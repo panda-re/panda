@@ -22,9 +22,21 @@
  *  @brief Debug macros.
  */
 #define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
-#define LOG_ERROR(fmt, args...) fprintf(stderr, PANDA_MSG "(ERROR:%s:%s) " fmt "\n", __FILENAME__, __func__, ## args)
-#define LOG_WARN(fmt, args...)  fprintf(stderr, PANDA_MSG "(WARN:%s:%s) "  fmt "\n", __FILENAME__, __func__, ## args)
-#define LOG_INFO(fmt, args...)  fprintf(stderr, PANDA_MSG "(INFO:%s:%s) "  fmt "\n", __FILENAME__, __func__, ## args)
+#define LOG_ERROR(fmt, args...) fprintf(stderr, PANDA_MSG "ERROR:%s:%s() " fmt "\n", __FILENAME__, __func__, ## args)
+#define LOG_WARN(fmt, args...)  fprintf(stderr, PANDA_MSG "WARN:%s:%s() "  fmt "\n", __FILENAME__, __func__, ## args)
+#define LOG_INFO(fmt, args...)  fprintf(stderr, PANDA_MSG "INFO:%s:%s() "  fmt "\n", __FILENAME__, __func__, ## args)
+
+/**
+ * @brief Macros to check if a task_struct is a thread (T) or process (P).
+ */
+#define TS_THREAD(env, ts) ((ts + ki.task.thread_group_offset != get_thread_group(env, ts)) ? 1 : 0)
+#define TS_THREAD_CHR(env, ts) (TS_THREAD(env, ts_current) ? 'T' : 'P')
+
+/**
+ * @brief Macros to check if a task_struct is a thread group leader (L) or follower (F).
+ */
+#define TS_LEADER(env, ts) ((get_pid(env, ts) == get_tgid(env, ts)) ? 1 : 0)
+#define TS_LEADER_CHR(env, ts) (TS_LEADER(env, ts_current) ? 'L' : 'F')
 
 /**
  * @brief Pointer type of the guest VM.
