@@ -259,34 +259,8 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 
 	// To avoid infinite loops, we need to actually start traversal from the next
 	// process after the thread group leader of the current task.
-#if 1
-	// ubuntu16-test: 0 inifinite loops - simpler code
 	ts_first = get_group_leader(env, ts_first);
 	ts_first = get_task_struct_next(env, ts_first);
-#endif
-#if 0
-	// ubuntu16-test: 0 inifinite loops - more complex code
-	while (get_pid(env, ts_first) != get_tgid(env, ts_first)) {
-		LOG_INFO("\t %d-%d", get_pid(env, ts_first), get_tgid(env, ts_first));
-		ts_first = get_thread_group(env, ts_first) - ki.task.thread_group_offset;
-	}
-	ts_first = get_task_struct_next(env, ts_first);
-#endif
-#if 0
-	// ubuntu16-test: 16 inifinite loops (manifests when traversal starts with process)
-	ts_first = get_group_leader(env, ts_first);
-#endif
-#if 0
-	// ubuntu16-test: 112 inifinite loops (manifests when traversal starts with thread)
-	ts_first = get_task_struct_next(env, ts_first);
-#endif
-#if 0
-	// ubuntu16-test: 112 + 16 inifinite loops (old code - this used to work for 3.x kernels)
-	if (ts_first + ki.task.thread_group_offset != get_thread_group(env, ts_first)) {
-		LOG_INFO("\t %d-%d", get_pid(env, ts_first), get_tgid(env, ts_first));
-		ts_first = get_task_struct_next(env, ts_first);
-	}
-#endif
 #endif
 
 	ts_first = ts_current;
