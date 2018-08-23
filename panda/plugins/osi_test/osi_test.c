@@ -15,9 +15,10 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
-// Choose a granularity for the OSI code to be invoked.
-// Comment out line below to generate output for each block.
-#define INVOKE_FREQ_PGD
+// Specify when the OSI test code is called.
+//    OSI_TEST_ON_ASID_CHANGED defined -> on context switches
+//    OSI_TEST_ON_ASID_CHANGED undefined -> for each executed block
+#define OSI_TEST_ON_ASID_CHANGED
 
 #include "panda/plugin.h"
 #include "osi/osi_types.h"
@@ -31,8 +32,6 @@ int before_block_exec(CPUState *cpu, TranslationBlock *tb);
 int after_block_exec(CPUState *cpu, TranslationBlock *tb);
 
 int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
-    int i;
-
     OsiProc *current = get_current_process(cpu);
     if(current) {
         printf("Current process: %s PID:" TARGET_FMT_ld " PPID:" TARGET_FMT_ld "\n", current->pid > 0 ? current->name : "N/A", current->pid, current->ppid);
@@ -47,7 +46,7 @@ int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
         printf("Process list not available.\n");
     } else {
         printf("Process list (%d procs):\n", ps->num);
-        for (i = 0; i < ps->num; i++)
+        for (int i = 0; i < ps->num; i++)
             printf("  %-16s\t" TARGET_FMT_ld "\t" TARGET_FMT_ld "\n", ps->proc[i].name, ps->proc[i].pid, ps->proc[i].ppid);
     }
 
@@ -61,15 +60,13 @@ int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
 }
 
 int after_block_exec(CPUState *cpu, TranslationBlock *tb) {
-    int i;
-
     OsiProc *current = get_current_process(cpu);
     OsiModules *ms = get_libraries(cpu, current);
     if (ms == NULL) {
         printf("No mapped dynamic libraries.\n");
     } else {
         printf("Dynamic libraries list (%d libs):\n", ms->num);
-        for (i = 0; i < ms->num; i++)
+        for (int i = 0; i < ms->num; i++)
             printf("\t0x" TARGET_FMT_lx "\t" TARGET_FMT_ld "\t%-24s %s\n", ms->module[i].base, ms->module[i].size, ms->module[i].name, ms->module[i].file);
     }
 
@@ -80,7 +77,7 @@ int after_block_exec(CPUState *cpu, TranslationBlock *tb) {
         printf("No mapped kernel modules.\n");
     } else {
         printf("Kernel module list (%d modules):\n", kms->num);
-        for (i = 0; i < kms->num; i++)
+        for (int i = 0; i < kms->num; i++)
             printf("\t0x" TARGET_FMT_lx "\t" TARGET_FMT_ld "\t%-24s %s\n", kms->module[i].base, kms->module[i].size, kms->module[i].name, kms->module[i].file);
     }
 
@@ -102,7 +99,7 @@ int asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd) {
 }
 
 bool init_plugin(void *self) {
-#if defined(INVOKE_FREQ_PGD)
+#if defined(OSI_TEST_ON_ASID_CHANGED)
     // relatively short execution
     // loaded library information will be for the previously running process
     panda_cb pcb = { .asid_changed = asid_changed };
