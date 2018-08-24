@@ -65,7 +65,7 @@ aur_install_pkg () {
 	makepkg --install
 }
 
-gpg --receive-keys A2C794A986419D8A #
+gpg --receive-keys A2C794A986419D8A
 aur_install_pkg "libc++"
 aur_install_pkg "llvm33"
 aur_install_pkg "libprotobuf2"
