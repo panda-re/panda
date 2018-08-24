@@ -244,7 +244,7 @@ static int usb_host_init(void)
     if (rc != 0) {
         return -1;
     }
-    libusb_set_debug(ctx, loglevel);
+    libusb_set_option(ctx, LIBUSB_OPTION_LOG_LEVEL, loglevel);
 #ifdef CONFIG_WIN32
     /* FIXME: add support for Windows. */
 #else
