@@ -37,6 +37,7 @@ typedef enum panda_cb_type {
     PANDA_CB_AFTER_BLOCK_EXEC,          // After executing each basic block
     PANDA_CB_INSN_TRANSLATE,    // Before an insn is translated
     PANDA_CB_INSN_EXEC,         // Before an insn is executed
+    PANDA_CB_AFTER_INSN_EXEC,
 
     PANDA_CB_VIRT_MEM_BEFORE_READ,
     PANDA_CB_VIRT_MEM_BEFORE_WRITE,
@@ -183,6 +184,7 @@ typedef union panda_cb {
         the PANDA_CB_INSN_TRANSLATE callback.
     */
     int (*insn_exec)(CPUState *env, target_ulong pc);
+    int (*after_insn_exec)(CPUState *env, target_ulong pc);
 
     /* Callback ID: PANDA_CB_GUEST_HYPERCALL
 
