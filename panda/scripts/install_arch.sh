@@ -100,7 +100,7 @@ else
 fi
 
 
-sudo pacman -S python2-protobuf libelf dtc capstone libdwarf python2-pycparser
+sudo pacman -S libelf dtc capstone libdwarf python2-pycparser
 
 
 
@@ -108,7 +108,7 @@ sudo pacman -S python2-protobuf libelf dtc capstone libdwarf python2-pycparser
 progress "Building PANDA..."
 
 
-mkdir build
+mkdir build || true
 cd build
 
 export PANDA_LLVM_ROOT=/opt/llvm33
