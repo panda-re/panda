@@ -173,7 +173,6 @@ static inline const char* get_log_entry_kind_string(RR_log_entry_kind kind)
 // mz 10.20.2009 Unified view of all callsite ids for record/replay calls.
 // mz These are used as additional sanity check during replay
 #define FOREACH_CALLSITE(ACTION) \
-    ACTION(RR_CALLSITE_CPU_HANDLE_INTERRUPT_POLL), \
     ACTION(RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE), \
     ACTION(RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO), \
     ACTION(RR_CALLSITE_CPU_HANDLE_INTERRUPT_AFTER), \
