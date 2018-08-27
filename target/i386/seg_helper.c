@@ -1328,11 +1328,6 @@ bool x86_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
     if (interrupt_request & CPU_INTERRUPT_POLL) {
         cs->interrupt_request &= ~CPU_INTERRUPT_POLL;
         apic_poll_irq(cpu->apic_state);
-        RR_DO_RECORD_OR_REPLAY(
-                /*action=*/RR_NO_ACTION,
-                /*record=*/rr_input_4(&cs->interrupt_request),
-                /*replay=*/rr_input_4(&cs->interrupt_request),
-              /*location=*/RR_CALLSITE_CPU_HANDLE_INTERRUPT_POLL);
         /* Don't process multiple interrupt requests in a single call.
            This is required to make icount-driven execution deterministic. */
         return true;
