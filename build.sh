@@ -7,8 +7,12 @@ else
     READLINK=readlink
 fi
 
+# Set source path variables.
+PANDA_DIR_REL="$(dirname $0)"
+PANDA_DIR="$("$READLINK" -f "${PANDA_DIR_REL}")"
+
 # Get the location of the LLVM compiled for PANDA, respecting environment variables.
-PANDA_LLVM_ROOT="${PANDA_LLVM_ROOT:-$(dirname $0)/../llvm}"
+PANDA_LLVM_ROOT="${PANDA_LLVM_ROOT:-"${PANDA_DIR_REL}/../llvm"}"
 PANDA_LLVM_BUILD="${PANDA_LLVM_BUILD:-Release}"
 PANDA_LLVM="$("$READLINK" -f "${PANDA_LLVM_ROOT}/${PANDA_LLVM_BUILD}" 2>/dev/null)"
 
@@ -93,16 +97,23 @@ fi
 #MISC_CONFIG="$MISC_CONFIG --extra-cflags=-DOSI_LINUX_PSDEBUG"
 
 ### Force QEMU options definitions to be regenerated.
-rm -f "$(dirname "$0")"/qemu-options.def
+rm -f "${PANDA_DIR}/qemu-options.def"
 
-"$(dirname "$0")/configure" \
+### Include any local build configurations options.
+BUILD_LOCAL="${PANDA_DIR}/build.inc.sh"
+if [ -f "$BUILD_LOCAL" ]; then
+    echo "Including local configuration from $BUILD_LOCAL."
+    . "$BUILD_LOCAL"
+fi
+
+## Configure and compile.
+"${PANDA_DIR_REL}/configure" \
     --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu \
     --prefix="$(pwd)/install" \
     $COMPILER_CONFIG \
     $LLVM_CONFIG \
     $MISC_CONFIG \
     "$@"
-
 make -j ${PANDA_NPROC:-$(nproc || sysctl -n hw.ncpu)}
 
 # vim: set et ts=4 sts=4 sw=4 ai ft=sh :
