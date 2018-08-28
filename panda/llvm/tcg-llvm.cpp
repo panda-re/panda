@@ -728,8 +728,17 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
         return m_builder.CreateSExt(loadedValue, intType(TCG_TARGET_REG_BITS));
 #endif
     case MO_UB:
+        if (loadedValue->getType()->isVoidTy()) return loadedValue;
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(8));
+        return loadedValue;
     case MO_UW:
+        if (loadedValue->getType()->isVoidTy()) return loadedValue;
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(16));
+        return loadedValue;
     case MO_UL:
+        if (loadedValue->getType()->isVoidTy()) return loadedValue;
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(32));
+        return loadedValue;
     case MO_Q:
         return loadedValue;
     default:
