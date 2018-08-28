@@ -111,9 +111,11 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                 f.asid = p.cr3;
                 matchstacks[p] = f;
 
-                // call the i-found-a-match registered callbacks here
-                PPP_RUN_CB(on_ssm, env, pc, addr, tofind[str_idx], strlens[str_idx], is_write)
+                target_ulong match_addr = (addr + i) - (strlens[str_idx] - 1);
 
+                // call the i-found-a-match registered callbacks here
+                PPP_RUN_CB(on_ssm, env, pc, match_addr, tofind[str_idx],
+                           strlens[str_idx], is_write)
             }
         }
     }
