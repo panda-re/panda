@@ -107,12 +107,12 @@ Description: Frees an `OsiModules` structure. You only need to implement this if
 
 In addition, there are two callbacks intended to be used by `osi` *users*, rather than by introspection providers:
 
-Name: **on_new_process**
+Name: **on_process_start**
 
 Signature:
 
 ```C
-typedef void (*on_new_process_t)(CPUState *, OsiProc *)
+typedef void (*on_process_start_t)(CPUState *, OsiProc *)
 ```
 
 Description: Called whenever a new process is created in the guest. Passes in an `OsiProc` identifying the newly created process.
@@ -120,12 +120,12 @@ This callback is **disabled by default** because it requires a fair amount of co
 To enable/use this callback you need to have used the `-DOSI_PROC_EVENTS` flag at compile time.
 
 
-Name: **on_finished_process**
+Name: **on_process_end**
 
 Signature:
 
 ```C
-typedef void (*on_finished_process_t)(CPUState *, OsiProc *)
+typedef void (*on_process_end_t)(CPUState *, OsiProc *)
 ```
 
 Description: Called whenever a process exits in the guest. Passes in an `OsiProc` identifying the process that just exited.

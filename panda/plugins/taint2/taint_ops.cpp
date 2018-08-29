@@ -14,9 +14,10 @@ PANDAENDCOMMENT */
 
 /*
  * Change Log:
- * 2018-MAY-07   Detaint bytes whose control mask bits all become 0
+ * dynamic check if there is a mul X 0 or mul X 1, for no taint prop or parallel
+ * propagation respetively
  */
- 
+
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
 #endif
@@ -28,6 +29,9 @@ PANDAENDCOMMENT */
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Value.h>
+
+#include "qemu/osdep.h"        // needed for host-utils.h
+#include "qemu/host-utils.h"   // needed for clz64 and ctz64
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
@@ -49,9 +53,11 @@ void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size);
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);
 
 // Remove the taint marker from any bytes whose control mask bits go to 0.
-// A 0 control mask bit means that bit does not impact the value in the byte.
-// This reduces false positives by removing taint from bytes which were formerly
-// tainted, but whose values are no longer controlled by any tainted data.
+// A 0 control mask bit means that bit does not impact the value in the byte (or
+// impacts it in an irreversible fashion, so they gave up on calculating the
+// mask).  This reduces false positives by removing taint from bytes which were
+// formerly tainted, but whose values are no longer (reversibly) controlled by
+// any tainted data.
 void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size)
 {
     uint64_t curAddr = 0;
@@ -59,13 +65,17 @@ void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size)
     {
         curAddr = addr + i;
         TaintData td = shad->query_full(curAddr);
-        if (td.cb_mask == 0)
+        
+        // query_full ALWAYS returns a TaintData object - but there's not really
+        // any taint (controlled or not) unless there are labels too
+        if ((td.cb_mask == 0) && (td.ls != NULL) && (td.ls->size() > 0))
         {
             taint_delete(shad, curAddr, 1);
             taint_log("detaint: control bits 0 for 0x%lx\n", curAddr);
         }
     }
 }
+
 // Memlog functions.
 
 uint64_t taint_memlog_pop(taint2_memlog *taint_memlog) {
@@ -182,7 +192,7 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
             cb_mask_1.cb_mask, cb_mask_2.cb_mask, cb_mask_out.cb_mask);
     taint_log_labels(shad, dest, src_size);
     write_cb_masks(shad, dest, src_size, cb_mask_out);
-    
+
     if (detaint_cb0_bytes)
     {
         detaint_on_cb0(shad, dest, src_size);
@@ -222,6 +232,32 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
     taint_log("mcompute: %s[%lx+%lx] <- %lx + %lx ",
             shad->name(), dest, dest_size, src1, src2);
     taint_log_labels(shad, dest, dest_size);
+}
+
+void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
+                       uint64_t src1, uint64_t src2, uint64_t src_size,
+                       llvm::Instruction *inst, uint64_t arg1, uint64_t arg2)
+{
+    bool isTainted1 = false;
+    bool isTainted2 = false;
+    for (int i = 0; i < src_size; ++i) {
+        isTainted1 |= shad->query(src1+i) != NULL;
+        isTainted2 |= shad->query(src2+i) != NULL;
+    }
+    if (!isTainted1 && !isTainted2) {
+        taint_log("mul_com: untainted args \n");
+        return; //nothing to propagate
+    } else if (!(isTainted1 && isTainted2)){ //the case we do special stuff
+        uint64_t cleanArg = isTainted1 ? arg2 : arg1;
+        taint_log("mul_com: one untainted arg %lu \n", cleanArg);
+        if (cleanArg == 0) return ; // mul X untainted 0 -> no taint prop
+        else if (cleanArg == 1) { //mul X untainted 1(one) should be a parallel taint
+            taint_parallel_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
+            taint_log("mul_com: mul X 1\n");
+            return;
+        }
+    }
+    taint_mix_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
 }
 
 void taint_delete(Shad *shad, uint64_t dest, uint64_t size)
@@ -330,7 +366,6 @@ void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
     while (!(src == ones && srcsel == ones)) {
         if (srcsel == selector) { // bingo!
             if (src != ones) { // otherwise it's a constant.
-                taint_log("slct\n");
                 Shad::copy(shad, dest, shad, src, size);
             }
             return;
@@ -338,7 +373,7 @@ void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
 
         src = va_arg(argp, uint64_t);
         srcsel = va_arg(argp, uint64_t);
-    } 
+    }
 
     tassert(false && "Couldn't find selected argument!!");
 }
@@ -355,7 +390,7 @@ static void find_offset(Shad *greg, Shad *gspec, uint64_t offset,
 {
 #ifdef TARGET_PPC
     if (cpu_contains(gpr, offset)) {
-#else 
+#else
     if (cpu_contains(regs, offset)) {
 #endif
         *dest = greg;
@@ -421,7 +456,7 @@ void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
                        uint64_t labels_per_reg)
 {
     int64_t dest_offset = dest - env_ptr, src_offset = src - env_ptr;
-    if (dest_offset < 0 || (size_t)dest_offset >= sizeof(CPUArchState) || 
+    if (dest_offset < 0 || (size_t)dest_offset >= sizeof(CPUArchState) ||
             src_offset < 0 || (size_t)src_offset >= sizeof(CPUArchState)) {
         taint_log("hostmemcpy: irrelevant\n");
         return;
@@ -469,6 +504,9 @@ void taint_host_delete(uint64_t env_ptr, uint64_t dest_addr, Shad *greg,
 // to reconstruct and deconstruct the full mask.
 static inline CBMasks compile_cb_masks(Shad *shad, uint64_t addr, uint64_t size)
 {
+    // as our masks are only 64 bits in size, can't handle more than 8 bytes
+    tassert(size <= 8);
+    
     CBMasks result = {0};
     for (int i = size - 1; i >= 0; i--) {
         TaintData td = shad->query_full(addr + i);
@@ -497,6 +535,7 @@ static inline void write_cb_masks(Shad *shad, uint64_t addr, uint64_t size,
     }
 }
 
+//seems implied via callers that for dyadic operations 'I' will have one tainted and one untainted arg
 static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
                       uint64_t src, uint64_t size, llvm::Instruction *I)
 {
@@ -522,169 +561,18 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
     }
     int log2 = 0;
 
-    switch (I->getOpcode()) {
-        // Totally reversible cases.
-        case llvm::Instruction::Sub:
-            if (literals[1] == ~0UL) {
-                tassert(last_literal != ~0UL);
-                // first operand is a variable. so negate.
-                // throw out ones/zeroes info.
-                // FIXME: handle better.
-                one_mask = zero_mask = 0;
-                break;
-            } // otherwise fall through.
-        case llvm::Instruction::Add:
-            tassert(last_literal != ~0UL);
-            log2 = 64 - __builtin_clz(last_literal);
-            // FIXME: this isn't quite right. for example, if all bits ones,
-            // adding one makes all bits zero.
-            one_mask &= ~((1 << log2) - 1);
-            zero_mask &= ~((1 << log2) - 1);
-            break;
+    unsigned int opcode = I->getOpcode();
 
-        case llvm::Instruction::Xor:
-            one_mask &= ~last_literal;
-            one_mask |= last_literal & orig_zero_mask;
-            zero_mask &= ~last_literal;
-            zero_mask |= last_literal & orig_one_mask;
-            break;
-
-        case llvm::Instruction::ZExt:
-        case llvm::Instruction::IntToPtr:
-        case llvm::Instruction::PtrToInt:
-        case llvm::Instruction::BitCast:
-        // This one copies the existing bits and adds non-controllable bits.
-        // One and zero masks too complicated to compute. Bah.
-        case llvm::Instruction::SExt:
-        // Copies. These we ignore (the copy will copy the CB data for us)
-        case llvm::Instruction::Store:
-        case llvm::Instruction::Load:
-        case llvm::Instruction::ExtractValue:
-        case llvm::Instruction::InsertValue:
-            break;
-
-        case llvm::Instruction::Trunc:
-            cb_mask &= (1 << (size * 8)) - 1;
-            one_mask &= (1 << (size * 8)) - 1;
-            zero_mask &= (1 << (size * 8)) - 1;
-            break;
-
-        case llvm::Instruction::Mul:
-        {
-            tassert(last_literal != ~0UL);
-            // Powers of two in last_literal destroy reversibility.
-            uint64_t trailing_zeroes = __builtin_ctz(last_literal);
-            cb_mask <<= trailing_zeroes;
-            zero_mask = (1 << trailing_zeroes) - 1;
-            one_mask = 0;
-            break;
-        }
-
-        case llvm::Instruction::URem:
-        case llvm::Instruction::SRem:
-            tassert(last_literal != ~0UL);
-            log2 = 64 - __builtin_clz(last_literal);
-            cb_mask &= (1 << log2) - 1;
-            one_mask = 0;
-            zero_mask = 0;
-            break;
-
-        case llvm::Instruction::UDiv:
-        case llvm::Instruction::SDiv:
-            tassert(last_literal != ~0UL);
-            log2 = 64 - __builtin_clz(last_literal);
-            cb_mask >>= log2;
-            one_mask = 0;
-            zero_mask = 0;
-            break;
-
-        case llvm::Instruction::And:
-            tassert(last_literal != ~0UL);
-            // Bits not in the bit mask are no longer controllable
-            cb_mask &= last_literal;
-            zero_mask |= ~last_literal;
-            one_mask &= last_literal;
-            break;
-
-        case llvm::Instruction::Or:
-            tassert(last_literal != ~0UL);
-            // Bits in the bit mask are no longer controllable
-            cb_mask &= ~last_literal;
-            one_mask |= last_literal;
-            zero_mask &= ~last_literal;
-            break;
-
-        case llvm::Instruction::Shl:
-            tassert(last_literal != ~0UL);
-            cb_mask <<= last_literal;
-            one_mask <<= last_literal;
-            zero_mask <<= last_literal;
-            zero_mask |= (1 << last_literal) - 1;
-            break;
-
-        case llvm::Instruction::LShr:
-            tassert(last_literal != ~0UL);
-            cb_mask >>= last_literal;
-            one_mask >>= last_literal;
-            zero_mask >>= last_literal;
-            zero_mask |= ~((1 << (64 - last_literal)) - 1);
-            break;
-
-        case llvm::Instruction::AShr: // High bits not really controllable.
-            tassert(last_literal != ~0UL);
-            cb_mask >>= last_literal;
-            one_mask >>= last_literal;
-            zero_mask >>= last_literal;
-
-            // See if high bit is a last_literal
-            if (orig_one_mask & (1 << (size * 8 - 1))) {
-                one_mask |= ~((1 << (64 - last_literal)) - 1);
-            } else if (orig_zero_mask & (1 << (size * 8 - 1))) {
-                zero_mask |= ~((1 << (64 - last_literal)) - 1);
-            }
-            break;
-
-        // Totally irreversible cases. Erase and bail.
-        case llvm::Instruction::FAdd:
-        case llvm::Instruction::FSub:
-        case llvm::Instruction::FMul:
-        case llvm::Instruction::FDiv:
-        case llvm::Instruction::FRem:
-        case llvm::Instruction::Call:
-        case llvm::Instruction::ICmp:
-        case llvm::Instruction::FCmp:
-            cb_mask = 0;
-            one_mask = 0;
-            zero_mask = 0;
-            break;
-
-        case llvm::Instruction::GetElementPtr:
-        {
-            llvm::GetElementPtrInst *GEPI =
-                llvm::dyn_cast<llvm::GetElementPtrInst>(I);
-            tassert(GEPI);
-            one_mask = 0;
-            zero_mask = 0;
-            // Constant indices => fully reversible
-            if (GEPI->hasAllConstantIndices()) break;
-            // Otherwise we know nothing.
-            cb_mask = 0;
-            break;
-        }
-
-        default:
-            printf("Unknown instruction in update_cb: ");
-            I->dump();
-            fflush(stdout);
-            return;
-    }
+    // guts of this function are in separate file so it can be more easily
+    // tested without calling a function (which would slow things down even more)
+#include "update_cb_switch.h"
 
     taint_log("update_cb: %s[%lx+%lx] CB %#lx -> 0x%#lx, 0 %#lx -> %#lx, 1 %#lx -> %#lx\n",
             shad_dest->name(), dest, size, orig_cb_mask, cb_mask,
             orig_zero_mask, zero_mask, orig_one_mask, one_mask);
 
     write_cb_masks(shad_dest, dest, size, cb_masks);
-    
+
     if (detaint_cb0_bytes)
     {
         detaint_on_cb0(shad_dest, dest, size);
