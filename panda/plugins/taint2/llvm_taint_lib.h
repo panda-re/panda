@@ -114,6 +114,8 @@ private:
             Value *src1, Value *src2, bool is_mixed);
     void insertTaintCompute(Instruction &I, Value *dest,
             Value *src1, Value *src2, bool is_mixed);
+    void insertTaintMul(Instruction &I, Value *dest,
+            Value *src1, Value *src2);
     void insertTaintSext(Instruction &I, Value *src);
     void insertTaintSelect(Instruction &after, Value *dest,
             Value *selector, vector<pair<Value *, Value *>> &selections);
@@ -130,6 +132,7 @@ public:
     Function *mixF;
     Function *pointerF;
     Function *mixCompF;
+    Function *mulCompF;
     Function *parallelCompF;
     Function *copyF;
     Function *moveF;

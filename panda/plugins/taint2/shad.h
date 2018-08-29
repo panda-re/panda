@@ -88,7 +88,7 @@ struct TaintData {
     TaintData() : ls(NULL), tcn(0), cb_mask(0), one_mask(0), zero_mask(0) {}
     explicit TaintData(LabelSetP ls) : ls(ls), tcn(0), cb_mask(ls ? 0xFF : 0),
             one_mask(0), zero_mask(0) {}
-    TaintData(LabelSetP ls, uint32_t tcn, uint8_t cb_mask, 
+    TaintData(LabelSetP ls, uint32_t tcn, uint8_t cb_mask,
             uint8_t one_mask, uint8_t zero_mask)
         : ls(ls), tcn(ls ? tcn : 0), cb_mask(ls ? cb_mask : 0),
         one_mask(one_mask), zero_mask(zero_mask) {}
@@ -129,8 +129,10 @@ class Shad
     // inheritance tree, and only by methods that already take care of reporting
     // taint changes.
     virtual void set_full_quiet(uint64_t addr, TaintData td) = 0;
-        
+
   public:
+    Shad(std::string name, uint64_t max_size);
+
     virtual ~Shad() = 0;
 
     uint64_t get_size()
@@ -154,7 +156,7 @@ class Shad
 
         for (uint64_t i = 0; i < size; i++) {
             auto td = shad_src->query_full(src + i);
-            
+
             // don't report taint changes when store the taint data, as it is
             // already taken care of for all bytes below
             shad_dest->set_full_quiet(dest + i, td);
@@ -216,7 +218,7 @@ class FastShad : public Shad
         tassert(addr < size);
         labels[addr] = td;
     }
-    
+
   public:
     FastShad(std::string name, uint64_t size);
     ~FastShad();
@@ -312,7 +314,7 @@ class LazyShad : public Shad
     {
         labels[addr] = td;
     }
-    
+
   public:
     LazyShad(std::string name, uint64_t size);
     ~LazyShad();
@@ -333,7 +335,7 @@ class LazyShad : public Shad
         if (track_taint_state && range_tainted(addr, remove_size)) {
             change = true;
         }
-        for (uint64_t cur = addr; cur < addr + remove_size - 1; cur++) {
+        for (uint64_t cur = addr; cur < addr + remove_size; cur++) {
              labels.erase(cur);
         }
 

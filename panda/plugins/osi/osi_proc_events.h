@@ -1,17 +1,6 @@
-#ifndef OSI_PROC_EVENTS_H
-#define OSI_PROC_EVENTS_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "config.h"
-#include "qemu-common.h"
+#pragma once
+#include "panda/plugin.h"
 #include "osi_types.h"
-
-#ifdef __cplusplus
-}
-#endif
 
 /*!
  * @brief Branch prediction hint macros.
@@ -22,9 +11,10 @@ extern "C" {
 /*!
  * @brief Debug macros.
  */
-#define LOG_ERROR(fmt, args...) fprintf(stderr, "ERROR(%s:%s): " fmt "\n", __FILE__, __func__, ## args)
-#define LOG_WARN(fmt, args...) fprintf(stderr, "WARN(%s:%s): " fmt "\n", __FILE__, __func__, ## args)
-#define LOG_INFO(fmt, args...) fprintf(stderr, "INFO(%s:%s): " fmt "\n", __FILE__, __func__, ## args)
+#define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
+#define LOG_ERROR(fmt, args...)	fprintf(stderr, PANDA_MSG "(ERROR:%s:%s) " fmt "\n", __FILENAME__, __func__, ## args)
+#define LOG_WARN(fmt, args...)	fprintf(stderr, PANDA_MSG "(WARN:%s:%s) "  fmt "\n", __FILENAME__, __func__, ## args)
+#define LOG_INFO(fmt, args...)	fprintf(stderr, PANDA_MSG "(INFO:%s:%s) "  fmt "\n", __FILENAME__, __func__, ## args)
 #define PRINT_CONTAINER(c, fmt, args...) do{\
 	int _l = 0;\
 	LOG_INFO("------- " #c " start -------");\
@@ -78,4 +68,3 @@ void procstate_update(OsiProcs *ps, OsiProcs **in, OsiProcs **out);
 }
 #endif
 
-#endif

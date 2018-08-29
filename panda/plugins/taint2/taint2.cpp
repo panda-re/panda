@@ -23,7 +23,7 @@
  * 2018-MAY-07   Add detaint_cb0 option to remove taint from bytes whose
  *               control bits are all zero.
  */
- 
+
 // This needs to be defined before anything is included in order to get
 // the PRIx64 macro
 #ifndef __STDC_FORMAT_MACROS
@@ -319,7 +319,7 @@ void taint2_enable_taint(void) {
     }
 
 #ifdef TAINT2_DEBUG
-    tcg_llvm_write_module(tcg_llvm_ctx, "/tmp/llvm-mod.bc");
+    tcg_llvm_write_module(tcg_llvm_ctx, "llvm-mod.bc");
 #endif
 
     std::cerr << "Done verifying module. Running..." << std::endl;

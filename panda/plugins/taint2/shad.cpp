@@ -30,13 +30,18 @@ PANDAENDCOMMENT */
 #include <set>
 #include <string>
 
+Shad::Shad(std::string name, uint64_t max_size)
+{
+    this->_name = name;
+    this->size = max_size;
+}
+
 Shad::~Shad() = default;
 
 typedef const std::set<uint32_t> *LabelSetP;
 
-FastShad::FastShad(std::string name, uint64_t labelsets)
+FastShad::FastShad(std::string name, uint64_t labelsets) : Shad(name, labelsets)
 {
-    this->_name = name;
     uint64_t bytes = sizeof(TaintData) * labelsets;
 
     TaintData *array;
@@ -57,7 +62,6 @@ FastShad::FastShad(std::string name, uint64_t labelsets)
 
     labels = array;
     orig_labels = array;
-    size = labelsets;
 }
 
 // release all memory associated with this fast_shad.
@@ -69,9 +73,10 @@ FastShad::~FastShad() {
     }
 }
 
-LazyShad::LazyShad(std::string name, uint64_t max_size)
+LazyShad::LazyShad(std::string name, uint64_t max_size) : Shad(name, max_size)
 {
-    assert(max_size > 0);
+    tassert(this->size > 0);
+    tassert(this->_name.size() > 0);
 }
 
 LazyShad::~LazyShad()
