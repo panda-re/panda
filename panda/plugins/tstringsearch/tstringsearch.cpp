@@ -72,8 +72,14 @@ bool first_time = true;
 
 // this is called from stringsearch upon a match
 void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
-        uint8_t *matched_string, uint32_t matched_string_length, 
-        bool is_write) {
+                         uint8_t *matched_string,
+                         uint32_t matched_string_length, bool is_write,
+                         bool in_memory)
+{
+    if (!in_memory) {
+        printf("tstringsearch: match not in memory - not applying taint\n");
+        return;
+    }
 
     tstringsearch_enable_taint(env, pc);
 
@@ -84,7 +90,26 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
                "p=0x" TARGET_FMT_lx "\n",
                matched_string_length, addr);
         printf("***************************************************************"
-               "***************\n");
+               "*************\n");
+
+        uint8_t *buf =
+            (uint8_t *)calloc(matched_string_length + 1, sizeof(*buf));
+        panda_virtual_memory_read(env, addr, buf, matched_string_length);
+        printf("tstringsearch: ascii = [");
+        for (int i = 0; i < matched_string_length; i++) {
+            if (isprint(buf[i])) {
+                printf("%c", buf[i]);
+            } else {
+                printf(".");
+            }
+        }
+        printf("]\n");
+        printf("tstringsearch: hex = ");
+        for (int i = 0; i < matched_string_length; i++) {
+                printf("%X ", buf[i]);
+        }
+        printf("\n");
+        free(buf);
 
         for (int i = 0; i < matched_string_length; i++) {
             hwaddr pa = panda_virt_to_phys(env, addr + i);
