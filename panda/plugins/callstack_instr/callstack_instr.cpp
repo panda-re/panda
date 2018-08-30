@@ -180,7 +180,7 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
     instr_type res = INSTR_UNKNOWN;
 
 #if defined(TARGET_I386)
-    csh handle = (env->hflags & HF_LMA_MASK) ? cs_handle_64 : cs_handle_32;
+    csh handle = (env->hflags & HF_CS64_MASK) ? cs_handle_64 : cs_handle_32;
 #if !defined(TARGET_X86_64)
     // not every block in i386 is necessary executing in the same processor mode
     // need to make capstone match current mode or may miss call statements
