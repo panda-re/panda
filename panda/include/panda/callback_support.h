@@ -15,6 +15,7 @@ bool panda_callbacks_after_find_fast(CPUState *cpu, TranslationBlock *tb, bool p
 
 // target-i386/translate.c
 bool panda_callbacks_insn_translate(CPUState *env, target_ulong pc);
+bool panda_callbacks_after_insn_translate(CPUState *env, target_ulong pc);
 // softmmu_template.h
 void panda_callbacks_before_mem_read(CPUState *env, target_ulong pc, target_ulong addr,
                                      uint32_t data_size, void *ram_ptr);
