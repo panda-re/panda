@@ -37,7 +37,8 @@ typedef enum panda_cb_type {
     PANDA_CB_AFTER_BLOCK_EXEC,          // After executing each basic block
     PANDA_CB_INSN_TRANSLATE,    // Before an insn is translated
     PANDA_CB_INSN_EXEC,         // Before an insn is executed
-    PANDA_CB_AFTER_INSN_EXEC,
+    PANDA_CB_AFTER_INSN_TRANSLATE,  // After an insn is translated
+    PANDA_CB_AFTER_INSN_EXEC,   // After an insn is executed
 
     PANDA_CB_VIRT_MEM_BEFORE_READ,
     PANDA_CB_VIRT_MEM_BEFORE_WRITE,
@@ -184,6 +185,39 @@ typedef union panda_cb {
         the PANDA_CB_INSN_TRANSLATE callback.
     */
     int (*insn_exec)(CPUState *env, target_ulong pc);
+
+    /* Callback ID: PANDA_CB_AFTER_INSN_TRANSLATE
+
+       after_insn_translate: called after the translation of each instruction
+
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong pc: the next guest PC we've translated
+
+       Return value:
+        true if PANDA should insert instrumentation into the generated code,
+        false otherwise
+
+       Notes:
+        See `insn_translate`, callbacks are registered via PANDA_CB_AFTER_INSN_EXEC 
+    */
+    bool (*after_insn_translate)(CPUState *env, target_ulong pc);
+
+    /* Callback ID: PANDA_CB_AFTER_INSN_EXEC
+
+       after_insn_exec: called after execution of an instruction identified
+        by the PANDA_CB_AFTER_INSN_TRANSLATE callback
+
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong pc: the next guest PC already executed
+
+       Return value:
+        unused
+
+       Notes:
+        See `insn_exec`. Enabled via the PANDA_CB_AFTER_INSN_TRANSLATE callback.
+    */
     int (*after_insn_exec)(CPUState *env, target_ulong pc);
 
     /* Callback ID: PANDA_CB_GUEST_HYPERCALL
