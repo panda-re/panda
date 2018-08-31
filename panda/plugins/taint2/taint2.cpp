@@ -72,6 +72,7 @@ PPP_PROT_REG_CB(on_taint_change);
 PPP_CB_BOILERPLATE(on_taint_change);
 
 bool track_taint_state = false;
+uint32_t max_tcn = 0;          // ie disabled
 
 int asid_changed_callback(CPUState *env, target_ulong oldval, target_ulong newval);
 }
@@ -351,6 +352,9 @@ bool init_plugin(void *self) {
     std::cerr << PANDA_MSG "taint debugging " << PANDA_FLAG_STATUS(debug_taint) << std::endl;
     detaint_cb0_bytes = panda_parse_bool_opt(args, "detaint_cb0", "detaint bytes whose control mask bits are 0");
     std::cerr << PANDA_MSG "detaint if control bits 0 " << PANDA_FLAG_STATUS(detaint_cb0_bytes) << std::endl;
+    max_tcn = panda_parse_uint32_opt(args, "max_taintset_compute_number", 0,
+        "stop propagating taint after it goes through this number of computations (0=never stop)");
+    std::cerr << PANDA_MSG "maximum taint compute number (0=unlimited) " << max_tcn << std::endl;
 
     // load dependencies
     panda_require("callstack_instr");
