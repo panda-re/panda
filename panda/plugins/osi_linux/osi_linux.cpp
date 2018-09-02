@@ -131,10 +131,6 @@ static void fill_osiproc(CPUState *env, OsiProc *p, PTR task_addr) {
 
 	panda_memory_errors = 0;
 	p->asid = get_pgd(env, task_addr);
-
-#if defined(OSI_LINUX_TEST)
-	LOG_INFO(TARGET_FMT_PTR ":" TARGET_FMT_PID ":" TARGET_FMT_PID ":" TARGET_FMT_PTR ":%s", task_addr, (int)p->ppid, (int)p->pid, p->asid, p->name);
-#endif
 }
 
 /**
@@ -178,10 +174,6 @@ static void fill_osimodule(CPUState *env, OsiModule *m, PTR vma_addr) {
 			m->name = g_strdup("[???]");
 		}
 	}
-
-#if defined(OSI_LINUX_TEST)
-	LOG_INFO(TARGET_FMT_PTR ":" TARGET_FMT_PTR ":" TARGET_FMT_PID "p:%s:%s", m->offset, m->base, NPAGES(m->size), m->name, m->file);
-#endif
 }
 
 
@@ -305,18 +297,6 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 			OSI_MAX_PROC_CHECK(ps->num, "traversing thread group list");
 		}
 		ts_current = tg_first - ki.task.thread_group_offset;
-#endif
-
-#if 0
-		/*********************************************************/
-		// Test of fd -> name resolution.
-		/*********************************************************/
-		for (int fdn=0; fdn<256; fdn++) {
-			char *s = get_fd_name(env, ts_current, fdn);
-			LOG_INFO("%s fd%d -> %s", p->name, fdn, s);
-			g_free(s);
-		}
-		/*********************************************************/
 #endif
 
 		ts_current = get_task_struct_next(env, ts_current);
@@ -530,36 +510,49 @@ void on_free_osimodules(OsiModules *ms) {
 ****************************************************************** */
 #if (defined OSI_LINUX_TEST)
 /**
- * @brief Fills an OsiProc struct.
+ * @brief Tests the osi_linux functionality by directly calling the
+ * respective introspection functions. For testing the functions via
+ * their callbacks, use the osi_test plugin.
  */
-int asid_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
-	static int asid_change_count = 0;
-	OsiProcs *ps;
-	OsiModules *ms;
-	uint32_t i;
+int osi_linux_test(CPUState *env, target_ulong oldval, target_ulong newval) {
+	static uint32_t asid_change_count = 0;
+	char mode = panda_in_kernel(env) ? 'K' : 'U';
 
-	if (!panda_in_kernel(env)) {
-		// This shouldn't ever happen, as PGD is updated only in kernel mode.
-		LOG_ERROR("Can't do introspection in user mode.");
-		goto error;
-	}
-
-	// Directly call the linux-specific introspection functions.
-	// For testing the functions via their callbacks, use the osi_test plugin.
-	LOG_INFO("--- START %4d ---------------------------------------------", asid_change_count);
+	LOG_INFO("--- START(%c) %06u ------------------------------------------", mode, asid_change_count);
+	OsiProcs *ps = NULL;
 	on_get_processes(env, &ps);
-	for (i=0; i< ps->num; i++) {
-		on_get_libraries(env, &ps->proc[i], &ms);
-		on_free_osimodules(ms);
+	for (uint32_t i=0; i<ps->num; i++) {
+		OsiProc *p = &ps->proc[i];
+		LOG_INFO(TARGET_FMT_PID ":" TARGET_FMT_PID ":%s:" TARGET_FMT_PTR ":" TARGET_FMT_PTR,
+				(int)p->pid, (int)p->ppid, p->name, p->asid, p->offset);
+#if defined(OSI_LINUX_TEST_MODULES)
+		OsiModules *ms = NULL;
+		on_get_libraries(env, p, &ms);
+		if (ms != NULL) {
+			for (uint32_t j=0; j<ms->num; j++) {
+				OsiModule *m = &ms->module[j];
+				LOG_INFO("\t" TARGET_FMT_PTR ":%04up:%s:%s", m->base, NPAGES(m->size), m->name, m->file);
+			}
+			on_free_osimodules(ms);
+		}
+#endif
+#if defined(OSI_LINUX_TEST_MODULES) && defined(OSI_LINUX_TEST_FDNAME)
+		if (ms != NULL) {
+			LOG_INFO("\t------------------------");
+		}
+#endif
+#if defined(OSI_LINUX_TEST_FDNAME)
+		for (uint32_t fd=0; fd<16; fd++) {
+			char *s = get_fd_name(env, ps->proc[i].offset, fd);
+			LOG_INFO("\tfd%d -> %s", fd, s);
+			g_free(s);
+		}
+#endif
 	}
 	on_free_osiprocs(ps);
-	LOG_INFO("--- END  %4d ---------------------------------------------", asid_change_count);
+	LOG_INFO("--- END(%c)  %06u ------------------------------------------", mode, asid_change_count);
 	asid_change_count++;
-
 	return 0;
-
-error:
-	return -1;
 }
 #endif
 
@@ -575,8 +568,8 @@ error:
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) || defined(TARGET_ARM)
 #if (defined OSI_LINUX_TEST)
-	panda_cb pcb = { .asid_changed = asid_changed };
-	panda_register_callback(self, PANDA_CB_OSI_PGD_CHANGED, pcb);
+	panda_cb pcb = { .asid_changed = osi_linux_test };
+	panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
 #endif
 
 	// Read the name of the kernel configuration to use.
