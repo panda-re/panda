@@ -80,7 +80,7 @@
 /**
  * @brief Returns the number of pages required to store n bytes.
  */
-#define NPAGES(n) ((n) >> 12)
+#define NPAGES(n) ((uint32_t)((n) >> 12))
 
 /**
  * @brief Mask to apply on ESP to get the thread_info address.
@@ -119,7 +119,7 @@
 #define TARGET_FMT_PTR TARGET_FMT_lx
 
 /** @brief Print format for guest VM pids. */
-#define TARGET_FMT_PID "%5d"
+#define TARGET_FMT_PID "%d"
 
 extern struct kernelinfo ki;
 extern int panda_memory_errors;
