@@ -160,6 +160,12 @@ void taint2_label_ram(uint64_t pa, uint32_t l) {
     tp_label(a, l);
 }
 
+// label this IO address with this label
+void taint2_label_io(uint64_t ia, uint32_t l) {
+    Addr a = make_iaddr(ia);
+    tp_label(a, l);
+}
+
 void taint2_label_reg(int reg_num, int offset, uint32_t l) {
     Addr a = make_greg(reg_num, offset);
     tp_label(a, l);
@@ -172,6 +178,11 @@ void taint2_label_ram_additive(uint64_t pa, uint32_t l) {
 
 void taint2_label_reg_additive(int reg_num, int offset, uint32_t l) {
     Addr a = make_greg(reg_num, offset);
+    tp_label_additive(a, l);
+}
+
+void taint2_label_io_additive(uint64_t ia, uint32_t l) {
+    Addr a = make_iaddr(ia);
     tp_label_additive(a, l);
 }
 
@@ -236,6 +247,13 @@ uint32_t taint2_query_ram(uint64_t pa) {
 
 uint32_t taint2_query_reg(int reg_num, int offset) {
     LabelSetP ls = tp_labelset_get(make_greg(reg_num, offset));
+    return ls ? ls->size() : 0;
+}
+
+// if IO address is untainted, return 0
+// otherwise, return the label set cardinality
+uint32_t taint2_query_io(uint64_t ia) {
+    LabelSetP ls = tp_labelset_get(make_iaddr(ia));
     return ls ? ls->size() : 0;
 }
 
@@ -310,6 +328,16 @@ extern "C" void taint2_query_set_reg(int reg_num, int offset, uint32_t *out) {
 	}
 }
 
+extern "C" void taint2_query_set_io(uint64_t ia, uint32_t *out) {
+	auto set = tp_labelset_get(make_iaddr(ia));
+	if (set == nullptr || set->empty()) return;
+
+	auto it = set->begin();
+	for (size_t i = 0; it != set->end(); ++i, ++it) {
+		out[i] = *it;
+	}
+}
+
 uint32_t taint2_query_tcn(Addr a) {
     return tp_query_full(a).tcn;
 }
@@ -320,6 +348,10 @@ uint32_t taint2_query_tcn_ram(uint64_t pa) {
 
 uint32_t taint2_query_tcn_reg(int reg_num, int offset) {
     return taint2_query_tcn(make_greg(reg_num, offset));
+}
+
+uint32_t taint2_query_tcn_io(uint64_t ia) {
+    return taint2_query_tcn(make_iaddr(ia));
 }
 
 uint64_t taint2_query_cb_mask(Addr a, uint8_t size) {
@@ -344,6 +376,11 @@ void taint2_delete_reg(int reg_num, int offset) {
     tp_delete(a);
 }
 
+void taint2_delete_io(uint64_t ia) {
+    Addr a = make_iaddr(ia);
+    tp_delete(a);
+}
+
 void taint2_labelset_addr_iter(Addr a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
     tp_ls_iter(tp_labelset_get(a), app, stuff2);
 }
@@ -354,6 +391,10 @@ void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1)
 
 void taint2_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
     tp_ls_iter(tp_labelset_get(make_greg(reg_num, offset)), app, stuff2);
+}
+
+void taint2_labelset_io_iter(uint64_t ia, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    tp_ls_iter(tp_labelset_get(make_iaddr(ia)), app, stuff2);
 }
 
 void taint2_track_taint_state(void) {
