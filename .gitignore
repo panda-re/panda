@@ -121,6 +121,7 @@ docker-src.*
 *plog.pb-c.c
 *plog.pb-c.h
 plog.proto
+build.inc.sh
 trace.h
 trace.c
 trace-ust.h
