@@ -73,6 +73,7 @@ PPP_CB_BOILERPLATE(on_taint_change);
 
 bool track_taint_state = false;
 uint32_t max_tcn = 0;          // ie disabled
+uint32_t max_taintset_card = 0;   // ie disabled - there is no maximum
 
 int asid_changed_callback(CPUState *env, target_ulong oldval, target_ulong newval);
 }
@@ -355,7 +356,10 @@ bool init_plugin(void *self) {
     max_tcn = panda_parse_uint32_opt(args, "max_taintset_compute_number", 0,
         "stop propagating taint after it goes through this number of computations (0=never stop)");
     std::cerr << PANDA_MSG "maximum taint compute number (0=unlimited) " << max_tcn << std::endl;
-
+    max_taintset_card = panda_parse_uint32_opt(args, "max_taintset_card", 0,
+        "maximum size a label set can reach before stop tracking taint on it (0=never stop)");
+    std::cerr << PANDA_MSG "maximum taintset cardinality (0=unlimited) " << max_taintset_card << std::endl;
+    
     // load dependencies
     panda_require("callstack_instr");
     assert(init_callstack_instr_api());
