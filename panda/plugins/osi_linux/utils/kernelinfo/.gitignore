@@ -5,3 +5,4 @@ modules.order
 .tmp*
 *.o
 *.ko
+.cache.mk

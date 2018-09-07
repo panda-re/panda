@@ -21,8 +21,21 @@
 #include <linux/mount.h>
 #include <linux/version.h>
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
-#include "mount.h"
+/*
+ * Include the appropriate fs/mount.h version. Not all
+ * kernel versions have been tested. You may need to tweak
+ * things.
+ */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)		/* 0.0  <= v < 3.0  */
+#error Unsupported kernel.
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)	/* 3.0  <= v < 3.3  */
+/* nothing */
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)	/* 3.3  <= v < 4.4  */
+#include "ksrc/v3.3-rc1/fs/mount.h"
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)	/* 4.4  <= v < 4.12 */
+#include "ksrc/v4.4/fs/mount.h"
+#else												/* 4.12 <= v < x.xx */
+#include "ksrc/v4.12/fs/mount.h"
 #endif
 
 /*
