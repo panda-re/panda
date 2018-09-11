@@ -39,6 +39,10 @@ class Shad;
 extern "C" {
 extern bool track_taint_state;
 extern void taint_state_changed(Shad *shad, uint64_t addr, uint64_t size);
+
+// maximum taintset compute number (0=unlimited)
+// taint will be deleted once this value is exceeded
+extern uint32_t max_tcn;
 }
 
 #define CPU_LOG_TAINT_OPS (1 << 28)
@@ -279,11 +283,23 @@ class FastShad : public Shad
     {
         tassert(addr < size);
 
-        bool change = !(td == *get_td_p(addr));
-        labels[addr] = td;
-
-        if (change)
-            taint_state_changed(this, addr, 1);
+        if ((max_tcn == 0) || (td.tcn <= max_tcn))
+        {
+            bool change = !(td == *get_td_p(addr));
+            labels[addr] = td;
+            
+            if (change) taint_state_changed(this, addr, 1);
+        }
+        else
+        {
+            // delete taint, if there is any, as things have gone too far
+            if (range_tainted(addr, 1))
+            {
+                // remove will take care of taint_state_changed, unless they
+                // don't care to be informed of removals
+                remove(addr, 1);
+            }
+        }
     }
 
     uint32_t query_tcn(uint64_t addr) override
@@ -360,11 +376,23 @@ class LazyShad : public Shad
 
     void set_full(uint64_t addr, TaintData td) override
     {
-        bool change = !(td == query_full(addr));
-        labels[addr] = td;
-
-        if (change)
-            taint_state_changed(this, addr, 1);
+        if ((max_tcn == 0) || (td.tcn <= max_tcn))
+        {
+            bool change = !(td == query_full(addr));
+            labels[addr] = td;
+            
+            if (change) taint_state_changed(this, addr, 1);
+        }
+        else
+        {
+            // delete taint, if there is any, as things have gone too far
+            if (range_tainted(addr, 1))
+            {
+                // remove will take care of taint_state_changed, unless they
+                // don't care to be informed of removals
+                remove(addr, 1);
+            }
+        }
     }
 
     uint32_t query_tcn(uint64_t addr) override
