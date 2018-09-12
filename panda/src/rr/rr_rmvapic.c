@@ -282,11 +282,13 @@ static inline void rr_write_item(RR_log_entry item)
         case RR_CALL_NET_TRANSFER:
             RR_WRITE_ITEM(args->variant.net_transfer_args);
             break;
-        case RR_CALL_HANDLE_PACKET:
+        case RR_CALL_HANDLE_PACKET: {
+            uint8_t *buf = args->variant.handle_packet_args.buf;
+            args->variant.handle_packet_args.buf =
+                (uint8_t *)args->old_buf_addr;
             RR_WRITE_ITEM(args->variant.handle_packet_args);
-            rr_fwrite(args->variant.handle_packet_args.buf,
-                      args->variant.handle_packet_args.size, 1);
-            break;
+            rr_fwrite(buf, args->variant.handle_packet_args.size, 1);
+        } break;
         default:
             // mz unimplemented
             assert(0 && "Unimplemented skipped call!");
