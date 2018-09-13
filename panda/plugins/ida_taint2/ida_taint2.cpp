@@ -1,12 +1,5 @@
 /* PANDABEGINCOMMENT
  * 
- * Authors:
- *  Tim Leek               tleek@ll.mit.edu
- *  Ryan Whelan            rwhelan@ll.mit.edu
- *  Joshua Hodosh          josh.hodosh@ll.mit.edu
- *  Michael Zhivich        mzhivich@ll.mit.edu
- *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
  * This work is licensed under the terms of the GNU GPL, version 2. 
  * See the COPYING file in the top-level directory. 
  * 
@@ -36,18 +29,15 @@ void uninit_plugin(void *);
 
 }
 
+FILE *pidpclog;
+
 struct PidPcPair {
     target_ulong pid;
     target_ulong pc;
 };
 
-FILE *pidpclog;
-
-bool operator==(const PidPcPair &lhs, const PidPcPair &rhs)
-{
-    return lhs.pid == rhs.pid && lhs.pc == rhs.pc;
-}
-
+// Inject the hash function for PidPcPair into the std namespace, allows us to
+// store PidPcPair in an unordered set.
 namespace std
 {
 template <> struct hash<PidPcPair> {
@@ -55,12 +45,21 @@ template <> struct hash<PidPcPair> {
     using result_type = size_t;
     result_type operator()(argument_type const &s) const noexcept
     {
+        // Combining hashes, see C++ reference:
+        // https://en.cppreference.com/w/cpp/utility/hash
         result_type const h1 = std::hash<target_ulong>{}(s.pid);
         result_type const h2 = std::hash<target_ulong>{}(s.pc);
         return h1 ^ (h2 << 1);
     }
 };
 } // namespace std
+
+// Also needed to use an unordered set (probably in case there is a hash
+// collision).
+bool operator==(const PidPcPair &lhs, const PidPcPair &rhs)
+{
+    return lhs.pid == rhs.pid && lhs.pc == rhs.pc;
+}
 
 void taint_state_changed(Addr a, uint64_t size)
 {
@@ -112,6 +111,7 @@ bool init_plugin(void *self)
     const char *filename =
         panda_parse_string(args, "filename", "ida_taint2.csv");
 
+    // Open up a CSV file and write the header.
     pidpclog = fopen(filename, "w");
     fprintf(pidpclog, "pid,pc\n");
 
