@@ -69,7 +69,7 @@ before_install:
     - sudo pip install pycparser
     - git submodule update --init dtc
 script:
-    - travis_wait 35 sleep infinity &
+    - travis_wait 50 sleep infinity &
     - sudo panda/scripts/install_ubuntu.sh && cd ./build && sudo make check
 #before_script:
 #  - ./configure ${CONFIG}
