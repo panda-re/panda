@@ -142,6 +142,16 @@ bool panda_callbacks_insn_translate(CPUState *env, target_ulong pc) {
     return panda_exec_cb;
 }
 
+bool panda_callbacks_after_insn_translate(CPUState *env, target_ulong pc) {
+    panda_cb_list *plist;
+    bool panda_exec_cb = false;
+    for(plist = panda_cbs[PANDA_CB_AFTER_INSN_TRANSLATE]; plist != NULL;
+        plist = panda_cb_list_next(plist)) {
+        panda_exec_cb |= plist->entry.after_insn_translate(env, pc);
+    }
+    return panda_exec_cb;
+}
+
 static inline hwaddr get_paddr(CPUState *cpu, target_ulong addr, void *ram_ptr) {
     if (!ram_ptr) {
         return panda_virt_to_phys(cpu, addr);

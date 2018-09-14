@@ -12,3 +12,4 @@
  * 
 PANDAENDCOMMENT */
 DEF_HELPER_1(panda_insn_exec, void, tl)
+DEF_HELPER_1(panda_after_insn_exec, void, tl)

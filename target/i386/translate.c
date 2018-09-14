@@ -8488,6 +8488,12 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         }
 
         pc_ptr = disas_insn(env, dc, pc_ptr);
+
+        if (unlikely(panda_callbacks_after_insn_translate(ENV_GET_CPU(env), pc_ptr))
+                && !dc->is_jmp) {
+            gen_helper_panda_after_insn_exec(tcg_const_tl(pc_ptr));
+        }
+
         /* stop translation if indicated */
         if (dc->is_jmp)
             break;
