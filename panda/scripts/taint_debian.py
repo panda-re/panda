@@ -347,27 +347,46 @@ if __name__ == "__main__":
 #            else: print "(Tainting file input)"
 
     t2 = time.time(); #  print "\t%.2f sec" % (t2-t1)
+    time_record = t2 - t1
 
-    progress("Replay 1: figure out when to turn on taint.")
+    progress("Replay just to get timing")
+    t1 = time.time()
+    output = vcheck_output([qemu_binary(arch_data)] +  ["-replay", replay_base])
+    t2 = time.time()
+    time_replay = t2 - t1
+
+    progress("Replay to figure out when to turn on taint.")
+    t1 = time.time()
     (asids_for_binary, first_instr, last_instr, num_instrs) =  \
                 asidstory_replay(arch_data, replay_base, guest_cmd)
+    t2 = time.time()
+    time_replay_asidstory = t2 - t1
     print "\tAsids for binary: %s" % (" ".join([str(x) for x in asids_for_binary]))
     print "\tInstruction range is [%d..%d]" % (first_instr, last_instr)
     print "\tTotal instructions is %d" % num_instrs
     reduction = (float(last_instr-first_instr)) / num_instrs
     print "\treduction: %.4f " % reduction
-    t3 = time.time(); #  print "\t%.2f sec" % (t3-t2)
 
-    progress("Replay 2: create scissors")
+    progress("Replay to create scissors")
+    t1 = time.time()
     sciss_replay_name = \
                 scissors_replay(arch_data, replay_base, first_instr, last_instr)
+    t2 = time.time()
     print "\tScissors_replay=%s" % sciss_replay_name
-    t4 = time.time(); #  print "\t%.2f sec" % (t4-t3)
+    time_replay_create_scissors = t2 - t1
+
+    progress("Replay just checking if scissors worked")
+    t1 = time.time()
+    output = vcheck_output([qemu_binary(arch_data)] +  ["-replay", replay_base])
+    t2 = time.time()
+    time_replay_scissors = t2 - t1
    
-    progress("Replay 3: perform taint analysis")
+    progress("Replay to perform taint analysis")
+    t1 = time.time()
     taint_plog = taint_replay(arch_data, sciss_replay_name, stdin, fileinput)
+    t2 = time.time()
+    time_replay_scissors_taint = t2 - t1
     print "\tTaint_plog=%s" % taint_plog
-    t5 = time.time(); #  print "\t%.2f sec" % (t5-t4)
 
     ta = TaintPlog(False, asids_for_binary, first_instr, last_instr, taint_plog)
 
@@ -383,17 +402,15 @@ if __name__ == "__main__":
         spit_taint(ta.tainted_load, "TLOAD")
         spit_taint(ta.tainted_store, "TSTORE")
 
+    speedup_replay = time_record / time_replay
+    slowdown_asidstory = time_replay_asidstory / time_replay
+    speedup_scissors = time_replay_scissors / time_replay
+    slowdown_taint = time_replay_scissors_taint / time_replay_scissors
 
-    d1 = t2-t1  # time to create recording
-    d2 = t3-t2  # time to run asidstory 
-    d3 = t4-t3  # time to create scissors
-    d4 = t5-t4  # time to replay with taint
-    s2 = d2/d1  # slowdown of replay + asidstory vs record
-    s3 = d3/d1  # slowdown of scissors vs record
-    s4 = d4/(d1*reduction)  # slowdown of taint (on scissors) vs record
-    #print
-    print "%.2f sec: recording" % d1
-    print "%.2f sec: 1st replay (asidstory) slowdown %.2f" % (d2, s2)
-    print "%.2f sec: 2nd replay (scissors) slowdown %.2f" % (d3, s3)
-    print "%.2f sec: 3rd replay (taint) slowdown %.2f (approx)" % (d4, s4)
-    print " "
+    print "%.2f sec: recording" % time_record
+    print "%.2f sec: replay                 speeedup %.2f" % (time_replay, speedup_replay)
+    print "%.2f sec: replay asidstory       slowdown %.2f" % (time_replay_asidstory, slowdown_asidstory)
+    print "%.2f sec: replay scissors-ed     speedup  %.2f" % (time_replay_scissors, speedup_scissors)
+    print "          Instruction count reduction     %.3f" % reduction
+    print "%.2f sec: replay taint           slowdown %.2f" % (time_replay_scissors_taint, slowdown_taint)
+
