@@ -1137,6 +1137,32 @@ void PandaTaintVisitor::visitCastInst(CastInst &I) {
  * potentially affect control flow.
  */
 void PandaTaintVisitor::visitCmpInst(CmpInst &I) {
+
+    
+    // we dont want to run taint_cmp callbacks if we are in a helper
+    if (!in_helper(I)) {
+        
+        // insert one or two calls to taint_cmp which will
+        // run callbacks on non-const args to cmp
+        LLVMContext &ctx = I.getContext();
+        Value *o0 = I.getOperand(0);
+        Value *o1 = I.getOperand(1);
+     
+        // op0 is never a constant, but op1 can be
+        assert (!(isa<Constant>(o0)));
+        vector<Value *> args {
+            llvConst, constSlot(o0), const_uint64(ctx, getValueSize(o0))
+                };
+        inlineCallBefore(I, cmpF, args);
+        if (!isa<Constant>(o1)) {
+            vector<Value *> args {
+                llvConst, constSlot(o1), const_uint64(ctx, getValueSize(o1))
+                    };
+            inlineCallBefore(I, cmpF, args);
+        }
+    }
+
+
     LoadInst *LI = dyn_cast<LoadInst>(I.getOperand(0));
     if (LI) {
         IntToPtrInst *I2PI = dyn_cast<IntToPtrInst>(LI->getOperand(0));
@@ -1151,28 +1177,6 @@ void PandaTaintVisitor::visitCmpInst(CmpInst &I) {
         }
     }
     insertTaintCompute(I, &I, I.getOperand(0), I.getOperand(1), true);
-    
-    // we dont want to run taint_cmp callbacks if we are in a helper
-    if (in_helper(I)) return;
-
-    // insert one or two calls to taint_cmp which will
-    // run callbacks on non-const args to cmp
-    LLVMContext &ctx = I.getContext();
-    Value *o0 = I.getOperand(0);
-    Value *o1 = I.getOperand(1);
-//    printf ("visitCmpInst operands const %d %d\n", isa<Constant>(o0), isa<Constant>(o1));
-    // op0 is never a constant, but op1 can be
-    assert (!(isa<Constant>(o0)));
-    vector<Value *> args {
-        llvConst, constSlot(o0), const_uint64(ctx, getValueSize(o0))
-    };
-    inlineCallBefore(I, cmpF, args);
-    if (!isa<Constant>(o1)) {
-        vector<Value *> args {
-            llvConst, constSlot(o1), const_uint64(ctx, getValueSize(o1))
-        };
-        inlineCallBefore(I, cmpF, args);
-    }
 }
         
              

@@ -26,7 +26,7 @@ def env_to_list(env):
 
 def progress(msg):
     print Fore.GREEN + '[run_guest.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
-    print
+#    print
 
 class Qemu(object):
     def __init__(self, qemu_path, qcow, snapshot, tempdir, expect_prompt,

@@ -13,7 +13,7 @@ So, e.g., the following should work
 
 The first will create recording of running the binary 'foo' which is
 assumed to be in the path and a 32-bit linux executable.
-
+g
 The second will create a recording of running the program 'base64'
 assumed to exist on the guest and be in the path.
 
@@ -69,8 +69,10 @@ import re
 import os
 import subprocess32 as sp
 import time
+import struct
 from verbosity import verbose_off, verbose, vcheck_output, out_args
 from run_debian import run_and_create_recording_default, run_and_create_recording_pargs, qemu_binary
+from run_guest import progress
 from plog_reader import PLogReader
 
 tmpdir = os.getcwd()
@@ -117,7 +119,7 @@ class TaintPlog:
 
     def read(self):
         if (not self.quiet):
-            print "Reading pandalog and generating taint_debian.out summary"
+            progress("Reading pandalog and generating taint_debian.out summary")
 
         with PLogReader(self.plog_name) as plr:
             for m in plr:        
@@ -126,6 +128,7 @@ class TaintPlog:
                 tq = None
                 if m.HasField("tainted_branch"): tq = m.tainted_branch.taint_query
                 if m.HasField("tainted_ldst"): tq = m.tainted_ldst.taint_query
+                if m.HasField("tainted_cmp"): tq = m.tainted_cmp.taint_query
                 if not (tq is None):
                     self.update_uls(tq)
 
@@ -139,7 +142,9 @@ class TaintPlog:
                             tqr = tuple([(tqe.tcn, self.uls[tqe.ptr]) for tqe in tq])
                             self.tainted_branches[m.pc].extend(tqr)
                         else:                            
-                            self.collect_taint(self.tainted_jmp, m.tainted_branch.asid, m.pc, tq)             
+                            self.collect_taint(self.tainted_jmp, m.tainted_branch.asid, m.pc, tq)    
+                                                    
+         
                 if m.HasField("tainted_ldst"):
                     if m.tainted_ldst.is_load:
                         self.collect_taint(self.tainted_load, m.tainted_ldst.asid, m.pc, tq)
@@ -190,6 +195,9 @@ class TaintPlog:
 # in terms of start / end instr count
 def asidstory_replay(arch_data, replay_base, guest_cmd):
 
+    with open(replay_base + "-rr-nondet.log", 'rb') as f:
+        num_instrs = struct.unpack("<Q", f.read()[:8])[0]
+
     replay_args = ["-replay", replay_base]
     asidstory_plog = tmpdir + "/asidstory.plog"
     try:
@@ -235,7 +243,7 @@ def asidstory_replay(arch_data, replay_base, guest_cmd):
 
         print "] extent is instr %d..%d" % (first_instr, last_instr)
 
-    return (asids_for_binary, first_instr, last_instr)
+    return (asids_for_binary, first_instr, last_instr, num_instrs)
 
 
 def scissors_replay(arch_data, replay_base, first_instr, last_instr):
@@ -249,6 +257,8 @@ def scissors_replay(arch_data, replay_base, first_instr, last_instr):
 
 
 def taint_replay(arch_data, replay_name, stdin, fileinput):
+#    print "verbosity = %d" % (verbose())
+
     # second pass to do taint analysis
     taint_plog = tmpdir + "/taint.plog"
     try:
@@ -261,11 +271,14 @@ def taint_replay(arch_data, replay_name, stdin, fileinput):
         raise ValueError("Actually, stdin taint not working?")
     else: 
         # file input
-        more_args =  ["-panda", "file_taint:filename=%s,pos,enable_taint_on_open" % fileinput, \
-                      "-panda", "tainted_branch", \
-                      "-panda", "edges",\
-                      "-panda", "tainted_ldst",\
-                      "-panda", "tainted_cmp"\
+        more_args =  [
+            "-panda", "taint2:no_tp",
+            "-panda", "file_taint:filename=%s,pos,enable_taint_on_open" % fileinput, \
+            "-panda", "tainted_branch", \
+            "-panda", "edges",\
+            "-panda", "tainted_ldst",\
+            "-panda", "tainted_cmp"\
+#                      "-panda", "tainted_callargs"\
         ]
         panda_args.extend(more_args)
 
@@ -273,6 +286,9 @@ def taint_replay(arch_data, replay_name, stdin, fileinput):
         print "third pass xx " + (" ".join([qemu_binary(arch_data)] + panda_args)) + " xx"
 
     output = vcheck_output([qemu_binary(arch_data)] + panda_args)
+    if verbose():
+        print "OUTPUT from replay:"
+        print output
     return taint_plog
 
 
@@ -286,7 +302,7 @@ def taint_analysis(program, inp):
         = run_and_create_recording_default(guest_cmd)
     # replay 1 to get instr extend for guest program
 #    print "asidstory"
-    (asids_for_binary, first_instr, last_instr) =  asidstory_replay(arch_data, replay_base, guest_cmd)
+    (asids_for_binary, first_instr, last_instr, num_instrs) =  asidstory_replay(arch_data, replay_base, guest_cmd)
     # replay 2 to scissors
 #    print "scissors"
     sciss_replay_name = scissors_replay(arch_data, replay_base, first_instr, last_instr)
@@ -303,13 +319,16 @@ if __name__ == "__main__":
 
     t1 = time.time()
     tmpdir = os.getcwd()
-#    verbose_off()
+    verbose_off()
     #create recording
     (replay_base, arch_data, stdin, fileinput, guest_cmd) = run_and_create_recording_pargs()  
-    t2 = time.time()
+    progress ("Created recording")
+    print "\tOf [%s] running on guest" % (" ".join(guest_cmd))
+    print "\tReplay=%s" % replay_base
 
     # this only works for this arch (for now)
     assert (arch_data.dir == 'i386-softmmu')
+
     # also, we need to know if input was file or stdin
     # and that it can't be both
     if (stdin ^ (not (fileinput is None))):
@@ -325,23 +344,31 @@ if __name__ == "__main__":
         else:
             fileinput = os.path.basename(guest_cmd[-1])        
             if verbose(): print "... I deduced file input [%s]" % fileinput
-            else: print "(Tainting file input)"
+#            else: print "(Tainting file input)"
 
-    print "Created recording of [%s] running on guest" % guest_cmd
+    t2 = time.time(); #  print "\t%.2f sec" % (t2-t1)
 
-    print "Replay 1: figure out when to turn on taint (after file opened) replay=[%s]" % replay_base
-    t2 = time.time()
-    (asids_for_binary, first_instr, last_instr) =  asidstory_replay(arch_data, replay_base, guest_cmd)
+    progress("Replay 1: figure out when to turn on taint.")
+    (asids_for_binary, first_instr, last_instr, num_instrs) =  \
+                asidstory_replay(arch_data, replay_base, guest_cmd)
+    print "\tAsids for binary: %s" % (" ".join([str(x) for x in asids_for_binary]))
+    print "\tInstruction range is [%d..%d]" % (first_instr, last_instr)
+    print "\tTotal instructions is %d" % num_instrs
+    reduction = (float(last_instr-first_instr)) / num_instrs
+    print "\treduction: %.4f " % reduction
+    t3 = time.time(); #  print "\t%.2f sec" % (t3-t2)
 
-    print "Replay 2: create scissors replay" 
-    t3 = time.time()
-    sciss_replay_name = scissors_replay(arch_data, replay_base, first_instr, last_instr)
+    progress("Replay 2: create scissors")
+    sciss_replay_name = \
+                scissors_replay(arch_data, replay_base, first_instr, last_instr)
+    print "\tScissors_replay=%s" % sciss_replay_name
+    t4 = time.time(); #  print "\t%.2f sec" % (t4-t3)
    
-    print "Replay 3: perform taint analysis"
-    t4 = time.time()
+    progress("Replay 3: perform taint analysis")
     taint_plog = taint_replay(arch_data, sciss_replay_name, stdin, fileinput)
+    print "\tTaint_plog=%s" % taint_plog
+    t5 = time.time(); #  print "\t%.2f sec" % (t5-t4)
 
-    t5 = time.time()
     ta = TaintPlog(False, asids_for_binary, first_instr, last_instr, taint_plog)
 
     with open("taint_debian.out", "w") as out:
@@ -363,10 +390,10 @@ if __name__ == "__main__":
     d4 = t5-t4  # time to replay with taint
     s2 = d2/d1  # slowdown of replay + asidstory vs record
     s3 = d3/d1  # slowdown of scissors vs record
-    s4 = d4/d1  # slowdown of taint (on scissors) vs record
+    s4 = d4/(d1*reduction)  # slowdown of taint (on scissors) vs record
     #print
     print "%.2f sec: recording" % d1
     print "%.2f sec: 1st replay (asidstory) slowdown %.2f" % (d2, s2)
     print "%.2f sec: 2nd replay (scissors) slowdown %.2f" % (d3, s3)
-    print "%.2f sec: 3rd replay (taint) slowdown %.2f" % (d4, s4)
+    print "%.2f sec: 3rd replay (taint) slowdown %.2f (approx)" % (d4, s4)
     print " "
