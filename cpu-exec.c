@@ -691,7 +691,8 @@ static void detect_infinite_loops(void) {
     if (last_instr_count == rr_get_guest_instr_count()) {
         loop_tries++;
         if (loop_tries > 20) {
-            fprintf(stderr, "rr_guest_instr_count = %lu\n", rr_get_guest_instr_count());
+            fprintf(stderr, "rr_guest_instr_count = %lu\n",
+                    rr_get_guest_instr_count());
             assert(false);
         }
     } else {
@@ -746,6 +747,9 @@ int cpu_exec(CPUState *cpu)
 
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
+
+        if (panda_exit_loop) break;
+
         TranslationBlock *last_tb = NULL;
         int tb_exit = 0;
 
