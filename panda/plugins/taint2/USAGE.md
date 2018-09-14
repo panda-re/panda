@@ -6,7 +6,7 @@ Summary
 
 The `taint2` plugin tracks the flow of data through a running program. One can apply taint labels to some data, follow the flow of labeled data through the program execution, and later query data to find out what labels it has.
 
-`taint2` provides APIs and callbacks for labeling and querying data, and does the work of propagating taint. This means it is not generally useful by itself. To introduce taint into the system, you can use plugins like `file_taint` and `tstringsearch`; to query taint you can use plugins like `tainted_instr`, `dead_data`, or `taint_compute_numbers`.
+`taint2` provides APIs and callbacks for labeling and querying data, and does the work of propagating taint. This means it is not generally useful by itself. To introduce taint into the system, you can use plugins like `file_taint`, `tstringsearch` and `tainted_net`; to query taint you can use plugins like `tainted_instr`, `dead_data`, `taint_compute_numbers` or `tainted_net`.
 
 Note that since this notion of taint supports an arbitrary number of *labels*, the taint on a particular piece of data will typically be a *label set* rather than a single label. For example, if some quantities `a` and `b` have labels `1` and `2` respectively, then an operation such as `c = a + b` will result in `c` being tainted with the label set `{1, 2}`.
 
@@ -19,7 +19,7 @@ Note that the `taint2` plugin replaces the original `taint` plugin and is prefer
 
 * Speed: `taint2` is much faster (rough estimate: ~10x) due to inlining taint operations into the generated LLVM code rather than accumulating taint operations in a buffer and the processing them after each basic block.
 * Memory: many analyses were simply impossible in the original `taint` plugin because the memory requirements were too high. `taint2` should solve this. Note that because it uses a large `mmap`ed area for its shadow memory, you may need to adjust the value of `vm.overcommit_memory` via `sysctl`.
-* Interface: the interface to `taint2` is somewhat cleaner, and allows things like tainted branch, tainted instruction, and taint compute number counting to be implemented as separate plugins.
+* Interface: the interface to `taint2` is somewhat cleaner, and allows things like tainted branch, tainted instruction, taint compute number counting and tainting network packets to be implemented as separate plugins.
 
 Arguments
 ---------
@@ -72,10 +72,18 @@ Description: Called whenever the state of taint changes; i.e. when taint is prop
     // register are not removed.
     void taint2_label_reg_additive(int reg_num, int offset, uint32_t l);
 
+    // label this io addr with label l
+    void taint2_label_io(uint64_t ia, uint32_t l);
+    
+    // add label l to this io addr. any previous labels applied to 
+    // this address are not removed.
+    void taint2_label_io_additive(uint64_t ia, uint32_t l);
+        
     // query fns return 0 if untainted, else cardinality of taint set
     uint32_t taint2_query(Addr a);
     uint32_t taint2_query_ram(uint64_t pa);
     uint32_t taint2_query_reg(int reg_num, int offset);
+    uint32_t taint2_query_io(uint64_t ia);
     uint32_t taint2_query_llvm(int reg_num, int offset);
 
     // query set fns writes taint set contents to the specified array. the
@@ -83,6 +91,7 @@ Description: Called whenever the state of taint changes; i.e. when taint is prop
     void taint2_query_set(Addr a, uint32_t *out);
     void taint2_query_set_ram(uint64_t pa, uint32_t *out);
     void taint2_query_set_reg(int reg_num, int offset, uint32_t *out);
+    void taint2_query_set_io(uint64_t ia, uint32_t *out);
 
     // returns cardinality and the taint set.
     // reallocates and updates buffer size as needed.
@@ -92,6 +101,7 @@ Description: Called whenever the state of taint changes; i.e. when taint is prop
     uint32_t taint2_query_tcn(Addr a);
     uint32_t taint2_query_tcn_ram(uint64_t pa);
     uint32_t taint2_query_tcn_reg(int reg_num, int offset);
+    uint32_t taint2_query_tcn_io(uint64_t ia);
     uint32_t taint2_query_tcn_llvm(int reg_num, int offset);
 
     // Returns a mask indicating which bits are attacker-controlled (derived
@@ -101,6 +111,9 @@ Description: Called whenever the state of taint changes; i.e. when taint is prop
     // delete taint from this phys addr
     void taint2_delete_ram(uint64_t pa) ;
 
+    // delete taint from this io addr
+    void taint2_delete_io(uint64_t ia) ;
+    
     // print out a labelset.
     void taint2_labelset_spit(LabelSetP ls) ; 
 
@@ -112,7 +125,10 @@ Description: Called whenever the state of taint changes; i.e. when taint is prop
     // you should be able to use R_EAX, etc as reg_num
     // offset is byte offset withing that reg.
     void taint2_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
-
+    
+    // ditto, but for io address
+    void taint2_labelset_io_iter(uint64_t ia, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+    
     // ditto, but for llvm regs.  dunno where you are getting that number
     void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 

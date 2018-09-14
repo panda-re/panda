@@ -20,6 +20,7 @@ endif
 
 ifdef CONFIG_SOFTMMU
 RR_PRINT_PROG=rr_print_$(TARGET_NAME)$(EXESUF)
+RR_RMVAPIC_PROG=rr_rmvapic_$(TARGET_NAME)$(EXESUF)
 endif
 
 ifdef CONFIG_SOFTMMU
@@ -116,6 +117,9 @@ obj-y += plog.pb.o
 $(RR_PRINT_PROG): panda/src/rr/rr_print.o
 	$(call LINK,$^)
 
+$(RR_RMVAPIC_PROG): panda/src/rr/rr_rmvapic.o
+	$(call LINK,$^)
+
 $(PLOG_READER_PROG): panda/src/plog_reader.o \
 	plog.pb.o \
 	panda/src/plog-cc.o \
@@ -125,6 +129,8 @@ $(PLOG_READER_PROG): panda/src/plog_reader.o \
 	$(call LINK,$^)
 
 PROGS+=$(RR_PRINT_PROG) plog_pb2.py
+
+PROGS+=$(RR_RMVAPIC_PROG)
 
 PROGS+=$(PLOG_READER_PROG) 
 

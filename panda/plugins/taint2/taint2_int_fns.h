@@ -22,6 +22,10 @@ void taint2_label_ram(uint64_t pa, uint32_t l);
 // to this address are removed.
 void taint2_label_reg(int reg_num, int offset, uint32_t l);
 
+// label this io addr with label l, and only label l. any previous
+// labels applied to this address are removed.
+void taint2_label_io(uint64_t ia, uint32_t l);
+
 // add label l to this phys addr in memory. any previous labels applied to this
 // address are not removed.
 void taint2_label_ram_additive(uint64_t pa, uint32_t l);
@@ -30,10 +34,15 @@ void taint2_label_ram_additive(uint64_t pa, uint32_t l);
 // are not removed.
 void taint2_label_reg_additive(int reg_num, int offset, uint32_t l);
 
+// add label l to this io addr. any previous labels applied to this
+// address are not removed.
+void taint2_label_io_additive(uint64_t ia, uint32_t l);
+
 // query fns return 0 if untainted, else cardinality of taint set
 uint32_t taint2_query(Addr a);
 uint32_t taint2_query_ram(uint64_t pa);
 uint32_t taint2_query_reg(int reg_num, int offset);
+uint32_t taint2_query_io(uint64_t ia);
 
 // query with automatic allocation of the required memory
 uint32_t taint2_query_set_a(Addr a, uint32_t **out, uint32_t *outsz);
@@ -43,11 +52,13 @@ uint32_t taint2_query_set_a(Addr a, uint32_t **out, uint32_t *outsz);
 void taint2_query_set(Addr a, uint32_t *out);
 void taint2_query_set_ram(uint64_t pa, uint32_t *out);
 void taint2_query_set_reg(int reg_num, int offset, uint32_t *out);
+void taint2_query_set_io(uint64_t ia, uint32_t *out);
 
 // returns taint compute number associated with addr
 uint32_t taint2_query_tcn(Addr a);
 uint32_t taint2_query_tcn_ram(uint64_t pa);
 uint32_t taint2_query_tcn_reg(int reg_num, int offset);
+uint32_t taint2_query_tcn_io(uint64_t ia);
 
 // Returns a mask indicating which bits are attacker-controlled (derived
 // reversibly from input).
@@ -58,6 +69,9 @@ void taint2_delete_ram(uint64_t pa);
 
 // delete taint from this register
 void taint2_delete_reg(int reg_num, int offset);
+
+// delete taint from this io addr
+void taint2_delete_io(uint64_t ia);
 
 // addr is an opaque.  it should be &a if a is known to be an Addr
 void taint2_labelset_addr_iter(Addr addr, int (*app)(uint32_t el, void *stuff1), void *stuff2);
@@ -70,6 +84,10 @@ void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1)
 // you should be able to use R_EAX, etc as reg_num
 // offset is byte offset withing that reg.
 void taint2_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+
+// apply this fn to each of the labels associated with this io address
+// fn should return 0 to continue iteration
+void taint2_labelset_io_iter(uint64_t ia, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 
 // just tells how big that labels_applied set will be
 uint32_t taint2_num_labels_applied(void);
