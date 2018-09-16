@@ -101,6 +101,7 @@ then
   progress "Cloning PANDA into $(pwd) ..."
   git clone https://github.com/panda-re/panda.git
   cd panda
+  git submodule update --init dtc
 else
   progress "Already in PANDA directory."
 fi
