@@ -19,7 +19,6 @@ def check_range(pc, range):
 
 
 def get_ttok(tq):
-    update_uls(tq)
     all_labels = set([])
     tcns = []
     for q in tq:
@@ -33,13 +32,14 @@ def get_ttoks(filename, pc_range):
     ttoks = {}
     with PLogReader(filename) as plr:
         for m in plr:
-            if not check_range(m.pc, pc_range):
-                continue
             tq = None
             if m.HasField("tainted_branch"): tq = m.tainted_branch.taint_query
             if m.HasField("tainted_ldst"): tq = m.tainted_ldst.taint_query                       
             if m.HasField("tainted_cmp"): tq = m.tainted_cmp.taint_query
             if not (tq is None):
+                update_uls(tq)                
+                if not check_range(m.pc, pc_range):
+                    continue
                 (tcnm,tcns,tt) = get_ttok(tq)                
                 v = (m.pc,tcnm,tcns,len(tq))
                 if not (tt in ttoks):
