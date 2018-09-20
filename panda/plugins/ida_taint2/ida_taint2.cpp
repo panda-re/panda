@@ -67,12 +67,6 @@ void taint_state_changed(Addr a, uint64_t size)
     // only need to write out distinct pairs once.
     static std::unordered_set<PidPcPair> seen;
 
-    // We only care about memory addresses, don't write to the PID\PC log unless
-    // the taint state of a RAM address changed.
-    if (a.typ != MADDR) {
-        return;
-    }
-
     // Get current PID and PC.
     OsiProc *proc = get_current_process(first_cpu);
     PidPcPair p;
