@@ -271,7 +271,8 @@ int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
             l = len;
         phys_addr += (addr & ~TARGET_PAGE_MASK);
         ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
-        if(ret < 0) return ret;
+        if (ret != MEMTX_OK)
+            return ret;
         len -= l;
         buf += l;
         addr += l;
