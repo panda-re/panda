@@ -218,8 +218,25 @@ void panda_set_os_name(char *os_name) {
     fprintf(stderr, PANDA_MSG_FMT "os_familyno=%d bits=%d os_details=%s\n", PANDA_CORE_NAME, panda_os_familyno, panda_os_bits, panda_os_variant);
 }
 
+extern AddressSpace address_space_memory;
+
 int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len, int is_write) {
-    return cpu_physical_memory_rw_ex(addr, buf, len, is_write, true);
+    hwaddr l = len;
+    hwaddr addr1;
+    MemoryRegion *mr = address_space_translate(&address_space_memory, addr,
+                                               &addr1, &l, is_write);
+    // Fail for MMIO regions of physical address space.
+    if (!memory_access_is_direct(mr, is_write)) {
+        return MEMTX_ERROR;
+    }
+    void *ram_ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
+
+    if (is_write) {
+        memcpy(ram_ptr, buf, len);
+    } else {
+        memcpy(buf, ram_ptr, len);
+    }
+    return MEMTX_OK;
 }
 
 
@@ -254,7 +271,8 @@ int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
             l = len;
         phys_addr += (addr & ~TARGET_PAGE_MASK);
         ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
-        if(ret < 0) return ret;
+        if (ret != MEMTX_OK)
+            return ret;
         len -= l;
         buf += l;
         addr += l;
