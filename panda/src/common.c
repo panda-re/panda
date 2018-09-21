@@ -225,6 +225,10 @@ int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len, int is_write) {
     hwaddr addr1;
     MemoryRegion *mr = address_space_translate(&address_space_memory, addr,
                                                &addr1, &l, is_write);
+    // Fail for MMIO regions of physical address space.
+    if (!memory_access_is_direct(mr, is_write)) {
+        return MEMTX_ERROR;
+    }
     void *ram_ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
 
     if (is_write) {
