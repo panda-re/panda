@@ -44,28 +44,21 @@ struct kernelinfo_errors {
 #define LOG_INFO(fmt, args...)  fprintf(stderr, PANDA_MSG "INFO:%s:%s() "  fmt "\n", __FILENAME__, __func__, ## args)
 
 /*!
- * @brief Read `int` value from keyfile and handle errors.
+ * @brief Wrapper for reading information from keyfile and handle errors.
  */
+#define READ_INFO_X(key_file_get, ki, memb, gerr, errcount, errbmp)\
+	((ki)->memb) = key_file_get(keyfile, group_real, #memb, &gerr);\
+	if (gerr != NULL) { errcount++; g_error_free(gerr); gerr = NULL; LOG_ERROR("failed to read " #memb); }\
+	else { memset(&(errbmp)->memb, 0xff, sizeof((errbmp)->memb)); }
+
 #define READ_INFO_INT(ki, memb, gerr, errcount, errbmp)\
-	((ki)->memb) = g_key_file_get_integer(keyfile, group_real, #memb, &gerr);\
-	if (gerr != NULL) { errcount++; g_error_free(gerr); gerr = NULL; LOG_ERROR("Couldn't read " #memb "."); }\
-	else { memset(&(errbmp)->memb, 0xff, sizeof((errbmp)->memb)); }
+	READ_INFO_X(g_key_file_get_integer, ki, memb, gerr, errcount, errbmp)
 
-/*!
- * @brief Read `uint64_t` value from keyfile and handle errors.
- */
 #define READ_INFO_UINT64(ki, memb, gerr, errcount, errbmp)\
-	((ki)->memb) = g_key_file_get_uint64(keyfile, group_real, #memb, &gerr);\
-	if (gerr != NULL) { errcount++; g_error_free(gerr); gerr = NULL; }\
-	else { memset(&(errbmp)->memb, 0xff, sizeof((errbmp)->memb)); }
+	READ_INFO_X(g_key_file_get_uint64, ki, memb, gerr, errcount, errbmp)
 
-/*!
- * @brief Read string value from keyfile and handle errors.
- */
 #define READ_INFO_STRING(ki, memb, gerr, errcount, errbmp)\
-	((ki)->memb) = g_key_file_get_string(keyfile, group_real, #memb, &gerr);\
-	if (gerr != NULL) { errcount++; g_error_free(gerr); gerr = NULL; }\
-	else { memset(&(errbmp)->memb, 0xff, sizeof((errbmp)->memb)); }
+	READ_INFO_X(g_key_file_get_string, ki, memb, gerr, errcount, errbmp)
 
 
 /*! Reads kernel information (struct offsets and such) from the specified file.
@@ -174,7 +167,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 			e++;
 		}
 		if (nerrors > 0) {
-			LOG_ERROR("%d errors when reading group [%s] from %s.", nerrors, group_real, file);
+			LOG_ERROR("%d errors reading from group %s", nerrors, group_real);
 			rval = -1;
 		}
 	}
@@ -199,7 +192,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 			}
 
 			if (doprint) {
-				LOG_ERROR("bytes [%td-%td] of struct kernelinfo were not read.", b-b_first-notread, b-b_first);
+				LOG_ERROR("kernelinfo bytes [%td-%td] not read", b-b_first-notread, b-b_first);
 				notread = 0;
 				rval = -1;
 			}
