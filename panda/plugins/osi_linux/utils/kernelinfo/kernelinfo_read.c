@@ -192,7 +192,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 			}
 
 			if (doprint) {
-				LOG_ERROR("kernelinfo bytes [%td-%td] not read", b-b_first-notread, b-b_first);
+				LOG_ERROR("kernelinfo bytes [%td-%td] not read", b-b_first-notread, b-b_first-1);
 				notread = 0;
 				rval = -1;
 			}
