@@ -105,6 +105,7 @@ int init_module(void)
 	struct cred cred__s;
 	struct vm_area_struct vm_area_struct__s;
 	struct dentry dentry__s;
+	struct dentry_operations dentry_operations__s;
 	struct file file__s;
 	struct thread_info thread_info__s;
 	struct files_struct files_struct__s;
@@ -120,6 +121,7 @@ int init_module(void)
 	struct mm_struct *mm_struct__p;
 	struct vm_area_struct *vm_area_struct__p;
 	struct dentry *dentry__p;
+	struct dentry_operations *dentry_operations__p;
 	struct file *file__p;
 	struct fdtable *fdtable__p;
 	struct thread_info *thread_info__p;
@@ -134,6 +136,7 @@ int init_module(void)
 	mm_struct__p = init_task.mm;
 	vm_area_struct__p = &vm_area_struct__s;
 	dentry__p = &dentry__s;
+	dentry_operations__p = &dentry_operations__s;
 	file__p = &file__s;
 	thread_info__p = &thread_info__s;
 	files_struct__p = &files_struct__s;
@@ -202,6 +205,8 @@ int init_module(void)
 	PRINT_OFFSET(dentry__p,				d_name,					"path");
 	PRINT_OFFSET(dentry__p,				d_iname,				"path");
 	PRINT_OFFSET(dentry__p,				d_parent,				"path");
+	PRINT_OFFSET(dentry__p,				d_op,					"path");
+	PRINT_OFFSET(dentry_operations__p,	d_dname,				"path");
 	PRINT_OFFSET(vfsmount__p,			mnt_root,				"path");
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
 	/* fields in struct mount */
