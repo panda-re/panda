@@ -88,6 +88,8 @@ struct path_info {
 	int d_name_offset;
 	int d_iname_offset;
 	int d_parent_offset;
+	int d_op_offset;			/**< Offset of the dentry ops table. */
+	int d_dname_offset;			/**< Offset of dynamic name function in dentry ops. */
 	int mnt_root_offset;
 	int mnt_parent_offset;
 	int mnt_mountpoint_offset;

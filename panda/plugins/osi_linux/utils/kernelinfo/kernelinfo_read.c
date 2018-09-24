@@ -143,7 +143,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	/* read fs information */
 	READ_INFO_INT(ki, fs.f_path_dentry_offset, gerr, err.fs, &errbmp);
 	READ_INFO_INT(ki, fs.f_path_mnt_offset, gerr, err.fs, &errbmp);
-    READ_INFO_INT(ki, fs.f_pos_offset, gerr, err.fs, &errbmp);
+	READ_INFO_INT(ki, fs.f_pos_offset, gerr, err.fs, &errbmp);
 	READ_INFO_INT(ki, fs.fdt_offset, gerr, err.fs, &errbmp);
 	READ_INFO_INT(ki, fs.fdtab_offset, gerr, err.fs, &errbmp);
 	READ_INFO_INT(ki, fs.fd_offset, gerr, err.fs, &errbmp);
@@ -153,6 +153,8 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	READ_INFO_INT(ki, path.d_name_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.d_iname_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.d_parent_offset, gerr, err.path, &errbmp);
+	READ_INFO_INT(ki, path.d_op_offset, gerr, err.path, &errbmp);
+	READ_INFO_INT(ki, path.d_dname_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.mnt_root_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.mnt_parent_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.mnt_mountpoint_offset, gerr, err.path, &errbmp);
