@@ -25,6 +25,21 @@
 #define LOG_ERROR(fmt, args...) fprintf(stderr, PANDA_MSG "ERROR:%s:%s() " fmt "\n", __FILENAME__, __func__, ## args)
 #define LOG_WARN(fmt, args...)  fprintf(stderr, PANDA_MSG "WARN:%s:%s() "  fmt "\n", __FILENAME__, __func__, ## args)
 #define LOG_INFO(fmt, args...)  fprintf(stderr, PANDA_MSG "INFO:%s:%s() "  fmt "\n", __FILENAME__, __func__, ## args)
+#define LN printf("@%s:%03d\n", __FILENAME__, __LINE__)
+#define HEXDUMP(_buf, _size, _base) \
+	{ \
+		uintptr_t _b = (uintptr_t)_base; \
+		_b = (_b == 0) ? (uintptr_t)_buf : _b; \
+		for (uint32_t _i=0; _i<_size;) { \
+			if (_i % 16 == 0) { printf("%" PRIxPTR "\t", (uintptr_t)_b + _i); } \
+			printf("%02x", ((uint8_t *)_buf)[_i]); \
+			_i++; \
+			if (_i % 16 == 0) { printf("\n"); continue; } \
+			else if (_i % 8 == 0) { printf("  "); continue; } \
+		    else { printf(" "); } \
+		} \
+		if (_size % 16 != 0) { printf("\n"); } \
+	}
 
 /**
  * @brief Macros to check if a task_struct is a thread (T) or process (P).
@@ -46,6 +61,13 @@
  * assumption to make -- at least in the context of a research prototype.
  */
 #define PTR target_ulong
+typedef target_ulong target_ptr_t;
+
+/** @brief Print format for guest VM pointers. */
+#define TARGET_FMT_PTR TARGET_FMT_lx
+
+/** @brief Print format for guest VM pids. */
+#define TARGET_FMT_PID "%d"
 
 /**
  * @brief Maximum number of processes. Rough way to detect infinite loops
@@ -115,24 +137,20 @@
 #error	"_ESP macro not defined for target architecture."
 #endif
 
-/** @brief Print format for guest VM pointers. */
-#define TARGET_FMT_PTR TARGET_FMT_lx
-
-/** @brief Print format for guest VM pids. */
-#define TARGET_FMT_PID "%d"
-
 extern struct kernelinfo ki;
-extern int panda_memory_errors;
 
 /**
  * @brief IMPLEMENT_OFFSET_GET is a macro for generating uniform
  * inlines for retrieving data based on a location+offset.
+ *
+ * @deprecated Directly returning a value complicates error handling
+ * and doesn't work for arrays or simple structs.
+ * Use IMPLEMENT_OFFSET_GETN instead.
  */
 #define IMPLEMENT_OFFSET_GET(_name, _paramName, _retType, _offset, _errorRetValue) \
 static inline _retType _name(CPUState* env, PTR _paramName) { \
 	_retType _t; \
 	if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType), 0)) { \
-		panda_memory_errors++; \
 		return (_errorRetValue); \
 	} \
 	return (_t); \
@@ -141,20 +159,74 @@ static inline _retType _name(CPUState* env, PTR _paramName) { \
 /**
  * @brief IMPLEMENT_OFFSET_GET2L is a macro for generating uniform
  * inlines for retrieving data based on a *(location+offset1) + offset2.
+ *
+ * @deprecated Directly returning a value complicates error handling
+ * and doesn't work for arrays or simple structs.
+ * Use IMPLEMENT_OFFSET_GET2LN instead.
  */
 #define IMPLEMENT_OFFSET_GET2L(_name, _paramName, _retType1, _offset1, _retType2, _offset2, _errorRetValue) \
 static inline _retType2 _name(CPUState* env, PTR _paramName) { \
 	_retType1 _t1; \
 	_retType2 _t2; \
 	if (-1 == panda_virtual_memory_rw(env, _paramName + _offset1, (uint8_t *)&_t1, sizeof(_retType1), 0)) { \
-		panda_memory_errors++; \
 		return (_errorRetValue); \
 	} \
 	if (-1 == panda_virtual_memory_rw(env, _t1 + _offset2, (uint8_t *)&_t2, sizeof(_retType2), 0)) { \
-		panda_memory_errors++; \
 		return (_errorRetValue); \
 	} \
 	return (_t2); \
+}
+
+#define OG_AUTOSIZE 0
+#define OG_SUCCESS 0
+#define OG_ERROR_MEMORY -1
+#define OG_ERROR_DEREF -2
+//#define OG_printf(...)
+#define OG_printf(...) printf(__VA_ARGS__)
+
+/**
+ * @brief IMPLEMENT_OFFSET_GETN is a macro for generating uniform
+ * inlines for retrieving data based on a location+offset.
+ * It provides better error handling than IMPLEMENT_OFFSET_GET and is not
+ * limited to retrieving only primitive types.
+ */
+#define IMPLEMENT_OFFSET_GETN(_funcName, _paramName, _retType, _retName, _retSize, _offset) \
+static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _retName) { \
+	size_t ret_size = ((_retSize) == OG_AUTOSIZE) ? sizeof(_retType) : (_retSize); \
+	OG_printf(#_funcName ":1:" TARGET_FMT_PTR ":%d\n", _paramName, _offset); \
+	OG_printf(#_funcName ":2:" TARGET_FMT_PTR ":%zu\n", _paramName + _offset, ret_size); \
+	if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)_retName, ret_size, 0)) { \
+		return OG_ERROR_MEMORY; \
+	} \
+	OG_printf(#_funcName ":3:ok\n"); \
+	return OG_SUCCESS; \
+}
+
+/**
+ * @brief IMPLEMENT_OFFSET_GET2LN is an improved macro for generating uniform
+ * inlines for retrieving data based on a *(location+offset1) + offset2.
+ * It provides better error handling than IMPLEMENT_OFFSET_GET2L and is not
+ * limited to retrieving only primitive types.
+ */
+#define IMPLEMENT_OFFSET_GET2LN(_funcName, _paramName, _retType, _retName, _retSize, _offset1, _offset2) \
+static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _retName) { \
+	target_ptr_t _p1; \
+	size_t ret_size = ((_retSize) == OG_AUTOSIZE) ? sizeof(_retType) : (_retSize); \
+	OG_printf(#_funcName ":1:" TARGET_FMT_PTR ":%d\n", _paramName, _offset1); \
+	OG_printf(#_funcName ":2:" TARGET_FMT_PTR ":%zu\n", _paramName + _offset1, sizeof(target_ptr_t)); \
+	if (-1 == panda_virtual_memory_rw(env, _paramName + _offset1, (uint8_t *)&_p1, sizeof(target_ptr_t), 0)) { \
+		return OG_ERROR_MEMORY; \
+	} \
+	OG_printf(#_funcName ":3:" TARGET_FMT_PTR ":%d\n", _p1, _offset2); \
+	if (_p1 == (target_ptr_t)NULL) { \
+		return OG_ERROR_DEREF; \
+	} \
+	OG_printf(#_funcName ":4:" TARGET_FMT_PTR ":%zu\n", _p1 + _offset2, ret_size); \
+	if (-1 == panda_virtual_memory_rw(env, _p1 + _offset2, (uint8_t *)_retName, ret_size, 0)) { \
+		return OG_ERROR_MEMORY; \
+	} \
+	OG_printf(#_funcName ":5:ok\n"); \
+	return OG_SUCCESS; \
 }
 
 
@@ -318,44 +390,37 @@ IMPLEMENT_OFFSET_GET(get_file_pos, file_struct, PTR, ki.fs.f_pos_offset, 0)
 /**
  * @brief Retrieves the mnt_parent vfsmount struct associated with a vfsmount struct.
  */
-IMPLEMENT_OFFSET_GET(get_mnt_parent, vfsmount_struct, PTR, ki.fs.mnt_parent_offset, 0)
+IMPLEMENT_OFFSET_GET(get_mnt_parent, vfsmount_struct, PTR, ki.path.mnt_parent_offset, 0)
 
 /**
  * @brief Retrieves the dentry struct associated with a vfsmount struct.
  */
-IMPLEMENT_OFFSET_GET(get_mnt_dentry, vfsmount_struct, PTR, ki.fs.mnt_mountpoint_offset, 0)
+IMPLEMENT_OFFSET_GET(get_mnt_dentry, vfsmount_struct, PTR, ki.path.mnt_mountpoint_offset, 0)
 
 /**
  * @brief Retrieves the mnt_root dentry struct associated with a vfsmount struct.
- *
- * XXX: We don't use this anywhere. Marked for removal after verifying that we don't really need it. :)
  */
-IMPLEMENT_OFFSET_GET(get_mnt_root_dentry, vfsmount_struct, PTR, ki.fs.mnt_root_offset, 0)
+IMPLEMENT_OFFSET_GET(get_mnt_root_dentry, vfsmount_struct, PTR, ki.path.mnt_root_offset, 0)
 
+/**
+ * @brief Retrieves the qstr for a dentry.
+ */
+IMPLEMENT_OFFSET_GETN(get_dentry_name, dentry_struct, uint8_t, dname_qstr, ki.path.qstr_size*sizeof(uint8_t), ki.path.d_name_offset)
+
+/**
+ * @brief Retrieves the dynamic name function for a dentry.
+ */
+IMPLEMENT_OFFSET_GET2LN(get_dentry_dname, dentry_struct, target_ptr_t, dname_funcp, OG_AUTOSIZE, ki.path.d_op_offset, ki.path.d_dname_offset)
+
+/**
+ * @brief Retrieves the parent of a dentry.
+ */
+//IMPLEMENT_OFFSET_GET(get_dentry_parent, dentry_struct, target_ptr_t, ki.path.d_parent_offset, 0)
 
 /* ******************************************************************
  Slightly more complex inlines that can't be implemented as simple
  offset getters.
 ****************************************************************** */
-
-/**
- * @brief Size of the qstr kernel struct. Used to resolve dentry struct to names.
- *
- *	Because the struct is simple with no conditionally defined members,
- *	we choose to not use kernel offsets read from kernelinfo.conf to retrieve it.
- *
- * @code{.c}
- *	struct qstr {
- *		unsigned int hash;
- *		unsigned int len;
- *		const unsigned char *name;
- *	};
- * @endcode
- */
-// bdg: target_uint is assumed to be 32-bit uint
-#define target_uint uint32_t
-#define _SIZEOF_QSTR (2*sizeof(target_uint) + sizeof(PTR))
-
 /**
  * @brief Retrieves the n-th file struct from an fd file array. (pp 479)
  */
@@ -367,7 +432,6 @@ static inline PTR get_fd_file(CPUState *env, PTR fd_file_array, int n) {
 
 	// Read address of the file struct.
 	if (-1 == panda_virtual_memory_rw(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(PTR), 0)) {
-		panda_memory_errors++;
 		return (PTR)NULL;
 	}
 
@@ -387,18 +451,17 @@ static inline PTR get_fd_file(CPUState *env, PTR fd_file_array, int n) {
 static inline char *read_dentry_name(CPUState *env, PTR dentry) {
 	char *name = NULL;
 	PTR current_dentry;
-	uint8_t d_name[_SIZEOF_QSTR];
 	int err;
 
 	// current path component
 	char *pcomp = NULL;
-	target_uint pcomp_length = 0;
-	unsigned int pcomp_capacity = 32;
+	uint32_t pcomp_length = 0;
+	uint32_t pcomp_capacity = 32;
 
 	// all path components read so far
 	char **pcomps = NULL;
-	unsigned int pcomps_idx = 0;
-	unsigned int pcomps_capacity = 16;
+	uint32_t pcomps_idx = 0;
+	uint32_t pcomps_capacity = 16;
 
 	// for reversing pcomps
 	char **pcomps_start, **pcomps_end;
@@ -406,19 +469,21 @@ static inline char *read_dentry_name(CPUState *env, PTR dentry) {
 	pcomp = (char *)g_malloc(pcomp_capacity * sizeof(char));
 	pcomps = (char **)g_malloc(pcomps_capacity * sizeof(char *));
 	do {
+		int og_err;
 		current_dentry = dentry;
 
 		// read d_name qstr
-		err = panda_virtual_memory_rw(env, current_dentry + ki.fs.d_name_offset, d_name, _SIZEOF_QSTR, 0);
-		if (-1 == err) goto error;
+		uint8_t d_name[ki.path.qstr_size] = {0}; // hurrah for c99!
+		og_err = get_dentry_name(env, current_dentry, d_name);
+		if (og_err != OG_SUCCESS) goto error;
 
 		// read component
-		pcomp_length = *(target_uint *)(d_name + sizeof(target_uint)) + 1;
+		pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t)) + 1;
 		if (pcomp_capacity < pcomp_length) {
 			pcomp_capacity = pcomp_length;
 			pcomp = (char *)g_realloc(pcomp, pcomp_capacity * sizeof(char));
 		}
-		err = panda_virtual_memory_rw(env, *(PTR *)(d_name + 2*sizeof(target_uint)), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
+		err = panda_virtual_memory_rw(env, *(PTR *)(d_name + 2*sizeof(uint32_t)), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
 		if (-1 == err) goto error;
 
 		// copy component
@@ -429,7 +494,7 @@ static inline char *read_dentry_name(CPUState *env, PTR dentry) {
 		pcomps[pcomps_idx++] = g_strdup(pcomp);
 
 		// read the parent dentry
-		err = panda_virtual_memory_rw(env, current_dentry + ki.fs.d_parent_offset, (uint8_t *)&dentry, sizeof(PTR), 0);
+		err = panda_virtual_memory_rw(env, current_dentry + ki.path.d_parent_offset, (uint8_t *)&dentry, sizeof(PTR), 0);
 		if (-1 == err) goto error;
 	} while (dentry != current_dentry);
 
@@ -456,12 +521,14 @@ static inline char *read_dentry_name(CPUState *env, PTR dentry) {
 	return name;
 
 error:
-	LOG_INFO("Error reading d_entry.");
-	panda_memory_errors++;
-	pcomps[pcomps_idx] = NULL;
+#if defined(OSI_LINUX_FDNDEBUG)
+	LOG_WARN("Error reading d_entry.");
+#endif
 	g_free(pcomp);
-	g_strfreev(pcomps);
-
+	if (pcomps != NULL) {
+		pcomps[pcomps_idx] = NULL;
+		g_strfreev(pcomps);
+	}
 	return NULL;
 }
 
@@ -479,8 +546,8 @@ static inline char *read_vfsmount_name(CPUState *env, PTR vfsmount) {
 
 	// all path components read so far
 	char **pcomps = NULL;
-	unsigned int pcomps_idx = 0;
-	unsigned int pcomps_capacity = 16;
+	uint32_t pcomps_idx = 0;
+	uint32_t pcomps_capacity = 16;
 
 	// for reversing pcomps
 	char **pcomps_start, **pcomps_end;
@@ -531,7 +598,6 @@ static inline char *get_name(CPUState *env, PTR task_struct, char *name) {
 	if (name == NULL) { name = (char *)g_malloc0(ki.task.comm_size * sizeof(char)); }
 	else { name = (char *)g_realloc(name, ki.task.comm_size * sizeof(char)); }
 	if (-1 == panda_virtual_memory_rw(env, task_struct + ki.task.comm_offset, (uint8_t *)name, ki.task.comm_size * sizeof(char), 0)) {
-		panda_memory_errors++;
 		strncpy(name, "N/A", ki.task.comm_size*sizeof(char));
 	}
 	return name;
@@ -539,14 +605,16 @@ static inline char *get_name(CPUState *env, PTR task_struct, char *name) {
 
 /**
  * @brief Retrieves the address of the following task_struct in the process list.
+ *
+ * XXX: Can now be implemented with IMPLEMENT_OFFSET_GETTER_2LN
  */
 static inline PTR get_task_struct_next(CPUState *env, PTR task_struct) {
-    PTR tasks = get_tasks(env, task_struct);
+	PTR tasks = get_tasks(env, task_struct);
 
-    if (!tasks) {
+	if (!tasks) {
 		return (PTR)NULL;
 	}
-    else {
+	else {
 		return tasks-ki.task.tasks_offset;
 	}
 }
