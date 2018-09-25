@@ -460,7 +460,9 @@ void uninit_plugin(void *self) {
         shadow = nullptr;
     }
 
-    panda_disable_llvm();
+    // Check if tcg_llvm_ctx has been initialized before destroy
+    if (taint2_enabled()) panda_disable_llvm();
+
     panda_disable_memcb();
     panda_enable_tb_chaining();
 }
