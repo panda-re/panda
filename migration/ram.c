@@ -300,7 +300,6 @@ static void *do_data_compress(void *opaque)
             offset = param->offset;
             param->block = NULL;
             qemu_mutex_unlock(&param->mutex);
-
             do_compress_ram_page(param->file, block, offset);
 
             qemu_mutex_lock(&comp_done_lock);
