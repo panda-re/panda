@@ -44,7 +44,6 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms);
 void on_free_osimodules(OsiModules *ms);
 
 struct kernelinfo ki;
-int panda_memory_errors;
 
 /* ******************************************************************
  Helpers
@@ -129,7 +128,6 @@ static void fill_osiproc(CPUState *env, OsiProc *p, PTR task_addr) {
 	p->ppid = get_real_parent_pid(env, task_addr);
 	p->pages = NULL;		// OsiPage - TODO
 
-	panda_memory_errors = 0;
 	p->asid = get_pgd(env, task_addr);
 }
 
@@ -580,7 +578,7 @@ bool init_plugin(void *self) {
 
 	// Load kernel offsets.
 	if (read_kernelinfo(kconf_file, kconf_group, &ki) != 0) {
-		LOG_ERROR("Failed to read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
+		LOG_ERROR("Failed to read group %s from %s.", kconf_group, kconf_file);
 		goto error;
 	}
 	LOG_INFO("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
