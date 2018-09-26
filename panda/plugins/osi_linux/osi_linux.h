@@ -466,14 +466,12 @@ static inline char *read_dentry_name(CPUState *env, PTR dentry) {
 	// for reversing pcomps
 	char **pcomps_start, **pcomps_end;
 
-	LN;
 	target_ptr_t current_dentry_parent = dentry;
 	target_ptr_t current_dentry = (target_ptr_t)NULL;
 	while (current_dentry_parent != current_dentry) {
 		int og_err1, og_err2;
 		current_dentry = current_dentry_parent;
 
-		LN;
 		printf("1#%lx\n", (uintptr_t)(current_dentry + ki.path.d_name_offset));
 		// read dentry d_parent and d_name
 		uint8_t d_name[ki.path.qstr_size] = {0}; // hurrah for c99!
@@ -485,7 +483,6 @@ static inline char *read_dentry_name(CPUState *env, PTR dentry) {
 		}
 
 		// read d_dname function pointer - indicates a dynamic name
-		LN;
 		target_ptr_t d_dname;
 		og_err1 = get_dentry_dname(env, current_dentry, &d_dname);
 		if (OG_SUCCESS != og_err1) {
@@ -494,7 +491,6 @@ static inline char *read_dentry_name(CPUState *env, PTR dentry) {
 		}
 
 		// read component
-		LN;
 		pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t)) + 1; // increment pcomp_length to include the string terminator
 		if (pcomp_capacity < pcomp_length) {
 			pcomp_capacity = pcomp_length + 16;
@@ -526,9 +522,7 @@ static inline char *read_dentry_name(CPUState *env, PTR dentry) {
 			// XXX: full reconstruction of dynamic names in not currently supported
 			pcomps[pcomps_idx++] = g_strconcat(DNAME_MARK, pcomp, NULL);
 		}
-		LN;
 	}
-	LN;
 
 	// reverse components order and join them
 	g_free(pcomp);
@@ -563,7 +557,6 @@ static inline char *read_dentry_name(CPUState *env, PTR dentry) {
 	}
 #endif
 #undef OSI_LINUX_FDNDEBUG
-	LN;
 	return name;
 }
 
@@ -600,11 +593,9 @@ static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
 		if (OG_SUCCESS != og_err0 || OG_SUCCESS != og_err1) {
 			break;
 		}
-		LN;
 		if (current_vfsmount_dentry == (target_ptr_t)NULL) {
 			break;
 		}
-		LN;
 
 		// read and copy component
 		pcomp = read_dentry_name(env, current_vfsmount_dentry);
@@ -614,16 +605,13 @@ static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
 		if (pcomp == NULL) {
 			continue;
 		}
-		LN;
 
 		if (pcomps_idx + 1 >= pcomps_capacity) { // +1 accounts for the terminating NULL
 			pcomps_capacity += 16;
 			pcomps = (char **)g_realloc(pcomps, pcomps_capacity * sizeof(char *));
 		}
 		pcomps[pcomps_idx++] = pcomp;
-		LN;
 	}
-	LN;
 
 	// reverse components order and join them
 	if (pcomps != NULL) {
