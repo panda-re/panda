@@ -43,6 +43,11 @@ extern void taint_state_changed(Shad *shad, uint64_t addr, uint64_t size);
 // maximum taintset compute number (0=unlimited)
 // taint will be deleted once this value is exceeded
 extern uint32_t max_tcn;
+
+// maximum taintset cardinality (0=unlimited)
+// taint will be deleted once this value is exceeded
+extern uint32_t max_taintset_card;
+
 }
 
 #define CPU_LOG_TAINT_OPS (1 << 28)
@@ -283,7 +288,10 @@ class FastShad : public Shad
     {
         tassert(addr < size);
 
-        if ((max_tcn == 0) || (td.tcn <= max_tcn))
+        uint32_t newcard = 0;
+        if (td.ls != NULL) newcard = td.ls->size();
+        if (((max_tcn == 0) || (td.tcn <= max_tcn)) &&
+            ((max_taintset_card == 0) || (newcard <= max_taintset_card)))
         {
             bool change = !(td == *get_td_p(addr));
             labels[addr] = td;
@@ -376,7 +384,10 @@ class LazyShad : public Shad
 
     void set_full(uint64_t addr, TaintData td) override
     {
-        if ((max_tcn == 0) || (td.tcn <= max_tcn))
+        uint32_t newcard = 0;
+        if (td.ls != NULL) newcard = td.ls->size();
+        if (((max_tcn == 0) || (td.tcn <= max_tcn)) &&
+            ((max_taintset_card == 0) || (newcard <= max_taintset_card)))
         {
             bool change = !(td == query_full(addr));
             labels[addr] = td;
