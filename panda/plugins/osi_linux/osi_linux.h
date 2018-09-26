@@ -471,8 +471,8 @@ static inline char *read_dentry_name(CPUState *env, PTR dentry) {
 	while (current_dentry_parent != current_dentry) {
 		int og_err1, og_err2;
 		current_dentry = current_dentry_parent;
+		//printf("1#%lx\n", (uintptr_t)(current_dentry + ki.path.d_name_offset));
 
-		printf("1#%lx\n", (uintptr_t)(current_dentry + ki.path.d_name_offset));
 		// read dentry d_parent and d_name
 		uint8_t d_name[ki.path.qstr_size] = {0}; // hurrah for c99!
 		og_err1 = get_dentry_name(env, current_dentry, d_name);
@@ -497,8 +497,8 @@ static inline char *read_dentry_name(CPUState *env, PTR dentry) {
 			pcomp = (char *)g_realloc(pcomp, pcomp_capacity * sizeof(char));
 		}
 		og_err1 = panda_virtual_memory_rw(env, *(target_ptr_t *)(d_name + 2*sizeof(uint32_t)), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
-		printf("2#%lx\n", (uintptr_t)*(PTR *)(d_name + 2*sizeof(uint32_t)));
-		printf("3#%s\n", pcomp);
+		//printf("2#%lx\n", (uintptr_t)*(PTR *)(d_name + 2*sizeof(uint32_t)));
+		//printf("3#%s\n", pcomp);
 		if (-1 == og_err1) {
 			break;
 		}
