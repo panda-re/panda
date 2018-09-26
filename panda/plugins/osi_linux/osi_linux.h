@@ -60,11 +60,10 @@
  * size of unsigned long of the target processor. This is a reasonable
  * assumption to make -- at least in the context of a research prototype.
  */
-#define PTR target_ulong
 typedef target_ulong target_ptr_t;
 
 /** @brief Print format for guest VM pointers. */
-#define TARGET_FMT_PTR TARGET_FMT_lx
+#define TARGET_PTR_FMT TARGET_FMT_lx
 
 /** @brief Print format for guest VM pids. */
 #define TARGET_FMT_PID "%d"
@@ -151,7 +150,7 @@ extern struct kernelinfo ki;
  * Use IMPLEMENT_OFFSET_GETN instead.
  */
 #define IMPLEMENT_OFFSET_GET(_name, _paramName, _retType, _offset, _errorRetValue) \
-static inline _retType _name(CPUState* env, PTR _paramName) { \
+static inline _retType _name(CPUState* env, target_ptr_t _paramName) { \
 	_retType _t; \
 	if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType), 0)) { \
 		return (_errorRetValue); \
@@ -168,7 +167,7 @@ static inline _retType _name(CPUState* env, PTR _paramName) { \
  * Use IMPLEMENT_OFFSET_GET2LN instead.
  */
 #define IMPLEMENT_OFFSET_GET2L(_name, _paramName, _retType1, _offset1, _retType2, _offset2, _errorRetValue) \
-static inline _retType2 _name(CPUState* env, PTR _paramName) { \
+static inline _retType2 _name(CPUState* env, target_ptr_t _paramName) { \
 	_retType1 _t1; \
 	_retType2 _t2; \
 	if (-1 == panda_virtual_memory_rw(env, _paramName + _offset1, (uint8_t *)&_t1, sizeof(_retType1), 0)) { \
@@ -196,8 +195,8 @@ static inline _retType2 _name(CPUState* env, PTR _paramName) { \
 #define IMPLEMENT_OFFSET_GETN(_funcName, _paramName, _retType, _retName, _retSize, _offset) \
 static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _retName) { \
 	size_t ret_size = ((_retSize) == OG_AUTOSIZE) ? sizeof(_retType) : (_retSize); \
-	OG_printf(#_funcName ":1:" TARGET_FMT_PTR ":%d\n", _paramName, _offset); \
-	OG_printf(#_funcName ":2:" TARGET_FMT_PTR ":%zu\n", _paramName + _offset, ret_size); \
+	OG_printf(#_funcName ":1:" TARGET_PTR_FMT ":%d\n", _paramName, _offset); \
+	OG_printf(#_funcName ":2:" TARGET_PTR_FMT ":%zu\n", _paramName + _offset, ret_size); \
 	if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)_retName, ret_size, 0)) { \
 		return OG_ERROR_MEMORY; \
 	} \
@@ -215,16 +214,16 @@ static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _r
 static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _retName) { \
 	target_ptr_t _p1; \
 	size_t ret_size = ((_retSize) == OG_AUTOSIZE) ? sizeof(_retType) : (_retSize); \
-	OG_printf(#_funcName ":1:" TARGET_FMT_PTR ":%d\n", _paramName, _offset1); \
-	OG_printf(#_funcName ":2:" TARGET_FMT_PTR ":%zu\n", _paramName + _offset1, sizeof(target_ptr_t)); \
+	OG_printf(#_funcName ":1:" TARGET_PTR_FMT ":%d\n", _paramName, _offset1); \
+	OG_printf(#_funcName ":2:" TARGET_PTR_FMT ":%zu\n", _paramName + _offset1, sizeof(target_ptr_t)); \
 	if (-1 == panda_virtual_memory_rw(env, _paramName + _offset1, (uint8_t *)&_p1, sizeof(target_ptr_t), 0)) { \
 		return OG_ERROR_MEMORY; \
 	} \
-	OG_printf(#_funcName ":3:" TARGET_FMT_PTR ":%d\n", _p1, _offset2); \
+	OG_printf(#_funcName ":3:" TARGET_PTR_FMT ":%d\n", _p1, _offset2); \
 	if (_p1 == (target_ptr_t)NULL) { \
 		return OG_ERROR_DEREF; \
 	} \
-	OG_printf(#_funcName ":4:" TARGET_FMT_PTR ":%zu\n", _p1 + _offset2, ret_size); \
+	OG_printf(#_funcName ":4:" TARGET_PTR_FMT ":%zu\n", _p1 + _offset2, ret_size); \
 	if (-1 == panda_virtual_memory_rw(env, _p1 + _offset2, (uint8_t *)_retName, ret_size, 0)) { \
 		return OG_ERROR_MEMORY; \
 	} \
@@ -243,25 +242,25 @@ static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _r
 /**
  * @brief Retrieves the task_struct address using the thread_info address.
  */
-IMPLEMENT_OFFSET_GET(get_task_struct, thread_info_addr, PTR, ki.task.task_offset, 0)
+IMPLEMENT_OFFSET_GET(get_task_struct, thread_info_addr, target_ptr_t, ki.task.task_offset, 0)
 
 /**
  * @brief Retrieves the thread group address from task_struct.
  * If the thread group address points back to itself, then the task_struct
  * corresponds to a process.
  */
-IMPLEMENT_OFFSET_GET(get_thread_group, task_struct, PTR, ki.task.thread_group_offset, 0)
+IMPLEMENT_OFFSET_GET(get_thread_group, task_struct, target_ptr_t, ki.task.thread_group_offset, 0)
 
 /**
  * @brief Retrieves the thread group leader address from task_struct.
  */
-IMPLEMENT_OFFSET_GET(get_group_leader, task_struct, PTR, ki.task.group_leader_offset, 0)
+IMPLEMENT_OFFSET_GET(get_group_leader, task_struct, target_ptr_t, ki.task.group_leader_offset, 0)
 
 /**
  * @brief Retrieves the tasks address from a task_struct.
  * This is used to iterate the process list.
  */
-IMPLEMENT_OFFSET_GET(get_tasks, task_struct, PTR, ki.task.tasks_offset, 0)
+IMPLEMENT_OFFSET_GET(get_tasks, task_struct, target_ptr_t, ki.task.tasks_offset, 0)
 
 /**
  * @brief Retrieves the pid from a task_struct.
@@ -276,59 +275,59 @@ IMPLEMENT_OFFSET_GET(get_tgid, task_struct, int, ki.task.tgid_offset, 0)
 /**
  * @brief Retrieves the address of the stack from a task_struct.
  */
-IMPLEMENT_OFFSET_GET(get_stack, task_struct, PTR, ki.task.stack_offset, 0)
+IMPLEMENT_OFFSET_GET(get_stack, task_struct, target_ptr_t, ki.task.stack_offset, 0)
 
 /**
  * @brief Retrieves the original parent pid from task_struct.
  */
-IMPLEMENT_OFFSET_GET2L(get_real_parent_pid, task_struct, PTR, ki.task.real_parent_offset, int, ki.task.pid_offset, -1)
+IMPLEMENT_OFFSET_GET2L(get_real_parent_pid, task_struct, target_ptr_t, ki.task.real_parent_offset, int, ki.task.pid_offset, -1)
 
 /**
  * @brief Retrieves the current parent pid (that will receive SIGCHLD, SIGWAIT) from task_struct.
  */
-IMPLEMENT_OFFSET_GET2L(get_parent_pid, task_struct, PTR, ki.task.parent_offset, int, ki.task.pid_offset, -1)
+IMPLEMENT_OFFSET_GET2L(get_parent_pid, task_struct, target_ptr_t, ki.task.parent_offset, int, ki.task.pid_offset, -1)
 
 /**
  * @brief Retrieves the address of the page directory from a task_struct.
  */
-IMPLEMENT_OFFSET_GET2L(get_pgd, task_struct, PTR, ki.task.mm_offset, PTR, ki.mm.pgd_offset, 0)
+IMPLEMENT_OFFSET_GET2L(get_pgd, task_struct, target_ptr_t, ki.task.mm_offset, target_ptr_t, ki.mm.pgd_offset, 0)
 
 
 /**
  * @brief Retrieves the address of the mm_struct from a task_struct.
  */
-IMPLEMENT_OFFSET_GET(get_mm, task_struct, PTR, ki.task.mm_offset, 0)
+IMPLEMENT_OFFSET_GET(get_mm, task_struct, target_ptr_t, ki.task.mm_offset, 0)
 
 /**
  * @brief Retrieves the address of the mm_struct from a task_struct.
  */
-IMPLEMENT_OFFSET_GET(get_mm_start_brk, mm_struct, PTR, ki.mm.start_brk_offset, 0)
+IMPLEMENT_OFFSET_GET(get_mm_start_brk, mm_struct, target_ptr_t, ki.mm.start_brk_offset, 0)
 
 /**
  * @brief Retrieves the address of the mm_struct from a task_struct.
  */
-IMPLEMENT_OFFSET_GET(get_mm_brk, mm_struct, PTR, ki.mm.brk_offset, 0)
+IMPLEMENT_OFFSET_GET(get_mm_brk, mm_struct, target_ptr_t, ki.mm.brk_offset, 0)
 
 /**
  * @brief Retrieves the address of the mm_struct from a task_struct.
  */
-IMPLEMENT_OFFSET_GET(get_mm_start_stack, mm_struct, PTR, ki.mm.start_stack_offset, 0)
+IMPLEMENT_OFFSET_GET(get_mm_start_stack, mm_struct, target_ptr_t, ki.mm.start_stack_offset, 0)
 
 /**
  * @brief Retrieves the address of the first vm_area_struct of the task.
  */
-IMPLEMENT_OFFSET_GET2L(get_vma_first, task_struct, PTR, ki.task.mm_offset, PTR, ki.mm.mmap_offset, 0)
+IMPLEMENT_OFFSET_GET2L(get_vma_first, task_struct, target_ptr_t, ki.task.mm_offset, target_ptr_t, ki.mm.mmap_offset, 0)
 
 /**
  * @brief Retrieves the address of the following vm_area_struct.
  * This is used to iterate the mmap list.
  */
-IMPLEMENT_OFFSET_GET(get_vma_next, vma_struct, PTR, ki.vma.vm_next_offset, 0)
+IMPLEMENT_OFFSET_GET(get_vma_next, vma_struct, target_ptr_t, ki.vma.vm_next_offset, 0)
 
 /**
  * @brief Retrieves the of the mm_struct where this vm_area_struct belongs to.
  */
-IMPLEMENT_OFFSET_GET(get_vma_vm_mm, vma_struct, PTR, ki.vma.vm_mm_offset, 0)
+IMPLEMENT_OFFSET_GET(get_vma_vm_mm, vma_struct, target_ptr_t, ki.vma.vm_mm_offset, 0)
 
 /**
  * @todo Retrieves the address of the following vm_area_struct.
@@ -348,7 +347,7 @@ IMPLEMENT_OFFSET_GET(get_vma_flags, vma_struct, target_ulong, ki.vma.vm_flags_of
 /**
  * @brief Retrieves the address of the mm_struct from a task_struct.
  */
-IMPLEMENT_OFFSET_GET(get_vma_vm_file, vma_struct, PTR, ki.vma.vm_file_offset, 0)
+IMPLEMENT_OFFSET_GET(get_vma_vm_file, vma_struct, target_ptr_t, ki.vma.vm_file_offset, 0)
 
 /**
  * @brief Retrieves the dentry associated with a vma_struct.
@@ -357,7 +356,7 @@ IMPLEMENT_OFFSET_GET(get_vma_vm_file, vma_struct, PTR, ki.vma.vm_file_offset, 0)
  * Operating on file structs vs vma structs, will help to share code between
  * mm resolution and fd resolution.
  */
-IMPLEMENT_OFFSET_GET2L(get_vma_dentry, vma_struct, PTR, ki.vma.vm_file_offset, PTR, ki.fs.f_path_dentry_offset, 0)
+IMPLEMENT_OFFSET_GET2L(get_vma_dentry, vma_struct, target_ptr_t, ki.vma.vm_file_offset, target_ptr_t, ki.fs.f_path_dentry_offset, 0)
 
 /**
  * @brief Retrieves the vfsmount dentry associated with a vma_struct.
@@ -365,30 +364,30 @@ IMPLEMENT_OFFSET_GET2L(get_vma_dentry, vma_struct, PTR, ki.vma.vm_file_offset, P
  * XXX: Reading the vfsmount dentry is required to get the full pathname of files not located in the root fs.
  * This hasn't been implemented yet...
  */
-IMPLEMENT_OFFSET_GET2L(get_vma_vfsmount_dentry, vma_struct, PTR, ki.vma.vm_file_offset, PTR, ki.fs.f_path_dentry_offset, 0)
+IMPLEMENT_OFFSET_GET2L(get_vma_vfsmount_dentry, vma_struct, target_ptr_t, ki.vma.vm_file_offset, target_ptr_t, ki.fs.f_path_dentry_offset, 0)
 
 /**
  * @brief Retrieves the address of the files struct associated with a task_struct.
  */
-IMPLEMENT_OFFSET_GET(get_files, task_struct, PTR, ki.task.files_offset, 0)
+IMPLEMENT_OFFSET_GET(get_files, task_struct, target_ptr_t, ki.task.files_offset, 0)
 
 /**
  * @brief Retrieves the array of file structs from the files struct.
  * The n-th element of the array corresponds to the n-th open fd.
  */
-IMPLEMENT_OFFSET_GET2L(get_files_fds, files_struct, PTR, ki.fs.fdt_offset, PTR, ki.fs.fd_offset, 0)
+IMPLEMENT_OFFSET_GET2L(get_files_fds, files_struct, target_ptr_t, ki.fs.fdt_offset, target_ptr_t, ki.fs.fd_offset, 0)
 
 /**
  * @brief Retrieves the dentry struct associated with a file struct.
  */
-IMPLEMENT_OFFSET_GET(get_file_dentry, file_struct, PTR, ki.fs.f_path_dentry_offset, 0)
+IMPLEMENT_OFFSET_GET(get_file_dentry, file_struct, target_ptr_t, ki.fs.f_path_dentry_offset, 0)
 
 /**
  * @brief Retrieves the vfsmount struct associated with a file struct.
  */
-IMPLEMENT_OFFSET_GET(get_file_mnt, file_struct, PTR, ki.fs.f_path_mnt_offset, 0)
+IMPLEMENT_OFFSET_GET(get_file_mnt, file_struct, target_ptr_t, ki.fs.f_path_mnt_offset, 0)
 
-IMPLEMENT_OFFSET_GET(get_file_pos, file_struct, PTR, ki.fs.f_pos_offset, 0)
+IMPLEMENT_OFFSET_GET(get_file_pos, file_struct, target_ptr_t, ki.fs.f_pos_offset, 0)
 
 /**
  * @brief Retrieves the mnt_parent vfsmount struct associated with a vfsmount struct.
@@ -403,7 +402,7 @@ IMPLEMENT_OFFSET_GETN(get_vfsmount_dentry, vfsmount, target_ptr_t, vfsmount_dent
 /**
  * @brief Retrieves the mnt_root dentry struct associated with a vfsmount struct.
  */
-IMPLEMENT_OFFSET_GET(get_mnt_root_dentry, vfsmount, PTR, ki.path.mnt_root_offset, 0)
+IMPLEMENT_OFFSET_GET(get_mnt_root_dentry, vfsmount, target_ptr_t, ki.path.mnt_root_offset, 0)
 
 /**
  * @brief Retrieves the qstr for a dentry.
@@ -427,15 +426,15 @@ IMPLEMENT_OFFSET_GETN(get_dentry_parent, dentry, target_ptr_t, dentry_parent, OG
 /**
  * @brief Retrieves the n-th file struct from an fd file array. (pp 479)
  */
-static inline PTR get_fd_file(CPUState *env, PTR fd_file_array, int n) {
-	PTR fd_file, fd_file_ptr;
+static inline target_ptr_t get_fd_file(CPUState *env, target_ptr_t fd_file_array, int n) {
+	target_ptr_t fd_file, fd_file_ptr;
 
 	// Compute address of the pointer to the file struct of the n-th fd.
-	fd_file_ptr = fd_file_array+n*sizeof(PTR);
+	fd_file_ptr = fd_file_array+n*sizeof(target_ptr_t);
 
 	// Read address of the file struct.
-	if (-1 == panda_virtual_memory_rw(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(PTR), 0)) {
-		return (PTR)NULL;
+	if (-1 == panda_virtual_memory_rw(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(target_ptr_t), 0)) {
+		return (target_ptr_t)NULL;
 	}
 
 	return fd_file_ptr;
@@ -450,7 +449,7 @@ static inline PTR get_fd_file(CPUState *env, PTR fd_file_array, int n) {
  * @note We can always use dentry.d_name->name and ignore dentry.d_iname.
  * When the latter is used, the former will be set to point to it.
  */
-static inline char *read_dentry_name(CPUState *env, PTR dentry) {
+static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
 	char *name = NULL;
 
 	// current path component
@@ -497,7 +496,7 @@ static inline char *read_dentry_name(CPUState *env, PTR dentry) {
 			pcomp = (char *)g_realloc(pcomp, pcomp_capacity * sizeof(char));
 		}
 		og_err1 = panda_virtual_memory_rw(env, *(target_ptr_t *)(d_name + 2*sizeof(uint32_t)), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
-		//printf("2#%lx\n", (uintptr_t)*(PTR *)(d_name + 2*sizeof(uint32_t)));
+		//printf("2#%lx\n", (uintptr_t)*(target_ptr_t *)(d_name + 2*sizeof(uint32_t)));
 		//printf("3#%s\n", pcomp);
 		if (-1 == og_err1) {
 			break;
@@ -575,8 +574,8 @@ static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
 		// retrieve vfsmount members
 		og_err0 = get_vfsmount_dentry(env, current_vfsmount, &current_vfsmount_dentry);
 		og_err1 = get_vfsmount_parent(env, current_vfsmount, &current_vfsmount_parent);
-		//printf("###D:%d:" TARGET_FMT_PTR ":" TARGET_FMT_PTR "\n", og_err, current_vfsmount, current_vfsmount_dentry);
-		//printf("###P:%d:" TARGET_FMT_PTR ":" TARGET_FMT_PTR "\n", og_err, current_vfsmount, current_vfsmount_parent);
+		//printf("###D:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err, current_vfsmount, current_vfsmount_dentry);
+		//printf("###P:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err, current_vfsmount, current_vfsmount_parent);
 
 		// check whether we should break out
 		if (OG_SUCCESS != og_err0 || OG_SUCCESS != og_err1) {
@@ -627,7 +626,7 @@ static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
  * @note task.comm is a fixed length array.
  * This means that we don't have to account for the terminating '\0'.
  */
-static inline char *get_name(CPUState *env, PTR task_struct, char *name) {
+static inline char *get_name(CPUState *env, target_ptr_t task_struct, char *name) {
 	if (name == NULL) { name = (char *)g_malloc0(ki.task.comm_size * sizeof(char)); }
 	else { name = (char *)g_realloc(name, ki.task.comm_size * sizeof(char)); }
 	if (-1 == panda_virtual_memory_rw(env, task_struct + ki.task.comm_offset, (uint8_t *)name, ki.task.comm_size * sizeof(char), 0)) {
@@ -641,11 +640,11 @@ static inline char *get_name(CPUState *env, PTR task_struct, char *name) {
  *
  * XXX: Can now be implemented with IMPLEMENT_OFFSET_GETTER_2LN
  */
-static inline PTR get_task_struct_next(CPUState *env, PTR task_struct) {
-	PTR tasks = get_tasks(env, task_struct);
+static inline target_ptr_t get_task_struct_next(CPUState *env, target_ptr_t task_struct) {
+	target_ptr_t tasks = get_tasks(env, task_struct);
 
 	if (!tasks) {
-		return (PTR)NULL;
+		return (target_ptr_t)NULL;
 	}
 	else {
 		return tasks-ki.task.tasks_offset;

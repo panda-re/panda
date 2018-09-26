@@ -52,16 +52,16 @@ struct kernelinfo ki;
 /**
  * @brief Resolves a file struct and returns its full pathname.
  */
-static char *get_file_name(CPUState *env, PTR file_struct) {
+static char *get_file_name(CPUState *env, target_ptr_t file_struct) {
 	char *name = NULL;
-	PTR file_dentry, file_mnt;
+	target_ptr_t file_dentry, file_mnt;
 
 	// Read addresses for dentry, vfsmnt structs.
 	file_dentry = get_file_dentry(env, file_struct);
 	file_mnt = get_file_mnt(env, file_struct);
 
-	if (unlikely(file_dentry == (PTR)NULL || file_mnt == (PTR)NULL)) {
-		LOG_INFO("failure resolving file struct " TARGET_FMT_PTR "/" TARGET_FMT_PTR, file_dentry, file_mnt);
+	if (unlikely(file_dentry == (target_ptr_t)NULL || file_mnt == (target_ptr_t)NULL)) {
+		LOG_INFO("failure resolving file struct " TARGET_PTR_FMT "/" TARGET_PTR_FMT, file_dentry, file_mnt);
 		return NULL;
 	}
 
@@ -75,24 +75,24 @@ static char *get_file_name(CPUState *env, PTR file_struct) {
 	return name;
 }
 
-static uint64_t get_file_position(CPUState *env, PTR file_struct) {
+static uint64_t get_file_position(CPUState *env, target_ptr_t file_struct) {
 	return get_file_pos(env, file_struct);
 }
 
 
-static PTR get_file_struct_ptr(CPUState *env, PTR task_struct, int fd) {
-	PTR files = get_files(env, task_struct);
-	PTR fds = get_files_fds(env, files);
-	PTR fd_file_ptr, fd_file;
+static target_ptr_t get_file_struct_ptr(CPUState *env, target_ptr_t task_struct, int fd) {
+	target_ptr_t files = get_files(env, task_struct);
+	target_ptr_t fds = get_files_fds(env, files);
+	target_ptr_t fd_file_ptr, fd_file;
 
 	// fds is a flat array with struct file pointers.
 	// Calculate the address of the nth pointer and read it.
-	fd_file_ptr = fds + fd*sizeof(PTR);
-	if (-1 == panda_virtual_memory_rw(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(PTR), 0)) {
-		return (PTR)NULL;
+	fd_file_ptr = fds + fd*sizeof(target_ptr_t);
+	if (-1 == panda_virtual_memory_rw(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(target_ptr_t), 0)) {
+		return (target_ptr_t)NULL;
 	}
-	if (fd_file == (PTR)NULL) {
-		return (PTR)NULL;
+	if (fd_file == (target_ptr_t)NULL) {
+		return (target_ptr_t)NULL;
 	}
 	return fd_file;
 }
@@ -101,17 +101,17 @@ static PTR get_file_struct_ptr(CPUState *env, PTR task_struct, int fd) {
 /**
  * @brief Resolves a file struct and returns its full pathname.
  */
-static char *get_fd_name(CPUState *env, PTR task_struct, int fd) {
-	PTR fd_file = get_file_struct_ptr(env, task_struct, fd);
-	if (fd_file == (PTR)NULL) return NULL;
+static char *get_fd_name(CPUState *env, target_ptr_t task_struct, int fd) {
+	target_ptr_t fd_file = get_file_struct_ptr(env, task_struct, fd);
+	if (fd_file == (target_ptr_t)NULL) return NULL;
 	return get_file_name(env, fd_file);
 }
 
 #define INVALID_FILE_POS (-1)
 
-static uint64_t get_fd_pos(CPUState *env, PTR task_struct, int fd) {
-	PTR fd_file = get_file_struct_ptr(env, task_struct, fd);
-	if (fd_file == (PTR)NULL) return ((uint64_t) INVALID_FILE_POS);
+static uint64_t get_fd_pos(CPUState *env, target_ptr_t task_struct, int fd) {
+	target_ptr_t fd_file = get_file_struct_ptr(env, task_struct, fd);
+	if (fd_file == (target_ptr_t)NULL) return ((uint64_t) INVALID_FILE_POS);
 	return get_file_position(env, fd_file);
 }
 
@@ -119,7 +119,7 @@ static uint64_t get_fd_pos(CPUState *env, PTR task_struct, int fd) {
 /**
  * @brief Fills an OsiProc struct. Any existing contents are overwritten.
  */
-static void fill_osiproc(CPUState *env, OsiProc *p, PTR task_addr) {
+static void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr) {
 	memset(p, 0, sizeof(OsiProc));
 
 	p->offset = task_addr;	// XXX: Not sure what this is. Storing task_addr here seems logical.
@@ -134,11 +134,11 @@ static void fill_osiproc(CPUState *env, OsiProc *p, PTR task_addr) {
 /**
  * @brief Fills an OsiModule struct.
  */
-static void fill_osimodule(CPUState *env, OsiModule *m, PTR vma_addr) {
+static void fill_osimodule(CPUState *env, OsiModule *m, target_ptr_t vma_addr) {
 	target_ulong vma_start, vma_end;
-	PTR vma_vm_file;
-	PTR vma_dentry;
-	PTR mm_addr, start_brk, brk, start_stack;
+	target_ptr_t vma_vm_file;
+	target_ptr_t vma_dentry;
+	target_ptr_t mm_addr, start_brk, brk, start_stack;
 
 	vma_start = get_vma_start(env, vma_addr);
 	vma_end = get_vma_end(env, vma_addr);
@@ -149,7 +149,7 @@ static void fill_osimodule(CPUState *env, OsiModule *m, PTR vma_addr) {
 	m->base = vma_start;
 	m->size = vma_end - vma_start;
 
-	if (vma_vm_file != (PTR)NULL) {	 // Memory area is mapped from a file.
+	if (vma_vm_file != (target_ptr_t)NULL) {	 // Memory area is mapped from a file.
 		vma_dentry = get_vma_dentry(env, vma_addr);
 		m->file = read_dentry_name(env, vma_dentry);
 		m->name = g_strrstr (m->file, "/");
@@ -185,7 +185,7 @@ static void fill_osimodule(CPUState *env, OsiModule *m, PTR vma_addr) {
  */
 void on_get_current_process(CPUState *env, OsiProc **out_p) {
 	OsiProc *p = NULL;
-	PTR ts;
+	target_ptr_t ts;
 
 #if defined(TARGET_I386)
 	target_ulong kernel_esp;
@@ -217,12 +217,12 @@ void on_get_current_process(CPUState *env, OsiProc **out_p) {
  * Avoiding these infinite loops was mostly a trial+error process.
  */
 void on_get_processes(CPUState *env, OsiProcs **out_ps) {
-	PTR ts_first, ts_current;
+	target_ptr_t ts_first, ts_current;
 	OsiProcs *ps;
 	OsiProc *p;
 	uint32_t ps_capacity;
 #if defined(OSI_LINUX_LIST_THREADS)
-	PTR tg_first, tg_next;
+	target_ptr_t tg_first, tg_next;
 #endif
 
 #if !defined(OSI_LINUX_LIST_FROM_CURRENT)
@@ -234,7 +234,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 	// Related reading: https://css.csail.mit.edu/6.858/2018/readings/i386/c07.htm
 	target_ulong kernel_esp;
 	if (panda_virtual_memory_rw(env, TSS_BASE, (uint8_t *)&kernel_esp, sizeof(kernel_esp), false ) < 0) {
-		ts_first = (PTR)NULL;
+		ts_first = (target_ptr_t)NULL;
 	} else {
 		ts_first = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
 	}
@@ -243,7 +243,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 #endif
 
 #if defined(OSI_LINUX_PSDEBUG)
-	LOG_INFO("INIT %c:%c " TARGET_FMT_PTR " " TARGET_FMT_PTR, TS_THREAD_CHR(env, ts_first),  TS_LEADER_CHR(env, ts_first), ts_first, ts_first);
+	LOG_INFO("INIT %c:%c " TARGET_PTR_FMT " " TARGET_PTR_FMT, TS_THREAD_CHR(env, ts_first),  TS_LEADER_CHR(env, ts_first), ts_first, ts_first);
 	LOG_INFO("\t %d-%d", get_pid(env, ts_first), get_tgid(env, ts_first));
 #endif
 
@@ -254,10 +254,10 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 #endif
 
 	ts_first = ts_current;
-	if (ts_first == (PTR)NULL) goto error0;
+	if (ts_first == (target_ptr_t)NULL) goto error0;
 
 #if defined(OSI_LINUX_PSDEBUG)
-	LOG_INFO("START %c:%c " TARGET_FMT_PTR " " TARGET_FMT_PTR, TS_THREAD_CHR(env, ts_first),  TS_LEADER_CHR(env, ts_first), ts_first, ts_first);
+	LOG_INFO("START %c:%c " TARGET_PTR_FMT " " TARGET_PTR_FMT, TS_THREAD_CHR(env, ts_first),  TS_LEADER_CHR(env, ts_first), ts_first, ts_first);
 	LOG_INFO("\t %d-%d", get_pid(env, ts_first), get_tgid(env, ts_first));
 #endif
 
@@ -272,7 +272,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 
 		fill_osiproc(env, p, ts_current);
 #if defined(OSI_LINUX_PSDEBUG)
-		LOG_INFO("\t %d " TARGET_FMT_PTR " " TARGET_FMT_PTR " %s %d %d %c:%c", ps->num, ts_current, p->asid, p->name, (int)p->pid, (int)get_tgid(env, ts_current), TS_THREAD_CHR(env, ts_current),  TS_LEADER_CHR(env, ts_current));
+		LOG_INFO("\t %d " TARGET_PTR_FMT " " TARGET_PTR_FMT " %s %d %d %c:%c", ps->num, ts_current, p->asid, p->name, (int)p->pid, (int)get_tgid(env, ts_current), TS_THREAD_CHR(env, ts_current),  TS_LEADER_CHR(env, ts_current));
 #endif
 		OSI_MAX_PROC_CHECK(ps->num, "traversing process list");
 
@@ -290,7 +290,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 
 			fill_osiproc(env, p, ts_current);
 #if defined(OSI_LINUX_PSDEBUG)
-			LOG_INFO("\t %d " TARGET_FMT_PTR " " TARGET_FMT_PTR " %s %d %d %c:%c", ps->num, ts_current, p->asid, p->name, (int)p->pid, (int)get_tgid(env, ts_current), TS_THREAD_CHR(env, ts_current),  TS_LEADER_CHR(env, ts_current));
+			LOG_INFO("\t %d " TARGET_PTR_FMT " " TARGET_PTR_FMT " %s %d %d %c:%c", ps->num, ts_current, p->asid, p->name, (int)p->pid, (int)get_tgid(env, ts_current), TS_THREAD_CHR(env, ts_current),  TS_LEADER_CHR(env, ts_current));
 #endif
 			OSI_MAX_PROC_CHECK(ps->num, "traversing thread group list");
 		}
@@ -298,10 +298,10 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 #endif
 
 		ts_current = get_task_struct_next(env, ts_current);
-	} while(ts_current != (PTR)NULL && ts_current != ts_first);
+	} while(ts_current != (target_ptr_t)NULL && ts_current != ts_first);
 
 	// memory read error
-	if (ts_current == (PTR)NULL) goto error1;
+	if (ts_current == (target_ptr_t)NULL) goto error1;
 
 	*out_ps = ps;
 	return;
@@ -328,14 +328,14 @@ error0:
  * @todo Remove duplicates from results.
  */
 void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
-	PTR ts_first, ts_current;
+	target_ptr_t ts_first, ts_current;
 	target_ulong current_pid;
 	OsiModules *ms;
 	OsiModule *m;
 	uint32_t ms_capacity = 16;
-	PTR vma_first, vma_current;
+	target_ptr_t vma_first, vma_current;
 #if defined(OSI_LINUX_LIST_THREADS)
-	PTR tg_first, tg_next;
+	target_ptr_t tg_first, tg_next;
 #endif
 #if OSI_MAX_PROC > 0
 	uint32_t np = 0;
@@ -345,7 +345,7 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
 	// Related reading: https://css.csail.mit.edu/6.858/2018/readings/i386/c07.htm
 	target_ulong kernel_esp;
 	if (panda_virtual_memory_rw(env, TSS_BASE, (uint8_t *)&kernel_esp, sizeof(kernel_esp), false ) < 0) {
-		ts_first = ts_current = (PTR)NULL;
+		ts_first = ts_current = (target_ptr_t)NULL;
 	}
 	else {
 		ts_first = ts_current = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
@@ -354,7 +354,7 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
 	// Get a starting process.
 	ts_first = ts_current = get_task_struct(env, (_ESP & THREADINFO_MASK));
 #endif
-	if (ts_current == (PTR)NULL) goto error0;
+	if (ts_current == (target_ptr_t)NULL) goto error0;
 	if (ts_current + ki.task.thread_group_offset != get_thread_group(env, ts_current)) {
 		ts_first = ts_current = get_task_struct_next(env, ts_current);
 	}
@@ -377,15 +377,15 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
 #endif
 		ts_current = get_task_struct_next(env, ts_current);
 		OSI_MAX_PROC_CHECK(np++, "looking up pid in process list");
-	} while(ts_current != (PTR)NULL && ts_current != ts_first);
+	} while(ts_current != (target_ptr_t)NULL && ts_current != ts_first);
 
 pid_found:
 	// memory read error or process not found
-	if (ts_current == (PTR)NULL || current_pid != p->pid) goto error0;
+	if (ts_current == (target_ptr_t)NULL || current_pid != p->pid) goto error0;
 
 	// Read the module info for the process.
 	vma_first = vma_current = get_vma_first(env, ts_current);
-	if (vma_current == (PTR)NULL) goto error0;
+	if (vma_current == (target_ptr_t)NULL) goto error0;
 
 	ms = (OsiModules *)g_malloc0(sizeof(OsiModules));
 	ms->module = g_new(OsiModule, ms_capacity);
@@ -400,7 +400,7 @@ pid_found:
 		fill_osimodule(env, m, vma_current);
 
 		vma_current = get_vma_next(env, vma_current);
-	} while(vma_current != (PTR)NULL && vma_current != vma_first);
+	} while(vma_current != (target_ptr_t)NULL && vma_current != vma_first);
 
 	*out_ms = ms;
 	return;
@@ -443,7 +443,7 @@ void on_free_osiprocs(OsiProcs *ps) {
 ****************************************************************** */
 
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
-	PTR ts_current = p->offset;
+	target_ptr_t ts_current = p->offset;
 	char *filename = NULL;
 	const char *err = NULL;
 
@@ -476,7 +476,7 @@ end:
 
 unsigned long long  osi_linux_fd_to_pos(CPUState *env, OsiProc *p, int fd) {
 	//	target_ulong asid = panda_current_asid(env);
-	PTR ts_current = 0;
+	target_ptr_t ts_current = 0;
 	ts_current = p->offset;
 	if (ts_current == 0) return INVALID_FILE_POS;
 	return get_fd_pos(env, ts_current, fd);
@@ -521,7 +521,7 @@ int osi_linux_test(CPUState *env, target_ulong oldval, target_ulong newval) {
 	on_get_processes(env, &ps);
 	for (uint32_t i=0; i<ps->num; i++) {
 		OsiProc *p = &ps->proc[i];
-		LOG_INFO(TARGET_FMT_PID ":" TARGET_FMT_PID ":%s:" TARGET_FMT_PTR ":" TARGET_FMT_PTR,
+		LOG_INFO(TARGET_FMT_PID ":" TARGET_FMT_PID ":%s:" TARGET_PTR_FMT ":" TARGET_PTR_FMT,
 				(int)p->pid, (int)p->ppid, p->name, p->asid, p->offset);
 #if defined(OSI_LINUX_TEST_MODULES)
 		OsiModules *ms = NULL;
@@ -529,7 +529,7 @@ int osi_linux_test(CPUState *env, target_ulong oldval, target_ulong newval) {
 		if (ms != NULL) {
 			for (uint32_t j=0; j<ms->num; j++) {
 				OsiModule *m = &ms->module[j];
-				LOG_INFO("\t" TARGET_FMT_PTR ":%04up:%s:%s", m->base, NPAGES(m->size), m->name, m->file);
+				LOG_INFO("\t" TARGET_PTR_FMT ":%04up:%s:%s", m->base, NPAGES(m->size), m->name, m->file);
 			}
 			on_free_osimodules(ms);
 		}
