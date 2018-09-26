@@ -538,25 +538,14 @@ static inline char *read_dentry_name(CPUState *env, PTR dentry) {
 		}
 		pcomps[pcomps_idx] = NULL; // NULL terminate vector
 		name = g_strjoinv("/", pcomps);
-		if (pcomps_idx == 1) {
-			LOG_INFO("%d:%s:%s*", pcomps_idx, pcomps[0], name);
-		}
-		else if (pcomps_idx > 2) {
-			LOG_INFO("%d:%s:%s:%s*", pcomps_idx, pcomps[0], pcomps[1], name);
-		}
 		g_strfreev(pcomps);
 	}
 
-#define OSI_LINUX_FDNDEBUG
 #if defined(OSI_LINUX_FDNDEBUG)
 	if (name == NULL) {
 		LOG_WARN("Error reading d_entry.");
 	}
-	else {
-		LOG_INFO("%s", name);
-	}
 #endif
-#undef OSI_LINUX_FDNDEBUG
 	return name;
 }
 
