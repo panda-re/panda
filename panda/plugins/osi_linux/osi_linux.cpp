@@ -68,7 +68,7 @@ static char *get_file_name(CPUState *env, PTR file_struct) {
 	char *s1, *s2;
 	s1 = read_vfsmount_name(env, file_mnt);
 	s2 = read_dentry_name(env, file_dentry);
-	name = g_strconcat(s1, s2, NULL);
+	name = g_strconcat("/", s1, "/", s2, NULL);
 	g_free(s1);
 	g_free(s2);
 

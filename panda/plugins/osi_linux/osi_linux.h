@@ -69,6 +69,9 @@ typedef target_ulong target_ptr_t;
 /** @brief Print format for guest VM pids. */
 #define TARGET_FMT_PID "%d"
 
+/** @brief Marker for dynamic names. */
+#define DNAME_MARK "§"
+
 /**
  * @brief Maximum number of processes. Rough way to detect infinite loops
  * when iterating the process list. Undefining the macro will disable the
@@ -181,8 +184,8 @@ static inline _retType2 _name(CPUState* env, PTR _paramName) { \
 #define OG_SUCCESS 0
 #define OG_ERROR_MEMORY -1
 #define OG_ERROR_DEREF -2
-//#define OG_printf(...)
-#define OG_printf(...) printf(__VA_ARGS__)
+#define OG_printf(...)
+//#define OG_printf(...) printf(__VA_ARGS__)
 
 /**
  * @brief IMPLEMENT_OFFSET_GETN is a macro for generating uniform
@@ -390,32 +393,32 @@ IMPLEMENT_OFFSET_GET(get_file_pos, file_struct, PTR, ki.fs.f_pos_offset, 0)
 /**
  * @brief Retrieves the mnt_parent vfsmount struct associated with a vfsmount struct.
  */
-IMPLEMENT_OFFSET_GET(get_mnt_parent, vfsmount_struct, PTR, ki.path.mnt_parent_offset, 0)
+IMPLEMENT_OFFSET_GETN(get_vfsmount_parent, vfsmount, target_ptr_t, vfsmount_parent, OG_AUTOSIZE, ki.path.mnt_parent_offset)
 
 /**
  * @brief Retrieves the dentry struct associated with a vfsmount struct.
  */
-IMPLEMENT_OFFSET_GET(get_mnt_dentry, vfsmount_struct, PTR, ki.path.mnt_mountpoint_offset, 0)
+IMPLEMENT_OFFSET_GETN(get_vfsmount_dentry, vfsmount, target_ptr_t, vfsmount_dentry, OG_AUTOSIZE, ki.path.mnt_mountpoint_offset)
 
 /**
  * @brief Retrieves the mnt_root dentry struct associated with a vfsmount struct.
  */
-IMPLEMENT_OFFSET_GET(get_mnt_root_dentry, vfsmount_struct, PTR, ki.path.mnt_root_offset, 0)
+IMPLEMENT_OFFSET_GET(get_mnt_root_dentry, vfsmount, PTR, ki.path.mnt_root_offset, 0)
 
 /**
  * @brief Retrieves the qstr for a dentry.
  */
-IMPLEMENT_OFFSET_GETN(get_dentry_name, dentry_struct, uint8_t, dname_qstr, ki.path.qstr_size*sizeof(uint8_t), ki.path.d_name_offset)
+IMPLEMENT_OFFSET_GETN(get_dentry_name, dentry, uint8_t, dname_qstr, ki.path.qstr_size*sizeof(uint8_t), ki.path.d_name_offset)
 
 /**
  * @brief Retrieves the dynamic name function for a dentry.
  */
-IMPLEMENT_OFFSET_GET2LN(get_dentry_dname, dentry_struct, target_ptr_t, dname_funcp, OG_AUTOSIZE, ki.path.d_op_offset, ki.path.d_dname_offset)
+IMPLEMENT_OFFSET_GET2LN(get_dentry_dname, dentry, target_ptr_t, dname_funcp, OG_AUTOSIZE, ki.path.d_op_offset, ki.path.d_dname_offset)
 
 /**
  * @brief Retrieves the parent of a dentry.
  */
-//IMPLEMENT_OFFSET_GET(get_dentry_parent, dentry_struct, target_ptr_t, ki.path.d_parent_offset, 0)
+IMPLEMENT_OFFSET_GETN(get_dentry_parent, dentry, target_ptr_t, dentry_parent, OG_AUTOSIZE, ki.path.d_parent_offset)
 
 /* ******************************************************************
  Slightly more complex inlines that can't be implemented as simple
@@ -442,94 +445,126 @@ static inline PTR get_fd_file(CPUState *env, PTR fd_file_array, int n) {
  * @brief Retrieves the name of the file associated with a dentry struct.
  *
  * The function traverses all the path components it meets until it
- * reaches a mount point.
+ * reaches a mount point. 
  *
- * @note The old DECAF code used to check dentry.d_iname. This unecessarily complicated
- * the implementation. dentry.d_iname is merely a buffer. When used, dentry.d_name->name
- * will merely point to this buffer instead of a dynamically allocated buffer.
+ * @note We can always use dentry.d_name->name and ignore dentry.d_iname.
+ * When the latter is used, the former will be set to point to it.
  */
 static inline char *read_dentry_name(CPUState *env, PTR dentry) {
 	char *name = NULL;
-	PTR current_dentry;
-	int err;
 
 	// current path component
 	char *pcomp = NULL;
 	uint32_t pcomp_length = 0;
-	uint32_t pcomp_capacity = 32;
+	uint32_t pcomp_capacity = 0;
 
 	// all path components read so far
 	char **pcomps = NULL;
 	uint32_t pcomps_idx = 0;
-	uint32_t pcomps_capacity = 16;
+	uint32_t pcomps_capacity = 0;
 
 	// for reversing pcomps
 	char **pcomps_start, **pcomps_end;
 
-	pcomp = (char *)g_malloc(pcomp_capacity * sizeof(char));
-	pcomps = (char **)g_malloc(pcomps_capacity * sizeof(char *));
-	do {
-		int og_err;
-		current_dentry = dentry;
+	LN;
+	target_ptr_t current_dentry_parent = dentry;
+	target_ptr_t current_dentry = (target_ptr_t)NULL;
+	while (current_dentry_parent != current_dentry) {
+		int og_err1, og_err2;
+		current_dentry = current_dentry_parent;
 
-		// read d_name qstr
+		LN;
+		printf("1#%lx\n", (uintptr_t)(current_dentry + ki.path.d_name_offset));
+		// read dentry d_parent and d_name
 		uint8_t d_name[ki.path.qstr_size] = {0}; // hurrah for c99!
-		og_err = get_dentry_name(env, current_dentry, d_name);
-		if (og_err != OG_SUCCESS) goto error;
+		og_err1 = get_dentry_name(env, current_dentry, d_name);
+		og_err2 = get_dentry_parent(env, current_dentry, &current_dentry_parent);
+		HEXDUMP(d_name, ki.path.qstr_size, current_dentry + ki.path.d_name_offset);
+		if (OG_SUCCESS != og_err1 || OG_SUCCESS != og_err2) {
+			break;
+		}
+
+		// read d_dname function pointer - indicates a dynamic name
+		LN;
+		target_ptr_t d_dname;
+		og_err1 = get_dentry_dname(env, current_dentry, &d_dname);
+		if (OG_SUCCESS != og_err1) {
+			// static name
+			d_dname = (target_ptr_t)NULL;
+		}
 
 		// read component
-		pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t)) + 1;
+		LN;
+		pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t)) + 1; // increment pcomp_length to include the string terminator
 		if (pcomp_capacity < pcomp_length) {
-			pcomp_capacity = pcomp_length;
+			pcomp_capacity = pcomp_length + 16;
 			pcomp = (char *)g_realloc(pcomp, pcomp_capacity * sizeof(char));
 		}
-		err = panda_virtual_memory_rw(env, *(PTR *)(d_name + 2*sizeof(uint32_t)), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
-		if (-1 == err) goto error;
+		og_err1 = panda_virtual_memory_rw(env, *(target_ptr_t *)(d_name + 2*sizeof(uint32_t)), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
+		printf("2#%lx\n", (uintptr_t)*(PTR *)(d_name + 2*sizeof(uint32_t)));
+		printf("3#%s\n", pcomp);
+		if (-1 == og_err1) {
+			break;
+		}
+
+		// skip "/" (mountpoints?)
+		if (pcomp[0] == '/' && pcomp[1] == '\0') {
+			continue;
+		}
 
 		// copy component
-		if (pcomps_idx == pcomps_capacity - 1) { // -1 leaves room for NULL termination
-			pcomps_capacity *= 2;
+		if (pcomps_idx + 1 >= pcomps_capacity) { // +1 accounts for the terminating NULL
+			pcomps_capacity += 16;
 			pcomps = (char **)g_realloc(pcomps, pcomps_capacity * sizeof(char *));
 		}
-		pcomps[pcomps_idx++] = g_strdup(pcomp);
-
-		// read the parent dentry
-		err = panda_virtual_memory_rw(env, current_dentry + ki.path.d_parent_offset, (uint8_t *)&dentry, sizeof(PTR), 0);
-		if (-1 == err) goto error;
-	} while (dentry != current_dentry);
-
-	// reverse components order
-	g_free(pcomp);
-	pcomps_start = pcomps;
-	pcomps_end = &pcomps[pcomps_idx - 1];
-	while (pcomps_start < pcomps_end) {
-		pcomp = *pcomps_start;
-		*pcomps_start = *pcomps_end;
-		*pcomps_end = pcomp;
-		pcomps_start++;
-		pcomps_end--;
+		if (d_dname == (target_ptr_t)NULL) {
+			// static name
+			pcomps[pcomps_idx++] = g_strdup(pcomp);
+		}
+		else {
+			// dynamic name - mark it with DNAME_MARK
+			// XXX: full reconstruction of dynamic names in not currently supported
+			pcomps[pcomps_idx++] = g_strconcat(DNAME_MARK, pcomp, NULL);
+		}
+		LN;
 	}
+	LN;
 
-	// join components and return
-	pcomps[pcomps_idx] = NULL;			// NULL terminate vector
-	if (dentry == current_dentry) { // Eliminate root directory.
-		pcomps[0][0] = '\0';
-	}
-	name = g_strjoinv("/", pcomps);
-	g_strfreev(pcomps);
-
-	return name;
-
-error:
-#if defined(OSI_LINUX_FDNDEBUG)
-	LOG_WARN("Error reading d_entry.");
-#endif
+	// reverse components order and join them
 	g_free(pcomp);
 	if (pcomps != NULL) {
-		pcomps[pcomps_idx] = NULL;
+		pcomps_start = pcomps;
+		pcomps_end = &pcomps[pcomps_idx - 1];
+		while (pcomps_start < pcomps_end) {
+			pcomp = *pcomps_start;
+			*pcomps_start = *pcomps_end;
+			*pcomps_end = pcomp;
+			pcomps_start++;
+			pcomps_end--;
+		}
+		pcomps[pcomps_idx] = NULL; // NULL terminate vector
+		name = g_strjoinv("/", pcomps);
+		if (pcomps_idx == 1) {
+			LOG_INFO("%d:%s:%s*", pcomps_idx, pcomps[0], name);
+		}
+		else if (pcomps_idx > 2) {
+			LOG_INFO("%d:%s:%s:%s*", pcomps_idx, pcomps[0], pcomps[1], name);
+		}
 		g_strfreev(pcomps);
 	}
-	return NULL;
+
+#define OSI_LINUX_FDNDEBUG
+#if defined(OSI_LINUX_FDNDEBUG)
+	if (name == NULL) {
+		LOG_WARN("Error reading d_entry.");
+	}
+	else {
+		LOG_INFO("%s", name);
+	}
+#endif
+#undef OSI_LINUX_FDNDEBUG
+	LN;
+	return name;
 }
 
 /**
@@ -537,9 +572,8 @@ error:
  *
  * The function traverses all the mount points to the root mount.
  */
-static inline char *read_vfsmount_name(CPUState *env, PTR vfsmount) {
+static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
 	char *name = NULL;
-	PTR current_vfsmount, current_vfsmount_parent, current_vfsmount_dentry;
 
 	// current path component
 	char *pcomp = NULL;
@@ -547,43 +581,65 @@ static inline char *read_vfsmount_name(CPUState *env, PTR vfsmount) {
 	// all path components read so far
 	char **pcomps = NULL;
 	uint32_t pcomps_idx = 0;
-	uint32_t pcomps_capacity = 16;
+	uint32_t pcomps_capacity = 0;
 
-	// for reversing pcomps
-	char **pcomps_start, **pcomps_end;
-
-	pcomps = (char **)g_malloc(pcomps_capacity * sizeof(char *));
-	current_vfsmount_parent = vfsmount;
-	do {
+	target_ptr_t current_vfsmount_parent = vfsmount;
+	target_ptr_t current_vfsmount = (target_ptr_t)NULL;
+	while(current_vfsmount != current_vfsmount_parent) {
+		int og_err0, og_err1;
+		target_ptr_t current_vfsmount_dentry;
 		current_vfsmount = current_vfsmount_parent;
-		current_vfsmount_parent = get_mnt_parent(env, current_vfsmount);
-		current_vfsmount_dentry = get_mnt_dentry(env, current_vfsmount);
+
+		// retrieve vfsmount members
+		og_err0 = get_vfsmount_dentry(env, current_vfsmount, &current_vfsmount_dentry);
+		og_err1 = get_vfsmount_parent(env, current_vfsmount, &current_vfsmount_parent);
+		//printf("###D:%d:" TARGET_FMT_PTR ":" TARGET_FMT_PTR "\n", og_err, current_vfsmount, current_vfsmount_dentry);
+		//printf("###P:%d:" TARGET_FMT_PTR ":" TARGET_FMT_PTR "\n", og_err, current_vfsmount, current_vfsmount_parent);
+
+		// check whether we should break out
+		if (OG_SUCCESS != og_err0 || OG_SUCCESS != og_err1) {
+			break;
+		}
+		LN;
+		if (current_vfsmount_dentry == (target_ptr_t)NULL) {
+			break;
+		}
+		LN;
 
 		// read and copy component
 		pcomp = read_dentry_name(env, current_vfsmount_dentry);
-		if (pcomps_idx == pcomps_capacity - 1) { // -1 leaves room for NULL termination
-			pcomps_capacity *= 2;
+		//printf("###S:%s\n", pcomp);
+
+		// this may hapen it seems
+		if (pcomp == NULL) {
+			continue;
+		}
+		LN;
+
+		if (pcomps_idx + 1 >= pcomps_capacity) { // +1 accounts for the terminating NULL
+			pcomps_capacity += 16;
 			pcomps = (char **)g_realloc(pcomps, pcomps_capacity * sizeof(char *));
 		}
 		pcomps[pcomps_idx++] = pcomp;
-
-	} while(current_vfsmount != current_vfsmount_parent);
-
-	// reverse components order
-	pcomps_start = pcomps;
-	pcomps_end = &pcomps[pcomps_idx - 1];
-	while (pcomps_start < pcomps_end) {
-		pcomp = *pcomps_start;
-		*pcomps_start = *pcomps_end;
-		*pcomps_end = pcomp;
-		pcomps_start++;
-		pcomps_end--;
+		LN;
 	}
+	LN;
 
-	// join components and return
-	pcomps[pcomps_idx] = NULL;			// NULL terminate vector
-	name = g_strjoinv("", pcomps);	// slashes are included in pcomps
-	g_strfreev(pcomps);
+	// reverse components order and join them
+	if (pcomps != NULL) {
+		char **pcomps_start = pcomps;
+		char **pcomps_end = &pcomps[pcomps_idx - 1];
+		while (pcomps_start < pcomps_end) {
+			pcomp = *pcomps_start;
+			*pcomps_start = *pcomps_end;
+			*pcomps_end = pcomp;
+			pcomps_start++;
+			pcomps_end--;
+		}
+		pcomps[pcomps_idx] = NULL;			// NULL terminate vector
+		name = g_strjoinv("", pcomps);		// slashes are included in pcomps
+		g_strfreev(pcomps);
+	}
 
 	return name;
 }
