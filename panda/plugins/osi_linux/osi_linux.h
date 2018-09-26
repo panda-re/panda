@@ -467,16 +467,17 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
 
 	target_ptr_t current_dentry_parent = dentry;
 	target_ptr_t current_dentry = (target_ptr_t)NULL;
+	uint8_t *d_name = (uint8_t *)g_malloc(ki.path.qstr_size * sizeof(uint8_t));
 	while (current_dentry_parent != current_dentry) {
 		int og_err1, og_err2;
 		current_dentry = current_dentry_parent;
 		//printf("1#%lx\n", (uintptr_t)(current_dentry + ki.path.d_name_offset));
 
 		// read dentry d_parent and d_name
-		uint8_t d_name[ki.path.qstr_size] = {0}; // hurrah for c99!
+		memset(d_name, 0, ki.path.qstr_size * sizeof(uint8_t));
 		og_err1 = get_dentry_name(env, current_dentry, d_name);
 		og_err2 = get_dentry_parent(env, current_dentry, &current_dentry_parent);
-		HEXDUMP(d_name, ki.path.qstr_size, current_dentry + ki.path.d_name_offset);
+		//HEXDUMP(d_name, ki.path.qstr_size, current_dentry + ki.path.d_name_offset);
 		if (OG_SUCCESS != og_err1 || OG_SUCCESS != og_err2) {
 			break;
 		}
@@ -524,6 +525,7 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
 	}
 
 	// reverse components order and join them
+	g_free(d_name);
 	g_free(pcomp);
 	if (pcomps != NULL) {
 		pcomps_start = pcomps;
