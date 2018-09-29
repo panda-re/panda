@@ -100,7 +100,18 @@ static void rr_spit_log_entry(RR_log_entry item) {
                             args->variant.hd_transfer_args.src_addr,
                             args->variant.hd_transfer_args.dest_addr,
                             args->variant.hd_transfer_args.num_bytes);
-
+                        break;
+                    case RR_CALL_SERIAL_SEND:
+                        callbytes = sizeof(args->variant.serial_send_args);
+                        break;
+                    case RR_CALL_SERIAL_WRITE:
+                        callbytes = sizeof(args->variant.serial_write_args);
+                        break;
+                    case RR_CALL_SERIAL_RECEIVE:
+                        callbytes = sizeof(args->variant.serial_receive_args);
+                        break;
+                    case RR_CALL_SERIAL_READ:
+                        callbytes = sizeof(args->variant.serial_read_args);
                         break;
                     default: break;
                 }
@@ -252,6 +263,26 @@ static RR_log_entry *rr_read_item(void) {
                     case RR_CALL_NET_TRANSFER:
                         assert(fread(&(args->variant.net_transfer_args),
                               sizeof(args->variant.net_transfer_args), 1, rr_nondet_log->fp) == 1);
+                        break;
+                    case RR_CALL_SERIAL_RECEIVE:
+                        assert(fread(&(args->variant.serial_receive_args),
+                                     sizeof(args->variant.serial_receive_args),
+                                     1, rr_nondet_log->fp) == 1);
+                        break;
+                    case RR_CALL_SERIAL_READ:
+                        assert(fread(&(args->variant.serial_read_args),
+                                     sizeof(args->variant.serial_read_args), 1,
+                                     rr_nondet_log->fp) == 1);
+                        break;
+                    case RR_CALL_SERIAL_SEND:
+                        assert(fread(&(args->variant.serial_send_args),
+                                     sizeof(args->variant.serial_send_args), 1,
+                                     rr_nondet_log->fp) == 1);
+                        break;
+                    case RR_CALL_SERIAL_WRITE:
+                        assert(fread(&(args->variant.serial_write_args),
+                                     sizeof(args->variant.serial_write_args), 1,
+                                     rr_nondet_log->fp) == 1);
                         break;
                     default:
                         //mz unimplemented

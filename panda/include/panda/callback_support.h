@@ -6,6 +6,7 @@
 // exec.c
 void panda_callbacks_before_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write);
 void panda_callbacks_after_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write);
+
 // cpu-exec.c
 void panda_callbacks_before_block_exec(CPUState *cpu, TranslationBlock *tb);
 void panda_callbacks_after_block_exec(CPUState *cpu, TranslationBlock *tb);
@@ -40,5 +41,15 @@ void panda_callbacks_hd_transfer(CPUState *cpu, Hd_transfer_type type, uint64_t 
 
 void panda_callbacks_net_transfer(CPUState *cpu, Net_transfer_type type, uint64_t src_addr, uint64_t dst_addr, uint32_t num_bytes);
 void panda_callbacks_handle_packet(CPUState *cpu, uint8_t *buf, size_t size, uint8_t direction, uint64_t old_buf_addr);
+
+// serial port callbacks
+void panda_callbacks_serial_receive(CPUState *cpu, uint64_t fifo_addr,
+                                    uint8_t value);
+void panda_callbacks_serial_read(CPUState *cpu, uint64_t fifo_addr,
+                                 uint32_t port_addr, uint8_t value);
+void panda_callbacks_serial_send(CPUState *cpu, uint64_t fifo_addr,
+                                 uint8_t value);
+void panda_callbacks_serial_write(CPUState *cpu, uint64_t fifo_addr,
+                                  uint32_t port_addr, uint8_t value);
 
 #endif
