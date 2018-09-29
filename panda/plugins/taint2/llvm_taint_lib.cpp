@@ -1302,6 +1302,37 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         } else if (calledName == "ldexp" || calledName == "atan2") {
             insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), true);
             return;
+#ifdef TARGET_I386
+        } else if (calledName == "helper_outb") {
+            // Call taint_copy to copy taint from LLVM to the EAX register. We
+            // have to copy taint here to ensure that EAX becomes tainted.
+            vector<Value *> copy_args{grvConst,
+                                      const_uint64(ctx, R_EAX),
+                                      llvConst,
+                                      constSlot(I.getArgOperand(2)),
+                                      const_uint64(ctx, 1),
+                                      constInstr(&I)};
+            auto call_inst = CallInst::Create(copyF, copy_args);
+            // For output, we have to propagate taint before the helper function
+            // is executed because the helper would likely have some side effect
+            // on the device.
+            call_inst->insertBefore(&I);
+        } else if (calledName == "helper_inb") {
+            // Call taint_copy to copy taint from EAX to LLVM. The helper's
+            // return value is the value on the IO port and so the taint data
+            // (if any) will be associated with the return value.
+            vector<Value *> copy_args{llvConst,
+                                      constSlot(&I),
+                                      grvConst,
+                                      const_uint64(ctx, R_EAX),
+                                      const_uint64(ctx, 1),
+                                      constInstr(&I)};
+            auto call_inst = CallInst::Create(copyF, copy_args);
+            // For input, we have to propagate taint after the helper function
+            // is executed since the value on the port isn't available until
+            // after the helper returns.
+            call_inst->insertAfter(&I);
+#endif
         } else if (inoutFuncs.count(calledName) > 0) {
             return;
         }

@@ -135,14 +135,6 @@ int replay_hd_transfer_callback(CPUState *cpu, uint32_t type, uint64_t src_addr,
     Shad *src_shad, *dst_shad;
 
     switch (type) {
-    case HD_TRANSFER_PORT_TO_IOB:
-        src_shad = &shadow->ports;
-        dst_shad = &shadow->io;
-        break;
-    case HD_TRANSFER_IOB_TO_PORT:
-        src_shad = &shadow->io;
-        dst_shad = &shadow->ports;
-        break;
     case HD_TRANSFER_HD_TO_IOB:
         src_shad = &shadow->hd;
         dst_shad = &shadow->io;
@@ -392,8 +384,8 @@ void taint_state_changed(Shad *shad, uint64_t shad_addr, uint64_t size)
         addr = make_haddr(shad_addr);
     } else if (shad == &shadow->io) {
         addr = make_iaddr(shad_addr);
-    } else if (shad == &shadow->ports) {
-        addr = make_paddr(shad_addr);
+        /*    } else if (shad == &shadow->ports) {
+                addr = make_paddr(shad_addr); */
     } else return;
 
     PPP_RUN_CB(on_taint_change, addr, size);

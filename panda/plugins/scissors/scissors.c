@@ -189,6 +189,18 @@ static RR_prog_point copy_entry(void) {
                             args->variant.handle_packet_args.size, 1,
                             oldlog, newlog);
                     break;
+                case RR_CALL_SERIAL_READ:
+                    RR_COPY_ITEM(args->variant.serial_read_args);
+                    break;
+                case RR_CALL_SERIAL_RECEIVE:
+                    RR_COPY_ITEM(args->variant.serial_receive_args);
+                    break;
+                case RR_CALL_SERIAL_SEND:
+                    RR_COPY_ITEM(args->variant.serial_send_args);
+                    break;
+                case RR_CALL_SERIAL_WRITE:
+                    RR_COPY_ITEM(args->variant.serial_write_args);
+                    break;
                 default:
                     //mz unimplemented
                     sassert(0, 3);
