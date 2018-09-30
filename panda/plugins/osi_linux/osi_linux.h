@@ -292,7 +292,6 @@ IMPLEMENT_OFFSET_GET2L(get_parent_pid, task_struct, target_ptr_t, ki.task.parent
  */
 IMPLEMENT_OFFSET_GET2L(get_pgd, task_struct, target_ptr_t, ki.task.mm_offset, target_ptr_t, ki.mm.pgd_offset, 0)
 
-
 /**
  * @brief Retrieves the address of the mm_struct from a task_struct.
  */
@@ -402,7 +401,7 @@ IMPLEMENT_OFFSET_GETN(get_vfsmount_dentry, vfsmount, target_ptr_t, vfsmount_dent
 /**
  * @brief Retrieves the mnt_root dentry struct associated with a vfsmount struct.
  */
-IMPLEMENT_OFFSET_GET(get_mnt_root_dentry, vfsmount, target_ptr_t, ki.path.mnt_root_offset, 0)
+IMPLEMENT_OFFSET_GETN(get_vfsmount_root_dentry, vfsmount, target_ptr_t, root_dentry, OG_AUTOSIZE, ki.path.mnt_root_offset)
 
 /**
  * @brief Retrieves the qstr for a dentry.
@@ -503,9 +502,9 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
 			break;
 		}
 
-		// skip "/" (mountpoints?)
+		// use the empty string for "/" components (mountpoints?)
 		if (pcomp[0] == '/' && pcomp[1] == '\0') {
-			continue;
+			pcomp[0] = '\0';
 		}
 
 		// copy component
@@ -518,9 +517,8 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
 			pcomps[pcomps_idx++] = g_strdup(pcomp);
 		}
 		else {
-			// dynamic name - mark it with DNAME_MARK
 			// XXX: full reconstruction of dynamic names in not currently supported
-			pcomps[pcomps_idx++] = g_strconcat(DNAME_MARK, pcomp, NULL);
+			pcomps[pcomps_idx++] = g_strdup(pcomp);
 		}
 	}
 
@@ -571,13 +569,17 @@ static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
 	while(current_vfsmount != current_vfsmount_parent) {
 		int og_err0, og_err1;
 		target_ptr_t current_vfsmount_dentry;
+		//int og_err2;
+		//target_ptr_t root_dentry;
 		current_vfsmount = current_vfsmount_parent;
 
 		// retrieve vfsmount members
 		og_err0 = get_vfsmount_dentry(env, current_vfsmount, &current_vfsmount_dentry);
 		og_err1 = get_vfsmount_parent(env, current_vfsmount, &current_vfsmount_parent);
-		//printf("###D:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err, current_vfsmount, current_vfsmount_dentry);
-		//printf("###P:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err, current_vfsmount, current_vfsmount_parent);
+		//printf("###D:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err0, current_vfsmount, current_vfsmount_dentry);
+		//printf("###R:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err2, current_vfsmount, root_dentry);
+		//og_err2 = get_vfsmount_root_dentry(env, current_vfsmount, &root_dentry);
+		//printf("###P:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err1, current_vfsmount, current_vfsmount_parent);
 
 		// check whether we should break out
 		if (OG_SUCCESS != og_err0 || OG_SUCCESS != og_err1) {
@@ -619,6 +621,7 @@ static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
 		g_strfreev(pcomps);
 	}
 
+	//printf("###F:%s\n", name);
 	return name;
 }
 
