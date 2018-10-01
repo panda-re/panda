@@ -1,4 +1,5 @@
 file_taint
+pointer_taint
 pri_taint
 pri_trace
 taint2
