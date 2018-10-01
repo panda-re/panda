@@ -33,4 +33,6 @@ void panda_callbacks_after_machine_init(void);
 
 void panda_callbacks_top_loop(void);
 
+TranslationBlock *panda_get_last_tb(void);
+
 #endif

@@ -59,6 +59,7 @@ const int has_llvm_engine = 1;
 int generate_llvm = 0;
 int execute_llvm = 0;
 extern bool panda_tb_chaining;
+extern TranslationBlock *panda_last_tb;
 
 extern bool panda_exit_loop;
 
@@ -213,7 +214,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 #endif // CONFIG_LLVM
 
     cpu->can_do_io = 1;
-    last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
+    panda_last_tb = last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
 
     panda_callbacks_after_block_exec(cpu, itb);
 

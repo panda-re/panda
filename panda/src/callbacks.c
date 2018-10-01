@@ -70,6 +70,21 @@ bool panda_abort_requested = false;
 
 bool panda_exit_loop = false;
 
+
+
+TranslationBlock *panda_last_tb;
+
+TranslationBlock *panda_get_last_tb(void);
+
+// this just provides access to the variable set in cpu_exec
+// Caveat emptor.  In a before_block_exec callback, this should
+// point to the last bb executed.  Other  times?
+TranslationBlock *panda_get_last_tb(void) {
+    return panda_last_tb;
+}
+
+
+
 bool panda_add_arg(const char *plugin_name, const char *plugin_arg) {
     if (plugin_name == NULL)    // PANDA argument
         panda_argv[panda_argc++] = g_strdup(plugin_arg);
@@ -904,5 +919,7 @@ void hmp_panda_plugin_cmd(Monitor *mon, const QDict *qdict) {
         plist->entry.monitor(mon, cmd);
     }
 }
+
+
 
 #endif // CONFIG_SOFTMMU
