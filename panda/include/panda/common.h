@@ -32,42 +32,6 @@ target_ulong panda_current_asid(CPUState *env);
 target_ulong panda_current_pc(CPUState *cpu);
 
 /**
- * @brief Returns the guest stack pointer.
- */
-static inline target_ulong panda_current_sp(CPUState *cpu) {
-    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
-#if defined(TARGET_I386)
-    return env->regs[R_ESP];
-#elif defined(TARGET_ARM)
-    // R13 on ARM.
-    return env->regs[13];
-#elif defined(TARGET_PPC)
-    // R1 on PPC.
-    return env->gpr[1];
-#else
-#error "panda_current_asid() not implemented for target architecture."
-    return 0;
-#endif
-}
-
-/**
- * @brief Determines if guest is currently executes in kernel mode.
- */
-static inline bool panda_in_kernel(CPUState *cpu) {
-    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
-#if defined(TARGET_I386)
-    return ((env->hflags & HF_CPL_MASK) == 0);
-#elif defined(TARGET_ARM)
-    return ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC);
-#elif defined(TARGET_PPC)
-    return msr_pr;
-#else
-#error "panda_in_kernel() not implemented for target architecture."
-    return false;
-#endif
-}
-
-/**
  * @brief Reads/writes data into/from \p buf from/to guest physical address \p addr.
  */
 static inline int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
@@ -155,6 +119,56 @@ static inline int panda_virtual_memory_write(CPUState *env, target_ulong addr,
                                              uint8_t *buf, int len) {
     return panda_virtual_memory_rw(env, addr, buf, len, 1);
 }
+
+/**
+ * @brief Determines if guest is currently executes in kernel mode.
+ */
+static inline bool panda_in_kernel(CPUState *cpu) {
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+#if defined(TARGET_I386)
+    return ((env->hflags & HF_CPL_MASK) == 0);
+#elif defined(TARGET_ARM)
+    return ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC);
+#elif defined(TARGET_PPC)
+    return msr_pr;
+#else
+#error "panda_in_kernel() not implemented for target architecture."
+    return false;
+#endif
+}
+
+/**
+ * @brief Returns the guest stack pointer.
+ */
+static inline target_ulong panda_current_sp(CPUState *cpu) {
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+#if defined(TARGET_I386)
+    if (panda_in_kernel(cpu)) {
+        // Return directly the ESP register value.
+        return env->regs[R_ESP];
+    } else {
+        // Returned kernel ESP stored in the TSS.
+        // Related reading: https://css.csail.mit.edu/6.858/2018/readings/i386/c07.htm
+        const uint32_t esp0 = 4;
+        const target_ulong tss_base = ((CPUX86State *)env)->tr.base + esp0;
+        target_ulong kernel_esp = 0;
+        if (panda_virtual_memory_rw(cpu, tss_base, (uint8_t *)&kernel_esp, sizeof(kernel_esp), false ) < 0) {
+            return 0;
+        }
+        return kernel_esp;
+    }
+#elif defined(TARGET_ARM)
+    // R13 on ARM.
+    return env->regs[13];
+#elif defined(TARGET_PPC)
+    // R1 on PPC.
+    return env->gpr[1];
+#else
+#error "panda_current_asid() not implemented for target architecture."
+    return 0;
+#endif
+}
+
 
 #ifdef __cplusplus
 }

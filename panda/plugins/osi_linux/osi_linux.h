@@ -117,28 +117,6 @@ typedef target_ulong target_ptr_t;
  */
 #define THREADINFO_MASK (~(PAGE_SIZE + PAGE_SIZE - 1))
 
-/**
- * @brief The offset in the linear address space of a process
- * where the kernel lives.
- */
-#define PAGE_OFFSET 0xc0000000
-
-/**
- * @brief Platform specific macro for retrieving ESP.
- */
-#if defined(TARGET_I386)
-//#define _ESP	((CPUX86State *)env)->regs[R_ESP]
-#define _ESP	((CPUX86State *)((CPUState *)env->env_ptr))->regs[R_ESP]
-#define ESP0    4
-#define TSS_BASE    (((CPUX86State *)(env->env_ptr))->tr.base + ESP0)
-#elif defined(TARGET_ARM)
-#define _ESP	((CPUARMState *)((CPUState *)env->env_ptr))->regs[13]
-#elif defined(TARGET_PPC)
-#define _ESP	((CPUPPCState *)((CPUState *)env->env_ptr))->gpr[1]
-#else
-#error	"_ESP macro not defined for target architecture."
-#endif
-
 extern struct kernelinfo ki;
 
 /**
