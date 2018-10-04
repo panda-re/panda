@@ -2,8 +2,11 @@
 PLUGIN_OBJ_FILES=$(PLUGIN_OBJ_DIR)/kernelinfo_read.o
 
 ### Preprocessor flags.
-# Start process enumeration with current task. Default is to start with the init task.
-# QEMU_FLAGS += -DOSI_LINUX_LIST_FROM_CURRENT
+# Process enumeration starts from approximately the current task by
+# default. With this flag, it is set to start from the init task.
+# This is less robust than the default and you may need to re-extract
+# the kernel profile each time you change your kernel.
+# QEMU_CFLAGS += -DOSI_LINUX_LIST_FROM_INIT
 
 # Include threads when listing all processes.
 # QEMU_CFLAGS += -DOSI_LINUX_LIST_THREADS

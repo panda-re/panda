@@ -704,7 +704,7 @@ extern int panda_argc;
 // this stuff is used by the new qemu cmd-line arg '-os os_name'
 typedef enum OSFamilyEnum { OS_UNKNOWN, OS_WINDOWS, OS_LINUX } PandaOsFamily;
 
-// these are set in panda_common.c via call to panda_set_os_name(os_name)
+// these are set in panda/src/common.c via call to panda_set_os_name(os_name)
 extern char *panda_os_name;           // the full name of the os, as provided by the user
 extern char *panda_os_family;         // parsed os family
 extern char *panda_os_variant;        // parsed os variant
@@ -755,8 +755,6 @@ char** str_split(char* a_str, const char a_delim);
 
 char *panda_plugin_path(const char *name);
 void panda_require(const char *plugin_name);
-
-void panda_cleanup(void);
 
 #ifdef __cplusplus
 }

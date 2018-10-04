@@ -6,24 +6,16 @@
  * @copyright This work is licensed under the terms of the GNU GPL, version 2.
  * See the COPYING file in the top-level directory.
  */
-#ifndef KERNELINFO_H
-#define KERNELINFO_H
+#pragma once
+#include <stdint.h>
 
 /*!
  * @brief Information and offsets related to `struct task_struct`.
  */
 struct task_info {
-	int task_offset;			/**< Offset of task_struct in the thread_info struct. */
-#ifdef CPU_DEFS_H
-	/* included from qemu code */
-	/** The address of the `task_struct` of `init`. Can be used to traverse the `task_struct` list. */
-	target_ulong init_addr;
-#else
-	/* used to compile the kernelinfo module */
-	/** The address of the `task_struct` of `init`. Can be used to traverse the `task_struct` list. */
-	void *init_addr;
-#endif
+	uint64_t init_addr;			/**< Address of the `struct task_struct` of the init task. */
 	size_t size;				/**< Size of `struct task_struct`. */
+	int task_offset;			/**< Offset of task_struct in the thread_info struct. */
 	int tasks_offset;			/**< TODO: add documentation for the rest of the struct members */
 	int pid_offset;
 	int tgid_offset;
@@ -54,6 +46,7 @@ struct cred_info {
  * @brief Information and offsets related to `struct mm_struct`.
  */
 struct mm_info {
+	size_t size;				/**< Size of `struct mm_struct`. */
 	int mmap_offset;
 	int pgd_offset;
 	int arg_start_offset;
@@ -66,6 +59,7 @@ struct mm_info {
  * @brief Information and offsets related to `struct vm_area_struct`.
  */
 struct vma_info {
+	size_t size;				/**< Size of `struct vm_area_struct`. */
 	int vm_mm_offset;
 	int vm_start_offset;
 	int vm_end_offset;
@@ -80,16 +74,25 @@ struct vma_info {
 struct fs_info {
 	int f_path_dentry_offset;
 	int f_path_mnt_offset;
-    int f_pos_offset;
-	int mnt_parent_offset;
-	int mnt_mountpoint_offset;
-	int mnt_root_offset;
-	int d_name_offset;
-	int d_iname_offset;
-	int d_parent_offset;
+	int f_pos_offset;
 	int fdt_offset;
 	int fdtab_offset;
 	int fd_offset;
+};
+
+/*!
+ * @brief Path related information and offsets.
+ */
+struct path_info {
+	size_t qstr_size;			/**< Size of `struct qstr`. */
+	int d_name_offset;
+	int d_iname_offset;
+	int d_parent_offset;
+	int d_op_offset;			/**< Offset of the dentry ops table. */
+	int d_dname_offset;			/**< Offset of dynamic name function in dentry ops. */
+	int mnt_root_offset;
+	int mnt_parent_offset;
+	int mnt_mountpoint_offset;
 };
 
 /*!
@@ -102,8 +105,8 @@ struct kernelinfo {
 	struct mm_info mm;
 	struct vma_info vma;
 	struct fs_info fs;
+	struct path_info path;
 };
-
 
 #if defined(__G_LIB_H__) || defined(DOXYGEN)
 /*!
@@ -121,6 +124,5 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 }
 #endif
 #endif
-#endif
 
-/* vim:set tabstop=4 softtabstop=4 noexpandtab */
+/* vim:set tabstop=4 softtabstop=4 noexpandtab: */
