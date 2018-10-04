@@ -28,8 +28,20 @@ To compile the module, you will need to have installed the appropriate
 linux-headers package.
 
 ## Kernels from v3.3-rc1 onwards
+[Linux v3.3-rc1][linux-v3.3-rc1] introduced some changes in the interface
+exported by VFS. Specifically, most of the members of `struct vfsmount`
+are no longer exposed by the linux headers.
+Among them are the pointers to `mnt_parent` and `mnt_mountpoint` which 
+are used by osi\_linux for reversing file descriptors.
+These members now "live" in `struct mount`, defined in the internal VFS
+header `fs/mount.h`.
+In order to make the kernelinfo module self-contained and avoid requiring
+to install the full linux sources, we include `fs/mount.h` for different
+kernels in the [ksrc](./ksrc) directory. If what is included doesn't work
+for your kernel, feel free to add what is missing, update the sources and
+send a PR to upstream.
 
-As of [v3.3-rc1](https://github.com/torvalds/linux/releases/tag/v3.3-rc1), the structures `mnt_parent` and `mnt_mountpoint` were moved from `struct vfsmount` to `struct mount`. `struct mount` is defined in `/fs/mount.h` of the kernel source which is not included in the `linux-headers` package. Consequently, [`mount.h` from kernel 4.12](https://github.com/torvalds/linux/blob/6f7da290413ba713f0cdd9ff1a2a9bb129ef4f6c/fs/mount.h#L33) was added to this folder.
+[linux-v3.3-rc1]: https://github.com/torvalds/linux/releases/tag/v3.3-rc1
 
 ### Here be dragons! `__randomize_layout`
 As of [v4.13-rc2](https://github.com/torvalds/linux/releases/tag/v4.13-rc2), `struct mount` (in `mount.h`) includes [the `__randomize_layout` annotation](https://lwn.net/Articles/723997/). We don't *think* this breaks anything, but it might be the case that the offsets are not transferrable between different builds of the same kernel.
