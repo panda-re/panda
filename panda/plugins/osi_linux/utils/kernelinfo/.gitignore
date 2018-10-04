@@ -1,5 +1,6 @@
 Module.symvers
 modules.order
+.cache.mk
 .*.cmd
 *.mod.c
 .tmp*
