@@ -263,7 +263,14 @@ target_ulong calc_retaddr_linux_x86(CPUState* cpu, target_ulong pc) {
     panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
     // Check if the instruction is syscall (0F 05) or  sysenter (0F 34)
     if ((buf[0]== 0x0F && buf[1] == 0x05) || (buf[0]== 0x0F && buf[1] == 0x34)) {
-        return pc+11;
+        // For Linux system calls using sysenter, we need to look on the stack.
+        // https://reverseengineering.stackexchange.com/questions/2869/how-to-use-sysenter-under-linux
+        target_ulong ret = 0x0;
+        target_ulong ret_ptr =
+            ((CPUX86State *)cpu->env_ptr)->regs[R_ESP] + 0x0C;
+        panda_virtual_memory_read(cpu, ret_ptr, (uint8_t *)&ret, sizeof(ret));
+        assert(ret != 0x0);
+        return ret;
     }
     // Check if the instruction is int 0x80 (CD 80)
     else if (buf[0]== 0xCD && buf[1] == 0x80) {
