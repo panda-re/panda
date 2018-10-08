@@ -62,7 +62,6 @@ struct TCGLLVMRuntime {
     // END of fixed block
 
     TranslationBlock *last_tb;
-    uint64_t last_pc;
 };
 
 extern struct TCGLLVMRuntime tcg_llvm_runtime;
