@@ -1482,13 +1482,10 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     Instruction *EnvI2PI = dyn_cast<Instruction>(m_envInt);
     if (EnvI2PI) EnvI2PI->setMetadata("host", RuntimeMD);
 
-    /* Setup panda_guest_pc and last_pc stores */
+    /* Setup panda_guest_pc */
     Constant *GuestPCPtrInt = constInt(sizeof(uintptr_t) * 8,
             (uintptr_t)&first_cpu->panda_guest_pc);
     Value *GuestPCPtr = m_builder.CreateIntToPtr(GuestPCPtrInt, intPtrType(64), "guestpc");
-    Constant *LastPCPtrInt = constInt(sizeof(uintptr_t) * 8,
-            (uintptr_t)&tcg_llvm_runtime.last_pc);
-    Value *LastPCPtr = m_builder.CreateIntToPtr(LastPCPtrInt, intPtrType(64), "lastpc");
 
     /* Setup rr_guest_instr_count stores */
     Constant *InstrCountPtrInt = constInt(sizeof(uintptr_t) * 8,
@@ -1511,11 +1508,9 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
         if (opc == INDEX_op_insn_start) {
             // volatile store of current PC
             Constant *PC = ConstantInt::get(intType(64), args[0]);
-            Instruction *LastPCSt = m_builder.CreateStore(PC, LastPCPtr, true);
             Instruction *GuestPCSt = m_builder.CreateStore(PC, GuestPCPtr, true);
             // TRL 2014 hack to annotate that last instruction as the one
             // that sets PC
-            LastPCSt->setMetadata("host", PCUpdateMD);
             GuestPCSt->setMetadata("host", PCUpdateMD);
 
             InstrCount = dyn_cast<Instruction>(
