@@ -307,7 +307,7 @@ void read_return(CPUState *cpu, target_ulong pc, uint32_t buf, uint32_t actual_c
             uint32_t range_start = std::max(read_start, start_label);
             uint32_t range_end = std::min(read_end, end_label);
 
-            assert(taint_enabled); // Can't taint if we missed the file open
+            assert(no_taint || taint_enabled); // Can't taint if we missed the file open
             printf("*** applying %s taint labels %u..%u to buffer @ %lu\n",
                     positional_labels ? "positional" : "uniform",
                     range_start, range_end - 1, rr_get_guest_instr_count());
