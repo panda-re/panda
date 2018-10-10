@@ -197,6 +197,18 @@ void on_get_processes(CPUState *cpu, OsiProcs **out_ps) {
     *out_ps = ps;
 }
 
+void on_get_current_thread_id(CPUState *cpu, OsiThreadId *tid)
+{
+    CPUArchState *env = (CPUArchState *)first_cpu->env_ptr;
+    target_ulong ptib;
+    panda_virtual_memory_read(first_cpu, env->segs[R_FS].base + 0x18,
+                              (uint8_t *)&ptib, sizeof(ptib));
+
+    uint32_t thread_id;
+    panda_virtual_memory_read(first_cpu, ptib + 0x24, (uint8_t *)&thread_id,
+                              sizeof(thread_id));
+    *tid = thread_id;
+}
 
 uint32_t get_ntreadfile_esp_off(void) { return ntreadfile_esp_off; }
 
@@ -567,6 +579,7 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
     PPP_REG_CB("osi", on_free_osiprocs, on_free_osiprocs);
     PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
+    PPP_REG_CB("osi", on_get_current_thread_id, on_get_current_thread_id);
 
     return true;
 #else
