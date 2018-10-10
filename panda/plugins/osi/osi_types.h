@@ -35,7 +35,7 @@ typedef struct osi_modules_struct {
     OsiModule *module;
 } OsiModules;
 
-
+typedef uint64_t OsiThreadId;
 
 /*
  * Generic inlines for handling OsiProc, OsiProcs structs.
