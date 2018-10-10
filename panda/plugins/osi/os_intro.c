@@ -42,6 +42,7 @@ PPP_PROT_REG_CB(on_get_processes)
 PPP_PROT_REG_CB(on_get_current_process)
 PPP_PROT_REG_CB(on_get_modules)
 PPP_PROT_REG_CB(on_get_libraries)
+PPP_PROT_REG_CB(on_get_current_thread_id)
 PPP_PROT_REG_CB(on_free_osiproc)
 PPP_PROT_REG_CB(on_free_osiprocs)
 PPP_PROT_REG_CB(on_free_osimodules)
@@ -54,6 +55,7 @@ PPP_CB_BOILERPLATE(on_get_processes)
 PPP_CB_BOILERPLATE(on_get_current_process)
 PPP_CB_BOILERPLATE(on_get_modules)
 PPP_CB_BOILERPLATE(on_get_libraries)
+PPP_CB_BOILERPLATE(on_get_current_thread_id)
 PPP_CB_BOILERPLATE(on_free_osiproc)
 PPP_CB_BOILERPLATE(on_free_osiprocs)
 PPP_CB_BOILERPLATE(on_free_osimodules)
@@ -88,6 +90,13 @@ OsiModules *get_libraries(CPUState *cpu, OsiProc *p) {
     OsiModules *m = NULL;
     PPP_RUN_CB(on_get_libraries, cpu, p, &m);
     return m;
+}
+
+OsiThreadId get_current_thread_id(CPUState *cpu)
+{
+    OsiThreadId tid;
+    PPP_RUN_CB(on_get_current_thread_id, cpu, &tid);
+    return tid;
 }
 
 void free_osiproc(OsiProc *p) {
