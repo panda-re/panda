@@ -59,6 +59,8 @@ void on_get_current_process(CPUState *cpu, OsiProc **out_p);
 
 void on_get_processes(CPUState *cpu, OsiProcs **out_ps);
 
+void on_get_current_thread_id(CPUState *cpu, OsiThreadId *tid);
+
 // Getters for os-specific constants
 uint32_t get_ntreadfile_esp_off(void);
 
