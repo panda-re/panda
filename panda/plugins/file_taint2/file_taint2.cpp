@@ -42,6 +42,7 @@ static std::string target_filename;
 static uint64_t min_byte_pos;
 static uint64_t max_byte_pos;
 static bool positional;
+static uint32_t static_label;
 
 // Read metadata, specifically the file position upon entry.
 using FilePosition = uint64_t;
@@ -72,6 +73,8 @@ void read_enter(const std::string &filename, uint64_t thread_id,
     key.thread_id = thread_id;
     key.file_id = file_id;
     read_positions[key] = position;
+
+    free_osiproc_g(proc);
 }
 
 void read_return(uint64_t thread_id, uint64_t file_id, uint64_t bytes_read,
@@ -95,11 +98,11 @@ void read_return(uint64_t thread_id, uint64_t file_id, uint64_t bytes_read,
             if (positional) {
                 taint2_label_ram(shadow_addr, curpos);
             } else {
-                taint2_label_ram(shadow_addr, 0xDEADBEEF);
+                taint2_label_ram(shadow_addr, static_label);
             }
         }
     }
-    printf("read return!\n");
+    free_osiproc_g(proc);
 }
 
 #ifdef TARGET_I386
@@ -156,6 +159,7 @@ void linux_read_enter(CPUState *cpu, target_ulong pc, uint32_t fd,
     // For now, assume that the thread ID is the same as PID in Linux.
     read_enter(filename, proc->pid, fd, pos);
     free(filename);
+    free_osiproc_g(proc);
 }
 
 void linux_read_return(CPUState *cpu, target_ulong pc, uint32_t fd,
@@ -169,6 +173,7 @@ void linux_read_return(CPUState *cpu, target_ulong pc, uint32_t fd,
 #endif
     // Again, assume that the thread ID is the same as PID in Linux.
     read_return(proc->pid, fd, actually_read, buffer);
+    free_osiproc_g(proc);
 }
 
 bool init_plugin(void *self)
@@ -218,6 +223,8 @@ bool init_plugin(void *self)
                                "max byte offset within the file to taint");
     positional = panda_parse_bool_opt(args, "pos",
                                       "enable or disable positional labels");
+    static_label = panda_parse_uint32_opt(
+        args, "label", 0xF11E, "the label to use (for non-positional labels)");
 
     return true;
 }
