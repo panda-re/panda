@@ -21,7 +21,7 @@ typedef void OsiProc;
 typedef void OsiProcs;
 typedef void OsiModules;
 typedef void CPUState;
-typedef void OsiThreadId;
+typedef void OsiThread;
 
 #include "osi_int_fns.h"
 

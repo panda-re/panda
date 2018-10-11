@@ -9,7 +9,7 @@ typedef void OsiProc;
 typedef void OsiProcs;
 typedef void OsiModule;
 typedef void OsiModules;
-typedef void OsiThreadId;
+typedef void OsiThread;
 
 #include "wintrospection_int_fns.h"
 
