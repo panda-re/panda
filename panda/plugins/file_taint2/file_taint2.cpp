@@ -55,8 +55,8 @@ bool is_match(const std::string &filename)
            filename.substr(pos).size() == target_filename.size();
 }
 
-void read_enter(const std::string &filename, uint64_t thread_id,
-                uint64_t file_id, uint64_t position)
+void read_enter(const std::string &filename, uint64_t file_id,
+                uint64_t position)
 {
     // 1. Check if the filename matches else return
     if (!is_match(filename)) {
@@ -69,21 +69,26 @@ void read_enter(const std::string &filename, uint64_t thread_id,
     // 3. Insert read key <-> position pair into map.
     ReadKey key;
     OsiProc *proc = get_current_process(first_cpu);
+    OsiThread *thr = get_current_thread(first_cpu);
     key.process_id = proc ? proc->pid : 0;
-    key.thread_id = thread_id;
+    key.thread_id = thr->tid;
     key.file_id = file_id;
     read_positions[key] = position;
 
     free_osiproc_g(proc);
+    free_osithread_g(thr);
+
+    printf("enter thread id = %u\n", (uint32_t)key.thread_id);
 }
 
-void read_return(uint64_t thread_id, uint64_t file_id, uint64_t bytes_read,
+void read_return(uint64_t file_id, uint64_t bytes_read,
                  target_ulong buffer_addr)
 {
     ReadKey key;
     OsiProc *proc = get_current_process(first_cpu);
+    OsiThread *thr = get_current_thread(first_cpu);
     key.process_id = proc ? proc->pid : 0;
-    key.thread_id = thread_id;
+    key.thread_id = thr->tid;
     key.file_id = file_id;
     if (read_positions.find(key) == read_positions.end()) {
         return;
@@ -103,22 +108,12 @@ void read_return(uint64_t thread_id, uint64_t file_id, uint64_t bytes_read,
         }
     }
     free_osiproc_g(proc);
+    free_osithread_g(thr);
+
+    printf("return thread id = %u\n", (uint32_t)key.thread_id);
 }
 
 #ifdef TARGET_I386
-uint32_t windows_get_current_thread_id()
-{
-    CPUArchState *env = (CPUArchState *)first_cpu->env_ptr;
-    target_ulong ptib;
-    panda_virtual_memory_read(first_cpu, env->segs[R_FS].base + 0x18,
-                              (uint8_t *)&ptib, sizeof(ptib));
-
-    uint32_t thread_id;
-    panda_virtual_memory_read(first_cpu, ptib + 0x24, (uint8_t *)&thread_id,
-                              sizeof(thread_id));
-    return thread_id;
-}
-
 void windows_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
                         uint32_t Event, uint32_t UserApcRoutine,
                         uint32_t UserApcContext, uint32_t IoStatusBlock,
@@ -127,8 +122,7 @@ void windows_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
 {
     char *filename = get_handle_name(cpu, get_current_proc(cpu), FileHandle);
     int64_t pos = get_file_handle_pos(cpu, get_current_proc(cpu), FileHandle);
-    uint64_t tid = windows_get_current_thread_id();
-    read_enter(filename, tid, FileHandle, pos);
+    read_enter(filename, FileHandle, pos);
     g_free(filename);
 }
 
@@ -138,7 +132,6 @@ void windows_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
                          uint32_t Buffer, uint32_t BufferLength,
                          uint32_t ByteOffset, uint32_t Key)
 {
-    uint64_t tid = windows_get_current_thread_id();
     uint32_t bytes_read;
     if (panda_virtual_memory_read(cpu, IoStatusBlock + 4,
                                   (uint8_t *)&bytes_read,
@@ -146,7 +139,7 @@ void windows_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
         printf("failed to read number of bytes read\n");
         return;
     }
-    read_return(tid, FileHandle, bytes_read, Buffer);
+    read_return(FileHandle, bytes_read, Buffer);
 }
 #endif
 
@@ -156,8 +149,7 @@ void linux_read_enter(CPUState *cpu, target_ulong pc, uint32_t fd,
     OsiProc *proc = get_current_process(cpu);
     char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
     uint64_t pos = osi_linux_fd_to_pos(cpu, proc, fd);
-    // For now, assume that the thread ID is the same as PID in Linux.
-    read_enter(filename, proc->pid, fd, pos);
+    read_enter(filename, fd, pos);
     free(filename);
     free_osiproc_g(proc);
 }
@@ -165,15 +157,13 @@ void linux_read_enter(CPUState *cpu, target_ulong pc, uint32_t fd,
 void linux_read_return(CPUState *cpu, target_ulong pc, uint32_t fd,
                        uint32_t buffer, uint32_t count)
 {
-    OsiProc *proc = get_current_process(cpu);
     uint32_t actually_read = 0;
 #ifdef TARGET_I386
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     actually_read = env->regs[R_EAX];
 #endif
     // Again, assume that the thread ID is the same as PID in Linux.
-    read_return(proc->pid, fd, actually_read, buffer);
-    free_osiproc_g(proc);
+    read_return(fd, actually_read, buffer);
 }
 
 bool init_plugin(void *self)
