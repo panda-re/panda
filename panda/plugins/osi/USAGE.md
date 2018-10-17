@@ -53,6 +53,16 @@ typedef void (*on_get_current_process_t)(CPUState *, OsiProc **)
 
 Description: Called to get the currently running process in the guest OS. The implementation should allocate memory and fill in the pointer to an `OsiProc` struct. The returned `OsiProc` can be freed with `on_free_osiproc`.
 
+Name: **on_get_current_thread**
+
+Signature:
+
+```C
+typedef void (*on_get_current_thread_t)(CPUState *, OsiThread **)
+```
+
+Description: Called to retrieve the current thread from the guest OS. The implementation should allocate memory and fill in the pointer to an `OsiThread` struct. The returned `OsiThread` can be freed with `on_free_osithread`.
+
 Name: **on_get_modules**
 
 Signature:
@@ -157,6 +167,12 @@ Data structures used by OSI:
         OsiProc *proc;
     } OsiProcs;
 
+    // Represents a thread
+    typedef struct osi_thread_struct {
+        target_ulong tid;
+        target_ulong pid;
+    } OsiThread;
+
     // Represents a single module (userspace library or kernel module)
     typedef struct osi_module_struct {
         target_ulong offset;
@@ -171,6 +187,7 @@ Data structures used by OSI:
         uint32_t num;
         OsiModule *module;
     } OsiModules;
+
 ```
 
 Example

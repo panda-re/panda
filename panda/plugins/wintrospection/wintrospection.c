@@ -44,6 +44,7 @@ void uninit_plugin(void *);
 void add_proc(CPUState *cpu, OsiProcs *ps, PTR eproc);
 void on_free_osiproc(OsiProc *p);
 void on_free_osiprocs(OsiProcs *ps);
+void on_free_osithread(OsiThread *t);
 void on_free_osimodules(OsiModules *ms);
 
 // this stuff only makes sense for win x86 32-bit
@@ -197,6 +198,25 @@ void on_get_processes(CPUState *cpu, OsiProcs **out_ps) {
     *out_ps = ps;
 }
 
+void on_get_current_thread(CPUState *cpu, OsiThread **out_t)
+{
+    // Get current thread ID from thread information block.
+    CPUArchState *env = (CPUArchState *)first_cpu->env_ptr;
+    target_ulong ptib;
+    panda_virtual_memory_read(first_cpu, env->segs[R_FS].base + 0x18,
+                              (uint8_t *)&ptib, sizeof(ptib));
+    OsiThread *t = (OsiThread *)malloc(sizeof(*t));
+    panda_virtual_memory_read(first_cpu, ptib + 0x24, (uint8_t *)&t->tid,
+                              sizeof(t->tid));
+
+    // Get the process id.
+    OsiProc *p = NULL;
+    on_get_current_process(cpu, &p);
+    t->pid = p->pid;
+    on_free_osiproc(p);
+
+    *out_t = t;
+}
 
 uint32_t get_ntreadfile_esp_off(void) { return ntreadfile_esp_off; }
 
@@ -567,6 +587,7 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
     PPP_REG_CB("osi", on_free_osiprocs, on_free_osiprocs);
     PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
+    PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
 
     return true;
 #else
