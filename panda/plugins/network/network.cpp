@@ -58,7 +58,9 @@ bool init_plugin(void *self) {
         return false;
     }
 
-#if VERSION_MAJOR == 2 && VERSION_MINOR == 2 && VERSION_MICRO >= 4
+#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 6 && VERSION_MICRO >= 0
+    wtap_init(false);
+#elif VERSION_MAJOR == 2 && VERSION_MINOR == 2 && VERSION_MICRO >= 4
     wtap_init();
 #endif
 
@@ -90,6 +92,7 @@ void uninit_plugin(void *self) {
     printf("Unloading network plugin.\n");
     panda_free_args(args);
     int err;
+    wtap_dump_flush(plugin_log);
     gboolean ret = wtap_dump_close(plugin_log, &err);
     if (!ret) {
         fprintf(stderr, "Plugin 'network': failed wtap_dump_close() with error %d\n", err);
@@ -99,30 +102,58 @@ void uninit_plugin(void *self) {
 int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
                 uint64_t old_buf_addr) {
     int err;
-    struct wtap_pkthdr header;
-    struct timeval now_tv;
-    char comment_buf[COMMENT_BUF_LEN];
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
     char *err_info;
+    struct timeval now_tv;
+    gettimeofday(&now_tv, NULL);
+    char comment_buf[COMMENT_BUF_LEN];
+    snprintf(comment_buf, COMMENT_BUF_LEN, "Guest instruction count: %" PRIu64,
+             rr_get_guest_instr_count());
+    gboolean ret = false;
+#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 6 && VERSION_MICRO >= 3
+    wtap_rec rec;
+    wtap_rec_init(&rec);
+    rec.rec_type = REC_TYPE_PACKET;
+    rec.ts.secs = now_tv.tv_sec;
+    rec.ts.nsecs = now_tv.tv_usec * 1000;
+    rec.rec_header.packet_header.caplen = size;
+    rec.rec_header.packet_header.len = size;
+    rec.rec_header.packet_header.pkt_encap = WTAP_ENCAP_ETHERNET;
+    rec.opt_comment = comment_buf;
+    rec.has_comment_changed = true;
+
+    ret = wtap_dump(
+        /*wtap_dumper*/ plugin_log,
+        /*wtap_rec*/ &rec,
+        /*buf*/ buf,
+        /*err*/ &err,
+        /*err_info*/ &err_info);
+
+    wtap_rec_cleanup(&rec);
+#else
+    struct wtap_pkthdr header;
+#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
     wtap_phdr_init(&header);
 #endif
-    gettimeofday(&now_tv, NULL);
     header.ts.secs = now_tv.tv_sec;
     header.ts.nsecs = now_tv.tv_usec * 1000;
     header.caplen = size;
     header.len = size;
     header.opt_comment = comment_buf;
-    snprintf(comment_buf, COMMENT_BUF_LEN, "Guest instruction count: %" PRIu64, rr_get_guest_instr_count());
-    gboolean ret = wtap_dump(
-        /*wtap_dumper*/plugin_log,
-        /*wtap_pkthdr*/&header,
-        /*buf*/buf,
-        /*err*/&err
+
+    ret = wtap_dump(
+        /*wtap_dumper*/ plugin_log,
+        /*wtap_pkthdr*/ &header,
+        /*buf*/ buf,
+        /*err*/ &err
 #if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
         ,
-        /*err_info*/&err_info
+        /*err_info*/ &err_info
 #endif
-        );
+    );
+#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
+    wtap_phdr_cleanup(&header);
+#endif
+#endif
     if (!ret) {
       fprintf(stderr, "Plugin 'network': failed wtap_dump() with error %d", err);
 #if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
@@ -130,9 +161,5 @@ int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
 #endif
       fprintf(stderr, "\n");
     }
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
-    wtap_phdr_cleanup(&header);
-#endif
-
     return 0;
 }
