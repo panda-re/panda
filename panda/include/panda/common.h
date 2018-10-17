@@ -7,10 +7,25 @@
  * infrequently called are decalred here and defined in `src/common.c`.
  */
 #pragma once
+#if !defined(__cplusplus)
 #include <stdint.h>
 #include <stdbool.h>
+#else
+#include <cstdint>
+#include <cstdbool>
+#endif
 #include "cpu.h"
 #include "exec/address-spaces.h"
+
+/**
+ * @brief Branch predition hint macros.
+ */
+#if !defined(likely)
+#define likely(x) __builtin_expect(!!(x), 1)
+#endif
+#if !defined(unlikely)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+#endif
 
 #ifdef __cplusplus
 extern "C" {

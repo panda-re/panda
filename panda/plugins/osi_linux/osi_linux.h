@@ -21,11 +21,6 @@
 /**
  *  @brief Debug macros.
  */
-#define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
-#define LOG_ERROR(fmt, args...) fprintf(stderr, PANDA_MSG "ERROR:%s:%s() " fmt "\n", __FILENAME__, __func__, ## args)
-#define LOG_WARN(fmt, args...)  fprintf(stderr, PANDA_MSG "WARN:%s:%s() "  fmt "\n", __FILENAME__, __func__, ## args)
-#define LOG_INFO(fmt, args...)  fprintf(stderr, PANDA_MSG "INFO:%s:%s() "  fmt "\n", __FILENAME__, __func__, ## args)
-#define LN printf("@%s:%03d\n", __FILENAME__, __LINE__)
 #define HEXDUMP(_buf, _size, _base) \
 	{ \
 		uintptr_t _b = (uintptr_t)_base; \
@@ -36,7 +31,7 @@
 			_i++; \
 			if (_i % 16 == 0) { printf("\n"); continue; } \
 			else if (_i % 8 == 0) { printf("  "); continue; } \
-		    else { printf(" "); } \
+			else { printf(" "); } \
 		} \
 		if (_size % 16 != 0) { printf("\n"); } \
 	}
