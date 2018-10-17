@@ -92,6 +92,7 @@ void uninit_plugin(void *self) {
     printf("Unloading network plugin.\n");
     panda_free_args(args);
     int err;
+    wtap_dump_flush(plugin_log);
     gboolean ret = wtap_dump_close(plugin_log, &err);
     if (!ret) {
         fprintf(stderr, "Plugin 'network': failed wtap_dump_close() with error %d\n", err);
@@ -110,6 +111,7 @@ int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
     gboolean ret = false;
 #if VERSION_MAJOR >= 2 && VERSION_MINOR >= 6 && VERSION_MICRO >= 3
     wtap_rec rec;
+    wtap_rec_init(&rec);
     rec.rec_type = REC_TYPE_PACKET;
     rec.ts.secs = now_tv.tv_sec;
     rec.ts.nsecs = now_tv.tv_usec * 1000;
@@ -117,6 +119,7 @@ int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
     rec.rec_header.packet_header.len = size;
     rec.rec_header.packet_header.pkt_encap = WTAP_ENCAP_ETHERNET;
     rec.opt_comment = comment_buf;
+    rec.has_comment_changed = true;
 
     ret = wtap_dump(
         /*wtap_dumper*/ plugin_log,
@@ -124,6 +127,8 @@ int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
         /*buf*/ buf,
         /*err*/ &err,
         /*err_info*/ &err_info);
+
+    wtap_rec_cleanup(&rec);
 #else
     struct wtap_pkthdr header;
 #if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
