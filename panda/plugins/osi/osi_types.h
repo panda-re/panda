@@ -35,7 +35,10 @@ typedef struct osi_modules_struct {
     OsiModule *module;
 } OsiModules;
 
-
+typedef struct osi_thread_struct {
+    target_ulong tid;
+    target_ulong pid;
+} OsiThread;
 
 /*
  * Generic inlines for handling OsiProc, OsiProcs structs.
@@ -66,6 +69,11 @@ static inline void free_osimodule_g(OsiModule *m) {
     g_free(m->file);
     g_free(m->name);
     g_free(m);
+}
+
+static inline void free_osithread_g(OsiThread *t)
+{
+    g_free(t);
 }
 
 /*! @brief Copies an OsiProc struct. Returns a pointer to the destination location.

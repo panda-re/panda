@@ -38,8 +38,10 @@ void uninit_plugin(void *);
 
 void on_get_current_process(CPUState *env, OsiProc **out_p);
 void on_get_processes(CPUState *env, OsiProcs **out_ps);
+void on_get_current_thread(CPUState *env, OsiThread *t);
 void on_free_osiproc(OsiProc *p);
 void on_free_osiprocs(OsiProcs *ps);
+void on_free_osithread(OsiThread *t);
 void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms);
 void on_free_osimodules(OsiModules *ms);
 
@@ -122,11 +124,12 @@ static uint64_t get_fd_pos(CPUState *env, target_ptr_t task_struct, int fd) {
 static void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr) {
 	memset(p, 0, sizeof(OsiProc));
 
-	p->offset = task_addr;	// XXX: Not sure what this is. Storing task_addr here seems logical.
+	p->offset = task_addr; // XXX: Not sure what this is. Storing task_addr here
+	// seems logical.
 	p->name = get_name(env, task_addr, p->name);
-	p->pid = get_pid(env, task_addr);
+	p->pid = get_tgid(env, task_addr);
 	p->ppid = get_real_parent_pid(env, task_addr);
-	p->pages = NULL;		// OsiPage - TODO
+	p->pages = NULL; // OsiPage - TODO
 
 	p->asid = get_pgd(env, task_addr);
 }
@@ -174,7 +177,16 @@ static void fill_osimodule(CPUState *env, OsiModule *m, target_ptr_t vma_addr) {
 	}
 }
 
+/**
+ * @brief Fills an OsiThread struct. Any existing contents are overwritten.
+ */
+static void fill_osithread(CPUState *env, OsiThread *t, target_ptr_t task_addr)
+{
+    memset(t, 0, sizeof(*t));
 
+    t->tid = get_pid(env, task_addr);
+    t->pid = get_tgid(env, task_addr);
+}
 
 /* ******************************************************************
  PPP Callbacks
@@ -300,6 +312,25 @@ error0:
 }
 
 /**
+ * @brief PPP callback to retrieve current thread
+ */
+void on_get_current_thread(CPUState *env, OsiThread **out_t)
+{
+	OsiThread *t = NULL;
+	target_ptr_t kernel_esp = panda_current_sp(env);
+	target_ptr_t ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+
+	if (ts) {
+		// valid task struct
+		// got a reasonable looking process.
+		// return it and save in cache
+		t = (OsiThread *)g_malloc(sizeof(*t));
+		fill_osithread(env, t, ts);
+	}
+	*out_t = t;
+}
+
+/**
  * @brief PPP callback to retrieve OsiModules from the running OS.
  *
  * Current implementation returns all the memory areas mapped by the
@@ -409,7 +440,16 @@ void on_free_osiprocs(OsiProcs *ps) {
 	return;
 }
 
-
+/**
+ * @brief PPP callback to free memory allocated for an OsiThread struct.
+ */
+void on_free_osithread(OsiThread *t)
+{
+    if (t == NULL)
+        return;
+    g_free(t);
+    return;
+}
 
 /* ******************************************************************
  osi_linux extra API
@@ -560,8 +600,10 @@ bool init_plugin(void *self) {
 
 	PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
 	PPP_REG_CB("osi", on_get_processes, on_get_processes);
+	PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
 	PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
 	PPP_REG_CB("osi", on_free_osiprocs, on_free_osiprocs);
+	PPP_REG_CB("osi", on_free_osithread, on_free_osithread);
 	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
 	PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
 	LOG_INFO(PLUGIN_NAME " initialization complete.");
