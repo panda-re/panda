@@ -42,9 +42,13 @@ static std::string target_filename = "";
 // All bytes in the file can be tainted by default.
 static uint64_t min_byte_pos = 0;
 static uint64_t max_byte_pos = UINT64_MAX;
+static uint64_t max_byte_count = UINT64_MAX;
 static bool positional = false;
 static uint32_t static_label = 0xF11E;
 static bool verbose = false;
+
+// Number of bytes tainted, used for the max_byte_count option.
+static uint64_t tainted_byte_count = 0;
 
 // Read metadata, specifically the file position upon entry.
 using FilePosition = uint64_t;
@@ -151,7 +155,8 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
            positional ? "positional" : "uniform", range_start, range_end,
            rr_get_guest_instr_count());
     uint64_t buffer_index = 0;
-    for (uint64_t cur = range_start; cur <= range_end; cur++) {
+    for (uint64_t cur = range_start;
+         cur <= range_end && tainted_byte_count <= max_byte_count; cur++) {
         hwaddr shadow_addr =
             panda_virt_to_phys(first_cpu, buffer_addr + (buffer_index++));
         if (positional) {
@@ -159,6 +164,8 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
         } else {
             taint2_label_ram(shadow_addr, static_label);
         }
+
+        tainted_byte_count++;
     }
 
     // We've handled the read for this pid, tid, and file id. We have to see
@@ -245,6 +252,8 @@ bool init_plugin(void *self)
     max_byte_pos =
         panda_parse_uint64_opt(args, "max_byte_pos", UINT64_MAX,
                                "max byte offset within the file to taint");
+    max_byte_count = panda_parse_uint64_opt(args, "max_byte_count", UINT64_MAX,
+                                            "maximum number of bytes to taint");
     positional = panda_parse_bool_opt(args, "pos",
                                       "enable or disable positional labels");
     static_label = panda_parse_uint32_opt(
