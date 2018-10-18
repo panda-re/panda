@@ -446,8 +446,6 @@ char *read_unicode_string(CPUState *cpu, uint32_t pUstr)
     free(utf16);
     free(utf8);
 
-    fprintf(stderr, "debug filename=%s\n", result);
-
     return result;
 }
 
