@@ -154,18 +154,22 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
     printf("*** applying %s taint labels %lu..%lu to buffer @ %lu ***\n",
            positional ? "positional" : "uniform", range_start, range_end,
            rr_get_guest_instr_count());
-    uint64_t buffer_index = 0;
-    for (uint64_t cur = range_start;
-         cur <= range_end && tainted_byte_count <= max_byte_count; cur++) {
-        hwaddr shadow_addr =
-            panda_virt_to_phys(first_cpu, buffer_addr + (buffer_index++));
-        if (positional) {
-            taint2_label_ram(shadow_addr, cur);
-        } else {
-            taint2_label_ram(shadow_addr, static_label);
-        }
 
-        tainted_byte_count++;
+    for (uint64_t i = 0; i < bytes_read && tainted_byte_count < max_byte_count;
+         i++) {
+        uint64_t file_pos = read_start_pos + i;
+        if (range_start <= file_pos && file_pos <= range_end) {
+            hwaddr shadow_addr = panda_virt_to_phys(first_cpu, buffer_addr + i);
+            verbose_printf(
+                "file_taint applying label: file_pos=%lu buffer_addr=%lu\n",
+                file_pos, buffer_addr + i);
+            if (positional) {
+                taint2_label_ram(shadow_addr, file_pos);
+            } else {
+                taint2_label_ram(shadow_addr, static_label);
+            }
+            tainted_byte_count++;
+        }
     }
 
     // We've handled the read for this pid, tid, and file id. We have to see
