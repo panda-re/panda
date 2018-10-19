@@ -93,7 +93,7 @@ void read_enter(const std::string &filename, uint64_t file_id,
     if (!taint2_enabled()) {
         printf("file_taint read_enter: first time match of file \"%s\", "
                "enabling taint\n",
-               filename.c_str());
+               target_filename.c_str());
         taint2_enable_taint();
     }
 
@@ -187,8 +187,21 @@ void windows_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
                         uint32_t ByteOffset, uint32_t Key)
 {
     char *filename = get_handle_name(cpu, get_current_proc(cpu), FileHandle);
+    std::string ob_path = filename;
+    // Check if the file handle is absolute, if not we need to make it absolute.
+    if (filename[0] != '\\') {
+        char *cwd = get_cwd(cpu);
+        ob_path = cwd;
+        // If the cwd doesn't have a slash, add it.
+        if (ob_path.back() != '\\') {
+            ob_path += "\\";
+        }
+        ob_path += filename;
+        free(cwd);
+    }
+    verbose_printf("file_taint windows object path: %s\n", ob_path.c_str());
     int64_t pos = get_file_handle_pos(cpu, get_current_proc(cpu), FileHandle);
-    read_enter(filename, FileHandle, pos);
+    read_enter(ob_path, FileHandle, pos);
     g_free(filename);
 }
 
@@ -217,6 +230,7 @@ void linux_read_enter(CPUState *cpu, target_ulong pc, uint32_t fd,
                       uint32_t buffer, uint32_t count)
 {
     OsiProc *proc = get_current_process(cpu);
+    // The filename in Linux should always be absolute.
     char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
     uint64_t pos = osi_linux_fd_to_pos(cpu, proc, fd);
     read_enter(filename, fd, pos);

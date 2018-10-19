@@ -67,7 +67,8 @@ void on_free_osimodules(OsiModules *ms);
 #define OBJNAME_OFF          0x008
 #define FILE_OBJECT_NAME_OFF 0x030
 #define FILE_OBJECT_POS_OFF  0x038
-
+#define PROCESS_PARAMETERS_OFF 0x010 // PEB.ProcessParameters
+#define UNICODE_WORKDIR_OFF 0x24     // ProcessParameters.WorkingDirectory
 
 // "Constants" specific to the guest operating system.
 // These are initialized in the init_plugin function.
@@ -76,6 +77,8 @@ static uint32_t eproc_pid_off;      // _EPROCESS.UniqueProcessId
 static uint32_t eproc_ppid_off;     // _EPROCESS.InheritedFromUniqueProcessId
 static uint32_t eproc_name_off;     // _EPROCESS.ImageFileName
 static uint32_t eproc_objtable_off; // _EPROCESS.ObjectTable
+static uint32_t
+    eproc_ppeb_off; // _EPROCESS.Peb (pointer to process environment block)
 static uint32_t eproc_size;         // Value of Size
 static uint32_t eproc_links_off;    // _EPROCESS.ActiveProcessLinks
 static uint32_t obj_type_file;      // FILE object type
@@ -258,6 +261,31 @@ void get_procname(CPUState *cpu, uint32_t eproc, char **name) {
     assert(*name);
     assert(!panda_virtual_memory_rw(cpu, eproc+eproc_name_off, (uint8_t *)*name, 16, false));
     (*name)[16] = '\0';
+}
+
+char *get_cwd(CPUState *cpu)
+{
+    PTR eproc = get_current_proc(cpu);
+
+    // Get pointer to PEB
+    target_ulong ppeb = 0x0;
+    assert(!panda_virtual_memory_read(cpu, eproc + eproc_ppeb_off,
+                                      (uint8_t *)&ppeb, sizeof(ppeb)));
+    // Get pointer to PROCESS_PARAMETERS
+    target_ulong pprocess_params = 0x0;
+    assert(!panda_virtual_memory_read(cpu, ppeb + PROCESS_PARAMETERS_OFF,
+                                      (uint8_t *)&pprocess_params,
+                                      sizeof(pprocess_params)));
+
+    // Get the work dir handle
+    uint32_t cwd_handle = 0x0;
+    assert(!panda_virtual_memory_read(cpu, pprocess_params + 0x2C,
+                                      (uint8_t *)&cwd_handle,
+                                      sizeof(cwd_handle)));
+
+    char *cwd_handle_name = get_handle_name(cpu, eproc, cwd_handle);
+
+    return cwd_handle_name;
 }
 
 bool is_valid_process(CPUState *cpu, PTR eproc) {
@@ -566,6 +594,7 @@ bool init_plugin(void *self) {
         eproc_ppid_off=0x140;
         eproc_name_off=0x16c;
         eproc_objtable_off=0xf4;
+        eproc_ppeb_off = 0x1a8;
         obj_type_file = 28;
         obj_type_key = 35;
         obj_type_process = 7;
@@ -583,6 +612,7 @@ bool init_plugin(void *self) {
         eproc_ppid_off=0x1c8;
         eproc_name_off=0x1fc;
         eproc_objtable_off=0x128;
+        eproc_ppeb_off = 0x1b0;
         obj_type_file = 0x05;
         obj_type_key = 0x32;
         obj_type_process = 0x03;

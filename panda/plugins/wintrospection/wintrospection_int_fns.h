@@ -25,6 +25,8 @@ PTR get_dtb(CPUState *cpu, PTR eproc);
 // fills name (assumed alloced) for process given virtual address of EPROCESS data structure
 void get_procname(CPUState *cpu, uint32_t eproc, char **name) ;
 
+char *get_cwd(CPUState *cpu);
+
 char *get_handle_object_name(CPUState *cpu, HandleObject *ho);
 
 int64_t get_file_handle_pos(CPUState *cpu, uint32_t eproc, uint32_t handle) ;
