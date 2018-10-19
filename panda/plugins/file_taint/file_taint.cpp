@@ -42,7 +42,7 @@ static std::string target_filename = "";
 // All bytes in the file can be tainted by default.
 static uint64_t min_byte_pos = 0;
 static uint64_t max_byte_pos = UINT64_MAX;
-static uint64_t max_byte_count = UINT64_MAX;
+static uint64_t max_byte_count = 1000000;
 static bool positional = false;
 static uint32_t static_label = 0xF11E;
 static bool verbose = false;
@@ -261,12 +261,11 @@ bool init_plugin(void *self)
     target_filename =
         panda_parse_string_req(args, "filename", "name of file to taint");
     min_byte_pos = panda_parse_uint64_opt(
-        args, "min_byte_pos", 0,
+        args, "start", 0,
         "minimum byte offset within the file to start tainting");
-    max_byte_pos =
-        panda_parse_uint64_opt(args, "max_byte_pos", UINT64_MAX,
-                               "max byte offset within the file to taint");
-    max_byte_count = panda_parse_uint64_opt(args, "max_byte_count", UINT64_MAX,
+    max_byte_pos = panda_parse_uint64_opt(
+        args, "end", UINT64_MAX, "last byte offset within the file to taint");
+    max_byte_count = panda_parse_uint64_opt(args, "max_num_labels", 1000000,
                                             "maximum number of bytes to taint");
     positional = panda_parse_bool_opt(args, "pos",
                                       "enable or disable positional labels");
