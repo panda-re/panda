@@ -36,7 +36,7 @@ int load_syscall_info(void) {
     dlerror();  // clear errors
     void *syscall_info_dl = dlopen(syscall_info_dlname, RTLD_NOW|RTLD_NODELETE);
     if (syscall_info_dl == NULL) {
-        fprintf(stderr, PANDA_MSG "%s\n", dlerror());
+        LOG_ERROR("%s", dlerror());
         g_free(syscall_info_dlname);
         return -1;
     }
@@ -44,13 +44,13 @@ int load_syscall_info(void) {
     dlerror();  // clear errors
     syscall_info = (syscall_info_t *)dlsym(syscall_info_dl, "__syscall_info_a");
     if (syscall_info == NULL) {
-        fprintf(stderr, PANDA_MSG "%s\n", dlerror());
+        LOG_ERROR("%s", dlerror());
         dlclose(syscall_info_dl);
         g_free(syscall_info_dlname);
         return -1;
     }
 
-    fprintf(stderr, PANDA_MSG "loaded syscalls info from %s\n", syscall_info_dlname);
+    LOG_INFO("loaded syscalls info from %s", syscall_info_dlname);
     dlclose(syscall_info_dl);
     g_free(syscall_info_dlname);
     return 0;
