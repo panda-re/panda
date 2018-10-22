@@ -212,6 +212,11 @@ void windows_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
     g_free(filename);
 }
 
+// From DDK
+typedef uint32_t NTSTATUS;
+const NTSTATUS STATUS_SUCCESS = 0x00000000;
+const NTSTATUS STATUS_PENDING = 0x00000103;
+
 // Handle a Windows read return. Gets the number of bytes read from the file and
 // calls the normalized read return.
 void windows_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
@@ -220,14 +225,28 @@ void windows_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
                          uint32_t Buffer, uint32_t BufferLength,
                          uint32_t ByteOffset, uint32_t Key)
 {
-    uint32_t bytes_read;
-    if (panda_virtual_memory_read(cpu, IoStatusBlock + 4,
-                                  (uint8_t *)&bytes_read,
-                                  sizeof(bytes_read)) == -1) {
+    struct {
+        union {
+            NTSTATUS status;
+            uint32_t pointer;
+        };
+        uint32_t information;
+    } io_status_block;
+    if (panda_virtual_memory_read(cpu, IoStatusBlock,
+                                  (uint8_t *)&io_status_block,
+                                  sizeof(io_status_block)) == -1) {
         printf("failed to read number of bytes read\n");
         return;
     }
-    read_return(FileHandle, bytes_read, Buffer);
+
+    if (io_status_block.status == STATUS_PENDING) {
+        printf(
+            "file_taint read return: detected async read return, ignoring\n");
+    } else if (io_status_block.status == STATUS_SUCCESS) {
+        read_return(FileHandle, io_status_block.information, Buffer);
+    } else {
+        printf("file_taint  read_return: detected read failure, ignoring\n");
+    }
 }
 #endif
 
