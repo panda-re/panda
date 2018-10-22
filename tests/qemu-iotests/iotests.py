@@ -24,10 +24,12 @@ import subprocess
 import string
 import unittest
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'scripts'))
-import qtest
+import io
 import struct
 import json
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'scripts'))
+import qtest
 
 
 # This will not work if arguments contain spaces but is necessary if we
@@ -441,15 +443,19 @@ def main(supported_fmts=[], supported_oses=['linux']):
     verify_image_format(supported_fmts)
     verify_platform(supported_oses)
 
-    # We need to filter out the time taken from the output so that qemu-iotest
-    # can reliably diff the results against master output.
-    import StringIO
     if debug:
         output = sys.stdout
         verbosity = 2
         sys.argv.remove('-d')
     else:
-        output = StringIO.StringIO()
+        # We need to filter out the time taken from the output so that
+        # qemu-iotest can reliably diff the results against master output.
+        if sys.version_info.major >= 3:
+            output = io.StringIO()
+        else:
+            # io.StringIO is for unicode strings, which is not what
+            # 2.x's test runner emits.
+            output = io.BytesIO()
 
     class MyTestRunner(unittest.TextTestRunner):
         def __init__(self, stream=output, descriptions=True, verbosity=verbosity):
