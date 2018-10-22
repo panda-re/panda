@@ -28,6 +28,18 @@
 #endif
 
 /**
+ * @brief Wrapper macro for quashing warnings for unused variables.
+ */
+#if defined(UNUSED)
+#elif defined(__GNUC__)
+#define UNUSED(x) UNUSED_ ## x __attribute__((unused))
+#elif defined(__LCLINT__)
+#define UNUSED(x) /*@unused@*/ x
+#else
+#define UNUSED(x) x
+#endif
+
+/**
  * @brief Pointer type for the guest VM.
  *
  * @note Currently, this is meant as a code-readability improvement:
