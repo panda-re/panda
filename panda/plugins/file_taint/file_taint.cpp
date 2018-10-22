@@ -150,15 +150,18 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
     uint64_t range_end =
         std::min(read_start_pos + bytes_read - 1, max_byte_pos);
 
-    // Apply taint within the valid range.
-    printf("*** applying %s taint labels %lu..%lu to buffer @ %lu ***\n",
-           positional ? "positional" : "uniform", range_start, range_end,
-           rr_get_guest_instr_count());
-
+    bool print_apply_message = true;
     for (uint64_t i = 0; i < bytes_read && tainted_byte_count < max_byte_count;
          i++) {
         uint64_t file_pos = read_start_pos + i;
         if (range_start <= file_pos && file_pos <= range_end) {
+            if (print_apply_message) {
+                printf("*** applying %s taint labels %lu..%lu to buffer @ %lu "
+                       "***\n",
+                       positional ? "positional" : "uniform", range_start,
+                       range_end, rr_get_guest_instr_count());
+                print_apply_message = false;
+            }
             hwaddr shadow_addr = panda_virt_to_phys(first_cpu, buffer_addr + i);
             verbose_printf(
                 "file_taint applying label: file_pos=%lu buffer_addr=%lu\n",
