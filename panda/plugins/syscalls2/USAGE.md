@@ -72,17 +72,28 @@ typedef void (*on_all_sys_return_t)(CPUState *env, target_ulong pc, target_ulong
 Description: Called whenever any system call returns in the guest. The call number is available in the `callno` parameter.
 
 ### API calls
-Finally the plugin provides one API call:
+Finally the plugin provides two API calls:
 
 Name: **get_syscall_info**
 
 Signature:
 
 ```C
-syscall_info_t *get_syscall_info(uint32_t callno)
+const syscall_info_t *get_syscall_info(uint32_t callno)
 ```
 
 Description: Returns a pointer to a `syscall_info_t` struct containing information about the specified system call. Available only when the `load-info` flag of the plugin has been turned on.
+
+Name: **get_syscall_meta**
+
+Signature:
+
+```C
+const syscall_meta_t *get_syscall_meta(void)
+```
+
+Description: Returns a pointer to a `syscall_meta_t` struct containing meta-information about the system calls of the guest operating system. Available only when the `load-info` flag of the plugin has been turned on.
+
 
 
 Example

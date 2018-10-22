@@ -7,7 +7,8 @@
 #include "syscalls2_info.h"
 #include "syscalls2_int_fns.h"
 
-syscall_info_t *syscall_info;
+const syscall_info_t *syscall_info;
+const syscall_meta_t *syscall_meta;
 
 int load_syscall_info(void) {
     gchar *syscall_info_dlname = NULL;
@@ -50,6 +51,15 @@ int load_syscall_info(void) {
         return -1;
     }
 
+    dlerror();  // clear errors
+    syscall_meta = (syscall_meta_t *)dlsym(syscall_info_dl, "__syscall_meta");
+    if (syscall_meta == NULL) {
+        LOG_ERROR("%s", dlerror());
+        dlclose(syscall_info_dl);
+        g_free(syscall_info_dlname);
+        return -1;
+    }
+
     LOG_INFO("loaded syscalls info from %s", syscall_info_dlname);
     dlclose(syscall_info_dl);
     g_free(syscall_info_dlname);
@@ -57,7 +67,7 @@ int load_syscall_info(void) {
 }
 
 
-syscall_info_t *get_syscall_info(uint32_t callno) {
+const syscall_info_t *get_syscall_info(uint32_t callno) {
     if (syscall_info != NULL) {
         return &syscall_info[callno];
     }
@@ -66,3 +76,7 @@ syscall_info_t *get_syscall_info(uint32_t callno) {
     }
 }
 
+
+const syscall_meta_t *get_syscall_meta(void) {
+    return syscall_meta;
+}
