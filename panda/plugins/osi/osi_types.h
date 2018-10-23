@@ -3,13 +3,7 @@
  * @brief Base data types for PANDA OSI.
  */
 #pragma once
-#include "panda/common.h"
-
-/** @brief Type for the guest VM pids. */
-typedef target_ulong target_pid_t;
-
-/** @brief Print format for guest VM pids. */
-#define TARGET_PID_FMT TARGET_FMT_lu
+#include "panda/types.h"
 
 typedef struct osi_page_struct {
     target_ptr_t start;
