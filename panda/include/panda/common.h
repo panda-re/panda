@@ -16,6 +16,7 @@
 #endif
 #include "cpu.h"
 #include "exec/address-spaces.h"
+#include "panda/types.h"
 
 /**
  * @brief Branch predition hint macros.
@@ -38,18 +39,6 @@
 #else
 #define UNUSED(x) x
 #endif
-
-/**
- * @brief Pointer type for the guest VM.
- *
- * @note Currently, this is meant as a code-readability improvement:
- * having an explicit type for guest pointers is more readable than
- * re-using target_ulong.
- */
-typedef target_ulong target_ptr_t;
-
-/** @brief Print format for guest VM pointers. */
-#define TARGET_PTR_FMT TARGET_FMT_lx
 
 #ifdef __cplusplus
 extern "C" {
