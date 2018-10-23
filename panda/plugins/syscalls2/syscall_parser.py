@@ -286,6 +286,9 @@ if __name__ == '__main__':
         'architectures': KNOWN_ARCH,
         'syscalls': {target: [] for target in args.target}, # per target system call list
         'syscalls_arch': {arch: {} for arch in KNOWN_ARCH}, # per arch system call list
+        'global_max_syscall_args': 0,
+        'global_max_syscall_no': 0,
+        'global_max_syscall_generic_no': 0,
     }
 
     # parse system call definitions for all targets
@@ -322,6 +325,14 @@ if __name__ == '__main__':
         target_context['max_syscall_args'] = max([len(s.args) for s in syscalls])
         target_context['max_syscall_no'] = max([s.no for s in syscalls])
         target_context['max_syscall_generic_no'] = max([s.no for s in syscalls if s.generic])
+
+        # Update the global maximum number of arguments and system call number.
+        global_context['global_max_syscall_args'] = max(
+                global_context['global_max_syscall_args'], target_context['max_syscall_args'])
+        global_context['global_max_syscall_no'] = max(
+                global_context['global_max_syscall_no'], target_context['max_syscall_no'])
+        global_context['global_max_syscall_generic_no'] = max(
+                global_context['global_max_syscall_generic_no'], target_context['max_syscall_generic_no'])
 
         # Render per-target output files.
         j2tpl = j2env.get_template('syscall_switch_enter.tpl')
