@@ -29,7 +29,6 @@ PANDAENDCOMMENT */
 #include <iostream>
 
 #include "syscalls2.h"
-#include "syscalls_common.h"
 #include "syscalls2_info.h"
 
 bool translate_callback(CPUState *cpu, target_ulong pc);
@@ -38,7 +37,6 @@ int exec_callback(CPUState *cpu, target_ulong pc);
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
-
 void registerExecPreCallback(void (*callback)(CPUState*, target_ulong));
 
 // PPP code
@@ -56,17 +54,17 @@ int32_t get_return_s32_generic(CPUState *cpu, uint32_t argnum);
 int64_t get_return_s64_generic(CPUState *cpu, uint32_t argnum);
 target_long get_return_val_x86(CPUState *cpu);
 target_long get_return_val_arm(CPUState *cpu);
-uint32_t get_return_32_windows_x86 (CPUState *cpu, uint32_t argnum);
+uint32_t get_return_32_windows_x86(CPUState *cpu, uint32_t argnum);
 uint64_t get_return_64_windows_x86(CPUState *cpu, uint32_t argnum);
 uint64_t get_64_linux_x86(CPUState *cpu, uint32_t argnum);
 uint64_t get_64_linux_arm(CPUState *cpu, uint32_t argnum);
 uint64_t get_64_windows_x86(CPUState *cpu, uint32_t argnum);
-uint32_t get_32_linux_x86 (CPUState *cpu, uint32_t argnum);
-uint32_t get_32_linux_arm (CPUState *cpu, uint32_t argnum);
-uint32_t get_32_windows_x86 (CPUState *cpu, uint32_t argnum);
-target_ulong calc_retaddr_windows_x86(CPUState* cpu, target_ulong pc);
-target_ulong calc_retaddr_linux_x86(CPUState* cpu, target_ulong pc);
-target_ulong calc_retaddr_linux_arm(CPUState* cpu, target_ulong pc);
+uint32_t get_32_linux_x86(CPUState *cpu, uint32_t argnum);
+uint32_t get_32_linux_arm(CPUState *cpu, uint32_t argnum);
+uint32_t get_32_windows_x86(CPUState *cpu, uint32_t argnum);
+target_ulong calc_retaddr_windows_x86(CPUState *cpu, target_ulong pc);
+target_ulong calc_retaddr_linux_x86(CPUState *cpu, target_ulong pc);
+target_ulong calc_retaddr_linux_arm(CPUState *cpu, target_ulong pc);
 
 enum ProfileType {
     PROFILE_LINUX_X86,
@@ -80,7 +78,7 @@ enum ProfileType {
 
 struct Profile {
     void         (*enter_switch)(CPUState *, target_ulong);
-    void         (*return_switch)(CPUState *, target_ulong, target_ulong, ReturnPoint &);
+    void         (*return_switch)(CPUState *, target_ulong, int, const ReturnPoint *);
     target_long  (*get_return_val )(CPUState *);
     target_ulong (*calc_retaddr )(CPUState *, target_ulong);
     uint32_t     (*get_32 )(CPUState *, uint32_t);
@@ -410,7 +408,7 @@ uint64_t get_return_64_windows_x86(CPUState *cpu, uint32_t argnum) {
 }
 
 // Wrappers
-target_long  get_return_val (CPUState *cpu) {
+target_long get_return_val (CPUState *cpu) {
     return syscalls_profile->get_return_val(cpu);
 }
 target_ulong calc_retaddr (CPUState *cpu, target_ulong pc) {
@@ -464,32 +462,32 @@ void registerExecPreCallback(void (*callback)(CPUState*, target_ulong)){
 }
 
 // always return to same process
-static std::map < std::pair < target_ulong, target_ulong >, ReturnPoint > returns;
+static std::map<std::pair<target_ptr_t, target_ptr_t>, ReturnPoint> returns;
 
-void appendReturnPoint(ReturnPoint &rp){
-    returns[std::make_pair(rp.retaddr,rp.proc_id)] = rp;
+void appendReturnPoint(ReturnPoint &rp) {
+    returns[std::make_pair(rp.retaddr, rp.asid)] = rp;
 }
 
-
-#if defined (TARGET_PPC) 
+#if defined(TARGET_PPC)
 #else
-static int returned_check_callback(CPUState *cpu, TranslationBlock* tb){
-    // check if any of the internally tracked syscalls has returned
-    // only one should be at its return point for any given basic block
-    std::pair < target_ulong, target_ulong > ret_key = std::make_pair(tb->pc, panda_current_asid(cpu));
-    if (returns.count(ret_key) != 0) {
-        ReturnPoint &retVal = returns[ret_key];
-        syscalls_profile->return_switch(cpu, tb->pc, retVal.ordinal, retVal);
-        // used by remove_if to delete from returns list those values
-        // that have been processed
-        //        retVal.retaddr = retVal.proc_id = 0;
-        returns.erase(ret_key);
+/**
+ * @brief Checks if any of the internally tracked system calls has
+ * returned.
+ */
+static int returned_check_callback(CPUState *cpu, TranslationBlock *tb) {
+    auto retKey = std::make_pair(tb->pc, panda_current_asid(cpu));
+    size_t retCount = returns.count(retKey);
+    if (retCount == 1) {
+        ReturnPoint &retVal = returns[retKey];
+        syscalls_profile->return_switch(cpu, tb->pc, retVal.no, &retVal);
+        returns.erase(retKey);
+    } else if (retCount > 1) {
+        // only one return point for any given tb
+        assert(false);
     }
-
     return false;
 }
 #endif
-
 #ifdef DEBUG
 static std::map<target_ulong,target_ulong> syscallCounter;
 static uint32_t impossibleToReadPCs = 0;
