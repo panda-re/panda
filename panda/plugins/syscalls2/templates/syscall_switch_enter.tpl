@@ -2,7 +2,9 @@
 #include "panda/plugin_plugin.h"
 
 #include "syscalls2.h"
-#include "syscalls_common.h"
+#include "syscalls2_info.h"
+
+extern const syscall_info_t *syscall_info;
 
 extern "C" {
 #include "gen_syscalls_ext_typedefs.h"
@@ -10,23 +12,23 @@ extern "C" {
 #include "gen_syscall_ppp_extern_return.h"
 }
 
-void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ulong pc) {
+void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc) {
 #ifdef {{arch_conf.qemu_target}}
 	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 	ReturnPoint rp;
-	rp.ordinal = {{arch_conf.rt_callno_reg}};
-	rp.proc_id = panda_current_asid(cpu);
+	rp.no = {{arch_conf.rt_callno_reg}};
+	rp.asid = panda_current_asid(cpu);
 	rp.retaddr = calc_retaddr(cpu, pc);
 	switch({{arch_conf.rt_callno_reg}}) {
 		{%- for syscall in syscalls %}
 		// {{syscall.no}} {{syscall.rettype}} {{syscall.name}} {{syscall.args_raw}}
 		case {{syscall.no}}: {
 			{%- for arg in syscall.args %}
-			{{arg.temp_assg_code}}
+			{{arg.emit_temp_assignment()}}
 			{%- endfor %}
-			if (PPP_CHECK_CB(on_{{syscall.name}}_return)) {
+			if (PPP_CHECK_CB(on_{{syscall.name}}_return) || PPP_CHECK_CB(on_all_sys_enter2) || PPP_CHECK_CB(on_all_sys_return2)) {
 				{%- for arg in syscall.args %}
-				{{arg.memcpy_temp2rp_code}}
+				{{arg.emit_memcpy_temp_to_ref()}}
 				{%- endfor %}
 			}
 			PPP_RUN_CB(on_{{syscall.name}}_enter, {{syscall.cargs}});
@@ -36,6 +38,7 @@ void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_unknown_sys_enter, cpu, pc, {{arch_conf.rt_callno_reg}});
 	}
 	PPP_RUN_CB(on_all_sys_enter, cpu, pc, {{arch_conf.rt_callno_reg}});
+	PPP_RUN_CB(on_all_sys_enter2, cpu, pc, &syscall_info[rp.no], &rp);
 	appendReturnPoint(rp);
 #endif
 }

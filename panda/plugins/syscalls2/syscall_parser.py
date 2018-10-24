@@ -164,17 +164,15 @@ class Argument(object):
             return 'uint16_t'
         assert False, 'Unknown type for argument %s: %s' % (self.name, self.type)
 
-    @property
-    def temp_decl_code(self):
+    def emit_temp_declaration(self):
         ''' Returns a snippet declaring an appropriate temp
             variable for this argument.
         '''
         return "{0} arg{1};".format(self.ctype, self.no)
 
-    @property
-    def temp_assg_code(self):
+    def emit_temp_assignment(self):
         ''' Returns a snippet declaring an appropriate temp
-            variable for this argument and assigning its 
+            variable for this argument and assigning its
             runtime value to it.
         '''
         ctype = self.ctype
@@ -183,19 +181,33 @@ class Argument(object):
         ctype_get = 'get_%d' % ctype_bits if ctype.startswith('uint') else 'get_s%d' % ctype_bits
         return "{0} arg{1} = {2}(cpu, {1});".format(ctype, self.no, ctype_get)
 
-    @property
-    def memcpy_temp2rp_code(self):
+    def emit_memcpy_temp_to_ref(self):
         ''' Returns a snippet that copies this argument from its
             corresponding temp into a return point structure.
+            The return point is assumed to be a pointer.
         '''
         return 'memcpy(rp.params[{0}], &arg{0}, sizeof({1}));'.format(self.no, self.ctype)
 
-    @property
-    def memcpy_rp2temp_code(self):
-        ''' Returns a snippet that copies this argument from 
+    def emit_memcpy_ref_to_temp(self):
+        ''' Returns a snippet that copies this argument from
             a return point structure into its corresponding temp.
+            The return point is assumed to be a pointer.
         '''
         return 'memcpy(&arg{0}, rp.params[{0}], sizeof({1}));'.format(self.no, self.ctype)
+
+    def emit_memcpy_temp_to_ptr(self):
+        ''' Returns a snippet that copies this argument from its
+            corresponding temp into a return point structure.
+            The return point is assumed to be a pointer.
+        '''
+        return 'memcpy(&rp->params[{0}], &arg{0}, sizeof({1}));'.format(self.no, self.ctype)
+
+    def emit_memcpy_ptr_to_temp(self):
+        ''' Returns a snippet that copies this argument from
+            a return point structure into its corresponding temp.
+            The return point is assumed to be a pointer.
+        '''
+        return 'memcpy(&arg{0}, rp->params[{0}], sizeof({1}));'.format(self.no, self.ctype)
 
 class SysCallError(Exception):
     ''' Base error class for SysCall related errors.

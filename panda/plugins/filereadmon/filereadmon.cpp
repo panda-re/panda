@@ -15,7 +15,6 @@
 #include "panda/plugin_plugin.h"
 
 #include "syscalls2/gen_syscalls_ext_typedefs.h"
-#include "syscalls2/syscalls_common.h"
 
 #include "osi/osi_types.h"
 

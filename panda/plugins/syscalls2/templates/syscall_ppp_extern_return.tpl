@@ -7,5 +7,6 @@ PPP_CB_EXTERN(on_{{syscall.name}}_return)
 {% endfor %}
 PPP_CB_EXTERN(on_unknown_sys_return)
 PPP_CB_EXTERN(on_all_sys_return)
+PPP_CB_EXTERN(on_all_sys_return2)
 
 /* vim: set tabstop=4 softtabstop=4 noexpandtab ft=cpp: */
