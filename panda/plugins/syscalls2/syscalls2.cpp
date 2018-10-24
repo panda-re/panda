@@ -21,8 +21,6 @@ PANDAENDCOMMENT */
 #include <cassert>
 #include <functional>
 #include <string>
-#include <map>
-#include <set>
 #include <algorithm>
 #include <memory>
 #include <vector>
@@ -78,7 +76,7 @@ enum ProfileType {
 
 struct Profile {
     void         (*enter_switch)(CPUState *, target_ulong);
-    void         (*return_switch)(CPUState *, target_ulong, int, const ReturnPoint *);
+    void         (*return_switch)(CPUState *, target_ulong, int, const syscall_ctx_t *);
     target_long  (*get_return_val )(CPUState *);
     target_ulong (*calc_retaddr )(CPUState *, target_ulong);
     uint32_t     (*get_32 )(CPUState *, uint32_t);
@@ -461,12 +459,13 @@ void registerExecPreCallback(void (*callback)(CPUState*, target_ulong)){
     preExecCallbacks.push_back(callback);
 }
 
-// always return to same process
-static std::map<std::pair<target_ptr_t, target_ptr_t>, ReturnPoint> returns;
-
-void appendReturnPoint(ReturnPoint &rp) {
-    returns[std::make_pair(rp.retaddr, rp.asid)] = rp;
-}
+/**
+ * @brief Map holding the context of ongoing system calls. An unfinished
+ * system call can be uniquely identified by its return address and the
+ * asid of the process that invoked it. This pair is used as the key to
+ * the map.
+ */
+context_map_t running_syscalls;
 
 #if defined(TARGET_PPC)
 #else
@@ -475,15 +474,17 @@ void appendReturnPoint(ReturnPoint &rp) {
  * returned.
  */
 static int returned_check_callback(CPUState *cpu, TranslationBlock *tb) {
-    auto retKey = std::make_pair(tb->pc, panda_current_asid(cpu));
-    size_t retCount = returns.count(retKey);
-    if (retCount == 1) {
-        ReturnPoint &retVal = returns[retKey];
-        syscalls_profile->return_switch(cpu, tb->pc, retVal.no, &retVal);
-        returns.erase(retKey);
-    } else if (retCount > 1) {
-        // only one return point for any given tb
-        assert(false);
+    auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
+    size_t ctx_count = running_syscalls.count(k);
+    if (ctx_count == 0) {
+        LOG_WARN("Returned from unknown syscall (pc=" TARGET_PTR_FMT ","
+                 "asid=" TARGET_PTR_FMT ")",
+                 tb->pc, panda_current_asid(cpu));
+    } else {
+        assert(ctx_count == 1);
+        syscall_ctx_t &ctx = running_syscalls[k];
+        syscalls_profile->return_switch(cpu, tb->pc, ctx.no, &ctx);
+        running_syscalls.erase(k);
     }
     return false;
 }

@@ -76,7 +76,7 @@ Name: **on_all_sys_enter2**
 Signature:
 
 ```C
-typedef void (*on_all_sys_enter2_t)(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const ReturnPoint *rp)
+typedef void (*on_all_sys_enter2_t)(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp)
 ```
 
 Description: Called for every system call invoked in the guest. The `call` parameter is used to provide information about the system call. The `rp` parameter is used to provide information about the context of the system call (asid, argument values etc). This means that some additional processing is required on the side of the `syscalls2` plugin. You need to have the `load-info` flag enabled for `syscalls2` to use this variant of the callback.
@@ -86,7 +86,7 @@ Name: **on_all_sys_return2**
 Signature:
 
 ```C
-typedef void (*on_all_sys_return2_t)(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const ReturnPoint *rp)
+typedef void (*on_all_sys_return2_t)(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp)
 ```
 
 Description: Called whenever any system call returns in the guest. The `call` parameter is used to provide information about the system call. The `rp` parameter is used to provide information about the context of the system call (asid, argument values etc). This means that some additional processing is required on the side of the `syscalls2` plugin. You need to have the `load-info` flag enabled for `syscalls2` to use this variant of the callback.

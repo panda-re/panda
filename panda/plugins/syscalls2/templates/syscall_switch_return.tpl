@@ -11,7 +11,7 @@ extern "C" {
 #include "gen_syscall_ppp_extern_return.h"
 }
 
-void syscall_return_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, int no, const ReturnPoint *rp) {
+void syscall_return_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, int no, const syscall_ctx_t *ctx) {
 #ifdef {{arch_conf.qemu_target}}
 	switch(no) {
 		{%- for syscall in syscalls %}
@@ -29,10 +29,10 @@ void syscall_return_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, int n
 		}; break;
 		{%- endfor %}
 		default:
-			PPP_RUN_CB(on_unknown_sys_return, cpu, pc, rp->no);
+			PPP_RUN_CB(on_unknown_sys_return, cpu, pc, ctx->no);
 	}
-	PPP_RUN_CB(on_all_sys_return, cpu, pc, rp->no);
-	PPP_RUN_CB(on_all_sys_return2, cpu, pc, &syscall_info[rp->no], rp);
+	PPP_RUN_CB(on_all_sys_return, cpu, pc, ctx->no);
+	PPP_RUN_CB(on_all_sys_return2, cpu, pc, &syscall_info[ctx->no], ctx);
 #endif
 }
 

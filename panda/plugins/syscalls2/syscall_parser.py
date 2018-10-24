@@ -183,31 +183,31 @@ class Argument(object):
 
     def emit_memcpy_temp_to_ref(self):
         ''' Returns a snippet that copies this argument from its
-            corresponding temp into a return point structure.
-            The return point is assumed to be a pointer.
+            corresponding temp into a syscall context structure.
+            The syscall context is assumed to be a pointer.
         '''
-        return 'memcpy(rp.params[{0}], &arg{0}, sizeof({1}));'.format(self.no, self.ctype)
+        return 'memcpy(ctx.args[{0}], &arg{0}, sizeof({1}));'.format(self.no, self.ctype)
 
     def emit_memcpy_ref_to_temp(self):
         ''' Returns a snippet that copies this argument from
-            a return point structure into its corresponding temp.
-            The return point is assumed to be a pointer.
+            a syscall context structure into its corresponding temp.
+            The syscall context is assumed to be a pointer.
         '''
-        return 'memcpy(&arg{0}, rp.params[{0}], sizeof({1}));'.format(self.no, self.ctype)
+        return 'memcpy(&arg{0}, ctx.args[{0}], sizeof({1}));'.format(self.no, self.ctype)
 
     def emit_memcpy_temp_to_ptr(self):
         ''' Returns a snippet that copies this argument from its
-            corresponding temp into a return point structure.
-            The return point is assumed to be a pointer.
+            corresponding temp into a syscall context structure.
+            The syscall context is assumed to be a pointer.
         '''
-        return 'memcpy(&rp->params[{0}], &arg{0}, sizeof({1}));'.format(self.no, self.ctype)
+        return 'memcpy(&ctx->args[{0}], &arg{0}, sizeof({1}));'.format(self.no, self.ctype)
 
     def emit_memcpy_ptr_to_temp(self):
         ''' Returns a snippet that copies this argument from
-            a return point structure into its corresponding temp.
-            The return point is assumed to be a pointer.
+            a syscall context structure into its corresponding temp.
+            The syscall context is assumed to be a pointer.
         '''
-        return 'memcpy(&arg{0}, rp->params[{0}], sizeof({1}));'.format(self.no, self.ctype)
+        return 'memcpy(&arg{0}, ctx->args[{0}], sizeof({1}));'.format(self.no, self.ctype)
 
 class SysCallError(Exception):
     ''' Base error class for SysCall related errors.

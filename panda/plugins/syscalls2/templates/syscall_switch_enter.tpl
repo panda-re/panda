@@ -15,10 +15,10 @@ extern "C" {
 void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc) {
 #ifdef {{arch_conf.qemu_target}}
 	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-	ReturnPoint rp;
-	rp.no = {{arch_conf.rt_callno_reg}};
-	rp.asid = panda_current_asid(cpu);
-	rp.retaddr = calc_retaddr(cpu, pc);
+	syscall_ctx_t ctx;
+	ctx.no = {{arch_conf.rt_callno_reg}};
+	ctx.asid = panda_current_asid(cpu);
+	ctx.retaddr = calc_retaddr(cpu, pc);
 	switch({{arch_conf.rt_callno_reg}}) {
 		{%- for syscall in syscalls %}
 		// {{syscall.no}} {{syscall.rettype}} {{syscall.name}} {{syscall.args_raw}}
@@ -38,8 +38,8 @@ void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc) {
 			PPP_RUN_CB(on_unknown_sys_enter, cpu, pc, {{arch_conf.rt_callno_reg}});
 	}
 	PPP_RUN_CB(on_all_sys_enter, cpu, pc, {{arch_conf.rt_callno_reg}});
-	PPP_RUN_CB(on_all_sys_enter2, cpu, pc, &syscall_info[rp.no], &rp);
-	appendReturnPoint(rp);
+	PPP_RUN_CB(on_all_sys_enter2, cpu, pc, &syscall_info[ctx.no], &ctx);
+	running_syscalls[std::make_pair(ctx.retaddr, ctx.asid)] = ctx;
 #endif
 }
 
