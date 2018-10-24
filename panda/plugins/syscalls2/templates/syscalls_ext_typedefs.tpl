@@ -6,7 +6,7 @@
 #include "panda/types.h"
 #include "syscalls2_info.h"
 
-/* Functions used to populate ReturnPoint structs. */
+/* Functions used to populate syscall_ctx_t structs. */
 target_long get_return_val(CPUState *env);
 target_ptr_t mask_retaddr_to_pc(target_ptr_t retaddr);
 target_ptr_t calc_retaddr(CPUState *env, target_ptr_t pc);
@@ -32,13 +32,13 @@ target_ptr_t get_return_pointer(CPUState *env, uint32_t argnum);
  * needed in order to be able to make the system call arguments
  * available to the return callback.
  */
-struct ReturnPoint {
+struct syscall_ctx {
     int no;               /**< system call number */
     target_ptr_t asid;    /**< asid of the process that made the system call */
     target_ptr_t retaddr; /**< return address of the system call */
-    uint8_t params[GLOBAL_MAX_SYSCALL_ARGS][8]; /**< system call arguments */
+    uint8_t args[GLOBAL_MAX_SYSCALL_ARGS][8]; /**< system call arguments */
 };
-typedef struct ReturnPoint ReturnPoint;
+typedef struct syscall_ctx syscall_ctx_t;
 
 {% for arch, syscalls in syscalls_arch|dictsort -%}
 #ifdef {{architectures[arch].qemu_target}}
@@ -49,9 +49,9 @@ typedef void (*on_{{syscall.name}}_return_t)({{syscall.cargs_signature}});
 #endif
 {% endfor %}
 typedef void (*on_all_sys_enter_t)(CPUState *cpu, target_ulong pc, target_ulong callno);
-typedef void (*on_all_sys_enter2_t)(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const ReturnPoint *rp);
+typedef void (*on_all_sys_enter2_t)(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *ctx);
 typedef void (*on_all_sys_return_t)(CPUState *cpu, target_ulong pc, target_ulong callno);
-typedef void (*on_all_sys_return2_t)(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const ReturnPoint *rp);
+typedef void (*on_all_sys_return2_t)(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *ctx);
 typedef void (*on_unknown_sys_enter_t)(CPUState *cpu, target_ulong pc, target_ulong callno);
 typedef void (*on_unknown_sys_return_t)(CPUState *cpu, target_ulong pc, target_ulong callno);
 
