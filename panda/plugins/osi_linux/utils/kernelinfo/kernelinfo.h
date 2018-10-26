@@ -9,10 +9,30 @@
 #pragma once
 #include <stdint.h>
 
-/*!
+/**
+ * @brief Macro used to declare structs are as packed (or not).
+ *
+ * `kernelinfo_read.c` uses a bitmap to determine which members of
+ * `struct kernelinfo` were not read from the kernel config file. Due to
+ * alignment padding by the compiler, the bitmap check will have false
+ * positives for the bytes of the padding.
+ *
+ * Declaring the structs as packed will eliminate the false positives.
+ * This may be useful when debugging osi_linux or adding support for new
+ * kernels. However, packed structs may be slower to access in practice.
+ * For this, we keep packing of by default and bear with the false
+ * positives.
+ */
+#if 0
+#define PACKED_STRUCT(x) struct __attribute__((__packed__)) x
+#else
+#define PACKED_STRUCT(x) struct x
+#endif
+
+/**
  * @brief Information and offsets related to `struct task_struct`.
  */
-struct task_info {
+PACKED_STRUCT(task_info) {
 	uint64_t init_addr;			/**< Address of the `struct task_struct` of the init task. */
 	size_t size;				/**< Size of `struct task_struct`. */
 	int task_offset;			/**< Offset of task_struct in the thread_info struct. */
@@ -32,20 +52,20 @@ struct task_info {
 	int files_offset;			/**< Offset for open files information. */
 };
 
-/*!
+/**
  * @brief Information and offsets related to `struct cred`.
  */
-struct cred_info {
+PACKED_STRUCT(cred_info) {
 	int uid_offset;
 	int gid_offset;
 	int euid_offset;
 	int egid_offset;
 };
 
-/*!
+/**
  * @brief Information and offsets related to `struct mm_struct`.
  */
-struct mm_info {
+PACKED_STRUCT(mm_info) {
 	size_t size;				/**< Size of `struct mm_struct`. */
 	int mmap_offset;
 	int pgd_offset;
@@ -55,10 +75,10 @@ struct mm_info {
 	int start_stack_offset;
 };
 
-/*!
+/**
  * @brief Information and offsets related to `struct vm_area_struct`.
  */
-struct vma_info {
+PACKED_STRUCT(vma_info) {
 	size_t size;				/**< Size of `struct vm_area_struct`. */
 	int vm_mm_offset;
 	int vm_start_offset;
@@ -68,10 +88,10 @@ struct vma_info {
 	int vm_flags_offset;
 };
 
-/*!
+/**
  * @brief Filesystem information and offsets.
  */
-struct fs_info {
+PACKED_STRUCT(fs_info) {
 	int f_path_dentry_offset;
 	int f_path_mnt_offset;
 	int f_pos_offset;
@@ -80,10 +100,10 @@ struct fs_info {
 	int fd_offset;
 };
 
-/*!
+/**
  * @brief Path related information and offsets.
  */
-struct path_info {
+PACKED_STRUCT(path_info) {
 	size_t qstr_size;			/**< Size of `struct qstr`. */
 	int d_name_offset;
 	int d_iname_offset;
@@ -95,10 +115,10 @@ struct path_info {
 	int mnt_mountpoint_offset;
 };
 
-/*!
+/**
  * @brief Wrapper for the structure-specific structs.
  */
-struct kernelinfo {
+PACKED_STRUCT(kernelinfo) {
 	char *name;
 	struct task_info task;
 	struct cred_info cred;
