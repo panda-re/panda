@@ -470,25 +470,22 @@ context_map_t running_syscalls;
 #if defined(TARGET_PPC)
 #else
 /**
- * @brief Checks if any of the internally tracked system calls has
- * returned.
+ * @brief Checks if the translation block that is about to be executed
+ * matches the return address of an executing system call.
  */
-static int returned_check_callback(CPUState *cpu, TranslationBlock *tb) {
+static int tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
     auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
     size_t ctx_count = running_syscalls.count(k);
-    if (ctx_count == 0) {
-        LOG_WARN("Returned from unknown syscall (pc=" TARGET_PTR_FMT ","
-                 "asid=" TARGET_PTR_FMT ")",
-                 tb->pc, panda_current_asid(cpu));
-    } else {
+    if (ctx_count > 0) {
         assert(ctx_count == 1);
         syscall_ctx_t &ctx = running_syscalls[k];
         syscalls_profile->return_switch(cpu, tb->pc, ctx.no, &ctx);
         running_syscalls.erase(k);
     }
-    return false;
+    return 0;
 }
 #endif
+
 #ifdef DEBUG
 static std::map<target_ulong,target_ulong> syscallCounter;
 static uint32_t impossibleToReadPCs = 0;
@@ -637,7 +634,7 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_INSN_TRANSLATE, pcb);
     pcb.insn_exec = exec_callback;
     panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb);
-    pcb.before_block_exec = returned_check_callback;
+    pcb.before_block_exec = tb_check_syscall_return;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 
     // load system call info
