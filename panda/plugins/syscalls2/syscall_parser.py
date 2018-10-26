@@ -129,38 +129,38 @@ class Argument(object):
 
         # identify argument type
         if Argument.charre.search(self.raw) and not any([self.name.endswith('buf'), self.name == '...', self.name.endswith('[]')]):
-            self.type = 'CHAR_STAR'
+            self.type = 'STR'
         elif any(['*' in self.raw, '[]' in self.raw, any([x in self.raw for x in Argument.types['ptr']])]):
-            self.type = 'POINTER'
+            self.type = 'PTR'
         elif any([x in self.raw for x in Argument.types['u64']]):
-            self.type = '8BYTE'
+            self.type = 'U64'
         elif any([x in self.raw for x in Argument.types['u32']]) or any([x in self.raw for x in Argument.types['u16']]):
-            self.type = '4BYTE'
+            self.type = 'U32'
         elif any([x in self.raw for x in Argument.types['s32']]) and 'unsigned' not in self.raw:
-            self.type = '4SIGNED'
+            self.type = 'S32'
         elif self.raw == 'void':
             self.type = None
             assert False, 'Unexpected void argument.'
         elif self.raw == 'unsigned' or (len(self.raw.split()) == 2 and self.raw.split()[0] == 'unsigned'):
-            self.type = '4BYTE'
+            self.type = 'U32'
         else:
             # Warn but assume it's a 32-bit argument
             logging.debug("%s not of known type, assuming 32-bit", self.raw)
-            self.type = '4BYTE'
+            self.type = 'U32'
 
     @property
     def ctype(self):
-        if self.type in ['CHAR_STAR', 'POINTER'] and self.arch_bits == 32:
+        if self.type in ['STR', 'PTR'] and self.arch_bits == 32:
             return 'uint32_t'
-        elif self.type in ['CHAR_STAR', 'POINTER']:
+        elif self.type in ['STR', 'PTR']:
             return 'uint64_t'
-        elif self.type == '4BYTE':
+        elif self.type == 'U32':
             return 'uint32_t'
-        elif self.type == '4SIGNED':
+        elif self.type == 'S32':
             return 'int32_t'
-        elif self.type == '8BYTE':
+        elif self.type == 'U64':
             return 'uint64_t'
-        elif self.type == '2BYTE':
+        elif self.type == 'U16':
             return 'uint16_t'
         assert False, 'Unknown type for argument %s: %s' % (self.name, self.type)
 
