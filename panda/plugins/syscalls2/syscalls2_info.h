@@ -22,12 +22,14 @@ typedef struct {
  * @brief Type of system call argument enumeration.
  */
 typedef enum {
-    SYSCALL_ARG_CHAR_STAR,
-    SYSCALL_ARG_POINTER,
-    SYSCALL_ARG_4BYTE,
-    SYSCALL_ARG_4SIGNED,
-    SYSCALL_ARG_8BYTE,
-    SYSCALL_ARG_2BYTE
+    SYSCALL_ARG_U64 = 0x00, /**< unsigned 64bit value */
+    SYSCALL_ARG_U32,        /**< unsigned 32bit value */
+    SYSCALL_ARG_U16,        /**< unsigned 16bit value */
+    SYSCALL_ARG_S64 = 0x10, /**< signed 64bit value */
+    SYSCALL_ARG_S32,        /**< signed 32bit value */
+    SYSCALL_ARG_S16,        /**< signed 16bit value */
+    SYSCALL_ARG_PTR = 0x20, /**< pointer to buffer/struct */
+    SYSCALL_ARG_STR         /**< C string */
 } syscall_argtype_t;
 
 /**
