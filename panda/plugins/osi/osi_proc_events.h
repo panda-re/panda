@@ -1,12 +1,7 @@
 #pragma once
 #include "panda/plugin.h"
+#include "panda/common.h"
 #include "osi_types.h"
-
-/*!
- * @brief Branch prediction hint macros.
- */
-#define likely(x)       __builtin_expect(!!(x), 1)
-#define unlikely(x)     __builtin_expect(!!(x), 0)
 
 /*!
  * @brief Debug macros.
