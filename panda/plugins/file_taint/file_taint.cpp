@@ -264,6 +264,19 @@ void linux_read_enter(CPUState *cpu, target_ulong pc, uint32_t fd,
     free_osiproc_g(proc);
 }
 
+// Handle a Linux pread enter. Extract the filename and use the position passed
+// to pread to call the normalized read enter.
+void linux_pread_enter(CPUState *cpu, target_ulong pc, uint32_t fd,
+                       uint32_t buf, uint32_t count, uint64_t pos)
+{
+    OsiProc *proc = get_current_process(cpu);
+    // The filename in Linux should always be absolute.
+    char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
+    read_enter(filename, fd, pos);
+    free(filename);
+    free_osiproc_g(proc);
+}
+
 // Handle a Linux read return. Extract the number of bytes read from EAX and
 // call the normalized read return.
 void linux_read_return(CPUState *cpu, target_ulong pc, uint32_t fd,
@@ -280,7 +293,14 @@ void linux_read_return(CPUState *cpu, target_ulong pc, uint32_t fd,
     }
 }
 
-bool init_plugin(void *self)
+void linux_pread_return(CPUState *cpu, target_ulong pc, uint32_t fd,
+                        uint32_t buf, uint32_t count, uint64_t pos)
+{
+    // Just call the regular linux read return
+    linux_read_return(cpu, pc, fd, buf, count);
+}
+
+    bool init_plugin(void *self)
 {
     // Parse arguments for file_taint
     panda_arg_list *args = panda_get_args("file_taint");
@@ -324,6 +344,8 @@ bool init_plugin(void *self)
         verbose_printf("file_taint: setting up Linux file read detection\n");
         PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter);
         PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return);
+        PPP_REG_CB("syscalls2", on_sys_pread64_enter, linux_pread_enter);
+        PPP_REG_CB("syscalls2", on_sys_pread64_return, linux_pread_return);
 
         panda_require("osi_linux");
         assert(init_osi_linux_api());
