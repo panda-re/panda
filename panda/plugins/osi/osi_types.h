@@ -3,7 +3,18 @@
  * @brief Base data types for PANDA OSI.
  */
 #pragma once
+#include <gmodule.h>
 #include "panda/types.h"
+
+/**
+ * @brief Minimal handle for a process. Contains a unique identifier \p asid
+ * and a pointer to guest memory \p task that can be used to retrieve the full
+ * details of the process.
+ */
+typedef struct osi_proc_handle {
+    target_ptr_t asid;
+    target_ptr_t task;
+} OsiProcHandle;
 
 typedef struct osi_page_struct {
     target_ptr_t start;

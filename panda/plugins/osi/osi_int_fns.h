@@ -1,11 +1,16 @@
-#ifndef __OSI_INT_FNS_H__
-#define __OSI_INT_FNS_H__
+#pragma once
 
 // returns operating system introspection info for each process in an array
 OsiProcs *get_processes(CPUState *env);
 
+// returns minimal handles for processes in an array
+GArray *get_process_handles(CPUState *env);
+
 // gets the currently running process
 OsiProc *get_current_process(CPUState *env);
+
+// gets the process pointed to by task
+OsiProc *get_process(CPUState *env, OsiProcHandle *h);
 
 // returns operating system introspection info for each kernel module currently loaded
 OsiModules *get_modules(CPUState *env);
@@ -23,4 +28,3 @@ void free_osiprocs(OsiProcs *ps);
 void free_osimodules(OsiModules *ms);
 void free_osithread(OsiThread *t);
 
-#endif

@@ -18,10 +18,12 @@
 
 
 typedef void OsiProc;
+typedef void OsiProcHandle;
 typedef void OsiProcs;
 typedef void OsiModules;
 typedef void CPUState;
 typedef void OsiThread;
+typedef void GArray;
 
 #include "osi_int_fns.h"
 

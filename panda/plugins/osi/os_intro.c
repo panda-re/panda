@@ -20,6 +20,7 @@ PANDAENDCOMMENT */
 // glib provides some nifty string manipulation functions
 // https://developer.gnome.org/glib/stable/glib-String-Utility-Functions.html
 #include <glib.h>
+#include <gmodule.h>
 #include <glib/gprintf.h>
 
 #include "panda/plugin.h"
@@ -39,7 +40,9 @@ int asid_changed(CPUState *, target_ulong, target_ulong);
 #endif
 
 PPP_PROT_REG_CB(on_get_processes)
+PPP_PROT_REG_CB(on_get_process_handles)
 PPP_PROT_REG_CB(on_get_current_process)
+PPP_PROT_REG_CB(on_get_process)
 PPP_PROT_REG_CB(on_get_modules)
 PPP_PROT_REG_CB(on_get_libraries)
 PPP_PROT_REG_CB(on_get_current_thread)
@@ -53,7 +56,9 @@ PPP_PROT_REG_CB(on_process_end)
 #endif
 
 PPP_CB_BOILERPLATE(on_get_processes)
+PPP_CB_BOILERPLATE(on_get_process_handles)
 PPP_CB_BOILERPLATE(on_get_current_process)
+PPP_CB_BOILERPLATE(on_get_process)
 PPP_CB_BOILERPLATE(on_get_modules)
 PPP_CB_BOILERPLATE(on_get_libraries)
 PPP_CB_BOILERPLATE(on_get_current_thread)
@@ -76,9 +81,21 @@ OsiProcs *get_processes(CPUState *cpu) {
     return p;
 }
 
+GArray *get_process_handles(CPUState *cpu) {
+    GArray *p = NULL;
+    PPP_RUN_CB(on_get_process_handles, cpu, &p);
+    return p;
+}
+
 OsiProc *get_current_process(CPUState *cpu) {
     OsiProc *p = NULL;
     PPP_RUN_CB(on_get_current_process, cpu, &p);
+    return p;
+}
+
+OsiProc *get_process(CPUState *cpu, OsiProcHandle *h) {
+    OsiProc *p = NULL;
+    PPP_RUN_CB(on_get_process, cpu, h, &p);
     return p;
 }
 
@@ -94,8 +111,7 @@ OsiModules *get_libraries(CPUState *cpu, OsiProc *p) {
     return m;
 }
 
-OsiThread *get_current_thread(CPUState *cpu)
-{
+OsiThread *get_current_thread(CPUState *cpu) {
     OsiThread *thread = NULL;
     PPP_RUN_CB(on_get_current_thread, cpu, &thread);
     return thread;
