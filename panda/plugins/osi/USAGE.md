@@ -18,10 +18,21 @@ Expressed graphically, this arrangement looks like:
 
 The key is that you can swap out the bottom layer to support a new operating system without needing to modify your plugin.
 
-Arguments
+Command Line Arguments
 ---------
 
-* `os`: the target os. Options can be seen in [common.c](/panda/src/common.c) or in the error message if you get the argument wrong, but in the correct format, e.g.: `-os windows-32-0`
+* `os`: The target os. This argument is validated against a list of regular expressions in [common.c][common.c]. For linux, the specified os must also match an existing kernel profile. See [osi_linux documentation][osi_linux_usage] for details.
+
+```C
+const char * valid_os_re[] = {
+    "windows[-_]32[-_]xpsp[23]",
+    "windows[-_]32[-_]7",
+    "windows[-_]32[-_]2000",
+    "linux[-_]32[-_].+",
+    "linux[-_]64[-_].+",
+    NULL
+};
+```
 
 Dependencies
 ------------
@@ -33,7 +44,9 @@ APIs and Callbacks
 
 To implement OS-specific introspection support, an OSI provider should register the following callbacks:
 
-Name: **on_get_processes**
+---
+
+Name: **on\_get\_processes**
 
 Signature:
 
@@ -43,7 +56,23 @@ typedef void (*on_get_processes_t)(CPUState *, OsiProcs **)
 
 Description: Called to get the process list from the guest OS. The implementation should allocate memory and fill in the pointer to an `OsiProcs` struct. The returned list can be freed with `on_free_osiprocs`.
 
-Name: **on_get_current_process**
+---
+
+Name: **on\_get\_process\_handles**
+
+Signature:
+
+```C
+typedef void (*on_get_process_handles_t)(CPUState *, GArray **)
+```
+
+Description: Retrieves an array of minimal handles of type `OsiProcHandle` for the processes of the guest OS. Using the process list from the guest OS. The minimal handles contain just enough information to (a) uniquely identify a process and (b) retrieve the full process information when needed. This allows for lightweight tracking of processes.
+
+Implementation should create and populate a [`GArray`][garray]. Similarly, the returned data have to be freed using the respective `GArray` deallocation function.
+
+---
+
+Name: **on\_get\_current\_process**
 
 Signature:
 
@@ -53,7 +82,21 @@ typedef void (*on_get_current_process_t)(CPUState *, OsiProc **)
 
 Description: Called to get the currently running process in the guest OS. The implementation should allocate memory and fill in the pointer to an `OsiProc` struct. The returned `OsiProc` can be freed with `on_free_osiproc`.
 
-Name: **on_get_current_thread**
+---
+
+Name: **on\_get\_process**
+
+Signature:
+
+```C
+typedef void (*on_get_process_t)(CPUState *, OsiProcHandle *, OsiProc **)
+```
+
+Description: Called to retrieve full process information about the process pointed to by `OsiProcHandle`. Implementation should allocate memory and fill in the pointer to an `OsiProc` struct. The returned `OsiProc` can be freed with `on_free_osiproc`.
+
+---
+
+Name: **on\_get\_current\_thread**
 
 Signature:
 
@@ -63,7 +106,9 @@ typedef void (*on_get_current_thread_t)(CPUState *, OsiThread **)
 
 Description: Called to retrieve the current thread from the guest OS. The implementation should allocate memory and fill in the pointer to an `OsiThread` struct. The returned `OsiThread` can be freed with `on_free_osithread`.
 
-Name: **on_get_modules**
+---
+
+Name: **on\_get\_modules**
 
 Signature:
 
@@ -73,7 +118,9 @@ typedef void (*on_get_modules_t)(CPUState *, OsiModules **)
 
 Description: Called to get the list of kernel modules loaded in the guest. The implementation should allocate memory and fill in the pointer to an `OsiModules` struct. The returned list can be freed with `on_free_osimodules`.
 
-Name: **on_get_libraries**
+---
+
+Name: **on\_get\_libraries**
 
 Signature:
 
@@ -83,7 +130,9 @@ typedef void (*on_get_libraries_t)(CPUState *, OsiProc *, OsiModules**)
 
 Description: Called to get the list of shared libraries loaded for some particular process in the guest. The process should be an `OsiProc` previously returned by `on_get_current_process` or `on_get_processes`. The implementation should allocate memory and fill in the pointer to an `OsiModules` struct. The returned list can be freed with `on_free_osimodules`.
 
-Name: **on_free_osiproc**
+---
+
+Name: **on\_free\_osiproc**
 
 Signature:
 
@@ -93,7 +142,9 @@ typedef void (*on_free_osiproc_t)(OsiProc *p)`
 
 Description: Frees an `OsiProc` struct. You only need to implement this if you use a custom memory allocator (instead of the default malloc/free) in your plugin.
 
-Name: **on_free_osiprocs**
+---
+
+Name: **on\_free\_osiprocs**
 
 Signature:
 
@@ -103,7 +154,9 @@ typedef void (*on_free_osiprocs_t)(OsiProcs *ps)
 
 Description: Frees an `OsiProcs` struct. You only need to implement this if you use a custom memory allocator (instead of the default malloc/free) in your plugin.
 
-Name: **on_free_osimodules**
+---
+
+Name: **on\_free\_osimodules**
 
 Signature:
 
@@ -117,7 +170,9 @@ Description: Frees an `OsiModules` structure. You only need to implement this if
 
 In addition, there are two callbacks intended to be used by `osi` *users*, rather than by introspection providers:
 
-Name: **on_process_start**
+---
+
+Name: **on\_process\_start**
 
 Signature:
 
@@ -130,7 +185,9 @@ This callback is **disabled by default** because it requires a fair amount of co
 To enable/use this callback you need to have used the `-DOSI_PROC_EVENTS` flag at compile time.
 
 
-Name: **on_process_end**
+---
+
+Name: **on\_process\_end**
 
 Signature:
 
@@ -194,3 +251,9 @@ Example
 -------
 
 The `osi` plugin is not very useful on its own. If you want to see an example of how to use when writing your own plugins, have a look at [osi_test](/panda/plugins/osi_test/).
+
+
+<!-- place all urls here -->
+[common.c]: /panda/src/common.c
+[osi_linux_usage]: /panda/plugins/osi_linux/USAGE.md
+[garray]: https://developer.gnome.org/glib/stable/glib-Arrays.html
