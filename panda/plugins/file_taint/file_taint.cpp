@@ -246,7 +246,8 @@ void windows_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
     } else if (io_status_block.status == STATUS_SUCCESS) {
         read_return(FileHandle, io_status_block.information, Buffer);
     } else {
-        printf("file_taint  read_return: detected read failure, ignoring\n");
+        printf("file_taint windows_read_return: detected read failure, "
+               "ignoring\n");
     }
 }
 #endif
@@ -300,6 +301,9 @@ void linux_read_return(CPUState *cpu, target_ulong pc, uint32_t fd,
 #endif
     if (actually_read != -1) {
         read_return(fd, actually_read, buffer);
+    } else {
+        printf("file_taint linux_read_return: detected read failure, "
+               "ignoring.\n");
     }
 }
 
