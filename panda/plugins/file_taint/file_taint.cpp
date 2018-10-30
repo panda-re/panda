@@ -288,10 +288,15 @@ void linux_read_return(CPUState *cpu, target_ulong pc, uint32_t fd,
                        uint32_t buffer, uint32_t count)
 {
     ssize_t actually_read = 0;
-#ifdef TARGET_I386
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     // EAX has the number of bytes read.
     actually_read = env->regs[R_EAX];
+#else
+    fprintf(
+        stderr,
+        "WARNING: file_taint only supports 32-bit x86 Linux and Windows.\n");
+    return;
 #endif
     if (actually_read != -1) {
         read_return(fd, actually_read, buffer);
