@@ -51,4 +51,10 @@ syscall_info_t __syscall_info_a[] = {
 	{%- endfor %}
 };
 
+syscall_meta_t __syscall_meta = {
+	.max = MAX_SYSCALL_NO,
+	.max_generic = MAX_SYSCALL_GENERIC_NO,
+	.max_args = MAX_SYSCALL_ARGS
+};
+
 /* vim: set tabstop=4 softtabstop=4 noexpandtab ft=c: */

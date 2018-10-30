@@ -153,7 +153,7 @@ void panda_set_os_name(char *os_name) {
 
     // set os name and split it
     panda_os_name = g_strdup(os_name);
-    gchar **osparts = g_strsplit(panda_os_name, "-", 3);
+    gchar **osparts = g_strsplit_set(panda_os_name, "-_", 3);
 
     // set os type
     if (0 == g_ascii_strncasecmp("windows", osparts[0], strlen("windows"))) { panda_os_familyno = OS_WINDOWS; }

@@ -35,14 +35,6 @@ struct kernelinfo_errors {
 #define PANDA_MSG
 #endif
 
-/**
- *  @brief Debug macros - copied from osi_linux.h.
- */
-#define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
-#define LOG_ERROR(fmt, args...) fprintf(stderr, PANDA_MSG "ERROR:%s:%s() " fmt "\n", __FILENAME__, __func__, ## args)
-#define LOG_WARN(fmt, args...)  fprintf(stderr, PANDA_MSG "WARN:%s:%s() "  fmt "\n", __FILENAME__, __func__, ## args)
-#define LOG_INFO(fmt, args...)  fprintf(stderr, PANDA_MSG "INFO:%s:%s() "  fmt "\n", __FILENAME__, __func__, ## args)
-
 /*!
  * @brief Wrapper for reading information from keyfile and handle errors.
  */
