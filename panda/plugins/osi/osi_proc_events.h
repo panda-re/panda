@@ -1,20 +1,11 @@
 #pragma once
 #include "panda/plugin.h"
+#include "panda/common.h"
 #include "osi_types.h"
-
-/*!
- * @brief Branch prediction hint macros.
- */
-#define likely(x)       __builtin_expect(!!(x), 1)
-#define unlikely(x)     __builtin_expect(!!(x), 0)
 
 /*!
  * @brief Debug macros.
  */
-#define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
-#define LOG_ERROR(fmt, args...)	fprintf(stderr, PANDA_MSG "(ERROR:%s:%s) " fmt "\n", __FILENAME__, __func__, ## args)
-#define LOG_WARN(fmt, args...)	fprintf(stderr, PANDA_MSG "(WARN:%s:%s) "  fmt "\n", __FILENAME__, __func__, ## args)
-#define LOG_INFO(fmt, args...)	fprintf(stderr, PANDA_MSG "(INFO:%s:%s) "  fmt "\n", __FILENAME__, __func__, ## args)
 #define PRINT_CONTAINER(c, fmt, args...) do{\
 	int _l = 0;\
 	LOG_INFO("------- " #c " start -------");\

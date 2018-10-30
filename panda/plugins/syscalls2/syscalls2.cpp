@@ -21,15 +21,12 @@ PANDAENDCOMMENT */
 #include <cassert>
 #include <functional>
 #include <string>
-#include <map>
-#include <set>
 #include <algorithm>
 #include <memory>
 #include <vector>
 #include <iostream>
 
 #include "syscalls2.h"
-#include "syscalls_common.h"
 #include "syscalls2_info.h"
 
 bool translate_callback(CPUState *cpu, target_ulong pc);
@@ -38,7 +35,6 @@ int exec_callback(CPUState *cpu, target_ulong pc);
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
-
 void registerExecPreCallback(void (*callback)(CPUState*, target_ulong));
 
 // PPP code
@@ -56,17 +52,17 @@ int32_t get_return_s32_generic(CPUState *cpu, uint32_t argnum);
 int64_t get_return_s64_generic(CPUState *cpu, uint32_t argnum);
 target_long get_return_val_x86(CPUState *cpu);
 target_long get_return_val_arm(CPUState *cpu);
-uint32_t get_return_32_windows_x86 (CPUState *cpu, uint32_t argnum);
+uint32_t get_return_32_windows_x86(CPUState *cpu, uint32_t argnum);
 uint64_t get_return_64_windows_x86(CPUState *cpu, uint32_t argnum);
 uint64_t get_64_linux_x86(CPUState *cpu, uint32_t argnum);
 uint64_t get_64_linux_arm(CPUState *cpu, uint32_t argnum);
 uint64_t get_64_windows_x86(CPUState *cpu, uint32_t argnum);
-uint32_t get_32_linux_x86 (CPUState *cpu, uint32_t argnum);
-uint32_t get_32_linux_arm (CPUState *cpu, uint32_t argnum);
-uint32_t get_32_windows_x86 (CPUState *cpu, uint32_t argnum);
-target_ulong calc_retaddr_windows_x86(CPUState* cpu, target_ulong pc);
-target_ulong calc_retaddr_linux_x86(CPUState* cpu, target_ulong pc);
-target_ulong calc_retaddr_linux_arm(CPUState* cpu, target_ulong pc);
+uint32_t get_32_linux_x86(CPUState *cpu, uint32_t argnum);
+uint32_t get_32_linux_arm(CPUState *cpu, uint32_t argnum);
+uint32_t get_32_windows_x86(CPUState *cpu, uint32_t argnum);
+target_ulong calc_retaddr_windows_x86(CPUState *cpu, target_ulong pc);
+target_ulong calc_retaddr_linux_x86(CPUState *cpu, target_ulong pc);
+target_ulong calc_retaddr_linux_arm(CPUState *cpu, target_ulong pc);
 
 enum ProfileType {
     PROFILE_LINUX_X86,
@@ -80,7 +76,7 @@ enum ProfileType {
 
 struct Profile {
     void         (*enter_switch)(CPUState *, target_ulong);
-    void         (*return_switch)(CPUState *, target_ulong, target_ulong, ReturnPoint &);
+    void         (*return_switch)(CPUState *, target_ulong, int, const syscall_ctx_t *);
     target_long  (*get_return_val )(CPUState *);
     target_ulong (*calc_retaddr )(CPUState *, target_ulong);
     uint32_t     (*get_32 )(CPUState *, uint32_t);
@@ -410,7 +406,7 @@ uint64_t get_return_64_windows_x86(CPUState *cpu, uint32_t argnum) {
 }
 
 // Wrappers
-target_long  get_return_val (CPUState *cpu) {
+target_long get_return_val (CPUState *cpu) {
     return syscalls_profile->get_return_val(cpu);
 }
 target_ulong calc_retaddr (CPUState *cpu, target_ulong pc) {
@@ -463,30 +459,30 @@ void registerExecPreCallback(void (*callback)(CPUState*, target_ulong)){
     preExecCallbacks.push_back(callback);
 }
 
-// always return to same process
-static std::map < std::pair < target_ulong, target_ulong >, ReturnPoint > returns;
+/**
+ * @brief Map holding the context of ongoing system calls. An unfinished
+ * system call can be uniquely identified by its return address and the
+ * asid of the process that invoked it. This pair is used as the key to
+ * the map.
+ */
+context_map_t running_syscalls;
 
-void appendReturnPoint(ReturnPoint &rp){
-    returns[std::make_pair(rp.retaddr,rp.proc_id)] = rp;
-}
-
-
-#if defined (TARGET_PPC) 
+#if defined(TARGET_PPC)
 #else
-static int returned_check_callback(CPUState *cpu, TranslationBlock* tb){
-    // check if any of the internally tracked syscalls has returned
-    // only one should be at its return point for any given basic block
-    std::pair < target_ulong, target_ulong > ret_key = std::make_pair(tb->pc, panda_current_asid(cpu));
-    if (returns.count(ret_key) != 0) {
-        ReturnPoint &retVal = returns[ret_key];
-        syscalls_profile->return_switch(cpu, tb->pc, retVal.ordinal, retVal);
-        // used by remove_if to delete from returns list those values
-        // that have been processed
-        //        retVal.retaddr = retVal.proc_id = 0;
-        returns.erase(ret_key);
+/**
+ * @brief Checks if the translation block that is about to be executed
+ * matches the return address of an executing system call.
+ */
+static int tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
+    auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
+    size_t ctx_count = running_syscalls.count(k);
+    if (ctx_count > 0) {
+        assert(ctx_count == 1);
+        syscall_ctx_t &ctx = running_syscalls[k];
+        syscalls_profile->return_switch(cpu, tb->pc, ctx.no, &ctx);
+        running_syscalls.erase(k);
     }
-
-    return false;
+    return 0;
 }
 #endif
 
@@ -638,7 +634,7 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_INSN_TRANSLATE, pcb);
     pcb.insn_exec = exec_callback;
     panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb);
-    pcb.before_block_exec = returned_check_callback;
+    pcb.before_block_exec = tb_check_syscall_return;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 
     // load system call info

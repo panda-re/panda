@@ -131,7 +131,10 @@ static void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr) {
 	p->ppid = get_real_parent_pid(env, task_addr);
 	p->pages = NULL; // OsiPage - TODO
 
-	p->asid = get_pgd(env, task_addr);
+	// task_struct contains the virtual address of the pgd
+	// Convert it to physycal, so it can be directly matched with the value
+	// of the pgd register.
+	p->asid = panda_virt_to_phys(env, get_pgd(env, task_addr));
 }
 
 /**

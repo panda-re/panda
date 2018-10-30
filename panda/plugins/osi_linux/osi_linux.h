@@ -21,11 +21,6 @@
 /**
  *  @brief Debug macros.
  */
-#define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
-#define LOG_ERROR(fmt, args...) fprintf(stderr, PANDA_MSG "ERROR:%s:%s() " fmt "\n", __FILENAME__, __func__, ## args)
-#define LOG_WARN(fmt, args...)  fprintf(stderr, PANDA_MSG "WARN:%s:%s() "  fmt "\n", __FILENAME__, __func__, ## args)
-#define LOG_INFO(fmt, args...)  fprintf(stderr, PANDA_MSG "INFO:%s:%s() "  fmt "\n", __FILENAME__, __func__, ## args)
-#define LN printf("@%s:%03d\n", __FILENAME__, __LINE__)
 #define HEXDUMP(_buf, _size, _base) \
 	{ \
 		uintptr_t _b = (uintptr_t)_base; \
@@ -36,7 +31,7 @@
 			_i++; \
 			if (_i % 16 == 0) { printf("\n"); continue; } \
 			else if (_i % 8 == 0) { printf("  "); continue; } \
-		    else { printf(" "); } \
+			else { printf(" "); } \
 		} \
 		if (_size % 16 != 0) { printf("\n"); } \
 	}
@@ -52,21 +47,6 @@
  */
 #define TS_LEADER(env, ts) ((get_pid(env, ts) == get_tgid(env, ts)) ? 1 : 0)
 #define TS_LEADER_CHR(env, ts) (TS_LEADER(env, ts_current) ? 'L' : 'F')
-
-/**
- * @brief Pointer type of the guest VM.
- *
- * @note This definition implies that the guest VM pointer size matches the
- * size of unsigned long of the target processor. This is a reasonable
- * assumption to make -- at least in the context of a research prototype.
- */
-typedef target_ulong target_ptr_t;
-
-/** @brief Print format for guest VM pointers. */
-#define TARGET_PTR_FMT TARGET_FMT_lx
-
-/** @brief Print format for guest VM pids. */
-#define TARGET_FMT_PID "%d"
 
 /** @brief Marker for dynamic names. */
 #define DNAME_MARK "§"

@@ -7,10 +7,38 @@
  * infrequently called are decalred here and defined in `src/common.c`.
  */
 #pragma once
+#if !defined(__cplusplus)
 #include <stdint.h>
 #include <stdbool.h>
+#else
+#include <cstdint>
+#include <cstdbool>
+#endif
 #include "cpu.h"
 #include "exec/address-spaces.h"
+#include "panda/types.h"
+
+/**
+ * @brief Branch predition hint macros.
+ */
+#if !defined(likely)
+#define likely(x) __builtin_expect(!!(x), 1)
+#endif
+#if !defined(unlikely)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+#endif
+
+/**
+ * @brief Wrapper macro for quashing warnings for unused variables.
+ */
+#if defined(UNUSED)
+#elif defined(__GNUC__)
+#define UNUSED(x) UNUSED_ ## x __attribute__((unused))
+#elif defined(__LCLINT__)
+#define UNUSED(x) /*@unused@*/ x
+#else
+#define UNUSED(x) x
+#endif
 
 #ifdef __cplusplus
 extern "C" {

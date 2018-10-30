@@ -21,9 +21,9 @@ PLUGIN_OBJ_FILES=$(PLUGIN_OBJ_DIR)/kernelinfo_read.o
 # QEMU_CFLAGS += -DOSI_MAX_PROC=256
 
 ### Recipes.
-$(PLUGIN_OBJ_DIR)/kernelinfo_read.o: $(PLUGIN_SRC_DIR)/utils/kernelinfo/kernelinfo_read.c
+$(PLUGIN_OBJ_DIR)/kernelinfo_read.o: $(PLUGIN_SRC_DIR)/utils/kernelinfo/kernelinfo_read.c $(PLUGIN_SRC_DIR)/utils/kernelinfo/kernelinfo.h
 	@[ -d  $(dir $@) ] || mkdir -p $(dir $@)
-	$(call quiet-command,$(CC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) -c -o $@ $^,"UTIL CC $(TARGET_DIR)$@")
+	$(call quiet-command,$(CC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) -c -o $@ $<,"UTIL CC $(TARGET_DIR)$@")
 
 $(PLUGIN_OBJ_DIR)/kernelinfo.conf: $(PLUGIN_SRC_DIR)/kernelinfo.conf
 	$(call quiet-command,cp $< $@,"CP      $(TARGET_DIR)$@")
