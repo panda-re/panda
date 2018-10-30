@@ -267,6 +267,9 @@ bool PandaTaintFunctionPass::runOnFunction(Function &F) {
             F.getName().startswith("taint")) { // already processed!!
         return false;
     }
+    // Avoid Instrumentation in helper functions
+    if (F.getName().startswith("helper_panda_"))
+        return false;
     //printf("Processing entry BB...\n");
     PTV.visitFunction(F);
     for (BasicBlock &BB : F) {
