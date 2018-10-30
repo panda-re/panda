@@ -348,17 +348,20 @@ void linux_pread_return(CPUState *cpu, target_ulong pc, uint32_t fd,
     // OS specific setup
     switch (panda_os_familyno) {
     case OS_WINDOWS: {
-#ifdef TARGET_I386
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
         verbose_printf("file_taint: setting up Windows file read detection\n");
         PPP_REG_CB("syscalls2", on_NtReadFile_enter, windows_read_enter);
         PPP_REG_CB("syscalls2", on_NtReadFile_return, windows_read_return);
 
         panda_require("wintrospection");
         assert(init_wintrospection_api());
+#else
+        fprintf(stderr, "ERROR: Windows is only supported on x86 (32-bit)\n");
+        return false;
 #endif
     } break;
     case OS_LINUX: {
-#ifndef TARGET_PPC
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
         verbose_printf("file_taint: setting up Linux file read detection\n");
         PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter);
         PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return);
@@ -367,6 +370,9 @@ void linux_pread_return(CPUState *cpu, target_ulong pc, uint32_t fd,
 
         panda_require("osi_linux");
         assert(init_osi_linux_api());
+#else
+        fprintf(stderr, "ERROR: Linux is only supported on x86 (32-bit)\n");
+        return false;
 #endif
     } break;
     default: {
