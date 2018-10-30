@@ -412,7 +412,12 @@ bool is_irrelevant(int64_t offset) {
         cpu_contains(fpregs, offset) ||
         cpu_contains(xmm_regs, offset) ||
         cpu_contains(xmm_t0, offset) ||
-        cpu_contains(mmx_t0, offset);
+        cpu_contains(mmx_t0, offset) ||
+        cpu_contains(cc_dst, offset) ||
+        cpu_contains(cc_src, offset) ||
+        cpu_contains(cc_src2, offset) ||
+        cpu_contains(cc_op, offset) ||
+        cpu_contains(df, offset);
     return !relevant;
 #else
     return offset < 0 || (size_t)offset >= sizeof(CPUArchState);
