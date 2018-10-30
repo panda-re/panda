@@ -33,6 +33,7 @@ Arguments
 * `end`: ulong, the last offset in the file to label.
 * `label`: the uniform label to use if positional taint is off (defaults to 0xF11E).
 * `verbose`: enables some extra output for debugging, sanity checks.
+* `pread_bits_64`: Treat the offset passed to pread as a 64-bit signed integer (Linux specific). If the binary under analysis was compiled with _FILE_OFFSET_BITS=64, then its possible that this flag needs to be set. See: https://www.gnu.org/software/libc/manual/html_node/I_002fO-Primitives.html
 
 Dependencies
 ------------

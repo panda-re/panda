@@ -46,6 +46,7 @@ static uint64_t max_byte_count = 1000000;
 static bool positional = false;
 static uint32_t static_label = 0xF11E;
 static bool verbose = false;
+static bool pread_bits_64 = false;
 
 // Number of bytes tainted, used for the max_byte_count option.
 static uint64_t tainted_byte_count = 0;
@@ -272,7 +273,11 @@ void linux_pread_enter(CPUState *cpu, target_ulong pc, uint32_t fd,
     OsiProc *proc = get_current_process(cpu);
     // The filename in Linux should always be absolute.
     char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
-    read_enter(filename, fd, pos);
+    if (pread_bits_64) {
+        read_enter(filename, fd, pos);
+    } else {
+        read_enter(filename, fd, (int32_t)pos);
+    }
     free(filename);
     free_osiproc_g(proc);
 }
@@ -318,6 +323,10 @@ void linux_pread_return(CPUState *cpu, target_ulong pc, uint32_t fd,
     static_label = panda_parse_uint32_opt(
         args, "label", 0xF11E, "the label to use (for non-positional labels)");
     verbose = panda_parse_bool_opt(args, "verbose", "enable verbose output");
+    pread_bits_64 =
+        panda_parse_bool_opt(args, "pread_bits_64",
+                             "Assume the offset passed to pread is a signed "
+                             "64-bit integer (Linux specific)");
 
     // Setup dependencies
     panda_require("syscalls2");
