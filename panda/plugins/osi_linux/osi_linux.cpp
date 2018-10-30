@@ -6,24 +6,18 @@
  * @copyright This work is licensed under the terms of the GNU GPL, version 2.
  * See the COPYING file in the top-level directory.
  */
-
-#define __STDC_FORMAT_MACROS
-
+#include <cstdio>
+#include <cstdlib>
+#include <cerrno>
 #include <map>
+#include <glib.h>
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
-
 #include "osi/osi_types.h"
 #include "osi/os_intro.h"
-
-#include <glib.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-
-#include "utils/kernelinfo/kernelinfo.h"	/* must come after cpu.h, glib.h */
-#include "osi_linux.h"						/* must come after kernelinfo.h */
+#include "utils/kernelinfo/kernelinfo.h"
+#include "osi_linux.h"
 
 /*
  * Functions interfacing with QEMU/PANDA should be linked as C.
@@ -32,18 +26,19 @@
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
-
 #include "osi_linux_int_fns.h"
 }
 
+void on_get_processes(CPUState *env, OsiProcs **out);
+void on_get_process_handles(CPUState *env, GArray **out);
 void on_get_current_process(CPUState *env, OsiProc **out_p);
-void on_get_processes(CPUState *env, OsiProcs **out_ps);
+void on_get_process(CPUState *, OsiProcHandle *, OsiProc **);
+void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms);
 void on_get_current_thread(CPUState *env, OsiThread *t);
 void on_free_osiproc(OsiProc *p);
 void on_free_osiprocs(OsiProcs *ps);
-void on_free_osithread(OsiThread *t);
-void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms);
 void on_free_osimodules(OsiModules *ms);
+void on_free_osithread(OsiThread *t);
 
 struct kernelinfo ki;
 
@@ -81,7 +76,6 @@ static uint64_t get_file_position(CPUState *env, target_ptr_t file_struct) {
 	return get_file_pos(env, file_struct);
 }
 
-
 static target_ptr_t get_file_struct_ptr(CPUState *env, target_ptr_t task_struct, int fd) {
 	target_ptr_t files = get_files(env, task_struct);
 	target_ptr_t fds = get_files_fds(env, files);
@@ -109,14 +103,14 @@ static char *get_fd_name(CPUState *env, target_ptr_t task_struct, int fd) {
 	return get_file_name(env, fd_file);
 }
 
-#define INVALID_FILE_POS (-1)
-
+/**
+ * @brief Retrieves the current offset of a file descriptor.
+ */
 static uint64_t get_fd_pos(CPUState *env, target_ptr_t task_struct, int fd) {
 	target_ptr_t fd_file = get_file_struct_ptr(env, task_struct, fd);
 	if (fd_file == (target_ptr_t)NULL) return ((uint64_t) INVALID_FILE_POS);
 	return get_file_position(env, fd_file);
 }
-
 
 /**
  * @brief Fills an OsiProc struct. Any existing contents are overwritten.
@@ -124,12 +118,11 @@ static uint64_t get_fd_pos(CPUState *env, target_ptr_t task_struct, int fd) {
 static void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr) {
 	memset(p, 0, sizeof(OsiProc));
 
-	p->offset = task_addr; // XXX: Not sure what this is. Storing task_addr here
-	// seems logical.
+	p->offset = task_addr;  // XXX: bad. that's not the offset.
 	p->name = get_name(env, task_addr, p->name);
 	p->pid = get_tgid(env, task_addr);
 	p->ppid = get_real_parent_pid(env, task_addr);
-	p->pages = NULL; // OsiPage - TODO
+	p->pages = NULL;  // OsiPage - TODO
 
 	// task_struct contains the virtual address of the pgd
 	// Convert it to physycal, so it can be directly matched with the value
@@ -151,17 +144,17 @@ static void fill_osimodule(CPUState *env, OsiModule *m, target_ptr_t vma_addr) {
 	vma_vm_file = get_vma_vm_file(env, vma_addr);
 
 	// Fill everything but m->name and m->file.
-	m->offset = vma_addr;	// XXX: Not sure what this is. Storing vma_addr here seems logical.
+	m->offset = vma_addr;
 	m->base = vma_start;
 	m->size = vma_end - vma_start;
 
-	if (vma_vm_file != (target_ptr_t)NULL) {	 // Memory area is mapped from a file.
+	if (vma_vm_file !=
+		(target_ptr_t)NULL) {  // Memory area is mapped from a file.
 		vma_dentry = get_vma_dentry(env, vma_addr);
 		m->file = read_dentry_name(env, vma_dentry);
-		m->name = g_strrstr (m->file, "/");
+		m->name = g_strrstr(m->file, "/");
 		if (m->name != NULL) m->name = g_strdup(m->name + 1);
-	}
-	else {					// Other memory areas.
+	} else {  // Other memory areas.
 		mm_addr = get_vma_vm_mm(env, vma_addr);
 		start_brk = get_mm_start_brk(env, mm_addr);
 		brk = get_mm_brk(env, mm_addr);
@@ -170,11 +163,9 @@ static void fill_osimodule(CPUState *env, OsiModule *m, target_ptr_t vma_addr) {
 		m->file = NULL;
 		if (vma_start <= start_brk && vma_end >= brk) {
 			m->name = g_strdup("[heap]");
-		}
-		else if (vma_start <= start_stack && vma_end >= start_stack) {
+		} else if (vma_start <= start_stack && vma_end >= start_stack) {
 			m->name = g_strdup("[stack]");
-		}
-		else {
+		} else {
 			m->name = g_strdup("[???]");
 		}
 	}
@@ -183,35 +174,16 @@ static void fill_osimodule(CPUState *env, OsiModule *m, target_ptr_t vma_addr) {
 /**
  * @brief Fills an OsiThread struct. Any existing contents are overwritten.
  */
-static void fill_osithread(CPUState *env, OsiThread *t, target_ptr_t task_addr)
-{
-    memset(t, 0, sizeof(*t));
-
-    t->tid = get_pid(env, task_addr);
-    t->pid = get_tgid(env, task_addr);
+static void fill_osithread(CPUState *env, OsiThread *t,
+						   target_ptr_t task_addr) {
+	memset(t, 0, sizeof(*t));
+	t->tid = get_pid(env, task_addr);
+	t->pid = get_tgid(env, task_addr);
 }
 
 /* ******************************************************************
  PPP Callbacks
 ****************************************************************** */
-
-/**
- * @brief PPP callback to retrieve current process info for the running OS.
- */
-void on_get_current_process(CPUState *env, OsiProc **out_p) {
-	OsiProc *p = NULL;
-	target_ptr_t kernel_esp = panda_current_sp(env);
-	target_ptr_t ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
-
-	if (ts) {
-		// valid task struct
-		// got a reasonable looking process.
-		// return it and save in cache
-		p = (OsiProc *)g_malloc(sizeof(OsiProc));
-		fill_osiproc(env, p, ts);
-	}
-	*out_p = p;
-}
 
 /**
  * @brief PPP callback to retrieve process list from the running OS.
@@ -221,7 +193,7 @@ void on_get_current_process(CPUState *env, OsiProc **out_p) {
  * cases. E.g. it doesn't explain why some inifnite loop cases manifest.
  * Avoiding these infinite loops was mostly a trial+error process.
  */
-void on_get_processes(CPUState *env, OsiProcs **out_ps) {
+void on_get_processes(CPUState *env, OsiProcs **out) {
 	target_ptr_t ts_first, ts_current;
 	OsiProcs *ps;
 	OsiProc *p;
@@ -299,7 +271,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 	// memory read error
 	if (ts_current == (target_ptr_t)NULL) goto error1;
 
-	*out_ps = ps;
+	*out = ps;
 	return;
 
 error1:
@@ -310,27 +282,36 @@ error1:
 	g_free(ps->proc);
 	g_free(ps);
 error0:
-	*out_ps = NULL;
+	*out = NULL;
 	return;
 }
 
 /**
- * @brief PPP callback to retrieve current thread
+ * @brief PPP callback to retrieve process handles from the running OS.
  */
-void on_get_current_thread(CPUState *env, OsiThread **out_t)
-{
-	OsiThread *t = NULL;
+void on_get_process_handles(CPUState *env, GArray **out) {
+
+}
+
+/**
+ * @brief PPP callback to retrieve current process info for the running OS.
+ */
+void on_get_current_process(CPUState *env, OsiProc **out) {
+	OsiProc *p = NULL;
 	target_ptr_t kernel_esp = panda_current_sp(env);
 	target_ptr_t ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
-
 	if (ts) {
-		// valid task struct
-		// got a reasonable looking process.
-		// return it and save in cache
-		t = (OsiThread *)g_malloc(sizeof(*t));
-		fill_osithread(env, t, ts);
+		p = (OsiProc *)g_malloc(sizeof(OsiProc));
+		fill_osiproc(env, p, ts);
 	}
-	*out_t = t;
+	*out = p;
+}
+
+/**
+ * @brief PPP callback to retrieve info about a running process using its
+ * handle.
+ */
+void on_get_process(CPUState *env, OsiProcHandle *h, OsiProc **out) {
 }
 
 /**
@@ -415,6 +396,20 @@ pid_found:
 error0:
 	*out_ms = NULL;
 	return;
+}
+
+/**
+ * @brief PPP callback to retrieve current thread.
+ */
+void on_get_current_thread(CPUState *env, OsiThread **out) {
+	OsiThread *t = NULL;
+	target_ptr_t kernel_esp = panda_current_sp(env);
+	target_ptr_t ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+	if (ts) {
+		t = (OsiThread *)g_malloc(sizeof(OsiThread));
+		fill_osithread(env, t, ts);
+	}
+	*out = t;
 }
 
 /**
@@ -601,14 +596,16 @@ bool init_plugin(void *self) {
 	g_free(kconf_file);
 	g_free(kconf_group);
 
-	PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
 	PPP_REG_CB("osi", on_get_processes, on_get_processes);
+	PPP_REG_CB("osi", on_get_process_handles, on_get_process_handles);
+	PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
+	PPP_REG_CB("osi", on_get_process, on_get_process);
+	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
 	PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
 	PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
 	PPP_REG_CB("osi", on_free_osiprocs, on_free_osiprocs);
-	PPP_REG_CB("osi", on_free_osithread, on_free_osithread);
-	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
 	PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
+	PPP_REG_CB("osi", on_free_osithread, on_free_osithread);
 	LOG_INFO(PLUGIN_NAME " initialization complete.");
 	return true;
 #else
