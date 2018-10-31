@@ -25,21 +25,12 @@ reader = csv.reader(input_file)
 next(reader, None)
 for row in reader:
     pid = int(row[0])
-    pc = int(row[1])
+    tb_pc = int(row[1])
+    tb_size = int(row[2])
     if pid != selected_pid:
         continue
-    fn = idaapi.get_func(pc)
-    if not fn:
-        continue
-    fc = idaapi.FlowChart(fn)
-    bb = None
-    for blk in fc:
-        if blk.startEA <= pc and blk.endEA > pc:
-           bb = blk
-    while not (idaapi.is_call_insn(pc-1) or
-               idaapi.is_ret_insn(pc-1) or
-               idaapi.is_indirect_jump_insn(pc-1) or
-               pc == bb.endEA):  
-        SetColor(pc, CIC_ITEM, COLOR)
-        pc += 1
+    i = 0
+    while tb_pc+i < tb_pc+tb_size:
+        SetColor(tb_pc+i, CIC_ITEM, COLOR)
+        i += 1
 input_file.close()

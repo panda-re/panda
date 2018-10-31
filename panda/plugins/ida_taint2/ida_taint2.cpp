@@ -36,6 +36,8 @@ struct PidPcPair {
     target_ulong pc;
 };
 
+static TranslationBlock *current_tb = NULL;
+
 // Inject the hash function for PidPcPair into the std namespace, allows us to
 // store PidPcPair in an unordered set.
 namespace std
@@ -84,8 +86,15 @@ void taint_state_changed(Addr a, uint64_t size)
     // file.
     if (num_tainted && seen.find(p) == seen.end()) {
         seen.insert(p);
-        fprintf(pidpclog, "%lu,%lu\n", (uint64_t)p.pid, (uint64_t)p.pc);
+        fprintf(pidpclog, "%lu,%lu,%lu\n", (uint64_t)p.pid,
+                (uint64_t)current_tb->pc, (uint64_t)current_tb->size);
     }
+}
+
+int before_block_exec(CPUState *cpu, TranslationBlock *tb)
+{
+    current_tb = tb;
+    return 0;
 }
 
 bool init_plugin(void *self)
@@ -107,7 +116,12 @@ bool init_plugin(void *self)
 
     // Open up a CSV file and write the header.
     pidpclog = fopen(filename, "w");
-    fprintf(pidpclog, "pid,pc\n");
+    fprintf(pidpclog, "pid,tb_pc,tb_size\n");
+
+    // Register before block exec so we can track the translation block
+    panda_cb pcb;
+    pcb.before_block_exec = before_block_exec;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 
     return true;
 }
