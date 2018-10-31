@@ -86,6 +86,9 @@ void taint_state_changed(Addr a, uint64_t size)
     // file.
     if (num_tainted && seen.find(p) == seen.end()) {
         seen.insert(p);
+
+        // It should not be possible for current_tb to be null.
+        assert(current_tb != NULL);
         fprintf(pidpclog, "%lu,%lu,%lu\n", (uint64_t)p.pid,
                 (uint64_t)current_tb->pc, (uint64_t)current_tb->size);
     }
