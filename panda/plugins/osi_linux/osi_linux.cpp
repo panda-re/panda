@@ -93,7 +93,6 @@ static target_ptr_t get_file_struct_ptr(CPUState *env, target_ptr_t task_struct,
 	return fd_file;
 }
 
-
 /**
  * @brief Resolves a file struct and returns its full pathname.
  */
@@ -110,6 +109,102 @@ static uint64_t get_fd_pos(CPUState *env, target_ptr_t task_struct, int fd) {
 	target_ptr_t fd_file = get_file_struct_ptr(env, task_struct, fd);
 	if (fd_file == (target_ptr_t)NULL) return ((uint64_t) INVALID_FILE_POS);
 	return get_file_position(env, fd_file);
+}
+
+/**
+ * @brief Template function for extracting data for all running processes.
+ * This can be used to quickly implement extraction of partial process
+ * information without having to rewrite the process list traversal
+ * code.
+ */
+template <typename ET>
+void get_process_info(CPUState *env, GArray **out,
+					  void (*element_fill)(CPUState *, ET *, target_ptr_t),
+					  void (*element_free)(ET *)) {
+	ET element;
+	target_ptr_t ts_first, ts_current;
+	target_ptr_t UNUSED(tg_first), UNUSED(tg_next);
+
+	// prepare return array
+	if (*out == NULL) {
+		// g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
+		*out = g_array_sized_new(false, false, sizeof(ET), 128);
+	}
+	else {
+		// destroy contents but keep allocated storage
+		g_array_free(*out, false);
+	}
+	if (element_free != NULL) {
+		g_array_set_clear_func(*out, (GDestroyNotify)element_free);
+	}
+
+#if defined(OSI_LINUX_LIST_FROM_INIT)
+	// Start process enumeration from the init task.
+	ts_first = ki.task.init_addr;
+#else
+	// Start process enumeration (roughly) from the current task. This is the default.
+	target_ptr_t kernel_esp = panda_current_sp(env);
+	ts_first = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+
+	// To avoid infinite loops, we need to actually start traversal from the next
+	// process after the thread group leader of the current task.
+	ts_first = get_group_leader(env, ts_first);
+	ts_first = get_task_struct_next(env, ts_first);
+#endif
+
+	ts_current = ts_first;
+	if (ts_first == (target_ptr_t)NULL) goto error;
+#if defined(OSI_LINUX_PSDEBUG)
+	LOG_INFO("START %c:%c " TARGET_PTR_FMT " " TARGET_PTR_FMT, TS_THREAD_CHR(env, ts_first),  TS_LEADER_CHR(env, ts_first), ts_first, ts_first);
+#endif
+
+	do {
+#if defined(OSI_LINUX_PSDEBUG)
+		LOG_INFO("\t %03u:" TARGET_PTR_FMT ":" TARGET_PID_FMT ":" TARGET_PID_FMT ":%c:%c", a->len, ts_current, get_pid(env, ts_current), get_tgid(env, ts_current), TS_THREAD_CHR(env, ts_current), TS_LEADER_CHR(env, ts_current));
+#endif
+		memset(&element, 0, sizeof(ET));
+		element_fill(env, &element, ts_current);
+		g_array_append_val(*out, element);
+		OSI_MAX_PROC_CHECK((*out)->len, "traversing process list");
+
+#if defined(OSI_LINUX_LIST_THREADS)
+		// Traverse thread group list.
+		// It is assumed that ts_current is a thread group leader.
+		tg_first = ts_current + ki.task.thread_group_offset;
+		while ((tg_next = get_thread_group(env, ts_current)) != tg_first) {
+			ts_current = tg_next - ki.task.thread_group_offset;
+#if defined(OSI_LINUX_PSDEBUG)
+			LOG_INFO("\t %03u:" TARGET_PTR_FMT ":" TARGET_PID_FMT ":" TARGET_PID_FMT ":%c:%c", a->len, ts_current, get_pid(env, ts_current), get_tgid(env, ts_current), TS_THREAD_CHR(env, ts_current), TS_LEADER_CHR(env, ts_current));
+#endif
+			memset(&element, 0, sizeof(ET));
+			element_fill(env, &element, ts_current);
+			g_array_append_val(*out, element);
+			OSI_MAX_PROC_CHECK((*out)->len, "traversing thread group list");
+		}
+		ts_current = tg_first - ki.task.thread_group_offset;
+#endif
+
+		ts_current = get_task_struct_next(env, ts_current);
+	} while(ts_current != (target_ptr_t)NULL && ts_current != ts_first);
+
+	// memory read error
+	if (ts_current == (target_ptr_t)NULL) goto error;
+
+	return;
+
+error:
+	// destroy contents and free allocated storage
+	g_array_free(*out, true);
+	*out = NULL;
+}
+
+/**
+ * @brief Fills an OsiProcHandle struct.
+ */
+static void fill_osiprochandle(CPUState *env, OsiProcHandle *h,
+						   target_ptr_t task_addr) {
+	h->asid = panda_virt_to_phys(env, get_pgd(env, task_addr));
+	h->task = task_addr;
 }
 
 /**
@@ -290,11 +385,16 @@ error0:
  * @brief PPP callback to retrieve process handles from the running OS.
  */
 void on_get_process_handles(CPUState *env, GArray **out) {
+	// create a NULL function pointer for free
+	typedef void (*osi_prochandle_free_t)(OsiProcHandle *);
+	osi_prochandle_free_t nofree = NULL;
 
+	// instantiate and call function from get_process_info template
+	get_process_info<>(env, out, fill_osiprochandle, nofree);
 }
 
 /**
- * @brief PPP callback to retrieve current process info for the running OS.
+ * @brief PPP callback to retrieve info about the currently running process.
  */
 void on_get_current_process(CPUState *env, OsiProc **out) {
 	OsiProc *p = NULL;
@@ -312,6 +412,12 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
  * handle.
  */
 void on_get_process(CPUState *env, OsiProcHandle *h, OsiProc **out) {
+	OsiProc *p = NULL;
+	if (h != NULL && h->task != (target_ptr_t)NULL) {
+		p = (OsiProc *)g_malloc(sizeof(OsiProc));
+		fill_osiproc(env, p, h->task);
+	}
+	*out = p;
 }
 
 /**
