@@ -1,7 +1,7 @@
 #pragma once
 
 // returns operating system introspection info for each process in an array
-OsiProcs *get_processes(CPUState *env);
+GArray *get_processes(CPUState *env);
 
 // returns minimal handles for processes in an array
 GArray *get_process_handles(CPUState *env);
@@ -24,7 +24,6 @@ OsiThread *get_current_thread(CPUState *env);
 
 // Free memory allocated by other library functions
 void free_osiproc(OsiProc *p);
-void free_osiprocs(OsiProcs *ps);
 void free_osimodules(OsiModules *ms);
 void free_osithread(OsiThread *t);
 

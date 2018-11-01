@@ -42,9 +42,7 @@ PANDAENDCOMMENT */
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void add_proc(CPUState *cpu, OsiProcs *ps, PTR eproc);
 void on_free_osiproc(OsiProc *p);
-void on_free_osiprocs(OsiProcs *ps);
 void on_free_osithread(OsiThread *t);
 void on_free_osimodules(OsiModules *ms);
 
@@ -90,7 +88,7 @@ static uint32_t ntreadfile_esp_off; // Number of bytes left on stack when NtRead
 static PTR(*get_kpcr)(CPUState *cpu);
 
 // Function pointer, returns handle table entry.  OS-specific.
-static HandleObject *(*get_handle_object)(CPUState *cpu, uint32_t eproc, uint32_t handle);
+static HandleObject *(*get_handle_object)(CPUState *cpu, PTR eproc, uint32_t handle);
 
 
 char *make_pagedstr(void) {
@@ -140,19 +138,6 @@ char *get_unicode_str(CPUState *cpu, PTR ustr) {
     return ret;
 }
 
-
-void add_proc(CPUState *cpu, OsiProcs *ps, PTR eproc) {
-
-    if ((ps->proc == NULL) || (ps->num == ps->capacity)) {
-        ps->capacity *= 2;
-        ps->proc = (OsiProc *)realloc(ps->proc, sizeof(OsiProc) * ps->capacity);
-        assert(ps->proc);
-    }
-
-    OsiProc *p = &ps->proc[ps->num++];
-    fill_osiproc(cpu, p, eproc);
-}
-
 void add_mod(CPUState *cpu, OsiModules *ms, PTR mod, bool ignore_basename) {
     if ((ms->module == NULL ) || (ms->num == ms->capacity)) {
         ms->capacity *= 2;
@@ -175,41 +160,45 @@ void on_get_current_process(CPUState *cpu, OsiProc **out_p) {
     }
 }
 
-void on_get_processes(CPUState *cpu, OsiProcs **out_ps) {
-    PTR first = get_current_proc(cpu);
-    if(first == 0) {
-        *out_ps = NULL;
-        return;
-    }
-    PTR first_pid = get_pid(cpu, first);
-    PTR current = first;
+void on_get_processes(CPUState *cpu, GArray **out) {
+    OsiProc p;
+    PTR first, current;
 
-    if (first_pid == 0) { // Idle proc, don't try
-        *out_ps = NULL;
-        return;
+    first = get_current_proc(cpu);
+    current = first;
+    if (first == (uintptr_t)NULL) {
+        goto error;
+    }
+    if (get_pid(cpu, first) == 0) {
+        // idle proc - don't try
+        goto error;
     }
 
-    OsiProcs *ps = (OsiProcs *)malloc(sizeof(OsiProcs));
-    ps->num = 0;
-    ps->capacity = 1;
-    ps->proc = NULL;
+    g_array_free(*out, true);
+    // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
+    *out = g_array_sized_new(false, false, sizeof(OsiProc), 128);
+    g_array_set_clear_func(*out, (GDestroyNotify)on_free_osiproc);
 
     do {
         // One of these will be the loop head,
         // which we don't want to include
         if (is_valid_process(cpu, current)) {
-            add_proc(cpu, ps, current);
+            memset(&p, 0, sizeof(OsiProc));
+            fill_osiproc(cpu, &p, current);
+            g_array_append_val(*out, p);
         }
-
         current = get_next_proc(cpu, current);
-        if (!current) break;
-    } while (current != first);
+    } while (current != (uintptr_t)NULL && current != first);
 
-    *out_ps = ps;
+    return;
+
+error:
+    g_array_free(*out, true);  // safe even when *out == NULL
+    *out = NULL;
+    return;
 }
 
-void on_get_current_thread(CPUState *cpu, OsiThread **out_t)
-{
+void on_get_current_thread(CPUState *cpu, OsiThread **out_t) {
     // Get current thread ID from thread information block.
     CPUArchState *env = (CPUArchState *)first_cpu->env_ptr;
     target_ulong ptib;
@@ -240,7 +229,7 @@ uint32_t get_eproc_objtable_off(void) { return eproc_objtable_off; }
 
 uint32_t get_obj_type_offset(void) { return obj_type_offset; }
 
-uint32_t get_pid(CPUState *cpu, uint32_t eproc) {
+uint32_t get_pid(CPUState *cpu, PTR eproc) {
     uint32_t pid;
     if(-1 == panda_virtual_memory_rw(cpu, eproc+eproc_pid_off, (uint8_t *)&pid, 4, false)) return 0;
     return pid;
@@ -260,7 +249,7 @@ PTR get_dtb(CPUState *cpu, PTR eproc) {
 }
 
 
-void get_procname(CPUState *cpu, uint32_t eproc, char **name) {
+void get_procname(CPUState *cpu, PTR eproc, char **name) {
     assert(name);
     *name = (char *) malloc(17);
     assert(*name);
@@ -492,12 +481,12 @@ char *get_handle_object_name(CPUState *cpu, HandleObject *ho) {
 }
 
 
-char * get_handle_name(CPUState *cpu, uint32_t eproc, uint32_t handle) {
+char *get_handle_name(CPUState *cpu, PTR eproc, uint32_t handle) {
     HandleObject *ho = get_handle_object(cpu, eproc, handle);
     return get_handle_object_name(cpu, ho);
 }
 
-int64_t get_file_handle_pos(CPUState *cpu, uint32_t eproc, uint32_t handle) {
+int64_t get_file_handle_pos(CPUState *cpu, PTR eproc, uint32_t handle) {
     HandleObject *ho = get_handle_object(cpu, eproc, handle);
     if (!ho) {
         return -1;
@@ -529,17 +518,6 @@ void on_free_osiproc(OsiProc *p) {
     if (!p) return;
     free(p->name);
     free(p);
-}
-
-void on_free_osiprocs(OsiProcs *ps) {
-    if(!ps) return;
-    if(ps->proc) {
-        for(uint32_t i = 0; i < ps->num; i++) {
-            free(ps->proc[i].name);
-        }
-        free(ps->proc);
-    }
-    free(ps);
 }
 
 void on_free_osimodules(OsiModules *ms) {
@@ -610,7 +588,6 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
     PPP_REG_CB("osi", on_get_processes, on_get_processes);
     PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
-    PPP_REG_CB("osi", on_free_osiprocs, on_free_osiprocs);
     PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
     PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
 

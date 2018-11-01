@@ -47,7 +47,6 @@ PPP_PROT_REG_CB(on_get_modules)
 PPP_PROT_REG_CB(on_get_libraries)
 PPP_PROT_REG_CB(on_get_current_thread)
 PPP_PROT_REG_CB(on_free_osiproc)
-PPP_PROT_REG_CB(on_free_osiprocs)
 PPP_PROT_REG_CB(on_free_osimodules)
 PPP_PROT_REG_CB(on_free_osithread)
 #ifdef OSI_PROC_EVENTS
@@ -63,7 +62,6 @@ PPP_CB_BOILERPLATE(on_get_modules)
 PPP_CB_BOILERPLATE(on_get_libraries)
 PPP_CB_BOILERPLATE(on_get_current_thread)
 PPP_CB_BOILERPLATE(on_free_osiproc)
-PPP_CB_BOILERPLATE(on_free_osiprocs)
 PPP_CB_BOILERPLATE(on_free_osimodules)
 PPP_CB_BOILERPLATE(on_free_osithread)
 #ifdef OSI_PROC_EVENTS
@@ -75,8 +73,8 @@ PPP_CB_BOILERPLATE(on_process_end)
 // the fact that PPP doesn't support return values (since it assumes
 // that you will be running multiple callbacks at one site)
 
-OsiProcs *get_processes(CPUState *cpu) {
-    OsiProcs *p = NULL;
+GArray *get_processes(CPUState *cpu) {
+    GArray *p = NULL;
     PPP_RUN_CB(on_get_processes, cpu, &p);
     return p;
 }
@@ -121,10 +119,6 @@ void free_osiproc(OsiProc *p) {
     PPP_RUN_CB(on_free_osiproc, p);
 }
 
-void free_osiprocs(OsiProcs *ps) {
-    PPP_RUN_CB(on_free_osiprocs, ps);
-}
-
 void free_osimodules(OsiModules *ms) {
     PPP_RUN_CB(on_free_osimodules, ms);
 }
@@ -152,7 +146,7 @@ int asid_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
         for (i=0; i<out->num; i++) {
             PPP_RUN_CB(on_process_end, cpu, &out->proc[i]);
         }
-        free_osiprocs(out);
+        //free_osiprocs(out);
     }
 
     /* invoke callbacks for new processes */
@@ -160,7 +154,7 @@ int asid_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
         for (i=0; i<in->num; i++) {
             PPP_RUN_CB(on_process_start, cpu, &in->proc[i]);
         }
-        free_osiprocs(in);
+        //free_osiprocs(in);
     }
 
     return 0;

@@ -11,7 +11,7 @@
  * and a pointer to guest memory \p task that can be used to retrieve the full
  * details of the process.
  */
-typedef struct osi_proc_handle {
+typedef struct osi_proc_handle_struct {
     target_ptr_t asid;
     target_ptr_t task;
 } OsiProcHandle;
@@ -21,6 +21,9 @@ typedef struct osi_page_struct {
     target_ulong len;
 } OsiPage;
 
+/**
+ * @brief Detailed information for a process.
+ */
 typedef struct osi_proc_struct {
     target_ptr_t offset;
     char *name;
@@ -29,12 +32,6 @@ typedef struct osi_proc_struct {
     target_ptr_t pid;
     target_ptr_t ppid;
 } OsiProc;
-
-typedef struct osi_procs_struct {
-    uint32_t num;
-    uint32_t capacity;
-    OsiProc *proc;
-} OsiProcs;
 
 typedef struct osi_module_struct {
     target_ptr_t offset;
@@ -56,7 +53,7 @@ typedef struct osi_thread_struct {
 } OsiThread;
 
 /*
- * Generic inlines for handling OsiProc, OsiProcs structs.
+ * Generic inlines for handling OsiProc structs.
  * It is left to the OS-specific modules to use them or not.
  */
 
@@ -65,17 +62,6 @@ static inline void free_osiproc_g(OsiProc *p) {
     if (p == NULL) return;
     g_free(p->name);
     g_free(p);
-    return;
-}
-
-/** @brief Frees an OsiProcs struct. */
-static inline void free_osiprocs_g(OsiProcs *ps) {
-    if (ps == NULL) return;
-    for (uint32_t i = 0; i < ps->num; i++) {
-        g_free(ps->proc[i].name);
-    }
-    g_free(ps->proc);
-    g_free(ps);
     return;
 }
 

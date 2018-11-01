@@ -51,10 +51,12 @@ Name: **on\_get\_processes**
 Signature:
 
 ```C
-typedef void (*on_get_processes_t)(CPUState *, OsiProcs **)
+typedef void (*on_get_processes_t)(CPUState *, GArray **)
 ```
 
-Description: Called to get the process list from the guest OS. The implementation should allocate memory and fill in the pointer to an `OsiProcs` struct. The returned list can be freed with `on_free_osiprocs`.
+Description: Retrieves the process list from the guest OS, along with detailed information for each process. to get the process list from the guest OS.
+
+Implementation should create and populate a [`GArray`][garray] filled with `OsiProc` elements. Similarly, the returned data have to be freed using the respective `GArray` deallocation function.
 
 ---
 
@@ -68,7 +70,7 @@ typedef void (*on_get_process_handles_t)(CPUState *, GArray **)
 
 Description: Retrieves an array of minimal handles of type `OsiProcHandle` for the processes of the guest OS. Using the process list from the guest OS. The minimal handles contain just enough information to (a) uniquely identify a process and (b) retrieve the full process information when needed. This allows for lightweight tracking of processes.
 
-Implementation should create and populate a [`GArray`][garray]. Similarly, the returned data have to be freed using the respective `GArray` deallocation function.
+Implementation should create and populate a [`GArray`][garray] filled with `OsiProcHandle` elements. Similarly, the returned data have to be freed using the respective `GArray` deallocation function.
 
 ---
 
@@ -144,18 +146,6 @@ Description: Frees an `OsiProc` struct. You only need to implement this if you u
 
 ---
 
-Name: **on\_free\_osiprocs**
-
-Signature:
-
-```C
-typedef void (*on_free_osiprocs_t)(OsiProcs *ps)
-```
-
-Description: Frees an `OsiProcs` struct. You only need to implement this if you use a custom memory allocator (instead of the default malloc/free) in your plugin.
-
----
-
 Name: **on\_free\_osimodules**
 
 Signature:
@@ -217,12 +207,6 @@ Data structures used by OSI:
         target_ulong pid;
         target_ulong ppid;
     } OsiProc;
-
-    // Represents a list of processes
-    typedef struct osi_procs_struct {
-        uint32_t num;
-        OsiProc *proc;
-    } OsiProcs;
 
     // Represents a thread
     typedef struct osi_thread_struct {

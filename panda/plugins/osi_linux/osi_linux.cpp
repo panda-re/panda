@@ -29,14 +29,13 @@ void uninit_plugin(void *);
 #include "osi_linux_int_fns.h"
 }
 
-void on_get_processes(CPUState *env, OsiProcs **out);
+void on_get_processes(CPUState *env, GArray **out);
 void on_get_process_handles(CPUState *env, GArray **out);
 void on_get_current_process(CPUState *env, OsiProc **out_p);
 void on_get_process(CPUState *, OsiProcHandle *, OsiProc **);
 void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms);
 void on_get_current_thread(CPUState *env, OsiThread *t);
 void on_free_osiproc(OsiProc *p);
-void on_free_osiprocs(OsiProcs *ps);
 void on_free_osimodules(OsiModules *ms);
 void on_free_osithread(OsiThread *t);
 
@@ -116,6 +115,11 @@ static uint64_t get_fd_pos(CPUState *env, target_ptr_t task_struct, int fd) {
  * This can be used to quickly implement extraction of partial process
  * information without having to rewrite the process list traversal
  * code.
+ *
+ * @note The ascii pictogram in kernel_structs.html roughly explains how the
+ * process list traversal works. However, it may be inacurrate for some corner
+ * cases. E.g. it doesn't explain why some inifnite loop cases manifest.
+ * Avoiding these infinite loops was mostly a trial+error process.
  */
 template <typename ET>
 void get_process_info(CPUState *env, GArray **out,
@@ -125,18 +129,10 @@ void get_process_info(CPUState *env, GArray **out,
 	target_ptr_t ts_first, ts_current;
 	target_ptr_t UNUSED(tg_first), UNUSED(tg_next);
 
-	// prepare return array
-	if (*out == NULL) {
-		// g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-		*out = g_array_sized_new(false, false, sizeof(ET), 128);
-	}
-	else {
-		// destroy contents but keep allocated storage
-		g_array_free(*out, false);
-	}
-	if (element_free != NULL) {
-		g_array_set_clear_func(*out, (GDestroyNotify)element_free);
-	}
+	g_array_free(*out, true);
+	// g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
+	*out = g_array_sized_new(false, false, sizeof(ET), 128);
+	g_array_set_clear_func(*out, (GDestroyNotify)element_free);
 
 #if defined(OSI_LINUX_LIST_FROM_INIT)
 	// Start process enumeration from the init task.
@@ -193,9 +189,9 @@ void get_process_info(CPUState *env, GArray **out,
 	return;
 
 error:
-	// destroy contents and free allocated storage
-	g_array_free(*out, true);
+	g_array_free(*out, true);  // safe even when *out == NULL
 	*out = NULL;
+	return;
 }
 
 /**
@@ -283,102 +279,10 @@ static void fill_osithread(CPUState *env, OsiThread *t,
 /**
  * @brief PPP callback to retrieve process list from the running OS.
  *
- * @note The ascii pictogram in kernel_structs.html roughly explains how the
- * process list traversal works. However, it may be inacurrate for some corner
- * cases. E.g. it doesn't explain why some inifnite loop cases manifest.
- * Avoiding these infinite loops was mostly a trial+error process.
  */
-void on_get_processes(CPUState *env, OsiProcs **out) {
-	target_ptr_t ts_first, ts_current;
-	OsiProcs *ps;
-	OsiProc *p;
-	uint32_t ps_capacity;
-#if defined(OSI_LINUX_LIST_THREADS)
-	target_ptr_t tg_first, tg_next;
-#endif
-
-#if defined(OSI_LINUX_LIST_FROM_INIT)
-	// Start process enumeration from the init task.
-	ts_first = ki.task.init_addr;
-#else
-	// Start process enumeration (roughly) from the current task. This is the default.
-	target_ptr_t kernel_esp = panda_current_sp(env);
-	ts_first = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
-
-#if defined(OSI_LINUX_PSDEBUG)
-	LOG_INFO("INIT %c:%c " TARGET_PTR_FMT " " TARGET_PTR_FMT, TS_THREAD_CHR(env, ts_first),  TS_LEADER_CHR(env, ts_first), ts_first, ts_first);
-	LOG_INFO("\t %d-%d", get_pid(env, ts_first), get_tgid(env, ts_first));
-#endif
-
-	// To avoid infinite loops, we need to actually start traversal from the next
-	// process after the thread group leader of the current task.
-	ts_first = get_group_leader(env, ts_first);
-	ts_first = get_task_struct_next(env, ts_first);
-#endif
-
-	ts_current = ts_first;
-	if (ts_first == (target_ptr_t)NULL) goto error0;
-
-#if defined(OSI_LINUX_PSDEBUG)
-	LOG_INFO("START %c:%c " TARGET_PTR_FMT " " TARGET_PTR_FMT, TS_THREAD_CHR(env, ts_first),  TS_LEADER_CHR(env, ts_first), ts_first, ts_first);
-	LOG_INFO("\t %d-%d", get_pid(env, ts_first), get_tgid(env, ts_first));
-#endif
-
-	ps = (OsiProcs *)g_malloc0(sizeof(OsiProcs));
-	ps_capacity = 0;
-	do {
-		if (ps->num == ps_capacity) {
-			ps_capacity += 128;
-			ps->proc = g_renew(OsiProc, ps->proc, ps_capacity);
-		}
-		p = &ps->proc[ps->num++];
-
-		fill_osiproc(env, p, ts_current);
-#if defined(OSI_LINUX_PSDEBUG)
-		LOG_INFO("\t %d " TARGET_PTR_FMT " " TARGET_PTR_FMT " %s %d %d %c:%c", ps->num, ts_current, p->asid, p->name, (int)p->pid, (int)get_tgid(env, ts_current), TS_THREAD_CHR(env, ts_current),  TS_LEADER_CHR(env, ts_current));
-#endif
-		OSI_MAX_PROC_CHECK(ps->num, "traversing process list");
-
-#if defined(OSI_LINUX_LIST_THREADS)
-		// Traverse thread group list.
-		// It is assumed that ts_current is a thread group leader.
-		tg_first = ts_current + ki.task.thread_group_offset;
-		while ((tg_next = get_thread_group(env, ts_current)) != tg_first) {
-			ts_current = tg_next - ki.task.thread_group_offset;
-			if (ps->num == ps_capacity) {
-				ps_capacity += 128;
-				ps->proc = g_renew(OsiProc, ps->proc, ps_capacity);
-			}
-			p = &ps->proc[ps->num++];
-
-			fill_osiproc(env, p, ts_current);
-#if defined(OSI_LINUX_PSDEBUG)
-			LOG_INFO("\t %d " TARGET_PTR_FMT " " TARGET_PTR_FMT " %s %d %d %c:%c", ps->num, ts_current, p->asid, p->name, (int)p->pid, (int)get_tgid(env, ts_current), TS_THREAD_CHR(env, ts_current),  TS_LEADER_CHR(env, ts_current));
-#endif
-			OSI_MAX_PROC_CHECK(ps->num, "traversing thread group list");
-		}
-		ts_current = tg_first - ki.task.thread_group_offset;
-#endif
-
-		ts_current = get_task_struct_next(env, ts_current);
-	} while(ts_current != (target_ptr_t)NULL && ts_current != ts_first);
-
-	// memory read error
-	if (ts_current == (target_ptr_t)NULL) goto error1;
-
-	*out = ps;
-	return;
-
-error1:
-	do {
-		ps->num--;
-		g_free(ps->proc[ps->num].name);
-	} while (ps->num != 0);
-	g_free(ps->proc);
-	g_free(ps);
-error0:
-	*out = NULL;
-	return;
+void on_get_processes(CPUState *env, GArray **out) {
+	// instantiate and call function from get_process_info template
+	get_process_info<>(env, out, fill_osiproc, on_free_osiproc);
 }
 
 /**
@@ -525,22 +429,6 @@ void on_free_osiproc(OsiProc *p) {
 	if (p == NULL) return;
 	g_free(p->name);
 	g_free(p);
-	return;
-}
-
-/**
- * @brief PPP callback to free memory allocated for an OsiProcs struct.
- */
-void on_free_osiprocs(OsiProcs *ps) {
-	uint32_t i;
-
-	if (ps == NULL) return;
-
-	for (i=0; i< ps->num; i++) {
-		g_free(ps->proc[i].name);
-	}
-	g_free(ps->proc);
-	g_free(ps);
 	return;
 }
 
@@ -709,7 +597,6 @@ bool init_plugin(void *self) {
 	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
 	PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
 	PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
-	PPP_REG_CB("osi", on_free_osiprocs, on_free_osiprocs);
 	PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
 	PPP_REG_CB("osi", on_free_osithread, on_free_osithread);
 	LOG_INFO(PLUGIN_NAME " initialization complete.");

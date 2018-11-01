@@ -41,20 +41,22 @@ int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
     
     printf("\n");
 
-    OsiProcs *ps = get_processes(cpu);
+    GArray *ps = get_processes(cpu);
     if (ps == NULL) {
         printf("Process list not available.\n");
     } else {
-        printf("Process list (%d procs):\n", ps->num);
-        for (int i = 0; i < ps->num; i++)
-            printf("  %-16s\t" TARGET_FMT_ld "\t" TARGET_FMT_ld "\n", ps->proc[i].name, ps->proc[i].pid, ps->proc[i].ppid);
+        printf("Process list (%d procs):\n", ps->len);
+        for (int i = 0; i < ps->len; i++) {
+            OsiProc *p = &g_array_index(ps, OsiProc, i);
+            printf("  %-16s\t" TARGET_FMT_ld "\t" TARGET_FMT_ld "\n", p->name, p->pid, p->ppid);
+        }
     }
 
     printf("\n-------------------------------------------------\n\n");
 
     // Cleanup
     free_osiproc(current);
-    free_osiprocs(ps);
+    g_array_free(ps, true);
 
     return 0;
 }
