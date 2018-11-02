@@ -447,34 +447,7 @@ PTR get_next_mod(CPUState *cpu, PTR mod) {
 
 char *read_unicode_string(CPUState *cpu, uint32_t pUstr)
 {
-    win_unicode_string_t s;
-    assert(-1 != panda_virtual_memory_rw(cpu, pUstr, (uint8_t *)&s, sizeof(s),
-                                         false));
-
-    if (s.Length == 0 || !s.Buffer) {
-        return strdup("");
-    }
-
-    size_t in_remaining = s.Length;
-    char *utf16 = (char *)malloc(in_remaining);
-    assert(-1 != panda_virtual_memory_rw(cpu, s.Buffer, (uint8_t *)utf16,
-                                         s.Length, false));
-    char *cur16 = utf16;
-
-    size_t out_remaining = in_remaining + 1;
-    char *utf8 = (char *)calloc(out_remaining, sizeof(*utf8));
-    char *cur8 = utf8;
-
-    iconv_t cd = iconv_open("UTF-8", "UTF-16");
-    iconv(cd, &cur16, &in_remaining, &cur8, &out_remaining);
-    iconv_close(cd);
-
-    char *result = strdup(utf8);
-
-    free(utf16);
-    free(utf8);
-
-    return result;
+    return get_unicode_str(cpu, pUstr);
 }
 
 char *get_objname(CPUState *cpu, uint32_t obj) {

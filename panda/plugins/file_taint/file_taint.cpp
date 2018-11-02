@@ -205,7 +205,7 @@ void windows_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
             ob_path += "\\";
         }
         ob_path += filename;
-        free(cwd);
+        g_free(cwd);
     }
     verbose_printf("file_taint windows object path: %s\n", ob_path.c_str());
     int64_t pos = get_file_handle_pos(cpu, get_current_proc(cpu), FileHandle);
@@ -262,7 +262,7 @@ void linux_read_enter(CPUState *cpu, target_ulong pc, uint32_t fd,
     char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
     uint64_t pos = osi_linux_fd_to_pos(cpu, proc, fd);
     read_enter(filename, fd, pos);
-    free(filename);
+    g_free(filename);
     free_osiproc_g(proc);
 }
 
@@ -279,7 +279,7 @@ void linux_pread_enter(CPUState *cpu, target_ulong pc, uint32_t fd,
     } else {
         read_enter(filename, fd, (int32_t)pos);
     }
-    free(filename);
+    g_free(filename);
     free_osiproc_g(proc);
 }
 
