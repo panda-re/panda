@@ -42,9 +42,6 @@ PANDAENDCOMMENT */
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void on_free_osiproc(OsiProc *p);
-void on_free_osithread(OsiThread *t);
-void on_free_osimodules(OsiModules *ms);
 
 // this stuff only makes sense for win x86 32-bit
 #ifdef TARGET_I386
@@ -131,7 +128,7 @@ char *get_unicode_str(CPUState *cpu, PTR ustr) {
     // An abundance of caution: we copy it over to something allocated
     // with our own malloc. In the future we need to provide a way for
     // someone else to free the memory allocated in here...
-    char *ret = (char *)malloc(bytes_written+1);
+    char *ret = (char *)g_malloc(bytes_written+1);
     memcpy(ret, out_str, bytes_written+1);
     g_free(in_str);
     g_free(out_str);
@@ -152,7 +149,7 @@ void add_mod(CPUState *cpu, OsiModules *ms, PTR mod, bool ignore_basename) {
 void on_get_current_process(CPUState *cpu, OsiProc **out_p) {
     PTR eproc = get_current_proc(cpu);
     if(eproc) {
-        OsiProc *p = (OsiProc *) malloc(sizeof(OsiProc));
+        OsiProc *p = (OsiProc *)g_malloc(sizeof(OsiProc));
         fill_osiproc(cpu, p, eproc);
         *out_p = p;
     } else {
@@ -177,7 +174,7 @@ void on_get_processes(CPUState *cpu, GArray **out) {
     g_array_free(*out, true);
     // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
     *out = g_array_sized_new(false, false, sizeof(OsiProc), 128);
-    g_array_set_clear_func(*out, (GDestroyNotify)on_free_osiproc);
+    g_array_set_clear_func(*out, (GDestroyNotify)free_osiproc);
 
     do {
         // One of these will be the loop head,
@@ -198,25 +195,34 @@ error:
     return;
 }
 
-void on_get_current_thread(CPUState *cpu, OsiThread **out_t) {
-    // Get current thread ID from thread information block.
+void on_get_current_thread(CPUState *cpu, OsiThread **out) {
+    OsiProc *p = NULL;
     CPUArchState *env = (CPUArchState *)first_cpu->env_ptr;
+
+    on_get_current_process(cpu, &p);
+    if (p == NULL) {
+        goto error;
+    }
+    if (*out == NULL) {
+        *out = (OsiThread *)g_malloc(sizeof(OsiThread));
+    }
+
+    // Get the process id.
+    OsiThread *t = *out;
+    t->pid = p->pid;
+    free_osiproc(p);
+
+    // Get current thread ID from thread information block.
     target_ulong ptib;
     panda_virtual_memory_read(first_cpu, env->segs[R_FS].base + 0x18,
                               (uint8_t *)&ptib, sizeof(ptib));
-    OsiThread *t = (OsiThread *)malloc(sizeof(*t));
     panda_virtual_memory_read(first_cpu, ptib + 0x24, (uint8_t *)&t->tid,
                               sizeof(t->tid));
+    return;
 
-    // Get the process id.
-    OsiProc *p = NULL;
-    on_get_current_process(cpu, &p);
-    t->pid = p->pid;
-    on_free_osiproc(p);
-
-    *out_t = t;
+error:
+    *out = NULL;
 }
-
 uint32_t get_ntreadfile_esp_off(void) { return ntreadfile_esp_off; }
 
 uint32_t get_kthread_kproc_off(void) { return kthread_kproc_off; }
@@ -251,7 +257,7 @@ PTR get_dtb(CPUState *cpu, PTR eproc) {
 
 void get_procname(CPUState *cpu, PTR eproc, char **name) {
     assert(name);
-    *name = (char *) malloc(17);
+    *name = (char *)g_malloc(17);
     assert(*name);
     assert(!panda_virtual_memory_rw(cpu, eproc+eproc_name_off, (uint8_t *)*name, 16, false));
     (*name)[16] = '\0';
@@ -512,28 +518,6 @@ void fill_osimod(CPUState *cpu, OsiModule *m, PTR mod, bool ignore_basename) {
     m->name = ignore_basename ? g_strdup("-") : (char *)get_mod_basename(cpu, mod);
     assert(m->name);
 }
-
-
-void on_free_osiproc(OsiProc *p) {
-    if (!p) return;
-    free(p->name);
-    free(p);
-}
-
-void on_free_osimodules(OsiModules *ms) {
-    if(!ms) return;
-    if(ms->module) {
-        for(uint32_t i = 0; i < ms->num; i++) {
-            free(ms->module[i].file);
-            free(ms->module[i].name);
-        }
-        free(ms->module);
-    }
-    free(ms);
-}
-
-
-
 #endif
 
 
@@ -587,8 +571,6 @@ bool init_plugin(void *self) {
 
     PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
     PPP_REG_CB("osi", on_get_processes, on_get_processes);
-    PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
-    PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
     PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
 
     return true;

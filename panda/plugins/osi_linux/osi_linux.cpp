@@ -35,9 +35,6 @@ void on_get_current_process(CPUState *env, OsiProc **out_p);
 void on_get_process(CPUState *, OsiProcHandle *, OsiProc **);
 void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms);
 void on_get_current_thread(CPUState *env, OsiThread *t);
-void on_free_osiproc(OsiProc *p);
-void on_free_osimodules(OsiModules *ms);
-void on_free_osithread(OsiThread *t);
 
 struct kernelinfo ki;
 
@@ -123,8 +120,8 @@ static uint64_t get_fd_pos(CPUState *env, target_ptr_t task_struct, int fd) {
  */
 template <typename ET>
 void get_process_info(CPUState *env, GArray **out,
-					  void (*element_fill)(CPUState *, ET *, target_ptr_t),
-					  void (*element_free)(ET *)) {
+					  void (*fill_element)(CPUState *, ET *, target_ptr_t),
+					  void (*free_element_contents)(ET *)) {
 	ET element;
 	target_ptr_t ts_first, ts_current;
 	target_ptr_t UNUSED(tg_first), UNUSED(tg_next);
@@ -132,7 +129,7 @@ void get_process_info(CPUState *env, GArray **out,
 	g_array_free(*out, true);
 	// g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
 	*out = g_array_sized_new(false, false, sizeof(ET), 128);
-	g_array_set_clear_func(*out, (GDestroyNotify)element_free);
+	g_array_set_clear_func(*out, (GDestroyNotify)free_element_contents);
 
 #if defined(OSI_LINUX_LIST_FROM_INIT)
 	// Start process enumeration from the init task.
@@ -159,7 +156,7 @@ void get_process_info(CPUState *env, GArray **out,
 		LOG_INFO("\t %03u:" TARGET_PTR_FMT ":" TARGET_PID_FMT ":" TARGET_PID_FMT ":%c:%c", a->len, ts_current, get_pid(env, ts_current), get_tgid(env, ts_current), TS_THREAD_CHR(env, ts_current), TS_LEADER_CHR(env, ts_current));
 #endif
 		memset(&element, 0, sizeof(ET));
-		element_fill(env, &element, ts_current);
+		fill_element(env, &element, ts_current);
 		g_array_append_val(*out, element);
 		OSI_MAX_PROC_CHECK((*out)->len, "traversing process list");
 
@@ -282,19 +279,18 @@ static void fill_osithread(CPUState *env, OsiThread *t,
  */
 void on_get_processes(CPUState *env, GArray **out) {
 	// instantiate and call function from get_process_info template
-	get_process_info<>(env, out, fill_osiproc, on_free_osiproc);
+	get_process_info<>(env, out, fill_osiproc, free_osiproc_contents);
 }
 
 /**
  * @brief PPP callback to retrieve process handles from the running OS.
  */
 void on_get_process_handles(CPUState *env, GArray **out) {
-	// create a NULL function pointer for free
-	typedef void (*osi_prochandle_free_t)(OsiProcHandle *);
-	osi_prochandle_free_t nofree = NULL;
+	// use a dummy free functioon instead of free_osiprochandle_contents()
+	//decltype(free_osiprochandle_contents) *dummy_free = NULL;
 
 	// instantiate and call function from get_process_info template
-	get_process_info<>(env, out, fill_osiprochandle, nofree);
+	get_process_info<>(env, out, fill_osiprochandle, free_osiprochandle_contents);
 }
 
 /**
@@ -422,27 +418,6 @@ void on_get_current_thread(CPUState *env, OsiThread **out) {
 	*out = t;
 }
 
-/**
- * @brief PPP callback to free memory allocated for an OsiProc struct.
- */
-void on_free_osiproc(OsiProc *p) {
-	if (p == NULL) return;
-	g_free(p->name);
-	g_free(p);
-	return;
-}
-
-/**
- * @brief PPP callback to free memory allocated for an OsiThread struct.
- */
-void on_free_osithread(OsiThread *t)
-{
-    if (t == NULL)
-        return;
-    g_free(t);
-    return;
-}
-
 /* ******************************************************************
  osi_linux extra API
 ****************************************************************** */
@@ -485,25 +460,6 @@ unsigned long long  osi_linux_fd_to_pos(CPUState *env, OsiProc *p, int fd) {
 	ts_current = p->offset;
 	if (ts_current == 0) return INVALID_FILE_POS;
 	return get_fd_pos(env, ts_current, fd);
-}
-
-
-
-/**
- * @brief PPP callback to free memory allocated for an OsiModules struct.
- */
-void on_free_osimodules(OsiModules *ms) {
-	uint32_t i;
-
-	if (ms == NULL) return;
-
-	for (i=0; i< ms->num; i++) {
-		g_free(ms->module[i].name);
-		g_free(ms->module[i].file);
-	}
-	g_free(ms->module);
-	g_free(ms);
-	return;
 }
 
 
@@ -559,8 +515,6 @@ int osi_linux_test(CPUState *env, target_ulong oldval, target_ulong newval) {
 }
 #endif
 
-
-
 /* ******************************************************************
  Plugin Initialization/Cleanup
 ****************************************************************** */
@@ -596,9 +550,6 @@ bool init_plugin(void *self) {
 	PPP_REG_CB("osi", on_get_process, on_get_process);
 	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
 	PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
-	PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
-	PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
-	PPP_REG_CB("osi", on_free_osithread, on_free_osithread);
 	LOG_INFO(PLUGIN_NAME " initialization complete.");
 	return true;
 #else

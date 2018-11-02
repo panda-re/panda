@@ -13,6 +13,7 @@
 PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
+#include <glib.h>
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 
@@ -122,7 +123,7 @@ void on_get_libraries(CPUState *cpu, OsiProc *p, OsiModules **out_ms) {
         *out_ms = NULL; return;
     }
 
-    OsiModules *ms = (OsiModules *)malloc(sizeof(OsiModules));
+    OsiModules *ms = (OsiModules *)g_malloc(sizeof(OsiModules));
     ms->num = 0;
     ms->capacity = 1;
     ms->module = NULL;
@@ -151,7 +152,7 @@ void on_get_modules(CPUState *cpu, OsiModules **out_ms) {
         return;
     }
 
-    OsiModules *ms = (OsiModules *)malloc(sizeof(OsiModules));
+    OsiModules *ms = (OsiModules *)g_malloc(sizeof(OsiModules));
     ms->num = 0;
     ms->capacity = 1;   
     ms->module = NULL;
@@ -209,7 +210,7 @@ HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t 
     if (-1 == panda_virtual_memory_rw(cpu, pObjHeader+get_obj_type_offset(), (uint8_t *)&objType, 1, false)) {
         return NULL;
     }
-    HandleObject *ho = (HandleObject *) malloc(sizeof(HandleObject));
+    HandleObject *ho = (HandleObject *)g_malloc(sizeof(HandleObject));
     ho->objType = objType;
     ho->pObj = pObj;
     return ho;
