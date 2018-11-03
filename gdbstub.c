@@ -1279,7 +1279,7 @@ static int gdb_handle_packet(GDBState *s, const char *line_buf)
         }
 #endif /* !CONFIG_USER_ONLY */
         if (is_query_packet(p, "Supported", ':')) {
-            snprintf(buf, sizeof(buf), "PacketSize=%x", MAX_PACKET_LENGTH);
+            snprintf(buf, sizeof(buf), "PacketSize=%x;ReverseStep;ReverseContinue", MAX_PACKET_LENGTH);
             cc = CPU_GET_CLASS(first_cpu);
             if (cc->gdb_core_xml_file != NULL) {
                 pstrcat(buf, sizeof(buf), ";qXfer:features:read+");
