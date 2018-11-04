@@ -24,24 +24,24 @@ bool before_block_exec(CPUState *env, TranslationBlock *tb) {
     static int progress = 0;
     static void *saved = NULL;
     static void *last = NULL;
-    if (rr_get_guest_instr_count() / 50000 > progress) {
+    if (rr_get_guest_instr_count() / 500000 > progress) {
         progress++;
         printf("Taking panda checkpoint %u...\n", progress);
         last = panda_checkpoint();
         printf("Done.\n");
     }
-    if (!saved && rr_get_guest_instr_count() > 100000) {
+    if (!saved && rr_get_guest_instr_count() > 1000000) {
         printf("\n\nSaving checkpoint for restore!!\n\n");
         saved = last;
     }
-    static int restart_count = 0;
-    if (rr_get_guest_instr_count() > 200000 && restart_count < 3) {
-        restart_count++;
-        printf("Restarting...\n");
-        panda_restart(saved);
-        printf("Done.\n");
-        return true;
-    }
+    //static int restart_count = 0;
+    //if (rr_get_guest_instr_count() > 2000000 && restart_count < 3) {
+        //restart_count++;
+        //printf("Restarting...\n");
+        //panda_restart(saved);
+        //printf("Done.\n");
+        //return true;
+    //}
     return false;
 }
 

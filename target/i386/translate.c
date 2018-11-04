@@ -8447,6 +8447,8 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         }
     }
 
+    uint64_t rr_instr_count = rr_get_guest_instr_count();
+
     /*
      * This function call emits a few instructions at the beginning of every
      * basic block checking for an exit request.  This probably won't affect
@@ -8460,7 +8462,10 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         /* If RF is set, suppress an internally generated breakpoint.  */
         if (unlikely(cpu_breakpoint_test(cs, pc_ptr,
                                          tb->flags & HF_RF_MASK
-                                         ? BP_GDB : BP_ANY))) {
+                                         ? BP_GDB : BP_ANY)) || unlikely(cpu_rr_breakpoint_test(cs, pc_ptr, rr_instr_count, 
+                                             tb->flags & HF_RF_MASK ? BP_GDB : BP_ANY))) {
+            // If we're in reverse direction, don't gen a debug event. 
+            // Instead, record it so we can figure out the latest one
             gen_debug(dc, pc_ptr - dc->cs_base);
             /* The address covered by the breakpoint must be included in
                [tb->pc, tb->pc + tb->size) in order to for it to be
@@ -8488,6 +8493,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         }
 
         pc_ptr = disas_insn(env, dc, pc_ptr);
+        rr_instr_count++;
 
         if (unlikely(panda_callbacks_after_insn_translate(ENV_GET_CPU(env), pc_ptr))
                 && !dc->is_jmp) {

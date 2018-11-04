@@ -215,6 +215,7 @@ typedef struct icount_decr_u16 {
 
 typedef struct CPUBreakpoint {
     vaddr pc;
+    uint64_t rr_instr_count;
     int flags; /* BP_* */
     QTAILQ_ENTRY(CPUBreakpoint) entry;
 } CPUBreakpoint;
@@ -958,6 +959,8 @@ void cpu_single_step(CPUState *cpu, int enabled);
 
 int cpu_breakpoint_insert(CPUState *cpu, vaddr pc, int flags,
                           CPUBreakpoint **breakpoint);
+int cpu_rr_breakpoint_insert(CPUState *cpu,  uint64_t instr_count, int flags,
+                          CPUBreakpoint **breakpoint);
 int cpu_breakpoint_remove(CPUState *cpu, vaddr pc, int flags);
 void cpu_breakpoint_remove_by_ref(CPUState *cpu, CPUBreakpoint *breakpoint);
 void cpu_breakpoint_remove_all(CPUState *cpu, int mask);
@@ -969,7 +972,24 @@ static inline bool cpu_breakpoint_test(CPUState *cpu, vaddr pc, int mask)
 
     if (unlikely(!QTAILQ_EMPTY(&cpu->breakpoints))) {
         QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
-            if (bp->pc == pc && (bp->flags & mask)) {
+            if (bp->pc != 0 && bp->pc == pc && (bp->flags & mask)) {
+                printf("Hit pc breakpoint %lx\n", pc);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static inline bool cpu_rr_breakpoint_test(CPUState *cpu, vaddr pc, uint64_t cur_instr_count, int mask)
+{
+    CPUBreakpoint *bp;
+
+    if (unlikely(!QTAILQ_EMPTY(&cpu->breakpoints))) {
+        QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
+            if (bp->rr_instr_count != 0 && bp->rr_instr_count == cur_instr_count && (bp->flags & mask)) {
+                printf("Hit bp->rr_instr_count %lu to cur %lu\n", bp->rr_instr_count, cur_instr_count);
+                cpu_breakpoint_remove_by_ref(cpu, bp);
                 return true;
             }
         }

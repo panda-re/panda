@@ -889,6 +889,7 @@ int cpu_breakpoint_insert(CPUState *cpu, vaddr pc, int flags,
     bp = g_malloc(sizeof(*bp));
 
     bp->pc = pc;
+    bp->rr_instr_count = 0;
     bp->flags = flags;
 
     /* keep all GDB-injected breakpoints in front */
@@ -899,6 +900,35 @@ int cpu_breakpoint_insert(CPUState *cpu, vaddr pc, int flags,
     }
 
     breakpoint_invalidate(cpu, pc);
+
+    if (breakpoint) {
+        *breakpoint = bp;
+    }
+    return 0;
+}
+
+int cpu_rr_breakpoint_insert(CPUState *cpu, uint64_t rr_instr_count, int flags,
+                          CPUBreakpoint **breakpoint)
+{
+    CPUBreakpoint *bp;
+
+    bp = g_malloc(sizeof(*bp));
+
+    bp->pc = 0;
+    bp->rr_instr_count = rr_instr_count;
+    bp->flags = flags;
+
+    /* keep all GDB-injected breakpoints in front */
+    if (flags & BP_GDB) {
+        QTAILQ_INSERT_HEAD(&cpu->breakpoints, bp, entry);
+    } else {
+        QTAILQ_INSERT_TAIL(&cpu->breakpoints, bp, entry);
+    }
+
+    //breakpoint_invalidate(cpu, pc);
+    tb_flush(cpu);
+    
+    printf("Inserted bp @ instr count %lu\n", rr_instr_count);
 
     if (breakpoint) {
         *breakpoint = bp;
@@ -925,7 +955,7 @@ void cpu_breakpoint_remove_by_ref(CPUState *cpu, CPUBreakpoint *breakpoint)
 {
     QTAILQ_REMOVE(&cpu->breakpoints, breakpoint, entry);
 
-    breakpoint_invalidate(cpu, breakpoint->pc);
+    //breakpoint_invalidate(cpu, breakpoint->pc);
 
     g_free(breakpoint);
 }

@@ -31,32 +31,50 @@ static int memfd_create(const char *name, unsigned int flags)
 
 #include "panda/checkpoint.h"
 
-static QLIST_HEAD(, Checkpoint) checkpoints = QLIST_HEAD_INITIALIZER(checkpoints);
-
 extern RR_log_entry *rr_queue_head;
+Checkpoint* checkpoints[MAX_CHECKPOINTS] = {NULL}; 
 
 extern unsigned long long rr_number_of_log_entries[RR_LAST];
 extern unsigned long long rr_size_of_log_entries[RR_LAST];
 extern unsigned long long rr_max_num_queue_entries;
-
-typedef struct Checkpoint {
-    uint64_t guest_instr_count;
-    size_t nondet_log_position;
-
-    unsigned long long number_of_log_entries[RR_LAST];
-    unsigned long long size_of_log_entries[RR_LAST];
-    unsigned long long max_num_queue_entries;
-
-    unsigned next_progress;
-
-    int memfd;
-
-    size_t memfd_usage;
-
-    QLIST_ENTRY(Checkpoint) next;
-} Checkpoint;
-
 static size_t total_usage = 0;
+static size_t checkpoint_ctr = 0;
+
+/*
+ *
+ * DOes binary search for checkpoint 
+ * Return NULL if not found
+ *
+ */
+void* search_checkpoints(uint64_t target_instr_count){
+    size_t start = 0;
+    size_t end = checkpoint_ctr;
+
+    while (start < end){
+        size_t mid = (start+end)/2;
+        Checkpoint* cur = checkpoints[mid];
+        if (cur->guest_instr_count > target_instr_count){
+            end = mid;
+        } else {
+            if (mid == MAX_CHECKPOINTS || checkpoints[mid+1]->guest_instr_count > target_instr_count){
+                // we found desired checkpoint interval
+                return checkpoints[mid];
+            } else {
+                start = mid+1;
+            }
+        }
+    }
+    
+    return NULL;
+}
+
+void* get_latest_checkpoint(void){
+    if (checkpoint_ctr > 0){
+       return checkpoints[checkpoint_ctr-1]; 
+    }
+
+    return NULL;
+}
 
 /*
  * Perform replay checkpoint which we can later rewind to.
@@ -66,23 +84,31 @@ static size_t total_usage = 0;
 void *panda_checkpoint(void) {
     assert(rr_in_replay());
 
+    if (checkpoint_ctr >= MAX_CHECKPOINTS){ 
+        printf("panda_checkpoint: Cannot make any more checkpoints!\n");
+        return NULL;
+    }
+
     uint64_t instr_count = rr_get_guest_instr_count();
 
     /* Find last existing checkpoint before this point */
-    Checkpoint *base = NULL;
+    //Checkpoint *base = NULL;
     Checkpoint *check = NULL;
-    QLIST_FOREACH(check, &checkpoints, next) {
+    for (int i = 0; i < checkpoint_ctr; i++){
+        check = checkpoints[i];
         if (check->guest_instr_count > instr_count) break;
-        base = check;
+        //base = check;
     }
 
     Checkpoint *checkpoint = (Checkpoint *)malloc(sizeof(Checkpoint));
 
-    if (base) {
-        QLIST_INSERT_AFTER(base, checkpoint, next);
-    } else {
-        QLIST_INSERT_HEAD(&checkpoints, checkpoint, next);
-    }
+    checkpoints[checkpoint_ctr] = checkpoint;
+    checkpoint_ctr++;
+    //if (base) {
+        //QLIST_INSERT_AFTER(base, checkpoint, next);
+    //} else {
+        //QLIST_INSERT_HEAD(&checkpoints, checkpoint, next);
+    //}
 
     checkpoint->guest_instr_count = instr_count;
     checkpoint->nondet_log_position = rr_queue_head
@@ -118,8 +144,10 @@ void *panda_checkpoint(void) {
 
 void panda_restart(void *opaque) {
     assert(rr_in_replay());
+    
 
     Checkpoint *checkpoint = (Checkpoint *)opaque;
+    printf("Restarting checkpoint @ instr count %lu\n", checkpoint->guest_instr_count);
 
     lseek(checkpoint->memfd, 0, SEEK_SET);
 

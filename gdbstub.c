@@ -37,6 +37,7 @@
 #include "sysemu/kvm.h"
 #include "exec/semihost.h"
 #include "exec/exec-all.h"
+#include "panda/checkpoint.h"
 
 #ifdef CONFIG_USER_ONLY
 #define GDB_ATTACHED "0"
@@ -271,7 +272,7 @@ static int gdb_signal_to_target (int sig)
         return -1;
 }
 
-//#define DEBUG_GDB
+#define DEBUG_GDB
 
 typedef struct GDBRegisterState {
     int base_reg;
@@ -720,6 +721,38 @@ static inline int xlat_gdb_type(CPUState *cpu, int gdbtype)
 }
 #endif
 
+static int gdb_rr_breakpoint_insert(uint64_t instr_count, int type){
+    CPUState* cpu;
+    int err = 0;
+
+    switch (type) {
+    case GDB_BREAKPOINT_SW:
+    case GDB_BREAKPOINT_HW:
+        CPU_FOREACH(cpu) {
+            err = cpu_rr_breakpoint_insert(cpu, instr_count, BP_GDB, NULL);
+            if (err) {
+                break;
+            }
+        }
+        return err;
+//#ifndef CONFIG_USER_ONLY
+    //case GDB_WATCHPOINT_WRITE:
+    //case GDB_WATCHPOINT_READ:
+    //case GDB_WATCHPOINT_ACCESS:
+        //CPU_FOREACH(cpu) {
+            //err = cpu_rrwatchpoint_insert(cpu, addr, len,
+                                        //xlat_gdb_type(cpu, type), NULL);
+            //if (err) {
+                //break;
+            //}
+        //}
+        //return err;
+//#endif
+    default:
+        return -ENOSYS;
+    }
+}
+
 static int gdb_breakpoint_insert(target_ulong addr, target_ulong len, int type)
 {
     CPUState *cpu;
@@ -940,6 +973,31 @@ out:
     return res;
 }
 
+static void gdb_handle_reversestep(GDBState *s){
+	// Revert to most recent checkpoint
+    uint64_t cur_instr_count = rr_get_guest_instr_count();
+    int res = gdb_rr_breakpoint_insert(cur_instr_count-1, GDB_BREAKPOINT_SW);
+    if (res < 0){
+        //TODO: What is this?
+          put_packet(s, "E22");
+          return;
+    }
+		
+	// revert to most recent checkpoint 
+     Checkpoint* latest = (Checkpoint*)get_latest_checkpoint();
+     if (latest == NULL){
+         printf("No checkpoints, reverse-step failed!\n");
+        return;
+     }
+     panda_restart(latest);
+     gdb_continue(s);
+}
+
+static void gdb_handle_reversecont(GDBState* s){
+
+    
+}
+
 static int gdb_handle_packet(GDBState *s, const char *line_buf)
 {
     CPUState *cpu;
@@ -958,6 +1016,17 @@ static int gdb_handle_packet(GDBState *s, const char *line_buf)
     p = line_buf;
     ch = *p++;
     switch(ch) {
+    case 'b':
+        if (*p == 's'){
+
+            // Reverse step
+            gdb_handle_reversestep(s);
+        } else if (*p == 'c'){
+           // reverse continue
+
+        }
+		put_packet(s, "OK");
+        break;
     case '?':
         /* TODO: Make this return the correct value for user-mode.  */
         snprintf(buf, sizeof(buf), "T%02xthread:%02x;", GDB_SIGNAL_TRAP,
@@ -1279,7 +1348,7 @@ static int gdb_handle_packet(GDBState *s, const char *line_buf)
         }
 #endif /* !CONFIG_USER_ONLY */
         if (is_query_packet(p, "Supported", ':')) {
-            snprintf(buf, sizeof(buf), "PacketSize=%x;ReverseStep;ReverseContinue", MAX_PACKET_LENGTH);
+            snprintf(buf, sizeof(buf), "PacketSize=%x;ReverseContinue+;ReverseStep+", MAX_PACKET_LENGTH);
             cc = CPU_GET_CLASS(first_cpu);
             if (cc->gdb_core_xml_file != NULL) {
                 pstrcat(buf, sizeof(buf), ";qXfer:features:read+");
