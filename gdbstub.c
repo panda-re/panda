@@ -993,10 +993,6 @@ static void gdb_handle_reversestep(GDBState *s){
      gdb_continue(s);
 }
 
-static void gdb_handle_reversecont(GDBState* s){
-
-    
-}
 
 static int gdb_handle_packet(GDBState *s, const char *line_buf)
 {
