@@ -44,9 +44,7 @@
 #else
 #define GDB_ATTACHED "1"
 #endif
-
-static inline int target_memory_rw_debug(CPUState *cpu, target_ulong addr,
-                                         uint8_t *buf, int len, bool is_write)
+static inline int target_memory_rw_debug(CPUState *cpu, target_ulong addr, uint8_t *buf, int len, bool is_write)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
 
@@ -973,26 +971,47 @@ out:
     return res;
 }
 
-static void gdb_handle_reversestep(GDBState *s){
+static void gdb_handle_reverse(GDBState *s, const char *p){
 	// Revert to most recent checkpoint
     uint64_t cur_instr_count = rr_get_guest_instr_count();
-    int res = gdb_rr_breakpoint_insert(cur_instr_count-1, GDB_BREAKPOINT_SW);
-    if (res < 0){
-        //TODO: What is this?
-          put_packet(s, "E22");
-          return;
+
+    if (*p == 's'){
+        // Reverse step
+        int res = gdb_rr_breakpoint_insert(cur_instr_count-1, GDB_BREAKPOINT_SW);
+        if (res < 0){
+              put_packet(s, "E22");
+              return;
+        }
+       s->c_cpu->reverse_flags = GDB_RSTEP;
+       s->c_cpu->last_gdb_instr = cur_instr_count; 
+
+    } else if (*p == 'c'){
+       // reverse continue
+       s->c_cpu->reverse_flags = GDB_RCONT ;
+       s->c_cpu->last_gdb_instr = cur_instr_count; 
+       s->c_cpu->last_bp_hit_instr = 0;
+
+       printf("Kicking off rc, last_gdb_instr %lu\n", s->c_cpu->last_gdb_instr);
     }
-		
-	// revert to most recent checkpoint 
-     Checkpoint* latest = (Checkpoint*)get_latest_checkpoint();
+    // revert to most recent checkpoint 
+     Checkpoint* latest = (Checkpoint*)get_checkpoint(-1);
      if (latest == NULL){
          printf("No checkpoints, reverse-step failed!\n");
         return;
      }
-     panda_restart(latest);
+     panda_restore(latest);
      gdb_continue(s);
+    printf("Reached end of handle reverse!!!\n");
 }
 
+static void gdb_handle_panda_cmd(GDBState *s, const char* p){
+    char buf[MAX_PACKET_LENGTH];
+    if (!strncmp(p, "when", 4)){
+
+        snprintf(buf, sizeof(buf), "%lu", rr_get_guest_instr_count());
+        put_packet(s, buf);
+    }
+}
 
 static int gdb_handle_packet(GDBState *s, const char *line_buf)
 {
@@ -1013,14 +1032,7 @@ static int gdb_handle_packet(GDBState *s, const char *line_buf)
     ch = *p++;
     switch(ch) {
     case 'b':
-        if (*p == 's'){
-
-            // Reverse step
-            gdb_handle_reversestep(s);
-        } else if (*p == 'c'){
-           // reverse continue
-
-        }
+        gdb_handle_reverse(s, p);
 		put_packet(s, "OK");
         break;
     case '?':
@@ -1261,7 +1273,11 @@ static int gdb_handle_packet(GDBState *s, const char *line_buf)
     case 'q':
     case 'Q':
         /* parse any 'q' packets here */
-        if (!strcmp(p,"qemu.sstepbits")) {
+        if (!strncmp(p, "PandaCmd:", 8)){
+            p += 9;
+            gdb_handle_panda_cmd(s, p);
+            break;
+        } else if (!strcmp(p,"qemu.sstepbits")) {
             /* Query Breakpoint bit definitions */
             snprintf(buf, sizeof(buf), "ENABLE=%x,NOIRQ=%x,NOTIMER=%x",
                      SSTEP_ENABLE,

@@ -27,6 +27,7 @@
 
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
+#include "panda/checkpoint.h"
 extern bool panda_update_pc;
 #endif
 
@@ -37,6 +38,7 @@ extern bool panda_update_pc;
 
 #include "trace-tcg.h"
 #include "exec/log.h"
+
 
 
 #define PREFIX_REPZ   0x01
@@ -8459,20 +8461,94 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         tcg_gen_insn_start(pc_ptr, dc->cc_op);
         num_insns++;
 
+        if (unlikely(cs->reverse_flags & GDB_RCONT)){
+            
+            // If we've reached the end of this checkpoint region, 
+            if (unlikely(rr_instr_count >= cs->last_gdb_instr-1)){
+                 int closest_num;
+                 if ((closest_num = get_closest_checkpoint_num(cs->last_gdb_instr-1)) < 0){
+                    fprintf(stderr, "get_closest_checkpoint_num %d\n", closest_num); 
+                    abort();
+                 }
+
+                if (cs->last_bp_hit_instr == 0){
+                    //let's restart from the previous checkpoint
+                    printf("REACHED last instr of this checkpoint %lu without seeing break, restarting\n", rr_instr_count);
+
+                     if (closest_num == 1){
+                        // No more checkpoints before this one! Insert bp at beginning
+                        printf("Reached beginning, breaking at 1st instr\n");
+                        cpu_rr_breakpoint_insert(cs, 1, BP_GDB, NULL);
+                        cs->reverse_flags = 0;
+                        panda_restore_by_num(1);
+                     }
+
+                     Checkpoint* prev_checkpoint;
+                     if ((prev_checkpoint = get_checkpoint(closest_num-1)) == NULL){
+                         fprintf(stderr, "gen_intmed_code: get_checkpoint fail\n");
+                         abort();
+                     }
+
+                     cs->last_gdb_instr = get_checkpoint(closest_num)->guest_instr_count;
+                     printf("Set last_gdb_instr to %lu, prev_checkpoint start instr %lu\n", cs->last_gdb_instr, prev_checkpoint->guest_instr_count);
+                     // TODO: Remove this maybe?
+                     tb_flush(cs);
+                     panda_restore(prev_checkpoint);
+                } else {
+                    // Re-run from checkpoint to latest breakpoint!
+                    printf("SETTING RCONT_BREAK! last_bp_hit_instr %lu\n", cs->last_bp_hit_instr);
+                    cs->reverse_flags = GDB_RCONT_BREAK;
+                    panda_restore_by_num(closest_num);
+                }
+            }
+        }
+        
         /* If RF is set, suppress an internally generated breakpoint.  */
         if (unlikely(cpu_breakpoint_test(cs, pc_ptr,
                                          tb->flags & HF_RF_MASK
-                                         ? BP_GDB : BP_ANY)) || unlikely(cpu_rr_breakpoint_test(cs, pc_ptr, rr_instr_count, 
+                                         ? BP_GDB : BP_ANY)) || 
+                unlikely(cpu_rr_breakpoint_test(cs, rr_instr_count, 
                                              tb->flags & HF_RF_MASK ? BP_GDB : BP_ANY))) {
-            // If we're in reverse direction, don't gen a debug event. 
-            // Instead, record it so we can figure out the latest one
-            gen_debug(dc, pc_ptr - dc->cs_base);
-            /* The address covered by the breakpoint must be included in
-               [tb->pc, tb->pc + tb->size) in order to for it to be
-               properly cleared -- thus we increment the PC here so that
-               the logic setting tb->size below does the right thing.  */
-            pc_ptr += 1;
-            goto done_generating;
+                // If we're in reverse direction, don't gen a debug event. 
+                // Instead, record it so we can figure out the latest one
+                if (unlikely(cs->reverse_flags & GDB_RCONT)){
+                    cs->last_bp_hit_instr = rr_instr_count;
+                    printf("Skipping/recording breakpoint at pc " TARGET_FMT_lx ", instr %lu\n", pc_ptr, rr_instr_count);
+                } else if (cs->reverse_flags & GDB_RSTEP) {
+                    if (rr_instr_count >= cs->last_gdb_instr){
+                        fprintf(stderr, "GDB_RSTEP went too far");
+                        abort();
+                    }
+
+                    if (rr_instr_count == cs->last_gdb_instr-1){
+                        cs->reverse_flags |= GDB_RDONE;
+                        printf("Emitting debug RSTEP, flags now %x\n", cs->reverse_flags);
+                        goto generate_debug;
+                    } else {
+                        // if we're reverse-stepping, ignore all bps except the one directly before the reverse invocation point
+                        printf("RSTEP skipping  at pc " TARGET_FMT_lx ", instr %lu, last_gdb_instr-1 %lu\n", pc_ptr, rr_instr_count, cs->last_gdb_instr-1);
+                    }
+
+                } else if (cs->reverse_flags & GDB_RCONT_BREAK){
+                    if  ( rr_instr_count == cs->last_bp_hit_instr){
+                        cs->reverse_flags = 0;
+                        printf("Cleared RCONT_BREAK flag\n");
+                        goto generate_debug;
+                    } else {
+                        // if we're reverse-continuing to a certain point, ignore all other bps except the last one
+                        printf("RCONT_BREAK skipping  at pc " TARGET_FMT_lx ", instr %lu, last_bp_hit_instr %lu\n", pc_ptr, rr_instr_count, cs->last_bp_hit_instr);
+                    }
+                } else {
+generate_debug:
+                    printf("Emitting debug\n");
+                    gen_debug(dc, pc_ptr - dc->cs_base);
+                    /* The address covered by the breakpoint must be included in
+                       [tb->pc, tb->pc + tb->size) in order to for it to be
+                       properly cleared -- thus we increment the PC here so that
+                       the logic setting tb->size below does the right thing.  */
+                    pc_ptr += 1;
+                    goto done_generating;
+                }
         }
         if (num_insns == max_insns && (tb->cflags & CF_LAST_IO)) {
             gen_io_start();

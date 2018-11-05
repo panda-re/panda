@@ -950,6 +950,20 @@ int cpu_breakpoint_remove(CPUState *cpu, vaddr pc, int flags)
     return -ENOENT;
 }
 
+/* Remove a specific breakpoint by rr instr count.  */
+int cpu_breakpoint_remove_by_instr(CPUState *cpu, uint64_t rr_instr_count, int flags)
+{
+    CPUBreakpoint *bp;
+
+    QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
+        if (bp->rr_instr_count == rr_instr_count && bp->flags == flags) {
+            cpu_breakpoint_remove_by_ref(cpu, bp);
+            return 0;
+        }
+    }
+    return -ENOENT;
+}
+
 /* Remove a specific breakpoint by reference.  */
 void cpu_breakpoint_remove_by_ref(CPUState *cpu, CPUBreakpoint *breakpoint)
 {

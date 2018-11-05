@@ -1,4 +1,3 @@
-
 #include "panda/rr/rr_log.h"
 
 typedef struct Checkpoint {
@@ -21,7 +20,10 @@ typedef struct Checkpoint {
 #define MAX_CHECKPOINTS 256
 extern Checkpoint* checkpoints[MAX_CHECKPOINTS];
 
-void* search_checkpoints(uint64_t target_instr);
-void* get_latest_checkpoint(void);
+/*void* search_checkpoints(uint64_t target_instr);*/
+size_t get_num_checkpoints(void);
+int get_closest_checkpoint_num(uint64_t instr_count);
+Checkpoint* get_checkpoint(int num);
 void* panda_checkpoint(void);
-void panda_restart(void *opaque);
+void panda_restore_by_num(int num);
+void panda_restore(void *opaque);
