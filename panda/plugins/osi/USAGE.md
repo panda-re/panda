@@ -56,7 +56,7 @@ typedef void (*on_get_processes_t)(CPUState *, GArray **)
 
 Description: Retrieves the process list from the guest OS, along with detailed information for each process. to get the process list from the guest OS.
 
-Implementation should create and populate a [`GArray`][garray] filled with `OsiProc` elements. Similarly, the returned data have to be freed using the respective `GArray` deallocation function.
+Implementation should create and populate a [`GArray`][garray] filled with `OsiProc` elements and set the element-content free function using `g_array_set_clear_func`. The returned data have to be freed using the respective `GArray` deallocation function.
 
 ---
 
@@ -70,7 +70,7 @@ typedef void (*on_get_process_handles_t)(CPUState *, GArray **)
 
 Description: Retrieves an array of minimal handles of type `OsiProcHandle` for the processes of the guest OS. Using the process list from the guest OS. The minimal handles contain just enough information to (a) uniquely identify a process and (b) retrieve the full process information when needed. This allows for lightweight tracking of processes.
 
-Implementation should create and populate a [`GArray`][garray] filled with `OsiProcHandle` elements. Similarly, the returned data have to be freed using the respective `GArray` deallocation function.
+Implementation should create and populate a [`GArray`][garray] filled with `OsiProcHandle` elements and set the element-content free function using `g_array_set_clear_func`. The returned data have to be freed using the respective `GArray` deallocation function.
 
 ---
 
@@ -115,10 +115,12 @@ Name: **on\_get\_modules**
 Signature:
 
 ```C
-typedef void (*on_get_modules_t)(CPUState *, OsiModules **)
+typedef void (*on_get_modules_t)(CPUState *, GArray **)
 ```
 
-Description: Called to get the list of kernel modules loaded in the guest. The implementation should allocate memory and fill in the pointer to an `OsiModules` struct. The returned list can be freed with `on_free_osimodules`.
+Description: Retrieves the kernel modules loaded in the guest OS, along with detailed information for each process. to get the process list from the guest OS.
+
+Implementation should create and populate a [`GArray`][garray] filled with `OsiModule` elements and set the element-content free function using `g_array_set_clear_func`. The returned data have to be freed using the respective `GArray` deallocation function.
 
 ---
 
@@ -127,10 +129,12 @@ Name: **on\_get\_libraries**
 Signature:
 
 ```C
-typedef void (*on_get_libraries_t)(CPUState *, OsiProc *, OsiModules**)
+typedef void (*on_get_libraries_t)(CPUState *, OsiProc *, GArray**)
 ```
 
-Description: Called to get the list of shared libraries loaded for some particular process in the guest. The process should be an `OsiProc` previously returned by `on_get_current_process` or `on_get_processes`. The implementation should allocate memory and fill in the pointer to an `OsiModules` struct. The returned list can be freed with `on_free_osimodules`.
+Description: Retrieves the shared libraries loaded for the specified process of the guest OS. The process `OsiProc` can be avquired via a previous call to `on_get_current_process` or `on_get_processes`.
+
+Implementation should create and populate a [`GArray`][garray] filled with `OsiModule` elements and set the element-content free function using `g_array_set_clear_func`. The returned data have to be freed using the respective `GArray` deallocation function.
 
 ---
 
@@ -143,18 +147,6 @@ typedef void (*on_free_osiproc_t)(OsiProc *p)`
 ```
 
 Description: Frees an `OsiProc` struct. You only need to implement this if you use a custom memory allocator (instead of the default malloc/free) in your plugin.
-
----
-
-Name: **on\_free\_osimodules**
-
-Signature:
-
-```C
-typedef void (*on_free_osimodules_t)(OsiModules *ms)
-```
-
-Description: Frees an `OsiModules` structure. You only need to implement this if you use a custom memory allocator (instead of the default malloc/free) in your plugin.
 
 ---------------
 
@@ -192,42 +184,42 @@ To enable/use this callback you need to have used the `-DOSI_PROC_EVENTS` flag a
 Data structures used by OSI:
 
 ```C
-    // Represents a page of memory (TODO in osi_linux)
-    typedef struct osi_page_struct {
-        target_ulong start;
-        target_ulong len;
-    } OsiPage;
-
-    // Represents a single process
-    typedef struct osi_proc_struct {
-        target_ulong offset;
-        char *name;
-        target_ulong asid;
-        OsiPage *pages;     // TODO in osi_linux
-        target_ulong pid;
-        target_ulong ppid;
-    } OsiProc;
+    // Represents a process handle
+    typedef struct osi_prochandle_struct {
+        target_ptr_t asid;
+        target_ptr_t handle;
+    } OsiProcHandle;
 
     // Represents a thread
     typedef struct osi_thread_struct {
-        target_ulong tid;
-        target_ulong pid;
+        target_pid_t pid;
+        target_pid_t tid;
     } OsiThread;
+
+    // Represents a page of memory (TODO in osi_linux)
+    typedef struct osi_page_struct {
+        target_ptr_t start;
+        target_ulong len;
+    } OsiPage;
 
     // Represents a single module (userspace library or kernel module)
     typedef struct osi_module_struct {
-        target_ulong offset;
+        target_ptr_t offset;
+        target_ptr_t base;
+        target_ptr_t size;
         char *file;
-        target_ulong base;
-        target_ulong size;
         char *name;
     } OsiModule;
 
-    // Represents a list of modules
-    typedef struct osi_modules_struct {
-        uint32_t num;
-        OsiModule *module;
-    } OsiModules;
+    // Represents a single process
+    typedef struct osi_proc_struct {
+        target_ptr_t asid;
+        target_ptr_t offset;
+        target_pid_t pid;
+        target_pid_t ppid;
+        char *name;
+        OsiPage *pages;     // TODO in osi_linux
+    } OsiProc;
 
 ```
 

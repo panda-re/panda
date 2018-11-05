@@ -33,7 +33,7 @@ void on_get_processes(CPUState *env, GArray **out);
 void on_get_process_handles(CPUState *env, GArray **out);
 void on_get_current_process(CPUState *env, OsiProc **out_p);
 void on_get_process(CPUState *, OsiProcHandle *, OsiProc **);
-void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms);
+void on_get_libraries(CPUState *env, OsiProc *p, GArray **out);
 void on_get_current_thread(CPUState *env, OsiThread *t);
 
 struct kernelinfo ki;
@@ -126,10 +126,11 @@ void get_process_info(CPUState *env, GArray **out,
 	target_ptr_t ts_first, ts_current;
 	target_ptr_t UNUSED(tg_first), UNUSED(tg_next);
 
-	g_array_free(*out, true);
-	// g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-	*out = g_array_sized_new(false, false, sizeof(ET), 128);
-	g_array_set_clear_func(*out, (GDestroyNotify)free_element_contents);
+	if (*out == NULL) {
+		// g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
+		*out = g_array_sized_new(false, false, sizeof(ET), 128);
+		g_array_set_clear_func(*out, (GDestroyNotify)free_element_contents);
+	}
 
 #if defined(OSI_LINUX_LIST_FROM_INIT)
 	// Start process enumeration from the init task.
@@ -190,7 +191,6 @@ error:
 	*out = NULL;
 	return;
 }
-
 /**
  * @brief Fills an OsiProcHandle struct.
  */
@@ -329,12 +329,10 @@ void on_get_process(CPUState *env, OsiProcHandle *h, OsiProc **out) {
  *
  * @todo Remove duplicates from results.
  */
-void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
+void on_get_libraries(CPUState *env, OsiProc *p, GArray **out) {
+	OsiModule m;
 	target_ptr_t ts_first, ts_current;
 	target_ulong current_pid;
-	OsiModules *ms;
-	OsiModule *m;
-	uint32_t ms_capacity = 16;
 	target_ptr_t vma_first, vma_current;
 
 #if defined(OSI_LINUX_LIST_THREADS)
@@ -381,26 +379,24 @@ pid_found:
 	vma_first = vma_current = get_vma_first(env, ts_current);
 	if (vma_current == (target_ptr_t)NULL) goto error0;
 
-	ms = (OsiModules *)g_malloc0(sizeof(OsiModules));
-	ms->module = g_new(OsiModule, ms_capacity);
+	if (*out == NULL) {
+		// g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
+		*out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
+		g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
+	}
+
 	do {
-		if (ms->num == ms_capacity) {
-			ms_capacity *= 2;
-			ms->module = g_renew(OsiModule, ms->module, ms_capacity);
-		}
-
-		m = &ms->module[ms->num++];
-		memset(m, 0, sizeof(OsiModule));
-		fill_osimodule(env, m, vma_current);
-
+		memset(&m, 0, sizeof(OsiModule));
+		fill_osimodule(env, &m, vma_current);
+		g_array_append_val(*out, m);
 		vma_current = get_vma_next(env, vma_current);
 	} while(vma_current != (target_ptr_t)NULL && vma_current != vma_first);
 
-	*out_ms = ms;
 	return;
 
 error0:
-	*out_ms = NULL;
+	g_array_free(*out, true);  // safe even when *out == NULL
+	*out = NULL;
 	return;
 }
 

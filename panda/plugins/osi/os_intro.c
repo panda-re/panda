@@ -91,14 +91,14 @@ OsiProc *get_process(CPUState *cpu, OsiProcHandle *h) {
     return p;
 }
 
-OsiModules *get_modules(CPUState *cpu) {
-    OsiModules *m = NULL;
+GArray *get_modules(CPUState *cpu) {
+    GArray *m = NULL;
     PPP_RUN_CB(on_get_modules, cpu, &m);
     return m;
 }
 
-OsiModules *get_libraries(CPUState *cpu, OsiProc *p) {
-    OsiModules *m = NULL;
+GArray *get_libraries(CPUState *cpu, OsiProc *p) {
+    GArray *m = NULL;
     PPP_RUN_CB(on_get_libraries, cpu, p, &m);
     return m;
 }

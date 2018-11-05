@@ -7,7 +7,6 @@ typedef void bool;
 typedef void PTR;
 typedef void OsiProc;
 typedef void OsiModule;
-typedef void OsiModules;
 typedef void OsiThread;
 typedef void GArray;
 

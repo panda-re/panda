@@ -37,8 +37,8 @@ typedef struct osi_page_struct {
 } OsiPage;
 
 /**
- * @brief Represents a mapped memory region in the address space
- * of a process.
+ * @brief Represents information about a guest OS module (kernel module
+ * or shared library).
  */
 typedef struct osi_module_struct {
     target_ptr_t offset;
@@ -52,20 +52,13 @@ typedef struct osi_module_struct {
  * @brief Detailed information for a process.
  */
 typedef struct osi_proc_struct {
-    target_ptr_t offset;
-    char *name;
     target_ptr_t asid;
-    OsiPage *pages;
+    target_ptr_t offset;
     target_ptr_t pid;
     target_ptr_t ppid;
+    char *name;
+    OsiPage *pages;
 } OsiProc;
-
-/** @brief Container for OsiModule. To be replaced by GArray. */
-typedef struct osi_modules_struct {
-    uint32_t num;
-    uint32_t capacity;
-    OsiModule *module;
-} OsiModules;
 
 
 /* ******************************************************************
@@ -157,23 +150,6 @@ static inline void free_osiproc(OsiProc *p) {
     free_osiproc_contents(p);
     g_free(p);
 }
-
-/**
- * @brief free memory allocated for an OsiModules struct.
- * To be removed.
- */
-static inline void free_osimodules(OsiModules *ms) {
-    if (ms == NULL) return;
-
-    for (uint32_t i = 0; i < ms->num; i++) {
-        g_free(ms->module[i].name);
-        g_free(ms->module[i].file);
-    }
-    g_free(ms->module);
-    g_free(ms);
-    return;
-}
-
 
 /**
  * @brief Copies an OsiProc struct. Returns a pointer to the destination location.

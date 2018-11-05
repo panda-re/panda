@@ -109,7 +109,7 @@ bool inExecutableSource = false;
 // current process
 OsiProc *current_proc = NULL;
 OsiModule *current_lib = NULL;
-OsiModules *current_libs = NULL;
+GArray *current_libs = NULL;
 bool proc_diff(OsiProc *p_curr, OsiProc *p_new) {
     if (p_curr == NULL) {
         return (p_new != NULL);
@@ -1802,16 +1802,16 @@ bool main_exec_initialized = false;
 bool ensure_main_exec_initialized(CPUState *cpu) {
     //if (!correct_asid(cpu)) return;
     OsiProc *p = get_current_process(cpu);
-    OsiModules *libs = NULL;
+    GArray *libs = NULL;
     libs = get_libraries(cpu, p);
     if (!libs)
         return false;
 
     //printf("[ensure_main_exec_initialized] looking at libraries\n");
 
-    for (unsigned i = 0; i < libs->num; i++) {
+    for (unsigned i = 0; i < libs->len; i++) {
         char fname[260] = {};
-        OsiModule *m = &libs->module[i];
+        OsiModule *m = &g_array_index(libs, OsiModule, i);
         if (!m->file) continue;
         if (!m->name) continue;
         std::string lib = std::string(m->file);
@@ -2363,11 +2363,11 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
             //// if we get here, we have a valid proc in current_proc
             //// that is new.  That is, we believe process has changed
             //if (current_libs) {
-                //free_osimodules(current_libs);
+                //g_array_free(current_libs, true);
             //}
             //current_libs = get_libraries(cpu, current_proc);
             //if (current_libs) {
-                //for (unsigned i=0; i<current_libs->num; i++) {
+                //for (unsigned i=0; i<current_libs->len; i++) {
                     //OsiModule *m = &(current_libs->module[i]);
                     //if (tb->pc >= m->base &&
                             //tb->pc < (m->base + m->size)) {

@@ -135,15 +135,11 @@ char *get_unicode_str(CPUState *cpu, PTR ustr) {
     return ret;
 }
 
-void add_mod(CPUState *cpu, OsiModules *ms, PTR mod, bool ignore_basename) {
-    if ((ms->module == NULL ) || (ms->num == ms->capacity)) {
-        ms->capacity *= 2;
-        ms->module = (OsiModule *)realloc(ms->module, sizeof(OsiModule) * ms->capacity);
-        assert(ms->module);
-    }
-
-    OsiModule *p = &ms->module [ms->num++];
-    fill_osimod(cpu, p, mod, ignore_basename);
+void add_mod(CPUState *cpu, GArray *ms, PTR mod, bool ignore_basename) {
+    OsiModule m;
+    memset(&m, 0, sizeof(OsiModule));
+    fill_osimod(cpu, &m, mod, ignore_basename);
+    g_array_append_val(ms, m);
 }
 
 void on_get_current_process(CPUState *cpu, OsiProc **out_p) {

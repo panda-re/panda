@@ -17,13 +17,11 @@
 //  Just the prototypes, please.  
 
 
-typedef void OsiProc;
-typedef void OsiProcHandle;
-typedef void OsiModules;
 typedef void CPUState;
+typedef void OsiProcHandle;
 typedef void OsiThread;
+typedef void OsiProc;
 typedef void GArray;
 
 #include "osi_int_fns.h"
-
 
