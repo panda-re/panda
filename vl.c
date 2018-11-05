@@ -42,8 +42,6 @@
 #include "qemu/uuid.h"
 #include <unistd.h>
 #include <glib.h>
-#include <sys/sysinfo.h>
-
 
 #ifdef CONFIG_SECCOMP
 #include "sysemu/seccomp.h"
@@ -4185,15 +4183,6 @@ int main(int argc, char **argv, char **envp)
                 // panda_add_arg() currently always return true
                 assert(panda_add_arg(NULL, optarg));
                 break;
-            //case QEMU_OPTION_panda_checkpoint:
-                //// Set
-                //char* new_optarg = strdup(optarg);
-                //printf("panda checkpoint arg");
-
-                //struct sysinfo info;
-                //sysinfo(&info);
-                //rr_init_checkpoints();
-                //break;
             case QEMU_OPTION_panda_plugin:
                 panda_plugin_files[nb_panda_plugins] = optarg;
                 panda_plugin_names[nb_panda_plugins] = NULL;
