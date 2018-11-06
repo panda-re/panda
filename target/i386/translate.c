@@ -8504,6 +8504,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         }
         
         /* If RF is set, suppress an internally generated breakpoint.  */
+
         if (unlikely(cpu_breakpoint_test(cs, pc_ptr,
                                          tb->flags & HF_RF_MASK
                                          ? BP_GDB : BP_ANY)) || 

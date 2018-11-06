@@ -395,6 +395,7 @@ struct CPUState {
     uint8_t reverse_flags;
     uint64_t last_gdb_instr;
     uint64_t last_bp_hit_instr;
+    uint64_t temp_rr_bp_instr;
 
     /* Used to keep track of an outstanding cpu throttle thread for migration
      * autoconverge
@@ -1000,7 +1001,6 @@ static inline bool cpu_rr_breakpoint_test(CPUState *cpu,  uint64_t cur_instr_cou
 
     if (unlikely(!QTAILQ_EMPTY(&cpu->breakpoints))) {
         QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
-            printf("bp instr %lx\n", bp->rr_instr_count);
            if (bp->rr_instr_count != 0 && bp->rr_instr_count == cur_instr_count && (bp->flags & mask)) {
                 printf("Hit bp->rr_instr_count %lu to cur %lu\n", bp->rr_instr_count, cur_instr_count);
                 return true;

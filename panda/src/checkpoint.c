@@ -75,15 +75,6 @@ size_t get_num_checkpoints(void){
 }
 
 /*
- */
-//int get_closest_checkpoint_num(uint64_t target_instr_count){
-    //Checkpoint* chkpt = search_checkpoints(target_instr_count);
-    //if (chkpt == NULL){
-        //return -1
-
-//}
-
-/*
  * Gets checkpoint from array by idx.
  * If idx <= 0, return last one
  */

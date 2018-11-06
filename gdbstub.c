@@ -424,7 +424,18 @@ static int gdb_continue_partial(GDBState *s, char *newstates)
                 flag = 1;
                 break;
             case 'c':
+                // If we are broken at an rr breakpoint, disable it before continuing
+                // and reenable it after we get past the instruction
                 cpu_resume(cpu);
+                CPUBreakpoint* bp;
+                QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
+                    if (bp->rr_instr_count != 0 && rr_get_guest_instr_count() == bp->rr_instr_count) {
+                        printf("Temp removing rr breakpoint at %lu\n", rr_get_guest_instr_count());
+                        cpu_breakpoint_remove_by_instr(cpu, bp->rr_instr_count, BP_GDB);
+                        cpu->temp_rr_bp_instr = bp->rr_instr_count;
+                        break;
+                    }
+                }
                 flag = 1;
                 break;
             default:
@@ -1006,6 +1017,7 @@ static void gdb_handle_reverse(GDBState *s, const char *p){
 
 static void gdb_handle_panda_cmd(GDBState *s, const char* p){
     char buf[MAX_PACKET_LENGTH];
+    int chars_written;
     if (!strncmp(p, "when", 4)){
         snprintf(buf, sizeof(buf), "%lu", rr_get_guest_instr_count());
         put_packet(s, buf);

@@ -469,10 +469,11 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
     if ((cpu->reverse_flags & (GDB_RSTEP | GDB_RDONE)) == (GDB_RSTEP | GDB_RDONE)){
         // Remove the breakpoint we just hit
         // And clear the reverse_flags
-       cpu_breakpoint_remove_by_instr(cpu, cpu->last_gdb_instr-1, BP_GDB);
+        cpu_breakpoint_remove_by_instr(cpu, cpu->last_gdb_instr-1, BP_GDB);
         cpu->reverse_flags = 0;
         printf("Removed RSTEP breakpoint %lu\n", cpu->last_gdb_instr-1);
     }
+    
 
     if (cpu->exception_index >= 0) {
         if (cpu->exception_index >= EXCP_INTERRUPT) {
@@ -785,6 +786,14 @@ int cpu_exec(CPUState *cpu)
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
             panda_bb_invalidate_done = panda_callbacks_after_find_fast(
                     cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
+        
+            if (unlikely(cpu->temp_rr_bp_instr) && rr_get_guest_instr_count() > cpu->temp_rr_bp_instr){
+                // Restore rr breakpoint if one was disabled for continue
+                printf("Restoring rr breakpoint on %lu at %lu\n", cpu->temp_rr_bp_instr, rr_get_guest_instr_count());
+                cpu_rr_breakpoint_insert(cpu, cpu->temp_rr_bp_instr, BP_GDB, NULL);
+                cpu->temp_rr_bp_instr = 0;
+            }
+
             qemu_log_rr(tb->pc);
 
 #ifdef CONFIG_SOFTMMU

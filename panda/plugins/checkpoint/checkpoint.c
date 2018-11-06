@@ -36,14 +36,15 @@ bool before_block_exec(CPUState *env, TranslationBlock *tb) {
 
     // If this found tb could contain a breakpoint or watchpoint that is set for some instruction count,
     // invalidate it and retranslate, so that a debug instruction is emitted for this tb
-
     CPUBreakpoint* bp;
-    QTAILQ_FOREACH(bp, &env->breakpoints, entry) {
-        if ((bp->rr_instr_count != 0 && rr_get_guest_instr_count()+tb->icount > bp->rr_instr_count) ||
-               (bp->pc != 0 && tb->pc <= bp->pc && bp->pc < tb->pc+tb->size)){
-            printf("Asking to retranslate block " TARGET_FMT_lx " instr %lu\n", tb->pc, rr_get_guest_instr_count());
-            return true;
-        };
+    if (unlikely(!QTAILQ_EMPTY(&env->breakpoints))) {
+        QTAILQ_FOREACH(bp, &env->breakpoints, entry) {
+            if ((bp->rr_instr_count != 0 && rr_get_guest_instr_count() <= bp->rr_instr_count && bp->rr_instr_count < rr_get_guest_instr_count()+tb->icount) ||
+                   (bp->pc != 0 && tb->pc <= bp->pc && bp->pc < tb->pc+tb->size)){
+                printf("Asking to retranslate block " TARGET_FMT_lx " instr %lu\n", tb->pc, rr_get_guest_instr_count());
+                return true;
+            };
+        }
     }
 
     return false;
