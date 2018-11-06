@@ -49,3 +49,8 @@ python PandaCmd('when', [])
 document when
 Print the rr_instruction_count 
 end
+
+python PandaCmd('rrbreakpoint', [])
+document rrbreakpoint
+Add breakpoint at rr_instruction_count 
+end

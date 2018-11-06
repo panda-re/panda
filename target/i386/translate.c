@@ -8530,6 +8530,11 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
                     }
 
                 } else if (cs->reverse_flags & GDB_RCONT_BREAK){
+                    if (rr_instr_count > cs->last_bp_hit_instr){
+                        fprintf(stderr, "GDB_RCONT_BREAK went too far");
+                        abort();
+                    }
+
                     if  ( rr_instr_count == cs->last_bp_hit_instr){
                         cs->reverse_flags = 0;
                         printf("Cleared RCONT_BREAK flag\n");

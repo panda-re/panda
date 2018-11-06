@@ -1007,8 +1007,23 @@ static void gdb_handle_reverse(GDBState *s, const char *p){
 static void gdb_handle_panda_cmd(GDBState *s, const char* p){
     char buf[MAX_PACKET_LENGTH];
     if (!strncmp(p, "when", 4)){
-
         snprintf(buf, sizeof(buf), "%lu", rr_get_guest_instr_count());
+        put_packet(s, buf);
+    } else if (!strncmp(p, "rrbreakpoint", 12)){
+        p+=12;
+        int bufsize = 0;
+        const char msg[] = "Added breakpoints at instructions";
+        snprintf(buf, sizeof(buf), msg); 
+        bufsize += sizeof(msg)-1;
+        
+        while (*p == ':'){
+            p++;
+            uint64_t bpinstr = strtoull(p, (char **)&p, 10);
+            chars_written = snprintf(buf+bufsize, sizeof(buf), " %lu,", bpinstr); 
+            bufsize += chars_written;
+            gdb_rr_breakpoint_insert(bpinstr, GDB_BREAKPOINT_SW);
+        }
+        buf[bufsize-1] = '\0';
         put_packet(s, buf);
     }
 }

@@ -50,8 +50,7 @@ bool before_block_exec(CPUState *env, TranslationBlock *tb) {
 }
 
 void after_init(CPUState* env){
-
-    panda_arg_list *args = panda_get_args("checkpoint_test");
+    panda_arg_list *args = panda_get_args("checkpoint");
 
     const char* avail_space = panda_parse_string_opt(args, "space", "6G", "Available disk/RAM space for storing checkpoints");
     uint64_t space_bytes;
