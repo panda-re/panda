@@ -466,7 +466,7 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
 {
 
     // If we finished a reverse-step, clear the most recent breakpoint
-    if ((cpu->reverse_flags & (GDB_RSTEP | GDB_RDONE)) == (GDB_RSTEP | GDB_RDONE)){
+    if ((cpu->reverse_flags & (GDB_RSTEP | GDB_RDONE)) == (GDB_RSTEP | GDB_RDONE)) {
         // Remove the breakpoint we just hit
         // And clear the reverse_flags
         cpu_breakpoint_remove_by_instr(cpu, cpu->last_gdb_instr-1, BP_GDB);
@@ -787,7 +787,7 @@ int cpu_exec(CPUState *cpu)
             panda_bb_invalidate_done = panda_callbacks_after_find_fast(
                     cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
         
-            if (unlikely(cpu->temp_rr_bp_instr) && rr_get_guest_instr_count() > cpu->temp_rr_bp_instr){
+            if (unlikely(cpu->temp_rr_bp_instr) && rr_get_guest_instr_count() > cpu->temp_rr_bp_instr) {
                 // Restore rr breakpoint if one was disabled for continue
                 printf("Restoring rr breakpoint on %lu at %lu\n", cpu->temp_rr_bp_instr, rr_get_guest_instr_count());
                 cpu_rr_breakpoint_insert(cpu, cpu->temp_rr_bp_instr, BP_GDB, NULL);

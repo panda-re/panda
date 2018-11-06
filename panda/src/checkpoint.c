@@ -48,20 +48,20 @@ static size_t cur_checkpoint_num = 0;
  * Return -1 if not found
  *
  */
-int get_closest_checkpoint_num(uint64_t target_instr_count){
+int get_closest_checkpoint_num(uint64_t target_instr_count) {
 
     // Check base cases 
-    if (checkpoints[next_checkpoint_num-1]->guest_instr_count < target_instr_count){
+    if (checkpoints[next_checkpoint_num-1]->guest_instr_count < target_instr_count) {
         return next_checkpoint_num;
     } 
 
-    if (target_instr_count == 0){
+    if (target_instr_count == 0) {
         return 1;
     }
 
-    for (int i = 1; i < next_checkpoint_num; i++){
+    for (int i = 1; i < next_checkpoint_num; i++) {
         printf("range %lu-%lu, target %lu\n", checkpoints[i-1]->guest_instr_count, checkpoints[i]->guest_instr_count, target_instr_count);
-        if (checkpoints[i-1]->guest_instr_count < target_instr_count && target_instr_count <= checkpoints[i]->guest_instr_count){
+        if (checkpoints[i-1]->guest_instr_count < target_instr_count && target_instr_count <= checkpoints[i]->guest_instr_count) {
             return i; 
         }
     }
@@ -70,7 +70,7 @@ int get_closest_checkpoint_num(uint64_t target_instr_count){
 
 }
 
-size_t get_num_checkpoints(void){
+size_t get_num_checkpoints(void) {
     return next_checkpoint_num;
 }
 
@@ -78,10 +78,10 @@ size_t get_num_checkpoints(void){
  * Gets checkpoint from array by idx.
  * If idx <= 0, return last one
  */
-Checkpoint* get_checkpoint(int num){
-    if (num <= 0){
+Checkpoint* get_checkpoint(int num) {
+    if (num <= 0) {
         return checkpoints[next_checkpoint_num-1]; 
-    } else if (num <= next_checkpoint_num){
+    } else if (num <= next_checkpoint_num) {
         return checkpoints[num-1];
     }
 
@@ -96,7 +96,7 @@ Checkpoint* get_checkpoint(int num){
 void *panda_checkpoint(void) {
     assert(rr_in_replay());
 
-    if (next_checkpoint_num >= MAX_CHECKPOINTS){ 
+    if (next_checkpoint_num >= MAX_CHECKPOINTS) { 
         printf("panda_checkpoint: Cannot make any more checkpoints!\n");
         return NULL;
     }
@@ -105,7 +105,7 @@ void *panda_checkpoint(void) {
 
     /* Find last existing checkpoint before this point */
     //Checkpoint *check = NULL;
-    //for (int i = 0; i < next_checkpoint_num; i++){
+    //for (int i = 0; i < next_checkpoint_num; i++) {
         //check = checkpoints[i];
         //if (check->guest_instr_count > instr_count) break;
     //}
@@ -148,11 +148,11 @@ void *panda_checkpoint(void) {
 }
 
 
-void panda_restore_by_num(int num){
-    if (num <= 0){
+void panda_restore_by_num(int num) {
+    if (num <= 0) {
         panda_restore(checkpoints[next_checkpoint_num-1]); 
-    } else if (num <= next_checkpoint_num){
-        if (checkpoints[num-1] != NULL){
+    } else if (num <= next_checkpoint_num) {
+        if (checkpoints[num-1] != NULL) {
             panda_restore(checkpoints[num-1]);
         }
     }
@@ -165,8 +165,8 @@ void panda_restore(void *opaque) {
     printf("Restarting checkpoint @ instr count %lu\n", checkpoint->guest_instr_count);
         
     // Determine 
-    for (int i = 0; i < next_checkpoint_num; i++){
-        if (checkpoints[i]->guest_instr_count == checkpoint->guest_instr_count){
+    for (int i = 0; i < next_checkpoint_num; i++) {
+        if (checkpoints[i]->guest_instr_count == checkpoint->guest_instr_count) {
             cur_checkpoint_num = i;
         }
     }

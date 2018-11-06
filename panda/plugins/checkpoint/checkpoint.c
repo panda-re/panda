@@ -40,7 +40,7 @@ bool before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (unlikely(!QTAILQ_EMPTY(&env->breakpoints))) {
         QTAILQ_FOREACH(bp, &env->breakpoints, entry) {
             if ((bp->rr_instr_count != 0 && rr_get_guest_instr_count() <= bp->rr_instr_count && bp->rr_instr_count < rr_get_guest_instr_count()+tb->icount) ||
-                   (bp->pc != 0 && tb->pc <= bp->pc && bp->pc < tb->pc+tb->size)){
+                   (bp->pc != 0 && tb->pc <= bp->pc && bp->pc < tb->pc+tb->size)) {
                 printf("Asking to retranslate block " TARGET_FMT_lx " instr %lu\n", tb->pc, rr_get_guest_instr_count());
                 return true;
             };
@@ -50,7 +50,7 @@ bool before_block_exec(CPUState *env, TranslationBlock *tb) {
     return false;
 }
 
-void after_init(CPUState* env){
+void after_init(CPUState* env) {
     panda_arg_list *args = panda_get_args("checkpoint");
 
     const char* avail_space = panda_parse_string_opt(args, "space", "6G", "Available disk/RAM space for storing checkpoints");

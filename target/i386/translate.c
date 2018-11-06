@@ -2007,7 +2007,7 @@ static AddressParts gen_lea_modrm_0(CPUX86State *env, DisasContext *s,
     }
 
  done:
-    return (AddressParts){ def_seg, base, index, scale, disp };
+    return (AddressParts) { def_seg, base, index, scale, disp };
 }
 
 /* Compute the address, with a minimum number of TCG ops.  */
@@ -8461,21 +8461,21 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         tcg_gen_insn_start(pc_ptr, dc->cc_op);
         num_insns++;
 
-        if (unlikely(cs->reverse_flags & GDB_RCONT)){
+        if (unlikely(cs->reverse_flags & GDB_RCONT)) {
             
             // If we've reached the end of this checkpoint region, 
-            if (unlikely(rr_instr_count >= cs->last_gdb_instr-1)){
+            if (unlikely(rr_instr_count >= cs->last_gdb_instr-1)) {
                  int closest_num;
-                 if ((closest_num = get_closest_checkpoint_num(cs->last_gdb_instr-1)) < 0){
+                 if ((closest_num = get_closest_checkpoint_num(cs->last_gdb_instr-1)) < 0) {
                     fprintf(stderr, "get_closest_checkpoint_num %d\n", closest_num); 
                     abort();
                  }
 
-                if (cs->last_bp_hit_instr == 0){
+                if (cs->last_bp_hit_instr == 0) {
                     //let's restart from the previous checkpoint
                     printf("REACHED last instr of this checkpoint %lu without seeing break, restarting\n", rr_instr_count);
 
-                     if (closest_num == 1){
+                     if (closest_num == 1) {
                         // No more checkpoints before this one! Insert bp at beginning
                         printf("Reached beginning, breaking at 1st instr\n");
                         cpu_rr_breakpoint_insert(cs, 1, BP_GDB, NULL);
@@ -8484,7 +8484,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
                      }
 
                      Checkpoint* prev_checkpoint;
-                     if ((prev_checkpoint = get_checkpoint(closest_num-1)) == NULL){
+                     if ((prev_checkpoint = get_checkpoint(closest_num-1)) == NULL) {
                          fprintf(stderr, "gen_intmed_code: get_checkpoint fail\n");
                          abort();
                      }
@@ -8512,16 +8512,16 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
                                              tb->flags & HF_RF_MASK ? BP_GDB : BP_ANY))) {
                 // If we're in reverse direction, don't gen a debug event. 
                 // Instead, record it so we can figure out the latest one
-                if (unlikely(cs->reverse_flags & GDB_RCONT)){
+                if (unlikely(cs->reverse_flags & GDB_RCONT)) {
                     cs->last_bp_hit_instr = rr_instr_count;
                     printf("Skipping/recording breakpoint at pc " TARGET_FMT_lx ", instr %lu\n", pc_ptr, rr_instr_count);
                 } else if (cs->reverse_flags & GDB_RSTEP) {
-                    if (rr_instr_count >= cs->last_gdb_instr){
+                    if (rr_instr_count >= cs->last_gdb_instr) {
                         fprintf(stderr, "GDB_RSTEP went too far");
                         abort();
                     }
 
-                    if (rr_instr_count == cs->last_gdb_instr-1){
+                    if (rr_instr_count == cs->last_gdb_instr-1) {
                         cs->reverse_flags |= GDB_RDONE;
                         printf("Emitting debug RSTEP, flags now %x\n", cs->reverse_flags);
                         goto generate_debug;
@@ -8530,13 +8530,13 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
                         printf("RSTEP skipping  at pc " TARGET_FMT_lx ", instr %lu, last_gdb_instr-1 %lu\n", pc_ptr, rr_instr_count, cs->last_gdb_instr-1);
                     }
 
-                } else if (cs->reverse_flags & GDB_RCONT_BREAK){
-                    if (rr_instr_count > cs->last_bp_hit_instr){
+                } else if (cs->reverse_flags & GDB_RCONT_BREAK) {
+                    if (rr_instr_count > cs->last_bp_hit_instr) {
                         fprintf(stderr, "GDB_RCONT_BREAK went too far");
                         abort();
                     }
 
-                    if  ( rr_instr_count == cs->last_bp_hit_instr){
+                    if  ( rr_instr_count == cs->last_bp_hit_instr) {
                         cs->reverse_flags = 0;
                         printf("Cleared RCONT_BREAK flag\n");
                         goto generate_debug;

@@ -730,7 +730,7 @@ static inline int xlat_gdb_type(CPUState *cpu, int gdbtype)
 }
 #endif
 
-static int gdb_rr_breakpoint_insert(uint64_t instr_count, int type){
+static int gdb_rr_breakpoint_insert(uint64_t instr_count, int type) {
     CPUState* cpu;
     int err = 0;
 
@@ -982,21 +982,21 @@ out:
     return res;
 }
 
-static void gdb_handle_reverse(GDBState *s, const char *p){
+static void gdb_handle_reverse(GDBState *s, const char *p) {
 	// Revert to most recent checkpoint
     uint64_t cur_instr_count = rr_get_guest_instr_count();
 
-    if (*p == 's'){
+    if (*p == 's') {
         // Reverse step
         int res = gdb_rr_breakpoint_insert(cur_instr_count-1, GDB_BREAKPOINT_SW);
-        if (res < 0){
+        if (res < 0) {
               put_packet(s, "E22");
               return;
         }
        s->c_cpu->reverse_flags = GDB_RSTEP;
        s->c_cpu->last_gdb_instr = cur_instr_count; 
 
-    } else if (*p == 'c'){
+    } else if (*p == 'c') {
        // reverse continue
        s->c_cpu->reverse_flags = GDB_RCONT ;
        s->c_cpu->last_gdb_instr = cur_instr_count; 
@@ -1006,7 +1006,7 @@ static void gdb_handle_reverse(GDBState *s, const char *p){
     }
     // revert to most recent checkpoint 
      Checkpoint* latest = (Checkpoint*)get_checkpoint(-1);
-     if (latest == NULL){
+     if (latest == NULL) {
          printf("No checkpoints, reverse-step failed!\n");
         return;
      }
@@ -1015,20 +1015,20 @@ static void gdb_handle_reverse(GDBState *s, const char *p){
     printf("Reached end of handle reverse!!!\n");
 }
 
-static void gdb_handle_panda_cmd(GDBState *s, const char* p){
+static void gdb_handle_panda_cmd(GDBState *s, const char* p) {
     char buf[MAX_PACKET_LENGTH];
     int chars_written;
-    if (!strncmp(p, "when", 4)){
+    if (!strncmp(p, "when", 4)) {
         snprintf(buf, sizeof(buf), "%lu", rr_get_guest_instr_count());
         put_packet(s, buf);
-    } else if (!strncmp(p, "rrbreakpoint", 12)){
+    } else if (!strncmp(p, "rrbreakpoint", 12)) {
         p+=12;
         int bufsize = 0;
         const char msg[] = "Added breakpoints at instructions";
         snprintf(buf, sizeof(buf), msg); 
         bufsize += sizeof(msg)-1;
         
-        while (*p == ':'){
+        while (*p == ':') {
             p++;
             uint64_t bpinstr = strtoull(p, (char **)&p, 10);
             chars_written = snprintf(buf+bufsize, sizeof(buf), " %lu,", bpinstr); 
@@ -1300,7 +1300,7 @@ static int gdb_handle_packet(GDBState *s, const char *line_buf)
     case 'q':
     case 'Q':
         /* parse any 'q' packets here */
-        if (!strncmp(p, "PandaCmd:", 8)){
+        if (!strncmp(p, "PandaCmd:", 8)) {
             p += 9;
             gdb_handle_panda_cmd(s, p);
             break;
