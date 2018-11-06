@@ -8462,7 +8462,6 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         num_insns++;
 
         if (unlikely(cs->reverse_flags & GDB_RCONT)) {
-            
             // If we've reached the end of this checkpoint region, 
             if (unlikely(rr_instr_count >= cs->last_gdb_instr-1)) {
                  int closest_num;
