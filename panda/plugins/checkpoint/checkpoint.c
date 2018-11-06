@@ -59,6 +59,10 @@ void after_init(CPUState* env) {
 
     // Get approx size of each checkpoint
     printf("Avail space %lx, ram_size %lx\n", space_bytes, ram_size);
+    if (space_bytes < ram_size){
+        fprintf(stderr, "Not enough RAM for a checkpoint!\n");
+        abort();
+    }
     uint64_t num_checkpoints = space_bytes/ram_size;
     printf("num_checkpoints %lu\n", num_checkpoints);
     checkpoint_instr_size = rr_nondet_log->last_prog_point.guest_instr_count/num_checkpoints;
