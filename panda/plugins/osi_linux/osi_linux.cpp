@@ -32,7 +32,7 @@ void uninit_plugin(void *);
 void on_get_processes(CPUState *env, GArray **out);
 void on_get_process_handles(CPUState *env, GArray **out);
 void on_get_current_process(CPUState *env, OsiProc **out_p);
-void on_get_process(CPUState *, OsiProcHandle *, OsiProc **);
+void on_get_process(CPUState *, const OsiProcHandle *, OsiProc **);
 void on_get_libraries(CPUState *env, OsiProc *p, GArray **out);
 void on_get_current_thread(CPUState *env, OsiThread *t);
 
@@ -311,7 +311,7 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
  * @brief PPP callback to retrieve info about a running process using its
  * handle.
  */
-void on_get_process(CPUState *env, OsiProcHandle *h, OsiProc **out) {
+void on_get_process(CPUState *env, const OsiProcHandle *h, OsiProc **out) {
 	OsiProc *p = NULL;
 	if (h != NULL && h->task != (target_ptr_t)NULL) {
 		p = (OsiProc *)g_malloc(sizeof(OsiProc));

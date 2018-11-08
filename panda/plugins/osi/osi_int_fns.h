@@ -19,5 +19,5 @@ GArray *get_processes(CPUState *env);
 OsiProc *get_current_process(CPUState *env);
 
 // gets the process pointed to by task
-OsiProc *get_process(CPUState *env, OsiProcHandle *h);
+OsiProc *get_process(CPUState *env, const OsiProcHandle *h);
 

@@ -85,7 +85,7 @@ OsiProc *get_current_process(CPUState *cpu) {
     return p;
 }
 
-OsiProc *get_process(CPUState *cpu, OsiProcHandle *h) {
+OsiProc *get_process(CPUState *cpu, const OsiProcHandle *h) {
     OsiProc *p = NULL;
     PPP_RUN_CB(on_get_process, cpu, h, &p);
     return p;
