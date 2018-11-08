@@ -20,10 +20,7 @@ APIs and Callbacks
 Example
 -------
 
-To enable checkpoints and time-travel debugging, and start the replay in GDB mode. 
+To enable checkpoints and time-travel debugging, allocating 4GB of RAM to store checkpoints
 ```sh
 $PANDA_PATH/build/x86_64-softmmu/qemu-system-x86_64 -replay foo -S -s -panda checkpoint:space=4GB
 ```
-
-And to attach
-
