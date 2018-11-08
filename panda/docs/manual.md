@@ -129,6 +129,8 @@ often use to begin analysis are [`asidstory`](../plugins/asidstory),
 [`stringsearch`](../plugins/stringsearch), and
 [`file_taint`](../plugins/file_taint).
 
+You can also attach a GDB client to replay, allowing you to debug the guest system using PANDA's [**time-travel debugging**](./time-travel.md).
+
 ## A Tour of QEMU
 
 In order to use PANDA, you will need to understand at least some things about
