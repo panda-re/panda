@@ -986,7 +986,6 @@ static inline bool cpu_breakpoint_test(CPUState *cpu, vaddr pc, int mask)
     if (unlikely(!QTAILQ_EMPTY(&cpu->breakpoints))) {
         QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
             if (bp->pc != 0 && bp->pc == pc && (bp->flags & mask)) {
-                printf("Hit pc breakpoint %lx\n", pc);
                 return true;
             }
         }
@@ -994,7 +993,7 @@ static inline bool cpu_breakpoint_test(CPUState *cpu, vaddr pc, int mask)
     return false;
 }
 
-/* Return true if PC matches an installed breakpoint.  */
+/* Return true if address matches an installed breakpoint.  */
 static inline bool cpu_rr_breakpoint_test(CPUState *cpu,  uint64_t cur_instr_count, int mask)
 {
     CPUBreakpoint *bp;
@@ -1002,7 +1001,6 @@ static inline bool cpu_rr_breakpoint_test(CPUState *cpu,  uint64_t cur_instr_cou
     if (unlikely(!QTAILQ_EMPTY(&cpu->breakpoints))) {
         QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
            if (bp->rr_instr_count != 0 && bp->rr_instr_count == cur_instr_count && (bp->flags & mask)) {
-                printf("Hit bp->rr_instr_count %lu to cur %lu\n", bp->rr_instr_count, cur_instr_count);
                 return true;
             }
         }

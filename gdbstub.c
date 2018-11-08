@@ -270,7 +270,7 @@ static int gdb_signal_to_target (int sig)
         return -1;
 }
 
-#define DEBUG_GDB
+/*#define DEBUG_GDB*/
 
 typedef struct GDBRegisterState {
     int base_reg;
@@ -430,7 +430,6 @@ static int gdb_continue_partial(GDBState *s, char *newstates)
                 CPUBreakpoint* bp;
                 QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
                     if (bp->rr_instr_count != 0 && rr_get_guest_instr_count() == bp->rr_instr_count) {
-                        printf("Temp removing rr breakpoint at %lu\n", rr_get_guest_instr_count());
                         cpu_breakpoint_remove_by_instr(cpu, bp->rr_instr_count, BP_GDB);
                         cpu->temp_rr_bp_instr = bp->rr_instr_count;
                         break;
@@ -983,7 +982,6 @@ out:
 }
 
 static void gdb_handle_reverse(GDBState *s, const char *p) {
-	// Revert to most recent checkpoint
     uint64_t cur_instr_count = rr_get_guest_instr_count();
 
     if (*p == 's') {
@@ -997,22 +995,21 @@ static void gdb_handle_reverse(GDBState *s, const char *p) {
        s->c_cpu->last_gdb_instr = cur_instr_count; 
 
     } else if (*p == 'c') {
-       // reverse continue
+       // Reverse continue
        s->c_cpu->reverse_flags = GDB_RCONT ;
        s->c_cpu->last_gdb_instr = cur_instr_count; 
        s->c_cpu->last_bp_hit_instr = 0;
 
-       printf("Kicking off rc, last_gdb_instr %lu\n", s->c_cpu->last_gdb_instr);
     }
+
     // revert to most recent checkpoint 
      Checkpoint* latest = (Checkpoint*)get_checkpoint(-1);
      if (latest == NULL) {
-         printf("No checkpoints, reverse-step failed!\n");
+         fprintf(stderr, "No checkpoints, reverse-step failed!\n");
         return;
      }
      panda_restore(latest);
      gdb_continue(s);
-    printf("Reached end of handle reverse!!!\n");
 }
 
 static void gdb_handle_panda_cmd(GDBState *s, const char* p) {
@@ -1300,7 +1297,7 @@ static int gdb_handle_packet(GDBState *s, const char *line_buf)
     case 'q':
     case 'Q':
         /* parse any 'q' packets here */
-        if (!strncmp(p, "PandaCmd:", 8)) {
+        if (!strncmp(p, "PandaCmd:", 9)) {
             p += 9;
             gdb_handle_panda_cmd(s, p);
             break;

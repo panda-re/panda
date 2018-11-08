@@ -41,7 +41,6 @@ bool before_block_exec(CPUState *env, TranslationBlock *tb) {
         QTAILQ_FOREACH(bp, &env->breakpoints, entry) {
             if ((bp->rr_instr_count != 0 && rr_get_guest_instr_count() <= bp->rr_instr_count && bp->rr_instr_count < rr_get_guest_instr_count()+tb->icount) ||
                    (bp->pc != 0 && tb->pc <= bp->pc && bp->pc < tb->pc+tb->size)) {
-                printf("Asking to retranslate block " TARGET_FMT_lx " instr %lu\n", tb->pc, rr_get_guest_instr_count());
                 return true;
             };
         }
@@ -64,9 +63,9 @@ void after_init(CPUState* env) {
         abort();
     }
     uint64_t num_checkpoints = space_bytes/ram_size;
-    printf("num_checkpoints %lu\n", num_checkpoints);
+    printf("Number of checkpoints allowed:  %lu\n", num_checkpoints);
     checkpoint_instr_size = rr_nondet_log->last_prog_point.guest_instr_count/num_checkpoints;
-    printf("checkpoint_instr_size %lu\n", checkpoint_instr_size);
+    printf("Instructions per checkpoint: %lu\n", checkpoint_instr_size);
 
 }
 

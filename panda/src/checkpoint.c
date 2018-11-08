@@ -42,11 +42,9 @@ static size_t next_checkpoint_num = 0;
 static size_t cur_checkpoint_num = 0;
 
 /*
- *
  * Returns closest checkpoint containing target_instr_count 
  * If target is start of a checkpoint, returns prev checkpoint num
  * Return -1 if not found
- *
  */
 int get_closest_checkpoint_num(uint64_t target_instr_count) {
 
@@ -60,7 +58,6 @@ int get_closest_checkpoint_num(uint64_t target_instr_count) {
     }
 
     for (int i = 1; i < next_checkpoint_num; i++) {
-        printf("range %lu-%lu, target %lu\n", checkpoints[i-1]->guest_instr_count, checkpoints[i]->guest_instr_count, target_instr_count);
         if (checkpoints[i-1]->guest_instr_count < target_instr_count && target_instr_count <= checkpoints[i]->guest_instr_count) {
             return i; 
         }
