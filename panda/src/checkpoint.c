@@ -39,7 +39,6 @@ extern unsigned long long rr_size_of_log_entries[RR_LAST];
 extern unsigned long long rr_max_num_queue_entries;
 static size_t total_usage = 0;
 static size_t next_checkpoint_num = 0;
-static size_t cur_checkpoint_num = 0;
 
 /*
  * Returns closest checkpoint containing target_instr_count 
@@ -161,13 +160,6 @@ void panda_restore(void *opaque) {
     Checkpoint *checkpoint = (Checkpoint *)opaque;
     printf("Restarting checkpoint @ instr count %lu\n", checkpoint->guest_instr_count);
         
-    // Determine 
-    for (int i = 0; i < next_checkpoint_num; i++) {
-        if (checkpoints[i]->guest_instr_count == checkpoint->guest_instr_count) {
-            cur_checkpoint_num = i;
-        }
-    }
-
     lseek(checkpoint->memfd, 0, SEEK_SET);
 
     QIOChannelFile *iochannel = qio_channel_file_new_fd(checkpoint->memfd);

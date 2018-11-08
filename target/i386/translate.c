@@ -8471,6 +8471,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
                  }
 
                 if (cs->last_bp_hit_instr == 0) {
+                    // if we didn't see a breakpoint hit in this checkpoint region
                     //let's restart from the previous checkpoint
 
                      if (closest_num == 1) {
@@ -8515,7 +8516,6 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
 
                     if (rr_instr_count == cs->last_gdb_instr-1) {
                         cs->reverse_flags |= GDB_RDONE;
-                        printf("Emitting debug RSTEP, flags now %x\n", cs->reverse_flags);
                         goto generate_debug;
                     } 
 
