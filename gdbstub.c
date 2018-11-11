@@ -319,25 +319,6 @@ static GDBState *gdbserver_state;
 
 bool gdb_has_xml;
 
-
-static char* bin2hex(const unsigned char *bin, size_t len)
-{
-    char   *out;
-    size_t  i;
- 
-    if (bin == NULL || len == 0)
-        return NULL;
- 
-    out = malloc(len*2+1);
-    for (i=0; i<len; i++) {
-        out[i*2]   = "0123456789ABCDEF"[bin[i] >> 4];
-        out[i*2+1] = "0123456789ABCDEF"[bin[i] & 0x0F];
-    }
-    out[len*2] = '\0';
- 
-    return out;
-}
-
 #ifdef CONFIG_USER_ONLY
 /* XXX: This is not thread safe.  Do we care?  */
 static int gdbserver_fd = -1;
@@ -446,14 +427,6 @@ static int gdb_continue_partial(GDBState *s, char *newstates)
                 // If we are broken at an rr breakpoint, disable it before continuing
                 // and reenable it after we get past the instruction
                 cpu_resume(cpu);
-                CPUBreakpoint* bp;
-                QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
-                    if (bp->rr_instr_count != 0 && rr_get_guest_instr_count() == bp->rr_instr_count) {
-                        cpu_breakpoint_remove_by_instr(cpu, bp->rr_instr_count, BP_GDB);
-                        cpu->temp_rr_bp_instr = bp->rr_instr_count;
-                        break;
-                    }
-                }
                 flag = 1;
                 break;
             default:
@@ -1064,62 +1037,74 @@ static void gdb_handle_reverse(GDBState *s, const char *p) {
 }
 
 static void gdb_handle_panda_cmd(GDBState *s, const char* p) {
-    char buf[MAX_PACKET_LENGTH];
+    char buf[MAX_PACKET_LENGTH] = {0};
+	char membuf[MAX_PACKET_LENGTH] = {0};
+
     int chars_written;
     if (!strncmp(p, "when", 4)) {
-        snprintf(buf, sizeof(buf), "%lu", rr_get_guest_instr_count());
+        snprintf(membuf, sizeof(membuf), "%lu", rr_get_guest_instr_count());
+		
+		memtohex(buf, (uint8_t*)membuf, strlen(membuf));
         put_packet(s, buf);
     } else if (!strncmp(p, "rrbreakpoint", 12)) {
         p+=12;
-        int bufsize = 0;
+        int membufsize = 0;
         const char msg[] = "Added breakpoints at instructions";
-        snprintf(buf, sizeof(buf), msg); 
-        bufsize += sizeof(msg)-1;
-        
+        snprintf(membuf, sizeof(membuf), msg); 
+        membufsize += sizeof(msg)-1;
         while (*p == ':') {
             p++;
             uint64_t bpinstr = strtoull(p, (char **)&p, 10);
-            chars_written = snprintf(buf+bufsize, sizeof(buf), " %lu,", bpinstr); 
-            bufsize += chars_written;
+            chars_written = snprintf(membuf+membufsize, sizeof(membuf), " %lu,", bpinstr); 
+            membufsize += chars_written;
             gdb_rr_breakpoint_insert(bpinstr, GDB_BREAKPOINT_SW);
         }
-		 
-		char* hexbuf = bin2hex((unsigned char*)buf, bufsize);
-        put_packet(s, hexbuf);
+
+		if (membufsize > MAX_PACKET_LENGTH/2)
+			membufsize = MAX_PACKET_LENGTH/2;
+        
+		memtohex(buf, (uint8_t*)membuf, membufsize);
+        put_packet(s, buf);
     } else if (!strncmp(p, "rrdelete", 8)) {
 		// delete rr instr breakpoint
 		p += 8;
-        int bufsize = 0;
+        int membufsize = 0;
         const char msg[] = "Deleted breakpoints at instructions";
-        snprintf(buf, sizeof(buf), msg); 
-        bufsize += sizeof(msg)-1;
+        snprintf(membuf, sizeof(membuf), msg); 
+        membufsize += sizeof(msg)-1;
 
         while (*p == ':') {
             p++;
             uint64_t bpinstr = strtoull(p, (char **)&p, 10);
-            chars_written = snprintf(buf+bufsize, sizeof(buf), " %lu,", bpinstr); 
-            bufsize += chars_written;
+            chars_written = snprintf(membuf+membufsize, sizeof(membuf), " %lu,", bpinstr); 
+            membufsize += chars_written;
             gdb_rr_breakpoint_remove(bpinstr, GDB_BREAKPOINT_SW);
         }
 
-		char* hexbuf = bin2hex((unsigned char*)buf, bufsize);
-        put_packet(s, hexbuf);
+		if (membufsize > MAX_PACKET_LENGTH/2)
+			membufsize = MAX_PACKET_LENGTH/2;
+        
+		memtohex(buf, (uint8_t*)membuf, membufsize);
+        put_packet(s, buf);
 	} else if (!strncmp(p, "rrlist", 6)) {
 		CPUBreakpoint *bp;
-        int bufsize = 0;
+        int membufsize = 0;
         const char msg[] = "rr breakpoints: \n";
-        snprintf(buf, sizeof(buf), msg); 
-        bufsize += sizeof(msg)-1;
+        snprintf(membuf, sizeof(membuf), msg); 
+        membufsize += sizeof(msg)-1;
 
         QTAILQ_FOREACH(bp, &s->c_cpu->breakpoints, entry) {
            if (bp->rr_instr_count != 0) {
-				chars_written = snprintf(buf+bufsize, sizeof(buf), "%lu\n", bp->rr_instr_count);
-				bufsize += chars_written;
+				chars_written = snprintf(membuf+membufsize, sizeof(membuf), "%lu\n", bp->rr_instr_count);
+				membufsize += chars_written;
             }
 		}
         
-		char* hexbuf = bin2hex((unsigned char*)buf, bufsize);
-        put_packet(s, hexbuf);
+		if (membufsize > MAX_PACKET_LENGTH/2)
+			membufsize = MAX_PACKET_LENGTH/2;
+        
+		memtohex(buf, (uint8_t*)membuf, membufsize);
+        put_packet(s, buf);
 	}
 }
 
