@@ -270,7 +270,7 @@ static int gdb_signal_to_target (int sig)
         return -1;
 }
 
-/*#define DEBUG_GDB*/
+#define DEBUG_GDB
 
 typedef struct GDBRegisterState {
     int base_reg;
@@ -318,6 +318,25 @@ static int sstep_flags = SSTEP_ENABLE|SSTEP_NOIRQ|SSTEP_NOTIMER;
 static GDBState *gdbserver_state;
 
 bool gdb_has_xml;
+
+
+static char* bin2hex(const unsigned char *bin, size_t len)
+{
+    char   *out;
+    size_t  i;
+ 
+    if (bin == NULL || len == 0)
+        return NULL;
+ 
+    out = malloc(len*2+1);
+    for (i=0; i<len; i++) {
+        out[i*2]   = "0123456789ABCDEF"[bin[i] >> 4];
+        out[i*2+1] = "0123456789ABCDEF"[bin[i] & 0x0F];
+    }
+    out[len*2] = '\0';
+ 
+    return out;
+}
 
 #ifdef CONFIG_USER_ONLY
 /* XXX: This is not thread safe.  Do we care?  */
@@ -798,6 +817,38 @@ static int gdb_breakpoint_insert(target_ulong addr, target_ulong len, int type)
     }
 }
 
+static int gdb_rr_breakpoint_remove(uint64_t instr, int type) {
+    CPUState *cpu;
+    int err = 0;
+
+    switch (type) {
+    case GDB_BREAKPOINT_SW:
+    case GDB_BREAKPOINT_HW:
+        CPU_FOREACH(cpu) {
+            err = cpu_breakpoint_remove_by_instr(cpu, instr, BP_GDB);
+            if (err) {
+                break;
+            }
+        }
+        return err;
+//#ifndef CONFIG_USER_ONLY
+    //case GDB_WATCHPOINT_WRITE:
+    //case GDB_WATCHPOINT_READ:
+    //case GDB_WATCHPOINT_ACCESS:
+        //CPU_FOREACH(cpu) {
+            //err = cpu_watchpoint_remove(cpu, addr, len,
+                                        //xlat_gdb_type(cpu, type));
+            //if (err)
+                //break;
+		/*}*/
+		/*return err;*/
+//#endif
+    default:
+        return -ENOSYS;
+    }
+	
+}
+
 static int gdb_breakpoint_remove(target_ulong addr, target_ulong len, int type)
 {
     CPUState *cpu;
@@ -1032,9 +1083,44 @@ static void gdb_handle_panda_cmd(GDBState *s, const char* p) {
             bufsize += chars_written;
             gdb_rr_breakpoint_insert(bpinstr, GDB_BREAKPOINT_SW);
         }
-        buf[bufsize-1] = '\0';
-        put_packet(s, buf);
-    }
+		 
+		char* hexbuf = bin2hex((unsigned char*)buf, bufsize);
+        put_packet(s, hexbuf);
+    } else if (!strncmp(p, "rrdelete", 8)) {
+		// delete rr instr breakpoint
+		p += 8;
+        int bufsize = 0;
+        const char msg[] = "Deleted breakpoints at instructions";
+        snprintf(buf, sizeof(buf), msg); 
+        bufsize += sizeof(msg)-1;
+
+        while (*p == ':') {
+            p++;
+            uint64_t bpinstr = strtoull(p, (char **)&p, 10);
+            chars_written = snprintf(buf+bufsize, sizeof(buf), " %lu,", bpinstr); 
+            bufsize += chars_written;
+            gdb_rr_breakpoint_remove(bpinstr, GDB_BREAKPOINT_SW);
+        }
+
+		char* hexbuf = bin2hex((unsigned char*)buf, bufsize);
+        put_packet(s, hexbuf);
+	} else if (!strncmp(p, "rrlist", 6)) {
+		CPUBreakpoint *bp;
+        int bufsize = 0;
+        const char msg[] = "rr breakpoints: \n";
+        snprintf(buf, sizeof(buf), msg); 
+        bufsize += sizeof(msg)-1;
+
+        QTAILQ_FOREACH(bp, &s->c_cpu->breakpoints, entry) {
+           if (bp->rr_instr_count != 0) {
+				chars_written = snprintf(buf+bufsize, sizeof(buf), "%lu\n", bp->rr_instr_count);
+				bufsize += chars_written;
+            }
+		}
+        
+		char* hexbuf = bin2hex((unsigned char*)buf, bufsize);
+        put_packet(s, hexbuf);
+	}
 }
 
 static int gdb_handle_packet(GDBState *s, const char *line_buf)
