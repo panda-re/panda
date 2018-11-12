@@ -386,6 +386,22 @@ static inline void gdb_continue(GDBState *s)
 #endif
 }
 
+static void disable_cur_rr_bp_and_wp(CPUState* cpu) {
+	CPUBreakpoint* bp;
+	QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
+		if (bp->rr_instr_count != 0 && rr_get_guest_instr_count() == bp->rr_instr_count) {
+			printf("temp removing bp at rr instr %lu\n", bp->rr_instr_count);
+			cpu_breakpoint_remove_by_instr(cpu, bp->rr_instr_count, BP_GDB);
+			cpu->temp_rr_bp_instr = bp->rr_instr_count;
+			return;
+		}
+	}
+
+	// If we are currently broken at watchpoint, disable it until we get past it
+	// reenabled in exec.c: check_watchpoint
+	cpu->watchpoints_disabled = true;
+}
+
 /*
  * Resume execution, per CPU actions. For user-mode emulation it's
  * equivalent to gdb_continue.
@@ -421,12 +437,18 @@ static int gdb_continue_partial(GDBState *s, char *newstates)
             case 's':
                 cpu_single_step(cpu, sstep_flags);
                 cpu_resume(cpu);
+                
+				// If we are broken at an rr breakpoint, disable it before continuing
+                // and reenable it after we get past the instruction
+				disable_cur_rr_bp_and_wp(cpu);
                 flag = 1;
                 break;
             case 'c':
-                // If we are broken at an rr breakpoint, disable it before continuing
-                // and reenable it after we get past the instruction
                 cpu_resume(cpu);
+				
+				// If we are broken at an rr breakpoint, disable it before continuing
+                // and reenable it after we get past the instruction
+				disable_cur_rr_bp_and_wp(cpu);
                 flag = 1;
                 break;
             default:
@@ -441,6 +463,7 @@ static int gdb_continue_partial(GDBState *s, char *newstates)
 #endif
     return res;
 }
+
 
 static void put_buffer(GDBState *s, const uint8_t *buf, int len)
 {
@@ -1015,15 +1038,15 @@ static void gdb_handle_reverse(GDBState *s, const char *p) {
               put_packet(s, "E22");
               return;
         }
+		printf("Kicking off RSTEP from %lu\n", cur_instr_count);
        s->c_cpu->reverse_flags = GDB_RSTEP;
        s->c_cpu->last_gdb_instr = cur_instr_count; 
-
     } else if (*p == 'c') {
        // Reverse continue
        s->c_cpu->reverse_flags = GDB_RCONT ;
        s->c_cpu->last_gdb_instr = cur_instr_count; 
        s->c_cpu->last_bp_hit_instr = 0;
-
+		printf("Kicking off RCONT from %lu\n", cur_instr_count);
     }
 
     // revert to most recent checkpoint 

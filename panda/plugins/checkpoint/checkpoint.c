@@ -41,6 +41,7 @@ bool before_block_exec(CPUState *env, TranslationBlock *tb) {
         QTAILQ_FOREACH(bp, &env->breakpoints, entry) {
             if ((bp->rr_instr_count != 0 && rr_get_guest_instr_count() <= bp->rr_instr_count && bp->rr_instr_count < rr_get_guest_instr_count()+tb->icount) ||
                    (bp->pc != 0 && tb->pc <= bp->pc && bp->pc < tb->pc+tb->size)) {
+                printf("Asking to retranslate bp at pc %lx, instr %lu\n", bp->pc, rr_get_guest_instr_count());
                 return true;
             };
         }
@@ -79,8 +80,6 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);
     pcb.after_machine_init = after_init;
     panda_register_callback(self, PANDA_CB_AFTER_MACHINE_INIT, pcb);
-
-    /*bool = panda_parse_uint64_opt(args, "", 16, "depth of callstack for matches");*/
 
     return true;
 }

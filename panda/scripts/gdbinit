@@ -1,6 +1,7 @@
 dir /home/raywang/lava32_ksyms/linux-3.2.51
 set substitute-path /build/linux-n2St39/ /home/raywang/lava32_ksyms/
 symbol-file /home/raywang/lava32_ksyms/usr/lib/debug/vmlinux-3.2.0-4-686-pae
+display/5i $pc
 
 set python print-stack full
 python
