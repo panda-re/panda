@@ -393,7 +393,6 @@ static void disable_cur_rr_bp_and_wp(CPUState* cpu) {
 			printf("temp removing bp at rr instr %lu\n", bp->rr_instr_count);
 			cpu_breakpoint_remove_by_instr(cpu, bp->rr_instr_count, BP_GDB);
 			cpu->temp_rr_bp_instr = bp->rr_instr_count;
-			return;
 		}
 	}
 
@@ -1029,34 +1028,37 @@ out:
 }
 
 static void gdb_handle_reverse(GDBState *s, const char *p) {
-    uint64_t cur_instr_count = rr_get_guest_instr_count();
+	uint64_t cur_instr_count = rr_get_guest_instr_count();
 
-    if (*p == 's') {
-        // Reverse step
-        int res = gdb_rr_breakpoint_insert(cur_instr_count-1, GDB_BREAKPOINT_SW);
-        if (res < 0) {
-              put_packet(s, "E22");
-              return;
-        }
+	if (*p == 's') {
+		// Reverse step
+		int res = gdb_rr_breakpoint_insert(cur_instr_count-1, GDB_BREAKPOINT_SW);
+		if (res < 0) {
+			put_packet(s, "E22");
+			return;
+		}
 		printf("Kicking off RSTEP from %lu\n", cur_instr_count);
-       s->c_cpu->reverse_flags = GDB_RSTEP;
-       s->c_cpu->last_gdb_instr = cur_instr_count; 
-    } else if (*p == 'c') {
-       // Reverse continue
-       s->c_cpu->reverse_flags = GDB_RCONT ;
-       s->c_cpu->last_gdb_instr = cur_instr_count; 
-       s->c_cpu->last_bp_hit_instr = 0;
+		s->c_cpu->reverse_flags = GDB_RSTEP;
+		s->c_cpu->last_gdb_instr = cur_instr_count; 
+	} else if (*p == 'c') {
+		// Reverse continue
+		s->c_cpu->reverse_flags = GDB_RCONT ;
+		s->c_cpu->last_gdb_instr = cur_instr_count; 
+		s->c_cpu->last_bp_hit_instr = 0;
 		printf("Kicking off RCONT from %lu\n", cur_instr_count);
-    }
+	}
 
-    // revert to most recent checkpoint 
-     Checkpoint* latest = (Checkpoint*)get_checkpoint(-1);
-     if (latest == NULL) {
-         fprintf(stderr, "No checkpoints, reverse-step failed!\n");
-        return;
-     }
-     panda_restore(latest);
-     gdb_continue(s);
+	// revert to most recent checkpoint 
+	int closest_num;
+	if ((closest_num = get_closest_checkpoint_num(cur_instr_count)) < 0) {
+		fprintf(stderr, "gdb_handle_reverse: get_closest_checkpoint_num %d\n", closest_num); 
+		abort();
+	}
+
+	tb_flush(s->c_cpu);
+	tlb_flush(s->c_cpu);
+	panda_restore_by_num(closest_num);
+	gdb_continue(s);
 }
 
 static void gdb_handle_panda_cmd(GDBState *s, const char* p) {
