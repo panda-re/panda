@@ -2248,7 +2248,6 @@ static void check_watchpoint(int offset, int len, MemTxAttrs attrs, int flags)
     cpu_rcont_check_restore(cpu, rr_instr_count);
 
     if (cpu->watchpoint_hit) {
-        printf("watchpoint hit\n");
         /* We re-entered the check after replacing the TB. Now raise
          * the debug interrupt so that is will trigger after the
          * current instruction. */
