@@ -794,7 +794,6 @@ int cpu_watchpoint_insert(CPUState *cpu, vaddr addr, vaddr len,
                           int flags, CPUWatchpoint **watchpoint)
 {
     CPUWatchpoint *wp;
-    printf("set watchpoint at %lx\n", addr);
 
     /* forbid ranges which are empty or run off the end of the address space */
     if (len == 0 || (addr + len - 1) < addr) {
@@ -1006,11 +1005,9 @@ void cpu_rcont_check_restore(CPUState* cpu, uint64_t rr_instr_count){
 
             if (cpu->last_bp_hit_instr == 0) {
                 // let's restart from the previous checkpoint
-                printf("rcont_check_restore: REACHED last instr of this checkpoint %lu without seeing break, restarting\n", rr_instr_count);
 
                  if (closest_num == 1) {
                     // No more checkpoints before this one! Insert bp at beginning
-                    printf("Reached beginning, breaking at 1st instr\n");
                     cpu_rr_breakpoint_insert(cpu, 1, BP_GDB, NULL);
                     cpu->reverse_flags = 0;
                     panda_restore_by_num(1);
@@ -1023,14 +1020,11 @@ void cpu_rcont_check_restore(CPUState* cpu, uint64_t rr_instr_count){
                  }
 
                  cpu->last_gdb_instr = get_checkpoint(closest_num)->guest_instr_count;
-                 printf("rcont_check_restore: Set last_gdb_instr to %lu, prev_checkpoint start instr %lu\n", cpu->last_gdb_instr, prev_checkpoint->guest_instr_count);
-                 // TODO: Remove this maybe?
                  tb_flush(cpu);
-                tlb_flush(cpu);
+                 tlb_flush(cpu);
                  panda_restore(prev_checkpoint);
             } else {
                 // Re-run from checkpoint to latest breakpoint!
-                printf("rcont_check_restore: SETTING RCONT_BREAK! last_bp_hit_instr %lu\n", cpu->last_bp_hit_instr);
                 cpu->reverse_flags = GDB_RCONT_BREAK;
                 panda_restore_by_num(closest_num);
             }
@@ -2246,7 +2240,6 @@ static void check_watchpoint(int offset, int len, MemTxAttrs attrs, int flags)
 
     // If we disabled watchpoints in gdbstub for a step or continue, reenable
     if (cpu->watchpoints_disabled){
-        printf("check_watchpoint: Watchpoints disabled. Enabling, returning\n");
         cpu->watchpoints_disabled = false;
         return;
     }
@@ -2266,12 +2259,9 @@ static void check_watchpoint(int offset, int len, MemTxAttrs attrs, int flags)
     vaddr = (cpu->mem_io_vaddr & TARGET_PAGE_MASK) + offset;
     vaddr = cc->adjust_watchpoint_address(cpu, vaddr, len);
     
-    printf("checking watchpoint at vaddr " TARGET_FMT_lx ", instr %lu\n", vaddr, rr_instr_count);
-
     QTAILQ_FOREACH(wp, &cpu->watchpoints, entry) {
         if (cpu_watchpoint_address_matches(wp, vaddr, len)
             && (wp->flags & flags)) {
-            printf("watchpoint address match at " TARGET_FMT_lx "\n", vaddr);
             if (flags == BP_MEM_READ) {
                 wp->flags |= BP_WATCHPOINT_HIT_READ;
             } else {
@@ -2282,7 +2272,8 @@ static void check_watchpoint(int offset, int len, MemTxAttrs attrs, int flags)
             wp->hitattrs = attrs;
 
             if (unlikely(cpu->reverse_flags & GDB_RCONT)) {
-                printf("Skipping/recording watchpoint hit in RCONT on vaddr " TARGET_FMT_lx ", instr %lu\n", vaddr, rr_instr_count);
+                // first pass of reverse-continue
+                // skip this watchpoint and record it
                 cpu->last_bp_hit_instr = rr_instr_count;
                 return;
             }  else if (cpu->reverse_flags & GDB_RCONT_BREAK) {
@@ -2295,7 +2286,6 @@ static void check_watchpoint(int offset, int len, MemTxAttrs attrs, int flags)
 
                 if  (!(rr_instr_count == cpu->last_bp_hit_instr)) {
                     // if we're reverse-continuing to a certain point, ignore all other bps except the last one
-                    printf("check_watchpoint RCONT_BREAK skipping  at instr %lu, last_bp_hit_instr %lu\n", rr_instr_count, cpu->last_bp_hit_instr);
                     return;
                 }
 
@@ -2316,15 +2306,13 @@ static void check_watchpoint(int offset, int len, MemTxAttrs attrs, int flags)
                  */
                 tb_lock();
                 tb_check_watchpoint(cpu);
+
                 // Let's just break before access if we're in RR replay
                 if (wp->flags & BP_STOP_BEFORE_ACCESS || rr_in_replay()) {
-                /*if (wp->flags & BP_STOP_BEFORE_ACCESS) {*/
-                    printf("exiting CPU loop BEFORE ACCESS\n");
                     cpu->exception_index = EXCP_DEBUG;
                     cpu->rr_guest_instr_count -= 1;
                     cpu_loop_exit(cpu);
                 } else {
-                    printf("exiting CPU loop AFTER ACCESS\n");
                     cpu_get_tb_cpu_state(env, &pc, &cs_base, &cpu_flags);
                     tb_gen_code(cpu, pc, cs_base, cpu_flags, 1);
                     cpu_loop_exit_noexc(cpu);
@@ -3569,4 +3557,3 @@ int qemu_ram_foreach_block(RAMBlockIterFunc func, void *opaque)
     rcu_read_unlock();
     return ret;
 }
-#endif

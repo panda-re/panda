@@ -56,7 +56,6 @@ int get_closest_checkpoint_num(uint64_t target_instr_count) {
 
     // Check base cases 
     if (checkpoints[next_checkpoint_num-1]->guest_instr_count < target_instr_count) {
-		printf("base case %lu\n", checkpoints[next_checkpoint_num-1]->guest_instr_count);
         return next_checkpoint_num;
     } 
 
@@ -66,7 +65,6 @@ int get_closest_checkpoint_num(uint64_t target_instr_count) {
 
     for (int i = 1; i < next_checkpoint_num; i++) {
         if (checkpoints[i-1]->guest_instr_count < target_instr_count && target_instr_count <= checkpoints[i]->guest_instr_count) {
-			printf("get_closest i %d, i-1 instr %lu, i instr %lu\n", i, checkpoints[i-1]->guest_instr_count, checkpoints[i]->guest_instr_count);
             return i; 
         }
     }

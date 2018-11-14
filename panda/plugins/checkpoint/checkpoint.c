@@ -41,7 +41,6 @@ bool before_block_exec(CPUState *env, TranslationBlock *tb) {
         QTAILQ_FOREACH(bp, &env->breakpoints, entry) {
             if ((bp->rr_instr_count != 0 && rr_get_guest_instr_count() <= bp->rr_instr_count && bp->rr_instr_count < rr_get_guest_instr_count()+tb->icount) ||
                    (bp->pc != 0 && tb->pc <= bp->pc && bp->pc < tb->pc+tb->size)) {
-                printf("Asking to retranslate bp at pc %lx, instr %lu\n", bp->pc, rr_get_guest_instr_count());
                 return true;
             };
         }

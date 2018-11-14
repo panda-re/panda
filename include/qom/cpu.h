@@ -1003,7 +1003,6 @@ static inline bool cpu_rr_breakpoint_test(CPUState *cpu,  uint64_t cur_instr_cou
     if (unlikely(!QTAILQ_EMPTY(&cpu->breakpoints))) {
         QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
            if (bp->rr_instr_count != 0 && bp->rr_instr_count == cur_instr_count && (bp->flags & mask)) {
-               printf("rr_breakpoint_test true at %lu\n", bp->rr_instr_count);
                 return true;
             }
         }

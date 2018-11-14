@@ -8475,7 +8475,6 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
                 // Instead, record it so we can figure out the latest one
                 if (unlikely(cs->reverse_flags & GDB_RCONT)) {
                     cs->last_bp_hit_instr = rr_updated_instr_count;
-                    printf("Skipping/recording breakpoint at pc " TARGET_FMT_lx ", last_gdb_instr %lu, instr %lu\n", pc_ptr, cs->last_gdb_instr, rr_updated_instr_count);
                 } else if (cs->reverse_flags & GDB_RSTEP) {
                     if (rr_updated_instr_count >= cs->last_gdb_instr) {
                         fprintf(stderr, "GDB_RSTEP went too far");
@@ -8484,11 +8483,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
 
                     if (rr_updated_instr_count == cs->last_gdb_instr-1) {
                         cs->reverse_flags |= GDB_RDONE;
-                        printf("Emitting debug RSTEP, flags now %x\n", cs->reverse_flags);
                         goto generate_debug;
-                    } else {
-                        // if we're reverse-stepping, ignore all bps except the one directly before the reverse invocation point
-                        printf("RSTEP skipping  at pc " TARGET_FMT_lx ", instr %lu, last_gdb_instr-1 %lu\n", pc_ptr, rr_updated_instr_count, cs->last_gdb_instr-1);
                     }
 
                 } else if (cs->reverse_flags & GDB_RCONT_BREAK) {
@@ -8501,15 +8496,10 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
 
                     if  (rr_updated_instr_count == cs->last_bp_hit_instr) {
                         cs->reverse_flags = 0;
-                        printf("Reached last_bp_hit_instr, cleared RCONT_BREAK flag\n");
                         goto generate_debug;
-                    } else {
-                        // if we're reverse-continuing to a certain point, ignore all other bps except the last one
-                        printf("RCONT_BREAK skipping  at pc " TARGET_FMT_lx ", instr %lu, last_bp_hit_instr %lu\n", pc_ptr, rr_updated_instr_count, cs->last_bp_hit_instr);
                     }
                 } else {
 generate_debug:
-                    printf("Emitting debug\n");
                     gen_debug(dc, pc_ptr - dc->cs_base);
                     /* The address covered by the breakpoint must be included in
                        [tb->pc, tb->pc + tb->size) in order to for it to be
