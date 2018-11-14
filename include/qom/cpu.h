@@ -222,7 +222,6 @@ typedef struct CPUBreakpoint {
 
 struct CPUWatchpoint {
     vaddr virtaddr;
-    uint64_t last_hit_instr;
     vaddr len;
     vaddr hitaddr;
     MemTxAttrs hitattrs;

@@ -804,7 +804,6 @@ int cpu_watchpoint_insert(CPUState *cpu, vaddr addr, vaddr len,
     wp = g_malloc(sizeof(*wp));
 
     wp->virtaddr = addr;
-    wp->last_hit_instr = 0;
     wp->len = len;
     wp->flags = flags;
 
@@ -2267,7 +2266,6 @@ static void check_watchpoint(int offset, int len, MemTxAttrs attrs, int flags)
                 wp->flags |= BP_WATCHPOINT_HIT_WRITE;
             }
             wp->hitaddr = vaddr;
-            wp->last_hit_instr = rr_instr_count;
             wp->hitattrs = attrs;
 
             if (unlikely(cpu->reverse_flags & GDB_RCONT)) {
