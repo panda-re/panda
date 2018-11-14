@@ -270,7 +270,7 @@ static int gdb_signal_to_target (int sig)
         return -1;
 }
 
-#define DEBUG_GDB
+/*#define DEBUG_GDB*/
 
 typedef struct GDBRegisterState {
     int base_reg;
@@ -1037,7 +1037,6 @@ static void gdb_handle_reverse(GDBState *s, const char *p) {
 			put_packet(s, "E22");
 			return;
 		}
-		printf("Kicking off RSTEP from %lu\n", cur_instr_count);
 		s->c_cpu->reverse_flags = GDB_RSTEP;
 		s->c_cpu->last_gdb_instr = cur_instr_count; 
 	} else if (*p == 'c') {
@@ -1045,7 +1044,6 @@ static void gdb_handle_reverse(GDBState *s, const char *p) {
 		s->c_cpu->reverse_flags = GDB_RCONT ;
 		s->c_cpu->last_gdb_instr = cur_instr_count; 
 		s->c_cpu->last_bp_hit_instr = 0;
-		printf("Kicking off RCONT from %lu\n", cur_instr_count);
 	}
 
 	// revert to most recent checkpoint 
