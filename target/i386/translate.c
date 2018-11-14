@@ -8449,7 +8449,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         }
     }
 
-    uint64_t rr_instr_count = rr_get_guest_instr_count();
+    uint64_t rr_updated_instr_count = rr_get_guest_instr_count();
 
     /*
      * This function call emits a few instructions at the beginning of every
@@ -8461,71 +8461,40 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         tcg_gen_insn_start(pc_ptr, dc->cc_op);
         num_insns++;
 
-        if (unlikely(cs->reverse_flags & GDB_RCONT)) {
-            // If we've reached the end of this checkpoint region, 
-            if (unlikely(rr_instr_count >= cs->last_gdb_instr-1)) {
-                 int closest_num;
-                 if ((closest_num = get_closest_checkpoint_num(cs->last_gdb_instr-1)) < 0) {
-                    fprintf(stderr, "get_closest_checkpoint_num %d\n", closest_num); 
-                    abort();
-                 }
+        // Check reverse-continue status and conditions
+        // potentially restoring to checkpoint
+        cpu_rcont_check_restore(cs, rr_updated_instr_count);
 
-                if (cs->last_bp_hit_instr == 0) {
-                    // if we didn't see a breakpoint hit in this checkpoint region
-                    //let's restart from the previous checkpoint
-
-                     if (closest_num == 1) {
-                        // No more checkpoints before this one! Insert bp at beginning
-                        cpu_rr_breakpoint_insert(cs, 1, BP_GDB, NULL);
-                        cs->reverse_flags = 0;
-                        panda_restore_by_num(1);
-                     }
-
-                     Checkpoint* prev_checkpoint;
-                     if ((prev_checkpoint = get_checkpoint(closest_num-1)) == NULL) {
-                         fprintf(stderr, "gen_intmed_code: get_checkpoint fail\n");
-                         abort();
-                     }
-
-                     cs->last_gdb_instr = get_checkpoint(closest_num)->guest_instr_count;
-                     panda_restore(prev_checkpoint);
-                } else {
-                    // Re-run from checkpoint to latest breakpoint!
-                    cs->reverse_flags = GDB_RCONT_BREAK;
-                    panda_restore_by_num(closest_num);
-                }
-            }
-        }
-        
         /* If RF is set, suppress an internally generated breakpoint.  */
-
         if (unlikely(cpu_breakpoint_test(cs, pc_ptr,
                                          tb->flags & HF_RF_MASK
                                          ? BP_GDB : BP_ANY)) || 
-                unlikely(cpu_rr_breakpoint_test(cs, rr_instr_count, 
+                unlikely(cpu_rr_breakpoint_test(cs, rr_updated_instr_count, 
                                              tb->flags & HF_RF_MASK ? BP_GDB : BP_ANY))) {
                 // If we're in reverse direction, don't gen a debug event. 
                 // Instead, record it so we can figure out the latest one
                 if (unlikely(cs->reverse_flags & GDB_RCONT)) {
-                    cs->last_bp_hit_instr = rr_instr_count;
+                    cs->last_bp_hit_instr = rr_updated_instr_count;
                 } else if (cs->reverse_flags & GDB_RSTEP) {
-                    if (rr_instr_count >= cs->last_gdb_instr) {
+                    if (rr_updated_instr_count >= cs->last_gdb_instr) {
                         fprintf(stderr, "GDB_RSTEP went too far");
                         abort();
                     }
 
-                    if (rr_instr_count == cs->last_gdb_instr-1) {
+                    if (rr_updated_instr_count == cs->last_gdb_instr-1) {
                         cs->reverse_flags |= GDB_RDONE;
                         goto generate_debug;
-                    } 
+                    }
 
                 } else if (cs->reverse_flags & GDB_RCONT_BREAK) {
-                    if (rr_instr_count > cs->last_bp_hit_instr) {
+                    // We are doing second pass of reverse-continue
+                    // break on latest breakpoint/watchpoint 
+                    if (rr_updated_instr_count > cs->last_bp_hit_instr) {
                         fprintf(stderr, "GDB_RCONT_BREAK went too far");
                         abort();
                     }
 
-                    if  ( rr_instr_count == cs->last_bp_hit_instr) {
+                    if  (rr_updated_instr_count == cs->last_bp_hit_instr) {
                         cs->reverse_flags = 0;
                         goto generate_debug;
                     }
@@ -8559,7 +8528,7 @@ generate_debug:
         }
 
         pc_ptr = disas_insn(env, dc, pc_ptr);
-        rr_instr_count++;
+        rr_updated_instr_count++;
 
         if (unlikely(panda_callbacks_after_insn_translate(ENV_GET_CPU(env), pc_ptr))
                 && !dc->is_jmp) {

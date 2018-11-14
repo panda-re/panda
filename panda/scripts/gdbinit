@@ -1,3 +1,8 @@
+dir /home/raywang/lava32_ksyms/linux-3.2.51
+set substitute-path /build/linux-n2St39/ /home/raywang/lava32_ksyms/
+symbol-file /home/raywang/lava32_ksyms/usr/lib/debug/vmlinux-3.2.0-4-686-pae
+display/5i $pc
+
 set python print-stack full
 python
 
@@ -41,7 +46,7 @@ class PandaCmd(gdb.Command):
         if not rv_match:
             gdb.write("Response err: " + rv)
             return
-        response = rv_match.group(1)
+        response = gdb_unescape(rv_match.group(1))
         gdb.write(response + "\n")
 
 end
@@ -53,4 +58,14 @@ end
 python PandaCmd('rrbreakpoint', [])
 document rrbreakpoint
 Add breakpoint at rr_instruction_count 
+end
+
+python PandaCmd('rrdelete', [])
+document rrdelete
+Delete breakpoint at rr_instruction_count 
+end
+
+python PandaCmd('rrlist', [])
+document rrlist
+List all rr breakpoints
 end

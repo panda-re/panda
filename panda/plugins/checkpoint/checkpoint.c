@@ -65,6 +65,9 @@ void after_init(CPUState* env) {
     uint64_t num_checkpoints = space_bytes/ram_size;
     printf("Number of checkpoints allowed:  %lu\n", num_checkpoints);
     checkpoint_instr_size = rr_nondet_log->last_prog_point.guest_instr_count/num_checkpoints;
+    if (checkpoint_instr_size < 500000)
+        checkpoint_instr_size = 500000;
+
     printf("Instructions per checkpoint: %lu\n", checkpoint_instr_size);
 
 }
@@ -76,8 +79,6 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);
     pcb.after_machine_init = after_init;
     panda_register_callback(self, PANDA_CB_AFTER_MACHINE_INIT, pcb);
-
-    /*bool = panda_parse_uint64_opt(args, "", 16, "depth of callstack for matches");*/
 
     return true;
 }

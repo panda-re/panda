@@ -358,6 +358,7 @@ struct CPUState {
 
     QTAILQ_HEAD(watchpoints_head, CPUWatchpoint) watchpoints;
     CPUWatchpoint *watchpoint_hit;
+    bool watchpoints_disabled;
 
     void *opaque;
 
@@ -393,9 +394,9 @@ struct CPUState {
 
     // Used for rr reverse debugging
     uint8_t reverse_flags;
-    uint64_t last_gdb_instr;
-    uint64_t last_bp_hit_instr;
-    uint64_t temp_rr_bp_instr;
+    uint64_t last_gdb_instr; // Instruction count from which we last sent a GDB command
+    uint64_t last_bp_hit_instr; // Last bp observed during this checkpoint run
+    uint64_t temp_rr_bp_instr; // Saved bp. Used by rstep/rcont, which disables bp to move forward, then restores on next tb in cpu-exec.c
 
     /* Used to keep track of an outstanding cpu throttle thread for migration
      * autoconverge
@@ -1014,6 +1015,8 @@ int cpu_watchpoint_remove(CPUState *cpu, vaddr addr,
                           vaddr len, int flags);
 void cpu_watchpoint_remove_by_ref(CPUState *cpu, CPUWatchpoint *watchpoint);
 void cpu_watchpoint_remove_all(CPUState *cpu, int mask);
+
+void cpu_rcont_check_restore(CPUState* cpu, uint64_t rr_instr_count);
 
 //#ifdef CONFIG_SOFTMMU
 //#include "../exec/cpu-defs.h"
