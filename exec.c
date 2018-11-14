@@ -2285,8 +2285,6 @@ static void check_watchpoint(int offset, int len, MemTxAttrs attrs, int flags)
                     // if we're reverse-continuing to a certain point, ignore all other bps except the last one
                     return;
                 }
-
-                cpu->reverse_flags = 0;
             }
 
             if (!cpu->watchpoint_hit) {
@@ -2304,7 +2302,10 @@ static void check_watchpoint(int offset, int len, MemTxAttrs attrs, int flags)
                 tb_lock();
                 tb_check_watchpoint(cpu);
 
-                // Let's just break before access if we're in RR replay
+                // We're done with reverse-continue, clear the flag
+                cpu->reverse_flags = 0;
+
+                // rw: Let's just break before access if we're in RR replay
                 if (wp->flags & BP_STOP_BEFORE_ACCESS || rr_in_replay()) {
                     cpu->exception_index = EXCP_DEBUG;
                     cpu->rr_guest_instr_count -= 1;
