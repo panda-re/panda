@@ -15,6 +15,8 @@ gdb -x ~/panda/panda/scripts/gdbinit -ex 'target remote localhost:1234'
 ## Reverse execution
 You can use `reverse-stepi` and `reverse-continue` commands, which are analogous to `step` and `continue`, to debug the guest.
 
+Watchpoints and breakpoints should work as normal.
+
 ```
 Remote debugging using localhost:1234
 0xffffffff81030c64 in ?? ()
@@ -43,6 +45,10 @@ PANDA supports several commands inspired by Mozilla's rr project.
 During replay, `when` displays the guest instruction count
 * `rrbreakpoint <instr>`
 Sets a breakpoint on a guest instruction count
+* `rrdelete <instr>`
+Deletes a breakpoint on a guest instruction count
+* `rrlist
+Lists all guest instruction count breakpoints
 
 ```
 (gdb) when

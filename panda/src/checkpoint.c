@@ -1,3 +1,10 @@
+/*
+ * PANDA Checkpoint API
+ * Author: Ray Wang		raywang@mit.edu
+ *
+ * Provides functions to take, store, and restore replay checkpoints
+ */
+
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>

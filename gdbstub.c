@@ -386,6 +386,21 @@ static inline void gdb_continue(GDBState *s)
 #endif
 }
 
+static void disable_cur_rr_bp_and_wp(CPUState* cpu) {
+	CPUBreakpoint* bp;
+	QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
+		if (bp->rr_instr_count != 0 && rr_get_guest_instr_count() == bp->rr_instr_count) {
+			printf("temp removing bp at rr instr %lu\n", bp->rr_instr_count);
+			cpu_breakpoint_remove_by_instr(cpu, bp->rr_instr_count, BP_GDB);
+			cpu->temp_rr_bp_instr = bp->rr_instr_count;
+		}
+	}
+
+	// If we are currently broken at watchpoint, disable it until we get past it
+	// reenabled in exec.c: check_watchpoint
+	cpu->watchpoints_disabled = true;
+}
+
 /*
  * Resume execution, per CPU actions. For user-mode emulation it's
  * equivalent to gdb_continue.
@@ -421,20 +436,18 @@ static int gdb_continue_partial(GDBState *s, char *newstates)
             case 's':
                 cpu_single_step(cpu, sstep_flags);
                 cpu_resume(cpu);
+                
+				// If we are broken at an rr breakpoint, disable it before continuing
+                // and reenable it after we get past the instruction
+				disable_cur_rr_bp_and_wp(cpu);
                 flag = 1;
                 break;
             case 'c':
-                // If we are broken at an rr breakpoint, disable it before continuing
-                // and reenable it after we get past the instruction
                 cpu_resume(cpu);
-                CPUBreakpoint* bp;
-                QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
-                    if (bp->rr_instr_count != 0 && rr_get_guest_instr_count() == bp->rr_instr_count) {
-                        cpu_breakpoint_remove_by_instr(cpu, bp->rr_instr_count, BP_GDB);
-                        cpu->temp_rr_bp_instr = bp->rr_instr_count;
-                        break;
-                    }
-                }
+				
+				// If we are broken at an rr breakpoint, disable it before continuing
+                // and reenable it after we get past the instruction
+				disable_cur_rr_bp_and_wp(cpu);
                 flag = 1;
                 break;
             default:
@@ -449,6 +462,7 @@ static int gdb_continue_partial(GDBState *s, char *newstates)
 #endif
     return res;
 }
+
 
 static void put_buffer(GDBState *s, const uint8_t *buf, int len)
 {
@@ -798,6 +812,38 @@ static int gdb_breakpoint_insert(target_ulong addr, target_ulong len, int type)
     }
 }
 
+static int gdb_rr_breakpoint_remove(uint64_t instr, int type) {
+    CPUState *cpu;
+    int err = 0;
+
+    switch (type) {
+    case GDB_BREAKPOINT_SW:
+    case GDB_BREAKPOINT_HW:
+        CPU_FOREACH(cpu) {
+            err = cpu_breakpoint_remove_by_instr(cpu, instr, BP_GDB);
+            if (err) {
+                break;
+            }
+        }
+        return err;
+//#ifndef CONFIG_USER_ONLY
+    //case GDB_WATCHPOINT_WRITE:
+    //case GDB_WATCHPOINT_READ:
+    //case GDB_WATCHPOINT_ACCESS:
+        //CPU_FOREACH(cpu) {
+            //err = cpu_watchpoint_remove(cpu, addr, len,
+                                        //xlat_gdb_type(cpu, type));
+            //if (err)
+                //break;
+		/*}*/
+		/*return err;*/
+//#endif
+    default:
+        return -ENOSYS;
+    }
+	
+}
+
 static int gdb_breakpoint_remove(target_ulong addr, target_ulong len, int type)
 {
     CPUState *cpu;
@@ -982,59 +1028,107 @@ out:
 }
 
 static void gdb_handle_reverse(GDBState *s, const char *p) {
-    uint64_t cur_instr_count = rr_get_guest_instr_count();
+	uint64_t cur_instr_count = rr_get_guest_instr_count();
 
-    if (*p == 's') {
-        // Reverse step
-        int res = gdb_rr_breakpoint_insert(cur_instr_count-1, GDB_BREAKPOINT_SW);
-        if (res < 0) {
-              put_packet(s, "E22");
-              return;
-        }
-       s->c_cpu->reverse_flags = GDB_RSTEP;
-       s->c_cpu->last_gdb_instr = cur_instr_count; 
+	if (*p == 's') {
+		// Reverse step
+		int res = gdb_rr_breakpoint_insert(cur_instr_count-1, GDB_BREAKPOINT_SW);
+		if (res < 0) {
+			put_packet(s, "E22");
+			return;
+		}
+		s->c_cpu->reverse_flags = GDB_RSTEP;
+		s->c_cpu->last_gdb_instr = cur_instr_count; 
+	} else if (*p == 'c') {
+		// Reverse continue
+		s->c_cpu->reverse_flags = GDB_RCONT ;
+		s->c_cpu->last_gdb_instr = cur_instr_count; 
+		s->c_cpu->last_bp_hit_instr = 0;
+	}
 
-    } else if (*p == 'c') {
-       // Reverse continue
-       s->c_cpu->reverse_flags = GDB_RCONT ;
-       s->c_cpu->last_gdb_instr = cur_instr_count; 
-       s->c_cpu->last_bp_hit_instr = 0;
+	// revert to most recent checkpoint 
+	int closest_num;
+	if ((closest_num = get_closest_checkpoint_num(cur_instr_count)) < 0) {
+		fprintf(stderr, "gdb_handle_reverse: get_closest_checkpoint_num %d\n", closest_num); 
+		abort();
+	}
 
-    }
-
-    // revert to most recent checkpoint 
-     Checkpoint* latest = (Checkpoint*)get_checkpoint(-1);
-     if (latest == NULL) {
-         fprintf(stderr, "No checkpoints, reverse-step failed!\n");
-        return;
-     }
-     panda_restore(latest);
-     gdb_continue(s);
+	tb_flush(s->c_cpu);
+	tlb_flush(s->c_cpu);
+	panda_restore_by_num(closest_num);
+	gdb_continue(s);
 }
 
 static void gdb_handle_panda_cmd(GDBState *s, const char* p) {
-    char buf[MAX_PACKET_LENGTH];
+    char buf[MAX_PACKET_LENGTH] = {0};
+	char membuf[MAX_PACKET_LENGTH] = {0};
+
     int chars_written;
     if (!strncmp(p, "when", 4)) {
-        snprintf(buf, sizeof(buf), "%lu", rr_get_guest_instr_count());
+        snprintf(membuf, sizeof(membuf), "%lu", rr_get_guest_instr_count());
+		
+		memtohex(buf, (uint8_t*)membuf, strlen(membuf));
         put_packet(s, buf);
     } else if (!strncmp(p, "rrbreakpoint", 12)) {
         p+=12;
-        int bufsize = 0;
+        int membufsize = 0;
         const char msg[] = "Added breakpoints at instructions";
-        snprintf(buf, sizeof(buf), msg); 
-        bufsize += sizeof(msg)-1;
-        
+        snprintf(membuf, sizeof(membuf), msg); 
+        membufsize += sizeof(msg)-1;
         while (*p == ':') {
             p++;
             uint64_t bpinstr = strtoull(p, (char **)&p, 10);
-            chars_written = snprintf(buf+bufsize, sizeof(buf), " %lu,", bpinstr); 
-            bufsize += chars_written;
+            chars_written = snprintf(membuf+membufsize, sizeof(membuf), " %lu,", bpinstr); 
+            membufsize += chars_written;
             gdb_rr_breakpoint_insert(bpinstr, GDB_BREAKPOINT_SW);
         }
-        buf[bufsize-1] = '\0';
+
+		if (membufsize > MAX_PACKET_LENGTH/2)
+			membufsize = MAX_PACKET_LENGTH/2;
+        
+		memtohex(buf, (uint8_t*)membuf, membufsize);
         put_packet(s, buf);
-    }
+    } else if (!strncmp(p, "rrdelete", 8)) {
+		// delete rr instr breakpoint
+		p += 8;
+        int membufsize = 0;
+        const char msg[] = "Deleted breakpoints at instructions";
+        snprintf(membuf, sizeof(membuf), msg); 
+        membufsize += sizeof(msg)-1;
+
+        while (*p == ':') {
+            p++;
+            uint64_t bpinstr = strtoull(p, (char **)&p, 10);
+            chars_written = snprintf(membuf+membufsize, sizeof(membuf), " %lu,", bpinstr); 
+            membufsize += chars_written;
+            gdb_rr_breakpoint_remove(bpinstr, GDB_BREAKPOINT_SW);
+        }
+
+		if (membufsize > MAX_PACKET_LENGTH/2)
+			membufsize = MAX_PACKET_LENGTH/2;
+        
+		memtohex(buf, (uint8_t*)membuf, membufsize);
+        put_packet(s, buf);
+	} else if (!strncmp(p, "rrlist", 6)) {
+		CPUBreakpoint *bp;
+        int membufsize = 0;
+        const char msg[] = "rr breakpoints: \n";
+        snprintf(membuf, sizeof(membuf), msg); 
+        membufsize += sizeof(msg)-1;
+
+        QTAILQ_FOREACH(bp, &s->c_cpu->breakpoints, entry) {
+           if (bp->rr_instr_count != 0) {
+				chars_written = snprintf(membuf+membufsize, sizeof(membuf), "%lu\n", bp->rr_instr_count);
+				membufsize += chars_written;
+            }
+		}
+        
+		if (membufsize > MAX_PACKET_LENGTH/2)
+			membufsize = MAX_PACKET_LENGTH/2;
+        
+		memtohex(buf, (uint8_t*)membuf, membufsize);
+        put_packet(s, buf);
+	}
 }
 
 static int gdb_handle_packet(GDBState *s, const char *line_buf)
