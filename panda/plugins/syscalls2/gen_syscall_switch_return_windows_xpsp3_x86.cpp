@@ -2,16 +2,18 @@
 #include "panda/plugin_plugin.h"
 
 #include "syscalls2.h"
-#include "syscalls_common.h"
+#include "syscalls2_info.h"
+
+extern const syscall_info_t *syscall_info;
 
 extern "C" {
 #include "gen_syscalls_ext_typedefs.h"
 #include "gen_syscall_ppp_extern_return.h"
 }
 
-void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {
+void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int no, const syscall_ctx_t *ctx) {
 #ifdef TARGET_I386
-	switch(ordinal) {
+	switch(no) {
 		// 0 NTSTATUS NtAcceptConnectPort ['PHANDLE PortHandle', ' PVOID PortContext', ' PPORT_MESSAGE ConnectionRequest', ' BOOLEAN AcceptConnection', ' PPORT_VIEW ServerView', ' PREMOTE_PORT_VIEW ClientView']
 		case 0: {
 			uint32_t arg0;
@@ -20,13 +22,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtAcceptConnectPort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAcceptConnectPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAcceptConnectPort_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -40,15 +42,15 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg5;
 			uint32_t arg6;
 			uint32_t arg7;
-			if (PPP_CHECK_CB(on_NtAccessCheck_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAccessCheck_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAccessCheck_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) ;
 		}; break;
@@ -65,18 +67,18 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg8;
 			uint32_t arg9;
 			uint32_t arg10;
-			if (PPP_CHECK_CB(on_NtAccessCheckAndAuditAlarm_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
-				memcpy(&arg10, rp.params[10], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAccessCheckAndAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
+				memcpy(&arg10, ctx->args[10], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAccessCheckAndAuditAlarm_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) ;
 		}; break;
@@ -93,18 +95,18 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg8;
 			uint32_t arg9;
 			uint32_t arg10;
-			if (PPP_CHECK_CB(on_NtAccessCheckByType_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
-				memcpy(&arg10, rp.params[10], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAccessCheckByType_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
+				memcpy(&arg10, ctx->args[10], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAccessCheckByType_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) ;
 		}; break;
@@ -126,23 +128,23 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg13;
 			uint32_t arg14;
 			uint32_t arg15;
-			if (PPP_CHECK_CB(on_NtAccessCheckByTypeAndAuditAlarm_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
-				memcpy(&arg10, rp.params[10], sizeof(uint32_t));
-				memcpy(&arg11, rp.params[11], sizeof(uint32_t));
-				memcpy(&arg12, rp.params[12], sizeof(uint32_t));
-				memcpy(&arg13, rp.params[13], sizeof(uint32_t));
-				memcpy(&arg14, rp.params[14], sizeof(uint32_t));
-				memcpy(&arg15, rp.params[15], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAccessCheckByTypeAndAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
+				memcpy(&arg10, ctx->args[10], sizeof(uint32_t));
+				memcpy(&arg11, ctx->args[11], sizeof(uint32_t));
+				memcpy(&arg12, ctx->args[12], sizeof(uint32_t));
+				memcpy(&arg13, ctx->args[13], sizeof(uint32_t));
+				memcpy(&arg14, ctx->args[14], sizeof(uint32_t));
+				memcpy(&arg15, ctx->args[15], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAccessCheckByTypeAndAuditAlarm_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15) ;
 		}; break;
@@ -159,18 +161,18 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg8;
 			uint32_t arg9;
 			uint32_t arg10;
-			if (PPP_CHECK_CB(on_NtAccessCheckByTypeResultList_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
-				memcpy(&arg10, rp.params[10], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAccessCheckByTypeResultList_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
+				memcpy(&arg10, ctx->args[10], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAccessCheckByTypeResultList_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) ;
 		}; break;
@@ -192,23 +194,23 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg13;
 			uint32_t arg14;
 			uint32_t arg15;
-			if (PPP_CHECK_CB(on_NtAccessCheckByTypeResultListAndAuditAlarm_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
-				memcpy(&arg10, rp.params[10], sizeof(uint32_t));
-				memcpy(&arg11, rp.params[11], sizeof(uint32_t));
-				memcpy(&arg12, rp.params[12], sizeof(uint32_t));
-				memcpy(&arg13, rp.params[13], sizeof(uint32_t));
-				memcpy(&arg14, rp.params[14], sizeof(uint32_t));
-				memcpy(&arg15, rp.params[15], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAccessCheckByTypeResultListAndAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
+				memcpy(&arg10, ctx->args[10], sizeof(uint32_t));
+				memcpy(&arg11, ctx->args[11], sizeof(uint32_t));
+				memcpy(&arg12, ctx->args[12], sizeof(uint32_t));
+				memcpy(&arg13, ctx->args[13], sizeof(uint32_t));
+				memcpy(&arg14, ctx->args[14], sizeof(uint32_t));
+				memcpy(&arg15, ctx->args[15], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAccessCheckByTypeResultListAndAuditAlarm_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15) ;
 		}; break;
@@ -231,24 +233,24 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg14;
 			uint32_t arg15;
 			uint32_t arg16;
-			if (PPP_CHECK_CB(on_NtAccessCheckByTypeResultListAndAuditAlarmByHandle_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
-				memcpy(&arg10, rp.params[10], sizeof(uint32_t));
-				memcpy(&arg11, rp.params[11], sizeof(uint32_t));
-				memcpy(&arg12, rp.params[12], sizeof(uint32_t));
-				memcpy(&arg13, rp.params[13], sizeof(uint32_t));
-				memcpy(&arg14, rp.params[14], sizeof(uint32_t));
-				memcpy(&arg15, rp.params[15], sizeof(uint32_t));
-				memcpy(&arg16, rp.params[16], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAccessCheckByTypeResultListAndAuditAlarmByHandle_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
+				memcpy(&arg10, ctx->args[10], sizeof(uint32_t));
+				memcpy(&arg11, ctx->args[11], sizeof(uint32_t));
+				memcpy(&arg12, ctx->args[12], sizeof(uint32_t));
+				memcpy(&arg13, ctx->args[13], sizeof(uint32_t));
+				memcpy(&arg14, ctx->args[14], sizeof(uint32_t));
+				memcpy(&arg15, ctx->args[15], sizeof(uint32_t));
+				memcpy(&arg16, ctx->args[16], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAccessCheckByTypeResultListAndAuditAlarmByHandle_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16) ;
 		}; break;
@@ -257,10 +259,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtAddAtom_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAddAtom_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAddAtom_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -268,9 +270,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 9: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtEnumerateBootEntries_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtEnumerateBootEntries_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtEnumerateBootEntries_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -282,13 +284,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtAdjustGroupsToken_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAdjustGroupsToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAdjustGroupsToken_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -300,13 +302,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtAdjustPrivilegesToken_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAdjustPrivilegesToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAdjustPrivilegesToken_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -314,25 +316,25 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 12: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtAlertResumeThread_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAlertResumeThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAlertResumeThread_return, cpu, pc, arg0, arg1) ;
 		}; break;
 		// 13 NTSTATUS NtAlertThread ['HANDLE ThreadHandle']
 		case 13: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtAlertThread_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAlertThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAlertThread_return, cpu, pc, arg0) ;
 		}; break;
 		// 14 NTSTATUS NtAllocateLocallyUniqueId ['PLUID Luid']
 		case 14: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtAllocateLocallyUniqueId_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAllocateLocallyUniqueId_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAllocateLocallyUniqueId_return, cpu, pc, arg0) ;
 		}; break;
@@ -341,10 +343,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtAllocateUserPhysicalPages_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAllocateUserPhysicalPages_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAllocateUserPhysicalPages_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -354,11 +356,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtAllocateUuids_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAllocateUuids_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAllocateUuids_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -370,13 +372,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtAllocateVirtualMemory_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAllocateVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAllocateVirtualMemory_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -384,9 +386,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 18: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtAreMappedFilesTheSame_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAreMappedFilesTheSame_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAreMappedFilesTheSame_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -394,9 +396,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 19: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtAssignProcessToJobObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtAssignProcessToJobObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtAssignProcessToJobObject_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -405,18 +407,18 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtCallbackReturn_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCallbackReturn_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCallbackReturn_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
 		// 21 NTSTATUS NtModifyBootEntry ['PBOOT_ENTRY BootEntry']
 		case 21: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtModifyBootEntry_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtModifyBootEntry_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtModifyBootEntry_return, cpu, pc, arg0) ;
 		}; break;
@@ -424,9 +426,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 22: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtCancelIoFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCancelIoFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCancelIoFile_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -434,25 +436,25 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 23: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtCancelTimer_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCancelTimer_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCancelTimer_return, cpu, pc, arg0, arg1) ;
 		}; break;
 		// 24 NTSTATUS NtClearEvent ['HANDLE EventHandle']
 		case 24: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtClearEvent_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtClearEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtClearEvent_return, cpu, pc, arg0) ;
 		}; break;
 		// 25 NTSTATUS NtClose ['HANDLE Handle']
 		case 25: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtClose_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtClose_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtClose_return, cpu, pc, arg0) ;
 		}; break;
@@ -461,10 +463,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtCloseObjectAuditAlarm_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCloseObjectAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCloseObjectAuditAlarm_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -472,9 +474,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 27: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtCompactKeys_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCompactKeys_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCompactKeys_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -483,26 +485,26 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtCompareTokens_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCompareTokens_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCompareTokens_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
 		// 29 NTSTATUS NtCompleteConnectPort ['HANDLE PortHandle']
 		case 29: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtCompleteConnectPort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCompleteConnectPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCompleteConnectPort_return, cpu, pc, arg0) ;
 		}; break;
 		// 30 NTSTATUS NtCompressKey ['HANDLE Key']
 		case 30: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtCompressKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCompressKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCompressKey_return, cpu, pc, arg0) ;
 		}; break;
@@ -516,15 +518,15 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg5;
 			uint32_t arg6;
 			uint32_t arg7;
-			if (PPP_CHECK_CB(on_NtConnectPort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtConnectPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtConnectPort_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) ;
 		}; break;
@@ -532,9 +534,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 32: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtContinue_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtContinue_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtContinue_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -544,11 +546,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtCreateDebugObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateDebugObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateDebugObject_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -557,10 +559,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtCreateDirectoryObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateDirectoryObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateDirectoryObject_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -571,12 +573,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtCreateEvent_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateEvent_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -585,10 +587,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtCreateEventPair_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateEventPair_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -605,18 +607,18 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg8;
 			uint32_t arg9;
 			uint32_t arg10;
-			if (PPP_CHECK_CB(on_NtCreateFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
-				memcpy(&arg10, rp.params[10], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
+				memcpy(&arg10, ctx->args[10], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) ;
 		}; break;
@@ -626,11 +628,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtCreateIoCompletion_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateIoCompletion_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateIoCompletion_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -639,10 +641,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtCreateJobObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateJobObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateJobObject_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -651,10 +653,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtCreateJobSet_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateJobSet_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateJobSet_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -667,14 +669,14 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg4;
 			uint32_t arg5;
 			uint32_t arg6;
-			if (PPP_CHECK_CB(on_NtCreateKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateKey_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6) ;
 		}; break;
@@ -688,15 +690,15 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg5;
 			uint32_t arg6;
 			uint32_t arg7;
-			if (PPP_CHECK_CB(on_NtCreateMailslotFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateMailslotFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateMailslotFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) ;
 		}; break;
@@ -706,11 +708,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtCreateMutant_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateMutant_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateMutant_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -730,21 +732,21 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg11;
 			uint32_t arg12;
 			uint32_t arg13;
-			if (PPP_CHECK_CB(on_NtCreateNamedPipeFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
-				memcpy(&arg10, rp.params[10], sizeof(uint32_t));
-				memcpy(&arg11, rp.params[11], sizeof(uint32_t));
-				memcpy(&arg12, rp.params[12], sizeof(uint32_t));
-				memcpy(&arg13, rp.params[13], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateNamedPipeFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
+				memcpy(&arg10, ctx->args[10], sizeof(uint32_t));
+				memcpy(&arg11, ctx->args[11], sizeof(uint32_t));
+				memcpy(&arg12, ctx->args[12], sizeof(uint32_t));
+				memcpy(&arg13, ctx->args[13], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateNamedPipeFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13) ;
 		}; break;
@@ -754,11 +756,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtCreatePagingFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreatePagingFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreatePagingFile_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -769,12 +771,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtCreatePort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreatePort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreatePort_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -788,15 +790,15 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg5;
 			uint32_t arg6;
 			uint32_t arg7;
-			if (PPP_CHECK_CB(on_NtCreateProcess_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateProcess_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateProcess_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) ;
 		}; break;
@@ -811,16 +813,16 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg6;
 			uint32_t arg7;
 			uint32_t arg8;
-			if (PPP_CHECK_CB(on_NtCreateProcessEx_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateProcessEx_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateProcessEx_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) ;
 		}; break;
@@ -835,16 +837,16 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg6;
 			uint32_t arg7;
 			uint32_t arg8;
-			if (PPP_CHECK_CB(on_NtCreateProfile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateProfile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateProfile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) ;
 		}; break;
@@ -857,14 +859,14 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg4;
 			uint32_t arg5;
 			uint32_t arg6;
-			if (PPP_CHECK_CB(on_NtCreateSection_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateSection_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateSection_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6) ;
 		}; break;
@@ -875,12 +877,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			int32_t arg3;
 			int32_t arg4;
-			if (PPP_CHECK_CB(on_NtCreateSemaphore_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(int32_t));
-				memcpy(&arg4, rp.params[4], sizeof(int32_t));
+			if (PPP_CHECK_CB(on_NtCreateSemaphore_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(int32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(int32_t));
 			}
 			PPP_RUN_CB(on_NtCreateSemaphore_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -890,11 +892,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtCreateSymbolicLinkObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateSymbolicLinkObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateSymbolicLinkObject_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -908,15 +910,15 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg5;
 			uint32_t arg6;
 			uint32_t arg7;
-			if (PPP_CHECK_CB(on_NtCreateThread_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateThread_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) ;
 		}; break;
@@ -926,11 +928,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtCreateTimer_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateTimer_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateTimer_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -949,20 +951,20 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg10;
 			uint32_t arg11;
 			uint32_t arg12;
-			if (PPP_CHECK_CB(on_NtCreateToken_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
-				memcpy(&arg10, rp.params[10], sizeof(uint32_t));
-				memcpy(&arg11, rp.params[11], sizeof(uint32_t));
-				memcpy(&arg12, rp.params[12], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
+				memcpy(&arg10, ctx->args[10], sizeof(uint32_t));
+				memcpy(&arg11, ctx->args[11], sizeof(uint32_t));
+				memcpy(&arg12, ctx->args[12], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateToken_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12) ;
 		}; break;
@@ -973,12 +975,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtCreateWaitablePort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateWaitablePort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateWaitablePort_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -986,9 +988,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 57: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtDebugActiveProcess_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtDebugActiveProcess_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtDebugActiveProcess_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -997,10 +999,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtDebugContinue_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtDebugContinue_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtDebugContinue_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1008,33 +1010,33 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 59: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtDelayExecution_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtDelayExecution_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtDelayExecution_return, cpu, pc, arg0, arg1) ;
 		}; break;
 		// 60 NTSTATUS NtDeleteAtom ['RTL_ATOM Atom']
 		case 60: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtDeleteAtom_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtDeleteAtom_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtDeleteAtom_return, cpu, pc, arg0) ;
 		}; break;
 		// 61 NTSTATUS NtDeleteFile ['POBJECT_ATTRIBUTES ObjectAttributes']
 		case 61: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtDeleteFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtDeleteFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtDeleteFile_return, cpu, pc, arg0) ;
 		}; break;
 		// 62 NTSTATUS NtDeleteKey ['HANDLE KeyHandle']
 		case 62: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtDeleteKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtDeleteKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtDeleteKey_return, cpu, pc, arg0) ;
 		}; break;
@@ -1043,10 +1045,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtDeleteObjectAuditAlarm_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtDeleteObjectAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtDeleteObjectAuditAlarm_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1054,9 +1056,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 64: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtDeleteValueKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtDeleteValueKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtDeleteValueKey_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -1072,25 +1074,25 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg7;
 			uint32_t arg8;
 			uint32_t arg9;
-			if (PPP_CHECK_CB(on_NtDeviceIoControlFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtDeviceIoControlFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtDeviceIoControlFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) ;
 		}; break;
 		// 66 NTSTATUS NtDisplayString ['PUNICODE_STRING String']
 		case 66: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtDisplayString_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtDisplayString_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtDisplayString_return, cpu, pc, arg0) ;
 		}; break;
@@ -1103,14 +1105,14 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg4;
 			uint32_t arg5;
 			uint32_t arg6;
-			if (PPP_CHECK_CB(on_NtDuplicateObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtDuplicateObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtDuplicateObject_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6) ;
 		}; break;
@@ -1122,13 +1124,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtDuplicateToken_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtDuplicateToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtDuplicateToken_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -1140,13 +1142,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtEnumerateKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtEnumerateKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtEnumerateKey_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -1155,10 +1157,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtEnumerateSystemEnvironmentValuesEx_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtEnumerateSystemEnvironmentValuesEx_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtEnumerateSystemEnvironmentValuesEx_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1170,13 +1172,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtEnumerateValueKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtEnumerateValueKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtEnumerateValueKey_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -1184,9 +1186,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 72: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtExtendSection_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtExtendSection_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtExtendSection_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -1198,13 +1200,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtFilterToken_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtFilterToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtFilterToken_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -1213,10 +1215,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtFindAtom_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtFindAtom_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtFindAtom_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1224,9 +1226,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 75: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtFlushBuffersFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtFlushBuffersFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtFlushBuffersFile_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -1235,18 +1237,18 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtFlushInstructionCache_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtFlushInstructionCache_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtFlushInstructionCache_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
 		// 77 NTSTATUS NtFlushKey ['HANDLE KeyHandle']
 		case 77: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtFlushKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtFlushKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtFlushKey_return, cpu, pc, arg0) ;
 		}; break;
@@ -1256,17 +1258,17 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtFlushVirtualMemory_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtFlushVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtFlushVirtualMemory_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
 		// 79 NTSTATUS NtFlushWriteBuffer ['']
 		case 79: {
-			if (PPP_CHECK_CB(on_NtFlushWriteBuffer_return)) {
+			if (PPP_CHECK_CB(on_NtFlushWriteBuffer_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 			}
 			PPP_RUN_CB(on_NtFlushWriteBuffer_return, cpu, pc) ;
 		}; break;
@@ -1275,10 +1277,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtFreeUserPhysicalPages_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtFreeUserPhysicalPages_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtFreeUserPhysicalPages_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1288,11 +1290,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtFreeVirtualMemory_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtFreeVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtFreeVirtualMemory_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -1308,17 +1310,17 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg7;
 			uint32_t arg8;
 			uint32_t arg9;
-			if (PPP_CHECK_CB(on_NtFsControlFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtFsControlFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtFsControlFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) ;
 		}; break;
@@ -1326,9 +1328,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 83: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtGetContextThread_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtGetContextThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtGetContextThread_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -1336,9 +1338,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 84: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtGetDevicePowerState_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtGetDevicePowerState_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtGetDevicePowerState_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -1348,11 +1350,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtGetPlugPlayEvent_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtGetPlugPlayEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtGetPlugPlayEvent_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -1365,22 +1367,22 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg4;
 			uint32_t arg5;
 			uint32_t arg6;
-			if (PPP_CHECK_CB(on_NtGetWriteWatch_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtGetWriteWatch_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtGetWriteWatch_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6) ;
 		}; break;
 		// 87 NTSTATUS NtImpersonateAnonymousToken ['HANDLE ThreadHandle']
 		case 87: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtImpersonateAnonymousToken_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtImpersonateAnonymousToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtImpersonateAnonymousToken_return, cpu, pc, arg0) ;
 		}; break;
@@ -1388,9 +1390,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 88: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtImpersonateClientOfPort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtImpersonateClientOfPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtImpersonateClientOfPort_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -1399,18 +1401,18 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtImpersonateThread_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtImpersonateThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtImpersonateThread_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
 		// 90 NTSTATUS NtInitializeRegistry ['USHORT BootCondition']
 		case 90: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtInitializeRegistry_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtInitializeRegistry_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtInitializeRegistry_return, cpu, pc, arg0) ;
 		}; break;
@@ -1420,11 +1422,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtInitiatePowerAction_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtInitiatePowerAction_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtInitiatePowerAction_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -1432,15 +1434,15 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 92: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtIsProcessInJob_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtIsProcessInJob_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtIsProcessInJob_return, cpu, pc, arg0, arg1) ;
 		}; break;
 		// 93 BOOLEAN NtIsSystemResumeAutomatic ['']
 		case 93: {
-			if (PPP_CHECK_CB(on_NtIsSystemResumeAutomatic_return)) {
+			if (PPP_CHECK_CB(on_NtIsSystemResumeAutomatic_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 			}
 			PPP_RUN_CB(on_NtIsSystemResumeAutomatic_return, cpu, pc) ;
 		}; break;
@@ -1448,17 +1450,17 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 94: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtListenPort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtListenPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtListenPort_return, cpu, pc, arg0, arg1) ;
 		}; break;
 		// 95 NTSTATUS NtLoadDriver ['PUNICODE_STRING DriverServiceName']
 		case 95: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtLoadDriver_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtLoadDriver_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtLoadDriver_return, cpu, pc, arg0) ;
 		}; break;
@@ -1466,9 +1468,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 96: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtLoadKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtLoadKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtLoadKey_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -1477,10 +1479,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtLoadKey2_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtLoadKey2_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtLoadKey2_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1496,17 +1498,17 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg7;
 			uint32_t arg8;
 			uint32_t arg9;
-			if (PPP_CHECK_CB(on_NtLockFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtLockFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtLockFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) ;
 		}; break;
@@ -1514,17 +1516,17 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 99: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtLockProductActivationKeys_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtLockProductActivationKeys_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtLockProductActivationKeys_return, cpu, pc, arg0, arg1) ;
 		}; break;
 		// 100 NTSTATUS NtLockRegistryKey ['HANDLE KeyHandle']
 		case 100: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtLockRegistryKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtLockRegistryKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtLockRegistryKey_return, cpu, pc, arg0) ;
 		}; break;
@@ -1534,27 +1536,27 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtLockVirtualMemory_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtLockVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtLockVirtualMemory_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
 		// 102 NTSTATUS NtMakePermanentObject ['HANDLE Handle']
 		case 102: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtMakePermanentObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtMakePermanentObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtMakePermanentObject_return, cpu, pc, arg0) ;
 		}; break;
 		// 103 NTSTATUS NtMakeTemporaryObject ['HANDLE Handle']
 		case 103: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtMakeTemporaryObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtMakeTemporaryObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtMakeTemporaryObject_return, cpu, pc, arg0) ;
 		}; break;
@@ -1563,10 +1565,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtMapUserPhysicalPages_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtMapUserPhysicalPages_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtMapUserPhysicalPages_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1575,10 +1577,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtMapUserPhysicalPagesScatter_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtMapUserPhysicalPagesScatter_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtMapUserPhysicalPagesScatter_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1594,17 +1596,17 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg7;
 			uint32_t arg8;
 			uint32_t arg9;
-			if (PPP_CHECK_CB(on_NtMapViewOfSection_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtMapViewOfSection_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtMapViewOfSection_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) ;
 		}; break;
@@ -1619,16 +1621,16 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg6;
 			uint32_t arg7;
 			uint32_t arg8;
-			if (PPP_CHECK_CB(on_NtNotifyChangeDirectoryFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtNotifyChangeDirectoryFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtNotifyChangeDirectoryFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) ;
 		}; break;
@@ -1644,17 +1646,17 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg7;
 			uint32_t arg8;
 			uint32_t arg9;
-			if (PPP_CHECK_CB(on_NtNotifyChangeKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtNotifyChangeKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtNotifyChangeKey_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) ;
 		}; break;
@@ -1672,19 +1674,19 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg9;
 			uint32_t arg10;
 			uint32_t arg11;
-			if (PPP_CHECK_CB(on_NtNotifyChangeMultipleKeys_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
-				memcpy(&arg10, rp.params[10], sizeof(uint32_t));
-				memcpy(&arg11, rp.params[11], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtNotifyChangeMultipleKeys_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
+				memcpy(&arg10, ctx->args[10], sizeof(uint32_t));
+				memcpy(&arg11, ctx->args[11], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtNotifyChangeMultipleKeys_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11) ;
 		}; break;
@@ -1693,10 +1695,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtOpenDirectoryObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenDirectoryObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenDirectoryObject_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1705,10 +1707,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtOpenEvent_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenEvent_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1717,10 +1719,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtOpenEventPair_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenEventPair_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1732,13 +1734,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtOpenFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -1747,10 +1749,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtOpenIoCompletion_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenIoCompletion_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenIoCompletion_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1759,10 +1761,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtOpenJobObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenJobObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenJobObject_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1771,10 +1773,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtOpenKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenKey_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1783,10 +1785,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtOpenMutant_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenMutant_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenMutant_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1804,19 +1806,19 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg9;
 			uint32_t arg10;
 			uint32_t arg11;
-			if (PPP_CHECK_CB(on_NtOpenObjectAuditAlarm_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
-				memcpy(&arg10, rp.params[10], sizeof(uint32_t));
-				memcpy(&arg11, rp.params[11], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenObjectAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
+				memcpy(&arg10, ctx->args[10], sizeof(uint32_t));
+				memcpy(&arg11, ctx->args[11], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenObjectAuditAlarm_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11) ;
 		}; break;
@@ -1826,11 +1828,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtOpenProcess_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenProcess_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenProcess_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -1839,10 +1841,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtOpenProcessToken_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenProcessToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenProcessToken_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1852,11 +1854,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtOpenProcessTokenEx_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenProcessTokenEx_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenProcessTokenEx_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -1865,10 +1867,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtOpenSection_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenSection_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenSection_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1877,10 +1879,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtOpenSemaphore_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenSemaphore_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenSemaphore_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1889,10 +1891,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtOpenSymbolicLinkObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenSymbolicLinkObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenSymbolicLinkObject_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1902,11 +1904,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtOpenThread_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenThread_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -1916,11 +1918,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtOpenThreadToken_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenThreadToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenThreadToken_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -1931,12 +1933,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtOpenThreadTokenEx_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenThreadTokenEx_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenThreadTokenEx_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -1945,10 +1947,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtOpenTimer_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenTimer_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenTimer_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1957,10 +1959,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtPlugPlayControl_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtPlugPlayControl_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtPlugPlayControl_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -1971,12 +1973,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtPowerInformation_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtPowerInformation_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtPowerInformation_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -1985,10 +1987,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtPrivilegeCheck_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtPrivilegeCheck_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtPrivilegeCheck_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -2000,13 +2002,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtPrivilegeObjectAuditAlarm_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtPrivilegeObjectAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtPrivilegeObjectAuditAlarm_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -2017,12 +2019,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtPrivilegedServiceAuditAlarm_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtPrivilegedServiceAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtPrivilegedServiceAuditAlarm_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2033,12 +2035,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtProtectVirtualMemory_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtProtectVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtProtectVirtualMemory_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2046,9 +2048,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 135: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtPulseEvent_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtPulseEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtPulseEvent_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2056,9 +2058,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 136: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtQueryAttributesFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryAttributesFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryAttributesFile_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2066,9 +2068,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 137: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtQueryDebugFilterState_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryDebugFilterState_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryDebugFilterState_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2076,17 +2078,17 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 138: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtQueryDefaultLocale_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryDefaultLocale_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryDefaultLocale_return, cpu, pc, arg0, arg1) ;
 		}; break;
 		// 139 NTSTATUS NtQueryDefaultUILanguage ['LANGID *DefaultUILanguageId']
 		case 139: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtQueryDefaultUILanguage_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryDefaultUILanguage_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryDefaultUILanguage_return, cpu, pc, arg0) ;
 		}; break;
@@ -2103,18 +2105,18 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg8;
 			uint32_t arg9;
 			uint32_t arg10;
-			if (PPP_CHECK_CB(on_NtQueryDirectoryFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
-				memcpy(&arg9, rp.params[9], sizeof(uint32_t));
-				memcpy(&arg10, rp.params[10], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryDirectoryFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
+				memcpy(&arg9, ctx->args[9], sizeof(uint32_t));
+				memcpy(&arg10, ctx->args[10], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryDirectoryFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) ;
 		}; break;
@@ -2127,14 +2129,14 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg4;
 			uint32_t arg5;
 			uint32_t arg6;
-			if (PPP_CHECK_CB(on_NtQueryDirectoryObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryDirectoryObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryDirectoryObject_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6) ;
 		}; break;
@@ -2149,16 +2151,16 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg6;
 			uint32_t arg7;
 			uint32_t arg8;
-			if (PPP_CHECK_CB(on_NtQueryEaFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryEaFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryEaFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) ;
 		}; break;
@@ -2169,12 +2171,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueryEvent_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryEvent_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2182,9 +2184,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 144: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtQueryFullAttributesFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryFullAttributesFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryFullAttributesFile_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2195,12 +2197,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueryInformationAtom_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryInformationAtom_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryInformationAtom_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2211,12 +2213,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueryInformationFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryInformationFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryInformationFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2227,12 +2229,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueryInformationJobObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryInformationJobObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryInformationJobObject_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2243,12 +2245,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueryInformationPort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryInformationPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryInformationPort_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2259,12 +2261,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueryInformationProcess_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryInformationProcess_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryInformationProcess_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2275,12 +2277,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueryInformationThread_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryInformationThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryInformationThread_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2291,20 +2293,20 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueryInformationToken_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryInformationToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryInformationToken_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
 		// 152 NTSTATUS NtQueryInstallUILanguage ['LANGID *InstallUILanguageId']
 		case 152: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtQueryInstallUILanguage_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryInstallUILanguage_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryInstallUILanguage_return, cpu, pc, arg0) ;
 		}; break;
@@ -2312,9 +2314,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 153: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtQueryIntervalProfile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryIntervalProfile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryIntervalProfile_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2325,12 +2327,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueryIoCompletion_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryIoCompletion_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryIoCompletion_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2341,12 +2343,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueryKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryKey_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2358,13 +2360,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtQueryMultipleValueKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryMultipleValueKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryMultipleValueKey_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -2375,12 +2377,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueryMutant_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryMutant_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryMutant_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2391,12 +2393,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueryObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryObject_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2404,9 +2406,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 159: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtQueryOpenSubKeys_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryOpenSubKeys_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryOpenSubKeys_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2414,9 +2416,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 160: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtQueryPerformanceCounter_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryPerformanceCounter_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryPerformanceCounter_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2431,16 +2433,16 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg6;
 			uint32_t arg7;
 			uint32_t arg8;
-			if (PPP_CHECK_CB(on_NtQueryQuotaInformationFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryQuotaInformationFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryQuotaInformationFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) ;
 		}; break;
@@ -2451,12 +2453,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQuerySection_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQuerySection_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQuerySection_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2467,12 +2469,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQuerySecurityObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQuerySecurityObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQuerySecurityObject_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2483,12 +2485,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQuerySemaphore_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQuerySemaphore_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQuerySemaphore_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2497,10 +2499,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtQuerySymbolicLinkObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQuerySymbolicLinkObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQuerySymbolicLinkObject_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -2510,11 +2512,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtQuerySystemEnvironmentValue_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQuerySystemEnvironmentValue_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQuerySystemEnvironmentValue_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -2525,12 +2527,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQuerySystemEnvironmentValueEx_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQuerySystemEnvironmentValueEx_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQuerySystemEnvironmentValueEx_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2540,19 +2542,19 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtQuerySystemInformation_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQuerySystemInformation_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQuerySystemInformation_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
 		// 169 NTSTATUS NtQuerySystemTime ['PLARGE_INTEGER SystemTime']
 		case 169: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtQuerySystemTime_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQuerySystemTime_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQuerySystemTime_return, cpu, pc, arg0) ;
 		}; break;
@@ -2563,12 +2565,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueryTimer_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryTimer_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryTimer_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2577,10 +2579,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtQueryTimerResolution_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryTimerResolution_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryTimerResolution_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -2592,13 +2594,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtQueryValueKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryValueKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryValueKey_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -2610,13 +2612,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtQueryVirtualMemory_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryVirtualMemory_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -2627,12 +2629,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueryVolumeInformationFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueryVolumeInformationFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueryVolumeInformationFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2643,12 +2645,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtQueueApcThread_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtQueueApcThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtQueueApcThread_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2657,10 +2659,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtRaiseException_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtRaiseException_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtRaiseException_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -2672,13 +2674,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtRaiseHardError_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtRaiseHardError_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtRaiseHardError_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -2693,16 +2695,16 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg6;
 			uint32_t arg7;
 			uint32_t arg8;
-			if (PPP_CHECK_CB(on_NtReadFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtReadFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtReadFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) ;
 		}; break;
@@ -2717,16 +2719,16 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg6;
 			uint32_t arg7;
 			uint32_t arg8;
-			if (PPP_CHECK_CB(on_NtReadFileScatter_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtReadFileScatter_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtReadFileScatter_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) ;
 		}; break;
@@ -2738,13 +2740,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtReadRequestData_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtReadRequestData_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtReadRequestData_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -2755,20 +2757,20 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtReadVirtualMemory_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtReadVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtReadVirtualMemory_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
 		// 182 NTSTATUS NtRegisterThreadTerminatePort ['HANDLE PortHandle']
 		case 182: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtRegisterThreadTerminatePort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtRegisterThreadTerminatePort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtRegisterThreadTerminatePort_return, cpu, pc, arg0) ;
 		}; break;
@@ -2776,9 +2778,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 183: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtReleaseMutant_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtReleaseMutant_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtReleaseMutant_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2787,10 +2789,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			int32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtReleaseSemaphore_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(int32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtReleaseSemaphore_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtReleaseSemaphore_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -2801,12 +2803,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtRemoveIoCompletion_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtRemoveIoCompletion_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtRemoveIoCompletion_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2814,9 +2816,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 186: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtRemoveProcessDebug_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtRemoveProcessDebug_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtRemoveProcessDebug_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2824,9 +2826,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 187: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtRenameKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtRenameKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtRenameKey_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2835,10 +2837,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtReplaceKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtReplaceKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtReplaceKey_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -2846,9 +2848,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 189: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtReplyPort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtReplyPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtReplyPort_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2858,11 +2860,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtReplyWaitReceivePort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtReplyWaitReceivePort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtReplyWaitReceivePort_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -2873,12 +2875,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtReplyWaitReceivePortEx_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtReplyWaitReceivePortEx_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtReplyWaitReceivePortEx_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -2886,9 +2888,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 192: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtReplyWaitReplyPort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtReplyWaitReplyPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtReplyWaitReplyPort_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2896,9 +2898,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 194: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtRequestPort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtRequestPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtRequestPort_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2907,10 +2909,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtRequestWaitReplyPort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtRequestWaitReplyPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtRequestWaitReplyPort_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -2918,9 +2920,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 197: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtResetEvent_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtResetEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtResetEvent_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2929,10 +2931,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtResetWriteWatch_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtResetWriteWatch_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtResetWriteWatch_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -2941,18 +2943,18 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtRestoreKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtRestoreKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtRestoreKey_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
 		// 200 NTSTATUS NtResumeProcess ['HANDLE ProcessHandle']
 		case 200: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtResumeProcess_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtResumeProcess_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtResumeProcess_return, cpu, pc, arg0) ;
 		}; break;
@@ -2960,9 +2962,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 201: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtResumeThread_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtResumeThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtResumeThread_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2970,9 +2972,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 202: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtSaveKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSaveKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSaveKey_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -2981,10 +2983,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtSaveKeyEx_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSaveKeyEx_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSaveKeyEx_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -2993,10 +2995,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtSaveMergedKeys_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSaveMergedKeys_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSaveMergedKeys_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -3011,16 +3013,16 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg6;
 			uint32_t arg7;
 			uint32_t arg8;
-			if (PPP_CHECK_CB(on_NtSecureConnectPort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSecureConnectPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSecureConnectPort_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) ;
 		}; break;
@@ -3028,9 +3030,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 206: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtSetContextThread_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetContextThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetContextThread_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -3039,18 +3041,18 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtSetDebugFilterState_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetDebugFilterState_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetDebugFilterState_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
 		// 208 NTSTATUS NtSetDefaultHardErrorPort ['HANDLE DefaultHardErrorPort']
 		case 208: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtSetDefaultHardErrorPort_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetDefaultHardErrorPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetDefaultHardErrorPort_return, cpu, pc, arg0) ;
 		}; break;
@@ -3058,17 +3060,17 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 209: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtSetDefaultLocale_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetDefaultLocale_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetDefaultLocale_return, cpu, pc, arg0, arg1) ;
 		}; break;
 		// 210 NTSTATUS NtSetDefaultUILanguage ['LANGID DefaultUILanguageId']
 		case 210: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtSetDefaultUILanguage_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetDefaultUILanguage_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetDefaultUILanguage_return, cpu, pc, arg0) ;
 		}; break;
@@ -3078,11 +3080,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtSetEaFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetEaFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetEaFile_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -3090,33 +3092,33 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 212: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtSetEvent_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetEvent_return, cpu, pc, arg0, arg1) ;
 		}; break;
 		// 213 NTSTATUS NtSetEventBoostPriority ['HANDLE EventHandle']
 		case 213: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtSetEventBoostPriority_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetEventBoostPriority_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetEventBoostPriority_return, cpu, pc, arg0) ;
 		}; break;
 		// 214 NTSTATUS NtSetHighEventPair ['HANDLE EventPairHandle']
 		case 214: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtSetHighEventPair_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetHighEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetHighEventPair_return, cpu, pc, arg0) ;
 		}; break;
 		// 215 NTSTATUS NtSetHighWaitLowEventPair ['HANDLE EventPairHandle']
 		case 215: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtSetHighWaitLowEventPair_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetHighWaitLowEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetHighWaitLowEventPair_return, cpu, pc, arg0) ;
 		}; break;
@@ -3127,12 +3129,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtSetInformationDebugObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetInformationDebugObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetInformationDebugObject_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -3143,12 +3145,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtSetInformationFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetInformationFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetInformationFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -3158,11 +3160,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtSetInformationJobObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetInformationJobObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetInformationJobObject_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -3172,11 +3174,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtSetInformationKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetInformationKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetInformationKey_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -3186,11 +3188,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtSetInformationObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetInformationObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetInformationObject_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -3200,11 +3202,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtSetInformationProcess_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetInformationProcess_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetInformationProcess_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -3214,11 +3216,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtSetInformationThread_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetInformationThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetInformationThread_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -3228,11 +3230,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtSetInformationToken_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetInformationToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetInformationToken_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -3240,9 +3242,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 224: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtSetIntervalProfile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetIntervalProfile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetIntervalProfile_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -3253,12 +3255,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtSetIoCompletion_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetIoCompletion_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetIoCompletion_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -3270,29 +3272,29 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtSetLdtEntries_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetLdtEntries_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetLdtEntries_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
 		// 227 NTSTATUS NtSetLowEventPair ['HANDLE EventPairHandle']
 		case 227: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtSetLowEventPair_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetLowEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetLowEventPair_return, cpu, pc, arg0) ;
 		}; break;
 		// 228 NTSTATUS NtSetLowWaitHighEventPair ['HANDLE EventPairHandle']
 		case 228: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtSetLowWaitHighEventPair_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetLowWaitHighEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetLowWaitHighEventPair_return, cpu, pc, arg0) ;
 		}; break;
@@ -3302,11 +3304,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtSetQuotaInformationFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetQuotaInformationFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetQuotaInformationFile_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -3315,10 +3317,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtSetSecurityObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetSecurityObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetSecurityObject_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -3326,9 +3328,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 231: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtSetSystemEnvironmentValue_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetSystemEnvironmentValue_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetSystemEnvironmentValue_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -3337,10 +3339,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtSetSystemInformation_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetSystemInformation_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetSystemInformation_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -3349,10 +3351,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtSetSystemPowerState_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetSystemPowerState_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetSystemPowerState_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -3360,9 +3362,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 234: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtSetSystemTime_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetSystemTime_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetSystemTime_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -3370,9 +3372,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 235: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtSetThreadExecutionState_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetThreadExecutionState_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetThreadExecutionState_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -3385,14 +3387,14 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg4;
 			int32_t arg5;
 			uint32_t arg6;
-			if (PPP_CHECK_CB(on_NtSetTimer_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(int32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetTimer_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(int32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetTimer_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6) ;
 		}; break;
@@ -3401,18 +3403,18 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtSetTimerResolution_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetTimerResolution_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetTimerResolution_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
 		// 238 NTSTATUS NtSetUuidSeed ['PCHAR Seed']
 		case 238: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtSetUuidSeed_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetUuidSeed_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetUuidSeed_return, cpu, pc, arg0) ;
 		}; break;
@@ -3424,13 +3426,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtSetValueKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetValueKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetValueKey_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -3441,20 +3443,20 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtSetVolumeInformationFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSetVolumeInformationFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSetVolumeInformationFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
 		// 241 NTSTATUS NtShutdownSystem ['SHUTDOWN_ACTION Action']
 		case 241: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtShutdownSystem_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtShutdownSystem_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtShutdownSystem_return, cpu, pc, arg0) ;
 		}; break;
@@ -3464,35 +3466,35 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtSignalAndWaitForSingleObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSignalAndWaitForSingleObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSignalAndWaitForSingleObject_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
 		// 243 NTSTATUS NtStartProfile ['HANDLE ProfileHandle']
 		case 243: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtStartProfile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtStartProfile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtStartProfile_return, cpu, pc, arg0) ;
 		}; break;
 		// 244 NTSTATUS NtStopProfile ['HANDLE ProfileHandle']
 		case 244: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtStopProfile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtStopProfile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtStopProfile_return, cpu, pc, arg0) ;
 		}; break;
 		// 245 NTSTATUS NtSuspendProcess ['HANDLE ProcessHandle']
 		case 245: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtSuspendProcess_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSuspendProcess_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSuspendProcess_return, cpu, pc, arg0) ;
 		}; break;
@@ -3500,9 +3502,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 246: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtSuspendThread_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSuspendThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSuspendThread_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -3514,13 +3516,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtSystemDebugControl_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtSystemDebugControl_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtSystemDebugControl_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -3528,9 +3530,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 248: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtTerminateJobObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtTerminateJobObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtTerminateJobObject_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -3538,9 +3540,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 249: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtTerminateProcess_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtTerminateProcess_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtTerminateProcess_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -3548,15 +3550,15 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 250: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtTerminateThread_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtTerminateThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtTerminateThread_return, cpu, pc, arg0, arg1) ;
 		}; break;
 		// 251 NTSTATUS NtTestAlert ['']
 		case 251: {
-			if (PPP_CHECK_CB(on_NtTestAlert_return)) {
+			if (PPP_CHECK_CB(on_NtTestAlert_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 			}
 			PPP_RUN_CB(on_NtTestAlert_return, cpu, pc) ;
 		}; break;
@@ -3566,11 +3568,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtTraceEvent_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtTraceEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtTraceEvent_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -3580,27 +3582,27 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtTranslateFilePath_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtTranslateFilePath_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtTranslateFilePath_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
 		// 254 NTSTATUS NtUnloadDriver ['PUNICODE_STRING DriverServiceName']
 		case 254: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtUnloadDriver_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtUnloadDriver_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtUnloadDriver_return, cpu, pc, arg0) ;
 		}; break;
 		// 255 NTSTATUS NtUnloadKey ['POBJECT_ATTRIBUTES TargetKey']
 		case 255: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtUnloadKey_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtUnloadKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtUnloadKey_return, cpu, pc, arg0) ;
 		}; break;
@@ -3608,9 +3610,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 256: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtUnloadKeyEx_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtUnloadKeyEx_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtUnloadKeyEx_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -3621,12 +3623,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtUnlockFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtUnlockFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtUnlockFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -3636,11 +3638,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtUnlockVirtualMemory_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtUnlockVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtUnlockVirtualMemory_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -3648,9 +3650,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 259: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtUnmapViewOfSection_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtUnmapViewOfSection_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtUnmapViewOfSection_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -3658,9 +3660,9 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 		case 260: {
 			uint32_t arg0;
 			uint32_t arg1;
-			if (PPP_CHECK_CB(on_NtVdmControl_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtVdmControl_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtVdmControl_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -3670,11 +3672,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtWaitForDebugEvent_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtWaitForDebugEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtWaitForDebugEvent_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -3685,12 +3687,12 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtWaitForMultipleObjects_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtWaitForMultipleObjects_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtWaitForMultipleObjects_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
@@ -3699,26 +3701,26 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtWaitForSingleObject_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtWaitForSingleObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtWaitForSingleObject_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
 		// 264 NTSTATUS NtWaitHighEventPair ['HANDLE EventPairHandle']
 		case 264: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtWaitHighEventPair_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtWaitHighEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtWaitHighEventPair_return, cpu, pc, arg0) ;
 		}; break;
 		// 265 NTSTATUS NtWaitLowEventPair ['HANDLE EventPairHandle']
 		case 265: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_NtWaitLowEventPair_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtWaitLowEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtWaitLowEventPair_return, cpu, pc, arg0) ;
 		}; break;
@@ -3733,16 +3735,16 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg6;
 			uint32_t arg7;
 			uint32_t arg8;
-			if (PPP_CHECK_CB(on_NtWriteFile_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtWriteFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtWriteFile_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) ;
 		}; break;
@@ -3757,16 +3759,16 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg6;
 			uint32_t arg7;
 			uint32_t arg8;
-			if (PPP_CHECK_CB(on_NtWriteFileGather_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
-				memcpy(&arg6, rp.params[6], sizeof(uint32_t));
-				memcpy(&arg7, rp.params[7], sizeof(uint32_t));
-				memcpy(&arg8, rp.params[8], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtWriteFileGather_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+				memcpy(&arg6, ctx->args[6], sizeof(uint32_t));
+				memcpy(&arg7, ctx->args[7], sizeof(uint32_t));
+				memcpy(&arg8, ctx->args[8], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtWriteFileGather_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) ;
 		}; break;
@@ -3778,13 +3780,13 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_NtWriteRequestData_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
-				memcpy(&arg5, rp.params[5], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtWriteRequestData_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtWriteRequestData_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
@@ -3795,18 +3797,18 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg2;
 			uint32_t arg3;
 			uint32_t arg4;
-			if (PPP_CHECK_CB(on_NtWriteVirtualMemory_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
-				memcpy(&arg4, rp.params[4], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtWriteVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtWriteVirtualMemory_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
 		// 270 NTSTATUS NtYieldExecution ['']
 		case 270: {
-			if (PPP_CHECK_CB(on_NtYieldExecution_return)) {
+			if (PPP_CHECK_CB(on_NtYieldExecution_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 			}
 			PPP_RUN_CB(on_NtYieldExecution_return, cpu, pc) ;
 		}; break;
@@ -3816,11 +3818,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtCreateKeyedEvent_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtCreateKeyedEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCreateKeyedEvent_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -3829,10 +3831,10 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_NtOpenKeyedEvent_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtOpenKeyedEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtOpenKeyedEvent_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -3842,11 +3844,11 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtReleaseKeyedEvent_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtReleaseKeyedEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtReleaseKeyedEvent_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
@@ -3856,24 +3858,25 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ulong pc, tar
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_NtWaitForKeyedEvent_return)) {
-				memcpy(&arg0, rp.params[0], sizeof(uint32_t));
-				memcpy(&arg1, rp.params[1], sizeof(uint32_t));
-				memcpy(&arg2, rp.params[2], sizeof(uint32_t));
-				memcpy(&arg3, rp.params[3], sizeof(uint32_t));
+			if (PPP_CHECK_CB(on_NtWaitForKeyedEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtWaitForKeyedEvent_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
 		// 275 NTSTATUS NtQueryPortInformationProcess ['']
 		case 275: {
-			if (PPP_CHECK_CB(on_NtQueryPortInformationProcess_return)) {
+			if (PPP_CHECK_CB(on_NtQueryPortInformationProcess_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 			}
 			PPP_RUN_CB(on_NtQueryPortInformationProcess_return, cpu, pc) ;
 		}; break;
 		default:
-			PPP_RUN_CB(on_unknown_sys_return, cpu, pc, rp.ordinal);
+			PPP_RUN_CB(on_unknown_sys_return, cpu, pc, ctx->no);
 	}
-	PPP_RUN_CB(on_all_sys_return, cpu, pc, rp.ordinal);
+	PPP_RUN_CB(on_all_sys_return, cpu, pc, ctx->no);
+	PPP_RUN_CB(on_all_sys_return2, cpu, pc, &syscall_info[ctx->no], ctx);
 #endif
 }
 

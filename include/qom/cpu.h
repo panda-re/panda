@@ -215,6 +215,7 @@ typedef struct icount_decr_u16 {
 
 typedef struct CPUBreakpoint {
     vaddr pc;
+    uint64_t rr_instr_count;
     int flags; /* BP_* */
     QTAILQ_ENTRY(CPUBreakpoint) entry;
 } CPUBreakpoint;
@@ -357,6 +358,7 @@ struct CPUState {
 
     QTAILQ_HEAD(watchpoints_head, CPUWatchpoint) watchpoints;
     CPUWatchpoint *watchpoint_hit;
+    bool watchpoints_disabled;
 
     void *opaque;
 
@@ -389,6 +391,12 @@ struct CPUState {
     int32_t exception_index; /* used by m68k TCG */
     uint64_t rr_guest_instr_count;
     uint64_t panda_guest_pc;
+
+    // Used for rr reverse debugging
+    uint8_t reverse_flags;
+    uint64_t last_gdb_instr; // Instruction count from which we last sent a GDB command
+    uint64_t last_bp_hit_instr; // Last bp observed during this checkpoint run
+    uint64_t temp_rr_bp_instr; // Saved bp. Used by rstep/rcont, which disables bp to move forward, then restores on next tb in cpu-exec.c
 
     /* Used to keep track of an outstanding cpu throttle thread for migration
      * autoconverge
@@ -956,9 +964,18 @@ void cpu_single_step(CPUState *cpu, int enabled);
 #define BP_WATCHPOINT_HIT_WRITE 0x80
 #define BP_WATCHPOINT_HIT (BP_WATCHPOINT_HIT_READ | BP_WATCHPOINT_HIT_WRITE)
 
+// Reverse continue flags
+#define GDB_RDONE 0x1
+#define GDB_RSTEP 0x2
+#define GDB_RCONT 0x4
+#define GDB_RCONT_BREAK 0x8
+
 int cpu_breakpoint_insert(CPUState *cpu, vaddr pc, int flags,
                           CPUBreakpoint **breakpoint);
+int cpu_rr_breakpoint_insert(CPUState *cpu,  uint64_t instr_count, int flags,
+                          CPUBreakpoint **breakpoint);
 int cpu_breakpoint_remove(CPUState *cpu, vaddr pc, int flags);
+int cpu_breakpoint_remove_by_instr(CPUState *cpu, uint64_t instr, int flags);
 void cpu_breakpoint_remove_by_ref(CPUState *cpu, CPUBreakpoint *breakpoint);
 void cpu_breakpoint_remove_all(CPUState *cpu, int mask);
 
@@ -969,7 +986,22 @@ static inline bool cpu_breakpoint_test(CPUState *cpu, vaddr pc, int mask)
 
     if (unlikely(!QTAILQ_EMPTY(&cpu->breakpoints))) {
         QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
-            if (bp->pc == pc && (bp->flags & mask)) {
+            if (bp->pc != 0 && bp->pc == pc && (bp->flags & mask)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/* Return true if address matches an installed breakpoint.  */
+static inline bool cpu_rr_breakpoint_test(CPUState *cpu,  uint64_t cur_instr_count, int mask)
+{
+    CPUBreakpoint *bp;
+
+    if (unlikely(!QTAILQ_EMPTY(&cpu->breakpoints))) {
+        QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
+           if (bp->rr_instr_count != 0 && bp->rr_instr_count == cur_instr_count && (bp->flags & mask)) {
                 return true;
             }
         }
@@ -983,6 +1015,8 @@ int cpu_watchpoint_remove(CPUState *cpu, vaddr addr,
                           vaddr len, int flags);
 void cpu_watchpoint_remove_by_ref(CPUState *cpu, CPUWatchpoint *watchpoint);
 void cpu_watchpoint_remove_all(CPUState *cpu, int mask);
+
+void cpu_rcont_check_restore(CPUState* cpu, uint64_t rr_instr_count);
 
 //#ifdef CONFIG_SOFTMMU
 //#include "../exec/cpu-defs.h"

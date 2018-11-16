@@ -6,35 +6,31 @@
  *
  * Note that using the C wrappers requires a few more object files to be linked in (see Makefile.panda.target).
  *
- * To compile as part of Panda's make,
- * Uncomment two lines in Makefile.panda.target. This will define PLOG_READER, which causes some rr code in plog-cc.cpp to be ignored
- *
- * To compile standalone:
- * First, compile the plog.proto file to generate the plog.pb.h and plog.pb.cc files
- * plog.proto is created by combining all the plugins' individual .proto files
- *
- * protoc -I=$SRC_DIR --cpp_out=$DST_DIR plog.proto
- *
- * Then, assuming headers are in panda/include/panda/
- * g++ -g -o plog_reader_new plog_reader_new.cpp plog.cpp plog.pb.cc -I../include/ -std=c++11 -lz -lprotobuf
- *
  * You will have to implement your own printing functions.
  *
  * 8/30/17 Ray Wang
  *
 */
 
-#define __STDC_FORMAT_MACROS
+#include <fstream>
+#include "panda/plog-cc.hpp"
 
-extern "C" {
-    #include <inttypes.h>
-    #include <stdio.h>
-    #include <stdlib.h>
-    #include <stdint.h>
-    //#include "panda/plog.h"
+/* plog-cc.cpp dependencies.
+
+   These are needed so we can link with the same version of plog-cc.o that is
+   linked with the main PANDA binary.
+
+   As long as this file only calls functions that read a pandalog file, these
+   will never be accessed by plog_reader. */
+
+int panda_in_main_loop = 0;
+struct CPUTailQ cpus;
+
+target_ulong panda_current_pc(CPUState *env) {
+    assert(false);
 }
 
-#include "panda/plog-cc.hpp"
+/* *** */
 
 void pprint_llvmentry(std::unique_ptr<panda::LogEntry> ple){
     printf("\tllvmEntry: {\n");
@@ -84,6 +80,9 @@ void pprint(std::unique_ptr<panda::LogEntry> ple) {
 }
 
 int main (int argc, char **argv) {
+
+    memset(&cpus, 0, sizeof(cpus));
+
     if (argc < 2) {
          printf("USAGE: %s <plog>\n", argv[0]);
          exit(1);

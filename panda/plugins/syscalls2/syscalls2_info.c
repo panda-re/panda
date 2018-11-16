@@ -7,7 +7,8 @@
 #include "syscalls2_info.h"
 #include "syscalls2_int_fns.h"
 
-syscall_info_t *syscall_info;
+const syscall_info_t *syscall_info;
+const syscall_meta_t *syscall_meta;
 
 int load_syscall_info(void) {
     gchar *syscall_info_dlname = NULL;
@@ -36,7 +37,7 @@ int load_syscall_info(void) {
     dlerror();  // clear errors
     void *syscall_info_dl = dlopen(syscall_info_dlname, RTLD_NOW|RTLD_NODELETE);
     if (syscall_info_dl == NULL) {
-        fprintf(stderr, PANDA_MSG "%s\n", dlerror());
+        LOG_ERROR("%s", dlerror());
         g_free(syscall_info_dlname);
         return -1;
     }
@@ -44,20 +45,29 @@ int load_syscall_info(void) {
     dlerror();  // clear errors
     syscall_info = (syscall_info_t *)dlsym(syscall_info_dl, "__syscall_info_a");
     if (syscall_info == NULL) {
-        fprintf(stderr, PANDA_MSG "%s\n", dlerror());
+        LOG_ERROR("%s", dlerror());
         dlclose(syscall_info_dl);
         g_free(syscall_info_dlname);
         return -1;
     }
 
-    fprintf(stderr, PANDA_MSG "loaded syscalls info from %s\n", syscall_info_dlname);
+    dlerror();  // clear errors
+    syscall_meta = (syscall_meta_t *)dlsym(syscall_info_dl, "__syscall_meta");
+    if (syscall_meta == NULL) {
+        LOG_ERROR("%s", dlerror());
+        dlclose(syscall_info_dl);
+        g_free(syscall_info_dlname);
+        return -1;
+    }
+
+    LOG_INFO("loaded syscalls info from %s", syscall_info_dlname);
     dlclose(syscall_info_dl);
     g_free(syscall_info_dlname);
     return 0;
 }
 
 
-syscall_info_t *get_syscall_info(uint32_t callno) {
+const syscall_info_t *get_syscall_info(uint32_t callno) {
     if (syscall_info != NULL) {
         return &syscall_info[callno];
     }
@@ -66,3 +76,7 @@ syscall_info_t *get_syscall_info(uint32_t callno) {
     }
 }
 
+
+const syscall_meta_t *get_syscall_meta(void) {
+    return syscall_meta;
+}

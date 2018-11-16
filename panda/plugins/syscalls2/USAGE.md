@@ -59,7 +59,7 @@ Signature:
 typedef void (*on_all_sys_enter_t)(CPUState *env, target_ulong pc, target_ulong callno)
 ```
 
-Description: Called for every system call invoked in the guest. The call number is available in the `callno` parameter.
+Description: Called for every system call invoked in the guest. The call number is available in the `callno` parameter. This callback does minimal processing on the side of `syscalls2` plugin.
 
 Name: **on_all_sys_return**
 
@@ -69,20 +69,52 @@ Signature:
 typedef void (*on_all_sys_return_t)(CPUState *env, target_ulong pc, target_ulong callno)
 ```
 
-Description: Called whenever any system call returns in the guest. The call number is available in the `callno` parameter.
+Description: Called whenever any system call returns in the guest. The call number is available in the `callno` parameter. This callback does minimal processing on the side of `syscalls2` plugin.
+
+Name: **on_all_sys_enter2**
+
+Signature:
+
+```C
+typedef void (*on_all_sys_enter2_t)(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp)
+```
+
+Description: Called for every system call invoked in the guest. The `call` parameter is used to provide information about the system call. The `rp` parameter is used to provide information about the context of the system call (asid, argument values etc). This means that some additional processing is required on the side of the `syscalls2` plugin. You need to have the `load-info` flag enabled for `syscalls2` to use this variant of the callback.
+
+Name: **on_all_sys_return2**
+
+Signature:
+
+```C
+typedef void (*on_all_sys_return2_t)(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp)
+```
+
+Description: Called whenever any system call returns in the guest. The `call` parameter is used to provide information about the system call. The `rp` parameter is used to provide information about the context of the system call (asid, argument values etc). This means that some additional processing is required on the side of the `syscalls2` plugin. You need to have the `load-info` flag enabled for `syscalls2` to use this variant of the callback.
+
 
 ### API calls
-Finally the plugin provides one API call:
+Finally the plugin provides two API calls:
 
 Name: **get_syscall_info**
 
 Signature:
 
 ```C
-syscall_info_t *get_syscall_info(uint32_t callno)
+const syscall_info_t *get_syscall_info(uint32_t callno)
 ```
 
 Description: Returns a pointer to a `syscall_info_t` struct containing information about the specified system call. Available only when the `load-info` flag of the plugin has been turned on.
+
+Name: **get_syscall_meta**
+
+Signature:
+
+```C
+const syscall_meta_t *get_syscall_meta(void)
+```
+
+Description: Returns a pointer to a `syscall_meta_t` struct containing meta-information about the system calls of the guest operating system. Available only when the `load-info` flag of the plugin has been turned on.
+
 
 
 Example

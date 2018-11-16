@@ -339,6 +339,18 @@ static inline void rr_write_item(RR_log_entry item)
                     rr_fwrite(args->variant.handle_packet_args.buf,
                             args->variant.handle_packet_args.size, 1);
                     break;
+                case RR_CALL_SERIAL_RECEIVE:
+                    RR_WRITE_ITEM(args->variant.serial_receive_args);
+                    break;
+                case RR_CALL_SERIAL_READ:
+                    RR_WRITE_ITEM(args->variant.serial_read_args);
+                    break;
+                case RR_CALL_SERIAL_SEND:
+                    RR_WRITE_ITEM(args->variant.serial_send_args);
+                    break;
+                case RR_CALL_SERIAL_WRITE:
+                    RR_WRITE_ITEM(args->variant.serial_write_args);
+                    break;
                 default:
                     // mz unimplemented
                     rr_assert(0 && "Unimplemented skipped call!");
@@ -558,6 +570,55 @@ void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t *buf, int si
     });
 }
 
+void rr_record_hd_transfer(RR_callsite_id call_site,
+				  Hd_transfer_type transfer_type,
+				  uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) {
+	rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_CALL_HD_TRANSFER,
+        .variant.hd_transfer_args = {
+            .type = transfer_type,
+            .src_addr = src_addr,
+            .dest_addr = dest_addr,
+            .num_bytes = num_bytes
+        }
+    });
+}
+
+void rr_record_serial_receive(RR_callsite_id call_site, uint64_t fifo_addr,
+                              uint8_t value)
+{
+    rr_record_skipped_call(
+        (RR_skipped_call_args){.kind = RR_CALL_SERIAL_RECEIVE,
+                               .variant.serial_receive_args = {
+                                   .fifo_addr = fifo_addr, .value = value}});
+}
+
+void rr_record_serial_read(RR_callsite_id call_site, uint64_t fifo_addr,
+                           uint32_t port_addr, uint8_t value)
+{
+    rr_record_skipped_call((RR_skipped_call_args){
+        .kind = RR_CALL_SERIAL_READ,
+        .variant.serial_read_args = {
+            .fifo_addr = fifo_addr, .port_addr = port_addr, .value = value}});
+}
+
+void rr_record_serial_send(RR_callsite_id call_site, uint64_t fifo_addr,
+                           uint8_t value)
+{
+    rr_record_skipped_call((RR_skipped_call_args){
+        .kind = RR_CALL_SERIAL_SEND,
+        .variant.serial_send_args = {.fifo_addr = fifo_addr, .value = value}});
+}
+
+void rr_record_serial_write(RR_callsite_id call_site, uint64_t fifo_addr,
+                            uint32_t port_addr, uint8_t value)
+{
+    rr_record_skipped_call((RR_skipped_call_args){
+        .kind = RR_CALL_SERIAL_WRITE,
+        .variant.serial_write_args = {
+            .fifo_addr = fifo_addr, .port_addr = port_addr, .value = value}});
+}
+
 // mz record a marker for end of the log
 static inline void rr_record_end_of_log(void) {
     rr_write_item((RR_log_entry) {
@@ -744,7 +805,18 @@ static RR_log_entry *rr_read_item(void) {
                     rr_fread(args->variant.handle_packet_args.buf,
                             args->variant.handle_packet_args.size, 1);
                     break;
-
+                case RR_CALL_SERIAL_RECEIVE:
+                    RR_READ_ITEM(args->variant.serial_receive_args);
+                    break;
+                case RR_CALL_SERIAL_READ:
+                    RR_READ_ITEM(args->variant.serial_read_args);
+                    break;
+                case RR_CALL_SERIAL_SEND:
+                    RR_READ_ITEM(args->variant.serial_send_args);
+                    break;
+                case RR_CALL_SERIAL_WRITE:
+                    RR_READ_ITEM(args->variant.serial_write_args);
+                    break;
                 default:
                     // mz unimplemented
                     rr_assert(0 && "Unimplemented skipped call!");
@@ -1015,6 +1087,10 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                                           /*is_write=*/1,
                                           args.variant.cpu_mem_unmap.len);
             } break;
+            case RR_CALL_HD_TRANSFER: {
+                RR_hd_transfer_args hdt = args.variant.hd_transfer_args;
+                panda_callbacks_hd_transfer(first_cpu, hdt.type, hdt.src_addr, hdt.dest_addr, hdt.num_bytes);
+            } break;
             case RR_CALL_HANDLE_PACKET:
                 {
                     // run all callbacks registered for packet handling
@@ -1029,9 +1105,33 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                          args.variant.net_transfer_args;
                     panda_callbacks_net_transfer(first_cpu, nta.type, nta.src_addr, nta.dest_addr, nta.num_bytes);
                 } break;
-            default:
-                // mz sanity check
-                rr_assert(0);
+                case RR_CALL_SERIAL_RECEIVE: {
+                    RR_serial_receive_args recv =
+                        args.variant.serial_receive_args;
+                    panda_callbacks_serial_receive(first_cpu, recv.fifo_addr,
+                                                   recv.value);
+                } break;
+                case RR_CALL_SERIAL_READ: {
+                    RR_serial_read_args readargs =
+                        args.variant.serial_read_args;
+                    panda_callbacks_serial_read(first_cpu, readargs.fifo_addr,
+                                                readargs.port_addr,
+                                                readargs.value);
+                } break;
+                case RR_CALL_SERIAL_SEND: {
+                    RR_serial_send_args send = args.variant.serial_send_args;
+                    panda_callbacks_serial_send(first_cpu, send.fifo_addr,
+                                                send.value);
+                } break;
+                case RR_CALL_SERIAL_WRITE: {
+                    RR_serial_write_args write = args.variant.serial_write_args;
+                    panda_callbacks_serial_write(first_cpu, write.fifo_addr,
+                                                 write.port_addr, write.value);
+                } break;
+
+                default:
+                    // mz sanity check
+                    rr_assert(0);
             }
             rr_queue_pop_front();
         }

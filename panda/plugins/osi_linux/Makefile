@@ -1,22 +1,33 @@
-# Don't forget to add your plugin to config.panda!
-
+### Additional plugin object files.
 PLUGIN_OBJ_FILES=$(PLUGIN_OBJ_DIR)/kernelinfo_read.o
 
-# Influential plugin-specific flags.
+### Preprocessor flags.
+# Process enumeration starts from approximately the current task by
+# default. With this flag, it is set to start from the init task.
+# This is less robust than the default and you may need to re-extract
+# the kernel profile each time you change your kernel.
+# QEMU_CFLAGS += -DOSI_LINUX_LIST_FROM_INIT
+
 # Include threads when listing all processes.
-#QEMU_CFLAGS += -DOSI_LINUX_LIST_THREADS
+# QEMU_CFLAGS += -DOSI_LINUX_LIST_THREADS
+
 # Enable test mode. See osi_linux.cpp:asid_changed().
-#QEMU_CFLAGS += -DOSI_LINUX_TEST
+# QEMU_CFLAGS += -DOSI_LINUX_TEST
 
-$(PLUGIN_OBJ_DIR)/kernelinfo_read.o: $(PLUGIN_SRC_DIR)/utils/kernelinfo/kernelinfo_read.c
+# Enable extra debugging for process listing.
+# QEMU_CFLAGS += -DOSI_LINUX_PSDEBUG
+
+# Enable infinite loop detection.
+# QEMU_CFLAGS += -DOSI_MAX_PROC=256
+
+### Recipes.
+$(PLUGIN_OBJ_DIR)/kernelinfo_read.o: $(PLUGIN_SRC_DIR)/utils/kernelinfo/kernelinfo_read.c $(PLUGIN_SRC_DIR)/utils/kernelinfo/kernelinfo.h
 	@[ -d  $(dir $@) ] || mkdir -p $(dir $@)
-	$(call quiet-command,$(CC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) -c -o $@ $^,"UTIL CC $(TARGET_DIR)$@")
+	$(call quiet-command,$(CC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) -c -o $@ $<,"UTIL CC $(TARGET_DIR)$@")
 
-# We could implement a better search strategy here. Oh well!
 $(PLUGIN_OBJ_DIR)/kernelinfo.conf: $(PLUGIN_SRC_DIR)/kernelinfo.conf
 	$(call quiet-command,cp $< $@,"CP      $(TARGET_DIR)$@")
 
-# The main rule for your plugin. List all object-file dependencies.
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
 	$(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o \
 	$(PLUGIN_OBJ_FILES)

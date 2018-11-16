@@ -129,6 +129,8 @@ often use to begin analysis are [`asidstory`](../plugins/asidstory),
 [`stringsearch`](../plugins/stringsearch), and
 [`file_taint`](../plugins/file_taint).
 
+You can also attach a GDB client to replay, allowing you to debug the guest system using PANDA's [**time-travel debugging**](./time-travel.md).
+
 ## A Tour of QEMU
 
 In order to use PANDA, you will need to understand at least some things about
@@ -391,8 +393,10 @@ Start replays from the command line using the `-replay <name>` option.
 
 Of course, just running a replay isn't very useful by itself, so you
 will probably want to run the replay with some plugins enabled that
-perform some analysis on the replayed execution. See docs/PANDA.md for
+perform some analysis on the replayed execution. See [Plugins](#Plugins) for
 more details.
+
+You can also debug the guest under replay using PANDA's [**time-travel debugging**](./time-travel.md).
 
 ### Sharing Recordings
 
@@ -1014,7 +1018,7 @@ Now all that is left is to write the entry to the pandalog.
 pandalog_write_entry(&ple);
 ```
 
-The above C functions are defined in `panda/include/panda/plog.h` and `panda/src/plog.c`, but you'll notice that they are just wrappers around C++ functions. The wrappers simply pass on the data to the C++ functions that actually do the work of reading/writing to the log. The functions that bridge the two are declared in `panda/include/panda/plog-cc-bridge.h`. 
+The above C functions are defined in `panda/include/panda/plog.h` and `panda/src/plog.c`, but you'll notice that they are just wrappers around C++ functions. The wrappers simply pass on the data to the C++ functions that actually do the work of reading/writing to the log. The functions that bridge the two are declared in `panda/include/panda/plog-cc-bridge.h`.
 
 #### C++ Interface
 
@@ -1169,16 +1173,16 @@ example.
 
 What is missing from PANDA?  What do we know how to do but just don't have time for?  What do we not know how to do?
 
-## FAQ 
+## FAQ
 * How do I modify values in a replay?
 
 PANDA does not by default allow you to modify values in a replay.
 
-* How do I start/continue the system after a replay? 
+* How do I start/continue the system after a replay?
 
 PANDA does not enable you to continue the system after a replay.
 
-* So, what can I do with PANDA? 
+* So, what can I do with PANDA?
 
 You can use custom or prebuilt plugins to analyze a replay at the full OS level. See [plugins](#plugins) for examples.
  
@@ -1672,7 +1676,10 @@ int (*before_loadvm)(void);
 ```
 ---
 
-`asid_changed`: called when the CPU changes to a different address space
+`asid_changed`: Called right before the CPU ASID register (e.g. `cr3`
+for x86) is updated. The state of other CPU registers may or may not
+have been updated (depends on the QEMU implementation).
+**The callback is currently only implemented for x86.**
 
 **Callback ID**: `PANDA_CB_ASID_CHANGED`
 

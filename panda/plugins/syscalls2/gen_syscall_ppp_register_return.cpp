@@ -1051,5 +1051,6 @@ PPP_PROT_REG_CB(on_sys_writev_return)
 
 PPP_PROT_REG_CB(on_unknown_sys_return)
 PPP_PROT_REG_CB(on_all_sys_return)
+PPP_PROT_REG_CB(on_all_sys_return2)
 
 /* vim: set tabstop=4 softtabstop=4 noexpandtab ft=cpp: */

@@ -17,6 +17,13 @@
  * Ryan Whelan, Tim Leek, Sam Coe, Nathan VanBenschoten
  */
 
+/*
+ * Change Log:
+ * 2018-JUL-09   Propagate network related taint too.
+ * 2018-MAY-07   Add detaint_cb0 option to remove taint from bytes whose
+ *               control bits are all zero.
+ */
+
 // This needs to be defined before anything is included in order to get
 // the PRIx64 macro
 #ifndef __STDC_FORMAT_MACROS
@@ -41,7 +48,7 @@
 #include "shad_dir_32.h"
 #include "shad_dir_64.h"
 #include "llvm_taint_lib.h"
-#include "fast_shad.h"
+#include "shad.h"
 #include "taint_ops.h"
 #include "taint2.h"
 #include "label_set.h"
@@ -61,11 +68,17 @@ int after_block_exec(CPUState *cpu, TranslationBlock *tb);
 int phys_mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int phys_mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
-void taint_state_changed(FastShad *, uint64_t, uint64_t);
+// network related callbacks
+int on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr, uint64_t dst_addr, uint32_t num_bytes);
+int on_replay_before_dma(CPUState *cpu, uint32_t is_write, uint8_t *src_addr, uint64_t dest_addr, uint32_t num_bytes);
+
+void taint_state_changed(Shad *, uint64_t, uint64_t);
 PPP_PROT_REG_CB(on_taint_change);
 PPP_CB_BOILERPLATE(on_taint_change);
 
 bool track_taint_state = false;
+uint32_t max_tcn = 0;          // ie disabled
+uint32_t max_taintset_card = 0;   // ie disabled - there is no maximum
 
 int asid_changed_callback(CPUState *env, target_ulong oldval, target_ulong newval);
 }
@@ -96,6 +109,7 @@ bool tainted_pointer = true;
 bool optimize_llvm = true;
 extern bool inline_taint;
 bool debug_taint = false;
+bool detaint_cb0_bytes = false;
 
 /*
  * These memory callbacks are only for whole-system mode.  User-mode memory
@@ -111,10 +125,125 @@ int phys_mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr, ta
     return 0;
 }
 
+int replay_hd_transfer_callback(CPUState *cpu, uint32_t type, uint64_t src_addr,
+                                uint64_t dst_addr, uint32_t num_bytes)
+{
+    if (!taintEnabled) {
+        return 0;
+    }
+
+    Shad *src_shad, *dst_shad;
+
+    switch (type) {
+    case HD_TRANSFER_HD_TO_IOB:
+        src_shad = &shadow->hd;
+        dst_shad = &shadow->io;
+        break;
+    case HD_TRANSFER_IOB_TO_HD:
+        src_shad = &shadow->io;
+        dst_shad = &shadow->hd;
+        break;
+    case HD_TRANSFER_HD_TO_RAM:
+        src_shad = &shadow->hd;
+        dst_shad = &shadow->ram;
+        break;
+    case HD_TRANSFER_RAM_TO_HD:
+        src_shad = &shadow->ram;
+        dst_shad = &shadow->hd;
+        break;
+    default:
+        fprintf(stderr, "invalid HD transfer type\n");
+        return 0;
+    }
+
+    Shad::copy(dst_shad, dst_addr, src_shad, src_addr, num_bytes);
+
+    return 0;
+}
+
+// network data has been transfered - transfer the associated taint too
+int on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
+    uint64_t dst_addr, uint32_t num_bytes)
+{
+    if (!taintEnabled)
+    {
+        return 0;
+    }
+    
+    Shad *src_shad;
+    Shad *dst_shad;
+    switch (type)
+    {
+    case NET_TRANSFER_RAM_TO_IOB:
+        src_shad = &shadow->ram;
+        dst_shad = &shadow->io;
+        break;
+    case NET_TRANSFER_IOB_TO_RAM:
+        src_shad = &shadow->io;
+        dst_shad = &shadow->ram;
+        break;
+    case NET_TRANSFER_IOB_TO_IOB:
+        src_shad = &shadow->io;
+        dst_shad = &shadow->io;
+        break;
+    default:
+        fprintf(stderr, "Invalid network transfer type (%d)\n", type);
+        return 0;
+    }
+    Shad::copy(dst_shad, dst_addr, src_shad, src_addr, num_bytes);
+    return 0;
+} // end of function on_replay_net_transfer
+
+// transfer between IO and RAM - transfer any taint too
+int on_replay_before_dma(CPUState *cpu, uint32_t is_write, uint8_t *src_addr,
+    uint64_t dest_addr, uint32_t num_bytes)
+{
+    // in taint1, this was PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM
+    
+    if (!taintEnabled)
+    {
+        return 0;
+    }
+    
+    // per comments in plugin.h, src_addr is really the QEMU device's buffer in
+    // QEMU's virtual memory, and dest_addr is the physical address of guest RAM
+    // so, the signature for the PANDA_CB_BEFORE_DMA callback in plugin.h
+    // doesn't really match the comment - which is source and which is
+    // destination depends upon what is_write is
+    
+    // per the comments in the code generating this event...
+    // ...is_write=1 means writing from IO buffer to RAM
+    // ...is_write=0 means writing from RAM to IO buffer
+    Shad *src_shad;
+    Shad *dst_shad;
+    uint64_t ss_addr;
+    uint64_t ds_addr;
+    if (1 == is_write)
+    {
+        src_shad = &shadow->io;
+        dst_shad = &shadow->ram;
+        ss_addr = (uint64_t)src_addr;
+        ds_addr = dest_addr;
+    }
+    else if (0 == is_write)
+    {
+        src_shad = &shadow->ram;
+        dst_shad = &shadow->io;
+        ss_addr = dest_addr;
+        ds_addr = (uint64_t)src_addr;
+    }
+    else
+    {
+        fprintf(stderr, "Invalid replay before DMA write flag (%d)\n", is_write);
+        return 0;
+    }
+    Shad::copy(dst_shad, ds_addr, src_shad, ss_addr, num_bytes);
+    return 0;
+} // end of function on_replay_before_dma
+
 void taint2_enable_tainted_pointer(void) {
     tainted_pointer = true;
 }
-
 
 void taint2_enable_taint(void) {
     if(taintEnabled) {return;}
@@ -131,6 +260,15 @@ void taint2_enable_taint(void) {
     pcb.asid_changed = asid_changed_callback;
     panda_register_callback(taint2_plugin, PANDA_CB_ASID_CHANGED, pcb);
 
+    pcb.replay_hd_transfer = replay_hd_transfer_callback;
+    panda_register_callback(taint2_plugin, PANDA_CB_REPLAY_HD_TRANSFER, pcb);
+
+    // network related callbacks
+    pcb.replay_net_transfer = on_replay_net_transfer;
+    panda_register_callback(taint2_plugin, PANDA_CB_REPLAY_NET_TRANSFER, pcb);
+    pcb.replay_before_dma = on_replay_before_dma;
+    panda_register_callback(taint2_plugin, PANDA_CB_REPLAY_BEFORE_DMA, pcb);
+    
     panda_enable_precise_pc(); //before_block_exec requires precise_pc for panda_current_asid
 
     if (!execute_llvm){
@@ -175,7 +313,7 @@ void taint2_enable_taint(void) {
     }
 
 #ifdef TAINT2_DEBUG
-    tcg_llvm_write_module(tcg_llvm_ctx, "/tmp/llvm-mod.bc");
+    tcg_llvm_write_module(tcg_llvm_ctx, "llvm-mod.bc");
 #endif
 
     std::cerr << "Done verifying module. Running..." << std::endl;
@@ -223,24 +361,31 @@ void panda_virtual_string_read(CPUState *cpu, target_ulong vaddr, char *str) {
  * @brief Wrapper for running the registered `on_taint_change` PPP callbacks.
  * Called by the shadow memory implementation whenever changes occur to it.
  */
-void taint_state_changed(FastShad *fast_shad, uint64_t shad_addr, uint64_t size) {
+void taint_state_changed(Shad *shad, uint64_t shad_addr, uint64_t size)
+{
     Addr addr;
-    if (fast_shad == &shadow->llv) {
+    if (shad == &shadow->llv) {
         addr = make_laddr(shad_addr / MAXREGSIZE, shad_addr % MAXREGSIZE);
-    } else if (fast_shad == &shadow->ram) {
+    } else if (shad == &shadow->ram) {
         addr = make_maddr(shad_addr);
-    } else if (fast_shad == &shadow->grv) {
+    } else if (shad == &shadow->grv) {
         addr = make_greg(shad_addr / sizeof(target_ulong), shad_addr % sizeof(target_ulong));
-    } else if (fast_shad == &shadow->gsv) {
+    } else if (shad == &shadow->gsv) {
         addr.typ = GSPEC;
         addr.val.gs = shad_addr;
         addr.off = 0;
         addr.flag = (AddrFlag)0;
-    } else if (fast_shad == &shadow->ret) {
+    } else if (shad == &shadow->ret) {
         addr.typ = RET;
         addr.val.ret = 0;
         addr.off = shad_addr;
         addr.flag = (AddrFlag)0;
+    } else if (shad == &shadow->hd) {
+        addr = make_haddr(shad_addr);
+    } else if (shad == &shadow->io) {
+        addr = make_iaddr(shad_addr);
+        /*    } else if (shad == &shadow->ports) {
+                addr = make_paddr(shad_addr); */
     } else return;
 
     PPP_RUN_CB(on_taint_change, addr, size);
@@ -289,7 +434,15 @@ bool init_plugin(void *self) {
     std::cerr << PANDA_MSG "llvm optimizations " << PANDA_FLAG_STATUS(optimize_llvm) << std::endl;
     debug_taint = panda_parse_bool_opt(args, "debug", "enable taint debugging");
     std::cerr << PANDA_MSG "taint debugging " << PANDA_FLAG_STATUS(debug_taint) << std::endl;
-
+    detaint_cb0_bytes = panda_parse_bool_opt(args, "detaint_cb0", "detaint bytes whose control mask bits are 0");
+    std::cerr << PANDA_MSG "detaint if control bits 0 " << PANDA_FLAG_STATUS(detaint_cb0_bytes) << std::endl;
+    max_tcn = panda_parse_uint32_opt(args, "max_taintset_compute_number", 0,
+        "stop propagating taint after it goes through this number of computations (0=never stop)");
+    std::cerr << PANDA_MSG "maximum taint compute number (0=unlimited) " << max_tcn << std::endl;
+    max_taintset_card = panda_parse_uint32_opt(args, "max_taintset_card", 0,
+        "maximum size a label set can reach before stop tracking taint on it (0=never stop)");
+    std::cerr << PANDA_MSG "maximum taintset cardinality (0=unlimited) " << max_taintset_card << std::endl;
+    
     // load dependencies
     panda_require("callstack_instr");
     assert(init_callstack_instr_api());
@@ -303,7 +456,9 @@ void uninit_plugin(void *self) {
         shadow = nullptr;
     }
 
-    panda_disable_llvm();
+    // Check if tcg_llvm_ctx has been initialized before destroy
+    if (taint2_enabled()) panda_disable_llvm();
+
     panda_disable_memcb();
     panda_enable_tb_chaining();
 }

@@ -730,8 +730,17 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
         return m_builder.CreateSExt(loadedValue, intType(TCG_TARGET_REG_BITS));
 #endif
     case MO_UB:
+        if (loadedValue->getType()->isVoidTy()) return loadedValue;
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(8));
+        return loadedValue;
     case MO_UW:
+        if (loadedValue->getType()->isVoidTy()) return loadedValue;
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(16));
+        return loadedValue;
     case MO_UL:
+        if (loadedValue->getType()->isVoidTy()) return loadedValue;
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(32));
+        return loadedValue;
     case MO_Q:
         return loadedValue;
     default:
@@ -1477,13 +1486,10 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     Instruction *EnvI2PI = dyn_cast<Instruction>(m_envInt);
     if (EnvI2PI) EnvI2PI->setMetadata("host", RuntimeMD);
 
-    /* Setup panda_guest_pc and last_pc stores */
+    /* Setup panda_guest_pc */
     Constant *GuestPCPtrInt = constInt(sizeof(uintptr_t) * 8,
             (uintptr_t)&first_cpu->panda_guest_pc);
     Value *GuestPCPtr = m_builder.CreateIntToPtr(GuestPCPtrInt, intPtrType(64), "guestpc");
-    Constant *LastPCPtrInt = constInt(sizeof(uintptr_t) * 8,
-            (uintptr_t)&tcg_llvm_runtime.last_pc);
-    Value *LastPCPtr = m_builder.CreateIntToPtr(LastPCPtrInt, intPtrType(64), "lastpc");
 
     /* Setup rr_guest_instr_count stores */
     Constant *InstrCountPtrInt = constInt(sizeof(uintptr_t) * 8,
@@ -1522,11 +1528,9 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
 
             // volatile store of current PC
             Constant *PC = ConstantInt::get(intType(64), args[0]);
-            Instruction *LastPCSt = m_builder.CreateStore(PC, LastPCPtr, true);
             Instruction *GuestPCSt = m_builder.CreateStore(PC, GuestPCPtr, true);
             // TRL 2014 hack to annotate that last instruction as the one
             // that sets PC
-            LastPCSt->setMetadata("host", PCUpdateMD);
             GuestPCSt->setMetadata("host", PCUpdateMD);
             GuestPCSt->setMetadata("targetAsm", targetAsmMD);
 
@@ -1641,7 +1645,8 @@ void TCGLLVMContext::generateCode(TCGContext *s, TranslationBlock *tb)
     m_private->generateCode(s, tb);
 }
 
-void TCGLLVMContext::writeModule(const char *path) {
+void TCGLLVMContext::writeModule(const char *path)
+{
     std::string Error;
     raw_fd_ostream outfile(path, Error, raw_fd_ostream::F_Binary);
     std::string err;
@@ -1655,20 +1660,18 @@ void TCGLLVMContext::writeModule(const char *path) {
 /*****************************/
 /* Functions for QEMU c code */
 
-TCGLLVMContext* tcg_llvm_initialize()
+void tcg_llvm_initialize()
 {
-    if (!llvm_start_multithreaded()) {
-        fprintf(stderr, "Could not initialize LLVM threading\n");
-        exit(-1);
-    }
-    return new TCGLLVMContext;
+    assert(tcg_llvm_ctx == NULL);
+    assert(llvm_start_multithreaded());
+    tcg_llvm_ctx = new TCGLLVMContext;
 }
 
-void tcg_llvm_destroy() {
-    if (tcg_llvm_ctx) {
-        delete tcg_llvm_ctx;
-        tcg_llvm_ctx = NULL;
-    }
+void tcg_llvm_destroy()
+{
+    assert(tcg_llvm_ctx != NULL);
+    delete tcg_llvm_ctx;
+    tcg_llvm_ctx = NULL;
 }
 
 void tcg_llvm_gen_code(TCGLLVMContext *l, TCGContext *s, TranslationBlock *tb)
@@ -1709,7 +1712,8 @@ uintptr_t tcg_llvm_qemu_tb_exec(CPUArchState *env, TranslationBlock *tb)
     return next_tb;
 }
 
-void tcg_llvm_write_module(TCGLLVMContext *l, const char *path) {
+void tcg_llvm_write_module(TCGLLVMContext *l, const char *path)
+{
     l->writeModule(path);
 }
 

@@ -6,6 +6,7 @@
  * @copyright This work is licensed under the terms of the GNU GPL, version 2.
  * See the COPYING file in the top-level directory.
  */
+#include <linux/types.h>
 #include <linux/module.h>	/* Needed by all modules */
 #include <linux/kernel.h>	/* Needed for KERN_INFO */
 #include <linux/utsname.h>
@@ -21,8 +22,29 @@
 #include <linux/mount.h>
 #include <linux/version.h>
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
-#include "mount.h"
+/*
+ * Include the appropriate mount.h version.
+ *
+ * Linux commit 7d6fec45a5131 introduces struct mount in fs/mount.h.
+ * The new struct contains all the fields that were previously members
+ * of struct vfsmount but were touched only by core VFS.
+ * It also contains an embedded struct vfsmount which now has been
+ * stripped down to include only the fields shared between core VFS
+ * and other components.
+ *
+ * XXX: identify the first kernel version after 7d6fec45a5131 to make
+ * the conditionals more accurate.
+ */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)		/* 0.0  <= v < 3.0  */
+#error Unsupported kernel.
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)	/* 3.0  <= v < 3.3  */
+/* nothing */
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)	/* 3.3  <= v < 4.4  */
+#include "ksrc/v3.3-rc1/fs/mount.h"
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)	/* 4.4  <= v < 4.12 */
+#include "ksrc/v4.4/fs/mount.h"
+#else												/* 4.12 <= v < x.xx */
+#include "ksrc/v4.12/fs/mount.h"
 #endif
 
 /*
@@ -56,114 +78,145 @@ static char *cp_memb(const char *s) {
 }
 
 /*
- * The macro printing the config lines in the kernel log.
+ * Printf offset of memb from the beginning of structp.
  */
-#define PRINT_OFFSET(structp, memb, cfgname) printk(KERN_INFO "%s.%s_offset = %d", cfgname, cp_memb(#memb), (int)((void *)&(structp->memb) - (void *)structp))
+#define PRINT_OFFSET(structp, memb, cfgname)\
+	printk(KERN_INFO cfgname ".%s_offset = %d",\
+		cp_memb(#memb),\
+		(int)((void *)&(structp->memb) - (void *)structp))
+
+/*
+ * Prints offset between members memb_base and memb_dest.
+ * Useful in case where we have a pointer to memb_base, but not to structp.
+ * We emit the same name as if we were using PRINT_OFFSET() for memb_dest.
+ */
+#define PRINT_OFFSET_FROM_MEMBER(structp, memb_base, memb_dest, cfgname)\
+	printk(KERN_INFO cfgname ".%s_offset = %d",\
+		cp_memb(#memb_dest),\
+		(int)((void *)&(structp->memb_dest) - (void *)&(structp->memb_base)))
+
+/*
+ * Prints the size of structv.
+ */
+#define PRINT_SIZE(structv, cfgmemb, cfgname) printk(KERN_INFO cfgname "." cfgmemb " = %zu", sizeof(structv))
 
 int init_module(void)
 {
-	struct cred credstruct;
-	struct vm_area_struct vmastruct;
-	struct dentry dentrystruct;
-	struct file filestruct;
-	struct thread_info threadinfostruct;
-	struct files_struct filesstruct; /* mind the extra 's' :-P */
-	struct fdtable fdtablestruct;
-	struct vfsmount vfsmountstruct;
-
-	struct task_struct *ts_p;
-	struct cred *cs_p;
-	struct mm_struct *mms_p;
-	struct vm_area_struct *vma_p;
-	struct dentry *ds_p;
-	struct file *fs_p;
-	struct fdtable *fdt_p;
-	struct thread_info *ti_p;
-	struct files_struct *fss_p;
-	struct vfsmount *vfsmnt_p;
-
-// Put it here because ISO C90
+	struct cred cred__s;
+	struct vm_area_struct vm_area_struct__s;
+	struct dentry dentry__s;
+	struct dentry_operations dentry_operations__s;
+	struct file file__s;
+	struct thread_info thread_info__s;
+	struct files_struct files_struct__s;
+	struct fdtable fdtable__s;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
-	struct mount mountstruct;
-	struct mount *mnt_p;
-	mnt_p = &mountstruct;
+	struct mount mount__s;
+#else
+	struct vfsmount vfsmount__s;
 #endif
 
-	ts_p = &init_task;
-	cs_p = &credstruct;
-	mms_p = init_task.mm;
-	vma_p = &vmastruct;
-	ds_p = &dentrystruct;
-	fs_p = &filestruct;
-	ti_p = &threadinfostruct;
-	fss_p = &filesstruct;
-	fdt_p = &fdtablestruct;
-	vfsmnt_p = &vfsmountstruct;
+	struct task_struct *task_struct__p;
+	struct cred *cred__p;
+	struct mm_struct *mm_struct__p;
+	struct vm_area_struct *vm_area_struct__p;
+	struct dentry *dentry__p;
+	struct dentry_operations *dentry_operations__p;
+	struct file *file__p;
+	struct fdtable *fdtable__p;
+	struct thread_info *thread_info__p;
+	struct files_struct *files_struct__p;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
+	struct mount *mount__p;
+#endif
+	struct vfsmount *vfsmount__p;
+
+	task_struct__p = &init_task;
+	cred__p = &cred__s;
+	mm_struct__p = init_task.mm;
+	vm_area_struct__p = &vm_area_struct__s;
+	dentry__p = &dentry__s;
+	dentry_operations__p = &dentry_operations__s;
+	file__p = &file__s;
+	thread_info__p = &thread_info__s;
+	files_struct__p = &files_struct__s;
+	fdtable__p = &fdtable__s;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
+	mount__p = &mount__s;
+	vfsmount__p = &mount__s.mnt;
+#else
+	vfsmount__p = &vfsmount__s;
+#endif
+
 
 	printk(KERN_INFO "--KERNELINFO-BEGIN--\n");
 	printk(KERN_INFO "name = %s|%s|%s\n", utsname()->release, utsname()->version, utsname()->machine);
+	printk(KERN_INFO "task.init_addr = %llu\n", (u64)(uintptr_t)(task_struct__p));
+	printk(KERN_INFO "#task.init_addr = 0x%08llX\n", (u64)(uintptr_t)task_struct__p);
 
-	printk(KERN_INFO "task.size = %zu\n", sizeof(init_task));
-	printk(KERN_INFO "#task.init_addr = 0x%08lX\n", (unsigned long)ts_p);
-	printk(KERN_INFO "task.init_addr = %lu\n", (unsigned long)ts_p);
+	PRINT_SIZE(init_task,				"size",			"task");
+	PRINT_OFFSET(thread_info__p,		task,			"task");
+	PRINT_OFFSET(task_struct__p,		tasks,			"task");
+	PRINT_OFFSET(task_struct__p,		pid,			"task");
+	PRINT_OFFSET(task_struct__p,		tgid,			"task");
+	PRINT_OFFSET(task_struct__p,		group_leader,	"task");
+	PRINT_OFFSET(task_struct__p,		thread_group,	"task");
+	PRINT_OFFSET(task_struct__p,		real_parent,	"task");
+	PRINT_OFFSET(task_struct__p,		parent,			"task");
+	PRINT_OFFSET(task_struct__p,		mm,				"task");
+	PRINT_OFFSET(task_struct__p,		stack,			"task");
+	PRINT_OFFSET(task_struct__p,		real_cred,		"task");
+	PRINT_OFFSET(task_struct__p,		cred,			"task");
+	PRINT_OFFSET(task_struct__p,		comm,			"task");
+	PRINT_SIZE(task_struct__p->comm,	"comm_size",	"task");
+	PRINT_OFFSET(task_struct__p,		files,			"task");
 
-	PRINT_OFFSET(ti_p,	task,			"task");
-	PRINT_OFFSET(ts_p,	tasks,			"task");
-	PRINT_OFFSET(ts_p,	pid,			"task");
-	PRINT_OFFSET(ts_p,	tgid,			"task");
-	PRINT_OFFSET(ts_p,	group_leader,	"task");
-	PRINT_OFFSET(ts_p,	thread_group,	"task");
-	PRINT_OFFSET(ts_p,	real_parent,	"task");
-	PRINT_OFFSET(ts_p,	parent,			"task");
-	PRINT_OFFSET(ts_p,	mm,				"task");
-	PRINT_OFFSET(ts_p,	stack,			"task");
-	PRINT_OFFSET(ts_p,	real_cred,		"task");
-	PRINT_OFFSET(ts_p,	cred,			"task");
-	PRINT_OFFSET(ts_p,	comm,			"task");
-	printk(KERN_INFO "task.comm_size = %zu\n", sizeof(ts_p->comm));
-	PRINT_OFFSET(ts_p,	files,			"task");
+	PRINT_OFFSET(cred__p,				uid,			"cred");
+	PRINT_OFFSET(cred__p,				gid,			"cred");
+	PRINT_OFFSET(cred__p,				euid,			"cred");
+	PRINT_OFFSET(cred__p,				egid,			"cred");
 
-	PRINT_OFFSET(cs_p,	uid,			"cred");
-	PRINT_OFFSET(cs_p,	gid,			"cred");
-	PRINT_OFFSET(cs_p,	euid,			"cred");
-	PRINT_OFFSET(cs_p,	egid,			"cred");
+	PRINT_SIZE(*init_task.mm,			"size",			"mm");
+	PRINT_OFFSET(mm_struct__p,			mmap,			"mm");
+	PRINT_OFFSET(mm_struct__p,			pgd,			"mm");
+	PRINT_OFFSET(mm_struct__p,			arg_start,		"mm");
+	PRINT_OFFSET(mm_struct__p,			start_brk,		"mm");
+	PRINT_OFFSET(mm_struct__p,			brk,			"mm");
+	PRINT_OFFSET(mm_struct__p,			start_stack,	"mm");
 
-	PRINT_OFFSET(mms_p, mmap,			"mm");
-	PRINT_OFFSET(mms_p, pgd,			"mm");
-	PRINT_OFFSET(mms_p, arg_start,		"mm");
-	PRINT_OFFSET(mms_p, start_brk,		"mm");
-	PRINT_OFFSET(mms_p, brk,			"mm");
-	PRINT_OFFSET(mms_p, start_stack,	"mm");
+	PRINT_SIZE(vm_area_struct__s,		"size",			"vma");
+	PRINT_OFFSET(vm_area_struct__p,		vm_mm,			"vma");
+	PRINT_OFFSET(vm_area_struct__p,		vm_start,		"vma");
+	PRINT_OFFSET(vm_area_struct__p,		vm_end,			"vma");
+	PRINT_OFFSET(vm_area_struct__p,		vm_next,		"vma");
+	PRINT_OFFSET(vm_area_struct__p,		vm_flags,		"vma");
+	PRINT_OFFSET(vm_area_struct__p,		vm_file,		"vma");
 
-	PRINT_OFFSET(vma_p, vm_mm,			"vma");
-	PRINT_OFFSET(vma_p, vm_start,		"vma");
-	PRINT_OFFSET(vma_p, vm_end,			"vma");
-	PRINT_OFFSET(vma_p, vm_next,		"vma");
-	PRINT_OFFSET(vma_p, vm_flags,		"vma");
+	/* used in reading file information */
+	PRINT_OFFSET(file__p,				f_path.dentry,	"fs");
+	PRINT_OFFSET(file__p,				f_path.mnt,		"fs"); // XXX: check if this changes across versions
+	PRINT_OFFSET(file__p,				f_pos,			"fs");
+	PRINT_OFFSET(files_struct__p,		fdt,			"fs");
+	PRINT_OFFSET(files_struct__p,		fdtab,			"fs");
+	PRINT_OFFSET(fdtable__p,			fd,				"fs");
 
-	/* used in reading OsiModules */
-	PRINT_OFFSET(vma_p, vm_file,		"vma");
-
-	PRINT_OFFSET(fs_p,		f_path.dentry,	"fs");
-	PRINT_OFFSET(fs_p,		f_path.mnt,		"fs");
-    PRINT_OFFSET(fs_p,      f_pos,          "fs");
-	PRINT_OFFSET(vfsmnt_p,	mnt_root,		"fs");	/* XXX: We don't use this anywhere. Marked for removal. */
+	/* used for resolving path names */
+	PRINT_SIZE(dentry__s.d_name,		"qstr_size",			"path");
+	PRINT_OFFSET(dentry__p,				d_name,					"path");
+	PRINT_OFFSET(dentry__p,				d_iname,				"path");
+	PRINT_OFFSET(dentry__p,				d_parent,				"path");
+	PRINT_OFFSET(dentry__p,				d_op,					"path");
+	PRINT_OFFSET(dentry_operations__p,	d_dname,				"path");
+	PRINT_OFFSET(vfsmount__p,			mnt_root,				"path");
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
-	PRINT_OFFSET(mnt_p,		mnt_parent,		"fs");
-	PRINT_OFFSET(mnt_p,		mnt_mountpoint, "fs");
+	/* fields in struct mount */
+	PRINT_OFFSET_FROM_MEMBER(mount__p,	mnt, mnt_parent,		"path");
+	PRINT_OFFSET_FROM_MEMBER(mount__p,	mnt, mnt_mountpoint,	"path");
 #else
-	PRINT_OFFSET(vfsmnt_p,	mnt_parent,		"fs");
-	PRINT_OFFSET(vfsmnt_p,	mnt_mountpoint, "fs");
+	/* fields in struct vfsmount */
+	PRINT_OFFSET(vfsmount__p,			mnt_parent,				"path");
+	PRINT_OFFSET(vfsmount__p,			mnt_mountpoint,			"path");
 #endif
-
-	/* used in reading FDs */
-	PRINT_OFFSET(fss_p,	fdt,			"fs");
-	PRINT_OFFSET(fss_p,	fdtab,			"fs");
-	PRINT_OFFSET(fdt_p,	fd,				"fs");
-
-	PRINT_OFFSET(ds_p,	d_name,			"fs");
-	PRINT_OFFSET(ds_p,	d_iname,		"fs");
-	PRINT_OFFSET(ds_p,	d_parent,		"fs");
 	printk(KERN_INFO "---KERNELINFO-END---\n");
 
 	/* Return a failure. We only want to print the info. */
@@ -177,4 +230,4 @@ void cleanup_module(void)
 
 MODULE_LICENSE("GPL");
 
-/* vim:set tabstop=4 softtabstop=4 noexpandtab */
+/* vim:set tabstop=4 softtabstop=4 noexpandtab: */

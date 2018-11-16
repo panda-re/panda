@@ -180,7 +180,7 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
     instr_type res = INSTR_UNKNOWN;
 
 #if defined(TARGET_I386)
-    csh handle = (env->hflags & HF_LMA_MASK) ? cs_handle_64 : cs_handle_32;
+    csh handle = (env->hflags & HF_CS64_MASK) ? cs_handle_64 : cs_handle_32;
 #if !defined(TARGET_X86_64)
     // not every block in i386 is necessary executing in the same processor mode
     // need to make capstone match current mode or may miss call statements
@@ -297,7 +297,7 @@ uint32_t get_callers(target_ulong callers[], uint32_t n, CPUState* cpu) {
     std::vector<stack_entry> &v = callstacks[get_stackid(env)];
 
     n = std::min((uint32_t)v.size(), n);
-    for (uint32_t i=0; i<n; i++) { callers[i] = v[i].pc; }
+    for (uint32_t i=0; i<n; i++) { callers[i] = v[n-1-i].pc; }
     return n;
 }
 
@@ -316,7 +316,7 @@ Panda__CallStack *pandalog_callstack_create() {
     cs->n_addr = std::min((uint32_t)v.size(), (uint32_t)CALLSTACK_MAX_SIZE);
     cs->addr = (uint64_t *)malloc(cs->n_addr * sizeof(uint64_t));
 
-    for (uint32_t i=0; i<cs->n_addr; i++) { cs->addr[i] = v[i].pc; }
+    for (uint32_t i=0; i<cs->n_addr; i++) { cs->addr[i] = v[cs->n_addr-1-i].pc; }
 
     return cs;
 }
@@ -339,7 +339,7 @@ uint32_t get_functions(target_ulong functions[], uint32_t n, CPUState* cpu) {
     std::vector<target_ulong> &v = function_stacks[get_stackid(env)];
 
     n = std::min((uint32_t)v.size(), n);
-    for (uint32_t i=0; i<n; i++) { functions[i] = v[i]; }
+    for (uint32_t i=0; i<n; i++) { functions[i] = v[n-1-i]; }
     return n;
 }
 

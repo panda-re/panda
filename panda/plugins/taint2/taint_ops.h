@@ -19,7 +19,7 @@ PANDAENDCOMMENT */
 
 namespace llvm { class Instruction; }
 
-class FastShad;
+class Shad;
 
 extern "C" {
 
@@ -46,93 +46,77 @@ void taint_memlog_push(taint2_memlog *memlog, uint64_t val);
 //
 // Functions for dealing with function frames. We'll just advance and retract
 // the label array pointer to make a new frame.
-void taint_reset_frame(FastShad *shad);
-void taint_push_frame(FastShad *shad);
-void taint_pop_frame(FastShad *shad);
+void taint_reset_frame(Shad *shad);
+void taint_push_frame(Shad *shad);
+void taint_pop_frame(Shad *shad);
 
 // Bookkeeping.
 void taint_breadcrumb(uint64_t *dest_ptr, uint64_t bb_slot);
 
 // Call out to PPP callback.
-void taint_branch(FastShad *shad, uint64_t src);
+void taint_branch(Shad *shad, uint64_t src);
 
 // Taint operations
 //
 // These are all the taint operations which we will inline into the LLVM code
 // as it JITs.
-void taint_copy(
-        FastShad *shad_dest, uint64_t dest,
-        FastShad *shad_src, uint64_t src,
-        uint64_t size, llvm::Instruction *I);
+void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
+                uint64_t size, llvm::Instruction *I);
 
 // Two compute models: parallel and mixed. Parallel for bitwise, mixed otherwise.
 // Parallel compute: take labelset vectors [1,2,3] + [4,5,6] -> [14,25,36]
-void taint_parallel_compute(
-        FastShad *shad,
-        uint64_t dest, uint64_t ignored,
-        uint64_t src1, uint64_t src2, uint64_t src_size,
-        llvm::Instruction *I);
+void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
+                            uint64_t src1, uint64_t src2, uint64_t src_size,
+                            llvm::Instruction *I);
 
 // Mixed compute: [1,2] + [3,4] -> [1234,1234]
 // Note that dest_size and src_size can differ.
-void taint_mix_compute(
-        FastShad *shad,
-        uint64_t dest, uint64_t dest_size,
-        uint64_t src1, uint64_t src2, uint64_t src_size,
-        llvm::Instruction *ignored);
+void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
+                       uint64_t src1, uint64_t src2, uint64_t src_size,
+                       llvm::Instruction *ignored);
+
+//for mul or fmul. can do parallel or mixed or no prop depending on vals and their taints
+void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
+                       uint64_t src1, uint64_t src2, uint64_t src_size,
+                       llvm::Instruction *inst, uint64_t arg1, uint64_t arg2);
 
 // Clear taint.
-void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);
+void taint_delete(Shad *shad, uint64_t dest, uint64_t size);
 
 // Copy a single value to multiple destinations. (i.e. memset)
-void taint_set(
-        FastShad *shad_dest, uint64_t dest, uint64_t dest_size,
-        FastShad *shad_src, uint64_t src);
+void taint_set(Shad *shad_dest, uint64_t dest, uint64_t dest_size,
+               Shad *shad_src, uint64_t src);
 
 // Union all labels within here: [1,2,3] -> [123,123,123]
 // A mixed compute becomes two mixes followed by a parallel.
-void taint_mix(
-        FastShad *shad,
-        uint64_t dest, uint64_t dest_size,
-        uint64_t src, uint64_t src_size,
-        llvm::Instruction *I);
+void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
+               uint64_t src_size, llvm::Instruction *I);
 
 // Tainted pointer load in tainted pointer mode.
 // Mixes the ptr labels and parallels that with each src label.
-void taint_pointer(
-        FastShad *shad_dest, uint64_t dest,
-        FastShad *shad_ptr, uint64_t ptr, uint64_t ptr_size,
-        FastShad *shad_src, uint64_t src, uint64_t size,
-        uint64_t is_store);
+void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
+                   uint64_t ptr_size, Shad *shad_src, uint64_t src,
+                   uint64_t size, uint64_t is_store);
 
 // Only generate when signed and dest_size > src_size.
 // Otherwise it should just be a copy.
-void taint_sext(
-        FastShad *shad,
-        uint64_t dest, uint64_t dest_size,
-        uint64_t src, uint64_t src_size);
+void taint_sext(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
+                uint64_t src_size);
 
 // Takes a NULL-terminated list of (value, select) pairs.
-void taint_select(
-        FastShad *shad,
-        uint64_t dest, uint64_t size, uint64_t selector,
-        ...);
+void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
+                  ...);
 
-void taint_host_copy(
-        uint64_t env_ptr, uint64_t addr,
-        FastShad *llv, uint64_t llv_offset,
-        FastShad *greg, FastShad *gspec,
-        uint64_t size, uint64_t labels_per_reg, bool is_store);
+void taint_host_copy(uint64_t env_ptr, uint64_t addr, Shad *llv,
+                     uint64_t llv_offset, Shad *greg, Shad *gspec,
+                     uint64_t size, uint64_t labels_per_reg, bool is_store);
 
-void taint_host_memcpy(
-        uint64_t env_ptr, uint64_t dest, uint64_t src,
-        FastShad *greg, FastShad *gspec,
-        uint64_t size, uint64_t labels_per_reg);
+void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
+                       Shad *greg, Shad *gspec, uint64_t size,
+                       uint64_t labels_per_reg);
 
-void taint_host_delete(
-        uint64_t env_ptr, uint64_t dest_addr,
-        FastShad *greg, FastShad *gspec,
-        uint64_t size, uint64_t labels_per_reg);
+void taint_host_delete(uint64_t env_ptr, uint64_t dest_addr, Shad *greg,
+                       Shad *gspec, uint64_t size, uint64_t labels_per_reg);
 
 } // extern "C"
 

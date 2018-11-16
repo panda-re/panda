@@ -121,7 +121,7 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
     nb_panda_plugins++;
 
     // Call init_fn and check status.
-    fprintf(stderr, PANDA_MSG_FMT "initializing %s\n", PANDA_CORE_NAME, panda_plugins[nb_panda_plugins].name);
+    fprintf(stderr, PANDA_MSG_FMT "initializing %s\n", PANDA_CORE_NAME, panda_plugins[nb_panda_plugins-1].name);
     panda_help_wanted = false;
     panda_args_set_help_wanted(plugin_name);
     if (panda_help_wanted) {
@@ -440,30 +440,28 @@ void panda_disable_tb_chaining(void){
 }
 
 #ifdef CONFIG_LLVM
-void panda_enable_llvm(void){
+void panda_enable_llvm(void) {
     panda_do_flush_tb();
     execute_llvm = 1;
     generate_llvm = 1;
-    tcg_llvm_ctx = tcg_llvm_initialize();
+    tcg_llvm_initialize();
 }
 
-extern CPUState *env;
-
-void panda_disable_llvm(void){
+void panda_disable_llvm(void) {
+    panda_do_flush_tb();
     execute_llvm = 0;
     generate_llvm = 0;
     tcg_llvm_destroy();
     tcg_llvm_ctx = NULL;
 }
 
-void panda_enable_llvm_helpers(void){
+void panda_enable_llvm_helpers(void) {
     init_llvm_helpers();
 }
 
-void panda_disable_llvm_helpers(void){
+void panda_disable_llvm_helpers(void) {
     uninit_llvm_helpers();
 }
-
 #endif
 
 void panda_memsavep(FILE *f) {

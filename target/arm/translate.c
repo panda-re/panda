@@ -11917,6 +11917,11 @@ void gen_intermediate_code(CPUARMState *env, TranslationBlock *tb)
             disas_arm_insn(dc, insn);
         }
 
+        if (unlikely(panda_callbacks_after_insn_translate(cs, dc->pc))
+                && !dc->is_jmp) {
+            gen_helper_panda_after_insn_exec(tcg_const_tl(dc->pc));
+        }
+
         if (dc->condjmp && !dc->is_jmp) {
             gen_set_label(dc->condlabel);
             dc->condjmp = 0;

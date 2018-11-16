@@ -465,6 +465,16 @@ static inline void cpu_handle_debug_exception(CPUState *cpu)
 
 static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
 {
+
+    // If we finished a reverse-step, clear the most recent breakpoint
+    if ((cpu->reverse_flags & (GDB_RSTEP | GDB_RDONE)) == (GDB_RSTEP | GDB_RDONE)) {
+        // Remove the breakpoint we just hit
+        // And clear the reverse_flags
+        cpu_breakpoint_remove_by_instr(cpu, cpu->last_gdb_instr-1, BP_GDB);
+        cpu->reverse_flags = 0;
+    }
+    
+
     if (cpu->exception_index >= 0) {
         if (cpu->exception_index >= EXCP_INTERRUPT) {
             /* exit request from the cpu execution loop */
@@ -692,7 +702,8 @@ static void detect_infinite_loops(void) {
     if (last_instr_count == rr_get_guest_instr_count()) {
         loop_tries++;
         if (loop_tries > 20) {
-            fprintf(stderr, "rr_guest_instr_count = %lu\n", rr_get_guest_instr_count());
+            fprintf(stderr, "rr_guest_instr_count = %lu\n",
+                    rr_get_guest_instr_count());
             assert(false);
         }
     } else {
@@ -753,15 +764,15 @@ int cpu_exec(CPUState *cpu)
         TranslationBlock *last_tb = NULL;
         int tb_exit = 0;
 
-        while (true) {
-
-            if (panda_exit_loop) break;
-
+        /* Note: We usually break out of the loop manually and
+         * not because panda_exit_loop is true. */
+        while (likely(!panda_exit_loop)) {
             bool panda_invalidate_tb = false;
             debug_checkpoint(cpu);
             detect_infinite_loops();
             rr_maybe_progress();
-    
+
+            /* Replay skipped calls from the I/O thread here. */
             if (rr_in_replay()) {
                 rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
                 rr_replay_skipped_calls();
@@ -775,6 +786,13 @@ int cpu_exec(CPUState *cpu)
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
             panda_bb_invalidate_done = panda_callbacks_after_find_fast(
                     cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
+        
+            if (unlikely(cpu->temp_rr_bp_instr) && rr_get_guest_instr_count() > cpu->temp_rr_bp_instr) {
+                // Restore rr breakpoint if one was disabled for continue
+                cpu_rr_breakpoint_insert(cpu, cpu->temp_rr_bp_instr, BP_GDB, NULL);
+                cpu->temp_rr_bp_instr = 0;
+            }
+
             qemu_log_rr(tb->pc);
 
 #ifdef CONFIG_SOFTMMU
@@ -782,6 +800,8 @@ int cpu_exec(CPUState *cpu)
             if (panda_invalidate_tb
                     || (rr_mode == RR_REPLAY && until_interrupt > 0
                         && tb->icount > until_interrupt)) {
+                /* Retranslate so that basic block boundary matches
+                 * record & replay for interrupt delivery. */
                 tb_lock();
                 tb_phys_invalidate(tb, -1);
                 tb_unlock();
@@ -794,6 +814,7 @@ int cpu_exec(CPUState *cpu)
                 panda_exit_loop = true;
                 break;
             }
+
             if (!rr_in_replay() || until_interrupt > 0) {
                 cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
                 /* Try to align the host and virtual clocks

@@ -21,8 +21,9 @@ Laboratory, NYU, and Northeastern University.
 
 ## Building
 
+###  Debian 7/8, Ubuntu 14.04 / 16.04
 Because PANDA has a few dependencies, we've encoded the build instructions into
-a script, [panda/scripts/install\_ubuntu.sh](panda/scripts/install\_ubuntu.sh).
+a script,, [panda/scripts/install\_ubuntu.sh](panda/scripts/install\_ubuntu.sh).
 The script should actually work on Debian 7/8 and Ubuntu 14.04, and it
 shouldn't be hard to translate the `apt-get` commands into whatever package
 manager your distribution uses. We currently only vouch for buildability  on
@@ -47,10 +48,61 @@ mkdir -p build-panda && cd build-panda
 ../panda/build.sh
 ```
 
+### Arch-linux
+Because PANDA has a few dependencies, we've encoded the build instructions into
+a script, [panda/scripts/install\_arch.sh](panda/scripts/install\_arch.sh).
+The script has only been tested on Arch Linux 4.17.5-1-MANJARO
+
+#### Dependencies
+```
+aur_install_pkg () {
+	local FNAME=$1
+	local FNAME_WEB=$(python2 -c "import urllib; print urllib.quote('''$FNAME''')")
+	wget -O /tmp/$FNAME.tar.gz https://aur.archlinux.org/cgit/aur.git/snapshot/$FNAME_WEB.tar.gz
+	cd /tmp
+	tar -xvf $FNAME.tar.gz
+	cd /tmp/$FNAME
+	makepkg -s
+	makepkg --install
+}
+
+gpg --receive-keys A2C794A986419D8A
+aur_install_pkg "libc++"
+aur_install_pkg "llvm33"
+aur_install_pkg "libprotobuf2"
+
+# Protobuf for C language
+cd /tmp
+git clone https://github.com/protobuf-c/protobuf-c.git protobuf-c
+cd protobuf-c
+./autogen.sh
+./configure --prefix=/usr
+make
+sudo make install
+
+# We need to use an older version of wireshark, since 2.5.1 breaks the network plugin
+sudo pacman -U https://archive.archlinux.org/packages/w/wireshark-common/wireshark-common-2.4.4-1-x86_64.pkg.tar.xz
+sudo pacman -U https://archive.archlinux.org/packages/w/wireshark-cli/wireshark-cli-2.4.4-1-x86_64.pkg.tar.xz
+
+# Other dependencies
+sudo pacman -S python2-protobuf libelf dtc capstone libdwarf python2-pycparser
+```
+#### Build
+
+```
+export PANDA_LLVM_ROOT=/opt/llvm33
+export CFLAGS=-Wno-error
+./build.sh
+```
+
+### Building on Mac
+
 Building on Mac is less well-tested, but has been known to work. There is a script,
 [panda/scripts/install\_osx.sh](panda/scripts/install\_osx.sh) to build under OS X.
 
-Finally, if you want to skip the build process altogether, there is a 
+### Docker Image
+
+Finally, if you want to skip the build process altogether, there is a
 [Docker image](https://hub.docker.com/r/pandare/panda). You can get it by running:
 
     docker pull pandare/panda
@@ -75,8 +127,7 @@ Details about the architecture-neutral plugin interface can be found in
 
 ## Record/Replay
 
-PANDA currently supports whole-system record/replay execution of x86, x86\_64,
-and ARM guests. Documentation can be found in
+PANDA currently supports whole-system record/replay execution, as well as time-travel debugging, of x86, x86\_64, and ARM guests. Documentation can be found in
 [the manual](panda/docs/manual.md#recordreplay-details).
 
 ## Publications

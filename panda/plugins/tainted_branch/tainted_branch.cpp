@@ -141,8 +141,8 @@ bool init_plugin(void *self) {
     panda_require("callstack_instr");
     assert (init_callstack_instr_api());
     panda_require("taint2");
-    assert (init_taint2_api());    
-    panda_arg_list *args = panda_get_args("tainted_instr");
+    assert (init_taint2_api());
+    panda_arg_list *args = panda_get_args("tainted_branch");
     summary = panda_parse_bool_opt(args, "summary", "only print out a summary of tainted instructions");
     bool indirect_jumps = panda_parse_bool_opt(args, "indirect_jumps", "also query taint on indirect jumps and calls");
     liveness = panda_parse_bool_opt(args, "liveness", "track liveness of input bytes");
@@ -174,6 +174,18 @@ void uninit_plugin(void *self) {
             }
         }
         free(tbs);
-    }    
-    
+    }
+
+    if (liveness) {
+        Panda__LabelLiveness *ll = (Panda__LabelLiveness *)malloc(sizeof(*ll));
+        for (auto kvp : liveness_map) {
+            *ll = PANDA__LABEL_LIVENESS__INIT;
+            ll->label = kvp.first;
+            ll->count = kvp.second;
+            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+            ple.label_liveness = ll;
+            pandalog_write_entry(&ple);
+        }
+        free(ll);
+    }
 }

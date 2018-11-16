@@ -166,7 +166,7 @@ extern int generate_llvm;
 extern int execute_llvm;
 extern const int has_llvm_engine;
 
-struct TCGLLVMContext* tcg_llvm_initialize(void);
+void tcg_llvm_initialize(void);
 void tcg_llvm_destroy(void);
 #endif
 
@@ -4373,7 +4373,7 @@ int main(int argc, char **argv, char **envp)
 #if defined(CONFIG_LLVM)
     if (generate_llvm || execute_llvm){
         if (tcg_llvm_ctx == NULL){
-            tcg_llvm_ctx = tcg_llvm_initialize();
+	    tcg_llvm_initialize();
         }
     }
 #endif

@@ -109,14 +109,19 @@ extern void rr_signal_disagreement(RR_prog_point current,
 // not run during replay, we'll need to replay these calls (at the right
 // program point) to achieve the same effect.
 
-#define FOREACH_SKIPCALL(ACTION) \
-    ACTION(RR_CALL_CPU_MEM_RW),         /* cpu_physical_memory_rw() */ \
-    ACTION(RR_CALL_MEM_REGION_CHANGE),  /* cpu_register_physical_memory() */ \
-    ACTION(RR_CALL_CPU_MEM_UNMAP),      /* cpu_physical_memory_unmap() */ \
-    ACTION(RR_CALL_HD_TRANSFER),        /* hd transfer */ \
-    ACTION(RR_CALL_NET_TRANSFER),       /* network transfer in device */ \
-    ACTION(RR_CALL_HANDLE_PACKET),      /* packet handling on send/receive */ \
-    ACTION(RR_CALL_LAST)
+#define FOREACH_SKIPCALL(ACTION)                                               \
+    ACTION(RR_CALL_CPU_MEM_RW), /* cpu_physical_memory_rw() */                 \
+        ACTION(                                                                \
+            RR_CALL_MEM_REGION_CHANGE), /* cpu_register_physical_memory() */   \
+        ACTION(RR_CALL_CPU_MEM_UNMAP),  /* cpu_physical_memory_unmap() */      \
+        ACTION(RR_CALL_HD_TRANSFER),    /* hd transfer */                      \
+        ACTION(RR_CALL_NET_TRANSFER),   /* network transfer in device */       \
+        ACTION(RR_CALL_HANDLE_PACKET),  /* packet handling on send/receive */  \
+        ACTION(RR_CALL_SERIAL_RECEIVE), /* receive byte on serial port */      \
+        ACTION(RR_CALL_SERIAL_READ),    /* read byte from serial rx fifo */    \
+        ACTION(RR_CALL_SERIAL_SEND),    /* send byte on serial port */         \
+        ACTION(RR_CALL_SERIAL_WRITE),   /* write byte to serial tx fifo */     \
+        ACTION(RR_CALL_LAST)
 
 typedef enum {
     FOREACH_SKIPCALL(GENERATE_ENUM)
@@ -172,42 +177,42 @@ static inline const char* get_log_entry_kind_string(RR_log_entry_kind kind)
 
 // mz 10.20.2009 Unified view of all callsite ids for record/replay calls.
 // mz These are used as additional sanity check during replay
-#define FOREACH_CALLSITE(ACTION) \
-    ACTION(RR_CALLSITE_CPU_HANDLE_INTERRUPT_POLL), \
-    ACTION(RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE), \
-    ACTION(RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO), \
-    ACTION(RR_CALLSITE_CPU_HANDLE_INTERRUPT_AFTER), \
-    ACTION(RR_CALLSITE_RDTSC), \
-    ACTION(RR_CALLSITE_IO_READ_ALL), \
-    ACTION(RR_CALLSITE_IO_WRITE_ALL), \
-    ACTION(RR_CALLSITE_MAIN_LOOP_WAIT), \
-    ACTION(RR_CALLSITE_DO_SMM_ENTER), \
-    ACTION(RR_CALLSITE_HELPER_RSM), \
-    ACTION(RR_CALLSITE_READ_8), \
-    ACTION(RR_CALLSITE_READ_4), \
-    ACTION(RR_CALLSITE_READ_2), \
-    ACTION(RR_CALLSITE_READ_1), \
-    ACTION(RR_CALLSITE_WRITE_8), \
-    ACTION(RR_CALLSITE_WRITE_4), \
-    ACTION(RR_CALLSITE_WRITE_2), \
-    ACTION(RR_CALLSITE_WRITE_1), \
-    ACTION(RR_CALLSITE_END_OF_LOG), \
-    ACTION(RR_CALLSITE_CPU_PENDING_INTERRUPTS_BEFORE), \
-    ACTION(RR_CALLSITE_CPU_PENDING_INTERRUPTS_AFTER), \
-    ACTION(RR_CALLSITE_CPU_EXCEPTION_INDEX), \
-    ACTION(RR_CALLSITE_E1000_RECEIVE_1), \
-    ACTION(RR_CALLSITE_E1000_RECEIVE_2), \
-    ACTION(RR_CALLSITE_E1000_RECEIVE_3), \
-    ACTION(RR_CALLSITE_E1000_RECEIVE_MEMCPY_1), \
-    ACTION(RR_CALLSITE_E1000_XMIT_SEG_1), \
-    ACTION(RR_CALLSITE_E1000_XMIT_SEG_2), \
-    ACTION(RR_CALLSITE_E1000_PROCESS_TX_DESC_1), \
-    ACTION(RR_CALLSITE_E1000_PROCESS_TX_DESC_2), \
-    ACTION(RR_CALLSITE_E1000_PROCESS_TX_DESC_MEMMOVE_1),            \
-    ACTION(RR_CALLSITE_E1000_PROCESS_TX_DESC_MEMMOVE_2), \
-    ACTION(RR_CALLSITE_E1000_TXDESC_WRITEBACK), \
-    ACTION(RR_CALLSITE_E1000_START_XMIT), \
-    ACTION(RR_CALLSITE_LAST)
+#define FOREACH_CALLSITE(ACTION)                                               \
+        ACTION(RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE),                       \
+        ACTION(RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO),                        \
+        ACTION(RR_CALLSITE_CPU_HANDLE_INTERRUPT_AFTER),                        \
+        ACTION(RR_CALLSITE_RDTSC), ACTION(RR_CALLSITE_IO_READ_ALL),            \
+        ACTION(RR_CALLSITE_IO_WRITE_ALL), ACTION(RR_CALLSITE_MAIN_LOOP_WAIT),  \
+        ACTION(RR_CALLSITE_DO_SMM_ENTER), ACTION(RR_CALLSITE_HELPER_RSM),      \
+        ACTION(RR_CALLSITE_READ_8), ACTION(RR_CALLSITE_READ_4),                \
+        ACTION(RR_CALLSITE_READ_2), ACTION(RR_CALLSITE_READ_1),                \
+        ACTION(RR_CALLSITE_WRITE_8), ACTION(RR_CALLSITE_WRITE_4),              \
+        ACTION(RR_CALLSITE_WRITE_2), ACTION(RR_CALLSITE_WRITE_1),              \
+        ACTION(RR_CALLSITE_END_OF_LOG),                                        \
+        ACTION(RR_CALLSITE_CPU_PENDING_INTERRUPTS_BEFORE),                     \
+        ACTION(RR_CALLSITE_CPU_PENDING_INTERRUPTS_AFTER),                      \
+        ACTION(RR_CALLSITE_CPU_EXCEPTION_INDEX),                               \
+        ACTION(RR_CALLSITE_IDE_SECTOR_READ),                                   \
+        ACTION(RR_CALLSITE_IDE_SECTOR_WRITE), ACTION(RR_CALLSITE_IDE_DMA_CB),  \
+        ACTION(RR_CALLSITE_IDE_DATA_WRITEW),                                   \
+        ACTION(RR_CALLSITE_IDE_DATA_WRITEL),                                   \
+        ACTION(RR_CALLSITE_IDE_DATA_READW),                                    \
+        ACTION(RR_CALLSITE_IDE_DATA_READL),                                    \
+        ACTION(RR_CALLSITE_E1000_RECEIVE_1),                                   \
+        ACTION(RR_CALLSITE_E1000_RECEIVE_2),                                   \
+        ACTION(RR_CALLSITE_E1000_RECEIVE_3),                                   \
+        ACTION(RR_CALLSITE_E1000_RECEIVE_MEMCPY_1),                            \
+        ACTION(RR_CALLSITE_E1000_XMIT_SEG_1),                                  \
+        ACTION(RR_CALLSITE_E1000_XMIT_SEG_2),                                  \
+        ACTION(RR_CALLSITE_E1000_PROCESS_TX_DESC_1),                           \
+        ACTION(RR_CALLSITE_E1000_PROCESS_TX_DESC_2),                           \
+        ACTION(RR_CALLSITE_E1000_PROCESS_TX_DESC_MEMMOVE_1),                   \
+        ACTION(RR_CALLSITE_E1000_PROCESS_TX_DESC_MEMMOVE_2),                   \
+        ACTION(RR_CALLSITE_E1000_TXDESC_WRITEBACK),                            \
+        ACTION(RR_CALLSITE_E1000_START_XMIT),                                  \
+        ACTION(RR_CALLSITE_SERIAL_RECEIVE), ACTION(RR_CALLSITE_SERIAL_READ),   \
+        ACTION(RR_CALLSITE_SERIAL_SEND), ACTION(RR_CALLSITE_SERIAL_WRITE),     \
+        ACTION(RR_CALLSITE_LAST)
 
 typedef enum {
     FOREACH_CALLSITE(GENERATE_ENUM)
@@ -493,6 +498,39 @@ void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t* buf,
 void rr_record_net_transfer(RR_callsite_id call_site,
                             Net_transfer_type transfer_type, uint64_t src_addr,
                             uint64_t dest_addr, uint32_t num_bytes);
+
+// serial record\replay support
+typedef struct {
+    uint64_t fifo_addr;
+    uint8_t value;
+} RR_serial_receive_args;
+
+typedef struct {
+    uint64_t fifo_addr;
+    uint32_t port_addr;
+    uint8_t value;
+} RR_serial_read_args;
+
+void rr_record_serial_receive(RR_callsite_id call_site, uint64_t fifo_addr,
+                              uint8_t value);
+void rr_record_serial_read(RR_callsite_id call_site, uint64_t fifo_addr,
+                           uint32_t port_addr, uint8_t value);
+
+typedef struct {
+    uint64_t fifo_addr;
+    uint8_t value;
+} RR_serial_send_args;
+
+typedef struct {
+    uint64_t fifo_addr;
+    uint32_t port_addr;
+    uint8_t value;
+} RR_serial_write_args;
+
+void rr_record_serial_send(RR_callsite_id call_site, uint64_t fifo_addr,
+                           uint8_t value);
+void rr_record_serial_write(RR_callsite_id call_site, uint64_t fifo_addr,
+                            uint32_t port_addr, uint8_t value);
 
 // Needed from main-loop.c which is not target-specific
 void rr_tracked_mem_regions_record(void);

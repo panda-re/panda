@@ -53,6 +53,16 @@ typedef void (*on_get_current_process_t)(CPUState *, OsiProc **)
 
 Description: Called to get the currently running process in the guest OS. The implementation should allocate memory and fill in the pointer to an `OsiProc` struct. The returned `OsiProc` can be freed with `on_free_osiproc`.
 
+Name: **on_get_current_thread**
+
+Signature:
+
+```C
+typedef void (*on_get_current_thread_t)(CPUState *, OsiThread **)
+```
+
+Description: Called to retrieve the current thread from the guest OS. The implementation should allocate memory and fill in the pointer to an `OsiThread` struct. The returned `OsiThread` can be freed with `on_free_osithread`.
+
 Name: **on_get_modules**
 
 Signature:
@@ -107,12 +117,12 @@ Description: Frees an `OsiModules` structure. You only need to implement this if
 
 In addition, there are two callbacks intended to be used by `osi` *users*, rather than by introspection providers:
 
-Name: **on_new_process**
+Name: **on_process_start**
 
 Signature:
 
 ```C
-typedef void (*on_new_process_t)(CPUState *, OsiProc *)
+typedef void (*on_process_start_t)(CPUState *, OsiProc *)
 ```
 
 Description: Called whenever a new process is created in the guest. Passes in an `OsiProc` identifying the newly created process.
@@ -120,12 +130,12 @@ This callback is **disabled by default** because it requires a fair amount of co
 To enable/use this callback you need to have used the `-DOSI_PROC_EVENTS` flag at compile time.
 
 
-Name: **on_finished_process**
+Name: **on_process_end**
 
 Signature:
 
 ```C
-typedef void (*on_finished_process_t)(CPUState *, OsiProc *)
+typedef void (*on_process_end_t)(CPUState *, OsiProc *)
 ```
 
 Description: Called whenever a process exits in the guest. Passes in an `OsiProc` identifying the process that just exited.
@@ -157,6 +167,12 @@ Data structures used by OSI:
         OsiProc *proc;
     } OsiProcs;
 
+    // Represents a thread
+    typedef struct osi_thread_struct {
+        target_ulong tid;
+        target_ulong pid;
+    } OsiThread;
+
     // Represents a single module (userspace library or kernel module)
     typedef struct osi_module_struct {
         target_ulong offset;
@@ -171,6 +187,7 @@ Data structures used by OSI:
         uint32_t num;
         OsiModule *module;
     } OsiModules;
+
 ```
 
 Example

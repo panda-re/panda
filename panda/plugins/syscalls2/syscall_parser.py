@@ -129,52 +129,50 @@ class Argument(object):
 
         # identify argument type
         if Argument.charre.search(self.raw) and not any([self.name.endswith('buf'), self.name == '...', self.name.endswith('[]')]):
-            self.type = 'CHAR_STAR'
+            self.type = 'STR'
         elif any(['*' in self.raw, '[]' in self.raw, any([x in self.raw for x in Argument.types['ptr']])]):
-            self.type = 'POINTER'
+            self.type = 'PTR'
         elif any([x in self.raw for x in Argument.types['u64']]):
-            self.type = '8BYTE'
+            self.type = 'U64'
         elif any([x in self.raw for x in Argument.types['u32']]) or any([x in self.raw for x in Argument.types['u16']]):
-            self.type = '4BYTE'
+            self.type = 'U32'
         elif any([x in self.raw for x in Argument.types['s32']]) and 'unsigned' not in self.raw:
-            self.type = '4SIGNED'
+            self.type = 'S32'
         elif self.raw == 'void':
             self.type = None
             assert False, 'Unexpected void argument.'
         elif self.raw == 'unsigned' or (len(self.raw.split()) == 2 and self.raw.split()[0] == 'unsigned'):
-            self.type = '4BYTE'
+            self.type = 'U32'
         else:
             # Warn but assume it's a 32-bit argument
             logging.debug("%s not of known type, assuming 32-bit", self.raw)
-            self.type = '4BYTE'
+            self.type = 'U32'
 
     @property
     def ctype(self):
-        if self.type in ['CHAR_STAR', 'POINTER'] and self.arch_bits == 32:
+        if self.type in ['STR', 'PTR'] and self.arch_bits == 32:
             return 'uint32_t'
-        elif self.type in ['CHAR_STAR', 'POINTER']:
+        elif self.type in ['STR', 'PTR']:
             return 'uint64_t'
-        elif self.type == '4BYTE':
+        elif self.type == 'U32':
             return 'uint32_t'
-        elif self.type == '4SIGNED':
+        elif self.type == 'S32':
             return 'int32_t'
-        elif self.type == '8BYTE':
+        elif self.type == 'U64':
             return 'uint64_t'
-        elif self.type == '2BYTE':
+        elif self.type == 'U16':
             return 'uint16_t'
         assert False, 'Unknown type for argument %s: %s' % (self.name, self.type)
 
-    @property
-    def temp_decl_code(self):
+    def emit_temp_declaration(self):
         ''' Returns a snippet declaring an appropriate temp
             variable for this argument.
         '''
         return "{0} arg{1};".format(self.ctype, self.no)
 
-    @property
-    def temp_assg_code(self):
+    def emit_temp_assignment(self):
         ''' Returns a snippet declaring an appropriate temp
-            variable for this argument and assigning its 
+            variable for this argument and assigning its
             runtime value to it.
         '''
         ctype = self.ctype
@@ -183,19 +181,33 @@ class Argument(object):
         ctype_get = 'get_%d' % ctype_bits if ctype.startswith('uint') else 'get_s%d' % ctype_bits
         return "{0} arg{1} = {2}(cpu, {1});".format(ctype, self.no, ctype_get)
 
-    @property
-    def memcpy_temp2rp_code(self):
+    def emit_memcpy_temp_to_ref(self):
         ''' Returns a snippet that copies this argument from its
-            corresponding temp into a return point structure.
+            corresponding temp into a syscall context structure.
+            The syscall context is assumed to be a pointer.
         '''
-        return 'memcpy(rp.params[{0}], &arg{0}, sizeof({1}));'.format(self.no, self.ctype)
+        return 'memcpy(ctx.args[{0}], &arg{0}, sizeof({1}));'.format(self.no, self.ctype)
 
-    @property
-    def memcpy_rp2temp_code(self):
-        ''' Returns a snippet that copies this argument from 
-            a return point structure into its corresponding temp.
+    def emit_memcpy_ref_to_temp(self):
+        ''' Returns a snippet that copies this argument from
+            a syscall context structure into its corresponding temp.
+            The syscall context is assumed to be a pointer.
         '''
-        return 'memcpy(&arg{0}, rp.params[{0}], sizeof({1}));'.format(self.no, self.ctype)
+        return 'memcpy(&arg{0}, ctx.args[{0}], sizeof({1}));'.format(self.no, self.ctype)
+
+    def emit_memcpy_temp_to_ptr(self):
+        ''' Returns a snippet that copies this argument from its
+            corresponding temp into a syscall context structure.
+            The syscall context is assumed to be a pointer.
+        '''
+        return 'memcpy(&ctx->args[{0}], &arg{0}, sizeof({1}));'.format(self.no, self.ctype)
+
+    def emit_memcpy_ptr_to_temp(self):
+        ''' Returns a snippet that copies this argument from
+            a syscall context structure into its corresponding temp.
+            The syscall context is assumed to be a pointer.
+        '''
+        return 'memcpy(&arg{0}, ctx->args[{0}], sizeof({1}));'.format(self.no, self.ctype)
 
 class SysCallError(Exception):
     ''' Base error class for SysCall related errors.
@@ -286,6 +298,9 @@ if __name__ == '__main__':
         'architectures': KNOWN_ARCH,
         'syscalls': {target: [] for target in args.target}, # per target system call list
         'syscalls_arch': {arch: {} for arch in KNOWN_ARCH}, # per arch system call list
+        'global_max_syscall_args': 0,
+        'global_max_syscall_no': 0,
+        'global_max_syscall_generic_no': 0,
     }
 
     # parse system call definitions for all targets
@@ -322,6 +337,14 @@ if __name__ == '__main__':
         target_context['max_syscall_args'] = max([len(s.args) for s in syscalls])
         target_context['max_syscall_no'] = max([s.no for s in syscalls])
         target_context['max_syscall_generic_no'] = max([s.no for s in syscalls if s.generic])
+
+        # Update the global maximum number of arguments and system call number.
+        global_context['global_max_syscall_args'] = max(
+                global_context['global_max_syscall_args'], target_context['max_syscall_args'])
+        global_context['global_max_syscall_no'] = max(
+                global_context['global_max_syscall_no'], target_context['max_syscall_no'])
+        global_context['global_max_syscall_generic_no'] = max(
+                global_context['global_max_syscall_generic_no'], target_context['max_syscall_generic_no'])
 
         # Render per-target output files.
         j2tpl = j2env.get_template('syscall_switch_enter.tpl')

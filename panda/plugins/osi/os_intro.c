@@ -42,24 +42,28 @@ PPP_PROT_REG_CB(on_get_processes)
 PPP_PROT_REG_CB(on_get_current_process)
 PPP_PROT_REG_CB(on_get_modules)
 PPP_PROT_REG_CB(on_get_libraries)
+PPP_PROT_REG_CB(on_get_current_thread)
 PPP_PROT_REG_CB(on_free_osiproc)
 PPP_PROT_REG_CB(on_free_osiprocs)
 PPP_PROT_REG_CB(on_free_osimodules)
+PPP_PROT_REG_CB(on_free_osithread)
 #ifdef OSI_PROC_EVENTS
-PPP_PROT_REG_CB(on_new_process)
-PPP_PROT_REG_CB(on_finished_process)
+PPP_PROT_REG_CB(on_process_start)
+PPP_PROT_REG_CB(on_process_end)
 #endif
 
 PPP_CB_BOILERPLATE(on_get_processes)
 PPP_CB_BOILERPLATE(on_get_current_process)
 PPP_CB_BOILERPLATE(on_get_modules)
 PPP_CB_BOILERPLATE(on_get_libraries)
+PPP_CB_BOILERPLATE(on_get_current_thread)
 PPP_CB_BOILERPLATE(on_free_osiproc)
 PPP_CB_BOILERPLATE(on_free_osiprocs)
 PPP_CB_BOILERPLATE(on_free_osimodules)
+PPP_CB_BOILERPLATE(on_free_osithread)
 #ifdef OSI_PROC_EVENTS
-PPP_CB_BOILERPLATE(on_new_process)
-PPP_CB_BOILERPLATE(on_finished_process)
+PPP_CB_BOILERPLATE(on_process_start)
+PPP_CB_BOILERPLATE(on_process_end)
 #endif
 
 // The copious use of pointers to pointers in this file is due to
@@ -90,6 +94,13 @@ OsiModules *get_libraries(CPUState *cpu, OsiProc *p) {
     return m;
 }
 
+OsiThread *get_current_thread(CPUState *cpu)
+{
+    OsiThread *thread = NULL;
+    PPP_RUN_CB(on_get_current_thread, cpu, &thread);
+    return thread;
+}
+
 void free_osiproc(OsiProc *p) {
     PPP_RUN_CB(on_free_osiproc, p);
 }
@@ -102,6 +113,10 @@ void free_osimodules(OsiModules *ms) {
     PPP_RUN_CB(on_free_osimodules, ms);
 }
 
+void free_osithread(OsiThread *t)
+{
+    PPP_RUN_CB(on_free_osithread, t);
+}
 
 #ifdef OSI_PROC_EVENTS
 int asid_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
@@ -119,7 +134,7 @@ int asid_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
     /* invoke callbacks for finished processes */
     if (out != NULL) {
         for (i=0; i<out->num; i++) {
-            PPP_RUN_CB(on_finished_process, cpu, &out->proc[i]);
+            PPP_RUN_CB(on_process_end, cpu, &out->proc[i]);
         }
         free_osiprocs(out);
     }
@@ -127,7 +142,7 @@ int asid_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
     /* invoke callbacks for new processes */
     if (in != NULL) {
         for (i=0; i<in->num; i++) {
-            PPP_RUN_CB(on_new_process, cpu, &in->proc[i]);
+            PPP_RUN_CB(on_process_start, cpu, &in->proc[i]);
         }
         free_osiprocs(in);
     }
@@ -143,8 +158,10 @@ bool init_plugin(void *self) {
     panda_cb pcb = { .asid_changed = asid_changed };
     panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
 #endif
-    // figure out what kind of os introspection is needed and grab it? 
+    // No os supplied on command line? E.g. -os linux-32-ubuntu:4.4.0-130-generic
     assert (!(panda_os_familyno == OS_UNKNOWN));
+
+    // figure out what kind of os introspection is needed and grab it? 
     if (panda_os_familyno == OS_LINUX) {
         // sadly, all of this is to find kernelinfo.conf file
         const gchar *progname = qemu_file;

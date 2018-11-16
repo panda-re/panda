@@ -12,6 +12,11 @@
  * See the COPYING file in the top-level directory.
  *
 PANDAENDCOMMENT */
+/*
+ * Change Log:
+ * Added taint propagation truncation for mul X 0, mul X 1, lshr 0 , ashr 0
+ *  sub, sdiv, udiv, fsub, fdiv (x,x) == no taint op
+ */
 
 #include <iostream>
 #include <vector>
@@ -35,7 +40,7 @@ PANDAENDCOMMENT */
 #include "panda/plugin_plugin.h"
 #include "panda/tcg-llvm.h"
 
-#include "fast_shad.h"
+#include "shad.h"
 #include "llvm_taint_lib.h"
 #include "taint_ops.h"
 #include "taint2.h"
@@ -97,7 +102,8 @@ static inline Constant *const_struct_ptr(LLVMContext &C, llvm::Type *ptrT, void 
     return ConstantExpr::getIntToPtr(const_uint64_ptr(C, ptr), ptrT);
 }
 
-static void taint_branch_run(FastShad *shad, uint64_t src, uint64_t size) {
+static void taint_branch_run(Shad *shad, uint64_t src, uint64_t size)
+{
     // this arg should be the register number
     Addr a = make_laddr(src / MAXREGSIZE, 0);
     PPP_RUN_CB(on_branch2, a, size);
@@ -107,14 +113,15 @@ void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store,
     // I think this has to be an LLVM register
     Addr ptr_addr = make_laddr(ptr / MAXREGSIZE, 0);
     if (is_store) {
-        PPP_RUN_CB(on_ptr_store, ptr_addr, dest, size);    
+        PPP_RUN_CB(on_ptr_store, ptr_addr, dest, size);
     }
     else {
         PPP_RUN_CB(on_ptr_load, ptr_addr, src, size);
     }
 }
 
-static void taint_copyRegToPc_run(FastShad *shad, uint64_t src, uint64_t size) {
+static void taint_copyRegToPc_run(Shad *shad, uint64_t src, uint64_t size)
+{
     // this arg should be the register number
     Addr a = make_laddr(src / MAXREGSIZE, 0);
     PPP_RUN_CB(on_indirect_jump, a, size);
@@ -160,6 +167,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.mixF = M.getFunction("taint_mix"),
     PTV.pointerF = M.getFunction("taint_pointer"),
     PTV.mixCompF = M.getFunction("taint_mix_compute"),
+    PTV.mulCompF = M.getFunction("taint_mul_compute"),
     PTV.parallelCompF = M.getFunction("taint_parallel_compute"),
     PTV.copyF = M.getFunction("taint_copy");
     PTV.sextF = M.getFunction("taint_sext");
@@ -173,7 +181,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.resetFrameF = M.getFunction("taint_reset_frame");
     PTV.breadcrumbF = M.getFunction("taint_breadcrumb");
 
-    llvm::Type *shadT = M.getTypeByName("class.FastShad");
+    llvm::Type *shadT = M.getTypeByName("class.Shad");
     assert(shadT);
     llvm::Type *shadP = PointerType::getUnqual(shadT);
 
@@ -226,6 +234,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     ADD_MAPPING(taint_mix);
     ADD_MAPPING(taint_pointer);
     ADD_MAPPING(taint_mix_compute);
+    ADD_MAPPING(taint_mul_compute);
     ADD_MAPPING(taint_parallel_compute);
     ADD_MAPPING(taint_copy);
     ADD_MAPPING(taint_sext);
@@ -258,6 +267,9 @@ bool PandaTaintFunctionPass::runOnFunction(Function &F) {
             F.getName().startswith("taint")) { // already processed!!
         return false;
     }
+    // Avoid Instrumentation in helper functions
+    if (F.getName().startswith("helper_panda_"))
+        return false;
     //printf("Processing entry BB...\n");
     PTV.visitFunction(F);
     for (BasicBlock &BB : F) {
@@ -591,7 +603,7 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *s
     if (!is_mixed) {
         assert(getValueSize(dest) == getValueSize(src1));
     }
-    assert(getValueSize(src1) == getValueSize(src1));
+    assert(getValueSize(src1) == getValueSize(src2));
 
     Constant *dest_size = const_uint64(ctx, getValueSize(dest));
     Constant *src_size = const_uint64(ctx, getValueSize(src1));
@@ -602,6 +614,54 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *s
         constInstr(&I)
     };
     inlineCallAfter(I, is_mixed ? mixCompF : parallelCompF, args);
+}
+
+// if we multiply tainted_val * 0, and 0 is untainted,
+// the result is no longer controlable, so do not propagate taint
+// if tainted_val * 1, do a parallel compute
+void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1, Value *src2) {
+    LLVMContext &ctx = I.getContext();
+    if (!dest) dest = &I;
+
+    if (isa<Constant>(src1) && isa<Constant>(src2)) {
+        return; // do nothing, should not happen in optimized code
+    } else if (isa<Constant>(src1)) {
+        //one oper is const (necessarily not tainted), so do a static check
+        if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src1)){
+            if (CI->isZero()) return;
+        } else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src1)){
+            if (CFP->isZero()) return;
+        }
+        insertTaintMix(I, src2);
+        return;
+    } else if (isa<Constant>(src2)) {
+        if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src2)){
+            if (CI->isZero()) return;
+        } else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src2)){
+            if (CFP->isZero()) return;
+        }
+        insertTaintMix(I, src1);
+        return;
+    }
+    //neither are constants, but one can be a dynamic untainted zero
+    assert(getValueSize(src1) == getValueSize(src2));
+    Constant *dest_size = const_uint64(ctx, getValueSize(dest));
+    Constant *src_size = const_uint64(ctx, getValueSize(src1));
+
+    auto b = IRBuilder<>(ctx);
+    Instruction *nextI = I.getNextNode();
+    b.SetInsertPoint(nextI);
+    Value *src1slot = constSlot(src1);
+    Value *src2slot = constSlot(src2);
+    Value *dslot = constSlot(dest);
+    Value *arg1 = b.CreateSExtOrBitCast(src1, Type::getInt64Ty(ctx));
+    Value *arg2 = b.CreateSExtOrBitCast(src2, Type::getInt64Ty(ctx));
+    vector<Value*> args{
+        llvConst, dslot, dest_size,
+        src1slot, src2slot, src_size,
+        constInstr(&I), arg1, arg2
+    };
+    b.CreateCall(mulCompF, args);
 }
 
 void PandaTaintVisitor::insertTaintSext(Instruction &I, Value *src) {
@@ -747,27 +807,54 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
     bool is_mixed = false;
     if (I.getMetadata("host")) return;
     switch (I.getOpcode()) {
+        case Instruction::LShr:
+        case Instruction::AShr:
+        case Instruction::Shl:
+            {
+                // operand 1 is the number of bits to shift
+                // if shifting 0 bits, then you're not really shifting at all, so
+                // don't propagate the taint that may be in one byte to them all
+                Value *op1 = I.getOperand(1);
+                if (isa<Constant>(op1))
+                {
+                    if (intValue(op1) != 0)
+                    {
+                        is_mixed = true;
+                    }
+                }
+                else
+                {
+                    is_mixed = true;
+                }
+            }
+            break;
+
+        case Instruction::Mul:
+        case Instruction::FMul:
+            insertTaintMul(I, &I, I.getOperand(0), I.getOperand(1));
+            return;
         case Instruction::Add:
             {
                 BinaryOperator *AI = dyn_cast<BinaryOperator>(&I);
                 assert(AI);
                 if (isCPUStateAdd(AI)) return;
                 else if (isIrrelevantAdd(AI)) return;
-            } // fall through otherwise.
+            }
+            is_mixed = true;
+            break;
         case Instruction::Sub:
-        case Instruction::Mul:
         case Instruction::UDiv:
         case Instruction::SDiv:
-        case Instruction::FAdd:
-        case Instruction::FSub:
-        case Instruction::FMul:
         case Instruction::FDiv:
+        case Instruction::FSub:
+            // these operations have exactly 1 result if operand is repeated, no need to taint
+            if (I.getOperand(0) == I.getOperand(1))    return;
+            is_mixed = true;
+            break;
+        case Instruction::FAdd:
         case Instruction::URem:
         case Instruction::SRem:
         case Instruction::FRem:
-        case Instruction::Shl:
-        case Instruction::LShr:
-        case Instruction::AShr:
             is_mixed = true;
             break;
             // mixed; i.e. operation is not bitwise, so taint transfers
@@ -854,7 +941,7 @@ bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
         return true;
     }
 
-#if defined (TARGET_PPC) 
+#if defined (TARGET_PPC)
     if (contains_offset(gpr)) {
         addrOut.typ = GREG;
         addrOut.val.gr = (offset - cpu_off(gpr)) / cpu_size(gpr[0]);
@@ -982,8 +1069,8 @@ void PandaTaintVisitor::visitStoreInst(StoreInst &I) {
 
 /*
  * In TCG->LLVM translation, it seems like this instruction is only used to get
- * the pointer to the CPU state.  Because of this, we will just delete taint at
- * the destination LLVM register.
+ * the pointer to the CPU state.  Because of this, we will just delete taint in
+ * later ops at the destination LLVM register.
  */
 void PandaTaintVisitor::visitGetElementPtrInst(GetElementPtrInst &I) {
     insertTaintMix(I, I.getOperand(0));
@@ -1218,6 +1305,37 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         } else if (calledName == "ldexp" || calledName == "atan2") {
             insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), true);
             return;
+#ifdef TARGET_I386
+        } else if (calledName == "helper_outb") {
+            // Call taint_copy to copy taint from LLVM to the EAX register. We
+            // have to copy taint here to ensure that EAX becomes tainted.
+            vector<Value *> copy_args{grvConst,
+                                      const_uint64(ctx, R_EAX),
+                                      llvConst,
+                                      constSlot(I.getArgOperand(2)),
+                                      const_uint64(ctx, 1),
+                                      constInstr(&I)};
+            auto call_inst = CallInst::Create(copyF, copy_args);
+            // For output, we have to propagate taint before the helper function
+            // is executed because the helper would likely have some side effect
+            // on the device.
+            call_inst->insertBefore(&I);
+        } else if (calledName == "helper_inb") {
+            // Call taint_copy to copy taint from EAX to LLVM. The helper's
+            // return value is the value on the IO port and so the taint data
+            // (if any) will be associated with the return value.
+            vector<Value *> copy_args{llvConst,
+                                      constSlot(&I),
+                                      grvConst,
+                                      const_uint64(ctx, R_EAX),
+                                      const_uint64(ctx, 1),
+                                      constInstr(&I)};
+            auto call_inst = CallInst::Create(copyF, copy_args);
+            // For input, we have to propagate taint after the helper function
+            // is executed since the value on the port isn't available until
+            // after the helper returns.
+            call_inst->insertAfter(&I);
+#endif
         } else if (inoutFuncs.count(calledName) > 0) {
             return;
         }
