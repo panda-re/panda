@@ -1206,7 +1206,7 @@ static void handle_even_inj(CPUX86State *env, int intno, int is_int,
 #endif
 
 /*
- * Begin execution of an interruption. is_int is TRUE if coming from
+ * Begin execution of an interruption. is_int is TRUE if c oming from
  * the int instruction. next_eip is the env->eip value AFTER the interrupt
  * instruction. It is only relevant if is_int is TRUE.
  */
@@ -1292,6 +1292,9 @@ void x86_cpu_do_interrupt(CPUState *cs)
     X86CPU *cpu = X86_CPU(cs);
     CPUX86State *env = &cpu->env;
 
+    //printf("SETTING LLVMTRACE_FLAGS CPU_DO_INTERRUPT @ pc " TARGET_FMT_lx ", instr %lu\n", env->eip, rr_get_guest_instr_count());
+    llvmtrace_flags |= 1;
+
 #if defined(CONFIG_USER_ONLY)
     /* if user mode only, we simulate a fake exception
        which will be handled outside the cpu execution
@@ -1325,6 +1328,8 @@ bool x86_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
     X86CPU *cpu = X86_CPU(cs);
     CPUX86State *env = &cpu->env;
     bool ret = false;
+    /*printf("SETTING LLVMTRACE_FLAGS CPU_EXEC_INTERRUPT @ pc " TARGET_FMT_lx ", instr %lu\n", env->eip, rr_get_guest_instr_count());*/
+    llvmtrace_flags |= 1;
 
 #if !defined(CONFIG_USER_ONLY)
     if (interrupt_request & CPU_INTERRUPT_POLL) {
@@ -1381,7 +1386,7 @@ bool x86_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
 
             qemu_log_mask(CPU_LOG_TB_IN_ASM,
                           "Servicing hardware INT=0x%02x\n", intno);
-            llvmtrace_flags |= 1;
+            
             do_interrupt_x86_hardirq(env, intno, 1);
             /* ensure that no TB jump will be modified as
                the program flow was changed */
@@ -2256,6 +2261,10 @@ void helper_iret_protected(CPUX86State *env, int shift, int next_eip)
 {
     int tss_selector, type;
     uint32_t e1, e2;
+
+    // clear llvm_trace flag
+    //printf("CLEARING LLVMTRACE_FLAGS in helper_iret_protected, pc " TARGET_FMT_lx ", instr %lu\n", env->eip, rr_get_guest_instr_count());
+    llvmtrace_flags &= ~1;
 
     /* specific case for TSS */
     if (env->eflags & NT_MASK) {

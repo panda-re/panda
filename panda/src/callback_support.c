@@ -236,6 +236,7 @@ void panda_callbacks_after_machine_init(void) {
     }
 }
 
+//cpus.c
 void panda_callbacks_top_loop(void) {
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_TOP_LOOP]; plist != NULL;

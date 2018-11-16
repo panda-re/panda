@@ -38,15 +38,32 @@ extern "C" {
 
 void pprint_llvmentry(std::unique_ptr<panda::LogEntry> ple){
     printf("\tllvmEntry: {\n");
-    printf("\t pc = %lx(%lu)\n", ple->llvmentry().pc(), ple->llvmentry().pc());
+    printf("\t pc = %lx(%lu)", ple->llvmentry().pc(), ple->llvmentry().pc());
+    if (ple->llvmentry().has_tb_num()){
+        printf("\t tb_num = %lu", ple->llvmentry().tb_num());
+    }
+    printf("\n");
+
     printf("\t type = %lu\n", ple->llvmentry().type()); 
-    printf("\t addrtype = %u\n", ple->llvmentry().addr_type()); 
-    printf("\t cpustate_offset = %u\n", ple->llvmentry().cpustate_offset()); 
-    printf("\t address = %lx\n", ple->llvmentry().address());
-    printf("\t numBytes = %lx\n", ple->llvmentry().num_bytes());
-    printf("\t value = %lu(%lx)\n", ple->llvmentry().value(), ple->llvmentry().value());
+
+    if (ple->llvmentry().type() == 20 || ple->llvmentry().type() == 24) {
+        printf("\t addrtype = %u\n", ple->llvmentry().addr_type()); 
+        printf("\t cpustate_offset = %u\n", ple->llvmentry().cpustate_offset()); 
+        printf("\t address = %lx\n", ple->llvmentry().address());
+        printf("\t numBytes = %lx\n", ple->llvmentry().num_bytes());
+        printf("\t value = %lu(%lx)\n", ple->llvmentry().value(), ple->llvmentry().value());
+    }
+
     printf("\t condition = %u, ", ple->llvmentry().condition());
     printf("\t flags = %x\n", ple->llvmentry().flags());
+
+    if (ple->llvmentry().has_vma_name()) {
+        printf("\t vma_name = %s\n", ple->llvmentry().vma_name().c_str());
+    }
+
+    if (ple->llvmentry().has_called_func_name()) {
+        printf("\t called_func_name = %s\n", ple->llvmentry().called_func_name().c_str());
+    }
     //printf("\t}\n"); 
 }
 
@@ -56,7 +73,7 @@ void pprint(std::unique_ptr<panda::LogEntry> ple) {
         return;
     }
 
-    printf("{\n");
+    // printf("{\n");
     printf("\tPC = %lx\n", ple->pc());
     printf("\tinstr = %lu\n", ple->instr());
 

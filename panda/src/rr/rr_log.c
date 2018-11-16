@@ -75,6 +75,8 @@ RR_log* rr_nondet_log = NULL;
 
 bool rr_replay_complete = false;
 
+extern bool panda_exit_loop;
+
 #define RR_RECORD_FROM_REQUEST 2
 #define RR_RECORD_REQUEST 1
 
@@ -1233,7 +1235,10 @@ void qmp_end_replay(Error** errp)
     rr_end_replay_requested = 1;
 }
 
-void panda_end_replay(void) { rr_end_replay_requested = 1; }
+void panda_end_replay(void) { 
+    panda_exit_loop = true;
+    rr_end_replay_requested = 1; 
+}
 
 #include "qemu-common.h"    // Monitor def
 #include "qapi/qmp/qdict.h" // QDict def
