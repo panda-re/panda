@@ -41,7 +41,7 @@ OsiModule* lookup_libname(target_ulong curpc, OsiModules* ms){
 
 void stringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
         uint8_t *matched_string, uint32_t matched_string_length, 
-        bool is_write){
+        bool is_write, bool in_memory){
 
     std::ofstream crit_file("criteria", std::ios::app);
     if (!crit_file.is_open()){

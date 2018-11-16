@@ -9,13 +9,10 @@
 using namespace std; 
 
 extern "C" {
-#ifndef PLOG_READER
 #include "panda/rr/rr_log.h"
 #include "panda/common.h"
-#endif
 }
 
-#ifndef PLOG_READER
 extern int panda_in_main_loop;
 
 void PandaLog::create(uint32_t chunk_size) {
@@ -260,8 +257,7 @@ int PandaLog::close(){
 
 // compress current chunk and write it to file,
 // also update directory map
-void PandaLog::write_current_chunk(){
-#ifndef PLOG_READER 
+void PandaLog::write_current_chunk(){ 
     //uncompressed chunk size
     unsigned long chunk_sz = this->chunk.buf_p - this->chunk.buf;
     unsigned long ccs = this->chunk.zsize;
@@ -298,13 +294,11 @@ void PandaLog::write_current_chunk(){
     this->chunk.buf_p = this->chunk.buf;
     this->chunk_num ++;
     this->chunk.ind_entry = 0;
-#endif
 }
 
 uint64_t last_instr_entry = -1;
 
-void PandaLog::write_entry(std::unique_ptr<panda::LogEntry> entry){
-#ifndef PLOG_READER 
+void PandaLog::write_entry(std::unique_ptr<panda::LogEntry> entry){ 
     if (panda_in_main_loop) {
         entry->set_pc(panda_current_pc(first_cpu));
         entry->set_instr(rr_get_guest_instr_count());
@@ -345,7 +339,6 @@ void PandaLog::write_entry(std::unique_ptr<panda::LogEntry> entry){
     // remember instr for last entry
     last_instr_entry = entry->instr();
     this->chunk.ind_entry ++;
-#endif
 }
 
 void PandaLog::unmarshall_chunk(uint32_t chunk_num){  
