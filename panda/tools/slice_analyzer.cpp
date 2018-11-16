@@ -43,6 +43,7 @@ using namespace llvm;
 #define MAX_BITSET 2048
 FILE *sliceAddrFile = fopen("slice_addrs", "wb");
 
+// map<char* module_name, uint64_t> marked_addrs;
 
 // Don't ever call this with an array of size < MAX_BITSET/8
 void bits2bytes(std::bitset<MAX_BITSET> &bs, uint8_t out[]) {
@@ -94,6 +95,7 @@ void print_target_asm(LLVMDisasmContextRef dcr, std::string targetAsm, bool mark
     // Write to slice_addrs file
     if (marked) {
         fprintf(sliceAddrFile, "%lx\n", baseAddr);
+        // marked_addrs[lib_name]
     }
 }
 
@@ -142,6 +144,7 @@ int main(int argc, char **argv) {
             break;
         
         //// Name
+        
         char *cname = new char[name_size];
         fread(cname, name_size, 1, f);
         std::string name(cname, name_size);
@@ -175,6 +178,7 @@ int main(int argc, char **argv) {
             printf("Is not a guest tb\n");
             continue;
         }; 
+
         int i = 0;
         for (Function::iterator it = f->begin(), ed = f->end(); it != ed; ++it) {
             printf(">>> Block %d\n", i);
@@ -187,6 +191,7 @@ int main(int argc, char **argv) {
             std::string targetAsm = "";
             bool targetAsmSeen, targetAsmMarked = false;
 			printf("bits: %lu\n", marked[f][i].count());
+
             for (BasicBlock::iterator insn_it = it->begin(), insn_ed = it->end();
                     insn_it != insn_ed; ++insn_it) {
                     

@@ -36,6 +36,9 @@ extern "C" {
 }
 
 #include <iostream>
+#include <fstream>
+#include <sstream>
+
 
 #include <llvm/IR/Metadata.h>
 #include <llvm/PassManager.h>
@@ -55,9 +58,18 @@ extern "C" {
 
 extern PandaLog globalLog;
 extern int llvmtrace_flags;
+extern bool panda_exit_loop;
+
 bool do_record = true;
 bool record_int = false;
 bool use_osi = false;
+
+bool llvm_done = false;
+
+uint64_t startpc = -1;
+uint64_t startinstr = -1;
+uint64_t endpc = UINT64_MAX;
+uint64_t endinstr = UINT64_MAX;
 
 #define cpu_off(member) (uint64_t)(&((CPUArchState *)0)->member)
 #define cpu_size(member) sizeof(((CPUArchState *)0)->member)
@@ -183,26 +195,30 @@ void recordCall(uint64_t fp){
         globalLog.write_entry(std::move(ple));
     }
 
-    if (calledFunc->getName().startswith("helper_iret")){
-        llvmtrace_flags &= ~1;
+    // Handling this in seg_helper.c now...
+    // if (calledFunc->getName().startswith("helper_iret")){
+    //     llvmtrace_flags &= ~1;
 
-        //turn on record!
-        do_record = true;
-        printf("TURNED ON RECORD\n");
-    }
+    //     //turn on record!
+    //     if (!do_record){
+    //         do_record = true;
+    //         printf("HELPER_IRET LLVM ENCOUNTERED, TURNED ON RECORD\n");
+    //         // panda_enable_llvm();
+    //     }
+    // }
 }
 
 //TODO: Can I get rid of this?
-void recordBB(uint64_t fp, unsigned lastBB){
+// void recordBB(uint64_t fp, unsigned lastBB){
     
-    if (pandalog && do_record){
-        std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
-        ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
-        ple->mutable_llvmentry()->set_type(FunctionCode::BB);
+//     if (pandalog && do_record){
+//         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+//         ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
+//         ple->mutable_llvmentry()->set_type(FunctionCode::BB);
 
-        globalLog.write_entry(std::move(ple));
-    }
-}
+//         globalLog.write_entry(std::move(ple));
+//     }
+// }
 
 void recordLoad(uint64_t address, uint64_t resultval, uint64_t num_bytes){
     // printf("recording load from   address %lx, resultval %lx\n", address, resultval);
@@ -269,6 +285,14 @@ void recordReturn(uint64_t retVal){
         ple->mutable_llvmentry()->set_value(retVal);
         globalLog.write_entry(std::move(ple));
     }
+
+    if (llvmtrace_flags & 1 && !record_int){
+        // this is an interrupt, and we don't want to record interrupts. turn off record
+        if (do_record){
+            printf("TURNING OFF RECORD at pc %lx, instr %lu\n", first_cpu->panda_guest_pc, rr_get_guest_instr_count());
+            do_record = false;
+        }
+    } 
 }
 
 void recordSelect(uint8_t condition){
@@ -590,16 +614,18 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
             return;
         }
 
-        printf("call to helper %s\n", name.str().c_str());
+        // printf("call to helper %s\n", name.str().c_str());
+
         //fp = castTo(I.getCalledFunction(), VoidPtrType, name, &I);   
         fp = ConstantInt::get(Int64Type, (uint64_t)calledFunc);
 
         //Clear llvmtrace interrupt flag if an iret
-        if (name.startswith("helper_iret")){
-            printf("HELPER IRET ENCOUNTERED\n");
-            llvmtrace_flags &= ~1;
-            printf("iret addr: %p\n", fp); 
-        }
+        // XXX: Fix this 
+        // if (name.startswith("helper_iret")){
+        //     printf("HELPER IRET ENCOUNTERED\n");
+        //     llvmtrace_flags &= ~1;
+        //     printf("iret addr: %p\n", fp); 
+        // }
 
         std::vector<Value*> args = make_vector(fp, 0);
 
@@ -654,6 +680,7 @@ extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }
 static void llvm_init(){
 
     printf("LLVM_init\n");
+
     FunctionPassManager *passMngr = tcg_llvm_ctx->getFunctionPassManager();
     Module *mod = tcg_llvm_ctx->getModule();
     LLVMContext &ctx = mod->getContext();
@@ -665,9 +692,7 @@ static void llvm_init(){
     // Add the taint analysis pass to our taint pass manager
     PLTP = new llvm::PandaLLVMTracePass(mod);
     passMngr->add(PLTP);
-
     passMngr->doInitialization();
-
 }
 
 
@@ -703,8 +728,7 @@ void instrumentBasicBlock(BasicBlock &BB){
 }
 
 char PandaLLVMTracePass::ID = 0;
-static RegisterPass<PandaLLVMTracePass>
-Y("PandaLLVMTrace", "Instrument instructions that produce dynamic values");
+static RegisterPass<PandaLLVMTracePass> Y("PandaLLVMTrace", "Instrument instructions that produce dynamic values");
 
 bool PandaLLVMTracePass::runOnBasicBlock(BasicBlock &B){
     //TODO: Iterate over function instrs
@@ -718,17 +742,17 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
     printf("Doing pandallvmtracepass initialization\n");
     ExecutionEngine *execEngine = tcg_llvm_ctx->getExecutionEngine();
       // Get references to the different types that we'll need.
-  Int8Type  = IntegerType::getInt8Ty(module.getContext());
-  Int32Type = IntegerType::getInt32Ty(module.getContext());
-  Int64Type = IntegerType::getInt64Ty(module.getContext());
-  VoidPtrType = PointerType::getUnqual(Int8Type);
-  VoidType = Type::getVoidTy(module.getContext());
+    Int8Type  = IntegerType::getInt8Ty(module.getContext());
+    Int32Type = IntegerType::getInt32Ty(module.getContext());
+    Int64Type = IntegerType::getInt64Ty(module.getContext());
+    VoidPtrType = PointerType::getUnqual(Int8Type);
+    VoidType = Type::getVoidTy(module.getContext());
 
-  // Insert code at the beginning of the basic block to record that it started
-  // execution.
-  //std::vector<Value*> args = make_vector<Value *>();
-  //Instruction *F = BB.getFirstInsertionPt();
-  //Instruction *S = CallInst::Create(recordStartBBF, args, "", F);
+    // Insert code at the beginning of the basic block to record that it started
+    // execution.
+    //std::vector<Value*> args = make_vector<Value *>();
+    //Instruction *F = BB.getFirstInsertionPt();
+    //Instruction *S = CallInst::Create(recordStartBBF, args, "", F);
 
     //initialize all the other record/logging functions
     PLTV->recordLoadF = cast<Function>(module.getOrInsertFunction("recordLoad", VoidType, VoidPtrType, Int64Type, Int64Type, nullptr));
@@ -750,8 +774,6 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
     // recordStartBB: 
     PLTV->recordStartBBF = cast<Function>(module.getOrInsertFunction("recordStartBB", VoidType, VoidPtrType, Int64Type, nullptr));
 
-    PLTV->recordBBF = cast<Function>(module.getOrInsertFunction("recordBB", VoidType, VoidPtrType, Int32Type, nullptr));
-
     PLTV->recordReturnF = cast<Function>(module.getOrInsertFunction("recordReturn", VoidType, nullptr));
 
     //add external linkages
@@ -767,7 +789,7 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
     ADD_MAPPING(recordSwitch);
     ADD_MAPPING(recordBranch);
     ADD_MAPPING(recordStartBB);
-    ADD_MAPPING(recordBB);
+    // ADD_MAPPING(recordBB);
     ADD_MAPPING(recordReturn);
 
     return true; //modified program
@@ -808,36 +830,65 @@ OsiModule* lookup_libname(target_ulong curpc, OsiModules* ms){
 // PANDA Plugin setup functions and callbacks
 //*************************************************************************
 
-int before_block_exec(CPUState *env, TranslationBlock *tb) {
-    // write LLVM FUNCTION to pandalog
-    // Get dynamic libraries of current process
 
-    //Look up mapping/library name
-    OsiModule* lib = NULL;
-    if (use_osi) {
-        OsiProc *current = get_current_process(env);
-        OsiModules *ms = get_libraries(env, current);
-            
-        target_ulong curpc = panda_current_pc(env);
+void llvmtrace_enable_llvm(){
+    // I have to enable llvm to get the tcg_llvm_ctx
+    printf("TURNING ON LLVM\n");
 
-        if (ms == NULL){
-            lib = NULL;
-        } else {
-            lib = lookup_libname(curpc, ms);
-            if (lib != NULL) {
-                printf("lib_name %s\n", lib->name);
-            }
+    panda_enable_llvm();    
+    panda_enable_llvm_helpers();
+
+    llvm::llvm_init();
+
+    /*
+     * Run instrumentation pass over all helper functions that are now in the
+     * module, and verify module.
+     */
+    llvm::Module *module = tcg_llvm_ctx->getModule();
+
+    // // Populate module with helper function log ops 
+    for (llvm::Module::iterator func = module->begin(), mod_end = module->end(); func != mod_end; ++func) {
+        for (llvm::Function::iterator b = func->begin(), be = func->end(); b != be; ++b) {
+            llvm::BasicBlock* bb = b;
+            llvm::PLTP->runOnBasicBlock(*bb);
         }
     }
+}
 
-    if (llvmtrace_flags & 1 && !record_int){
-        // this is an interrupt, and we don't want to record interrupts. turn off record
-        printf("TURNING OFF RECORD\n");
-        do_record = false;
+int llvmtrace_before_block_exec(CPUState *env, TranslationBlock *tb) {
+    // write LLVM FUNCTION to pandalog
+    // Get dynamic libraries of current process
+    if (!execute_llvm){
+        return 0;
     }
-    //printf("lib_name: %s\n", lib_name);
+
+    // if we are no longer in interrupt, flip do_record on
+    if (!(llvmtrace_flags & 1) && !do_record){
+        printf("TURNING ON RECORD at pc " TARGET_FMT_lx ", instr %lu\n", panda_current_pc(env), rr_get_guest_instr_count());
+        do_record = true;
+    }
     
     if (pandalog && do_record) {
+        //Look up mapping/library name
+        OsiModule* lib = NULL;
+
+        if (use_osi) {
+            OsiProc *current = get_current_process(env);
+            // printf("proc name %s\n", current->name);
+            OsiModules *ms = get_libraries(env, current);
+                
+            target_ulong curpc = panda_current_pc(env);
+
+            if (ms == NULL){
+                lib = NULL;
+            } else {
+                lib = lookup_libname(curpc, ms);
+                // if (lib != NULL) {
+                //     printf("lib_name %s\n", lib->name);
+                // }
+            }
+        }
+
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::LLVM_FN);
 
@@ -861,6 +912,80 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
     return 0;
 }
 
+
+
+int llvmtrace_before_block_translate(CPUState *env, target_ulong pc) {
+    if (!execute_llvm){
+        std::ofstream crit_file("criteria");
+        if (!crit_file.is_open()){
+            std::cout << "Error: llvmtrace_before_block_translate could not open crit_file!" << std::endl;
+            exit(1);
+        }
+
+        if (startinstr != 0){
+            uint64_t ins = rr_get_guest_instr_count();
+            if (ins > startinstr) {
+                llvmtrace_enable_llvm();
+                printf (" enabled LLVM tracing @ ins  %" PRId64 "\n", ins);
+                crit_file << "rr_start:" << ins << std::endl;
+            }
+        } else if (startpc != 0){
+            if (startpc == pc){
+                llvmtrace_enable_llvm();
+                printf (" enabled LLVM tracing @ pc " TARGET_FMT_lx ", instr %lu\n", pc, rr_get_guest_instr_count());
+                crit_file << "rr_start:" << rr_get_guest_instr_count() << std::endl;
+            }
+        } else {
+            // neither option is set, enable LLVM at beginning
+            llvmtrace_enable_llvm();
+            printf (" enabled LLVM tracing @ beginning\n");   
+        }
+        if (crit_file.bad()) {
+           std::cout << "Writing to file failed" << std::endl;
+           exit(1);
+        }
+        crit_file.close();
+
+    } 
+
+    return 0; 
+}
+
+int llvmtrace_after_block_translate(CPUState *env, TranslationBlock *tb){
+    if (execute_llvm){
+        std::ofstream crit_file("criteria", std::ios::app);
+        if (!crit_file.is_open()){
+            std::cout << "Error: llvm_trace_after_block_translate could not open crit_file!" << std::endl;
+            exit(1);
+        }
+
+        // execute LLVM is on. See if we should disable LLVM 
+        if (endinstr != UINT64_MAX){
+            uint64_t ins = rr_get_guest_instr_count();
+            if (ins > endinstr){
+                panda_end_replay();
+                printf (" disabled LLVM tracing @ ins  %" PRId64 "\n", ins);
+                crit_file << "rr_end:" << ins << std::endl;
+
+            }
+        } else if (endpc != UINT64_MAX){
+            if (tb->pc <= endpc && endpc <= tb->pc + tb->size){
+                panda_end_replay();
+                printf (" disabled LLVM tracing @ pc " TARGET_FMT_lx ", instr %lu\n", tb->pc, rr_get_guest_instr_count());
+                printf (" writing rr_end instr %lu\n", rr_get_guest_instr_count());
+                crit_file << "rr_end:" << rr_get_guest_instr_count() << std::endl;
+            }
+        }
+        if (crit_file.bad()) {
+           std::cout << "Writing to file failed" << std::endl;
+           exit(1);
+        }
+        crit_file.close();
+    }
+
+    return 0;
+}
+
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
     printf("EXCEPTION - logging\n");
     
@@ -874,17 +999,26 @@ int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
     return 0; 
 }
 
+
 bool init_plugin(void *self){
     printf("Initializing plugin llvm_trace2\n");
 
     panda_cb pcb;
-    panda_enable_memcb();
-    pcb.before_block_exec = before_block_exec;
+    pcb.before_block_exec = llvmtrace_before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-    
+    pcb.before_block_translate = llvmtrace_before_block_translate;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb);
+    pcb.after_block_translate = llvmtrace_after_block_translate;
+    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_TRANSLATE, pcb);
+
     panda_arg_list *args = panda_get_args("llvm_trace2");
+
     if (args != NULL) {
         record_int = panda_parse_bool_opt(args, "int", "set to 1 to record interrupts. 0 by default");
+        startpc = panda_parse_uint64_opt(args, "startpc", 0, "Start PC at which to begin LLVM tracing (in hex)");
+        endpc = panda_parse_uint64_opt(args, "endpc", UINT64_MAX, "End PC at which to stop LLVM tracing (in hex)");
+        startinstr = panda_parse_uint64_opt(args, "startinstr", 0, "Start rr instr count at which to begin LLVM tracing");
+        endinstr = panda_parse_uint64_opt(args, "endinstr", UINT64_MAX, "End rr instr count at which to stop LLVM tracing");
     }
 
     use_osi = panda_parse_bool_opt(args, "use_osi", "use operating system introspection");
@@ -897,35 +1031,12 @@ bool init_plugin(void *self){
         
     // Initialize OS API
     if(use_osi && !init_osi_api()) return false;
-    
-    //Parse args
-    // Initialize pass manager
-    
-    // I have to enable llvm to get the tcg_llvm_ctx
-    if (!execute_llvm){
-        panda_enable_llvm();
-    }
-    
-    panda_enable_llvm_helpers();
 
-    llvm::llvm_init();
-  /*
-     * Run instrumentation pass over all helper functions that are now in the
-     * module, and verify module.
-     */
-    llvm::Module *module = tcg_llvm_ctx->getModule();
-
-    // Populate module with helper function log ops 
-    /*for (llvm::Function f : *mod){*/
-        for (llvm::Module::iterator func = module->begin(), mod_end = module->end(); func != mod_end; ++func) {
-            for (llvm::Function::iterator b = func->begin(), be = func->end(); b != be; ++b) {
-                llvm::BasicBlock* bb = b;
-                llvm::PLTP->runOnBasicBlock(*bb);
-            }
-        }
+    // llvmtrace_enable_llvm();
 
     return true;
 }
+
 void uninit_plugin(void *self){
     printf("Uninitializing plugin\n");
     llvm::Module *mod = tcg_llvm_ctx->getModule();
@@ -941,14 +1052,12 @@ void uninit_plugin(void *self){
 	
 	CPUStateAddr->dump();
     
-    //XXX: Make this be done somewhere else, in cleanup
-    /*globalLog.close();*/
-
     tcg_llvm_write_module(tcg_llvm_ctx, "./llvm-mod.bc");
     
-     llvm::PassRegistry *pr = llvm::PassRegistry::getPassRegistry();
+    llvm::PassRegistry *pr = llvm::PassRegistry::getPassRegistry();
     const llvm::PassInfo *pi =
         pr->getPassInfo(llvm::StringRef("PandaLLVMTrace"));
+    
     if (!pi){
         printf("Unable to find 'PandaLLVMTrace' pass in pass registry\n");
     }
@@ -956,12 +1065,10 @@ void uninit_plugin(void *self){
         pr->unregisterPass(*pi);
     }
 
-    panda_disable_llvm_helpers();
-
     if (execute_llvm){
+        panda_disable_llvm_helpers();
         panda_disable_llvm();
     }
-    panda_disable_memcb();
 }
 
 

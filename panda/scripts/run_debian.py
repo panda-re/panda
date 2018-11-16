@@ -152,7 +152,7 @@ def run_and_create_recording():
     # +---+ binary1
     #     +---- cdrom
     #     +---- cdrom.iso
-    binary_dir = join(os.getcwd(), 'replays', binary_basename)
+    binary_dir = join(home_dir, 'replays', binary_basename)
     if not os.path.exists(binary_dir):
         os.makedirs(binary_dir)
 
@@ -210,5 +210,9 @@ def run_and_create_recording():
 
 
 if __name__ == "__main__":
-    run_and_create_recording()
+    (replay_base, arch_data, _,_, guest_cmd) = run_and_create_recording()
+    binary = os.path.basename(guest_cmd[0])
+    
+    sp.check_call("python ~/panda/panda/scripts/run_scissors.py --replay /home/raywang/replays/{}/{}".format(binary, binary), shell = True)
+
     

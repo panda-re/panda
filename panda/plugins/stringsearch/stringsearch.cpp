@@ -64,6 +64,7 @@ struct fullstack {
     target_ulong callers[MAX_CALLERS];
     target_ulong pc;
     target_ulong asid;
+    target_ulong string_addr;
 };
 
 std::map<prog_point,fullstack> matchstacks;
@@ -109,6 +110,7 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                 f.n = get_callers(f.callers, n_callers, env);
                 f.pc = p.pc;
                 f.asid = p.cr3;
+                f.string_addr = addr;
                 matchstacks[p] = f;
 
                 // call the i-found-a-match registered callbacks here
@@ -125,8 +127,8 @@ int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
     return mem_callback(env, pc, addr, size, buf, false, read_text_tracker);
 
-}
 
+}
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
     return mem_callback(env, pc, addr, size, buf, true, write_text_tracker);
@@ -234,8 +236,9 @@ void uninit_plugin(void *self) {
         for (int i = f.n-1; i >= 0; i--) {
             fprintf(mem_report, TARGET_FMT_lx " ", f.callers[i]);
         }
-        fprintf(mem_report, TARGET_FMT_lx " ", f.pc);
-        fprintf(mem_report, TARGET_FMT_lx " ", f.asid);
+        fprintf(mem_report, "pc: " TARGET_FMT_lx " ", f.pc);
+        fprintf(mem_report, "asid: " TARGET_FMT_lx " ", f.asid);
+        fprintf(mem_report, "addr: " TARGET_FMT_lx " ", f.string_addr);
 
         // Print strings that matched and how many times
         for(int i = 0; i < num_strings; i++)
