@@ -57,9 +57,9 @@ class Panda:
                 print "Please go create that qcow and give it to moyix!"
         self.bindir = pjoin(panda_build, "%s-softmmu" % arch)
         self.panda = pjoin(self.bindir, "qemu-system-%s" % arch)
-        self.libpanda = cdll.LoadLibrary(pjoin(self.bindir, "libpanda-%s.so" % arch))
+        self.libpanda = CDLL(pjoin(self.bindir, "libpanda-%s.so" % arch), mode=RTLD_GLOBAL)
         biospath = realpath(pjoin(self.panda, "..", "..", "pc-bios"))
-        self.panda_args = [self.panda, "-m", self.mem, "-nographic", "-L", biospath]
+        self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath]
         cargs = strarr2c(self.panda_args)
         # start up panda!
         # note: weird that we need panda as 1st arg to lib fn to init? 
