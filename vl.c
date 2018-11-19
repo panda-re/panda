@@ -142,6 +142,8 @@ int main(int argc, char **argv)
 #include "qapi/qmp/qerror.h"
 #include "sysemu/iothread.h"
 
+#include "vl.h"
+
 extern void panda_cleanup(void);
 extern bool panda_add_arg(const char *, const char *);
 extern bool panda_load_plugin(const char *, const char *);
@@ -3063,8 +3065,13 @@ static char* this_executable_path(const char* argv0){
     return realpath(argv0, NULL);
 }
 
-int main(int argc, char **argv, char **envp)
+
+int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 {
+
+    if (pmm == PANDA_RUN)    goto PANDA_MAIN_RUN;
+    if (pmm == PANDA_FINISH) goto PANDA_MAIN_FINISH;
+
     int i;
     int snapshot, linux_boot;
     const char *initrd_filename;
@@ -3104,7 +3111,11 @@ int main(int argc, char **argv, char **envp)
     // PANDA stuff
     gargv = argv;
     gargc = argc;
-    qemu_file = this_executable_path(argv[0]);
+    if (pmm == PANDA_NORMAL)
+        qemu_file = this_executable_path(argv[0]);
+    else
+        qemu_file = strdup(argv[0]);
+
     assert(qemu_file != NULL);
 
     const char* replay_name = NULL;
@@ -4979,9 +4990,17 @@ int main(int argc, char **argv, char **envp)
     // Call PANDA post-machine init hook
     panda_callbacks_after_machine_init();
 
+    if (pmm == PANDA_INIT) return 0;
+
+PANDA_MAIN_RUN:
+    
     panda_in_main_loop = 1;
     main_loop();
     panda_in_main_loop = 0;
+
+    if (pmm == PANDA_RUN) return 0;
+
+PANDA_MAIN_FINISH:
 
     if(rr_in_record()){
         rr_do_end_record();

@@ -5,6 +5,15 @@ from os.path import realpath
 import os
 from ctypes import *
 from enum import Enum
+from colorama import Fore, Style
+
+debug = True
+
+
+def progress(msg):
+    print Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
+#    print
+
 
 # location of panda build dir
 panda_build = realpath(pjoin(os.path.abspath(__file__), "../../../build"))
@@ -30,6 +39,8 @@ class Panda:
     NB: wheezy is debian:3.2.0-4-686-pae
     """    
     def __init__(self, arch="i386", mem="128M", the_os="debian:3.2.0-4-686-pae", qcow="default", extra_args = []):
+        if debug:
+            progress("Initializing panda")
         self.arch = arch
         self.mem = mem
         self.os = the_os
@@ -53,18 +64,27 @@ class Panda:
         # start up panda!
         # note: weird that we need panda as 1st arg to lib fn to init? 
         cenvp =  POINTER(c_int)()
+
+        print "Panda args: [" + (" ".join(self.panda_args)) + "]"
         self.libpanda.panda_init(len(cargs), cargs, cenvp)
 
 
     def load_plugin(self, name, args=[]):
+        if debug:
+            progress ("Loading plugin %s" % name),
+            print "plugin args: [" + (" ".join(args)) + "]"
         n = len(args)
         cargs = strarr2c(args)
         self.libpanda.panda_init_plugin(create_string_buffer(name), cargs, n)
 
     def replay(self, replaypfx):
+        if debug:
+            progress ("Replaying %s" % replaypfx)
         pass
 
     def run(self):
+        if debug:
+            progress ("Running")
         self.libpanda.panda_run()
 
 

@@ -22,6 +22,7 @@ QEMU_PROG_BUILD = $(QEMU_PROG)
 else
 # system emulator name
 QEMU_PROG=qemu-system-$(TARGET_NAME)$(EXESUF)
+PANDA_PROG=libpanda-$(TARGET_NAME).so
 ifneq (,$(findstring -mwindows,$(libs_softmmu)))
 # Terminate program name with a 'w' because the linker builds a windows executable.
 QEMU_PROGW=qemu-system-$(TARGET_NAME)w$(EXESUF)
@@ -33,7 +34,8 @@ QEMU_PROG_BUILD = $(QEMU_PROG)
 endif
 endif
 
-PROGS=$(QEMU_PROG) $(QEMU_PROGW)
+PROGS=$(QEMU_PROG) $(QEMU_PROGW) $(PANDA_PROG)
+
 STPFILES=
 
 config-target.h: config-target.h-timestamp
@@ -176,6 +178,7 @@ endif # CONFIG_SOFTMMU
 
 dummy := $(call unnest-vars,,obj-y)
 all-obj-y := $(obj-y)
+panda-all-obj-y := $(obj-y)
 
 target-obj-y :=
 block-obj-y :=
@@ -204,7 +207,20 @@ all-obj-$(CONFIG_USER_ONLY) += $(crypto-aes-obj-y)
 all-obj-$(CONFIG_SOFTMMU) += $(crypto-obj-y)
 all-obj-$(CONFIG_SOFTMMU) += $(io-obj-y)
 
+
+ifdef CONFIG_SOFTMMU
+panda-all-obj-y += $(filter-out %main.o, $(common-obj-y))
+panda-all-obj-y += panda/src/panda_api.o
+panda-all-obj-y += $(target-obj-y)
+panda-all-obj-y += $(qom-obj-y)
+panda-all-obj-$(CONFIG_SOFTMMU) += $(block-obj-y) $(chardev-obj-y)
+panda-all-obj-$(CONFIG_SOFTMMU) += $(crypto-obj-y)
+panda-all-obj-$(CONFIG_SOFTMMU) += $(io-obj-y)
+endif #CONFIG_SOFTMMU
+
+
 $(QEMU_PROG_BUILD): config-devices.mak
+$(PANDA_PROG): config-devices.mak
 
 COMMON_LDADDS = $(trace-obj-y) ../libqemuutil.a ../libqemustub.a
 
@@ -215,6 +231,15 @@ ifdef CONFIG_DARWIN
 	$(call quiet-command,Rez -append $(SRC_PATH)/pc-bios/panda.rsrc -o $@,"REZ","$(TARGET_DIR)$@")
 	$(call quiet-command,SetFile -a C $@,"SETFILE","$(TARGET_DIR)$@")
 endif
+
+$(PANDA_PROG): LDFLAGS+=-shared
+$(PANDA_PROG): $(panda-all-obj-y) $(COMMON_LDADDS)
+	$(call LINK, $(filter-out %.mak, $^))
+ifdef CONFIG_DARWIN
+	$(call quiet-command,Rez -append $(SRC_PATH)/pc-bios/panda.rsrc -o $@,"REZ","$(TARGET_DIR)$@")
+	$(call quiet-command,SetFile -a C $@,"SETFILE","$(TARGET_DIR)$@")
+endif
+
 
 gdbstub-xml.c: $(TARGET_XML_FILES) $(SRC_PATH)/scripts/feature_to_c.sh
 	$(call quiet-command,rm -f $@ && $(SHELL) $(SRC_PATH)/scripts/feature_to_c.sh $@ $(TARGET_XML_FILES),"GEN","$(TARGET_DIR)$@")
