@@ -108,6 +108,12 @@ char *get_unicode_str(CPUState *cpu, PTR ustr) {
         return make_pagedstr();
     }
 
+    // Unicode Strings can be zero length. In this case, just return an empty
+    // string.
+    if (size == 0) {
+        return g_strdup("");
+    }
+
     // Clamp size
     if (size > 1024) size = 1024;
     if (-1 == panda_virtual_memory_rw(cpu, ustr+4, (uint8_t *)&str_ptr, 4, false)) {
