@@ -114,7 +114,7 @@ bool proc_diff(OsiProc *p_curr, OsiProc *p_new) {
     if (p_curr == NULL) {
         return (p_new != NULL);
     }
-    if (p_curr->offset != p_new->offset
+    if (p_curr->taskd != p_new->taskd
         || p_curr->asid != p_new->asid
         || p_curr->pid != p_new->pid
         || p_curr->ppid != p_new->ppid)
@@ -2329,7 +2329,7 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
 
         //some sanity checks on what we think the current process is
         // this means we didnt find current task
-        //if (p->offset == 0) return 0;
+        //if (p->taskd == 0) return 0;
         //// or the name
         //if (p->name == 0) return 0;
         //// this is just not ok
@@ -2345,7 +2345,7 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
         //if (np != n) return 0;
         target_ulong asid = panda_current_asid(cpu);
         if (running_procs.count(asid) == 0) {
-            printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->offset);
+            printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->taskd);
         }
         running_procs[asid] = *p;
         //proc_changed = proc_diff(current_proc, p);

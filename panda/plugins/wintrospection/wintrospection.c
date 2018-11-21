@@ -498,7 +498,7 @@ int64_t get_file_handle_pos(CPUState *cpu, PTR eproc, uint32_t handle) {
 }
 
 void fill_osiproc(CPUState *cpu, OsiProc *p, PTR eproc) {
-    p->offset = eproc;
+    p->taskd = eproc;
     get_procname(cpu, eproc, &p->name);
     p->asid = get_dtb(cpu, eproc);
     p->pages = NULL;
@@ -507,7 +507,7 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, PTR eproc) {
 }
 
 void fill_osimod(CPUState *cpu, OsiModule *m, PTR mod, bool ignore_basename) {
-    m->offset = mod;
+    m->modd = mod;
     m->file = (char *)get_mod_filename(cpu, mod);
     m->base = get_mod_base(cpu, mod);
     m->size = get_mod_size(cpu, mod);

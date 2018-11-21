@@ -90,7 +90,7 @@ void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out) {
     eproc_found = (PTR)NULL;
     if (eproc_first == NULL) goto error;
     do {
-        if (eproc_cur == p->offset) {
+        if (eproc_cur == p->taskd) {
             eproc_found = eproc_cur;
             break;
         }

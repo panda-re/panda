@@ -8,12 +8,12 @@
 
 /**
  * @brief Minimal handle for a process. Contains a unique identifier \p asid
- * and a pointer to guest memory \p task that can be used to retrieve the full
+ * and a task descriptor pointer \p taskd that can be used to retrieve the full
  * details of the process.
  */
 typedef struct osi_proc_handle_struct {
+    target_ptr_t taskd;
     target_ptr_t asid;
-    target_ptr_t task;
 } OsiProcHandle;
 
 /**
@@ -41,7 +41,7 @@ typedef struct osi_page_struct {
  * or shared library).
  */
 typedef struct osi_module_struct {
-    target_ptr_t offset;
+    target_ptr_t modd;
     target_ptr_t base;
     target_ptr_t size;
     char *file;
@@ -52,8 +52,8 @@ typedef struct osi_module_struct {
  * @brief Detailed information for a process.
  */
 typedef struct osi_proc_struct {
+    target_ptr_t taskd;
     target_ptr_t asid;
-    target_ptr_t offset;
     target_ptr_t pid;
     target_ptr_t ppid;
     char *name;

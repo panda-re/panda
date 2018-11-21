@@ -196,8 +196,8 @@ error:
  */
 static void fill_osiprochandle(CPUState *env, OsiProcHandle *h,
 						   target_ptr_t task_addr) {
+	h->taskd = task_addr;
 	h->asid = panda_virt_to_phys(env, get_pgd(env, task_addr));
-	h->task = task_addr;
 }
 
 /**
@@ -206,7 +206,7 @@ static void fill_osiprochandle(CPUState *env, OsiProcHandle *h,
 static void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr) {
 	memset(p, 0, sizeof(OsiProc));
 
-	p->offset = task_addr;  // XXX: bad. that's not the offset.
+	p->taskd = task_addr;
 	p->name = get_name(env, task_addr, p->name);
 	p->pid = get_tgid(env, task_addr);
 	p->ppid = get_real_parent_pid(env, task_addr);
@@ -232,7 +232,7 @@ static void fill_osimodule(CPUState *env, OsiModule *m, target_ptr_t vma_addr) {
 	vma_vm_file = get_vma_vm_file(env, vma_addr);
 
 	// Fill everything but m->name and m->file.
-	m->offset = vma_addr;
+	m->modd = vma_addr;
 	m->base = vma_start;
 	m->size = vma_end - vma_start;
 
@@ -313,9 +313,9 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
  */
 void on_get_process(CPUState *env, const OsiProcHandle *h, OsiProc **out) {
 	OsiProc *p = NULL;
-	if (h != NULL && h->task != (target_ptr_t)NULL) {
+	if (h != NULL && h->taskd != (target_ptr_t)NULL) {
 		p = (OsiProc *)g_malloc(sizeof(OsiProc));
-		fill_osiproc(env, p, h->task);
+		fill_osiproc(env, p, h->taskd);
 	}
 	*out = p;
 }
@@ -352,7 +352,7 @@ void on_get_libraries(CPUState *env, OsiProc *p, GArray **out) {
 	}
 
 	// Find the process that matches p->pid.
-	// XXX: We could probably just use p->offset instead of traversing
+	// XXX: We could probably just use p->taskd instead of traversing
 	//	  the process list.
 	// XXX: An infinite loop will be triggered if p is a thread and
 	//		OSI_LINUX_LIST_THREADS is not enabled.
@@ -419,7 +419,7 @@ void on_get_current_thread(CPUState *env, OsiThread **out) {
 ****************************************************************** */
 
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
-	target_ptr_t ts_current = p->offset;
+	target_ptr_t ts_current = p->taskd;
 	char *filename = NULL;
 	const char *err = NULL;
 
@@ -453,7 +453,7 @@ end:
 unsigned long long  osi_linux_fd_to_pos(CPUState *env, OsiProc *p, int fd) {
 	//	target_ulong asid = panda_current_asid(env);
 	target_ptr_t ts_current = 0;
-	ts_current = p->offset;
+	ts_current = p->taskd;
 	if (ts_current == 0) return INVALID_FILE_POS;
 	return get_fd_pos(env, ts_current, fd);
 }
@@ -479,7 +479,7 @@ int osi_linux_test(CPUState *env, target_ulong oldval, target_ulong newval) {
 	for (uint32_t i=0; i<ps->num; i++) {
 		OsiProc *p = &ps->proc[i];
 		LOG_INFO(TARGET_FMT_PID ":" TARGET_FMT_PID ":%s:" TARGET_PTR_FMT ":" TARGET_PTR_FMT,
-				(int)p->pid, (int)p->ppid, p->name, p->asid, p->offset);
+				(int)p->pid, (int)p->ppid, p->name, p->asid, p->taskd);
 #if defined(OSI_LINUX_TEST_MODULES)
 		OsiModules *ms = NULL;
 		on_get_libraries(env, p, &ms);

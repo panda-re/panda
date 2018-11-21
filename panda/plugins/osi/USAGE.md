@@ -40,8 +40,8 @@ The following data structures are defined in the [`osi_types.h` header][osi_type
 ```C
     // Represents a process handle
     typedef struct osi_prochandle_struct {
+        target_ptr_t taskd;
         target_ptr_t asid;
-        target_ptr_t handle;
     } OsiProcHandle;
 
     // Represents a thread
@@ -58,7 +58,7 @@ The following data structures are defined in the [`osi_types.h` header][osi_type
 
     // Represents a single module (userspace library or kernel module)
     typedef struct osi_module_struct {
-        target_ptr_t offset;
+        target_ptr_t modd;
         target_ptr_t base;
         target_ptr_t size;
         char *file;
@@ -67,8 +67,8 @@ The following data structures are defined in the [`osi_types.h` header][osi_type
 
     // Represents a single process
     typedef struct osi_proc_struct {
+        target_ptr_t taskd;
         target_ptr_t asid;
-        target_ptr_t offset;
         target_pid_t pid;
         target_pid_t ppid;
         char *name;
