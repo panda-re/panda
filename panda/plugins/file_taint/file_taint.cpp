@@ -112,8 +112,8 @@ void read_enter(const std::string &filename, uint64_t file_id,
                    "tid=%lu fid=%lu\n",
                    filename.c_str(), proc ? proc->pid : 0, thr->tid, file_id);
 
-    free_osiproc_g(proc);
-    free_osithread_g(thr);
+    free_osiproc(proc);
+    free_osithread(thr);
 }
 
 // A normaled read_return function. Called by both Linux and Windows read return
@@ -181,8 +181,8 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
     // file id key.
     read_positions.erase(key);
 
-    free_osiproc_g(proc);
-    free_osithread_g(thr);
+    free_osiproc(proc);
+    free_osithread(thr);
 }
 
 #ifdef TARGET_I386
@@ -263,7 +263,7 @@ void linux_read_enter(CPUState *cpu, target_ulong pc, uint32_t fd,
     uint64_t pos = osi_linux_fd_to_pos(cpu, proc, fd);
     read_enter(filename, fd, pos);
     g_free(filename);
-    free_osiproc_g(proc);
+    free_osiproc(proc);
 }
 
 // Handle a Linux pread enter. Extract the filename and use the position passed
@@ -280,7 +280,7 @@ void linux_pread_enter(CPUState *cpu, target_ulong pc, uint32_t fd,
         read_enter(filename, fd, (int32_t)pos);
     }
     g_free(filename);
-    free_osiproc_g(proc);
+    free_osiproc(proc);
 }
 
 // Handle a Linux read return. Extract the number of bytes read from EAX and

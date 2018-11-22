@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
@@ -26,7 +26,7 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void on_get_libraries(CPUState *cpu, OsiProc *p, OsiModules **out_ms);
+void on_get_libraries(CPUState *, OsiProc *p, GArray **out);
 PTR get_win7_kpcr(CPUState *cpu);
 HandleObject *get_win7_handle_object(CPUState *cpu, uint32_t eproc, uint32_t handle);
 }
@@ -83,86 +83,86 @@ static PTR get_kdbg(CPUState *cpu) {
 
 
 
-void on_get_libraries(CPUState *cpu, OsiProc *p, OsiModules **out_ms) {
-    // Find the process we're interested in
-    PTR eproc = get_current_proc(cpu);
-    if(!eproc) {
-        *out_ms = NULL; return;
-    }
-
-    bool found = false;
-    PTR first_proc = eproc;
+void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out) {
+    // search for process
+    PTR eproc_first, eproc_cur, eproc_found;
+    eproc_first = eproc_cur = get_current_proc(cpu);
+    eproc_found = (PTR)NULL;
+    if (eproc_first == NULL) goto error;
     do {
-        if (eproc == p->offset) {
-            found = true;
+        if (eproc_cur == p->taskd) {
+            eproc_found = eproc_cur;
             break;
         }
-        eproc = get_next_proc(cpu, eproc);
-        if (!eproc) break;
-    } while (eproc != first_proc);
+        eproc_cur = get_next_proc(cpu, eproc_cur);
+    } while (eproc_cur != NULL && eproc_cur != eproc_first);
+    if (eproc_found == NULL) goto error;
 
-    if (!found) {
-        *out_ms = NULL; return;
+    if (*out == NULL) {
+        // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
+        *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
+        g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
     }
 
-    OsiModules *ms = (OsiModules *)malloc(sizeof(OsiModules));
-    ms->num = 0;
-    ms->module = NULL;
-    ms->capacity = 1;
-    PTR peb = 0, ldr = 0;
-    // PEB->Ldr->InMemoryOrderModuleList
-    if (-1 == panda_virtual_memory_rw(cpu, eproc+EPROC_PEB_OFF, (uint8_t *)&peb, sizeof(PTR), false) ||
-        -1 == panda_virtual_memory_rw(cpu, peb+PEB_LDR_OFF, (uint8_t *)&ldr, sizeof(PTR), false)) {
-        *out_ms = NULL; return;
-    }
+    PTR peb, ldr;
+    PTR mod_first, mod_current;
+    peb = ldr = (PTR)NULL;
+    mod_first = mod_current = (PTR)NULL;
 
-    if (ldr == NULL) {
-        *out_ms = NULL;
-        return;
-    }
+    // get module list: PEB->Ldr->InMemoryOrderModuleList
+    if (-1 == panda_virtual_memory_rw(cpu, eproc_found+EPROC_PEB_OFF, (uint8_t *)&peb, sizeof(PTR), false))
+        goto error;
+    if (-1 == panda_virtual_memory_rw(cpu, peb+PEB_LDR_OFF, (uint8_t *)&ldr, sizeof(PTR), false))
+        goto error;
+    if (ldr == NULL)
+        goto error;
 
     // Fake "first mod": the address of where the list head would
     // be if it were a LDR_DATA_TABLE_ENTRY
-    PTR first_mod = ldr+PEB_LDR_LOAD_LINKS_OFF-LDR_LOAD_LINKS_OFF;
-    PTR current_mod = get_next_mod(cpu, first_mod);
+    mod_first = ldr+PEB_LDR_LOAD_LINKS_OFF-LDR_LOAD_LINKS_OFF;
+    mod_current = get_next_mod(cpu, mod_first);
 
     // We want while loop here -- we are starting at the head,
     // which is not a valid module
-    while (current_mod != first_mod) {                     
-        add_mod(cpu, ms, current_mod, false);
-        current_mod = get_next_mod(cpu, current_mod);
-        if (!current_mod) break;
+    while (mod_current != NULL && mod_current != mod_first) {
+        add_mod(cpu, *out, mod_current, false);
+        mod_current = get_next_mod(cpu, mod_current);
     }
+    return;
 
-    *out_ms = ms;
+error:
+    *out = NULL;
     return;
 }
 
-void on_get_modules(CPUState *cpu, OsiModules **out_ms) {
+void on_get_modules(CPUState *cpu, GArray **out) {
     PTR kdbg = get_kdbg(cpu);
-
     PTR PsLoadedModuleList;
+    PTR mod_current = (PTR)NULL;
+
     // Dbg.PsLoadedModuleList
-    if (-1 == panda_virtual_memory_rw(cpu, kdbg+KDBG_PSLML, (uint8_t *)&PsLoadedModuleList, sizeof(PTR), false)) {
-        *out_ms = NULL;
-        return;
+    if (-1 == panda_virtual_memory_rw(cpu, kdbg+KDBG_PSLML, (uint8_t *)&PsLoadedModuleList, sizeof(PTR), false))
+        goto error;
+
+    if (*out == NULL) {
+        // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
+        *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
+        g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
     }
 
-    OsiModules *ms = (OsiModules *)malloc(sizeof(OsiModules));
-    ms->num = 0;
-    ms->capacity = 1;
-    ms->module = NULL;
-    PTR current_mod = get_next_mod(cpu, PsLoadedModuleList);
+    mod_current = get_next_mod(cpu, PsLoadedModuleList);
 
     // We want while loop here -- we are starting at the head,
     // which is not a valid module
-    while (current_mod != PsLoadedModuleList) {
-        add_mod(cpu, ms, current_mod, false);
-        current_mod = get_next_mod(cpu, current_mod);
-        if (!current_mod) break;
+    while (mod_current != NULL && mod_current != PsLoadedModuleList) {
+        add_mod(cpu, *out, mod_current, false);
+        mod_current = get_next_mod(cpu, mod_current);
     }
+    return;
 
-    *out_ms = ms;
+error:
+    *out = NULL;
+    return;
 }
 
 // i.e. return pointer to the object represented by this handle

@@ -17,6 +17,18 @@
 #include <cstdint>
 #endif
 
+/**
+ * @brief Wrapper macro for quashing warnings for unused variables.
+ */
+#if defined(UNUSED)
+#elif defined(__GNUC__)
+#define UNUSED(x) x __attribute__((unused))
+#elif defined(__LCLINT__)
+#define UNUSED(x) /*@unused@*/ x
+#else
+#define UNUSED(x) x
+#endif
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
