@@ -11,6 +11,10 @@ typedef enum panda_main_mode {
     PANDA_FINISH}             // cleanup and exit
 PandaMainMode;
 
+void main_panda_run(void);
+
+void main_loop(void);
+
 int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm);
 
 #endif

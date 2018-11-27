@@ -1937,7 +1937,7 @@ static void tcg_llvm_cleanup(void)
 }
 #endif
 
-static void main_loop(void)
+void main_loop(void)
 {
     bool nonblocking;
     int last_io = 0;
@@ -3065,6 +3065,12 @@ static char* this_executable_path(const char* argv0){
     return realpath(argv0, NULL);
 }
 
+
+void main_panda_run(void) {
+    panda_in_main_loop = 1;
+    main_loop();
+    panda_in_main_loop = 0;
+}
 
 int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 {
