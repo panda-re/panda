@@ -3,12 +3,14 @@
 
 #include <stdint.h>
 
-void panda_init(int argc, char **argv, char **envp);
+int panda_init(int argc, char **argv, char **envp);
 
-void panda_run(void);
+int panda_run(void);
 
-void panda_finish(void);
+int panda_finish(void);
 
 int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args);
+
+int panda_replay(char *replay_name);
 
 #endif
