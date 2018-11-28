@@ -20,7 +20,7 @@ void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc) {
 	ctx.no = env->regs[7];
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
-	const syscall_info_t *call = (ctx.no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx.no];
+	const syscall_info_t *call = (syscall_meta == NULL || ctx.no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx.no];
 	switch (ctx.no) {
 		// 0 long sys_restart_syscall ['void']
 		case 0: {

@@ -20,7 +20,7 @@ void syscall_enter_switch_windows_7_x86(CPUState *cpu, target_ptr_t pc) {
 	ctx.no = env->regs[R_EAX];
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
-	const syscall_info_t *call = (ctx.no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx.no];
+	const syscall_info_t *call = (syscall_meta == NULL || ctx.no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx.no];
 	switch (ctx.no) {
 		// 0 NTSTATUS NtAcceptConnectPort ['PHANDLE PortHandle', ' PVOID PortContext', ' PPORT_MESSAGE ConnectionRequest', ' BOOLEAN AcceptConnection', ' PPORT_VIEW ServerView', ' PREMOTE_PORT_VIEW ClientView']
 		case 0: {
