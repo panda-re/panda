@@ -1,23 +1,26 @@
 #pragma once
 
 // returns minimal handles for processes in an array
-GArray *get_process_handles(CPUState *env);
+GArray *get_process_handles(CPUState *cpu);
 
 // returns the current thread
-OsiThread *get_current_thread(CPUState *env);
+OsiThread *get_current_thread(CPUState *cpu);
 
 // returns information about the modules loaded by the guest OS kernel
-GArray *get_modules(CPUState *env);
+GArray *get_modules(CPUState *cpu);
 
 // returns information about the libraries loaded by a guest OS process
-GArray *get_libraries(CPUState *env, OsiProc *p);
+GArray *get_libraries(CPUState *cpu, OsiProc *p);
 
 // returns operating system introspection info for each process in an array
-GArray *get_processes(CPUState *env);
+GArray *get_processes(CPUState *cpu);
 
 // gets the currently running process
-OsiProc *get_current_process(CPUState *env);
+OsiProc *get_current_process(CPUState *cpu);
 
-// gets the process pointed to by task
-OsiProc *get_process(CPUState *env, const OsiProcHandle *h);
+// gets the currently running process handle
+OsiProcHandle *get_current_process_handle(CPUState *cpu);
+
+// gets the process pointed to by the handle
+OsiProc *get_process(CPUState *cpu, const OsiProcHandle *h);
 

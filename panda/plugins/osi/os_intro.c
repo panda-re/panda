@@ -42,6 +42,7 @@ int asid_changed(CPUState *, target_ulong, target_ulong);
 PPP_PROT_REG_CB(on_get_processes)
 PPP_PROT_REG_CB(on_get_process_handles)
 PPP_PROT_REG_CB(on_get_current_process)
+PPP_PROT_REG_CB(on_get_current_process_handle)
 PPP_PROT_REG_CB(on_get_process)
 PPP_PROT_REG_CB(on_get_modules)
 PPP_PROT_REG_CB(on_get_libraries)
@@ -54,6 +55,7 @@ PPP_PROT_REG_CB(on_process_end)
 PPP_CB_BOILERPLATE(on_get_processes)
 PPP_CB_BOILERPLATE(on_get_process_handles)
 PPP_CB_BOILERPLATE(on_get_current_process)
+PPP_CB_BOILERPLATE(on_get_current_process_handle)
 PPP_CB_BOILERPLATE(on_get_process)
 PPP_CB_BOILERPLATE(on_get_modules)
 PPP_CB_BOILERPLATE(on_get_libraries)
@@ -83,6 +85,12 @@ OsiProc *get_current_process(CPUState *cpu) {
     OsiProc *p = NULL;
     PPP_RUN_CB(on_get_current_process, cpu, &p);
     return p;
+}
+
+OsiProcHandle *get_current_process_handle(CPUState *cpu) {
+    OsiProcHandle *h = NULL;
+    PPP_RUN_CB(on_get_current_process_handle, cpu, &h);
+    return h;
 }
 
 OsiProc *get_process(CPUState *cpu, const OsiProcHandle *h) {

@@ -142,14 +142,25 @@ void add_mod(CPUState *cpu, GArray *ms, PTR mod, bool ignore_basename) {
     g_array_append_val(ms, m);
 }
 
-void on_get_current_process(CPUState *cpu, OsiProc **out_p) {
+void on_get_current_process(CPUState *cpu, OsiProc **out) {
     PTR eproc = get_current_proc(cpu);
     if(eproc) {
         OsiProc *p = (OsiProc *)g_malloc(sizeof(OsiProc));
         fill_osiproc(cpu, p, eproc);
-        *out_p = p;
+        *out = p;
     } else {
-        *out_p = NULL;
+        *out = NULL;
+    }
+}
+
+void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out) {
+    PTR eproc = get_current_proc(cpu);
+    if(eproc) {
+        OsiProcHandle *h = (OsiProcHandle *)g_malloc(sizeof(OsiProcHandle));
+        fill_osiprochandle(cpu, h, eproc);
+        *out = h;
+    } else {
+        *out = NULL;
     }
 }
 
@@ -506,6 +517,11 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, PTR eproc) {
     p->ppid = get_ppid(cpu, eproc);
 }
 
+void fill_osiprochandle(CPUState *cpu, OsiProcHandle *h, PTR eproc) {
+    h->taskd = eproc;
+    h->asid = get_dtb(cpu, eproc);
+}
+
 void fill_osimod(CPUState *cpu, OsiModule *m, PTR mod, bool ignore_basename) {
     m->modd = mod;
     m->file = (char *)get_mod_filename(cpu, mod);
@@ -566,6 +582,7 @@ bool init_plugin(void *self) {
     }
 
     PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
+    PPP_REG_CB("osi", on_get_current_process_handle, on_get_current_process_handle);
     PPP_REG_CB("osi", on_get_processes, on_get_processes);
     PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
 

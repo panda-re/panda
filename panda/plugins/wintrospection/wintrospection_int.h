@@ -6,6 +6,7 @@ typedef void int64_t;
 typedef void bool;
 typedef void PTR;
 typedef void OsiProc;
+typedef void OsiProcHandle;
 typedef void OsiModule;
 typedef void OsiThread;
 typedef void GArray;

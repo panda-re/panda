@@ -35,6 +35,7 @@ void uninit_plugin(void *);
 void on_get_processes(CPUState *env, GArray **out);
 void on_get_process_handles(CPUState *env, GArray **out);
 void on_get_current_process(CPUState *env, OsiProc **out_p);
+void on_get_current_process_handle(CPUState *env, OsiProcHandle **out_p);
 void on_get_process(CPUState *, const OsiProcHandle *, OsiProc **);
 void on_get_libraries(CPUState *env, OsiProc *p, GArray **out);
 void on_get_current_thread(CPUState *env, OsiThread *t);
@@ -310,6 +311,20 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
 }
 
 /**
+ * @brief PPP callback to the handle of the currently running process.
+ */
+void on_get_current_process_handle(CPUState *env, OsiProcHandle **out) {
+	OsiProcHandle *p = NULL;
+	target_ptr_t kernel_esp = panda_current_sp(env);
+	target_ptr_t ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+	if (ts) {
+		p = (OsiProcHandle *)g_malloc(sizeof(OsiProcHandle));
+		fill_osiprochandle(env, p, ts);
+	}
+	*out = p;
+}
+
+/**
  * @brief PPP callback to retrieve info about a running process using its
  * handle.
  */
@@ -506,6 +521,7 @@ bool init_plugin(void *self) {
 	PPP_REG_CB("osi", on_get_processes, on_get_processes);
 	PPP_REG_CB("osi", on_get_process_handles, on_get_process_handles);
 	PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
+	PPP_REG_CB("osi", on_get_current_process_handle, on_get_current_process_handle);
 	PPP_REG_CB("osi", on_get_process, on_get_process);
 	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
 	PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);

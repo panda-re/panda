@@ -144,6 +144,18 @@ Description: Called to get the currently running process in the guest OS. The im
 
 ---
 
+Name: **on\_get\_current\_process\_handle**
+
+Signature:
+
+```C
+typedef void (*on_get_current_process_handle_t)(CPUState *, OsiProcHandle **)
+```
+
+Description: Called to get the handle of the currently running process in the guest OS. The implementation should allocate memory and fill in the pointer to an `OsiProcHandle` struct. The returned `OsiProcHandle` can be freed with `free_osiprochandle`.
+
+---
+
 Name: **on\_get\_process**
 
 Signature:
