@@ -20,7 +20,7 @@ void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc) {
 	ctx.no = {{arch_conf.rt_callno_reg}};
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
-	const syscall_info_t *call = (ctx.no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx.no];
+	const syscall_info_t *call = (syscall_meta == NULL || ctx.no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx.no];
 	switch (ctx.no) {
 		{%- for syscall in syscalls %}
 		// {{syscall.no}} {{syscall.rettype}} {{syscall.name}} {{syscall.args_raw}}
