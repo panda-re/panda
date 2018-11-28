@@ -199,7 +199,7 @@ error:
  */
 static void fill_osiprochandle(CPUState *env, OsiProcHandle *h,
 						   target_ptr_t task_addr) {
-	h->taskd = task_addr;
+	h->taskd = kernel_profile->get_group_leader(env, task_addr);
 	h->asid = panda_virt_to_phys(env, get_pgd(env, task_addr));
 }
 
@@ -209,7 +209,7 @@ static void fill_osiprochandle(CPUState *env, OsiProcHandle *h,
 void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr) {
 	memset(p, 0, sizeof(OsiProc));
 
-	p->taskd = task_addr;
+	p->taskd = kernel_profile->get_group_leader(env, task_addr);
 	p->name = get_name(env, task_addr, p->name);
 	p->pid = get_tgid(env, task_addr);
 	p->ppid = get_real_parent_pid(env, task_addr);
