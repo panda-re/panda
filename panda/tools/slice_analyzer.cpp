@@ -43,7 +43,12 @@ using namespace llvm;
 #define MAX_BITSET 2048
 FILE *sliceAddrFile = fopen("slice_addrs", "wb");
 
-// map<char* module_name, uint64_t> marked_addrs;
+// map<char* module_name, uint64_t> markedMap_addrs;
+
+std::map<std::string, uint32_t> instr_hits;
+
+int basic_block_count = 0;
+
 
 // Don't ever call this with an array of size < MAX_BITSET/8
 void bits2bytes(std::bitset<MAX_BITSET> &bs, uint8_t out[]) {
@@ -74,7 +79,7 @@ void bytes2bits(uint8_t bytes[], std::bitset<MAX_BITSET> &bits) {
     }
 }
 
-int hex2bytes(std::string hex, unsigned char outBytes[]){
+void hex2bytes(std::string hex, unsigned char outBytes[]){
      const char* pos = hex.c_str();
      for (int ct = 0; ct < hex.length()/2; ct++){
         sscanf(pos, "%2hhx", &outBytes[ct]);
@@ -82,23 +87,63 @@ int hex2bytes(std::string hex, unsigned char outBytes[]){
     }
 }
 
-void print_target_asm(LLVMDisasmContextRef dcr, std::string targetAsm, bool marked, uint64_t baseAddr){
-    char c = marked ? '*' : ' ';
+void print_target_asm(LLVMDisasmContextRef dcr, std::string targetAsm, bool is_marked, uint64_t baseAddr, uint32_t hit_count){
+    char c = is_marked ? '*' : ' ';
     unsigned char* u = new unsigned char[targetAsm.length()/2];
     hex2bytes(targetAsm, u); 
-    char *outstring = new char[50];
+    char *outinst = new char[50];
 
     // disassemble target asm
-    LLVMDisasmInstruction(dcr, u, targetAsm.length()/2, baseAddr, outstring, 50);   
-    printf("%c %s\n", c, outstring);
+    LLVMDisasmInstruction(dcr, u, targetAsm.length()/2, baseAddr, outinst, 50);   
+    printf("%c %s\n", c, outinst);
+
+    // count_inst(outinst);
 
     // Write to slice_addrs file
-    if (marked) {
-        fprintf(sliceAddrFile, "%lx\n", baseAddr);
-        // marked_addrs[lib_name]
+    // Also count number of hits to this addr, based on 
+    if (is_marked) {
+        fprintf(sliceAddrFile, "%lx:%d\n", baseAddr, hit_count);
+        // markedMap_addrs[lib_name]
     }
 }
 
+void count_insts(std::string inst_str) {
+    // if (inst_str.find("xor") != std::string::npos){
+
+    // } else if (inst_str.find("add") != std::string::npos){
+
+    // } else if (inst_str.find("sub") != std::string::npos){
+
+    // } else if (inst_str.find("xor") != std::string::npos){
+
+    // } else if (inst_str.find("xor") != std::string::npos){
+
+
+    // } else if (inst_str.find("xor") != std::string::npos){ 
+
+
+    // }
+
+    // I ain't no software engineer hehehe 
+}
+
+void count_loops() {
+    
+
+}
+
+void compare_trace() {
+
+}
+
+/*
+* Various metrics to compare string computations — counting types of arith instructions
+* xor, add, sub, mul, 
+*/
+void compute_statistics() {
+
+
+}
 
 int main(int argc, char **argv) {
     if (argc < 3) {
@@ -130,13 +175,14 @@ int main(int argc, char **argv) {
 
     LLVMSetDisasmOptions(dcr, LLVMDisassembler_Option_AsmPrinterVariant | LLVMDisassembler_Option_UseMarkup); 
 
-    std::map<Function *, std::vector<std::bitset<MAX_BITSET>>> marked;
+    // map of Functions to hitcount, bitset 
+    std::map<Function *, std::pair<uint32_t, std::vector<std::bitset<MAX_BITSET>>>> markedMap;
     FILE *f = fopen(argv[2], "rb");
 
-    // 
     while (!feof(f)) {
         uint32_t name_size = 0;
         uint32_t bb_idx = 0;
+        uint32_t hit_count = 0;
         uint8_t bytes[MAX_BITSET/8] = {};
         
         //// Name size
@@ -151,6 +197,7 @@ int main(int argc, char **argv) {
         // printf("name %s\n", name.c_str());
 
         fread(&bb_idx, sizeof(uint32_t), 1, f);
+        fread(&hit_count, sizeof(uint32_t), 1, f);
         fread(bytes, MAX_BITSET / 8, 1, f);
 
         Function *fn = mod->getFunction(name);
@@ -159,17 +206,19 @@ int main(int argc, char **argv) {
         std::bitset<MAX_BITSET>* bits = new std::bitset<MAX_BITSET>();
         bytes2bits(bytes, *bits);
 
-        if (bb_idx >= marked[fn].size()){
-            marked[fn].resize(bb_idx+1);
+        if (bb_idx >= markedMap[fn].second.size()) {
+            markedMap[fn].second.resize(bb_idx+1);
 		}
 
-        marked[fn][bb_idx] = *bits;
+        markedMap[fn].first = hit_count;
+        markedMap[fn].second[bb_idx] = *bits;
     }
 
-    // Now, print marked assembly
-    for (auto pair : marked) {
-        Function* f = pair.first;
-        printf("*** Function %s ***\n", f->getName().str().c_str());
+    // Now, print markedMap assembly
+    for (auto keyval : markedMap) {
+        Function* f = keyval.first;
+        uint32_t hit_count = keyval.second.first;
+        printf("*** Function %s , hitcount %d***\n", f->getName().str().c_str(), hit_count);
 		
 		int tb_num;
 		uint64_t base_addr;
@@ -183,14 +232,13 @@ int main(int argc, char **argv) {
         for (Function::iterator it = f->begin(), ed = f->end(); it != ed; ++it) {
             printf(">>> Block %d\n", i);
 
-			if (i >= marked[f].size()) {
+			if (i >= markedMap[f].second.size()) {
 				break;
 			}
 
             int j = 0;
             std::string targetAsm = "";
             bool targetAsmSeen, targetAsmMarked = false;
-			printf("bits: %lu\n", marked[f][i].count());
 
             for (BasicBlock::iterator insn_it = it->begin(), insn_ed = it->end();
                     insn_it != insn_ed; ++insn_it) {
@@ -199,7 +247,7 @@ int main(int argc, char **argv) {
 
                     if (!targetAsm.empty()){
 						printf("%lx ", base_addr);
-                        print_target_asm(dcr, targetAsm, targetAsmMarked, base_addr);
+                        print_target_asm(dcr, targetAsm, targetAsmMarked, base_addr, hit_count);
                         base_addr += targetAsm.length()/2;
                     }                    
                     
@@ -209,8 +257,8 @@ int main(int argc, char **argv) {
                     targetAsmMarked = false;
                 }
 
-                // If this llvm instruction is marked and we haven't already printed target asm for this inst
-                if (marked[f][i][j] && !targetAsmSeen){
+                // If this llvm instruction is markedMap and we haven't already printed target asm for this inst
+                if (markedMap[f].second[i][j] && !targetAsmSeen){
                     //Print target asm
                     targetAsmSeen = true;
                     targetAsmMarked = true;
@@ -222,7 +270,7 @@ int main(int argc, char **argv) {
             //Print last instruction and mark
             if (!targetAsm.empty()){
 				printf("%lx ", base_addr);
-                print_target_asm(dcr, targetAsm, targetAsmMarked, base_addr);
+                print_target_asm(dcr, targetAsm, targetAsmMarked, base_addr, hit_count);
             }                    
             i++;
         }

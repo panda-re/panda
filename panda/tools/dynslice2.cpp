@@ -25,8 +25,10 @@ PANDAENDCOMMENT */
 #include <stack>
 #include <bitset>
 
-#include "panda/plugins/llvm_trace2/functionCode.h"
+#include "dynslice2.h"
+
 #include "panda/plog-cc.hpp"
+#include "panda/plog_reader.hpp"
 
 extern "C" {
 #include "panda/addr.h"
@@ -66,6 +68,21 @@ extern "C" {
 
 #define MAX_BITSET 2048
 
+/* plog-cc.cpp dependencies.
+
+   These are needed so we can link with the same version of plog-cc.o that is
+   linked with the main PANDA binary.
+
+   As long as this file only calls functions that read a pandalog file, these
+   will never be accessed by dynslice2. */
+
+int panda_in_main_loop = 0;
+struct CPUTailQ cpus;
+
+target_ulong panda_current_pc(CPUState *env) {
+    assert(false);
+}
+
 using namespace llvm;
 
 /*
@@ -78,35 +95,18 @@ using namespace llvm;
  * Then, with this criterion, I can work backwards and find the uses/definitions. 
  * 
  * I need a working set, uses, and definitions set. 
- *
  */
 
-typedef std::pair<SliceVarType,uint64_t> SliceVar;
+typedef std::pair<SliceVarType, uint64_t> SliceVar;
+
+// maintain a worklist for each SliceVar, so we can keep track of SCN for each one. 
+std::map<SliceVar, std::set<SliceVar>> slice_work_lists;
+
+// map SliceVars to Instruction enum: count
+std::map<SliceVar, std::map<int, int>> slice_count;
 
 int ret_ctr = 0;
 LLVMDisasmContextRef dcr;
-
-//add stuff to this as needed
-struct traceEntry {
-    uint16_t bb_num;
-    int inst_index;
-    llvm::Function *func;
-    llvm::Instruction *inst;
-    
-    panda::LogEntry* ple = NULL;
-    panda::LogEntry* ple2 = NULL;
-    //special snowflake?
-    // memcpy may need another logentry 
-
-    std::string target_asm;
-
-    bool operator==(const traceEntry& other) const 
-    {
-        return (inst == other.inst);
-    }
-
-};
-
 
 uint64_t cpustatebase;
 llvm::Module* mod;
@@ -125,9 +125,11 @@ std::set<std::string> searchModules;
 // std::string cur_vma;
 bool markedInsideBB = false; 
 
-std::set<SliceVar> work_list; 
+// std::set<SliceVar> work_list; 
 std::vector<traceEntry> trace_entries;
-std::map<std::pair<Function*, int>, std::bitset<MAX_BITSET>> markedMap;
+
+// markedMap maps Function, bb_idx pairs to count for function, bitset of each instruction
+std::map<std::pair<Function*, int>, std::pair<int, std::bitset<MAX_BITSET>>> markedMap;
 
 bool debug = false;
 uint64_t last_pc = 0;
@@ -139,7 +141,7 @@ std::unique_ptr<panda::LogEntry> cursor;
 //******************************************************************
 // Helper functions 
 //*****************************************************************
-int hex2bytes(std::string hex, unsigned char outBytes[]){
+void hex2bytes(std::string hex, unsigned char outBytes[]){
      const char* pos = hex.c_str();
      for (int ct = 0; ct < hex.length()/2; ct++){
         sscanf(pos, "%2hhx", &outBytes[ct]);
@@ -200,6 +202,14 @@ std::string slicevar_to_str(const SliceVar &s) {
     return output;
 }
 
+void print_slice_count(std::map<int, int> inst_count) {
+    std::cout << "{";
+    for (auto it: inst_count) {
+        std::cout << Instruction::getOpcodeName(it.first) << ": " << it.second << ", ";
+    }
+    std::cout << "}" << std::endl;
+}
+
 void print_insn(Instruction *insn) {
     std::string s;
     raw_string_ostream ss(s);
@@ -215,51 +225,13 @@ void print_set(std::set<SliceVar> &s) {
     printf(" }\n");
 }
 
-void pprint_llvmentry(std::unique_ptr<panda::LogEntry>& ple){
-    printf("\tllvmEntry: {\n");
-    printf("\t pc = %lx(%lu)", ple->llvmentry().pc(), ple->llvmentry().pc());
-    if (ple->llvmentry().has_tb_num()){
-        printf("\t tb_num = %lu", ple->llvmentry().tb_num());
-    }
-    printf("\n");
-
-    printf("\t type = %lu\n", ple->llvmentry().type()); 
-
-    if (ple->llvmentry().type() == 20 || ple->llvmentry().type() == 24) {
-        printf("\t addrtype = %u\n", ple->llvmentry().addr_type()); 
-        printf("\t cpustate_offset = %u\n", ple->llvmentry().cpustate_offset()); 
-        printf("\t address = %lx\n", ple->llvmentry().address());
-        printf("\t numBytes = %lx\n", ple->llvmentry().num_bytes());
-        printf("\t value = %lu(%lx)\n", ple->llvmentry().value(), ple->llvmentry().value());
-    }
-
-    printf("\t condition = %u, ", ple->llvmentry().condition());
-    printf("\t flags = %x\n", ple->llvmentry().flags());
-
-    if (ple->llvmentry().has_vma_name()) {
-        printf("\t vma_name = %s\n", ple->llvmentry().vma_name().c_str());
-    }
-
-    if (ple->llvmentry().has_called_func_name()) {
-        printf("\t called_func_name = %s\n", ple->llvmentry().called_func_name().c_str());
-    }
-    //printf("\t}\n"); 
-}
-
-void pprint_ple(std::unique_ptr<panda::LogEntry>& ple) {
-    if (ple == NULL) {
-        printf("PLE is NULL\n");
-        return;
-    }
-
-    printf("{\n");
-    printf("\tPC = %lx\n", ple->pc());
-    printf("\tinstr = %lu\n", ple->instr());
-
-    if (ple->has_llvmentry()) {
-        pprint_llvmentry(ple);
-    }
-    printf("}\n");
+void print_slice_worklist(std::map<SliceVar, std::set<SliceVar>> &s) {
+    printf("{");
+    for (auto w : s) {
+        printf("Var: %s\t", slicevar_to_str(w.first).c_str());
+        print_set(w.second);
+    } 
+    printf(" }\n");
 }
 
 uint64_t infer_offset(const char* reg){
@@ -278,6 +250,7 @@ void insert_criteria(std::string str){
     
     SliceVarType typ = LLVM;
     std::string crit = str.substr(0, str.find(" at ")); 
+
 	if (strncmp(str.c_str(), "MEM", 3) == 0) {
         // slicing on a memory address
         typ = MEM;
@@ -290,20 +263,17 @@ void insert_criteria(std::string str){
         uint64_t start_mem_addr = std::stoull(start_mem_str, nullptr, 16);
         uint64_t end_mem_addr = std::stoull(end_mem_str, nullptr, 16);
 
-        for (uint64_t addr = start_mem_addr; addr < end_mem_addr; addr++){
+        for (uint64_t addr = start_mem_addr; addr < end_mem_addr; addr++) {
             printf("Adding mem addr %lx\n", addr);
-            work_list.insert(std::make_pair(typ, addr));
+            slice_work_lists[std::make_pair(typ, addr)] = std::set<SliceVar> {std::make_pair(typ, addr)};
         }
-
-
-
     }
     else if (strncmp(str.c_str(), "TGT", 3) == 0) {
         // we are slicing on a target register
         typ = TGT;
         std::string reg = crit.substr(4, crit.length());
         uint64_t sliceVal = cpustatebase + infer_offset(reg.c_str())*4;
-         work_list.insert(std::make_pair(typ, sliceVal));
+        slice_work_lists[std::make_pair(typ, sliceVal)] = std::set<SliceVar> {std::make_pair(typ, sliceVal)};
     }
 
     //searchTbs.insert(addr_to_tb(start_addr));
@@ -323,14 +293,6 @@ void process_criteria(std::string criteria_fname){
         std::cout << "process_criteria: error opening criteria file" << std::endl;
         exit(1);
     }
-
-    // get list of modules
-    // std::getline(file, str);
-    
-
-    // get rr range to slice on 
-    // std::string rangeStr;
-    // std::getline(file, rangeStr);
 
     // get all initial worklist criteria
     while (std::getline(file, str))
@@ -376,7 +338,7 @@ void process_criteria(std::string criteria_fname){
  *  
  * 
  */ 
-SliceVar get_slice_var(Value *v){
+SliceVar get_slice_var(Value *v) {
     return std::make_pair(LLVM, (uint64_t)v);
 }
 
@@ -389,24 +351,24 @@ int addr_to_tb(uint64_t addr){
 
 }
 
-void bitset2bytes(std::bitset<MAX_BITSET> &bitset, uint8_t bytes[]){
-    for(int i = 0; i < MAX_BITSET/8; i++){
+void bitset2bytes(std::bitset<MAX_BITSET> &bitset, uint8_t bytes[]) {
+    for (int i = 0; i < MAX_BITSET/8; i++){
         for (int j = 0; j < 7; j++){
             bytes[i] |= bitset[i*8 + j] << j;
         }
     }
 }
 
-void mark(traceEntry &t){
+void mark(traceEntry &t) {
     int bb_num = t.bb_num;
     int insn_index = t.inst_index;
     printf("insn index %d\n", insn_index);
     assert(insn_index < MAX_BITSET);
-    markedMap[std::make_pair(t.func, bb_num)][insn_index] = 1;
-    printf("Marking %s, block %d, instruction %d\n", t.func->getName().str().c_str(), bb_num, insn_index);
+    markedMap[std::make_pair(t.func, bb_num)].second[insn_index] = 1;
+    printf("Marking %s, block %d, instruction %d. Func count %d\n", t.func->getName().str().c_str(), bb_num, insn_index, markedMap[std::make_pair(t.func, bb_num)].first);
 }
-
-bool is_ignored(StringRef funcName){
+ 
+bool is_ignored(StringRef funcName) {
     if (external_helper_funcs.count(funcName) || 
         funcName.startswith("record") || 
         funcName.startswith("llvm.memcpy") ||
@@ -820,13 +782,16 @@ void get_uses_and_defs(traceEntry &te, std::set<SliceVar> &uses, std::set<SliceV
  * This function takes in a list of criteria
  * and iterates backwards over an LLVM function
  * updating the global work_list, uses, and defs. 
+ * 
+ * Return true if block is marked, false otherwise
  */
-void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &work_list){
+bool slice_trace(std::vector<traceEntry> &aligned_block){
 
     std::cout << "aligned block size " << aligned_block.size() << "\n";
  
     std::stack<std::map<SliceVar, SliceVar>> argMapStack;
     Function *entry_tb_func = aligned_block[0].func;
+    bool is_block_marked = false;
     
     //print out aligned block for debugging purposes
     for (std::vector<traceEntry>::reverse_iterator traceIt = aligned_block.rbegin() ; traceIt != aligned_block.rend(); ++traceIt) {
@@ -837,7 +802,7 @@ void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &wor
         //XXX: For some reason, these values are kinda corrupted. Should checkout what's wrong.  
         //printf("rr instr: %lx\n", traceIt->ple->pc());
 
-        printf("DEBUG: %lu defs, %lu uses\n", defs.size(), uses.size());
+        // printf("DEBUG: %lu defs, %lu uses\n", defs.size(), uses.size());
         printf("DEFS: ");
         print_set(defs);
         printf("USES: ");
@@ -877,81 +842,80 @@ void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &wor
             // printf("INSERTING BRANCH USES INTO WORK_lIST\n");
             // work_list.insert(uses.begin(), uses.end());
         } else {
-            for (auto &def : defs){
-                if (work_list.find(def) != work_list.end()){
-                        
-                    char destbuf[200];
-                    memset(destbuf, 0, 200);
+            for (auto &def : defs) {
+                // Check all SliceVars' worklists 
 
-                    int destoff = 0;
-                    for (const SliceVar &w : defs) {
-                        int ct = snprintf(destbuf+destoff, 30, "%s ", slicevar_to_str(w).c_str());
-                        destoff += ct;
-                    }
+                for (auto& slice_set: slice_work_lists) {
 
-                    char buf[200];
-                    memset(buf, 0, 200);
+                    if (slice_set.second.find(def) != slice_set.second.end()) {
 
-                    int off = 0;
-                    for (const SliceVar &w : uses) {
-                        int ct = snprintf(buf+off, 30, "%s ", slicevar_to_str(w).c_str());
-                        off += ct;
-                    }
+                        is_block_marked = true;
+                            
+                        char destbuf[200] = {};
 
-                    printf("Def %s is in work_list, adding %s to work_list\n", destbuf, buf);
-                    mark(*traceIt);
-                    // If this is not the entry tb func, mark the entry tb func as well
-                    // if (traceIt->func != entry_tb_func){
-                    //     printf("Marking entry tb func\n");
-                    //     // Search backwards for most recent call and mark it 
-                    //     for (std::vector<traceEntry>::iterator callIt = std::find(aligned_block.begin(), aligned_block.end(), *traceIt); callIt != aligned_block.end(); callIt++){
-                    //         if (CallInst *c = dyn_cast<CallInst>(callIt->inst)){
-                    //             printf("Found most recent call, marking\n");
-                    //             mark(*callIt);
-                    //         }
-                    //     }
-                    // }
-
-
-                    for (auto &def : defs){
-                        work_list.erase(def);                 
-                    }   
-
-                    for (const SliceVar &w : uses) {
-                        // If the use is not ESP or EBP, insert use into work_list
-                        if (slicevar_to_str(w).find("ESP") == std::string::npos && slicevar_to_str(w).find("EBP") == std::string::npos) {
-                            work_list.insert(w);     
+                        int destoff = 0;
+                        for (const SliceVar &w : defs) {
+                            int ct = snprintf(destbuf+destoff, 30, "%s ", slicevar_to_str(w).c_str());
+                            destoff += ct;
                         }
+
+                        char usebuf[200] = {};
+
+                        int off = 0;
+                        for (const SliceVar &w : uses) {
+                            int ct = snprintf(usebuf+off, 30, "%s ", slicevar_to_str(w).c_str());
+                            off += ct;
+                        }
+
+                        printf("Def %s is in work_list, adding %s to %s work_list\n", destbuf, usebuf, slicevar_to_str(slice_set.first).c_str());
+                        mark(*traceIt);
+
+                        for (auto &def : defs){
+                            slice_set.second.erase(def);                 
+                        }
+
+                        for (const SliceVar &w : uses) {
+                            // If the use is not ESP or EBP, insert use into work_list
+                            if (slicevar_to_str(w).find("ESP") == std::string::npos && slicevar_to_str(w).find("EBP") == std::string::npos) {
+
+                                // increase count for this LLVM instr
+                                slice_count[slice_set.first][traceIt->inst->getOpcode()]++;
+                                slice_set.second.insert(w);
+                            }
+                        }
+
+                        print_slice_worklist(slice_work_lists);
+
+                        break;
                     }
-                    // work_list.insert(uses.begin(), uses.end());
-                    break;
-                }
+                }   
             }
         }
 
         // in align_function, we put the Call traceEntry after the function's instructions and return
         // So, we'll see this Call before we descend backwards into the function
-        if (CallInst *c = dyn_cast<CallInst>(traceIt->inst)){
+        if (CallInst *c = dyn_cast<CallInst>(traceIt->inst)) {
             std::map<SliceVar, SliceVar> argMap;
             Function *subf = c->getCalledFunction();
 
-            if (!is_ignored(subf->getName())){
+            if (!is_ignored(subf->getName())) {
                 int argIdx;
                 Function::arg_iterator argIt;
-                for (argIt = subf->arg_begin(), argIdx = 0; argIt != subf->arg_end(); argIt++, argIdx++){
+                for (argIt = subf->arg_begin(), argIdx = 0; argIt != subf->arg_end(); argIt++, argIdx++) {
                     argMap[get_slice_var(&*argIt)] = get_slice_var(c->getArgOperand(argIdx));
                     printf("argMap %s => %s\n", slicevar_to_str(get_slice_var(&*argIt)).c_str(), slicevar_to_str(get_slice_var(c->getArgOperand(argIdx))).c_str());
                     // printf("argit\n");
                     // argIt->dump();
                     // c->getArgOperand(argIdx)->dump();
                 }
+
                 argMapStack.push(argMap);
             }
 
-        } else if (&*(traceIt->func->getEntryBlock().begin()) == &*(traceIt->inst)){
+        } else if (&*(traceIt->func->getEntryBlock().begin()) == &*(traceIt->inst)) {
             // if first instruction of subfunction's entry block
             // pop the stack before we return to calling parent
-            if (!argMapStack.empty()){
+            if (!argMapStack.empty()) {
                 argMapStack.pop();
             }
         }
@@ -959,6 +923,8 @@ void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &wor
         // printf("Work_list: ");
         // print_set(work_list);
     }
+
+    return is_block_marked;
 }
 
 bool in_exception = false;
@@ -978,16 +944,14 @@ int align_intrinsic_call(std::vector<traceEntry> &aligned_block, traceEntry t, s
 
         aligned_block.push_back(t);
         cursor_idx++;
-    } 
-    else if (Regex("helper_([lb]e|ret)_st.*_mmu_panda").match(func_name) || func_name.startswith("llvm.memset")) {
+    } else if (Regex("helper_([lb]e|ret)_st.*_mmu_panda").match(func_name) || func_name.startswith("llvm.memset")) {
         assert(ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_STORE);
 
         t.ple = ple;
           
         aligned_block.push_back(t);
         cursor_idx++;
-    }
-    else if (func_name.startswith("llvm.memcpy")) {
+    } else if (func_name.startswith("llvm.memcpy")) {
         assert(ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_LOAD);
 
         panda::LogEntry* storePle = ple_vector[cursor_idx+1];
@@ -1210,8 +1174,7 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                     } else if (subf->isDeclaration() || subf->isIntrinsic()) {
 
                         cursor_idx = align_intrinsic_call(aligned_block, t, ple_vector,func_name, cursor_idx);
-                    }
-                    else {
+                    } else {
                         // descend into function
                         
                         panda::LogEntry *bbPle = ple_vector[cursor_idx];
@@ -1347,8 +1310,6 @@ int main(int argc, char **argv){
     printf("EDI: %lx\n", cpustatebase + 7*4);
     printf("EIP: %lx\n", cpustatebase + 8*4);
 
-    // read trace into memory
-	
 	// Populate map of addrs to tb_nums
 	int tb_num;
 	uint64_t addr;
@@ -1364,8 +1325,8 @@ int main(int argc, char **argv){
     // Add the slicing criteria from the file
     process_criteria(criteria_fname);
 
-    printf("Starting work_list: ");        
-    print_set(work_list);
+    printf("Starting work_list: ");
+    print_slice_worklist(slice_work_lists);
 
     if (output == NULL) {
         output = "slice_report.bin";
@@ -1404,7 +1365,7 @@ int main(int argc, char **argv){
         // pprint_ple(ple);
         
         // If we have found the start of an LLVM function
-        if (ple->llvmentry().type() == FunctionCode::LLVM_FN && ple->llvmentry().tb_num()){
+        if (ple->llvmentry().type() == FunctionCode::LLVM_FN && ple->llvmentry().tb_num()) {
             if (ple->llvmentry().tb_num() == 0) {
                 break;
             }
@@ -1460,17 +1421,29 @@ int main(int argc, char **argv){
             ple_vector.erase(ple_vector.begin(), ple_vector.begin()+2);
 
             cursor_idx = align_function(aligned_block, f, ple_vector, cursor_idx);
-			slice_trace(aligned_block, work_list);
+			bool is_block_marked = slice_trace(aligned_block);
 
-            // printf("Working set: ");
-            // print_set(work_list);
-            // CLear ple_vector for next block
-			//break;
+            printf("After slice trace\n");
+            print_slice_worklist(slice_work_lists);
+
+            // If we added to the worklist, increase hitcount for this bb/function
+            if (is_block_marked){
+                markedMap[std::make_pair(f, 1)].first += 1;
+                printf("Func hitcount %d\n", markedMap[std::make_pair(f, 1)].first);
+
+            }
 
             aligned_block.clear();
             ple_vector.clear();
         }
     }
+
+   print_slice_worklist(slice_work_lists);
+   for (auto slice_set: slice_work_lists) {
+        std::cout << slicevar_to_str(slice_set.first) << ": ";
+       print_slice_count(slice_count[slice_set.first]);
+   }
+
 
    printf("Done slicing. Marked %lu blocks\n", markedMap.size()); 
 
@@ -1480,20 +1453,23 @@ int main(int argc, char **argv){
    }
 
    FILE *outf = fopen(output, "wb");
-   for (auto &markPair: markedMap){
+   for (auto &markPair: markedMap) {
         uint32_t name_size = 0;
         uint32_t lib_size = 0;
         uint32_t bb_idx = markPair.first.second;
+        uint32_t hit_count = markPair.second.first;
         uint8_t bytes[MAX_BITSET/8] = {};
 
         StringRef func_name = markPair.first.first->getName();
         name_size = func_name.size();
-        bitset2bytes(markPair.second, bytes);
+        bitset2bytes(markPair.second.second, bytes);
 
         fwrite(&name_size, sizeof(uint32_t), 1, outf);
         fwrite(func_name.str().c_str(), name_size, 1, outf);
         fwrite(&bb_idx, sizeof(uint32_t), 1, outf);
+        fwrite(&hit_count, sizeof(uint32_t), 1, outf);
         fwrite(bytes, MAX_BITSET / 8, 1, outf);
+
    }
 
     p.close();

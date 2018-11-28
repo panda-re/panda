@@ -1,3 +1,5 @@
+#ifndef FUNCCODE_H
+#define FUNCCODE_H
 
 #include <set>
 #include <string>
@@ -62,7 +64,7 @@ typedef enum {
     FUNC_CODE_INST_LANDINGPAD  = 40, // LANDINGPAD: [ty,val,val,num,id0,val0...]
     FUNC_CODE_INST_LOADATOMIC  = 41, // LOAD: [opty, op, align, vol,
                                      //        ordering, synchscope]
-FUNC_CODE_INST_STOREATOMIC = 42,  // STORE: [ptrty,ptr,val, align, vol
+    FUNC_CODE_INST_STOREATOMIC = 42,  // STORE: [ptrty,ptr,val, align, vol
                                  //         ordering, synchscope]
     BB = 43,
     LLVM_FN = 44,
@@ -101,18 +103,4 @@ const static std::set<std::string> external_helper_funcs{
     "helper_outb", "helper_outw", "helper_outl", "helper_outq", 
 };
 
-
-
-std::map<FunctionCode, std::string> functionCodeStrings = {
-    {FunctionCode::LLVM_FN, "LLVM FUNCTION"},
-    {FunctionCode::FUNC_CODE_INST_LOAD, "LOAD"},
-    {FunctionCode::FUNC_CODE_INST_STORE, "STORE"},
-    {FunctionCode::FUNC_CODE_INST_PHI, "PHI"},
-    {FunctionCode::FUNC_CODE_INST_BR, "BR"},
-    {FunctionCode::FUNC_CODE_INST_SELECT, "SELECT"},
-    {FunctionCode::FUNC_CODE_INST_SWITCH, "SWITCH"},
-    {FunctionCode::FUNC_CODE_INST_CALL, "CALL"},
-    {LLVM_EXCEPTION, "EXCEPTION"},
-    {BB, "LLVM_BB"},
-};
-
+#endif

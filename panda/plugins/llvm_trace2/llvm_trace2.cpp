@@ -24,7 +24,6 @@ PANDAENDCOMMENT */
 #include <libunwind.h>
 
 #include "llvm_trace2.h"
-// #include "function_table.h"
 #include "Extras.h"
 
 extern "C" {
