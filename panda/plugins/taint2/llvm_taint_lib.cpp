@@ -887,8 +887,7 @@ bool PandaTaintVisitor::isEnvPtr(Value *V) {
 }
 
 bool PandaTaintVisitor::isCPUStateAdd(BinaryOperator *AI) {
-    assert(AI->getOpcode() == Instruction::Add);
-    return isEnvPtr(AI->getOperand(0));
+    return (AI->getOpcode() == Instruction::Add) && isEnvPtr(AI->getOperand(0));
 }
 
 // Find address and constant given a load/store (i.e. host vmem) address.

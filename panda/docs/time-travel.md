@@ -47,7 +47,7 @@ During replay, `when` displays the guest instruction count
 Sets a breakpoint on a guest instruction count
 * `rrdelete <instr>`
 Deletes a breakpoint on a guest instruction count
-* `rrlist
+* `rrlist`
 Lists all guest instruction count breakpoints
 
 ```
