@@ -6,7 +6,7 @@ Summary
 
 The `taint2` plugin tracks the flow of data through a running program. One can apply taint labels to some data, follow the flow of labeled data through the program execution, and later query data to find out what labels it has.
 
-`taint2` provides APIs and callbacks for labeling and querying data, and does the work of propagating taint. This means it is not generally useful by itself. To introduce taint into the system, you can use plugins like `file_taint`, `tstringsearch` and `tainted_net`; to query taint you can use plugins like `tainted_instr`, `dead_data`, `taint_compute_numbers` or `tainted_net`.
+`taint2` provides APIs and callbacks for labeling and querying data, and does the work of propagating taint. This means it is not generally useful by itself. To introduce taint into the system, you can use plugins like `file_taint`, `tstringsearch` and `tainted_net`; to query taint you can use plugins like `tainted_instr`, `taint_compute_numbers` or `tainted_net`.
 
 Note that since this notion of taint supports an arbitrary number of *labels*, the taint on a particular piece of data will typically be a *label set* rather than a single label. For example, if some quantities `a` and `b` have labels `1` and `2` respectively, then an operation such as `c = a + b` will result in `c` being tainted with the label set `{1, 2}`.
 
