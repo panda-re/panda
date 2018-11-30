@@ -36,8 +36,6 @@ struct PidPcPair {
     target_ulong pc;
 };
 
-static TranslationBlock *current_tb = NULL;
-
 // Inject the hash function for PidPcPair into the std namespace, allows us to
 // store PidPcPair in an unordered set.
 namespace std
@@ -69,13 +67,17 @@ void taint_state_changed(Addr a, uint64_t size)
     // only need to write out distinct pairs once.
     static std::unordered_set<PidPcPair> seen;
 
-    // Get current PID and PC.
-    OsiProc *proc = get_current_process(first_cpu);
+    // Get current PID (if in user-mode and OSI gave us a process) and PC.
     PidPcPair p;
-    p.pid = proc ? proc->pid : 0;
-    p.pc = panda_current_pc(first_cpu);
-    if (proc) {
-        free_osiproc(proc);
+    p.pc = first_cpu->panda_guest_pc;
+    p.pid = 0;
+    if (false == panda_in_kernel(first_cpu)) {
+        OsiProc *proc = get_current_process(first_cpu);
+        p.pid = proc ? proc->pid : 0;
+
+        if (proc) {
+            free_osiproc(proc);
+        }
     }
 
     // Figure out which entries are tainted.
@@ -90,17 +92,8 @@ void taint_state_changed(Addr a, uint64_t size)
     if (num_tainted && seen.find(p) == seen.end()) {
         seen.insert(p);
 
-        // It should not be possible for current_tb to be null.
-        assert(current_tb != NULL);
-        fprintf(pidpclog, "%lu,%lu,%lu\n", (uint64_t)p.pid,
-                (uint64_t)current_tb->pc, (uint64_t)current_tb->size);
+        fprintf(pidpclog, "%lu,0x%lX\n", (uint64_t)p.pid, (uint64_t)p.pc);
     }
-}
-
-int before_block_exec(CPUState *cpu, TranslationBlock *tb)
-{
-    current_tb = tb;
-    return 0;
 }
 
 bool init_plugin(void *self)
@@ -115,6 +108,10 @@ bool init_plugin(void *self)
     PPP_REG_CB("taint2", on_taint_change, taint_state_changed);
     taint2_track_taint_state();
 
+    // Turn on the precise program counter so we can highlight the exact
+    // instruction.
+    panda_enable_precise_pc();
+
     // Setup CSV file.
     panda_arg_list *args = panda_get_args("ida_taint2");
     const char *filename =
@@ -122,12 +119,7 @@ bool init_plugin(void *self)
 
     // Open up a CSV file and write the header.
     pidpclog = fopen(filename, "w");
-    fprintf(pidpclog, "pid,tb_pc,tb_size\n");
-
-    // Register before block exec so we can track the translation block
-    panda_cb pcb;
-    pcb.before_block_exec = before_block_exec;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    fprintf(pidpclog, "pid,pc\n");
 
     return true;
 }

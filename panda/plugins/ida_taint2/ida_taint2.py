@@ -1,6 +1,6 @@
 """
-IDAPython Script to load ida_taint2 data and colorize basic blocks that contain
-instructions that maninpulate tainted data.
+IDAPython Script to load ida_taint2 data and colorize instructiions that
+maninpulate tainted data.
 """
 
 import csv
@@ -25,12 +25,8 @@ reader = csv.reader(input_file)
 next(reader, None)
 for row in reader:
     pid = int(row[0])
-    tb_pc = int(row[1])
-    tb_size = int(row[2])
+    pc = int(row[1], 16)
     if pid != selected_pid:
         continue
-    i = 0
-    while tb_pc+i < tb_pc+tb_size:
-        SetColor(tb_pc+i, CIC_ITEM, COLOR)
-        i += 1
+    SetColor(pc, CIC_ITEM, COLOR)
 input_file.close()
