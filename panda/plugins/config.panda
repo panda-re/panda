@@ -22,6 +22,4 @@ unigrams
 textprinter
 net
 network
-tainted_net
 filereadmon
-serial_taint
