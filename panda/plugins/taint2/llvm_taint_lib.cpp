@@ -623,6 +623,14 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     LLVMContext &ctx = I.getContext();
     if (!dest) dest = &I;
 
+    unsigned src1BitWidth = src1->getType()->getPrimitiveSizeInBits();
+    unsigned src2BitWidth = src1->getType()->getPrimitiveSizeInBits();
+    if (src1BitWidth > 64 || src2BitWidth > 64) {
+        printf("warning: encountered a value greater than 64 bits - not "
+               "attempting to propagate taint through mul instruction\n");
+        return;
+    }
+
     if (isa<Constant>(src1) && isa<Constant>(src2)) {
         return; // do nothing, should not happen in optimized code
     } else if (isa<Constant>(src1)) {
