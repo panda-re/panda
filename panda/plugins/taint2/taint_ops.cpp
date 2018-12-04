@@ -560,37 +560,37 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
     }
 
     if (tainted) {
-		CBMasks cb_masks = compile_cb_masks(shad_src, src, size);
-		uint64_t &cb_mask = cb_masks.cb_mask;
-		uint64_t &one_mask = cb_masks.one_mask;
-		uint64_t &zero_mask = cb_masks.zero_mask;
+        CBMasks cb_masks = compile_cb_masks(shad_src, src, size);
+        uint64_t &cb_mask = cb_masks.cb_mask;
+        uint64_t &one_mask = cb_masks.one_mask;
+        uint64_t &zero_mask = cb_masks.zero_mask;
 
-		uint64_t orig_one_mask = one_mask, orig_zero_mask = zero_mask;
-		__attribute__((unused)) uint64_t orig_cb_mask = cb_mask;
-		std::vector<uint64_t> literals;
-		uint64_t last_literal = ~0UL; // last valid literal.
-		literals.reserve(I->getNumOperands());
+        uint64_t orig_one_mask = one_mask, orig_zero_mask = zero_mask;
+        __attribute__((unused)) uint64_t orig_cb_mask = cb_mask;
+        std::vector<uint64_t> literals;
+        uint64_t last_literal = ~0UL; // last valid literal.
+        literals.reserve(I->getNumOperands());
 
-		for (auto it = I->value_op_begin(); it != I->value_op_end(); it++) {
-			const llvm::Value *arg = *it;
-			const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(arg);
-			uint64_t literal = CI ? CI->getZExtValue() : ~0UL;
-			literals.push_back(literal);
-			if (literal != ~0UL) last_literal = literal;
-		}
-		int log2 = 0;
+        for (auto it = I->value_op_begin(); it != I->value_op_end(); it++) {
+            const llvm::Value *arg = *it;
+            const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(arg);
+            uint64_t literal = CI ? CI->getZExtValue() : ~0UL;
+            literals.push_back(literal);
+            if (literal != ~0UL) last_literal = literal;
+        }
+        int log2 = 0;
 
-		unsigned int opcode = I->getOpcode();
+        unsigned int opcode = I->getOpcode();
 
-		// guts of this function are in separate file so it can be more easily
-		// tested without calling a function (which would slow things down even more)
+        // guts of this function are in separate file so it can be more easily
+        // tested without calling a function (which would slow things down even more)
 #include "update_cb_switch.h"
 
-		taint_log("update_cb: %s[%lx+%lx] CB %#lx -> 0x%#lx, 0 %#lx -> %#lx, 1 %#lx -> %#lx\n",
-				shad_dest->name(), dest, size, orig_cb_mask, cb_mask,
-				orig_zero_mask, zero_mask, orig_one_mask, one_mask);
+        taint_log("update_cb: %s[%lx+%lx] CB %#lx -> 0x%#lx, 0 %#lx -> %#lx, 1 %#lx -> %#lx\n",
+                shad_dest->name(), dest, size, orig_cb_mask, cb_mask,
+                orig_zero_mask, zero_mask, orig_one_mask, one_mask);
 
-		write_cb_masks(shad_dest, dest, size, cb_masks);
+        write_cb_masks(shad_dest, dest, size, cb_masks);
     }
 
     // not sure it's possible to call update_cb with data that is unlabeled but
