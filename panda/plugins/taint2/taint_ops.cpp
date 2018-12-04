@@ -16,7 +16,7 @@ PANDAENDCOMMENT */
  * Change Log:
  * dynamic check if there is a mul X 0 or mul X 1, for no taint prop or parallel
  * propagation respetively
- * 03-DEC-2018:  don't update masks on data that is not tainted; fix bug in
+ * 04-DEC-2018:  don't update masks on data that is not tainted; fix bug in
  *    taint2 deboug output for host memcpy
  */
 
@@ -553,8 +553,10 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
     // (eg. SHL puts 1s in lower bits of zero mask), and this would then
     // generate a spurious taint change report
     bool tainted = false;
-    for (unsigned int i = 0; i < size; i++) {
-    	if (shad_src->query(src + i) != NULL) tainted = true;
+    for (uint32_t i = 0; i < size; i++) {
+        if (shad_src->query(src + i) != NULL) {
+            tainted = true;
+        }
     }
 
     if (tainted) {
