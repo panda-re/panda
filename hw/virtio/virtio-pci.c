@@ -1128,9 +1128,8 @@ static void virtio_9p_pci_instance_init(Object *obj)
                                 TYPE_VIRTIO_9P);
 }
 
-static const TypeInfo virtio_9p_pci_info = {
-    .name          = TYPE_VIRTIO_9P_PCI,
-    .parent        = TYPE_VIRTIO_PCI,
+static const VirtioPCIDeviceTypeInfo virtio_9p_pci_info = {
+    .generic_name   = TYPE_VIRTIO_9P_PCI,
     .instance_size = sizeof(V9fsPCIState),
     .instance_init = virtio_9p_pci_instance_init,
     .class_init    = virtio_9p_pci_class_init,
@@ -1892,9 +1891,6 @@ static void virtio_pci_reset(DeviceState *qdev)
 static Property virtio_pci_properties[] = {
     DEFINE_PROP_BIT("virtio-pci-bus-master-bug-migration", VirtIOPCIProxy, flags,
                     VIRTIO_PCI_FLAG_BUS_MASTER_BUG_MIGRATION_BIT, false),
-    DEFINE_PROP_ON_OFF_AUTO("disable-legacy", VirtIOPCIProxy, disable_legacy,
-                            ON_OFF_AUTO_AUTO),
-    DEFINE_PROP_BOOL("disable-modern", VirtIOPCIProxy, disable_modern, false),
     DEFINE_PROP_BIT("migrate-extra", VirtIOPCIProxy, flags,
                     VIRTIO_PCI_FLAG_MIGRATE_EXTRA_BIT, true),
     DEFINE_PROP_BIT("modern-pio-notify", VirtIOPCIProxy, flags,
@@ -1956,6 +1952,121 @@ static const TypeInfo virtio_pci_info = {
     .abstract      = true,
 };
 
+static Property virtio_pci_generic_properties[] = {
+    DEFINE_PROP_ON_OFF_AUTO("disable-legacy", VirtIOPCIProxy, disable_legacy,
+                            ON_OFF_AUTO_AUTO),
+    DEFINE_PROP_BOOL("disable-modern", VirtIOPCIProxy, disable_modern, false),
+    DEFINE_PROP_END_OF_LIST(),
+};
+
+static void virtio_pci_base_class_init(ObjectClass *klass, void *data)
+{
+    const VirtioPCIDeviceTypeInfo *t = data;
+    if (t->class_init) {
+        t->class_init(klass, NULL);
+    }
+}
+
+static void virtio_pci_generic_class_init(ObjectClass *klass, void *data)
+{
+    DeviceClass *dc = DEVICE_CLASS(klass);
+
+    dc->props = virtio_pci_generic_properties;
+}
+
+/* Used when the generic type and the base type is the same */
+static void virtio_pci_generic_base_class_init(ObjectClass *klass, void *data)
+{
+    virtio_pci_base_class_init(klass, data);
+    virtio_pci_generic_class_init(klass, NULL);
+}
+
+static void virtio_pci_transitional_instance_init(Object *obj)
+{
+    VirtIOPCIProxy *proxy = VIRTIO_PCI(obj);
+
+    proxy->disable_legacy = ON_OFF_AUTO_OFF;
+    proxy->disable_modern = false;
+}
+
+static void virtio_pci_non_transitional_instance_init(Object *obj)
+{
+    VirtIOPCIProxy *proxy = VIRTIO_PCI(obj);
+
+    proxy->disable_legacy = ON_OFF_AUTO_ON;
+    proxy->disable_modern = false;
+}
+
+void virtio_pci_types_register(const VirtioPCIDeviceTypeInfo *t)
+{
+    TypeInfo base_type_info = {
+        .name          = t->base_name,
+        .parent        = t->parent ? t->parent : TYPE_VIRTIO_PCI,
+        .instance_size = t->instance_size,
+        .instance_init = t->instance_init,
+        .class_init    = virtio_pci_base_class_init,
+        .class_data    = (void *)t,
+        .abstract      = true,
+    };
+    TypeInfo generic_type_info = {
+        .name = t->generic_name,
+        .parent = base_type_info.name,
+        .class_init = virtio_pci_generic_class_init,
+        .interfaces = (InterfaceInfo[]) {
+            { INTERFACE_PCIE_DEVICE },
+            { INTERFACE_CONVENTIONAL_PCI_DEVICE },
+            { }
+        },
+    };
+
+    if (!base_type_info.name) {
+        /* No base type -> register a single generic device type */
+        base_type_info.name = t->generic_name;
+        base_type_info.class_init = virtio_pci_generic_base_class_init;
+        base_type_info.interfaces = generic_type_info.interfaces;
+        base_type_info.abstract = false;
+        generic_type_info.name = NULL;
+        assert(!t->non_transitional_name);
+        assert(!t->transitional_name);
+    }
+
+    type_register(&base_type_info);
+    if (generic_type_info.name) {
+        type_register(&generic_type_info);
+    }
+
+    if (t->non_transitional_name) {
+        const TypeInfo non_transitional_type_info = {
+            .name          = t->non_transitional_name,
+            .parent        = base_type_info.name,
+            .instance_init = virtio_pci_non_transitional_instance_init,
+            .interfaces = (InterfaceInfo[]) {
+                { INTERFACE_PCIE_DEVICE },
+                { INTERFACE_CONVENTIONAL_PCI_DEVICE },
+                { }
+            },
+        };
+        type_register(&non_transitional_type_info);
+    }
+
+    if (t->transitional_name) {
+        const TypeInfo transitional_type_info = {
+            .name          = t->transitional_name,
+            .parent        = base_type_info.name,
+            .instance_init = virtio_pci_transitional_instance_init,
+            .interfaces = (InterfaceInfo[]) {
+                /*
+                 * Transitional virtio devices work only as Conventional PCI
+                 * devices because they require PIO ports.
+                 */
+                { INTERFACE_CONVENTIONAL_PCI_DEVICE },
+                { }
+            },
+        };
+        type_register(&transitional_type_info);
+    }
+}
+
 /* virtio-blk-pci */
 
 static Property virtio_blk_pci_properties[] = {
@@ -2002,14 +2113,130 @@ static void virtio_blk_pci_instance_init(Object *obj)
                               "bootindex", &error_abort);
 }
 
-static const TypeInfo virtio_blk_pci_info = {
-    .name          = TYPE_VIRTIO_BLK_PCI,
-    .parent        = TYPE_VIRTIO_PCI,
+static const VirtioPCIDeviceTypeInfo virtio_blk_pci_info = {
+    .generic_name   = TYPE_VIRTIO_BLK_PCI,
     .instance_size = sizeof(VirtIOBlkPCI),
     .instance_init = virtio_blk_pci_instance_init,
     .class_init    = virtio_blk_pci_class_init,
 };
 
+<<<<<<< HEAD
+||||||| parent of a4ee4c8baa (virtio: Helper for registering virtio device types)
+#if defined(CONFIG_VHOST_USER) && defined(CONFIG_LINUX)
+/* vhost-user-blk */
+
+static Property vhost_user_blk_pci_properties[] = {
+    DEFINE_PROP_UINT32("class", VirtIOPCIProxy, class_code, 0),
+    DEFINE_PROP_UINT32("vectors", VirtIOPCIProxy, nvectors,
+                       DEV_NVECTORS_UNSPECIFIED),
+    DEFINE_PROP_END_OF_LIST(),
+};
+
+static void vhost_user_blk_pci_realize(VirtIOPCIProxy *vpci_dev, Error **errp)
+{
+    VHostUserBlkPCI *dev = VHOST_USER_BLK_PCI(vpci_dev);
+    DeviceState *vdev = DEVICE(&dev->vdev);
+
+    if (vpci_dev->nvectors == DEV_NVECTORS_UNSPECIFIED) {
+        vpci_dev->nvectors = dev->vdev.num_queues + 1;
+    }
+
+    qdev_set_parent_bus(vdev, BUS(&vpci_dev->bus));
+    object_property_set_bool(OBJECT(vdev), true, "realized", errp);
+}
+
+static void vhost_user_blk_pci_class_init(ObjectClass *klass, void *data)
+{
+    DeviceClass *dc = DEVICE_CLASS(klass);
+    VirtioPCIClass *k = VIRTIO_PCI_CLASS(klass);
+    PCIDeviceClass *pcidev_k = PCI_DEVICE_CLASS(klass);
+
+    set_bit(DEVICE_CATEGORY_STORAGE, dc->categories);
+    dc->props = vhost_user_blk_pci_properties;
+    k->realize = vhost_user_blk_pci_realize;
+    pcidev_k->vendor_id = PCI_VENDOR_ID_REDHAT_QUMRANET;
+    pcidev_k->device_id = PCI_DEVICE_ID_VIRTIO_BLOCK;
+    pcidev_k->revision = VIRTIO_PCI_ABI_VERSION;
+    pcidev_k->class_id = PCI_CLASS_STORAGE_SCSI;
+}
+
+static void vhost_user_blk_pci_instance_init(Object *obj)
+{
+    VHostUserBlkPCI *dev = VHOST_USER_BLK_PCI(obj);
+
+    virtio_instance_init_common(obj, &dev->vdev, sizeof(dev->vdev),
+                                TYPE_VHOST_USER_BLK);
+    object_property_add_alias(obj, "bootindex", OBJECT(&dev->vdev),
+                              "bootindex", &error_abort);
+}
+
+static const TypeInfo vhost_user_blk_pci_info = {
+    .name           = TYPE_VHOST_USER_BLK_PCI,
+    .parent         = TYPE_VIRTIO_PCI,
+    .instance_size  = sizeof(VHostUserBlkPCI),
+    .instance_init  = vhost_user_blk_pci_instance_init,
+    .class_init     = vhost_user_blk_pci_class_init,
+};
+#endif
+
+=======
+#if defined(CONFIG_VHOST_USER) && defined(CONFIG_LINUX)
+/* vhost-user-blk */
+
+static Property vhost_user_blk_pci_properties[] = {
+    DEFINE_PROP_UINT32("class", VirtIOPCIProxy, class_code, 0),
+    DEFINE_PROP_UINT32("vectors", VirtIOPCIProxy, nvectors,
+                       DEV_NVECTORS_UNSPECIFIED),
+    DEFINE_PROP_END_OF_LIST(),
+};
+
+static void vhost_user_blk_pci_realize(VirtIOPCIProxy *vpci_dev, Error **errp)
+{
+    VHostUserBlkPCI *dev = VHOST_USER_BLK_PCI(vpci_dev);
+    DeviceState *vdev = DEVICE(&dev->vdev);
+
+    if (vpci_dev->nvectors == DEV_NVECTORS_UNSPECIFIED) {
+        vpci_dev->nvectors = dev->vdev.num_queues + 1;
+    }
+
+    qdev_set_parent_bus(vdev, BUS(&vpci_dev->bus));
+    object_property_set_bool(OBJECT(vdev), true, "realized", errp);
+}
+
+static void vhost_user_blk_pci_class_init(ObjectClass *klass, void *data)
+{
+    DeviceClass *dc = DEVICE_CLASS(klass);
+    VirtioPCIClass *k = VIRTIO_PCI_CLASS(klass);
+    PCIDeviceClass *pcidev_k = PCI_DEVICE_CLASS(klass);
+
+    set_bit(DEVICE_CATEGORY_STORAGE, dc->categories);
+    dc->props = vhost_user_blk_pci_properties;
+    k->realize = vhost_user_blk_pci_realize;
+    pcidev_k->vendor_id = PCI_VENDOR_ID_REDHAT_QUMRANET;
+    pcidev_k->device_id = PCI_DEVICE_ID_VIRTIO_BLOCK;
+    pcidev_k->revision = VIRTIO_PCI_ABI_VERSION;
+    pcidev_k->class_id = PCI_CLASS_STORAGE_SCSI;
+}
+
+static void vhost_user_blk_pci_instance_init(Object *obj)
+{
+    VHostUserBlkPCI *dev = VHOST_USER_BLK_PCI(obj);
+
+    virtio_instance_init_common(obj, &dev->vdev, sizeof(dev->vdev),
+                                TYPE_VHOST_USER_BLK);
+    object_property_add_alias(obj, "bootindex", OBJECT(&dev->vdev),
+                              "bootindex", &error_abort);
+}
+
+static const VirtioPCIDeviceTypeInfo vhost_user_blk_pci_info = {
+    .generic_name    = TYPE_VHOST_USER_BLK_PCI,
+    .instance_size  = sizeof(VHostUserBlkPCI),
+    .instance_init  = vhost_user_blk_pci_instance_init,
+    .class_init     = vhost_user_blk_pci_class_init,
+};
+#endif
+
+>>>>>>> a4ee4c8baa (virtio: Helper for registering virtio device types)
 /* virtio-scsi-pci */
 
 static Property virtio_scsi_pci_properties[] = {
@@ -2071,9 +2298,8 @@ static void virtio_scsi_pci_instance_init(Object *obj)
                               &error_abort);
 }
 
-static const TypeInfo virtio_scsi_pci_info = {
-    .name          = TYPE_VIRTIO_SCSI_PCI,
-    .parent        = TYPE_VIRTIO_PCI,
+static const VirtioPCIDeviceTypeInfo virtio_scsi_pci_info = {
+    .generic_name   = TYPE_VIRTIO_SCSI_PCI,
     .instance_size = sizeof(VirtIOSCSIPCI),
     .instance_init = virtio_scsi_pci_instance_init,
     .class_init    = virtio_scsi_pci_class_init,
@@ -2126,9 +2352,8 @@ static void vhost_scsi_pci_instance_init(Object *obj)
                               "bootindex", &error_abort);
 }
 
-static const TypeInfo vhost_scsi_pci_info = {
-    .name          = TYPE_VHOST_SCSI_PCI,
-    .parent        = TYPE_VIRTIO_PCI,
+static const VirtioPCIDeviceTypeInfo vhost_scsi_pci_info = {
+    .generic_name  = TYPE_VHOST_SCSI_PCI,
     .instance_size = sizeof(VHostSCSIPCI),
     .instance_init = vhost_scsi_pci_instance_init,
     .class_init    = vhost_scsi_pci_class_init,
@@ -2174,9 +2399,8 @@ static void vhost_vsock_pci_instance_init(Object *obj)
                                 TYPE_VHOST_VSOCK);
 }
 
-static const TypeInfo vhost_vsock_pci_info = {
-    .name          = TYPE_VHOST_VSOCK_PCI,
-    .parent        = TYPE_VIRTIO_PCI,
+static const VirtioPCIDeviceTypeInfo vhost_vsock_pci_info = {
+    .generic_name  = TYPE_VHOST_VSOCK_PCI,
     .instance_size = sizeof(VHostVSockPCI),
     .instance_init = vhost_vsock_pci_instance_init,
     .class_init    = vhost_vsock_pci_class_init,
@@ -2231,9 +2455,8 @@ static void virtio_balloon_pci_instance_init(Object *obj)
                               "guest-stats-polling-interval", &error_abort);
 }
 
-static const TypeInfo virtio_balloon_pci_info = {
-    .name          = TYPE_VIRTIO_BALLOON_PCI,
-    .parent        = TYPE_VIRTIO_PCI,
+static const VirtioPCIDeviceTypeInfo virtio_balloon_pci_info = {
+    .generic_name  = TYPE_VIRTIO_BALLOON_PCI,
     .instance_size = sizeof(VirtIOBalloonPCI),
     .instance_init = virtio_balloon_pci_instance_init,
     .class_init    = virtio_balloon_pci_class_init,
@@ -2304,9 +2527,8 @@ static void virtio_serial_pci_instance_init(Object *obj)
                                 TYPE_VIRTIO_SERIAL);
 }
 
-static const TypeInfo virtio_serial_pci_info = {
-    .name          = TYPE_VIRTIO_SERIAL_PCI,
-    .parent        = TYPE_VIRTIO_PCI,
+static const VirtioPCIDeviceTypeInfo virtio_serial_pci_info = {
+    .generic_name  = TYPE_VIRTIO_SERIAL_PCI,
     .instance_size = sizeof(VirtIOSerialPCI),
     .instance_init = virtio_serial_pci_instance_init,
     .class_init    = virtio_serial_pci_class_init,
@@ -2359,9 +2581,8 @@ static void virtio_net_pci_instance_init(Object *obj)
                               "bootindex", &error_abort);
 }
 
-static const TypeInfo virtio_net_pci_info = {
-    .name          = TYPE_VIRTIO_NET_PCI,
-    .parent        = TYPE_VIRTIO_PCI,
+static const VirtioPCIDeviceTypeInfo virtio_net_pci_info = {
+    .generic_name  = TYPE_VIRTIO_NET_PCI,
     .instance_size = sizeof(VirtIONetPCI),
     .instance_init = virtio_net_pci_instance_init,
     .class_init    = virtio_net_pci_class_init,
@@ -2412,9 +2633,8 @@ static void virtio_rng_initfn(Object *obj)
                               &error_abort);
 }
 
-static const TypeInfo virtio_rng_pci_info = {
-    .name          = TYPE_VIRTIO_RNG_PCI,
-    .parent        = TYPE_VIRTIO_PCI,
+static const VirtioPCIDeviceTypeInfo virtio_rng_pci_info = {
+    .generic_name  = TYPE_VIRTIO_RNG_PCI,
     .instance_size = sizeof(VirtIORngPCI),
     .instance_init = virtio_rng_initfn,
     .class_init    = virtio_rng_pci_class_init,
@@ -2504,24 +2724,24 @@ static const TypeInfo virtio_input_hid_pci_info = {
     .abstract      = true,
 };
 
-static const TypeInfo virtio_keyboard_pci_info = {
-    .name          = TYPE_VIRTIO_KEYBOARD_PCI,
+static const VirtioPCIDeviceTypeInfo virtio_keyboard_pci_info = {
+    .generic_name  = TYPE_VIRTIO_KEYBOARD_PCI,
     .parent        = TYPE_VIRTIO_INPUT_HID_PCI,
     .class_init    = virtio_input_hid_kbd_pci_class_init,
     .instance_size = sizeof(VirtIOInputHIDPCI),
     .instance_init = virtio_keyboard_initfn,
 };
 
-static const TypeInfo virtio_mouse_pci_info = {
-    .name          = TYPE_VIRTIO_MOUSE_PCI,
+static const VirtioPCIDeviceTypeInfo virtio_mouse_pci_info = {
+    .generic_name  = TYPE_VIRTIO_MOUSE_PCI,
     .parent        = TYPE_VIRTIO_INPUT_HID_PCI,
     .class_init    = virtio_input_hid_mouse_pci_class_init,
     .instance_size = sizeof(VirtIOInputHIDPCI),
     .instance_init = virtio_mouse_initfn,
 };
 
-static const TypeInfo virtio_tablet_pci_info = {
-    .name          = TYPE_VIRTIO_TABLET_PCI,
+static const VirtioPCIDeviceTypeInfo virtio_tablet_pci_info = {
+    .generic_name  = TYPE_VIRTIO_TABLET_PCI,
     .parent        = TYPE_VIRTIO_INPUT_HID_PCI,
     .instance_size = sizeof(VirtIOInputHIDPCI),
     .instance_init = virtio_tablet_initfn,
@@ -2536,8 +2756,8 @@ static void virtio_host_initfn(Object *obj)
                                 TYPE_VIRTIO_INPUT_HOST);
 }
 
-static const TypeInfo virtio_host_pci_info = {
-    .name          = TYPE_VIRTIO_INPUT_HOST_PCI,
+static const VirtioPCIDeviceTypeInfo virtio_host_pci_info = {
+    .generic_name  = TYPE_VIRTIO_INPUT_HOST_PCI,
     .parent        = TYPE_VIRTIO_INPUT_PCI,
     .instance_size = sizeof(VirtIOInputHostPCI),
     .instance_init = virtio_host_initfn,
@@ -2590,30 +2810,39 @@ static const TypeInfo virtio_pci_bus_info = {
 
 static void virtio_pci_register_types(void)
 {
-    type_register_static(&virtio_rng_pci_info);
-    type_register_static(&virtio_input_pci_info);
-    type_register_static(&virtio_input_hid_pci_info);
-    type_register_static(&virtio_keyboard_pci_info);
-    type_register_static(&virtio_mouse_pci_info);
-    type_register_static(&virtio_tablet_pci_info);
-#ifdef CONFIG_LINUX
-    type_register_static(&virtio_host_pci_info);
-#endif
+    /* Base types: */
     type_register_static(&virtio_pci_bus_info);
     type_register_static(&virtio_pci_info);
-#ifdef CONFIG_VIRTFS
-    type_register_static(&virtio_9p_pci_info);
+    type_register_static(&virtio_input_pci_info);
+    type_register_static(&virtio_input_hid_pci_info);
+
+    /* Implementations: */
+    virtio_pci_types_register(&virtio_rng_pci_info);
+    virtio_pci_types_register(&virtio_keyboard_pci_info);
+    virtio_pci_types_register(&virtio_mouse_pci_info);
+    virtio_pci_types_register(&virtio_tablet_pci_info);
+#ifdef CONFIG_LINUX
+    virtio_pci_types_register(&virtio_host_pci_info);
 #endif
-    type_register_static(&virtio_blk_pci_info);
-    type_register_static(&virtio_scsi_pci_info);
-    type_register_static(&virtio_balloon_pci_info);
-    type_register_static(&virtio_serial_pci_info);
-    type_register_static(&virtio_net_pci_info);
+#ifdef CONFIG_VIRTFS
+    virtio_pci_types_register(&virtio_9p_pci_info);
+#endif
+    virtio_pci_types_register(&virtio_blk_pci_info);
+#if defined(CONFIG_VHOST_USER) && defined(CONFIG_LINUX)
+    virtio_pci_types_register(&vhost_user_blk_pci_info);
+#endif
+    virtio_pci_types_register(&virtio_scsi_pci_info);
+    virtio_pci_types_register(&virtio_balloon_pci_info);
+    virtio_pci_types_register(&virtio_serial_pci_info);
+    virtio_pci_types_register(&virtio_net_pci_info);
 #ifdef CONFIG_VHOST_SCSI
-    type_register_static(&vhost_scsi_pci_info);
+    virtio_pci_types_register(&vhost_scsi_pci_info);
+#endif
+#if defined(CONFIG_VHOST_USER) && defined(CONFIG_LINUX)
+    virtio_pci_types_register(&vhost_user_scsi_pci_info);
 #endif
 #ifdef CONFIG_VHOST_VSOCK
-    type_register_static(&vhost_vsock_pci_info);
+    virtio_pci_types_register(&vhost_vsock_pci_info);
 #endif
 }
 
