@@ -27,24 +27,37 @@ void uninit_plugin(void *);
 
 using namespace std;
 
+bool wrote_one = false;
 
-OsiModule* lookup_libname(target_ulong curpc, OsiModules* ms){
-    for (int i = 0; i < ms->num; i++){
-        if (curpc >= ms->module[i].base && curpc <= ms->module[i].base + ms->module[i].size){
+OsiModule* lookup_libname(target_ulong curpc, GArray* ms){
+    for (int i = 0; i < ms->len; i++){
+        OsiModule *mod = &g_array_index(ms, OsiModule, i);
+
+        if (curpc >= mod->base && curpc <= mod->base + mod->size){
             //we've found the module this belongs to
             //return name of module
-            return &ms->module[i];
+            return mod;
         }
     }
     return NULL;
 }
 
+
 void stringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
         uint8_t *matched_string, uint32_t matched_string_length, 
-        bool is_write, bool in_memory){
+        bool is_write, bool in_memory) {
+
+    if (!in_memory) {
+        fprintf(stderr, "Stringsearch match not in memory\n");
+        return;
+    }
+
+    if (wrote_one) {
+        return;
+    }
 
     std::ofstream crit_file("criteria", std::ios::app);
-    if (!crit_file.is_open()){
+    if (!crit_file.is_open()) {
             std::cout << "Error: stringsearch_match could not open crit_file!" << std::endl;
             exit(1);
     }           
@@ -52,11 +65,11 @@ void stringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
 
     OsiProc *current = get_current_process(env);
     // printf("proc name %s\n", current->name);
-    OsiModules *ms = get_libraries(env, current);
+    GArray *ms = get_libraries(env, current);
         
     target_ulong curpc = panda_current_pc(env);
 
-    if (ms == NULL){
+    if (ms == NULL) {
         lib = NULL;
     } else {
         lib = lookup_libname(curpc, ms);
@@ -74,8 +87,8 @@ void stringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
     printf("PC: " TARGET_FMT_lx "\n", pc);
     printf("Addr: " TARGET_FMT_lx "\n", addr);
 
-    printf("Adding range " TARGET_FMT_lx "-" TARGET_FMT_lx " to slice\n", addr-matched_string_length+1, addr+1);
-    crit_file << hex << "MEM_" << addr-matched_string_length+1 << "-" << addr+1 << endl;
+    printf("Adding range " TARGET_FMT_lx "-" TARGET_FMT_lx " to slice\n", addr, addr+matched_string_length);
+    crit_file << hex << "MEM_" << addr << "-" << addr+matched_string_length << endl;
 
     // Add rr_end for this match 
     crit_file << dec << "rr_end:" << rr_get_guest_instr_count() << endl;
@@ -84,12 +97,18 @@ void stringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
     printf("Curr instr %lu\n", curr_instr);
 
     crit_file.close();
+
+    wrote_one = true;
 }
 
 
 bool init_plugin(void *self) {
     panda_require("stringsearch");
+    panda_require("osi");
     if(!init_osi_api()) return false;
+
+    std::ofstream crit_file("criteria", std::ios::trunc);
+    crit_file.close();
 
     // panda_arg_list *args;  
 

@@ -65,6 +65,7 @@ struct fullstack {
     target_ulong pc;
     target_ulong asid;
     target_ulong string_addr;
+    uint64_t instr;
 };
 
 std::map<prog_point,fullstack> matchstacks;
@@ -111,6 +112,7 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                 f.pc = p.pc;
                 f.asid = p.cr3;
                 f.string_addr = addr;
+                f.instr = rr_get_guest_instr_count();
                 matchstacks[p] = f;
 
                 // Check if the full string is in memory.
@@ -247,6 +249,7 @@ void uninit_plugin(void *self) {
         for (int i = f.n-1; i >= 0; i--) {
             fprintf(mem_report, TARGET_FMT_lx " ", f.callers[i]);
         }
+        fprintf(mem_report, "instr: %lu ", f.instr);
         fprintf(mem_report, "pc: " TARGET_FMT_lx " ", f.pc);
         fprintf(mem_report, "asid: " TARGET_FMT_lx " ", f.asid);
         fprintf(mem_report, "addr: " TARGET_FMT_lx " ", f.string_addr);

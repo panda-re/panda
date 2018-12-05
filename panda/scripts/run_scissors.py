@@ -13,10 +13,10 @@ Arch = namedtuple('Arch', ['dir', 'binary', 'prompt', 'qcow', 'os', 'extra_files
 Arch.__new__.__defaults__ = (None,None)
 
 SUPPORTED_ARCHES = {
-    'i386': Arch('i386-softmmu', 'qemu-system-i386', "root@debian-i386:~#", "wheezy_panda2.qcow2", 'linux-32-lava32'),
+    'i386': Arch('i386-softmmu', 'qemu-system-i386', "root@debian-i386:~#", "wheezy_panda2.qcow2", 'linux-32-debian:3.2.0-4-686-pae'),
     'x86_64': Arch('x86_64-softmmu', 'qemu-system-x86_64', "root@debian-amd64:~#", "wheezy_x64.qcow2", 'windows-32-7'),
     # 'ppc': Arch('ppc-softmmu', 'qemu-system-ppc', "root@debian-powerpc:~#", "ppc_wheezy.qcow"),
-    'arm': Arch('arm-softmmu', 'qemu-system-arm', "root@debian-armel:~#", "arm_wheezy.qcow", 'linux-32-lava32',
+    'arm': Arch('arm-softmmu', 'qemu-system-arm', "root@debian-armel:~#", "arm_wheezy.qcow", 'linux-32-debian:3.2.0-4-686-pae',
         extra_files=['vmlinuz-3.2.0-4-versatile', 'initrd.img-3.2.0-4-versatile'],
         extra_args='-M versatilepb -append "root=/dev/sda1" -kernel {DOT_DIR}/vmlinuz-3.2.0-4-versatile -initrd {DOT_DIR}/initrd.img-3.2.0-4-versatile')
 }
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     instr_ranges = []
     with PLogReader("{}_asidstory_plog".format(args.process)) as plr:
         for i, m in enumerate(plr):
-            if m.asid_info.name in args.process:
+            if m.asid_info.name != "" and m.asid_info.name in args.process:
                 print m
                 instr_ranges.append((m.asid_info.start_instr, m.asid_info.end_instr))
             # IPython.embed()
@@ -105,8 +105,8 @@ if __name__ == "__main__":
     max_range =  max(instr_ranges, key=lambda pair: pair[0])
     # start_instr = max_range[0]
     # end_instr = max_range[1]
-    start_instr = instr_ranges[-1][0]
-    end_instr = instr_ranges[-1][1]
+    start_instr = instr_ranges[0][0]
+    end_instr = instr_ranges[0][1]
     print "start_instr", start_instr, "end_instr", end_instr
 
     scissors_args = "{} -replay {} -panda scissors:name={}_snipped,start={},end={}".format(m_args, args.replay, args.replay, start_instr, end_instr).split(" ")
