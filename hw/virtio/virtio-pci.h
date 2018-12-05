@@ -203,7 +203,7 @@ static inline void virtio_pci_disable_modern(VirtIOPCIProxy *proxy)
 /*
  * virtio-scsi-pci: This extends VirtioPCIProxy.
  */
-#define TYPE_VIRTIO_SCSI_PCI "virtio-scsi-pci"
+#define TYPE_VIRTIO_SCSI_PCI "virtio-scsi-pci-base"
 #define VIRTIO_SCSI_PCI(obj) \
         OBJECT_CHECK(VirtIOSCSIPCI, (obj), TYPE_VIRTIO_SCSI_PCI)
 
@@ -216,7 +216,7 @@ struct VirtIOSCSIPCI {
 /*
  * vhost-scsi-pci: This extends VirtioPCIProxy.
  */
-#define TYPE_VHOST_SCSI_PCI "vhost-scsi-pci"
+#define TYPE_VHOST_SCSI_PCI "vhost-scsi-pci-base"
 #define VHOST_SCSI_PCI(obj) \
         OBJECT_CHECK(VHostSCSIPCI, (obj), TYPE_VHOST_SCSI_PCI)
 
@@ -229,7 +229,7 @@ struct VHostSCSIPCI {
 /*
  * virtio-blk-pci: This extends VirtioPCIProxy.
  */
-#define TYPE_VIRTIO_BLK_PCI "virtio-blk-pci"
+#define TYPE_VIRTIO_BLK_PCI "virtio-blk-pci-base"
 #define VIRTIO_BLK_PCI(obj) \
         OBJECT_CHECK(VirtIOBlkPCI, (obj), TYPE_VIRTIO_BLK_PCI)
 
@@ -241,7 +241,7 @@ struct VirtIOBlkPCI {
 /*
  * virtio-balloon-pci: This extends VirtioPCIProxy.
  */
-#define TYPE_VIRTIO_BALLOON_PCI "virtio-balloon-pci"
+#define TYPE_VIRTIO_BALLOON_PCI "virtio-balloon-pci-base"
 #define VIRTIO_BALLOON_PCI(obj) \
         OBJECT_CHECK(VirtIOBalloonPCI, (obj), TYPE_VIRTIO_BALLOON_PCI)
 
@@ -253,7 +253,7 @@ struct VirtIOBalloonPCI {
 /*
  * virtio-serial-pci: This extends VirtioPCIProxy.
  */
-#define TYPE_VIRTIO_SERIAL_PCI "virtio-serial-pci"
+#define TYPE_VIRTIO_SERIAL_PCI "virtio-serial-pci-base"
 #define VIRTIO_SERIAL_PCI(obj) \
         OBJECT_CHECK(VirtIOSerialPCI, (obj), TYPE_VIRTIO_SERIAL_PCI)
 
@@ -265,7 +265,7 @@ struct VirtIOSerialPCI {
 /*
  * virtio-net-pci: This extends VirtioPCIProxy.
  */
-#define TYPE_VIRTIO_NET_PCI "virtio-net-pci"
+#define TYPE_VIRTIO_NET_PCI "virtio-net-pci-base"
 #define VIRTIO_NET_PCI(obj) \
         OBJECT_CHECK(VirtIONetPCI, (obj), TYPE_VIRTIO_NET_PCI)
 
@@ -280,7 +280,7 @@ struct VirtIONetPCI {
 
 #ifdef CONFIG_VIRTFS
 
-#define TYPE_VIRTIO_9P_PCI "virtio-9p-pci"
+#define TYPE_VIRTIO_9P_PCI "virtio-9p-pci-base"
 #define VIRTIO_9P_PCI(obj) \
         OBJECT_CHECK(V9fsPCIState, (obj), TYPE_VIRTIO_9P_PCI)
 
@@ -294,7 +294,7 @@ typedef struct V9fsPCIState {
 /*
  * virtio-rng-pci: This extends VirtioPCIProxy.
  */
-#define TYPE_VIRTIO_RNG_PCI "virtio-rng-pci"
+#define TYPE_VIRTIO_RNG_PCI "virtio-rng-pci-base"
 #define VIRTIO_RNG_PCI(obj) \
         OBJECT_CHECK(VirtIORngPCI, (obj), TYPE_VIRTIO_RNG_PCI)
 
@@ -329,7 +329,7 @@ struct VirtIOInputHIDPCI {
 
 #ifdef CONFIG_LINUX
 
-#define TYPE_VIRTIO_INPUT_HOST_PCI "virtio-input-host-pci"
+#define TYPE_VIRTIO_INPUT_HOST_PCI "virtio-input-host-pci-base"
 #define VIRTIO_INPUT_HOST_PCI(obj) \
         OBJECT_CHECK(VirtIOInputHostPCI, (obj), TYPE_VIRTIO_INPUT_HOST_PCI)
 
