@@ -35,7 +35,7 @@ for row in reader:
     fn_start = fn.startEA
     fn_name = GetFunctionName(fn_start)
     if "TAINTED" not in fn_name:
-        MakeName(fn_start, fn_name + "_TAINTED")
+        MakeName(fn_start, "TAINTED_" + fn_name)
     SetColor(pc, CIC_FUNC, FUNC_COLOR)
     SetColor(pc, CIC_ITEM, INST_COLOR)
 input_file.close()
