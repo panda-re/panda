@@ -7,7 +7,8 @@ import csv
 
 from PyQt5.QtWidgets import (QFileDialog, QInputDialog)
 
-COLOR = 0x55AAFF
+FUNC_COLOR = 0x90EE90
+INST_COLOR = 0x55AAFF
 
 filename, _ = QFileDialog.getOpenFileName(None, "Open file", ".",
     "CSV Files(*.csv)")
@@ -28,5 +29,13 @@ for row in reader:
     pc = int(row[1], 16)
     if pid != selected_pid:
         continue
-    SetColor(pc, CIC_ITEM, COLOR)
+    fn = idaapi.get_func(pc)
+    if not fn:
+        continue
+    fn_start = fn.startEA
+    fn_name = GetFunctionName(fn_start)
+    if "TAINTED" not in fn_name:
+        MakeName(fn_start, fn_name + "_TAINTED")
+    SetColor(pc, CIC_FUNC, FUNC_COLOR)
+    SetColor(pc, CIC_ITEM, INST_COLOR)
 input_file.close()
