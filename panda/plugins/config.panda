@@ -22,7 +22,6 @@ unigrams
 textprinter
 net
 network
-tainted_net
 filereadmon
-slice_stringsearch
 serial_taint
+slice_stringsearch
