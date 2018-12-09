@@ -4,10 +4,10 @@
 
 int main(int argc, char **argv) {
 
-    argv[0] = strdup("/home/tleek/pypanda/build/i386-softmmu/qemu-system-i386");
+    argv[0] = strdup("/home/luke/panda_luke_new/build/i386-softmmu/qemu-system-i386");
     panda_init(argc, argv, 0);
 
-    panda_replay("/home/tleek/tmp/toy/toy");
+    panda_replay("/home/luke/recordings/recording_in_new_panda");
 
     panda_run();
 }
