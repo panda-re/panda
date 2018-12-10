@@ -13,6 +13,5 @@ mkdir build
 cd build
 ../build.sh "$@"
 
-progress "PANDA is built and ready to use in panda/build/[arch]-softmmu/qemu-system-[arch]."
 cd ..
 gcc -g -o papi panda_api_sample.c ./build/i386-softmmu/libpanda-i386.so

@@ -666,6 +666,7 @@ void   panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void   panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void   panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void   panda_unregister_callbacks(void *plugin);
+bool panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr);
 bool   panda_load_plugin(const char *filename, const char *plugin_name);
 bool   panda_add_arg(const char *plugin_name, const char *plugin_arg);
 void * panda_get_plugin_by_name(const char *name);

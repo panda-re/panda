@@ -39,3 +39,49 @@ int panda_replay(char *replay_name) {
     return 0;
 //    return panda_run();
 }
+/*
+bool panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr) {
+    // don't load the same plugin twice
+    uint32_t i;
+    for (i=0; i<nb_panda_plugins_loaded; i++) {
+        if (0 == (strcmp(filename, panda_plugins_loaded[i]))) {
+            fprintf(stderr, PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, filename);
+            return true;
+        }
+    }
+    // NB: this is really a list of plugins for which we have started loading 
+    // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require  
+    panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(filename);
+    nb_panda_plugins_loaded ++;
+    void *plugin = plugin_uuid;//going to be a handle of some sort -> dlopen(filename, RTLD_NOW);
+    bool (*init_fn)(void *) = init_fn_ptr; //normally dlsym init_fun
+
+    // Populate basic plugin info *before* calling init_fn.
+    // This allows plugins accessing handles of other plugins before
+    // initialization completes. E.g. osi does a panda_require("win7x86intro"),
+    // and then win7x86intro does a PPP_REG_CB("osi", ...) while initializing.
+    panda_plugins[nb_panda_plugins].plugin = plugin;
+    if (plugin_name) {
+        strncpy(panda_plugins[nb_panda_plugins].name, plugin_name, 256);
+    } else {
+        char *pn = g_path_get_basename((char *) filename);
+        *g_strrstr(pn, HOST_DSOSUF) = '\0';
+        strncpy(panda_plugins[nb_panda_plugins].name, pn, 256);
+        g_free(pn);
+    }
+    nb_panda_plugins++;
+
+    // Call init_fn and check status.
+    fprintf(stderr, PANDA_MSG_FMT "initializing %s\n", PANDA_CORE_NAME, panda_plugins[nb_panda_plugins-1].name);
+    panda_help_wanted = false;
+    panda_args_set_help_wanted(plugin_name);
+    if (panda_help_wanted) {
+        printf("Options for plugin %s:\n", plugin_name);
+        fprintf(stderr, "PLUGIN              ARGUMENT                REQUIRED        DESCRIPTION\n");
+        fprintf(stderr, "======              ========                ========        ===========\n");
+    }
+    if(!init_fn(plugin) || panda_plugin_load_failed) {
+        return false;
+    }
+    return true;
+}*/
