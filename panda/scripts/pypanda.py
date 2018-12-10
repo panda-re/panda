@@ -80,22 +80,27 @@ class Panda:
         assert (not (bits == None))            
 
         # note: weird that we need panda as 1st arg to lib fn to init? 
-        self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath, "-os", os2osstring[the_os]]
+        self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath, "-os", os2osstring[the_os], self.qcow]
         cargs = strarr2c(self.panda_args)
         # start up panda!
         cenvp =  POINTER(c_int)()
 
-        print "Panda args: [" + (" ".join(self.panda_args)) + "]"
+        print("Panda args: [" + (" ".join(self.panda_args)) + "]")
         self.libpanda.panda_init(len(cargs), cargs, cenvp)
 
 
     def load_plugin(self, name, args=[]):
         if debug:
             progress ("Loading plugin %s" % name),
-            print "plugin args: [" + (" ".join(args)) + "]"
+            print("plugin args: [" + (" ".join(args)) + "]")
         n = len(args)
         cargs = strarr2c(args)
         self.libpanda.panda_init_plugin(create_string_buffer(name), cargs, n)
+
+	def load_python_plugin(self, name, plugin):
+		# plugin.init 
+		# load_python_plugin -> lep -> init -> capi_init(pcb) -> init -> lep -> load_python_plugin -> python
+		self.libpanda.panda_load_external_plugin(plugin.filename, plugin.name, plugin.uuid, plugin.init)
 
     def begin_replay(self, replaypfx):
         if debug:
@@ -108,12 +113,28 @@ class Panda:
         self.libpanda.panda_run()
 
 
+class Plugin:
+	def __init__(self, name,uuid):
+		self.name = name
+		self.uuid = uuid
+		self.filename = "C:/"+name
 
+class CoolPlugin(Plugin):
+	def __init__(self):
+		super("CoolPlugin",43)
+	def init(self, void*):
+		print("init in python")
+		panda_cb pcb = { .before_block_exec = self.before_block_execute };
+		panda_register_callback(void*, enum_value, pcb)
 
-panda = Panda()
+	def before_block_execute(self, a,b):
+		print("before block in python")
 
-panda.load_plugin("asidstory")
+panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img")
 
-panda.begin_replay("/home/tleek/tmp/toy/toy")
+#panda.load_plugin("asidstory")
+
+#panda.begin_replay("/home/recordings/this_is_a_recording")
+panda.run()
 
 
