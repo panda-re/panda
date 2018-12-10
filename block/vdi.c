@@ -228,7 +228,8 @@ static void vdi_header_to_le(VdiHeader *header)
 #if defined(CONFIG_VDI_DEBUG)
 static void vdi_header_print(VdiHeader *header)
 {
-    char uuid[37];
+    char uuidstr[37];
+    QemuUUID uuid;
     logout("text        %s", header->text);
     logout("signature   0x%08x\n", header->signature);
     logout("header size 0x%04x\n", header->header_size);
@@ -247,14 +248,18 @@ static void vdi_header_print(VdiHeader *header)
     logout("block extra 0x%04x\n", header->block_extra);
     logout("blocks tot. 0x%04x\n", header->blocks_in_image);
     logout("blocks all. 0x%04x\n", header->blocks_allocated);
-    uuid_unparse(header->uuid_image, uuid);
-    logout("uuid image  %s\n", uuid);
-    uuid_unparse(header->uuid_last_snap, uuid);
-    logout("uuid snap   %s\n", uuid);
-    uuid_unparse(header->uuid_link, uuid);
-    logout("uuid link   %s\n", uuid);
-    uuid_unparse(header->uuid_parent, uuid);
-    logout("uuid parent %s\n", uuid);
+    uuid = header->uuid_image;
+    qemu_uuid_unparse(&uuid, uuidstr);
+    logout("uuid image  %s\n", uuidstr);
+    uuid = header->uuid_last_snap;
+    qemu_uuid_unparse(&uuid, uuidstr);
+    logout("uuid snap   %s\n", uuidstr);
+    uuid = header->uuid_link;
+    qemu_uuid_unparse(&uuid, uuidstr);
+    logout("uuid link   %s\n", uuidstr);
+    uuid = header->uuid_parent;
+    qemu_uuid_unparse(&uuid, uuidstr);
+    logout("uuid parent %s\n", uuidstr);
 }
 #endif
 
@@ -362,6 +367,7 @@ static int vdi_open(BlockDriverState *bs, QDict *options, int flags,
     size_t bmap_size;
     int ret;
     Error *local_err = NULL;
+    QemuUUID uuid_link, uuid_parent;
 
     bs->file = bdrv_open_child(NULL, options, "file", bs, &child_file,
                                false, errp);
@@ -388,6 +394,9 @@ static int vdi_open(BlockDriverState *bs, QDict *options, int flags,
         ret = -ENOTSUP;
         goto fail;
     }
+
+    uuid_link = header.uuid_link;
+    uuid_parent = header.uuid_parent;
 
     if (header.disk_size % SECTOR_SIZE != 0) {
         /* 'VBoxManage convertfromraw' can create images with odd disk sizes.
@@ -437,11 +446,11 @@ static int vdi_open(BlockDriverState *bs, QDict *options, int flags,
                    (uint64_t)header.blocks_in_image * header.block_size);
         ret = -ENOTSUP;
         goto fail;
-    } else if (!qemu_uuid_is_null(&header.uuid_link)) {
+    } else if (!qemu_uuid_is_null(&uuid_link)) {
         error_setg(errp, "unsupported VDI image (non-NULL link UUID)");
         ret = -ENOTSUP;
         goto fail;
-    } else if (!qemu_uuid_is_null(&header.uuid_parent)) {
+    } else if (!qemu_uuid_is_null(&uuid_parent)) {
         error_setg(errp, "unsupported VDI image (non-NULL parent UUID)");
         ret = -ENOTSUP;
         goto fail;
@@ -730,6 +739,7 @@ static int vdi_create(const char *filename, QemuOpts *opts, Error **errp)
     Error *local_err = NULL;
     BlockBackend *blk = NULL;
     uint32_t *bmap = NULL;
+    QemuUUID uuid;
 
     logout("\n");
 
@@ -795,8 +805,10 @@ static int vdi_create(const char *filename, QemuOpts *opts, Error **errp)
     if (image_type == VDI_TYPE_STATIC) {
         header.blocks_allocated = blocks;
     }
-    qemu_uuid_generate(&header.uuid_image);
-    qemu_uuid_generate(&header.uuid_last_snap);
+    qemu_uuid_generate(&uuid);
+    header.uuid_image = uuid;
+    qemu_uuid_generate(&uuid);
+    header.uuid_last_snap = uuid;
     /* There is no need to set header.uuid_link or header.uuid_parent here. */
 #if defined(CONFIG_VDI_DEBUG)
     vdi_header_print(&header);
