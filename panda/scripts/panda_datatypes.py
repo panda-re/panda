@@ -574,12 +574,18 @@ class panda_cb(Union):
                                         #    point to the same callback function. In principle, any other
                                         #    member could be used instead.
                                         #    However, cbaddr provides neutral semantics for the comparisson.
-    
+
+
+class PandaState(Enum):
+    UNINT = 1
+    INIT_DONE = 2
+    IN_RECORD = 3
+    IN_REPLAY = 4   
     
 
-for val in cb_types:
-    print(val)
+#for val in cb_types:
+#    print(val)
 
-cb = panda_cb()
-cb.cbaddr = 3
-print (cb.cbaddr)
+#cb = panda_cb()
+#cb.cbaddr = 3
+#print (cb.cbaddr)

@@ -6,24 +6,17 @@ import os
 from ctypes import *
 from enum import Enum
 from colorama import Fore, Style
-
+from panda_datatypes import cb_types, panda_cb, PandaState
 debug = True
 
 
 def progress(msg):
     print Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
-#    print
 
 
 # location of panda build dir
 panda_build = realpath(pjoin(os.path.abspath(__file__), "../../../build"))
 home = os.getenv("HOME")
-
-class PandaState(Enum):
-    UNINT = 1
-    INIT_DONE = 2
-    IN_RECORD = 3
-    IN_REPLAY = 4
 
 
 def strarr2c(str_arr):
@@ -101,6 +94,9 @@ class Panda:
 		# plugin.init 
 		# load_python_plugin -> lep -> init -> capi_init(pcb) -> init -> lep -> load_python_plugin -> python
 		self.libpanda.panda_load_external_plugin(plugin.filename, plugin.name, plugin.uuid, plugin.init)
+	
+	def register_callback(handle, enum_value, pcb):
+		self.libpanda.panda_register_callback(handle, enum_value, pcb)
 
     def begin_replay(self, replaypfx):
         if debug:
@@ -114,27 +110,32 @@ class Panda:
 
 
 class Plugin:
-	def __init__(self, name,uuid):
+	def __init__(self,name,uuid):
 		self.name = name
 		self.uuid = uuid
-		self.filename = "C:/"+name
+		self.filename = "C:/"+name # extraneous
 
 class CoolPlugin(Plugin):
 	def __init__(self):
-		super("CoolPlugin",43)
-	def init(self, void*):
-		print("init in python")
-		panda_cb pcb = { .before_block_exec = self.before_block_execute };
-		panda_register_callback(void*, enum_value, pcb)
-
+		super(name="CoolPlugin",uuid=43).__init(t
+	def init(self, handle):
+		progress("init in python")
+		#	panda_cb pcb = { .before_block_exec = self.before_block_execute };
+		pcb = panda_cb()
+		pcb.before_block_execute = self.before_block_execute
+		panda_register_callback(handle, cb_types.PANDA_BEFORE_BLOCK_EXEC, pcb)
+		
 	def before_block_execute(self, a,b):
-		print("before block in python")
+		progress("before block in python")
 
 panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img")
 
 #panda.load_plugin("asidstory")
 
 #panda.begin_replay("/home/recordings/this_is_a_recording")
+
+cool_plugin = CoolPlugin()
+panda.load_python_plugin(cool_plugin)
 panda.run()
 
 
