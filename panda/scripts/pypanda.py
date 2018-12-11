@@ -11,7 +11,7 @@ debug = True
 
 
 def progress(msg):
-	print Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
+	print(Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL)
 
 
 # location of panda build dir
@@ -22,7 +22,7 @@ home = os.getenv("HOME")
 def strarr2c(str_arr):
 	c_str_arr = (POINTER(c_char) * len(str_arr))()
 	for ix,el in enumerate(str_arr):
-		c_str_arr[ix] = create_string_buffer(el)
+		c_str_arr[ix] = create_string_buffer(str.encode(el))
 	return c_str_arr
 
 
@@ -56,20 +56,21 @@ class Panda:
 				# this means we'll use arch / mem / os to find a qcow
 				self.qcow = pjoin(home, ".panda", "%s-%s-%s.qcow" % (the_os, arch, mem))
 			if not (os.path.exists(self.qcow)):
-				print "Missing qcow -- %s" % self.qcow
-				print "Please go create that qcow and give it to moyix!"
+				print("Missing qcow -- %s" % self.qcow)
+				print("Please go create that qcow and give it to moyix!")
 		self.bindir = pjoin(panda_build, "%s-softmmu" % arch)
 		self.panda = pjoin(self.bindir, "qemu-system-%s" % arch)
 		self.libpanda = CDLL(pjoin(self.bindir, "libpanda-%s.so" % arch), mode=RTLD_GLOBAL)
 		biospath = realpath(pjoin(self.panda, "..", "..", "pc-bios"))
-
+		self.libpanda.panda_register_callback.argtypes = [c_void_p,c_void_p, POINTER(panda_cb)]
+		self.libpanda.panda_register_callback.restype = None
 		bits = None
 		if self.arch == "i386":
 			bits = 32
 		elif self.arch == "x86_64":
 			bits = 64
 		else:
-			print "For arch %s: I need logic to figure out num bits"
+			print("For arch %s: I need logic to figure out num bits")
 		assert (not (bits == None))
 
 		# note: weird that we need panda as 1st arg to lib fn to init?
@@ -87,16 +88,19 @@ class Panda:
 			progress ("Loading plugin %s" % name),
 			print("plugin args: [" + (" ".join(args)) + "]")
 		n = len(args)
-		cargs = strarr2c(args)
+		cargs = [] #strarr2c(args)
 		self.libpanda.panda_init_plugin(create_string_buffer(name), cargs, n)
 
-	def load_python_plugin(self, name, plugin):
+	def load_python_plugin(self, plugin):
 		# plugin.init
 		# load_python_plugin -> lep -> init -> capi_init(pcb) -> init -> lep -> load_python_plugin -> python
-		self.libpanda.panda_load_external_plugin(plugin.filename, plugin.name, plugin.uuid, plugin.init)
+		func = CFUNCTYPE(c_int, c_void_p)(plugin.init)
+		self.libpanda.panda_load_external_plugin(plugin.filename, plugin.name, plugin.uuid, func)
 
-	def register_callback(handle, enum_value, pcb):
+	def register_callback(self, handle, enum_value, pcb):
+		progress("got to register_callback")
 		self.libpanda.panda_register_callback(handle, enum_value, pcb)
+		progress(" got to end of register_callback")
 
 	def begin_replay(self, replaypfx):
 		if debug:
@@ -117,16 +121,16 @@ class Plugin:
 
 class CoolPlugin(Plugin):
 	def __init__(self):
-		super(name="CoolPlugin",uuid=43).__init(t
-	def init(self, handle):
+		super().__init__("CoolPlugin", uuid=43)
+	def init(self, handle):	
 		progress("init in python")
 		# panda_cb pcb = { .before_block_exec = self.before_block_execute };
 		pcb = panda_cb()
-		pcb.before_block_execute = self.before_block_execute
-		panda_register_callback(handle, cb_types.PANDA_BEFORE_BLOCK_EXEC, pcb)
+		pcb.before_block_execute = before_block_execute
+		panda.register_callback(handle, 1, pcb)
 
-	def before_block_execute(self, a,b):
-		progress("before block in python")
+def before_block_execute(a,b):
+	progress("before block in python")
 
 panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img")
 
@@ -136,4 +140,5 @@ panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img")
 
 cool_plugin = CoolPlugin()
 panda.load_python_plugin(cool_plugin)
+progress("here")
 panda.run()

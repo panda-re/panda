@@ -288,12 +288,12 @@ void *panda_get_plugin_by_name(const char *plugin_name) {
  */
 void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
     panda_cb_list *plist_last = NULL;
-
+	printf("%p \n", cb.before_block_exec);
     panda_cb_list *new_list = g_new0(panda_cb_list, 1);
     new_list->entry = cb;
     new_list->owner = plugin;
     new_list->enabled = true;
-
+	printf("%d\n", type);
     if(panda_cbs[type] != NULL) {
         for(panda_cb_list *plist = panda_cbs[type]; plist != NULL; plist = plist->next) {
             // the same plugin can register the same callback function only once
