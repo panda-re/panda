@@ -6,6 +6,7 @@
 
 void qemu_rr_quit_timers(void);
 //void qemu_cpu_kick(CPUState *cpu);
+void panda_register_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 
 int panda_init(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_INIT);
@@ -30,6 +31,11 @@ int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args) 
         panda_add_arg(plugin_name, plugin_args[i]);
     char *plugin_path = panda_plugin_path((const char *) plugin_name);
     return panda_load_plugin(plugin_path, plugin_name);
+}
+void panda_register_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb) {
+	panda_cb cb_copy;
+	memcpy(&cb_copy,cb, sizeof(panda_cb));
+	panda_register_callback(plugin, type, cb_copy);
 }
 
 // initiate replay 

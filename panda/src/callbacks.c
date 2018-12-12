@@ -289,6 +289,8 @@ void *panda_get_plugin_by_name(const char *plugin_name) {
 void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
     panda_cb_list *plist_last = NULL;
 	printf("%p \n", cb.before_block_exec);
+	//void (*call_fnct)(void*, void*) = (void*)cb.before_block_exec;
+	//call_fnct(plugin, (void*)type);
     panda_cb_list *new_list = g_new0(panda_cb_list, 1);
     new_list->entry = cb;
     new_list->owner = plugin;

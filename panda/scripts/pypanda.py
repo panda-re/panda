@@ -7,6 +7,7 @@ from ctypes import *
 from enum import Enum
 from colorama import Fore, Style
 from panda_datatypes import *
+
 debug = True
 
 
@@ -62,8 +63,8 @@ class Panda:
 		self.panda = pjoin(self.bindir, "qemu-system-%s" % arch)
 		self.libpanda = CDLL(pjoin(self.bindir, "libpanda-%s.so" % arch), mode=RTLD_GLOBAL)
 		biospath = realpath(pjoin(self.panda, "..", "..", "pc-bios"))
-		self.libpanda.panda_register_callback.argtypes = [c_void_p,c_void_p, POINTER(panda_cb)]
-		self.libpanda.panda_register_callback.restype = None
+		self.libpanda.panda_register_callback_helper.argtypes = [c_void_p,c_void_p, POINTER(panda_cb)]
+		self.libpanda.panda_register_callback_helper.restype = None
 		bits = None
 		if self.arch == "i386":
 			bits = 32
@@ -94,12 +95,15 @@ class Panda:
 	def load_python_plugin(self, plugin):
 		# plugin.init
 		# load_python_plugin -> lep -> init -> capi_init(pcb) -> init -> lep -> load_python_plugin -> python
-		func = CFUNCTYPE(c_int, c_void_p)(plugin.init)
+		func = CFUNCTYPE(c_void_p, c_void_p)(plugin.init)
+		print("CASTED" + " "+str(cast(func,c_void_p)))
+		dir(cast(func,c_void_p))
 		self.libpanda.panda_load_external_plugin(plugin.filename, plugin.name, plugin.uuid, func)
 
-	def register_callback(self, handle, enum_value, pcb):
+	def register_callback(self, handle, enum_value, function):
 		progress("got to register_callback")
-		self.libpanda.panda_register_callback(handle, enum_value, pcb)
+		pcb = ffi.new("panda_cb *", {"before_block_exec":function})
+		self.libpanda.panda_register_callback_helper(handle, enum_value, pcb)
 		progress(" got to end of register_callback")
 
 	def begin_replay(self, replaypfx):
@@ -122,15 +126,18 @@ class Plugin:
 class CoolPlugin(Plugin):
 	def __init__(self):
 		super().__init__("CoolPlugin", uuid=43)
-	def init(self, handle):	
-		progress("init in python")
-		# panda_cb pcb = { .before_block_exec = self.before_block_execute };
-		pcb = panda_cb()
-		pcb.before_block_execute = before_block_execute
-		panda.register_callback(handle, 1, pcb)
 
-def before_block_execute(a,b):
-	progress("before block in python")
+	def init(self, handle):	
+		progress("init in python. handle="+str(handle))
+		print(self.name)
+		# panda_cb pcb = { .before_block_exec = self.before_block_execute };
+#		pcb = panda_cb()
+#		pcb.before_block_translate = 0x242424242
+		panda.register_callback(handle, 3, self.before_block_execute)
+	@ffi.callback("int(int*, int*)")
+	def before_block_execute(self, a,b):
+		progress("before block in python")
+		return 0
 
 panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img")
 
@@ -141,4 +148,4 @@ panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img")
 cool_plugin = CoolPlugin()
 panda.load_python_plugin(cool_plugin)
 progress("here")
-panda.run()
+#panda.run()
