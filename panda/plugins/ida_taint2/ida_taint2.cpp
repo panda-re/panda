@@ -71,13 +71,18 @@ void taint_state_changed(Addr a, uint64_t size)
     PidPcPair p;
     p.pc = first_cpu->panda_guest_pc;
     p.pid = 0;
+    char *process_name = NULL;
     if (false == panda_in_kernel(first_cpu)) {
         OsiProc *proc = get_current_process(first_cpu);
         p.pid = proc ? proc->pid : 0;
 
+        process_name = g_strdup(proc->name);
+
         if (proc) {
             free_osiproc(proc);
         }
+    } else {
+        process_name = g_strdup("(kernel)");
     }
 
     // Figure out which entries are tainted.
@@ -92,7 +97,12 @@ void taint_state_changed(Addr a, uint64_t size)
     if (num_tainted && seen.find(p) == seen.end()) {
         seen.insert(p);
 
-        fprintf(pidpclog, "%lu,0x%lX\n", (uint64_t)p.pid, (uint64_t)p.pc);
+        fprintf(pidpclog, "%s,%lu,0x%lX\n", process_name, (uint64_t)p.pid,
+                (uint64_t)p.pc);
+    }
+
+    if (NULL != process_name) {
+        g_free(process_name);
     }
 }
 
@@ -119,7 +129,7 @@ bool init_plugin(void *self)
 
     // Open up a CSV file and write the header.
     pidpclog = fopen(filename, "w");
-    fprintf(pidpclog, "pid,pc\n");
+    fprintf(pidpclog, "process name,pid,pc\n");
 
     return true;
 }
