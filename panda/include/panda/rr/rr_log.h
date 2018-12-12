@@ -55,6 +55,8 @@ void rr_cpu_physical_memory_unmap_record(hwaddr addr, uint8_t* buf,
                                          hwaddr len, int is_write);
 void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
                                   int len, int is_write);
+void rr_device_mem_unmap_call_record(hwaddr addr, const uint8_t* buf,
+                                  int len, int is_write);
 void rr_mem_region_change_record(hwaddr start_addr, uint64_t size,
                                  const char *name, RR_mem_type mtype, bool added);
 void rr_mem_region_transaction_record(bool begin);

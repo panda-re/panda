@@ -481,9 +481,21 @@ static inline void rr_record_skipped_call(RR_skipped_call_args args) {
     });
 }
 
+void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
+                                  int len, int is_write) {
+    rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_CALL_CPU_MEM_RW,
+        .variant.cpu_mem_rw_args = {
+            .addr = addr,
+            .buf = (uint8_t *)buf,
+            .len = len
+        }
+    });
+}
+
 // bdg Record the memory modified during a call to
 // address_space_map/unmap.
-void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
+void rr_device_mem_unmap_call_record(hwaddr addr, const uint8_t* buf,
                                   int len, int is_write) {
     rr_record_skipped_call((RR_skipped_call_args) {
         .kind = RR_CALL_CPU_MEM_UNMAP,
@@ -494,6 +506,7 @@ void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
         }
     });
 }
+
 
 static inline uint32_t rr_chunked_crc32(void *ptr, size_t len) {
     uint32_t crc = crc32(0, Z_NULL, 0);
