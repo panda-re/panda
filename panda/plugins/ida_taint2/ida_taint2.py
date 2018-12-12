@@ -108,5 +108,9 @@ for pc, labels in labels_for_pc.iteritems():
     comment = Comment(pc)
     if not comment:
         comment = ""
-    comment = "taint labels = {}".format(list(labels)) + "" if comment == "" else ", " + comment
+    label_portion = "taint labels = {}".format(list(labels))
+    if comment == "":
+        comment = label_portion
+    else:
+        comment += ", " + label_portion
     MakeComm(pc, comment)
