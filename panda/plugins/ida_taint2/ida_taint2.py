@@ -1,6 +1,5 @@
 """
-IDAPython Script to load ida_taint2 data and colorize instructiions that
-maninpulate tainted data.
+IDAPython Script to ingest an ida_taint2 report.
 """
 
 import csv
@@ -82,11 +81,13 @@ if not selected_pid:
 
 input_file = open(filename, "r")
 reader = csv.reader(input_file)
+labels_for_pc = {}
 # skip header
 next(reader, None)
 for row in reader:
     pid = int(row[1])
     pc = int(row[2], 16)
+    label = int(row[3], 16)
     if pid != selected_pid:
         continue
     fn = idaapi.get_func(pc)
@@ -98,4 +99,14 @@ for row in reader:
         MakeName(fn_start, "TAINTED_" + fn_name)
     SetColor(pc, CIC_FUNC, FUNC_COLOR)
     SetColor(pc, CIC_ITEM, INST_COLOR)
+    if pc not in labels_for_pc:
+        labels_for_pc[pc] = set()
+    labels_for_pc[pc].add(label)
 input_file.close()
+
+for pc, labels in labels_for_pc.iteritems():
+    comment = Comment(pc)
+    if not comment:
+        comment = ""
+    comment = "taint labels = {}".format(list(labels)) + "" if comment == "" else ", " + comment
+    MakeComm(pc, comment)
