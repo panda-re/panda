@@ -121,6 +121,7 @@ extern void rr_signal_disagreement(RR_prog_point current,
         ACTION(RR_CALL_SERIAL_READ),    /* read byte from serial rx fifo */    \
         ACTION(RR_CALL_SERIAL_SEND),    /* send byte on serial port */         \
         ACTION(RR_CALL_SERIAL_WRITE),   /* write byte to serial tx fifo */     \
+        ACTION(RR_CALL_CPU_REG_WRITE),   /* */     \
         ACTION(RR_CALL_LAST)
 
 typedef enum {
