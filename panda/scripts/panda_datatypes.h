@@ -733,4 +733,10 @@ char** str_split(char* a_str, const char a_delim);
 
 char *panda_plugin_path(const char *name);
 void panda_require(const char *plugin_name);
+int panda_init(int argc, char **argv, char **envp);
+int panda_run(void);
+int panda_finish(void);
+int panda_init_plugin(char *plugin_name, char ** plugin_args, uint32_t num_args);
+void panda_register_callback_helper(void* plugin, panda_cb_type type, panda_cb* cb);
+int panda_replay(char *replay_name);
 
