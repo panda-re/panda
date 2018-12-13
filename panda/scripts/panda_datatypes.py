@@ -583,24 +583,31 @@ class PandaState(Enum):
 	IN_REPLAY = 4
 
 
-#for val in cb_types:
-#	print(val)
-
-#cb = panda_cb()
-#cb.cbaddr = 3
-#print (cb.cbaddr)
 
 from cffi import FFI
 ffi = FFI()
 
-ffi.cdef(open("./pypanda_datatypes.h").read())
 ffi.cdef('''
-#include "pypanda_datatypes.h"
-extern "Python" bool function_called(void*, void*);
 void panda_register_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb);
 ''')
+ffi.set_source("_panda_cffi",
+"""
+#include "panda_datatypes.h"
+""")
+if __name__ == "__main__":
+	ffibuilder.compile(verbose=True)
 
 
+
+
+
+
+
+
+
+
+
+#example code
 #@ffi.callback("int(int*, int*)")
 #def function_called(a,b,c,d):
 #	print("o")
