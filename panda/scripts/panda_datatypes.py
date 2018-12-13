@@ -593,14 +593,7 @@ class PandaState(Enum):
 from cffi import FFI
 ffi = FFI()
 
-ffi.cdef(open("./pypanda_datatypes.h").read())
-ffi.cdef('''
-#include "pypanda_datatypes.h"
-extern "Python" bool function_called(void*, void*);
-void panda_register_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb);
-''')
-
-
+ffi.cdef(open("./panda_datatypes.h").read())
 #@ffi.callback("int(int*, int*)")
 #def function_called(a,b,c,d):
 #	print("o")
@@ -610,6 +603,7 @@ void panda_register_callback_helper(void *plugin, panda_cb_type type, panda_cb* 
 
 
 
+#extern "Python" bool function_called(void*, void*);
 
 
 
