@@ -60,6 +60,7 @@ MAX_GENERIC_SYSCALL = 1023
 # Generated files will contain definitions for multiple architectures in guarded #ifdef blocks.
 GENERATED_FILES = [
     ('syscalls_ext_typedefs.tpl', '.h'),
+    ('syscall_numbers.tpl', '.h'),
     ('syscall_ppp_register_enter.tpl', '.cpp'),
     ('syscall_ppp_register_return.tpl', '.cpp'),
     ('syscall_ppp_boilerplate_enter.tpl', '.cpp'),
