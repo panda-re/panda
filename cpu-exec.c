@@ -70,6 +70,9 @@ typedef struct SyncClocks {
 // running more than once
 bool panda_bb_invalidate_done = false;
 
+// Whether or not a block has actually run since cpu_exec was last entered
+bool ranBlockSinceEnter = false;
+
 static void align_clocks(SyncClocks *sc, const CPUState *cpu)
 {
     int64_t cpu_icount;
@@ -198,6 +201,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 #endif // CONFIG_LLVM
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
+    ranBlockSinceEnter = true;
 
     panda_callbacks_after_block_exec(cpu, itb);
 
@@ -728,7 +732,9 @@ int cpu_exec(CPUState *cpu)
 
     rcu_read_lock();
 
+    ranBlockSinceEnter = false;
     cc->cpu_exec_enter(cpu);
+    panda_callbacks_after_cpu_exec_enter(cpu);
 
     /* Calculate difference between guest clock and host clock.
      * This delay includes the delay of the last cycle, so
@@ -823,6 +829,7 @@ int cpu_exec(CPUState *cpu)
         }
     }
 
+    panda_callbacks_before_cpu_exec_exit(cpu, ranBlockSinceEnter);
     cc->cpu_exec_exit(cpu);
     rcu_read_unlock();
 
