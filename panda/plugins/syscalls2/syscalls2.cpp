@@ -25,6 +25,7 @@ PANDAENDCOMMENT */
 #include <memory>
 #include <vector>
 #include <iostream>
+#include <sstream>
 
 #include "syscalls2.h"
 #include "syscalls2_info.h"
@@ -459,6 +460,9 @@ void registerExecPreCallback(void (*callback)(CPUState*, target_ulong)){
     preExecCallbacks.push_back(callback);
 }
 
+extern const syscall_info_t *syscall_info;
+extern const syscall_meta_t *syscall_meta;
+
 /**
  * @brief Map holding the context of ongoing system calls. An unfinished
  * system call can be uniquely identified by its return address and the
@@ -473,15 +477,37 @@ context_map_t running_syscalls;
  * @brief Checks if the translation block that is about to be executed
  * matches the return address of an executing system call.
  */
+#define SYSCALL_RETURN_DEBUG
 static int tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
     auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
-    size_t ctx_count = running_syscalls.count(k);
-    if (ctx_count > 0) {
-        assert(ctx_count == 1);
-        syscall_ctx_t &ctx = running_syscalls[k];
-        syscalls_profile->return_switch(cpu, tb->pc, &ctx);
-        running_syscalls.erase(k);
+    auto ctxi = running_syscalls.find(k);
+    int UNUSED(no) = -1;
+    if (ctxi != running_syscalls.end()) {
+        syscall_ctx_t *ctx = &ctxi->second;
+        no = ctx->no;
+        syscalls_profile->return_switch(cpu, tb->pc, ctx);
+        running_syscalls.erase(ctxi);
     }
+#if defined(SYSCALL_RETURN_DEBUG)
+    if (no >= 0) {
+        context_map_t &rs = running_syscalls;
+        const syscall_info_t *si = syscall_info;
+        const syscall_meta_t *sm = syscall_meta;
+        std::stringstream ss;
+        ss << "{";
+        for (auto ctxi = rs.begin(); ctxi != rs.end(); ++ctxi) {
+            syscall_ctx_t *ctx = &ctxi->second;
+            ss << " ";
+            if (si == NULL || ctx->no > sm->max_generic) { ss << ctx->no; }
+            else { ss << si[ctx->no].name; }
+            ss << ",";
+        }
+        ss.seekp(-1, ss.cur);
+        ss << " }";
+        LOG_DEBUG("returned: %s", (no > sm->max_generic ? "N/A" : si[no].name));
+        LOG_DEBUG("remaining %zu: %s", rs.size(), ss.str().c_str());
+    }
+#endif
     return 0;
 }
 #endif
