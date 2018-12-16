@@ -42,6 +42,7 @@ class Panda:
 		self.arch = arch
 		self.mem = mem
 		self.os = the_os
+		self.static_var = 0
 		self.qcow = qcow
 		if qcow is None:
 			# this means we wont be using a qcow -- replay only presumably
@@ -132,4 +133,27 @@ class Panda:
 			return env.msr_pr
 		else:
 			print("in_kernel() not implemented for target architecture.")
+		return 0
+	
+	def current_sp(self, cpustate): # under construction
+		if self.arch == "i386":
+			if self.in_kernel(cpustate):
+				'''			
+				probably an enum at some point here.
+				#define R_EAX 0
+				#define R_ECX 1
+				#define R_EDX 2
+				#define R_EBX 3
+				#define R_ESP 4
+				#define R_EBP 5
+				#define R_ESI 6
+				#define R_EDI 7
+				'''
+				R_ESP = 4
+				return cpustate.env_ptr.regs[R_ESP]
+	#		else:
+	#			esp0 = 4
+	#			tss_base = env.tr.base + esp0
+	#			kernel_esp = 0
+	#			self.virtual_memory_rw(cpustate, tss_base, 
 		return 0
