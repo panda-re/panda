@@ -7,6 +7,8 @@ from enum import Enum
 from colorama import Fore, Style
 from panda_datatypes import *
 from random import randint
+import pdb
+
 debug = True
 pyp = ffi
 
@@ -54,7 +56,7 @@ class Panda:
 		self.bindir = pjoin(panda_build, "%s-softmmu" % arch)
 		self.panda = pjoin(self.bindir, "qemu-system-%s" % arch)
 		self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % arch))
-		biospath = realpath(pjoin(self.panda,"..", "..", "..", "pc-bios"))
+		biospath = realpath(pjoin(self.panda,"..", "..",  "pc-bios"))
 		bits = None
 		if self.arch == "i386":
 			bits = 32
@@ -76,6 +78,17 @@ class Panda:
 		self.libpanda.panda_init(len_cargs, self.panda_args_ffi, cenvp)
 
 
+	def run(self):
+		if debug:
+			progress ("Running")
+		self.libpanda.panda_run()
+
+	def begin_replay(self, replaypfx):
+		if debug:
+			progress ("Replaying %s" % replaypfx)
+		charptr = ffi.new("char[]",bytes(replaypfx,"utf-8")) 
+		self.libpanda.panda_replay(charptr)
+
 	def load_plugin(self, name, args=[]):
 		if debug:
 			progress ("Loading plugin %s" % name),
@@ -83,6 +96,7 @@ class Panda:
 		n = len(args)
 		cargs = []
 		self.libpanda.panda_init_plugin(create_string_buffer(name), cargs, n)
+
 
 	def load_python_plugin(self, init_function, name):
 		ffi.cdef("""
@@ -94,18 +108,28 @@ class Panda:
 		uid_ffi = ffi.cast("void*",randint(0,0xffffffff))
 		self.libpanda.panda_load_external_plugin(filename_ffi, name_ffi, uid_ffi, init_ffi)
 
+
 	def register_callback(self, handle, name, number, function):
 		pcb = ffi.new("panda_cb *", {name:function})
 		self.libpanda.panda_register_callback_helper(handle, number, pcb)
 		if debug:
 			progress("registered callback for type: %s" %name)
-
-	def begin_replay(self, replaypfx):
-		if debug:
-			progress ("Replaying %s" % replaypfx)
-		self.libpanda.panda_replay(create_string_buffer(replaypfx))
-
-	def run(self):
-		if debug:
-			progress ("Running")
-		self.libpanda.panda_run()
+	
+	def require(self, plugin):
+		charptr = pyp.new("char[]", bytes(plugin,"utf-8"))
+		self.libpanda.panda_require(charptr)
+	
+	def in_kernel(self, cpustate):
+#		pdb.set_trace()
+		if self.arch == "i386":
+			cpu = cpustate.env_ptr #ffi.cast("CPUX86State*", cpustate.env_ptr)S
+			HF_CPL_SHIFT = 0
+			HF_CPL_MASK = 3 << HF_CPL_SHIFT
+			return (cpu.hflags & HF_CPL_SHIFT) == 0 
+		elif self.arch == "arm":
+			return env.regs[13]
+		elif self.arch == "ppc":
+			return env.msr_pr
+		else:
+			print("in_kernel() not implemented for target architecture.")
+		return 0

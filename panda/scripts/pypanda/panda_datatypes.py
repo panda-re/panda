@@ -3,9 +3,11 @@ from ctypes import *
 
 from cffi import FFI
 ffi = FFI()
-ffi.cdef(open("./pthreadtypes.h").read())
-ffi.cdef(open("./panda_qemu_support.h").read())
-ffi.cdef(open("./panda_datatypes.h").read())
+ffi.cdef("typedef uint32_t target_ulong;")
+ffi.cdef(open("./include/pthreadtypes.h").read())
+ffi.cdef(open("./include/panda_x86_support.h").read())
+ffi.cdef(open("./include/panda_qemu_support.h").read())
+ffi.cdef(open("./include/panda_datatypes.h").read())
 class PandaState(Enum):
 	UNINT = 1
 	INIT_DONE = 2
