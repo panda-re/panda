@@ -3,7 +3,7 @@ from ctypes import *
 
 from cffi import FFI
 ffi = FFI()
-
+ffi.cdef(open("./pthreadtypes.h").read())
 ffi.cdef(open("./panda_qemu_support.h").read())
 ffi.cdef(open("./panda_datatypes.h").read())
 class PandaState(Enum):

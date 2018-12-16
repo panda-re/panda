@@ -1,24 +1,4 @@
 /**
- * ObjectClass:
- *
- * The base for all classes.  The only thing that #ObjectClass contains is an
- * integer type handle.
- */
-struct ObjectClass
-{
-    /*< private >*/
-    Type type;
-    GSList *interfaces;
-
-    const char *object_cast_cache[OBJECT_CLASS_CAST_CACHE];
-    const char *class_cast_cache[OBJECT_CLASS_CAST_CACHE];
-
-    ObjectUnparent *unparent;
-
-    GHashTable *properties;
-};
-
-/**
  * Object:
  *
  * The base for all objects.  The first member of this object is a pointer to
@@ -33,11 +13,11 @@ struct ObjectClass
 struct Object
 {
     /*< private >*/
-    ObjectClass *klass;
-    ObjectFree *free;
-    GHashTable *properties;
+    void* klass; //ObjectClass *klass;
+    void* free; //ObjectFree *free;
+    void* properties; //GHashTable *properties;
     uint32_t ref;
-    Object *parent;
+    void* parent;
 };
 
 
@@ -50,23 +30,47 @@ struct Object
  */
 struct DeviceState {
     /*< private >*/
-    Object parent_obj;
+    struct Object parent_obj;
     /*< public >*/
     
     const char *id;
     bool realized;
     bool pending_deleted_event;
-    QemuOpts *opts;
+    void* opts; //QemuOpts *opts;
     int hotplugged;
-    BusState *parent_bus;
-    QLIST_HEAD(, NamedGPIOList) gpios;
-    QLIST_HEAD(, BusState) child_bus;
+    void* parent_bus; //BusState *parent_bus;
+    void* gpios; //QLIST_HEAD(, NamedGPIOList) gpios;
+    void* child_bus; //QLIST_HEAD(, BusState) child_bus;
     int num_child_bus;
     int instance_id_alias;
     int alias_required_for_version;
 };
 
+typedef struct {
+  int __flags;			/* XXX - long might give better alignment */
+  long __mask;			/* must have size >= sizeof(sigset_t) */
+//#if (_SETJMP_SAVES_REGS == 0)
+// _PROTOTYPE(void (*__pc),(void));	/* program counter */
+//  void *__sp;			/* stack pointer */
+//  void *__lb;			/* local base (ACKspeak for frame pointer) */
+//#else
+  void *__regs[16];		/* size is machine dependent */
+//#endif
+} jmp_buf[1];
+typedef jmp_buf sigjmp_buf;
 
+struct QemuMutex {
+	pthread_mutex_t lock;
+};
+
+typedef struct icount_decr_u16 {
+    uint16_t low;
+    uint16_t high;
+} icount_decr_u16;
+typedef struct QemuMutex QemuMutex;
+typedef uint64_t vaddr;
+#define TB_JMP_CACHE_BITS 12
+#define TB_JMP_CACHE_SIZE 4096 // 1<<12
 /**
  * CPUState:
  * @cpu_index: CPU index (informative).
@@ -116,17 +120,17 @@ struct DeviceState {
  */
 	struct CPUState {
 	    /*< private >*/
-	    DeviceState parent_obj;
+	    struct DeviceState parent_obj; //DeviceState parent_obj;
 	    /*< public >*/
 
 	    int nr_cores;
 	    int nr_threads;
 	    int numa_node;
 
-	    struct QemuThread *thread;
-	#ifdef _WIN32
-	    HANDLE hThread;
-	#endif
+	    void* thread; //struct QemuThread *thread;
+//	#ifdef _WIN32
+//	    HANDLE hThread;
+//	#endif
 	    int thread_id;
 	    uint32_t host_tid;
 	    bool running, has_waiter;
@@ -146,26 +150,25 @@ struct DeviceState {
 	    QemuMutex work_mutex;
 	    struct qemu_work_item *queued_work_first, *queued_work_last;
 
-	    CPUAddressSpace *cpu_ases;
+	    void* cpu_ases; //CPUAddressSpace *cpu_ases;
 	    int num_ases;
-	    AddressSpace *as;
-	    MemoryRegion *memory;
+	    void* as; //AddressSpace *as;
+	    void* memory; //MemoryRegion *memory;
 
 	    void *env_ptr; /* CPUArchState */
 
 	    /* Writes protected by tb_lock, reads not thread-safe  */
-	    struct TranslationBlock *tb_jmp_cache[TB_JMP_CACHE_SIZE];
-
+	    void* tb_jmp_cache[TB_JMP_CACHE_SIZE]; //struct TranslationBlock *tb_jmp_cache[TB_JMP_CACHE_SIZE];
 	    struct GDBRegisterState *gdb_regs;
 	    int gdb_num_regs;
 	    int gdb_num_g_regs;
-	    QTAILQ_ENTRY(CPUState) node;
+	    void* node; //QTAILQ_ENTRY(CPUState) node;
 
 	    /* ice debug support */
-	    QTAILQ_HEAD(breakpoints_head, CPUBreakpoint) breakpoints;
+	    void* breakpoints; //QTAILQ_HEAD(breakpoints_head, CPUBreakpoint) breakpoints;
 
-	    QTAILQ_HEAD(watchpoints_head, CPUWatchpoint) watchpoints;
-	    CPUWatchpoint *watchpoint_hit;
+	    void* watchpoints; //QTAILQ_HEAD(watchpoints_head, CPUWatchpoint) watchpoints;
+	    void* watchpoint_hit; //CPUWatchpoint *watchpoint_hit;
 	    bool watchpoints_disabled;
 
 	    void *opaque;
@@ -218,5 +221,6 @@ struct DeviceState {
 	    uint32_t tcg_exit_req;
 
 	    bool hax_vcpu_dirty;
-	    struct hax_vcpu_state *hax_vcpu;
+	    void* hax_vcpu; //struct hax_vcpu_state *hax_vcpu;
 	};
+typedef struct CPUState CPUState;

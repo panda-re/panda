@@ -15,7 +15,7 @@ def progress(msg):
 
 
 # location of panda build dir
-panda_build = realpath(pjoin(os.path.abspath(__file__), "../../../build"))
+panda_build = realpath(pjoin(os.path.abspath(__file__), "../../../../build"))
 home = os.getenv("HOME")
 
 
@@ -54,7 +54,7 @@ class Panda:
 		self.bindir = pjoin(panda_build, "%s-softmmu" % arch)
 		self.panda = pjoin(self.bindir, "qemu-system-%s" % arch)
 		self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % arch))
-		biospath = realpath(pjoin(self.panda, "..", "..", "pc-bios"))
+		biospath = realpath(pjoin(self.panda,"..", "..", "..", "pc-bios"))
 		bits = None
 		if self.arch == "i386":
 			bits = 32
