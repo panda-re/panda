@@ -100,6 +100,7 @@ class Panda:
 
 
 	def load_python_plugin(self, init_function, name):
+#		pdb.set_trace()
 		ffi.cdef("""
 		extern "Python" bool init(void*);		
 		""")

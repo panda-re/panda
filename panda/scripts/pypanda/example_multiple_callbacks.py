@@ -7,13 +7,13 @@ def init(handle):
 	panda.register_callback(handle, "after_block_exec", 4, after_block_execute)
 	return True
 
-@pyp.callback("int(int*, int*)")
+@pyp.callback("int(CPUState*, TranslationBlock*)")
 def before_block_execute(a,b):
 	progress("before block in python")
 	sleep(sleeptime)
 	return 0
 
-@pyp.callback("int(int*,int*)")
+@pyp.callback("int(CPUState*,TranslationBlock*)")
 def after_block_execute(a,b):
 	progress("after block in python")
 	sleep(sleeptime)
