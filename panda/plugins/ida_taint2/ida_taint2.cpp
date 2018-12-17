@@ -102,7 +102,7 @@ void taint_state_changed(Addr a, uint64_t size)
                 report.label = labels[j];
                 if (seen.find(report) == seen.end()) {
                     seen.insert(report);
-                    fprintf(pidpclog, "%s,%lu,0x%lX,0x%X\n", process_name,
+                    fprintf(pidpclog, "%s,%lu,0x%lX,%u\n", process_name,
                             (uint64_t)report.pid, (uint64_t)report.pc,
                             report.label);
                 }

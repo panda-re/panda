@@ -87,7 +87,7 @@ next(reader, None)
 for row in reader:
     pid = int(row[1])
     pc = int(row[2], 16)
-    label = int(row[3], 16)
+    label = int(row[3])
     if pid != selected_pid:
         continue
     fn = idaapi.get_func(pc)
