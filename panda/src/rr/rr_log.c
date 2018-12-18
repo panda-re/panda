@@ -1115,7 +1115,8 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                             args.variant.mem_region_change_args.size);
                     MemoryRegion *parent = rr_memory_region_find_parent(get_system_memory(),
                             mrs.mr);
-                    memory_region_del_subregion(parent, mrs.mr);
+		    if (parent)
+                        memory_region_del_subregion(parent, mrs.mr);
                 }
             } break;
             case RR_CALL_CPU_MEM_UNMAP: {
