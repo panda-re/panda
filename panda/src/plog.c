@@ -86,7 +86,7 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
 	panda__log_entry__pack(entry, buf);
 
 	pandalog_write_packed(packed_size, buf);
-
+  free(buf);
 }
 
 void pandalog_open_read(const char *path, uint32_t pl_mode) {

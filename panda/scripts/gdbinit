@@ -1,0 +1,71 @@
+dir /home/raywang/lava32_ksyms/linux-3.2.51
+set substitute-path /build/linux-n2St39/ /home/raywang/lava32_ksyms/
+symbol-file /home/raywang/lava32_ksyms/usr/lib/debug/vmlinux-3.2.0-4-686-pae
+display/5i $pc
+
+set python print-stack full
+python
+
+import re
+
+def gdb_unescape(string):
+    result = ""
+    pos = 0
+    while pos < len(string):
+        result += chr(int(string[pos:pos+2], 16))
+        pos += 2
+    return result
+
+def gdb_escape(string):
+    result = ""
+    pos = 0
+    for curr_char in string:
+        result += format(ord(curr_char), '02x')
+    return result
+
+class PandaCmd(gdb.Command):
+    def __init__(self, name, auto_args):
+        gdb.Command.__init__(self, name,
+                             gdb.COMMAND_USER, gdb.COMPLETE_NONE, False)
+        self.cmd_name = name
+        self.auto_args = auto_args
+
+    def invoke(self, arg, from_tty):
+        args = gdb.string_to_argv(arg)
+        self.panda_cmd(args)
+
+    def panda_cmd(self, args):
+        cmd_prefix = "maint packet qPandaCmd:" + self.cmd_name
+        argStr = ""
+        for auto_arg in self.auto_args:
+            argStr += ":" + gdb.execute(auto_arg, to_string=True)
+        for arg in args:
+            argStr += ":" + arg
+        rv = gdb.execute(cmd_prefix + argStr, to_string=True);
+        rv_match = re.search('received: "(.*)"', rv, re.MULTILINE);
+        if not rv_match:
+            gdb.write("Response err: " + rv)
+            return
+        response = gdb_unescape(rv_match.group(1))
+        gdb.write(response + "\n")
+
+end
+python PandaCmd('when', [])
+document when
+Print the rr_instruction_count 
+end
+
+python PandaCmd('rrbreakpoint', [])
+document rrbreakpoint
+Add breakpoint at rr_instruction_count 
+end
+
+python PandaCmd('rrdelete', [])
+document rrdelete
+Delete breakpoint at rr_instruction_count 
+end
+
+python PandaCmd('rrlist', [])
+document rrlist
+List all rr breakpoints
+end

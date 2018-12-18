@@ -13,7 +13,7 @@ from ptest_utils import *
 run_test_32bitlinux("-panda general:first_instr=1 " \
                     + "-panda tstringsearch:only_first -panda stringsearch:name=" \
                     + search_string_file_pfx \
-                    + " -panda tainted_instr:summary,num=2000")
+                    + " -panda tainted_instr:summary=y,num=2000")
 
 os.chdir(tmpoutdir)
 shutil.move("asidstory", tmpoutfile)

@@ -1,3 +1,9 @@
+DEPRECATION WARNING
+====
+Android is no longer supported in PANDA 2.0. You may have some luck with running the [Android-x86 project](http://www.android-x86.org/) under PANDA 2.0, but stock Android images will no longer work correctly.
+
+The main reason for this is that the `goldfish` devices used by the emulator use APIs that were deprecated in newer versions of QEMU (including the version of QEMU PANDA 2.0 is based on). Porting them to the new APIs would be a significant amount of work. In addition, even in PANDA 1.0 we found that newer versions of Android were poorly supported by the open source emulator.
+
 PANDROID
 ====
 PANDA supports Android/ARM guests.

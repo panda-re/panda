@@ -11,7 +11,7 @@ Once the given point in the replay has been reached and the memory has been dump
 Arguments
 ---------
 
-`memsavep` accepts two arguments: a given point in the program, expressed with either `percent` or `instr_count`, and a filename
+`memsavep` accepts two arguments: a given point in the program, expressed with either `percent` or `instrcount`, and a filename
 
 * `percent`: double, defaults to 200 (do not dump at percent). The percentage of the replay at which we should dump memory.
 * `instrcount`: uint64, defaults to 0 (do not dump at instrcount). The instruction count of the replay at which we should dump memory.
@@ -38,4 +38,4 @@ To dump memory at 66.2% to `mymem.dd`:
 To dump memory when an instruction count of 3314667015 is reached: 
 
     $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
-        -panda memsavep:instr_count=3314667015,file=mymem.dd
+        -panda memsavep:instrcount=3314667015,file=mymem.dd

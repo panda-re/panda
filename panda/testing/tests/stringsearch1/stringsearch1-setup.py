@@ -12,7 +12,7 @@ sys.path.append(td)
 
 from ptest_utils import *
 
-record_32bitlinux("guest:/bin/cat guest:/etc/passwd", "cat")
+record_debian("guest:/bin/cat guest:/etc/passwd", "cat", "i386")
 
 ss_filename = miscdir + "/cat_search_strings.txt"
 ssf = open(ss_filename, "w")

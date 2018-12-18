@@ -37,6 +37,32 @@
 
 #include "hw/ide/internal.h"
 
+#include "panda/rr/rr_log_all.h"
+
+// RW record scatter-gather DMA transfers for taint
+static void rr_record_sg_transfer(IDEState *s, Hd_transfer_type type,
+        int64_t sector_num, int num_sectors){
+    assert(s);
+    assert(s->sg.size == num_sectors * 512);
+    int i;
+    int64_t cur_sector = sector_num;
+    for (i = 0; i < s->sg.nsg; i++){
+        if (type == HD_TRANSFER_RAM_TO_HD){
+            rr_record_hd_transfer(RR_CALLSITE_IDE_DMA_CB, type,
+                s->sg.sg[i].base, cur_sector * 512, s->sg.sg[i].len);
+        }
+        else if (type == HD_TRANSFER_HD_TO_RAM){
+            rr_record_hd_transfer(RR_CALLSITE_IDE_DMA_CB, type,
+                cur_sector * 512, s->sg.sg[i].base, s->sg.sg[i].len);
+        }
+        else {
+            // Wrong transfer type
+            assert(0);
+        }
+        cur_sector += s->sg.sg[i].len / 512;
+    }
+}
+
 /* These values were based on a Seagate ST3500418AS but have been modified
    to make more sense in QEMU */
 static const int smart_attributes[][12] = {
@@ -755,6 +781,15 @@ static void ide_sector_read(IDEState *s)
     s->iov.iov_len  = n * BDRV_SECTOR_SIZE;
     qemu_iovec_init_external(&s->qiov, &s->iov, 1);
 
+    if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
+        rr_record_hd_transfer(
+            RR_CALLSITE_IDE_SECTOR_READ,
+            HD_TRANSFER_HD_TO_IOB,
+            sector_num*512,
+            (uint64_t) s->io_buffer,
+            n*512);
+    }
+
     block_acct_start(blk_get_stats(s->blk), &s->acct,
                      n * BDRV_SECTOR_SIZE, BLOCK_ACCT_READ);
     s->pio_aiocb = ide_buffered_readv(s, sector_num, &s->qiov, n,
@@ -881,10 +916,16 @@ static void ide_dma_cb(void *opaque, int ret)
     offset = sector_num << BDRV_SECTOR_BITS;
     switch (s->dma_cmd) {
     case IDE_DMA_READ:
+        if ((!(s->drive_kind == IDE_CD) && (rr_in_record()))) {
+            rr_record_sg_transfer(s, HD_TRANSFER_HD_TO_RAM, sector_num, n);
+        }
         s->bus->dma->aiocb = dma_blk_read(s->blk, &s->sg, offset,
                                           BDRV_SECTOR_SIZE, ide_dma_cb, s);
         break;
     case IDE_DMA_WRITE:
+        if ((!(s->drive_kind == IDE_CD) && (rr_in_record()))) {
+            rr_record_sg_transfer(s, HD_TRANSFER_RAM_TO_HD, sector_num, n);
+        }
         s->bus->dma->aiocb = dma_blk_write(s->blk, &s->sg, offset,
                                            BDRV_SECTOR_SIZE, ide_dma_cb, s);
         break;
@@ -1022,6 +1063,15 @@ static void ide_sector_write(IDEState *s)
     s->iov.iov_base = s->io_buffer;
     s->iov.iov_len  = n * BDRV_SECTOR_SIZE;
     qemu_iovec_init_external(&s->qiov, &s->iov, 1);
+
+    if ((s->drive_kind == IDE_HD) && (rr_in_record())) {
+        rr_record_hd_transfer(
+            RR_CALLSITE_IDE_SECTOR_WRITE,
+            HD_TRANSFER_IOB_TO_HD,
+            (uint64_t) s->io_buffer,
+            sector_num*512,
+            n*512);
+    }
 
     block_acct_start(blk_get_stats(s->blk), &s->acct,
                      n * BDRV_SECTOR_SIZE, BLOCK_ACCT_WRITE);
@@ -2227,6 +2277,20 @@ void ide_data_writew(void *opaque, uint32_t addr, uint32_t val)
         return;
     }
 
+    // TRL hd taint
+    // this is a transfer from port to io_buffer
+    // 0x1f0-0x1f7, 0x3f6-0x3f7 is hd
+    if ((rr_in_record())
+            && (((addr >= 0x1f0) && (addr <= 0x1f7))
+                || (addr == 0x3f6) || (addr == 0x3f7))){
+        rr_record_hd_transfer
+            (RR_CALLSITE_IDE_DATA_WRITEW,
+             HD_TRANSFER_PORT_TO_IOB,
+             addr,
+             (uint64_t) s->data_ptr, 
+             2);
+	}
+
     *(uint16_t *)p = le16_to_cpu(val);
     p += 2;
     s->data_ptr = p;
@@ -2252,6 +2316,20 @@ uint32_t ide_data_readw(void *opaque, uint32_t addr)
     p = s->data_ptr;
     if (p + 2 > s->data_end) {
         return 0;
+    }
+
+    // TRL hd taint
+    // this is transfer from io_buffer to port 
+    // 0x1f0-0x1f7, 0x3f6-0x3f7 is hd
+    if ((rr_in_record())
+            && (((addr >= 0x1f0) && (addr <= 0x1f7))
+                || (addr == 0x3f6) || (addr == 0x3f7))){
+        rr_record_hd_transfer
+            (RR_CALLSITE_IDE_DATA_READW,
+             HD_TRANSFER_IOB_TO_PORT,
+             (uint64_t) s->data_ptr, 
+             addr, 
+             2);
     }
 
     ret = cpu_to_le16(*(uint16_t *)p);
@@ -2281,6 +2359,20 @@ void ide_data_writel(void *opaque, uint32_t addr, uint32_t val)
         return;
     }
 
+	// TRL hd taint
+    // this is a transfer from port to io_buffer
+    // 0x1f0-0x1f7, 0x3f6-0x3f7 is hd
+    if ((rr_in_record())
+            && (((addr >= 0x1f0) && (addr <= 0x1f7))
+                || (addr == 0x3f6) || (addr == 0x3f7))){
+        rr_record_hd_transfer
+            (RR_CALLSITE_IDE_DATA_WRITEL,
+             HD_TRANSFER_PORT_TO_IOB,
+             addr, 
+             (uint64_t) s->data_ptr, 
+             4);
+    }
+
     *(uint32_t *)p = le32_to_cpu(val);
     p += 4;
     s->data_ptr = p;
@@ -2306,6 +2398,20 @@ uint32_t ide_data_readl(void *opaque, uint32_t addr)
     p = s->data_ptr;
     if (p + 4 > s->data_end) {
         return 0;
+    }
+
+    // TRL hd taint
+    // this is transfer from io_buffer to port 
+    // 0x1f0-0x1f7, 0x3f6-0x3f7 is hd
+    if ((rr_in_record())
+            && (((addr >= 0x1f0) && (addr <= 0x1f7))
+                || (addr == 0x3f6) || (addr == 0x3f7))){
+        rr_record_hd_transfer
+            (RR_CALLSITE_IDE_DATA_READL,
+             HD_TRANSFER_IOB_TO_PORT,
+             (uint64_t) s->data_ptr, 
+             addr,
+             4);
     }
 
     ret = cpu_to_le32(*(uint32_t *)p);
@@ -2840,23 +2946,6 @@ const VMStateDescription vmstate_ide_bus = {
 void ide_drive_get(DriveInfo **hd, int n)
 {
     int i;
-    int highest_bus = drive_get_max_bus(IF_IDE) + 1;
-    int max_devs = drive_get_max_devs(IF_IDE);
-    int n_buses = max_devs ? (n / max_devs) : n;
-
-    /*
-     * Note: The number of actual buses available is not known.
-     * We compute this based on the size of the DriveInfo* array, n.
-     * If it is less than max_devs * <num_real_buses>,
-     * We will stop looking for drives prematurely instead of overfilling
-     * the array.
-     */
-
-    if (highest_bus > n_buses) {
-        error_report("Too many IDE buses defined (%d > %d)",
-                     highest_bus, n_buses);
-        exit(1);
-    }
 
     for (i = 0; i < n; i++) {
         hd[i] = drive_get_by_index(IF_IDE, i);

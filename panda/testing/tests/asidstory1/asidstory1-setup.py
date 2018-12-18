@@ -12,4 +12,4 @@ sys.path.append(td)
 
 from ptest_utils import *
 
-record_32bitlinux("guest:/bin/netstat -a", "netstat")
+record_debian("guest:/bin/netstat -a", "netstat", "i386")

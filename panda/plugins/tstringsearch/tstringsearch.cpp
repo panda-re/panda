@@ -60,6 +60,7 @@ int tstringsearch_enable_taint(CPUState *env, target_ulong pc) {
     uint64_t ic = rr_get_guest_instr_count();
     if (!taint2_enabled()) {
         if (ic + 100 > enable_taint_instr_count) {
+            tstringsearch_label_on = true;
             printf ("enabling taint at instr count %" PRIu64 "\n", ic);
             taint2_enable_taint();           
         }
@@ -67,97 +68,60 @@ int tstringsearch_enable_taint(CPUState *env, target_ulong pc) {
     return 0;
 }
 
-int tstringsearch_label(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size) {
-    tstringsearch_enable_taint(env, pc);
-
-    if (tstringsearch_label_on == false) {
-        return 0;
-    }
-    if (!done_labeling && pc == the_pc) {
-        printf ("\n****************************************************************************\n");
-        printf ("applying taint labels to search string of length %d  @ p=0x" TARGET_FMT_lx "\n", the_len, the_buf);
-        printf ("******************************************************************************\n");
-        // label that buffer 
-        int i;
-        for (i=0; i<the_len; i++) {
-            target_ulong va = the_buf + i;
-            hwaddr pa = panda_virt_to_phys(env, va);
-
-            if (pa != (hwaddr) -1) {
-                if (positional_tainting) {
-                    taint2_label_ram(pa, i);
-                }
-                else {
-                    taint2_label_ram(pa, 10);
-                }
-            }
-        }
-        tstringsearch_label_on = false;
-        if (only_first) done_labeling = true;
-    }
-    return 0;
-}
-
-int tstringsearch_label_write(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
-    return tstringsearch_label(env, pc, addr, size);
-}
-
-
-
 bool first_time = true;
 
 // this is called from stringsearch upon a match
 void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
-        uint8_t *matched_string, uint32_t matched_string_length, 
-        bool is_write) {
-
-    // determine if the search string is sitting in memory, starting at addr - (strlen-1)
-    // first, grab that string out of memory
-    target_ulong p = addr - (matched_string_length-1);
-    uint8_t thestring[MAX_STRLEN*2];
-    panda_virtual_memory_rw(env, p, thestring, matched_string_length, 0);
-    printf ("tstringsearch: thestring = [");
-    for (unsigned i=0; i<matched_string_length; i++) {
-        if (isprint(thestring[i])) {
-            printf("%c", thestring[i]);
-        }
-        else {
-            printf(".");
-        }
+                         uint8_t *matched_string,
+                         uint32_t matched_string_length, bool is_write,
+                         bool in_memory)
+{
+    if (!in_memory) {
+        printf("tstringsearch: match not in memory - not applying taint\n");
+        return;
     }
-    printf ("]\ntstringsearch: ");
-    for (unsigned i=0; i<matched_string_length; i++) {
-        printf ("%02x ", thestring[i]);
-    }
-    printf ("\n");
 
-    // now compare it to the search string
-    // NOTE: this is a write, so the final byte of the string hasn't yet been
-    // written to memory since write callback is at start of fn.
-    // thus, the matched_string_length - 1.
-    // yes, we can get this right. but, meh.
-    if ((memcmp((char *)thestring, (char *)matched_string, matched_string_length-1)) == 0) {
-        printf ("tstringsearch: string in memory @ 0x%lx\n", (long unsigned int) p);    
-        // ok this is ugly.  save pc, buffer addr and len
-        the_pc = pc;
-        the_buf = p;
-        the_len = matched_string_length;
-        // this should enable
-        tstringsearch_label_on = true;    
+    tstringsearch_enable_taint(env, pc);
 
-        if (first_time) {
-            first_time = false;
-            // add a callback for taint processor st 
-            panda_cb pcb;
-            pcb.phys_mem_before_read = tstringsearch_label;
-            panda_register_callback(plugin_self, PANDA_CB_PHYS_MEM_BEFORE_READ, pcb);
-            pcb.phys_mem_after_write = tstringsearch_label_write;
-            panda_register_callback(plugin_self, PANDA_CB_PHYS_MEM_AFTER_WRITE, pcb);
+    if (((only_first && first_time) || !only_first) && tstringsearch_label_on) {
+        printf("\n*************************************************************"
+               "***************\n");
+        printf("applying taint labels to search string of length %d  @ "
+               "p=0x" TARGET_FMT_lx "\n",
+               matched_string_length, addr);
+        printf("***************************************************************"
+               "*************\n");
+
+        uint8_t *buf =
+            (uint8_t *)calloc(matched_string_length + 1, sizeof(*buf));
+        panda_virtual_memory_read(env, addr, buf, matched_string_length);
+        printf("tstringsearch: ascii = [");
+        for (int i = 0; i < matched_string_length; i++) {
+            if (isprint(buf[i])) {
+                printf("%c", buf[i]);
+            } else {
+                printf(".");
+            }
         }
+        printf("]\n");
+        printf("tstringsearch: hex = ");
+        for (int i = 0; i < matched_string_length; i++) {
+                printf("%X ", buf[i]);
+        }
+        printf("\n");
+        free(buf);
+
+        for (int i = 0; i < matched_string_length; i++) {
+            hwaddr pa = panda_virt_to_phys(env, addr + i);
+            if (positional_tainting) {
+                taint2_label_ram(pa, i);
+            } else {
+                taint2_label_ram(pa, 10);
+            }
+        }
+        first_time = false;
     }
 }
-
-bool labeled = false;
 
 #endif
 

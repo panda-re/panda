@@ -10,6 +10,38 @@
 #include "exec/cpu-common.h"
 #include "exec/ram_addr.h"
 
+void panda_callbacks_hd_transfer(CPUState *cpu, Hd_transfer_type type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes)
+{
+    if (rr_mode == RR_REPLAY) {
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_REPLAY_HD_TRANSFER];
+             plist != NULL;
+             plist = panda_cb_list_next(plist)) {
+                 plist->entry.replay_hd_transfer(cpu, type, src_addr, dest_addr, num_bytes);
+        }
+    }
+}
+
+void panda_callbacks_handle_packet(CPUState *cpu, uint8_t *buf, size_t size, uint8_t direction, uint64_t old_buf_addr) {
+    if (rr_mode == RR_REPLAY) {
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_REPLAY_HANDLE_PACKET];
+             plist != NULL;
+             plist = panda_cb_list_next(plist)) {
+                 plist->entry.replay_handle_packet(cpu, buf, size, direction, old_buf_addr);
+        }
+    }
+}
+void panda_callbacks_net_transfer(CPUState *cpu, Net_transfer_type type, uint64_t src_addr, uint64_t dst_addr, uint32_t num_bytes) {
+    if (rr_mode == RR_REPLAY) {
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_REPLAY_NET_TRANSFER];
+             plist != NULL;
+             plist = panda_cb_list_next(plist)) {
+                 plist->entry.replay_net_transfer(cpu, type, src_addr, dst_addr, num_bytes);
+        }
+    }
+}
 
 // These are used in exec.c
 void panda_callbacks_before_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write) {
@@ -106,6 +138,16 @@ bool panda_callbacks_insn_translate(CPUState *env, target_ulong pc) {
     for(plist = panda_cbs[PANDA_CB_INSN_TRANSLATE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
         panda_exec_cb |= plist->entry.insn_translate(env, pc);
+    }
+    return panda_exec_cb;
+}
+
+bool panda_callbacks_after_insn_translate(CPUState *env, target_ulong pc) {
+    panda_cb_list *plist;
+    bool panda_exec_cb = false;
+    for(plist = panda_cbs[PANDA_CB_AFTER_INSN_TRANSLATE]; plist != NULL;
+        plist = panda_cb_list_next(plist)) {
+        panda_exec_cb |= plist->entry.after_insn_translate(env, pc);
     }
     return panda_exec_cb;
 }
@@ -207,6 +249,24 @@ void panda_callbacks_after_mem_write(CPUState *env, target_ulong pc,
 }
 
 
+// vl.c
+void panda_callbacks_after_machine_init(void) {
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_AFTER_MACHINE_INIT]; plist != NULL;
+        plist = panda_cb_list_next(plist)) {
+        plist->entry.after_machine_init(first_cpu);
+    }
+}
+
+void panda_callbacks_top_loop(void) {
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_TOP_LOOP]; plist != NULL;
+        plist = panda_cb_list_next(plist)) {
+        plist->entry.top_loop(first_cpu);
+    }
+}
+
+
 // target-i386/misc_helpers.c
 void panda_callbacks_cpuid(CPUState *env) {
     panda_cb_list *plist;
@@ -232,4 +292,51 @@ void panda_callbacks_asid_changed(CPUState *env, target_ulong old_asid, target_u
     }
 }
 
+void panda_callbacks_serial_receive(CPUState *cpu, uint64_t fifo_addr,
+                                    uint8_t value)
+{
+    if (rr_mode == RR_REPLAY) {
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_REPLAY_SERIAL_RECEIVE]; plist != NULL;
+             plist = panda_cb_list_next(plist)) {
+            plist->entry.replay_serial_receive(cpu, fifo_addr, value);
+        }
+    }
+}
+
+void panda_callbacks_serial_read(CPUState *cpu, uint64_t fifo_addr,
+                                 uint32_t port_addr, uint8_t value)
+{
+    if (rr_mode == RR_REPLAY) {
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_REPLAY_SERIAL_READ]; plist != NULL;
+             plist = panda_cb_list_next(plist)) {
+            plist->entry.replay_serial_read(cpu, fifo_addr, port_addr, value);
+        }
+    }
+}
+
+void panda_callbacks_serial_send(CPUState *cpu, uint64_t fifo_addr,
+                                 uint8_t value)
+{
+    if (rr_mode == RR_REPLAY) {
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_REPLAY_SERIAL_SEND]; plist != NULL;
+             plist = panda_cb_list_next(plist)) {
+            plist->entry.replay_serial_send(cpu, fifo_addr, value);
+        }
+    }
+}
+
+void panda_callbacks_serial_write(CPUState *cpu, uint64_t fifo_addr,
+                                  uint32_t port_addr, uint8_t value)
+{
+    if (rr_mode == RR_REPLAY) {
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_REPLAY_SERIAL_WRITE]; plist != NULL;
+             plist = panda_cb_list_next(plist)) {
+            plist->entry.replay_serial_write(cpu, fifo_addr, port_addr, value);
+        }
+    }
+}
 

@@ -49,11 +49,11 @@ name_grep = lambda l: re.match(r'^\s*name\s*=', l)
 kname = filter(name_grep, lines)[-1].split('=', 1)[1].strip().lower()
 krelease, kversion, kmachine = kname.strip().split('|')
 
-# Match the distribution-specific version.
-kversion_m = re.search(r'(?<=\s)(?P<kversion_dist>[234]\.[0-9]+\.[0-9]+)', kversion)
+# Ignore distribution-specific version string. More trouble than benefits.
+# kversion_m = re.search(r'(?<=\s)(?P<kversion_dist>[234]\.[0-9]+\.[0-9]+)', kversion)
 
-# Match the base version and variant.
-krelease_m = re.search(r'(?P<kversion_base>[234]\.[0-9]+\.[0-9]+-[0-9]+)-(?P<kversion_variant>[0-9a-z-]+)', krelease)
+# Don't do base version and variant parsing. More trouble than benefits.
+# krelease_m = re.search(r'(?P<kversion_base>[234]\.[0-9]+\.[0-9]+-[0-9]+)-(?P<kversion_variant>[0-9a-z-]+)', krelease)
 
 # Partial heuristics for dist name.
 if 'debian' in kversion.lower():
@@ -64,10 +64,9 @@ else:
     distname = 'unknown'
 
 # Print group line.
-print('[%s-%s-%s:%d]' % (
+print('[%s:%s:%d]' % (
     distname,
-    kversion_m.group('kversion_dist'),
-    krelease_m.group('kversion_variant'),
+    krelease,
     64 if kmachine == 'x86_64' else 32
 ))
 

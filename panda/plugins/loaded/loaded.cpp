@@ -138,8 +138,10 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
         OsiProc *p = get_current_process(cpu);
 
         //some sanity checks on what we think the current process is
+        // we couldn't find the current task
+        if (p == NULL) return 0;
         // this means we didnt find current task
-        if (p->offset == 0) return 0;
+        if (p->taskd == 0) return 0;
         // or the name
         if (p->name == 0) return 0;
         // this is just not ok
@@ -156,7 +158,7 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
         if (np != n) return 0;
         target_ulong asid = panda_current_asid(cpu);
         if (running_procs.count(asid) == 0) {
-            printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->offset);
+            printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->taskd);
         }
         running_procs[asid] = *p;
     }

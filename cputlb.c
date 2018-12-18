@@ -33,6 +33,7 @@
 #include "qemu/atomic.h"
 
 #include "panda/rr/rr_log_all.h"
+#include "panda/rr/rr_log.h"
 #include "panda/callback_support.h"
 
 /* DEBUG defines, enable DEBUG_TLB_LOG to log to the CPU_LOG_MMU target */
@@ -506,12 +507,18 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     }
 
     cpu->mem_io_vaddr = addr;
+    if (mr->name && !strcmp(mr->name, "watch")){
+        memory_region_dispatch_read(mr, physaddr, &val, size, iotlbentry->attrs);
+        return val;
+    }
+
     RR_DO_RECORD_OR_REPLAY(
         /* action= */
         memory_region_dispatch_read(mr, physaddr, &val, size, iotlbentry->attrs),
         /* record= */ rr_input_8(&val),
         /* replay= */ rr_input_8(&val),
         /* location= */ RR_CALLSITE_IO_READ_ALL);
+
     return val;
 }
 
@@ -530,6 +537,12 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
 
     cpu->mem_io_vaddr = addr;
     cpu->mem_io_pc = retaddr;
+    
+    if (mr->name && !strcmp(mr->name, "watch")){
+        memory_region_dispatch_write(mr, physaddr, val, size, iotlbentry->attrs);
+        return;
+    }
+
     if (mr != &io_mem_rom && mr != &io_mem_notdirty) {
         RR_DO_RECORD_OR_REPLAY(
             /* action= */

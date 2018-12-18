@@ -20,6 +20,7 @@ PANDAENDCOMMENT */
 // glib provides some nifty string manipulation functions
 // https://developer.gnome.org/glib/stable/glib-String-Utility-Functions.html
 #include <glib.h>
+#include <gmodule.h>
 #include <glib/gprintf.h>
 
 #include "panda/plugin.h"
@@ -35,40 +36,46 @@ PANDAENDCOMMENT */
 bool init_plugin(void *);
 void uninit_plugin(void *);
 #ifdef OSI_PROC_EVENTS
-int vmi_pgd_changed(CPUState *, target_ulong, target_ulong);
+int asid_changed(CPUState *, target_ulong, target_ulong);
 #endif
 
 PPP_PROT_REG_CB(on_get_processes)
+PPP_PROT_REG_CB(on_get_process_handles)
 PPP_PROT_REG_CB(on_get_current_process)
+PPP_PROT_REG_CB(on_get_process)
 PPP_PROT_REG_CB(on_get_modules)
 PPP_PROT_REG_CB(on_get_libraries)
-PPP_PROT_REG_CB(on_free_osiproc)
-PPP_PROT_REG_CB(on_free_osiprocs)
-PPP_PROT_REG_CB(on_free_osimodules)
+PPP_PROT_REG_CB(on_get_current_thread)
 #ifdef OSI_PROC_EVENTS
-PPP_PROT_REG_CB(on_new_process)
-PPP_PROT_REG_CB(on_finished_process)
+PPP_PROT_REG_CB(on_process_start)
+PPP_PROT_REG_CB(on_process_end)
 #endif
 
 PPP_CB_BOILERPLATE(on_get_processes)
+PPP_CB_BOILERPLATE(on_get_process_handles)
 PPP_CB_BOILERPLATE(on_get_current_process)
+PPP_CB_BOILERPLATE(on_get_process)
 PPP_CB_BOILERPLATE(on_get_modules)
 PPP_CB_BOILERPLATE(on_get_libraries)
-PPP_CB_BOILERPLATE(on_free_osiproc)
-PPP_CB_BOILERPLATE(on_free_osiprocs)
-PPP_CB_BOILERPLATE(on_free_osimodules)
+PPP_CB_BOILERPLATE(on_get_current_thread)
 #ifdef OSI_PROC_EVENTS
-PPP_CB_BOILERPLATE(on_new_process)
-PPP_CB_BOILERPLATE(on_finished_process)
+PPP_CB_BOILERPLATE(on_process_start)
+PPP_CB_BOILERPLATE(on_process_end)
 #endif
 
 // The copious use of pointers to pointers in this file is due to
 // the fact that PPP doesn't support return values (since it assumes
 // that you will be running multiple callbacks at one site)
 
-OsiProcs *get_processes(CPUState *cpu) {
-    OsiProcs *p = NULL;
+GArray *get_processes(CPUState *cpu) {
+    GArray *p = NULL;
     PPP_RUN_CB(on_get_processes, cpu, &p);
+    return p;
+}
+
+GArray *get_process_handles(CPUState *cpu) {
+    GArray *p = NULL;
+    PPP_RUN_CB(on_get_process_handles, cpu, &p);
     return p;
 }
 
@@ -78,33 +85,32 @@ OsiProc *get_current_process(CPUState *cpu) {
     return p;
 }
 
-OsiModules *get_modules(CPUState *cpu) {
-    OsiModules *m = NULL;
+OsiProc *get_process(CPUState *cpu, const OsiProcHandle *h) {
+    OsiProc *p = NULL;
+    PPP_RUN_CB(on_get_process, cpu, h, &p);
+    return p;
+}
+
+GArray *get_modules(CPUState *cpu) {
+    GArray *m = NULL;
     PPP_RUN_CB(on_get_modules, cpu, &m);
     return m;
 }
 
-OsiModules *get_libraries(CPUState *cpu, OsiProc *p) {
-    OsiModules *m = NULL;
+GArray *get_libraries(CPUState *cpu, OsiProc *p) {
+    GArray *m = NULL;
     PPP_RUN_CB(on_get_libraries, cpu, p, &m);
     return m;
 }
 
-void free_osiproc(OsiProc *p) {
-    PPP_RUN_CB(on_free_osiproc, p);
+OsiThread *get_current_thread(CPUState *cpu) {
+    OsiThread *thread = NULL;
+    PPP_RUN_CB(on_get_current_thread, cpu, &thread);
+    return thread;
 }
-
-void free_osiprocs(OsiProcs *ps) {
-    PPP_RUN_CB(on_free_osiprocs, ps);
-}
-
-void free_osimodules(OsiModules *ms) {
-    PPP_RUN_CB(on_free_osimodules, ms);
-}
-
 
 #ifdef OSI_PROC_EVENTS
-int vmi_pgd_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
+int asid_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
     uint32_t i;
     OsiProcs *ps, *in, *out;
     ps = in = out = NULL;
@@ -119,35 +125,37 @@ int vmi_pgd_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
     /* invoke callbacks for finished processes */
     if (out != NULL) {
         for (i=0; i<out->num; i++) {
-            PPP_RUN_CB(on_finished_process, cpu, &out->proc[i]);
+            PPP_RUN_CB(on_process_end, cpu, &out->proc[i]);
         }
-        free_osiprocs(out);
+        //free_osiprocs(out);
     }
 
     /* invoke callbacks for new processes */
     if (in != NULL) {
         for (i=0; i<in->num; i++) {
-            PPP_RUN_CB(on_new_process, cpu, &in->proc[i]);
+            PPP_RUN_CB(on_process_start, cpu, &in->proc[i]);
         }
-        free_osiprocs(in);
+        //free_osiprocs(in);
     }
 
     return 0;
 }
 #endif
 
-extern char **gargv;
+extern const char *qemu_file;
 
 bool init_plugin(void *self) {
 #ifdef OSI_PROC_EVENTS
-    panda_cb pcb = { .after_PGD_write = vmi_pgd_changed };
-    panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
+    panda_cb pcb = { .asid_changed = asid_changed };
+    panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
 #endif
+    // No os supplied on command line? E.g. -os linux-32-ubuntu:4.4.0-130-generic
+    assert (!(panda_os_familyno == OS_UNKNOWN));
+
     // figure out what kind of os introspection is needed and grab it? 
-    assert (!(panda_os_type == OST_UNKNOWN));
-    if (panda_os_type == OST_LINUX) {
+    if (panda_os_familyno == OS_LINUX) {
         // sadly, all of this is to find kernelinfo.conf file
-        gchar *progname = gargv[0];
+        const gchar *progname = qemu_file;
         gchar *progname_path;
         gchar *progdir;
 
@@ -184,16 +192,16 @@ bool init_plugin(void *self) {
         free(kconffile_canon);
 
         // get kconfgroup
-        gchar *kconfgroup = g_strdup_printf("%s:%d", panda_os_details, panda_os_bits);
+        gchar *kconfgroup = g_strdup_printf("%s:%d", panda_os_variant, panda_os_bits);
 
         // add arguments to panda
-        gchar *panda_arg;
-        panda_arg = g_strdup_printf("osi_linux:kconf_file=%s", kconffile);
-        panda_add_arg(panda_arg, strlen(panda_arg));
-        g_free(panda_arg);
-        panda_arg = g_strdup_printf("osi_linux:kconf_group=%s", kconfgroup);
-        panda_add_arg(panda_arg, strlen(panda_arg));
-        g_free(panda_arg);
+        gchar *plugin_arg;
+        plugin_arg = g_strdup_printf("kconf_file=%s", kconffile);
+        panda_add_arg("osi_linux", plugin_arg);
+        g_free(plugin_arg);
+        plugin_arg = g_strdup_printf("kconf_group=%s", kconfgroup);
+        panda_add_arg("osi_linux", plugin_arg);
+        g_free(plugin_arg);
 
         // print info and finish
         g_printf("OSI grabbing Linux introspection backend.\n");
@@ -203,9 +211,8 @@ bool init_plugin(void *self) {
 
         panda_require("osi_linux");
     }
-    if (panda_os_type == OST_WINDOWS) {
+    if (panda_os_familyno == OS_WINDOWS) {
         g_printf("OSI grabbing Windows introspection backend.\n");
-        panda_require("win7x86intro");
         panda_require("wintrospection");
     }
     return true;

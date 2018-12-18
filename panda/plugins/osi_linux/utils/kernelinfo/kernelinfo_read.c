@@ -9,35 +9,49 @@
  * See the COPYING file in the top-level directory.
  */
 #include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #include <glib.h>
-#include "config-host.h"
-#include "config-target.h"
-#include "qemu/osdep.h"
-#include "qemu-common.h"
-#include "cpu.h"
-#include "kernelinfo.h"	/* must come after cpu.h, glib.h */
-
-#define ERRLOG_OUT stderr
-#define ERRLOG(fmt, args...) fprintf(ERRLOG_OUT, "ERROR(%s:%s): " fmt "\n", basename(__FILE__), __func__, ## args)
+#include "kernelinfo.h"
 
 /*!
- * @brief Convenience wrapper for reading `int` values from keyfile and handling any errors.
+ * @brief Wrapper for error counters.
  */
-#define READ_INFO_INT(mname, errp, errcount) (ki->mname) = g_key_file_get_integer(keyfile, group_real, #mname, &err); \
-	if (err != NULL) { errcount++; g_error_free(errp); errp = NULL; ERRLOG("Couldn't read " #mname "."); }
+struct kernelinfo_errors {
+	int name;
+	int task;
+	int cred;
+	int mm;
+	int vma;
+	int fs;
+	int path;
+};
+
+/* make sure PANDA_MSG is defined somewhere */
+#if defined(PLUGIN_NAME)
+#include "panda/debug.h"
+#else
+#define PANDA_MSG
+#endif
 
 /*!
- * @brief Convenience wrapper for reading unsigned 64bit values from keyfile and handling any errors.
+ * @brief Wrapper for reading information from keyfile and handle errors.
  */
-#define READ_INFO_UINT64(mname, errp, errcount) (ki->mname) = g_key_file_get_uint64(keyfile, group_real, #mname, &err); \
-	if (err != NULL) { errcount++; g_error_free(errp); errp = NULL; }
+#define READ_INFO_X(key_file_get, ki, memb, gerr, errcount, errbmp)\
+	((ki)->memb) = key_file_get(keyfile, group_real, #memb, &gerr);\
+	if (gerr != NULL) { errcount++; g_error_free(gerr); gerr = NULL; LOG_ERROR("failed to read " #memb); }\
+	else { memset(&(errbmp)->memb, 0xff, sizeof((errbmp)->memb)); }
 
-/*!
- * @brief Convenience wrapper for reading string values from keyfile and handling any errors.
- */
-#define READ_INFO_STRING(mname, errp, errcount) (ki->mname) = g_key_file_get_string(keyfile, group_real, #mname, &err); \
-	if (err != NULL) { errcount++; g_error_free(errp); errp = NULL; }
+#define READ_INFO_INT(ki, memb, gerr, errcount, errbmp)\
+	READ_INFO_X(g_key_file_get_integer, ki, memb, gerr, errcount, errbmp)
+
+#define READ_INFO_UINT64(ki, memb, gerr, errcount, errbmp)\
+	READ_INFO_X(g_key_file_get_uint64, ki, memb, gerr, errcount, errbmp)
+
+#define READ_INFO_STRING(ki, memb, gerr, errcount, errbmp)\
+	READ_INFO_X(g_key_file_get_string, ki, memb, gerr, errcount, errbmp)
+
 
 /*! Reads kernel information (struct offsets and such) from the specified file.
  *
@@ -50,98 +64,145 @@
  * \return 0 for success. -1 for failure.
  */
 int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki) {
-	GError *err = NULL;
+	int rval = 0;						/**< return value */
 	GKeyFile *keyfile;
 	gchar *group_real = NULL;
-	int err_task = 0, err_mm = 0, err_cred = 0, err_vma = 0, err_fs = 0, err_misc = 0;
-	uint64_t init_addr = 0;
+
+	GError *gerr = NULL;				/**< glib errors */
+	struct kernelinfo_errors err = {0};	/**< error counters for kernelinfo */
+	struct kernelinfo errbmp = {0};		/**< error bitmap for kernelinfo */
+
 
 	/* open file */
-	memset(ki, '\0', sizeof(struct kernelinfo));
+	memset(ki, 0, sizeof(struct kernelinfo));
 	keyfile = g_key_file_new();
-	g_key_file_load_from_file (keyfile, (file != NULL ? file : DEFAULT_KERNELINFO_FILE), G_KEY_FILE_NONE, &err);
-	if (err != NULL) goto error;
+	g_key_file_load_from_file (keyfile, (file != NULL ? file : DEFAULT_KERNELINFO_FILE), G_KEY_FILE_NONE, &gerr);
+	if (gerr != NULL) { rval = -1; goto end; }
 
 	/* get group */
 	if (group != NULL) group_real = g_strdup(group);
 	else group_real = g_key_file_get_start_group(keyfile);
-	if (!g_key_file_has_group(keyfile, group_real)) goto error;
-
-	/* read task information */
-	READ_INFO_INT(task.task_offset, err, err_fs);
-	READ_INFO_INT(task.tasks_offset, err, err_task);
-	READ_INFO_INT(task.size, err, err_task);
-	//READ_INFO_INT(task.list_offset, err, err_task);
-	READ_INFO_INT(task.pid_offset, err, err_task);
-	READ_INFO_INT(task.tgid_offset, err, err_task);
-	READ_INFO_INT(task.group_leader_offset, err, err_task);
-	READ_INFO_INT(task.thread_group_offset, err, err_task);
-	READ_INFO_INT(task.real_parent_offset, err, err_task);
-	READ_INFO_INT(task.parent_offset, err, err_task);
-	READ_INFO_INT(task.mm_offset, err, err_task);
-	READ_INFO_INT(task.stack_offset, err, err_task);
-	READ_INFO_INT(task.real_cred_offset, err, err_task);
-	READ_INFO_INT(task.cred_offset, err, err_task);
-	READ_INFO_INT(task.comm_offset, err, err_task);
-	READ_INFO_INT(task.comm_size, err, err_task);
-	READ_INFO_INT(task.files_offset, err, err_task);
-
-	/* init_task address is always read as uint64 and then cast to (target-specific) target_ulong */
-	init_addr = g_key_file_get_uint64(keyfile, group_real, "task.init_addr", &err);
-	if (err != NULL) { err_task++; g_error_free(err); err = NULL; ERRLOG("Couldn't read task.init_addr."); }
-	else { ki->task.init_addr = (target_ulong)init_addr; }
-
-	/* read cred information */
-	READ_INFO_INT(cred.uid_offset, err, err_cred);
-	READ_INFO_INT(cred.gid_offset, err, err_cred);
-	READ_INFO_INT(cred.euid_offset, err, err_cred);
-	READ_INFO_INT(cred.egid_offset, err, err_cred);
-
-	/* read mm information */
-	READ_INFO_INT(mm.mmap_offset, err, err_mm);
-	READ_INFO_INT(mm.pgd_offset, err, err_mm);
-	READ_INFO_INT(mm.arg_start_offset, err, err_mm);
-	READ_INFO_INT(mm.start_brk_offset, err, err_mm);
-	READ_INFO_INT(mm.brk_offset, err, err_mm);
-	READ_INFO_INT(mm.start_stack_offset, err, err_mm);
-
-	/* read vma information */
-	READ_INFO_INT(vma.vm_mm_offset, err, err_vma);
-	READ_INFO_INT(vma.vm_start_offset, err, err_vma);
-	READ_INFO_INT(vma.vm_end_offset, err, err_vma);
-	READ_INFO_INT(vma.vm_next_offset, err, err_vma);
-	READ_INFO_INT(vma.vm_file_offset, err, err_vma);
-	READ_INFO_INT(vma.vm_flags_offset, err, err_vma);
-
-	/* read fs information */
-	READ_INFO_INT(fs.f_path_dentry_offset, err, err_fs);
-	READ_INFO_INT(fs.f_path_mnt_offset, err, err_fs);
-    READ_INFO_INT(fs.f_pos_offset, err, err_fs);
-	READ_INFO_INT(fs.mnt_parent_offset, err, err_fs);
-	READ_INFO_INT(fs.mnt_mountpoint_offset, err, err_fs);
-	READ_INFO_INT(fs.mnt_root_offset, err, err_fs);
-	READ_INFO_INT(fs.d_name_offset, err, err_fs);
-	READ_INFO_INT(fs.d_iname_offset, err, err_fs);
-	READ_INFO_INT(fs.d_parent_offset, err, err_fs);
-	READ_INFO_INT(fs.fdt_offset, err, err_fs);
-	READ_INFO_INT(fs.fdtab_offset, err, err_fs);
-	READ_INFO_INT(fs.fd_offset, err, err_fs);
+	if (!g_key_file_has_group(keyfile, group_real)) { rval = -1; goto end; }
 
 	/* read kernel full name */
-	READ_INFO_STRING(name, err, err_misc);
+	READ_INFO_STRING(ki, name, gerr, err.name, &errbmp);
 
-	/* check the sum of errors */
-	if (err_task + err_cred + err_mm + err_vma + err_fs + err_misc == 0) {
-		g_key_file_free(keyfile);
-		g_free(group_real);
-		return 0;
+	/* read init task address */
+	READ_INFO_UINT64(ki, task.init_addr, gerr, err.task, &errbmp);
+
+	/* read task information */
+	READ_INFO_INT(ki, task.size, gerr, err.task, &errbmp);
+	READ_INFO_INT(ki, task.task_offset, gerr, err.fs, &errbmp);
+	READ_INFO_INT(ki, task.tasks_offset, gerr, err.task, &errbmp);
+	READ_INFO_INT(ki, task.pid_offset, gerr, err.task, &errbmp);
+	READ_INFO_INT(ki, task.tgid_offset, gerr, err.task, &errbmp);
+	READ_INFO_INT(ki, task.group_leader_offset, gerr, err.task, &errbmp);
+	READ_INFO_INT(ki, task.thread_group_offset, gerr, err.task, &errbmp);
+	READ_INFO_INT(ki, task.real_parent_offset, gerr, err.task, &errbmp);
+	READ_INFO_INT(ki, task.parent_offset, gerr, err.task, &errbmp);
+	READ_INFO_INT(ki, task.mm_offset, gerr, err.task, &errbmp);
+	READ_INFO_INT(ki, task.stack_offset, gerr, err.task, &errbmp);
+	READ_INFO_INT(ki, task.real_cred_offset, gerr, err.task, &errbmp);
+	READ_INFO_INT(ki, task.cred_offset, gerr, err.task, &errbmp);
+	READ_INFO_INT(ki, task.comm_offset, gerr, err.task, &errbmp);
+	READ_INFO_INT(ki, task.comm_size, gerr, err.task, &errbmp);
+	READ_INFO_INT(ki, task.files_offset, gerr, err.task, &errbmp);
+
+	/* read cred information */
+	READ_INFO_INT(ki, cred.uid_offset, gerr, err.cred, &errbmp);
+	READ_INFO_INT(ki, cred.gid_offset, gerr, err.cred, &errbmp);
+	READ_INFO_INT(ki, cred.euid_offset, gerr, err.cred, &errbmp);
+	READ_INFO_INT(ki, cred.egid_offset, gerr, err.cred, &errbmp);
+
+	/* read mm information */
+	READ_INFO_INT(ki, mm.size, gerr, err.mm, &errbmp);
+	READ_INFO_INT(ki, mm.mmap_offset, gerr, err.mm, &errbmp);
+	READ_INFO_INT(ki, mm.pgd_offset, gerr, err.mm, &errbmp);
+	READ_INFO_INT(ki, mm.arg_start_offset, gerr, err.mm, &errbmp);
+	READ_INFO_INT(ki, mm.start_brk_offset, gerr, err.mm, &errbmp);
+	READ_INFO_INT(ki, mm.brk_offset, gerr, err.mm, &errbmp);
+	READ_INFO_INT(ki, mm.start_stack_offset, gerr, err.mm, &errbmp);
+
+	/* read vma information */
+	READ_INFO_INT(ki, vma.size, gerr, err.vma, &errbmp);
+	READ_INFO_INT(ki, vma.vm_mm_offset, gerr, err.vma, &errbmp);
+	READ_INFO_INT(ki, vma.vm_start_offset, gerr, err.vma, &errbmp);
+	READ_INFO_INT(ki, vma.vm_end_offset, gerr, err.vma, &errbmp);
+	READ_INFO_INT(ki, vma.vm_next_offset, gerr, err.vma, &errbmp);
+	READ_INFO_INT(ki, vma.vm_file_offset, gerr, err.vma, &errbmp);
+	READ_INFO_INT(ki, vma.vm_flags_offset, gerr, err.vma, &errbmp);
+
+	/* read fs information */
+	READ_INFO_INT(ki, fs.f_path_dentry_offset, gerr, err.fs, &errbmp);
+	READ_INFO_INT(ki, fs.f_path_mnt_offset, gerr, err.fs, &errbmp);
+	READ_INFO_INT(ki, fs.f_pos_offset, gerr, err.fs, &errbmp);
+	READ_INFO_INT(ki, fs.fdt_offset, gerr, err.fs, &errbmp);
+	READ_INFO_INT(ki, fs.fdtab_offset, gerr, err.fs, &errbmp);
+	READ_INFO_INT(ki, fs.fd_offset, gerr, err.fs, &errbmp);
+
+	/* read path information */
+	READ_INFO_INT(ki, path.qstr_size, gerr, err.path, &errbmp);
+	READ_INFO_INT(ki, path.d_name_offset, gerr, err.path, &errbmp);
+	READ_INFO_INT(ki, path.d_iname_offset, gerr, err.path, &errbmp);
+	READ_INFO_INT(ki, path.d_parent_offset, gerr, err.path, &errbmp);
+	READ_INFO_INT(ki, path.d_op_offset, gerr, err.path, &errbmp);
+	READ_INFO_INT(ki, path.d_dname_offset, gerr, err.path, &errbmp);
+	READ_INFO_INT(ki, path.mnt_root_offset, gerr, err.path, &errbmp);
+	READ_INFO_INT(ki, path.mnt_parent_offset, gerr, err.path, &errbmp);
+	READ_INFO_INT(ki, path.mnt_mountpoint_offset, gerr, err.path, &errbmp);
+
+	/* check number of errors */
+	{
+		int nerrors = 0;
+		int *e = (int *)&err;
+		int *e_last = (int *)((uint8_t *)&err + sizeof(err));
+		while (e < e_last) {
+			nerrors += *e;
+			e++;
+		}
+		if (nerrors > 0) {
+			LOG_ERROR("%d errors reading from group %s", nerrors, group_real);
+			rval = -1;
+		}
 	}
 
-	error:
+	/* check the bitmap for values that were not read */
+	{
+		int notread = 0;
+		uint8_t *b_first = (uint8_t *)&errbmp;;
+		uint8_t *b_last = (uint8_t *)&errbmp + sizeof(errbmp);
+		uint8_t *b = b_first;
+		while (b < b_last) {
+			bool doprint = false;
+
+			if (*b != 0xff) {
+				notread++;
+				if (!(b+1 < b_last)) {
+					doprint = true;
+				}
+			}
+			else if (notread > 0) {
+				doprint = true;
+			}
+
+			if (doprint) {
+				/* don't make errors critical - alignment padding bytes are never written */
+				LOG_WARNING("kernelinfo bytes [%td-%td] not read", b-b_first-notread, b-b_first-1);
+				notread = 0;
+				/* rval = -1; */
+			}
+
+			/* debug */
+			/* printf("%3td %x:%x\n", b-b_first, *b, ((uint8_t *)ki)[b-b_first]); */
+
+			b++;
+		}
+	}
+
+end:
 		g_key_file_free(keyfile);
 		g_free(group_real);
-		g_free(ki->name);
-		return -1;
+		return rval;
 }
 
-/* vim:set tabstop=4 softtabstop=4 noexpandtab */
+/* vim:set tabstop=4 softtabstop=4 noexpandtab: */

@@ -114,13 +114,15 @@ private:
             Value *src1, Value *src2, bool is_mixed);
     void insertTaintCompute(Instruction &I, Value *dest,
             Value *src1, Value *src2, bool is_mixed);
+    void insertTaintMul(Instruction &I, Value *dest,
+            Value *src1, Value *src2);
     void insertTaintSext(Instruction &I, Value *src);
     void insertTaintSelect(Instruction &after, Value *dest,
             Value *selector, vector<pair<Value *, Value *>> &selections);
     void insertTaintDelete(Instruction &I,
             Constant *shad, Value *dest, Value *size);
     void insertTaintBranch(Instruction &I, Value *cond);
-    void insertStoreEip(Instruction &I, Value *cond);
+    void insertTaintQueryNonConstPc(Instruction &I, Value *cond);
     void insertStateOp(Instruction &I);
 
 public:
@@ -130,6 +132,7 @@ public:
     Function *mixF;
     Function *pointerF;
     Function *mixCompF;
+    Function *mulCompF;
     Function *parallelCompF;
     Function *copyF;
     Function *moveF;
@@ -145,7 +148,7 @@ public:
     Function *resetFrameF;
     Function *breadcrumbF;
     Function *branchF;
-    Function *storeEipF;
+    Function *copyRegToPcF;
 
     Constant *memlogConst;
     Function *memlogPopF;

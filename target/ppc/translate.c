@@ -7115,6 +7115,11 @@ void gen_intermediate_code(CPUPPCState *env, struct TranslationBlock *tb)
 #if defined(DO_PPC_STATISTICS)
         handler->count++;
 #endif
+
+        if (unlikely(panda_callbacks_after_insn_translate(cs, ctx.nip))) {
+            gen_helper_panda_after_insn_exec(tcg_const_tl(ctx.nip));
+        }
+
         /* Check trace mode exceptions */
         if (unlikely(ctx.singlestep_enabled & CPU_SINGLE_STEP &&
                      (ctx.nip <= 0x100 || ctx.nip > 0xF00) &&

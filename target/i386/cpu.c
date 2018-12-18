@@ -2347,6 +2347,15 @@ static void x86_cpu_load_def(X86CPU *cpu, X86CPUDefinition *def, Error **errp)
 
 }
 
+static gchar *x86_gdb_arch_name(CPUState *cs)
+{
+#ifdef TARGET_X86_64
+        return g_strdup("i386:x86-64");
+#else
+            return g_strdup("i386");
+#endif
+}
+
 X86CPU *cpu_x86_init(const char *cpu_model)
 {
     return X86_CPU(cpu_generic_init(TYPE_X86_CPU, cpu_model));
@@ -3495,6 +3504,53 @@ static void x86_cpu_register_feature_bit_props(X86CPU *cpu,
     x86_cpu_register_bit_prop(cpu, name, &cpu->env.features[w], bitnr);
 }
 
+static GuestPanicInformation *x86_cpu_get_crash_info(CPUState *cs)
+{
+    X86CPU *cpu = X86_CPU(cs);
+    CPUX86State *env = &cpu->env;
+    GuestPanicInformation *panic_info = NULL;
+
+    if (env->features[FEAT_HYPERV_EDX] & HV_X64_GUEST_CRASH_MSR_AVAILABLE) {
+        GuestPanicInformationHyperV *panic_info_hv =
+            g_malloc0(sizeof(GuestPanicInformationHyperV));
+        panic_info = g_malloc0(sizeof(GuestPanicInformation));
+
+        panic_info->type = GUEST_PANIC_INFORMATION_KIND_HYPER_V;
+        panic_info->u.hyper_v.data = panic_info_hv;
+
+        assert(HV_X64_MSR_CRASH_PARAMS >= 5);
+        panic_info_hv->arg1 = env->msr_hv_crash_params[0];
+        panic_info_hv->arg2 = env->msr_hv_crash_params[1];
+        panic_info_hv->arg3 = env->msr_hv_crash_params[2];
+        panic_info_hv->arg4 = env->msr_hv_crash_params[3];
+        panic_info_hv->arg5 = env->msr_hv_crash_params[4];
+    }
+
+    return panic_info;
+}
+static void x86_cpu_get_crash_info_qom(Object *obj, Visitor *v,
+                                       const char *name, void *opaque,
+                                       Error **errp)
+{
+    CPUState *cs = CPU(obj);
+    GuestPanicInformation *panic_info;
+
+    if (!cs->crash_occurred) {
+        error_setg(errp, "No crash occured");
+        return;
+    }
+
+    panic_info = x86_cpu_get_crash_info(cs);
+    if (panic_info == NULL) {
+        error_setg(errp, "No crash information");
+        return;
+    }
+
+    visit_type_GuestPanicInformation(v, "crash-information", &panic_info,
+                                     errp);
+    qapi_free_GuestPanicInformation(panic_info);
+}
+
 static void x86_cpu_initfn(Object *obj)
 {
     CPUState *cs = CPU(obj);
@@ -3529,6 +3585,9 @@ static void x86_cpu_initfn(Object *obj)
     object_property_add(obj, "filtered-features", "X86CPUFeatureWordInfo",
                         x86_cpu_get_feature_words,
                         NULL, NULL, (void *)cpu->filtered_features, NULL);
+
+    object_property_add(obj, "crash-information", "GuestPanicInformation",
+                        x86_cpu_get_crash_info_qom, NULL, NULL, NULL, NULL);
 
     cpu->hyperv_spinlock_attempts = HYPERV_SPINLOCK_NEVER_RETRY;
 
@@ -3684,6 +3743,7 @@ static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
     cc->do_interrupt = x86_cpu_do_interrupt;
     cc->cpu_exec_interrupt = x86_cpu_exec_interrupt;
     cc->dump_state = x86_cpu_dump_state;
+    cc->get_crash_info = x86_cpu_get_crash_info;
     cc->set_pc = x86_cpu_set_pc;
     cc->synchronize_from_tb = x86_cpu_synchronize_from_tb;
     cc->gdb_read_register = x86_cpu_gdb_read_register;
@@ -3701,10 +3761,15 @@ static void x86_cpu_common_class_init(ObjectClass *oc, void *data)
     cc->write_elf32_qemunote = x86_cpu_write_elf32_qemunote;
     cc->vmsd = &vmstate_x86_cpu;
 #endif
-    /* CPU_NB_REGS * 2 = general regs + xmm regs
-     * 25 = eip, eflags, 6 seg regs, st[0-7], fctrl,...,fop, mxcsr.
-     */
-    cc->gdb_num_core_regs = CPU_NB_REGS * 2 + 25;
+
+    cc->gdb_arch_name = x86_gdb_arch_name;
+#ifdef TARGET_X86_64
+    cc->gdb_core_xml_file = "i386-64bit-core.xml";
+    cc->gdb_num_core_regs = 40;
+#else
+    cc->gdb_core_xml_file = "i386-32bit-core.xml";
+    cc->gdb_num_core_regs = 32;
+#endif
 #ifndef CONFIG_USER_ONLY
     cc->debug_excp_handler = breakpoint_handler;
 #endif

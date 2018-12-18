@@ -11,6 +11,9 @@
  * See the COPYING file in the top-level directory.
  *
 PANDAENDCOMMENT */
+/* Change Log: */
+/* 2018-MAY-29   move where mode bit calculated as requested */
+/* 2018-APR-13   watch for x86 processor mode changing in i386 build */
 #define __STDC_FORMAT_MACROS
 
 #include <cstdio>
@@ -37,7 +40,6 @@ PANDAENDCOMMENT */
 
 extern "C" {
 #include "panda/plog.h"
-
 #include "callstack_instr_int_fns.h"
 
 bool translate_callback(CPUState* cpu, target_ulong pc);
@@ -51,7 +53,6 @@ void uninit_plugin(void *);
 
 PPP_PROT_REG_CB(on_call);
 PPP_PROT_REG_CB(on_ret);
-
 }
 
 PPP_CB_BOILERPLATE(on_call);
@@ -179,7 +180,17 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
     instr_type res = INSTR_UNKNOWN;
 
 #if defined(TARGET_I386)
-    csh handle = (env->hflags & HF_LMA_MASK) ? cs_handle_64 : cs_handle_32;
+    csh handle = (env->hflags & HF_CS64_MASK) ? cs_handle_64 : cs_handle_32;
+#if !defined(TARGET_X86_64)
+    // not every block in i386 is necessary executing in the same processor mode
+    // need to make capstone match current mode or may miss call statements
+    if ((env->hflags & HF_CS32_MASK) == 0) {
+        cs_option(handle, CS_OPT_MODE, CS_MODE_16);
+    }
+    else {
+        cs_option(handle, CS_OPT_MODE, CS_MODE_32);
+    }
+#endif
 #elif defined(TARGET_ARM)
     csh handle = cs_handle_32;
 
@@ -223,6 +234,7 @@ done2:
 
 int after_block_translate(CPUState *cpu, TranslationBlock *tb) {
     CPUArchState* env = (CPUArchState*)cpu->env_ptr;
+
     call_cache[tb->pc] = disas_block(env, tb->pc, tb->size);
 
     return 1;
@@ -276,63 +288,59 @@ int after_block_exec(CPUState* cpu, TranslationBlock *tb) {
     return 1;
 }
 
-// Public interface implementation
-int get_callers(target_ulong callers[], int n, CPUState* cpu) {
+
+/**
+ * @brief Fills preallocated buffer \p callers with up to \p n call addresses.
+ */
+uint32_t get_callers(target_ulong callers[], uint32_t n, CPUState* cpu) {
     CPUArchState* env = (CPUArchState*)cpu->env_ptr;
     std::vector<stack_entry> &v = callstacks[get_stackid(env)];
-    auto rit = v.rbegin();
-    int i = 0;
-    for (/*no init*/; rit != v.rend() && i < n; ++rit, ++i) {
-        callers[i] = rit->pc;
-    }
-    return i;
+
+    n = std::min((uint32_t)v.size(), n);
+    for (uint32_t i=0; i<n; i++) { callers[i] = v[n-1-i].pc; }
+    return n;
 }
 
 
 #define CALLSTACK_MAX_SIZE 16
-// writes an entry to the pandalog with callstack info (and instr count and pc)
+/**
+ * @brief Creates a pandalog entry with the callstack information.
+ */
 Panda__CallStack *pandalog_callstack_create() {
-    assert (pandalog);
-    CPUState *cpu = first_cpu;
-    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
-    uint32_t n = 0;
+    assert(pandalog);
+    CPUArchState* env = (CPUArchState*)first_cpu->env_ptr;
     std::vector<stack_entry> &v = callstacks[get_stackid(env)];
-    auto rit = v.rbegin();
-    for (/*no init*/; rit != v.rend() && n < CALLSTACK_MAX_SIZE; ++rit) {
-        n ++;
-    }
-    Panda__CallStack *cs = (Panda__CallStack *) malloc (sizeof(Panda__CallStack));
+
+    Panda__CallStack *cs = (Panda__CallStack *)malloc(sizeof(Panda__CallStack));
     *cs = PANDA__CALL_STACK__INIT;
-    cs->n_addr = n;
-    cs->addr = (uint64_t *) malloc (sizeof(uint64_t) * n);
-    v = callstacks[get_stackid(env)];
-    rit = v.rbegin();
-    uint32_t i=0;
-    for (/*no init*/; rit != v.rend() && n < CALLSTACK_MAX_SIZE; ++rit, ++i) {
-        cs->addr[i] = rit->pc;
-    }
+    cs->n_addr = std::min((uint32_t)v.size(), (uint32_t)CALLSTACK_MAX_SIZE);
+    cs->addr = (uint64_t *)malloc(cs->n_addr * sizeof(uint64_t));
+
+    for (uint32_t i=0; i<cs->n_addr; i++) { cs->addr[i] = v[cs->n_addr-1-i].pc; }
+
     return cs;
 }
 
 
+/**
+ * @brief Frees a pandalog entry containing callstack information.
+ */
 void pandalog_callstack_free(Panda__CallStack *cs) {
     free(cs->addr);
     free(cs);
 }
 
 
-int get_functions(target_ulong functions[], int n, CPUState* cpu) {
+/**
+ * @brief Fills preallocated buffer \p functions with up to \p n function addresses.
+ */
+uint32_t get_functions(target_ulong functions[], uint32_t n, CPUState* cpu) {
     CPUArchState* env = (CPUArchState*)cpu->env_ptr;
     std::vector<target_ulong> &v = function_stacks[get_stackid(env)];
-    if (v.empty()) {
-        return 0;
-    }
-    auto rit = v.rbegin();
-    int i = 0;
-    for (/*no init*/; rit != v.rend() && i < n; ++rit, ++i) {
-        functions[i] = *rit;
-    }
-    return i;
+
+    n = std::min((uint32_t)v.size(), n);
+    for (uint32_t i=0; i<n; i++) { functions[i] = v[n-1-i]; }
+    return n;
 }
 
 void get_prog_point(CPUState* cpu, prog_point *p) {
@@ -370,15 +378,18 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
 bool init_plugin(void *self) {
 #if defined(TARGET_I386)
     if (cs_open(CS_ARCH_X86, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
+        return false;
 #if defined(TARGET_X86_64)
     if (cs_open(CS_ARCH_X86, CS_MODE_64, &cs_handle_64) != CS_ERR_OK)
+        return false;
 #endif
 #elif defined(TARGET_ARM)
     if (cs_open(CS_ARCH_ARM, CS_MODE_ARM, &cs_handle_32) != CS_ERR_OK)
+        return false;
 #elif defined(TARGET_PPC)
     if (cs_open(CS_ARCH_PPC, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
-#endif
         return false;
+#endif
 
     // Need details in capstone to have instruction groupings
     cs_option(cs_handle_32, CS_OPT_DETAIL, CS_OPT_ON);
@@ -403,3 +414,5 @@ bool init_plugin(void *self) {
 
 void uninit_plugin(void *self) {
 }
+
+/* vim: set tabstop=4 softtabstop=4 expandtab ft=cpp: */

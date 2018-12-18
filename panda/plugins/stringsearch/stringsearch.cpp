@@ -111,9 +111,20 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                 f.asid = p.cr3;
                 matchstacks[p] = f;
 
-                // call the i-found-a-match registered callbacks here
-                PPP_RUN_CB(on_ssm, env, pc, addr, tofind[str_idx], strlens[str_idx], is_write)
+                // Check if the full string is in memory.
+                uint8_t *tmp =
+                    (uint8_t *)calloc(strlens[str_idx] + 1, sizeof(*tmp));
+                target_ulong match_addr = (addr + i) - (strlens[str_idx] - 1);
+                panda_virtual_memory_read(env, match_addr, tmp,
+                                          strlens[str_idx]);
+                bool in_memory =
+                    memcmp(tmp, tofind[str_idx], strlens[str_idx]) == 0;
+                free(tmp);
 
+                // call the i-found-a-match registered callbacks here
+                PPP_RUN_CB(on_ssm, env, pc, in_memory ? match_addr : addr,
+                           tofind[str_idx], strlens[str_idx], is_write,
+                           in_memory);
             }
         }
     }
@@ -215,7 +226,7 @@ bool init_plugin(void *self) {
     panda_enable_memcb();
 
     pcb.virt_mem_before_write = mem_write_callback;
-    panda_register_callback(self, PANDA_CB_VIRT_MEM_BEFORE_WRITE, pcb);
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_AFTER_WRITE, pcb);
     pcb.virt_mem_after_read = mem_read_callback;
     panda_register_callback(self, PANDA_CB_VIRT_MEM_AFTER_READ, pcb);
 
