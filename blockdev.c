@@ -52,6 +52,7 @@
 #include "sysemu/arch_init.h"
 #include "qemu/cutils.h"
 #include "qemu/help_option.h"
+#include "qemu/throttle-options.h"
 
 static QTAILQ_HEAD(, BlockDriverState) monitor_bdrv_states =
     QTAILQ_HEAD_INITIALIZER(monitor_bdrv_states);
@@ -557,7 +558,7 @@ static BlockBackend *blockdev_init(const char *file, QDict *bs_opts,
     if ((!file || !*file) && !qdict_size(bs_opts)) {
         BlockBackendRootState *blk_rs;
 
-        blk = blk_new();
+        blk = blk_new(0, BLK_PERM_ALL);
         blk_rs = blk_get_root_state(blk);
         blk_rs->open_flags    = bdrv_flags;
         blk_rs->read_only     = read_only;
@@ -1767,6 +1768,17 @@ static void external_snapshot_prepare(BlkActionState *common,
 
     if (!state->new_bs->drv->supports_backing) {
         error_setg(errp, "The snapshot does not support backing images");
+        return;
+    }
+
+    /* This removes our old bs and adds the new bs. This is an operation that
+     * can fail, so we need to do it in .prepare; undoing it for abort is
+     * always possible. */
+    bdrv_ref(state->new_bs);
+    bdrv_append(state->new_bs, state->old_bs, &local_err);
+    if (local_err) {
+        error_propagate(errp, local_err);
+        return;
     }
 }
 
@@ -1777,8 +1789,6 @@ static void external_snapshot_commit(BlkActionState *common)
 
     bdrv_set_aio_context(state->new_bs, state->aio_context);
 
-    /* This removes our old bs and adds the new bs */
-    bdrv_append(state->new_bs, state->old_bs);
     /* We don't need (or want) to use the transactional
      * bdrv_reopen_multiple() across all the entries at once, because we
      * don't want to abort all of them if one of them fails the reopen */
@@ -1793,7 +1803,9 @@ static void external_snapshot_abort(BlkActionState *common)
     ExternalSnapshotState *state =
                              DO_UPCAST(ExternalSnapshotState, common, common);
     if (state->new_bs) {
-        bdrv_unref(state->new_bs);
+        if (state->new_bs->backing) {
+            bdrv_replace_in_backing_chain(state->new_bs, state->old_bs);
+        }
     }
 }
 
@@ -1804,6 +1816,7 @@ static void external_snapshot_clean(BlkActionState *common)
     if (state->aio_context) {
         bdrv_drained_end(state->old_bs);
         aio_context_release(state->aio_context);
+        bdrv_unref(state->new_bs);
     }
 }
 
@@ -2310,7 +2323,7 @@ static int do_open_tray(const char *blk_name, const char *qdev_id,
     }
 
     if (!locked || force) {
-        blk_dev_change_media_cb(blk, false);
+        blk_dev_change_media_cb(blk, false, &error_abort);
     }
 
     if (locked && !force) {
@@ -2348,6 +2361,7 @@ void qmp_blockdev_close_tray(bool has_device, const char *device,
                              Error **errp)
 {
     BlockBackend *blk;
+    Error *local_err = NULL;
 
     device = has_device ? device : NULL;
     id = has_id ? id : NULL;
@@ -2371,7 +2385,11 @@ void qmp_blockdev_close_tray(bool has_device, const char *device,
         return;
     }
 
-    blk_dev_change_media_cb(blk, true);
+    blk_dev_change_media_cb(blk, true, &local_err);
+    if (local_err) {
+        error_propagate(errp, local_err);
+        return;
+    }
 }
 
 void qmp_x_blockdev_remove_medium(bool has_device, const char *device,
@@ -2424,7 +2442,7 @@ void qmp_x_blockdev_remove_medium(bool has_device, const char *device,
          * called at all); therefore, the medium needs to be ejected here.
          * Do it after blk_remove_bs() so blk_is_inserted(blk) returns the @load
          * value passed here (i.e. false). */
-        blk_dev_change_media_cb(blk, false);
+        blk_dev_change_media_cb(blk, false, &error_abort);
     }
 
 out:
@@ -2434,7 +2452,9 @@ out:
 static void qmp_blockdev_insert_anon_medium(BlockBackend *blk,
                                             BlockDriverState *bs, Error **errp)
 {
+    Error *local_err = NULL;
     bool has_device;
+    int ret;
 
     /* For BBs without a device, we can exchange the BDS tree at will */
     has_device = blk_get_attached_dev(blk);
@@ -2454,7 +2474,10 @@ static void qmp_blockdev_insert_anon_medium(BlockBackend *blk,
         return;
     }
 
-    blk_insert_bs(blk, bs);
+    ret = blk_insert_bs(blk, bs, errp);
+    if (ret < 0) {
+        return;
+    }
 
     if (!blk_dev_has_tray(blk)) {
         /* For tray-less devices, blockdev-close-tray is a no-op (or may not be
@@ -2462,7 +2485,12 @@ static void qmp_blockdev_insert_anon_medium(BlockBackend *blk,
          * slot here.
          * Do it after blk_insert_bs() so blk_is_inserted(blk) returns the @load
          * value passed here (i.e. true). */
-        blk_dev_change_media_cb(blk, true);
+        blk_dev_change_media_cb(blk, true, &local_err);
+        if (local_err) {
+            error_propagate(errp, local_err);
+            blk_remove_bs(blk);
+            return;
+        }
     }
 }
 
@@ -2858,6 +2886,7 @@ void qmp_block_resize(bool has_device, const char *device,
                       int64_t size, Error **errp)
 {
     Error *local_err = NULL;
+    BlockBackend *blk = NULL;
     BlockDriverState *bs;
     AioContext *aio_context;
     int ret;
@@ -2888,10 +2917,16 @@ void qmp_block_resize(bool has_device, const char *device,
         goto out;
     }
 
+    blk = blk_new(BLK_PERM_RESIZE, BLK_PERM_ALL);
+    ret = blk_insert_bs(blk, bs, errp);
+    if (ret < 0) {
+        goto out;
+    }
+
     /* complete all in-flight operations before resizing the device */
     bdrv_drain_all();
 
-    ret = bdrv_truncate(bs, size);
+    ret = blk_truncate(blk, size);
     switch (ret) {
     case 0:
         break;
@@ -2913,6 +2948,7 @@ void qmp_block_resize(bool has_device, const char *device,
     }
 
 out:
+    blk_unref(blk);
     aio_context_release(aio_context);
 }
 
@@ -3008,6 +3044,7 @@ void qmp_block_commit(bool has_job_id, const char *job_id, const char *device,
                       bool has_top, const char *top,
                       bool has_backing_file, const char *backing_file,
                       bool has_speed, int64_t speed,
+                      bool has_filter_node_name, const char *filter_node_name,
                       Error **errp)
 {
     BlockDriverState *bs;
@@ -3022,6 +3059,9 @@ void qmp_block_commit(bool has_job_id, const char *job_id, const char *device,
 
     if (!has_speed) {
         speed = 0;
+    }
+    if (!has_filter_node_name) {
+        filter_node_name = NULL;
     }
 
     /* Important Note:
@@ -3097,8 +3137,8 @@ void qmp_block_commit(bool has_job_id, const char *job_id, const char *device,
             goto out;
         }
         commit_active_start(has_job_id ? job_id : NULL, bs, base_bs,
-                            BLOCK_JOB_DEFAULT, speed, on_error, NULL, NULL,
-                            &local_err, false);
+                            BLOCK_JOB_DEFAULT, speed, on_error,
+                            filter_node_name, NULL, NULL, &local_err, false);
     } else {
         BlockDriverState *overlay_bs = bdrv_find_overlay(bs, top_bs);
         if (bdrv_op_is_blocked(overlay_bs, BLOCK_OP_TYPE_COMMIT_TARGET, errp)) {
@@ -3106,7 +3146,7 @@ void qmp_block_commit(bool has_job_id, const char *job_id, const char *device,
         }
         commit_start(has_job_id ? job_id : NULL, bs, base_bs, top_bs, speed,
                      on_error, has_backing_file ? backing_file : NULL,
-                     &local_err);
+                     filter_node_name, &local_err);
     }
     if (local_err != NULL) {
         error_propagate(errp, local_err);
@@ -3342,6 +3382,8 @@ static void blockdev_mirror_common(const char *job_id, BlockDriverState *bs,
                                    bool has_on_target_error,
                                    BlockdevOnError on_target_error,
                                    bool has_unmap, bool unmap,
+                                   bool has_filter_node_name,
+                                   const char *filter_node_name,
                                    Error **errp)
 {
 
@@ -3362,6 +3404,9 @@ static void blockdev_mirror_common(const char *job_id, BlockDriverState *bs,
     }
     if (!has_unmap) {
         unmap = true;
+    }
+    if (!has_filter_node_name) {
+        filter_node_name = NULL;
     }
 
     if (granularity != 0 && (granularity < 512 || granularity > 1048576 * 64)) {
@@ -3392,7 +3437,8 @@ static void blockdev_mirror_common(const char *job_id, BlockDriverState *bs,
     mirror_start(job_id, bs, target,
                  has_replaces ? replaces : NULL,
                  speed, granularity, buf_size, sync, backing_mode,
-                 on_source_error, on_target_error, unmap, errp);
+                 on_source_error, on_target_error, unmap, filter_node_name,
+                 errp);
 }
 
 void qmp_drive_mirror(DriveMirror *arg, Error **errp)
@@ -3530,6 +3576,7 @@ void qmp_drive_mirror(DriveMirror *arg, Error **errp)
                            arg->has_on_source_error, arg->on_source_error,
                            arg->has_on_target_error, arg->on_target_error,
                            arg->has_unmap, arg->unmap,
+                           false, NULL,
                            &local_err);
     bdrv_unref(target_bs);
     error_propagate(errp, local_err);
@@ -3548,6 +3595,8 @@ void qmp_blockdev_mirror(bool has_job_id, const char *job_id,
                          BlockdevOnError on_source_error,
                          bool has_on_target_error,
                          BlockdevOnError on_target_error,
+                         bool has_filter_node_name,
+                         const char *filter_node_name,
                          Error **errp)
 {
     BlockDriverState *bs;
@@ -3579,6 +3628,7 @@ void qmp_blockdev_mirror(bool has_job_id, const char *job_id,
                            has_on_source_error, on_source_error,
                            has_on_target_error, on_target_error,
                            true, true,
+                           has_filter_node_name, filter_node_name,
                            &local_err);
     error_propagate(errp, local_err);
 
@@ -4002,83 +4052,11 @@ QemuOptsList qemu_common_drive_opts = {
             .name = BDRV_OPT_READ_ONLY,
             .type = QEMU_OPT_BOOL,
             .help = "open drive file as read-only",
-        },{
-            .name = "throttling.iops-total",
-            .type = QEMU_OPT_NUMBER,
-            .help = "limit total I/O operations per second",
-        },{
-            .name = "throttling.iops-read",
-            .type = QEMU_OPT_NUMBER,
-            .help = "limit read operations per second",
-        },{
-            .name = "throttling.iops-write",
-            .type = QEMU_OPT_NUMBER,
-            .help = "limit write operations per second",
-        },{
-            .name = "throttling.bps-total",
-            .type = QEMU_OPT_NUMBER,
-            .help = "limit total bytes per second",
-        },{
-            .name = "throttling.bps-read",
-            .type = QEMU_OPT_NUMBER,
-            .help = "limit read bytes per second",
-        },{
-            .name = "throttling.bps-write",
-            .type = QEMU_OPT_NUMBER,
-            .help = "limit write bytes per second",
-        },{
-            .name = "throttling.iops-total-max",
-            .type = QEMU_OPT_NUMBER,
-            .help = "I/O operations burst",
-        },{
-            .name = "throttling.iops-read-max",
-            .type = QEMU_OPT_NUMBER,
-            .help = "I/O operations read burst",
-        },{
-            .name = "throttling.iops-write-max",
-            .type = QEMU_OPT_NUMBER,
-            .help = "I/O operations write burst",
-        },{
-            .name = "throttling.bps-total-max",
-            .type = QEMU_OPT_NUMBER,
-            .help = "total bytes burst",
-        },{
-            .name = "throttling.bps-read-max",
-            .type = QEMU_OPT_NUMBER,
-            .help = "total bytes read burst",
-        },{
-            .name = "throttling.bps-write-max",
-            .type = QEMU_OPT_NUMBER,
-            .help = "total bytes write burst",
-        },{
-            .name = "throttling.iops-total-max-length",
-            .type = QEMU_OPT_NUMBER,
-            .help = "length of the iops-total-max burst period, in seconds",
-        },{
-            .name = "throttling.iops-read-max-length",
-            .type = QEMU_OPT_NUMBER,
-            .help = "length of the iops-read-max burst period, in seconds",
-        },{
-            .name = "throttling.iops-write-max-length",
-            .type = QEMU_OPT_NUMBER,
-            .help = "length of the iops-write-max burst period, in seconds",
-        },{
-            .name = "throttling.bps-total-max-length",
-            .type = QEMU_OPT_NUMBER,
-            .help = "length of the bps-total-max burst period, in seconds",
-        },{
-            .name = "throttling.bps-read-max-length",
-            .type = QEMU_OPT_NUMBER,
-            .help = "length of the bps-read-max burst period, in seconds",
-        },{
-            .name = "throttling.bps-write-max-length",
-            .type = QEMU_OPT_NUMBER,
-            .help = "length of the bps-write-max burst period, in seconds",
-        },{
-            .name = "throttling.iops-size",
-            .type = QEMU_OPT_NUMBER,
-            .help = "when limiting by iops max size of an I/O in bytes",
-        },{
+        },
+
+        THROTTLE_OPTS,
+
+        {
             .name = "throttling.group",
             .type = QEMU_OPT_STRING,
             .help = "name of the block throttling group",

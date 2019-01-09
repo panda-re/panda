@@ -984,8 +984,10 @@ static void qmp_unregister_commands_hack(void)
 #ifndef TARGET_ARM
     qmp_unregister_command("query-gic-capabilities");
 #endif
-#if !defined(TARGET_S390X)
+#if !defined(TARGET_S390X) && !defined(TARGET_I386)
     qmp_unregister_command("query-cpu-model-expansion");
+#endif
+#if !defined(TARGET_S390X)
     qmp_unregister_command("query-cpu-model-baseline");
     qmp_unregister_command("query-cpu-model-comparison");
 #endif
@@ -2799,7 +2801,8 @@ static QDict *monitor_parse_arguments(Monitor *mon,
             break;
         case 'o':
             {
-                int64_t val;
+                int ret;
+                uint64_t val;
                 char *end;
 
                 while (qemu_isspace(*p)) {
@@ -2811,8 +2814,8 @@ static QDict *monitor_parse_arguments(Monitor *mon,
                         break;
                     }
                 }
-                val = qemu_strtosz(p, &end);
-                if (val < 0) {
+                ret = qemu_strtosz_MiB(p, &end, &val);
+                if (ret < 0 || val > INT64_MAX) {
                     monitor_printf(mon, "invalid size\n");
                     goto fail;
                 }
@@ -3712,12 +3715,12 @@ static QDict *qmp_check_input_obj(QObject *input_obj, Error **errp)
     int has_exec_key = 0;
     QDict *input_dict;
 
-    if (qobject_type(input_obj) != QTYPE_QDICT) {
+    input_dict = qobject_to_qdict(input_obj);
+    if (!input_dict) {
         error_setg(errp, QERR_QMP_BAD_INPUT_OBJECT, "object");
         return NULL;
     }
 
-    input_dict = qobject_to_qdict(input_obj);
 
     for (ent = qdict_first(input_dict); ent; ent = qdict_next(input_dict, ent)){
         const char *arg_name = qdict_entry_key(ent);
@@ -3761,10 +3764,11 @@ static void handle_qmp_command(JSONMessageParser *parser, GQueue *tokens)
     Error *err = NULL;
 
     req = json_parser_parse_err(tokens, NULL, &err);
-    if (err || !req || qobject_type(req) != QTYPE_QDICT) {
-        if (!err) {
-            error_setg(&err, QERR_JSON_PARSING);
-        }
+    if (!req && !err) {
+        /* json_parser_parse_err() sucks: can fail without setting @err */
+        error_setg(&err, QERR_JSON_PARSING);
+    }
+    if (err) {
         goto err_out;
     }
 
