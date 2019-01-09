@@ -70,6 +70,7 @@
 #include "qemu/bitmap.h"
 #include "qemu/timer.h"
 #include "exec/log.h"
+#include "sysemu/cpus.h"
 
 #ifdef CONFIG_LLVM
 #include "panda/tcg-llvm.h"
@@ -372,6 +373,19 @@ bool cpu_restore_state(CPUState *cpu, uintptr_t retaddr)
 {
     TranslationBlock *tb;
     bool r = false;
+
+    /* A retaddr of zero is invalid so we really shouldn't have ended
+     * up here. The target code has likely forgotten to check retaddr
+     * != 0 before attempting to restore state. We return early to
+     * avoid blowing up on a recursive tb_lock(). The target must have
+     * previously survived a failed cpu_restore_state because
+     * tb_find_pc(0) would have failed anyway. It still should be
+     * fixed though.
+     */
+
+    if (!retaddr) {
+        return r;
+    }
 
     tb_lock();
     tb = tb_find_pc(retaddr);
