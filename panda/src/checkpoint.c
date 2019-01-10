@@ -23,6 +23,8 @@
 #include "panda/common.h"
 #include "qemu/memfd.h"
 
+#include "sysemu/cpus.h"
+
 #if defined CONFIG_LINUX && !defined CONFIG_MEMFD
 #include <sys/syscall.h>
 #include <asm/unistd.h>

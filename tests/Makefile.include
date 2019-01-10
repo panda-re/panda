@@ -369,24 +369,30 @@ qapi-schema += base-cycle-direct.json
 qapi-schema += base-cycle-indirect.json
 qapi-schema += command-int.json
 qapi-schema += comments.json
-qapi-schema += doc-bad-args.json
+qapi-schema += doc-bad-alternate-member.json
+qapi-schema += doc-bad-command-arg.json
 qapi-schema += doc-bad-symbol.json
+qapi-schema += doc-bad-union-member.json
+qapi-schema += doc-before-include.json
+qapi-schema += doc-before-pragma.json
 qapi-schema += doc-duplicated-arg.json
 qapi-schema += doc-duplicated-return.json
 qapi-schema += doc-duplicated-since.json
 qapi-schema += doc-empty-arg.json
 qapi-schema += doc-empty-section.json
 qapi-schema += doc-empty-symbol.json
+qapi-schema += doc-good.json
 qapi-schema += doc-interleaved-section.json
 qapi-schema += doc-invalid-end.json
 qapi-schema += doc-invalid-end2.json
 qapi-schema += doc-invalid-return.json
 qapi-schema += doc-invalid-section.json
 qapi-schema += doc-invalid-start.json
+qapi-schema += doc-missing.json
 qapi-schema += doc-missing-colon.json
 qapi-schema += doc-missing-expr.json
 qapi-schema += doc-missing-space.json
-qapi-schema += doc-optional.json
+qapi-schema += doc-no-symbol.json
 qapi-schema += double-data.json
 qapi-schema += double-type.json
 qapi-schema += duplicate-key.json
@@ -424,6 +430,7 @@ qapi-schema += funny-char.json
 qapi-schema += ident-with-escape.json
 qapi-schema += include-before-err.json
 qapi-schema += include-cycle.json
+qapi-schema += include-extra-junk.json
 qapi-schema += include-format-err.json
 qapi-schema += include-nested-err.json
 qapi-schema += include-no-file.json
@@ -441,6 +448,11 @@ qapi-schema += missing-comma-object.json
 qapi-schema += missing-type.json
 qapi-schema += nested-struct-data.json
 qapi-schema += non-objects.json
+qapi-schema += pragma-doc-required-crap.json
+qapi-schema += pragma-extra-junk.json
+qapi-schema += pragma-name-case-whitelist-crap.json
+qapi-schema += pragma-non-dict.json
+qapi-schema += pragma-returns-whitelist-crap.json
 qapi-schema += qapi-schema-test.json
 qapi-schema += quoted-structural-chars.json
 qapi-schema += redefined-builtin.json
@@ -471,6 +483,7 @@ qapi-schema += unclosed-list.json
 qapi-schema += unclosed-object.json
 qapi-schema += unclosed-string.json
 qapi-schema += unicode-str.json
+qapi-schema += union-base-empty.json
 qapi-schema += union-base-no-discriminator.json
 qapi-schema += union-branch-case.json
 qapi-schema += union-clash-branches.json
@@ -484,7 +497,7 @@ qapi-schema += unknown-expr-key.json
 
 check-qapi-schema-y := $(addprefix tests/qapi-schema/, $(qapi-schema))
 
-GENERATED_HEADERS += tests/test-qapi-types.h tests/test-qapi-visit.h \
+GENERATED_FILES += tests/test-qapi-types.h tests/test-qapi-visit.h \
 	tests/test-qmp-commands.h tests/test-qapi-event.h \
 	tests/test-qmp-introspect.h
 
@@ -596,6 +609,9 @@ $(SRC_PATH)/tests/qapi-schema/qapi-schema-test.json $(SRC_PATH)/scripts/qapi-int
 	$(call quiet-command,$(PYTHON) $(SRC_PATH)/scripts/qapi-introspect.py \
 		$(gen-out-type) -o tests -p "test-" $<, \
 		"GEN","$@")
+
+tests/qapi-schema/doc-good.test.texi: $(SRC_PATH)/tests/qapi-schema/doc-good.json $(SRC_PATH)/scripts/qapi2texi.py $(qapi-py)
+	$(call quiet-command,$(PYTHON) $(SRC_PATH)/scripts/qapi2texi.py $< > $@,"GEN","$@")
 
 tests/test-string-output-visitor$(EXESUF): tests/test-string-output-visitor.o $(test-qapi-obj-y)
 tests/test-string-input-visitor$(EXESUF): tests/test-string-input-visitor.o $(test-qapi-obj-y)
@@ -726,7 +742,7 @@ tests/vhost-user-test$(EXESUF): tests/vhost-user-test.o $(test-util-obj-y) \
 	$(chardev-obj-y)
 tests/qemu-iotests/socket_scm_helper$(EXESUF): tests/qemu-iotests/socket_scm_helper.o
 tests/test-qemu-opts$(EXESUF): tests/test-qemu-opts.o $(test-util-obj-y)
-tests/test-keyval$(EXESUF): tests/test-keyval.o $(test-util-obj-y)
+tests/test-keyval$(EXESUF): tests/test-keyval.o $(test-util-obj-y) $(test-qapi-obj-y)
 tests/test-write-threshold$(EXESUF): tests/test-write-threshold.o $(test-block-obj-y)
 tests/test-netfilter$(EXESUF): tests/test-netfilter.o $(qtest-obj-y)
 tests/test-filter-mirror$(EXESUF): tests/test-filter-mirror.o $(qtest-obj-y)
@@ -846,9 +862,6 @@ QEMU_IOTESTS_HELPERS-$(CONFIG_LINUX) = tests/qemu-iotests/socket_scm_helper$(EXE
 check-tests/qemu-iotests-quick.sh: tests/qemu-iotests-quick.sh qemu-img$(EXESUF) qemu-io$(EXESUF) $(QEMU_IOTESTS_HELPERS-y)
 	$<
 
-.PHONY: check-tests/test-qapi.py
-check-tests/test-qapi.py: tests/test-qapi.py
-
 .PHONY: $(patsubst %, check-%, $(check-qapi-schema-y))
 $(patsubst %, check-%, $(check-qapi-schema-y)): check-%.json: $(SRC_PATH)/%.json
 	$(call quiet-command, PYTHONPATH=$(SRC_PATH)/scripts \
@@ -861,10 +874,14 @@ $(patsubst %, check-%, $(check-qapi-schema-y)): check-%.json: $(SRC_PATH)/%.json
 	@perl -p -e 's|\Q$(SRC_PATH)\E/||g' $*.test.err | diff -q $(SRC_PATH)/$*.err -
 	@diff -q $(SRC_PATH)/$*.exit $*.test.exit
 
+.PHONY: check-tests/qapi-schema/doc-good.texi
+check-tests/qapi-schema/doc-good.texi: tests/qapi-schema/doc-good.test.texi
+	@diff -q $(SRC_PATH)/tests/qapi-schema/doc-good.texi $<
+
 # Consolidated targets
 
 .PHONY: check-qapi-schema check-qtest check-unit check check-clean
-check-qapi-schema: $(patsubst %,check-%, $(check-qapi-schema-y))
+check-qapi-schema: $(patsubst %,check-%, $(check-qapi-schema-y)) check-tests/qapi-schema/doc-good.texi
 check-qtest: $(patsubst %,check-qtest-%, $(QTEST_TARGETS))
 check-unit: $(patsubst %,check-%, $(check-unit-y))
 check-block: $(patsubst %,check-%, $(check-block-y))
