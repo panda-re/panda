@@ -9,14 +9,9 @@ def init(handle):
 @pyp.callback("int(CPUState*, TranslationBlock*)")
 def before_block_execute(cpustate,transblock):
 	progress("before block in python")
-	if panda.static_var >= 10000:
-		pdb.set_trace()
-	else:
-		panda.static_var +=1
-	#sleep(sleeptime)
+	pdb.set_trace()
 	return 0
 
-sleeptime = 1
 panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img")
 panda.load_python_plugin(init,"Cool Plugin")
 panda.run()

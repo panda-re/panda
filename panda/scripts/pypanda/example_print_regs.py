@@ -8,12 +8,13 @@ def init(handle):
 
 @pyp.callback("int(CPUState*, TranslationBlock*)")
 def before_block_execute(cpustate,transblock):
+	pdb.set_trace()
 	if panda.static_var == 10000:
 		fregs = ["{:08x}".format(i) for i in cpustate.env_ptr.regs]
 		fregs.append("{:08x}".format(cpustate.env_ptr.eip))
 		fregs.append("{:08x}".format(cpustate.env_ptr.eflags))
-		progress("EAX: %s EBX: %s ECX: %s EDX: %s ESP: %s EBP: %s ESI: %s EDI: %s EIP: %s EFLAGS: %s" %(fregs[0], fregs[3], fregs[1], fregs[2], fregs[4], fregs[5], fregs[6], fregs[7], fregs[8], fregs[9]))
-		sleep(0.4)
+		progress("EAX: %s EBX: %s ECX: %s EDX: %s ESP: %s EBP: %s EIP: %s" %(fregs[0], fregs[3], fregs[1], fregs[2], fregs[4], fregs[5] , fregs[8]))
+		sleep(1.2)
 	panda.static_var = (panda.static_var+1) % (10001)
 	return 0
 

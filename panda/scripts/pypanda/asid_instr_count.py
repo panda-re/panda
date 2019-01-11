@@ -3,13 +3,14 @@ from time import sleep
 
 ac_instr_start = 0
 
+
 def InstrRange:
 	def __init__(self, old_instr, new_instr):
 		self.old = old # first
 		self.new = new # secod
 
-asid_rr_sub_factor = {}
-asid_instr_intervals = {}
+asid_rr_sub_factor = {} # (int -> instr)
+asid_instr_intervals = {}	# (int -> instrrange)
 
 def update_asid_rr_sub_factor(old_asid, rr):
 	if old_asid not in asid_instr_intervals:
@@ -19,9 +20,10 @@ def update_asid_rr_sub_factor(old_asid, rr):
 	rri_len = rr.new - rr.old
 	for kvp in asid_rr_sub_factor:
 		asid = kvp.old_instr
-		if 
+		if asid != old_asid:
+			asid_rr_sub_factor[asid] += rri_len
 	if len(asid_rr_sub_factor) == 0:
-		asid_rr_sub_factor[old_asid] = panda.get_guest_instr_count()
+		asid_rr_sub_factor[old_asid] = panda.rr_get_guest_instr_count_external()
 
 @pyp.callback("int(CPUState*, uint32_t, uint32_t)")
 def asid_changed(cpustate, old_asid, new_asid):

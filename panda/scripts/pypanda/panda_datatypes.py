@@ -8,6 +8,7 @@ ffi.cdef(open("./include/pthreadtypes.h").read())
 ffi.cdef(open("./include/panda_x86_support.h").read())
 ffi.cdef(open("./include/panda_qemu_support.h").read())
 ffi.cdef(open("./include/panda_datatypes.h").read())
+
 class PandaState(Enum):
 	UNINT = 1
 	INIT_DONE = 2
