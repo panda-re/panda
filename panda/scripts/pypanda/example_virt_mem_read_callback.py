@@ -6,7 +6,7 @@ import unicodedata
 def init(handle):
 	progress("init in python. handle="+str(handle))
 	panda.enable_memcb()
-	panda.register_callback(handle, "virt_mem_after_write", 14, virt_mem_after_write)
+	panda.register_callback(handle, panda.callback.virt_mem_after_write, virt_mem_after_write)
 	return True
 
 

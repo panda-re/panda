@@ -3,8 +3,8 @@ from time import sleep
 @pyp.callback("bool(void*)")
 def init(handle):
 	progress("init in python. handle="+str(handle))
-	panda.register_callback(handle, "before_block_exec", 3, before_block_execute)
-	panda.register_callback(handle, "after_block_exec", 4, after_block_execute)
+	panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
+	panda.register_callback(handle, panda.callback.after_block_exec, after_block_execute)
 	return True
 
 @pyp.callback("int(CPUState*, TranslationBlock*)")

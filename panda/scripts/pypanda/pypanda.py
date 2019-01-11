@@ -42,12 +42,12 @@ class Panda:
 	arch should be "i386" or "x86_64" or ...
 	NB: wheezy is debian:3.2.0-4-686-pae
 	"""
-	def __init__(self, arch="i386", mem="128M", the_os="debian:3.2.0-4-686-pae", qcow="default", extra_args = ""):
+	def __init__(self, arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", qcow="default", extra_args = ""):
 		if debug:
 			progress("Initializing panda")
 		self.arch = arch
 		self.mem = mem
-		self.os = the_os
+		self.os = os_version
 		self.static_var = 0
 		self.qcow = qcow
 		if qcow is None:
@@ -60,6 +60,8 @@ class Panda:
 			if not (os.path.exists(self.qcow)):
 				print("Missing qcow -- %s" % self.qcow)
 				print("Please go create that qcow and give it to moyix!")
+
+		self.callback = pcb
 		self.bindir = pjoin(panda_build, "%s-softmmu" % arch)
 		self.panda = pjoin(self.bindir, "qemu-system-%s" % arch)
 		self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % arch))
@@ -74,7 +76,7 @@ class Panda:
 		assert (not (bits == None))
 		
 		# note: weird that we need panda as 1st arg to lib fn to init?
-		self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath, "-os", os2osstring[the_os], self.qcow]
+		self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath, "-os", os2osstring[self.os], self.qcow]
 		self.panda_args_ffi = [ffi.new("char[]", bytes(str(i),"utf-8")) for i in self.panda_args]
 		cargs = ffi.new("char **")
 		# start up panda!
@@ -117,11 +119,11 @@ class Panda:
 		self.libpanda.panda_load_external_plugin(filename_ffi, name_ffi, uid_ffi, init_ffi)
 
 
-	def register_callback(self, handle, name, number, function):
-		pcb = ffi.new("panda_cb *", {name:function})
-		self.libpanda.panda_register_callback_helper(handle, number, pcb)
+	def register_callback(self, handle, callback, function):
+		pcb = ffi.new("panda_cb *", {callback.name:function})
+		self.libpanda.panda_register_callback_helper(handle, callback.number, pcb)
 		if debug:
-			progress("registered callback for type: %s" %name)
+			progress("registered callback for type: %s" % callback.name)
 
 	def rr_get_guest_instr_count_external(self):
 		return self.libpanda.rr_get_guest_instr_count_external()
@@ -208,3 +210,4 @@ class Panda:
 
 	def virtual_memory_write(env, addr, buf, length):
 		self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
+

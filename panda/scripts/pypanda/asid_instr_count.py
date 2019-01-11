@@ -37,7 +37,7 @@ def asid_changed(cpustate, old_asid, new_asid):
 
 @pyp.callback("bool(void*)")
 def init(handle):
-	panda.register_callback(handle, "asid_changed", 23, asid_changed)
+	panda.register_callback(handle, panda.callback.asid_changed, asid_changed)
 	return True
 
 panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img", mem="2048M")

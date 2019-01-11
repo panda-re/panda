@@ -12,7 +12,7 @@ def init(handle):
 	panda.disable_tb_chaining()
 	
 	if taint2_hypercalls:
-		panda.register_callback(handle, "guest_hypercall", 19, guest_hypercall) 
+		panda.register_callback(handle, panda.callback.guest_hypercall, guest_hypercall) 
 	
 	
 		

@@ -3,7 +3,7 @@ from time import sleep
 
 @pyp.callback("bool(void*)")
 def init(handle):
-	panda.register_callback(handle, "before_block_exec", 3, before_block_execute)
+	panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
 	return True
 
 @pyp.callback("int(CPUState*, TranslationBlock*)")

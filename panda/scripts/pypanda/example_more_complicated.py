@@ -26,8 +26,8 @@ def asid_changed(cpustate, old_asid, new_asid):
 def init(handle):
 	progress("init in python. handle="+str(handle))
 #	panda.require("osi")
-	panda.register_callback(handle, "before_block_exec", 3, before_block_execute) 
-	panda.register_callback(handle, "asid_changed", 23, asid_changed)
+	panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute) 
+	panda.register_callback(handle, panda.callback.asid_changed, asid_changed)
 	return True
 panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img", mem="2048M")
 panda.load_python_plugin(init,"Cool Plugin")
