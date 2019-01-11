@@ -147,6 +147,7 @@ def before_block_execute(cpustate,transblock):
 This is a comprehensive list of the decorators you must use for each callback type.
 
 | Callback | Decorator 																		|
+| --------------------------------- | : --------------------------------------------------: |
 | before_block_exec_invalidate_opt | @pyp.callback("bool(CPUState*, TranslationBlock*)") |
 | before_block_exec | @pyp.callback("int(CPUState*, TranslationBlock*)") |
 | after_block_exec | @pyp.callback("int(CPUState*, TranslationBlock*)") |
