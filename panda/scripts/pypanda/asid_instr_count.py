@@ -25,7 +25,7 @@ def update_asid_rr_sub_factor(old_asid, rr):
 	if len(asid_rr_sub_factor) == 0:
 		asid_rr_sub_factor[old_asid] = panda.rr_get_guest_instr_count_external()
 
-@pyp.callback("int(CPUState*, uint32_t, uint32_t)")
+@panda.callback.asid_changed
 def asid_changed(cpustate, old_asid, new_asid):
 	if new_asid < 10:
 		return 0
@@ -35,7 +35,7 @@ def asid_changed(cpustate, old_asid, new_asid):
 	ac_instr_count = panda.get_guest_instr_count()
 	return 0
 
-@pyp.callback("bool(void*)")
+@panda.callback.init
 def init(handle):
 	panda.register_callback(handle, panda.callback.asid_changed, asid_changed)
 	return True

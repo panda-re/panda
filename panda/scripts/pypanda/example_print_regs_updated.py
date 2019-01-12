@@ -1,12 +1,12 @@
 from pypanda import *
 from time import sleep
 
-@pyp.callback("bool(void*)")
+@panda.callback.init
 def init(handle):
 	panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
 	return True
 
-@pyp.callback("int(CPUState*, TranslationBlock*)")
+@panda.callback.before_block_exec
 def before_block_execute(cpustate,transblock):
 	if panda.static_var == 100000:
 		pdb.set_trace()

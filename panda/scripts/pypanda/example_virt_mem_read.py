@@ -2,7 +2,8 @@ from pypanda import *
 from time import sleep
 from string import printable
 import unicodedata
-@pyp.callback("bool(void*)")
+
+@panda.callback.init
 def init(handle):
 	progress("init in python. handle="+str(handle))
 	panda.enable_memcb()
@@ -10,7 +11,7 @@ def init(handle):
 	return True
 
 
-@pyp.callback("int(CPUState *, target_ulong, target_ulong, target_ulong, void*)")
+@panda.callback.virt_mem_after_write
 def virt_mem_after_write(cpustate,pc, addr, size, buf):
 #	pdb.set_trace()
 	z = ffi.cast("char*", buf)

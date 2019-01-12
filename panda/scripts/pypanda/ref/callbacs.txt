@@ -41,14 +41,14 @@ panda = Panda(arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", qcow
 #### Writing an init function
 
 ```
-@panda.callback.init
+@pyp.callback("bool(void*)")
 def init(handle):
 	progress("init in python. handle="+str(handle))
 	panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
 	return True
 ```
 
-- @panda.callback.init - Init functions must contain this decorator. This lets cffi know how to use it as a callback. 
+- @pyp.callback("bool(void*)") - Init functions must contain this decorator. This lets cffi know how to use it as a callback. 
 - handle - This is a unique identifier. Pass it to register_callback and mostly leave it alone.
 - panda.register_callback(...) - next section
 - This function must return True or False (or you will run into issues)
@@ -121,7 +121,7 @@ callback = panda.callback.virt_mem_before_write
 
 #### Writing Callbacks
 ```
-@panda.callback.name_of_callback
+@pyp.callback("return_type(arg_1_type,arg_2_type,arg_3_type,...)")
 def your_callback_name(arg1,arg2,arg3):
     return variable_of_return_type
 ```
@@ -134,12 +134,54 @@ def your_callback_name(arg1,arg2,arg3):
 Example:
 
 ```
-@panda.callback.before_block_exec
+@pyp.callback("int(CPUState*, TranslationBlock*)")
 def before_block_execute(cpustate,transblock):
 	progress("before block in python")
 	pdb.set_trace()
 	return 0
 ```
+
+
+##### Callback Decorators
+
+This is a comprehensive list of the decorators you must use for each callback type.
+
+| Callback | Decorator 																		|
+| --------------------------------- | : --------------------------------------------------: |
+| before_block_exec_invalidate_opt | @pyp.callback("bool(CPUState*, TranslationBlock*)") |
+| before_block_exec | @pyp.callback("int(CPUState*, TranslationBlock*)") |
+| after_block_exec | @pyp.callback("int(CPUState*, TranslationBlock*)") |
+| before_block_translate | @pyp.callback("int(CPUState*, target_ulong)") |
+| after_block_translate | @pyp.callback("int(CPUState*, TranslationBlock*)") |
+| insn_translate | @pyp.callback("bool(CPUState*, target_ulong)") |
+| insn_exec | @pyp.callback("int(CPUState*, target_ulong)") |
+| after_insn_translate | @pyp.callback("bool(CPUState*, target_ulong)") |
+| after_insn_exec | @pyp.callback("int(CPUState*, target_ulong)") |
+| guest_hypercall | @pyp.callback("int(CPUState*)") |
+| monitor | @pyp.callback("int(Monitor*, char*)") |
+| virt_mem_before_read | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong)") |
+| virt_mem_before_write | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)") |
+| phys_mem_before_read | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong)") |
+| phys_mem_before_write | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)") |
+| virt_mem_after_read | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)") |
+| virt_mem_after_write | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)") |
+| phys_mem_after_read | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)") |
+| phys_mem_after_write | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)") |
+| cb_cpu_restore_state | @pyp.callback("int(CPUState*, TranslationBlock*)") |
+| before_loadvm | @pyp.callback("int(void)") |
+| asid_changed | @pyp.callback("int(CPUState*, target_ulong, target_ulong)") |
+| replay_hd_transfer | @pyp.callback("int(CPUState*, uint32_t, uint64_t , uint64_t , uint32_t )") |
+| replay_before_dma | @pyp.callback("int(CPUState*, uint32_t, uint8_t* , uint64_t , uint32_t )") |
+| replay_after_dma | @pyp.callback("int(CPUState*, uint32_t , uint8_t* , uint64_t , uint32_t )") |
+| replay_handle_packet | @pyp.callback("int(CPUState*, uint8_t *, int , uint8_t , uint64_t )") |
+| replay_net_transfer | @pyp.callback("int(CPUState*, uint32_t , uint64_t , uint64_t , uint32_t )") |
+| replay_serial_receive | @pyp.callback("int(CPUState*, uint64_t ") |
+| replay_serial_read | @pyp.callback("int(CPUState*, uint64_t , uint32_t , uint8_t )") |
+| replay_serial_send | @pyp.callback("int(CPUState*, uint64_t , uint8_t )") |
+| replay_serial_write | @pyp.callback("int(CPUState*, uint64_t ,uint32_t , uint8_t )") |
+| after_machine_init | @pyp.callback("void(CPUState*)") |
+| top_loop | @pyp.callback("void(CPUState*)") |
+
 
 #### Running Recordings
 

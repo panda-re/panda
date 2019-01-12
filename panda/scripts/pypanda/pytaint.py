@@ -1,11 +1,11 @@
 from pypanda import *
 from time import sleep
 
-@pyp.callback("int(CPUState*)")
+@panda.callback.guest_hypercall
 def guest_hypercall(cpustate)
 	progress("guest hypercall in python")
 
-@pyp.callback("bool(void*)")
+@panda.callback.init
 def init(handle):
 	progress("init in python. handle="+str(handle))
 	panda.enable_memcb()
