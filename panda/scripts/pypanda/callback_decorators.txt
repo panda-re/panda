@@ -1,33 +1,33 @@
-bool (*before_block_exec_invalidate_opt)(CPUState *env, TranslationBlock *tb);
-int (*before_block_exec)(CPUState *env, TranslationBlock *tb);
-int (*after_block_exec)(CPUState *env, TranslationBlock *tb);
-int (*before_block_translate)(CPUState *env, target_ulong pc);
-int (*after_block_translate)(CPUState *env, TranslationBlock *tb);
-bool (*insn_translate)(CPUState *env, target_ulong pc);
-int (*insn_exec)(CPUState *env, target_ulong pc);
-bool (*after_insn_translate)(CPUState *env, target_ulong pc);
-int (*after_insn_exec)(CPUState *env, target_ulong pc);
-int (*guest_hypercall)(CPUState *env);
-int (*monitor)(Monitor *mon, const char *cmd);
-int (*virt_mem_before_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size);
-int (*virt_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-int (*phys_mem_before_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size);
-int (*phys_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-int (*virt_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-int (*virt_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-int (*phys_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-int (*phys_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-int (*cb_cpu_restore_state)(CPUState *env, TranslationBlock *tb);
-int (*before_loadvm)(void);
-int (*asid_changed)(CPUState *env, target_ulong oldval, target_ulong newval);
-int (*replay_hd_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
-int (*replay_before_dma)(CPUState *env, uint32_t is_write, uint8_t* src_addr, uint64_t dest_addr, uint32_t num_bytes);
-int (*replay_after_dma)(CPUState *env, uint32_t is_write, uint8_t* src_addr, uint64_t dest_addr, uint32_t num_bytes);
-int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size, uint8_t direction, uint64_t old_buf_addr);
-int (*replay_net_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
-int (*replay_serial_receive)(CPUState *env, uint64_t fifo_addr,
-int (*replay_serial_read)(CPUState *env, uint64_t fifo_addr, uint32_t port_addr, uint8_t value);
-int (*replay_serial_send)(CPUState *env, uint64_t fifo_addr, uint8_t value);
-int (*replay_serial_write)(CPUState *env, uint64_t fifo_addr,uint32_t port_addr, uint8_t value);
-void (*after_machine_init)(CPUState *env);
-void (*top_loop)(CPUState *env);
+@pyp.callback("bool(CPUState*, TranslationBlock*)")
+@pyp.callback("int(CPUState*, TranslationBlock*)")
+@pyp.callback("int(CPUState*, TranslationBlock*)")
+@pyp.callback("int(CPUState*, target_ulong)")
+@pyp.callback("int(CPUState*, TranslationBlock*)")
+@pyp.callback("bool(CPUState*, target_ulong)")
+@pyp.callback("int(CPUState*, target_ulong)")
+@pyp.callback("bool(CPUState*, target_ulong)")
+@pyp.callback("int(CPUState*, target_ulong)")
+@pyp.callback("int(CPUState*)")
+@pyp.callback("int(Monitor*, char*)")
+@pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong)")
+@pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)")
+@pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong)")
+@pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)")
+@pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)")
+@pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)")
+@pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)")
+@pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)")
+@pyp.callback("int(CPUState*, TranslationBlock*)")
+@pyp.callback("int(void)")
+@pyp.callback("int(CPUState*, target_ulong, target_ulong)")
+@pyp.callback("int(CPUState*, uint32_t, uint64_t , uint64_t , uint32_t )")
+@pyp.callback("int(CPUState*, uint32_t, uint8_t* , uint64_t , uint32_t )")
+@pyp.callback("int(CPUState*, uint32_t , uint8_t* , uint64_t , uint32_t )")
+@pyp.callback("int(CPUState*, uint8_t *, int , uint8_t , uint64_t )")
+@pyp.callback("int(CPUState*, uint32_t , uint64_t , uint64_t , uint32_t )")
+@pyp.callback("int(CPUState*, uint64_t ")
+@pyp.callback("int(CPUState*, uint64_t , uint32_t , uint8_t )")
+@pyp.callback("int(CPUState*, uint64_t , uint8_t )")
+@pyp.callback("int(CPUState*, uint64_t ,uint32_t , uint8_t )")
+@pyp.callback("void(CPUState*)")
+@pyp.callback("void(CPUState*)")

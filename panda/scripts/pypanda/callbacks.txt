@@ -1,0 +1,34 @@
+| --------------------------------- | : --------------------------------------------------: |
+| before_block_exec_invalidate_opt | @pyp.callback("bool(CPUState*, TranslationBlock*)") |
+| before_block_exec | @pyp.callback("int(CPUState*, TranslationBlock*)") |
+| after_block_exec | @pyp.callback("int(CPUState*, TranslationBlock*)") |
+| before_block_translate | @pyp.callback("int(CPUState*, target_ulong)") |
+| after_block_translate | @pyp.callback("int(CPUState*, TranslationBlock*)") |
+| insn_translate | @pyp.callback("bool(CPUState*, target_ulong)") |
+| insn_exec | @pyp.callback("int(CPUState*, target_ulong)") |
+| after_insn_translate | @pyp.callback("bool(CPUState*, target_ulong)") |
+| after_insn_exec | @pyp.callback("int(CPUState*, target_ulong)") |
+| guest_hypercall | @pyp.callback("int(CPUState*)") |
+| monitor | @pyp.callback("int(Monitor*, char*)") |
+| virt_mem_before_read | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong)") |
+| virt_mem_before_write | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)") |
+| phys_mem_before_read | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong)") |
+| phys_mem_before_write | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)") |
+| virt_mem_after_read | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)") |
+| virt_mem_after_write | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)") |
+| phys_mem_after_read | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)") |
+| phys_mem_after_write | @pyp.callback("int(CPUState*, target_ulong, target_ulong, target_ulong, void*)") |
+| cb_cpu_restore_state | @pyp.callback("int(CPUState*, TranslationBlock*)") |
+| before_loadvm | @pyp.callback("int(void)") |
+| asid_changed | @pyp.callback("int(CPUState*, target_ulong, target_ulong)") |
+| replay_hd_transfer | @pyp.callback("int(CPUState*, uint32_t, uint64_t , uint64_t , uint32_t )") |
+| replay_before_dma | @pyp.callback("int(CPUState*, uint32_t, uint8_t* , uint64_t , uint32_t )") |
+| replay_after_dma | @pyp.callback("int(CPUState*, uint32_t , uint8_t* , uint64_t , uint32_t )") |
+| replay_handle_packet | @pyp.callback("int(CPUState*, uint8_t *, int , uint8_t , uint64_t )") |
+| replay_net_transfer | @pyp.callback("int(CPUState*, uint32_t , uint64_t , uint64_t , uint32_t )") |
+| replay_serial_receive | @pyp.callback("int(CPUState*, uint64_t ") |
+| replay_serial_read | @pyp.callback("int(CPUState*, uint64_t , uint32_t , uint8_t )") |
+| replay_serial_send | @pyp.callback("int(CPUState*, uint64_t , uint8_t )") |
+| replay_serial_write | @pyp.callback("int(CPUState*, uint64_t ,uint32_t , uint8_t )") |
+| after_machine_init | @pyp.callback("void(CPUState*)") |
+| top_loop | @pyp.callback("void(CPUState*)") |

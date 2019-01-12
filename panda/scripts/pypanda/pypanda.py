@@ -120,10 +120,11 @@ class Panda:
 
 
 	def register_callback(self, handle, callback, function):
-		pcb = ffi.new("panda_cb *", {callback.name:function})
-		self.libpanda.panda_register_callback_helper(handle, callback.number, pcb)
+		cb = callback_dictionary[callback]
+		pcb = ffi.new("panda_cb *", {cb.name:function})
+		self.libpanda.panda_register_callback_helper(handle, cb.number, pcb)
 		if debug:
-			progress("registered callback for type: %s" % callback.name)
+			progress("registered callback for type: %s" % cb.name)
 
 	def rr_get_guest_instr_count_external(self):
 		return self.libpanda.rr_get_guest_instr_count_external()
