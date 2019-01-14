@@ -119,11 +119,10 @@ Functions in PYPANDA
 
 **function:** register_callback
 **args:**
-$\qquad$handle$\qquad$ unique ID for the plugin \s\s
-$\qquad$name	$\qquad$ User given name for the callback
-
-$\qquad$number$\qquad$ Not currently in use
-$\qquad$function$\qquad$ Python function to be run on call back
+- handle - unique ID for the plugin
+- name - User given name for the callback
+- number - Not currently in use
+- function - Python function to be run on call back
 **use:**	Tells PANDA to call a function once a callback has been reached
 
 **function:** run
@@ -135,29 +134,29 @@ Replays are not currently supported in PYPANDA
 
 **function:** load_plugin
 **args:**
-	name:$\qquad$ Name of the plugin to load
-	args: $\qquad$List of optional arguments for the plugin. Default is []
+- name - Name of the plugin to load
+- args - List of optional arguments for the plugin. Default is []
 **use:** Loads a plugin written in C
 
 **function:** load_python_plugin
 **args:**
-	init_function: $\qquad$Function in python to call first.
-	Name:$\qquad$ Name of the plugin to load
+- init_function - Function in python to call first.
+- Name - Name of the plugin to load
 **use:** Loads a plugin written in Python
 
 **function:** require
 **args:**
-	plugin:	$\qquad$C plugin to require
+- plugin - C plugin to require
 **use:** loads a C plugin required by your plug in.
 
 **function:** in_kernel
 **args:**
-	cpustate:$\qquad$Current CPU state. Returned to the callback by PANDA
+- cpustate - Current CPU state. Returned to the callback by PANDA
 **use:** Returns true it the callback is currently in the kernel
 
 **function:** current_sp
 **args:**
-	cpustate:$\qquad$Current CPU state. Returned to the callback by PANDA
+- cpustate - Current CPU state. Returned to the callback by PANDA
 **use:** Returns the current stack pointer
 
 **function:** get_guest_instr_count 
