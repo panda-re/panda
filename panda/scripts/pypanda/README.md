@@ -181,6 +181,7 @@ after_insn_translate | After an insn is translated
 after_insn_exec | After an insn is executed
 
 **Before memory changes**
+
 Name|Description
 ---|---
 virt_mem_before_read | Before virtual memory read
@@ -189,6 +190,7 @@ phys_mem_before_read | Before physical memory read
 phys_mem_before_write | Before physical memory write
 
 **After Memory changes**
+
 Name|Description
 ---|---
 virt_mem_after_read | After virtual memory read
@@ -197,6 +199,7 @@ phys_mem_after_read | After physical memory read
 phys_mem_after_write | After physical memory write
 
 **Other**
+
 Name|Description
 ---|---
 hd_read | Each HDD read
@@ -218,6 +221,7 @@ replay_handle_packet | In replay, packet in / out
 after_machine_init | Right after the machine is initialized, before any code runs
 
 **Top of the loop**
+
 Name|Description
 ---|---
 top_loop | At top of loop that manages emulation.  good place to take a snapshot
