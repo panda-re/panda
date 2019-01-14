@@ -119,8 +119,9 @@ Functions in PYPANDA
 
 **function:** register_callback
 **args:**
-$\qquad$handle$\qquad$ unique ID for the plugin
+$\qquad$handle$\qquad$ unique ID for the plugin \s\s
 $\qquad$name	$\qquad$ User given name for the callback
+
 $\qquad$number$\qquad$ Not currently in use
 $\qquad$function$\qquad$ Python function to be run on call back
 **use:**	Tells PANDA to call a function once a callback has been reached
