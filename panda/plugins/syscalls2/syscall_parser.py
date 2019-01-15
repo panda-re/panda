@@ -53,7 +53,7 @@ KNOWN_ARCH = {
 }
 
 # This is the the maximum generic syscall number.
-# We use this to tell apart special system calls (see last lines in arm prototypes).
+# We use this to tell apart arch-specific system calls (see last lines in arm prototypes).
 MAX_GENERIC_SYSCALL = 1023
 
 # Templates for per-arch typedefs and callback registration code files.
@@ -277,15 +277,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PANDA syscalls2 support files generator.')
     parser.add_argument('--target', '-t', action='append', required=True, help='Target os:arch tuple to process.')
     parser.add_argument('--prefix', '-p', default='gen', help='Generated files prefix.')
-    parser.add_argument('--outdir', '-o', default='./f', help='Output directory.')
+    parser.add_argument('--outdir', '-o', default='./', help='Output directory.')
     parser.add_argument('--prototypes', default='./prototypes', help='Prototype directory.')
     parser.add_argument('--templates', default='./templates', help='Template directory.')
     parser.add_argument('--generate-info', default=False, action='store_true', help='Generate code for syscall info dynamic libraries.')
     args = parser.parse_args()
+    logging.debug(args)
 
     assert os.path.isdir(args.outdir), 'Output directory %s does not exist.' % args.outdir
     assert os.path.isdir(args.templates), 'Template directory %s does not exist.' % args.templates
-    logging.debug(args)
 
     # Create a Jinja2 environment for rendering templates.
     # Setting undefined to StrictUndefined will raise an error if a variable

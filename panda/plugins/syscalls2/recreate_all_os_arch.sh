@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PYTHON="python2"
-PYENV="pyenv"
+PYENV="pyenv2"
 PYENV_ACTIVATE="$PYENV/bin/activate"
 
 function activate_pyenv() {
@@ -10,7 +10,7 @@ function activate_pyenv() {
 	else
 		virtualenv -p "$PYTHON" "$PYENV"
 		. "$PYENV_ACTIVATE"
-		pip install -r requirements.txt
+		pip install -r requirements2.txt
 	fi
 }
 
