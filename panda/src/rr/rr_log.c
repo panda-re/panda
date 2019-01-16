@@ -53,6 +53,7 @@
 #include "sysemu/sysemu.h"
 #include "panda/callback_support.h"
 #include "exec/gdbstub.h"
+#include "sysemu/cpus.h"
 
 /******************************************************************************************/
 /* GLOBALS */

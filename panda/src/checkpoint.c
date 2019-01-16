@@ -12,11 +12,12 @@
 #include "qemu/osdep.h"
 #include "cpu.h"
 
-#include "exec/memory.h"
 #include "exec/exec-all.h"
+#include "exec/memory.h"
 #include "io/channel-file.h"
 #include "migration/migration.h"
 #include "migration/qemu-file.h"
+#include "sysemu/cpus.h"
 #include "sysemu/sysemu.h"
 
 #include "panda/rr/rr_log.h"
