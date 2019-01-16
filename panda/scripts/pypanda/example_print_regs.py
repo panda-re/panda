@@ -17,6 +17,6 @@ def before_block_execute(cpustate,transblock):
 	panda.static_var = (panda.static_var+1) % (10001)
 	return 0
 
-panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img")
+panda = Panda(qcow="/home/alom/ubuntu-14.04-server-cloudimg-i386-disk1.img")
 panda.load_python_plugin(init,"register_printer")
 panda.run()
