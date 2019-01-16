@@ -19,7 +19,7 @@ int egl_get_fd_for_texture(uint32_t tex_id, EGLint *stride, EGLint *fourcc);
 
 #endif
 
-EGLSurface qemu_egl_init_surface_x11(EGLContext ectx, Window win);
+EGLSurface qemu_egl_init_surface_x11(EGLContext ectx, EGLNativeWindowType win);
 
 int qemu_egl_init_dpy(EGLNativeDisplayType dpy, bool gles, bool debug);
 EGLContext qemu_egl_init_ctx(void);
