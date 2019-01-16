@@ -31,76 +31,84 @@ void uninit_plugin(void *);
 
 FILE *pidpclog;
 
-struct PidPcPair {
+struct IDATaintReport {
     target_ulong pid;
     target_ulong pc;
+    uint32_t label;
 };
 
-static TranslationBlock *current_tb = NULL;
+template <typename T> inline void hash_combine(std::size_t &seed, const T &v)
+{
+    std::hash<T> hasher;
+    seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
 
 // Inject the hash function for PidPcPair into the std namespace, allows us to
 // store PidPcPair in an unordered set.
 namespace std
 {
-template <> struct hash<PidPcPair> {
-    using argument_type = PidPcPair;
+template <> struct hash<IDATaintReport> {
+    using argument_type = IDATaintReport;
     using result_type = size_t;
     result_type operator()(argument_type const &s) const noexcept
     {
-        // Combining hashes, see C++ reference:
-        // https://en.cppreference.com/w/cpp/utility/hash
-        result_type const h1 = std::hash<target_ulong>{}(s.pid);
-        result_type const h2 = std::hash<target_ulong>{}(s.pc);
-        return h1 ^ (h2 << 1);
+        std::size_t h = 0;
+        hash_combine(h, s.pid);
+        hash_combine(h, s.pc);
+        hash_combine(h, s.label);
+        return h;
     }
 };
 } // namespace std
 
 // Also needed to use an unordered set (probably in case there is a hash
 // collision).
-bool operator==(const PidPcPair &lhs, const PidPcPair &rhs)
+bool operator==(const IDATaintReport &lhs, const IDATaintReport &rhs)
 {
-    return lhs.pid == rhs.pid && lhs.pc == rhs.pc;
+    return lhs.pid == rhs.pid && lhs.pc == rhs.pc && lhs.label == rhs.label;
 }
 
 void taint_state_changed(Addr a, uint64_t size)
 {
-    // We keep track of pairs of PIDs and PCs that we've already seen since we
-    // only need to write out distinct pairs once.
-    static std::unordered_set<PidPcPair> seen;
+    // Keep track of reports that we've already seen.
+    static std::unordered_set<IDATaintReport> seen;
 
-    // Get current PID and PC.
-    OsiProc *proc = get_current_process(first_cpu);
-    PidPcPair p;
-    p.pid = proc ? proc->pid : 0;
-    p.pc = panda_current_pc(first_cpu);
-    if (proc) {
-        free_osiproc(proc);
+    // Get current PID (if in user-mode and OSI gave us a process) and PC.
+    IDATaintReport report;
+    report.pc = first_cpu->panda_guest_pc;
+    report.pid = 0;
+    char *process_name = NULL;
+    if (false == panda_in_kernel(first_cpu)) {
+        OsiProc *proc = get_current_process(first_cpu);
+        report.pid = proc ? proc->pid : 0;
+
+        process_name = g_strdup(proc->name);
+
+        if (proc) {
+            free_osiproc(proc);
+        }
+    } else {
+        process_name = g_strdup("(kernel)");
     }
 
-    // Figure out which entries are tainted.
-    uint32_t num_tainted = 0;
     for (int i = 0; i < size; i++) {
         a.off = i;
-        num_tainted += (taint2_query(a) != 0);
+        uint32_t label_count = taint2_query(a);
+        std::vector<uint32_t> labels(label_count);
+        taint2_query_set(a, labels.data());
+
+        if (label_count > 0) {
+            for (int j = 0; j < label_count; j++) {
+                report.label = labels[j];
+                if (seen.find(report) == seen.end()) {
+                    seen.insert(report);
+                    fprintf(pidpclog, "%s,%lu,0x%lX,%u\n", process_name,
+                            (uint64_t)report.pid, (uint64_t)report.pc,
+                            report.label);
+                }
+            }
+        }
     }
-
-    // If its tainted and we haven't seen this PID\PC pair before, write to the
-    // file.
-    if (num_tainted && seen.find(p) == seen.end()) {
-        seen.insert(p);
-
-        // It should not be possible for current_tb to be null.
-        assert(current_tb != NULL);
-        fprintf(pidpclog, "%lu,%lu,%lu\n", (uint64_t)p.pid,
-                (uint64_t)current_tb->pc, (uint64_t)current_tb->size);
-    }
-}
-
-int before_block_exec(CPUState *cpu, TranslationBlock *tb)
-{
-    current_tb = tb;
-    return 0;
 }
 
 bool init_plugin(void *self)
@@ -115,6 +123,10 @@ bool init_plugin(void *self)
     PPP_REG_CB("taint2", on_taint_change, taint_state_changed);
     taint2_track_taint_state();
 
+    // Turn on the precise program counter so we can highlight the exact
+    // instruction.
+    panda_enable_precise_pc();
+
     // Setup CSV file.
     panda_arg_list *args = panda_get_args("ida_taint2");
     const char *filename =
@@ -122,12 +134,7 @@ bool init_plugin(void *self)
 
     // Open up a CSV file and write the header.
     pidpclog = fopen(filename, "w");
-    fprintf(pidpclog, "pid,tb_pc,tb_size\n");
-
-    // Register before block exec so we can track the translation block
-    panda_cb pcb;
-    pcb.before_block_exec = before_block_exec;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    fprintf(pidpclog, "process name,pid,pc,label\n");
 
     return true;
 }
