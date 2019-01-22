@@ -278,17 +278,27 @@ update_map_file:
 
 static int fchmodat_nofollow(int dirfd, const char *name, mode_t mode)
 {
+    struct stat stbuf;
     int fd, ret;
 
     /* FIXME: this should be handled with fchmodat(AT_SYMLINK_NOFOLLOW).
-     * Unfortunately, the linux kernel doesn't implement it yet. As an
-     * alternative, let's open the file and use fchmod() instead. This
-     * may fail depending on the permissions of the file, but it is the
-     * best we can do to avoid TOCTTOU. We first try to open read-only
-     * in case name points to a directory. If that fails, we try write-only
-     * in case name doesn't point to a directory.
+     * Unfortunately, the linux kernel doesn't implement it yet.
      */
-    fd = openat_file(dirfd, name, O_RDONLY, 0);
+
+     /* First, we clear non-racing symlinks out of the way. */
+    if (fstatat(dirfd, name, &stbuf, AT_SYMLINK_NOFOLLOW)) {
+        return -1;
+    }
+    if (S_ISLNK(stbuf.st_mode)) {
+        errno = ELOOP;
+        return -1;
+    }
+
+    /* Access modes are ignored when O_PATH is supported. We try O_RDONLY and
+     * O_WRONLY for old-systems that don't support O_PATH.
+     */
+    fd = openat_file(dirfd, name, O_RDONLY | O_PATH_9P_UTIL, 0);
+#if O_PATH_9P_UTIL == 0
     if (fd == -1) {
         /* In case the file is writable-only and isn't a directory. */
         if (errno == EACCES) {
@@ -302,6 +312,24 @@ static int fchmodat_nofollow(int dirfd, const char *name, mode_t mode)
         return -1;
     }
     ret = fchmod(fd, mode);
+#else
+    if (fd == -1) {
+        return -1;
+    }
+
+    /* Now we handle racing symlinks. */
+    ret = fstat(fd, &stbuf);
+    if (!ret) {
+        if (S_ISLNK(stbuf.st_mode)) {
+            errno = ELOOP;
+            ret = -1;
+        } else {
+            char *proc_path = g_strdup_printf("/proc/self/fd/%d", fd);
+            ret = chmod(proc_path, mode);
+            g_free(proc_path);
+        }
+    }
+#endif
     close_preserve_errno(fd);
     return ret;
 }
@@ -452,6 +480,11 @@ static off_t local_telldir(FsContext *ctx, V9fsFidOpenState *fs)
     return telldir(fs->dir.stream);
 }
 
+static bool local_is_mapped_file_metadata(FsContext *fs_ctx, const char *name)
+{
+    return !strcmp(name, VIRTFS_META_DIR);
+}
+
 static struct dirent *local_readdir(FsContext *ctx, V9fsFidOpenState *fs)
 {
     struct dirent *entry;
@@ -465,8 +498,8 @@ again:
     if (ctx->export_flags & V9FS_SM_MAPPED) {
         entry->d_type = DT_UNKNOWN;
     } else if (ctx->export_flags & V9FS_SM_MAPPED_FILE) {
-        if (!strcmp(entry->d_name, VIRTFS_META_DIR)) {
-            /* skp the meta data directory */
+        if (local_is_mapped_file_metadata(ctx, entry->d_name)) {
+            /* skip the meta data directory */
             goto again;
         }
         entry->d_type = DT_UNKNOWN;
@@ -559,6 +592,12 @@ static int local_mknod(FsContext *fs_ctx, V9fsPath *dir_path,
     int err = -1;
     int dirfd;
 
+    if (fs_ctx->export_flags & V9FS_SM_MAPPED_FILE &&
+        local_is_mapped_file_metadata(fs_ctx, name)) {
+        errno = EINVAL;
+        return -1;
+    }
+
     dirfd = local_opendir_nofollow(fs_ctx, dir_path->data);
     if (dirfd == -1) {
         return -1;
@@ -604,6 +643,12 @@ static int local_mkdir(FsContext *fs_ctx, V9fsPath *dir_path,
 {
     int err = -1;
     int dirfd;
+
+    if (fs_ctx->export_flags & V9FS_SM_MAPPED_FILE &&
+        local_is_mapped_file_metadata(fs_ctx, name)) {
+        errno = EINVAL;
+        return -1;
+    }
 
     dirfd = local_opendir_nofollow(fs_ctx, dir_path->data);
     if (dirfd == -1) {
@@ -694,6 +739,12 @@ static int local_open2(FsContext *fs_ctx, V9fsPath *dir_path, const char *name,
     int err = -1;
     int dirfd;
 
+    if (fs_ctx->export_flags & V9FS_SM_MAPPED_FILE &&
+        local_is_mapped_file_metadata(fs_ctx, name)) {
+        errno = EINVAL;
+        return -1;
+    }
+
     /*
      * Mark all the open to not follow symlinks
      */
@@ -751,6 +802,12 @@ static int local_symlink(FsContext *fs_ctx, const char *oldpath,
 {
     int err = -1;
     int dirfd;
+
+    if (fs_ctx->export_flags & V9FS_SM_MAPPED_FILE &&
+        local_is_mapped_file_metadata(fs_ctx, name)) {
+        errno = EINVAL;
+        return -1;
+    }
 
     dirfd = local_opendir_nofollow(fs_ctx, dir_path->data);
     if (dirfd == -1) {
@@ -825,6 +882,12 @@ static int local_link(FsContext *ctx, V9fsPath *oldpath,
     char *oname = g_path_get_basename(oldpath->data);
     int ret = -1;
     int odirfd, ndirfd;
+
+    if (ctx->export_flags & V9FS_SM_MAPPED_FILE &&
+        local_is_mapped_file_metadata(ctx, name)) {
+        errno = EINVAL;
+        return -1;
+    }
 
     odirfd = local_opendir_nofollow(ctx, odirpath);
     if (odirfd == -1) {
@@ -957,6 +1020,14 @@ static int local_unlinkat_common(FsContext *ctx, int dirfd, const char *name,
     if (ctx->export_flags & V9FS_SM_MAPPED_FILE) {
         int map_dirfd;
 
+        /* We need to remove the metadata as well:
+         * - the metadata directory if we're removing a directory
+         * - the metadata file in the parent's metadata directory
+         *
+         * If any of these are missing (ie, ENOENT) then we're probably
+         * trying to remove something that wasn't created in mapped-file
+         * mode. We just ignore the error.
+         */
         if (flags == AT_REMOVEDIR) {
             int fd;
 
@@ -964,32 +1035,20 @@ static int local_unlinkat_common(FsContext *ctx, int dirfd, const char *name,
             if (fd == -1) {
                 goto err_out;
             }
-            /*
-             * If directory remove .virtfs_metadata contained in the
-             * directory
-             */
             ret = unlinkat(fd, VIRTFS_META_DIR, AT_REMOVEDIR);
             close_preserve_errno(fd);
             if (ret < 0 && errno != ENOENT) {
-                /*
-                 * We didn't had the .virtfs_metadata file. May be file created
-                 * in non-mapped mode ?. Ignore ENOENT.
-                 */
                 goto err_out;
             }
         }
-        /*
-         * Now remove the name from parent directory
-         * .virtfs_metadata directory.
-         */
         map_dirfd = openat_dir(dirfd, VIRTFS_META_DIR);
-        ret = unlinkat(map_dirfd, name, 0);
-        close_preserve_errno(map_dirfd);
-        if (ret < 0 && errno != ENOENT) {
-            /*
-             * We didn't had the .virtfs_metadata file. May be file created
-             * in non-mapped mode ?. Ignore ENOENT.
-             */
+        if (map_dirfd != -1) {
+            ret = unlinkat(map_dirfd, name, 0);
+            close_preserve_errno(map_dirfd);
+            if (ret < 0 && errno != ENOENT) {
+                goto err_out;
+            }
+        } else if (errno != ENOENT) {
             goto err_out;
         }
     }
@@ -1013,7 +1072,7 @@ static int local_remove(FsContext *ctx, const char *path)
         goto out;
     }
 
-    if (fstatat(dirfd, path, &stbuf, AT_SYMLINK_NOFOLLOW) < 0) {
+    if (fstatat(dirfd, name, &stbuf, AT_SYMLINK_NOFOLLOW) < 0) {
         goto err_out;
     }
 
@@ -1096,10 +1155,21 @@ static int local_lremovexattr(FsContext *ctx, V9fsPath *fs_path,
 static int local_name_to_path(FsContext *ctx, V9fsPath *dir_path,
                               const char *name, V9fsPath *target)
 {
+    if (ctx->export_flags & V9FS_SM_MAPPED_FILE &&
+        local_is_mapped_file_metadata(ctx, name)) {
+        errno = EINVAL;
+        return -1;
+    }
+
     if (dir_path) {
         v9fs_path_sprintf(target, "%s/%s", dir_path->data, name);
-    } else {
+    } else if (strcmp(name, "/")) {
         v9fs_path_sprintf(target, "%s", name);
+    } else {
+        /* We want the path of the export root to be relative, otherwise
+         * "*at()" syscalls would treat it as "/" in the host.
+         */
+        v9fs_path_sprintf(target, "%s", ".");
     }
     return 0;
 }
@@ -1110,6 +1180,13 @@ static int local_renameat(FsContext *ctx, V9fsPath *olddir,
 {
     int ret;
     int odirfd, ndirfd;
+
+    if (ctx->export_flags & V9FS_SM_MAPPED_FILE &&
+        (local_is_mapped_file_metadata(ctx, old_name) ||
+         local_is_mapped_file_metadata(ctx, new_name))) {
+        errno = EINVAL;
+        return -1;
+    }
 
     odirfd = local_opendir_nofollow(ctx, olddir->data);
     if (odirfd == -1) {
@@ -1200,6 +1277,12 @@ static int local_unlinkat(FsContext *ctx, V9fsPath *dir,
 {
     int ret;
     int dirfd;
+
+    if (ctx->export_flags & V9FS_SM_MAPPED_FILE &&
+        local_is_mapped_file_metadata(ctx, name)) {
+        errno = EINVAL;
+        return -1;
+    }
 
     dirfd = local_opendir_nofollow(ctx, dir->data);
     if (dirfd == -1) {

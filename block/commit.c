@@ -89,6 +89,12 @@ static void commit_complete(BlockJob *job, void *opaque)
     int ret = data->ret;
     bool remove_commit_top_bs = false;
 
+    /* Make sure overlay_bs and top stay around until bdrv_set_backing_hd() */
+    bdrv_ref(top);
+    if (overlay_bs) {
+        bdrv_ref(overlay_bs);
+    }
+
     /* Remove base node parent that still uses BLK_PERM_WRITE/RESIZE before
      * the normal backing chain can be restored. */
     blk_unref(s->base);
@@ -115,6 +121,13 @@ static void commit_complete(BlockJob *job, void *opaque)
     }
     g_free(s->backing_file_str);
     blk_unref(s->top);
+
+    /* If there is more than one reference to the job (e.g. if called from
+     * block_job_finish_sync()), block_job_completed() won't free it and
+     * therefore the blockers on the intermediate nodes remain. This would
+     * cause bdrv_set_backing_hd() to fail. */
+    block_job_remove_all_bdrv(job);
+
     block_job_completed(&s->common, ret);
     g_free(data);
 
@@ -124,6 +137,9 @@ static void commit_complete(BlockJob *job, void *opaque)
     if (remove_commit_top_bs) {
         bdrv_set_backing_hd(overlay_bs, top, &error_abort);
     }
+
+    bdrv_unref(overlay_bs);
+    bdrv_unref(top);
 }
 
 static void coroutine_fn commit_run(void *opaque)
@@ -151,7 +167,7 @@ static void coroutine_fn commit_run(void *opaque)
     }
 
     if (base_len < s->common.len) {
-        ret = blk_truncate(s->base, s->common.len);
+        ret = blk_truncate(s->base, s->common.len, NULL);
         if (ret) {
             goto out;
         }
@@ -335,6 +351,11 @@ void commit_start(const char *job_id, BlockDriverState *bs,
     if (commit_top_bs == NULL) {
         goto fail;
     }
+    if (!filter_node_name) {
+        commit_top_bs->implicit = true;
+    }
+    commit_top_bs->total_sectors = top->total_sectors;
+    bdrv_set_aio_context(commit_top_bs, bdrv_get_aio_context(top));
 
     bdrv_set_backing_hd(commit_top_bs, top, &local_err);
     if (local_err) {
@@ -482,6 +503,7 @@ int bdrv_commit(BlockDriverState *bs)
         error_report_err(local_err);
         goto ro_cleanup;
     }
+    bdrv_set_aio_context(commit_top_bs, bdrv_get_aio_context(backing_file_bs));
 
     bdrv_set_backing_hd(commit_top_bs, backing_file_bs, &error_abort);
     bdrv_set_backing_hd(bs, commit_top_bs, &error_abort);
@@ -508,8 +530,9 @@ int bdrv_commit(BlockDriverState *bs)
      * grow the backing file image if possible.  If not possible,
      * we must return an error */
     if (length > backing_length) {
-        ret = blk_truncate(backing, length);
+        ret = blk_truncate(backing, length, &local_err);
         if (ret < 0) {
+            error_report_err(local_err);
             goto ro_cleanup;
         }
     }

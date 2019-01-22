@@ -313,7 +313,7 @@ static BlockBackend *img_open_file(const char *filename,
 
     if (fmt) {
         options = qdict_new();
-        qdict_put(options, "driver", qstring_from_str(fmt));
+        qdict_put_str(options, "driver", fmt);
     }
 
     blk = blk_new_open(filename, NULL, options, flags, &local_err);
@@ -1761,13 +1761,13 @@ static void coroutine_fn convert_co_do_copy(void *opaque)
         qemu_co_mutex_lock(&s->lock);
         if (s->ret != -EINPROGRESS || s->sector_num >= s->total_sectors) {
             qemu_co_mutex_unlock(&s->lock);
-            goto out;
+            break;
         }
         n = convert_iteration_sectors(s, s->sector_num);
         if (n < 0) {
             qemu_co_mutex_unlock(&s->lock);
             s->ret = n;
-            goto out;
+            break;
         }
         /* save current sector and allocation status to local variables */
         sector_num = s->sector_num;
@@ -1792,7 +1792,6 @@ static void coroutine_fn convert_co_do_copy(void *opaque)
                 error_report("error while reading sector %" PRId64
                              ": %s", sector_num, strerror(-ret));
                 s->ret = ret;
-                goto out;
             }
         } else if (!s->min_sparse && status == BLK_ZERO) {
             status = BLK_DATA;
@@ -1801,22 +1800,20 @@ static void coroutine_fn convert_co_do_copy(void *opaque)
 
         if (s->wr_in_order) {
             /* keep writes in order */
-            while (s->wr_offs != sector_num) {
-                if (s->ret != -EINPROGRESS) {
-                    goto out;
-                }
+            while (s->wr_offs != sector_num && s->ret == -EINPROGRESS) {
                 s->wait_sector_num[index] = sector_num;
                 qemu_coroutine_yield();
             }
             s->wait_sector_num[index] = -1;
         }
 
-        ret = convert_co_write(s, sector_num, n, buf, status);
-        if (ret < 0) {
-            error_report("error while writing sector %" PRId64
-                         ": %s", sector_num, strerror(-ret));
-            s->ret = ret;
-            goto out;
+        if (s->ret == -EINPROGRESS) {
+            ret = convert_co_write(s, sector_num, n, buf, status);
+            if (ret < 0) {
+                error_report("error while writing sector %" PRId64
+                             ": %s", sector_num, strerror(-ret));
+                s->ret = ret;
+            }
         }
 
         if (s->wr_in_order) {
@@ -1837,7 +1834,6 @@ static void coroutine_fn convert_co_do_copy(void *opaque)
         }
     }
 
-out:
     qemu_vfree(buf);
     s->co[index] = NULL;
     s->running_coroutines--;
@@ -1899,7 +1895,7 @@ static int convert_do_copy(ImgConvertState *s)
         qemu_coroutine_enter(s->co[i]);
     }
 
-    while (s->ret == -EINPROGRESS) {
+    while (s->running_coroutines) {
         main_loop_wait(false);
     }
 
@@ -2065,13 +2061,16 @@ static int img_convert(int argc, char **argv)
         case 'W':
             wr_in_order = false;
             break;
-        case OPTION_OBJECT:
-            opts = qemu_opts_parse_noisily(&qemu_object_opts,
-                                           optarg, true);
-            if (!opts) {
+        case OPTION_OBJECT: {
+            QemuOpts *object_opts;
+            object_opts = qemu_opts_parse_noisily(&qemu_object_opts,
+                                                  optarg, true);
+            if (!object_opts) {
+                ret = -1;
                 goto fail_getopt;
             }
             break;
+        }
         case OPTION_IMAGE_OPTS:
             image_opts = true;
             break;
@@ -2081,6 +2080,7 @@ static int img_convert(int argc, char **argv)
     if (qemu_opts_foreach(&qemu_object_opts,
                           user_creatable_add_opts_foreach,
                           NULL, NULL)) {
+        ret = -1;
         goto fail_getopt;
     }
 
@@ -2108,13 +2108,6 @@ static int img_convert(int argc, char **argv)
         error_exit("Must specify image file name");
     }
 
-
-    if (bs_n > 1 && out_baseimg) {
-        error_report("-B makes no sense when concatenating multiple input "
-                     "images");
-        ret = -1;
-        goto out;
-    }
 
     src_flags = 0;
     ret = bdrv_parse_cache_mode(src_cache, &src_flags, &src_writethrough);
@@ -2223,6 +2216,13 @@ static int img_convert(int argc, char **argv)
     out_baseimg_param = qemu_opt_get(opts, BLOCK_OPT_BACKING_FILE);
     if (out_baseimg_param) {
         out_baseimg = out_baseimg_param;
+    }
+
+    if (bs_n > 1 && out_baseimg) {
+        error_report("Having a backing file for the target makes no sense when "
+                     "concatenating multiple input images");
+        ret = -1;
+        goto out;
     }
 
     /* Check if compression is supported */
@@ -3158,7 +3158,7 @@ static int img_rebase(int argc, char **argv)
 
         if (bs->backing_format[0] != '\0') {
             options = qdict_new();
-            qdict_put(options, "driver", qstring_from_str(bs->backing_format));
+            qdict_put_str(options, "driver", bs->backing_format);
         }
 
         bdrv_get_backing_filename(bs, backing_name, sizeof(backing_name));
@@ -3175,7 +3175,7 @@ static int img_rebase(int argc, char **argv)
         if (out_baseimg[0]) {
             if (out_basefmt) {
                 options = qdict_new();
-                qdict_put(options, "driver", qstring_from_str(out_basefmt));
+                qdict_put_str(options, "driver", out_basefmt);
             } else {
                 options = NULL;
             }
@@ -3500,20 +3500,11 @@ static int img_resize(int argc, char **argv)
         goto out;
     }
 
-    ret = blk_truncate(blk, total_size);
-    switch (ret) {
-    case 0:
+    ret = blk_truncate(blk, total_size, &err);
+    if (!ret) {
         qprintf(quiet, "Image resized.\n");
-        break;
-    case -ENOTSUP:
-        error_report("This image does not support resize");
-        break;
-    case -EACCES:
-        error_report("Image is read-only");
-        break;
-    default:
-        error_report("Error resizing image: %s", strerror(-ret));
-        break;
+    } else {
+        error_report_err(err);
     }
 out:
     blk_unref(blk);
