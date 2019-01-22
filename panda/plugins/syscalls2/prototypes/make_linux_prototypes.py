@@ -101,7 +101,7 @@ CONFIG = {
             'locations': {
                 'include/linux/syscalls.h': r'asmlinkage (?P<signature>\w+ (?P<syscall>\w+)\(.*)',
             },
-            'normalize': False,
+            'normalize': True,
         },
         'map_function_number': {
             'parser': 'parse_numbers_calltable',
