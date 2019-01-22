@@ -129,14 +129,18 @@ class Argument(object):
         self.name = self.name.rstrip('[]')
 
         # identify argument type
+        # types defined above are matched against the whole raw argument string
+        # this means that e.g. mode_t will also match a umode_t agument
         if Argument.charre.search(self.raw) and not any([self.name.endswith('buf'), self.name == '...', self.name.endswith('[]')]):
             self.type = 'STR'
         elif any(['*' in self.raw, '[]' in self.raw, any([x in self.raw for x in Argument.types['ptr']])]):
             self.type = 'PTR'
         elif any([x in self.raw for x in Argument.types['u64']]):
             self.type = 'U64'
-        elif any([x in self.raw for x in Argument.types['u32']]) or any([x in self.raw for x in Argument.types['u16']]):
+        elif any([x in self.raw for x in Argument.types['u32']]):
             self.type = 'U32'
+        elif any([x in self.raw for x in Argument.types['u16']]):
+            self.type = 'U32'   # is this correct?
         elif any([x in self.raw for x in Argument.types['s32']]) and 'unsigned' not in self.raw:
             self.type = 'S32'
         elif self.raw == 'void':
@@ -239,7 +243,7 @@ class SysCall(object):
         self.generic = False if self.no > MAX_GENERIC_SYSCALL else True
         self.rettype = fields.group(2)
         self.name = fields.group(3)
-        self.args_raw = fields.group(4).split(',')
+        self.args_raw = [arg.strip() for arg in fields.group(4).split(',')]
         self.arch_bits = arch_bits
 
         # process raw args
