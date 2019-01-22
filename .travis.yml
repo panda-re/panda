@@ -45,7 +45,7 @@ notifications:
     on_failure: always
 env:
   global:
-    - TEST_CMD="make check"
+    - TEST_CMD="make check V=1"
 git:
   # we want to do this ourselves
   submodules: false
@@ -63,7 +63,7 @@ before_install:
     - git submodule update --init dtc
 script:
     - travis_wait 35 sleep infinity &
-    - sudo panda/scripts/install_ubuntu.sh && cd ./build && sudo make check
+    - sudo panda/scripts/install_ubuntu.sh && cd ./build && sudo make check V=1
 #before_script:
 #  - ./configure ${CONFIG}
 #script:
