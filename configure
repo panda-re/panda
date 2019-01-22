@@ -335,6 +335,7 @@ replication="yes"
 
 supported_cpu="no"
 supported_os="no"
+bogus_os="no"
 
 # parse CC options first
 for opt do
@@ -532,11 +533,11 @@ ARCH=
 # Normalise host CPU name and set ARCH.
 # Note that this case should only have supported host CPUs, not guests.
 case "$cpu" in
-  ppc|ppc64|s390|s390x|x32)
+  ppc|ppc64|s390|s390x|sparc64|x32)
     cpu="$cpu"
     supported_cpu="yes"
   ;;
-  ia64|sparc64)
+  ia64)
     cpu="$cpu"
   ;;
   i386|i486|i586|i686|i86pc|BePC)
@@ -561,6 +562,7 @@ case "$cpu" in
   ;;
   sparc|sun4[cdmuv])
     cpu="sparc"
+    supported_cpu="yes"
   ;;
   *)
     # This will result in either an error or falling back to TCI later
@@ -708,7 +710,10 @@ Linux)
   LIBS="-ldl  -lprotobuf-c -lprotobuf  $LIBS"
 ;;
 *)
-  error_exit "Unsupported host OS $targetos"
+  # This is a fatal error, but don't report it yet, because we
+  # might be going to just print the --help text, or it might
+  # be the result of a missing compiler.
+  bogus_os="yes"
 ;;
 esac
 
@@ -1481,6 +1486,14 @@ else
 fi
 if ! compile_prog ; then
     error_exit "\"$cc\" cannot build an executable (is your linker broken?)"
+fi
+
+if test "$bogus_os" = "yes"; then
+    # Now that we know that we're not printing the help and that
+    # the compiler works (so the results of the check_defines we used
+    # to identify the OS are reliable), if we didn't recognize the
+    # host OS we should stop now.
+    error_exit "Unrecognized host OS $targetos"
 fi
 
 # Check that the C++ compiler exists and works with the C compiler
@@ -3087,6 +3100,13 @@ glib_req_ver=2.22
 glib_modules=gthread-2.0
 if test "$modules" = yes; then
     glib_modules="$glib_modules gmodule-2.0"
+fi
+
+# This workaround is required due to a bug in pkg-config file for glib as it
+# doesn't define GLIB_STATIC_COMPILATION for pkg-config --static
+
+if test "$static" = yes -a "$mingw32" = yes; then
+    QEMU_CFLAGS="-DGLIB_STATIC_COMPILATION $QEMU_CFLAGS"
 fi
 
 for i in $glib_modules; do
