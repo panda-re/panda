@@ -8,8 +8,8 @@ extern const syscall_info_t *syscall_info;
 extern const syscall_meta_t *syscall_meta;
 
 extern "C" {
-#include "gen_syscalls_ext_typedefs.h"
-#include "gen_syscall_ppp_extern_return.h"
+#include "syscalls_ext_typedefs.h"
+#include "syscall_ppp_extern_return.h"
 }
 
 void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx) {

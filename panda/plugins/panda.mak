@@ -54,8 +54,15 @@ LDFLAGS_SHARED+=-Wl,-rpath=$(abspath $(PLUGIN_TARGET_DIR))
 $(PLUGIN_TARGET_DIR)/panda_%$(DSOSUF):
 	$(call quiet-command,$(CXX) $(QEMU_CFLAGS) $(LDFLAGS) $(LDFLAGS_SHARED) -o $@ $^ $(LIBS),"PLUGIN  $(TARGET_DIR)$@")
 
-# Rule for creating support .so files.
-$(PLUGIN_TARGET_DIR)/dso_$(PLUGIN_NAME)_%$(DSOSUF): $(PLUGIN_SRC_DIR)/%.c
-	$(call quiet-command,$(CC) $(LDFLAGS) $(LDFLAGS_SHARED) -o $@ $^,"DSO     $@")
+# Rules for creating support .so files.
+$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_dso_%$(DSOSUF): $(PLUGIN_SRC_DIR)/generated/dso_%.c
+	$(call quiet-command,$(CC) $(LDFLAGS) $(LDFLAGS_SHARED) -o $@ $^,"DSO","$@")
+
+# Rule for generating object files from generated files.
+# Recipe copied from top-level rules.mak.
+$(PLUGIN_OBJ_DIR)/gen_%.o: $(PLUGIN_SRC_DIR)/generated/%.cpp
+	$(call quiet-command,$(CXX) $(QEMU_LOCAL_INCLUDES) $(QEMU_INCLUDES) \
+	       $(QEMU_CXXFLAGS) $(QEMU_DGFLAGS) $(CFLAGS) $($@-cflags) \
+	       -c -o $@ $<,"CXX-gen","$(TARGET_DIR)$@")
 
 all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME)$(DSOSUF)

@@ -39,11 +39,11 @@ void uninit_plugin(void *);
 void registerExecPreCallback(void (*callback)(CPUState*, target_ulong));
 
 // PPP code
-#include "gen_syscalls_ext_typedefs.h"
-#include "gen_syscall_ppp_boilerplate_enter.cpp"
-#include "gen_syscall_ppp_boilerplate_return.cpp"
-#include "gen_syscall_ppp_register_enter.cpp"
-#include "gen_syscall_ppp_register_return.cpp"
+#include "syscalls_ext_typedefs.h"
+#include "generated/syscall_ppp_boilerplate_enter.cpp"
+#include "generated/syscall_ppp_boilerplate_return.cpp"
+#include "generated/syscall_ppp_register_enter.cpp"
+#include "generated/syscall_ppp_register_return.cpp"
 }
 
 // Forward declarations

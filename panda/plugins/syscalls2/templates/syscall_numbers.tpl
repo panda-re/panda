@@ -1,5 +1,5 @@
 /*!
- * @file gen_syscall_numbers.h
+ * @file syscall_numbers.h
  *
  * @brief Symbolic names for syscall numbers. We make this header c++ only
  * so we can use namespaces. This results in shorter names in the code and

@@ -1,5 +1,5 @@
 /*!
- * @file gen_syscalls_ext_typedefs.h
+ * @file syscalls_ext_typedefs.h
  * @brief Definitions of types for syscalls2 callbacks.
  */
 #pragma once
