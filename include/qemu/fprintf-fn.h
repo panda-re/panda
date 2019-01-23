@@ -4,6 +4,7 @@
  * This work is licensed under the terms of the GNU GPL, version 2 or later.
  * See the COPYING file in the top-level directory.
  */
+#include "compiler.h"
 
 #ifndef QEMU_FPRINTF_FN_H
 #define QEMU_FPRINTF_FN_H

@@ -483,6 +483,7 @@ static inline void stfq_be_p(void *ptr, float64 v)
     u.d = v;
     stq_be_p(ptr, u.ll);
 }
+/*
 
 static inline unsigned long leul_to_cpu(unsigned long v)
 {
@@ -493,7 +494,18 @@ static inline unsigned long leul_to_cpu(unsigned long v)
 #else
 # error Unknown sizeof long
 #endif
-}
+}*/
+
+static inline unsigned long leul_to_cpu(unsigned long v)
+{
+#if HOST_LONG_BITS == 32
+    return le_bswap(v, 32);
+#else
+    return le_bswap(v, 64);
+
+#endif
+
+
 
 #undef le_bswap
 #undef be_bswap
