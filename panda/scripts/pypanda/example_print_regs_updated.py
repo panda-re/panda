@@ -1,6 +1,9 @@
 from pypanda import *
 from time import sleep
 
+extra = "-nographic -chardev socket,id=monitor,path=./monitor.sock,server,nowait -monitor chardev:monitor -serial telnet:127.0.0.1:4444,server,nowait".split() 
+panda = Panda(qcow="/home/luke/ubuntu-16.04-server-cloudimg-i386-disk1.img", extra_args="")
+
 @panda.callback.init
 def init(handle):
 	panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
@@ -18,7 +21,5 @@ def before_block_execute(cpustate,transblock):
 	panda.static_var = (panda.static_var+1) % (100001)
 	return 0
 
-extra = "-nographic -chardev socket,id=monitor,path=./monitor.sock,server,nowait -monitor chardev:monitor -serial telnet:127.0.0.1:4444,server,nowait".split() 
-panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img", extra_args=extra)
 panda.load_python_plugin(init,"register_printer")
 panda.run()

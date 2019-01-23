@@ -757,6 +757,9 @@ void panda_register_callback_helper(void* plugin, panda_cb_type type, panda_cb* 
 int panda_replay(char *replay_name);
 int rr_get_guest_instr_count_external(void);
 
+target_ulong panda_current_sp_external(CPUState *cpu);
+bool panda_in_kernel_external(CPUState *cpu);
+
 /*!
  * @file panda/common.h
  * @brief Common PANDA utility functions.

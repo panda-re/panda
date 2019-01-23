@@ -13,10 +13,7 @@ from panda_datatypes import *
 from random import randint
 import pdb
 
-
-
 debug = True
-pyp = ffi
 
 def progress(msg):
 	print(Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL)
@@ -77,6 +74,8 @@ class Panda:
 		
 		# note: weird that we need panda as 1st arg to lib fn to init?
 		self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath, "-os", os2osstring[self.os], self.qcow]
+		if extra_args:
+			self.panda_args.extend(extra_args.split())
 		self.panda_args_ffi = [ffi.new("char[]", bytes(str(i),"utf-8")) for i in self.panda_args]
 		cargs = ffi.new("char **")
 		# start up panda!
@@ -118,15 +117,20 @@ class Panda:
 		uid_ffi = ffi.cast("void*",randint(0,0xffffffff))
 		self.libpanda.panda_load_external_plugin(filename_ffi, name_ffi, uid_ffi, init_ffi)
 
-
 	def register_callback(self, handle, callback, function):
 		cb = callback_dictionary[callback]
 		pcb = ffi.new("panda_cb *", {cb.name:function})
 		self.libpanda.panda_register_callback_helper(handle, cb.number, pcb)
+		if "block" in cb.name:
+			self.disable_tb_chaining()
+
 		if debug:
 			progress("registered callback for type: %s" % cb.name)
 
-	def rr_get_guest_instr_count_external(self):
+	def unload_plugin(self, handle):
+		self.libpanda.panda_unload_plugin(handle)
+
+	def rr_get_guest_instr_count(self):
 		return self.libpanda.rr_get_guest_instr_count_external()
 
 	def require(self, plugin):
@@ -162,6 +166,15 @@ class Panda:
 	
 	def disable_tb_chaining(self):
 		self.libpanda.panda_disable_tb_chaining()
+
+	def flush_tb(self):
+		return self.libpanda.panda_flush_tb()
+	
+	def enable_precise_pc(self):
+		self.libpanda.panda_enable_precise_pc()
+
+	def disable_precise_pc(self):
+		self.libpanda.panda_disable_precise_pc()
 	
 	def memsavep(self, file_out):
 		newfd = os.dup(f_out.fileno())	
@@ -169,42 +182,27 @@ class Panda:
 		self.libpanda.fclose(newfd)
 		
 	def in_kernel(self, cpustate):
-#		pdb.set_trace()
-		if self.arch == "i386":
-			cpu = cpustate.env_ptr #ffi.cast("CPUX86State*", cpustate.env_ptr)S
-			HF_CPL_SHIFT = 0
-			HF_CPL_MASK = 3 << HF_CPL_SHIFT
-			return (cpu.hflags & HF_CPL_SHIFT) == 0 
-		elif self.arch == "arm":
-			return env.regs[13]
-		elif self.arch == "ppc":
-			return env.msr_pr
-		else:
-			print("in_kernel() not implemented for target architecture.")
-		return 0
+		return self.libpanda.panda_in_kernel_external(cpustate)
 	
-	def current_sp(self, cpustate): # under construction
-		if self.arch == "i386":
-			if self.in_kernel(cpustate):
-				'''			
-				probably an enum at some point here.
-				#define R_EAX 0
-				#define R_ECX 1
-				#define R_EDX 2
-				#define R_EBX 3
-				#define R_ESP 4
-				#define R_EBP 5
-				#define R_ESI 6
-				#define R_EDI 7
-				'''
-				R_ESP = 4
-				return cpustate.env_ptr.regs[R_ESP]
-	#		else:
-	#			esp0 = 4
-	#			tss_base = env.tr.base + esp0
-	#			kernel_esp = 0
-	#			self.virtual_memory_rw(cpustate, tss_base, 
-		return 0
+	def current_sp(self, cpustate):
+		return self.libpanda.panda_current_sp_external(cpustate)
+	
+	def current_pc(self, cpustate):	
+		return self.libpanda.panda_current_pc(cpustate)
+
+	def current_asid(self, cpustate):
+		return self.libpanda.panda_current_asid(cpustate)
+	
+	def disas(self, fout, code, size):
+		newfd = os.dup(fout.fileno())
+		return self.libpanda.panda_disas(newfd, code, size)
+	
+	def set_os_name(self, os_name):
+		os_name_new = ffi.new("char[]", bytes(name, "utf-8"))
+		self.libpanda.panda_set_os_name(os_name_new)
+	
+	def cleanup(self):
+		self.libpanda.panda_cleanup()
 
 	def virtual_memory_read(env, addr, buf, length):
 		self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)

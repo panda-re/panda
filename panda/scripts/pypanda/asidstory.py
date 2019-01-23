@@ -2,7 +2,7 @@ from pypanda import *
 from time import sleep
 
 # in progress
-
+panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img", mem="2048M")
 
 asid_count = {}
 kernel_count = 0
@@ -33,7 +33,6 @@ def init(handle):
 	panda.register_callback(handle, panda.callback.asid_changed, asid_changed)
 	return True
 
-panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img", mem="2048M")
 panda.load_python_plugin(init,"Cool Plugin")
 #panda.begin_replay("/home/luke/recordings/this_is_a_recording")
 panda.run()

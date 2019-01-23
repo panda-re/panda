@@ -10,6 +10,8 @@ int rr_get_guest_instr_count_external(void);
 void qemu_rr_quit_timers(void);
 //void qemu_cpu_kick(CPUState *cpu);
 void panda_register_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
+target_ulong panda_current_sp_external(CPUState *cpu);
+bool panda_in_kernel_external(CPUState *cpu);
 
 int panda_init(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_INIT);
@@ -61,6 +63,13 @@ int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, uint8_
 	return panda_virtual_memory_write(env, addr, buf, len);
 }
 
+bool panda_in_kernel_external(CPUState *cpu){
+	return panda_in_kernel(cpu);
+}
+
+target_ulong panda_current_sp_external(CPUState *cpu){
+	return panda_current_sp(cpu);
+}
 
 // we have this temporarily in callbacks.c -> to be moved here
 /*
