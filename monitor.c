@@ -974,6 +974,11 @@ static void qmp_unregister_commands_hack(void)
 #ifndef CONFIG_SPICE
     qmp_unregister_command(&qmp_commands, "query-spice");
 #endif
+#ifndef CONFIG_REPLICATION
+    qmp_unregister_command(&qmp_commands, "xen-set-replication");
+    qmp_unregister_command(&qmp_commands, "query-xen-replication-status");
+    qmp_unregister_command(&qmp_commands, "xen-colo-do-checkpoint");
+#endif
 #ifndef TARGET_I386
     qmp_unregister_command(&qmp_commands, "rtc-reset-reinjection");
 #endif
@@ -1086,6 +1091,11 @@ static void hmp_info_registers(Monitor *mon, const QDict *qdict)
 
 static void hmp_info_jit(Monitor *mon, const QDict *qdict)
 {
+    if (!tcg_enabled()) {
+        error_report("JIT information is only available with accel=tcg");
+        return;
+    }
+
     dump_exec_info((FILE *)mon, monitor_fprintf);
     dump_drift_info((FILE *)mon, monitor_fprintf);
 }
@@ -2671,7 +2681,7 @@ static QDict *monitor_parse_arguments(Monitor *mon,
                     }
                     goto fail;
                 }
-                qdict_put(qdict, key, qstring_from_str(buf));
+                qdict_put_str(qdict, key, buf);
             }
             break;
         case 'O':
@@ -2773,9 +2783,9 @@ static QDict *monitor_parse_arguments(Monitor *mon,
                         size = -1;
                     }
                 }
-                qdict_put(qdict, "count", qint_from_int(count));
-                qdict_put(qdict, "format", qint_from_int(format));
-                qdict_put(qdict, "size", qint_from_int(size));
+                qdict_put_int(qdict, "count", count);
+                qdict_put_int(qdict, "format", format);
+                qdict_put_int(qdict, "size", size);
             }
             break;
         case 'i':
@@ -2818,7 +2828,7 @@ static QDict *monitor_parse_arguments(Monitor *mon,
                     }
                     val <<= 20;
                 }
-                qdict_put(qdict, key, qint_from_int(val));
+                qdict_put_int(qdict, key, val);
             }
             break;
         case 'o':
@@ -2841,7 +2851,7 @@ static QDict *monitor_parse_arguments(Monitor *mon,
                     monitor_printf(mon, "invalid size\n");
                     goto fail;
                 }
-                qdict_put(qdict, key, qint_from_int(val));
+                qdict_put_int(qdict, key, val);
                 p = end;
             }
             break;
@@ -2897,7 +2907,7 @@ static QDict *monitor_parse_arguments(Monitor *mon,
                     monitor_printf(mon, "Expected 'on' or 'off'\n");
                     goto fail;
                 }
-                qdict_put(qdict, key, qbool_from_bool(val));
+                qdict_put_bool(qdict, key, val);
             }
             break;
         case '-':
@@ -2928,7 +2938,7 @@ static QDict *monitor_parse_arguments(Monitor *mon,
                     } else {
                         /* has option */
                         p++;
-                        qdict_put(qdict, key, qbool_from_bool(true));
+                        qdict_put_bool(qdict, key, true);
                     }
                 }
             }
@@ -2954,7 +2964,7 @@ static QDict *monitor_parse_arguments(Monitor *mon,
                                    cmd->name);
                     goto fail;
                 }
-                qdict_put(qdict, key, qstring_from_str(p));
+                qdict_put_str(qdict, key, p);
                 p += len;
             }
             break;
@@ -3156,7 +3166,7 @@ void device_add_completion(ReadLineState *rs, int nb_args, const char *str)
                                              TYPE_DEVICE);
         name = object_class_get_name(OBJECT_CLASS(dc));
 
-        if (!dc->cannot_instantiate_with_device_add_yet
+        if (dc->user_creatable
             && !strncmp(name, str, len)) {
             readline_add_completion(rs, name);
         }
@@ -3733,9 +3743,8 @@ static void handle_qmp_command(JSONMessageParser *parser, GQueue *tokens)
                     QapiErrorClass_lookup[ERROR_CLASS_COMMAND_NOT_FOUND])) {
             /* Provide a more useful error message */
             qdict_del(qdict, "desc");
-            qdict_put(qdict, "desc",
-                      qstring_from_str("Expecting capabilities negotiation"
-                                       " with 'qmp_capabilities'"));
+            qdict_put_str(qdict, "desc", "Expecting capabilities negotiation"
+                          " with 'qmp_capabilities'");
         }
     }
 

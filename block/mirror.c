@@ -514,7 +514,12 @@ static void mirror_exit(BlockJob *job, void *opaque)
 
     /* Remove target parent that still uses BLK_PERM_WRITE/RESIZE before
      * inserting target_bs at s->to_replace, where we might not be able to get
-     * these permissions. */
+     * these permissions.
+     *
+     * Note that blk_unref() alone doesn't necessarily drop permissions because
+     * we might be running nested inside mirror_drain(), which takes an extra
+     * reference, so use an explicit blk_set_perm() first. */
+    blk_set_perm(s->target, 0, BLK_PERM_ALL, &error_abort);
     blk_unref(s->target);
     s->target = NULL;
 
@@ -724,7 +729,7 @@ static void coroutine_fn mirror_run(void *opaque)
         }
 
         if (s->bdev_length > base_length) {
-            ret = blk_truncate(s->target, s->bdev_length);
+            ret = blk_truncate(s->target, s->bdev_length, NULL);
             if (ret < 0) {
                 goto immediate_exit;
             }
@@ -1147,10 +1152,14 @@ static void mirror_start_job(const char *job_id, BlockDriverState *bs,
     if (mirror_top_bs == NULL) {
         return;
     }
+    if (!filter_node_name) {
+        mirror_top_bs->implicit = true;
+    }
     mirror_top_bs->total_sectors = bs->total_sectors;
+    bdrv_set_aio_context(mirror_top_bs, bdrv_get_aio_context(bs));
 
     /* bdrv_append takes ownership of the mirror_top_bs reference, need to keep
-     * it alive until block_job_create() even if bs has no parent. */
+     * it alive until block_job_create() succeeds even if bs has no parent. */
     bdrv_ref(mirror_top_bs);
     bdrv_drained_begin(bs);
     bdrv_append(mirror_top_bs, bs, &local_err);
@@ -1168,10 +1177,12 @@ static void mirror_start_job(const char *job_id, BlockDriverState *bs,
                          BLK_PERM_CONSISTENT_READ | BLK_PERM_WRITE_UNCHANGED |
                          BLK_PERM_WRITE | BLK_PERM_GRAPH_MOD, speed,
                          creation_flags, cb, opaque, errp);
-    bdrv_unref(mirror_top_bs);
     if (!s) {
         goto fail;
     }
+    /* The block job now has a reference to this node */
+    bdrv_unref(mirror_top_bs);
+
     s->source = bs;
     s->mirror_top_bs = mirror_top_bs;
 
@@ -1242,6 +1253,10 @@ static void mirror_start_job(const char *job_id, BlockDriverState *bs,
 
 fail:
     if (s) {
+        /* Make sure this BDS does not go away until we have completed the graph
+         * changes below */
+        bdrv_ref(mirror_top_bs);
+
         g_free(s->replaces);
         blk_unref(s->target);
         block_job_unref(&s->common);
@@ -1250,6 +1265,8 @@ fail:
     bdrv_child_try_set_perm(mirror_top_bs->backing, 0, BLK_PERM_ALL,
                             &error_abort);
     bdrv_replace_node(mirror_top_bs, backing_bs(mirror_top_bs), &error_abort);
+
+    bdrv_unref(mirror_top_bs);
 }
 
 void mirror_start(const char *job_id, BlockDriverState *bs,

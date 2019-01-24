@@ -2139,10 +2139,10 @@ void *qemu_map_ram_ptr(RAMBlock *ram_block, ram_addr_t addr)
          * In that case just map until the end of the page.
          */
         if (block->offset == 0) {
-            return xen_map_cache(addr, 0, 0);
+            return xen_map_cache(addr, 0, 0, false);
         }
 
-        block->host = xen_map_cache(block->offset, block->max_length, 1);
+        block->host = xen_map_cache(block->offset, block->max_length, 1, false);
     }
     return ramblock_ptr(block, addr);
 }
@@ -2153,7 +2153,7 @@ void *qemu_map_ram_ptr(RAMBlock *ram_block, ram_addr_t addr)
  * Called within RCU critical section.
  */
 static void *qemu_ram_ptr_length(RAMBlock *ram_block, ram_addr_t addr,
-                                 hwaddr *size)
+                                 hwaddr *size, bool lock)
 {
     RAMBlock *block = ram_block;
     if (*size == 0) {
@@ -2172,10 +2172,10 @@ static void *qemu_ram_ptr_length(RAMBlock *ram_block, ram_addr_t addr,
          * In that case just map the requested area.
          */
         if (block->offset == 0) {
-            return xen_map_cache(addr, *size, 1);
+            return xen_map_cache(addr, *size, lock, lock);
         }
 
-        block->host = xen_map_cache(block->offset, block->max_length, 1);
+        block->host = xen_map_cache(block->offset, block->max_length, 1, lock);
     }
 
     return ramblock_ptr(block, addr);
@@ -2949,7 +2949,7 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
             }
         } else {
             /* RAM case */
-            ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
+            ptr = qemu_ram_ptr_length(mr->ram_block, addr1, &l, false);
             if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
                 // We should record the memory address relative to the address space, not physical memory.
                 // During replay, this address will be translated into the physical address.
@@ -3063,7 +3063,7 @@ MemTxResult address_space_read_continue(AddressSpace *as, hwaddr addr,
             }
         } else {
             /* RAM case */
-            ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
+            ptr = qemu_ram_ptr_length(mr->ram_block, addr1, &l, false);
             panda_callbacks_before_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 0);
             memcpy(buf, ptr, l);
             panda_callbacks_after_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 0);
@@ -3398,7 +3398,7 @@ void *address_space_map(AddressSpace *as,
 
     memory_region_ref(mr);
     *plen = address_space_extend_translation(as, addr, len, mr, xlat, l, is_write);
-    ptr = qemu_ram_ptr_length(mr->ram_block, xlat, plen);
+    ptr = qemu_ram_ptr_length(mr->ram_block, xlat, plen, true);
     rcu_read_unlock();
 
     if (!rr_in_replay()) {
