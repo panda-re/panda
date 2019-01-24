@@ -4,7 +4,7 @@
  */
 #pragma once
 #include "panda/types.h"
-#include "syscalls2_info.h"
+#include "../syscalls2_info.h"
 
 /* Functions used to populate syscall_ctx_t structs. */
 target_long get_return_val(CPUState *env);

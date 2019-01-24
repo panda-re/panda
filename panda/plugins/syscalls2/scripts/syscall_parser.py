@@ -280,10 +280,10 @@ class SysCall(object):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PANDA syscalls2 support files generator.')
     parser.add_argument('--target', '-t', action='append', required=True, help='Target os:arch tuple to process.')
-    parser.add_argument('--prefix', '-p', default='gen', help='Generated files prefix.')
-    parser.add_argument('--outdir', '-o', default='./', help='Output directory.')
-    parser.add_argument('--prototypes', default='./prototypes', help='Prototype directory.')
-    parser.add_argument('--templates', default='./templates', help='Template directory.')
+    parser.add_argument('--prefix', '-p', default='', help='Generated files prefix.')
+    parser.add_argument('--outdir', '-o', default='../generated', help='Output directory.')
+    parser.add_argument('--prototypes', default='../generated-in', help='Prototype directory.')
+    parser.add_argument('--templates', default='../generated-tpl', help='Template directory.')
     parser.add_argument('--generate-info', default=False, action='store_true', help='Generate code for syscall info dynamic libraries.')
     args = parser.parse_args()
     logging.debug(args)
@@ -361,26 +361,27 @@ if __name__ == '__main__':
 
         # Render per-target output files.
         j2tpl = j2env.get_template('syscall_switch_enter.tpl')
-        with open(os.path.join(args.outdir, "%s_syscall_switch_enter_%s_%s.cpp" % (args.prefix, _os, _arch)), "wb+") as of:
+        with open(os.path.join(args.outdir, "%ssyscall_switch_enter_%s_%s.cpp" % (args.prefix, _os, _arch)), "wb+") as of:
             logging.info("Writing %s", of.name)
             of.write(j2tpl.render(target_context))
         j2tpl = j2env.get_template('syscall_switch_return.tpl')
-        with open(os.path.join(args.outdir, "%s_syscall_switch_return_%s_%s.cpp" % (args.prefix, _os, _arch)), "wb+") as of:
+        with open(os.path.join(args.outdir, "%ssyscall_switch_return_%s_%s.cpp" % (args.prefix, _os, _arch)), "wb+") as of:
             logging.info("Writing %s", of.name)
             of.write(j2tpl.render(target_context))
 
         # Generate syscall info dynamic libraries.
         if args.generate_info:
             j2tpl = j2env.get_template('syscall_info.tpl')
-            with open(os.path.join(args.outdir, "%s_syscall_info_%s_%s.c" % (args.prefix, _os, _arch)), "wb+") as of:
+            with open(os.path.join(args.outdir, "%sdso_info_%s_%s.c" % (args.prefix, _os, _arch)), "wb+") as of:
                 logging.info("Writing %s", of.name)
                 of.write(j2tpl.render(target_context))
 
     # Render big files.
     for tpl, ext in GENERATED_FILES:
         j2tpl = j2env.get_template(tpl)
-        of_name = '%s_%s%s' % (args.prefix, os.path.splitext(os.path.basename(tpl))[0], ext)
+        of_name = '%s%s%s' % (args.prefix, os.path.splitext(os.path.basename(tpl))[0], ext)
         with open(os.path.join(args.outdir, of_name), 'wb+') as of:
             logging.info("Writing %s", of.name)
             of.write(j2tpl.render(global_context))
 
+# vim: set tabstop=4 softtabstop=4 expandtab :

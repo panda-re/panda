@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "syscalls2_info.h"
+#include "../syscalls2_info.h"
 #define MAX_SYSCALL_NO {{max_syscall_no}}
 #define MAX_SYSCALL_GENERIC_NO {{max_syscall_generic_no}}
 #define MAX_SYSCALL_ARGS {{max_syscall_args}}

@@ -31,6 +31,8 @@ import shlex
 import subprocess
 import logging
 import argparse
+import importlib
+import inspect
 from pprint import pprint, pformat
 
 
@@ -40,93 +42,14 @@ from pprint import pprint, pformat
 # Setup logging first thing in the morning.
 LOGLEVEL = logging.INFO
 logging.basicConfig(format='%(levelname)s: %(message)s', level=LOGLEVEL)
-
-# Configuration for valid architectures.
-#
-# Building the prototypes may vary between architectures, even for for
-# the same operating system. For this, we use a flexible approach based
-# on pluggable parsers. The parsers are specified in the configuation
-# dictionary below. The results of the specified parsers are combined
-# using write_prototypes() to produce the PANDA system call prototypes.
-#
-# Pluggable parsers:
-#   - map_function_signature: Specifies the function/arguments that
-#     can be used to acquire a [entry function name]->[signature]
-#     mapping for the target system calls.
-#   - map_function_number: Specifies the function/arguments that can
-#     be used to acquire a [entry function name]->[number] mapping
-#     for the target system calls. This allows direct mapping of
-#     numbers to signatures.
-#   - map_name_number: Specifies the function/arguments that can be
-#     used to acquire a [name]->[number] mapping for the target system
-#     calls. The name corresponds to to the name of an entry function.
-#     This allows mapping of numbers to signatures after inferring the
-#     entry function name from the system call name.
-#
-# Additional documentation for the implemented parser can be found in
-# their definition.
-#
-# Other configuration values:
-#   - bits: Target ISA bits, presumably also number of bits of a
-#     long int.
-#   - src: Root directory for scanned files.
-#   - extrasigs: json file with additional signatures or signature
-#     overrides.
-#
-# The configuration values listed in CONFIG_CLI_OVERRIDES can be
-# overriden using command line arguments.
-CONFIG = {
-    'linux:x86:ubuntu': {
-        'bits': 32,
-        'src': os.path.expanduser('~/git/ubuntu-xenial'),
-        'map_function_signature': {
-            'parser': 'parse_linux_signatures',
-            'locations': {
-                'include/linux/syscalls.h': r'asmlinkage (?P<signature>\w+ (?P<syscall>\w+)\(.*)',
-                'arch/x86/include/asm/syscalls.h': r'(asmlinkage )?(?P<signature>\w+ (?P<syscall>\w+)\(.*)',
-            },
-            'normalize': True,
-        },
-        'map_function_number': {
-            'parser': 'parse_numbers_tbl',
-            'source': 'arch/x86/entry/syscalls/syscall_32.tbl',
-        },
-    },
-    'linux:arm:ubuntu': {
-        'bits': 32,
-        'src': os.path.expanduser('~/git/ubuntu-xenial'),
-        'extrasigs': 'linux_arm_extrasigs.json',
-        'map_function_signature': {
-            'parser': 'parse_linux_signatures',
-            'locations': {
-                'include/linux/syscalls.h': r'asmlinkage (?P<signature>\w+ (?P<syscall>\w+)\(.*)',
-            },
-            'normalize': True,
-        },
-        'map_function_number': {
-            'parser': 'parse_numbers_calltable',
-            'source': 'arch/arm/kernel/calls.S',
-            'regex': {
-                'callnr': r'^/\*\s*(?P<nr>\d+)\s*\*/',
-                'call': r'CALL\((?P<obsolete>OBSOLETE\()?(?P<abi>ABI\()?(?P<syscall>\w+)',
-            },
-            'syscalls_skip': ['sys_ni_syscall',],
-        },
-        'map_name_number': {
-            'parser': 'parse_numbers_unistd',
-            'source': 'arch/arm/include/uapi/asm/unistd.h',
-            'cpp_flags': ['-D__ARM_EABI__', '-D__KERNEL__',],
-        },
-    },
-}
-CONFIG_CLI_OVERRIDES = ['src', 'extrasigs',]
+from prototype_parser_config import CONFIG, CONFIG_CLI_OVERRIDES
 
 
 ##############################################################################
 ### Parser functions #########################################################
 ##############################################################################
-def parse_linux_signatures(rootdir, arch, locations, normalize=False):
-    ''' Parse system call signatures from different linux source files.
+def parse_signature_files(rootdir, arch, locations, normalize=False):
+    ''' Parse system call signatures from different source files.
         Lines in the files are scanned to check for the start of a
         system call function declaration. If the declaration spans
         multiple lines, they are joined to get the whole declaration in
@@ -172,6 +95,7 @@ def parse_linux_signatures(rootdir, arch, locations, normalize=False):
             signature = ' '.join(signature.split())
             signature = ', '.join([t.strip() for t in signature.split(',')])
             signature = re.sub(r'\*\s(\w+)(?=[,)])', r'*\1', signature)
+            #signature = signature.replace(' (', '(', 1)
             signatures_parsed[syscall] = signature
 
     logging.info('Parsed %d signatures from %s:', len(signatures_parsed), sigfile)
@@ -307,6 +231,18 @@ def parse_numbers_unistd(rootdir, arch, source, cpp_flags=[]):
     # return
     return syscall_numbers
 
+def parse_numbers_volatility(rootdir, arch, os):
+    volatility_module = 'volatility_local.%s_%s_syscalls' % (os, arch)
+    module = importlib.import_module(volatility_module)
+    syscalls = module.syscalls
+    syscall_numbers = {}
+    for table_nr, table in enumerate(syscalls):
+        for syscall_tnr, syscall_name in enumerate(table):
+            syscall_nr = table_nr << 12 | syscall_tnr
+            syscall_numbers[syscall_name] = syscall_nr
+    del module
+    return syscall_numbers
+
 
 ##############################################################################
 ### Helper functions #########################################################
@@ -340,7 +276,16 @@ def run_parser(config, parser_name):
     assert config[parser_name]['parser'] in globals()
     parser = globals()[config[parser_name]['parser']]
     args = (config['src'], config['arch'])
-    kwargs = {k: v for k, v in config[parser_name].items() if k != 'parser'}
+    kwargs = {}
+
+    for kwarg in inspect.getfullargspec(parser).args[2:]:
+        if kwarg in config[parser_name]:
+            kwargs[kwarg] = config[parser_name][kwarg]
+        elif kwarg in config:
+            kwargs[kwarg] = config[kwarg]
+        else:
+            raise TypeError('Missing keyword argument \'%s\' for %s().' % (kwarg, parser.__name__))
+
     logging.debug('%s(args=%s, kwargs=%s)', config[parser_name]['parser'], args, kwargs)
     return parser(*args, **kwargs)
 
@@ -348,7 +293,10 @@ def write_prototypes(fsigs, fnums, nnums, config, outdir):
     ''' Writes prototypes starting by iterating syscall_numbers and
         looking for an appropriate signature in syscall_signatures.
     '''
-    protofile = '%s/%s_%s_prototypes.txt' % (outdir, config['os'], config['arch'])
+    if 'outfile' in config:
+        protofile = '%s/%s' % (outdir, config['outfile'])
+    else:
+        protofile = '%s/%s_%s_prototypes.txt' % (outdir, config['os'], config['arch'])
     logging.info('Writing prototypes for %s:%s to %s.', config['os'], config['arch'], protofile)
 
     # work on a copy of fsigs, and reverse number mappings
@@ -395,12 +343,12 @@ def write_prototypes(fsigs, fnums, nnums, config, outdir):
 ##############################################################################
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PANDA syscall scanner.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--outdir', '-o', default='.', help='Output directory for syscall prototypes.')
-    parser.add_argument('--templates', default='../templates', help='Jinja2 template directory.')
+    parser.add_argument('--outdir', '-o', default='../generated-in', help='Output directory for syscall prototypes.')
     parser.add_argument('--target', '-t', choices=CONFIG.keys(), required=True, help='Configuration to use as an os:arch:variant triplet.')
 
     # config override options
     parser.add_argument('--src', '-s', help='Non-default kernel source directory.')
+    parser.add_argument('--json-dir', default='../generated-in', help='Where to find any json files needed.')
     parser.add_argument('--extrasigs', help='json file with additional signatures.')
 
     # parse args and apply overrides
@@ -416,7 +364,6 @@ if __name__ == '__main__':
     logging.debug('args: %s', args)
     logging.debug('config: %s', config)
     assert os.path.isdir(args.outdir), 'Output directory %s does not exist.' % args.outdir
-    assert os.path.isdir(args.templates), 'Template directory %s does not exist.' % args.templates
 
     logging.info('Generating prototypes for {os}:{arch} using {variant} as source.'.format(**config))
 
@@ -427,7 +374,7 @@ if __name__ == '__main__':
 
     # load extra signatures
     if 'extrasigs' in config:
-        with open(config['extrasigs']) as f:
+        with open('%s/%s' % (config['json_dir'], config['extrasigs'])) as f:
             extrasigs = json.load(f)
             syscall_fsigs.update(extrasigs)
             logging.info('Loaded %d additional signatures from %s.', len(extrasigs), config['extrasigs'])
@@ -435,28 +382,27 @@ if __name__ == '__main__':
     write_prototypes(syscall_fsigs, syscall_fnums, syscall_nnums, config, args.outdir)
     sys.exit(0)
 
+    # Additional ARM stuff that may need adjustment.
+    #
     # ARM also has a bunch of wrappers for fork, vfork, execve, clone,
     # sigsuspend, rt_sigsuspend, sigreturn, rt_sigreturn, sigaltstack,
     # statfs64, and fsatfs64
-
-                #if realname.startswith('new'):
-                    #realname = realname[3:]
-        # now deal with the ARM syscalls:
-        #if ARCH == "ARM":
-            #printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_breakpoint'))
-            #printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_breakpoint(void);'))
-            #printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_cacheflush'))
-            #printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_cacheflush(unsigned long start, unsigned long end, unsigned long flags);'))
-            #printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_usr26'))
-            #printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_user26_mode(void);'))
-            #printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_usr32'))
-            #printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_usr32_mode(void);'))
-            #printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_set_tls'))
-            #printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_set_tls(unsigned long arg);'))
-            #printer.write('printf("%d ",{0} + 0xfff0 );\n'.format('__ARM_NR_BASE'))
-            #printer.write('printf("%s\\n",\"{0}\" ); \n'.format('int ARM_cmpxchg(unsigned long val, unsigned long src, unsigned long* dest);'))
-            ## branch through zero = bad!
-            #printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_BASE'))
-            #printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_null_segfault(void);'))
+    #
+    #if ARCH == "ARM":
+    #printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_breakpoint'))
+    #printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_breakpoint(void);'))
+    #printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_cacheflush'))
+    #printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_cacheflush(unsigned long start, unsigned long end, unsigned long flags);'))
+    #printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_usr26'))
+    #printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_user26_mode(void);'))
+    #printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_usr32'))
+    #printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_usr32_mode(void);'))
+    #printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_set_tls'))
+    #printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_set_tls(unsigned long arg);'))
+    #printer.write('printf("%d ",{0} + 0xfff0 );\n'.format('__ARM_NR_BASE'))
+    #printer.write('printf("%s\\n",\"{0}\" ); \n'.format('int ARM_cmpxchg(unsigned long val, unsigned long src, unsigned long* dest);'))
+    ## branch through zero = bad!
+    #printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_BASE'))
+    #printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_null_segfault(void);'))
 
 # vim: set tabstop=4 softtabstop=4 expandtab :

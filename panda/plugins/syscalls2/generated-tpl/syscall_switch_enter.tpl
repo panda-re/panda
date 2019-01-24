@@ -35,7 +35,7 @@ void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc) {
 			}
 			PPP_RUN_CB(on_{{syscall.name}}_enter, {{syscall.cargs}});
 		}; break;
-		{% endfor %}
+		{%- endfor %}
 		default:
 			PPP_RUN_CB(on_unknown_sys_enter, cpu, pc, ctx.no);
 	}
