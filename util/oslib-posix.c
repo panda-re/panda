@@ -361,7 +361,19 @@ static void *do_touch_pages(void *arg)
         memset_thread_failed = true;
     } else {
         for (i = 0; i < numpages; i++) {
-            memset(addr, 0, 1);
+            /*
+             * Read & write back the same value, so we don't
+             * corrupt existing user/app data that might be
+             * stored.
+             *
+             * 'volatile' to stop compiler optimizing this away
+             * to a no-op
+             *
+             * TODO: get a better solution from kernel so we
+             * don't need to write at all so we don't cause
+             * wear on the storage backing the region...
+             */
+            *(volatile char *)addr = *addr;
             addr += hpagesize;
         }
     }
@@ -697,8 +709,6 @@ void sigaction_invoke(struct sigaction *action,
         si.si_pid = info->ssi_pid;
         si.si_status = info->ssi_status;
         si.si_uid = info->ssi_uid;
-    } else if (info->ssi_signo == SIGIO) {
-        si.si_band = info->ssi_band;
     }
     action->sa_sigaction(info->ssi_signo, &si, NULL);
 }
