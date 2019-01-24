@@ -539,14 +539,15 @@ static void coroutine_fn virtfs_reset(V9fsPDU *pdu)
 
     /* Free all fids */
     while (s->fid_list) {
+        /* Get fid */
         fidp = s->fid_list;
-        s->fid_list = fidp->next;
+        fidp->ref++;
 
-        if (fidp->ref) {
-            fidp->clunked = 1;
-        } else {
-            free_fid(pdu, fidp);
-        }
+        /* Clunk fid */
+        s->fid_list = fidp->next;
+        fidp->clunked = 1;
+
+        put_fid(pdu, fidp);
     }
 }
 
@@ -1550,6 +1551,10 @@ static void coroutine_fn v9fs_lcreate(void *opaque)
         err = -ENOENT;
         goto out_nofid;
     }
+    if (fidp->fid_type != P9_FID_NONE) {
+        err = -EINVAL;
+        goto out;
+    }
 
     flags = get_dotl_openflags(pdu->s, flags);
     err = v9fs_co_open2(pdu, fidp, &name, gid,
@@ -2153,6 +2158,10 @@ static void coroutine_fn v9fs_create(void *opaque)
         err = -EINVAL;
         goto out_nofid;
     }
+    if (fidp->fid_type != P9_FID_NONE) {
+        err = -EINVAL;
+        goto out;
+    }
     if (perm & P9_STAT_MODE_DIR) {
         err = v9fs_co_mkdir(pdu, fidp, &name, perm & 0777,
                             fidp->uid, -1, &stbuf);
@@ -2379,8 +2388,10 @@ static void coroutine_fn v9fs_flush(void *opaque)
          * Wait for pdu to complete.
          */
         qemu_co_queue_wait(&cancel_pdu->complete, NULL);
-        cancel_pdu->cancelled = 0;
-        pdu_free(cancel_pdu);
+        if (!qemu_co_queue_next(&cancel_pdu->complete)) {
+            cancel_pdu->cancelled = 0;
+            pdu_free(cancel_pdu);
+        }
     }
     pdu_complete(pdu, 7);
 }

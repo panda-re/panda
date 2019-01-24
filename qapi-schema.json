@@ -4051,19 +4051,27 @@
   'data': [ 'all', 'rx', 'tx' ] }
 
 ##
+# @InetSocketAddressBase:
+#
+# @host: host part of the address
+# @port: port part of the address
+##
+{ 'struct': 'InetSocketAddressBase',
+  'data': {
+    'host': 'str',
+    'port': 'str' } }
+
+##
 # @InetSocketAddress:
 #
 # Captures a socket address or address range in the Internet namespace.
-#
-# @host: host part of the address
-#
-# @port: port part of the address, or lowest port if @to is present
 #
 # @numeric: true if the host/port are guaranteed to be numeric,
 #           false if name resolution should be attempted. Defaults to false.
 #           (Since 2.9)
 #
-# @to: highest port to try
+# @to: If present, this is range of possible addresses, with port
+#      between @port and @to.
 #
 # @ipv4: whether to accept IPv4 addresses, default try both IPv4 and IPv6
 #
@@ -4072,9 +4080,8 @@
 # Since: 1.3
 ##
 { 'struct': 'InetSocketAddress',
+  'base': 'InetSocketAddressBase',
   'data': {
-    'host': 'str',
-    'port': 'str',
     '*numeric':  'bool',
     '*to': 'uint16',
     '*ipv4': 'bool',
@@ -4137,7 +4144,7 @@
 # Since: 2.9
 ##
 { 'enum': 'SocketAddressFlatType',
-  'data': [ 'unix', 'inet' ] }
+  'data': [ 'inet', 'unix', 'vsock', 'fd' ] }
 
 ##
 # @SocketAddressFlat:
@@ -4146,22 +4153,19 @@
 #
 # @type:       Transport type
 #
-# This is similar to SocketAddress, only distinction:
-#
-# 1. SocketAddressFlat is a flat union, SocketAddress is a simple union.
-#    A flat union is nicer than simple because it avoids nesting
-#    (i.e. more {}) on the wire.
-#
-# 2. SocketAddressFlat supports only types 'unix' and 'inet', because
-#    that's what its current users need.
+# This is just like SocketAddress, except it's a flat union rather
+# than a simple union.  Nicer because it avoids nesting on the wire,
+# i.e. this form has fewer {}.
 #
 # Since: 2.9
 ##
 { 'union': 'SocketAddressFlat',
   'base': { 'type': 'SocketAddressFlatType' },
   'discriminator': 'type',
-  'data': { 'unix': 'UnixSocketAddress',
-            'inet': 'InetSocketAddress' } }
+  'data': { 'inet': 'InetSocketAddress',
+            'unix': 'UnixSocketAddress',
+            'vsock': 'VsockSocketAddress',
+            'fd': 'String' } }
 
 ##
 # @getfd:

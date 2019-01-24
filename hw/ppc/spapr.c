@@ -1521,16 +1521,16 @@ static void htab_save_first_pass(QEMUFile *f, sPAPRMachineState *spapr,
         /* Consume invalid HPTEs */
         while ((index < htabslots)
                && !HPTE_VALID(HPTE(spapr->htab, index))) {
-            index++;
             CLEAN_HPTE(HPTE(spapr->htab, index));
+            index++;
         }
 
         /* Consume valid HPTEs */
         chunkstart = index;
         while ((index < htabslots) && (index - chunkstart < USHRT_MAX)
                && HPTE_VALID(HPTE(spapr->htab, index))) {
-            index++;
             CLEAN_HPTE(HPTE(spapr->htab, index));
+            index++;
         }
 
         if (index > chunkstart) {
@@ -2785,6 +2785,12 @@ static void spapr_core_pre_plug(HotplugHandler *hotplug_dev, DeviceState *dev,
     if (cc->core_id % smp_threads) {
         error_setg(&local_err, "invalid core id %d", cc->core_id);
         goto out;
+    }
+
+    if (cc->nr_threads != smp_threads) {
+        error_setg(errp, "invalid nr-threads %d, must be %d",
+                   cc->nr_threads, smp_threads);
+        return;
     }
 
     core_slot = spapr_find_cpu_slot(MACHINE(hotplug_dev), cc->core_id, &index);

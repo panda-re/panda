@@ -2053,7 +2053,7 @@
 # @ignore:      Ignore the request
 # @unmap:       Forward as an unmap request
 #
-# Since: 1.7
+# Since: 2.9
 ##
 { 'enum': 'BlockdevDiscardOptions',
   'data': [ 'ignore', 'unmap' ] }
@@ -2082,7 +2082,7 @@
 # @threads:     Use qemu's thread pool
 # @native:      Use native AIO backend (only Linux and Windows)
 #
-# Since: 1.7
+# Since: 2.9
 ##
 { 'enum': 'BlockdevAioOptions',
   'data': [ 'threads', 'native' ] }
@@ -2097,7 +2097,7 @@
 # @no-flush:    ignore any flush requests for the device (default:
 #               false)
 #
-# Since: 1.7
+# Since: 2.9
 ##
 { 'struct': 'BlockdevCacheOptions',
   'data': { '*direct': 'bool',
@@ -2108,18 +2108,7 @@
 #
 # Drivers that are supported in block device operations.
 #
-# @host_device: Since 2.1
-# @host_cdrom: Since 2.1
-# @gluster: Since 2.7
-# @nbd: Since 2.8
-# @nfs: Since 2.8
-# @replication: Since 2.8
-# @ssh: Since 2.8
-# @iscsi: Since 2.9
-# @rbd: Since 2.9
-# @sheepdog: Since 2.9
-#
-# Since: 2.0
+# Since: 2.9
 ##
 { 'enum': 'BlockdevDriver',
   'data': [ 'blkdebug', 'blkverify', 'bochs', 'cloop',
@@ -2137,7 +2126,7 @@
 # @filename:    path to the image file
 # @aio:         AIO backend (default: threads) (since: 2.8)
 #
-# Since: 1.7
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsFile',
   'data': { 'filename': 'str',
@@ -2153,7 +2142,7 @@
 #              requests. Default to zero which completes requests immediately.
 #              (Since 2.4)
 #
-# Since: 2.2
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsNull',
   'data': { '*size': 'int', '*latency-ns': 'uint64' } }
@@ -2173,7 +2162,7 @@
 #               (since 2.4)
 # @rw:          whether to allow write operations (default: false)
 #
-# Since: 1.7
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsVVFAT',
   'data': { 'dir': 'str', '*fat-type': 'int', '*floppy': 'bool',
@@ -2187,7 +2176,7 @@
 #
 # @file:        reference to or definition of the data source block device
 #
-# Since: 1.7
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsGenericFormat',
   'data': { 'file': 'BlockdevRef' } }
@@ -2201,7 +2190,7 @@
 #              the decryption key (since 2.6). Mandatory except when
 #              doing a metadata-only probe of the image.
 #
-# Since: 2.6
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsLUKS',
   'base': 'BlockdevOptionsGenericFormat',
@@ -2219,7 +2208,7 @@
 #               allowed to pass an empty string here in order to disable the
 #               default backing file.
 #
-# Since: 1.7
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsGenericCOWFormat',
   'base': 'BlockdevOptionsGenericFormat',
@@ -2240,7 +2229,7 @@
 #
 # @all:         Perform all available overlap checks
 #
-# Since: 2.2
+# Since: 2.9
 ##
 { 'enum': 'Qcow2OverlapCheckMode',
   'data': [ 'none', 'constant', 'cached', 'all' ] }
@@ -2255,7 +2244,7 @@
 # @template: Specifies a template mode which can be adjusted using the other
 #            flags, defaults to 'cached'
 #
-# Since: 2.2
+# Since: 2.9
 ##
 { 'struct': 'Qcow2OverlapCheckFlags',
   'data': { '*template':       'Qcow2OverlapCheckMode',
@@ -2279,7 +2268,7 @@
 #
 # @mode:    named mode which chooses a specific set of flags
 #
-# Since: 2.2
+# Since: 2.9
 ##
 { 'alternate': 'Qcow2OverlapChecks',
   'data': { 'flags': 'Qcow2OverlapCheckFlags',
@@ -2320,7 +2309,7 @@
 #                         caches. The interval is in seconds. The default value
 #                         is 0 and it disables this feature (since 2.5)
 #
-# Since: 1.7
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsQcow2',
   'base': 'BlockdevOptionsGenericCOWFormat',
@@ -2347,7 +2336,7 @@
 #
 # TODO: Expose the host_key_check option in QMP
 #
-# Since: 2.8
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsSsh',
   'data': { 'server': 'InetSocketAddress',
@@ -2360,7 +2349,7 @@
 #
 # Trigger events supported by blkdebug.
 #
-# Since: 2.0
+# Since: 2.9
 ##
 { 'enum': 'BlkdebugEvent', 'prefix': 'BLKDBG',
   'data': [ 'l1_update', 'l1_grow_alloc_table', 'l1_grow_write_table',
@@ -2400,7 +2389,7 @@
 #
 # @immediately: fail immediately; defaults to false
 #
-# Since: 2.0
+# Since: 2.9
 ##
 { 'struct': 'BlkdebugInjectErrorOptions',
   'data': { 'event': 'BlkdebugEvent',
@@ -2423,7 +2412,7 @@
 # @new_state:   the state identifier blkdebug is supposed to assume if
 #               this event is triggered
 #
-# Since: 2.0
+# Since: 2.9
 ##
 { 'struct': 'BlkdebugSetStateOptions',
   'data': { 'event': 'BlkdebugEvent',
@@ -2446,7 +2435,7 @@
 #
 # @set-state:       array of state-change descriptions
 #
-# Since: 2.0
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsBlkdebug',
   'data': { 'image': 'BlockdevRef',
@@ -2464,7 +2453,7 @@
 #
 # @raw:     raw image used for verification
 #
-# Since: 2.0
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsBlkverify',
   'data': { 'test': 'BlockdevRef',
@@ -2479,7 +2468,7 @@
 #
 # @fifo: read only from the first child that has not failed
 #
-# Since: 2.2
+# Since: 2.9
 ##
 { 'enum': 'QuorumReadPattern', 'data': [ 'quorum', 'fifo' ] }
 
@@ -2501,7 +2490,7 @@
 # @read-pattern: choose read pattern and set to quorum by default
 #                (Since 2.2)
 #
-# Since: 2.0
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsQuorum',
   'data': { '*blkverify': 'bool',
@@ -2526,7 +2515,7 @@
 #
 # @logfile:     libgfapi log file (default /dev/stderr) (Since 2.8)
 #
-# Since: 2.7
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsGluster',
   'data': { 'volume': 'str',
@@ -2601,27 +2590,6 @@
 
 
 ##
-# @RbdAuthSupport:
-#
-# An enumeration of RBD auth support
-#
-# Since: 2.9
-##
-{ 'enum': 'RbdAuthSupport',
-  'data': [ 'cephx', 'none' ] }
-
-
-##
-# @RbdAuthMethod:
-#
-# An enumeration of rados auth_supported types
-#
-# Since: 2.9
-##
-{ 'struct': 'RbdAuthMethod',
-  'data': { 'auth': 'RbdAuthSupport' } }
-
-##
 # @BlockdevOptionsRbd:
 #
 # @pool:               Ceph pool name.
@@ -2639,11 +2607,6 @@
 # @server:             Monitor host address and port.  This maps
 #                      to the "mon_host" Ceph option.
 #
-# @auth-supported:     Authentication supported.
-#
-# @password-secret:    The ID of a QCryptoSecret object providing
-#                      the password for the login.
-#
 # Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsRbd',
@@ -2652,9 +2615,7 @@
             '*conf': 'str',
             '*snapshot': 'str',
             '*user': 'str',
-            '*server': ['InetSocketAddress'],
-            '*auth-supported': ['RbdAuthMethod'],
-            '*password-secret': 'str' } }
+            '*server': ['InetSocketAddressBase'] } }
 
 ##
 # @BlockdevOptionsSheepdog:
@@ -2662,7 +2623,7 @@
 # Driver specific block device options for sheepdog
 #
 # @vdi:         Virtual disk image name
-# @addr:        The Sheepdog server to connect to
+# @server:      The Sheepdog server to connect to
 # @snap-id:     Snapshot ID
 # @tag:         Snapshot tag name
 #
@@ -2671,7 +2632,7 @@
 # Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsSheepdog',
-  'data': { 'addr': 'SocketAddressFlat',
+  'data': { 'server': 'SocketAddressFlat',
             'vdi': 'str',
             '*snap-id': 'uint32',
             '*tag': 'str' } }
@@ -2685,7 +2646,7 @@
 #
 # @secondary: Secondary mode, receive the vm's state from primary QEMU.
 #
-# Since: 2.8
+# Since: 2.9
 ##
 { 'enum' : 'ReplicationMode', 'data' : [ 'primary', 'secondary' ] }
 
@@ -2700,7 +2661,7 @@
 #          node who owns the replication node chain. Must not be given in
 #          primary mode.
 #
-# Since: 2.8
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsReplication',
   'base': 'BlockdevOptionsGenericFormat',
@@ -2714,7 +2675,7 @@
 #
 # @inet:        TCP transport
 #
-# Since: 2.8
+# Since: 2.9
 ##
 { 'enum': 'NFSTransport',
   'data': [ 'inet' ] }
@@ -2728,7 +2689,7 @@
 #
 # @host:        host address for NFS server
 #
-# Since: 2.8
+# Since: 2.9
 ##
 { 'struct': 'NFSServer',
   'data': { 'type': 'NFSTransport',
@@ -2763,7 +2724,7 @@
 # @debug:                   set the NFS debug level (max 2) (defaults
 #                           to libnfs default)
 #
-# Since: 2.8
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsNfs',
   'data': { 'server': 'NFSServer',
@@ -2776,16 +2737,101 @@
             '*debug': 'int' } }
 
 ##
-# @BlockdevOptionsCurl:
+# @BlockdevOptionsCurlBase:
 #
-# Driver specific block device options for the curl backend.
+# Driver specific block device options shared by all protocols supported by the
+# curl backend.
 #
-# @filename:    path to the image file
+# @url:                     URL of the image file
 #
-# Since: 1.7
+# @readahead:               Size of the read-ahead cache; must be a multiple of
+#                           512 (defaults to 256 kB)
+#
+# @timeout:                 Timeout for connections, in seconds (defaults to 5)
+#
+# @username:                Username for authentication (defaults to none)
+#
+# @password-secret:         ID of a QCryptoSecret object providing a password
+#                           for authentication (defaults to no password)
+#
+# @proxy-username:          Username for proxy authentication (defaults to none)
+#
+# @proxy-password-secret:   ID of a QCryptoSecret object providing a password
+#                           for proxy authentication (defaults to no password)
+#
+# Since: 2.9
 ##
-{ 'struct': 'BlockdevOptionsCurl',
-  'data': { 'filename': 'str' } }
+{ 'struct': 'BlockdevOptionsCurlBase',
+  'data': { 'url': 'str',
+            '*readahead': 'int',
+            '*timeout': 'int',
+            '*username': 'str',
+            '*password-secret': 'str',
+            '*proxy-username': 'str',
+            '*proxy-password-secret': 'str' } }
+
+##
+# @BlockdevOptionsCurlHttp:
+#
+# Driver specific block device options for HTTP connections over the curl
+# backend.  URLs must start with "http://".
+#
+# @cookie:      List of cookies to set; format is
+#               "name1=content1; name2=content2;" as explained by
+#               CURLOPT_COOKIE(3). Defaults to no cookies.
+#
+# Since: 2.9
+##
+{ 'struct': 'BlockdevOptionsCurlHttp',
+  'base': 'BlockdevOptionsCurlBase',
+  'data': { '*cookie': 'str' } }
+
+##
+# @BlockdevOptionsCurlHttps:
+#
+# Driver specific block device options for HTTPS connections over the curl
+# backend.  URLs must start with "https://".
+#
+# @cookie:      List of cookies to set; format is
+#               "name1=content1; name2=content2;" as explained by
+#               CURLOPT_COOKIE(3). Defaults to no cookies.
+#
+# @sslverify:   Whether to verify the SSL certificate's validity (defaults to
+#               true)
+#
+# Since: 2.9
+##
+{ 'struct': 'BlockdevOptionsCurlHttps',
+  'base': 'BlockdevOptionsCurlBase',
+  'data': { '*cookie': 'str',
+            '*sslverify': 'bool' } }
+
+##
+# @BlockdevOptionsCurlFtp:
+#
+# Driver specific block device options for FTP connections over the curl
+# backend.  URLs must start with "ftp://".
+#
+# Since: 2.9
+##
+{ 'struct': 'BlockdevOptionsCurlFtp',
+  'base': 'BlockdevOptionsCurlBase',
+  'data': { } }
+
+##
+# @BlockdevOptionsCurlFtps:
+#
+# Driver specific block device options for FTPS connections over the curl
+# backend.  URLs must start with "ftps://".
+#
+# @sslverify:   Whether to verify the SSL certificate's validity (defaults to
+#               true)
+#
+# Since: 2.9
+##
+{ 'struct': 'BlockdevOptionsCurlFtps',
+  'base': 'BlockdevOptionsCurlBase',
+  'data': { '*sslverify': 'bool' } }
 
 ##
 # @BlockdevOptionsNbd:
@@ -2798,10 +2844,10 @@
 #
 # @tls-creds:   TLS credentials ID
 #
-# Since: 2.8
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsNbd',
-  'data': { 'server': 'SocketAddress',
+  'data': { 'server': 'SocketAddressFlat',
             '*export': 'str',
             '*tls-creds': 'str' } }
 
@@ -2813,7 +2859,7 @@
 # @offset:      position where the block device starts
 # @size:        the assumed size of the device
 #
-# Since: 2.8
+# Since: 2.9
 ##
 { 'struct': 'BlockdevOptionsRaw',
   'base': 'BlockdevOptionsGenericFormat',
@@ -2837,7 +2883,7 @@
 #
 # Remaining options are determined by the block driver.
 #
-# Since: 1.7
+# Since: 2.9
 ##
 { 'union': 'BlockdevOptions',
   'base': { 'driver': 'BlockdevDriver',
@@ -2854,13 +2900,13 @@
       'cloop':      'BlockdevOptionsGenericFormat',
       'dmg':        'BlockdevOptionsGenericFormat',
       'file':       'BlockdevOptionsFile',
-      'ftp':        'BlockdevOptionsCurl',
-      'ftps':       'BlockdevOptionsCurl',
+      'ftp':        'BlockdevOptionsCurlFtp',
+      'ftps':       'BlockdevOptionsCurlFtps',
       'gluster':    'BlockdevOptionsGluster',
       'host_cdrom': 'BlockdevOptionsFile',
       'host_device':'BlockdevOptionsFile',
-      'http':       'BlockdevOptionsCurl',
-      'https':      'BlockdevOptionsCurl',
+      'http':       'BlockdevOptionsCurlHttp',
+      'https':      'BlockdevOptionsCurlHttps',
       'iscsi':      'BlockdevOptionsIscsi',
       'luks':       'BlockdevOptionsLUKS',
       'nbd':        'BlockdevOptionsNbd',
@@ -2894,7 +2940,7 @@
 #                   empty string means that no block device should be
 #                   referenced.
 #
-# Since: 1.7
+# Since: 2.9
 ##
 { 'alternate': 'BlockdevRef',
   'data': { 'definition': 'BlockdevOptions',
@@ -2907,11 +2953,7 @@
 # BlockBackend will be created; otherwise, @node-name is mandatory at the top
 # level and no BlockBackend will be created.
 #
-# Note: This command is still a work in progress.  It doesn't support all
-# block drivers among other things.  Stay away from it unless you want
-# to help with its development.
-#
-# Since: 1.7
+# Since: 2.9
 #
 # Example:
 #
@@ -2957,7 +2999,7 @@
 { 'command': 'blockdev-add', 'data': 'BlockdevOptions', 'boxed': true }
 
 ##
-# @x-blockdev-del:
+# @blockdev-del:
 #
 # Deletes a block device that has been added using blockdev-add.
 # The command will fail if the node is attached to a device or is
@@ -2965,11 +3007,7 @@
 #
 # @node-name: Name of the graph node to delete.
 #
-# Note: This command is still a work in progress and is considered
-# experimental. Stay away from it unless you want to help with its
-# development.
-#
-# Since: 2.5
+# Since: 2.9
 #
 # Example:
 #
@@ -2985,13 +3023,13 @@
 #    }
 # <- { "return": {} }
 #
-# -> { "execute": "x-blockdev-del",
+# -> { "execute": "blockdev-del",
 #      "arguments": { "node-name": "node0" }
 #    }
 # <- { "return": {} }
 #
 ##
-{ 'command': 'x-blockdev-del', 'data': { 'node-name': 'str' } }
+{ 'command': 'blockdev-del', 'data': { 'node-name': 'str' } }
 
 ##
 # @blockdev-open-tray:
