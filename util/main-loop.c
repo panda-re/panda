@@ -28,14 +28,13 @@
 #include "qemu/timer.h"
 #include "qemu/sockets.h"	// struct in_addr needed for libslirp.h
 #include "sysemu/qtest.h"
+#include "sysemu/cpus.h"
 #include "slirp/libslirp.h"
 #include "qemu/main-loop.h"
 #include "block/aio.h"
 #include "panda/rr/rr_log_all.h"
 
 #ifndef _WIN32
-
-#include "qemu/compatfd.h"
 
 /* If we have signalfd, we mask out the signals we want to handle and then
  * use signalfd to listen for them.  We rely on whatever the current signal
@@ -64,8 +63,7 @@ static void sigfd_handler(void *opaque)
 
         sigaction(info.ssi_signo, NULL, &action);
         if ((action.sa_flags & SA_SIGINFO) && action.sa_sigaction) {
-            action.sa_sigaction(info.ssi_signo,
-                                (siginfo_t *)&info, NULL);
+            sigaction_invoke(&action, &info);
         } else if (action.sa_handler) {
             action.sa_handler(info.ssi_signo);
         }
@@ -147,7 +145,7 @@ int qemu_init_main_loop(Error **errp)
     GSource *src;
     Error *local_error = NULL;
 
-    init_clocks();
+    init_clocks(qemu_timer_notify_cb);
 
     ret = qemu_signal_init();
     if (ret) {

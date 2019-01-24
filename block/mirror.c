@@ -12,6 +12,7 @@
  */
 
 #include "qemu/osdep.h"
+#include "qemu/cutils.h"
 #include "trace.h"
 #include "block/blockjob_int.h"
 #include "block/block_int.h"
@@ -509,6 +510,13 @@ static void mirror_exit(BlockJob *job, void *opaque)
      * block_job_completed(). */
     bdrv_ref(src);
     bdrv_ref(mirror_top_bs);
+    bdrv_ref(target_bs);
+
+    /* Remove target parent that still uses BLK_PERM_WRITE/RESIZE before
+     * inserting target_bs at s->to_replace, where we might not be able to get
+     * these permissions. */
+    blk_unref(s->target);
+    s->target = NULL;
 
     /* We don't access the source any more. Dropping any WRITE/RESIZE is
      * required before it could become a backing file of target_bs. */
@@ -543,8 +551,12 @@ static void mirror_exit(BlockJob *job, void *opaque)
         /* The mirror job has no requests in flight any more, but we need to
          * drain potential other users of the BDS before changing the graph. */
         bdrv_drained_begin(target_bs);
-        bdrv_replace_in_backing_chain(to_replace, target_bs);
+        bdrv_replace_node(to_replace, target_bs, &local_err);
         bdrv_drained_end(target_bs);
+        if (local_err) {
+            error_report_err(local_err);
+            data->ret = -EPERM;
+        }
     }
     if (s->to_replace) {
         bdrv_op_unblock_all(s->to_replace, s->replace_blocker);
@@ -555,19 +567,19 @@ static void mirror_exit(BlockJob *job, void *opaque)
         aio_context_release(replace_aio_context);
     }
     g_free(s->replaces);
-    blk_unref(s->target);
-    s->target = NULL;
+    bdrv_unref(target_bs);
 
     /* Remove the mirror filter driver from the graph. Before this, get rid of
      * the blockers on the intermediate nodes so that the resulting state is
-     * valid. */
+     * valid. Also give up permissions on mirror_top_bs->backing, which might
+     * block the removal. */
     block_job_remove_all_bdrv(job);
-    bdrv_replace_in_backing_chain(mirror_top_bs, backing_bs(mirror_top_bs));
+    bdrv_child_set_perm(mirror_top_bs->backing, 0, BLK_PERM_ALL);
+    bdrv_replace_node(mirror_top_bs, backing_bs(mirror_top_bs), &error_abort);
 
     /* We just changed the BDS the job BB refers to (with either or both of the
-     * bdrv_replace_in_backing_chain() calls), so switch the BB back so the
-     * cleanup does the right thing. We don't need any permissions any more
-     * now. */
+     * bdrv_replace_node() calls), so switch the BB back so the cleanup does
+     * the right thing. We don't need any permissions any more now. */
     blk_remove_bs(job->blk);
     blk_set_perm(job->blk, 0, BLK_PERM_ALL, &error_abort);
     blk_insert_bs(job->blk, mirror_top_bs, &error_abort);
@@ -1049,6 +1061,13 @@ static int coroutine_fn bdrv_mirror_top_pdiscard(BlockDriverState *bs,
     return bdrv_co_pdiscard(bs->backing->bs, offset, count);
 }
 
+static void bdrv_mirror_top_refresh_filename(BlockDriverState *bs, QDict *opts)
+{
+    bdrv_refresh_filename(bs->backing->bs);
+    pstrcpy(bs->exact_filename, sizeof(bs->exact_filename),
+            bs->backing->bs->filename);
+}
+
 static void bdrv_mirror_top_close(BlockDriverState *bs)
 {
 }
@@ -1077,6 +1096,7 @@ static BlockDriver bdrv_mirror_top = {
     .bdrv_co_pdiscard           = bdrv_mirror_top_pdiscard,
     .bdrv_co_flush              = bdrv_mirror_top_flush,
     .bdrv_co_get_block_status   = bdrv_mirror_top_get_block_status,
+    .bdrv_refresh_filename      = bdrv_mirror_top_refresh_filename,
     .bdrv_close                 = bdrv_mirror_top_close,
     .bdrv_child_perm            = bdrv_mirror_top_child_perm,
 };
@@ -1189,10 +1209,7 @@ static void mirror_start_job(const char *job_id, BlockDriverState *bs,
 
     s->dirty_bitmap = bdrv_create_dirty_bitmap(bs, granularity, NULL, errp);
     if (!s->dirty_bitmap) {
-        g_free(s->replaces);
-        blk_unref(s->target);
-        block_job_unref(&s->common);
-        return;
+        goto fail;
     }
 
     /* Required permissions are already taken with blk_new() */
@@ -1228,7 +1245,8 @@ fail:
         block_job_unref(&s->common);
     }
 
-    bdrv_replace_in_backing_chain(mirror_top_bs, backing_bs(mirror_top_bs));
+    bdrv_child_set_perm(mirror_top_bs->backing, 0, BLK_PERM_ALL);
+    bdrv_replace_node(mirror_top_bs, backing_bs(mirror_top_bs), &error_abort);
 }
 
 void mirror_start(const char *job_id, BlockDriverState *bs,

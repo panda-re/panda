@@ -473,6 +473,22 @@ struct ppc_slb_t {
 #endif
 #endif
 
+/* DSISR */
+#define DSISR_NOPTE              0x40000000
+/* Not permitted by access authority of encoded access authority */
+#define DSISR_PROTFAULT          0x08000000
+#define DSISR_ISSTORE            0x02000000
+/* Not permitted by virtual page class key protection */
+#define DSISR_AMR                0x00200000
+
+/* SRR1 error code fields */
+
+#define SRR1_NOPTE               DSISR_NOPTE
+/* Not permitted due to no-execute or guard bit set */
+#define SRR1_NOEXEC_GUARD        0x10000000
+#define SRR1_PROTFAULT           DSISR_PROTFAULT
+#define SRR1_IAMR                DSISR_AMR
+
 /* Facility Status and Control (FSCR) bits */
 #define FSCR_EBB        (63 - 56) /* Event-Based Branch Facility */
 #define FSCR_TAR        (63 - 55) /* Target Address Register */
@@ -1216,6 +1232,7 @@ struct PPCVirtualHypervisorClass {
                         hwaddr ptex, int n);
     void (*store_hpte)(PPCVirtualHypervisor *vhyp, hwaddr ptex,
                        uint64_t pte0, uint64_t pte1);
+    uint64_t (*get_patbe)(PPCVirtualHypervisor *vhyp);
 };
 
 #define TYPE_PPC_VIRTUAL_HYPERVISOR "ppc-virtual-hypervisor"
@@ -1391,7 +1408,7 @@ int ppc_compat_max_threads(PowerPCCPU *cpu);
 #define SPR_601_UDECR         (0x006)
 #define SPR_LR                (0x008)
 #define SPR_CTR               (0x009)
-#define SPR_UAMR              (0x00C)
+#define SPR_UAMR              (0x00D)
 #define SPR_DSCR              (0x011)
 #define SPR_DSISR             (0x012)
 #define SPR_DAR               (0x013) /* DAE for PowerPC 601 */
