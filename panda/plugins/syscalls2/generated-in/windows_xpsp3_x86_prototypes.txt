@@ -191,10 +191,8 @@
 190 NTSTATUS NtReplyWaitReceivePort (HANDLE PortHandle, PVOID *PortContext , PPORT_MESSAGE ReplyMessage, PPORT_MESSAGE ReceiveMessage);
 191 NTSTATUS NtReplyWaitReceivePortEx (HANDLE PortHandle, PVOID *PortContext, PPORT_MESSAGE ReplyMessage, PPORT_MESSAGE ReceiveMessage, PLARGE_INTEGER Timeout);
 192 NTSTATUS NtReplyWaitReplyPort (HANDLE PortHandle, PPORT_MESSAGE ReplyMessage);
-193 missing NtRequestDeviceWakeup
 194 NTSTATUS NtRequestPort (HANDLE PortHandle, PPORT_MESSAGE RequestMessage);
 195 NTSTATUS NtRequestWaitReplyPort (HANDLE PortHandle, PPORT_MESSAGE RequestMessage, PPORT_MESSAGE ReplyMessage);
-196 missing NtRequestWakeupLatency
 197 NTSTATUS NtResetEvent (HANDLE EventHandle, PLONG PreviousState);
 198 NTSTATUS NtResetWriteWatch (HANDLE ProcessHandle, PVOID BaseAddress, SIZE_T RegionSize);
 199 NTSTATUS NtRestoreKey (HANDLE KeyHandle, HANDLE FileHandle, ULONG Flags);

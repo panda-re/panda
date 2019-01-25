@@ -20,7 +20,6 @@
 19 NTSTATUS NtCallbackReturn (PVOID OutputBuffer, ULONG OutputLength, NTSTATUS Status);
 20 NTSTATUS NtCancelIoFile (HANDLE FileHandle, PIO_STATUS_BLOCK IoStatusBlock);
 21 NTSTATUS NtCancelTimer (HANDLE TimerHandle, PBOOLEAN CurrentState);
-22 missing NtCancelDeviceWakeupRequest
 23 NTSTATUS NtClearEvent (HANDLE EventHandle);
 24 NTSTATUS NtClose (HANDLE Handle);
 25 NTSTATUS NtCloseObjectAuditAlarm (PUNICODE_STRING SubsystemName, PVOID HandleId, BOOLEAN GenerateOnClose);
@@ -74,7 +73,6 @@
 73 NTSTATUS NtGetContextThread (HANDLE ThreadHandle, PCONTEXT ThreadContext);
 74 NTSTATUS NtGetDevicePowerState (HANDLE Device, DEVICE_POWER_STATE *State);
 75 NTSTATUS NtGetPlugPlayEvent (HANDLE EventHandle, PVOID Context, PPLUGPLAY_EVENT_BLOCK EventBlock, ULONG EventBufferSize);
-76 missing NtGetTickCount
 77 NTSTATUS NtGetWriteWatch (HANDLE ProcessHandle, ULONG Flags, PVOID BaseAddress, SIZE_T RegionSize, PVOID *UserAddressArray, PULONG_PTR EntriesInUserAddressArray, PULONG Granularity);
 78 NTSTATUS NtImpersonateAnonymousToken (HANDLE ThreadHandle);
 79 NTSTATUS NtImpersonateClientOfPort (HANDLE PortHandle, PPORT_MESSAGE Message);
@@ -172,10 +170,8 @@
 171 NTSTATUS NtReplyWaitReceivePort (HANDLE PortHandle, PVOID *PortContext , PPORT_MESSAGE ReplyMessage, PPORT_MESSAGE ReceiveMessage);
 172 NTSTATUS NtReplyWaitReceivePortEx (HANDLE PortHandle, PVOID *PortContext, PPORT_MESSAGE ReplyMessage, PPORT_MESSAGE ReceiveMessage, PLARGE_INTEGER Timeout);
 173 NTSTATUS NtReplyWaitReplyPort (HANDLE PortHandle, PPORT_MESSAGE ReplyMessage);
-174 missing NtRequestDeviceWakeup
 175 NTSTATUS NtRequestPort (HANDLE PortHandle, PPORT_MESSAGE RequestMessage);
 176 NTSTATUS NtRequestWaitReplyPort (HANDLE PortHandle, PPORT_MESSAGE RequestMessage, PPORT_MESSAGE ReplyMessage);
-177 missing NtRequestWakeupLatency
 178 NTSTATUS NtResetEvent (HANDLE EventHandle, PLONG PreviousState);
 179 NTSTATUS NtResetWriteWatch (HANDLE ProcessHandle, PVOID BaseAddress, SIZE_T RegionSize);
 180 NTSTATUS NtRestoreKey (HANDLE KeyHandle, HANDLE FileHandle, ULONG Flags);
@@ -239,10 +235,4 @@
 238 NTSTATUS NtWriteFileGather (HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, PFILE_SEGMENT_ELEMENT SegmentArray, ULONG Length, PLARGE_INTEGER ByteOffset, PULONG Key);
 239 NTSTATUS NtWriteRequestData (HANDLE PortHandle, PPORT_MESSAGE Message, ULONG DataEntryIndex, PVOID Buffer, SIZE_T BufferSize, PSIZE_T NumberOfBytesWritten);
 240 NTSTATUS NtWriteVirtualMemory (HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, SIZE_T BufferSize, PSIZE_T NumberOfBytesWritten);
-241 missing NtCreateChannel
-242 missing NtListenChannel
-243 missing NtOpenChannel
-244 missing NtReplyWaitSendChannel
-245 missing NtSendWaitReplyChannel
-246 missing NtSetContextChannel
 247 NTSTATUS NtYieldExecution ();

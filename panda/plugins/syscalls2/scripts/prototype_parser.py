@@ -95,7 +95,7 @@ def parse_signature_files(rootdir, arch, locations, normalize=False):
             signature = ' '.join(signature.split())
             signature = ', '.join([t.strip() for t in signature.split(',')])
             signature = re.sub(r'\*\s(\w+)(?=[,)])', r'*\1', signature)
-            #signature = signature.replace(' (', '(', 1)
+            signature = signature.replace(' (', '(', 1)
             signatures_parsed[syscall] = signature
 
     logging.info('Parsed %d signatures from %s:', len(signatures_parsed), sigfile)
