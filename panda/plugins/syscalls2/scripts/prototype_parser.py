@@ -14,12 +14,13 @@
 # *
 #PANDAENDCOMMENT */
 
-''' PANDA tool for scanning linux sources for system call definitions.
+''' PANDA tool for generating system call prototypes using various 
+    sources.
 
-    This is not an exact science. We try to make this script flexible
-    to extend for more vendors, and perhaps, operating systems. See
-    MAITENANCE.md for details. Also, carefuly read the comments above
-    the configuration dictionary below.
+    This is not an exact science. We try to make this script
+    flexible to extend for more vendors, and operating systems.
+    See MAINTENANCE.md for details. Also, carefuly read the comments
+    above the configuration dictionary below.
 '''
 
 import sys
@@ -232,6 +233,9 @@ def parse_numbers_unistd(rootdir, arch, source, cpp_flags=[]):
     return syscall_numbers
 
 def parse_numbers_volatility(rootdir, arch, os):
+    ''' Reads system call lists from a custom package mirroring the
+        system call overlays from the Volatility project.
+    '''
     volatility_module = 'volatility_local.%s_%s_syscalls' % (os, arch)
     module = importlib.import_module(volatility_module)
     syscalls = module.syscalls
