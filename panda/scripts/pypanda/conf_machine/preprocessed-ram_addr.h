@@ -1,17 +1,45 @@
-# 1 "qdev-core.h"
+# 1 "ram_addr.h"
 # 1 "<built-in>"
 # 1 "<command-line>"
 # 1 "/usr/include/stdc-predef.h" 1 3 4
 # 1 "<command-line>" 2
-# 1 "qdev-core.h"
+# 1 "ram_addr.h"
+# 23 "ram_addr.h"
+# 1 "../hw/xen/xen.h" 1
+# 11 "../hw/xen/xen.h"
+# 1 "../qemu-common.h" 1
+# 15 "../qemu-common.h"
+# 1 "../qemu/fprintf-fn.h" 1
+# 1 "fprintf-fn.h"
+# 1 "<built-in>"
+# 1 "<command-line>"
+# 1 "/usr/include/stdc-predef.h" 1 3 4
+# 1 "<command-line>" 2
+# 1 "fprintf-fn.h"
 
 
 
-# 1 "/home/alom/git/panda/include/qemu/queue.h" 1
-# 81 "/home/alom/git/panda/include/qemu/queue.h"
-# 1 "/home/alom/git/panda/include/qemu/atomic.h" 1
-# 82 "/home/alom/git/panda/include/qemu/queue.h" 2
-# 444 "/home/alom/git/panda/include/qemu/queue.h"
+
+
+
+# 1 "compiler.h" 1
+# 8 "fprintf-fn.h" 2
+
+
+
+
+typedef int (*fprintf_function)(FILE *f, const char *fmt, ...);
+# 16 "../qemu-common.h" 2
+
+
+
+# 1 "../qemu/option.h" 1
+# 29 "../qemu/option.h"
+# 1 "../qemu/queue.h" 1
+# 81 "../qemu/queue.h"
+# 1 "../qemu/atomic.h" 1
+# 82 "../qemu/queue.h" 2
+# 444 "../qemu/queue.h"
 typedef struct DUMMY_Q_ENTRY DUMMY_Q_ENTRY;
 typedef struct DUMMY_Q DUMMY_Q;
 
@@ -22,15 +50,13 @@ struct DUMMY_Q_ENTRY {
 struct DUMMY_Q {
         struct DUMMY_Q_HEAD { struct DUMMY_Q_ENTRY *tqh_first; struct DUMMY_Q_ENTRY * *tqh_last; } head;
 };
-# 5 "qdev-core.h" 2
-# 1 "/home/alom/git/panda/include/qemu/option.h" 1
-# 30 "/home/alom/git/panda/include/qemu/option.h"
-# 1 "/home/alom/git/panda/include/qapi/qmp/qdict.h" 1
-# 16 "/home/alom/git/panda/include/qapi/qmp/qdict.h"
-# 1 "/home/alom/git/panda/include/qapi/qmp/qobject.h" 1
-# 35 "/home/alom/git/panda/include/qapi/qmp/qobject.h"
-# 1 "/home/alom/git/panda/build/qapi-types.h" 1
-# 24 "/home/alom/git/panda/build/qapi-types.h"
+# 30 "../qemu/option.h" 2
+# 1 "../qapi/qmp/qdict.h" 1
+# 16 "../qapi/qmp/qdict.h"
+# 1 "../qapi/qmp/qobject.h" 1
+# 35 "../qapi/qmp/qobject.h"
+# 1 "../../build/qapi-types.h" 1
+# 24 "../../build/qapi-types.h"
 typedef enum QType {
     QTYPE_NONE = 0,
     QTYPE_QNULL = 1,
@@ -6094,13 +6120,13 @@ struct q_obj_xen_save_devices_state_arg {
 struct q_obj_xen_set_global_dirty_log_arg {
     bool enable;
 };
-# 36 "/home/alom/git/panda/include/qapi/qmp/qobject.h" 2
+# 36 "../qapi/qmp/qobject.h" 2
 
 struct QObject {
     QType type;
     size_t refcnt;
 };
-# 54 "/home/alom/git/panda/include/qapi/qmp/qobject.h"
+# 54 "../qapi/qmp/qobject.h"
 static inline void qobject_init(QObject *obj, QType type)
 {
     assert(QTYPE_NONE < type && type < QTYPE__MAX);
@@ -6150,9 +6176,9 @@ static inline QObject *qnull(void)
     qobject_incref(&qnull_);
     return &qnull_;
 }
-# 17 "/home/alom/git/panda/include/qapi/qmp/qdict.h" 2
-# 1 "/home/alom/git/panda/include/qapi/qmp/qlist.h" 1
-# 19 "/home/alom/git/panda/include/qapi/qmp/qlist.h"
+# 17 "../qapi/qmp/qdict.h" 2
+# 1 "../qapi/qmp/qlist.h" 1
+# 19 "../qapi/qmp/qlist.h"
 typedef struct QListEntry {
     QObject *value;
     struct { struct QListEntry *tqe_next; struct QListEntry * *tqe_prev; } next;
@@ -6162,7 +6188,7 @@ typedef struct QList {
     QObject base;
     struct { struct QListEntry *tqh_first; struct QListEntry * *tqh_last; } head;
 } QList;
-# 37 "/home/alom/git/panda/include/qapi/qmp/qlist.h"
+# 37 "../qapi/qmp/qlist.h"
 static inline QObject *qlist_entry_obj(const QListEntry *entry)
 {
     return entry->value;
@@ -6189,7 +6215,7 @@ static inline const QListEntry *qlist_next(const QListEntry *entry)
 {
     return ((entry)->next.tqe_next);
 }
-# 18 "/home/alom/git/panda/include/qapi/qmp/qdict.h" 2
+# 18 "../qapi/qmp/qdict.h" 2
 
 
 
@@ -6251,7 +6277,7 @@ int qdict_array_entries(QDict *src, const char *subqdict);
 QObject *qdict_crumple(const QDict *src, Error **errp);
 
 void qdict_join(QDict *dest, QDict *src, bool overwrite);
-# 31 "/home/alom/git/panda/include/qemu/option.h" 2
+# 31 "../qemu/option.h" 2
 
 const char *get_opt_name(char *buf, int buf_size, const char *p, char delim);
 const char *get_opt_value(char *buf, int buf_size, const char *p);
@@ -6290,7 +6316,7 @@ struct QemuOptsList {
 
 const char *qemu_opt_get(QemuOpts *opts, const char *name);
 char *qemu_opt_get_del(QemuOpts *opts, const char *name);
-# 80 "/home/alom/git/panda/include/qemu/option.h"
+# 80 "../qemu/option.h"
 bool qemu_opt_has_help_opt(QemuOpts *opts);
 QemuOpt *qemu_opt_find(QemuOpts *opts, const char *name);
 bool qemu_opt_get_bool(QemuOpts *opts, const char *name, bool defval);
@@ -6354,21 +6380,107 @@ void qemu_opts_print(QemuOpts *opts, const char *sep);
 void qemu_opts_print_help(QemuOptsList *list);
 void qemu_opts_free(QemuOptsList *list);
 QemuOptsList *qemu_opts_append(QemuOptsList *dst, QemuOptsList *list);
-# 6 "qdev-core.h" 2
-# 1 "/home/alom/git/panda/include/qemu/bitmap.h" 1
-# 16 "/home/alom/git/panda/include/qemu/bitmap.h"
-# 1 "/home/alom/git/panda/include/qemu/bitops.h" 1
-# 16 "/home/alom/git/panda/include/qemu/bitops.h"
-# 1 "/home/alom/git/panda/include/qemu/host-utils.h" 1
-# 29 "/home/alom/git/panda/include/qemu/host-utils.h"
-# 1 "/home/alom/git/panda/include/qemu/compiler.h" 1
-# 30 "/home/alom/git/panda/include/qemu/host-utils.h" 2
-# 1 "/home/alom/git/panda/include/qemu/bswap.h" 1
+# 20 "../qemu-common.h" 2
+# 30 "../qemu-common.h"
+void qemu_get_timedate(struct tm *tm, int offset);
+int qemu_timedate_diff(struct tm *tm);
+# 49 "../qemu-common.h"
+void *qemu_oom_check(void *ptr);
+
+ssize_t qemu_write_full(int fd, const void *buf, size_t count)
+    QEMU_WARN_UNUSED_RESULT;
+
+
+int qemu_pipe(int pipefd[2]);
+
+int qemu_openpty_raw(int *aslave, char *pty_name);
+# 79 "../qemu-common.h"
+void tcg_exec_init(unsigned long tb_size);
+bool tcg_enabled(void);
+
+void cpu_exec_init_all(void);
+void cpu_exec_step_atomic(CPUState *cpu);
+# 95 "../qemu-common.h"
+bool set_preferred_target_page_bits(int bits);
+# 104 "../qemu-common.h"
+ssize_t qemu_co_sendv_recvv(int sockfd, struct iovec *iov, unsigned iov_cnt,
+                            size_t offset, size_t bytes, bool do_send);
+# 114 "../qemu-common.h"
+ssize_t qemu_co_send_recv(int sockfd, void *buf, size_t bytes, bool do_send);
 
 
 
-# 1 "/home/alom/git/panda/include/fpu/softfloat.h" 1
-# 94 "/home/alom/git/panda/include/fpu/softfloat.h"
+
+
+void qemu_progress_init(int enabled, float min_skip);
+void qemu_progress_end(void);
+void qemu_progress_print(float delta, int max);
+const char *qemu_get_vm_name(void);
+
+
+
+char *qemu_find_file(int type, const char *name);
+
+
+void os_setup_early_signal_handling(void);
+char *os_find_datadir(void);
+void os_parse_cmd_args(int index, const char *optarg);
+
+# 1 "../qemu/module.h" 1
+# 42 "../qemu/module.h"
+typedef enum {
+    MODULE_INIT_BLOCK,
+    MODULE_INIT_OPTS,
+    MODULE_INIT_QAPI,
+    MODULE_INIT_QOM,
+    MODULE_INIT_TRACE,
+    MODULE_INIT_MAX
+} module_init_type;
+# 59 "../qemu/module.h"
+void register_module_init(void (*fn)(void), module_init_type type);
+void register_dso_module_init(void (*fn)(void), module_init_type type);
+
+void module_call_init(module_init_type type);
+void module_load_one(const char *prefix, const char *lib_name);
+# 135 "../qemu-common.h" 2
+
+
+
+
+
+void qemu_hexdump(const char *buf, FILE *fp, const char *prefix, size_t size);
+
+
+
+
+int parse_debug_env(const char *name, int max, int initial);
+
+const char *qemu_ether_ntoa(const MACAddr *mac);
+void page_size_init(void);
+
+
+
+bool dump_in_progress(void);
+# 12 "../hw/xen/xen.h" 2
+# 1 "../exec/cpu-common.h" 1
+
+
+
+
+
+
+# 1 "../exec/hwaddr.h" 1
+# 11 "../exec/hwaddr.h"
+typedef uint64_t hwaddr;
+# 8 "../exec/cpu-common.h" 2
+
+
+# 1 "../qemu/bswap.h" 1
+
+
+
+# 1 "../fpu/softfloat.h" 1
+# 94 "../fpu/softfloat.h"
 typedef uint8_t flag;
 
 
@@ -6382,11 +6494,11 @@ enum {
     float_relation_greater = 1,
     float_relation_unordered = 2
 };
-# 137 "/home/alom/git/panda/include/fpu/softfloat.h"
+# 137 "../fpu/softfloat.h"
 typedef uint16_t float16;
 typedef uint32_t float32;
 typedef uint64_t float64;
-# 150 "/home/alom/git/panda/include/fpu/softfloat.h"
+# 150 "../fpu/softfloat.h"
 typedef struct {
     uint64_t low;
     uint16_t high;
@@ -6522,7 +6634,7 @@ void float_raise(uint8_t flags, float_status *status);
 
 float32 float32_squash_input_denormal(float32 a, float_status *status);
 float64 float64_squash_input_denormal(float64 a, float_status *status);
-# 294 "/home/alom/git/panda/include/fpu/softfloat.h"
+# 294 "../fpu/softfloat.h"
 enum {
     float_muladd_negate_c = 1,
     float_muladd_negate_product = 2,
@@ -6711,7 +6823,7 @@ static inline float32 float32_set_sign(float32 a, int sign)
 {
     return (((a) & 0x7fffffff) | (sign << 31));
 }
-# 494 "/home/alom/git/panda/include/fpu/softfloat.h"
+# 494 "../fpu/softfloat.h"
 float32 float32_default_nan(float_status *status);
 
 
@@ -6813,7 +6925,7 @@ static inline float64 float64_set_sign(float64 a, int sign)
     return (((a) & 0x7fffffffffffffffULL) | ((int64_t)sign << 63))
                                                 ;
 }
-# 606 "/home/alom/git/panda/include/fpu/softfloat.h"
+# 606 "../fpu/softfloat.h"
 float64 float64_default_nan(float_status *status);
 
 
@@ -6888,12 +7000,12 @@ static inline int floatx80_is_any_nan(floatx80 a)
 {
     return ((a.high & 0x7fff) == 0x7fff) && (a.low<<1);
 }
-# 691 "/home/alom/git/panda/include/fpu/softfloat.h"
+# 691 "../fpu/softfloat.h"
 static inline bool floatx80_invalid_encoding(floatx80 a)
 {
     return (a.low & (1ULL << 63)) == 0 && (a.high & 0x7FFF) != 0;
 }
-# 706 "/home/alom/git/panda/include/fpu/softfloat.h"
+# 706 "../fpu/softfloat.h"
 floatx80 floatx80_default_nan(float_status *status);
 
 
@@ -6976,8 +7088,8 @@ static inline int float128_is_any_nan(float128 a)
 
 
 float128 float128_default_nan(float_status *status);
-# 5 "/home/alom/git/panda/include/qemu/bswap.h" 2
-# 29 "/home/alom/git/panda/include/qemu/bswap.h"
+# 5 "../qemu/bswap.h" 2
+# 29 "../qemu/bswap.h"
 static inline uint16_t bswap16(uint16_t x)
 {
     return (((x & 0x00ff) << 8) |
@@ -7019,21 +7131,21 @@ static inline void bswap64s(uint64_t *s)
 {
     *s = bswap64(*s);
 }
-# 162 "/home/alom/git/panda/include/qemu/bswap.h"
-static inline uint16_t be16_to_cpu(uint16_t v){ return bswap16(v);}static inline uint16_t cpu_to_be16(uint16_t v){ return bswap16(v);}static inline void be16_to_cpus(uint16_t *p){ do { *p = bswap16(*p); } while(0);}static inline void cpu_to_be16s(uint16_t *p){ do { *p = bswap16(*p); } while(0);}
-static inline uint32_t be32_to_cpu(uint32_t v){ return bswap32(v);}static inline uint32_t cpu_to_be32(uint32_t v){ return bswap32(v);}static inline void be32_to_cpus(uint32_t *p){ do { *p = bswap32(*p); } while(0);}static inline void cpu_to_be32s(uint32_t *p){ do { *p = bswap32(*p); } while(0);}
-static inline uint64_t be64_to_cpu(uint64_t v){ return bswap64(v);}static inline uint64_t cpu_to_be64(uint64_t v){ return bswap64(v);}static inline void be64_to_cpus(uint64_t *p){ do { *p = bswap64(*p); } while(0);}static inline void cpu_to_be64s(uint64_t *p){ do { *p = bswap64(*p); } while(0);}
+# 162 "../qemu/bswap.h"
+static inline uint16_t be16_to_cpu(uint16_t v){ return glue(be, _bswap)(v, 16);}static inline uint16_t cpu_to_be16(uint16_t v){ return glue(be, _bswap)(v, 16);}static inline void be16_to_cpus(uint16_t *p){ glue(be, _bswaps)(p, 16);}static inline void cpu_to_be16s(uint16_t *p){ glue(be, _bswaps)(p, 16);}
+static inline uint32_t be32_to_cpu(uint32_t v){ return glue(be, _bswap)(v, 32);}static inline uint32_t cpu_to_be32(uint32_t v){ return glue(be, _bswap)(v, 32);}static inline void be32_to_cpus(uint32_t *p){ glue(be, _bswaps)(p, 32);}static inline void cpu_to_be32s(uint32_t *p){ glue(be, _bswaps)(p, 32);}
+static inline uint64_t be64_to_cpu(uint64_t v){ return glue(be, _bswap)(v, 64);}static inline uint64_t cpu_to_be64(uint64_t v){ return glue(be, _bswap)(v, 64);}static inline void be64_to_cpus(uint64_t *p){ glue(be, _bswaps)(p, 64);}static inline void cpu_to_be64s(uint64_t *p){ glue(be, _bswaps)(p, 64);}
 
-static inline uint16_t le16_to_cpu(uint16_t v){ return (v);}static inline uint16_t cpu_to_le16(uint16_t v){ return (v);}static inline void le16_to_cpus(uint16_t *p){ ;}static inline void cpu_to_le16s(uint16_t *p){ ;}
-static inline uint32_t le32_to_cpu(uint32_t v){ return (v);}static inline uint32_t cpu_to_le32(uint32_t v){ return (v);}static inline void le32_to_cpus(uint32_t *p){ ;}static inline void cpu_to_le32s(uint32_t *p){ ;}
-static inline uint64_t le64_to_cpu(uint64_t v){ return (v);}static inline uint64_t cpu_to_le64(uint64_t v){ return (v);}static inline void le64_to_cpus(uint64_t *p){ ;}static inline void cpu_to_le64s(uint64_t *p){ ;}
+static inline uint16_t le16_to_cpu(uint16_t v){ return glue(le, _bswap)(v, 16);}static inline uint16_t cpu_to_le16(uint16_t v){ return glue(le, _bswap)(v, 16);}static inline void le16_to_cpus(uint16_t *p){ glue(le, _bswaps)(p, 16);}static inline void cpu_to_le16s(uint16_t *p){ glue(le, _bswaps)(p, 16);}
+static inline uint32_t le32_to_cpu(uint32_t v){ return glue(le, _bswap)(v, 32);}static inline uint32_t cpu_to_le32(uint32_t v){ return glue(le, _bswap)(v, 32);}static inline void le32_to_cpus(uint32_t *p){ glue(le, _bswaps)(p, 32);}static inline void cpu_to_le32s(uint32_t *p){ glue(le, _bswaps)(p, 32);}
+static inline uint64_t le64_to_cpu(uint64_t v){ return glue(le, _bswap)(v, 64);}static inline uint64_t cpu_to_le64(uint64_t v){ return glue(le, _bswap)(v, 64);}static inline void le64_to_cpus(uint64_t *p){ glue(le, _bswaps)(p, 64);}static inline void cpu_to_le64s(uint64_t *p){ glue(le, _bswaps)(p, 64);}
 
 
 static inline uint32_t qemu_bswap_len(uint32_t value, int len)
 {
     return bswap32(value) >> (32 - 8 * len);
 }
-# 197 "/home/alom/git/panda/include/qemu/bswap.h"
+# 197 "../qemu/bswap.h"
 typedef union {
     float32 f;
     uint32_t l;
@@ -7065,7 +7177,7 @@ typedef union {
 
 typedef union {
     float128 q;
-# 240 "/home/alom/git/panda/include/qemu/bswap.h"
+# 240 "../qemu/bswap.h"
     struct {
         uint32_t lowest;
         uint32_t lower;
@@ -7078,7 +7190,7 @@ typedef union {
     } ll;
 
 } CPU_QuadU;
-# 295 "/home/alom/git/panda/include/qemu/bswap.h"
+# 295 "../qemu/bswap.h"
 static inline int ldub_p(const void *ptr)
 {
     return *(uint8_t *)ptr;
@@ -7208,37 +7320,37 @@ static inline void stfq_le_p(void *ptr, float64 v)
 
 static inline int lduw_be_p(const void *ptr)
 {
-    return (uint16_t)bswap16(lduw_he_p(ptr));
+    return (uint16_t)glue(bswap, 16)(lduw_he_p(ptr));
 }
 
 static inline int ldsw_be_p(const void *ptr)
 {
-    return (int16_t)bswap16(lduw_he_p(ptr));
+    return (int16_t)glue(bswap, 16)(lduw_he_p(ptr));
 }
 
 static inline int ldl_be_p(const void *ptr)
 {
-    return bswap32(ldl_he_p(ptr));
+    return glue(bswap, 32)(ldl_he_p(ptr));
 }
 
 static inline uint64_t ldq_be_p(const void *ptr)
 {
-    return bswap64(ldq_he_p(ptr));
+    return glue(bswap, 64)(ldq_he_p(ptr));
 }
 
 static inline void stw_be_p(void *ptr, uint16_t v)
 {
-    stw_he_p(ptr, bswap16(v));
+    stw_he_p(ptr, glue(bswap, 16)(v));
 }
 
 static inline void stl_be_p(void *ptr, uint32_t v)
 {
-    stl_he_p(ptr, bswap32(v));
+    stl_he_p(ptr, glue(bswap, 32)(v));
 }
 
 static inline void stq_be_p(void *ptr, uint64_t v)
 {
-    stq_he_p(ptr, bswap64(v));
+    stq_he_p(ptr, glue(bswap, 64)(v));
 }
 
 
@@ -7270,1225 +7382,128 @@ static inline void stfq_be_p(void *ptr, float64 v)
     u.d = v;
     stq_be_p(ptr, u.ll);
 }
-# 499 "/home/alom/git/panda/include/qemu/bswap.h"
+# 499 "../qemu/bswap.h"
 static inline unsigned long leul_to_cpu(unsigned long v)
 {
 
 
 
     return (v);
-# 31 "/home/alom/git/panda/include/qemu/host-utils.h" 2
-# 81 "/home/alom/git/panda/include/qemu/host-utils.h"
-void muls64(uint64_t *phigh, uint64_t *plow, int64_t a, int64_t b);
-void mulu64(uint64_t *phigh, uint64_t *plow, uint64_t a, uint64_t b);
-int divu128(uint64_t *plow, uint64_t *phigh, uint64_t divisor);
-int divs128(int64_t *plow, int64_t *phigh, int64_t divisor);
+# 11 "../exec/cpu-common.h" 2
 
-static inline uint64_t muldiv64(uint64_t a, uint32_t b, uint32_t c)
-{
-    union {
-        uint64_t ll;
-        struct {
+# 1 "../qemu/fprintf-fn.h" 1
+# 1 "fprintf-fn.h"
+# 1 "<built-in>"
+# 1 "<command-line>"
+# 1 "/usr/include/stdc-predef.h" 1 3 4
+# 1 "<command-line>" 2
+# 1 "fprintf-fn.h"
 
 
 
-            uint32_t low, high;
 
-        } l;
-    } u, res;
-    uint64_t rl, rh;
 
-    u.ll = a;
-    rl = (uint64_t)u.l.low * (uint64_t)b;
-    rh = (uint64_t)u.l.high * (uint64_t)b;
-    rh += (rl >> 32);
-    res.l.high = rh / c;
-    res.l.low = (((rh % c) << 32) + (rl & 0xffffffff)) / c;
-    return res.ll;
-}
-# 117 "/home/alom/git/panda/include/qemu/host-utils.h"
-static inline int clz32(uint32_t val)
-{
 
-    return val ? __builtin_clz(val) : 32;
-# 150 "/home/alom/git/panda/include/qemu/host-utils.h"
-}
+# 1 "compiler.h" 1
+# 8 "fprintf-fn.h" 2
 
 
 
 
+typedef int (*fprintf_function)(FILE *f, const char *fmt, ...);
+# 13 "../exec/cpu-common.h" 2
+# 21 "../exec/cpu-common.h"
+typedef struct CPUListState {
+    fprintf_function cpu_fprintf;
+    FILE *file;
+} CPUListState;
 
 
+void qemu_init_cpu_list(void);
+void cpu_list_lock(void);
+void cpu_list_unlock(void);
 
-static inline int clo32(uint32_t val)
-{
-    return clz32(~val);
-}
-# 170 "/home/alom/git/panda/include/qemu/host-utils.h"
-static inline int clz64(uint64_t val)
-{
 
-    return val ? __builtin_clzll(val) : 64;
-# 185 "/home/alom/git/panda/include/qemu/host-utils.h"
-}
 
-
-
-
-
-
-
-static inline int clo64(uint64_t val)
-{
-    return clz64(~val);
-}
-# 205 "/home/alom/git/panda/include/qemu/host-utils.h"
-static inline int ctz32(uint32_t val)
-{
-
-    return val ? __builtin_ctz(val) : 32;
-# 240 "/home/alom/git/panda/include/qemu/host-utils.h"
-}
-
-
-
-
-
-
-
-static inline int cto32(uint32_t val)
-{
-    return ctz32(~val);
-}
-# 260 "/home/alom/git/panda/include/qemu/host-utils.h"
-static inline int ctz64(uint64_t val)
-{
-
-    return val ? __builtin_ctzll(val) : 64;
-# 275 "/home/alom/git/panda/include/qemu/host-utils.h"
-}
-
-
-
-
-
-
-
-static inline int cto64(uint64_t val)
-{
-    return ctz64(~val);
-}
-# 295 "/home/alom/git/panda/include/qemu/host-utils.h"
-static inline int clrsb32(uint32_t val)
-{
-
-    return __builtin_clrsb(val);
-
-
-
-}
-# 311 "/home/alom/git/panda/include/qemu/host-utils.h"
-static inline int clrsb64(uint64_t val)
-{
-
-    return __builtin_clrsbll(val);
-
-
-
-}
-
-
-
-
-
-static inline int ctpop8(uint8_t val)
-{
-
-    return __builtin_popcount(val);
-
-
-
-
-
-
-
-}
-
-
-
-
-
-static inline int ctpop16(uint16_t val)
-{
-
-    return __builtin_popcount(val);
-# 353 "/home/alom/git/panda/include/qemu/host-utils.h"
-}
-
-
-
-
-
-static inline int ctpop32(uint32_t val)
-{
-
-    return __builtin_popcount(val);
-# 371 "/home/alom/git/panda/include/qemu/host-utils.h"
-}
-
-
-
-
-
-static inline int ctpop64(uint64_t val)
-{
-
-    return __builtin_popcountll(val);
-# 389 "/home/alom/git/panda/include/qemu/host-utils.h"
-}
-
-
-
-
-
-static inline uint8_t revbit8(uint8_t x)
-{
-
-    x = ((x & 0xf0) >> 4)
-      | ((x & 0x0f) << 4);
-
-    x = ((x & 0x88) >> 3)
-      | ((x & 0x44) >> 1)
-      | ((x & 0x22) << 1)
-      | ((x & 0x11) << 3);
-    return x;
-}
-
-
-
-
-
-static inline uint16_t revbit16(uint16_t x)
-{
-
-    x = bswap16(x);
-
-    x = ((x & 0xf0f0) >> 4)
-      | ((x & 0x0f0f) << 4);
-
-    x = ((x & 0x8888) >> 3)
-      | ((x & 0x4444) >> 1)
-      | ((x & 0x2222) << 1)
-      | ((x & 0x1111) << 3);
-    return x;
-}
-
-
-
-
-
-static inline uint32_t revbit32(uint32_t x)
-{
-
-    x = bswap32(x);
-
-    x = ((x & 0xf0f0f0f0u) >> 4)
-      | ((x & 0x0f0f0f0fu) << 4);
-
-    x = ((x & 0x88888888u) >> 3)
-      | ((x & 0x44444444u) >> 1)
-      | ((x & 0x22222222u) << 1)
-      | ((x & 0x11111111u) << 3);
-    return x;
-}
-
-
-
-
-
-static inline uint64_t revbit64(uint64_t x)
-{
-
-    x = bswap64(x);
-
-    x = ((x & 0xf0f0f0f0f0f0f0f0ull) >> 4)
-      | ((x & 0x0f0f0f0f0f0f0f0full) << 4);
-
-    x = ((x & 0x8888888888888888ull) >> 3)
-      | ((x & 0x4444444444444444ull) >> 1)
-      | ((x & 0x2222222222222222ull) << 1)
-      | ((x & 0x1111111111111111ull) << 3);
-    return x;
-}
-# 485 "/home/alom/git/panda/include/qemu/host-utils.h"
-static inline bool is_power_of_2(uint64_t value)
-{
-    if (!value) {
-        return false;
-    }
-
-    return !(value & (value - 1));
-}
-
-
-static inline int64_t pow2floor(int64_t value)
-{
-    if (!is_power_of_2(value)) {
-        value = 0x8000000000000000ULL >> clz64(value);
-    }
-    return value;
-}
-
-
-static inline uint64_t pow2ceil(uint64_t value)
-{
-    uint8_t nlz = clz64(value);
-
-    if (is_power_of_2(value)) {
-        return value;
-    }
-    if (!nlz) {
-        return 0;
-    }
-    return 1ULL << (64 - nlz);
-}
-# 528 "/home/alom/git/panda/include/qemu/host-utils.h"
-void urshift(uint64_t *plow, uint64_t *phigh, int32_t shift);
-# 542 "/home/alom/git/panda/include/qemu/host-utils.h"
-void ulshift(uint64_t *plow, uint64_t *phigh, int32_t shift, bool *overflow);
-# 17 "/home/alom/git/panda/include/qemu/bitops.h" 2
-# 1 "/home/alom/git/panda/include/qemu/atomic.h" 1
-# 18 "/home/alom/git/panda/include/qemu/bitops.h" 2
-# 35 "/home/alom/git/panda/include/qemu/bitops.h"
-static inline void set_bit(long nr, unsigned long *addr)
-{
-    unsigned long mask = (1UL << ((nr) % (sizeof (unsigned long) * CHAR_BIT)));
-    unsigned long *p = addr + ((nr) / (sizeof (unsigned long) * CHAR_BIT));
-
-    *p |= mask;
-}
-
-
-
-
-
-
-static inline void set_bit_atomic(long nr, unsigned long *addr)
-{
-    unsigned long mask = (1UL << ((nr) % (sizeof (unsigned long) * CHAR_BIT)));
-    unsigned long *p = addr + ((nr) / (sizeof (unsigned long) * CHAR_BIT));
-
-    ((void) __atomic_fetch_or(p, mask, 5));
-}
-
-
-
-
-
-
-static inline void clear_bit(long nr, unsigned long *addr)
-{
-    unsigned long mask = (1UL << ((nr) % (sizeof (unsigned long) * CHAR_BIT)));
-    unsigned long *p = addr + ((nr) / (sizeof (unsigned long) * CHAR_BIT));
-
-    *p &= ~mask;
-}
-
-
-
-
-
-
-static inline void change_bit(long nr, unsigned long *addr)
-{
-    unsigned long mask = (1UL << ((nr) % (sizeof (unsigned long) * CHAR_BIT)));
-    unsigned long *p = addr + ((nr) / (sizeof (unsigned long) * CHAR_BIT));
-
-    *p ^= mask;
-}
-
-
-
-
-
-
-static inline int test_and_set_bit(long nr, unsigned long *addr)
-{
-    unsigned long mask = (1UL << ((nr) % (sizeof (unsigned long) * CHAR_BIT)));
-    unsigned long *p = addr + ((nr) / (sizeof (unsigned long) * CHAR_BIT));
-    unsigned long old = *p;
-
-    *p = old | mask;
-    return (old & mask) != 0;
-}
-
-
-
-
-
-
-static inline int test_and_clear_bit(long nr, unsigned long *addr)
-{
-    unsigned long mask = (1UL << ((nr) % (sizeof (unsigned long) * CHAR_BIT)));
-    unsigned long *p = addr + ((nr) / (sizeof (unsigned long) * CHAR_BIT));
-    unsigned long old = *p;
-
-    *p = old & ~mask;
-    return (old & mask) != 0;
-}
-
-
-
-
-
-
-static inline int test_and_change_bit(long nr, unsigned long *addr)
-{
-    unsigned long mask = (1UL << ((nr) % (sizeof (unsigned long) * CHAR_BIT)));
-    unsigned long *p = addr + ((nr) / (sizeof (unsigned long) * CHAR_BIT));
-    unsigned long old = *p;
-
-    *p = old ^ mask;
-    return (old & mask) != 0;
-}
-
-
-
-
-
-
-static inline int test_bit(long nr, const unsigned long *addr)
-{
-    return 1UL & (addr[((nr) / (sizeof (unsigned long) * CHAR_BIT))] >> (nr & ((sizeof (unsigned long) * CHAR_BIT)-1)));
-}
-# 144 "/home/alom/git/panda/include/qemu/bitops.h"
-unsigned long find_last_bit(const unsigned long *addr,
-                            unsigned long size);
-
-
-
-
-
-
-
-unsigned long find_next_bit(const unsigned long *addr,
-                            unsigned long size,
-                            unsigned long offset);
-# 164 "/home/alom/git/panda/include/qemu/bitops.h"
-unsigned long find_next_zero_bit(const unsigned long *addr,
-                                 unsigned long size,
-                                 unsigned long offset);
-# 175 "/home/alom/git/panda/include/qemu/bitops.h"
-static inline unsigned long find_first_bit(const unsigned long *addr,
-                                           unsigned long size)
-{
-    unsigned long result, tmp;
-
-    for (result = 0; result < size; result += (sizeof (unsigned long) * CHAR_BIT)) {
-        tmp = *addr++;
-        if (tmp) {
-            result += ctz32(tmp);
-            return result < size ? result : size;
-        }
-    }
-
-    return size;
-}
-# 198 "/home/alom/git/panda/include/qemu/bitops.h"
-static inline unsigned long find_first_zero_bit(const unsigned long *addr,
-                                                unsigned long size)
-{
-    return find_next_zero_bit(addr, size, 0);
-}
-
-static inline unsigned long hweight_long(unsigned long w)
-{
-    unsigned long count;
-
-    for (count = 0; w; w >>= 1) {
-        count += w & 1;
-    }
-    return count;
-}
-
-
-
-
-
-
-static inline uint8_t rol8(uint8_t word, unsigned int shift)
-{
-    return (word << shift) | (word >> ((8 - shift) & 7));
-}
-
-
-
-
-
-
-static inline uint8_t ror8(uint8_t word, unsigned int shift)
-{
-    return (word >> shift) | (word << ((8 - shift) & 7));
-}
-
-
-
-
-
-
-static inline uint16_t rol16(uint16_t word, unsigned int shift)
-{
-    return (word << shift) | (word >> ((16 - shift) & 15));
-}
-
-
-
-
-
-
-static inline uint16_t ror16(uint16_t word, unsigned int shift)
-{
-    return (word >> shift) | (word << ((16 - shift) & 15));
-}
-
-
-
-
-
-
-static inline uint32_t rol32(uint32_t word, unsigned int shift)
-{
-    return (word << shift) | (word >> ((32 - shift) & 31));
-}
-
-
-
-
-
-
-static inline uint32_t ror32(uint32_t word, unsigned int shift)
-{
-    return (word >> shift) | (word << ((32 - shift) & 31));
-}
-
-
-
-
-
-
-static inline uint64_t rol64(uint64_t word, unsigned int shift)
-{
-    return (word << shift) | (word >> ((64 - shift) & 63));
-}
-
-
-
-
-
-
-static inline uint64_t ror64(uint64_t word, unsigned int shift)
-{
-    return (word >> shift) | (word << ((64 - shift) & 63));
-}
-# 307 "/home/alom/git/panda/include/qemu/bitops.h"
-static inline uint32_t extract32(uint32_t value, int start, int length)
-{
-    assert(start >= 0 && length > 0 && length <= 32 - start);
-    return (value >> start) & (~0U >> (32 - length));
-}
-# 326 "/home/alom/git/panda/include/qemu/bitops.h"
-static inline uint64_t extract64(uint64_t value, int start, int length)
-{
-    assert(start >= 0 && length > 0 && length <= 64 - start);
-    return (value >> start) & (~0ULL >> (64 - length));
-}
-# 348 "/home/alom/git/panda/include/qemu/bitops.h"
-static inline int32_t sextract32(uint32_t value, int start, int length)
-{
-    assert(start >= 0 && length > 0 && length <= 32 - start);
-
-
-
-    return ((int32_t)(value << (32 - length - start))) >> (32 - length);
-}
-# 373 "/home/alom/git/panda/include/qemu/bitops.h"
-static inline int64_t sextract64(uint64_t value, int start, int length)
-{
-    assert(start >= 0 && length > 0 && length <= 64 - start);
-
-
-
-    return ((int64_t)(value << (64 - length - start))) >> (64 - length);
-}
-# 399 "/home/alom/git/panda/include/qemu/bitops.h"
-static inline uint32_t deposit32(uint32_t value, int start, int length,
-                                 uint32_t fieldval)
-{
-    uint32_t mask;
-    assert(start >= 0 && length > 0 && length <= 32 - start);
-    mask = (~0U >> (32 - length)) << start;
-    return (value & ~mask) | ((fieldval << start) & mask);
-}
-# 425 "/home/alom/git/panda/include/qemu/bitops.h"
-static inline uint64_t deposit64(uint64_t value, int start, int length,
-                                 uint64_t fieldval)
-{
-    uint64_t mask;
-    assert(start >= 0 && length > 0 && length <= 64 - start);
-    mask = (~0ULL >> (64 - length)) << start;
-    return (value & ~mask) | ((fieldval << start) & mask);
-}
-# 448 "/home/alom/git/panda/include/qemu/bitops.h"
-static inline uint32_t half_shuffle32(uint32_t x)
-{
-
-
-
-    x = ((x & 0xFF00) << 8) | (x & 0x00FF);
-    x = ((x << 4) | x) & 0x0F0F0F0F;
-    x = ((x << 2) | x) & 0x33333333;
-    x = ((x << 1) | x) & 0x55555555;
-    return x;
-}
-# 474 "/home/alom/git/panda/include/qemu/bitops.h"
-static inline uint64_t half_shuffle64(uint64_t x)
-{
-
-
-
-    x = ((x & 0xFFFF0000ULL) << 16) | (x & 0xFFFF);
-    x = ((x << 8) | x) & 0x00FF00FF00FF00FFULL;
-    x = ((x << 4) | x) & 0x0F0F0F0F0F0F0F0FULL;
-    x = ((x << 2) | x) & 0x3333333333333333ULL;
-    x = ((x << 1) | x) & 0x5555555555555555ULL;
-    return x;
-}
-# 501 "/home/alom/git/panda/include/qemu/bitops.h"
-static inline uint32_t half_unshuffle32(uint32_t x)
-{
-
-
-
-    x &= 0x55555555;
-    x = ((x >> 1) | x) & 0x33333333;
-    x = ((x >> 2) | x) & 0x0F0F0F0F;
-    x = ((x >> 4) | x) & 0x00FF00FF;
-    x = ((x >> 8) | x) & 0x0000FFFF;
-    return x;
-}
-# 528 "/home/alom/git/panda/include/qemu/bitops.h"
-static inline uint64_t half_unshuffle64(uint64_t x)
-{
-
-
-
-    x &= 0x5555555555555555ULL;
-    x = ((x >> 1) | x) & 0x3333333333333333ULL;
-    x = ((x >> 2) | x) & 0x0F0F0F0F0F0F0F0FULL;
-    x = ((x >> 4) | x) & 0x00FF00FF00FF00FFULL;
-    x = ((x >> 8) | x) & 0x0000FFFF0000FFFFULL;
-    x = ((x >> 16) | x) & 0x00000000FFFFFFFFULL;
-    return x;
-}
-# 17 "/home/alom/git/panda/include/qemu/bitmap.h" 2
-# 69 "/home/alom/git/panda/include/qemu/bitmap.h"
-int slow_bitmap_empty(const unsigned long *bitmap, long bits);
-int slow_bitmap_full(const unsigned long *bitmap, long bits);
-int slow_bitmap_equal(const unsigned long *bitmap1,
-                      const unsigned long *bitmap2, long bits);
-void slow_bitmap_complement(unsigned long *dst, const unsigned long *src,
-                            long bits);
-int slow_bitmap_and(unsigned long *dst, const unsigned long *bitmap1,
-                    const unsigned long *bitmap2, long bits);
-void slow_bitmap_or(unsigned long *dst, const unsigned long *bitmap1,
-                    const unsigned long *bitmap2, long bits);
-void slow_bitmap_xor(unsigned long *dst, const unsigned long *bitmap1,
-                     const unsigned long *bitmap2, long bits);
-int slow_bitmap_andnot(unsigned long *dst, const unsigned long *bitmap1,
-                       const unsigned long *bitmap2, long bits);
-int slow_bitmap_intersects(const unsigned long *bitmap1,
-                           const unsigned long *bitmap2, long bits);
-
-static inline unsigned long *bitmap_try_new(long nbits)
-{
-    long len = DIV_ROUND_UP(nbits, CHAR_BIT * sizeof(long)) * sizeof(unsigned long);
-    return (unsigned long *) g_try_malloc0(len);
-}
-
-static inline unsigned long *bitmap_new(long nbits)
-{
-    unsigned long *ptr = bitmap_try_new(nbits);
-    if (ptr == NULL) {
-        abort();
-    }
-    return ptr;
-}
-
-static inline void bitmap_zero(unsigned long *dst, long nbits)
-{
-    if (((nbits) <= (sizeof (unsigned long) * CHAR_BIT))) {
-        *dst = 0UL;
-    } else {
-        long len = DIV_ROUND_UP(nbits, CHAR_BIT * sizeof(long)) * sizeof(unsigned long);
-        memset(dst, 0, len);
-    }
-}
-
-static inline void bitmap_fill(unsigned long *dst, long nbits)
-{
-    size_t nlongs = DIV_ROUND_UP(nbits, CHAR_BIT * sizeof(long));
-    if (!((nbits) <= (sizeof (unsigned long) * CHAR_BIT))) {
-        long len = (nlongs - 1) * sizeof(unsigned long);
-        memset(dst, 0xff, len);
-    }
-    dst[nlongs - 1] = (~0UL >> (-(nbits) & ((sizeof (unsigned long) * CHAR_BIT) - 1)));
-}
-
-static inline void bitmap_copy(unsigned long *dst, const unsigned long *src,
-                               long nbits)
-{
-    if (((nbits) <= (sizeof (unsigned long) * CHAR_BIT))) {
-        *dst = *src;
-    } else {
-        long len = DIV_ROUND_UP(nbits, CHAR_BIT * sizeof(long)) * sizeof(unsigned long);
-        memcpy(dst, src, len);
-    }
-}
-
-static inline int bitmap_and(unsigned long *dst, const unsigned long *src1,
-                             const unsigned long *src2, long nbits)
-{
-    if (((nbits) <= (sizeof (unsigned long) * CHAR_BIT))) {
-        return (*dst = *src1 & *src2) != 0;
-    }
-    return slow_bitmap_and(dst, src1, src2, nbits);
-}
-
-static inline void bitmap_or(unsigned long *dst, const unsigned long *src1,
-                             const unsigned long *src2, long nbits)
-{
-    if (((nbits) <= (sizeof (unsigned long) * CHAR_BIT))) {
-        *dst = *src1 | *src2;
-    } else {
-        slow_bitmap_or(dst, src1, src2, nbits);
-    }
-}
-
-static inline void bitmap_xor(unsigned long *dst, const unsigned long *src1,
-                              const unsigned long *src2, long nbits)
-{
-    if (((nbits) <= (sizeof (unsigned long) * CHAR_BIT))) {
-        *dst = *src1 ^ *src2;
-    } else {
-        slow_bitmap_xor(dst, src1, src2, nbits);
-    }
-}
-
-static inline int bitmap_andnot(unsigned long *dst, const unsigned long *src1,
-                                const unsigned long *src2, long nbits)
-{
-    if (((nbits) <= (sizeof (unsigned long) * CHAR_BIT))) {
-        return (*dst = *src1 & ~(*src2)) != 0;
-    }
-    return slow_bitmap_andnot(dst, src1, src2, nbits);
-}
-
-static inline void bitmap_complement(unsigned long *dst,
-                                     const unsigned long *src,
-                                     long nbits)
-{
-    if (((nbits) <= (sizeof (unsigned long) * CHAR_BIT))) {
-        *dst = ~(*src) & (~0UL >> (-(nbits) & ((sizeof (unsigned long) * CHAR_BIT) - 1)));
-    } else {
-        slow_bitmap_complement(dst, src, nbits);
-    }
-}
-
-static inline int bitmap_equal(const unsigned long *src1,
-                               const unsigned long *src2, long nbits)
-{
-    if (((nbits) <= (sizeof (unsigned long) * CHAR_BIT))) {
-        return ! ((*src1 ^ *src2) & (~0UL >> (-(nbits) & ((sizeof (unsigned long) * CHAR_BIT) - 1))));
-    } else {
-        return slow_bitmap_equal(src1, src2, nbits);
-    }
-}
-
-static inline int bitmap_empty(const unsigned long *src, long nbits)
-{
-    if (((nbits) <= (sizeof (unsigned long) * CHAR_BIT))) {
-        return ! (*src & (~0UL >> (-(nbits) & ((sizeof (unsigned long) * CHAR_BIT) - 1))));
-    } else {
-        return slow_bitmap_empty(src, nbits);
-    }
-}
-
-static inline int bitmap_full(const unsigned long *src, long nbits)
-{
-    if (((nbits) <= (sizeof (unsigned long) * CHAR_BIT))) {
-        return ! (~(*src) & (~0UL >> (-(nbits) & ((sizeof (unsigned long) * CHAR_BIT) - 1))));
-    } else {
-        return slow_bitmap_full(src, nbits);
-    }
-}
-
-static inline int bitmap_intersects(const unsigned long *src1,
-                                    const unsigned long *src2, long nbits)
-{
-    if (((nbits) <= (sizeof (unsigned long) * CHAR_BIT))) {
-        return ((*src1 & *src2) & (~0UL >> (-(nbits) & ((sizeof (unsigned long) * CHAR_BIT) - 1)))) != 0;
-    } else {
-        return slow_bitmap_intersects(src1, src2, nbits);
-    }
-}
-
-void bitmap_set(unsigned long *map, long i, long len);
-void bitmap_set_atomic(unsigned long *map, long i, long len);
-void bitmap_clear(unsigned long *map, long start, long nr);
-bool bitmap_test_and_clear_atomic(unsigned long *map, long start, long nr);
-unsigned long bitmap_find_next_zero_area(unsigned long *map,
-                                         unsigned long size,
-                                         unsigned long start,
-                                         unsigned long nr,
-                                         unsigned long align_mask);
-
-static inline unsigned long *bitmap_zero_extend(unsigned long *old,
-                                                long old_nbits, long new_nbits)
-{
-    long new_len = DIV_ROUND_UP(new_nbits, CHAR_BIT * sizeof(long)) * sizeof(unsigned long);
-    unsigned long *newfoo = (unsigned long *) g_realloc(old, new_len);
-    bitmap_clear(newfoo, old_nbits, new_nbits - old_nbits);
-    return newfoo;
-}
-# 7 "qdev-core.h" 2
-# 1 "/home/alom/git/panda/include/qom/object.h" 1
-# 20 "/home/alom/git/panda/include/qom/object.h"
-struct TypeImpl;
-typedef struct TypeImpl *Type;
-
-typedef struct ObjectClass ObjectClass;
-typedef struct Object Object;
-
-typedef struct TypeInfo TypeInfo;
-
-typedef struct InterfaceClass InterfaceClass;
-typedef struct InterfaceInfo InterfaceInfo;
-# 295 "/home/alom/git/panda/include/qom/object.h"
-typedef void (ObjectPropertyAccessor)(Object *obj,
-                                      Visitor *v,
-                                      const char *name,
-                                      void *opaque,
-                                      Error **errp);
-# 316 "/home/alom/git/panda/include/qom/object.h"
-typedef Object *(ObjectPropertyResolve)(Object *obj,
-                                        void *opaque,
-                                        const char *part);
-# 328 "/home/alom/git/panda/include/qom/object.h"
-typedef void (ObjectPropertyRelease)(Object *obj,
-                                     const char *name,
-                                     void *opaque);
-
-typedef struct ObjectProperty
-{
-    gchar *name;
-    gchar *type;
-    gchar *description;
-    ObjectPropertyAccessor *get;
-    ObjectPropertyAccessor *set;
-    ObjectPropertyResolve *resolve;
-    ObjectPropertyRelease *release;
-    void *opaque;
-} ObjectProperty;
-# 351 "/home/alom/git/panda/include/qom/object.h"
-typedef void (ObjectUnparent)(Object *obj);
-
-
-
-
-
-
-
-typedef void (ObjectFree)(void *obj);
-# 369 "/home/alom/git/panda/include/qom/object.h"
-struct ObjectClass
-{
-
-    Type type;
-    GSList *interfaces;
-
-    const char *object_cast_cache[4];
-    const char *class_cast_cache[4];
-
-    ObjectUnparent *unparent;
-
-    GHashTable *properties;
+enum device_endian {
+    DEVICE_NATIVE_ENDIAN,
+    DEVICE_BIG_ENDIAN,
+    DEVICE_LITTLE_ENDIAN,
 };
-# 395 "/home/alom/git/panda/include/qom/object.h"
-struct Object
+
+
+
+
+
+
+
+typedef uintptr_t ram_addr_t;
+
+
+
+
+extern ram_addr_t ram_size;
+
+
+
+typedef void CPUWriteMemoryFunc(void *opaque, hwaddr addr, uint32_t value);
+typedef uint32_t CPUReadMemoryFunc(void *opaque, hwaddr addr);
+
+void qemu_ram_remap(ram_addr_t addr, ram_addr_t length);
+
+ram_addr_t qemu_ram_addr_from_host(void *ptr);
+RAMBlock *qemu_ram_block_by_name(const char *name);
+RAMBlock *qemu_ram_block_from_host(void *ptr, bool round_offset,
+                                   ram_addr_t *offset);
+void qemu_ram_set_idstr(RAMBlock *block, const char *name, DeviceState *dev);
+void qemu_ram_unset_idstr(RAMBlock *block);
+const char *qemu_ram_get_idstr(RAMBlock *rb);
+size_t qemu_ram_pagesize(RAMBlock *block);
+
+
+
+void cpu_physical_memory_rw(hwaddr addr, uint8_t *buf,
+                            int len, int is_write);
+static inline void cpu_physical_memory_read(hwaddr addr,
+                                            void *buf, int len)
 {
-
-    ObjectClass *klass;
-    ObjectFree *free;
-    GHashTable *properties;
-    uint32_t ref;
-    Object *parent;
-};
-# 445 "/home/alom/git/panda/include/qom/object.h"
-struct TypeInfo
+    cpu_physical_memory_rw(addr, (uint8_t *) buf, len, 0);
+}
+static inline void cpu_physical_memory_write(hwaddr addr,
+                                             const void *buf, int len)
 {
-    const char *name;
-    const char *parent;
+    cpu_physical_memory_rw(addr, (uint8_t *)buf, len, 1);
+}
+void *cpu_physical_memory_map(hwaddr addr,
+                              hwaddr *plen,
+                              int is_write);
+void cpu_physical_memory_unmap(void *buffer, hwaddr len,
+                               int is_write, hwaddr access_len);
+void cpu_register_map_client(QEMUBH *bh);
+void cpu_unregister_map_client(QEMUBH *bh);
 
-    size_t instance_size;
-    void (*instance_init)(Object *obj);
-    void (*instance_post_init)(Object *obj);
-    void (*instance_finalize)(Object *obj);
+bool cpu_physical_memory_is_io(hwaddr phys_addr);
 
-    bool abstract;
-    size_t class_size;
 
-    void (*class_init)(ObjectClass *klass, void *data);
-    void (*class_base_init)(ObjectClass *klass, void *data);
-    void (*class_finalize)(ObjectClass *klass, void *data);
-    void *class_data;
 
-    InterfaceInfo *interfaces;
-};
-# 536 "/home/alom/git/panda/include/qom/object.h"
-struct InterfaceInfo {
-    const char *type;
-};
-# 547 "/home/alom/git/panda/include/qom/object.h"
-struct InterfaceClass
-{
-    ObjectClass parent_class;
 
-    ObjectClass *concrete_class;
-    Type interface_type;
-};
-# 587 "/home/alom/git/panda/include/qom/object.h"
-Object *object_new(const char *typename);
-# 638 "/home/alom/git/panda/include/qom/object.h"
-Object *object_new_with_props(const char *typename,
-                              Object *parent,
-                              const char *id,
-                              Error **errp,
-                              ...) __attribute__((sentinel));
-# 654 "/home/alom/git/panda/include/qom/object.h"
-Object *object_new_with_propv(const char *typename,
-                              Object *parent,
-                              const char *id,
-                              Error **errp,
-                              va_list vargs);
-# 699 "/home/alom/git/panda/include/qom/object.h"
-int object_set_props(Object *obj,
-                     Error **errp,
-                     ...) __attribute__((sentinel));
-# 713 "/home/alom/git/panda/include/qom/object.h"
-int object_set_propv(Object *obj,
-                     Error **errp,
-                     va_list vargs);
-# 727 "/home/alom/git/panda/include/qom/object.h"
-void object_initialize(void *obj, size_t size, const char *typename);
-# 739 "/home/alom/git/panda/include/qom/object.h"
-Object *object_dynamic_cast(Object *obj, const char *typename);
-# 750 "/home/alom/git/panda/include/qom/object.h"
-Object *object_dynamic_cast_assert(Object *obj, const char *typename,
-                                   const char *file, int line, const char *func);
 
 
+void qemu_flush_coalesced_mmio_buffer(void);
 
+void cpu_physical_memory_write_rom(AddressSpace *as, hwaddr addr,
+                                   const uint8_t *buf, int len);
+void cpu_flush_icache_range(hwaddr start, int len);
 
+extern struct MemoryRegion io_mem_rom;
+extern struct MemoryRegion io_mem_notdirty;
 
+typedef int (RAMBlockIterFunc)(const char *block_name, void *host_addr,
+    ram_addr_t offset, ram_addr_t length, void *opaque);
 
-
-ObjectClass *object_get_class(Object *obj);
-
-
-
-
-
-
-
-const char *object_get_typename(Object *obj);
-# 778 "/home/alom/git/panda/include/qom/object.h"
-Type type_register_static(const TypeInfo *info);
-# 789 "/home/alom/git/panda/include/qom/object.h"
-Type type_register(const TypeInfo *info);
-# 802 "/home/alom/git/panda/include/qom/object.h"
-ObjectClass *object_class_dynamic_cast_assert(ObjectClass *klass,
-                                              const char *typename,
-                                              const char *file, int line,
-                                              const char *func);
-# 821 "/home/alom/git/panda/include/qom/object.h"
-ObjectClass *object_class_dynamic_cast(ObjectClass *klass,
-                                       const char *typename);
-
-
-
-
-
-
-
-ObjectClass *object_class_get_parent(ObjectClass *klass);
-
-
-
-
-
-
-
-const char *object_class_get_name(ObjectClass *klass);
-
-
-
-
-
-
-
-bool object_class_is_abstract(ObjectClass *klass);
-
-
-
-
-
-
-
-ObjectClass *object_class_by_name(const char *typename);
-
-void object_class_foreach(void (*fn)(ObjectClass *klass, void *opaque),
-                          const char *implements_type, bool include_abstract,
-                          void *opaque);
-# 867 "/home/alom/git/panda/include/qom/object.h"
-GSList *object_class_get_list(const char *implements_type,
-                              bool include_abstract);
-# 877 "/home/alom/git/panda/include/qom/object.h"
-void object_ref(Object *obj);
-# 886 "/home/alom/git/panda/include/qom/object.h"
-void object_unref(Object *obj);
-# 911 "/home/alom/git/panda/include/qom/object.h"
-ObjectProperty *object_property_add(Object *obj, const char *name,
-                                    const char *type,
-                                    ObjectPropertyAccessor *get,
-                                    ObjectPropertyAccessor *set,
-                                    ObjectPropertyRelease *release,
-                                    void *opaque, Error **errp);
-
-void object_property_del(Object *obj, const char *name, Error **errp);
-
-ObjectProperty *object_class_property_add(ObjectClass *klass, const char *name,
-                                          const char *type,
-                                          ObjectPropertyAccessor *get,
-                                          ObjectPropertyAccessor *set,
-                                          ObjectPropertyRelease *release,
-                                          void *opaque, Error **errp);
-# 935 "/home/alom/git/panda/include/qom/object.h"
-ObjectProperty *object_property_find(Object *obj, const char *name,
-                                     Error **errp);
-ObjectProperty *object_class_property_find(ObjectClass *klass, const char *name,
-                                           Error **errp);
-
-typedef struct ObjectPropertyIterator {
-    ObjectClass *nextclass;
-    GHashTableIter iter;
-} ObjectPropertyIterator;
-# 970 "/home/alom/git/panda/include/qom/object.h"
-void object_property_iter_init(ObjectPropertyIterator *iter,
-                               Object *obj);
-# 985 "/home/alom/git/panda/include/qom/object.h"
-ObjectProperty *object_property_iter_next(ObjectPropertyIterator *iter);
-
-void object_unparent(Object *obj);
-# 999 "/home/alom/git/panda/include/qom/object.h"
-void object_property_get(Object *obj, Visitor *v, const char *name,
-                         Error **errp);
-# 1010 "/home/alom/git/panda/include/qom/object.h"
-void object_property_set_str(Object *obj, const char *value,
-                             const char *name, Error **errp);
-# 1023 "/home/alom/git/panda/include/qom/object.h"
-char *object_property_get_str(Object *obj, const char *name,
-                              Error **errp);
-# 1034 "/home/alom/git/panda/include/qom/object.h"
-void object_property_set_link(Object *obj, Object *value,
-                              const char *name, Error **errp);
-# 1047 "/home/alom/git/panda/include/qom/object.h"
-Object *object_property_get_link(Object *obj, const char *name,
-                                 Error **errp);
-# 1058 "/home/alom/git/panda/include/qom/object.h"
-void object_property_set_bool(Object *obj, bool value,
-                              const char *name, Error **errp);
-# 1070 "/home/alom/git/panda/include/qom/object.h"
-bool object_property_get_bool(Object *obj, const char *name,
-                              Error **errp);
-# 1081 "/home/alom/git/panda/include/qom/object.h"
-void object_property_set_int(Object *obj, int64_t value,
-                             const char *name, Error **errp);
-# 1093 "/home/alom/git/panda/include/qom/object.h"
-int64_t object_property_get_int(Object *obj, const char *name,
-                                Error **errp);
-# 1107 "/home/alom/git/panda/include/qom/object.h"
-int object_property_get_enum(Object *obj, const char *name,
-                             const char *typename, Error **errp);
-# 1121 "/home/alom/git/panda/include/qom/object.h"
-void object_property_get_uint16List(Object *obj, const char *name,
-                                    uint16List **list, Error **errp);
-# 1135 "/home/alom/git/panda/include/qom/object.h"
-void object_property_set(Object *obj, Visitor *v, const char *name,
-                         Error **errp);
-# 1147 "/home/alom/git/panda/include/qom/object.h"
-void object_property_parse(Object *obj, const char *string,
-                           const char *name, Error **errp);
-# 1160 "/home/alom/git/panda/include/qom/object.h"
-char *object_property_print(Object *obj, const char *name, bool human,
-                            Error **errp);
-# 1171 "/home/alom/git/panda/include/qom/object.h"
-const char *object_property_get_type(Object *obj, const char *name,
-                                     Error **errp);
-
-
-
-
-
-
-Object *object_get_root(void);
-# 1191 "/home/alom/git/panda/include/qom/object.h"
-Object *object_get_objects_root(void);
-
-
-
-
-
-
-
-gchar *object_get_canonical_path_component(Object *obj);
-
-
-
-
-
-
-
-gchar *object_get_canonical_path(Object *obj);
-# 1232 "/home/alom/git/panda/include/qom/object.h"
-Object *object_resolve_path(const char *path, bool *ambiguous);
-# 1252 "/home/alom/git/panda/include/qom/object.h"
-Object *object_resolve_path_type(const char *path, const char *typename,
-                                 bool *ambiguous);
-# 1265 "/home/alom/git/panda/include/qom/object.h"
-Object *object_resolve_path_component(Object *parent, const gchar *part);
-# 1284 "/home/alom/git/panda/include/qom/object.h"
-void object_property_add_child(Object *obj, const char *name,
-                               Object *child, Error **errp);
-
-typedef enum {
-
-    OBJ_PROP_LINK_UNREF_ON_RELEASE = 0x1,
-} ObjectPropertyLinkFlags;
-# 1299 "/home/alom/git/panda/include/qom/object.h"
-void object_property_allow_set_link(Object *, const char *,
-                                    Object *, Error **);
-# 1330 "/home/alom/git/panda/include/qom/object.h"
-void object_property_add_link(Object *obj, const char *name,
-                              const char *type, Object **child,
-                              void (*check)(Object *obj, const char *name,
-                                            Object *val, Error **errp),
-                              ObjectPropertyLinkFlags flags,
-                              Error **errp);
-# 1349 "/home/alom/git/panda/include/qom/object.h"
-void object_property_add_str(Object *obj, const char *name,
-                             char *(*get)(Object *, Error **),
-                             void (*set)(Object *, const char *, Error **),
-                             Error **errp);
-
-void object_class_property_add_str(ObjectClass *klass, const char *name,
-                                   char *(*get)(Object *, Error **),
-                                   void (*set)(Object *, const char *,
-                                               Error **),
-                                   Error **errp);
-# 1371 "/home/alom/git/panda/include/qom/object.h"
-void object_property_add_bool(Object *obj, const char *name,
-                              bool (*get)(Object *, Error **),
-                              void (*set)(Object *, bool, Error **),
-                              Error **errp);
-
-void object_class_property_add_bool(ObjectClass *klass, const char *name,
-                                    bool (*get)(Object *, Error **),
-                                    void (*set)(Object *, bool, Error **),
-                                    Error **errp);
-# 1393 "/home/alom/git/panda/include/qom/object.h"
-void object_property_add_enum(Object *obj, const char *name,
-                              const char *typename,
-                              const char * const *strings,
-                              int (*get)(Object *, Error **),
-                              void (*set)(Object *, int, Error **),
-                              Error **errp);
-
-void object_class_property_add_enum(ObjectClass *klass, const char *name,
-                                    const char *typename,
-                                    const char * const *strings,
-                                    int (*get)(Object *, Error **),
-                                    void (*set)(Object *, int, Error **),
-                                    Error **errp);
-# 1417 "/home/alom/git/panda/include/qom/object.h"
-void object_property_add_tm(Object *obj, const char *name,
-                            void (*get)(Object *, struct tm *, Error **),
-                            Error **errp);
-
-void object_class_property_add_tm(ObjectClass *klass, const char *name,
-                                  void (*get)(Object *, struct tm *, Error **),
-                                  Error **errp);
-# 1435 "/home/alom/git/panda/include/qom/object.h"
-void object_property_add_uint8_ptr(Object *obj, const char *name,
-                                   const uint8_t *v, Error **errp);
-void object_class_property_add_uint8_ptr(ObjectClass *klass, const char *name,
-                                         const uint8_t *v, Error **errp);
-# 1450 "/home/alom/git/panda/include/qom/object.h"
-void object_property_add_uint16_ptr(Object *obj, const char *name,
-                                    const uint16_t *v, Error **errp);
-void object_class_property_add_uint16_ptr(ObjectClass *klass, const char *name,
-                                          const uint16_t *v, Error **errp);
-# 1465 "/home/alom/git/panda/include/qom/object.h"
-void object_property_add_uint32_ptr(Object *obj, const char *name,
-                                    const uint32_t *v, Error **errp);
-void object_class_property_add_uint32_ptr(ObjectClass *klass, const char *name,
-                                          const uint32_t *v, Error **errp);
-# 1480 "/home/alom/git/panda/include/qom/object.h"
-void object_property_add_uint64_ptr(Object *obj, const char *name,
-                                    const uint64_t *v, Error **Errp);
-void object_class_property_add_uint64_ptr(ObjectClass *klass, const char *name,
-                                          const uint64_t *v, Error **Errp);
-# 1501 "/home/alom/git/panda/include/qom/object.h"
-void object_property_add_alias(Object *obj, const char *name,
-                               Object *target_obj, const char *target_name,
-                               Error **errp);
-# 1520 "/home/alom/git/panda/include/qom/object.h"
-void object_property_add_const_link(Object *obj, const char *name,
-                                    Object *target, Error **errp);
-# 1533 "/home/alom/git/panda/include/qom/object.h"
-void object_property_set_description(Object *obj, const char *name,
-                                     const char *description, Error **errp);
-void object_class_property_set_description(ObjectClass *klass, const char *name,
-                                           const char *description,
-                                           Error **errp);
-# 1553 "/home/alom/git/panda/include/qom/object.h"
-int object_child_foreach(Object *obj, int (*fn)(Object *child, void *opaque),
-                         void *opaque);
-# 1571 "/home/alom/git/panda/include/qom/object.h"
-int object_child_foreach_recursive(Object *obj,
-                                   int (*fn)(Object *child, void *opaque),
-                                   void *opaque);
-# 1584 "/home/alom/git/panda/include/qom/object.h"
-Object *container_get(Object *root, const char *path);
-
-
-
-
-
-
-
-size_t object_type_get_instance_size(const char *typename);
-# 8 "qdev-core.h" 2
-# 1 "/home/alom/git/panda/include/hw/irq.h" 1
+int qemu_ram_foreach_block(RAMBlockIterFunc func, void *opaque);
+# 13 "../hw/xen/xen.h" 2
+# 1 "../hw/irq.h" 1
 
 
 
@@ -8552,363 +7567,2364 @@ qemu_irq *qemu_irq_proxy(qemu_irq **target, int n);
 
 
 void qemu_irq_intercept_in(qemu_irq *gpio_in, qemu_irq_handler handler, int n);
-# 9 "qdev-core.h" 2
-# 1 "/home/alom/git/panda/include/hw/hotplug.h" 1
-# 27 "/home/alom/git/panda/include/hw/hotplug.h"
-typedef struct HotplugHandler {
-
-    Object Parent;
-} HotplugHandler;
+# 14 "../hw/xen/xen.h" 2
 
 
-
-
-
-
-
-typedef void (*hotplug_fn)(HotplugHandler *plug_handler,
-                           DeviceState *plugged_dev, Error **errp);
-# 57 "/home/alom/git/panda/include/hw/hotplug.h"
-typedef struct HotplugHandlerClass {
-
-    InterfaceClass parent;
-
-
-    hotplug_fn pre_plug;
-    hotplug_fn plug;
-    hotplug_fn unplug_request;
-    hotplug_fn unplug;
-} HotplugHandlerClass;
-
-
-
-
-
-
-void hotplug_handler_plug(HotplugHandler *plug_handler,
-                          DeviceState *plugged_dev,
-                          Error **errp);
-
-
-
-
-
-
-void hotplug_handler_pre_plug(HotplugHandler *plug_handler,
-                              DeviceState *plugged_dev,
-                              Error **errp);
-
-
-
-
-
-
-void hotplug_handler_unplug_request(HotplugHandler *plug_handler,
-                                    DeviceState *plugged_dev,
-                                    Error **errp);
-
-
-
-
-
-void hotplug_handler_unplug(HotplugHandler *plug_handler,
-                            DeviceState *plugged_dev,
-                            Error **errp);
-# 10 "qdev-core.h" 2
-
-enum {
-    DEV_NVECTORS_UNSPECIFIED = -1,
+enum xen_mode {
+    XEN_EMULATE = 0,
+    XEN_CREATE,
+    XEN_ATTACH
 };
 
+extern uint32_t xen_domid;
+extern enum xen_mode xen_mode;
 
+extern bool xen_allowed;
 
-
-
-
-typedef enum DeviceCategory {
-    DEVICE_CATEGORY_BRIDGE,
-    DEVICE_CATEGORY_USB,
-    DEVICE_CATEGORY_STORAGE,
-    DEVICE_CATEGORY_NETWORK,
-    DEVICE_CATEGORY_INPUT,
-    DEVICE_CATEGORY_DISPLAY,
-    DEVICE_CATEGORY_SOUND,
-    DEVICE_CATEGORY_MISC,
-    DEVICE_CATEGORY_CPU,
-    DEVICE_CATEGORY_MAX
-} DeviceCategory;
-
-typedef int (*qdev_initfn)(DeviceState *dev);
-typedef int (*qdev_event)(DeviceState *dev);
-typedef void (*qdev_resetfn)(DeviceState *dev);
-typedef void (*DeviceRealize)(DeviceState *dev, Error **errp);
-typedef void (*DeviceUnrealize)(DeviceState *dev, Error **errp);
-typedef void (*BusRealize)(BusState *bus, Error **errp);
-typedef void (*BusUnrealize)(BusState *bus, Error **errp);
-
-struct VMStateDescription;
-# 95 "qdev-core.h"
-typedef struct DeviceClass {
-
-    ObjectClass parent_class;
-
-
-    unsigned long categories[DIV_ROUND_UP(DEVICE_CATEGORY_MAX, CHAR_BIT * sizeof(long))];
-    const char *fw_name;
-    const char *desc;
-    Property *props;
-# 115 "qdev-core.h"
-    bool cannot_instantiate_with_device_add_yet;
-# 127 "qdev-core.h"
-    bool cannot_destroy_with_object_finalize_yet;
-
-    bool hotpluggable;
-
-
-    void (*reset)(DeviceState *dev);
-    DeviceRealize realize;
-    DeviceUnrealize unrealize;
-
-
-    const struct VMStateDescription *vmsd;
-
-
-    qdev_initfn init;
-    qdev_event exit;
-    const char *bus_type;
-} DeviceClass;
-
-typedef struct NamedGPIOList NamedGPIOList;
-
-struct NamedGPIOList {
-    char *name;
-    qemu_irq *in;
-    int num_in;
-    int num_out;
-    struct { struct NamedGPIOList *le_next; struct NamedGPIOList **le_prev; } node;
-};
-# 162 "qdev-core.h"
-struct DeviceState {
-
-    Object parent_obj;
-
-
-    const char *id;
-    bool realized;
-    bool pending_deleted_event;
-    QemuOpts *opts;
-    int hotplugged;
-    BusState *parent_bus;
-    struct { struct NamedGPIOList *lh_first; } gpios;
-    struct { struct BusState *lh_first; } child_bus;
-    int num_child_bus;
-    int instance_id_alias;
-    int alias_required_for_version;
-};
-
-struct DeviceListener {
-    void (*realize)(DeviceListener *listener, DeviceState *dev);
-    void (*unrealize)(DeviceListener *listener, DeviceState *dev);
-    struct { struct DeviceListener *tqe_next; struct DeviceListener * *tqe_prev; } link;
-};
-
-
-
-
-
-
-struct BusClass {
-    ObjectClass parent_class;
-
-
-    void (*print_dev)(Monitor *mon, DeviceState *dev, int indent);
-    char *(*get_dev_path)(DeviceState *dev);
-
-
-
-
-
-    char *(*get_fw_dev_path)(DeviceState *dev);
-    void (*reset)(BusState *bus);
-    BusRealize realize;
-    BusUnrealize unrealize;
-
-
-    int max_dev;
-
-    int automatic_ids;
-};
-
-typedef struct BusChild {
-    DeviceState *child;
-    int index;
-    struct { struct BusChild *tqe_next; struct BusChild * *tqe_prev; } sibling;
-} BusChild;
-
-
-
-
-
-
-
-struct BusState {
-    Object obj;
-    DeviceState *parent;
-    char *name;
-    HotplugHandler *hotplug_handler;
-    int max_index;
-    bool realized;
-    struct ChildrenHead { struct BusChild *tqh_first; struct BusChild * *tqh_last; } children;
-    struct { struct BusState *le_next; struct BusState **le_prev; } sibling;
-};
-
-struct Property {
-    const char *name;
-    PropertyInfo *info;
-    ptrdiff_t offset;
-    uint8_t bitnr;
-    QType qtype;
-    int64_t defval;
-    int arrayoffset;
-    PropertyInfo *arrayinfo;
-    int arrayfieldsize;
-};
-
-struct PropertyInfo {
-    const char *name;
-    const char *description;
-    const char * const *enum_table;
-    int (*print)(DeviceState *dev, Property *prop, char *dest, size_t len);
-    ObjectPropertyAccessor *get;
-    ObjectPropertyAccessor *set;
-    ObjectPropertyRelease *release;
-};
-# 269 "qdev-core.h"
-typedef struct GlobalProperty {
-    const char *driver;
-    const char *property;
-    const char *value;
-    bool user_provided;
-    bool used;
-    Error **errp;
-} GlobalProperty;
-
-
-
-DeviceState *qdev_create(BusState *bus, const char *name);
-DeviceState *qdev_try_create(BusState *bus, const char *name);
-void qdev_init_nofail(DeviceState *dev);
-void qdev_set_legacy_instance_id(DeviceState *dev, int alias_id,
-                                 int required_for_version);
-HotplugHandler *qdev_get_hotplug_handler(DeviceState *dev);
-void qdev_unplug(DeviceState *dev, Error **errp);
-void qdev_simple_device_unplug_cb(HotplugHandler *hotplug_dev,
-                                  DeviceState *dev, Error **errp);
-void qdev_machine_creation_done(void);
-bool qdev_machine_modified(void);
-
-qemu_irq qdev_get_gpio_in(DeviceState *dev, int n);
-qemu_irq qdev_get_gpio_in_named(DeviceState *dev, const char *name, int n);
-
-void qdev_connect_gpio_out(DeviceState *dev, int n, qemu_irq pin);
-void qdev_connect_gpio_out_named(DeviceState *dev, const char *name, int n,
-                                 qemu_irq pin);
-qemu_irq qdev_get_gpio_out_connector(DeviceState *dev, const char *name, int n);
-qemu_irq qdev_intercept_gpio_out(DeviceState *dev, qemu_irq icpt,
-                                 const char *name, int n);
-
-BusState *qdev_get_child_bus(DeviceState *dev, const char *name);
-
-
-
-
-
-void qdev_init_gpio_in(DeviceState *dev, qemu_irq_handler handler, int n);
-void qdev_init_gpio_out(DeviceState *dev, qemu_irq *pins, int n);
-void qdev_init_gpio_in_named(DeviceState *dev, qemu_irq_handler handler,
-                             const char *name, int n);
-void qdev_init_gpio_out_named(DeviceState *dev, qemu_irq *pins,
-                              const char *name, int n);
-
-void qdev_pass_gpios(DeviceState *dev, DeviceState *container,
-                     const char *name);
-
-BusState *qdev_get_parent_bus(DeviceState *dev);
-
-
-
-DeviceState *qdev_find_recursive(BusState *bus, const char *id);
-
-
-typedef int (qbus_walkerfn)(BusState *bus, void *opaque);
-typedef int (qdev_walkerfn)(DeviceState *dev, void *opaque);
-
-void qbus_create_inplace(void *bus, size_t size, const char *typename,
-                         DeviceState *parent, const char *name);
-BusState *qbus_create(const char *typename, DeviceState *parent, const char *name);
-
-
-
-int qbus_walk_children(BusState *bus,
-                       qdev_walkerfn *pre_devfn, qbus_walkerfn *pre_busfn,
-                       qdev_walkerfn *post_devfn, qbus_walkerfn *post_busfn,
-                       void *opaque);
-int qdev_walk_children(DeviceState *dev,
-                       qdev_walkerfn *pre_devfn, qbus_walkerfn *pre_busfn,
-                       qdev_walkerfn *post_devfn, qbus_walkerfn *post_busfn,
-                       void *opaque);
-
-void qdev_reset_all(DeviceState *dev);
-void qdev_reset_all_fn(void *opaque);
-# 356 "qdev-core.h"
-void qbus_reset_all(BusState *bus);
-void qbus_reset_all_fn(void *opaque);
-
-
-BusState *sysbus_get_default(void);
-
-char *qdev_get_fw_dev_path(DeviceState *dev);
-char *qdev_get_own_fw_dev_path_from_handler(BusState *bus, DeviceState *dev);
-
-
-
-
-
-
-
-void qdev_machine_init(void);
-
-
-
-
-
-
-void device_reset(DeviceState *dev);
-
-const struct VMStateDescription *qdev_get_vmsd(DeviceState *dev);
-
-const char *qdev_fw_name(DeviceState *dev);
-
-Object *qdev_get_machine(void);
-
-
-void qdev_set_parent_bus(DeviceState *dev, BusState *bus);
-
-extern int qdev_hotplug;
-
-char *qdev_get_dev_path(DeviceState *dev);
-
-GSList *qdev_build_hotpluggable_device_list(Object *peripheral);
-
-void qbus_set_hotplug_handler(BusState *bus, DeviceState *handler,
-                              Error **errp);
-
-void qbus_set_bus_hotplug_handler(BusState *bus, Error **errp);
-
-static inline bool qbus_is_hotpluggable(BusState *bus)
+static inline bool xen_enabled(void)
 {
-   return bus->hotplug_handler;
+    return xen_allowed;
 }
 
-void device_listener_register(DeviceListener *listener);
-void device_listener_unregister(DeviceListener *listener);
+int xen_pci_slot_get_pirq(PCIDevice *pci_dev, int irq_num);
+void xen_piix3_set_irq(void *opaque, int irq_num, int level);
+void xen_piix_pci_write_config_client(uint32_t address, uint32_t val, int len);
+void xen_hvm_inject_msi(uint64_t addr, uint32_t data);
+int xen_is_pirq_msi(uint32_t msi_data);
+
+qemu_irq *xen_interrupt_controller_init(void);
+
+void xenstore_store_pv_console_info(int i, struct Chardev *chr);
+
+void xen_hvm_init(PCMachineState *pcms, MemoryRegion **ram_memory);
+
+void xen_ram_alloc(ram_addr_t ram_addr, ram_addr_t size,
+                   struct MemoryRegion *mr, Error **errp);
+void xen_modified_memory(ram_addr_t start, ram_addr_t length);
+
+void xen_register_framebuffer(struct MemoryRegion *mr);
+# 24 "ram_addr.h" 2
+# 1 "../exec/ramlist.h" 1
+
+
+
+
+# 1 "../qemu/thread.h" 1
+
+
+
+# 1 "../qemu/processor.h" 1
+# 5 "../qemu/thread.h" 2
+
+
+typedef struct QemuMutex QemuMutex;
+typedef struct QemuCond QemuCond;
+typedef struct QemuSemaphore QemuSemaphore;
+typedef struct QemuEvent QemuEvent;
+typedef struct QemuLockCnt QemuLockCnt;
+typedef struct QemuThread QemuThread;
+
+
+
+
+# 1 "../qemu/thread-posix.h" 1
+
+
+
+# 1 "/usr/include/pthread.h" 1 3 4
+# 21 "/usr/include/pthread.h" 3 4
+# 1 "/usr/include/features.h" 1 3 4
+# 367 "/usr/include/features.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/sys/cdefs.h" 1 3 4
+# 410 "/usr/include/x86_64-linux-gnu/sys/cdefs.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
+# 411 "/usr/include/x86_64-linux-gnu/sys/cdefs.h" 2 3 4
+# 368 "/usr/include/features.h" 2 3 4
+# 391 "/usr/include/features.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/gnu/stubs.h" 1 3 4
+# 10 "/usr/include/x86_64-linux-gnu/gnu/stubs.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/gnu/stubs-64.h" 1 3 4
+# 11 "/usr/include/x86_64-linux-gnu/gnu/stubs.h" 2 3 4
+# 392 "/usr/include/features.h" 2 3 4
+# 22 "/usr/include/pthread.h" 2 3 4
+# 1 "/usr/include/endian.h" 1 3 4
+# 36 "/usr/include/endian.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/endian.h" 1 3 4
+# 37 "/usr/include/endian.h" 2 3 4
+# 60 "/usr/include/endian.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/byteswap.h" 1 3 4
+# 27 "/usr/include/x86_64-linux-gnu/bits/byteswap.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/types.h" 1 3 4
+# 27 "/usr/include/x86_64-linux-gnu/bits/types.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
+# 28 "/usr/include/x86_64-linux-gnu/bits/types.h" 2 3 4
+
+
+
+# 30 "/usr/include/x86_64-linux-gnu/bits/types.h" 3 4
+typedef unsigned char __u_char;
+typedef unsigned short int __u_short;
+typedef unsigned int __u_int;
+typedef unsigned long int __u_long;
+
+
+typedef signed char __int8_t;
+typedef unsigned char __uint8_t;
+typedef signed short int __int16_t;
+typedef unsigned short int __uint16_t;
+typedef signed int __int32_t;
+typedef unsigned int __uint32_t;
+
+typedef signed long int __int64_t;
+typedef unsigned long int __uint64_t;
+
+
+
+
+
+
+
+typedef long int __quad_t;
+typedef unsigned long int __u_quad_t;
+# 121 "/usr/include/x86_64-linux-gnu/bits/types.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/typesizes.h" 1 3 4
+# 122 "/usr/include/x86_64-linux-gnu/bits/types.h" 2 3 4
+
+
+typedef unsigned long int __dev_t;
+typedef unsigned int __uid_t;
+typedef unsigned int __gid_t;
+typedef unsigned long int __ino_t;
+typedef unsigned long int __ino64_t;
+typedef unsigned int __mode_t;
+typedef unsigned long int __nlink_t;
+typedef long int __off_t;
+typedef long int __off64_t;
+typedef int __pid_t;
+typedef struct { int __val[2]; } __fsid_t;
+typedef long int __clock_t;
+typedef unsigned long int __rlim_t;
+typedef unsigned long int __rlim64_t;
+typedef unsigned int __id_t;
+typedef long int __time_t;
+typedef unsigned int __useconds_t;
+typedef long int __suseconds_t;
+
+typedef int __daddr_t;
+typedef int __key_t;
+
+
+typedef int __clockid_t;
+
+
+typedef void * __timer_t;
+
+
+typedef long int __blksize_t;
+
+
+
+
+typedef long int __blkcnt_t;
+typedef long int __blkcnt64_t;
+
+
+typedef unsigned long int __fsblkcnt_t;
+typedef unsigned long int __fsblkcnt64_t;
+
+
+typedef unsigned long int __fsfilcnt_t;
+typedef unsigned long int __fsfilcnt64_t;
+
+
+typedef long int __fsword_t;
+
+typedef long int __ssize_t;
+
+
+typedef long int __syscall_slong_t;
+
+typedef unsigned long int __syscall_ulong_t;
+
+
+
+typedef __off64_t __loff_t;
+typedef __quad_t *__qaddr_t;
+typedef char *__caddr_t;
+
+
+typedef long int __intptr_t;
+
+
+typedef unsigned int __socklen_t;
+# 28 "/usr/include/x86_64-linux-gnu/bits/byteswap.h" 2 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
+# 29 "/usr/include/x86_64-linux-gnu/bits/byteswap.h" 2 3 4
+
+
+
+
+
+
+# 1 "/usr/include/x86_64-linux-gnu/bits/byteswap-16.h" 1 3 4
+# 36 "/usr/include/x86_64-linux-gnu/bits/byteswap.h" 2 3 4
+# 44 "/usr/include/x86_64-linux-gnu/bits/byteswap.h" 3 4
+static __inline unsigned int
+__bswap_32 (unsigned int __bsx)
+{
+  return __builtin_bswap32 (__bsx);
+}
+# 108 "/usr/include/x86_64-linux-gnu/bits/byteswap.h" 3 4
+static __inline __uint64_t
+__bswap_64 (__uint64_t __bsx)
+{
+  return __builtin_bswap64 (__bsx);
+}
+# 61 "/usr/include/endian.h" 2 3 4
+# 23 "/usr/include/pthread.h" 2 3 4
+# 1 "/usr/include/sched.h" 1 3 4
+# 28 "/usr/include/sched.h" 3 4
+# 1 "/usr/lib/gcc/x86_64-linux-gnu/5/include/stddef.h" 1 3 4
+# 216 "/usr/lib/gcc/x86_64-linux-gnu/5/include/stddef.h" 3 4
+typedef long unsigned int size_t;
+# 29 "/usr/include/sched.h" 2 3 4
+
+
+
+
+
+# 1 "/usr/include/time.h" 1 3 4
+# 73 "/usr/include/time.h" 3 4
+
+
+typedef __time_t time_t;
+
+
+
+# 120 "/usr/include/time.h" 3 4
+struct timespec
+  {
+    __time_t tv_sec;
+    __syscall_slong_t tv_nsec;
+  };
+# 35 "/usr/include/sched.h" 2 3 4
+
+
+typedef __pid_t pid_t;
+
+
+
+
+
+# 1 "/usr/include/x86_64-linux-gnu/bits/sched.h" 1 3 4
+# 72 "/usr/include/x86_64-linux-gnu/bits/sched.h" 3 4
+struct sched_param
+  {
+    int __sched_priority;
+  };
+
+
+# 95 "/usr/include/x86_64-linux-gnu/bits/sched.h" 3 4
+
+
+
+
+
+
+
+
+struct __sched_param
+  {
+    int __sched_priority;
+  };
+# 118 "/usr/include/x86_64-linux-gnu/bits/sched.h" 3 4
+typedef unsigned long int __cpu_mask;
+
+
+
+
+
+
+typedef struct
+{
+  __cpu_mask __bits[1024 / (8 * sizeof (__cpu_mask))];
+} cpu_set_t;
+# 201 "/usr/include/x86_64-linux-gnu/bits/sched.h" 3 4
+
+
+extern int __sched_cpucount (size_t __setsize, const cpu_set_t *__setp)
+  __attribute__ ((__nothrow__ , __leaf__));
+extern cpu_set_t *__sched_cpualloc (size_t __count) __attribute__ ((__nothrow__ , __leaf__)) ;
+extern void __sched_cpufree (cpu_set_t *__set) __attribute__ ((__nothrow__ , __leaf__));
+
+
+# 44 "/usr/include/sched.h" 2 3 4
+
+
+
+
+
+
+
+extern int sched_setparam (__pid_t __pid, const struct sched_param *__param)
+     __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int sched_getparam (__pid_t __pid, struct sched_param *__param) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int sched_setscheduler (__pid_t __pid, int __policy,
+          const struct sched_param *__param) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int sched_getscheduler (__pid_t __pid) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int sched_yield (void) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int sched_get_priority_max (int __algorithm) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int sched_get_priority_min (int __algorithm) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int sched_rr_get_interval (__pid_t __pid, struct timespec *__t) __attribute__ ((__nothrow__ , __leaf__));
+# 126 "/usr/include/sched.h" 3 4
+
+# 24 "/usr/include/pthread.h" 2 3 4
+# 1 "/usr/include/time.h" 1 3 4
+# 29 "/usr/include/time.h" 3 4
+
+
+
+
+
+
+
+
+# 1 "/usr/lib/gcc/x86_64-linux-gnu/5/include/stddef.h" 1 3 4
+# 38 "/usr/include/time.h" 2 3 4
+
+
+
+# 1 "/usr/include/x86_64-linux-gnu/bits/time.h" 1 3 4
+# 42 "/usr/include/time.h" 2 3 4
+# 57 "/usr/include/time.h" 3 4
+
+
+typedef __clock_t clock_t;
+
+
+
+# 91 "/usr/include/time.h" 3 4
+typedef __clockid_t clockid_t;
+# 103 "/usr/include/time.h" 3 4
+typedef __timer_t timer_t;
+# 131 "/usr/include/time.h" 3 4
+
+
+struct tm
+{
+  int tm_sec;
+  int tm_min;
+  int tm_hour;
+  int tm_mday;
+  int tm_mon;
+  int tm_year;
+  int tm_wday;
+  int tm_yday;
+  int tm_isdst;
+
+
+  long int tm_gmtoff;
+  const char *tm_zone;
+
+
+
+
+};
+
+
+
+
+
+
+
+
+struct itimerspec
+  {
+    struct timespec it_interval;
+    struct timespec it_value;
+  };
+
+
+struct sigevent;
+# 186 "/usr/include/time.h" 3 4
+
+
+
+extern clock_t clock (void) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern time_t time (time_t *__timer) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern double difftime (time_t __time1, time_t __time0)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+
+
+extern time_t mktime (struct tm *__tp) __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+
+
+extern size_t strftime (char *__restrict __s, size_t __maxsize,
+   const char *__restrict __format,
+   const struct tm *__restrict __tp) __attribute__ ((__nothrow__ , __leaf__));
+
+# 221 "/usr/include/time.h" 3 4
+# 1 "/usr/include/xlocale.h" 1 3 4
+# 27 "/usr/include/xlocale.h" 3 4
+typedef struct __locale_struct
+{
+
+  struct __locale_data *__locales[13];
+
+
+  const unsigned short int *__ctype_b;
+  const int *__ctype_tolower;
+  const int *__ctype_toupper;
+
+
+  const char *__names[13];
+} *__locale_t;
+
+
+typedef __locale_t locale_t;
+# 222 "/usr/include/time.h" 2 3 4
+
+extern size_t strftime_l (char *__restrict __s, size_t __maxsize,
+     const char *__restrict __format,
+     const struct tm *__restrict __tp,
+     __locale_t __loc) __attribute__ ((__nothrow__ , __leaf__));
+# 236 "/usr/include/time.h" 3 4
+
+
+
+extern struct tm *gmtime (const time_t *__timer) __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+extern struct tm *localtime (const time_t *__timer) __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+
+
+extern struct tm *gmtime_r (const time_t *__restrict __timer,
+       struct tm *__restrict __tp) __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+extern struct tm *localtime_r (const time_t *__restrict __timer,
+          struct tm *__restrict __tp) __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+
+
+extern char *asctime (const struct tm *__tp) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern char *ctime (const time_t *__timer) __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+
+
+
+
+extern char *asctime_r (const struct tm *__restrict __tp,
+   char *__restrict __buf) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern char *ctime_r (const time_t *__restrict __timer,
+        char *__restrict __buf) __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+
+extern char *__tzname[2];
+extern int __daylight;
+extern long int __timezone;
+
+
+
+
+extern char *tzname[2];
+
+
+
+extern void tzset (void) __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+extern int daylight;
+extern long int timezone;
+
+
+
+
+
+extern int stime (const time_t *__when) __attribute__ ((__nothrow__ , __leaf__));
+# 319 "/usr/include/time.h" 3 4
+extern time_t timegm (struct tm *__tp) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern time_t timelocal (struct tm *__tp) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int dysize (int __year) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+# 334 "/usr/include/time.h" 3 4
+extern int nanosleep (const struct timespec *__requested_time,
+        struct timespec *__remaining);
+
+
+
+extern int clock_getres (clockid_t __clock_id, struct timespec *__res) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int clock_gettime (clockid_t __clock_id, struct timespec *__tp) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int clock_settime (clockid_t __clock_id, const struct timespec *__tp)
+     __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+
+
+
+extern int clock_nanosleep (clockid_t __clock_id, int __flags,
+       const struct timespec *__req,
+       struct timespec *__rem);
+
+
+extern int clock_getcpuclockid (pid_t __pid, clockid_t *__clock_id) __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+
+extern int timer_create (clockid_t __clock_id,
+    struct sigevent *__restrict __evp,
+    timer_t *__restrict __timerid) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int timer_delete (timer_t __timerid) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int timer_settime (timer_t __timerid, int __flags,
+     const struct itimerspec *__restrict __value,
+     struct itimerspec *__restrict __ovalue) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int timer_gettime (timer_t __timerid, struct itimerspec *__value)
+     __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int timer_getoverrun (timer_t __timerid) __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+
+
+extern int timespec_get (struct timespec *__ts, int __base)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+# 430 "/usr/include/time.h" 3 4
+
+# 25 "/usr/include/pthread.h" 2 3 4
+
+# 1 "/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h" 1 3 4
+# 21 "/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
+# 22 "/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h" 2 3 4
+# 60 "/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h" 3 4
+typedef unsigned long int pthread_t;
+
+
+union pthread_attr_t
+{
+  char __size[56];
+  long int __align;
+};
+
+typedef union pthread_attr_t pthread_attr_t;
+
+
+
+
+
+typedef struct __pthread_internal_list
+{
+  struct __pthread_internal_list *__prev;
+  struct __pthread_internal_list *__next;
+} __pthread_list_t;
+# 90 "/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h" 3 4
+typedef union
+{
+  struct __pthread_mutex_s
+  {
+    int __lock;
+    unsigned int __count;
+    int __owner;
+
+    unsigned int __nusers;
+
+
+
+    int __kind;
+
+    short __spins;
+    short __elision;
+    __pthread_list_t __list;
+# 125 "/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h" 3 4
+  } __data;
+  char __size[40];
+  long int __align;
+} pthread_mutex_t;
+
+typedef union
+{
+  char __size[4];
+  int __align;
+} pthread_mutexattr_t;
+
+
+
+
+typedef union
+{
+  struct
+  {
+    int __lock;
+    unsigned int __futex;
+    __extension__ unsigned long long int __total_seq;
+    __extension__ unsigned long long int __wakeup_seq;
+    __extension__ unsigned long long int __woken_seq;
+    void *__mutex;
+    unsigned int __nwaiters;
+    unsigned int __broadcast_seq;
+  } __data;
+  char __size[48];
+  __extension__ long long int __align;
+} pthread_cond_t;
+
+typedef union
+{
+  char __size[4];
+  int __align;
+} pthread_condattr_t;
+
+
+
+typedef unsigned int pthread_key_t;
+
+
+
+typedef int pthread_once_t;
+
+
+
+
+
+typedef union
+{
+
+  struct
+  {
+    int __lock;
+    unsigned int __nr_readers;
+    unsigned int __readers_wakeup;
+    unsigned int __writer_wakeup;
+    unsigned int __nr_readers_queued;
+    unsigned int __nr_writers_queued;
+    int __writer;
+    int __shared;
+    signed char __rwelision;
+
+
+
+
+    unsigned char __pad1[7];
+
+
+    unsigned long int __pad2;
+
+
+    unsigned int __flags;
+
+  } __data;
+# 220 "/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h" 3 4
+  char __size[56];
+  long int __align;
+} pthread_rwlock_t;
+
+typedef union
+{
+  char __size[8];
+  long int __align;
+} pthread_rwlockattr_t;
+
+
+
+
+
+typedef volatile int pthread_spinlock_t;
+
+
+
+
+typedef union
+{
+  char __size[32];
+  long int __align;
+} pthread_barrier_t;
+
+typedef union
+{
+  char __size[4];
+  int __align;
+} pthread_barrierattr_t;
+# 27 "/usr/include/pthread.h" 2 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/setjmp.h" 1 3 4
+# 26 "/usr/include/x86_64-linux-gnu/bits/setjmp.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
+# 27 "/usr/include/x86_64-linux-gnu/bits/setjmp.h" 2 3 4
+
+
+
+
+typedef long int __jmp_buf[8];
+# 28 "/usr/include/pthread.h" 2 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
+# 29 "/usr/include/pthread.h" 2 3 4
+
+
+
+enum
+{
+  PTHREAD_CREATE_JOINABLE,
+
+  PTHREAD_CREATE_DETACHED
+
+};
+
+
+
+enum
+{
+  PTHREAD_MUTEX_TIMED_NP,
+  PTHREAD_MUTEX_RECURSIVE_NP,
+  PTHREAD_MUTEX_ERRORCHECK_NP,
+  PTHREAD_MUTEX_ADAPTIVE_NP
+
+  ,
+  PTHREAD_MUTEX_NORMAL = PTHREAD_MUTEX_TIMED_NP,
+  PTHREAD_MUTEX_RECURSIVE = PTHREAD_MUTEX_RECURSIVE_NP,
+  PTHREAD_MUTEX_ERRORCHECK = PTHREAD_MUTEX_ERRORCHECK_NP,
+  PTHREAD_MUTEX_DEFAULT = PTHREAD_MUTEX_NORMAL
+
+
+
+
+
+};
+
+
+
+
+enum
+{
+  PTHREAD_MUTEX_STALLED,
+  PTHREAD_MUTEX_STALLED_NP = PTHREAD_MUTEX_STALLED,
+  PTHREAD_MUTEX_ROBUST,
+  PTHREAD_MUTEX_ROBUST_NP = PTHREAD_MUTEX_ROBUST
+};
+
+
+
+
+
+enum
+{
+  PTHREAD_PRIO_NONE,
+  PTHREAD_PRIO_INHERIT,
+  PTHREAD_PRIO_PROTECT
+};
+# 114 "/usr/include/pthread.h" 3 4
+enum
+{
+  PTHREAD_RWLOCK_PREFER_READER_NP,
+  PTHREAD_RWLOCK_PREFER_WRITER_NP,
+  PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP,
+  PTHREAD_RWLOCK_DEFAULT_NP = PTHREAD_RWLOCK_PREFER_READER_NP
+};
+# 155 "/usr/include/pthread.h" 3 4
+enum
+{
+  PTHREAD_INHERIT_SCHED,
+
+  PTHREAD_EXPLICIT_SCHED
+
+};
+
+
+
+enum
+{
+  PTHREAD_SCOPE_SYSTEM,
+
+  PTHREAD_SCOPE_PROCESS
+
+};
+
+
+
+enum
+{
+  PTHREAD_PROCESS_PRIVATE,
+
+  PTHREAD_PROCESS_SHARED
+
+};
+# 190 "/usr/include/pthread.h" 3 4
+struct _pthread_cleanup_buffer
+{
+  void (*__routine) (void *);
+  void *__arg;
+  int __canceltype;
+  struct _pthread_cleanup_buffer *__prev;
+};
+
+
+enum
+{
+  PTHREAD_CANCEL_ENABLE,
+
+  PTHREAD_CANCEL_DISABLE
+
+};
+enum
+{
+  PTHREAD_CANCEL_DEFERRED,
+
+  PTHREAD_CANCEL_ASYNCHRONOUS
+
+};
+# 228 "/usr/include/pthread.h" 3 4
+
+
+
+
+
+extern int pthread_create (pthread_t *__restrict __newthread,
+      const pthread_attr_t *__restrict __attr,
+      void *(*__start_routine) (void *),
+      void *__restrict __arg) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 3)));
+
+
+
+
+
+extern void pthread_exit (void *__retval) __attribute__ ((__noreturn__));
+
+
+
+
+
+
+
+extern int pthread_join (pthread_t __th, void **__thread_return);
+# 271 "/usr/include/pthread.h" 3 4
+extern int pthread_detach (pthread_t __th) __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+extern pthread_t pthread_self (void) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+
+
+extern int pthread_equal (pthread_t __thread1, pthread_t __thread2)
+  __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+
+
+
+
+
+
+
+extern int pthread_attr_init (pthread_attr_t *__attr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_attr_destroy (pthread_attr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_attr_getdetachstate (const pthread_attr_t *__attr,
+     int *__detachstate)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+extern int pthread_attr_setdetachstate (pthread_attr_t *__attr,
+     int __detachstate)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+extern int pthread_attr_getguardsize (const pthread_attr_t *__attr,
+          size_t *__guardsize)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+extern int pthread_attr_setguardsize (pthread_attr_t *__attr,
+          size_t __guardsize)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+extern int pthread_attr_getschedparam (const pthread_attr_t *__restrict __attr,
+           struct sched_param *__restrict __param)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+extern int pthread_attr_setschedparam (pthread_attr_t *__restrict __attr,
+           const struct sched_param *__restrict
+           __param) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+extern int pthread_attr_getschedpolicy (const pthread_attr_t *__restrict
+     __attr, int *__restrict __policy)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+extern int pthread_attr_setschedpolicy (pthread_attr_t *__attr, int __policy)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_attr_getinheritsched (const pthread_attr_t *__restrict
+      __attr, int *__restrict __inherit)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+extern int pthread_attr_setinheritsched (pthread_attr_t *__attr,
+      int __inherit)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+extern int pthread_attr_getscope (const pthread_attr_t *__restrict __attr,
+      int *__restrict __scope)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+extern int pthread_attr_setscope (pthread_attr_t *__attr, int __scope)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_attr_getstackaddr (const pthread_attr_t *__restrict
+          __attr, void **__restrict __stackaddr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2))) __attribute__ ((__deprecated__));
+
+
+
+
+
+extern int pthread_attr_setstackaddr (pthread_attr_t *__attr,
+          void *__stackaddr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__deprecated__));
+
+
+extern int pthread_attr_getstacksize (const pthread_attr_t *__restrict
+          __attr, size_t *__restrict __stacksize)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+
+
+extern int pthread_attr_setstacksize (pthread_attr_t *__attr,
+          size_t __stacksize)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+extern int pthread_attr_getstack (const pthread_attr_t *__restrict __attr,
+      void **__restrict __stackaddr,
+      size_t *__restrict __stacksize)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2, 3)));
+
+
+
+
+extern int pthread_attr_setstack (pthread_attr_t *__attr, void *__stackaddr,
+      size_t __stacksize) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+# 429 "/usr/include/pthread.h" 3 4
+extern int pthread_setschedparam (pthread_t __target_thread, int __policy,
+      const struct sched_param *__param)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3)));
+
+
+extern int pthread_getschedparam (pthread_t __target_thread,
+      int *__restrict __policy,
+      struct sched_param *__restrict __param)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 3)));
+
+
+extern int pthread_setschedprio (pthread_t __target_thread, int __prio)
+     __attribute__ ((__nothrow__ , __leaf__));
+# 494 "/usr/include/pthread.h" 3 4
+extern int pthread_once (pthread_once_t *__once_control,
+    void (*__init_routine) (void)) __attribute__ ((__nonnull__ (1, 2)));
+# 506 "/usr/include/pthread.h" 3 4
+extern int pthread_setcancelstate (int __state, int *__oldstate);
+
+
+
+extern int pthread_setcanceltype (int __type, int *__oldtype);
+
+
+extern int pthread_cancel (pthread_t __th);
+
+
+
+
+extern void pthread_testcancel (void);
+
+
+
+
+typedef struct
+{
+  struct
+  {
+    __jmp_buf __cancel_jmp_buf;
+    int __mask_was_saved;
+  } __cancel_jmp_buf[1];
+  void *__pad[4];
+} __pthread_unwind_buf_t __attribute__ ((__aligned__));
+# 540 "/usr/include/pthread.h" 3 4
+struct __pthread_cleanup_frame
+{
+  void (*__cancel_routine) (void *);
+  void *__cancel_arg;
+  int __do_it;
+  int __cancel_type;
+};
+# 680 "/usr/include/pthread.h" 3 4
+extern void __pthread_register_cancel (__pthread_unwind_buf_t *__buf)
+     ;
+# 692 "/usr/include/pthread.h" 3 4
+extern void __pthread_unregister_cancel (__pthread_unwind_buf_t *__buf)
+  ;
+# 733 "/usr/include/pthread.h" 3 4
+extern void __pthread_unwind_next (__pthread_unwind_buf_t *__buf)
+     __attribute__ ((__noreturn__))
+
+     __attribute__ ((__weak__))
+
+     ;
+
+
+
+struct __jmp_buf_tag;
+extern int __sigsetjmp (struct __jmp_buf_tag *__env, int __savemask) __attribute__ ((__nothrow__));
+
+
+
+
+
+extern int pthread_mutex_init (pthread_mutex_t *__mutex,
+          const pthread_mutexattr_t *__mutexattr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_mutex_destroy (pthread_mutex_t *__mutex)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_mutex_trylock (pthread_mutex_t *__mutex)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_mutex_lock (pthread_mutex_t *__mutex)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+extern int pthread_mutex_timedlock (pthread_mutex_t *__restrict __mutex,
+        const struct timespec *__restrict
+        __abstime) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+
+extern int pthread_mutex_unlock (pthread_mutex_t *__mutex)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+extern int pthread_mutex_getprioceiling (const pthread_mutex_t *
+      __restrict __mutex,
+      int *__restrict __prioceiling)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+
+extern int pthread_mutex_setprioceiling (pthread_mutex_t *__restrict __mutex,
+      int __prioceiling,
+      int *__restrict __old_ceiling)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 3)));
+
+
+
+
+extern int pthread_mutex_consistent (pthread_mutex_t *__mutex)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+# 806 "/usr/include/pthread.h" 3 4
+extern int pthread_mutexattr_init (pthread_mutexattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_mutexattr_destroy (pthread_mutexattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_mutexattr_getpshared (const pthread_mutexattr_t *
+      __restrict __attr,
+      int *__restrict __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+extern int pthread_mutexattr_setpshared (pthread_mutexattr_t *__attr,
+      int __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+extern int pthread_mutexattr_gettype (const pthread_mutexattr_t *__restrict
+          __attr, int *__restrict __kind)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+
+
+extern int pthread_mutexattr_settype (pthread_mutexattr_t *__attr, int __kind)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+extern int pthread_mutexattr_getprotocol (const pthread_mutexattr_t *
+       __restrict __attr,
+       int *__restrict __protocol)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+
+extern int pthread_mutexattr_setprotocol (pthread_mutexattr_t *__attr,
+       int __protocol)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_mutexattr_getprioceiling (const pthread_mutexattr_t *
+          __restrict __attr,
+          int *__restrict __prioceiling)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+extern int pthread_mutexattr_setprioceiling (pthread_mutexattr_t *__attr,
+          int __prioceiling)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+extern int pthread_mutexattr_getrobust (const pthread_mutexattr_t *__attr,
+     int *__robustness)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+
+
+
+
+
+extern int pthread_mutexattr_setrobust (pthread_mutexattr_t *__attr,
+     int __robustness)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+# 888 "/usr/include/pthread.h" 3 4
+extern int pthread_rwlock_init (pthread_rwlock_t *__restrict __rwlock,
+    const pthread_rwlockattr_t *__restrict
+    __attr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_rwlock_destroy (pthread_rwlock_t *__rwlock)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_rwlock_rdlock (pthread_rwlock_t *__rwlock)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_rwlock_tryrdlock (pthread_rwlock_t *__rwlock)
+  __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+extern int pthread_rwlock_timedrdlock (pthread_rwlock_t *__restrict __rwlock,
+           const struct timespec *__restrict
+           __abstime) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+
+extern int pthread_rwlock_wrlock (pthread_rwlock_t *__rwlock)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_rwlock_trywrlock (pthread_rwlock_t *__rwlock)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+extern int pthread_rwlock_timedwrlock (pthread_rwlock_t *__restrict __rwlock,
+           const struct timespec *__restrict
+           __abstime) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+
+extern int pthread_rwlock_unlock (pthread_rwlock_t *__rwlock)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+
+
+extern int pthread_rwlockattr_init (pthread_rwlockattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_rwlockattr_destroy (pthread_rwlockattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_rwlockattr_getpshared (const pthread_rwlockattr_t *
+       __restrict __attr,
+       int *__restrict __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+extern int pthread_rwlockattr_setpshared (pthread_rwlockattr_t *__attr,
+       int __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_rwlockattr_getkind_np (const pthread_rwlockattr_t *
+       __restrict __attr,
+       int *__restrict __pref)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+extern int pthread_rwlockattr_setkind_np (pthread_rwlockattr_t *__attr,
+       int __pref) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+
+
+
+
+extern int pthread_cond_init (pthread_cond_t *__restrict __cond,
+         const pthread_condattr_t *__restrict __cond_attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_cond_destroy (pthread_cond_t *__cond)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_cond_signal (pthread_cond_t *__cond)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_cond_broadcast (pthread_cond_t *__cond)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+
+
+
+extern int pthread_cond_wait (pthread_cond_t *__restrict __cond,
+         pthread_mutex_t *__restrict __mutex)
+     __attribute__ ((__nonnull__ (1, 2)));
+# 1000 "/usr/include/pthread.h" 3 4
+extern int pthread_cond_timedwait (pthread_cond_t *__restrict __cond,
+       pthread_mutex_t *__restrict __mutex,
+       const struct timespec *__restrict __abstime)
+     __attribute__ ((__nonnull__ (1, 2, 3)));
+
+
+
+
+extern int pthread_condattr_init (pthread_condattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_condattr_destroy (pthread_condattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_condattr_getpshared (const pthread_condattr_t *
+     __restrict __attr,
+     int *__restrict __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+extern int pthread_condattr_setpshared (pthread_condattr_t *__attr,
+     int __pshared) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+extern int pthread_condattr_getclock (const pthread_condattr_t *
+          __restrict __attr,
+          __clockid_t *__restrict __clock_id)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+extern int pthread_condattr_setclock (pthread_condattr_t *__attr,
+          __clockid_t __clock_id)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+# 1044 "/usr/include/pthread.h" 3 4
+extern int pthread_spin_init (pthread_spinlock_t *__lock, int __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_spin_destroy (pthread_spinlock_t *__lock)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_spin_lock (pthread_spinlock_t *__lock)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_spin_trylock (pthread_spinlock_t *__lock)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_spin_unlock (pthread_spinlock_t *__lock)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+
+
+
+extern int pthread_barrier_init (pthread_barrier_t *__restrict __barrier,
+     const pthread_barrierattr_t *__restrict
+     __attr, unsigned int __count)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_barrier_destroy (pthread_barrier_t *__barrier)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_barrier_wait (pthread_barrier_t *__barrier)
+     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+
+
+
+extern int pthread_barrierattr_init (pthread_barrierattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_barrierattr_destroy (pthread_barrierattr_t *__attr)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_barrierattr_getpshared (const pthread_barrierattr_t *
+        __restrict __attr,
+        int *__restrict __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+
+
+extern int pthread_barrierattr_setpshared (pthread_barrierattr_t *__attr,
+        int __pshared)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+# 1111 "/usr/include/pthread.h" 3 4
+extern int pthread_key_create (pthread_key_t *__key,
+          void (*__destr_function) (void *))
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+
+
+extern int pthread_key_delete (pthread_key_t __key) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern void *pthread_getspecific (pthread_key_t __key) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int pthread_setspecific (pthread_key_t __key,
+    const void *__pointer) __attribute__ ((__nothrow__ , __leaf__)) ;
+
+
+
+
+extern int pthread_getcpuclockid (pthread_t __thread_id,
+      __clockid_t *__clock_id)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
+# 1145 "/usr/include/pthread.h" 3 4
+extern int pthread_atfork (void (*__prepare) (void),
+      void (*__parent) (void),
+      void (*__child) (void)) __attribute__ ((__nothrow__ , __leaf__));
+# 1159 "/usr/include/pthread.h" 3 4
+
+# 5 "../qemu/thread-posix.h" 2
+# 1 "/usr/include/semaphore.h" 1 3 4
+# 22 "/usr/include/semaphore.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/sys/types.h" 1 3 4
+# 27 "/usr/include/x86_64-linux-gnu/sys/types.h" 3 4
+
+
+
+
+
+
+typedef __u_char u_char;
+typedef __u_short u_short;
+typedef __u_int u_int;
+typedef __u_long u_long;
+typedef __quad_t quad_t;
+typedef __u_quad_t u_quad_t;
+typedef __fsid_t fsid_t;
+
+
+
+
+typedef __loff_t loff_t;
+
+
+
+typedef __ino_t ino_t;
+# 60 "/usr/include/x86_64-linux-gnu/sys/types.h" 3 4
+typedef __dev_t dev_t;
+
+
+
+
+typedef __gid_t gid_t;
+
+
+
+
+typedef __mode_t mode_t;
+
+
+
+
+typedef __nlink_t nlink_t;
+
+
+
+
+typedef __uid_t uid_t;
+
+
+
+
+
+typedef __off_t off_t;
+# 104 "/usr/include/x86_64-linux-gnu/sys/types.h" 3 4
+typedef __id_t id_t;
+
+
+
+
+typedef __ssize_t ssize_t;
+
+
+
+
+
+typedef __daddr_t daddr_t;
+typedef __caddr_t caddr_t;
+
+
+
+
+
+typedef __key_t key_t;
+# 146 "/usr/include/x86_64-linux-gnu/sys/types.h" 3 4
+# 1 "/usr/lib/gcc/x86_64-linux-gnu/5/include/stddef.h" 1 3 4
+# 147 "/usr/include/x86_64-linux-gnu/sys/types.h" 2 3 4
+
+
+
+typedef unsigned long int ulong;
+typedef unsigned short int ushort;
+typedef unsigned int uint;
+# 194 "/usr/include/x86_64-linux-gnu/sys/types.h" 3 4
+typedef int int8_t __attribute__ ((__mode__ (__QI__)));
+typedef int int16_t __attribute__ ((__mode__ (__HI__)));
+typedef int int32_t __attribute__ ((__mode__ (__SI__)));
+typedef int int64_t __attribute__ ((__mode__ (__DI__)));
+
+
+typedef unsigned int u_int8_t __attribute__ ((__mode__ (__QI__)));
+typedef unsigned int u_int16_t __attribute__ ((__mode__ (__HI__)));
+typedef unsigned int u_int32_t __attribute__ ((__mode__ (__SI__)));
+typedef unsigned int u_int64_t __attribute__ ((__mode__ (__DI__)));
+
+typedef int register_t __attribute__ ((__mode__ (__word__)));
+# 219 "/usr/include/x86_64-linux-gnu/sys/types.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/sys/select.h" 1 3 4
+# 30 "/usr/include/x86_64-linux-gnu/sys/select.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/select.h" 1 3 4
+# 22 "/usr/include/x86_64-linux-gnu/bits/select.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
+# 23 "/usr/include/x86_64-linux-gnu/bits/select.h" 2 3 4
+# 31 "/usr/include/x86_64-linux-gnu/sys/select.h" 2 3 4
+
+
+# 1 "/usr/include/x86_64-linux-gnu/bits/sigset.h" 1 3 4
+# 22 "/usr/include/x86_64-linux-gnu/bits/sigset.h" 3 4
+typedef int __sig_atomic_t;
+
+
+
+
+typedef struct
+  {
+    unsigned long int __val[(1024 / (8 * sizeof (unsigned long int)))];
+  } __sigset_t;
+# 34 "/usr/include/x86_64-linux-gnu/sys/select.h" 2 3 4
+
+
+
+typedef __sigset_t sigset_t;
+
+
+
+
+
+
+
+# 1 "/usr/include/x86_64-linux-gnu/bits/time.h" 1 3 4
+# 30 "/usr/include/x86_64-linux-gnu/bits/time.h" 3 4
+struct timeval
+  {
+    __time_t tv_sec;
+    __suseconds_t tv_usec;
+  };
+# 46 "/usr/include/x86_64-linux-gnu/sys/select.h" 2 3 4
+
+
+typedef __suseconds_t suseconds_t;
+
+
+
+
+
+typedef long int __fd_mask;
+# 64 "/usr/include/x86_64-linux-gnu/sys/select.h" 3 4
+typedef struct
+  {
+
+
+
+
+
+
+    __fd_mask __fds_bits[1024 / (8 * (int) sizeof (__fd_mask))];
+
+
+  } fd_set;
+
+
+
+
+
+
+typedef __fd_mask fd_mask;
+# 96 "/usr/include/x86_64-linux-gnu/sys/select.h" 3 4
+
+# 106 "/usr/include/x86_64-linux-gnu/sys/select.h" 3 4
+extern int select (int __nfds, fd_set *__restrict __readfds,
+     fd_set *__restrict __writefds,
+     fd_set *__restrict __exceptfds,
+     struct timeval *__restrict __timeout);
+# 118 "/usr/include/x86_64-linux-gnu/sys/select.h" 3 4
+extern int pselect (int __nfds, fd_set *__restrict __readfds,
+      fd_set *__restrict __writefds,
+      fd_set *__restrict __exceptfds,
+      const struct timespec *__restrict __timeout,
+      const __sigset_t *__restrict __sigmask);
+# 131 "/usr/include/x86_64-linux-gnu/sys/select.h" 3 4
+
+# 220 "/usr/include/x86_64-linux-gnu/sys/types.h" 2 3 4
+
+
+# 1 "/usr/include/x86_64-linux-gnu/sys/sysmacros.h" 1 3 4
+# 24 "/usr/include/x86_64-linux-gnu/sys/sysmacros.h" 3 4
+
+
+__extension__
+extern unsigned int gnu_dev_major (unsigned long long int __dev)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+__extension__
+extern unsigned int gnu_dev_minor (unsigned long long int __dev)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+__extension__
+extern unsigned long long int gnu_dev_makedev (unsigned int __major,
+            unsigned int __minor)
+     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+# 58 "/usr/include/x86_64-linux-gnu/sys/sysmacros.h" 3 4
+
+# 223 "/usr/include/x86_64-linux-gnu/sys/types.h" 2 3 4
+
+
+
+
+
+typedef __blksize_t blksize_t;
+
+
+
+
+
+
+typedef __blkcnt_t blkcnt_t;
+
+
+
+typedef __fsblkcnt_t fsblkcnt_t;
+
+
+
+typedef __fsfilcnt_t fsfilcnt_t;
+# 273 "/usr/include/x86_64-linux-gnu/sys/types.h" 3 4
+
+# 23 "/usr/include/semaphore.h" 2 3 4
+
+
+
+
+
+
+# 1 "/usr/include/x86_64-linux-gnu/bits/semaphore.h" 1 3 4
+# 23 "/usr/include/x86_64-linux-gnu/bits/semaphore.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
+# 24 "/usr/include/x86_64-linux-gnu/bits/semaphore.h" 2 3 4
+# 36 "/usr/include/x86_64-linux-gnu/bits/semaphore.h" 3 4
+typedef union
+{
+  char __size[32];
+  long int __align;
+} sem_t;
+# 30 "/usr/include/semaphore.h" 2 3 4
+
+
+
+
+
+
+extern int sem_init (sem_t *__sem, int __pshared, unsigned int __value)
+     __attribute__ ((__nothrow__ , __leaf__));
+
+extern int sem_destroy (sem_t *__sem) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern sem_t *sem_open (const char *__name, int __oflag, ...) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int sem_close (sem_t *__sem) __attribute__ ((__nothrow__ , __leaf__));
+
+
+extern int sem_unlink (const char *__name) __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+
+
+extern int sem_wait (sem_t *__sem);
+
+
+
+
+
+
+extern int sem_timedwait (sem_t *__restrict __sem,
+     const struct timespec *__restrict __abstime);
+
+
+
+extern int sem_trywait (sem_t *__sem) __attribute__ ((__nothrow__));
+
+
+extern int sem_post (sem_t *__sem) __attribute__ ((__nothrow__));
+
+
+extern int sem_getvalue (sem_t *__restrict __sem, int *__restrict __sval)
+     __attribute__ ((__nothrow__ , __leaf__));
+
+
+
+# 6 "../qemu/thread-posix.h" 2
+
+
+# 7 "../qemu/thread-posix.h"
+typedef QemuMutex QemuRecMutex;
+
+
+
+
+
+struct QemuMutex {
+    pthread_mutex_t lock;
+};
+
+struct QemuCond {
+    pthread_cond_t cond;
+};
+
+struct QemuSemaphore {
+
+
+
+
+
+    sem_t sem;
+
+};
+
+struct QemuEvent {
+
+
+
+
+    unsigned value;
+};
+
+struct QemuThread {
+    pthread_t thread;
+};
+# 18 "../qemu/thread.h" 2
+
+
+
+
+
+void qemu_mutex_init(QemuMutex *mutex);
+void qemu_mutex_destroy(QemuMutex *mutex);
+void qemu_mutex_lock(QemuMutex *mutex);
+int qemu_mutex_trylock(QemuMutex *mutex);
+void qemu_mutex_unlock(QemuMutex *mutex);
+
+
+void qemu_rec_mutex_init(QemuRecMutex *mutex);
+
+void qemu_cond_init(QemuCond *cond);
+void qemu_cond_destroy(QemuCond *cond);
+
+
+
+
+
+
+void qemu_cond_signal(QemuCond *cond);
+void qemu_cond_broadcast(QemuCond *cond);
+void qemu_cond_wait(QemuCond *cond, QemuMutex *mutex);
+
+void qemu_sem_init(QemuSemaphore *sem, int init);
+void qemu_sem_post(QemuSemaphore *sem);
+void qemu_sem_wait(QemuSemaphore *sem);
+int qemu_sem_timedwait(QemuSemaphore *sem, int ms);
+void qemu_sem_destroy(QemuSemaphore *sem);
+
+void qemu_event_init(QemuEvent *ev, bool init);
+void qemu_event_set(QemuEvent *ev);
+void qemu_event_reset(QemuEvent *ev);
+void qemu_event_wait(QemuEvent *ev);
+void qemu_event_destroy(QemuEvent *ev);
+
+void qemu_thread_create(QemuThread *thread, const char *name,
+                        void *(*start_routine)(void *),
+                        void *arg, int mode);
+void *qemu_thread_join(QemuThread *thread);
+void qemu_thread_get_self(QemuThread *thread);
+bool qemu_thread_is_self(QemuThread *thread);
+void qemu_thread_exit(void *retval);
+void qemu_thread_naming(bool enable);
+
+struct Notifier;
+void qemu_thread_atexit_add(struct Notifier *notifier);
+void qemu_thread_atexit_remove(struct Notifier *notifier);
+
+typedef struct QemuSpin {
+    int value;
+} QemuSpin;
+
+static inline void qemu_spin_init(QemuSpin *spin)
+{
+    __sync_lock_release(&spin->value);
+}
+
+static inline void qemu_spin_lock(QemuSpin *spin)
+{
+    while (unlikely(__sync_lock_test_and_set(&spin->value, true))) {
+        while (({ QEMU_BUILD_BUG_ON(sizeof(*&spin->value) > sizeof(void *)); __atomic_load_n(&spin->value, 0); })) {
+            asm volatile("rep; nop" ::: "memory");
+        }
+    }
+}
+
+static inline bool qemu_spin_trylock(QemuSpin *spin)
+{
+    return __sync_lock_test_and_set(&spin->value, true);
+}
+
+static inline bool qemu_spin_locked(QemuSpin *spin)
+{
+    return ({ QEMU_BUILD_BUG_ON(sizeof(*&spin->value) > sizeof(void *)); __atomic_load_n(&spin->value, 0); });
+}
+
+static inline void qemu_spin_unlock(QemuSpin *spin)
+{
+    __sync_lock_release(&spin->value);
+}
+
+struct QemuLockCnt {
+
+    QemuMutex mutex;
+
+    unsigned count;
+};
+# 116 "../qemu/thread.h"
+void qemu_lockcnt_init(QemuLockCnt *lockcnt);
+
+
+
+
+
+
+
+void qemu_lockcnt_destroy(QemuLockCnt *lockcnt);
+# 146 "../qemu/thread.h"
+void qemu_lockcnt_inc(QemuLockCnt *lockcnt);
+
+
+
+
+
+void qemu_lockcnt_dec(QemuLockCnt *lockcnt);
+# 162 "../qemu/thread.h"
+bool qemu_lockcnt_dec_and_lock(QemuLockCnt *lockcnt);
+# 172 "../qemu/thread.h"
+bool qemu_lockcnt_dec_if_lock(QemuLockCnt *lockcnt);
+# 182 "../qemu/thread.h"
+void qemu_lockcnt_lock(QemuLockCnt *lockcnt);
+
+
+
+
+
+void qemu_lockcnt_unlock(QemuLockCnt *lockcnt);
+# 201 "../qemu/thread.h"
+void qemu_lockcnt_inc_and_unlock(QemuLockCnt *lockcnt);
+# 211 "../qemu/thread.h"
+unsigned qemu_lockcnt_count(QemuLockCnt *lockcnt);
+# 6 "../exec/ramlist.h" 2
+# 1 "../qemu/rcu.h" 1
+# 54 "../qemu/rcu.h"
+extern unsigned long rcu_gp_ctr;
+
+extern QemuEvent rcu_gp_event;
+
+struct rcu_reader_data {
+
+    unsigned long ctr;
+    bool waiting;
+
+
+    unsigned depth;
+
+
+    struct { struct rcu_reader_data *le_next; struct rcu_reader_data **le_prev; } node;
+};
+
+extern __thread struct rcu_reader_data rcu_reader;
+
+static inline void rcu_read_lock(void)
+{
+    struct rcu_reader_data *p_rcu_reader = &rcu_reader;
+    unsigned ctr;
+
+    if (p_rcu_reader->depth++ > 0) {
+        return;
+    }
+
+    ctr = ({ QEMU_BUILD_BUG_ON(sizeof(*&rcu_gp_ctr) > sizeof(void *)); __atomic_load_n(&rcu_gp_ctr, 0); });
+    ({ QEMU_BUILD_BUG_ON(sizeof(*&p_rcu_reader->ctr) > sizeof(void *)); ({ __atomic_exchange_n(&p_rcu_reader->ctr, (ctr), 5); }); });
+}
+
+static inline void rcu_read_unlock(void)
+{
+    struct rcu_reader_data *p_rcu_reader = &rcu_reader;
+
+    assert(p_rcu_reader->depth != 0);
+    if (--p_rcu_reader->depth > 0) {
+        return;
+    }
+
+    ({ QEMU_BUILD_BUG_ON(sizeof(*&p_rcu_reader->ctr) > sizeof(void *)); ({ __atomic_exchange_n(&p_rcu_reader->ctr, (0), 5); }); });
+    if (unlikely(({ QEMU_BUILD_BUG_ON(sizeof(*&p_rcu_reader->waiting) > sizeof(void *)); __atomic_load_n(&p_rcu_reader->waiting, 0); }))) {
+        do { QEMU_BUILD_BUG_ON(sizeof(*&p_rcu_reader->waiting) > sizeof(void *)); __atomic_store_n(&p_rcu_reader->waiting, false, 0); } while(0);
+        qemu_event_set(&rcu_gp_event);
+    }
+}
+
+extern void synchronize_rcu(void);
+
+
+
+
+extern void rcu_register_thread(void);
+extern void rcu_unregister_thread(void);
+extern void rcu_after_fork(void);
+
+struct rcu_head;
+typedef void RCUCBFunc(struct rcu_head *head);
+
+struct rcu_head {
+    struct rcu_head *next;
+    RCUCBFunc *func;
+};
+
+extern void call_rcu1(struct rcu_head *head, RCUCBFunc *func);
+# 7 "../exec/ramlist.h" 2
+
+typedef struct RAMBlockNotifier RAMBlockNotifier;
+# 41 "../exec/ramlist.h"
+typedef struct {
+    struct rcu_head rcu;
+    unsigned long *blocks[];
+} DirtyMemoryBlocks;
+
+typedef struct RAMList {
+    QemuMutex mutex;
+    RAMBlock *mru_block;
+
+    struct { struct RAMBlock *lh_first; } blocks;
+    DirtyMemoryBlocks *dirty_memory[3];
+    uint32_t version;
+    struct { struct RAMBlockNotifier *lh_first; } ramblock_notifiers;
+} RAMList;
+extern RAMList ram_list;
+
+void qemu_mutex_lock_ramlist(void);
+void qemu_mutex_unlock_ramlist(void);
+
+struct RAMBlockNotifier {
+    void (*ram_block_added)(RAMBlockNotifier *n, void *host, size_t size);
+    void (*ram_block_removed)(RAMBlockNotifier *n, void *host, size_t size);
+    struct { struct RAMBlockNotifier *le_next; struct RAMBlockNotifier **le_prev; } next;
+};
+
+void ram_block_notifier_add(RAMBlockNotifier *n);
+void ram_block_notifier_remove(RAMBlockNotifier *n);
+void ram_block_notify_add(void *host, size_t size);
+void ram_block_notify_remove(void *host, size_t size);
+# 25 "ram_addr.h" 2
+
+struct RAMBlock {
+    struct rcu_head rcu;
+    struct MemoryRegion *mr;
+    uint8_t *host;
+    ram_addr_t offset;
+    ram_addr_t used_length;
+    ram_addr_t max_length;
+    void (*resized)(const char*, uint64_t length, void *host);
+    uint32_t flags;
+
+    char idstr[256];
+
+    struct { struct RAMBlock *le_next; struct RAMBlock **le_prev; } next;
+    struct { struct RAMBlockNotifier *lh_first; } ramblock_notifiers;
+    int fd;
+    size_t page_size;
+};
+
+static inline bool offset_in_ramblock(RAMBlock *b, ram_addr_t offset)
+{
+    return (b && b->host && offset < b->used_length) ? true : false;
+}
+
+static inline void *ramblock_ptr(RAMBlock *block, ram_addr_t offset)
+{
+    assert(offset_in_ramblock(block, offset));
+    return (char *)block->host + offset;
+}
+
+ram_addr_t last_ram_offset(void);
+RAMBlock *qemu_ram_alloc_from_file(ram_addr_t size, MemoryRegion *mr,
+                                   bool share, const char *mem_path,
+                                   Error **errp);
+RAMBlock *qemu_ram_alloc_from_ptr(ram_addr_t size, void *host,
+                                  MemoryRegion *mr, Error **errp);
+RAMBlock *qemu_ram_alloc(ram_addr_t size, MemoryRegion *mr, Error **errp);
+RAMBlock *qemu_ram_alloc_resizeable(ram_addr_t size, ram_addr_t max_size,
+                                    void (*resized)(const char*,
+                                                    uint64_t length,
+                                                    void *host),
+                                    MemoryRegion *mr, Error **errp);
+void qemu_ram_free(RAMBlock *block);
+
+int qemu_ram_resize(RAMBlock *block, ram_addr_t newsize, Error **errp);
+
+
+
+
+static inline bool cpu_physical_memory_get_dirty(ram_addr_t start,
+                                                 ram_addr_t length,
+                                                 unsigned client)
+{
+    DirtyMemoryBlocks *blocks;
+    unsigned long end, page;
+    unsigned long idx, offset, base;
+    bool dirty = false;
+
+    assert(client < 3);
+
+    end = TARGET_PAGE_ALIGN(start + length) >> TARGET_PAGE_BITS;
+    page = start >> TARGET_PAGE_BITS;
+
+    rcu_read_lock();
+
+    blocks = ({ QEMU_BUILD_BUG_ON(sizeof(*&ram_list.dirty_memory[client]) > sizeof(void *)); typeof( __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile bool), (bool)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile signed char), (signed char)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile unsigned char), (unsigned char)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile signed short), (signed short)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile unsigned short), (unsigned short)1, (*&ram_list.dirty_memory[client])+0)))))) _val; __atomic_load(&ram_list.dirty_memory[client], &_val, 0); ({ asm volatile("" ::: "memory"); (void)0; });; _val; });
+
+    idx = page / ((ram_addr_t)256 * 1024 * 8);
+    offset = page % ((ram_addr_t)256 * 1024 * 8);
+    base = page - offset;
+    while (page < end) {
+        unsigned long next = MIN(end, base + ((ram_addr_t)256 * 1024 * 8));
+        unsigned long num = next - base;
+        unsigned long found = find_next_bit(blocks->blocks[idx], num, offset);
+        if (found < num) {
+            dirty = true;
+            break;
+        }
+
+        page = next;
+        idx++;
+        offset = 0;
+        base += ((ram_addr_t)256 * 1024 * 8);
+    }
+
+    rcu_read_unlock();
+
+    return dirty;
+}
+
+static inline bool cpu_physical_memory_all_dirty(ram_addr_t start,
+                                                 ram_addr_t length,
+                                                 unsigned client)
+{
+    DirtyMemoryBlocks *blocks;
+    unsigned long end, page;
+    unsigned long idx, offset, base;
+    bool dirty = true;
+
+    assert(client < 3);
+
+    end = TARGET_PAGE_ALIGN(start + length) >> TARGET_PAGE_BITS;
+    page = start >> TARGET_PAGE_BITS;
+
+    rcu_read_lock();
+
+    blocks = ({ QEMU_BUILD_BUG_ON(sizeof(*&ram_list.dirty_memory[client]) > sizeof(void *)); typeof( __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile bool), (bool)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile signed char), (signed char)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile unsigned char), (unsigned char)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile signed short), (signed short)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile unsigned short), (unsigned short)1, (*&ram_list.dirty_memory[client])+0)))))) _val; __atomic_load(&ram_list.dirty_memory[client], &_val, 0); ({ asm volatile("" ::: "memory"); (void)0; });; _val; });
+
+    idx = page / ((ram_addr_t)256 * 1024 * 8);
+    offset = page % ((ram_addr_t)256 * 1024 * 8);
+    base = page - offset;
+    while (page < end) {
+        unsigned long next = MIN(end, base + ((ram_addr_t)256 * 1024 * 8));
+        unsigned long num = next - base;
+        unsigned long found = find_next_zero_bit(blocks->blocks[idx], num, offset);
+        if (found < num) {
+            dirty = false;
+            break;
+        }
+
+        page = next;
+        idx++;
+        offset = 0;
+        base += ((ram_addr_t)256 * 1024 * 8);
+    }
+
+    rcu_read_unlock();
+
+    return dirty;
+}
+
+static inline bool cpu_physical_memory_get_dirty_flag(ram_addr_t addr,
+                                                      unsigned client)
+{
+    return cpu_physical_memory_get_dirty(addr, 1, client);
+}
+
+static inline bool cpu_physical_memory_is_clean(ram_addr_t addr)
+{
+    bool vga = cpu_physical_memory_get_dirty_flag(addr, 0);
+    bool code = cpu_physical_memory_get_dirty_flag(addr, 1);
+    bool migration =
+        cpu_physical_memory_get_dirty_flag(addr, 2);
+    return !(vga && code && migration);
+}
+
+static inline uint8_t cpu_physical_memory_range_includes_clean(ram_addr_t start,
+                                                               ram_addr_t length,
+                                                               uint8_t mask)
+{
+    uint8_t ret = 0;
+
+    if (mask & (1 << 0) &&
+        !cpu_physical_memory_all_dirty(start, length, 0)) {
+        ret |= (1 << 0);
+    }
+    if (mask & (1 << 1) &&
+        !cpu_physical_memory_all_dirty(start, length, 1)) {
+        ret |= (1 << 1);
+    }
+    if (mask & (1 << 2) &&
+        !cpu_physical_memory_all_dirty(start, length, 2)) {
+        ret |= (1 << 2);
+    }
+    return ret;
+}
+
+static inline void cpu_physical_memory_set_dirty_flag(ram_addr_t addr,
+                                                      unsigned client)
+{
+    unsigned long page, idx, offset;
+    DirtyMemoryBlocks *blocks;
+
+    assert(client < 3);
+
+    page = addr >> TARGET_PAGE_BITS;
+    idx = page / ((ram_addr_t)256 * 1024 * 8);
+    offset = page % ((ram_addr_t)256 * 1024 * 8);
+
+    rcu_read_lock();
+
+    blocks = ({ QEMU_BUILD_BUG_ON(sizeof(*&ram_list.dirty_memory[client]) > sizeof(void *)); typeof( __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile bool), (bool)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile signed char), (signed char)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile unsigned char), (unsigned char)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile signed short), (signed short)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), volatile unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[client]), const volatile unsigned short), (unsigned short)1, (*&ram_list.dirty_memory[client])+0)))))) _val; __atomic_load(&ram_list.dirty_memory[client], &_val, 0); ({ asm volatile("" ::: "memory"); (void)0; });; _val; });
+
+    set_bit_atomic(offset, blocks->blocks[idx]);
+
+    rcu_read_unlock();
+}
+
+static inline void cpu_physical_memory_set_dirty_range(ram_addr_t start,
+                                                       ram_addr_t length,
+                                                       uint8_t mask)
+{
+    DirtyMemoryBlocks *blocks[3];
+    unsigned long end, page;
+    unsigned long idx, offset, base;
+    int i;
+
+    if (!mask && !xen_enabled()) {
+        return;
+    }
+
+    end = TARGET_PAGE_ALIGN(start + length) >> TARGET_PAGE_BITS;
+    page = start >> TARGET_PAGE_BITS;
+
+    rcu_read_lock();
+
+    for (i = 0; i < 3; i++) {
+        blocks[i] = ({ QEMU_BUILD_BUG_ON(sizeof(*&ram_list.dirty_memory[i]) > sizeof(void *)); typeof( __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), volatile bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const volatile bool), (bool)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), volatile signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const volatile signed char), (signed char)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), volatile unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const volatile unsigned char), (unsigned char)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), volatile signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const volatile signed short), (signed short)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), volatile unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const volatile unsigned short), (unsigned short)1, (*&ram_list.dirty_memory[i])+0)))))) _val; __atomic_load(&ram_list.dirty_memory[i], &_val, 0); ({ asm volatile("" ::: "memory"); (void)0; });; _val; });
+    }
+
+    idx = page / ((ram_addr_t)256 * 1024 * 8);
+    offset = page % ((ram_addr_t)256 * 1024 * 8);
+    base = page - offset;
+    while (page < end) {
+        unsigned long next = MIN(end, base + ((ram_addr_t)256 * 1024 * 8));
+
+        if (likely(mask & (1 << 2))) {
+            bitmap_set_atomic(blocks[2]->blocks[idx],
+                              offset, next - page);
+        }
+        if (unlikely(mask & (1 << 0))) {
+            bitmap_set_atomic(blocks[0]->blocks[idx],
+                              offset, next - page);
+        }
+        if (unlikely(mask & (1 << 1))) {
+            bitmap_set_atomic(blocks[1]->blocks[idx],
+                              offset, next - page);
+        }
+
+        page = next;
+        idx++;
+        offset = 0;
+        base += ((ram_addr_t)256 * 1024 * 8);
+    }
+
+    rcu_read_unlock();
+
+    xen_modified_memory(start, length);
+}
+
+
+static inline void cpu_physical_memory_set_dirty_lebitmap(unsigned long *bitmap,
+                                                          ram_addr_t start,
+                                                          ram_addr_t pages)
+{
+    unsigned long i, j;
+    unsigned long page_number, c;
+    hwaddr addr;
+    ram_addr_t ram_addr;
+    unsigned long len = (pages + HOST_LONG_BITS - 1) / HOST_LONG_BITS;
+    unsigned long hpratio = getpagesize() / TARGET_PAGE_SIZE;
+    unsigned long page = BIT_WORD(start >> TARGET_PAGE_BITS);
+
+
+    if ((((page * BITS_PER_LONG) << TARGET_PAGE_BITS) == start) &&
+        (hpratio == 1)) {
+        unsigned long **blocks[3];
+        unsigned long idx;
+        unsigned long offset;
+        long k;
+        long nr = BITS_TO_LONGS(pages);
+
+        idx = (start >> TARGET_PAGE_BITS) / ((ram_addr_t)256 * 1024 * 8);
+        offset = BIT_WORD((start >> TARGET_PAGE_BITS) %
+                          ((ram_addr_t)256 * 1024 * 8));
+
+        rcu_read_lock();
+
+        for (i = 0; i < 3; i++) {
+            blocks[i] = ({ QEMU_BUILD_BUG_ON(sizeof(*&ram_list.dirty_memory[i]) > sizeof(void *)); typeof( __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), volatile bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const volatile bool), (bool)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), volatile signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const volatile signed char), (signed char)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), volatile unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const volatile unsigned char), (unsigned char)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), volatile signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const volatile signed short), (signed short)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), volatile unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[i]), const volatile unsigned short), (unsigned short)1, (*&ram_list.dirty_memory[i])+0)))))) _val; __atomic_load(&ram_list.dirty_memory[i], &_val, 0); ({ asm volatile("" ::: "memory"); (void)0; });; _val; })->blocks;
+        }
+
+        for (k = 0; k < nr; k++) {
+            if (bitmap[k]) {
+                unsigned long temp = leul_to_cpu(bitmap[k]);
+
+                ((void) __atomic_fetch_or(&blocks[2][idx][offset], temp, 5));
+                ((void) __atomic_fetch_or(&blocks[0][idx][offset], temp, 5));
+                if (tcg_enabled()) {
+                    ((void) __atomic_fetch_or(&blocks[1][idx][offset], temp, 5));
+                }
+            }
+
+            if (++offset >= BITS_TO_LONGS(((ram_addr_t)256 * 1024 * 8))) {
+                offset = 0;
+                idx++;
+            }
+        }
+
+        rcu_read_unlock();
+
+        xen_modified_memory(start, pages << TARGET_PAGE_BITS);
+    } else {
+        uint8_t clients = tcg_enabled() ? ((1 << 3) - 1) : (((1 << 3) - 1) & ~(1 << 1));
+
+
+
+
+        for (i = 0; i < len; i++) {
+            if (bitmap[i] != 0) {
+                c = leul_to_cpu(bitmap[i]);
+                do {
+                    j = ctzl(c);
+                    c &= ~(1ul << j);
+                    page_number = (i * HOST_LONG_BITS + j) * hpratio;
+                    addr = page_number * TARGET_PAGE_SIZE;
+                    ram_addr = start + addr;
+                    cpu_physical_memory_set_dirty_range(ram_addr,
+                                       TARGET_PAGE_SIZE * hpratio, clients);
+                } while (c != 0);
+            }
+        }
+    }
+}
+
+
+bool cpu_physical_memory_test_and_clear_dirty(ram_addr_t start,
+                                              ram_addr_t length,
+                                              unsigned client);
+
+static inline void cpu_physical_memory_clear_dirty_range(ram_addr_t start,
+                                                         ram_addr_t length)
+{
+    cpu_physical_memory_test_and_clear_dirty(start, length, 2);
+    cpu_physical_memory_test_and_clear_dirty(start, length, 0);
+    cpu_physical_memory_test_and_clear_dirty(start, length, 1);
+}
+
+
+static inline
+uint64_t cpu_physical_memory_sync_dirty_bitmap(unsigned long *dest,
+                                               ram_addr_t start,
+                                               ram_addr_t length)
+{
+    ram_addr_t addr;
+    unsigned long page = BIT_WORD(start >> TARGET_PAGE_BITS);
+    uint64_t num_dirty = 0;
+
+
+    if (((page * BITS_PER_LONG) << TARGET_PAGE_BITS) == start) {
+        int k;
+        int nr = BITS_TO_LONGS(length >> TARGET_PAGE_BITS);
+        unsigned long * const *src;
+        unsigned long idx = (page * BITS_PER_LONG) / ((ram_addr_t)256 * 1024 * 8);
+        unsigned long offset = BIT_WORD((page * BITS_PER_LONG) %
+                                        ((ram_addr_t)256 * 1024 * 8));
+
+        rcu_read_lock();
+
+        src = ({ QEMU_BUILD_BUG_ON(sizeof(*&ram_list.dirty_memory[2]) > sizeof(void *)); typeof( __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), const bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), volatile bool) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), const volatile bool), (bool)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), const signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), volatile signed char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), const volatile signed char), (signed char)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), const unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), volatile unsigned char) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), const volatile unsigned char), (unsigned char)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), const signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), volatile signed short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), const volatile signed short), (signed short)1, __builtin_choose_expr( __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), const unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), volatile unsigned short) || __builtin_types_compatible_p(typeof(*&ram_list.dirty_memory[2]), const volatile unsigned short), (unsigned short)1, (*&ram_list.dirty_memory[2])+0)))))) _val; __atomic_load(&ram_list.dirty_memory[2], &_val, 0); ({ asm volatile("" ::: "memory"); (void)0; });; _val; })
+                                                               ->blocks;
+
+        for (k = page; k < page + nr; k++) {
+            if (src[idx][offset]) {
+                unsigned long bits = ({ QEMU_BUILD_BUG_ON(sizeof(*&src[idx][offset]) > sizeof(void *)); ({ __atomic_exchange_n(&src[idx][offset], (0), 5); }); });
+                unsigned long new_dirty;
+                new_dirty = ~dest[k];
+                dest[k] |= bits;
+                new_dirty &= bits;
+                num_dirty += ctpopl(new_dirty);
+            }
+
+            if (++offset >= BITS_TO_LONGS(((ram_addr_t)256 * 1024 * 8))) {
+                offset = 0;
+                idx++;
+            }
+        }
+
+        rcu_read_unlock();
+    } else {
+        for (addr = 0; addr < length; addr += TARGET_PAGE_SIZE) {
+            if (cpu_physical_memory_test_and_clear_dirty(
+                        start + addr,
+                        TARGET_PAGE_SIZE,
+                        2)) {
+                long k = (start + addr) >> TARGET_PAGE_BITS;
+                if (!test_and_set_bit(k, dest)) {
+                    num_dirty++;
+                }
+            }
+        }
+    }
+
+    return num_dirty;
+}
+
+void migration_bitmap_extend(ram_addr_t old, ram_addr_t new);

@@ -1,39 +1,26 @@
-# 1 "sysbus.h"
-# 1 "<built-in>"
-# 1 "<command-line>"
-# 1 "/usr/include/stdc-predef.h" 1 3 4
-# 1 "<command-line>" 2
-# 1 "sysbus.h"
 
+typedef unsigned long long uint64_t;
+typedef unsigned int uint32_t;
+typedef unsigned short uint16_t;
+typedef unsigned char uint8_t;
 
-
-
-
-# 1 "/home/alom/git/panda/include/hw/qdev.h" 1
-
-
-
-# 1 "/home/alom/git/panda/include/hw/hw.h" 1
-# 9 "/home/alom/git/panda/include/hw/hw.h"
-# 1 "/home/alom/git/panda/include/exec/cpu-common.h" 1
+typedef signed long long int64_t;
+typedef signed int int32_t;
+typedef signed short int16_t;
+typedef signed char int8_t;
 
 
 
 
 
 
-# 1 "/home/alom/git/panda/include/exec/hwaddr.h" 1
-# 11 "/home/alom/git/panda/include/exec/hwaddr.h"
+
 typedef uint64_t hwaddr;
-# 8 "/home/alom/git/panda/include/exec/cpu-common.h" 2
-
-
-# 1 "/home/alom/git/panda/include/qemu/bswap.h" 1
 
 
 
-# 1 "/home/alom/git/panda/include/fpu/softfloat.h" 1
-# 94 "/home/alom/git/panda/include/fpu/softfloat.h"
+
+
 typedef uint8_t flag;
 
 
@@ -47,11 +34,9 @@ enum {
     float_relation_greater = 1,
     float_relation_unordered = 2
 };
-# 137 "/home/alom/git/panda/include/fpu/softfloat.h"
 typedef uint16_t float16;
 typedef uint32_t float32;
 typedef uint64_t float64;
-# 150 "/home/alom/git/panda/include/fpu/softfloat.h"
 typedef struct {
     uint64_t low;
     uint16_t high;
@@ -100,7 +85,7 @@ enum {
     float_flag_output_denormal = 128
 };
 
-typedef struct float_status {
+struct float_status {
     signed char float_detect_tininess;
     signed char float_rounding_mode;
     uint8_t float_exception_flags;
@@ -111,7 +96,9 @@ typedef struct float_status {
     flag flush_inputs_to_zero;
     flag default_nan_mode;
     flag snan_bit_is_one;
-} float_status;
+};
+
+typedef struct float_status float_status;
 
 static inline void set_float_detect_tininess(int val, float_status *status)
 {
@@ -187,30 +174,29 @@ void float_raise(uint8_t flags, float_status *status);
 
 float32 float32_squash_input_denormal(float32 a, float_status *status);
 float64 float64_squash_input_denormal(float64 a, float_status *status);
-# 294 "/home/alom/git/panda/include/fpu/softfloat.h"
-enum {
+/*enum {
     float_muladd_negate_c = 1,
     float_muladd_negate_product = 2,
     float_muladd_negate_result = 4,
     float_muladd_halve_result = 8,
-};
+};*/
 
 
 
 
-float32 int32_to_float32(int32_t, float_status *status);
-float64 int32_to_float64(int32_t, float_status *status);
-float32 uint32_to_float32(uint32_t, float_status *status);
-float64 uint32_to_float64(uint32_t, float_status *status);
-floatx80 int32_to_floatx80(int32_t, float_status *status);
-float128 int32_to_float128(int32_t, float_status *status);
-float32 int64_to_float32(int64_t, float_status *status);
-float64 int64_to_float64(int64_t, float_status *status);
-floatx80 int64_to_floatx80(int64_t, float_status *status);
-float128 int64_to_float128(int64_t, float_status *status);
-float32 uint64_to_float32(uint64_t, float_status *status);
-float64 uint64_to_float64(uint64_t, float_status *status);
-float128 uint64_to_float128(uint64_t, float_status *status);
+float32 int32_to_float32(int32_t v, float_status *status);
+float64 int32_to_float64(int32_t v, float_status *status);
+float32 uint32_to_float32(uint32_t v, float_status *status);
+float64 uint32_to_float64(uint32_t v, float_status *status);
+floatx80 int32_to_floatx80(int32_t v, float_status *status);
+float128 int32_to_float128(int32_t v, float_status *status);
+float32 int64_to_float32(int64_t v, float_status *status);
+float64 int64_to_float64(int64_t v, float_status *status);
+floatx80 int64_to_floatx80(int64_t v, float_status *status);
+float128 int64_to_float128(int64_t v, float_status *status);
+float32 uint64_to_float32(uint64_t v, float_status *status);
+float64 uint64_to_float64(uint64_t v, float_status *status);
+float128 uint64_to_float128(uint64_t v, float_status *status);
 
 
 static inline float32 int16_to_float32(int16_t v, float_status *status)
@@ -376,7 +362,6 @@ static inline float32 float32_set_sign(float32 a, int sign)
 {
     return (((a) & 0x7fffffff) | (sign << 31));
 }
-# 494 "/home/alom/git/panda/include/fpu/softfloat.h"
 float32 float32_default_nan(float_status *status);
 
 
@@ -478,7 +463,6 @@ static inline float64 float64_set_sign(float64 a, int sign)
     return (((a) & 0x7fffffffffffffffULL) | ((int64_t)sign << 63))
                                                 ;
 }
-# 606 "/home/alom/git/panda/include/fpu/softfloat.h"
 float64 float64_default_nan(float_status *status);
 
 
@@ -553,12 +537,10 @@ static inline int floatx80_is_any_nan(floatx80 a)
 {
     return ((a.high & 0x7fff) == 0x7fff) && (a.low<<1);
 }
-# 691 "/home/alom/git/panda/include/fpu/softfloat.h"
 static inline bool floatx80_invalid_encoding(floatx80 a)
 {
     return (a.low & (1ULL << 63)) == 0 && (a.high & 0x7FFF) != 0;
 }
-# 706 "/home/alom/git/panda/include/fpu/softfloat.h"
 floatx80 floatx80_default_nan(float_status *status);
 
 
@@ -641,8 +623,6 @@ static inline int float128_is_any_nan(float128 a)
 
 
 float128 float128_default_nan(float_status *status);
-# 5 "/home/alom/git/panda/include/qemu/bswap.h" 2
-# 29 "/home/alom/git/panda/include/qemu/bswap.h"
 static inline uint16_t bswap16(uint16_t x)
 {
     return (((x & 0x00ff) << 8) |
@@ -684,7 +664,6 @@ static inline void bswap64s(uint64_t *s)
 {
     *s = bswap64(*s);
 }
-# 162 "/home/alom/git/panda/include/qemu/bswap.h"
 static inline uint16_t be16_to_cpu(uint16_t v){ return glue(be, _bswap)(v, 16);}static inline uint16_t cpu_to_be16(uint16_t v){ return glue(be, _bswap)(v, 16);}static inline void be16_to_cpus(uint16_t *p){ glue(be, _bswaps)(p, 16);}static inline void cpu_to_be16s(uint16_t *p){ glue(be, _bswaps)(p, 16);}
 static inline uint32_t be32_to_cpu(uint32_t v){ return glue(be, _bswap)(v, 32);}static inline uint32_t cpu_to_be32(uint32_t v){ return glue(be, _bswap)(v, 32);}static inline void be32_to_cpus(uint32_t *p){ glue(be, _bswaps)(p, 32);}static inline void cpu_to_be32s(uint32_t *p){ glue(be, _bswaps)(p, 32);}
 static inline uint64_t be64_to_cpu(uint64_t v){ return glue(be, _bswap)(v, 64);}static inline uint64_t cpu_to_be64(uint64_t v){ return glue(be, _bswap)(v, 64);}static inline void be64_to_cpus(uint64_t *p){ glue(be, _bswaps)(p, 64);}static inline void cpu_to_be64s(uint64_t *p){ glue(be, _bswaps)(p, 64);}
@@ -698,7 +677,6 @@ static inline uint32_t qemu_bswap_len(uint32_t value, int len)
 {
     return bswap32(value) >> (32 - 8 * len);
 }
-# 197 "/home/alom/git/panda/include/qemu/bswap.h"
 typedef union {
     float32 f;
     uint32_t l;
@@ -730,7 +708,6 @@ typedef union {
 
 typedef union {
     float128 q;
-# 240 "/home/alom/git/panda/include/qemu/bswap.h"
     struct {
         uint32_t lowest;
         uint32_t lower;
@@ -743,7 +720,6 @@ typedef union {
     } ll;
 
 } CPU_QuadU;
-# 295 "/home/alom/git/panda/include/qemu/bswap.h"
 static inline int ldub_p(const void *ptr)
 {
     return *(uint8_t *)ptr;
@@ -935,19 +911,12 @@ static inline void stfq_be_p(void *ptr, float64 v)
     u.d = v;
     stq_be_p(ptr, u.ll);
 }
-# 499 "/home/alom/git/panda/include/qemu/bswap.h"
 static inline unsigned long leul_to_cpu(unsigned long v)
 {
 
 
 
     return (v);
-# 11 "/home/alom/git/panda/include/exec/cpu-common.h" 2
-# 1 "/home/alom/git/panda/include/qemu/queue.h" 1
-# 81 "/home/alom/git/panda/include/qemu/queue.h"
-# 1 "/home/alom/git/panda/include/qemu/atomic.h" 1
-# 82 "/home/alom/git/panda/include/qemu/queue.h" 2
-# 444 "/home/alom/git/panda/include/qemu/queue.h"
 typedef struct DUMMY_Q_ENTRY DUMMY_Q_ENTRY;
 typedef struct DUMMY_Q DUMMY_Q;
 
@@ -958,24 +927,17 @@ struct DUMMY_Q_ENTRY {
 struct DUMMY_Q {
         struct DUMMY_Q_HEAD { struct DUMMY_Q_ENTRY *tqh_first; struct DUMMY_Q_ENTRY * *tqh_last; } head;
 };
-# 12 "/home/alom/git/panda/include/exec/cpu-common.h" 2
-# 1 "/home/alom/git/panda/include/qemu/fprintf-fn.h" 1
 
 
 
 
 
 
-# 1 "/home/alom/git/panda/include/qemu/compiler.h" 1
-# 8 "/home/alom/git/panda/include/qemu/fprintf-fn.h" 2
 
 
 
 
-typedef int (*fprintf_function)(FILE *f, const char *fmt, ...)
-    __attribute__((format(gnu_printf, 2, 3)));
-# 13 "/home/alom/git/panda/include/exec/cpu-common.h" 2
-# 21 "/home/alom/git/panda/include/exec/cpu-common.h"
+typedef int (*fprintf_function)(FILE *f, const char *fmt, ...);
 typedef struct CPUListState {
     fprintf_function cpu_fprintf;
     FILE *file;
@@ -1065,11 +1027,6 @@ typedef int (RAMBlockIterFunc)(const char *block_name, void *host_addr,
     ram_addr_t offset, ram_addr_t length, void *opaque);
 
 int qemu_ram_foreach_block(RAMBlockIterFunc func, void *opaque);
-# 10 "/home/alom/git/panda/include/hw/hw.h" 2
-# 1 "/home/alom/git/panda/include/qom/object.h" 1
-# 17 "/home/alom/git/panda/include/qom/object.h"
-# 1 "/home/alom/git/panda/build/qapi-types.h" 1
-# 24 "/home/alom/git/panda/build/qapi-types.h"
 typedef enum QType {
     QTYPE_NONE = 0,
     QTYPE_QNULL = 1,
@@ -7133,7 +7090,6 @@ struct q_obj_xen_save_devices_state_arg {
 struct q_obj_xen_set_global_dirty_log_arg {
     bool enable;
 };
-# 18 "/home/alom/git/panda/include/qom/object.h" 2
 
 
 struct TypeImpl;
@@ -7146,17 +7102,14 @@ typedef struct TypeInfo TypeInfo;
 
 typedef struct InterfaceClass InterfaceClass;
 typedef struct InterfaceInfo InterfaceInfo;
-# 295 "/home/alom/git/panda/include/qom/object.h"
 typedef void (ObjectPropertyAccessor)(Object *obj,
                                       Visitor *v,
                                       const char *name,
                                       void *opaque,
                                       Error **errp);
-# 316 "/home/alom/git/panda/include/qom/object.h"
 typedef Object *(ObjectPropertyResolve)(Object *obj,
                                         void *opaque,
                                         const char *part);
-# 328 "/home/alom/git/panda/include/qom/object.h"
 typedef void (ObjectPropertyRelease)(Object *obj,
                                      const char *name,
                                      void *opaque);
@@ -7172,7 +7125,6 @@ typedef struct ObjectProperty
     ObjectPropertyRelease *release;
     void *opaque;
 } ObjectProperty;
-# 351 "/home/alom/git/panda/include/qom/object.h"
 typedef void (ObjectUnparent)(Object *obj);
 
 
@@ -7182,7 +7134,6 @@ typedef void (ObjectUnparent)(Object *obj);
 
 
 typedef void (ObjectFree)(void *obj);
-# 369 "/home/alom/git/panda/include/qom/object.h"
 struct ObjectClass
 {
 
@@ -7196,7 +7147,6 @@ struct ObjectClass
 
     GHashTable *properties;
 };
-# 395 "/home/alom/git/panda/include/qom/object.h"
 struct Object
 {
 
@@ -7206,7 +7156,6 @@ struct Object
     uint32_t ref;
     Object *parent;
 };
-# 445 "/home/alom/git/panda/include/qom/object.h"
 struct TypeInfo
 {
     const char *name;
@@ -7227,11 +7176,9 @@ struct TypeInfo
 
     InterfaceInfo *interfaces;
 };
-# 536 "/home/alom/git/panda/include/qom/object.h"
 struct InterfaceInfo {
     const char *type;
 };
-# 547 "/home/alom/git/panda/include/qom/object.h"
 struct InterfaceClass
 {
     ObjectClass parent_class;
@@ -7239,33 +7186,25 @@ struct InterfaceClass
     ObjectClass *concrete_class;
     Type interface_type;
 };
-# 587 "/home/alom/git/panda/include/qom/object.h"
 Object *object_new(const char *typename);
-# 638 "/home/alom/git/panda/include/qom/object.h"
 Object *object_new_with_props(const char *typename,
                               Object *parent,
                               const char *id,
                               Error **errp,
-                              ...) __attribute__((sentinel));
-# 654 "/home/alom/git/panda/include/qom/object.h"
+                              ...) QEMU_SENTINEL;
 Object *object_new_with_propv(const char *typename,
                               Object *parent,
                               const char *id,
                               Error **errp,
                               va_list vargs);
-# 699 "/home/alom/git/panda/include/qom/object.h"
 int object_set_props(Object *obj,
                      Error **errp,
-                     ...) __attribute__((sentinel));
-# 713 "/home/alom/git/panda/include/qom/object.h"
+                     ...) QEMU_SENTINEL;
 int object_set_propv(Object *obj,
                      Error **errp,
                      va_list vargs);
-# 727 "/home/alom/git/panda/include/qom/object.h"
 void object_initialize(void *obj, size_t size, const char *typename);
-# 739 "/home/alom/git/panda/include/qom/object.h"
 Object *object_dynamic_cast(Object *obj, const char *typename);
-# 750 "/home/alom/git/panda/include/qom/object.h"
 Object *object_dynamic_cast_assert(Object *obj, const char *typename,
                                    const char *file, int line, const char *func);
 
@@ -7284,16 +7223,12 @@ ObjectClass *object_get_class(Object *obj);
 
 
 const char *object_get_typename(Object *obj);
-# 778 "/home/alom/git/panda/include/qom/object.h"
 Type type_register_static(const TypeInfo *info);
-# 789 "/home/alom/git/panda/include/qom/object.h"
 Type type_register(const TypeInfo *info);
-# 802 "/home/alom/git/panda/include/qom/object.h"
 ObjectClass *object_class_dynamic_cast_assert(ObjectClass *klass,
                                               const char *typename,
                                               const char *file, int line,
                                               const char *func);
-# 821 "/home/alom/git/panda/include/qom/object.h"
 ObjectClass *object_class_dynamic_cast(ObjectClass *klass,
                                        const char *typename);
 
@@ -7332,14 +7267,10 @@ ObjectClass *object_class_by_name(const char *typename);
 void object_class_foreach(void (*fn)(ObjectClass *klass, void *opaque),
                           const char *implements_type, bool include_abstract,
                           void *opaque);
-# 867 "/home/alom/git/panda/include/qom/object.h"
 GSList *object_class_get_list(const char *implements_type,
                               bool include_abstract);
-# 877 "/home/alom/git/panda/include/qom/object.h"
 void object_ref(Object *obj);
-# 886 "/home/alom/git/panda/include/qom/object.h"
 void object_unref(Object *obj);
-# 911 "/home/alom/git/panda/include/qom/object.h"
 ObjectProperty *object_property_add(Object *obj, const char *name,
                                     const char *type,
                                     ObjectPropertyAccessor *get,
@@ -7355,7 +7286,6 @@ ObjectProperty *object_class_property_add(ObjectClass *klass, const char *name,
                                           ObjectPropertyAccessor *set,
                                           ObjectPropertyRelease *release,
                                           void *opaque, Error **errp);
-# 935 "/home/alom/git/panda/include/qom/object.h"
 ObjectProperty *object_property_find(Object *obj, const char *name,
                                      Error **errp);
 ObjectProperty *object_class_property_find(ObjectClass *klass, const char *name,
@@ -7365,56 +7295,39 @@ typedef struct ObjectPropertyIterator {
     ObjectClass *nextclass;
     GHashTableIter iter;
 } ObjectPropertyIterator;
-# 970 "/home/alom/git/panda/include/qom/object.h"
 void object_property_iter_init(ObjectPropertyIterator *iter,
                                Object *obj);
-# 985 "/home/alom/git/panda/include/qom/object.h"
 ObjectProperty *object_property_iter_next(ObjectPropertyIterator *iter);
 
 void object_unparent(Object *obj);
-# 999 "/home/alom/git/panda/include/qom/object.h"
 void object_property_get(Object *obj, Visitor *v, const char *name,
                          Error **errp);
-# 1010 "/home/alom/git/panda/include/qom/object.h"
 void object_property_set_str(Object *obj, const char *value,
                              const char *name, Error **errp);
-# 1023 "/home/alom/git/panda/include/qom/object.h"
 char *object_property_get_str(Object *obj, const char *name,
                               Error **errp);
-# 1034 "/home/alom/git/panda/include/qom/object.h"
 void object_property_set_link(Object *obj, Object *value,
                               const char *name, Error **errp);
-# 1047 "/home/alom/git/panda/include/qom/object.h"
 Object *object_property_get_link(Object *obj, const char *name,
                                  Error **errp);
-# 1058 "/home/alom/git/panda/include/qom/object.h"
 void object_property_set_bool(Object *obj, bool value,
                               const char *name, Error **errp);
-# 1070 "/home/alom/git/panda/include/qom/object.h"
 bool object_property_get_bool(Object *obj, const char *name,
                               Error **errp);
-# 1081 "/home/alom/git/panda/include/qom/object.h"
 void object_property_set_int(Object *obj, int64_t value,
                              const char *name, Error **errp);
-# 1093 "/home/alom/git/panda/include/qom/object.h"
 int64_t object_property_get_int(Object *obj, const char *name,
                                 Error **errp);
-# 1107 "/home/alom/git/panda/include/qom/object.h"
 int object_property_get_enum(Object *obj, const char *name,
                              const char *typename, Error **errp);
-# 1121 "/home/alom/git/panda/include/qom/object.h"
 void object_property_get_uint16List(Object *obj, const char *name,
                                     uint16List **list, Error **errp);
-# 1135 "/home/alom/git/panda/include/qom/object.h"
 void object_property_set(Object *obj, Visitor *v, const char *name,
                          Error **errp);
-# 1147 "/home/alom/git/panda/include/qom/object.h"
 void object_property_parse(Object *obj, const char *string,
                            const char *name, Error **errp);
-# 1160 "/home/alom/git/panda/include/qom/object.h"
 char *object_property_print(Object *obj, const char *name, bool human,
                             Error **errp);
-# 1171 "/home/alom/git/panda/include/qom/object.h"
 const char *object_property_get_type(Object *obj, const char *name,
                                      Error **errp);
 
@@ -7424,7 +7337,6 @@ const char *object_property_get_type(Object *obj, const char *name,
 
 
 Object *object_get_root(void);
-# 1191 "/home/alom/git/panda/include/qom/object.h"
 Object *object_get_objects_root(void);
 
 
@@ -7442,14 +7354,10 @@ gchar *object_get_canonical_path_component(Object *obj);
 
 
 gchar *object_get_canonical_path(Object *obj);
-# 1232 "/home/alom/git/panda/include/qom/object.h"
 Object *object_resolve_path(const char *path, bool *ambiguous);
-# 1252 "/home/alom/git/panda/include/qom/object.h"
 Object *object_resolve_path_type(const char *path, const char *typename,
                                  bool *ambiguous);
-# 1265 "/home/alom/git/panda/include/qom/object.h"
 Object *object_resolve_path_component(Object *parent, const gchar *part);
-# 1284 "/home/alom/git/panda/include/qom/object.h"
 void object_property_add_child(Object *obj, const char *name,
                                Object *child, Error **errp);
 
@@ -7457,17 +7365,14 @@ typedef enum {
 
     OBJ_PROP_LINK_UNREF_ON_RELEASE = 0x1,
 } ObjectPropertyLinkFlags;
-# 1299 "/home/alom/git/panda/include/qom/object.h"
 void object_property_allow_set_link(Object *, const char *,
                                     Object *, Error **);
-# 1330 "/home/alom/git/panda/include/qom/object.h"
 void object_property_add_link(Object *obj, const char *name,
                               const char *type, Object **child,
                               void (*check)(Object *obj, const char *name,
                                             Object *val, Error **errp),
                               ObjectPropertyLinkFlags flags,
                               Error **errp);
-# 1349 "/home/alom/git/panda/include/qom/object.h"
 void object_property_add_str(Object *obj, const char *name,
                              char *(*get)(Object *, Error **),
                              void (*set)(Object *, const char *, Error **),
@@ -7478,7 +7383,6 @@ void object_class_property_add_str(ObjectClass *klass, const char *name,
                                    void (*set)(Object *, const char *,
                                                Error **),
                                    Error **errp);
-# 1371 "/home/alom/git/panda/include/qom/object.h"
 void object_property_add_bool(Object *obj, const char *name,
                               bool (*get)(Object *, Error **),
                               void (*set)(Object *, bool, Error **),
@@ -7488,7 +7392,6 @@ void object_class_property_add_bool(ObjectClass *klass, const char *name,
                                     bool (*get)(Object *, Error **),
                                     void (*set)(Object *, bool, Error **),
                                     Error **errp);
-# 1393 "/home/alom/git/panda/include/qom/object.h"
 void object_property_add_enum(Object *obj, const char *name,
                               const char *typename,
                               const char * const *strings,
@@ -7502,7 +7405,6 @@ void object_class_property_add_enum(ObjectClass *klass, const char *name,
                                     int (*get)(Object *, Error **),
                                     void (*set)(Object *, int, Error **),
                                     Error **errp);
-# 1417 "/home/alom/git/panda/include/qom/object.h"
 void object_property_add_tm(Object *obj, const char *name,
                             void (*get)(Object *, struct tm *, Error **),
                             Error **errp);
@@ -7510,47 +7412,37 @@ void object_property_add_tm(Object *obj, const char *name,
 void object_class_property_add_tm(ObjectClass *klass, const char *name,
                                   void (*get)(Object *, struct tm *, Error **),
                                   Error **errp);
-# 1435 "/home/alom/git/panda/include/qom/object.h"
 void object_property_add_uint8_ptr(Object *obj, const char *name,
                                    const uint8_t *v, Error **errp);
 void object_class_property_add_uint8_ptr(ObjectClass *klass, const char *name,
                                          const uint8_t *v, Error **errp);
-# 1450 "/home/alom/git/panda/include/qom/object.h"
 void object_property_add_uint16_ptr(Object *obj, const char *name,
                                     const uint16_t *v, Error **errp);
 void object_class_property_add_uint16_ptr(ObjectClass *klass, const char *name,
                                           const uint16_t *v, Error **errp);
-# 1465 "/home/alom/git/panda/include/qom/object.h"
 void object_property_add_uint32_ptr(Object *obj, const char *name,
                                     const uint32_t *v, Error **errp);
 void object_class_property_add_uint32_ptr(ObjectClass *klass, const char *name,
                                           const uint32_t *v, Error **errp);
-# 1480 "/home/alom/git/panda/include/qom/object.h"
 void object_property_add_uint64_ptr(Object *obj, const char *name,
                                     const uint64_t *v, Error **Errp);
 void object_class_property_add_uint64_ptr(ObjectClass *klass, const char *name,
                                           const uint64_t *v, Error **Errp);
-# 1501 "/home/alom/git/panda/include/qom/object.h"
 void object_property_add_alias(Object *obj, const char *name,
                                Object *target_obj, const char *target_name,
                                Error **errp);
-# 1520 "/home/alom/git/panda/include/qom/object.h"
 void object_property_add_const_link(Object *obj, const char *name,
                                     Object *target, Error **errp);
-# 1533 "/home/alom/git/panda/include/qom/object.h"
 void object_property_set_description(Object *obj, const char *name,
                                      const char *description, Error **errp);
 void object_class_property_set_description(ObjectClass *klass, const char *name,
                                            const char *description,
                                            Error **errp);
-# 1553 "/home/alom/git/panda/include/qom/object.h"
 int object_child_foreach(Object *obj, int (*fn)(Object *child, void *opaque),
                          void *opaque);
-# 1571 "/home/alom/git/panda/include/qom/object.h"
 int object_child_foreach_recursive(Object *obj,
                                    int (*fn)(Object *child, void *opaque),
                                    void *opaque);
-# 1584 "/home/alom/git/panda/include/qom/object.h"
 Object *container_get(Object *root, const char *path);
 
 
@@ -7560,11 +7452,6 @@ Object *container_get(Object *root, const char *path);
 
 
 size_t object_type_get_instance_size(const char *typename);
-# 11 "/home/alom/git/panda/include/hw/hw.h" 2
-# 1 "/home/alom/git/panda/include/exec/memory.h" 1
-# 23 "/home/alom/git/panda/include/exec/memory.h"
-# 1 "/home/alom/git/panda/include/exec/memattrs.h" 1
-# 25 "/home/alom/git/panda/include/exec/memattrs.h"
 typedef struct MemTxAttrs {
 
 
@@ -7581,18 +7468,13 @@ typedef struct MemTxAttrs {
 
     unsigned int requester_id:16;
 } MemTxAttrs;
-# 24 "/home/alom/git/panda/include/exec/memory.h" 2
-# 1 "/home/alom/git/panda/include/exec/ramlist.h" 1
 
 
 
 
-# 1 "/home/alom/git/panda/include/qemu/thread.h" 1
 
 
 
-# 1 "/home/alom/git/panda/include/qemu/processor.h" 1
-# 5 "/home/alom/git/panda/include/qemu/thread.h" 2
 
 
 typedef struct QemuMutex QemuMutex;
@@ -7605,41 +7487,12 @@ typedef struct QemuThread QemuThread;
 
 
 
-# 1 "/home/alom/git/panda/include/qemu/thread-posix.h" 1
 
 
 
-# 1 "/usr/include/pthread.h" 1 3 4
-# 21 "/usr/include/pthread.h" 3 4
-# 1 "/usr/include/features.h" 1 3 4
-# 367 "/usr/include/features.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/sys/cdefs.h" 1 3 4
-# 410 "/usr/include/x86_64-linux-gnu/sys/cdefs.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
-# 411 "/usr/include/x86_64-linux-gnu/sys/cdefs.h" 2 3 4
-# 368 "/usr/include/features.h" 2 3 4
-# 391 "/usr/include/features.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/gnu/stubs.h" 1 3 4
-# 10 "/usr/include/x86_64-linux-gnu/gnu/stubs.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/gnu/stubs-64.h" 1 3 4
-# 11 "/usr/include/x86_64-linux-gnu/gnu/stubs.h" 2 3 4
-# 392 "/usr/include/features.h" 2 3 4
-# 22 "/usr/include/pthread.h" 2 3 4
-# 1 "/usr/include/endian.h" 1 3 4
-# 36 "/usr/include/endian.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/bits/endian.h" 1 3 4
-# 37 "/usr/include/endian.h" 2 3 4
-# 60 "/usr/include/endian.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/bits/byteswap.h" 1 3 4
-# 27 "/usr/include/x86_64-linux-gnu/bits/byteswap.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/bits/types.h" 1 3 4
-# 27 "/usr/include/x86_64-linux-gnu/bits/types.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
-# 28 "/usr/include/x86_64-linux-gnu/bits/types.h" 2 3 4
 
 
 
-# 30 "/usr/include/x86_64-linux-gnu/bits/types.h" 3 4
 typedef unsigned char __u_char;
 typedef unsigned short int __u_short;
 typedef unsigned int __u_int;
@@ -7664,9 +7517,6 @@ typedef unsigned long int __uint64_t;
 
 typedef long int __quad_t;
 typedef unsigned long int __u_quad_t;
-# 121 "/usr/include/x86_64-linux-gnu/bits/types.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/bits/typesizes.h" 1 3 4
-# 122 "/usr/include/x86_64-linux-gnu/bits/types.h" 2 3 4
 
 
 typedef unsigned long int __dev_t;
@@ -7735,57 +7585,39 @@ typedef long int __intptr_t;
 
 
 typedef unsigned int __socklen_t;
-# 28 "/usr/include/x86_64-linux-gnu/bits/byteswap.h" 2 3 4
-# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
-# 29 "/usr/include/x86_64-linux-gnu/bits/byteswap.h" 2 3 4
 
 
 
 
 
 
-# 1 "/usr/include/x86_64-linux-gnu/bits/byteswap-16.h" 1 3 4
-# 36 "/usr/include/x86_64-linux-gnu/bits/byteswap.h" 2 3 4
-# 44 "/usr/include/x86_64-linux-gnu/bits/byteswap.h" 3 4
 static __inline unsigned int
 __bswap_32 (unsigned int __bsx)
 {
   return __builtin_bswap32 (__bsx);
 }
-# 108 "/usr/include/x86_64-linux-gnu/bits/byteswap.h" 3 4
 static __inline __uint64_t
 __bswap_64 (__uint64_t __bsx)
 {
   return __builtin_bswap64 (__bsx);
 }
-# 61 "/usr/include/endian.h" 2 3 4
-# 23 "/usr/include/pthread.h" 2 3 4
-# 1 "/usr/include/sched.h" 1 3 4
-# 28 "/usr/include/sched.h" 3 4
-# 1 "/usr/lib/gcc/x86_64-linux-gnu/5/include/stddef.h" 1 3 4
-# 216 "/usr/lib/gcc/x86_64-linux-gnu/5/include/stddef.h" 3 4
 typedef long unsigned int size_t;
-# 29 "/usr/include/sched.h" 2 3 4
 
 
 
 
 
-# 1 "/usr/include/time.h" 1 3 4
-# 73 "/usr/include/time.h" 3 4
 
 
 typedef __time_t time_t;
 
 
 
-# 120 "/usr/include/time.h" 3 4
 struct timespec
   {
     __time_t tv_sec;
     __syscall_slong_t tv_nsec;
   };
-# 35 "/usr/include/sched.h" 2 3 4
 
 
 typedef __pid_t pid_t;
@@ -7794,15 +7626,12 @@ typedef __pid_t pid_t;
 
 
 
-# 1 "/usr/include/x86_64-linux-gnu/bits/sched.h" 1 3 4
-# 72 "/usr/include/x86_64-linux-gnu/bits/sched.h" 3 4
 struct sched_param
   {
     int __sched_priority;
   };
 
 
-# 95 "/usr/include/x86_64-linux-gnu/bits/sched.h" 3 4
 
 
 
@@ -7815,7 +7644,6 @@ struct __sched_param
   {
     int __sched_priority;
   };
-# 118 "/usr/include/x86_64-linux-gnu/bits/sched.h" 3 4
 typedef unsigned long int __cpu_mask;
 
 
@@ -7827,16 +7655,14 @@ typedef struct
 {
   __cpu_mask __bits[1024 / (8 * sizeof (__cpu_mask))];
 } cpu_set_t;
-# 201 "/usr/include/x86_64-linux-gnu/bits/sched.h" 3 4
 
 
 extern int __sched_cpucount (size_t __setsize, const cpu_set_t *__setp)
-  __attribute__ ((__nothrow__ , __leaf__));
-extern cpu_set_t *__sched_cpualloc (size_t __count) __attribute__ ((__nothrow__ , __leaf__)) ;
-extern void __sched_cpufree (cpu_set_t *__set) __attribute__ ((__nothrow__ , __leaf__));
+  ;
+extern cpu_set_t *__sched_cpualloc (size_t __count) ;
+extern void __sched_cpufree (cpu_set_t *__set) ;
 
 
-# 44 "/usr/include/sched.h" 2 3 4
 
 
 
@@ -7845,34 +7671,29 @@ extern void __sched_cpufree (cpu_set_t *__set) __attribute__ ((__nothrow__ , __l
 
 
 extern int sched_setparam (__pid_t __pid, const struct sched_param *__param)
-     __attribute__ ((__nothrow__ , __leaf__));
+     ;
 
 
-extern int sched_getparam (__pid_t __pid, struct sched_param *__param) __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_getparam (__pid_t __pid, struct sched_param *__param) ;
 
 
 extern int sched_setscheduler (__pid_t __pid, int __policy,
-          const struct sched_param *__param) __attribute__ ((__nothrow__ , __leaf__));
+          const struct sched_param *__param) ;
 
 
-extern int sched_getscheduler (__pid_t __pid) __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_getscheduler (__pid_t __pid) ;
 
 
-extern int sched_yield (void) __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_yield (void) ;
 
 
-extern int sched_get_priority_max (int __algorithm) __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_get_priority_max (int __algorithm) ;
 
 
-extern int sched_get_priority_min (int __algorithm) __attribute__ ((__nothrow__ , __leaf__));
+extern int sched_get_priority_min (int __algorithm) ;
 
 
-extern int sched_rr_get_interval (__pid_t __pid, struct timespec *__t) __attribute__ ((__nothrow__ , __leaf__));
-# 126 "/usr/include/sched.h" 3 4
-
-# 24 "/usr/include/pthread.h" 2 3 4
-# 1 "/usr/include/time.h" 1 3 4
-# 29 "/usr/include/time.h" 3 4
+extern int sched_rr_get_interval (__pid_t __pid, struct timespec *__t) ;
 
 
 
@@ -7881,25 +7702,18 @@ extern int sched_rr_get_interval (__pid_t __pid, struct timespec *__t) __attribu
 
 
 
-# 1 "/usr/lib/gcc/x86_64-linux-gnu/5/include/stddef.h" 1 3 4
-# 38 "/usr/include/time.h" 2 3 4
 
 
 
-# 1 "/usr/include/x86_64-linux-gnu/bits/time.h" 1 3 4
-# 42 "/usr/include/time.h" 2 3 4
-# 57 "/usr/include/time.h" 3 4
+
 
 
 typedef __clock_t clock_t;
 
 
 
-# 91 "/usr/include/time.h" 3 4
 typedef __clockid_t clockid_t;
-# 103 "/usr/include/time.h" 3 4
 typedef __timer_t timer_t;
-# 131 "/usr/include/time.h" 3 4
 
 
 struct tm
@@ -7938,21 +7752,20 @@ struct itimerspec
 
 
 struct sigevent;
-# 186 "/usr/include/time.h" 3 4
 
 
 
-extern clock_t clock (void) __attribute__ ((__nothrow__ , __leaf__));
+extern clock_t clock (void) ;
 
 
-extern time_t time (time_t *__timer) __attribute__ ((__nothrow__ , __leaf__));
+extern time_t time (time_t *__timer) ;
 
 
 extern double difftime (time_t __time1, time_t __time0)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+     ;
 
 
-extern time_t mktime (struct tm *__tp) __attribute__ ((__nothrow__ , __leaf__));
+extern time_t mktime (struct tm *__tp) ;
 
 
 
@@ -7960,11 +7773,8 @@ extern time_t mktime (struct tm *__tp) __attribute__ ((__nothrow__ , __leaf__));
 
 extern size_t strftime (char *__restrict __s, size_t __maxsize,
    const char *__restrict __format,
-   const struct tm *__restrict __tp) __attribute__ ((__nothrow__ , __leaf__));
+   const struct tm *__restrict __tp) ;
 
-# 221 "/usr/include/time.h" 3 4
-# 1 "/usr/include/xlocale.h" 1 3 4
-# 27 "/usr/include/xlocale.h" 3 4
 typedef struct __locale_struct
 {
 
@@ -7981,42 +7791,40 @@ typedef struct __locale_struct
 
 
 typedef __locale_t locale_t;
-# 222 "/usr/include/time.h" 2 3 4
 
 extern size_t strftime_l (char *__restrict __s, size_t __maxsize,
      const char *__restrict __format,
      const struct tm *__restrict __tp,
-     __locale_t __loc) __attribute__ ((__nothrow__ , __leaf__));
-# 236 "/usr/include/time.h" 3 4
+     __locale_t __loc) ;
 
 
 
-extern struct tm *gmtime (const time_t *__timer) __attribute__ ((__nothrow__ , __leaf__));
+extern struct tm *gmtime (const time_t *__timer) ;
 
 
 
-extern struct tm *localtime (const time_t *__timer) __attribute__ ((__nothrow__ , __leaf__));
+extern struct tm *localtime (const time_t *__timer) ;
 
 
 
 
 
 extern struct tm *gmtime_r (const time_t *__restrict __timer,
-       struct tm *__restrict __tp) __attribute__ ((__nothrow__ , __leaf__));
+       struct tm *__restrict __tp) ;
 
 
 
 extern struct tm *localtime_r (const time_t *__restrict __timer,
-          struct tm *__restrict __tp) __attribute__ ((__nothrow__ , __leaf__));
+          struct tm *__restrict __tp) ;
 
 
 
 
 
-extern char *asctime (const struct tm *__tp) __attribute__ ((__nothrow__ , __leaf__));
+extern char *asctime (const struct tm *__tp) ;
 
 
-extern char *ctime (const time_t *__timer) __attribute__ ((__nothrow__ , __leaf__));
+extern char *ctime (const time_t *__timer) ;
 
 
 
@@ -8025,11 +7833,11 @@ extern char *ctime (const time_t *__timer) __attribute__ ((__nothrow__ , __leaf_
 
 
 extern char *asctime_r (const struct tm *__restrict __tp,
-   char *__restrict __buf) __attribute__ ((__nothrow__ , __leaf__));
+   char *__restrict __buf) ;
 
 
 extern char *ctime_r (const time_t *__restrict __timer,
-        char *__restrict __buf) __attribute__ ((__nothrow__ , __leaf__));
+        char *__restrict __buf) ;
 
 
 
@@ -8045,7 +7853,7 @@ extern char *tzname[2];
 
 
 
-extern void tzset (void) __attribute__ ((__nothrow__ , __leaf__));
+extern void tzset (void) ;
 
 
 
@@ -8056,29 +7864,27 @@ extern long int timezone;
 
 
 
-extern int stime (const time_t *__when) __attribute__ ((__nothrow__ , __leaf__));
-# 319 "/usr/include/time.h" 3 4
-extern time_t timegm (struct tm *__tp) __attribute__ ((__nothrow__ , __leaf__));
+extern int stime (const time_t *__when) ;
+extern time_t timegm (struct tm *__tp) ;
 
 
-extern time_t timelocal (struct tm *__tp) __attribute__ ((__nothrow__ , __leaf__));
+extern time_t timelocal (struct tm *__tp) ;
 
 
-extern int dysize (int __year) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
-# 334 "/usr/include/time.h" 3 4
+extern int dysize (int __year) ;
 extern int nanosleep (const struct timespec *__requested_time,
         struct timespec *__remaining);
 
 
 
-extern int clock_getres (clockid_t __clock_id, struct timespec *__res) __attribute__ ((__nothrow__ , __leaf__));
+extern int clock_getres (clockid_t __clock_id, struct timespec *__res) ;
 
 
-extern int clock_gettime (clockid_t __clock_id, struct timespec *__tp) __attribute__ ((__nothrow__ , __leaf__));
+extern int clock_gettime (clockid_t __clock_id, struct timespec *__tp) ;
 
 
 extern int clock_settime (clockid_t __clock_id, const struct timespec *__tp)
-     __attribute__ ((__nothrow__ , __leaf__));
+     ;
 
 
 
@@ -8090,45 +7896,38 @@ extern int clock_nanosleep (clockid_t __clock_id, int __flags,
        struct timespec *__rem);
 
 
-extern int clock_getcpuclockid (pid_t __pid, clockid_t *__clock_id) __attribute__ ((__nothrow__ , __leaf__));
+extern int clock_getcpuclockid (pid_t __pid, clockid_t *__clock_id) ;
 
 
 
 
 extern int timer_create (clockid_t __clock_id,
     struct sigevent *__restrict __evp,
-    timer_t *__restrict __timerid) __attribute__ ((__nothrow__ , __leaf__));
+    timer_t *__restrict __timerid) ;
 
 
-extern int timer_delete (timer_t __timerid) __attribute__ ((__nothrow__ , __leaf__));
+extern int timer_delete (timer_t __timerid) ;
 
 
 extern int timer_settime (timer_t __timerid, int __flags,
      const struct itimerspec *__restrict __value,
-     struct itimerspec *__restrict __ovalue) __attribute__ ((__nothrow__ , __leaf__));
+     struct itimerspec *__restrict __ovalue) ;
 
 
 extern int timer_gettime (timer_t __timerid, struct itimerspec *__value)
-     __attribute__ ((__nothrow__ , __leaf__));
+     ;
 
 
-extern int timer_getoverrun (timer_t __timerid) __attribute__ ((__nothrow__ , __leaf__));
+extern int timer_getoverrun (timer_t __timerid) ;
 
 
 
 
 
 extern int timespec_get (struct timespec *__ts, int __base)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
-# 430 "/usr/include/time.h" 3 4
+     ;
 
-# 25 "/usr/include/pthread.h" 2 3 4
 
-# 1 "/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h" 1 3 4
-# 21 "/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
-# 22 "/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h" 2 3 4
-# 60 "/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h" 3 4
 typedef unsigned long int pthread_t;
 
 
@@ -8149,7 +7948,6 @@ typedef struct __pthread_internal_list
   struct __pthread_internal_list *__prev;
   struct __pthread_internal_list *__next;
 } __pthread_list_t;
-# 90 "/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h" 3 4
 typedef union
 {
   struct __pthread_mutex_s
@@ -8167,7 +7965,6 @@ typedef union
     short __spins;
     short __elision;
     __pthread_list_t __list;
-# 125 "/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h" 3 4
   } __data;
   char __size[40];
   long int __align;
@@ -8244,7 +8041,6 @@ typedef union
     unsigned int __flags;
 
   } __data;
-# 220 "/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h" 3 4
   char __size[56];
   long int __align;
 } pthread_rwlock_t;
@@ -8275,19 +8071,11 @@ typedef union
   char __size[4];
   int __align;
 } pthread_barrierattr_t;
-# 27 "/usr/include/pthread.h" 2 3 4
-# 1 "/usr/include/x86_64-linux-gnu/bits/setjmp.h" 1 3 4
-# 26 "/usr/include/x86_64-linux-gnu/bits/setjmp.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
-# 27 "/usr/include/x86_64-linux-gnu/bits/setjmp.h" 2 3 4
 
 
 
 
 typedef long int __jmp_buf[8];
-# 28 "/usr/include/pthread.h" 2 3 4
-# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
-# 29 "/usr/include/pthread.h" 2 3 4
 
 
 
@@ -8341,7 +8129,6 @@ enum
   PTHREAD_PRIO_INHERIT,
   PTHREAD_PRIO_PROTECT
 };
-# 114 "/usr/include/pthread.h" 3 4
 enum
 {
   PTHREAD_RWLOCK_PREFER_READER_NP,
@@ -8349,7 +8136,6 @@ enum
   PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP,
   PTHREAD_RWLOCK_DEFAULT_NP = PTHREAD_RWLOCK_PREFER_READER_NP
 };
-# 155 "/usr/include/pthread.h" 3 4
 enum
 {
   PTHREAD_INHERIT_SCHED,
@@ -8377,7 +8163,6 @@ enum
   PTHREAD_PROCESS_SHARED
 
 };
-# 190 "/usr/include/pthread.h" 3 4
 struct _pthread_cleanup_buffer
 {
   void (*__routine) (void *);
@@ -8401,7 +8186,6 @@ enum
   PTHREAD_CANCEL_ASYNCHRONOUS
 
 };
-# 228 "/usr/include/pthread.h" 3 4
 
 
 
@@ -8410,13 +8194,13 @@ enum
 extern int pthread_create (pthread_t *__restrict __newthread,
       const pthread_attr_t *__restrict __attr,
       void *(*__start_routine) (void *),
-      void *__restrict __arg) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 3)));
+      void *__restrict __arg) ;
 
 
 
 
 
-extern void pthread_exit (void *__retval) __attribute__ ((__noreturn__));
+extern void pthread_exit (void *__retval) ;
 
 
 
@@ -8425,16 +8209,15 @@ extern void pthread_exit (void *__retval) __attribute__ ((__noreturn__));
 
 
 extern int pthread_join (pthread_t __th, void **__thread_return);
-# 271 "/usr/include/pthread.h" 3 4
-extern int pthread_detach (pthread_t __th) __attribute__ ((__nothrow__ , __leaf__));
+extern int pthread_detach (pthread_t __th) ;
 
 
 
-extern pthread_t pthread_self (void) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+extern pthread_t pthread_self (void) ;
 
 
 extern int pthread_equal (pthread_t __thread1, pthread_t __thread2)
-  __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+  ;
 
 
 
@@ -8442,77 +8225,77 @@ extern int pthread_equal (pthread_t __thread1, pthread_t __thread2)
 
 
 
-extern int pthread_attr_init (pthread_attr_t *__attr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+extern int pthread_attr_init (pthread_attr_t *__attr) ;
 
 
 extern int pthread_attr_destroy (pthread_attr_t *__attr)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_attr_getdetachstate (const pthread_attr_t *__attr,
      int *__detachstate)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 extern int pthread_attr_setdetachstate (pthread_attr_t *__attr,
      int __detachstate)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 
 extern int pthread_attr_getguardsize (const pthread_attr_t *__attr,
           size_t *__guardsize)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 extern int pthread_attr_setguardsize (pthread_attr_t *__attr,
           size_t __guardsize)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 
 extern int pthread_attr_getschedparam (const pthread_attr_t *__restrict __attr,
            struct sched_param *__restrict __param)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 extern int pthread_attr_setschedparam (pthread_attr_t *__restrict __attr,
            const struct sched_param *__restrict
-           __param) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+           __param) ;
 
 
 extern int pthread_attr_getschedpolicy (const pthread_attr_t *__restrict
      __attr, int *__restrict __policy)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 extern int pthread_attr_setschedpolicy (pthread_attr_t *__attr, int __policy)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_attr_getinheritsched (const pthread_attr_t *__restrict
       __attr, int *__restrict __inherit)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 extern int pthread_attr_setinheritsched (pthread_attr_t *__attr,
       int __inherit)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 
 extern int pthread_attr_getscope (const pthread_attr_t *__restrict __attr,
       int *__restrict __scope)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 extern int pthread_attr_setscope (pthread_attr_t *__attr, int __scope)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_attr_getstackaddr (const pthread_attr_t *__restrict
           __attr, void **__restrict __stackaddr)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2))) __attribute__ ((__deprecated__));
+     ;
 
 
 
@@ -8520,50 +8303,47 @@ extern int pthread_attr_getstackaddr (const pthread_attr_t *__restrict
 
 extern int pthread_attr_setstackaddr (pthread_attr_t *__attr,
           void *__stackaddr)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1))) __attribute__ ((__deprecated__));
+     ;
 
 
 extern int pthread_attr_getstacksize (const pthread_attr_t *__restrict
           __attr, size_t *__restrict __stacksize)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 
 
 extern int pthread_attr_setstacksize (pthread_attr_t *__attr,
           size_t __stacksize)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 
 extern int pthread_attr_getstack (const pthread_attr_t *__restrict __attr,
       void **__restrict __stackaddr,
       size_t *__restrict __stacksize)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2, 3)));
+     ;
 
 
 
 
 extern int pthread_attr_setstack (pthread_attr_t *__attr, void *__stackaddr,
-      size_t __stacksize) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
-# 429 "/usr/include/pthread.h" 3 4
+      size_t __stacksize) ;
 extern int pthread_setschedparam (pthread_t __target_thread, int __policy,
       const struct sched_param *__param)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (3)));
+     ;
 
 
 extern int pthread_getschedparam (pthread_t __target_thread,
       int *__restrict __policy,
       struct sched_param *__restrict __param)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2, 3)));
+     ;
 
 
 extern int pthread_setschedprio (pthread_t __target_thread, int __prio)
-     __attribute__ ((__nothrow__ , __leaf__));
-# 494 "/usr/include/pthread.h" 3 4
+     ;
 extern int pthread_once (pthread_once_t *__once_control,
-    void (*__init_routine) (void)) __attribute__ ((__nonnull__ (1, 2)));
-# 506 "/usr/include/pthread.h" 3 4
+    void (*__init_routine) (void)) ;
 extern int pthread_setcancelstate (int __state, int *__oldstate);
 
 
@@ -8589,8 +8369,7 @@ typedef struct
     int __mask_was_saved;
   } __cancel_jmp_buf[1];
   void *__pad[4];
-} __pthread_unwind_buf_t __attribute__ ((__aligned__));
-# 540 "/usr/include/pthread.h" 3 4
+} __pthread_unwind_buf_t ;
 struct __pthread_cleanup_frame
 {
   void (*__cancel_routine) (void *);
@@ -8598,24 +8377,21 @@ struct __pthread_cleanup_frame
   int __do_it;
   int __cancel_type;
 };
-# 680 "/usr/include/pthread.h" 3 4
 extern void __pthread_register_cancel (__pthread_unwind_buf_t *__buf)
      ;
-# 692 "/usr/include/pthread.h" 3 4
 extern void __pthread_unregister_cancel (__pthread_unwind_buf_t *__buf)
   ;
-# 733 "/usr/include/pthread.h" 3 4
 extern void __pthread_unwind_next (__pthread_unwind_buf_t *__buf)
-     __attribute__ ((__noreturn__))
+    
 
-     __attribute__ ((__weak__))
+    
 
      ;
 
 
 
 struct __jmp_buf_tag;
-extern int __sigsetjmp (struct __jmp_buf_tag *__env, int __savemask) __attribute__ ((__nothrow__));
+extern int __sigsetjmp (struct __jmp_buf_tag *__env, int __savemask) ;
 
 
 
@@ -8623,110 +8399,109 @@ extern int __sigsetjmp (struct __jmp_buf_tag *__env, int __savemask) __attribute
 
 extern int pthread_mutex_init (pthread_mutex_t *__mutex,
           const pthread_mutexattr_t *__mutexattr)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_mutex_destroy (pthread_mutex_t *__mutex)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_mutex_trylock (pthread_mutex_t *__mutex)
-     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_mutex_lock (pthread_mutex_t *__mutex)
-     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 
 extern int pthread_mutex_timedlock (pthread_mutex_t *__restrict __mutex,
         const struct timespec *__restrict
-        __abstime) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 2)));
+        __abstime) ;
 
 
 
 extern int pthread_mutex_unlock (pthread_mutex_t *__mutex)
-     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 
 extern int pthread_mutex_getprioceiling (const pthread_mutex_t *
       __restrict __mutex,
       int *__restrict __prioceiling)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 
 extern int pthread_mutex_setprioceiling (pthread_mutex_t *__restrict __mutex,
       int __prioceiling,
       int *__restrict __old_ceiling)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 3)));
+     ;
 
 
 
 
 extern int pthread_mutex_consistent (pthread_mutex_t *__mutex)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
-# 806 "/usr/include/pthread.h" 3 4
+     ;
 extern int pthread_mutexattr_init (pthread_mutexattr_t *__attr)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_mutexattr_destroy (pthread_mutexattr_t *__attr)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_mutexattr_getpshared (const pthread_mutexattr_t *
       __restrict __attr,
       int *__restrict __pshared)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 extern int pthread_mutexattr_setpshared (pthread_mutexattr_t *__attr,
       int __pshared)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 
 extern int pthread_mutexattr_gettype (const pthread_mutexattr_t *__restrict
           __attr, int *__restrict __kind)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 
 
 extern int pthread_mutexattr_settype (pthread_mutexattr_t *__attr, int __kind)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 
 extern int pthread_mutexattr_getprotocol (const pthread_mutexattr_t *
        __restrict __attr,
        int *__restrict __protocol)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 
 extern int pthread_mutexattr_setprotocol (pthread_mutexattr_t *__attr,
        int __protocol)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_mutexattr_getprioceiling (const pthread_mutexattr_t *
           __restrict __attr,
           int *__restrict __prioceiling)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 extern int pthread_mutexattr_setprioceiling (pthread_mutexattr_t *__attr,
           int __prioceiling)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 
 extern int pthread_mutexattr_getrobust (const pthread_mutexattr_t *__attr,
      int *__robustness)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 
@@ -8736,81 +8511,80 @@ extern int pthread_mutexattr_getrobust (const pthread_mutexattr_t *__attr,
 
 extern int pthread_mutexattr_setrobust (pthread_mutexattr_t *__attr,
      int __robustness)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
-# 888 "/usr/include/pthread.h" 3 4
+     ;
 extern int pthread_rwlock_init (pthread_rwlock_t *__restrict __rwlock,
     const pthread_rwlockattr_t *__restrict
-    __attr) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+    __attr) ;
 
 
 extern int pthread_rwlock_destroy (pthread_rwlock_t *__rwlock)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_rwlock_rdlock (pthread_rwlock_t *__rwlock)
-     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_rwlock_tryrdlock (pthread_rwlock_t *__rwlock)
-  __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+  ;
 
 
 
 extern int pthread_rwlock_timedrdlock (pthread_rwlock_t *__restrict __rwlock,
            const struct timespec *__restrict
-           __abstime) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 2)));
+           __abstime) ;
 
 
 
 extern int pthread_rwlock_wrlock (pthread_rwlock_t *__rwlock)
-     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_rwlock_trywrlock (pthread_rwlock_t *__rwlock)
-     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 
 extern int pthread_rwlock_timedwrlock (pthread_rwlock_t *__restrict __rwlock,
            const struct timespec *__restrict
-           __abstime) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 2)));
+           __abstime) ;
 
 
 
 extern int pthread_rwlock_unlock (pthread_rwlock_t *__rwlock)
-     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 
 
 
 extern int pthread_rwlockattr_init (pthread_rwlockattr_t *__attr)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_rwlockattr_destroy (pthread_rwlockattr_t *__attr)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_rwlockattr_getpshared (const pthread_rwlockattr_t *
        __restrict __attr,
        int *__restrict __pshared)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 extern int pthread_rwlockattr_setpshared (pthread_rwlockattr_t *__attr,
        int __pshared)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_rwlockattr_getkind_np (const pthread_rwlockattr_t *
        __restrict __attr,
        int *__restrict __pref)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 extern int pthread_rwlockattr_setkind_np (pthread_rwlockattr_t *__attr,
-       int __pref) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+       int __pref) ;
 
 
 
@@ -8820,19 +8594,19 @@ extern int pthread_rwlockattr_setkind_np (pthread_rwlockattr_t *__attr,
 
 extern int pthread_cond_init (pthread_cond_t *__restrict __cond,
          const pthread_condattr_t *__restrict __cond_attr)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_cond_destroy (pthread_cond_t *__cond)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_cond_signal (pthread_cond_t *__cond)
-     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_cond_broadcast (pthread_cond_t *__cond)
-     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 
@@ -8841,63 +8615,61 @@ extern int pthread_cond_broadcast (pthread_cond_t *__cond)
 
 extern int pthread_cond_wait (pthread_cond_t *__restrict __cond,
          pthread_mutex_t *__restrict __mutex)
-     __attribute__ ((__nonnull__ (1, 2)));
-# 1000 "/usr/include/pthread.h" 3 4
+     ;
 extern int pthread_cond_timedwait (pthread_cond_t *__restrict __cond,
        pthread_mutex_t *__restrict __mutex,
        const struct timespec *__restrict __abstime)
-     __attribute__ ((__nonnull__ (1, 2, 3)));
+     ;
 
 
 
 
 extern int pthread_condattr_init (pthread_condattr_t *__attr)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_condattr_destroy (pthread_condattr_t *__attr)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_condattr_getpshared (const pthread_condattr_t *
      __restrict __attr,
      int *__restrict __pshared)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 extern int pthread_condattr_setpshared (pthread_condattr_t *__attr,
-     int __pshared) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     int __pshared) ;
 
 
 
 extern int pthread_condattr_getclock (const pthread_condattr_t *
           __restrict __attr,
           __clockid_t *__restrict __clock_id)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 extern int pthread_condattr_setclock (pthread_condattr_t *__attr,
           __clockid_t __clock_id)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
-# 1044 "/usr/include/pthread.h" 3 4
+     ;
 extern int pthread_spin_init (pthread_spinlock_t *__lock, int __pshared)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_spin_destroy (pthread_spinlock_t *__lock)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_spin_lock (pthread_spinlock_t *__lock)
-     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_spin_trylock (pthread_spinlock_t *__lock)
-     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_spin_unlock (pthread_spinlock_t *__lock)
-     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 
@@ -8907,67 +8679,59 @@ extern int pthread_spin_unlock (pthread_spinlock_t *__lock)
 extern int pthread_barrier_init (pthread_barrier_t *__restrict __barrier,
      const pthread_barrierattr_t *__restrict
      __attr, unsigned int __count)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_barrier_destroy (pthread_barrier_t *__barrier)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_barrier_wait (pthread_barrier_t *__barrier)
-     __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 
 extern int pthread_barrierattr_init (pthread_barrierattr_t *__attr)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_barrierattr_destroy (pthread_barrierattr_t *__attr)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
 extern int pthread_barrierattr_getpshared (const pthread_barrierattr_t *
         __restrict __attr,
         int *__restrict __pshared)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1, 2)));
+     ;
 
 
 extern int pthread_barrierattr_setpshared (pthread_barrierattr_t *__attr,
         int __pshared)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
-# 1111 "/usr/include/pthread.h" 3 4
+     ;
 extern int pthread_key_create (pthread_key_t *__key,
           void (*__destr_function) (void *))
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (1)));
+     ;
 
 
-extern int pthread_key_delete (pthread_key_t __key) __attribute__ ((__nothrow__ , __leaf__));
+extern int pthread_key_delete (pthread_key_t __key) ;
 
 
-extern void *pthread_getspecific (pthread_key_t __key) __attribute__ ((__nothrow__ , __leaf__));
+extern void *pthread_getspecific (pthread_key_t __key) ;
 
 
 extern int pthread_setspecific (pthread_key_t __key,
-    const void *__pointer) __attribute__ ((__nothrow__ , __leaf__)) ;
+    const void *__pointer) ;
 
 
 
 
 extern int pthread_getcpuclockid (pthread_t __thread_id,
       __clockid_t *__clock_id)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__nonnull__ (2)));
-# 1145 "/usr/include/pthread.h" 3 4
+     ;
 extern int pthread_atfork (void (*__prepare) (void),
       void (*__parent) (void),
-      void (*__child) (void)) __attribute__ ((__nothrow__ , __leaf__));
-# 1159 "/usr/include/pthread.h" 3 4
+      void (*__child) (void)) ;
 
-# 5 "/home/alom/git/panda/include/qemu/thread-posix.h" 2
-# 1 "/usr/include/semaphore.h" 1 3 4
-# 22 "/usr/include/semaphore.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/sys/types.h" 1 3 4
-# 27 "/usr/include/x86_64-linux-gnu/sys/types.h" 3 4
 
 
 
@@ -8990,7 +8754,6 @@ typedef __loff_t loff_t;
 
 
 typedef __ino_t ino_t;
-# 60 "/usr/include/x86_64-linux-gnu/sys/types.h" 3 4
 typedef __dev_t dev_t;
 
 
@@ -9018,7 +8781,6 @@ typedef __uid_t uid_t;
 
 
 typedef __off_t off_t;
-# 104 "/usr/include/x86_64-linux-gnu/sys/types.h" 3 4
 typedef __id_t id_t;
 
 
@@ -9038,40 +8800,26 @@ typedef __caddr_t caddr_t;
 
 
 typedef __key_t key_t;
-# 146 "/usr/include/x86_64-linux-gnu/sys/types.h" 3 4
-# 1 "/usr/lib/gcc/x86_64-linux-gnu/5/include/stddef.h" 1 3 4
-# 147 "/usr/include/x86_64-linux-gnu/sys/types.h" 2 3 4
 
 
 
 typedef unsigned long int ulong;
 typedef unsigned short int ushort;
 typedef unsigned int uint;
-# 194 "/usr/include/x86_64-linux-gnu/sys/types.h" 3 4
-typedef int int8_t __attribute__ ((__mode__ (__QI__)));
-typedef int int16_t __attribute__ ((__mode__ (__HI__)));
-typedef int int32_t __attribute__ ((__mode__ (__SI__)));
-typedef int int64_t __attribute__ ((__mode__ (__DI__)));
+typedef int int8_t ;
+typedef int int16_t ;
+typedef int int32_t ;
+typedef int int64_t ;
 
 
-typedef unsigned int u_int8_t __attribute__ ((__mode__ (__QI__)));
-typedef unsigned int u_int16_t __attribute__ ((__mode__ (__HI__)));
-typedef unsigned int u_int32_t __attribute__ ((__mode__ (__SI__)));
-typedef unsigned int u_int64_t __attribute__ ((__mode__ (__DI__)));
+typedef unsigned int u_int8_t ;
+typedef unsigned int u_int16_t ;
+typedef unsigned int u_int32_t ;
+typedef unsigned int u_int64_t ;
 
-typedef int register_t __attribute__ ((__mode__ (__word__)));
-# 219 "/usr/include/x86_64-linux-gnu/sys/types.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/sys/select.h" 1 3 4
-# 30 "/usr/include/x86_64-linux-gnu/sys/select.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/bits/select.h" 1 3 4
-# 22 "/usr/include/x86_64-linux-gnu/bits/select.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
-# 23 "/usr/include/x86_64-linux-gnu/bits/select.h" 2 3 4
-# 31 "/usr/include/x86_64-linux-gnu/sys/select.h" 2 3 4
+typedef int register_t ;
 
 
-# 1 "/usr/include/x86_64-linux-gnu/bits/sigset.h" 1 3 4
-# 22 "/usr/include/x86_64-linux-gnu/bits/sigset.h" 3 4
 typedef int __sig_atomic_t;
 
 
@@ -9081,7 +8829,6 @@ typedef struct
   {
     unsigned long int __val[(1024 / (8 * sizeof (unsigned long int)))];
   } __sigset_t;
-# 34 "/usr/include/x86_64-linux-gnu/sys/select.h" 2 3 4
 
 
 
@@ -9093,14 +8840,11 @@ typedef __sigset_t sigset_t;
 
 
 
-# 1 "/usr/include/x86_64-linux-gnu/bits/time.h" 1 3 4
-# 30 "/usr/include/x86_64-linux-gnu/bits/time.h" 3 4
 struct timeval
   {
     __time_t tv_sec;
     __suseconds_t tv_usec;
   };
-# 46 "/usr/include/x86_64-linux-gnu/sys/select.h" 2 3 4
 
 
 typedef __suseconds_t suseconds_t;
@@ -9110,7 +8854,6 @@ typedef __suseconds_t suseconds_t;
 
 
 typedef long int __fd_mask;
-# 64 "/usr/include/x86_64-linux-gnu/sys/select.h" 3 4
 typedef struct
   {
 
@@ -9130,41 +8873,32 @@ typedef struct
 
 
 typedef __fd_mask fd_mask;
-# 96 "/usr/include/x86_64-linux-gnu/sys/select.h" 3 4
 
-# 106 "/usr/include/x86_64-linux-gnu/sys/select.h" 3 4
 extern int select (int __nfds, fd_set *__restrict __readfds,
      fd_set *__restrict __writefds,
      fd_set *__restrict __exceptfds,
      struct timeval *__restrict __timeout);
-# 118 "/usr/include/x86_64-linux-gnu/sys/select.h" 3 4
 extern int pselect (int __nfds, fd_set *__restrict __readfds,
       fd_set *__restrict __writefds,
       fd_set *__restrict __exceptfds,
       const struct timespec *__restrict __timeout,
       const __sigset_t *__restrict __sigmask);
-# 131 "/usr/include/x86_64-linux-gnu/sys/select.h" 3 4
-
-# 220 "/usr/include/x86_64-linux-gnu/sys/types.h" 2 3 4
 
 
-# 1 "/usr/include/x86_64-linux-gnu/sys/sysmacros.h" 1 3 4
-# 24 "/usr/include/x86_64-linux-gnu/sys/sysmacros.h" 3 4
+
 
 
 __extension__
 extern unsigned int gnu_dev_major (unsigned long long int __dev)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+     ;
 __extension__
 extern unsigned int gnu_dev_minor (unsigned long long int __dev)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
+     ;
 __extension__
 extern unsigned long long int gnu_dev_makedev (unsigned int __major,
             unsigned int __minor)
-     __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__const__));
-# 58 "/usr/include/x86_64-linux-gnu/sys/sysmacros.h" 3 4
+     ;
 
-# 223 "/usr/include/x86_64-linux-gnu/sys/types.h" 2 3 4
 
 
 
@@ -9186,26 +8920,18 @@ typedef __fsblkcnt_t fsblkcnt_t;
 
 
 typedef __fsfilcnt_t fsfilcnt_t;
-# 273 "/usr/include/x86_64-linux-gnu/sys/types.h" 3 4
-
-# 23 "/usr/include/semaphore.h" 2 3 4
 
 
 
 
 
 
-# 1 "/usr/include/x86_64-linux-gnu/bits/semaphore.h" 1 3 4
-# 23 "/usr/include/x86_64-linux-gnu/bits/semaphore.h" 3 4
-# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
-# 24 "/usr/include/x86_64-linux-gnu/bits/semaphore.h" 2 3 4
-# 36 "/usr/include/x86_64-linux-gnu/bits/semaphore.h" 3 4
+
 typedef union
 {
   char __size[32];
   long int __align;
 } sem_t;
-# 30 "/usr/include/semaphore.h" 2 3 4
 
 
 
@@ -9213,18 +8939,18 @@ typedef union
 
 
 extern int sem_init (sem_t *__sem, int __pshared, unsigned int __value)
-     __attribute__ ((__nothrow__ , __leaf__));
+     ;
 
-extern int sem_destroy (sem_t *__sem) __attribute__ ((__nothrow__ , __leaf__));
-
-
-extern sem_t *sem_open (const char *__name, int __oflag, ...) __attribute__ ((__nothrow__ , __leaf__));
+extern int sem_destroy (sem_t *__sem) ;
 
 
-extern int sem_close (sem_t *__sem) __attribute__ ((__nothrow__ , __leaf__));
+extern sem_t *sem_open (const char *__name, int __oflag, ...) ;
 
 
-extern int sem_unlink (const char *__name) __attribute__ ((__nothrow__ , __leaf__));
+extern int sem_close (sem_t *__sem) ;
+
+
+extern int sem_unlink (const char *__name) ;
 
 
 
@@ -9242,21 +8968,19 @@ extern int sem_timedwait (sem_t *__restrict __sem,
 
 
 
-extern int sem_trywait (sem_t *__sem) __attribute__ ((__nothrow__));
+extern int sem_trywait (sem_t *__sem) ;
 
 
-extern int sem_post (sem_t *__sem) __attribute__ ((__nothrow__));
+extern int sem_post (sem_t *__sem) ;
 
 
 extern int sem_getvalue (sem_t *__restrict __sem, int *__restrict __sval)
-     __attribute__ ((__nothrow__ , __leaf__));
+     ;
 
 
 
-# 6 "/home/alom/git/panda/include/qemu/thread-posix.h" 2
 
 
-# 7 "/home/alom/git/panda/include/qemu/thread-posix.h"
 typedef QemuMutex QemuRecMutex;
 
 
@@ -9292,7 +9016,6 @@ struct QemuEvent {
 struct QemuThread {
     pthread_t thread;
 };
-# 18 "/home/alom/git/panda/include/qemu/thread.h" 2
 
 
 
@@ -9355,8 +9078,8 @@ static inline void qemu_spin_init(QemuSpin *spin)
 
 static inline void qemu_spin_lock(QemuSpin *spin)
 {
-    while (__builtin_expect(!!(__sync_lock_test_and_set(&spin->value, true)), 0)) {
-        while (({ typedef struct { int:(sizeof(*&spin->value) > sizeof(void *)) ? -1 : 1; } qemu_build_bug_on__0 __attribute__((unused)); __atomic_load_n(&spin->value, 0); })) {
+    while (unlikely(__sync_lock_test_and_set(&spin->value, true))) {
+        while (({ QEMU_BUILD_BUG_ON(sizeof(*&spin->value) > sizeof(void *)); __atomic_load_n(&spin->value, 0); })) {
             asm volatile("rep; nop" ::: "memory");
         }
     }
@@ -9369,7 +9092,7 @@ static inline bool qemu_spin_trylock(QemuSpin *spin)
 
 static inline bool qemu_spin_locked(QemuSpin *spin)
 {
-    return ({ typedef struct { int:(sizeof(*&spin->value) > sizeof(void *)) ? -1 : 1; } qemu_build_bug_on__1 __attribute__((unused)); __atomic_load_n(&spin->value, 0); });
+    return ({ QEMU_BUILD_BUG_ON(sizeof(*&spin->value) > sizeof(void *)); __atomic_load_n(&spin->value, 0); });
 }
 
 static inline void qemu_spin_unlock(QemuSpin *spin)
@@ -9383,7 +9106,6 @@ struct QemuLockCnt {
 
     unsigned count;
 };
-# 116 "/home/alom/git/panda/include/qemu/thread.h"
 void qemu_lockcnt_init(QemuLockCnt *lockcnt);
 
 
@@ -9393,7 +9115,6 @@ void qemu_lockcnt_init(QemuLockCnt *lockcnt);
 
 
 void qemu_lockcnt_destroy(QemuLockCnt *lockcnt);
-# 146 "/home/alom/git/panda/include/qemu/thread.h"
 void qemu_lockcnt_inc(QemuLockCnt *lockcnt);
 
 
@@ -9401,11 +9122,8 @@ void qemu_lockcnt_inc(QemuLockCnt *lockcnt);
 
 
 void qemu_lockcnt_dec(QemuLockCnt *lockcnt);
-# 162 "/home/alom/git/panda/include/qemu/thread.h"
 bool qemu_lockcnt_dec_and_lock(QemuLockCnt *lockcnt);
-# 172 "/home/alom/git/panda/include/qemu/thread.h"
 bool qemu_lockcnt_dec_if_lock(QemuLockCnt *lockcnt);
-# 182 "/home/alom/git/panda/include/qemu/thread.h"
 void qemu_lockcnt_lock(QemuLockCnt *lockcnt);
 
 
@@ -9413,13 +9131,8 @@ void qemu_lockcnt_lock(QemuLockCnt *lockcnt);
 
 
 void qemu_lockcnt_unlock(QemuLockCnt *lockcnt);
-# 201 "/home/alom/git/panda/include/qemu/thread.h"
 void qemu_lockcnt_inc_and_unlock(QemuLockCnt *lockcnt);
-# 211 "/home/alom/git/panda/include/qemu/thread.h"
 unsigned qemu_lockcnt_count(QemuLockCnt *lockcnt);
-# 6 "/home/alom/git/panda/include/exec/ramlist.h" 2
-# 1 "/home/alom/git/panda/include/qemu/rcu.h" 1
-# 54 "/home/alom/git/panda/include/qemu/rcu.h"
 extern unsigned long rcu_gp_ctr;
 
 extern QemuEvent rcu_gp_event;
@@ -9447,8 +9160,8 @@ static inline void rcu_read_lock(void)
         return;
     }
 
-    ctr = ({ typedef struct { int:(sizeof(*&rcu_gp_ctr) > sizeof(void *)) ? -1 : 1; } qemu_build_bug_on__2 __attribute__((unused)); __atomic_load_n(&rcu_gp_ctr, 0); });
-    ({ typedef struct { int:(sizeof(*&p_rcu_reader->ctr) > sizeof(void *)) ? -1 : 1; } qemu_build_bug_on__3 __attribute__((unused)); ({ __atomic_exchange_n(&p_rcu_reader->ctr, (ctr), 5); }); });
+    ctr = ({ QEMU_BUILD_BUG_ON(sizeof(*&rcu_gp_ctr) > sizeof(void *)); __atomic_load_n(&rcu_gp_ctr, 0); });
+    ({ QEMU_BUILD_BUG_ON(sizeof(*&p_rcu_reader->ctr) > sizeof(void *)); ({ __atomic_exchange_n(&p_rcu_reader->ctr, (ctr), 5); }); });
 }
 
 static inline void rcu_read_unlock(void)
@@ -9460,9 +9173,9 @@ static inline void rcu_read_unlock(void)
         return;
     }
 
-    ({ typedef struct { int:(sizeof(*&p_rcu_reader->ctr) > sizeof(void *)) ? -1 : 1; } qemu_build_bug_on__4 __attribute__((unused)); ({ __atomic_exchange_n(&p_rcu_reader->ctr, (0), 5); }); });
-    if (__builtin_expect(!!(({ typedef struct { int:(sizeof(*&p_rcu_reader->waiting) > sizeof(void *)) ? -1 : 1; } qemu_build_bug_on__5 __attribute__((unused)); __atomic_load_n(&p_rcu_reader->waiting, 0); })), 0)) {
-        do { typedef struct { int:(sizeof(*&p_rcu_reader->waiting) > sizeof(void *)) ? -1 : 1; } qemu_build_bug_on__6 __attribute__((unused)); __atomic_store_n(&p_rcu_reader->waiting, false, 0); } while(0);
+    ({ QEMU_BUILD_BUG_ON(sizeof(*&p_rcu_reader->ctr) > sizeof(void *)); ({ __atomic_exchange_n(&p_rcu_reader->ctr, (0), 5); }); });
+    if (unlikely(({ QEMU_BUILD_BUG_ON(sizeof(*&p_rcu_reader->waiting) > sizeof(void *)); __atomic_load_n(&p_rcu_reader->waiting, 0); }))) {
+        do { QEMU_BUILD_BUG_ON(sizeof(*&p_rcu_reader->waiting) > sizeof(void *)); __atomic_store_n(&p_rcu_reader->waiting, false, 0); } while(0);
         qemu_event_set(&rcu_gp_event);
     }
 }
@@ -9485,10 +9198,8 @@ struct rcu_head {
 };
 
 extern void call_rcu1(struct rcu_head *head, RCUCBFunc *func);
-# 7 "/home/alom/git/panda/include/exec/ramlist.h" 2
 
 typedef struct RAMBlockNotifier RAMBlockNotifier;
-# 41 "/home/alom/git/panda/include/exec/ramlist.h"
 typedef struct {
     struct rcu_head rcu;
     unsigned long *blocks[];
@@ -9518,10 +9229,7 @@ void ram_block_notifier_add(RAMBlockNotifier *n);
 void ram_block_notifier_remove(RAMBlockNotifier *n);
 void ram_block_notify_add(void *host, size_t size);
 void ram_block_notify_remove(void *host, size_t size);
-# 25 "/home/alom/git/panda/include/exec/memory.h" 2
 
-# 1 "/home/alom/git/panda/include/qemu/int128.h" 1
-# 148 "/home/alom/git/panda/include/qemu/int128.h"
 typedef struct Int128 Int128;
 
 struct Int128 {
@@ -9677,9 +9385,6 @@ static inline void int128_subfrom(Int128 *a, Int128 b)
 {
     *a = int128_sub(*a, b);
 }
-# 27 "/home/alom/git/panda/include/exec/memory.h" 2
-# 1 "/home/alom/git/panda/include/qemu/notify.h" 1
-# 19 "/home/alom/git/panda/include/qemu/notify.h"
 typedef struct Notifier Notifier;
 
 struct Notifier
@@ -9732,8 +9437,6 @@ void notifier_with_return_remove(NotifierWithReturn *notifier);
 
 int notifier_with_return_list_notify(NotifierWithReturnList *list,
                                      void *data);
-# 28 "/home/alom/git/panda/include/exec/memory.h" 2
-# 41 "/home/alom/git/panda/include/exec/memory.h"
 typedef struct MemoryRegionOps MemoryRegionOps;
 typedef struct MemoryRegionMmio MemoryRegionMmio;
 
@@ -9780,7 +9483,6 @@ struct IOMMUNotifier {
     struct { struct IOMMUNotifier *le_next; struct IOMMUNotifier **le_prev; } node;
 };
 typedef struct IOMMUNotifier IOMMUNotifier;
-# 96 "/home/alom/git/panda/include/exec/memory.h"
 typedef uint32_t MemTxResult;
 
 
@@ -9967,7 +9669,6 @@ struct AddressSpace {
     struct memory_listeners_as { struct MemoryListener *tqh_first; struct MemoryListener * *tqh_last; } listeners;
     struct { struct AddressSpace *tqe_next; struct AddressSpace * *tqe_prev; } address_spaces_link;
 };
-# 294 "/home/alom/git/panda/include/exec/memory.h"
 struct MemoryRegionSection {
     MemoryRegion *mr;
     AddressSpace *address_space;
@@ -9976,29 +9677,23 @@ struct MemoryRegionSection {
     hwaddr offset_within_address_space;
     bool readonly;
 };
-# 314 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_init(MemoryRegion *mr,
                         struct Object *owner,
                         const char *name,
                         uint64_t size);
-# 334 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_ref(MemoryRegion *mr);
-# 346 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_unref(MemoryRegion *mr);
-# 362 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_init_io(MemoryRegion *mr,
                            struct Object *owner,
                            const MemoryRegionOps *ops,
                            void *opaque,
                            const char *name,
                            uint64_t size);
-# 379 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_init_ram(MemoryRegion *mr,
                             struct Object *owner,
                             const char *name,
                             uint64_t size,
                             Error **errp);
-# 400 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_init_resizeable_ram(MemoryRegion *mr,
                                        struct Object *owner,
                                        const char *name,
@@ -10008,7 +9703,6 @@ void memory_region_init_resizeable_ram(MemoryRegion *mr,
                                                        uint64_t length,
                                                        void *host),
                                        Error **errp);
-# 422 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_init_ram_from_file(MemoryRegion *mr,
                                       struct Object *owner,
                                       const char *name,
@@ -10016,32 +9710,27 @@ void memory_region_init_ram_from_file(MemoryRegion *mr,
                                       bool share,
                                       const char *path,
                                       Error **errp);
-# 442 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_init_ram_ptr(MemoryRegion *mr,
                                 struct Object *owner,
                                 const char *name,
                                 uint64_t size,
                                 void *ptr);
-# 466 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_init_ram_device_ptr(MemoryRegion *mr,
                                        struct Object *owner,
                                        const char *name,
                                        uint64_t size,
                                        void *ptr);
-# 484 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_init_alias(MemoryRegion *mr,
                               struct Object *owner,
                               const char *name,
                               MemoryRegion *orig,
                               hwaddr offset,
                               uint64_t size);
-# 504 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_init_rom(MemoryRegion *mr,
                             struct Object *owner,
                             const char *name,
                             uint64_t size,
                             Error **errp);
-# 521 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_init_rom_device(MemoryRegion *mr,
                                    struct Object *owner,
                                    const MemoryRegionOps *ops,
@@ -10049,19 +9738,15 @@ void memory_region_init_rom_device(MemoryRegion *mr,
                                    const char *name,
                                    uint64_t size,
                                    Error **errp);
-# 544 "/home/alom/git/panda/include/exec/memory.h"
 static inline void memory_region_init_reservation(MemoryRegion *mr,
                                     Object *owner,
                                     const char *name,
                                     uint64_t size)
 {
     memory_region_init_io(mr, owner, 
-# 549 "/home/alom/git/panda/include/exec/memory.h" 3 4
                                     ((void *)0)
-# 549 "/home/alom/git/panda/include/exec/memory.h"
                                         , mr, name, size);
 }
-# 565 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_init_iommu(MemoryRegion *mr,
                               struct Object *owner,
                               const MemoryRegionIOMMUOps *ops,
@@ -10081,19 +9766,15 @@ struct Object *memory_region_owner(MemoryRegion *mr);
 
 
 uint64_t memory_region_size(MemoryRegion *mr);
-# 592 "/home/alom/git/panda/include/exec/memory.h"
 static inline bool memory_region_is_ram(MemoryRegion *mr)
 {
     return mr->ram;
 }
-# 604 "/home/alom/git/panda/include/exec/memory.h"
 bool memory_region_is_ram_device(MemoryRegion *mr);
-# 614 "/home/alom/git/panda/include/exec/memory.h"
 static inline bool memory_region_is_romd(MemoryRegion *mr)
 {
     return mr->rom_device && mr->romd_mode;
 }
-# 626 "/home/alom/git/panda/include/exec/memory.h"
 static inline bool memory_region_is_iommu(MemoryRegion *mr)
 {
     if (mr->alias) {
@@ -10101,97 +9782,64 @@ static inline bool memory_region_is_iommu(MemoryRegion *mr)
     }
     return mr->iommu_ops;
 }
-# 643 "/home/alom/git/panda/include/exec/memory.h"
 uint64_t memory_region_iommu_get_min_page_size(MemoryRegion *mr);
-# 662 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_notify_iommu(MemoryRegion *mr,
                                 IOMMUTLBEntry entry);
-# 674 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_register_iommu_notifier(MemoryRegion *mr,
                                            IOMMUNotifier *n);
-# 687 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_iommu_replay(MemoryRegion *mr, IOMMUNotifier *n,
                                 bool is_write);
-# 698 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_unregister_iommu_notifier(MemoryRegion *mr,
                                              IOMMUNotifier *n);
-# 708 "/home/alom/git/panda/include/exec/memory.h"
 const char *memory_region_name(const MemoryRegion *mr);
-# 718 "/home/alom/git/panda/include/exec/memory.h"
 bool memory_region_is_logging(MemoryRegion *mr, uint8_t client);
-# 729 "/home/alom/git/panda/include/exec/memory.h"
 uint8_t memory_region_get_dirty_log_mask(MemoryRegion *mr);
-# 738 "/home/alom/git/panda/include/exec/memory.h"
 static inline bool memory_region_is_rom(MemoryRegion *mr)
 {
     return mr->ram && mr->readonly;
 }
-# 752 "/home/alom/git/panda/include/exec/memory.h"
 int memory_region_get_fd(MemoryRegion *mr);
-# 763 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_set_fd(MemoryRegion *mr, int fd);
-# 781 "/home/alom/git/panda/include/exec/memory.h"
 MemoryRegion *memory_region_from_host(void *ptr, ram_addr_t *offset);
-# 797 "/home/alom/git/panda/include/exec/memory.h"
 void *memory_region_get_ram_ptr(MemoryRegion *mr);
-# 808 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_ram_resize(MemoryRegion *mr, ram_addr_t newsize,
                               Error **errp);
-# 821 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_set_log(MemoryRegion *mr, bool log, unsigned client);
-# 837 "/home/alom/git/panda/include/exec/memory.h"
 bool memory_region_get_dirty(MemoryRegion *mr, hwaddr addr,
                              hwaddr size, unsigned client);
-# 850 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_set_dirty(MemoryRegion *mr, hwaddr addr,
                              hwaddr size);
-# 867 "/home/alom/git/panda/include/exec/memory.h"
 bool memory_region_test_and_clear_dirty(MemoryRegion *mr, hwaddr addr,
                                         hwaddr size, unsigned client);
-# 878 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_sync_dirty_bitmap(MemoryRegion *mr);
-# 892 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_reset_dirty(MemoryRegion *mr, hwaddr addr,
                                hwaddr size, unsigned client);
-# 904 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_set_readonly(MemoryRegion *mr, bool readonly);
-# 918 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_rom_device_set_romd(MemoryRegion *mr, bool romd_mode);
-# 929 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_set_coalescing(MemoryRegion *mr);
-# 942 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_add_coalescing(MemoryRegion *mr,
                                   hwaddr offset,
                                   uint64_t size);
-# 955 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_clear_coalescing(MemoryRegion *mr);
-# 967 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_set_flush_coalesced(MemoryRegion *mr);
-# 980 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_clear_flush_coalesced(MemoryRegion *mr);
-# 992 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_set_global_locking(MemoryRegion *mr);
-# 1005 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_clear_global_locking(MemoryRegion *mr);
-# 1023 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_add_eventfd(MemoryRegion *mr,
                                hwaddr addr,
                                unsigned size,
                                bool match_data,
                                uint64_t data,
                                EventNotifier *e);
-# 1043 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_del_eventfd(MemoryRegion *mr,
                                hwaddr addr,
                                unsigned size,
                                bool match_data,
                                uint64_t data,
                                EventNotifier *e);
-# 1064 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_add_subregion(MemoryRegion *mr,
                                  hwaddr offset,
                                  MemoryRegion *subregion);
-# 1084 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_add_subregion_overlap(MemoryRegion *mr,
                                          hwaddr offset,
                                          MemoryRegion *subregion,
@@ -10204,19 +9852,13 @@ void memory_region_add_subregion_overlap(MemoryRegion *mr,
 ram_addr_t memory_region_get_ram_addr(MemoryRegion *mr);
 
 uint64_t memory_region_get_alignment(const MemoryRegion *mr);
-# 1104 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_del_subregion(MemoryRegion *mr,
                                  MemoryRegion *subregion);
-# 1120 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_set_enabled(MemoryRegion *mr, bool enabled);
-# 1131 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_set_address(MemoryRegion *mr, hwaddr addr);
-# 1141 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_set_size(MemoryRegion *mr, uint64_t size);
-# 1152 "/home/alom/git/panda/include/exec/memory.h"
 void memory_region_set_alias_offset(MemoryRegion *mr,
                                     hwaddr offset);
-# 1165 "/home/alom/git/panda/include/exec/memory.h"
 bool memory_region_present(MemoryRegion *container, hwaddr addr);
 
 
@@ -10226,7 +9868,6 @@ bool memory_region_present(MemoryRegion *container, hwaddr addr);
 
 
 bool memory_region_is_mapped(MemoryRegion *mr);
-# 1203 "/home/alom/git/panda/include/exec/memory.h"
 MemoryRegionSection memory_region_find(MemoryRegion *mr,
                                        hwaddr addr, uint64_t size);
 
@@ -10250,7 +9891,6 @@ void memory_region_transaction_begin(void);
 
 
 void memory_region_transaction_commit(void);
-# 1235 "/home/alom/git/panda/include/exec/memory.h"
 void memory_listener_register(MemoryListener *listener, AddressSpace *filter);
 
 
@@ -10271,34 +9911,26 @@ void memory_global_dirty_log_start(void);
 void memory_global_dirty_log_stop(void);
 
 void mtree_info(fprintf_function mon_printf, void *f, bool flatview);
-# 1266 "/home/alom/git/panda/include/exec/memory.h"
 MemTxResult memory_region_dispatch_read(MemoryRegion *mr,
                                         hwaddr addr,
                                         uint64_t *pval,
                                         unsigned size,
                                         MemTxAttrs attrs);
-# 1281 "/home/alom/git/panda/include/exec/memory.h"
 MemTxResult memory_region_dispatch_write(MemoryRegion *mr,
                                          hwaddr addr,
                                          uint64_t data,
                                          unsigned size,
                                          MemTxAttrs attrs);
-# 1295 "/home/alom/git/panda/include/exec/memory.h"
 void address_space_init(AddressSpace *as, MemoryRegion *root, const char *name);
-# 1311 "/home/alom/git/panda/include/exec/memory.h"
 AddressSpace *address_space_init_shareable(MemoryRegion *root,
                                            const char *name);
-# 1323 "/home/alom/git/panda/include/exec/memory.h"
 void address_space_destroy(AddressSpace *as);
-# 1338 "/home/alom/git/panda/include/exec/memory.h"
 MemTxResult address_space_rw(AddressSpace *as, hwaddr addr,
                              MemTxAttrs attrs, uint8_t *buf,
                              int len, bool is_write);
-# 1354 "/home/alom/git/panda/include/exec/memory.h"
 MemTxResult address_space_write(AddressSpace *as, hwaddr addr,
                                 MemTxAttrs attrs,
                                 const uint8_t *buf, int len);
-# 1378 "/home/alom/git/panda/include/exec/memory.h"
 uint32_t address_space_ldub(AddressSpace *as, hwaddr addr,
                             MemTxAttrs attrs, MemTxResult *result);
 uint32_t address_space_lduw_le(AddressSpace *as, hwaddr addr,
@@ -10350,13 +9982,11 @@ struct MemoryRegionCache {
     MemoryRegion *mr;
     bool is_write;
 };
-# 1451 "/home/alom/git/panda/include/exec/memory.h"
 int64_t address_space_cache_init(MemoryRegionCache *cache,
                                  AddressSpace *as,
                                  hwaddr addr,
                                  hwaddr len,
                                  bool is_write);
-# 1465 "/home/alom/git/panda/include/exec/memory.h"
 void address_space_cache_invalidate(MemoryRegionCache *cache,
                                     hwaddr addr,
                                     hwaddr access_len);
@@ -10367,7 +9997,6 @@ void address_space_cache_invalidate(MemoryRegionCache *cache,
 
 
 void address_space_cache_destroy(MemoryRegionCache *cache);
-# 1499 "/home/alom/git/panda/include/exec/memory.h"
 uint32_t address_space_ldub_cached(MemoryRegionCache *cache, hwaddr addr,
                             MemTxAttrs attrs, MemTxResult *result);
 uint32_t address_space_lduw_le_cached(MemoryRegionCache *cache, hwaddr addr,
@@ -10416,16 +10045,12 @@ void stq_be_phys_cached(MemoryRegionCache *cache, hwaddr addr, uint64_t val);
 
 IOMMUTLBEntry address_space_get_iotlb_entry(AddressSpace *as, hwaddr addr,
                                             bool is_write);
-# 1560 "/home/alom/git/panda/include/exec/memory.h"
 MemoryRegion *address_space_translate(AddressSpace *as, hwaddr addr,
                                       hwaddr *xlat, hwaddr *len,
                                       bool is_write);
-# 1579 "/home/alom/git/panda/include/exec/memory.h"
 bool address_space_access_valid(AddressSpace *as, hwaddr addr, int len, bool is_write);
-# 1594 "/home/alom/git/panda/include/exec/memory.h"
 void *address_space_map(AddressSpace *as, hwaddr addr,
                         hwaddr *plen, bool is_write);
-# 1608 "/home/alom/git/panda/include/exec/memory.h"
 void address_space_unmap(AddressSpace *as, void *buffer, hwaddr len,
                          int is_write, hwaddr access_len);
 
@@ -10449,8 +10074,7 @@ static inline bool memory_access_is_direct(MemoryRegion *mr, bool is_write)
                memory_region_is_romd(mr);
     }
 }
-# 1644 "/home/alom/git/panda/include/exec/memory.h"
-static inline __attribute__((__always_inline__))
+static inline
 MemTxResult address_space_read(AddressSpace *as, hwaddr addr, MemTxAttrs attrs,
                                uint8_t *buf, int len)
 {
@@ -10477,7 +10101,6 @@ MemTxResult address_space_read(AddressSpace *as, hwaddr addr, MemTxAttrs attrs,
     }
     return result;
 }
-# 1680 "/home/alom/git/panda/include/exec/memory.h"
 static inline void
 address_space_read_cached(MemoryRegionCache *cache, hwaddr addr,
                           void *buf, int len)
@@ -10485,7 +10108,6 @@ address_space_read_cached(MemoryRegionCache *cache, hwaddr addr,
     assert(addr < cache->len && len <= cache->len - addr);
     memcpy(buf, (uint8_t *)cache->ptr + addr, len);
 }
-# 1696 "/home/alom/git/panda/include/exec/memory.h"
 static inline void
 address_space_write_cached(MemoryRegionCache *cache, hwaddr addr,
                            void *buf, int len)
@@ -10493,8 +10115,6 @@ address_space_write_cached(MemoryRegionCache *cache, hwaddr addr,
     assert(addr < cache->len && len <= cache->len - addr);
     memcpy((uint8_t *)cache->ptr + addr, buf, len);
 }
-# 12 "/home/alom/git/panda/include/hw/hw.h" 2
-# 1 "/home/alom/git/panda/include/hw/irq.h" 1
 
 
 
@@ -10558,29 +10178,24 @@ qemu_irq *qemu_irq_proxy(qemu_irq **target, int n);
 
 
 void qemu_irq_intercept_in(qemu_irq *gpio_in, qemu_irq_handler handler, int n);
-# 13 "/home/alom/git/panda/include/hw/hw.h" 2
-# 1 "/home/alom/git/panda/include/migration/vmstate.h" 1
-# 31 "/home/alom/git/panda/include/migration/vmstate.h"
-# 1 "/home/alom/git/panda/include/migration/qemu-file.h" 1
-# 28 "/home/alom/git/panda/include/migration/qemu-file.h"
-# 1 "/home/alom/git/panda/include/qemu-common.h" 1
-# 15 "/home/alom/git/panda/include/qemu-common.h"
-# 1 "/home/alom/git/panda/include/qemu/fprintf-fn.h" 1
-# 16 "/home/alom/git/panda/include/qemu-common.h" 2
 
 
 
-# 1 "/home/alom/git/panda/include/qemu/option.h" 1
-# 30 "/home/alom/git/panda/include/qemu/option.h"
-# 1 "/home/alom/git/panda/include/qapi/qmp/qdict.h" 1
-# 16 "/home/alom/git/panda/include/qapi/qmp/qdict.h"
-# 1 "/home/alom/git/panda/include/qapi/qmp/qobject.h" 1
-# 37 "/home/alom/git/panda/include/qapi/qmp/qobject.h"
+
+
+
+
+
+
+
+typedef int (*fprintf_function)(FILE *f, const char *fmt, ...);
+
+
+
 struct QObject {
     QType type;
     size_t refcnt;
 };
-# 54 "/home/alom/git/panda/include/qapi/qmp/qobject.h"
 static inline void qobject_init(QObject *obj, QType type)
 {
     assert(QTYPE_NONE < type && type < QTYPE__MAX);
@@ -10630,9 +10245,6 @@ static inline QObject *qnull(void)
     qobject_incref(&qnull_);
     return &qnull_;
 }
-# 17 "/home/alom/git/panda/include/qapi/qmp/qdict.h" 2
-# 1 "/home/alom/git/panda/include/qapi/qmp/qlist.h" 1
-# 19 "/home/alom/git/panda/include/qapi/qmp/qlist.h"
 typedef struct QListEntry {
     QObject *value;
     struct { struct QListEntry *tqe_next; struct QListEntry * *tqe_prev; } next;
@@ -10642,7 +10254,6 @@ typedef struct QList {
     QObject base;
     struct { struct QListEntry *tqh_first; struct QListEntry * *tqh_last; } head;
 } QList;
-# 37 "/home/alom/git/panda/include/qapi/qmp/qlist.h"
 static inline QObject *qlist_entry_obj(const QListEntry *entry)
 {
     return entry->value;
@@ -10669,7 +10280,6 @@ static inline const QListEntry *qlist_next(const QListEntry *entry)
 {
     return ((entry)->next.tqe_next);
 }
-# 18 "/home/alom/git/panda/include/qapi/qmp/qdict.h" 2
 
 
 
@@ -10731,7 +10341,6 @@ int qdict_array_entries(QDict *src, const char *subqdict);
 QObject *qdict_crumple(const QDict *src, Error **errp);
 
 void qdict_join(QDict *dest, QDict *src, bool overwrite);
-# 31 "/home/alom/git/panda/include/qemu/option.h" 2
 
 const char *get_opt_name(char *buf, int buf_size, const char *p, char delim);
 const char *get_opt_value(char *buf, int buf_size, const char *p);
@@ -10770,7 +10379,6 @@ struct QemuOptsList {
 
 const char *qemu_opt_get(QemuOpts *opts, const char *name);
 char *qemu_opt_get_del(QemuOpts *opts, const char *name);
-# 80 "/home/alom/git/panda/include/qemu/option.h"
 bool qemu_opt_has_help_opt(QemuOpts *opts);
 QemuOpt *qemu_opt_find(QemuOpts *opts, const char *name);
 bool qemu_opt_get_bool(QemuOpts *opts, const char *name, bool defval);
@@ -10834,32 +10442,25 @@ void qemu_opts_print(QemuOpts *opts, const char *sep);
 void qemu_opts_print_help(QemuOptsList *list);
 void qemu_opts_free(QemuOptsList *list);
 QemuOptsList *qemu_opts_append(QemuOptsList *dst, QemuOptsList *list);
-# 20 "/home/alom/git/panda/include/qemu-common.h" 2
-# 30 "/home/alom/git/panda/include/qemu-common.h"
 void qemu_get_timedate(struct tm *tm, int offset);
 int qemu_timedate_diff(struct tm *tm);
-# 49 "/home/alom/git/panda/include/qemu-common.h"
 void *qemu_oom_check(void *ptr);
 
 ssize_t qemu_write_full(int fd, const void *buf, size_t count)
-    __attribute__((warn_unused_result));
+    QEMU_WARN_UNUSED_RESULT;
 
 
 int qemu_pipe(int pipefd[2]);
 
 int qemu_openpty_raw(int *aslave, char *pty_name);
-# 79 "/home/alom/git/panda/include/qemu-common.h"
 void tcg_exec_init(unsigned long tb_size);
 bool tcg_enabled(void);
 
 void cpu_exec_init_all(void);
 void cpu_exec_step_atomic(CPUState *cpu);
-# 95 "/home/alom/git/panda/include/qemu-common.h"
 bool set_preferred_target_page_bits(int bits);
-# 104 "/home/alom/git/panda/include/qemu-common.h"
 ssize_t qemu_co_sendv_recvv(int sockfd, struct iovec *iov, unsigned iov_cnt,
                             size_t offset, size_t bytes, bool do_send);
-# 114 "/home/alom/git/panda/include/qemu-common.h"
 ssize_t qemu_co_send_recv(int sockfd, void *buf, size_t bytes, bool do_send);
 
 
@@ -10880,8 +10481,6 @@ void os_setup_early_signal_handling(void);
 char *os_find_datadir(void);
 void os_parse_cmd_args(int index, const char *optarg);
 
-# 1 "/home/alom/git/panda/include/qemu/module.h" 1
-# 42 "/home/alom/git/panda/include/qemu/module.h"
 typedef enum {
     MODULE_INIT_BLOCK,
     MODULE_INIT_OPTS,
@@ -10890,13 +10489,11 @@ typedef enum {
     MODULE_INIT_TRACE,
     MODULE_INIT_MAX
 } module_init_type;
-# 59 "/home/alom/git/panda/include/qemu/module.h"
 void register_module_init(void (*fn)(void), module_init_type type);
 void register_dso_module_init(void (*fn)(void), module_init_type type);
 
 void module_call_init(module_init_type type);
 void module_load_one(const char *prefix, const char *lib_name);
-# 135 "/home/alom/git/panda/include/qemu-common.h" 2
 
 
 
@@ -10915,23 +10512,12 @@ void page_size_init(void);
 
 
 bool dump_in_progress(void);
-# 29 "/home/alom/git/panda/include/migration/qemu-file.h" 2
-
-# 1 "/home/alom/git/panda/include/io/channel.h" 1
-# 26 "/home/alom/git/panda/include/io/channel.h"
-# 1 "/home/alom/git/panda/include/qemu/coroutine.h" 1
-# 19 "/home/alom/git/panda/include/qemu/coroutine.h"
-# 1 "/home/alom/git/panda/include/qemu/timer.h" 1
 
 
 
 
 
-# 1 "/home/alom/git/panda/include/qemu/host-utils.h" 1
-# 29 "/home/alom/git/panda/include/qemu/host-utils.h"
-# 1 "/home/alom/git/panda/include/qemu/compiler.h" 1
-# 30 "/home/alom/git/panda/include/qemu/host-utils.h" 2
-# 81 "/home/alom/git/panda/include/qemu/host-utils.h"
+
 void muls64(uint64_t *phigh, uint64_t *plow, int64_t a, int64_t b);
 void mulu64(uint64_t *phigh, uint64_t *plow, uint64_t a, uint64_t b);
 int divu128(uint64_t *plow, uint64_t *phigh, uint64_t divisor);
@@ -10959,12 +10545,10 @@ static inline uint64_t muldiv64(uint64_t a, uint32_t b, uint32_t c)
     res.l.low = (((rh % c) << 32) + (rl & 0xffffffff)) / c;
     return res.ll;
 }
-# 117 "/home/alom/git/panda/include/qemu/host-utils.h"
 static inline int clz32(uint32_t val)
 {
 
     return val ? __builtin_clz(val) : 32;
-# 150 "/home/alom/git/panda/include/qemu/host-utils.h"
 }
 
 
@@ -10977,12 +10561,10 @@ static inline int clo32(uint32_t val)
 {
     return clz32(~val);
 }
-# 170 "/home/alom/git/panda/include/qemu/host-utils.h"
 static inline int clz64(uint64_t val)
 {
 
     return val ? __builtin_clzll(val) : 64;
-# 185 "/home/alom/git/panda/include/qemu/host-utils.h"
 }
 
 
@@ -10995,12 +10577,10 @@ static inline int clo64(uint64_t val)
 {
     return clz64(~val);
 }
-# 205 "/home/alom/git/panda/include/qemu/host-utils.h"
 static inline int ctz32(uint32_t val)
 {
 
     return val ? __builtin_ctz(val) : 32;
-# 240 "/home/alom/git/panda/include/qemu/host-utils.h"
 }
 
 
@@ -11013,12 +10593,10 @@ static inline int cto32(uint32_t val)
 {
     return ctz32(~val);
 }
-# 260 "/home/alom/git/panda/include/qemu/host-utils.h"
 static inline int ctz64(uint64_t val)
 {
 
     return val ? __builtin_ctzll(val) : 64;
-# 275 "/home/alom/git/panda/include/qemu/host-utils.h"
 }
 
 
@@ -11031,7 +10609,6 @@ static inline int cto64(uint64_t val)
 {
     return ctz64(~val);
 }
-# 295 "/home/alom/git/panda/include/qemu/host-utils.h"
 static inline int clrsb32(uint32_t val)
 {
 
@@ -11040,7 +10617,6 @@ static inline int clrsb32(uint32_t val)
 
 
 }
-# 311 "/home/alom/git/panda/include/qemu/host-utils.h"
 static inline int clrsb64(uint64_t val)
 {
 
@@ -11075,7 +10651,6 @@ static inline int ctpop16(uint16_t val)
 {
 
     return __builtin_popcount(val);
-# 353 "/home/alom/git/panda/include/qemu/host-utils.h"
 }
 
 
@@ -11086,7 +10661,6 @@ static inline int ctpop32(uint32_t val)
 {
 
     return __builtin_popcount(val);
-# 371 "/home/alom/git/panda/include/qemu/host-utils.h"
 }
 
 
@@ -11097,7 +10671,6 @@ static inline int ctpop64(uint64_t val)
 {
 
     return __builtin_popcountll(val);
-# 389 "/home/alom/git/panda/include/qemu/host-utils.h"
 }
 
 
@@ -11173,7 +10746,6 @@ static inline uint64_t revbit64(uint64_t x)
       | ((x & 0x1111111111111111ull) << 3);
     return x;
 }
-# 485 "/home/alom/git/panda/include/qemu/host-utils.h"
 static inline bool is_power_of_2(uint64_t value)
 {
     if (!value) {
@@ -11205,12 +10777,8 @@ static inline uint64_t pow2ceil(uint64_t value)
     }
     return 1ULL << (64 - nlz);
 }
-# 528 "/home/alom/git/panda/include/qemu/host-utils.h"
 void urshift(uint64_t *plow, uint64_t *phigh, int32_t shift);
-# 542 "/home/alom/git/panda/include/qemu/host-utils.h"
 void ulshift(uint64_t *plow, uint64_t *phigh, int32_t shift, bool *overflow);
-# 7 "/home/alom/git/panda/include/qemu/timer.h" 2
-# 1 "/home/alom/git/panda/include/sysemu/cpus.h" 1
 
 
 
@@ -11250,8 +10818,6 @@ extern int smp_threads;
 void list_cpus(FILE *f, fprintf_function cpu_fprintf, const char *optarg);
 
 void qemu_tcg_configure(QemuOpts *opts, Error **errp);
-# 8 "/home/alom/git/panda/include/qemu/timer.h" 2
-# 48 "/home/alom/git/panda/include/qemu/timer.h"
 typedef enum {
     QEMU_CLOCK_REALTIME = 0,
     QEMU_CLOCK_VIRTUAL = 1,
@@ -11279,31 +10845,21 @@ struct QEMUTimer {
 };
 
 extern QEMUTimerListGroup main_loop_tlg;
-# 85 "/home/alom/git/panda/include/qemu/timer.h"
 int64_t qemu_clock_get_ns(QEMUClockType type);
-# 96 "/home/alom/git/panda/include/qemu/timer.h"
 static inline int64_t qemu_clock_get_ms(QEMUClockType type)
 {
     return qemu_clock_get_ns(type) / 1000000;
 }
-# 110 "/home/alom/git/panda/include/qemu/timer.h"
 static inline int64_t qemu_clock_get_us(QEMUClockType type)
 {
     return qemu_clock_get_ns(type) / 1000;
 }
-# 129 "/home/alom/git/panda/include/qemu/timer.h"
 bool qemu_clock_has_timers(QEMUClockType type);
-# 141 "/home/alom/git/panda/include/qemu/timer.h"
 bool qemu_clock_expired(QEMUClockType type);
-# 157 "/home/alom/git/panda/include/qemu/timer.h"
 bool qemu_clock_use_for_deadline(QEMUClockType type);
-# 169 "/home/alom/git/panda/include/qemu/timer.h"
 int64_t qemu_clock_deadline_ns_all(QEMUClockType type);
-# 179 "/home/alom/git/panda/include/qemu/timer.h"
 QEMUTimerList *qemu_clock_get_main_loop_timerlist(QEMUClockType type);
-# 188 "/home/alom/git/panda/include/qemu/timer.h"
 void qemu_clock_notify(QEMUClockType type);
-# 203 "/home/alom/git/panda/include/qemu/timer.h"
 void qemu_clock_enable(QEMUClockType type, bool enabled);
 
 
@@ -11312,15 +10868,11 @@ void qemu_clock_enable(QEMUClockType type, bool enabled);
 
 
 void qemu_start_warp_timer(void);
-# 220 "/home/alom/git/panda/include/qemu/timer.h"
 void qemu_clock_register_reset_notifier(QEMUClockType type,
                                         Notifier *notifier);
-# 231 "/home/alom/git/panda/include/qemu/timer.h"
 void qemu_clock_unregister_reset_notifier(QEMUClockType type,
                                           Notifier *notifier);
-# 243 "/home/alom/git/panda/include/qemu/timer.h"
 bool qemu_clock_run_timers(QEMUClockType type);
-# 253 "/home/alom/git/panda/include/qemu/timer.h"
 bool qemu_clock_run_all_timers(void);
 
 
@@ -11329,7 +10881,6 @@ bool qemu_clock_run_all_timers(void);
 
 
 void qemu_rr_quit_timers(void);
-# 277 "/home/alom/git/panda/include/qemu/timer.h"
 QEMUTimerList *timerlist_new(QEMUClockType type,
                              QEMUTimerListNotifyCB *cb, void *opaque);
 
@@ -11340,15 +10891,10 @@ QEMUTimerList *timerlist_new(QEMUClockType type,
 
 
 void timerlist_free(QEMUTimerList *timer_list);
-# 300 "/home/alom/git/panda/include/qemu/timer.h"
 bool timerlist_has_timers(QEMUTimerList *timer_list);
-# 312 "/home/alom/git/panda/include/qemu/timer.h"
 bool timerlist_expired(QEMUTimerList *timer_list);
-# 325 "/home/alom/git/panda/include/qemu/timer.h"
 int64_t timerlist_deadline_ns(QEMUTimerList *timer_list);
-# 336 "/home/alom/git/panda/include/qemu/timer.h"
 QEMUClockType timerlist_get_clock(QEMUTimerList *timer_list);
-# 346 "/home/alom/git/panda/include/qemu/timer.h"
 bool timerlist_run_timers(QEMUTimerList *timer_list);
 
 
@@ -11358,44 +10904,34 @@ bool timerlist_run_timers(QEMUTimerList *timer_list);
 
 
 void timerlist_notify(QEMUTimerList *timer_list);
-# 373 "/home/alom/git/panda/include/qemu/timer.h"
 void timerlistgroup_init(QEMUTimerListGroup *tlg,
                          QEMUTimerListNotifyCB *cb, void *opaque);
-# 383 "/home/alom/git/panda/include/qemu/timer.h"
 void timerlistgroup_deinit(QEMUTimerListGroup *tlg);
-# 394 "/home/alom/git/panda/include/qemu/timer.h"
 bool timerlistgroup_run_timers(QEMUTimerListGroup *tlg);
-# 408 "/home/alom/git/panda/include/qemu/timer.h"
 int64_t timerlistgroup_deadline_ns(QEMUTimerListGroup *tlg);
-# 428 "/home/alom/git/panda/include/qemu/timer.h"
 void timer_init_tl(QEMUTimer *ts,
                    QEMUTimerList *timer_list, int scale,
                    QEMUTimerCB *cb, void *opaque);
-# 446 "/home/alom/git/panda/include/qemu/timer.h"
 static inline void timer_init(QEMUTimer *ts, QEMUClockType type, int scale,
                               QEMUTimerCB *cb, void *opaque)
 {
     timer_init_tl(ts, main_loop_tlg.tl[type], scale, cb, opaque);
 }
-# 465 "/home/alom/git/panda/include/qemu/timer.h"
 static inline void timer_init_ns(QEMUTimer *ts, QEMUClockType type,
                                  QEMUTimerCB *cb, void *opaque)
 {
     timer_init(ts, type, 1, cb, opaque);
 }
-# 484 "/home/alom/git/panda/include/qemu/timer.h"
 static inline void timer_init_us(QEMUTimer *ts, QEMUClockType type,
                                  QEMUTimerCB *cb, void *opaque)
 {
     timer_init(ts, type, 1000, cb, opaque);
 }
-# 503 "/home/alom/git/panda/include/qemu/timer.h"
 static inline void timer_init_ms(QEMUTimer *ts, QEMUClockType type,
                                  QEMUTimerCB *cb, void *opaque)
 {
     timer_init(ts, type, 1000000, cb, opaque);
 }
-# 524 "/home/alom/git/panda/include/qemu/timer.h"
 static inline QEMUTimer *timer_new_tl(QEMUTimerList *timer_list,
                                       int scale,
                                       QEMUTimerCB *cb,
@@ -11405,31 +10941,26 @@ static inline QEMUTimer *timer_new_tl(QEMUTimerList *timer_list,
     timer_init_tl(ts, timer_list, scale, cb, opaque);
     return ts;
 }
-# 546 "/home/alom/git/panda/include/qemu/timer.h"
 static inline QEMUTimer *timer_new(QEMUClockType type, int scale,
                                    QEMUTimerCB *cb, void *opaque)
 {
     return timer_new_tl(main_loop_tlg.tl[type], scale, cb, opaque);
 }
-# 563 "/home/alom/git/panda/include/qemu/timer.h"
 static inline QEMUTimer *timer_new_ns(QEMUClockType type, QEMUTimerCB *cb,
                                       void *opaque)
 {
     return timer_new(type, 1, cb, opaque);
 }
-# 580 "/home/alom/git/panda/include/qemu/timer.h"
 static inline QEMUTimer *timer_new_us(QEMUClockType type, QEMUTimerCB *cb,
                                       void *opaque)
 {
     return timer_new(type, 1000, cb, opaque);
 }
-# 597 "/home/alom/git/panda/include/qemu/timer.h"
 static inline QEMUTimer *timer_new_ms(QEMUClockType type, QEMUTimerCB *cb,
                                       void *opaque)
 {
     return timer_new(type, 1000000, cb, opaque);
 }
-# 612 "/home/alom/git/panda/include/qemu/timer.h"
 void timer_deinit(QEMUTimer *ts);
 
 
@@ -11439,23 +10970,14 @@ void timer_deinit(QEMUTimer *ts);
 
 
 void timer_free(QEMUTimer *ts);
-# 631 "/home/alom/git/panda/include/qemu/timer.h"
 void timer_del(QEMUTimer *ts);
-# 643 "/home/alom/git/panda/include/qemu/timer.h"
 void timer_mod_ns(QEMUTimer *ts, int64_t expire_time);
-# 656 "/home/alom/git/panda/include/qemu/timer.h"
 void timer_mod_anticipate_ns(QEMUTimer *ts, int64_t expire_time);
-# 669 "/home/alom/git/panda/include/qemu/timer.h"
 void timer_mod(QEMUTimer *ts, int64_t expire_timer);
-# 682 "/home/alom/git/panda/include/qemu/timer.h"
 void timer_mod_anticipate(QEMUTimer *ts, int64_t expire_time);
-# 693 "/home/alom/git/panda/include/qemu/timer.h"
 bool timer_pending(QEMUTimer *ts);
-# 704 "/home/alom/git/panda/include/qemu/timer.h"
 bool timer_expired(QEMUTimer *timer_head, int64_t current_time);
-# 714 "/home/alom/git/panda/include/qemu/timer.h"
 uint64_t timer_expire_time_ns(QEMUTimer *ts);
-# 723 "/home/alom/git/panda/include/qemu/timer.h"
 void timer_get(QEMUFile *f, QEMUTimer *ts);
 
 
@@ -11464,11 +10986,8 @@ void timer_get(QEMUFile *f, QEMUTimer *ts);
 
 
 void timer_put(QEMUFile *f, QEMUTimer *ts);
-# 745 "/home/alom/git/panda/include/qemu/timer.h"
 int qemu_timeout_ns_to_ms(int64_t ns);
-# 758 "/home/alom/git/panda/include/qemu/timer.h"
 int qemu_poll_ns(GPollFD *fds, guint nfds, int64_t timeout);
-# 770 "/home/alom/git/panda/include/qemu/timer.h"
 static inline int64_t qemu_soonest_timeout(int64_t timeout1, int64_t timeout2)
 {
 
@@ -11510,13 +11029,10 @@ static inline int64_t get_clock_realtime(void)
     struct timeval tv;
 
     gettimeofday(&tv, 
-# 810 "/home/alom/git/panda/include/qemu/timer.h" 3 4
                      ((void *)0)
-# 810 "/home/alom/git/panda/include/qemu/timer.h"
                          );
     return tv.tv_sec * 1000000000LL + (tv.tv_usec * 1000);
 }
-# 829 "/home/alom/git/panda/include/qemu/timer.h"
 extern int use_rt_clock;
 
 static inline int64_t get_clock(void)
@@ -11525,9 +11041,7 @@ static inline int64_t get_clock(void)
     if (use_rt_clock) {
         struct timespec ts;
         clock_gettime(
-# 836 "/home/alom/git/panda/include/qemu/timer.h" 3 4
                      1
-# 836 "/home/alom/git/panda/include/qemu/timer.h"
                                     , &ts);
         return ts.tv_sec * 1000000000LL + ts.tv_nsec;
     } else
@@ -11545,7 +11059,6 @@ int64_t cpu_get_icount_raw(void);
 int64_t cpu_get_icount(void);
 int64_t cpu_get_clock(void);
 int64_t cpu_icount_to_ns(int64_t icount);
-# 894 "/home/alom/git/panda/include/qemu/timer.h"
 static inline int64_t cpu_get_host_ticks(void)
 {
     uint32_t low,high;
@@ -11556,10 +11069,7 @@ static inline int64_t cpu_get_host_ticks(void)
     val |= low;
     return val;
 }
-# 20 "/home/alom/git/panda/include/qemu/coroutine.h" 2
-# 47 "/home/alom/git/panda/include/qemu/coroutine.h"
 typedef struct Coroutine Coroutine;
-# 58 "/home/alom/git/panda/include/qemu/coroutine.h"
 typedef void CoroutineEntry(void *opaque);
 
 
@@ -11593,9 +11103,7 @@ void qemu_coroutine_yield(void);
 
 
 Coroutine * qemu_coroutine_self(void);
-# 99 "/home/alom/git/panda/include/qemu/coroutine.h"
 bool qemu_in_coroutine(void);
-# 113 "/home/alom/git/panda/include/qemu/coroutine.h"
 bool qemu_coroutine_entered(Coroutine *co);
 
 
@@ -11737,11 +11245,6 @@ void co_aio_sleep_ns(AioContext *ctx, QEMUClockType type,
 
 
 void yield_until_fd_readable(int fd);
-# 27 "/home/alom/git/panda/include/io/channel.h" 2
-# 1 "/home/alom/git/panda/include/block/aio.h" 1
-# 19 "/home/alom/git/panda/include/block/aio.h"
-# 1 "/home/alom/git/panda/include/qemu/event_notifier.h" 1
-# 22 "/home/alom/git/panda/include/qemu/event_notifier.h"
 struct EventNotifier {
 
 
@@ -11763,7 +11266,6 @@ int event_notifier_test_and_clear(EventNotifier *);
 
 
 HANDLE event_notifier_get_handle(EventNotifier *);
-# 20 "/home/alom/git/panda/include/block/aio.h" 2
 
 
 
@@ -11806,7 +11308,6 @@ struct AioContext {
 
 
     struct { struct AioHandler *lh_first; } aio_handlers;
-# 86 "/home/alom/git/panda/include/block/aio.h"
     uint32_t notify_me;
 
 
@@ -11817,7 +11318,6 @@ struct AioContext {
 
 
     struct QEMUBH *first_bh;
-# 109 "/home/alom/git/panda/include/block/aio.h"
     bool notified;
     EventNotifier notifier;
 
@@ -11828,7 +11328,6 @@ struct AioContext {
 
 
     struct ThreadPool *thread_pool;
-# 130 "/home/alom/git/panda/include/block/aio.h"
     QEMUTimerListGroup tlg;
 
     int external_disable_cnt;
@@ -11850,7 +11349,6 @@ struct AioContext {
     bool epoll_enabled;
     bool epoll_available;
 };
-# 159 "/home/alom/git/panda/include/block/aio.h"
 AioContext *aio_context_new(Error **errp);
 
 
@@ -11868,7 +11366,6 @@ void aio_context_ref(AioContext *ctx);
 
 
 void aio_context_unref(AioContext *ctx);
-# 189 "/home/alom/git/panda/include/block/aio.h"
 void aio_context_acquire(AioContext *ctx);
 
 
@@ -11879,24 +11376,17 @@ void aio_context_release(AioContext *ctx);
 
 
 void aio_bh_schedule_oneshot(AioContext *ctx, QEMUBHFunc *cb, void *opaque);
-# 207 "/home/alom/git/panda/include/block/aio.h"
 QEMUBH *aio_bh_new(AioContext *ctx, QEMUBHFunc *cb, void *opaque);
-# 222 "/home/alom/git/panda/include/block/aio.h"
 void aio_notify(AioContext *ctx);
-# 240 "/home/alom/git/panda/include/block/aio.h"
 void aio_notify_accept(AioContext *ctx);
 
 
 
 
 void aio_bh_call(QEMUBH *bh);
-# 254 "/home/alom/git/panda/include/block/aio.h"
 int aio_bh_poll(AioContext *ctx);
-# 268 "/home/alom/git/panda/include/block/aio.h"
 void qemu_bh_schedule(QEMUBH *bh);
-# 281 "/home/alom/git/panda/include/block/aio.h"
 void qemu_bh_cancel(QEMUBH *bh);
-# 294 "/home/alom/git/panda/include/block/aio.h"
 void qemu_bh_delete(QEMUBH *bh);
 
 
@@ -11918,9 +11408,7 @@ bool aio_pending(AioContext *ctx);
 
 
 void aio_dispatch(AioContext *ctx);
-# 329 "/home/alom/git/panda/include/block/aio.h"
 bool aio_poll(AioContext *ctx, bool blocking);
-# 338 "/home/alom/git/panda/include/block/aio.h"
 void aio_set_fd_handler(AioContext *ctx,
                         int fd,
                         bool is_external,
@@ -11936,7 +11424,6 @@ void aio_set_fd_handler(AioContext *ctx,
 void aio_set_fd_poll(AioContext *ctx, int fd,
                      IOHandler *io_poll_begin,
                      IOHandler *io_poll_end);
-# 361 "/home/alom/git/panda/include/block/aio.h"
 void aio_set_event_notifier(AioContext *ctx,
                             EventNotifier *notifier,
                             bool is_external,
@@ -11962,14 +11449,12 @@ struct ThreadPool *aio_get_thread_pool(AioContext *ctx);
 
 
 struct LinuxAioState *aio_get_linux_aio(AioContext *ctx);
-# 403 "/home/alom/git/panda/include/block/aio.h"
 static inline QEMUTimer *aio_timer_new(AioContext *ctx, QEMUClockType type,
                                        int scale,
                                        QEMUTimerCB *cb, void *opaque)
 {
     return timer_new_tl(ctx->tlg.tl[type], scale, cb, opaque);
 }
-# 422 "/home/alom/git/panda/include/block/aio.h"
 static inline void aio_timer_init(AioContext *ctx,
                                   QEMUTimer *ts, QEMUClockType type,
                                   int scale,
@@ -12017,16 +11502,13 @@ static inline void aio_enable_external(AioContext *ctx)
 
 static inline bool aio_external_disabled(AioContext *ctx)
 {
-    return ({ typedef struct { int:(sizeof(*&ctx->external_disable_cnt) > sizeof(void *)) ? -1 : 1; } qemu_build_bug_on__7 __attribute__((unused)); __atomic_load_n(&ctx->external_disable_cnt, 0); });
+    return ({ typedef struct { int:(sizeof(*&ctx->external_disable_cnt) > sizeof(void *)) ? -1 : 1; } qemu_build_bug_on__0 ; __atomic_load_n(&ctx->external_disable_cnt, 0); });
 }
-# 480 "/home/alom/git/panda/include/block/aio.h"
 static inline bool aio_node_check(AioContext *ctx, bool is_external)
 {
-    return !is_external || !({ typedef struct { int:(sizeof(*&ctx->external_disable_cnt) > sizeof(void *)) ? -1 : 1; } qemu_build_bug_on__8 __attribute__((unused)); __atomic_load_n(&ctx->external_disable_cnt, 0); });
+    return !is_external || !({ typedef struct { int:(sizeof(*&ctx->external_disable_cnt) > sizeof(void *)) ? -1 : 1; } qemu_build_bug_on__1 ; __atomic_load_n(&ctx->external_disable_cnt, 0); });
 }
-# 497 "/home/alom/git/panda/include/block/aio.h"
 void aio_co_schedule(AioContext *ctx, struct Coroutine *co);
-# 511 "/home/alom/git/panda/include/block/aio.h"
 void aio_co_wake(struct Coroutine *co);
 
 
@@ -12054,12 +11536,9 @@ static inline bool aio_context_in_iothread(AioContext *ctx)
 
 
 void aio_context_setup(AioContext *ctx);
-# 548 "/home/alom/git/panda/include/block/aio.h"
 void aio_context_set_poll_params(AioContext *ctx, int64_t max_ns,
                                  int64_t grow, int64_t shrink,
                                  Error **errp);
-# 28 "/home/alom/git/panda/include/io/channel.h" 2
-# 37 "/home/alom/git/panda/include/io/channel.h"
 typedef struct QIOChannel QIOChannel;
 typedef struct QIOChannelClass QIOChannelClass;
 
@@ -12085,7 +11564,6 @@ enum QIOChannelShutdown {
 typedef gboolean (*QIOChannelFunc)(QIOChannel *ioc,
                                    GIOCondition condition,
                                    gpointer data);
-# 81 "/home/alom/git/panda/include/io/channel.h"
 struct QIOChannel {
     Object parent;
     unsigned int features;
@@ -12097,7 +11575,6 @@ struct QIOChannel {
 
 
 };
-# 104 "/home/alom/git/panda/include/io/channel.h"
 struct QIOChannelClass {
     ObjectClass parent;
 
@@ -12140,98 +11617,75 @@ struct QIOChannelClass {
                                   IOHandler *io_write,
                                   void *opaque);
 };
-# 159 "/home/alom/git/panda/include/io/channel.h"
 bool qio_channel_has_feature(QIOChannel *ioc,
                              QIOChannelFeature feature);
-# 169 "/home/alom/git/panda/include/io/channel.h"
 void qio_channel_set_feature(QIOChannel *ioc,
                              QIOChannelFeature feature);
-# 181 "/home/alom/git/panda/include/io/channel.h"
 void qio_channel_set_name(QIOChannel *ioc,
                           const char *name);
-# 222 "/home/alom/git/panda/include/io/channel.h"
 ssize_t qio_channel_readv_full(QIOChannel *ioc,
                                const struct iovec *iov,
                                size_t niov,
                                int **fds,
                                size_t *nfds,
                                Error **errp);
-# 264 "/home/alom/git/panda/include/io/channel.h"
 ssize_t qio_channel_writev_full(QIOChannel *ioc,
                                 const struct iovec *iov,
                                 size_t niov,
                                 int *fds,
                                 size_t nfds,
                                 Error **errp);
-# 281 "/home/alom/git/panda/include/io/channel.h"
 ssize_t qio_channel_readv(QIOChannel *ioc,
                           const struct iovec *iov,
                           size_t niov,
                           Error **errp);
-# 296 "/home/alom/git/panda/include/io/channel.h"
 ssize_t qio_channel_writev(QIOChannel *ioc,
                            const struct iovec *iov,
                            size_t niov,
                            Error **errp);
-# 312 "/home/alom/git/panda/include/io/channel.h"
 ssize_t qio_channel_read(QIOChannel *ioc,
                          char *buf,
                          size_t buflen,
                          Error **errp);
-# 328 "/home/alom/git/panda/include/io/channel.h"
 ssize_t qio_channel_write(QIOChannel *ioc,
                           const char *buf,
                           size_t buflen,
                           Error **errp);
-# 346 "/home/alom/git/panda/include/io/channel.h"
 int qio_channel_set_blocking(QIOChannel *ioc,
                              bool enabled,
                              Error **errp);
-# 359 "/home/alom/git/panda/include/io/channel.h"
 int qio_channel_close(QIOChannel *ioc,
                       Error **errp);
-# 379 "/home/alom/git/panda/include/io/channel.h"
 int qio_channel_shutdown(QIOChannel *ioc,
                          QIOChannelShutdown how,
                          Error **errp);
-# 408 "/home/alom/git/panda/include/io/channel.h"
 void qio_channel_set_delay(QIOChannel *ioc,
                            bool enabled);
-# 433 "/home/alom/git/panda/include/io/channel.h"
 void qio_channel_set_cork(QIOChannel *ioc,
                           bool enabled);
-# 457 "/home/alom/git/panda/include/io/channel.h"
 off_t qio_channel_io_seek(QIOChannel *ioc,
                           off_t offset,
                           int whence,
                           Error **errp);
-# 476 "/home/alom/git/panda/include/io/channel.h"
 GSource *qio_channel_create_watch(QIOChannel *ioc,
                                   GIOCondition condition);
-# 502 "/home/alom/git/panda/include/io/channel.h"
 guint qio_channel_add_watch(QIOChannel *ioc,
                             GIOCondition condition,
                             QIOChannelFunc func,
                             gpointer user_data,
                             GDestroyNotify notify);
-# 531 "/home/alom/git/panda/include/io/channel.h"
 void qio_channel_attach_aio_context(QIOChannel *ioc,
                                     AioContext *ctx);
-# 542 "/home/alom/git/panda/include/io/channel.h"
 void qio_channel_detach_aio_context(QIOChannel *ioc);
-# 557 "/home/alom/git/panda/include/io/channel.h"
 void qio_channel_yield(QIOChannel *ioc,
                        GIOCondition condition);
-# 572 "/home/alom/git/panda/include/io/channel.h"
 void qio_channel_wait(QIOChannel *ioc,
                       GIOCondition condition);
-# 588 "/home/alom/git/panda/include/io/channel.h"
 void qio_channel_set_aio_fd_handler(QIOChannel *ioc,
                                     AioContext *ctx,
                                     IOHandler *io_read,
                                     IOHandler *io_write,
                                     void *opaque);
-# 31 "/home/alom/git/panda/include/migration/qemu-file.h" 2
 
 
 
@@ -12240,7 +11694,6 @@ void qio_channel_set_aio_fd_handler(QIOChannel *ioc,
 
 typedef ssize_t (QEMUFileGetBufferFunc)(void *opaque, uint8_t *buf,
                                         int64_t pos, size_t size);
-# 47 "/home/alom/git/panda/include/migration/qemu-file.h"
 typedef int (QEMUFileCloseFunc)(void *opaque);
 
 
@@ -12266,7 +11719,6 @@ typedef ssize_t (QEMUFileWritevBufferFunc)(void *opaque, struct iovec *iov,
 
 typedef int (QEMURamHookFunc)(QEMUFile *f, void *opaque, uint64_t flags,
                               void *data);
-# 86 "/home/alom/git/panda/include/migration/qemu-file.h"
 typedef size_t (QEMURamSaveFunc)(QEMUFile *f, void *opaque,
                                ram_addr_t block_offset,
                                ram_addr_t offset,
@@ -12493,10 +11945,7 @@ static inline void qemu_get_sbe64s(QEMUFile *f, int64_t *pv)
 }
 
 size_t qemu_get_counted_string(QEMUFile *f, char buf[256]);
-# 32 "/home/alom/git/panda/include/migration/vmstate.h" 2
 
-# 1 "/home/alom/git/panda/include/migration/qjson.h" 1
-# 16 "/home/alom/git/panda/include/migration/qjson.h"
 typedef struct QJSON QJSON;
 
 QJSON *qjson_new(void);
@@ -12509,7 +11958,6 @@ void json_end_object(QJSON *json);
 void json_start_object(QJSON *json, const char *name);
 const char *qjson_get_str(QJSON *json);
 void qjson_finish(QJSON *json);
-# 34 "/home/alom/git/panda/include/migration/vmstate.h" 2
 
 typedef void SaveStateHandler(QEMUFile *f, void *opaque);
 typedef int LoadStateHandler(QEMUFile *f, void *opaque, int version_id);
@@ -12561,7 +12009,6 @@ void unregister_savevm(DeviceState *dev, const char *idstr, void *opaque);
 typedef struct VMStateInfo VMStateInfo;
 typedef struct VMStateDescription VMStateDescription;
 typedef struct VMStateField VMStateField;
-# 93 "/home/alom/git/panda/include/migration/vmstate.h"
 struct VMStateInfo {
     const char *name;
     int (*get)(QEMUFile *f, void *pv, size_t size, VMStateField *field);
@@ -12572,9 +12019,7 @@ struct VMStateInfo {
 enum VMStateFlags {
 
     VMS_SINGLE = 0x001,
-# 111 "/home/alom/git/panda/include/migration/vmstate.h"
     VMS_POINTER = 0x002,
-# 121 "/home/alom/git/panda/include/migration/vmstate.h"
     VMS_ARRAY = 0x004,
 
 
@@ -12719,7 +12164,6 @@ extern const VMStateInfo vmstate_info_unused_buffer;
 extern const VMStateInfo vmstate_info_tmp;
 extern const VMStateInfo vmstate_info_bitmap;
 extern const VMStateInfo vmstate_info_qtailq;
-# 1004 "/home/alom/git/panda/include/migration/vmstate.h"
 void loadvm_free_handlers(MigrationIncomingState *mis);
 
 int vmstate_load_state(QEMUFile *f, const VMStateDescription *vmsd,
@@ -12743,9 +12187,7 @@ static inline int vmstate_register(DeviceState *dev, int instance_id,
 {
     return vmstate_register_with_alias_id(dev, instance_id, vmsd,
                                           opaque, -1, 0, 
-# 1026 "/home/alom/git/panda/include/migration/vmstate.h" 3 4
                                                         ((void *)0)
-# 1026 "/home/alom/git/panda/include/migration/vmstate.h"
                                                             );
 }
 
@@ -12766,10 +12208,6 @@ int64_t self_announce_delay(int round)
 }
 
 void dump_vmstate_json_to_file(FILE *out_fp);
-# 14 "/home/alom/git/panda/include/hw/hw.h" 2
-# 1 "/home/alom/git/panda/include/qemu/module.h" 1
-# 15 "/home/alom/git/panda/include/hw/hw.h" 2
-# 1 "/home/alom/git/panda/include/sysemu/reset.h" 1
 
 
 
@@ -12778,26 +12216,12 @@ typedef void QEMUResetHandler(void *opaque);
 void qemu_register_reset(QEMUResetHandler *func, void *opaque);
 void qemu_unregister_reset(QEMUResetHandler *func, void *opaque);
 void qemu_devices_reset(void);
-# 16 "/home/alom/git/panda/include/hw/hw.h" 2
 
-void __attribute__ ((__noreturn__)) hw_error(const char *fmt, ...) __attribute__((format(gnu_printf, 1, 2)));
-# 5 "/home/alom/git/panda/include/hw/qdev.h" 2
-# 1 "/home/alom/git/panda/include/hw/qdev-core.h" 1
+void hw_error(const char *fmt, ...) ;
 
 
 
 
-# 1 "/home/alom/git/panda/include/qemu/option.h" 1
-# 6 "/home/alom/git/panda/include/hw/qdev-core.h" 2
-# 1 "/home/alom/git/panda/include/qemu/bitmap.h" 1
-# 16 "/home/alom/git/panda/include/qemu/bitmap.h"
-# 1 "/home/alom/git/panda/include/qemu/bitops.h" 1
-# 16 "/home/alom/git/panda/include/qemu/bitops.h"
-# 1 "/home/alom/git/panda/include/qemu/host-utils.h" 1
-# 17 "/home/alom/git/panda/include/qemu/bitops.h" 2
-# 1 "/home/alom/git/panda/include/qemu/atomic.h" 1
-# 18 "/home/alom/git/panda/include/qemu/bitops.h" 2
-# 35 "/home/alom/git/panda/include/qemu/bitops.h"
 static inline void set_bit(long nr, unsigned long *addr)
 {
     unsigned long mask = (1UL << ((nr) % (sizeof (unsigned long) * CHAR_BIT)));
@@ -12899,7 +12323,6 @@ static inline int test_bit(long nr, const unsigned long *addr)
 {
     return 1UL & (addr[((nr) / (sizeof (unsigned long) * CHAR_BIT))] >> (nr & ((sizeof (unsigned long) * CHAR_BIT)-1)));
 }
-# 144 "/home/alom/git/panda/include/qemu/bitops.h"
 unsigned long find_last_bit(const unsigned long *addr,
                             unsigned long size);
 
@@ -12912,11 +12335,9 @@ unsigned long find_last_bit(const unsigned long *addr,
 unsigned long find_next_bit(const unsigned long *addr,
                             unsigned long size,
                             unsigned long offset);
-# 164 "/home/alom/git/panda/include/qemu/bitops.h"
 unsigned long find_next_zero_bit(const unsigned long *addr,
                                  unsigned long size,
                                  unsigned long offset);
-# 175 "/home/alom/git/panda/include/qemu/bitops.h"
 static inline unsigned long find_first_bit(const unsigned long *addr,
                                            unsigned long size)
 {
@@ -12932,7 +12353,6 @@ static inline unsigned long find_first_bit(const unsigned long *addr,
 
     return size;
 }
-# 198 "/home/alom/git/panda/include/qemu/bitops.h"
 static inline unsigned long find_first_zero_bit(const unsigned long *addr,
                                                 unsigned long size)
 {
@@ -13028,19 +12448,16 @@ static inline uint64_t ror64(uint64_t word, unsigned int shift)
 {
     return (word >> shift) | (word << ((64 - shift) & 63));
 }
-# 307 "/home/alom/git/panda/include/qemu/bitops.h"
 static inline uint32_t extract32(uint32_t value, int start, int length)
 {
     assert(start >= 0 && length > 0 && length <= 32 - start);
     return (value >> start) & (~0U >> (32 - length));
 }
-# 326 "/home/alom/git/panda/include/qemu/bitops.h"
 static inline uint64_t extract64(uint64_t value, int start, int length)
 {
     assert(start >= 0 && length > 0 && length <= 64 - start);
     return (value >> start) & (~0ULL >> (64 - length));
 }
-# 348 "/home/alom/git/panda/include/qemu/bitops.h"
 static inline int32_t sextract32(uint32_t value, int start, int length)
 {
     assert(start >= 0 && length > 0 && length <= 32 - start);
@@ -13049,7 +12466,6 @@ static inline int32_t sextract32(uint32_t value, int start, int length)
 
     return ((int32_t)(value << (32 - length - start))) >> (32 - length);
 }
-# 373 "/home/alom/git/panda/include/qemu/bitops.h"
 static inline int64_t sextract64(uint64_t value, int start, int length)
 {
     assert(start >= 0 && length > 0 && length <= 64 - start);
@@ -13058,7 +12474,6 @@ static inline int64_t sextract64(uint64_t value, int start, int length)
 
     return ((int64_t)(value << (64 - length - start))) >> (64 - length);
 }
-# 399 "/home/alom/git/panda/include/qemu/bitops.h"
 static inline uint32_t deposit32(uint32_t value, int start, int length,
                                  uint32_t fieldval)
 {
@@ -13067,7 +12482,6 @@ static inline uint32_t deposit32(uint32_t value, int start, int length,
     mask = (~0U >> (32 - length)) << start;
     return (value & ~mask) | ((fieldval << start) & mask);
 }
-# 425 "/home/alom/git/panda/include/qemu/bitops.h"
 static inline uint64_t deposit64(uint64_t value, int start, int length,
                                  uint64_t fieldval)
 {
@@ -13076,7 +12490,6 @@ static inline uint64_t deposit64(uint64_t value, int start, int length,
     mask = (~0ULL >> (64 - length)) << start;
     return (value & ~mask) | ((fieldval << start) & mask);
 }
-# 448 "/home/alom/git/panda/include/qemu/bitops.h"
 static inline uint32_t half_shuffle32(uint32_t x)
 {
 
@@ -13088,7 +12501,6 @@ static inline uint32_t half_shuffle32(uint32_t x)
     x = ((x << 1) | x) & 0x55555555;
     return x;
 }
-# 474 "/home/alom/git/panda/include/qemu/bitops.h"
 static inline uint64_t half_shuffle64(uint64_t x)
 {
 
@@ -13101,7 +12513,6 @@ static inline uint64_t half_shuffle64(uint64_t x)
     x = ((x << 1) | x) & 0x5555555555555555ULL;
     return x;
 }
-# 501 "/home/alom/git/panda/include/qemu/bitops.h"
 static inline uint32_t half_unshuffle32(uint32_t x)
 {
 
@@ -13114,7 +12525,6 @@ static inline uint32_t half_unshuffle32(uint32_t x)
     x = ((x >> 8) | x) & 0x0000FFFF;
     return x;
 }
-# 528 "/home/alom/git/panda/include/qemu/bitops.h"
 static inline uint64_t half_unshuffle64(uint64_t x)
 {
 
@@ -13128,8 +12538,6 @@ static inline uint64_t half_unshuffle64(uint64_t x)
     x = ((x >> 16) | x) & 0x00000000FFFFFFFFULL;
     return x;
 }
-# 17 "/home/alom/git/panda/include/qemu/bitmap.h" 2
-# 69 "/home/alom/git/panda/include/qemu/bitmap.h"
 int slow_bitmap_empty(const unsigned long *bitmap, long bits);
 int slow_bitmap_full(const unsigned long *bitmap, long bits);
 int slow_bitmap_equal(const unsigned long *bitmap1,
@@ -13157,9 +12565,7 @@ static inline unsigned long *bitmap_new(long nbits)
 {
     unsigned long *ptr = bitmap_try_new(nbits);
     if (ptr == 
-# 95 "/home/alom/git/panda/include/qemu/bitmap.h" 3 4
               ((void *)0)
-# 95 "/home/alom/git/panda/include/qemu/bitmap.h"
                   ) {
         abort();
     }
@@ -13302,11 +12708,8 @@ static inline unsigned long *bitmap_zero_extend(unsigned long *old,
     bitmap_clear(newfoo, old_nbits, new_nbits - old_nbits);
     return newfoo;
 }
-# 7 "/home/alom/git/panda/include/hw/qdev-core.h" 2
 
 
-# 1 "/home/alom/git/panda/include/hw/hotplug.h" 1
-# 27 "/home/alom/git/panda/include/hw/hotplug.h"
 typedef struct HotplugHandler {
 
     Object Parent;
@@ -13320,7 +12723,6 @@ typedef struct HotplugHandler {
 
 typedef void (*hotplug_fn)(HotplugHandler *plug_handler,
                            DeviceState *plugged_dev, Error **errp);
-# 57 "/home/alom/git/panda/include/hw/hotplug.h"
 typedef struct HotplugHandlerClass {
 
     InterfaceClass parent;
@@ -13366,7 +12768,6 @@ void hotplug_handler_unplug_request(HotplugHandler *plug_handler,
 void hotplug_handler_unplug(HotplugHandler *plug_handler,
                             DeviceState *plugged_dev,
                             Error **errp);
-# 10 "/home/alom/git/panda/include/hw/qdev-core.h" 2
 
 enum {
     DEV_NVECTORS_UNSPECIFIED = -1,
@@ -13399,7 +12800,6 @@ typedef void (*BusRealize)(BusState *bus, Error **errp);
 typedef void (*BusUnrealize)(BusState *bus, Error **errp);
 
 struct VMStateDescription;
-# 95 "/home/alom/git/panda/include/hw/qdev-core.h"
 typedef struct DeviceClass {
 
     ObjectClass parent_class;
@@ -13409,9 +12809,7 @@ typedef struct DeviceClass {
     const char *fw_name;
     const char *desc;
     Property *props;
-# 115 "/home/alom/git/panda/include/hw/qdev-core.h"
     bool cannot_instantiate_with_device_add_yet;
-# 127 "/home/alom/git/panda/include/hw/qdev-core.h"
     bool cannot_destroy_with_object_finalize_yet;
 
     bool hotpluggable;
@@ -13439,7 +12837,6 @@ struct NamedGPIOList {
     int num_out;
     struct { struct NamedGPIOList *le_next; struct NamedGPIOList **le_prev; } node;
 };
-# 162 "/home/alom/git/panda/include/hw/qdev-core.h"
 struct DeviceState {
 
     Object parent_obj;
@@ -13535,7 +12932,6 @@ struct PropertyInfo {
     ObjectPropertyAccessor *set;
     ObjectPropertyRelease *release;
 };
-# 269 "/home/alom/git/panda/include/hw/qdev-core.h"
 typedef struct GlobalProperty {
     const char *driver;
     const char *property;
@@ -13612,7 +13008,6 @@ int qdev_walk_children(DeviceState *dev,
 
 void qdev_reset_all(DeviceState *dev);
 void qdev_reset_all_fn(void *opaque);
-# 356 "/home/alom/git/panda/include/hw/qdev-core.h"
 void qbus_reset_all(BusState *bus);
 void qbus_reset_all_fn(void *opaque);
 
@@ -13664,8 +13059,6 @@ static inline bool qbus_is_hotpluggable(BusState *bus)
 
 void device_listener_register(DeviceListener *listener);
 void device_listener_unregister(DeviceListener *listener);
-# 6 "/home/alom/git/panda/include/hw/qdev.h" 2
-# 1 "/home/alom/git/panda/include/hw/qdev-properties.h" 1
 
 
 
@@ -13698,7 +13091,6 @@ extern PropertyInfo qdev_prop_pci_devfn;
 extern PropertyInfo qdev_prop_blocksize;
 extern PropertyInfo qdev_prop_pci_host_devaddr;
 extern PropertyInfo qdev_prop_arraylen;
-# 179 "/home/alom/git/panda/include/hw/qdev-properties.h"
 void *qdev_get_prop_ptr(DeviceState *dev, Property *prop);
 void qdev_prop_set_bit(DeviceState *dev, const char *name, bool value);
 void qdev_prop_set_uint8(DeviceState *dev, const char *name, uint8_t value);
@@ -13722,28 +13114,20 @@ int qdev_prop_check_globals(void);
 void qdev_prop_set_globals(DeviceState *dev);
 void error_set_from_qdev_prop_error(Error **errp, int ret, DeviceState *dev,
                                     Property *prop, const char *value);
-# 213 "/home/alom/git/panda/include/hw/qdev-properties.h"
 void qdev_property_add_static(DeviceState *dev, Property *prop, Error **errp);
 
 void qdev_alias_all_properties(DeviceState *target, Object *source);
-# 227 "/home/alom/git/panda/include/hw/qdev-properties.h"
 void qdev_prop_set_after_realize(DeviceState *dev, const char *name,
                                  Error **errp);
-# 237 "/home/alom/git/panda/include/hw/qdev-properties.h"
 void qdev_prop_allow_set_link_before_realize(Object *obj, const char *name,
                                              Object *val, Error **errp);
-# 7 "/home/alom/git/panda/include/hw/qdev.h" 2
-# 7 "sysbus.h" 2
-# 15 "sysbus.h"
 typedef struct SysBusDevice SysBusDevice;
-# 38 "sysbus.h"
 typedef struct SysBusDeviceClass {
 
     DeviceClass parent_class;
 
 
     int (*init)(SysBusDevice *dev);
-# 60 "sysbus.h"
     char *(*explicit_ofw_unit_address)(const SysBusDevice *dev);
     void (*connect_irq_notifier)(SysBusDevice *dev, qemu_irq irq);
 } SysBusDeviceClass;
@@ -13796,9 +13180,7 @@ static inline DeviceState *sysbus_create_simple(const char *name,
                                               qemu_irq irq)
 {
     return sysbus_create_varargs(name, addr, irq, 
-# 111 "sysbus.h" 3 4
                                                  ((void *)0)
-# 111 "sysbus.h"
                                                      );
 }
 
@@ -13807,8 +13189,6 @@ static inline DeviceState *sysbus_try_create_simple(const char *name,
                                                     qemu_irq irq)
 {
     return sysbus_try_create_varargs(name, addr, irq, 
-# 118 "sysbus.h" 3 4
                                                      ((void *)0)
-# 118 "sysbus.h"
                                                          );
 }
