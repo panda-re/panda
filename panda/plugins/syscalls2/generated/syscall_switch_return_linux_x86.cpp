@@ -30,13 +30,13 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_exit_return, cpu, pc, arg0) ;
 		}; break;
-		// 2 pid_t sys_fork ['']
+		// 2 long sys_fork ['void']
 		case 2: {
 			if (PPP_CHECK_CB(on_sys_fork_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 			}
 			PPP_RUN_CB(on_sys_fork_return, cpu, pc) ;
 		}; break;
-		// 3 long sys_read ['unsigned int fd', ' char __user *buf', ' size_t count']
+		// 3 long sys_read ['unsigned int fd', 'char __user *buf', 'size_t count']
 		case 3: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -48,7 +48,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_read_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 4 long sys_write ['unsigned int fd', ' const char __user *buf', 'size_t count']
+		// 4 long sys_write ['unsigned int fd', 'const char __user *buf', 'size_t count']
 		case 4: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -60,15 +60,15 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_write_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 5 long sys_open ['const char __user *filename', 'int flags', ' int mode']
+		// 5 long sys_open ['const char __user *filename', 'int flags', 'umode_t mode']
 		case 5: {
 			uint32_t arg0;
 			int32_t arg1;
-			int32_t arg2;
+			uint32_t arg2;
 			if (PPP_CHECK_CB(on_sys_open_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
-				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_sys_open_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
@@ -80,7 +80,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_close_return, cpu, pc, arg0) ;
 		}; break;
-		// 7 long sys_waitpid ['pid_t pid', ' int __user *stat_addr', ' int options']
+		// 7 long sys_waitpid ['pid_t pid', 'int __user *stat_addr', 'int options']
 		case 7: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -92,13 +92,13 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_waitpid_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 8 long sys_creat ['const char __user *pathname', ' int mode']
+		// 8 long sys_creat ['const char __user *pathname', 'umode_t mode']
 		case 8: {
 			uint32_t arg0;
-			int32_t arg1;
+			uint32_t arg1;
 			if (PPP_CHECK_CB(on_sys_creat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_sys_creat_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -120,7 +120,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_unlink_return, cpu, pc, arg0) ;
 		}; break;
-		// 11 int sys_execve ['const char *filename', ' const char *argv[]', ' const char *const envp[]']
+		// 11 long sys_execve ['const char __user *filename', 'const char __user *const __user *argv', 'const char __user *const __user *envp']
 		case 11: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -148,19 +148,19 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_time_return, cpu, pc, arg0) ;
 		}; break;
-		// 14 long sys_mknod ['const char __user *filename', ' int mode', 'unsigned dev']
+		// 14 long sys_mknod ['const char __user *filename', 'umode_t mode', 'unsigned dev']
 		case 14: {
 			uint32_t arg0;
-			int32_t arg1;
+			uint32_t arg1;
 			uint32_t arg2;
 			if (PPP_CHECK_CB(on_sys_mknod_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_sys_mknod_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 15 long sys_chmod ['const char __user *filename', ' mode_t mode']
+		// 15 long sys_chmod ['const char __user *filename', 'umode_t mode']
 		case 15: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -170,7 +170,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_chmod_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 16 long sys_lchown16 ['const char __user *filename', 'old_uid_t user', ' old_gid_t group']
+		// 16 long sys_lchown16 ['const char __user *filename', 'old_uid_t user', 'old_gid_t group']
 		case 16: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -192,7 +192,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_stat_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 19 long sys_lseek ['unsigned int fd', ' off_t offset', 'unsigned int origin']
+		// 19 long sys_lseek ['unsigned int fd', 'off_t offset', 'unsigned int whence']
 		case 19: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -210,7 +210,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getpid_return, cpu, pc) ;
 		}; break;
-		// 21 long sys_mount ['char __user *dev_name', ' char __user *dir_name', 'char __user *type', ' unsigned long flags', 'void __user *data']
+		// 21 long sys_mount ['char __user *dev_name', 'char __user *dir_name', 'char __user *type', 'unsigned long flags', 'void __user *data']
 		case 21: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -256,7 +256,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_stime_return, cpu, pc, arg0) ;
 		}; break;
-		// 26 long sys_ptrace ['long request', ' long pid', ' unsigned long addr', 'unsigned long data']
+		// 26 long sys_ptrace ['long request', 'long pid', 'unsigned long addr', 'unsigned long data']
 		case 26: {
 			int32_t arg0;
 			int32_t arg1;
@@ -304,7 +304,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_utime_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 33 long sys_access ['const char __user *filename', ' int mode']
+		// 33 long sys_access ['const char __user *filename', 'int mode']
 		case 33: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -328,7 +328,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_sync_return, cpu, pc) ;
 		}; break;
-		// 37 long sys_kill ['int pid', ' int sig']
+		// 37 long sys_kill ['int pid', 'int sig']
 		case 37: {
 			int32_t arg0;
 			int32_t arg1;
@@ -348,13 +348,13 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_rename_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 39 long sys_mkdir ['const char __user *pathname', ' int mode']
+		// 39 long sys_mkdir ['const char __user *pathname', 'umode_t mode']
 		case 39: {
 			uint32_t arg0;
-			int32_t arg1;
+			uint32_t arg1;
 			if (PPP_CHECK_CB(on_sys_mkdir_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_sys_mkdir_return, cpu, pc, arg0, arg1) ;
 		}; break;
@@ -412,7 +412,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getgid16_return, cpu, pc) ;
 		}; break;
-		// 48 long sys_signal ['int sig', ' __sighandler_t handler']
+		// 48 long sys_signal ['int sig', '__sighandler_t handler']
 		case 48: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -442,7 +442,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_acct_return, cpu, pc, arg0) ;
 		}; break;
-		// 52 long sys_umount ['char __user *name', ' int flags']
+		// 52 long sys_umount ['char __user *name', 'int flags']
 		case 52: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -452,7 +452,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_umount_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 54 long sys_ioctl ['unsigned int fd', ' unsigned int cmd', 'unsigned long arg']
+		// 54 long sys_ioctl ['unsigned int fd', 'unsigned int cmd', 'unsigned long arg']
 		case 54: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -464,7 +464,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_ioctl_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 55 long sys_fcntl ['unsigned int fd', ' unsigned int cmd', ' unsigned long arg']
+		// 55 long sys_fcntl ['unsigned int fd', 'unsigned int cmd', 'unsigned long arg']
 		case 55: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -476,7 +476,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fcntl_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 57 long sys_setpgid ['pid_t pid', ' pid_t pgid']
+		// 57 long sys_setpgid ['pid_t pid', 'pid_t pgid']
 		case 57: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -510,7 +510,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_chroot_return, cpu, pc, arg0) ;
 		}; break;
-		// 62 long sys_ustat ['unsigned dev', ' struct ustat __user *ubuf']
+		// 62 long sys_ustat ['unsigned dev', 'struct ustat __user *ubuf']
 		case 62: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -520,7 +520,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_ustat_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 63 long sys_dup2 ['unsigned int oldfd', ' unsigned int newfd']
+		// 63 long sys_dup2 ['unsigned int oldfd', 'unsigned int newfd']
 		case 63: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -548,17 +548,17 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setsid_return, cpu, pc) ;
 		}; break;
-		// 67 int sigaction ['int sig', ' const struct old_sigaction __user *act', ' struct old_sigaction __user *oact']
+		// 67 long sys_sigaction ['int', 'const struct old_sigaction __user *', 'struct old_sigaction __user *']
 		case 67: {
 			int32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_sigaction_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+			if (PPP_CHECK_CB(on_sys_sigaction_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
-			PPP_RUN_CB(on_sigaction_return, cpu, pc, arg0, arg1, arg2) ;
+			PPP_RUN_CB(on_sys_sigaction_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
 		// 68 long sys_sgetmask ['void']
 		case 68: {
@@ -574,7 +574,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_ssetmask_return, cpu, pc, arg0) ;
 		}; break;
-		// 70 long sys_setreuid16 ['old_uid_t ruid', ' old_uid_t euid']
+		// 70 long sys_setreuid16 ['old_uid_t ruid', 'old_uid_t euid']
 		case 70: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -584,7 +584,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setreuid16_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 71 long sys_setregid16 ['old_gid_t rgid', ' old_gid_t egid']
+		// 71 long sys_setregid16 ['old_gid_t rgid', 'old_gid_t egid']
 		case 71: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -594,17 +594,17 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setregid16_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 72 long sigsuspend ['int restart', ' unsigned long oldmask', ' old_sigset_t mask']
+		// 72 long sys_sigsuspend ['int unused1', 'int unused2', 'old_sigset_t mask']
 		case 72: {
 			int32_t arg0;
-			uint32_t arg1;
+			int32_t arg1;
 			uint32_t arg2;
-			if (PPP_CHECK_CB(on_sigsuspend_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+			if (PPP_CHECK_CB(on_sys_sigsuspend_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
 				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 			}
-			PPP_RUN_CB(on_sigsuspend_return, cpu, pc, arg0, arg1, arg2) ;
+			PPP_RUN_CB(on_sys_sigsuspend_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
 		// 73 long sys_sigpending ['old_sigset_t __user *set']
 		case 73: {
@@ -614,7 +614,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_sigpending_return, cpu, pc, arg0) ;
 		}; break;
-		// 74 long sys_sethostname ['char __user *name', ' int len']
+		// 74 long sys_sethostname ['char __user *name', 'int len']
 		case 74: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -634,7 +634,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setrlimit_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 76 long sys_old_getrlimit ['unsigned int resource', ' struct rlimit __user *rlim']
+		// 76 long sys_old_getrlimit ['unsigned int resource', 'struct rlimit __user *rlim']
 		case 76: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -644,7 +644,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_old_getrlimit_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 77 long sys_getrusage ['int who', ' struct rusage __user *ru']
+		// 77 long sys_getrusage ['int who', 'struct rusage __user *ru']
 		case 77: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -674,7 +674,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_settimeofday_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 80 long sys_getgroups16 ['int gidsetsize', ' old_gid_t __user *grouplist']
+		// 80 long sys_getgroups16 ['int gidsetsize', 'old_gid_t __user *grouplist']
 		case 80: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -684,7 +684,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getgroups16_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 81 long sys_setgroups16 ['int gidsetsize', ' old_gid_t __user *grouplist']
+		// 81 long sys_setgroups16 ['int gidsetsize', 'old_gid_t __user *grouplist']
 		case 81: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -702,7 +702,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_old_select_return, cpu, pc, arg0) ;
 		}; break;
-		// 83 long sys_symlink ['const char __user *old', ' const char __user *new']
+		// 83 long sys_symlink ['const char __user *old', 'const char __user *new']
 		case 83: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -722,7 +722,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_lstat_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 85 long sys_readlink ['const char __user *path', 'char __user *buf', ' int bufsiz']
+		// 85 long sys_readlink ['const char __user *path', 'char __user *buf', 'int bufsiz']
 		case 85: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -742,7 +742,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_uselib_return, cpu, pc, arg0) ;
 		}; break;
-		// 87 long sys_swapon ['const char __user *specialfile', ' int swap_flags']
+		// 87 long sys_swapon ['const char __user *specialfile', 'int swap_flags']
 		case 87: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -752,7 +752,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_swapon_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 88 long sys_reboot ['int magic1', ' int magic2', ' unsigned int cmd', 'void __user *arg']
+		// 88 long sys_reboot ['int magic1', 'int magic2', 'unsigned int cmd', 'void __user *arg']
 		case 88: {
 			int32_t arg0;
 			int32_t arg1;
@@ -766,7 +766,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_reboot_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 89 long sys_old_readdir ['unsigned int', ' struct old_linux_dirent __user *', ' unsigned int']
+		// 89 long sys_old_readdir ['unsigned int', 'struct old_linux_dirent __user *', 'unsigned int']
 		case 89: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -786,7 +786,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_old_mmap_return, cpu, pc, arg0) ;
 		}; break;
-		// 91 long sys_munmap ['unsigned long addr', ' size_t len']
+		// 91 long sys_munmap ['unsigned long addr', 'size_t len']
 		case 91: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -796,7 +796,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_munmap_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 92 long sys_truncate ['const char __user *path', ' long length']
+		// 92 long sys_truncate ['const char __user *path', 'long length']
 		case 92: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -806,7 +806,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_truncate_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 93 long sys_ftruncate ['unsigned int fd', ' unsigned long length']
+		// 93 long sys_ftruncate ['unsigned int fd', 'unsigned long length']
 		case 93: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -816,7 +816,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_ftruncate_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 94 long sys_fchmod ['unsigned int fd', ' mode_t mode']
+		// 94 long sys_fchmod ['unsigned int fd', 'umode_t mode']
 		case 94: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -826,7 +826,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fchmod_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 95 long sys_fchown16 ['unsigned int fd', ' old_uid_t user', ' old_gid_t group']
+		// 95 long sys_fchown16 ['unsigned int fd', 'old_uid_t user', 'old_gid_t group']
 		case 95: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -838,7 +838,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fchown16_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 96 long sys_getpriority ['int which', ' int who']
+		// 96 long sys_getpriority ['int which', 'int who']
 		case 96: {
 			int32_t arg0;
 			int32_t arg1;
@@ -848,7 +848,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getpriority_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 97 long sys_setpriority ['int which', ' int who', ' int niceval']
+		// 97 long sys_setpriority ['int which', 'int who', 'int niceval']
 		case 97: {
 			int32_t arg0;
 			int32_t arg1;
@@ -860,7 +860,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setpriority_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 99 long sys_statfs ['const char __user * path', 'struct statfs __user *buf']
+		// 99 long sys_statfs ['const char __user *path', 'struct statfs __user *buf']
 		case 99: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -870,7 +870,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_statfs_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 100 long sys_fstatfs ['unsigned int fd', ' struct statfs __user *buf']
+		// 100 long sys_fstatfs ['unsigned int fd', 'struct statfs __user *buf']
 		case 100: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -880,7 +880,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fstatfs_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 101 long sys_ioperm ['unsigned long from', ' unsigned long num', ' int on']
+		// 101 long sys_ioperm ['unsigned long', 'unsigned long', 'int']
 		case 101: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -892,7 +892,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_ioperm_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 102 long sys_socketcall ['int call', ' unsigned long __user *args']
+		// 102 long sys_socketcall ['int call', 'unsigned long __user *args']
 		case 102: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -902,7 +902,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_socketcall_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 103 long sys_syslog ['int type', ' char __user *buf', ' int len']
+		// 103 long sys_syslog ['int type', 'char __user *buf', 'int len']
 		case 103: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -926,7 +926,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setitimer_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 105 long sys_getitimer ['int which', ' struct itimerval __user *value']
+		// 105 long sys_getitimer ['int which', 'struct itimerval __user *value']
 		case 105: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -956,7 +956,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_newlstat_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 108 long sys_newfstat ['unsigned int fd', ' struct stat __user *statbuf']
+		// 108 long sys_newfstat ['unsigned int fd', 'struct stat __user *statbuf']
 		case 108: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -974,11 +974,11 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_uname_return, cpu, pc, arg0) ;
 		}; break;
-		// 110 int sys_iopl ['int level']
+		// 110 long sys_iopl ['unsigned int']
 		case 110: {
-			int32_t arg0;
+			uint32_t arg0;
 			if (PPP_CHECK_CB(on_sys_iopl_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_sys_iopl_return, cpu, pc, arg0) ;
 		}; break;
@@ -988,7 +988,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_vhangup_return, cpu, pc) ;
 		}; break;
-		// 113 int sys_vm86old ['struct vm86_struct *info']
+		// 113 long sys_vm86old ['struct vm86_struct __user *']
 		case 113: {
 			uint32_t arg0;
 			if (PPP_CHECK_CB(on_sys_vm86old_return) || PPP_CHECK_CB(on_all_sys_return2)) {
@@ -996,7 +996,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_vm86old_return, cpu, pc, arg0) ;
 		}; break;
-		// 114 long sys_wait4 ['pid_t pid', ' int __user *stat_addr', 'int options', ' struct rusage __user *ru']
+		// 114 long sys_wait4 ['pid_t pid', 'int __user *stat_addr', 'int options', 'struct rusage __user *ru']
 		case 114: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1026,7 +1026,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_sysinfo_return, cpu, pc, arg0) ;
 		}; break;
-		// 117 long sys_ipc ['unsigned int call', ' int first', ' unsigned long second', 'unsigned long third', ' void __user *ptr', ' long fifth']
+		// 117 long sys_ipc ['unsigned int call', 'int first', 'unsigned long second', 'unsigned long third', 'void __user *ptr', 'long fifth']
 		case 117: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -1052,15 +1052,13 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fsync_return, cpu, pc, arg0) ;
 		}; break;
-		// 119 int sys_sigreturn ['unsigned long __unused']
+		// 119 long sys_sigreturn ['void']
 		case 119: {
-			uint32_t arg0;
 			if (PPP_CHECK_CB(on_sys_sigreturn_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
-			PPP_RUN_CB(on_sys_sigreturn_return, cpu, pc, arg0) ;
+			PPP_RUN_CB(on_sys_sigreturn_return, cpu, pc) ;
 		}; break;
-		// 120 long sys_clone ['unsigned long flags', ' void *child_stack', ' void *ptid', ' void *ctid', ' struct pt_regs *regs']
+		// 120 long sys_clone ['unsigned long', 'unsigned long', 'int __user *', 'int __user *', 'unsigned long']
 		case 120: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1076,7 +1074,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_clone_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 121 long sys_setdomainname ['char __user *name', ' int len']
+		// 121 long sys_setdomainname ['char __user *name', 'int len']
 		case 121: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -1094,7 +1092,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_newuname_return, cpu, pc, arg0) ;
 		}; break;
-		// 123 int sys_modify_ldt ['int func', ' void *ptr', ' unsigned long bytecount']
+		// 123 long sys_modify_ldt ['int', 'void __user *', 'unsigned long']
 		case 123: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -1114,7 +1112,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_adjtimex_return, cpu, pc, arg0) ;
 		}; break;
-		// 125 long sys_mprotect ['unsigned long start', ' size_t len', 'unsigned long prot']
+		// 125 long sys_mprotect ['unsigned long start', 'size_t len', 'unsigned long prot']
 		case 125: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1126,7 +1124,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_mprotect_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 126 long sys_sigprocmask ['int how', ' old_sigset_t __user *set', 'old_sigset_t __user *oset']
+		// 126 long sys_sigprocmask ['int how', 'old_sigset_t __user *set', 'old_sigset_t __user *oset']
 		case 126: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -1138,7 +1136,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_sigprocmask_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 128 long sys_init_module ['void __user *umod', ' unsigned long len', 'const char __user *uargs']
+		// 128 long sys_init_module ['void __user *umod', 'unsigned long len', 'const char __user *uargs']
 		case 128: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1160,7 +1158,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_delete_module_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 131 long sys_quotactl ['unsigned int cmd', ' const char __user *special', 'qid_t id', ' void __user *addr']
+		// 131 long sys_quotactl ['unsigned int cmd', 'const char __user *special', 'qid_t id', 'void __user *addr']
 		case 131: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1190,7 +1188,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fchdir_return, cpu, pc, arg0) ;
 		}; break;
-		// 134 long sys_bdflush ['int func', ' long data']
+		// 134 long sys_bdflush ['int func', 'long data']
 		case 134: {
 			int32_t arg0;
 			int32_t arg1;
@@ -1200,7 +1198,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_bdflush_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 135 long sys_sysfs ['int option', 'unsigned long arg1', ' unsigned long arg2']
+		// 135 long sys_sysfs ['int option', 'unsigned long arg1', 'unsigned long arg2']
 		case 135: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -1236,7 +1234,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setfsgid16_return, cpu, pc, arg0) ;
 		}; break;
-		// 140 long sys_llseek ['unsigned int fd', ' unsigned long offset_high', 'unsigned long offset_low', ' loff_t __user *result', 'unsigned int origin']
+		// 140 long sys_llseek ['unsigned int fd', 'unsigned long offset_high', 'unsigned long offset_low', 'loff_t __user *result', 'unsigned int whence']
 		case 140: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1264,7 +1262,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getdents_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 142 long sys_select ['int n', ' fd_set __user *inp', ' fd_set __user *outp', 'fd_set __user *exp', ' struct timeval __user *tvp']
+		// 142 long sys_select ['int n', 'fd_set __user *inp', 'fd_set __user *outp', 'fd_set __user *exp', 'struct timeval __user *tvp']
 		case 142: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -1280,7 +1278,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_select_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 143 long sys_flock ['unsigned int fd', ' unsigned int cmd']
+		// 143 long sys_flock ['unsigned int fd', 'unsigned int cmd']
 		case 143: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1290,7 +1288,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_flock_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 144 long sys_msync ['unsigned long start', ' size_t len', ' int flags']
+		// 144 long sys_msync ['unsigned long start', 'size_t len', 'int flags']
 		case 144: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1350,7 +1348,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_sysctl_return, cpu, pc, arg0) ;
 		}; break;
-		// 150 long sys_mlock ['unsigned long start', ' size_t len']
+		// 150 long sys_mlock ['unsigned long start', 'size_t len']
 		case 150: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1360,7 +1358,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_mlock_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 151 long sys_munlock ['unsigned long start', ' size_t len']
+		// 151 long sys_munlock ['unsigned long start', 'size_t len']
 		case 151: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1404,7 +1402,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_sched_getparam_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 156 long sys_sched_setscheduler ['pid_t pid', ' int policy', 'struct sched_param __user *param']
+		// 156 long sys_sched_setscheduler ['pid_t pid', 'int policy', 'struct sched_param __user *param']
 		case 156: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -1456,7 +1454,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_sched_rr_get_interval_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 162 long sys_nanosleep ['struct timespec __user *rqtp', ' struct timespec __user *rmtp']
+		// 162 long sys_nanosleep ['struct timespec __user *rqtp', 'struct timespec __user *rmtp']
 		case 162: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1466,7 +1464,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_nanosleep_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 163 long sys_mremap ['unsigned long addr', 'unsigned long old_len', ' unsigned long new_len', 'unsigned long flags', ' unsigned long new_addr']
+		// 163 long sys_mremap ['unsigned long addr', 'unsigned long old_len', 'unsigned long new_len', 'unsigned long flags', 'unsigned long new_addr']
 		case 163: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1482,7 +1480,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_mremap_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 164 long sys_setresuid16 ['old_uid_t ruid', ' old_uid_t euid', ' old_uid_t suid']
+		// 164 long sys_setresuid16 ['old_uid_t ruid', 'old_uid_t euid', 'old_uid_t suid']
 		case 164: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1494,7 +1492,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setresuid16_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 165 long sys_getresuid16 ['old_uid_t __user *ruid', 'old_uid_t __user *euid', ' old_uid_t __user *suid']
+		// 165 long sys_getresuid16 ['old_uid_t __user *ruid', 'old_uid_t __user *euid', 'old_uid_t __user *suid']
 		case 165: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1506,7 +1504,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getresuid16_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 166 int sys_vm86 ['unsigned long fn', ' struct vm86plus_struct *v86']
+		// 166 long sys_vm86 ['unsigned long', 'unsigned long']
 		case 166: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1516,7 +1514,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_vm86_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 168 long sys_poll ['struct pollfd __user *ufds', ' unsigned int nfds', 'long timeout']
+		// 168 long sys_poll ['struct pollfd __user *ufds', 'unsigned int nfds', 'int timeout']
 		case 168: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1528,7 +1526,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_poll_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 170 long sys_setresgid16 ['old_gid_t rgid', ' old_gid_t egid', ' old_gid_t sgid']
+		// 170 long sys_setresgid16 ['old_gid_t rgid', 'old_gid_t egid', 'old_gid_t sgid']
 		case 170: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1540,7 +1538,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setresgid16_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 171 long sys_getresgid16 ['old_gid_t __user *rgid', 'old_gid_t __user *egid', ' old_gid_t __user *sgid']
+		// 171 long sys_getresgid16 ['old_gid_t __user *rgid', 'old_gid_t __user *egid', 'old_gid_t __user *sgid']
 		case 171: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1552,7 +1550,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getresgid16_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 172 long sys_prctl ['int option', ' unsigned long arg2', ' unsigned long arg3', 'unsigned long arg4', ' unsigned long arg5']
+		// 172 long sys_prctl ['int option', 'unsigned long arg2', 'unsigned long arg3', 'unsigned long arg4', 'unsigned long arg5']
 		case 172: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -1568,29 +1566,27 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_prctl_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 173 int sys_rt_sigreturn ['unsigned long __unused']
+		// 173 long sys_rt_sigreturn ['void']
 		case 173: {
-			uint32_t arg0;
 			if (PPP_CHECK_CB(on_sys_rt_sigreturn_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
-			PPP_RUN_CB(on_sys_rt_sigreturn_return, cpu, pc, arg0) ;
+			PPP_RUN_CB(on_sys_rt_sigreturn_return, cpu, pc) ;
 		}; break;
-		// 174 long rt_sigaction ['int sig', ' const struct sigaction __user * act', ' struct sigaction __user * oact', '  size_t sigsetsize']
+		// 174 long sys_rt_sigaction ['int', 'const struct sigaction __user *', 'struct sigaction __user *', 'size_t']
 		case 174: {
 			int32_t arg0;
 			uint32_t arg1;
 			uint32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_rt_sigaction_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+			if (PPP_CHECK_CB(on_sys_rt_sigaction_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
 				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
-			PPP_RUN_CB(on_rt_sigaction_return, cpu, pc, arg0, arg1, arg2, arg3) ;
+			PPP_RUN_CB(on_sys_rt_sigaction_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 175 long sys_rt_sigprocmask ['int how', ' sigset_t __user *set', 'sigset_t __user *oset', ' size_t sigsetsize']
+		// 175 long sys_rt_sigprocmask ['int how', 'sigset_t __user *set', 'sigset_t __user *oset', 'size_t sigsetsize']
 		case 175: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -1604,7 +1600,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_rt_sigprocmask_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 176 long sys_rt_sigpending ['sigset_t __user *set', ' size_t sigsetsize']
+		// 176 long sys_rt_sigpending ['sigset_t __user *set', 'size_t sigsetsize']
 		case 176: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1628,7 +1624,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_rt_sigtimedwait_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 178 long sys_rt_sigqueueinfo ['int pid', ' int sig', ' siginfo_t __user *uinfo']
+		// 178 long sys_rt_sigqueueinfo ['int pid', 'int sig', 'siginfo_t __user *uinfo']
 		case 178: {
 			int32_t arg0;
 			int32_t arg1;
@@ -1640,7 +1636,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_rt_sigqueueinfo_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 179 int sys_rt_sigsuspend ['sigset_t __user *unewset', ' size_t sigsetsize']
+		// 179 long sys_rt_sigsuspend ['sigset_t __user *unewset', 'size_t sigsetsize']
 		case 179: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1650,7 +1646,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_rt_sigsuspend_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 180 long sys_pread64 ['unsigned int fd', ' char __user *buf', 'size_t count', ' loff_t pos']
+		// 180 long sys_pread64 ['unsigned int fd', 'char __user *buf', 'size_t count', 'loff_t pos']
 		case 180: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1664,7 +1660,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_pread64_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 181 long sys_pwrite64 ['unsigned int fd', ' const char __user *buf', 'size_t count', ' loff_t pos']
+		// 181 long sys_pwrite64 ['unsigned int fd', 'const char __user *buf', 'size_t count', 'loff_t pos']
 		case 181: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1678,7 +1674,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_pwrite64_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 182 long sys_chown16 ['const char __user *filename', 'old_uid_t user', ' old_gid_t group']
+		// 182 long sys_chown16 ['const char __user *filename', 'old_uid_t user', 'old_gid_t group']
 		case 182: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1690,7 +1686,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_chown16_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 183 long sys_getcwd ['char __user *buf', ' unsigned long size']
+		// 183 long sys_getcwd ['char __user *buf', 'unsigned long size']
 		case 183: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1720,7 +1716,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_capset_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 186 int sys_sigaltstack ['const stack_t *ss', ' stack_t *oss']
+		// 186 long sys_sigaltstack ['const struct sigaltstack __user *uss', 'struct sigaltstack __user *uoss']
 		case 186: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1730,7 +1726,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_sigaltstack_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 187 long sys_sendfile ['int out_fd', ' int in_fd', 'off_t __user *offset', ' size_t count']
+		// 187 long sys_sendfile ['int out_fd', 'int in_fd', 'off_t __user *offset', 'size_t count']
 		case 187: {
 			int32_t arg0;
 			int32_t arg1;
@@ -1744,7 +1740,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_sendfile_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 190 pid_t sys_vfork ['']
+		// 190 long sys_vfork ['void']
 		case 190: {
 			if (PPP_CHECK_CB(on_sys_vfork_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 			}
@@ -1760,7 +1756,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getrlimit_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 192 long sys_mmap_pgoff ['unsigned long addr', ' unsigned long len', 'unsigned long prot', ' unsigned long flags', 'unsigned long fd', ' unsigned long pgoff']
+		// 192 long sys_mmap_pgoff ['unsigned long addr', 'unsigned long len', 'unsigned long prot', 'unsigned long flags', 'unsigned long fd', 'unsigned long pgoff']
 		case 192: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1778,7 +1774,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_mmap_pgoff_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
-		// 193 long sys_truncate64 ['const char __user *path', ' loff_t length']
+		// 193 long sys_truncate64 ['const char __user *path', 'loff_t length']
 		case 193: {
 			uint32_t arg0;
 			uint64_t arg1;
@@ -1788,7 +1784,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_truncate64_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 194 long sys_ftruncate64 ['unsigned int fd', ' loff_t length']
+		// 194 long sys_ftruncate64 ['unsigned int fd', 'loff_t length']
 		case 194: {
 			uint32_t arg0;
 			uint64_t arg1;
@@ -1818,7 +1814,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_lstat64_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 197 long sys_fstat64 ['unsigned long fd', ' struct stat64 __user *statbuf']
+		// 197 long sys_fstat64 ['unsigned long fd', 'struct stat64 __user *statbuf']
 		case 197: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1828,7 +1824,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fstat64_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 198 long sys_lchown ['const char __user *filename', 'uid_t user', ' gid_t group']
+		// 198 long sys_lchown ['const char __user *filename', 'uid_t user', 'gid_t group']
 		case 198: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1864,7 +1860,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getegid_return, cpu, pc) ;
 		}; break;
-		// 203 long sys_setreuid ['uid_t ruid', ' uid_t euid']
+		// 203 long sys_setreuid ['uid_t ruid', 'uid_t euid']
 		case 203: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1874,7 +1870,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setreuid_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 204 long sys_setregid ['gid_t rgid', ' gid_t egid']
+		// 204 long sys_setregid ['gid_t rgid', 'gid_t egid']
 		case 204: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1884,7 +1880,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setregid_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 205 long sys_getgroups ['int gidsetsize', ' gid_t __user *grouplist']
+		// 205 long sys_getgroups ['int gidsetsize', 'gid_t __user *grouplist']
 		case 205: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -1894,7 +1890,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getgroups_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 206 long sys_setgroups ['int gidsetsize', ' gid_t __user *grouplist']
+		// 206 long sys_setgroups ['int gidsetsize', 'gid_t __user *grouplist']
 		case 206: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -1904,7 +1900,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setgroups_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 207 long sys_fchown ['unsigned int fd', ' uid_t user', ' gid_t group']
+		// 207 long sys_fchown ['unsigned int fd', 'uid_t user', 'gid_t group']
 		case 207: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1916,7 +1912,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fchown_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 208 long sys_setresuid ['uid_t ruid', ' uid_t euid', ' uid_t suid']
+		// 208 long sys_setresuid ['uid_t ruid', 'uid_t euid', 'uid_t suid']
 		case 208: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1928,7 +1924,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setresuid_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 209 long sys_getresuid ['uid_t __user *ruid', ' uid_t __user *euid', ' uid_t __user *suid']
+		// 209 long sys_getresuid ['uid_t __user *ruid', 'uid_t __user *euid', 'uid_t __user *suid']
 		case 209: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1940,7 +1936,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getresuid_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 210 long sys_setresgid ['gid_t rgid', ' gid_t egid', ' gid_t sgid']
+		// 210 long sys_setresgid ['gid_t rgid', 'gid_t egid', 'gid_t sgid']
 		case 210: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1952,7 +1948,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setresgid_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 211 long sys_getresgid ['gid_t __user *rgid', ' gid_t __user *egid', ' gid_t __user *sgid']
+		// 211 long sys_getresgid ['gid_t __user *rgid', 'gid_t __user *egid', 'gid_t __user *sgid']
 		case 211: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1964,7 +1960,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getresgid_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 212 long sys_chown ['const char __user *filename', 'uid_t user', ' gid_t group']
+		// 212 long sys_chown ['const char __user *filename', 'uid_t user', 'gid_t group']
 		case 212: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2018,7 +2014,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_pivot_root_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 218 long sys_mincore ['unsigned long start', ' size_t len', 'unsigned char __user * vec']
+		// 218 long sys_mincore ['unsigned long start', 'size_t len', 'unsigned char __user *vec']
 		case 218: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2030,7 +2026,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_mincore_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 219 long sys_madvise ['unsigned long start', ' size_t len', ' int behavior']
+		// 219 long sys_madvise ['unsigned long start', 'size_t len', 'int behavior']
 		case 219: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2054,7 +2050,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getdents64_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 221 long sys_fcntl64 ['unsigned int fd', 'unsigned int cmd', ' unsigned long arg']
+		// 221 long sys_fcntl64 ['unsigned int fd', 'unsigned int cmd', 'unsigned long arg']
 		case 221: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2072,7 +2068,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_gettid_return, cpu, pc) ;
 		}; break;
-		// 225 long sys_readahead ['int fd', ' loff_t offset', ' size_t count']
+		// 225 long sys_readahead ['int fd', 'loff_t offset', 'size_t count']
 		case 225: {
 			int32_t arg0;
 			uint64_t arg1;
@@ -2084,7 +2080,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_readahead_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 226 long sys_setxattr ['const char __user *path', ' const char __user *name', 'const void __user *value', ' size_t size', ' int flags']
+		// 226 long sys_setxattr ['const char __user *path', 'const char __user *name', 'const void __user *value', 'size_t size', 'int flags']
 		case 226: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2100,7 +2096,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_setxattr_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 227 long sys_lsetxattr ['const char __user *path', ' const char __user *name', 'const void __user *value', ' size_t size', ' int flags']
+		// 227 long sys_lsetxattr ['const char __user *path', 'const char __user *name', 'const void __user *value', 'size_t size', 'int flags']
 		case 227: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2116,7 +2112,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_lsetxattr_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 228 long sys_fsetxattr ['int fd', ' const char __user *name', 'const void __user *value', ' size_t size', ' int flags']
+		// 228 long sys_fsetxattr ['int fd', 'const char __user *name', 'const void __user *value', 'size_t size', 'int flags']
 		case 228: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -2132,7 +2128,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fsetxattr_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 229 long sys_getxattr ['const char __user *path', ' const char __user *name', 'void __user *value', ' size_t size']
+		// 229 long sys_getxattr ['const char __user *path', 'const char __user *name', 'void __user *value', 'size_t size']
 		case 229: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2146,7 +2142,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getxattr_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 230 long sys_lgetxattr ['const char __user *path', ' const char __user *name', 'void __user *value', ' size_t size']
+		// 230 long sys_lgetxattr ['const char __user *path', 'const char __user *name', 'void __user *value', 'size_t size']
 		case 230: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2160,7 +2156,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_lgetxattr_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 231 long sys_fgetxattr ['int fd', ' const char __user *name', 'void __user *value', ' size_t size']
+		// 231 long sys_fgetxattr ['int fd', 'const char __user *name', 'void __user *value', 'size_t size']
 		case 231: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -2174,7 +2170,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fgetxattr_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 232 long sys_listxattr ['const char __user *path', ' char __user *list', 'size_t size']
+		// 232 long sys_listxattr ['const char __user *path', 'char __user *list', 'size_t size']
 		case 232: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2186,7 +2182,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_listxattr_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 233 long sys_llistxattr ['const char __user *path', ' char __user *list', 'size_t size']
+		// 233 long sys_llistxattr ['const char __user *path', 'char __user *list', 'size_t size']
 		case 233: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2198,7 +2194,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_llistxattr_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 234 long sys_flistxattr ['int fd', ' char __user *list', ' size_t size']
+		// 234 long sys_flistxattr ['int fd', 'char __user *list', 'size_t size']
 		case 234: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -2230,7 +2226,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_lremovexattr_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 237 long sys_fremovexattr ['int fd', ' const char __user *name']
+		// 237 long sys_fremovexattr ['int fd', 'const char __user *name']
 		case 237: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -2240,7 +2236,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fremovexattr_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 238 long sys_tkill ['int pid', ' int sig']
+		// 238 long sys_tkill ['int pid', 'int sig']
 		case 238: {
 			int32_t arg0;
 			int32_t arg1;
@@ -2250,7 +2246,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_tkill_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 239 long sys_sendfile64 ['int out_fd', ' int in_fd', 'loff_t __user *offset', ' size_t count']
+		// 239 long sys_sendfile64 ['int out_fd', 'int in_fd', 'loff_t __user *offset', 'size_t count']
 		case 239: {
 			int32_t arg0;
 			int32_t arg1;
@@ -2264,7 +2260,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_sendfile64_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 240 long sys_futex ['u32 __user *uaddr', ' int op', ' u32 val', 'struct timespec __user *utime', ' u32 __user *uaddr2', 'u32 val3']
+		// 240 long sys_futex ['u32 __user *uaddr', 'int op', 'u32 val', 'struct timespec __user *utime', 'u32 __user *uaddr2', 'u32 val3']
 		case 240: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -2282,7 +2278,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_futex_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
-		// 241 long sys_sched_setaffinity ['pid_t pid', ' unsigned int len', 'unsigned long __user *user_mask_ptr']
+		// 241 long sys_sched_setaffinity ['pid_t pid', 'unsigned int len', 'unsigned long __user *user_mask_ptr']
 		case 241: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2294,7 +2290,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_sched_setaffinity_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 242 long sys_sched_getaffinity ['pid_t pid', ' unsigned int len', 'unsigned long __user *user_mask_ptr']
+		// 242 long sys_sched_getaffinity ['pid_t pid', 'unsigned int len', 'unsigned long __user *user_mask_ptr']
 		case 242: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2306,23 +2302,23 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_sched_getaffinity_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 243 int set_thread_area ['struct user_desc *u_info']
+		// 243 long sys_set_thread_area ['struct user_desc __user *']
 		case 243: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_set_thread_area_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+			if (PPP_CHECK_CB(on_sys_set_thread_area_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
-			PPP_RUN_CB(on_set_thread_area_return, cpu, pc, arg0) ;
+			PPP_RUN_CB(on_sys_set_thread_area_return, cpu, pc, arg0) ;
 		}; break;
-		// 244 int get_thread_area ['struct user_desc *u_info']
+		// 244 long sys_get_thread_area ['struct user_desc __user *']
 		case 244: {
 			uint32_t arg0;
-			if (PPP_CHECK_CB(on_get_thread_area_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+			if (PPP_CHECK_CB(on_sys_get_thread_area_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
-			PPP_RUN_CB(on_get_thread_area_return, cpu, pc, arg0) ;
+			PPP_RUN_CB(on_sys_get_thread_area_return, cpu, pc, arg0) ;
 		}; break;
-		// 245 long sys_io_setup ['unsigned nr_reqs', ' aio_context_t __user *ctx']
+		// 245 long sys_io_setup ['unsigned nr_reqs', 'aio_context_t __user *ctx']
 		case 245: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2356,7 +2352,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_io_getevents_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 248 long sys_io_submit ['aio_context_t', ' long', 'struct iocb __user * __user *']
+		// 248 long sys_io_submit ['aio_context_t', 'long', 'struct iocb __user * __user *']
 		case 248: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -2368,7 +2364,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_io_submit_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 249 long sys_io_cancel ['aio_context_t ctx_id', ' struct iocb __user *iocb', 'struct io_event __user *result']
+		// 249 long sys_io_cancel ['aio_context_t ctx_id', 'struct iocb __user *iocb', 'struct io_event __user *result']
 		case 249: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2380,7 +2376,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_io_cancel_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 250 long sys_fadvise64 ['int fd', ' loff_t offset', ' size_t len', ' int advice']
+		// 250 long sys_fadvise64 ['int fd', 'loff_t offset', 'size_t len', 'int advice']
 		case 250: {
 			int32_t arg0;
 			uint64_t arg1;
@@ -2402,7 +2398,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_exit_group_return, cpu, pc, arg0) ;
 		}; break;
-		// 253 long sys_lookup_dcookie ['u64 cookie64', ' char __user *buf', ' size_t len']
+		// 253 long sys_lookup_dcookie ['u64 cookie64', 'char __user *buf', 'size_t len']
 		case 253: {
 			uint64_t arg0;
 			uint32_t arg1;
@@ -2422,7 +2418,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_epoll_create_return, cpu, pc, arg0) ;
 		}; break;
-		// 255 long sys_epoll_ctl ['int epfd', ' int op', ' int fd', 'struct epoll_event __user *event']
+		// 255 long sys_epoll_ctl ['int epfd', 'int op', 'int fd', 'struct epoll_event __user *event']
 		case 255: {
 			int32_t arg0;
 			int32_t arg1;
@@ -2436,7 +2432,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_epoll_ctl_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 256 long sys_epoll_wait ['int epfd', ' struct epoll_event __user *events', 'int maxevents', ' int timeout']
+		// 256 long sys_epoll_wait ['int epfd', 'struct epoll_event __user *events', 'int maxevents', 'int timeout']
 		case 256: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -2450,7 +2446,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_epoll_wait_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 257 long sys_remap_file_pages ['unsigned long start', ' unsigned long size', 'unsigned long prot', ' unsigned long pgoff', 'unsigned long flags']
+		// 257 long sys_remap_file_pages ['unsigned long start', 'unsigned long size', 'unsigned long prot', 'unsigned long pgoff', 'unsigned long flags']
 		case 257: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2474,7 +2470,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_set_tid_address_return, cpu, pc, arg0) ;
 		}; break;
-		// 259 long sys_timer_create ['clockid_t which_clock', 'struct sigevent __user *timer_event_spec', 'timer_t __user * created_timer_id']
+		// 259 long sys_timer_create ['clockid_t which_clock', 'struct sigevent __user *timer_event_spec', 'timer_t __user *created_timer_id']
 		case 259: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2486,7 +2482,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_timer_create_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 260 long sys_timer_settime ['timer_t timer_id', ' int flags', 'const struct itimerspec __user *new_setting', 'struct itimerspec __user *old_setting']
+		// 260 long sys_timer_settime ['timer_t timer_id', 'int flags', 'const struct itimerspec __user *new_setting', 'struct itimerspec __user *old_setting']
 		case 260: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -2556,7 +2552,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_clock_getres_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 267 long sys_clock_nanosleep ['clockid_t which_clock', ' int flags', 'const struct timespec __user *rqtp', 'struct timespec __user *rmtp']
+		// 267 long sys_clock_nanosleep ['clockid_t which_clock', 'int flags', 'const struct timespec __user *rqtp', 'struct timespec __user *rmtp']
 		case 267: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -2570,7 +2566,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_clock_nanosleep_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 268 long sys_statfs64 ['const char __user *path', ' size_t sz', 'struct statfs64 __user *buf']
+		// 268 long sys_statfs64 ['const char __user *path', 'size_t sz', 'struct statfs64 __user *buf']
 		case 268: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2582,7 +2578,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_statfs64_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 269 long sys_fstatfs64 ['unsigned int fd', ' size_t sz', 'struct statfs64 __user *buf']
+		// 269 long sys_fstatfs64 ['unsigned int fd', 'size_t sz', 'struct statfs64 __user *buf']
 		case 269: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2594,7 +2590,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fstatfs64_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 270 long sys_tgkill ['int tgid', ' int pid', ' int sig']
+		// 270 long sys_tgkill ['int tgid', 'int pid', 'int sig']
 		case 270: {
 			int32_t arg0;
 			int32_t arg1;
@@ -2616,7 +2612,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_utimes_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 272 long sys_fadvise64_64 ['int fd', ' loff_t offset', ' loff_t len', ' int advice']
+		// 272 long sys_fadvise64_64 ['int fd', 'loff_t offset', 'loff_t len', 'int advice']
 		case 272: {
 			int32_t arg0;
 			uint64_t arg1;
@@ -2630,7 +2626,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fadvise64_64_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 274 long sys_mbind ['unsigned long start', ' unsigned long len', 'unsigned long mode', 'unsigned long __user *nmask', 'unsigned long maxnode', 'unsigned flags']
+		// 274 long sys_mbind ['unsigned long start', 'unsigned long len', 'unsigned long mode', 'const unsigned long __user *nmask', 'unsigned long maxnode', 'unsigned flags']
 		case 274: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2648,7 +2644,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_mbind_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
-		// 275 long sys_get_mempolicy ['int __user *policy', 'unsigned long __user *nmask', 'unsigned long maxnode', 'unsigned long addr', ' unsigned long flags']
+		// 275 long sys_get_mempolicy ['int __user *policy', 'unsigned long __user *nmask', 'unsigned long maxnode', 'unsigned long addr', 'unsigned long flags']
 		case 275: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2664,7 +2660,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_get_mempolicy_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 276 long sys_set_mempolicy ['int mode', ' unsigned long __user *nmask', 'unsigned long maxnode']
+		// 276 long sys_set_mempolicy ['int mode', 'const unsigned long __user *nmask', 'unsigned long maxnode']
 		case 276: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -2676,7 +2672,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_set_mempolicy_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 277 long sys_mq_open ['const char __user *name', ' int oflag', ' mode_t mode', ' struct mq_attr __user *attr']
+		// 277 long sys_mq_open ['const char __user *name', 'int oflag', 'umode_t mode', 'struct mq_attr __user *attr']
 		case 277: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -2698,7 +2694,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_mq_unlink_return, cpu, pc, arg0) ;
 		}; break;
-		// 279 long sys_mq_timedsend ['mqd_t mqdes', ' const char __user *msg_ptr', ' size_t msg_len', ' unsigned int msg_prio', ' const struct timespec __user *abs_timeout']
+		// 279 long sys_mq_timedsend ['mqd_t mqdes', 'const char __user *msg_ptr', 'size_t msg_len', 'unsigned int msg_prio', 'const struct timespec __user *abs_timeout']
 		case 279: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2714,7 +2710,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_mq_timedsend_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 280 long sys_mq_timedreceive ['mqd_t mqdes', ' char __user *msg_ptr', ' size_t msg_len', ' unsigned int __user *msg_prio', ' const struct timespec __user *abs_timeout']
+		// 280 long sys_mq_timedreceive ['mqd_t mqdes', 'char __user *msg_ptr', 'size_t msg_len', 'unsigned int __user *msg_prio', 'const struct timespec __user *abs_timeout']
 		case 280: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2730,7 +2726,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_mq_timedreceive_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 281 long sys_mq_notify ['mqd_t mqdes', ' const struct sigevent __user *notification']
+		// 281 long sys_mq_notify ['mqd_t mqdes', 'const struct sigevent __user *notification']
 		case 281: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2740,7 +2736,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_mq_notify_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 282 long sys_mq_getsetattr ['mqd_t mqdes', ' const struct mq_attr __user *mqstat', ' struct mq_attr __user *omqstat']
+		// 282 long sys_mq_getsetattr ['mqd_t mqdes', 'const struct mq_attr __user *mqstat', 'struct mq_attr __user *omqstat']
 		case 282: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2752,7 +2748,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_mq_getsetattr_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 283 long sys_kexec_load ['unsigned long entry', ' unsigned long nr_segments', 'struct kexec_segment __user *segments', 'unsigned long flags']
+		// 283 long sys_kexec_load ['unsigned long entry', 'unsigned long nr_segments', 'struct kexec_segment __user *segments', 'unsigned long flags']
 		case 283: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2766,7 +2762,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_kexec_load_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 284 long sys_waitid ['int which', ' pid_t pid', 'struct siginfo __user *infop', 'int options', ' struct rusage __user *ru']
+		// 284 long sys_waitid ['int which', 'pid_t pid', 'struct siginfo __user *infop', 'int options', 'struct rusage __user *ru']
 		case 284: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -2812,7 +2808,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_request_key_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 288 long sys_keyctl ['int cmd', ' unsigned long arg2', ' unsigned long arg3', 'unsigned long arg4', ' unsigned long arg5']
+		// 288 long sys_keyctl ['int cmd', 'unsigned long arg2', 'unsigned long arg3', 'unsigned long arg4', 'unsigned long arg5']
 		case 288: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -2828,7 +2824,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_keyctl_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 289 long sys_ioprio_set ['int which', ' int who', ' int ioprio']
+		// 289 long sys_ioprio_set ['int which', 'int who', 'int ioprio']
 		case 289: {
 			int32_t arg0;
 			int32_t arg1;
@@ -2840,7 +2836,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_ioprio_set_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 290 long sys_ioprio_get ['int which', ' int who']
+		// 290 long sys_ioprio_get ['int which', 'int who']
 		case 290: {
 			int32_t arg0;
 			int32_t arg1;
@@ -2856,7 +2852,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_inotify_init_return, cpu, pc) ;
 		}; break;
-		// 292 long sys_inotify_add_watch ['int fd', ' const char __user *path', 'u32 mask']
+		// 292 long sys_inotify_add_watch ['int fd', 'const char __user *path', 'u32 mask']
 		case 292: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -2868,7 +2864,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_inotify_add_watch_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 293 long sys_inotify_rm_watch ['int fd', ' __s32 wd']
+		// 293 long sys_inotify_rm_watch ['int fd', '__s32 wd']
 		case 293: {
 			int32_t arg0;
 			int32_t arg1;
@@ -2878,7 +2874,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_inotify_rm_watch_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 294 long sys_migrate_pages ['pid_t pid', ' unsigned long maxnode', 'const unsigned long __user *from', 'const unsigned long __user *to']
+		// 294 long sys_migrate_pages ['pid_t pid', 'unsigned long maxnode', 'const unsigned long __user *from', 'const unsigned long __user *to']
 		case 294: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -2892,47 +2888,47 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_migrate_pages_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 295 long sys_openat ['int dfd', ' const char __user *filename', ' int flags', 'int mode']
+		// 295 long sys_openat ['int dfd', 'const char __user *filename', 'int flags', 'umode_t mode']
 		case 295: {
 			int32_t arg0;
 			uint32_t arg1;
 			int32_t arg2;
-			int32_t arg3;
-			if (PPP_CHECK_CB(on_sys_openat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
-				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
-				memcpy(&arg3, ctx->args[3], sizeof(int32_t));
-			}
-			PPP_RUN_CB(on_sys_openat_return, cpu, pc, arg0, arg1, arg2, arg3) ;
-		}; break;
-		// 296 long sys_mkdirat ['int dfd', ' const char __user * pathname', ' int mode']
-		case 296: {
-			int32_t arg0;
-			uint32_t arg1;
-			int32_t arg2;
-			if (PPP_CHECK_CB(on_sys_mkdirat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
-				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
-			}
-			PPP_RUN_CB(on_sys_mkdirat_return, cpu, pc, arg0, arg1, arg2) ;
-		}; break;
-		// 297 long sys_mknodat ['int dfd', ' const char __user * filename', ' int mode', 'unsigned dev']
-		case 297: {
-			int32_t arg0;
-			uint32_t arg1;
-			int32_t arg2;
 			uint32_t arg3;
-			if (PPP_CHECK_CB(on_sys_mknodat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+			if (PPP_CHECK_CB(on_sys_openat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
 				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
 			}
+			PPP_RUN_CB(on_sys_openat_return, cpu, pc, arg0, arg1, arg2, arg3) ;
+		}; break;
+		// 296 long sys_mkdirat ['int dfd', 'const char __user *pathname', 'umode_t mode']
+		case 296: {
+			int32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			if (PPP_CHECK_CB(on_sys_mkdirat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_mkdirat_return, cpu, pc, arg0, arg1, arg2) ;
+		}; break;
+		// 297 long sys_mknodat ['int dfd', 'const char __user *filename', 'umode_t mode', 'unsigned dev']
+		case 297: {
+			int32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			uint32_t arg3;
+			if (PPP_CHECK_CB(on_sys_mknodat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+			}
 			PPP_RUN_CB(on_sys_mknodat_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 298 long sys_fchownat ['int dfd', ' const char __user *filename', ' uid_t user', 'gid_t group', ' int flag']
+		// 298 long sys_fchownat ['int dfd', 'const char __user *filename', 'uid_t user', 'gid_t group', 'int flag']
 		case 298: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -2948,7 +2944,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fchownat_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 299 long sys_futimesat ['int dfd', ' const char __user *filename', 'struct timeval __user *utimes']
+		// 299 long sys_futimesat ['int dfd', 'const char __user *filename', 'struct timeval __user *utimes']
 		case 299: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -2960,7 +2956,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_futimesat_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 300 long sys_fstatat64 ['int dfd', ' const char __user *filename', 'struct stat64 __user *statbuf', ' int flag']
+		// 300 long sys_fstatat64 ['int dfd', 'const char __user *filename', 'struct stat64 __user *statbuf', 'int flag']
 		case 300: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -2974,7 +2970,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fstatat64_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 301 long sys_unlinkat ['int dfd', ' const char __user * pathname', ' int flag']
+		// 301 long sys_unlinkat ['int dfd', 'const char __user *pathname', 'int flag']
 		case 301: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -2986,7 +2982,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_unlinkat_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 302 long sys_renameat ['int olddfd', ' const char __user * oldname', 'int newdfd', ' const char __user * newname']
+		// 302 long sys_renameat ['int olddfd', 'const char __user *oldname', 'int newdfd', 'const char __user *newname']
 		case 302: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3000,7 +2996,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_renameat_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 303 long sys_linkat ['int olddfd', ' const char __user *oldname', 'int newdfd', ' const char __user *newname', ' int flags']
+		// 303 long sys_linkat ['int olddfd', 'const char __user *oldname', 'int newdfd', 'const char __user *newname', 'int flags']
 		case 303: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3016,7 +3012,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_linkat_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 304 long sys_symlinkat ['const char __user * oldname', 'int newdfd', ' const char __user * newname']
+		// 304 long sys_symlinkat ['const char __user *oldname', 'int newdfd', 'const char __user *newname']
 		case 304: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -3028,7 +3024,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_symlinkat_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 305 long sys_readlinkat ['int dfd', ' const char __user *path', ' char __user *buf', 'int bufsiz']
+		// 305 long sys_readlinkat ['int dfd', 'const char __user *path', 'char __user *buf', 'int bufsiz']
 		case 305: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3042,7 +3038,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_readlinkat_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 306 long sys_fchmodat ['int dfd', ' const char __user * filename', 'mode_t mode']
+		// 306 long sys_fchmodat ['int dfd', 'const char __user *filename', 'umode_t mode']
 		case 306: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3054,7 +3050,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fchmodat_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 307 long sys_faccessat ['int dfd', ' const char __user *filename', ' int mode']
+		// 307 long sys_faccessat ['int dfd', 'const char __user *filename', 'int mode']
 		case 307: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3066,7 +3062,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_faccessat_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 308 long sys_pselect6 ['int', ' fd_set __user *', ' fd_set __user *', 'fd_set __user *', ' struct timespec __user *', 'void __user *']
+		// 308 long sys_pselect6 ['int', 'fd_set __user *', 'fd_set __user *', 'fd_set __user *', 'struct timespec __user *', 'void __user *']
 		case 308: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3084,7 +3080,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_pselect6_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
-		// 309 long sys_ppoll ['struct pollfd __user *', ' unsigned int', 'struct timespec __user *', ' const sigset_t __user *', 'size_t']
+		// 309 long sys_ppoll ['struct pollfd __user *', 'unsigned int', 'struct timespec __user *', 'const sigset_t __user *', 'size_t']
 		case 309: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -3130,7 +3126,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_get_robust_list_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 313 long sys_splice ['int fd_in', ' loff_t __user *off_in', 'int fd_out', ' loff_t __user *off_out', 'size_t len', ' unsigned int flags']
+		// 313 long sys_splice ['int fd_in', 'loff_t __user *off_in', 'int fd_out', 'loff_t __user *off_out', 'size_t len', 'unsigned int flags']
 		case 313: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3148,7 +3144,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_splice_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
-		// 314 long sys_sync_file_range ['int fd', ' loff_t offset', ' loff_t nbytes', 'unsigned int flags']
+		// 314 long sys_sync_file_range ['int fd', 'loff_t offset', 'loff_t nbytes', 'unsigned int flags']
 		case 314: {
 			int32_t arg0;
 			uint64_t arg1;
@@ -3162,7 +3158,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_sync_file_range_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 315 long sys_tee ['int fdin', ' int fdout', ' size_t len', ' unsigned int flags']
+		// 315 long sys_tee ['int fdin', 'int fdout', 'size_t len', 'unsigned int flags']
 		case 315: {
 			int32_t arg0;
 			int32_t arg1;
@@ -3176,7 +3172,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_tee_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 316 long sys_vmsplice ['int fd', ' const struct iovec __user *iov', 'unsigned long nr_segs', ' unsigned int flags']
+		// 316 long sys_vmsplice ['int fd', 'const struct iovec __user *iov', 'unsigned long nr_segs', 'unsigned int flags']
 		case 316: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3190,7 +3186,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_vmsplice_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 317 long sys_move_pages ['pid_t pid', ' unsigned long nr_pages', 'const void __user * __user *pages', 'const int __user *nodes', 'int __user *status', 'int flags']
+		// 317 long sys_move_pages ['pid_t pid', 'unsigned long nr_pages', 'const void __user * __user *pages', 'const int __user *nodes', 'int __user *status', 'int flags']
 		case 317: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -3208,7 +3204,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_move_pages_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
-		// 318 long sys_getcpu ['unsigned __user *cpu', ' unsigned __user *node', ' struct getcpu_cache __user *cache']
+		// 318 long sys_getcpu ['unsigned __user *cpu', 'unsigned __user *node', 'struct getcpu_cache __user *cache']
 		case 318: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -3220,7 +3216,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getcpu_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 319 long sys_epoll_pwait ['int epfd', ' struct epoll_event __user *events', 'int maxevents', ' int timeout', 'const sigset_t __user *sigmask', 'size_t sigsetsize']
+		// 319 long sys_epoll_pwait ['int epfd', 'struct epoll_event __user *events', 'int maxevents', 'int timeout', 'const sigset_t __user *sigmask', 'size_t sigsetsize']
 		case 319: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3238,7 +3234,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_epoll_pwait_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
-		// 320 long sys_utimensat ['int dfd', ' const char __user *filename', 'struct timespec __user *utimes', ' int flags']
+		// 320 long sys_utimensat ['int dfd', 'const char __user *filename', 'struct timespec __user *utimes', 'int flags']
 		case 320: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3252,7 +3248,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_utimensat_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 321 long sys_signalfd ['int ufd', ' sigset_t __user *user_mask', ' size_t sizemask']
+		// 321 long sys_signalfd ['int ufd', 'sigset_t __user *user_mask', 'size_t sizemask']
 		case 321: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3264,7 +3260,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_signalfd_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 322 long sys_timerfd_create ['int clockid', ' int flags']
+		// 322 long sys_timerfd_create ['int clockid', 'int flags']
 		case 322: {
 			int32_t arg0;
 			int32_t arg1;
@@ -3282,7 +3278,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_eventfd_return, cpu, pc, arg0) ;
 		}; break;
-		// 324 long sys_fallocate ['int fd', ' int mode', ' loff_t offset', ' loff_t len']
+		// 324 long sys_fallocate ['int fd', 'int mode', 'loff_t offset', 'loff_t len']
 		case 324: {
 			int32_t arg0;
 			int32_t arg1;
@@ -3296,7 +3292,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fallocate_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 325 long sys_timerfd_settime ['int ufd', ' int flags', 'const struct itimerspec __user *utmr', 'struct itimerspec __user *otmr']
+		// 325 long sys_timerfd_settime ['int ufd', 'int flags', 'const struct itimerspec __user *utmr', 'struct itimerspec __user *otmr']
 		case 325: {
 			int32_t arg0;
 			int32_t arg1;
@@ -3310,7 +3306,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_timerfd_settime_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 326 long sys_timerfd_gettime ['int ufd', ' struct itimerspec __user *otmr']
+		// 326 long sys_timerfd_gettime ['int ufd', 'struct itimerspec __user *otmr']
 		case 326: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3320,7 +3316,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_timerfd_gettime_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 327 long sys_signalfd4 ['int ufd', ' sigset_t __user *user_mask', ' size_t sizemask', ' int flags']
+		// 327 long sys_signalfd4 ['int ufd', 'sigset_t __user *user_mask', 'size_t sizemask', 'int flags']
 		case 327: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3334,7 +3330,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_signalfd4_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 328 long sys_eventfd2 ['unsigned int count', ' int flags']
+		// 328 long sys_eventfd2 ['unsigned int count', 'int flags']
 		case 328: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -3352,7 +3348,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_epoll_create1_return, cpu, pc, arg0) ;
 		}; break;
-		// 330 long sys_dup3 ['unsigned int oldfd', ' unsigned int newfd', ' int flags']
+		// 330 long sys_dup3 ['unsigned int oldfd', 'unsigned int newfd', 'int flags']
 		case 330: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -3364,7 +3360,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_dup3_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 331 long sys_pipe2 ['int __user *fildes', ' int flags']
+		// 331 long sys_pipe2 ['int __user *fildes', 'int flags']
 		case 331: {
 			uint32_t arg0;
 			int32_t arg1;
@@ -3382,7 +3378,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_inotify_init1_return, cpu, pc, arg0) ;
 		}; break;
-		// 333 long sys_preadv ['unsigned long fd', ' const struct iovec __user *vec', 'unsigned long vlen', ' unsigned long pos_l', ' unsigned long pos_h']
+		// 333 long sys_preadv ['unsigned long fd', 'const struct iovec __user *vec', 'unsigned long vlen', 'unsigned long pos_l', 'unsigned long pos_h']
 		case 333: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -3398,7 +3394,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_preadv_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 334 long sys_pwritev ['unsigned long fd', ' const struct iovec __user *vec', 'unsigned long vlen', ' unsigned long pos_l', ' unsigned long pos_h']
+		// 334 long sys_pwritev ['unsigned long fd', 'const struct iovec __user *vec', 'unsigned long vlen', 'unsigned long pos_l', 'unsigned long pos_h']
 		case 334: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -3414,7 +3410,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_pwritev_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 335 long sys_rt_tgsigqueueinfo ['pid_t tgid', ' pid_t  pid', ' int sig', 'siginfo_t __user *uinfo']
+		// 335 long sys_rt_tgsigqueueinfo ['pid_t tgid', 'pid_t pid', 'int sig', 'siginfo_t __user *uinfo']
 		case 335: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -3428,7 +3424,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_rt_tgsigqueueinfo_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 336 long sys_perf_event_open ['struct perf_event_attr __user *attr_uptr', 'pid_t pid', ' int cpu', ' int group_fd', ' unsigned long flags']
+		// 336 long sys_perf_event_open ['struct perf_event_attr __user *attr_uptr', 'pid_t pid', 'int cpu', 'int group_fd', 'unsigned long flags']
 		case 336: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -3444,7 +3440,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_perf_event_open_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 337 long sys_recvmmsg ['int fd', ' struct mmsghdr __user *msg', 'unsigned int vlen', ' unsigned flags', 'struct timespec __user *timeout']
+		// 337 long sys_recvmmsg ['int fd', 'struct mmsghdr __user *msg', 'unsigned int vlen', 'unsigned flags', 'struct timespec __user *timeout']
 		case 337: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3460,7 +3456,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_recvmmsg_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 338 long sys_fanotify_init ['unsigned int flags', ' unsigned int event_f_flags']
+		// 338 long sys_fanotify_init ['unsigned int flags', 'unsigned int event_f_flags']
 		case 338: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -3470,7 +3466,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fanotify_init_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 339 long sys_fanotify_mark ['int fanotify_fd', ' unsigned int flags', 'u64 mask', ' int fd', 'const char  __user *pathname']
+		// 339 long sys_fanotify_mark ['int fanotify_fd', 'unsigned int flags', 'u64 mask', 'int fd', 'const char __user *pathname']
 		case 339: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3486,7 +3482,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fanotify_mark_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 340 long sys_prlimit64 ['pid_t pid', ' unsigned int resource', 'const struct rlimit64 __user *new_rlim', 'struct rlimit64 __user *old_rlim']
+		// 340 long sys_prlimit64 ['pid_t pid', 'unsigned int resource', 'const struct rlimit64 __user *new_rlim', 'struct rlimit64 __user *old_rlim']
 		case 340: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -3500,7 +3496,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_prlimit64_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 341 long sys_name_to_handle_at ['int dfd', ' const char __user *name', 'struct file_handle __user *handle', 'int __user *mnt_id', ' int flag']
+		// 341 long sys_name_to_handle_at ['int dfd', 'const char __user *name', 'struct file_handle __user *handle', 'int __user *mnt_id', 'int flag']
 		case 341: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3546,7 +3542,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_syncfs_return, cpu, pc, arg0) ;
 		}; break;
-		// 345 long sys_sendmmsg ['int fd', ' struct mmsghdr __user *msg', 'unsigned int vlen', ' unsigned flags']
+		// 345 long sys_sendmmsg ['int fd', 'struct mmsghdr __user *msg', 'unsigned int vlen', 'unsigned flags']
 		case 345: {
 			int32_t arg0;
 			uint32_t arg1;
@@ -3560,7 +3556,7 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_sendmmsg_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
-		// 346 long sys_setns ['int fd', ' int nstype']
+		// 346 long sys_setns ['int fd', 'int nstype']
 		case 346: {
 			int32_t arg0;
 			int32_t arg1;
@@ -3605,6 +3601,368 @@ void syscall_return_switch_linux_x86(CPUState *cpu, target_ptr_t pc, const sysca
 				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_sys_process_vm_writev_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
+		}; break;
+		// 349 long sys_kcmp ['pid_t pid1', 'pid_t pid2', 'int type', 'unsigned long idx1', 'unsigned long idx2']
+		case 349: {
+			uint32_t arg0;
+			uint32_t arg1;
+			int32_t arg2;
+			uint32_t arg3;
+			uint32_t arg4;
+			if (PPP_CHECK_CB(on_sys_kcmp_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_kcmp_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
+		}; break;
+		// 350 long sys_finit_module ['int fd', 'const char __user *uargs', 'int flags']
+		case 350: {
+			int32_t arg0;
+			uint32_t arg1;
+			int32_t arg2;
+			if (PPP_CHECK_CB(on_sys_finit_module_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
+			}
+			PPP_RUN_CB(on_sys_finit_module_return, cpu, pc, arg0, arg1, arg2) ;
+		}; break;
+		// 351 long sys_sched_setattr ['pid_t pid', 'struct sched_attr __user *attr', 'unsigned int flags']
+		case 351: {
+			uint32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			if (PPP_CHECK_CB(on_sys_sched_setattr_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_sched_setattr_return, cpu, pc, arg0, arg1, arg2) ;
+		}; break;
+		// 352 long sys_sched_getattr ['pid_t pid', 'struct sched_attr __user *attr', 'unsigned int size', 'unsigned int flags']
+		case 352: {
+			uint32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			uint32_t arg3;
+			if (PPP_CHECK_CB(on_sys_sched_getattr_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_sched_getattr_return, cpu, pc, arg0, arg1, arg2, arg3) ;
+		}; break;
+		// 353 long sys_renameat2 ['int olddfd', 'const char __user *oldname', 'int newdfd', 'const char __user *newname', 'unsigned int flags']
+		case 353: {
+			int32_t arg0;
+			uint32_t arg1;
+			int32_t arg2;
+			uint32_t arg3;
+			uint32_t arg4;
+			if (PPP_CHECK_CB(on_sys_renameat2_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_renameat2_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
+		}; break;
+		// 354 long sys_seccomp ['unsigned int op', 'unsigned int flags', 'const char __user *uargs']
+		case 354: {
+			uint32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			if (PPP_CHECK_CB(on_sys_seccomp_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_seccomp_return, cpu, pc, arg0, arg1, arg2) ;
+		}; break;
+		// 355 long sys_getrandom ['char __user *buf', 'size_t count', 'unsigned int flags']
+		case 355: {
+			uint32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			if (PPP_CHECK_CB(on_sys_getrandom_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_getrandom_return, cpu, pc, arg0, arg1, arg2) ;
+		}; break;
+		// 356 long sys_memfd_create ['const char __user *uname_ptr', 'unsigned int flags']
+		case 356: {
+			uint32_t arg0;
+			uint32_t arg1;
+			if (PPP_CHECK_CB(on_sys_memfd_create_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_memfd_create_return, cpu, pc, arg0, arg1) ;
+		}; break;
+		// 357 long sys_bpf ['int cmd', 'union bpf_attr *attr', 'unsigned int size']
+		case 357: {
+			int32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			if (PPP_CHECK_CB(on_sys_bpf_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_bpf_return, cpu, pc, arg0, arg1, arg2) ;
+		}; break;
+		// 358 long sys_execveat ['int dfd', 'const char __user *filename', 'const char __user *const __user *argv', 'const char __user *const __user *envp', 'int flags']
+		case 358: {
+			int32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			uint32_t arg3;
+			int32_t arg4;
+			if (PPP_CHECK_CB(on_sys_execveat_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(int32_t));
+			}
+			PPP_RUN_CB(on_sys_execveat_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
+		}; break;
+		// 359 long sys_socket ['int', 'int', 'int']
+		case 359: {
+			int32_t arg0;
+			int32_t arg1;
+			int32_t arg2;
+			if (PPP_CHECK_CB(on_sys_socket_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
+			}
+			PPP_RUN_CB(on_sys_socket_return, cpu, pc, arg0, arg1, arg2) ;
+		}; break;
+		// 360 long sys_socketpair ['int', 'int', 'int', 'int __user *']
+		case 360: {
+			int32_t arg0;
+			int32_t arg1;
+			int32_t arg2;
+			uint32_t arg3;
+			if (PPP_CHECK_CB(on_sys_socketpair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_socketpair_return, cpu, pc, arg0, arg1, arg2, arg3) ;
+		}; break;
+		// 361 long sys_bind ['int', 'struct sockaddr __user *', 'int']
+		case 361: {
+			int32_t arg0;
+			uint32_t arg1;
+			int32_t arg2;
+			if (PPP_CHECK_CB(on_sys_bind_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
+			}
+			PPP_RUN_CB(on_sys_bind_return, cpu, pc, arg0, arg1, arg2) ;
+		}; break;
+		// 362 long sys_connect ['int', 'struct sockaddr __user *', 'int']
+		case 362: {
+			int32_t arg0;
+			uint32_t arg1;
+			int32_t arg2;
+			if (PPP_CHECK_CB(on_sys_connect_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
+			}
+			PPP_RUN_CB(on_sys_connect_return, cpu, pc, arg0, arg1, arg2) ;
+		}; break;
+		// 363 long sys_listen ['int', 'int']
+		case 363: {
+			int32_t arg0;
+			int32_t arg1;
+			if (PPP_CHECK_CB(on_sys_listen_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
+			}
+			PPP_RUN_CB(on_sys_listen_return, cpu, pc, arg0, arg1) ;
+		}; break;
+		// 364 long sys_accept4 ['int', 'struct sockaddr __user *', 'int __user *', 'int']
+		case 364: {
+			int32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			int32_t arg3;
+			if (PPP_CHECK_CB(on_sys_accept4_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(int32_t));
+			}
+			PPP_RUN_CB(on_sys_accept4_return, cpu, pc, arg0, arg1, arg2, arg3) ;
+		}; break;
+		// 365 long sys_getsockopt ['int fd', 'int level', 'int optname', 'char __user *optval', 'int __user *optlen']
+		case 365: {
+			int32_t arg0;
+			int32_t arg1;
+			int32_t arg2;
+			uint32_t arg3;
+			uint32_t arg4;
+			if (PPP_CHECK_CB(on_sys_getsockopt_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_getsockopt_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
+		}; break;
+		// 366 long sys_setsockopt ['int fd', 'int level', 'int optname', 'char __user *optval', 'int optlen']
+		case 366: {
+			int32_t arg0;
+			int32_t arg1;
+			int32_t arg2;
+			uint32_t arg3;
+			int32_t arg4;
+			if (PPP_CHECK_CB(on_sys_setsockopt_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(int32_t));
+			}
+			PPP_RUN_CB(on_sys_setsockopt_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
+		}; break;
+		// 367 long sys_getsockname ['int', 'struct sockaddr __user *', 'int __user *']
+		case 367: {
+			int32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			if (PPP_CHECK_CB(on_sys_getsockname_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_getsockname_return, cpu, pc, arg0, arg1, arg2) ;
+		}; break;
+		// 368 long sys_getpeername ['int', 'struct sockaddr __user *', 'int __user *']
+		case 368: {
+			int32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			if (PPP_CHECK_CB(on_sys_getpeername_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_getpeername_return, cpu, pc, arg0, arg1, arg2) ;
+		}; break;
+		// 369 long sys_sendto ['int', 'void __user *', 'size_t', 'unsigned', 'struct sockaddr __user *', 'int']
+		case 369: {
+			int32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			uint32_t arg3;
+			uint32_t arg4;
+			int32_t arg5;
+			if (PPP_CHECK_CB(on_sys_sendto_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(int32_t));
+			}
+			PPP_RUN_CB(on_sys_sendto_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
+		}; break;
+		// 370 long sys_sendmsg ['int fd', 'struct user_msghdr __user *msg', 'unsigned flags']
+		case 370: {
+			int32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			if (PPP_CHECK_CB(on_sys_sendmsg_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_sendmsg_return, cpu, pc, arg0, arg1, arg2) ;
+		}; break;
+		// 371 long sys_recvfrom ['int', 'void __user *', 'size_t', 'unsigned', 'struct sockaddr __user *', 'int __user *']
+		case 371: {
+			int32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			uint32_t arg3;
+			uint32_t arg4;
+			uint32_t arg5;
+			if (PPP_CHECK_CB(on_sys_recvfrom_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_recvfrom_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
+		}; break;
+		// 372 long sys_recvmsg ['int fd', 'struct user_msghdr __user *msg', 'unsigned flags']
+		case 372: {
+			int32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			if (PPP_CHECK_CB(on_sys_recvmsg_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_recvmsg_return, cpu, pc, arg0, arg1, arg2) ;
+		}; break;
+		// 373 long sys_shutdown ['int', 'int']
+		case 373: {
+			int32_t arg0;
+			int32_t arg1;
+			if (PPP_CHECK_CB(on_sys_shutdown_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
+			}
+			PPP_RUN_CB(on_sys_shutdown_return, cpu, pc, arg0, arg1) ;
+		}; break;
+		// 374 long sys_userfaultfd ['int flags']
+		case 374: {
+			int32_t arg0;
+			if (PPP_CHECK_CB(on_sys_userfaultfd_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+			}
+			PPP_RUN_CB(on_sys_userfaultfd_return, cpu, pc, arg0) ;
+		}; break;
+		// 375 long sys_membarrier ['int cmd', 'int flags']
+		case 375: {
+			int32_t arg0;
+			int32_t arg1;
+			if (PPP_CHECK_CB(on_sys_membarrier_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
+			}
+			PPP_RUN_CB(on_sys_membarrier_return, cpu, pc, arg0, arg1) ;
+		}; break;
+		// 376 long sys_mlock2 ['unsigned long start', 'size_t len', 'int flags']
+		case 376: {
+			uint32_t arg0;
+			uint32_t arg1;
+			int32_t arg2;
+			if (PPP_CHECK_CB(on_sys_mlock2_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
+			}
+			PPP_RUN_CB(on_sys_mlock2_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
 		default:
 			PPP_RUN_CB(on_unknown_sys_return, cpu, pc, ctx->no);

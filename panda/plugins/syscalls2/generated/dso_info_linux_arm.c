@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include "../syscalls2_info.h"
-#define MAX_SYSCALL_NO 10485744
-#define MAX_SYSCALL_GENERIC_NO 360
+#define MAX_SYSCALL_NO 983045
+#define MAX_SYSCALL_GENERIC_NO 390
 #define MAX_SYSCALL_ARGS 6
 
 #if __GNUC__ < 5
@@ -27,12 +27,12 @@ static syscall_argtype_t argt_3[] = {SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_A
 static uint8_t argsz_3[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_4[] = {SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32};
 static uint8_t argsz_4[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
-static syscall_argtype_t argt_5[] = {SYSCALL_ARG_STR, SYSCALL_ARG_S32, SYSCALL_ARG_S32};
-static uint8_t argsz_5[] = {sizeof(uint32_t), sizeof(int32_t), sizeof(int32_t)};
+static syscall_argtype_t argt_5[] = {SYSCALL_ARG_STR, SYSCALL_ARG_S32, SYSCALL_ARG_U32};
+static uint8_t argsz_5[] = {sizeof(uint32_t), sizeof(int32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_6[] = {SYSCALL_ARG_U32};
 static uint8_t argsz_6[] = {sizeof(uint32_t)};
-static syscall_argtype_t argt_8[] = {SYSCALL_ARG_STR, SYSCALL_ARG_S32};
-static uint8_t argsz_8[] = {sizeof(uint32_t), sizeof(int32_t)};
+static syscall_argtype_t argt_8[] = {SYSCALL_ARG_STR, SYSCALL_ARG_U32};
+static uint8_t argsz_8[] = {sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_9[] = {SYSCALL_ARG_STR, SYSCALL_ARG_STR};
 static uint8_t argsz_9[] = {sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_10[] = {SYSCALL_ARG_STR};
@@ -41,8 +41,10 @@ static syscall_argtype_t argt_11[] = {SYSCALL_ARG_STR, SYSCALL_ARG_STR, SYSCALL_
 static uint8_t argsz_11[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_12[] = {SYSCALL_ARG_STR};
 static uint8_t argsz_12[] = {sizeof(uint32_t)};
-static syscall_argtype_t argt_14[] = {SYSCALL_ARG_STR, SYSCALL_ARG_S32, SYSCALL_ARG_U32};
-static uint8_t argsz_14[] = {sizeof(uint32_t), sizeof(int32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_13[] = {SYSCALL_ARG_PTR};
+static uint8_t argsz_13[] = {sizeof(uint32_t)};
+static syscall_argtype_t argt_14[] = {SYSCALL_ARG_STR, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
+static uint8_t argsz_14[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_15[] = {SYSCALL_ARG_STR, SYSCALL_ARG_U32};
 static uint8_t argsz_15[] = {sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_16[] = {SYSCALL_ARG_STR, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
@@ -57,10 +59,16 @@ static syscall_argtype_t argt_23[] = {SYSCALL_ARG_U32};
 static uint8_t argsz_23[] = {sizeof(uint32_t)};
 static syscall_argtype_t argt_24[] = {};
 static uint8_t argsz_24[] = {};
-static syscall_argtype_t argt_26[] = {SYSCALL_ARG_S32, SYSCALL_ARG_S32, SYSCALL_ARG_S32, SYSCALL_ARG_S32};
-static uint8_t argsz_26[] = {sizeof(int32_t), sizeof(int32_t), sizeof(int32_t), sizeof(int32_t)};
+static syscall_argtype_t argt_25[] = {SYSCALL_ARG_PTR};
+static uint8_t argsz_25[] = {sizeof(uint32_t)};
+static syscall_argtype_t argt_26[] = {SYSCALL_ARG_S32, SYSCALL_ARG_S32, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
+static uint8_t argsz_26[] = {sizeof(int32_t), sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_27[] = {SYSCALL_ARG_U32};
+static uint8_t argsz_27[] = {sizeof(uint32_t)};
 static syscall_argtype_t argt_29[] = {};
 static uint8_t argsz_29[] = {};
+static syscall_argtype_t argt_30[] = {SYSCALL_ARG_STR, SYSCALL_ARG_PTR};
+static uint8_t argsz_30[] = {sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_33[] = {SYSCALL_ARG_STR, SYSCALL_ARG_S32};
 static uint8_t argsz_33[] = {sizeof(uint32_t), sizeof(int32_t)};
 static syscall_argtype_t argt_34[] = {SYSCALL_ARG_S32};
@@ -71,8 +79,8 @@ static syscall_argtype_t argt_37[] = {SYSCALL_ARG_S32, SYSCALL_ARG_S32};
 static uint8_t argsz_37[] = {sizeof(int32_t), sizeof(int32_t)};
 static syscall_argtype_t argt_38[] = {SYSCALL_ARG_STR, SYSCALL_ARG_STR};
 static uint8_t argsz_38[] = {sizeof(uint32_t), sizeof(uint32_t)};
-static syscall_argtype_t argt_39[] = {SYSCALL_ARG_STR, SYSCALL_ARG_S32};
-static uint8_t argsz_39[] = {sizeof(uint32_t), sizeof(int32_t)};
+static syscall_argtype_t argt_39[] = {SYSCALL_ARG_STR, SYSCALL_ARG_U32};
+static uint8_t argsz_39[] = {sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_40[] = {SYSCALL_ARG_STR};
 static uint8_t argsz_40[] = {sizeof(uint32_t)};
 static syscall_argtype_t argt_41[] = {SYSCALL_ARG_U32};
@@ -121,8 +129,8 @@ static syscall_argtype_t argt_70[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32};
 static uint8_t argsz_70[] = {sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_71[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32};
 static uint8_t argsz_71[] = {sizeof(uint32_t), sizeof(uint32_t)};
-static syscall_argtype_t argt_72[] = {SYSCALL_ARG_S32, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
-static uint8_t argsz_72[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_72[] = {SYSCALL_ARG_S32, SYSCALL_ARG_S32, SYSCALL_ARG_U32};
+static uint8_t argsz_72[] = {sizeof(int32_t), sizeof(int32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_73[] = {SYSCALL_ARG_PTR};
 static uint8_t argsz_73[] = {sizeof(uint32_t)};
 static syscall_argtype_t argt_74[] = {SYSCALL_ARG_STR, SYSCALL_ARG_S32};
@@ -151,8 +159,8 @@ static syscall_argtype_t argt_88[] = {SYSCALL_ARG_S32, SYSCALL_ARG_S32, SYSCALL_
 static uint8_t argsz_88[] = {sizeof(int32_t), sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_91[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32};
 static uint8_t argsz_91[] = {sizeof(uint32_t), sizeof(uint32_t)};
-static syscall_argtype_t argt_92[] = {SYSCALL_ARG_STR, SYSCALL_ARG_U32};
-static uint8_t argsz_92[] = {sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_92[] = {SYSCALL_ARG_STR, SYSCALL_ARG_S32};
+static uint8_t argsz_92[] = {sizeof(uint32_t), sizeof(int32_t)};
 static syscall_argtype_t argt_93[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32};
 static uint8_t argsz_93[] = {sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_94[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32};
@@ -167,6 +175,8 @@ static syscall_argtype_t argt_99[] = {SYSCALL_ARG_STR, SYSCALL_ARG_PTR};
 static uint8_t argsz_99[] = {sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_100[] = {SYSCALL_ARG_U32, SYSCALL_ARG_PTR};
 static uint8_t argsz_100[] = {sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_102[] = {SYSCALL_ARG_S32, SYSCALL_ARG_PTR};
+static uint8_t argsz_102[] = {sizeof(int32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_103[] = {SYSCALL_ARG_S32, SYSCALL_ARG_PTR, SYSCALL_ARG_S32};
 static uint8_t argsz_103[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(int32_t)};
 static syscall_argtype_t argt_104[] = {SYSCALL_ARG_S32, SYSCALL_ARG_PTR, SYSCALL_ARG_PTR};
@@ -187,12 +197,14 @@ static syscall_argtype_t argt_115[] = {SYSCALL_ARG_STR};
 static uint8_t argsz_115[] = {sizeof(uint32_t)};
 static syscall_argtype_t argt_116[] = {SYSCALL_ARG_PTR};
 static uint8_t argsz_116[] = {sizeof(uint32_t)};
+static syscall_argtype_t argt_117[] = {SYSCALL_ARG_U32, SYSCALL_ARG_S32, SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_S32};
+static uint8_t argsz_117[] = {sizeof(uint32_t), sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(int32_t)};
 static syscall_argtype_t argt_118[] = {SYSCALL_ARG_U32};
 static uint8_t argsz_118[] = {sizeof(uint32_t)};
 static syscall_argtype_t argt_119[] = {};
 static uint8_t argsz_119[] = {};
-static syscall_argtype_t argt_120[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_S32, SYSCALL_ARG_PTR, SYSCALL_ARG_PTR};
-static uint8_t argsz_120[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_120[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_PTR, SYSCALL_ARG_U32};
+static uint8_t argsz_120[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_121[] = {SYSCALL_ARG_STR, SYSCALL_ARG_S32};
 static uint8_t argsz_121[] = {sizeof(uint32_t), sizeof(int32_t)};
 static syscall_argtype_t argt_122[] = {SYSCALL_ARG_PTR};
@@ -217,8 +229,8 @@ static syscall_argtype_t argt_134[] = {SYSCALL_ARG_S32, SYSCALL_ARG_S32};
 static uint8_t argsz_134[] = {sizeof(int32_t), sizeof(int32_t)};
 static syscall_argtype_t argt_135[] = {SYSCALL_ARG_S32, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
 static uint8_t argsz_135[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t)};
-static syscall_argtype_t argt_136[] = {SYSCALL_ARG_S32};
-static uint8_t argsz_136[] = {sizeof(int32_t)};
+static syscall_argtype_t argt_136[] = {SYSCALL_ARG_U32};
+static uint8_t argsz_136[] = {sizeof(uint32_t)};
 static syscall_argtype_t argt_138[] = {SYSCALL_ARG_U32};
 static uint8_t argsz_138[] = {sizeof(uint32_t)};
 static syscall_argtype_t argt_139[] = {SYSCALL_ARG_U32};
@@ -277,8 +289,6 @@ static syscall_argtype_t argt_165[] = {SYSCALL_ARG_PTR, SYSCALL_ARG_PTR, SYSCALL
 static uint8_t argsz_165[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_168[] = {SYSCALL_ARG_PTR, SYSCALL_ARG_U32, SYSCALL_ARG_S32};
 static uint8_t argsz_168[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(int32_t)};
-static syscall_argtype_t argt_169[] = {SYSCALL_ARG_S32, SYSCALL_ARG_PTR, SYSCALL_ARG_PTR};
-static uint8_t argsz_169[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_170[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
 static uint8_t argsz_170[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_171[] = {SYSCALL_ARG_PTR, SYSCALL_ARG_PTR, SYSCALL_ARG_PTR};
@@ -569,12 +579,12 @@ static syscall_argtype_t argt_320[] = {SYSCALL_ARG_PTR, SYSCALL_ARG_PTR, SYSCALL
 static uint8_t argsz_320[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_321[] = {SYSCALL_ARG_S32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32};
 static uint8_t argsz_321[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t)};
-static syscall_argtype_t argt_322[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_S32, SYSCALL_ARG_S32};
-static uint8_t argsz_322[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(int32_t), sizeof(int32_t)};
-static syscall_argtype_t argt_323[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_S32};
-static uint8_t argsz_323[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(int32_t)};
-static syscall_argtype_t argt_324[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_S32, SYSCALL_ARG_U32};
-static uint8_t argsz_324[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(int32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_322[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_S32, SYSCALL_ARG_U32};
+static uint8_t argsz_322[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(int32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_323[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_U32};
+static uint8_t argsz_323[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_324[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
+static uint8_t argsz_324[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_325[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_S32};
 static uint8_t argsz_325[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(int32_t)};
 static syscall_argtype_t argt_326[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_PTR};
@@ -595,6 +605,10 @@ static syscall_argtype_t argt_333[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL
 static uint8_t argsz_333[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_334[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_S32};
 static uint8_t argsz_334[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(int32_t)};
+static syscall_argtype_t argt_335[] = {SYSCALL_ARG_S32, SYSCALL_ARG_PTR, SYSCALL_ARG_PTR, SYSCALL_ARG_PTR, SYSCALL_ARG_PTR, SYSCALL_ARG_PTR};
+static uint8_t argsz_335[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_336[] = {SYSCALL_ARG_PTR, SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_PTR, SYSCALL_ARG_U32};
+static uint8_t argsz_336[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_337[] = {SYSCALL_ARG_U32};
 static uint8_t argsz_337[] = {sizeof(uint32_t)};
 static syscall_argtype_t argt_338[] = {SYSCALL_ARG_PTR, SYSCALL_ARG_U32};
@@ -613,6 +627,8 @@ static syscall_argtype_t argt_344[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL
 static uint8_t argsz_344[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(int32_t)};
 static syscall_argtype_t argt_345[] = {SYSCALL_ARG_PTR, SYSCALL_ARG_PTR, SYSCALL_ARG_PTR};
 static uint8_t argsz_345[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_346[] = {SYSCALL_ARG_S32, SYSCALL_ARG_PTR, SYSCALL_ARG_S32, SYSCALL_ARG_S32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32};
+static uint8_t argsz_346[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(int32_t), sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_347[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32};
 static uint8_t argsz_347[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_348[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_PTR, SYSCALL_ARG_S32};
@@ -641,13 +657,71 @@ static syscall_argtype_t argt_359[] = {SYSCALL_ARG_PTR, SYSCALL_ARG_S32};
 static uint8_t argsz_359[] = {sizeof(uint32_t), sizeof(int32_t)};
 static syscall_argtype_t argt_360[] = {SYSCALL_ARG_S32};
 static uint8_t argsz_360[] = {sizeof(int32_t)};
-/* skipping non generic system call 10420225 (ARM_breakpoint) */
-/* skipping non generic system call 10420226 (ARM_cacheflush) */
-/* skipping non generic system call 10420227 (ARM_user26_mode) */
-/* skipping non generic system call 10420228 (ARM_usr32_mode) */
-/* skipping non generic system call 10420229 (ARM_set_tls) */
-/* skipping non generic system call 10485744 (ARM_cmpxchg) */
-/* skipping non generic system call 10420224 (ARM_null_segfault) */
+static syscall_argtype_t argt_361[] = {SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
+static uint8_t argsz_361[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_362[] = {SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
+static uint8_t argsz_362[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_363[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_S32, SYSCALL_ARG_PTR};
+static uint8_t argsz_363[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(int32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_364[] = {SYSCALL_ARG_PTR, SYSCALL_ARG_U32, SYSCALL_ARG_S32, SYSCALL_ARG_S32, SYSCALL_ARG_U32};
+static uint8_t argsz_364[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(int32_t), sizeof(int32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_365[] = {SYSCALL_ARG_S32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_PTR};
+static uint8_t argsz_365[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_366[] = {SYSCALL_ARG_S32, SYSCALL_ARG_PTR, SYSCALL_ARG_PTR, SYSCALL_ARG_S32};
+static uint8_t argsz_366[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(int32_t)};
+static syscall_argtype_t argt_367[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32};
+static uint8_t argsz_367[] = {sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_368[] = {SYSCALL_ARG_S32, SYSCALL_ARG_U32, SYSCALL_ARG_U64, SYSCALL_ARG_S32, SYSCALL_ARG_STR};
+static uint8_t argsz_368[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint64_t), sizeof(int32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_369[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_PTR};
+static uint8_t argsz_369[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_370[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_PTR, SYSCALL_ARG_PTR, SYSCALL_ARG_S32};
+static uint8_t argsz_370[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(int32_t)};
+static syscall_argtype_t argt_371[] = {SYSCALL_ARG_S32, SYSCALL_ARG_PTR, SYSCALL_ARG_S32};
+static uint8_t argsz_371[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(int32_t)};
+static syscall_argtype_t argt_372[] = {SYSCALL_ARG_U32, SYSCALL_ARG_PTR};
+static uint8_t argsz_372[] = {sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_373[] = {SYSCALL_ARG_S32};
+static uint8_t argsz_373[] = {sizeof(int32_t)};
+static syscall_argtype_t argt_374[] = {SYSCALL_ARG_S32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
+static uint8_t argsz_374[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_375[] = {SYSCALL_ARG_S32, SYSCALL_ARG_S32};
+static uint8_t argsz_375[] = {sizeof(int32_t), sizeof(int32_t)};
+static syscall_argtype_t argt_376[] = {SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
+static uint8_t argsz_376[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_377[] = {SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
+static uint8_t argsz_377[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_378[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_S32, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
+static uint8_t argsz_378[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_379[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_S32};
+static uint8_t argsz_379[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(int32_t)};
+static syscall_argtype_t argt_380[] = {SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32};
+static uint8_t argsz_380[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_381[] = {SYSCALL_ARG_U32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
+static uint8_t argsz_381[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_382[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_U32};
+static uint8_t argsz_382[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_383[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_STR};
+static uint8_t argsz_383[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_384[] = {SYSCALL_ARG_PTR, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
+static uint8_t argsz_384[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_385[] = {SYSCALL_ARG_STR, SYSCALL_ARG_U32};
+static uint8_t argsz_385[] = {sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_386[] = {SYSCALL_ARG_S32, SYSCALL_ARG_PTR, SYSCALL_ARG_U32};
+static uint8_t argsz_386[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_387[] = {SYSCALL_ARG_S32, SYSCALL_ARG_STR, SYSCALL_ARG_STR, SYSCALL_ARG_STR, SYSCALL_ARG_S32};
+static uint8_t argsz_387[] = {sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(int32_t)};
+static syscall_argtype_t argt_388[] = {SYSCALL_ARG_S32};
+static uint8_t argsz_388[] = {sizeof(int32_t)};
+static syscall_argtype_t argt_389[] = {SYSCALL_ARG_S32, SYSCALL_ARG_S32};
+static uint8_t argsz_389[] = {sizeof(int32_t), sizeof(int32_t)};
+static syscall_argtype_t argt_390[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_S32};
+static uint8_t argsz_390[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(int32_t)};
+/* skipping non generic system call 983041 (ARM_breakpoint) */
+/* skipping non generic system call 983042 (ARM_cacheflush) */
+/* skipping non generic system call 983043 (ARM_user26_mode) */
+/* skipping non generic system call 983044 (ARM_usr32_mode) */
+/* skipping non generic system call 983045 (ARM_set_tls) */
 
 
 syscall_info_t __syscall_info_a[] = {
@@ -668,7 +742,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[2] = {
 		.no = 2,
-		.name = "fork",
+		.name = "sys_fork",
 		.nargs = 0,
 		.argt = argt_2,
 		.argsz = argsz_2
@@ -724,7 +798,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[11] = {
 		.no = 11,
-		.name = "execve",
+		.name = "sys_execve",
 		.nargs = 3,
 		.argt = argt_11,
 		.argsz = argsz_11
@@ -735,6 +809,13 @@ syscall_info_t __syscall_info_a[] = {
 		.nargs = 1,
 		.argt = argt_12,
 		.argsz = argsz_12
+	},
+	[13] = {
+		.no = 13,
+		.name = "sys_time",
+		.nargs = 1,
+		.argt = argt_13,
+		.argsz = argsz_13
 	},
 	[14] = {
 		.no = 14,
@@ -792,6 +873,13 @@ syscall_info_t __syscall_info_a[] = {
 		.argt = argt_24,
 		.argsz = argsz_24
 	},
+	[25] = {
+		.no = 25,
+		.name = "sys_stime",
+		.nargs = 1,
+		.argt = argt_25,
+		.argsz = argsz_25
+	},
 	[26] = {
 		.no = 26,
 		.name = "sys_ptrace",
@@ -799,12 +887,26 @@ syscall_info_t __syscall_info_a[] = {
 		.argt = argt_26,
 		.argsz = argsz_26
 	},
+	[27] = {
+		.no = 27,
+		.name = "sys_alarm",
+		.nargs = 1,
+		.argt = argt_27,
+		.argsz = argsz_27
+	},
 	[29] = {
 		.no = 29,
 		.name = "sys_pause",
 		.nargs = 0,
 		.argt = argt_29,
 		.argsz = argsz_29
+	},
+	[30] = {
+		.no = 30,
+		.name = "sys_utime",
+		.nargs = 2,
+		.argt = argt_30,
+		.argsz = argsz_30
 	},
 	[33] = {
 		.no = 33,
@@ -997,7 +1099,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[67] = {
 		.no = 67,
-		.name = "sigaction",
+		.name = "sys_sigaction",
 		.nargs = 3,
 		.argt = argt_67,
 		.argsz = argsz_67
@@ -1018,7 +1120,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[72] = {
 		.no = 72,
-		.name = "sigsuspend",
+		.name = "sys_sigsuspend",
 		.nargs = 3,
 		.argt = argt_72,
 		.argsz = argsz_72
@@ -1177,6 +1279,13 @@ syscall_info_t __syscall_info_a[] = {
 		.argt = argt_100,
 		.argsz = argsz_100
 	},
+	[102] = {
+		.no = 102,
+		.name = "sys_socketcall",
+		.nargs = 2,
+		.argt = argt_102,
+		.argsz = argsz_102
+	},
 	[103] = {
 		.no = 103,
 		.name = "sys_syslog",
@@ -1247,6 +1356,13 @@ syscall_info_t __syscall_info_a[] = {
 		.argt = argt_116,
 		.argsz = argsz_116
 	},
+	[117] = {
+		.no = 117,
+		.name = "sys_ipc",
+		.nargs = 6,
+		.argt = argt_117,
+		.argsz = argsz_117
+	},
 	[118] = {
 		.no = 118,
 		.name = "sys_fsync",
@@ -1263,8 +1379,8 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[120] = {
 		.no = 120,
-		.name = "clone",
-		.nargs = 6,
+		.name = "sys_clone",
+		.nargs = 5,
 		.argt = argt_120,
 		.argsz = argsz_120
 	},
@@ -1536,7 +1652,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[163] = {
 		.no = 163,
-		.name = "arm_mremap",
+		.name = "sys_mremap",
 		.nargs = 5,
 		.argt = argt_163,
 		.argsz = argsz_163
@@ -1561,13 +1677,6 @@ syscall_info_t __syscall_info_a[] = {
 		.nargs = 3,
 		.argt = argt_168,
 		.argsz = argsz_168
-	},
-	[169] = {
-		.no = 169,
-		.name = "sys_nfsservctl",
-		.nargs = 3,
-		.argt = argt_169,
-		.argsz = argsz_169
 	},
 	[170] = {
 		.no = 170,
@@ -1599,7 +1708,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[174] = {
 		.no = 174,
-		.name = "rt_sigaction",
+		.name = "sys_rt_sigaction",
 		.nargs = 4,
 		.argt = argt_174,
 		.argsz = argsz_174
@@ -1683,7 +1792,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[186] = {
 		.no = 186,
-		.name = "do_sigaltstack",
+		.name = "sys_sigaltstack",
 		.nargs = 2,
 		.argt = argt_186,
 		.argsz = argsz_186
@@ -1697,7 +1806,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[190] = {
 		.no = 190,
-		.name = "vfork",
+		.name = "sys_vfork",
 		.nargs = 0,
 		.argt = argt_190,
 		.argsz = argsz_190
@@ -2675,6 +2784,20 @@ syscall_info_t __syscall_info_a[] = {
 		.argt = argt_334,
 		.argsz = argsz_334
 	},
+	[335] = {
+		.no = 335,
+		.name = "sys_pselect6",
+		.nargs = 6,
+		.argt = argt_335,
+		.argsz = argsz_335
+	},
+	[336] = {
+		.no = 336,
+		.name = "sys_ppoll",
+		.nargs = 5,
+		.argt = argt_336,
+		.argsz = argsz_336
+	},
 	[337] = {
 		.no = 337,
 		.name = "sys_unshare",
@@ -2737,6 +2860,13 @@ syscall_info_t __syscall_info_a[] = {
 		.nargs = 3,
 		.argt = argt_345,
 		.argsz = argsz_345
+	},
+	[346] = {
+		.no = 346,
+		.name = "sys_epoll_pwait",
+		.nargs = 6,
+		.argt = argt_346,
+		.argsz = argsz_346
 	},
 	[347] = {
 		.no = 347,
@@ -2836,13 +2966,221 @@ syscall_info_t __syscall_info_a[] = {
 		.argt = argt_360,
 		.argsz = argsz_360
 	},
-	/* skipping non generic system call 10420225 (ARM_breakpoint) */
-	/* skipping non generic system call 10420226 (ARM_cacheflush) */
-	/* skipping non generic system call 10420227 (ARM_user26_mode) */
-	/* skipping non generic system call 10420228 (ARM_usr32_mode) */
-	/* skipping non generic system call 10420229 (ARM_set_tls) */
-	/* skipping non generic system call 10485744 (ARM_cmpxchg) */
-	/* skipping non generic system call 10420224 (ARM_null_segfault) */
+	[361] = {
+		.no = 361,
+		.name = "sys_preadv",
+		.nargs = 5,
+		.argt = argt_361,
+		.argsz = argsz_361
+	},
+	[362] = {
+		.no = 362,
+		.name = "sys_pwritev",
+		.nargs = 5,
+		.argt = argt_362,
+		.argsz = argsz_362
+	},
+	[363] = {
+		.no = 363,
+		.name = "sys_rt_tgsigqueueinfo",
+		.nargs = 4,
+		.argt = argt_363,
+		.argsz = argsz_363
+	},
+	[364] = {
+		.no = 364,
+		.name = "sys_perf_event_open",
+		.nargs = 5,
+		.argt = argt_364,
+		.argsz = argsz_364
+	},
+	[365] = {
+		.no = 365,
+		.name = "sys_recvmmsg",
+		.nargs = 5,
+		.argt = argt_365,
+		.argsz = argsz_365
+	},
+	[366] = {
+		.no = 366,
+		.name = "sys_accept4",
+		.nargs = 4,
+		.argt = argt_366,
+		.argsz = argsz_366
+	},
+	[367] = {
+		.no = 367,
+		.name = "sys_fanotify_init",
+		.nargs = 2,
+		.argt = argt_367,
+		.argsz = argsz_367
+	},
+	[368] = {
+		.no = 368,
+		.name = "sys_fanotify_mark",
+		.nargs = 5,
+		.argt = argt_368,
+		.argsz = argsz_368
+	},
+	[369] = {
+		.no = 369,
+		.name = "sys_prlimit64",
+		.nargs = 4,
+		.argt = argt_369,
+		.argsz = argsz_369
+	},
+	[370] = {
+		.no = 370,
+		.name = "sys_name_to_handle_at",
+		.nargs = 5,
+		.argt = argt_370,
+		.argsz = argsz_370
+	},
+	[371] = {
+		.no = 371,
+		.name = "sys_open_by_handle_at",
+		.nargs = 3,
+		.argt = argt_371,
+		.argsz = argsz_371
+	},
+	[372] = {
+		.no = 372,
+		.name = "sys_clock_adjtime",
+		.nargs = 2,
+		.argt = argt_372,
+		.argsz = argsz_372
+	},
+	[373] = {
+		.no = 373,
+		.name = "sys_syncfs",
+		.nargs = 1,
+		.argt = argt_373,
+		.argsz = argsz_373
+	},
+	[374] = {
+		.no = 374,
+		.name = "sys_sendmmsg",
+		.nargs = 4,
+		.argt = argt_374,
+		.argsz = argsz_374
+	},
+	[375] = {
+		.no = 375,
+		.name = "sys_setns",
+		.nargs = 2,
+		.argt = argt_375,
+		.argsz = argsz_375
+	},
+	[376] = {
+		.no = 376,
+		.name = "sys_process_vm_readv",
+		.nargs = 6,
+		.argt = argt_376,
+		.argsz = argsz_376
+	},
+	[377] = {
+		.no = 377,
+		.name = "sys_process_vm_writev",
+		.nargs = 6,
+		.argt = argt_377,
+		.argsz = argsz_377
+	},
+	[378] = {
+		.no = 378,
+		.name = "sys_kcmp",
+		.nargs = 5,
+		.argt = argt_378,
+		.argsz = argsz_378
+	},
+	[379] = {
+		.no = 379,
+		.name = "sys_finit_module",
+		.nargs = 3,
+		.argt = argt_379,
+		.argsz = argsz_379
+	},
+	[380] = {
+		.no = 380,
+		.name = "sys_sched_setattr",
+		.nargs = 3,
+		.argt = argt_380,
+		.argsz = argsz_380
+	},
+	[381] = {
+		.no = 381,
+		.name = "sys_sched_getattr",
+		.nargs = 4,
+		.argt = argt_381,
+		.argsz = argsz_381
+	},
+	[382] = {
+		.no = 382,
+		.name = "sys_renameat2",
+		.nargs = 5,
+		.argt = argt_382,
+		.argsz = argsz_382
+	},
+	[383] = {
+		.no = 383,
+		.name = "sys_seccomp",
+		.nargs = 3,
+		.argt = argt_383,
+		.argsz = argsz_383
+	},
+	[384] = {
+		.no = 384,
+		.name = "sys_getrandom",
+		.nargs = 3,
+		.argt = argt_384,
+		.argsz = argsz_384
+	},
+	[385] = {
+		.no = 385,
+		.name = "sys_memfd_create",
+		.nargs = 2,
+		.argt = argt_385,
+		.argsz = argsz_385
+	},
+	[386] = {
+		.no = 386,
+		.name = "sys_bpf",
+		.nargs = 3,
+		.argt = argt_386,
+		.argsz = argsz_386
+	},
+	[387] = {
+		.no = 387,
+		.name = "sys_execveat",
+		.nargs = 5,
+		.argt = argt_387,
+		.argsz = argsz_387
+	},
+	[388] = {
+		.no = 388,
+		.name = "sys_userfaultfd",
+		.nargs = 1,
+		.argt = argt_388,
+		.argsz = argsz_388
+	},
+	[389] = {
+		.no = 389,
+		.name = "sys_membarrier",
+		.nargs = 2,
+		.argt = argt_389,
+		.argsz = argsz_389
+	},
+	[390] = {
+		.no = 390,
+		.name = "sys_mlock2",
+		.nargs = 3,
+		.argt = argt_390,
+		.argsz = argsz_390
+	},
+	/* skipping non generic system call 983041 (ARM_breakpoint) */
+	/* skipping non generic system call 983042 (ARM_cacheflush) */
+	/* skipping non generic system call 983043 (ARM_user26_mode) */
+	/* skipping non generic system call 983044 (ARM_usr32_mode) */
+	/* skipping non generic system call 983045 (ARM_set_tls) */
 	
 };
 

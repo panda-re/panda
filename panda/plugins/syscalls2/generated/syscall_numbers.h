@@ -1,5 +1,5 @@
 /*!
- * @file gen_syscall_numbers.h
+ * @file syscall_numbers.h
  *
  * @brief Symbolic names for syscall numbers. We make this header c++ only
  * so we can use namespaces. This results in shorter names in the code and
@@ -822,7 +822,7 @@ namespace syscalls2 {
 		namespace arm {
 			const int sys_restart_syscall = 0;
 			const int sys_exit = 1;
-			const int fork = 2;
+			const int sys_fork = 2;
 			const int sys_read = 3;
 			const int sys_write = 4;
 			const int sys_open = 5;
@@ -830,8 +830,9 @@ namespace syscalls2 {
 			const int sys_creat = 8;
 			const int sys_link = 9;
 			const int sys_unlink = 10;
-			const int execve = 11;
+			const int sys_execve = 11;
 			const int sys_chdir = 12;
+			const int sys_time = 13;
 			const int sys_mknod = 14;
 			const int sys_chmod = 15;
 			const int sys_lchown16 = 16;
@@ -840,8 +841,11 @@ namespace syscalls2 {
 			const int sys_mount = 21;
 			const int sys_setuid16 = 23;
 			const int sys_getuid16 = 24;
+			const int sys_stime = 25;
 			const int sys_ptrace = 26;
+			const int sys_alarm = 27;
 			const int sys_pause = 29;
+			const int sys_utime = 30;
 			const int sys_access = 33;
 			const int sys_nice = 34;
 			const int sys_sync = 36;
@@ -869,10 +873,10 @@ namespace syscalls2 {
 			const int sys_getppid = 64;
 			const int sys_getpgrp = 65;
 			const int sys_setsid = 66;
-			const int sigaction = 67;
+			const int sys_sigaction = 67;
 			const int sys_setreuid16 = 70;
 			const int sys_setregid16 = 71;
-			const int sigsuspend = 72;
+			const int sys_sigsuspend = 72;
 			const int sys_sigpending = 73;
 			const int sys_sethostname = 74;
 			const int sys_setrlimit = 75;
@@ -895,6 +899,7 @@ namespace syscalls2 {
 			const int sys_setpriority = 97;
 			const int sys_statfs = 99;
 			const int sys_fstatfs = 100;
+			const int sys_socketcall = 102;
 			const int sys_syslog = 103;
 			const int sys_setitimer = 104;
 			const int sys_getitimer = 105;
@@ -905,9 +910,10 @@ namespace syscalls2 {
 			const int sys_wait4 = 114;
 			const int sys_swapoff = 115;
 			const int sys_sysinfo = 116;
+			const int sys_ipc = 117;
 			const int sys_fsync = 118;
 			const int sigreturn = 119;
-			const int clone = 120;
+			const int sys_clone = 120;
 			const int sys_setdomainname = 121;
 			const int sys_newuname = 122;
 			const int sys_adjtimex = 124;
@@ -946,16 +952,15 @@ namespace syscalls2 {
 			const int sys_sched_get_priority_min = 160;
 			const int sys_sched_rr_get_interval = 161;
 			const int sys_nanosleep = 162;
-			const int arm_mremap = 163;
+			const int sys_mremap = 163;
 			const int sys_setresuid16 = 164;
 			const int sys_getresuid16 = 165;
 			const int sys_poll = 168;
-			const int sys_nfsservctl = 169;
 			const int sys_setresgid16 = 170;
 			const int sys_getresgid16 = 171;
 			const int sys_prctl = 172;
 			const int sigreturn = 173;
-			const int rt_sigaction = 174;
+			const int sys_rt_sigaction = 174;
 			const int sys_rt_sigprocmask = 175;
 			const int sys_rt_sigpending = 176;
 			const int sys_rt_sigtimedwait = 177;
@@ -967,9 +972,9 @@ namespace syscalls2 {
 			const int sys_getcwd = 183;
 			const int sys_capget = 184;
 			const int sys_capset = 185;
-			const int do_sigaltstack = 186;
+			const int sys_sigaltstack = 186;
 			const int sys_sendfile = 187;
-			const int vfork = 190;
+			const int sys_vfork = 190;
 			const int sys_getrlimit = 191;
 			const int do_mmap2 = 192;
 			const int sys_truncate64 = 193;
@@ -1109,6 +1114,8 @@ namespace syscalls2 {
 			const int sys_readlinkat = 332;
 			const int sys_fchmodat = 333;
 			const int sys_faccessat = 334;
+			const int sys_pselect6 = 335;
+			const int sys_ppoll = 336;
 			const int sys_unshare = 337;
 			const int sys_set_robust_list = 338;
 			const int sys_get_robust_list = 339;
@@ -1118,6 +1125,7 @@ namespace syscalls2 {
 			const int sys_vmsplice = 343;
 			const int sys_move_pages = 344;
 			const int sys_getcpu = 345;
+			const int sys_epoll_pwait = 346;
 			const int sys_kexec_load = 347;
 			const int sys_utimensat = 348;
 			const int sys_signalfd = 349;
@@ -1132,13 +1140,41 @@ namespace syscalls2 {
 			const int sys_dup3 = 358;
 			const int sys_pipe2 = 359;
 			const int sys_inotify_init1 = 360;
-			const int ARM_breakpoint = 10420225;
-			const int ARM_cacheflush = 10420226;
-			const int ARM_user26_mode = 10420227;
-			const int ARM_usr32_mode = 10420228;
-			const int ARM_set_tls = 10420229;
-			const int ARM_cmpxchg = 10485744;
-			const int ARM_null_segfault = 10420224;
+			const int sys_preadv = 361;
+			const int sys_pwritev = 362;
+			const int sys_rt_tgsigqueueinfo = 363;
+			const int sys_perf_event_open = 364;
+			const int sys_recvmmsg = 365;
+			const int sys_accept4 = 366;
+			const int sys_fanotify_init = 367;
+			const int sys_fanotify_mark = 368;
+			const int sys_prlimit64 = 369;
+			const int sys_name_to_handle_at = 370;
+			const int sys_open_by_handle_at = 371;
+			const int sys_clock_adjtime = 372;
+			const int sys_syncfs = 373;
+			const int sys_sendmmsg = 374;
+			const int sys_setns = 375;
+			const int sys_process_vm_readv = 376;
+			const int sys_process_vm_writev = 377;
+			const int sys_kcmp = 378;
+			const int sys_finit_module = 379;
+			const int sys_sched_setattr = 380;
+			const int sys_sched_getattr = 381;
+			const int sys_renameat2 = 382;
+			const int sys_seccomp = 383;
+			const int sys_getrandom = 384;
+			const int sys_memfd_create = 385;
+			const int sys_bpf = 386;
+			const int sys_execveat = 387;
+			const int sys_userfaultfd = 388;
+			const int sys_membarrier = 389;
+			const int sys_mlock2 = 390;
+			const int ARM_breakpoint = 983041;
+			const int ARM_cacheflush = 983042;
+			const int ARM_user26_mode = 983043;
+			const int ARM_usr32_mode = 983044;
+			const int ARM_set_tls = 983045;
 		}
 	}
 	// windows_7:x86
@@ -1609,12 +1645,12 @@ namespace syscalls2 {
 			const int sys_getppid = 64;
 			const int sys_getpgrp = 65;
 			const int sys_setsid = 66;
-			const int sigaction = 67;
+			const int sys_sigaction = 67;
 			const int sys_sgetmask = 68;
 			const int sys_ssetmask = 69;
 			const int sys_setreuid16 = 70;
 			const int sys_setregid16 = 71;
-			const int sigsuspend = 72;
+			const int sys_sigsuspend = 72;
 			const int sys_sigpending = 73;
 			const int sys_sethostname = 74;
 			const int sys_setrlimit = 75;
@@ -1709,7 +1745,7 @@ namespace syscalls2 {
 			const int sys_getresgid16 = 171;
 			const int sys_prctl = 172;
 			const int sys_rt_sigreturn = 173;
-			const int rt_sigaction = 174;
+			const int sys_rt_sigaction = 174;
 			const int sys_rt_sigprocmask = 175;
 			const int sys_rt_sigpending = 176;
 			const int sys_rt_sigtimedwait = 177;
@@ -1774,8 +1810,8 @@ namespace syscalls2 {
 			const int sys_futex = 240;
 			const int sys_sched_setaffinity = 241;
 			const int sys_sched_getaffinity = 242;
-			const int set_thread_area = 243;
-			const int get_thread_area = 244;
+			const int sys_set_thread_area = 243;
+			const int sys_get_thread_area = 244;
 			const int sys_io_setup = 245;
 			const int sys_io_destroy = 246;
 			const int sys_io_getevents = 247;
@@ -1877,6 +1913,34 @@ namespace syscalls2 {
 			const int sys_setns = 346;
 			const int sys_process_vm_readv = 347;
 			const int sys_process_vm_writev = 348;
+			const int sys_kcmp = 349;
+			const int sys_finit_module = 350;
+			const int sys_sched_setattr = 351;
+			const int sys_sched_getattr = 352;
+			const int sys_renameat2 = 353;
+			const int sys_seccomp = 354;
+			const int sys_getrandom = 355;
+			const int sys_memfd_create = 356;
+			const int sys_bpf = 357;
+			const int sys_execveat = 358;
+			const int sys_socket = 359;
+			const int sys_socketpair = 360;
+			const int sys_bind = 361;
+			const int sys_connect = 362;
+			const int sys_listen = 363;
+			const int sys_accept4 = 364;
+			const int sys_getsockopt = 365;
+			const int sys_setsockopt = 366;
+			const int sys_getsockname = 367;
+			const int sys_getpeername = 368;
+			const int sys_sendto = 369;
+			const int sys_sendmsg = 370;
+			const int sys_recvfrom = 371;
+			const int sys_recvmsg = 372;
+			const int sys_shutdown = 373;
+			const int sys_userfaultfd = 374;
+			const int sys_membarrier = 375;
+			const int sys_mlock2 = 376;
 		}
 	}
 }
