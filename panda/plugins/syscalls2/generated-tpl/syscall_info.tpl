@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdbool.h>
 #include "../syscalls2_info.h"
 #define MAX_SYSCALL_NO {{max_syscall_no}}
 #define MAX_SYSCALL_GENERIC_NO {{max_syscall_generic_no}}
@@ -43,7 +44,8 @@ syscall_info_t __syscall_info_a[] = {
 		.name = "{{syscall.name}}",
 		.nargs = {{syscall.args|length}},
 		.argt = argt_{{syscall.no}},
-		.argsz = argsz_{{syscall.no}}
+		.argsz = argsz_{{syscall.no}},
+		.noreturn = {{ 'true' if syscall.panda_noreturn else 'false' }}
 	},
 	{% else -%}
 	/* skipping non generic system call {{syscall.no}} ({{syscall.name}}) */
