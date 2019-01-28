@@ -22,6 +22,7 @@ function activate_pyenv() {
 #		to run the scrip exactly once.
 activate_pyenv
 ./syscall_parser.py --generate-info \
+	--context-target ../generated-in/context_target.json \
 	-t linux:arm -t linux:x86 \
 	-t windows_2000:x86 -t windows_xpsp2:x86 -t windows_xpsp3:x86 -t windows_7:x86
 

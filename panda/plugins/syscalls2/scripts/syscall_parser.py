@@ -19,12 +19,12 @@
 
 from __future__ import print_function
 import jinja2
+import json
 import sys
 import os
 import re
 import logging
 import argparse
-
 
 
 ##############################################################################
@@ -68,7 +68,6 @@ GENERATED_FILES = [
     ('syscall_ppp_extern_enter.tpl', '.h'),
     ('syscall_ppp_extern_return.tpl', '.h'),
 ]
-
 
 
 ##############################################################################
@@ -234,17 +233,22 @@ class SysCall(object):
     # Fields: <no> <return-type> <name><signature with spaces>
     linere = re.compile("(\d+) (.+) (\w+) ?\((.*)\);")
 
-    def __init__(self, line, arch_bits=32):
+    def __init__(self, line, target_context={}):
         fields = SysCall.linere.match(line)
         if fields is None:
             raise SysCallDefError()
 
+        # set properties inferred from prototype
         self.no = int(fields.group(1))
         self.generic = False if self.no > MAX_GENERIC_SYSCALL else True
         self.rettype = fields.group(2)
         self.name = fields.group(3)
         self.args_raw = [arg.strip() for arg in fields.group(4).split(',')]
-        self.arch_bits = arch_bits
+
+        # set properties inferred from target context
+        self.arch_bits = target_context['arch_conf']['bits']
+        panda_noreturn_names = target_context.get('panda_noreturn', {})
+        self.panda_noreturn = True if self.name in panda_noreturn_names else False
 
         # process raw args
         self.args = []
@@ -273,22 +277,24 @@ class SysCall(object):
         return ', '.join(['CPUState* cpu', 'target_ulong pc'] + ['%s %s' % (x.ctype, x.name) for x in self.args])
 
 
-
 ##############################################################################
 ### Main #####################################################################
 ##############################################################################
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='PANDA syscalls2 support files generator.')
+    parser = argparse.ArgumentParser(description='PANDA syscalls2 support source files generator.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--target', '-t', action='append', required=True, help='Target os:arch tuple to process.')
     parser.add_argument('--prefix', '-p', default='', help='Generated files prefix.')
     parser.add_argument('--outdir', '-o', default='../generated', help='Output directory.')
-    parser.add_argument('--prototypes', default='../generated-in', help='Prototype directory.')
+    parser.add_argument('--prototypes', default='../generated-in', help='Prototypes directory.')
     parser.add_argument('--templates', default='../generated-tpl', help='Template directory.')
+    parser.add_argument('--context-target', default=None, help='JSON file with per-target context to be used for rendering output.')
     parser.add_argument('--generate-info', default=False, action='store_true', help='Generate code for syscall info dynamic libraries.')
     args = parser.parse_args()
     logging.debug(args)
 
+    # Sanity checks.
     assert os.path.isdir(args.outdir), 'Output directory %s does not exist.' % args.outdir
+    assert os.path.isdir(args.prototypes), 'Output directory %s does not exist.' % args.prototypes
     assert os.path.isdir(args.templates), 'Template directory %s does not exist.' % args.templates
 
     # Create a Jinja2 environment for rendering templates.
@@ -316,6 +322,13 @@ if __name__ == '__main__':
         'global_max_syscall_generic_no': 0,
     }
 
+    # load extra target context
+    if args.context_target is not None:
+        with open(args.context_target) as args.context_target_file:
+            context_target_extra = json.load(args.context_target_file)
+    else:
+        context_target_extra = {}
+
     # parse system call definitions for all targets
     for _target in args.target:
         _os, _arch = _target.split(':')
@@ -333,18 +346,22 @@ if __name__ == '__main__':
             'syscalls': syscalls,
             'arch_conf': KNOWN_ARCH[_arch],
         }
+        if _target in context_target_extra:
+            d = context_target_extra[_target]
+            assert all([k not in target_context for k in d.keys()]), 'target context for %s overwrites values' % (_target)
+            target_context.update(d)
 
-        # Parse prototype file contents.
-        # Notes:
-        # Goldfish kernel doesn't support OABI layer. Yay!
+        # Parse prototype file contents. Extra context is passed to set
+        # properties that are not defined by the prototype definition.
         with open(protofile_name) as protofile:
             for lineno, line in enumerate(protofile, 1):
                 try:
-                    syscall = SysCall(line, arch_bits=KNOWN_ARCH[_arch]['bits'])
+                    syscall = SysCall(line, target_context)
                     syscalls.append(syscall)
                     syscalls_arch[syscall.name] = syscall
                 except SysCallDefError:
                     logging.debug('Bad prototype line in %s:%d: %s', protofile.name, lineno, line.rstrip())
+        logging.info('Loaded %d system calls from %s.', len(syscalls), protofile_name)
 
         # Calculate the maximum number of arguments and system call number for this os/arch.
         target_context['max_syscall_args'] = max([len(s.args) for s in syscalls])
