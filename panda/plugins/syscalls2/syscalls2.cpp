@@ -13,6 +13,12 @@
 PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
+// The return of some linux system calls is not always handled
+// correctly. This needs further investigation.
+// Uncomment next line to enable debug prints for tracking of system
+// call context.
+//#define SYSCALL_RETURN_DEBUG
+
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 
@@ -471,13 +477,38 @@ extern const syscall_meta_t *syscall_meta;
  */
 context_map_t running_syscalls;
 
+#if defined(SYSCALL_RETURN_DEBUG)
+/**
+ * @brief Returns a string representation of a context_map_t container.
+ */
+static inline std::string context_map_t_dump(context_map_t &cm) {
+    const syscall_info_t *si = syscall_info;
+    const syscall_meta_t *sm = syscall_meta;
+    std::stringstream ss;
+    ss << "{";
+    for (auto ctxi = cm.begin(); ctxi != cm.end(); ++ctxi) {
+	    syscall_ctx_t *ctx = &ctxi->second;
+	    ss << " ";
+	    if (si == NULL || ctx->no > sm->max_generic) {
+	        ss << ctx->no;
+	    } else {
+	        ss << si[ctx->no].name;
+	    }
+	    ss << ":" << std::hex << ctx->asid;
+	    ss << ",";
+    }
+    ss.seekp(-1, ss.cur);
+    ss << " }";
+    return ss.str();
+}
+#endif
+
 #if defined(TARGET_PPC)
 #else
 /**
  * @brief Checks if the translation block that is about to be executed
  * matches the return address of an executing system call.
  */
-#define SYSCALL_RETURN_DEBUG
 static int tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
     auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
     auto ctxi = running_syscalls.find(k);
@@ -490,22 +521,11 @@ static int tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
     }
 #if defined(SYSCALL_RETURN_DEBUG)
     if (no >= 0) {
-        context_map_t &rs = running_syscalls;
         const syscall_info_t *si = syscall_info;
         const syscall_meta_t *sm = syscall_meta;
-        std::stringstream ss;
-        ss << "{";
-        for (auto ctxi = rs.begin(); ctxi != rs.end(); ++ctxi) {
-            syscall_ctx_t *ctx = &ctxi->second;
-            ss << " ";
-            if (si == NULL || ctx->no > sm->max_generic) { ss << ctx->no; }
-            else { ss << si[ctx->no].name; }
-            ss << ",";
-        }
-        ss.seekp(-1, ss.cur);
-        ss << " }";
-        LOG_DEBUG("returned: %s", (no > sm->max_generic ? "N/A" : si[no].name));
-        LOG_DEBUG("remaining %zu: %s", rs.size(), ss.str().c_str());
+        std::string remaining = context_map_t_dump(running_syscalls);
+        LOG_DEBUG("returned: %s:" TARGET_PTR_FMT, (no > sm->max_generic ? "N/A" : si[no].name), panda_current_asid(cpu));
+        LOG_DEBUG("remaining %zu: %s\n", running_syscalls.size(), remaining.c_str());
     }
 #endif
     return 0;
@@ -577,6 +597,12 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
 // translate_callback returned true
 int exec_callback(CPUState *cpu, target_ulong pc) {
     int res = isCurrentInstructionASyscall(cpu,pc);
+#if defined(SYSCALL_RETURN_DEBUG) && defined(TARGET_I386)
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    int no = env->regs[R_EAX];
+    const syscall_info_t *si = syscall_info;
+    const syscall_meta_t *sm = syscall_meta;
+#endif
 #ifdef DEBUG
     if(res < 0){
         impossibleToReadPCs++;
@@ -588,6 +614,14 @@ int exec_callback(CPUState *cpu, target_ulong pc) {
             callback(cpu, pc);
         }
         syscalls_profile->enter_switch(cpu, pc);
+#if defined(SYSCALL_RETURN_DEBUG) && defined(TARGET_I386)
+    if (no >= 0 && !si[no].noreturn) {
+        std::string remaining = context_map_t_dump(running_syscalls);
+        const char *c = (rr_get_guest_instr_count() > 7726588867 ? "X" : "");
+        LOG_DEBUG("started%s: %s:" TARGET_PTR_FMT, c, (no > sm->max_generic ? "N/A" : si[no].name), panda_current_asid(cpu));
+        LOG_DEBUG("remaining %zu: %s\n", running_syscalls.size(), remaining.c_str());
+    }
+#endif
 #ifdef DEBUG
         syscallCounter[panda_current_asid(cpu)]++;
 #endif
@@ -667,6 +701,10 @@ bool init_plugin(void *self) {
     if (panda_parse_bool_opt(plugin_args, "load-info", "Load systemcall information for the selected os.")) {
         if (load_syscall_info() < 0) return false;
     }
+
+#if defined(SYSCALL_RETURN_DEBUG)
+    assert((syscall_info != NULL) && "syscall return debugging requires loading syscall info");
+#endif
 
     // done parsing arguments
     panda_free_args(plugin_args);
