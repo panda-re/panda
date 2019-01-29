@@ -123,7 +123,6 @@ typedef union panda_cb {
        Arguments:
         CPUState *env: the current CPU state
         TranslationBlock *tb: the TB we just executed
-        TranslationBlock *next_tb: the TB we will execute next (may be NULL)
         uint8_t exitCode:  why the block execution exited
 
        Return value:

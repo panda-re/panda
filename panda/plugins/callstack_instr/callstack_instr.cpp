@@ -11,11 +11,11 @@
  * See the COPYING file in the top-level directory.
  *
 PANDAENDCOMMENT */
-/* Change Log: */
-/* 2018-MAY-29   move where mode bit calculated as requested */
-/* 2018-APR-13   watch for x86 processor mode changing in i386 build */
-/* 2019-JAN-29   do not put an entry in the callstack if the block was stopped */
-/*               before the call at the end was made */
+// Change Log
+// 2018-MAY-29   move where mode bit calculated as requested
+// 2018-APR-13   watch for x86 processor mode changing in i386 build
+// 2019-JAN-29   do not put an entry in the callstack if the block was stopped
+//               before the call at the end was made
 #define __STDC_FORMAT_MACROS
 
 #include <cstdio>
@@ -126,7 +126,8 @@ void verbose_log(const char *msg, TranslationBlock *tb, stackid curStackid,
         }
         printf("\n");
     }
-} // end of function verbose_log
+    // end of function verbose_log
+}
 
 static inline bool in_kernelspace(CPUArchState* env) {
 #if defined(TARGET_I386)
@@ -356,7 +357,8 @@ int after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
 
         cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
         // C++ maps don't let you replace value of an existing key (grr)
-        stoppedInfo.erase(curStackid);  // nicely does nothing if key DNE
+        // erase nicely does nothing if key DNE
+        stoppedInfo.erase(curStackid);
         stoppedInfo[curStackid] = pc;
     }
 
