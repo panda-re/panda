@@ -117,17 +117,19 @@ typedef union panda_cb {
 
     /* Callback ID: PANDA_CB_AFTER_BLOCK_EXEC
 
-       after_block_exec: called after execution of every basic block
+       after_block_exec: called after execution of every basic block, although
+       if exitCode > TB_EXIT_IDX1, then the block exited early
 
        Arguments:
         CPUState *env: the current CPU state
         TranslationBlock *tb: the TB we just executed
         TranslationBlock *next_tb: the TB we will execute next (may be NULL)
+        uint8_t exitCode:  why the block execution exited
 
        Return value:
         unused
     */
-    int (*after_block_exec)(CPUState *env, TranslationBlock *tb);
+    int (*after_block_exec)(CPUState *env, TranslationBlock *tb, uint8_t exitCode);
 
     /* Callback ID: PANDA_CB_BEFORE_BLOCK_TRANSLATE
 

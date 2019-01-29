@@ -158,6 +158,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     uintptr_t ret;
     TranslationBlock *last_tb;
     int tb_exit;
+    uint8_t exitCode;
     uint8_t *tb_ptr = itb->tc_ptr;
 
     qemu_log_mask_and_addr(CPU_LOG_EXEC, itb->pc,
@@ -199,9 +200,12 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
 
-    panda_callbacks_after_block_exec(cpu, itb);
-
     tb_exit = ret & TB_EXIT_MASK;
+
+    /* force into variable of known size */
+    exitCode = (uint8_t)tb_exit;
+    panda_callbacks_after_block_exec(cpu, itb, exitCode);
+
     trace_exec_tb_exit(last_tb, tb_exit);
 
     if (tb_exit > TB_EXIT_IDX1) {

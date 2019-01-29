@@ -63,7 +63,6 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 int after_block_translate(CPUState *cpu, TranslationBlock *tb);
 bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb);
-int after_block_exec(CPUState *cpu, TranslationBlock *tb);
 
 int phys_mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int phys_mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
@@ -317,18 +316,6 @@ void taint2_enable_taint(void) {
 #endif
 
     std::cerr << "Done verifying module. Running..." << std::endl;
-}
-
-// Execute taint ops
-int after_block_exec(CPUState *cpu, TranslationBlock *tb) {
-    if (taintJustDisabled){
-        taintJustDisabled = false;
-        execute_llvm = 0;
-        generate_llvm = 0;
-        panda_do_flush_tb();
-        panda_disable_memcb();
-    }
-    return 0;
 }
 
 __attribute__((unused)) static void print_labels(uint32_t el, void *stuff) {

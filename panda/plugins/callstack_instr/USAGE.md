@@ -6,12 +6,12 @@ Summary
 
 The `callstack_instr` plugin keeps track of function calls and returns as they occur in the guest. These are tracked using a shadow call stack, so it should be more reliable than trying to do a stack walk. The plugin makes this information available through an exposed plugin-plugin interaction API, and offers callbacks to let other plugins be notified.
 
-`callstack_instr` currently requires `distorm` to be installed so it can disassemble instructions and identify `call`s and `ret`s.
+`callstack_instr` currently requires `Capstone` to be installed so it can disassemble instructions and identify `call`s and `ret`s.
 
 Arguments
 ---------
 
-None.
+* `verbose`: boolean, defaults to false. Whether to output debugging messages.
 
 Dependencies
 ------------
@@ -65,9 +65,6 @@ void get_prog_point(CPUState *env, prog_point *p);
 There are also functions available for getting callstack information in [pandalog format](docs/pandalog.md):
 
 ```C
-// Create pandalog message for callstack info
-Panda__CallStack *pandalog_callstack_create(void);
-
 // Create pandalog message for callstack info
 Panda__CallStack *pandalog_callstack_create(void);
 

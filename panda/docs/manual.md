@@ -1275,14 +1275,19 @@ bool (*before_block_exec_invalidate_opt)(CPUState *env, TranslationBlock *tb);
 
 * `CPUState *env`: the current CPU state
 * `TranslationBlock *tb`: the TB we just executed
+* `uint8_t exitCode`: one of the `TB_EXIT_` constants from `tcg.h`
 
 **Return value**:
 
 unused
 
+**Notes**:
+
+The `exitCode` can be used to determine if the block was executed to completion, or if it was interrupted by an exit request and execution must be retried later.  When `exitCode <= TB_EXIT_IDX1`, then execution completed normally; otherwise, it was stopped and will be retried later.
+
 **Signature:**:
 ```C
-int (*after_block_exec)(CPUState *env, TranslationBlock *tb);
+int (*after_block_exec)(CPUState *env, TranslationBlock *tb, uint8_t exitCode);
 ```
 ---
 
