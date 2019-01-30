@@ -219,7 +219,5 @@ typedef struct DeviceState {
     int alias_required_for_version;
 } DeviceState;
 
-DeviceState *sysbus_create_varargs(const char *name,
-                                 hwaddr addr, ...);
-
+DeviceState *sysbus_create_varargs(const char *name, hwaddr addr, ...);
 

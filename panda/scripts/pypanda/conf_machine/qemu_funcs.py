@@ -4,7 +4,7 @@ from cffi import FFI
 ffi = FFI()
 
 
-ffi.cdef(open("./include/devicestate.h").read())
+ffi.cdef(open("./include/headers.h").read())
 
 libpanda = ffi.dlopen("/home/alom/git/panda/build/x86_64-softmmu/libpanda-x86_64.so")
 libc = ffi.dlopen(None)
