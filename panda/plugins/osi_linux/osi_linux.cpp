@@ -32,10 +32,8 @@ void uninit_plugin(void *);
 
 void on_get_processes(CPUState *env, GArray **out);
 void on_get_process_handles(CPUState *env, GArray **out);
-void on_get_current_process(CPUState *env, OsiProc **out_p);
 void on_get_process(CPUState *, const OsiProcHandle *, OsiProc **);
 void on_get_libraries(CPUState *env, OsiProc *p, GArray **out);
-void on_get_current_thread(CPUState *env, OsiThread *t);
 
 struct kernelinfo ki;
 
@@ -263,7 +261,7 @@ static void fill_osimodule(CPUState *env, OsiModule *m, target_ptr_t vma_addr) {
 /**
  * @brief Fills an OsiThread struct. Any existing contents are overwritten.
  */
-static void fill_osithread(CPUState *env, OsiThread *t,
+void fill_osithread(CPUState *env, OsiThread *t,
 						   target_ptr_t task_addr) {
 	memset(t, 0, sizeof(*t));
 	t->tid = get_pid(env, task_addr);
@@ -292,20 +290,6 @@ void on_get_process_handles(CPUState *env, GArray **out) {
 
 	// instantiate and call function from get_process_info template
 	get_process_info<>(env, out, fill_osiprochandle, free_osiprochandle_contents);
-}
-
-/**
- * @brief PPP callback to retrieve info about the currently running process.
- */
-void on_get_current_process(CPUState *env, OsiProc **out) {
-	OsiProc *p = NULL;
-	target_ptr_t kernel_esp = panda_current_sp(env);
-	target_ptr_t ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
-	if (ts) {
-		p = (OsiProc *)g_malloc(sizeof(OsiProc));
-		fill_osiproc(env, p, ts);
-	}
-	*out = p;
 }
 
 /**
@@ -399,20 +383,6 @@ error0:
 	g_array_free(*out, true);  // safe even when *out == NULL
 	*out = NULL;
 	return;
-}
-
-/**
- * @brief PPP callback to retrieve current thread.
- */
-void on_get_current_thread(CPUState *env, OsiThread **out) {
-	OsiThread *t = NULL;
-	target_ptr_t kernel_esp = panda_current_sp(env);
-	target_ptr_t ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
-	if (ts) {
-		t = (OsiThread *)g_malloc(sizeof(OsiThread));
-		fill_osithread(env, t, ts);
-	}
-	*out = t;
 }
 
 /* ******************************************************************
@@ -546,7 +516,7 @@ bool init_plugin(void *self) {
 	PPP_REG_CB("osi", on_get_current_process, DEFAULT_PROFILE.get_current_process);
 	PPP_REG_CB("osi", on_get_process, on_get_process);
 	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
-	PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
+	PPP_REG_CB("osi", on_get_current_thread, DEFAULT_PROFILE.get_current_thread);
 	LOG_INFO(PLUGIN_NAME " initialization complete.");
 	return true;
 #else

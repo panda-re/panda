@@ -617,5 +617,6 @@ static inline target_ptr_t get_task_struct_next(CPUState *env, target_ptr_t task
 }
 
 void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr);
+void fill_osithread(CPUState *env, OsiThread *t, target_ptr_t task_addr);
 
 /* vim:set tabstop=4 softtabstop=4 noexpandtab: */
