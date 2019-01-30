@@ -18,6 +18,7 @@
 #include "osi/os_intro.h"
 #include "utils/kernelinfo/kernelinfo.h"
 #include "osi_linux.h"
+#include "default_profile.h"
 
 /*
  * Functions interfacing with QEMU/PANDA should be linked as C.
@@ -203,7 +204,7 @@ static void fill_osiprochandle(CPUState *env, OsiProcHandle *h,
 /**
  * @brief Fills an OsiProc struct. Any existing contents are overwritten.
  */
-static void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr) {
+void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr) {
 	memset(p, 0, sizeof(OsiProc));
 
 	p->taskd = task_addr;
@@ -542,7 +543,7 @@ bool init_plugin(void *self) {
 
 	PPP_REG_CB("osi", on_get_processes, on_get_processes);
 	PPP_REG_CB("osi", on_get_process_handles, on_get_process_handles);
-	PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
+	PPP_REG_CB("osi", on_get_current_process, DEFAULT_PROFILE.get_current_process);
 	PPP_REG_CB("osi", on_get_process, on_get_process);
 	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
 	PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);

@@ -17,6 +17,8 @@
  */
 #pragma once
 #include "panda/plugin.h"
+#include "osi/osi_types.h"
+#include "utils/kernelinfo/kernelinfo.h"
 
 /**
  *  @brief Debug macros.
@@ -613,5 +615,7 @@ static inline target_ptr_t get_task_struct_next(CPUState *env, target_ptr_t task
 		return tasks-ki.task.tasks_offset;
 	}
 }
+
+void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr);
 
 /* vim:set tabstop=4 softtabstop=4 noexpandtab: */

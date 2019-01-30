@@ -1,6 +1,8 @@
 ### Additional plugin object files.
 PLUGIN_OBJ_FILES=$(PLUGIN_OBJ_DIR)/kernelinfo_read.o
 
+PLUGIN_OBJ_FILES+=$(PLUGIN_OBJ_DIR)/default_profile.o
+
 ### Preprocessor flags.
 # Process enumeration starts from approximately the current task by
 # default. With this flag, it is set to start from the init task.
