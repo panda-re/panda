@@ -1,21 +1,21 @@
-from cffi import FFI
+import qemu_funcs
+import sys
+
+sys.path.append("/home/alom/git/panda/panda/scripts/pypanda")
+
+from pypanda import *
+from time import sleep
+
+@pyp.callback("bool(void*)")
+def init(handle):
+	panda.register_callback(handle, "after_machine_init", 33, after_machine_init)
+	return True
+
+@qemu_funcs.ffi.callback("DeviceState*(char*, uint64_t*)")
+def after_machine_init(name, addr):
+	return qemu_funcs.libpanda.sysbus_create_varargs(name,addr)
 
 
-ffi = FFI()
-
-
-ffi.cdef(open("./include/header.h").read())
-
-
-#ffi.cdef(open("./include/libc.h").read())
-#ffi.cdef(open("./include/ram_addr.h").read())
-#ffi.cdef(open("./include/sysbus.h").read())
-
-#ffi.cdef(open("./hwaddr-preprocessed.h").read())
-#ffi.cdef(open("./irq-preprocessed.h").read())
-#ffi.cdef(open("./qdev-core-preprocessed.h").read())
-#ffi.cdef(open("./qdev-preprocessed.h").read())
-
-
-libpanda = ffi.dlopen("/home/alom/git/panda/build/x86_64-softmmu/libpanda-x86_64.so")
-libc = ffi.dlopen(None)
+panda = Panda(qcow="/home/alom/ubuntu-14.04-server-cloudimg-i386-disk1.img")
+panda.load_python_plugin(init,"make_configurable_device")
+panda.run()
