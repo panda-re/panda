@@ -26,7 +26,6 @@
 #ifndef HOST_UTILS_H
 #define HOST_UTILS_H
 
-#include "qemu/compiler.h"
 #include "qemu/bswap.h"
 
 #ifdef CONFIG_INT128

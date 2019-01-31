@@ -1,19 +1,14 @@
-# 1 "fprintf-fn.h"
-# 1 "<built-in>"
-# 1 "<command-line>"
-# 1 "/usr/include/stdc-predef.h" 1 3 4
-# 1 "<command-line>" 2
-# 1 "fprintf-fn.h"
+/*
+ * Typedef for fprintf-alike function pointers.
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2 or later.
+ * See the COPYING file in the top-level directory.
+ */
 
+#ifndef QEMU_FPRINTF_FN_H
+#define QEMU_FPRINTF_FN_H
 
+typedef int (*fprintf_function)(FILE *f, const char *fmt, ...)
+    GCC_FMT_ATTR(2, 3);
 
-
-
-
-# 1 "compiler.h" 1
-# 8 "fprintf-fn.h" 2
-
-
-
-
-typedef int (*fprintf_function)(FILE *f, const char *fmt, ...);
+#endif
