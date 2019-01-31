@@ -202,6 +202,7 @@ int init_module(void)
 
 	/* used for resolving path names */
 	PRINT_SIZE(dentry__s.d_name,		"qstr_size",			"path");
+	// need to add qstr name offset
 	PRINT_OFFSET(dentry__p,				d_name,					"path");
 	PRINT_OFFSET(dentry__p,				d_iname,				"path");
 	PRINT_OFFSET(dentry__p,				d_parent,				"path");

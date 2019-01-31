@@ -32,4 +32,11 @@ void kernel24x_get_current_thread(CPUState *cpu, OsiThread **thr)
 	*thr= t;
 }
 
+IMPLEMENT_OFFSET_GET(get_files_fds, files_struct, target_ptr_t, ki.fs.fd_offset,
+                     0)
+target_ptr_t kernel24x_get_files_fds(CPUState *cpu, target_ptr_t files)
+{
+	return get_files_fds(cpu, files);
+}
+
 /* vim:set tabstop=4 softtabstop=4 noexpandtab: */

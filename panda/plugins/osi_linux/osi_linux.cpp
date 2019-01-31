@@ -38,6 +38,7 @@ void on_get_process(CPUState *, const OsiProcHandle *, OsiProc **);
 void on_get_libraries(CPUState *env, OsiProc *p, GArray **out);
 
 struct kernelinfo ki;
+struct KernelProfile const *kernel_profile = &DEFAULT_PROFILE;
 
 /* ******************************************************************
  Helpers
@@ -75,7 +76,7 @@ static uint64_t get_file_position(CPUState *env, target_ptr_t file_struct) {
 
 static target_ptr_t get_file_struct_ptr(CPUState *env, target_ptr_t task_struct, int fd) {
 	target_ptr_t files = get_files(env, task_struct);
-	target_ptr_t fds = get_files_fds(env, files);
+	target_ptr_t fds = kernel_profile->get_files_fds(env, files);
 	target_ptr_t fd_file_ptr, fd_file;
 
 	// fds is a flat array with struct file pointers.
@@ -497,7 +498,6 @@ bool init_plugin(void *self) {
 	panda_cb pcb = { .asid_changed = osi_linux_test };
 	panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
 #endif
-	KernelProfile const *kernel_profile = &DEFAULT_PROFILE;
 
 	// Read the name of the kernel configuration to use.
 	panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);

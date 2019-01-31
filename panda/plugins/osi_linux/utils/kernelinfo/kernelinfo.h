@@ -114,6 +114,7 @@ PACKED_STRUCT(fs_info) {
  */
 PACKED_STRUCT(path_info) {
 	size_t qstr_size;			/**< Size of `struct qstr`. */
+	int qstr_name_offset;
 	int d_name_offset;
 	int d_iname_offset;
 	int d_parent_offset;

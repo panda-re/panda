@@ -32,18 +32,21 @@ static int __init kernelinfo24_init(void)
 	struct files_struct files_struct__s;
 	struct dentry dentry__s;
 	struct vfsmount vfsmount__s;
+	struct qstr qstr__s;
 
 	struct task_struct *task_struct__p;
 	struct file *file__p;
 	struct files_struct *files_struct__p;
 	struct dentry *dentry__p;
 	struct vfsmount *vfsmount__p;
+	struct qstr *qstr__p;
 
 	task_struct__p = &init_task;
 	file__p = &file__s;
 	files_struct__p = &files_struct__s;
 	dentry__p = &dentry__s;
 	vfsmount__p = &vfsmount__s;
+	qstr__p = &qstr__s;
 
 	printk(KERN_INFO "---KERNELINFO-BEGIN---\n");
 	printk(KERN_INFO "name = %s|%s|%s\n", system_utsname.release,
@@ -69,6 +72,7 @@ static int __init kernelinfo24_init(void)
 	PRINT_OFFSET(files_struct__p, fd, "fs");
 
 	PRINT_SIZE(dentry__s.d_name, "qstr_size", "path");
+	// need to add qstr name offset
 	PRINT_OFFSET(dentry__p, d_name, "path");
 	PRINT_OFFSET(dentry__p, d_iname, "path");
 	PRINT_OFFSET(dentry__p, d_parent, "path");

@@ -148,6 +148,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 
 	/* read path information */
 	READ_INFO_INT(ki, path.qstr_size, gerr, err.path, &errbmp);
+	READ_INFO_INT(ki, path.qstr_name_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.d_name_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.d_iname_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.d_parent_offset, gerr, err.path, &errbmp);

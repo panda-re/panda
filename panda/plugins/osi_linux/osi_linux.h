@@ -334,7 +334,7 @@ IMPLEMENT_OFFSET_GET(get_files, task_struct, target_ptr_t, ki.task.files_offset,
  * @brief Retrieves the array of file structs from the files struct.
  * The n-th element of the array corresponds to the n-th open fd.
  */
-IMPLEMENT_OFFSET_GET2L(get_files_fds, files_struct, target_ptr_t, ki.fs.fdt_offset, target_ptr_t, ki.fs.fd_offset, 0)
+//IMPLEMENT_OFFSET_GET2L(get_files_fds, files_struct, target_ptr_t, ki.fs.fdt_offset, target_ptr_t, ki.fs.fd_offset, 0)
 
 /**
  * @brief Retrieves the dentry struct associated with a file struct.
@@ -455,7 +455,7 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
 			pcomp_capacity = pcomp_length + 16;
 			pcomp = (char *)g_realloc(pcomp, pcomp_capacity * sizeof(char));
 		}
-		og_err1 = panda_virtual_memory_rw(env, *(target_ptr_t *)(d_name + 2*sizeof(uint32_t)), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
+		og_err1 = panda_virtual_memory_rw(env, *(target_ptr_t *)(d_name + ki.path.qstr_name_offset), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
 		//printf("2#%lx\n", (uintptr_t)*(target_ptr_t *)(d_name + 2*sizeof(uint32_t)));
 		//printf("3#%s\n", pcomp);
 		if (-1 == og_err1) {
