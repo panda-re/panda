@@ -1,12 +1,12 @@
 from pypanda import *
 from time import sleep
-@pyp.callback("bool(void*)")
+@panda.callback.init
 def init(handle):
 	progress("init in python. handle="+str(handle))
-	panda.register_callback(handle, "before_block_exec", 3, before_block_execute)
+	panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
 	return True
 
-@pyp.callback("int(int*, int*)")
+@panda.callback.before_block_exec
 def before_block_execute(env,tb):
 	progress("before block in python")
 	print(panda.libpanda.panda_in_kernel(env))

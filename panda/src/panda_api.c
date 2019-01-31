@@ -4,9 +4,14 @@
 #include "panda/panda_api.h"
 #include "panda/plugin.h"
 
+int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, uint8_t *buf, int len);
+int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, uint8_t *buf, int len);
+int rr_get_guest_instr_count_external(void);
 void qemu_rr_quit_timers(void);
 //void qemu_cpu_kick(CPUState *cpu);
 void panda_register_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
+target_ulong panda_current_sp_external(CPUState *cpu);
+bool panda_in_kernel_external(CPUState *cpu);
 
 int panda_init(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_INIT);
@@ -45,6 +50,28 @@ int panda_replay(char *replay_name) {
     return 0;
 //    return panda_run();
 }
+
+int rr_get_guest_instr_count_external(void){
+	return rr_get_guest_instr_count();
+}
+
+int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, uint8_t *buf, int len){
+	return panda_virtual_memory_read(env, addr, buf, len);
+}
+
+int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, uint8_t *buf, int len){
+	return panda_virtual_memory_write(env, addr, buf, len);
+}
+
+bool panda_in_kernel_external(CPUState *cpu){
+	return panda_in_kernel(cpu);
+}
+
+target_ulong panda_current_sp_external(CPUState *cpu){
+	return panda_current_sp(cpu);
+}
+
+// we have this temporarily in callbacks.c -> to be moved here
 /*
 bool panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr) {
     // don't load the same plugin twice

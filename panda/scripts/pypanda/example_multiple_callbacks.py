@@ -1,19 +1,20 @@
 from pypanda import *
 from time import sleep
-@pyp.callback("bool(void*)")
+
+@panda.callback.init
 def init(handle):
 	progress("init in python. handle="+str(handle))
-	panda.register_callback(handle, "before_block_exec", 3, before_block_execute)
-	panda.register_callback(handle, "after_block_exec", 4, after_block_execute)
+	panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
+	panda.register_callback(handle, panda.callback.after_block_exec, after_block_execute)
 	return True
 
-@pyp.callback("int(CPUState*, TranslationBlock*)")
+@panda.callback.before_block_exec
 def before_block_execute(a,b):
 	progress("before block in python")
 	sleep(sleeptime)
 	return 0
 
-@pyp.callback("int(CPUState*,TranslationBlock*)")
+@panda.callback.after_block_exec
 def after_block_execute(a,b):
 	progress("after block in python")
 	sleep(sleeptime)
