@@ -319,52 +319,10 @@ void on_get_process(CPUState *env, const OsiProcHandle *h, OsiProc **out) {
  */
 void on_get_libraries(CPUState *env, OsiProc *p, GArray **out) {
 	OsiModule m;
-	target_ptr_t ts_first, ts_current;
-	target_ulong current_pid;
 	target_ptr_t vma_first, vma_current;
 
-#if defined(OSI_LINUX_LIST_THREADS)
-	target_ptr_t tg_first, tg_next;
-#endif
-#if OSI_MAX_PROC > 0
-	uint32_t np = 0;
-#endif
-
-	target_ptr_t kernel_esp = panda_current_sp(env);
-	ts_first = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
-	ts_current = ts_first;
-
-	if (ts_current == (target_ptr_t)NULL) goto error0;
-	if (ts_current + ki.task.thread_group_offset != get_thread_group(env, ts_current)) {
-		ts_first = ts_current = get_task_struct_next(env, ts_current);
-	}
-
-	// Find the process that matches p->pid.
-	// XXX: We could probably just use p->taskd instead of traversing
-	//	  the process list.
-	// XXX: An infinite loop will be triggered if p is a thread and
-	//		OSI_LINUX_LIST_THREADS is not enabled.
-	do {
-		if ((current_pid = get_pid(env, ts_current)) == p->pid) goto pid_found;
-#if defined(OSI_LINUX_LIST_THREADS)
-		tg_first = ts_current + ki.task.thread_group_offset;
-		while ((tg_next = get_thread_group(env, ts_current)) != tg_first) {
-			ts_current = tg_next - ki.task.thread_group_offset;
-			if ((current_pid = get_pid(env, ts_current)) == p->pid) goto pid_found;
-			OSI_MAX_PROC_CHECK(np++, "looking up pid in thread group");
-		}
-		ts_current = tg_first - ki.task.thread_group_offset;
-#endif
-		ts_current = get_task_struct_next(env, ts_current);
-		OSI_MAX_PROC_CHECK(np++, "looking up pid in process list");
-	} while(ts_current != (target_ptr_t)NULL && ts_current != ts_first);
-
-pid_found:
-	// memory read error or process not found
-	if (ts_current == (target_ptr_t)NULL || current_pid != p->pid) goto error0;
-
 	// Read the module info for the process.
-	vma_first = vma_current = get_vma_first(env, ts_current);
+	vma_first = vma_current = get_vma_first(env, p->taskd);
 	if (vma_current == (target_ptr_t)NULL) goto error0;
 
 	if (*out == NULL) {

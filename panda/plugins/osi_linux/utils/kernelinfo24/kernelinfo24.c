@@ -4,6 +4,7 @@
 #include <linux/init.h>
 #include <linux/sched.h>
 #include <linux/utsname.h>
+#include <linux/mm.h>
 
 typedef unsigned long uintptr_t;
 
@@ -28,6 +29,7 @@ static char *cp_memb(const char *s)
 
 static int __init kernelinfo24_init(void)
 {
+	struct vm_area_struct vm_area_struct__s;
 	struct file file__s;
 	struct files_struct files_struct__s;
 	struct dentry dentry__s;
@@ -35,6 +37,8 @@ static int __init kernelinfo24_init(void)
 	struct qstr qstr__s;
 
 	struct task_struct *task_struct__p;
+	struct mm_struct *mm_struct__p;
+	struct vm_area_struct *vm_area_struct__p;
 	struct file *file__p;
 	struct files_struct *files_struct__p;
 	struct dentry *dentry__p;
@@ -62,9 +66,27 @@ static int __init kernelinfo24_init(void)
 	PRINT_SIZE(init_task, "size", "task");
 	PRINT_OFFSET(task_struct__p, pid, "task");
 	PRINT_OFFSET(task_struct__p, tgid, "task");
+	PRINT_OFFSET(task_struct__p,		mm,				"task");
 	PRINT_OFFSET(task_struct__p, comm, "task");
 	PRINT_SIZE(task_struct__p->comm, "comm_size", "task");
 	PRINT_OFFSET(task_struct__p, files, "task");
+
+	PRINT_SIZE(*init_task.mm,			"size",			"mm");
+	PRINT_OFFSET(mm_struct__p,			mmap,			"mm");
+	PRINT_OFFSET(mm_struct__p,			pgd,			"mm");
+	PRINT_OFFSET(mm_struct__p,			arg_start,		"mm");
+	PRINT_OFFSET(mm_struct__p,			start_brk,		"mm");
+	PRINT_OFFSET(mm_struct__p,			brk,			"mm");
+	PRINT_OFFSET(mm_struct__p,			start_stack,	"mm");
+
+	PRINT_SIZE(vm_area_struct__s,		"size",			"vma");
+	PRINT_OFFSET(vm_area_struct__p,		vm_mm,			"vma");
+	PRINT_OFFSET(vm_area_struct__p,		vm_start,		"vma");
+	PRINT_OFFSET(vm_area_struct__p,		vm_end,			"vma");
+	PRINT_OFFSET(vm_area_struct__p,		vm_next,		"vma");
+	PRINT_OFFSET(vm_area_struct__p,		vm_flags,		"vma");
+	PRINT_OFFSET(vm_area_struct__p,		vm_file,		"vma");
+
 
 	PRINT_OFFSET(file__p, f_dentry, "fs");
 	PRINT_OFFSET(file__p, f_vfsmnt, "fs");
