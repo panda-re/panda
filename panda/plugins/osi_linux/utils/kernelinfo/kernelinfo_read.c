@@ -19,6 +19,7 @@
  * @brief Wrapper for error counters.
  */
 struct kernelinfo_errors {
+	int version;
 	int name;
 	int task;
 	int cred;
@@ -86,6 +87,11 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 
 	/* read kernel full name */
 	READ_INFO_STRING(ki, name, gerr, err.name, &errbmp);
+
+	/* read kernel version information */
+	READ_INFO_INT(ki, version.a, gerr, err.version, &errbmp);
+	READ_INFO_INT(ki, version.b, gerr, err.version, &errbmp);
+	READ_INFO_INT(ki, version.c, gerr, err.version, &errbmp);
 
 	/* read init task address */
 	READ_INFO_UINT64(ki, task.init_addr, gerr, err.task, &errbmp);

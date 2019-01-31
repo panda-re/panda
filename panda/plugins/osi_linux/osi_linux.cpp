@@ -18,7 +18,9 @@
 #include "osi/os_intro.h"
 #include "utils/kernelinfo/kernelinfo.h"
 #include "osi_linux.h"
+
 #include "default_profile.h"
+#include "kernel_2_4_x_profile.h"
 
 /*
  * Functions interfacing with QEMU/PANDA should be linked as C.
@@ -495,6 +497,7 @@ bool init_plugin(void *self) {
 	panda_cb pcb = { .asid_changed = osi_linux_test };
 	panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
 #endif
+	KernelProfile const *kernel_profile = &DEFAULT_PROFILE;
 
 	// Read the name of the kernel configuration to use.
 	panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
@@ -511,12 +514,16 @@ bool init_plugin(void *self) {
 	g_free(kconf_file);
 	g_free(kconf_group);
 
+	if (ki.version.a == 2 && ki.version.b == 4) {
+		kernel_profile = &KERNEL24X_PROFILE;
+	}
+
 	PPP_REG_CB("osi", on_get_processes, on_get_processes);
 	PPP_REG_CB("osi", on_get_process_handles, on_get_process_handles);
-	PPP_REG_CB("osi", on_get_current_process, DEFAULT_PROFILE.get_current_process);
+	PPP_REG_CB("osi", on_get_current_process, kernel_profile->get_current_process);
 	PPP_REG_CB("osi", on_get_process, on_get_process);
 	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
-	PPP_REG_CB("osi", on_get_current_thread, DEFAULT_PROFILE.get_current_thread);
+	PPP_REG_CB("osi", on_get_current_thread, kernel_profile->get_current_thread);
 	LOG_INFO(PLUGIN_NAME " initialization complete.");
 	return true;
 #else

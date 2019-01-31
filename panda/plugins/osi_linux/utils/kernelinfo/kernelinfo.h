@@ -30,6 +30,15 @@
 #endif
 
 /**
+ * @brief Kernel Version information
+ */
+PACKED_STRUCT(version) {
+	int a;
+	int b;
+	int c;
+};
+
+/**
  * @brief Information and offsets related to `struct task_struct`.
  */
 PACKED_STRUCT(task_info) {
@@ -120,6 +129,7 @@ PACKED_STRUCT(path_info) {
  */
 PACKED_STRUCT(kernelinfo) {
 	char *name;
+	struct version version;
 	struct task_info task;
 	struct cred_info cred;
 	struct mm_info mm;
