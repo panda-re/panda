@@ -749,6 +749,7 @@ void panda_require(const char *plugin_name);
 /**
 * panda_plugin_api
 */
+int panda_pre(int argc, char **argv, char **envp);
 int panda_init(int argc, char **argv, char **envp);
 int panda_run(void);
 int panda_finish(void);

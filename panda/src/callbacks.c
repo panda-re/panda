@@ -288,7 +288,7 @@ void *panda_get_plugin_by_name(const char *plugin_name) {
  */
 void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
     panda_cb_list *plist_last = NULL;
-	printf("%p \n", cb.before_block_exec);
+    printf ("entering panda_register_callback: type = %d\n", type);
 	//void (*call_fnct)(void*, void*) = (void*)cb.before_block_exec;
 	//call_fnct(plugin, (void*)type);
     panda_cb_list *new_list = g_new0(panda_cb_list, 1);
@@ -308,6 +308,7 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
     else {
         panda_cbs[type] = new_list;
     }
+    printf ("exiting panda_register_callback:  panda_cbs[%d] = %" PRIx64 "\n", type, (uint64_t) panda_cbs[type]);
 }
 
 /**

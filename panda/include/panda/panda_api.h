@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+int panda_pre(int argc, char **argv, char **envp);
+
 int panda_init(int argc, char **argv, char **envp);
 
 int panda_run(void);

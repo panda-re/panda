@@ -76,8 +76,15 @@ class Panda:
 		cenvp =  ffi.new("char **",nulls)
 		len_cargs = ffi.cast("int", len(self.panda_args))
 		print("Panda args: [" + (" ".join(self.panda_args)) + "]")
-		self.libpanda.panda_init(len_cargs, self.panda_args_ffi, cenvp)
+		self.len_cargs = len_cargs
+		self.cenvp = cenvp
+		self.libpanda.panda_pre(len_cargs, self.panda_args_ffi, cenvp)
 
+
+	def init(self):
+		if debug:
+			progress ("Initializing from cmdline")
+		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
 
 	def run(self):
 		if debug:
