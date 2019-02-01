@@ -19,4 +19,5 @@ def before_block_execute(cpustate,transblock):
 
 panda = Panda(qcow="/home/alom/ubuntu-14.04-server-cloudimg-i386-disk1.img")
 panda.load_python_plugin(init,"register_printer")
+panda.init()
 panda.run()
