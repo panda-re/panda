@@ -34,8 +34,10 @@ void uninit_plugin(void *);
 
 void on_get_processes(CPUState *env, GArray **out);
 void on_get_process_handles(CPUState *env, GArray **out);
+void on_get_current_process(CPUState *env, OsiProc **out_p);
 void on_get_process(CPUState *, const OsiProcHandle *, OsiProc **);
 void on_get_libraries(CPUState *env, OsiProc *p, GArray **out);
+void on_get_current_thread(CPUState *env, OsiThread *t);
 
 struct kernelinfo ki;
 struct KernelProfile const *kernel_profile = &DEFAULT_PROFILE;
@@ -139,8 +141,7 @@ void get_process_info(CPUState *env, GArray **out,
 	ts_first = ki.task.init_addr;
 #else
 	// Start process enumeration (roughly) from the current task. This is the default.
-	target_ptr_t kernel_esp = panda_current_sp(env);
-	ts_first = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+	ts_first = kernel_profile->get_current_task_struct(env);
 
 	// To avoid infinite loops, we need to actually start traversal from the next
 	// process after the thread group leader of the current task.
@@ -296,6 +297,19 @@ void on_get_process_handles(CPUState *env, GArray **out) {
 }
 
 /**
+ * @brief PPP callback to retrieve info about the currently running process.
+ */
+void on_get_current_process(CPUState *env, OsiProc **out) {
+	OsiProc *p = NULL;
+	target_ptr_t ts = kernel_profile->get_current_task_struct(env);
+	if (ts) {
+		p = (OsiProc *)g_malloc(sizeof(OsiProc));
+		fill_osiproc(env, p, ts);
+	}
+	*out = p;
+}
+
+/**
  * @brief PPP callback to retrieve info about a running process using its
  * handle.
  */
@@ -344,6 +358,19 @@ error0:
 	g_array_free(*out, true);  // safe even when *out == NULL
 	*out = NULL;
 	return;
+}
+
+/**
+ * @brief PPP callback to retrieve current thread.
+ */
+void on_get_current_thread(CPUState *env, OsiThread **out) {
+	OsiThread *t = NULL;
+	target_ptr_t ts = kernel_profile->get_current_task_struct(env);
+	if (ts) {
+		t = (OsiThread *)g_malloc(sizeof(OsiThread));
+		fill_osithread(env, t, ts);
+	}
+	*out = t;
 }
 
 /* ******************************************************************
@@ -478,10 +505,10 @@ bool init_plugin(void *self) {
 
 	PPP_REG_CB("osi", on_get_processes, on_get_processes);
 	PPP_REG_CB("osi", on_get_process_handles, on_get_process_handles);
-	PPP_REG_CB("osi", on_get_current_process, kernel_profile->get_current_process);
+	PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
 	PPP_REG_CB("osi", on_get_process, on_get_process);
 	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
-	PPP_REG_CB("osi", on_get_current_thread, kernel_profile->get_current_thread);
+	PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
 	LOG_INFO(PLUGIN_NAME " initialization complete.");
 	return true;
 #else
