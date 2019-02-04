@@ -1090,6 +1090,7 @@ static void qemu_tcg_wait_io_event(CPUState *cpu)
         if (rr_in_replay() && rr_num_instr_before_next_interrupt() == 0) break;
 
         stop_tcg_kick_timer();
+        printf ("qmu_tcg_wait_io_event -- cond_wait\n");
         qemu_cond_wait(cpu->halt_cond, &qemu_global_mutex);
     }
 
@@ -1107,6 +1108,7 @@ static void qemu_tcg_wait_io_event(CPUState *cpu)
 static void qemu_kvm_wait_io_event(CPUState *cpu)
 {
     while (cpu_thread_is_idle(cpu)) {
+        printf ("qemu_kvm_qait_io_event -- cond_wait\n");
         qemu_cond_wait(cpu->halt_cond, &qemu_global_mutex);
     }
 
@@ -1321,6 +1323,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
 
     /* wait for initial kick-off after machine start */
     while (first_cpu->stopped) {
+        printf ("qemu_tcg_cpu_thread_fn -- cond_wait\n");
         qemu_cond_wait(first_cpu->halt_cond, &qemu_global_mutex);
 
         /* process any pending work */
@@ -1420,6 +1423,7 @@ static void *qemu_hax_cpu_thread_fn(void *arg)
         }
 
         while (cpu_thread_is_idle(cpu)) {
+            printf ("qemu_hax_cpu_thread_fn -- cond_wait\n");
             qemu_cond_wait(cpu->halt_cond, &qemu_global_mutex);
         }
 #ifdef _WIN32
@@ -1463,6 +1467,8 @@ static void qemu_cpu_kick_thread(CPUState *cpu)
 
 void qemu_cpu_kick(CPUState *cpu)
 {
+//    printf ("qemu_cpu_kick\n");
+
     qemu_cond_broadcast(cpu->halt_cond);
     if (tcg_enabled()) {
         cpu_exit(cpu);

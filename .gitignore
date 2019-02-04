@@ -1,3 +1,7 @@
+/build
+build_gen.sh
+papi
+/panda/plugins/config.panda
 /config-devices.*
 /config-all-devices.*
 /config-all-disas.*

@@ -11,23 +11,9 @@
  * See the COPYING file in the top-level directory.
  *
 PANDAENDCOMMENT */
-#ifndef __PANDA_PLUGIN_H__
-#define __PANDA_PLUGIN_H__
-
-#include "panda/debug.h"
-#include "panda/cheaders.h"
-
-#ifndef CONFIG_SOFTMMU
-#include "linux-user/qemu-types.h"
-#include "thunk.h"
-#endif
 
 #define MAX_PANDA_PLUGINS 16
 #define MAX_PANDA_PLUGIN_ARGS 32
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef enum panda_cb_type {
     PANDA_CB_BEFORE_BLOCK_TRANSLATE, // Before translating each basic block
@@ -56,7 +42,7 @@ typedef enum panda_cb_type {
     PANDA_CB_HD_READ,              // Each HDD read
     PANDA_CB_HD_WRITE,             // Each HDD write
     PANDA_CB_GUEST_HYPERCALL,      // Hypercall from the guest (e.g. CPUID)
-    PANDA_CB_MONITOR,              // Monitor callback
+    PANDA_CB_MONITOR,              // void callback
     PANDA_CB_CPU_RESTORE_STATE,    // In cpu_restore_state() (fault/exception)
     PANDA_CB_BEFORE_REPLAY_LOADVM, // at start of replay, before loadvm
     PANDA_CB_ASID_CHANGED, // When CPU asid (address space identifier) changes
@@ -84,6 +70,7 @@ typedef enum panda_cb_type {
 
     PANDA_CB_LAST
 } panda_cb_type;
+
 
 // Union of all possible callback function types
 typedef union panda_cb {
@@ -666,8 +653,8 @@ void   panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void   panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void   panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void   panda_unregister_callbacks(void *plugin);
-bool panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr);
 bool   panda_load_plugin(const char *filename, const char *plugin_name);
+bool panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr);
 bool   panda_add_arg(const char *plugin_name, const char *plugin_arg);
 void * panda_get_plugin_by_name(const char *name);
 void   panda_do_unload_plugin(int index);
@@ -697,6 +684,8 @@ extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
 extern bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
 extern bool panda_plugin_to_unload;
 extern bool panda_tb_chaining;
+
+typedef char gchar; //from glib.h
 
 extern const gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
 extern int panda_argc;
@@ -757,24 +746,42 @@ char** str_split(char* a_str, const char a_delim);
 char *panda_plugin_path(const char *name);
 void panda_require(const char *plugin_name);
 
-#ifdef __cplusplus
-}
-#endif
+/**
+* panda_plugin_api
+*/
+int panda_init(int argc, char **argv, char **envp);
+int panda_run(void);
+int panda_finish(void);
+int panda_init_plugin(char *plugin_name, char ** plugin_args, uint32_t num_args);
+void panda_register_callback_helper(void* plugin, panda_cb_type type, panda_cb* cb);
+int panda_replay(char *replay_name);
+int rr_get_guest_instr_count_external(void);
 
-#include "panda/plugin_plugin.h"
+target_ulong panda_current_sp_external(CPUState *cpu);
+bool panda_in_kernel_external(CPUState *cpu);
+
+/*!
+ * @file panda/common.h
+ * @brief Common PANDA utility functions.
+ *
+ * @note Functions that are both simple and frequently called are
+ * defined here as inlines. Functions that are either complex or
+ * infrequently called are decalred here and defined in `src/common.c`.
+ */
+
+void panda_cleanup(void);
+void panda_set_os_name(char *os_name);
+void panda_before_find_fast(void);
+void panda_disas(FILE *out, void *code, unsigned long size);
+/*
+ * @brief Returns the guest address space identifier.
+ */
+int panda_current_asid(CPUState *env);
+
+/**
+ * @brief Returns the guest program counter.
+ */
+int panda_current_pc(CPUState *cpu);
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-#include "panda/rr/rr_log.h"
-#include "panda/plog.h"
-#include "panda/addr.h"
-
-#ifdef __cplusplus
-}
-#endif
-
-
-#endif
