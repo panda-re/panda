@@ -29,7 +29,7 @@ ProcState::~ProcState(void) {
 	// This destructor is called at the end of the replay.
 	// Calling free_osiprocs() may cause a segfault at that point.
 	// Use the generic inline.
-	//free_osiprocs_g(this->ps);
+	free_osiprocs_g(this->ps);
 }
 
 /*! @brief Gets a subset of the processes in `ProcMap`. */
@@ -55,7 +55,7 @@ OsiProcs *ProcState::OsiProcsSubset(ProcMap *m, PidSet *s) {
 	return ps;
 
 error:
-	//free_osiprocs(ps);
+	free_osiprocs(ps);
 	return NULL;
 }
 
@@ -103,8 +103,8 @@ void ProcState::update(OsiProcs *ps, OsiProcs **in, OsiProcs **out){
 	// extract OsiProcs
 	if (likely(in != NULL && out != NULL)) {
 		// free old data
-		//if (*in != NULL) free_osiprocs(*in);
-		//if (*out != NULL) free_osiprocs(*out);
+		if (*in != NULL) free_osiprocs(*in);
+		if (*out != NULL) free_osiprocs(*out);
 
 		// find the pids of incoming/outgoing process
 		PidSet pid_in, pid_out;

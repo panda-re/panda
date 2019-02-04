@@ -16,8 +16,6 @@ PANDAENDCOMMENT */
  * Change Log:
  * dynamic check if there is a mul X 0 or mul X 1, for no taint prop or parallel
  * propagation respetively
- * 04-DEC-2018:  don't update masks on data that is not tainted; fix bug in
- *    taint2 deboug output for host memcpy
  */
 
 #ifndef __STDC_FORMAT_MACROS
@@ -480,7 +478,7 @@ void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
     taint_log("hostmemcpy: %s[%lx+%lx] <- %s[%lx] (offsets %lx <- %lx) ",
             shad_dest->name(), dest, size, shad_src->name(), src,
             dest_offset, src_offset);
-    taint_log_labels(shad_src, addr_src, size);
+    taint_log_labels(shad_src, src, size);
     Shad::copy(shad_dest, addr_dest, shad_src, addr_src, size);
 }
 
@@ -548,54 +546,38 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
 {
     if (!I) return;
 
-    // do not update masks on data that is not tainted (ie. has no labels)
-    // this is because some operations cause constants to be put in the masks
-    // (eg. SHL puts 1s in lower bits of zero mask), and this would then
-    // generate a spurious taint change report
-    bool tainted = false;
-    for (uint32_t i = 0; i < size; i++) {
-        if (shad_src->query(src + i) != NULL) {
-            tainted = true;
-        }
+    CBMasks cb_masks = compile_cb_masks(shad_src, src, size);
+    uint64_t &cb_mask = cb_masks.cb_mask;
+    uint64_t &one_mask = cb_masks.one_mask;
+    uint64_t &zero_mask = cb_masks.zero_mask;
+
+    uint64_t orig_one_mask = one_mask, orig_zero_mask = zero_mask;
+    __attribute__((unused)) uint64_t orig_cb_mask = cb_mask;
+    std::vector<uint64_t> literals;
+    uint64_t last_literal = ~0UL; // last valid literal.
+    literals.reserve(I->getNumOperands());
+
+    for (auto it = I->value_op_begin(); it != I->value_op_end(); it++) {
+        const llvm::Value *arg = *it;
+        const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(arg);
+        uint64_t literal = CI ? CI->getZExtValue() : ~0UL;
+        literals.push_back(literal);
+        if (literal != ~0UL) last_literal = literal;
     }
+    int log2 = 0;
 
-    if (tainted) {
-        CBMasks cb_masks = compile_cb_masks(shad_src, src, size);
-        uint64_t &cb_mask = cb_masks.cb_mask;
-        uint64_t &one_mask = cb_masks.one_mask;
-        uint64_t &zero_mask = cb_masks.zero_mask;
+    unsigned int opcode = I->getOpcode();
 
-        uint64_t orig_one_mask = one_mask, orig_zero_mask = zero_mask;
-        __attribute__((unused)) uint64_t orig_cb_mask = cb_mask;
-        std::vector<uint64_t> literals;
-        uint64_t last_literal = ~0UL; // last valid literal.
-        literals.reserve(I->getNumOperands());
-
-        for (auto it = I->value_op_begin(); it != I->value_op_end(); it++) {
-            const llvm::Value *arg = *it;
-            const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(arg);
-            uint64_t literal = CI ? CI->getZExtValue() : ~0UL;
-            literals.push_back(literal);
-            if (literal != ~0UL) last_literal = literal;
-        }
-        int log2 = 0;
-
-        unsigned int opcode = I->getOpcode();
-
-        // guts of this function are in separate file so it can be more easily
-        // tested without calling a function (which would slow things down even more)
+    // guts of this function are in separate file so it can be more easily
+    // tested without calling a function (which would slow things down even more)
 #include "update_cb_switch.h"
 
-        taint_log("update_cb: %s[%lx+%lx] CB %#lx -> 0x%#lx, 0 %#lx -> %#lx, 1 %#lx -> %#lx\n",
-                shad_dest->name(), dest, size, orig_cb_mask, cb_mask,
-                orig_zero_mask, zero_mask, orig_one_mask, one_mask);
+    taint_log("update_cb: %s[%lx+%lx] CB %#lx -> 0x%#lx, 0 %#lx -> %#lx, 1 %#lx -> %#lx\n",
+            shad_dest->name(), dest, size, orig_cb_mask, cb_mask,
+            orig_zero_mask, zero_mask, orig_one_mask, one_mask);
 
-        write_cb_masks(shad_dest, dest, size, cb_masks);
-    }
+    write_cb_masks(shad_dest, dest, size, cb_masks);
 
-    // not sure it's possible to call update_cb with data that is unlabeled but
-    // still has non-0 masks leftover from previous processing, so just in case
-    // call detainter (if desired) even for unlabeled input
     if (detaint_cb0_bytes)
     {
         detaint_on_cb0(shad_dest, dest, size);

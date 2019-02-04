@@ -5,17 +5,15 @@
 #include "syscalls2_info.h"
 
 extern const syscall_info_t *syscall_info;
-extern const syscall_meta_t *syscall_meta;
 
 extern "C" {
 #include "gen_syscalls_ext_typedefs.h"
 #include "gen_syscall_ppp_extern_return.h"
 }
 
-void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx) {
+void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, int no, const syscall_ctx_t *ctx) {
 #ifdef TARGET_I386
-	const syscall_info_t *call = (syscall_meta == NULL || ctx->no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx->no];
-	switch (ctx->no) {
+	switch(no) {
 		// 0 NTSTATUS NtAcceptConnectPort ['PHANDLE PortHandle', ' PVOID PortContext', ' PPORT_MESSAGE ConnectionRequest', ' BOOLEAN AcceptConnection', ' PPORT_VIEW ServerView', ' PREMOTE_PORT_VIEW ClientView']
 		case 0: {
 			uint32_t arg0;
@@ -3878,7 +3876,7 @@ void syscall_return_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc, con
 			PPP_RUN_CB(on_unknown_sys_return, cpu, pc, ctx->no);
 	}
 	PPP_RUN_CB(on_all_sys_return, cpu, pc, ctx->no);
-	PPP_RUN_CB(on_all_sys_return2, cpu, pc, call, ctx);
+	PPP_RUN_CB(on_all_sys_return2, cpu, pc, &syscall_info[ctx->no], ctx);
 #endif
 }
 

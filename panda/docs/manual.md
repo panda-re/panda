@@ -799,6 +799,7 @@ one has a USAGE.md file linked here for further explanation.
 
 #### Taint-related plugins
 * [`taint2`](../plugins/taint2/USAGE.md) - Modern taint plugin. Required by most other taint plugins. `Already ported from panda1`
+* [`dead_data`](../plugins/dead_data/USAGE.md) - Track dead data (tainted, but not used in branches). `Already ported from panda1`
 * [`ida_taint2`](../../../panda1/qemu/panda_plugins/ida_taint2/USAGE.md) - IDA taint
   integration.
 * [`file_taint`](../plugins/file_taint/USAGE.md) - Syscall and

@@ -623,15 +623,6 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     LLVMContext &ctx = I.getContext();
     if (!dest) dest = &I;
 
-    const uint64_t maxBitWidth = 64;
-    unsigned src1BitWidth = src1->getType()->getPrimitiveSizeInBits();
-    unsigned src2BitWidth = src1->getType()->getPrimitiveSizeInBits();
-    if ((src1BitWidth > maxBitWidth) || (src2BitWidth > maxBitWidth)) {
-        printf("warning: encountered a value greater than 64 bits - not "
-               "attempting to propagate taint through mul instruction\n");
-        return;
-    }
-
     if (isa<Constant>(src1) && isa<Constant>(src2)) {
         return; // do nothing, should not happen in optimized code
     } else if (isa<Constant>(src1)) {
@@ -896,7 +887,8 @@ bool PandaTaintVisitor::isEnvPtr(Value *V) {
 }
 
 bool PandaTaintVisitor::isCPUStateAdd(BinaryOperator *AI) {
-    return (AI->getOpcode() == Instruction::Add) && isEnvPtr(AI->getOperand(0));
+    assert(AI->getOpcode() == Instruction::Add);
+    return isEnvPtr(AI->getOperand(0));
 }
 
 // Find address and constant given a load/store (i.e. host vmem) address.

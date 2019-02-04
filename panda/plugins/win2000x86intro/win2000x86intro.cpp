@@ -13,7 +13,6 @@
 PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
-#include <glib.h>
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 
@@ -32,7 +31,7 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out);
+void on_get_libraries(CPUState *cpu, OsiProc *p, OsiModules **out_ms);
 PTR get_win2000_kpcr(CPUState *cpu);
 HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t handle);
 }
@@ -72,12 +71,12 @@ static PTR get_loaded_module_list(CPUState *cpu) {
     // Locate the KDDEBUGGER_DATA64 structure
     for(i=0; i<mr->size-0x208; i++) {
         s = ((unsigned char *) host_ptr) + i;
-    if(s[8] == '\0' && s[9] == '\0' && s[10] == '\0' && s[11] == '\0' &&
-        s[12] == '\0' && s[13] == '\0' && s[14] == '\0' && s[15] == '\0' &&
-        s[16] == 'K' && s[17] == 'D' && s[18] == 'B' && s[19] == 'G') {
+	if(s[8] == '\0' && s[9] == '\0' && s[10] == '\0' && s[11] == '\0' &&
+	    s[12] == '\0' && s[13] == '\0' && s[14] == '\0' && s[15] == '\0' &&
+	    s[16] == 'K' && s[17] == 'D' && s[18] == 'B' && s[19] == 'G') {
             found=true;
-        break;
-    }
+	    break;
+	}
     }
 
     // Ensure the structure was located
@@ -92,85 +91,81 @@ static PTR get_loaded_module_list(CPUState *cpu) {
 }
 
 
-void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out) {
-    // search for process
-    PTR eproc_first, eproc_cur, eproc_found;
-    eproc_first = eproc_cur = get_current_proc(cpu);
-    eproc_found = (PTR)NULL;
-    if (eproc_first == NULL) goto error;
-    do {
-        if (eproc_cur == p->taskd) {
-            eproc_found = eproc_cur;
-            break;
-        }
-        eproc_cur = get_next_proc(cpu, eproc_cur);
-    } while (eproc_cur != NULL && eproc_cur != eproc_first);
-    if (eproc_found == NULL) goto error;
 
-    PTR peb, ldr;
-    PTR mod_first, mod_current, mod_next;
-    peb = ldr = (PTR)NULL;
-    mod_first = mod_current = mod_next = (PTR)NULL;
-
-    // get module list: PEB->Ldr->InMemoryOrderModuleList
-    if (-1 == panda_virtual_memory_rw(cpu, eproc_found + EPROC_PEB_OFF, (uint8_t *)&peb, sizeof(PTR), false))
-        goto error;
-    if (-1 == panda_virtual_memory_rw(cpu, peb + PEB_LDR_OFF, (uint8_t *)&ldr, sizeof(PTR), false))
-        goto error;
-    if (-1 == panda_virtual_memory_rw(cpu, ldr + PEB_LDR_MEM_LINKS_OFF, (uint8_t *)&mod_first, sizeof(PTR), false))
-        goto error;
-
-    // allocate GArray
-    if (*out == NULL) {
-        // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-        *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
-        g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
+void on_get_libraries(CPUState *cpu, OsiProc *p, OsiModules **out_ms) {
+    // Find the process we're interested in
+    PTR eproc = get_current_proc(cpu);
+    if (!eproc) {
+        *out_ms = NULL; return;
     }
 
-    // fill GArray
-    mod_current = mod_first;
-    mod_next = get_next_mod(cpu, mod_current);
-    while (mod_current != NULL && mod_next != mod_first) {
-        add_mod(cpu, *out, mod_current, true);
-        mod_current = mod_next;
-        mod_next = get_next_mod(cpu, mod_current);
-    };
-    return;
+    bool found = false;
+    PTR first_proc = eproc;
+    do {
+        if (eproc == p->offset) {
+            found = true;
+            break;
+        }
+        eproc = get_next_proc(cpu, eproc);
+        if (!eproc) break;
+    } while (eproc != first_proc);
 
-error:
-    *out = NULL;
+    if (!found) {
+        *out_ms = NULL; return;
+    }
+
+    PTR peb = 0, ldr = 0, first_mod = 0;
+    // PEB->Ldr->InMemoryOrderModuleList
+    if (-1 == panda_virtual_memory_rw(cpu, eproc+EPROC_PEB_OFF, (uint8_t *)&peb, sizeof(PTR), false) ||
+        -1 == panda_virtual_memory_rw(cpu, peb+PEB_LDR_OFF, (uint8_t *)&ldr, sizeof(PTR), false) ||
+        -1 == panda_virtual_memory_rw(cpu, ldr+PEB_LDR_MEM_LINKS_OFF, (uint8_t *)&first_mod, sizeof(PTR), false)) {
+        *out_ms = NULL; return;
+    }
+
+    OsiModules *ms = (OsiModules *)malloc(sizeof(OsiModules));
+    ms->num = 0;
+    ms->capacity = 1;
+    ms->module = NULL;
+
+    PTR current_mod = first_mod;
+    while(true) {
+        PTR next_mod = get_next_mod(cpu, current_mod);
+        if(next_mod == first_mod) break;
+        add_mod(cpu, ms, current_mod, true);
+        current_mod = next_mod;
+        if (!current_mod) break;
+    }
+
+    *out_ms = ms;
     return;
 }
 
-void on_get_modules(CPUState *cpu, GArray **out) {
+void on_get_modules(CPUState *cpu, OsiModules **out_ms) {
     PTR lml = get_loaded_module_list(cpu);
-    PTR mod_first, mod_current, mod_next;
-    mod_first = mod_current = mod_next = (PTR)NULL;
+
+    PTR PsLoadedModuleList;
 
     // Dbg.PsLoadedModuleList
-    if (-1 == panda_virtual_memory_rw(cpu, lml, (uint8_t *)&mod_first, sizeof(PTR), false))
-    goto error;
-
-    // allocate GArray
-    if (*out == NULL) {
-    // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-    *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
-    g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
+    if (-1 == panda_virtual_memory_rw(cpu, lml, (uint8_t *)&PsLoadedModuleList, sizeof(PTR), false)) {
+        *out_ms = NULL;
+        return;
     }
 
-    // fill GArray
-    mod_current = mod_first;
-    mod_next = get_next_mod(cpu, mod_current);
-    while (mod_current != NULL && mod_next != mod_first) {
-        add_mod(cpu, *out, mod_current, false);
-        mod_current = mod_next;
-        mod_next = get_next_mod(cpu, mod_current);
-    }
-    return;
+    OsiModules *ms = (OsiModules *)malloc(sizeof(OsiModules));
+    ms->num = 0;
+    ms->capacity = 1;   
+    ms->module = NULL;
+    PTR current_mod = PsLoadedModuleList;
 
-error:
-    *out = NULL;
-    return;
+    while(true) {
+        PTR next_mod = get_next_mod(cpu, current_mod);
+        if(next_mod == PsLoadedModuleList) break;
+        add_mod(cpu, ms, current_mod, false);
+        current_mod = next_mod;
+        if (!current_mod) break;
+    }
+
+    *out_ms = ms;
 }
 
 // i.e. return pointer to the object represented by this handle
@@ -214,7 +209,7 @@ HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t 
     if (-1 == panda_virtual_memory_rw(cpu, pObjHeader+get_obj_type_offset(), (uint8_t *)&objType, 1, false)) {
         return NULL;
     }
-    HandleObject *ho = (HandleObject *)g_malloc(sizeof(HandleObject));
+    HandleObject *ho = (HandleObject *) malloc(sizeof(HandleObject));
     ho->objType = objType;
     ho->pObj = pObj;
     return ho;

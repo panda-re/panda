@@ -10,30 +10,18 @@ The `file_taint` plugin taints the bytes of some file that is read in the guest 
 * Tainting some encrypted file to see where the decryption algorithm is (using `tainted_instr`)
 * Tracking the liveness of each byte of some input file using `dead_data`
 
-To effectively use taint, you will also need some mechanism for *querying* taint on some data at some point in the replay. Some plugins available for this are `tainted_instr` and `tainted_branch`.
+To effectively use taint, you will also need some mechanism for *querying* taint on some data at some point in the replay. Some plugins available for this are `tainted_instr`, `tainted_branch`, and `dead_data`.
 
 Arguments
 ---------
 
-* `filename`: string, required. The filename we want to taint. Full paths are supported, but on Windows there are some limitations.
-
-   The matching algorithm looks for the last instance of this parameter in the filename of files that are being read. If an instance is found, it must fill out the rest of the string to be considered a match. The following are examples. Say I want to taint "/home/panda/test". Then the following filenames can be searched for to match "/home/panda/test":
-
-    * "test"
-    * "panda/test"
-    * "/home/panda/test"
-    * "nda/test"
-    * ... and more
-
-    For Windows paths, be sure to escape backslashes if you're using bash. Alternatively, you may surround the entire path in single quotes.
-
+* `filename`: string, defaults to "abc123". The filename we want to taint.
 * `pos`: boolean, defaults to false. Enables use of positional labels. I.e. the file offset where the data were read from is used as their initial taint label.
+* `notaint`: boolean: whether to actually do any tainting. This option is useful because we can run `file_taint` without taint to find out when the first use of the file in the replay is, and then re-run it with the `first_instr` option to turn on taint just before the file is opened. This can dramatically speed up the process, since running with taint enabled (even if nothing is tainted) can be very slow.
 * `max_num_labels` ulong, defaults to 1000000. How many labels to apply to input bytes. The default value corresponds to a roughly 1MB chunk of the file.
 * `start`: ulong, the first offset in the file to label.
 * `end`: ulong, the last offset in the file to label.
-* `label`: the uniform label to use if positional taint is off (defaults to 0xF11E).
-* `verbose`: enables some extra output for debugging, sanity checks.
-* `pread_bits_64`: Treat the offset passed to pread as a 64-bit signed integer (Linux specific). If the binary under analysis was compiled with _FILE_OFFSET_BITS=64, then its possible that this flag needs to be set. See: https://www.gnu.org/software/libc/manual/html_node/I_002fO-Primitives.html
+* `first_instr`: uint64, defaults to 0. The instruction count at which we should enable taint. To find out what instruction count that is, you can run with `notaint` as described above.
 
 Dependencies
 ------------
@@ -50,13 +38,19 @@ Example
 
 A typical run might first try to find out where the file `foo.txt` is first used:
 
-    $PANDA_PATH/i386-softmmu/qemu-system-i386 -replay foo -panda osi \
+    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo -panda osi \
         -panda osi_linux:kconf_group=debian-3.2.63-i686 \
-        -panda syscalls2:profile=linux_x86 -panda file_taint:filename=foo.txt
+        -panda syscalls2:profile=linux_x86 -panda file_taint:filename=foo.txt,notaint=y
 
-Limitations
+By looking at the output, we may discover that the file is first opened at instruction `1215124234`. Now we can actually run the replay with taint enabled:
+
+    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo -panda osi \
+        -panda osi_linux:kconf_group=debian-3.2.63-i686 \
+        -panda syscalls2:profile=linux_x86 \
+        -panda file_taint:filename=foo.txt,pos=y,first_instr=1215124234
+
+Bugs
 ----
 
-* In Windows, matching file names that include a drive letter is not supported. The OSI calls used to support file taint in Windows return Kernel object paths which do not include drive letters. This means that the filename is checked against a path without a drive letter. Also, the exact filename that is stored in the kernel object depends on how the file was opened. If the file was opened with a full path, it will have a full path in the file object. Otherwise, the path is relative to the process working directory.
-
-   For example, say I want to taint C:\Users\panda\test.txt. If I provide "C:\Users\panda\test.txt" as the filename, file_taint will miss the file. However, if I provide "\Users\panda\test.txt", file_taint will pick up the file read properly.
+* `file_taint` unconditionally requires the `osi_linux` plugin, which means it can't be run on Windows replays without modifying the source.
+* File position information is currently somewhat broken on Windows.

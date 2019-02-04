@@ -5,7 +5,6 @@
 #include "syscalls2_info.h"
 
 extern const syscall_info_t *syscall_info;
-extern const syscall_meta_t *syscall_meta;
 
 extern "C" {
 #include "gen_syscalls_ext_typedefs.h"
@@ -20,8 +19,7 @@ void syscall_enter_switch_windows_7_x86(CPUState *cpu, target_ptr_t pc) {
 	ctx.no = env->regs[R_EAX];
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
-	const syscall_info_t *call = (syscall_meta == NULL || ctx.no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx.no];
-	switch (ctx.no) {
+	switch(env->regs[R_EAX]) {
 		// 0 NTSTATUS NtAcceptConnectPort ['PHANDLE PortHandle', ' PVOID PortContext', ' PPORT_MESSAGE ConnectionRequest', ' BOOLEAN AcceptConnection', ' PPORT_VIEW ServerView', ' PREMOTE_PORT_VIEW ClientView']
 		case 0: {
 			uint32_t arg0 = get_32(cpu, 0);
@@ -5992,10 +5990,10 @@ void syscall_enter_switch_windows_7_x86(CPUState *cpu, target_ptr_t pc) {
 		}; break;
 		
 		default:
-			PPP_RUN_CB(on_unknown_sys_enter, cpu, pc, ctx.no);
+			PPP_RUN_CB(on_unknown_sys_enter, cpu, pc, env->regs[R_EAX]);
 	}
-	PPP_RUN_CB(on_all_sys_enter, cpu, pc, ctx.no);
-	PPP_RUN_CB(on_all_sys_enter2, cpu, pc, call, &ctx);
+	PPP_RUN_CB(on_all_sys_enter, cpu, pc, env->regs[R_EAX]);
+	PPP_RUN_CB(on_all_sys_enter2, cpu, pc, &syscall_info[ctx.no], &ctx);
 	running_syscalls[std::make_pair(ctx.retaddr, ctx.asid)] = ctx;
 #endif
 }

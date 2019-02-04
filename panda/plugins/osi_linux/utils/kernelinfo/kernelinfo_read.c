@@ -187,7 +187,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 
 			if (doprint) {
 				/* don't make errors critical - alignment padding bytes are never written */
-				LOG_WARNING("kernelinfo bytes [%td-%td] not read", b-b_first-notread, b-b_first-1);
+				LOG_WARN("kernelinfo bytes [%td-%td] read", b-b_first-notread, b-b_first-1);
 				notread = 0;
 				/* rval = -1; */
 			}

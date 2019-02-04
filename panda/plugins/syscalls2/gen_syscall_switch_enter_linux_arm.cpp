@@ -5,7 +5,6 @@
 #include "syscalls2_info.h"
 
 extern const syscall_info_t *syscall_info;
-extern const syscall_meta_t *syscall_meta;
 
 extern "C" {
 #include "gen_syscalls_ext_typedefs.h"
@@ -20,8 +19,7 @@ void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc) {
 	ctx.no = env->regs[7];
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
-	const syscall_info_t *call = (syscall_meta == NULL || ctx.no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx.no];
-	switch (ctx.no) {
+	switch(env->regs[7]) {
 		// 0 long sys_restart_syscall ['void']
 		case 0: {
 			if (PPP_CHECK_CB(on_sys_restart_syscall_return) || PPP_CHECK_CB(on_all_sys_enter2) || PPP_CHECK_CB(on_all_sys_return2)) {
@@ -3856,10 +3854,10 @@ void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc) {
 		}; break;
 		
 		default:
-			PPP_RUN_CB(on_unknown_sys_enter, cpu, pc, ctx.no);
+			PPP_RUN_CB(on_unknown_sys_enter, cpu, pc, env->regs[7]);
 	}
-	PPP_RUN_CB(on_all_sys_enter, cpu, pc, ctx.no);
-	PPP_RUN_CB(on_all_sys_enter2, cpu, pc, call, &ctx);
+	PPP_RUN_CB(on_all_sys_enter, cpu, pc, env->regs[7]);
+	PPP_RUN_CB(on_all_sys_enter2, cpu, pc, &syscall_info[ctx.no], &ctx);
 	running_syscalls[std::make_pair(ctx.retaddr, ctx.asid)] = ctx;
 #endif
 }

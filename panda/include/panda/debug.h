@@ -51,45 +51,27 @@
  */
 #define PANDA_FLAG_STATUS(flag) ((flag) ? "ENABLED" : "DISABLED")
 
+#if !defined(PANDA_NODEBUG)
 /**
- * @brief PANDA log-levels.
+ * @brief Print the current file/line to stdout. Useful for debugging control flow issues.
  */
-#define PANDA_LOG_NOTHING 0
-#define PANDA_LOG_ERROR   1
-#define PANDA_LOG_WARNING 2
-#define PANDA_LOG_INFO    3
-#define PANDA_LOG_DEBUG   4
-
-/**
- * @brief Set default PANDA log-level.
- */
-#if !defined(PANDA_LOG_LEVEL)
-#define PANDA_LOG_LEVEL 2
-#endif
+#define PANDALN printf("@%s:%03d\n", __FILENAME__, __LINE__)
 
 /**
  * @brief Macro for logging error messages.
  */
-#if !defined(PANDA_ERROR_FILE)
+#if !defined(LOG_ERROR_FILE)
 #define LOG_ERROR_FILE stderr
 #endif
-#if PANDA_LOG_LEVEL < PANDA_LOG_ERROR
-#define LOG_ERROR(fmt, args...) {}
-#else
 #define LOG_ERROR(fmt, args...) fprintf(LOG_ERROR_FILE, PANDA_MSG "E:%s(%s)> " fmt "\n", __FILENAME__, __func__, ## args)
-#endif
 
 /**
  * @brief Macro for logging warning messages.
  */
-#if !defined(LOG_WARNING_FILE)
-#define LOG_WARNING_FILE stderr
+#if !defined(LOG_WARN_FILE)
+#define LOG_WARN_FILE stderr
 #endif
-#if PANDA_LOG_LEVEL < PANDA_LOG_WARNING
-#define LOG_WARNING(fmt, args...) {}
-#else
-#define LOG_WARNING(fmt, args...)  fprintf(LOG_WARNING_FILE, PANDA_MSG "W> "  fmt "\n", ## args)
-#endif
+#define LOG_WARN(fmt, args...)  fprintf(LOG_WARN_FILE, PANDA_MSG "W:%s(%s)> "  fmt "\n", __FILENAME__, __func__, ## args)
 
 /**
  * @brief Macro for logging informational messages.
@@ -97,25 +79,12 @@
 #if !defined(LOG_INFO_FILE)
 #define LOG_INFO_FILE stderr
 #endif
-#if PANDA_LOG_LEVEL < PANDA_LOG_INFO
-#define LOG_INFO(fmt, args...) {}
+#define LOG_INFO(fmt, args...)  fprintf(LOG_INFO_FILE, PANDA_MSG "I:%s(%s)> "  fmt "\n", __FILENAME__, __func__, ## args)
 #else
-#define LOG_INFO(fmt, args...)  fprintf(LOG_INFO_FILE, PANDA_MSG "I> "  fmt "\n", ## args)
-#endif
-
-/**
- * @brief Macro for logging debug messages.
- */
-#if !defined(LOG_DEBUG_FILE)
-#define LOG_DEBUG_FILE stderr
-#endif
-
-#if PANDA_LOG_LEVEL < PANDA_LOG_DEBUG
-#define LOG_DEBUG(fmt, args...) {}
 #define PANDALN
-#else
-#define LOG_DEBUG(fmt, args...)  fprintf(LOG_DEBUG_FILE, PANDA_MSG "D:%s(%s)> "  fmt "\n", __FILENAME__, __func__, ## args)
-#define PANDALN fprintf(stdout, "@%s:%03d\n", __FILENAME__, __LINE__)
+#define LOG_ERROR(fmt, args...) {}
+#define LOG_WARN(fmt, args...) {}
+#define LOG_INFO(fmt, args...) {}
 #endif
 
 /* vim:set tabstop=4 softtabstop=4 expandtab: */

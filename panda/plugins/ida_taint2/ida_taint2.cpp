@@ -75,7 +75,7 @@ void taint_state_changed(Addr a, uint64_t size)
     p.pid = proc ? proc->pid : 0;
     p.pc = panda_current_pc(first_cpu);
     if (proc) {
-        free_osiproc(proc);
+        free_osiproc_g(proc);
     }
 
     // Figure out which entries are tainted.

@@ -454,7 +454,7 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
         OsiProc *current_proc = get_current_process(env);    
         if (check_proc(current_proc)) {
             // first good proc 
-            first_good_proc = copy_osiproc(current_proc, first_good_proc);
+            first_good_proc = copy_osiproc_g(current_proc, first_good_proc);
             instr_first_good_proc = rr_get_guest_instr_count(); 
             process_mode = Process_suspicious;
             process_counter = PROCESS_GOOD_NUM;

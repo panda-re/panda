@@ -76,7 +76,7 @@ enum ProfileType {
 
 struct Profile {
     void         (*enter_switch)(CPUState *, target_ulong);
-    void         (*return_switch)(CPUState *, target_ulong, const syscall_ctx_t *);
+    void         (*return_switch)(CPUState *, target_ulong, int, const syscall_ctx_t *);
     target_long  (*get_return_val )(CPUState *);
     target_ulong (*calc_retaddr )(CPUState *, target_ulong);
     uint32_t     (*get_32 )(CPUState *, uint32_t);
@@ -479,7 +479,7 @@ static int tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
     if (ctx_count > 0) {
         assert(ctx_count == 1);
         syscall_ctx_t &ctx = running_syscalls[k];
-        syscalls_profile->return_switch(cpu, tb->pc, &ctx);
+        syscalls_profile->return_switch(cpu, tb->pc, ctx.no, &ctx);
         running_syscalls.erase(k);
     }
     return 0;

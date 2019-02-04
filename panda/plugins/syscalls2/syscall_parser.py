@@ -147,10 +147,6 @@ class Argument(object):
             # Warn but assume it's a 32-bit argument
             logging.debug("%s not of known type, assuming 32-bit", self.raw)
             self.type = 'U32'
-        #print('\t', self.type)
-
-    def __repr__(self):
-        return '{0} {1}'.format(self.ctype, self.name)
 
     @property
     def ctype(self):
@@ -248,10 +244,6 @@ class SysCall(object):
                 self.args.append(Argument(arg, argno=len(self.args), arch_bits=self.arch_bits))
             except EmptyArgumentError:
                 continue
-        #print(self)
-
-    def __repr__(self):
-        return '{0}{1}'.format(self.name, self.args)
 
     @property
     def cargs(self):

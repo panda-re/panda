@@ -6,7 +6,7 @@ char *make_pagedstr(void);
 char *get_unicode_str(CPUState *cpu, PTR ustr);
 
 // returns virtual address of EPROCESS data structure of currently running process
-PTR get_current_proc(CPUState *cpu);
+uint32_t get_current_proc(CPUState *cpu);
 
 // returns next process in process list
 PTR get_next_proc(CPUState *cpu, PTR eproc);
@@ -15,29 +15,27 @@ PTR get_next_proc(CPUState *cpu, PTR eproc);
 bool is_valid_process(CPUState *cpu, PTR eproc);
 
 // returns pid,given virtual address of EPROCESS data structure
-uint32_t get_pid(CPUState *cpu, PTR eproc);
+uint32_t get_pid(CPUState *cpu, uint32_t eproc) ;
 
 // returns parent pid,given virtual address of EPROCESS data structure
-uint32_t get_ppid(CPUState *cpu, PTR eproc);
+PTR get_ppid(CPUState *cpu, uint32_t eproc);
 
 PTR get_dtb(CPUState *cpu, PTR eproc);
 
 // fills name (assumed alloced) for process given virtual address of EPROCESS data structure
-void get_procname(CPUState *cpu, PTR eproc, char **name);
-
-char *get_cwd(CPUState *cpu);
+void get_procname(CPUState *cpu, uint32_t eproc, char **name) ;
 
 char *get_handle_object_name(CPUState *cpu, HandleObject *ho);
 
-int64_t get_file_handle_pos(CPUState *cpu, PTR eproc, uint32_t handle);
+int64_t get_file_handle_pos(CPUState *cpu, uint32_t eproc, uint32_t handle) ;
 
-char *get_handle_name(CPUState *cpu, PTR eproc, uint32_t handle);
+char *get_handle_name(CPUState *cpu, uint32_t eproc, uint32_t handle) ;
 
-char * get_objname(CPUState *cpu, uint32_t obj);
+char * get_objname(CPUState *cpu, uint32_t obj) ;
 
-char *get_file_obj_name(CPUState *cpu, uint32_t fobj);
+char *get_file_obj_name(CPUState *cpu, uint32_t fobj) ;
 
-int64_t get_file_obj_pos(CPUState *cpu, uint32_t fobj);
+int64_t get_file_obj_pos(CPUState *cpu, uint32_t fobj) ;
 
 char *read_unicode_string(CPUState *cpu, uint32_t pUstr);
 
@@ -55,11 +53,11 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, PTR eproc);
 
 void fill_osimod(CPUState *cpu, OsiModule *m, PTR mod, bool ignore_basename);
 
-void add_mod(CPUState *cpu, GArray *ms, PTR mod, bool ignore_basename);
+void add_mod(CPUState *cpu, OsiModules *ms, PTR mod, bool ignore_basename);
 
 void on_get_current_process(CPUState *cpu, OsiProc **out_p);
 
-void on_get_processes(CPUState *cpu, GArray **out);
+void on_get_processes(CPUState *cpu, OsiProcs **out_ps);
 
 void on_get_current_thread(CPUState *cpu, OsiThread **t);
 

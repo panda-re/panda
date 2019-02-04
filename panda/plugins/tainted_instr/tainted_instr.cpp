@@ -127,13 +127,9 @@ void taint_change(Addr a, uint64_t size) {
             if (0 == (num_tainted_instr_observed % 1000))
                 printf ("%" PRId64 " tainted instr observed\n", num_tainted_instr_observed);
         }
-
-        // a taint delete on tainted data will cause a taint change event
-        // thus, do not say we've seen a tainted 'instruction' unless the data
-        // really was tainted
-        last_asid = asid;
-        last_pc = pc;
     }
+    last_asid = asid;
+    last_pc = pc;
 }
 
 bool init_plugin(void *self) {

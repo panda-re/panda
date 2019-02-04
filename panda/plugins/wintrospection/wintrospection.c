@@ -19,8 +19,6 @@ PANDAENDCOMMENT */
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <iconv.h>
-
 #include "panda/rr/rr_log.h"
 
 #include "osi/osi_types.h"
@@ -42,6 +40,11 @@ PANDAENDCOMMENT */
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
+void add_proc(CPUState *cpu, OsiProcs *ps, PTR eproc);
+void on_free_osiproc(OsiProc *p);
+void on_free_osiprocs(OsiProcs *ps);
+void on_free_osithread(OsiThread *t);
+void on_free_osimodules(OsiModules *ms);
 
 // this stuff only makes sense for win x86 32-bit
 #ifdef TARGET_I386
@@ -61,8 +64,7 @@ void uninit_plugin(void *);
 #define OBJNAME_OFF          0x008
 #define FILE_OBJECT_NAME_OFF 0x030
 #define FILE_OBJECT_POS_OFF  0x038
-#define PROCESS_PARAMETERS_OFF 0x010 // PEB.ProcessParameters
-#define UNICODE_WORKDIR_OFF 0x24     // ProcessParameters.WorkingDirectory
+
 
 // "Constants" specific to the guest operating system.
 // These are initialized in the init_plugin function.
@@ -71,8 +73,6 @@ static uint32_t eproc_pid_off;      // _EPROCESS.UniqueProcessId
 static uint32_t eproc_ppid_off;     // _EPROCESS.InheritedFromUniqueProcessId
 static uint32_t eproc_name_off;     // _EPROCESS.ImageFileName
 static uint32_t eproc_objtable_off; // _EPROCESS.ObjectTable
-static uint32_t
-    eproc_ppeb_off; // _EPROCESS.Peb (pointer to process environment block)
 static uint32_t eproc_size;         // Value of Size
 static uint32_t eproc_links_off;    // _EPROCESS.ActiveProcessLinks
 static uint32_t obj_type_file;      // FILE object type
@@ -85,7 +85,7 @@ static uint32_t ntreadfile_esp_off; // Number of bytes left on stack when NtRead
 static PTR(*get_kpcr)(CPUState *cpu);
 
 // Function pointer, returns handle table entry.  OS-specific.
-static HandleObject *(*get_handle_object)(CPUState *cpu, PTR eproc, uint32_t handle);
+static HandleObject *(*get_handle_object)(CPUState *cpu, uint32_t eproc, uint32_t handle);
 
 
 char *make_pagedstr(void) {
@@ -101,12 +101,6 @@ char *get_unicode_str(CPUState *cpu, PTR ustr) {
     PTR str_ptr = 0;
     if (-1 == panda_virtual_memory_rw(cpu, ustr, (uint8_t *)&size, 2, false)) {
         return make_pagedstr();
-    }
-
-    // Unicode Strings can be zero length. In this case, just return an empty
-    // string.
-    if (size == 0) {
-        return g_strdup("");
     }
 
     // Clamp size
@@ -128,24 +122,41 @@ char *get_unicode_str(CPUState *cpu, PTR ustr) {
     // An abundance of caution: we copy it over to something allocated
     // with our own malloc. In the future we need to provide a way for
     // someone else to free the memory allocated in here...
-    char *ret = (char *)g_malloc(bytes_written+1);
+    char *ret = (char *)malloc(bytes_written+1);
     memcpy(ret, out_str, bytes_written+1);
     g_free(in_str);
     g_free(out_str);
     return ret;
 }
 
-void add_mod(CPUState *cpu, GArray *ms, PTR mod, bool ignore_basename) {
-    OsiModule m;
-    memset(&m, 0, sizeof(OsiModule));
-    fill_osimod(cpu, &m, mod, ignore_basename);
-    g_array_append_val(ms, m);
+
+void add_proc(CPUState *cpu, OsiProcs *ps, PTR eproc) {
+
+    if ((ps->proc == NULL) || (ps->num == ps->capacity)) {
+        ps->capacity *= 2;
+        ps->proc = (OsiProc *)realloc(ps->proc, sizeof(OsiProc) * ps->capacity);
+        assert(ps->proc);
+    }
+
+    OsiProc *p = &ps->proc[ps->num++];
+    fill_osiproc(cpu, p, eproc);
+}
+
+void add_mod(CPUState *cpu, OsiModules *ms, PTR mod, bool ignore_basename) {
+    if ((ms->module == NULL ) || (ms->num == ms->capacity)) {
+        ms->capacity *= 2;
+        ms->module = (OsiModule *)realloc(ms->module, sizeof(OsiModule) * ms->capacity);
+        assert(ms->module);
+    }
+
+    OsiModule *p = &ms->module [ms->num++];
+    fill_osimod(cpu, p, mod, ignore_basename);
 }
 
 void on_get_current_process(CPUState *cpu, OsiProc **out_p) {
     PTR eproc = get_current_proc(cpu);
     if(eproc) {
-        OsiProc *p = (OsiProc *)g_malloc(sizeof(OsiProc));
+        OsiProc *p = (OsiProc *) malloc(sizeof(OsiProc));
         fill_osiproc(cpu, p, eproc);
         *out_p = p;
     } else {
@@ -153,72 +164,59 @@ void on_get_current_process(CPUState *cpu, OsiProc **out_p) {
     }
 }
 
-void on_get_processes(CPUState *cpu, GArray **out) {
-    OsiProc p;
-    PTR first, current;
-
-    first = get_current_proc(cpu);
-    current = first;
-    if (first == (uintptr_t)NULL) {
-        goto error;
+void on_get_processes(CPUState *cpu, OsiProcs **out_ps) {
+    PTR first = get_current_proc(cpu);
+    if(first == 0) {
+        *out_ps = NULL;
+        return;
     }
-    if (get_pid(cpu, first) == 0) {
-        // idle proc - don't try
-        goto error;
+    PTR first_pid = get_pid(cpu, first);
+    PTR current = first;
+
+    if (first_pid == 0) { // Idle proc, don't try
+        *out_ps = NULL;
+        return;
     }
 
-    g_array_free(*out, true);
-    // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-    *out = g_array_sized_new(false, false, sizeof(OsiProc), 128);
-    g_array_set_clear_func(*out, (GDestroyNotify)free_osiproc);
+    OsiProcs *ps = (OsiProcs *)malloc(sizeof(OsiProcs));
+    ps->num = 0;
+    ps->capacity = 1;
+    ps->proc = NULL;
 
     do {
         // One of these will be the loop head,
         // which we don't want to include
         if (is_valid_process(cpu, current)) {
-            memset(&p, 0, sizeof(OsiProc));
-            fill_osiproc(cpu, &p, current);
-            g_array_append_val(*out, p);
+            add_proc(cpu, ps, current);
         }
+
         current = get_next_proc(cpu, current);
-    } while (current != (uintptr_t)NULL && current != first);
+        if (!current) break;
+    } while (current != first);
 
-    return;
-
-error:
-    g_array_free(*out, true);  // safe even when *out == NULL
-    *out = NULL;
-    return;
+    *out_ps = ps;
 }
 
-void on_get_current_thread(CPUState *cpu, OsiThread **out) {
-    OsiProc *p = NULL;
-    CPUArchState *env = (CPUArchState *)first_cpu->env_ptr;
-
-    on_get_current_process(cpu, &p);
-    if (p == NULL) {
-        goto error;
-    }
-    if (*out == NULL) {
-        *out = (OsiThread *)g_malloc(sizeof(OsiThread));
-    }
-
-    // Get the process id.
-    OsiThread *t = *out;
-    t->pid = p->pid;
-    free_osiproc(p);
-
+void on_get_current_thread(CPUState *cpu, OsiThread **out_t)
+{
     // Get current thread ID from thread information block.
+    CPUArchState *env = (CPUArchState *)first_cpu->env_ptr;
     target_ulong ptib;
     panda_virtual_memory_read(first_cpu, env->segs[R_FS].base + 0x18,
                               (uint8_t *)&ptib, sizeof(ptib));
+    OsiThread *t = (OsiThread *)malloc(sizeof(*t));
     panda_virtual_memory_read(first_cpu, ptib + 0x24, (uint8_t *)&t->tid,
                               sizeof(t->tid));
-    return;
 
-error:
-    *out = NULL;
+    // Get the process id.
+    OsiProc *p = NULL;
+    on_get_current_process(cpu, &p);
+    t->pid = p->pid;
+    on_free_osiproc(p);
+
+    *out_t = t;
 }
+
 uint32_t get_ntreadfile_esp_off(void) { return ntreadfile_esp_off; }
 
 uint32_t get_kthread_kproc_off(void) { return kthread_kproc_off; }
@@ -231,7 +229,7 @@ uint32_t get_eproc_objtable_off(void) { return eproc_objtable_off; }
 
 uint32_t get_obj_type_offset(void) { return obj_type_offset; }
 
-uint32_t get_pid(CPUState *cpu, PTR eproc) {
+uint32_t get_pid(CPUState *cpu, uint32_t eproc) {
     uint32_t pid;
     if(-1 == panda_virtual_memory_rw(cpu, eproc+eproc_pid_off, (uint8_t *)&pid, 4, false)) return 0;
     return pid;
@@ -251,37 +249,12 @@ PTR get_dtb(CPUState *cpu, PTR eproc) {
 }
 
 
-void get_procname(CPUState *cpu, PTR eproc, char **name) {
+void get_procname(CPUState *cpu, uint32_t eproc, char **name) {
     assert(name);
-    *name = (char *)g_malloc(17);
+    *name = (char *) malloc(17);
     assert(*name);
     assert(!panda_virtual_memory_rw(cpu, eproc+eproc_name_off, (uint8_t *)*name, 16, false));
     (*name)[16] = '\0';
-}
-
-char *get_cwd(CPUState *cpu)
-{
-    PTR eproc = get_current_proc(cpu);
-
-    // Get pointer to PEB
-    target_ulong ppeb = 0x0;
-    assert(!panda_virtual_memory_read(cpu, eproc + eproc_ppeb_off,
-                                      (uint8_t *)&ppeb, sizeof(ppeb)));
-    // Get pointer to PROCESS_PARAMETERS
-    target_ulong pprocess_params = 0x0;
-    assert(!panda_virtual_memory_read(cpu, ppeb + PROCESS_PARAMETERS_OFF,
-                                      (uint8_t *)&pprocess_params,
-                                      sizeof(pprocess_params)));
-
-    // Get the work dir handle
-    uint32_t cwd_handle = 0x0;
-    assert(!panda_virtual_memory_read(cpu, pprocess_params + 0x2C,
-                                      (uint8_t *)&cwd_handle,
-                                      sizeof(cwd_handle)));
-
-    char *cwd_handle_name = get_handle_name(cpu, eproc, cwd_handle);
-
-    return cwd_handle_name;
 }
 
 bool is_valid_process(CPUState *cpu, PTR eproc) {
@@ -441,9 +414,21 @@ PTR get_next_mod(CPUState *cpu, PTR mod) {
     return next;
 }
 
-char *read_unicode_string(CPUState *cpu, uint32_t pUstr)
-{
-    return get_unicode_str(cpu, pUstr);
+char *read_unicode_string(CPUState *cpu, uint32_t pUstr) {
+    win_unicode_string_t s;
+    assert(-1 != panda_virtual_memory_rw(cpu, pUstr, (uint8_t *)&s, sizeof(s), false));
+
+    if (s.Length == 0 || !s.Buffer) {
+        return g_strdup("");
+    }
+
+    // Length field is in bytes - see: https://msdn.microsoft.com/en-us/library/windows/desktop/aa380518(v=vs.85).aspx
+    char *fileName = g_malloc0((s.Length+1)*sizeof(char));
+    assert(-1 != panda_virtual_memory_rw(cpu, s.Buffer, (uint8_t *)fileName, s.Length, false));
+    char *fileName_ascii = g_str_to_ascii(fileName, "C");
+
+    g_free(fileName);
+    return fileName_ascii;
 }
 
 char *get_objname(CPUState *cpu, uint32_t obj) {
@@ -453,7 +438,7 @@ char *get_objname(CPUState *cpu, uint32_t obj) {
 }
 
 char *get_file_obj_name(CPUState *cpu, uint32_t fobj) {
-    return read_unicode_string(cpu, fobj + FILE_OBJECT_NAME_OFF);
+    return read_unicode_string(cpu, fobj+FILE_OBJECT_NAME_OFF);
 }
 
 int64_t get_file_obj_pos(CPUState *cpu, uint32_t fobj) {
@@ -483,12 +468,12 @@ char *get_handle_object_name(CPUState *cpu, HandleObject *ho) {
 }
 
 
-char *get_handle_name(CPUState *cpu, PTR eproc, uint32_t handle) {
+char * get_handle_name(CPUState *cpu, uint32_t eproc, uint32_t handle) {
     HandleObject *ho = get_handle_object(cpu, eproc, handle);
     return get_handle_object_name(cpu, ho);
 }
 
-int64_t get_file_handle_pos(CPUState *cpu, PTR eproc, uint32_t handle) {
+int64_t get_file_handle_pos(CPUState *cpu, uint32_t eproc, uint32_t handle) {
     HandleObject *ho = get_handle_object(cpu, eproc, handle);
     if (!ho) {
         return -1;
@@ -498,7 +483,7 @@ int64_t get_file_handle_pos(CPUState *cpu, PTR eproc, uint32_t handle) {
 }
 
 void fill_osiproc(CPUState *cpu, OsiProc *p, PTR eproc) {
-    p->taskd = eproc;
+    p->offset = eproc;
     get_procname(cpu, eproc, &p->name);
     p->asid = get_dtb(cpu, eproc);
     p->pages = NULL;
@@ -507,13 +492,46 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, PTR eproc) {
 }
 
 void fill_osimod(CPUState *cpu, OsiModule *m, PTR mod, bool ignore_basename) {
-    m->modd = mod;
+    m->offset = mod;
     m->file = (char *)get_mod_filename(cpu, mod);
     m->base = get_mod_base(cpu, mod);
     m->size = get_mod_size(cpu, mod);
     m->name = ignore_basename ? g_strdup("-") : (char *)get_mod_basename(cpu, mod);
     assert(m->name);
 }
+
+
+void on_free_osiproc(OsiProc *p) {
+    if (!p) return;
+    free(p->name);
+    free(p);
+}
+
+void on_free_osiprocs(OsiProcs *ps) {
+    if(!ps) return;
+    if(ps->proc) {
+        for(uint32_t i = 0; i < ps->num; i++) {
+            free(ps->proc[i].name);
+        }
+        free(ps->proc);
+    }
+    free(ps);
+}
+
+void on_free_osimodules(OsiModules *ms) {
+    if(!ms) return;
+    if(ms->module) {
+        for(uint32_t i = 0; i < ms->num; i++) {
+            free(ms->module[i].file);
+            free(ms->module[i].name);
+        }
+        free(ms->module);
+    }
+    free(ms);
+}
+
+
+
 #endif
 
 
@@ -530,7 +548,6 @@ bool init_plugin(void *self) {
         eproc_ppid_off=0x140;
         eproc_name_off=0x16c;
         eproc_objtable_off=0xf4;
-        eproc_ppeb_off = 0x1a8;
         obj_type_file = 28;
         obj_type_key = 35;
         obj_type_process = 7;
@@ -548,7 +565,6 @@ bool init_plugin(void *self) {
         eproc_ppid_off=0x1c8;
         eproc_name_off=0x1fc;
         eproc_objtable_off=0x128;
-        eproc_ppeb_off = 0x1b0;
         obj_type_file = 0x05;
         obj_type_key = 0x32;
         obj_type_process = 0x03;
@@ -567,6 +583,9 @@ bool init_plugin(void *self) {
 
     PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
     PPP_REG_CB("osi", on_get_processes, on_get_processes);
+    PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
+    PPP_REG_CB("osi", on_free_osiprocs, on_free_osiprocs);
+    PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
     PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
 
     return true;
