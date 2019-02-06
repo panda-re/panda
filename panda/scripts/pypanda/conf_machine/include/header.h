@@ -195,5 +195,5 @@ struct ObjectClass
 
 
 
-DeviceState *sysbus_create_varargs(const char *name, hwaddr addr, qemu_irq irq, ...);
+DeviceState *sysbus_create_varargs(const char *name, hwaddr addr, ...);
 

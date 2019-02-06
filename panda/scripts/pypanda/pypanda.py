@@ -165,3 +165,10 @@ class Panda:
 	#			kernel_esp = 0
 	#			self.virtual_memory_rw(cpustate, tss_base, 
 		return 0
+
+	
+	#string, int, qemu_irq, null
+	def sysbus_create_varargs(self, name, addr):
+		cname = ffi.new("char[]", bytes(name,"UTF-8"))
+		self.libpanda.sysbus_create_varargs(cname,addr,ffi.NULL) 
+		

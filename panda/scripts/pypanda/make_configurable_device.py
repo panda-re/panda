@@ -8,10 +8,10 @@ def init(handle):
 
 @pyp.callback("void(CPUState*)")
 def after_machine_init(cpustate):
-	print(panda.libpanda.sysbus_create_varargs("something", 0xdeadbeef))
+	print(panda.sysbus_create_varargs("sd-card", 503357440))
         
 
-panda = Panda(qcow="/home/tleek/ubuntu-14.04-server-cloudimg-i386-disk1.img")
+panda = Panda(qcow="/home/alom/ubuntu-14.04-server-cloudimg-i386-disk1.img")
 print ("pypanda: done with pre")
 
 panda.load_python_plugin(init,"make_configurable_device")
