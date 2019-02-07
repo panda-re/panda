@@ -26,6 +26,7 @@ struct kernelinfo_errors {
 	int mm;
 	int vma;
 	int fs;
+	int qstr;
 	int path;
 };
 
@@ -146,9 +147,11 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	READ_INFO_INT(ki, fs.fdtab_offset, gerr, err.fs, &errbmp);
 	READ_INFO_INT(ki, fs.fd_offset, gerr, err.fs, &errbmp);
 
+	/* read qstr information */
+	READ_INFO_INT(ki, qstr.size, gerr, err.qstr, &errbmp);
+	READ_INFO_INT(ki, qstr.name_offset, gerr, err.qstr, &errbmp);
+
 	/* read path information */
-	READ_INFO_INT(ki, path.qstr_size, gerr, err.path, &errbmp);
-	READ_INFO_INT(ki, path.qstr_name_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.d_name_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.d_iname_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.d_parent_offset, gerr, err.path, &errbmp);

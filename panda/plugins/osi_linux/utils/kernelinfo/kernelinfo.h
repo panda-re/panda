@@ -110,11 +110,17 @@ PACKED_STRUCT(fs_info) {
 };
 
 /**
+ * @brief qstr information and offsets
+ */
+PACKED_STRUCT(qstr_info) {
+  size_t size;
+  size_t name_offset;
+};
+
+/**
  * @brief Path related information and offsets.
  */
 PACKED_STRUCT(path_info) {
-	size_t qstr_size;			/**< Size of `struct qstr`. */
-	int qstr_name_offset;
 	int d_name_offset;
 	int d_iname_offset;
 	int d_parent_offset;
@@ -136,6 +142,7 @@ PACKED_STRUCT(kernelinfo) {
 	struct mm_info mm;
 	struct vma_info vma;
 	struct fs_info fs;
+	struct qstr_info qstr;
 	struct path_info path;
 };
 

@@ -366,7 +366,7 @@ IMPLEMENT_OFFSET_GETN(get_vfsmount_root_dentry, vfsmount, target_ptr_t, root_den
 /**
  * @brief Retrieves the qstr for a dentry.
  */
-IMPLEMENT_OFFSET_GETN(get_dentry_name, dentry, uint8_t, dname_qstr, ki.path.qstr_size*sizeof(uint8_t), ki.path.d_name_offset)
+IMPLEMENT_OFFSET_GETN(get_dentry_name, dentry, uint8_t, dname_qstr, ki.qstr.size*sizeof(uint8_t), ki.path.d_name_offset)
 
 /**
  * @brief Retrieves the dynamic name function for a dentry.
@@ -426,14 +426,14 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
 
 	target_ptr_t current_dentry_parent = dentry;
 	target_ptr_t current_dentry = (target_ptr_t)NULL;
-	uint8_t *d_name = (uint8_t *)g_malloc(ki.path.qstr_size * sizeof(uint8_t));
+	uint8_t *d_name = (uint8_t *)g_malloc(ki.qstr.size * sizeof(uint8_t));
 	while (current_dentry_parent != current_dentry) {
 		int og_err1, og_err2;
 		current_dentry = current_dentry_parent;
 		//printf("1#%lx\n", (uintptr_t)(current_dentry + ki.path.d_name_offset));
 
 		// read dentry d_parent and d_name
-		memset(d_name, 0, ki.path.qstr_size * sizeof(uint8_t));
+		memset(d_name, 0, ki.qstr.size * sizeof(uint8_t));
 		og_err1 = get_dentry_name(env, current_dentry, d_name);
 		og_err2 = get_dentry_parent(env, current_dentry, &current_dentry_parent);
 		//HEXDUMP(d_name, ki.path.qstr_size, current_dentry + ki.path.d_name_offset);
@@ -455,7 +455,7 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
 			pcomp_capacity = pcomp_length + 16;
 			pcomp = (char *)g_realloc(pcomp, pcomp_capacity * sizeof(char));
 		}
-		og_err1 = panda_virtual_memory_rw(env, *(target_ptr_t *)(d_name + ki.path.qstr_name_offset), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
+		og_err1 = panda_virtual_memory_rw(env, *(target_ptr_t *)(d_name + ki.qstr.name_offset), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
 		//printf("2#%lx\n", (uintptr_t)*(target_ptr_t *)(d_name + 2*sizeof(uint32_t)));
 		//printf("3#%s\n", pcomp);
 		if (-1 == og_err1) {

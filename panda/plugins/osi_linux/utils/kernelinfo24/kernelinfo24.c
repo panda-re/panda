@@ -93,8 +93,9 @@ static int __init kernelinfo24_init(void)
 	PRINT_OFFSET(file__p, f_pos, "fs");
 	PRINT_OFFSET(files_struct__p, fd, "fs");
 
-	PRINT_SIZE(dentry__s.d_name, "qstr_size", "path");
-	// need to add qstr name offset
+	PRINT_SIZE(qstr__s, "size", "qstr");
+	PRINT_OFFSET(qstr__p, name, "qstr");
+
 	PRINT_OFFSET(dentry__p, d_name, "path");
 	PRINT_OFFSET(dentry__p, d_iname, "path");
 	PRINT_OFFSET(dentry__p, d_parent, "path");
