@@ -205,7 +205,7 @@ static int parse_uri(const char *filename, QDict *options, Error **errp)
         return -EINVAL;
     }
 
-    if (strcmp(uri->scheme, "ssh") != 0) {
+    if (g_strcmp0(uri->scheme, "ssh") != 0) {
         error_setg(errp, "URI scheme must be 'ssh'");
         goto err;
     }
@@ -227,24 +227,23 @@ static int parse_uri(const char *filename, QDict *options, Error **errp)
     }
 
     if(uri->user && strcmp(uri->user, "") != 0) {
-        qdict_put(options, "user", qstring_from_str(uri->user));
+        qdict_put_str(options, "user", uri->user);
     }
 
-    qdict_put(options, "server.host", qstring_from_str(uri->server));
+    qdict_put_str(options, "server.host", uri->server);
 
     port_str = g_strdup_printf("%d", uri->port ?: 22);
-    qdict_put(options, "server.port", qstring_from_str(port_str));
+    qdict_put_str(options, "server.port", port_str);
     g_free(port_str);
 
-    qdict_put(options, "path", qstring_from_str(uri->path));
+    qdict_put_str(options, "path", uri->path);
 
     /* Pick out any query parameters that we understand, and ignore
      * the rest.
      */
     for (i = 0; i < qp->n; ++i) {
         if (strcmp(qp->p[i].name, "host_key_check") == 0) {
-            qdict_put(options, "host_key_check",
-                      qstring_from_str(qp->p[i].value));
+            qdict_put_str(options, "host_key_check", qp->p[i].value);
         }
     }
 
@@ -574,9 +573,8 @@ static bool ssh_process_legacy_socket_options(QDict *output_opts,
     }
 
     if (host) {
-        qdict_put(output_opts, "server.host", qstring_from_str(host));
-        qdict_put(output_opts, "server.port",
-                  qstring_from_str(port ?: stringify(22)));
+        qdict_put_str(output_opts, "server.host", host);
+        qdict_put_str(output_opts, "server.port", port ?: stringify(22));
     }
 
     return true;
@@ -601,7 +599,15 @@ static InetSocketAddress *ssh_config(QDict *options, Error **errp)
         goto out;
     }
 
-    iv = qobject_input_visitor_new(crumpled_addr, true);
+    /*
+     * FIXME .numeric, .to, .ipv4 or .ipv6 don't work with -drive.
+     * .to doesn't matter, it's ignored anyway.
+     * That's because when @options come from -blockdev or
+     * blockdev_add, members are typed according to the QAPI schema,
+     * but when they come from -drive, they're all QString.  The
+     * visitor expects the former.
+     */
+    iv = qobject_input_visitor_new(crumpled_addr);
     visit_type_InetSocketAddress(iv, NULL, &inet, &local_error);
     if (local_error) {
         error_propagate(errp, local_error);

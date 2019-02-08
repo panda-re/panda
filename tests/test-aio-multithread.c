@@ -309,7 +309,7 @@ static void mcs_mutex_lock(void)
 static void mcs_mutex_unlock(void)
 {
     int next;
-    if (nodes[id].next == -1) {
+    if (atomic_read(&nodes[id].next) == -1) {
         if (atomic_read(&mutex_head) == id &&
             atomic_cmpxchg(&mutex_head, id, -1) == id) {
             /* Last item in the list, exit.  */
@@ -323,7 +323,7 @@ static void mcs_mutex_unlock(void)
     }
 
     /* Wake up the next in line.  */
-    next = nodes[id].next;
+    next = atomic_read(&nodes[id].next);
     nodes[next].locked = 0;
     qemu_futex_wake(&nodes[next].locked, 1);
 }
@@ -438,7 +438,7 @@ static void test_multi_mutex_10(void)
 
 int main(int argc, char **argv)
 {
-    init_clocks();
+    init_clocks(NULL);
 
     g_test_init(&argc, &argv, NULL);
     g_test_add_func("/aio/multi/lifecycle", test_lifecycle);

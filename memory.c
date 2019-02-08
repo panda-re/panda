@@ -908,12 +908,6 @@ void memory_region_transaction_begin(void)
     ++memory_region_transaction_depth;
 }
 
-static void memory_region_clear_pending(void)
-{
-    memory_region_update_pending = false;
-    ioeventfd_update_pending = false;
-}
-
 void memory_region_transaction_commit(void)
 {
     AddressSpace *as;
@@ -927,14 +921,14 @@ void memory_region_transaction_commit(void)
             QTAILQ_FOREACH(as, &address_spaces, address_spaces_link) {
                 address_space_update_topology(as);
             }
-
+            memory_region_update_pending = false;
             MEMORY_LISTENER_CALL_GLOBAL(commit, Forward);
         } else if (ioeventfd_update_pending) {
             QTAILQ_FOREACH(as, &address_spaces, address_spaces_link) {
                 address_space_update_ioeventfds(as);
             }
+            ioeventfd_update_pending = false;
         }
-        memory_region_clear_pending();
    }
 }
 
@@ -1182,7 +1176,7 @@ static void memory_region_ram_device_write(void *opaque, hwaddr addr,
 static const MemoryRegionOps ram_device_mem_ops = {
     .read = memory_region_ram_device_read,
     .write = memory_region_ram_device_write,
-    .endianness = DEVICE_NATIVE_ENDIAN,
+    .endianness = DEVICE_HOST_ENDIAN,
     .valid = {
         .min_access_size = 1,
         .max_access_size = 8,
@@ -2499,6 +2493,7 @@ static void mtree_print_mr(fprintf_function mon_printf, void *f,
     MemoryRegionListHead submr_print_queue;
     const MemoryRegion *submr;
     unsigned int i;
+    hwaddr cur_start, cur_end;
 
     if (!mr) {
         return;
@@ -2506,6 +2501,18 @@ static void mtree_print_mr(fprintf_function mon_printf, void *f,
 
     for (i = 0; i < level; i++) {
         mon_printf(f, MTREE_INDENT);
+    }
+
+    cur_start = base + mr->addr;
+    cur_end = cur_start + MR_SIZE(mr->size);
+
+    /*
+     * Try to detect overflow of memory region. This should never
+     * happen normally. When it happens, we dump something to warn the
+     * user who is observing this.
+     */
+    if (cur_start < base || cur_end < cur_start) {
+        mon_printf(f, "[DETECTED OVERFLOW!] ");
     }
 
     if (mr->alias) {
@@ -2527,8 +2534,7 @@ static void mtree_print_mr(fprintf_function mon_printf, void *f,
         mon_printf(f, TARGET_FMT_plx "-" TARGET_FMT_plx
                    " (prio %d, %s): alias %s @%s " TARGET_FMT_plx
                    "-" TARGET_FMT_plx "%s\n",
-                   base + mr->addr,
-                   base + mr->addr + MR_SIZE(mr->size),
+                   cur_start, cur_end,
                    mr->priority,
                    memory_region_type((MemoryRegion *)mr),
                    memory_region_name(mr),
@@ -2539,8 +2545,7 @@ static void mtree_print_mr(fprintf_function mon_printf, void *f,
     } else {
         mon_printf(f,
                    TARGET_FMT_plx "-" TARGET_FMT_plx " (prio %d, %s): %s%s\n",
-                   base + mr->addr,
-                   base + mr->addr + MR_SIZE(mr->size),
+                   cur_start, cur_end,
                    mr->priority,
                    memory_region_type((MemoryRegion *)mr),
                    memory_region_name(mr),
@@ -2567,7 +2572,7 @@ static void mtree_print_mr(fprintf_function mon_printf, void *f,
     }
 
     QTAILQ_FOREACH(ml, &submr_print_queue, queue) {
-        mtree_print_mr(mon_printf, f, ml->mr, level + 1, base + mr->addr,
+        mtree_print_mr(mon_printf, f, ml->mr, level + 1, cur_start,
                        alias_print_queue);
     }
 
@@ -2593,13 +2598,24 @@ static void mtree_print_flatview(fprintf_function p, void *f,
 
     while (n--) {
         mr = range->mr;
-        p(f, MTREE_INDENT TARGET_FMT_plx "-"
-          TARGET_FMT_plx " (prio %d, %s): %s\n",
-          int128_get64(range->addr.start),
-          int128_get64(range->addr.start) + MR_SIZE(range->addr.size),
-          mr->priority,
-          memory_region_type(mr),
-          memory_region_name(mr));
+        if (range->offset_in_region) {
+            p(f, MTREE_INDENT TARGET_FMT_plx "-"
+              TARGET_FMT_plx " (prio %d, %s): %s @" TARGET_FMT_plx "\n",
+              int128_get64(range->addr.start),
+              int128_get64(range->addr.start) + MR_SIZE(range->addr.size),
+              mr->priority,
+              range->readonly ? "rom" : memory_region_type(mr),
+              memory_region_name(mr),
+              range->offset_in_region);
+        } else {
+            p(f, MTREE_INDENT TARGET_FMT_plx "-"
+              TARGET_FMT_plx " (prio %d, %s): %s\n",
+              int128_get64(range->addr.start),
+              int128_get64(range->addr.start) + MR_SIZE(range->addr.size),
+              mr->priority,
+              range->readonly ? "rom" : memory_region_type(mr),
+              memory_region_name(mr));
+        }
         range++;
     }
 

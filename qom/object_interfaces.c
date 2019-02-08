@@ -4,6 +4,7 @@
 #include "qemu/module.h"
 #include "qapi-visit.h"
 #include "qapi/opts-visitor.h"
+#include "qemu/config-file.h"
 
 void user_creatable_complete(Object *obj, Error **errp)
 {
@@ -114,7 +115,7 @@ Object *user_creatable_add_opts(QemuOpts *opts, Error **errp)
     QDict *pdict;
     Object *obj;
     const char *id = qemu_opts_id(opts);
-    const char *type = qemu_opt_get(opts, "qom-type");
+    char *type = qemu_opt_get_del(opts, "qom-type");
 
     if (!type) {
         error_setg(errp, QERR_MISSING_PARAMETER, "qom-type");
@@ -122,17 +123,21 @@ Object *user_creatable_add_opts(QemuOpts *opts, Error **errp)
     }
     if (!id) {
         error_setg(errp, QERR_MISSING_PARAMETER, "id");
+        qemu_opt_set(opts, "qom-type", type, &error_abort);
+        g_free(type);
         return NULL;
     }
 
+    qemu_opts_set_id(opts, NULL);
     pdict = qemu_opts_to_qdict(opts, NULL);
-    qdict_del(pdict, "qom-type");
-    qdict_del(pdict, "id");
 
     v = opts_visitor_new(opts);
     obj = user_creatable_add_type(type, id, pdict, v, errp);
     visit_free(v);
 
+    qemu_opts_set_id(opts, (char *) id);
+    qemu_opt_set(opts, "qom-type", type, &error_abort);
+    g_free(type);
     QDECREF(pdict);
     return obj;
 }
@@ -177,6 +182,14 @@ void user_creatable_del(const char *id, Error **errp)
         error_setg(errp, "object '%s' is in use, can not be deleted", id);
         return;
     }
+
+    /*
+     * if object was defined on the command-line, remove its corresponding
+     * option group entry
+     */
+    qemu_opts_del(qemu_opts_find(qemu_find_opts_err("object", &error_abort),
+                                 id));
+
     object_unparent(obj);
 }
 

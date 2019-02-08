@@ -1170,7 +1170,7 @@ static void ide_cfata_metadata_write(IDEState *s)
 }
 
 /* called when the inserted state of the media has changed */
-static void ide_cd_change_cb(void *opaque, bool load)
+static void ide_cd_change_cb(void *opaque, bool load, Error **errp)
 {
     IDEState *s = opaque;
     uint64_t nb_sectors;
@@ -2707,6 +2707,14 @@ void ide_init2(IDEBus *bus, qemu_irq irq)
     }
     bus->irq = irq;
     bus->dma = &ide_dma_nop;
+}
+
+void ide_exit(IDEState *s)
+{
+    timer_del(s->sector_write_timer);
+    timer_free(s->sector_write_timer);
+    qemu_vfree(s->smart_selftest_data);
+    qemu_vfree(s->io_buffer);
 }
 
 static const MemoryRegionPortio ide_portio_list[] = {
