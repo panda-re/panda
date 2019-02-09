@@ -81,6 +81,10 @@ typedef enum panda_cb_type {
 
     PANDA_CB_TOP_LOOP, // at top of loop that manages emulation.  good place to
                        // take a snapshot
+    // Unassigned I/O
+    PANDA_CB_UNASSIGNED_IO_READ,
+    PANDA_CB_UNASSIGNED_IO_WRITE,
+
 
     PANDA_CB_LAST
 } panda_cb_type;
@@ -539,6 +543,12 @@ typedef union panda_cb {
         unused
     */
     int (*replay_net_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
+
+    /* TODO: Document */
+    void (*unassigned_io_read)(CPUState *env, target_ulong pc, hwaddr addr, uint32_t size, uint64_t *val);
+
+    /* TODO: Document */
+    void (*unassigned_io_write)(CPUState *env, target_ulong pc, hwaddr addr, uint32_t size, uint64_t *val);
 
     /* Callback ID:     PANDA_CB_REPLAY_SERIAL_RECEIVE,
 

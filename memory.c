@@ -34,6 +34,10 @@
 #include "panda/rr/rr_log_all.h"
 
 //#define DEBUG_UNASSIGNED
+// TODO: conditionally do this?
+#define NO_TRANSLATION_BLOCKS
+#include "panda/callback_support.h"
+#undef NO_TRANSLATION_BLOCKS
 
 static unsigned memory_region_transaction_depth;
 static bool memory_region_update_pending;
@@ -1096,10 +1100,12 @@ static uint64_t unassigned_mem_read(void *opaque, hwaddr addr,
 #ifdef DEBUG_UNASSIGNED
     printf("Unassigned mem read " TARGET_FMT_plx "\n", addr);
 #endif
+    uint64_t val = 0;
     if (current_cpu != NULL) {
         cpu_unassigned_access(current_cpu, addr, false, false, 0, size);
     }
-    return 0;
+    panda_callbacks_unassigned_io(first_cpu, addr, size, &val, false);
+    return val;
 }
 
 static void unassigned_mem_write(void *opaque, hwaddr addr,
@@ -1111,6 +1117,7 @@ static void unassigned_mem_write(void *opaque, hwaddr addr,
     if (current_cpu != NULL) {
         cpu_unassigned_access(current_cpu, addr, true, false, 0, size);
     }
+    panda_callbacks_unassigned_io(first_cpu, addr, size, &val, true);
 }
 
 static bool unassigned_mem_accepts(void *opaque, hwaddr addr,
