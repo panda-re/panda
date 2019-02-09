@@ -8,6 +8,7 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+#include <vector>
 #include <unordered_set>
 
 #include "panda/plugin.h"

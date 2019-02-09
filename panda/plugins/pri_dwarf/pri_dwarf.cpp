@@ -52,7 +52,7 @@ extern "C" {
 // this provides the fd resolution magic
 #include "osi_linux/osi_linux_ext.h"
 
-#include "syscalls2/gen_syscalls_ext_typedefs.h"
+#include "syscalls2/syscalls_ext_typedefs.h"
 
 #include "loaded/loaded.h"
 

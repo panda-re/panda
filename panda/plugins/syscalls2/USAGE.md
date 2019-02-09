@@ -8,7 +8,7 @@ The `syscalls2` plugin provides callbacks that allow notification whenever syste
 
 This is accomplished by automatically generating a bunch of code based on an initial prototypes file. For full details, have a look at `syscalls2/syscall_parser.py` and one of the prototypes files, such as `syscalls2/prototypes/linux_x86_prototypes.txt`.
 
-FIXME: We should include a list of steps for adding support for a new OS to `syscalls2` here. It's a little tricky.
+For adding support for a new OS or updating the existing ones, see the `syscalls2` [maintenance documentation][prototypes/MAINTENANCE.md].
 
 Arguments
 ---------

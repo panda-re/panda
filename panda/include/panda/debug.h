@@ -109,13 +109,16 @@
 #if !defined(LOG_DEBUG_FILE)
 #define LOG_DEBUG_FILE stderr
 #endif
+#if !defined(LOG_PANDALN_FILE)
+#define LOG_PANDALN_FILE stdout
+#endif
 
 #if PANDA_LOG_LEVEL < PANDA_LOG_DEBUG
 #define LOG_DEBUG(fmt, args...) {}
 #define PANDALN
 #else
-#define LOG_DEBUG(fmt, args...)  fprintf(LOG_DEBUG_FILE, PANDA_MSG "D:%s(%s)> "  fmt "\n", __FILENAME__, __func__, ## args)
-#define PANDALN fprintf(stdout, "@%s:%03d\n", __FILENAME__, __LINE__)
+#define LOG_DEBUG(fmt, args...)  fprintf(LOG_DEBUG_FILE, PANDA_MSG "D> "  fmt "\n", ## args)
+#define PANDALN fprintf(LOG_PANDALN_FILE, "-> %s:%03d %s()\n", __FILENAME__, __LINE__, __func__)
 #endif
 
 /* vim:set tabstop=4 softtabstop=4 expandtab: */

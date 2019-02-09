@@ -41,6 +41,7 @@ typedef struct {
     int nargs;
     syscall_argtype_t *argt;
     uint8_t *argsz;
+    bool noreturn;
 } syscall_info_t;
 
 #if defined(__cplusplus)
