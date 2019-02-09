@@ -71,6 +71,10 @@ typedef enum panda_cb_type {
     PANDA_CB_MAIN_LOOP_WAIT,        // Called after main_loop in main_loop.c runs
     PANDA_CB_PRE_SHUTDOWN,          // Just before shutting down
 
+    // Unassigned I/O
+    PANDA_CB_UNASSIGNED_IO_READ,
+    PANDA_CB_UNASSIGNED_IO_WRITE,
+
     PANDA_CB_BEFORE_HANDLE_EXCEPTION, // Allows you to monitor, modify,
                                       // or squash exceptions
 
@@ -736,6 +740,13 @@ typedef union panda_cb {
          None
      */
     void (*pre_shutdown)(void);
+
+    /* TODO: Document */
+    void (*unassigned_io_read)(CPUState *env, target_ulong pc, hwaddr addr, uint32_t size, uint64_t *val);
+
+    /* TODO: Document */
+    void (*unassigned_io_write)(CPUState *env, target_ulong pc, hwaddr addr, uint32_t size, uint64_t *val);
+
 
 
     /* Callback ID:     PANDA_CB_BEFORE_HANDLE_EXCEPTION

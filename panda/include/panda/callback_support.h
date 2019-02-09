@@ -4,6 +4,7 @@
 #include "panda/rr/rr_log_all.h"
 
 // exec.c
+#ifndef NO_TRANSLATION_BLOCKS
 void panda_callbacks_before_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write);
 void panda_callbacks_after_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write);
 
@@ -36,6 +37,8 @@ void panda_callbacks_mmio_after_write(CPUState *env, target_ulong addr, int size
 void panda_callbacks_cpuid(CPUState *env);
 // translate-all.c
 void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb);
+#endif
+
 // target-i386/helper.c
 void panda_callbacks_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid);
 // vl.c
@@ -64,5 +67,8 @@ void panda_callbacks_main_loop_wait(void);
 void panda_callbacks_pre_shutdown(void);
 
 int32_t panda_callbacks_before_handle_exception(CPUState *cpu, int32_t exception_index);
+
+// memory.c
+void panda_callbacks_unassigned_io(CPUState *env, uint64_t addr, uint32_t size, uint64_t *val, bool is_write);
 
 #endif
