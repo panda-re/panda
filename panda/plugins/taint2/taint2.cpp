@@ -244,6 +244,19 @@ void taint2_enable_tainted_pointer(void) {
     tainted_pointer = true;
 }
 
+int disable_taint(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
+    if (taintJustDisabled){
+        taintJustDisabled = false;
+        execute_llvm = 0;
+        generate_llvm = 0;
+        panda_do_flush_tb();
+        panda_disable_memcb();
+    }
+    return 0;
+}
+
+
+
 void taint2_enable_taint(void) {
     if(taintEnabled) {return;}
     std::cerr << PANDA_MSG << __FUNCTION__ << std::endl;
@@ -252,7 +265,7 @@ void taint2_enable_taint(void) {
 
     pcb.before_block_exec_invalidate_opt = before_block_exec_invalidate_opt;
     panda_register_callback(taint2_plugin, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);
-    pcb.after_block_exec = after_block_exec;
+    pcb.after_block_exec = disable_taint;
     panda_register_callback(taint2_plugin, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     pcb.phys_mem_before_read = phys_mem_read_callback;
     panda_register_callback(taint2_plugin, PANDA_CB_PHYS_MEM_BEFORE_READ, pcb);
@@ -358,17 +371,6 @@ void taint2_disable_taint(void) {
 
 }
 
-// Execute taint ops
-int after_block_exec(CPUState *cpu, TranslationBlock *tb) {
-    if (taintJustDisabled){
-        taintJustDisabled = false;
-        execute_llvm = 0;
-        generate_llvm = 0;
-        panda_do_flush_tb();
-        panda_disable_memcb();
-    }
-    return 0;
-}
 
 __attribute__((unused)) static void print_labels(uint32_t el, void *stuff) {
     printf("%d ", el);
