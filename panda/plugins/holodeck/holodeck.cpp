@@ -29,6 +29,9 @@ void uninit_plugin(void *);
 #include "holodeck.h"
 #include <iostream>
 
+char dtbfile[32];
+std::vector<Device> device_list;
+
 // Given a model, get the next value and update any internal state
 unsigned int _generate_value(Model &m) {
     switch (m.type) {
@@ -95,6 +98,8 @@ bool parse_devices(YAML::Node &devices_y, std::vector<Device> &devices) {
        Device d;
 
        d.name = name;
+       assert(device.second["start"]);
+       assert(device.second["length"]);
        d.start = device.second["start"].as<unsigned int>();
        d.length = device.second["length"].as<unsigned int>();
 
@@ -137,6 +142,7 @@ bool parse_devices(YAML::Node &devices_y, std::vector<Device> &devices) {
            switch(m.type) {
                case ModelConstant:
                    Constant c;
+                   assert(props.second["reads"]);
                    c.value = props.second["reads"].as<unsigned int>();
                    m.c = c;
                    break;
@@ -147,6 +153,7 @@ bool parse_devices(YAML::Node &devices_y, std::vector<Device> &devices) {
                    seq.offset = 0;
                    seq.values = new std::vector<int>;
 
+                   assert(props.second["reads"]);
                    const YAML::Node& seqvals = props.second["reads"];
                    for(unsigned i=0;i<seqvals.size();i++) {
                        unsigned int intval = seqvals[i].as<unsigned int>();
@@ -162,6 +169,7 @@ bool parse_devices(YAML::Node &devices_y, std::vector<Device> &devices) {
                    rnd.rndseed = 0;
                    rnd.values = new std::vector<int>;
 
+                   assert(props.second["reads"]);
                    const YAML::Node& seqvals = props.second["reads"];
                    for(unsigned i=0;i<seqvals.size();i++) {
                        int intval = seqvals[i].as<int>();
@@ -260,31 +268,84 @@ bool init_plugin(void *self) {
     qemu_opts_set(qemu_find_opts("machine"), 0, "type", "rehosting",
                                           &error_abort);
 
-    // TODO: get dtb path from config (or from inside config?)
-    // qemu_opts_set(qemu_find_opts("machine"), 0, "dtb", "DTB_FILENAME.dtb",
-    //               &error_abort);
-
     YAML::Node config = YAML::LoadFile(config_path);
 
     // Parse machine from config
+    assert(config["machine"]);
+    YAML::Node machine_y = config["machine"];
+
+    assert(machine_y["peripherals"]);
+    std::stringstream memmap;
+    for (auto peripheral : machine_y["peripherals"]) {
+        std::string pname = peripheral.first.as<std::string>();
+        std::string pvalue = peripheral.second.as<std::string>();
+        memmap << pname << " " << pvalue << ";";
+    }
+
+    assert(machine_y["board_id"]);
+    int board_id = machine_y["board_id"].as<int>();
+    std::string board_id_s = std::to_string(board_id);
+
+    qemu_opts_set(qemu_find_opts("machine"), 0, "mem-map", memmap.str().c_str(),
+                                          &error_abort);
+
+    qemu_opts_set(qemu_find_opts("machine"), 0, "board-id", board_id_s.c_str(),
+                                          &error_abort);
+
+    // Parse DTB from config (final version with patches)
+    assert(machine_y["dtb"]);
+
+    // Note: the dtb must be single quoted line, not what's output by python
+    YAML::Binary binary = config["machine"]["dtb"].as<YAML::Binary>();
+
+    const unsigned char * data = binary.data();
+    std::size_t size = binary.size();
+
+    // Write DTB to disk
+    strncpy(dtbfile, "/tmp/holodeck-XXXXXXXX",32);
+    assert(mkstemp(dtbfile) != NULL);
+    printf("DTB at %s\n", dtbfile);
+
+    FILE *f = fopen(dtbfile, "wb");
+    if (f==NULL) {
+        perror("Failed to make tempfile");
+        assert(0);
+    }
+
+    fwrite(data, size, 1, f);
+    fclose(f);
+
+    // Pass tempfile path to qemu
+    qemu_opts_set(qemu_find_opts("machine"), 0, "dtb", dtbfile,
+                   &error_abort);
+
 
     // Parse devices from config
-    std::vector<Device> devices;
+    assert(config["devices"]);
     YAML::Node devices_y = config["devices"];
 
-    if (!parse_devices(devices_y, devices)) {
+    if (!parse_devices(devices_y, device_list)) {
         fprintf(stderr, "Error: [holodeck] Couldn't parse input config. Aborting\n");
         assert(0);
     }
 
-    //dump_devices(devices);
-    //cleanup_devices(devices);
-
     return true;
 #else
     fprintf(stderr, "Error: [holodeck] Holodeck is unsupported on this architecture\n");
-    assert(0);
+    return false;
 #endif
 }
 
-void uninit_plugin(void *self) { }
+void uninit_plugin(void *self) {
+#ifdef TARGET_ARM
+    // TODO: this will not run if qemu fails early?
+    fprintf(stderr, "INFO: [holodeck] cleaning up\n");
+
+    if (dtbfile != NULL)
+        unlink(dtbfile);
+
+    if (device_list.size() > 0 )
+        cleanup_devices(device_list);
+#endif
+
+}
