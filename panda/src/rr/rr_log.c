@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <time.h>
+#include <libgen.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -1179,6 +1180,17 @@ void rr_create_replay_log(const char* filename)
 
     rr_nondet_log->type = REPLAY;
     rr_nondet_log->name = g_strdup(filename);
+    
+    char *short_name = basename(g_strdup(filename));
+
+    // typical log filename base: 
+    // cat-rr-nondet.log
+    //    ^ this is 14 chars back from end of string
+    int l = strlen(short_name);
+    assert (l > 14);
+    short_name[l-14] = '\0';
+    rr_nondet_log->short_name = short_name;
+
     rr_nondet_log->fp = fopen(rr_nondet_log->name, "r");
     rr_assert(rr_nondet_log->fp != NULL);
 
