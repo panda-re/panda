@@ -6,6 +6,7 @@ tainted_branch
 tstringsearch
 tainted_instr
 ida_taint2
-ipflow
+#ipflow
 tainted_net
 serial_taint
+tainted_mmio
