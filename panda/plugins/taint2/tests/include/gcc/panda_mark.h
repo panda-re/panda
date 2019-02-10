@@ -8,14 +8,21 @@
 const int LABEL_BUFFER = 7;
 const int LABEL_BUFFER_POS = 8;
 const int QUERY_BUFFER = 9;
+const int ENABLE_TAINT = 10;
+const int DISABLE_TAINT = 11;
+
+#define debug 0
+
+void hypercall(unsigned long buf, unsigned long len, unsigned long arg, int action);
+
 
 #ifdef TARGET_I386
 inline
-void hypercall(unsigned long buf, unsigned long len, unsigned long off, int action) {
+void hypercall(unsigned long buf, unsigned long len, unsigned long arg, int action) {
   unsigned long eax = action;
   unsigned long ebx = buf;
   unsigned long ecx = len;
-  unsigned long edx = off;
+  unsigned long edx = arg; // label.  or query number.  or whatever
 
   asm __volatile__
       ("push %%eax \t\n\
@@ -33,21 +40,23 @@ void hypercall(unsigned long buf, unsigned long len, unsigned long off, int acti
         pop  %%eax \t\n\
        "
       : /* no output registers */
-      : "r" (eax), "r" (ebx), "r" (ecx), "r" (edx) /* input operands */
+      : "g" (eax), "g" (ebx), "g" (ecx), "g" (edx) /* input operands */
       : "eax", "ebx", "ecx", "edx" /* clobbered registers */
       );
   return;
 }
 
+
+
 #endif // TARGET_I386
 
 #ifdef TARGET_ARM
 inline
-void hypercall(unsigned long buf, unsigned long len, unsigned long off, int action) {
+void hypercall(unsigned long buf, unsigned long len, unsigned long arg, int action) {
     unsigned long r0 = action;
     unsigned long r1 = buf;
     unsigned long r2 = len;
-    unsigned long r3 = off;
+    unsigned long r3 = arg;
 
     asm __volatile__
       ("push {%%r0-%%r3} \t\n\
@@ -66,24 +75,51 @@ void hypercall(unsigned long buf, unsigned long len, unsigned long off, int acti
 }
 #endif // TARGET_ARM
 
+inline
+void enable_taint(void) {
+    hypercall(0,0,0,ENABLE_TAINT);
+}
+
+inline
+void disable_taint(void) {
+    hypercall(0,0,0,DISABLE_TAINT);
+}
+
 /* buf is the address of the buffer to be labeled
  * len is the length of the buffer to be labeled */
 inline
-void label_buffer(unsigned long buf, unsigned long len) {
-  printf("Address to be labeled: 0x%lx\n", buf);
-  printf("Size in bytes: %lu\n", len);
-  hypercall(buf, len, 0, LABEL_BUFFER);
-  return;
+void label_buffer(unsigned long buf, unsigned long len, unsigned long label, int  pos) {
+    if (debug) {
+        printf("Address to be labeled: 0x%lx\n", buf);
+        printf("Size in bytes: %lu\n", len);
+    }
+    if (pos) {
+        if (debug) printf ("Positional labels starting at %lu \n", label);
+        hypercall(buf, len, label, LABEL_BUFFER_POS);
+    }
+    else {
+        if (debug) printf ("Non-positional label %lu\n", label);
+        hypercall(buf, len, label, LABEL_BUFFER);
+    }
+    return;
 }
 
 /* buf is the address of the buffer to be queried
  * len is the length of the buffer to be queried */
 inline
-void query_buffer(unsigned long buf, unsigned long len) {
-  printf("Address to be queried: 0x%lx\n", buf);
-  printf("Size in bytes: %lu\n", len);
-  hypercall(buf, len, 0, QUERY_BUFFER);
-  return;
+void query_buffer(unsigned long buf, unsigned long len, unsigned long query_number) {
+    if (debug) {
+        printf("Address to be queried: 0x%lx\n", buf);
+        printf("Size in bytes: %lu\n", len);
+    }
+    hypercall(buf, len, query_number, QUERY_BUFFER);
+    return;
 }
+
+void enable_taint(void);
+void disable_taint(void);
+void label_buffer(unsigned long buf, unsigned long len, unsigned long label, int pos);
+void query_buffer(unsigned long buf, unsigned long len, unsigned long query_number);
+
 
 #endif

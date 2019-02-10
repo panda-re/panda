@@ -105,5 +105,7 @@ Panda__TaintQuery *taint2_query_pandalog (Addr addr, uint32_t offset);
 // used to free memory associated with that struct
 void pandalog_taint_query_free(Panda__TaintQuery *tq);
 
+void taint2_stats(void);
+
 #endif
 

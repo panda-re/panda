@@ -110,6 +110,7 @@ static void tp_delete(const Addr &a) {
 
 static void tp_labelset_put(const Addr &a, LabelSetP ls) {
     assert(shadow);
+
     auto loc = shadow->query_loc(a);
     if (loc.first) loc.first->set_full(loc.second, TaintData(ls));
 }
@@ -117,12 +118,23 @@ static void tp_labelset_put(const Addr &a, LabelSetP ls) {
 // used to keep track of labels that have been applied
 std::set<uint32_t> labels_applied;
 
+// used to make sure we dont create same singleton over and over
+std::map<uint32_t, LabelSetP> labelsingletons;
+
+
 // label -- associate label l, and only label l, with address a. any previous
 // labels applied to the address are removed.
 static void tp_label(Addr a, uint32_t l) {
     if (debug_taint) start_debugging();
 
-    LabelSetP ls = label_set_singleton(l);
+    LabelSetP ls;
+    if (labelsingletons.count(l) == 0) {
+        ls = label_set_singleton(l);
+        labelsingletons[l] = ls;
+    }
+    else 
+        ls = labelsingletons[l];
+
     tp_labelset_put(a, ls);
     labels_applied.insert(l);
 }
@@ -157,6 +169,9 @@ static void tp_ls_iter(LabelSetP ls, int (*app)(uint32_t, void *), void *opaque)
 // label this phys addr in memory with this label
 void taint2_label_ram(uint64_t pa, uint32_t l) {
     Addr a = make_maddr(pa);
+
+    taint_log("LABEL: RAM[%lx] (%d)\n", pa, l);
+
     tp_label(a, l);
 }
 
@@ -477,4 +492,10 @@ extern bool taintEnabled;
 int taint2_enabled() {
     return taintEnabled;
 }
+
+
+void taint2_stats() {
+    shadow->stats();
+}
+    
 

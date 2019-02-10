@@ -5,6 +5,7 @@
 extern "C" {
 // For the C API to taint accessible from other plugins
 void taint2_enable_taint(void);
+void taint2_disable_taint(void);
 void taint2_enable_tainted_pointer(void);
 int taint2_enabled(void);
 void taint2_label_ram(uint64_t pa, uint32_t l) ;
@@ -53,5 +54,8 @@ void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, 
 uint32_t taint2_num_labels_applied(void);
 
 void taint2_track_taint_state(void);
+
+void taint2_stats(void);
+
 }
 

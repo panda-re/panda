@@ -29,6 +29,7 @@ extern "C" {
 #define EBX ((CPUArchState*)cpu->env_ptr)->regs[R_EBX]
 #define ECX ((CPUArchState*)cpu->env_ptr)->regs[R_ECX]
 #define EDI ((CPUArchState*)cpu->env_ptr)->regs[R_EDI]
+#define EDX ((CPUArchState*)cpu->env_ptr)->regs[R_EDX]
 #endif
 
 // max length of strnlen or taint query
@@ -39,35 +40,35 @@ extern bool taintEnabled;
 /**
  * @brief Constructs a pandalog message for src-level info.
  */
-Panda__SrcInfo *pandalog_src_info_create(PandaHypercallStruct phs) {
+Panda__SrcInfo *pandalog_src_info_create(PandaHypercallStruct *phs) {
     Panda__SrcInfo *si = (Panda__SrcInfo *)malloc(sizeof(Panda__SrcInfo));
     *si = PANDA__SRC_INFO__INIT;
-    si->filename = phs.src_filename;
-    si->astnodename = phs.src_ast_node_name;
-    si->linenum = phs.src_linenum;
+    si->filename = phs->src_filename;
+    si->astnodename = phs->src_ast_node_name;
+    si->linenum = phs->src_linenum;
     si->has_insertionpoint = 0;
-    if (phs.insertion_point) {
+    if (phs->insertion_point) {
         si->has_insertionpoint = 1;
-        si->insertionpoint = phs.insertion_point;
+        si->insertionpoint = phs->insertion_point;
     }
     si->has_ast_loc_id = 1;
-    si->ast_loc_id = phs.src_filename;
+    si->ast_loc_id = phs->src_filename;
     return si;
 }
 
 /**
  * @brief Hypercall-initiated taint query of some src-level extent.
  */
-void taint_query_hypercall(PandaHypercallStruct phs) {
+void taint_query_hypercall(PandaHypercallStruct *phs) {
     CPUState *cpu = first_cpu;
     if  (pandalog && taintEnabled && (taint2_num_labels_applied() > 0)) {
         // okay, taint is on and some labels have actually been applied
         // is there *any* taint on this extent
         uint32_t num_tainted = 0;
-        bool is_strnlen = ((int) phs.len == -1);
+        bool is_strnlen = ((int) phs->len == -1);
         uint32_t offset=0;
         while (true) {
-            uint32_t va = phs.buf + offset;
+            uint32_t va = phs->buf + offset;
             uint32_t pa =  panda_virt_to_phys(cpu, va);
             if (is_strnlen) {
                 uint8_t c;
@@ -83,7 +84,7 @@ void taint_query_hypercall(PandaHypercallStruct phs) {
             }
             offset ++;
             // end of query by length or max string length
-            if (!is_strnlen && offset == phs.len) break;
+            if (!is_strnlen && offset == phs->len) break;
             if (is_strnlen && (offset == QUERY_HYPERCALL_MAX_LEN)) break;
         }
         uint32_t len = offset;
@@ -92,33 +93,39 @@ void taint_query_hypercall(PandaHypercallStruct phs) {
             // 1. write the pandalog entry that tells us something was tainted on this extent
             Panda__TaintQueryHypercall *tqh = (Panda__TaintQueryHypercall *) malloc (sizeof (Panda__TaintQueryHypercall));
             *tqh = PANDA__TAINT_QUERY_HYPERCALL__INIT;
-            tqh->buf = phs.buf;
+            tqh->buf = phs->buf;
             tqh->len = len;
             tqh->num_tainted = num_tainted;
             // obtain the actual data out of memory
             // NOTE: first X bytes only!
             uint32_t data[QUERY_HYPERCALL_MAX_LEN];
             uint32_t n = len;
+            if (phs->magic == 0xAAAAAAAA) {
+                tqh->has_num = 1;
+                tqh->num = phs->info;
+            }
             // grab at most X bytes from memory to pandalog
             // this is just a snippet.  we dont want to write 1M buffer
             if (QUERY_HYPERCALL_MAX_LEN < len) n = QUERY_HYPERCALL_MAX_LEN;
             for (uint32_t i=0; i<n; i++) {
                 data[i] = 0;
                 uint8_t c;
-                panda_virtual_memory_rw(cpu, phs.buf+i, &c, 1, false);
+                panda_virtual_memory_rw(cpu, phs->buf+i, &c, 1, false);
                 data[i] = c;
             }
             tqh->n_data = n;
             tqh->data = data;
-            // 2. write out src-level info
-            Panda__SrcInfo *si = pandalog_src_info_create(phs);
-            tqh->src_info = si;
+            if (phs->magic != 0xAAAAAAAA) {
+                // 2. write out src-level info
+                Panda__SrcInfo *si = pandalog_src_info_create(phs);
+                tqh->src_info = si;
+            }
             // 3. write out callstack info
             Panda__CallStack *cs = pandalog_callstack_create();
             tqh->call_stack = cs;
             std::vector<Panda__TaintQuery *> tq;
             for (uint32_t offset=0; offset<len; offset++) {
-                uint32_t va = phs.buf + offset;
+                uint32_t va = phs->buf + offset;
                 uint32_t pa =  panda_virt_to_phys(cpu, va);
                 if ((int) pa != -1) {
                     Addr a = make_maddr(pa);
@@ -152,7 +159,7 @@ void lava_attack_point(PandaHypercallStruct phs) {
         ap->info = phs.info;
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.attack_point = ap;
-        ple.attack_point->src_info = pandalog_src_info_create(phs);
+        ple.attack_point->src_info = pandalog_src_info_create(&phs);
         ple.attack_point->call_stack = pandalog_callstack_create();
         pandalog_write_entry(&ple);
         free(ple.attack_point->src_info);
@@ -164,32 +171,54 @@ void lava_attack_point(PandaHypercallStruct phs) {
 int guest_hypercall_callback(CPUState *cpu) {
 #if defined(TARGET_I386)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    if (EAX == 10) {
+        printf ("taint2: enabling via hypercall\n");
+        taint2_enable_taint();
+    }
     if (taintEnabled) {
-        if (EAX == 7 || EAX == 8) {
+        if (EAX == 11) {
+            printf ("taint2: disabling via hypercall\n");
+            taint2_disable_taint();                            
+        }
+        if (EAX == 7 || EAX == 8 || EAX == 9) {
             target_ulong buf_start = EBX;
             target_ulong buf_len = ECX;
-            long label = EDI;
-            if (R_EAX == 7) {
+            long label = EDX;
+            if (EAX == 7) {
                 // Standard buffer label
-                printf("taint2: single taint label\n");
-                taint2_add_taint_ram_single_label(cpu, (uint64_t)buf_start,
-                                                  (int)buf_len, label);
+                printf("taint2: single taint label via hypercall buf_start=0x%lx buf_len=%lu label=%lu\n",
+                       (unsigned long) buf_start, (unsigned long) buf_len, (unsigned long) label);
+                taint2_add_taint_ram_single_label
+                    (cpu, (uint64_t)buf_start, (int)buf_len, label);
             }
-            else if (R_EAX == 8) {
+            else if (EAX == 8) {
                 // Positional buffer label
-                printf("taint2: positional taint label\n");
+                printf("taint2: positional taint label via hypercall\n");
                 taint2_add_taint_ram_pos(cpu, (uint64_t)buf_start, (int)buf_len, label);
+            }
+            else if (EAX == 9) {
+                // query buffer 
+                printf ("taint2: query via hypercall\n");
+                PandaHypercallStruct phs;
+                phs.magic = 0xAAAAAAAA;
+                phs.buf = buf_start;
+                phs.len = buf_len;
+                phs.info = EDX;
+                taint_query_hypercall(&phs);
             }
         }
         else {
+            // any other value for eax is a lava hypercall? 
             // LAVA Hypercall
             target_ulong addr = panda_virt_to_phys(cpu, env->regs[R_EAX]);
             if ((int)addr == -1) {
                 // if EAX is not a valid ptr, then it is unlikely that this is a
                 // PandaHypercall which requires EAX to point to a block of memory
                 // defined by PandaHypercallStruct
+/*
                 printf ("cpuid with invalid ptr in EAX: vaddr=0x%x paddr=0x%x. Probably not a Panda Hypercall\n",
                         (uint32_t) env->regs[R_EAX], (uint32_t) addr);
+*/
             }
             else if (pandalog) {
                 PandaHypercallStruct phs;
@@ -197,7 +226,7 @@ int guest_hypercall_callback(CPUState *cpu) {
                 if (phs.magic == 0xabcd) {
                     if  (phs.action == 11) {
                         // it's a lava query
-                        taint_query_hypercall(phs);
+                        taint_query_hypercall(&phs);
                     }
                     else if (phs.action == 12) {
                         // it's an attack point sighting

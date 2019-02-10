@@ -22,6 +22,9 @@ PANDAENDCOMMENT */
 #include <string>
 #include <map>
 
+#include <iostream>
+#include <algorithm>
+
 #ifdef TAINT2_DEBUG
 #include "qemu/osdep.h"
 
@@ -33,6 +36,9 @@ extern "C" {
 
 #include "taint_defines.h"
 #include "label_set.h"
+
+
+#define UPDATE_MINMAX
 
 class Shad;
 
@@ -50,6 +56,8 @@ extern uint32_t max_taintset_card;
 
 }
 
+//extern uint64_t panda_current_pc(CPUState *cpu);
+
 #define CPU_LOG_TAINT_OPS (1 << 28)
 
 #ifdef TAINT2_DEBUG
@@ -59,6 +67,7 @@ extern uint32_t max_taintset_card;
     extern int qemu_loglevel; \
     if (qemu_loglevel & CPU_LOG_TAINT_OPS) { \
         bool tainted = false; \
+        qemu_log("pc=0x" TARGET_FMT_lx ": ", panda_current_pc(first_cpu)); \
         for (int __i = 0; __i < size; __i++) { \
             LabelSetP ls = shad->query(src + __i); \
             qemu_log("{"); \
@@ -191,12 +200,15 @@ class Shad
 
     virtual uint32_t query_tcn(uint64_t addr) = 0;
 
+    virtual void stats() = 0;
+
     const char *name()
     {
         return _name.c_str();
     }
 
 };
+
 
 // A fast shadow memory - allocates memory on creation.
 class FastShad : public Shad
@@ -205,10 +217,22 @@ class FastShad : public Shad
     TaintData *labels;
     TaintData *orig_labels;
 
+#ifdef UPDATE_MINMAX
+    uint64_t min_addr=0xffffffffffffffff;
+    uint64_t max_addr=0;
+#endif
+
     TaintData *get_td_p(uint64_t guest_addr)
     {
         tassert(guest_addr < size);
         return &labels[guest_addr];
+    }
+
+    void update_minmax(uint64_t addr) {
+#ifdef UPDATE_MINMAX
+        min_addr = std::min(addr, min_addr);
+        max_addr = std::max(addr, max_addr);
+#endif
     }
 
   protected:
@@ -226,6 +250,7 @@ class FastShad : public Shad
     {
         tassert(addr < size);
         labels[addr] = td;
+        update_minmax(addr);
     }
 
   public:
@@ -237,6 +262,7 @@ class FastShad : public Shad
     {
         taint_log("LABEL: %s[%lx] (%p)\n", name(), addr, ls);
         *get_td_p(addr) = TaintData(ls);
+        update_minmax(addr);
     }
 
     // Remove taint.
@@ -249,13 +275,15 @@ class FastShad : public Shad
         if (track_taint_state && range_tainted(addr, remove_size))
             change = true;
         memset(get_td_p(addr), 0, remove_size * sizeof(TaintData));
-
-        if (change)
+        
+        if (change) 
             taint_state_changed(this, addr, remove_size);
+        
     }
 
     LabelSetP query(uint64_t addr) override
     {
+        taint_log("QUERY: %s[%lx]\n", name(), addr);
         return get_td_p(addr)->ls;
     }
 
@@ -297,7 +325,7 @@ class FastShad : public Shad
             labels[addr] = td;
             
             if (change) taint_state_changed(this, addr, 1);
-        }
+         }
         else
         {
             // delete taint, if there is any, as things have gone too far
@@ -308,12 +336,32 @@ class FastShad : public Shad
                 remove(addr, 1);
             }
         }
+        update_minmax(addr);
     }
 
     uint32_t query_tcn(uint64_t addr) override
     {
         return (query_full(addr)).tcn;
     }
+
+    void stats() override
+    {
+#if UPDATE_MINMAX
+        uint64_t num_tainted=0;
+        uint64_t card_sum=0;
+        std::cout << "FastShad " << name() << " : addr range "
+                  << std::hex << min_addr << " .. " << max_addr << std::dec << " : ";
+        for (uint64_t addr=min_addr; addr<=max_addr; addr++) {
+            LabelSetP ls = query(addr);
+            if (ls) {
+                num_tainted ++;
+                card_sum += ls->size();
+            }
+        }
+        std::cout << " : nt " << num_tainted << " : cs " << card_sum << "\n";
+#endif
+    }
+
 };
 
 class LazyShad : public Shad
@@ -422,6 +470,12 @@ class LazyShad : public Shad
     void pop_frame(uint64_t framesize) override
     {
     }
+
+    void stats() override
+    {
+        std::cout << "LazyShad " << name() << " : sz " << labels.size() << "\n";
+    }
+        
 };
 
 #endif

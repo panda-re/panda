@@ -103,6 +103,8 @@ void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
 void taint_sext(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
                 uint64_t src_size);
 
+void taint_after_ldst(uint64_t memaddr, uint64_t size, uint64_t is_store);
+
 // Takes a NULL-terminated list of (value, select) pairs.
 void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
                   ...);

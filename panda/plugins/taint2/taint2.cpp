@@ -253,6 +253,8 @@ void taint2_enable_taint(void) {
 
     pcb.before_block_exec_invalidate_opt = before_block_exec_invalidate_opt;
     panda_register_callback(taint2_plugin, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);
+    pcb.after_block_exec = after_block_exec;
+    panda_register_callback(taint2_plugin, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     pcb.phys_mem_before_read = phys_mem_read_callback;
     panda_register_callback(taint2_plugin, PANDA_CB_PHYS_MEM_BEFORE_READ, pcb);
     pcb.phys_mem_before_write = phys_mem_write_callback;
@@ -317,6 +319,44 @@ void taint2_enable_taint(void) {
 #endif
 
     std::cerr << "Done verifying module. Running..." << std::endl;
+}
+
+
+void taint2_disable_taint(void) {
+    if (!taintEnabled) return;
+    taintJustDisabled = true;
+
+/*
+    std::cerr << PANDA_MSG << __FUNCTION__ << std::endl;  
+    taintEnabled = false;
+    
+    // unregister all those callbacks
+    panda_cb pcb;
+    pcb.before_block_exec_invalidate_opt = before_block_exec_invalidate_opt;
+    panda_disable_callback(taint2_plugin, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);
+    pcb.phys_mem_before_read = phys_mem_read_callback;
+    panda_disable_callback(taint2_plugin, PANDA_CB_PHYS_MEM_BEFORE_READ, pcb);
+    pcb.phys_mem_before_write = phys_mem_write_callback;
+    panda_disable_callback(taint2_plugin, PANDA_CB_PHYS_MEM_BEFORE_WRITE, pcb);
+    pcb.asid_changed = asid_changed_callback;
+    panda_disable_callback(taint2_plugin, PANDA_CB_ASID_CHANGED, pcb);
+
+    pcb.replay_hd_transfer = replay_hd_transfer_callback;
+    panda_disable_callback(taint2_plugin, PANDA_CB_REPLAY_HD_TRANSFER, pcb);
+
+    // network related callbacks
+    pcb.replay_net_transfer = on_replay_net_transfer;
+    panda_disable_callback(taint2_plugin, PANDA_CB_REPLAY_NET_TRANSFER, pcb);
+    pcb.replay_before_dma = on_replay_before_dma;
+    panda_disable_callback(taint2_plugin, PANDA_CB_REPLAY_BEFORE_DMA, pcb);
+
+
+    panda_disable_llvm();
+    panda_disable_llvm_helpers();
+*/
+    // I guess we should try to reclaim all that memory? 
+    // nah. Assume this will be used to turn of taint for rest of replay
+
 }
 
 // Execute taint ops

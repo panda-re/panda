@@ -109,7 +109,7 @@ enum Mode {Process_unknown, Process_suspicious, Process_known};
 
 Mode process_mode = Process_unknown;
 
-#define PROCESS_GOOD_NUM 10
+#define PROCESS_GOOD_NUM 2
 
 // use to count how many bb in a row have same proc name
 // if that is changing we won't believe it
@@ -193,11 +193,13 @@ static unsigned digits(uint64_t num) {
     return std::to_string(num).size();
 }
 
+const char *outfilename;
+
 void spit_asidstory() {
     // if pandalog we dont write asidstory file
     if (pandalog) return;
 
-    FILE *fp = fopen("asidstory", "w");
+    FILE *fp = fopen(outfilename, "w");
 
     std::vector<ProcessKV> count_sorted_pds(process_datas.begin(), process_datas.end());
     std::sort(count_sorted_pds.begin(), count_sorted_pds.end(),
@@ -258,22 +260,27 @@ void spit_asidstory() {
 }
 
 
+// kernel is pid 1 on linux
+// negative pids must be bad. 0 too?
 static inline bool pid_ok(int pid) {
+    if (pid <= 0) return false;
+/*
     if (pid < 4) {
         return false;
     }
+*/
     return true;
 }
 
 
 static inline bool check_proc(OsiProc *proc) {
     if (!proc) return false;
-    if (pid_ok(proc->pid)) {
-        int l = strlen(proc->name);
-        for (int i=0; i<l; i++) 
-            if (!isprint(proc->name[i])) 
-                return false;
-    }
+    if (!pid_ok(proc->pid)) return false;
+    // if name is not printable characters...
+    int l = strlen(proc->name);
+    for (int i=0; i<l; i++) 
+        if (!isprint(proc->name[i])) 
+            return false;    
     // 'ls', 'ps', 'nc' all are 2 characters
     // we don't believe 1-character cmd names
     // are there any?
@@ -390,11 +397,6 @@ int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong ne
 }
 
 
-OsiProc *asidstory_current_proc() {
-    if (process_mode == Process_known) 
-        return first_good_proc;
-    return NULL;
-}
 
 OsiProc *copy_proc(OsiProc *from, OsiProc *to) {
     if (to == NULL) 
@@ -417,23 +419,17 @@ static inline bool process_same(OsiProc *proc1, OsiProc *proc2) {
 }
 
 
+bool in_kernel = true;
 
 // before every bb, mostly just trying to figure out current proc 
 int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
-/*
-    {
-        OsiProc *current_proc = get_current_process(env);    
-        if (check_proc(current_proc)) {
-            // first good proc 
-            printf ("instr %" PRId64 " proc %d %" PRIx64 " %s\n", rr_get_guest_instr_count(), (int) current_proc->pid, (uint64_t) current_proc->asid, current_proc->name);
-        }
-}
-*/
-
-    if (panda_in_kernel(env)) 
+    in_kernel = panda_in_kernel(env);
+    if (in_kernel) 
         kernel_count ++;
     else
         user_count ++;
+    if (in_kernel) return 0;
+    
     asid_count[panda_current_asid(env)] ++;   
 
     // NB: we only know max instr *after* replay has started which is why this is here
@@ -446,6 +442,14 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     // all this is about figuring out if and when we know the current process
     switch (process_mode) {
     case Process_known: {
+        if (debug) {
+            OsiProc *current_proc = get_current_process(env);    
+            if (check_proc(current_proc)) {
+                printf ("tb=%" PRIx64 " : ", (uint64_t) tb);
+                printf ("before_bb : process_mode known.  %d %s kernel=%d\n", (int) current_proc->pid, current_proc->name, panda_in_kernel(env));
+            }
+            free_osiproc(current_proc);
+        }
         return 0;
         break;
     }
@@ -454,12 +458,16 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
         OsiProc *current_proc = get_current_process(env);    
         if (check_proc(current_proc)) {
             // first good proc 
+            if (!first_good_proc) 
+                free_osiproc(first_good_proc);
             first_good_proc = copy_osiproc_g(current_proc, first_good_proc);
             instr_first_good_proc = rr_get_guest_instr_count(); 
             process_mode = Process_suspicious;
             process_counter = PROCESS_GOOD_NUM;
-            if (debug) printf ("before_bb: process_mode suspicious.  %d %s\n", (int) current_proc->pid, current_proc->name);
+//            if (debug) printf ("tb=%" PRIx64 " : ", (uint64_t) tb);
+            if (debug) printf ("before_bb: process_mode suspicious.  %d %s kernel=%d\n", (int) current_proc->pid, current_proc->name, panda_in_kernel(env));
         }
+        free_osiproc(current_proc);
         break;
     }
     case Process_suspicious: {
@@ -471,15 +479,19 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
             if (process_counter == 0) {
                 // process deemed good enough
                 process_mode = Process_known;
-                PPP_RUN_CB(on_proc_change, env, asid_at_asid_changed, first_good_proc);
-                if (debug) printf ("before_bb: process_mode known\n");
+                PPP_RUN_CB(on_proc_change, env, asid_at_asid_changed, first_good_proc);     
+//                if (debug) printf ("tb=%" PRIx64 " : ", (uint64_t) tb);
+                if (debug) 
+                    printf ("before_bb: process_mode newly known.  %d %s kernel=%d\n", (int) current_proc->pid, current_proc->name, panda_in_kernel(env));           
             }
         }
         else {
             // process either not good or not stable -- revert
             process_mode = Process_unknown;                    
-            if (debug) printf ("before_bb: process_mode unknown\n");
+            if (debug) printf ("before_bb: process_mode unknown kernel=%d\n", panda_in_kernel(env));
+            printf("process mode went from suspicious to unknown\n");
         }
+        free_osiproc(current_proc);
         break;        
     }
     default: {}
@@ -487,6 +499,17 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     
     return 0;
 }
+
+
+/*
+  This will return NULL if asidstory doesn't currently know the process.
+*/
+extern "C" OsiProc *asidstory_current_proc(void ) {
+    if (!(in_kernel) && process_mode == Process_known) 
+        return first_good_proc;
+    return NULL;
+}
+
 
 
 bool init_plugin(void *self) {    
@@ -504,6 +527,8 @@ bool init_plugin(void *self) {
     
     panda_arg_list *args = panda_get_args("asidstory");
     num_cells = std::max(panda_parse_uint64_opt(args, "width", 100, "number of columns to use for display"), UINT64_C(80)) - NAMELEN - 5;
+    outfilename = panda_parse_string_opt(args, "outfile", "theasidstory", "specify outfile for asidstory ascii art");
+
     //    sample_rate = panda_parse_uint32(args, "sample_rate", sample_rate);
     //    sample_cutoff = panda_parse_uint32(args, "sample_cutoff", sample_cutoff);
     if (!pandalog) {
@@ -516,14 +541,11 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
-//  spit_asidstory();
-
+    spit_asidstory();
 
     printf ("user %" PRId64 "\n", user_count);
     printf ("kernel %" PRId64 "\n", kernel_count);
     for (auto &kvp : asid_count) {
-//        target_ulong asid : kvp.first;
-  //      uint64_t count : kvp.second;
         printf ("  %lx %" PRId64 "\n", (uint64_t) kvp.first, kvp.second);
     }
 

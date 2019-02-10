@@ -39,13 +39,14 @@ message AttackPoint {
 // taint_query is results of taint query on each byte in extent
 // that actually was tainted   
 message TaintQueryHypercall {
-    required uint64 buf = 1;
-    required uint32 len = 2;
-    repeated uint32 data = 3;
-    required uint32 num_tainted = 4;
-    required CallStack call_stack = 5;
-    required SrcInfo src_info = 6;
-    repeated TaintQuery taint_query = 7;
+    optional uint64 num = 1;
+    required uint64 buf = 2;
+    required uint32 len = 3;
+    repeated uint32 data = 4;
+    required uint32 num_tainted = 5;
+    required CallStack call_stack = 6;
+    optional SrcInfo src_info = 7;
+    repeated TaintQuery taint_query = 8;
 }
 
 optional TaintQueryHypercall taint_query_hypercall = 38;
