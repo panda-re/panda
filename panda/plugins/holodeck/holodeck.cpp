@@ -20,6 +20,8 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
+#include "include/qemu/option.h"
+#include "include/qemu/config-file.h"
 
 }
 
@@ -68,7 +70,7 @@ unsigned int _generate_value(Device &dev, unsigned int offset) {
         }
     }
 
-    printf("Couldn't find config to generate value. Aborting\n");
+    fprintf(stderr, "Error: [holodeck] couldn't find config to generate value. Aborting\n");
     assert(0);
 }
 
@@ -81,7 +83,7 @@ unsigned int generate_value(std::vector<Device> devices, unsigned int address) {
         }
     }
 
-    printf("Couldn't find config to generate value. Aborting\n");
+    fprintf(stderr, "Error: [holodeck] couldn't find config to generate value. Aborting\n");
     assert(0);
 }
 
@@ -128,7 +130,7 @@ bool parse_devices(YAML::Node &devices_y, std::vector<Device> &devices) {
            } else if (model_name == "random-uniform") {
                m.type = ModelRandomUniform;
            }else{
-               printf("Unknown model type %s\n", model_name.c_str());
+               fprintf(stderr, "Error: [holodeck] found unknown model type %s\n", model_name.c_str());
                return false;
            }
 
@@ -147,7 +149,7 @@ bool parse_devices(YAML::Node &devices_y, std::vector<Device> &devices) {
 
                    const YAML::Node& seqvals = props.second["reads"];
                    for(unsigned i=0;i<seqvals.size();i++) {
-                       int intval = seqvals[i].as<int>();
+                       unsigned int intval = seqvals[i].as<unsigned int>();
                        (*seq.values).push_back(intval);
                    }
                    m.s = seq;
@@ -221,8 +223,6 @@ void dump_devices(std::vector<Device> &devices) {
 void cleanup_devices(std::vector<Device> &devices) {
     //Cleanup
     for (auto &dev : devices) {
-        printf("Device %s has %lu models:\n", dev.name.c_str(), dev.models.size());
-
         // Delete allocated vectors* in models where necessary
         for (auto &model : dev.models) {
             if (model.type == ModelSequence) {
@@ -236,6 +236,7 @@ void cleanup_devices(std::vector<Device> &devices) {
 }
 
 bool init_plugin(void *self) {
+#ifdef TARGET_ARM
     panda_arg_list *args = panda_get_args("holodeck");
     const char *config_path = NULL;
     if (args != NULL) {
@@ -243,24 +244,47 @@ bool init_plugin(void *self) {
     }
     assert(config_path != NULL);
 
+    // Setup machine type
+    const char *optarg;
+    QemuOpts *opts;
 
-    
+    // Warn if a machine type was already specified
+    opts = qemu_find_opts_singleton("machine");
+    optarg = qemu_opt_get(opts, "type");
+    if (optarg) {
+        fprintf(stderr, "Warning: [holodeck] Machine type was set to '%s' but holodeck plugin is using machine rehosting\n", optarg);
+    }
+
+    // Set machine type to 'rehosting' and specify parameters from config
+    Error* error_abort;
+    qemu_opts_set(qemu_find_opts("machine"), 0, "type", "rehosting",
+                                          &error_abort);
+
+    // TODO: get dtb path from config (or from inside config?)
+    // qemu_opts_set(qemu_find_opts("machine"), 0, "dtb", "DTB_FILENAME.dtb",
+    //               &error_abort);
+
     YAML::Node config = YAML::LoadFile(config_path);
 
-    std::vector<Device> devices;
+    // Parse machine from config
 
-    // Parse devices
+    // Parse devices from config
+    std::vector<Device> devices;
     YAML::Node devices_y = config["devices"];
 
     if (!parse_devices(devices_y, devices)) {
-        fprintf(stderr, "Couldn't parse input config. Aborting\n");
+        fprintf(stderr, "Error: [holodeck] Couldn't parse input config. Aborting\n");
         assert(0);
     }
 
-    dump_devices(devices);
-    cleanup_devices(devices);
+    //dump_devices(devices);
+    //cleanup_devices(devices);
 
     return true;
+#else
+    fprintf(stderr, "Error: [holodeck] Holodeck is unsupported on this architecture\n");
+    assert(0);
+#endif
 }
 
 void uninit_plugin(void *self) { }

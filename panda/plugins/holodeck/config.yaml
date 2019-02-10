@@ -1,0 +1,53 @@
+devices:
+    mmio1:
+        # a region for which we just return 7 every time offset 0
+        #  is read and 119 every time offset 12 is read
+        start: 3735928559
+        length: 100
+        models:
+            0:
+                type: constant
+                reads: 7
+            12:
+                type: constant
+                reads: 119
+
+    mmio2:
+        # a region for which we return these values in sequence
+        # when we read from offset 4, and when we exhaust the sequence and
+        # require an additional read, we abort, since more inference is in
+        # order.  For offset 6, we have a policy of reading back anything
+        # previously written to that offset.  But the first access to that
+        # offset is a read then we abort
+        start: 4096
+        length: 12
+        models:
+            4:
+                type: sequence
+                reads: [1, 2, 3]
+                uninit_read_policy: repeat
+            6:
+                type: constant
+                reads: 8
+                uninit_read_policy: repeat
+                write_policy: return_last_written
+
+    mmio3:
+        # a region for which we return a random draw from the
+        # values 1-9 for any read of offsets 0-511
+        start: 262144
+        length: 2048
+        models:
+            511:
+                type: random-uniform
+                reads: [1,2,3,4,5,6,7,8,9]
+
+    mmio4:
+        # a region for which we return a random draw from the
+        # values 1-9 for any read of offsets 0-511
+        start: 65535
+        length: 2048
+        models:
+            2047:
+                type: random-uniform
+                reads: [1,2,3,4,5,6,7,8,9]
