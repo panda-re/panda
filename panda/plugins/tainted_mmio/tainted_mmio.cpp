@@ -59,8 +59,17 @@ typedef uint32_t Tlabel;
 map<Tlabel,uint64_t> label2ioaddr;
 map<uint64_t,Tlabel> ioaddr2label;
 
-
 uint64_t last_unassigned_io_read = 0;
+
+bool taint_on = false;
+
+void enable_taint(CPUState *env) {
+    printf ("tainted_mmio plugin is enabling taint\n");
+    taint2_enable_taint();
+    taint_on = true;
+}
+
+
 
 /*
   We are assuming this callback will run *before* the label_io_read
@@ -76,7 +85,9 @@ void saw_unassigned_io_read(CPUState *env, target_ulong pc, hwaddr addr,
 
 // Apply taint labels to mmio
 void label_io_read(Addr reg, uint64_t paddr, uint64_t size) {
-    
+
+    if (!taint_on) return;
+
     bool label_it = false;
     if (only_label_uninitialized_reads 
          && (paddr == last_unassigned_io_read)) {
@@ -117,9 +128,12 @@ bool init_plugin(void *self) {
     panda_arg_list *args = panda_get_args("tainted_mmio");
     only_label_uninitialized_reads = panda_parse_bool_opt(args, "uninit", "if set this means we will only label reads from uninitialized mmio regions");
 
+    panda_cb pcb;
+    pcb.after_machine_init = enable_taint;
+    panda_register_callback(self, PANDA_CB_AFTER_MACHINE_INIT, pcb);
+    
     if (only_label_uninitialized_reads) {
         cout << "tainted_mmio: only labeling uninitialized mmio reads\n";
-        panda_cb pcb;
         pcb.unassigned_io_read = saw_unassigned_io_read;
         panda_register_callback(self, PANDA_CB_UNASSIGNED_IO_READ, pcb);
     }
