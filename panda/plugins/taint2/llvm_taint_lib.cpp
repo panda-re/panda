@@ -126,13 +126,13 @@ void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store,
     }
 }
 
-void taint_after_ldst_run(/*uint64_t rega, */ uint64_t addr, uint64_t size, bool is_store) {
-//    Addr reg = make_laddr(rega / MAXREGSIZE, 0);
+void taint_after_ldst_run(uint64_t rega, uint64_t addr, uint64_t size, bool is_store) {
+    Addr reg = make_laddr(rega / MAXREGSIZE, 0);
     if (is_store) {
-        PPP_RUN_CB(on_after_store, /* reg,*/ addr, size);
+        PPP_RUN_CB(on_after_store, reg, addr, size);
     }
     else {
-        PPP_RUN_CB(on_after_load, /* reg, */ addr, size);
+        PPP_RUN_CB(on_after_load, reg, addr, size);
     }
 }
 
@@ -520,10 +520,11 @@ void PandaTaintVisitor::insertTaintCopy(Instruction &I,
 // load llreg from addr
 // or store llreg to addr 
 // both logically after taint transfer has occurred
+// NB: val is llvm register that is dest of store or that is source of load
 void PandaTaintVisitor::insertAfterTaintLdSt(Instruction &I,
-       Value *ptr, uint64_t size, bool is_store) {
+       Value *val, Value *ptr, uint64_t size, bool is_store) {
     LLVMContext &ctx = I.getContext();
-    vector<Value *> args {constSlot(ptr), const_uint64(ctx, size), const_uint64(ctx, is_store)};
+    vector<Value *> args {constSlot(val), constSlot(ptr), const_uint64(ctx, size), const_uint64(ctx, is_store)};
     inlineCallAfter(I, afterLdStF, args);    
 }
 
@@ -1313,6 +1314,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             return;
         } else if (ldFuncs.count(calledName) > 0) {
             Value *ptr = I.getArgOperand(1);
+            Value *val = I.getArgOperand(2);
             if (tainted_pointer && !isa<Constant>(ptr)) {
                 insertTaintPointer(I, ptr, &I, false);
             } else {
@@ -1320,7 +1322,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
                 insertTaintCopy(I, llvConst, &I, memConst, NULL, getValueSize(&I));
             }
             // TRL 
-            insertAfterTaintLdSt(I, ptr, getValueSize(&I), /* is_store=*/ false);
+            insertAfterTaintLdSt(I, val, ptr, getValueSize(&I), /* is_store=*/ false);
             return;
         } else if (stFuncs.count(calledName) > 0) {
             Value *ptr = I.getArgOperand(1);
@@ -1334,7 +1336,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
                 insertTaintCopy(I, memConst, NULL, llvConst, val, getValueSize(val));
             }
             // TRL
-            insertAfterTaintLdSt(I, ptr, getValueSize(val), true);
+            insertAfterTaintLdSt(I, val, ptr, getValueSize(val), true);
             return;
         } else if (unaryMathFuncs.count(calledName) > 0) {
             insertTaintMix(I, I.getArgOperand(0));

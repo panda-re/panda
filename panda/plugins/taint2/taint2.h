@@ -34,8 +34,8 @@ typedef void (*on_indirect_jump_t) (Addr, uint64_t);
 typedef void (*on_taint_change_t) (Addr, uint64_t);
 typedef void (*on_ptr_load_t) (Addr, uint64_t, uint64_t);
 typedef void (*on_ptr_store_t) (Addr, uint64_t, uint64_t);
-typedef void (*on_after_load_t) (uint64_t, uint64_t);
-typedef void (*on_after_store_t) (uint64_t, uint64_t);
+typedef void (*on_after_load_t) (Addr, uint64_t, uint64_t);
+typedef void (*on_after_store_t) (Addr, uint64_t, uint64_t);
 
 
 struct ShadowState {
@@ -83,8 +83,9 @@ struct ShadowState {
         }
     }
 
-    void stats(void) {
+
 #ifdef UPDATE_MINMAX
+    void stats(void) {
         ram.stats();
         llv.stats();
         ret.stats();
@@ -92,8 +93,8 @@ struct ShadowState {
         gsv.stats();
         hd.stats();
         io.stats();
-#endif
     }
+#endif
 
 };
 

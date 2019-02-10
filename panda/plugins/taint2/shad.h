@@ -200,7 +200,9 @@ class Shad
 
     virtual uint32_t query_tcn(uint64_t addr) = 0;
 
+#ifdef UPDATE_MINMAX
     virtual void stats() = 0;
+#endif
 
     const char *name()
     {
@@ -228,12 +230,12 @@ class FastShad : public Shad
         return &labels[guest_addr];
     }
 
-    void update_minmax(uint64_t addr) {
 #ifdef UPDATE_MINMAX
+    void update_minmax(uint64_t addr) {
         min_addr = std::min(addr, min_addr);
         max_addr = std::max(addr, max_addr);
-#endif
     }
+#endif
 
   protected:
     bool range_tainted(uint64_t addr, uint64_t size) override
@@ -250,7 +252,9 @@ class FastShad : public Shad
     {
         tassert(addr < size);
         labels[addr] = td;
+#ifdef UPDATE_MINMAX
         update_minmax(addr);
+#endif
     }
 
   public:
@@ -262,7 +266,9 @@ class FastShad : public Shad
     {
         taint_log("LABEL: %s[%lx] (%p)\n", name(), addr, ls);
         *get_td_p(addr) = TaintData(ls);
+#ifdef UPDATE_MINMAX
         update_minmax(addr);
+#endif
     }
 
     // Remove taint.
@@ -336,7 +342,9 @@ class FastShad : public Shad
                 remove(addr, 1);
             }
         }
+#ifdef UPDATE_MINMAX
         update_minmax(addr);
+#endif
     }
 
     uint32_t query_tcn(uint64_t addr) override
@@ -344,9 +352,10 @@ class FastShad : public Shad
         return (query_full(addr)).tcn;
     }
 
+
+#ifdef UPDATE_MINMAX
     void stats() override
     {
-#if UPDATE_MINMAX
         uint64_t num_tainted=0;
         uint64_t card_sum=0;
         std::cout << "FastShad " << name() << " : addr range "
@@ -359,8 +368,8 @@ class FastShad : public Shad
             }
         }
         std::cout << " : nt " << num_tainted << " : cs " << card_sum << "\n";
-#endif
     }
+#endif
 
 };
 
@@ -471,11 +480,13 @@ class LazyShad : public Shad
     {
     }
 
+#ifdef UPDATE_MINMAX
     void stats() override
     {
         std::cout << "LazyShad " << name() << " : sz " << labels.size() << "\n";
     }
-        
+#endif        
+
 };
 
 #endif
