@@ -189,7 +189,7 @@ typedef struct LineRange {
 
     friend std::ostream &operator<<(std::ostream &os, const LineRange &lr) {
         os << "0x" << std::hex << lr.lowpc << "-0x" << std::hex << lr.highpc <<
-            lr.filename << ":" << lr.line_number << ":" << lr.line_off;
+            lr.filename << ":" << std::dec << lr.line_number << ":" << lr.line_off;
         return os;
     }
 
@@ -1745,7 +1745,8 @@ void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, targe
     printf ("on_library_load guest_lib_name=%s\n", guest_lib_name);
     if (!correct_asid(cpu)) {
         printf ("current_asid=%x is not monitored\n", panda_current_asid(cpu));
-        return;
+        printf ("... soldiering on regardless\n");
+//        return;
     }
     active_libs.push_back(Lib(guest_lib_name, base_addr, base_addr + size));
     //sprintf(fname, "%s/%s", debug_path, m->name);

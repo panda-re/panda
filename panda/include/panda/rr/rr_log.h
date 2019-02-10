@@ -140,8 +140,9 @@ typedef struct RR_log_t {
     RR_log_type type;              // record or replay
     RR_prog_point last_prog_point; // to report progress
 
-    char* name; // file name
-    FILE* fp;   // file pointer for log
+    char* name;        // file name
+    char *short_name;  // short version of filename (minus path and suffix)
+    FILE* fp;          // file pointer for log
     unsigned long long
         size; // for a log being opened for read, this will be the size in bytes
     uint64_t bytes_read;
