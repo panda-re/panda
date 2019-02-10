@@ -73,8 +73,9 @@ unsigned int _generate_value(Device &dev, unsigned int offset) {
         }
     }
 
-    fprintf(stderr, "Error: [holodeck] couldn't find config to generate value. Aborting\n");
-    assert(0);
+    fprintf(stderr, "Error: [holodeck] couldn't find config to generate value. return 0\n");
+    return 0;
+    //assert(0);
 }
 
 unsigned int generate_value(std::vector<Device> devices, unsigned int address) {
@@ -82,6 +83,8 @@ unsigned int generate_value(std::vector<Device> devices, unsigned int address) {
     for (auto &dev : devices) {
         if (address > dev.start && address < (dev.start+dev.length)) {
             // Found device, now generate respond
+            fprintf(stderr, "Info: [holodeck] found device %s\n", dev.name.c_str());
+
             return _generate_value(dev, address-dev.start);
         }
     }
@@ -194,9 +197,9 @@ bool parse_devices(YAML::Node &devices_y, std::vector<Device> &devices) {
 void dump_devices(std::vector<Device> &devices) {
     // Done parsing devices. Test print all devices
     for (auto &dev : devices) {
-        printf("Device %s has %lu models:\n", dev.name.c_str(), dev.models.size());
+        printf("Device %s starts at 0x%x and has %lu models:\n", dev.name.c_str(), dev.start, dev.models.size());
         for (auto &model : dev.models) {
-            printf("\tOffset %u:\n", model.offset);
+            printf("\tOffset 0x%x:\n", model.offset);
             switch (model.type) {
                 case ModelConstant:
                     printf("\t\tConstant: %d\n", model.c.value);
@@ -220,10 +223,12 @@ void dump_devices(std::vector<Device> &devices) {
                     break;
             }
 
+            /*
             printf("\t\tSample values:\t");
             for(int j=0;j<10;j++) 
                 printf(" %u,", _generate_value(dev, model.offset));
             printf("\n");
+            */
         }
     }
 }
@@ -242,6 +247,16 @@ void cleanup_devices(std::vector<Device> &devices) {
 
     }
 }
+
+void saw_unassigned_io_read(CPUState *env, target_ulong pc, hwaddr addr, 
+                            uint32_t size, uint64_t *val) {
+
+    fprintf(stderr, "INFO: [holodeck] unassigned read to 0x%lx of size %x\n", addr, size);
+    uint64_t v= generate_value(device_list, addr);
+    fprintf(stderr, "INFO: [holodeck] \treturning 0x%lx\n", v);
+    *val = v;
+}
+
 
 bool init_plugin(void *self) {
 #ifdef TARGET_ARM
@@ -328,6 +343,13 @@ bool init_plugin(void *self) {
         fprintf(stderr, "Error: [holodeck] Couldn't parse input config. Aborting\n");
         assert(0);
     }
+    fprintf(stderr, "Info: [holodeck] Parsed input config!\n");
+    dump_devices(device_list);
+
+    // Register callbacks
+    panda_cb pcb;
+    pcb.unassigned_io_read = saw_unassigned_io_read;
+    panda_register_callback(self, PANDA_CB_UNASSIGNED_IO_READ, pcb);
 
     return true;
 #else
