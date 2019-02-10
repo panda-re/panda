@@ -454,8 +454,14 @@ static inline void aio_disable_external(AioContext *ctx)
  */
 static inline void aio_enable_external(AioContext *ctx)
 {
-    assert(ctx->external_disable_cnt > 0);
-    atomic_dec(&ctx->external_disable_cnt);
+    int old;
+
+    old = atomic_fetch_dec(&ctx->external_disable_cnt);
+    assert(old > 0);
+    if (old == 1) {
+        /* Kick event loop so it re-arms file descriptors */
+        aio_notify(ctx);
+    }
 }
 
 /**
@@ -509,6 +515,15 @@ void aio_co_schedule(AioContext *ctx, struct Coroutine *co);
  * aio_co_wake() is active.
  */
 void aio_co_wake(struct Coroutine *co);
+
+/**
+ * aio_co_enter:
+ * @ctx: the context to run the coroutine
+ * @co: the coroutine to run
+ *
+ * Enter a coroutine in the specified AioContext.
+ */
+void aio_co_enter(AioContext *ctx, struct Coroutine *co);
 
 /**
  * Return the AioContext whose event loop runs in the current thread.

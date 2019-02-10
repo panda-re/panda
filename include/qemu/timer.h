@@ -4,7 +4,6 @@
 #include "qemu-common.h"
 #include "qemu/notify.h"
 #include "qemu/host-utils.h"
-#include "sysemu/cpus.h"
 
 #define NANOSECONDS_PER_SECOND 1000000000LL
 
@@ -60,7 +59,7 @@ struct QEMUTimerListGroup {
 };
 
 typedef void QEMUTimerCB(void *opaque);
-typedef void QEMUTimerListNotifyCB(void *opaque);
+typedef void QEMUTimerListNotifyCB(void *opaque, QEMUClockType type);
 
 struct QEMUTimer {
     int64_t expire_time;        /* in nanoseconds */
@@ -617,7 +616,10 @@ void timer_deinit(QEMUTimer *ts);
  *
  * Free a timer (it must not be on the active list)
  */
-void timer_free(QEMUTimer *ts);
+static inline void timer_free(QEMUTimer *ts)
+{
+    g_free(ts);
+}
 
 /**
  * timer_del:
@@ -781,7 +783,7 @@ static inline int64_t qemu_soonest_timeout(int64_t timeout1, int64_t timeout2)
  *
  * Initialise the clock & timer infrastructure
  */
-void init_clocks(void);
+void init_clocks(QEMUTimerListNotifyCB *notify_cb);
 
 int64_t cpu_get_ticks(void);
 /* Caller must hold BQL */
@@ -850,6 +852,7 @@ int64_t cpu_get_icount_raw(void);
 int64_t cpu_get_icount(void);
 int64_t cpu_get_clock(void);
 int64_t cpu_icount_to_ns(int64_t icount);
+void    cpu_update_icount(CPUState *cpu);
 
 /*******************************************/
 /* host CPU ticks (if available) */

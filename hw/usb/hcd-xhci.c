@@ -635,6 +635,11 @@ static bool xhci_get_flag(XHCIState *xhci, enum xhci_flags bit)
     return xhci->flags & (1 << bit);
 }
 
+static void xhci_set_flag(XHCIState *xhci, enum xhci_flags bit)
+{
+    xhci->flags |= (1 << bit);
+}
+
 static uint64_t xhci_mfindex_get(XHCIState *xhci)
 {
     int64_t now = qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL);
@@ -2058,7 +2063,7 @@ static void xhci_kick_ep(XHCIState *xhci, unsigned int slotid,
 static void xhci_kick_epctx(XHCIEPContext *epctx, unsigned int streamid)
 {
     XHCIState *xhci = epctx->xhci;
-    XHCIStreamContext *stctx;
+    XHCIStreamContext *stctx = NULL;
     XHCITransfer *xfer;
     XHCIRing *ring;
     USBEndpoint *ep = NULL;
@@ -2114,6 +2119,8 @@ static void xhci_kick_epctx(XHCIEPContext *epctx, unsigned int streamid)
         }
         assert(!xfer->running_retry);
         if (xfer->complete) {
+            /* update ring dequeue ptr */
+            xhci_set_ep_state(xhci, epctx, stctx, epctx->state);
             xhci_ep_free_xfer(epctx->retry);
         }
         epctx->retry = NULL;
@@ -2164,6 +2171,8 @@ static void xhci_kick_epctx(XHCIEPContext *epctx, unsigned int streamid)
             xhci_fire_transfer(xhci, xfer, epctx);
         }
         if (xfer->complete) {
+            /* update ring dequeue ptr */
+            xhci_set_ep_state(xhci, epctx, stctx, epctx->state);
             xhci_ep_free_xfer(xfer);
             xfer = NULL;
         }
@@ -3839,17 +3848,21 @@ static const VMStateDescription vmstate_xhci = {
     }
 };
 
-static Property xhci_properties[] = {
+static Property nec_xhci_properties[] = {
     DEFINE_PROP_ON_OFF_AUTO("msi", XHCIState, msi, ON_OFF_AUTO_AUTO),
     DEFINE_PROP_ON_OFF_AUTO("msix", XHCIState, msix, ON_OFF_AUTO_AUTO),
     DEFINE_PROP_BIT("superspeed-ports-first",
                     XHCIState, flags, XHCI_FLAG_SS_FIRST, true),
     DEFINE_PROP_BIT("force-pcie-endcap", XHCIState, flags,
                     XHCI_FLAG_FORCE_PCIE_ENDCAP, false),
-    DEFINE_PROP_BIT("streams", XHCIState, flags,
-                    XHCI_FLAG_ENABLE_STREAMS, true),
     DEFINE_PROP_UINT32("intrs", XHCIState, numintrs, MAXINTRS),
     DEFINE_PROP_UINT32("slots", XHCIState, numslots, MAXSLOTS),
+    DEFINE_PROP_END_OF_LIST(),
+};
+
+static Property xhci_properties[] = {
+    DEFINE_PROP_BIT("streams", XHCIState, flags,
+                    XHCI_FLAG_ENABLE_STREAMS, true),
     DEFINE_PROP_UINT32("p2",    XHCIState, numports_2, 4),
     DEFINE_PROP_UINT32("p3",    XHCIState, numports_3, 4),
     DEFINE_PROP_END_OF_LIST(),
@@ -3881,7 +3894,9 @@ static const TypeInfo xhci_info = {
 static void nec_xhci_class_init(ObjectClass *klass, void *data)
 {
     PCIDeviceClass *k = PCI_DEVICE_CLASS(klass);
+    DeviceClass *dc = DEVICE_CLASS(klass);
 
+    dc->props       = nec_xhci_properties;
     k->vendor_id    = PCI_VENDOR_ID_NEC;
     k->device_id    = PCI_DEVICE_ID_NEC_UPD720200;
     k->revision     = 0x03;
@@ -3902,10 +3917,22 @@ static void qemu_xhci_class_init(ObjectClass *klass, void *data)
     k->revision     = 0x01;
 }
 
+static void qemu_xhci_instance_init(Object *obj)
+{
+    XHCIState *xhci = XHCI(obj);
+
+    xhci->msi      = ON_OFF_AUTO_OFF;
+    xhci->msix     = ON_OFF_AUTO_AUTO;
+    xhci->numintrs = MAXINTRS;
+    xhci->numslots = MAXSLOTS;
+    xhci_set_flag(xhci, XHCI_FLAG_SS_FIRST);
+}
+
 static const TypeInfo qemu_xhci_info = {
     .name          = TYPE_QEMU_XHCI,
     .parent        = TYPE_XHCI,
     .class_init    = qemu_xhci_class_init,
+    .instance_init = qemu_xhci_instance_init,
 };
 
 static void xhci_register_types(void)

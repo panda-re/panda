@@ -20,6 +20,7 @@ PANDAENDCOMMENT */
 // glib provides some nifty string manipulation functions
 // https://developer.gnome.org/glib/stable/glib-String-Utility-Functions.html
 #include <glib.h>
+#include <gmodule.h>
 #include <glib/gprintf.h>
 
 #include "panda/plugin.h"
@@ -39,28 +40,24 @@ int asid_changed(CPUState *, target_ulong, target_ulong);
 #endif
 
 PPP_PROT_REG_CB(on_get_processes)
+PPP_PROT_REG_CB(on_get_process_handles)
 PPP_PROT_REG_CB(on_get_current_process)
+PPP_PROT_REG_CB(on_get_process)
 PPP_PROT_REG_CB(on_get_modules)
 PPP_PROT_REG_CB(on_get_libraries)
 PPP_PROT_REG_CB(on_get_current_thread)
-PPP_PROT_REG_CB(on_free_osiproc)
-PPP_PROT_REG_CB(on_free_osiprocs)
-PPP_PROT_REG_CB(on_free_osimodules)
-PPP_PROT_REG_CB(on_free_osithread)
 #ifdef OSI_PROC_EVENTS
 PPP_PROT_REG_CB(on_process_start)
 PPP_PROT_REG_CB(on_process_end)
 #endif
 
 PPP_CB_BOILERPLATE(on_get_processes)
+PPP_CB_BOILERPLATE(on_get_process_handles)
 PPP_CB_BOILERPLATE(on_get_current_process)
+PPP_CB_BOILERPLATE(on_get_process)
 PPP_CB_BOILERPLATE(on_get_modules)
 PPP_CB_BOILERPLATE(on_get_libraries)
 PPP_CB_BOILERPLATE(on_get_current_thread)
-PPP_CB_BOILERPLATE(on_free_osiproc)
-PPP_CB_BOILERPLATE(on_free_osiprocs)
-PPP_CB_BOILERPLATE(on_free_osimodules)
-PPP_CB_BOILERPLATE(on_free_osithread)
 #ifdef OSI_PROC_EVENTS
 PPP_CB_BOILERPLATE(on_process_start)
 PPP_CB_BOILERPLATE(on_process_end)
@@ -70,9 +67,15 @@ PPP_CB_BOILERPLATE(on_process_end)
 // the fact that PPP doesn't support return values (since it assumes
 // that you will be running multiple callbacks at one site)
 
-OsiProcs *get_processes(CPUState *cpu) {
-    OsiProcs *p = NULL;
+GArray *get_processes(CPUState *cpu) {
+    GArray *p = NULL;
     PPP_RUN_CB(on_get_processes, cpu, &p);
+    return p;
+}
+
+GArray *get_process_handles(CPUState *cpu) {
+    GArray *p = NULL;
+    PPP_RUN_CB(on_get_process_handles, cpu, &p);
     return p;
 }
 
@@ -82,40 +85,28 @@ OsiProc *get_current_process(CPUState *cpu) {
     return p;
 }
 
-OsiModules *get_modules(CPUState *cpu) {
-    OsiModules *m = NULL;
+OsiProc *get_process(CPUState *cpu, const OsiProcHandle *h) {
+    OsiProc *p = NULL;
+    PPP_RUN_CB(on_get_process, cpu, h, &p);
+    return p;
+}
+
+GArray *get_modules(CPUState *cpu) {
+    GArray *m = NULL;
     PPP_RUN_CB(on_get_modules, cpu, &m);
     return m;
 }
 
-OsiModules *get_libraries(CPUState *cpu, OsiProc *p) {
-    OsiModules *m = NULL;
+GArray *get_libraries(CPUState *cpu, OsiProc *p) {
+    GArray *m = NULL;
     PPP_RUN_CB(on_get_libraries, cpu, p, &m);
     return m;
 }
 
-OsiThread *get_current_thread(CPUState *cpu)
-{
+OsiThread *get_current_thread(CPUState *cpu) {
     OsiThread *thread = NULL;
     PPP_RUN_CB(on_get_current_thread, cpu, &thread);
     return thread;
-}
-
-void free_osiproc(OsiProc *p) {
-    PPP_RUN_CB(on_free_osiproc, p);
-}
-
-void free_osiprocs(OsiProcs *ps) {
-    PPP_RUN_CB(on_free_osiprocs, ps);
-}
-
-void free_osimodules(OsiModules *ms) {
-    PPP_RUN_CB(on_free_osimodules, ms);
-}
-
-void free_osithread(OsiThread *t)
-{
-    PPP_RUN_CB(on_free_osithread, t);
 }
 
 #ifdef OSI_PROC_EVENTS
@@ -136,7 +127,7 @@ int asid_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
         for (i=0; i<out->num; i++) {
             PPP_RUN_CB(on_process_end, cpu, &out->proc[i]);
         }
-        free_osiprocs(out);
+        //free_osiprocs(out);
     }
 
     /* invoke callbacks for new processes */
@@ -144,7 +135,7 @@ int asid_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
         for (i=0; i<in->num; i++) {
             PPP_RUN_CB(on_process_start, cpu, &in->proc[i]);
         }
-        free_osiprocs(in);
+        //free_osiprocs(in);
     }
 
     return 0;

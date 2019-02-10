@@ -43,7 +43,7 @@ static const uint8_t bcast[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 #include "panda/network.h"
 #include "panda/rr/rr_log_all.h"
 
-//#define E1000_DEBUG
+/* #define E1000_DEBUG */
 
 #ifdef E1000_DEBUG
 enum {

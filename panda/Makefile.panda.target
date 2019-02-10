@@ -86,9 +86,9 @@ plog_pb2.py: plog.proto
 		protoc --proto_path=. --python_out=. $<,\
 		"PROTO   $(TARGET_DIR)$@")
 
-GENERATED_HEADERS += plog.pb-c.h
-GENERATED_HEADERS += plog.pb.h
-GENERATED_HEADERS += $(PANDA_API_EXT)
+GENERATED_FILES += plog.pb-c.h
+GENERATED_FILES += plog.pb.h
+GENERATED_FILES += $(PANDA_API_EXT)
 
 # This keeps make from thinking it's an "intermediate" file
 .PRECIOUS: $(PANDA_API_EXT)
@@ -186,7 +186,7 @@ llvmmorph-$(TARGET_PPC) += llvm-helpers.bc
 
 CLANG_FILTER = -Wold-style-declaration -fstack-protector-strong -Wno-error=cpp -g -O0 -O1 -O3 -mcx16 -Wno-shift-negative-value
 QEMU_BC2FLAGS:=$(filter-out $(CLANG_FILTER),$(QEMU_CFLAGS) $(CFLAGS)) -O2 -I../target/$(TARGET_BASE_ARCH)
-%.bc2: %.c $(GENERATED_HEADERS)
+%.bc2: %.c $(GENERATED_FILES)
 	$(call quiet-command,\
 		$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_BC2FLAGS) $(QEMU_DGFLAGS) -c -emit-llvm -o $@ $<,\
 		"CLANG   $(TARGET_DIR)$@")

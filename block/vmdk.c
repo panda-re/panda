@@ -943,6 +943,12 @@ static int vmdk_open(BlockDriverState *bs, QDict *options, int flags,
     uint32_t magic;
     Error *local_err = NULL;
 
+    bs->file = bdrv_open_child(NULL, options, "file", bs, &child_file,
+                               false, errp);
+    if (!bs->file) {
+        return -EINVAL;
+    }
+
     buf = vmdk_read_desc(bs->file, 0, errp);
     if (!buf) {
         return -EINVAL;
@@ -1697,7 +1703,8 @@ static int vmdk_create_extent(const char *filename, int64_t filesize,
     }
 
     blk = blk_new_open(filename, NULL, NULL,
-                       BDRV_O_RDWR | BDRV_O_PROTOCOL, &local_err);
+                       BDRV_O_RDWR | BDRV_O_RESIZE | BDRV_O_PROTOCOL,
+                       &local_err);
     if (blk == NULL) {
         error_propagate(errp, local_err);
         ret = -EIO;
@@ -1707,10 +1714,7 @@ static int vmdk_create_extent(const char *filename, int64_t filesize,
     blk_set_allow_write_beyond_eof(blk, true);
 
     if (flat) {
-        ret = blk_truncate(blk, filesize);
-        if (ret < 0) {
-            error_setg_errno(errp, -ret, "Could not truncate file");
-        }
+        ret = blk_truncate(blk, filesize, errp);
         goto exit;
     }
     magic = cpu_to_be32(VMDK4_MAGIC);
@@ -1773,9 +1777,8 @@ static int vmdk_create_extent(const char *filename, int64_t filesize,
         goto exit;
     }
 
-    ret = blk_truncate(blk, le64_to_cpu(header.grain_offset) << 9);
+    ret = blk_truncate(blk, le64_to_cpu(header.grain_offset) << 9, errp);
     if (ret < 0) {
-        error_setg_errno(errp, -ret, "Could not truncate file");
         goto exit;
     }
 
@@ -2065,7 +2068,8 @@ static int vmdk_create(const char *filename, QemuOpts *opts, Error **errp)
     }
 
     new_blk = blk_new_open(filename, NULL, NULL,
-                           BDRV_O_RDWR | BDRV_O_PROTOCOL, &local_err);
+                           BDRV_O_RDWR | BDRV_O_RESIZE | BDRV_O_PROTOCOL,
+                           &local_err);
     if (new_blk == NULL) {
         error_propagate(errp, local_err);
         ret = -EIO;
@@ -2082,10 +2086,7 @@ static int vmdk_create(const char *filename, QemuOpts *opts, Error **errp)
     /* bdrv_pwrite write padding zeros to align to sector, we don't need that
      * for description file */
     if (desc_offset == 0) {
-        ret = blk_truncate(new_blk, desc_len);
-        if (ret < 0) {
-            error_setg_errno(errp, -ret, "Could not truncate file");
-        }
+        ret = blk_truncate(new_blk, desc_len, errp);
     }
 exit:
     if (new_blk) {
@@ -2353,6 +2354,7 @@ static BlockDriver bdrv_vmdk = {
     .bdrv_open                    = vmdk_open,
     .bdrv_check                   = vmdk_check,
     .bdrv_reopen_prepare          = vmdk_reopen_prepare,
+    .bdrv_child_perm              = bdrv_format_default_perms,
     .bdrv_co_preadv               = vmdk_co_preadv,
     .bdrv_co_pwritev              = vmdk_co_pwritev,
     .bdrv_co_pwritev_compressed   = vmdk_co_pwritev_compressed,

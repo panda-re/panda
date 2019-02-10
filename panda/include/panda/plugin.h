@@ -81,6 +81,10 @@ typedef enum panda_cb_type {
 
     PANDA_CB_TOP_LOOP, // at top of loop that manages emulation.  good place to
                        // take a snapshot
+    // Unassigned I/O
+    PANDA_CB_UNASSIGNED_IO_READ,
+    PANDA_CB_UNASSIGNED_IO_WRITE,
+
 
     PANDA_CB_LAST
 } panda_cb_type;
@@ -117,17 +121,18 @@ typedef union panda_cb {
 
     /* Callback ID: PANDA_CB_AFTER_BLOCK_EXEC
 
-       after_block_exec: called after execution of every basic block
+       after_block_exec: called after execution of every basic block, although
+       if exitCode > TB_EXIT_IDX1, then the block exited early
 
        Arguments:
         CPUState *env: the current CPU state
         TranslationBlock *tb: the TB we just executed
-        TranslationBlock *next_tb: the TB we will execute next (may be NULL)
+        uint8_t exitCode:  why the block execution exited
 
        Return value:
         unused
     */
-    int (*after_block_exec)(CPUState *env, TranslationBlock *tb);
+    int (*after_block_exec)(CPUState *env, TranslationBlock *tb, uint8_t exitCode);
 
     /* Callback ID: PANDA_CB_BEFORE_BLOCK_TRANSLATE
 
@@ -538,6 +543,12 @@ typedef union panda_cb {
         unused
     */
     int (*replay_net_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
+
+    /* TODO: Document */
+    void (*unassigned_io_read)(CPUState *env, target_ulong pc, hwaddr addr, uint32_t size, uint64_t *val);
+
+    /* TODO: Document */
+    void (*unassigned_io_write)(CPUState *env, target_ulong pc, hwaddr addr, uint32_t size, uint64_t *val);
 
     /* Callback ID:     PANDA_CB_REPLAY_SERIAL_RECEIVE,
 

@@ -102,7 +102,7 @@ Building on Mac is less well-tested, but has been known to work. There is a scri
 
 ### Docker Image
 
-Finally, if you want to skip the build process altogether, there is a 
+Finally, if you want to skip the build process altogether, there is a
 [Docker image](https://hub.docker.com/r/pandare/panda). You can get it by running:
 
     docker pull pandare/panda
@@ -127,8 +127,7 @@ Details about the architecture-neutral plugin interface can be found in
 
 ## Record/Replay
 
-PANDA currently supports whole-system record/replay execution of x86, x86\_64,
-and ARM guests. Documentation can be found in
+PANDA currently supports whole-system record/replay execution, as well as time-travel debugging, of x86, x86\_64, and ARM guests. Documentation can be found in
 [the manual](panda/docs/manual.md#recordreplay-details).
 
 ## Publications

@@ -27,6 +27,7 @@
 
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
+#include "panda/checkpoint.h"
 extern bool panda_update_pc;
 #endif
 
@@ -37,6 +38,7 @@ extern bool panda_update_pc;
 
 #include "trace-tcg.h"
 #include "exec/log.h"
+
 
 
 #define PREFIX_REPZ   0x01
@@ -2005,7 +2007,7 @@ static AddressParts gen_lea_modrm_0(CPUX86State *env, DisasContext *s,
     }
 
  done:
-    return (AddressParts){ def_seg, base, index, scale, disp };
+    return (AddressParts) { def_seg, base, index, scale, disp };
 }
 
 /* Compute the address, with a minimum number of TCG ops.  */
@@ -4425,6 +4427,13 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
     s->vex_l = 0;
     s->vex_v = 0;
  next_byte:
+    /* x86 has an upper limit of 15 bytes for an instruction. Since we
+     * do not want to decode and generate IR for an illegal
+     * instruction, the following check limits the instruction size to
+     * 25 bytes: 14 prefix + 1 opc + 6 (modrm+sib+ofs) + 4 imm */
+    if (s->pc - pc_start > 14) {
+        goto illegal_op;
+    }
     b = cpu_ldub_code(env, s->pc);
     s->pc++;
     /* Collect prefixes.  */
@@ -8447,6 +8456,8 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         }
     }
 
+    uint64_t rr_updated_instr_count = rr_get_guest_instr_count();
+
     /*
      * This function call emits a few instructions at the beginning of every
      * basic block checking for an exit request.  This probably won't affect
@@ -8457,17 +8468,53 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         tcg_gen_insn_start(pc_ptr, dc->cc_op);
         num_insns++;
 
+        // Check reverse-continue status and conditions
+        // potentially restoring to checkpoint
+        cpu_rcont_check_restore(cs, rr_updated_instr_count);
+
         /* If RF is set, suppress an internally generated breakpoint.  */
         if (unlikely(cpu_breakpoint_test(cs, pc_ptr,
                                          tb->flags & HF_RF_MASK
-                                         ? BP_GDB : BP_ANY))) {
-            gen_debug(dc, pc_ptr - dc->cs_base);
-            /* The address covered by the breakpoint must be included in
-               [tb->pc, tb->pc + tb->size) in order to for it to be
-               properly cleared -- thus we increment the PC here so that
-               the logic setting tb->size below does the right thing.  */
-            pc_ptr += 1;
-            goto done_generating;
+                                         ? BP_GDB : BP_ANY)) || 
+                unlikely(cpu_rr_breakpoint_test(cs, rr_updated_instr_count, 
+                                             tb->flags & HF_RF_MASK ? BP_GDB : BP_ANY))) {
+                // If we're in reverse direction, don't gen a debug event. 
+                // Instead, record it so we can figure out the latest one
+                if (unlikely(cs->reverse_flags & GDB_RCONT)) {
+                    cs->last_bp_hit_instr = rr_updated_instr_count;
+                } else if (cs->reverse_flags & GDB_RSTEP) {
+                    if (rr_updated_instr_count >= cs->last_gdb_instr) {
+                        fprintf(stderr, "GDB_RSTEP went too far");
+                        abort();
+                    }
+
+                    if (rr_updated_instr_count == cs->last_gdb_instr-1) {
+                        cs->reverse_flags |= GDB_RDONE;
+                        goto generate_debug;
+                    }
+
+                } else if (cs->reverse_flags & GDB_RCONT_BREAK) {
+                    // We are doing second pass of reverse-continue
+                    // break on latest breakpoint/watchpoint 
+                    if (rr_updated_instr_count > cs->last_bp_hit_instr) {
+                        fprintf(stderr, "GDB_RCONT_BREAK went too far");
+                        abort();
+                    }
+
+                    if  (rr_updated_instr_count == cs->last_bp_hit_instr) {
+                        cs->reverse_flags = 0;
+                        goto generate_debug;
+                    }
+                } else {
+generate_debug:
+                    gen_debug(dc, pc_ptr - dc->cs_base);
+                    /* The address covered by the breakpoint must be included in
+                       [tb->pc, tb->pc + tb->size) in order to for it to be
+                       properly cleared -- thus we increment the PC here so that
+                       the logic setting tb->size below does the right thing.  */
+                    pc_ptr += 1;
+                    goto done_generating;
+                }
         }
         if (num_insns == max_insns && (tb->cflags & CF_LAST_IO)) {
             gen_io_start();
@@ -8488,6 +8535,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         }
 
         pc_ptr = disas_insn(env, dc, pc_ptr);
+        rr_updated_instr_count++;
 
         if (unlikely(panda_callbacks_after_insn_translate(ENV_GET_CPU(env), pc_ptr))
                 && !dc->is_jmp) {

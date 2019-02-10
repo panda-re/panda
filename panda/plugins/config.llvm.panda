@@ -7,3 +7,5 @@ tstringsearch
 tainted_instr
 ida_taint2
 ipflow
+tainted_net
+serial_taint

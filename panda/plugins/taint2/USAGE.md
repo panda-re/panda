@@ -6,7 +6,7 @@ Summary
 
 The `taint2` plugin tracks the flow of data through a running program. One can apply taint labels to some data, follow the flow of labeled data through the program execution, and later query data to find out what labels it has.
 
-`taint2` provides APIs and callbacks for labeling and querying data, and does the work of propagating taint. This means it is not generally useful by itself. To introduce taint into the system, you can use plugins like `file_taint`, `tstringsearch` and `tainted_net`; to query taint you can use plugins like `tainted_instr`, `dead_data`, `taint_compute_numbers` or `tainted_net`.
+`taint2` provides APIs and callbacks for labeling and querying data, and does the work of propagating taint. This means it is not generally useful by itself. To introduce taint into the system, you can use plugins like `file_taint`, `tstringsearch` and `tainted_net`; to query taint you can use plugins like `tainted_instr`, `taint_compute_numbers` or `tainted_net`.
 
 Note that since this notion of taint supports an arbitrary number of *labels*, the taint on a particular piece of data will typically be a *label set* rather than a single label. For example, if some quantities `a` and `b` have labels `1` and `2` respectively, then an operation such as `c = a + b` will result in `c` being tainted with the label set `{1, 2}`.
 
@@ -26,8 +26,6 @@ Arguments
 
 * `no_tp`: boolean. Whether to taint the result of dereferencing a pointer that has been tainted.
 * `inline`: boolean. Whether taint operations should be carried out in line with generated code, or through a function call.
-* `binary`: boolean. Whether to use binary taint (i.e., data is tainted or not tainted, rather than supporting arbitrary numbers of labels).
-* `word`: boolean. Whether to track taint at word-level (i.e., 4 bytes on a 32-bit architecture) as opposed to byte-level. Can provide a performance improvement at the cost of reduced precision.
 * `opt`:  boolean. Whether to run an optimization pass on the instrumented LLVM code.
 * `detaint_cb0`: boolean. Whether to detaint bytes whose control mask bits have become 0. Can reduce false positives when tainted data no longer influences a byte's value.
 * `max_taintset_compute_number`: maximum taint compute number (0, the default, means unlimited).

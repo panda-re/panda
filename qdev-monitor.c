@@ -29,7 +29,6 @@
 #include "qemu/error-report.h"
 #include "qemu/help_option.h"
 #include "sysemu/block-backend.h"
-#include "migration/migration.h"
 
 /*
  * Aliases were a bad idea from the start.  Let's keep them
@@ -114,7 +113,7 @@ static void qdev_print_devinfo(DeviceClass *dc)
     if (dc->desc) {
         error_printf(", desc \"%s\"", dc->desc);
     }
-    if (dc->cannot_instantiate_with_device_add_yet) {
+    if (!dc->user_creatable) {
         error_printf(", no-user");
     }
     error_printf("\n");
@@ -156,7 +155,7 @@ static void qdev_print_devinfos(bool show_no_user)
                  ? !test_bit(i, dc->categories)
                  : !bitmap_empty(dc->categories, DEVICE_CATEGORY_MAX))
                 || (!show_no_user
-                    && dc->cannot_instantiate_with_device_add_yet)) {
+                    && !dc->user_creatable)) {
                 continue;
             }
             if (!cat_printed) {
@@ -241,7 +240,7 @@ static DeviceClass *qdev_get_device_class(const char **driver, Error **errp)
     }
 
     dc = DEVICE_CLASS(oc);
-    if (dc->cannot_instantiate_with_device_add_yet ||
+    if (!dc->user_creatable ||
         (qdev_hotplug && !dc->hotpluggable)) {
         error_setg(errp, QERR_INVALID_PARAMETER_VALUE, "driver",
                    "pluggable device type");
@@ -577,14 +576,6 @@ DeviceState *qdev_device_add(QemuOpts *opts, Error **errp)
     dc = qdev_get_device_class(&driver, errp);
     if (!dc) {
         return NULL;
-    }
-
-    if (only_migratable) {
-        if (dc->vmsd->unmigratable) {
-            error_setg(errp, "Device %s is not migratable, but "
-                       "--only-migratable was specified", driver);
-            return NULL;
-        }
     }
 
     /* find bus */

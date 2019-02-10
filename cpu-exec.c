@@ -32,6 +32,7 @@
 #if defined(TARGET_I386) && !defined(CONFIG_USER_ONLY)
 #include "hw/i386/apic.h"
 #endif
+#include "sysemu/cpus.h"
 #include "sysemu/replay.h"
 #include "panda/rr/rr_log.h"
 #include "panda/callback_support.h"
@@ -158,6 +159,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     uintptr_t ret;
     TranslationBlock *last_tb;
     int tb_exit;
+    uint8_t exitCode;
     uint8_t *tb_ptr = itb->tc_ptr;
 
     qemu_log_mask_and_addr(CPU_LOG_EXEC, itb->pc,
@@ -199,9 +201,12 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
 
-    panda_callbacks_after_block_exec(cpu, itb);
-
     tb_exit = ret & TB_EXIT_MASK;
+
+    /* force into variable of known size */
+    exitCode = (uint8_t)tb_exit;
+    panda_callbacks_after_block_exec(cpu, itb, exitCode);
+
     trace_exec_tb_exit(last_tb, tb_exit);
 
     if (tb_exit > TB_EXIT_IDX1) {
@@ -264,24 +269,43 @@ static void cpu_exec_nocache(CPUState *cpu, int max_cycles,
 
 static void cpu_exec_step(CPUState *cpu)
 {
+    CPUClass *cc = CPU_GET_CLASS(cpu);
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     TranslationBlock *tb;
     target_ulong cs_base, pc;
     uint32_t flags;
 
     cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
-    tb_lock();
-    tb = tb_gen_code(cpu, pc, cs_base, flags,
-                     1 | CF_NOCACHE | CF_IGNORE_ICOUNT);
-    tb->orig_tb = NULL;
-    tb_unlock();
-    /* execute the generated code */
-    trace_exec_tb_nocache(tb, pc);
-    cpu_tb_exec(cpu, tb);
-    tb_lock();
-    tb_phys_invalidate(tb, -1);
-    tb_free(tb);
-    tb_unlock();
+    if (sigsetjmp(cpu->jmp_env, 0) == 0) {
+        mmap_lock();
+        tb_lock();
+        tb = tb_gen_code(cpu, pc, cs_base, flags,
+                         1 | CF_NOCACHE | CF_IGNORE_ICOUNT);
+        tb->orig_tb = NULL;
+        tb_unlock();
+        mmap_unlock();
+
+        cc->cpu_exec_enter(cpu);
+        /* execute the generated code */
+        trace_exec_tb_nocache(tb, pc);
+        cpu_tb_exec(cpu, tb);
+        cc->cpu_exec_exit(cpu);
+
+        tb_lock();
+        tb_phys_invalidate(tb, -1);
+        tb_free(tb);
+        tb_unlock();
+    } else {
+        /* We may have exited due to another problem here, so we need
+         * to reset any tb_locks we may have taken but didn't release.
+         * The mmap_lock is dropped by tb_gen_code if it runs out of
+         * memory.
+         */
+#ifndef CONFIG_SOFTMMU
+        tcg_debug_assert(!have_mmap_lock());
+#endif
+        tb_lock_reset();
+    }
 }
 
 void cpu_exec_step_atomic(CPUState *cpu)
@@ -464,6 +488,16 @@ static inline void cpu_handle_debug_exception(CPUState *cpu)
 
 static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
 {
+
+    // If we finished a reverse-step, clear the most recent breakpoint
+    if ((cpu->reverse_flags & (GDB_RSTEP | GDB_RDONE)) == (GDB_RSTEP | GDB_RDONE)) {
+        // Remove the breakpoint we just hit
+        // And clear the reverse_flags
+        cpu_breakpoint_remove_by_instr(cpu, cpu->last_gdb_instr-1, BP_GDB);
+        cpu->reverse_flags = 0;
+    }
+    
+
     if (cpu->exception_index >= 0) {
         if (cpu->exception_index >= EXCP_INTERRUPT) {
             /* exit request from the cpu execution loop */
@@ -775,6 +809,13 @@ int cpu_exec(CPUState *cpu)
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
             panda_bb_invalidate_done = panda_callbacks_after_find_fast(
                     cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
+        
+            if (unlikely(cpu->temp_rr_bp_instr) && rr_get_guest_instr_count() > cpu->temp_rr_bp_instr) {
+                // Restore rr breakpoint if one was disabled for continue
+                cpu_rr_breakpoint_insert(cpu, cpu->temp_rr_bp_instr, BP_GDB, NULL);
+                cpu->temp_rr_bp_instr = 0;
+            }
+
             qemu_log_rr(tb->pc);
 
 #ifdef CONFIG_SOFTMMU

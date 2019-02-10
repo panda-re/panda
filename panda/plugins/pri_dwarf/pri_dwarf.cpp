@@ -52,7 +52,7 @@ extern "C" {
 // this provides the fd resolution magic
 #include "osi_linux/osi_linux_ext.h"
 
-#include "syscalls2/gen_syscalls_ext_typedefs.h"
+#include "syscalls2/syscalls_ext_typedefs.h"
 
 #include "loaded/loaded.h"
 
@@ -109,12 +109,12 @@ bool inExecutableSource = false;
 // current process
 OsiProc *current_proc = NULL;
 OsiModule *current_lib = NULL;
-OsiModules *current_libs = NULL;
+GArray *current_libs = NULL;
 bool proc_diff(OsiProc *p_curr, OsiProc *p_new) {
     if (p_curr == NULL) {
         return (p_new != NULL);
     }
-    if (p_curr->offset != p_new->offset
+    if (p_curr->taskd != p_new->taskd
         || p_curr->asid != p_new->asid
         || p_curr->pid != p_new->pid
         || p_curr->ppid != p_new->ppid)
@@ -1803,16 +1803,16 @@ bool main_exec_initialized = false;
 bool ensure_main_exec_initialized(CPUState *cpu) {
     //if (!correct_asid(cpu)) return;
     OsiProc *p = get_current_process(cpu);
-    OsiModules *libs = NULL;
+    GArray *libs = NULL;
     libs = get_libraries(cpu, p);
     if (!libs)
         return false;
 
     //printf("[ensure_main_exec_initialized] looking at libraries\n");
 
-    for (unsigned i = 0; i < libs->num; i++) {
+    for (unsigned i = 0; i < libs->len; i++) {
         char fname[260] = {};
-        OsiModule *m = &libs->module[i];
+        OsiModule *m = &g_array_index(libs, OsiModule, i);
         if (!m->file) continue;
         if (!m->name) continue;
         std::string lib = std::string(m->file);
@@ -2330,7 +2330,7 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
 
         //some sanity checks on what we think the current process is
         // this means we didnt find current task
-        //if (p->offset == 0) return 0;
+        //if (p->taskd == 0) return 0;
         //// or the name
         //if (p->name == 0) return 0;
         //// this is just not ok
@@ -2346,7 +2346,7 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
         //if (np != n) return 0;
         target_ulong asid = panda_current_asid(cpu);
         if (running_procs.count(asid) == 0) {
-            printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->offset);
+            printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->taskd);
         }
         running_procs[asid] = *p;
         //proc_changed = proc_diff(current_proc, p);
@@ -2364,11 +2364,11 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
             //// if we get here, we have a valid proc in current_proc
             //// that is new.  That is, we believe process has changed
             //if (current_libs) {
-                //free_osimodules(current_libs);
+                //g_array_free(current_libs, true);
             //}
             //current_libs = get_libraries(cpu, current_proc);
             //if (current_libs) {
-                //for (unsigned i=0; i<current_libs->num; i++) {
+                //for (unsigned i=0; i<current_libs->len; i++) {
                     //OsiModule *m = &(current_libs->module[i]);
                     //if (tb->pc >= m->base &&
                             //tb->pc < (m->base + m->size)) {

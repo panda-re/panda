@@ -37,15 +37,14 @@
 #include "sysemu/kvm.h"
 #include "exec/semihost.h"
 #include "exec/exec-all.h"
+#include "panda/checkpoint.h"
 
 #ifdef CONFIG_USER_ONLY
 #define GDB_ATTACHED "0"
 #else
 #define GDB_ATTACHED "1"
 #endif
-
-static inline int target_memory_rw_debug(CPUState *cpu, target_ulong addr,
-                                         uint8_t *buf, int len, bool is_write)
+static inline int target_memory_rw_debug(CPUState *cpu, target_ulong addr, uint8_t *buf, int len, bool is_write)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
 
@@ -271,7 +270,7 @@ static int gdb_signal_to_target (int sig)
         return -1;
 }
 
-//#define DEBUG_GDB
+/*#define DEBUG_GDB*/
 
 typedef struct GDBRegisterState {
     int base_reg;
@@ -387,6 +386,21 @@ static inline void gdb_continue(GDBState *s)
 #endif
 }
 
+static void disable_cur_rr_bp_and_wp(CPUState* cpu) {
+	CPUBreakpoint* bp;
+	QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
+		if (bp->rr_instr_count != 0 && rr_get_guest_instr_count() == bp->rr_instr_count) {
+			printf("temp removing bp at rr instr %lu\n", bp->rr_instr_count);
+			cpu_breakpoint_remove_by_instr(cpu, bp->rr_instr_count, BP_GDB);
+			cpu->temp_rr_bp_instr = bp->rr_instr_count;
+		}
+	}
+
+	// If we are currently broken at watchpoint, disable it until we get past it
+	// reenabled in exec.c: check_watchpoint
+	cpu->watchpoints_disabled = true;
+}
+
 /*
  * Resume execution, per CPU actions. For user-mode emulation it's
  * equivalent to gdb_continue.
@@ -422,10 +436,18 @@ static int gdb_continue_partial(GDBState *s, char *newstates)
             case 's':
                 cpu_single_step(cpu, sstep_flags);
                 cpu_resume(cpu);
+                
+				// If we are broken at an rr breakpoint, disable it before continuing
+                // and reenable it after we get past the instruction
+				disable_cur_rr_bp_and_wp(cpu);
                 flag = 1;
                 break;
             case 'c':
                 cpu_resume(cpu);
+				
+				// If we are broken at an rr breakpoint, disable it before continuing
+                // and reenable it after we get past the instruction
+				disable_cur_rr_bp_and_wp(cpu);
                 flag = 1;
                 break;
             default:
@@ -440,6 +462,7 @@ static int gdb_continue_partial(GDBState *s, char *newstates)
 #endif
     return res;
 }
+
 
 static void put_buffer(GDBState *s, const uint8_t *buf, int len)
 {
@@ -641,22 +664,30 @@ static int gdb_read_register(CPUState *cpu, uint8_t *mem_buf, int reg)
     return 0;
 }
 
-static int gdb_write_register(CPUState *cpu, uint8_t *mem_buf, int reg)
+int gdb_write_register(CPUState *cpu, uint8_t *mem_buf, int reg)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
     CPUArchState *env = cpu->env_ptr;
     GDBRegisterState *r;
+    int ret = 0;
+
 
     if (reg < cc->gdb_num_core_regs) {
-        return cc->gdb_write_register(cpu, mem_buf, reg);
+        ret = cc->gdb_write_register(cpu, mem_buf, reg);
     }
 
     for (r = cpu->gdb_regs; r; r = r->next) {
         if (r->base_reg <= reg && reg < r->base_reg + r->num_regs) {
-            return r->set_reg(env, mem_buf, reg - r->base_reg);
+            ret = r->set_reg(env, mem_buf, reg - r->base_reg);
         }
     }
-    return 0;
+    if (rr_in_record()) {
+        /* mm: to play along with the gdb rsp, the return value of 
+         * gdb_write_register *should* return the size of the register, which
+         * give us insight about the expected size of mem_buf */
+        rr_cpu_reg_write_call_record(cpu->cpu_index, mem_buf, reg, ret);
+    }
+    return ret;
 }
 
 /* Register a supplemental set of CPU registers.  If g_pos is nonzero it
@@ -720,6 +751,38 @@ static inline int xlat_gdb_type(CPUState *cpu, int gdbtype)
 }
 #endif
 
+static int gdb_rr_breakpoint_insert(uint64_t instr_count, int type) {
+    CPUState* cpu;
+    int err = 0;
+
+    switch (type) {
+    case GDB_BREAKPOINT_SW:
+    case GDB_BREAKPOINT_HW:
+        CPU_FOREACH(cpu) {
+            err = cpu_rr_breakpoint_insert(cpu, instr_count, BP_GDB, NULL);
+            if (err) {
+                break;
+            }
+        }
+        return err;
+//#ifndef CONFIG_USER_ONLY
+    //case GDB_WATCHPOINT_WRITE:
+    //case GDB_WATCHPOINT_READ:
+    //case GDB_WATCHPOINT_ACCESS:
+        //CPU_FOREACH(cpu) {
+            //err = cpu_rrwatchpoint_insert(cpu, addr, len,
+                                        //xlat_gdb_type(cpu, type), NULL);
+            //if (err) {
+                //break;
+            //}
+        //}
+        //return err;
+//#endif
+    default:
+        return -ENOSYS;
+    }
+}
+
 static int gdb_breakpoint_insert(target_ulong addr, target_ulong len, int type)
 {
     CPUState *cpu;
@@ -755,6 +818,38 @@ static int gdb_breakpoint_insert(target_ulong addr, target_ulong len, int type)
     default:
         return -ENOSYS;
     }
+}
+
+static int gdb_rr_breakpoint_remove(uint64_t instr, int type) {
+    CPUState *cpu;
+    int err = 0;
+
+    switch (type) {
+    case GDB_BREAKPOINT_SW:
+    case GDB_BREAKPOINT_HW:
+        CPU_FOREACH(cpu) {
+            err = cpu_breakpoint_remove_by_instr(cpu, instr, BP_GDB);
+            if (err) {
+                break;
+            }
+        }
+        return err;
+//#ifndef CONFIG_USER_ONLY
+    //case GDB_WATCHPOINT_WRITE:
+    //case GDB_WATCHPOINT_READ:
+    //case GDB_WATCHPOINT_ACCESS:
+        //CPU_FOREACH(cpu) {
+            //err = cpu_watchpoint_remove(cpu, addr, len,
+                                        //xlat_gdb_type(cpu, type));
+            //if (err)
+                //break;
+		/*}*/
+		/*return err;*/
+//#endif
+    default:
+        return -ENOSYS;
+    }
+	
 }
 
 static int gdb_breakpoint_remove(target_ulong addr, target_ulong len, int type)
@@ -940,6 +1035,110 @@ out:
     return res;
 }
 
+static void gdb_handle_reverse(GDBState *s, const char *p) {
+	uint64_t cur_instr_count = rr_get_guest_instr_count();
+
+	if (*p == 's') {
+		// Reverse step
+		int res = gdb_rr_breakpoint_insert(cur_instr_count-1, GDB_BREAKPOINT_SW);
+		if (res < 0) {
+			put_packet(s, "E22");
+			return;
+		}
+		s->c_cpu->reverse_flags = GDB_RSTEP;
+		s->c_cpu->last_gdb_instr = cur_instr_count; 
+	} else if (*p == 'c') {
+		// Reverse continue
+		s->c_cpu->reverse_flags = GDB_RCONT ;
+		s->c_cpu->last_gdb_instr = cur_instr_count; 
+		s->c_cpu->last_bp_hit_instr = 0;
+	}
+
+	// revert to most recent checkpoint 
+	int closest_num;
+	if ((closest_num = get_closest_checkpoint_num(cur_instr_count)) < 0) {
+		fprintf(stderr, "gdb_handle_reverse: get_closest_checkpoint_num %d\n", closest_num); 
+		abort();
+	}
+
+	tb_flush(s->c_cpu);
+	tlb_flush(s->c_cpu);
+	panda_restore_by_num(closest_num);
+	gdb_continue(s);
+}
+
+static void gdb_handle_panda_cmd(GDBState *s, const char* p) {
+    char buf[MAX_PACKET_LENGTH] = {0};
+	char membuf[MAX_PACKET_LENGTH] = {0};
+
+    int chars_written;
+    if (!strncmp(p, "when", 4)) {
+        snprintf(membuf, sizeof(membuf), "%lu", rr_get_guest_instr_count());
+		
+		memtohex(buf, (uint8_t*)membuf, strlen(membuf));
+        put_packet(s, buf);
+    } else if (!strncmp(p, "rrbreakpoint", 12)) {
+        p+=12;
+        int membufsize = 0;
+        const char msg[] = "Added breakpoints at instructions";
+        snprintf(membuf, sizeof(membuf), msg); 
+        membufsize += sizeof(msg)-1;
+        while (*p == ':') {
+            p++;
+            uint64_t bpinstr = strtoull(p, (char **)&p, 10);
+            chars_written = snprintf(membuf+membufsize, sizeof(membuf), " %lu,", bpinstr); 
+            membufsize += chars_written;
+            gdb_rr_breakpoint_insert(bpinstr, GDB_BREAKPOINT_SW);
+        }
+
+		if (membufsize > MAX_PACKET_LENGTH/2)
+			membufsize = MAX_PACKET_LENGTH/2;
+        
+		memtohex(buf, (uint8_t*)membuf, membufsize);
+        put_packet(s, buf);
+    } else if (!strncmp(p, "rrdelete", 8)) {
+		// delete rr instr breakpoint
+		p += 8;
+        int membufsize = 0;
+        const char msg[] = "Deleted breakpoints at instructions";
+        snprintf(membuf, sizeof(membuf), msg); 
+        membufsize += sizeof(msg)-1;
+
+        while (*p == ':') {
+            p++;
+            uint64_t bpinstr = strtoull(p, (char **)&p, 10);
+            chars_written = snprintf(membuf+membufsize, sizeof(membuf), " %lu,", bpinstr); 
+            membufsize += chars_written;
+            gdb_rr_breakpoint_remove(bpinstr, GDB_BREAKPOINT_SW);
+        }
+
+		if (membufsize > MAX_PACKET_LENGTH/2)
+			membufsize = MAX_PACKET_LENGTH/2;
+        
+		memtohex(buf, (uint8_t*)membuf, membufsize);
+        put_packet(s, buf);
+	} else if (!strncmp(p, "rrlist", 6)) {
+		CPUBreakpoint *bp;
+        int membufsize = 0;
+        const char msg[] = "rr breakpoints: \n";
+        snprintf(membuf, sizeof(membuf), msg); 
+        membufsize += sizeof(msg)-1;
+
+        QTAILQ_FOREACH(bp, &s->c_cpu->breakpoints, entry) {
+           if (bp->rr_instr_count != 0) {
+				chars_written = snprintf(membuf+membufsize, sizeof(membuf), "%lu\n", bp->rr_instr_count);
+				membufsize += chars_written;
+            }
+		}
+        
+		if (membufsize > MAX_PACKET_LENGTH/2)
+			membufsize = MAX_PACKET_LENGTH/2;
+        
+		memtohex(buf, (uint8_t*)membuf, membufsize);
+        put_packet(s, buf);
+	}
+}
+
 static int gdb_handle_packet(GDBState *s, const char *line_buf)
 {
     CPUState *cpu;
@@ -958,6 +1157,10 @@ static int gdb_handle_packet(GDBState *s, const char *line_buf)
     p = line_buf;
     ch = *p++;
     switch(ch) {
+    case 'b':
+        gdb_handle_reverse(s, p);
+		put_packet(s, "OK");
+        break;
     case '?':
         /* TODO: Make this return the correct value for user-mode.  */
         snprintf(buf, sizeof(buf), "T%02xthread:%02x;", GDB_SIGNAL_TRAP,
@@ -1196,7 +1399,11 @@ static int gdb_handle_packet(GDBState *s, const char *line_buf)
     case 'q':
     case 'Q':
         /* parse any 'q' packets here */
-        if (!strcmp(p,"qemu.sstepbits")) {
+        if (!strncmp(p, "PandaCmd:", 9)) {
+            p += 9;
+            gdb_handle_panda_cmd(s, p);
+            break;
+        } else if (!strcmp(p,"qemu.sstepbits")) {
             /* Query Breakpoint bit definitions */
             snprintf(buf, sizeof(buf), "ENABLE=%x,NOIRQ=%x,NOTIMER=%x",
                      SSTEP_ENABLE,
@@ -1279,7 +1486,7 @@ static int gdb_handle_packet(GDBState *s, const char *line_buf)
         }
 #endif /* !CONFIG_USER_ONLY */
         if (is_query_packet(p, "Supported", ':')) {
-            snprintf(buf, sizeof(buf), "PacketSize=%x", MAX_PACKET_LENGTH);
+            snprintf(buf, sizeof(buf), "PacketSize=%x;ReverseContinue+;ReverseStep+", MAX_PACKET_LENGTH);
             cc = CPU_GET_CLASS(first_cpu);
             if (cc->gdb_core_xml_file != NULL) {
                 pstrcat(buf, sizeof(buf), ";qXfer:features:read+");

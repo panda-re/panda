@@ -10,11 +10,12 @@ Arguments
 ---------
 
 * `summary`: boolean. Determines whether full or summary information will be produced. In summary mode, `tainted_instr` just produces information about what instructions were tainted in each address space seen. In full mode, a log entry is written every time an instruction handling tainted data is executed, along with the callstack at that point. The logs for full mode can get rather large.
+* `num`: uint64.  Number of tainted instructions to log or summarize.  The default (0) means there is no limit.  Note that if `tainted_instr` sees the same tainted block reported mutiple times in a row, that this is counted as only one 'instruction'.  For example, if taint change reports come in five times for tainted data in block 1, then three times for tainted data in block 2, then seven times for tainted data in block 1 again, and then four times for tainted data in block 3, then the number of tainted 'instructions' seen will be 4, as there were four distinct runs.
 
 Dependencies
 ------------
 
-`tainted_instr` uses `taint2` to track taint, and `callstack_instr` to provide callstack information whenever tainted branches are encountered.
+`tainted_instr` uses `taint2` to track taint, and `callstack_instr` to provide callstack information whenever tainted instructions are encountered.
 
 APIs and Callbacks
 ------------------

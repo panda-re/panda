@@ -28,6 +28,7 @@
 #include "qemu/config-file.h"
 #include "qemu/bswap.h"
 #include "qemu/log.h"
+#include "qemu/systemd.h"
 #include "block/snapshot.h"
 #include "qapi/util.h"
 #include "qapi/qmp/qstring.h"
@@ -323,7 +324,7 @@ out:
 
 static int nbd_can_accept(void)
 {
-    return nb_fds < shared;
+    return state == RUNNING && nb_fds < shared;
 }
 
 static void nbd_export_closed(NBDExport *exp)
@@ -334,10 +335,10 @@ static void nbd_export_closed(NBDExport *exp)
 
 static void nbd_update_server_watch(void);
 
-static void nbd_client_closed(NBDClient *client)
+static void nbd_client_closed(NBDClient *client, bool negotiated)
 {
     nb_fds--;
-    if (nb_fds == 0 && !persistent && state == RUNNING) {
+    if (negotiated && nb_fds == 0 && !persistent && state == RUNNING) {
         state = TERMINATE;
     }
     nbd_update_server_watch();
@@ -474,98 +475,6 @@ static void setup_address_and_port(const char **address, const char **port)
     }
 }
 
-#define FIRST_SOCKET_ACTIVATION_FD 3 /* defined by systemd ABI */
-
-#ifndef _WIN32
-/*
- * Check if socket activation was requested via use of the
- * LISTEN_FDS and LISTEN_PID environment variables.
- *
- * Returns 0 if no socket activation, or the number of FDs.
- */
-static unsigned int check_socket_activation(void)
-{
-    const char *s;
-    unsigned long pid;
-    unsigned long nr_fds;
-    unsigned int i;
-    int fd;
-    int err;
-
-    s = getenv("LISTEN_PID");
-    if (s == NULL) {
-        return 0;
-    }
-    err = qemu_strtoul(s, NULL, 10, &pid);
-    if (err) {
-        if (verbose) {
-            fprintf(stderr, "malformed %s environment variable (ignored)\n",
-                    "LISTEN_PID");
-        }
-        return 0;
-    }
-    if (pid != getpid()) {
-        if (verbose) {
-            fprintf(stderr, "%s was not for us (ignored)\n",
-                    "LISTEN_PID");
-        }
-        return 0;
-    }
-
-    s = getenv("LISTEN_FDS");
-    if (s == NULL) {
-        return 0;
-    }
-    err = qemu_strtoul(s, NULL, 10, &nr_fds);
-    if (err) {
-        if (verbose) {
-            fprintf(stderr, "malformed %s environment variable (ignored)\n",
-                    "LISTEN_FDS");
-        }
-        return 0;
-    }
-    assert(nr_fds <= UINT_MAX);
-
-    /* A limitation of current qemu-nbd is that it can only listen on
-     * a single socket.  When that limitation is lifted, we can change
-     * this function to allow LISTEN_FDS > 1, and remove the assertion
-     * in the main function below.
-     */
-    if (nr_fds > 1) {
-        error_report("qemu-nbd does not support socket activation with %s > 1",
-                     "LISTEN_FDS");
-        exit(EXIT_FAILURE);
-    }
-
-    /* So these are not passed to any child processes we might start. */
-    unsetenv("LISTEN_FDS");
-    unsetenv("LISTEN_PID");
-
-    /* So the file descriptors don't leak into child processes. */
-    for (i = 0; i < nr_fds; ++i) {
-        fd = FIRST_SOCKET_ACTIVATION_FD + i;
-        if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1) {
-            /* If we cannot set FD_CLOEXEC then it probably means the file
-             * descriptor is invalid, so socket activation has gone wrong
-             * and we should exit.
-             */
-            error_report("Socket activation failed: "
-                         "invalid file descriptor fd = %d: %m",
-                         fd);
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    return (unsigned int) nr_fds;
-}
-
-#else /* !_WIN32 */
-static unsigned int check_socket_activation(void)
-{
-    return 0;
-}
-#endif
-
 /*
  * Check socket parameters compatibility when socket activation is used.
  */
@@ -671,6 +580,10 @@ int main(int argc, char **argv)
     memset(&sa_sigterm, 0, sizeof(sa_sigterm));
     sa_sigterm.sa_handler = termsig_handler;
     sigaction(SIGTERM, &sa_sigterm, NULL);
+
+#ifdef CONFIG_POSIX
+    signal(SIGPIPE, SIG_IGN);
+#endif
 
     module_call_init(MODULE_INIT_TRACE);
     qcrypto_init(&error_fatal);
@@ -892,6 +805,13 @@ int main(int argc, char **argv)
             error_report("%s", err_msg);
             exit(EXIT_FAILURE);
         }
+
+        /* qemu-nbd can only listen on a single socket.  */
+        if (socket_activation > 1) {
+            error_report("qemu-nbd does not support socket activation with %s > 1",
+                         "LISTEN_FDS");
+            exit(EXIT_FAILURE);
+        }
     }
 
     if (tlscredsid) {
@@ -1043,7 +963,7 @@ int main(int argc, char **argv)
     } else {
         if (fmt) {
             options = qdict_new();
-            qdict_put(options, "driver", qstring_from_str(fmt));
+            qdict_put_str(options, "driver", fmt);
         }
         blk = blk_new_open(srcpath, NULL, options, flags, &local_err);
     }

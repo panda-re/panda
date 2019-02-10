@@ -1,3 +1,10 @@
+/*
+ * PANDA Checkpoint API
+ * Author: Ray Wang		raywang@mit.edu
+ *
+ * Provides functions to take, store, and restore replay checkpoints
+ */
+
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -5,11 +12,12 @@
 #include "qemu/osdep.h"
 #include "cpu.h"
 
-#include "exec/memory.h"
 #include "exec/exec-all.h"
+#include "exec/memory.h"
 #include "io/channel-file.h"
 #include "migration/migration.h"
 #include "migration/qemu-file.h"
+#include "sysemu/cpus.h"
 #include "sysemu/sysemu.h"
 
 #include "panda/rr/rr_log.h"
@@ -31,32 +39,58 @@ static int memfd_create(const char *name, unsigned int flags)
 
 #include "panda/checkpoint.h"
 
-static QLIST_HEAD(, Checkpoint) checkpoints = QLIST_HEAD_INITIALIZER(checkpoints);
-
 extern RR_log_entry *rr_queue_head;
+Checkpoint* checkpoints[MAX_CHECKPOINTS] = {NULL}; 
 
 extern unsigned long long rr_number_of_log_entries[RR_LAST];
 extern unsigned long long rr_size_of_log_entries[RR_LAST];
 extern unsigned long long rr_max_num_queue_entries;
-
-typedef struct Checkpoint {
-    uint64_t guest_instr_count;
-    size_t nondet_log_position;
-
-    unsigned long long number_of_log_entries[RR_LAST];
-    unsigned long long size_of_log_entries[RR_LAST];
-    unsigned long long max_num_queue_entries;
-
-    unsigned next_progress;
-
-    int memfd;
-
-    size_t memfd_usage;
-
-    QLIST_ENTRY(Checkpoint) next;
-} Checkpoint;
-
 static size_t total_usage = 0;
+static size_t next_checkpoint_num = 0;
+
+/*
+ * Returns closest checkpoint containing target_instr_count 
+ * If target is start of a checkpoint, returns prev checkpoint num
+ * Return -1 if not found
+ */
+int get_closest_checkpoint_num(uint64_t target_instr_count) {
+
+    // Check base cases 
+    if (checkpoints[next_checkpoint_num-1]->guest_instr_count < target_instr_count) {
+        return next_checkpoint_num;
+    } 
+
+    if (target_instr_count == 0) {
+        return 1;
+    }
+
+    for (int i = 1; i < next_checkpoint_num; i++) {
+        if (checkpoints[i-1]->guest_instr_count < target_instr_count && target_instr_count <= checkpoints[i]->guest_instr_count) {
+            return i; 
+        }
+    }
+
+    return -1;
+
+}
+
+size_t get_num_checkpoints(void) {
+    return next_checkpoint_num;
+}
+
+/*
+ * Gets checkpoint from array by idx.
+ * If idx <= 0, return last one
+ */
+Checkpoint* get_checkpoint(int num) {
+    if (num <= 0) {
+        return checkpoints[next_checkpoint_num-1]; 
+    } else if (num <= next_checkpoint_num) {
+        return checkpoints[num-1];
+    }
+
+    return NULL;
+}
 
 /*
  * Perform replay checkpoint which we can later rewind to.
@@ -66,24 +100,25 @@ static size_t total_usage = 0;
 void *panda_checkpoint(void) {
     assert(rr_in_replay());
 
+    if (next_checkpoint_num >= MAX_CHECKPOINTS) { 
+        printf("panda_checkpoint: Cannot make any more checkpoints!\n");
+        return NULL;
+    }
+
     uint64_t instr_count = rr_get_guest_instr_count();
 
     /* Find last existing checkpoint before this point */
-    Checkpoint *base = NULL;
-    Checkpoint *check = NULL;
-    QLIST_FOREACH(check, &checkpoints, next) {
-        if (check->guest_instr_count > instr_count) break;
-        base = check;
-    }
+    //Checkpoint *check = NULL;
+    //for (int i = 0; i < next_checkpoint_num; i++) {
+        //check = checkpoints[i];
+        //if (check->guest_instr_count > instr_count) break;
+    //}
 
     Checkpoint *checkpoint = (Checkpoint *)malloc(sizeof(Checkpoint));
 
-    if (base) {
-        QLIST_INSERT_AFTER(base, checkpoint, next);
-    } else {
-        QLIST_INSERT_HEAD(&checkpoints, checkpoint, next);
-    }
-
+    // TODO: Do we want to insert checkpoint in list in order?
+    checkpoints[next_checkpoint_num] = checkpoint;
+    next_checkpoint_num++;
     checkpoint->guest_instr_count = instr_count;
     checkpoint->nondet_log_position = rr_queue_head
         ? rr_queue_head->header.file_pos
@@ -116,11 +151,23 @@ void *panda_checkpoint(void) {
     return checkpoint;
 }
 
-void panda_restart(void *opaque) {
+
+void panda_restore_by_num(int num) {
+    if (num <= 0) {
+        panda_restore(checkpoints[next_checkpoint_num-1]); 
+    } else if (num <= next_checkpoint_num) {
+        if (checkpoints[num-1] != NULL) {
+            panda_restore(checkpoints[num-1]);
+        }
+    }
+}
+
+void panda_restore(void *opaque) {
     assert(rr_in_replay());
-
+    
     Checkpoint *checkpoint = (Checkpoint *)opaque;
-
+    printf("Restarting checkpoint @ instr count %lu\n", checkpoint->guest_instr_count);
+        
     lseek(checkpoint->memfd, 0, SEEK_SET);
 
     QIOChannelFile *iochannel = qio_channel_file_new_fd(checkpoint->memfd);

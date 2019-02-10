@@ -229,21 +229,10 @@ static void usbredir_log(void *priv, int level, const char *msg)
 static void usbredir_log_data(USBRedirDevice *dev, const char *desc,
     const uint8_t *data, int len)
 {
-    int i, j, n;
-
     if (dev->debug < usbredirparser_debug_data) {
         return;
     }
-
-    for (i = 0; i < len; i += j) {
-        char buf[128];
-
-        n = sprintf(buf, "%s", desc);
-        for (j = 0; j < 8 && i + j < len; j++) {
-            n += sprintf(buf + n, " %02X", data[i + j]);
-        }
-        error_report("%s", buf);
-    }
+    qemu_hexdump((char *)data, stderr, desc, len);
 }
 
 /*
@@ -1427,7 +1416,7 @@ static void usbredir_cleanup_device_queues(USBRedirDevice *dev)
     }
 }
 
-static void usbredir_handle_destroy(USBDevice *udev)
+static void usbredir_unrealize(USBDevice *udev, Error **errp)
 {
     USBRedirDevice *dev = USB_REDIRECT(udev);
     Chardev *chr = qemu_chr_fe_get_driver(&dev->cs);
@@ -2513,7 +2502,7 @@ static void usbredir_class_initfn(ObjectClass *klass, void *data)
 
     uc->realize        = usbredir_realize;
     uc->product_desc   = "USB Redirection Device";
-    uc->handle_destroy = usbredir_handle_destroy;
+    uc->unrealize      = usbredir_unrealize;
     uc->cancel_packet  = usbredir_cancel_packet;
     uc->handle_reset   = usbredir_handle_reset;
     uc->handle_data    = usbredir_handle_data;

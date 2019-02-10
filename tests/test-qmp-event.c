@@ -95,24 +95,18 @@ static bool qdict_cmp_simple(QDict *a, QDict *b)
    correctness. */
 static void event_test_emit(test_QAPIEvent event, QDict *d, Error **errp)
 {
-    QObject *obj;
     QDict *t;
     int64_t s, ms;
 
     /* Verify that we have timestamp, then remove it to compare other fields */
-    obj = qdict_get(d, "timestamp");
-    g_assert(obj);
-    t = qobject_to_qdict(obj);
+    t = qdict_get_qdict(d, "timestamp");
     g_assert(t);
-    obj = qdict_get(t, "seconds");
-    g_assert(obj && qobject_type(obj) == QTYPE_QINT);
-    s = qint_get_int(qobject_to_qint(obj));
-    obj = qdict_get(t, "microseconds");
-    g_assert(obj && qobject_type(obj) == QTYPE_QINT);
-    ms = qint_get_int(qobject_to_qint(obj));
+    s = qdict_get_try_int(t, "seconds", -2);
+    ms = qdict_get_try_int(t, "microseconds", -2);
     if (s == -1) {
         g_assert(ms == -1);
     } else {
+        g_assert(s >= 0);
         g_assert(ms >= 0 && ms <= 999999);
     }
     g_assert(qdict_size(t) == 2);
@@ -159,7 +153,7 @@ static void test_event_a(TestEventData *data,
 {
     QDict *d;
     d = data->expect;
-    qdict_put(d, "event", qstring_from_str("EVENT_A"));
+    qdict_put_str(d, "event", "EVENT_A");
     qapi_event_send_event_a(&error_abort);
 }
 
@@ -168,7 +162,7 @@ static void test_event_b(TestEventData *data,
 {
     QDict *d;
     d = data->expect;
-    qdict_put(d, "event", qstring_from_str("EVENT_B"));
+    qdict_put_str(d, "event", "EVENT_B");
     qapi_event_send_event_b(&error_abort);
 }
 
@@ -183,16 +177,16 @@ static void test_event_c(TestEventData *data,
     b.has_enum1 = false;
 
     d_b = qdict_new();
-    qdict_put(d_b, "integer", qint_from_int(2));
-    qdict_put(d_b, "string", qstring_from_str("test1"));
+    qdict_put_int(d_b, "integer", 2);
+    qdict_put_str(d_b, "string", "test1");
 
     d_data = qdict_new();
-    qdict_put(d_data, "a", qint_from_int(1));
+    qdict_put_int(d_data, "a", 1);
     qdict_put(d_data, "b", d_b);
-    qdict_put(d_data, "c", qstring_from_str("test2"));
+    qdict_put_str(d_data, "c", "test2");
 
     d = data->expect;
-    qdict_put(d, "event", qstring_from_str("EVENT_C"));
+    qdict_put_str(d, "event", "EVENT_C");
     qdict_put(d, "data", d_data);
 
     qapi_event_send_event_c(true, 1, true, &b, "test2", &error_abort);
@@ -219,22 +213,22 @@ static void test_event_d(TestEventData *data,
     a.enum2 = ENUM_ONE_VALUE2;
 
     d_struct1 = qdict_new();
-    qdict_put(d_struct1, "integer", qint_from_int(2));
-    qdict_put(d_struct1, "string", qstring_from_str("test1"));
-    qdict_put(d_struct1, "enum1", qstring_from_str("value1"));
+    qdict_put_int(d_struct1, "integer", 2);
+    qdict_put_str(d_struct1, "string", "test1");
+    qdict_put_str(d_struct1, "enum1", "value1");
 
     d_a = qdict_new();
     qdict_put(d_a, "struct1", d_struct1);
-    qdict_put(d_a, "string", qstring_from_str("test2"));
-    qdict_put(d_a, "enum2", qstring_from_str("value2"));
+    qdict_put_str(d_a, "string", "test2");
+    qdict_put_str(d_a, "enum2", "value2");
 
     d_data = qdict_new();
     qdict_put(d_data, "a", d_a);
-    qdict_put(d_data, "b", qstring_from_str("test3"));
-    qdict_put(d_data, "enum3", qstring_from_str("value3"));
+    qdict_put_str(d_data, "b", "test3");
+    qdict_put_str(d_data, "enum3", "value3");
 
     d = data->expect;
-    qdict_put(d, "event", qstring_from_str("EVENT_D"));
+    qdict_put_str(d, "event", "EVENT_D");
     qdict_put(d, "data", d_data);
 
     qapi_event_send_event_d(&a, "test3", false, NULL, true, ENUM_ONE_VALUE3,

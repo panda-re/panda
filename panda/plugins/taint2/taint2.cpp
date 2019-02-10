@@ -63,7 +63,6 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 int after_block_translate(CPUState *cpu, TranslationBlock *tb);
 bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb);
-int after_block_exec(CPUState *cpu, TranslationBlock *tb);
 
 int phys_mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int phys_mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf);

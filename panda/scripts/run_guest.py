@@ -149,7 +149,7 @@ def make_iso(directory, iso_path):
 # command as array of args.
 # copy_directory gets mounted in the same place on the guest as an iso/CD-ROM.
 def create_recording(qemu_path, qcow, snapshot, command, copy_directory,
-                     recording_path, expect_prompt, isoname=None, rr=False,
+                     recording_path, expect_prompt, cdrom, isoname=None, rr=False, savevm=False,
                      perf=False, env={}, extra_args=None):
     assert not (rr and perf)
 
@@ -164,7 +164,7 @@ def create_recording(qemu_path, qcow, snapshot, command, copy_directory,
             make_iso(copy_directory, isoname)
 
             progress("Inserting CD...")
-            qemu.run_monitor("change ide1-cd0 \"{}\"".format(isoname))
+            qemu.run_monitor("change {} \"{}\"".format(cdrom, isoname))
             qemu.run_console("mkdir -p {}".format(pipes.quote(copy_directory)))
             # Make sure cdrom didn't automount
             # Make sure guest path mirrors host path

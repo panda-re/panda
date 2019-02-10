@@ -74,11 +74,11 @@ void panda_callbacks_before_block_exec(CPUState *cpu, TranslationBlock *tb) {
 }
 
 
-void panda_callbacks_after_block_exec(CPUState *cpu, TranslationBlock *tb) {
+void panda_callbacks_after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
     panda_cb_list *plist;
     for (plist = panda_cbs[PANDA_CB_AFTER_BLOCK_EXEC];
          plist != NULL; plist = panda_cb_list_next(plist)) {
-        plist->entry.after_block_exec(cpu, tb);
+        plist->entry.after_block_exec(cpu, tb, exitCode);
     }
 }
 
@@ -263,6 +263,24 @@ void panda_callbacks_top_loop(void) {
     for(plist = panda_cbs[PANDA_CB_TOP_LOOP]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
         plist->entry.top_loop(first_cpu);
+    }
+}
+
+void panda_callbacks_unassigned_io(CPUState *env, hwaddr addr, uint32_t size,
+        uint64_t *val, bool is_write) {
+    if (is_write) {
+        panda_cb_list *plist;
+        for(plist = panda_cbs[PANDA_CB_UNASSIGNED_IO_WRITE]; plist != NULL;
+            plist = panda_cb_list_next(plist)) {
+            plist->entry.unassigned_io_write(env, env->panda_guest_pc, addr, size, val);
+        }
+    }
+    else {
+        panda_cb_list *plist;
+        for(plist = panda_cbs[PANDA_CB_UNASSIGNED_IO_READ]; plist != NULL;
+            plist = panda_cb_list_next(plist)) {
+            plist->entry.unassigned_io_read(env, env->panda_guest_pc, addr, size, val);
+        }
     }
 }
 

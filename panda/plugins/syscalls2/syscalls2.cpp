@@ -13,6 +13,12 @@
 PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
+// The return of some linux system calls is not always handled
+// correctly. This needs further investigation.
+// Uncomment next line to enable debug prints for tracking of system
+// call context.
+//#define SYSCALL_RETURN_DEBUG
+
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 
@@ -25,6 +31,7 @@ PANDAENDCOMMENT */
 #include <memory>
 #include <vector>
 #include <iostream>
+#include <sstream>
 
 #include "syscalls2.h"
 #include "syscalls2_info.h"
@@ -38,11 +45,11 @@ void uninit_plugin(void *);
 void registerExecPreCallback(void (*callback)(CPUState*, target_ulong));
 
 // PPP code
-#include "gen_syscalls_ext_typedefs.h"
-#include "gen_syscall_ppp_boilerplate_enter.cpp"
-#include "gen_syscall_ppp_boilerplate_return.cpp"
-#include "gen_syscall_ppp_register_enter.cpp"
-#include "gen_syscall_ppp_register_return.cpp"
+#include "syscalls_ext_typedefs.h"
+#include "generated/syscall_ppp_boilerplate_enter.cpp"
+#include "generated/syscall_ppp_boilerplate_return.cpp"
+#include "generated/syscall_ppp_register_enter.cpp"
+#include "generated/syscall_ppp_register_return.cpp"
 }
 
 // Forward declarations
@@ -76,7 +83,7 @@ enum ProfileType {
 
 struct Profile {
     void         (*enter_switch)(CPUState *, target_ulong);
-    void         (*return_switch)(CPUState *, target_ulong, int, const syscall_ctx_t *);
+    void         (*return_switch)(CPUState *, target_ulong, const syscall_ctx_t *);
     target_long  (*get_return_val )(CPUState *);
     target_ulong (*calc_retaddr )(CPUState *, target_ulong);
     uint32_t     (*get_32 )(CPUState *, uint32_t);
@@ -459,6 +466,9 @@ void registerExecPreCallback(void (*callback)(CPUState*, target_ulong)){
     preExecCallbacks.push_back(callback);
 }
 
+extern const syscall_info_t *syscall_info;
+extern const syscall_meta_t *syscall_meta;
+
 /**
  * @brief Map holding the context of ongoing system calls. An unfinished
  * system call can be uniquely identified by its return address and the
@@ -466,6 +476,32 @@ void registerExecPreCallback(void (*callback)(CPUState*, target_ulong)){
  * the map.
  */
 context_map_t running_syscalls;
+
+#if defined(SYSCALL_RETURN_DEBUG)
+/**
+ * @brief Returns a string representation of a context_map_t container.
+ */
+static inline std::string context_map_t_dump(context_map_t &cm) {
+    const syscall_info_t *si = syscall_info;
+    const syscall_meta_t *sm = syscall_meta;
+    std::stringstream ss;
+    ss << "{";
+    for (auto ctxi = cm.begin(); ctxi != cm.end(); ++ctxi) {
+	    syscall_ctx_t *ctx = &ctxi->second;
+	    ss << " ";
+	    if (si == NULL || ctx->no > sm->max_generic) {
+	        ss << ctx->no;
+	    } else {
+	        ss << si[ctx->no].name;
+	    }
+	    ss << ":" << std::hex << ctx->asid;
+	    ss << ",";
+    }
+    ss.seekp(-1, ss.cur);
+    ss << " }";
+    return ss.str();
+}
+#endif
 
 #if defined(TARGET_PPC)
 #else
@@ -475,13 +511,23 @@ context_map_t running_syscalls;
  */
 static int tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
     auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
-    size_t ctx_count = running_syscalls.count(k);
-    if (ctx_count > 0) {
-        assert(ctx_count == 1);
-        syscall_ctx_t &ctx = running_syscalls[k];
-        syscalls_profile->return_switch(cpu, tb->pc, ctx.no, &ctx);
-        running_syscalls.erase(k);
+    auto ctxi = running_syscalls.find(k);
+    int UNUSED(no) = -1;
+    if (ctxi != running_syscalls.end()) {
+        syscall_ctx_t *ctx = &ctxi->second;
+        no = ctx->no;
+        syscalls_profile->return_switch(cpu, tb->pc, ctx);
+        running_syscalls.erase(ctxi);
     }
+#if defined(SYSCALL_RETURN_DEBUG)
+    if (no >= 0) {
+        const syscall_info_t *si = syscall_info;
+        const syscall_meta_t *sm = syscall_meta;
+        std::string remaining = context_map_t_dump(running_syscalls);
+        LOG_DEBUG("returned: %s:" TARGET_PTR_FMT, (no > sm->max_generic ? "N/A" : si[no].name), panda_current_asid(cpu));
+        LOG_DEBUG("remaining %zu: %s\n", running_syscalls.size(), remaining.c_str());
+    }
+#endif
     return 0;
 }
 #endif
@@ -551,6 +597,12 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
 // translate_callback returned true
 int exec_callback(CPUState *cpu, target_ulong pc) {
     int res = isCurrentInstructionASyscall(cpu,pc);
+#if defined(SYSCALL_RETURN_DEBUG) && defined(TARGET_I386)
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    int no = env->regs[R_EAX];
+    const syscall_info_t *si = syscall_info;
+    const syscall_meta_t *sm = syscall_meta;
+#endif
 #ifdef DEBUG
     if(res < 0){
         impossibleToReadPCs++;
@@ -562,6 +614,14 @@ int exec_callback(CPUState *cpu, target_ulong pc) {
             callback(cpu, pc);
         }
         syscalls_profile->enter_switch(cpu, pc);
+#if defined(SYSCALL_RETURN_DEBUG) && defined(TARGET_I386)
+    if (no >= 0 && !si[no].noreturn) {
+        std::string remaining = context_map_t_dump(running_syscalls);
+        const char *c = (rr_get_guest_instr_count() > 7726588867 ? "X" : "");
+        LOG_DEBUG("started%s: %s:" TARGET_PTR_FMT, c, (no > sm->max_generic ? "N/A" : si[no].name), panda_current_asid(cpu));
+        LOG_DEBUG("remaining %zu: %s\n", running_syscalls.size(), remaining.c_str());
+    }
+#endif
 #ifdef DEBUG
         syscallCounter[panda_current_asid(cpu)]++;
 #endif
@@ -641,6 +701,10 @@ bool init_plugin(void *self) {
     if (panda_parse_bool_opt(plugin_args, "load-info", "Load systemcall information for the selected os.")) {
         if (load_syscall_info() < 0) return false;
     }
+
+#if defined(SYSCALL_RETURN_DEBUG)
+    assert((syscall_info != NULL) && "syscall return debugging requires loading syscall info");
+#endif
 
     // done parsing arguments
     panda_free_args(plugin_args);

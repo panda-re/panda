@@ -1003,6 +1003,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
         assert(!m_tcgContext->temps[args[1]].name                   \
                 || !strcmp(m_tcgContext->temps[args[1]].name, "env"));\
         v = getEnvOffsetPtr(args[2], temp);                         \
+        v = m_builder.CreatePointerCast(v, intPtrType(memBits)); \
         v = m_builder.CreateLoad(v);                                \
         setValue(args[0], m_builder.Create ## signE ## Ext(         \
                     v, intType(regBits)));                          \
@@ -1016,6 +1017,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
                 || !strcmp(m_tcgContext->temps[args[1]].name, "env"));\
         Value* valueToStore = getValue(args[0]);                    \
         Value* storePtr = getEnvOffsetPtr(args[2], temp);           \
+        storePtr = m_builder.CreatePointerCast(storePtr, intPtrType(memBits)); \
         m_builder.CreateStore(m_builder.CreateTrunc(                \
                 valueToStore, intType(memBits)), storePtr);         \
     } break;
