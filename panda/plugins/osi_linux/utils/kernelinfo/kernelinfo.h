@@ -29,6 +29,8 @@
 #define PACKED_STRUCT(x) struct x
 #endif
 
+#define KERNEL_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
+
 /**
  * @brief Kernel Version information
  */
@@ -101,8 +103,14 @@ PACKED_STRUCT(vma_info) {
  * @brief Filesystem information and offsets.
  */
 PACKED_STRUCT(fs_info) {
-	int f_path_dentry_offset;
-	int f_path_mnt_offset;
+	union {
+		int f_path_dentry_offset;
+		int f_dentry_offset;
+	};
+	union {
+		int f_path_mnt_offset;
+		int f_vfsmnt_offset;
+	};
 	int f_pos_offset;
 	int fdt_offset;
 	int fdtab_offset;

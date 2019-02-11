@@ -64,8 +64,12 @@ static int __init kernelinfo24_init(void)
 			(u64)(uintptr_t)(task_struct__p));
 
 	PRINT_SIZE(init_task, "size", "task");
+	PRINT_OFFSET(task_struct__p,		tasks,			"task");
 	PRINT_OFFSET(task_struct__p, pid, "task");
 	PRINT_OFFSET(task_struct__p, tgid, "task");
+	PRINT_OFFSET(task_struct__p,		group_leader,	"task");
+	PRINT_OFFSET(task_struct__p,		real_parent,	"task");
+	PRINT_OFFSET(task_struct__p,		parent,			"task");
 	PRINT_OFFSET(task_struct__p,		mm,				"task");
 	PRINT_OFFSET(task_struct__p, comm, "task");
 	PRINT_SIZE(task_struct__p->comm, "comm_size", "task");
