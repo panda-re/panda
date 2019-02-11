@@ -499,7 +499,7 @@ bool init_plugin(void *self) {
 	g_free(kconf_file);
 	g_free(kconf_group);
 
-	if (ki.version.a == 2 && ki.version.b == 4) {
+	if (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) <= KERNEL_VERSION(2, 4, 254)) {
 		kernel_profile = &KERNEL24X_PROFILE;
 	}
 
