@@ -12,6 +12,9 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+// Verbose logging flag
+#define HOLODECK_LOG
+
 #include "panda/plugin.h"
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -255,9 +258,13 @@ void cleanup_devices(std::vector<Device> &devices) {
 void saw_unassigned_io_read(CPUState *env, target_ulong pc, hwaddr addr, 
                             uint32_t size, uint64_t *val) {
 
-    //fprintf(stderr, "INFO: [holodeck] unassigned read to 0x%lx of size %x\n", addr, size);
+#ifdef HOLODECK_LOG
+    fprintf(stderr, "INFO: [holodeck] unassigned read to 0x%lx of size %x.. ", addr, size);
+#endif
     uint64_t v= generate_value(device_list, addr);
-    //fprintf(stderr, "INFO: [holodeck] \treturning 0x%lx\n", v);
+#ifdef HOLODECK_LOG
+    fprintf(stderr, "\treturning 0x%lx\n", v);
+#endif
     *val = v;
 }
 
@@ -347,8 +354,11 @@ bool init_plugin(void *self) {
         fprintf(stderr, "Error: [holodeck] Couldn't parse input config. Aborting\n");
         assert(0);
     }
-    fprintf(stderr, "Info: [holodeck] Parsed input config!\n");
+
+#ifdef HOLODECK_LOG
+    fprintf(stderr, "INFO: [holodeck] Parsed input config!\n");
     dump_devices(device_list);
+#endif
 
     // Register callbacks
     panda_cb pcb;
@@ -365,7 +375,9 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
 #ifdef TARGET_ARM
     // TODO: this will not run if qemu fails early?
+#ifdef HOLODECK_LOG
     fprintf(stderr, "INFO: [holodeck] cleaning up\n");
+#endif
 
     if (dtbfile != NULL)
         unlink(dtbfile);
