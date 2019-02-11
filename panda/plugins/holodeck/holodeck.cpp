@@ -66,30 +66,34 @@ unsigned int _generate_value(Model &m) {
 }
 
 // Given a device and an offset, find the matching model and generate_value on it
-unsigned int _generate_value(Device &dev, unsigned int offset) {
+bool _generate_value(Device &dev, unsigned int offset, unsigned int *result) {
     for (auto &model : dev.models) {
         if (model.offset==offset) {
-            return _generate_value(model);
+            *result = _generate_value(model);
+            return true;
         }
     }
 
-    fprintf(stderr, "Error: [holodeck] couldn't find config to generate value. return 0\n");
-    return 0;
+    fprintf(stderr, "Error: [holodeck] couldn't find model in %s at offset 0x%x to generate value\n", dev.name.c_str(), offset);
+    return false;
     //assert(0);
 }
 
 unsigned int generate_value(std::vector<Device> devices, unsigned int address) {
     // Do we handle it? If so
     for (auto &dev : devices) {
-        if (address > dev.start && address < (dev.start+dev.length)) {
+        if (address >= dev.start && address < (dev.start+dev.length)) {
             // Found device, now generate respond
-            fprintf(stderr, "Info: [holodeck] found device %s\n", dev.name.c_str());
+            //fprintf(stderr, "\nInfo: [holodeck] trying device %s\n", dev.name.c_str());
 
-            return _generate_value(dev, address-dev.start);
+            unsigned int result;
+            if (_generate_value(dev, address-dev.start, &result)) {
+                return result;
+            }
         }
     }
 
-    fprintf(stderr, "Error: [holodeck] couldn't find config to generate value. Aborting\n");
+    fprintf(stderr, "Error: [holodeck] couldn't find any config to generate value at 0x%x. Aborting\n", address);
     assert(0);
 }
 
@@ -251,9 +255,9 @@ void cleanup_devices(std::vector<Device> &devices) {
 void saw_unassigned_io_read(CPUState *env, target_ulong pc, hwaddr addr, 
                             uint32_t size, uint64_t *val) {
 
-    fprintf(stderr, "INFO: [holodeck] unassigned read to 0x%lx of size %x\n", addr, size);
+    //fprintf(stderr, "INFO: [holodeck] unassigned read to 0x%lx of size %x\n", addr, size);
     uint64_t v= generate_value(device_list, addr);
-    fprintf(stderr, "INFO: [holodeck] \treturning 0x%lx\n", v);
+    //fprintf(stderr, "INFO: [holodeck] \treturning 0x%lx\n", v);
     *val = v;
 }
 
