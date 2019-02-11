@@ -65,14 +65,14 @@ static int __init kernelinfo24_init(void)
 
 	PRINT_SIZE(init_task, "size", "task");
 	PRINT_OFFSET(task_struct__p,		tasks,			"task");
-	PRINT_OFFSET(task_struct__p, pid, "task");
-	PRINT_OFFSET(task_struct__p, tgid, "task");
+	PRINT_OFFSET(task_struct__p,		pid,			"task");
+	PRINT_OFFSET(task_struct__p,		tgid,			"task");
 	PRINT_OFFSET(task_struct__p,		group_leader,	"task");
 	PRINT_OFFSET(task_struct__p,		real_parent,	"task");
 	PRINT_OFFSET(task_struct__p,		parent,			"task");
 	PRINT_OFFSET(task_struct__p,		mm,				"task");
-	PRINT_OFFSET(task_struct__p, comm, "task");
-	PRINT_SIZE(task_struct__p->comm, "comm_size", "task");
+	PRINT_OFFSET(task_struct__p,		comm,			"task");
+	PRINT_SIZE(task_struct__p->comm,	"comm_size",	"task");
 	PRINT_OFFSET(task_struct__p, files, "task");
 
 	PRINT_SIZE(*init_task.mm,			"size",			"mm");
@@ -92,22 +92,22 @@ static int __init kernelinfo24_init(void)
 	PRINT_OFFSET(vm_area_struct__p,		vm_file,		"vma");
 
 
-	PRINT_OFFSET(file__p, f_dentry, "fs");
-	PRINT_OFFSET(file__p, f_vfsmnt, "fs");
-	PRINT_OFFSET(file__p, f_pos, "fs");
-	PRINT_OFFSET(files_struct__p, fd, "fs");
+	PRINT_OFFSET(file__p,				f_dentry,		"fs");
+	PRINT_OFFSET(file__p,				f_vfsmnt,		"fs");
+	PRINT_OFFSET(file__p,				f_pos,			"fs");
+	PRINT_OFFSET(files_struct__p,		fd,				"fs");
 
-	PRINT_SIZE(qstr__s, "size", "qstr");
-	PRINT_OFFSET(qstr__p, name, "qstr");
+	PRINT_SIZE(qstr__s,					"size",			"qstr");
+	PRINT_OFFSET(qstr__p,				name,			"qstr");
 
-	PRINT_OFFSET(dentry__p, d_name, "path");
-	PRINT_OFFSET(dentry__p, d_iname, "path");
-	PRINT_OFFSET(dentry__p, d_parent, "path");
-	PRINT_OFFSET(dentry__p, d_op, "path");
-	PRINT_OFFSET(dentry__p, d_name, "path");
-	PRINT_OFFSET(vfsmount__p, mnt_root, "path");
-	PRINT_OFFSET(vfsmount__p, mnt_parent, "path");
-	PRINT_OFFSET(vfsmount__p, mnt_mountpoint, "path");
+	PRINT_OFFSET(dentry__p,				d_name,			"path");
+	PRINT_OFFSET(dentry__p,				d_iname,		"path");
+	PRINT_OFFSET(dentry__p,				d_parent,		"path");
+	PRINT_OFFSET(dentry__p,				d_op,			"path");
+	PRINT_OFFSET(dentry__p,				d_name,			"path");
+	PRINT_OFFSET(vfsmount__p,			mnt_root,		"path");
+	PRINT_OFFSET(vfsmount__p,			mnt_parent,		"path");
+	PRINT_OFFSET(vfsmount__p,			mnt_mountpoint,	"path");
 
 	printk(KERN_INFO "---KERNELINFO-END---\n");
 
