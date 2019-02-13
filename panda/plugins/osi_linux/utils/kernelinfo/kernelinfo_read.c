@@ -125,6 +125,9 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 		READ_INFO_INT(ki, fs.fdtab_offset, gerr, err.fs, &errbmp);
 		READ_INFO_INT(ki, path.d_dname_offset, gerr, err.path, &errbmp);
 	} else if (KERNEL_VERSION(ki->version.a, ki->version.b, ki->version.c) >= KERNEL_VERSION(2, 4, 0)) {
+		READ_INFO_INT(ki, task.p_opptr_offset, gerr, err.task, &errbmp);
+		READ_INFO_INT(ki, task.p_pptr_offset, gerr, err.task, &errbmp);
+
 		READ_INFO_INT(ki, fs.f_dentry_offset, gerr, err.fs, &errbmp);	
 		READ_INFO_INT(ki, fs.f_vfsmnt_offset, gerr, err.fs, &errbmp);
 	}

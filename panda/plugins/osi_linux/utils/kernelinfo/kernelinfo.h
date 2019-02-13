@@ -52,8 +52,14 @@ PACKED_STRUCT(task_info) {
 	int tgid_offset;
 	int group_leader_offset;
 	int thread_group_offset;
-	int real_parent_offset;
-	int parent_offset;
+	union {
+		int real_parent_offset;
+		int p_opptr_offset;
+	};
+	union {
+		int parent_offset;
+		int p_pptr_offset;
+	};
 	int mm_offset;
 	int stack_offset;
 	int real_cred_offset;
