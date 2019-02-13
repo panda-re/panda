@@ -99,9 +99,10 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 
 	/* read task information */
 	READ_INFO_INT(ki, task.size, gerr, err.task, &errbmp);
-	READ_INFO_INT(ki, task.tasks_offset, gerr, err.task, &errbmp);
 
 	if (KERNEL_VERSION(ki->version.a, ki->version.b, ki->version.c) > KERNEL_VERSION(2, 4, 254)) {
+		READ_INFO_INT(ki, task.tasks_offset, gerr, err.task, &errbmp);
+
 		READ_INFO_INT(ki, task.task_offset, gerr, err.fs, &errbmp);
 		READ_INFO_INT(ki, task.group_leader_offset, gerr, err.task, &errbmp);
 		READ_INFO_INT(ki, task.thread_group_offset, gerr, err.task, &errbmp);
@@ -109,6 +110,8 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 		READ_INFO_INT(ki, task.stack_offset, gerr, err.task, &errbmp);
 		READ_INFO_INT(ki, task.real_cred_offset, gerr, err.task, &errbmp);
 		READ_INFO_INT(ki, task.cred_offset, gerr, err.task, &errbmp);
+		READ_INFO_INT(ki, task.real_parent_offset, gerr, err.task, &errbmp);
+		READ_INFO_INT(ki, task.parent_offset, gerr, err.task, &errbmp);
 
 		/* read cred information */
 		READ_INFO_INT(ki, cred.uid_offset, gerr, err.cred, &errbmp);
@@ -128,9 +131,6 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 
 	READ_INFO_INT(ki, task.pid_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.tgid_offset, gerr, err.task, &errbmp);
-	READ_INFO_INT(ki, task.group_leader_offset, gerr, err.task, &errbmp);
-	READ_INFO_INT(ki, task.real_parent_offset, gerr, err.task, &errbmp);
-	READ_INFO_INT(ki, task.parent_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.mm_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.comm_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.comm_size, gerr, err.task, &errbmp);
