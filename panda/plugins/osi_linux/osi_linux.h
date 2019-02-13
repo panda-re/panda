@@ -212,11 +212,6 @@ IMPLEMENT_OFFSET_GET(get_task_struct, thread_info_addr, target_ptr_t, ki.task.ta
 IMPLEMENT_OFFSET_GET(get_thread_group, task_struct, target_ptr_t, ki.task.thread_group_offset, 0)
 
 /**
- * @brief Retrieves the thread group leader address from task_struct.
- */
-IMPLEMENT_OFFSET_GET(get_group_leader, task_struct, target_ptr_t, ki.task.group_leader_offset, 0)
-
-/**
  * @brief Retrieves the tasks address from a task_struct.
  * This is used to iterate the process list.
  */
@@ -592,22 +587,6 @@ static inline char *get_name(CPUState *env, target_ptr_t task_struct, char *name
 		strncpy(name, "N/A", ki.task.comm_size*sizeof(char));
 	}
 	return name;
-}
-
-/**
- * @brief Retrieves the address of the following task_struct in the process list.
- *
- * XXX: Can now be implemented with IMPLEMENT_OFFSET_GETTER_2LN
- */
-static inline target_ptr_t get_task_struct_next(CPUState *env, target_ptr_t task_struct) {
-	target_ptr_t tasks = get_tasks(env, task_struct);
-
-	if (!tasks) {
-		return (target_ptr_t)NULL;
-	}
-	else {
-		return tasks-ki.task.tasks_offset;
-	}
 }
 
 void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr);

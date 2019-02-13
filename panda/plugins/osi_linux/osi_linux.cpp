@@ -145,8 +145,8 @@ void get_process_info(CPUState *env, GArray **out,
 
 	// To avoid infinite loops, we need to actually start traversal from the next
 	// process after the thread group leader of the current task.
-	ts_first = get_group_leader(env, ts_first);
-	ts_first = get_task_struct_next(env, ts_first);
+	ts_first = kernel_profile->get_group_leader(env, ts_first);
+	ts_first = kernel_profile->get_task_struct_next(env, ts_first);
 #endif
 
 	ts_current = ts_first;
@@ -181,7 +181,7 @@ void get_process_info(CPUState *env, GArray **out,
 		ts_current = tg_first - ki.task.thread_group_offset;
 #endif
 
-		ts_current = get_task_struct_next(env, ts_current);
+		ts_current = kernel_profile->get_task_struct_next(env, ts_current);
 	} while(ts_current != (target_ptr_t)NULL && ts_current != ts_first);
 
 	// memory read error

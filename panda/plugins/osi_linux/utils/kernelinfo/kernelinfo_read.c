@@ -105,8 +105,6 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 
 		READ_INFO_INT(ki, task.task_offset, gerr, err.fs, &errbmp);
 		READ_INFO_INT(ki, task.group_leader_offset, gerr, err.task, &errbmp);
-		READ_INFO_INT(ki, task.thread_group_offset, gerr, err.task, &errbmp);
-		READ_INFO_INT(ki, task.thread_group_offset, gerr, err.task, &errbmp);
 		READ_INFO_INT(ki, task.stack_offset, gerr, err.task, &errbmp);
 		READ_INFO_INT(ki, task.real_cred_offset, gerr, err.task, &errbmp);
 		READ_INFO_INT(ki, task.cred_offset, gerr, err.task, &errbmp);
@@ -127,11 +125,13 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	} else if (KERNEL_VERSION(ki->version.a, ki->version.b, ki->version.c) >= KERNEL_VERSION(2, 4, 0)) {
 		READ_INFO_INT(ki, task.p_opptr_offset, gerr, err.task, &errbmp);
 		READ_INFO_INT(ki, task.p_pptr_offset, gerr, err.task, &errbmp);
+		READ_INFO_INT(ki, task.next_task_offset, gerr, err.task, &errbmp);
 
 		READ_INFO_INT(ki, fs.f_dentry_offset, gerr, err.fs, &errbmp);	
 		READ_INFO_INT(ki, fs.f_vfsmnt_offset, gerr, err.fs, &errbmp);
 	}
 
+	READ_INFO_INT(ki, task.thread_group_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.pid_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.tgid_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.mm_offset, gerr, err.task, &errbmp);

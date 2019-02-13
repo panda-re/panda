@@ -47,7 +47,10 @@ PACKED_STRUCT(task_info) {
 	uint64_t init_addr;			/**< Address of the `struct task_struct` of the init task. */
 	size_t size;				/**< Size of `struct task_struct`. */
 	int task_offset;			/**< Offset of task_struct in the thread_info struct. */
-	int tasks_offset;			/**< TODO: add documentation for the rest of the struct members */
+	union {
+		int tasks_offset;			/**< TODO: add documentation for the rest of the struct members */
+		int next_task_offset;
+	};
 	int pid_offset;
 	int tgid_offset;
 	int group_leader_offset;
