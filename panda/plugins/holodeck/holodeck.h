@@ -8,12 +8,12 @@ struct Constant {
 
 struct Sequence {
     unsigned int offset;
-    std::vector<int> *values;
+    std::vector<unsigned int> *values;
 };
 
 struct RandomUniform {
     int rndseed; // TODO: store random state in seed?
-    std::vector<int> *values;
+    std::vector<unsigned int> *values;
 };
 
 

@@ -25,7 +25,6 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 #include "include/qemu/option.h"
 #include "include/qemu/config-file.h"
-
 }
 
 #include "yaml-cpp/yaml.h"
@@ -97,6 +96,9 @@ unsigned int generate_value(std::vector<Device> devices, unsigned int address) {
     }
 
     fprintf(stderr, "Error: [holodeck] couldn't find any config to generate value at 0x%x. Aborting\n", address);
+    //fprintf(stderr, "Error: [holodeck] couldn't find any config to generate value at 0x%x. Suspending execution\n", address);
+    //vm_stop(RUN_STATE_PAUSED);
+    //qemu_system_suspend();
     assert(0);
 }
 
@@ -161,7 +163,7 @@ bool parse_devices(YAML::Node &devices_y, std::vector<Device> &devices) {
                    Sequence seq;
 
                    seq.offset = 0;
-                   seq.values = new std::vector<int>;
+                   seq.values = new std::vector<unsigned int>;
 
                    assert(props.second["reads"]);
                    const YAML::Node& seqvals = props.second["reads"];
@@ -177,12 +179,12 @@ bool parse_devices(YAML::Node &devices_y, std::vector<Device> &devices) {
                    RandomUniform rnd;
 
                    rnd.rndseed = 0;
-                   rnd.values = new std::vector<int>;
+                   rnd.values = new std::vector<unsigned int>;
 
                    assert(props.second["reads"]);
                    const YAML::Node& seqvals = props.second["reads"];
                    for(unsigned i=0;i<seqvals.size();i++) {
-                       int intval = seqvals[i].as<int>();
+                       int intval = seqvals[i].as<unsigned int>();
                        (*rnd.values).push_back(intval);
                    }
                    m.r = rnd;
@@ -357,7 +359,7 @@ bool init_plugin(void *self) {
 
 #ifdef HOLODECK_LOG
     fprintf(stderr, "INFO: [holodeck] Parsed input config!\n");
-    dump_devices(device_list);
+    //dump_devices(device_list);
 #endif
 
     // Register callbacks
