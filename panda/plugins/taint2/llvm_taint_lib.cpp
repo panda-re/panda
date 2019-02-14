@@ -12,11 +12,12 @@
  * See the COPYING file in the top-level directory.
  *
 PANDAENDCOMMENT */
-/*
- * Change Log:
- * Added taint propagation truncation for mul X 0, mul X 1, lshr 0 , ashr 0
- *  sub, sdiv, udiv, fsub, fdiv (x,x) == no taint op
- */
+//
+// Change Log:
+// Added taint propagation truncation for mul X 0, mul X 1, lshr 0 , ashr 0
+//  sub, sdiv, udiv, fsub, fdiv (x,x) == no taint op
+//
+// 12-FEB-2019:  ensure LLVM frames cleared before they are reused
 
 #include <iostream>
 #include <vector>
@@ -447,10 +448,10 @@ void PandaTaintVisitor::visitBasicBlock(BasicBlock &BB) {
     if (&F->front() == &BB && F->getName().startswith("tcg-llvm-tb-")) {
         // Entry block.
         // This is a single guest BB, so callstack should be empty.
-        // Insert call to reset llvm frame.
-        vector<Value *> args{ llvConst };
-        assert(BB.getFirstNonPHI());
-        inlineCallBefore(*BB.getFirstNonPHI(), resetFrameF, args);
+        // Insert call to reset llvm frame and clear it for use
+        // N.B.  As inserting both calls BEFORE the node, need to insert the
+        // reset second so it gets executed first (or will end up clearing an
+        // abandoned frame instead of one about to use).
 
         // Insert call to clear llvm shadow mem.
         vector<Value *> args2{
@@ -458,6 +459,11 @@ void PandaTaintVisitor::visitBasicBlock(BasicBlock &BB) {
             const_uint64(ctx, MAXREGSIZE * PST->getMaxSlot())
         };
         inlineCallBefore(*BB.getFirstNonPHI(), deleteF, args2);
+
+        // Insert call to reset the frame before clearing the llvm shadow mem
+        vector<Value *> args{ llvConst };
+        assert(BB.getFirstNonPHI());
+        inlineCallBefore(*BB.getFirstNonPHI(), resetFrameF, args);
 
         // Two things: Insert "tainted" metadata.
         MDNode *md = MDNode::get(ctx, ArrayRef<Value *>());
@@ -1353,6 +1359,16 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
     // This is a call that we aren't going to model, so we need to process
     // it instruction by instruction.
     // First, we need to set up a new stack frame and copy argument taint.
+
+    // As the frame may have been used before, first clear it out
+    // note that shad->num_vals is MAXFRAMESIZE
+    auto clr_dest = const_uint64(ctx, (shad->num_vals)*MAXREGSIZE);
+    int clrBytes = MAXREGSIZE * (shad->num_vals);
+    auto clr_bytes = const_uint64(ctx, clrBytes);
+    vector<Value *> clearArgs { llvConst, clr_dest, clr_bytes };
+    inlineCallBefore(I, deleteF, clearArgs);
+
+    // And now copy taint for the arguments into the new frame
     vector<Value *> fargs{ llvConst };
     int numArgs = I.getNumArgOperands();
     for (int i = 0; i < numArgs; i++) {
@@ -1370,10 +1386,9 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
                 constNull(ctx)
             };
             inlineCallBefore(I, copyF, copyargs);
-        } else {
-            vector<Value *> args { llvConst, arg_dest, arg_bytes };
-            inlineCallBefore(I, deleteF, args);
         }
+        // no need to insert a taint_delete for constant arguments, as we've
+        // already cleared the subframe
     }
     if (!callType->getReturnType()->isVoidTy()) { // Copy from return slot.
         vector<Value *> retargs{
