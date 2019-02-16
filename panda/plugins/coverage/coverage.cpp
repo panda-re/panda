@@ -17,6 +17,8 @@ PANDAENDCOMMENT */
 
 #include "panda/plugin.h"
 #include <unordered_set>
+#include <fstream>
+#include <iostream>
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -41,5 +43,13 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
-    fprintf(stderr, "Saw a total of %lu unique blocks\n", basic_block_pcs.size());
+    fprintf(stderr, "Saw a total of %lu unique blocks. Saved list to /tmp/coverage.txt\n", basic_block_pcs.size());
+
+    std::ofstream f;
+	f.open ("/tmp/coverage.txt");
+    for (auto i : basic_block_pcs) {
+        f << "0x" << std::hex << i << "\n";
+    }
+
+	f.close();
 }
