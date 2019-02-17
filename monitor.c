@@ -1089,6 +1089,20 @@ static void hmp_info_registers(Monitor *mon, const QDict *qdict)
     cpu_dump_state(cs, (FILE *)mon, monitor_fprintf, CPU_DUMP_FPU);
 }
 
+static void hmp_interrupt(Monitor *mon, const QDict *qdict)
+{
+    CPUState *cs = mon_get_cpu();
+
+    if (!cs) {
+        monitor_printf(mon, "No CPU available\n");
+        return;
+    }
+
+    int intnum = qdict_get_try_int(qdict, "intnum", 0);
+    monitor_printf(mon, "Raising interrupt %d\n", intnum);
+    cpu_interrupt(cs, intnum);
+}
+
 static void hmp_info_jit(Monitor *mon, const QDict *qdict)
 {
     if (!tcg_enabled()) {
