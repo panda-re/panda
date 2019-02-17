@@ -30,8 +30,8 @@ static uint64_t start_count;
 static uint64_t actual_start_count;
 static uint64_t end_count;
 
-static char nondet_name[128];
-static char snp_name[128];
+static char *nondet_name;
+static char *snp_name;
 
 static FILE *oldlog = NULL;
 static FILE *newlog = NULL;
@@ -377,8 +377,13 @@ bool init_plugin(void *self) {
         end_count = panda_parse_uint64_opt(args, "end", UINT64_MAX, "ending instruction count");
     }
 
-    snprintf(nondet_name, 128, "%s-rr-nondet.log", name);
-    snprintf(snp_name, 128, "%s-rr-snp", name);
+    size_t needed;
+    needed = snprintf(NULL, 0, "%s-rr-nondet.log", name);
+    nondet_name = malloc(needed+1);
+    snprintf(nondet_name, needed+1, "%s-rr-nondet.log", name);
+    needed = snprintf(NULL, 0, "%s-rr-snp", name);
+    snp_name = malloc(needed+1);
+    snprintf(snp_name, needed+1, "%s-rr-snp", name);
 
     return true;
 }
