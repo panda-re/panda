@@ -13,7 +13,7 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 // Verbose logging flag
-#define HOLODECK_LOG
+//#define HOLODECK_LOG
 
 #include "panda/plugin.h"
 
@@ -33,6 +33,44 @@ void uninit_plugin(void *);
 
 char dtbfile[32];
 std::vector<Device> device_list;
+
+// Given a model, handle its write
+ void save_write(Model &m, uint64_t *val) {
+    switch (m.writePolicy) {
+        case WriteIgnore:
+            return;
+            break;
+        case WriteStoreBuffer:
+            // Dump if it's too long or we're getting a new log
+            if (m.obuf.buf->length() > 160 || (char)(*val) == '[') {
+                fprintf(stderr, "%s\n", m.obuf.buf->c_str());
+                m.obuf.buf->erase();
+            }
+
+            // If newline or null byte, dump and clear buffer
+            if ((char)(*val) == '\n') {
+                fprintf(stderr, "%s", m.obuf.buf->c_str());
+                m.obuf.buf->erase();
+
+            } else { // append to buffer
+                m.obuf.buf->append(1, (char)*val);
+            }
+
+
+
+            break;
+
+        case WriteLast:
+            // Store last char
+            m.obyte.byte = (char)*val;
+            break;
+
+        default:
+            assert(0);
+            return;
+
+    }
+}
 
 // Given a model, get the next value and update any internal state
 unsigned int _generate_value(Model &m) {
@@ -60,6 +98,11 @@ unsigned int _generate_value(Model &m) {
         case ModelRandomUniform:
             return (*m.s.values)[rand() % (m.s.values->size())];
             break;
+
+        case ModelOutput:
+          fprintf(stderr, "Reading from output device. Enter value to return >\n");
+          return getchar();
+
         default:
             assert(0);
             return 0;
@@ -76,9 +119,8 @@ bool _generate_value(Device &dev, unsigned int offset, unsigned int *result) {
         }
     }
 
-    fprintf(stderr, "Error: [holodeck] couldn't find model in %s at offset 0x%x to generate value\n", dev.name.c_str(), offset);
+    //fprintf(stderr, "Error: [holodeck] couldn't find model in %s at offset 0x%x to generate value\n", dev.name.c_str(), offset);
     return false;
-    //assert(0);
 }
 
 unsigned int generate_value(std::vector<Device> devices, unsigned int address) {
@@ -91,15 +133,19 @@ unsigned int generate_value(std::vector<Device> devices, unsigned int address) {
             unsigned int result;
             if (_generate_value(dev, address-dev.start, &result)) {
                 return result;
+            }else {
+                return 0xFFFFFFFF; // TODO: instead of returning 0xFFFFFFFF, just fail?
             }
         }
     }
 
+
     fprintf(stderr, "Error: [holodeck] couldn't find any config to generate value at 0x%x. Aborting\n", address);
+    assert(0);
+    //panda_unload_plugins();
     //fprintf(stderr, "Error: [holodeck] couldn't find any config to generate value at 0x%x. Suspending execution\n", address);
     //vm_stop(RUN_STATE_PAUSED);
     //qemu_system_suspend();
-    assert(0);
 }
 
 //Parse a yaml tree, output in devices vector
@@ -135,6 +181,9 @@ bool parse_devices(YAML::Node &devices_y, std::vector<Device> &devices) {
            if (props.second["write_policy"] &&
               props.second["write_policy"].as<std::string>() == "ignore") {
                m.writePolicy=WriteIgnore;
+           }else if (props.second["write_policy"] &&
+               props.second["write_policy"].as<std::string>() == "store_buffer") {
+               m.writePolicy=WriteStoreBuffer;
            }else{
                m.writePolicy=WriteLast;
            }
@@ -146,6 +195,8 @@ bool parse_devices(YAML::Node &devices_y, std::vector<Device> &devices) {
                m.type = ModelSequence;
            } else if (model_name == "random-uniform") {
                m.type = ModelRandomUniform;
+           } else if (model_name == "output") {
+               m.type = ModelOutput;
            }else{
                fprintf(stderr, "Error: [holodeck] found unknown model type %s\n", model_name.c_str());
                return false;
@@ -190,6 +241,10 @@ bool parse_devices(YAML::Node &devices_y, std::vector<Device> &devices) {
                    m.r = rnd;
                    }
                    break;
+
+               case ModelOutput:  // Initialize output
+                   m.obuf.buf = new std::string;
+                   break;
            }
 
            models.push_back(m);
@@ -230,6 +285,10 @@ void dump_devices(std::vector<Device> &devices) {
                     printf("\n");
                     }
                     break;
+               case ModelOutput: 
+                   fprintf(stderr, "Can't write to output model\n");
+                   assert(0);
+                   break;
             }
 
             /*
@@ -252,9 +311,59 @@ void cleanup_devices(std::vector<Device> &devices) {
             } else if (model.type == ModelRandomUniform) {
                 delete model.r.values;
             }
+
+            if (model.writePolicy == WriteStoreBuffer) {
+                delete model.obuf.buf;
+            }
         }
 
     }
+}
+
+bool is_ascii(char x) {
+    return (x > 0x20) && (x < 0x7e);
+}
+void saw_unassigned_io_write(CPUState *env, target_ulong pc, hwaddr addr, 
+                            uint32_t size, uint64_t *val) {
+    // Find device
+    for (auto &dev : device_list) {
+        unsigned int offset = addr - dev.start;
+        if (addr >= dev.start && addr < (dev.start+dev.length)) {
+            // Now find model
+            for (auto &model : dev.models) {
+                if (model.offset==offset) {
+                    save_write(model, val);
+                    return;
+                }
+            }
+#ifdef HOLODECK_LOG
+            fprintf(stderr, "INFO: [holodeck] ignoring unassigned write to modeled "
+                   "device at 0x%x because offset 0xl%x is unmodeled\n\t "
+                   "written value: %lx\n", dev.start, offset, *val);
+#endif
+        }
+    }
+
+    // Else no model, ignore write
+
+#ifdef HOLODECK_LOG
+    unsigned int mask = 0x000000FF;
+    char c0 = (char)((*val)&mask);
+    char c1 = (char)((*val>>8)&mask);
+    char c2 = (char)((*val>>16)&mask);
+    char c3 = (char)((*val>>24)&mask);
+
+    // If at least first char is ascii and rest are ascii or null, print
+    if (is_ascii(c0) &&
+        (is_ascii(c1) || c1 == 0) &&
+        (is_ascii(c2) || c2 == 0) &&
+        (is_ascii(c2) || c3 == 0)) {
+        fprintf(stderr, "INFO: [holodeck] unassigned write to 0x%lx ascii: %c%c%c%c\n", addr,c0, c1, c2, c3);
+    }else{
+        fprintf(stderr, "INFO: [holodeck] ignoring unassigned write to unmodeled "
+                "0x%lx value: %lx\n", addr, *val);
+    }
+#endif
 }
 
 void saw_unassigned_io_read(CPUState *env, target_ulong pc, hwaddr addr, 
@@ -367,6 +476,9 @@ bool init_plugin(void *self) {
     pcb.unassigned_io_read = saw_unassigned_io_read;
     panda_register_callback(self, PANDA_CB_UNASSIGNED_IO_READ, pcb);
 
+    pcb.unassigned_io_write = saw_unassigned_io_write;
+    panda_register_callback(self, PANDA_CB_UNASSIGNED_IO_WRITE, pcb);
+
     return true;
 #else
     fprintf(stderr, "Error: [holodeck] Holodeck is unsupported on this architecture\n");
@@ -383,6 +495,15 @@ void uninit_plugin(void *self) {
 
     if (dtbfile != NULL)
         unlink(dtbfile);
+
+    for (auto &dev : device_list) {
+        for (auto &model : dev.models) {
+            if (model.writePolicy == WriteStoreBuffer) {
+                // Dump log before quitting
+                fprintf(stderr, "%s\n", (*model.obuf.buf).c_str());
+            }
+        }
+    }
 
     if (device_list.size() > 0 )
         cleanup_devices(device_list);

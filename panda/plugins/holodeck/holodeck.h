@@ -1,6 +1,6 @@
-enum ModelType   {ModelConstant, ModelSequence, ModelRandomUniform};
+enum ModelType   {ModelConstant, ModelSequence, ModelRandomUniform, ModelOutput};
 enum ReadPolicy  {ReadAbort, ReadRepeat};
-enum WritePolicy {WriteLast, WriteIgnore};
+enum WritePolicy {WriteLast, WriteIgnore, WriteStoreBuffer};
 
 struct Constant {
     unsigned int value;
@@ -16,6 +16,14 @@ struct RandomUniform {
     std::vector<unsigned int> *values;
 };
 
+struct OutputBuf {
+    std::string *buf;
+};
+
+struct OutputByte {
+    unsigned int byte;
+};
+
 
 struct Model {
     ModelType type;
@@ -27,8 +35,14 @@ struct Model {
         RandomUniform r;
     };
 
-    ReadPolicy  readPolicy;
     WritePolicy writePolicy;
+    // This is probably really wasteful for read-only devices
+    union {
+        OutputBuf obuf;
+        OutputByte obyte;
+    };
+
+    ReadPolicy  readPolicy;
 };
 
 struct Device {
