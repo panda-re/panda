@@ -100,8 +100,10 @@ unsigned int _generate_value(Model &m) {
             break;
 
         case ModelOutput:
-          fprintf(stderr, "Reading from output device. Enter value to return >\n");
-          return getchar();
+          fprintf(stderr, "Reading from output device. Returning 0\n");
+          return 0;
+          //fprintf(stderr, "Reading from output device. Enter value to return >\n");
+          //return getchar();
 
         default:
             assert(0);
