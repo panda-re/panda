@@ -17,7 +17,7 @@ PANDAENDCOMMENT */
 // Added taint propagation truncation for mul X 0, mul X 1, lshr 0 , ashr 0
 //  sub, sdiv, udiv, fsub, fdiv (x,x) == no taint op
 //
-// 12-FEB-2019:  ensure LLVM frames cleared before they are reused
+// 15-FEB-2019:  ensure LLVM frames cleared before they are reused
 
 #include <iostream>
 #include <vector>
@@ -1362,8 +1362,15 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
 
     // As the frame may have been used before, first clear it out
     // note that shad->num_vals is MAXFRAMESIZE
+    // if function called doesn't have a name, then have to assume worst case
+    // of maximum frame size as can't calculate using PandaSlotTracker
+    uint64_t clrBytes = MAXREGSIZE * (shad->num_vals);
+    if (calledF) {
+        SubframePST.reset(new PandaSlotTracker(calledF));
+        SubframePST->initialize();
+        clrBytes = MAXREGSIZE * (SubframePST->getMaxSlot());
+    }
     auto clr_dest = const_uint64(ctx, (shad->num_vals)*MAXREGSIZE);
-    int clrBytes = MAXREGSIZE * (shad->num_vals);
     auto clr_bytes = const_uint64(ctx, clrBytes);
     vector<Value *> clearArgs { llvConst, clr_dest, clr_bytes };
     inlineCallBefore(I, deleteF, clearArgs);
