@@ -53,10 +53,6 @@
 
 #include "panda/rr/rr_log.h"
 
-#ifndef _WIN32
-#include "qemu/compatfd.h"
-#endif
-
 #ifdef CONFIG_LINUX
 
 #include <sys/prctl.h>
@@ -192,10 +188,7 @@ static bool check_tcg_memory_orders_compatible(void)
 
 static bool default_mttcg_enabled(void)
 {
-    QemuOpts *icount_opts = qemu_find_opts_singleton("icount");
-    const char *rr = qemu_opt_get(icount_opts, "rr");
-
-    if (rr || TCG_OVERSIZED_GUEST) {
+    if (use_icount || TCG_OVERSIZED_GUEST) {
         return false;
     } else {
 #ifdef TARGET_SUPPORTS_MTTCG
@@ -213,11 +206,17 @@ void qemu_tcg_configure(QemuOpts *opts, Error **errp)
         if (strcmp(t, "multi") == 0) {
             if (TCG_OVERSIZED_GUEST) {
                 error_setg(errp, "No MTTCG when guest word size > hosts");
+            } else if (use_icount) {
+                error_setg(errp, "No MTTCG when icount is enabled");
             } else {
+#ifndef TARGET_SUPPORTS_MTTCG
+                error_report("Guest not yet converted to MTTCG - "
+                             "you may get unexpected results");
+#endif
                 if (!check_tcg_memory_orders_compatible()) {
                     error_report("Guest expects a stronger memory ordering "
                                  "than the host provides");
-                    error_printf("This may cause strange/hard to debug errors");
+                    error_printf("This may cause strange/hard to debug errors\n");
                 }
                 mttcg_enabled = true;
             }
@@ -808,6 +807,11 @@ static void qemu_cpu_kick_rr_cpu(void)
     } while (cpu != atomic_mb_read(&tcg_current_rr_cpu));
 }
 
+void qemu_timer_notify_cb(void *opaque, QEMUClockType type)
+{
+    qemu_notify_event();
+}
+
 static void kick_tcg_thread(void *opaque)
 {
     timer_mod(tcg_kick_vcpu_timer, qemu_tcg_next_kick());
@@ -931,12 +935,22 @@ static void sigbus_reraise(void)
     abort();
 }
 
-static void sigbus_handler(int n, struct qemu_signalfd_siginfo *siginfo,
-                           void *ctx)
+static void sigbus_handler(int n, siginfo_t *siginfo, void *ctx)
 {
-    if (kvm_on_sigbus(siginfo->ssi_code,
-                      (void *)(intptr_t)siginfo->ssi_addr)) {
+    if (siginfo->si_code != BUS_MCEERR_AO && siginfo->si_code != BUS_MCEERR_AR) {
         sigbus_reraise();
+    }
+
+    if (current_cpu) {
+        /* Called asynchronously in VCPU thread.  */
+        if (kvm_on_sigbus_vcpu(current_cpu, siginfo->si_code, siginfo->si_addr)) {
+            sigbus_reraise();
+        }
+    } else {
+        /* Called synchronously (via signalfd) in main thread.  */
+        if (kvm_on_sigbus(siginfo->si_code, siginfo->si_addr)) {
+            sigbus_reraise();
+        }
     }
 }
 
@@ -946,91 +960,16 @@ static void qemu_init_sigbus(void)
 
     memset(&action, 0, sizeof(action));
     action.sa_flags = SA_SIGINFO;
-    action.sa_sigaction = (void (*)(int, siginfo_t*, void*))sigbus_handler;
+    action.sa_sigaction = sigbus_handler;
     sigaction(SIGBUS, &action, NULL);
 
     prctl(PR_MCE_KILL, PR_MCE_KILL_SET, PR_MCE_KILL_EARLY, 0, 0);
 }
-
-static void qemu_kvm_eat_signals(CPUState *cpu)
-{
-    struct timespec ts = { 0, 0 };
-    siginfo_t siginfo;
-    sigset_t waitset;
-    sigset_t chkset;
-    int r;
-
-    sigemptyset(&waitset);
-    sigaddset(&waitset, SIG_IPI);
-    sigaddset(&waitset, SIGBUS);
-
-    do {
-        r = sigtimedwait(&waitset, &siginfo, &ts);
-        if (r == -1 && !(errno == EAGAIN || errno == EINTR)) {
-            perror("sigtimedwait");
-            exit(1);
-        }
-
-        switch (r) {
-        case SIGBUS:
-            if (kvm_on_sigbus_vcpu(cpu, siginfo.si_code, siginfo.si_addr)) {
-                sigbus_reraise();
-            }
-            break;
-        default:
-            break;
-        }
-
-        r = sigpending(&chkset);
-        if (r == -1) {
-            perror("sigpending");
-            exit(1);
-        }
-    } while (sigismember(&chkset, SIG_IPI) || sigismember(&chkset, SIGBUS));
-}
-
 #else /* !CONFIG_LINUX */
-
 static void qemu_init_sigbus(void)
 {
 }
-
-static void qemu_kvm_eat_signals(CPUState *cpu)
-{
-}
 #endif /* !CONFIG_LINUX */
-
-#ifndef _WIN32
-static void dummy_signal(int sig)
-{
-}
-
-static void qemu_kvm_init_cpu_signals(CPUState *cpu)
-{
-    int r;
-    sigset_t set;
-    struct sigaction sigact;
-
-    memset(&sigact, 0, sizeof(sigact));
-    sigact.sa_handler = dummy_signal;
-    sigaction(SIG_IPI, &sigact, NULL);
-
-    pthread_sigmask(SIG_BLOCK, NULL, &set);
-    sigdelset(&set, SIG_IPI);
-    sigdelset(&set, SIGBUS);
-    r = kvm_set_signal_mask(cpu, &set);
-    if (r) {
-        fprintf(stderr, "kvm_set_signal_mask: %s\n", strerror(-r));
-        exit(1);
-    }
-}
-
-#else /* _WIN32 */
-static void qemu_kvm_init_cpu_signals(CPUState *cpu)
-{
-    abort();
-}
-#endif /* _WIN32 */
 
 static QemuMutex qemu_global_mutex;
 static QemuCond qemu_io_proceeded_cond;
@@ -1110,7 +1049,6 @@ static void qemu_kvm_wait_io_event(CPUState *cpu)
         qemu_cond_wait(cpu->halt_cond, &qemu_global_mutex);
     }
 
-    qemu_kvm_eat_signals(cpu);
     qemu_wait_io_event_common(cpu);
 }
 
@@ -1133,7 +1071,7 @@ static void *qemu_kvm_cpu_thread_fn(void *arg)
         exit(1);
     }
 
-    qemu_kvm_init_cpu_signals(cpu);
+    kvm_init_cpu_signals(cpu);
 
     /* signal CPU creation */
     cpu->created = true;
@@ -1400,8 +1338,9 @@ static void *qemu_hax_cpu_thread_fn(void *arg)
 {
     CPUState *cpu = arg;
     int r;
+
+    qemu_mutex_lock_iothread();
     qemu_thread_get_self(cpu->thread);
-    qemu_mutex_lock(&qemu_global_mutex);
 
     cpu->thread_id = qemu_get_thread_id();
     cpu->created = true;

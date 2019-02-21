@@ -17,15 +17,14 @@
  * Ryan Whelan, Tim Leek, Sam Coe, Nathan VanBenschoten
  */
 
-/*
- * Change Log:
- * 2018-JUL-09   Propagate network related taint too.
- * 2018-MAY-07   Add detaint_cb0 option to remove taint from bytes whose
- *               control bits are all zero.
- * 2018-DEC-12   In i386 build, save information needed to calculate condition
- *               codes when the cpu_exec loop exits, and restore when it
- *               re-enters, to avoid inconsistent taint results.
- */
+// Change Log:
+// 2018-JUL-09   Propagate network related taint too.
+// 2018-MAY-07   Add detaint_cb0 option to remove taint from bytes whose
+//               control bits are all zero.
+// 2019-FEB-21   In i386 build, save information needed to calculate condition
+//               codes when the cpu_exec loop exits, and restore when it
+//               re-enters, to avoid inconsistent taint results.
+
 
 // This needs to be defined before anything is included in order to get
 // the PRIx64 macro
@@ -95,23 +94,23 @@ uint32_t max_taintset_card = 0;   // ie disabled - there is no maximum
 bool haveSavedCC = false;
 bool savedTaint = false;
 
-target_ulong saved_cc_dst;
-TaintData cc_dst_taint[sizeof(target_ulong)];
-uint64_t dst_off = cpu_off(cc_dst);
+target_ulong savedCCDst;
+TaintData ccDstTaint[sizeof(target_ulong)];
+uint64_t dstOff = cpu_off(cc_dst);
 
-target_ulong saved_cc_src;
-TaintData cc_src_taint[sizeof(target_ulong)];
-uint64_t src_off = cpu_off(cc_src);
+target_ulong savedCCSrc;
+TaintData ccSrcTaint[sizeof(target_ulong)];
+uint64_t srcOff = cpu_off(cc_src);
 
-target_ulong saved_cc_src2;
-TaintData cc_src2_taint[sizeof(target_ulong)];
-uint64_t src2_off = cpu_off(cc_src2);
+target_ulong savedCCSrc2;
+TaintData ccSrc2Taint[sizeof(target_ulong)];
+uint64_t src2Off = cpu_off(cc_src2);
 
-uint32_t saved_cc_op;
-TaintData cc_op_taint[sizeof(uint32_t)];
-uint64_t op_off = cpu_off(cc_op);
+uint32_t savedCCOp;
+TaintData ccOpTaint[sizeof(uint32_t)];
+uint64_t opOff = cpu_off(cc_op);
 
-target_ulong saved_eflags;
+target_ulong savedEflags;
 // CPUArchState->eflags is marked irrelevant, so it will never have taint
 #endif
 
@@ -372,33 +371,33 @@ int i386_after_cpu_exec_enter(CPUState *cpu) {
     if (haveSavedCC) {
         CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 
-        env->cc_dst = saved_cc_dst;
-        env->cc_src = saved_cc_src;
-        env->cc_src2 = saved_cc_src2;
-        env->cc_op = saved_cc_op;
-        env->eflags = saved_eflags;
+        env->cc_dst = savedCCDst;
+        env->cc_src = savedCCSrc;
+        env->cc_src2 = savedCCSrc2;
+        env->cc_op = savedCCOp;
+        env->eflags = savedEflags;
         haveSavedCC = false;
 
         // if saved taint too, restore that
         if (taintEnabled) {
             if (savedTaint) {
                 for (uint32_t i = 0; i < sizeof(target_ulong); i++) {
-                    shadow->gsv.set_full_quiet(dst_off + i, cc_dst_taint[i]);
-                    shadow->gsv.set_full_quiet(src_off + i, cc_src_taint[i]);
-                    shadow->gsv.set_full_quiet(src2_off + i, cc_src2_taint[i]);
+                    shadow->gsv.set_full_quiet(dstOff + i, ccDstTaint[i]);
+                    shadow->gsv.set_full_quiet(srcOff + i, ccSrcTaint[i]);
+                    shadow->gsv.set_full_quiet(src2Off + i, ccSrc2Taint[i]);
                 }
                 for (uint32_t i = 0; i < sizeof(uint32_t); i++) {
-                    shadow->gsv.set_full_quiet(op_off + i, cc_op_taint[i]);
+                    shadow->gsv.set_full_quiet(opOff + i, ccOpTaint[i]);
                 }
                 savedTaint = false;
             }
             else {
                 // if taint enabled since saved info, wipe out any taint that
                 // may have appeared on the data since the save
-                shadow->gsv.remove_quiet(dst_off, sizeof(target_ulong));
-                shadow->gsv.remove_quiet(src_off, sizeof(target_ulong));
-                shadow->gsv.remove_quiet(src2_off, sizeof(target_ulong));
-                shadow->gsv.remove_quiet(op_off, sizeof(uint32_t));
+                shadow->gsv.remove_quiet(dstOff, sizeof(target_ulong));
+                shadow->gsv.remove_quiet(srcOff, sizeof(target_ulong));
+                shadow->gsv.remove_quiet(src2Off, sizeof(target_ulong));
+                shadow->gsv.remove_quiet(opOff, sizeof(uint32_t));
             }
         }
         // if taint was disabled since saved the taint, I think we're just hosed
@@ -417,11 +416,11 @@ int i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock) {
         CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 
         // save the data itself
-        saved_cc_dst = env->cc_dst;
-        saved_cc_src = env->cc_src;
-        saved_cc_src2 = env->cc_src2;
-        saved_cc_op = env->cc_op;
-        saved_eflags = env->eflags;
+        savedCCDst = env->cc_dst;
+        savedCCSrc = env->cc_src;
+        savedCCSrc2 = env->cc_src2;
+        savedCCOp = env->cc_op;
+        savedEflags = env->eflags;
 
         // save the taint on the data, if there might be any
         if (taintEnabled) {
@@ -429,12 +428,12 @@ int i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock) {
             // the offset into CPUX86State of each item of interest is used as
             // the address of the item's taint in the shadow
             for (uint32_t i = 0; i < sizeof(target_ulong); i++) {
-                cc_dst_taint[i] = shadow->gsv.query_full(dst_off + i);
-                cc_src_taint[i] = shadow->gsv.query_full(src_off + i);
-                cc_src2_taint[i] = shadow->gsv.query_full(src2_off + i);
+                ccDstTaint[i] = shadow->gsv.query_full(dstOff + i);
+                ccSrcTaint[i] = shadow->gsv.query_full(srcOff + i);
+                ccSrc2Taint[i] = shadow->gsv.query_full(src2Off + i);
             }
             for (uint32_t i = 0; i < sizeof(uint32_t); i++) {
-                cc_op_taint[i] = shadow->gsv.query_full(op_off + i);
+                ccOpTaint[i] = shadow->gsv.query_full(opOff + i);
             }
             savedTaint = true;
         }

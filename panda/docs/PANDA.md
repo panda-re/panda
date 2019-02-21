@@ -55,15 +55,19 @@ int (*before_block_exec)(CPUState *env, TranslationBlock *tb);
 
 * `CPUState *env`: the current CPU state
 * `TranslationBlock *tb`: the TB we just executed
-* `TranslationBlock *next_tb`: the TB we will execute next (may be `NULL`)
+* `uint8_t exitCode`: one of the `TB_EXIT_` constants found in `tcg.h`
 
 **Return value**:
 
 unused
 
-**Signature:**:
- ```C
-int (*after_block_exec)(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
+**Notes**:
+
+The `exitCode` can be used to determine if the `tb` was executed to completion, or was interrupted due to an exit request.  If `exitCode <= TB_EXIT_IDX1` then the block ran to completion; otherwise it did not, and will be retried later.
+
+**Signature**:
+```C
+int (*after_block_exec)(CPUState *env, TranslationBlock *tb, uint8_t exitCode);
 ```
 ---
 
@@ -317,7 +321,7 @@ int (*replay_before_cpu_physical_mem_rw_ram)(
 ```
 ---
 
-**replay_handle_packet**: TODO: This will be used for network packet replay.
+**replay_handle_packet**: used for network packet replay
 
 **Callback ID**:   PANDA_CB_REPLAY_HANDLE_PACKET
 
@@ -326,8 +330,8 @@ int (*replay_before_cpu_physical_mem_rw_ram)(
 * `CPUState *env`: pointer to CPUState
 * `uint8_t *buf`: buffer containing packet data
 * `int size`: num bytes in buffer
-* `uint8_t direction`: XXX read or write.  not sure which is which.
-* `uint64_t old_buf_addr`: XXX this is a mystery
+* `uint8_t direction`: `PANDA_NET_RX` for receive, `PANDA_NET_TX` for transmit
+* `uint64_t old_buf_addr`: the address that the buffer had when the recording was taken
 
 **Signature**:
 ```C

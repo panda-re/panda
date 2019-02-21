@@ -89,6 +89,9 @@ static void or_irq_class_init(ObjectClass *klass, void *data)
     dc->props = or_irq_properties;
     dc->realize = or_irq_realize;
     dc->vmsd = &vmstate_or_irq;
+
+    /* Reason: Needs to be wired up to work, e.g. see stm32f205_soc.c */
+    dc->user_creatable = false;
 }
 
 static const TypeInfo or_irq_type_info = {

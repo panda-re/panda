@@ -14,6 +14,7 @@
 #include "qapi/visitor.h"
 #include "hw/qdev.h"
 #include "qemu/bitops.h"
+#include "qemu/error-report.h"
 #include "exec/address-spaces.h"
 #include "cpu.h"
 #include "hw/s390x/ioinst.h"
@@ -368,13 +369,16 @@ static CCW1 copy_ccw_from_guest(hwaddr addr, bool fmt1)
         ret.cda = be32_to_cpu(tmp1.cda);
     } else {
         cpu_physical_memory_read(addr, &tmp0, sizeof(tmp0));
-        ret.cmd_code = tmp0.cmd_code;
-        ret.flags = tmp0.flags;
-        ret.count = be16_to_cpu(tmp0.count);
-        ret.cda = be16_to_cpu(tmp0.cda1) | (tmp0.cda0 << 16);
-        if ((ret.cmd_code & 0x0f) == CCW_CMD_TIC) {
-            ret.cmd_code &= 0x0f;
+        if ((tmp0.cmd_code & 0x0f) == CCW_CMD_TIC) {
+            ret.cmd_code = CCW_CMD_TIC;
+            ret.flags = 0;
+            ret.count = 0;
+        } else {
+            ret.cmd_code = tmp0.cmd_code;
+            ret.flags = tmp0.flags;
+            ret.count = be16_to_cpu(tmp0.count);
         }
+        ret.cda = be16_to_cpu(tmp0.cda1) | (tmp0.cda0 << 16);
     }
     return ret;
 }
@@ -1672,12 +1676,40 @@ void subch_device_save(SubchDev *s, QEMUFile *f)
 
 int subch_device_load(SubchDev *s, QEMUFile *f)
 {
+    SubchDev *old_s;
+    Error *err = NULL;
+    uint16_t old_schid = s->schid;
+    uint16_t old_devno = s->devno;
     int i;
 
     s->cssid = qemu_get_byte(f);
     s->ssid = qemu_get_byte(f);
     s->schid = qemu_get_be16(f);
     s->devno = qemu_get_be16(f);
+    if (s->devno != old_devno) {
+        /* Only possible if machine < 2.7 (no css_dev_path) */
+
+        error_setg(&err, "%x != %x", old_devno,  s->devno);
+        error_append_hint(&err, "Devno mismatch, tried to load wrong section!"
+                          " Likely reason: some sequences of plug and unplug"
+                          " can break migration for machine versions prior to"
+                          " 2.7 (known design flaw).\n");
+        error_report_err(err);
+        return -EINVAL;
+    }
+    /* Re-assign subch. */
+    if (old_schid != s->schid) {
+        old_s = channel_subsys.css[s->cssid]->sch_set[s->ssid]->sch[old_schid];
+        /*
+         * (old_s != s) means that some other device has its correct
+         * subchannel already assigned (in load).
+         */
+        if (old_s == s) {
+            css_subch_assign(s->cssid, s->ssid, old_schid, s->devno, NULL);
+        }
+        /* It's OK to re-assign without a prior de-assign. */
+        css_subch_assign(s->cssid, s->ssid, s->schid, s->devno, s);
+    }
     s->thinint_active = qemu_get_byte(f);
     /* SCHIB */
     /*     PMCW */

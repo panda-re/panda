@@ -27,6 +27,7 @@
 #include "qemu/timer.h"
 #include "sysemu/replay.h"
 #include "sysemu/sysemu.h"
+#include "sysemu/cpus.h"
 
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log_all.h"
@@ -127,7 +128,7 @@ void timerlist_free(QEMUTimerList *timer_list)
     g_free(timer_list);
 }
 
-static void qemu_clock_init(QEMUClockType type)
+static void qemu_clock_init(QEMUClockType type, QEMUTimerListNotifyCB *notify_cb)
 {
     QEMUClock *clock = qemu_clock_ptr(type);
 
@@ -139,7 +140,7 @@ static void qemu_clock_init(QEMUClockType type)
     clock->last = INT64_MIN;
     QLIST_INIT(&clock->timerlists);
     notifier_list_init(&clock->reset_notifiers);
-    main_loop_tlg.tl[type] = timerlist_new(type, NULL, NULL);
+    main_loop_tlg.tl[type] = timerlist_new(type, notify_cb, NULL);
 }
 
 bool qemu_clock_use_for_deadline(QEMUClockType type)
@@ -205,7 +206,7 @@ bool timerlist_expired(QEMUTimerList *timer_list)
     expire_time = timer_list->active_timers->expire_time;
     qemu_mutex_unlock(&timer_list->active_timers_lock);
 
-    return expire_time < qemu_clock_get_ns(timer_list->clock->type);
+    return expire_time <= qemu_clock_get_ns(timer_list->clock->type);
 }
 
 bool qemu_clock_expired(QEMUClockType type)
@@ -283,7 +284,7 @@ QEMUTimerList *qemu_clock_get_main_loop_timerlist(QEMUClockType type)
 void timerlist_notify(QEMUTimerList *timer_list)
 {
     if (timer_list->notify_cb) {
-        timer_list->notify_cb(timer_list->notify_opaque);
+        timer_list->notify_cb(timer_list->notify_opaque, timer_list->clock->type);
     } else {
         qemu_notify_event();
     }
@@ -359,11 +360,6 @@ void timer_deinit(QEMUTimer *ts)
 {
     assert(ts->expire_time == -1);
     ts->timer_list = NULL;
-}
-
-void timer_free(QEMUTimer *ts)
-{
-    g_free(ts);
 }
 
 static void timer_del_locked(QEMUTimerList *timer_list, QEMUTimer *ts)
@@ -650,11 +646,11 @@ void qemu_clock_unregister_reset_notifier(QEMUClockType type,
     notifier_remove(notifier);
 }
 
-void init_clocks(void)
+void init_clocks(QEMUTimerListNotifyCB *notify_cb)
 {
     QEMUClockType type;
     for (type = 0; type < QEMU_CLOCK_MAX; type++) {
-        qemu_clock_init(type);
+        qemu_clock_init(type, notify_cb);
     }
 
 #ifdef CONFIG_PRCTL_PR_SET_TIMERSLACK

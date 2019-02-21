@@ -11,9 +11,11 @@
  * See the COPYING file in the top-level directory.
  *
 PANDAENDCOMMENT */
-/* Change Log: */
-/* 2018-MAY-29   move where mode bit calculated as requested */
-/* 2018-APR-13   watch for x86 processor mode changing in i386 build */
+// Change Log
+// 2018-MAY-29   move where mode bit calculated as requested
+// 2018-APR-13   watch for x86 processor mode changing in i386 build
+// 2019-JAN-29   do not put an entry in the callstack if the block was stopped
+//               before the call at the end was made
 #define __STDC_FORMAT_MACROS
 
 #include <cstdio>
@@ -45,7 +47,7 @@ extern "C" {
 bool translate_callback(CPUState* cpu, target_ulong pc);
 int exec_callback(CPUState* cpu, target_ulong pc);
 int before_block_exec(CPUState* cpu, TranslationBlock *tb);
-int after_block_exec(CPUState* cpu, TranslationBlock *tb);
+int after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode);
 int after_block_translate(CPUState* cpu, TranslationBlock *tb);
 
 bool init_plugin(void *);
@@ -57,6 +59,9 @@ PPP_PROT_REG_CB(on_ret);
 
 PPP_CB_BOILERPLATE(on_call);
 PPP_CB_BOILERPLATE(on_ret);
+
+// callstack_instr arguments
+static bool verbose = false;
 
 enum instr_type {
   INSTR_UNKNOWN = 0,
@@ -100,7 +105,29 @@ std::map<stackid, std::vector<stack_entry>> callstacks;
 std::map<stackid, std::vector<target_ulong>> function_stacks;
 // EIP -> instr_type
 std::map<target_ulong, instr_type> call_cache;
+// stackid -> address of Stopped block
+std::map<stackid, target_ulong> stoppedInfo;
+
 int last_ret_size = 0;
+
+void verbose_log(const char *msg, TranslationBlock *tb, stackid curStackid,
+        bool logReturn) {
+    if (verbose) {
+        printf("%s:  asid=0x", msg);
+#ifdef USE_STACK_HEURISTIC
+        printf(TARGET_FMT_lx ", sp=0x" TARGET_FMT_lx, curStackid.first,
+                curStackid.second);
+#else
+        printf(TARGET_FMT_lx, curStackid);
+#endif
+        printf(", block pc=0x" TARGET_FMT_lx, tb->pc);
+        if (logReturn) {
+            printf(", returns to 0x" TARGET_FMT_lx, (tb->pc+tb->size));
+        }
+        printf("\n");
+    }
+    // end of function verbose_log
+}
 
 static inline bool in_kernelspace(CPUArchState* env) {
 #if defined(TARGET_I386)
@@ -242,47 +269,97 @@ int after_block_translate(CPUState *cpu, TranslationBlock *tb) {
 
 int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
     CPUArchState* env = (CPUArchState*)cpu->env_ptr;
-    std::vector<stack_entry> &v = callstacks[get_stackid(env)];
-    std::vector<target_ulong> &w = function_stacks[get_stackid(env)];
-    if (v.empty()) return 1;
 
-    // Search up to 10 down
-    for (int i = v.size()-1; i > ((int)(v.size()-10)) && i >= 0; i--) {
-        if (tb->pc == v[i].pc) {
-            //printf("Matched at depth %d\n", v.size()-i);
-            //v.erase(v.begin()+i, v.end());
-
-            PPP_RUN_CB(on_ret, cpu, w[i]);
-            v.erase(v.begin()+i, v.end());
-            w.erase(w.begin()+i, w.end());
-
-            break;
+    // if the block a call returns to was interrupted before it completed, this
+    // function will be called twice - only want to remove the return value from
+    // the stack once
+    // the return value will have been removed before the attempt to run which
+    // was stopped (as we didn't know it would be stopped then), so skip it on
+    // the retry
+    bool needToCheck = true;
+    stackid curStackid = get_stackid(env);
+    std::map<stackid, target_ulong>::const_iterator it;
+    it = stoppedInfo.find(curStackid);
+    if (it != stoppedInfo.end()) {
+        target_ulong stoppedPC = stoppedInfo[curStackid];
+        if (stoppedPC == tb->pc) {
+            stoppedInfo.erase(it);
+            needToCheck = false;
+            verbose_log("callstack_instr skipping return check", tb, curStackid,
+                    false);
         }
     }
+
+    if (needToCheck) {
+        std::vector<stack_entry> &v = callstacks[get_stackid(env)];
+        std::vector<target_ulong> &w = function_stacks[get_stackid(env)];
+        if (v.empty()) return 1;
+
+        // Search up to 10 down
+        for (int i = v.size()-1; i > ((int)(v.size()-10)) && i >= 0; i--) {
+            if (tb->pc == v[i].pc) {
+                //printf("Matched at depth %d\n", v.size()-i);
+                //v.erase(v.begin()+i, v.end());
+
+                PPP_RUN_CB(on_ret, cpu, w[i]);
+                v.erase(v.begin()+i, v.end());
+                w.erase(w.begin()+i, w.end());
+
+                break;
+            }
+        }
+    }
+
 
     return 0;
 }
 
-int after_block_exec(CPUState* cpu, TranslationBlock *tb) {
+int after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
+    target_ulong pc;
+    target_ulong cs_base;
+    uint32_t flags;
+
     CPUArchState* env = (CPUArchState*)cpu->env_ptr;
     instr_type tb_type = call_cache[tb->pc];
+    stackid curStackid = get_stackid(env);
 
-    if (tb_type == INSTR_CALL) {
-        stack_entry se = {tb->pc+tb->size,tb_type};
-        callstacks[get_stackid(env)].push_back(se);
+    // sometimes an attempt to run a block is interrupted, but this callback is
+    // still made - only update the callstack if the block ran to completion
+    if (exitCode <= TB_EXIT_IDX1) {
+        // this attempt is OK, so remove it from the Stopped list, if there
+        stoppedInfo.erase(curStackid);
 
-        // Also track the function that gets called
-        target_ulong pc, cs_base;
-        uint32_t flags;
-        // This retrieves the pc in an architecture-neutral way
-        cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
-        function_stacks[get_stackid(env)].push_back(pc);
+        if (tb_type == INSTR_CALL) {
+            stack_entry se = {tb->pc+tb->size,tb_type};
+            callstacks[curStackid].push_back(se);
 
-        PPP_RUN_CB(on_call, cpu, pc);
+            // Also track the function that gets called
+            // This retrieves the pc in an architecture-neutral way
+            cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+            function_stacks[curStackid].push_back(pc);
+
+            PPP_RUN_CB(on_call, cpu, pc);
+        }
+        else if (tb_type == INSTR_RET) {
+            //printf("Just executed a RET in TB " TARGET_FMT_lx "\n", tb->pc);
+            //if (next) printf("Next TB: " TARGET_FMT_lx "\n", next->pc);
+        }
     }
-    else if (tb_type == INSTR_RET) {
-        //printf("Just executed a RET in TB " TARGET_FMT_lx "\n", tb->pc);
-        //if (next) printf("Next TB: " TARGET_FMT_lx "\n", next->pc);
+    // in case this block is one that a call returns to, need to note that its
+    // execution was interrupted, so don't try to remove it from the callstack
+    // when retry (as already removed it before this attempt)
+    else {
+        // verbose output is helpful in regression testing
+        if (tb_type == INSTR_CALL) {
+            verbose_log("callstack_instr not adding Stopped caller to stack",
+                    tb, curStackid, true);
+        }
+
+        cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+        // C++ maps don't let you replace value of an existing key (grr)
+        // erase nicely does nothing if key DNE
+        stoppedInfo.erase(curStackid);
+        stoppedInfo[curStackid] = pc;
     }
 
     return 1;
@@ -376,6 +453,11 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
 
 
 bool init_plugin(void *self) {
+
+    // get arguments to this plugin
+    panda_arg_list *args = panda_get_args("callstack_instr");
+    verbose = panda_parse_bool_opt(args, "verbose", "enable verbose output");
+
 #if defined(TARGET_I386)
     if (cs_open(CS_ARCH_X86, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
         return false;
@@ -389,6 +471,13 @@ bool init_plugin(void *self) {
 #elif defined(TARGET_PPC)
     if (cs_open(CS_ARCH_PPC, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
         return false;
+#endif
+
+    // note which build was used, as it is useful in analyzing the results
+#ifdef USE_STACK_HEURISTIC
+    printf("callstack_instr:  using USE_STACK_HEURISTIC build\n");
+#else
+    printf("callstack_instr:  using standard build\n");
 #endif
 
     // Need details in capstone to have instruction groupings

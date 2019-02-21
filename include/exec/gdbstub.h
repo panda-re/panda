@@ -54,6 +54,7 @@ void gdbserver_fork(CPUState *);
 #endif
 /* Get or set a register.  Returns the size of the register.  */
 typedef int (*gdb_reg_cb)(CPUArchState *env, uint8_t *buf, int reg);
+int gdb_write_register(CPUState *cpu, uint8_t *mem_buf, int reg);
 void gdb_register_coprocessor(CPUState *cpu,
                               gdb_reg_cb get_reg, gdb_reg_cb set_reg,
                               int num_regs, const char *xml, int g_pos);

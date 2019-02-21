@@ -179,7 +179,7 @@ q[K[Dqu[K[D[Dqui[K[D[D[Dquit[K
 
 Testing: -drive file=TEST_DIR/t.qcow2,if=ide,readonly=on
 QEMU X.Y.Z monitor - type 'help' for more information
-(qemu) QEMU_PROG: Can't use a read-only drive
+(qemu) QEMU_PROG: Block node is read-only
 QEMU_PROG: Initialization of device ide-hd failed: Device initialization failed.
 
 Testing: -drive file=TEST_DIR/t.qcow2,if=scsi,readonly=on
@@ -201,12 +201,12 @@ QEMU X.Y.Z monitor - type 'help' for more information
 
 Testing: -drive file=TEST_DIR/t.qcow2,if=none,id=disk,readonly=on -device ide-drive,drive=disk
 QEMU X.Y.Z monitor - type 'help' for more information
-(qemu) QEMU_PROG: -device ide-drive,drive=disk: Can't use a read-only drive
+(qemu) QEMU_PROG: -device ide-drive,drive=disk: Block node is read-only
 QEMU_PROG: -device ide-drive,drive=disk: Device initialization failed.
 
 Testing: -drive file=TEST_DIR/t.qcow2,if=none,id=disk,readonly=on -device ide-hd,drive=disk
 QEMU X.Y.Z monitor - type 'help' for more information
-(qemu) QEMU_PROG: -device ide-hd,drive=disk: Can't use a read-only drive
+(qemu) QEMU_PROG: -device ide-hd,drive=disk: Block node is read-only
 QEMU_PROG: -device ide-hd,drive=disk: Device initialization failed.
 
 Testing: -drive file=TEST_DIR/t.qcow2,if=none,id=disk,readonly=on -device lsi53c895a -device scsi-disk,drive=disk
@@ -319,11 +319,14 @@ QEMU X.Y.Z monitor - type 'help' for more information
 Testing: -drive driver=file
 QEMU_PROG: -drive driver=file: The 'file' block driver requires a file name
 
+Testing: -drive driver=file,filename=
+QEMU_PROG: -drive driver=file,filename=: The 'file' block driver requires a file name
+
 Testing: -drive driver=nbd
 QEMU_PROG: -drive driver=nbd: NBD server address missing
 
 Testing: -drive driver=raw
-QEMU_PROG: -drive driver=raw: Can't use 'raw' as a block driver for the protocol level
+QEMU_PROG: -drive driver=raw: A block device must be specified for "file"
 
 Testing: -drive file.driver=file
 QEMU_PROG: -drive file.driver=file: The 'file' block driver requires a file name
@@ -332,7 +335,7 @@ Testing: -drive file.driver=nbd
 QEMU_PROG: -drive file.driver=nbd: NBD server address missing
 
 Testing: -drive file.driver=raw
-QEMU_PROG: -drive file.driver=raw: Can't use 'raw' as a block driver for the protocol level
+QEMU_PROG: -drive file.driver=raw: A block device must be specified for "file"
 
 Testing: -drive foo=bar
 QEMU_PROG: -drive foo=bar: Must specify either driver or file

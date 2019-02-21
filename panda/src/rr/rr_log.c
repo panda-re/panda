@@ -52,6 +52,9 @@
 #include "io/channel-file.h"
 #include "sysemu/sysemu.h"
 #include "panda/callback_support.h"
+#include "exec/gdbstub.h"
+#include "sysemu/cpus.h"
+
 /******************************************************************************************/
 /* GLOBALS */
 /******************************************************************************************/
@@ -321,6 +324,11 @@ static inline void rr_write_item(RR_log_entry item)
                     rr_fwrite(args->variant.cpu_mem_unmap.buf, 1,
                                 args->variant.cpu_mem_unmap.len);
                     break;
+                case RR_CALL_CPU_REG_WRITE:
+                    RR_WRITE_ITEM(args->variant.cpu_reg_write_args);
+                    rr_fwrite(args->variant.cpu_reg_write_args.buf, 1,
+                                args->variant.cpu_reg_write_args.len);
+                    break;
                 case RR_CALL_MEM_REGION_CHANGE:
                     RR_WRITE_ITEM(args->variant.mem_region_change_args);
                     rr_fwrite(args->variant.mem_region_change_args.name, 1,
@@ -481,9 +489,35 @@ static inline void rr_record_skipped_call(RR_skipped_call_args args) {
     });
 }
 
+void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
+                                  int len, int is_write) {
+    rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_CALL_CPU_MEM_RW,
+        .variant.cpu_mem_rw_args = {
+            .addr = addr,
+            .buf = (uint8_t *)buf,
+            .len = len
+        }
+    });
+}
+
+// mm: Record an external register write, e.g. via GDB
+void rr_cpu_reg_write_call_record(int cpu_index, const uint8_t* buf,
+                                  int reg, int len) {
+    rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_CALL_CPU_REG_WRITE,
+        .variant.cpu_reg_write_args = {
+            .cpu_index = cpu_index,
+            .buf = (uint8_t *)buf,
+            .reg = reg,
+            .len = len
+        }
+    });
+}
+
 // bdg Record the memory modified during a call to
 // address_space_map/unmap.
-void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
+void rr_device_mem_unmap_call_record(hwaddr addr, const uint8_t* buf,
                                   int len, int is_write) {
     rr_record_skipped_call((RR_skipped_call_args) {
         .kind = RR_CALL_CPU_MEM_UNMAP,
@@ -494,6 +528,7 @@ void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
         }
     });
 }
+
 
 static inline uint32_t rr_chunked_crc32(void *ptr, size_t len) {
     uint32_t crc = crc32(0, Z_NULL, 0);
@@ -642,6 +677,10 @@ static inline void free_entry_params(RR_log_entry* entry)
             g_free(entry->variant.call_args.variant.cpu_mem_unmap.buf);
             entry->variant.call_args.variant.cpu_mem_unmap.buf = NULL;
             break;
+        case RR_CALL_CPU_REG_WRITE:
+            g_free(entry->variant.call_args.variant.cpu_reg_write_args.buf);
+            entry->variant.call_args.variant.cpu_reg_write_args.buf = NULL;
+            break;
         case RR_CALL_HANDLE_PACKET:
             g_free(entry->variant.call_args.variant.handle_packet_args.buf);
             entry->variant.call_args.variant.handle_packet_args.buf = NULL;
@@ -774,6 +813,13 @@ static RR_log_entry *rr_read_item(void) {
                         g_malloc(args->variant.cpu_mem_unmap.len);
                     rr_fread(args->variant.cpu_mem_unmap.buf, 1,
                                 args->variant.cpu_mem_unmap.len);
+                    break;
+                case RR_CALL_CPU_REG_WRITE:
+                    RR_READ_ITEM(args->variant.cpu_reg_write_args);
+                    args->variant.cpu_reg_write_args.buf =
+                        g_malloc(args->variant.cpu_reg_write_args.len);
+                    rr_fread(args->variant.cpu_reg_write_args.buf, 1,
+                                args->variant.cpu_reg_write_args.len);
                     break;
                 case RR_CALL_MEM_REGION_CHANGE:
                     RR_READ_ITEM(args->variant.mem_region_change_args);
@@ -1070,7 +1116,8 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                             args.variant.mem_region_change_args.size);
                     MemoryRegion *parent = rr_memory_region_find_parent(get_system_memory(),
                             mrs.mr);
-                    memory_region_del_subregion(parent, mrs.mr);
+		    if (parent)
+                        memory_region_del_subregion(parent, mrs.mr);
                 }
             } break;
             case RR_CALL_CPU_MEM_UNMAP: {
@@ -1084,6 +1131,16 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                 cpu_physical_memory_unmap(host_buf, plen,
                                           /*is_write=*/1,
                                           args.variant.cpu_mem_unmap.len);
+            } break;
+            case RR_CALL_CPU_REG_WRITE: {
+                CPUState *cpu;
+                CPU_FOREACH(cpu) {
+                    if (cpu->cpu_index == args.variant.cpu_reg_write_args.cpu_index)
+                        break;
+                    }
+                gdb_write_register(cpu, args.variant.cpu_reg_write_args.buf,
+                                   args.variant.cpu_reg_write_args.reg);
+
             } break;
             case RR_CALL_HD_TRANSFER: {
                 RR_hd_transfer_args hdt = args.variant.hd_transfer_args;

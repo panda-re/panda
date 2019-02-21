@@ -74,11 +74,11 @@ void panda_callbacks_before_block_exec(CPUState *cpu, TranslationBlock *tb) {
 }
 
 
-void panda_callbacks_after_block_exec(CPUState *cpu, TranslationBlock *tb) {
+void panda_callbacks_after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
     panda_cb_list *plist;
     for (plist = panda_cbs[PANDA_CB_AFTER_BLOCK_EXEC];
          plist != NULL; plist = panda_cb_list_next(plist)) {
-        plist->entry.after_block_exec(cpu, tb);
+        plist->entry.after_block_exec(cpu, tb, exitCode);
     }
 }
 

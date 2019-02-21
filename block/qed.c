@@ -415,8 +415,8 @@ static void bdrv_qed_drain(BlockDriverState *bs)
     }
 }
 
-static int bdrv_qed_open(BlockDriverState *bs, QDict *options, int flags,
-                         Error **errp)
+static int bdrv_qed_do_open(BlockDriverState *bs, QDict *options, int flags,
+                            Error **errp)
 {
     BDRVQEDState *s = bs->opaque;
     QEDHeader le_header;
@@ -550,6 +550,18 @@ out:
     return ret;
 }
 
+static int bdrv_qed_open(BlockDriverState *bs, QDict *options, int flags,
+                         Error **errp)
+{
+    bs->file = bdrv_open_child(NULL, options, "file", bs, &child_file,
+                               false, errp);
+    if (!bs->file) {
+        return -EINVAL;
+    }
+
+    return bdrv_qed_do_open(bs, options, flags, errp);
+}
+
 static void bdrv_qed_refresh_limits(BlockDriverState *bs, Error **errp)
 {
     BDRVQEDState *s = bs->opaque;
@@ -613,7 +625,8 @@ static int qed_create(const char *filename, uint32_t cluster_size,
     }
 
     blk = blk_new_open(filename, NULL, NULL,
-                       BDRV_O_RDWR | BDRV_O_PROTOCOL, &local_err);
+                       BDRV_O_RDWR | BDRV_O_RESIZE | BDRV_O_PROTOCOL,
+                       &local_err);
     if (blk == NULL) {
         error_propagate(errp, local_err);
         return -EIO;
@@ -622,7 +635,7 @@ static int qed_create(const char *filename, uint32_t cluster_size,
     blk_set_allow_write_beyond_eof(blk, true);
 
     /* File must start empty and grow, check truncate is supported */
-    ret = blk_truncate(blk, 0);
+    ret = blk_truncate(blk, 0, errp);
     if (ret < 0) {
         goto out;
     }
@@ -1629,7 +1642,7 @@ static void bdrv_qed_invalidate_cache(BlockDriverState *bs, Error **errp)
     bdrv_qed_close(bs);
 
     memset(s, 0, sizeof(BDRVQEDState));
-    ret = bdrv_qed_open(bs, NULL, bs->open_flags, &local_err);
+    ret = bdrv_qed_do_open(bs, NULL, bs->open_flags, &local_err);
     if (local_err) {
         error_propagate(errp, local_err);
         error_prepend(errp, "Could not reopen qed layer: ");
@@ -1692,6 +1705,7 @@ static BlockDriver bdrv_qed = {
     .bdrv_open                = bdrv_qed_open,
     .bdrv_close               = bdrv_qed_close,
     .bdrv_reopen_prepare      = bdrv_qed_reopen_prepare,
+    .bdrv_child_perm          = bdrv_format_default_perms,
     .bdrv_create              = bdrv_qed_create,
     .bdrv_has_zero_init       = bdrv_has_zero_init_1,
     .bdrv_co_get_block_status = bdrv_qed_co_get_block_status,

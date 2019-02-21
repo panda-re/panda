@@ -26,7 +26,6 @@ Arguments
 
 * `no_tp`: boolean. Whether to taint the result of dereferencing a pointer that has been tainted.
 * `inline`: boolean. Whether taint operations should be carried out in line with generated code, or through a function call.
-* `word`: boolean. Whether to track taint at word-level (i.e., 4 bytes on a 32-bit architecture) as opposed to byte-level. Can provide a performance improvement at the cost of reduced precision.
 * `opt`:  boolean. Whether to run an optimization pass on the instrumented LLVM code.
 * `detaint_cb0`: boolean. Whether to detaint bytes whose control mask bits have become 0. Can reduce false positives when tainted data no longer influences a byte's value.
 * `max_taintset_compute_number`: maximum taint compute number (0, the default, means unlimited).

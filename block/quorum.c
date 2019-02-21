@@ -1032,10 +1032,17 @@ static void quorum_add_child(BlockDriverState *bs, BlockDriverState *child_bs,
 
     /* We can safely add the child now */
     bdrv_ref(child_bs);
-    child = bdrv_attach_child(bs, child_bs, indexstr, &child_format);
+
+    child = bdrv_attach_child(bs, child_bs, indexstr, &child_format, errp);
+    if (child == NULL) {
+        s->next_child_index--;
+        bdrv_unref(child_bs);
+        goto out;
+    }
     s->children = g_renew(BdrvChild *, s->children, s->num_children + 1);
     s->children[s->num_children++] = child;
 
+out:
     bdrv_drained_end(bs);
 }
 
@@ -1089,19 +1096,15 @@ static void quorum_refresh_filename(BlockDriverState *bs, QDict *options)
     children = qlist_new();
     for (i = 0; i < s->num_children; i++) {
         QINCREF(s->children[i]->bs->full_open_options);
-        qlist_append_obj(children,
-                         QOBJECT(s->children[i]->bs->full_open_options));
+        qlist_append(children, s->children[i]->bs->full_open_options);
     }
 
     opts = qdict_new();
-    qdict_put_obj(opts, "driver", QOBJECT(qstring_from_str("quorum")));
-    qdict_put_obj(opts, QUORUM_OPT_VOTE_THRESHOLD,
-                  QOBJECT(qint_from_int(s->threshold)));
-    qdict_put_obj(opts, QUORUM_OPT_BLKVERIFY,
-                  QOBJECT(qbool_from_bool(s->is_blkverify)));
-    qdict_put_obj(opts, QUORUM_OPT_REWRITE,
-                  QOBJECT(qbool_from_bool(s->rewrite_corrupted)));
-    qdict_put_obj(opts, "children", QOBJECT(children));
+    qdict_put_str(opts, "driver", "quorum");
+    qdict_put_int(opts, QUORUM_OPT_VOTE_THRESHOLD, s->threshold);
+    qdict_put_bool(opts, QUORUM_OPT_BLKVERIFY, s->is_blkverify);
+    qdict_put_bool(opts, QUORUM_OPT_REWRITE, s->rewrite_corrupted);
+    qdict_put(opts, "children", children);
 
     bs->full_open_options = opts;
 }
@@ -1125,6 +1128,8 @@ static BlockDriver bdrv_quorum = {
 
     .bdrv_add_child                     = quorum_add_child,
     .bdrv_del_child                     = quorum_del_child,
+
+    .bdrv_child_perm                    = bdrv_filter_default_perms,
 
     .is_filter                          = true,
     .bdrv_recurse_is_first_non_filter   = quorum_recurse_is_first_non_filter,

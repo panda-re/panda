@@ -43,6 +43,14 @@ typedef struct {
     hwaddr len;
 } RR_cpu_mem_unmap;
 
+// structure for arguments to gdb_write_register
+typedef struct {
+    int cpu_index;
+    uint8_t* buf;
+    int reg;
+    int len;
+} RR_cpu_reg_write_args;
+
 typedef struct RR_MapList {
     void *ptr;
     hwaddr addr;
@@ -53,7 +61,11 @@ typedef struct RR_MapList {
 
 void rr_cpu_physical_memory_unmap_record(hwaddr addr, uint8_t* buf,
                                          hwaddr len, int is_write);
+void rr_cpu_reg_write_call_record(int cpu_index, const uint8_t* buf,
+                                  int reg, int len);
 void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
+                                  int len, int is_write);
+void rr_device_mem_unmap_call_record(hwaddr addr, const uint8_t* buf,
                                   int len, int is_write);
 void rr_mem_region_change_record(hwaddr start_addr, uint64_t size,
                                  const char *name, RR_mem_type mtype, bool added);
@@ -84,6 +96,7 @@ typedef struct {
         RR_serial_read_args serial_read_args;
         RR_serial_send_args serial_send_args;
         RR_serial_write_args serial_write_args;
+        RR_cpu_reg_write_args cpu_reg_write_args;
     } variant;
     // mz XXX HACK
     uint64_t old_buf_addr;

@@ -27,6 +27,10 @@ typedef struct NBDServerData {
 
 static NBDServerData *nbd_server;
 
+static void nbd_blockdev_client_closed(NBDClient *client, bool ignored)
+{
+    nbd_client_put(client);
+}
 
 static gboolean nbd_accept(QIOChannel *ioc, GIOCondition condition,
                            gpointer opaque)
@@ -46,7 +50,7 @@ static gboolean nbd_accept(QIOChannel *ioc, GIOCondition condition,
     qio_channel_set_name(QIO_CHANNEL(cioc), "nbd-server");
     nbd_client_new(NULL, cioc,
                    nbd_server->tlscreds, NULL,
-                   nbd_client_put);
+                   nbd_blockdev_client_closed);
     object_unref(OBJECT(cioc));
     return TRUE;
 }
@@ -124,6 +128,7 @@ void qmp_nbd_server_start(SocketAddress *addr,
             goto error;
         }
 
+        /* TODO SOCKET_ADDRESS_KIND_FD where fd has AF_INET or AF_INET6 */
         if (addr->type != SOCKET_ADDRESS_KIND_INET) {
             error_setg(errp, "TLS is only supported with IPv4/IPv6");
             goto error;

@@ -664,22 +664,30 @@ static int gdb_read_register(CPUState *cpu, uint8_t *mem_buf, int reg)
     return 0;
 }
 
-static int gdb_write_register(CPUState *cpu, uint8_t *mem_buf, int reg)
+int gdb_write_register(CPUState *cpu, uint8_t *mem_buf, int reg)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
     CPUArchState *env = cpu->env_ptr;
     GDBRegisterState *r;
+    int ret = 0;
+
 
     if (reg < cc->gdb_num_core_regs) {
-        return cc->gdb_write_register(cpu, mem_buf, reg);
+        ret = cc->gdb_write_register(cpu, mem_buf, reg);
     }
 
     for (r = cpu->gdb_regs; r; r = r->next) {
         if (r->base_reg <= reg && reg < r->base_reg + r->num_regs) {
-            return r->set_reg(env, mem_buf, reg - r->base_reg);
+            ret = r->set_reg(env, mem_buf, reg - r->base_reg);
         }
     }
-    return 0;
+    if (rr_in_record()) {
+        /* mm: to play along with the gdb rsp, the return value of 
+         * gdb_write_register *should* return the size of the register, which
+         * give us insight about the expected size of mem_buf */
+        rr_cpu_reg_write_call_record(cpu->cpu_index, mem_buf, reg, ret);
+    }
+    return ret;
 }
 
 /* Register a supplemental set of CPU registers.  If g_pos is nonzero it

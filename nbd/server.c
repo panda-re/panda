@@ -81,7 +81,7 @@ static QTAILQ_HEAD(, NBDExport) exports = QTAILQ_HEAD_INITIALIZER(exports);
 
 struct NBDClient {
     int refcount;
-    void (*close)(NBDClient *client);
+    void (*close_fn)(NBDClient *client, bool negotiated);
 
     bool no_zeroes;
     NBDExport *exp;
@@ -796,7 +796,7 @@ void nbd_client_put(NBDClient *client)
     }
 }
 
-static void client_close(NBDClient *client)
+static void client_close(NBDClient *client, bool negotiated)
 {
     if (client->closing) {
         return;
@@ -811,8 +811,8 @@ static void client_close(NBDClient *client)
                          NULL);
 
     /* Also tell the client, so that they release their reference.  */
-    if (client->close) {
-        client->close(client);
+    if (client->close_fn) {
+        client->close_fn(client, negotiated);
     }
 }
 
@@ -891,9 +891,21 @@ NBDExport *nbd_export_new(BlockDriverState *bs, off_t dev_offset, off_t size,
 {
     BlockBackend *blk;
     NBDExport *exp = g_malloc0(sizeof(NBDExport));
+    uint64_t perm;
+    int ret;
 
-    blk = blk_new();
-    blk_insert_bs(blk, bs);
+    /* Don't allow resize while the NBD server is running, otherwise we don't
+     * care what happens with the node. */
+    perm = BLK_PERM_CONSISTENT_READ;
+    if ((nbdflags & NBD_FLAG_READ_ONLY) == 0) {
+        perm |= BLK_PERM_WRITE;
+    }
+    blk = blk_new(perm, BLK_PERM_CONSISTENT_READ | BLK_PERM_WRITE_UNCHANGED |
+                        BLK_PERM_WRITE | BLK_PERM_GRAPH_MOD);
+    ret = blk_insert_bs(blk, bs, errp);
+    if (ret < 0) {
+        goto fail;
+    }
     blk_set_enable_write_cache(blk, !writethrough);
 
     exp->refcount = 1;
@@ -981,7 +993,7 @@ void nbd_export_close(NBDExport *exp)
 
     nbd_export_get(exp);
     QTAILQ_FOREACH_SAFE(client, &exp->clients, next, next) {
-        client_close(client);
+        client_close(client, true);
     }
     nbd_export_set_name(exp, NULL);
     nbd_export_set_description(exp, NULL);
@@ -1343,7 +1355,7 @@ done:
 
 out:
     nbd_request_put(req);
-    client_close(client);
+    client_close(client, true);
     nbd_client_put(client);
 }
 
@@ -1364,15 +1376,13 @@ static coroutine_fn void nbd_co_client_start(void *opaque)
 
     if (exp) {
         nbd_export_get(exp);
-    }
-    if (nbd_negotiate(data)) {
-        client_close(client);
-        goto out;
+        QTAILQ_INSERT_TAIL(&exp->clients, client, next);
     }
     qemu_co_mutex_init(&client->send_lock);
 
-    if (exp) {
-        QTAILQ_INSERT_TAIL(&exp->clients, client, next);
+    if (nbd_negotiate(data)) {
+        client_close(client, false);
+        goto out;
     }
 
     nbd_client_receive_next_request(client);
@@ -1381,11 +1391,17 @@ out:
     g_free(data);
 }
 
+/*
+ * Create a new client listener on the given export @exp, using the
+ * given channel @sioc.  Begin servicing it in a coroutine.  When the
+ * connection closes, call @close_fn with an indication of whether the
+ * client completed negotiation.
+ */
 void nbd_client_new(NBDExport *exp,
                     QIOChannelSocket *sioc,
                     QCryptoTLSCreds *tlscreds,
                     const char *tlsaclname,
-                    void (*close_fn)(NBDClient *))
+                    void (*close_fn)(NBDClient *, bool))
 {
     NBDClient *client;
     NBDClientNewData *data = g_new(NBDClientNewData, 1);
@@ -1402,7 +1418,7 @@ void nbd_client_new(NBDExport *exp,
     object_ref(OBJECT(client->sioc));
     client->ioc = QIO_CHANNEL(sioc);
     object_ref(OBJECT(client->ioc));
-    client->close = close_fn;
+    client->close_fn = close_fn;
 
     data->client = client;
     data->co = qemu_coroutine_create(nbd_co_client_start, data);

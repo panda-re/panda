@@ -37,9 +37,6 @@ static int blkreplay_open(BlockDriverState *bs, QDict *options, int flags,
 
     ret = 0;
 fail:
-    if (ret < 0) {
-        bdrv_unref_child(bs, bs->file);
-    }
     return ret;
 }
 
@@ -137,6 +134,7 @@ static BlockDriver bdrv_blkreplay = {
 
     .bdrv_file_open         = blkreplay_open,
     .bdrv_close             = blkreplay_close,
+    .bdrv_child_perm        = bdrv_filter_default_perms,
     .bdrv_getlength         = blkreplay_getlength,
 
     .bdrv_co_preadv         = blkreplay_co_preadv,

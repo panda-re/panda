@@ -1,0 +1,8 @@
+{
+	"linux:x86": {
+		"panda_noreturn": ["sys_execve", "sys_exit_group", "sys_sigreturn"]
+	},
+	"linux:arm": {
+		"panda_noreturn": ["sys_execve", "sys_exit_group", "sys_sigreturn"]
+	}
+}

@@ -30,7 +30,7 @@ PANDAENDCOMMENT */
 #include "panda/plugin_plugin.h"
 #include "panda/plog.h"
 
-#include "syscalls2/gen_syscalls_ext_typedefs.h"
+#include "syscalls2/syscalls_ext_typedefs.h"
 
 #include "wintrospection.h"
 #include "wintrospection_int_fns.h"
