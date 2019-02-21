@@ -87,7 +87,7 @@ private:
     taint2_memlog *taint_memlog; // same.
 
     // for counting up slots used by called subroutines
-    std::unique_ptr<PandaSlotTracker> SubframePST;
+    std::unique_ptr<PandaSlotTracker> subframePST;
 
     Constant *constSlot(Value *value);
     Constant *constWeakSlot(Value *value);

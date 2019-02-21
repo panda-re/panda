@@ -1366,13 +1366,13 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
     // of maximum frame size as can't calculate using PandaSlotTracker
     uint64_t clrBytes = MAXREGSIZE * (shad->num_vals);
     if (calledF) {
-        SubframePST.reset(new PandaSlotTracker(calledF));
-        SubframePST->initialize();
-        clrBytes = MAXREGSIZE * (SubframePST->getMaxSlot());
+        subframePST.reset(new PandaSlotTracker(calledF));
+        subframePST->initialize();
+        clrBytes = MAXREGSIZE * (subframePST->getMaxSlot());
     }
-    auto clr_dest = const_uint64(ctx, (shad->num_vals)*MAXREGSIZE);
-    auto clr_bytes = const_uint64(ctx, clrBytes);
-    vector<Value *> clearArgs { llvConst, clr_dest, clr_bytes };
+    Constant *clrDestC = const_uint64(ctx, (shad->num_vals)*MAXREGSIZE);
+    Constant *clrBytesC = const_uint64(ctx, clrBytes);
+    vector<Value *> clearArgs { llvConst, clrDestC, clrBytesC };
     inlineCallBefore(I, deleteF, clearArgs);
 
     // And now copy taint for the arguments into the new frame
