@@ -208,8 +208,7 @@ panda/tools:
 panda/tools/helper_call_modifier.o: | panda/tools ../panda/tools
 panda/tools/helper_call_modifier: panda/tools/helper_call_modifier.o
 
-panda/tools/dynslice2.o: panda/tools/dynslice2.cpp | panda/tools ../panda/tools
-# panda/tools/dynslice2_align_helper.o: panda/tools/dynslice2_align_helper.cpp 
+panda/tools/dynslice2.o: panda/plugins/llvm_trace2/functionCode.h panda/tools/dynslice2.cpp  | panda/tools ../panda/tools
 panda/tools/dynslice2: panda/tools/dynslice2.o plog.pb.o panda/src/plog-cc.o
 
 panda/tools/slice_analyzer.o: panda/tools/slice_analyzer.cpp | panda/tools ../panda/tools

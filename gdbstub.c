@@ -1128,7 +1128,41 @@ static void gdb_handle_panda_cmd(GDBState *s, const char* p) {
         
 		memtohex(buf, (uint8_t*)membuf, membufsize);
         put_packet(s, buf);
-	}
+	} else if (!strncmp(p, "slice", 5)) {
+        // p += 5;
+
+        // // parse start instr 
+        // assert(*p == ':');
+        // p++;
+        // uint64_t start_instr, end_instr, start_pc, end_pc;
+        // if (!strcmp(p, "0x")) {
+        //     start_pc = strtoull(p, (char **)&p, 0);  
+        // } else {
+        //     start_instr = strtoull(p, (char **)&p, 0);  
+        // }
+
+        // assert(*p == ':');
+        // p++;
+        // if (!strcmp(p, "0x")) {
+        //     end_pc = strtoull(p, (char **)&p, 0);  
+        // } else {
+        //     end_instr = strtoull(p, (char **)&p, 0);  
+        // }
+
+        // assert(*p == ':');
+        // p++;
+
+        // // parse target register or address
+        // uint64_t addr;
+        // if (!strcmp(p, "0x")) {
+        //     addr = strtoull(p, (char **)&p, 0);  
+        // } 
+
+        // // Begin a slice
+
+
+        // p++;
+    }
 }
 
 static int gdb_handle_packet(GDBState *s, const char *line_buf)
