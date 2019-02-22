@@ -1,4 +1,4 @@
-       
+
 /* PANDABEGINCOMMENT
  *
  * Authors:
@@ -66,6 +66,18 @@ extern "C" {
 #include "llvm/Support/MemoryObject.h"
 #include "llvm/Support/TargetRegistry.h"
 
+// boost graphing
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/graphviz.hpp>
+#include <boost/graph/graph_utility.hpp>
+// #include <boost/throw_exception.hpp>
+
+#define BOOST_NO_EXCEPTIONS
+#include <boost/throw_exception.hpp>
+void boost::throw_exception(std::exception const & e){
+//do nothing
+}
+
 #define MAX_BITSET 2048
 
 /* plog-cc.cpp dependencies.
@@ -84,6 +96,7 @@ target_ulong panda_current_pc(CPUState *env) {
 }
 
 using namespace llvm;
+using namespace boost;
 
 /*
  * Switch statement to handle all instructions
@@ -98,12 +111,14 @@ using namespace llvm;
  */
 
 typedef std::pair<SliceVarType, uint64_t> SliceVar;
-
+ 
 // maintain a worklist for each SliceVar, so we can keep track of SCN for each one. 
-std::map<SliceVar, std::set<SliceVar>> slice_work_lists;
+// pair of SCN, set of <SliceVar, depth>
+typedef std::map<SliceVar, std::pair<int, std::map<SliceVar, int>>> slice_work_lists_t;
+slice_work_lists_t slice_work_lists;
 
 // map SliceVars to Instruction enum: count
-std::map<SliceVar, std::map<int, int>> slice_count;
+std::map<SliceVar, std::map<int, int>> slice_count;  
 
 int ret_ctr = 0;
 LLVMDisasmContextRef dcr;
@@ -134,9 +149,89 @@ std::map<std::pair<Function*, int>, std::pair<int, std::bitset<MAX_BITSET>>> mar
 bool debug = false;
 uint64_t last_pc = 0;
 
+// tainted_ptr option should cause the LLVM value determining the load or store address to be tracked in slice, as well as the guest RAM addr
+// this affects slice
+bool tainted_ptr = false;
+
 std::vector<std::string> registers = {"EAX", "ECX", "EDX", "EBX", "ESP", "EBP", "ESI", "EDI", "EIP", "EFLAGS", "CC_DST", "CC_SRC", "CC_SRC2", "CC_OP", "DF"};
  
-std::unique_ptr<panda::LogEntry> cursor; 
+std::unique_ptr<panda::LogEntry> cursor;
+
+// graphing stuff
+struct Vertex{ 
+    std::string slice_var; 
+    int slice_var_type; 
+    unsigned opcode;
+    uint64_t value;
+    bool scn;
+};
+
+typedef boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS, Vertex> Graph;
+typedef boost::graph_traits<Graph>::vertex_descriptor vertex_t;
+typedef boost::graph_traits<Graph>::edge_descriptor edge_t;
+
+const char* get_opcode_name(unsigned opcode) {
+    if (opcode == 255) {
+        return "mem_load";
+    } else if (opcode == 256) {
+        return "mem_store";
+    } else {
+        return Instruction::getOpcodeName(opcode);
+    }
+}
+
+// property writer for Vertex
+template <class Name>
+class myVertexWriter {
+public:
+     myVertexWriter(Name _name) : name(_name) {}
+     template <class VertexOrEdge>
+     void operator()(std::ostream& out, const VertexOrEdge& v) const {
+
+            std::string opcode = name[v].opcode ? get_opcode_name(name[v].opcode) : "";
+
+            // only print value if load or store
+            switch (name[v].opcode) {
+            case Instruction::Load:
+            case Instruction::Store:
+            case 255:
+            case 256:
+                out << std::hex << "[label=\"" << "(" << opcode << ") " << name[v].slice_var << "\n" << "val: " << name[v].value << "\"";
+                break;
+            default:
+                out << std::hex << "[label=\"" << "(" << opcode << ") " << name[v].slice_var << "\"";
+            }
+
+
+            if (name[v].scn) {
+                out << " color=red style=filled";
+            }
+
+            switch (name[v].slice_var_type) {
+            case -1:
+                out << " color=green style=filled";
+                break;
+            case MEM:
+                out << " color=gray style=filled";
+                break;
+            case TGT: 
+                out << " color=yellow style=filled";                
+                break;
+            }
+
+            out << "]";
+     }
+private:
+     Name name;
+};
+
+// map SliceVars to vertex_descriptors
+std::map<SliceVar, vertex_t> vertex_table;
+std::map<SliceVar, vertex_t> scn_vertex_table;
+
+// Define Graph
+Graph g;
+Graph scn_g;
 
 //******************************************************************
 // Helper functions 
@@ -159,6 +254,28 @@ void print_target_asm(LLVMDisasmContextRef dcr, std::string target_asm, bool mar
     LLVMDisasmInstruction(dcr, u, target_asm.length()/2, baseAddr, outstring, 50);   
     printf("%c %s\n", c, outstring);
 }
+
+
+unsigned get_opcode(traceEntry &t) {
+    if (t.inst->getOpcode() == Instruction::Call) {
+
+        CallInst* c = dyn_cast<CallInst>(t.inst);
+
+        Function *subf = c->getCalledFunction();
+        StringRef func_name = subf->getName();
+
+         if (Regex("helper_([lb]e|ret)_ld.*_mmu_panda").match(func_name)) {
+            return 255;
+        } else if (Regex("helper_([lb]e|ret)_st.*_mmu_panda").match(func_name) || func_name.startswith("llvm.memset")) {
+            return 256;
+        } else {
+            return Instruction::Call;
+        }
+    } else {
+        return t.inst->getOpcode();
+    }
+}
+
 
 
 //******************************************************************
@@ -204,8 +321,10 @@ std::string slicevar_to_str(const SliceVar &s) {
 
 void print_slice_count(std::map<int, int> inst_count) {
     std::cout << "{";
+    std::string opcode;
     for (auto it: inst_count) {
-        std::cout << Instruction::getOpcodeName(it.first) << ": " << it.second << ", ";
+        opcode = Instruction::getOpcodeName(it.first);
+        std::cout << opcode << ": " << it.second << ", ";
     }
     std::cout << "}" << std::endl;
 }
@@ -225,11 +344,17 @@ void print_set(std::set<SliceVar> &s) {
     printf(" }\n");
 }
 
-void print_slice_worklist(std::map<SliceVar, std::set<SliceVar>> &s) {
+void print_set(std::map<SliceVar, int> &s) {
+    printf("{");
+    for (auto &w : s) printf(" %s", slicevar_to_str(w.first).c_str());
+    printf(" }\n");
+}
+
+void print_slice_worklist(slice_work_lists_t &s) {
     printf("{");
     for (auto w : s) {
-        printf("Var: %s\t", slicevar_to_str(w.first).c_str());
-        print_set(w.second);
+        printf("Var: %s, scn: %d\t", slicevar_to_str(w.first).c_str(), w.second.first);
+        print_set(w.second.second);
     } 
     printf(" }\n");
 }
@@ -265,7 +390,7 @@ void insert_criteria(std::string str){
 
         for (uint64_t addr = start_mem_addr; addr < end_mem_addr; addr++) {
             printf("Adding mem addr %lx\n", addr);
-            slice_work_lists[std::make_pair(typ, addr)] = std::set<SliceVar> {std::make_pair(typ, addr)};
+            slice_work_lists[std::make_pair(typ, addr)] = {0, {{std::make_pair(typ, addr), 0}}};
         }
     }
     else if (strncmp(str.c_str(), "TGT", 3) == 0) {
@@ -273,7 +398,7 @@ void insert_criteria(std::string str){
         typ = TGT;
         std::string reg = crit.substr(4, crit.length());
         uint64_t sliceVal = cpustatebase + infer_offset(reg.c_str())*4;
-        slice_work_lists[std::make_pair(typ, sliceVal)] = std::set<SliceVar> {std::make_pair(typ, sliceVal)};
+        slice_work_lists[std::make_pair(typ, sliceVal)] = {0, {{std::make_pair(typ, sliceVal), 0}}};
     }
 
     //searchTbs.insert(addr_to_tb(start_addr));
@@ -362,7 +487,7 @@ void bitset2bytes(std::bitset<MAX_BITSET> &bitset, uint8_t bytes[]) {
 void mark(traceEntry &t) {
     int bb_num = t.bb_num;
     int insn_index = t.inst_index;
-    printf("insn index %d\n", insn_index);
+    // printf("insn index %d\n", insn_index);
     assert(insn_index < MAX_BITSET);
     markedMap[std::make_pair(t.func, bb_num)].second[insn_index] = 1;
     printf("Marking %s, block %d, instruction %d. Func count %d\n", t.func->getName().str().c_str(), bb_num, insn_index, markedMap[std::make_pair(t.func, bb_num)].first);
@@ -482,7 +607,12 @@ void get_usedefs_intrinsic_call(traceEntry &t,
 
         //call looks like call i64 @helper_le_ldul_mmu_panda(%struct.CPUX86State* %0, i32 %tmp2_v19, i32 1, i64 3735928559)
         Value *load_addr = c->getArgOperand(1);
-        insertValue(uses, load_addr);
+
+        // Only add load_addr LLVM val if we are tracking slice on pointers
+        if (tainted_ptr) {
+            insertValue(uses, load_addr);
+        }
+
         insertValue(defines, t.inst);
     }
     else if (Regex("helper_([lb]e|ret)_st(.*)_mmu_panda").match(func_name, matches))  {
@@ -559,6 +689,7 @@ void get_usedefs_intrinsic_call(traceEntry &t,
 
 }
 
+
 void get_usedefs_Call(traceEntry &t, 
         std::set<SliceVar> &uses, 
         std::set<SliceVar> &defines){
@@ -570,12 +701,6 @@ void get_usedefs_Call(traceEntry &t,
     printf("CALL: pc = %lx (%lu), %s\n", t.ple->llvmentry().pc(), t.ple->llvmentry().pc(), func_name.data());
     Function::arg_iterator argIt;
     int argIdx;
-    // for (argIt = subf->arg_begin(), argIdx = 0; argIt != subf->arg_end(); argIt++, argIdx++){
-    //    // argIt->print(outs());
-    //    // printf("\n");
-    //     c->getArgOperand(argIdx)->print(outs());
-    //     printf("\n");
-    // }       
 
     if (subf->isDeclaration() || subf->isIntrinsic()) {
         get_usedefs_intrinsic_call(t, uses, defines, func_name);
@@ -611,6 +736,7 @@ void get_usedefs_PHI(traceEntry &t,
     std::set<SliceVar> &uses, 
     std::set<SliceVar> &defines){
     assert(t.ple->llvmentry().phi_index());
+    
     PHINode *p = cast<PHINode>(t.inst);
     
     Value *v = p->getIncomingValue(t.ple->llvmentry().phi_index());
@@ -775,6 +901,17 @@ void get_uses_and_defs(traceEntry &te, std::set<SliceVar> &uses, std::set<SliceV
     return;
 }
 
+// Return depth of def in worklist, if found
+// else -1
+int inWorklist(std::set<std::pair<SliceVar, int>>& workset, const SliceVar &def) {
+    for (auto& pair: workset) {
+        if (pair.first == def) {
+            return pair.second;
+        }
+    }
+
+    return -1;
+}
 
 //TODO: Don't need to store the func in every single traceEntry, only in the first entry of every function. The name suffices for mark function otherwise
 
@@ -798,7 +935,7 @@ bool slice_trace(std::vector<traceEntry> &aligned_block){
         std::set<SliceVar> uses, defs;
         get_uses_and_defs(*traceIt, uses, defs);
 
-        //print_insn(traceIt->inst);
+        printf("INST: %s\n", Instruction::getOpcodeName(traceIt->inst->getOpcode()));
         //XXX: For some reason, these values are kinda corrupted. Should checkout what's wrong.  
         //printf("rr instr: %lx\n", traceIt->ple->pc());
 
@@ -842,17 +979,21 @@ bool slice_trace(std::vector<traceEntry> &aligned_block){
             // printf("INSERTING BRANCH USES INTO WORK_lIST\n");
             // work_list.insert(uses.begin(), uses.end());
         } else {
+            bool scn_edge = false;
             for (auto &def : defs) {
                 // Check all SliceVars' worklists 
-
+                
                 for (auto& slice_set: slice_work_lists) {
 
-                    if (slice_set.second.find(def) != slice_set.second.end()) {
+                    int depth; 
+                    if ((slice_set.second.second.count(def)) > 0) {
+                        // If one of the defs is in worklist
+                        depth = slice_set.second.second.at(def);
 
                         is_block_marked = true;
-                            
-                        char destbuf[200] = {};
 
+                        // print debug info
+                        char destbuf[200] = {};
                         int destoff = 0;
                         for (const SliceVar &w : defs) {
                             int ct = snprintf(destbuf+destoff, 30, "%s ", slicevar_to_str(w).c_str());
@@ -860,27 +1001,136 @@ bool slice_trace(std::vector<traceEntry> &aligned_block){
                         }
 
                         char usebuf[200] = {};
-
                         int off = 0;
                         for (const SliceVar &w : uses) {
                             int ct = snprintf(usebuf+off, 30, "%s ", slicevar_to_str(w).c_str());
                             off += ct;
                         }
 
-                        printf("Def %s is in work_list, adding %s to %s work_list\n", destbuf, usebuf, slicevar_to_str(slice_set.first).c_str());
+                        printf("DEFINED %s, adding %s to %s work_list\n", destbuf, usebuf, slicevar_to_str(slice_set.first).c_str());
                         mark(*traceIt);
 
-                        for (auto &def : defs){
-                            slice_set.second.erase(def);                 
-                        }
+                        // Increment SCN based on type of instruction
+                        switch (traceIt->inst->getOpcode()) {
+                            case Instruction::LShr:
+                            case Instruction::AShr:
+                            case Instruction::Shl:
+                            case Instruction::Mul:
+                            case Instruction::FMul:
+                            case Instruction::Add:
+                            case Instruction::UDiv:
+                            case Instruction::SDiv:
+                            case Instruction::FDiv:
+                            case Instruction::FSub:
+                            case Instruction::FAdd:
+                            case Instruction::URem:
+                            case Instruction::SRem:
+                            case Instruction::FRem:
+                                // mixed; i.e. operation is not bitwise, so taint transfers
+                                // between bytes in the word.
+                            case Instruction::And:
+                            case Instruction::Or:
+                            case Instruction::Xor:
+                            {
+                                // set SCN to be the maximum depth of old SCN and depth of new SCN
 
+                                int old_scn = slice_set.second.first;
+                                slice_set.second.first = std::max(depth+1, old_scn);
+                                printf("SCN depth: %d -> %d for %s\n", old_scn, slice_set.second.first, slicevar_to_str(slice_set.first).c_str());
+
+                                scn_edge = true;
+
+                                // let's create a new graph with just SCN nodes 
+                                // for (const SliceVar &w : uses) {
+
+                                //     vertex_t scn_use_v;
+                                //     scn_use_v = boost::add_vertex(scn_g);   
+                                //     scn_g[scn_use_v].slice_var = slicevar_to_str(w);
+                                //     scn_g[scn_use_v].slice_var_type = w.first;
+                                //     scn_g[scn_use_v].opcode = get_opcode(*traceIt);
+
+                                //     scn_vertex_table[w] = scn_use_v;
+
+                                //     vertex_t scn_def_v = scn_vertex_table.at(def);
+                                //     boost::add_edge(scn_use_v, scn_def_v, scn_g);
+                                // }
+
+                                break;
+                            }
+                            default:
+                                // don't increment scn
+                                // printf("Instr %s no scn\n", Instruction::getOpcodeName(traceIt->inst->getOpcode()));
+                                ;
+                            }
+
+                        slice_set.second.second.erase(def);
+
+                        // increase count for this LLVM instr
+                        slice_count[slice_set.first][traceIt->inst->getOpcode()]++;
+
+                        // generate a graph node for this marked instr 
+                        // create vertices for the uses, which will have directed edges to the def 
                         for (const SliceVar &w : uses) {
                             // If the use is not ESP or EBP, insert use into work_list
                             if (slicevar_to_str(w).find("ESP") == std::string::npos && slicevar_to_str(w).find("EBP") == std::string::npos) {
 
-                                // increase count for this LLVM instr
-                                slice_count[slice_set.first][traceIt->inst->getOpcode()]++;
-                                slice_set.second.insert(w);
+                                // insert {use, depth} into slice_set
+                                slice_set.second.second.insert({w, slice_set.second.first});
+
+                                vertex_t use_v;
+                                if (vertex_table.find(w) != vertex_table.end()) {
+                                    use_v = vertex_table[w];
+                                } else {
+                                    use_v = boost::add_vertex(g);   
+                                    g[use_v].slice_var = slicevar_to_str(w);
+                                    g[use_v].slice_var_type = w.first;
+                                    // g[use_v].opcode = get_opcode(*traceIt);
+                                    // if ( traceIt->ple != NULL && traceIt->ple->has_llvmentry() && traceIt->ple->llvmentry().has_value() ) {
+
+                                    //     uint64_t val = traceIt->ple->llvmentry().value();
+
+                                    //     printf("node value %lx\n", val);
+                                    
+                                    //     g[use_v].value = traceIt->ple->llvmentry().value();
+                                    // }
+                                }
+
+                                // Add to vertex lookup table
+                                vertex_table[w] = use_v;
+
+                                // if def only has one outgoing edge, try condensing use to def 
+                                vertex_t def_v = vertex_table.at(def);
+                                g[def_v].opcode = get_opcode(*traceIt);
+                                if ( traceIt->ple != NULL && traceIt->ple->has_llvmentry() && traceIt->ple->llvmentry().has_value() ) {
+
+                                    uint64_t val = traceIt->ple->llvmentry().value();
+
+                                    printf("node value %lx\n", val);
+                                
+                                    g[def_v].value = traceIt->ple->llvmentry().value();
+                                }
+                                // unsigned out_degree = (unsigned)boost::out_degree(def_v, g);
+                                
+                                // if (out_degree == 1) {
+                                //     auto p = out_edges(def_v, g);
+                                //     auto edge = *p.first;
+                                    
+                                //     vertex_t next_def_v = target(edge, g);
+                                //     // g[next_def_v].slice_var += " condensed";
+                                //     boost::add_edge(use_v, next_def_v, g);                                    
+                                // } else {
+                                    // add edge from use to def 
+                                
+                                // if (scn_edge) {
+                                    
+                                boost::add_edge(use_v, def_v, g);
+                                if (scn_edge) {
+                                    printf("boost adding SCN edge\n");
+                                    g[use_v].scn = true;
+                                }
+
+                                // }
+                                // }
                             }
                         }
 
@@ -974,8 +1224,11 @@ int align_intrinsic_call(std::vector<traceEntry> &aligned_block, traceEntry t, s
     return cursor_idx;
 }
 
+
 /*
- * Aligns log entries and  
+ * Takes vector of log entries and aligns them with llvm Instructions from function
+ * then places them in aligned_block
+ * 
  *
  */
 int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, std::vector<panda::LogEntry*>& ple_vector, int cursor_idx){
@@ -1020,8 +1273,7 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                 target_asm_marked = false;
             }
 
-      
-            if(in_exception) return cursor_idx;
+            if (in_exception) return cursor_idx;
 
             panda::LogEntry* ple;
             if (cursor_idx >= ple_vector.size()){
@@ -1043,7 +1295,6 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
             switch (i->getOpcode()){
                 case Instruction::Load: {
                     // get the value from the trace 
-                    //
                     assert (ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_LOAD);
                     t.ple = ple;
 
@@ -1198,7 +1449,9 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                 default:
                     //printf("fell through!\n");
                     /*print_insn(i);*/
-                    aligned_block.push_back(t);
+                    if (!i->getMetadata("host")) {
+                        aligned_block.push_back(t);
+                    }
                     break;
 
             }
@@ -1211,7 +1464,6 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
 
     //update work_list 
     /*for (auto it )*/
-    
 }
 
 //******************************************************************
@@ -1223,7 +1475,6 @@ void usage(char *prog) {
            prog);
    fprintf(stderr, "Options:\n"
            "  -d                : enable debug output\n"
-           "  -n NUM -p PC      : start slicing from TB NUM-PC\n"
            "  -o OUTPUT         : save slice results to OUTPUT\n"
            "  <llvm_mod>        : the LLVM bitcode module\n"
            "  <dynlog>          : the pandalog trace file\n"
@@ -1231,10 +1482,9 @@ void usage(char *prog) {
           );
 }
 
-
 int main(int argc, char **argv){
     //parse args 
-    
+
     if (argc < 4) {
         printf("Usage: <llvm-mod.bc> <trace-file> <criteria-file>\n");
         return EXIT_FAILURE; 
@@ -1250,14 +1500,10 @@ int main(int argc, char **argv){
     bool align_only = false;
     const char *output = NULL;
      
-    while ((opt = getopt(argc, argv, "vbdn:p:o:")) != -1) {
+    while ((opt = getopt(argc, argv, "to:")) != -1) {
         switch (opt) {
-        case 'p':
-            pc = strtoul(optarg, NULL, 16);
-            have_pc = true;
-            break;
-        case 'd':
-            debug = true;
+        case 't':
+            tainted_ptr = true;
             break;
         case 'o':
             output = optarg;
@@ -1268,6 +1514,7 @@ int main(int argc, char **argv){
     }
 
     char *llvm_mod_fname = argv[optind];
+    printf("llvm_mod_fname %s\n", llvm_mod_fname);
     char *llvm_trace_fname = argv[optind+1];
     char *criteria_fname = argv[optind+2];
 
@@ -1325,6 +1572,22 @@ int main(int argc, char **argv){
     // Add the slicing criteria from the file
     process_criteria(criteria_fname);
 
+    // Initialize the lookup table and Graph with the initial worklist
+     for (auto swl : slice_work_lists) {
+        printf("Creating graph node for Var: %s\n", slicevar_to_str(swl.first).c_str());
+        vertex_t v = boost::add_vertex(g);
+        g[v].slice_var = slicevar_to_str(swl.first);
+        g[v].slice_var_type = -1;
+        g[v].opcode = 0;
+        vertex_table[swl.first] = v;
+
+        vertex_t scn_v = boost::add_vertex(scn_g);
+        scn_g[scn_v].slice_var = slicevar_to_str(swl.first);
+        scn_g[scn_v].slice_var_type = -1;
+        scn_g[scn_v].opcode = 0;
+        scn_vertex_table[swl.first] = scn_v;
+    } 
+
     printf("Starting work_list: ");
     print_slice_worklist(slice_work_lists);
 
@@ -1360,10 +1623,9 @@ int main(int argc, char **argv){
             continue;
         }
 
+        // If not a !host metadata instr
         ple_vector.push_back(new panda::LogEntry(*ple.get()));
 
-        // pprint_ple(ple);
-        
         // If we have found the start of an LLVM function
         if (ple->llvmentry().type() == FunctionCode::LLVM_FN && ple->llvmentry().tb_num()) {
             if (ple->llvmentry().tb_num() == 0) {
@@ -1471,6 +1733,56 @@ int main(int argc, char **argv){
         fwrite(bytes, MAX_BITSET / 8, 1, outf);
 
    }
+
+   std::cout << "Writing graphviz to out.dot" << std::endl;
+
+
+   // remove all vertices with no edges 
+   // typedef graph_traits<Graph>::vertex_iterator vertex_iter;
+   // std::pair<vertex_iter, vertex_iter> vp;
+   // for (vp = vertices(g); vp.first != vp.second; ++vp.first) {
+   //      if (degree(*vp.first, g) == 0) {
+   //          printf("Has no edges, removing\n");
+   //          remove_vertex(*vp.first, g);
+   //      }
+   // }
+
+   // condense all trunc, zext, sext vertices: remove them, reroute input vertices to output vertex 
+   typedef graph_traits<Graph>::vertex_iterator vertex_iter;
+   typedef boost::graph_traits<Graph>::out_edge_iterator out_edge_iterator;
+   typedef boost::graph_traits<Graph>::in_edge_iterator in_edge_iterator;
+   std::pair<vertex_iter, vertex_iter> vp;
+
+   for (vp = vertices(g); vp.first != vp.second; ++vp.first) {
+        vertex_t this_v = *vp.first;
+        unsigned opcode = g[this_v].opcode;
+        if (opcode == Instruction::Trunc || opcode == Instruction::SExt || opcode == Instruction::ZExt) {
+
+            // get single inputnodes 
+            std::pair<in_edge_iterator, in_edge_iterator> in_it = in_edges(this_v, g);
+
+            // for (in_it = in_edges(this_v, g); in_it.first != in_it.second; ++in_it.first) {
+                vertex_t src_v = source(*in_it.first, g);    
+                
+            // }
+
+            // get all output nodes
+            std::pair<out_edge_iterator, out_edge_iterator> outit = out_edges(this_v, g);
+            for (outit = out_edges(this_v, g); outit.first != outit.second; ++outit.first) {
+                vertex_t targ_v = target(*outit.first, g);    
+                add_edge(src_v, targ_v, g); 
+            }
+            
+            clear_vertex(this_v, g);
+            remove_vertex(this_v, g);
+        }
+   }
+
+   std::ofstream outgraph("out.dot");
+   // print_graph(g, "test");
+    myVertexWriter<Graph> my_vwriter(g);
+    // boost::write_graphviz(outgraph, g, make_label_writer(get(&Vertex::slice_var, g)));
+    boost::write_graphviz(outgraph, g, my_vwriter);
 
     p.close();
     return 0;

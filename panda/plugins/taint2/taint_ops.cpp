@@ -544,6 +544,7 @@ static inline void write_cb_masks(Shad *shad, uint64_t addr, uint64_t size,
 static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
                       uint64_t src, uint64_t size, llvm::Instruction *I)
 {
+    return;
     if (!I) return;
 
     CBMasks cb_masks = compile_cb_masks(shad_src, src, size);

@@ -49,7 +49,6 @@ void uninit_plugin(void *);
 
 #include <stdint.h>
 #include "tainted_branch_int_fns.h"
-
 }
 
 

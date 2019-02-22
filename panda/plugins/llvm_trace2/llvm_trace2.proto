@@ -31,6 +31,6 @@ message LLVMEntry {
     optional uint64 vma_base = 14;
 }
 
-optional LLVMEntry llvmEntry = 30;
+optional LLVMEntry llvmEntry = 31;
 
 // will also need func names, bb boundaries, metadata, 

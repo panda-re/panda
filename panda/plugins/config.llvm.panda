@@ -5,7 +5,8 @@ taint2
 tainted_branch
 tstringsearch
 tainted_instr
-llvm_trace2
 ida_taint2
 tainted_net
 serial_taint
+llvm_trace2
+taint_test

@@ -804,25 +804,19 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
 // Helper functions
 //*************************************************************************
 
-const char* infer_register(uint32_t offset){
-    if (offset < registers.size()){
-        return registers[offset].c_str();
-    } else {
-        printf("Not an x86 reg");
-        return "";
-    }
-}
+OsiModule* lookup_libname(target_ulong curpc, GArray* ms){
+    for (int i = 0; i < ms->len; i++){
+        OsiModule *mod = &g_array_index(ms, OsiModule, i);
 
-OsiModule* lookup_libname(target_ulong curpc, OsiModules* ms){
-    for (int i = 0; i < ms->num; i++){
-        if (curpc >= ms->module[i].base && curpc <= ms->module[i].base + ms->module[i].size){
+        if (curpc >= mod->base && curpc <= mod->base + mod->size){
             //we've found the module this belongs to
             //return name of module
-            return &ms->module[i];
+            return mod;
         }
     }
     return NULL;
 }
+
 
 
 //*************************************************************************
@@ -857,36 +851,18 @@ void llvmtrace_enable_llvm(){
 int llvmtrace_before_block_exec(CPUState *env, TranslationBlock *tb) {
     // write LLVM FUNCTION to pandalog
     // Get dynamic libraries of current process
-    if (!execute_llvm){
+    if (!execute_llvm) {
         return 0;
     }
 
     // if we are no longer in interrupt, flip do_record on
-    if (!(llvmtrace_flags & 1) && !do_record){
+    if (!(llvmtrace_flags & 1) && !do_record) {
         printf("TURNING ON RECORD at pc " TARGET_FMT_lx ", instr %lu\n", panda_current_pc(env), rr_get_guest_instr_count());
         do_record = true;
     }
     
     if (pandalog && do_record) {
         //Look up mapping/library name
-        OsiModule* lib = NULL;
-
-        if (use_osi) {
-            OsiProc *current = get_current_process(env);
-            // printf("proc name %s\n", current->name);
-            OsiModules *ms = get_libraries(env, current);
-                
-            target_ulong curpc = panda_current_pc(env);
-
-            if (ms == NULL){
-                lib = NULL;
-            } else {
-                lib = lookup_libname(curpc, ms);
-                // if (lib != NULL) {
-                //     printf("lib_name %s\n", lib->name);
-                // }
-            }
-        }
 
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::LLVM_FN);
@@ -899,13 +875,32 @@ int llvmtrace_before_block_exec(CPUState *env, TranslationBlock *tb) {
         
             ple->mutable_llvmentry()->set_flags(llvmtrace_flags);
             
-            if (lib != NULL){
-                ple->mutable_llvmentry()->set_vma_name(lib->name);
-                ple->mutable_llvmentry()->set_vma_base(lib->base);
+            if (use_osi) {
+                OsiModule* lib = NULL;
+                OsiProc *current = get_current_process(env);
+                // printf("proc name %s\n", current->name);
+                GArray *ms = get_libraries(env, current);
+                    
+                target_ulong curpc = panda_current_pc(env);
+
+                if (ms == NULL){
+                    lib = NULL;
+                } else {
+                    lib = lookup_libname(curpc, ms);
+                    if (lib != NULL) {
+                        printf("lib_name %s\n", lib->name);
+                        ple->mutable_llvmentry()->set_vma_name(lib->name);
+                        ple->mutable_llvmentry()->set_vma_base(lib->base);
+                    }
+                }
+
+                free_osiproc(current);
+                g_array_free(ms, true);   
             }
         }   
-        
+
         globalLog.write_entry(std::move(ple));
+
     }
 
     return 0;

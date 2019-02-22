@@ -69,3 +69,8 @@ python PandaCmd('rrlist', [])
 document rrlist
 List all rr breakpoints
 end
+
+python PandaCmd('slice', [])
+document slice
+Perform slice between instruction count/address on a certain memory address/register
+end

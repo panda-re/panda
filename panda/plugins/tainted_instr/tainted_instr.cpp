@@ -22,6 +22,14 @@ extern "C" {
 #include "panda/plugin.h"
 
 #include "taint2/taint2.h"
+#include <llvm/PassManager.h>
+#include <llvm/PassRegistry.h>
+#include <llvm/Analysis/Verifier.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
+
+#include "taint2/llvm_taint_lib.h"
+#include <llvm/IR/Instructions.h>
 
 extern "C" {
 #include "taint2/taint2_ext.h"
@@ -41,9 +49,7 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 void taint_change(void);
-
 }
-
 
 bool summary = false;
 uint64_t num_tainted_instr = 0;
@@ -58,6 +64,27 @@ std::map<uint64_t,std::set<uint64_t>> tainted_instr;
 
 target_ulong last_asid = 0;
 target_ulong last_pc = 0;
+
+std::vector<std::string> registers = {"EAX", "ECX", "EDX", "EBX", "ESP", "EBP", "ESI", "EDI", "EIP", "EFLAGS", "CC_DST", "CC_SRC", "CC_SRC2", "CC_OP", "DF"};
+
+
+void addr_to_str(Addr a) {
+    
+    std::string res = "";
+    switch (a.typ) {
+        case 5:
+            printf(" GREG %s", registers[a.val.gr].c_str());      
+            break;  
+        case 4: 
+            printf(" Local slot %lu ", a.val.la);
+            break;
+        default:
+            printf(" Typ %d, val %lx", a.typ, *(uint64_t*)&a.val);
+            break;
+    }
+    
+    printf(" tcn %d\n", taint2_query_tcn(a));
+}
 
 void taint_change(Addr a, uint64_t size) {
     if (replay_ended) return;
@@ -78,38 +105,44 @@ void taint_change(Addr a, uint64_t size) {
         a.off = i;
         num_tainted += (taint2_query(a) != 0);
     }
+    a.off = 0;
     if (num_tainted > 0) {            
         if (summary) {
             tainted_instr[asid].insert(pc);
         }
         else {
-            if (pandalog) {
-                Panda__TaintedInstr *ti = (Panda__TaintedInstr *) malloc(sizeof(Panda__TaintedInstr));
-                *ti = PANDA__TAINTED_INSTR__INIT;
-                ti->call_stack = pandalog_callstack_create();
-                ti->n_taint_query = num_tainted;
-                ti->taint_query = (Panda__TaintQuery **) malloc (sizeof(Panda__TaintQuery *) * num_tainted);
-                uint32_t j = 0;
-                for (uint32_t i=0; i<size; i++) {
-                    a.off = i;
-                    if (taint2_query(a)) {
-                        ti->taint_query[j++] = taint2_query_pandalog(a, 0);
-                    }
-                }
-                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-                ple.tainted_instr = ti;
+            if (rr_get_guest_instr_count() >= 9489712) {
+                printf ("taint_change pc = " TARGET_FMT_lx, pc);
+                addr_to_str(a);
+
                 if (pandalog) {
-                    pandalog_write_entry(&ple);
+                    Panda__TaintedInstr *ti = (Panda__TaintedInstr *) malloc(sizeof(Panda__TaintedInstr));
+                    *ti = PANDA__TAINTED_INSTR__INIT;
+                    ti->call_stack = pandalog_callstack_create();
+                    ti->n_taint_query = num_tainted;
+                    ti->taint_query = (Panda__TaintQuery **) malloc (sizeof(Panda__TaintQuery *) * num_tainted);
+                    uint32_t j = 0;
+                    for (uint32_t i=0; i<size; i++) {
+                        a.off = i;
+                        if (taint2_query(a)) {
+                            ti->taint_query[j++] = taint2_query_pandalog(a, 0);
+                        }
+                    }
+                    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+                    ple.tainted_instr = ti;
+                    if (pandalog) {
+                        pandalog_write_entry(&ple);
+                    }
+                    pandalog_callstack_free(ti->call_stack);
+                    for (uint32_t i=0; i<num_tainted; i++) {
+                        pandalog_taint_query_free(ti->taint_query[i]);
+                    }
+                    free(ti);
                 }
-                pandalog_callstack_free(ti->call_stack);
-                for (uint32_t i=0; i<num_tainted; i++) {
-                    pandalog_taint_query_free(ti->taint_query[i]);
-                }
-                free(ti);
             }
-            else {
-                printf ("  pc = 0x%" PRIx64 "\n", (uint64_t) pc);
-            }
+            // else {
+            //     printf ("  pc = 0x%" PRIx64 "\n", (uint64_t) pc);
+            // }
         }
         if (asid != last_asid) {
             if (pandalog) {
@@ -146,6 +179,7 @@ bool init_plugin(void *self) {
     // this tells taint system to enable extra instrumentation
     // so it can tell when the taint state changes
     taint2_track_taint_state();
+
     return true;
 }
 

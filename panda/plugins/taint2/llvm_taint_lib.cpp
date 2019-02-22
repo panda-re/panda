@@ -324,6 +324,11 @@ void PandaSlotTracker::processFunction() {
             ++I) {
             if (I->getType() != llvm::Type::getVoidTy(TheFunction->getContext())) {
                 CreateFunctionSlot(I);
+
+                if (TheFunction->getName().find("8048461") != std::string::npos || TheFunction->getName().find("8048455") != std::string::npos) {
+                    printf("Setting value at slot %d\n", fNext);
+                    I->dump();
+                }
             }
         }
     }
@@ -436,6 +441,8 @@ int PandaTaintVisitor::intValue(Value *value) {
 
 void PandaTaintVisitor::visitFunction(Function& F) {
     // create slot tracker to keep track of LLVM values
+    printf("Initializing slottracker for function %s\n", F.getName().str().c_str());
+
     PST.reset(new PandaSlotTracker(&F));
     PST->initialize();
 }

@@ -23,5 +23,4 @@ textprinter
 net
 network
 filereadmon
-serial_taint
 slice_stringsearch

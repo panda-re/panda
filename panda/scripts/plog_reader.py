@@ -8,6 +8,7 @@ import struct
 import itertools
 from google.protobuf.json_format import MessageToJson
 from os.path import dirname
+import re
 
 panda_dir = dirname(dirname(dirname(os.path.realpath(__file__))))
 
@@ -99,5 +100,6 @@ if __name__ == "__main__":
     with PLogReader(sys.argv[1]) as plr:
         for i, m in enumerate(plr):
             if i > 0: print(',')
-            print(MessageToJson(m), end='')
+            json = MessageToJson(m)
+            print(re.sub('(\d+)', lambda i: hex(int(i.group(0))), json))
     print('\n]')

@@ -107,35 +107,6 @@ void print_target_asm(LLVMDisasmContextRef dcr, std::string targetAsm, bool is_m
     }
 }
 
-void count_insts(std::string inst_str) {
-    // if (inst_str.find("xor") != std::string::npos){
-
-    // } else if (inst_str.find("add") != std::string::npos){
-
-    // } else if (inst_str.find("sub") != std::string::npos){
-
-    // } else if (inst_str.find("xor") != std::string::npos){
-
-    // } else if (inst_str.find("xor") != std::string::npos){
-
-
-    // } else if (inst_str.find("xor") != std::string::npos){ 
-
-
-    // }
-
-    // I ain't no software engineer hehehe 
-}
-
-void count_loops() {
-    
-
-}
-
-void compare_trace() {
-
-}
-
 /*
 * Various metrics to compare string computations — counting types of arith instructions
 * xor, add, sub, mul, 

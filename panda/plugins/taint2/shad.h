@@ -55,6 +55,7 @@ extern uint32_t max_taintset_card;
 #ifdef TAINT2_DEBUG
 #define tassert(cond) assert((cond))
 #define taint_log(...) qemu_log_mask(CPU_LOG_TAINT_OPS, ## __VA_ARGS__);
+// #define taint_only_log(...) qemu_log_mask(CPU_LOG_TAINT_OPS, ## __VA_ARGS__);
 #define taint_log_labels(shad, src, size) \
     extern int qemu_loglevel; \
     if (qemu_loglevel & CPU_LOG_TAINT_OPS) { \
@@ -68,6 +69,8 @@ extern uint32_t max_taintset_card;
                     qemu_log("%u, ", l); \
                 } \
             } \
+            uint32_t tcn = shad->query_tcn(src + __i); \
+            qemu_log(": %d", tcn); \
             qemu_log("}; "); \
         } \
         if (tainted) qemu_log("TAINTED"); \

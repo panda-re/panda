@@ -83,7 +83,7 @@ enum SliceVarType {
 };
 
 // copied from helper_runtime.cpp
-const static std::set<std::string> external_helper_funcs{
+const static std::set<std::string> external_helper_funcs {
     "helper_le_ldq_mmu_panda", "helper_le_ldul_mmu_panda", "helper_le_lduw_mmu_panda",
     "helper_le_ldub_mmu_panda", "helper_le_ldsl_mmu_panda", "helper_le_ldsw_mmu_panda",
     "helper_le_ldsb_mmu_panda",
