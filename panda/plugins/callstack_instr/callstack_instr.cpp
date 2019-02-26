@@ -374,7 +374,7 @@ uint32_t get_callers(target_ulong callers[], uint32_t n, CPUState* cpu) {
     std::vector<stack_entry> &v = callstacks[get_stackid(env)];
 
     n = std::min((uint32_t)v.size(), n);
-    for (uint32_t i=0; i<n; i++) { callers[i] = v[n-1-i].pc; }
+    for (uint32_t i=0; i<n; i++) { callers[i] = v[v.size()-1-i].pc; }
     return n;
 }
 
