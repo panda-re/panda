@@ -133,16 +133,18 @@ class Shad
     // addr+size-1] are tainted.
     virtual bool range_tainted(uint64_t addr, uint64_t size) = 0;
 
-    // Puts the given TaintData object on the given address, without reporting
-    // a taint change.  This method should ONLY be called internal to the Shad
-    // inheritance tree, and only by methods that already take care of reporting
-    // taint changes.
-    virtual void set_full_quiet(uint64_t addr, TaintData td) = 0;
-
   public:
     Shad(std::string name, uint64_t max_size);
 
     virtual ~Shad() = 0;
+
+    // Puts the given TaintData object on the given address, without reporting
+    // a taint change.  This method should ONLY be called internal to the Shad
+    // inheritance tree, and only by methods that already take care of reporting
+    // taint changes, or ONLY as a part of restoring taint earlier saved as a
+    // part of preventing it from being lost (such as the i386 needs to work
+    // around indeterminism in condition code calculations).
+    virtual void set_full_quiet(uint64_t addr, TaintData td) = 0;
 
     uint64_t get_size()
     {
@@ -175,6 +177,12 @@ class Shad
     }
 
     virtual void remove(uint64_t addr, uint64_t remove_size) = 0;
+
+    // Removes the taint from remove_size items starting at address addr,
+    // without reporting taint.  This method should ONLY be used by methods
+    // that take care of reporting taint in other ways, or as a part of removing
+    // erroneous taint introduced during a save/restore activity.
+    virtual void remove_quiet(uint64_t addr, uint64_t remove_size) = 0;
 
     // Query. NULL if untainted.
     virtual LabelSetP query(uint64_t addr) = 0;
@@ -221,13 +229,6 @@ class FastShad : public Shad
         return false;
     }
 
-    // Set taint quietly - ie. no taint change report is made.
-    void set_full_quiet(uint64_t addr, TaintData td) override
-    {
-        tassert(addr < size);
-        labels[addr] = td;
-    }
-
   public:
     FastShad(std::string name, uint64_t size);
     ~FastShad();
@@ -252,6 +253,14 @@ class FastShad : public Shad
 
         if (change)
             taint_state_changed(this, addr, remove_size);
+    }
+
+    void remove_quiet(uint64_t addr, uint64_t remove_size) override
+    {
+        tassert(addr + remove_size >= addr);
+        tassert(addr + remove_size <= size);
+
+        memset(get_td_p(addr), 0, remove_size * sizeof(TaintData));
     }
 
     LabelSetP query(uint64_t addr) override
@@ -310,6 +319,13 @@ class FastShad : public Shad
         }
     }
 
+    // Set taint quietly - ie. no taint change report is made.
+    void set_full_quiet(uint64_t addr, TaintData td) override
+    {
+        tassert(addr < size);
+        labels[addr] = td;
+    }
+
     uint32_t query_tcn(uint64_t addr) override
     {
         return (query_full(addr)).tcn;
@@ -331,12 +347,6 @@ class LazyShad : public Shad
             }
         }
         return false;
-    }
-
-    // Set taint quietly - ie. no taint change report is made
-    void set_full_quiet(uint64_t addr, TaintData td) override
-    {
-        labels[addr] = td;
     }
 
   public:
@@ -365,6 +375,13 @@ class LazyShad : public Shad
 
         if (change) {
             taint_state_changed(this, addr, remove_size);
+        }
+    }
+
+    void remove_quiet(uint64_t addr, uint64_t remove_size) override
+    {
+        for (uint64_t cur = addr; cur < (addr + remove_size); cur++) {
+             labels.erase(cur);
         }
     }
 
@@ -404,6 +421,12 @@ class LazyShad : public Shad
                 remove(addr, 1);
             }
         }
+    }
+
+    // Set taint quietly - ie. no taint change report is made
+    void set_full_quiet(uint64_t addr, TaintData td) override
+    {
+        labels[addr] = td;
     }
 
     uint32_t query_tcn(uint64_t addr) override

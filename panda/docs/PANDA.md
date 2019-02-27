@@ -340,6 +340,39 @@ int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
 ```
 ---
 
+**after_cpu_exec_enter**: called right after cpu_exec calls the cpu_exec_enter function
+
+**Callback ID**:   PANDA_CB_AFTER_CPU_EXEC_ENTER
+
+**Arguments**:
+
+* `CPUState *env`: pointer to CPUState
+
+**Return value**: unused
+
+**Signature**:
+```C
+int (*after_cpu_exec_enter)(CPUState *env);
+```
+---
+
+**before_cpu_exec_exit**: called right before cpu_exec calls the cpu_exec_exit function
+
+**Callback ID**:   PANDA_CB_BEFORE_CPU_EXEC_EXIT
+
+**Arguments**:
+
+* `CPUState *env`: pointer to CPUState
+* `bool ranBlock`: true if ran a block since the previous cpu_exec_enter
+
+**Return value**: unused
+
+**Signature**:
+```C
+int (*before_cpu_exec_exit)(CPUState *env, bool ranBlock);
+```
+---
+
 ## Sample Plugin: Syscall Monitor
 
 To make the information in the preceding sections concrete, we will now show how to implement a low-overhead x86 system call monitor as a PANDA plugin. To do so, we will use the `PANDA_CB_INSN_TRANSLATE` and `PANDA_CB_INSN_EXEC` callbacks to create instrumentation that will execute only when the `sysenter` command is executed on x86.

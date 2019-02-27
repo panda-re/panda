@@ -130,6 +130,21 @@ bool panda_callbacks_after_find_fast(CPUState *cpu, TranslationBlock *tb, bool b
     return false;
 }
 
+void panda_callbacks_after_cpu_exec_enter(CPUState *cpu) {
+    panda_cb_list *plist;
+    for (plist = panda_cbs[PANDA_CB_AFTER_CPU_EXEC_ENTER];
+         plist != NULL; plist = panda_cb_list_next(plist)) {
+        plist->entry.after_cpu_exec_enter(cpu);
+    }
+}
+
+void panda_callbacks_before_cpu_exec_exit(CPUState *cpu, bool ranBlock) {
+    panda_cb_list *plist;
+    for (plist = panda_cbs[PANDA_CB_BEFORE_CPU_EXEC_EXIT];
+         plist != NULL; plist = panda_cb_list_next(plist)) {
+        plist->entry.before_cpu_exec_exit(cpu, ranBlock);
+    }
+}
 
 // These are used in target-i386/translate.c
 bool panda_callbacks_insn_translate(CPUState *env, target_ulong pc) {

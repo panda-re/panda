@@ -575,6 +575,8 @@ PANDA_CB_REPLAY_NET_TRANSFER,   // in replay, transfers within network card (cur
 PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw
 PANDA_CB_REPLAY_AFTER_CPU_PHYSICAL_MEM_RW_RAM,   // in replay, just after RAM case of cpu_physical_mem_rw
 PANDA_CB_REPLAY_HANDLE_PACKET,    // in replay, packet in / out
+PANDA_CB_AFTER_CPU_EXEC_ENTER,    // just after cpu_exec_enter is called
+PANDA_CB_BEFORE_CPU_EXEC_EXIT,    // just before cpu_exec_exit is called
 PANDA_CB_AFTER_MACHINE_INIT,     // Right after the machine is initialized, before any code runs
 ```
 For more information on each callback, see the "Callbacks" section.
@@ -1850,6 +1852,43 @@ unused
 ```C
 int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
                             uint8_t direction, uint64_t old_buf_addr);
+```
+---
+
+`after_cpu_exec_enter`: called right after cpu_exec calls the cpu_exec_enter function
+
+**Callback ID**: `PANDA_CB_AFTER_CPU_EXEC_ENTER`
+
+**Arguments**:
+
+* `CPUState *env`: pointer to CPUState
+
+**Return value**:
+
+unused
+
+**Signature**
+```C
+int after_cpu_exec_enter(CPUState *env);
+```
+---
+
+`before_cpu_exec_exit`: called right before cpu_exec calls the cpu_exec_exit function
+
+**Callback ID**: `PANDA_CB_BEFORE_CPU_EXEC_EXIT`
+
+**Arguments**:
+
+* `CPUState *env`: pointer to CPUState
+* `bool ranBlock`: true if ran a block since the previous cpu_exec_enter
+
+**Return value**:
+
+unused
+
+**Signature**
+```C
+int before_cpu_exec_exit(CPUState *env, bool ranBlock);
 ```
 ---
 

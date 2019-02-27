@@ -13,6 +13,8 @@ void panda_callbacks_after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8
 void panda_callbacks_before_block_translate(CPUState *cpu, target_ulong pc);
 void panda_callbacks_after_block_translate(CPUState *cpu, TranslationBlock *tb);
 bool panda_callbacks_after_find_fast(CPUState *cpu, TranslationBlock *tb, bool panda_bb_invalidate_done, bool *invalidate);
+void panda_callbacks_after_cpu_exec_enter(CPUState *cpu);
+void panda_callbacks_before_cpu_exec_exit(CPUState *cpu, bool ranBlock);
 
 // target-i386/translate.c
 bool panda_callbacks_insn_translate(CPUState *env, target_ulong pc);

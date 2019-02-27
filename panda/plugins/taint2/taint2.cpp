@@ -17,12 +17,14 @@
  * Ryan Whelan, Tim Leek, Sam Coe, Nathan VanBenschoten
  */
 
-/*
- * Change Log:
- * 2018-JUL-09   Propagate network related taint too.
- * 2018-MAY-07   Add detaint_cb0 option to remove taint from bytes whose
- *               control bits are all zero.
- */
+// Change Log:
+// 2018-JUL-09   Propagate network related taint too.
+// 2018-MAY-07   Add detaint_cb0 option to remove taint from bytes whose
+//               control bits are all zero.
+// 2019-FEB-21   In i386 build, save information needed to calculate condition
+//               codes when the cpu_exec loop exits, and restore when it
+//               re-enters, to avoid inconsistent taint results.
+
 
 // This needs to be defined before anything is included in order to get
 // the PRIx64 macro
@@ -55,6 +57,8 @@
 #include "taint_api.h"
 #include "taint2_hypercalls.h"
 
+#define CPU_OFF(member) (uint64_t)(&((CPUArchState *)0)->member)
+
 extern "C" {
 #include "callstack_instr/callstack_instr.h"
 #include "callstack_instr/callstack_instr_ext.h"
@@ -63,6 +67,12 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 int after_block_translate(CPUState *cpu, TranslationBlock *tb);
 bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb);
+
+// for i386 condition code adjustments
+#if defined(TARGET_I386)
+int i386_after_cpu_exec_enter(CPUState *cpu);
+int i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock);
+#endif
 
 int phys_mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int phys_mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
@@ -78,6 +88,31 @@ PPP_CB_BOILERPLATE(on_taint_change);
 bool track_taint_state = false;
 uint32_t max_tcn = 0;          // ie disabled
 uint32_t max_taintset_card = 0;   // ie disabled - there is no maximum
+
+// more i386 condition code adjustment information
+#if defined(TARGET_I386)
+bool haveSavedCC = false;
+bool savedTaint = false;
+
+target_ulong savedCCDst;
+TaintData ccDstTaint[sizeof(target_ulong)];
+uint64_t dstOff = CPU_OFF(cc_dst);
+
+target_ulong savedCCSrc;
+TaintData ccSrcTaint[sizeof(target_ulong)];
+uint64_t srcOff = CPU_OFF(cc_src);
+
+target_ulong savedCCSrc2;
+TaintData ccSrc2Taint[sizeof(target_ulong)];
+uint64_t src2Off = CPU_OFF(cc_src2);
+
+uint32_t savedCCOp;
+TaintData ccOpTaint[sizeof(uint32_t)];
+uint64_t opOff = CPU_OFF(cc_op);
+
+target_ulong savedEflags;
+// CPUArchState->eflags is marked irrelevant, so it will never have taint
+#endif
 
 int asid_changed_callback(CPUState *env, target_ulong oldval, target_ulong newval);
 }
@@ -318,6 +353,101 @@ void taint2_enable_taint(void) {
     std::cerr << "Done verifying module. Running..." << std::endl;
 }
 
+// The i386 doesn't update the condition codes whenever executing an emulated
+// instruction that chagnes them, but just saves some information needed to
+// calculate the value should it be needed before the next change.  This causes
+// problems in reporting taint beforec when the cpu executive loop (cpu_exec)
+// exits, it updates the condition codes (without reporting taint), and the
+// cpu_exec loop may exit at inconsistent times due to external events and the
+// rcu thread not being deterministic.
+// These callbacks work around this by saving the condition code calculation
+// information just before cpu_exec updates it, and restores it just after it
+// runs the enter callback.  (Apparently somebody outside of the cpu_exec needs
+// to know the real condition codes.)
+#if defined(TARGET_I386)
+int i386_after_cpu_exec_enter(CPUState *cpu) {
+
+    if (!haveSavedCC)
+    {
+        return 0;
+    }
+
+    // as have saved data, restore it
+    CPUArchState *env = static_cast<CPUArchState*>(cpu->env_ptr);
+
+    env->cc_dst = savedCCDst;
+    env->cc_src = savedCCSrc;
+    env->cc_src2 = savedCCSrc2;
+    env->cc_op = savedCCOp;
+    env->eflags = savedEflags;
+    haveSavedCC = false;
+
+    // if saved taint too, restore that
+    if (taintEnabled) {
+        if (savedTaint) {
+            for (uint32_t i = 0; i < sizeof(target_ulong); i++) {
+                shadow->gsv.set_full_quiet(dstOff + i, ccDstTaint[i]);
+                shadow->gsv.set_full_quiet(srcOff + i, ccSrcTaint[i]);
+                shadow->gsv.set_full_quiet(src2Off + i, ccSrc2Taint[i]);
+            }
+            for (uint32_t i = 0; i < sizeof(uint32_t); i++) {
+                shadow->gsv.set_full_quiet(opOff + i, ccOpTaint[i]);
+            }
+            savedTaint = false;
+        }
+        else {
+            // if taint enabled since saved info, wipe out any taint that
+            // may have appeared on the data since the save
+            shadow->gsv.remove_quiet(dstOff, sizeof(target_ulong));
+            shadow->gsv.remove_quiet(srcOff, sizeof(target_ulong));
+            shadow->gsv.remove_quiet(src2Off, sizeof(target_ulong));
+            shadow->gsv.remove_quiet(opOff, sizeof(uint32_t));
+        }
+    }
+    // if taint was disabled since saved the taint, I think we're just hosed
+    // fortunately, it appears the feature to disable taint is not currently
+    // implemented
+
+    // return value isn't used, so don't worry about it
+    return 0;
+}
+
+int i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock) {
+    // it's possible for the cpu_exec loop to enter and then leave without
+    // ever executing an LLVM block - don't update the saved information in
+    // that case, as may have unrestored saved information to apply yet
+    if (ranBlock) {
+        CPUArchState *env = static_cast<CPUArchState*>(cpu->env_ptr);
+
+        // save the data itself
+        savedCCDst = env->cc_dst;
+        savedCCSrc = env->cc_src;
+        savedCCSrc2 = env->cc_src2;
+        savedCCOp = env->cc_op;
+        savedEflags = env->eflags;
+
+        // save the taint on the data, if there might be any
+        if (taintEnabled) {
+            // the taint for this info is in the CPUState shadow
+            // the offset into CPUX86State of each item of interest is used as
+            // the address of the item's taint in the shadow
+            for (uint32_t i = 0; i < sizeof(target_ulong); i++) {
+                ccDstTaint[i] = shadow->gsv.query_full(dstOff + i);
+                ccSrcTaint[i] = shadow->gsv.query_full(srcOff + i);
+                ccSrc2Taint[i] = shadow->gsv.query_full(src2Off + i);
+            }
+            for (uint32_t i = 0; i < sizeof(uint32_t); i++) {
+                ccOpTaint[i] = shadow->gsv.query_full(opOff + i);
+            }
+            savedTaint = true;
+        }
+        haveSavedCC = true;
+    }
+    // return value isn't used so don't worry about it
+    return 0;
+}
+#endif
+
 __attribute__((unused)) static void print_labels(uint32_t el, void *stuff) {
     printf("%d ", el);
 }
@@ -409,6 +539,14 @@ bool init_plugin(void *self) {
     // keep this commented until we figure out which one we should eliminate
     pcb.before_block_exec_invalidate_opt = before_block_exec_invalidate_opt;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);
+#endif
+
+#if defined(TARGET_I386)
+    panda_cb pcb2;
+    pcb2.after_cpu_exec_enter = i386_after_cpu_exec_enter;
+    panda_register_callback(self, PANDA_CB_AFTER_CPU_EXEC_ENTER, pcb2);
+    pcb2.before_cpu_exec_exit = i386_before_cpu_exec_exit;
+    panda_register_callback(self, PANDA_CB_BEFORE_CPU_EXEC_EXIT, pcb2);
 #endif
 
     // parse arguments
