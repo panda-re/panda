@@ -380,7 +380,7 @@ class LazyShad : public Shad
 
     void remove_quiet(uint64_t addr, uint64_t remove_size) override
     {
-        for (uint64_t cur = addr; cur < addr + remove_size; cur++) {
+        for (uint64_t cur = addr; cur < (addr + remove_size); cur++) {
              labels.erase(cur);
         }
     }

@@ -57,11 +57,11 @@
 #include "taint_api.h"
 #include "taint2_hypercalls.h"
 
+#define CPU_OFF(member) (uint64_t)(&((CPUArchState *)0)->member)
+
 extern "C" {
 #include "callstack_instr/callstack_instr.h"
 #include "callstack_instr/callstack_instr_ext.h"
-
-#define cpu_off(member) (uint64_t)(&((CPUArchState *)0)->member)
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -96,19 +96,19 @@ bool savedTaint = false;
 
 target_ulong savedCCDst;
 TaintData ccDstTaint[sizeof(target_ulong)];
-uint64_t dstOff = cpu_off(cc_dst);
+uint64_t dstOff = CPU_OFF(cc_dst);
 
 target_ulong savedCCSrc;
 TaintData ccSrcTaint[sizeof(target_ulong)];
-uint64_t srcOff = cpu_off(cc_src);
+uint64_t srcOff = CPU_OFF(cc_src);
 
 target_ulong savedCCSrc2;
 TaintData ccSrc2Taint[sizeof(target_ulong)];
-uint64_t src2Off = cpu_off(cc_src2);
+uint64_t src2Off = CPU_OFF(cc_src2);
 
 uint32_t savedCCOp;
 TaintData ccOpTaint[sizeof(uint32_t)];
-uint64_t opOff = cpu_off(cc_op);
+uint64_t opOff = CPU_OFF(cc_op);
 
 target_ulong savedEflags;
 // CPUArchState->eflags is marked irrelevant, so it will never have taint
@@ -367,43 +367,47 @@ void taint2_enable_taint(void) {
 #if defined(TARGET_I386)
 int i386_after_cpu_exec_enter(CPUState *cpu) {
 
-    // if have any saved data, restore it
-    if (haveSavedCC) {
-        CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-
-        env->cc_dst = savedCCDst;
-        env->cc_src = savedCCSrc;
-        env->cc_src2 = savedCCSrc2;
-        env->cc_op = savedCCOp;
-        env->eflags = savedEflags;
-        haveSavedCC = false;
-
-        // if saved taint too, restore that
-        if (taintEnabled) {
-            if (savedTaint) {
-                for (uint32_t i = 0; i < sizeof(target_ulong); i++) {
-                    shadow->gsv.set_full_quiet(dstOff + i, ccDstTaint[i]);
-                    shadow->gsv.set_full_quiet(srcOff + i, ccSrcTaint[i]);
-                    shadow->gsv.set_full_quiet(src2Off + i, ccSrc2Taint[i]);
-                }
-                for (uint32_t i = 0; i < sizeof(uint32_t); i++) {
-                    shadow->gsv.set_full_quiet(opOff + i, ccOpTaint[i]);
-                }
-                savedTaint = false;
-            }
-            else {
-                // if taint enabled since saved info, wipe out any taint that
-                // may have appeared on the data since the save
-                shadow->gsv.remove_quiet(dstOff, sizeof(target_ulong));
-                shadow->gsv.remove_quiet(srcOff, sizeof(target_ulong));
-                shadow->gsv.remove_quiet(src2Off, sizeof(target_ulong));
-                shadow->gsv.remove_quiet(opOff, sizeof(uint32_t));
-            }
-        }
-        // if taint was disabled since saved the taint, I think we're just hosed
-        // fortunately, it appears the feature to disable taint is not currently
-        // implemented
+    if (!haveSavedCC)
+    {
+        return 0;
     }
+
+    // as have saved data, restore it
+    CPUArchState *env = static_cast<CPUArchState*>(cpu->env_ptr);
+
+    env->cc_dst = savedCCDst;
+    env->cc_src = savedCCSrc;
+    env->cc_src2 = savedCCSrc2;
+    env->cc_op = savedCCOp;
+    env->eflags = savedEflags;
+    haveSavedCC = false;
+
+    // if saved taint too, restore that
+    if (taintEnabled) {
+        if (savedTaint) {
+            for (uint32_t i = 0; i < sizeof(target_ulong); i++) {
+                shadow->gsv.set_full_quiet(dstOff + i, ccDstTaint[i]);
+                shadow->gsv.set_full_quiet(srcOff + i, ccSrcTaint[i]);
+                shadow->gsv.set_full_quiet(src2Off + i, ccSrc2Taint[i]);
+            }
+            for (uint32_t i = 0; i < sizeof(uint32_t); i++) {
+                shadow->gsv.set_full_quiet(opOff + i, ccOpTaint[i]);
+            }
+            savedTaint = false;
+        }
+        else {
+            // if taint enabled since saved info, wipe out any taint that
+            // may have appeared on the data since the save
+            shadow->gsv.remove_quiet(dstOff, sizeof(target_ulong));
+            shadow->gsv.remove_quiet(srcOff, sizeof(target_ulong));
+            shadow->gsv.remove_quiet(src2Off, sizeof(target_ulong));
+            shadow->gsv.remove_quiet(opOff, sizeof(uint32_t));
+        }
+    }
+    // if taint was disabled since saved the taint, I think we're just hosed
+    // fortunately, it appears the feature to disable taint is not currently
+    // implemented
+
     // return value isn't used, so don't worry about it
     return 0;
 }
@@ -413,7 +417,7 @@ int i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock) {
     // ever executing an LLVM block - don't update the saved information in
     // that case, as may have unrestored saved information to apply yet
     if (ranBlock) {
-        CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+        CPUArchState *env = static_cast<CPUArchState*>(cpu->env_ptr);
 
         // save the data itself
         savedCCDst = env->cc_dst;
