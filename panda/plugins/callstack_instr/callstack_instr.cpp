@@ -393,7 +393,7 @@ Panda__CallStack *pandalog_callstack_create() {
     cs->n_addr = std::min((uint32_t)v.size(), (uint32_t)CALLSTACK_MAX_SIZE);
     cs->addr = (uint64_t *)malloc(cs->n_addr * sizeof(uint64_t));
 
-    for (uint32_t i=0; i<cs->n_addr; i++) { cs->addr[i] = v[cs->n_addr-1-i].pc; }
+    for (uint32_t i=0; i<cs->n_addr; i++) { cs->addr[i] = v[v.size()-1-i].pc; }
 
     return cs;
 }
