@@ -8,7 +8,8 @@ def init(handle):
 
 @pyp.callback("void(CPUState*)")
 def after_machine_init(cpustate):
-	print(panda.sysbus_create_varargs("sd-card", 503357440))
+	print("running sysbus_create_varargs")
+	print(panda.sysbus_create_varargs("sysbus-fdc", 503357440))
         
 
 panda = Panda(qcow="/home/alom/ubuntu-14.04-server-cloudimg-i386-disk1.img")
