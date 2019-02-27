@@ -416,7 +416,7 @@ uint32_t get_functions(target_ulong functions[], uint32_t n, CPUState* cpu) {
     std::vector<target_ulong> &v = function_stacks[get_stackid(env)];
 
     n = std::min((uint32_t)v.size(), n);
-    for (uint32_t i=0; i<n; i++) { functions[i] = v[n-1-i]; }
+    for (uint32_t i=0; i<n; i++) { functions[i] = v[v.size()-1-i]; }
     return n;
 }
 
