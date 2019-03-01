@@ -63,6 +63,10 @@ class Panda:
 			bits = 32
 		elif self.arch == "x86_64":
 			bits = 64
+		elif self.arch == "arm":
+			bits = 32
+		elif self.arch == "aarch64":
+			bit = 64
 		else:
 			print("For arch %s: I need logic to figure out num bits")
 		assert (not (bits == None))
@@ -170,5 +174,14 @@ class Panda:
 	#string, int, qemu_irq, null
 	def sysbus_create_varargs(self, name, addr):
 		cname = ffi.new("char[]", bytes(name,"UTF-8"))
-		self.libpanda.sysbus_create_varargs(cname,addr,ffi.NULL) 
-		
+		self.libpanda.sysbus_create_varargs(cname,addr,ffi.NULL)
+
+	def cpu_class_by_name(self, name, cpu_model):
+		n = ffi.new("char[]", bytes(name,"UTF-8"))
+		c = ffi.new("char[]", bytes(cpu_model,"UTF-8"))
+		self.libpanda.cpu_class_by_name(n, c)
+	
+	def object_class_by_name(self, name):
+		n = ffi.new("char[]", bytes(name,"UTF-8"))
+		self.libpanda.object_class_by_name(n)
+	

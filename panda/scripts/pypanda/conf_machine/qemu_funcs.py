@@ -31,3 +31,47 @@ def sysbus_create_varargs(name, addr, *args):
 
 	dev = libpanda.sysbus_create_varargs(name,addr)
 
+	return dev
+
+
+def cpu_class_by_name(name, cpu_model):
+	n = ffi.new("char*", name)
+	c = ffi.new("char*", cpu_model)
+
+	obj_dict[name] = n
+	obj_dict[cpu_model] = c
+
+	cpu_class = libpanda.cpu_class_by_name(
+
+
+		
+
+def object_new(name):
+	return 0
+
+def object_class_by_name(name):
+	return 0
+
+def object_class_get_name(obj_class):
+	return 0
+
+def object_property_find(obj, name, error):
+	return 0
+
+def object_property_set_bool(obj, value, name, error):
+	return 0
+
+def object_property_set_int(obj, value, name, error):
+	return 0
+
+def object_property_set_link(obj,value,name,error):
+	return 0
+
+def memory_region_allocate_system_memory(mem_reg, obj, name, size):
+	return 0
+
+def memory_region_add_subregion(mem_reg, offset, sub_mem_reg):
+	return 0
+
+
+
