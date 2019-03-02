@@ -896,11 +896,13 @@ void syscall_return_switch_linux_arm(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_fsync_return, cpu, pc, arg0) ;
 		}; break;
-		// 119 int sigreturn ['void']
+		// 119 int sys_sigreturn ['struct pt_regs *regs']
 		case 119: {
-			if (PPP_CHECK_CB(on_sigreturn_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+			uint32_t arg0;
+			if (PPP_CHECK_CB(on_sys_sigreturn_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
-			PPP_RUN_CB(on_sigreturn_return, cpu, pc) ;
+			PPP_RUN_CB(on_sys_sigreturn_return, cpu, pc, arg0) ;
 		}; break;
 		// 120 long sys_clone ['unsigned long', 'unsigned long', 'int __user *', 'int __user *', 'unsigned long']
 		case 120: {
@@ -1388,11 +1390,13 @@ void syscall_return_switch_linux_arm(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_prctl_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 173 int sigreturn ['void']
+		// 173 int sys_rt_sigreturn ['struct pt_regs *regs']
 		case 173: {
-			if (PPP_CHECK_CB(on_sigreturn_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+			uint32_t arg0;
+			if (PPP_CHECK_CB(on_sys_rt_sigreturn_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
-			PPP_RUN_CB(on_sigreturn_return, cpu, pc) ;
+			PPP_RUN_CB(on_sys_rt_sigreturn_return, cpu, pc, arg0) ;
 		}; break;
 		// 174 long sys_rt_sigaction ['int', 'const struct sigaction __user *', 'struct sigaction __user *', 'size_t']
 		case 174: {
