@@ -19,7 +19,7 @@ function activate_pyenv() {
 
 # Note: GENERATED_FILES created by syscall_parser.py contain information from
 #	    all architectures/operating systems. This means that we currently need
-#		to run the scrip exactly once.
+#		to run the script exactly once.
 activate_pyenv
 ./syscall_parser.py --generate-info \
 	--context-target ../generated-in/context_target.json \

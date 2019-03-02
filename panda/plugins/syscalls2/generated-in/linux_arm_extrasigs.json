@@ -1,7 +1,5 @@
 {
   "sys_mmap2": "long do_mmap2(unsigned long addr, unsigned long len, unsigned long prot, unsigned long flags, unsigned long fd, unsigned long pgoff);",
-  "sys_sigreturn": "int sigreturn(void);",
-  "sys_rt_sigreturn": "int sigreturn(void);",
   "sys_arm_fadvise64_64": "long sys_arm_fadvise64_64(int fd, int advice, loff_t offset, loff_t len);",
   "ARM_breakpoint": "long ARM_breakpoint(void);",
   "ARM_cacheflush": "long ARM_cacheflush(unsigned long start, unsigned long end, unsigned long flags);",

@@ -90,7 +90,7 @@
 116 long sys_sysinfo(struct sysinfo __user *info);
 117 long sys_ipc(unsigned int call, int first, unsigned long second, unsigned long third, void __user *ptr, long fifth);
 118 long sys_fsync(unsigned int fd);
-119 int sigreturn(void);
+119 int sys_sigreturn(struct pt_regs *regs);
 120 long sys_clone(unsigned long, unsigned long, int __user *, int __user *, unsigned long);
 121 long sys_setdomainname(char __user *name, int len);
 122 long sys_newuname(struct new_utsname __user *name);
@@ -137,7 +137,7 @@
 170 long sys_setresgid16(old_gid_t rgid, old_gid_t egid, old_gid_t sgid);
 171 long sys_getresgid16(old_gid_t __user *rgid, old_gid_t __user *egid, old_gid_t __user *sgid);
 172 long sys_prctl(int option, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5);
-173 int sigreturn(void);
+173 int sys_rt_sigreturn(struct pt_regs *regs);
 174 long sys_rt_sigaction(int, const struct sigaction __user *, struct sigaction __user *, size_t);
 175 long sys_rt_sigprocmask(int how, sigset_t __user *set, sigset_t __user *oset, size_t sigsetsize);
 176 long sys_rt_sigpending(sigset_t __user *set, size_t sigsetsize);

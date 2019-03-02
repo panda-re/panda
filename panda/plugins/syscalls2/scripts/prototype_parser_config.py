@@ -68,6 +68,7 @@ CONFIG_LINUX = {
             'parser': 'parse_signature_files',
             'locations': {
                 'include/linux/syscalls.h': r'asmlinkage (?P<signature>\w+\s+(?P<syscall>\w+)\(.*)',
+                'arch/arm/kernel/signal.c': r'asmlinkage (?P<signature>\w+\s+(?P<syscall>\w+)\(.*)',
             },
             'normalize': True,
         },
