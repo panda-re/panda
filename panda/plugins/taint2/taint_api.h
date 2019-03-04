@@ -8,6 +8,7 @@ void taint2_enable_taint(void);
 void taint2_disable_taint(void);
 void taint2_enable_tainted_pointer(void);
 int taint2_enabled(void);
+void taint2_label_addr(Addr a, int offset, uint32_t l) ;
 void taint2_label_ram(uint64_t pa, uint32_t l) ;
 void taint2_label_reg(int reg_num, int offset, uint32_t l) ;
 void taint2_label_io(uint64_t ia, uint32_t l);

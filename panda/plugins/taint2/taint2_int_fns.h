@@ -14,6 +14,8 @@ void taint2_enable_tainted_pointer(void);
 // returns 1 if taint is on
 int taint2_enabled(void);
 
+void taint2_label_addr(Addr a, int offset, uint32_t l);
+
 // label this phys addr in memory with label l, and only label l. any previous
 // labels applied to this address are removed.
 void taint2_label_ram(uint64_t pa, uint32_t l);
