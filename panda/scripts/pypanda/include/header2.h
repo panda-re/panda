@@ -27,7 +27,48 @@ typedef struct GenericAlternate {
     char padding[];
 } GenericAlternate;
 
+
+typedef enum QapiErrorClass {
+    QAPI_ERROR_CLASS_GENERICERROR = 0,
+    QAPI_ERROR_CLASS_COMMANDNOTFOUND = 1,
+    QAPI_ERROR_CLASS_DEVICEENCRYPTED = 2,
+    QAPI_ERROR_CLASS_DEVICENOTACTIVE = 3,
+    QAPI_ERROR_CLASS_DEVICENOTFOUND = 4,
+    QAPI_ERROR_CLASS_KVMMISSINGCAP = 5,
+    QAPI_ERROR_CLASS__MAX = 6,
+} QapiErrorClass;
+
+typedef enum ErrorClass {
+    ERROR_CLASS_GENERIC_ERROR = QAPI_ERROR_CLASS_GENERICERROR,
+    ERROR_CLASS_COMMAND_NOT_FOUND = QAPI_ERROR_CLASS_COMMANDNOTFOUND,
+    ERROR_CLASS_DEVICE_ENCRYPTED = QAPI_ERROR_CLASS_DEVICEENCRYPTED,
+    ERROR_CLASS_DEVICE_NOT_ACTIVE = QAPI_ERROR_CLASS_DEVICENOTACTIVE,
+    ERROR_CLASS_DEVICE_NOT_FOUND = QAPI_ERROR_CLASS_DEVICENOTFOUND,
+    ERROR_CLASS_KVM_MISSING_CAP = QAPI_ERROR_CLASS_KVMMISSINGCAP,
+} ErrorClass;
+
+typedef unsigned long gsize;
+
+typedef struct _GString GString;
+
+struct _GString
+{
+  gchar *str;
+  gsize len;
+  gsize allocated_len;
+};
+
+
 typedef struct Error Error;
+
+struct Error
+{
+    char *msg;
+    ErrorClass err_class;
+    const char *src, *func;
+    int line;
+    GString *hint;
+};
 
 
 typedef struct GenericList {
@@ -161,10 +202,15 @@ ObjectProperty *object_property_find(Object *obj, const char *name, Error **errp
 
 void object_property_set_bool(Object *obj, bool value,const char *name, Error **errp);
 
+bool object_property_get_bool(Object *obj, const char *name, Error **errp);
+
 void object_property_set_int(Object *obj, int64_t value, const char *name, Error **errp);
+
+int64_t object_property_get_int(Object *obj, const char *name,Error **errp);
 
 void object_property_set_link(Object *obj, Object *value, const char *name, Error **errp);
 
+Object *object_property_get_link(Object *obj, const char *name,Error **errp);
 
 typedef enum {
     IOMMU_NONE = 0,

@@ -7,14 +7,13 @@ panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img")
 @panda.callback.init
 def init(handle):
 	progress("init in python. handle="+str(handle))
-	panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
+	panda.register_callback(handle, panda.callback.after_machine_init, after_machine_init)
 	return True
 
-@panda.callback.before_block_exec
-def before_block_execute(cpustate,transblock):
+@panda.callback.after_machine_init
+def after_machine_init(cpustate):
 	progress("before block in python")
-	pdb.set_trace()
 	return 0
 
-panda.load_python_plugin(init,"Cool Plugin")
+panda.load_python_plugin(init,"after-machine-init-plugin")
 panda.run()
