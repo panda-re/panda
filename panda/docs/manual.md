@@ -1190,6 +1190,10 @@ You can use custom or prebuilt plugins to analyze a replay at the full OS level.
 
 That's what the [`scissors`](../plugins/scissors/USAGE.md) plugin is for!
 
+* I'm getting an error like `Length mismatch: pc.ram: 0x100000000 in != 0x8000000: Invalid argument`, what do I do?
+
+You need to provide PANDA with the amount of RAM to use (and it must be the same as you used when making the recording). If you forgot, you can look at the error message to tell; in this case it's saying that it expects RAM to be `0x100000000` bytes, which is 4G, so you need to provide `-m 4G` on the command line.
+
 ## Appendix A: Callback List
 
 `before_block_translate`: called before translation of each basic block
