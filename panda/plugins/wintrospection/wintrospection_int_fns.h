@@ -66,6 +66,10 @@ void on_get_processes(CPUState *cpu, GArray **out);
 
 void on_get_current_thread(CPUState *cpu, OsiThread **t);
 
+void on_get_process_pid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *pid);
+
+void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *ppid);
+
 // Getters for os-specific constants
 uint32_t get_ntreadfile_esp_off(void);
 

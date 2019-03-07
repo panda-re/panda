@@ -11,13 +11,15 @@
 // Please always put the actual prototypes in a separate file, XXX_int_fns.h.
 // It is fine to #include that file.
 
-// Also, you CANT put and typedefs or #includes in XXX_int_fns.h as it will bollocks
+// Also, you CANT put and typedefs or #includes in XXX_int_fns.h as it bollocks
 // pycparser. Unless they are ones that are easy to find like stdint.h.
 // Just the prototypes, please.
 
 
 typedef void OsiProc;
+typedef void OsiProcHandle;
 typedef void CPUState;
+typedef void target_ptr_t;
 
 #include "osi_linux_int_fns.h"
 

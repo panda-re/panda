@@ -290,9 +290,6 @@ void on_get_processes(CPUState *env, GArray **out) {
  * @brief PPP callback to retrieve process handles from the running OS.
  */
 void on_get_process_handles(CPUState *env, GArray **out) {
-	// use a dummy free functioon instead of free_osiprochandle_contents()
-	//decltype(free_osiprochandle_contents) *dummy_free = NULL;
-
 	// instantiate and call function from get_process_info template
 	get_process_info<>(env, out, fill_osiprochandle, free_osiprochandle_contents);
 }
@@ -386,6 +383,28 @@ void on_get_current_thread(CPUState *env, OsiThread **out) {
 		fill_osithread(env, t, ts);
 	}
 	*out = t;
+}
+
+/**
+ * @brief PPP callback to retrieve the process pid from a handle.
+ */
+void on_get_process_pid(CPUState *env, const OsiProcHandle *h, target_pid_t *pid) {
+	if (h->taskd == NULL || h->taskd == (target_ptr_t)-1) {
+		*pid = (target_pid_t)-1;
+	} else {
+		*pid = get_tgid(env, h->taskd);
+	}
+}
+
+/**
+ * @brief PPP callback to retrieve the process parent pid from a handle.
+ */
+void on_get_process_ppid(CPUState *env, const OsiProcHandle *h, target_pid_t *ppid) {
+	if (h->taskd == NULL || h->taskd == (target_ptr_t)-1) {
+		*ppid = (target_pid_t)-1;
+	} else {
+		*ppid = get_real_parent_pid(env, h->taskd);
+	}
 }
 
 /* ******************************************************************
@@ -525,6 +544,8 @@ bool init_plugin(void *self) {
 	PPP_REG_CB("osi", on_get_process, on_get_process);
 	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
 	PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
+	PPP_REG_CB("osi", on_get_process_pid, on_get_process_pid);
+	PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);
 	LOG_INFO(PLUGIN_NAME " initialization complete.");
 	return true;
 #else

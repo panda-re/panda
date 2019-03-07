@@ -9,3 +9,5 @@ typedef void (*on_get_modules_t)(CPUState *, GArray **);
 typedef void (*on_get_libraries_t)(CPUState *, OsiProc *, GArray**);
 typedef void (*on_get_current_thread_t)(CPUState *, OsiThread **);
 
+typedef void (*on_get_process_pid_t)(CPUState *, const OsiProcHandle *, target_pid_t *);
+typedef void (*on_get_process_ppid_t)(CPUState *, const OsiProcHandle *, target_pid_t *);

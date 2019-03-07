@@ -41,6 +41,8 @@ PPP_PROT_REG_CB(on_get_process)
 PPP_PROT_REG_CB(on_get_modules)
 PPP_PROT_REG_CB(on_get_libraries)
 PPP_PROT_REG_CB(on_get_current_thread)
+PPP_PROT_REG_CB(on_get_process_pid)
+PPP_PROT_REG_CB(on_get_process_ppid)
 
 PPP_CB_BOILERPLATE(on_get_processes)
 PPP_CB_BOILERPLATE(on_get_process_handles)
@@ -50,6 +52,8 @@ PPP_CB_BOILERPLATE(on_get_process)
 PPP_CB_BOILERPLATE(on_get_modules)
 PPP_CB_BOILERPLATE(on_get_libraries)
 PPP_CB_BOILERPLATE(on_get_current_thread)
+PPP_CB_BOILERPLATE(on_get_process_pid)
+PPP_CB_BOILERPLATE(on_get_process_ppid)
 
 // The copious use of pointers to pointers in this file is due to
 // the fact that PPP doesn't support return values (since it assumes
@@ -101,6 +105,18 @@ OsiThread *get_current_thread(CPUState *cpu) {
     OsiThread *thread = NULL;
     PPP_RUN_CB(on_get_current_thread, cpu, &thread);
     return thread;
+}
+
+target_pid_t get_process_pid(CPUState *cpu, const OsiProcHandle *h) {
+    target_pid_t pid;
+    PPP_RUN_CB(on_get_process_pid, cpu, h, &pid);
+    return pid;
+}
+
+target_pid_t get_process_ppid(CPUState *cpu, const OsiProcHandle *h) {
+    target_pid_t ppid;
+    PPP_RUN_CB(on_get_process_ppid, cpu, h, &ppid);
+    return ppid;
 }
 
 extern const char *qemu_file;

@@ -230,6 +230,29 @@ void on_get_current_thread(CPUState *cpu, OsiThread **out) {
 error:
     *out = NULL;
 }
+
+/**
+ * @brief PPP callback to retrieve the process pid from a handle.
+ */
+void on_get_process_pid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *pid) {
+	if (h->taskd == (intptr_t)(NULL) || h->taskd == (target_ptr_t)-1) {
+		*pid = (target_pid_t)-1;
+	} else {
+		*pid = get_pid(cpu, h->taskd);
+	}
+}
+
+/**
+ * @brief PPP callback to retrieve the process parent pid from a handle.
+ */
+void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *ppid) {
+	if (h->taskd == (intptr_t)(NULL) || h->taskd == (target_ptr_t)-1) {
+		*ppid = (target_pid_t)-1;
+	} else {
+		*ppid = get_ppid(cpu, h->taskd);
+	}
+}
+
 uint32_t get_ntreadfile_esp_off(void) { return ntreadfile_esp_off; }
 
 uint32_t get_kthread_kproc_off(void) { return kthread_kproc_off; }
@@ -585,6 +608,8 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_current_process_handle, on_get_current_process_handle);
     PPP_REG_CB("osi", on_get_processes, on_get_processes);
     PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
+    PPP_REG_CB("osi", on_get_process_pid, on_get_process_pid);
+    PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);
 
     return true;
 #else
