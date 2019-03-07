@@ -438,6 +438,9 @@ struct MemoryRegionOps {
     const MemoryRegionMmio old_mmio;
 };
 
+
+MemoryRegion *get_system_memory(void);
+
 struct MemoryRegion {
     Object parent_obj;
 

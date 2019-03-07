@@ -242,7 +242,11 @@ class Panda:
 		return self.libpanda.object_class_get_name(objclass)
 
 	def object_new(self, name):
-		return self.libpanda.object_new(name)
+		if type(name) == type(''):
+			n = ffi.new("char[]", bytes(name, "UTF-8"))
+		else:
+			n = name
+		return self.libpanda.object_new(n)
 
 	def object_property_get_bool(self, obj, name):
 		n = ffi.new("char[]", bytes(name,"UTF-8"))
@@ -279,7 +283,10 @@ class Panda:
 
 	def memory_region_add_subregion(self, mr, offset, sr):
 		return self.libpanda.memory_region_add_subregion(mr,offset,sr)
+		
 
+	def get_system_memory(self):
+		return self.libpanda.get_system_memory()
 
 	def current_sp(self, cpustate):
 		return self.libpanda.panda_current_sp_external(cpustate)

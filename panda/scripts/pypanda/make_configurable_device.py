@@ -23,9 +23,13 @@ def after_machine_init(cpustate):
 	obj_property = panda.object_property_find(obj,"reset-cbar")
 	panda.object_property_set_int(obj, 100,"reset-cbar")
 	obj_int = panda.object_property_get_int(obj,"reset-cbar")
-	panda.object_property_set_link(obj, 99, "memory")
+	sys_mem= panda.get_system_memory()
+	obj_2 = ffi.cast("Object*",sys_mem)
+	panda.object_property_set_link(obj, obj_2, "memory")
 	obj_link = panda.object_property_get_link(obj,"memory")
-	print(obj_link)
+	mem_reg = ffi.new("MemoryRegion*")
+	panda.memory_region_allocate_system_memory(mem_reg,ffi.NULL,"ram",100)
+	panda.memory_region_add_subregion(sys_mem,100,mem_reg)
 	print("after_machine_init done")
         
 
