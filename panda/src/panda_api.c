@@ -13,6 +13,11 @@ void panda_register_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 target_ulong panda_current_sp_external(CPUState *cpu);
 bool panda_in_kernel_external(CPUState *cpu);
 
+
+int panda_pre(int argc, char **argv, char **envp) {
+    return main_aux(argc, argv, envp, PANDA_PRE);
+}
+
 int panda_init(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_INIT);
 }

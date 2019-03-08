@@ -18,6 +18,8 @@ typedef struct QemuOpts QemuOpts;
 typedef struct BusState BusState;
 typedef struct DeviceState DeviceState;
 
+typedef struct ObjectClass ObjectClass;
+
 typedef struct HotplugHandler HotplugHandler;
 
 typedef struct IRQState *qemu_irq;
@@ -195,5 +197,5 @@ struct ObjectClass
 
 
 
-DeviceState *sysbus_create_varargs(const char *name, hwaddr addr, ...);
+DeviceState *sysbus_create_varargs(const char *name, hwaddr addr, qemu_irq irq, ...);
 

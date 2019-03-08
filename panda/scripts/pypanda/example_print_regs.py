@@ -2,7 +2,7 @@ from pypanda import *
 from panda_x86_helper import *
 from time import sleep
 
-panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img")
+panda = Panda(qcow="/home/alom/ubuntu-14.04-server-cloudimg-i386-disk1.img")
 
 @panda.callback.init
 def init(handle):
@@ -24,4 +24,5 @@ def before_block_execute(cpustate,transblock):
 sleeptime = 0.5
 # this is unncecessary because we do this when before_block_exec is registered.
 panda.load_python_plugin(init,"register_printer")
+panda.init()
 panda.run()

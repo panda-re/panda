@@ -68,6 +68,10 @@ class Panda:
 			bits = 32
 		elif self.arch == "x86_64":
 			bits = 64
+		elif self.arch == "arm":
+			bits = 32
+		elif self.arch == "aarch64":
+			bit = 64
 		else:
 			print("For arch %s: I need logic to figure out num bits")
 		assert (not (bits == None))
@@ -83,8 +87,15 @@ class Panda:
 		cenvp =  ffi.new("char **",nulls)
 		len_cargs = ffi.cast("int", len(self.panda_args))
 		print("Panda args: [" + (" ".join(self.panda_args)) + "]")
-		self.libpanda.panda_init(len_cargs, self.panda_args_ffi, cenvp)
+		self.len_cargs = len_cargs
+		self.cenvp = cenvp
+		self.libpanda.panda_pre(len_cargs, self.panda_args_ffi, cenvp)
 
+
+	def init(self):
+		if debug:
+			progress ("Initializing from cmdline")
+		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
 
 	def run(self):
 		if debug:
@@ -184,6 +195,99 @@ class Panda:
 	def in_kernel(self, cpustate):
 		return self.libpanda.panda_in_kernel_external(cpustate)
 	
+	def current_sp(self, cpustate): # under construction
+		if self.arch == "i386":
+			if self.in_kernel(cpustate):
+				'''			
+				probably an enum at some point here.
+				#define R_EAX 0
+				#define R_ECX 1
+				#define R_EDX 2
+				#define R_EBX 3
+				#define R_ESP 4
+				#define R_EBP 5
+				#define R_ESI 6
+				#define R_EDI 7
+				'''
+				R_ESP = 4
+				return cpustate.env_ptr.regs[R_ESP]
+	#		else:
+	#			esp0 = 4
+	#			tss_base = env.tr.base + esp0
+	#			kernel_esp = 0
+	#			self.virtual_memory_rw(cpustate, tss_base, 
+		return 0
+
+	
+	#string, int, qemu_irq, null
+	def sysbus_create_varargs(self, name, addr):
+		cname = ffi.new("char[]", bytes(name,"UTF-8"))
+		return self.libpanda.sysbus_create_varargs(cname,addr,ffi.NULL)
+
+	def cpu_class_by_name(self, name, cpu_model):
+		n = ffi.new("char[]", bytes(name,"UTF-8"))
+		c = ffi.new("char[]", bytes(cpu_model,"UTF-8"))
+		return self.libpanda.cpu_class_by_name(n, c)
+	
+	def object_class_by_name(self, name):
+		n = ffi.new("char[]", bytes(name,"UTF-8"))
+		return self.libpanda.object_class_by_name(n)
+	
+	def object_property_set_bool(self, obj, value, name):
+		n = ffi.new("char[]", bytes(name,"UTF-8"))
+		e = ffi.new("Error **error_abort")
+		return self.libpanda.object_property_set_bool(obj,value,n,e)
+
+	def object_class_get_name(self, objclass):
+		return self.libpanda.object_class_get_name(objclass)
+
+	def object_new(self, name):
+		if type(name) == type(''):
+			n = ffi.new("char[]", bytes(name, "UTF-8"))
+		else:
+			n = name
+		return self.libpanda.object_new(n)
+
+	def object_property_get_bool(self, obj, name):
+		n = ffi.new("char[]", bytes(name,"UTF-8"))
+		e = ffi.new("Error **error_abort")
+		return self.libpanda.object_property_get_bool(obj,n,e)
+	
+	def object_property_set_int(self,obj, value, name):
+		n = ffi.new("char[]", bytes(name,"UTF-8"))
+		e = ffi.new("Error **error_abort")
+		return self.libpanda.object_property_set_int(obj, value, n, e)
+
+	def object_property_get_int(self, obj, name):
+		n = ffi.new("char[]", bytes(name,"UTF-8"))
+		e = ffi.new("Error **error_abort")
+		return self.libpanda.object_property_get_int(obj, n, e)
+	
+	def object_property_set_link(self, obj, val, name):
+		n = ffi.new("char[]", bytes(name,"UTF-8"))
+		e = ffi.new("Error **error_abort")
+		return self.libpanda.object_property_set_link(obj,val,n,e)
+
+	def object_property_get_link(self, obj, name):
+		n = ffi.new("char[]", bytes(name,"UTF-8"))
+		e = ffi.new("Error **error_abort")
+		return self.libpanda.object_property_get_link(obj,n,e)
+
+	def object_property_find(self, obj, name):
+		n = ffi.new("char[]", bytes(name,"UTF-8"))
+		return self.libpanda.object_property_find(obj,n,ffi.NULL)
+
+	def memory_region_allocate_system_memory(self, mr, obj, name, ram_size):
+		n = ffi.new("char[]", bytes(name,"UTF-8"))
+		return self.libpanda.memory_region_allocate_system_memory(mr, obj, n, ram_size)
+
+	def memory_region_add_subregion(self, mr, offset, sr):
+		return self.libpanda.memory_region_add_subregion(mr,offset,sr)
+		
+
+	def get_system_memory(self):
+		return self.libpanda.get_system_memory()
+
 	def current_sp(self, cpustate):
 		return self.libpanda.panda_current_sp_external(cpustate)
 	
