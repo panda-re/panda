@@ -1157,15 +1157,32 @@ static bool vhost_user_mem_section_filter(struct vhost_dev *dev,
     return result;
 }
 
-VhostUserState *vhost_user_init(void)
+bool vhost_user_init(VhostUserState *user, CharBackend *chr, Error **errp)
 {
-    VhostUserState *user = g_new0(struct VhostUserState, 1);
-
-    return user;
+    if (user->chr) {
+        error_setg(errp, "Cannot initialize vhost-user state");
+        return false;
+    }
+    user->chr = chr;
+    return true;
 }
 
 void vhost_user_cleanup(VhostUserState *user)
 {
+    int i;
+
+    if (!user->chr) {
+        return;
+    }
+
+    for (i = 0; i < VIRTIO_QUEUE_MAX; i++) {
+        if (user->notifier[i].addr) {
+            object_unparent(OBJECT(&user->notifier[i].mr));
+            munmap(user->notifier[i].addr, qemu_real_host_page_size);
+            user->notifier[i].addr = NULL;
+        }
+    }
+    user->chr = NULL;
 }
 
 const VhostOps user_ops = {

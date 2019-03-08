@@ -14,7 +14,7 @@ typedef struct VhostUserState {
     CharBackend *chr;
 } VhostUserState;
 
-VhostUserState *vhost_user_init(void);
+bool vhost_user_init(VhostUserState *user, CharBackend *chr, Error **errp);
 void vhost_user_cleanup(VhostUserState *user);
 
 #endif
