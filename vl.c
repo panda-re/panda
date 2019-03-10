@@ -3076,7 +3076,6 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 {
 
     if (pmm == PANDA_PRE) return 0;
-
     if (pmm == PANDA_RUN)    goto PANDA_MAIN_RUN;
     if (pmm == PANDA_FINISH) goto PANDA_MAIN_FINISH;
 
@@ -5000,6 +4999,11 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 	
     if (pmm == PANDA_INIT) return 0;
 
+<<<<<<< HEAD
+=======
+    if (pmm == PANDA_INIT) return 0;
+
+>>>>>>> 3c23bf6a8448c08732e4e3d92dea5376afd4442d
 PANDA_MAIN_RUN:
     
     panda_in_main_loop = 1;

@@ -42,6 +42,7 @@ int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args) 
     char *plugin_path = panda_plugin_path((const char *) plugin_name);
     return panda_load_plugin(plugin_path, plugin_name);
 }
+
 void panda_register_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb) {
 	panda_cb cb_copy;
 	memcpy(&cb_copy,cb, sizeof(panda_cb));
@@ -123,3 +124,4 @@ bool panda_load_external_plugin(const char *filename, const char *plugin_name, v
     }
     return true;
 }*/
+
