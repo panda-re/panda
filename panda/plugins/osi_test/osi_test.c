@@ -119,6 +119,7 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb2);
 #endif
 
+    panda_require("osi");
     if(!init_osi_api()) return false;
 
     return true;

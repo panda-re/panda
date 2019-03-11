@@ -19,12 +19,14 @@
  * @brief Wrapper for error counters.
  */
 struct kernelinfo_errors {
+	int version;
 	int name;
 	int task;
 	int cred;
 	int mm;
 	int vma;
 	int fs;
+	int qstr;
 	int path;
 };
 
@@ -87,32 +89,55 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	/* read kernel full name */
 	READ_INFO_STRING(ki, name, gerr, err.name, &errbmp);
 
+	/* read kernel version information */
+	READ_INFO_INT(ki, version.a, gerr, err.version, &errbmp);
+	READ_INFO_INT(ki, version.b, gerr, err.version, &errbmp);
+	READ_INFO_INT(ki, version.c, gerr, err.version, &errbmp);
+
 	/* read init task address */
 	READ_INFO_UINT64(ki, task.init_addr, gerr, err.task, &errbmp);
 
 	/* read task information */
 	READ_INFO_INT(ki, task.size, gerr, err.task, &errbmp);
-	READ_INFO_INT(ki, task.task_offset, gerr, err.fs, &errbmp);
-	READ_INFO_INT(ki, task.tasks_offset, gerr, err.task, &errbmp);
+
+	if (KERNEL_VERSION(ki->version.a, ki->version.b, ki->version.c) > KERNEL_VERSION(2, 4, 254)) {
+		READ_INFO_INT(ki, task.tasks_offset, gerr, err.task, &errbmp);
+
+		READ_INFO_INT(ki, task.task_offset, gerr, err.fs, &errbmp);
+		READ_INFO_INT(ki, task.group_leader_offset, gerr, err.task, &errbmp);
+		READ_INFO_INT(ki, task.stack_offset, gerr, err.task, &errbmp);
+		READ_INFO_INT(ki, task.real_cred_offset, gerr, err.task, &errbmp);
+		READ_INFO_INT(ki, task.cred_offset, gerr, err.task, &errbmp);
+		READ_INFO_INT(ki, task.real_parent_offset, gerr, err.task, &errbmp);
+		READ_INFO_INT(ki, task.parent_offset, gerr, err.task, &errbmp);
+
+		/* read cred information */
+		READ_INFO_INT(ki, cred.uid_offset, gerr, err.cred, &errbmp);
+		READ_INFO_INT(ki, cred.gid_offset, gerr, err.cred, &errbmp);
+		READ_INFO_INT(ki, cred.euid_offset, gerr, err.cred, &errbmp);
+		READ_INFO_INT(ki, cred.egid_offset, gerr, err.cred, &errbmp);
+
+		READ_INFO_INT(ki, fs.f_path_dentry_offset, gerr, err.fs, &errbmp);
+		READ_INFO_INT(ki, fs.f_path_mnt_offset, gerr, err.fs, &errbmp);
+		READ_INFO_INT(ki, fs.fdt_offset, gerr, err.fs, &errbmp);
+		READ_INFO_INT(ki, fs.fdtab_offset, gerr, err.fs, &errbmp);
+		READ_INFO_INT(ki, path.d_dname_offset, gerr, err.path, &errbmp);
+	} else if (KERNEL_VERSION(ki->version.a, ki->version.b, ki->version.c) >= KERNEL_VERSION(2, 4, 0)) {
+		READ_INFO_INT(ki, task.p_opptr_offset, gerr, err.task, &errbmp);
+		READ_INFO_INT(ki, task.p_pptr_offset, gerr, err.task, &errbmp);
+		READ_INFO_INT(ki, task.next_task_offset, gerr, err.task, &errbmp);
+
+		READ_INFO_INT(ki, fs.f_dentry_offset, gerr, err.fs, &errbmp);	
+		READ_INFO_INT(ki, fs.f_vfsmnt_offset, gerr, err.fs, &errbmp);
+	}
+
+	READ_INFO_INT(ki, task.thread_group_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.pid_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.tgid_offset, gerr, err.task, &errbmp);
-	READ_INFO_INT(ki, task.group_leader_offset, gerr, err.task, &errbmp);
-	READ_INFO_INT(ki, task.thread_group_offset, gerr, err.task, &errbmp);
-	READ_INFO_INT(ki, task.real_parent_offset, gerr, err.task, &errbmp);
-	READ_INFO_INT(ki, task.parent_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.mm_offset, gerr, err.task, &errbmp);
-	READ_INFO_INT(ki, task.stack_offset, gerr, err.task, &errbmp);
-	READ_INFO_INT(ki, task.real_cred_offset, gerr, err.task, &errbmp);
-	READ_INFO_INT(ki, task.cred_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.comm_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.comm_size, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.files_offset, gerr, err.task, &errbmp);
-
-	/* read cred information */
-	READ_INFO_INT(ki, cred.uid_offset, gerr, err.cred, &errbmp);
-	READ_INFO_INT(ki, cred.gid_offset, gerr, err.cred, &errbmp);
-	READ_INFO_INT(ki, cred.euid_offset, gerr, err.cred, &errbmp);
-	READ_INFO_INT(ki, cred.egid_offset, gerr, err.cred, &errbmp);
 
 	/* read mm information */
 	READ_INFO_INT(ki, mm.size, gerr, err.mm, &errbmp);
@@ -133,20 +158,18 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	READ_INFO_INT(ki, vma.vm_flags_offset, gerr, err.vma, &errbmp);
 
 	/* read fs information */
-	READ_INFO_INT(ki, fs.f_path_dentry_offset, gerr, err.fs, &errbmp);
-	READ_INFO_INT(ki, fs.f_path_mnt_offset, gerr, err.fs, &errbmp);
 	READ_INFO_INT(ki, fs.f_pos_offset, gerr, err.fs, &errbmp);
-	READ_INFO_INT(ki, fs.fdt_offset, gerr, err.fs, &errbmp);
-	READ_INFO_INT(ki, fs.fdtab_offset, gerr, err.fs, &errbmp);
 	READ_INFO_INT(ki, fs.fd_offset, gerr, err.fs, &errbmp);
 
+	/* read qstr information */
+	READ_INFO_INT(ki, qstr.size, gerr, err.qstr, &errbmp);
+	READ_INFO_INT(ki, qstr.name_offset, gerr, err.qstr, &errbmp);
+
 	/* read path information */
-	READ_INFO_INT(ki, path.qstr_size, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.d_name_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.d_iname_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.d_parent_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.d_op_offset, gerr, err.path, &errbmp);
-	READ_INFO_INT(ki, path.d_dname_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.mnt_root_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.mnt_parent_offset, gerr, err.path, &errbmp);
 	READ_INFO_INT(ki, path.mnt_mountpoint_offset, gerr, err.path, &errbmp);

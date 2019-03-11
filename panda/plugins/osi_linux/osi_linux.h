@@ -17,6 +17,8 @@
  */
 #pragma once
 #include "panda/plugin.h"
+#include "osi/osi_types.h"
+#include "utils/kernelinfo/kernelinfo.h"
 
 /**
  *  @brief Debug macros.
@@ -210,11 +212,6 @@ IMPLEMENT_OFFSET_GET(get_task_struct, thread_info_addr, target_ptr_t, ki.task.ta
 IMPLEMENT_OFFSET_GET(get_thread_group, task_struct, target_ptr_t, ki.task.thread_group_offset, 0)
 
 /**
- * @brief Retrieves the thread group leader address from task_struct.
- */
-IMPLEMENT_OFFSET_GET(get_group_leader, task_struct, target_ptr_t, ki.task.group_leader_offset, 0)
-
-/**
  * @brief Retrieves the tasks address from a task_struct.
  * This is used to iterate the process list.
  */
@@ -329,12 +326,6 @@ IMPLEMENT_OFFSET_GET2L(get_vma_vfsmount_dentry, vma_struct, target_ptr_t, ki.vma
 IMPLEMENT_OFFSET_GET(get_files, task_struct, target_ptr_t, ki.task.files_offset, 0)
 
 /**
- * @brief Retrieves the array of file structs from the files struct.
- * The n-th element of the array corresponds to the n-th open fd.
- */
-IMPLEMENT_OFFSET_GET2L(get_files_fds, files_struct, target_ptr_t, ki.fs.fdt_offset, target_ptr_t, ki.fs.fd_offset, 0)
-
-/**
  * @brief Retrieves the dentry struct associated with a file struct.
  */
 IMPLEMENT_OFFSET_GET(get_file_dentry, file_struct, target_ptr_t, ki.fs.f_path_dentry_offset, 0)
@@ -364,7 +355,7 @@ IMPLEMENT_OFFSET_GETN(get_vfsmount_root_dentry, vfsmount, target_ptr_t, root_den
 /**
  * @brief Retrieves the qstr for a dentry.
  */
-IMPLEMENT_OFFSET_GETN(get_dentry_name, dentry, uint8_t, dname_qstr, ki.path.qstr_size*sizeof(uint8_t), ki.path.d_name_offset)
+IMPLEMENT_OFFSET_GETN(get_dentry_name, dentry, uint8_t, dname_qstr, ki.qstr.size*sizeof(uint8_t), ki.path.d_name_offset)
 
 /**
  * @brief Retrieves the dynamic name function for a dentry.
@@ -424,14 +415,14 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
 
 	target_ptr_t current_dentry_parent = dentry;
 	target_ptr_t current_dentry = (target_ptr_t)NULL;
-	uint8_t *d_name = (uint8_t *)g_malloc(ki.path.qstr_size * sizeof(uint8_t));
+	uint8_t *d_name = (uint8_t *)g_malloc(ki.qstr.size * sizeof(uint8_t));
 	while (current_dentry_parent != current_dentry) {
 		int og_err1, og_err2;
 		current_dentry = current_dentry_parent;
 		//printf("1#%lx\n", (uintptr_t)(current_dentry + ki.path.d_name_offset));
 
 		// read dentry d_parent and d_name
-		memset(d_name, 0, ki.path.qstr_size * sizeof(uint8_t));
+		memset(d_name, 0, ki.qstr.size * sizeof(uint8_t));
 		og_err1 = get_dentry_name(env, current_dentry, d_name);
 		og_err2 = get_dentry_parent(env, current_dentry, &current_dentry_parent);
 		//HEXDUMP(d_name, ki.path.qstr_size, current_dentry + ki.path.d_name_offset);
@@ -453,7 +444,7 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
 			pcomp_capacity = pcomp_length + 16;
 			pcomp = (char *)g_realloc(pcomp, pcomp_capacity * sizeof(char));
 		}
-		og_err1 = panda_virtual_memory_rw(env, *(target_ptr_t *)(d_name + 2*sizeof(uint32_t)), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
+		og_err1 = panda_virtual_memory_rw(env, *(target_ptr_t *)(d_name + ki.qstr.name_offset), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
 		//printf("2#%lx\n", (uintptr_t)*(target_ptr_t *)(d_name + 2*sizeof(uint32_t)));
 		//printf("3#%s\n", pcomp);
 		if (-1 == og_err1) {
@@ -598,20 +589,7 @@ static inline char *get_name(CPUState *env, target_ptr_t task_struct, char *name
 	return name;
 }
 
-/**
- * @brief Retrieves the address of the following task_struct in the process list.
- *
- * XXX: Can now be implemented with IMPLEMENT_OFFSET_GETTER_2LN
- */
-static inline target_ptr_t get_task_struct_next(CPUState *env, target_ptr_t task_struct) {
-	target_ptr_t tasks = get_tasks(env, task_struct);
-
-	if (!tasks) {
-		return (target_ptr_t)NULL;
-	}
-	else {
-		return tasks-ki.task.tasks_offset;
-	}
-}
+void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr);
+void fill_osithread(CPUState *env, OsiThread *t, target_ptr_t task_addr);
 
 /* vim:set tabstop=4 softtabstop=4 noexpandtab: */
