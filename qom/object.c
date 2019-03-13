@@ -78,7 +78,6 @@ static GHashTable *type_table_get(void)
     if (type_table == NULL) {
         type_table = g_hash_table_new(g_str_hash, g_str_equal);
     }
-
     return type_table;
 }
 
@@ -92,6 +91,8 @@ static void type_table_add(TypeImpl *ti)
 
 static TypeImpl *type_table_lookup(const char *name)
 {
+    
+
     return g_hash_table_lookup(type_table_get(), name);
 }
 
@@ -154,6 +155,8 @@ TypeImpl *type_register_static(const TypeInfo *info)
 
 static TypeImpl *type_get_by_name(const char *name)
 {
+    
+    
     if (name == NULL) {
         return NULL;
     }
@@ -758,7 +761,7 @@ bool object_class_is_abstract(ObjectClass *klass)
 
 const char *object_class_get_name(ObjectClass *klass)
 {
-    return klass->type->name;
+	return klass->type->name;
 }
 
 ObjectClass *object_class_by_name(const char *typename)
@@ -770,7 +773,6 @@ ObjectClass *object_class_by_name(const char *typename)
     }
 
     type_initialize(type);
-
     return type->class;
 }
 
