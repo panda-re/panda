@@ -201,7 +201,7 @@ typedef union panda_cb {
         false otherwise
 
        Notes:
-        See `insn_translate`, callbacks are registered via PANDA_CB_AFTER_INSN_EXEC 
+        See `insn_translate`, callbacks are registered via PANDA_CB_AFTER_INSN_EXEC
     */
     bool (*after_insn_translate)(CPUState *env, target_ulong pc);
 
@@ -749,6 +749,7 @@ void panda_require(const char *plugin_name);
 /**
 * panda_plugin_api
 */
+int panda_pre(int argc, char **argv, char **envp);
 int panda_init(int argc, char **argv, char **envp);
 int panda_run(void);
 int panda_finish(void);
@@ -782,6 +783,3 @@ int panda_current_asid(CPUState *env);
  * @brief Returns the guest program counter.
  */
 int panda_current_pc(CPUState *cpu);
-
-
-

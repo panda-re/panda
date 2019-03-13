@@ -17,7 +17,7 @@ def before_block_execute(cpustate, transblock):
 @panda.callback.asid_changed
 def asid_changed(cpustate, old_asid, new_asid):
 	if panda.in_kernel(cpustate):
-	#	progress("panda in KERNELand")	
+	#	progress("panda in KERNELand")
 		pass
 	else:
 		progress("panda in USERland")
@@ -29,7 +29,7 @@ def asid_changed(cpustate, old_asid, new_asid):
 def init(handle):
 	progress("init in python. handle="+str(handle))
 #	panda.require("osi")
-	panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute) 
+	panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
 	panda.register_callback(handle, panda.callback.asid_changed, asid_changed)
 	return True
 

@@ -5,7 +5,8 @@
 #include <stdint.h>
 
 typedef enum panda_main_mode {
-    PANDA_NORMAL,              // just run panda/qemu as normal
+    PANDA_NORMAL,             // just run panda/qemu as normal
+    PANDA_PRE,                // pre-init
     PANDA_INIT,               // initialize panda/qemu
     PANDA_RUN,                // run the emulate machine
     PANDA_FINISH}             // cleanup and exit

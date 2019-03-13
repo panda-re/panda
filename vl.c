@@ -152,7 +152,7 @@ extern char *panda_plugin_path(const char *name);
 void panda_set_os_name(char *os_name);
 extern void panda_callbacks_after_machine_init(void);
 
-extern void pandalog_cc_init_write(const char * fname); 
+extern void pandalog_cc_init_write(const char * fname);
 int pandalog = 0;
 int panda_in_main_loop = 0;
 extern bool panda_abort_requested;
@@ -3075,6 +3075,8 @@ void main_panda_run(void) {
 int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 {
 
+    if (pmm == PANDA_PRE) return 0;
+
     if (pmm == PANDA_RUN)    goto PANDA_MAIN_RUN;
     if (pmm == PANDA_FINISH) goto PANDA_MAIN_FINISH;
 
@@ -4236,7 +4238,7 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
                         if (0 == strcmp("general", plugin_start)) {
                             // not really a plugin -- just used to collect general panda args
                         }
-                        else {                        
+                        else {
                             char *plugin_path = panda_plugin_path((const char *) plugin_start);
                             panda_plugin_files[nb_panda_plugins] = plugin_path;
                             panda_plugin_names[nb_panda_plugins] = strdup(plugin_start);
@@ -4994,12 +4996,14 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
     os_setup_post();
 
     // Call PANDA post-machine init hook
+    printf("hit 1\n");
     panda_callbacks_after_machine_init();
+    printf("hit 2\n");
 
     if (pmm == PANDA_INIT) return 0;
 
 PANDA_MAIN_RUN:
-    
+
     panda_in_main_loop = 1;
     main_loop();
     panda_in_main_loop = 0;

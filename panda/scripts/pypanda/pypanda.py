@@ -71,7 +71,7 @@ class Panda:
 		else:
 			print("For arch %s: I need logic to figure out num bits")
 		assert (not (bits == None))
-		
+
 		# note: weird that we need panda as 1st arg to lib fn to init?
 		self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath, "-os", os2osstring[self.os], self.qcow]
 		if extra_args:
@@ -94,7 +94,7 @@ class Panda:
 	def begin_replay(self, replaypfx):
 		if debug:
 			progress ("Replaying %s" % replaypfx)
-		charptr = ffi.new("char[]",bytes(replaypfx,"utf-8")) 
+		charptr = ffi.new("char[]",bytes(replaypfx,"utf-8"))
 		self.libpanda.panda_replay(charptr)
 
 	def load_plugin(self, name, args=[]):
@@ -109,7 +109,7 @@ class Panda:
 	def load_python_plugin(self, init_function, name):
 		#pdb.set_trace()
 		ffi.cdef("""
-		extern "Python" bool init(void*);		
+		extern "Python" bool init(void*);
 		""")
 		init_ffi = init_function
 		name_ffi = ffi.new("char[]", bytes(name, "utf-8"))
@@ -142,12 +142,12 @@ class Panda:
 
 	def panda_disable_plugin(self, handle):
 		self.libpanda.panda_disable_plugin(handle)
-	
+
 	def enable_memcb(self):
 		self.libpanda.panda_enable_memcb()
-	
+
 	def disable_memcb(self):
-		self.libpanda.panda_disable_memcb()	
+		self.libpanda.panda_disable_memcb()
 
 	def enable_llvm(self):
 		self.libpanda.panda_enable_llvm()
@@ -157,50 +157,50 @@ class Panda:
 
 	def enable_llvm_helpers(self):
 		self.libpanda.panda_enable_llvm_helpers()
-	 
+
 	def disable_llvm_helpers(self):
 		self.libpanda.panda_disable_llvm_helpers()
-	
+
 	def enable_tb_chaining(self):
 		self.libpanda.panda_enable_tb_chaining()
-	
+
 	def disable_tb_chaining(self):
 		self.libpanda.panda_disable_tb_chaining()
 
 	def flush_tb(self):
 		return self.libpanda.panda_flush_tb()
-	
+
 	def enable_precise_pc(self):
 		self.libpanda.panda_enable_precise_pc()
 
 	def disable_precise_pc(self):
 		self.libpanda.panda_disable_precise_pc()
-	
+
 	def memsavep(self, file_out):
-		newfd = os.dup(f_out.fileno())	
+		newfd = os.dup(f_out.fileno())
 		self.libpanda.panda_memsavep(newfd)
 		self.libpanda.fclose(newfd)
-		
+
 	def in_kernel(self, cpustate):
 		return self.libpanda.panda_in_kernel_external(cpustate)
-	
+
 	def current_sp(self, cpustate):
 		return self.libpanda.panda_current_sp_external(cpustate)
-	
-	def current_pc(self, cpustate):	
+
+	def current_pc(self, cpustate):
 		return self.libpanda.panda_current_pc(cpustate)
 
 	def current_asid(self, cpustate):
 		return self.libpanda.panda_current_asid(cpustate)
-	
+
 	def disas(self, fout, code, size):
 		newfd = os.dup(fout.fileno())
 		return self.libpanda.panda_disas(newfd, code, size)
-	
+
 	def set_os_name(self, os_name):
 		os_name_new = ffi.new("char[]", bytes(name, "utf-8"))
 		self.libpanda.panda_set_os_name(os_name_new)
-	
+
 	def cleanup(self):
 		self.libpanda.panda_cleanup()
 
@@ -209,4 +209,3 @@ class Panda:
 
 	def virtual_memory_write(env, addr, buf, length):
 		self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
-
