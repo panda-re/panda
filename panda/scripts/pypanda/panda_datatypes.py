@@ -24,7 +24,7 @@ class PandaState(Enum):
 #		self.decorator = decorator
 #	def __str__(self):
 #		return self.decorator
-#	
+#
 #	def __repr__():
 #		return self.decorator
 
@@ -34,8 +34,8 @@ class PandaState(Enum):
 #	after_block_exec = Callback("after_block_exec", 4)
 #	before_block_translate = Callback("before_block_translate", 5)
 #	after_block_translate = Callback("after_block_translate", 6)
-	
-	
+
+
 
 
 
@@ -116,7 +116,7 @@ pyp.callback("void(CPUState*)"))
 pandacbtype = namedtuple("pandacbtype", "name number")
 
 callback_dictionary = {
-pcb.init : pandacbtype("init", -1), 
+pcb.init : pandacbtype("init", -1),
 pcb.before_block_exec_invalidate_opt : pandacbtype("before_block_exec_invalidate_opt", 2),
 pcb.before_block_exec : pandacbtype("before_block_exec", 3),
 pcb.after_block_exec : pandacbtype("after_block_exec", 4),
@@ -126,7 +126,7 @@ pcb.insn_translate :  pandacbtype("insn_translate", 5),
 pcb.insn_exec : pandacbtype("insn_exec", 6),
 pcb.after_insn_translate : pandacbtype("after_insn_translate", 7),
 pcb.after_insn_exec :  pandacbtype("after_insn_exec", 8),
-pcb.guest_hypercall : pandacbtype("guest_hypercall", 19), 
+pcb.guest_hypercall : pandacbtype("guest_hypercall", 19),
 pcb.monitor : pandacbtype("monitor", 20),
 pcb.virt_mem_before_read : pandacbtype("virt_mem_before_read", 9),
 pcb.virt_mem_before_write : pandacbtype("virt_mem_before_write", 10),

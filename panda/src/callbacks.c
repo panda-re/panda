@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 #include <stdint.h>
 #include <string.h>
@@ -90,8 +90,8 @@ bool panda_load_external_plugin(const char *filename, const char *plugin_name, v
             return true;
         }
     }
-    // NB: this is really a list of plugins for which we have started loading 
-    // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require  
+    // NB: this is really a list of plugins for which we have started loading
+    // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require
     panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(filename);
     nb_panda_plugins_loaded ++;
     void *plugin = plugin_uuid;//going to be a handle of some sort -> dlopen(filename, RTLD_NOW);
@@ -136,9 +136,9 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
             fprintf(stderr, PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, filename);
             return true;
         }
-    }    
-    // NB: this is really a list of plugins for which we have started loading 
-    // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require  
+    }
+    // NB: this is really a list of plugins for which we have started loading
+    // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require
     panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(filename);
     nb_panda_plugins_loaded ++;
     void *plugin = dlopen(filename, RTLD_NOW);
@@ -173,7 +173,7 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
     panda_help_wanted = false;
     panda_args_set_help_wanted(plugin_name);
     if (panda_help_wanted) {
-        printf("Options for plugin %s:\n", plugin_name); 
+        printf("Options for plugin %s:\n", plugin_name);
         fprintf(stderr, "PLUGIN              ARGUMENT                REQUIRED        DESCRIPTION\n");
         fprintf(stderr, "======              ========                ========        ===========\n");
     }
@@ -187,7 +187,7 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
 extern const char *qemu_file;
 
 // translate plugin name into path to .so
-char *panda_plugin_path(const char *plugin_name) {    
+char *panda_plugin_path(const char *plugin_name) {
     char *plugin_path = NULL;
     const char *plugin_dir = g_getenv("PANDA_PLUGIN_DIR");
 
@@ -219,7 +219,7 @@ void panda_require(const char *plugin_name) {
     g_free(plugin_path);
 }
 
-    
+
 
 // Internal: remove a plugin from the global array
 static void panda_delete_plugin(int i) {
@@ -288,7 +288,7 @@ void *panda_get_plugin_by_name(const char *plugin_name) {
  */
 void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
     panda_cb_list *plist_last = NULL;
-	printf("%p \n", cb.before_block_exec);
+    printf ("entering panda_register_callback: type = %d\n", type);
 	//void (*call_fnct)(void*, void*) = (void*)cb.before_block_exec;
 	//call_fnct(plugin, (void*)type);
     panda_cb_list *new_list = g_new0(panda_cb_list, 1);
@@ -308,6 +308,7 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
     else {
         panda_cbs[type] = new_list;
     }
+    printf ("exiting panda_register_callback:  panda_cbs[%d] = %" PRIx64 "\n", type, (uint64_t) panda_cbs[type]);
 }
 
 /**
@@ -602,7 +603,7 @@ static panda_arg_list *panda_get_args_internal(const char *plugin_name, bool che
             panda_abort_requested = true;
         }
     }
-    
+
     if (check_only) {
         panda_free_args(ret);
         ret = NULL;
@@ -972,7 +973,7 @@ PandaPluginInfoList *qmp_list_plugins(Error **errp) {
 }
 
 void qmp_plugin_cmd(const char * cmd, Error **errp) {
-    
+
 }
 
 void hmp_panda_plugin_cmd(Monitor *mon, const QDict *qdict);
@@ -1000,7 +1001,7 @@ void hmp_panda_list_plugins(Monitor *mon, const QDict *qdict) {
     PandaPluginInfoList *plugin_item = qmp_list_plugins(&err);
     monitor_printf(mon, "idx\t%-20s\taddr\n", "name");
     while (plugin_item != NULL){
-        monitor_printf(mon, "%ld\t%-20s\t%lx\n", plugin_item->value->index, 
+        monitor_printf(mon, "%ld\t%-20s\t%lx\n", plugin_item->value->index,
                         plugin_item->value->name, plugin_item->value->address);
         plugin_item = plugin_item->next;
 
