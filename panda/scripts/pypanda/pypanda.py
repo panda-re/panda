@@ -146,21 +146,12 @@ class Panda:
 
 	def panda_disable_plugin(self, handle):
 		self.libpanda.panda_disable_plugin(handle)
-<<<<<<< HEAD
 
 	def enable_memcb(self):
 		self.libpanda.panda_enable_memcb()
 
 	def disable_memcb(self):
 		self.libpanda.panda_disable_memcb()
-=======
-	
-	def enable_memcb(self):
-		self.libpanda.panda_enable_memcb()
-	
-	def disable_memcb(self):
-		self.libpanda.panda_disable_memcb()	
->>>>>>> 8cd1421babbb82356518a96be5862b467043c5f9
 
 	def enable_llvm(self):
 		self.libpanda.panda_enable_llvm()
@@ -170,7 +161,6 @@ class Panda:
 
 	def enable_llvm_helpers(self):
 		self.libpanda.panda_enable_llvm_helpers()
-<<<<<<< HEAD
 
 	def disable_llvm_helpers(self):
 		self.libpanda.panda_disable_llvm_helpers()
@@ -178,31 +168,17 @@ class Panda:
 	def enable_tb_chaining(self):
 		self.libpanda.panda_enable_tb_chaining()
 
-=======
-	 
-	def disable_llvm_helpers(self):
-		self.libpanda.panda_disable_llvm_helpers()
-	
-	def enable_tb_chaining(self):
-		self.libpanda.panda_enable_tb_chaining()
-	
->>>>>>> 8cd1421babbb82356518a96be5862b467043c5f9
 	def disable_tb_chaining(self):
 		self.libpanda.panda_disable_tb_chaining()
 
 	def flush_tb(self):
 		return self.libpanda.panda_flush_tb()
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> 8cd1421babbb82356518a96be5862b467043c5f9
 	def enable_precise_pc(self):
 		self.libpanda.panda_enable_precise_pc()
 
 	def disable_precise_pc(self):
 		self.libpanda.panda_disable_precise_pc()
-<<<<<<< HEAD
 
 	def memsavep(self, file_out):
 		newfd = os.dup(f_out.fileno())
@@ -212,24 +188,10 @@ class Panda:
 	def in_kernel(self, cpustate):
 		return self.libpanda.panda_in_kernel_external(cpustate)
 
-	def current_sp(self, cpustate):
-		return self.libpanda.panda_current_sp_external(cpustate)
-
-	def current_pc(self, cpustate):
-=======
-	
-	def memsavep(self, file_out):
-		newfd = os.dup(f_out.fileno())	
-		self.libpanda.panda_memsavep(newfd)
-		self.libpanda.fclose(newfd)
-		
-	def in_kernel(self, cpustate):
-		return self.libpanda.panda_in_kernel_external(cpustate)
-	
 	def current_sp(self, cpustate): # under construction
 		if self.arch == "i386":
 			if self.in_kernel(cpustate):
-				'''			
+				'''
 				probably an enum at some point here.
 				#define R_EAX 0
 				#define R_ECX 1
@@ -246,10 +208,10 @@ class Panda:
 	#			esp0 = 4
 	#			tss_base = env.tr.base + esp0
 	#			kernel_esp = 0
-	#			self.virtual_memory_rw(cpustate, tss_base, 
+	#			self.virtual_memory_rw(cpustate, tss_base,
 		return 0
 
-	
+
 	#string, int, qemu_irq, null
 	def sysbus_create_varargs(self, name, addr):
 		cname = ffi.new("char[]", bytes(name,"UTF-8"))
@@ -259,11 +221,11 @@ class Panda:
 		n = ffi.new("char[]", bytes(name,"UTF-8"))
 		c = ffi.new("char[]", bytes(cpu_model,"UTF-8"))
 		return self.libpanda.cpu_class_by_name(n, c)
-	
+
 	def object_class_by_name(self, name):
 		n = ffi.new("char[]", bytes(name,"UTF-8"))
 		return self.libpanda.object_class_by_name(n)
-	
+
 	def object_property_set_bool(self, obj, value, name):
 		n = ffi.new("char[]", bytes(name,"UTF-8"))
 		e = ffi.new("Error **error_abort")
@@ -283,7 +245,7 @@ class Panda:
 		n = ffi.new("char[]", bytes(name,"UTF-8"))
 		e = ffi.new("Error **error_abort")
 		return self.libpanda.object_property_get_bool(obj,n,e)
-	
+
 	def object_property_set_int(self,obj, value, name):
 		n = ffi.new("char[]", bytes(name,"UTF-8"))
 		e = ffi.new("Error **error_abort")
@@ -293,7 +255,7 @@ class Panda:
 		n = ffi.new("char[]", bytes(name,"UTF-8"))
 		e = ffi.new("Error **error_abort")
 		return self.libpanda.object_property_get_int(obj, n, e)
-	
+
 	def object_property_set_link(self, obj, val, name):
 		n = ffi.new("char[]", bytes(name,"UTF-8"))
 		e = ffi.new("Error **error_abort")
@@ -314,21 +276,19 @@ class Panda:
 
 	def memory_region_add_subregion(self, mr, offset, sr):
 		return self.libpanda.memory_region_add_subregion(mr,offset,sr)
-		
+
 
 	def get_system_memory(self):
 		return self.libpanda.get_system_memory()
 
 	def current_sp(self, cpustate):
 		return self.libpanda.panda_current_sp_external(cpustate)
-	
-	def current_pc(self, cpustate):	
->>>>>>> 8cd1421babbb82356518a96be5862b467043c5f9
+
+	def current_pc(self, cpustate):
 		return self.libpanda.panda_current_pc(cpustate)
 
 	def current_asid(self, cpustate):
 		return self.libpanda.panda_current_asid(cpustate)
-<<<<<<< HEAD
 
 	def disas(self, fout, code, size):
 		newfd = os.dup(fout.fileno())
@@ -338,17 +298,6 @@ class Panda:
 		os_name_new = ffi.new("char[]", bytes(name, "utf-8"))
 		self.libpanda.panda_set_os_name(os_name_new)
 
-=======
-	
-	def disas(self, fout, code, size):
-		newfd = os.dup(fout.fileno())
-		return self.libpanda.panda_disas(newfd, code, size)
-	
-	def set_os_name(self, os_name):
-		os_name_new = ffi.new("char[]", bytes(name, "utf-8"))
-		self.libpanda.panda_set_os_name(os_name_new)
-	
->>>>>>> 8cd1421babbb82356518a96be5862b467043c5f9
 	def cleanup(self):
 		self.libpanda.panda_cleanup()
 
@@ -357,7 +306,3 @@ class Panda:
 
 	def virtual_memory_write(env, addr, buf, length):
 		self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
-<<<<<<< HEAD
-=======
-
->>>>>>> 8cd1421babbb82356518a96be5862b467043c5f9

@@ -4996,19 +4996,10 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 
     // Call PANDA post-machine init hook
     panda_callbacks_after_machine_init();
-<<<<<<< HEAD
     printf("hit 2\n");
 
-=======
-	
->>>>>>> 8cd1421babbb82356518a96be5862b467043c5f9
     if (pmm == PANDA_INIT) return 0;
 
-<<<<<<< HEAD
-=======
-    if (pmm == PANDA_INIT) return 0;
-
->>>>>>> 3c23bf6a8448c08732e4e3d92dea5376afd4442d
 PANDA_MAIN_RUN:
 
     panda_in_main_loop = 1;

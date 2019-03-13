@@ -12,11 +12,8 @@ void qemu_rr_quit_timers(void);
 void panda_register_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 target_ulong panda_current_sp_external(CPUState *cpu);
 bool panda_in_kernel_external(CPUState *cpu);
-<<<<<<< HEAD
-=======
 
 
->>>>>>> 8cd1421babbb82356518a96be5862b467043c5f9
 int panda_pre(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_PRE);
 }
@@ -126,4 +123,3 @@ bool panda_load_external_plugin(const char *filename, const char *plugin_name, v
     }
     return true;
 }*/
-
