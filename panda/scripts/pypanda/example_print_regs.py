@@ -21,7 +21,7 @@ def before_block_execute(cpustate,transblock):
 #	sleep(sleeptime)
 	return 0
 
-sleeptime = 0.5
+sleeptime = 2
 # this is unncecessary because we do this when before_block_exec is registered.
 panda.load_python_plugin(init,"register_printer")
 panda.init()

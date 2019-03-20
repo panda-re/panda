@@ -32,6 +32,7 @@
 /*
  * Main board type
  */
+extern void panda_callbacks_during_machine_init(void);
 
 typedef struct RehostingBoardInfo {
     struct arm_boot_info bootinfo;
@@ -484,6 +485,8 @@ static void create_virtio_devices(RehostingBoardInfo *vbi, qemu_irq *pic)
 
 static void mach_rehosting_init(MachineState *machine)
 {
+    
+    panda_callbacks_during_machine_init();
     machine_irqs *s = g_malloc0(sizeof(machine_irqs));
     MemoryRegion *sysmem = get_system_memory();
     int gic_version = 2;
@@ -524,8 +527,9 @@ static void mach_rehosting_init(MachineState *machine)
         dev_mem_map[i].size = 0;
     }
 
-    parse_mem_map(machine->mem_map_str);
-
+//    parse_mem_map(machine->mem_map_str);
+    char mem_str[] = "VIRT_MMIO 0a000000-0a000200;CACHE_CTRL f1008000-f1009000;MPCORE_PERIPHBASE f100c000-f100e000;MEM 00000000-40000000";
+    parse_mem_map(mem_str);
     vbi->smp_cpus = smp_cpus;
 
     // Init CPUs

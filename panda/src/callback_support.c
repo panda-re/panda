@@ -262,6 +262,22 @@ void panda_callbacks_after_machine_init(void) {
     }
 }
 
+
+//kazi's callback
+void panda_callbacks_during_machine_init(void) {
+    panda_cb_list *plist;
+	
+    printf ("entering panda_callbacks_during_machine_init:  panda_cbs[PANDA_CB_DURING_MACHINE_INIT=%d] = %" PRIx64 "\n", 
+            PANDA_CB_DURING_MACHINE_INIT, (uint64_t) panda_cbs[PANDA_CB_DURING_MACHINE_INIT]);
+
+    for(plist = panda_cbs[PANDA_CB_DURING_MACHINE_INIT]; plist != NULL;
+        plist = panda_cb_list_next(plist)) {
+        plist->entry.during_machine_init(first_cpu);
+    }
+
+}
+
+
 void panda_callbacks_top_loop(void) {
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_TOP_LOOP]; plist != NULL;

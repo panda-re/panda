@@ -3,21 +3,17 @@ from time import sleep
 
 
 
-panda = Panda(arch="arm",qcow="/home/alom/.panda/arm_wheezy.qcow",extra_args="-M virt")
+panda = Panda(arch="arm",qcow="/home/alom/.panda/arm_wheezy.qcow",extra_args="-M rehosting")
 print ("pypanda: done with pre")
 
 @panda.callback.init
 def init(handle):
-	print(panda.callback.after_machine_init)
-	print(panda.callback.during_machine_init)
-	print("\n")
-	panda.register_callback(handle, panda.callback.after_machine_init, after_machine_init)
+	panda.register_callback(handle, panda.callback.during_machine_init, during_machine_init)
 	return True
 
-@panda.callback.after_machine_init
-def after_machine_init(cpustate):
-	print("running after_machine_init")
-#	print(panda.sysbus_create_varargs("l2x0", 503357440))
+@panda.callback.during_machine_init
+def during_machine_init(cpustate):
+	print("running during_machine_init")
 	arm_cpu = panda.cpu_class_by_name("arm-cpu", "cortex-a15")
 	cpu_name = panda.object_class_get_name(arm_cpu)
 	obj = panda.object_new(cpu_name)
@@ -42,7 +38,7 @@ def after_machine_init(cpustate):
 	print("mem_reg: %s" % str(mem_reg))
 #	panda.memory_region_allocate_system_memory(mem_reg,ffi.NULL,"ram",100)
 #	panda.memory_region_add_subregion(sys_mem,100,mem_reg)
-	print("after_machine_init done")
+	print("during_machine_init done")
         
 
 #panda = Panda(qcow="/home/alom/ubuntu-14.04-server-cloudimg-i386-disk1.img")

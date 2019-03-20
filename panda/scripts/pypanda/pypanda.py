@@ -130,7 +130,11 @@ class Panda:
 
 	def register_callback(self, handle, callback, function):
 		cb = callback_dictionary[callback]
+		print(cb)
+		print(cb.name)
+		print(function)
 		pcb = ffi.new("panda_cb *", {cb.name:function})
+		print(pcb)
 		self.libpanda.panda_register_callback_helper(handle, cb.number, pcb)
 		if "block" in cb.name:
 			self.disable_tb_chaining()

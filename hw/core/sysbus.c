@@ -237,7 +237,6 @@ DeviceState *sysbus_create_varargs(const char *name,
         n++;
     }
     va_end(va);
-    printf("ptr: %p\n", &dev);
     return dev;
 }
 
