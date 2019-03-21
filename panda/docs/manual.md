@@ -80,8 +80,10 @@ system level.
 
 ## Quickstart
 
-To build PANDA, use `panda_install.bash`, which installs all the dependencies
-and builds PANDA. Don't worry; it won't actually install PANDA to a system
+To build PANDA and it's dependencies, use the install script for your OS,
+`panda/scripts/install_*.sh`. See
+[our main README](https://github.com/panda-re/panda#building) for more detail.
+Don't worry; it won't actually install PANDA to a system
 directory, despite the name. If you already have the dependencies you can just
 run `qemu/build.sh`. Once it's built, you will find the QEMU binaries in
 `i386-softmmu/qemu-system-i386`, `x86_64-softmmu/qemu-system-x86_64`, and
@@ -135,7 +137,7 @@ You can also attach a GDB client to replay, allowing you to debug the guest syst
 
 In order to use PANDA, you will need to understand at least some things about
 the underlying emulator, QEMU.  In truth, the more you know about QEMU the
-better, but that it is a complicated beast
+better, but that it is a complicated beast.
 
 ### QEMU's Monitor
 
@@ -146,8 +148,8 @@ details on what you do with the monitor, consult the QEMU manual.
 The most common way of interacting with the monitor is just via `stdio` in the
 terminal from which you originally entered the commandline that started up
 PANDA.  To get this to work, just add the following to the end of your
-commandline: `--monitor stdio`.  There are also ways to connect to the monitor
-over a telnet port etc -- refer to ethe QEMU manual for details.
+commandline: `-monitor stdio`.  There are also ways to connect to the monitor
+over a telnet port etc - refer to the QEMU manual for details.
 
 Here are few monitor functions we commonly need with PANDA.
 
@@ -204,8 +206,9 @@ Here is how some of the plugins fit into that emulation sequence.
   executes, but only exists if `INSN_TRANSLATE` callback returned true.
 
 NOTE. Although it is a little out of date, the explanation of emulation in
-Fabrice Bellard's original USENIX paper on QEMU is quite a good read.  "QEMU, a
-Fast and Portable Dynamic Translator", USENIX 2005 Annual Technical Conference.
+Fabrice Bellard's original USENIX paper on QEMU is quite a good read.  ["QEMU, a
+Fast and Portable Dynamic Translator"](https://www.usenix.org/legacy/publications/library/proceedings/usenix05/tech/freenix/full_papers/bellard/bellard.pdf),
+USENIX 2005 Annual Technical Conference.
 
 NOTE: QEMU has an additional cute optimization called `chaining` that links up
 cached translated blocks of code in such a way that they emulation can
@@ -222,7 +225,7 @@ that the *actual* type for an emulated CPU is made more specific in the
 For instance, in `qemu/target-i386/cpu.h`, we find it redefined as `CPUX86State`,
 where we also find convenient definitions such as `EAX`, `EBX`, and `EIP`.
 Other information of interest such as hidden flags, segment registers, `idt`,
-and `gdt` are all available via `env.
+and `gdt` are all available via `env`.
 
 ### Useful PANDA functions
 
@@ -247,7 +250,7 @@ makes changes to the way code is translated.  For example, by using
 **WARNING**: failing to flush the TB before turning on something that alters
 code translation may cause QEMU to crash! This is because QEMU's interrupt
 handling mechanism relies on translation being deterministic (see the
-`search_pc` stuff in translate-all.c for details).
+`search_pc` stuff in `translate-all.c` for details).
 ```C
 void panda_disable_tb_chaining(void);
 void panda_enable_tb_chaining(void);
@@ -335,7 +338,7 @@ address `code` of `size` bytes.
 ### Introduction
 
 PANDA supports whole system deterministic record and replay in whole
-system mode on the i386, x86_64, and arm targets. We hope to add more
+system mode on the `i386`, `x86_64`, and `arm` targets. We hope to add more
 soon; for example, partial SPARC support exists but is not yet reliable.
 
 ### Background
@@ -1033,7 +1036,7 @@ if (pandalog){
     std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
     ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_CALL);
     ple->mutable_llvmentry()->set_address(addr);
-    
+
     globalLog.write_entry(std::move(ple));
 }
 ```
@@ -1183,7 +1186,7 @@ PANDA does not enable you to continue the system after a replay.
 * So, what can I do with PANDA?
 
 You can use custom or prebuilt plugins to analyze a replay at the full OS level. See [plugins](#plugins) for examples.
- 
+
 * How do I trim my replay to include the executed parts of interest?
 
 That's what the [`scissors`](../plugins/scissors/USAGE.md) plugin is for!

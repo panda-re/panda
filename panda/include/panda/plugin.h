@@ -53,6 +53,9 @@ typedef enum panda_cb_type {
     PANDA_CB_PHYS_MEM_AFTER_READ,
     PANDA_CB_PHYS_MEM_AFTER_WRITE,
 
+    PANDA_CB_MMIO_AFTER_READ,       // After each MMIO read
+    PANDA_CB_MMIO_AFTER_WRITE,      // After each MMIO write
+
     PANDA_CB_HD_READ,              // Each HDD read
     PANDA_CB_HD_WRITE,             // Each HDD write
     PANDA_CB_GUEST_HYPERCALL,      // Hypercall from the guest (e.g. CPUID)
@@ -215,7 +218,7 @@ typedef union panda_cb {
         false otherwise
 
        Notes:
-        See `insn_translate`, callbacks are registered via PANDA_CB_AFTER_INSN_EXEC 
+        See `insn_translate`, callbacks are registered via PANDA_CB_AFTER_INSN_EXEC
     */
     bool (*after_insn_translate)(CPUState *env, target_ulong pc);
 
@@ -420,6 +423,36 @@ typedef union panda_cb {
         unused
     */
     int (*phys_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+    /* Callback ID: PANDA_CB_MMIO_AFTER_READ
+
+       after_mmio_read: called after MMIO memory is read
+
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong addr: the (physical) address being read from
+        target_ulong size: the size of the read
+        uin64_t val: the value being read
+
+       Return value:
+        unused
+    */
+    int (*after_mmio_read)(CPUState *env, target_ulong addr, int size, uint64_t val);
+
+    /* Callback ID: PANDA_CB_MMIO_AFTER_WRITE
+
+       after_mmio_write: called after MMIO memory is written to
+
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong addr: the (physical) address being written to
+        target_ulong size: the size of the write
+        uin64_t val: the value being written
+
+       Return value:
+        unused
+    */
+    int (*after_mmio_write)(CPUState *env, target_ulong addr, int size, uint64_t val);
 
     /* Callback ID: PANDA_CB_CPU_RESTORE_STATE
 

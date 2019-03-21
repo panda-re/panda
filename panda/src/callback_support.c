@@ -248,6 +248,24 @@ void panda_callbacks_after_mem_write(CPUState *env, target_ulong pc,
     }
 }
 
+// These are used in cputlb.c
+void panda_callbacks_after_mmio_read(CPUState *env, target_ulong addr, int size, uint64_t val) {
+
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_MMIO_AFTER_READ]; plist != NULL;
+        plist = panda_cb_list_next(plist)) {
+        plist->entry.after_mmio_read(env, addr, size, val);
+    }
+}
+
+void panda_callbacks_after_mmio_write(CPUState *env, target_ulong addr, int size, uint64_t val) {
+
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_MMIO_AFTER_WRITE]; plist != NULL;
+        plist = panda_cb_list_next(plist)) {
+        plist->entry.after_mmio_write(env, addr, size, val);
+    }
+}
 
 // vl.c
 void panda_callbacks_after_machine_init(void) {
