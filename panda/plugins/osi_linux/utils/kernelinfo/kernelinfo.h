@@ -29,6 +29,17 @@
 #define PACKED_STRUCT(x) struct x
 #endif
 
+#define KERNEL_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
+
+/**
+ * @brief Kernel Version information
+ */
+PACKED_STRUCT(version) {
+	int a;
+	int b;
+	int c;
+};
+
 /**
  * @brief Information and offsets related to `struct task_struct`.
  */
@@ -36,13 +47,22 @@ PACKED_STRUCT(task_info) {
 	uint64_t init_addr;			/**< Address of the `struct task_struct` of the init task. */
 	size_t size;				/**< Size of `struct task_struct`. */
 	int task_offset;			/**< Offset of task_struct in the thread_info struct. */
-	int tasks_offset;			/**< TODO: add documentation for the rest of the struct members */
+	union {
+		int tasks_offset;			/**< TODO: add documentation for the rest of the struct members */
+		int next_task_offset;
+	};
 	int pid_offset;
 	int tgid_offset;
 	int group_leader_offset;
 	int thread_group_offset;
-	int real_parent_offset;
-	int parent_offset;
+	union {
+		int real_parent_offset;
+		int p_opptr_offset;
+	};
+	union {
+		int parent_offset;
+		int p_pptr_offset;
+	};
 	int mm_offset;
 	int stack_offset;
 	int real_cred_offset;
@@ -92,8 +112,14 @@ PACKED_STRUCT(vma_info) {
  * @brief Filesystem information and offsets.
  */
 PACKED_STRUCT(fs_info) {
-	int f_path_dentry_offset;
-	int f_path_mnt_offset;
+	union {
+		int f_path_dentry_offset;
+		int f_dentry_offset;
+	};
+	union {
+		int f_path_mnt_offset;
+		int f_vfsmnt_offset;
+	};
 	int f_pos_offset;
 	int fdt_offset;
 	int fdtab_offset;
@@ -101,10 +127,17 @@ PACKED_STRUCT(fs_info) {
 };
 
 /**
+ * @brief qstr information and offsets
+ */
+PACKED_STRUCT(qstr_info) {
+  size_t size;
+  size_t name_offset;
+};
+
+/**
  * @brief Path related information and offsets.
  */
 PACKED_STRUCT(path_info) {
-	size_t qstr_size;			/**< Size of `struct qstr`. */
 	int d_name_offset;
 	int d_iname_offset;
 	int d_parent_offset;
@@ -120,11 +153,13 @@ PACKED_STRUCT(path_info) {
  */
 PACKED_STRUCT(kernelinfo) {
 	char *name;
+	struct version version;
 	struct task_info task;
 	struct cred_info cred;
 	struct mm_info mm;
 	struct vma_info vma;
 	struct fs_info fs;
+	struct qstr_info qstr;
 	struct path_info path;
 };
 

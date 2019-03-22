@@ -11,6 +11,9 @@
  * See the COPYING file in the top-level directory.
  *
 PANDAENDCOMMENT */
+//
+// Change Log:
+// 14-FEB-2019:  ensure LLVM frames cleared before they are reused
 
 #ifndef LLVM_TAINT_LIB_H
 #define LLVM_TAINT_LIB_H
@@ -82,6 +85,9 @@ private:
     std::unique_ptr<PandaSlotTracker> PST;
     ShadowState *shad; // no ownership. weak ptr.
     taint2_memlog *taint_memlog; // same.
+
+    // for counting up slots used by called subroutines
+    std::unique_ptr<PandaSlotTracker> subframePST;
 
     Constant *constSlot(Value *value);
     Constant *constWeakSlot(Value *value);

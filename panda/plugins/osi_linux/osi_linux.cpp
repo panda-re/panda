@@ -19,6 +19,9 @@
 #include "utils/kernelinfo/kernelinfo.h"
 #include "osi_linux.h"
 
+#include "default_profile.h"
+#include "kernel_2_4_x_profile.h"
+
 /*
  * Functions interfacing with QEMU/PANDA should be linked as C.
  * C++ function name mangling breaks linkage.
@@ -37,6 +40,7 @@ void on_get_libraries(CPUState *env, OsiProc *p, GArray **out);
 void on_get_current_thread(CPUState *env, OsiThread *t);
 
 struct kernelinfo ki;
+struct KernelProfile const *kernel_profile = &DEFAULT_PROFILE;
 
 /* ******************************************************************
  Helpers
@@ -74,7 +78,7 @@ static uint64_t get_file_position(CPUState *env, target_ptr_t file_struct) {
 
 static target_ptr_t get_file_struct_ptr(CPUState *env, target_ptr_t task_struct, int fd) {
 	target_ptr_t files = get_files(env, task_struct);
-	target_ptr_t fds = get_files_fds(env, files);
+	target_ptr_t fds = kernel_profile->get_files_fds(env, files);
 	target_ptr_t fd_file_ptr, fd_file;
 
 	// fds is a flat array with struct file pointers.
@@ -137,13 +141,12 @@ void get_process_info(CPUState *env, GArray **out,
 	ts_first = ki.task.init_addr;
 #else
 	// Start process enumeration (roughly) from the current task. This is the default.
-	target_ptr_t kernel_esp = panda_current_sp(env);
-	ts_first = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+	ts_first = kernel_profile->get_current_task_struct(env);
 
 	// To avoid infinite loops, we need to actually start traversal from the next
 	// process after the thread group leader of the current task.
-	ts_first = get_group_leader(env, ts_first);
-	ts_first = get_task_struct_next(env, ts_first);
+	ts_first = kernel_profile->get_group_leader(env, ts_first);
+	ts_first = kernel_profile->get_task_struct_next(env, ts_first);
 #endif
 
 	ts_current = ts_first;
@@ -178,7 +181,7 @@ void get_process_info(CPUState *env, GArray **out,
 		ts_current = tg_first - ki.task.thread_group_offset;
 #endif
 
-		ts_current = get_task_struct_next(env, ts_current);
+		ts_current = kernel_profile->get_task_struct_next(env, ts_current);
 	} while(ts_current != (target_ptr_t)NULL && ts_current != ts_first);
 
 	// memory read error
@@ -203,7 +206,7 @@ static void fill_osiprochandle(CPUState *env, OsiProcHandle *h,
 /**
  * @brief Fills an OsiProc struct. Any existing contents are overwritten.
  */
-static void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr) {
+void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr) {
 	memset(p, 0, sizeof(OsiProc));
 
 	p->taskd = task_addr;
@@ -262,7 +265,7 @@ static void fill_osimodule(CPUState *env, OsiModule *m, target_ptr_t vma_addr) {
 /**
  * @brief Fills an OsiThread struct. Any existing contents are overwritten.
  */
-static void fill_osithread(CPUState *env, OsiThread *t,
+void fill_osithread(CPUState *env, OsiThread *t,
 						   target_ptr_t task_addr) {
 	memset(t, 0, sizeof(*t));
 	t->tid = get_pid(env, task_addr);
@@ -298,8 +301,7 @@ void on_get_process_handles(CPUState *env, GArray **out) {
  */
 void on_get_current_process(CPUState *env, OsiProc **out) {
 	OsiProc *p = NULL;
-	target_ptr_t kernel_esp = panda_current_sp(env);
-	target_ptr_t ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+	target_ptr_t ts = kernel_profile->get_current_task_struct(env);
 	if (ts) {
 		p = (OsiProc *)g_malloc(sizeof(OsiProc));
 		fill_osiproc(env, p, ts);
@@ -331,52 +333,10 @@ void on_get_process(CPUState *env, const OsiProcHandle *h, OsiProc **out) {
  */
 void on_get_libraries(CPUState *env, OsiProc *p, GArray **out) {
 	OsiModule m;
-	target_ptr_t ts_first, ts_current;
-	target_ulong current_pid;
 	target_ptr_t vma_first, vma_current;
 
-#if defined(OSI_LINUX_LIST_THREADS)
-	target_ptr_t tg_first, tg_next;
-#endif
-#if OSI_MAX_PROC > 0
-	uint32_t np = 0;
-#endif
-
-	target_ptr_t kernel_esp = panda_current_sp(env);
-	ts_first = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
-	ts_current = ts_first;
-
-	if (ts_current == (target_ptr_t)NULL) goto error0;
-	if (ts_current + ki.task.thread_group_offset != get_thread_group(env, ts_current)) {
-		ts_first = ts_current = get_task_struct_next(env, ts_current);
-	}
-
-	// Find the process that matches p->pid.
-	// XXX: We could probably just use p->taskd instead of traversing
-	//	  the process list.
-	// XXX: An infinite loop will be triggered if p is a thread and
-	//		OSI_LINUX_LIST_THREADS is not enabled.
-	do {
-		if ((current_pid = get_pid(env, ts_current)) == p->pid) goto pid_found;
-#if defined(OSI_LINUX_LIST_THREADS)
-		tg_first = ts_current + ki.task.thread_group_offset;
-		while ((tg_next = get_thread_group(env, ts_current)) != tg_first) {
-			ts_current = tg_next - ki.task.thread_group_offset;
-			if ((current_pid = get_pid(env, ts_current)) == p->pid) goto pid_found;
-			OSI_MAX_PROC_CHECK(np++, "looking up pid in thread group");
-		}
-		ts_current = tg_first - ki.task.thread_group_offset;
-#endif
-		ts_current = get_task_struct_next(env, ts_current);
-		OSI_MAX_PROC_CHECK(np++, "looking up pid in process list");
-	} while(ts_current != (target_ptr_t)NULL && ts_current != ts_first);
-
-pid_found:
-	// memory read error or process not found
-	if (ts_current == (target_ptr_t)NULL || current_pid != p->pid) goto error0;
-
 	// Read the module info for the process.
-	vma_first = vma_current = get_vma_first(env, ts_current);
+	vma_first = vma_current = get_vma_first(env, p->taskd);
 	if (vma_current == (target_ptr_t)NULL) goto error0;
 
 	if (*out == NULL) {
@@ -405,8 +365,7 @@ error0:
  */
 void on_get_current_thread(CPUState *env, OsiThread **out) {
 	OsiThread *t = NULL;
-	target_ptr_t kernel_esp = panda_current_sp(env);
-	target_ptr_t ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+	target_ptr_t ts = kernel_profile->get_current_task_struct(env);
 	if (ts) {
 		t = (OsiThread *)g_malloc(sizeof(OsiThread));
 		fill_osithread(env, t, ts);
@@ -539,6 +498,10 @@ bool init_plugin(void *self) {
 	LOG_INFO("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
 	g_free(kconf_file);
 	g_free(kconf_group);
+
+	if (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) <= KERNEL_VERSION(2, 4, 254)) {
+		kernel_profile = &KERNEL24X_PROFILE;
+	}
 
 	PPP_REG_CB("osi", on_get_processes, on_get_processes);
 	PPP_REG_CB("osi", on_get_process_handles, on_get_process_handles);

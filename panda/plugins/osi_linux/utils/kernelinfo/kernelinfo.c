@@ -115,6 +115,7 @@ int init_module(void)
 #else
 	struct vfsmount vfsmount__s;
 #endif
+	struct qstr qstr__s;
 
 	struct task_struct *task_struct__p;
 	struct cred *cred__p;
@@ -130,6 +131,7 @@ int init_module(void)
 	struct mount *mount__p;
 #endif
 	struct vfsmount *vfsmount__p;
+	struct qstr *qstr__p;
 
 	task_struct__p = &init_task;
 	cred__p = &cred__s;
@@ -147,7 +149,7 @@ int init_module(void)
 #else
 	vfsmount__p = &vfsmount__s;
 #endif
-
+	qstr__p = &qstr__s;
 
 	printk(KERN_INFO "--KERNELINFO-BEGIN--\n");
 	printk(KERN_INFO "name = %s|%s|%s\n", utsname()->release, utsname()->version, utsname()->machine);
@@ -201,7 +203,8 @@ int init_module(void)
 	PRINT_OFFSET(fdtable__p,			fd,				"fs");
 
 	/* used for resolving path names */
-	PRINT_SIZE(dentry__s.d_name,		"qstr_size",			"path");
+	PRINT_SIZE(qstr__s,					"size",			"qstr");
+	PRINT_OFFSET(qstr__p,				name,			"qstr");
 	PRINT_OFFSET(dentry__p,				d_name,					"path");
 	PRINT_OFFSET(dentry__p,				d_iname,				"path");
 	PRINT_OFFSET(dentry__p,				d_parent,				"path");

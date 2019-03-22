@@ -79,6 +79,8 @@ typedef enum panda_cb_type {
     PANDA_CB_REPLAY_AFTER_DMA,    // in replay, just after RAM case of
                                   // cpu_physical_mem_rw
     PANDA_CB_REPLAY_HANDLE_PACKET, // in replay, packet in / out
+    PANDA_CB_AFTER_CPU_EXEC_ENTER, // just after cpu_exec_enter is called
+    PANDA_CB_BEFORE_CPU_EXEC_EXIT, // just before cpu_exec_exit is called
     PANDA_CB_AFTER_MACHINE_INIT,   // Right after the machine is initialized,
                                    // before any code runs
 
@@ -164,6 +166,31 @@ typedef union panda_cb {
             has already been generated. Modify the IR and then regenerate?
     */
     int (*after_block_translate)(CPUState *env, TranslationBlock *tb);
+
+    /* Callback ID: PANDA_CB_AFTER_CPU_EXEC_ENTER
+
+       after_cpu_exec_enter: called after cpu_exec calls cpu_exec_enter function
+
+       Arguments:
+        CPUState *env: the current CPU state
+
+       Return value:
+        unused
+    */
+    int (*after_cpu_exec_enter)(CPUState *env);
+
+    /* Callback ID: PANDA_CB_BEFORE_CPU_EXEC_EXIT
+
+       before_cpu_exec_exit: called before cpu_exec calls cpu_exec_exit function
+
+       Arguments:
+        CPUState *env: the current CPU state
+        bool ranBlock: true if ran a block since previous cpu_exec_enter
+
+       Return value:
+        unused
+    */
+    int (*before_cpu_exec_exit)(CPUState *env, bool ranBlock);
 
     /* Callback ID: PANDA_CB_INSN_TRANSLATE
 
