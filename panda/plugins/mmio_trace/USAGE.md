@@ -19,7 +19,13 @@ None
 APIs and Callbacks
 ------------------
 
-None
+As an alternative to the optional log file output in `uninit_plugin`, API for retrieval of sequential MMIO event tuples (`access_type`, `prog_counter`, `phys_addr`, `size`, `value`).
+
+
+```c
+// Get heap-allocated array of mmio_event_t structs and it's size
+mmio_event_t* get_mmio_events(int* arr_size_ret);
+```
 
 Example
 -------

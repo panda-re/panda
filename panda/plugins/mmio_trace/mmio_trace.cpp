@@ -11,8 +11,7 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
-#include "panda/plugin.h"
-#include "panda/common.h"
+#include "mmio_trace.h" // mmio_event_t, panda imports
 #include <tuple>
 #include <vector>
 #include <iostream>
@@ -20,7 +19,7 @@ PANDAENDCOMMENT */
 #include <fstream>
 
 const char* fn_str;
-std::vector<std::tuple<char,target_ulong, int, uint64_t>> mmio_events;
+std::vector<mmio_event_t> mmio_events;
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -32,12 +31,14 @@ void uninit_plugin(void *);
 }
 
 int buffer_mmio_read(CPUState *env, target_ulong addr, int size, uint64_t val) {
-    mmio_events.push_back(std::make_tuple('R', addr, size, val));
+    mmio_event_t new_event{'W', addr, size, val};
+    mmio_events.push_back(new_event);
     return 0;
 }
 
 int buffer_mmio_write(CPUState *env, target_ulong addr, int size, uint64_t val) {
-    mmio_events.push_back(std::make_tuple('W', addr, size, val));
+    mmio_event_t new_event{'R', addr, size, val};
+    mmio_events.push_back(new_event);
     return 0;
 }
 
@@ -54,10 +55,10 @@ void flush_to_mmio_log_file() {
         // Write log line
         out_log_file
             << std::hex << std::setfill('0')
-            << std::get<0>(entry) << ":"                                    // R or W
-            << "0x" << std::setw(hex_width) << std::get<1>(entry) << ":"    // Physical Address
-            << "0x" << std::setw(hex_width) << std::get<2>(entry) << ":"    // Size
-            << "0x" << std::setw(hex_width) << std::get<3>(entry)           // Value
+            << entry.access_type << ":"                                     // R or W
+            << "0x" << std::setw(hex_width) << entry.phys_addr << ":"       // Physical Address
+            << "0x" << std::setw(hex_width) << entry.size << ":"            // Size
+            << "0x" << std::setw(hex_width) << entry.value                  // Value
             << std::endl;
 
         // Validate write
@@ -68,14 +69,29 @@ void flush_to_mmio_log_file() {
     }
 }
 
+// C-compatible external API, caller responsible for freeing memory
+mmio_event_t* get_mmio_events(int* arr_size_ret) {
+
+    // Note: mmio_events might be added to asynchronously as this function is executing!
+    //  - We cannot use mmio_events.end() as a race may cause heap overflow
+    //  - Instead (mmio_events.begin() + num_structs) ensures we only copy the amount present when this func read size
+
+    // Copy vector data to newly allocated heap array
+    int num_structs = mmio_events.size();
+    mmio_event_t* heap_arr = new mmio_event_t[num_structs];
+    std::copy(mmio_events.begin(), (mmio_events.begin() + num_structs), heap_arr);
+
+    // Provide caller with pointer to array and it's size
+    *arr_size_ret = num_structs;
+    return heap_arr;
+}
+
 bool init_plugin(void* self) {
 
     panda_cb pcb;
     panda_arg_list* panda_args = panda_get_args("mmio_trace");
 
     fn_str = panda_parse_string_opt(panda_args, "out_log", nullptr, "File to write MMIO trace log to.");
-
-    // TODO: make logging to file optional and expose MMIO data via inter-plugin API
     if (!fn_str) {
         std::cerr << "No \'out_log\' specified, MMIO R/W will not be logged!" << std::endl;
     }
