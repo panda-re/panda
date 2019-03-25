@@ -811,7 +811,7 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
         /* replay= */ rr_input_8(&val),
         /* location= */ RR_CALLSITE_IO_READ_ALL);
 
-    panda_callbacks_after_mmio_read((CPUState*)env, physaddr, size, val);
+    panda_callbacks_after_mmio_read(cpu, physaddr, size, val);
 
     return val;
 }
@@ -848,7 +848,7 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
         memory_region_dispatch_write(mr, physaddr, val, size, iotlbentry->attrs);
     }
 
-    panda_callbacks_after_mmio_write((CPUState*)env, physaddr, size, val);
+    panda_callbacks_after_mmio_write(cpu, physaddr, size, val);
 }
 
 /* Return true if ADDR is present in the victim tlb, and has been copied

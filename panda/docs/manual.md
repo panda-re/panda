@@ -71,7 +71,7 @@
 ## Overview
 
 PANDA (Platform for Architecture-Neutral Dynamic Analysis) is a whole-system
-dynamic analysis engine based on QEMU 1.0.1. Its strengths lie in rapid reverse
+dynamic analysis engine currently based on QEMU 2.9.1. Its strengths lie in rapid reverse
 engineering of software. PANDA includes a system for recording and replaying
 execution, a framework for running LLVM analysis on executing code, and an
 easily extensible plugin architecture. Together, these basic tools let you
