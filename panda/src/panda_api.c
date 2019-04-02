@@ -4,6 +4,7 @@
 #include "panda/panda_api.h"
 #include "panda/plugin.h"
 
+
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, uint8_t *buf, int len);
 int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, uint8_t *buf, int len);
 int rr_get_guest_instr_count_external(void);
@@ -17,6 +18,7 @@ bool panda_in_kernel_external(CPUState *cpu);
 int panda_pre(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_PRE);
 }
+
 int panda_init(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_INIT);
 }

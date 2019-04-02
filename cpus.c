@@ -1468,7 +1468,6 @@ static void qemu_cpu_kick_thread(CPUState *cpu)
 void qemu_cpu_kick(CPUState *cpu)
 {
 //    printf ("qemu_cpu_kick\n");
-
     qemu_cond_broadcast(cpu->halt_cond);
     if (tcg_enabled()) {
         cpu_exit(cpu);
