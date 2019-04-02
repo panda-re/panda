@@ -254,7 +254,7 @@ void panda_callbacks_after_machine_init(void) {
     panda_cb_list *plist;
 
     //printf ("entering panda_callbacks_after_machine_init:  panda_cbs[PANDA_CB_AFTER_MACHINE_INIT=%d] = %" PRIx64 "\n", 
-            PANDA_CB_AFTER_MACHINE_INIT, (uint64_t) panda_cbs[PANDA_CB_AFTER_MACHINE_INIT]);
+//            PANDA_CB_AFTER_MACHINE_INIT, (uint64_t) panda_cbs[PANDA_CB_AFTER_MACHINE_INIT]);
 
     for(plist = panda_cbs[PANDA_CB_AFTER_MACHINE_INIT]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
