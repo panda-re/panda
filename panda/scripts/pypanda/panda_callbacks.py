@@ -41,8 +41,8 @@ class PandaCB:
 	replay_after_dma: pandacbtype
 	replay_handle_packet: pandacbtype
 	after_machine_init: pandacbtype
-	during_machine_init: pandacbtype
 	top_loop: pandacbtype
+	during_machine_init: pandacbtype
 	panda_cb_last: pandacbtype
 
 pcb = PandaCB(pandacbtype("before_block_translate", 0),\
@@ -79,7 +79,7 @@ pandacbtype("replay_before_dma", 30),\
 pandacbtype("replay_after_dma", 31),\
 pandacbtype("replay_handle_packet", 32),\
 pandacbtype("after_machine_init", 33),\
-pandacbtype("during_machine_init",34),\
-pandacbtype("top_loop", 35),\
+pandacbtype("top_loop", 34,\
+pandacbtype("during_machine_init",35),\
 pandacbtype("panda_cb_last", 36))
 print(pcb.before_block_translate.name)

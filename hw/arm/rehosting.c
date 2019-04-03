@@ -32,7 +32,7 @@
 /*
  * Main board type
  */
-extern void panda_callbacks_during_machine_init(void);
+extern void panda_callbacks_during_machine_init(MachineState *machine);
 
 typedef struct RehostingBoardInfo {
     struct arm_boot_info bootinfo;
@@ -486,7 +486,7 @@ static void create_virtio_devices(RehostingBoardInfo *vbi, qemu_irq *pic)
 static void mach_rehosting_init(MachineState *machine)
 {
     
-    panda_callbacks_during_machine_init();
+    panda_callbacks_during_machine_init(machine);
     machine_irqs *s = g_malloc0(sizeof(machine_irqs));
     MemoryRegion *sysmem = get_system_memory();
     int gic_version = 2;

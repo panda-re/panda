@@ -36,7 +36,7 @@ void panda_callbacks_asid_changed(CPUState *env, target_ulong old_asid, target_u
 void panda_callbacks_after_machine_init(void);
 
 //kazis callback
-void panda_callbacks_during_machine_init(void);
+void panda_callbacks_during_machine_init(MachineState *machine);
 
 void panda_callbacks_top_loop(void);
 

@@ -8,9 +8,6 @@ print ("pypanda: done with pre")
 
 @panda.callback.init
 def init(handle):
-	print(panda.callback.after_machine_init)
-	print(panda.callback.during_machine_init)
-	print("\n")
 	panda.register_callback(handle, panda.callback.after_machine_init, after_machine_init)
 	return True
 

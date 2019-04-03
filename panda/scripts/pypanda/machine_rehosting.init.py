@@ -12,8 +12,9 @@ def init(handle):
 	return True
 
 @panda.callback.during_machine_init
-def during_machine_init(cpustate):
-	print("running during_machine_init")
+def during_machine_init(machinestate):
+	
+	"""
 	arm_cpu = panda.cpu_class_by_name("arm-cpu", "cortex-a15")
 	cpu_name = panda.object_class_get_name(arm_cpu)
 	obj = panda.object_new(cpu_name)
@@ -36,8 +37,15 @@ def during_machine_init(cpustate):
 	print("obj_2: %s" % str(obj_2))
 	print("obj_link: %s" % str(obj_link))
 	print("mem_reg: %s" % str(mem_reg))
-#	panda.memory_region_allocate_system_memory(mem_reg,ffi.NULL,"ram",100)
-#	panda.memory_region_add_subregion(sys_mem,100,mem_reg)
+	panda.memory_region_allocate_system_memory(mem_reg,ffi.NULL,"ram",100)
+	panda.memory_region_add_subregion(sys_mem,100,mem_reg)
+	"""
+
+	print("running during_machine_init")
+
+	sysmem = panda.get_system_memory()
+	print(sysmem)
+	print(machinestate)
 	print("during_machine_init done")
         
 

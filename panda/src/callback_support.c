@@ -264,7 +264,7 @@ void panda_callbacks_after_machine_init(void) {
 
 
 //kazi's callback
-void panda_callbacks_during_machine_init(void) {
+void panda_callbacks_during_machine_init(MachineState *machine) {
     panda_cb_list *plist;
 	
     printf ("entering panda_callbacks_during_machine_init:  panda_cbs[PANDA_CB_DURING_MACHINE_INIT=%d] = %" PRIx64 "\n", 
@@ -272,7 +272,7 @@ void panda_callbacks_during_machine_init(void) {
 
     for(plist = panda_cbs[PANDA_CB_DURING_MACHINE_INIT]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        plist->entry.during_machine_init(first_cpu);
+        plist->entry.during_machine_init(machine);
     }
 
 }

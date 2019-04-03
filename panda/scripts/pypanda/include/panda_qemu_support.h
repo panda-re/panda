@@ -37,6 +37,27 @@ struct IRQState {
     int n;
 };
 
+typedef struct QEMUTimerList QEMUTimerList;
+
+typedef void QEMUTimerCB(void *opaque);
+
+typedef struct QEMUTimer QEMUTimer;
+
+struct QEMUTimer {
+	int64_t expire_time;
+	QEMUTimerList *timer_list;
+	QEMUTimerCB *cb;
+	void *opaque;
+	QEMUTimer *next;
+	int scale;
+};
+
+typedef struct {
+    QEMUTimer *timer;
+    qemu_irq sgi[4][16];                  // Software Generated Interrupts (SGI)
+    qemu_irq ppi[4][16]; // Shared Peripheral Interrupts (SPI)
+    qemu_irq spi[256];                                         // Private Peripheral Interrupts (PPI)
+} machine_irqs;
 
 enum QemuOptType {
     QEMU_OPT_STRING = 0,
@@ -168,11 +189,14 @@ struct TypeImpl
     InterfaceImpl interfaces[32];
 };
 
+typedef unsigned long gsize;
+
 typedef struct _GHashTable GHashTable;
 
 typedef struct _GSList GSList;
 typedef void* gpointer;
 
+gpointer g_malloc0 (gsize n_bytes);
 
 struct _GSList
 {
@@ -755,6 +779,180 @@ struct MemoryListener {
 void memory_region_allocate_system_memory(MemoryRegion *mr, Object *owner, const char *name,uint64_t ram_size);
 
 void memory_region_add_subregion(MemoryRegion *mr, hwaddr offset, MemoryRegion *subregion);
+
+
+typedef enum {
+    ARM_ENDIANNESS_UNKNOWN = 0,
+    ARM_ENDIANNESS_LE,
+    ARM_ENDIANNESS_BE8,
+    ARM_ENDIANNESS_BE32,
+} arm_endianness;
+
+typedef struct Notifier Notifier;
+
+struct Notifier
+{
+    void (*notify)(Notifier *notifier, void *data);
+    struct { struct Notifier *le_next; struct Notifier **le_prev; } node;
+};
+
+typedef struct ARMCPU ARMCPU;
+
+typedef struct {
+    Notifier notifier; /* actual notifier */
+    ARMCPU *cpu; /* handle to the first cpu object */
+} ArmLoadKernelNotifier;
+
+struct arm_boot_info {
+    uint64_t ram_size;
+    const char *kernel_filename;
+    const char *kernel_cmdline;
+    const char *initrd_filename;
+    const char *dtb_filename;
+    hwaddr loader_start;
+    /* multicore boards that use the default secondary core boot functions
+     * need to put the address of the secondary boot code, the boot reg,
+     * and the GIC address in the next 3 values, respectively. boards that
+     * have their own boot functions can use these values as they want.
+     */
+    hwaddr smp_loader_start;
+    hwaddr smp_bootreg_addr;
+    hwaddr gic_cpu_if_addr;
+    int nb_cpus;
+    int board_id;
+    /* ARM machines that support the ARM Security Extensions use this field to
+     * control whether Linux is booted as secure(true) or non-secure(false).
+     */
+    bool secure_boot;
+    int (*atag_board)(const struct arm_boot_info *info, void *p);
+    /* multicore boards that use the default secondary core boot functions
+     * can ignore these two function calls. If the default functions won't
+     * work, then write_secondary_boot() should write a suitable blob of
+     * code mimicking the secondary CPU startup process used by the board's
+     * boot loader/boot ROM code, and secondary_cpu_reset_hook() should
+     * perform any necessary CPU reset handling and set the PC for the
+     * secondary CPUs to point at this boot blob.
+     */
+    void (*write_secondary_boot)(ARMCPU *cpu,
+                                 const struct arm_boot_info *info);
+    void (*secondary_cpu_reset_hook)(ARMCPU *cpu,
+                                     const struct arm_boot_info *info);
+    /* if a board is able to create a dtb without a dtb file then it
+     * sets get_dtb. This will only be used if no dtb file is provided
+     * by the user. On success, sets *size to the length of the created
+     * dtb, and returns a pointer to it. (The caller must free this memory
+     * with g_free() when it has finished with it.) On failure, returns NULL.
+     */
+    void *(*get_dtb)(const struct arm_boot_info *info, int *size);
+    /* if a board needs to be able to modify a device tree provided by
+     * the user it should implement this hook.
+     */
+    void (*modify_dtb)(const struct arm_boot_info *info, void *fdt);
+    /* machine init done notifier executing arm_load_dtb */
+    ArmLoadKernelNotifier load_kernel_notifier;
+    /* Used internally by arm_boot.c */
+    int is_linux;
+    hwaddr initrd_start;
+    hwaddr initrd_size;
+    hwaddr entry;
+
+    /* Boot firmware has been loaded, typically at address 0, with -bios or
+     * -pflash. It also implies that fw_cfg_find() will succeed.
+     */
+    bool firmware_loaded;
+
+    /* Address at which board specific loader/setup code exists. If enabled,
+     * this code-blob will run before anything else. It must return to the
+     * caller via the link register. There is no stack set up. Enabled by
+     * defining write_board_setup, which is responsible for loading the blob
+     * to the specified address.
+     */
+    hwaddr board_setup_addr;
+    void (*write_board_setup)(ARMCPU *cpu,
+                              const struct arm_boot_info *info);
+
+    /* If set, the board specific loader/setup blob will be run from secure
+     * mode, regardless of secure_boot. The blob becomes responsible for
+     * changing to non-secure state if implementing a non-secure boot
+     */
+    bool secure_board_setup;
+
+    arm_endianness endianness;
+};
+
+
+typedef struct MemMapEntry {
+	hwaddr base;
+	hwaddr size;
+	char* opt_fn_str;
+} MemMapEntry;
+
+
+typedef struct RehostingBoardInfo {
+    struct arm_boot_info bootinfo;
+    const char *cpu_model;
+    const MemMapEntry *dev_mem_map;
+    const MemMapEntry *file_mem_map;
+    const int *irqmap;
+    int smp_cpus;
+    void *fdt;
+    int fdt_size;
+    uint32_t clock_phandle;
+    uint32_t gic_phandle;
+    uint32_t v2m_phandle;
+    bool using_psci;
+} RehostingBoardInfo;
+
+
+typedef struct AccelState {
+    /*< private >*/
+    Object parent_obj;
+} AccelState;
+
+typedef struct MachineState MachineState;
+
+struct MachineState {
+    /*< private >*/
+    Object parent_obj;
+    Notifier sysbus_notifier;
+
+    /*< public >*/
+
+    char *accel;
+    bool kernel_irqchip_allowed;
+    bool kernel_irqchip_required;
+    bool kernel_irqchip_split;
+    int kvm_shadow_mem;
+    char *dtb;
+    char *dumpdtb;
+    int phandle_start;
+    char *dt_compatible;
+    bool dump_guest_core;
+    bool mem_merge;
+    bool usb;
+    bool usb_disabled;
+    bool igd_gfx_passthru;
+    char *firmware;
+    bool iommu;
+    bool suppress_vmdesc;
+    bool enforce_config_section;
+    bool enable_graphics;
+	
+    int board_id;
+    char *mem_map_str;
+
+    ram_addr_t ram_size;
+    ram_addr_t maxram_size;
+    uint64_t   ram_slots;
+    const char *boot_order;
+    char *kernel_filename;
+    char *kernel_cmdline;
+    char *initrd_filename;
+    const char *cpu_model;
+    AccelState *accelerator;
+};
+
+
 
 
 /**
