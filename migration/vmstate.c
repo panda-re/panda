@@ -83,7 +83,7 @@ int vmstate_load_state(QEMUFile *f, const VMStateDescription *vmsd,
     VMStateField *field = vmsd->fields;
     int ret = 0;
 
-    printf ("vmstate_load_state field = %s\n", field->name);
+    //printf ("vmstate_load_state field = %s\n", field->name);
 
     trace_vmstate_load_state(vmsd->name, version_id);
     if (version_id > vmsd->version_id) {
@@ -113,7 +113,7 @@ int vmstate_load_state(QEMUFile *f, const VMStateDescription *vmsd,
         }
     }
     while (field->name) {
-        printf ("  field->name = %s\n", field->name);
+       // printf ("  field->name = %s\n", field->name);
         trace_vmstate_load_state_field(vmsd->name, field->name);
         if ((field->field_exists &&
              field->field_exists(opaque, version_id)) ||
