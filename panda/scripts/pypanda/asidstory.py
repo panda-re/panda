@@ -1,8 +1,9 @@
 from pypanda import *
 from time import sleep
+from sys import argv
 
 # in progress
-panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img", mem="2048M")
+panda = Panda(qcow=argv[1], mem="2048M")
 
 asid_count = {}
 kernel_count = 0

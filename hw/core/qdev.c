@@ -134,12 +134,12 @@ DeviceState *qdev_try_create(BusState *bus, const char *type)
     DeviceState *dev;
 
     if (object_class_by_name(type) == NULL) {
-	printf("qdev_try_create object_class_by_name NULL\n");
-	return NULL;
+		//printf("qdev_try_create object_class_by_name NULL\n");
+		return NULL;
     }
     dev = DEVICE(object_new(type));
     if (!dev) {
-        printf("qdev_try_create !dev\n");
+        //printf("qdev_try_create !dev\n");
         return NULL;
     }
 

@@ -73,8 +73,6 @@ def init(handle):
 	panda.register_callback(handle, panda.callback.asid_changed, asid_changed)
 	return True
 
-=======
->>>>>>> 8cd1421babbb82356518a96be5862b467043c5f9
 panda.load_python_plugin(init,"Cool Plugin")
 #panda.begin_replay("/home/luke/recordings/this_is_a_recording")
 panda.run()
