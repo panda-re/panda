@@ -83,7 +83,6 @@ class Panda:
 		print("Panda args: [" + (" ".join(self.panda_args)) + "]")
 		self.libpanda.panda_init(len_cargs, self.panda_args_ffi, cenvp)
 
-
 	def run(self):
 		if debug:
 			progress ("Running")
