@@ -24,22 +24,13 @@ panda_build = realpath(pjoin(os.path.abspath(__file__), "../../../../build"))
 home = os.getenv("HOME")
 
 
-# NOTE:
-# map from the_os input to Panda to os-string needed by panda
-# Note that qcow for this os is assumed to exist and live in
-# ~/.panda/"%s-%s-%s.qcow" % (the_os, arch, mem)
-os2osstring = {
-	"debian:3.2.0-4-686-pae" : "linux-32-debian:3.2.0-4-686-pae"
-}
-
-
 class Panda:
 
 	"""
 	arch should be "i386" or "x86_64" or ...
 	NB: wheezy is debian:3.2.0-4-686-pae
 	"""
-	def __init__(self, arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", qcow="default", extra_args = ""):
+	def __init__(self, arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", qcow="default", extra_args = "", the_os="linux"):
 		if debug:
 			progress("Initializing panda")
 		self.arch = arch
@@ -76,8 +67,11 @@ class Panda:
 			print("For arch %s: I need logic to figure out num bits")
 		assert (not (bits == None))
 
+		# set os string in line with osi plugin requirements e.g. "linux[-_]64[-_].+"
+		self.os_string = "%s-%d-%s" % (the_os,bits,os_version)
+
 		# note: weird that we need panda as 1st arg to lib fn to init?
-		self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath, "-os", os2osstring[self.os], self.qcow]
+		self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath, "-os", self.os_string, self.qcow]
 		if extra_args:
 			self.panda_args.extend(extra_args.split())
 		self.panda_args_ffi = [ffi.new("char[]", bytes(str(i),"utf-8")) for i in self.panda_args]
