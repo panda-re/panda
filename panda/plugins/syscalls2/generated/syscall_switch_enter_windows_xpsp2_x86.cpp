@@ -1,6 +1,7 @@
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 
+#include <iostream>
 #include "syscalls2.h"
 #include "syscalls2_info.h"
 
@@ -4795,7 +4796,20 @@ void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc) {
 	PPP_RUN_CB(on_all_sys_enter, cpu, pc, ctx.no);
 	PPP_RUN_CB(on_all_sys_enter2, cpu, pc, call, &ctx);
 	if (!panda_noreturn) {
-		running_syscalls[std::make_pair(ctx.retaddr, ctx.asid)] = ctx;
+		auto idx = std::make_pair(ctx.retaddr, ctx.asid);
+		/*
+		auto ctx_old_it = running_syscalls.find(idx);
+		if (ctx_old_it != running_syscalls.end()) {
+			auto ctx_old = ctx_old_it->second;
+			const syscall_info_t *call_old = &syscall_info[ctx_old.no];
+			//std::cerr << "%%% " << call_old->name << std::endl;
+			//std::cerr << "%%% " << call->name << std::endl;
+			//std::cerr << std::endl;
+			//assert(false && "duplicate insertion");
+		}
+		*/
+		running_syscalls.insert(std::make_pair(idx, ctx));
+		//running_syscalls[std::make_pair(ctx.retaddr, ctx.asid)] = ctx;
 	}
 #endif
 }
