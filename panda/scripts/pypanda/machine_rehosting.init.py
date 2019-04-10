@@ -40,12 +40,40 @@ def during_machine_init(machinestate):
 	panda.memory_region_allocate_system_memory(mem_reg,ffi.NULL,"ram",100)
 	panda.memory_region_add_subregion(sys_mem,100,mem_reg)
 	"""
+	
+	#Constants
+	#machine_irqs structure 
+	MAX_MEM_MAPPED_FILES = 10
 
 	print("running during_machine_init")
-
+	
+	s = panda.g_malloc0(ffi.sizeof("machine_irqs"))
 	sysmem = panda.get_system_memory()
-	print(sysmem)
-	print(machinestate)
+	gic_version = 2
+	
+	vbi_mem =panda.g_malloc0(ffi.sizeof("RehostingBoardInfo")) 
+	vbi = ffi.cast("RehostingBoardInfo*", vbi_mem)
+	
+	ram = ffi.new("MemoryRegion*")
+	firmware_loaded = (panda.libpanda.bios_name != ffi.NULL) or (panda.drive_get(panda.libpanda.IF_PFLASH,0,0) != ffi.NULL)
+	
+	#line 10 of rehosting.c
+
+	vbi.cpu_model = machinestate.cpu_model
+	
+	assert(vbi != ffi.NULL)
+	assert(s != ffi.NULL)
+	
+	if(not vbi.cpu_model):
+		cpu_model = ffi.new("char[]", bytes("cortex-a15","UTF-8"))
+		vbi.cpu_model = cpu_model
+	
+	temp = panda.lookup_gic(vbi.cpu_model)
+	if(temp != -1):
+		gic_version = temp
+	print(temp)
+	print(gic_version)
+
 	print("during_machine_init done")
         
 

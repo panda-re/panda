@@ -489,6 +489,7 @@ static void mach_rehosting_init(MachineState *machine)
     panda_callbacks_during_machine_init(machine);
     machine_irqs *s = g_malloc0(sizeof(machine_irqs));
     MemoryRegion *sysmem = get_system_memory();
+    printf("ptr: %p \n", bios_name);
     int gic_version = 2;
     int n;
     int temp;

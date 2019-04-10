@@ -204,6 +204,7 @@ struct _GSList
   GSList *next;
 };
 
+const char *bios_name;
 
 typedef void (ObjectFree)(void *obj);
 
@@ -436,12 +437,61 @@ void object_property_set_link(Object *obj, Object *value, const char *name, Erro
 
 Object *object_property_get_link(Object *obj, const char *name,Error **errp);
 
+enum {
+    MEM = 0,
+    NAND,
+    NAND_CONTROLLER,
+    DMAC,
+    CPUPERIPHS,
+    MPCORE_PERIPHBASE,
+    GIC_DIST,
+    GIC_CPU,
+    GIC_V2M,
+    GIC_ITS,
+    GIC_REDIST,
+    UART,
+    GPIO,
+    GP_TIMER0,
+    GP_TIMER1,
+    DG_TIMER,
+    CACHE_CTRL,
+    FLASH,
+    VIRT_MMIO,
+
+    MEM_REGION_COUNT
+};
+
 typedef enum {
     IOMMU_NONE = 0,
     IOMMU_RO   = 1,
     IOMMU_WO   = 2,
     IOMMU_RW   = 3,
 } IOMMUAccessFlags;
+
+typedef enum {
+    IF_DEFAULT = -1,            /* for use with drive_add() only */
+    /*
+     * IF_NONE must be zero, because we want MachineClass member
+     * block_default_type to default-initialize to IF_NONE
+     */
+    IF_NONE = 0,
+    IF_IDE, IF_SCSI, IF_FLOPPY, IF_PFLASH, IF_MTD, IF_SD, IF_VIRTIO, IF_XEN,
+    IF_COUNT
+} BlockInterfaceType;
+
+typedef struct DriveInfo DriveInfo;
+
+static int lookup_gic(const char *cpu_model);
+
+void error_report(const char *fmt, ...);
+
+enum {
+    QEMU_PSCI_CONDUIT_DISABLED = 0,
+    QEMU_PSCI_CONDUIT_SMC = 1,
+    QEMU_PSCI_CONDUIT_HVC = 2,
+};
+
+DriveInfo *drive_get(BlockInterfaceType type, int bus, int unit);
 
 typedef struct Int128 Int128;
 

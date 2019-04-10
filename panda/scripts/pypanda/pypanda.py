@@ -223,7 +223,14 @@ class Panda:
 		return 0
 
 	
-	#string, int, qemu_irq, null
+	#if data types start to disappear, store them in weakkeysdict
+
+	def g_malloc0(self, size):
+		return self.libpanda.g_malloc0(size)
+
+	def drive_get(self, blocktype, bus, unit):
+		return self.libpanda.drive_get(blocktype,bus,unit)
+
 	def sysbus_create_varargs(self, name, addr):
 		cname = ffi.new("char[]", bytes(name,"UTF-8"))
 		return self.libpanda.sysbus_create_varargs(cname,addr,ffi.NULL)
@@ -291,6 +298,9 @@ class Panda:
 
 	def get_system_memory(self):
 		return self.libpanda.get_system_memory()
+
+	def lookup_gic(self,n):
+		return self.libpanda.lookup_gic(n)
 
 	def current_sp(self, cpustate):
 		return self.libpanda.panda_current_sp_external(cpustate)
