@@ -724,7 +724,7 @@ void vmstate_unregister(DeviceState *dev, const VMStateDescription *vmsd,
 
 static int vmstate_load(QEMUFile *f, SaveStateEntry *se, int version_id)
 {
-    printf ("vmstate_load: %s\n", se->idstr); // , se->vmsd->name);
+    //printf ("vmstate_load: %s\n", se->idstr); // , se->vmsd->name);
     trace_vmstate_load(se->idstr, se->vmsd ? se->vmsd->name : "(old)");
     if (!se->vmsd) {         /* Old style */
         return se->ops->load_state(f, se->opaque, version_id);

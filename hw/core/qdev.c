@@ -121,8 +121,9 @@ DeviceState *qdev_create(BusState *bus, const char *name)
                          object_get_typename(OBJECT(bus)));
         } else {
             error_report("Unknown device '%s' for default sysbus", name);
-        }
-        abort();
+       }
+        
+	abort();
     }
 
     return dev;
@@ -133,10 +134,12 @@ DeviceState *qdev_try_create(BusState *bus, const char *type)
     DeviceState *dev;
 
     if (object_class_by_name(type) == NULL) {
-        return NULL;
+		//printf("qdev_try_create object_class_by_name NULL\n");
+		return NULL;
     }
     dev = DEVICE(object_new(type));
     if (!dev) {
+        //printf("qdev_try_create !dev\n");
         return NULL;
     }
 
