@@ -481,7 +481,7 @@ typedef enum {
 
 typedef struct DriveInfo DriveInfo;
 
-static int lookup_gic(const char *cpu_model);
+int lookup_gic(const char *cpu_model);
 
 void error_report(const char *fmt, ...);
 
@@ -938,6 +938,13 @@ typedef struct MemMapEntry {
 } MemMapEntry;
 
 
+void parse_mem_map(char *map_str);
+
+MemMapEntry dev_mem_map[MEM_REGION_COUNT];
+MemMapEntry file_mem_map[10];
+
+int smp_cpus;
+
 typedef struct RehostingBoardInfo {
     struct arm_boot_info bootinfo;
     const char *cpu_model;
@@ -1052,6 +1059,7 @@ struct DeviceState {
     int instance_id_alias;
     int alias_required_for_version;
 };
+
 
 typedef struct {
   int __flags[8];			/* XXX - long might give better alignment */

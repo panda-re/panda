@@ -20,6 +20,9 @@ do { fprintf(stderr, "rehosting_machine: " fmt "\n", ## __VA_ARGS__); } while (0
 #define RH_DBG(fmt, ...) do {} while(0)
 #endif
 
+int lookup_gic(const char *cpu_model);
+void parse_mem_map(char *map_str);
+
 enum {
     MEM = 0,
     NAND,

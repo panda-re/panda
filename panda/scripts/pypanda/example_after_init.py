@@ -2,7 +2,7 @@ from pypanda import *
 from time import sleep
 
 
-panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img")
+panda = Panda(qcow="/home/alom/ubuntu-14.04-server-cloudimg-i386-disk1.img")
 
 @panda.callback.init
 def init(handle):

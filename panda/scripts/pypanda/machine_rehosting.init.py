@@ -42,7 +42,17 @@ def during_machine_init(machinestate):
 	"""
 	
 	#Constants
-	#machine_irqs structure 
+	#machine_irqs structure
+	#max_mem_mapped_files
+	#type_arm_cpu
+
+	#things i made not static
+	#lookup_gic
+	#dev_mem_map
+	#file_mem_map
+	#parse_mem_map
+
+	TYPE_ARM_CPU = "arm-cpu"
 	MAX_MEM_MAPPED_FILES = 10
 
 	print("running during_machine_init")
@@ -71,8 +81,12 @@ def during_machine_init(machinestate):
 	temp = panda.lookup_gic(vbi.cpu_model)
 	if(temp != -1):
 		gic_version = temp
-	print(temp)
-	print(gic_version)
+	
+
+	print(panda.libpanda.dev_mem_map)
+	print(panda.libpanda.smp_cpus)
+	print(panda.libpanda.parse_mem_map)
+
 
 	print("during_machine_init done")
         

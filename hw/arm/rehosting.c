@@ -61,8 +61,8 @@ typedef struct {
 #define REHOSTING_MACHINE_CLASS(klass) \
     OBJECT_CLASS_CHECK(RehostingMachineClass, klass, TYPE_REHOSTING_MACHINE)
 
-static MemMapEntry dev_mem_map[MEM_REGION_COUNT];
-static MemMapEntry file_mem_map[MAX_MEM_MAPPED_FILES];
+MemMapEntry dev_mem_map[MEM_REGION_COUNT];
+MemMapEntry file_mem_map[MAX_MEM_MAPPED_FILES];
 
 // Allocate enough for both SPI and PPI IRQs
 static int irqmap[NUM_IRQS +
@@ -94,7 +94,7 @@ static long int get_file_size(char file_name[]) {
 
 }
 
-static void parse_mem_map(char *map_str)
+void parse_mem_map(char *map_str)
 {
     static int fmm_idx = 0;
 
@@ -188,7 +188,7 @@ static void parse_mem_map(char *map_str)
 }
 
 // Match CPU model to GIC version number using a static lookup table defined in rehosting.h
-static int lookup_gic(const char *cpu_model) {
+int lookup_gic(const char *cpu_model) {
 
     int i;
 
