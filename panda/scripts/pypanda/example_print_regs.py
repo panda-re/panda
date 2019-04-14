@@ -1,8 +1,9 @@
 from pypanda import *
 from panda_x86_helper import *
 from time import sleep
+from sys import argv
 
-panda = Panda(qcow="/home/alom/ubuntu-14.04-server-cloudimg-i386-disk1.img")
+panda = Panda(qcow=argv[1])
 
 @panda.callback.init
 def init(handle):
