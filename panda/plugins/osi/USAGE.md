@@ -206,43 +206,10 @@ Description: Retrieves the shared libraries loaded for the specified process of 
 
 Implementation behaviour: The implementation should populate a [`GArray`][garray] filled with `OsiModule` elements, following the rules described in the *data containers* section above. Results need to be freed using [`g_array_free`][gafree].
 
-<!--
-(to be removed)
-
-In addition, there are two callbacks intended to be used by `osi` *users*, rather than by introspection providers:
-
 ---
-
-Name: **on\_process\_start**
-
-Signature:
-
-```C
-typedef void (*on_process_start_t)(CPUState *, OsiProc *)
-```
-
-Description: Called whenever a new process is created in the guest. Passes in an `OsiProc` identifying the newly created process.
-This callback is **disabled by default** because it requires a fair amount of computation.
-To enable/use this callback you need to have used the `-DOSI_PROC_EVENTS` flag at compile time.
-
----
-
-Name: **on\_process\_end**
-
-Signature:
-
-```C
-typedef void (*on_process_end_t)(CPUState *, OsiProc *)
-```
-
-Description: Called whenever a process exits in the guest. Passes in an `OsiProc` identifying the process that just exited.
-This callback is **disabled by default** because it requires a fair amount of computation.
-To enable/use this callback you need to have used the `-DOSI_PROC_EVENTS` flag at compile time.
--->
 
 ## Example
 The `osi` plugin is not very useful on its own. If you want to see an example of how to use when writing your own plugins, have a look at [osi_test](/panda/plugins/osi_test/).
-
 
 <!-- place all urls here -->
 [common.c]: /panda/src/common.c
