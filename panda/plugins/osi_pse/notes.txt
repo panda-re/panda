@@ -1,0 +1,21 @@
+/**
+ * @brief Handles a failed execve.
+ *
+ * When execve suceeds, it does not return. Having this callback invoked
+ * means that execve failed. In that case, we restore the handle in its
+ * original position.
+ */
+/**
+ * @brief TBA
+ *
+ * In linux, launching a new process typically involves:
+ *   - `sys_clone` to setup a new process.
+ *   - `sys_execve` follows shortly after, to load the new process image.
+ *     The system call will start but will not return if successful.
+ *   - A context switch happens where the task is still in a transient state.
+ *   - In the first system call after the context switch (typically a `sys_brk`)
+ *     the task has been updated and can be introspected via the `osi` api.
+ *
+ * @note XXX: Signature should have target_ptr_t as the type of all arguments.
+ * However, syscall_parser.py doesn't emit target_ptr_t for strings/pointers.
+ */
