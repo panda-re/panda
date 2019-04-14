@@ -152,24 +152,48 @@ static inline void free_osiproc(OsiProc *p) {
 }
 
 /**
- * @brief Copies an OsiProc struct. Returns a pointer to the destination location.
- *
- * @note Members of `to` struct must have been freed to avoid memory leaks.
+ * @brief Copies an OsiProcHandle struct.
+ * Returns a pointer to the destination location.
+ */
+static inline OsiProcHandle *copy_osiprochandle(OsiProcHandle *from, OsiProcHandle *to) {
+    if (from == NULL) return NULL;
+    if (to == NULL) {
+        to = (OsiProcHandle *)g_malloc0(sizeof(OsiProc));
+    } else if (free_osiprochandle_contents != NULL) {
+        free_osiprochandle_contents(to);
+    }
+    memcpy(to, from, sizeof(OsiProc));
+    return to;
+}
+
+/**
+ * @brief Copies an OsiProc struct.
+ * Returns a pointer to the destination location.
  */
 static inline OsiProc *copy_osiproc(OsiProc *from, OsiProc *to) {
     if (from == NULL) return NULL;
-    if (to == NULL) to = (OsiProc *)g_malloc0(sizeof(OsiProc));
-
+    if (to == NULL) {
+        to = (OsiProc *)g_malloc0(sizeof(OsiProc));
+    } else {
+        free_osiproc_contents(to);
+    }
     memcpy(to, from, sizeof(OsiProc));
     to->name = g_strdup(from->name);
     to->pages = NULL;  // OsiPage - TODO
     return to;
 }
 
+/**
+ * @brief Copies an OsiModule struct.
+ * Returns a pointer to the destination location.
+ */
 static inline OsiModule *copy_osimod(OsiModule *from, OsiModule *to) {
     if (from == NULL) return NULL;
-    if (to == NULL) to = (OsiModule *)g_malloc0(sizeof(OsiModule));
-
+    if (to == NULL) {
+        to = (OsiModule *)g_malloc0(sizeof(OsiModule));
+    } else {
+        free_osimodule_contents(to);
+    }
     memcpy(to, from, sizeof(OsiModule));
     to->name = g_strdup(from->name);
     to->file = g_strdup(from->file);
