@@ -13,13 +13,12 @@ def init(handle):
 
 @panda.callback.before_block_exec
 def before_block_execute(cpustate,transblock):
-	if panda.in_kernel(cpustate):
-		fregs = ["{:08x}".format(i) for i in cpustate.env_ptr.regs]
-		fregs.append("{:08x}".format(cpustate.env_ptr.eip))
-		fregs.append("{:08x}".format(cpustate.env_ptr.eflags))
-		in_kernel = "Yes" if panda.in_kernel(cpustate) else "No"
-		progress("EAX: %s EBX: %s ECX: %s EDX: %s ESP: %s EBP: %s EIP: %s In_Kernel: %s" %(fregs[R_EAX], fregs[R_EBX], fregs[R_ECX], fregs[R_EDX], fregs[R_ESP], fregs[R_EBP] , fregs[8], in_kernel))
-#	sleep(sleeptime)
+	fregs = ["{:08x}".format(i) for i in cpustate.env_ptr.regs]
+	fregs.append("{:08x}".format(cpustate.env_ptr.eip))
+	fregs.append("{:08x}".format(cpustate.env_ptr.eflags))
+	in_kernel = "Yes" if panda.in_kernel(cpustate) else "No"
+	progress("EAX: %s EBX: %s ECX: %s EDX: %s ESP: %s EBP: %s EIP: %s In_Kernel: %s" %(fregs[R_EAX], fregs[R_EBX], fregs[R_ECX], fregs[R_EDX], fregs[R_ESP], fregs[R_EBP] , fregs[8], in_kernel))
+	sleep(sleeptime)
 	return 0
 
 sleeptime = 0.5

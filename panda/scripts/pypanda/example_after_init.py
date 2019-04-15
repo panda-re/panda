@@ -12,8 +12,8 @@ def init(handle):
 
 @panda.callback.after_machine_init
 def after_machine_init(cpustate):
-	progress("before block in python")
-	return 0
+	progress("hit machine init")
+	pdb.set_trace()
 
 panda.load_python_plugin(init,"after-machine-init-plugin")
 panda.run()
