@@ -4,6 +4,7 @@ IDAPython Script to ingest an ida_taint2 report.
 
 import csv
 
+from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 FUNC_COLOR = 0x90EE90
@@ -30,8 +31,12 @@ class ProcessSelectDialog(QDialog):
         self.process_table.setSelectionMode(QAbstractItemView.SingleSelection)
         i = 0
         for p in processes:
-            self.process_table.setItem(i, 0, QTableWidgetItem(p[0]))
-            self.process_table.setItem(i, 1, QTableWidgetItem(str(p[1])))
+            process_name_item = QTableWidgetItem(p[0])
+            process_name_item.setFlags(process_name_item.flags() & ~(Qt.ItemIsEditable))
+            self.process_table.setItem(i, 0, process_name_item)
+            process_id_item = QTableWidgetItem(str(p[1]))
+            process_id_item.setFlags(process_id_item.flags() & ~(Qt.ItemIsEditable))
+            self.process_table.setItem(i, 1, process_id_item)
             i += 1
 
         hbox = QHBoxLayout()
