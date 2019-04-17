@@ -3,7 +3,6 @@ IDAPython Script to ingest an ida_taint2 report.
 """
 
 import csv
-import os
 
 from PyQt5.QtWidgets import *
 
