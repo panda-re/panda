@@ -3,6 +3,10 @@ IDAPython Script to ingest an ida_taint2 report.
 """
 
 import csv
+import datetime
+
+import ida_kernwin
+import ida_loader
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -83,6 +87,10 @@ def main():
     selected_pid = ProcessSelectDialog.selectProcess(processes)
     if not selected_pid:
         return
+
+    snapshot = ida_loader.snapshot_t()
+    snapshot.desc = "Before ida_taint2.py @ %s" % (datetime.datetime.now())
+    ida_kernwin.take_database_snapshot(snapshot)
 
     input_file = open(filename, "r")
     reader = csv.reader(input_file)
