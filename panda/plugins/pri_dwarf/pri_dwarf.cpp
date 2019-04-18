@@ -1860,6 +1860,7 @@ target_ulong get_cur_fp(CPUState *cpu, target_ulong pc){
         printf("loc_cnt: Could not properly determine fp\n");
         return -1;
     }
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     target_ulong fp_loc;
     int i;
     for (i = 0; i < loc_cnt; i++){
@@ -1869,7 +1870,7 @@ target_ulong get_cur_fp(CPUState *cpu, target_ulong pc){
             switch (loc_type){
                 case LocReg:
                     //printf(" VAR %s in REG %d\n", var_name.c_str(), var_loc);
-                    return 0;
+                    return env->regs[fp_loc];
                 case LocMem:
                     return fp_loc;
                 case LocConst:
