@@ -71,6 +71,18 @@ class ProcessSelectDialog(QDialog):
             return psd.selectedProcess()
         return None
 
+def read_semantic_labels(filename):
+    semantic_labels = dict()
+    try:
+        with open(filename) as f:
+            reader = csv.reader(f)
+            for row in reader:
+                semantic_labels[int(row[0])]=row[1]
+    except OSError:
+        pass
+
+    return semantic_labels
+
 def main():
     filename, _ = QFileDialog.getOpenFileName(None, "Open file", ".", "CSV Files(*.csv)")
     if filename == "":
@@ -88,6 +100,8 @@ def main():
     if not selected_pid:
         return
 
+    semantic_labels = read_semantic_labels(filename + ".semantic_labels")
+
     snapshot = ida_loader.snapshot_t()
     snapshot.desc = "Before ida_taint2.py @ %s" % (datetime.datetime.now())
     ida_kernwin.take_database_snapshot(snapshot)
@@ -101,6 +115,12 @@ def main():
         pid = int(row[1])
         pc = int(row[2], 16)
         label = int(row[3])
+
+        try:
+            label = semantic_labels[label]
+        except KeyError:
+            pass
+
         if pid != selected_pid:
             continue
         fn = idaapi.get_func(pc)
