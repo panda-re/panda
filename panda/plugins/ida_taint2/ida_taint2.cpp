@@ -21,6 +21,8 @@ PANDAENDCOMMENT */
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 
+#include "ida_taint2_api.h"
+
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
@@ -112,6 +114,12 @@ void taint_state_changed(Addr a, uint64_t size)
     }
 }
 
+const char *filename;
+
+const char *ida_taint2_get_filename(void) {
+    return filename;
+}
+
 bool init_plugin(void *self)
 {
     // Setup OSI
@@ -130,8 +138,7 @@ bool init_plugin(void *self)
 
     // Setup CSV file.
     panda_arg_list *args = panda_get_args("ida_taint2");
-    const char *filename =
-        panda_parse_string(args, "filename", "ida_taint2.csv");
+    filename = panda_parse_string(args, "filename", "ida_taint2.csv");
 
     // Open up a CSV file and write the header.
     pidpclog = fopen(filename, "w");
