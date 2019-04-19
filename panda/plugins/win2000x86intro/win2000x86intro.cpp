@@ -47,7 +47,7 @@ HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t 
 #define PEB_LDR_OFF            0x00c // _PEB.Ldr
 #define PEB_LDR_MEM_LINKS_OFF  0x014 // _PEB_LDR_DATA.InMemoryOrderModuleList
 #define PEB_LDR_LOAD_LINKS_OFF 0x00c // _PEB_LDR_DATA.InLoadOrderModuleList
-
+#define HANDLE_LOCK_FLAG 0x80000000
 
 // Windows 2000 has a fixed location for the KPCR
 PTR get_win2000_kpcr(CPUState *cpu) {
@@ -190,9 +190,19 @@ static uint32_t get_handle_table_entry(CPUState *cpu, uint32_t pHandleTable, uin
     uint32_t pObjectHeader;
     if ((panda_virtual_memory_rw(cpu, pEntry, (uint8_t *) &pObjectHeader, 4, false)) == -1) return 0;
 
-    //  printf ("processHandle_to_pid pObjectHeader = 0x%x\n", pObjectHeader);
-    pObjectHeader |= 0x80000000;
-    pObjectHeader &= ~0x00000007;
+    // In Windows 2000 (and supposedly Windows NT 4), the three low-order and
+    // highest-order bit are flags.
+    //
+    // The remaining bits make up the pointer - sometimes. The lock flag must be
+    // set get a valid pointer to the object since these are kernel objects and
+    // they will always live in memory that is greater than 0x80000000. So to
+    // get the pointer you have to set the high bit if it is not already locked
+    // and mask off the lower three bits.
+    //
+    // Ref: Inside Microsoft Windows 2000, Third Edition, David A. Solomon, Mark
+    // E. Russinovich.
+    pObjectHeader |= HANDLE_LOCK_FLAG;
+    pObjectHeader &= TABLE_MASK;
 
     return pObjectHeader;
 }

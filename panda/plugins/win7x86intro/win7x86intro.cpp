@@ -207,8 +207,14 @@ static uint32_t get_handle_table_entry(CPUState *cpu, uint32_t pHandleTable, uin
     if ((panda_virtual_memory_rw(cpu, pEntry, (uint8_t *) &pObjectHeader, 4, false)) == -1) {
         return 0;
     }
-    //  printf ("processHandle_to_pid pObjectHeader = 0x%x\n", pObjectHeader);
-    pObjectHeader &= ~0x00000007;
+
+    // Like in Windows 2000, the entry here needs to be masked off. However, it
+    // appears that starting in Windows XP, they've done away with the lock
+    // flag. The lower three bits mask should be consistent across Windows
+    // versions because of the object alignment.
+    //
+    // No obvious reference.
+    pObjectHeader &= TABLE_MASK;
 
     return pObjectHeader;
 }
