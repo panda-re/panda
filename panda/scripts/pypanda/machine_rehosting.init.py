@@ -1,10 +1,22 @@
 from pypanda import *
 from time import sleep
-
+import pdb
 
 
 panda = Panda(arch="arm",qcow="/home/alom/.panda/arm_wheezy.qcow",extra_args="-M rehosting")
+
 print ("pypanda: done with pre")
+
+
+c_dict = {}
+
+def add_c_string(s):
+	if s not in c_dict:
+		n = ffi.new("char[]", bytes(s,"UTF-8"))
+		c_dict[s] = n
+	return c_dict[s]
+
+
 
 @panda.callback.init
 def init(handle):
@@ -14,50 +26,33 @@ def init(handle):
 @panda.callback.during_machine_init
 def during_machine_init(machinestate):
 	
-	"""
-	arm_cpu = panda.cpu_class_by_name("arm-cpu", "cortex-a15")
-	cpu_name = panda.object_class_get_name(arm_cpu)
-	obj = panda.object_new(cpu_name)
-	panda.object_property_set_bool(obj, True,"has_el3")
-	obj_bool = panda.object_property_get_bool(obj, "has_el3")
-	obj_property = panda.object_property_find(obj,"reset-cbar")
-	panda.object_property_set_int(obj, 100,"reset-cbar")
-	obj_int = panda.object_property_get_int(obj,"reset-cbar")
-	sys_mem= panda.get_system_memory()
-	obj_2 = ffi.cast("Object*",sys_mem)
-	panda.object_property_set_link(obj, obj_2, "memory")
-	obj_link = panda.object_property_get_link(obj,"memory")
-	mem_reg = ffi.new("MemoryRegion*")
-	print("arm_cpu: %s" % str(arm_cpu))
-	print("cpu_name: %s" % str(cpu_name))
-	print("obj: %s" % str(obj))
-	print("obj_bool: %s" % str(obj_bool))
-	print("obj_property: %s" % str(obj_property))
-	print("obj_int: %s" % str(obj_int))
-	print("obj_2: %s" % str(obj_2))
-	print("obj_link: %s" % str(obj_link))
-	print("mem_reg: %s" % str(mem_reg))
-	panda.memory_region_allocate_system_memory(mem_reg,ffi.NULL,"ram",100)
-	panda.memory_region_add_subregion(sys_mem,100,mem_reg)
-	"""
-	
 	#Constants
 	#machine_irqs structure
-	#max_mem_mapped_files
-	#type_arm_cpu
+	#variables below: if changing them, change header file as well
 
 	#things i made not static
 	#lookup_gic
 	#dev_mem_map
 	#file_mem_map
 	#parse_mem_map
+	#irqmap
+	#create_internal_gic
+	#create_one_flash
+	#create_external_gic
+	
+	#instead of RH_DBG im using python print statements
 
-	TYPE_ARM_CPU = "arm-cpu"
+	NUM_IRQS = 256
+	GIC_NR_SGIS = 16
+	REHOSTING_MAX_CPUS = 4
+	GIC_INTERNAL = 32
+	TYPE_ARM_CPU = add_c_string("arm-cpu")
 	MAX_MEM_MAPPED_FILES = 10
 
 	print("running during_machine_init")
 	
-	s = panda.g_malloc0(ffi.sizeof("machine_irqs"))
+	s_mem = panda.g_malloc0(ffi.sizeof("machine_irqs"))
+	s = ffi.cast("machine_irqs*", s_mem)
 	sysmem = panda.get_system_memory()
 	gic_version = 2
 	
@@ -67,28 +62,105 @@ def during_machine_init(machinestate):
 	ram = ffi.new("MemoryRegion*")
 	firmware_loaded = (panda.libpanda.bios_name != ffi.NULL) or (panda.drive_get(panda.libpanda.IF_PFLASH,0,0) != ffi.NULL)
 	
-	#line 10 of rehosting.c
-
 	vbi.cpu_model = machinestate.cpu_model
 	
 	assert(vbi != ffi.NULL)
 	assert(s != ffi.NULL)
 	
 	if(not vbi.cpu_model):
-		cpu_model = ffi.new("char[]", bytes("cortex-a15","UTF-8"))
+		cpu_model = add_c_string("cortex-a15")
 		vbi.cpu_model = cpu_model
 	
 	temp = panda.lookup_gic(vbi.cpu_model)
 	if(temp != -1):
 		gic_version = temp
 	
+	vbi.dev_mem_map = panda.libpanda.dev_mem_map
+	vbi.file_mem_map = panda.libpanda.file_mem_map
+	vbi.irqmap = panda.libpanda.irqmap
+	
+	for i in range(MAX_MEM_MAPPED_FILES):
+		panda.libpanda.file_mem_map[i].opt_fn_str = ffi.NULL
+		panda.libpanda.file_mem_map[i].base = 0
+		panda.libpanda.file_mem_map[i].size = 0
 
-	print(panda.libpanda.dev_mem_map)
-	print(panda.libpanda.smp_cpus)
-	print(panda.libpanda.parse_mem_map)
 
+	for i in range(panda.libpanda.MEM_REGION_COUNT):
+		panda.libpanda.dev_mem_map[i].opt_fn_str = ffi.NULL
+		panda.libpanda.dev_mem_map[i].base = 0
+		panda.libpanda.dev_mem_map[i].size = 0
+
+	mem_str = add_c_string("VIRT_MMIO 0a000000-0a000200;CACHE_CTRL f1008000-f1009000;MPCORE_PERIPHBASE f100c000-f100e000;MEM 00000000-40000000")
+	panda.libpanda.parse_mem_map(mem_str)
+	vbi.smp_cpus = panda.libpanda.smp_cpus
+	
+	for i in range(panda.libpanda.smp_cpus):
+		cpu_oc = panda.cpu_class_by_name(TYPE_ARM_CPU, vbi.cpu_model)
+	
+		if not cpu_oc:
+			panda.error_report(add_c_string("Unable to find CPU definition"))
+			panda.libpanda.exit(0)
+		else:
+			print("rehosting machine: Adding CPU: %s (%i of %i)" %(ffi.string(vbi.cpu_model), i ,panda.libpanda.smp_cpus)) 
+		
+		cpuobj = panda.object_new(panda.object_class_get_name(cpu_oc))	
+
+		if panda.object_property_find(cpuobj, add_c_string("has_el3")):
+			panda.object_property_set_bool(cpuobj, False, add_c_string("has_el3"));
+		
+		if panda.object_property_find(cpuobj, add_c_string("reset-cbar")) and vbi.dev_mem_map[panda.libpanda.MPCORE_PERIPHBASE].base:
+			panda.object_property_set_int(cpuobj, vbi.dev_mem_map[panda.libpanda.MPCORE_PERIPHBASE].base, add_c_string("reset-cbar"))
+		
+		if vbi.using_psci:
+			print("Using PSCI")
+			panda.object_property_set_int(cpuobj, panda.libpanda.QEMU_PSCI_CONDUIT_HVC, add_c_string("psci-conduit"))
+			if panda.libpanda.smp_cpus > 0:
+				panda.object_property_set_bool(cpuobj, True, add_c_string("start-powered-off"))
+
+		panda.object_property_set_link(cpuobj, ffi.cast("Object*", sysmem), add_c_string("memory"))
+		panda.object_property_set_bool(cpuobj, True, add_c_string("realized"))
+
+
+	machinestate.ram_size = vbi.dev_mem_map[panda.libpanda.MEM].size
+	panda.memory_region_allocate_system_memory(ram, ffi.NULL, add_c_string("ram"), machinestate.ram_size)
+	panda.memory_region_add_subregion(sysmem, vbi.dev_mem_map[panda.libpanda.MEM].base, ram)
+
+	for i in range(MAX_MEM_MAPPED_FILES):
+		if vbi.file_mem_map[i].opt_fn_str != ffi.NULL:
+			mr_file = ffi.new("MemoryRegion*")
+			assert(mr_file != ffi.NULL)
+			panda.memory_region_init_ram_from_file(mr_file, ffi.NULL, vbi.file_mem_map[i].opt_fn_str, vbi.file_mem_map[i].size, False, vbi.file_mem_map[i].opt_fn_str)
+			panda.memory_region_add_subregion(sysmem, vbi.file_mem_map[i].base, mr_file)
+			print("Mapped %s @ 0x%d8lx" % (vbi.file_mem_map[i].opt_fn_str, vbi.file_mem_map[i].base))
+		
+	if vbi.dev_mem_map[panda.libpanda.MPCORE_PERIPHBASE].base:
+		print("Adding CPU peripheral base @ 0x%d8lx" % vbi.dev_mem_map[panda.libpanda.MPCORE_PERIPHBASE].base)
+		panda.create_internal_gic(vbi, s, gic_version)
+		
+	
+	if vbi.dev_mem_map[panda.libpanda.CACHE_CTRL].base:
+		print("Adding PL310 @ 0x%d8lx" % vbi.dev_mem_map[panda.libpanda.CACHE_CTRL].base)
+		panda.sysbus_create_varargs(add_c_string("l2x0"), vbi.dev_mem_map[panda.libpanda.CACHE_CTRL].base)
+
+	if vbi.dev_mem_map[panda.libpanda.FLASH].base:
+		print("Adding flash drive device @ 0x%d8lx" % vbi.dev_mem_map[panda.libpanda.FLASH].base)
+		panda.create_one_flash(add_c_string("virt.flash0"), vbi.dev_mem_map[panda.libpanda.FLASH].base, vbi.dev_mem_map[panda.libpanda.FLASH].size, ffi.NULL, sysmem)
+
+	if not vbi.dev_mem_map[panda.libpanda.GIC_DIST].base or vbi.dev_mem_map[panda.libpanda.GIC_CPU].base:
+		print("Adding GICv%d @ 0x%d8lx" % (gic_version, vbi.dev_mem_map[panda.libpanda.GIC_DIST].base))
+		panda.create_external_gic(vbi, s, gic_version, False)
+	
+	print(vbi)
+
+	if vbi.dev_mem_map[panda.libpanda.VIRT_MMIO].base:
+		print("Adding VIRT_MMIO @ 0x%d8lx" % vbi.dev_mem_map[panda.libpanda.VIRT_MMIO].base)
+		panda.create_virtio_devices(vbi, s.spi)
 
 	print("during_machine_init done")
+	
+
+	pdb.set_trace()
+	
         
 
 #panda = Panda(qcow="/home/alom/ubuntu-14.04-server-cloudimg-i386-disk1.img")

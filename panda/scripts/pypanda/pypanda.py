@@ -223,8 +223,6 @@ class Panda:
 		return 0
 
 	
-	#if data types start to disappear, store them in weakkeysdict
-
 	def g_malloc0(self, size):
 		return self.libpanda.g_malloc0(size)
 
@@ -232,69 +230,64 @@ class Panda:
 		return self.libpanda.drive_get(blocktype,bus,unit)
 
 	def sysbus_create_varargs(self, name, addr):
-		cname = ffi.new("char[]", bytes(name,"UTF-8"))
-		return self.libpanda.sysbus_create_varargs(cname,addr,ffi.NULL)
+		return self.libpanda.sysbus_create_varargs(name,addr,ffi.NULL)
 
 	def cpu_class_by_name(self, name, cpu_model):
-		n = ffi.new("char[]", bytes(name,"UTF-8"))
-		c = ffi.new("char[]", bytes(cpu_model,"UTF-8"))
-		return self.libpanda.cpu_class_by_name(n, c)
+		return self.libpanda.cpu_class_by_name(name, cpu_model)
 	
 	def object_class_by_name(self, name):
-		n = ffi.new("char[]", bytes(name,"UTF-8"))
-		return self.libpanda.object_class_by_name(n)
+		return self.libpanda.object_class_by_name(name)
 	
 	def object_property_set_bool(self, obj, value, name):
-		n = ffi.new("char[]", bytes(name,"UTF-8"))
-		e = ffi.new("Error **error_abort")
-		return self.libpanda.object_property_set_bool(obj,value,n,e)
+		return self.libpanda.object_property_set_bool(obj,value,name,self.libpanda.error_abort)
 
 	def object_class_get_name(self, objclass):
 		return self.libpanda.object_class_get_name(objclass)
 
 	def object_new(self, name):
-		if type(name) == type(''):
-			n = ffi.new("char[]", bytes(name, "UTF-8"))
-		else:
-			n = name
-		return self.libpanda.object_new(n)
+		return self.libpanda.object_new(name)
 
 	def object_property_get_bool(self, obj, name):
-		n = ffi.new("char[]", bytes(name,"UTF-8"))
-		e = ffi.new("Error **error_abort")
-		return self.libpanda.object_property_get_bool(obj,n,e)
+		return self.libpanda.object_property_get_bool(obj,name,self.libpanda.error_abort)
 	
 	def object_property_set_int(self,obj, value, name):
-		n = ffi.new("char[]", bytes(name,"UTF-8"))
-		e = ffi.new("Error **error_abort")
-		return self.libpanda.object_property_set_int(obj, value, n, e)
+		return self.libpanda.object_property_set_int(obj, value, name, self.libpanda.error_abort)
 
 	def object_property_get_int(self, obj, name):
-		n = ffi.new("char[]", bytes(name,"UTF-8"))
-		e = ffi.new("Error **error_abort")
-		return self.libpanda.object_property_get_int(obj, n, e)
+		return self.libpanda.object_property_get_int(obj, name, self.libpanda.error_abort)
 	
 	def object_property_set_link(self, obj, val, name):
-		n = ffi.new("char[]", bytes(name,"UTF-8"))
-		e = ffi.new("Error **error_abort")
-		return self.libpanda.object_property_set_link(obj,val,n,e)
+		return self.libpanda.object_property_set_link(obj,val,name,self.libpanda.error_abort)
 
 	def object_property_get_link(self, obj, name):
-		n = ffi.new("char[]", bytes(name,"UTF-8"))
-		e = ffi.new("Error **error_abort")
-		return self.libpanda.object_property_get_link(obj,n,e)
+		return self.libpanda.object_property_get_link(obj,name,self.libpanda.error_abort)
 
 	def object_property_find(self, obj, name):
-		n = ffi.new("char[]", bytes(name,"UTF-8"))
-		return self.libpanda.object_property_find(obj,n,ffi.NULL)
+		return self.libpanda.object_property_find(obj,name,ffi.NULL)
 
 	def memory_region_allocate_system_memory(self, mr, obj, name, ram_size):
-		n = ffi.new("char[]", bytes(name,"UTF-8"))
-		return self.libpanda.memory_region_allocate_system_memory(mr, obj, n, ram_size)
+		return self.libpanda.memory_region_allocate_system_memory(mr, obj, name, ram_size)
 
 	def memory_region_add_subregion(self, mr, offset, sr):
 		return self.libpanda.memory_region_add_subregion(mr,offset,sr)
-		
+	
+	def memory_region_init_ram_from_file(self, mr, owner, name, size, share, path):
+		return self.libpanda.memory_region_init_ram_from_file(mr, owner, name, size, share, path, self.libpanda.error_fatal)
+
+	def create_internal_gic(self, vbi, irqs, gic_vers):
+		return self.libpanda.create_internal_gic(vbi, irqs, gic_vers)
+	
+	def create_one_flash(self, name, flashbase, flashsize, filename, mr):
+		return self.libpanda.create_one_flash(name, flashbase, flashsize, filename, mr)
+
+	def create_external_gic(self, vbi, irqs, gic_vers, secure):
+		return self.libpanda.create_external_gic(vbi, irqs, gic_vers, secure)
+
+	def create_virtio_devices(self, vbi, pic):
+		return self.libpanda.create_virtio_devices(vbi, pic)
+
+	def error_report(self, s):
+		return self.libpanda.error_report(s)
 
 	def get_system_memory(self):
 		return self.libpanda.get_system_memory()

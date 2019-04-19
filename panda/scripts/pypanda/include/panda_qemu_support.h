@@ -295,6 +295,8 @@ struct Error
     GString *hint;
 };
 
+Error **error_abort;
+Error **error_fatal;
 
 typedef struct GenericList {
     struct GenericList *next;
@@ -484,6 +486,8 @@ typedef struct DriveInfo DriveInfo;
 int lookup_gic(const char *cpu_model);
 
 void error_report(const char *fmt, ...);
+
+void exit(int status);
 
 enum {
     QEMU_PSCI_CONDUIT_DISABLED = 0,
@@ -708,6 +712,57 @@ struct MemoryRegionOps {
 };
 
 
+typedef struct MigrationStats MigrationStats;
+
+typedef enum MigrationStatus {
+    MIGRATION_STATUS_NONE = 0,
+    MIGRATION_STATUS_SETUP = 1,
+    MIGRATION_STATUS_CANCELLING = 2,
+    MIGRATION_STATUS_CANCELLED = 3,
+    MIGRATION_STATUS_ACTIVE = 4,
+    MIGRATION_STATUS_POSTCOPY_ACTIVE = 5,
+    MIGRATION_STATUS_COMPLETED = 6,
+    MIGRATION_STATUS_FAILED = 7,
+    MIGRATION_STATUS_COLO = 8,
+    MIGRATION_STATUS__MAX = 9,
+} MigrationStatus;
+
+typedef struct XBZRLECacheStats XBZRLECacheStats;
+
+struct XBZRLECacheStats {
+    int64_t cache_size;
+    int64_t bytes;
+    int64_t pages;
+    int64_t cache_miss;
+    double cache_miss_rate;
+    int64_t overflow;
+};
+
+typedef struct MigrationInfo MigrationInfo;
+
+struct MigrationInfo {
+    bool has_status;
+    MigrationStatus status;
+    bool has_ram;
+    MigrationStats *ram;
+    bool has_disk;
+    MigrationStats *disk;
+    bool has_xbzrle_cache;
+    XBZRLECacheStats *xbzrle_cache;
+    bool has_total_time;
+    int64_t total_time;
+    bool has_expected_downtime;
+    int64_t expected_downtime;
+    bool has_downtime;
+    int64_t downtime;
+    bool has_setup_time;
+    int64_t setup_time;
+    bool has_cpu_throttle_percentage;
+    int64_t cpu_throttle_percentage;
+    bool has_error_desc;
+    char *error_desc;
+};
+
 MemoryRegion *get_system_memory(void);
 
 struct MemoryRegion {
@@ -752,6 +807,21 @@ struct MemoryRegion {
     struct { struct IOMMUNotifier *lh_first; } iommu_notify;
     IOMMUNotifierFlag iommu_notify_flags;
 };
+
+void memory_region_init_ram_from_file(MemoryRegion *mr,
+                                      struct Object *owner,
+                                      const char *name,
+                                      uint64_t size,
+                                      bool share,
+                                      const char *path,
+                                      Error **errp);
+
+
+void create_one_flash(const char *name, hwaddr flashbase,
+                             hwaddr flashsize, const char *file,
+                             MemoryRegion *sysmem);
+
+
 
 typedef struct FlatRange FlatRange;
 
@@ -943,6 +1013,8 @@ void parse_mem_map(char *map_str);
 MemMapEntry dev_mem_map[MEM_REGION_COUNT];
 MemMapEntry file_mem_map[10];
 
+const int irqmap[384];
+
 int smp_cpus;
 
 typedef struct RehostingBoardInfo {
@@ -960,6 +1032,9 @@ typedef struct RehostingBoardInfo {
     bool using_psci;
 } RehostingBoardInfo;
 
+void create_internal_gic(RehostingBoardInfo *vbi, machine_irqs *irqs, int gic_version);
+void create_external_gic(RehostingBoardInfo *vbi, machine_irqs *irqs, int gic_version, bool secure);
+void create_virtio_devices(RehostingBoardInfo *vbi, qemu_irq *pic);
 
 typedef struct AccelState {
     /*< private >*/
