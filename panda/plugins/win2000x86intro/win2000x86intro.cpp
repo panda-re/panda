@@ -47,6 +47,8 @@ HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t 
 #define PEB_LDR_OFF            0x00c // _PEB.Ldr
 #define PEB_LDR_MEM_LINKS_OFF  0x014 // _PEB_LDR_DATA.InMemoryOrderModuleList
 #define PEB_LDR_LOAD_LINKS_OFF 0x00c // _PEB_LDR_DATA.InLoadOrderModuleList
+#define HANDLE_TABLE_L1_OFF    0x008    // _HANDLE_TABLE.Layer1
+
 #define HANDLE_LOCK_FLAG 0x80000000
 
 // Windows 2000 has a fixed location for the KPCR
@@ -214,12 +216,14 @@ HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t 
     if (-1 == panda_virtual_memory_rw(cpu, eproc+get_eproc_objtable_off(), (uint8_t *)&pObjectTable, 4, false)) {
         return NULL;
     }
-    if (-1 == panda_virtual_memory_rw(cpu, pObjectTable + 0x08, (uint8_t *)&handleTable, 4, false)) {
+    if (-1 == panda_virtual_memory_read(cpu, pObjectTable + HANDLE_TABLE_L1_OFF,
+                                        (uint8_t *)&handleTable,
+                                        sizeof(handleTable))) {
         return NULL;
     }
     uint32_t pObjHeader = get_handle_table_entry(cpu, handleTable, handle);
     if (pObjHeader == 0) return NULL;
-    uint32_t pObj = pObjHeader + 0x18;
+    uint32_t pObj = pObjHeader + OBJECT_HEADER_BODY_OFFSET;
     uint8_t objType = 0;
     if (-1 == panda_virtual_memory_rw(cpu, pObjHeader+get_obj_type_offset(), (uint8_t *)&objType, 1, false)) {
         return NULL;

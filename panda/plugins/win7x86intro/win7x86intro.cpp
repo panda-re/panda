@@ -227,7 +227,7 @@ HandleObject *get_win7_handle_object(CPUState *cpu, uint32_t eproc, uint32_t han
     }
     uint32_t pObjHeader = get_handle_table_entry(cpu, pObjectTable, handle);
     if (pObjHeader == 0) return NULL;
-    uint32_t pObj = pObjHeader + 0x18;
+    uint32_t pObj = pObjHeader + OBJECT_HEADER_BODY_OFFSET;
     uint8_t objType = 0;
     if (-1 == panda_virtual_memory_rw(cpu, pObjHeader+get_obj_type_offset(), &objType, 1, false)) {
         return NULL;

@@ -30,3 +30,6 @@ typedef struct {
 #define ADDR_SIZE 4
 #define HANDLE_TABLE_ENTRY_SIZE 8
 
+// Given an object header, we can find the body of the object at this offset.
+// This seems stable across versions of Windows (at least Win 2k SP4 - 7 SP1).
+#define OBJECT_HEADER_BODY_OFFSET 0x18
