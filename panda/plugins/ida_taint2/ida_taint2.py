@@ -4,6 +4,7 @@ IDAPython Script to ingest an ida_taint2 report.
 
 import csv
 
+from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 FUNC_COLOR = 0x90EE90
@@ -30,8 +31,12 @@ class ProcessSelectDialog(QDialog):
         self.process_table.setSelectionMode(QAbstractItemView.SingleSelection)
         i = 0
         for p in processes:
-            self.process_table.setItem(i, 0, QTableWidgetItem(p[0]))
-            self.process_table.setItem(i, 1, QTableWidgetItem(p[1]))
+            process_name_item = QTableWidgetItem(p[0])
+            process_name_item.setFlags(process_name_item.flags() & ~(Qt.ItemIsEditable))
+            self.process_table.setItem(i, 0, process_name_item)
+            process_id_item = QTableWidgetItem(str(p[1]))
+            process_id_item.setFlags(process_id_item.flags() & ~(Qt.ItemIsEditable))
+            self.process_table.setItem(i, 1, process_id_item)
             i += 1
 
         hbox = QHBoxLayout()
@@ -50,11 +55,10 @@ class ProcessSelectDialog(QDialog):
         if not selectionModel.hasSelection():
             return None
         if len(selectionModel.selectedRows()) > 1:
-            print("should not be possible")
-            exit(1)
+            raise Exception("Supposedly impossible condition reached!")
         row = selectionModel.selectedRows()[0].row()
         return int(self.process_table.item(row, 1).data(0))
-        
+
 
     @classmethod
     def selectProcess(cls, processes):
@@ -63,54 +67,65 @@ class ProcessSelectDialog(QDialog):
             return psd.selectedProcess()
         return None
 
-filename, _ = QFileDialog.getOpenFileName(None, "Open file", ".", "CSV Files(*.csv)")
-if filename == "":
-    exit(0)
-    
-processes = set()
-input_file = open(filename, "r")
-reader = csv.reader(input_file)
-next(reader, None)
-for row in reader:
-    processes.add((row[0], row[1]))
-input_file.close()
+def main():
+    filename, _ = QFileDialog.getOpenFileName(None, "Open file", ".", "CSV Files(*.csv)")
+    if filename == "":
+        return
 
-selected_pid = ProcessSelectDialog.selectProcess(processes)
-if not selected_pid:
-    exit(0)
+    processes = set()
+    input_file = open(filename, "r")
+    reader = csv.reader(input_file)
+    next(reader, None)
+    for row in reader:
+        processes.add((row[0], int(row[1])))
+    input_file.close()
 
-input_file = open(filename, "r")
-reader = csv.reader(input_file)
-labels_for_pc = {}
-# skip header
-next(reader, None)
-for row in reader:
-    pid = int(row[1])
-    pc = int(row[2], 16)
-    label = int(row[3])
-    if pid != selected_pid:
-        continue
-    fn = idaapi.get_func(pc)
-    if not fn:
-        continue
-    fn_start = fn.startEA
-    fn_name = GetFunctionName(fn_start)
-    if "TAINTED" not in fn_name:
-        MakeName(fn_start, "TAINTED_" + fn_name)
-    SetColor(pc, CIC_FUNC, FUNC_COLOR)
-    SetColor(pc, CIC_ITEM, INST_COLOR)
-    if pc not in labels_for_pc:
-        labels_for_pc[pc] = set()
-    labels_for_pc[pc].add(label)
-input_file.close()
+    selected_pid = ProcessSelectDialog.selectProcess(processes)
+    if not selected_pid:
+        return
 
-for pc, labels in labels_for_pc.iteritems():
-    comment = Comment(pc)
-    if not comment:
-        comment = ""
-    label_portion = "taint labels = {}".format(list(labels))
-    if comment == "":
-        comment = label_portion
-    else:
-        comment += ", " + label_portion
-    MakeComm(pc, comment)
+    input_file = open(filename, "r")
+    reader = csv.reader(input_file)
+    labels_for_pc = {}
+    # skip header
+    next(reader, None)
+    for row in reader:
+        pid = int(row[1])
+        pc = int(row[2], 16)
+        label = int(row[3])
+        if pid != selected_pid:
+            continue
+        fn = idaapi.get_func(pc)
+        if not fn:
+            continue
+        fn_start = fn.startEA
+        fn_name = GetFunctionName(fn_start)
+        if "TAINTED" not in fn_name:
+            MakeName(fn_start, "TAINTED_" + fn_name)
+        SetColor(pc, CIC_FUNC, FUNC_COLOR)
+        SetColor(pc, CIC_ITEM, INST_COLOR)
+        if pc not in labels_for_pc:
+            labels_for_pc[pc] = set()
+        labels_for_pc[pc].add(label)
+    input_file.close()
+
+    for pc, labels in labels_for_pc.iteritems():
+        comment = Comment(pc)
+        if not comment:
+            comment = ""
+        label_portion = "taint labels = {}".format(list(labels))
+        if comment == "":
+            comment = label_portion
+        else:
+            comment += ", " + label_portion
+        MakeComm(pc, comment)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except ValueError as ve:
+        msg = "Failed to read IDA Taint CSV: %s" % (ve.message)
+        QMessageBox.critical(None, "Error", msg)
+    except Exception as e:
+        msg = "Unexpected error: %s" % (e.message)
+        QMessageBox.critical(None, "Error", msg)
