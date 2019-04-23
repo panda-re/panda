@@ -37,6 +37,7 @@ PANDAENDCOMMENT */
 
 #include "win2000x86intro/win2000x86intro_ext.h"
 #include "win7x86intro/win7x86intro_ext.h"
+#include "winxpx86intro/winxpx86intro_ext.h"
 
 #include "glib.h"
 
@@ -582,7 +583,7 @@ bool init_plugin(void *self) {
         get_kpcr = get_win7_kpcr;
         get_handle_object = get_win7_handle_object;
     } else if (0 == strcmp(panda_os_variant, "2000")) {
-        kthread_kproc_off=0x22c;
+        kthread_kproc_off = 0x22c; // Win 2K's KTHREAD doesn't have KProc?
         eproc_pid_off=0x09c;
         eproc_ppid_off=0x1c8;
         eproc_name_off=0x1fc;
@@ -599,6 +600,25 @@ bool init_plugin(void *self) {
         assert(init_win2000x86intro_api());
         get_kpcr = get_win2000_kpcr;
         get_handle_object = get_win2000_handle_object;
+    } else if (0 == strcmp(panda_os_variant, "xp")) {
+        printf("set XP offsets\n");
+        kthread_kproc_off = 0x044;
+        eproc_pid_off = 0x084;
+        eproc_ppid_off = 0x14c;
+        eproc_name_off = 0x174;
+        eproc_objtable_off = 0x0c4;
+        eproc_ppeb_off = 0x1b0;
+        obj_type_file = 28;
+        obj_type_key = 20;
+        obj_type_process = 5;
+        obj_type_offset = 0x8;
+        eproc_size = 0x1b; // why???
+        eproc_links_off = 0x088;
+        ntreadfile_esp_off = 0;
+        panda_require("winxpx86intro");
+        assert(init_winxpx86intro_api());
+        get_kpcr = get_winxp_kpcr;
+        get_handle_object = get_winxp_handle_object;
     } else {
         fprintf(stderr, "Plugin is not supported for this windows "
             "version (%s).\n", panda_os_variant);
