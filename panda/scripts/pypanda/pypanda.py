@@ -78,14 +78,20 @@ class Panda:
 		cargs = ffi.new("char **")
 		# start up panda!
 		nulls = ffi.new("char[]", b"")
-		cenvp =  ffi.new("char **",nulls)
-		len_cargs = ffi.cast("int", len(self.panda_args))
+		self.cenvp =  ffi.new("char **",nulls)
+		self.len_cargs = ffi.cast("int", len(self.panda_args))
+		self.init_run = False
+	
+	def init(self):
+		self.init_run = True
+		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
 		print("Panda args: [" + (" ".join(self.panda_args)) + "]")
-		self.libpanda.panda_init(len_cargs, self.panda_args_ffi, cenvp)
 
 	def run(self):
 		if debug:
 			progress ("Running")
+		if not self.init_run:
+			self.init()
 		self.libpanda.panda_run()
 
 	def begin_replay(self, replaypfx):
