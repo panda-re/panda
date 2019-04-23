@@ -28,6 +28,10 @@ void panda_callbacks_before_mem_write(CPUState *env, target_ulong pc, target_ulo
                                       uint32_t data_size, uint64_t result, void *ram_ptr);
 void panda_callbacks_after_mem_write(CPUState *env, target_ulong pc, target_ulong addr,
                                      uint32_t data_size, uint64_t val, void *ram_ptr);
+// cputlb.c
+void panda_callbacks_after_mmio_read(CPUState *env, target_ulong addr, int size, uint64_t val);
+void panda_callbacks_after_mmio_write(CPUState *env, target_ulong addr, int size, uint64_t val);
+
 // target-i386/misc_helper.c
 void panda_callbacks_cpuid(CPUState *env);
 // translate-all.c

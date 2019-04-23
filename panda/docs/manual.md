@@ -71,7 +71,7 @@
 ## Overview
 
 PANDA (Platform for Architecture-Neutral Dynamic Analysis) is a whole-system
-dynamic analysis engine based on QEMU 1.0.1. Its strengths lie in rapid reverse
+dynamic analysis engine currently based on QEMU 2.9.1. Its strengths lie in rapid reverse
 engineering of software. PANDA includes a system for recording and replaying
 execution, a framework for running LLVM analysis on executing code, and an
 easily extensible plugin architecture. Together, these basic tools let you
@@ -80,8 +80,10 @@ system level.
 
 ## Quickstart
 
-To build PANDA, use `panda_install.bash`, which installs all the dependencies
-and builds PANDA. Don't worry; it won't actually install PANDA to a system
+To build PANDA and it's dependencies, use the install script for your OS,
+`panda/scripts/install_*.sh`. See
+[our main README](https://github.com/panda-re/panda#building) for more detail.
+Don't worry; it won't actually install PANDA to a system
 directory, despite the name. If you already have the dependencies you can just
 run `qemu/build.sh`. Once it's built, you will find the QEMU binaries in
 `i386-softmmu/qemu-system-i386`, `x86_64-softmmu/qemu-system-x86_64`, and
@@ -135,7 +137,7 @@ You can also attach a GDB client to replay, allowing you to debug the guest syst
 
 In order to use PANDA, you will need to understand at least some things about
 the underlying emulator, QEMU.  In truth, the more you know about QEMU the
-better, but that it is a complicated beast
+better, but that it is a complicated beast.
 
 ### QEMU's Monitor
 
@@ -146,8 +148,8 @@ details on what you do with the monitor, consult the QEMU manual.
 The most common way of interacting with the monitor is just via `stdio` in the
 terminal from which you originally entered the commandline that started up
 PANDA.  To get this to work, just add the following to the end of your
-commandline: `--monitor stdio`.  There are also ways to connect to the monitor
-over a telnet port etc -- refer to ethe QEMU manual for details.
+commandline: `-monitor stdio`.  There are also ways to connect to the monitor
+over a telnet port etc - refer to the QEMU manual for details.
 
 Here are few monitor functions we commonly need with PANDA.
 
@@ -204,8 +206,9 @@ Here is how some of the plugins fit into that emulation sequence.
   executes, but only exists if `INSN_TRANSLATE` callback returned true.
 
 NOTE. Although it is a little out of date, the explanation of emulation in
-Fabrice Bellard's original USENIX paper on QEMU is quite a good read.  "QEMU, a
-Fast and Portable Dynamic Translator", USENIX 2005 Annual Technical Conference.
+Fabrice Bellard's original USENIX paper on QEMU is quite a good read.  ["QEMU, a
+Fast and Portable Dynamic Translator"](https://www.usenix.org/legacy/publications/library/proceedings/usenix05/tech/freenix/full_papers/bellard/bellard.pdf),
+USENIX 2005 Annual Technical Conference.
 
 NOTE: QEMU has an additional cute optimization called `chaining` that links up
 cached translated blocks of code in such a way that they emulation can
@@ -222,7 +225,7 @@ that the *actual* type for an emulated CPU is made more specific in the
 For instance, in `qemu/target-i386/cpu.h`, we find it redefined as `CPUX86State`,
 where we also find convenient definitions such as `EAX`, `EBX`, and `EIP`.
 Other information of interest such as hidden flags, segment registers, `idt`,
-and `gdt` are all available via `env.
+and `gdt` are all available via `env`.
 
 ### Useful PANDA functions
 
@@ -247,7 +250,7 @@ makes changes to the way code is translated.  For example, by using
 **WARNING**: failing to flush the TB before turning on something that alters
 code translation may cause QEMU to crash! This is because QEMU's interrupt
 handling mechanism relies on translation being deterministic (see the
-`search_pc` stuff in translate-all.c for details).
+`search_pc` stuff in `translate-all.c` for details).
 ```C
 void panda_disable_tb_chaining(void);
 void panda_enable_tb_chaining(void);
@@ -335,7 +338,7 @@ address `code` of `size` bytes.
 ### Introduction
 
 PANDA supports whole system deterministic record and replay in whole
-system mode on the i386, x86_64, and arm targets. We hope to add more
+system mode on the `i386`, `x86_64`, and `arm` targets. We hope to add more
 soon; for example, partial SPARC support exists but is not yet reliable.
 
 ### Background
@@ -548,13 +551,15 @@ Registers a callback with PANDA. The `type` parameter specifies what type of
 callback, and `cb` is used for the callback itself (`panda_cb` is a union of all
 possible callback signatures).
 ```C
-PANDA_CB_BEFORE_BLOCK_TRANSLATE,    // Before translating each basic block
-PANDA_CB_AFTER_BLOCK_TRANSLATE,     // After translating each basic block
+PANDA_CB_BEFORE_BLOCK_TRANSLATE,// Before translating each basic block
+PANDA_CB_AFTER_BLOCK_TRANSLATE, // After translating each basic block
 PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT,    // Before executing each basic block (with option to invalidate, may trigger retranslation)
-PANDA_CB_BEFORE_BLOCK_EXEC,         // Before executing each basic block
-PANDA_CB_AFTER_BLOCK_EXEC,          // After executing each basic block
-PANDA_CB_INSN_TRANSLATE,    // Before an instruction is translated
-PANDA_CB_INSN_EXEC,         // Before an instruction is executed
+PANDA_CB_BEFORE_BLOCK_EXEC,     // Before executing each basic block
+PANDA_CB_AFTER_BLOCK_EXEC,      // After executing each basic block
+PANDA_CB_INSN_TRANSLATE,        // Before an instruction is translated
+PANDA_CB_INSN_EXEC,             // Before an instruction is executed
+PANDA_CB_AFTER_INSN_TRANSLATE,  // After an insn is translated
+PANDA_CB_AFTER_INSN_EXEC,       // After an insn is executed
 PANDA_CB_VIRT_MEM_BEFORE_READ,  // Before read of virtual memory
 PANDA_CB_VIRT_MEM_BEFORE_WRITE, // Before write to virtual memory
 PANDA_CB_PHYS_MEM_BEFORE_READ,  // Before read of physical memory
@@ -563,21 +568,28 @@ PANDA_CB_VIRT_MEM_AFTER_READ,   // After read of virtual memory
 PANDA_CB_VIRT_MEM_AFTER_WRITE,  // After write to virtual memory
 PANDA_CB_PHYS_MEM_AFTER_READ,   // After read of physical memory
 PANDA_CB_PHYS_MEM_AFTER_WRITE,  // After write to physical memory
-PANDA_CB_HD_READ,           // Each HDD read
-PANDA_CB_HD_WRITE,          // Each HDD write
-PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
-PANDA_CB_MONITOR,           // Monitor callback
-PANDA_CB_CPU_RESTORE_STATE,  // In cpu_restore_state() (fault/exception)
-PANDA_CB_BEFORE_REPLAY_LOADVM,  // at start of replay, before loadvm
-PANDA_CB_ASID_CHANGED,          // after an ASID (address space identifier - aka PGD) write
-PANDA_CB_REPLAY_HD_TRANSFER,    // in replay, hd transfer
-PANDA_CB_REPLAY_NET_TRANSFER,   // in replay, transfers within network card (currently only E1000)
-PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw
-PANDA_CB_REPLAY_AFTER_CPU_PHYSICAL_MEM_RW_RAM,   // in replay, just after RAM case of cpu_physical_mem_rw
-PANDA_CB_REPLAY_HANDLE_PACKET,    // in replay, packet in / out
-PANDA_CB_AFTER_CPU_EXEC_ENTER,    // just after cpu_exec_enter is called
-PANDA_CB_BEFORE_CPU_EXEC_EXIT,    // just before cpu_exec_exit is called
-PANDA_CB_AFTER_MACHINE_INIT,     // Right after the machine is initialized, before any code runs
+PANDA_CB_MMIO_AFTER_READ,       // After each MMIO read
+PANDA_CB_MMIO_AFTER_WRITE,      // After each MMIO write
+PANDA_CB_HD_READ,               // Each HDD read
+PANDA_CB_HD_WRITE,              // Each HDD write
+PANDA_CB_GUEST_HYPERCALL,       // Hypercall from the guest (e.g. CPUID)
+PANDA_CB_MONITOR,               // Monitor callback
+PANDA_CB_CPU_RESTORE_STATE,     // In cpu_restore_state() (fault/exception)
+PANDA_CB_BEFORE_REPLAY_LOADVM,  // At start of replay, before loadvm
+PANDA_CB_ASID_CHANGED,          // After an ASID (address space identifier - aka PGD) write
+PANDA_CB_REPLAY_HD_TRANSFER,    // In replay, hd transfer
+PANDA_CB_REPLAY_NET_TRANSFER,   // In replay, transfers within network card (currently only E1000)
+PANDA_CB_REPLAY_SERIAL_RECEIVE, // In replay, right after data is pushed into the serial RX FIFO
+PANDA_CB_REPLAY_SERIAL_READ,    // In replay, right after a value is read from the serial RX FIFO.
+PANDA_CB_REPLAY_SERIAL_SEND,    // In replay, right after data is popped from the serial TX FIFO
+PANDA_CB_REPLAY_SERIAL_WRITE,   // In replay, right after data is pushed into the serial TX FIFO.
+PANDA_CB_REPLAY_BEFORE_DMA,     // In replay, just before RAM case of cpu_physical_mem_rw
+PANDA_CB_REPLAY_AFTER_DMA,      // In replay, just after RAM case of cpu_physical_mem_rw
+PANDA_CB_REPLAY_HANDLE_PACKET,  // In replay, packet in / out
+PANDA_CB_AFTER_CPU_EXEC_ENTER,  // Just after cpu_exec_enter is called
+PANDA_CB_BEFORE_CPU_EXEC_EXIT,  // Just before cpu_exec_exit is called
+PANDA_CB_AFTER_MACHINE_INIT,    // Right after the machine is initialized, before any code runs
+PANDA_CB_TOP_LOOP,              // At top of loop that manages emulation.  good place to take a snapshot
 ```
 For more information on each callback, see the "Callbacks" section.
 ```C
@@ -1035,7 +1047,7 @@ if (pandalog){
     std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
     ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_CALL);
     ple->mutable_llvmentry()->set_address(addr);
-    
+
     globalLog.write_entry(std::move(ple));
 }
 ```
@@ -1185,7 +1197,7 @@ PANDA does not enable you to continue the system after a replay.
 * So, what can I do with PANDA?
 
 You can use custom or prebuilt plugins to analyze a replay at the full OS level. See [plugins](#plugins) for examples.
- 
+
 * How do I trim my replay to include the executed parts of interest?
 
 That's what the [`scissors`](../plugins/scissors/USAGE.md) plugin is for!

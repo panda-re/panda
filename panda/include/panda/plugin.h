@@ -30,58 +30,61 @@ extern "C" {
 #endif
 
 typedef enum panda_cb_type {
-    PANDA_CB_BEFORE_BLOCK_TRANSLATE, // Before translating each basic block
-    PANDA_CB_AFTER_BLOCK_TRANSLATE,  // After translating each basic block
+    PANDA_CB_BEFORE_BLOCK_TRANSLATE,    // Before translating each basic block
+    PANDA_CB_AFTER_BLOCK_TRANSLATE,     // After translating each basic block
     PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, // Before executing each basic
                                                // block (with option to
                                                // invalidate, may trigger
                                                // retranslation)
-    PANDA_CB_BEFORE_BLOCK_EXEC, // Before executing each basic block
-    PANDA_CB_AFTER_BLOCK_EXEC,  // After executing each basic block
-    PANDA_CB_INSN_TRANSLATE,    // Before an insn is translated
-    PANDA_CB_INSN_EXEC,         // Before an insn is executed
+    PANDA_CB_BEFORE_BLOCK_EXEC,     // Before executing each basic block
+    PANDA_CB_AFTER_BLOCK_EXEC,      // After executing each basic block
+    PANDA_CB_INSN_TRANSLATE,        // Before an insn is translated
+    PANDA_CB_INSN_EXEC,             // Before an insn is executed
     PANDA_CB_AFTER_INSN_TRANSLATE,  // After an insn is translated
-    PANDA_CB_AFTER_INSN_EXEC,   // After an insn is executed
+    PANDA_CB_AFTER_INSN_EXEC,       // After an insn is executed
 
-    PANDA_CB_VIRT_MEM_BEFORE_READ,
-    PANDA_CB_VIRT_MEM_BEFORE_WRITE,
-    PANDA_CB_PHYS_MEM_BEFORE_READ,
-    PANDA_CB_PHYS_MEM_BEFORE_WRITE,
+    PANDA_CB_VIRT_MEM_BEFORE_READ,  // Before read of virtual memory
+    PANDA_CB_VIRT_MEM_BEFORE_WRITE, // Before write of virtual memory
+    PANDA_CB_PHYS_MEM_BEFORE_READ,  // Before read of physical memory
+    PANDA_CB_PHYS_MEM_BEFORE_WRITE, // Before write of physical memory
 
-    PANDA_CB_VIRT_MEM_AFTER_READ,
-    PANDA_CB_VIRT_MEM_AFTER_WRITE,
-    PANDA_CB_PHYS_MEM_AFTER_READ,
-    PANDA_CB_PHYS_MEM_AFTER_WRITE,
+    PANDA_CB_VIRT_MEM_AFTER_READ,   // After read of virtual memory
+    PANDA_CB_VIRT_MEM_AFTER_WRITE,  // After write of virtual memory
+    PANDA_CB_PHYS_MEM_AFTER_READ,   // After read of physical memory
+    PANDA_CB_PHYS_MEM_AFTER_WRITE,  // After write of physical memory
 
-    PANDA_CB_HD_READ,              // Each HDD read
-    PANDA_CB_HD_WRITE,             // Each HDD write
-    PANDA_CB_GUEST_HYPERCALL,      // Hypercall from the guest (e.g. CPUID)
-    PANDA_CB_MONITOR,              // Monitor callback
-    PANDA_CB_CPU_RESTORE_STATE,    // In cpu_restore_state() (fault/exception)
-    PANDA_CB_BEFORE_REPLAY_LOADVM, // at start of replay, before loadvm
-    PANDA_CB_ASID_CHANGED, // When CPU asid (address space identifier) changes
-    PANDA_CB_REPLAY_HD_TRANSFER,    // in replay, hd transfer
-    PANDA_CB_REPLAY_NET_TRANSFER,   // in replay, transfers within network card
+    PANDA_CB_MMIO_AFTER_READ,       // After each MMIO read
+    PANDA_CB_MMIO_AFTER_WRITE,      // After each MMIO write
+
+    PANDA_CB_HD_READ,               // Each HDD read
+    PANDA_CB_HD_WRITE,              // Each HDD write
+    PANDA_CB_GUEST_HYPERCALL,       // Hypercall from the guest (e.g. CPUID)
+    PANDA_CB_MONITOR,               // Monitor callback
+    PANDA_CB_CPU_RESTORE_STATE,     // In cpu_restore_state() (fault/exception)
+    PANDA_CB_BEFORE_REPLAY_LOADVM,  // at start of replay, before loadvm
+    PANDA_CB_ASID_CHANGED,          // When CPU asid (address space identifier) changes
+    PANDA_CB_REPLAY_HD_TRANSFER,    // In replay, hd transfer
+    PANDA_CB_REPLAY_NET_TRANSFER,   // In replay, transfers within network card
                                     // (currently only E1000)
-    PANDA_CB_REPLAY_SERIAL_RECEIVE, // in replay, right after data is pushed
+    PANDA_CB_REPLAY_SERIAL_RECEIVE, // In replay, right after data is pushed
                                     // into the serial RX FIFO
-    PANDA_CB_REPLAY_SERIAL_READ,  // in replay, right after a value is read from
-                                  // the serial RX FIFO.
-    PANDA_CB_REPLAY_SERIAL_SEND,  // in replay, right after data is popped from
-                                  // the serial TX FIFO
-    PANDA_CB_REPLAY_SERIAL_WRITE, // in replay, right after data is pushed into
-                                  // the serial TX FIFO.
-    PANDA_CB_REPLAY_BEFORE_DMA,   // in replay, just before RAM case of
-                                  // cpu_physical_mem_rw
-    PANDA_CB_REPLAY_AFTER_DMA,    // in replay, just after RAM case of
-                                  // cpu_physical_mem_rw
-    PANDA_CB_REPLAY_HANDLE_PACKET, // in replay, packet in / out
-    PANDA_CB_AFTER_CPU_EXEC_ENTER, // just after cpu_exec_enter is called
-    PANDA_CB_BEFORE_CPU_EXEC_EXIT, // just before cpu_exec_exit is called
-    PANDA_CB_AFTER_MACHINE_INIT,   // Right after the machine is initialized,
-                                   // before any code runs
+    PANDA_CB_REPLAY_SERIAL_READ,    // In replay, right after a value is read from
+                                    // the serial RX FIFO.
+    PANDA_CB_REPLAY_SERIAL_SEND,    // In replay, right after data is popped from
+                                    // the serial TX FIFO
+    PANDA_CB_REPLAY_SERIAL_WRITE,   // In replay, right after data is pushed into
+                                    // the serial TX FIFO.
+    PANDA_CB_REPLAY_BEFORE_DMA,     // In replay, just before RAM case of
+                                    // cpu_physical_mem_rw
+    PANDA_CB_REPLAY_AFTER_DMA,      // In replay, just after RAM case of
+                                    // cpu_physical_mem_rw
+    PANDA_CB_REPLAY_HANDLE_PACKET,  // In replay, packet in / out
+    PANDA_CB_AFTER_CPU_EXEC_ENTER,  // Just after cpu_exec_enter is called
+    PANDA_CB_BEFORE_CPU_EXEC_EXIT,  // Just before cpu_exec_exit is called
+    PANDA_CB_AFTER_MACHINE_INIT,    // Right after the machine is initialized,
+                                    // before any code runs
 
-    PANDA_CB_TOP_LOOP, // at top of loop that manages emulation.  good place to
+    PANDA_CB_TOP_LOOP, // At top of loop that manages emulation.  good place to
                        // take a snapshot
 
     PANDA_CB_LAST
@@ -242,7 +245,7 @@ typedef union panda_cb {
         false otherwise
 
        Notes:
-        See `insn_translate`, callbacks are registered via PANDA_CB_AFTER_INSN_EXEC 
+        See `insn_translate`, callbacks are registered via PANDA_CB_AFTER_INSN_EXEC
     */
     bool (*after_insn_translate)(CPUState *env, target_ulong pc);
 
@@ -447,6 +450,36 @@ typedef union panda_cb {
         unused
     */
     int (*phys_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+    /* Callback ID: PANDA_CB_MMIO_AFTER_READ
+
+       after_mmio_read: called after MMIO memory is read
+
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong addr: the (physical) address being read from
+        target_ulong size: the size of the read
+        uin64_t val: the value being read
+
+       Return value:
+        unused
+    */
+    int (*after_mmio_read)(CPUState *env, target_ulong addr, int size, uint64_t val);
+
+    /* Callback ID: PANDA_CB_MMIO_AFTER_WRITE
+
+       after_mmio_write: called after MMIO memory is written to
+
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong addr: the (physical) address being written to
+        target_ulong size: the size of the write
+        uin64_t val: the value being written
+
+       Return value:
+        unused
+    */
+    int (*after_mmio_write)(CPUState *env, target_ulong addr, int size, uint64_t val);
 
     /* Callback ID: PANDA_CB_CPU_RESTORE_STATE
 
