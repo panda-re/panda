@@ -1,5 +1,4 @@
-#ifndef __WINTROSPECTION_INT_FNS_H__
-#define __WINTROSPECTION_INT_FNS_H__
+#pragma once
 
 char *make_pagedstr(void);
 
@@ -53,15 +52,23 @@ PTR get_next_mod(CPUState *cpu, PTR mod);
 
 void fill_osiproc(CPUState *cpu, OsiProc *p, PTR eproc);
 
+void fill_osiprochandle(CPUState *cpu, OsiProcHandle *h, PTR eproc);
+
 void fill_osimod(CPUState *cpu, OsiModule *m, PTR mod, bool ignore_basename);
 
 void add_mod(CPUState *cpu, GArray *ms, PTR mod, bool ignore_basename);
 
-void on_get_current_process(CPUState *cpu, OsiProc **out_p);
+void on_get_current_process(CPUState *cpu, OsiProc **out);
+
+void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out);
 
 void on_get_processes(CPUState *cpu, GArray **out);
 
 void on_get_current_thread(CPUState *cpu, OsiThread **t);
+
+void on_get_process_pid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *pid);
+
+void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *ppid);
 
 // Getters for os-specific constants
 uint32_t get_ntreadfile_esp_off(void);
@@ -88,5 +95,3 @@ uint32_t handle_table_L2_entry(uint32_t table_vaddr, uint32_t L1_table, uint32_t
 
 uint32_t handle_table_L3_entry(uint32_t table_vaddr, uint32_t L2_table, uint32_t L3);
 
-
-#endif

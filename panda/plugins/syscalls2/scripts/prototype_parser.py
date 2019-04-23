@@ -71,11 +71,14 @@ def parse_signature_files(rootdir, arch, locations, normalize=False):
                     assert not multiline_signature
                     syscall = line_match.group('syscall')
                     signature = line_match.group('signature')
-                    if line.endswith(';'):
-                        ## one liner
+                    if line.endswith(')'):
+                        ## function definition
+                        signatures_parsed[syscall] = signature + ';'
+                    elif line.endswith(';'):
+                        ## function declaration - one liner
                         signatures_parsed[syscall] = signature
                     else:
-                        ## start multiline
+                        ## function declaration - start multiline
                         multiline_signature = True
                 elif multiline_signature and not line.endswith(';'):
                     # continue multiline

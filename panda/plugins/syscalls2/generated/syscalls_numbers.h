@@ -912,7 +912,7 @@ namespace syscalls2 {
 			const int sys_sysinfo = 116;
 			const int sys_ipc = 117;
 			const int sys_fsync = 118;
-			const int sigreturn = 119;
+			const int sys_sigreturn = 119;
 			const int sys_clone = 120;
 			const int sys_setdomainname = 121;
 			const int sys_newuname = 122;
@@ -959,7 +959,7 @@ namespace syscalls2 {
 			const int sys_setresgid16 = 170;
 			const int sys_getresgid16 = 171;
 			const int sys_prctl = 172;
-			const int sigreturn = 173;
+			const int sys_rt_sigreturn = 173;
 			const int sys_rt_sigaction = 174;
 			const int sys_rt_sigprocmask = 175;
 			const int sys_rt_sigpending = 176;

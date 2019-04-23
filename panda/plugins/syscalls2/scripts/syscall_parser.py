@@ -60,7 +60,7 @@ MAX_GENERIC_SYSCALL = 1023
 # Generated files will contain definitions for multiple architectures in guarded #ifdef blocks.
 GENERATED_FILES = [
     ('syscalls_ext_typedefs.tpl', '.h'),
-    ('syscall_numbers.tpl', '.h'),
+    ('syscalls_numbers.tpl', '.h'),
     ('syscall_ppp_register_enter.tpl', '.cpp'),
     ('syscall_ppp_register_return.tpl', '.cpp'),
     ('syscall_ppp_boilerplate_enter.tpl', '.cpp'),
@@ -388,7 +388,7 @@ if __name__ == '__main__':
 
         # Generate syscall info dynamic libraries.
         if args.generate_info:
-            j2tpl = j2env.get_template('syscall_info.tpl')
+            j2tpl = j2env.get_template('syscalls_info.tpl')
             with open(os.path.join(args.outdir, "%sdso_info_%s_%s.c" % (args.prefix, _os, _arch)), "wb+") as of:
                 logging.info("Writing %s", of.name)
                 of.write(j2tpl.render(target_context))

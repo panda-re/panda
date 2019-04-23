@@ -35,6 +35,7 @@ void uninit_plugin(void *);
 void on_get_processes(CPUState *env, GArray **out);
 void on_get_process_handles(CPUState *env, GArray **out);
 void on_get_current_process(CPUState *env, OsiProc **out_p);
+void on_get_current_process_handle(CPUState *env, OsiProcHandle **out_p);
 void on_get_process(CPUState *, const OsiProcHandle *, OsiProc **);
 void on_get_libraries(CPUState *env, OsiProc *p, GArray **out);
 void on_get_current_thread(CPUState *env, OsiThread *t);
@@ -199,7 +200,7 @@ error:
  */
 static void fill_osiprochandle(CPUState *env, OsiProcHandle *h,
 						   target_ptr_t task_addr) {
-	h->taskd = task_addr;
+	h->taskd = kernel_profile->get_group_leader(env, task_addr);
 	h->asid = panda_virt_to_phys(env, get_pgd(env, task_addr));
 }
 
@@ -209,7 +210,7 @@ static void fill_osiprochandle(CPUState *env, OsiProcHandle *h,
 void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr) {
 	memset(p, 0, sizeof(OsiProc));
 
-	p->taskd = task_addr;
+	p->taskd = kernel_profile->get_group_leader(env, task_addr);
 	p->name = get_name(env, task_addr, p->name);
 	p->pid = get_tgid(env, task_addr);
 	p->ppid = get_real_parent_pid(env, task_addr);
@@ -289,9 +290,6 @@ void on_get_processes(CPUState *env, GArray **out) {
  * @brief PPP callback to retrieve process handles from the running OS.
  */
 void on_get_process_handles(CPUState *env, GArray **out) {
-	// use a dummy free functioon instead of free_osiprochandle_contents()
-	//decltype(free_osiprochandle_contents) *dummy_free = NULL;
-
 	// instantiate and call function from get_process_info template
 	get_process_info<>(env, out, fill_osiprochandle, free_osiprochandle_contents);
 }
@@ -305,6 +303,20 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
 	if (ts) {
 		p = (OsiProc *)g_malloc(sizeof(OsiProc));
 		fill_osiproc(env, p, ts);
+	}
+	*out = p;
+}
+
+/**
+ * @brief PPP callback to the handle of the currently running process.
+ */
+void on_get_current_process_handle(CPUState *env, OsiProcHandle **out) {
+	OsiProcHandle *p = NULL;
+	target_ptr_t kernel_esp = panda_current_sp(env);
+	target_ptr_t ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+	if (ts) {
+		p = (OsiProcHandle *)g_malloc(sizeof(OsiProcHandle));
+		fill_osiprochandle(env, p, ts);
 	}
 	*out = p;
 }
@@ -371,6 +383,28 @@ void on_get_current_thread(CPUState *env, OsiThread **out) {
 		fill_osithread(env, t, ts);
 	}
 	*out = t;
+}
+
+/**
+ * @brief PPP callback to retrieve the process pid from a handle.
+ */
+void on_get_process_pid(CPUState *env, const OsiProcHandle *h, target_pid_t *pid) {
+	if (h->taskd == NULL || h->taskd == (target_ptr_t)-1) {
+		*pid = (target_pid_t)-1;
+	} else {
+		*pid = get_tgid(env, h->taskd);
+	}
+}
+
+/**
+ * @brief PPP callback to retrieve the process parent pid from a handle.
+ */
+void on_get_process_ppid(CPUState *env, const OsiProcHandle *h, target_pid_t *ppid) {
+	if (h->taskd == NULL || h->taskd == (target_ptr_t)-1) {
+		*ppid = (target_pid_t)-1;
+	} else {
+		*ppid = get_real_parent_pid(env, h->taskd);
+	}
 }
 
 /* ******************************************************************
@@ -506,9 +540,12 @@ bool init_plugin(void *self) {
 	PPP_REG_CB("osi", on_get_processes, on_get_processes);
 	PPP_REG_CB("osi", on_get_process_handles, on_get_process_handles);
 	PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
+	PPP_REG_CB("osi", on_get_current_process_handle, on_get_current_process_handle);
 	PPP_REG_CB("osi", on_get_process, on_get_process);
 	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
 	PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
+	PPP_REG_CB("osi", on_get_process_pid, on_get_process_pid);
+	PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);
 	LOG_INFO(PLUGIN_NAME " initialization complete.");
 	return true;
 #else

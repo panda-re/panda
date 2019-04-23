@@ -1,4 +1,3 @@
-
 //  NOTE.  This file is a manually generated spec for the API to this plugin.
 //  It is intended to be consumed by apigen.py.  Actually pycparser is what
 //  consumes it.
@@ -12,7 +11,7 @@
 //  Please always put the actual prototypes in a separate file, XXX_int_fns.h.
 //  It is fine to #include that file.
 
-//  Also, you CANT put and typedefs or #includes in XXX_int_fns.h as it will bollocks
+//  Also, you CANT put and typedefs or #includes in XXX_int_fns.h as it bollocks
 //  pycparser.  Unless they are ones that are easy to find like stdint.h.
 //  Just the prototypes, please.  
 
@@ -22,6 +21,7 @@ typedef void OsiProcHandle;
 typedef void OsiThread;
 typedef void OsiProc;
 typedef void GArray;
+typedef void target_pid_t;
 
 #include "osi_int_fns.h"
 

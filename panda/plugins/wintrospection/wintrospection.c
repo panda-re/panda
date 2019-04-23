@@ -142,14 +142,25 @@ void add_mod(CPUState *cpu, GArray *ms, PTR mod, bool ignore_basename) {
     g_array_append_val(ms, m);
 }
 
-void on_get_current_process(CPUState *cpu, OsiProc **out_p) {
+void on_get_current_process(CPUState *cpu, OsiProc **out) {
     PTR eproc = get_current_proc(cpu);
     if(eproc) {
         OsiProc *p = (OsiProc *)g_malloc(sizeof(OsiProc));
         fill_osiproc(cpu, p, eproc);
-        *out_p = p;
+        *out = p;
     } else {
-        *out_p = NULL;
+        *out = NULL;
+    }
+}
+
+void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out) {
+    PTR eproc = get_current_proc(cpu);
+    if(eproc) {
+        OsiProcHandle *h = (OsiProcHandle *)g_malloc(sizeof(OsiProcHandle));
+        fill_osiprochandle(cpu, h, eproc);
+        *out = h;
+    } else {
+        *out = NULL;
     }
 }
 
@@ -219,6 +230,29 @@ void on_get_current_thread(CPUState *cpu, OsiThread **out) {
 error:
     *out = NULL;
 }
+
+/**
+ * @brief PPP callback to retrieve the process pid from a handle.
+ */
+void on_get_process_pid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *pid) {
+	if (h->taskd == (intptr_t)(NULL) || h->taskd == (target_ptr_t)-1) {
+		*pid = (target_pid_t)-1;
+	} else {
+		*pid = get_pid(cpu, h->taskd);
+	}
+}
+
+/**
+ * @brief PPP callback to retrieve the process parent pid from a handle.
+ */
+void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *ppid) {
+	if (h->taskd == (intptr_t)(NULL) || h->taskd == (target_ptr_t)-1) {
+		*ppid = (target_pid_t)-1;
+	} else {
+		*ppid = get_ppid(cpu, h->taskd);
+	}
+}
+
 uint32_t get_ntreadfile_esp_off(void) { return ntreadfile_esp_off; }
 
 uint32_t get_kthread_kproc_off(void) { return kthread_kproc_off; }
@@ -506,6 +540,11 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, PTR eproc) {
     p->ppid = get_ppid(cpu, eproc);
 }
 
+void fill_osiprochandle(CPUState *cpu, OsiProcHandle *h, PTR eproc) {
+    h->taskd = eproc;
+    h->asid = get_dtb(cpu, eproc);
+}
+
 void fill_osimod(CPUState *cpu, OsiModule *m, PTR mod, bool ignore_basename) {
     m->modd = mod;
     m->file = (char *)get_mod_filename(cpu, mod);
@@ -566,8 +605,11 @@ bool init_plugin(void *self) {
     }
 
     PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
+    PPP_REG_CB("osi", on_get_current_process_handle, on_get_current_process_handle);
     PPP_REG_CB("osi", on_get_processes, on_get_processes);
     PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
+    PPP_REG_CB("osi", on_get_process_pid, on_get_process_pid);
+    PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);
 
     return true;
 #else

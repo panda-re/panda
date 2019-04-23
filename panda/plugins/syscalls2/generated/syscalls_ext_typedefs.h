@@ -53,8 +53,6 @@ typedef void (*on_ARM_usr32_mode_enter_t)(CPUState* cpu, target_ulong pc);
 typedef void (*on_ARM_usr32_mode_return_t)(CPUState* cpu, target_ulong pc);
 typedef void (*on_do_mmap2_enter_t)(CPUState* cpu, target_ulong pc, uint32_t addr, uint32_t len, uint32_t prot, uint32_t flags, uint32_t fd, uint32_t pgoff);
 typedef void (*on_do_mmap2_return_t)(CPUState* cpu, target_ulong pc, uint32_t addr, uint32_t len, uint32_t prot, uint32_t flags, uint32_t fd, uint32_t pgoff);
-typedef void (*on_sigreturn_enter_t)(CPUState* cpu, target_ulong pc);
-typedef void (*on_sigreturn_return_t)(CPUState* cpu, target_ulong pc);
 typedef void (*on_sys_accept_enter_t)(CPUState* cpu, target_ulong pc, int32_t arg0, uint32_t arg1, uint32_t arg2);
 typedef void (*on_sys_accept_return_t)(CPUState* cpu, target_ulong pc, int32_t arg0, uint32_t arg1, uint32_t arg2);
 typedef void (*on_sys_accept4_enter_t)(CPUState* cpu, target_ulong pc, int32_t arg0, uint32_t arg1, uint32_t arg2, int32_t arg3);
@@ -503,6 +501,8 @@ typedef void (*on_sys_rt_sigprocmask_enter_t)(CPUState* cpu, target_ulong pc, in
 typedef void (*on_sys_rt_sigprocmask_return_t)(CPUState* cpu, target_ulong pc, int32_t how, uint32_t set, uint32_t oset, uint32_t sigsetsize);
 typedef void (*on_sys_rt_sigqueueinfo_enter_t)(CPUState* cpu, target_ulong pc, int32_t pid, int32_t sig, uint32_t uinfo);
 typedef void (*on_sys_rt_sigqueueinfo_return_t)(CPUState* cpu, target_ulong pc, int32_t pid, int32_t sig, uint32_t uinfo);
+typedef void (*on_sys_rt_sigreturn_enter_t)(CPUState* cpu, target_ulong pc, uint32_t regs);
+typedef void (*on_sys_rt_sigreturn_return_t)(CPUState* cpu, target_ulong pc, uint32_t regs);
 typedef void (*on_sys_rt_sigsuspend_enter_t)(CPUState* cpu, target_ulong pc, uint32_t unewset, uint32_t sigsetsize);
 typedef void (*on_sys_rt_sigsuspend_return_t)(CPUState* cpu, target_ulong pc, uint32_t unewset, uint32_t sigsetsize);
 typedef void (*on_sys_rt_sigtimedwait_enter_t)(CPUState* cpu, target_ulong pc, uint32_t uthese, uint32_t uinfo, uint32_t uts, uint32_t sigsetsize);
@@ -643,6 +643,8 @@ typedef void (*on_sys_sigpending_enter_t)(CPUState* cpu, target_ulong pc, uint32
 typedef void (*on_sys_sigpending_return_t)(CPUState* cpu, target_ulong pc, uint32_t set);
 typedef void (*on_sys_sigprocmask_enter_t)(CPUState* cpu, target_ulong pc, int32_t how, uint32_t set, uint32_t oset);
 typedef void (*on_sys_sigprocmask_return_t)(CPUState* cpu, target_ulong pc, int32_t how, uint32_t set, uint32_t oset);
+typedef void (*on_sys_sigreturn_enter_t)(CPUState* cpu, target_ulong pc, uint32_t regs);
+typedef void (*on_sys_sigreturn_return_t)(CPUState* cpu, target_ulong pc, uint32_t regs);
 typedef void (*on_sys_sigsuspend_enter_t)(CPUState* cpu, target_ulong pc, int32_t unused1, int32_t unused2, uint32_t mask);
 typedef void (*on_sys_sigsuspend_return_t)(CPUState* cpu, target_ulong pc, int32_t unused1, int32_t unused2, uint32_t mask);
 typedef void (*on_sys_socket_enter_t)(CPUState* cpu, target_ulong pc, int32_t arg0, int32_t arg1, int32_t arg2);

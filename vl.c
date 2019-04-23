@@ -4187,7 +4187,7 @@ int main(int argc, char **argv, char **envp)
 #if defined(CONFIG_LLVM)
             case QEMU_OPTION_execute_llvm:
                 if (!has_llvm_engine) {
-                    fprintf(stderr, "Cannot execute un LLVM mode (S2E mode present or LLVM mode missing)\n");
+                    fprintf(stderr, "Cannot execute in LLVM mode (S2E mode present or LLVM mode missing)\n");
                     exit(1);
                 }
                 generate_llvm = 1;
@@ -4195,7 +4195,7 @@ int main(int argc, char **argv, char **envp)
                 break;
             case QEMU_OPTION_generate_llvm:
                 if (!has_llvm_engine) {
-                    fprintf(stderr, "Cannot execute un LLVM mode (S2E mode present or LLVM mode missing)\n");
+                    fprintf(stderr, "Cannot execute in LLVM mode (S2E mode present or LLVM mode missing)\n");
                     exit(1);
                 }
                 generate_llvm = 1;

@@ -29,39 +29,31 @@ PANDAENDCOMMENT */
 #include "osi_types.h"
 #include "osi_int_fns.h"
 #include "os_intro.h"
-#ifdef OSI_PROC_EVENTS
-#include "osi_proc_events.h"
-#endif
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-#ifdef OSI_PROC_EVENTS
-int asid_changed(CPUState *, target_ulong, target_ulong);
-#endif
 
 PPP_PROT_REG_CB(on_get_processes)
 PPP_PROT_REG_CB(on_get_process_handles)
 PPP_PROT_REG_CB(on_get_current_process)
+PPP_PROT_REG_CB(on_get_current_process_handle)
 PPP_PROT_REG_CB(on_get_process)
 PPP_PROT_REG_CB(on_get_modules)
 PPP_PROT_REG_CB(on_get_libraries)
 PPP_PROT_REG_CB(on_get_current_thread)
-#ifdef OSI_PROC_EVENTS
-PPP_PROT_REG_CB(on_process_start)
-PPP_PROT_REG_CB(on_process_end)
-#endif
+PPP_PROT_REG_CB(on_get_process_pid)
+PPP_PROT_REG_CB(on_get_process_ppid)
 
 PPP_CB_BOILERPLATE(on_get_processes)
 PPP_CB_BOILERPLATE(on_get_process_handles)
 PPP_CB_BOILERPLATE(on_get_current_process)
+PPP_CB_BOILERPLATE(on_get_current_process_handle)
 PPP_CB_BOILERPLATE(on_get_process)
 PPP_CB_BOILERPLATE(on_get_modules)
 PPP_CB_BOILERPLATE(on_get_libraries)
 PPP_CB_BOILERPLATE(on_get_current_thread)
-#ifdef OSI_PROC_EVENTS
-PPP_CB_BOILERPLATE(on_process_start)
-PPP_CB_BOILERPLATE(on_process_end)
-#endif
+PPP_CB_BOILERPLATE(on_get_process_pid)
+PPP_CB_BOILERPLATE(on_get_process_ppid)
 
 // The copious use of pointers to pointers in this file is due to
 // the fact that PPP doesn't support return values (since it assumes
@@ -83,6 +75,12 @@ OsiProc *get_current_process(CPUState *cpu) {
     OsiProc *p = NULL;
     PPP_RUN_CB(on_get_current_process, cpu, &p);
     return p;
+}
+
+OsiProcHandle *get_current_process_handle(CPUState *cpu) {
+    OsiProcHandle *h = NULL;
+    PPP_RUN_CB(on_get_current_process_handle, cpu, &h);
+    return h;
 }
 
 OsiProc *get_process(CPUState *cpu, const OsiProcHandle *h) {
@@ -109,46 +107,21 @@ OsiThread *get_current_thread(CPUState *cpu) {
     return thread;
 }
 
-#ifdef OSI_PROC_EVENTS
-int asid_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
-    uint32_t i;
-    OsiProcs *ps, *in, *out;
-    ps = in = out = NULL;
-
-    /* some callback has to be registered for retrieving processes */
-    assert(PPP_CHECK_CB(on_get_processes) != 0);
-
-    /* update process state */
-    ps = get_processes(cpu);
-    procstate_update(ps, &in, &out);
-
-    /* invoke callbacks for finished processes */
-    if (out != NULL) {
-        for (i=0; i<out->num; i++) {
-            PPP_RUN_CB(on_process_end, cpu, &out->proc[i]);
-        }
-        //free_osiprocs(out);
-    }
-
-    /* invoke callbacks for new processes */
-    if (in != NULL) {
-        for (i=0; i<in->num; i++) {
-            PPP_RUN_CB(on_process_start, cpu, &in->proc[i]);
-        }
-        //free_osiprocs(in);
-    }
-
-    return 0;
+target_pid_t get_process_pid(CPUState *cpu, const OsiProcHandle *h) {
+    target_pid_t pid;
+    PPP_RUN_CB(on_get_process_pid, cpu, h, &pid);
+    return pid;
 }
-#endif
+
+target_pid_t get_process_ppid(CPUState *cpu, const OsiProcHandle *h) {
+    target_pid_t ppid;
+    PPP_RUN_CB(on_get_process_ppid, cpu, h, &ppid);
+    return ppid;
+}
 
 extern const char *qemu_file;
 
 bool init_plugin(void *self) {
-#ifdef OSI_PROC_EVENTS
-    panda_cb pcb = { .asid_changed = asid_changed };
-    panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
-#endif
     // No os supplied on command line? E.g. -os linux-32-ubuntu:4.4.0-130-generic
     assert (!(panda_os_familyno == OS_UNKNOWN));
 

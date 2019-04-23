@@ -1,7 +1,4 @@
-
-#ifndef __WINTROSPECTION_H__
-#define __WINTROSPECTION_H__
-
+#pragma once
 
 typedef struct handle_object_struct {
     uint8_t objType;
@@ -32,6 +29,4 @@ typedef struct {
 #define TABLE_MASK ~LEVEL_MASK
 #define ADDR_SIZE 4
 #define HANDLE_TABLE_ENTRY_SIZE 8
-
-#endif
 
