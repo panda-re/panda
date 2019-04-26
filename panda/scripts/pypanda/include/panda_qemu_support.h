@@ -918,6 +918,9 @@ struct Notifier
 
 typedef struct ARMCPU ARMCPU;
 
+struct CPUTailQ { struct CPUState *tqh_first; struct CPUState * *tqh_last;} cpus;
+
+
 typedef struct {
     Notifier notifier; /* actual notifier */
     ARMCPU *cpu; /* handle to the first cpu object */
@@ -999,6 +1002,9 @@ struct arm_boot_info {
 
     arm_endianness endianness;
 };
+
+
+void arm_load_kernel(ARMCPU *cpu, struct arm_boot_info *info);
 
 
 typedef struct MemMapEntry {

@@ -286,6 +286,9 @@ class Panda:
 	def create_virtio_devices(self, vbi, pic):
 		return self.libpanda.create_virtio_devices(vbi, pic)
 
+	def arm_load_kernel(self, cpu, bootinfo):
+		return self.libpanda.arm_load_kernel(cpu, bootinfo)
+
 	def error_report(self, s):
 		return self.libpanda.error_report(s)
 

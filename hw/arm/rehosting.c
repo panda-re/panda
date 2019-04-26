@@ -494,6 +494,12 @@ void create_virtio_devices(RehostingBoardInfo *vbi, qemu_irq *pic)
     }
 }
 
+static void mach_rehosting_init(MachineState *machine){
+    panda_callbacks_during_machine_init(machine);
+}
+
+
+/*
 static void mach_rehosting_init(MachineState *machine)
 {
     
@@ -571,7 +577,7 @@ static void mach_rehosting_init(MachineState *machine)
         if (vbi->using_psci) {
             RH_DBG("Using PSCI.");
             object_property_set_int(cpuobj, QEMU_PSCI_CONDUIT_HVC, "psci-conduit", &error_abort);
-            /* Secondary CPUs start in PSCI powered-down state */
+             Secondary CPUs start in PSCI powered-down state 
             if (n > 0) {
                 object_property_set_bool(cpuobj, true, "start-powered-off", &error_abort);
             }
@@ -631,9 +637,9 @@ static void mach_rehosting_init(MachineState *machine)
     }
 
     // VIRTIO devices
-    /* Create mmio transports, so the user can create virtio backends
+     Create mmio transports, so the user can create virtio backends
      * (which will be automatically plugged in to the transports). If
-     * no backend is created the transport will just sit harmlessly idle. */
+     * no backend is created the transport will just sit harmlessly idle. 
     if (vbi->dev_mem_map[VIRT_MMIO].base) {
         RH_DBG("Adding VIRT_MMIO @ 0x%08lx", vbi->dev_mem_map[VIRT_MMIO].base);
         create_virtio_devices(vbi, s->spi);
@@ -656,7 +662,7 @@ static void mach_rehosting_init(MachineState *machine)
     vbi->bootinfo.firmware_loaded = firmware_loaded;
 
     arm_load_kernel(ARM_CPU(first_cpu), &vbi->bootinfo);
-}
+}*/
 
 static void rehosting_machine_class_init(MachineClass *mc)
 {

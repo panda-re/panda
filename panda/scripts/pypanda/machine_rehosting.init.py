@@ -16,7 +16,11 @@ def add_c_string(s):
 		c_dict[s] = n
 	return c_dict[s]
 
-
+def add_c_structure(obj, s):
+	if s not in c_dict:
+		n = ffi.new(obj, s)
+		c_dict[s] = n
+	return c_dict[s]
 
 @panda.callback.init
 def init(handle):
@@ -42,6 +46,8 @@ def during_machine_init(machinestate):
 	
 	#instead of RH_DBG im using python print statements
 
+	#didnt know how to handle ARMCPU(first_cpu)
+
 	NUM_IRQS = 256
 	GIC_NR_SGIS = 16
 	REHOSTING_MAX_CPUS = 4
@@ -53,13 +59,19 @@ def during_machine_init(machinestate):
 	
 	s_mem = panda.g_malloc0(ffi.sizeof("machine_irqs"))
 	s = ffi.cast("machine_irqs*", s_mem)
+	c_dict['s'] = s
+
 	sysmem = panda.get_system_memory()
+
 	gic_version = 2
 	
-	vbi_mem =panda.g_malloc0(ffi.sizeof("RehostingBoardInfo")) 
+	vbi_mem = panda.g_malloc0(ffi.sizeof("RehostingBoardInfo")) 
 	vbi = ffi.cast("RehostingBoardInfo*", vbi_mem)
-	
+	c_dict['vbi'] = vbi
+
 	ram = ffi.new("MemoryRegion*")
+	c_dict['ram_mr'] = ram
+	
 	firmware_loaded = (panda.libpanda.bios_name != ffi.NULL) or (panda.drive_get(panda.libpanda.IF_PFLASH,0,0) != ffi.NULL)
 	
 	vbi.cpu_model = machinestate.cpu_model
@@ -150,16 +162,35 @@ def during_machine_init(machinestate):
 		print("Adding GICv%d @ 0x%d8lx" % (gic_version, vbi.dev_mem_map[panda.libpanda.GIC_DIST].base))
 		panda.create_external_gic(vbi, s, gic_version, False)
 	
-	print(vbi)
 
 	if vbi.dev_mem_map[panda.libpanda.VIRT_MMIO].base:
 		print("Adding VIRT_MMIO @ 0x%d8lx" % vbi.dev_mem_map[panda.libpanda.VIRT_MMIO].base)
 		panda.create_virtio_devices(vbi, s.spi)
 
+
+	print("KERNEL_CMD: %s" % ffi.string(machinestate.kernel_cmdline))
+	print("BOARD_ID: %d" % machinestate.board_id)
+	
+	vbi.bootinfo.ram_size = machinestate.ram_size
+	vbi.bootinfo.kernel_filename = machinestate.kernel_filename
+	vbi.bootinfo.kernel_cmdline = machinestate.kernel_cmdline
+	vbi.bootinfo.initrd_filename = machinestate.initrd_filename
+	vbi.bootinfo.nb_cpus = panda.libpanda.smp_cpus
+	vbi.bootinfo.board_id = machinestate.board_id
+
+	vbi.bootinfo.is_linux = True
+	vbi.bootinfo.loader_start = vbi.dev_mem_map[panda.libpanda.MEM].base
+	vbi.bootinfo.firmware_loaded = firmware_loaded
+
+	arm_cpu = ffi.cast("ARMCPU*", panda.libpanda.cpus.tqh_first)
+
+	panda.arm_load_kernel(arm_cpu, ffi.addressof(vbi.bootinfo))
+	
 	print("during_machine_init done")
 	
+	
+	
 
-	pdb.set_trace()
 	
         
 
