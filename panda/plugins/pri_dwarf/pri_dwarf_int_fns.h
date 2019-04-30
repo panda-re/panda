@@ -9,5 +9,7 @@ void dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t, Dwar
 // to create this type of function for a custom var data type
 const char *dwarf_type_to_string(DwarfVarType *var_ty);
 
+target_ulong get_cur_fp(CPUState *env, target_ulong pc);
+
 #endif
 /* vim:set tabstop=4 softabstop=4 noexpandtab */
