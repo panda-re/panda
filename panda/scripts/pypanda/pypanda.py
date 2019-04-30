@@ -81,7 +81,8 @@ class Panda:
 		self.cenvp =  ffi.new("char **",nulls)
 		self.len_cargs = ffi.cast("int", len(self.panda_args))
 		self.init_run = False
-	
+		self.pcb_list = {}
+
 	def init(self):
 		self.init_run = True
 		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
@@ -124,11 +125,31 @@ class Panda:
 		cb = callback_dictionary[callback]
 		pcb = ffi.new("panda_cb *", {cb.name:function})
 		self.libpanda.panda_register_callback_helper(handle, cb.number, pcb)
+		self.pcb_list[callback] = (function,pcb)
 		if "block" in cb.name:
 			self.disable_tb_chaining()
 
 		if debug:
 			progress("registered callback for type: %s" % cb.name)
+
+	def enable_callback(self, handle, callback):
+		if self.pcb_list[callback]:
+			function,pcb = self.pcb_list[callback]
+			cb = callback_dictionary[callback]
+			progress("enabled callback %s" % cb.name)
+			self.libpanda.panda_enable_callback_helper(handle, cb.number, pcb)
+		else:
+			progress("ERROR: plugin not registered");
+
+	def disable_callback(self, handle, callback):
+		if self.pcb_list[callback]:
+			function,pcb = self.pcb_list[callback]
+			cb = callback_dictionary[callback]
+			progress("disabled callback %s" % cb.name)
+			self.libpanda.panda_disable_callback_helper(handle, cb.number, pcb)
+		else:
+			progress("ERROR: plugin not registered");
+
 
 	def unload_plugin(self, handle):
 		self.libpanda.panda_unload_plugin(handle)
@@ -140,10 +161,10 @@ class Panda:
 		charptr = pyp.new("char[]", bytes(plugin,"utf-8"))
 		self.libpanda.panda_require(charptr)
 
-	def panda_enable_plugin(self, handle):
+	def enable_plugin(self, handle):
 		self.libpanda.panda_enable_plugin(handle)
 
-	def panda_disable_plugin(self, handle):
+	def disable_plugin(self, handle):
 		self.libpanda.panda_disable_plugin(handle)
 
 	def enable_memcb(self):

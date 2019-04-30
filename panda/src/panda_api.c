@@ -11,6 +11,8 @@ int rr_get_guest_instr_count_external(void);
 void qemu_rr_quit_timers(void);
 //void qemu_cpu_kick(CPUState *cpu);
 void panda_register_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
+void panda_enable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
+void panda_disable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 target_ulong panda_current_sp_external(CPUState *cpu);
 bool panda_in_kernel_external(CPUState *cpu);
 
@@ -48,6 +50,18 @@ void panda_register_callback_helper(void *plugin, panda_cb_type type, panda_cb* 
 	panda_cb cb_copy;
 	memcpy(&cb_copy,cb, sizeof(panda_cb));
 	panda_register_callback(plugin, type, cb_copy);
+}
+
+void panda_enable_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb) {
+	panda_cb cb_copy;
+	memcpy(&cb_copy,cb, sizeof(panda_cb));
+	panda_enable_callback(plugin, type, cb_copy);
+}
+
+void panda_disable_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb) {
+	panda_cb cb_copy;
+	memcpy(&cb_copy,cb, sizeof(panda_cb));
+	panda_disable_callback(plugin, type, cb_copy);
 }
 
 // initiate replay
