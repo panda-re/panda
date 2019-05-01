@@ -253,8 +253,8 @@ void panda_callbacks_after_mem_write(CPUState *env, target_ulong pc,
 void panda_callbacks_after_machine_init(void) {
     panda_cb_list *plist;
 
-    printf ("entering panda_callbacks_after_machine_init:  panda_cbs[PANDA_CB_AFTER_MACHINE_INIT=%d] = %" PRIx64 "\n", 
-            PANDA_CB_AFTER_MACHINE_INIT, (uint64_t) panda_cbs[PANDA_CB_AFTER_MACHINE_INIT]);
+    //printf ("entering panda_callbacks_after_machine_init:  panda_cbs[PANDA_CB_AFTER_MACHINE_INIT=%d] = %" PRIx64 "\n", 
+//            PANDA_CB_AFTER_MACHINE_INIT, (uint64_t) panda_cbs[PANDA_CB_AFTER_MACHINE_INIT]);
 
     for(plist = panda_cbs[PANDA_CB_AFTER_MACHINE_INIT]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
@@ -262,21 +262,13 @@ void panda_callbacks_after_machine_init(void) {
     }
 }
 
-
-//kazi's callback
 void panda_callbacks_during_machine_init(MachineState *machine) {
     panda_cb_list *plist;
-	
-    printf ("entering panda_callbacks_during_machine_init:  panda_cbs[PANDA_CB_DURING_MACHINE_INIT=%d] = %" PRIx64 "\n", 
-            PANDA_CB_DURING_MACHINE_INIT, (uint64_t) panda_cbs[PANDA_CB_DURING_MACHINE_INIT]);
-
     for(plist = panda_cbs[PANDA_CB_DURING_MACHINE_INIT]; plist != NULL;
-        plist = panda_cb_list_next(plist)) {
-        plist->entry.during_machine_init(machine);
+	plist = panda_cb_list_next(plist)) {
+	plist->entry.during_machine_init(machine);
     }
-
 }
-
 
 void panda_callbacks_top_loop(void) {
     panda_cb_list *plist;
@@ -285,7 +277,6 @@ void panda_callbacks_top_loop(void) {
         plist->entry.top_loop(first_cpu);
     }
 }
-
 
 // target-i386/misc_helpers.c
 void panda_callbacks_cpuid(CPUState *env) {

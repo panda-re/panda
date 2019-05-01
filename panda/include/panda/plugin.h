@@ -77,10 +77,11 @@ typedef enum panda_cb_type {
                                   // cpu_physical_mem_rw
     PANDA_CB_REPLAY_HANDLE_PACKET, // in replay, packet in / out
     PANDA_CB_AFTER_MACHINE_INIT,   // Right after the machine is initialized,
+                                   // before any code runs
 
     PANDA_CB_TOP_LOOP, // at top of loop that manages emulation.  good place to
                        // take a snapshot
-    PANDA_CB_DURING_MACHINE_INIT,                              // before any code runs
+    PANDA_CB_DURING_MACHINE_INIT, //for rehosting machine init
 
     PANDA_CB_LAST
 } panda_cb_type;
@@ -630,10 +631,6 @@ typedef union panda_cb {
        Return value:
         unused
      */
-
-    void (*during_machine_init)(MachineState *machine);
-
-
     void (*top_loop)(CPUState *env);
 
     /* Dummy union member.
@@ -644,6 +641,7 @@ typedef union panda_cb {
        member could be used instead.
        However, cbaddr provides neutral semantics for the comparisson.
     */
+    void (*during_machine_init)(MachineState *machine);
     void (* cbaddr)(void);
 } panda_cb;
 

@@ -56,7 +56,7 @@ def during_machine_init(machinestate):
 	MAX_MEM_MAPPED_FILES = 10
 
 	print("running during_machine_init")
-	
+
 	s_mem = panda.g_malloc0(ffi.sizeof("machine_irqs"))
 	s = ffi.cast("machine_irqs*", s_mem)
 	c_dict['s'] = s
@@ -105,7 +105,6 @@ def during_machine_init(machinestate):
 	mem_str = add_c_string("VIRT_MMIO 0a000000-0a000200;CACHE_CTRL f1008000-f1009000;MPCORE_PERIPHBASE f100c000-f100e000;MEM 00000000-40000000")
 	panda.libpanda.parse_mem_map(mem_str)
 	vbi.smp_cpus = panda.libpanda.smp_cpus
-	
 	for i in range(panda.libpanda.smp_cpus):
 		cpu_oc = panda.cpu_class_by_name(TYPE_ARM_CPU, vbi.cpu_model)
 	

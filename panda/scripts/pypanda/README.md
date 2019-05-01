@@ -4,12 +4,13 @@ What is PYPANDA
 -
 PYPANDA is a modification of PANDA that allows for PANDA plugins to be written in Python.
 
-Instillation
+Installation
 -
 Below are the directions to install PYPANDA. These are similar to PANDA.
 ```
-git clone https://github.com/lacraig2/panda.git
+git clone https://github.com/panda-re/panda.git
 cd panda
+pip install cffi colorama # make sure for Python 3
 git checkout pypanda
 git submodule update --init dtc
 mkdir build
@@ -38,6 +39,29 @@ panda = Panda(arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", qcow
 - os_version - string to be passed as "-os"
 - qcow - path for qcow for system
 - extra_args - any arguments you would like to be passed to QEMU
+
+### Playing with existing plugins
+
+#### [example_plugin.py](example_plugin.py)
+This is the simplest of plugins. It registers a callback for `before_block_exec` and gives the user a pdb trace each time it is hit.
+
+Run this with `python3 example_plugin.py /path/to/qcow`
+
+
+#### [example_after_init.py](example_after_init.py)
+This sets up the callback for `after_machine_init`, hits it, and gives the user a pdb trace.
+
+Run this with `python3 example_after_init.py /path/to/qcow`
+
+#### [example_multiple_callbacks.py](example_multiple_callbacks.py)
+This example shows the ability to set up multiple callbacks. The example sets up `before_block_exec`as well as `after_block_exec`. There is a delay of 1 second every time each callback is called. 
+
+Run this with `python3 example_multiple_callbacks.py /path/to/qcow`
+
+#### [example_print_regs.py](example_print_regs.py)
+This example displays the register state of the cpu in x86 at each `before_block_exec`.
+
+Run this with `python3 example_print_regs.py /path/to/qcow`
 
 
 ### Writing a Python Plugin
