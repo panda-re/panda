@@ -600,8 +600,7 @@ bool init_plugin(void *self) {
         assert(init_win2000x86intro_api());
         get_kpcr = get_win2000_kpcr;
         get_handle_object = get_win2000_handle_object;
-    } else if (0 == strcmp(panda_os_variant, "xp")) {
-        printf("set XP offsets\n");
+    } else if (0 == strcmp(panda_os_variant, "xpsp3")) {
         kthread_kproc_off = 0x044;
         eproc_pid_off = 0x084;
         eproc_ppid_off = 0x14c;
