@@ -85,8 +85,8 @@ class Panda:
 
 	def init(self):
 		self.init_run = True
-		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
 		print("Panda args: [" + (" ".join(self.panda_args)) + "]")
+		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
 
 	def run(self):
 		if debug:
@@ -107,7 +107,8 @@ class Panda:
 			print("plugin args: [" + (" ".join(args)) + "]")
 		n = len(args)
 		cargs = []
-		self.libpanda.panda_init_plugin(create_string_buffer(name), cargs, n)
+		name_ffi = ffi.new("char[]", bytes(name,"utf-8"))
+		self.libpanda.panda_init_plugin(name_ffi, cargs, n)
 
 
 	def load_python_plugin(self, init_function, name):
@@ -125,28 +126,32 @@ class Panda:
 		cb = callback_dictionary[callback]
 		pcb = ffi.new("panda_cb *", {cb.name:function})
 		self.libpanda.panda_register_callback_helper(handle, cb.number, pcb)
-		self.pcb_list[callback] = (function,pcb)
+		self.pcb_list[callback] = (function,pcb, handle)
 		if "block" in cb.name:
 			self.disable_tb_chaining()
 
 		if debug:
 			progress("registered callback for type: %s" % cb.name)
 
-	def enable_callback(self, handle, callback):
+	def enable_callback(self, callback):
 		if self.pcb_list[callback]:
-			function,pcb = self.pcb_list[callback]
+			function,pcb,handle = self.pcb_list[callback]
 			cb = callback_dictionary[callback]
 			progress("enabled callback %s" % cb.name)
 			self.libpanda.panda_enable_callback_helper(handle, cb.number, pcb)
+			if "block" in cb.name:
+				self.disable_tb_chaining()
 		else:
 			progress("ERROR: plugin not registered");
 
-	def disable_callback(self, handle, callback):
+	def disable_callback(self,  callback):
 		if self.pcb_list[callback]:
-			function,pcb = self.pcb_list[callback]
+			function,pcb,handle = self.pcb_list[callback]
 			cb = callback_dictionary[callback]
 			progress("disabled callback %s" % cb.name)
 			self.libpanda.panda_disable_callback_helper(handle, cb.number, pcb)
+			if "block" in cb.name:
+				self.enable_tb_chaining()
 		else:
 			progress("ERROR: plugin not registered");
 
@@ -158,6 +163,8 @@ class Panda:
 		return self.libpanda.rr_get_guest_instr_count_external()
 
 	def require(self, plugin):
+		if not self.init_run:
+			self.init()
 		charptr = pyp.new("char[]", bytes(plugin,"utf-8"))
 		self.libpanda.panda_require(charptr)
 
@@ -315,7 +322,7 @@ class Panda:
 		return self.libpanda.panda_disas(newfd, code, size)
 
 	def set_os_name(self, os_name):
-		os_name_new = ffi.new("char[]", bytes(name, "utf-8"))
+		os_name_new = ffi.new("char[]", bytes(os_name, "utf-8"))
 		self.libpanda.panda_set_os_name(os_name_new)
 
 	def cleanup(self):
