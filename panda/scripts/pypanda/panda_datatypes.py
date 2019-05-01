@@ -72,7 +72,8 @@ replay_serial_read \
 replay_serial_send \
 replay_serial_write \
 after_machine_init \
-top_loop")
+top_loop \
+during_machine_init")
 
 
 
@@ -109,7 +110,8 @@ pyp.callback("int(CPUState*, uint64_t, uint32_t , uint8_t )"),
 pyp.callback("int(CPUState*, uint64_t, uint8_t )"),
 pyp.callback("int(CPUState*, uint64_t, uint32_t , uint8_t )"),
 pyp.callback("void(CPUState*)"),
-pyp.callback("void(CPUState*)"))
+pyp.callback("void(CPUState*)"),
+pyp.callback("void(MachineState*)"))
 
 
 
@@ -149,7 +151,8 @@ pcb.replay_serial_read : pandacbtype("replay_serial_read", 27),
 pcb.replay_serial_send : pandacbtype("replay_serial_send", 28),
 pcb.replay_serial_write :  pandacbtype("replay_serial_write", 29),
 pcb.after_machine_init :  pandacbtype("after_machine_init", 33),
-pcb.top_loop : pandacbtype("top_loop", 34)}
+pcb.top_loop : pandacbtype("top_loop", 34),
+pcb.during_machine_init : pandacbtype("during_machine_init", 35)}
 
 
 ''',\

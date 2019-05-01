@@ -37,6 +37,27 @@ struct IRQState {
     int n;
 };
 
+typedef struct QEMUTimerList QEMUTimerList;
+
+typedef void QEMUTimerCB(void *opaque);
+
+typedef struct QEMUTimer QEMUTimer;
+
+struct QEMUTimer {
+	int64_t expire_time;
+	QEMUTimerList *timer_list;
+	QEMUTimerCB *cb;
+	void *opaque;
+	QEMUTimer *next;
+	int scale;
+};
+
+typedef struct {
+    QEMUTimer *timer;
+    qemu_irq sgi[4][16];                  // Software Generated Interrupts (SGI)
+    qemu_irq ppi[4][16]; // Shared Peripheral Interrupts (SPI)
+    qemu_irq spi[256];                                         // Private Peripheral Interrupts (PPI)
+} machine_irqs;
 
 enum QemuOptType {
     QEMU_OPT_STRING = 0,
@@ -168,11 +189,14 @@ struct TypeImpl
     InterfaceImpl interfaces[32];
 };
 
+typedef unsigned long gsize;
+
 typedef struct _GHashTable GHashTable;
 
 typedef struct _GSList GSList;
 typedef void* gpointer;
 
+gpointer g_malloc0 (gsize n_bytes);
 
 struct _GSList
 {
@@ -180,6 +204,7 @@ struct _GSList
   GSList *next;
 };
 
+const char *bios_name;
 
 typedef void (ObjectFree)(void *obj);
 
@@ -270,6 +295,8 @@ struct Error
     GString *hint;
 };
 
+Error **error_abort;
+Error **error_fatal;
 
 typedef struct GenericList {
     struct GenericList *next;
@@ -412,12 +439,63 @@ void object_property_set_link(Object *obj, Object *value, const char *name, Erro
 
 Object *object_property_get_link(Object *obj, const char *name,Error **errp);
 
+enum {
+    MEM = 0,
+    NAND,
+    NAND_CONTROLLER,
+    DMAC,
+    CPUPERIPHS,
+    MPCORE_PERIPHBASE,
+    GIC_DIST,
+    GIC_CPU,
+    GIC_V2M,
+    GIC_ITS,
+    GIC_REDIST,
+    UART,
+    GPIO,
+    GP_TIMER0,
+    GP_TIMER1,
+    DG_TIMER,
+    CACHE_CTRL,
+    FLASH,
+    VIRT_MMIO,
+
+    MEM_REGION_COUNT
+};
+
 typedef enum {
     IOMMU_NONE = 0,
     IOMMU_RO   = 1,
     IOMMU_WO   = 2,
     IOMMU_RW   = 3,
 } IOMMUAccessFlags;
+
+typedef enum {
+    IF_DEFAULT = -1,            /* for use with drive_add() only */
+    /*
+     * IF_NONE must be zero, because we want MachineClass member
+     * block_default_type to default-initialize to IF_NONE
+     */
+    IF_NONE = 0,
+    IF_IDE, IF_SCSI, IF_FLOPPY, IF_PFLASH, IF_MTD, IF_SD, IF_VIRTIO, IF_XEN,
+    IF_COUNT
+} BlockInterfaceType;
+
+typedef struct DriveInfo DriveInfo;
+
+int lookup_gic(const char *cpu_model);
+
+void error_report(const char *fmt, ...);
+
+void exit(int status);
+
+enum {
+    QEMU_PSCI_CONDUIT_DISABLED = 0,
+    QEMU_PSCI_CONDUIT_SMC = 1,
+    QEMU_PSCI_CONDUIT_HVC = 2,
+};
+
+DriveInfo *drive_get(BlockInterfaceType type, int bus, int unit);
 
 typedef struct Int128 Int128;
 
@@ -634,6 +712,57 @@ struct MemoryRegionOps {
 };
 
 
+typedef struct MigrationStats MigrationStats;
+
+typedef enum MigrationStatus {
+    MIGRATION_STATUS_NONE = 0,
+    MIGRATION_STATUS_SETUP = 1,
+    MIGRATION_STATUS_CANCELLING = 2,
+    MIGRATION_STATUS_CANCELLED = 3,
+    MIGRATION_STATUS_ACTIVE = 4,
+    MIGRATION_STATUS_POSTCOPY_ACTIVE = 5,
+    MIGRATION_STATUS_COMPLETED = 6,
+    MIGRATION_STATUS_FAILED = 7,
+    MIGRATION_STATUS_COLO = 8,
+    MIGRATION_STATUS__MAX = 9,
+} MigrationStatus;
+
+typedef struct XBZRLECacheStats XBZRLECacheStats;
+
+struct XBZRLECacheStats {
+    int64_t cache_size;
+    int64_t bytes;
+    int64_t pages;
+    int64_t cache_miss;
+    double cache_miss_rate;
+    int64_t overflow;
+};
+
+typedef struct MigrationInfo MigrationInfo;
+
+struct MigrationInfo {
+    bool has_status;
+    MigrationStatus status;
+    bool has_ram;
+    MigrationStats *ram;
+    bool has_disk;
+    MigrationStats *disk;
+    bool has_xbzrle_cache;
+    XBZRLECacheStats *xbzrle_cache;
+    bool has_total_time;
+    int64_t total_time;
+    bool has_expected_downtime;
+    int64_t expected_downtime;
+    bool has_downtime;
+    int64_t downtime;
+    bool has_setup_time;
+    int64_t setup_time;
+    bool has_cpu_throttle_percentage;
+    int64_t cpu_throttle_percentage;
+    bool has_error_desc;
+    char *error_desc;
+};
+
 MemoryRegion *get_system_memory(void);
 
 struct MemoryRegion {
@@ -678,6 +807,21 @@ struct MemoryRegion {
     struct { struct IOMMUNotifier *lh_first; } iommu_notify;
     IOMMUNotifierFlag iommu_notify_flags;
 };
+
+void memory_region_init_ram_from_file(MemoryRegion *mr,
+                                      struct Object *owner,
+                                      const char *name,
+                                      uint64_t size,
+                                      bool share,
+                                      const char *path,
+                                      Error **errp);
+
+
+void create_one_flash(const char *name, hwaddr flashbase,
+                             hwaddr flashsize, const char *file,
+                             MemoryRegion *sysmem);
+
+
 
 typedef struct FlatRange FlatRange;
 
@@ -757,6 +901,198 @@ void memory_region_allocate_system_memory(MemoryRegion *mr, Object *owner, const
 void memory_region_add_subregion(MemoryRegion *mr, hwaddr offset, MemoryRegion *subregion);
 
 
+typedef enum {
+    ARM_ENDIANNESS_UNKNOWN = 0,
+    ARM_ENDIANNESS_LE,
+    ARM_ENDIANNESS_BE8,
+    ARM_ENDIANNESS_BE32,
+} arm_endianness;
+
+typedef struct Notifier Notifier;
+
+struct Notifier
+{
+    void (*notify)(Notifier *notifier, void *data);
+    struct { struct Notifier *le_next; struct Notifier **le_prev; } node;
+};
+
+typedef struct ARMCPU ARMCPU;
+
+struct CPUTailQ { struct CPUState *tqh_first; struct CPUState * *tqh_last;} cpus;
+
+
+typedef struct {
+    Notifier notifier; /* actual notifier */
+    ARMCPU *cpu; /* handle to the first cpu object */
+} ArmLoadKernelNotifier;
+
+struct arm_boot_info {
+    uint64_t ram_size;
+    const char *kernel_filename;
+    const char *kernel_cmdline;
+    const char *initrd_filename;
+    const char *dtb_filename;
+    hwaddr loader_start;
+    /* multicore boards that use the default secondary core boot functions
+     * need to put the address of the secondary boot code, the boot reg,
+     * and the GIC address in the next 3 values, respectively. boards that
+     * have their own boot functions can use these values as they want.
+     */
+    hwaddr smp_loader_start;
+    hwaddr smp_bootreg_addr;
+    hwaddr gic_cpu_if_addr;
+    int nb_cpus;
+    int board_id;
+    /* ARM machines that support the ARM Security Extensions use this field to
+     * control whether Linux is booted as secure(true) or non-secure(false).
+     */
+    bool secure_boot;
+    int (*atag_board)(const struct arm_boot_info *info, void *p);
+    /* multicore boards that use the default secondary core boot functions
+     * can ignore these two function calls. If the default functions won't
+     * work, then write_secondary_boot() should write a suitable blob of
+     * code mimicking the secondary CPU startup process used by the board's
+     * boot loader/boot ROM code, and secondary_cpu_reset_hook() should
+     * perform any necessary CPU reset handling and set the PC for the
+     * secondary CPUs to point at this boot blob.
+     */
+    void (*write_secondary_boot)(ARMCPU *cpu,
+                                 const struct arm_boot_info *info);
+    void (*secondary_cpu_reset_hook)(ARMCPU *cpu,
+                                     const struct arm_boot_info *info);
+    /* if a board is able to create a dtb without a dtb file then it
+     * sets get_dtb. This will only be used if no dtb file is provided
+     * by the user. On success, sets *size to the length of the created
+     * dtb, and returns a pointer to it. (The caller must free this memory
+     * with g_free() when it has finished with it.) On failure, returns NULL.
+     */
+    void *(*get_dtb)(const struct arm_boot_info *info, int *size);
+    /* if a board needs to be able to modify a device tree provided by
+     * the user it should implement this hook.
+     */
+    void (*modify_dtb)(const struct arm_boot_info *info, void *fdt);
+    /* machine init done notifier executing arm_load_dtb */
+    ArmLoadKernelNotifier load_kernel_notifier;
+    /* Used internally by arm_boot.c */
+    int is_linux;
+    hwaddr initrd_start;
+    hwaddr initrd_size;
+    hwaddr entry;
+
+    /* Boot firmware has been loaded, typically at address 0, with -bios or
+     * -pflash. It also implies that fw_cfg_find() will succeed.
+     */
+    bool firmware_loaded;
+
+    /* Address at which board specific loader/setup code exists. If enabled,
+     * this code-blob will run before anything else. It must return to the
+     * caller via the link register. There is no stack set up. Enabled by
+     * defining write_board_setup, which is responsible for loading the blob
+     * to the specified address.
+     */
+    hwaddr board_setup_addr;
+    void (*write_board_setup)(ARMCPU *cpu,
+                              const struct arm_boot_info *info);
+
+    /* If set, the board specific loader/setup blob will be run from secure
+     * mode, regardless of secure_boot. The blob becomes responsible for
+     * changing to non-secure state if implementing a non-secure boot
+     */
+    bool secure_board_setup;
+
+    arm_endianness endianness;
+};
+
+
+void arm_load_kernel(ARMCPU *cpu, struct arm_boot_info *info);
+
+
+typedef struct MemMapEntry {
+	hwaddr base;
+	hwaddr size;
+	char* opt_fn_str;
+} MemMapEntry;
+
+
+void parse_mem_map(char *map_str);
+
+MemMapEntry dev_mem_map[MEM_REGION_COUNT];
+MemMapEntry file_mem_map[10];
+
+const int irqmap[384];
+
+int smp_cpus;
+
+typedef struct RehostingBoardInfo {
+    struct arm_boot_info bootinfo;
+    const char *cpu_model;
+    const MemMapEntry *dev_mem_map;
+    const MemMapEntry *file_mem_map;
+    const int *irqmap;
+    int smp_cpus;
+    void *fdt;
+    int fdt_size;
+    uint32_t clock_phandle;
+    uint32_t gic_phandle;
+    uint32_t v2m_phandle;
+    bool using_psci;
+} RehostingBoardInfo;
+
+void create_internal_gic(RehostingBoardInfo *vbi, machine_irqs *irqs, int gic_version);
+void create_external_gic(RehostingBoardInfo *vbi, machine_irqs *irqs, int gic_version, bool secure);
+void create_virtio_devices(RehostingBoardInfo *vbi, qemu_irq *pic);
+
+typedef struct AccelState {
+    /*< private >*/
+    Object parent_obj;
+} AccelState;
+
+typedef struct MachineState MachineState;
+
+struct MachineState {
+    /*< private >*/
+    Object parent_obj;
+    Notifier sysbus_notifier;
+
+    /*< public >*/
+
+    char *accel;
+    bool kernel_irqchip_allowed;
+    bool kernel_irqchip_required;
+    bool kernel_irqchip_split;
+    int kvm_shadow_mem;
+    char *dtb;
+    char *dumpdtb;
+    int phandle_start;
+    char *dt_compatible;
+    bool dump_guest_core;
+    bool mem_merge;
+    bool usb;
+    bool usb_disabled;
+    bool igd_gfx_passthru;
+    char *firmware;
+    bool iommu;
+    bool suppress_vmdesc;
+    bool enforce_config_section;
+    bool enable_graphics;
+	
+    int board_id;
+    char *mem_map_str;
+
+    ram_addr_t ram_size;
+    ram_addr_t maxram_size;
+    uint64_t   ram_slots;
+    const char *boot_order;
+    char *kernel_filename;
+    char *kernel_cmdline;
+    char *initrd_filename;
+    const char *cpu_model;
+    AccelState *accelerator;
+};
+
+
+
+
 /**
  * Object:
  *
@@ -804,6 +1140,7 @@ struct DeviceState {
     int instance_id_alias;
     int alias_required_for_version;
 };
+
 
 typedef struct {
   int __flags[8];			/* XXX - long might give better alignment */
