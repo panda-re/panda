@@ -143,13 +143,13 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
     nb_panda_plugins_loaded ++;
 
     // Ensure pypanda is loaded so its symbols can be used in the plugin we're loading (TODO: should we move this to happen earlier (and just once?))
-    void *libpanda = dlopen(
+    void *libpanda = dlopen("../../../build/"
 #if defined(TARGET_I386)
-        "/home/andrew/git/pypanda/build/i386-softmmu/libpanda-i386.so"
+        "i386-softmmu/libpanda-i386.so"
 #elif defined(TARGET_x86_64)
-        "/home/andrew/git/pypanda/build/x86_64-softmmu-softmmu/libpanda-x86_64.so"
+        "/x86_64-softmmu-softmmu/libpanda-x86_64.so"
 #else
-        "TODO: other architectures"
+        "\n TODO: other architectures \n"
 #endif
         , RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
 
@@ -211,6 +211,9 @@ char *panda_plugin_path(const char *plugin_name) {
     if (plugin_dir != NULL) {
         plugin_path = g_strdup_printf("%s/panda_%s" HOST_DSOSUF, plugin_dir, plugin_name);
     } else {
+        // Note qemu_file is set in the first call to main_aux
+        // so if this is called (likely via load_plugin) qemu_file must be set directly
+        assert(qemu_file != NULL);
         char *dir = g_path_get_dirname(qemu_file);
         plugin_path = g_strdup_printf("%s/panda/plugins/panda_%s" HOST_DSOSUF, dir, plugin_name);
         g_free(dir);
@@ -297,9 +300,7 @@ void *panda_get_plugin_by_name(const char *plugin_name) {
 void panda_unload_plugin_by_name(const char *plugin_name) {
     for (int i = 0; i < nb_panda_plugins; i++) {
         if (strncmp(panda_plugins[i].name, plugin_name, 256) == 0) {
-            printf("Found plugin %s\n", plugin_name);
             panda_unload_plugin(panda_plugins[i].plugin);
-            printf("Unloaded\n");
             break;
         }
     }

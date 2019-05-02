@@ -40,6 +40,12 @@ void panda_stop(void) {
     qemu_system_shutdown_request();
 }
 
+extern const char *qemu_file;
+
+void panda_set_qemu_path(char* filepath) {
+    qemu_file=filepath;
+}
+
 int panda_finish(void) {
     return main_aux(0, 0, 0, PANDA_FINISH);
 }

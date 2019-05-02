@@ -114,7 +114,13 @@ class Panda:
 			progress ("Loading plugin %s" % name),
 			print("plugin args: [" + (" ".join(args)) + "]")
 		n = len(args)
-		cargs = [] # TODO: support arguments
+		cargs = []
+		assert(len(args)==0), "TODO: support arguments"
+
+		# First set qemu_path so plugins can load (may be unnecessary after the first time)
+		panda_name_ffi = ffi.new("char[]", bytes(self.panda,"utf-8"))
+		self.libpanda.panda_set_qemu_path(panda_name_ffi)
+
 		name_ffi = ffi.new("char[]", bytes(name,"utf-8"))
 		self.libpanda.panda_init_plugin(name_ffi, cargs, n)
 

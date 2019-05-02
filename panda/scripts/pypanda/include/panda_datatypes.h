@@ -755,6 +755,7 @@ int panda_init(int argc, char **argv, char **envp);
 void panda_run(void);
 void panda_stop(void);
 int panda_finish(void);
+void panda_set_qemu_path(char *filepath);
 int panda_init_plugin(char *plugin_name, char ** plugin_args, uint32_t num_args);
 void panda_register_callback_helper(void* plugin, panda_cb_type type, panda_cb* cb);
 int panda_replay(char *replay_name);
