@@ -31,8 +31,6 @@ class Panda:
 	NB: wheezy is debian:3.2.0-4-686-pae
 	"""
 	def __init__(self, arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", qcow="default", extra_args = "", the_os="linux"):
-		if debug:
-			progress("Initializing panda")
 		self.arch = arch
 		self.mem = mem
 		self.os = os_version
@@ -84,6 +82,8 @@ class Panda:
 		self.pcb_list = {}
 
 	def init(self):
+		if debug:
+			progress ("Initializing")
 		self.init_run = True
 		print("Panda args: [" + (" ".join(self.panda_args)) + "]")
 		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
@@ -95,18 +95,26 @@ class Panda:
 			self.init()
 		self.libpanda.panda_run()
 
+	def stop(self):
+		if debug:
+		    progress ("Stopping guest")
+		if self.init_run:
+		    self.libpanda.panda_stop()
+		else:
+		    raise RuntimeError("Guest not running- can't be stopped")
+
 	def begin_replay(self, replaypfx):
 		if debug:
 			progress ("Replaying %s" % replaypfx)
 		charptr = ffi.new("char[]",bytes(replaypfx,"utf-8"))
 		self.libpanda.panda_replay(charptr)
 
-	def load_plugin(self, name, args=[]):
+	def load_plugin(self, name, args=[]): # TODO: this doesn't work yet
 		if debug:
 			progress ("Loading plugin %s" % name),
 			print("plugin args: [" + (" ".join(args)) + "]")
 		n = len(args)
-		cargs = []
+		cargs = [] # TODO: support arguments
 		name_ffi = ffi.new("char[]", bytes(name,"utf-8"))
 		self.libpanda.panda_init_plugin(name_ffi, cargs, n)
 
@@ -156,8 +164,16 @@ class Panda:
 			progress("ERROR: plugin not registered");
 
 
-	def unload_plugin(self, handle):
-		self.libpanda.panda_unload_plugin(handle)
+	def unload_plugin(self, name):
+		if debug:
+			progress ("Unloading plugin %s" % name),
+		name_ffi = ffi.new("char[]", bytes(name,"utf-8"))
+		self.libpanda.panda_unload_plugin_by_name(name_ffi)
+
+	def unload_plugins(self):
+		if debug:
+			progress ("Unloading all panda plugins")
+		self.libpanda.panda_unload_plugins()
 
 	def rr_get_guest_instr_count(self):
 		return self.libpanda.rr_get_guest_instr_count_external()

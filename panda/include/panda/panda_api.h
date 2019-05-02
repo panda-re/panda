@@ -9,6 +9,8 @@ int panda_init(int argc, char **argv, char **envp);
 
 int panda_run(void);
 
+void panda_stop(void);
+
 int panda_finish(void);
 
 int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args);

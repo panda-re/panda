@@ -3,12 +3,13 @@
 #include "vl.h"
 #include "panda/panda_api.h"
 #include "panda/plugin.h"
+#include "sysemu/sysemu.h"
 
 
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, uint8_t *buf, int len);
 int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, uint8_t *buf, int len);
 int rr_get_guest_instr_count_external(void);
-void qemu_rr_quit_timers(void);
+//void qemu_rr_quit_timers(void);
 //void qemu_cpu_kick(CPUState *cpu);
 void panda_register_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 void panda_enable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
@@ -35,6 +36,10 @@ int panda_run(void) {
     return 0;
 }
 
+void panda_stop(void) {
+    qemu_system_shutdown_request();
+}
+
 int panda_finish(void) {
     return main_aux(0, 0, 0, PANDA_FINISH);
 }
@@ -45,6 +50,7 @@ int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args) 
     char *plugin_path = panda_plugin_path((const char *) plugin_name);
     return panda_load_plugin(plugin_path, plugin_name);
 }
+
 
 void panda_register_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb) {
 	panda_cb cb_copy;
