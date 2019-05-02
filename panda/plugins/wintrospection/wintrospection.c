@@ -182,7 +182,7 @@ void on_get_processes(CPUState *cpu, GArray **out) {
     g_array_free(*out, true);
     // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
     *out = g_array_sized_new(false, false, sizeof(OsiProc), 128);
-    g_array_set_clear_func(*out, (GDestroyNotify)free_osiproc);
+    g_array_set_clear_func(*out, (GDestroyNotify)free_osiproc_contents);
 
     do {
         // One of these will be the loop head,
