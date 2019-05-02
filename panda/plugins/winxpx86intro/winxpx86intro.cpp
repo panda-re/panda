@@ -75,8 +75,8 @@ false)) { return 0;
 void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out) {
     *out = NULL;
 
-    target_ptr_t eproc = p->taskd;
-    target_ptr_t peb;
+    PTR eproc = p->taskd;
+    PTR peb;
     if (-1 == panda_virtual_memory_read(cpu, eproc + EPROC_PEB_OFF,
                                         (uint8_t *)&peb, sizeof(peb))) {
         // EPROCESS is allocated from the non-paged pool, this really shouldn't
@@ -85,7 +85,7 @@ void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out) {
         return;
     }
 
-    target_ptr_t peb_ldr_data;
+    PTR peb_ldr_data;
     if (-1 == panda_virtual_memory_read(cpu, peb + PEB_LDR_OFF,
                                         (uint8_t *)&peb_ldr_data,
                                         sizeof(peb_ldr_data))) {
@@ -161,11 +161,8 @@ static uint32_t get_handle_table_entry(CPUState *cpu, uint32_t pHandleTable, uin
     uint32_t tableCode, tableLevels;
     // get tablecode
     panda_virtual_memory_rw(cpu, pHandleTable, (uint8_t *)&tableCode, 4, false);
-    //printf ("tableCode = 0x%x\n", tableCode);
     // extract levels
     tableLevels = tableCode & LEVEL_MASK;
-    //printf("tableLevels = %d\n", tableLevels);
-    //  assert (tableLevels <= 2);
     if (tableLevels > 2) {
         return 0;
     }
@@ -199,12 +196,13 @@ static uint32_t get_handle_table_entry(CPUState *cpu, uint32_t pHandleTable, uin
         return 0;
     }
 
-    // Like in Windows 2000, the entry here needs to be masked off. However, it
-    // appears that starting in Windows XP, they've done away with the lock
-    // flag. The lower three bits mask should be consistent across Windows
-    // versions because of the object alignment.
+    // Like in Windows 2000, the entry here needs to be masked off. However, the
+    // lock flag was moved to the low-order bit. So we only need to mask off the
+    // lower three bits of the entry.
     //
-    // No obvious reference.
+    // Russinovich, Mark E., and David A. Solomon. Microsoft Windows
+    //     Internals, Fourth Edition: Microsoft Windows Server 2003, Windows XP,
+    //     and Windows 2000. Microsoft Press, 2005, pp. 139.
     pObjectHeader &= TABLE_MASK;
 
     return pObjectHeader;
