@@ -38,10 +38,10 @@ HandleObject *get_winxp_handle_object(CPUState *cpu, uint32_t eproc,
 #ifdef TARGET_I386
 
 #define KMODE_FS               0x030 // Segment number of FS in kernel mode
-#define KPCR_KDVERSION_OFF     0x034  // _KPCR.KdVersionBlock
-#define KDVERSION_DDL_OFF      0x020  // _DBGKD_GET_VERSION64.DebuggerDataList
-#define KDBG_PSLML             0x048  // _KDDEBUGGER_DATA64.PsLoadedModuleList
-#define EPROC_PEB_OFF          0x1a8 // _EPROCESS.Peb
+#define KPCR_KDVERSION_OFF     0x034 // _KPCR.KdVersionBlock
+#define KDVERSION_DDL_OFF      0x020 // _DBGKD_GET_VERSION64.DebuggerDataList
+#define KDBG_PSLML             0x048 // _KDDEBUGGER_DATA64.PsLoadedModuleList
+#define EPROC_PEB_OFF          0x1b0 // _EPROCESS.Peb
 #define PEB_LDR_OFF            0x00c // _PEB.Ldr
 #define PEB_LDR_MEM_LINKS_OFF  0x014 // _PEB_LDR_DATA.InMemoryOrderModuleLinks
 #define PEB_LDR_LOAD_LINKS_OFF 0x00c // _PEB_LDR_DATA.InMemoryOrderModuleLinks
@@ -54,40 +54,60 @@ PTR get_winxp_kpcr(CPUState *cpu)
     return 0xFFDFF000;
 }
 
-static PTR get_kdbg(CPUState *cpu) {
+static PTR get_kdbg(CPUState *cpu)
+{
     PTR kpcr = get_winxp_kpcr(cpu);
     PTR kdversion, kddl, kddlp;
-    if (-1 == panda_virtual_memory_rw(cpu, kpcr+KPCR_KDVERSION_OFF, (uint8_t *)&kdversion, sizeof(PTR), false)) {
-        return 0;
+    if (-1 == panda_virtual_memory_rw(cpu, kpcr+KPCR_KDVERSION_OFF, (uint8_t
+*)&kdversion, sizeof(PTR), false)) { return 0;
     }
     // DebuggerDataList is a pointer to a pointer to the _KDDEBUGGER_DATA64
     // So we need to dereference it twice.
-    if (-1 == panda_virtual_memory_rw(cpu, kdversion+KDVERSION_DDL_OFF, (uint8_t *)&kddlp, sizeof(PTR), false)) {
-        return 0;
+    if (-1 == panda_virtual_memory_rw(cpu, kdversion+KDVERSION_DDL_OFF, (uint8_t
+*)&kddlp, sizeof(PTR), false)) { return 0;
     }
-    if (-1 == panda_virtual_memory_rw(cpu, kddlp, (uint8_t *)&kddl, sizeof(PTR), false)) {
-        return 0;
+    if (-1 == panda_virtual_memory_rw(cpu, kddlp, (uint8_t *)&kddl, sizeof(PTR),
+false)) { return 0;
     }
     return kddl;
 }
 
-
-
-
 void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out) {
-    // search for process
-    PTR eproc_first, eproc_cur, eproc_found;
-    eproc_first = eproc_cur = get_current_proc(cpu);
-    eproc_found = (PTR)NULL;
-    if (eproc_first == NULL) goto error;
-    do {
-        if (eproc_cur == p->taskd) {
-            eproc_found = eproc_cur;
-            break;
-        }
-        eproc_cur = get_next_proc(cpu, eproc_cur);
-    } while (eproc_cur != NULL && eproc_cur != eproc_first);
-    if (eproc_found == NULL) goto error;
+    *out = NULL;
+
+    target_ptr_t eproc = p->taskd;
+    target_ptr_t peb;
+    if (-1 == panda_virtual_memory_read(cpu, eproc + EPROC_PEB_OFF,
+                                        (uint8_t *)&peb, sizeof(peb))) {
+        // EPROCESS is allocated from the non-paged pool, this really shouldn't
+        // fail unless the process that was passed in does not exist.
+        fprintf(stderr, "Could not read PEB pointer from _EPROCESS!\n");
+        return;
+    }
+
+    target_ptr_t peb_ldr_data;
+    if (-1 == panda_virtual_memory_read(cpu, peb + PEB_LDR_OFF,
+                                        (uint8_t *)&peb_ldr_data,
+                                        sizeof(peb_ldr_data))) {
+        // PEB is allocated from the paged pool, so there is actually a good
+        // chance that this will fail and there isn't anything wrong.
+        //
+        // XXX: In WinDbg, its possible to use !vtop to get the physical
+        // address. This WinDbg extension I think walks the page table manually
+        // to get at the physical address. Perhaps this could be added to
+        // wintrospection.
+        return;
+    }
+
+    if (NULL == peb_ldr_data) {
+        // XXX: Why would this ever be null?
+        return;
+    }
+
+    // Fake "first mod": the address of where the list head would
+    // be if it were a LDR_DATA_TABLE_ENTRY
+    PTR mod_first = peb_ldr_data + PEB_LDR_LOAD_LINKS_OFF - LDR_LOAD_LINKS_OFF;
+    PTR mod_current = get_next_mod(cpu, mod_first);
 
     if (*out == NULL) {
         // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
@@ -95,34 +115,12 @@ void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out) {
         g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
     }
 
-    PTR peb, ldr;
-    PTR mod_first, mod_current;
-    peb = ldr = (PTR)NULL;
-    mod_first = mod_current = (PTR)NULL;
-
-    // get module list: PEB->Ldr->InMemoryOrderModuleList
-    if (-1 == panda_virtual_memory_rw(cpu, eproc_found+EPROC_PEB_OFF, (uint8_t *)&peb, sizeof(PTR), false))
-        goto error;
-    if (-1 == panda_virtual_memory_rw(cpu, peb+PEB_LDR_OFF, (uint8_t *)&ldr, sizeof(PTR), false))
-        goto error;
-    if (ldr == NULL)
-        goto error;
-
-    // Fake "first mod": the address of where the list head would
-    // be if it were a LDR_DATA_TABLE_ENTRY
-    mod_first = ldr+PEB_LDR_LOAD_LINKS_OFF-LDR_LOAD_LINKS_OFF;
-    mod_current = get_next_mod(cpu, mod_first);
-
     // We want while loop here -- we are starting at the head,
     // which is not a valid module
     while (mod_current != NULL && mod_current != mod_first) {
         add_mod(cpu, *out, mod_current, false);
         mod_current = get_next_mod(cpu, mod_current);
     }
-    return;
-
-error:
-    *out = NULL;
     return;
 }
 
@@ -132,28 +130,30 @@ void on_get_modules(CPUState *cpu, GArray **out) {
     PTR mod_current = (PTR)NULL;
 
     // Dbg.PsLoadedModuleList
-    if (-1 == panda_virtual_memory_rw(cpu, kdbg+KDBG_PSLML, (uint8_t *)&PsLoadedModuleList, sizeof(PTR), false))
+    if (-1 == panda_virtual_memory_rw(cpu, kdbg + KDBG_PSLML,
+                                      (uint8_t *)&PsLoadedModuleList,
+                                      sizeof(PTR), false))
         goto error;
 
     if (*out == NULL) {
         // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
         *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
         g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
-    }
+        }
 
-    mod_current = get_next_mod(cpu, PsLoadedModuleList);
+        mod_current = get_next_mod(cpu, PsLoadedModuleList);
 
-    // We want while loop here -- we are starting at the head,
-    // which is not a valid module
-    while (mod_current != NULL && mod_current != PsLoadedModuleList) {
-        add_mod(cpu, *out, mod_current, false);
-        mod_current = get_next_mod(cpu, mod_current);
-    }
-    return;
+        // We want while loop here -- we are starting at the head,
+        // which is not a valid module
+        while (mod_current != NULL && mod_current != PsLoadedModuleList) {
+            add_mod(cpu, *out, mod_current, false);
+            mod_current = get_next_mod(cpu, mod_current);
+        }
+        return;
 
-error:
-    *out = NULL;
-    return;
+    error:
+        *out = NULL;
+        return;
 }
 
 // i.e. return pointer to the object represented by this handle
