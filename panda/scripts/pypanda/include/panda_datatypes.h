@@ -667,6 +667,7 @@ void   panda_do_unload_plugin(int index);
 void   panda_unload_plugin(void* plugin);
 void   panda_unload_plugin_idx(int idx);
 void   panda_unload_plugins(void);
+void   panda_unload_plugin_by_name(const char *name);
 
 
 bool panda_flush_tb(void);
@@ -757,11 +758,15 @@ void panda_require(const char *plugin_name);
 */
 int panda_pre(int argc, char **argv, char **envp);
 int panda_init(int argc, char **argv, char **envp);
-int panda_run(void);
+void panda_run(void);
+void panda_stop(void);
 int panda_finish(void);
+void panda_set_qemu_path(char *filepath);
 int panda_init_plugin(char *plugin_name, char ** plugin_args, uint32_t num_args);
 void panda_register_callback_helper(void* plugin, panda_cb_type type, panda_cb* cb);
 int panda_replay(char *replay_name);
+void panda_enable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
+void panda_disable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 int rr_get_guest_instr_count_external(void);
 
 target_ulong panda_current_sp_external(CPUState *cpu);

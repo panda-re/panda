@@ -1,8 +1,9 @@
 from pypanda import *
 from time import sleep
 from sys import argv
+from qcows import get_qcow
 
-panda = Panda(qcow=argv[1])
+panda = Panda(qcow=get_qcow(argv[1]))
 
 @panda.callback.init
 def init(handle):
@@ -14,7 +15,6 @@ def init(handle):
 def before_block_execute(cpustate,transblock):
 	progress("before block in python")
 	pdb.set_trace()
-	return 0
 
 panda.load_python_plugin(init,"Cool Plugin")
 panda.run()

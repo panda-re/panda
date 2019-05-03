@@ -3075,7 +3075,6 @@ void main_panda_run(void) {
 int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 {
 
-
     if (pmm == PANDA_PRE) return 0;
     if (pmm == PANDA_RUN)    goto PANDA_MAIN_RUN;
     if (pmm == PANDA_FINISH) goto PANDA_MAIN_FINISH;

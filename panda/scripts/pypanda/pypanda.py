@@ -31,8 +31,6 @@ class Panda:
 	NB: wheezy is debian:3.2.0-4-686-pae
 	"""
 	def __init__(self, arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", qcow="default", extra_args = "", the_os="linux"):
-		if debug:
-			progress("Initializing panda")
 		self.arch = arch
 		self.mem = mem
 		self.os = os_version
@@ -81,11 +79,14 @@ class Panda:
 		self.cenvp =  ffi.new("char **",nulls)
 		self.len_cargs = ffi.cast("int", len(self.panda_args))
 		self.init_run = False
-	
+		self.pcb_list = {}
+
 	def init(self):
+		if debug:
+			progress ("Initializing")
 		self.init_run = True
-		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
 		print("Panda args: [" + (" ".join(self.panda_args)) + "]")
+		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
 
 	def run(self):
 		if debug:
@@ -94,19 +95,34 @@ class Panda:
 			self.init()
 		self.libpanda.panda_run()
 
+	def stop(self):
+		if debug:
+		    progress ("Stopping guest")
+		if self.init_run:
+		    self.libpanda.panda_stop()
+		else:
+		    raise RuntimeError("Guest not running- can't be stopped")
+
 	def begin_replay(self, replaypfx):
 		if debug:
 			progress ("Replaying %s" % replaypfx)
 		charptr = ffi.new("char[]",bytes(replaypfx,"utf-8"))
 		self.libpanda.panda_replay(charptr)
 
-	def load_plugin(self, name, args=[]):
+	def load_plugin(self, name, args=[]): # TODO: this doesn't work yet
 		if debug:
 			progress ("Loading plugin %s" % name),
 			print("plugin args: [" + (" ".join(args)) + "]")
 		n = len(args)
 		cargs = []
-		self.libpanda.panda_init_plugin(create_string_buffer(name), cargs, n)
+		assert(len(args)==0), "TODO: support arguments"
+
+		# First set qemu_path so plugins can load (may be unnecessary after the first time)
+		panda_name_ffi = ffi.new("char[]", bytes(self.panda,"utf-8"))
+		self.libpanda.panda_set_qemu_path(panda_name_ffi)
+
+		name_ffi = ffi.new("char[]", bytes(name,"utf-8"))
+		self.libpanda.panda_init_plugin(name_ffi, cargs, n)
 
 
 	def load_python_plugin(self, init_function, name):
@@ -124,26 +140,60 @@ class Panda:
 		cb = callback_dictionary[callback]
 		pcb = ffi.new("panda_cb *", {cb.name:function})
 		self.libpanda.panda_register_callback_helper(handle, cb.number, pcb)
+		self.pcb_list[callback] = (function,pcb, handle)
 		if "block" in cb.name:
 			self.disable_tb_chaining()
 
 		if debug:
 			progress("registered callback for type: %s" % cb.name)
 
-	def unload_plugin(self, handle):
-		self.libpanda.panda_unload_plugin(handle)
+	def enable_callback(self, callback):
+		if self.pcb_list[callback]:
+			function,pcb,handle = self.pcb_list[callback]
+			cb = callback_dictionary[callback]
+			progress("enabled callback %s" % cb.name)
+			self.libpanda.panda_enable_callback_helper(handle, cb.number, pcb)
+			if "block" in cb.name:
+				self.disable_tb_chaining()
+		else:
+			progress("ERROR: plugin not registered");
+
+	def disable_callback(self,  callback):
+		if self.pcb_list[callback]:
+			function,pcb,handle = self.pcb_list[callback]
+			cb = callback_dictionary[callback]
+			progress("disabled callback %s" % cb.name)
+			self.libpanda.panda_disable_callback_helper(handle, cb.number, pcb)
+			if "block" in cb.name:
+				self.enable_tb_chaining()
+		else:
+			progress("ERROR: plugin not registered");
+
+
+	def unload_plugin(self, name):
+		if debug:
+			progress ("Unloading plugin %s" % name),
+		name_ffi = ffi.new("char[]", bytes(name,"utf-8"))
+		self.libpanda.panda_unload_plugin_by_name(name_ffi)
+
+	def unload_plugins(self):
+		if debug:
+			progress ("Unloading all panda plugins")
+		self.libpanda.panda_unload_plugins()
 
 	def rr_get_guest_instr_count(self):
 		return self.libpanda.rr_get_guest_instr_count_external()
 
 	def require(self, plugin):
+		if not self.init_run:
+			self.init()
 		charptr = pyp.new("char[]", bytes(plugin,"utf-8"))
 		self.libpanda.panda_require(charptr)
 
-	def panda_enable_plugin(self, handle):
+	def enable_plugin(self, handle):
 		self.libpanda.panda_enable_plugin(handle)
 
-	def panda_disable_plugin(self, handle):
+	def disable_plugin(self, handle):
 		self.libpanda.panda_disable_plugin(handle)
 
 	def enable_memcb(self):
@@ -301,7 +351,7 @@ class Panda:
 		return self.libpanda.panda_disas(newfd, code, size)
 
 	def set_os_name(self, os_name):
-		os_name_new = ffi.new("char[]", bytes(name, "utf-8"))
+		os_name_new = ffi.new("char[]", bytes(os_name, "utf-8"))
 		self.libpanda.panda_set_os_name(os_name_new)
 
 	def cleanup(self):

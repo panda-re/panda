@@ -3,14 +3,17 @@
 #include "vl.h"
 #include "panda/panda_api.h"
 #include "panda/plugin.h"
+#include "sysemu/sysemu.h"
 
 
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, uint8_t *buf, int len);
 int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, uint8_t *buf, int len);
 int rr_get_guest_instr_count_external(void);
-void qemu_rr_quit_timers(void);
+//void qemu_rr_quit_timers(void);
 //void qemu_cpu_kick(CPUState *cpu);
 void panda_register_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
+void panda_enable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
+void panda_disable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 target_ulong panda_current_sp_external(CPUState *cpu);
 bool panda_in_kernel_external(CPUState *cpu);
 
@@ -33,6 +36,16 @@ int panda_run(void) {
     return 0;
 }
 
+void panda_stop(void) {
+    qemu_system_shutdown_request();
+}
+
+extern const char *qemu_file;
+
+void panda_set_qemu_path(char* filepath) {
+    qemu_file=filepath;
+}
+
 int panda_finish(void) {
     return main_aux(0, 0, 0, PANDA_FINISH);
 }
@@ -44,10 +57,23 @@ int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args) 
     return panda_load_plugin(plugin_path, plugin_name);
 }
 
+
 void panda_register_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb) {
 	panda_cb cb_copy;
 	memcpy(&cb_copy,cb, sizeof(panda_cb));
 	panda_register_callback(plugin, type, cb_copy);
+}
+
+void panda_enable_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb) {
+	panda_cb cb_copy;
+	memcpy(&cb_copy,cb, sizeof(panda_cb));
+	panda_enable_callback(plugin, type, cb_copy);
+}
+
+void panda_disable_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb) {
+	panda_cb cb_copy;
+	memcpy(&cb_copy,cb, sizeof(panda_cb));
+	panda_disable_callback(plugin, type, cb_copy);
 }
 
 // initiate replay
