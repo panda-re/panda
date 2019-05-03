@@ -13,4 +13,7 @@ common-obj-$(CONFIG_LINUX) += hostmem-file.o
 common-obj-y += cryptodev.o
 common-obj-y += cryptodev-builtin.o
 
+
+common-obj-$(call land,$(CONFIG_VHOST_USER),$(CONFIG_VIRTIO)) += vhost-user.o
+
 common-obj-$(CONFIG_LINUX) += hostmem-memfd.o
