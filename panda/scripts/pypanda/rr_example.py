@@ -1,9 +1,14 @@
+#!/usr/bin/env python3
+
 from pypanda import *
 from time import sleep
 from sys import argv
+from qcows import qcow_from_arg
 
 extra = "-nographic -chardev socket,id=monitor,path=./monitor.sock,server,nowait -monitor chardev:monitor -serial telnet:127.0.0.1:4449,server,nowait"
-panda = Panda(qcow=argv[1], extra_args=extra)
+
+q = qcow_from_arg(1)
+panda = Panda(qcow=q, extra_args=extra)
 
 @panda.callback.init
 def init(handle):

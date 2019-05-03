@@ -1,6 +1,7 @@
 import os
 import subprocess
 import logging
+from sys import argv
 from collections import namedtuple
 
 logging.basicConfig(level=logging.DEBUG)
@@ -20,7 +21,11 @@ SUPPORTED_ARCHES = {
 
 VM_DIR = os.path.join(os.path.expanduser("~"), ".panda")
 
-def get_qcow(name):
+def get_qcow(name=None):
+    if name is None:
+        logging.warning("No qcow name provided. Defaulting to i386")
+        name = "i386"
+
     if os.path.isfile(name):
         logging.debug("Provided qcow name appears to be a path, returning it directly: %s", name)
         return name
@@ -55,3 +60,11 @@ def get_qcow(name):
         logging.debug("Found existing %s at %s", arch_data.qcow, qcow_path)
 
     return qcow_path
+
+# Given an index into argv, call get_qcow with that arg if it exists, else with None
+def qcow_from_arg(idx=1):
+    if (len(argv) > idx):
+        return get_qcow(argv[idx])
+    else:
+        return get_qcow()
+
