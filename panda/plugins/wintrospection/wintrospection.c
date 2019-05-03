@@ -166,41 +166,44 @@ void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out) {
 }
 
 void on_get_processes(CPUState *cpu, GArray **out) {
-    OsiProc p;
-    PTR first, current;
+    // The process list in NT can be iterated by starting at the
+    // nt!PsActiveProcessHead symbol. The symbol points to an nt!_LIST_ENTRY
+    // that acts as a sentinel node for the process list, so we can use it as a
+    // reference point to start and stop iterating.
 
-    first = get_current_proc(cpu);
-    current = first;
-    if (first == (uintptr_t)NULL) {
-        goto error;
-    }
-    if (get_pid(cpu, first) == 0) {
-        // idle proc - don't try
-        goto error;
-    }
-
-    g_array_free(*out, true);
-    // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-    *out = g_array_sized_new(false, false, sizeof(OsiProc), 128);
-    g_array_set_clear_func(*out, (GDestroyNotify)free_osiproc_contents);
-
-    do {
-        // One of these will be the loop head,
-        // which we don't want to include
-        if (is_valid_process(cpu, current)) {
-            memset(&p, 0, sizeof(OsiProc));
-            fill_osiproc(cpu, &p, current);
-            g_array_append_val(*out, p);
-        }
-        current = get_next_proc(cpu, current);
-    } while (current != (uintptr_t)NULL && current != first);
-
-    return;
-
-error:
-    g_array_free(*out, true);  // safe even when *out == NULL
+    // Assume failure until we reach the first process, so set the output to
+    // null.
     *out = NULL;
-    return;
+
+    // PTR sentinel = 0x80561358; // nt!PsActiveProcessHead - Windows XP SP3
+    PTR sentinel = 0x8046e460; // nt!PsActiveProcessHead - Windows 2000 SP4
+    PTR cur_entry = sentinel;
+    do {
+        // Read the current list entry Flink pointer.
+        if (-1 == panda_virtual_memory_read(cpu, cur_entry,
+                                            (uint8_t *)&cur_entry,
+                                            sizeof(cur_entry))) {
+            fprintf(stderr, "Error reading process list entry!\n");
+            break;
+        }
+
+
+        // If we've reached the sentinel, we're done.
+        if (cur_entry == sentinel) {
+            break;
+        }
+
+        // We've found the procss, if this is the first one go ahead and create
+        // the array.
+        OsiProc cur_proc;
+        if (*out == NULL) {
+            *out = g_array_sized_new(false, false, sizeof(cur_proc), 128);
+            g_array_set_clear_func(*out, (GDestroyNotify)free_osiproc_contents);
+        }
+        PTR cur_eproc = cur_entry - eproc_links_off;
+        fill_osiproc(cpu, &cur_proc, cur_eproc);
+        g_array_append_val(*out, cur_proc);
+    } while (true);
 }
 
 void on_get_current_thread(CPUState *cpu, OsiThread **out) {
