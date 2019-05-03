@@ -692,6 +692,10 @@ vu_get_protocol_features_exec(VuDev *dev, VhostUserMsg *vmsg)
 {
     uint64_t features = 1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD;
 
+    if (dev->iface->get_config && dev->iface->set_config) {
+        features |= 1ULL << VHOST_USER_PROTOCOL_F_CONFIG;
+    }
+
     if (dev->iface->get_protocol_features) {
         features |= dev->iface->get_protocol_features(dev);
     }
