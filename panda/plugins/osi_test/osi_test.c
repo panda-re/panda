@@ -56,7 +56,9 @@ int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
 
     // Cleanup
     free_osiproc(current);
-    g_array_free(ps, true);
+    if (ps != NULL) {
+        g_array_free(ps, true);
+    }
 
     return 0;
 }
@@ -91,8 +93,12 @@ int after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
 
     // Cleanup
     free_osiproc(current);
-    g_array_free(ms, true);
-    g_array_free(kms, true);
+    if (ms != NULL) {
+        g_array_free(ms, true);
+    }
+    if (kms != NULL) {
+        g_array_free(kms, true);
+    }
 
     return 0;
 }
