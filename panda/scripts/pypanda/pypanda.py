@@ -51,6 +51,7 @@ class Panda:
 		self.bindir = pjoin(panda_build, "%s-softmmu" % arch)
 		self.panda = pjoin(self.bindir, "qemu-system-%s" % arch)
 		self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % arch))
+		
 		biospath = realpath(pjoin(self.panda,"..", "..",  "pc-bios"))
 		bits = None
 		if self.arch == "i386":
@@ -355,3 +356,7 @@ class Panda:
 
 	def virtual_memory_write(self, env, addr, buf, length):
 		return self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
+	def load_osi(self):
+		self.libpanda_osi = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_osi.so"))
+		self.libpanda_osi_linux = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_osi_linux.so"))
+		self.libpanda_osi_test = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_osi_test.so"))
