@@ -356,7 +356,23 @@ class Panda:
 
 	def virtual_memory_write(self, env, addr, buf, length):
 		return self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
+	
 	def load_osi(self):
 		self.libpanda_osi = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_osi.so"))
 		self.libpanda_osi_linux = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_osi_linux.so"))
 		self.libpanda_osi_test = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_osi_test.so"))
+	
+	def get_current_process(self, cpustate):
+		return self.libpanda_osi.get_current_process(cpustate)
+
+	def get_processes(self, cpustate):
+		return self.libpanda_osi.get_processes(cpustate)
+	
+	def get_libraries(self, cpustate, current):
+		return self.libpanda_osi.get_libraries(cpustate,current)
+	
+	def get_modules(self, cpustate):
+		return self.libpanda_osi.get_modules(cpustate)
+	
+	def get_current_thread(self, cpustate):
+		return self.libpanda_osi.get_current_thread(cpustate)	

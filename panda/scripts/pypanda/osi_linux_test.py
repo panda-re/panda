@@ -3,6 +3,8 @@ from pypanda import *
 import qcows
 from sys import argv
 
+recording =  argv[2] #"/path/to/recording"
+
 # Single arg of arch, defaults to i386
 arg1 = "i386" if len(argv) <= 1 else argv[1]
 
@@ -82,6 +84,6 @@ panda.load_python_plugin(init,"on-init")
 panda.require("osi")
 panda.require("osi_linux")
 panda.load_osi()
-panda.begin_replay("/home/luke/recordings/debian_recording/wget")
+panda.begin_replay(recording)
 # Start running
 panda.run()
