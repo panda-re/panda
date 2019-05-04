@@ -350,8 +350,8 @@ class Panda:
 	def cleanup(self):
 		self.libpanda.panda_cleanup()
 
-	def virtual_memory_read(env, addr, buf, length):
-		self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
+	def virtual_memory_read(self, env, addr, buf, length):
+		return self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
 
-	def virtual_memory_write(env, addr, buf, length):
-		self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
+	def virtual_memory_write(self, env, addr, buf, length):
+		return self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
