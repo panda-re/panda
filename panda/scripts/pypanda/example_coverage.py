@@ -20,6 +20,7 @@ blocks = 0
 @panda.callback.before_block_exec
 def before_block_execute(cpustate, transblock):
     global blocks
+
     if blocks == 10:
         progress("Finished with 10 BBs. Loading coverage plugin to start analysis")
         panda.load_plugin("coverage")
@@ -29,7 +30,18 @@ def before_block_execute(cpustate, transblock):
         panda.unload_plugin("coverage")
         progress("Unloaded coverage plugin")
 
-    if blocks > 100:
+    if blocks == 100:
+        progress("Finished with 100 BBs. Loading coverage plugin to start analysis")
+        panda.load_plugin("coverage")
+
+    if blocks == 150:
+        progress("Finished with 50 BBs. Ending coverage analysis")
+        panda.unload_plugin("coverage")
+        progress("Unloaded coverage plugin")
+
+
+
+    if blocks > 200:
         progress("Saw 100 BBs. Stopping")
         panda.stop()
 
