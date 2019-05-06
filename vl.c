@@ -232,6 +232,14 @@ int only_migratable; /* turn it off unless user states otherwise */
 
 int icount_align_option;
 
+
+bool panda_snap_requested = false;
+bool panda_revert_requested = false;
+char *panda_snap_name = NULL;
+int save_vmstate_nomon(char *name);
+
+
+
 /* The bytes in qemu_uuid are in the order specified by RFC4122, _not_ in the
  * little-endian "wire format" described in the SMBIOS 2.6 specification.
  */
@@ -1924,6 +1932,10 @@ static bool main_loop_should_exit(void)
     if (qemu_vmstop_requested(&r)) {
         vm_stop(r);
     }
+    if (panda_snap_requested) {
+        // vm_stop(RUN_STATE_SAVE_VM);
+        vm_stop(RUN_STATE_PAUSED);
+    }
     return false;
 }
 
@@ -2002,6 +2014,13 @@ void main_loop(void)
 #ifdef CONFIG_PROFILER
         dev_time += profile_getclock() - ti;
 #endif
+
+        if (panda_snap_requested) {
+            panda_snap_requested = false;
+            printf ("snap requested: snapshot=[%s]\n", panda_snap_name);
+            save_vmstate_nomon(panda_snap_name);
+        }    
+
     } while (!main_loop_should_exit());
 }
 

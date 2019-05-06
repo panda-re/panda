@@ -37,6 +37,11 @@
 
 #include "qemu/compatfd.h"
 
+
+extern bool panda_exit_loop;
+
+void panda_callbacks_main_loop_wait(void);
+
 /* If we have signalfd, we mask out the signals we want to handle and then
  * use signalfd to listen for them.  We rely on whatever the current signal
  * handler is to dispatch the signals when we receive them.
@@ -236,7 +241,7 @@ static int os_host_main_loop_wait(int64_t timeout)
      * a fake timeout in order to give the VCPU threads a chance to run.
      */
     if (!timeout && (spin_counter > MAX_MAIN_LOOP_SPIN)) {
-        static bool notified;
+         static bool notified;
 
         if (!notified && !qtest_enabled() && !qtest_driver()) {
             fprintf(stderr,
@@ -263,6 +268,8 @@ static int os_host_main_loop_wait(int64_t timeout)
     rr_begin_main_loop_wait();
     glib_pollfds_poll();
     rr_end_main_loop_wait();
+
+    panda_callbacks_main_loop_wait();
     return ret;
 }
 #else

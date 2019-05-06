@@ -90,6 +90,8 @@ extern void panda_callbacks_top_loop(void);
 
 extern bool rr_replay_complete;
 extern bool panda_exit_loop;
+extern bool panda_snap_requested;;
+
 
 bool cpu_is_stopped(CPUState *cpu)
 {
@@ -1341,6 +1343,8 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
 
     while (1) {
 
+//        printf ("going around big loop in qemu_tcg_cpu_thread_fn\n");
+
         if (!rr_replay_complete) {
             panda_callbacks_top_loop();
         }
@@ -1376,9 +1380,13 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
             cpu = CPU_NEXT(cpu);
 
             if (panda_exit_loop) {
+//                printf ("Clearing panda_exit_loop\n");
                 panda_exit_loop = false;
                 break;
             }
+
+            if (panda_snap_requested) break;
+
 
         } /* while (cpu && !cpu->exit_request).. */
 
@@ -1394,7 +1402,11 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
         qemu_tcg_wait_io_event(QTAILQ_FIRST(&cpus));
         deal_with_unplugged_cpus();
 
+
     }
+
+//    printf ("exiting big loop in qemu_tcg_cpu_thread_fn\n");
+
 
     return NULL;
 }

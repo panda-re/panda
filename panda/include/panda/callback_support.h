@@ -52,4 +52,6 @@ void panda_callbacks_serial_send(CPUState *cpu, uint64_t fifo_addr,
 void panda_callbacks_serial_write(CPUState *cpu, uint64_t fifo_addr,
                                   uint32_t port_addr, uint8_t value);
 
+void panda_callbacks_main_loop_wait(void);
+
 #endif

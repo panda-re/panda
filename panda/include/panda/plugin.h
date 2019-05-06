@@ -82,6 +82,8 @@ typedef enum panda_cb_type {
     PANDA_CB_TOP_LOOP, // at top of loop that manages emulation.  good place to
                        // take a snapshot
 
+    PANDA_CB_MAIN_LOOP_WAIT,       // you can run monitor cmds here (bc you are in right thread)
+
     PANDA_CB_LAST
 } panda_cb_type;
 
@@ -632,6 +634,20 @@ typedef union panda_cb {
      */
     void (*top_loop)(CPUState *env);
 
+    /* Callback ID:     PANDA_CB_MAIN_LOOP_WAIT
+
+       top_loop: Called in IO thread in place where monitor cmds are processed
+
+       Arguments:
+         None
+
+       Return value:
+         None
+     */
+
+    void (*main_loop_wait)(void);
+    
+
     /* Dummy union member.
 
        This union only contains function pointers.
@@ -641,6 +657,7 @@ typedef union panda_cb {
        However, cbaddr provides neutral semantics for the comparisson.
     */
     void (* cbaddr)(void);
+
 } panda_cb;
 
 // Doubly linked list that stores a callback, along with its owner

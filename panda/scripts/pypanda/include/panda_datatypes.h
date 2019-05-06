@@ -67,6 +67,7 @@ typedef enum panda_cb_type {
 
     PANDA_CB_TOP_LOOP, // at top of loop that manages emulation.  good place to
                        // take a snapshot
+    PANDA_MAIN_LOOP_WAIT,
 
     PANDA_CB_LAST
 } panda_cb_type;
@@ -619,6 +620,9 @@ typedef union panda_cb {
      */
     void (*top_loop)(CPUState *env);
 
+
+    void (*main_loop_wait)(void);
+
     /* Dummy union member.
 
        This union only contains function pointers.
@@ -752,10 +756,13 @@ void panda_require(const char *plugin_name);
 int panda_pre(int argc, char **argv, char **envp);
 int panda_init(int argc, char **argv, char **envp);
 int panda_run(void);
+int panda_revert(char *name);
+int panda_snap(char *name);
 int panda_finish(void);
 int panda_init_plugin(char *plugin_name, char ** plugin_args, uint32_t num_args);
 void panda_register_callback_helper(void* plugin, panda_cb_type type, panda_cb* cb);
 int panda_replay(char *replay_name);
+
 int rr_get_guest_instr_count_external(void);
 
 target_ulong panda_current_sp_external(CPUState *cpu);
@@ -774,12 +781,21 @@ void panda_cleanup(void);
 void panda_set_os_name(char *os_name);
 void panda_before_find_fast(void);
 void panda_disas(FILE *out, void *code, unsigned long size);
+
+int panda_delvm(char *name);
+void panda_exit_emul_loop(void);
+void panda_stop(void);
+void panda_cont(void);
+
 /*
  * @brief Returns the guest address space identifier.
  */
-int panda_current_asid(CPUState *env);
+uint64_t panda_current_asid(CPUState *env);
+
+//int load_vmstate(char *snapshot);
+
 
 /**
  * @brief Returns the guest program counter.
  */
-int panda_current_pc(CPUState *cpu);
+uint64_t panda_current_pc(CPUState *cpu);

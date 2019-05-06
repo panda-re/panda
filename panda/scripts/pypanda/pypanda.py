@@ -24,6 +24,29 @@ panda_build = realpath(pjoin(os.path.abspath(__file__), "../../../../build"))
 home = os.getenv("HOME")
 
 
+main_loop_wait_fnargs = []
+
+@pcb.main_loop_wait
+def main_loop_wait_stuff():
+	global main_loop_wait_fnargs
+	progress("main_loop_wait_stuff")
+	for fnargs in main_loop_wait_fnargs:
+		progress("running : " + (str(fnargs)))
+		(fn, args) = fnargs
+		print ("fn = " + (str(fn)))
+		print ("args = " + (str(args))) 
+		if (len(args) == 0):
+			fn()
+		else:
+			charptr = ffi.new("char[]", bytes("terpitude", "utf-8"))
+			fn(charptr)
+#			fn(args[0])
+	progress("done with main_loop_wait_stuff  --  %d " % (len(main_loop_wait_fnargs)))
+	main_loop_wait_fnargs = []	  
+
+
+
+
 class Panda:
 
 	"""
@@ -78,10 +101,78 @@ class Panda:
 		cargs = ffi.new("char **")
 		# start up panda!
 		nulls = ffi.new("char[]", b"")
-		cenvp =  ffi.new("char **",nulls)
+		cenvp =	 ffi.new("char **",nulls)
 		len_cargs = ffi.cast("int", len(self.panda_args))
 		print("Panda args: [" + (" ".join(self.panda_args)) + "]")
-		self.libpanda.panda_init(len_cargs, self.panda_args_ffi, cenvp)
+		self.len_cargs = len_cargs
+		self.cenvp = cenvp
+		self.libpanda.panda_pre(self.len_cargs, self.panda_args_ffi, self.cenvp)
+
+	def init(self):
+		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
+		self.register_callback(ffi.cast("void *", 0xdeadbeef), self.callback.main_loop_wait, main_loop_wait_stuff)
+
+
+	# fnargs is a pair (fn, args)
+	# fn is a function we want to run
+	# args is args (an array)
+	def queue_main_loop_wait_fn(self, fn, args):
+		progress("queued up a fnargs")
+		fnargs = (fn, args)
+		main_loop_wait_fnargs.append(fnargs)
+		
+	def exit_emul_loop(self):
+		self.libpanda.panda_exit_emul_loop()
+
+	def revert(self, snapshot_name, now):
+		if debug:
+			progress ("Loading snapshot " + snapshot_name)
+		if now:
+			charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
+			self.libpanda.panda_revert(charptr)
+		else:
+			self.exit_emul_loop()
+			charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
+			self.queue_main_loop_wait_fn(self.libpanda.panda_revert, [charptr])
+		
+	# stop cpu right now
+	def stop(self):
+#		 self.exit_emul_loop()
+		self.libpanda.panda_stop()
+
+	def snap(self, snapshot_name):
+		if debug:
+			progress ("Creating snapshot " + snapshot_name)
+		# stop executing guest code
+		self.stop()
+		# and queue up snapshot for whenever iothread runs
+		charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
+		self.queue_main_loop_wait_fn(self.libpanda.panda_snap, [charptr])
+		self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
+
+
+	def delvm(self, snapshot_name, now):
+		if debug:
+			progress ("Deleting snapshot " + snapshot_name)
+		if now:
+			charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
+			self.libpanda.panda_delvm(charptr)
+		else:
+			self.exit_emul_loop()
+			charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
+			self.queue_main_loop_wait_fn(self.libpanda.panda_delvm, [charptr])
+
+		
+	def enable_tb_chaining(self):
+		if debug:
+			progress("Enabling TB chaining")
+		self.libpanda.panda_enable_tb_chaining()
+
+	def disable_tb_chaining(self):
+		if debug:
+			progress("Disabling TB chaining")
+		print("!@!@!!!!!! Disabling TB chaining\n")
+		self.libpanda.panda_disable_tb_chaining()
 
 	def run(self):
 		if debug:

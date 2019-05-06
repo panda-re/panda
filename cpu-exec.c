@@ -33,6 +33,9 @@
 #include "hw/i386/apic.h"
 #endif
 #include "sysemu/replay.h"
+
+#include "sysemu/sysemu.h"
+
 #include "panda/rr/rr_log.h"
 #include "panda/callback_support.h"
 #include "panda/common.h"
@@ -47,6 +50,10 @@ int execute_llvm = 0;
 extern bool panda_tb_chaining;
 
 extern bool panda_exit_loop;
+bool panda_stopped;
+extern bool panda_revert_requested;
+extern bool panda_snap_requested ;
+char *panda_revert_name = NULL;
 
 /* -icount align implementation. */
 
@@ -69,6 +76,8 @@ typedef struct SyncClocks {
 // Needed to prevent before_block_exec_invalidate_opt from 
 // running more than once
 bool panda_bb_invalidate_done = false;
+
+
 
 static void align_clocks(SyncClocks *sc, const CPUState *cpu)
 {
@@ -181,6 +190,12 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     cpu->can_do_io = !use_icount;
 
     panda_callbacks_before_block_exec(cpu, itb);
+
+    if (panda_exit_loop) {
+//        printf ("cpu-exec.c: Exiting emul loop\n");
+        cpu->can_do_io = 1;
+        return TB_EXIT_REQUESTED;
+    }
 
     // NB: This is where we did this in panda1
     panda_bb_invalidate_done = false;
@@ -621,12 +636,14 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 {
     uintptr_t ret;
 
-    if (unlikely(atomic_read(&cpu->exit_request))) {
+    if (unlikely(panda_snap_requested || atomic_read(&cpu->exit_request))) {
         return;
     }
 
     trace_exec_tb(tb, tb->pc);
+//    printf ("cpu_loop_exec_tb: calling cpu_tb_exec pc=%x\n", tb->pc);
     ret = cpu_tb_exec(cpu, tb);
+//    printf ("cpu_loop_exec_tb: back from cpu_tb_exec pc=%x\n", tb->pc);
     tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
     *tb_exit = ret & TB_EXIT_MASK;
     switch (*tb_exit) {
@@ -639,6 +656,7 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
          * comes before the next read of cpu->exit_request or
          * cpu->interrupt_request.
          */
+//        printf ("cpu_loop_exec_tb: exit requested\n");
         smp_mb();
         *last_tb = NULL;
         break;
@@ -757,8 +775,12 @@ int cpu_exec(CPUState *cpu)
 
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
-
-        if (panda_exit_loop) break;
+        
+        if (panda_exit_loop) {
+//            printf ("Exiting cpu_handle_execption loop\n");
+//            vm_stop(RUN_STATE_PAUSED);                                                         
+            break;
+        }
 
         TranslationBlock *last_tb = NULL;
         int tb_exit = 0;
@@ -814,20 +836,37 @@ int cpu_exec(CPUState *cpu)
                 break;
             }
 
-            if (!rr_in_replay() || until_interrupt > 0) {
+            if ((!rr_in_replay() || until_interrupt > 0) 
+                 && !panda_stopped) {
+//                printf ("Calling cpu_loop_exec_tb pc = %x\n", tb->pc);
                 cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
                 /* Try to align the host and virtual clocks
                    if the guest is in advance */
                 align_clocks(&sc, cpu);
             }
+            if (panda_exit_loop) {
+//                printf ("Exiting inner loop\n");
+                break;
+            }
         }
     }
+
 
     cc->cpu_exec_exit(cpu);
     rcu_read_unlock();
 
     /* fail safe : never use current_cpu outside cpu_exec() */
     current_cpu = NULL;
+
+    if (panda_revert_requested) {
+        panda_revert_requested = false;
+//        printf ("revert requested: snapshot=[%s]\n", panda_revert_name);
+        load_vmstate(panda_revert_name);
+    }
+
+    if (panda_snap_requested) {
+//        vm_stop(RUN_STATE_SAVE_VM);                                                                 
+    }
 
     return ret;
 }

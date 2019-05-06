@@ -66,6 +66,8 @@ const unsigned int postcopy_ram_discard_version = 0;
 
 static bool skip_section_footers;
 
+int save_vmstate_nomon(const char *name);
+
 static struct mig_cmd_args {
     ssize_t     len; /* -1 = variable */
     const char *name;
@@ -2056,6 +2058,21 @@ int qemu_loadvm_state(QEMUFile *f)
     return ret;
 }
 
+void mmonitor_printf(Monitor *mon, const char *fmt, ...);
+
+
+void mmonitor_printf(Monitor *mon, const char *fmt, ...) {
+    va_list ap; 
+    va_start(ap, fmt);
+    if (mon)
+        monitor_printf(mon, fmt, ap);
+    else
+        printf(fmt, ap);
+    va_end(ap);
+}
+
+
+
 int save_vmstate(Monitor *mon, const char *name)
 {
     BlockDriverState *bs, *bs1;
@@ -2070,8 +2087,8 @@ int save_vmstate(Monitor *mon, const char *name)
     AioContext *aio_context;
 
     if (!bdrv_all_can_snapshot(&bs)) {
-        monitor_printf(mon, "Device '%s' is writable but does not "
-                       "support snapshots.\n", bdrv_get_device_name(bs));
+        mmonitor_printf(mon, "Device '%s' is writable but does not "
+                        "support snapshots.\n", bdrv_get_device_name(bs));
         return ret;
     }
 
@@ -2088,7 +2105,7 @@ int save_vmstate(Monitor *mon, const char *name)
 
     bs = bdrv_all_find_vmstate_bs();
     if (bs == NULL) {
-        monitor_printf(mon, "No block device can accept snapshots\n");
+        mmonitor_printf(mon, "No block device can accept snapshots\n");
         return ret;
     }
     aio_context = bdrv_get_aio_context(bs);
@@ -2097,7 +2114,7 @@ int save_vmstate(Monitor *mon, const char *name)
 
     ret = global_state_store();
     if (ret) {
-        monitor_printf(mon, "Error saving global state\n");
+        mmonitor_printf(mon, "Error saving global state\n");
         return ret;
     }
     vm_stop(RUN_STATE_SAVE_VM);
@@ -2129,7 +2146,7 @@ int save_vmstate(Monitor *mon, const char *name)
     /* save the VM state */
     f = qemu_fopen_bdrv(bs, 1);
     if (!f) {
-        monitor_printf(mon, "Could not open VM state file\n");
+        mmonitor_printf(mon, "Could not open VM state file\n");
         goto the_end;
     }
     ret = qemu_savevm_state(f, &local_err);
@@ -2142,8 +2159,8 @@ int save_vmstate(Monitor *mon, const char *name)
 
     ret = bdrv_all_create_snapshot(sn, bs, vm_state_size, &bs);
     if (ret < 0) {
-        monitor_printf(mon, "Error while creating snapshot on '%s'\n",
-                       bdrv_get_device_name(bs));
+        mmonitor_printf(mon, "Error while creating snapshot on '%s'\n",
+                           bdrv_get_device_name(bs));
         goto the_end;
     }
 
@@ -2154,8 +2171,15 @@ int save_vmstate(Monitor *mon, const char *name)
     if (saved_vm_running) {
         vm_start();
     }
+
     return ret;
 }
+
+
+int save_vmstate_nomon(const char *name) {
+    return save_vmstate(NULL, name);
+}
+
 
 void hmp_savevm(Monitor *mon, const QDict *qdict)
 {
@@ -2241,7 +2265,7 @@ int load_vmstate(const char *name)
                      bdrv_get_device_name(bs), name);
         return ret;
     }
-
+    
     bs_vm_state = bdrv_all_find_vmstate_bs();
     if (!bs_vm_state) {
         error_report("No block device supports snapshots");
@@ -2287,6 +2311,7 @@ int load_vmstate(const char *name)
     aio_context_release(aio_context);
 
     migration_incoming_state_destroy();
+
     if (ret < 0) {
         error_report("Error %d while loading VM state", ret);
         return ret;
@@ -2295,18 +2320,34 @@ int load_vmstate(const char *name)
     return 0;
 }
 
+
 void hmp_delvm(Monitor *mon, const QDict *qdict)
 {
     BlockDriverState *bs;
     Error *err;
     const char *name = qdict_get_str(qdict, "name");
-
+    
     if (bdrv_all_delete_snapshot(name, &bs, &err) < 0) {
         error_reportf_err(err,
                           "Error while deleting snapshot on device '%s': ",
                           bdrv_get_device_name(bs));
     }
 }
+
+int delvm_name(char *name);
+
+
+// returns 0 if successful
+int delvm_name(char *name) {
+    BlockDriverState *bs;
+    Error *err;
+
+    return bdrv_all_delete_snapshot(name, &bs, &err);
+}
+
+
+
+
 
 void hmp_info_snapshots(Monitor *mon, const QDict *qdict)
 {

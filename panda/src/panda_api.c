@@ -4,6 +4,7 @@
 #include "panda/panda_api.h"
 #include "panda/plugin.h"
 
+extern int load_vmstate(char *name);
 
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, uint8_t *buf, int len);
 int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, uint8_t *buf, int len);
@@ -14,16 +15,29 @@ void panda_register_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 target_ulong panda_current_sp_external(CPUState *cpu);
 bool panda_in_kernel_external(CPUState *cpu);
 
+int save_vmstate_nomon(const char *name);
 
+
+// just call main_aux and return IMMEDIATELY
+// after this we will be able to register plugins in python
 int panda_pre(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_PRE);
 }
 
+// call main_aux and run everything up to and including panda_callbacks_after_machine_init
 int panda_init(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_INIT);
 }
 
 extern int panda_in_main_loop;
+extern bool panda_exit_loop;
+extern bool panda_stopped;
+
+extern bool panda_revert_requested;
+extern char *panda_revert_name;
+
+extern bool panda_snap_requested;
+extern char *panda_snap_name;
 
 int panda_run(void) {
     qemu_cpu_kick(first_cpu);
@@ -36,6 +50,60 @@ int panda_run(void) {
 int panda_finish(void) {
     return main_aux(0, 0, 0, PANDA_FINISH);
 }
+
+void panda_exit_emul_loop(void) {
+    printf ("panda_api: exit_emul_loop\n");
+    panda_exit_loop = true;
+}
+
+void panda_stop(void) {
+    printf ("panda_api: stop cpu\n");
+    panda_stopped = true;
+}
+
+void panda_cont(void) {
+    printf ("panda_api: cont cpu\n");
+    panda_stopped = false;
+} 
+
+int panda_revert(char *snapshot_name) {
+/*
+    panda_exit_loop = true;
+    panda_revert_requested = true;
+    panda_revert_name = strdup(snapshot_name);
+    return 1;
+*/
+    printf ("In panda_revert snapshot=%s\n", snapshot_name);
+    return load_vmstate(snapshot_name);
+}
+
+int panda_snap(char *snapshot_name) {
+/*
+    panda_exit_loop = true;
+    panda_snap_requested = true;
+    panda_snap_name = strdup(snapshot_name);
+    return 1;
+*/
+    printf("panda_snap %s\n", panda_snap_name);
+    return save_vmstate_nomon(panda_snap_name);  
+}
+
+
+
+int delvm_name(char *name);
+
+int panda_delvm(char *snapshot_name) {
+/*
+    panda_exit_loop = true;
+    panda_delvm_name_requested = true;
+    panda_delvm_name_name = strdup(name);
+    return 1;
+*/
+    printf ("In panda_delvm snapshot=%s\n", snapshot_name);
+    delvm_name(snapshot_name);
+    return 1;
+}
+
 
 int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args) {
     for (uint32_t i=0; i<num_args; i++)
