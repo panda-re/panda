@@ -67,6 +67,8 @@ void uninit_plugin(void *);
 #define FILE_OBJECT_POS_OFF  0x038
 #define PROCESS_PARAMETERS_OFF 0x010 // PEB.ProcessParameters
 #define UNICODE_WORKDIR_OFF 0x24     // ProcessParameters.WorkingDirectory
+// KDDEBUGGER_DATA64.PsActiveProcessHead
+#define KDDBG64_ACTIVE_PROCESS_HEAD_OFF 0x50
 
 // "Constants" specific to the guest operating system.
 // These are initialized in the init_plugin function.
@@ -285,8 +287,16 @@ void on_get_processes(CPUState *cpu, GArray **out) {
     // null.
     *out = NULL;
 
-    PTR sentinel = 0x80561358; // nt!PsActiveProcessHead - Windows XP SP3
-    // PTR sentinel = 0x8046e460; // nt!PsActiveProcessHead - Windows 2000 SP4
+    // Try to get the nt!PsActiveProcessHead from the KDDEBUGGER_DATA64 struct.
+    // Note that the result of kddebugger_data returns a physical address.
+    PTR kddebugger_data = get_kddebugger_data(cpu);
+    PTR sentinel = -1;
+    if (-1 == panda_physical_memory_rw(kddebugger_data + 0x50,
+                                       (uint8_t *)&sentinel, sizeof(sentinel),
+                                       0)) {
+        fprintf(stderr, "Could not get PsActiveProcessHead!\n");
+        return;
+    }
     PTR cur_entry = sentinel;
     do {
         // Read the current list entry Flink pointer.

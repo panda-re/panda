@@ -67,6 +67,7 @@ static PTR get_loaded_module_list(CPUState *cpu) {
         return lml;
     }
     PTR kddbg_data = get_win2000_kddebugger_data(cpu);
+    printf("kddbg_data = 0x%X\n", kddbg_data);
     if (-1 == kddbg_data) {
         fprintf(stderr, "Could not find KDDEBUGGER_DATA32 structure!\n");
         return -1;
