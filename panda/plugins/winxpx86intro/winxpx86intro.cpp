@@ -72,58 +72,6 @@ false)) { return 0;
     return kddl;
 }
 
-void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out) {
-    *out = NULL;
-
-    PTR eproc = p->taskd;
-    PTR peb;
-    if (-1 == panda_virtual_memory_read(cpu, eproc + EPROC_PEB_OFF,
-                                        (uint8_t *)&peb, sizeof(peb))) {
-        // EPROCESS is allocated from the non-paged pool, this really shouldn't
-        // fail unless the process that was passed in does not exist.
-        fprintf(stderr, "Could not read PEB pointer from _EPROCESS!\n");
-        return;
-    }
-
-    PTR peb_ldr_data;
-    if (-1 == panda_virtual_memory_read(cpu, peb + PEB_LDR_OFF,
-                                        (uint8_t *)&peb_ldr_data,
-                                        sizeof(peb_ldr_data))) {
-        // PEB is allocated from the paged pool, so there is actually a good
-        // chance that this will fail and there isn't anything wrong.
-        //
-        // XXX: In WinDbg, its possible to use !vtop to get the physical
-        // address. This WinDbg extension I think walks the page table manually
-        // to get at the physical address. Perhaps this could be added to
-        // wintrospection.
-        return;
-    }
-
-    if (NULL == peb_ldr_data) {
-        // XXX: Why would this ever be null?
-        return;
-    }
-
-    // Fake "first mod": the address of where the list head would
-    // be if it were a LDR_DATA_TABLE_ENTRY
-    PTR mod_first = peb_ldr_data + PEB_LDR_LOAD_LINKS_OFF - LDR_LOAD_LINKS_OFF;
-    PTR mod_current = get_next_mod(cpu, mod_first);
-
-    if (*out == NULL) {
-        // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-        *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
-        g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
-    }
-
-    // We want while loop here -- we are starting at the head,
-    // which is not a valid module
-    while (mod_current != NULL && mod_current != mod_first) {
-        add_mod(cpu, *out, mod_current, false);
-        mod_current = get_next_mod(cpu, mod_current);
-    }
-    return;
-}
-
 void on_get_modules(CPUState *cpu, GArray **out) {
     PTR kdbg = get_kdbg(cpu);
     PTR PsLoadedModuleList;
@@ -251,7 +199,6 @@ HandleObject *get_winxp_handle_object(CPUState *cpu, uint32_t eproc,
 
 bool init_plugin(void *self) {
 #ifdef TARGET_I386
-    PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
     PPP_REG_CB("osi", on_get_modules, on_get_modules);
     init_wintrospection_api();
     return true;

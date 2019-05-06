@@ -35,6 +35,7 @@ void uninit_plugin(void *);
 void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out);
 PTR get_win2000_kpcr(CPUState *cpu);
 HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t handle);
+PTR get_win2000_kddebugger_data(CPUState *cpu);
 }
 
 #include <cstdio>
@@ -47,7 +48,9 @@ HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t 
 #define PEB_LDR_OFF            0x00c // _PEB.Ldr
 #define PEB_LDR_MEM_LINKS_OFF  0x014 // _PEB_LDR_DATA.InMemoryOrderModuleList
 #define PEB_LDR_LOAD_LINKS_OFF 0x00c // _PEB_LDR_DATA.InLoadOrderModuleList
+#define LDR_LOAD_LINKS_OFF     0x000 // _LDR_DATA_TABLE_ENTRY.InLoadOrderLinks
 #define HANDLE_TABLE_L1_OFF    0x008    // _HANDLE_TABLE.Layer1
+#define KDDEBUGGER_DATA_SIZE   0x208
 
 #define HANDLE_LOCK_FLAG 0x80000000
 
@@ -60,88 +63,23 @@ PTR get_win2000_kpcr(CPUState *cpu) {
 static PTR lml;
 
 static PTR get_loaded_module_list(CPUState *cpu) {
-
-    if(lml) return lml;
-
-    MemoryRegion *mr = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
-
-    rcu_read_lock();
-    char *host_ptr = (char *)qemu_map_ram_ptr(mr->ram_block, 0);
-    unsigned char *s;
-    bool found=false;
-    uint32_t i;
-
-    // Locate the KDDEBUGGER_DATA64 structure
-    for(i=0; i<mr->size-0x208; i++) {
-        s = ((unsigned char *) host_ptr) + i;
-    if(s[8] == '\0' && s[9] == '\0' && s[10] == '\0' && s[11] == '\0' &&
-        s[12] == '\0' && s[13] == '\0' && s[14] == '\0' && s[15] == '\0' &&
-        s[16] == 'K' && s[17] == 'D' && s[18] == 'B' && s[19] == 'G') {
-            found=true;
-        break;
+    if (lml) {
+        return lml;
     }
+    PTR kddbg_data = get_win2000_kddebugger_data(cpu);
+    if (-1 == kddbg_data) {
+        fprintf(stderr, "Could not find KDDEBUGGER_DATA32 structure!\n");
+        return -1;
     }
-
-    // Ensure the structure was located
-    assert(found);
-
     // Store the virtual address of the loaded module list so we don't need
     // to repeat this work
-    memcpy(&lml, s+KDBG_PSLML, sizeof(lml));
-
-    rcu_read_unlock();
-    return lml;
-}
-
-
-void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out) {
-    // search for process
-    PTR eproc_first, eproc_cur, eproc_found;
-    eproc_first = eproc_cur = get_current_proc(cpu);
-    eproc_found = (PTR)NULL;
-    if (eproc_first == NULL) goto error;
-    do {
-        if (eproc_cur == p->taskd) {
-            eproc_found = eproc_cur;
-            break;
-        }
-        eproc_cur = get_next_proc(cpu, eproc_cur);
-    } while (eproc_cur != NULL && eproc_cur != eproc_first);
-    if (eproc_found == NULL) goto error;
-
-    PTR peb, ldr;
-    PTR mod_first, mod_current, mod_next;
-    peb = ldr = (PTR)NULL;
-    mod_first = mod_current = mod_next = (PTR)NULL;
-
-    // get module list: PEB->Ldr->InMemoryOrderModuleList
-    if (-1 == panda_virtual_memory_rw(cpu, eproc_found + EPROC_PEB_OFF, (uint8_t *)&peb, sizeof(PTR), false))
-        goto error;
-    if (-1 == panda_virtual_memory_rw(cpu, peb + PEB_LDR_OFF, (uint8_t *)&ldr, sizeof(PTR), false))
-        goto error;
-    if (-1 == panda_virtual_memory_rw(cpu, ldr + PEB_LDR_MEM_LINKS_OFF, (uint8_t *)&mod_first, sizeof(PTR), false))
-        goto error;
-
-    // allocate GArray
-    if (*out == NULL) {
-        // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-        *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
-        g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
+    if (-1 == panda_physical_memory_rw(kddbg_data + KDBG_PSLML, (uint8_t *)&lml,
+                                       sizeof(lml), 0)) {
+        fprintf(stderr,
+                "Could not read PsLoadedModuleList from KDDEBUGGER_DATA32!\n");
+        return -1;
     }
-
-    // fill GArray
-    mod_current = mod_first;
-    mod_next = get_next_mod(cpu, mod_current);
-    while (mod_current != NULL && mod_next != mod_first) {
-        add_mod(cpu, *out, mod_current, true);
-        mod_current = mod_next;
-        mod_next = get_next_mod(cpu, mod_current);
-    };
-    return;
-
-error:
-    *out = NULL;
-    return;
+    return lml;
 }
 
 void on_get_modules(CPUState *cpu, GArray **out) {
@@ -234,13 +172,32 @@ HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t 
     return ho;
 }
 
-
+// Returns the physical address of KDDEBUGGER_DATA.
+PTR get_win2000_kddebugger_data(CPUState *cpu)
+{
+    MemoryRegion *mr = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
+    rcu_read_lock();
+    uint8_t *host_ptr = (uint8_t *)qemu_map_ram_ptr(mr->ram_block, 0);
+    uint8_t signature[] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+                           0x0, 0x0, 'K', 'D', 'B', 'G'};
+    PTR result = 0xFFFFFFFF;
+    for (int i = 0; i < mr->size - KDDEBUGGER_DATA_SIZE; i++) {
+        if (0 == memcmp(signature, host_ptr + i, sizeof(signature))) {
+            // We subtract eight bytes from the current position because of the
+            // list entry field size. This gives us the start of the
+            // KDDEBUGGER_DATA structure.
+            result = i - 8;
+            break;
+        }
+    }
+    rcu_read_unlock();
+    return result;
+}
 
 #endif
 
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
     PPP_REG_CB("osi", on_get_modules, on_get_modules);
     assert(init_wintrospection_api());
     return true;
