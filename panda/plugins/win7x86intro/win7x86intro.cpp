@@ -80,61 +80,6 @@ static PTR get_kdbg(CPUState *cpu) {
     return kddl;
 }
 
-
-
-
-void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out) {
-    // search for process
-    PTR eproc_first, eproc_cur, eproc_found;
-    eproc_first = eproc_cur = get_current_proc(cpu);
-    eproc_found = (PTR)NULL;
-    if (eproc_first == NULL) goto error;
-    do {
-        if (eproc_cur == p->taskd) {
-            eproc_found = eproc_cur;
-            break;
-        }
-        eproc_cur = get_next_proc(cpu, eproc_cur);
-    } while (eproc_cur != NULL && eproc_cur != eproc_first);
-    if (eproc_found == NULL) goto error;
-
-    if (*out == NULL) {
-        // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-        *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
-        g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
-    }
-
-    PTR peb, ldr;
-    PTR mod_first, mod_current;
-    peb = ldr = (PTR)NULL;
-    mod_first = mod_current = (PTR)NULL;
-
-    // get module list: PEB->Ldr->InMemoryOrderModuleList
-    if (-1 == panda_virtual_memory_rw(cpu, eproc_found+EPROC_PEB_OFF, (uint8_t *)&peb, sizeof(PTR), false))
-        goto error;
-    if (-1 == panda_virtual_memory_rw(cpu, peb+PEB_LDR_OFF, (uint8_t *)&ldr, sizeof(PTR), false))
-        goto error;
-    if (ldr == NULL)
-        goto error;
-
-    // Fake "first mod": the address of where the list head would
-    // be if it were a LDR_DATA_TABLE_ENTRY
-    mod_first = ldr+PEB_LDR_LOAD_LINKS_OFF-LDR_LOAD_LINKS_OFF;
-    mod_current = get_next_mod(cpu, mod_first);
-
-    // We want while loop here -- we are starting at the head,
-    // which is not a valid module
-    while (mod_current != NULL && mod_current != mod_first) {
-        add_mod(cpu, *out, mod_current, false);
-        mod_current = get_next_mod(cpu, mod_current);
-    }
-    return;
-
-error:
-    *out = NULL;
-    return;
-}
-
 void on_get_modules(CPUState *cpu, GArray **out) {
     PTR kdbg = get_kdbg(cpu);
     PTR PsLoadedModuleList;
@@ -243,7 +188,7 @@ HandleObject *get_win7_handle_object(CPUState *cpu, uint32_t eproc, uint32_t han
 
 bool init_plugin(void *self) {
 #ifdef TARGET_I386
-    PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
+    // PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
     PPP_REG_CB("osi", on_get_modules, on_get_modules);
     init_wintrospection_api();
     return true;

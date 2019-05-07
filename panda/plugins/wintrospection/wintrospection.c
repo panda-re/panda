@@ -742,6 +742,7 @@ bool init_plugin(void *self) {
         assert(init_winxpx86intro_api());
         get_kpcr = get_winxp_kpcr;
         get_handle_object = get_winxp_handle_object;
+        get_kddebugger_data = get_winxp_kdbg;
     } else {
         fprintf(stderr, "Plugin is not supported for this windows "
             "version (%s).\n", panda_os_variant);

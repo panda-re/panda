@@ -3,5 +3,6 @@
 
 PTR get_winxp_kpcr(CPUState *cpu);
 HandleObject *get_winxp_handle_object(CPUState *cpu, uint32_t eproc, uint32_t handle);
+PTR get_winxp_kdbg(CPUState *cpu);
 
 #endif
