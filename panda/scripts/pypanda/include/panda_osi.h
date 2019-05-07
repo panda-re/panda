@@ -1,55 +1,63 @@
 typedef void target_pid_t;
-/**
- * @brief Minimal handle for a process. Contains a unique identifier \p asid
- * and a task descriptor pointer \p taskd that can be used to retrieve the full
- * details of the process.
- */
-typedef struct osi_proc_handle_struct {
-    target_ptr_t taskd;
-    target_ptr_t asid;
-} OsiProcHandle;
 
-/**
- * @brief Minimal information about a process thread.
- * Address space and open resources are shared between threads
- * of the same process. This information is stored in OsiProc.
- */
-typedef struct osi_thread_struct {
-    target_pid_t pid;
-    target_pid_t tid;
-} OsiThread;
-
-/**
- * @brief Represents a page in the address space of a process.
- *
- * @note This has not been implemented/used so far.
- */
 typedef struct osi_page_struct {
     target_ptr_t start;
     target_ulong len;
 } OsiPage;
 
-/**
- * @brief Represents information about a guest OS module (kernel module
- * or shared library).
- */
+typedef struct osi_proc_struct {
+    target_ptr_t offset;
+    char *name;
+    target_ptr_t asid;
+    OsiPage *pages;
+    target_ptr_t pid;
+    target_ptr_t ppid;
+} OsiProc;
+
+typedef struct osi_procs_struct {
+    uint32_t num;
+    uint32_t capacity;
+    OsiProc *proc;
+} OsiProcs;
+
 typedef struct osi_module_struct {
-    target_ptr_t modd;
+    target_ptr_t offset;
+    char *file;
     target_ptr_t base;
     target_ptr_t size;
-    char *file;
     char *name;
 } OsiModule;
 
-/**
- * @brief Detailed information for a process.
- */
-typedef struct osi_proc_struct {
-    target_ptr_t taskd;
-    target_ptr_t asid;
-    target_ptr_t pid;
-    target_ptr_t ppid;
-    char *name;
-    OsiPage *pages;
-} OsiProc;
+typedef struct osi_modules_struct {
+    uint32_t num;
+    uint32_t capacity;
+    OsiModule *module;
+} OsiModules;
 
+typedef struct osi_thread_struct {
+    target_pid_t tid;
+    target_pid_t pid;
+} OsiThread;
+
+
+// returns operating system introspection info for each process in an array
+OsiProcs *get_processes(CPUState *env);
+
+// gets the currently running process
+OsiProc *get_current_process(CPUState *env);
+
+// returns operating system introspection info for each kernel module currently loaded
+OsiModules *get_modules(CPUState *env);
+
+// returns operating system introspection info for each userspace loaded library in the specified process
+// returns the same type as get_modules
+OsiModules *get_libraries(CPUState *env, OsiProc *p);
+
+// returns the current thread
+OsiThread *get_current_thread(CPUState *env);
+
+// Free memory allocated by other library functions
+void free_osiproc(OsiProc *p);
+void free_osiprocs(OsiProcs *ps);
+void free_osimodules(OsiModules *ms);
+void free_osithread(OsiThread *t);

@@ -51,6 +51,7 @@ class Panda:
 		self.bindir = pjoin(panda_build, "%s-softmmu" % arch)
 		self.panda = pjoin(self.bindir, "qemu-system-%s" % arch)
 		self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % arch))
+		
 		biospath = realpath(pjoin(self.panda,"..", "..",  "pc-bios"))
 		bits = None
 		if self.arch == "i386":
@@ -368,3 +369,23 @@ class Panda:
 		else:
 		    ret = self.libpanda.panda_monitor_run(buf)
 		    return ffi.string(ret).decode("utf-8", "ignore");
+
+	def load_osi(self):
+		self.libpanda_osi = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_osi.so"))
+		self.libpanda_osi_linux = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_osi_linux.so"))
+		self.libpanda_osi_test = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_osi_test.so"))
+	
+	def get_current_process(self, cpustate):
+		return self.libpanda_osi.get_current_process(cpustate)
+
+	def get_processes(self, cpustate):
+		return self.libpanda_osi.get_processes(cpustate)
+	
+	def get_libraries(self, cpustate, current):
+		return self.libpanda_osi.get_libraries(cpustate,current)
+	
+	def get_modules(self, cpustate):
+		return self.libpanda_osi.get_modules(cpustate)
+	
+	def get_current_thread(self, cpustate):
+		return self.libpanda_osi.get_current_thread(cpustate)
