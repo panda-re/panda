@@ -62,6 +62,8 @@ void on_get_current_process(CPUState *cpu, OsiProc **out);
 
 void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out);
 
+void on_get_modules(CPUState *cpu, GArray **out);
+
 void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out);
 
 void on_get_processes(CPUState *cpu, GArray **out);

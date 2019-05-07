@@ -40,12 +40,6 @@ PTR get_win7_kdbg(CPUState *cpu);
 #define KMODE_FS               0x030 // Segment number of FS in kernel mode
 #define KPCR_KDVERSION_OFF     0x034  // _KPCR.KdVersionBlock
 #define KDVERSION_DDL_OFF      0x020  // _DBGKD_GET_VERSION64.DebuggerDataList
-#define KDBG_PSLML             0x048  // _KDDEBUGGER_DATA64.PsLoadedModuleList
-#define EPROC_PEB_OFF          0x1a8 // _EPROCESS.Peb
-#define PEB_LDR_OFF            0x00c // _PEB.Ldr
-#define PEB_LDR_MEM_LINKS_OFF  0x014 // _PEB_LDR_DATA.InMemoryOrderModuleLinks
-#define PEB_LDR_LOAD_LINKS_OFF 0x00c // _PEB_LDR_DATA.InMemoryOrderModuleLinks
-#define LDR_LOAD_LINKS_OFF     0x000 // _LDR_DATA_TABLE_ENTRY.InLoadOrderLinks
 
 // XXX: this will have to change for 64-bit
 PTR get_win7_kpcr(CPUState *cpu) {
@@ -64,48 +58,13 @@ PTR get_win7_kpcr(CPUState *cpu) {
     return fs_base;
 }
 
-void on_get_modules(CPUState *cpu, GArray **out) {
-    PTR kdbg = get_win7_kdbg(cpu);
-    PTR PsLoadedModuleList = 0xFFFFFFFF;
-    PTR mod_current = (PTR)NULL;
-
-    // Dbg.PsLoadedModuleList
-    if (-1 == panda_physical_memory_rw(kdbg + KDBG_PSLML,
-                                       (uint8_t *)&PsLoadedModuleList,
-                                       sizeof(PTR), false))
-        goto error;
-
-    if (*out == NULL) {
-        // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-        *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
-        g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
-    }
-
-    mod_current = get_next_mod(cpu, PsLoadedModuleList);
-
-    // We want while loop here -- we are starting at the head,
-    // which is not a valid module
-    while (mod_current != NULL && mod_current != PsLoadedModuleList) {
-        add_mod(cpu, *out, mod_current, false);
-        mod_current = get_next_mod(cpu, mod_current);
-    }
-    return;
-
-error:
-    *out = NULL;
-    return;
-}
-
 // i.e. return pointer to the object represented by this handle
 static uint32_t get_handle_table_entry(CPUState *cpu, uint32_t pHandleTable, uint32_t handle) {
     uint32_t tableCode, tableLevels;
     // get tablecode
     panda_virtual_memory_rw(cpu, pHandleTable, (uint8_t *)&tableCode, 4, false);
-    //printf ("tableCode = 0x%x\n", tableCode);
     // extract levels
     tableLevels = tableCode & LEVEL_MASK;
-    //printf("tableLevels = %d\n", tableLevels);
-    //  assert (tableLevels <= 2);
     if (tableLevels > 2) {
         return 0;
     }
@@ -195,8 +154,6 @@ PTR get_win7_kdbg(CPUState *cpu)
 
 bool init_plugin(void *self) {
 #ifdef TARGET_I386
-    // PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
-    PPP_REG_CB("osi", on_get_modules, on_get_modules);
     init_wintrospection_api();
     return true;
 #else

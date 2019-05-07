@@ -43,12 +43,6 @@ PTR get_win2000_kddebugger_data(CPUState *cpu);
 
 #ifdef TARGET_I386
 
-#define KDBG_PSLML             0x048 // _KDDEBUGGER_DATA64.PsLoadedModuleList
-#define EPROC_PEB_OFF          0x1b0 // _EPROCESS.Peb
-#define PEB_LDR_OFF            0x00c // _PEB.Ldr
-#define PEB_LDR_MEM_LINKS_OFF  0x014 // _PEB_LDR_DATA.InMemoryOrderModuleList
-#define PEB_LDR_LOAD_LINKS_OFF 0x00c // _PEB_LDR_DATA.InLoadOrderModuleList
-#define LDR_LOAD_LINKS_OFF     0x000 // _LDR_DATA_TABLE_ENTRY.InLoadOrderLinks
 #define HANDLE_TABLE_L1_OFF    0x008    // _HANDLE_TABLE.Layer1
 #define KDDEBUGGER_DATA_SIZE   0x208
 
@@ -57,61 +51,6 @@ PTR get_win2000_kddebugger_data(CPUState *cpu);
 // Windows 2000 has a fixed location for the KPCR
 PTR get_win2000_kpcr(CPUState *cpu) {
     return 0xFFDFF000;
-}
-
-// Loaded module list
-static PTR lml;
-
-static PTR get_loaded_module_list(CPUState *cpu) {
-    if (lml) {
-        return lml;
-    }
-    PTR kddbg_data = get_win2000_kddebugger_data(cpu);
-    printf("kddbg_data = 0x%X\n", kddbg_data);
-    if (-1 == kddbg_data) {
-        fprintf(stderr, "Could not find KDDEBUGGER_DATA32 structure!\n");
-        return -1;
-    }
-    // Store the virtual address of the loaded module list so we don't need
-    // to repeat this work
-    if (-1 == panda_physical_memory_rw(kddbg_data + KDBG_PSLML, (uint8_t *)&lml,
-                                       sizeof(lml), 0)) {
-        fprintf(stderr,
-                "Could not read PsLoadedModuleList from KDDEBUGGER_DATA32!\n");
-        return -1;
-    }
-    return lml;
-}
-
-void on_get_modules(CPUState *cpu, GArray **out) {
-    PTR lml = get_loaded_module_list(cpu);
-    PTR mod_first, mod_current, mod_next;
-    mod_first = mod_current = mod_next = (PTR)NULL;
-
-    // Dbg.PsLoadedModuleList
-    if (-1 == panda_virtual_memory_rw(cpu, lml, (uint8_t *)&mod_first, sizeof(PTR), false))
-    goto error;
-
-    // allocate GArray
-    if (*out == NULL) {
-    // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-    *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
-    g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
-    }
-
-    // fill GArray
-    mod_current = mod_first;
-    mod_next = get_next_mod(cpu, mod_current);
-    while (mod_current != NULL && mod_next != mod_first) {
-        add_mod(cpu, *out, mod_current, false);
-        mod_current = mod_next;
-        mod_next = get_next_mod(cpu, mod_current);
-    }
-    return;
-
-error:
-    *out = NULL;
-    return;
 }
 
 // i.e. return pointer to the object represented by this handle
@@ -173,33 +112,37 @@ HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t 
     return ho;
 }
 
-// Returns the physical address of KDDEBUGGER_DATA.
+// Returns the physical address of KDDEBUGGER_DATA64.
 PTR get_win2000_kddebugger_data(CPUState *cpu)
 {
+    static PTR cached_kdbg = -1;
+    if (cached_kdbg != -1) {
+        return cached_kdbg;
+    }
+
     MemoryRegion *mr = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
     rcu_read_lock();
     uint8_t *host_ptr = (uint8_t *)qemu_map_ram_ptr(mr->ram_block, 0);
     uint8_t signature[] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
                            0x0, 0x0, 'K', 'D', 'B', 'G'};
-    PTR result = 0xFFFFFFFF;
     for (int i = 0; i < mr->size - KDDEBUGGER_DATA_SIZE; i++) {
         if (0 == memcmp(signature, host_ptr + i, sizeof(signature))) {
             // We subtract eight bytes from the current position because of the
             // list entry field size. This gives us the start of the
             // KDDEBUGGER_DATA structure.
-            result = i - 8;
+            cached_kdbg = i - 8;
             break;
         }
     }
     rcu_read_unlock();
-    return result;
+
+    return cached_kdbg;
 }
 
 #endif
 
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    PPP_REG_CB("osi", on_get_modules, on_get_modules);
     assert(init_wintrospection_api());
     return true;
 #else

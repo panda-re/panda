@@ -48,7 +48,7 @@ void uninit_plugin(void *);
 #ifdef TARGET_I386
 
 // Constants that are the same in all supported versions of windows
-// Currently just Windows 7 and Windows 2000
+// Supports: Windows 2000 SP4, XP SP3, and Windows 7 SP1.
 #define KPCR_CURTHREAD_OFF   0x124 // _KPCR.PrcbData.CurrentThread
 #define EPROC_DTB_OFF        0x018 // _EPROCESS.Pcb.DirectoryTableBase
 #define EPROC_TYPE_OFF       0x000 // _EPROCESS.Pcb.Header.Type
@@ -68,6 +68,8 @@ void uninit_plugin(void *);
 #define PROCESS_PARAMETERS_OFF 0x010 // PEB.ProcessParameters
 #define UNICODE_WORKDIR_OFF 0x24     // ProcessParameters.WorkingDirectory
 // KDDEBUGGER_DATA64.PsActiveProcessHead
+#define KDDBG64_LOADED_MOD_HEAD_OFF 0x048
+// KDDEBUGGER_DATA64.PsLoadedModuleList
 #define KDDBG64_ACTIVE_PROCESS_HEAD_OFF 0x50
 
 // "Constants" specific to the guest operating system.
@@ -275,6 +277,39 @@ void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out)
 #ifdef TARGET_I386
     env->cr[3] = cur_cr3;
 #endif
+}
+
+void on_get_modules(CPUState *cpu, GArray **out)
+{
+    PTR kdbg = get_kddebugger_data(cpu);
+    PTR PsLoadedModuleList = 0xFFFFFFFF;
+    PTR mod_current = 0x0;
+
+    // Dbg.PsLoadedModuleList
+    if (-1 == panda_physical_memory_rw(kdbg + KDDBG64_LOADED_MOD_HEAD_OFF,
+                                       (uint8_t *)&PsLoadedModuleList,
+                                       sizeof(PTR), false))
+        goto error;
+
+    if (*out == NULL) {
+        // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
+        *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
+        g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
+    }
+
+    mod_current = get_next_mod(cpu, PsLoadedModuleList);
+
+    // We want while loop here -- we are starting at the head,
+    // which is not a valid module
+    while (mod_current != 0x0 && mod_current != PsLoadedModuleList) {
+        add_mod(cpu, *out, mod_current, false);
+        mod_current = get_next_mod(cpu, mod_current);
+    }
+    return;
+
+error:
+    *out = NULL;
+    return;
 }
 
 void on_get_processes(CPUState *cpu, GArray **out) {
@@ -756,6 +791,7 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_process_pid, on_get_process_pid);
     PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);
     PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
+    PPP_REG_CB("osi", on_get_modules, on_get_modules);
 
     return true;
 #else
