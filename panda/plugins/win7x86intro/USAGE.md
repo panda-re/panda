@@ -31,5 +31,3 @@ Running `osi_test` on an Windows 7 32-bit replay:
 
 Bugs
 ----
-
-The `win7x86intro` plugin currently does not support listing loaded kernel modules, even though the OSI API suggests that it should.
