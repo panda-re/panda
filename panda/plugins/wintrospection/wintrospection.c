@@ -291,9 +291,9 @@ void on_get_processes(CPUState *cpu, GArray **out) {
     // Note that the result of kddebugger_data returns a physical address.
     PTR kddebugger_data = get_kddebugger_data(cpu);
     PTR sentinel = -1;
-    if (-1 == panda_physical_memory_rw(kddebugger_data + 0x50,
-                                       (uint8_t *)&sentinel, sizeof(sentinel),
-                                       0)) {
+    if (-1 == panda_physical_memory_rw(
+                  kddebugger_data + KDDBG64_ACTIVE_PROCESS_HEAD_OFF,
+                  (uint8_t *)&sentinel, sizeof(sentinel), 0)) {
         fprintf(stderr, "Could not get PsActiveProcessHead!\n");
         return;
     }
