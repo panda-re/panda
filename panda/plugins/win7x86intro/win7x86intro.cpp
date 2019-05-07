@@ -29,6 +29,7 @@ void uninit_plugin(void *);
 void on_get_libraries(CPUState *, OsiProc *p, GArray **out);
 PTR get_win7_kpcr(CPUState *cpu);
 HandleObject *get_win7_handle_object(CPUState *cpu, uint32_t eproc, uint32_t handle);
+PTR get_win7_kdbg(CPUState *cpu);
 }
 
 #include <cstdio>
@@ -63,30 +64,15 @@ PTR get_win7_kpcr(CPUState *cpu) {
     return fs_base;
 }
 
-static PTR get_kdbg(CPUState *cpu) {
-    PTR kpcr = get_win7_kpcr(cpu);
-    PTR kdversion, kddl, kddlp;
-    if (-1 == panda_virtual_memory_rw(cpu, kpcr+KPCR_KDVERSION_OFF, (uint8_t *)&kdversion, sizeof(PTR), false)) {
-        return 0;
-    }
-    // DebuggerDataList is a pointer to a pointer to the _KDDEBUGGER_DATA64
-    // So we need to dereference it twice.
-    if (-1 == panda_virtual_memory_rw(cpu, kdversion+KDVERSION_DDL_OFF, (uint8_t *)&kddlp, sizeof(PTR), false)) {
-        return 0;
-    }
-    if (-1 == panda_virtual_memory_rw(cpu, kddlp, (uint8_t *)&kddl, sizeof(PTR), false)) {
-        return 0;
-    }
-    return kddl;
-}
-
 void on_get_modules(CPUState *cpu, GArray **out) {
-    PTR kdbg = get_kdbg(cpu);
-    PTR PsLoadedModuleList;
+    PTR kdbg = get_win7_kdbg(cpu);
+    PTR PsLoadedModuleList = 0xFFFFFFFF;
     PTR mod_current = (PTR)NULL;
 
     // Dbg.PsLoadedModuleList
-    if (-1 == panda_virtual_memory_rw(cpu, kdbg+KDBG_PSLML, (uint8_t *)&PsLoadedModuleList, sizeof(PTR), false))
+    if (-1 == panda_physical_memory_rw(kdbg + KDBG_PSLML,
+                                       (uint8_t *)&PsLoadedModuleList,
+                                       sizeof(PTR), false))
         goto error;
 
     if (*out == NULL) {
@@ -183,6 +169,27 @@ HandleObject *get_win7_handle_object(CPUState *cpu, uint32_t eproc, uint32_t han
     return ho;
 }
 
+PTR get_win7_kdbg(CPUState *cpu)
+{
+    PTR kpcr = get_win7_kpcr(cpu);
+    PTR kdversion, kddl, kddlp;
+    if (-1 == panda_virtual_memory_rw(cpu, kpcr + KPCR_KDVERSION_OFF,
+                                      (uint8_t *)&kdversion, sizeof(PTR),
+                                      false)) {
+        return 0;
+    }
+    // DebuggerDataList is a pointer to a pointer to the _KDDEBUGGER_DATA64
+    // So we need to dereference it twice.
+    if (-1 == panda_virtual_memory_rw(cpu, kdversion + KDVERSION_DDL_OFF,
+                                      (uint8_t *)&kddlp, sizeof(PTR), false)) {
+        return 0;
+    }
+    if (-1 == panda_virtual_memory_rw(cpu, kddlp, (uint8_t *)&kddl, sizeof(PTR),
+                                      false)) {
+        return 0;
+    }
+    return panda_virt_to_phys(cpu, kddl);
+}
 
 #endif
 

@@ -705,6 +705,7 @@ bool init_plugin(void *self) {
         assert(init_win7x86intro_api());
         get_kpcr = get_win7_kpcr;
         get_handle_object = get_win7_handle_object;
+        get_kddebugger_data = get_win7_kdbg;
     } else if (0 == strcmp(panda_os_variant, "2000")) {
         kthread_kproc_off = 0x22c; // Win 2K's KTHREAD doesn't have KProc?
         eproc_pid_off=0x09c;
