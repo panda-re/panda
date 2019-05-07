@@ -124,7 +124,6 @@ class Panda:
 		name_ffi = ffi.new("char[]", bytes(name,"utf-8"))
 		self.libpanda.panda_init_plugin(name_ffi, cargs, n)
 
-
 	def load_python_plugin(self, init_function, name):
 		#pdb.set_trace()
 		ffi.cdef("""
@@ -355,3 +354,17 @@ class Panda:
 
 	def virtual_memory_write(self, env, addr, buf, length):
 		return self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
+
+	def send_monitor_cmd(self, cmd, do_async=False):
+		if debug:
+			progress ("Sending monitor command %s" % cmd),
+
+		buf = ffi.new("char[]", bytes(cmd,"UTF-8"))
+		n = len(cmd)
+
+		if do_async:
+		    self.libpanda.panda_monitor_run_async(buf)
+		    return None
+		else:
+		    ret = self.libpanda.panda_monitor_run(buf)
+		    return ffi.string(ret).decode("utf-8", "ignore");

@@ -792,3 +792,20 @@ int panda_current_asid(CPUState *env);
  */
 int panda_current_pc(CPUState *cpu);
 typedef target_ulong target_ptr_t;
+
+/**
+ * @brief Create a monitor for panda
+ */
+void panda_init_monitor();
+
+/**
+ * @brief Pass a message via the panda monitor. Create monitor if necessary'
+ * returns output string from monitor. Some commands may cause spinloops
+ */
+char* panda_monitor_run(char* buf);
+
+/**
+ * @brief Pass a message via the panda monitor. Create monitor if necessary'
+ * does not return
+ */
+void panda_monitor_run_async(char* buf);
