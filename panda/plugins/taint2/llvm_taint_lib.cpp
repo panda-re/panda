@@ -1326,7 +1326,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             vector<Value *> copy_args{grvConst,
                                       const_uint64(ctx, R_EAX),
                                       llvConst,
-                                      constSlot(I.getArgOperand(2)),
+                                      constWeakSlot(I.getArgOperand(2)),
                                       const_uint64(ctx, 1),
                                       constInstr(&I)};
             auto call_inst = CallInst::Create(copyF, copy_args);
