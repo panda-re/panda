@@ -37,6 +37,7 @@ PANDAENDCOMMENT */
 
 #include "win2000x86intro/win2000x86intro_ext.h"
 #include "win7x86intro/win7x86intro_ext.h"
+#include "winxpx86intro/winxpx86intro_ext.h"
 
 #include "glib.h"
 
@@ -47,12 +48,15 @@ void uninit_plugin(void *);
 #ifdef TARGET_I386
 
 // Constants that are the same in all supported versions of windows
-// Currently just Windows 7 and Windows 2000
+// Supports: Windows 2000 SP4, XP SP3, and Windows 7 SP1.
 #define KPCR_CURTHREAD_OFF   0x124 // _KPCR.PrcbData.CurrentThread
 #define EPROC_DTB_OFF        0x018 // _EPROCESS.Pcb.DirectoryTableBase
 #define EPROC_TYPE_OFF       0x000 // _EPROCESS.Pcb.Header.Type
 #define EPROC_SIZE_OFF       0x002 // _EPROCESS.Pcb.Header.Size
 #define EPROC_TYPE           0x003 // Value of Type
+#define EPROC_DTB_OFF        0x018 // _EPROCESS.Pcb.DirectoryTableBase
+#define PEB_PEB_LDR_DATA_OFF 0x00c // _PEB.Ldr
+#define PEB_LDR_DATA_LOAD_LIST_OFF 0x00c // _PEB_LDR_DATA.InLoadOrderModuleList
 #define LDR_LOAD_LINKS_OFF   0x000 // _LDR_DATA_TABLE_ENTRY.InLoadOrderLinks
 #define LDR_BASE_OFF         0x018 // _LDR_DATA_TABLE_ENTRY.DllBase
 #define LDR_SIZE_OFF         0x020 // _LDR_DATA_TABLE_ENTRY.SizeOfImage
@@ -63,6 +67,10 @@ void uninit_plugin(void *);
 #define FILE_OBJECT_POS_OFF  0x038
 #define PROCESS_PARAMETERS_OFF 0x010 // PEB.ProcessParameters
 #define UNICODE_WORKDIR_OFF 0x24     // ProcessParameters.WorkingDirectory
+// KDDEBUGGER_DATA64.PsActiveProcessHead
+#define KDDBG64_LOADED_MOD_HEAD_OFF 0x048
+// KDDEBUGGER_DATA64.PsLoadedModuleList
+#define KDDBG64_ACTIVE_PROCESS_HEAD_OFF 0x50
 
 // "Constants" specific to the guest operating system.
 // These are initialized in the init_plugin function.
@@ -87,6 +95,9 @@ static PTR(*get_kpcr)(CPUState *cpu);
 // Function pointer, returns handle table entry.  OS-specific.
 static HandleObject *(*get_handle_object)(CPUState *cpu, PTR eproc, uint32_t handle);
 
+// Function pointer, returns location of KDDEBUGGER_DATA<32|64> data structure.
+// OS-specific.
+static PTR (*get_kddebugger_data)(CPUState *cpu);
 
 char *make_pagedstr(void) {
     char *m = g_strdup("(paged)");
@@ -164,42 +175,190 @@ void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out) {
     }
 }
 
-void on_get_processes(CPUState *cpu, GArray **out) {
-    OsiProc p;
-    PTR first, current;
-
-    first = get_current_proc(cpu);
-    current = first;
-    if (first == (uintptr_t)NULL) {
-        goto error;
-    }
-    if (get_pid(cpu, first) == 0) {
-        // idle proc - don't try
-        goto error;
+void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out)
+{
+    *out = NULL;
+    if (p == NULL) {
+        return;
     }
 
-    g_array_free(*out, true);
-    // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-    *out = g_array_sized_new(false, false, sizeof(OsiProc), 128);
-    g_array_set_clear_func(*out, (GDestroyNotify)free_osiproc);
+    PTR eproc = p->taskd;
+    PTR ptr_peb;
+    // EPROCESS is allocated from the non-paged pool, so it should
+    // accessible at any time via its virtual address.
+    if (-1 == panda_virtual_memory_read(cpu, eproc + eproc_ppeb_off,
+                                        (uint8_t *)&ptr_peb, sizeof(ptr_peb))) {
+        fprintf(stderr, "Could not read PEB Pointer from _EPROCESS!\n");
+        return;
+    }
 
+    // Since we are getting the libraries for a specified process, we have to
+    // make sure that we are looking in the address space of the process that
+    // was passed in. We will temporarily override CR3 with the value specified
+    // in _EPROCESS.Pcb.DirectoryTableBase. Again, since EPROCESS is allocated
+    // from the non-paged pool this shouldn't fail.
+    uint32_t dtb = -1;
+    if (panda_virtual_memory_read(cpu, eproc + EPROC_DTB_OFF, (uint8_t *)&dtb,
+                                  sizeof(dtb))) {
+        fprintf(stderr, "Could not read DirectoryTableBase from _EPROCESS!\n");
+        return;
+    }
+#ifdef TARGET_I386
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+    target_ulong cur_cr3 = env->cr[3];
+    env->cr[3] = dtb;
+#endif
+
+    // Get the location of the _PEB_LDR_DATA structure which contains the head
+    // of the DLL listing.
+    PTR ptr_peb_ldr_data;
+    if (-1 == panda_virtual_memory_read(cpu, ptr_peb + PEB_PEB_LDR_DATA_OFF,
+                                        (uint8_t *)&ptr_peb_ldr_data,
+                                        sizeof(ptr_peb_ldr_data))) {
+        // We fail silently here - _PEB is part of the paged pool, so its
+        // possible that this is paged out and nothing is wrong.
+        return;
+    }
+
+    bool reached_paged_entry = false;
+    PTR sentinel = ptr_peb_ldr_data + PEB_LDR_DATA_LOAD_LIST_OFF;
+    PTR cur_entry = sentinel;
     do {
-        // One of these will be the loop head,
-        // which we don't want to include
-        if (is_valid_process(cpu, current)) {
-            memset(&p, 0, sizeof(OsiProc));
-            fill_osiproc(cpu, &p, current);
-            g_array_append_val(*out, p);
+        // Read the current list entry Flink pointer.
+        if (-1 == panda_virtual_memory_read(cpu, cur_entry,
+                                            (uint8_t *)&cur_entry,
+                                            sizeof(cur_entry))) {
+            fprintf(stderr, "Could not read next entry in module list.\n");
+            break;
         }
-        current = get_next_proc(cpu, current);
-    } while (current != (uintptr_t)NULL && current != first);
 
+        // If we've reached the sentinel, we're done.
+        if (cur_entry == sentinel) {
+            break;
+        }
+
+        // We're reasonbly sure we've found a library, add it to the list.
+        // Note, the library may be paged out and if so, we stop iterating.
+        PTR ptr_ldr_data_table_entry = cur_entry - LDR_LOAD_LINKS_OFF;
+        char *name =
+            get_unicode_str(cpu, ptr_ldr_data_table_entry + LDR_BASENAME_OFF);
+        char *filename =
+            get_unicode_str(cpu, ptr_ldr_data_table_entry + LDR_FILENAME_OFF);
+        PTR base = -1;
+        if (-1 == panda_virtual_memory_read(
+                      cpu, ptr_ldr_data_table_entry + LDR_BASE_OFF,
+                      (uint8_t *)&base, sizeof(base))) {
+            // If this fails, we assume that this LDR_DATA_TABLE_ENTRY is paged
+            reached_paged_entry = true;
+        }
+        PTR size = -1;
+        if (-1 == panda_virtual_memory_read(
+                      cpu, ptr_ldr_data_table_entry + LDR_SIZE_OFF,
+                      (uint8_t *)&size, sizeof(size))) {
+            // If this fails, we assume that this LDR_DATA_TABLE_ENTRY is paged
+            reached_paged_entry = true;
+        }
+
+        OsiModule mod;
+        if (NULL == *out) {
+            *out = g_array_sized_new(false, false, sizeof(mod), 128);
+            g_array_set_clear_func(*out,
+                                   (GDestroyNotify)free_osimodule_contents);
+        }
+        mod.modd = ptr_ldr_data_table_entry;
+        mod.base = base;
+        mod.size = size;
+        mod.name = name;
+        mod.file = filename;
+        g_array_append_val(*out, mod);
+    } while (false == reached_paged_entry);
+
+    // Now that we've gotten the libraries, we need to restore CR3.
+#ifdef TARGET_I386
+    env->cr[3] = cur_cr3;
+#endif
+}
+
+void on_get_modules(CPUState *cpu, GArray **out)
+{
+    PTR kdbg = get_kddebugger_data(cpu);
+    PTR PsLoadedModuleList = 0xFFFFFFFF;
+    PTR mod_current = 0x0;
+
+    // Dbg.PsLoadedModuleList
+    if (-1 == panda_physical_memory_rw(kdbg + KDDBG64_LOADED_MOD_HEAD_OFF,
+                                       (uint8_t *)&PsLoadedModuleList,
+                                       sizeof(PTR), false))
+        goto error;
+
+    if (*out == NULL) {
+        // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
+        *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
+        g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
+    }
+
+    mod_current = get_next_mod(cpu, PsLoadedModuleList);
+
+    // We want while loop here -- we are starting at the head,
+    // which is not a valid module
+    while (mod_current != 0x0 && mod_current != PsLoadedModuleList) {
+        add_mod(cpu, *out, mod_current, false);
+        mod_current = get_next_mod(cpu, mod_current);
+    }
     return;
 
 error:
-    g_array_free(*out, true);  // safe even when *out == NULL
     *out = NULL;
     return;
+}
+
+void on_get_processes(CPUState *cpu, GArray **out) {
+    // The process list in NT can be iterated by starting at the
+    // nt!PsActiveProcessHead symbol. The symbol points to an nt!_LIST_ENTRY
+    // that acts as a sentinel node for the process list, so we can use it as a
+    // reference point to start and stop iterating.
+
+    // Assume failure until we reach the first process, so set the output to
+    // null.
+    *out = NULL;
+
+    // Try to get the nt!PsActiveProcessHead from the KDDEBUGGER_DATA64 struct.
+    // Note that the result of kddebugger_data returns a physical address.
+    PTR kddebugger_data = get_kddebugger_data(cpu);
+    PTR sentinel = -1;
+    if (-1 == panda_physical_memory_rw(
+                  kddebugger_data + KDDBG64_ACTIVE_PROCESS_HEAD_OFF,
+                  (uint8_t *)&sentinel, sizeof(sentinel), 0)) {
+        fprintf(stderr, "Could not get PsActiveProcessHead!\n");
+        return;
+    }
+    PTR cur_entry = sentinel;
+    do {
+        // Read the current list entry Flink pointer.
+        if (-1 == panda_virtual_memory_read(cpu, cur_entry,
+                                            (uint8_t *)&cur_entry,
+                                            sizeof(cur_entry))) {
+            fprintf(stderr, "Error reading process list entry!\n");
+            break;
+        }
+
+
+        // If we've reached the sentinel, we're done.
+        if (cur_entry == sentinel) {
+            break;
+        }
+
+        // We've found the procss, if this is the first one go ahead and create
+        // the array.
+        OsiProc cur_proc;
+        if (*out == NULL) {
+            *out = g_array_sized_new(false, false, sizeof(cur_proc), 128);
+            g_array_set_clear_func(*out, (GDestroyNotify)free_osiproc_contents);
+        }
+        PTR cur_eproc = cur_entry - eproc_links_off;
+        fill_osiproc(cpu, &cur_proc, cur_eproc);
+        g_array_append_val(*out, cur_proc);
+    } while (true);
 }
 
 void on_get_current_thread(CPUState *cpu, OsiThread **out) {
@@ -581,8 +740,9 @@ bool init_plugin(void *self) {
         assert(init_win7x86intro_api());
         get_kpcr = get_win7_kpcr;
         get_handle_object = get_win7_handle_object;
+        get_kddebugger_data = get_win7_kdbg;
     } else if (0 == strcmp(panda_os_variant, "2000")) {
-        kthread_kproc_off=0x22c;
+        kthread_kproc_off = 0x22c; // Win 2K's KTHREAD doesn't have KProc?
         eproc_pid_off=0x09c;
         eproc_ppid_off=0x1c8;
         eproc_name_off=0x1fc;
@@ -599,6 +759,26 @@ bool init_plugin(void *self) {
         assert(init_win2000x86intro_api());
         get_kpcr = get_win2000_kpcr;
         get_handle_object = get_win2000_handle_object;
+        get_kddebugger_data = get_win2000_kddebugger_data;
+    } else if (0 == strcmp(panda_os_variant, "xpsp3")) {
+        kthread_kproc_off = 0x044;
+        eproc_pid_off = 0x084;
+        eproc_ppid_off = 0x14c;
+        eproc_name_off = 0x174;
+        eproc_objtable_off = 0x0c4;
+        eproc_ppeb_off = 0x1b0;
+        obj_type_file = 28;
+        obj_type_key = 20;
+        obj_type_process = 5;
+        obj_type_offset = 0x8;
+        eproc_size = 0x1b; // why???
+        eproc_links_off = 0x088;
+        ntreadfile_esp_off = 0;
+        panda_require("winxpx86intro");
+        assert(init_winxpx86intro_api());
+        get_kpcr = get_winxp_kpcr;
+        get_handle_object = get_winxp_handle_object;
+        get_kddebugger_data = get_winxp_kdbg;
     } else {
         fprintf(stderr, "Plugin is not supported for this windows "
             "version (%s).\n", panda_os_variant);
@@ -610,6 +790,8 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
     PPP_REG_CB("osi", on_get_process_pid, on_get_process_pid);
     PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);
+    PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
+    PPP_REG_CB("osi", on_get_modules, on_get_modules);
 
     return true;
 #else

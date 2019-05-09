@@ -27,9 +27,10 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 void on_get_libraries(CPUState *, OsiProc *p, GArray **out);
-PTR get_win7_kpcr(CPUState *cpu);
-HandleObject *get_win7_handle_object(CPUState *cpu, uint32_t eproc, uint32_t handle);
-PTR get_win7_kdbg(CPUState *cpu);
+PTR get_winxp_kpcr(CPUState *cpu);
+HandleObject *get_winxp_handle_object(CPUState *cpu, uint32_t eproc,
+                                      uint32_t handle);
+PTR get_winxp_kdbg(CPUState *cpu);
 }
 
 #include <cstdio>
@@ -37,25 +38,14 @@ PTR get_win7_kdbg(CPUState *cpu);
 
 #ifdef TARGET_I386
 
-#define KMODE_FS               0x030 // Segment number of FS in kernel mode
-#define KPCR_KDVERSION_OFF     0x034  // _KPCR.KdVersionBlock
-#define KDVERSION_DDL_OFF      0x020  // _DBGKD_GET_VERSION64.DebuggerDataList
+#define KPCR_KDVERSION_OFF     0x034 // _KPCR.KdVersionBlock
+#define KDVERSION_DDL_OFF      0x020 // _DBGKD_GET_VERSION64.DebuggerDataList
+#define OBJ_TYPE_INDEX_OFF     0x04c // _OBJECT_TYPE.Index
 
 // XXX: this will have to change for 64-bit
-PTR get_win7_kpcr(CPUState *cpu) {
-    // Read the kernel-mode FS segment base
-    uint32_t e1, e2;
-    PTR fs_base;
-
-    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
-    // Read out the two 32-bit ints that make up a segment descriptor
-    panda_virtual_memory_rw(cpu, env->gdt.base + KMODE_FS, (uint8_t *)&e1, sizeof(PTR), false);
-    panda_virtual_memory_rw(cpu, env->gdt.base + KMODE_FS + 4, (uint8_t *)&e2, sizeof(PTR), false);
-
-    // Turn wacky segment into base
-    fs_base = (e1 >> 16) | ((e2 & 0xff) << 16) | (e2 & 0xff000000);
-
-    return fs_base;
+PTR get_winxp_kpcr(CPUState *cpu)
+{
+    return 0xFFDFF000;
 }
 
 // i.e. return pointer to the object represented by this handle
@@ -98,39 +88,60 @@ static uint32_t get_handle_table_entry(CPUState *cpu, uint32_t pHandleTable, uin
         return 0;
     }
 
-    // Like in Windows 2000, the entry here needs to be masked off. However, it
-    // appears that starting in Windows XP, they've done away with the lock
-    // flag. The lower three bits mask should be consistent across Windows
-    // versions because of the object alignment.
+    // Like in Windows 2000, the entry here needs to be masked off. However, the
+    // lock flag was moved to the low-order bit. So we only need to mask off the
+    // lower three bits of the entry.
     //
-    // No obvious reference.
+    // Russinovich, Mark E., and David A. Solomon. Microsoft Windows
+    //     Internals, Fourth Edition: Microsoft Windows Server 2003, Windows XP,
+    //     and Windows 2000. Microsoft Press, 2005, pp. 139.
     pObjectHeader &= TABLE_MASK;
 
     return pObjectHeader;
 }
 
-
-HandleObject *get_win7_handle_object(CPUState *cpu, uint32_t eproc, uint32_t handle) {
+HandleObject *get_winxp_handle_object(CPUState *cpu, uint32_t eproc,
+                                      uint32_t handle)
+{
+    // Obtain the handle table (also called the object table).
     uint32_t pObjectTable;
     if (-1 == panda_virtual_memory_rw(cpu, eproc+get_eproc_objtable_off(), (uint8_t *)&pObjectTable, 4, false)) {
         return NULL;
     }
+
+    // Given the handle, lookup the object's header in the table.
     uint32_t pObjHeader = get_handle_table_entry(cpu, pObjectTable, handle);
-    if (pObjHeader == 0) return NULL;
-    uint32_t pObj = pObjHeader + OBJECT_HEADER_BODY_OFFSET;
-    uint8_t objType = 0;
-    if (-1 == panda_virtual_memory_rw(cpu, pObjHeader+get_obj_type_offset(), &objType, 1, false)) {
+    if (pObjHeader == 0) {
         return NULL;
     }
+
+    // Once we have the header, we can get the object's body.
+    uint32_t pObj = pObjHeader + OBJECT_HEADER_BODY_OFFSET;
+
+    // In Windows XP, we need to look at the _OBJECT_TYPE struct to get the type
+    // index.
+    uint32_t pObjType;
+    if (-1 == panda_virtual_memory_read(cpu, pObjHeader + get_obj_type_offset(),
+                                        (uint8_t *)&pObjType,
+                                        sizeof(pObjType))) {
+        return NULL;
+    }
+    uint8_t objType = 0;
+    if (-1 == panda_virtual_memory_read(cpu, pObjType + OBJ_TYPE_INDEX_OFF,
+                                        (uint8_t *)&objType, sizeof(objType))) {
+        return NULL;
+    }
+
+    // Construct our handle object and return.
     HandleObject *ho = (HandleObject *) malloc(sizeof(HandleObject));
     ho->objType = objType;
     ho->pObj = pObj;
     return ho;
 }
 
-PTR get_win7_kdbg(CPUState *cpu)
+PTR get_winxp_kdbg(CPUState *cpu)
 {
-    PTR kpcr = get_win7_kpcr(cpu);
+    PTR kpcr = get_winxp_kpcr(cpu);
     PTR kdversion, kddl, kddlp;
     if (-1 == panda_virtual_memory_rw(cpu, kpcr + KPCR_KDVERSION_OFF,
                                       (uint8_t *)&kdversion, sizeof(PTR),
@@ -147,7 +158,10 @@ PTR get_win7_kdbg(CPUState *cpu)
                                       false)) {
         return 0;
     }
-    return panda_virt_to_phys(cpu, kddl);
+
+    kddl = panda_virt_to_phys(cpu, kddl);
+
+    return kddl;
 }
 
 #endif

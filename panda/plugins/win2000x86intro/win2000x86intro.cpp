@@ -35,6 +35,7 @@ void uninit_plugin(void *);
 void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out);
 PTR get_win2000_kpcr(CPUState *cpu);
 HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t handle);
+PTR get_win2000_kddebugger_data(CPUState *cpu);
 }
 
 #include <cstdio>
@@ -42,135 +43,14 @@ HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t 
 
 #ifdef TARGET_I386
 
-#define KDBG_PSLML             0x048 // _KDDEBUGGER_DATA64.PsLoadedModuleList
-#define EPROC_PEB_OFF          0x1b0 // _EPROCESS.Peb
-#define PEB_LDR_OFF            0x00c // _PEB.Ldr
-#define PEB_LDR_MEM_LINKS_OFF  0x014 // _PEB_LDR_DATA.InMemoryOrderModuleList
-#define PEB_LDR_LOAD_LINKS_OFF 0x00c // _PEB_LDR_DATA.InLoadOrderModuleList
+#define HANDLE_TABLE_L1_OFF    0x008    // _HANDLE_TABLE.Layer1
+#define KDDEBUGGER_DATA_SIZE   0x208
 
+#define HANDLE_LOCK_FLAG 0x80000000
 
 // Windows 2000 has a fixed location for the KPCR
 PTR get_win2000_kpcr(CPUState *cpu) {
     return 0xFFDFF000;
-}
-
-// Loaded module list
-static PTR lml;
-
-static PTR get_loaded_module_list(CPUState *cpu) {
-
-    if(lml) return lml;
-
-    MemoryRegion *mr = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
-
-    rcu_read_lock();
-    char *host_ptr = (char *)qemu_map_ram_ptr(mr->ram_block, 0);
-    unsigned char *s;
-    bool found=false;
-    uint32_t i;
-
-    // Locate the KDDEBUGGER_DATA64 structure
-    for(i=0; i<mr->size-0x208; i++) {
-        s = ((unsigned char *) host_ptr) + i;
-    if(s[8] == '\0' && s[9] == '\0' && s[10] == '\0' && s[11] == '\0' &&
-        s[12] == '\0' && s[13] == '\0' && s[14] == '\0' && s[15] == '\0' &&
-        s[16] == 'K' && s[17] == 'D' && s[18] == 'B' && s[19] == 'G') {
-            found=true;
-        break;
-    }
-    }
-
-    // Ensure the structure was located
-    assert(found);
-
-    // Store the virtual address of the loaded module list so we don't need
-    // to repeat this work
-    memcpy(&lml, s+KDBG_PSLML, sizeof(lml));
-
-    rcu_read_unlock();
-    return lml;
-}
-
-
-void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out) {
-    // search for process
-    PTR eproc_first, eproc_cur, eproc_found;
-    eproc_first = eproc_cur = get_current_proc(cpu);
-    eproc_found = (PTR)NULL;
-    if (eproc_first == NULL) goto error;
-    do {
-        if (eproc_cur == p->taskd) {
-            eproc_found = eproc_cur;
-            break;
-        }
-        eproc_cur = get_next_proc(cpu, eproc_cur);
-    } while (eproc_cur != NULL && eproc_cur != eproc_first);
-    if (eproc_found == NULL) goto error;
-
-    PTR peb, ldr;
-    PTR mod_first, mod_current, mod_next;
-    peb = ldr = (PTR)NULL;
-    mod_first = mod_current = mod_next = (PTR)NULL;
-
-    // get module list: PEB->Ldr->InMemoryOrderModuleList
-    if (-1 == panda_virtual_memory_rw(cpu, eproc_found + EPROC_PEB_OFF, (uint8_t *)&peb, sizeof(PTR), false))
-        goto error;
-    if (-1 == panda_virtual_memory_rw(cpu, peb + PEB_LDR_OFF, (uint8_t *)&ldr, sizeof(PTR), false))
-        goto error;
-    if (-1 == panda_virtual_memory_rw(cpu, ldr + PEB_LDR_MEM_LINKS_OFF, (uint8_t *)&mod_first, sizeof(PTR), false))
-        goto error;
-
-    // allocate GArray
-    if (*out == NULL) {
-        // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-        *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
-        g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
-    }
-
-    // fill GArray
-    mod_current = mod_first;
-    mod_next = get_next_mod(cpu, mod_current);
-    while (mod_current != NULL && mod_next != mod_first) {
-        add_mod(cpu, *out, mod_current, true);
-        mod_current = mod_next;
-        mod_next = get_next_mod(cpu, mod_current);
-    };
-    return;
-
-error:
-    *out = NULL;
-    return;
-}
-
-void on_get_modules(CPUState *cpu, GArray **out) {
-    PTR lml = get_loaded_module_list(cpu);
-    PTR mod_first, mod_current, mod_next;
-    mod_first = mod_current = mod_next = (PTR)NULL;
-
-    // Dbg.PsLoadedModuleList
-    if (-1 == panda_virtual_memory_rw(cpu, lml, (uint8_t *)&mod_first, sizeof(PTR), false))
-    goto error;
-
-    // allocate GArray
-    if (*out == NULL) {
-    // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-    *out = g_array_sized_new(false, false, sizeof(OsiModule), 128);
-    g_array_set_clear_func(*out, (GDestroyNotify)free_osimodule_contents);
-    }
-
-    // fill GArray
-    mod_current = mod_first;
-    mod_next = get_next_mod(cpu, mod_current);
-    while (mod_current != NULL && mod_next != mod_first) {
-        add_mod(cpu, *out, mod_current, false);
-        mod_current = mod_next;
-        mod_next = get_next_mod(cpu, mod_current);
-    }
-    return;
-
-error:
-    *out = NULL;
-    return;
 }
 
 // i.e. return pointer to the object represented by this handle
@@ -190,9 +70,19 @@ static uint32_t get_handle_table_entry(CPUState *cpu, uint32_t pHandleTable, uin
     uint32_t pObjectHeader;
     if ((panda_virtual_memory_rw(cpu, pEntry, (uint8_t *) &pObjectHeader, 4, false)) == -1) return 0;
 
-    //  printf ("processHandle_to_pid pObjectHeader = 0x%x\n", pObjectHeader);
-    pObjectHeader |= 0x80000000;
-    pObjectHeader &= ~0x00000007;
+    // In Windows 2000 (and supposedly Windows NT 4), the three low-order and
+    // highest-order bit are flags.
+    //
+    // The remaining bits make up the pointer - sometimes. The lock flag must be
+    // set get a valid pointer to the object since these are kernel objects and
+    // they will always live in memory that is greater than 0x80000000. So to
+    // get the pointer you have to set the high bit if it is not already locked
+    // and mask off the lower three bits.
+    //
+    // Ref: Inside Microsoft Windows 2000, Third Edition, David A. Solomon, Mark
+    // E. Russinovich.
+    pObjectHeader |= HANDLE_LOCK_FLAG;
+    pObjectHeader &= TABLE_MASK;
 
     return pObjectHeader;
 }
@@ -204,12 +94,14 @@ HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t 
     if (-1 == panda_virtual_memory_rw(cpu, eproc+get_eproc_objtable_off(), (uint8_t *)&pObjectTable, 4, false)) {
         return NULL;
     }
-    if (-1 == panda_virtual_memory_rw(cpu, pObjectTable + 0x08, (uint8_t *)&handleTable, 4, false)) {
+    if (-1 == panda_virtual_memory_read(cpu, pObjectTable + HANDLE_TABLE_L1_OFF,
+                                        (uint8_t *)&handleTable,
+                                        sizeof(handleTable))) {
         return NULL;
     }
     uint32_t pObjHeader = get_handle_table_entry(cpu, handleTable, handle);
     if (pObjHeader == 0) return NULL;
-    uint32_t pObj = pObjHeader + 0x18;
+    uint32_t pObj = pObjHeader + OBJECT_HEADER_BODY_OFFSET;
     uint8_t objType = 0;
     if (-1 == panda_virtual_memory_rw(cpu, pObjHeader+get_obj_type_offset(), (uint8_t *)&objType, 1, false)) {
         return NULL;
@@ -220,14 +112,37 @@ HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t 
     return ho;
 }
 
+// Returns the physical address of KDDEBUGGER_DATA64.
+PTR get_win2000_kddebugger_data(CPUState *cpu)
+{
+    static PTR cached_kdbg = -1;
+    if (cached_kdbg != -1) {
+        return cached_kdbg;
+    }
 
+    MemoryRegion *mr = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
+    rcu_read_lock();
+    uint8_t *host_ptr = (uint8_t *)qemu_map_ram_ptr(mr->ram_block, 0);
+    uint8_t signature[] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+                           0x0, 0x0, 'K', 'D', 'B', 'G'};
+    for (int i = 0; i < mr->size - KDDEBUGGER_DATA_SIZE; i++) {
+        if (0 == memcmp(signature, host_ptr + i, sizeof(signature))) {
+            // We subtract eight bytes from the current position because of the
+            // list entry field size. This gives us the start of the
+            // KDDEBUGGER_DATA structure.
+            cached_kdbg = i - 8;
+            break;
+        }
+    }
+    rcu_read_unlock();
+
+    return cached_kdbg;
+}
 
 #endif
 
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
-    PPP_REG_CB("osi", on_get_modules, on_get_modules);
     assert(init_wintrospection_api());
     return true;
 #else
