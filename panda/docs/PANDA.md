@@ -473,21 +473,25 @@ Inside `exec_callback`, we simply log the current program counter (`EIP`) and th
 
 Finally, in `uninit_plugin`, we simply close the plugin log file.
 
-To make the plugin, we add it to the list of plugins in `panda/qemu/panda_plugins/config.panda`:
+To make the plugin, we add it to the list of plugins in `panda/panda/plugins/config.panda`:
 
-	PANDA_PLUGINS = sample taintcap textfinder textprinter syscalls
+	sample
+	taintcap
+	textfinder
+	textprinter
+	syscalls
 	
-Then run `make` from the base QEMU directory:
+Then run `make` from the BUILD directory:
 
 ```
-brendan@laredo3:~/hg/panda/qemu$ make
-  CC    /home/brendan/hg/panda/qemu//x86_64-softmmu//panda_plugins/syscalls.o
+brendan@laredo3:~/hg/panda/build$ make
+  CC    /home/brendan/hg/panda/build//x86_64-softmmu//panda_plugins/syscalls.o
   PLUGIN  panda_syscalls.so
-  CC    /home/brendan/hg/panda/qemu//i386-linux-user//panda_plugins/syscalls.o
+  CC    /home/brendan/hg/panda/build//i386-linux-user//panda_plugins/syscalls.o
   PLUGIN  panda_syscalls.so
-  CC    /home/brendan/hg/panda/qemu//arm-linux-user//panda_plugins/syscalls.o
+  CC    /home/brendan/hg/panda/build//arm-linux-user//panda_plugins/syscalls.o
   PLUGIN  panda_syscalls.so
-  CC    /home/brendan/hg/panda/qemu//arm-softmmu//panda_plugins/syscalls.o
+  CC    /home/brendan/hg/panda/build//arm-softmmu//panda_plugins/syscalls.o
   PLUGIN  panda_syscalls.so
 ```
 
