@@ -192,7 +192,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     panda_callbacks_before_block_exec(cpu, itb);
 
     if (panda_exit_loop) {
-//        printf ("cpu-exec.c: Exiting emul loop\n");
+        printf ("cpu-exec.c: Exiting emul loop\n");
         cpu->can_do_io = 1;
         return TB_EXIT_REQUESTED;
     }
@@ -777,7 +777,7 @@ int cpu_exec(CPUState *cpu)
     while (!cpu_handle_exception(cpu, &ret)) {
         
         if (panda_exit_loop) {
-//            printf ("Exiting cpu_handle_execption loop\n");
+            printf ("Exiting cpu_handle_execption loop\n");
 //            vm_stop(RUN_STATE_PAUSED);                                                         
             break;
         }
@@ -845,7 +845,7 @@ int cpu_exec(CPUState *cpu)
                 align_clocks(&sc, cpu);
             }
             if (panda_exit_loop) {
-//                printf ("Exiting inner loop\n");
+                printf ("Exiting inner loop\n");
                 break;
             }
         }

@@ -1,5 +1,6 @@
 #include <assert.h>
 
+
 #include "vl.h"
 #include "panda/panda_api.h"
 #include "panda/plugin.h"
@@ -56,14 +57,20 @@ void panda_exit_emul_loop(void) {
     panda_exit_loop = true;
 }
 
+int do_vm_stop(int state);
+
 void panda_stop(void) {
     printf ("panda_api: stop cpu\n");
-    panda_stopped = true;
+    //  panda_stopped = true;
+    do_vm_stop(4 /* RUN_STATE_PAUSED*/ );
 }
+
+void vm_start(void);
 
 void panda_cont(void) {
     printf ("panda_api: cont cpu\n");
     panda_stopped = false;
+    vm_start();
 } 
 
 int panda_revert(char *snapshot_name) {
@@ -74,7 +81,9 @@ int panda_revert(char *snapshot_name) {
     return 1;
 */
     printf ("In panda_revert snapshot=%s\n", snapshot_name);
-    return load_vmstate(snapshot_name);
+    int ret = load_vmstate(snapshot_name);
+    printf ("Got back grom load_vmstate ret=%d\n", ret);
+    return ret;
 }
 
 int panda_snap(char *snapshot_name) {
@@ -84,8 +93,8 @@ int panda_snap(char *snapshot_name) {
     panda_snap_name = strdup(snapshot_name);
     return 1;
 */
-    printf("panda_snap %s\n", panda_snap_name);
-    return save_vmstate_nomon(panda_snap_name);  
+    printf("panda_snap %s\n", snapshot_name);
+    return save_vmstate_nomon(snapshot_name);  
 }
 
 

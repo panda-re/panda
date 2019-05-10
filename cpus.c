@@ -878,7 +878,9 @@ void cpu_synchronize_all_post_init(void)
     }
 }
 
-static int do_vm_stop(RunState state)
+int do_vm_stop(RunState state);
+
+/* static */ int do_vm_stop(RunState state)
 {
     int ret = 0;
 
@@ -1380,7 +1382,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
             cpu = CPU_NEXT(cpu);
 
             if (panda_exit_loop) {
-//                printf ("Clearing panda_exit_loop\n");
+                printf ("Clearing panda_exit_loop\n");
                 panda_exit_loop = false;
                 break;
             }

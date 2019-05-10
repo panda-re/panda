@@ -35,12 +35,9 @@ def main_loop_wait_stuff():
 		(fn, args) = fnargs
 		print ("fn = " + (str(fn)))
 		print ("args = " + (str(args))) 
-		if (len(args) == 0):
-			fn()
-		else:
-			charptr = ffi.new("char[]", bytes("terpitude", "utf-8"))
-			fn(charptr)
-#			fn(args[0])
+		for arg in args:
+			print("\tArg {} stringifies to {}".format(arg, ffi.string(arg)))
+		fn(*args)
 	progress("done with main_loop_wait_stuff  --  %d " % (len(main_loop_wait_fnargs)))
 	main_loop_wait_fnargs = []	  
 
@@ -131,24 +128,33 @@ class Panda:
 			charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
 			self.libpanda.panda_revert(charptr)
 		else:
-			self.exit_emul_loop()
+			# vm_stop(). so stop executing guest code right now
+			self.stop()
+			# queue up revert then continue
 			charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
 			self.queue_main_loop_wait_fn(self.libpanda.panda_revert, [charptr])
+			self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
 		
 	# stop cpu right now
 	def stop(self):
 #		 self.exit_emul_loop()
+		print ("executing panda_stop (vm_stop)\n")
 		self.libpanda.panda_stop()
+
+	def cont(self):
+		print ("executing panda_start (vm_start)\n");
+		self.libpanda.panda_cont()
 
 	def snap(self, snapshot_name):
 		if debug:
 			progress ("Creating snapshot " + snapshot_name)
-		# stop executing guest code
-		self.stop()
-		# and queue up snapshot for whenever iothread runs
+		# vm_stop(), so stop executing guest code
+		self.stop()  
+		# queue up snapshot for when monitor gets a turn
 		charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
 		self.queue_main_loop_wait_fn(self.libpanda.panda_snap, [charptr])
-		self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
+		# and right after that we will do a vm_start
+		self.queue_main_loop_wait_fn(self.libpanda.panda_cont, []) # so this 
 
 
 	def delvm(self, snapshot_name, now):

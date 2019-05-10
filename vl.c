@@ -778,6 +778,7 @@ void runstate_set(RunState new_state)
 
 int runstate_is_running(void)
 {
+    printf ("runstate is %d\n", current_run_state);
     return runstate_check(RUN_STATE_RUNNING);
 }
 
@@ -1949,6 +1950,8 @@ static void tcg_llvm_cleanup(void)
 }
 #endif
 
+extern bool panda_exit_loop;
+
 void main_loop(void)
 {
     bool nonblocking;
@@ -2020,6 +2023,9 @@ void main_loop(void)
             printf ("snap requested: snapshot=[%s]\n", panda_snap_name);
             save_vmstate_nomon(panda_snap_name);
         }    
+
+        if (panda_exit_loop)
+            break;
 
     } while (!main_loop_should_exit());
 }

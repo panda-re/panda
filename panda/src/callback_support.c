@@ -344,7 +344,32 @@ void panda_callbacks_serial_write(CPUState *cpu, uint64_t fifo_addr,
     }
 }
 
+
+/*
+typedef enum RunState {
+    RUN_STATE_DEBUG = 0,
+    RUN_STATE_INMIGRATE = 1,
+    RUN_STATE_INTERNAL_ERROR = 2,
+    RUN_STATE_IO_ERROR = 3,
+    RUN_STATE_PAUSED = 4,
+    RUN_STATE_POSTMIGRATE = 5,
+    RUN_STATE_PRELAUNCH = 6,
+    RUN_STATE_FINISH_MIGRATE = 7,
+    RUN_STATE_RESTORE_VM = 8,
+    RUN_STATE_RUNNING = 9,
+    RUN_STATE_SAVE_VM = 10,
+    RUN_STATE_SHUTDOWN = 11,
+    RUN_STATE_SUSPENDED = 12,
+    RUN_STATE_WATCHDOG = 13,
+    RUN_STATE_GUEST_PANICKED = 14,
+    RUN_STATE_COLO = 15,
+    RUN_STATE__MAX = 16,
+} RunState;
+*/
+
 extern bool panda_exit_loop;
+extern bool panda_stopped;
+int runstate_is_running(void);
 
 void panda_callbacks_main_loop_wait(void) {
     panda_cb_list *plist;
@@ -355,7 +380,8 @@ void panda_callbacks_main_loop_wait(void) {
         plist->entry.main_loop_wait();
         n ++;
     }
-    printf ("... %d callbacks\n", n);
+    printf ("... %d callbacks.  panda_exit_loop=%d runstate_is_running=%d panda_stopped=%d\n", n, panda_exit_loop, runstate_is_running(), panda_stopped);
+
     if (panda_exit_loop) {
         printf ("Clearing panda_exit_loop\n");
         panda_exit_loop = false;
