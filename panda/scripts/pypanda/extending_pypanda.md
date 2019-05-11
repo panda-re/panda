@@ -79,17 +79,23 @@ PANDA and the pypanda include files.
 
 ## Adding C functions to pypanda
 
-### Add description of function to include files
-
-The CFFI library depends on include files in the [include](./include) directory
-to makecalls into the shared library. 
+All you must do to add a C function to pypanda is add its description in a file 
+in the [include](./include) directory. Most of the time this will be the
+[panda_datatypes.h](include/panda_datatypes.h) file.
 
 The [panda_datatypes.h](include/panda_datatypes.h) file is a mashup of most of
 the include files from panda and is likely where you would want to add your
 definition. Try to place your function definition close to other functions in
 the same include file in panda.
 
-#### Example: Adding `panda_current_pc` to the panda object.
+Once our description is added to [panda_datatypes.h](include/panda_datatypes.h)
+it will be automatically populated within our libpanda object in the panda
+class. We *can* add call it through `panda.libpanda.our_function`, but we
+_should_ add it as a method to the panda class. See the example below for
+details.
+
+
+### Example: Adding `panda_current_pc` to the panda object.
 
 First, we want CFFI to understand return type and arguments of the
 `panda_current_pc` method. To do this we add the following line to
