@@ -16,7 +16,7 @@ import pdb
 debug = True
 
 def progress(msg):
-	print(Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL)
+	print(Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
 
 
 # location of panda build dir
@@ -389,3 +389,6 @@ class Panda:
 	
 	def get_current_thread(self, cpustate):
 		return self.libpanda_osi.get_current_thread(cpustate)
+	
+	def ppp_reg_cb(self):
+		pass

@@ -1,27 +1,12 @@
-PYPANDA
+pypanda
 ========
-What is PYPANDA
+What is pypanda
 -
-PYPANDA is a modification of PANDA that allows for PANDA plugins to be written 
+PYPANDA is an extension of PANDA that allows for PANDA plugins to be written 
 in Python.
 
-Installation
--
-Below are the directions to install PYPANDA. These are similar to PANDA.
-```
-git clone https://github.com/panda-re/panda.git
-cd panda
-pip install cffi colorama # make sure for Python 3
-git checkout pypanda
-git submodule update --init dtc
-mkdir build
-cd build
-../build.sh
-```
-
-Required Libraries
-- cffi
-- colorama
+### Installation
+See installation instructions in [here](./docs/installation.md).
 
 ### Importing pypanda
 ```
@@ -126,16 +111,19 @@ Run with: `python3 example_watch_program.py`
 
 ### Writing a Python Plugin
 
-#### Writing an init function
+#### Writing an `init` function
 ```
 @panda.callback.init
 def init(handle):
 	progress("init in python. handle="+str(handle))
-	panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
+	panda.register_callback(handle, panda.callback.before_block_exec, 
+							before_block_execute)
 	return True
 ```
-- @panda.callback.init - Init functions must contain this decorator. This lets cffi know how to use it as a callback. 
-- handle - This is a unique identifier. Pass it to register_callback and mostly leave it alone.
+- @panda.callback.init - Init functions must contain this decorator. This lets 
+cffi know how to use it as a callback. 
+- handle - This is a unique identifier. Pass it to register_callback and mostly
+leave it alone.
 - panda.register_callback(...) - next section
 - This function must return True or False (or you will run into issues)
 
@@ -150,21 +138,25 @@ panda.register_callback(handle, callback_type, your_callback_method)
 
 Example:
 ```
-panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
+panda.register_callback(handle, panda.callback.before_block_exec, 
+						before_block_execute)
 ```
-All callbacks are enumerated in the panda.callback structure. To specify a callback use any member shown in the Valid Callback Locations section.
+All callbacks are enumerated in the panda.callback structure. To specify a 
+callback use any member shown in the Valid Callback Locations section.
 Example:
 ```
 callback = panda.callback.virt_mem_before_write
 ```
- ### Writing Callbacks
+### Writing Callbacks
+
 ```
 @panda.callback.name_of_callback
 def your_callback_name(arg1,arg2,arg3):
     return variable_of_return_type
 ```
 
-- Your callback must include a decorator. This lets cffi know how to call your callback.
+- Your callback must include a decorator. This lets cffi know how to call your 
+callback.
 - Your callback must take the number of variables your decorator specifies.
 - Your callback must return the same type as your decorator describes
 
@@ -183,7 +175,7 @@ def before_block_execute(cpustate,transblock):
 
 ```
 panda = Panda(...) # as we saw before
-panda.replay("/file/path/here")
+panda.begin_replay("/file/path/here")
 ```
 
 Note: We will update this once we get it to actually work.
@@ -198,8 +190,7 @@ panda.run()
 
 This starts the system. No arguments.
 
-
-Functions in PYPANDA
+#### Functions in pypanda
 ----------------------------
 
 **function:** register_callback
