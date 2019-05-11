@@ -32,6 +32,8 @@
 /*
  * Main board type
  */
+extern void panda_callbacks_during_machine_init(MachineState *machine);
+
 
 typedef struct RehostingBoardInfo {
     struct arm_boot_info bootinfo;
@@ -60,11 +62,11 @@ typedef struct {
 #define REHOSTING_MACHINE_CLASS(klass) \
     OBJECT_CLASS_CHECK(RehostingMachineClass, klass, TYPE_REHOSTING_MACHINE)
 
-static MemMapEntry dev_mem_map[MEM_REGION_COUNT];
-static MemMapEntry file_mem_map[MAX_MEM_MAPPED_FILES];
+MemMapEntry dev_mem_map[MEM_REGION_COUNT];
+MemMapEntry file_mem_map[MAX_MEM_MAPPED_FILES];
 
 // Allocate enough for both SPI and PPI IRQs
-static int irqmap[NUM_IRQS +
+int irqmap[NUM_IRQS +
     (GIC_NR_SGIS * REHOSTING_MAX_CPUS) +
     ((GIC_INTERNAL - GIC_NR_SGIS) * REHOSTING_MAX_CPUS)];
 
@@ -74,6 +76,16 @@ typedef struct {
     qemu_irq ppi[REHOSTING_MAX_CPUS][(GIC_INTERNAL - GIC_NR_SGIS)]; // Shared Peripheral Interrupts (SPI)
     qemu_irq spi[NUM_IRQS];                                         // Private Peripheral Interrupts (PPI)
 } machine_irqs;
+
+void create_internal_gic(RehostingBoardInfo *vbi, machine_irqs *irqs, int gic_version);
+
+void create_one_flash(const char *name, hwaddr flashbase,
+                             hwaddr flashsize, const char *file,
+                             MemoryRegion *sysmem);
+
+void create_external_gic(RehostingBoardInfo *vbi, machine_irqs *irqs, int gic_version, bool secure);
+
+void create_virtio_devices(RehostingBoardInfo *vbi, qemu_irq *pic);
 
 static long int get_file_size(char file_name[]) {
 
@@ -93,7 +105,7 @@ static long int get_file_size(char file_name[]) {
 
 }
 
-static void parse_mem_map(char *map_str)
+void parse_mem_map(char *map_str)
 {
     static int fmm_idx = 0;
 
@@ -187,7 +199,7 @@ static void parse_mem_map(char *map_str)
 }
 
 // Match CPU model to GIC version number using a static lookup table defined in rehosting.h
-static int lookup_gic(const char *cpu_model) {
+int lookup_gic(const char *cpu_model) {
 
     int i;
 
@@ -229,7 +241,7 @@ static void check_sysbus_invariants() {
 }
 */
 
-static void create_internal_gic(RehostingBoardInfo *vbi, machine_irqs *irqs, int gic_version)
+void create_internal_gic(RehostingBoardInfo *vbi, machine_irqs *irqs, int gic_version)
 {
     // TODO: need to make use of sysbus_pass_irq?
     // TODO: need to call a9mp_priv_set_irq?
@@ -318,7 +330,7 @@ static void create_internal_gic(RehostingBoardInfo *vbi, machine_irqs *irqs, int
     }
 }
 
-static void create_external_gic(RehostingBoardInfo *vbi, machine_irqs *irqs, int gic_version, bool secure)
+void create_external_gic(RehostingBoardInfo *vbi, machine_irqs *irqs, int gic_version, bool secure)
 {
     DeviceState *gicdev;
     SysBusDevice *gicbusdev;
@@ -379,7 +391,7 @@ static void create_external_gic(RehostingBoardInfo *vbi, machine_irqs *irqs, int
 }
 
 // See: https://github.com/qemu/qemu/blob/a2e002ff7913ce93aa0f7dbedd2123dce5f1a9cd/hw/arm/virt.c#L883
-static void create_one_flash(const char *name, hwaddr flashbase,
+void create_one_flash(const char *name, hwaddr flashbase,
                              hwaddr flashsize, const char *file,
                              MemoryRegion *sysmem)
 {
@@ -437,7 +449,7 @@ static void create_one_flash(const char *name, hwaddr flashbase,
 }
 
 // https://github.com/qemu/qemu/blob/a2e002ff7913ce93aa0f7dbedd2123dce5f1a9cd/hw/arm/virt.c#L805
-static void create_virtio_devices(RehostingBoardInfo *vbi, qemu_irq *pic)
+void create_virtio_devices(RehostingBoardInfo *vbi, qemu_irq *pic)
 {
     int i;
     hwaddr size = vbi->dev_mem_map[VIRT_MMIO].size;
@@ -482,10 +494,19 @@ static void create_virtio_devices(RehostingBoardInfo *vbi, qemu_irq *pic)
     }
 }
 
+static void mach_rehosting_init(MachineState *machine){
+    panda_callbacks_during_machine_init(machine);
+}
+
+
+/*
 static void mach_rehosting_init(MachineState *machine)
 {
+    
+    panda_callbacks_during_machine_init(machine);
     machine_irqs *s = g_malloc0(sizeof(machine_irqs));
     MemoryRegion *sysmem = get_system_memory();
+//    printf("ptr: %p \n", bios_name);
     int gic_version = 2;
     int n;
     int temp;
@@ -524,8 +545,9 @@ static void mach_rehosting_init(MachineState *machine)
         dev_mem_map[i].size = 0;
     }
 
-    parse_mem_map(machine->mem_map_str);
-
+//    parse_mem_map(machine->mem_map_str);
+    char mem_str[] = "VIRT_MMIO 0a000000-0a000200;CACHE_CTRL f1008000-f1009000;MPCORE_PERIPHBASE f100c000-f100e000;MEM 00000000-40000000";
+    parse_mem_map(mem_str);
     vbi->smp_cpus = smp_cpus;
 
     // Init CPUs
@@ -555,7 +577,7 @@ static void mach_rehosting_init(MachineState *machine)
         if (vbi->using_psci) {
             RH_DBG("Using PSCI.");
             object_property_set_int(cpuobj, QEMU_PSCI_CONDUIT_HVC, "psci-conduit", &error_abort);
-            /* Secondary CPUs start in PSCI powered-down state */
+             Secondary CPUs start in PSCI powered-down state 
             if (n > 0) {
                 object_property_set_bool(cpuobj, true, "start-powered-off", &error_abort);
             }
@@ -615,9 +637,9 @@ static void mach_rehosting_init(MachineState *machine)
     }
 
     // VIRTIO devices
-    /* Create mmio transports, so the user can create virtio backends
+     Create mmio transports, so the user can create virtio backends
      * (which will be automatically plugged in to the transports). If
-     * no backend is created the transport will just sit harmlessly idle. */
+     * no backend is created the transport will just sit harmlessly idle. 
     if (vbi->dev_mem_map[VIRT_MMIO].base) {
         RH_DBG("Adding VIRT_MMIO @ 0x%08lx", vbi->dev_mem_map[VIRT_MMIO].base);
         create_virtio_devices(vbi, s->spi);
@@ -640,7 +662,7 @@ static void mach_rehosting_init(MachineState *machine)
     vbi->bootinfo.firmware_loaded = firmware_loaded;
 
     arm_load_kernel(ARM_CPU(first_cpu), &vbi->bootinfo);
-}
+}*/
 
 static void rehosting_machine_class_init(MachineClass *mc)
 {

@@ -58,7 +58,8 @@ replay_serial_read \
 replay_serial_send \
 replay_serial_write \
 after_machine_init \
-top_loop")
+top_loop \
+during_machine_init")
 
 
 
@@ -96,7 +97,6 @@ replay_serial_send = pyp.callback("int(CPUState*, uint64_t, uint8_t )"),
 replay_serial_write = pyp.callback("int(CPUState*, uint64_t, uint32_t , uint8_t )"),
 after_machine_init = pyp.callback("void(CPUState*)"),
 top_loop = pyp.callback("void(CPUState*)"))
-
 
 
 pandacbtype = namedtuple("pandacbtype", "name number")

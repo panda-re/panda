@@ -169,6 +169,9 @@ struct MachineState {
     bool enforce_config_section;
     bool enable_graphics;
 
+    int board_id;
+    char *mem_map_str;
+
     ram_addr_t ram_size;
     ram_addr_t maxram_size;
     uint64_t   ram_slots;
