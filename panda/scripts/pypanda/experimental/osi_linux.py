@@ -1,3 +1,7 @@
+'''
+attempt at getting osi_linux to function in pure python.
+abandoned when the C translation worked.
+'''
 from pypanda import *
 from qcows import get_qcow
 from sys import argv

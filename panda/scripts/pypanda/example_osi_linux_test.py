@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+'''
+example_osi_linux_test.py
+
+This example shows off the functionality of osi_linux in pypanda. Modeled after
+the original osi_linux panda plugin. 
+
+Runs with: python3 example_osi_linux_test.py i386 /path/to/recording
+'''
 from pypanda import *
 import qcows
 from sys import argv
@@ -9,7 +17,7 @@ recording =  argv[2] #"/path/to/recording"
 arg1 = "i386" if len(argv) <= 1 else argv[1]
 
 q = qcows.get_qcow(arg1)
-panda = Panda(qcow=q)#, extra_args="-panda osi -panda osi_linux")
+panda = Panda(qcow=q)
 
 
 def process_name_convert(name):
@@ -27,15 +35,18 @@ def process_name_convert(name):
 def init(handle):
     # Register a python before-BB callback
 	panda.register_callback(handle, panda.callback.asid_changed, asid_changed)
-#	panda.register_callback(handle, panda.callback.before_block_exec, before_block_exec)
-#	panda.register_callback(handle, panda.callback.after_block_exec, after_block_exec)
+#	panda.register_callback(handle, panda.callback.before_block_exec,\
+#							before_block_exec)
+#	panda.register_callback(handle, panda.callback.after_block_exec, \
+#							after_block_exec)
 	return True
 
 @panda.callback.before_block_exec
 def before_block_exec(cpustate, transblock):
 	current = panda.get_current_process(cpustate)
 	if current != ffi.NULL:
-		progress("Current process: %s PID: %d PPD: %d" %(process_name_convert(current.name), current.pid, current.ppid))
+		progress("Current process: %s PID: %d PPD: %d" \
+			%(process_name_convert(current.name), current.pid, current.ppid))
 	ps = panda.get_processes(cpustate)
 	if current != ffi.NULL:
 		for i in range(ps.num):
@@ -55,7 +66,8 @@ def after_block_exec(cpustate, transblock):
 			mod = ms.module[i]
 			name = process_name_convert(mod.name)
 			file_name = process_name_convert(mod.file)
-			progress("\t 0x%s \t 0x%s \t %s %s" %(hex(mod.base),hex(mod.size),name,file_name))
+			progress("\t 0x%s \t 0x%s \t %s %s" \
+					%(hex(mod.base),hex(mod.size),name,file_name))
 	
 	kms = panda.get_modules(cpustate)
 	if kms == ffi.NULL:
@@ -66,7 +78,8 @@ def after_block_exec(cpustate, transblock):
 			mod = kms.module[i]
 			name = process_name_convert(mod.name)
 			file_name = process_name_convert(mod.file)
-			progress("\t 0x%s \t 0x%s \t %s %s" %(hex(mod.base),hex(mod.size),name,file_name))
+			progress("\t 0x%s \t 0x%s \t %s %s" \
+					%(hex(mod.base),hex(mod.size),name,file_name))
 	return 0
 
 

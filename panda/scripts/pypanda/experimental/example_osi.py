@@ -1,15 +1,18 @@
+'''
+Example for doing osi in pure linux. Scrapped when we got it working in C.
+'''
 from pypanda import *
 from time import sleep
 from sys import argv
 from osi_linux import *
 
-panda = Panda(qcow=argv[1], extra_args="")
+panda = Panda(qcow=argv[1], extra_args="-nographic")
 o = osi_linux(panda,"kernelinfo.conf", "debian:3.2.0-4-686-pae:32")
 
 @panda.callback.init
 def init(handle):
 	progress("init in python. handle="+str(handle))
-	panda.register_callback(handle, panda.callback.asid_changed, asid_changed)
+#	panda.register_callback(handle, panda.callback.asid_changed, asid_changed)
 	return True
 
 @panda.callback.asid_changed
@@ -21,5 +24,5 @@ def asid_changed(cpustate,old_asid, new_asid):
 
 
 panda.load_python_plugin(init,"OSI Example")
-panda.begin_replay("/home/luke/recordings/debian_recording/wget")
+#panda.begin_replay("/home/luke/recordings/debian_recording/wget")
 panda.run()

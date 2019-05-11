@@ -1,3 +1,6 @@
+'''
+not a documented example
+'''		
 from pypanda import *
 from time import sleep
 
