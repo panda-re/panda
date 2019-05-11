@@ -64,10 +64,10 @@ typedef enum panda_cb_type {
     PANDA_CB_REPLAY_HANDLE_PACKET, // in replay, packet in / out
     PANDA_CB_AFTER_MACHINE_INIT,   // Right after the machine is initialized,
                                    // before any code runs
-
     PANDA_CB_TOP_LOOP, // at top of loop that manages emulation.  good place to
                        // take a snapshot
-
+    PANDA_CB_DURING_MACHINE_INIT,
+    
     PANDA_CB_LAST
 } panda_cb_type;
 
@@ -201,7 +201,7 @@ typedef union panda_cb {
         false otherwise
 
        Notes:
-        See `insn_translate`, callbacks are registered via PANDA_CB_AFTER_INSN_EXEC
+        See `insn_translate`, callbacks are registered via PANDA_CB_AFTER_INSN_EXEC 
     */
     bool (*after_insn_translate)(CPUState *env, target_ulong pc);
 
@@ -627,6 +627,12 @@ typedef union panda_cb {
        member could be used instead.
        However, cbaddr provides neutral semantics for the comparisson.
     */
+   
+    
+    void (*during_machine_init)(MachineState *machine);
+    
+    
+    
     void (* cbaddr)(void);
 } panda_cb;
 
@@ -809,3 +815,4 @@ char* panda_monitor_run(char* buf);
  * does not return
  */
 void panda_monitor_run_async(char* buf);
+
