@@ -42,7 +42,7 @@ Run this with `python3 example_after_init.py`
 This example demonstrates dynamic loading and unloading of the coverage plugin.
 It does so by registering the `before_block_execute` callback.
 
-### [example_disable_callbacks.py](example_disable_callbacks.py)
+#### [example_disable_callbacks.py](example_disable_callbacks.py)
 
 This example shows registering, enabling, and disabling of callbacks during 
 runtime of a program. In particular, it enables `before_block_execute` and
