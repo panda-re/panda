@@ -2,7 +2,7 @@
 ## Working with include files
 
 You must adjust the enum `panda_cb_type` and union `panda_cb` which are located
-in the [panda_datypes.h](include/panda_datatypes.h) file. These 
+in the [panda_datatypes.h](include/panda_datatypes.h) file. These 
 structures should reflect the datastructures included in `plugin.h`.
 
 ## Adding a callback in panda_datypes.py
@@ -23,8 +23,14 @@ after_machine_init \
 top_loop");
 ```
 
-Add your callback name as a line with a "\" at the end. Do this in the same
-order as the union `panda_cb` (not required to work, but makes things easier).
+Add your callback as a line in the `namedtuple` in the form:
+
+```
+my_callback_name \
+```
+in the same order as the union `panda_cb`.
+
+Note: The ordering is not a requirement, but keeps things organized.
 
 ### Add callback arguments in pcb
 
@@ -40,7 +46,7 @@ after_machine_init = pyp.callback("void(CPUState*)"),
 top_loop = pyp.callback("void(CPUState*)"))
 ```
 
-Add your callback on a new line in the form:
+Add your callback on a new line in the PandaCB initializer in the form:
 ```
 callback_name = pyp.callback("ret_type(arg1type,arg2type,arg3type...)"),
 ```
@@ -57,7 +63,7 @@ pcb.init : pandacbtype("init", -1),
 pcb.top_loop : pandacbtype("top_loop", C.PANDA_CB_TOP_LOOP)}
 ```
 
-Add your callback on a new line in the form:
+Add your callback on a new line in dictionary the form:
 
 ```
 pcb.your_callback_name : pandacbtype("your_callback_name",
