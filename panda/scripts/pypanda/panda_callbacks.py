@@ -1,3 +1,4 @@
+# cool but unused. See panda_datatypes.py for implementation
 from dataclasses import dataclass
 
 @dataclass
