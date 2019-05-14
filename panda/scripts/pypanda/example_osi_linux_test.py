@@ -94,9 +94,6 @@ def asid_changed(cpustate, old_asid, new_asid):
 panda.load_python_plugin(init,"on-init")
 
 # Register a c plugin, coverage
-panda.require("osi")
-panda.require("osi_linux")
-panda.load_osi()
 panda.begin_replay(recording)
 # Start running
 panda.run()

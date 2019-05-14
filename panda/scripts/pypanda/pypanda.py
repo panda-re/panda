@@ -42,7 +42,7 @@ class Panda:
 		else:
 			if qcow is "default":
 				# this means we'll use arch / mem / os to find a qcow
-				self.qcow = pjoin(home, ".panda", "%s-%s-%s.qcow" % (the_os, arch, mem))
+				self.qcow = pjoin(home, ".panda", "%s-%s-%s.qcow" % (os, arch, mem))
 			if not (exists(self.qcow)):
 				print("Missing qcow -- %s" % self.qcow)
 				print("Please go create that qcow and give it to moyix!")
@@ -124,9 +124,9 @@ class Panda:
 
 		name_ffi = ffi.new("char[]", bytes(name,"utf-8"))
 		self.libpanda.panda_init_plugin(name_ffi, cargs, n)
+		self.load_plugin_library(name)
 
 	def load_python_plugin(self, init_function, name):
-		#pdb.set_trace()
 		ffi.cdef("""
 		extern "Python" bool init(void*);
 		""")
@@ -189,6 +189,7 @@ class Panda:
 			self.init()
 		charptr = pyp.new("char[]", bytes(plugin,"utf-8"))
 		self.libpanda.panda_require(charptr)
+		self.load_plugin_library(plugin)
 
 	def enable_plugin(self, handle):
 		self.libpanda.panda_enable_plugin(handle)
@@ -376,25 +377,44 @@ class Panda:
 		else:
 		    ret = self.libpanda.panda_monitor_run(buf)
 		    return ffi.string(ret).decode("utf-8", "ignore");
+	
+	def load_plugin_library(self, name):
+		libname = "libpanda_%s" % name
+		if not hasattr(self, libname):
+			library = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_%s.so"% name))
+			self.__setattr__(libname, library)
 
 	def load_osi(self):
-		self.libpanda_osi = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_osi.so"))
-		self.libpanda_osi_linux = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_osi_linux.so"))
-		self.libpanda_osi_test = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_osi_test.so"))
+		self.require("osi")
+		if "linux" in self.os_string:
+			self.require("osi_linux")
+			self.require("osi_test")
+		else:
+			print("Not supported yet for os: %s" % self.os_string)
 	
 	def get_current_process(self, cpustate):
+		if not hasattr(self, "libpanda_osi"):
+			self.load_osi()	
 		return self.libpanda_osi.get_current_process(cpustate)
 
 	def get_processes(self, cpustate):
+		if not hasattr(self, "libpanda_osi"):
+			self.load_osi()	
 		return self.libpanda_osi.get_processes(cpustate)
 	
 	def get_libraries(self, cpustate, current):
+		if not hasattr(self, "libpanda_osi"):
+			self.load_osi()	
 		return self.libpanda_osi.get_libraries(cpustate,current)
 	
 	def get_modules(self, cpustate):
+		if not hasattr(self, "libpanda_osi"):
+			self.load_osi()	
 		return self.libpanda_osi.get_modules(cpustate)
 	
 	def get_current_thread(self, cpustate):
+		if not hasattr(self, "libpanda_osi"):
+			self.load_osi()	
 		return self.libpanda_osi.get_current_thread(cpustate)
 	
 	def ppp_reg_cb(self):
