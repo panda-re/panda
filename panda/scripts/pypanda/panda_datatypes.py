@@ -96,7 +96,9 @@ replay_serial_read = pyp.callback("int(CPUState*, uint64_t, uint32_t , uint8_t )
 replay_serial_send = pyp.callback("int(CPUState*, uint64_t, uint8_t )"),
 replay_serial_write = pyp.callback("int(CPUState*, uint64_t, uint32_t , uint8_t )"),
 after_machine_init = pyp.callback("void(CPUState*)"),
-top_loop = pyp.callback("void(CPUState*)"))
+top_loop = pyp.callback("void(CPUState*)"),
+during_machine_init = pyp.callback("void(MachineState*)"))
+
 
 
 pandacbtype = namedtuple("pandacbtype", "name number")
@@ -135,7 +137,9 @@ pcb.replay_serial_read : pandacbtype("replay_serial_read", C.PANDA_CB_REPLAY_SER
 pcb.replay_serial_send : pandacbtype("replay_serial_send", C.PANDA_CB_REPLAY_SERIAL_SEND),
 pcb.replay_serial_write :  pandacbtype("replay_serial_write", C.PANDA_CB_REPLAY_SERIAL_WRITE),
 pcb.after_machine_init :  pandacbtype("after_machine_init", C.PANDA_CB_AFTER_MACHINE_INIT),
-pcb.top_loop : pandacbtype("top_loop", C.PANDA_CB_TOP_LOOP)}
+pcb.top_loop : pandacbtype("top_loop", C.PANDA_CB_TOP_LOOP),
+pcb.during_machine_init:pandacbtype("during_machine_init",C.PANDA_CB_DURING_MACHINE_INIT)
+}
 
 
 ''',\

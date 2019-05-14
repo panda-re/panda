@@ -5,8 +5,8 @@ if sys.version_info[0] != 3:
 	sys.exit(0)
 
 from os.path import join as pjoin
-from os.path import realpath
-import os
+from os.path import realpath, exists, abspath
+from os import dup, getenv
 from enum import Enum
 from colorama import Fore, Style
 from panda_datatypes import *
@@ -20,8 +20,8 @@ def progress(msg):
 
 
 # location of panda build dir
-panda_build = realpath(pjoin(os.path.abspath(__file__), "../../../../build"))
-home = os.getenv("HOME")
+panda_build = realpath(pjoin(abspath(__file__), "../../../../build"))
+home = getenv("HOME")
 
 
 class Panda:
@@ -30,7 +30,7 @@ class Panda:
 	arch should be "i386" or "x86_64" or ...
 	NB: wheezy is debian:3.2.0-4-686-pae
 	"""
-	def __init__(self, arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", qcow="default", extra_args = "", the_os="linux"):
+	def __init__(self, arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", qcow="default", extra_args = "", os="linux"):
 		self.arch = arch
 		self.mem = mem
 		self.os = os_version
@@ -43,7 +43,7 @@ class Panda:
 			if qcow is "default":
 				# this means we'll use arch / mem / os to find a qcow
 				self.qcow = pjoin(home, ".panda", "%s-%s-%s.qcow" % (the_os, arch, mem))
-			if not (os.path.exists(self.qcow)):
+			if not (exists(self.qcow)):
 				print("Missing qcow -- %s" % self.qcow)
 				print("Please go create that qcow and give it to moyix!")
 
@@ -67,7 +67,7 @@ class Panda:
 		assert (not (bits == None))
 
 		# set os string in line with osi plugin requirements e.g. "linux[-_]64[-_].+"
-		self.os_string = "%s-%d-%s" % (the_os,bits,os_version)
+		self.os_string = "%s-%d-%s" % (os,bits,os_version)
 
 		# note: weird that we need panda as 1st arg to lib fn to init?
 		self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath, "-os", self.os_string, self.qcow]
@@ -230,7 +230,7 @@ class Panda:
 		self.libpanda.panda_disable_precise_pc()
 
 	def memsavep(self, file_out):
-		newfd = os.dup(f_out.fileno())
+		newfd = dup(f_out.fileno())
 		self.libpanda.panda_memsavep(newfd)
 		self.libpanda.fclose(newfd)
 
@@ -347,7 +347,7 @@ class Panda:
 		return self.libpanda.panda_current_asid(cpustate)
 
 	def disas(self, fout, code, size):
-		newfd = os.dup(fout.fileno())
+		newfd = dup(fout.fileno())
 		return self.libpanda.panda_disas(newfd, code, size)
 
 	def set_os_name(self, os_name):
