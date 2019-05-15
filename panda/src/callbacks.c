@@ -241,12 +241,17 @@ void panda_require(const char *plugin_name) {
 
 
 
-// Internal: remove a plugin from the global array
+// Internal: remove a plugin from the global array panda_plugins and panda_plugins_loaded
 static void panda_delete_plugin(int i) {
     if (i != nb_panda_plugins - 1) { // not the last element
         memmove(&panda_plugins[i], &panda_plugins[i+1], (nb_panda_plugins - i - 1)*sizeof(panda_plugin));
     }
     nb_panda_plugins--;
+
+    if (i != nb_panda_plugins_loaded -1 ) { // not the last element
+        memmove(&panda_plugins_loaded[i], &panda_plugins_loaded[i+1], (nb_panda_plugins_loaded - i - 1)*sizeof(char*));
+    }
+    nb_panda_plugins_loaded--;
 }
 
 void panda_do_unload_plugin(int plugin_idx){

@@ -1,26 +1,12 @@
-PYPANDA
+pypanda
 ========
-What is PYPANDA
+What is pypanda
 -
-PYPANDA is a modification of PANDA that allows for PANDA plugins to be written in Python.
+PYPANDA is an extension of PANDA that allows for PANDA plugins to be written 
+in Python.
 
-Installation
--
-Below are the directions to install PYPANDA. These are similar to PANDA.
-```
-git clone https://github.com/panda-re/panda.git
-cd panda
-pip install cffi colorama # make sure for Python 3
-git checkout pypanda
-git submodule update --init dtc
-mkdir build
-cd build
-../build.sh
-```
-
-Required Libraries
-- cffi
-- colorama
+### Installation
+See installation instructions in [here](./docs/installation.md).
 
 ### Importing pypanda
 ```
@@ -32,7 +18,8 @@ Currently your script should be in the same folder as the pypanda.py file.
 ### Set up a Panda instance
 
 ```
-panda = Panda(arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", qcow="/file/path/here", extra_args="") 
+panda = Panda(arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", 
+				qcow="/file/path/here", extra_args="") 
 ```
 - arch - string for an architecture
 - mem - memory for system
@@ -42,44 +29,106 @@ panda = Panda(arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", qcow
 
 ### Playing with existing plugins
 
-#### [example_plugin.py](example_plugin.py)
-This is the simplest of plugins. It registers a callback for `before_block_exec` and gives the user a pdb trace each time it is hit.
-
-Run this with `python3 example_plugin.py /path/to/qcow`
-
 
 #### [example_after_init.py](example_after_init.py)
-This sets up the callback for `after_machine_init`, hits it, and gives the user a pdb trace.
 
-Run this with `python3 example_after_init.py /path/to/qcow`
+This sets up the callback for `after_machine_init`, hits it, and gives the user
+a pdb trace.
+
+Run this with `python3 example_after_init.py`
+
+#### [example_coverage.py](example_coverage.py)
+
+This example demonstrates dynamic loading and unloading of the coverage plugin.
+It does so by registering the `before_block_execute` callback.
+
+#### [example_disable_callbacks.py](example_disable_callbacks.py)
+
+This example shows registering, enabling, and disabling of callbacks during 
+runtime of a program. In particular, it enables `before_block_execute` and
+`after_block_execute`. After 2 blocks hit it disables `after_block_execute`. 
+After 2 additional blocks hit it enables `after_block_execute` again.
+ 
+Run with: `python3 example_disable_callbacks.py`
 
 #### [example_multiple_callbacks.py](example_multiple_callbacks.py)
-This example shows the ability to set up multiple callbacks. The example sets up `before_block_exec`as well as `after_block_exec`. There is a delay of 1 second every time each callback is called. 
 
-Run this with `python3 example_multiple_callbacks.py /path/to/qcow`
+This example shows the ability to set up multiple callbacks. The example sets up
+`before_block_exec` as well as `after_block_exec`. There is a delay of 1 second 
+every time each callback is called. 
+
+Run this with `python3 example_multiple_callbacks.py`
+
+#### [example_network.py](example_network.py)
+
+This example implements the networks same functionality as the network plugin in
+panda. It registers `replay_handle_packet` callback, converts the buffer, and
+writes the buffer out to a pcap.
+
+Run with: `python3 example_network.py i386 out.pcap /path/to/recording`
+
+#### [example_osi_linux_test.py](example_osi_linux_test.py)
+
+This exampls shows off the functionality of `osi_linux` in pypanda. Modeled
+after the original `osi_linux` panda plugin.
+
+Runs with `python3 example_osi_linux_test.py i386 /path/to/recording`
+
+#### [example_plugin.py](example_plugin.py)
+
+This is the simplest of plugins. It registers a callback for `before_block_exec`
+and gives the user a pdb trace each time it is hit.
+
+Run this with `python3 example_plugin.py`
 
 #### [example_print_regs.py](example_print_regs.py)
-This example displays the register state of the cpu in x86 at each `before_block_exec`.
 
-Run this with `python3 example_print_regs.py /path/to/qcow`
+This example displays the register state of the cpu in x86 at each 
+`before_block_exec`.
 
+Run this with `python3 example_print_regs.py`
+
+#### [example_record_replay.py](example_record_replay.py)
+
+This example registers asid_changed and runs a replay from a file specified.
+
+Run with: `python3 example_record_replay.py i386 /path/to/recording`
+
+#### [example_virt_mem_read_callback.py](example_virt_mem_read_callback.py)
+
+This plugin registers the `virt_mem_after_write` callback and attempts to find
+strings in the buffers.
+
+Run with: `python3 example_virt_mem_read_callback.py`
+
+#### [example_watch_program.py](example_watch_program.py)
+
+This example allows us to debug a specific program by name. It registers 
+`asid_changed` and waits for the osi process name to match the name of the
+program set by the user.
+
+Run with: `python3 example_watch_program.py`
 
 ### Writing a Python Plugin
 
-#### Writing an init function
+#### Writing an `init` function
 ```
 @panda.callback.init
 def init(handle):
 	progress("init in python. handle="+str(handle))
-	panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
+	panda.register_callback(handle, panda.callback.before_block_exec, 
+							before_block_execute)
 	return True
 ```
-- @panda.callback.init - Init functions must contain this decorator. This lets cffi know how to use it as a callback. 
-- handle - This is a unique identifier. Pass it to register_callback and mostly leave it alone.
+- @panda.callback.init - Init functions must contain this decorator. This lets 
+cffi know how to use it as a callback. 
+- handle - This is a unique identifier. Pass it to register_callback and mostly
+leave it alone.
 - panda.register_callback(...) - next section
 - This function must return True or False (or you will run into issues)
 
 #### Registering Callbacks
+
 ```
 panda.register_callback(handle, callback_type, your_callback_method)
 ```
@@ -89,21 +138,25 @@ panda.register_callback(handle, callback_type, your_callback_method)
 
 Example:
 ```
-panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
+panda.register_callback(handle, panda.callback.before_block_exec, 
+						before_block_execute)
 ```
-All callbacks are enumerated in the panda.callback structure. To specify a callback use any member shown in the Valid Callback Locations section.
+All callbacks are enumerated in the panda.callback structure. To specify a 
+callback use any member shown in the Valid Callback Locations section.
 Example:
 ```
 callback = panda.callback.virt_mem_before_write
 ```
- ### Writing Callbacks
+### Writing Callbacks
+
 ```
 @panda.callback.name_of_callback
 def your_callback_name(arg1,arg2,arg3):
     return variable_of_return_type
 ```
 
-- Your callback must include a decorator. This lets cffi know how to call your callback.
+- Your callback must include a decorator. This lets cffi know how to call your 
+callback.
 - Your callback must take the number of variables your decorator specifies.
 - Your callback must return the same type as your decorator describes
 
@@ -122,7 +175,7 @@ def before_block_execute(cpustate,transblock):
 
 ```
 panda = Panda(...) # as we saw before
-panda.replay("/file/path/here")
+panda.begin_replay("/file/path/here")
 ```
 
 Note: We will update this once we get it to actually work.
@@ -137,8 +190,7 @@ panda.run()
 
 This starts the system. No arguments.
 
-
-Functions in PYPANDA
+#### Functions in pypanda
 ----------------------------
 
 **function:** register_callback

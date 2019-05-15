@@ -768,8 +768,11 @@ int panda_replay(char *replay_name);
 void panda_enable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 void panda_disable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 int rr_get_guest_instr_count_external(void);
+int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len);
+int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len);
 
 target_ulong panda_current_sp_external(CPUState *cpu);
+target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong pagesize);
 bool panda_in_kernel_external(CPUState *cpu);
 
 /*!
@@ -794,6 +797,22 @@ int panda_current_asid(CPUState *env);
  * @brief Returns the guest program counter.
  */
 int panda_current_pc(CPUState *cpu);
+typedef target_ulong target_ptr_t;
 
+/**
+ * @brief Create a monitor for panda
+ */
+void panda_init_monitor();
 
+/**
+ * @brief Pass a message via the panda monitor. Create monitor if necessary'
+ * returns output string from monitor. Some commands may cause spinloops
+ */
+char* panda_monitor_run(char* buf);
+
+/**
+ * @brief Pass a message via the panda monitor. Create monitor if necessary'
+ * does not return
+ */
+void panda_monitor_run_async(char* buf);
 

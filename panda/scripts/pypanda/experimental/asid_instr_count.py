@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+'''
+Not currently functional
+'''
 from pypanda import *
 from time import sleep
 from sys import argv

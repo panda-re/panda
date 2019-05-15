@@ -5,8 +5,8 @@ if sys.version_info[0] != 3:
 	sys.exit(0)
 
 from os.path import join as pjoin
-from os.path import realpath
-import os
+from os.path import realpath, exists, abspath
+from os import dup, getenv
 from enum import Enum
 from colorama import Fore, Style
 from panda_datatypes import *
@@ -16,12 +16,12 @@ import pdb
 debug = True
 
 def progress(msg):
-	print(Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL)
+	print(Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
 
 
 # location of panda build dir
-panda_build = realpath(pjoin(os.path.abspath(__file__), "../../../../build"))
-home = os.getenv("HOME")
+panda_build = realpath(pjoin(abspath(__file__), "../../../../build"))
+home = getenv("HOME")
 
 
 class Panda:
@@ -30,7 +30,7 @@ class Panda:
 	arch should be "i386" or "x86_64" or ...
 	NB: wheezy is debian:3.2.0-4-686-pae
 	"""
-	def __init__(self, arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", qcow="default", extra_args = "", the_os="linux"):
+	def __init__(self, arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", qcow="default", extra_args = "", os="linux"):
 		self.arch = arch
 		self.mem = mem
 		self.os = os_version
@@ -42,8 +42,8 @@ class Panda:
 		else:
 			if qcow is "default":
 				# this means we'll use arch / mem / os to find a qcow
-				self.qcow = pjoin(home, ".panda", "%s-%s-%s.qcow" % (the_os, arch, mem))
-			if not (os.path.exists(self.qcow)):
+				self.qcow = pjoin(home, ".panda", "%s-%s-%s.qcow" % (os, arch, mem))
+			if not (exists(self.qcow)):
 				print("Missing qcow -- %s" % self.qcow)
 				print("Please go create that qcow and give it to moyix!")
 
@@ -51,6 +51,7 @@ class Panda:
 		self.bindir = pjoin(panda_build, "%s-softmmu" % arch)
 		self.panda = pjoin(self.bindir, "qemu-system-%s" % arch)
 		self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % arch))
+		
 		biospath = realpath(pjoin(self.panda,"..", "..",  "pc-bios"))
 		bits = None
 		if self.arch == "i386":
@@ -66,7 +67,7 @@ class Panda:
 		assert (not (bits == None))
 
 		# set os string in line with osi plugin requirements e.g. "linux[-_]64[-_].+"
-		self.os_string = "%s-%d-%s" % (the_os,bits,os_version)
+		self.os_string = "%s-%d-%s" % (os,bits,os_version)
 
 		# note: weird that we need panda as 1st arg to lib fn to init?
 		self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath, "-os", self.os_string, self.qcow]
@@ -123,10 +124,9 @@ class Panda:
 
 		name_ffi = ffi.new("char[]", bytes(name,"utf-8"))
 		self.libpanda.panda_init_plugin(name_ffi, cargs, n)
-
+		self.load_plugin_library(name)
 
 	def load_python_plugin(self, init_function, name):
-		#pdb.set_trace()
 		ffi.cdef("""
 		extern "Python" bool init(void*);
 		""")
@@ -189,6 +189,7 @@ class Panda:
 			self.init()
 		charptr = pyp.new("char[]", bytes(plugin,"utf-8"))
 		self.libpanda.panda_require(charptr)
+		self.load_plugin_library(plugin)
 
 	def enable_plugin(self, handle):
 		self.libpanda.panda_enable_plugin(handle)
@@ -230,7 +231,7 @@ class Panda:
 		self.libpanda.panda_disable_precise_pc()
 
 	def memsavep(self, file_out):
-		newfd = os.dup(f_out.fileno())
+		newfd = dup(f_out.fileno())
 		self.libpanda.panda_memsavep(newfd)
 		self.libpanda.fclose(newfd)
 
@@ -347,7 +348,7 @@ class Panda:
 		return self.libpanda.panda_current_asid(cpustate)
 
 	def disas(self, fout, code, size):
-		newfd = os.dup(fout.fileno())
+		newfd = dup(fout.fileno())
 		return self.libpanda.panda_disas(newfd, code, size)
 
 	def set_os_name(self, os_name):
@@ -357,8 +358,64 @@ class Panda:
 	def cleanup(self):
 		self.libpanda.panda_cleanup()
 
-	def virtual_memory_read(env, addr, buf, length):
-		self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
+	def virtual_memory_read(self, env, addr, buf, length):
+		return self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
 
-	def virtual_memory_write(env, addr, buf, length):
-		self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
+	def virtual_memory_write(self, env, addr, buf, length):
+		return self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
+
+	def send_monitor_cmd(self, cmd, do_async=False):
+		if debug:
+			progress ("Sending monitor command %s" % cmd),
+
+		buf = ffi.new("char[]", bytes(cmd,"UTF-8"))
+		n = len(cmd)
+
+		if do_async:
+		    self.libpanda.panda_monitor_run_async(buf)
+		    return None
+		else:
+		    ret = self.libpanda.panda_monitor_run(buf)
+		    return ffi.string(ret).decode("utf-8", "ignore");
+	
+	def load_plugin_library(self, name):
+		libname = "libpanda_%s" % name
+		if not hasattr(self, libname):
+			library = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_%s.so"% name))
+			self.__setattr__(libname, library)
+
+	def load_osi(self):
+		self.require("osi")
+		if "linux" in self.os_string:
+			self.require("osi_linux")
+			self.require("osi_test")
+		else:
+			print("Not supported yet for os: %s" % self.os_string)
+	
+	def get_current_process(self, cpustate):
+		if not hasattr(self, "libpanda_osi"):
+			self.load_osi()	
+		return self.libpanda_osi.get_current_process(cpustate)
+
+	def get_processes(self, cpustate):
+		if not hasattr(self, "libpanda_osi"):
+			self.load_osi()	
+		return self.libpanda_osi.get_processes(cpustate)
+	
+	def get_libraries(self, cpustate, current):
+		if not hasattr(self, "libpanda_osi"):
+			self.load_osi()	
+		return self.libpanda_osi.get_libraries(cpustate,current)
+	
+	def get_modules(self, cpustate):
+		if not hasattr(self, "libpanda_osi"):
+			self.load_osi()	
+		return self.libpanda_osi.get_modules(cpustate)
+	
+	def get_current_thread(self, cpustate):
+		if not hasattr(self, "libpanda_osi"):
+			self.load_osi()	
+		return self.libpanda_osi.get_current_thread(cpustate)
+	
+	def ppp_reg_cb(self):
+		pass

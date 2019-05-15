@@ -19,5 +19,7 @@ int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args);
 
 int panda_replay(char *replay_name);
 
+void panda_monitor_run(char* buf, uint32_t len);
+
 //int panda_load_external_plugin(const char* filename, const char *plugin_name, void *plugin_uuid, void* init_fn_ptr);
 #endif
