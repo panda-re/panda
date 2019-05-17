@@ -128,7 +128,7 @@ $(PLOG_READER_PROG): panda/src/plog_reader.o \
 
 	$(call LINK,$^)
 
-PROGS+=$(RR_PRINT_PROG) plog_pb2.py
+PROGS+=$(RR_PRINT_PROG)
 
 PROGS+=$(RR_RMVAPIC_PROG)
 
@@ -165,24 +165,24 @@ X86_HELPERS += mpx_helper.bc2
 
 llvm-$(TARGET_I386) += fpu/softfloat.bc2
 llvm-$(TARGET_I386) += $(addprefix target/i386/,$(X86_HELPERS))
-llvmmorph-$(TARGET_I386) += llvm-helpers.bc
+llvmmorph-$(TARGET_I386) += llvm-helpers-i386.bc
 
 llvm-$(TARGET_X86_64) += fpu/softfloat.bc2
 llvm-$(TARGET_X86_64) += $(addprefix target/i386/,$(X86_HELPERS))
-llvmmorph-$(TARGET_X86_64) += llvm-helpers.bc
+llvmmorph-$(TARGET_X86_64) += llvm-helpers-x86_64.bc
 
 ARM_HELPERS = op_helper.bc2 helper.bc2 neon_helper.bc2 iwmmxt_helper.bc2
 ARM_HELPERS += crypto_helper.bc2
 
 llvm-$(TARGET_ARM) += fpu/softfloat.bc2
 llvm-$(TARGET_ARM) += $(addprefix target/arm/,$(ARM_HELPERS))
-llvmmorph-$(TARGET_ARM) += llvm-helpers.bc
+llvmmorph-$(TARGET_ARM) += llvm-helpers-arm.bc
 
 PPC_HELPERS = excp_helper.bc2 fpu_helper.bc2 timebase_helper.bc2 misc_helper.bc2 mmu_helper.bc2 mem_helper.bc2 int_helper.bc2
 
 llvm-$(TARGET_PPC) += fpu/softfloat.bc2
 llvm-$(TARGET_PPC) += $(addprefix target/ppc/,$(PPC_HELPERS))
-llvmmorph-$(TARGET_PPC) += llvm-helpers.bc
+llvmmorph-$(TARGET_PPC) += llvm-helpers-ppc.bc
 
 CLANG_FILTER = -Wold-style-declaration -fstack-protector-strong -Wno-error=cpp -g -O0 -O1 -O3 -mcx16 -Wno-shift-negative-value
 QEMU_BC2FLAGS:=$(filter-out $(CLANG_FILTER),$(QEMU_CFLAGS) $(CFLAGS)) -O2 -I../target/$(TARGET_BASE_ARCH)
@@ -207,7 +207,7 @@ panda/tools:
 panda/tools/helper_call_modifier.o: | panda/tools ../panda/tools
 panda/tools/helper_call_modifier: panda/tools/helper_call_modifier.o
 
-llvm-helpers.bc: llvm-helpers.bc1 panda/tools/helper_call_modifier
+llvm-helpers-$(TARGET_NAME).bc: llvm-helpers.bc1 panda/tools/helper_call_modifier
 	$(call quiet-command,\
 		panda/tools/helper_call_modifier -i $< -o $@,\
 		"LLMORPH $(TARGET_DIR)$@")

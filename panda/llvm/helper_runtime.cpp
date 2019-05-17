@@ -172,10 +172,8 @@ void init_llvm_helpers() {
     llvm::LLVMContext &ctx = mod->getContext();
 
     // Read helper module, link into JIT, verify
-    char *exe = strdup(qemu_file);
-    std::string bitcode(dirname(exe));
-    free(exe);
-    bitcode.append("/llvm-helpers.bc");
+    std::string bitcode =
+        CONFIG_QEMU_DATADIR "/llvm-helpers-" TARGET_NAME ".bc";
 
     llvm::SMDiagnostic Err;
     llvm::Module *helpermod = ParseIRFile(bitcode, Err, ctx);
