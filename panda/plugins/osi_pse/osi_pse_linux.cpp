@@ -242,7 +242,20 @@ void handle_sys_return(CPUState *cpu, target_ulong pc,
                     pparent.vforkc = &pchild;
 
                     pchild.vdump(cpu);
+#if defined(OSI_PSE_ALT_VFORK)
+                    // Alternate handling of the sys_vfork-sys_execve sequence.
+                    //
+                    // By default, the transient child process is ignored,
+                    // in order to guarantee to plugins using osi_pse that
+                    // there is a one-to-one mapping of asids to processes.
+                    // This is typically required if the plugins use asids
+                    // as the key to some C++ map structure.
+                    // If this guarantee is not needed, you can define the
+                    // OSI_PSE_ALT_VFORK macro, which will result in a start
+                    // and an end callback to be run for the transient child
+                    // process.
                     pchild.run_cb_start(cpu);
+#endif
                 } break;
                 default:
                     LOG_ERROR("Unexpected return for syscall %s at state %s.",
@@ -563,8 +576,14 @@ int asid_changed_linux(CPUState *cpu, target_ptr_t current, target_ptr_t next) {
                     LOG_DEBUG("parent ok");
                 }
 
-                // Run callbacks and update child.
+#if defined(OSI_PSE_ALT_VFORK)
+                // Alternate handling of the sys_vfork-sys_execve sequence.
+                // See details above.
                 pchild.run_cb_end(cpu);
+#endif
+
+                // At this point the child process has its own asid.
+                // Reset it and run the start callback.
                 pchild.reset(cpu, h->taskd, next, true);
                 lpt.AddASIDMapping(pchild.handle.asid, pchild.handle.taskd);
                 pchild.vforkp = nullptr;
