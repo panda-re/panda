@@ -308,7 +308,7 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
     else {
         panda_cbs[type] = new_list;
     }
-    printf ("exiting panda_register_callback:  panda_cbs[%d] = %" PRIx64 "\n", type, (uint64_t) panda_cbs[type]);
+//    printf ("exiting panda_register_callback:  panda_cbs[%d] = %" PRIx64 "\n", type, (uint64_t) panda_cbs[type]);
 }
 
 /**

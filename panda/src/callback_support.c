@@ -373,17 +373,17 @@ int runstate_is_running(void);
 
 void panda_callbacks_main_loop_wait(void) {
     panda_cb_list *plist;
-    printf ("In panda_callbacks_main_loop_wait\n");
+//    printf ("In panda_callbacks_main_loop_wait\n");
     int n = 0;
     for (plist = panda_cbs[PANDA_CB_MAIN_LOOP_WAIT]; plist != NULL;
          plist = panda_cb_list_next(plist)) {
         plist->entry.main_loop_wait();
         n ++;
     }
-    printf ("... %d callbacks.  panda_exit_loop=%d runstate_is_running=%d panda_stopped=%d\n", n, panda_exit_loop, runstate_is_running(), panda_stopped);
+//    printf ("... %d callbacks.  panda_exit_loop=%d runstate_is_running=%d panda_stopped=%d\n", n, panda_exit_loop, runstate_is_running(), panda_stopped);
 
     if (panda_exit_loop) {
-        printf ("Clearing panda_exit_loop\n");
+        //       printf ("Clearing panda_exit_loop\n");
         panda_exit_loop = false;
     }
 }

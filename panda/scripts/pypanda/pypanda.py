@@ -29,16 +29,16 @@ main_loop_wait_fnargs = []
 @pcb.main_loop_wait
 def main_loop_wait_stuff():
 	global main_loop_wait_fnargs
-	progress("main_loop_wait_stuff")
+#	progress("main_loop_wait_stuff")
 	for fnargs in main_loop_wait_fnargs:
-		progress("running : " + (str(fnargs)))
+#		progress("running : " + (str(fnargs)))
 		(fn, args) = fnargs
-		print ("fn = " + (str(fn)))
-		print ("args = " + (str(args))) 
-		for arg in args:
-			print("\tArg {} stringifies to {}".format(arg, ffi.string(arg)))
+#		print ("fn = " + (str(fn)))
+#		print ("args = " + (str(args))) 
+#		for arg in args:
+#			print("\tArg {} stringifies to {}".format(arg, ffi.string(arg)))
 		fn(*args)
-	progress("done with main_loop_wait_stuff  --  %d " % (len(main_loop_wait_fnargs)))
+#	progress("done with main_loop_wait_stuff  --  %d " % (len(main_loop_wait_fnargs)))
 	main_loop_wait_fnargs = []	  
 
 
@@ -100,7 +100,7 @@ class Panda:
 		nulls = ffi.new("char[]", b"")
 		cenvp =	 ffi.new("char **",nulls)
 		len_cargs = ffi.cast("int", len(self.panda_args))
-		print("Panda args: [" + (" ".join(self.panda_args)) + "]")
+		progress ("Panda args: [" + (" ".join(self.panda_args)) + "]")
 		self.len_cargs = len_cargs
 		self.cenvp = cenvp
 		self.libpanda.panda_pre(self.len_cargs, self.panda_args_ffi, self.cenvp)
@@ -114,7 +114,7 @@ class Panda:
 	# fn is a function we want to run
 	# args is args (an array)
 	def queue_main_loop_wait_fn(self, fn, args):
-		progress("queued up a fnargs")
+#		progress("queued up a fnargs")
 		fnargs = (fn, args)
 		main_loop_wait_fnargs.append(fnargs)
 		
@@ -138,11 +138,11 @@ class Panda:
 	# stop cpu right now
 	def stop(self):
 #		 self.exit_emul_loop()
-		print ("executing panda_stop (vm_stop)\n")
+#		print ("executing panda_stop (vm_stop)\n")
 		self.libpanda.panda_stop()
 
 	def cont(self):
-		print ("executing panda_start (vm_start)\n");
+#		print ("executing panda_start (vm_start)\n");
 		self.libpanda.panda_cont()
 
 	def snap(self, snapshot_name):
@@ -177,7 +177,7 @@ class Panda:
 	def disable_tb_chaining(self):
 		if debug:
 			progress("Disabling TB chaining")
-		print("!@!@!!!!!! Disabling TB chaining\n")
+#		print("!@!@!!!!!! Disabling TB chaining\n")
 		self.libpanda.panda_disable_tb_chaining()
 
 	def run(self):
@@ -194,7 +194,7 @@ class Panda:
 	def load_plugin(self, name, args=[]):
 		if debug:
 			progress ("Loading plugin %s" % name),
-			print("plugin args: [" + (" ".join(args)) + "]")
+#			print("plugin args: [" + (" ".join(args)) + "]")
 		n = len(args)
 		cargs = []
 		self.libpanda.panda_init_plugin(create_string_buffer(name), cargs, n)

@@ -2166,7 +2166,7 @@ int save_vmstate(Monitor *mon, const char *name)
 
     ret = 0;
 
-    printf ("done with savevm\n");
+//    printf ("done with savevm\n");
 
  the_end:
     aio_context_release(aio_context);

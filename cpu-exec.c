@@ -189,10 +189,13 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     cpu->can_do_io = !use_icount;
 
-    panda_callbacks_before_block_exec(cpu, itb);
+//    printf ("panda: before_block_exec: itb->pc=%x cpu->tcg_exit_req=%d\n", itb->pc, cpu->tcg_exit_req);
+
+    if (cpu->tcg_exit_req == 0)
+        panda_callbacks_before_block_exec(cpu, itb);
 
     if (panda_exit_loop) {
-        printf ("cpu-exec.c: Exiting emul loop\n");
+//        printf ("cpu-exec.c: Exiting emul loop\n");
         cpu->can_do_io = 1;
         return TB_EXIT_REQUESTED;
     }
@@ -214,9 +217,23 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
 
-    panda_callbacks_after_block_exec(cpu, itb);
-
     tb_exit = ret & TB_EXIT_MASK;
+
+    // if we were asked to exit that last bb *and* didn't actually
+    // execute any of the guest code, then we shouldn't run the
+    // after-block panda callbacks
+    if (!(tb_exit == TB_EXIT_REQUESTED
+          && last_tb->pc == itb->pc))
+        panda_callbacks_after_block_exec(cpu, itb);
+
+/*
+    printf ("panda: after_block_exec: last_tb= %lx tb_exit=%lx itb->pc=%lx cpu->tcg_exit_req=%d\n",
+            (long unsigned int) last_tb, (long unsigned int) tb_exit, (long unsigned int) itb->pc, cpu->tcg_exit_req);
+    if (last_tb)
+        printf ("panda: after_block_exec: last_tb->pc=%lx \n", (long unsigned int) last_tb->pc);
+*/
+    
+
     trace_exec_tb_exit(last_tb, tb_exit);
 
     if (tb_exit > TB_EXIT_IDX1) {

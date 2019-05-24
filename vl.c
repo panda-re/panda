@@ -778,7 +778,7 @@ void runstate_set(RunState new_state)
 
 int runstate_is_running(void)
 {
-    printf ("runstate is %d\n", current_run_state);
+//    printf ("runstate is %d\n", current_run_state);
     return runstate_check(RUN_STATE_RUNNING);
 }
 
