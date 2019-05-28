@@ -13,13 +13,13 @@ By default, `stringsearch` reads strings to search for from a text file named `$
 
 Will search for the string `has stopped working` and the byte sequence `0x01 0x02 0x03 0x04` being written to or read from memory.
 
-When a match is found, it is saved into `${NAME}_string_matches.txt` in a file listing the callstack, program counter, address space, and number of hits. The number of entries in the callstack is a configurable parameter. For example, with just two levels of callstack information, example output might look like:
+When a match is found, it is saved into `${NAME}_string_matches.txt` in a file listing the callstack, program counter, address space, and number of hits. The address space is determined by the `stack_type` setting in the `callstack_instr` plugin. The number of entries in the callstack is a configurable parameter. For example, with just two levels of callstack information and a `stack_type` of `asid`, example output might look like:
 
-    826954f7 8269669d 23d1a0e2 3eb5b3c0  1
-    3140cd87 330f54a0 23d1a11f 3eb5b3c0  1
-    826954f7 8269669d 23d1a11f 3eb5b3c0  1
-    188b2992 1c9196fc 23d7f60a 3eb5b3c0  3
-    1fd615c5 1fd621d8 23d80d9e 3eb5b3c0  8
+    826954f7 8269669d 23d1a0e2 (asid=0x3eb5b3c0)  1
+    3140cd87 330f54a0 23d1a11f (asid=0x3eb5b3c0)  1
+    826954f7 8269669d 23d1a11f (asid=0x3eb5b3c0)  1
+    188b2992 1c9196fc 23d7f60a (asid=0x3eb5b3c0)  3
+    1fd615c5 1fd621d8 23d80d9e (asid=0x3eb5b3c0)  8
 
 Arguments
 ---------

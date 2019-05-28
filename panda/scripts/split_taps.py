@@ -17,9 +17,9 @@ def main(logfile, prefix, num_callers=1):
             for o in filemap.values(): o.close()
             filemap = {}
 
-        callers, pc, cr3, addr, n, val = line.strip().rsplit(" ", 5)
+        callers, pc, stackKind, sidFirst, sidSecond, addr, n, val = line.strip().rsplit(" ", 7)
         callers = callers.split()
-        fname = prefix + "." + ".".join( callers[-num_callers:] + [pc, cr3] ) + ".dat"
+        fname = prefix + "." + ".".join( callers[-num_callers:] + [pc, stackKind, sidFirst, sidSecond] ) + ".dat"
         if fname not in filemap:
             filemap[fname] = open(fname,'a')
 

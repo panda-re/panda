@@ -70,8 +70,9 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
             for (int j = nret-1; j > 0; j--) {
                 gzprintf(f, TARGET_FMT_lx " ", callers[j]);
             }
-            gzprintf(f, TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx " %ld %02x\n",
-                    p.caller, p.pc, p.cr3, addr+i, mem_counter, ((unsigned char *)buf)[i]);
+            gzprintf(f, TARGET_FMT_lx " " TARGET_FMT_lx " %d " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx " %ld %02x\n",
+                    p.caller, p.pc, p.stackKind, p.sidFirst, p.sidSecond,
+                    addr+i, mem_counter, ((unsigned char *)buf)[i]);
         }
     }
     mem_counter++;
@@ -97,14 +98,40 @@ bool init_plugin(void *self) {
         return false;
     }
 
+    panda_require("callstack_instr");
+    if(!init_callstack_instr_api()) return false;
+
+    uint32_t stack_kind;
+    taps >> stack_kind;
+    printf("Tap points are all of stack type ");
+    if (STACK_ASID == stack_kind) {
+        printf("asid");
+    } else if (STACK_HEURISTIC == stack_kind) {
+        printf("heuristic");
+    } else if (STACK_THREADED == stack_kind) {
+        printf("threaded");
+    } else {
+        printf("UNKNOWN");
+    }
+    printf(" (%d)\n", stack_kind);
+
     prog_point p = {};
     while (taps >> std::hex >> p.caller) {
         taps >> std::hex >> p.pc;
-        taps >> std::hex >> p.cr3;
+        taps >> std::hex >> p.sidFirst;
+        if (STACK_ASID == stack_kind) {
+            p.sidSecond = 0;
+        } else {
+            taps >> std::hex >> p.sidSecond;
+        }
 
-        printf("Adding tap point (" TARGET_FMT_lx "," TARGET_FMT_lx "," TARGET_FMT_lx ")\n",
-               p.caller, p.pc, p.cr3);
+        p.stackKind = static_cast<stack_type>(stack_kind);
+
+        char *sid_string = get_stackid_string(p);
+        printf("Adding tap point (" TARGET_FMT_lx "," TARGET_FMT_lx ", %s)\n",
+               p.caller, p.pc, sid_string);
         tap_points.insert(p);
+        g_free(sid_string);
     }
     taps.close();
 
@@ -118,9 +145,6 @@ bool init_plugin(void *self) {
         printf("Couldn't open read_tap_buffers.txt for writing. Exiting.\n");
         return false;
     }
-
-    panda_require("callstack_instr");
-    if(!init_callstack_instr_api()) return false;
 
     panda_enable_precise_pc();
     panda_enable_memcb();    

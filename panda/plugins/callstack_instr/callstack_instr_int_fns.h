@@ -3,18 +3,22 @@
 
 // Public interface
 
-// Get up to n callers from the given address space at this moment
+// Get up to n callers from the given stack in use at this moment
 // Callers are returned in callers[], most recent first
 uint32_t get_callers(target_ulong *callers, uint32_t n, CPUState *cpu);
 
-// Get up to n functions from the given address space at this moment
+// Get up to n functions from the given stack in use at this moment
 // Functions are returned in functions[], most recent first
 uint32_t get_functions(target_ulong *functions, uint32_t n, CPUState *cpu);
 
-// Get the current program point: (Caller, PC, ASID)
+// Get the current program point: (Caller, PC, stack type, stack ID components)
 // This isn't quite the right place for it, but since it's awkward
 // right now to have a "utilities" library, this will have to do
 void get_prog_point(CPUState *cpu, prog_point *p);
+
+// Get the stack ID, as a string, from the given program point.  The returned
+// object must be freed with g_free when it is no longer needed.
+char *get_stackid_string(prog_point p);
 
 // create pandalog message for callstack info
 Panda__CallStack *pandalog_callstack_create(void);

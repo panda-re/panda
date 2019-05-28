@@ -13,18 +13,39 @@
 PANDAENDCOMMENT */
 #ifndef __PROG_POINT_H
 #define __PROG_POINT_H
+
+// different ways to segregate the stacks
+enum stack_type {
+    STACK_ASID = 0,
+    STACK_HEURISTIC,
+    STACK_THREADED
+};
+
 struct prog_point {
     target_ulong caller;
     target_ulong pc;
-    target_ulong cr3;
+    target_ulong sidFirst;
+    target_ulong sidSecond;
+    stack_type stackKind;
 #ifdef __cplusplus
     bool operator <(const prog_point &p) const {
         return (this->pc < p.pc) || \
-               (this->pc == p.pc && this->caller < p.caller) || \
-               (this->pc == p.pc && this->caller == p.caller && this->cr3 < p.cr3);
+               ((this->pc == p.pc) && (this->caller < p.caller)) || \
+               ((this->pc == p.pc) && (this->caller == p.caller) && \
+                       (this->sidFirst < p.sidFirst)) || \
+               ((this->pc == p.pc) && (this->caller == p.caller) && \
+                       (this->sidFirst == p.sidFirst) && \
+                       (this->sidSecond < p.sidSecond)) || \
+               ((this->pc == p.pc) && (this->caller == p.caller) && \
+                       (this->sidFirst == p.sidFirst) && \
+                       (this->sidSecond == p.sidSecond) && \
+                       (this->stackKind < p.stackKind));
     }
     bool operator ==(const prog_point &p) const {
-        return (this->pc == p.pc && this->caller == p.caller && this->cr3 == p.cr3);
+        return ((this->pc == p.pc) && (this->caller == p.caller) && \
+                (this->sidFirst == p.sidFirst) && \
+                (this->sidSecond == p.sidSecond) && \
+                (this->stackKind == p.stackKind));
     }
 #endif
 };
@@ -36,8 +57,10 @@ struct hash_prog_point{
     {
         size_t h1 = std::hash<target_ulong>()(p.caller);
         size_t h2 = std::hash<target_ulong>()(p.pc);
-        size_t h3 = std::hash<target_ulong>()(p.cr3);
-        return h1 ^ h2 ^ h3;
+        size_t h3 = std::hash<target_ulong>()(p.sidFirst);
+        size_t h4 = std::hash<target_ulong>()(p.sidSecond);
+        size_t h5 = std::hash<target_ulong>()(p.stackKind);
+        return h1 ^ h2 ^ h3 ^ h4 ^ h5;
     }
 };
 
