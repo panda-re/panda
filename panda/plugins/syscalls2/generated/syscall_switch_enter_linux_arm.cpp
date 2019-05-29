@@ -24,7 +24,7 @@ extern "C" {
 void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc) {
 #ifdef TARGET_ARM
 	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-	syscall_ctx_t ctx = {};
+	syscall_ctx_t ctx = {0};
 	ctx.no = env->regs[7];
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
