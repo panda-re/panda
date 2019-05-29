@@ -32,18 +32,18 @@ if (writes['stackKind'].all() != 0):
     writes = writes[writes['sidSecond'] != 0]
 
 ## Chi squared test
-print "Computing randomness of read buffers using Chi-Squared test..."
+print("Computing randomness of read buffers using Chi-Squared test...")
 #read_chi,read_p = scipy.stats.chisquare(reads['hist'].T)
 read_chi = chisq(reads['hist'])
-print "Computing randomness of write buffers using Chi-Squared test..."
+print("Computing randomness of write buffers using Chi-Squared test...")
 #write_chi,write_p = scipy.stats.chisquare(writes['hist'].T)
 write_chi = chisq(writes['hist'])
 
 # Entropy for each
-print "Computing read buffer entropy..."
+print("Computing read buffer entropy...")
 read_ent = ent(reads['hist'])
 
-print "Computing write buffer entropy..."
+print("Computing write buffer entropy...")
 write_ent = ent(writes['hist'])
 
 # Now we reduce, looking for callers that have high entropy read and write
@@ -57,7 +57,7 @@ mask = write_ent > 7
 high_ent_writes = writes[mask]
 write_chi = write_chi[mask]
 
-print "High entropy reads: %d writes: %d" % (len(high_ent_reads),len(high_ent_writes))
+print("High entropy reads: %d writes: %d" % (len(high_ent_reads),len(high_ent_writes)))
 
 # Further reduce so that they have low randomness on the write and
 # high randomness on the read
@@ -77,29 +77,29 @@ mask = np.in1d(write_candidates[['caller','sidFirst','sidSecond']],intersection)
 write_final = write_candidates[mask]
 write_chi = write_chi[mask]
 
-print "Results: reads: %d, writes: %d" % (len(read_final), len(write_final))
-print "================ Writes ================"
+print("Results: reads: %d, writes: %d" % (len(read_final), len(write_final)))
+print("================ Writes ================")
 for row in write_final:
-    print "(%08x %08x %08x %08x): %d bytes" % (row['caller'], row['pc'], row['sidFirst'], row['sidSecond'], row['hist'].sum())
-print "================ Reads  ================"
+    print("(%08x %08x %08x %08x): %d bytes" % (row['caller'], row['pc'], row['sidFirst'], row['sidSecond'], row['hist'].sum()))
+print("================ Reads  ================")
 for row in read_final:
-    print "(%08x %08x %08x %08x): %d bytes" % (row['caller'], row['pc'], row['sidFirst'], row['sidSecond'], row['hist'].sum())
+    print("(%08x %08x %08x %08x): %d bytes" % (row['caller'], row['pc'], row['sidFirst'], row['sidSecond'], row['hist'].sum()))
 
 wcount = Counter(tuple(row) for row in write_final[['caller','sidFirst','sidSecond']])
 rcount = Counter(tuple(row) for row in read_final[['caller','sidFirst','sidSecond']])
 
-print "Read x Write combinations by caller:"
+print("Read x Write combinations by caller:")
 for caller, sidFirst, sidSecond in rcount:
-    print "(%08x %08x %08x): %d x %d combinations" % (caller, sidFirst, sidSecond, rcount[(caller,sidFirst,sidSecond)], wcount[(caller,sidFirst,sidSecond)])
+    print("(%08x %08x %08x): %d x %d combinations" % (caller, sidFirst, sidSecond, rcount[(caller,sidFirst,sidSecond)], wcount[(caller,sidFirst,sidSecond)]))
     read_sizes = read_final['hist'][(read_final['caller'] == caller) & (read_final['sidFirst'] == sidFirst) & (read_final['sidSecond'] == sidSecond)].sum(axis=1)
-    print "  Read sizes: ",
-    print ", ".join(("%d" % x) for x in read_sizes)
+    print("  Read sizes: ")
+    print(", ".join(("%d" % x) for x in read_sizes))
     write_sizes = write_final['hist'][(write_final['caller'] == caller) & (write_final['sidFirst'] == sidFirst) & (write_final['sidSecond'] == sidSecond)].sum(axis=1)
-    print "  Write sizes:",
-    print ", ".join(("%d" % x) for x in write_sizes)
-    print "  Read rand: ",
-    print ", ".join(("%f" % x) for x in read_chi[(read_final['caller'] == caller) & (read_final['sidFirst'] == sidFirst) & (read_final['sidSecond'] == sidSecond)])
-    print "  Write rand:",
-    print ", ".join(("%f" % x) for x in write_chi[(write_final['caller'] == caller) & (write_final['sidFirst'] == sidFirst) & (write_final['sidSecond'] == sidSecond)])
-    print "  Best input/output ratio (0 is best possible):",
+    print("  Write sizes:")
+    print(", ".join(("%d" % x) for x in write_sizes))
+    print("  Read rand: ")
+    print(", ".join(("%f" % x) for x in read_chi[(read_final['caller'] == caller) & (read_final['sidFirst'] == sidFirst) & (read_final['sidSecond'] == sidSecond)]))
+    print("  Write rand:")
+    print(", ".join(("%f" % x) for x in write_chi[(write_final['caller'] == caller) & (write_final['sidFirst'] == sidFirst) & (write_final['sidSecond'] == sidSecond)]))
+    print("  Best input/output ratio (0 is best possible):")
     print min(np.abs(1-(xx/float(yy))) for xx in read_sizes for yy in write_sizes)

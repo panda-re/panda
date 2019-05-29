@@ -66,13 +66,14 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
     if (tap_points.find(p) != tap_points.end()) {
         target_ulong callers[16] = {0};
         int nret = get_callers(callers, 16, env);
+        unsigned char *buf_uc = static_cast<unsigned char *>(buf);
         for (unsigned int i = 0; i < size; i++) {
             for (int j = nret-1; j > 0; j--) {
                 gzprintf(f, TARGET_FMT_lx " ", callers[j]);
             }
             gzprintf(f, TARGET_FMT_lx " " TARGET_FMT_lx " %d " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx " %ld %02x\n",
                     p.caller, p.pc, p.stackKind, p.sidFirst, p.sidSecond,
-                    addr+i, mem_counter, ((unsigned char *)buf)[i]);
+                    addr+i, mem_counter, buf_uc[i]);
         }
     }
     mem_counter++;

@@ -162,34 +162,39 @@ static inline target_ulong get_stack_pointer(CPUArchState* env) {
 #endif
 }
 
-static stackid get_stackid(CPUArchState* env) {
-    if (STACK_HEURISTIC == stack_segregation) {
-        target_ulong asid;
+// get the stackid when the heuristic stack segregation method is in use
+// assumes stack_segregation is STACK_HEURISTIC
+static stackid get_heuristic_stackid(CPUArchState* env) {
+    // why is this part of get_stackid removed from it? to make SonarQube stop
+    // complaining about get_stackid having too many return statements without
+    // causing it to complain about if statements being nested too deep
+    target_ulong asid;
 
-        // Track all kernel-mode stacks together
-        if (in_kernelspace(env))
-            asid = 0;
-        else
-            asid = panda_current_asid(ENV_GET_CPU(env));
+    // Track all kernel-mode stacks together
+    if (in_kernelspace(env)) {
+        asid = 0;
+    } else {
+        asid = panda_current_asid(ENV_GET_CPU(env));
+    }
 
-        // Invalidate cached stack pointer on ASID change
-        if (cached_asid == 0 || cached_asid != asid) {
-            cached_sp = 0;
-            cached_asid = asid;
-        }
+    // Invalidate cached stack pointer on ASID change
+    if ((0 == cached_asid) || (cached_asid != asid)) {
+        cached_sp = 0;
+        cached_asid = asid;
+    }
 
-        target_ulong sp = get_stack_pointer(env);
+    target_ulong sp = get_stack_pointer(env);
+    stackid cursi;
 
-        // We can short-circuit the search in most cases
-        if (std::abs(sp - cached_sp) < MAX_STACK_DIFF) {
-            return std::make_pair(asid, cached_sp);
-        }
-
+    // We can short-circuit the search in most cases
+    if (std::abs(sp - cached_sp) < MAX_STACK_DIFF) {
+        cursi = std::make_pair(asid, cached_sp);
+    } else {
         auto &stackset = stacks_seen[asid];
         if (stackset.empty()) {
             stackset.insert(sp);
             cached_sp = sp;
-            return std::make_pair(asid,sp);
+            cursi = std::make_pair(asid,sp);
         }
         else {
             // Find the closest stack pointer we've seen
@@ -200,14 +205,21 @@ static stackid get_stackid(CPUArchState* env) {
             target_ulong stack = (std::abs(stack1 - sp) < std::abs(stack2 - sp)) ? stack1 : stack2;
             int diff = std::abs(stack-sp);
             if (diff < MAX_STACK_DIFF) {
-                return std::make_pair(asid,stack);
+                cursi = std::make_pair(asid,stack);
             }
             else {
                 stackset.insert(sp);
                 cached_sp = sp;
-                return std::make_pair(asid,sp);
+                cursi = std::make_pair(asid,sp);
             }
         }
+    }
+    return cursi;
+}
+
+static stackid get_stackid(CPUArchState* env) {
+    if (STACK_HEURISTIC == stack_segregation) {
+        return get_heuristic_stackid(env);
     } else if (STACK_THREADED == stack_segregation) {
         OsiThread *thr = get_current_thread(first_cpu);
         stackid cursi;
@@ -499,7 +511,39 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
     p->pc = cpu->panda_guest_pc;
 }
 
+// prepare Windows OSI support that is needed for the threaded stack type
+// return true if set up OK, and false if it was not
+bool setup_osi_windows() {
+    // moved out of init_plugin case statement to mollify SonarQube
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+    printf("callstack_instr:  setting up Windows threaded stack_type\n");
+    panda_require("osi");
+    assert(init_osi_api());
+    panda_require("wintrospection");
+    assert(init_wintrospection_api());
+    return true;
+#else
+    fprintf(stderr, "ERROR:  Windows is only supported on x86 (32-bit)\n");
+    return false;
+#endif
+}
 
+// prepare Linux OSI support that is needed for the threaded stack type
+// return true if set up OK, and false if it was not
+bool setup_osi_linux() {
+    // moved out of init_plugin case statement to mollify SonarQube
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+    printf("callstack_instr:  setting up Linux threaded stack_type\n");
+    panda_require("osi");
+    assert(init_osi_api());
+    panda_require("osi_linux");
+    assert(init_osi_linux_api());
+    return true;
+#else
+    fprintf(stderr, "ERROR:  Linux is only supported on x86 (32-bit)\n");
+    return false;
+#endif
+}
 
 bool init_plugin(void *self) {
 
@@ -556,39 +600,31 @@ bool init_plugin(void *self) {
 
     // the STACK_THREADED stack type needs some OS specific setup
     if (STACK_THREADED == stack_segregation) {
+        // have to assume true so don't get compilation errors for the cases
+        // that don't need osi_ok, and so don't use {} around case bodies that
+        // SonarQube complains about
+        bool osi_ok = true;
         switch (panda_os_familyno) {
-        case OS_WINDOWS: {
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
-            printf("callstack_instr: setting up Windows threaded stack_type\n");
-            panda_require("osi");
-            assert(init_osi_api());
-            panda_require("wintrospection");
-            assert(init_wintrospection_api());
-#else
-            fprintf(stderr, "ERROR: Windows is only supported on x86 (32-bit)\n");
-            return false;
-#endif
-        } break;
-        case OS_LINUX: {
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
-            printf("callstack_instr: setting up Linux threaded stack_type\n");
-            panda_require("osi");
-            assert(init_osi_api());
-            panda_require("osi_linux");
-            assert(init_osi_linux_api());
-#else
-            fprintf(stderr, "ERROR: Linux is only supported on x86 (32-bit)\n");
-            return false;
-#endif
-        } break;
-        case OS_UNKNOWN: {
-            printf("WARNING:  callstack_instr:  no OS specified, switching to asid stack_type\n");
+        case OS_WINDOWS:
+            osi_ok = setup_osi_windows();
+            if (!osi_ok) {
+                return false;
+            }
+            break;
+        case OS_LINUX:
+            osi_ok = setup_osi_linux();
+            if (!osi_ok) {
+                return false;
+            }
+            break;
+        case OS_UNKNOWN:
+            printf("WARNING:  callstack_instr: no OS specified, switching to asid stack_type\n");
             stack_segregation = STACK_ASID;
-        } break;
-        default: {
+            break;
+        default:
             printf("WARNING:  callstack_instr: OS not supported, switching to asid stack_type\n");
             stack_segregation = STACK_ASID;
-        } break;
+            break;
         }
     } else if (STACK_ASID == stack_segregation) {
         printf("callstack_instr:  using asid stack_type\n");

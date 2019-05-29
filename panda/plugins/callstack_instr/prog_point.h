@@ -42,10 +42,13 @@ struct prog_point {
                        (this->stackKind < p.stackKind));
     }
     bool operator ==(const prog_point &p) const {
-        return ((this->pc == p.pc) && (this->caller == p.caller) && \
-                (this->sidFirst == p.sidFirst) && \
-                (this->sidSecond == p.sidSecond) && \
-                (this->stackKind == p.stackKind));
+        bool sids_match = true;
+        if ((this->sidFirst != p.sidFirst) ||
+                (this->sidSecond != p.sidSecond) ||
+                (this->stackKind != p.stackKind)) {
+            sids_match = false;
+        }
+        return ((this->pc == p.pc) && (this->caller == p.caller) && sids_match);
     }
 #endif
 };
