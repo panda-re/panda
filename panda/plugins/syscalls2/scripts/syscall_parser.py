@@ -61,6 +61,7 @@ MAX_GENERIC_SYSCALL = 1023
 GENERATED_FILES = [
     ('syscalls_ext_typedefs.tpl', '.h'),
     ('syscalls_numbers.tpl', '.h'),
+    ('syscalls_args.tpl', '.h'),
     ('syscall_ppp_register_enter.tpl', '.cpp'),
     ('syscall_ppp_register_return.tpl', '.cpp'),
     ('syscall_ppp_boilerplate_enter.tpl', '.cpp'),
@@ -172,11 +173,35 @@ class Argument(object):
             return 'uint16_t'
         assert False, 'Unknown type for argument %s: %s' % (self.name, self.type)
 
+    def emit_local_declaration(self, ctxp, prefix, unused=True):
+        ''' Returns a snippet declaring a local variable for this
+            argument and assigning it from context pointer ctxp.
+        '''
+        if unused:
+            decl = '{2} UNUSED({0}{1})'.format(prefix, self.name, self.ctype)
+        else:
+            decl = '{2} {0}{1}'.format(prefix, self.name, self.ctype)
+        return '{1} = *({2} *)(({0})->args[{3}]);'.format(
+                ctxp, decl, self.ctype, self.no)
+
+    def emit_reference_declaration(self, ctxp, prefix, unused=True, const=False):
+        ''' Returns a snippet declaring a reference for this
+            argument and assigning it from context pointer ctxp.
+        '''
+        if unused:
+            decl = '{3}{2} &UNUSED({0}{1})'.format(
+                    prefix, self.name, self.ctype, 'const ' if const else '')
+        else:
+            decl = '{3}{2} &{0}{1}'.format(
+                    prefix, self.name, self.ctype, 'const ' if const else '')
+        return '{1} = *reinterpret_cast<{4}{2} *>(({0})->args[{3}]);'.format(
+                ctxp, decl, self.ctype, self.no, 'const ' if const else '')
+
     def emit_temp_declaration(self):
         ''' Returns a snippet declaring an appropriate temp
             variable for this argument.
         '''
-        return "{0} arg{1};".format(self.ctype, self.no)
+        return '{0} arg{1};'.format(self.ctype, self.no)
 
     def emit_temp_assignment(self):
         ''' Returns a snippet declaring an appropriate temp
@@ -187,7 +212,7 @@ class Argument(object):
         ctype_bits = int(filter(str.isdigit, ctype))
         assert ctype_bits in [32, 64], 'Invalid number of bits for type %s' % ctype
         ctype_get = 'get_%d' % ctype_bits if ctype.startswith('uint') else 'get_s%d' % ctype_bits
-        return "{0} arg{1} = {2}(cpu, {1});".format(ctype, self.no, ctype_get)
+        return '{0} arg{1} = {2}(cpu, {1});'.format(ctype, self.no, ctype_get)
 
     def emit_memcpy_temp_to_ref(self):
         ''' Returns a snippet that copies this argument from its
