@@ -1648,6 +1648,7 @@ void rr_do_end_replay(int is_error)
         panda_cleanup();
         abort();
     } else {
+        vm_stop(RUN_STATE_PAUSED);
         qemu_system_shutdown_request();
     }
 #endif // CONFIG_SOFTMMU
