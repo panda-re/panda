@@ -28,15 +28,21 @@ target_ptr_t get_return_pointer(CPUState *env, uint32_t argnum);
 #define GLOBAL_MAX_SYSCALL_ARGS 17
 
 /**
+ * @brief Maximum size for a syscall argument across all supported platforms.
+ */
+#define GLOBAL_MAX_SYSCALL_ARG_SIZE sizeof(uint64_t)
+
+/**
  * @brief Holds information about an ongoing system calls. This is
  * needed in order to be able to make the system call arguments
  * available to the return callback.
  */
 struct syscall_ctx {
-    int no;               /**< system call number */
-    target_ptr_t asid;    /**< asid of the process that made the system call */
-    target_ptr_t retaddr; /**< return address of the system call */
-    uint8_t args[GLOBAL_MAX_SYSCALL_ARGS][8]; /**< system call arguments */
+    int no;               /**< number */
+    target_ptr_t asid;    /**< calling process asid */
+    target_ptr_t retaddr; /**< return address */
+    uint8_t args[GLOBAL_MAX_SYSCALL_ARGS]
+                [GLOBAL_MAX_SYSCALL_ARG_SIZE]; /**< arguments */
 };
 typedef struct syscall_ctx syscall_ctx_t;
 

@@ -24,7 +24,7 @@ extern "C" {
 void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc) {
 #ifdef TARGET_I386
 	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-	syscall_ctx_t ctx = {};
+	syscall_ctx_t ctx = {0};
 	ctx.no = env->regs[R_EAX];
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);

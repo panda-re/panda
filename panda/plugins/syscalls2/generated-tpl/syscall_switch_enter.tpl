@@ -24,7 +24,7 @@ extern "C" {
 void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc) {
 #ifdef {{arch_conf.qemu_target}}
 	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-	syscall_ctx_t ctx = {};
+	syscall_ctx_t ctx = {0};
 	ctx.no = {{arch_conf.rt_callno_reg}};
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
