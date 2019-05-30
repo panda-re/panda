@@ -512,7 +512,7 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
 }
 
 // prepare Windows OSI support that is needed for the threaded stack type
-// return true if set up OK, and false if it was not
+// the return value is true if set up OK, and false if it was not
 bool setup_osi_windows() {
     // moved out of init_plugin case statement to mollify SonarQube
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
@@ -529,7 +529,7 @@ bool setup_osi_windows() {
 }
 
 // prepare Linux OSI support that is needed for the threaded stack type
-// return true if set up OK, and false if it was not
+// the return value is true if set up OK, and false if it was not
 bool setup_osi_linux() {
     // moved out of init_plugin case statement to mollify SonarQube
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
@@ -598,24 +598,18 @@ bool init_plugin(void *self) {
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 
+    // don't return false immediately once know can't continue, or will have
+    // too many return statements per SonarQube
+    bool setup_ok = true;
+
     // the STACK_THREADED stack type needs some OS specific setup
     if (STACK_THREADED == stack_segregation) {
-        // have to assume true so don't get compilation errors for the cases
-        // that don't need osi_ok, and so don't use {} around case bodies that
-        // SonarQube complains about
-        bool osi_ok = true;
         switch (panda_os_familyno) {
         case OS_WINDOWS:
-            osi_ok = setup_osi_windows();
-            if (!osi_ok) {
-                return false;
-            }
+            setup_ok = setup_osi_windows();
             break;
         case OS_LINUX:
-            osi_ok = setup_osi_linux();
-            if (!osi_ok) {
-                return false;
-            }
+            setup_ok = setup_osi_linux();
             break;
         case OS_UNKNOWN:
             printf("WARNING:  callstack_instr: no OS specified, switching to asid stack_type\n");
@@ -632,10 +626,11 @@ bool init_plugin(void *self) {
         printf("callstack_instr:  using heuristic stack_type\n");
     }
 
-    return true;
+    return setup_ok;
 }
 
 void uninit_plugin(void *self) {
+    // nothing to do
 }
 
 /* vim: set tabstop=4 softtabstop=4 expandtab ft=cpp: */
