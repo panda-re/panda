@@ -44,6 +44,9 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 void registerExecPreCallback(void (*callback)(CPUState*, target_ulong));
 
+// API calls
+#include "syscalls2_int_fns.h"
+
 // PPP code
 #include "syscalls_ext_typedefs.h"
 #include "generated/syscall_ppp_boilerplate_enter.cpp"
@@ -634,6 +637,33 @@ bool translate_callback(CPUState* cpu, target_ulong pc){
 }
 
 
+/* ### API calls ######################################################## */
+/*!
+ * @brief Returns a pointer to the meta-information for the specified syscall.
+ */
+target_long get_syscall_retval(CPUState *cpu) {
+    return syscalls_profile->get_return_val(cpu);
+}
+
+/*!
+ * @brief Returns a pointer to the meta-information for the specified syscall.
+ */
+const syscall_info_t *get_syscall_info(uint32_t callno) {
+    if (syscall_info != NULL) {
+        return &syscall_info[callno];
+    } else {
+        return NULL;
+    }
+}
+
+/*!
+ * @brief Returns a pointer to the array containing the meta-information
+ * for all syscalls.
+ */
+const syscall_meta_t *get_syscall_meta(void) { return syscall_meta; }
+
+
+/* ### Plugin bootstrapping ############################################# */
 bool init_plugin(void *self) {
 // Don't bother if we're not on a supported target
 #if defined(TARGET_I386) || defined(TARGET_ARM)
@@ -715,9 +745,8 @@ bool init_plugin(void *self) {
     return true;
 }
 
-
 void uninit_plugin(void *self) {
-    (void) self;
+    //(void) self;
 #ifdef DEBUG
     std::cout << PANDA_MSG "DEBUG syscall count per asid:";
     for(const auto &asid_count : syscallCounter){
@@ -730,3 +759,4 @@ void uninit_plugin(void *self) {
 #endif
 }
 
+/* vim:set tabstop=4 softtabstop=4 expandtab: */

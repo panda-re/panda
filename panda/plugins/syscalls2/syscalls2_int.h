@@ -4,6 +4,8 @@
 typedef void syscall_info_t;
 typedef void syscall_meta_t;
 typedef void uint32_t;
+typedef void target_long;
+typedef void CPUState;
 
 #include "syscalls2_int_fns.h"
 
