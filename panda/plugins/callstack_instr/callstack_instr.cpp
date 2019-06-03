@@ -511,39 +511,23 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
     p->pc = cpu->panda_guest_pc;
 }
 
-// prepare Windows OSI support that is needed for the threaded stack type
-// the return value is true if set up OK, and false if it was not
-bool setup_osi_windows() {
+// prepare OSI support that is needed for the threaded stack type
+// returns true if set up OK, and false if it was not
+bool setup_osi() {
     // moved out of init_plugin case statement to mollify SonarQube
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    printf("callstack_instr:  setting up Windows threaded stack_type\n");
+    printf("callstack_instr:  setting up threaded stack_type\n");
     panda_require("osi");
     assert(init_osi_api());
-    panda_require("wintrospection");
-    assert(init_wintrospection_api());
+    // the API needed is in the 'core' OSI plugin - no need to call out OS
+    // specific deriviation
     return true;
 #else
-    fprintf(stderr, "ERROR:  Windows is only supported on x86 (32-bit)\n");
+    fprintf(stderr, "ERROR:  threaded stack_type is only supported on x86 (32-bit)\n");
     return false;
 #endif
 }
 
-// prepare Linux OSI support that is needed for the threaded stack type
-// the return value is true if set up OK, and false if it was not
-bool setup_osi_linux() {
-    // moved out of init_plugin case statement to mollify SonarQube
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    printf("callstack_instr:  setting up Linux threaded stack_type\n");
-    panda_require("osi");
-    assert(init_osi_api());
-    panda_require("osi_linux");
-    assert(init_osi_linux_api());
-    return true;
-#else
-    fprintf(stderr, "ERROR:  Linux is only supported on x86 (32-bit)\n");
-    return false;
-#endif
-}
 
 bool init_plugin(void *self) {
 
@@ -551,8 +535,16 @@ bool init_plugin(void *self) {
     panda_arg_list *args = panda_get_args("callstack_instr");
     verbose = panda_parse_bool_opt(args, "verbose", "enable verbose output");
 
-    const char *stackType = panda_parse_string_opt(args, "stack_type", "asid",
-            "type of segregation used for stack entries (threaded, heuristic, or the default, asid");
+    // they really, really want the default stack_type to be threaded if an
+    // os is provided
+    const char *stackType;
+    if (OS_UNKNOWN == panda_os_familyno) {
+        stackType = panda_parse_string_opt(args, "stack_type", "asid",
+                "type of segregation used for stack entries (threaded, heuristic, or asid");
+    } else {
+        stackType = panda_parse_string_opt(args, "stack_type", "threaded",
+                "type of segregation used for stack entries (threaded, heuristic, or asid");
+    }
     if (0 == strcmp(stackType, "asid")) {
         stack_segregation = STACK_ASID;
     } else if (0 == strcmp(stackType, "heuristic")) {
@@ -598,27 +590,15 @@ bool init_plugin(void *self) {
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 
-    // don't return false immediately once know can't continue, or will have
-    // too many return statements per SonarQube
     bool setup_ok = true;
 
     // the STACK_THREADED stack type needs some OS specific setup
     if (STACK_THREADED == stack_segregation) {
-        switch (panda_os_familyno) {
-        case OS_WINDOWS:
-            setup_ok = setup_osi_windows();
-            break;
-        case OS_LINUX:
-            setup_ok = setup_osi_linux();
-            break;
-        case OS_UNKNOWN:
+        if (OS_UNKNOWN == panda_os_familyno) {
             printf("WARNING:  callstack_instr: no OS specified, switching to asid stack_type\n");
             stack_segregation = STACK_ASID;
-            break;
-        default:
-            printf("WARNING:  callstack_instr: OS not supported, switching to asid stack_type\n");
-            stack_segregation = STACK_ASID;
-            break;
+        } else {
+            setup_ok = setup_osi();
         }
     } else if (STACK_ASID == stack_segregation) {
         printf("callstack_instr:  using asid stack_type\n");

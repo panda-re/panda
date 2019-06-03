@@ -14,7 +14,7 @@ Arguments
 ---------
 
 * `verbose`: boolean, defaults to false. Whether to output debugging messages.
-* `stack_type`: string, defaults to `asid`. Sets how diffferent stacks are to be distinguished from each other (by `asid`, `heuristic` or `threaded`).
+* `stack_type`: string, defaults to `threaded` if `-os` is specified, and `asid` otherwise. Sets how different stacks are to be distinguished from each other (by `asid`, `heuristic` or `threaded`).
 
 Dependencies
 ------------
