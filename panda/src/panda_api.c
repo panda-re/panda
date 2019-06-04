@@ -6,7 +6,7 @@
 #include "panda/plugin.h"
 #include "sysemu/sysemu.h"
 
-extern int load_vmstate(char *name);
+//extern int load_vmstate(const char *name);
 
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len);
 int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len);
@@ -52,10 +52,6 @@ int panda_run(void) {
     return 0;
 }
 
-void panda_stop(void) {
-    qemu_system_shutdown_request();
-}
-
 extern const char *qemu_file;
 
 void panda_set_qemu_path(char* filepath) {
@@ -79,7 +75,7 @@ void panda_stop(void) {
     do_vm_stop(4 /* RUN_STATE_PAUSED*/ );
 }
 
-void vm_start(void);
+//void vm_start(void);
 
 void panda_cont(void) {
 //    printf ("panda_api: cont cpu\n");
