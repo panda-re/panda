@@ -95,6 +95,16 @@ Description: Called whenever any system call returns in the guest. The `call` pa
 ### API calls
 Finally the plugin provides two API calls:
 
+Name: **get_syscall_retval**
+
+Signature:
+
+```C
+target_long get_syscall_retval(CPUState *cpu)
+```
+
+Description: Retrieves the return value of a system call, abstracting away architecture-specific details. The call must be made in the appropriate context, so that the return value is still available (e.g. in a `on_all_sys_return` callback).
+
 Name: **get_syscall_info**
 
 Signature:

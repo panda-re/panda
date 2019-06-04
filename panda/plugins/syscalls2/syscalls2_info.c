@@ -66,17 +66,4 @@ int load_syscall_info(void) {
     return 0;
 }
 
-
-const syscall_info_t *get_syscall_info(uint32_t callno) {
-    if (syscall_info != NULL) {
-        return &syscall_info[callno];
-    }
-    else {
-        return NULL;
-    }
-}
-
-
-const syscall_meta_t *get_syscall_meta(void) {
-    return syscall_meta;
-}
+/* vim:set tabstop=4 softtabstop=4 expandtab: */
