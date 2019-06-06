@@ -63,10 +63,6 @@ uint32_t get_functions(target_ulong *functions, uint32_t n, CPUState *env);
 // This isn't quite the right place for it, but since it's awkward
 // right now to have a "utilities" library, this will have to do
 void get_prog_point(CPUState *env, prog_point *p);
-
-// Get the stack ID, as a string, from the given program point. The returned
-// object must be freed with g_free when it is no longer needed.
-char *get_stackid_string(prog_poing p);
 ```
 
 There are also functions available for getting callstack information in [pandalog format](docs/pandalog.md):
@@ -77,6 +73,14 @@ Panda__CallStack *pandalog_callstack_create(void);
 
 // Free a Panda__CallStack struct
 void pandalog_callstack_free(Panda__CallStack *cs);
+```
+
+In addition to the plugin-plugin API noted above, there is one additional function provided in `prog_point.h` for formating a `prog_point` as a string.  It can be called even after the `callstack_instr` plugin has been unloaded:
+
+```C
+// Get the stack ID, as a string, from the given program point. The returned
+// object must be freed with g_free when it is no longer needed.
+char *get_stackid_string(prog_point p);
 ```
 
 Example

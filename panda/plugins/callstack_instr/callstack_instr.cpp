@@ -239,25 +239,6 @@ static stackid get_stackid(CPUArchState* env) {
     // end of function get_stackid
 }
 
-// Get stack ID from the program point as a string
-// Caller must use g_free to free the returned object when done with it
-char *get_stackid_string(prog_point p) {
-    char *sid_string;
-    if (STACK_HEURISTIC == p.stackKind) {
-        sid_string = g_strdup_printf("(asid=0x" TARGET_FMT_lx ", sp=0x" TARGET_FMT_lx ")",
-                p.sidFirst, p.sidSecond);
-    } else if (STACK_THREADED == p.stackKind) {
-        sid_string = g_strdup_printf("(processID=0x" TARGET_FMT_lx ", threadID=0x" TARGET_FMT_lx ")",
-                p.sidFirst, p.sidSecond);
-    } else {
-        // STACK_ASID
-        sid_string = g_strdup_printf("(asid=0x" TARGET_FMT_lx ")", p.sidFirst);
-    }
-
-    assert(sid_string);
-    return sid_string;
-}
-
 instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
     unsigned char *buf = (unsigned char *) malloc(size);
     int err = panda_virtual_memory_rw(ENV_GET_CPU(env), pc, buf, size, 0);

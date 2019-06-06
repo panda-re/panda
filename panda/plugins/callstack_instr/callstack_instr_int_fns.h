@@ -16,10 +16,6 @@ uint32_t get_functions(target_ulong *functions, uint32_t n, CPUState *cpu);
 // right now to have a "utilities" library, this will have to do
 void get_prog_point(CPUState *cpu, prog_point *p);
 
-// Get the stack ID, as a string, from the given program point.  The returned
-// object must be freed with g_free when it is no longer needed.
-char *get_stackid_string(prog_point p);
-
 // create pandalog message for callstack info
 Panda__CallStack *pandalog_callstack_create(void);
 

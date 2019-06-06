@@ -70,4 +70,25 @@ struct hash_prog_point{
 
 #endif
 
+// Get stack ID from the program point as a string
+// Caller must use g_free to free the returned object when done with it
+static inline char *get_stackid_string(prog_point p) {
+    // this function is intentionally not callstack_instr plugin API so that it
+    // can be called after callstack_instr has been unloaded
+    char *sid_string;
+    if (STACK_HEURISTIC == p.stackKind) {
+        sid_string = g_strdup_printf("(asid=0x" TARGET_FMT_lx ", sp=0x" TARGET_FMT_lx ")",
+                p.sidFirst, p.sidSecond);
+    } else if (STACK_THREADED == p.stackKind) {
+        sid_string = g_strdup_printf("(processID=0x" TARGET_FMT_lx ", threadID=0x" TARGET_FMT_lx ")",
+                p.sidFirst, p.sidSecond);
+    } else {
+        // STACK_ASID
+        sid_string = g_strdup_printf("(asid=0x" TARGET_FMT_lx ")", p.sidFirst);
+    }
+
+    assert(sid_string);
+    return sid_string;
+}
+
 #endif
