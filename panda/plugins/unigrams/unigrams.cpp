@@ -94,10 +94,18 @@ void write_report(FILE *report, std::map<prog_point,text_counter> &tracker) {
     // Cross platform support: need to know how big a target_ulong is
     uint32_t target_ulong_size = sizeof(target_ulong);
     fwrite(&target_ulong_size, sizeof(uint32_t), 1, report);
+    uint32_t stack_type_size = sizeof(stack_type);
+    fwrite(&stack_type_size, sizeof(uint32_t), 1, report);
 
     std::map<prog_point,text_counter>::iterator it;
     for(it = tracker.begin(); it != tracker.end(); it++) {
-        fwrite(&it->first, sizeof(prog_point), 1, report);
+        // prog_point parts
+        fwrite(&it->first.stackKind, stack_type_size, 1, report);
+        fwrite(&it->first.caller, target_ulong_size, 1, report);
+        fwrite(&it->first.pc, target_ulong_size, 1, report);
+        fwrite(&it->first.sidFirst, target_ulong_size, 1, report);
+        fwrite(&it->first.sidSecond, target_ulong_size, 1, report);
+
         unsigned int hist[256] = {};
         for(int i = 0; i < 256; i++) {
             if (it->second.hist.find(i) != it->second.hist.end())

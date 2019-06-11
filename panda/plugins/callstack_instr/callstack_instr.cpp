@@ -16,6 +16,7 @@ PANDAENDCOMMENT */
 // 2018-APR-13   watch for x86 processor mode changing in i386 build
 // 2019-JAN-29   do not put an entry in the callstack if the block was stopped
 //               before the call at the end was made
+// 2019-MAY-21   add (more accurate) stack segregation option (threaded)
 #define __STDC_FORMAT_MACROS
 
 #include <cstdio>
@@ -38,6 +39,13 @@ PANDAENDCOMMENT */
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 
+// needed for the threaded stack_type
+#include "osi/osi_types.h"
+#include "osi/osi_ext.h"
+#include "wintrospection/wintrospection.h"
+#include "wintrospection/wintrospection_ext.h"
+#include "osi_linux/osi_linux_ext.h"
+
 #include "callstack_instr.h"
 
 extern "C" {
@@ -59,6 +67,8 @@ PPP_PROT_REG_CB(on_ret);
 
 PPP_CB_BOILERPLATE(on_call);
 PPP_CB_BOILERPLATE(on_ret);
+
+stack_type stack_segregation = STACK_ASID;
 
 // callstack_instr arguments
 static bool verbose = false;
@@ -86,18 +96,17 @@ csh cs_handle_32;
 csh cs_handle_64;
 
 // Track the different stacks we have seen to handle multiple threads
-// within a single process.
+// within a single process.  Used by STACK_HEURISTIC
 std::map<target_ulong,std::set<target_ulong>> stacks_seen;
 
-// Use a typedef here so we can switch between the stack heuristic and
-// the original code easily
-#ifdef USE_STACK_HEURISTIC
+// For STACK_ASID, the first entry of the pair is the ASID, and the second is 0
+// For STACK_HEURISTIC, the first entry is the ASID and the second is the SP
+// For STACK_THREADED, the first entry is the process ID and the second is the thread ID
 typedef std::pair<target_ulong,target_ulong> stackid;
+
+// STACK_HEURISTIC also needs to cache the SP and ASID
 target_ulong cached_sp = 0;
 target_ulong cached_asid = 0;
-#else
-typedef target_ulong stackid;
-#endif
 
 // stackid -> shadow stack
 std::map<stackid, std::vector<stack_entry>> callstacks;
@@ -113,13 +122,17 @@ int last_ret_size = 0;
 void verbose_log(const char *msg, TranslationBlock *tb, stackid curStackid,
         bool logReturn) {
     if (verbose) {
-        printf("%s:  asid=0x", msg);
-#ifdef USE_STACK_HEURISTIC
-        printf(TARGET_FMT_lx ", sp=0x" TARGET_FMT_lx, curStackid.first,
-                curStackid.second);
-#else
-        printf(TARGET_FMT_lx, curStackid);
-#endif
+        printf("%s:  ", msg);
+        if (STACK_HEURISTIC== stack_segregation) {
+            printf("asid=0x" TARGET_FMT_lx ", sp=0x" TARGET_FMT_lx,
+                curStackid.first, curStackid.second);
+        } else if (STACK_THREADED == stack_segregation) {
+            printf("processID=0x" TARGET_FMT_lx ", threadID=0x" TARGET_FMT_lx,
+                    curStackid.first, curStackid.second);
+        } else {
+            // STACK_ASID
+            printf("asid=0x" TARGET_FMT_lx, curStackid.first);
+        }
         printf(", block pc=0x" TARGET_FMT_lx, tb->pc);
         if (logReturn) {
             printf(", returns to 0x" TARGET_FMT_lx, (tb->pc+tb->size));
@@ -149,55 +162,81 @@ static inline target_ulong get_stack_pointer(CPUArchState* env) {
 #endif
 }
 
-static stackid get_stackid(CPUArchState* env) {
-#ifdef USE_STACK_HEURISTIC
+// get the stackid when the heuristic stack segregation method is in use
+// assumes stack_segregation is STACK_HEURISTIC
+static stackid get_heuristic_stackid(CPUArchState* env) {
+    // why is this part of get_stackid removed from it? to make SonarQube stop
+    // complaining about get_stackid having too many return statements without
+    // causing it to complain about if statements being nested too deep
     target_ulong asid;
 
     // Track all kernel-mode stacks together
-    if (in_kernelspace(env))
+    if (in_kernelspace(env)) {
         asid = 0;
-    else
+    } else {
         asid = panda_current_asid(ENV_GET_CPU(env));
+    }
 
     // Invalidate cached stack pointer on ASID change
-    if (cached_asid == 0 || cached_asid != asid) {
+    if ((0 == cached_asid) || (cached_asid != asid)) {
         cached_sp = 0;
         cached_asid = asid;
     }
 
     target_ulong sp = get_stack_pointer(env);
+    stackid cursi;
 
     // We can short-circuit the search in most cases
     if (std::abs(sp - cached_sp) < MAX_STACK_DIFF) {
-        return std::make_pair(asid, cached_sp);
-    }
-
-    auto &stackset = stacks_seen[asid];
-    if (stackset.empty()) {
-        stackset.insert(sp);
-        cached_sp = sp;
-        return std::make_pair(asid,sp);
-    }
-    else {
-        // Find the closest stack pointer we've seen
-        auto lb = std::lower_bound(stackset.begin(), stackset.end(), sp);
-        target_ulong stack1 = *lb;
-        lb--;
-        target_ulong stack2 = *lb;
-        target_ulong stack = (std::abs(stack1 - sp) < std::abs(stack2 - sp)) ? stack1 : stack2;
-        int diff = std::abs(stack-sp);
-        if (diff < MAX_STACK_DIFF) {
-            return std::make_pair(asid,stack);
-        }
-        else {
+        cursi = std::make_pair(asid, cached_sp);
+    } else {
+        auto &stackset = stacks_seen[asid];
+        if (stackset.empty()) {
             stackset.insert(sp);
             cached_sp = sp;
-            return std::make_pair(asid,sp);
+            cursi = std::make_pair(asid,sp);
+        }
+        else {
+            // Find the closest stack pointer we've seen
+            auto lb = std::lower_bound(stackset.begin(), stackset.end(), sp);
+            target_ulong stack1 = *lb;
+            lb--;
+            target_ulong stack2 = *lb;
+            target_ulong stack = (std::abs(stack1 - sp) < std::abs(stack2 - sp)) ? stack1 : stack2;
+            int diff = std::abs(stack-sp);
+            if (diff < MAX_STACK_DIFF) {
+                cursi = std::make_pair(asid,stack);
+            }
+            else {
+                stackset.insert(sp);
+                cached_sp = sp;
+                cursi = std::make_pair(asid,sp);
+            }
         }
     }
-#else
-    return panda_current_asid(ENV_GET_CPU(env));
-#endif
+    return cursi;
+}
+
+static stackid get_stackid(CPUArchState* env) {
+    if (STACK_HEURISTIC == stack_segregation) {
+        return get_heuristic_stackid(env);
+    } else if (STACK_THREADED == stack_segregation) {
+        OsiThread *thr = get_current_thread(first_cpu);
+        stackid cursi;
+        if (NULL != thr) {
+            cursi = std::make_pair(thr->pid, thr->tid);
+        } else {
+            // assuming 0 is never a valid process ID and thread ID
+            cursi = std::make_pair(0, 0);
+        }
+        free_osithread(thr);
+        return cursi;
+    } else {
+        // STACK_ASID
+        target_ulong asid = panda_current_asid(ENV_GET_CPU(env));
+        return std::make_pair(asid, 0);
+    }
+    // end of function get_stackid
 }
 
 instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
@@ -424,12 +463,15 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
     CPUArchState* env = (CPUArchState*)cpu->env_ptr;
     if (!p) return;
 
-    // Get address space identifier
-    target_ulong asid = panda_current_asid(ENV_GET_CPU(env));
-    // Lump all kernel-mode CR3s together
+    // Get stack ID
+    stackid curStackid = get_stackid(env);
 
-    if(!in_kernelspace(env))
-        p->cr3 = asid;
+    // Lump all kernel-mode CR3s together
+    if(!in_kernelspace(env)) {
+        p->sidFirst = curStackid.first;
+        p->sidSecond = curStackid.second;}
+
+    p->stackKind = stack_segregation;
 
     // Try to get the caller
     int n_callers = 0;
@@ -450,6 +492,22 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
     p->pc = cpu->panda_guest_pc;
 }
 
+// prepare OSI support that is needed for the threaded stack type
+// returns true if set up OK, and false if it was not
+bool setup_osi() {
+    // moved out of init_plugin case statement to mollify SonarQube
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+    printf("callstack_instr:  setting up threaded stack_type\n");
+    panda_require("osi");
+    assert(init_osi_api());
+    // the API needed is in the 'core' OSI plugin - no need to call out OS
+    // specific deriviation
+    return true;
+#else
+    fprintf(stderr, "ERROR:  threaded stack_type is only supported on x86 (32-bit)\n");
+    return false;
+#endif
+}
 
 
 bool init_plugin(void *self) {
@@ -457,6 +515,28 @@ bool init_plugin(void *self) {
     // get arguments to this plugin
     panda_arg_list *args = panda_get_args("callstack_instr");
     verbose = panda_parse_bool_opt(args, "verbose", "enable verbose output");
+
+    // they really, really want the default stack_type to be threaded if an
+    // os is provided
+    const char *stackType;
+    if (OS_UNKNOWN == panda_os_familyno) {
+        stackType = panda_parse_string_opt(args, "stack_type", "asid",
+                "type of segregation used for stack entries (threaded, heuristic, or asid");
+    } else {
+        stackType = panda_parse_string_opt(args, "stack_type", "threaded",
+                "type of segregation used for stack entries (threaded, heuristic, or asid");
+    }
+    if (0 == strcmp(stackType, "asid")) {
+        stack_segregation = STACK_ASID;
+    } else if (0 == strcmp(stackType, "heuristic")) {
+        stack_segregation = STACK_HEURISTIC;
+    } else if (0 == strcmp(stackType, "threaded")) {
+        stack_segregation = STACK_THREADED;
+    } else {
+        printf("ERROR:  callstack_instr:  invalid stack_type (%s) provided\n",
+                stackType);
+        return false;
+    }
 
 #if defined(TARGET_I386)
     if (cs_open(CS_ARCH_X86, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
@@ -471,13 +551,6 @@ bool init_plugin(void *self) {
 #elif defined(TARGET_PPC)
     if (cs_open(CS_ARCH_PPC, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
         return false;
-#endif
-
-    // note which build was used, as it is useful in analyzing the results
-#ifdef USE_STACK_HEURISTIC
-    printf("callstack_instr:  using USE_STACK_HEURISTIC build\n");
-#else
-    printf("callstack_instr:  using standard build\n");
 #endif
 
     // Need details in capstone to have instruction groupings
@@ -498,10 +571,27 @@ bool init_plugin(void *self) {
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 
-    return true;
+    bool setup_ok = true;
+
+    // the STACK_THREADED stack type needs some OS specific setup
+    if (STACK_THREADED == stack_segregation) {
+        if (OS_UNKNOWN == panda_os_familyno) {
+            printf("WARNING:  callstack_instr: no OS specified, switching to asid stack_type\n");
+            stack_segregation = STACK_ASID;
+        } else {
+            setup_ok = setup_osi();
+        }
+    } else if (STACK_ASID == stack_segregation) {
+        printf("callstack_instr:  using asid stack_type\n");
+    } else {
+        printf("callstack_instr:  using heuristic stack_type\n");
+    }
+
+    return setup_ok;
 }
 
 void uninit_plugin(void *self) {
+    // nothing to do
 }
 
 /* vim: set tabstop=4 softtabstop=4 expandtab ft=cpp: */

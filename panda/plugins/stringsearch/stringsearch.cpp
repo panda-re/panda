@@ -63,7 +63,9 @@ struct fullstack {
     int n;
     target_ulong callers[MAX_CALLERS];
     target_ulong pc;
-    target_ulong asid;
+    target_ulong sidFirst;
+    target_ulong sidSecond;
+    stack_type stackKind;
 };
 
 std::map<prog_point,fullstack> matchstacks;
@@ -99,16 +101,20 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
 
             if (sp.val[str_idx] == strlens[str_idx]) {
                 // Victory!
-                printf("%s Match of str %d at: instr_count=%lu :  " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
-                       (is_write ? "WRITE" : "READ"), str_idx, rr_get_guest_instr_count(), p.caller, p.pc, p.cr3);
+                char *sid_string = get_stackid_string(p);
+                printf("%s Match of str %d at: instr_count=%lu :  " TARGET_FMT_lx " " TARGET_FMT_lx " %s\n",
+                       (is_write ? "WRITE" : "READ"), str_idx, rr_get_guest_instr_count(), p.caller, p.pc, sid_string);
                 matches[p].val[str_idx]++;
                 sp.val[str_idx] = 0;
+                g_free(sid_string);
 
                 // Also get the full stack here
                 fullstack f = {0};
                 f.n = get_callers(f.callers, n_callers, env);
                 f.pc = p.pc;
-                f.asid = p.cr3;
+                f.sidFirst = p.sidFirst;
+                f.sidSecond = p.sidSecond;
+                f.stackKind = p.stackKind;
                 matchstacks[p] = f;
 
                 // Check if the full string is in memory.
@@ -246,12 +252,14 @@ void uninit_plugin(void *self) {
             fprintf(mem_report, TARGET_FMT_lx " ", f.callers[i]);
         }
         fprintf(mem_report, TARGET_FMT_lx " ", f.pc);
-        fprintf(mem_report, TARGET_FMT_lx " ", f.asid);
+        char *sid_string = get_stackid_string(it->first);
+        fprintf(mem_report, "%s ", sid_string);
 
         // Print strings that matched and how many times
         for(int i = 0; i < num_strings; i++)
             fprintf(mem_report, " %d", it->second.val[i]);
         fprintf(mem_report, "\n");
+        g_free(sid_string);
     }
     fclose(mem_report);
 }
