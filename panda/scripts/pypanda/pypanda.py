@@ -103,7 +103,7 @@ class Panda:
 		self.len_cargs = len_cargs
 		self.cenvp = cenvp
 		self.libpanda.panda_pre(self.len_cargs, self.panda_args_ffi, self.cenvp)
-                self.taint_enabled = False
+		self.taint_enabled = False
 		self.init_run = False
 		self.pcb_list = {}
 
@@ -452,32 +452,26 @@ class Panda:
 		self.libpanda.panda_cleanup()
 
 	def virtual_memory_read(self, env, addr, buf, length):
-<<<<<<< HEAD
 		self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
 
 	def virtual_memory_write(self, env, addr, buf, length):
-		self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
-
-        def taint_enable(self):
-                if not self.taint_enabled:
-                        progress("taint not enabled -- enabling")                        
-                        if not self.taint_plugin_loaded:
-                                progress("taint2 plugin not loaded -- loading")
-                                self.load_plugin("taint2")
-                                self.taint_plugin_loaded = True
-                        self.libpanda.panda_taint_enable()
-                        self.taint_enabled = True
-                        
-
-        def taint_reg(reg_num, label):
-                self.stop()
-                self.taint_enable()
-                self.queue_main_loop_wait_fn(self.libpanda.panda_taint_label_reg, [reg_num, label])
-=======
-		return self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
-
-	def virtual_memory_write(self, env, addr, buf, length):
 		return self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
+
+	def taint_enable(self):
+		if not self.taint_enabled:
+			progress("taint not enabled -- enabling")
+			if not self.taint_plugin_loaded:
+				progress("taint2 plugin not loaded -- loading")
+				self.load_plugin("taint2")
+				self.taint_plugin_loaded = True
+			self.libpanda.panda_taint_enable()
+			self.taint_enabled = True
+
+	def taint_reg(reg_num, label):
+		self.stop()
+		self.taint_enable()
+		self.queue_main_loop_wait_fn(self.libpanda.panda_taint_label_reg, [reg_num, label])
+		return self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
 
 	def send_monitor_cmd(self, cmd, do_async=False):
 		if debug:
@@ -534,4 +528,3 @@ class Panda:
 	
 	def ppp_reg_cb(self):
 		pass
->>>>>>> pypanda

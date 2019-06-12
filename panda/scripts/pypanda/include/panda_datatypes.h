@@ -66,7 +66,7 @@ typedef enum panda_cb_type {
                                    // before any code runs
     PANDA_CB_TOP_LOOP, // at top of loop that manages emulation.  good place to
                        // take a snapshot
-    PANDA_MAIN_LOOP_WAIT,
+    PANDA_CB_MAIN_LOOP_WAIT,
     PANDA_CB_DURING_MACHINE_INIT,
     PANDA_CB_LAST
 } panda_cb_type;
@@ -761,11 +761,9 @@ void panda_require(const char *plugin_name);
 */
 int panda_pre(int argc, char **argv, char **envp);
 int panda_init(int argc, char **argv, char **envp);
-int panda_run(void);
 int panda_revert(char *name);
 int panda_snap(char *name);
 void panda_run(void);
-void panda_stop(void);
 int panda_finish(void);
 void panda_set_qemu_path(char *filepath);
 int panda_init_plugin(char *plugin_name, char ** plugin_args, uint32_t num_args);

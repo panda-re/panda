@@ -59,6 +59,7 @@ replay_serial_send \
 replay_serial_write \
 after_machine_init \
 top_loop \
+main_loop_wait \
 during_machine_init")
 
 
@@ -97,6 +98,8 @@ replay_serial_send = pyp.callback("int(CPUState*, uint64_t, uint8_t )"),
 replay_serial_write = pyp.callback("int(CPUState*, uint64_t, uint32_t , uint8_t )"),
 after_machine_init = pyp.callback("void(CPUState*)"),
 top_loop = pyp.callback("void(CPUState*)"),
+#main_loop_wait = pyp.callback("int(int)"), # XXX: the qemu function main_loop_wait is an int(int), but we expect it to be a void(void) based on its usage?
+main_loop_wait = pyp.callback("void(void)"),
 during_machine_init = pyp.callback("void(MachineState*)"))
 
 
@@ -138,6 +141,7 @@ pcb.replay_serial_send : pandacbtype("replay_serial_send", C.PANDA_CB_REPLAY_SER
 pcb.replay_serial_write :  pandacbtype("replay_serial_write", C.PANDA_CB_REPLAY_SERIAL_WRITE),
 pcb.after_machine_init :  pandacbtype("after_machine_init", C.PANDA_CB_AFTER_MACHINE_INIT),
 pcb.top_loop : pandacbtype("top_loop", C.PANDA_CB_TOP_LOOP),
+pcb.main_loop_wait : pandacbtype("main_loop_wait", C.PANDA_CB_MAIN_LOOP_WAIT),
 pcb.during_machine_init:pandacbtype("during_machine_init",C.PANDA_CB_DURING_MACHINE_INIT)
 }
 
