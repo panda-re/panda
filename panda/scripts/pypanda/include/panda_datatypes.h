@@ -66,8 +66,8 @@ typedef enum panda_cb_type {
                                    // before any code runs
     PANDA_CB_TOP_LOOP, // at top of loop that manages emulation.  good place to
                        // take a snapshot
-    PANDA_CB_MAIN_LOOP_WAIT,
     PANDA_CB_DURING_MACHINE_INIT,
+    PANDA_CB_MAIN_LOOP_WAIT,
     PANDA_CB_LAST
 } panda_cb_type;
 
