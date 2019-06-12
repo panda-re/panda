@@ -496,10 +496,10 @@ class Panda:
 			r = None
 		else:
 			r = ffi.string(result).decode("utf-8", "ignore")
-		if user_cb is None and debug:
-			print("Monitor command result: {}".format(r))
-		else:
+		if user_cb:
 			user_cb(r)
+		elif debug and r:
+			print("(Debug) Monitor command result: {}".format(r))
 
 	def load_plugin_library(self, name):
 		libname = "libpanda_%s" % name
