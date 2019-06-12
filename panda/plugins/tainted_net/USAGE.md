@@ -13,7 +13,13 @@ Arguments
 
 * `label_incoming_network`: boolean. Whether to apply taint labels to incoming network traffic.
 * `query_outgoing_network`: boolean. Whether to display taint on outgoing network traffic.
-* `positional_taint`: boolean. Whether to apply a different label to each tainted byte in the incoming packet.
+* `semantic`: boolean. Whether to apply a different label to each tainted byte in the incoming packet.  An additional file will be generated for ida taint so semantic labels can be displayed in IDA Pro.
+* `packets`: string. List of packet numbers or ranges to taint.  Values should be separated by colons.  Example: 1-3:5
+* `ip_proto`: string.  List of IPV4 protocol numbers or ranges to taint.
+* `bytes`: string.  List of byte offsets or ranges in each packet to taint.
+* `ip_src`: string.  If specified, only packets received from the specified IPV4 address will be considered for tainting.
+* `ip_dst`: string.  If specified, only packets destined for the specified IPV4 address will be considered for tainting.
+* `eth_type`: string.  Type of packet encapulated in the received ethernet packet.
 * `file`: string, defaults to "tainted_net_query.csv". The name of the file to which outgoing network traffic taint information will be written.
 
 At least one of `label_incoming_network` or `query_outgoing_network` must be true.
@@ -52,4 +58,4 @@ To taint the string `quick` and then see if it is sent out over the network, wri
         -replay foo \
         -panda stringsearch:str="quick" -panda tstringsearch \
         -panda tainted_net:query_outgoing_network=true,file=quick_tnss.csv
-        
+
