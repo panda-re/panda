@@ -5,62 +5,96 @@ import pdb
 from pypanda import *
 from time import sleep
 from sys import argv
+from enum import Enum
 from qcows import get_qcow, get_qcow_info
-from pexpect import expect
-from tempdir import TempDir
+from panda_expect import Expect
+from tempfile import NamedTemporaryFile
 
 from colorama import Fore, Style
 from os.path import abspath, join, realpath
+from os import remove
 
+# No arguments, i386. Otherwise argument should be guest arch
 qfile = argv[1] if len(argv) > 1 else None
 q = get_qcow_info(qfile)
 qf = get_qcow(qfile)
 extra_args = []
-#extra_args.extend(['-monitor', 'unix:{},server,nowait'.format("mon")])
-#extra_args.extend(['-serial', 'unix:{},server,nowait'.format("ser")])
-#extra_args.extend(['-loadvm', q.snapshot])
-extra_args.extend(['-display', 'none'])
+
+serial_file = NamedTemporaryFile(prefix="pypanda_").name
+extra_args.extend(['-serial', 'unix:{},server,nowait'.format(serial_file)])
+extra_args.extend(['-loadvm', 'root']) # TODO want to remove this
 extra_str = " ".join(extra_args)
-
-# Initialize panda with our monitor and serial
-
-pdb.set_trace()
+# Initialize panda with a serial device connected
 panda = Panda(qcow=qf, extra_args=extra_str)
 
-@panda.callback.init
-def init(handle):
-    # Connect to serial
-    print("\n\nINIT\n\n")
-    # Register after-init callback
-    panda.register_callback(handle, panda.callback.after_machine_init, machinit)
+class State(Enum):
+    PRE_INIT = 0
+    INIT = 1
+    CMD_SENT = 2
+    GOT_RESPONSE = 3
+    DONE = 4
 
-    #panda.send_monitor_cmd('{ "execute": "qmp_capabilities" }')
-    #panda.send_monitor_cmd('help')
-    #print("ENABLED")
-
-    #pdb.set_trace()
-    #serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    #serial_socket.connect(serial_path)
-    #console = expect(self.serial_socket)
-
-    # Connect to monitor
-    #monitor_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    #monitor_socket.connect(monitor_path)
-    #monitor = expect(monitor_socket)
-
-
-    #panda.register_callback(handle, panda.callback.asid_changed, asid_changed)
-    return True
+state = State.PRE_INIT
+console = None
+serial_socket = None
+nr = 0
 
 @panda.callback.after_machine_init
 def machinit(env):
-    print("\n\nMACHINE INIT\n\n")
-    panda.send_monitor_cmd('savevm this_is_a_test', do_async=True);
-    print(panda.send_monitor_cmd('info snapshots'))
-    panda.send_monitor_cmd('delvm this_is_a_test', do_async=True);
-    print(panda.send_monitor_cmd('info snapshots'))
+    global state
+    global serial_socket
+    global serial_file
 
-panda.load_python_plugin(init,"run_guest")
+    progress("Machine initialized -- disabling chaining & reverting to booted snapshot\n")
+    panda.disable_tb_chaining()
+    #panda.revert("root", now=True) # TODO: Want this uncommented
+    pc = panda.current_pc(env)
+
+    # Connect to python from serial device
+    serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    serial_socket.connect(serial_file)
+    print("Connected to {}".format(serial_file))
+    state = State.INIT
+
+
+@panda.callback.before_block_exec
+def before_block_exec(env,tb):
+    global nr
+    global serial_socket
+    global serial_file
+    global console
+    global state
+    nr +=1
+
+    if state == State.INIT:
+        console = Expect(serial_socket, quiet=True)
+        progress("Executing `uname -a` in guest")
+        console.sendline(b"uname -a")
+        state = State.CMD_SENT
+
+    elif state == State.CMD_SENT and (nr % 100000) == 0: # Check if we have results after ever 100k BBs
+        if console.has_buffer(q.prompt):
+            print("Got result: ", repr(console.consume_buffer()))
+
+            serial_socket.close()
+            remove(serial_file)
+            state = State.DONE
+
+    return 0
+
+# Plugin initialization
+@panda.callback.init
+def init(handle):
+    panda.register_callback(handle, panda.callback.after_machine_init, machinit)
+    panda.register_callback(handle, panda.callback.before_block_exec, before_block_exec)
+    return True
+
+panda.load_python_plugin(init, "run_cmd")
+progress ("--- pypanda done with run_cmd plugin init")
+
+panda.init()
+progress ("--- pypanda done with init")
+
 panda.run()
 
 """

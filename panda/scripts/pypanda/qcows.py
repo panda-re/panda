@@ -1,8 +1,14 @@
+# Helper library for managing qcows on your filesystem.
+# Given an architecture, it can download a qcow from moyix to ~/.panda/ and then use that
+# Given a path to a qcow, it can use that
+# A qcow loaded by architecture can then be queried to get the name of the root snapshot or prompt
+
 import os
 import subprocess
 import logging
 from sys import argv
 from collections import namedtuple
+
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -81,4 +87,3 @@ def qcow_from_arg(idx=1):
         return get_qcow(argv[idx])
     else:
         return get_qcow()
-
