@@ -1,9 +1,14 @@
+#!/usr/bin/env python3
+'''
+Not currently functional
+'''
 from pypanda import *
 from time import sleep
+from sys import argv
 
 ac_instr_start = 0
 
-panda = Panda(qcow="/home/luke/ubuntu-14.04-server-cloudimg-i386-disk1.img", mem="2048M")
+panda = Panda(qcow=argv[1], mem="2048M")
 
 class InstrRange:
 	def __init__(self, old_instr, new_instr):

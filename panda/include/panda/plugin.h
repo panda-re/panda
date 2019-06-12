@@ -81,6 +81,7 @@ typedef enum panda_cb_type {
 
     PANDA_CB_TOP_LOOP, // at top of loop that manages emulation.  good place to
                        // take a snapshot
+    PANDA_CB_DURING_MACHINE_INIT, //for rehosting machine init
 
     PANDA_CB_MAIN_LOOP_WAIT,       // you can run monitor cmds here (bc you are in right thread)
 
@@ -656,6 +657,7 @@ typedef union panda_cb {
        member could be used instead.
        However, cbaddr provides neutral semantics for the comparisson.
     */
+    void (*during_machine_init)(MachineState *machine);
     void (* cbaddr)(void);
 
 } panda_cb;
@@ -689,6 +691,7 @@ bool   panda_add_arg(const char *plugin_name, const char *plugin_arg);
 void * panda_get_plugin_by_name(const char *name);
 void   panda_do_unload_plugin(int index);
 void   panda_unload_plugin(void* plugin);
+void   panda_unload_plugin_by_name(const char* name);
 void   panda_unload_plugin_idx(int idx);
 void   panda_unload_plugins(void);
 

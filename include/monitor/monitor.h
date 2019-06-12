@@ -17,6 +17,11 @@ extern Monitor *cur_mon;
 bool monitor_cur_is_qmp(void);
 
 void monitor_init(Chardev *chr, int flags);
+
+void panda_init_monitor(void);
+char* panda_monitor_run(char* buf);
+void panda_monitor_run_async(char* buf);
+
 void monitor_cleanup(void);
 
 int monitor_suspend(Monitor *mon);

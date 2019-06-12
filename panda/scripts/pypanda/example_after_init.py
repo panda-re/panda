@@ -1,19 +1,33 @@
+#!/usr/bin/env python3
+'''
+example_after_init.py
+
+Registers the after_machine_init callback and prints "hit machine init" when
+hit.
+
+Run with: python3 example_after_init.py
+'''
 from pypanda import *
 from time import sleep
+import qcows
 from sys import argv
 
-panda = Panda(qcow=argv[1])
+# Single arg of arch, defaults to i386
+arg1 = "i386" if len(argv) <= 1 else argv[1]
+
+q = qcows.get_qcow(arg1)
+panda = Panda(qcow=q)
 
 @panda.callback.init
 def init(handle):
 	progress("init in python. handle="+str(handle))
-	panda.register_callback(handle, panda.callback.after_machine_init, after_machine_init)
+	panda.register_callback(handle, \
+			panda.callback.after_machine_init, after_machine_init)
 	return True
 
 @panda.callback.after_machine_init
 def after_machine_init(cpustate):
-	progress("before block in python")
-	return 0
+	progress("hit machine init")
 
-panda.load_python_plugin(init,"after-machine-init-plugin")
+panda.load_python_plugin(init,"example_after_init")
 panda.run()

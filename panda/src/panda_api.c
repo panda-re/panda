@@ -4,16 +4,20 @@
 #include "vl.h"
 #include "panda/panda_api.h"
 #include "panda/plugin.h"
+#include "sysemu/sysemu.h"
 
 extern int load_vmstate(char *name);
 
-int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, uint8_t *buf, int len);
-int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, uint8_t *buf, int len);
+int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len);
+int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len);
 int rr_get_guest_instr_count_external(void);
-void qemu_rr_quit_timers(void);
+//void qemu_rr_quit_timers(void);
 //void qemu_cpu_kick(CPUState *cpu);
 void panda_register_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
+void panda_enable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
+void panda_disable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 target_ulong panda_current_sp_external(CPUState *cpu);
+target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong mask);
 bool panda_in_kernel_external(CPUState *cpu);
 
 int save_vmstate_nomon(const char *name);
@@ -46,6 +50,16 @@ int panda_run(void) {
     main_loop();
     panda_in_main_loop = 0;
     return 0;
+}
+
+void panda_stop(void) {
+    qemu_system_shutdown_request();
+}
+
+extern const char *qemu_file;
+
+void panda_set_qemu_path(char* filepath) {
+    qemu_file=filepath;
 }
 
 int panda_finish(void) {
@@ -121,10 +135,23 @@ int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args) 
     return panda_load_plugin(plugin_path, plugin_name);
 }
 
+
 void panda_register_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb) {
 	panda_cb cb_copy;
 	memcpy(&cb_copy,cb, sizeof(panda_cb));
 	panda_register_callback(plugin, type, cb_copy);
+}
+
+void panda_enable_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb) {
+	panda_cb cb_copy;
+	memcpy(&cb_copy,cb, sizeof(panda_cb));
+	panda_enable_callback(plugin, type, cb_copy);
+}
+
+void panda_disable_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb) {
+	panda_cb cb_copy;
+	memcpy(&cb_copy,cb, sizeof(panda_cb));
+	panda_disable_callback(plugin, type, cb_copy);
 }
 
 // initiate replay
@@ -139,12 +166,12 @@ int rr_get_guest_instr_count_external(void){
 	return rr_get_guest_instr_count();
 }
 
-int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, uint8_t *buf, int len){
-	return panda_virtual_memory_read(env, addr, buf, len);
+int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len){
+	return panda_virtual_memory_read(env, addr, (uint8_t*) buf, len);
 }
 
-int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, uint8_t *buf, int len){
-	return panda_virtual_memory_write(env, addr, buf, len);
+int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len){
+	return panda_virtual_memory_write(env, addr, (uint8_t*) buf, len);
 }
 
 bool panda_in_kernel_external(CPUState *cpu){
@@ -155,12 +182,16 @@ target_ulong panda_current_sp_external(CPUState *cpu){
 	return panda_current_sp(cpu);
 }
 
+target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong mask){
+	return (panda_current_sp(cpu) & (~(mask+mask-1)));
+}
+
 // we have this temporarily in callbacks.c -> to be moved here
 /*
 bool panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr) {
     // don't load the same plugin twice
     uint32_t i;
-    for (i=0; i<nb_panda_plugins_loaded; i++) {
+    for (i=1; i<nb_panda_plugins_loaded; i++) {
         if (0 == (strcmp(filename, panda_plugins_loaded[i]))) {
             fprintf(stderr, PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, filename);
             return true;

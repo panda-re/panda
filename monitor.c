@@ -79,6 +79,7 @@
 #include "sysemu/qtest.h"
 #include "qemu/cutils.h"
 #include "qapi/qmp/dispatch.h"
+#include "chardev/char-panda.h"
 
 #if defined(TARGET_S390X)
 #include "hw/s390x/storage-keys.h"
@@ -221,7 +222,11 @@ static int mon_refcount;
 static mon_cmd_t mon_cmds[];
 static mon_cmd_t info_cmds[];
 
-Monitor *cur_mon;
+Monitor *cur_mon = NULL;
+
+// global vars for panda monitor and chardev
+PandaChardev *panda_chr = NULL;
+Monitor *panda_mon = NULL;
 
 static QEMUClockType event_clock_type = QEMU_CLOCK_REALTIME;
 
@@ -3948,6 +3953,77 @@ static void monitor_event(void *opaque, int event)
     }
 }
 
+// Create a panda chardev and monitor to interact with (panda_chr and panda_mon)
+void panda_init_monitor(void) {
+  if (panda_mon != NULL) {
+    return;
+  }
+
+  Chardev* chr;
+
+  chr = qemu_chardev_new(NULL, TYPE_CHARDEV_PANDA,
+        NULL, &error_abort);
+
+  // Trying to recreate monitor_init manually
+  //monitor_init(chr, 0);
+  int flags=0;
+  panda_mon = g_malloc(sizeof(*panda_mon));
+  monitor_data_init(panda_mon);
+
+  qemu_chr_fe_init(&panda_mon->chr, chr, &error_abort);
+  panda_mon->flags = flags;
+  qemu_chr_fe_set_handlers(&panda_mon->chr, monitor_can_read, monitor_read,
+      monitor_event, panda_mon, NULL, true);
+
+  qemu_mutex_lock(&monitor_lock);
+  QLIST_INSERT_HEAD(&mon_list, panda_mon, entry);
+  qemu_mutex_unlock(&monitor_lock);
+
+  panda_chr = PANDA_CHARDEV(chr);
+
+}
+
+char* panda_monitor_run(char * cmdline)
+{
+    if (panda_mon == NULL) {
+      panda_init_monitor();
+    }
+
+    assert(panda_mon != NULL);
+
+    Monitor *mon = panda_mon;
+
+    panda_chr->buf = NULL;
+
+    monitor_suspend(mon);
+    handle_hmp_command(mon, cmdline);
+    monitor_resume(mon);
+
+    //Wait for result... XXX: this could be terrible and cause spinlocks. Use panda_monitor_run_async for things that cause issues
+    while(panda_chr->buf == NULL) { }
+
+    return panda_chr->buf;
+}
+
+void panda_monitor_run_async(char * cmdline)
+{
+    if (panda_mon == NULL) {
+      panda_init_monitor();
+    }
+
+    assert(panda_mon != NULL);
+
+    Monitor *mon = panda_mon;
+
+    panda_chr->buf = NULL;
+
+    monitor_suspend(mon);
+    handle_hmp_command(mon, cmdline);
+    monitor_resume(mon);
+    // Does not wait for results from monitor
+}
+
+
 static int
 compare_mon_cmd(const void *a, const void *b)
 {
@@ -3968,8 +4044,7 @@ static void sortcmdlist(void)
 }
 
 /* These functions just adapt the readline interface in a typesafe way.  We
- * could cast function pointers but that discards compiler checks.
- */
+ * could cast function pointers but that discards compiler checks.  */
 static void GCC_FMT_ATTR(2, 3) monitor_readline_printf(void *opaque,
                                                        const char *fmt, ...)
 {
@@ -4023,6 +4098,7 @@ void monitor_init(Chardev *chr, int flags)
         is_first_init = 0;
     }
 
+
     mon = g_malloc(sizeof(*mon));
     monitor_data_init(mon);
 
@@ -4042,6 +4118,8 @@ void monitor_init(Chardev *chr, int flags)
         qemu_chr_fe_set_echo(&mon->chr, true);
         json_message_parser_init(&mon->qmp.parser, handle_qmp_command);
     } else {
+
+
         qemu_chr_fe_set_handlers(&mon->chr, monitor_can_read, monitor_read,
                                  monitor_event, mon, NULL, true);
     }

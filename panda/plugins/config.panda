@@ -25,3 +25,4 @@ tainted_net
 filereadmon
 win2000x86intro
 serial_taint
+coverage

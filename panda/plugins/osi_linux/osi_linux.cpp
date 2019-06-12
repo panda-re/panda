@@ -590,8 +590,10 @@ bool init_plugin(void *self) {
 	panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
 	char *kconf_file = g_strdup(panda_parse_string_req(plugin_args, "kconf_file", "file containing kernel configuration information"));
 	char *kconf_group = g_strdup(panda_parse_string_req(plugin_args, "kconf_group", "kernel profile to use"));
-	panda_free_args(plugin_args);
 
+
+	
+	panda_free_args(plugin_args);
 	// Load kernel offsets.
 	if (read_kernelinfo(kconf_file, kconf_group, &ki) != 0) {
 		LOG_ERROR("Failed to read group %s from %s.", kconf_group, kconf_file);

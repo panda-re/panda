@@ -64,11 +64,10 @@ typedef enum panda_cb_type {
     PANDA_CB_REPLAY_HANDLE_PACKET, // in replay, packet in / out
     PANDA_CB_AFTER_MACHINE_INIT,   // Right after the machine is initialized,
                                    // before any code runs
-
     PANDA_CB_TOP_LOOP, // at top of loop that manages emulation.  good place to
                        // take a snapshot
     PANDA_MAIN_LOOP_WAIT,
-
+    PANDA_CB_DURING_MACHINE_INIT,
     PANDA_CB_LAST
 } panda_cb_type;
 
@@ -202,7 +201,7 @@ typedef union panda_cb {
         false otherwise
 
        Notes:
-        See `insn_translate`, callbacks are registered via PANDA_CB_AFTER_INSN_EXEC
+        See `insn_translate`, callbacks are registered via PANDA_CB_AFTER_INSN_EXEC 
     */
     bool (*after_insn_translate)(CPUState *env, target_ulong pc);
 
@@ -631,6 +630,12 @@ typedef union panda_cb {
        member could be used instead.
        However, cbaddr provides neutral semantics for the comparisson.
     */
+   
+    
+    void (*during_machine_init)(MachineState *machine);
+    
+    
+    
     void (* cbaddr)(void);
 } panda_cb;
 
@@ -665,6 +670,7 @@ void   panda_do_unload_plugin(int index);
 void   panda_unload_plugin(void* plugin);
 void   panda_unload_plugin_idx(int idx);
 void   panda_unload_plugins(void);
+void   panda_unload_plugin_by_name(const char *name);
 
 
 bool panda_flush_tb(void);
@@ -758,14 +764,21 @@ int panda_init(int argc, char **argv, char **envp);
 int panda_run(void);
 int panda_revert(char *name);
 int panda_snap(char *name);
+void panda_run(void);
+void panda_stop(void);
 int panda_finish(void);
+void panda_set_qemu_path(char *filepath);
 int panda_init_plugin(char *plugin_name, char ** plugin_args, uint32_t num_args);
 void panda_register_callback_helper(void* plugin, panda_cb_type type, panda_cb* cb);
 int panda_replay(char *replay_name);
-
+void panda_enable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
+void panda_disable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 int rr_get_guest_instr_count_external(void);
+int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len);
+int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len);
 
 target_ulong panda_current_sp_external(CPUState *cpu);
+target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong pagesize);
 bool panda_in_kernel_external(CPUState *cpu);
 
 /*!
@@ -799,3 +812,21 @@ uint64_t panda_current_asid(CPUState *env);
  * @brief Returns the guest program counter.
  */
 uint64_t panda_current_pc(CPUState *cpu);
+typedef target_ulong target_ptr_t;
+
+/**
+ * @brief Create a monitor for panda
+ */
+void panda_init_monitor();
+
+/**
+ * @brief Pass a message via the panda monitor. Create monitor if necessary'
+ * returns output string from monitor. Some commands may cause spinloops
+ */
+char* panda_monitor_run(char* buf);
+
+/**
+ * @brief Pass a message via the panda monitor. Create monitor if necessary'
+ * does not return
+ */
+void panda_monitor_run_async(char* buf);
