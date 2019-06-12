@@ -20,7 +20,6 @@ void monitor_init(Chardev *chr, int flags);
 
 void panda_init_monitor(void);
 char* panda_monitor_run(char* buf);
-void panda_monitor_run_async(char* buf);
 
 void monitor_cleanup(void);
 

@@ -21,6 +21,8 @@ int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args);
 
 int panda_replay(char *replay_name);
 
+void panda_monitor_run(char* buf, uint32_t len);
+
 int panda_delvm(char *snapshot_name);
 
 int panda_revert(char *snapshot_name);

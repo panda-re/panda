@@ -1030,6 +1030,7 @@ int monitor_set_cpu(int cpu_index)
 
 CPUState *mon_get_cpu(void)
 {
+    assert(cur_mon != NULL); // TODO
     if (!cur_mon->mon_cpu) {
         if (!first_cpu) {
             return NULL;
@@ -3959,13 +3960,19 @@ void panda_init_monitor(void) {
     return;
   }
 
-  Chardev* chr;
+  // first initialize a junk chardev that we don't care about (to get the is_first_init to work)
+  /*
+  Chardev* jnk;
+  jnk = qemu_chardev_new("jnk", TYPE_CHARDEV_NULL,
+        NULL, &error_abort);
+  monitor_init(jnk, 0);
+  */
 
+  Chardev* chr;
   chr = qemu_chardev_new(NULL, TYPE_CHARDEV_PANDA,
         NULL, &error_abort);
 
-  // Trying to recreate monitor_init manually
-  //monitor_init(chr, 0);
+  // Modified version of logic from monitor_init
   int flags=0;
   panda_mon = g_malloc(sizeof(*panda_mon));
   monitor_data_init(panda_mon);
@@ -3980,7 +3987,6 @@ void panda_init_monitor(void) {
   qemu_mutex_unlock(&monitor_lock);
 
   panda_chr = PANDA_CHARDEV(chr);
-
 }
 
 char* panda_monitor_run(char * cmdline)
@@ -3999,30 +4005,18 @@ char* panda_monitor_run(char * cmdline)
     handle_hmp_command(mon, cmdline);
     monitor_resume(mon);
 
-    //Wait for result... XXX: this could be terrible and cause spinlocks. Use panda_monitor_run_async for things that cause issues
-    while(panda_chr->buf == NULL) { }
+    //Wait for result.
+    // XXX: this could be terrible and cause spinlocks if called in the wrong thread
+    //while((panda_chr->buf == NULL)) { // Could comment this out for an async version
+    for(int i=0; i < 100000 && ((panda_chr->buf == NULL)); i++) { // Could comment this out for an async version
+      //usleep(10);
+      /*if (!panda_chr->be_open) { // chardev has closed, abort
+        return NULL;
+      }*/
+    }
 
     return panda_chr->buf;
 }
-
-void panda_monitor_run_async(char * cmdline)
-{
-    if (panda_mon == NULL) {
-      panda_init_monitor();
-    }
-
-    assert(panda_mon != NULL);
-
-    Monitor *mon = panda_mon;
-
-    panda_chr->buf = NULL;
-
-    monitor_suspend(mon);
-    handle_hmp_command(mon, cmdline);
-    monitor_resume(mon);
-    // Does not wait for results from monitor
-}
-
 
 static int
 compare_mon_cmd(const void *a, const void *b)

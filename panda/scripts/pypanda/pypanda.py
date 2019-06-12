@@ -25,21 +25,27 @@ home = getenv("HOME")
 
 
 main_loop_wait_fnargs = []
+main_loop_wait_cbargs = []
 
 @pcb.main_loop_wait
 def main_loop_wait_stuff():
 	global main_loop_wait_fnargs
-#	progress("main_loop_wait_stuff")
-	for fnargs in main_loop_wait_fnargs:
-#		progress("running : " + (str(fnargs)))
+	global main_loop_wait_cbargs
+	#progress("main_loop_wait_stuff")
+	for fnargs, cbargs in zip(main_loop_wait_fnargs, main_loop_wait_cbargs):
 		(fn, args) = fnargs
-#		print ("fn = " + (str(fn)))
-#		print ("args = " + (str(args))) 
-#		for arg in args:
-#			print("\tArg {} stringifies to {}".format(arg, ffi.string(arg)))
-		fn(*args)
-#	progress("done with main_loop_wait_stuff  --  %d " % (len(main_loop_wait_fnargs)))
-	main_loop_wait_fnargs = []	  
+		(cb, cb_args) = cbargs
+		fnargs = (fn, args)
+		#progress("running : " + (str(fnargs)))
+		ret = fn(*args)
+		if cb:
+			#progress("running callback : " + (str(cbargs)))
+			try:
+				cb(ret, *cb_args) # callback(result, cb_arg0, cb_arg1...)
+			except Exception as e: # Catch it so we can keep going?
+				print("CALLBACK {} RAISED EXCEPTION: {}".format(cb, e))
+	main_loop_wait_fnargs = []
+	main_loop_wait_cbargs = []
 
 
 
@@ -115,10 +121,12 @@ class Panda:
 	# fnargs is a pair (fn, args)
 	# fn is a function we want to run
 	# args is args (an array)
-	def queue_main_loop_wait_fn(self, fn, args):
+	def queue_main_loop_wait_fn(self, fn, args=[], callback=None, cb_args=[]):
 #		progress("queued up a fnargs")
 		fnargs = (fn, args)
 		main_loop_wait_fnargs.append(fnargs)
+		cbargs = (callback, cb_args)
+		main_loop_wait_cbargs.append(cbargs)
 		
 	def exit_emul_loop(self):
 		self.libpanda.panda_exit_emul_loop()
@@ -473,20 +481,26 @@ class Panda:
 		self.queue_main_loop_wait_fn(self.libpanda.panda_taint_label_reg, [reg_num, label])
 		return self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
 
-	def send_monitor_cmd(self, cmd, do_async=False):
+	def send_monitor_cmd(self, cmd, callback=None):
 		if debug:
-			progress ("Sending monitor command %s" % cmd),
+			progress ("Sending monitor command async: %s" % cmd),
 
 		buf = ffi.new("char[]", bytes(cmd,"UTF-8"))
 		n = len(cmd)
 
-		if do_async:
-		    self.libpanda.panda_monitor_run_async(buf)
-		    return None
+		self.queue_main_loop_wait_fn(self.libpanda.panda_monitor_run, [buf], self.monitor_command_cb, [callback])
+		return None
+
+	def monitor_command_cb(self, result, user_cb):
+		if result == ffi.NULL:
+			r = None
 		else:
-		    ret = self.libpanda.panda_monitor_run(buf)
-		    return ffi.string(ret).decode("utf-8", "ignore");
-	
+			r = ffi.string(result).decode("utf-8", "ignore")
+		if user_cb is None and debug:
+			print("Monitor command result: {}".format(r))
+		else:
+			user_cb(r)
+
 	def load_plugin_library(self, name):
 		libname = "libpanda_%s" % name
 		if not hasattr(self, libname):

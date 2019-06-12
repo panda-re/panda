@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 from pypanda import *
+import qcows
 import os
+from sys import argv
 
 #
 # snaps.py
@@ -29,12 +31,12 @@ import os
 # revert, we don't keep executing any code.  We snap back to exactly
 # that bloc.
 
-qcowpath = os.getenv("HOME") + "/.panda/debian:3.2.0-4-686-pae-i386-128M.qcow"
+# Single arg of arch, defaults to i386
+arg1 = "i386" if len(argv) <= 1 else argv[1]
 
+q = qcows.get_qcow(arg1)
 
-panda = Panda(qcow=qcowpath, extra_args="-D ./qemu.log -d in_asm") 
-
-
+panda = Panda(qcow=q, extra_args="-D ./qemu.log -d in_asm") 
 
 state = 0 # before snapshot load
 
