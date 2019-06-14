@@ -22,7 +22,7 @@ class Expect(object):
         self.logfile = open(logfile, "wb")
         self.quiet = quiet
         self.sofar = ''
-        self.last_message = None
+        self.last_msg = None
         self.bytessofar = bytearray()
 
     def __del__(self):
@@ -55,11 +55,21 @@ class Expect(object):
                 sofar.extend(char)
                 if sofar.endswith(expectation.encode('utf8')):
                     #print("Raw message '{}'".format(sofar))
-                    sofar = sofar[len(last_cmd):-len(expectation.encode('utf8'))] # Trim expect msg
+
+                    if b"\r\n" in sofar: # Serial will echo our command back, try to strip it out
+                        resp = sofar.split(b"\r\n")
+                        if resp[0].decode('utf8').replace(" \r", "") == last_cmd:
+                            resp[:] = resp[1:] # drop last cmd
+
+                        if resp[-1].decode('utf8') == expectation:
+                            resp[:] = resp[:-1] # drop next prompt
+
+                        sofar= b"\r\n".join(resp)
                     sofar = sofar.strip()
                     self.logfile.flush()
                     if not self.quiet: sys.stdout.flush()
                     return sofar.decode('utf8')
+
         self.logfile.flush()
         if not self.quiet: sys.stdout.flush()
         self.sofar = sofar.decode('utf8')
@@ -70,6 +80,14 @@ class Expect(object):
         os.write(self.fd, msg)
         self.logfile.write(msg)
         self.logfile.flush()
+
+    def send_eol(self):
+        if self.last_msg:
+            self.last_msg+=b"\n"
+        os.write(self.fd, b"\n")
+        self.logfile.write(b"\n")
+        self.logfile.flush()
+
 
     def sendline(self, msg=b""):
         self.send(msg + b"\n")

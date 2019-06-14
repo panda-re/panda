@@ -4,11 +4,18 @@ from pypanda import *
 from time import sleep
 from sys import argv
 from enum import Enum
+import subprocess
+import os
+import shlex
+
 from qcows import get_qcow, get_qcow_info
 
 from colorama import Fore, Style
 from os.path import abspath, join, realpath
-from os import remove
+
+
+## Example library to copy files into a guest and record a program executing
+# Basic functionality works but I think I'll merge this into pypanda itself (instead of an example) soon
 
 # No arguments, i386. Otherwise argument should be guest arch
 qfile = argv[1] if len(argv) > 1 else None
@@ -18,11 +25,95 @@ qf = get_qcow(qfile)
 # Initialize panda with a serial device connected
 panda = Panda(qcow=qf, os=q.os, serial=True)
 
+def make_iso(directory, iso_path):
+    with open(os.devnull, "w") as DEVNULL:
+        if sys.platform.startswith('linux'):
+            subprocess.check_call([
+                'genisoimage', '-RJ', '-max-iso9660-filenames', '-o', iso_path, directory
+            ], stderr=subprocess.STDOUT if debug else DEVNULL)
+        elif sys.platform == 'darwin':
+            subprocess.check_call([
+                'hdiutil', 'makehybrid', '-hfs', '-joliet', '-iso', '-o', iso_path, directory
+            ], stderr=subprocess.STDOUT if debug else DEVNULL)
+        else:
+            raise NotImplementedError("Unsupported operating system!")
+
+queue = []
+class cmdType(Enum):
+    MONITOR = 0
+    SERIAL = 1
+cmd = namedtuple('Command', 'name type command')
+
+def run_cmds(resp, state):
+    # Run the next command from queue with a callback of ourself with state+=1
+    if resp:
+        print("Result: {}".format(resp))
+
+    if state < len(queue):
+        c = queue[state]
+        progress("Run {} command via {}".format(c.name, "monitor" if c.type ==cmdType.MONITOR else "guest"))
+        if c.type == cmdType.MONITOR:
+            panda.send_monitor_async(c.command, finished_cb=run_cmds, finished_cb_args=[state+1])
+        elif c.type == cmdType.SERIAL:
+            panda.send_serial_async(c.command, q.prompt, finished_cb=run_cmds, finished_cb_args=[state+1])
+
+
+def run_guest_cmd(guest_command, copy_directory, recording_path_,
+                    expect_prompt, recording_name="recording", isoname=None):
+
+    recording_path = realpath(recording_path_)
+    if not isoname: isoname = copy_directory + '.iso'
+
+    # Now build up a queue of actions
+    global queue
+
+    # If there's a directory, build an ISO and put it in the cddrive
+    assert(os.listdir(copy_directory)), "TODO: support non-ISO guest commands" # TODO
+    progress("Creating ISO {}...".format(isoname))
+    make_iso(copy_directory, isoname)
+
+    # 1) we insert the CD drive
+    queue.append(cmd("cd-drive", cmdType.MONITOR, "change ide1-cd0 \"{}\"".format(isoname)))
+
+    # 2) run setup script
+    # setup_sh: 
+    #   Make sure cdrom didn't automount
+    #   Make sure guest path mirrors host path
+    #   if there is a setup.sh script in the directory,
+    #   then run that setup.sh script first (good for scripts that need to
+    #   prep guest environment before script runs)
+    
+    # TODO XXX: guest filesystem is read only so this could hang forever if it can't mount
+    copy_directory="/mnt/" # for now just mount to an existing directory
+    # XXX: fix this copy directory hack
+
+    setup_sh = "mkdir -p {mount_dir}; while ! mount /dev/cdrom {mount_dir}; do sleep 0.3; " \
+                " umount /dev/cdrom; done; {mount_dir}/setup.sh &> /dev/null || true " \
+                    .format(mount_dir = (shlex.quote(copy_directory)))
+    queue.append(cmd("setup", cmdType.SERIAL, setup_sh))
+
+    # TODO: we really want to type command, start recording, then press enter on command
+
+    # 3) start recording
+    queue.append(cmd("start recording",  cmdType.MONITOR,    "begin_record {}".format(recording_name)))
+
+    # 4) run commmand
+    queue.append(cmd("guest_command", cmdType.SERIAL, guest_command))
+
+    # 5) End recording
+    queue.append(cmd("end recording",  cmdType.MONITOR,    "end_record"))
+
+    # 5) End recording
+    queue.append(cmd("end recording",  cmdType.MONITOR,    "end_record"))
+
+    # Kick off our queue of commands
+    run_cmds(None, 0)
+
+
 @panda.callback.after_machine_init
 def machinit(env):
-    panda.revert("root") # XXX: why doesn't this work with now=True?
-    cmd = "uname -a"
-    panda.run_cmd_async(cmd, q.prompt, finished_cb=cmd_finished, finished_cb_args=[cmd])
+    panda.revert("root")
+    run_guest_cmd("/mnt/bin/jq . /mnt/inputs/fixed.json", "/tmp/jqB", "/tmp", q.prompt, "test.iso")
 
 def cmd_finished(result, cmd):
     print("{} ==> '{}'".format(cmd, result))
@@ -40,60 +131,3 @@ panda.load_python_plugin(on_init, "run_cmd")
 panda.init()
 
 panda.run()
-
-"""
-##### FROM RUN_GUEST
-def make_iso(directory, iso_path):
-    with open(os.devnull, "w") as DEVNULL:
-        if sys.platform.startswith('linux'):
-            subprocess32.check_call([
-                'genisoimage', '-RJ', '-max-iso9660-filenames', '-o', iso_path, directory
-            ], stderr=STDOUT if debug else DEVNULL)
-        elif sys.platform == 'darwin':
-            subprocess32.check_call([
-                'hdiutil', 'makehybrid', '-hfs', '-joliet', '-iso', '-o', iso_path, directory
-            ], stderr=STDOUT if debug else DEVNULL)
-        else:
-            raise NotImplementedError("Unsupported operating system!")
-# command as array of args.
-# copy_directory gets mounted in the same place on the guest as an iso/CD-ROM.
-def create_recording(qemu_path, qcow, snapshot, command, copy_directory,
-                     recording_path, expect_prompt, isoname=None, rr=False,
-                     perf=False, env={}, extra_args=None):
-    assert not (rr and perf)
-
-    recording_path = realpath(recording_path)
-    if not isoname: isoname = copy_directory + '.iso'
-
-    with TempDir() as tempdir, \
-            Qemu(qemu_path, qcow, snapshot, tempdir, rr=rr, perf=perf,
-                 expect_prompt=expect_prompt, extra_args=extra_args) as qemu:
-        if os.listdir(copy_directory):
-            progress("Creating ISO {}...".format(isoname))
-            make_iso(copy_directory, isoname)
-
-            progress("Inserting CD...")
-            qemu.run_monitor("change ide1-cd0 \"{}\"".format(isoname))
-            qemu.run_console("mkdir -p {}".format(pipes.quote(copy_directory)))
-            # Make sure cdrom didn't automount
-            # Make sure guest path mirrors host path
-            qemu.run_console("while ! mount /dev/cdrom {}; ".format(pipes.quote(copy_directory)) +
-                        "do sleep 0.3; umount /dev/cdrom; done")
-
-        # if there is a setup.sh script in the replay/proc_name/cdrom/ folder
-        # then run that setup.sh script first (good for scriptst that need to
-        # prep guest environment before script runs
-        qemu.run_console("{}/setup.sh &> /dev/null || true".format(pipes.quote(copy_directory)))
-        # Important that we type command into console before recording starts and only
-        # hit enter once we've started the recording.
-        progress("Running command inside guest.")
-        qemu.type_console(subprocess32.list2cmdline(env_to_list(env) + command))
-
-        # start PANDA recording
-        qemu.run_monitor("begin_record \"{}\"".format(recording_path))
-        qemu.run_console(timeout=1200)
-
-        # end PANDA recording
-        progress("Ending recording...")
-        qemu.run_monitor("end_record")
-"""

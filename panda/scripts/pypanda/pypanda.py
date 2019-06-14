@@ -50,6 +50,7 @@ def main_loop_wait_stuff():
 				cb(ret, *cb_args) # callback(result, cb_arg0, cb_arg1...). Note results may be None
 			except Exception as e: # Catch it so we can keep going?
 				print("CALLBACK {} RAISED EXCEPTION: {}".format(cb, e))
+				raise e
 	main_loop_wait_fnargs = []
 	main_loop_wait_cbargs = []
 
@@ -503,23 +504,26 @@ class Panda:
 		self.queue_main_loop_wait_fn(self.libpanda.panda_taint_label_reg, [reg_num, label])
 		return self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
 
-	def send_monitor_cmd(self, cmd, finished_cb=None):
+	def send_monitor_async(self, cmd, finished_cb=None, finished_cb_args=[]):
 		if debug:
 			progress ("Sending monitor command async: %s" % cmd),
 
 		buf = ffi.new("char[]", bytes(cmd,"UTF-8"))
 		n = len(cmd)
 
-		self.queue_main_loop_wait_fn(self.libpanda.panda_monitor_run, [buf], self.monitor_command_cb, [finished_cb])
-		return None
+		self.queue_main_loop_wait_fn(self.libpanda.panda_monitor_run,
+				[buf], self.monitor_command_cb, [finished_cb, finished_cb_args])
 
-	def monitor_command_cb(self, result, user_cb):
+	def monitor_command_cb(self, result, finished_cb=None, finished_cb_args=[]):
 		if result == ffi.NULL:
 			r = None
 		else:
 			r = ffi.string(result).decode("utf-8", "ignore")
-		if user_cb:
-			user_cb(r)
+		if finished_cb:
+			if len(finished_cb_args):
+				finished_cb(r, *finished_cb_args)
+			else:
+				finished_cb(r)
 		elif debug and r:
 			print("(Debug) Monitor command result: {}".format(r))
 
@@ -565,9 +569,10 @@ class Panda:
 	def ppp_reg_cb(self):
 		pass
 
-	def run_cmd_async(self, cmd, expect_prompt, finished_cb=None, finished_cb_args=[]):
+	def send_serial_async(self, cmd, expect_prompt, finished_cb=None, finished_cb_args=[]):
 		# Send a message into the serial socket, then spawn a thread to get its response sometime later
 		assert(self.serial_file), "Run command is only supported when panda has been configured with serial=True"
+		assert(isinstance(finished_cb_args, list)), "Arguments must be passed as a list"
 
 		# Connect socket and create console if necessary
 		if not self.console:
@@ -596,10 +601,48 @@ class Panda:
 		#print("Got response: ", resp)
 		self.pending_cmd = False
 
-		# Call user callback - XXX: This could then call run_cmd_async and make another thread
-		if len(callback_args):
-			callback(resp, *callback_args)
-		else:
-			callback(resp)
+		# Call user callback - XXX: This could then call send_serial_async again and make another thread
+		if callback:
+			if len(callback_args):
+				callback(resp, *callback_args)
+			else:
+				callback(resp)
+
+	def send_serial_sync(self, cmd): # Synchronously type directly into serial terminal. No results allowed directly, use send_serial_eol_async to get results
+		if not self.console:
+			self.serial_socket.connect(self.serial_file)
+			self.console = Expect(self.serial_socket, quiet=True)
+		assert (self.pending_cmd == False), "Serial command already pending"
+		self.console.send(cmd.encode("utf8"))
+
+	def send_serial_eol_async(self, expect_prompt, finished_cb=None, finished_cb_args=[]):
+		# Press enter. Waits async and calls cb when done
+		# XXX: Note we don't send pending_cmd here because we're not waiting on a command; you can still type more safely
+		if not self.console:
+			self.serial_socket.connect(self.serial_file)
+			self.console = Expect(self.serial_socket, quiet=True)
+		assert (self.pending_cmd == False), "Serial command already pending"
+		assert(isinstance(finished_cb_args, list)), "Arguments must be passed as a list"
+		self.console.send_eol()
+
+		self.serial_thread = threading.Thread(target=self._serial_thread_eol, args=(expect_prompt,
+																				finished_cb, finished_cb_args))
+		self.serial_thread.start()
+
+
+	def _serial_thread_eol(self, expect_prompt, callback, callback_args):
+		# Send command
+		self.console.send_eol()
+
+		resp = self.console.expect(expect_prompt, last_cmd=self.console.last_msg, timeout=100)
+		#print("Got response: ", resp)
+		self.pending_cmd = False
+
+		# Call user callback - XXX: This could then call send_serial_async again and make another thread
+		if callback:
+			if len(callback_args):
+				callback(resp, *callback_args)
+			else:
+				callback(resp)
 
 # vim: set noexpandtab,ts=4:
