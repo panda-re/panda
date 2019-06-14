@@ -13,6 +13,12 @@ from panda_datatypes import *
 from random import randint
 import pdb
 
+# for serial
+import socket
+from tempfile import NamedTemporaryFile
+from panda_expect import Expect
+import threading
+
 debug = True
 
 def progress(msg):
@@ -31,17 +37,17 @@ main_loop_wait_cbargs = []
 def main_loop_wait_stuff():
 	global main_loop_wait_fnargs
 	global main_loop_wait_cbargs
-	#progress("main_loop_wait_stuff")
+	#progress("main_loop_wait_stuff START")
 	for fnargs, cbargs in zip(main_loop_wait_fnargs, main_loop_wait_cbargs):
 		(fn, args) = fnargs
 		(cb, cb_args) = cbargs
 		fnargs = (fn, args)
-		#progress("running : " + (str(fnargs)))
+		#progress("main_loop_wait_stuff running : " + (str(fnargs)))
 		ret = fn(*args)
 		if cb:
 			#progress("running callback : " + (str(cbargs)))
 			try:
-				cb(ret, *cb_args) # callback(result, cb_arg0, cb_arg1...)
+				cb(ret, *cb_args) # callback(result, cb_arg0, cb_arg1...). Note results may be None
 			except Exception as e: # Catch it so we can keep going?
 				print("CALLBACK {} RAISED EXCEPTION: {}".format(cb, e))
 	main_loop_wait_fnargs = []
@@ -56,7 +62,7 @@ class Panda:
 	arch should be "i386" or "x86_64" or ...
 	NB: wheezy is debian:3.2.0-4-686-pae
 	"""
-	def __init__(self, arch="i386", mem="128M", os_version="debian:3.2.0-4-686-pae", qcow="default", extra_args = "", os="linux"):
+	def __init__(self, arch="i386", mem="128M", serial=False, os_version="debian:3.2.0-4-686-pae", qcow="default", extra_args = "", os="linux"):
 		self.arch = arch
 		self.mem = mem
 		self.os = os_version
@@ -97,21 +103,37 @@ class Panda:
 
 		# note: weird that we need panda as 1st arg to lib fn to init?
 		self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath, "-os", self.os_string, self.qcow]
+
+		# Serial setup
+		self.serial_socket = False
+		self.console = None
+		self.pending_cmd = False
+		self.serial_thread = None
+		self.serial_file = None
+		if serial:
+			self.serial_file = NamedTemporaryFile(prefix="pypanda_").name
+			self.panda_args.extend(['-serial', 'unix:{},server,nowait'.format(self.serial_file)])
+			self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+
 		if extra_args:
 			self.panda_args.extend(extra_args.split())
 		self.panda_args_ffi = [ffi.new("char[]", bytes(str(i),"utf-8")) for i in self.panda_args]
 		cargs = ffi.new("char **")
+
 		# start up panda!
 		nulls = ffi.new("char[]", b"")
-		cenvp =	 ffi.new("char **",nulls)
+		cenvp = ffi.new("char **",nulls)
 		len_cargs = ffi.cast("int", len(self.panda_args))
+
 		progress ("Panda args: [" + (" ".join(self.panda_args)) + "]")
+
 		self.len_cargs = len_cargs
 		self.cenvp = cenvp
 		self.libpanda.panda_pre(self.len_cargs, self.panda_args_ffi, self.cenvp)
 		self.taint_enabled = False
 		self.init_run = False
 		self.pcb_list = {}
+
 
 	def init(self):
 		self.init_run = True
@@ -122,7 +144,7 @@ class Panda:
 	# fn is a function we want to run
 	# args is args (an array)
 	def queue_main_loop_wait_fn(self, fn, args=[], callback=None, cb_args=[]):
-#		progress("queued up a fnargs")
+		#progress("queued up a fnargs")
 		fnargs = (fn, args)
 		main_loop_wait_fnargs.append(fnargs)
 		cbargs = (callback, cb_args)
@@ -131,7 +153,7 @@ class Panda:
 	def exit_emul_loop(self):
 		self.libpanda.panda_exit_emul_loop()
 
-	def revert(self, snapshot_name, now):
+	def revert(self, snapshot_name, now=False):
 		if debug:
 			progress ("Loading snapshot " + snapshot_name)
 		if now:
@@ -481,14 +503,14 @@ class Panda:
 		self.queue_main_loop_wait_fn(self.libpanda.panda_taint_label_reg, [reg_num, label])
 		return self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
 
-	def send_monitor_cmd(self, cmd, callback=None):
+	def send_monitor_cmd(self, cmd, finished_cb=None):
 		if debug:
 			progress ("Sending monitor command async: %s" % cmd),
 
 		buf = ffi.new("char[]", bytes(cmd,"UTF-8"))
 		n = len(cmd)
 
-		self.queue_main_loop_wait_fn(self.libpanda.panda_monitor_run, [buf], self.monitor_command_cb, [callback])
+		self.queue_main_loop_wait_fn(self.libpanda.panda_monitor_run, [buf], self.monitor_command_cb, [finished_cb])
 		return None
 
 	def monitor_command_cb(self, result, user_cb):
@@ -542,3 +564,42 @@ class Panda:
 	
 	def ppp_reg_cb(self):
 		pass
+
+	def run_cmd_async(self, cmd, expect_prompt, finished_cb=None, finished_cb_args=[]):
+		# Send a message into the serial socket, then spawn a thread to get its response sometime later
+		assert(self.serial_file), "Run command is only supported when panda has been configured with serial=True"
+
+		# Connect socket and create console if necessary
+		if not self.console:
+			self.serial_socket.connect(self.serial_file)
+			self.console = Expect(self.serial_socket, quiet=True)
+
+		if debug:
+			progress("run_cmd: Executing `{}` in guest".format(cmd))
+
+		assert (self.pending_cmd == False), "Serial command already pending"
+		self.pending_cmd = True 
+
+		# By disabling this we allow finished_cbs to call other commands directly
+		#if self.serial_thread: # Since pending_cmd _was_ false we know thread is done
+		#	self.serial_thread.join()
+
+		self.serial_thread = threading.Thread(target=self._serial_thread, args=(cmd, expect_prompt,
+																				finished_cb, finished_cb_args))
+		self.serial_thread.start()
+
+	def _serial_thread(self, cmd, expect_prompt, callback, callback_args):
+		# Send command
+		self.console.sendline(cmd.encode("utf8"))
+
+		resp = self.console.expect(expect_prompt, last_cmd=cmd, timeout=100)
+		#print("Got response: ", resp)
+		self.pending_cmd = False
+
+		# Call user callback - XXX: This could then call run_cmd_async and make another thread
+		if len(callback_args):
+			callback(resp, *callback_args)
+		else:
+			callback(resp)
+
+# vim: set noexpandtab,ts=4:

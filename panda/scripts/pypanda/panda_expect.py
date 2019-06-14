@@ -28,49 +28,8 @@ class Expect(object):
     def __del__(self):
         self.logfile.close()
 
-    def has_data(self):
-        # Quickly poll to see if we have data on the socket
-        ready = self.poller.poll(0.001) # args?
-        return self.fd in [fd for (fd, _) in ready]
-
-    def has_buffer(self, msg):
-        lastlen = len(self.bytessofar)
-        while self.fd in [fd for (fd, _) in self.poller.poll(0.001)]:
-            char = None
-            try:
-                char = os.read(self.fd, 1)
-            except OSError as e:
-                if e.errno in [EAGAIN, EWOULDBLOCK]:
-                    break
-                else: raise
-            if char:
-                self.logfile.write(char)
-                if not self.quiet: sys.stdout.write(char.decode("utf-8","ignore"))
-                self.bytessofar.extend(char)
-
-        if len(self.bytessofar) == lastlen:
-            return False # Nothing changed
-
-        # Check if it ends with out expected output
-        if self.bytessofar.decode('utf-8').strip().endswith(msg):
-            self.logfile.flush()
-            self.sofar = self.bytessofar.decode('utf-8')
-            self.sofar = self.sofar[len(self.last_msg)+1:-(len(msg)+3)]
-            return True
-
-        #print("So far:  {}".format(self.bytessofar.decode('utf-8')))
-
-        #self.logfile.flush()
-        #if not self.quiet: sys.stdout.flush()
-        return False
-
-    def consume_buffer(self):
-        r = self.sofar
-        self.sofar = ''
-        self.sofarbytes = bytearray()
-        return r
-
-    def expect(self, expectation, timeout=30):
+    def expect(self, expectation, last_cmd=b'', timeout=30):
+        # Wait until we get expectation back, up to timeout. Return data between last_command and expectation
         sofar = bytearray()
         start_time = datetime.now()
         time_passed = 0
@@ -95,9 +54,11 @@ class Expect(object):
 
                 sofar.extend(char)
                 if sofar.endswith(expectation.encode('utf8')):
+                    #print("Raw message '{}'".format(sofar))
+                    sofar = sofar[len(last_cmd):-len(expectation.encode('utf8'))] # Trim expect msg
+                    sofar = sofar.strip()
                     self.logfile.flush()
                     if not self.quiet: sys.stdout.flush()
-                    sofar.extend(b'\n')
                     return sofar.decode('utf8')
         self.logfile.flush()
         if not self.quiet: sys.stdout.flush()

@@ -12,18 +12,18 @@ from collections import namedtuple
 
 logging.basicConfig(level=logging.DEBUG)
 
-# Taken from run_debian.py
-Arch = namedtuple('Arch', ['dir', 'binary', 'prompt', 'qcow', 'cdrom', 'snapshot', 'extra_files', 'extra_args']) #TODO: do all architectures have a root snapshot?
+# TODO: add os_version strings for most archs
+Arch = namedtuple('Arch', ['dir',        'binary',             'os',                              'prompt',                  'qcow',                'cdrom',    'snapshot',
+                            'extra_files', 'extra_args'])
 Arch.__new__.__defaults__ = (None,None)
 SUPPORTED_ARCHES = {
-        'i386': Arch('i386-softmmu', 'qemu-system-i386', "root@debian-i386:~#", "wheezy_panda2.qcow2", "ide1-cd0", "root"),
-        'x86_64': Arch('x86_64-softmmu', 'qemu-system-x86_64', "root@debian-amd64:~#", "wheezy_x64.qcow2", "ide1-cd0", "root"),
-        'ppc': Arch('ppc-softmmu', 'qemu-system-ppc', "root@debian-powerpc:~#", "ppc_wheezy.qcow", "ide1-cd0", "root"),
-        'arm': Arch('arm-softmmu', 'qemu-system-arm', "root@debian-armel:~#", "arm_wheezy.qcow", "scsi0-cd2", "root", 
+        'i386':   Arch('i386-softmmu',   'qemu-system-i386',   "linux-32-debian:3.2.0-4-686-pae", "root@debian-i386:~# ",    "wheezy_panda2.qcow2", "ide1-cd0", "root"),
+        'x86_64': Arch('x86_64-softmmu', 'qemu-system-x86_64', "TODO",                            "root@debian-amd64:~# ",   "wheezy_x64.qcow2",    "ide1-cd0", "root"),
+        'ppc':    Arch('ppc-softmmu',    'qemu-system-ppc',    "TODO",                            "root@debian-powerpc:~# ", "ppc_wheezy.qcow",     "ide1-cd0", "root"),
+        'arm':    Arch('arm-softmmu',    'qemu-system-arm',    "TODO",                            "root@debian-armel:~# ",   "arm_wheezy.qcow",     "scsi0-cd2", "root", 
             extra_files=['vmlinuz-3.2.0-4-versatile', 'initrd.img-3.2.0-4-versatile'],
             extra_args='-M versatilepb -append "root=/dev/sda1" -kernel {DOT_DIR}/vmlinuz-3.2.0-4-versatile -initrd {DOT_DIR}/initrd.img-3.2.0-4-versatile')
         }
-# End code from run_debian
 
 VM_DIR = os.path.join(os.path.expanduser("~"), ".panda")
 
