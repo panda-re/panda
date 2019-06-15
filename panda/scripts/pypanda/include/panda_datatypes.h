@@ -68,6 +68,7 @@ typedef enum panda_cb_type {
                        // take a snapshot
     PANDA_CB_DURING_MACHINE_INIT,
     PANDA_CB_MAIN_LOOP_WAIT,
+    PANDA_CB_PRE_SHUTDOWN,
     PANDA_CB_LAST
 } panda_cb_type;
 
@@ -630,6 +631,8 @@ typedef union panda_cb {
        member could be used instead.
        However, cbaddr provides neutral semantics for the comparisson.
     */
+
+    void (*pre_shutdown)(void);
    
     
     void (*during_machine_init)(MachineState *machine);

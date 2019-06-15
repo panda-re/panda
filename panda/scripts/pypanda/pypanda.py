@@ -11,13 +11,10 @@ from enum import Enum
 from colorama import Fore, Style
 from panda_datatypes import *
 from random import randint
-import pdb
+from inspect import signature
 
-# for serial
-import socket
-from tempfile import NamedTemporaryFile
-from panda_expect import Expect
-import threading
+from userthread import UserThread
+import pdb
 
 debug = True
 
@@ -29,32 +26,66 @@ def progress(msg):
 panda_build = realpath(pjoin(abspath(__file__), "../../../../build"))
 home = getenv("HOME")
 
+def call_with_opt_arg(f, a):
+	# Helper function to call a function with an argument only when it expects one
+	# To be used for callbacks that may or may not expect a result
+	if len(signature(f).parameters) > 0:
+		f(a)
+	else:
+		f()
 
+# main_loop_wait_cb is called at the start of the main cpu loop in qemu.
+# This is a fairly safe place to call into qemu internals but watch out for deadlocks caused
+# by your request blocking on the guest's execution
+
+# Functions+args to call when we're next at the main loop. Callbacks to call when they're done
 main_loop_wait_fnargs = []
 main_loop_wait_cbargs = []
 
+# A list of callbacks to call at the next main loop, driven by user_thread
+async_callbacks = {}
+user_thread = None
+
 @pcb.main_loop_wait
-def main_loop_wait_stuff():
+def main_loop_wait_cb():
+	# At the start of the main cpu loop: run async_callbacks and main_loop_wait_fns
+	#progress("main_loop_wait_stuff START")
+
+	# First run async_callbacks as necessary in response to userthread commands
+	# finishing. Note these are run in the main thread (not the userthread)
+	global user_thread, async_callbacks
+	(cb_id, result) = user_thread.get_completed()
+	if cb_id and cb_id in async_callbacks:
+		call_with_opt_arg(async_callbacks[cb_id], result)
+		del async_callbacks[cb_id]
+
+	#progress("main_loop_wait_stuff MID")
+
+	# Then run any and all requested commands
 	global main_loop_wait_fnargs
 	global main_loop_wait_cbargs
-	#progress("main_loop_wait_stuff START")
 	for fnargs, cbargs in zip(main_loop_wait_fnargs, main_loop_wait_cbargs):
 		(fn, args) = fnargs
 		(cb, cb_args) = cbargs
 		fnargs = (fn, args)
-		#progress("main_loop_wait_stuff running : " + (str(fnargs)))
+		progress("main_loop_wait_stuff running : " + (str(fnargs)))
 		ret = fn(*args)
 		if cb:
-			#progress("running callback : " + (str(cbargs)))
+			progress("running callback : " + (str(cbargs)))
 			try:
-				cb(ret, *cb_args) # callback(result, cb_arg0, cb_arg1...). Note results may be None
+				if len(cb_args): # Must take result when cb_args provided
+					cb(ret, *cb_args) # callback(result, cb_arg0, cb_arg1...). Note results may be None
+				else:
+					call_with_opt_arg(cb, ret)
 			except Exception as e: # Catch it so we can keep going?
 				print("CALLBACK {} RAISED EXCEPTION: {}".format(cb, e))
 				raise e
 	main_loop_wait_fnargs = []
 	main_loop_wait_cbargs = []
 
-
+@pcb.pre_shutdown
+def pre_shutdown_cb():
+	print("TODO: Qemu is shutting down (ctrl-c or error)")
 
 
 class Panda:
@@ -63,7 +94,9 @@ class Panda:
 	arch should be "i386" or "x86_64" or ...
 	NB: wheezy is debian:3.2.0-4-686-pae
 	"""
-	def __init__(self, arch="i386", mem="128M", serial=False, os_version="debian:3.2.0-4-686-pae", qcow="default", extra_args = "", os="linux"):
+	def __init__(self, arch="i386", mem="128M",
+			expect_prompt = None, os_version="debian:3.2.0-4-686-pae",
+			qcow="default", extra_args = "", os="linux"):
 		self.arch = arch
 		self.mem = mem
 		self.os = os_version
@@ -105,16 +138,12 @@ class Panda:
 		# note: weird that we need panda as 1st arg to lib fn to init?
 		self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath, "-os", self.os_string, self.qcow]
 
-		# Serial setup
-		self.serial_socket = False
-		self.console = None
-		self.pending_cmd = False
-		self.serial_thread = None
-		self.serial_file = None
-		if serial:
-			self.serial_file = NamedTemporaryFile(prefix="pypanda_").name
-			self.panda_args.extend(['-serial', 'unix:{},server,nowait'.format(self.serial_file)])
-			self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+		# Serial setup - the "User" thread manages actions taken by a simulated user at a keyboard interacting
+		# with the guest through a terminal exposed via serial
+		# Always enabled for now?
+		global user_thread
+		user_thread = UserThread(self.libpanda, ffi, expect_prompt)
+		self.panda_args.extend(user_thread.get_panda_serial_arg())
 
 		if extra_args:
 			self.panda_args.extend(extra_args.split())
@@ -135,11 +164,30 @@ class Panda:
 		self.init_run = False
 		self.pcb_list = {}
 
+	# TODO: how can we gracefully stop our userthread
+	def __exit__(self, exc_type, exc_value, traceback):
+		print("Pypanda gracefully shutting down...")
+		global user_thread
+		if user_thread:
+			user_thread.stop()
+
+	def __del__(self):
+		print("Pypanda cleanup")
+
+
 
 	def init(self):
 		self.init_run = True
 		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
-		self.register_callback(ffi.cast("void *", 0xdeadbeef), self.callback.main_loop_wait, main_loop_wait_stuff)
+
+		# Register main_loop_wait_callback
+		self.register_callback(
+				ffi.cast("void *", 0xdeadbeef), # XXX: junk argument
+				self.callback.main_loop_wait, main_loop_wait_cb)
+
+		self.register_callback(
+				ffi.cast("void *", 0xdeeeeeef), # XXX: junk argument
+				self.callback.pre_shutdown, pre_shutdown_cb)
 
 	# fnargs is a pair (fn, args)
 	# fn is a function we want to run
@@ -154,7 +202,8 @@ class Panda:
 	def exit_emul_loop(self):
 		self.libpanda.panda_exit_emul_loop()
 
-	def revert(self, snapshot_name, now=False):
+	def revert(self, snapshot_name, now=False, finished_cb=None):
+		# XXX: now=True might be unsafe. Causes weird 30s hangs sometimes
 		if debug:
 			progress ("Loading snapshot " + snapshot_name)
 		if now:
@@ -166,7 +215,9 @@ class Panda:
 			# queue up revert then continue
 			charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
 			self.queue_main_loop_wait_fn(self.libpanda.panda_revert, [charptr])
-			self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
+			# if specified, finished_cb will run after we revert and have started to continue
+			# but before guest has a chance to execute anything
+			self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [], callback=finished_cb)
 		
 	# stop cpu right now
 	def stop(self):
@@ -183,6 +234,7 @@ class Panda:
 			progress ("Creating snapshot " + snapshot_name)
 		# vm_stop(), so stop executing guest code
 		self.stop()  
+
 		# queue up snapshot for when monitor gets a turn
 		charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
 		self.queue_main_loop_wait_fn(self.libpanda.panda_snap, [charptr])
@@ -569,80 +621,20 @@ class Panda:
 	def ppp_reg_cb(self):
 		pass
 
-	def send_serial_async(self, cmd, expect_prompt, finished_cb=None, finished_cb_args=[]):
-		# Send a message into the serial socket, then spawn a thread to get its response sometime later
-		assert(self.serial_file), "Run command is only supported when panda has been configured with serial=True"
-		assert(isinstance(finished_cb_args, list)), "Arguments must be passed as a list"
+	def queue_monitor_cmd(self, cmd, finished_cb=None):
+		# Request a command be run in guest via monitor
+		# When finished, finished_cb (type callback) may be called with result as first argument
+		ut_id = user_thread.queue_monitor_cmd(cmd)
+		if finished_cb:
+			global async_callbacks
+			async_callbacks[ut_id] = finished_cb
 
-		# Connect socket and create console if necessary
-		if not self.console:
-			self.serial_socket.connect(self.serial_file)
-			self.console = Expect(self.serial_socket, quiet=True)
+	def queue_serial_cmd(self, cmd, finished_cb=None):
+		# Request a command be run in guest via serial.
+		# When finished, finished_cb (type callback) may be called with result as first argument
+		ut_id = user_thread.queue_serial_cmd(cmd)
+		if finished_cb:
+			global async_callbacks
+			async_callbacks[ut_id] = finished_cb
 
-		if debug:
-			progress("run_cmd: Executing `{}` in guest".format(cmd))
-
-		assert (self.pending_cmd == False), "Serial command already pending"
-		self.pending_cmd = True 
-
-		# By disabling this we allow finished_cbs to call other commands directly
-		#if self.serial_thread: # Since pending_cmd _was_ false we know thread is done
-		#	self.serial_thread.join()
-
-		self.serial_thread = threading.Thread(target=self._serial_thread, args=(cmd, expect_prompt,
-																				finished_cb, finished_cb_args))
-		self.serial_thread.start()
-
-	def _serial_thread(self, cmd, expect_prompt, callback, callback_args):
-		# Send command
-		self.console.sendline(cmd.encode("utf8"))
-
-		resp = self.console.expect(expect_prompt, last_cmd=cmd, timeout=100)
-		#print("Got response: ", resp)
-		self.pending_cmd = False
-
-		# Call user callback - XXX: This could then call send_serial_async again and make another thread
-		if callback:
-			if len(callback_args):
-				callback(resp, *callback_args)
-			else:
-				callback(resp)
-
-	def send_serial_sync(self, cmd): # Synchronously type directly into serial terminal. No results allowed directly, use send_serial_eol_async to get results
-		if not self.console:
-			self.serial_socket.connect(self.serial_file)
-			self.console = Expect(self.serial_socket, quiet=True)
-		assert (self.pending_cmd == False), "Serial command already pending"
-		self.console.send(cmd.encode("utf8"))
-
-	def send_serial_eol_async(self, expect_prompt, finished_cb=None, finished_cb_args=[]):
-		# Press enter. Waits async and calls cb when done
-		# XXX: Note we don't send pending_cmd here because we're not waiting on a command; you can still type more safely
-		if not self.console:
-			self.serial_socket.connect(self.serial_file)
-			self.console = Expect(self.serial_socket, quiet=True)
-		assert (self.pending_cmd == False), "Serial command already pending"
-		assert(isinstance(finished_cb_args, list)), "Arguments must be passed as a list"
-		self.console.send_eol()
-
-		self.serial_thread = threading.Thread(target=self._serial_thread_eol, args=(expect_prompt,
-																				finished_cb, finished_cb_args))
-		self.serial_thread.start()
-
-
-	def _serial_thread_eol(self, expect_prompt, callback, callback_args):
-		# Send command
-		self.console.send_eol()
-
-		resp = self.console.expect(expect_prompt, last_cmd=self.console.last_msg, timeout=100)
-		#print("Got response: ", resp)
-		self.pending_cmd = False
-
-		# Call user callback - XXX: This could then call send_serial_async again and make another thread
-		if callback:
-			if len(callback_args):
-				callback(resp, *callback_args)
-			else:
-				callback(resp)
-
-# vim: set noexpandtab,ts=4:
+# vim: set noexpandtab:

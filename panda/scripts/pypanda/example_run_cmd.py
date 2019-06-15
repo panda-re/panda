@@ -23,7 +23,7 @@ q = get_qcow_info(qfile)
 qf = get_qcow(qfile)
 
 # Initialize panda with a serial device connected
-panda = Panda(qcow=qf, os=q.os, serial=True)
+panda = Panda(qcow=qf, os=q.os, expect_prompt=q.prompt)
 
 def make_iso(directory, iso_path):
     with open(os.devnull, "w") as DEVNULL:
@@ -38,34 +38,11 @@ def make_iso(directory, iso_path):
         else:
             raise NotImplementedError("Unsupported operating system!")
 
-queue = []
-class cmdType(Enum):
-    MONITOR = 0
-    SERIAL = 1
-cmd = namedtuple('Command', 'name type command')
-
-def run_cmds(resp, state):
-    # Run the next command from queue with a callback of ourself with state+=1
-    if resp:
-        print("Result: {}".format(resp))
-
-    if state < len(queue):
-        c = queue[state]
-        progress("Run {} command via {}".format(c.name, "monitor" if c.type ==cmdType.MONITOR else "guest"))
-        if c.type == cmdType.MONITOR:
-            panda.send_monitor_async(c.command, finished_cb=run_cmds, finished_cb_args=[state+1])
-        elif c.type == cmdType.SERIAL:
-            panda.send_serial_async(c.command, q.prompt, finished_cb=run_cmds, finished_cb_args=[state+1])
-
-
 def run_guest_cmd(guest_command, copy_directory, recording_path_,
                     expect_prompt, recording_name="recording", isoname=None):
 
     recording_path = realpath(recording_path_)
     if not isoname: isoname = copy_directory + '.iso'
-
-    # Now build up a queue of actions
-    global queue
 
     # If there's a directory, build an ISO and put it in the cddrive
     assert(os.listdir(copy_directory)), "TODO: support non-ISO guest commands" # TODO
@@ -73,7 +50,7 @@ def run_guest_cmd(guest_command, copy_directory, recording_path_,
     make_iso(copy_directory, isoname)
 
     # 1) we insert the CD drive
-    queue.append(cmd("cd-drive", cmdType.MONITOR, "change ide1-cd0 \"{}\"".format(isoname)))
+    panda.queue_monitor_cmd("change ide1-cd0 \"{}\"".format(isoname))
 
     # 2) run setup script
     # setup_sh: 
@@ -90,38 +67,32 @@ def run_guest_cmd(guest_command, copy_directory, recording_path_,
     setup_sh = "mkdir -p {mount_dir}; while ! mount /dev/cdrom {mount_dir}; do sleep 0.3; " \
                 " umount /dev/cdrom; done; {mount_dir}/setup.sh &> /dev/null || true " \
                     .format(mount_dir = (shlex.quote(copy_directory)))
-    queue.append(cmd("setup", cmdType.SERIAL, setup_sh))
+    panda.queue_serial_cmd(setup_sh)
 
     # TODO: we really want to type command, start recording, then press enter on command
 
     # 3) start recording
-    queue.append(cmd("start recording",  cmdType.MONITOR,    "begin_record {}".format(recording_name)))
+    panda.queue_monitor_cmd("begin_record {}".format(recording_name))
 
     # 4) run commmand
-    queue.append(cmd("guest_command", cmdType.SERIAL, guest_command))
+    panda.queue_serial_cmd(guest_command)
 
     # 5) End recording
-    queue.append(cmd("end recording",  cmdType.MONITOR,    "end_record"))
-
-    # 5) End recording
-    queue.append(cmd("end recording",  cmdType.MONITOR,    "end_record"))
-
-    # Kick off our queue of commands
-    run_cmds(None, 0)
-
+    panda.queue_monitor_cmd("end_record")
 
 @panda.callback.after_machine_init
 def machinit(env):
-    panda.revert("root")
+    panda.revert("root", finished_cb=call_rgc)
+
+def call_rgc():
+    print("Requesting run guest_cmds (async)")
     run_guest_cmd("/mnt/bin/jq . /mnt/inputs/fixed.json", "/tmp/jqB", "/tmp", q.prompt, "test.iso")
-
-def cmd_finished(result, cmd):
-    print("{} ==> '{}'".format(cmd, result))
-
+    print("Requests all pending...")
 
 @panda.callback.init
 def on_init(handle): # After panda is initialized, setup a single callback
     panda.register_callback(handle, panda.callback.after_machine_init, machinit)
+    #panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
     return True
 
 # Set up the panda plugin
