@@ -151,6 +151,7 @@ extern void panda_unload_plugins(void);
 extern char *panda_plugin_path(const char *name);
 void panda_set_os_name(char *os_name);
 extern void panda_callbacks_after_machine_init(void);
+extern void panda_callbacks_pre_shutdown(void);
 
 extern void pandalog_cc_init_write(const char * fname);
 int pandalog = 0;
@@ -1902,6 +1903,7 @@ static bool main_loop_should_exit(void)
         qemu_system_suspend();
     }
     if (qemu_shutdown_requested()) {
+        panda_callbacks_pre_shutdown();
         qemu_kill_report();
         qapi_event_send_shutdown(&error_abort);
         if (no_shutdown) {

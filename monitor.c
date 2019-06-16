@@ -3961,12 +3961,11 @@ void panda_init_monitor(void) {
   }
 
   // first initialize a junk chardev that we don't care about (to get the is_first_init to work)
-  /*
-  Chardev* jnk;
-  jnk = qemu_chardev_new("jnk", TYPE_CHARDEV_NULL,
-        NULL, &error_abort);
-  monitor_init(jnk, 0);
-  */
+  //Chardev* jnk;
+  //jnk = qemu_chardev_new("jnk", TYPE_CHARDEV_NULL,
+  //      NULL, &error_abort);
+  //monitor_init(jnk, 0);
+
 
   Chardev* chr;
   chr = qemu_chardev_new(NULL, TYPE_CHARDEV_PANDA,
@@ -3987,6 +3986,9 @@ void panda_init_monitor(void) {
   qemu_mutex_unlock(&monitor_lock);
 
   panda_chr = PANDA_CHARDEV(chr);
+
+  // Initialize cur_mon
+  cur_mon = panda_mon;
 }
 
 char* panda_monitor_run(char * cmdline)

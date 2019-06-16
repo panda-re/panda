@@ -21,11 +21,15 @@ class Expect(object):
         if logfile is None: logfile = os.devnull
         self.logfile = open(logfile, "wb")
         self.quiet = quiet
+        self.sofar = ''
+        self.last_msg = None
+        self.bytessofar = bytearray()
 
     def __del__(self):
         self.logfile.close()
 
-    def expect(self, expectation, timeout=30):
+    def expect(self, expectation, last_cmd=b'', timeout=30):
+        # Wait until we get expectation back, up to timeout. Return data between last_command and expectation
         sofar = bytearray()
         start_time = datetime.now()
         time_passed = 0
@@ -50,20 +54,42 @@ class Expect(object):
 
                 sofar.extend(char)
                 if sofar.endswith(expectation.encode('utf8')):
+                    #print("Raw message '{}'".format(sofar))
+
+                    if b"\r\n" in sofar: # Serial will echo our command back, try to strip it out
+                        resp = sofar.split(b"\r\n")
+                        if resp[0].decode('utf8').replace(" \r", "") == last_cmd:
+                            resp[:] = resp[1:] # drop last cmd
+
+                        if resp[-1].decode('utf8') == expectation:
+                            resp[:] = resp[:-1] # drop next prompt
+
+                        sofar= b"\r\n".join(resp)
+                    sofar = sofar.strip()
                     self.logfile.flush()
                     if not self.quiet: sys.stdout.flush()
-                    sofar.extend(b'\n')
                     return sofar.decode('utf8')
+
         self.logfile.flush()
         if not self.quiet: sys.stdout.flush()
         self.sofar = sofar.decode('utf8')
         raise TimeoutExpired()
 
     def send(self, msg):
+        self.last_msg = msg
         os.write(self.fd, msg)
         self.logfile.write(msg)
         self.logfile.flush()
 
+    def send_eol(self):
+        if self.last_msg:
+            self.last_msg+=b"\n"
+        os.write(self.fd, b"\n")
+        self.logfile.write(b"\n")
+        self.logfile.flush()
+
+
     def sendline(self, msg=b""):
         self.send(msg + b"\n")
+        self.last_msg = msg+b"\n"
 

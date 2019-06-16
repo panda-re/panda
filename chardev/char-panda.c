@@ -7,7 +7,6 @@
 static void chardev_open(Chardev *chr, ChardevBackend *backend,
                              bool *be_opened, Error **errp)
 {
-  printf("CHARDEV OPEN\n");
     *be_opened = false;
 }
 
