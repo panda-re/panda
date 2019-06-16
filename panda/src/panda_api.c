@@ -1,13 +1,16 @@
 #include <assert.h>
 
+#include <stdio.h>
+#include <stdbool.h>
 
 #include "vl.h"
-#include "panda/panda_api.h"
 #include "panda/plugin.h"
+#include "panda/panda_api.h"
 #include "sysemu/sysemu.h"
 
 //extern int load_vmstate(const char *name);
 
+/*
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len);
 int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len);
 int rr_get_guest_instr_count_external(void);
@@ -19,7 +22,7 @@ void panda_disable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 target_ulong panda_current_sp_external(CPUState *cpu);
 target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong mask);
 bool panda_in_kernel_external(CPUState *cpu);
-
+*/
 int save_vmstate_nomon(const char *name);
 
 

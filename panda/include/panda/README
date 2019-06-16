@@ -1,0 +1,21 @@
+
+There are a few files in here that you should be a little careful with:
+
+panda_callback_list.h
+panda_plugin_mgmt.h
+panda_args.h
+panda_os.h
+panda_api.h
+
+This code has been carefully curated to be parseable by cffi, in order
+for pypanda to be able to make use of it to import fn prototypes.
+Plesae do not insert things into these file that will jeopardize that.
+Here's some things that are known to cause issues.
+
+1. #ifdefs
+2. #includes
+3. inline fns
+
+Yes, I know that there are #ifndefs etc at top and bottom but these
+are being tolerated.
+

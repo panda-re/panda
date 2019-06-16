@@ -291,7 +291,7 @@ void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb) {
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_CPU_RESTORE_STATE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        plist->entry.cb_cpu_restore_state(env, tb);
+        plist->entry.cpu_restore_state(env, tb);
     }
 }
 
