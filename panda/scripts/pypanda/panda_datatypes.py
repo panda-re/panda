@@ -65,7 +65,8 @@ replay_handle_packet \
 after_machine_init \
 top_loop \
 during_machine_init \
-main_loop_wait ")
+main_loop_wait \
+pre_shutdown ")
 
 
 pcb = PandaCB(init = pyp.callback("bool(void*)"), 
@@ -105,7 +106,8 @@ replay_handle_packet = pyp.callback("int (CPUState *, uint8_t *, int, uint8_t, u
 after_machine_init = pyp.callback("void (CPUState *)"),
 top_loop = pyp.callback("void (CPUState *)"),
 during_machine_init = pyp.callback("void (MachineState *)"),
-main_loop_wait = pyp.callback("void (void)"))
+main_loop_wait = pyp.callback("void (void)"),
+pre_shutdown = pyp.callback("void (void)"))
 
 
 pandacbtype = namedtuple("pandacbtype", "name number")
@@ -150,4 +152,5 @@ pcb.replay_handle_packet : pandacbtype("replay_handle_packet", C.PANDA_CB_REPLAY
 pcb.after_machine_init : pandacbtype("after_machine_init", C.PANDA_CB_AFTER_MACHINE_INIT),
 pcb.top_loop : pandacbtype("top_loop", C.PANDA_CB_TOP_LOOP),
 pcb.during_machine_init : pandacbtype("during_machine_init", C.PANDA_CB_DURING_MACHINE_INIT),
-pcb.main_loop_wait : pandacbtype("main_loop_wait", C.PANDA_CB_MAIN_LOOP_WAIT)}
+pcb.main_loop_wait : pandacbtype("main_loop_wait", C.PANDA_CB_MAIN_LOOP_WAIT),
+pcb.pre_shutdown : pandacbtype("pre_shutdown", C.PANDA_CB_PRE_SHUTDOWN)}

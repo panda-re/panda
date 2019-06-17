@@ -109,6 +109,12 @@ class PandaState(Enum):
                         cb_name = cb_list[i]
                         cb_types[i] = (cb_name, cb_typ)
 
+    # Sanity check: input files must match
+    for i in range(cbn-1):
+        if i not in cb_types:
+            print(cb_types[i-1])
+            raise RuntimeError("Callback #{} missing from cb_types- is it in panda_callback_list.h's panda_cb_type enum AND as a prototype later in the source?".format(i))
+
     pdty.write("""
 
 pcb = PandaCB(init = pyp.callback("bool(void*)"), 

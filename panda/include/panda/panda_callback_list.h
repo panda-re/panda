@@ -65,6 +65,7 @@ typedef enum panda_cb_type {
     PANDA_CB_DURING_MACHINE_INIT, //for rehosting machine init
 
     PANDA_CB_MAIN_LOOP_WAIT,       // you can run monitor cmds here (bc you are in right thread)
+    PANDA_CB_PRE_SHUTDOWN,       // you can run monitor cmds here (bc you are in right thread)
 
     PANDA_CB_LAST
 } panda_cb_type;
@@ -652,11 +653,22 @@ typedef union panda_cb {
      */
     void (*top_loop)(CPUState *env);
 
+    /* Callback ID:     PANDA_CB_DURING_MACHINE_INIT
+
+       during_machine_init: Called in the middle of machine initialization
+
+       Arguments:
+         MachineState *machine: pointer to the machine state
+
+       Return value:
+         None
+     */
+
     void (*during_machine_init)(MachineState *machine);
 
     /* Callback ID:     PANDA_CB_MAIN_LOOP_WAIT
 
-       top_loop: Called in IO thread in place where monitor cmds are processed
+       main_loop_wait: Called in IO thread in place where monitor cmds are processed
 
        Arguments:
          None
@@ -666,7 +678,19 @@ typedef union panda_cb {
      */
 
     void (*main_loop_wait)(void);
-    
+
+    /* Callback ID:     PANDA_CB_PRE_SHUTDOWN
+
+      pre_shutdown: Called just before qemu shuts down
+
+       Arguments:
+         None
+
+       Return value:
+         None
+     */
+    void (*pre_shutdown)(void);
+
 
     /* Dummy union member.
 
