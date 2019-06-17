@@ -69,19 +69,19 @@ class UserThread:
 
 
     def stop(self):
-        print("serialuser: shutdown requested")
         self.running  = False
+        if self.console:
+            self.console.abort()
         self.thread.join()
-
-        # running = false, cleanup serial file and end thread
-        os.remove(self.serial_file)
 
     def run_loop(self):
         while self.running:
-            item = self.q.get() # Blocks until it has an item
+            try: # Only wait a few seconds so if runnuing becomes false we can exit
+                item = self.q.get(timeout=5) # Wait for an item to become available
+            except queue.Empty:
+                continue
 
             if item is None: # Empty queue
-                print(".", end="")
                 continue
 
             # Connect to serial socket and setup console if necessary
@@ -91,7 +91,7 @@ class UserThread:
 
             (cid, proto, cmd) = item
 
-            # Run command via specified channel, WAIT for result
+            # Run command via specified channel, WAIT for result (blocking)
             print("Run command {} via {}".format(cmd, proto))
             if proto == CmdType.MONITOR:
                 result = self.send_monitor_sync(cmd)
@@ -99,6 +99,11 @@ class UserThread:
                 result = self.send_serial_sync(cmd)
             else:
                 raise RuntimeError("Unsupported protocol {}".format(proto))
+
+            if not self.running:
+                self.q.task_done()
+                return
+
             print("Finished: {}".format(result if result else "(no output)"))
 
             self.q.task_done()

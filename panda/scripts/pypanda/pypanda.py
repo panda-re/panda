@@ -85,7 +85,11 @@ def main_loop_wait_cb():
 
 @pcb.pre_shutdown
 def pre_shutdown_cb():
-	print("TODO: Qemu is shutting down (ctrl-c or error)")
+	global user_thread
+	if user_thread:
+		print("QEmu has requested to shut down. Gracefully stopping user thread within 5 seconds...")
+		user_thread.stop()
+		print("User thread stopped")
 
 
 class Panda:
@@ -142,6 +146,7 @@ class Panda:
 		# with the guest through a terminal exposed via serial
 		# Always enabled for now?
 		global user_thread
+		assert(not user_thread), "Only one PANDA instance supported for now" # TODO?
 		user_thread = UserThread(self.libpanda, ffi, expect_prompt)
 		self.panda_args.extend(user_thread.get_panda_serial_arg())
 
@@ -164,15 +169,8 @@ class Panda:
 		self.init_run = False
 		self.pcb_list = {}
 
-	# TODO: how can we gracefully stop our userthread
-	def __exit__(self, exc_type, exc_value, traceback):
-		print("Pypanda gracefully shutting down...")
-		global user_thread
-		if user_thread:
-			user_thread.stop()
-
 	def __del__(self):
-		print("Pypanda cleanup")
+		print("Pypanda cleanup") # TODO anything else to cleanup?
 
 
 
@@ -637,4 +635,4 @@ class Panda:
 			global async_callbacks
 			async_callbacks[ut_id] = finished_cb
 
-# vim: set noexpandtab:
+# vim: noexpandtab:tabstop=4:

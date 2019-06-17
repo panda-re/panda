@@ -24,16 +24,20 @@ class Expect(object):
         self.sofar = ''
         self.last_msg = None
         self.bytessofar = bytearray()
+        self.running = True
 
     def __del__(self):
         self.logfile.close()
+
+    def abort(self):
+        self.running = False
 
     def expect(self, expectation, last_cmd=b'', timeout=30):
         # Wait until we get expectation back, up to timeout. Return data between last_command and expectation
         sofar = bytearray()
         start_time = datetime.now()
         time_passed = 0
-        while timeout is None or time_passed < timeout:
+        while (timeout is None or time_passed < timeout) and self.running:
             if timeout is not None:
                 time_passed = (datetime.now() - start_time).total_seconds()
                 time_left = timeout - time_passed
@@ -69,6 +73,9 @@ class Expect(object):
                     self.logfile.flush()
                     if not self.quiet: sys.stdout.flush()
                     return sofar.decode('utf8')
+
+        if not self.running: # Aborted
+            return None
 
         self.logfile.flush()
         if not self.quiet: sys.stdout.flush()
