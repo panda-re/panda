@@ -399,7 +399,7 @@ void panda_callbacks_pre_shutdown(void) {
     panda_cb_list *plist;
     //printf ("In panda_callbacks_pre_shutdown\n");
     int n = 0;
-    for (plist = panda_cbs[PANDA_CB_MAIN_LOOP_WAIT]; plist != NULL;
+    for (plist = panda_cbs[PANDA_CB_PRE_SHUTDOWN]; plist != NULL;
          plist = panda_cb_list_next(plist)) {
         plist->entry.main_loop_wait();
         n ++;
