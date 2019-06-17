@@ -1,4 +1,4 @@
-Plugin: tainted_net
+Plugin: tainted\_net
 ===========
 
 Summary
@@ -20,7 +20,7 @@ Arguments
 * `ip_src`: string.  If specified, only packets received from the specified IPV4 address will be considered for tainting.
 * `ip_dst`: string.  If specified, only packets destined for the specified IPV4 address will be considered for tainting.
 * `eth_type`: string.  Type of packet encapulated in the received ethernet packet.
-* `file`: string, defaults to "tainted_net_query.csv". The name of the file to which outgoing network traffic taint information will be written.
+* `file`: string, defaults to "tainted\_net\_query.csv". The name of the file to which outgoing network traffic taint information will be written.
 
 At least one of `label_incoming_network` or `query_outgoing_network` must be true.
 
@@ -52,7 +52,7 @@ Note that the `taint2` plugin is not explicitly listed here because it is automa
         -panda tainted_net:label_incoming_network=true \
         -panda tainted_instr
 
-To taint the string `quick` and then see if it is sent out over the network, writing the outgoing taint information to quick_tnss.csv, do:
+To taint the string `quick` and then see if it is sent out over the network, writing the outgoing taint information to quick\_tnss.csv, do:
 
     $PANDA_PATH/i386-softmmu/qemu-system-i386 -net nic -net user \
         -replay foo \
