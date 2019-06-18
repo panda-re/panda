@@ -71,10 +71,13 @@ void uninit_plugin(void *);
 #define KDDBG64_LOADED_MOD_HEAD_OFF 0x048
 // KDDEBUGGER_DATA64.PsLoadedModuleList
 #define KDDBG64_ACTIVE_PROCESS_HEAD_OFF 0x50
+// _CLIENT_ID.UniqueThread
+#define CLIENT_ID_UNIQUE_THREAD 0x4
 
 // "Constants" specific to the guest operating system.
 // These are initialized in the init_plugin function.
 static uint32_t kthread_kproc_off;  // _KTHREAD.Process
+static uint32_t kthread_cid_off;    // _ETHREAD._KTHREAD.Cid
 static uint32_t eproc_pid_off;      // _EPROCESS.UniqueProcessId
 static uint32_t eproc_ppid_off;     // _EPROCESS.InheritedFromUniqueProcessId
 static uint32_t eproc_name_off;     // _EPROCESS.ImageFileName
@@ -362,32 +365,37 @@ void on_get_processes(CPUState *cpu, GArray **out) {
 }
 
 void on_get_current_thread(CPUState *cpu, OsiThread **out) {
+    // Get current process.
     OsiProc *p = NULL;
-    CPUArchState *env = (CPUArchState *)first_cpu->env_ptr;
-
     on_get_current_process(cpu, &p);
-    if (p == NULL) {
+    if (NULL == p) {
         goto error;
     }
-    if (*out == NULL) {
-        *out = (OsiThread *)g_malloc(sizeof(OsiThread));
-    }
 
-    // Get the process id.
-    OsiThread *t = *out;
-    t->pid = p->pid;
+    OsiThread tmp;
+    tmp.pid = p->pid;
     free_osiproc(p);
 
-    // Get current thread ID from thread information block.
-    target_ulong ptib;
-    panda_virtual_memory_read(first_cpu, env->segs[R_FS].base + 0x18,
-                              (uint8_t *)&ptib, sizeof(ptib));
-    panda_virtual_memory_read(first_cpu, ptib + 0x24, (uint8_t *)&t->tid,
-                              sizeof(t->tid));
-    return;
+    PTR ethread;
+    if (-1 == panda_virtual_memory_read(cpu, get_kpcr(cpu) + KPCR_CURTHREAD_OFF,
+                                        (uint8_t *)&ethread, sizeof(ethread))) {
+        goto error;
+    }
 
+    // Cid contains thread ID
+    if (-1 == panda_virtual_memory_read(
+                  cpu, ethread + kthread_cid_off + CLIENT_ID_UNIQUE_THREAD,
+                  (uint8_t *)&tmp.tid, sizeof(tmp.tid))) {
+        goto error;
+    }
+
+    if (NULL == *out) {
+        *out = (OsiThread *)g_malloc(sizeof(**out));
+    }
+
+    **out = tmp;
 error:
-    *out = NULL;
+    return;
 }
 
 /**
@@ -724,6 +732,7 @@ bool init_plugin(void *self) {
 
     if(0 == strcmp(panda_os_variant, "7")) {
         kthread_kproc_off=0x150;
+        kthread_cid_off = 0x22c;
         eproc_pid_off=0x0b4;
         eproc_ppid_off=0x140;
         eproc_name_off=0x16c;
@@ -742,7 +751,8 @@ bool init_plugin(void *self) {
         get_handle_object = get_win7_handle_object;
         get_kddebugger_data = get_win7_kdbg;
     } else if (0 == strcmp(panda_os_variant, "2000")) {
-        kthread_kproc_off = 0x22c; // Win 2K's KTHREAD doesn't have KProc?
+        kthread_kproc_off = 0x22c;
+        kthread_cid_off = 0x1e0;
         eproc_pid_off=0x09c;
         eproc_ppid_off=0x1c8;
         eproc_name_off=0x1fc;
@@ -762,6 +772,7 @@ bool init_plugin(void *self) {
         get_kddebugger_data = get_win2000_kddebugger_data;
     } else if (0 == strcmp(panda_os_variant, "xpsp3")) {
         kthread_kproc_off = 0x044;
+        kthread_cid_off = 0x1ec;
         eproc_pid_off = 0x084;
         eproc_ppid_off = 0x14c;
         eproc_name_off = 0x174;
