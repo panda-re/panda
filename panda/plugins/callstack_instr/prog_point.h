@@ -26,6 +26,7 @@ struct prog_point {
     target_ulong pc;
     target_ulong sidFirst;
     target_ulong sidSecond;
+    target_ulong isKernelMode;
     stack_type stackKind;
 #ifdef __cplusplus
     bool operator <(const prog_point &p) const {
@@ -39,13 +40,19 @@ struct prog_point {
                ((this->pc == p.pc) && (this->caller == p.caller) && \
                        (this->sidFirst == p.sidFirst) && \
                        (this->sidSecond == p.sidSecond) && \
+                       (this->isKernelMode < p.isKernelMode)) || \
+               ((this->pc == p.pc) && (this->caller == p.caller) && \
+                       (this->sidFirst == p.sidFirst) && \
+                       (this->sidSecond == p.sidSecond) && \
+                       (this->isKernelMode == p.isKernelMode) && \
                        (this->stackKind < p.stackKind));
     }
     bool operator ==(const prog_point &p) const {
         bool sids_match = true;
         if ((this->sidFirst != p.sidFirst) ||
-                (this->sidSecond != p.sidSecond) ||
-                (this->stackKind != p.stackKind)) {
+            (this->sidSecond != p.sidSecond) ||
+            (this->isKernelMode != p.isKernelMode) ||
+            (this->stackKind != p.stackKind)) {
             sids_match = false;
         }
         return ((this->pc == p.pc) && (this->caller == p.caller) && sids_match);
@@ -63,7 +70,8 @@ struct hash_prog_point{
         size_t h3 = std::hash<target_ulong>()(p.sidFirst);
         size_t h4 = std::hash<target_ulong>()(p.sidSecond);
         size_t h5 = std::hash<target_ulong>()(p.stackKind);
-        return h1 ^ h2 ^ h3 ^ h4 ^ h5;
+        size_t h6 = std::hash<target_ulong>()(p.isKernelMode);
+        return h1 ^ h2 ^ h3 ^ h4 ^ h5 ^ h6;
     }
 };
 
@@ -80,8 +88,10 @@ static inline char *get_stackid_string(prog_point p) {
         sid_string = g_strdup_printf("(asid=0x" TARGET_FMT_lx ", sp=0x" TARGET_FMT_lx ")",
                 p.sidFirst, p.sidSecond);
     } else if (STACK_THREADED == p.stackKind) {
-        sid_string = g_strdup_printf("(processID=0x" TARGET_FMT_lx ", threadID=0x" TARGET_FMT_lx ")",
-                p.sidFirst, p.sidSecond);
+        sid_string = g_strdup_printf(
+            "(processID=0x" TARGET_FMT_lx ", threadID=0x" TARGET_FMT_lx
+            ", isKernelMode=%s)",
+            p.sidFirst, p.sidSecond, p.isKernelMode > 0 ? "true" : "false");
     } else {
         // STACK_ASID
         sid_string = g_strdup_printf("(asid=0x" TARGET_FMT_lx ")", p.sidFirst);
