@@ -105,6 +105,7 @@ void write_report(FILE *report, std::map<prog_point,text_counter> &tracker) {
         fwrite(&it->first.pc, target_ulong_size, 1, report);
         fwrite(&it->first.sidFirst, target_ulong_size, 1, report);
         fwrite(&it->first.sidSecond, target_ulong_size, 1, report);
+        fwrite(&it->first.isKernelMode, sizeof(bool), 1, report);
 
         unsigned int hist[256] = {};
         for(int i = 0; i < 256; i++) {
