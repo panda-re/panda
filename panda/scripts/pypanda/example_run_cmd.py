@@ -1,28 +1,17 @@
 #!/usr/bin/env python3
-import threading
+
 from pypanda import *
-from time import sleep
 from sys import argv
-from enum import Enum
 import subprocess
 import os
 import shlex
 
 from qcows import get_qcow, get_qcow_info
 
-from colorama import Fore, Style
-from os.path import abspath, join, realpath
-
-
-## Example library to copy files into a guest and record a program executing
-# Basic functionality works but I think I'll merge this into pypanda itself (instead of an example) soon
-
 # No arguments, i386. Otherwise argument should be guest arch
 qfile = argv[1] if len(argv) > 1 else None
 q = get_qcow_info(qfile)
 qf = get_qcow(qfile)
-
-# Initialize panda with a serial device connected
 panda = Panda(qcow=qf, os=q.os, expect_prompt=q.prompt)
 
 def make_iso(directory, iso_path):
@@ -38,19 +27,26 @@ def make_iso(directory, iso_path):
         else:
             raise NotImplementedError("Unsupported operating system!")
 
-def run_guest_cmd(guest_command, copy_directory, recording_path_,
-                    expect_prompt, recording_name="recording", isoname=None):
+async def run_cmd():
+    #await panda.revert("root")
 
-    recording_path = realpath(recording_path_)
-    if not isoname: isoname = copy_directory + '.iso'
+    # XXX Expose configuration
+    guest_command = "/mnt/bin/jq . /mnt/inputs/fixed.json"
+    copy_directory = "/tmp/jqB" # Host directory with file
+    iso_name="test.iso"
+    recording_name="recording"
+    # End configuration
+
+    # Make iso
+    if not iso_name: iso_name = copy_directory + '.iso'
 
     # If there's a directory, build an ISO and put it in the cddrive
     assert(os.listdir(copy_directory)), "TODO: support non-ISO guest commands" # TODO
-    progress("Creating ISO {}...".format(isoname))
-    make_iso(copy_directory, isoname)
+    progress("Creating ISO {}...".format(iso_name))
+    make_iso(copy_directory, iso_name)
 
     # 1) we insert the CD drive
-    panda.queue_monitor_cmd("change ide1-cd0 \"{}\"".format(isoname))
+    await panda.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
 
     # 2) run setup script
     # setup_sh: 
@@ -67,27 +63,24 @@ def run_guest_cmd(guest_command, copy_directory, recording_path_,
     setup_sh = "mkdir -p {mount_dir}; while ! mount /dev/cdrom {mount_dir}; do sleep 0.3; " \
                 " umount /dev/cdrom; done; {mount_dir}/setup.sh &> /dev/null || true " \
                     .format(mount_dir = (shlex.quote(copy_directory)))
-    panda.queue_serial_cmd(setup_sh)
-
-    # TODO: we really want to type command, start recording, then press enter on command
+    await panda.run_serial_cmd(setup_sh)
 
     # 3) start recording
-    panda.queue_monitor_cmd("begin_record {}".format(recording_name))
+    await panda.run_monitor_cmd("begin_record {}".format(recording_name))
 
     # 4) run commmand
-    panda.queue_serial_cmd(guest_command)
+    await panda.run_serial_cmd(guest_command)
 
     # 5) End recording
-    panda.queue_monitor_cmd("end_record")
+    await panda.run_monitor_cmd("end_record")
+
+    print("Finished recording")
+
 
 @panda.callback.after_machine_init
 def machinit(env):
-    panda.revert("root", finished_cb=call_rgc)
-
-def call_rgc():
-    print("Requesting run guest_cmds (async)")
-    run_guest_cmd("/mnt/bin/jq . /mnt/inputs/fixed.json", "/tmp/jqB", "/tmp", q.prompt, "test.iso")
-    print("Requests all pending...")
+    panda.revert("root")
+    panda.queue_async(run_cmd)
 
 @panda.callback.init
 def on_init(handle): # After panda is initialized, setup a single callback

@@ -1,19 +1,25 @@
 import sys
 
-if sys.version_info[0] != 3:
-	print("Please run with Python 3!")
+if sys.version_info[0] < 3 or sys.version_info[1] < 7:
+	print("Please run with Python 3.7+!")
 	sys.exit(0)
+
+import asyncio
+import socket
 
 from os.path import join as pjoin
 from os.path import realpath, exists, abspath
 from os import dup, getenv
 from enum import Enum
 from colorama import Fore, Style
-from panda_datatypes import *
 from random import randint
 from inspect import signature
+from tempfile import NamedTemporaryFile
 
-from userthread import UserThread
+from panda_datatypes import *
+from panda_expect import Expect
+from asyncthread import AsyncThread
+
 import pdb
 
 debug = True
@@ -43,24 +49,13 @@ main_loop_wait_fnargs = []
 main_loop_wait_cbargs = []
 
 # A list of callbacks to call at the next main loop, driven by user_thread
-async_callbacks = {}
-user_thread = None
+#async_callbacks = {}
+async_threads = []
 
-@pcb.main_loop_wait
-def main_loop_wait_cb():
 	# At the start of the main cpu loop: run async_callbacks and main_loop_wait_fns
 	#progress("main_loop_wait_stuff START")
-
-	# First run async_callbacks as necessary in response to userthread commands
-	# finishing. Note these are run in the main thread (not the userthread)
-	global user_thread, async_callbacks
-	(cb_id, result) = user_thread.get_completed()
-	if cb_id and cb_id in async_callbacks:
-		call_with_opt_arg(async_callbacks[cb_id], result)
-		del async_callbacks[cb_id]
-
-	#progress("main_loop_wait_stuff MID")
-
+@pcb.main_loop_wait
+def main_loop_wait_cb():
 	# Then run any and all requested commands
 	global main_loop_wait_fnargs
 	global main_loop_wait_cbargs
@@ -83,14 +78,14 @@ def main_loop_wait_cb():
 	main_loop_wait_fnargs = []
 	main_loop_wait_cbargs = []
 
+
 @pcb.pre_shutdown
 def pre_shutdown_cb():
-	global user_thread
-	if user_thread:
-		print("QEmu has requested to shut down. Gracefully stopping user thread within 5 seconds...")
-		user_thread.stop()
-		print("User thread stopped")
-
+	print("QEmu has requested to shut down. Gracefully stopping async threads...")
+	global async_threads
+	for t in async_threads:
+		t.stop()
+	print("All user threads stopped")
 
 class Panda:
 
@@ -145,10 +140,15 @@ class Panda:
 		# Serial setup - the "User" thread manages actions taken by a simulated user at a keyboard interacting
 		# with the guest through a terminal exposed via serial
 		# Always enabled for now?
-		global user_thread
-		assert(not user_thread), "Only one PANDA instance supported for now" # TODO?
-		user_thread = UserThread(self.libpanda, ffi, expect_prompt)
-		self.panda_args.extend(user_thread.get_panda_serial_arg())
+
+		self.serial_file = "/tmp/pypanda" #NamedTemporaryFile(prefix="pypanda_").name
+		self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+		self.expect_prompt = expect_prompt
+		self.panda_args.extend(['-serial', 'unix:{},server,nowait'.format(self.serial_file)])
+		self.athread = AsyncThread()
+		global async_threads
+		async_threads.append(self.athread)
+		self.console = None
 
 		if extra_args:
 			self.panda_args.extend(extra_args.split())
@@ -172,11 +172,29 @@ class Panda:
 	def __del__(self):
 		print("Pypanda cleanup") # TODO anything else to cleanup?
 
+	# XXX: Do not call from main thread
+	async def run_serial_cmd(self, cmd):
+		self.console.sendline(cmd.encode("utf8"))
+		result = self.console.expect(self.expect_prompt, last_cmd=cmd)
+		return result
+
+	# XXX: Do not call from main thread
+	async def run_monitor_cmd(self, cmd):
+		buf = ffi.new("char[]", bytes(cmd,"UTF-8"))
+		result = self.libpanda.panda_monitor_run(buf)
+		if result != ffi.NULL:
+			return ffi.string(result)
+		return None
 
 
 	def init(self):
 		self.init_run = True
 		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
+
+		# Connect to serial socket and setup console if necessary
+		if not self.console:
+			self.serial_socket.connect(self.serial_file)
+			self.console = Expect(self.serial_socket, quiet=True)
 
 		# Register main_loop_wait_callback
 		self.register_callback(
@@ -268,6 +286,9 @@ class Panda:
 			progress ("Running")
 		if not self.init_run:
 			self.init()
+		print("pypanda init done")
+
+		print("Start tasks...")
 		self.libpanda.panda_run()
 
 	def stop(self):
@@ -619,20 +640,7 @@ class Panda:
 	def ppp_reg_cb(self):
 		pass
 
-	def queue_monitor_cmd(self, cmd, finished_cb=None):
-		# Request a command be run in guest via monitor
-		# When finished, finished_cb (type callback) may be called with result as first argument
-		ut_id = user_thread.queue_monitor_cmd(cmd)
-		if finished_cb:
-			global async_callbacks
-			async_callbacks[ut_id] = finished_cb
-
-	def queue_serial_cmd(self, cmd, finished_cb=None):
-		# Request a command be run in guest via serial.
-		# When finished, finished_cb (type callback) may be called with result as first argument
-		ut_id = user_thread.queue_serial_cmd(cmd)
-		if finished_cb:
-			global async_callbacks
-			async_callbacks[ut_id] = finished_cb
+	def queue_async(self, f):
+		self.athread.queue(f)
 
 # vim: noexpandtab:tabstop=4:
