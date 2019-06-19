@@ -101,7 +101,8 @@ std::map<target_ulong,std::set<target_ulong>> stacks_seen;
 
 // For STACK_ASID, the first entry of the pair is the ASID, and the second is 0
 // For STACK_HEURISTIC, the first entry is the ASID and the second is the SP
-// For STACK_THREADED, the first entry is the process ID and the second is the thread ID
+// For STACK_THREADED, the first entry is the process ID, the second is the
+// thread ID, and the third is a flag to indicate kernel mode.
 typedef std::tuple<target_ulong, target_ulong, bool> stackid;
 
 // STACK_HEURISTIC also needs to cache the SP and ASID
@@ -124,13 +125,17 @@ void verbose_log(const char *msg, TranslationBlock *tb, stackid curStackid,
     if (verbose) {
         printf("%s:  ", msg);
         if (STACK_HEURISTIC== stack_segregation) {
+            // Kernel flag omitted, not required when using stack heuristic.
             printf("asid=0x" TARGET_FMT_lx ", sp=0x" TARGET_FMT_lx,
                    std::get<0>(curStackid), std::get<1>(curStackid));
         } else if (STACK_THREADED == stack_segregation) {
-            printf("processID=0x" TARGET_FMT_lx ", threadID=0x" TARGET_FMT_lx,
-                   std::get<0>(curStackid), std::get<1>(curStackid));
+            printf("processID=0x" TARGET_FMT_lx ", threadID=0x" TARGET_FMT_lx
+                   ", inKernel=%s",
+                   std::get<0>(curStackid), std::get<1>(curStackid),
+                   std::get<2>(curStackid) ? "true" : "false");
         } else {
             // STACK_ASID
+            // Kernel flag omitted, not required when using asid stack type.
             printf("asid=0x" TARGET_FMT_lx, std::get<0>(curStackid));
         }
         printf(", block pc=0x" TARGET_FMT_lx, tb->pc);

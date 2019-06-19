@@ -26,7 +26,7 @@ struct prog_point {
     target_ulong pc;
     target_ulong sidFirst;
     target_ulong sidSecond;
-    target_ulong isKernelMode;
+    bool isKernelMode;
     stack_type stackKind;
 #ifdef __cplusplus
     bool operator <(const prog_point &p) const {
@@ -85,6 +85,7 @@ static inline char *get_stackid_string(prog_point p) {
     // can be called after callstack_instr has been unloaded
     char *sid_string;
     if (STACK_HEURISTIC == p.stackKind) {
+        // Kernel flag omitted, not required when using stack heuristic.
         sid_string = g_strdup_printf("(asid=0x" TARGET_FMT_lx ", sp=0x" TARGET_FMT_lx ")",
                 p.sidFirst, p.sidSecond);
     } else if (STACK_THREADED == p.stackKind) {
@@ -94,6 +95,7 @@ static inline char *get_stackid_string(prog_point p) {
             p.sidFirst, p.sidSecond, p.isKernelMode > 0 ? "true" : "false");
     } else {
         // STACK_ASID
+        // Kernel flag omitted, not required when using asid stack type.
         sid_string = g_strdup_printf("(asid=0x" TARGET_FMT_lx ")", p.sidFirst);
     }
 

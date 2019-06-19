@@ -125,6 +125,9 @@ bool init_plugin(void *self) {
         } else {
             taps >> std::hex >> p.sidSecond;
         }
+        if (STACK_THREADED == stack_kind) {
+            taps >> std::hex >> p.isKernelMode;
+        }
 
         p.stackKind = static_cast<stack_type>(stack_kind);
 
