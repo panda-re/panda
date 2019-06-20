@@ -71,6 +71,9 @@ import ast
 import readline
 import sys
 
+if sys.version_info[0] == 2:
+    input = raw_input
+
 class QMPCompleter(list):
     def complete(self, text, state):
         for cmd in self:
@@ -277,7 +280,7 @@ class QMPShell(qmp.QEMUMonitorProtocol):
         @return True if execution was ok, return False if disconnected.
         """
         try:
-            cmdline = raw_input(prompt)
+            cmdline = input(prompt)
         except EOFError:
             print
             return False
