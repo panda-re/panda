@@ -174,10 +174,9 @@ static stackid get_heuristic_stackid(CPUArchState* env) {
     // complaining about get_stackid having too many return statements without
     // causing it to complain about if statements being nested too deep
     target_ulong asid;
-    int in_kernel = in_kernelspace(env);
 
     // Track all kernel-mode stacks together
-    if (in_kernel) {
+    if (in_kernelspace(env)) {
         asid = 0;
     } else {
         asid = panda_current_asid(ENV_GET_CPU(env));
@@ -194,13 +193,13 @@ static stackid get_heuristic_stackid(CPUArchState* env) {
 
     // We can short-circuit the search in most cases
     if (std::abs(sp - cached_sp) < MAX_STACK_DIFF) {
-        cursi = std::make_tuple(asid, cached_sp, in_kernel);
+        cursi = std::make_tuple(asid, cached_sp, 0);
     } else {
         auto &stackset = stacks_seen[asid];
         if (stackset.empty()) {
             stackset.insert(sp);
             cached_sp = sp;
-            cursi = std::make_tuple(asid, sp, in_kernel);
+            cursi = std::make_tuple(asid, sp, 0);
         }
         else {
             // Find the closest stack pointer we've seen
@@ -211,12 +210,12 @@ static stackid get_heuristic_stackid(CPUArchState* env) {
             target_ulong stack = (std::abs(stack1 - sp) < std::abs(stack2 - sp)) ? stack1 : stack2;
             int diff = std::abs(stack-sp);
             if (diff < MAX_STACK_DIFF) {
-                cursi = std::make_tuple(asid, stack, in_kernel);
+                cursi = std::make_tuple(asid, stack, 0);
             }
             else {
                 stackset.insert(sp);
                 cached_sp = sp;
-                cursi = std::make_tuple(asid, sp, in_kernel);
+                cursi = std::make_tuple(asid, sp, 0);
             }
         }
     }
@@ -241,7 +240,7 @@ static stackid get_stackid(CPUArchState* env) {
     } else {
         // STACK_ASID
         target_ulong asid = panda_current_asid(ENV_GET_CPU(env));
-        return std::make_tuple(asid, 0, in_kernel);
+        return std::make_tuple(asid, 0, 0);
     }
     // end of function get_stackid
 }
