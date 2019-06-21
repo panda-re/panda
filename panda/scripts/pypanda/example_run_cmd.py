@@ -11,6 +11,7 @@ panda = Panda(generic=generic_type)
 def run_cmd():
     # First revert to root snapshot, then type a command via serial
     panda.revert_sync("root")
+    print(panda.run_serial_cmd("uname -a"))
 
     print("Finding cat in cat's memory map:")
     maps = panda.run_serial_cmd("cat /proc/self/maps")
