@@ -27,26 +27,27 @@ def make_iso(directory, iso_path):
         else:
             raise NotImplementedError("Unsupported operating system!")
 
-async def run_cmd():
-    #await panda.revert("root")
-
+@alwaysasync
+def run_cmd():
     # XXX Expose configuration
     guest_command = "/mnt/bin/jq . /mnt/inputs/fixed.json"
     copy_directory = "/tmp/jqB" # Host directory with file
     iso_name="test.iso"
     recording_name="recording"
-    # End configuration
 
-    # Make iso
-    if not iso_name: iso_name = copy_directory + '.iso'
+    panda.revert_imprecise("root")
 
-    # If there's a directory, build an ISO and put it in the cddrive
-    assert(os.listdir(copy_directory)), "TODO: support non-ISO guest commands" # TODO
-    progress("Creating ISO {}...".format(iso_name))
-    make_iso(copy_directory, iso_name)
+    if copy_directory:
+        # Make iso
+        if not iso_name: iso_name = copy_directory + '.iso'
 
-    # 1) we insert the CD drive
-    await panda.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
+        # If there's a directory, build an ISO and put it in the cddrive
+        assert(os.listdir(copy_directory)), "TODO: support non-ISO guest commands" # TODO
+        progress("Creating ISO {}...".format(iso_name))
+        make_iso(copy_directory, iso_name)
+
+        # 1) we insert the CD drive
+        panda.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
 
     # 2) run setup script
     # setup_sh: 
@@ -56,42 +57,44 @@ async def run_cmd():
     #   then run that setup.sh script first (good for scripts that need to
     #   prep guest environment before script runs)
     
-    # TODO XXX: guest filesystem is read only so this could hang forever if it can't mount
-    copy_directory="/mnt/" # for now just mount to an existing directory
-    # XXX: fix this copy directory hack
+        # TODO XXX: guest filesystem is read only so this could hang forever if it can't mount
+        copy_directory="/mnt/" # for now just mount to an existing directory
+        # XXX: fix this copy directory hack
 
-    setup_sh = "mkdir -p {mount_dir}; while ! mount /dev/cdrom {mount_dir}; do sleep 0.3; " \
-                " umount /dev/cdrom; done; {mount_dir}/setup.sh &> /dev/null || true " \
-                    .format(mount_dir = (shlex.quote(copy_directory)))
-    await panda.run_serial_cmd(setup_sh)
+        setup_sh = "mkdir -p {mount_dir}; while ! mount /dev/cdrom {mount_dir}; do sleep 0.3; " \
+                    " umount /dev/cdrom; done; {mount_dir}/setup.sh &> /dev/null || true " \
+                        .format(mount_dir = (shlex.quote(copy_directory)))
+        panda.run_serial_cmd(setup_sh)
+
+    # TODO: type command before running
 
     # 3) start recording
-    await panda.run_monitor_cmd("begin_record {}".format(recording_name))
+    panda.run_monitor_cmd("begin_record {}".format(recording_name))
 
     # 4) run commmand
-    await panda.run_serial_cmd(guest_command)
+    panda.run_serial_cmd(guest_command)
 
     # 5) End recording
-    await panda.run_monitor_cmd("end_record")
+    panda.run_monitor_cmd("end_record")
 
     print("Finished recording")
 
 
-@panda.callback.after_machine_init
-def machinit(env):
-    panda.revert("root")
-    panda.queue_async(run_cmd)
+@alwaysasync
+def quit():
+    print("Finished with run_cmd, let's quit")
+    panda.run_monitor_cmd("quit")
+
 
 @panda.callback.init
 def on_init(handle): # After panda is initialized, setup a single callback
-    panda.register_callback(handle, panda.callback.after_machine_init, machinit)
     #panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
     return True
 
 # Set up the panda plugin
 panda.load_python_plugin(on_init, "run_cmd")
 
-# Initialize machine
-panda.init()
+panda.queue_async(run_cmd)
+panda.queue_async(quit)
 
 panda.run()

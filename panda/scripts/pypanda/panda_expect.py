@@ -3,6 +3,7 @@
 import os
 import select
 import sys
+import string
 
 from datetime import datetime
 from errno import EAGAIN, EWOULDBLOCK
@@ -10,7 +11,7 @@ from errno import EAGAIN, EWOULDBLOCK
 class TimeoutExpired(Exception): pass
 
 class Expect(object):
-    def __init__(self, filelike, logfile=None, quiet=False):
+    def __init__(self, filelike, expectation=None, logfile=None, quiet=False, consume_first=False):
         if type(filelike) == int:
             self.fd = filelike
         else:
@@ -25,6 +26,12 @@ class Expect(object):
         self.last_msg = None
         self.bytessofar = bytearray()
         self.running = True
+        self.expectation = expectation
+
+        # If cosuned_first is false, we'll consume a message before anything else. Requires self.expectation to be set
+        self.consumed_first = True
+        if consume_first:
+            self.consumed_first = False
 
     def __del__(self):
         self.logfile.close()
@@ -32,7 +39,9 @@ class Expect(object):
     def abort(self):
         self.running = False
 
-    def expect(self, expectation, last_cmd=b'', timeout=30):
+    def expect(self, expectation=None, last_cmd=b'', timeout=30):
+        if not expectation:
+            expectation = self.expectation
         # Wait until we get expectation back, up to timeout. Return data between last_command and expectation
         sofar = bytearray()
         start_time = datetime.now()
@@ -57,8 +66,12 @@ class Expect(object):
                 if not self.quiet: sys.stdout.write(char.decode("utf-8","ignore"))
 
                 sofar.extend(char)
+
                 if sofar.endswith(expectation.encode('utf8')):
-                    #print("Raw message '{}'".format(sofar))
+                    if b"\x1b" in sofar: # Socket is echoing back when we type, try to trim it
+                        sofar = sofar.split(b"\x1b")[-1][2:]
+
+                    #print("\nRaw message '{}'".format(sofar))
 
                     if b"\r\n" in sofar: # Serial will echo our command back, try to strip it out
                         resp = sofar.split(b"\r\n")
@@ -72,6 +85,7 @@ class Expect(object):
                     sofar = sofar.strip()
                     self.logfile.flush()
                     if not self.quiet: sys.stdout.flush()
+
                     return sofar.decode('utf8')
 
         if not self.running: # Aborted
@@ -83,6 +97,10 @@ class Expect(object):
         raise TimeoutExpired()
 
     def send(self, msg):
+        if not self.consumed_first: # Before we send anything, consume header
+            pre = self.expect("")
+            self.consumed_first = True
+
         self.last_msg = msg
         os.write(self.fd, msg)
         self.logfile.write(msg)

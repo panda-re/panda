@@ -1,11 +1,11 @@
 import sys
 
-if sys.version_info[0] < 3 or sys.version_info[1] < 7:
-	print("Please run with Python 3.7+!")
+if sys.version_info[0] < 3:
+	print("Please run with Python 3!")
 	sys.exit(0)
 
-import asyncio
 import socket
+import threading
 
 from os.path import join as pjoin
 from os.path import realpath, exists, abspath
@@ -23,6 +23,7 @@ from asyncthread import AsyncThread
 import pdb
 
 debug = True
+pandas = []
 
 def progress(msg):
 	print(Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
@@ -40,6 +41,14 @@ def call_with_opt_arg(f, a):
 	else:
 		f()
 
+# Decorator to ensure a function isn't called in the main thread
+def alwaysasync(func):
+    def wrapper(*args, **kwargs):
+        assert (threading.current_thread() is not threading.main_thread()), "Async function run in main thread"
+        return func(*args, **kwargs)
+    return wrapper
+
+
 # main_loop_wait_cb is called at the start of the main cpu loop in qemu.
 # This is a fairly safe place to call into qemu internals but watch out for deadlocks caused
 # by your request blocking on the guest's execution
@@ -48,9 +57,6 @@ def call_with_opt_arg(f, a):
 main_loop_wait_fnargs = []
 main_loop_wait_cbargs = []
 
-# A list of callbacks to call at the next main loop, driven by user_thread
-#async_callbacks = {}
-async_threads = []
 
 	# At the start of the main cpu loop: run async_callbacks and main_loop_wait_fns
 	#progress("main_loop_wait_stuff START")
@@ -81,11 +87,8 @@ def main_loop_wait_cb():
 
 @pcb.pre_shutdown
 def pre_shutdown_cb():
-	print("QEmu has requested to shut down. Gracefully stopping async threads...")
-	global async_threads
-	for t in async_threads:
-		t.stop()
-	print("All user threads stopped")
+	# XXX: This doesn't need to do anything for now since athreads are daemons
+	print("QEmu has requested to shut down. Gracefully stopping...")
 
 class Panda:
 
@@ -137,18 +140,28 @@ class Panda:
 		# note: weird that we need panda as 1st arg to lib fn to init?
 		self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath, "-os", self.os_string, self.qcow]
 
-		# Serial setup - the "User" thread manages actions taken by a simulated user at a keyboard interacting
-		# with the guest through a terminal exposed via serial
-		# Always enabled for now?
-
-		self.serial_file = "/tmp/pypanda" #NamedTemporaryFile(prefix="pypanda_").name
+		# The "athread" thread manages actions that need to occur outside qemu's CPU loop
+		# e.g., interacting with monitor/serial and waiting for results
+		
+		# Configure serial - Always enabled for now
+		self.serial_prompt = expect_prompt
+		self.serial_console = None
+		self.serial_file = NamedTemporaryFile(prefix="pypanda_s").name
 		self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-		self.expect_prompt = expect_prompt
 		self.panda_args.extend(['-serial', 'unix:{},server,nowait'.format(self.serial_file)])
-		self.athread = AsyncThread()
-		global async_threads
-		async_threads.append(self.athread)
-		self.console = None
+
+		# Configure monitor - Always enabled for now
+		self.monitor_prompt = "(qemu)"
+		self.monitor_console = None
+		self.monitor_file = NamedTemporaryFile(prefix="pypanda_m").name
+		self.monitor_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+		self.panda_args.extend(['-monitor', 'unix:{},server,nowait'.format(self.monitor_file)])
+
+
+		self.running = threading.Event()
+		self.athread = AsyncThread(self.running)
+		global pandas
+		pandas.append(self)
 
 		if extra_args:
 			self.panda_args.extend(extra_args.split())
@@ -172,29 +185,21 @@ class Panda:
 	def __del__(self):
 		print("Pypanda cleanup") # TODO anything else to cleanup?
 
-	# XXX: Do not call from main thread
-	async def run_serial_cmd(self, cmd):
-		self.console.sendline(cmd.encode("utf8"))
-		result = self.console.expect(self.expect_prompt, last_cmd=cmd)
-		return result
-
-	# XXX: Do not call from main thread
-	async def run_monitor_cmd(self, cmd):
-		buf = ffi.new("char[]", bytes(cmd,"UTF-8"))
-		result = self.libpanda.panda_monitor_run(buf)
-		if result != ffi.NULL:
-			return ffi.string(result)
-		return None
-
-
 	def init(self):
 		self.init_run = True
 		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
 
-		# Connect to serial socket and setup console if necessary
-		if not self.console:
+		# Connect to serial socket and setup serial_console if necessary
+		if not self.serial_console:
 			self.serial_socket.connect(self.serial_file)
-			self.console = Expect(self.serial_socket, quiet=True)
+			self.serial_console = Expect(self.serial_socket, expectation=self.serial_prompt, quiet=True,
+										consume_first=False)
+
+		# Connect to monitor socket and setup monitor_console if necessary
+		if not self.monitor_console:
+			self.monitor_socket.connect(self.monitor_file)
+			self.monitor_console = Expect(self.monitor_socket, expectation=self.monitor_prompt, quiet=True,
+										consume_first=True)
 
 		# Register main_loop_wait_callback
 		self.register_callback(
@@ -239,6 +244,7 @@ class Panda:
 	def stop(self):
 #		 self.exit_emul_loop()
 #		print ("executing panda_stop (vm_stop)\n")
+		self.running.clear()
 		self.libpanda.panda_stop()
 
 	def cont(self):
@@ -286,16 +292,18 @@ class Panda:
 			progress ("Running")
 		if not self.init_run:
 			self.init()
-		print("pypanda init done")
 
-		print("Start tasks...")
+		assert not self.running.is_set()
+		self.running.set()
+
 		self.libpanda.panda_run()
 
 	def stop(self):
 		if debug:
 		    progress ("Stopping guest")
 		if self.init_run:
-		    self.libpanda.panda_stop()
+			self.running.clear()
+			self.libpanda.panda_stop()
 		else:
 		    raise RuntimeError("Guest not running- can't be stopped")
 
@@ -575,6 +583,7 @@ class Panda:
 		self.queue_main_loop_wait_fn(self.libpanda.panda_taint_label_reg, [reg_num, label])
 		return self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
 
+	"""
 	def send_monitor_async(self, cmd, finished_cb=None, finished_cb_args=[]):
 		if debug:
 			progress ("Sending monitor command async: %s" % cmd),
@@ -597,6 +606,7 @@ class Panda:
 				finished_cb(r)
 		elif debug and r:
 			print("(Debug) Monitor command result: {}".format(r))
+	"""
 
 	def load_plugin_library(self, name):
 		libname = "libpanda_%s" % name
@@ -642,5 +652,24 @@ class Panda:
 
 	def queue_async(self, f):
 		self.athread.queue(f)
+
+	# XXX: Do not call any of the following from the main thread- they depend on the CPU loop running
+	@alwaysasync
+	def revert_imprecise(self, snapshot_name):
+		self.run_monitor_cmd("loadvm {}".format(snapshot_name))
+
+	@alwaysasync
+	def run_serial_cmd(self, cmd):
+		self.serial_console.sendline(cmd.encode("utf8"))
+		result = self.serial_console.expect(last_cmd=cmd)
+		return result
+
+	@alwaysasync
+	def run_monitor_cmd(self, cmd):
+		self.monitor_console.sendline(cmd.encode("utf8"))
+		result = self.monitor_console.expect(self.monitor_prompt, last_cmd=cmd)
+		return result
+
+
 
 # vim: noexpandtab:tabstop=4:
