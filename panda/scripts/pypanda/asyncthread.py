@@ -35,7 +35,8 @@ class AsyncThread:
 
         while self.running: # Note setting this to false will take some time
             func = self.task_queue.get() # Implicit (blocking) wait
-            # Don't interact with guest if it isn't running
+            # Don't interact with guest if it isn't running 
+            # XXX it may be possible to still run monitor commands if the guest has started but is currently paused. But not serial
             self.panda_running.wait()
 
             try:

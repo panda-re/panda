@@ -256,16 +256,10 @@ class Panda:
 			# but before guest has a chance to execute anything
 			self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [], callback=finished_cb)
 		
-	# stop cpu right now
-	def stop(self):
-#		 self.exit_emul_loop()
-#		print ("executing panda_stop (vm_stop)\n")
-		self.running.clear()
-		self.libpanda.panda_stop()
-
-	def cont(self):
+	def cont(self): # Call after self.stop()
 #		print ("executing panda_start (vm_start)\n");
 		self.libpanda.panda_cont()
+		self.running.set()
 
 	def snap(self, snapshot_name):
 		if debug:
