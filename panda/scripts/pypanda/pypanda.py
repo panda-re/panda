@@ -106,8 +106,10 @@ def main_loop_wait_cb():
 
 @pcb.pre_shutdown
 def pre_shutdown_cb():
-	# XXX: This doesn't need to do anything for now since athreads are daemons
 	print("QEmu has requested to shut down. Gracefully stopping...")
+	global pandas
+	for p in pandas:
+		p.shutdown()
 
 class Panda:
 
@@ -220,8 +222,8 @@ class Panda:
 		self.init_run = False
 		self.pcb_list = {}
 
-	def __del__(self):
-		print("Pypanda cleanup") # TODO anything else to cleanup?
+	def shutdown(self): # Cleanup panda object. XXX can't then re-initialize new python
+		del self.libpanda
 
 	def init(self):
 		self.init_run = True
