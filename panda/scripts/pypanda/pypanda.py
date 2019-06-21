@@ -6,10 +6,12 @@ if sys.version_info[0] < 3:
 
 import socket
 import threading
+import subprocess # For make_iso
+import shlex # for run_guest
 
 from os.path import join as pjoin
 from os.path import realpath, exists, abspath
-from os import dup, getenv
+from os import dup, getenv, devnull
 from enum import Enum
 from colorama import Fore, Style
 from random import randint
@@ -47,6 +49,20 @@ def alwaysasync(func):
         assert (threading.current_thread() is not threading.main_thread()), "Async function run in main thread"
         return func(*args, **kwargs)
     return wrapper
+
+
+def make_iso(directory, iso_path):
+    with open(devnull, "w") as DEVNULL:
+        if sys.platform.startswith('linux'):
+            subprocess.check_call([
+                'genisoimage', '-RJ', '-max-iso9660-filenames', '-o', iso_path, directory
+            ], stderr=subprocess.STDOUT if debug else DEVNULL)
+        elif sys.platform == 'darwin':
+            subprocess.check_call([
+                'hdiutil', 'makehybrid', '-hfs', '-joliet', '-iso', '-o', iso_path, directory
+            ], stderr=subprocess.STDOUT if debug else DEVNULL)
+        else:
+            raise NotImplementedError("Unsupported operating system!")
 
 
 # main_loop_wait_cb is called at the start of the main cpu loop in qemu.
@@ -669,6 +685,55 @@ class Panda:
 		self.monitor_console.sendline(cmd.encode("utf8"))
 		result = self.monitor_console.expect(self.monitor_prompt, last_cmd=cmd)
 		return result
+
+	@alwaysasync
+	def run_cmd(self, guest_command, copy_directory=None, iso_name=None, recording_name="recording"):
+		#self.revert("root")
+		self.revert_imprecise("root")
+
+		if copy_directory: # If there's a directory, build an ISO and put it in the cddrive
+			# Make iso
+			if not iso_name: iso_name = copy_directory + '.iso'
+
+			progress("Creating ISO {}...".format(iso_name))
+			make_iso(copy_directory, iso_name)
+
+			# 1) we insert the CD drive
+			self.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
+
+			# 2) run setup script
+			# setup_sh: 
+			#   Make sure cdrom didn't automount
+			#   Make sure guest path mirrors host path
+			#   if there is a setup.sh script in the directory,
+			#   then run that setup.sh script first (good for scripts that need to
+			#   prep guest environment before script runs)
+		
+			# TODO XXX: guest filesystem is read only so this could hang forever if it can't mount
+			copy_directory="/mnt/" # for now just mount to an existing directory
+			# XXX: fix this copy directory hack
+
+			setup_sh = "mkdir -p {mount_dir}; while ! mount /dev/cdrom {mount_dir}; do sleep 0.3; " \
+						" umount /dev/cdrom; done; {mount_dir}/setup.sh &> /dev/null || true " \
+							.format(mount_dir = (shlex.quote(copy_directory)))
+			self.run_serial_cmd(setup_sh)
+
+		# TODO: type command before starting recording
+
+		# 3) start recording
+		self.run_monitor_cmd("begin_record {}".format(recording_name))
+
+		# 4) run commmand (TODO: just press enter)
+		result = self.run_serial_cmd(guest_command)
+
+		progress("Result of `{}`:".format(guest_command))
+		print("\n\t".join(result.split("\n"))+"\n")
+
+		# 5) End recording
+		self.run_monitor_cmd("end_record")
+
+		print("Finished recording")
+
 
 
 
