@@ -71,9 +71,13 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
             for (int j = nret-1; j > 0; j--) {
                 gzprintf(f, TARGET_FMT_lx " ", callers[j]);
             }
-            gzprintf(f, TARGET_FMT_lx " " TARGET_FMT_lx " %d " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx " %ld %02x\n",
-                    p.caller, p.pc, p.stackKind, p.sidFirst, p.sidSecond,
-                    addr+i, mem_counter, buf_uc[i]);
+            gzprintf(f,
+                     TARGET_FMT_lx " " TARGET_FMT_lx " %d " TARGET_FMT_lx
+                                   " " TARGET_FMT_lx " %s " TARGET_FMT_lx
+                                   " %ld %02x\n",
+                     p.caller, p.pc, p.stackKind, p.sidFirst, p.sidSecond,
+                     p.isKernelMode ? "kernel" : "user", addr + i, mem_counter,
+                     buf_uc[i]);
         }
     }
     mem_counter++;
@@ -124,6 +128,9 @@ bool init_plugin(void *self) {
             p.sidSecond = 0;
         } else {
             taps >> std::hex >> p.sidSecond;
+        }
+        if (STACK_THREADED == stack_kind) {
+            taps >> std::hex >> p.isKernelMode;
         }
 
         p.stackKind = static_cast<stack_type>(stack_kind);

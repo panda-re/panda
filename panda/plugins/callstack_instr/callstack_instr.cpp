@@ -101,8 +101,9 @@ std::map<target_ulong,std::set<target_ulong>> stacks_seen;
 
 // For STACK_ASID, the first entry of the pair is the ASID, and the second is 0
 // For STACK_HEURISTIC, the first entry is the ASID and the second is the SP
-// For STACK_THREADED, the first entry is the process ID and the second is the thread ID
-typedef std::pair<target_ulong,target_ulong> stackid;
+// For STACK_THREADED, the first entry is the process ID, the second is the
+// thread ID, and the third is a flag to indicate kernel mode.
+typedef std::tuple<target_ulong, target_ulong, bool> stackid;
 
 // STACK_HEURISTIC also needs to cache the SP and ASID
 target_ulong cached_sp = 0;
@@ -124,14 +125,18 @@ void verbose_log(const char *msg, TranslationBlock *tb, stackid curStackid,
     if (verbose) {
         printf("%s:  ", msg);
         if (STACK_HEURISTIC== stack_segregation) {
+            // Kernel flag omitted, not required when using stack heuristic.
             printf("asid=0x" TARGET_FMT_lx ", sp=0x" TARGET_FMT_lx,
-                curStackid.first, curStackid.second);
+                   std::get<0>(curStackid), std::get<1>(curStackid));
         } else if (STACK_THREADED == stack_segregation) {
-            printf("processID=0x" TARGET_FMT_lx ", threadID=0x" TARGET_FMT_lx,
-                    curStackid.first, curStackid.second);
+            printf("processID=0x" TARGET_FMT_lx ", threadID=0x" TARGET_FMT_lx
+                   ", inKernel=%s",
+                   std::get<0>(curStackid), std::get<1>(curStackid),
+                   std::get<2>(curStackid) ? "true" : "false");
         } else {
             // STACK_ASID
-            printf("asid=0x" TARGET_FMT_lx, curStackid.first);
+            // Kernel flag omitted, not required when using asid stack type.
+            printf("asid=0x" TARGET_FMT_lx, std::get<0>(curStackid));
         }
         printf(", block pc=0x" TARGET_FMT_lx, tb->pc);
         if (logReturn) {
@@ -188,13 +193,13 @@ static stackid get_heuristic_stackid(CPUArchState* env) {
 
     // We can short-circuit the search in most cases
     if (std::abs(sp - cached_sp) < MAX_STACK_DIFF) {
-        cursi = std::make_pair(asid, cached_sp);
+        cursi = std::make_tuple(asid, cached_sp, 0);
     } else {
         auto &stackset = stacks_seen[asid];
         if (stackset.empty()) {
             stackset.insert(sp);
             cached_sp = sp;
-            cursi = std::make_pair(asid,sp);
+            cursi = std::make_tuple(asid, sp, 0);
         }
         else {
             // Find the closest stack pointer we've seen
@@ -205,12 +210,12 @@ static stackid get_heuristic_stackid(CPUArchState* env) {
             target_ulong stack = (std::abs(stack1 - sp) < std::abs(stack2 - sp)) ? stack1 : stack2;
             int diff = std::abs(stack-sp);
             if (diff < MAX_STACK_DIFF) {
-                cursi = std::make_pair(asid,stack);
+                cursi = std::make_tuple(asid, stack, 0);
             }
             else {
                 stackset.insert(sp);
                 cached_sp = sp;
-                cursi = std::make_pair(asid,sp);
+                cursi = std::make_tuple(asid, sp, 0);
             }
         }
     }
@@ -218,23 +223,24 @@ static stackid get_heuristic_stackid(CPUArchState* env) {
 }
 
 static stackid get_stackid(CPUArchState* env) {
+    int in_kernel = in_kernelspace(env);
     if (STACK_HEURISTIC == stack_segregation) {
         return get_heuristic_stackid(env);
     } else if (STACK_THREADED == stack_segregation) {
         OsiThread *thr = get_current_thread(first_cpu);
         stackid cursi;
         if (NULL != thr) {
-            cursi = std::make_pair(thr->pid, thr->tid);
+            cursi = std::make_tuple(thr->pid, thr->tid, in_kernel);
         } else {
             // assuming 0 is never a valid process ID and thread ID
-            cursi = std::make_pair(0, 0);
+            cursi = std::make_tuple(0, 0, in_kernel);
         }
         free_osithread(thr);
         return cursi;
     } else {
         // STACK_ASID
         target_ulong asid = panda_current_asid(ENV_GET_CPU(env));
-        return std::make_pair(asid, 0);
+        return std::make_tuple(asid, 0, 0);
     }
     // end of function get_stackid
 }
@@ -468,9 +474,11 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
 
     // Lump all kernel-mode CR3s together
     if(!in_kernelspace(env)) {
-        p->sidFirst = curStackid.first;
-        p->sidSecond = curStackid.second;}
+        p->sidFirst = std::get<0>(curStackid);
+        p->sidSecond = std::get<1>(curStackid);
+    }
 
+    p->isKernelMode = std::get<2>(curStackid);
     p->stackKind = stack_segregation;
 
     // Try to get the caller
