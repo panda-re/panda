@@ -10,7 +10,7 @@ import subprocess # For make_iso
 import shlex # for run_guest
 
 from os.path import join as pjoin
-from os.path import realpath, exists, abspath
+from os.path import realpath, exists, abspath, isfile
 from os import dup, getenv, devnull
 from enum import Enum
 from colorama import Fore, Style
@@ -21,6 +21,8 @@ from tempfile import NamedTemporaryFile
 from panda_datatypes import *
 from panda_expect import Expect
 from asyncthread import AsyncThread
+
+import qcows
 
 import pdb
 
@@ -48,6 +50,7 @@ def blocking(func):
     def wrapper(*args, **kwargs):
         assert (threading.current_thread() is not threading.main_thread()), "Blocking function run in main thread"
         return func(*args, **kwargs)
+    wrapper.__blocking__ = True
     return wrapper
 
 
@@ -114,27 +117,44 @@ class Panda:
 	"""
 	def __init__(self, arch="i386", mem="128M",
 			expect_prompt = None, os_version="debian:3.2.0-4-686-pae",
-			qcow="default", extra_args = "", os="linux"):
+			qcow="default", extra_args = "", os="linux", generic=None):
 		self.arch = arch
 		self.mem = mem
 		self.os = os_version
 		self.static_var = 0
 		self.qcow = qcow
-		if qcow is None:
+
+		if extra_args:
+			extra_args = extra_args.split()
+		else:
+			extra_args = []
+
+		# If specified use a generic (x86_64, i386, arm, ppc) qcow from moyix and ignore
+		# other args. See details in qcows.py
+		if generic:
+			q = qcows.get_qcow_info(generic)
+			self.arch     = q.arch
+			self.os       = q.os
+			self.qcow	  = qcows.get_qcow(generic)
+			expect_prompt = q.prompt
+			if q.extra_args:
+				extra_args.extend(q.extra_args.split(" "))
+
+		if self.qcow is None:
 			# this means we wont be using a qcow -- replay only presumably
 			pass
 		else:
-			if qcow is "default":
+			if self.qcow is "default":
 				# this means we'll use arch / mem / os to find a qcow
-				self.qcow = pjoin(home, ".panda", "%s-%s-%s.qcow" % (os, arch, mem))
+				self.qcow = pjoin(home, ".panda", "%s-%s-%s.qcow" % (self.os, self.arch, mem))
 			if not (exists(self.qcow)):
 				print("Missing qcow -- %s" % self.qcow)
 				print("Please go create that qcow and give it to moyix!")
 
 		self.callback = pcb
-		self.bindir = pjoin(panda_build, "%s-softmmu" % arch)
-		self.panda = pjoin(self.bindir, "qemu-system-%s" % arch)
-		self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % arch))
+		self.bindir = pjoin(panda_build, "%s-softmmu" % self.arch)
+		self.panda = pjoin(self.bindir, "qemu-system-%s" % self.arch)
+		self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % self.arch))
 		
 		biospath = realpath(pjoin(self.panda,"..", "..",  "pc-bios"))
 		bits = None
@@ -146,8 +166,10 @@ class Panda:
 			bits = 32
 		elif self.arch == "aarch64":
 			bit = 64
+		elif self.arch == "ppc":
+			bits = 32
 		else:
-			print("For arch %s: I need logic to figure out num bits")
+			print("For arch %s: I need logic to figure out num bits" % self.arch)
 		assert (not (bits == None))
 
 		# set os string in line with osi plugin requirements e.g. "linux[-_]64[-_].+"
@@ -155,6 +177,7 @@ class Panda:
 
 		# note: weird that we need panda as 1st arg to lib fn to init?
 		self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath, "-os", self.os_string, self.qcow]
+		self.panda_args.extend(extra_args)
 
 		# The "athread" thread manages actions that need to occur outside qemu's CPU loop
 		# e.g., interacting with monitor/serial and waiting for results
@@ -180,8 +203,6 @@ class Panda:
 		global pandas
 		pandas.append(self)
 
-		if extra_args:
-			self.panda_args.extend(extra_args.split())
 		self.panda_args_ffi = [ffi.new("char[]", bytes(str(i),"utf-8")) for i in self.panda_args]
 		cargs = ffi.new("char **")
 
@@ -625,6 +646,7 @@ class Panda:
 	def load_plugin_library(self, name):
 		libname = "libpanda_%s" % name
 		if not hasattr(self, libname):
+			assert(isfile(pjoin(self.bindir, "panda/plugins/panda_%s.so"% name)))
 			library = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_%s.so"% name))
 			self.__setattr__(libname, library)
 
@@ -696,7 +718,7 @@ class Panda:
 		self.run_monitor_cmd("loadvm {}".format(snapshot_name))
 
 	@blocking
-	def run_cmd(self, guest_command, copy_directory=None, iso_name=None, recording_name="recording"):
+	def record_cmd(self, guest_command, copy_directory=None, iso_name=None, recording_name="recording"):
 		self.revert_sync("root") # Can't use self.revert because that would would run async and we'd keep going before the revert happens
 
 		if copy_directory: # If there's a directory, build an ISO and put it in the cddrive

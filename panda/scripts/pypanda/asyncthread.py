@@ -30,9 +30,10 @@ class AsyncThread:
         # XXX: This doesn't work until a command finishes
         self.running = False
 
-    def queue(self, cmd): # Queue an item to be run soon
-        progress(f"Queuing up command {cmd}")
-        self.task_queue.put_nowait(cmd)
+    def queue(self, func): # Queue a function to be run soon. Must be @blocking
+        if not (hasattr(func, "__blocking__")) or not func.__blocking__:
+            raise RuntimeError(f"Refusing to queue function '{func.__name__}' without @blocking decorator")
+        self.task_queue.put_nowait(func)
 
     def run(self): # Run functions from queue
         #name = threading.get_ident()

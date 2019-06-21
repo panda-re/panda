@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 from pypanda import *
-import qcows
 import os
 from enum import Enum
 from sys import argv
 
-# defaults to i386 unless arg1 is another arch string or qcow path
-panda = Panda(qcow=qcows.qcow_from_arg())
+# Single arg of arch, defaults to i386
+arch = "i386" if len(argv) <= 1 else argv[1]
+panda = Panda(generic=arch)
 
 class State(Enum):
     CB_NOT_REQUESTED = 0

@@ -8,16 +8,17 @@ the original osi_linux panda plugin.
 Runs with: python3 example_osi_linux_test.py i386 /path/to/recording
 '''
 from pypanda import *
-import qcows
 from sys import argv
 
-recording =  argv[2] #"/path/to/recording"
+#  arg of arch, defaults to i386
+arch = "i386" if len(argv) <= 2 else argv[1]
+panda = Panda(generic=arch)
 
-# Single arg of arch, defaults to i386
-arg1 = "i386" if len(argv) <= 1 else argv[1]
+recording = argv[-1]
 
-q = qcows.get_qcow(arg1)
-panda = Panda(qcow=q)
+assert(len(argv) >= 2), f"USAGE: {argv[0]}, [arch] recording_name"
+
+print(f"Running with arch {arch}, recording {recording}")
 
 
 def process_name_convert(name):

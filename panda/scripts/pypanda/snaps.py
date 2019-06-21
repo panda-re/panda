@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from pypanda import *
-import qcows
 import os
 from sys import argv
 
@@ -32,11 +31,8 @@ from sys import argv
 # that bloc.
 
 # Single arg of arch, defaults to i386
-arg1 = "i386" if len(argv) <= 1 else argv[1]
-
-q = qcows.get_qcow(arg1)
-
-panda = Panda(qcow=q, extra_args="-D ./qemu.log -d in_asm") 
+arch = "i386" if len(argv) <= 1 else argv[1]
+panda = Panda(generic=arch, extra_args="-D ./qemu.log -d in_asm") 
 
 state = 0 # before snapshot load
 

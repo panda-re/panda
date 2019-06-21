@@ -12,13 +12,10 @@ Run with: python3 example_watch_program.py
 from pypanda import *
 from time import sleep
 from sys import argv
-import qcows
 
 # Single arg of arch, defaults to i386
-arg1 = "i386" if len(argv) <= 1 else argv[1]
-
-q = qcows.get_qcow(arg1)
-panda = Panda(qcow=q)
+arch = "i386" if len(argv) <= 1 else argv[1]
+panda = Panda(generic=arch)
 
 name_of_program = "wget" # replace with your program name
 bbe_enabled = False

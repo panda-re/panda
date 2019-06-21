@@ -10,15 +10,11 @@ Run with: python3 example_virt_mem_read_callback.py
 from pypanda import *
 from time import sleep
 from string import printable
-import qcows
 import unicodedata
 
-
 # Single arg of arch, defaults to i386
-arg1 = "i386" if len(argv) <= 1 else argv[1]
-
-q = qcows.get_qcow(arg1)
-panda = Panda(qcow=q)
+arch = "i386" if len(argv) <= 1 else argv[1]
+panda = Panda(generic=arch)
 
 @panda.callback.init
 def init(handle):

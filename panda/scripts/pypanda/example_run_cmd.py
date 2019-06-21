@@ -3,32 +3,27 @@
 from pypanda import *
 from sys import argv
 
-from qcows import get_qcow, get_qcow_info
-
 # No arguments, i386. Otherwise argument should be guest arch
-qfile = argv[1] if len(argv) > 1 else None
-q = get_qcow_info(qfile)
-qf = get_qcow(qfile)
-panda = Panda(qcow=qf, os=q.os, expect_prompt=q.prompt)
+generic_type = argv[1] if len(argv) > 1 else "i386"
+panda = Panda(generic=generic_type)
 
+@blocking
+def run_cmd():
+    # First revert to root snapshot, then type a command via serial
+    panda.revert_sync("root")
 
-@alwaysasync
-def run_it():
-    guest_command = "/mnt/bin/jq . /mnt/inputs/fixed.json"
-    copy_directory = "/tmp/jqB" # Host directory with file
-    iso_name="test.iso"
-    recording_name="recording"
+    print("Finding cat in cat's memory map:")
+    maps = panda.run_serial_cmd("cat /proc/self/maps")
+    for line in maps.split("\n"):
+        if "cat" in line:
+            print(line)
 
-    panda.run_cmd(guest_command, copy_directory, iso_name, recording_name)
-
-    print("Finished recording")
-
-@alwaysasync
+@blocking
 def quit():
     print("Finished with run_it, let's quit")
     panda.run_monitor_cmd("quit")
 
-panda.queue_async(run_it)
+panda.queue_async(run_cmd)
 panda.queue_async(quit)
 
 panda.run()

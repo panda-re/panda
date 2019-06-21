@@ -7,17 +7,13 @@ import os
 import shlex
 import threading
 
-from qcows import get_qcow, get_qcow_info
-
 
 # Record some programs running in the guest
 # for some programs, register python callbacks
 
-# No arguments, i386. Otherwise argument should be guest arch
-qfile = argv[1] if len(argv) > 1 else None
-q = get_qcow_info(qfile)
-qf = get_qcow(qfile)
-panda = Panda(qcow=qf, os=q.os, expect_prompt=q.prompt)
+# Single arg of arch, defaults to i386
+arch = "i386" if len(argv) <= 1 else argv[1]
+panda = Panda(generic=arch)
 
 # Python plugin- collect a set of unique basic blocks seen
 seen_bbs = set()
@@ -30,32 +26,32 @@ def before_block_execute(env, tb):
 
 # Run JQ from host machine. No plugins
 @blocking
-def run_jq():
+def record_jq():
     progress("Recording run of `jq`")
     guest_command = "/mnt/bin/jq . /mnt/inputs/fixed.json"
     copy_directory = "/tmp/jqB" # Host directory with file
 
-    panda.run_cmd(guest_command, copy_directory, recording_name="jq")
+    panda.record_cmd(guest_command, copy_directory, recording_name="jq")
 
 # Run ls with c plugin loaded
 @blocking
-def run_ls():
+def record_ls():
     progress("Recording run of `ls` with c callback")
 
     # Load c plugin
     panda.load_plugin("coverage")
 
-    panda.run_cmd("ls /", recording_name="ls")
+    panda.record_cmd("ls /", recording_name="ls")
 
     panda.unload_plugin("coverage")
 
 # Run whoami with python plugin
 @blocking
-def run_whoami():
+def record_whoami():
     progress("Recording run of `whoami` with callback")
     panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)
 
-    panda.run_cmd("whoami", recording_name="whoami")
+    panda.record_cmd("whoami", recording_name="whoami")
 
     global seen_bbs
     print("Saw a total of {} BBs while running ls".format(len(seen_bbs)))
@@ -74,12 +70,12 @@ def on_init(_handle):
     handle = _handle
     return True
 
-panda.load_python_plugin(on_init, "run_cmd_multiple")
+panda.load_python_plugin(on_init, "record_cmd_multiple")
 
 # Queue up a sequence of commands to run outside the CPU loop
-#panda.queue_async(run_jq) # Has paths specific to my host - AF
-panda.queue_async(run_ls)
-panda.queue_async(run_whoami)
+#panda.queue_async(record_jq) # Has paths specific to my host - AF
+panda.queue_async(record_ls)
+panda.queue_async(record_whoami)
 
 panda.run()
 
