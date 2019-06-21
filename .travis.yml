@@ -31,6 +31,8 @@ addons:
       - liburcu-dev
       - libusb-1.0-0-dev
       - libvte-2.90-dev
+      - python3
+      - python3-pip
       - sparse
       - uuid-dev
 
