@@ -29,7 +29,7 @@ def before_block_execute(env, tb):
     return True
 
 # Run JQ from host machine. No plugins
-@alwaysasync
+@blocking
 def run_jq():
     progress("Recording run of `jq`")
     guest_command = "/mnt/bin/jq . /mnt/inputs/fixed.json"
@@ -38,7 +38,7 @@ def run_jq():
     panda.run_cmd(guest_command, copy_directory, recording_name="jq")
 
 # Run ls with c plugin loaded
-@alwaysasync
+@blocking
 def run_ls():
     progress("Recording run of `ls` with c callback")
 
@@ -50,7 +50,7 @@ def run_ls():
     panda.unload_plugin("coverage")
 
 # Run whoami with python plugin
-@alwaysasync
+@blocking
 def run_whoami():
     progress("Recording run of `whoami` with callback")
     panda.register_callback(handle, panda.callback.before_block_exec, before_block_execute)

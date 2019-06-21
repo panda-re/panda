@@ -7,6 +7,10 @@ import string
 
 from datetime import datetime
 from errno import EAGAIN, EWOULDBLOCK
+from colorama import Fore, Style
+
+def progress(msg):
+	print(Fore.BLUE + '[panda_expect.py] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
 
 class TimeoutExpired(Exception): pass
 
@@ -39,7 +43,7 @@ class Expect(object):
     def abort(self):
         self.running = False
 
-    def expect(self, expectation=None, last_cmd=b'', timeout=30):
+    def expect(self, expectation=None, timeout=30):
         if not expectation:
             expectation = self.expectation
         # Wait until we get expectation back, up to timeout. Return data between last_command and expectation
@@ -71,11 +75,11 @@ class Expect(object):
                     if b"\x1b" in sofar: # Socket is echoing back when we type, try to trim it
                         sofar = sofar.split(b"\x1b")[-1][2:]
 
-                    #print("\nRaw message '{}'".format(sofar))
+                    #progress("\nRaw message '{}'".format(sofar))
 
                     if b"\r\n" in sofar: # Serial will echo our command back, try to strip it out
                         resp = sofar.split(b"\r\n")
-                        if resp[0].decode('utf8').replace(" \r", "") == last_cmd:
+                        if self.last_msg and resp[0].decode('utf8').replace(" \r", "").strip() == self.last_msg.decode('utf8').strip():
                             resp[:] = resp[1:] # drop last cmd
 
                         if resp[-1].decode('utf8') == expectation:
@@ -106,7 +110,7 @@ class Expect(object):
         self.logfile.write(msg)
         self.logfile.flush()
 
-    def send_eol(self):
+    def send_eol(self): # Just send an EOL
         if self.last_msg:
             self.last_msg+=b"\n"
         os.write(self.fd, b"\n")

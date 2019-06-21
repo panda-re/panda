@@ -540,6 +540,7 @@ int main_loop_wait(int nonblocking)
     rr_begin_main_loop_wait();
     qemu_clock_run_all_timers();
     rr_end_main_loop_wait();
+    panda_callbacks_main_loop_wait();
 
     return ret;
 }

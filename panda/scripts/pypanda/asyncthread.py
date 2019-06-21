@@ -2,20 +2,25 @@ import threading
 import functools
 from queue import Queue
 from time import sleep
+from colorama import Fore, Style
 
 # Module to run a thread in parallel to QEMU's main cpu loop
 # Enables queuing up python functions from main thread and vice versa
+
+def progress(msg):
+	print(Fore.CYAN + '[asyncthread.py] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
+
 
 class AsyncThread:
     """
     Create a single worker thread which runs commands from a queue
     """
 
-    def __init__(self, panda_running):
+    def __init__(self, panda_started):
         # Attributes are configured by thread
         self.task_queue = Queue()
         self.running = True
-        self.panda_running = panda_running
+        self.panda_started = panda_started
 
         self.athread = threading.Thread(target=self.run)
         self.athread.daemon = True # Quit on main quit
@@ -25,9 +30,9 @@ class AsyncThread:
         # XXX: This doesn't work until a command finishes
         self.running = False
 
-    def queue(self, x): # Queue an item to be run soon
-        print("Queuing up command..")
-        self.task_queue.put_nowait(x)
+    def queue(self, cmd): # Queue an item to be run soon
+        progress(f"Queuing up command {cmd}")
+        self.task_queue.put_nowait(cmd)
 
     def run(self): # Run functions from queue
         #name = threading.get_ident()
@@ -36,8 +41,7 @@ class AsyncThread:
         while self.running: # Note setting this to false will take some time
             func = self.task_queue.get() # Implicit (blocking) wait
             # Don't interact with guest if it isn't running 
-            # XXX it may be possible to still run monitor commands if the guest has started but is currently paused. But not serial
-            self.panda_running.wait()
+            self.panda_started.wait()
 
             try:
                 #print(f"{name} calling {func}")

@@ -44,9 +44,9 @@ def call_with_opt_arg(f, a):
 		f()
 
 # Decorator to ensure a function isn't called in the main thread
-def alwaysasync(func):
+def blocking(func):
     def wrapper(*args, **kwargs):
-        assert (threading.current_thread() is not threading.main_thread()), "Async function run in main thread"
+        assert (threading.current_thread() is not threading.main_thread()), "Blocking function run in main thread"
         return func(*args, **kwargs)
     return wrapper
 
@@ -175,7 +175,8 @@ class Panda:
 
 
 		self.running = threading.Event()
-		self.athread = AsyncThread(self.running)
+		self.started = threading.Event()
+		self.athread = AsyncThread(self.started)
 		global pandas
 		pandas.append(self)
 
@@ -239,7 +240,7 @@ class Panda:
 	def exit_emul_loop(self):
 		self.libpanda.panda_exit_emul_loop()
 
-	def revert(self, snapshot_name, now=False, finished_cb=None):
+	def revert(self, snapshot_name, now=False, finished_cb=None): # In the next main loop, revert
 		# XXX: now=True might be unsafe. Causes weird 30s hangs sometimes
 		if debug:
 			progress ("Loading snapshot " + snapshot_name)
@@ -305,6 +306,9 @@ class Panda:
 
 		assert not self.running.is_set()
 		self.running.set()
+
+		assert not self.started.is_set()
+		self.started.set()
 
 		self.libpanda.panda_run()
 
@@ -664,26 +668,36 @@ class Panda:
 		self.athread.queue(f)
 
 	# XXX: Do not call any of the following from the main thread- they depend on the CPU loop running
-	@alwaysasync
-	def revert_imprecise(self, snapshot_name):
-		self.run_monitor_cmd("loadvm {}".format(snapshot_name))
-
-	@alwaysasync
+	@blocking
 	def run_serial_cmd(self, cmd):
+		self.running.wait() # Can only run serial when guest is running
 		self.serial_console.sendline(cmd.encode("utf8"))
-		result = self.serial_console.expect(last_cmd=cmd)
+		result = self.serial_console.expect()
 		return result
 
-	@alwaysasync
+	@blocking
+	def type_serial_cmd(self, cmd):
+		#Can send message into socket without guest running (no self.running.wait())
+		self.serial_console.send(cmd.encode("utf8")) # send, not sendline
+
+	def finish_serial_cmd(self):
+		result = self.serial_console.send_eol()
+		result = self.serial_console.expect()
+		return result
+
+	@blocking
 	def run_monitor_cmd(self, cmd):
 		self.monitor_console.sendline(cmd.encode("utf8"))
-		result = self.monitor_console.expect(self.monitor_prompt, last_cmd=cmd)
+		result = self.monitor_console.expect(self.monitor_prompt)
 		return result
 
-	@alwaysasync
+	@blocking
+	def revert_sync(self, snapshot_name):
+		self.run_monitor_cmd("loadvm {}".format(snapshot_name))
+
+	@blocking
 	def run_cmd(self, guest_command, copy_directory=None, iso_name=None, recording_name="recording"):
-		#self.revert("root")
-		self.revert_imprecise("root")
+		self.revert_sync("root") # Can't use self.revert because that would would run async and we'd keep going before the revert happens
 
 		if copy_directory: # If there's a directory, build an ISO and put it in the cddrive
 			# Make iso
@@ -703,8 +717,10 @@ class Panda:
 			#   then run that setup.sh script first (good for scripts that need to
 			#   prep guest environment before script runs)
 		
-			# TODO XXX: guest filesystem is read only so this could hang forever if it can't mount
+			# TODO XXX: guest filesystem is read only so this could hang forever if it can't mount. Instead change the command to run out of /mnt/.
+			guest_cmd = guest_cmd.replace(copy_directory, "/mnt/")
 			copy_directory="/mnt/" # for now just mount to an existing directory
+
 			# XXX: fix this copy directory hack
 
 			setup_sh = "mkdir -p {mount_dir}; while ! mount /dev/cdrom {mount_dir}; do sleep 0.3; " \
@@ -712,16 +728,18 @@ class Panda:
 							.format(mount_dir = (shlex.quote(copy_directory)))
 			self.run_serial_cmd(setup_sh)
 
-		# TODO: type command before starting recording
+		# 3) type commmand (note we type command, start recording, finish command)
+		self.type_serial_cmd(guest_command)
 
 		# 3) start recording
 		self.run_monitor_cmd("begin_record {}".format(recording_name))
 
-		# 4) run commmand (TODO: just press enter)
-		result = self.run_serial_cmd(guest_command)
+		# 4) finish command
+		result = self.finish_serial_cmd()
 
-		progress("Result of `{}`:".format(guest_command))
-		print("\n\t".join(result.split("\n"))+"\n")
+		if debug:
+			progress("Result of `{}`:".format(guest_command))
+			print("\t"+"\n\t".join(result.split("\n"))+"\n")
 
 		# 5) End recording
 		self.run_monitor_cmd("end_record")
