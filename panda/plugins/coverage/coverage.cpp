@@ -22,6 +22,7 @@ enum coverage_mode {
 
 struct RecordID {
     target_ulong pid_or_asid;
+    target_ulong tid;
     target_ulong pc;
 };
 
@@ -38,25 +39,76 @@ template <> struct hash<RecordID> {
         // https://en.cppreference.com/w/cpp/utility/hash
         result_type const h1 = std::hash<target_ulong>{}(s.pid_or_asid);
         result_type const h2 = std::hash<target_ulong>{}(s.pc);
-        return h1 ^ (h2 << 1);
+        result_type const h3 = std::hash<target_ulong>{}(s.tid);
+        return h1 ^ (h2 << 2) ^ (h3 << 1);
     }
 };
-} // namespace std
+}
+// namespace std
 
 // Also needed to use an unordered set (probably in case there is a hash
 // collision).
 bool operator==(const RecordID &lhs, const RecordID &rhs)
 {
-    bool result = (lhs.pid_or_asid == rhs.pid_or_asid) && (lhs.pc == rhs.pc);
+    bool result = (lhs.pid_or_asid == rhs.pid_or_asid) && (lhs.pc == rhs.pc) &&
+            (lhs.tid == rhs.tid);
     return result;
 }
 
 coverage_mode mode = MODE_ASID;
 
-int before_block_exec_process(CPUState *cpu, TranslationBlock *tb)
+void write_process_record(RecordID id, uint64_t size)
 {
-    // We keep track of pairs of PIDs and PCs that we've already seen
-    // since we only need to write out distinct pairs once.
+    // Get the process name
+    char *process_name = NULL;
+    bool in_kernel = panda_in_kernel(first_cpu);
+    if (!in_kernel) {
+        OsiProc *proc = get_current_process(first_cpu);
+        if (NULL != proc) {
+            process_name = g_strdup(proc->name);
+            free_osiproc(proc);
+        } else {
+            process_name = g_strdup("(unknown)");
+        }
+    } else {
+        process_name = g_strdup("(kernel)");
+    }
+
+    // Log coverage data
+    // process and thread ID are in decimal, as that is the radix
+    // used by most tools that produce human readable output
+    fprintf(coveragelog,
+            "%s," TARGET_FMT_lu "," TARGET_FMT_lu ",%lu,0x"
+            TARGET_FMT_lx ",%lu\n",
+            process_name,
+            id.pid_or_asid, id.tid, (uint64_t)in_kernel,
+            id.pc, size);
+    g_free(process_name);
+}
+
+int before_block_exec_process_full(CPUState *cpu, TranslationBlock *tb)
+{
+    RecordID id;
+    id.pc = tb->pc;
+    OsiThread *thread = get_current_thread(cpu);
+    if (NULL != thread) {
+        id.pid_or_asid = thread->pid;
+        id.tid = thread->tid;
+        free_osithread(thread);
+    } else {
+        id.pid_or_asid = 0;
+        id.tid = 0;
+    }
+
+    write_process_record(id, (uint64_t)tb->size);
+
+    return 0;
+}
+
+int before_block_exec_process_unique(CPUState *cpu, TranslationBlock *tb)
+{
+    // We keep track of PID/TID/PC tuples that we've already seen
+    // since we only need to write out distinct tuples once.
     static std::unordered_set<RecordID> seen;
 
     RecordID id;
@@ -65,10 +117,15 @@ int before_block_exec_process(CPUState *cpu, TranslationBlock *tb)
     // Get process id
     OsiThread *thread = get_current_thread(cpu);
 
-    // Create the tuple of process id and program counter
-    id.pid_or_asid = thread ? thread->pid : 0;
-    target_ulong tid = thread->tid;
-    free_osithread(thread);
+    // Create the tuple of process id, thead id, and program counter
+    if (NULL != thread) {
+        id.pid_or_asid = thread->pid;
+        id.tid = thread->tid;
+        free_osithread(thread);
+    } else {
+        id.pid_or_asid = 0;
+        id.tid = 0;
+    }
 
     // Have we seen this block before?
     if (seen.find(id) == seen.end()) {
@@ -76,37 +133,32 @@ int before_block_exec_process(CPUState *cpu, TranslationBlock *tb)
         // No!  Put it into the list.
         seen.insert(id);
 
-        // Get the process name
-        char *process_name = NULL;
-        bool in_kernel = panda_in_kernel(first_cpu);
-        if (!in_kernel) {
-            OsiProc *proc = get_current_process(first_cpu);
-            if (NULL != proc) {
-                process_name = g_strdup(proc->name);
-                free_osiproc(proc);
-            } else {
-                process_name = g_strdup("(unknown)");
-            }
-        } else {
-            process_name = g_strdup("(kernel)");
-        }
-
-        // Log coverage data
-        // process and thread ID are in decimal, as that is the radix
-        // used by most tools that produce human readable output
-        fprintf(coveragelog,
-                "%s," TARGET_FMT_lu "," TARGET_FMT_lu ",%lu,0x"
-                TARGET_FMT_lx ",%lu\n",
-                process_name,
-                id.pid_or_asid, tid, (uint64_t)in_kernel,
-                tb->pc, (uint64_t)tb->size);
-        g_free(process_name);
+        write_process_record(id, (uint64_t)tb->size);
     }
 
     return 0;
 }
 
-int before_block_exec_asid(CPUState *cpu, TranslationBlock *tb)
+void write_asid_record(RecordID id, uint64_t size)
+{
+    // Want ASID to be output in hex to match what asidstory produces
+    fprintf(coveragelog,
+            "0x" TARGET_FMT_lx ",%lu,0x" TARGET_FMT_lx ",%lu\n",
+            id.pid_or_asid,
+            (uint64_t)panda_in_kernel(first_cpu), id.pc, size);
+}
+
+int before_block_exec_asid_full(CPUState *cpu, TranslationBlock *tb)
+{
+    RecordID id;
+    id.pc = tb->pc;
+    id.pid_or_asid = panda_current_asid(first_cpu);
+    id.tid = 0;
+    write_asid_record(id, (uint64_t)tb->size);
+    return 0;
+}
+
+int before_block_exec_asid_unique(CPUState *cpu, TranslationBlock *tb)
 {
     // We keep track of pairs of ASIDs and PCs that we've already seen
     // since we only need to write out distinct pairs once.
@@ -116,14 +168,10 @@ int before_block_exec_asid(CPUState *cpu, TranslationBlock *tb)
     id.pc = tb->pc;
 
     id.pid_or_asid = panda_current_asid(first_cpu);
+    id.tid = 0;
     if (seen.find(id) == seen.end()) {
         seen.insert(id);
-        // want ASID to be output in hex to match what asidstory produces
-        fprintf(coveragelog,
-                "0x" TARGET_FMT_lx ",%lu,0x" TARGET_FMT_lx ",%lu\n",
-                id.pid_or_asid,
-                (uint64_t)panda_in_kernel(first_cpu), tb->pc,
-                (uint64_t)tb->size);
+        write_asid_record(id, (uint64_t)tb->size);
     }
 
     return 0;
@@ -141,6 +189,7 @@ bool init_plugin(void *self)
     panda_arg_list *args = panda_get_args("coverage");
     const char *filename =
         panda_parse_string(args, "filename", "coverage.csv");
+    printf("%soutput file name %s\n", PANDA_MSG, filename);
 
     const char *mode_arg;
     if (OS_UNKNOWN == panda_os_familyno) {
@@ -161,48 +210,65 @@ bool init_plugin(void *self)
 
     uint32_t buffer_size = panda_parse_uint32_opt(args, "buffer_size", BUFSIZ,
         "size of output buffer (default=BUFSIZ)");
-    // don't use LOG_INFO because I always want to see the informational
+    // Don't use LOG_INFO because I always want to see the informational
     // messages (which aren't on by default)
-    printf("%susing buffer_size of %d\n", PANDA_MSG, buffer_size);
+    printf("%sfile buffer_size %d\n", PANDA_MSG, buffer_size);
+
+    bool log_all_records = panda_parse_bool_opt(args, "full",
+            "log all records instead of just uniquely identified ones");
+    printf("%slog all records %s\n", PANDA_MSG,
+            PANDA_FLAG_STATUS(log_all_records));
 
     if (MODE_PROCESS == mode) {
         if (OS_UNKNOWN == panda_os_familyno) {
             LOG_WARNING("no OS specified, switching to asid mode");
             mode = MODE_ASID;
         } else {
-            printf("%susing mode process\n", PANDA_MSG);
+            printf("%smode process\n", PANDA_MSG);
             panda_require("osi");
             assert(init_osi_api());
         }
     } else {
-        printf("%susing mode asid\n", PANDA_MSG);
+        printf("%smode asid\n", PANDA_MSG);
     }
 
-    // Open the coverage CSV file, and prepare the callback
+    // Open the coverage CSV file, and set up the file buffering
     panda_cb pcb;
     coveragelog = fopen(filename, "w");
     if (BUFSIZ != buffer_size) {
         int buf_mode = _IOFBF;
-        // if buffer_size is 0, then turn off buffering
+        // If buffer_size is 0, then turn off buffering
         if (0 == buffer_size) {
             buf_mode = _IONBF;
         }
-        // let setvbuf take care of allocating and freeing buffer
+        // Let setvbuf take care of allocating and freeing buffer
         int ret_code = setvbuf(coveragelog, NULL, buf_mode, buffer_size);
         if (0 != ret_code) {
             LOG_ERROR("could not change buffer size");
             return false;
         }
     }
+
+    // Output headers, and select appropriate callback
+    // we're trying to avoid making decisions during data collection, especially
+    // when logging all records, to make things go faster
     if (MODE_PROCESS == mode) {
         fprintf(coveragelog, "process\n");
         fprintf(coveragelog, "process name,process id,thread id,in kernel,"
                 "block address,block size\n");
-        pcb.before_block_exec = before_block_exec_process;
+        if (log_all_records) {
+            pcb.before_block_exec = before_block_exec_process_full;
+        } else {
+            pcb.before_block_exec = before_block_exec_process_unique;
+        }
     } else {
         fprintf(coveragelog, "asid\n");
         fprintf(coveragelog, "asid,in kernel,block address,block size\n");
-        pcb.before_block_exec = before_block_exec_asid;
+        if (log_all_records) {
+            pcb.before_block_exec = before_block_exec_asid_full;
+        } else {
+            pcb.before_block_exec = before_block_exec_asid_unique;
+        }
     }
 
     // Register callback
