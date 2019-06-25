@@ -76,12 +76,12 @@ class ProcessSelectDialog(QDialog):
         self.setLayout(vbox)
 
     def selectedProcess(self):
-        selectionModel = self.process_table.selectionModel()
-        if not selectionModel.hasSelection():
+        selection_model = self.process_table.selectionModel()
+        if not selection_model.hasSelection():
             return None
-        if len(selectionModel.selectedRows()) > 1:
+        if len(selection_model.selectedRows()) > 1:
             raise Exception("Supposedly impossible condition reached!")
-        row = selectionModel.selectedRows()[0].row()
+        row = selection_model.selectedRows()[0].row()
         return int(self.process_table.item(row, 1).data(0))
 
     def isAddSequenceLabels(self):
@@ -101,7 +101,37 @@ class ProcessSelectDialog(QDialog):
             sel_id = psd.selectedProcess()
             return {'add_seqs':seqs, 'add_tids':tids, 'selected_id':sel_id}
         return None
+        
+def color_blocks(fn, pc, size):
+    fn_start = fn.startEA
+    fn_name = GetFunctionName(fn_start)
+    if ("COVERED_" not in fn_name):
+        MakeName(fn_start, "COVERED_" + fn_name)
+    SetColor(pc, CIC_FUNC, FUNC_COLOR)
+    # PANDA blocks may be shorter than IDA blocks
+    # so use the size to color just what PANDA executed
+    i = 0
+    while ((pc + i) < (pc + size)):
+        SetColor(pc + i, CIC_ITEM, INST_COLOR)
+        i = i + 1
 
+def add_comments(info_for_pcs, selections):
+    for pc, info in info_for_pcs.iteritems():
+        comment = Comment(pc)
+        if (not comment):
+            comment = ""
+        if (selections['add_tids'] and selections['add_seqs']):
+            label_portion = "(seq #, thread ID) = {}".format(sorted(list(info)))
+        elif (selections['add_tids']):
+            label_portion = "thread ID = {}".format(sorted(list(info)))
+        else:
+            label_portion = "seq # = {}".format(sorted(list(info)))
+        if (comment == ""):
+            comment = label_portion
+        else:
+            comment = comment + ", " + label_portion
+        MakeComm(pc, comment)
+        
 def main():
     filename, _ = QFileDialog.getOpenFileName(None, "Open file", ".", "CSV Files(*.csv)")
     if filename == "":
@@ -112,8 +142,9 @@ def main():
     reader = csv.reader(input_file)
     
     # what mode was used to produce this output?
-    fmtRow = next(reader, None)
-    mode = fmtRow[0]
+    fmt_row = next(reader, None)
+    mode = fmt_row[0]
+    # where to find the pertinent data depends upon the mode that produced it
     if ("process" == mode):
         id_index = 1
         # process ID and thread ID are in decimal
@@ -144,13 +175,12 @@ def main():
     next(reader, None)
     for row in reader:
         processes.add((prefix + row[0], int(row[id_index], id_radix)))
-        if ("process" == mode):
-            # the process names from PANDA may be truncated, so the longest
-            # one that is a substring (or equal to) the binary's name is
-            # probably the one we want
-            if ((len(row[0]) > match_len) and binary_name.startswith(row[0])):
-                match_len = len(row[0])
-                matched_process = prefix + row[0]
+        # the process names from PANDA may be truncated, so the longest one
+        # that is a substring (or equal to) the binary's name is probably the
+        # one we want
+        if (("process" == mode) and (len(row[0]) > match_len) and binary_name.startswith(row[0])):
+            match_len = len(row[0])
+            matched_process = prefix + row[0]
     input_file.close()
 
     selections = ProcessSelectDialog.selectProcess(
@@ -163,6 +193,8 @@ def main():
     snapshot = ida_loader.snapshot_t()
     snapshot.desc = "Before coverage.py @ %s" % (datetime.datetime.now())
     ida_kernwin.take_database_snapshot(snapshot)
+    
+    # the next bit may take a while, if the input file is large
     ida_kernwin.show_wait_box("HIDECANCEL\nProcessing file " + filename + "...")
     
     colored_fn = False
@@ -187,16 +219,7 @@ def main():
             continue
         colored_fn = True
         seq_num = seq_num + 1
-        fn_start = fn.startEA
-        fn_name = GetFunctionName(fn_start)
-        if "COVERED_" not in fn_name:
-            MakeName(fn_start, "COVERED_" + fn_name)
-        SetColor(pc, CIC_FUNC, FUNC_COLOR)
-        # PANDA blocks may be shorter than IDA blocks
-        i = 0
-        while ((pc + i) < (pc + size)):
-            SetColor(pc + i, CIC_ITEM, INST_COLOR)
-            i = i + 1
+        color_blocks(fn, pc, size)
         if (selections['add_tids'] or selections['add_seqs']):
             if (pc not in info_for_pcs):
                 info_for_pcs[pc] = set()
@@ -213,21 +236,7 @@ def main():
     if (not colored_fn):
         print("WARNING:  did not find any selected functions")
     else:
-        for pc, info in info_for_pcs.iteritems():
-            comment = Comment(pc)
-            if (not comment):
-                comment = ""
-            if (selections['add_tids'] and selections['add_seqs']):
-                label_portion = "(seq #, thread ID) = {}".format(sorted(list(info)))
-            elif (selections['add_tids']):
-                label_portion = "thread ID = {}".format(sorted(list(info)))
-            else:
-                label_portion = "seq # = {}".format(sorted(list(info)))
-            if (comment == ""):
-                comment = label_portion
-            else:
-                comment = comment + ", " + label_portion
-            MakeComm(pc, comment)
+        add_comments(info_for_pcs, selections)
     ida_kernwin.hide_wait_box()
             
 if __name__ == "__main__":

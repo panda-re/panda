@@ -1,5 +1,9 @@
 /* PANDABEGINCOMMENT
  * 
+ * Authors:
+ *  Mark A. Mankins
+ *  Laura L. Mann
+ *
  * This work is licensed under the terms of the GNU GPL, version 2. 
  * See the COPYING file in the top-level directory. 
  * 
@@ -21,7 +25,7 @@ enum coverage_mode {
 };
 
 struct RecordID {
-    target_ulong pid_or_asid;
+    target_ulong pidOrAsid;
     target_ulong tid;
     target_ulong pc;
 };
@@ -30,14 +34,15 @@ struct RecordID {
 // store RecordID in an unordered set.
 namespace std
 {
-template <> struct hash<RecordID> {
+template <> class hash<RecordID> {
+public:
     using argument_type = RecordID;
     using result_type = size_t;
     result_type operator()(argument_type const &s) const noexcept
     {
         // Combining hashes, see C++ reference:
         // https://en.cppreference.com/w/cpp/utility/hash
-        result_type const h1 = std::hash<target_ulong>{}(s.pid_or_asid);
+        result_type const h1 = std::hash<target_ulong>{}(s.pidOrAsid);
         result_type const h2 = std::hash<target_ulong>{}(s.pc);
         result_type const h3 = std::hash<target_ulong>{}(s.tid);
         return h1 ^ (h2 << 2) ^ (h3 << 1);
@@ -50,7 +55,7 @@ template <> struct hash<RecordID> {
 // collision).
 bool operator==(const RecordID &lhs, const RecordID &rhs)
 {
-    bool result = (lhs.pid_or_asid == rhs.pid_or_asid) && (lhs.pc == rhs.pc) &&
+    bool result = (lhs.pidOrAsid == rhs.pidOrAsid) && (lhs.pc == rhs.pc) &&
             (lhs.tid == rhs.tid);
     return result;
 }
@@ -81,7 +86,7 @@ void write_process_record(RecordID id, uint64_t size)
             "%s," TARGET_FMT_lu "," TARGET_FMT_lu ",%lu,0x"
             TARGET_FMT_lx ",%lu\n",
             process_name,
-            id.pid_or_asid, id.tid, (uint64_t)in_kernel,
+            id.pidOrAsid, id.tid, static_cast<uint64_t>(in_kernel),
             id.pc, size);
     g_free(process_name);
 }
@@ -92,15 +97,15 @@ int before_block_exec_process_full(CPUState *cpu, TranslationBlock *tb)
     id.pc = tb->pc;
     OsiThread *thread = get_current_thread(cpu);
     if (NULL != thread) {
-        id.pid_or_asid = thread->pid;
+        id.pidOrAsid = thread->pid;
         id.tid = thread->tid;
         free_osithread(thread);
     } else {
-        id.pid_or_asid = 0;
+        id.pidOrAsid = 0;
         id.tid = 0;
     }
 
-    write_process_record(id, (uint64_t)tb->size);
+    write_process_record(id, static_cast<uint64_t>(tb->size));
 
     return 0;
 }
@@ -119,11 +124,11 @@ int before_block_exec_process_unique(CPUState *cpu, TranslationBlock *tb)
 
     // Create the tuple of process id, thead id, and program counter
     if (NULL != thread) {
-        id.pid_or_asid = thread->pid;
+        id.pidOrAsid = thread->pid;
         id.tid = thread->tid;
         free_osithread(thread);
     } else {
-        id.pid_or_asid = 0;
+        id.pidOrAsid = 0;
         id.tid = 0;
     }
 
@@ -133,7 +138,7 @@ int before_block_exec_process_unique(CPUState *cpu, TranslationBlock *tb)
         // No!  Put it into the list.
         seen.insert(id);
 
-        write_process_record(id, (uint64_t)tb->size);
+        write_process_record(id, static_cast<uint64_t>(tb->size));
     }
 
     return 0;
@@ -144,17 +149,17 @@ void write_asid_record(RecordID id, uint64_t size)
     // Want ASID to be output in hex to match what asidstory produces
     fprintf(coveragelog,
             "0x" TARGET_FMT_lx ",%lu,0x" TARGET_FMT_lx ",%lu\n",
-            id.pid_or_asid,
-            (uint64_t)panda_in_kernel(first_cpu), id.pc, size);
+            id.pidOrAsid,
+            static_cast<uint64_t>(panda_in_kernel(first_cpu)), id.pc, size);
 }
 
 int before_block_exec_asid_full(CPUState *cpu, TranslationBlock *tb)
 {
     RecordID id;
     id.pc = tb->pc;
-    id.pid_or_asid = panda_current_asid(first_cpu);
+    id.pidOrAsid = panda_current_asid(first_cpu);
     id.tid = 0;
-    write_asid_record(id, (uint64_t)tb->size);
+    write_asid_record(id, static_cast<uint64_t>(tb->size));
     return 0;
 }
 
@@ -167,11 +172,11 @@ int before_block_exec_asid_unique(CPUState *cpu, TranslationBlock *tb)
     RecordID id;
     id.pc = tb->pc;
 
-    id.pid_or_asid = panda_current_asid(first_cpu);
+    id.pidOrAsid = panda_current_asid(first_cpu);
     id.tid = 0;
     if (seen.find(id) == seen.end()) {
         seen.insert(id);
-        write_asid_record(id, (uint64_t)tb->size);
+        write_asid_record(id, static_cast<uint64_t>(tb->size));
     }
 
     return 0;
