@@ -14,6 +14,7 @@ Arguments
 * `label_incoming_network`: boolean. Whether to apply taint labels to incoming network traffic.
 * `query_outgoing_network`: boolean. Whether to display taint on outgoing network traffic.
 * `semantic`: boolean. Whether to apply a different label to each tainted byte in the incoming packet.  An additional file will be generated for ida taint so semantic labels can be displayed in IDA Pro.
+* `pos`: boolean. Whether to apply a different label to each tainted byte in the incoming packet.  The packet number will be represented by the two high order bytes in the label.  The byte offset in the packet will be represented by the two low order bytes in the label.
 * `packets`: string. List of packet numbers or ranges to taint.  Values should be separated by colons.  Example: 1-3:5
 * `ip_proto`: string.  List of IPV4 protocol numbers or ranges to taint.
 * `bytes`: string.  List of byte offsets or ranges in each packet to taint.

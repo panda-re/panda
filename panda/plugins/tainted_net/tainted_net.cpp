@@ -58,6 +58,7 @@ size_t cur_max_labels = 10;
 bool label_incoming_network_traffic = false;
 bool query_outgoing_network_traffic = false;
 bool semantic_labels = false;
+bool positional_labels = false;
 const char *tx_filename = NULL;
 
 bool firstOpen = true;
@@ -69,7 +70,7 @@ FILE *semantic_labels_file = NULL;
 // packet numbers.
 uint32_t packet_count = 0;
 
-// Label counter.  Used when semantic labelling is enabled.
+// Label counter.  Used when semantic labeling is enabled.
 uint32_t label_count = 0;
 
 // Set of packet numbers that will be tainted.
@@ -106,8 +107,8 @@ void taint_network_data(int packet_size, uint64_t old_buf_addr)
     // Counts number of labels applied to this packet.
     int num_labels_applied = 0;
 
-    // Default label value is 100.  This will be overwritten if semantic labeling is enabled.
-    int label_value = 100;
+    // Default label value is 100.  This will be overwritten if semantic or positional labeling is enabled.
+    uint32_t label_value = 100;
 
     if (0 == taint2_enabled())
     {
@@ -117,7 +118,7 @@ void taint_network_data(int packet_size, uint64_t old_buf_addr)
     }
 
     // Loop through each byte in the packet
-    for (int byte_offset = 0; byte_offset < packet_size; byte_offset++)
+    for (uint32_t byte_offset = 0; byte_offset < packet_size; byte_offset++)
     {
         // If only specific bytes are to be tainted, check to see if this byte should be tainted
         if(bytes_to_taint.empty() || (bytes_to_taint.find(byte_offset)!=bytes_to_taint.end()))
@@ -131,6 +132,13 @@ void taint_network_data(int packet_size, uint64_t old_buf_addr)
                 // The IDA taint plugin will read this data so semantic labels can be displayed in IDA.
                 label_value=++label_count;
                 assert(fprintf(semantic_labels_file, "%u,%u-%u\n", label_value, packet_count, byte_offset) > 0);
+            }
+            else if (positional_labels)
+            {
+                // Compute taint label.
+                // Set the high order bits to be the packet number.
+                // Set the low order bits to be the byte offset.
+                label_value = (packet_count << 16) | (byte_offset & ((1<<16)-1));
             }
 
             // Apply taint label
@@ -178,6 +186,10 @@ static bool validate_ethertype(uint8_t *buf, int packet_size)
 
 static void on_replay_handle_incoming_packet(CPUState *env, uint8_t *buf, int packet_size, uint64_t old_buf_addr)
 {
+    assert(packet_size > 0);
+    assert(buf);
+    assert(old_buf_addr);
+
     // determine if this is an IPV4 packet
     bool is_ipv4 = (packet_size > (MAC_HEADER_SIZE + IPV4_HEADER_MIN_SIZE)) &&
         ((buf[IPV4_VERSION_OCTET] & IPV4_VERSION_MASK) == IPV4_VERSION_MASK);
@@ -277,13 +289,21 @@ int on_replay_handle_packet(CPUState *env, uint8_t *buf, int packet_size,
     // wireshark file that is produced by the network plugin.
     ++packet_count;
 
-    if ((PANDA_NET_RX == direction) && label_incoming_network_traffic)
+    if (PANDA_NET_RX == direction)
     {
-        on_replay_handle_incoming_packet(env, buf, packet_size, old_buf_addr);
+        if (label_incoming_network_traffic)
+        {
+            on_replay_handle_incoming_packet(env, buf, packet_size,
+                old_buf_addr);
+        }
     }
-    else if ((PANDA_NET_TX == direction) && query_outgoing_network_traffic)
+    else if (PANDA_NET_TX == direction)
     {
-        on_replay_handle_outgoing_packet(env, buf, packet_size, old_buf_addr);
+        if (query_outgoing_network_traffic)
+        {
+            on_replay_handle_outgoing_packet(env, buf, packet_size,
+                old_buf_addr);
+        }
     }
     else
     {
@@ -430,6 +450,11 @@ bool init_plugin(void *self)
 
     if (label_incoming_network_traffic)
     {
+        positional_labels = panda_parse_bool_opt(args, "pos",
+            "positional labels");
+        output_message(std::string("apply positional taint labels ") +
+          PANDA_FLAG_STATUS(positional_labels));
+
         semantic_labels = panda_parse_bool_opt(args, "semantic",
             "semantic labels");
         output_message(std::string("apply semantic taint labels ") +
@@ -480,6 +505,11 @@ bool init_plugin(void *self)
 
         if(semantic_labels)
         {
+            if(positional_labels)
+            {
+                output_message(PLUGIN_NM + " only one of positional labels or semantic labels can be enabled");
+                return false;
+            }
             panda_require("ida_taint2");
             assert(init_ida_taint2_api());
             const char *taint2_filename = ida_taint2_get_filename();
