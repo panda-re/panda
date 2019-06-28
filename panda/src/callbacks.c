@@ -925,9 +925,6 @@ void qmp_plugin_cmd(const char * cmd, Error **errp) {
     
 }
 
-void hmp_panda_plugin_cmd(Monitor *mon, const QDict *qdict);
-
-
 // HMP
 void hmp_panda_load_plugin(Monitor *mon, const QDict *qdict) {
     Error *err;
