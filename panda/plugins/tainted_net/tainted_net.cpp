@@ -17,6 +17,12 @@ PANDAENDCOMMENT */
 #include "panda/network.h"
 #include "taint2/taint2.h"
 
+// Number of bits in a taint label
+constexpr uint32_t LABEL_BITS = 32;
+
+// Unsigned, 32-bit, 1
+constexpr uint32_t ONE = 1;
+
 extern "C"
 {
 #include "qemu/cutils.h"
@@ -41,14 +47,22 @@ const std::string DEFAULT_ALL = std::string("all");
 
 // IPV4/Ethernet constants
 
-constexpr int MAC_HEADER_SIZE = 14;
-constexpr int ETHERTYPE_OCTET = 12;
-constexpr int IPV4_HEADER_MIN_SIZE = 19;
-constexpr int IPV4_VERSION_OCTET = (MAC_HEADER_SIZE+0);
-constexpr int IPV4_VERSION_MASK = (1 << 6);
-constexpr int IPV4_PROTOCOL_OCTET = (MAC_HEADER_SIZE+9);
-constexpr int IPV4_SOURCE_IP_OCTET = (MAC_HEADER_SIZE+12);
-constexpr int IPV4_DEST_IP_OCTET = (MAC_HEADER_SIZE+16);
+constexpr uint16_t MAC_HEADER_SIZE = 14;
+constexpr uint16_t ETHERTYPE_OCTET = 12;
+constexpr uint16_t IPV4_HEADER_MIN_SIZE = 19;
+constexpr uint16_t IPV4_VERSION_OCTET = (MAC_HEADER_SIZE+0);
+constexpr uint16_t IPV4_VERSION_MASK = (1 << 6);
+constexpr uint16_t IPV4_PROTOCOL_OCTET = (MAC_HEADER_SIZE+9);
+constexpr uint16_t IPV4_SOURCE_IP_OCTET = (MAC_HEADER_SIZE+12);
+constexpr uint16_t IPV4_DEST_IP_OCTET = (MAC_HEADER_SIZE+16);
+
+// Constants for implementing max packet size option
+constexpr uint16_t PACKET_SIZE_16 = ((1<<16)-1);
+constexpr uint16_t PACKET_SIZE_15 = ((1<<15)-1);
+constexpr uint16_t PACKET_SIZE_14 = ((1<<14)-1);
+constexpr uint16_t PACKET_SIZE_13 = ((1<<13)-1);
+constexpr uint16_t PACKET_SIZE_12 = ((1<<12)-1);
+constexpr uint16_t PACKET_SIZE_11 = ((1<<11)-1);
 
 // buffer for getting labels on transmitted packets
 uint32_t *taint_labels = NULL;
@@ -72,6 +86,10 @@ uint32_t packet_count = 0;
 
 // Label counter.  Used when semantic labeling is enabled.
 uint32_t label_count = 0;
+
+// Only used for positional tainting.  The number of bits to reserve in the
+// taint label for the TCP packet_size.
+uint32_t packet_size_bits = 0;
 
 // Set of packet numbers that will be tainted.
 std::set<uint32_t> packets_to_taint;
@@ -105,7 +123,7 @@ static void output_message(const std::string &message)
 void taint_network_data(int packet_size, uint64_t old_buf_addr)
 {
     // Counts number of labels applied to this packet.
-    int num_labels_applied = 0;
+    uint32_t num_labels_applied = 0;
 
     // Default label value is 100.  This will be overwritten if semantic or positional labeling is enabled.
     uint32_t label_value = 100;
@@ -138,7 +156,8 @@ void taint_network_data(int packet_size, uint64_t old_buf_addr)
                 // Compute taint label.
                 // Set the high order bits to be the packet number.
                 // Set the low order bits to be the byte offset.
-                label_value = (packet_count << 16) | (byte_offset & ((1<<16)-1));
+                label_value = (packet_count << packet_size_bits) |
+                    (byte_offset & ((ONE << packet_size_bits) - ONE));
             }
 
             // Apply taint label
@@ -307,8 +326,8 @@ int on_replay_handle_packet(CPUState *env, uint8_t *buf, int packet_size,
     }
     else
     {
-        fprintf(stderr, "Unrecognized network packet direction (%d)\n",
-            direction);
+        output_message("Unrecognized network packet direction (" +
+            std::to_string(direction) + ")");
     }
 
     return 1;
@@ -373,12 +392,13 @@ std::set<uint32_t> parse_int_ranges(panda_arg_list *args, const char *arg_name,
 
 // convert a command line argument value to a uint16_t
 uint16_t parse_uint16_t(panda_arg_list *args, const char *arg_name,
-        const char *help_text)
+        const char *default_value, const char *help_text)
 {
 
     uint16_t num = 0;
 
-    const char *arg_value = panda_parse_string_opt(args, arg_name, "", help_text);
+    const char *arg_value = panda_parse_string_opt(args, arg_name,
+        default_value, help_text);
 
     assert(arg_value);
 
@@ -455,6 +475,48 @@ bool init_plugin(void *self)
         output_message(std::string("apply positional taint labels ") +
           PANDA_FLAG_STATUS(positional_labels));
 
+        if(positional_labels) {
+            uint16_t max_packet_size = parse_uint16_t(args, "max_packet_size",
+                "65535", "Maximum size of TCP packets");
+            switch(max_packet_size) {
+                case PACKET_SIZE_16:
+                    packet_size_bits = 16;
+                    break;
+                case PACKET_SIZE_15:
+                    packet_size_bits = 15;
+                    break;
+                case PACKET_SIZE_14:
+                    packet_size_bits = 14;
+                    break;
+                case PACKET_SIZE_13:
+                    packet_size_bits = 13;
+                    break;
+                case PACKET_SIZE_12:
+                    packet_size_bits = 12;
+                    break;
+                case PACKET_SIZE_11:
+                    packet_size_bits = 11;
+                    break;
+                default:
+                    output_message("Invalid value for maximum_packet_size. "
+                        "Must be one of " + std::to_string(PACKET_SIZE_16) +
+                        ", " + std::to_string(PACKET_SIZE_15) +
+                        ", " + std::to_string(PACKET_SIZE_14) +
+                        ", " + std::to_string(PACKET_SIZE_13) +
+                        ", " + std::to_string(PACKET_SIZE_12) +
+                        ", or " + std::to_string(PACKET_SIZE_11) + ".");
+                    return false;
+            }
+
+            output_message("Maximum packet size to ensure "
+                "unique taint labels is " + std::to_string(
+                (1<<packet_size_bits)-1) + " bytes.");
+
+            output_message("Maximum number of packets to ensure "
+                "unique taint labels is " +
+                std::to_string((1<<(LABEL_BITS-packet_size_bits))-1) + ".");
+        }
+
         semantic_labels = panda_parse_bool_opt(args, "semantic",
             "semantic labels");
         output_message(std::string("apply semantic taint labels ") +
@@ -495,7 +557,7 @@ bool init_plugin(void *self)
             output_message("only tainting packets with IPV4 dest addr " + std::to_string(dest_ip));
         }
 
-        ethertype = parse_uint16_t(args, "eth_type",
+        ethertype = parse_uint16_t(args, "eth_type", "",
             "protocol number of packet encapsulated in ethernet");
         if(ethertype != 0)
         {
