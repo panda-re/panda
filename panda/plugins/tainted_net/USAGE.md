@@ -14,6 +14,8 @@ Arguments
 * `label_incoming_network`: boolean. Whether to apply taint labels to incoming network traffic.
 * `query_outgoing_network`: boolean. Whether to display taint on outgoing network traffic.
 * `semantic`: boolean. Whether to apply a different label to each tainted byte in the incoming packet.  An additional file will be generated for ida taint so semantic labels can be displayed in IDA Pro.
+* `pos`: boolean. Whether to apply a different label to each tainted byte in the incoming packet.  The packet number will be represented by the high order bits in the taint label.  The byte offset in the packet will be represented by the low order bits in the taint label.  See `maximum_packet_size`.
+* `maximum_packet_size`: integer.  The maximum number of bytes expected in received TCP packets.  This parameter is only used when positional tainting is enabled.  This value should be one of 65535, 32767, 16383, 8191, 4095, or 2047.  The taint labels when positional tainting are a combination of the packet number and the byte offset in the packet.  Both of these values are combined in a single unsigned 32-bit integer.  Reserving more bits for the packet size reduces the number of bits available for the packet count.  To ensure that taint labels aren't reused, pick the lowest possible value for TCP packet size that will work with your specific recording.  The default value for TCP packet size is 65535.
 * `packets`: string. List of packet numbers or ranges to taint.  Values should be separated by colons.  Example: 1-3:5
 * `ip_proto`: string.  List of IPV4 protocol numbers or ranges to taint.
 * `bytes`: string.  List of byte offsets or ranges in each packet to taint.
