@@ -35,14 +35,14 @@ elif [ $GCC_VERSION_MAJOR -lt $GCC_TOOLCHAIN_VERSION_REQ -a $GCXX_VERSION_MAJOR 
     echo "Older gcc/g++ found. Enforcing gnu11 mode."
     COMPILER_CONFIG="--extra-cflags=-std=gnu11"
 else
-    echo "Modern gcc/g++ found. Trying with default."
+    echo "Modern gcc/g++ found. Trying with default. This is likely to fail!"
     COMPILER_CONFIG=""
 fi
 
 ### Check for protobuf v2.
 if ! pkg-config --exists protobuf; then
     echo "No pkg-config for protobuf. Continuing anyway..."
-elif pkg-config --exists protobuf "protobuf > 1 protobuf < 3"; then
+elif pkg-config --exists protobuf "protobuf >= 2"; then
     echo "Using protobuf $(pkg-config --modversion protobuf)."
 else
     echo "Found incompatible protobuf $(pkg-config --modversion protobuf) -- ABORTING"

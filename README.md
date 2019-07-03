@@ -21,28 +21,41 @@ Laboratory, NYU, and Northeastern University.
 
 ## Building
 
-###  Debian 7/8, Ubuntu 14.04 / 16.04
+###  Debian, Ubuntu
 Because PANDA has a few dependencies, we've encoded the build instructions into
 a script,, [panda/scripts/install\_ubuntu.sh](panda/scripts/install\_ubuntu.sh).
-The script should actually work on Debian 7/8 and Ubuntu 14.04, and it
-shouldn't be hard to translate the `apt-get` commands into whatever package
-manager your distribution uses. We currently only vouch for buildability  on
-Debian 7/8 and Ubuntu 14.04, but we welcome pull requests to fix issues with
-other distros.
+The script should actually work on the latest Debian stable/Ubuntu LTS versions.
+It should be straightforward to translate the `apt-get` commands into whatever
+package manager your distribution uses. We currently only vouch for buildability
+on the latest Debian stable/Ubuntu LTS, but we welcome pull requests to fix issues
+with other distros.
 
 Note that if you want to use our LLVM features (mainly the dynamic taint
 system), you will need to install LLVM 3.3 from OS packages or compiled from
-source. On Ubuntu 14.04 this will happen automatically via `install_ubuntu.sh`.
-Alternatively, we have created an Ubuntu PPA at `ppa:phulin/panda`. You can use
-the following commands to install all dependencies on 14.04 or 16.04:
+source. On Ubuntu this should happen automatically via `install_ubuntu.sh`.
 
-```
+Alternatively, you can manually add the Ubuntu PPA we have created at
+`ppa:phulin/panda` and use the following commands to install PANDA
+dependencies:
+
+```sh
+# install qemu pre-requisites
 sudo add-apt-repository ppa:phulin/panda
 sudo apt-get update
 sudo apt-get build-dep qemu
-sudo apt-get install python-pip git protobuf-compiler protobuf-c-compiler \
-  libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev \
-  libcapstone-dev libdwarf-dev python-pycparser llvm-3.3 clang-3.3 libc++-dev
+
+# install generic dependencies
+sudo apt-get install git python-pip libc++-dev libelf-dev libdwarf-dev \
+  libelf-dev libdwarf-dev libwiretap-dev wireshark-dev python-pycparser
+
+# install llvm dependencies from ppa:phulin/panda
+sudo apt-get install llvm-3.3 clang-3.3
+
+# install protobuf dependencies
+sudo apt-get install protobuf-compiler protobuf-c-compiler python-protobuf \
+  libprotoc-dev libprotobuf-dev libprotobuf-c-dev
+
+# clone and build PANDA
 git clone https://github.com/panda-re/panda
 mkdir -p build-panda && cd build-panda
 ../panda/build.sh
