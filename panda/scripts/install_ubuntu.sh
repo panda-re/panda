@@ -45,12 +45,9 @@ else
     git clone git://git.code.sf.net/p/libdwarf/code libdwarf-code
     pushd libdwarf-code
     progress "Installing libdwarf..."
-    ./configure --enable-shared
+    ./configure --prefix=/usr/local --includedir=/usr/local/include/libdwarf --enable-shared
     make -j$(nproc)
-    sudo mkdir -p /usr/local/include/libdwarf
-    sudo cp libdwarf/libdwarf.h /usr/local/include/libdwarf/
-    sudo cp libdwarf/dwarf.h /usr/local/include/libdwarf/
-    sudo cp libdwarf/libdwarf.so /usr/local/lib/
+    sudo make install
     popd
   else
     progress "Skipping libdwarf..."
