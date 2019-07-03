@@ -30,11 +30,14 @@ sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
 
 pushd /tmp
 
-if lsb_release -d | grep -E 'Ubuntu (14\.04|16\.04)'
+if lsb_release -d | grep -E 'Ubuntu (14\.04|16\.04|18\.04)'
 then
   sudo apt-get -y install software-properties-common
   sudo add-apt-repository -y ppa:phulin/panda
   sudo apt-get update
+
+  # For Ubuntu 18.04 the vendor packages are more recent than those in the PPA
+  # and will be preferred.
   sudo apt-get -y install libcapstone-dev libdwarf-dev python-pycparser
 else
   if [ ! \( -e "/usr/local/lib/libdwarf.so" -o -e "/usr/lib/libdwarf.so" \) ]
