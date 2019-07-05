@@ -330,12 +330,12 @@ int monitor_callback(Monitor *mon, const char *cmd)
                         enable_logging(pequal+1);
                     } else {
                         log_message("Instrumentation enabled without filename, "
-                            "using default of ", DEFAULT_FILE);
+                            "using default of", DEFAULT_FILE);
                         enable_logging(DEFAULT_FILE);
                     }
                 } else {
                     log_message("Instrumentation enabled without filename, "
-                        "using default of ", DEFAULT_FILE);
+                        "using default of", DEFAULT_FILE);
                     enable_logging(DEFAULT_FILE);
                 }
                 // if enable_logging failed, it will already have spit out a
