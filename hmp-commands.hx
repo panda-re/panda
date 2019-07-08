@@ -1838,6 +1838,14 @@ ETEXI
         .cmd = hmp_end_replay,
     },
 
+    {
+        .name       = "plugin_cmd",
+        .args_type  = "cmd:s",
+        .params     = "cmd",
+        .help       = "Execute a plugin monitor command",
+        .cmd        = hmp_panda_plugin_cmd,
+    },
+
 STEXI
 @end table
 ETEXI
