@@ -291,14 +291,43 @@ void disable_logging()
     }
 }
 
+void process_enable_cmd(char *word)
+{
+    char *pequal;
+    size_t wordlen;
+
+    pequal=strchr(word, '=');
+    if (pequal != NULL) {
+        // extract after = as new filename
+        wordlen = strlen(word);
+        if (wordlen > (MONITOR_ENABLE_LEN+1)) {
+            // I really, really don't want to allocate new memory
+            // for the file name every time enable, and as I can't
+            // predict the maximum filename length that doesn't
+            // leave me with much choice on how to send the filename
+            // to enable_logging
+            enable_logging(pequal+1);
+        } else {
+            log_message("Instrumentation enabled without filename, "
+                "using default of", DEFAULT_FILE);
+            enable_logging(DEFAULT_FILE);
+        }
+    } else {
+        log_message("Instrumentation enabled without filename, "
+            "using default of", DEFAULT_FILE);
+        enable_logging(DEFAULT_FILE);
+    }
+    // if enable_logging failed, it will already have spit out a
+    // warning, which is most can do here
+}
+
 int monitor_callback(Monitor *mon, const char *cmd)
 {
     char *cmd_copy = g_strdup(cmd);
     char *word;
-    char *pequal;
-    size_t wordlen;
+    char *tokstatus;
 
-    word = strtok(cmd_copy, " ");
+    word = strtok_r(cmd_copy, " ", &tokstatus);
     do {
         if (0 == strncmp(MONITOR_HELP, word, MONITOR_HELP_LEN)) {
             // yes there is a nice monitor_printf function in monitor.h, but
@@ -317,35 +346,13 @@ int monitor_callback(Monitor *mon, const char *cmd)
         } else if (0 == strncmp(MONITOR_ENABLE, word, MONITOR_ENABLE_LEN)) {
             // we know word at least STARTS with coverage_enable
             if (!enabled) {
-                pequal=strchr(word, '=');
-                if (pequal != NULL) {
-                    // extract after = as new filename
-                    wordlen = strlen(word);
-                    if (wordlen > (MONITOR_ENABLE_LEN+1)) {
-                        // I really, really don't want to allocate new memory
-                        // for the file name every time enable, and as I can't
-                        // predict the maximum filename length that doesn't
-                        // leave me with much choice on how to send the filename
-                        // to enable_logging
-                        enable_logging(pequal+1);
-                    } else {
-                        log_message("Instrumentation enabled without filename, "
-                            "using default of", DEFAULT_FILE);
-                        enable_logging(DEFAULT_FILE);
-                    }
-                } else {
-                    log_message("Instrumentation enabled without filename, "
-                        "using default of", DEFAULT_FILE);
-                    enable_logging(DEFAULT_FILE);
-                }
-                // if enable_logging failed, it will already have spit out a
-                // warning, which is most can do here
+                process_enable_cmd(word);
             } else {
                 log_message("Instrumentation already enabled, ignoring "
                         "request to enable");
             }
         }
-        word = strtok(NULL, " ");
+        word = strtok_r(NULL, " ", &tokstatus);
     } while (word != NULL);
     g_free(cmd_copy);
 
