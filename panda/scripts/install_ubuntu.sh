@@ -1,26 +1,36 @@
 #!/bin/bash
+# This script installs all of PANDA after first taking care of current
+# dependencies. Known to work on Debian 7 install.
 
-# This is just everything in compile.md
-# turned into a script
-# you should be able to run it, type in
-# sudo passwd and have it install all of panda.
-# Verified that this script works
-# from a clean install of deb7.
-#
-#
-# This script installs all of PANDA after first taking care of current dependencies. 
-# Known to work on debian 7 install.
+# some globals
+PANDA_GIT="https://github.com/panda-re/panda.git"
+PANDA_PPA="ppa:phulin/panda"
+LIBDWARF_GIT="git://git.code.sf.net/p/libdwarf/code"
+UBUNTU_FALLBACK="xenial"
+
+# system information
+vendor=$(lsb_release --id | awk -F':[\t ]+' '{print $2}')
+codename=$(lsb_release --codename | awk -F':[\t ]+' '{print $2}')
 
 progress() {
   echo
   echo -e "\e[32m[panda_install]\e[0m \e[1m$1\e[0m"
 }
 
+ppa_list_file() {
+  local SOURCES_LIST_D="/etc/apt/sources.list.d"
+  local PPA_OWNER=$(echo "$1" | awk -F'[:/]' '{print $2}')
+  local PPA_NAME=$(echo "$1" | awk -F'[:/]' '{print $3}')
+  printf "%s/%s-%s-%s-%s.list" \
+    "$SOURCES_LIST_D" "$PPA_OWNER" "$(echo "$2" | tr A-Z a-z)" \
+    "$PPA_NAME" "$3"
+}
+
 # Exit on error.
 set -e
 
 progress "Installing qemu dependencies..."
-sudo apt-get update
+sudo apt-get update || true
 sudo apt-get -y build-dep qemu
 
 progress "Installing PANDA dependencies..."
@@ -30,24 +40,41 @@ sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
 
 pushd /tmp
 
-if lsb_release -d | grep -E 'Ubuntu (14\.04|16\.04)'
-then
+if [ "$vendor" = "Ubuntu" ]; then
   sudo apt-get -y install software-properties-common
-  sudo add-apt-repository -y ppa:phulin/panda
+  panda_ppa_file=$(ppa_list_file "$PANDA_PPA" "$vendor" "$codename")
+  panda_ppa_file_fallback=$(ppa_list_file "$PANDA_PPA" "$vendor" "$UBUNTU_FALLBACK")
+
+  # add custom ppa
+  case $codename in
+    trusty)  ;&
+    xenial)  ;&
+    yakkety)
+      # directly supported release
+      sudo add-apt-repository -y "$PANDA_PPA"
+      ;;
+    *)
+      # use fallback release
+      sudo rm -f "$panda_ppa_file" "$panda_ppa_file_fallback"
+      sudo add-apt-repository -y "$PANDA_PPA" || true
+      sudo sed -i "s/$codename/$UBUNTU_FALLBACK/g" "$panda_ppa_file"
+      sudo mv -f "$panda_ppa_file" "$panda_ppa_file_fallback"
+      ;;
+  esac
+
+  # For Ubuntu 18.04 the vendor packages are more recent than those in the PPA
+  # and will be preferred.
   sudo apt-get update
   sudo apt-get -y install libcapstone-dev libdwarf-dev python-pycparser
 else
   if [ ! \( -e "/usr/local/lib/libdwarf.so" -o -e "/usr/lib/libdwarf.so" \) ]
   then
-    git clone git://git.code.sf.net/p/libdwarf/code libdwarf-code
+    git clone "$LIBDWARF_GIT" libdwarf-code
     pushd libdwarf-code
     progress "Installing libdwarf..."
-    ./configure --enable-shared
+    ./configure --prefix=/usr/local --includedir=/usr/local/include/libdwarf --enable-shared
     make -j$(nproc)
-    sudo mkdir -p /usr/local/include/libdwarf
-    sudo cp libdwarf/libdwarf.h /usr/local/include/libdwarf/
-    sudo cp libdwarf/dwarf.h /usr/local/include/libdwarf/
-    sudo cp libdwarf/libdwarf.so /usr/local/lib/
+    sudo make install
     popd
   else
     progress "Skipping libdwarf..."
@@ -78,9 +105,6 @@ EOF
   fi
 fi
 
-# Install libclang for apigen.py
-sudo apt-get -y install libclang-3.8 python-clang-3.8
-
 # Upgrading protocol buffers python support
 sudo pip install --upgrade protobuf
 
@@ -92,16 +116,28 @@ fi
 
 popd
 
-if [ ! -e "build.sh" ]
-then
-  progress "Cloning PANDA into $(pwd) ..."
-  git clone https://github.com/panda-re/panda.git
+if [ -e "build.sh" ]; then
+  progress "Already in PANDA directory."
+elif [ -e "panda/build.sh" ]; then
+  progress "Switching to PANDA directory."
+  cd panda
+elif ! [ -d "panda" ]; then
+  progress "Cloning PANDA into $(pwd)/panda..."
+  git clone "$PANDA_GIT" panda
   cd panda
 else
-  progress "Already in PANDA directory."
+  progress "Aborting. Can't find build.sh in $(pwd)/panda."
+  exit 1
 fi
+
 progress "Trying to update DTC submodule (if necessary)..."
 git submodule update --init dtc || true
+
+if [ -d "build" ]; then
+  progress "Removing build directory."
+  rm -rf "build"
+fi
+
 progress "Building PANDA..."
 mkdir build
 cd build
