@@ -32,7 +32,7 @@ class AsyncThread:
 
     def queue(self, func): # Queue a function to be run soon. Must be @blocking
         if not (hasattr(func, "__blocking__")) or not func.__blocking__:
-            raise RuntimeError(f"Refusing to queue function '{func.__name__}' without @blocking decorator")
+            raise RuntimeError("Refusing to queue function '{}' without @blocking decorator".format(func.__name__))
         self.task_queue.put_nowait(func)
 
     def run(self): # Run functions from queue
@@ -49,7 +49,7 @@ class AsyncThread:
                 func()
             except Exception as e:
                 #print(f"{name} exception {e!r}")
-                print(f"exception {e!r}")
+                print("exception {}".format(e))
                 raise
             finally:
                 self.task_queue.task_done()
