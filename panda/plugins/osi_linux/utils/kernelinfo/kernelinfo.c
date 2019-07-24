@@ -107,7 +107,6 @@ int init_module(void)
 	struct dentry dentry__s;
 	struct dentry_operations dentry_operations__s;
 	struct file file__s;
-	struct thread_info thread_info__s;
 	struct files_struct files_struct__s;
 	struct fdtable fdtable__s;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
@@ -125,7 +124,6 @@ int init_module(void)
 	struct dentry_operations *dentry_operations__p;
 	struct file *file__p;
 	struct fdtable *fdtable__p;
-	struct thread_info *thread_info__p;
 	struct files_struct *files_struct__p;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
 	struct mount *mount__p;
@@ -140,7 +138,6 @@ int init_module(void)
 	dentry__p = &dentry__s;
 	dentry_operations__p = &dentry_operations__s;
 	file__p = &file__s;
-	thread_info__p = &thread_info__s;
 	files_struct__p = &files_struct__s;
 	fdtable__p = &fdtable__s;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
@@ -158,9 +155,12 @@ int init_module(void)
 	printk(KERN_INFO "version.c = %d\n", LINUX_VERSION_CODE & 0xFF);
 	printk(KERN_INFO "task.init_addr = %llu\n", (u64)(uintptr_t)(task_struct__p));
 	printk(KERN_INFO "#task.init_addr = 0x%08llX\n", (u64)(uintptr_t)task_struct__p);
+    printk(KERN_INFO "#task.per_cpu_offset_0 = 0x%08lX\n", (unsigned long)__per_cpu_offset[0]);
+    printk(KERN_INFO "task.per_cpu_offset_0 = %lu\n", (unsigned long)__per_cpu_offset[0]);
+    printk(KERN_INFO "#task.current_task_addr = 0x%08lX\n", (unsigned long)&current_task);
+    printk(KERN_INFO "task.current_task_addr = %lu\n", (unsigned long)&current_task);
 
 	PRINT_SIZE(init_task,				"size",			"task");
-	PRINT_OFFSET(thread_info__p,		task,			"task");
 	PRINT_OFFSET(task_struct__p,		tasks,			"task");
 	PRINT_OFFSET(task_struct__p,		pid,			"task");
 	PRINT_OFFSET(task_struct__p,		tgid,			"task");

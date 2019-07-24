@@ -3,8 +3,7 @@
 
 target_ptr_t default_get_current_task_struct(CPUState *cpu)
 {
-	target_ptr_t kernel_esp = panda_current_sp(cpu);
-	target_ptr_t ts = get_task_struct(cpu, (kernel_esp & THREADINFO_MASK));
+	target_ptr_t ts = get_task_struct(cpu, ki.task.current_task_addr);
 	return ts;
 }
 
