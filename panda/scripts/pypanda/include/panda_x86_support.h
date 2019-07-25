@@ -299,3 +299,5 @@ typedef struct CPUX86State {
 
     TPRAccess tpr_access_type;
 } CPUX86State;
+
+typedef CPUX86State CPUArchState;

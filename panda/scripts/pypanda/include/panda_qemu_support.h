@@ -1248,8 +1248,7 @@ typedef uint64_t vaddr;
 	    int num_ases;
 	    void* as; //AddressSpace *as;
 	    void* memory; //MemoryRegion *memory;
-		//char values[32];
-	    CPUX86State *env_ptr; // CPUArchState *env_ptr; /* CPUArchState */
+	    CPUArchState *env_ptr; //CPUX86State *env_ptr; // CPUArchState *env_ptr; /* CPUArchState */
 		char values2[32924];
 		
 	    /* Writes protected by tb_lock, reads not thread-safe  */ 
