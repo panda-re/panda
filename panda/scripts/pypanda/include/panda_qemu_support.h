@@ -1216,21 +1216,20 @@ typedef uint64_t vaddr;
  */
 	struct CPUState {
 	    /*< private >*/
-//	    struct DeviceState parent_obj; //DeviceState parent_obj;
+	    char parent_obj[112]; //struct DeviceState parent_obj; //DeviceState parent_obj;
 	    /*< public >*/
-/*
+
 	    int nr_cores;
 	    int nr_threads;
 	    int numa_node;
-
-	    void* thread; //struct QemuThread *thread;
+	    void *thread; //struct QemuThread *thread;
 //	#ifdef _WIN32
 //	    HANDLE hThread;
 //	#endif
 	    int thread_id;
 	    uint32_t host_tid;
 	    bool running, has_waiter;
-	    struct QemuCond *halt_cond;
+	    void* halt_cond; // struct QemuCond *halt_cond;
 	    bool thread_kicked;
 	    bool created;
 	    bool stop;
@@ -1241,17 +1240,15 @@ typedef uint64_t vaddr;
 	    uint32_t interrupt_request;
 	    int singlestep_enabled;
 	    int64_t icount_extra;
-	    sigjmp_buf jmp_env;
+	   	char jmp_env[200]; // sigjmp_buf jmp_env;
 
-	    QemuMutex work_mutex;
-	    struct qemu_work_item *queued_work_first, *queued_work_last;
-
+	    char work_mutex[40]; //QemuMutex work_mutex;
+	    void *queued_work_first, *queued_work_last; // struct qemu_work_item *queued_work_first, *queued_work_last;
 	    void* cpu_ases; //CPUAddressSpace *cpu_ases;
 	    int num_ases;
 	    void* as; //AddressSpace *as;
 	    void* memory; //MemoryRegion *memory;
-*/
-		char values[472];
+		//char values[32];
 	    CPUX86State *env_ptr; // CPUArchState *env_ptr; /* CPUArchState */
 		char values2[32924];
 		
