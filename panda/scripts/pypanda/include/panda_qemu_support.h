@@ -630,12 +630,6 @@ struct MemoryRegionMmio {
 
 typedef uint32_t MemTxResult;
 
-typedef struct MemTxAttrs {
-    unsigned int unspecified:1;
-    unsigned int secure:1;
-    unsigned int user:1;
-    unsigned int requester_id:16;
-} MemTxAttrs;
 
 enum device_endian {
     DEVICE_NATIVE_ENDIAN,
@@ -1401,3 +1395,4 @@ struct MonitorDef {
 };
 
 typedef struct MonitorDef Monitor;
+

@@ -693,7 +693,7 @@ class Panda:
 			return self.get_cpu_arm(cpustate)
 		elif self.arch == "x86":
 			return self.get_cpu_x86(cpustate)
-		elif self.arch == "x64":
+		elif self.arch == "x64" or self.arch == "x86_64":
 			return self.get_cpu_x64(cpustate)
 		elif self.arch == "ppc":
 			return self.get_cpu_ppc(cpustate)
@@ -710,7 +710,7 @@ class Panda:
 		# we dont do this because x86 is the assumed arch
 		if not hasattr(self, "x64_support"):
 			self.x64_support = ffi.cdef(open("./include/panda_x64_support.h").read()) 
-		return ffi.cast("CPUX86State*", cpustate.env_ptr)
+		return ffi.cast("CPUX64State*", cpustate.env_ptr)
 
 	def get_cpu_arm(self,cpustate):
 		if not hasattr(self, "arm_support"):
