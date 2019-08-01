@@ -200,7 +200,7 @@ static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _r
 ****************************************************************** */
 
 /**
- * @brief Retrieves the task_struct address using the current thread address.
+ * @brief Retrieves the task_struct address using per cpu information.
  */
 IMPLEMENT_OFFSET_GET(get_task_struct, current_task_addr, target_ptr_t, ki.task.per_cpu_offset_0, 0)
 
