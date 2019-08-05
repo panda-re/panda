@@ -1314,6 +1314,7 @@ Standard options:
   --target-list=LIST       set target list (default: build everything)
 $(echo Available targets: $default_target_list | \
   fold -s -w 53 | sed -e 's/^/                           /')
+  --extra-plugins-path=PATH also compile plugins at this PATH
 
 Advanced options (experts only):
   --source-path=PATH       path of source code [$source_path]
