@@ -4964,6 +4964,7 @@ qemu_confdir=$sysconfdir$confsuffix
 qemu_moddir=$libdir$confsuffix
 qemu_datadir=$datadir$confsuffix
 qemu_localedir="$datadir/locale"
+panda_plugindir="$libdir/panda"
 
 tools=""
 if test "$want_tools" = "yes" ; then
@@ -5324,6 +5325,7 @@ echo "qemu_confdir=$qemu_confdir" >> $config_host_mak
 echo "qemu_datadir=$qemu_datadir" >> $config_host_mak
 echo "qemu_docdir=$qemu_docdir" >> $config_host_mak
 echo "qemu_moddir=$qemu_moddir" >> $config_host_mak
+echo "panda_plugindir=$panda_plugindir" >> $config_host_mak
 if test "$mingw32" = "no" ; then
   echo "qemu_localstatedir=$local_statedir" >> $config_host_mak
 fi

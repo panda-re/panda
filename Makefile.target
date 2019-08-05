@@ -247,7 +247,7 @@ ifdef CONFIG_LLVM
 endif
 	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/python2.7/site-packages"
 	$(INSTALL_DATA) plog_pb2.py "$(libdir)/python2.7/site-packages"
-	for p in $(PANDA_PLUGINS); do \
+	for p in $(PANDA_PLUGINS) $(EXTRA_PANDA_PLUGINS); do \
 		$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"; \
 		$(INSTALL_DATA) panda/plugins/panda_$$p.so "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"; \
 		echo $$p; \
