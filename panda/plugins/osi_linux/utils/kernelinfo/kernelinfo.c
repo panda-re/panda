@@ -81,7 +81,7 @@ static char *cp_memb(const char *s) {
  * Printf offset of memb from the beginning of structp.
  */
 #define PRINT_OFFSET(structp, memb, cfgname)\
-	printk(KERN_INFO cfgname ".%s_offset = %d",\
+	printk(KERN_INFO cfgname ".%s_offset = %d\n",\
 		cp_memb(#memb),\
 		(int)((void *)&(structp->memb) - (void *)structp))
 
@@ -91,14 +91,14 @@ static char *cp_memb(const char *s) {
  * We emit the same name as if we were using PRINT_OFFSET() for memb_dest.
  */
 #define PRINT_OFFSET_FROM_MEMBER(structp, memb_base, memb_dest, cfgname)\
-	printk(KERN_INFO cfgname ".%s_offset = %d",\
+	printk(KERN_INFO cfgname ".%s_offset = %d\n",\
 		cp_memb(#memb_dest),\
 		(int)((void *)&(structp->memb_dest) - (void *)&(structp->memb_base)))
 
 /*
  * Prints the size of structv.
  */
-#define PRINT_SIZE(structv, cfgmemb, cfgname) printk(KERN_INFO cfgname "." cfgmemb " = %zu", sizeof(structv))
+#define PRINT_SIZE(structv, cfgmemb, cfgname) printk(KERN_INFO cfgname "." cfgmemb " = %zu\n", sizeof(structv))
 
 int init_module(void)
 {
