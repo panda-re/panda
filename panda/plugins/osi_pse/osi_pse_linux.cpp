@@ -522,18 +522,42 @@ int asid_changed_linux(CPUState *cpu, target_ptr_t current, target_ptr_t next) {
 
     p.fsm.save_state();
     switch (p.fsm.state) {
-        case LPFSM::State::KERN:
         case LPFSM::State::RUN:
         {
-            // If the scheduled-out process is in RUN or KERN state, we
-            // expect that the process to be scheduled-in already has an
-            // asid to taskd mapping.
-            // If not, this means that the osi_pse codebase needs fixing.
+            // If the scheduled-out process is in RUN state, we expect that
+            // the process to be scheduled-in already has an asid to taskd
+            // mapping.
+            // If not, fail to excamine the situation in detail.
             if (lpt.asids.find(next) == lpt.asids.cend()) {
                 LOG_ERROR("An unknown asid appeared: " TARGET_PTR_FMT, next);
                 process_info_t *ppnew = lpt.AddNewByASID(cpu, next);
                 ppnew->vdump(cpu); //XXX nullptr check
-                assert(false && "unknown asid");
+                assert(false && "unknown asid scheduled after running process");
+            }
+        } break;
+        case LPFSM::State::KERN:
+        {
+            // If the scheduled-out process is in KERN state, we generally
+            // expect that the process to be scheduled-in already has an
+            // asid to taskd mapping.
+            // A rare exception to this is a transition to a kernel process
+            // after a sys_clone has created a process, but before it returns.
+            if (lpt.asids.find(next) == lpt.asids.cend()) {
+                LOG_WARNING("An unknown asid appeared: " TARGET_PTR_FMT, next);
+                process_info_t *ppnew = lpt.AddNewByASID(cpu, next);
+                ppnew->vdump(cpu); //XXX nullptr check - remove vdump
+                process_info_t &pparent = lpt.procinfo_by_pid(ppnew->ppid);
+                switch (pparent.fsm.state) {
+                    case LPFSM::State::CLN:
+                    {
+                        pparent.fsm.state = LPFSM::State::RUN;
+                        ppnew->run_cb_start(cpu);
+                    } break;
+                    default:
+                    {
+                        assert(false && "unknown asid scheduled after kernel process");
+                    } break;
+                }
             }
         } break;
         case LPFSM::State::CLN:
