@@ -6,35 +6,45 @@ Summary
 
 `osi_linux` provides Linux introspection information and makes it available through the OSI interface. It does so by knowing about the offsets for various Linux kernel data structures and then providing algorithms that traverse these data structures in the guest virtual machine.
 
-Because the offsets of fields in Linux kernel data structures change frequently (and can even depend on the specific compilation flags used), `osi_linux` uses a configuration file to specify the offsets of critical data structures. An portion of such a configuration file, which is in the [GLib key-value format](https://developer.gnome.org/glib/stable/glib-Key-value-file-parser.html) (similar to .ini files), is given below:
+Because the offsets of fields in Linux kernel data structures change frequently (and can even depend on the specific compilation flags used), `osi_linux` uses a configuration file to specify the offsets of critical data structures. A portion of such a configuration file, which is in the [GLib key-value format](https://developer.gnome.org/glib/stable/glib-Key-value-file-parser.html) (similar to .ini files), is given below:
 
-    [debian-3.2.63-i686]
-    name = #1 Debian 3.2.63-2+deb7u1 i686
-    task.size = 1000
-    #task.init_addr = 0xC1397480
-    task.init_addr = 3241768064
-    task.task_offset = 0
-    task.tasks_offset = 204
-    task.pid_offset = 248
-
-    [... omitted ...]
-
-    [debian_wheezy_i386_desktop]
-    name = #1 SMP Debian 3.2.51-1 i686
-    task.size = 1060
-    #task.init_addr = 0xC13E0FE0
-    task.init_addr = 3242069984
-    task.task_offset = 0
-    task.tasks_offset = 212
-    task.pid_offset = 292
-    task.tgid_offset = 296
-    task.group_leader_offset = 328
+    [ubuntu:4.4.0-98-generic:32]
+    name = 4.4.0-98-generic|#121-Ubuntu SMP Tue Oct 10 14:23:20 UTC 2017|i686
+    version.a = 4
+    version.b = 4
+    version.c = 90
+    task.init_addr = 3249445504
+    #task.init_addr = 0xC1AE9A80
+    #task.per_cpu_offset_0 = 0x34B42000
+    task.per_cpu_offset_0 = 884219904
+    #task.current_task_addr = 0xC1C852A8
+    task.current_task_addr = 3251131048
+    task.size = 5824
+    task.tasks_offset = 624
+    task.pid_offset = 776
 
     [... omitted ...]
 
-Of course, generating this file by hand would be extremely painful. So instead we can generate it automatically by building and loading a kernel module in the guest OS.
+    [debian:4.9.0-6-686-pae:32]
+    name = 4.9.0-6-686-pae|#1 SMP Debian 4.9.82-1+deb9u3 (2018-03-02)|i686
+    version.a = 4
+    version.b = 9
+    version.c = 88
+    task.init_addr = 3245807232
+    #task.init_addr = 0xC1771680
+    #task.per_cpu_offset_0 = 0x36127000
+    task.per_cpu_offset_0 = 907177984
+    #task.current_task_addr = 0xC18C3208
+    task.current_task_addr = 3247190536
+    task.size = 5888
+    task.tasks_offset = 708
+    task.pid_offset = 864
 
-To do so, you will need the kernel headers and a compiler installed in the guest. On a Debian guest, you can do:
+    [... omitted ...]
+
+Of course, generating this file by hand would be extremely painful. So instead we can generate it automatically by building and loading a kernel module in the guest OS.  If available, it is important that Address Space Layout Randomization (ASLR) be disabled in the guest before the kernel information configuration file is generated.
+
+To generate the kernel configuration file, you will need the kernel headers and a compiler installed in the guest. On a Debian guest, you can do:
 
 ```sh
     apt-get install build-essential linux-headers-`uname -r`
@@ -48,37 +58,45 @@ Then copy the `panda_plugins/osi_linux/utils/kernelinfo` directory into the gues
 
 You should see output in the `dmesg` log like:
 
-    [166368.803659] --KERNELINFO-BEGIN--
-    [166368.804324] name = #1 SMP Debian 3.2.51-1 i686
-    [166368.804390] task.size = 1060
-    [166368.804509] #task.init_addr = 0xC13E0FE0
-    [166368.804530] task.init_addr = 3242069984
-    [166368.804594] task.task_offset = 0
-    [166368.804639] task.tasks_offset = 212
-    [166368.804685] task.pid_offset = 292
-    [166368.804719] task.tgid_offset = 296
-    [166368.804748] task.group_leader_offset = 328
-    [166368.804781] task.thread_group_offset = 384
-    [166368.804808] task.real_parent_offset = 304
-    [166368.804836] task.parent_offset = 308
-    [166368.804861] task.mm_offset = 240
-    [166368.804885] task.stack_offset = 4
-    [166368.804912] task.real_cred_offset = 504
-    [166368.804936] task.cred_offset = 508
-    [166368.804966] task.comm_offset = 516
+    [  335.936312] --KERNELINFO-BEGIN--
+    [  335.936352] name = 4.9.0-6-686-pae|#1 SMP Debian 4.9.82-1+deb9u3 (2018-03-02)|i686
+    [  335.936371] version.a = 4
+    [  335.936380] version.b = 9
+    [  335.936389] version.c = 88
+    [  335.936400] task.init_addr = 3245807232
+    [  335.936415] #task.init_addr = 0xC1771680
+    [  335.936425] #task.per_cpu_offset_0 = 0x36127000
+    [  335.936435] task.per_cpu_offset_0 = 907177984
+    [  335.936443] #task.current_task_addr = 0xC18C3208
+    [  335.936452] task.current_task_addr = 3247190536
+    [  335.936473] task.size = 5888
+    [  335.936502] task.tasks_offset = 708
+    [  335.936528] task.pid_offset = 864
+    [  335.936553] task.tgid_offset = 868
+    [  335.936578] task.group_leader_offset = 900
+    [  335.936602] task.thread_group_offset = 956
+    [  335.936627] task.real_parent_offset = 876
+    [  335.936651] task.parent_offset = 880
+    [  335.936676] task.mm_offset = 748
+    [  335.936700] task.stack_offset = 12
+    [  335.936724] task.real_cred_offset = 1092
+    [  335.936748] task.cred_offset = 1096
+    [  335.936772] task.comm_offset = 1100
     [...]
-    [166368.805736] fs.d_iname_offset = 36
-    [166368.805761] fs.d_parent_offset = 16
-    [166368.805778] ---KERNELINFO-END---
+    [  335.937668] path.mnt_parent_offset = -8
+    [  335.937694] path.mnt_mountpoint_offset = -4
+    [  335.937701] ---KERNELINFO-END---
 
 Copy this information (without the KERNELINFO-BEGIN and KERNELINFO-END lines) into the `kernelinfo.conf`. Be sure to put it in its own configuration section, i.e.:
 
     [my_kernel_info]
     name = #1 SMP Debian 3.2.51-1 i686
-    task.size = 1060
+    version.a = 3
     [...]
 
 The name you give (`my_kernel_info` in this case) should then be passed as the `kconf_group` argument to the plugin.
+
+When taking a recording to be used with `osi_linux`, ASLR must be disabled in the guest, if it is available.
 
 Arguments
 ---------
