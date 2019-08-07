@@ -1753,6 +1753,20 @@ Print QOM properties of object at location @var{path}
 ETEXI
 
     {
+        .name       = "int",
+        .args_type  = "intnum:i",
+        .params     = "[intnum]",
+        .help       = "interrupt cpu registers",
+        .cmd        = hmp_interrupt,
+    },
+
+STEXI
+@item info int
+@findex interupt
+raise interrupt in guest
+ETEXI
+
+    {
         .name       = "qom-set",
         .args_type  = "path:s,property:s,value:s",
         .params     = "path property value",
