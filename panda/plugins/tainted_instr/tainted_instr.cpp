@@ -72,7 +72,7 @@ void taint_change(Addr a, uint64_t size) {
     }
     CPUState *env = first_cpu; // cpu_single_env;
     target_ulong asid = panda_current_asid(env);
-    target_ulong pc = panda_current_pc(env);
+    target_ulong pc = panda_current_pc(first_cpu);
     uint32_t num_tainted = 0;
     for (uint32_t i=0; i<size; i++) {
         a.off = i;

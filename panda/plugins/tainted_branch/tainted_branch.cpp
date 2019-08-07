@@ -95,12 +95,13 @@ void tbranch_on_branch_taint2(Addr a, uint64_t size) {
             num_tainted += (taint2_query(ao) != 0);
         }
         if (num_tainted > 0) {
+//            printf ("tainted_branch: saw some taint!\n");
             if (liveness) {
                 // update liveness info for all input bytes from which lval derives
                 for (uint32_t o=0; o<size; o++) {
                     ao.off = o;
                     taint2_labelset_addr_iter(a, taint_branch_aux, NULL);
-                }        
+                }
             }
             if (summary) {
                 CPUState *cpu = first_cpu;
@@ -146,7 +147,7 @@ bool init_plugin(void *self) {
     summary = panda_parse_bool_opt(args, "summary", "only print out a summary of tainted instructions");
     bool indirect_jumps = panda_parse_bool_opt(args, "indirect_jumps", "also query taint on indirect jumps and calls");
     liveness = panda_parse_bool_opt(args, "liveness", "track liveness of input bytes");
-    if (summary) printf ("tainted_instr summary mode\n"); else printf ("tainted_instr full mode\n");
+    if (summary) printf ("tainted_branch summary mode\n"); else printf ("tainted_branch full mode\n");
     /*
     panda_cb pcb;
     pcb.after_block_exec = tbranch_after_block_exec;

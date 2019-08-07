@@ -9,6 +9,7 @@
 #include "panda/plog.h"
 #include "panda/plog-cc-bridge.h"
 
+
 #ifdef TARGET_ARM
 /* Return the exception level which controls this address translation regime */
 static inline uint32_t regime_el(CPUARMState *env, ARMMMUIdx mmu_idx)
@@ -108,6 +109,8 @@ target_ulong panda_current_asid(CPUState *cpu) {
 }
 
 target_ulong panda_current_pc(CPUState *cpu) {
+    if (generate_llvm) 
+        return cpu->panda_guest_pc;
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     target_ulong pc, cs_base;
     uint32_t flags;

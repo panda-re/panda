@@ -23,6 +23,8 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
+extern void qemu_system_shutdown_request(void);
+
 #include "include/qemu/option.h"
 #include "include/qemu/config-file.h"
 }
@@ -75,11 +77,20 @@ bool _generate_value(Device &dev, unsigned int offset, unsigned int *result) {
             return true;
         }
     }
-
-    fprintf(stderr, "Error: [holodeck] couldn't find model in %s at offset 0x%x to generate value\n", dev.name.c_str(), offset);
-    return false;
+    
+    // make this non-fatal
+        fprintf(stderr, "Error: [holodeck] couldn't find model in %s at offset 0x%x to generate value\n", dev.name.c_str(), offset);
+        return false;
+/*
+    fprintf(stderr, "Warning: [holodeck] couldn't find model in %s at offset 0x%x to generate value\n", dev.name.c_str(), offset);
+    fprintf(stderr, "  -- proceeding with 0xffffffff\n");
+    *result = 0xffffffff;
+    return true;
+*/
     //assert(0);
 }
+
+
 
 unsigned int generate_value(std::vector<Device> devices, unsigned int address) {
     // Do we handle it? If so
@@ -99,7 +110,11 @@ unsigned int generate_value(std::vector<Device> devices, unsigned int address) {
     //fprintf(stderr, "Error: [holodeck] couldn't find any config to generate value at 0x%x. Suspending execution\n", address);
     //vm_stop(RUN_STATE_PAUSED);
     //qemu_system_suspend();
-    assert(0);
+//    assert(0);
+    
+    // graceful exit that will run all uninit_plugins
+    qemu_system_shutdown_request();
+    return 0;
 }
 
 //Parse a yaml tree, output in devices vector

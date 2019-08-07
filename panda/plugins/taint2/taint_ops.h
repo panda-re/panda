@@ -104,7 +104,7 @@ void taint_sext(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
                 uint64_t src_size);
 
 // reg is the register number into which the load went or out of which the store happened
-void taint_after_ldst(uint64_t reg, uint64_t memaddr, uint64_t size, uint64_t is_store);
+void taint_after_ld(uint64_t reg, uint64_t memaddr, uint64_t size);
 
 // Takes a NULL-terminated list of (value, select) pairs.
 void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,

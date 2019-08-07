@@ -79,8 +79,15 @@ void pandalog_open_read(const char *path, uint32_t pl_mode);
 
 
 void pandalog_write_entry(Panda__LogEntry *entry) {
-	// Pack this entry and pass it on to a C++ interface
+    
+    // if no one bothered to open a pandalog for write, we will just create one
+    if (!pandalog) {
+        printf ("No pandalog file -- using default.plog\n");
+        pandalog_cc_init_write("default.plog");
+        pandalog = 1;
+    }
 		
+	// Pack this entry and pass it on to a C++ interface
 	size_t packed_size = panda__log_entry__get_packed_size(entry);
 	unsigned char* buf = malloc(packed_size);
 	panda__log_entry__pack(entry, buf);
