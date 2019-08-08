@@ -52,7 +52,7 @@ None
 Example
 -------
 ```
-qemu-system-i386 -m 2G -replay test \
+panda-system-i386 -m 2G -replay test \
     -panda stringsearch:str="hello world" \
     -panda tstringsearch \
     -panda ida_taint2

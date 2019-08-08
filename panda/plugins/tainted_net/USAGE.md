@@ -41,14 +41,14 @@ Example
 
 To taint incoming network data and then find out what instructions depend on data from the network:
 
-    $PANDA_PATH/i386-softmmu/qemu-system-i386 -net nic -net user \
+    $PANDA_PATH/i386-softmmu/panda-system-i386 -net nic -net user \
         -replay foo \
         -panda tainted_net:label_incoming_network=true \
         -panda tainted_instr
 
 Note that the `taint2` plugin is not explicitly listed here because it is automatically loaded by the `tainted_net` plugin. If you wanted to pass custom options to `taint2`, such as disabling tainted pointers, you could instead do:
 
-    $PANDA_PATH/i386-softmmu/qemu-system-i386 -net nic -net user \
+    $PANDA_PATH/i386-softmmu/panda-system-i386 -net nic -net user \
         -replay foo \
         -panda taint2:no_tp=y \
         -panda tainted_net:label_incoming_network=true \
@@ -56,7 +56,7 @@ Note that the `taint2` plugin is not explicitly listed here because it is automa
 
 To taint the string `quick` and then see if it is sent out over the network, writing the outgoing taint information to quick\_tnss.csv, do:
 
-    $PANDA_PATH/i386-softmmu/qemu-system-i386 -net nic -net user \
+    $PANDA_PATH/i386-softmmu/panda-system-i386 -net nic -net user \
         -replay foo \
         -panda stringsearch:str="quick" -panda tstringsearch \
         -panda tainted_net:query_outgoing_network=true,file=quick_tnss.csv

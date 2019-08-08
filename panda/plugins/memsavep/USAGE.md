@@ -32,10 +32,10 @@ Example
 
 To dump memory at 66.2% to `mymem.dd`:
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
         -panda memsavep:percent=66.2,file=mymem.dd
 
 To dump memory when an instruction count of 3314667015 is reached: 
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
         -panda memsavep:instrcount=3314667015,file=mymem.dd

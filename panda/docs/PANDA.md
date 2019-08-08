@@ -498,7 +498,7 @@ brendan@laredo3:~/hg/panda/build$ make
 Finally, you can run QEMU with the plugin enabled:
 
 ```
-x86_64-softmmu/qemu-system-x86_64 -m 1024 -vnc :0 -monitor stdio \
+x86_64-softmmu/panda-system-x86_64 -m 1024 -vnc :0 -monitor stdio \
 	-hda /scratch/qcows/qcows/win7.1.qcow2 -loadvm booted -k en-us \
 	-panda syscalls
 ```

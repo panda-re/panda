@@ -116,7 +116,7 @@ To actually produce a trace, run:
 
 ```sh
 cd <arch>-softmmu
-./qemu-system-<arch> -replay <replay> -panda 'llvm_trace:tubt=1,base=<output_dir>'
+./panda-system-<arch> -replay <replay> -panda 'llvm_trace:tubt=1,base=<output_dir>'
 ```
 
 Which will produce `llvm-mod.bc` and `tubtf.log` in the `<output_dir>`

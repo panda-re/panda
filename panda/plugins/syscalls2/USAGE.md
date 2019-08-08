@@ -170,7 +170,7 @@ bool init_plugin(void *self) {
 And then invoke it as:
 
 ```sh
-$PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+$PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
     -os windows-32-7 -panda syscalls2:profile=windows_7_x86 -panda filereadmon
 ```
 

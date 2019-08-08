@@ -43,13 +43,13 @@ Example
 -------
 Use the coverage plugin with a recording:
 ```
-qemu-system-i386 -m 2G -replay test \
+panda-system-i386 -m 2G -replay test \
     -os windows-32-xpsp3 \
     -panda coverage:filename=test_coverage.csv,mode=process
 ```
 Use the coverage plugin on a live system:
 ```
-quemu-system-i386 -monitor stdio -m 2G -net nic -net user -os linux-32-.+ -panda osi -panda osi_linux:kconf_file=myconf.conf,kconf_group=mygroup -hda myimage.img
+panda-system-i386 -monitor stdio -m 2G -net nic -net user -os linux-32-.+ -panda osi -panda osi_linux:kconf_file=myconf.conf,kconf_group=mygroup -hda myimage.img
 (qemu) load_plugin coverage,filename=test01.csv,mode=process
 PANDA[core]:initializing coverage
 PANDA[coverage]:output file name test01.csv

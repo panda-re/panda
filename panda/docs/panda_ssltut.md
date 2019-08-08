@@ -54,7 +54,7 @@ If you want to follow along without creating your own recording, you can downloa
 
 Once you have the VM, boot it using
 
-    x86_64-softmmu/qemu-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
+    x86_64-softmmu/panda-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
         -m 256 -monitor stdio -net nic,model=e1000 -net user
 
 After it has booted, log in with the default username and password
@@ -95,7 +95,7 @@ To get started, boot up the VM. In addition to the arguments used to
 boot the VM in the previous section, we will also tell QEMU to capture
 all packets sent and received by the VM to a file called `ssltut.pcap`:
 
-    x86_64-softmmu/qemu-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
+    x86_64-softmmu/panda-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
         -m 256 -monitor stdio -net nic,model=e1000 \
         -net user -net dump,file=ssltut.pcap
 
@@ -178,7 +178,7 @@ which takes only 12 seconds to replay with no plugins, takes almost 2
 hours to run with `keyfind` enabled. This is what the output looks like:
 
     brendan@brendantemp:~/git/panda/qemu$ echo "begin_replay ssltut" | \
-        x86_64-softmmu/qemu-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
+        x86_64-softmmu/panda-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
         -m 256 -monitor stdio -vnc :0 -net nic,model=e1000 -net user \
         -panda "callstack_instr;keyfind"
     Initializing plugin callstack_instr
@@ -426,7 +426,7 @@ that looks like:
 
 Now, we run the replay:
 
-    $ echo "begin_replay ssltut" | x86_64-softmmu/qemu-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
+    $ echo "begin_replay ssltut" | x86_64-softmmu/panda-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
         -m 256 -monitor stdio -vnc :0 -net nic,model=e1000 -net user \
         -panda 'callstack_instr;textprinter'
 
@@ -496,7 +496,7 @@ the raw addresses we have back into symbolic names. Because we started
 was taken at the start of recording and just directly ask `gdb` to look
 up the addresses for us. Start the VM back up at the snapshot with:
 
-    $ x86_64-softmmu/qemu-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
+    $ x86_64-softmmu/panda-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
         -m 256 -monitor stdio -net nic,model=e1000 -net user -loadvm ssltut-rr-snp
 
 Next, we can enter the addresses into `gdb`. Because `gdb` doesn't load

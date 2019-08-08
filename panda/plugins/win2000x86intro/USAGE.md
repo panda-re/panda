@@ -26,5 +26,5 @@ Example
 
 Running `osi_test` on an Windows 2000 32-bit replay:
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
         -panda osi -panda win2000x86intro -panda osi_test
