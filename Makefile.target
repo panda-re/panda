@@ -243,10 +243,10 @@ ifdef CONFIG_TRACE_SYSTEMTAP
 	$(INSTALL_DATA) $(QEMU_PROG)-simpletrace.stp "$(DESTDIR)$(qemu_datadir)/../systemtap/tapset/$(QEMU_PROG)-simpletrace.stp"
 endif
 ifdef CONFIG_LLVM
-	$(INSTALL_DATA) $(llvmmorph-y) "$(qemu_datadir)/"
+	$(INSTALL_DATA) $(llvmmorph-y) "$(DESTDIR)$(qemu_datadir)/"
 endif
 	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/python2.7/site-packages"
-	$(INSTALL_DATA) plog_pb2.py "$(libdir)/python2.7/site-packages"
+	$(INSTALL_DATA) plog_pb2.py "$(DESTDIR)$(libdir)/python2.7/site-packages"
 	for p in $(PANDA_PLUGINS) $(EXTRA_PANDA_PLUGINS); do \
 		$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)/$$p"; \
 		$(INSTALL_DATA) panda/plugins/panda_$$p.so "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"; \
