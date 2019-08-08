@@ -172,15 +172,25 @@ void init_llvm_helpers() {
     llvm::LLVMContext &ctx = mod->getContext();
 
     // Read helper module, link into JIT, verify
-    std::string bitcode =
-        CONFIG_QEMU_DATADIR "/llvm-helpers-" TARGET_NAME ".bc";
+    // Try binary relative path first, otherwise use installation path.
+    char *exe = g_strdup(qemu_file);
+    std::string bitcode = dirname(exe);
+    g_free(exe);
+    bitcode.append("/llvm-helpers-" TARGET_NAME ".bc");
 
     llvm::SMDiagnostic Err;
     llvm::Module *helpermod = ParseIRFile(bitcode, Err, ctx);
+    if (nullptr == helpermod) {
+        std::string bitcode =
+            CONFIG_QEMU_DATADIR "/llvm-helpers-" TARGET_NAME ".bc";
+        helpermod = ParseIRFile(bitcode, Err, ctx);
+    }
+
     if (!helpermod) {
         Err.print("qemu", llvm::errs());
         exit(1);
     }
+
     std::string err;
     llvm::Linker::LinkModules(mod, helpermod, llvm::Linker::DestroySource, &err);
     if (!err.empty()) {
