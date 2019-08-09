@@ -246,11 +246,12 @@ ifdef CONFIG_LLVM
 	$(INSTALL_DATA) $(llvmmorph-y) "$(DESTDIR)$(qemu_datadir)/"
 endif
 	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/python2.7/site-packages"
-	$(INSTALL_DATA) plog_pb2.py "$(DESTDIR)$(libdir)/python2.7/site-packages"
+	$(INSTALL_LIB) plog_pb2.py "$(DESTDIR)$(libdir)/python2.7/site-packages"
+	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"
 	for p in $(PANDA_PLUGINS) $(EXTRA_PANDA_PLUGINS); do \
-		$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)/$$p"; \
-		$(INSTALL_DATA) panda/plugins/panda_$$p.so "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"; \
+		$(INSTALL_LIB) panda/plugins/panda_$$p.so "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"; \
 		for f in $$(find panda/plugins/$$p -type f -not -name '*.d' -not -name '*.o' -not -name '*.h'); do \
+			$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)/$$p"; \
 			$(INSTALL_DATA) $$f "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)/$$p"; \
 		done; \
 		echo $$p; \
