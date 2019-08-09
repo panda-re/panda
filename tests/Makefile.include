@@ -815,7 +815,7 @@ GCOV_OPTIONS = -n $(if $(V),-f,)
 .PHONY: $(patsubst %, check-qtest-%, $(QTEST_TARGETS))
 $(patsubst %, check-qtest-%, $(QTEST_TARGETS)): check-qtest-%: $(check-qtest-y)
 	$(if $(CONFIG_GCOV),@rm -f *.gcda */*.gcda */*/*.gcda */*/*/*.gcda,)
-	$(call quiet-command,QTEST_QEMU_BINARY=$*-softmmu/qemu-system-$* \
+	$(call quiet-command,QTEST_QEMU_BINARY=$*-softmmu/panda-system-$* \
 		QTEST_QEMU_IMG=qemu-img$(EXESUF) \
 		MALLOC_PERTURB_=$${MALLOC_PERTURB_:-$$((RANDOM % 255 + 1))} \
 		gtester $(GTESTER_OPTIONS) -m=$(SPEED) $(check-qtest-$*-y) $(check-qtest-generic-y),"GTESTER","$@")
@@ -838,7 +838,7 @@ $(patsubst %, check-%, $(check-unit-y)): check-%: %
 # gtester tests with XML output
 
 $(patsubst %, check-report-qtest-%.xml, $(QTEST_TARGETS)): check-report-qtest-%.xml: $(check-qtest-y)
-	$(call quiet-command,QTEST_QEMU_BINARY=$*-softmmu/qemu-system-$* \
+	$(call quiet-command,QTEST_QEMU_BINARY=$*-softmmu/panda-system-$* \
 		QTEST_QEMU_IMG=qemu-img$(EXESUF) \
 	  gtester -q $(GTESTER_OPTIONS) -o $@ -m=$(SPEED) $(check-qtest-$*-y) $(check-qtest-generic-y),"GTESTER","$@")
 
