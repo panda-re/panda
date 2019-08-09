@@ -132,8 +132,7 @@ installed from earlier steps, you can use configure and make to install PANDA.
 ```
 mkdir build
 cd build/
-../configure --prefix=/opt/panda --disable-docs --with-llvm=/opt/llvm33 \
-    --enable-llvm
+../configure --prefix=/opt/panda --with-llvm=/opt/llvm33 --enable-llvm
 make
 sudo make install
 ```
