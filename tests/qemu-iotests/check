@@ -70,12 +70,12 @@ if [[ -z "$QEMU_PROG" && ! -x './qemu' ]]
 then
     arch=$(uname -m 2> /dev/null)
 
-    if [[ -n $arch && -x "$build_root/$arch-softmmu/qemu-system-$arch" ]]
+    if [[ -n $arch && -x "$build_root/$arch-softmmu/panda-system-$arch" ]]
     then
-        export QEMU_PROG="$build_root/$arch-softmmu/qemu-system-$arch"
+        export QEMU_PROG="$build_root/$arch-softmmu/panda-system-$arch"
     else
         pushd "$build_root" > /dev/null
-        for binary in *-softmmu/qemu-system-*
+        for binary in *-softmmu/panda-system-*
         do
             if [ -x "$binary" ]
             then
