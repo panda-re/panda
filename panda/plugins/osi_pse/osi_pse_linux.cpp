@@ -140,16 +140,28 @@ void handle_kill_return(CPUState *cpu, target_ptr_t pc, int32_t pid, int32_t sig
     target_long r = 0;
     assert(false);
 #endif
+
+    // Only process if call succeeds and the signal is of interest.
     if (r != 0 || !(sig == 9 || sig == 2)) {
         return;
+    }
+    // XXX: also 3, 4, 6?
+
+    // XXX: Negative/zero pids have special meaning. Not implemented.
+    if (pid <= 0) {
+        LOG_ERROR("Sending signal to pid " TARGET_FMT_ld " not supported. "
+                  "Read kill(2) manual page on how to implement support for "
+                  "this case.", (target_long)pid);
+        assert(false && "sent signal to unsupported target");
     }
 
     // Create and init: OsiProcHandle *h; process_info_t &p; bool pexists;
     GET_PROCESS_INFO;
     assert(pexists && "kill from unknown process");
 
-    char *s = g_strdup_printf("-%d " TARGET_PID_FMT, sig, (target_pid_t)pid);
-    p.dump("KILL", s, nullptr);
+    char *s = g_strdup_printf("kill -%d " TARGET_FMT_ld " -> " TARGET_FMT_ld,
+                              sig, (target_long)pid, r);
+    p.vdump(cpu, s);
     g_free(s);
 
     process_info_t &pkilled = lpt.procinfo_by_pid(pid);
@@ -295,25 +307,30 @@ void handle_sys_enter(CPUState *cpu, target_ptr_t pc,
     p.fsm.save_state();
     switch (p.fsm.state) {
         case LPFSM::State::INIT:
-        {
-            // Run on_process_start callback if it is still pending.
-            // The only case this has been observed to be required are
-            // generic kworkers that are assigned a specific task.
-            //
-            // XXX: Running the callback here may cause problems with
-            // plugins that also register syscall-specific callbacks.
-            // This is due to the syscalls2 callbacks invocation order.
-            // Typically, the first syscall of the new process will be
-            // sys_brk which limits the consequences of this limitation.
-            if(!p.ran_cb_start_) {
-                LOG_WARNING("Late on_process_start callback for "
-                            PH_FMT ".", PH_ARGS(p.handle));
-                p.run_cb_start(cpu);
-            }
-            p.fsm.state = LPFSM::State::RUN;
-        } // fallthrough
         case LPFSM::State::RUN:
-        {
+        case LPFSM::State::KILL: {
+            if (p.fsm.state == LPFSM::State::INIT) {
+                // Run on_process_start if it is still pending.
+                // Observed for generic kworker tasks that "transform" to
+                // regular user processes.
+                // XXX: We need to warn about the delayed callback.
+                // This is because this code runs *after* any syscall-specific
+                // callbacks a plugin may have registered, due to the specifics
+                // of syscalls2 implementation. I.e. the syscall-specific
+                // callback will be run before the plugin has been notified
+                // about the new process. Note that this will not impact most
+                // plugins, as the first syscall of the new process is usually
+                // of little interest (e.g. sys_brk).
+                if (!p.ran_cb_start_) {
+                    LOG_WARNING("late on_process_start callback for " PH_FMT
+                                ".", PH_ARGS(p.handle));
+                    p.run_cb_start(cpu);
+                }
+                p.fsm.state = LPFSM::State::RUN;
+            } else if (p.fsm.state == LPFSM::State::KILL) {
+                LOG_DEBUG("survived kill!");
+                p.fsm.state = LPFSM::State::RUN;
+            }
             switch (call->no) {
                 case scnum::sys_clone:
                     p.fsm.state = LPFSM::State::CLN;
@@ -633,6 +650,7 @@ int asid_changed_linux(CPUState *cpu, target_ptr_t current, target_ptr_t next) {
         {
             // The scheduled-out process has already been killed.
             // Transition from KILL to END.
+            LOG_DEBUG("killing for good");
             p.fsm.state = LPFSM::State::END;
             assert(lpt.asids.erase(p.handle.asid));
             p.run_cb_end(cpu);
