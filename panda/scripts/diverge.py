@@ -117,7 +117,7 @@ class RRInstance(object):
     @cached_property
     def arch(self):
         rr_ps = check_output([cli_args.rr, 'ps', self.rr_replay])
-        qemu_regex = r"qemu-system-({})".format("|".join(SUPPORTED_ARCHS.keys()))
+        qemu_regex = r"panda-system-({})".format("|".join(SUPPORTED_ARCHS.keys()))
         re_result = re.search(qemu_regex, rr_ps)
         if not re_result: raise RuntimeError("Unsupported architecture!")
         return SUPPORTED_ARCHS[re_result.group(1)]
