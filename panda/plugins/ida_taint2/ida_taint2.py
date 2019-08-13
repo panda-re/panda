@@ -78,6 +78,8 @@ def read_semantic_labels(filename):
             reader = csv.reader(f)
             for row in reader:
                 semantic_labels[int(row[0])]=row[1]
+    except IOError:
+        pass
     except OSError:
         pass
 
