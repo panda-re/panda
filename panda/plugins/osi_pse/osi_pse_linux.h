@@ -158,9 +158,16 @@ typedef struct process_info_struct {
      */
     inline void run_cb_end(CPUState *cpu) {
         if (!ran_cb_start_) {
-           LOG_ERROR("Callback on_process_start hasn't run for "
-                     PH_FMT ".", PH_ARGS(handle));
-           assert(false && "on_process_end without on_process_start");
+           // Before you see the light, you must dieeeee!!!
+           //                     --Slayer, South of Heaven
+           // This used to be an error condition. However, we have observed
+           // that some processes that never get scheduled after the plugin
+           // initialization. Their first interaction with the world is
+           // receiving a KILL signal.
+           LOG_WARNING("Callback on_process_start hasn't run yet. "
+                       "Skipping on_process_end callback for " PH_FMT ".",
+                       PH_ARGS(handle));
+           return;
         }
 
         if (ran_cb_end_) {
@@ -436,8 +443,6 @@ class LPTracker {
      * @note Currently we retrieve the full process list and scan for
      * the specified asid. This can be simplified by adding to osi
      * an api call that retrieves one handle by asid.
-     *
-     * @note This method is currently only used for debug purposes.
      */
     inline process_info_t *AddNewByASID(CPUState *cpu, target_ptr_t asid) {
         GArray *handles = get_process_handles(cpu);
@@ -446,13 +451,10 @@ class LPTracker {
                   TARGET_PTR_FMT, handles->len, asid);
         for (uint32_t i = 0; i < handles->len; i++) {
             OsiProcHandle *h = &g_array_index(handles, OsiProcHandle, i);
-            // kernel process
-            if (h->asid == ASID0) { continue; }
+            // kernel process or asid not matching
+            if (h->asid == ASID0 || h->asid != asid) { continue; }
 
-            // asid not matching
-            if (h->asid != asid) { continue; }
-
-            // asid matching - get or create process_info_t entry
+            // matching asid
             auto ps_it = ps.lower_bound(h->taskd);
             bool found = (ps_it != ps.end() && ps_it->first == h->taskd);
             if (!found) {
@@ -466,11 +468,17 @@ class LPTracker {
                 g_array_free(handles, true);
                 return &p;
             } else {
-                LOG_DEBUG("RECYCLED");
                 process_info_t &p = ps_it->second;
-                p.reset(cpu, h);
-                auto emplaced_a2t = asids.emplace(h->asid, h->taskd);
-                assert(emplaced_a2t.second);
+                bool recycle = !(p.fsm.state ==  LPFSM::State::END &&
+                                 p.handle.asid == h->asid);
+                if (recycle) {
+                    LOG_DEBUG("RECYCLED");
+                    p.reset(cpu, h);
+                    auto emplaced_a2t = asids.emplace(h->asid, h->taskd);
+                    assert(emplaced_a2t.second);
+                } else {
+                    LOG_DEBUG("WAIT_END");
+                }
                 g_array_free(handles, true);
                 return &p;
             }
