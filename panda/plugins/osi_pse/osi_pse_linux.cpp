@@ -96,28 +96,32 @@ target_ptr_t taskd_guess = ASID0;
  * at the guess location.
  */
 void taskd_guess_check(CPUState *cpu, OsiProcHandle *h, process_info_t &p) {
-    const char *state;
-    target_ptr_t taskd_guess_orig = taskd_guess;
-
-    if (taskd_guess == ASID0) {  // initialization
+    const char *UNUSED(status);
+    target_ptr_t UNUSED(taskd_guess_sav) = taskd_guess;
+    bool fail = false;
+    if (taskd_guess == h->taskd) {
+        status = "ok";
+    } else if (p.fsm.state == LPFSM::State::VFC) {
+        status = "ok (vfc)";
         taskd_guess = h->taskd;
-        state = "init";
-    } else if (taskd_guess == h->taskd) {  // correct guess
-        state = "ok";
     } else if (p.fsm.state == LPFSM::State::VFP && p.vforkc != nullptr &&
-               p.vforkc->handle.taskd == taskd_guess) {  // vfork
-        state = "ok (vfork child)";
+               p.vforkc->handle.taskd == taskd_guess) {
+        status = "ok (vfp)";
         taskd_guess = h->taskd;
     } else {
+        status = "fail";
+        p.vdump(cpu);
         taskd_guess = h->taskd;
-        state = nullptr;
+        fail = true;
     }
 
-    LOG_DEBUG("%s: %s", __func__, (state == nullptr ? "fail" : state));
-    if (state == nullptr) {
-        LOG_DEBUG("\texpected:" TARGET_PTR_FMT, taskd_guess_orig);
-        LOG_DEBUG("\t     got:" TARGET_PTR_FMT, h->taskd);
-        LOG_DEBUG("\t     new:" TARGET_PTR_FMT, taskd_guess);
+    if (fail) {
+        LOG_DEBUG("%s: %-10s guess=" TARGET_PTR_FMT " real=" TARGET_PTR_FMT,
+                  __func__, status, taskd_guess_sav, taskd_guess);
+    } else {
+        //LOG_DEBUG("%s: %-10s", __func__, status);
+        LOG_DEBUG("%s: %-10s guess=" TARGET_PTR_FMT " real=" TARGET_PTR_FMT,
+                  __func__, status, taskd_guess_sav, taskd_guess);
     }
 }
 
@@ -131,17 +135,8 @@ void taskd_guess_check(CPUState *cpu, OsiProcHandle *h, process_info_t &p) {
  * handled here.
  */
 void handle_kill_return(CPUState *cpu, target_ptr_t pc, int32_t pid, int32_t sig) {
-    //target_long rval = get_return_val(cpu);
-#if defined(TARGET_I386)
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    target_long r = static_cast<target_ptr_t>(env->regs[R_EAX]);
-#else
-    // XXX: Platform-independent return value handling not supported by syscalls2.
-    target_long r = 0;
-    assert(false);
-#endif
-
     // Only process if call succeeds and the signal is of interest.
+    target_long r = panda_get_retval(cpu);
     if (r != 0 || !(sig == 9 || sig == 2)) {
         return;
     }
@@ -243,7 +238,7 @@ void handle_sys_return(CPUState *cpu, target_ulong pc,
 
                     // Update the expected taskd.
                     assert(taskd_guess == pparent.handle.taskd);
-                    taskd_guess = pchild.handle.taskd;
+                    //taskd_guess = pchild.handle.taskd;
                
                     // Set state and parent pointers.
                     pchild.fsm.state = LPFSM::State::VFC;
@@ -507,6 +502,7 @@ void handle_sys_enter(CPUState *cpu, target_ptr_t pc,
 int asid_changed_linux(CPUState *cpu, target_ptr_t current, target_ptr_t next) {
     // Create and init: OsiProcHandle *h; process_info_t &p; bool pexists;
     GET_PROCESS_INFO;
+    process_info_t *pnext = nullptr;
 
     LOG_DEBUG("--- CS: " TARGET_PTR_FMT " -> " TARGET_PTR_FMT
               " %5s ---------------------------",
@@ -522,70 +518,90 @@ int asid_changed_linux(CPUState *cpu, target_ptr_t current, target_ptr_t next) {
 
     p.fsm.save_state();
     switch (p.fsm.state) {
-        case LPFSM::State::RUN:
-        {
-            // If the scheduled-out process is in RUN state, we expect that
-            // the process to be scheduled-in already has an asid to taskd
-            // mapping.
-            // If not, fail to excamine the situation in detail.
-            if (lpt.asids.find(next) == lpt.asids.cend()) {
-                LOG_ERROR("An unknown asid appeared: " TARGET_PTR_FMT, next);
-                process_info_t *ppnew = lpt.AddNewByASID(cpu, next);
-                ppnew->vdump(cpu); //XXX nullptr check
-                assert(false && "unknown asid scheduled after running process");
-            }
-        } break;
         case LPFSM::State::KERN:
         {
             // If the scheduled-out process is in KERN state, we generally
             // expect that the process to be scheduled-in already has an
-            // asid to taskd mapping.
-            // A rare exception to this is a transition to a kernel process
-            // after a sys_clone has created a process, but before it returns.
-            if (lpt.asids.find(next) == lpt.asids.cend()) {
+            // asid to taskd mapping. There are some rare exceptions though.
+            auto a2t_it = lpt.asids.find(next);
+            if (a2t_it != lpt.asids.cend()) {
+                // expected
+                auto ps_it = lpt.ps.find(a2t_it->second);
+                assert(ps_it != lpt.ps.end());
+                pnext = &ps_it->second;
+            } else {
                 LOG_WARNING("An unknown asid appeared: " TARGET_PTR_FMT, next);
-                process_info_t *ppnew = lpt.AddNewByASID(cpu, next);
-                ppnew->vdump(cpu); //XXX nullptr check - remove vdump
-                process_info_t &pparent = lpt.procinfo_by_pid(ppnew->ppid);
-                switch (pparent.fsm.state) {
-                    case LPFSM::State::CLN:
-                    {
-                        pparent.fsm.state = LPFSM::State::RUN;
-                        ppnew->run_cb_start(cpu);
-                    } break;
-                    default:
-                    {
+                pnext = lpt.AddNewByASID(cpu, next);
+                if (pnext == nullptr) {
+                    // If no process was found, it is not necessarily an error
+                    // in the analysis code. It may be a transition to a kernel
+                    // context that doesn't map to a process.
+                    LOG_DEBUG_MSGPROC("kernel to kernel cs", p);
+                    break;
+                } else if (pnext->fsm.state == LPFSM::State::END) {
+                    // Due to kernel preemptibility, an exiting process may
+                    // be interrupted before its asid is cleared. In that
+                    // case, AddNewByASID() will return an ended process.
+                    LOG_DEBUG_MSGPROC("interrupted sys_exit_group", *pnext);
+                    pnext->vdump(cpu);
+                    break;
+                } else {
+                    process_info_t &parnext = lpt.procinfo_by_pid(pnext->ppid);
+                    if (parnext.fsm.state == LPFSM::State::CLN) {
+                        // Due to kernel preemtibility/non-determinism,
+                        // a process created by sys_clone may run before the
+                        // system call returns to its parent.
+                        LOG_DEBUG_MSGPROC("odd sys_clone return order", *pnext);
+                        parnext.fsm.state = LPFSM::State::RUN;
+                        pnext->vdump(cpu);
+                        pnext->run_cb_start(cpu);
+                    } else {
+                        // unexpected - fail to examine the case
                         assert(false && "unknown asid scheduled after kernel process");
-                    } break;
+                    }
                 }
             }
         } break;
         case LPFSM::State::CLN:
         {
             // The scheduled-out process is still executing a sys_clone.
+            // First check if parent or child process are scheduled next.
             if (next == current) {
-                // Same asid for the scheduled-in and out processes.
-                // This is part of the cloning process, but the new
-                // process is not ready yet. Do nothing.
+                // Same asid for the scheduled-in and out processes. This is
+                // part of the cloning process, but the new process is not
+                // ready yet. Do nothing.
+                pnext = &p;
             } else {
                 // Different asids for the scheduled-in and out processes.
-                // The cloned process should be ready.
-                // We can scan for it using AddNewByPPID(). Note that we
-                // can't use AddNewByASID() because there's no guarantee
-                // the the process to be scheduled next will be the
-                // newly cloned process.
-                // AddNewByPPID() is not guaranteed to yield a new process.
-                // A process running sys_clone may be scheduled in and out
-                // several times before the new process appears.
-                process_info_t *ppnew = lpt.AddNewByPPID(cpu, p.pid);
-                if (ppnew != nullptr) {
-                    process_info_t &pnew = *ppnew;
+                // Check if the cloned process is ready.
+                process_info_t *pnew = lpt.AddNewByPPID(cpu, p.pid);
+                if (pnew != nullptr) {
                     p.fsm.state = LPFSM::State::RUN;
-                    pnew.vdump(cpu);
-                    pnew.run_cb_start(cpu);
+                    pnew->vdump(cpu);
+                    pnew->run_cb_start(cpu);
+                }
+
+                // New process is the one to be scheduled next.
+                if (pnew != nullptr && pnew->handle.asid == next) {
+                    pnext = pnew;
+                }
+            }
+
+            // No new process found or found but not scheduled next.
+            if (pnext == nullptr) {
+                auto a2t_it = lpt.asids.find(next);
+                if (a2t_it != lpt.asids.cend()) {
+                    // expected - some other process is scheduled
+                    auto ps_it = lpt.ps.find(a2t_it->second);
+                    assert(ps_it != lpt.ps.end());
+                    pnext = &ps_it->second;
                 } else {
-                    // no new process found - yet
-                    break;
+                    // unexpected - fail to examine the case
+                    LOG_ERROR("An unknown asid appeared: " TARGET_PTR_FMT, next);
+                    pnext = lpt.AddNewByASID(cpu, next);
+                    assert(pnext != nullptr);
+                    pnext->vdump(cpu);
+                    assert(false && "unknown asid scheduled after running process");
                 }
             }
         } break;
@@ -594,7 +610,7 @@ int asid_changed_linux(CPUState *cpu, target_ptr_t current, target_ptr_t next) {
             assert(p.handle.asid == current);
             LOG_DEBUG("X0");
 
-            // Switching to new process in sys_vfork-sys_execve sequence.
+            // Process created as a result of a sys_vfork-sys_execve sequence.
             if (p.vforkp != nullptr) {
                 process_info_t &pchild = p;
                 process_info_t &pparent = *p.vforkp;
@@ -634,6 +650,7 @@ int asid_changed_linux(CPUState *cpu, target_ptr_t current, target_ptr_t next) {
                 // Make sure that we're indeed switching to the new child.
                 assert(pchild.ppid == pparent.pid);
 
+                pnext = &pchild;
                 break;
             }
 
@@ -659,6 +676,7 @@ int asid_changed_linux(CPUState *cpu, target_ptr_t current, target_ptr_t next) {
                 // Sanity check after reset.
                 assert(p.pid == pid_old && p.ppid == ppid_old);
 
+                pnext = &p;
                 break;
             }
 
@@ -666,26 +684,26 @@ int asid_changed_linux(CPUState *cpu, target_ptr_t current, target_ptr_t next) {
             // This means that the scheduled-out process has not finished
             // with sys_execve, and the scheduled-in process is unrelated.
             // Only do some sanity checks.
-            process_info_t &pnext = lpt.procinfo_by_taskd(a2t_it->second);
-            assert(pnext.fsm.state != LPFSM::State::END);
-            assert(pnext.pid != p.pid);
-        } break;
-        case LPFSM::State::KILL:
-        {
-            // The scheduled-out process has already been killed.
-            // Transition from KILL to END.
-            LOG_DEBUG("killing for good");
-            p.fsm.state = LPFSM::State::END;
-            assert(lpt.asids.erase(p.handle.asid));
-            p.run_cb_end(cpu);
+            pnext = &lpt.procinfo_by_taskd(a2t_it->second);
+            assert(pnext->fsm.state != LPFSM::State::END);
+            assert(pnext->pid != p.pid);
         } break;
         case LPFSM::State::END:
         {
             if (h->asid == ASID0) {
                 // Either the scheduled-out process has started terminating,
-                // or a real kernel process. Just do a quick sanity check.
+                // or a real kernel process. Attempt to find the next process
+                // by asid. Failing is ok. The kernel often takes a turn after
+                // an exiting process.
                 assert(h->taskd == p.handle.taskd);
-                LOG_DEBUG_MSGPROC("switching to exiting process", p);
+                auto a2t_it = lpt.asids.find(next);
+                if (a2t_it != lpt.asids.cend()) {
+                    auto ps_it = lpt.ps.find(a2t_it->second);
+                    assert(ps_it != lpt.ps.end());
+                    pnext = &ps_it->second;
+                } else {
+                    LOG_DEBUG_MSGPROC("exiting process to unknown", p);
+                }
             } else if (h->asid == next) {
                 // Weirdness: h->asid matches the scheduled-in process.
                 // XXX: This has only been observed when the kernel
@@ -696,6 +714,7 @@ int asid_changed_linux(CPUState *cpu, target_ptr_t current, target_ptr_t next) {
                 p.reset(cpu, h);
                 lpt.AddASIDMapping(h->asid, h->taskd);
                 LOG_DEBUG_MSGPROC("kworker to process", p);
+                pnext = &p;
             } else {
                 // XXX: This hasn't been observed in practice.
                 // This block covers two cases:
@@ -711,41 +730,58 @@ int asid_changed_linux(CPUState *cpu, target_ptr_t current, target_ptr_t next) {
                 assert(false && "unexpected asid for terminating process");
             }
         } break;
+        case LPFSM::State::RUN:
+        case LPFSM::State::KILL:
         default:
-            // Scheduled-out process in some other state.
-            // nop
-            break;
+        {
+            if (p.fsm.state == LPFSM::State::KILL) {
+                // The scheduled-out process has already been killed.
+                // Transition from KILL to END.
+                p.fsm.state = LPFSM::State::END;
+                assert(lpt.asids.erase(p.handle.asid));
+                p.run_cb_end(cpu);
+            }
+
+            // If the scheduled-out process is in RUN/KILL/other state,
+            // we expect that the process to be scheduled-in already has
+            // an asid to taskd mapping.
+            auto a2t_it = lpt.asids.find(next);
+            if (a2t_it != lpt.asids.cend()) {
+                // expected
+                auto ps_it = lpt.ps.find(a2t_it->second);
+                assert(ps_it != lpt.ps.end());
+                pnext = &ps_it->second;
+            } else if (p.fsm.state == LPFSM::State::END) {
+                // KILL->END transition.
+                // We have observed that the scheduled-in code may
+                // be kernel code not associated with a process.
+                LOG_DEBUG_MSGPROC("unknown code after kill", p);
+            } else {
+                // unexpected - fail to examine the case
+                LOG_ERROR("An unknown asid appeared: " TARGET_PTR_FMT, next);
+                pnext = lpt.AddNewByASID(cpu, next);
+                assert(pnext != nullptr);
+                pnext->vdump(cpu);
+                assert(false && "unknown asid scheduled after running process");
+            }
+        } break;
     }
     p.vdump_transition(cpu);
 
-    // Lookup the next taskd. This is for debugging purposes.
-    // Being able to guess this correctly here, means that:
+    // Update taskd_guess based on the value of pnext. Being able to guess
+    // this correctly, means that:
     //  - we can run the on_process_start callbacks here
     //  - we can make the INIT -> FSM transition on the first syscall
-    auto a2t_it = lpt.asids.find(next);
-    bool asid_task_found = (a2t_it != lpt.asids.cend());
-    if (asid_task_found) {
-        taskd_guess = a2t_it->second;
-        LOG_DEBUG("****** a2t entry found: " TARGET_PTR_FMT ":" TARGET_PTR_FMT,
-                  a2t_it->first, a2t_it->second);
-
-        auto ps_it = lpt.ps.find(taskd_guess);
-        assert(ps_it != lpt.ps.end());
-        process_info_t &pnext = ps_it->second;
-
-        if (h->asid != next && pnext.fsm.state == LPFSM::State::INIT) {
-            LOG_DEBUG_MSGPROC("starting at context switch", pnext);
-            pnext.run_cb_start(cpu);
-        }
-    } else if (p.fsm.state == LPFSM::State::END) {
-        taskd_guess = ASID0;
-        LOG_DEBUG("****** no a2t entry: " TARGET_PTR_FMT ":??? (expected)", next);
+    if (pnext != nullptr) {
+        taskd_guess = pnext->handle.taskd;
+        LOG_DEBUG("coming up next: " PH_FMT, PH_ARGS(pnext->handle));
     } else {
+        // This should only happen when switching to a kernel context
+        // with no process associated with it.
         taskd_guess = ASID0;
-        LOG_DEBUG("****** no a2t entry: " TARGET_PTR_FMT ":??? (unexpected)", next);
+        LOG_DEBUG("coming up next: ?");
     }
 
-    LOG_DEBUG("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
     free_osiprochandle(h);
     return 0;
 }
