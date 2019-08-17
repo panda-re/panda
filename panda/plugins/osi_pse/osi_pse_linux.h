@@ -379,13 +379,35 @@ class LPTracker {
         bool found = (ps_it != ps.end() && ps_it->first == h->taskd);
         if (!found) {
             // This is the cold path.
-            // Usually when kernel creates kworker processes.
+            // Mostly occurs when kernel creates kworker processes.
+            // When we need to create a new process_info_t for a
+            // regular process, this is usually a result of sys_vfork.
+            // In that case, we need to make sure to not attempt to
+            // create a new asid to taskd mapping, since the mapping
+            // of the parent process will still be in place.
+
+            // Create new process.
             ps_it = ps.emplace_hint(ps_it, std::piecewise_construct,
                                     std::forward_as_tuple(h->taskd),
                                     std::forward_as_tuple(cpu, h));
             process_info_t &p = ps_it->second;
-            auto emplaced_a2t = asids.emplace(h->asid, h->taskd);
-            assert(emplaced_a2t.second);
+
+            // Add mapping.
+            auto a2t_it = asids.lower_bound(h->asid);
+            bool a2t_found = (a2t_it != asids.end() && a2t_it->first == h->asid);
+            if (!a2t_found) {
+                // Add new mapping.
+                a2t_it = asids.emplace_hint(a2t_it, h->asid, h->taskd);
+                assert(a2t_it->second == h->taskd);
+            } else {
+                // Mapping exists. Make sure it belongs to parent process.
+                ps_it = ps.find(a2t_it->second);
+                process_info_t &pparent = ps_it->second;
+                assert(p.ppid == pparent.pid && "this ain't my parent!");
+
+                // No further action required. sys_vfork return handler
+                // will kick in shortly after this.
+            }
             p.vdump(cpu);
             return std::forward_as_tuple(h, p, found);
         } else {
