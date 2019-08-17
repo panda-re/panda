@@ -1,0 +1,90 @@
+- name: Build PANDA from source on OSX
+  hosts: local
+  vars:
+    # paths
+    panda_root: "{{ (playbook_dir + '/../..') | realpath }}"
+    panda_build: "{{ (panda_root + '/../panda-build') | realpath }}"
+    panda_install: "{{panda_build}}/install"
+    homebrew_root: "{{ homebrew_config.stdout_lines[0] }}"
+    homebrew_core_root: "{{ homebrew_config.stdout_lines[1] }}"
+    homebrew_core_formulas: "{{homebrew_core_root}}/Formula"
+    llvm_root: "{{homebrew_root}}/opt/llvm@3.3"
+    llvm_config: "{{llvm_root}}/bin/llvm-config"
+
+    # pre-requisites
+    qemu_prerequisites: ['autoconf', 'automake', 'gettext', 'glib', 'libffi', 'libjpeg', 'pixman', 'pkg-config']
+    panda_prerequisites: ['libdwarf', 'isl@0.11', 'llvm@3.3', 'capstone', 'protobuf', 'protobuf-c']
+    python_prerequisites: "pycparser>2.10"
+
+    # configuration options
+    panda_targets: ["x86_64-softmmu", "i386-softmmu", "arm-softmmu", "ppc-softmmu"]
+    panda_extra_pkgconfig:
+      - "$(brew --prefix ncurses)/lib/pkgconfig"
+    panda_extra_cflags:
+      - "-I$(xcrun --show-sdk-path)/usr/include"
+      - "$(pkg-config --cflags libjpeg)"
+      - "$(pkg-config --cflags libelf)"
+      - "-I$(brew --prefix libdwarf)/include"
+      - "-DNCURSES_WIDECHAR=1"
+    panda_extra_ldflags:
+      - "$(pkg-config --libs-only-L libjpeg)"
+      - "$(pkg-config --libs-only-L libelf)"
+      - "-L$(brew --prefix libdwarf)/lib"
+    panda_disable_plugins: ["network"]
+    panda_config_args:
+      - "--prefix={{panda_install}}"
+      - "--target-list={{panda_targets | join(',')}}"
+      - "--cc=clang"
+      - "--cxx=clang++"
+      - "--extra-cflags=\"{{panda_extra_cflags | join(' ')}}\""
+      - "--extra-ldflags=\"{{panda_extra_ldflags | join(' ')}}\""
+      - "--python=python2"
+      - "--enable-llvm"
+      - "--with-llvm=$({{llvm_config}} --prefix)"
+      - "--enable-capstone"
+      - "--enable-curses"
+      - "--enable-cocoa"
+      - "--disable-sdl"
+      - "--disable-gtk"
+      - "--disable-vhost-net"
+      - "--disable-plugins={{panda_disable_plugins | join(',')}}"
+
+  tasks:
+    - name: "get homebrew config"
+      shell: "brew --repo && brew --repo homebrew/core && brew update"
+      register: homebrew_config
+    - name: "update homebrew"
+      homebrew:
+        update_homebrew: yes
+    - name: "copy formulas"
+      copy:
+        src: resources/homebrew/
+        dest: "{{homebrew_core_formulas}}"
+    - name: "install pre-requisites"
+      # See https://wiki.qemu.org/Hosts/Mac
+      homebrew:
+        name: "{{qemu_prerequisites + panda_prerequisites}}"
+        state: present
+    - name: "install python pre-requisites"
+      pip:
+        name: "{{python_prerequisites}}"
+    - name: "create PANDA build directory"
+      file:
+        path: "{{panda_build}}"
+        state: directory
+        mode: 0755
+    - name: "create PANDA configure script"
+      template:
+        src: templates/configure-osx.j2
+        dest: "{{panda_build}}/configure-osx.sh"
+        mode: 0755
+    - name: "configure PANDA"
+      command: ./configure-osx.sh
+      args:
+        chdir: "{{panda_build}}"
+        creates: qemu-options.def
+      register: config_out
+    - name: "post configure"
+      debug:
+        msg: "To compile: cd {{panda_build}} && make -j $(nproc)"
+

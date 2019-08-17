@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+{% if panda_extra_pkgconfig %}
+export PKG_CONFIG_PATH="{{panda_extra_pkgconfig | join(":")}}"
+{% endif %}
+
+cd {{panda_build}}
+
+{{panda_root}}/configure \
+{% for arg in panda_config_args %}
+	{{arg}}{{ ' \\' if not loop.last else "" }}
+{% endfor %}
+
+# vim:ft=sh
