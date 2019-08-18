@@ -1,22 +1,15 @@
-class Isl < Formula
+class IslAT011 < Formula
   desc "Integer Set Library for the polyhedral model"
   homepage "https://isl.gforge.inria.fr/"
+  revision 2
   # Note: Always use tarball instead of git tag for stable version.
   #
   # Currently isl detects its version using source code directory name
   # and update isl_version() function accordingly.  All other names will
   # result in isl_version() function returning "UNKNOWN" and hence break
   # package detection.
-  url "http://isl.gforge.inria.fr/isl-0.21.tar.xz"
-  mirror "https://deb.debian.org/debian/pool/main/i/isl/isl_0.21.orig.tar.xz"
-  sha256 "777058852a3db9500954361e294881214f6ecd4b594c00da5eee974cd6a54960"
-
-  bottle do
-    cellar :any
-    sha256 "f9188b5d486b2a835cd865f219be1a9848ce3926e27089a1538ee989db65447d" => :mojave
-    sha256 "d997d49958218e521bc4f73369414ff9fad040d28601d94012e4c68cd090ea93" => :high_sierra
-    sha256 "d5dc353916cd98da04552a3d7cb86a3203612df422c4e9389e13e12f86945865" => :sierra
-  end
+  url "http://isl.gforge.inria.fr/isl-0.11.2.tar.gz"
+  sha256 "e3976c7af97b916aa84a46a64db4fb1b74a0af94592347a53fc5a286dc4b58fe"
 
   head do
     url "https://repo.or.cz/isl.git"
@@ -26,6 +19,7 @@ class Isl < Formula
     depends_on "libtool" => :build
   end
 
+  keg_only :versioned_formula
   depends_on "gmp"
 
   def install
