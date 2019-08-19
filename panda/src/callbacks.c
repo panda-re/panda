@@ -25,7 +25,6 @@ PANDAENDCOMMENT */
 #include "monitor/monitor.h"
 
 #ifdef CONFIG_LLVM
-//#include "panda/panda_helper_call_morph.h"
 #include "tcg.h"
 #include "panda/tcg-llvm.h"
 #include "panda/helper_runtime.h"
@@ -1009,8 +1008,9 @@ void hmp_panda_list_plugins(Monitor *mon, const QDict *qdict) {
     PandaPluginInfoList *plugin_item = qmp_list_plugins(&err);
     monitor_printf(mon, "idx\t%-20s\taddr\n", "name");
     while (plugin_item != NULL){
-        monitor_printf(mon, "%ld\t%-20s\t%lx\n", plugin_item->value->index, 
-                        plugin_item->value->name, plugin_item->value->address);
+        monitor_printf(mon, "%" PRId64 "\t%-20s\t%" PRIx64 "\n",
+                       plugin_item->value->index, plugin_item->value->name,
+                       plugin_item->value->address);
         plugin_item = plugin_item->next;
 
     }

@@ -25,10 +25,11 @@ uint32_t input_label;
 bool positional_labels;
 uint32_t pos_current_label = 0;
 
-int serial_receive(CPUState *cpu, uint64_t fifo_addr, uint8_t value)
+int serial_receive(CPUState *cpu, uint64_t _fifo_addr, uint8_t value)
 {
+    target_ptr_t fifo_addr = (target_ptr_t)_fifo_addr;
     fprintf(stderr, "Applying taint labels to incoming serial port data.\n");
-    fprintf(stderr, "  Address in IO Shadow = 0x%lX\n", fifo_addr);
+    fprintf(stderr, "  Address in IO Shadow = 0x" TARGET_PTR_FMT "\n", fifo_addr);
     fprintf(stderr, "  Value = 0x%X\n", value);
 
     taint2_enable_taint();

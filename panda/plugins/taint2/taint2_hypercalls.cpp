@@ -230,7 +230,7 @@ int guest_hypercall_callback(CPUState *cpu) {
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     if (env->regs[0] == 7 || env->regs[0] == 8) { //Taint label
         if (!taintEnabled) {
-            printf("Taint plugin: Label operation detected @ %lu\n", rr_get_guest_instr_count());
+            printf("Taint plugin: Label operation detected @ %" PRIu64 "\n", rr_get_guest_instr_count());
             printf("Enabling taint processing\n");
             taint2_enable_taint();
         }
@@ -238,7 +238,7 @@ int guest_hypercall_callback(CPUState *cpu) {
     }
     else if (env->regs[0] == 9) { //Query taint on label
         if (taintEnabled) {
-            printf("Taint plugin: Query operation detected @ %lu\n", rr_get_guest_instr_count());
+            printf("Taint plugin: Query operation detected @ %" PRIu64 "\n", rr_get_guest_instr_count());
         }
     }
     return 1;

@@ -226,7 +226,7 @@ static void start_snip(uint64_t count) {
     printf("Original ending prog point: %" PRId64 "\n", (uint64_t) orig_last_prog_point.guest_instr_count);
 
     actual_start_count = count;
-    printf("Saving snapshot at instr count %lu...\n", count);
+    printf("Saving snapshot at instr count %" PRIx64 "...\n", count);
     
     // Force running state
     global_state_store_running();

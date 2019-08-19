@@ -32,14 +32,15 @@ int on_replay_handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t
 
 int on_replay_net_transfer(CPUState* env, uint32_t type, uint64_t src_addr, 
     uint64_t dst_addr, uint32_t num_bytes) {
-    printf("net transfer: src: %lx, dst: %lx, n: %u\n", src_addr, dst_addr, num_bytes);
+    printf("net transfer: src: %" PRIx64 ", dst: %" PRIx64 ", n: %u\n",
+           src_addr, dst_addr, num_bytes);
     return 1;
 }
 
 int on_replay_handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t
     direction, uint64_t old_buf_addr) {
-    printf("handle packets: buf: %p, size: %i, direction: %u, old_buf_addr: %lx\n",
-        buf, size, direction, old_buf_addr);
+    printf("handle packets: buf: %p, size: %i, direction: %u, "
+           "old_buf_addr: %" PRIx64 "\n", buf, size, direction, old_buf_addr);
         printf("start content: \n");
         for (int i = 0; i < size; i++) {
             printf("%c, ", buf[i]);

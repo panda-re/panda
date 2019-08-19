@@ -102,8 +102,10 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
             if (sp.val[str_idx] == strlens[str_idx]) {
                 // Victory!
                 char *sid_string = get_stackid_string(p);
-                printf("%s Match of str %d at: instr_count=%lu :  " TARGET_FMT_lx " " TARGET_FMT_lx " %s\n",
-                       (is_write ? "WRITE" : "READ"), str_idx, rr_get_guest_instr_count(), p.caller, p.pc, sid_string);
+                printf("%s Match of str %d at: instr_count=%" PRIu64 " :  "
+                       TARGET_FMT_lx " " TARGET_FMT_lx " %s\n",
+                       (is_write ? "WRITE" : "READ"), str_idx,
+                       rr_get_guest_instr_count(), p.caller, p.pc, sid_string);
                 matches[p].val[str_idx]++;
                 sp.val[str_idx] = 0;
                 g_free(sid_string);

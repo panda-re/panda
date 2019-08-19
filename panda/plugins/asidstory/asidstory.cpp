@@ -31,7 +31,7 @@
 // This needs to be defined before anything is included in order to get
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
-
+#include <cmath>
 #include <algorithm>
 #include <map>
 #include <set>
@@ -355,7 +355,7 @@ int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong ne
     
     uint64_t curr_instr = rr_get_guest_instr_count();
     
-	if (debug) printf ("\nasid changed @ %lu\n", curr_instr);
+    if (debug) printf ("\nasid changed @ %" PRIu64 "\n", curr_instr);
     
     if (process_mode == Process_known) {
         
@@ -378,7 +378,7 @@ int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong ne
         }
     }    
     else {
-        if (debug) printf ("process was not known for last asid interval %lu %lu\n", instr_first_good_proc, curr_instr);
+        if (debug) printf ("process was not known for last asid interval %" PRIu64 " %" PRIu64 "\n", instr_first_good_proc, curr_instr);
     }
     
     process_mode = Process_unknown;   
@@ -524,9 +524,9 @@ void uninit_plugin(void *self) {
     printf ("user %" PRId64 "\n", user_count);
     printf ("kernel %" PRId64 "\n", kernel_count);
     for (auto &kvp : asid_count) {
-//        target_ulong asid : kvp.first;
-  //      uint64_t count : kvp.second;
-        printf ("  %lx %" PRId64 "\n", (uint64_t) kvp.first, kvp.second);
+        // target_ulong asid : kvp.first;
+        // uint64_t count : kvp.second;
+        printf ("  " TARGET_PTR_FMT " %" PRId64 "\n", kvp.first, kvp.second);
     }
 
     if (pandalog) {

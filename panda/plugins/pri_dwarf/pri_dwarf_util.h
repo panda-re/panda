@@ -3,7 +3,7 @@
 #define __PRI_DWARF_UTIL_H
 
 #include <libdwarf/libdwarf.h>
-#include <panda/plugin.h>
+#include "panda/plugin.h"
 #include <libdwarf/dwarf.h>
 #include "pri/pri_types.h"
 

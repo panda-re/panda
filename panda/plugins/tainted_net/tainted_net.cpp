@@ -120,7 +120,7 @@ static void output_message(const std::string &message)
 // User-specified options may limit the data that is tainted (e.g. only taint
 // bytes 56-60.)
 
-void taint_network_data(int packet_size, uint64_t old_buf_addr)
+void taint_network_data(int packet_size, target_ptr_t old_buf_addr)
 {
     // Counts number of labels applied to this packet.
     uint32_t num_labels_applied = 0;
@@ -166,8 +166,9 @@ void taint_network_data(int packet_size, uint64_t old_buf_addr)
     }
 
     // Notify user that data is being tainted.
-    fprintf(stderr, PANDA_MSG "Applying labels to %d of %d IO items starting at 0x%lx, packet #%u\n",
-        num_labels_applied, packet_size, old_buf_addr, packet_count);
+    fprintf(stderr, PANDA_MSG "Applying labels to %d of %d IO items "
+            "starting at 0x" TARGET_PTR_FMT ", packet #%u\n",
+             num_labels_applied, packet_size, old_buf_addr, packet_count);
 }
 
 // if filtering on specific ipv4 protocols, determine if this packet matches one of the target protocols
@@ -203,8 +204,11 @@ static bool validate_ethertype(uint8_t *buf, int packet_size)
 }
 
 
-static void on_replay_handle_incoming_packet(CPUState *env, uint8_t *buf, int packet_size, uint64_t old_buf_addr)
+static void on_replay_handle_incoming_packet(CPUState *env, uint8_t *buf, int packet_size, uint64_t _old_buf_addr)
 {
+    // The interface always used uint64_t, irrespective of the guest address space.
+    // Downcast the address.
+    target_ptr_t old_buf_addr = (target_ptr_t)_old_buf_addr;
     assert(packet_size > 0);
     assert(buf);
     assert(old_buf_addr);
@@ -224,7 +228,7 @@ static void on_replay_handle_incoming_packet(CPUState *env, uint8_t *buf, int pa
     }
 }
 
-static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, int packet_size, uint64_t old_buf_addr)
+static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, int packet_size, target_ptr_t old_buf_addr)
 {
     if (0 != taint2_enabled())
     {
@@ -244,7 +248,7 @@ static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, int pa
         fprintf(taintlogF, "\"Address\",\"Datum\",\"Labels\"\n");
 
         uint32_t numLabels = 0;
-        uint64_t curAddr = 0;
+        target_ptr_t curAddr = 0;
         for (int i = 0; i < packet_size; i++)
         {
             curAddr = old_buf_addr + i;
@@ -266,11 +270,11 @@ static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, int pa
                 // characters
                 if (isprint(buf[i]))
                 {
-                    fprintf(taintlogF, "%ld,%c,", curAddr, buf[i]);
+                    fprintf(taintlogF, TARGET_PTR_FMT ",%c,", curAddr, buf[i]);
                 }
                 else
                 {
-                    fprintf(taintlogF, "%ld,.,", curAddr);
+                    fprintf(taintlogF, TARGET_PTR_FMT ",.,", curAddr);
                 }
                 for (int j = 0; j < numLabels; j++)
                 {
@@ -282,11 +286,11 @@ static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, int pa
             {
                 if (isprint(buf[i]))
                 {
-                    fprintf(taintlogF, "%ld,%c, NULL\n", curAddr, buf[i]);
+                    fprintf(taintlogF, TARGET_PTR_FMT ",%c, NULL\n", curAddr, buf[i]);
                 }
                 else
                 {
-                    fprintf(taintlogF, "%ld,., NULL\n", curAddr);
+                    fprintf(taintlogF, TARGET_PTR_FMT ",., NULL\n", curAddr);
                 }
             }
         } // end of loop through items in TX buffer
@@ -302,7 +306,7 @@ static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, int pa
 
 // a packet has come in over the network, or is about to go out over the network
 int on_replay_handle_packet(CPUState *env, uint8_t *buf, int packet_size, 
-        uint8_t direction, uint64_t old_buf_addr)
+        uint8_t direction, target_ptr_t old_buf_addr)
 {
     // Increment packet counter.  This count should agree with the count in the
     // wireshark file that is produced by the network plugin.

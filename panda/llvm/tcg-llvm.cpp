@@ -202,6 +202,7 @@ public:
         }
         llvm::errs() << *v << '\n';
         assert(false && "Not a constant");
+        return 0; // make clang++ shut up
     }
 
     BasicBlock* getLabel(int idx);
