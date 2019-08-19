@@ -188,6 +188,7 @@ cc_i386=i386-pc-linux-gnu-gcc
 libs_qga=""
 debug_info="yes"
 stack_protector=""
+protobuf="yes"
 llvm="no"
 llvmver="3.3"
 
@@ -650,8 +651,6 @@ Darwin)
   # won't work when we're compiling with gcc as a C compiler.
   QEMU_CFLAGS="-DOS_OBJECT_USE_OBJC=0 $QEMU_CFLAGS"
   HOST_VARIANT_DIR="darwin"
-  LIBS="-lprotobuf-c -lprotobuf $LIBS"
-  supported_os="yes"
 ;;
 SunOS)
   solaris="yes"
@@ -708,14 +707,7 @@ Linux)
   vhost_scsi="yes"
   vhost_vsock="yes"
   QEMU_INCLUDES="-I\$(SRC_PATH)/linux-headers -I$(pwd)/linux-headers $QEMU_INCLUDES"
-  LIBS="-ldl  -lprotobuf-c -lprotobuf  $LIBS"
-  supported_os="yes"
-;;
-*)
-  # This is a fatal error, but don't report it yet, because we
-  # might be going to just print the --help text, or it might
-  # be the result of a missing compiler.
-  bogus_os="yes"
+  LIBS="-ldl $LIBS"
 ;;
 esac
 
@@ -4448,6 +4440,24 @@ EOF
 fi
 
 ##########################################
+# protobuf probe
+
+if test "$protobuf" != "no"; then
+  if $pkg_config --exists libprotobuf-c protobuf; then
+    protobuf="yes"
+    protobuf_libs=$($pkg_config --libs libprotobuf-c protobuf)
+    protobuf_cflags=$($pkg_config --cflags libprotobuf-c protobuf)
+    libs_softmmu="$libs_softmmu $protobuf_libs"
+    QEMU_CFLAGS="$QEMU_CFLAGS $protobuf_cflags"
+  else
+    protobuf="no"
+    if test "$protobuf" = "yes" ; then
+      feature_not_found "protobuf" "Please install protobuf and protobuf-c"
+    fi
+  fi
+fi
+
+##########################################
 # check if we have fdatasync
 
 fdatasync=no
@@ -5287,6 +5297,7 @@ echo "LLVM support      $llvm"
 echo "TCG interpreter   $tcg_interpreter"
 echo "fdt support       $fdt"
 echo "preadv support    $preadv"
+echo "protobuf support  $protobuf"
 echo "fdatasync         $fdatasync"
 echo "madvise           $madvise"
 echo "posix_madvise     $posix_madvise"
@@ -5749,6 +5760,9 @@ if test "$signalfd" = "yes" ; then
 fi
 if test "$tcg_interpreter" = "yes" ; then
   echo "CONFIG_TCG_INTERPRETER=y" >> $config_host_mak
+fi
+if test "$protobuf" = "yes" ; then
+  echo "CONFIG_PROTOBUF=y" >> $config_host_mak
 fi
 if test "$fdatasync" = "yes" ; then
   echo "CONFIG_FDATASYNC=y" >> $config_host_mak
