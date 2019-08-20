@@ -67,23 +67,6 @@ def make_iso(directory, iso_path):
         else:
             raise NotImplementedError("Unsupported operating system!")
 
-# XXX clean this up
-callback_t  = namedtuple('callback_t', "name procname enabled")
-def program_name_convert(name, null="(NULL)",length=16):
-	if name == ffi.NULL:
-		return null
-	a = ""
-	try:
-		for i in range(length):
-			char = name[i].decode()
-			if ord(char) == 0:
-				break
-			a += char
-		return a
-	except:
-		return null
-
-
 # main_loop_wait_cb is called at the start of the main cpu loop in qemu.
 # This is a fairly safe place to call into qemu internals but watch out for deadlocks caused
 # by your request blocking on the guest's execution
@@ -255,24 +238,27 @@ class Panda:
 
 			setattr(self, 'cb_'+cb_name, closure(cb_name, pandatype))
 
-		self.registered_callbacks = [] # List of callback_t objects
+		self.registered_callbacks = {} # name -> {procname: "bash", enabled: False, callback: None}
 		# Register internal callback on init so we can capture 'handle'
 		#self.handle = None
 		self.handle = ffi.cast('void *', 0xdeadbeef)
 
 		@pcb.asid_changed
 		def __asid_changed(cpustate, old_asid, new_asid):
-			print("PYASID", old_asid)
 			if old_asid == new_asid:
 				return 0
 
 			current = self.get_current_process(cpustate)
-			current_name = program_name_convert(current.name)
-			for cb in self.registered_callbacks:
-				if current_name == cb.name and not cb.enabled:
-					print("XXX enable {}".format(cb.name))
-				if current_name != cb.name and cb.enabled:
-					print("XXX disable {}".format(cb.name))
+			current_name = ffi.string(current.name).decode('utf8', 'ignore')
+			#print("ASID Changed to", current_name)
+			for cb_name, cb in self.registered_callbacks.items():
+				if not cb["procname"]:
+					continue
+
+				if current_name == cb["procname"] and not cb['enabled']:
+					self.enable_callback_by_name(cb_name)
+				if current_name != cb["procname"] and cb['enabled']:
+					self.disable_callback_by_name(cb_name)
 			return 0
 
 		@pcb.init
@@ -463,18 +449,24 @@ class Panda:
 		uid_ffi = ffi.cast("void*",randint(0,0xffffffff)) # XXX: Unlikely but possible for collisions here
 		self.libpanda.panda_load_external_plugin(filename_ffi, name_ffi, uid_ffi, init_ffi)
 
-	def callback_procname(self, pandatype, name=None, procname=None, enabled=True):
+	def callback_procname(self, pandatype, name, procname=None, enabled=True):
 		'''
 		Actual implementation of self.cb_XXX. pandatype is pcb.XXX
+		name must uniquely describe a callback
+		if procname is specified, callback will only be enabled when that asid is running (requires OSI support)
 		'''
+		if procname:
+			enabled = False # Process won't be running at time 0 (probably)
+
 		if debug:
-			print("Registering callback", pandatype, procname, enabled)
+			print("Registering callback {}, for proc={}, enabled={}".format(pandatype, procname, enabled))
 
 		def decorator(fun):
 			assert(self.handle is not None)
-			self.registered_callbacks.append(callback_t(name, procname, enabled))
-			if enabled:
-				self.register_callback(self.handle, pandatype, pandatype(fun))
+			self.registered_callbacks[name] = {"procname": procname, "enabled": enabled, "callback": pandatype}
+			self.register_callback(self.handle, pandatype, pandatype(fun))
+			if not enabled: # Disable if necessary
+				self.disable_callback_by_name(name)
 			def wrapper(*args, **kw):
 				return fun(*args, **kw)
 			return wrapper
@@ -492,10 +484,26 @@ class Panda:
 		if debug:
 			progress("registered callback for type: %s" % cb.name)
 
+	def enable_callback_by_name(self, name):
+		if name not in self.registered_callbacks.keys():
+			raise RuntimeError("Cannot enable callback with unknown name {}".format(name))
+		self.registered_callbacks[name]['enabled'] = True
+		# XXX This should enable/disable by name, but for now we enable/disable the whole type
+		print("Warning, enabling all callbacks of type {}, not just {}".format(self.registered_callbacks[name]["callback"], name))
+		self.enable_callback(self.registered_callbacks[name]["callback"])
+
+	def disable_callback_by_name(self, name):
+		if name not in self.registered_callbacks.keys():
+			raise RuntimeError("Cannot disable callback with unknown name {}".format(name))
+		self.registered_callbacks[name]['enabled'] = False
+		# XXX This should enable/disable by name, but for now we enable/disable the whole type
+		print("Warning, disabling all callbacks of type {}, not just {}".format(self.registered_callbacks[name]["callback"], name))
+		self.disable_callback(self.registered_callbacks[name]["callback"])
 
 	def enable_callback(self, callback):
 		if self.pcb_list[callback]:
-			function,pcb,handle = self.pcb_list[callback]
+			function, pcb, handle = self.pcb_list[callback]
+			print("Enable ", function)
 			cb = callback_dictionary[callback]
 			progress("enabled callback %s" % cb.name)
 			self.libpanda.panda_enable_callback_helper(handle, cb.number, pcb)
@@ -510,8 +518,8 @@ class Panda:
 			cb = callback_dictionary[callback]
 			progress("disabled callback %s" % cb.name)
 			self.libpanda.panda_disable_callback_helper(handle, cb.number, pcb)
-			if "block" in cb.name:
-				self.enable_tb_chaining()
+			#if "block" in cb.name: # XXX can't simply reenable without more checks
+			#	self.enable_tb_chaining()
 		else:
 			progress("ERROR: plugin not registered");
 
