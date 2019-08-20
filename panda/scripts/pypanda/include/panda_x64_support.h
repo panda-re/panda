@@ -1,61 +1,8 @@
+// so this isn't actually called CPUX64State, but the best way to handle this in cffi
+// is to declare it two structures. 
 
-typedef struct float_status {
-    signed char float_detect_tininess;
-    signed char float_rounding_mode;
-    uint8_t     float_exception_flags;
-    signed char floatx80_rounding_precision;
-    /* should denormalised results go to zero and set the inexact flag? */
-    uint32_t flush_to_zero; //flag flush_to_zero; guess
-    /* should denormalised inputs go to zero and set the input_denormal flag? */
-	uint32_t flush_inputs_to_zero;//    flag flush_inputs_to_zero; guess
-	uint32_t default_nan_mode; //    flag default_nan_mode; guess
-	uint32_t snan_bit_is_one; //lag snan_bit_is_one; guess
-} float_status;
-typedef uint32_t Reg; //a guess
-typedef Reg MMXReg;
-typedef Reg ZMMReg;
-typedef struct {
-    uint64_t low;
-    uint16_t high;
-} floatx80;
-
-typedef union {
-    floatx80 d; //not supported __attribute__((aligned(16)));
-    MMXReg mmx;
-} FPReg;
-
-typedef struct {
-    uint64_t base;
-    uint64_t mask;
-} MTRRVar;
-typedef struct BNDCSReg {
-    uint64_t cfgu;
-    uint64_t sts;
-} BNDCSReg;
-typedef struct BNDReg {
-    uint64_t lb;
-    uint64_t ub;
-} BNDReg;
-typedef struct SegmentCache {
-    uint32_t selector;
-    target_ulong base;
-    uint32_t limit;
-    uint32_t flags;
-} SegmentCache;
-
-typedef struct MemTxAttrs {
-    unsigned int unspecified:1;
-    unsigned int secure:1;
-    unsigned int user:1;
-    unsigned int requester_id:16;
-} MemTxAttrs;
-
-
-typedef enum TPRAccess {
-    TPR_ACCESS_READ,
-    TPR_ACCESS_WRITE,
-} TPRAccess;
-typedef struct CPUTLBEntry {
+// we have to do this because it changes based on arch
+typedef struct CPUTLBEntry_x64 {
     /* bit TARGET_LONG_BITS to TARGET_PAGE_BITS : virtual address
        bit TARGET_PAGE_BITS-1..4  : Nonzero for accesses that should not
                                     go directly to ram.
@@ -72,44 +19,18 @@ typedef struct CPUTLBEntry {
             uintptr_t addend;
         };
         /* padding to get a power of two size */
-		//CPU_TLB_ENTRY_BITS = 4. 1<<4 -> 16
-        uint8_t dummy[16];
+		//CPU_TLB_ENTRY_BITS = 5. 1<<5 -> 32
+        uint8_t dummy[32];
     };
-} CPUTLBEntry;
-
-typedef struct CPUIOTLBEntry {
-    uint64_t addr; //hwaddr addr;
-    MemTxAttrs attrs;
-} CPUIOTLBEntry;
+} CPUTLBEntry_64;
 
 
-/* CPUID feature words */
-typedef enum FeatureWord {
-    FEAT_1_EDX,         /* CPUID[1].EDX */
-    FEAT_1_ECX,         /* CPUID[1].ECX */
-    FEAT_7_0_EBX,       /* CPUID[EAX=7,ECX=0].EBX */
-    FEAT_7_0_ECX,       /* CPUID[EAX=7,ECX=0].ECX */
-    FEAT_7_0_EDX,       /* CPUID[EAX=7,ECX=0].EDX */
-    FEAT_8000_0001_EDX, /* CPUID[8000_0001].EDX */
-    FEAT_8000_0001_ECX, /* CPUID[8000_0001].ECX */
-    FEAT_8000_0007_EDX, /* CPUID[8000_0007].EDX */
-    FEAT_C000_0001_EDX, /* CPUID[C000_0001].EDX */
-    FEAT_KVM,           /* CPUID[4000_0001].EAX (KVM_CPUID_FEATURES) */
-    FEAT_HYPERV_EAX,    /* CPUID[4000_0003].EAX */
-    FEAT_HYPERV_EBX,    /* CPUID[4000_0003].EBX */
-    FEAT_HYPERV_EDX,    /* CPUID[4000_0003].EDX */
-    FEAT_SVM,           /* CPUID[8000_000A].EDX */
-    FEAT_XSAVE,         /* CPUID[EAX=0xd,ECX=1].EAX */
-    FEAT_6_EAX,         /* CPUID[6].EAX */
-    FEAT_XSAVE_COMP_LO, /* CPUID[EAX=0xd,ECX=0].EAX */
-    FEAT_XSAVE_COMP_HI, /* CPUID[EAX=0xd,ECX=0].EDX */
-    FEATURE_WORDS,
-} FeatureWord;
-typedef uint32_t FeatureWordArray[19];
-typedef struct CPUX86State {
+
+
+
+typedef struct CPUX64State {
     /* standard registers */
-	//    target_ulong regs[CPU_NB_REGS];
-	target_ulong regs[8]; //32 bit
+    target_ulong regs[16]; //[CPU_NB_REGS];
     target_ulong eip;
     target_ulong eflags; /* eflags register. During CPU emulation, CC
                         flags and DF are set to zero because they are
@@ -161,11 +82,11 @@ typedef struct CPUX86State {
     float_status mmx_status; /* for 3DNow! float ops */
     float_status sse_status;
     uint32_t mxcsr;
-    ZMMReg xmm_regs[8];//[CPU_NB_REGS == 8 ? 8 : 32];
+    ZMMReg xmm_regs[32];
     ZMMReg xmm_t0;
     MMXReg mmx_t0;
 
-    uint64_t opmask_regs[8];//[NB_OPMASK_REGS];
+    uint64_t opmask_regs[8]; //[NB_OPMASK_REGS];
 
     /* sysenter registers */
     uint32_t sysenter_cs;
@@ -175,12 +96,12 @@ typedef struct CPUX86State {
 
     uint64_t vm_hsave;
 
-/*#ifdef TARGET_X86_64
+//#ifdef TARGET_X86_64
     target_ulong lstar;
     target_ulong cstar;
     target_ulong fmask;
     target_ulong kernelgsbase;
-#endif*/
+//#endif
 
     uint64_t tsc;
     uint64_t tsc_adjust;
@@ -198,8 +119,8 @@ typedef struct CPUX86State {
     uint64_t msr_global_status;
     uint64_t msr_global_ovf_ctrl;
     uint64_t msr_fixed_counters[3];//[MAX_FIXED_COUNTERS];
-    uint64_t msr_gp_counters[18];//[MAX_GP_COUNTERS]; = 0x198 - 0x186 = 18
-    uint64_t msr_gp_evtsel[18]; //[MAX_GP_COUNTERS];
+    uint64_t msr_gp_counters[18];//[MAX_GP_COUNTERS];
+    uint64_t msr_gp_evtsel[18];//[MAX_GP_COUNTERS];
 
     uint64_t pat;
     uint32_t smbase;
@@ -219,15 +140,15 @@ typedef struct CPUX86State {
     uint64_t msr_hv_guest_os_id;
     uint64_t msr_hv_vapic;
     uint64_t msr_hv_tsc;
-    uint64_t msr_hv_crash_paramsp[5]; //[HV_X64_MSR_CRASH_PARAMS]; = 1 + 4
+    uint64_t msr_hv_crash_params[5];//[HV_X64_MSR_CRASH_PARAMS];
     uint64_t msr_hv_runtime;
     uint64_t msr_hv_synic_control;
     uint64_t msr_hv_synic_version;
     uint64_t msr_hv_synic_evt_page;
     uint64_t msr_hv_synic_msg_page;
-    uint64_t msr_hv_synic_sint[16];//HV_SYNIC_SINT_COUNT];
-    uint64_t msr_hv_stimer_config[16];//HV_SYNIC_STIMER_COUNT];
-    uint64_t msr_hv_stimer_count[16];//HV_SYNIC_STIMER_COUNT];
+    uint64_t msr_hv_synic_sint[16];//[HV_SYNIC_SINT_COUNT];
+    uint64_t msr_hv_stimer_config[16];//[HV_SYNIC_STIMER_COUNT];
+    uint64_t msr_hv_stimer_count[16];//[HV_SYNIC_STIMER_COUNT];
 
     /* exception/interrupt handling */
     int error_code;
@@ -257,7 +178,6 @@ typedef struct CPUX86State {
     /* Fields up to this point are cleared by a CPU reset */
     struct {} end_reset_fields;
 
-
 	// CPU_TLB_SIZE = 1 << CPU_TLB_BITS
 	// CPU_TLB_BITS = 
 //	#define CPU_TLB_BITS                                             \
@@ -274,16 +194,13 @@ typedef struct CPUX86State {
 // MIN(8, 32 - 5 - 2) -> 8
 // CPU_TLB_SIZE = 1<< 8 -> 256
 // CPU_VTLB_SIZE = 8
-    CPUTLBEntry tlb_table[3][256];//[NB_MMU_MODES][CPU_TLB_SIZE];                  
-    CPUTLBEntry tlb_v_table[3][8];//[NB_MMU_MODES][CPU_VTLB_SIZE];               
+    CPUTLBEntry_64 tlb_table[3][256];//[NB_MMU_MODES][CPU_TLB_SIZE];                  
+    CPUTLBEntry_64 tlb_v_table[3][8];//[NB_MMU_MODES][CPU_VTLB_SIZE];               
     CPUIOTLBEntry iotlb[3][256];//[NB_MMU_MODES][CPU_TLB_SIZE];                    
     CPUIOTLBEntry iotlb_v[3][256];//[NB_MMU_MODES][CPU_VTLB_SIZE];                 
     target_ulong tlb_flush_addr;                                        
     target_ulong tlb_flush_mask;                                        
     target_ulong vtlb_index;                                            
-
-
-
 
     /* Fields after CPU_COMMON are preserved across CPU reset. */
 
@@ -304,7 +221,7 @@ typedef struct CPUX86State {
     /* MTRRs */
     uint64_t mtrr_fixed[11];
     uint64_t mtrr_deftype;
-    MTRRVar mtrr_var[8];//MSR_MTRRcap_VCNT];
+    MTRRVar mtrr_var[254];//[MSR_MTRRcap_VCNT];
 
     /* For KVM */
     uint32_t mp_state;
@@ -321,7 +238,7 @@ typedef struct CPUX86State {
     uint64_t mcg_cap;
     uint64_t mcg_ctl;
     uint64_t mcg_ext_ctl;
-    uint64_t mce_banks[10];//MCE_BANKS_DEF*4];
+    uint64_t mce_banks[40];//[MCE_BANKS_DEF*4];
     uint64_t xstate_bv;
 
     /* vmstate */
@@ -332,6 +249,5 @@ typedef struct CPUX86State {
     uint64_t xss;
 
     TPRAccess tpr_access_type;
-} CPUX86State;
+} CPUX64State;
 
-typedef CPUX86State CPUArchState;

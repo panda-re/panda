@@ -125,7 +125,6 @@ class Panda:
 		self.os = os_version
 		self.static_var = 0
 		self.qcow = qcow
-
 		if extra_args:
 			extra_args = extra_args.split()
 		else:
@@ -620,7 +619,6 @@ class Panda:
 		self.queue_main_loop_wait_fn(self.libpanda.panda_taint_label_reg, [reg_num, label])
 		return self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
 
-	"""
 	def send_monitor_async(self, cmd, finished_cb=None, finished_cb_args=[]):
 		if debug:
 			progress ("Sending monitor command async: %s" % cmd),
@@ -643,7 +641,6 @@ class Panda:
 				finished_cb(r)
 		elif debug and r:
 			print("(Debug) Monitor command result: {}".format(r))
-	"""
 
 	def load_plugin_library(self, name):
 		libname = "libpanda_%s" % name
@@ -656,14 +653,17 @@ class Panda:
 		self.require("osi")
 		if "linux" in self.os_string:
 			self.require("osi_linux")
-			self.require("osi_test")
+#			self.require("osi_test")
 		else:
 			print("Not supported yet for os: %s" % self.os_string)
 	
 	def get_current_process(self, cpustate):
 		if not hasattr(self, "libpanda_osi"):
 			self.load_osi()	
-		return self.libpanda_osi.get_current_process(cpustate)
+		process = self.libpanda_osi.get_current_process(cpustate)
+		if process == ffi.NULL:
+			progress("[ERROR] returned process is NULL")
+		return process
 
 	def get_processes(self, cpustate):
 		if not hasattr(self, "libpanda_osi"):
@@ -687,6 +687,40 @@ class Panda:
 	
 	def ppp_reg_cb(self):
 		pass
+
+	def get_cpu(self,cpustate):
+		if self.arch == "arm":
+			return self.get_cpu_arm(cpustate)
+		elif self.arch == "x86":
+			return self.get_cpu_x86(cpustate)
+		elif self.arch == "x64" or self.arch == "x86_64":
+			return self.get_cpu_x64(cpustate)
+		elif self.arch == "ppc":
+			return self.get_cpu_ppc(cpustate)
+		else:
+			return self.get_cpu_x86(cpustate)
+
+	# note: should add something to check arch in self.arch
+	def get_cpu_x86(self,cpustate):
+		# we dont do this because x86 is the assumed arch
+		# ffi.cdef(open("./include/panda_x86_support.h")) 
+		return ffi.cast("CPUX86State*", cpustate.env_ptr)
+	
+	def get_cpu_x64(self,cpustate):
+		# we dont do this because x86 is the assumed arch
+		if not hasattr(self, "x64_support"):
+			self.x64_support = ffi.cdef(open("./include/panda_x64_support.h").read()) 
+		return ffi.cast("CPUX64State*", cpustate.env_ptr)
+
+	def get_cpu_arm(self,cpustate):
+		if not hasattr(self, "arm_support"):
+			self.arm_support = ffi.cdef(open("./include/panda_arm_support.h").read())
+		return ffi.cast("CPUARMState*", cpustate.env_ptr)
+	
+	def get_cpu_ppc(self,cpustate):
+		if not hasattr(self, "ppc_support"):
+			self.ppc_support = ffi.cdef(open("./include/panda_ppc_support.h").read())
+		return ffi.cast("CPUPPCState*", cpustate.env_ptr)
 
 	def queue_async(self, f):
 		self.athread.queue(f)
@@ -769,8 +803,4 @@ class Panda:
 		self.run_monitor_cmd("end_record")
 
 		print("Finished recording")
-
-
-
-
 # vim: noexpandtab:tabstop=4:
