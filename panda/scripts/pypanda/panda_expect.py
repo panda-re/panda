@@ -90,7 +90,7 @@ class Expect(object):
                     self.logfile.flush()
                     if not self.quiet: sys.stdout.flush()
 
-                    return sofar.decode('utf8')
+                    return sofar.decode('utf8', 'ignore')
 
         if not self.running: # Aborted
             return None
