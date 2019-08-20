@@ -67,6 +67,22 @@ def make_iso(directory, iso_path):
         else:
             raise NotImplementedError("Unsupported operating system!")
 
+# XXX clean this up
+callback_t  = namedtuple('callback_t', "name procname enabled")
+def program_name_convert(name, null="(NULL)",length=16):
+	if name == ffi.NULL:
+		return null
+	a = ""
+	try:
+		for i in range(length):
+			char = name[i].decode()
+			if ord(char) == 0:
+				break
+			a += char
+		return a
+	except:
+		return null
+
 
 # main_loop_wait_cb is called at the start of the main cpu loop in qemu.
 # This is a fairly safe place to call into qemu internals but watch out for deadlocks caused
@@ -152,11 +168,15 @@ class Panda:
 				print("Missing qcow -- %s" % self.qcow)
 				print("Please go create that qcow and give it to moyix!")
 
-		self.callback = pcb
+
 		self.bindir = pjoin(panda_build, "%s-softmmu" % self.arch)
 		self.panda = pjoin(self.bindir, "qemu-system-%s" % self.arch)
 		self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % self.arch))
-		
+		self.loaded_python = False
+
+		if self.os:
+			self.set_os_name(self.os)
+
 		biospath = realpath(pjoin(self.panda,"..", "..",  "pc-bios"))
 		bits = None
 		if self.arch == "i386":
@@ -221,6 +241,72 @@ class Panda:
 		self.init_run = False
 		self.pcb_list = {}
 
+		# Setup callbacks and generate self.cb_XYZ functions for cb decorators
+		# XXX Don't add any other methods with names starting with 'cb_'
+		self.callback = pcb
+
+		for cb_name, pandatype in zip(pcb._fields, pcb):
+			def closure(closed_cb_name, closed_pandatype): # Closure on cb_name and pandatype
+				def f(*args, **kwargs):
+					if debug:
+						print("Registering new-style callback: ", closed_cb_name)
+					return self.callback_procname(closed_pandatype, *args, **kwargs)
+				return f
+
+			setattr(self, 'cb_'+cb_name, closure(cb_name, pandatype))
+
+		self.registered_callbacks = [] # List of callback_t objects
+		# Register internal callback on init so we can capture 'handle'
+		#self.handle = None
+		self.handle = ffi.cast('void *', 0xdeadbeef)
+
+		@pcb.asid_changed
+		def __asid_changed(cpustate, old_asid, new_asid):
+			print("PYASID", old_asid)
+			if old_asid == new_asid:
+				return 0
+
+			current = self.get_current_process(cpustate)
+			current_name = program_name_convert(current.name)
+			for cb in self.registered_callbacks:
+				if current_name == cb.name and not cb.enabled:
+					print("XXX enable {}".format(cb.name))
+				if current_name != cb.name and cb.enabled:
+					print("XXX disable {}".format(cb.name))
+			return 0
+
+		@pcb.init
+		def __panda_loaded(newhandle): # Local function with a reference to this instance's self.handle
+			self.handle = newhandle
+			self.register_callback(self.handle, self.callback.asid_changed, __asid_changed)
+			return True
+
+		# Register init which sets up asid_changed as well
+		self.load_python_plugin(__panda_loaded, "__internal_python_init")
+
+
+	# /__init__
+
+	def unload(self):
+		print("calling dlclose on {}".format(self.libpanda))
+		ffi.dlclose(self.libpanda)
+		self.running.clear()
+		self.init_run = False
+		self.libpanda = None
+
+	def _reload_libpanda_if_necessary(self):
+		# Reopen the libpanda dll after it closed (e.g. from monitor quit)
+		# XXX: Make this interface more clean
+		#raise NotImplemented("Panda has already exited. Can't cleanly restart library.")
+		# XXX: Cffi won't let us reopen a new libpanda to do the replay. We should fix this someday
+
+		if not hasattr(self, "libpanda") or self.libpanda is None:
+			# Initialize libpanda as necessary
+			print("Reloading libpanda handle")
+
+			self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % self.arch))
+			self.running.clear()
+
 	def shutdown(self): # Cleanup panda object. XXX can't then re-initialize new python
 		del self.libpanda
 
@@ -239,14 +325,14 @@ class Panda:
 			self.monitor_socket.connect(self.monitor_file)
 			self.monitor_console = Expect(self.monitor_socket, expectation=self.monitor_prompt, quiet=True,
 										consume_first=True)
-
 		# Register main_loop_wait_callback
-		self.register_callback(
-				ffi.cast("void *", 0xdeadbeef), # XXX: junk argument
+		self.register_callback(self.handle,
 				self.callback.main_loop_wait, main_loop_wait_cb)
 
-		self.register_callback(
-				ffi.cast("void *", 0xdeeeeeef), # XXX: junk argument
+		# Register callback to cleanup when qemu shuts down
+		global panda
+		panda = self
+		self.register_callback(self.handle,
 				self.callback.pre_shutdown, pre_shutdown_cb)
 
 	# fnargs is a pair (fn, args)
@@ -366,14 +452,33 @@ class Panda:
 		self.load_plugin_library(name)
 
 	def load_python_plugin(self, init_function, name):
-		ffi.cdef("""
-		extern "Python" bool init(void*);
-		""")
+		if not self.loaded_python: # Only cdef this once
+			ffi.cdef("""
+			extern "Python" bool init(void*);
+			""")
+			self.loaded_python = True
 		init_ffi = init_function
 		name_ffi = ffi.new("char[]", bytes(name, "utf-8"))
 		filename_ffi = ffi.new("char[]", bytes(name, "utf-8"))
-		uid_ffi = ffi.cast("void*",randint(0,0xffffffff))
+		uid_ffi = ffi.cast("void*",randint(0,0xffffffff)) # XXX: Unlikely but possible for collisions here
 		self.libpanda.panda_load_external_plugin(filename_ffi, name_ffi, uid_ffi, init_ffi)
+
+	def callback_procname(self, pandatype, name=None, procname=None, enabled=True):
+		'''
+		Actual implementation of self.cb_XXX. pandatype is pcb.XXX
+		'''
+		if debug:
+			print("Registering callback", pandatype, procname, enabled)
+
+		def decorator(fun):
+			assert(self.handle is not None)
+			self.registered_callbacks.append(callback_t(name, procname, enabled))
+			if enabled:
+				self.register_callback(self.handle, pandatype, pandatype(fun))
+			def wrapper(*args, **kw):
+				return fun(*args, **kw)
+			return wrapper
+		return decorator
 
 	def register_callback(self, handle, callback, function):
 		cb = callback_dictionary[callback]
@@ -381,10 +486,12 @@ class Panda:
 		self.libpanda.panda_register_callback_helper(handle, cb.number, pcb)
 		self.pcb_list[callback] = (function,pcb, handle)
 		if "block" in cb.name:
+			print("Warning: disabling TB chaining to support {} callback".format(cb.name))
 			self.disable_tb_chaining()
 
 		if debug:
 			progress("registered callback for type: %s" % cb.name)
+
 
 	def enable_callback(self, callback):
 		if self.pcb_list[callback]:
