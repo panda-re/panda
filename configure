@@ -4484,6 +4484,9 @@ if test "$capstone" != no; then
   if $pkg_config capstone; then
     capstone=yes
     QEMU_CFLAGS="$QEMU_CFLAGS $($pkg_config --cflags capstone)"
+    if test $targetos = "Darwin"; then
+      QEMU_CFLAGS="$QEMU_CFLAGS $($pkg_config --cflags capstone)/capstone"
+    fi
     LIBS="$($pkg_config --libs capstone) $LIBS"
   else
     if test "$capstone" = yes; then
