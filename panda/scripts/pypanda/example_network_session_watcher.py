@@ -20,7 +20,7 @@ def virt_mem_after_read(cpustate, pc, addr, size, buf):
 	return 0
 
 packets = []
-@panda.cb_replay_handle_packet(name="test_vmnet",procname="bash")
+@panda.cb_replay_handle_packet(name="test_vmnet",procname="wget")
 def handle_packet(cpustate,buf,size,direction,old_buf_addr):
 	buf_uint8 = pyp.cast("uint8_t*", buf)
 	packets.append(Ether([buf_uint8[i] for i in range(size)]))
