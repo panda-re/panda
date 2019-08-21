@@ -230,6 +230,27 @@ have_backend () {
     echo "$trace_backends" | grep "$1" >/dev/null
 }
 
+# disable specific panda plugins
+panda_disable_plugins() {
+  local plugin_list="$1"
+  local config_file="$2"
+  local re_fmt='s/^ *(%s) ?.*/###&/'
+  local plugin_list_safe=$(echo "$plugin_list" | sed 's/[^a-z0-9_,]//gI; s/,/|/g')
+  if test -f "$config_file"; then
+    sed -i -E -e "$(printf "$re_fmt" "$plugin_list_safe")" "$config_file"
+    printf "PANDA plugins %s disabled in %s.\n" "$plugin_list" "$config_file" >> config.log 2>&1
+  fi
+}
+
+# enable all panda plugins disabled by panda_disable_plugins() (marked with '###')
+panda_reenable_plugins() {
+  local config_file="$1"
+  if test -f "$config_file"; then
+    sed -i -e 's/^###//' "$config_file"
+    printf "Disabled PANDA plugins re-enabled in %s.\n" "$config_file" >> config.log 2>&1
+  fi
+}
+
 # default parameters
 source_path=$(dirname "$0")
 cpu=""
@@ -253,6 +274,7 @@ git_submodules=""
 protobuf="yes"
 llvm="no"
 llvmver="3.3"
+reenable_plugins="no"
 
 # Don't accept a target_list environment variable.
 unset target_list
@@ -1273,6 +1295,10 @@ for opt do
   --enable-pyperipheral3) pyperipheral3="yes"
       pyperipheral2="no"
   ;;
+  --disable-plugins=*) disable_plugins="$optarg"
+  ;;
+  --re-enable-plugins=*) reenable_plugins="yes"
+  ;;
   *)
       echo "ERROR: unknown option $opt"
       echo "Try '$0 --help' for more information"
@@ -1449,6 +1475,9 @@ PANDA related options:
   --enable-llvm                enable LLVM support (for all targets)
   --with-llvm=PATH             LLVM path (PATH/bin/llvm-config must exist)
   --extra-plugins-path=PATH    also compile plugins at this PATH
+  --disable-plugins=p1,...,pn  list of PANDA plugins to disable (alters panda.config)
+  --re-enable-plugins          re-enable any previously disabled plugins
+                               (applied before --disable-plugins)
 
 Optional features, enabled with --enable-FEATURE and
 disabled with --disable-FEATURE, default is enabled if available:
@@ -5382,7 +5411,6 @@ echo "Install blobs     $blobs"
 echo "KVM support       $kvm"
 echo "HAX support       $hax"
 echo "RDMA support      $rdma"
-echo "LLVM support      $llvm"
 echo "TCG interpreter   $tcg_interpreter"
 echo "fdt support       $fdt"
 echo "preadv support    $preadv"
@@ -5434,6 +5462,8 @@ echo "replication support $replication"
 echo "capstone          $capstone"
 echo "LLVM support      $llvm"
 echo "extra plugins path $extra_plugins_path"
+echo "disabled plugins $disable_plugins"
+echo "re-enable plugins $reenable_plugins"
 
 if test "$sdl_too_old" = "yes"; then
 echo "-> Your SDL version is too old - please upgrade to have SDL support"
@@ -5609,6 +5639,22 @@ echo "PKGVERSION=$pkgversion" >>$config_host_mak
 echo "SRC_PATH=$source_path" >> $config_host_mak
 if test ! -z "$extra_plugins_path"; then
   echo "EXTRA_PLUGINS_PATH=$extra_plugins_path" >> $config_host_mak
+fi
+if test "$reenable_plugins" = "yes"; then
+  panda_reenable_plugins "$source_path"/panda/plugins/config.panda
+  panda_reenable_plugins "$source_path"/panda/plugins/config.llvm.panda
+  if test ! -z "$extra_plugins_path"; then
+    panda_reenable_plugins "$extra_plugins_path"/panda/plugins/config.panda
+    panda_reenable_plugins "$extra_plugins_path"/panda/plugins/config.llvm.panda
+  fi
+fi
+if test ! -z "$disable_plugins"; then
+  panda_disable_plugins "$disable_plugins" "$source_path"/panda/plugins/config.panda
+  panda_disable_plugins "$disable_plugins" "$source_path"/panda/plugins/config.llvm.panda
+  if test ! -z "$extra_plugins_path"; then
+    panda_disable_plugins "$disable_plugins" "$extra_plugins_path"/panda/plugins/config.panda
+    panda_disable_plugins "$disable_plugins" "$extra_plugins_path"/panda/plugins/config.llvm.panda
+  fi
 fi
 echo "TARGET_DIRS=$target_list" >> $config_host_mak
 if [ "$docs" = "yes" ] ; then
