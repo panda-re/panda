@@ -51,4 +51,4 @@ def handle_packet(cpustate,buf,size,direction,old_buf_addr):
 panda.enable_memcb()
 panda.begin_replay(recording_name)
 panda.run()
-#wrpcap(argv[2], packets)
+wrpcap(argv[2], packets)
