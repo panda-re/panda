@@ -119,8 +119,7 @@ compile_prog() {
 compile_prog_cxx() {
   local_cxxflags="$1"
   local_ldflags="$2"
-  echo $cxx $QEMU_CFLAGS $local_cxxflags -o $TMPE $TMPC $LDFLAGS $local_ldflags >> config.log
-  $cxx $QEMU_CFLAGS $QEMU_CXXFLAGS $local_cxxflags -o $TMPE $TMPCXX $LDFLAGS $local_ldflags >> config.log 2>&1
+  do_cxx $QEMU_CFLAGS $QEMU_CXXFLAGS $local_cxxflags -o $TMPE $TMPCXX $LDFLAGS $local_ldflags
 }
 
 # symbolically link $1 to $2.  Portable version of "ln -sf".
@@ -3240,81 +3239,122 @@ fi
 # llvm support probe
 
 if test "$llvm" != "no" ; then
-  cat > $TMPCXX << EOF
-#include <llvm/IR/LLVMContext.h>
-int main(void) { llvm::LLVMContext& c = llvm::getGlobalContext(); return 0; }
-EOF
-  if test "$llvmdir" != ""; then
-    if [ -x "$llvmdir/bin/llvm-config-$llvmver" ]; then
-      llvm_config="$llvmdir/bin/llvm-config-$llvmver"
-    else
-      llvm_config="$llvmdir/bin/llvm-config"
-    fi
-  else
-      llvm_config="llvm-config"
-  fi
-  if ! "$llvm_config" --version >> config.log 2>&1; then
-    feature_not_found "llvm (required for --enable-llvm)"
+  if [ -x "$llvmdir/bin/llvm-config" ] ; then
+    : llvm_config found
+    llvm_config="$llvmdir/bin/llvm-config"
+  elif [ -x "$llvmdir/bin/llvm-config-$llvmver" ]; then
+    : llvm_config found
+    llvm_config="$llvmdir/bin/llvm-config-$llvmver"
+  elif llvm-config --version >/dev/null 2>&1; then
+    : llvm_config found
+    llvm_config="llvm-config"
+  elif llvm-config-"$llvmver" --version >/dev/null 2>&1; then
+    : llvm_config found
+    llvm_config="llvm-config-$llvmver"
+  elif test "$llvm" = "yes"; then
+    feature_not_found "llvm-link (required for --enable-llvm)"
     exit 1
-  fi
-  #llvm_components="jit bitreader bitwriter asmparser ipo linker engine"
-  llvm_components=""
-  llvm_cxxflags=`$llvm_config $llvm_components --cxxflags 2> /dev/null`
-
-  llvm_ldflags=`$llvm_config $llvm_components --ldflags 2> /dev/null`
-  llvm_ldflags="$llvm_ldflags"
-  llvm_libs=`$llvm_config $llvm_components --libs 2> /dev/null`
-
-  if compile_prog_cxx "$llvm_cxxflags" "$llvm_libs $llvm_ldflags" ; then
-    : LLVM found
   else
-    feature_not_found "llvm (required for --enable-llvm)"
-    exit 1
+    llvm="no"
   fi
-fi
-
-if test "$llvm" != "no" ; then
-  llvm="yes"
-  #These will be automatically added by klee and we don't want
-  #duplicated libs on the command line.
-  #if [ "x$s2e" != "xyes" ]; then
-    LIBS="$llvm_libs $LIBS $llvm_ldflags"
-  #fi
-  linker="$cxx"
+  "$llvm_config" --version >> config.log 2>&1
 fi
 
 if test "$llvm" != "no" ; then
   if [ -x "$llvmdir/bin/clang" ]; then
-    clang="$llvmdir/bin/clang"
-  elif clang --version >> config.log 2>&1; then
     : clang found
-    clang=`which clang`
-  else
-    feature_not_found "clang (required to be built with LLVM)"
+    clang="$llvmdir/bin/clang"
+  elif [ -x "$llvmdir/bin/clang-$llvmver" ] ; then
+    : clang found
+    clang="$llvmdir/bin/clang-$llvmver"
+  elif clang-"$llvmver" --version >/dev/null 2>&1; then
+    : clang found
+    clang="clang-$llvmver"
+  elif clang --version >/dev/null 2>&1; then
+    : clang found
+    clang="clang"
+  elif test "$llvm" = "yes"; then
+    feature_not_found "clang (required for --enable-llvm)"
     exit 1
+  else
+    llvm="no"
   fi
+  "$clang" --version >> config.log 2>&1
+fi
 
+if test "$llvm" != "no" ; then
   if [ -x "$llvmdir/bin/clang++" ]; then
-    clangxx="$llvmdir/bin/clang++"
-  elif clang++ --version >> config.log 2>&1; then
     : clang++ found
-    clangxx=`which clang++`
-  else
-    feature_not_found "clang++ (required to be built with LLVM)"
+    clangxx="$llvmdir/bin/clang++"
+  elif [ -x "$llvmdir/bin/clang++-$llvmver" ] ; then
+    : clang++ found
+    clang="$llvmdir/bin/clang++-$llvmver"
+  elif clang++ --version >/dev/null 2>&1; then
+    : clang++ found
+    clangxx="clang++"
+  elif clang++-"$llvmver" --version >/dev/null 2>&1; then
+    : clang++ found
+    clangxx="clang++-$llvmver"
+  elif test "$llvm" = "yes"; then
+    feature_not_found "clang++ (required for --enable-llvm)"
     exit 1
+  else
+    llvm="no"
   fi
+  "$clangxx" --version >> config.log 2>&1
+fi
 
-  if [ -e "$llvmdir/bin/llvm-link" ] ; then
-    llvm_link=`cd $llvmdir/bin/ && find \`pwd\` -name llvm-link`
-  elif [ -e "$llvmdir/bin/llvm-link-$llvmver" ] ; then
-    llvm_link=`cd $llvmdir/bin/ && find \`pwd\` -name llvm-link-$llvmver`
-  fi
-  if [ -x "$llvm_link" ]; then
+if test "$llvm" != "no" ; then
+  if [ -x "$llvmdir/bin/llvm-link" ] ; then
     : llvm_link found
-  else
-    feature_not_found "llvm-link (required to be built with LLVM)"
+    llvm_link="$llvmdir/bin/llvm-link"
+  elif [ -x "$llvmdir/bin/llvm-link-$llvmver" ] ; then
+    : llvm_link found
+    llvm_link="$llvmdir/bin/llvm-link-$llvmver"
+  elif llvm-link --version >/dev/null 2>&1; then
+    : llvm_link found
+    llvm_link="llvm-link"
+  elif llvm-link-"$llvmver" --version >/dev/null 2>&1; then
+    : llvm_link found
+    llvm_link="llvm-link-$llvmver"
+  elif test "$llvm" = "yes"; then
+    feature_not_found "llvm-link (required for --enable-llvm)"
     exit 1
+  else
+    llvm="no"
   fi
+fi
+
+if test "$llvm" != "no" ; then
+  cat > $TMPCXX <<-EOF
+	#include <llvm/IR/LLVMContext.h>
+	int main(void) { llvm::LLVMContext& c = llvm::getGlobalContext(); return 0; }
+	EOF
+  llvm_components=""
+  llvm_cxxflags=`$llvm_config $llvm_components --cxxflags 2> /dev/null`
+  llvm_ldflags=`$llvm_config $llvm_components --ldflags 2> /dev/null`
+  llvm_ldflags="$llvm_ldflags"
+  llvm_libs=`$llvm_config $llvm_components --libs 2> /dev/null`
+
+  # temporarily replace cxx before calling compile_prog_cxx
+  cxx_bak=$cxx
+  cxx="$clangxx"
+  if compile_prog_cxx "$llvm_cxxflags" "$llvm_libs $llvm_ldflags" ; then
+    : LLVM found
+  elif test "$llvm" = "yes"; then
+    feature_not_found "llvm (required for --enable-llvm)"
+    exit 1
+  else
+    llvm="no"
+  fi
+  # restore cxx
+  cxx=$cxx_bak
+fi
+
+if test "$llvm" != "no" ; then
+  llvm="yes"
+  LIBS="$llvm_libs $LIBS $llvm_ldflags"
+  linker="$cxx"  # XXX: this choice doesn't seem to make sense
 fi
 
 ##########################################
