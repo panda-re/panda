@@ -44,6 +44,7 @@ void panda_disable_plugin(void *plugin);
 
 // callback mgmt
 void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
+bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb);
 void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void panda_unregister_callbacks(void *plugin);

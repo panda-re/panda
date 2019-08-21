@@ -346,6 +346,22 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
 }
 
 /**
+ * @brief Determine if the specified callback is enabled
+ *
+ * @note Querying an unregistered callback returns false
+ */
+bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb) {
+    if (panda_cbs[type] != NULL) {
+        for (panda_cb_list *plist = panda_cbs[type]; plist != NULL; plist = plist->next) {
+            if (plist->owner == plugin && (plist->entry.cbaddr) == cb.cbaddr) {
+                return plist->enabled;
+            }
+        }
+    }
+    return false;
+}
+
+/**
  * @brief Disables the execution of the specified callback.
  *
  * This is done by setting the `enabled` flag to `false`. The callback remains

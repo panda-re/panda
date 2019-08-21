@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import re
 
 # Autogenerate panda_datatypes.py and include/panda_datatypes.h
@@ -36,6 +37,7 @@ ffi.cdef(open("include/panda_qemu_support.h").read())
 ffi.cdef(open("include/panda_datatypes.h").read())
 ffi.cdef(open("include/panda_osi.h").read())
 ffi.cdef(open("include/panda_osi_linux.h").read())
+ffi.cdef(open("include/hooks.h").read())
 
 # so we need access to some data structures, but don't actually
 # want to open all of libpanda yet because we don't have all the

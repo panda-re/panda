@@ -233,7 +233,7 @@ class Panda:
 				def f(*args, **kwargs):
 					if debug:
 						print("Registering new-style callback: ", closed_cb_name)
-					return self.callback_procname(closed_pandatype, *args, **kwargs)
+					return self._generated_callback(closed_pandatype, *args, **kwargs)
 				return f
 
 			setattr(self, 'cb_'+cb_name, closure(cb_name, pandatype))
@@ -449,7 +449,35 @@ class Panda:
 		uid_ffi = ffi.cast("void*",randint(0,0xffffffff)) # XXX: Unlikely but possible for collisions here
 		self.libpanda.panda_load_external_plugin(filename_ffi, name_ffi, uid_ffi, init_ffi)
 
-	def callback_procname(self, pandatype, name, procname=None, enabled=True):
+	def hook(self, addr):
+		'''
+		Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
+		the function will be called with args (CPUState, TranslationBlock)
+		'''
+		def decorator(fun):
+			assert(self.handle is not None)
+
+			# Ultimately, our hook resolves as a before_block_exec_invalidate_opt callback so we must match its args
+			hook_cb_type = self.callback.before_block_exec_invalidate_opt # (CPUState, TranslationBlock)
+
+			if not hasattr(self, 'libpanda_hooks'):
+				# Enable hooks plugin on first request
+				self.load_plugin("hooks")
+
+			if debug:
+				print("Registering breakpoint at 0x{:x} -> {} == {}".format(addr, fun, 'cdata_cb'))
+
+			# Inform the plugin that it has a new breakpoint at addr
+			self.libpanda_hooks.add_hook(addr, hook_cb_type(fun))
+
+			@hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
+			def wrapper(*args, **kw):
+				return fun(*args, **kw)
+
+			return wrapper
+		return decorator
+
+	def _generated_callback(self, pandatype, name, procname=None, enabled=True):
 		'''
 		Actual implementation of self.cb_XXX. pandatype is pcb.XXX
 		name must uniquely describe a callback
@@ -476,7 +504,7 @@ class Panda:
 		cb = callback_dictionary[callback]
 		pcb = ffi.new("panda_cb *", {cb.name:function})
 		self.libpanda.panda_register_callback_helper(handle, cb.number, pcb)
-		self.pcb_list[callback] = (function,pcb, handle)
+		self.pcb_list[callback] = (function,pcb, handle) # XXX: Should be append?
 		if "block" in cb.name:
 			print("Warning: disabling TB chaining to support {} callback".format(cb.name))
 			self.disable_tb_chaining()
