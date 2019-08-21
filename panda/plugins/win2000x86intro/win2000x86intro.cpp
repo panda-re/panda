@@ -22,8 +22,10 @@ extern "C" {
 #include "osi/osi_types.h"
 #include "osi/os_intro.h"
 
+#ifndef CONFIG_DARWIN
 #include "qemu/rcu.h"
 #include "qemu/rcu_queue.h"
+#endif
 
 #include "exec/address-spaces.h"
 
@@ -35,7 +37,9 @@ void uninit_plugin(void *);
 void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out);
 PTR get_win2000_kpcr(CPUState *cpu);
 HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t handle);
+#ifndef CONFIG_DARWIN
 PTR get_win2000_kddebugger_data(CPUState *cpu);
+#endif
 }
 
 #include <cstdio>
@@ -112,6 +116,7 @@ HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t 
     return ho;
 }
 
+#ifndef CONFIG_DARWIN
 // Returns the physical address of KDDEBUGGER_DATA64.
 PTR get_win2000_kddebugger_data(CPUState *cpu)
 {
@@ -139,6 +144,7 @@ PTR get_win2000_kddebugger_data(CPUState *cpu)
 
     return cached_kdbg;
 }
+#endif
 
 #endif
 
