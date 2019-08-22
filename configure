@@ -108,6 +108,39 @@ update_cxxflags() {
     done
 }
 
+update_clangxxflags() {
+    # Set QEMU_CXXFLAGS from QEMU_CFLAGS by filtering out those
+    # options which some versions of clang++ compiler complain about
+    # because they don't understand.
+    # -Wall is also excluded because it resets any warnings we have
+    # previously hushed. QEMU_CXXFLAGS set -Wall seperately.
+    QEMU_CXXFLAGS="$QEMU_CXXFLAGS -D__STDC_LIMIT_MACROS"
+
+    for arg in $QEMU_CFLAGS; do
+        case $arg in
+            -std=*|-Wall|\
+            -Wold-style-declaration)
+                ;;
+            *)
+                QEMU_CXXFLAGS=${QEMU_CXXFLAGS:+$QEMU_CXXFLAGS }$arg
+                ;;
+        esac
+    done
+
+    # Finally filter-out flags only understood by g++.
+    local QEMU_CXXFLAGSL=""
+    for arg in $QEMU_CXXFLAGS; do
+        case $arg in
+            -Wno-shift-negative-value)
+                ;;
+            *)
+                QEMU_CXXFLAGSL=${QEMU_CXXFLAGSL:+$QEMU_CXXFLAGSL }$arg
+                ;;
+        esac
+    done
+    QEMU_CXXFLAGS="$QEMU_CXXFLAGSL"
+}
+
 compile_object() {
   local_cflags="$1"
   do_cc $QEMU_CFLAGS $local_cflags -c -o $TMPO $TMPC
@@ -122,7 +155,32 @@ compile_prog() {
 compile_prog_cxx() {
   local_cxxflags="$1"
   local_ldflags="$2"
-  do_cxx $QEMU_CFLAGS $QEMU_CXXFLAGS $local_cxxflags -o $TMPE $TMPCXX $LDFLAGS $local_ldflags
+  local qemu_cxxflags_bak="$QEMU_CXXFLAGS"
+  local ret=0
+
+  update_cxxflags
+  do_cxx $QEMU_CXXFLAGS $local_cxxflags -o $TMPE $TMPCXX $LDFLAGS $local_ldflags
+  ret=$?
+
+  QEMU_CXXFLAGS="$qemu_cxxflags_bak"
+  return $ret
+}
+
+compile_prog_clangxx() {
+  local_cxxflags="$1"
+  local_ldflags="$2"
+  local cxx_bak="$cxx"
+  local qemu_cxxflags_bak="$QEMU_CXXFLAGS"
+  local ret=0
+
+  update_clangxxflags
+  cxx="${clangxx:-clang++}"
+  do_cxx $QEMU_CXXFLAGS $local_cxxflags -o $TMPE $TMPCXX $LDFLAGS $local_ldflags
+  ret=$?
+
+  cxx="$cxx_bak"
+  QEMU_CXXFLAGS="$qemu_cxxflags_bak"
+  return $ret
 }
 
 # symbolically link $1 to $2.  Portable version of "ln -sf".
@@ -1510,37 +1568,6 @@ if test "$bogus_os" = "yes"; then
     # to identify the OS are reliable), if we didn't recognize the
     # host OS we should stop now.
     error_exit "Unrecognized host OS (uname -s reports '$(uname -s)')"
-fi
-
-# Check that the C++ compiler exists and works with the C compiler
-if has $cxx; then
-    cat > $TMPC <<EOF
-int c_function(void);
-int main(void) { return c_function(); }
-EOF
-
-    compile_object
-
-    cat > $TMPCXX <<EOF
-extern "C" {
-   int c_function(void);
-}
-int c_function(void) { return 42; }
-EOF
-
-    update_cxxflags
-
-    if do_cxx $QEMU_CXXFLAGS -o $TMPE $TMPCXX $TMPO $LDFLAGS; then
-        # C++ compiler $cxx works ok with C compiler $cc
-        :
-    else
-        echo "C++ compiler $cxx does not work with C compiler $cc"
-        echo "Disabling C++ specific optional code"
-        cxx=
-    fi
-else
-    echo "No C++ compiler available; disabling C++ specific optional code"
-    cxx=
 fi
 
 gcc_flags="-Wold-style-declaration -Wold-style-definition -Wtype-limits"
@@ -3221,7 +3248,7 @@ else
 fi
 
 ##########################################
-# llvm support probe
+# llvm components probe - final test for llvm at the end
 
 if test "$llvm" != "no" ; then
   if [ -x "$llvmdir/bin/llvm-config" ] ; then
@@ -3308,38 +3335,6 @@ if test "$llvm" != "no" ; then
   else
     llvm="no"
   fi
-fi
-
-if test "$llvm" != "no" ; then
-  cat > $TMPCXX <<-EOF
-	#include <llvm/IR/LLVMContext.h>
-	int main(void) { llvm::LLVMContext& c = llvm::getGlobalContext(); return 0; }
-	EOF
-  llvm_components=""
-  llvm_cxxflags=`$llvm_config $llvm_components --cxxflags 2> /dev/null`
-  llvm_ldflags=`$llvm_config $llvm_components --ldflags 2> /dev/null`
-  llvm_ldflags="$llvm_ldflags"
-  llvm_libs=`$llvm_config $llvm_components --libs 2> /dev/null`
-
-  # temporarily replace cxx before calling compile_prog_cxx
-  cxx_bak=$cxx
-  cxx="$clangxx"
-  if compile_prog_cxx "$llvm_cxxflags" "$llvm_libs $llvm_ldflags" ; then
-    : LLVM found
-  elif test "$llvm" = "yes"; then
-    feature_not_found "llvm (required for --enable-llvm)"
-    exit 1
-  else
-    llvm="no"
-  fi
-  # restore cxx
-  cxx=$cxx_bak
-fi
-
-if test "$llvm" != "no" ; then
-  llvm="yes"
-  LIBS="$llvm_libs $LIBS $llvm_ldflags"
-  linker="$cxx"  # XXX: this choice doesn't seem to make sense
 fi
 
 ##########################################
@@ -4199,8 +4194,6 @@ if compile_prog "" "" ; then
     # bswap_h=no
     true
 fi
-
-
 
 ##########################################
 # Do we have libiscsi >= 1.9.0
@@ -5248,6 +5241,36 @@ EOF
 else
     echo "No C++ compiler available; disabling C++ specific optional code"
     cxx=
+fi
+
+# Check that the llvm C++ compiler exists and works with the C compiler.
+# Any QEMU_CXXFLAGS/QEMU_CFLAGS are used by compile_prog_clangxx.
+# Keep this at the end to don't miss any other that could be added.
+if test "$llvm" != "no"; then
+  cat > $TMPCXX <<-EOF
+	#include <llvm/IR/LLVMContext.h>
+    int main(void) { llvm::LLVMContext& c = llvm::getGlobalContext(); return 0; }
+	EOF
+
+  llvm_components=""
+  llvm_cxxflags=$($llvm_config $llvm_components --cxxflags 2> /dev/null)
+  llvm_ldflags=$($llvm_config $llvm_components --ldflags 2> /dev/null)
+  llvm_libs=$($llvm_config $llvm_components --libs 2> /dev/null)
+
+  if compile_prog_clangxx "$llvm_cxxflags -Wno-unused-variable" "$llvm_libs $llvm_ldflags" ; then
+    : LLVM found
+  elif test "$llvm" = "yes"; then
+    feature_not_found "llvm (required for --enable-llvm)"
+    exit 1
+  else
+    llvm="no"
+  fi
+fi
+
+if test "$llvm" != "no" ; then
+  llvm="yes"
+  LIBS="$llvm_libs $LIBS $llvm_ldflags"
+  linker="$cxx"
 fi
 
 echo_version() {
