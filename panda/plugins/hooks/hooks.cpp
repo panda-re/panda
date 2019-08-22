@@ -47,15 +47,11 @@ void disable_hooking() {
   panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, c_callback);
 }
 
-// Can't use hook_func_t in our type because it's a c++ type and this is extern'd for c
-//void add_hook(target_ulong addr, void* hook_) {
 void add_hook(target_ulong addr, hook_func_t hook) {
-//void add_hook(target_ulong addr, bool(*hook)(void*, void*)) {
-  //hook_func_t hook = (hook_func_t)hook_;
-  printf("Adding hook from guest 0x" TARGET_FMT_lx " to host %p\n", addr, hook_);
+  printf("Adding hook from guest 0x" TARGET_FMT_lx " to host %p\n", addr, hook);
 
   if (!panda_is_callback_enabled(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, c_callback)) enable_hooking(); // Ensure our panda callback is enabled when we add a hook
-  hooks[addr].push_back((hook_func_t(hook);
+  hooks[addr].push_back(hook);
 }
 
 

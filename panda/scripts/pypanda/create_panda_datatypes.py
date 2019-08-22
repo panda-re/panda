@@ -30,14 +30,23 @@ from cffi import FFI
 
 ffi = FFI()
 pyp = ffi
+
+def read_cleanup_header(fname):
+    # CFFI can't handle externs, but sometimes we have to extern C (as opposed to 
+    r = open(fname).read()
+    for line in r.split("\\n"):
+        assert("extern \\"C\\" {" not in line), "Externs unsupported by CFFI. Change {} to a single line without braces".format(r)
+    r = r.replace("extern \\"C\\" ", "") # This allows inline externs like 'extern "C" void foo(...)'
+    return r
+
 ffi.cdef("typedef uint32_t target_ulong;")
-ffi.cdef(open("include/pthreadtypes.h").read())
-ffi.cdef(open("include/panda_x86_support.h").read())
-ffi.cdef(open("include/panda_qemu_support.h").read())
-ffi.cdef(open("include/panda_datatypes.h").read())
-ffi.cdef(open("include/panda_osi.h").read())
-ffi.cdef(open("include/panda_osi_linux.h").read())
-ffi.cdef(open("include/hooks.h").read())
+ffi.cdef(read_cleanup_header("include/pthreadtypes.h"))
+ffi.cdef(read_cleanup_header("include/panda_x86_support.h"))
+ffi.cdef(read_cleanup_header("include/panda_qemu_support.h"))
+ffi.cdef(read_cleanup_header("include/panda_datatypes.h"))
+ffi.cdef(read_cleanup_header("include/panda_osi.h"))
+ffi.cdef(read_cleanup_header("include/panda_osi_linux.h"))
+ffi.cdef(read_cleanup_header("include/hooks.h"))
 
 # so we need access to some data structures, but don't actually
 # want to open all of libpanda yet because we don't have all the

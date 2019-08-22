@@ -30,7 +30,7 @@ if not path.isfile(recording_name+"-rr-snp"):
 
 
 
-@panda.cb_virt_mem_after_read(name="test_vmread", procname="bash")
+@panda.cb_virt_mem_after_read(name="test_vmread", procname="wget")
 def virt_mem_after_read(cpustate, pc, addr, size, buf):
 	curbuf = ffi.cast("char*", buf)
 	current = panda.get_current_process(cpustate)
