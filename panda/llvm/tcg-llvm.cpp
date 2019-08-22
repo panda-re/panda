@@ -74,10 +74,10 @@ static const char *qemu_st_helper_names[16];
 #endif // CONFIG_SOFTMMU
 
 extern "C" {
-    TCGLLVMContext* tcg_llvm_ctx = 0;
+    TCGLLVMContext *tcg_llvm_ctx = nullptr;
 
     /* These data is accessible from generated code */
-    TCGLLVMRuntime tcg_llvm_runtime = {0};
+    TCGLLVMRuntime tcg_llvm_runtime = {};
 }
 
 extern CPUState *env;
@@ -86,7 +86,7 @@ using namespace llvm;
 
 class TJITMemoryManager;
 
-struct TCGLLVMContextPrivate {
+class TCGLLVMContextPrivate {
     LLVMContext& m_context;
     IRBuilder<> m_builder;
 
@@ -136,7 +136,7 @@ public:
     void deleteExecutionEngine() {
         if (m_executionEngine) {
             delete m_executionEngine;
-            m_executionEngine = NULL;
+            m_executionEngine = nullptr;
         }
     }
 
@@ -206,7 +206,7 @@ public:
 
     BasicBlock* getLabel(int idx);
     void delLabel(int idx);
-    void startNewBasicBlock(BasicBlock *bb = NULL);
+    void startNewBasicBlock(BasicBlock *bb = nullptr);
 
     /* Code generation */
     Value* getEnv();
@@ -215,6 +215,9 @@ public:
     void generateTraceCall(uintptr_t pc);
     int generateOperation(int opc, const TCGOp *op, const TCGArg *args);
     void generateCode(TCGContext *s, TranslationBlock *tb);
+
+    /* Friends */
+    friend class TCGLLVMContext;
 };
 
 /* Custom JITMemoryManager in order to capture the size of
@@ -300,7 +303,7 @@ public:
 
 TCGLLVMContextPrivate::TCGLLVMContextPrivate()
     : m_context(getGlobalContext()), m_builder(m_context), m_tbCount(0),
-      m_tcgContext(NULL), m_tbFunction(NULL)
+      m_tcgContext(nullptr), m_tbFunction(nullptr)
 {
     std::memset(m_values, 0, sizeof(m_values));
     std::memset(m_memValuesPtr, 0, sizeof(m_memValuesPtr));
@@ -323,7 +326,7 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
      */
     m_executionEngine = ExecutionEngine::createJIT(
             m_module, &error, m_jitMemoryManager, CodeGenOpt::None);
-    if(m_executionEngine == NULL) {
+    if(m_executionEngine == nullptr) {
         std::cerr << "Unable to create LLVM JIT: " << error << std::endl;
         exit(1);
     }
@@ -351,14 +354,14 @@ TCGLLVMContextPrivate::~TCGLLVMContextPrivate()
 {
     if (m_functionPassManager) {
         delete m_functionPassManager;
-        m_functionPassManager = NULL;
+        m_functionPassManager = nullptr;
     }
 
     // the following line will also delete
     // m_moduleProvider, m_module and all its functions
     if (m_executionEngine) {
         delete m_executionEngine;
-        m_executionEngine = NULL;
+        m_executionEngine = nullptr;
     }
 
     if (llvm_is_multithreaded()) {
@@ -414,7 +417,7 @@ Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
         return m_tbFunction->arg_begin();
     }
 
-    if(m_memValuesPtr[idx] == NULL) {
+    if(m_memValuesPtr[idx] == nullptr) {
         assert(idx < s->nb_globals);
 
         if(temp.fixed_reg) {
@@ -481,13 +484,13 @@ static inline void freeValue(Value *V) {
 inline void TCGLLVMContextPrivate::delValue(int idx)
 {
     freeValue(m_values[idx]);
-    m_values[idx] = NULL;
+    m_values[idx] = nullptr;
 }
 
 inline void TCGLLVMContextPrivate::delPtrForValue(int idx)
 {
     freeValue(m_memValuesPtr[idx]);
-    m_memValuesPtr[idx] = NULL;
+    m_memValuesPtr[idx] = nullptr;
 }
 
 unsigned TCGLLVMContextPrivate::getValueBits(int idx)
@@ -506,7 +509,7 @@ Value* TCGLLVMContextPrivate::getValue(int idx)
     if (temp.name && !strncmp(temp.name, "env", 3)) {
         return m_tbFunction->arg_begin();
     }
-    if(m_values[idx] == NULL) {
+    if(m_values[idx] == nullptr) {
         if(idx < m_tcgContext->nb_globals) {
             m_values[idx] = m_builder.CreateLoad(getPtrForValue(idx)
                     , StringRef(temp.name) + "_v"
@@ -623,7 +626,7 @@ inline void TCGLLVMContextPrivate::delLabel(int idx)
     if(m_labels[idx] && m_labels[idx]->use_empty() &&
             !m_labels[idx]->getParent())
         delete m_labels[idx];
-    m_labels[idx] = NULL;
+    m_labels[idx] = nullptr;
 }
 
 void TCGLLVMContextPrivate::startNewBasicBlock(BasicBlock *bb)
@@ -1295,7 +1298,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
         bool signE = op & MO_SIGN;                                  \
         int bits = (1 << (op & MO_SIZE)) * 8;                       \
         unsigned memIndex = get_mmuidx(args[2]);                    \
-        Value *v = generateQemuMemOp(true, NULL,                    \
+        Value *v = generateQemuMemOp(true, nullptr,                 \
             getValue(args[1]), args[2], memIndex, bits, 0xDEADBEEF);\
         setValue(args[0], m_builder.CreateIntCast(                  \
             v, intType(std::max(TARGET_LONG_BITS, bits)), signE));  \
@@ -1619,8 +1622,8 @@ ExecutionEngine* TCGLLVMContext::getExecutionEngine()
 
 void TCGLLVMContext::generateCode(TCGContext *s, TranslationBlock *tb)
 {
-    assert(tb->tcg_llvm_context == NULL);
-    assert(tb->llvm_function == NULL);
+    assert(tb->tcg_llvm_context == nullptr);
+    assert(tb->llvm_function == nullptr);
 
     tb->tcg_llvm_context = this;
     m_private->generateCode(s, tb);
@@ -1643,16 +1646,16 @@ void TCGLLVMContext::writeModule(const char *path)
 
 void tcg_llvm_initialize()
 {
-    assert(tcg_llvm_ctx == NULL);
+    assert(tcg_llvm_ctx == nullptr);
     assert(llvm_start_multithreaded());
     tcg_llvm_ctx = new TCGLLVMContext;
 }
 
 void tcg_llvm_destroy()
 {
-    assert(tcg_llvm_ctx != NULL);
+    assert(tcg_llvm_ctx != nullptr);
     delete tcg_llvm_ctx;
-    tcg_llvm_ctx = NULL;
+    tcg_llvm_ctx = nullptr;
 }
 
 void tcg_llvm_gen_code(TCGLLVMContext *l, TCGContext *s, TranslationBlock *tb)
@@ -1662,17 +1665,17 @@ void tcg_llvm_gen_code(TCGLLVMContext *l, TCGContext *s, TranslationBlock *tb)
 
 void tcg_llvm_tb_alloc(TranslationBlock *tb)
 {
-    tb->tcg_llvm_context = NULL;
-    tb->llvm_function = NULL;
+    tb->tcg_llvm_context = nullptr;
+    tb->llvm_function = nullptr;
 }
 
 void tcg_llvm_tb_free(TranslationBlock *tb)
 {
     if(tb->llvm_function) {
         tb->llvm_function->eraseFromParent();
-        tb->llvm_function = NULL;
-        tb->llvm_tc_ptr = NULL;
-        tb->llvm_tc_end = NULL;
+        tb->llvm_function = nullptr;
+        tb->llvm_tc_ptr = nullptr;
+        tb->llvm_tc_end = nullptr;
     }
 }
 
