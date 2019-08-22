@@ -58,7 +58,7 @@ def make_iso(directory, iso_path):
     with open(devnull, "w") as DEVNULL:
         if sys.platform.startswith('linux'):
             subprocess.check_call([
-                'genisoimage', '-RJ', '-max-iso9660-filenames', '-o', iso_path, directory
+                'genisoimage', '-quiet', '-RJ', '-max-iso9660-filenames', '-o', iso_path, directory
             ], stderr=subprocess.STDOUT if debug else DEVNULL)
         elif sys.platform == 'darwin':
             subprocess.check_call([
@@ -870,10 +870,13 @@ class Panda:
 
 	# XXX: Do not call any of the following from the main thread- they depend on the CPU loop running
 	@blocking
-	def run_serial_cmd(self, cmd):
+	def run_serial_cmd(self, cmd, no_timeout=False):
 		self.running.wait() # Can only run serial when guest is running
 		self.serial_console.sendline(cmd.encode("utf8"))
-		result = self.serial_console.expect()
+		if no_timeout:
+			result = self.serial_console.expect(timeout=9999)
+		else:
+			result = self.serial_console.expect()
 		return result
 
 	@blocking

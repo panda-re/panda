@@ -98,7 +98,7 @@ class Expect(object):
         self.logfile.flush()
         if not self.quiet: sys.stdout.flush()
         self.sofar = sofar.decode('utf8')
-        raise TimeoutExpired()
+        raise TimeoutExpired("Read message \n{}\n".format(self.sofar))
 
     def send(self, msg):
         if not self.consumed_first: # Before we send anything, consume header
