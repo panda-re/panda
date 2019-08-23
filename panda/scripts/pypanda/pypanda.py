@@ -223,6 +223,7 @@ class Panda:
 		self.taint_enabled = False
 		self.init_run = False
 		self.pcb_list = {}
+		self.hook_list = []
 
 		# Setup callbacks and generate self.cb_XYZ functions for cb decorators
 		# XXX Don't add any other methods with names starting with 'cb_'
@@ -248,8 +249,11 @@ class Panda:
 			if old_asid == new_asid:
 				return 0
 
+			#NOTE: Fix for case where no procnames are invlolved. This requires use of osi often for unrelated programs.
 			current = self.get_current_process(cpustate)
+			libs = self.get_libraries(cpustate,current)
 			current_name = ffi.string(current.name).decode('utf8', 'ignore')
+			print("libs", libs,"kernel", self.in_kernel(cpustate))#pdb.set_trace()
 			#print("ASID Changed to", current_name)
 			for cb_name, cb in self.registered_callbacks.items():
 				if not cb["procname"]:
@@ -259,6 +263,38 @@ class Panda:
 					self.enable_callback_by_name(cb_name)
 				if current_name != cb["procname"] and cb['enabled']:
 					self.disable_callback_by_name(cb_name)
+
+			for h in self.hook_list:
+				if not h.is_kernel:
+					if h.program_name:
+						if h.program_name == curent_name and not h.is_enabled:
+							print("Enabling hook at", hex(h.target_addr), "because program is", current_name)
+							self.enable_hook(h)
+						elif hook.program_name != current_name and hook.is_enabled:
+							print("Disabling hook at", hex(h.target_addr), "because program is", current_name)
+							self.disable_hook(h)
+						else:
+							pass
+					if h.library_name:
+						lowest_matching_lib = None
+						if libs != ffi.NULL:
+							for i in range(libs.num):
+								lib = libs.module[i]
+								if lib.file != ffi.NULL: 
+									filename = ffi.string(lib.file).decode()
+									if h.library_name in filename:
+										if lowest_matching_lib:
+											lowest_matching_lib = lib if lib.base < lowest_matching_lib.base else lowest_matching_lib
+										else:
+											lowest_matching_lib = lib
+						if lowest_matching_lib:
+							self.update_hook(h, lowest_matching_lib.base + h.target_library_offset)
+							print("Updating hook for libname", h.library_name, "to match for program", current_name)
+						else:
+							if h.is_enabled:
+								self.disable_hook(h)
+								print("Disabling hook because library", h.library_name, "was not found on process", current_name)
+
 			return 0
 
 		@pcb.init
@@ -269,7 +305,24 @@ class Panda:
 
 		# Register init which sets up asid_changed as well
 		self.load_python_plugin(__panda_loaded, "__internal_python_init")
+	
+	def update_hook(self, hook, addr):
+		if addr != hook.target_addr:
+			progress("Updating hook")
+			hook.target_addr = addr
+			self.enable_hook(hook)
 
+	def enable_hook(self, hook):
+		if not hook.is_enabled:
+			hook.is_enabled = True
+			progress("Enabling hook")
+			self.libpanda_hooks.enable_hook(hook.hook_cb, hook.target_addr)
+
+	def disable_hook(self,hook):
+		if hook.is_enabled:
+			hook.is_enabled = False
+			progress("Disabling hook")
+			self.libpanda_hooks.disable_hook(hook.hook_cb)
 
 	# /__init__
 
@@ -449,7 +502,7 @@ class Panda:
 		uid_ffi = ffi.cast("void*",randint(0,0xffffffff)) # XXX: Unlikely but possible for collisions here
 		self.libpanda.panda_load_external_plugin(filename_ffi, name_ffi, uid_ffi, init_ffi)
 
-	def hook(self, addr):
+	def hook(self, addr, enabled=True, kernel=True,libraryname=None,procname=None):
 		'''
 		Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
 		the function will be called with args (CPUState, TranslationBlock)
@@ -468,7 +521,18 @@ class Panda:
 				print("Registering breakpoint at 0x{:x} -> {} == {}".format(addr, fun, 'cdata_cb'))
 
 			# Inform the plugin that it has a new breakpoint at addr
-			self.libpanda_hooks.add_hook(addr, hook_cb_type(fun))
+			hook_cb_passed = hook_cb_type(fun)
+			self.libpanda_hooks.add_hook(addr, hook_cb_passed)
+			hook_to_add = Hook(is_enabled=enabled,is_kernel=kernel,target_addr=addr,library_name=libraryname,program_name=procname,hook_cb=None, target_library_offset=None)
+			if libraryname: 
+					hook_to_add.target_library_offset = addr
+					hook_to_add.target_addr = 0
+					hook_to_add.hook_cb = hook_cb_passed
+			else:
+					hook_to_add.hook_cb = hook_cb_passed
+			self.hook_list.append(hook_to_add)
+			if libraryname or procname:
+				self.disable_hook(hook_to_add)
 
 			@hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
 			def wrapper(*args, **kw):
@@ -580,9 +644,11 @@ class Panda:
 		self.libpanda.panda_disable_plugin(handle)
 
 	def enable_memcb(self):
+		self._memcb = True
 		self.libpanda.panda_enable_memcb()
 
 	def disable_memcb(self):
+		self._memcb = False
 		self.libpanda.panda_disable_memcb()
 
 	def enable_llvm(self):
@@ -741,9 +807,13 @@ class Panda:
 		self.libpanda.panda_cleanup()
 
 	def virtual_memory_read(self, env, addr, buf, length):
+		if not self._memcb:
+			self.enable_memcb()
 		self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
 
 	def virtual_memory_write(self, env, addr, buf, length):
+		if not self._memcb:
+			self.enable_memcb()
 		return self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
 
 	def taint_enable(self):

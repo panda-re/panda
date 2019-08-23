@@ -47,10 +47,45 @@ void disable_hooking() {
   panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, c_callback);
 }
 
+void update_hook(hook_func_t hook, target_ulong value){
+	printf("Got hook and updated it\n");
+	for (auto it = hooks.begin(); it != hooks.end(); ++it){
+		if (it->first == value) continue;
+		std::vector<hook_func_t> hook_pile = it->second;
+		for (auto it=hook_pile.begin(); it!=hook_pile.end(); ++it){
+			if (*it == hook){
+				hook_pile.erase(it);				
+				it--;
+				printf("hit hook pile erase\n");
+			}
+		}
+	}
+	hooks[value].push_back(hook);
+}
+
+void enable_hook(hook_func_t hook, target_ulong value){
+	printf("Enabling hook\n");
+	update_hook(hook, value);
+
+}
+
+void disable_hook(hook_func_t hook){
+	printf("Disabling hook\n");
+	update_hook(hook,0);
+}
+
+
 void add_hook(target_ulong addr, hook_func_t hook) {
   printf("Adding hook from guest 0x" TARGET_FMT_lx " to host %p\n", addr, hook);
 
   if (!panda_is_callback_enabled(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, c_callback)) enable_hooking(); // Ensure our panda callback is enabled when we add a hook
+	// check for existing hook
+  std::vector<hook_func_t> hook_pile = hooks[addr];
+	for (auto it=hook_pile.begin(); it!=hook_pile.end(); ++it){
+		if (*it == hook){
+			return;
+		}
+	}
   hooks[addr].push_back(hook);
 }
 
