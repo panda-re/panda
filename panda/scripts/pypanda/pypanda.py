@@ -156,6 +156,7 @@ class Panda:
 		self.panda = pjoin(self.bindir, "qemu-system-%s" % self.arch)
 		self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % self.arch))
 		self.loaded_python = False
+		self.qcow="/home/luke/.panda/ubuntu-16.04-server-cloudimg-i386-disk1.img"
 
 		if self.os:
 			self.set_os_name(self.os)
@@ -251,21 +252,19 @@ class Panda:
 
 			#NOTE: Fix for case where no procnames are invlolved. This requires use of osi often for unrelated programs.
 			current = self.get_current_process(cpustate)
-			libs = self.get_libraries(cpustate,current)
-			current_name = ffi.string(current.name).decode('utf8', 'ignore')
-			print("libs", libs,"kernel", self.in_kernel(cpustate))#pdb.set_trace()
-			#print("ASID Changed to", current_name)
-			for cb_name, cb in self.registered_callbacks.items():
-				if not cb["procname"]:
-					continue
-
-				if current_name == cb["procname"] and not cb['enabled']:
-					self.enable_callback_by_name(cb_name)
-				if current_name != cb["procname"] and cb['enabled']:
-					self.disable_callback_by_name(cb_name)
+			if current != ffi.NULL:
+				current_name = ffi.string(current.name).decode('utf8', 'ignore')
+#				print("Got process", current_name)
+				for cb_name, cb in self.registered_callbacks.items():
+					if not cb["procname"]:
+						continue
+					if current_name == cb["procname"] and not cb['enabled']:
+						self.enable_callback_by_name(cb_name)
+					if current_name != cb["procname"] and cb['enabled']:
+						self.disable_callback_by_name(cb_name)
 
 			for h in self.hook_list:
-				if not h.is_kernel:
+				if not h.is_kernel and ffi.NULL != current:
 					if h.program_name:
 						if h.program_name == curent_name and not h.is_enabled:
 							print("Enabling hook at", hex(h.target_addr), "because program is", current_name)
@@ -275,6 +274,7 @@ class Panda:
 							self.disable_hook(h)
 						else:
 							pass
+					libs = self.get_libraries(cpustate,current)
 					if h.library_name:
 						lowest_matching_lib = None
 						if libs != ffi.NULL:
@@ -288,6 +288,7 @@ class Panda:
 										else:
 											lowest_matching_lib = lib
 						if lowest_matching_lib:
+							print("Hook on lib", lowest_matching_lib.name, hex(lowest_matching_lib.base), hex(lowest_matching_lib.base+h.target_library_offset))
 							self.update_hook(h, lowest_matching_lib.base + h.target_library_offset)
 							print("Updating hook for libname", h.library_name, "to match for program", current_name)
 						else:
@@ -308,9 +309,10 @@ class Panda:
 	
 	def update_hook(self, hook, addr):
 		if addr != hook.target_addr:
-			progress("Updating hook")
+			print("Updating hook", hook, hex(addr))
 			hook.target_addr = addr
 			self.enable_hook(hook)
+		print("Hook is not updated", hook, hex(addr))
 
 	def enable_hook(self, hook):
 		if not hook.is_enabled:
@@ -541,12 +543,14 @@ class Panda:
 			return wrapper
 		return decorator
 
-	def _generated_callback(self, pandatype, name, procname=None, enabled=True):
+	def _generated_callback(self, pandatype, name=None, procname=None, enabled=True):
 		'''
 		Actual implementation of self.cb_XXX. pandatype is pcb.XXX
 		name must uniquely describe a callback
 		if procname is specified, callback will only be enabled when that asid is running (requires OSI support)
 		'''
+		if name == None:
+			name = str(pandatype)
 		if procname:
 			enabled = False # Process won't be running at time 0 (probably)
 
@@ -785,7 +789,6 @@ class Panda:
 	def lookup_gic(self,n):
 		return self.libpanda.lookup_gic(n)
 
-
 	def current_sp(self, cpustate):
 		return self.libpanda.panda_current_sp_external(cpustate)
 
@@ -807,12 +810,12 @@ class Panda:
 		self.libpanda.panda_cleanup()
 
 	def virtual_memory_read(self, env, addr, buf, length):
-		if not self._memcb:
+		if not hasattr(self,"_memcb"):
 			self.enable_memcb()
 		self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
 
 	def virtual_memory_write(self, env, addr, buf, length):
-		if not self._memcb:
+		if not hasattr(self,"_memcb"):
 			self.enable_memcb()
 		return self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
 
