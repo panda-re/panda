@@ -156,7 +156,6 @@ class Panda:
 		self.panda = pjoin(self.bindir, "qemu-system-%s" % self.arch)
 		self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % self.arch))
 		self.loaded_python = False
-		self.qcow="/home/luke/.panda/ubuntu-16.04-server-cloudimg-i386-disk1.img"
 
 		if self.os:
 			self.set_os_name(self.os)
