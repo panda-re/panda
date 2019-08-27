@@ -62,10 +62,10 @@ def before_block_exec(env,tb):
                 progress("I'm at label_pc=%x" % label_pc)
                 # we just about to executed this bb and we are returning
                 # so we want to taint eax
-                panda.taint_label_reg(R_EAX, 1+R_EAX)
-                panda.taint_label_reg(R_EBX, 1+R_EBX)
-                panda.taint_label_reg(R_ECX, 1+R_ECX)
-                panda.taint_label_reg(R_EDX, 1+R_EDX)
+                panda.taint_label_reg(R_EAX, 13)
+                panda.taint_label_reg(R_EBX, 14)
+                panda.taint_label_reg(R_ECX, 15)
+                panda.taint_label_reg(R_EDX, 16)
                 # so we don't keep trying to label over and over
                 state = 2
 
@@ -81,9 +81,7 @@ def before_block_exec(env,tb):
                         if tq is None:
                                 progress("offset=%d  NOTAINT")
                         else:
-                                progress("offset=%d  n=%d tcn=%d  cb_mask=%x" % (offset, tq.num_labels, tq.tcn, tq.cb_mask))
-                        for l in tq:
-                                progress("  label=%d" % l)
+                                progress("offset=%d taint=%s" % (offset, tq))
 
                 
         if panda.taint_enabled:

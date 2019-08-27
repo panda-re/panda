@@ -29,6 +29,17 @@ class TaintQuery:
             self.no_more = True
         return label
 
+
+    def __str__(self):
+        res = "(n=%d,tcn=%d,cb_mask=%x,labels=(" % (self.num_labels, self.tcn, self.cb_mask)
+        for l in self:
+            res += "%d," % l
+        res += "))"
+        return res
+
+    def __repr__(self):
+        return self.__str__()
+
     # I think this should reset query result so we can 
     # iterate over labels again
     def reset(self):
