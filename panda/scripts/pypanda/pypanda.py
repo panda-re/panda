@@ -798,9 +798,19 @@ class Panda:
 	def current_asid(self, cpustate):
 		return self.libpanda.panda_current_asid(cpustate)
 
-	def disas(self, fout, code, size):
-		newfd = dup(fout.fileno())
-		return self.libpanda.panda_disas(newfd, code, size)
+	ffi.cdef("void* fopen(char*, char*);") # This is wrong, but convenient
+	def disas(self, cpustate, fout, code, size):
+		if cpustate != ffi.NULL:
+			r = ffi.new("char[]", size)
+			self.virtual_memory_read(cpustate,code,r,ffi.sizeof(r))
+			newfd = fout.fileno()
+			f = ffi.new("char[]", bytes("/proc/self/fd/"+str(newfd),"utf-8"))
+			w = ffi.new("char[]", bytes("w","utf-8"))
+			s = ffi.cast("unsigned long",size)
+			c = ffi.cast("void*", code)
+			fp = C.fopen(f,w)
+			if fp != ffi.NULL:
+				self.libpanda.panda_disas(fp, ffi.addressof(r), s)
 
 	def set_os_name(self, os_name):
 		os_name_new = ffi.new("char[]", bytes(os_name, "utf-8"))
