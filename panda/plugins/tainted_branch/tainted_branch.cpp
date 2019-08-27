@@ -17,7 +17,6 @@ PANDAENDCOMMENT */
 
 #include <cstdio>
 
-#include "panda/addr.h"
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"

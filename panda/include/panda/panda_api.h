@@ -76,4 +76,15 @@ char* panda_monitor_run(char* buf);
 void panda_monitor_run_async(char* buf);
 #endif
 
+
+// turns on taint
+void panda_taint_enable(void) ;
+
+// label this register 
+void panda_taint_label_reg(uint32_t reg_num, uint32_t label) ;
+
+// returns true iff any byte in this register is tainted
+bool panda_taint_check_reg(uint32_t reg_num, uint32_t size) ;
+
+
 #endif

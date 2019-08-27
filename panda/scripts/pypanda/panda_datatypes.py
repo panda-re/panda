@@ -26,6 +26,9 @@ ffi.cdef(read_cleanup_header("include/panda_datatypes.h"))
 ffi.cdef(read_cleanup_header("include/panda_osi.h"))
 ffi.cdef(read_cleanup_header("include/panda_osi_linux.h"))
 ffi.cdef(read_cleanup_header("include/hooks.h"))
+ffi.cdef(read_cleanup_header("./include/addr_pypanda.h"))
+ffi.cdef(read_cleanup_header("./include/query_res_pypanda.h"))
+ffi.cdef(read_cleanup_header("./include/taint2_int_fns_pypanda.h"))
 
 # so we need access to some data structures, but don't actually
 # want to open all of libpanda yet because we don't have all the

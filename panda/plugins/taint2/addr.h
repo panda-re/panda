@@ -1,7 +1,13 @@
-#ifndef __PANDA_ADDR_H_
-#define __PANDA_ADDR_H_
+#ifndef __PANDA_ADDR_H__
+#define __PANDA_ADDR_H__
 
 #include <stdint.h>
+
+
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
 
 /* these need to be the same size because when we have an unknown dynamic value
  * that we need to fill in later, we need to fix up the taint op in the buffer
@@ -48,5 +54,7 @@ typedef struct addr_struct {
   uint16_t off;   // offset within local registers and guest registers
   AddrFlag flag;  // indication that we might need to look up address from log
 } Addr;
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 #endif

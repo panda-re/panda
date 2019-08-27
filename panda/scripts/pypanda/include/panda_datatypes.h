@@ -910,6 +910,17 @@ char* panda_monitor_run(char* buf);
 void panda_monitor_run_async(char* buf);
 
 
+// turns on taint
+void panda_taint_enable(void) ;
+
+// label this register 
+void panda_taint_label_reg(uint32_t reg_num, uint32_t label) ;
+
+// returns true iff any byte in this register is tainted
+bool panda_taint_check_reg(uint32_t reg_num, uint32_t size) ;
+
+
+
 
 // -----------------------------------
 // Pull number 5 from ../../include/panda/panda_os.h
@@ -940,6 +951,7 @@ void panda_cleanup(void);
 void panda_set_os_name(char *os_name);
 void panda_before_find_fast(void);
 void panda_disas(FILE *out, void *code, unsigned long size);
+void panda_disas2(void *code, unsigned long size);
 
 /*
  * @brief Returns the guest address space identifier.

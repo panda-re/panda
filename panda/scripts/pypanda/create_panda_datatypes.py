@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import re
+import os
 
 # Autogenerate panda_datatypes.py and include/panda_datatypes.h
 #
@@ -11,6 +12,61 @@ import re
 # fairly clean if we are to be able to make sense of them with this script
 # which isn't terriby clever.
 #
+
+
+
+pypanda_start_pattern = """// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+"""
+
+pypanda_end_pattern = "// END_PYPANDA_NEEDS_THIS -- do not delete this comment!\n"
+
+
+pypanda_headers = []
+
+
+def create_pypanda_header(filename):
+    contents = open(filename).read()
+    a = contents.find(pypanda_start_pattern)
+    if a == -1: return None
+    a += len(pypanda_start_pattern)
+    b = contents.find(pypanda_end_pattern)
+    if b == -1: return None
+    # look for local includes
+    rest = []
+    (plugin_dir,fn) = os.path.split(filename)
+    for line in contents.split("\n"):
+        foo = re.search('\#include "(.*)"$', line)
+        if foo:
+            nested_inc = foo.groups()[0]
+            print("Found nested include of %s" % nested_inc)
+            create_pypanda_header("%s/%s" % (plugin_dir,nested_inc))
+        else:
+            rest.append(line)
+    contents = "\n".join(rest)
+    foo = re.search("([^\/]+)\.h$", filename)
+    assert (not (foo is None))
+    pypanda_h = "./include/%s_pypanda.h" % foo.groups()[0]
+    print("Creating pypanda header [%s] for [%s]" % (pypanda_h, filename))
+    with open(pypanda_h, "w") as pyph:
+        pyph.write(contents[a:b])
+    pypanda_headers.append(pypanda_h)
+
+
+# examine all plugin dirs looking for pypanda-aware headers and pull
+# out pypanda bits to go in ./include files
+plugins_dir = "../../plugins"
+for plugin in os.listdir(plugins_dir):
+    if plugin == ".git": continue
+    plugin_dir = plugins_dir + "/" + plugin
+    if os.path.isdir(plugin_dir):
+        # just look for plugin_int_fns.h
+        plugin_file = plugin + "_int_fns.h"
+        if os.path.exists("%s/%s" % (plugin_dir, plugin_file)):
+            create_pypanda_header("%s/%s" % (plugin_dir, plugin_file))
+                        
 
 # First, create panda_datatypes.py from panda/include/panda/panda_callback_list.h
 #
@@ -47,7 +103,12 @@ ffi.cdef(read_cleanup_header("include/panda_datatypes.h"))
 ffi.cdef(read_cleanup_header("include/panda_osi.h"))
 ffi.cdef(read_cleanup_header("include/panda_osi_linux.h"))
 ffi.cdef(read_cleanup_header("include/hooks.h"))
+""")
 
+    for pypanda_header in pypanda_headers:
+        pdty.write('ffi.cdef(read_cleanup_header("%s"))\n' % pypanda_header)
+
+    pdty.write("""
 # so we need access to some data structures, but don't actually
 # want to open all of libpanda yet because we don't have all the
 # file information. So we just open libc to access this.

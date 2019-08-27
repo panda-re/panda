@@ -6,7 +6,6 @@
 extern "C" {
 
 #include "panda/rr/rr_log.h"
-#include "panda/addr.h"
 #include "panda/plog.h"
 
 #include "pri/pri_types.h"
