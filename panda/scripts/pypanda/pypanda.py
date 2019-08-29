@@ -270,10 +270,8 @@ class Panda:
                         if not h.is_kernel and ffi.NULL != current:
                             if h.program_name:
                                 if h.program_name == curent_name and not h.is_enabled:
-                                    print("Enabling hook at", hex(h.target_addr), "because program is", current_name)
                                     self.enable_hook(h)
                                 elif hook.program_name != current_name and hook.is_enabled:
-                                    print("Disabling hook at", hex(h.target_addr), "because program is", current_name)
                                     self.disable_hook(h)
                             libs = self.get_libraries(cpustate,current)
                             if h.library_name:
@@ -289,14 +287,10 @@ class Panda:
                                             else:
                                                 lowest_matching_lib = lib
                                 if lowest_matching_lib:
-                                    print("Hook on lib", lowest_matching_lib.name, hex(lowest_matching_lib.base), hex(lowest_matching_lib.base+h.target_library_offset))
                                     self.update_hook(h, lowest_matching_lib.base + h.target_library_offset)
-                                    print("Updating hook for libname", h.library_name, "to match for program", current_name)
                                 else:
-                                    if h.is_enabled:
-                                        self.disable_hook(h)
-                                        print("Disabling hook because library", h.library_name, "was not found on process", current_name)
-            
+                                    self.disable_hook(h)
+                                                
                     return 0
 
                 @pcb.init
@@ -310,21 +304,17 @@ class Panda:
 
         def update_hook(self,hook,addr):
             if addr != hook.target_addr:
-                print("Updating hook", hook, hex(addr))
                 hook.target_addr = addr
                 self.enable_hook(hook)
-            print("Hook is not updated", hook, hex(addr))
 
         def enable_hook(self,hook):
             if not hook.is_enabled:
                 hook.is_enabled = True
-                progress("Enabling hook")
                 self.libpanda_hooks.enable_hook(hook.hook_cb, hook.target_addr)
 
         def disable_hook(self,hook):
             if hook.is_enabled:
                 hook.is_enabled = False
-                progress("Disabling hook")
                 self.libpanda_hooks.disable_hook(hook.hook_cb)
 
 
@@ -816,7 +806,9 @@ class Panda:
         def virtual_memory_read(self, env, addr, buf, length):
             if not hasattr(self, "_memcb"):
                 self.enable_memcb()
-            self.libpanda.panda_virtual_memory_read_external(env, addr, buf, length)
+            buf_a = ffi.cast("char*", buf)
+            length_a = ffi.cast("int", length)
+            self.libpanda.panda_virtual_memory_read_external(env, addr, buf_a, length_a)
 
         def virtual_memory_write(self, env, addr, buf, length):
             if not hasattr(self, "_memcb"):

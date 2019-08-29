@@ -48,7 +48,6 @@ void disable_hooking() {
 }
 
 void update_hook(hook_func_t hook, target_ulong value){
-	printf("Got hook and updated it\n");
 	for (auto it = hooks.begin(); it != hooks.end(); ++it){
 		if (it->first == value) continue;
 		std::vector<hook_func_t> hook_pile = it->second;
@@ -56,7 +55,6 @@ void update_hook(hook_func_t hook, target_ulong value){
 			if (*it == hook){
 				hook_pile.erase(it);				
 				it--;
-				printf("hit hook pile erase\n");
 			}
 		}
 	}
@@ -64,13 +62,11 @@ void update_hook(hook_func_t hook, target_ulong value){
 }
 
 void enable_hook(hook_func_t hook, target_ulong value){
-	printf("Enabling hook\n");
 	update_hook(hook, value);
 
 }
 
 void disable_hook(hook_func_t hook){
-	printf("Disabling hook\n");
 	update_hook(hook,0);
 }
 
