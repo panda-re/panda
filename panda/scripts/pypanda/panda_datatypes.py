@@ -167,3 +167,14 @@ pcb.top_loop : pandacbtype("top_loop", C.PANDA_CB_TOP_LOOP),
 pcb.during_machine_init : pandacbtype("during_machine_init", C.PANDA_CB_DURING_MACHINE_INIT),
 pcb.main_loop_wait : pandacbtype("main_loop_wait", C.PANDA_CB_MAIN_LOOP_WAIT),
 pcb.pre_shutdown : pandacbtype("pre_shutdown", C.PANDA_CB_PRE_SHUTDOWN)}
+
+class Hook(object):
+    def __init__(self,is_enabled=True,is_kernel=True,hook_cb=True,target_addr=0,target_library_offset=0,library_name=None,program_name=None):
+        self.is_enabled = is_enabled
+        self.is_kernel = is_kernel
+        self.hook_cb = hook_cb
+        self.target_addr = target_addr
+        self.target_library_offset = target_library_offset
+        self.library_name = library_name
+        self.program_name = program_name
+        

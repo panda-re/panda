@@ -951,7 +951,6 @@ void panda_cleanup(void);
 void panda_set_os_name(char *os_name);
 void panda_before_find_fast(void);
 void panda_disas(FILE *out, void *code, unsigned long size);
-void panda_disas2(void *code, unsigned long size);
 
 /*
  * @brief Returns the guest address space identifier.
