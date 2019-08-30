@@ -223,6 +223,19 @@ pcb.init : pandacbtype("init", -1),
             pdty.write(",\n")
 
 
+    pdty.write("""
+class Hook(object):
+    def __init__(self,is_enabled=True,is_kernel=True,hook_cb=True,target_addr=0,target_library_offset=0,library_name=None,program_name=None):
+        self.is_enabled = is_enabled
+        self.is_kernel = is_kernel
+        self.hook_cb = hook_cb
+        self.target_addr = target_addr
+        self.target_library_offset = target_library_offset
+        self.library_name = library_name
+        self.program_name = program_name
+        """)
+
+
 #########################################################
 #########################################################
 # second, create panda_datatypes.h by glomming together
