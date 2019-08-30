@@ -938,38 +938,46 @@ class Panda:
         def revert_sync(self, snapshot_name):
                 self.run_monitor_cmd("loadvm {}".format(snapshot_name))
 
+
+        @blocking
+        def copy_to_guest(self, copy_directory, iso_name=None):
+
+                progress("Creating ISO {}...".format(iso_name))
+                if not iso_name: iso_name = copy_directory + '.iso'
+
+                make_iso(copy_directory, iso_name)
+
+                # 1) we insert the CD drive
+                self.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
+
+                # 2) run setup script
+                # setup_sh: 
+                #   Make sure cdrom didn't automount
+                #   Make sure guest path mirrors host path
+                #   if there is a setup.sh script in the directory,
+                #   then run that setup.sh script first (good for scripts that need to
+                #   prep guest environment before script runs)
+#                copy_directory="/mnt" # for now just mount to an existing directory
+
+                # XXX: fix this copy directory hack
+
+                setup_sh = "mkdir -p {mount_dir}; while ! mount /dev/cdrom {mount_dir}; do sleep 0.3; " \
+                           " umount /dev/cdrom; done; {mount_dir}/setup.sh &> /dev/null || true " \
+                           .format(mount_dir = (shlex.quote(copy_directory)))
+                progress("setup_sh = [%s] " % setup_sh)
+                progress(self.run_serial_cmd(setup_sh))
+
+
         @blocking
         def record_cmd(self, guest_command, copy_directory=None, iso_name=None, recording_name="recording"):
                 self.revert_sync("root") # Can't use self.revert because that would would run async and we'd keep going before the revert happens
 
                 if copy_directory: # If there's a directory, build an ISO and put it in the cddrive
                         # Make iso
-                        if not iso_name: iso_name = copy_directory + '.iso'
+                        copy_to_guest(copy_directory, iso_name)
 
-                        progress("Creating ISO {}...".format(iso_name))
-                        make_iso(copy_directory, iso_name)
-
-                        # 1) we insert the CD drive
-                        self.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
-
-                        # 2) run setup script
-                        # setup_sh: 
-                        #   Make sure cdrom didn't automount
-                        #   Make sure guest path mirrors host path
-                        #   if there is a setup.sh script in the directory,
-                        #   then run that setup.sh script first (good for scripts that need to
-                        #   prep guest environment before script runs)
-                
                         # TODO XXX: guest filesystem is read only so this could hang forever if it can't mount. Instead change the command to run out of /mnt/.
-                        guest_cmd = guest_cmd.replace(copy_directory, "/mnt/")
-                        copy_directory="/mnt/" # for now just mount to an existing directory
-
-                        # XXX: fix this copy directory hack
-
-                        setup_sh = "mkdir -p {mount_dir}; while ! mount /dev/cdrom {mount_dir}; do sleep 0.3; " \
-                                                " umount /dev/cdrom; done; {mount_dir}/setup.sh &> /dev/null || true " \
-                                                        .format(mount_dir = (shlex.quote(copy_directory)))
-                        self.run_serial_cmd(setup_sh)
+                        guest_command = guest_command.replace(copy_directory, "/mnt/")
 
                 # 3) type commmand (note we type command, start recording, finish command)
                 self.type_serial_cmd(guest_command)
