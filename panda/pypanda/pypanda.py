@@ -35,7 +35,7 @@ def progress(msg):
 
 
 # location of panda build dir
-panda_build = realpath(pjoin(abspath(__file__), "../../../../build"))
+panda_build = realpath(pjoin(abspath(__file__), "../../../build"))
 home = getenv("HOME")
 
 def call_with_opt_arg(f, a):
@@ -157,7 +157,10 @@ class Panda:
 
                 self.bindir = pjoin(panda_build, "%s-softmmu" % self.arch)
                 self.panda = pjoin(self.bindir, "qemu-system-%s" % self.arch)
-                self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % self.arch))
+
+                self.libpanda_path = pjoin(self.bindir,"libpanda-%s.so" % self.arch)
+                self.libpanda = ffi.dlopen(self.libpanda_path)
+
                 self.loaded_python = False
 
                 if self.os:
@@ -257,6 +260,7 @@ class Panda:
                     if current == ffi.NULL:
                         return 0
                     current_name = ffi.string(current.name).decode('utf8', 'ignore')
+                    progress(str("PROGRAM "+current_name))
                     for cb_name, cb in self.registered_callbacks.items():
                         if not cb["procname"]:
                             continue
@@ -266,7 +270,6 @@ class Panda:
                             self.disable_callback_by_name(cb_name)
                     
                     for h in self.hook_list:
-                       # pdb.set_trace()
                         if not h.is_kernel and ffi.NULL != current:
                             if h.program_name:
                                 if h.program_name == curent_name and not h.is_enabled:
@@ -287,6 +290,7 @@ class Panda:
                                             else:
                                                 lowest_matching_lib = lib
                                 if lowest_matching_lib:
+                                    progress("Updating matched hook")
                                     self.update_hook(h, lowest_matching_lib.base + h.target_library_offset)
                                 else:
                                     self.disable_hook(h)
@@ -514,7 +518,7 @@ class Panda:
                         if debug:
                             print("Registering breakpoint at 0x{:x} -> {} == {}".format(addr, fun, 'cdata_cb'))
 
-    					# Inform the plugin that it has a new breakpoint at addr
+						# Inform the plugin that it has a new breakpoint at addr
                         hook_cb_passed = hook_cb_type(fun)
                         self.libpanda_hooks.add_hook(addr, hook_cb_passed)
                         hook_to_add = Hook(is_enabled=enabled,is_kernel=kernel,target_addr=addr,library_name=libraryname,program_name=procname,hook_cb=None, target_library_offset=None)
@@ -535,12 +539,13 @@ class Panda:
                         return wrapper
                 return decorator
 
-        def _generated_callback(self, pandatype, name, procname=None, enabled=True):
+        def _generated_callback(self, pandatype, name=None, procname=None, enabled=True):
                 '''
                 Actual implementation of self.cb_XXX. pandatype is pcb.XXX
                 name must uniquely describe a callback
                 if procname is specified, callback will only be enabled when that asid is running (requires OSI support)
                 '''
+		
                 if procname:
                         enabled = False # Process won't be running at time 0 (probably)
 
@@ -886,6 +891,9 @@ class Panda:
                         print("(Debug) Monitor command result: {}".format(r))
 
         def load_plugin_library(self, name):
+                if hasattr(self,"__did_load_libpanda"):
+                        libpanda_path_chr = ffi.new("char[]",bytes(self.libpanda_path,"UTF-8"))
+                        self.__did_load_libpanda = self.libpanda.panda_load_libpanda(libpanda_path_chr)
                 libname = "libpanda_%s" % name
                 if not hasattr(self, libname):
                         assert(isfile(pjoin(self.bindir, "panda/plugins/panda_%s.so"% name)))

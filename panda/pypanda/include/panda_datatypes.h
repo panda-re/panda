@@ -7,7 +7,7 @@
 
 
 // -----------------------------------
-// Pull number 1 from ../../include/panda/panda_callback_list.h
+// Pull number 1 from ../include/panda/panda_callback_list.h
 
 
 // Just the enum defining callback numbering
@@ -717,7 +717,7 @@ typedef union panda_cb {
 
 
 // -----------------------------------
-// Pull number 2 from ../../include/panda/panda_plugin_mgmt.h
+// Pull number 2 from ../include/panda/panda_plugin_mgmt.h
 
 //  Manage plugins (load, enable, disable, etc).
 //  and callbacks (regster, unregister, etc) .
@@ -771,7 +771,7 @@ panda_cb_list* panda_cb_list_next(panda_cb_list* plist);
 
 
 // -----------------------------------
-// Pull number 3 from ../../include/panda/panda_args.h
+// Pull number 3 from ../include/panda/panda_args.h
 
 // Fns and structs to do with panda arg parsing 
 
@@ -834,7 +834,7 @@ extern int panda_argc;
 
 
 // -----------------------------------
-// Pull number 4 from ../../include/panda/panda_api.h
+// Pull number 4 from ../include/panda/panda_api.h
 
 // Functions considered part of the panda api that come from
 // panda_api.c. Also some from common.c. Note that, while common.c has
@@ -923,7 +923,7 @@ bool panda_taint_check_reg(uint32_t reg_num, uint32_t size) ;
 
 
 // -----------------------------------
-// Pull number 5 from ../../include/panda/panda_os.h
+// Pull number 5 from ../include/panda/panda_os.h
 
 // this stuff is defined / used in common.c
 
@@ -944,7 +944,7 @@ typedef target_ulong target_ptr_t;
 
 
 // -----------------------------------
-// Pull number 6 from ../../include/panda/panda_common.h
+// Pull number 6 from ../include/panda/panda_common.h
 
 
 void panda_cleanup(void);

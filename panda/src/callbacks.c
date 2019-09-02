@@ -143,7 +143,7 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
     nb_panda_plugins_loaded ++;
 
     // Ensure pypanda is loaded so its symbols can be used in the plugin we're loading (TODO: should we move this to happen earlier (and just once?))
-    void *libpanda = dlopen("../../../build/"
+    void *libpanda = dlopen("../../build/"
 #if defined(TARGET_I386)
         "i386-softmmu/libpanda-i386.so"
 #elif defined(TARGET_x86_64)

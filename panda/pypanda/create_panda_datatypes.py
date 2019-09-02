@@ -57,7 +57,7 @@ def create_pypanda_header(filename):
 
 # examine all plugin dirs looking for pypanda-aware headers and pull
 # out pypanda bits to go in ./include files
-plugins_dir = "../../plugins"
+plugins_dir = "../plugins"
 for plugin in os.listdir(plugins_dir):
     if plugin == ".git": continue
     plugin_dir = plugins_dir + "/" + plugin
@@ -123,7 +123,7 @@ class PandaState(Enum):
 
     cbn = 0
     cb_list = {}
-    with open ("../../include/panda/panda_callback_list.h") as fp:
+    with open ("../include/panda/panda_callback_list.h") as fp:
         for line in fp:
             foo = re.search("^(\s+)PANDA_CB_([^,]+)\,", line)
             if foo:
@@ -145,7 +145,7 @@ class PandaState(Enum):
 
     in_tdu = False
     cb_types = {}
-    with open ("../../include/panda/panda_callback_list.h") as fp:
+    with open ("../include/panda/panda_callback_list.h") as fp:
         for line in fp:
             foo = re.search("typedef union panda_cb {", line)
             if foo:
@@ -272,15 +272,12 @@ with open("include/panda_datatypes.h", "w") as pdth:
         for line in read_but_exclude_garbage(fn):
             pdth.write(line)
         pn += 1
-    include_this("../../include/panda/panda_callback_list.h")
-    include_this("../../include/panda/panda_plugin_mgmt.h")
-    include_this("../../include/panda/panda_args.h")
-    include_this("../../include/panda/panda_api.h")
-    include_this("../../include/panda/panda_os.h")
+    include_this("../include/panda/panda_callback_list.h")
+    include_this("../include/panda/panda_plugin_mgmt.h")
+    include_this("../include/panda/panda_args.h")
+    include_this("../include/panda/panda_api.h")
+    include_this("../include/panda/panda_os.h")
     # probably a better way... 
     pdth.write("typedef target_ulong target_ptr_t;\n")
-    include_this("../../include/panda/panda_common.h")
+    include_this("../include/panda/panda_common.h")
 
-
-
-    
