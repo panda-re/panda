@@ -11,7 +11,7 @@ import shlex # for run_guest
 
 from os.path import join as pjoin
 from os.path import realpath, exists, abspath, isfile
-from os import dup, getenv, devnull
+from os import dup, getenv, devnull, environ
 from enum import Enum
 from colorama import Fore, Style
 from random import randint
@@ -156,6 +156,7 @@ class Panda:
                 progress("qcow = " + (str(self.qcow)))
 
                 self.bindir = pjoin(panda_build, "%s-softmmu" % self.arch)
+                environ["PANDA_PLUGIN_DIR"] = self.bindir+"/panda/plugins"
                 self.panda = pjoin(self.bindir, "qemu-system-%s" % self.arch)
 
                 self.libpanda_path = pjoin(self.bindir,"libpanda-%s.so" % self.arch)
@@ -260,7 +261,6 @@ class Panda:
                     if current == ffi.NULL:
                         return 0
                     current_name = ffi.string(current.name).decode('utf8', 'ignore')
-                    progress(str("PROGRAM "+current_name))
                     for cb_name, cb in self.registered_callbacks.items():
                         if not cb["procname"]:
                             continue
@@ -290,7 +290,6 @@ class Panda:
                                             else:
                                                 lowest_matching_lib = lib
                                 if lowest_matching_lib:
-                                    progress("Updating matched hook")
                                     self.update_hook(h, lowest_matching_lib.base + h.target_library_offset)
                                 else:
                                     self.disable_hook(h)
@@ -594,7 +593,6 @@ class Panda:
         def enable_callback(self, callback):
                 if self.pcb_list[callback]:
                         function, pcb, handle = self.pcb_list[callback]
-                        print("Enable ", function)
                         cb = callback_dictionary[callback]
                         progress("enabled callback %s" % cb.name)
                         self.libpanda.panda_enable_callback_helper(handle, cb.number, pcb)
@@ -632,8 +630,8 @@ class Panda:
         def require(self, plugin):
                 if not self.init_run:
                         self.init()
-                charptr = pyp.new("char[]", bytes(plugin,"utf-8"))
-                self.libpanda.panda_require(charptr)
+                plugin_name_ptr = pyp.new("char[]", bytes(plugin,"utf-8"))
+                self.libpanda.panda_require(plugin_name_ptr)
                 self.load_plugin_library(plugin)
 
         def enable_plugin(self, handle):
@@ -901,6 +899,7 @@ class Panda:
                         self.__setattr__(libname, library)
 
         def load_osi(self):
+                progress("load_osi")
                 self.require("osi")
                 if "linux" in self.os_string:
                         self.require("osi_linux")
@@ -912,8 +911,8 @@ class Panda:
                 if not hasattr(self, "libpanda_osi"):
                         self.load_osi() 
                 process = self.libpanda_osi.get_current_process(cpustate)
-                if process == ffi.NULL:
-                        progress("[ERROR] returned process is NULL")
+                #if process == ffi.NULL:
+                 #       progress("[ERROR] returned process is NULL")
                 return process
 
         def get_processes(self, cpustate):

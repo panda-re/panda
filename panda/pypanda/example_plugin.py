@@ -9,24 +9,15 @@ Run this with python3 example_plugin.py
 
 '''
 from pypanda import *
-from time import sleep
 from sys import argv
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]
 panda = Panda(generic=arch)
 
-@panda.callback.init
-def init(handle):
-	progress("init in python. handle="+str(handle))
-	panda.register_callback(handle, panda.callback.before_block_exec, \
-	 						before_block_execute)
-	return True
-
-@panda.callback.before_block_exec
+@panda.cb_before_block_exec()
 def before_block_execute(cpustate,transblock):
 	progress("Before Block Run")
 	return 0
 
-panda.load_python_plugin(init,"example_plugin")
 panda.run()
