@@ -27,3 +27,4 @@ network
 filereadmon
 callfunc
 mmio_trace
+memorymap
