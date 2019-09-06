@@ -460,6 +460,7 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
             process_counter = PROCESS_GOOD_NUM;
             if (debug) printf ("before_bb: process_mode suspicious.  %d %s\n", (int) current_proc->pid, current_proc->name);
         }
+        free_osiproc(current_proc);
         break;
     }
     case Process_suspicious: {
@@ -480,6 +481,7 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
             process_mode = Process_unknown;                    
             if (debug) printf ("before_bb: process_mode unknown\n");
         }
+        free_osiproc(current_proc);
         break;        
     }
     default: {}

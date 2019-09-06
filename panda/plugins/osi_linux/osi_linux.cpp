@@ -191,7 +191,9 @@ void get_process_info(CPUState *env, GArray **out,
 	return;
 
 error:
-	g_array_free(*out, true);  // safe even when *out == NULL
+	if(*out != NULL) {
+		g_array_free(*out, true);
+	}
 	*out = NULL;
 	return;
 }
@@ -367,7 +369,9 @@ void on_get_libraries(CPUState *env, OsiProc *p, GArray **out) {
 	return;
 
 error0:
-	g_array_free(*out, true);  // safe even when *out == NULL
+	if(*out != NULL) {
+		g_array_free(*out, true);
+	}
 	*out = NULL;
 	return;
 }
