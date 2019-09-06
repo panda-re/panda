@@ -32,10 +32,10 @@ TAINT2_OBJ  = $(patsubst %.cpp,$(PLUGIN_OBJ_DIR)/%.o,$(TAINT2_SRC))
 			$(QEMU_DGFLAGS) $(CXXFLAGS) $(TAINT_OP_CFLAGS) \
 			-emit-llvm -c -o $@ $<),"CLANGXX $(TARGET_DIR)$@")
 
-$(PLUGIN_TARGET_DIR)/panda_taint2_ops.bc: $(PLUGIN_OBJ_DIR)/taint_ops_llvm.bc
+$(PLUGIN_OBJ_DIR)/panda_taint2_ops.bc: $(PLUGIN_OBJ_DIR)/taint_ops_llvm.bc
 	$(call quiet-command, $(LLVM_LINK) -o $@ $^,"LLVMLD  $(TARGET_DIR)$@")
 
 $(PLUGIN_TARGET_DIR)/panda_taint2.so: $(TAINT2_OBJ)
 
-all: $(PLUGIN_TARGET_DIR)/panda_taint2_ops.bc
+all: $(PLUGIN_OBJ_DIR)/panda_taint2_ops.bc
 

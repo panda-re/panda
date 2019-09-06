@@ -16,6 +16,7 @@ PANDAENDCOMMENT */
 #include <dlfcn.h>
 #include <glib.h>
 
+#include "config-host.h"
 #include "panda/plugin.h"
 #include "qapi/qmp/qdict.h"
 #include "qmp-commands.h"
@@ -138,19 +139,42 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
 
 extern const char *qemu_file;
 
-// translate plugin name into path to .so
-char *panda_plugin_path(const char *plugin_name) {    
-    char *plugin_path = NULL;
-    const char *plugin_dir = g_getenv("PANDA_PLUGIN_DIR");
-
-    if (plugin_dir != NULL) {
-        plugin_path = g_strdup_printf("%s/panda_%s" HOST_DSOSUF, plugin_dir, plugin_name);
-    } else {
-        char *dir = g_path_get_dirname(qemu_file);
-        plugin_path = g_strdup_printf("%s/panda/plugins/panda_%s" HOST_DSOSUF, dir, plugin_name);
-        g_free(dir);
+// Resolve a plugin to a path. If the plugin doesn't exist in any of the search
+// paths, then NULL is returned. The search order for plugins is as follows:
+//
+//   - Relative to the PANDA_PLUGIN_DIR environment variable.
+//   - Relative to the QEMU binary (for running out of the build directory).
+//   - Relative to the install prefix directory.
+char *panda_plugin_path(const char *plugin_name) {
+    // First try relative to PANDA_PLUGIN_DIR
+    char *plugin_path = g_strdup_printf(
+        "%s/panda_%s" HOST_DSOSUF, g_getenv("PANDA_PLUGIN_DIR"), plugin_name);
+    if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
+        return plugin_path;
     }
-    return plugin_path;
+    g_free(plugin_path);
+
+    // Second, try relative to QEMU binary.
+    char *dir = g_path_get_dirname(qemu_file);
+    plugin_path = g_strdup_printf("%s/panda/plugins/panda_%s" HOST_DSOSUF, dir,
+                                  plugin_name);
+    g_free(dir);
+    if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
+        return plugin_path;
+    }
+    g_free(plugin_path);
+
+    // Finally, try relative to the installation path.
+    plugin_path =
+        g_strdup_printf("%s/%s/panda_%s" HOST_DSOSUF, CONFIG_PANDA_PLUGINDIR,
+                        TARGET_NAME, plugin_name);
+    if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
+        return plugin_path;
+    }
+    g_free(plugin_path);
+
+    // Return null if plugin resolution failed.
+    return NULL;
 }
 
 
@@ -162,32 +186,40 @@ void panda_require(const char *plugin_name) {
 
     // translate plugin name into a path to .so
     char *plugin_path = panda_plugin_path(plugin_name);
+    if (NULL == plugin_path) {
+        fprintf(stderr, PANDA_MSG_FMT "FAILED to find required plugin %s\n",
+                PANDA_CORE_NAME, plugin_name);
+        abort();
+    }
 
     // load plugin same as in vl.c
     if (!panda_load_plugin(plugin_path, plugin_name)) {
-        fprintf(stderr, PANDA_MSG_FMT "FAILED to load required plugin %s from %s\n", PANDA_CORE_NAME, plugin_name, plugin_path);
+        fprintf(stderr,
+                PANDA_MSG_FMT "FAILED to load required plugin %s from %s\n",
+                PANDA_CORE_NAME, plugin_name, plugin_path);
         abort();
     }
     g_free(plugin_path);
 }
 
-    
-
 // Internal: remove a plugin from the global array
-static void panda_delete_plugin(int i) {
+static void panda_delete_plugin(int i)
+{
     if (i != nb_panda_plugins - 1) { // not the last element
-        memmove(&panda_plugins[i], &panda_plugins[i+1], (nb_panda_plugins - i - 1)*sizeof(panda_plugin));
+        memmove(&panda_plugins[i], &panda_plugins[i + 1],
+                (nb_panda_plugins - i - 1) * sizeof(panda_plugin));
     }
     nb_panda_plugins--;
 }
 
-void panda_do_unload_plugin(int plugin_idx){
+void panda_do_unload_plugin(int plugin_idx)
+{
     void *plugin = panda_plugins[plugin_idx].plugin;
     void (*uninit_fn)(void *) = dlsym(plugin, "uninit_plugin");
-    if(!uninit_fn) {
-        fprintf(stderr, "Couldn't get symbol %s: %s\n", "uninit_plugin", dlerror());
-    }
-    else {
+    if (!uninit_fn) {
+        fprintf(stderr, "Couldn't get symbol %s: %s\n", "uninit_plugin",
+                dlerror());
+    } else {
         uninit_fn(plugin);
     }
     panda_unregister_callbacks(plugin);
@@ -195,7 +227,8 @@ void panda_do_unload_plugin(int plugin_idx){
     dlclose(plugin);
 }
 
-void panda_unload_plugin(void* plugin) {
+void panda_unload_plugin(void *plugin)
+{
     int i;
     for (i = 0; i < nb_panda_plugins; i++) {
         if (panda_plugins[i].plugin == plugin) {
@@ -205,7 +238,8 @@ void panda_unload_plugin(void* plugin) {
     }
 }
 
-void panda_unload_plugin_idx(int plugin_idx) {
+void panda_unload_plugin_idx(int plugin_idx)
+{
     if (plugin_idx >= nb_panda_plugins || plugin_idx < 0) {
         return;
     }
@@ -213,7 +247,8 @@ void panda_unload_plugin_idx(int plugin_idx) {
     panda_plugins_to_unload[plugin_idx] = true;
 }
 
-void panda_unload_plugins(void) {
+void panda_unload_plugins(void)
+{
     // Unload them starting from the end to avoid having to shuffle everything
     // down each time
     while (nb_panda_plugins > 0) {
@@ -221,7 +256,8 @@ void panda_unload_plugins(void) {
     }
 }
 
-void *panda_get_plugin_by_name(const char *plugin_name) {
+void *panda_get_plugin_by_name(const char *plugin_name)
+{
     for (int i = 0; i < nb_panda_plugins; i++) {
         if (strncmp(panda_plugins[i].name, plugin_name, 256) == 0)
             return panda_plugins[i].plugin;
@@ -238,7 +274,8 @@ void *panda_get_plugin_by_name(const char *plugin_name) {
  * @note Registering a callback function twice from the same plugin will trigger
  * an assertion error.
  */
-void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
+void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb)
+{
     panda_cb_list *plist_last = NULL;
 
     panda_cb_list *new_list = g_new0(panda_cb_list, 1);
@@ -246,16 +283,17 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
     new_list->owner = plugin;
     new_list->enabled = true;
 
-    if(panda_cbs[type] != NULL) {
-        for(panda_cb_list *plist = panda_cbs[type]; plist != NULL; plist = plist->next) {
+    if (panda_cbs[type] != NULL) {
+        for (panda_cb_list *plist = panda_cbs[type]; plist != NULL;
+             plist = plist->next) {
             // the same plugin can register the same callback function only once
-            assert(!(plist->owner == plugin && (plist->entry.cbaddr) == cb.cbaddr));
+            assert(!(plist->owner == plugin &&
+                     (plist->entry.cbaddr) == cb.cbaddr));
             plist_last = plist;
         }
         plist_last->next = new_list;
         new_list->prev = plist_last;
-    }
-    else {
+    } else {
         panda_cbs[type] = new_list;
     }
 }
@@ -269,15 +307,18 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
  *
  * @note Disabling an unregistered callback will trigger an assertion error.
  */
-void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb) {
+void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb)
+{
     bool found = false;
     if (panda_cbs[type] != NULL) {
-        for (panda_cb_list *plist = panda_cbs[type]; plist != NULL; plist = plist->next) {
+        for (panda_cb_list *plist = panda_cbs[type]; plist != NULL;
+             plist = plist->next) {
             if (plist->owner == plugin && (plist->entry.cbaddr) == cb.cbaddr) {
                 found = true;
                 plist->enabled = false;
 
-                // break out of the loop - the same plugin can register the same callback only once
+                // break out of the loop - the same plugin can register the same
+                // callback only once
                 break;
             }
         }
@@ -295,15 +336,18 @@ void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb) {
  *
  * @note Enabling an unregistered callback will trigger an assertion error.
  */
-void panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb) {
+void panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb)
+{
     bool found = false;
     if (panda_cbs[type] != NULL) {
-        for (panda_cb_list *plist = panda_cbs[type]; plist != NULL; plist = plist->next) {
+        for (panda_cb_list *plist = panda_cbs[type]; plist != NULL;
+             plist = plist->next) {
             if (plist->owner == plugin && (plist->entry.cbaddr) == cb.cbaddr) {
                 found = true;
                 plist->enabled = true;
 
-                // break out of the loop - the same plugin can register the same callback only once
+                // break out of the loop - the same plugin can register the same
+                // callback only once
                 break;
             }
         }
@@ -319,7 +363,8 @@ void panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb) {
  * This means that if they are registered again, their execution order may be
  * different.
  */
-void panda_unregister_callbacks(void *plugin) {
+void panda_unregister_callbacks(void *plugin)
+{
     for (int i = 0; i < PANDA_CB_LAST; i++) {
         panda_cb_list *plist;
         plist = panda_cbs[i];
@@ -333,17 +378,20 @@ void panda_unregister_callbacks(void *plugin) {
                 if (plist->next == NULL && plist->prev == NULL) {
                     // its the only thing in the list -- list is now empty
                     plist_head = NULL;
-                }
-                else {
+                } else {
                     // Unlink this entry
-                    if (plist->prev) plist->prev->next = plist->next;
-                    if (plist->next) plist->next->prev = plist->prev;
+                    if (plist->prev)
+                        plist->prev->next = plist->next;
+                    if (plist->next)
+                        plist->next->prev = plist->prev;
                     // new head
-                    if (plist == plist_head) plist_head = plist->next;
+                    if (plist == plist_head)
+                        plist_head = plist->next;
                 }
                 // Free the entry we just unlinked
                 g_free(del_plist);
-                // there should only be one callback in list for this plugin so done
+                // there should only be one callback in list for this plugin so
+                // done
                 done = true;
             }
             plist = plist_next;
@@ -360,11 +408,12 @@ void panda_unregister_callbacks(void *plugin) {
  * the plugin. This means that when execution order of the callbacks
  * is preserved.
  */
-void panda_enable_plugin(void *plugin) {
+void panda_enable_plugin(void *plugin)
+{
     for (int i = 0; i < PANDA_CB_LAST; i++) {
         panda_cb_list *plist;
         plist = panda_cbs[i];
-        while(plist != NULL) {
+        while (plist != NULL) {
             if (plist->owner == plugin) {
                 plist->enabled = true;
             }
@@ -380,11 +429,12 @@ void panda_enable_plugin(void *plugin) {
  * This means that when the plugin is re-enabled, the callback order
  * is preserved.
  */
-void panda_disable_plugin(void *plugin) {
+void panda_disable_plugin(void *plugin)
+{
     for (int i = 0; i < PANDA_CB_LAST; i++) {
         panda_cb_list *plist;
         plist = panda_cbs[i];
-        while(plist != NULL) {
+        while (plist != NULL) {
             if (plist->owner == plugin) {
                 plist->enabled = false;
             }
@@ -394,48 +444,60 @@ void panda_disable_plugin(void *plugin) {
 }
 
 /**
- * @brief Allows to navigate the callback linked list skipping disabled callbacks.
+ * @brief Allows to navigate the callback linked list skipping disabled
+ * callbacks.
  */
-panda_cb_list* panda_cb_list_next(panda_cb_list* plist) {
-    for (panda_cb_list* node = plist->next; plist != NULL; plist = plist->next) {
-        if (!node || node->enabled) return node;
+panda_cb_list *panda_cb_list_next(panda_cb_list *plist)
+{
+    for (panda_cb_list *node = plist->next; plist != NULL;
+         plist = plist->next) {
+        if (!node || node->enabled)
+            return node;
     }
     return NULL;
 }
 
-bool panda_flush_tb(void) {
-    if(panda_please_flush_tb) {
+bool panda_flush_tb(void)
+{
+    if (panda_please_flush_tb) {
         panda_please_flush_tb = false;
         return true;
-    }
-    else return false;
+    } else
+        return false;
 }
 
-void panda_do_flush_tb(void) {
+void panda_do_flush_tb(void)
+{
     panda_please_flush_tb = true;
 }
 
-void panda_enable_precise_pc(void) {
+void panda_enable_precise_pc(void)
+{
     panda_update_pc = true;
 }
 
-void panda_disable_precise_pc(void) {
+void panda_disable_precise_pc(void)
+{
     panda_update_pc = false;
 }
 
-void panda_enable_memcb(void) {
+void panda_enable_memcb(void)
+{
     panda_use_memcb = true;
 }
 
-void panda_disable_memcb(void) {
+void panda_disable_memcb(void)
+{
     panda_use_memcb = false;
 }
 
-void panda_enable_tb_chaining(void){
+void panda_enable_tb_chaining(void)
+{
     panda_tb_chaining = true;
 }
 
-void panda_disable_tb_chaining(void){
+void panda_disable_tb_chaining(void)
+{
     panda_tb_chaining = false;
 }
 

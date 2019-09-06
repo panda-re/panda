@@ -110,7 +110,7 @@ Example
 Assuming you have a `kernelinfo.conf` in the current directory with a configuration named `my_kernel_info`, you can run the OSI test plugin on a Linux replay as follows:
 
 ```bash
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
         -panda osi -panda osi_linux:kconf_file=kernelinfo.conf,kconf_group=my_kernel_info \
         -panda osi_test
 ```

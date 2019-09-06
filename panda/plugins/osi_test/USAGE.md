@@ -56,6 +56,6 @@ None.
 Running `osi_test` on an Windows 7 32-bit replay:
 
 ```sh
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
         -panda osi -panda win7x86intro -panda osi_test
 ```

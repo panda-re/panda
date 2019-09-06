@@ -60,7 +60,7 @@ To search for JPEG files being read or written in memory, create a file named `j
 Then run PANDA with stringsearch:
 
 ```sh
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
         -panda callstack_instr -panda stringsearch:name=jpeg
 ```
 

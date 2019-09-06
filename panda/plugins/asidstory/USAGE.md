@@ -125,4 +125,4 @@ Example
 
 To run `asidstory` on a Windows 7 32-bit recording with a 180 character wide diagram:
 
-`$PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo -panda osi -panda win7x86intro -panda asidstory:width=180`
+`$PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo -panda osi -panda win7x86intro -panda asidstory:width=180`

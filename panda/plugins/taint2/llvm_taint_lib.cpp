@@ -131,19 +131,26 @@ static void taint_copyRegToPc_run(Shad *shad, uint64_t src, uint64_t size)
 extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }
 bool PandaTaintFunctionPass::doInitialization(Module &M) {
     // Add taint functions to module
-    char *exe = strdup(qemu_file);
-    std::string bitcode(dirname(exe));
-    free(exe);
-    bitcode.append("/panda/plugins/panda_taint2_ops.bc");
-    std::cout << "taint2: Linking taint ops from " << bitcode << std::endl;
+    // First try binary relative path.
+    char *exe = g_strdup(qemu_file);
+    std::string bitcode = dirname(exe);
+    g_free(exe);
+    bitcode.append("/panda/plugins/taint2/panda_taint2_ops.bc");
 
     LLVMContext &ctx = M.getContext();
     SMDiagnostic Err;
     Module *taintopmod(ParseIRFile(bitcode, Err, ctx));
+    if (nullptr == taintopmod) {
+        // If binary relative path fails, try the install path.
+        bitcode = CONFIG_PANDA_PLUGINDIR;
+        bitcode.append("/" TARGET_NAME "/taint2/panda_taint2_ops.bc");
+        taintopmod = ParseIRFile(bitcode, Err, ctx);
+    }
     if (!taintopmod) {
         Err.print("qemu", llvm::errs());
         return false;
     }
+    std::cout << "taint2: Linking taint ops from " << bitcode << std::endl;
 
     MDNode *md = MDNode::get(ctx, ArrayRef<Value *>());
     for (auto it = taintopmod->begin(); it != taintopmod->end(); it++) {

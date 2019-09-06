@@ -86,8 +86,8 @@ To build PANDA and it's dependencies, use the install script for your OS,
 Don't worry; it won't actually install PANDA to a system
 directory, despite the name. If you already have the dependencies you can just
 run `qemu/build.sh`. Once it's built, you will find the QEMU binaries in
-`i386-softmmu/qemu-system-i386`, `x86_64-softmmu/qemu-system-x86_64`, and
-`arm-softmmu/qemu-system-arm`. You'll need to create a qcow (disk image) for use
+`i386-softmmu/panda-system-i386`, `x86_64-softmmu/panda-system-x86_64`, and
+`arm-softmmu/panda-system-arm`. You'll need to create a qcow (disk image) for use
 with PANDA; the internet has documentation on how to do this.
 
 We've found that the most effective workflow in PANDA is to collect a recording
@@ -116,7 +116,7 @@ execution.
 
 ### Replay
 
-You can replay a recording (those two files) using `qemu-system-$arch -replay
+You can replay a recording (those two files) using `panda-system-$arch -replay
 replay_name`. Make sure you pass the same memory size to the VM as you did for
 the recording. Otherwise QEMU will fail with an incomprehensible error.
 

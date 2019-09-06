@@ -154,7 +154,7 @@ Example
 
 To taint data from a file named `foo.dat` on Linux and then find out what branches depend on data from that file, placing output into the pandalog `foo.plog`:
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo -panda osi \
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo -panda osi \
         -panda osi_linux:kconf_group=debian-3.2.63-i686 \
         -panda syscalls2:profile=linux_x86 \
         -panda file_taint:filename=foo.dat \
@@ -163,7 +163,7 @@ To taint data from a file named `foo.dat` on Linux and then find out what branch
 
 Note that the `taint2` plugin is not explicitly listed here because it is automatically loaded by the `file_taint` plugin. If you wanted to pass custom options to `taint2`, such as disabling tainted pointers, you could instead do:
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo -panda osi \
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo -panda osi \
         -panda osi_linux:kconf_group=debian-3.2.63-i686 \
         -panda syscalls2:profile=linux_x86 \
         -panda taint2:no_tp=y \

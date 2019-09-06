@@ -3,7 +3,7 @@
 This plugin is meant to test the functionality of the [PANDA OS introspection framework][osi]. To run, it requires to first load the `osi` framework plugin and a proper guest-os-specific plugin. e.g.
 
 ```
-./i386-softmmu/qemu-system-i386 -vnc :1 -panda 'osi;osi_linux;osi_test' -replay mytrace
+./i386-softmmu/panda-system-i386 -vnc :1 -panda 'osi;osi_linux;osi_test' -replay mytrace
 ```
 
 By default, the `osi_test` plugin invokes the OSI code every time that the Page Directory register is written to.

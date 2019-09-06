@@ -28,7 +28,7 @@ Example
 
 Below is an example command line usage of `pri_dwarf`:
 
-    ~/git/panda/qemu/i386-softmmu/qemu-system-i386 -replay \
+    ~/git/panda/qemu/i386-softmmu/panda-system-i386 -replay \
         /nas/ulrich/dwarf_tshark_capture2/wireshark-1.2.1-saurabh.cap.iso \
         -panda osi \
         -panda osi_linux:kconf_file=/nas/ulrich/kernelinfo.conf,kconf_group=debian-3.2.51-i686 \

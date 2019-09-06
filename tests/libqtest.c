@@ -611,7 +611,7 @@ const char *qtest_get_arch(void)
     g_assert(qemu != NULL);
     const char *end = strrchr(qemu, '/');
 
-    return end + strlen("/qemu-system-");
+    return end + strlen("/panda-system-");
 }
 
 bool qtest_get_irq(QTestState *s, int num)

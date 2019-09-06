@@ -17,14 +17,14 @@ QEMU_CFLAGS+=-I$(SRC_PATH)/include
 
 ifdef CONFIG_USER_ONLY
 # user emulator name
-QEMU_PROG=qemu-$(TARGET_NAME)
+QEMU_PROG=panda-$(TARGET_NAME)
 QEMU_PROG_BUILD = $(QEMU_PROG)
 else
 # system emulator name
-QEMU_PROG=qemu-system-$(TARGET_NAME)$(EXESUF)
+QEMU_PROG=panda-system-$(TARGET_NAME)$(EXESUF)
 ifneq (,$(findstring -mwindows,$(libs_softmmu)))
 # Terminate program name with a 'w' because the linker builds a windows executable.
-QEMU_PROGW=qemu-system-$(TARGET_NAME)w$(EXESUF)
+QEMU_PROGW=panda-system-$(TARGET_NAME)w$(EXESUF)
 $(QEMU_PROG): $(QEMU_PROGW)
 	$(call quiet-command,$(OBJCOPY) --subsystem console $(QEMU_PROGW) $(QEMU_PROG),"GEN","$(TARGET_DIR)$(QEMU_PROG)")
 QEMU_PROG_BUILD = $(QEMU_PROGW)
@@ -242,6 +242,20 @@ ifdef CONFIG_TRACE_SYSTEMTAP
 	$(INSTALL_DATA) $(QEMU_PROG).stp-installed "$(DESTDIR)$(qemu_datadir)/../systemtap/tapset/$(QEMU_PROG).stp"
 	$(INSTALL_DATA) $(QEMU_PROG)-simpletrace.stp "$(DESTDIR)$(qemu_datadir)/../systemtap/tapset/$(QEMU_PROG)-simpletrace.stp"
 endif
+ifdef CONFIG_LLVM
+	$(INSTALL_DATA) $(llvmmorph-y) "$(DESTDIR)$(qemu_datadir)/"
+endif
+	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/python2.7/site-packages"
+	$(INSTALL_LIB) plog_pb2.py "$(DESTDIR)$(libdir)/python2.7/site-packages"
+	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"
+	for p in $(PANDA_PLUGINS) $(EXTRA_PANDA_PLUGINS); do \
+		$(INSTALL_LIB) panda/plugins/panda_$$p.so "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"; \
+		for f in $$(find panda/plugins/$$p -type f -not -name '*.d' -not -name '*.o' -not -name '*.h'); do \
+			$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)/$$p"; \
+			$(INSTALL_DATA) $$f "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)/$$p"; \
+		done; \
+		echo $$p; \
+	done
 
-GENERATED_FILES += config-target.h
+GENERATED_FILES += config-target.h plog_pb2.py
 Makefile: $(GENERATED_FILES)

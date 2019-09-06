@@ -124,6 +124,28 @@ Alternatively, you can pull the [latest build from an unofficial](https://hub.do
 
     docker pull thawsystems/panda
 
+### Installation
+
+PANDA can be installed with `make install`. Assuming you have the dependencies
+installed from earlier steps, you can use configure and make to install PANDA.
+
+```
+mkdir build
+cd build/
+../configure --prefix=/opt/panda --with-llvm=/opt/llvm33 --enable-llvm
+make
+sudo make install
+```
+
+Note if you install PANDA, you need to make sure the bin directory where the
+PANDA binaries live is on your PATH.
+
+After installation, you can run PANDA similarly to QEMU:
+
+```
+panda-system-i386 -m 2G -hda guest.img -monitor stdio
+```
+
 ## Support
 
 If you need help with PANDA, or want to discuss the project, you can join our

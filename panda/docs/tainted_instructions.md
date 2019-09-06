@@ -62,7 +62,7 @@ TZB's  stringsearch  plugin to tell us what instructions
 2. Run PANDA with the following command (assuming you unpacked replay into
 qemu dir)
 
-        ./x86_64-softmmu/qemu-system-x86_64 -replay sshkeygen -panda stringsearch:name=sshkeygen
+        ./x86_64-softmmu/panda-system-x86_64 -replay sshkeygen -panda stringsearch:name=sshkeygen
 
 On my computer this takes about 15 seconds.  
 This should produce output chugging through the replay until `stringsearch` sees the passphrase:
@@ -117,7 +117,7 @@ that passphrase and ask the taint system to figure out what
 instructions are tainted, meaning they copy or compute on data derived from that key.  
 Here's how to do that.
 
-      ./x86_64-softmmu/qemu-system-x86_64 -replay sshkeygen -pandalog tainted_instr.plog -panda 'stringsearch:name=sshkeygen;tstringsearch;tainted_instr'
+      ./x86_64-softmmu/panda-system-x86_64 -replay sshkeygen -pandalog tainted_instr.plog -panda 'stringsearch:name=sshkeygen;tstringsearch;tainted_instr'
 
 On my computer, this takes about 2 min.
 This time, in addition to all the WRITE and READ match info, you should also see PANDA saying it is applying

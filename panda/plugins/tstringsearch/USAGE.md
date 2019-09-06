@@ -29,6 +29,6 @@ Example
 
 To taint a string `bogart` and then create a pandalog named `bogart.plog` listing all branches depending on that string via the `tainted_branch` plugin:
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
         -panda stringsearch:str=bogart -panda tstringsearch \
         -panda tainted_branch -pandalog bogart.plog
