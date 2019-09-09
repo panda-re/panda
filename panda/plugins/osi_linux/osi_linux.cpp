@@ -300,13 +300,38 @@ void on_get_process_handles(CPUState *env, GArray **out) {
  * @brief PPP callback to retrieve info about the currently running process.
  */
 void on_get_current_process(CPUState *env, OsiProc **out) {
-	OsiProc *p = NULL;
-	target_ptr_t ts = kernel_profile->get_current_task_struct(env);
-	if (ts) {
-		p = (OsiProc *)g_malloc(sizeof(OsiProc));
-		fill_osiproc(env, p, ts);
-	}
-	*out = p;
+    static target_ptr_t last_ts = 0x0;
+    static target_ptr_t cached_taskd = 0x0;
+    static char *cached_name = NULL;
+    static target_ptr_t cached_pid = -1;
+    static target_ptr_t cached_ppid = -1;
+    // OsiPage - TODO
+
+    OsiProc *p = NULL;
+    target_ptr_t ts = kernel_profile->get_current_task_struct(env);
+    if (0x0 != ts) {
+        p = (OsiProc *)g_malloc(sizeof(*p));
+        if (ts != last_ts) {
+            last_ts = ts;
+            fill_osiproc(env, p, ts);
+
+            // update the cache
+            cached_taskd = p->taskd;
+            if (NULL != cached_name) {
+                g_free(cached_name);
+            }
+            cached_name = g_strdup(p->name);
+            cached_pid = p->pid;
+            cached_ppid = p->ppid;
+        } else {
+            p->taskd = cached_taskd;
+            p->name = g_strdup(cached_name);
+            p->pid = cached_pid;
+            p->ppid = cached_ppid;
+            p->pages = NULL;
+        }
+    }
+    *out = p;
 }
 
 /**
