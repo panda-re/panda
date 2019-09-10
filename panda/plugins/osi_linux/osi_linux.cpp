@@ -305,13 +305,15 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
     static char *cached_name = NULL;
     static target_ptr_t cached_pid = -1;
     static target_ptr_t cached_ppid = -1;
+    static void *cached_comm_ptr = NULL;
     // OsiPage - TODO
 
     OsiProc *p = NULL;
     target_ptr_t ts = kernel_profile->get_current_task_struct(env);
     if (0x0 != ts) {
         p = (OsiProc *)g_malloc(sizeof(*p));
-        if (ts != last_ts) {
+        if (ts != last_ts || 0 != strncmp((char *)cached_comm_ptr, cached_name,
+                                          ki.task.comm_size)) {
             last_ts = ts;
             fill_osiproc(env, p, ts);
 
@@ -323,6 +325,8 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
             cached_name = g_strdup(p->name);
             cached_pid = p->pid;
             cached_ppid = p->ppid;
+            cached_comm_ptr = panda_map_virt_to_host(
+                env, ts + ki.task.comm_offset, ki.task.comm_size);
         } else {
             p->taskd = cached_taskd;
             p->name = g_strdup(cached_name);

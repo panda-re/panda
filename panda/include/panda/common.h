@@ -137,6 +137,25 @@ static inline int panda_virtual_memory_write(CPUState *env, target_ulong addr,
 }
 
 /**
+ * @brief Obtains a host pointer for the given virtual address.
+ */
+static inline void *panda_map_virt_to_host(CPUState *env, target_ulong addr,
+                                           int len)
+{
+    hwaddr phys = panda_virt_to_phys(env, addr);
+    hwaddr l = len;
+    hwaddr addr1;
+    MemoryRegion *mr =
+        address_space_translate(&address_space_memory, phys, &addr1, &l, true);
+
+    if (!memory_access_is_direct(mr, true)) {
+        return NULL;
+    }
+
+    return qemu_map_ram_ptr(mr->ram_block, addr1);
+}
+
+/**
  * @brief Determines if guest is currently executes in kernel mode.
  */
 static inline bool panda_in_kernel(CPUState *cpu) {
