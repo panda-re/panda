@@ -409,12 +409,24 @@ error0:
  * @brief PPP callback to retrieve current thread.
  */
 void on_get_current_thread(CPUState *env, OsiThread **out) {
-	OsiThread *t = NULL;
-	target_ptr_t ts = kernel_profile->get_current_task_struct(env);
-	if (ts) {
-		t = (OsiThread *)g_malloc(sizeof(OsiThread));
-		fill_osithread(env, t, ts);
-	}
+    static target_ptr_t last_ts = 0x0;
+    static target_pid_t cached_tid = 0;
+    static target_pid_t cached_pid = 0;
+
+    OsiThread *t = NULL;
+    target_ptr_t ts = kernel_profile->get_current_task_struct(env);
+    if (0x0 != ts) {
+        t = (OsiThread *)g_malloc(sizeof(OsiThread));
+        if (last_ts != ts) {
+            fill_osithread(env, t, ts);
+            cached_tid = t->tid;
+            cached_pid = t->pid;
+        } else {
+            t->tid = cached_tid;
+            t->pid = cached_pid;
+        }
+    }
+
 	*out = t;
 }
 
