@@ -193,7 +193,7 @@ static stackid get_heuristic_stackid(CPUArchState* env) {
     stackid cursi;
 
     // We can short-circuit the search in most cases
-    if (std::abs(sp - cached_sp) < MAX_STACK_DIFF) {
+    if (std::abs((target_long)(sp - cached_sp)) < MAX_STACK_DIFF) {
         cursi = std::make_tuple(asid, cached_sp, 0);
     } else {
         auto &stackset = stacks_seen[asid];
@@ -208,8 +208,8 @@ static stackid get_heuristic_stackid(CPUArchState* env) {
             target_ulong stack1 = *lb;
             lb--;
             target_ulong stack2 = *lb;
-            target_ulong stack = (std::abs(stack1 - sp) < std::abs(stack2 - sp)) ? stack1 : stack2;
-            int diff = std::abs(stack-sp);
+            target_ulong stack = (std::abs((target_long)(stack1 - sp)) < std::abs((target_long)(stack2 - sp))) ? stack1 : stack2;
+            int diff = std::abs((target_long)(stack-sp));
             if (diff < MAX_STACK_DIFF) {
                 cursi = std::make_tuple(asid, stack, 0);
             }
