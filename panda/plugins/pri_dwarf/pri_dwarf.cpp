@@ -418,7 +418,7 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
     Elf32_Sym *dynsym = NULL;
     char *strtable = NULL;
     char *dynstrtable = NULL;
-    uint32_t plt_addr;
+    uint32_t plt_addr=0;
     for (i = 0; i < ehdr.e_shnum; ++i) {
         if (strcmp(".plt", &shstrtable[shdr[i].sh_name]) == 0){
             plt_addr = shdr[i].sh_addr + 0x10;
