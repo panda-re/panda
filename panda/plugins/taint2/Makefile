@@ -9,6 +9,7 @@ TAINT2_FLAGS   += -DTAINT2_HYPERCALLS
 ### Flags setup #####################################################
 QEMU_CXXFLAGS += $(LLVM_CXXFLAGS) -Wno-type-limits -Wno-cast-qual $(TAINT2_FLAGS)
 QEMU_CFLAGS   += $(TAINT2_FLAGS)
+QEMU_CFLAGS   := $(filter-out -Wno-format-truncation,$(QEMU_CFLAGS))
 
 TAINT_OP_CFLAGS  = -O3 -std=c11 -Wno-typedef-redefinition -fno-stack-protector
 TAINT_OP_CFLAGS += -fno-omit-frame-pointer -Wno-type-limits -stdlib=libc++ -x c++
@@ -22,6 +23,9 @@ TAINT_OP_FILTER+= -Wno-shift-negative-value
 TAINT2_SRC  = $(notdir $(wildcard $(PLUGIN_SRC_DIR)/*.cpp))
 TAINT2_SRC := $(filter-out my_mem.cpp,$(TAINT2_SRC))
 TAINT2_OBJ  = $(patsubst %.cpp,$(PLUGIN_OBJ_DIR)/%.o,$(TAINT2_SRC))
+
+# got to strip out something
+
 
 ### Rules and recipes ###############################################
 %_llvm.bc: %.cpp $(wildcard *.h)
