@@ -210,26 +210,29 @@ int before_insn_exec_cb(CPUState *cpu, target_ulong pc) {
         }
     }
 
-    // dump info on the kernel module for the current PC, if there is one
-    GArray *kms = get_modules(cpu);
-    if (kms != NULL) {
-        for (int i = 0; i < kms->len; i++) {
-            OsiModule *km = &g_array_index(kms, OsiModule, i);
-            if ((pc >= km->base) && (pc < (km->base + km->size))) {
-                if (NULL != current) {
-                    dump_process_info("kernel_", pc, cur_instr, pname,
-                            current->pid, tid, km->name, km->file, km->base);
-                    found_lib = true;
-                    break;
-                } else {
-                    dump_noprocess_info(pc, cur_instr, tid, km->name, km->file,
-                            km->base);
-                    found_lib = true;
-                    break;
+    if (!found_lib) {
+        // dump info on the kernel module for the current PC, if there is one
+        GArray *kms = get_modules(cpu);
+        if (kms != NULL) {
+            for (int i = 0; i < kms->len; i++) {
+                OsiModule *km = &g_array_index(kms, OsiModule, i);
+                if ((pc >= km->base) && (pc < (km->base + km->size))) {
+                    if (NULL != current) {
+                        dump_process_info("kernel_", pc, cur_instr, pname,
+                                current->pid, tid, km->name, km->file,
+                                km->base);
+                        found_lib = true;
+                        break;
+                    } else {
+                        dump_noprocess_info(pc, cur_instr, tid, km->name,
+                                km->file, km->base);
+                        found_lib = true;
+                        break;
+                    }
                 }
             }
+            g_array_free(kms, true);
         }
-        g_array_free(kms, true);
     }
 
     if (!found_lib) {
