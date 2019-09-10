@@ -41,11 +41,9 @@ def before_block_execute(cpustate, transblock):
         panda.unload_plugin("coverage")
         progress("Unloaded coverage plugin")
 
-    """
-    if blocks > 20000:
-        progress("Saw 100 BBs. Stopping")
-        panda.stop()
-    """
+    if blocks > 200:
+        progress("Saw 200 BBs. Stopping")
+        panda.stop_run()
 
     blocks += 1
     return 0

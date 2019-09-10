@@ -9,7 +9,6 @@ writes the buffer out to a pcap.
 Run with: python3 example_network.py i386 out.pcap /path/to/recording
 '''
 from pypanda import *
-from time import sleep
 from sys import argv
 from scapy.all import Ether, wrpcap
 

@@ -6,7 +6,6 @@
 
 typedef enum panda_main_mode {
     PANDA_NORMAL,             // just run panda/qemu as normal
-    PANDA_PRE,                // pre-init
     PANDA_INIT,               // initialize panda/qemu
     PANDA_RUN,                // run the emulate machine
     PANDA_FINISH}             // cleanup and exit
@@ -17,5 +16,7 @@ void main_panda_run(void);
 void main_loop(void);
 
 int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm);
+
+void set_replay_name(char *name);
 
 #endif

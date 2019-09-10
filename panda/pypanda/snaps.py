@@ -32,45 +32,34 @@ from sys import argv
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]
-panda = Panda(generic=arch, extra_args="-D ./qemu.log -d in_asm") 
+panda = Panda(generic=arch)
 
 state = 0 # before snapshot load
 
-@panda.callback.after_machine_init
-def machinit(env):
+@blocking
+def init():
 	global state
-
-	progress("Machine initialized -- disabling chaining & reverting to booted snapshot\n")
-	panda.disable_tb_chaining()
-	panda.delvm("newroot", now=True)
-	pc = panda.current_pc(env)
-	panda.revert("root", now=True)
-	pc = panda.current_pc(env)
-	progress("After revert: pc=%lx" % pc)
+	print("INITIALIZE running")
+	panda.delvm_sync("newroot")
+	panda.revert_sync("root")
 	state = 1
 
-
-
-init_done = False
-
 nt = 0
+blocks = []
 
-
-@panda.callback.before_block_exec
+@panda.cb_before_block_exec()
 def before_block_exec(env,tb):
 	global nt
 	global state
-	if not init_done:
-		return 0
-
+	global blocks
 	if state == 0:
 		return 0
 
 	pc = panda.current_pc(env)
 #	print("state = %d pc=%x" % (state,pc))
 	
-	if (state <= 33):
-		progress("Before block exec: state=%d pc=%lx" % (state,pc))
+	#if (state <= 33):
+	#	progress("Before block exec: state=%d, nt=%d pc=%lx" % (state,nt,pc))
 
 	if (state == 1):
 		assert (pc == 0xc12c4648)
@@ -83,33 +72,27 @@ def before_block_exec(env,tb):
 		return 1
 
 	if state == 3:
+		if len(blocks) <= nt: # First time: capture ordered list of PCs for basic blocks
+		    print(nt,hex( pc))
+		    blocks.append(pc)
+		elif blocks[nt] != pc: # Subsequent execs, fail if we ever diverge from expected
+		    print("Divergence in the {}th block. Expected 0x{:x}, but got 0x{:x}".format(nt, blocks[nt], pc))
+		    panda.queue_async(panda.stop_run)
+		    state = 4
+
 		nt = nt + 1
+
 		if nt == 10:
-			progress("\nRestoring 'newroot' snapshot")
+			progress("Block sequences matches expected value!\nRestoring 'newroot' snapshot")
 			panda.revert("newroot", now=False)
 			nt = 0
-			state = 3
 		return 1
+
+	if state == 4:
+	    pass # While an async command is queued, don't do anything
 			
 	return 0
 
-	
-
-# this is the initialiation for this plugin
-@panda.callback.init
-def init(handle):
-	progress("Init of Fwi plugin -- in python. handle="+str(handle))
-	panda.register_callback(handle, panda.callback.after_machine_init, machinit)
-	panda.register_callback(handle, panda.callback.before_block_exec, before_block_exec)
-	return True
-
-
-panda.load_python_plugin(init,"Fwi")
-progress ("--- pypanda done with fwi init")
-
-panda.init()
-progress ("--- pypanda done with INIT")
-init_done = True
-
-
+panda.disable_tb_chaining()
+panda.queue_async(init)
 panda.run()

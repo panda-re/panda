@@ -52,6 +52,7 @@
 #include "io/channel-file.h"
 #include "sysemu/sysemu.h"
 #include "panda/callback_support.h"
+#include "panda/panda_common.h"
 /******************************************************************************************/
 /* GLOBALS */
 /******************************************************************************************/
@@ -1465,19 +1466,24 @@ void rr_do_end_record(void)
 #endif
 }
 
-extern void panda_cleanup(void);
-
 // file_name_full should be full path to the record/replay log
 int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
 {
+    vm_stop(RUN_STATE_PAUSED); // Stop execution of the CPU thread while the replay is being set up
 #ifdef CONFIG_SOFTMMU
     char name_buf[1024];
+    rr_replay_complete = false;
     // decompose file_name_base into path & file.
     char* rr_path = g_strdup(file_name_full);
     char* rr_name = g_strdup(file_name_full);
     __attribute__((unused)) int snapshot_ret;
     rr_path = dirname(rr_path);
     rr_name = basename(rr_name);
+
+    // When we start a replay, re-initialize state
+    // so we can do this multiple times
+    rr_next_progress = 1;
+
     if (rr_debug_whisper()) {
         qemu_log("Begin vm replay for file_name_full = %s\n", file_name_full);
         qemu_log("path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
@@ -1526,6 +1532,10 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     rr_queue_head = rr_queue_tail = NULL;
     rr_queue_end = &rr_queue[RR_QUEUE_MAX_LEN];
     rr_fill_queue();
+
+    // Resume execution of the CPU thread
+    vm_start();
+
     return 0; // snapshot_ret;
 #endif
 }
@@ -1587,11 +1597,17 @@ void rr_do_end_replay(int is_error)
     rr_replay_complete = true;
     
     // mz XXX something more graceful?
+    panda_cleanup();
     if (is_error) {
-        panda_cleanup();
         abort();
     } else {
+#ifdef PYPANDA
+        // Reset the system and break out of the vl.c loop. Note we leave the cpu thread running
+        qemu_system_reset(VMRESET_SILENT);
+        panda_break_vl_loop_req = true;
+#else
         qemu_system_shutdown_request();
+#endif
     }
 #endif // CONFIG_SOFTMMU
 }

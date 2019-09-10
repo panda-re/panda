@@ -6,6 +6,10 @@ void panda_cleanup(void);
 void panda_set_os_name(char *os_name);
 void panda_before_find_fast(void);
 void panda_disas(FILE *out, void *code, unsigned long size);
+void panda_break_main_loop(void);
+
+extern bool panda_break_cpu_loop_req;
+extern bool panda_break_vl_loop_req;
 
 /*
  * @brief Returns the guest address space identifier.

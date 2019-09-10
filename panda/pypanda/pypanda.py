@@ -24,11 +24,10 @@ from panda_expect import Expect
 from asyncthread import AsyncThread
 
 import qcows
+from plog import PLogReader
 
 import pdb
-
-debug = False
-pandas = []
+debug = True
 
 def progress(msg):
         print(Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
@@ -48,25 +47,26 @@ def call_with_opt_arg(f, a):
 
 # Decorator to ensure a function isn't called in the main thread
 def blocking(func):
-    def wrapper(*args, **kwargs):
-        assert (threading.current_thread() is not threading.main_thread()), "Blocking function run in main thread"
-        return func(*args, **kwargs)
-    wrapper.__blocking__ = True
-    return wrapper
+        def wrapper(*args, **kwargs):
+                assert (threading.current_thread() is not threading.main_thread()), "Blocking function run in main thread"
+                return func(*args, **kwargs)
+        wrapper.__blocking__ = True
+        wrapper.__name__ = func.__name__ + "(blocking)"
+        return wrapper
 
 
 def make_iso(directory, iso_path):
-    with open(devnull, "w") as DEVNULL:
-        if sys.platform.startswith('linux'):
-            subprocess.check_call([
-                'genisoimage', '-quiet', '-RJ', '-max-iso9660-filenames', '-o', iso_path, directory
-            ], stderr=subprocess.STDOUT if debug else DEVNULL)
-        elif sys.platform == 'darwin':
-            subprocess.check_call([
-                'hdiutil', 'makehybrid', '-hfs', '-joliet', '-iso', '-o', iso_path, directory
-            ], stderr=subprocess.STDOUT if debug else DEVNULL)
-        else:
-            raise NotImplementedError("Unsupported operating system!")
+        with open(devnull, "w") as DEVNULL:
+                if sys.platform.startswith('linux'):
+                        subprocess.check_call([
+                                'genisoimage', '-RJ', '-max-iso9660-filenames', '-o', iso_path, directory
+                        ], stderr=subprocess.STDOUT if debug else DEVNULL)
+                elif sys.platform == 'darwin':
+                        subprocess.check_call([
+                                'hdiutil', 'makehybrid', '-hfs', '-joliet', '-iso', '-o', iso_path, directory
+                        ], stderr=subprocess.STDOUT if debug else DEVNULL)
+                else:
+                        raise NotImplementedError("Unsupported operating system!")
 
 # main_loop_wait_cb is called at the start of the main cpu loop in qemu.
 # This is a fairly safe place to call into qemu internals but watch out for deadlocks caused
@@ -88,7 +88,7 @@ def main_loop_wait_cb():
                 (fn, args) = fnargs
                 (cb, cb_args) = cbargs
                 fnargs = (fn, args)
-                progress("main_loop_wait_stuff running : " + (str(fnargs)))
+                #progress("main_loop_wait_stuff running : " + (str(fnargs)))
                 ret = fn(*args)
                 if cb:
                         progress("running callback : " + (str(cbargs)))
@@ -104,13 +104,6 @@ def main_loop_wait_cb():
         main_loop_wait_cbargs = []
 
 
-@pcb.pre_shutdown
-def pre_shutdown_cb():
-        print("QEmu has requested to shut down. Gracefully stopping...")
-        global pandas
-        for p in pandas:
-                p.shutdown()
-
 class Panda:
 
         """
@@ -125,6 +118,7 @@ class Panda:
                 self.os = os_version
                 self.static_var = 0
                 self.qcow = qcow
+
                 if extra_args:
                         extra_args = extra_args.split()
                 else:
@@ -136,7 +130,7 @@ class Panda:
                         q = qcows.get_qcow_info(generic)
                         self.arch     = q.arch
                         self.os       = q.os
-                        self.qcow         = qcows.get_qcow(generic)
+                        self.qcow     = qcows.get_qcow(generic)
                         expect_prompt = q.prompt
                         if q.extra_args:
                                 extra_args.extend(q.extra_args.split(" "))
@@ -152,8 +146,6 @@ class Panda:
                                 print("Missing qcow -- %s" % self.qcow)
                                 print("Please go create that qcow and give it to moyix!")
 
-
-                progress("qcow = " + (str(self.qcow)))
 
                 self.bindir = pjoin(panda_build, "%s-softmmu" % self.arch)
                 environ["PANDA_PLUGIN_DIR"] = self.bindir+"/panda/plugins"
@@ -194,7 +186,7 @@ class Panda:
 
                 # The "athread" thread manages actions that need to occur outside qemu's CPU loop
                 # e.g., interacting with monitor/serial and waiting for results
-                
+
                 # Configure serial - Always enabled for now
                 self.serial_prompt = expect_prompt
                 self.serial_console = None
@@ -213,8 +205,6 @@ class Panda:
                 self.running = threading.Event()
                 self.started = threading.Event()
                 self.athread = AsyncThread(self.started)
-                global pandas
-                pandas.append(self)
 
                 self.panda_args_ffi = [ffi.new("char[]", bytes(str(i),"utf-8")) for i in self.panda_args]
                 cargs = ffi.new("char **")
@@ -228,9 +218,7 @@ class Panda:
 
                 self.len_cargs = len_cargs
                 self.cenvp = cenvp
-                self.libpanda.panda_pre(self.len_cargs, self.panda_args_ffi, self.cenvp)
                 self.taint_enabled = False
-                self.init_run = False
                 self.pcb_list = {}
                 self.hook_list = []
 
@@ -241,8 +229,6 @@ class Panda:
                 for cb_name, pandatype in zip(pcb._fields, pcb):
                         def closure(closed_cb_name, closed_pandatype): # Closure on cb_name and pandatype
                                 def f(*args, **kwargs):
-                                        if debug:
-                                                print("Registering new-style callback: ", closed_cb_name)
                                         return self._generated_callback(closed_pandatype, *args, **kwargs)
                                 return f
 
@@ -253,6 +239,7 @@ class Panda:
                 #self.handle = None
                 self.handle = ffi.cast('void *', 0xdeadbeef)
 
+                """
                 @pcb.asid_changed
                 def __asid_changed(cpustate, old_asid, new_asid):
                     if old_asid == new_asid:
@@ -268,7 +255,7 @@ class Panda:
                             self.enable_callback_by_name(cb_name)
                         if current_name != cb["procname"] and cb['enabled']:
                             self.disable_callback_by_name(cb_name)
-                    
+
                     for h in self.hook_list:
                         if not h.is_kernel and ffi.NULL != current:
                             if h.program_name:
@@ -293,9 +280,8 @@ class Panda:
                                     self.update_hook(h, lowest_matching_lib.base + h.target_library_offset)
                                 else:
                                     self.disable_hook(h)
-                                                
-                    return 0
 
+                    return 0
                 @pcb.init
                 def __panda_loaded(newhandle): # Local function with a reference to this instance's self.handle
                         self.handle = newhandle
@@ -304,6 +290,27 @@ class Panda:
 
                 # Register init which sets up asid_changed as well
                 self.load_python_plugin(__panda_loaded, "__internal_python_init")
+                """
+
+                self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
+
+                # Connect to serial socket and setup serial_console if necessary
+                if not self.serial_console:
+                        self.serial_socket.connect(self.serial_file)
+                        self.serial_console = Expect(self.serial_socket, expectation=self.serial_prompt, quiet=True,
+                                                                                consume_first=False)
+
+                # Connect to monitor socket and setup monitor_console if necessary
+                if not self.monitor_console:
+                        self.monitor_socket.connect(self.monitor_file)
+                        self.monitor_console = Expect(self.monitor_socket, expectation=self.monitor_prompt, quiet=True,
+                                                                                consume_first=True)
+                # Register main_loop_wait_callback
+                self.register_callback(self.handle,
+                                self.callback.main_loop_wait, main_loop_wait_cb)
+                # Register callback to cleanup when qemu shuts down
+                #self.register_callback(self.handle, self.callback.pre_shutdown, pre_shutdown_cb)
+        # /__init__
 
         def update_hook(self,hook,addr):
             if addr != hook.target_addr:
@@ -321,55 +328,40 @@ class Panda:
                 self.libpanda_hooks.disable_hook(hook.hook_cb)
 
 
-        # /__init__
-
-        def unload(self):
-                print("calling dlclose on {}".format(self.libpanda))
-                ffi.dlclose(self.libpanda)
+        """
+        # Callback to run before panda shuts down of its on volition
+        @self.callback.pre_shutdown
+        def pre_shutdown_cb():
+                # Cleanup and then clear mutexes. XXX maybe the mutexes are pointless?
+                self.cleanup()
                 self.running.clear()
-                self.init_run = False
-                self.libpanda = None
+                self.started.clear()
+        """
 
-        def _reload_libpanda_if_necessary(self):
-                # Reopen the libpanda dll after it closed (e.g. from monitor quit)
-                # XXX: Make this interface more clean
-                #raise NotImplemented("Panda has already exited. Can't cleanly restart library.")
-                # XXX: Cffi won't let us reopen a new libpanda to do the replay. We should fix this someday
+        """
+        def unload(self):
+                '''
+                Stop all PANDA threads, including our python async thread
+                '''
 
-                if not hasattr(self, "libpanda") or self.libpanda is None:
-                        # Initialize libpanda as necessary
-                        print("Reloading libpanda handle")
+                print("Pause TCG threads...")
+                self.athread.stop()
 
-                        self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % self.arch))
-                        self.running.clear()
+                # Stop the worker thread
+                # Removed this. To bring it back, update thread-pool.c to kill the main threadpool
 
-        def shutdown(self): # Cleanup panda object. XXX can't then re-initialize new python
-                del self.libpanda
+                # This stops the RCU thread
+                self.libpanda.kill_rcu_thread()
 
-        def init(self):
-                self.init_run = True
-                self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
+                # Kill the TCG thread
+                self.libpanda.kill_tcg_thread()
 
-                # Connect to serial socket and setup serial_console if necessary
-                if not self.serial_console:
-                        self.serial_socket.connect(self.serial_file)
-                        self.serial_console = Expect(self.serial_socket, expectation=self.serial_prompt, quiet=True,
-                                                                                consume_first=False)
+                # Give threads a chance to die for 1s
+                from time import sleep
+                sleep(1)
 
-                # Connect to monitor socket and setup monitor_console if necessary
-                if not self.monitor_console:
-                        self.monitor_socket.connect(self.monitor_file)
-                        self.monitor_console = Expect(self.monitor_socket, expectation=self.monitor_prompt, quiet=True,
-                                                                                consume_first=True)
-                # Register main_loop_wait_callback
-                self.register_callback(self.handle,
-                                self.callback.main_loop_wait, main_loop_wait_cb)
-
-                # Register callback to cleanup when qemu shuts down
-                global panda
-                panda = self
-                self.register_callback(self.handle,
-                                self.callback.pre_shutdown, pre_shutdown_cb)
+                self.running.clear()
+        """
 
         # fnargs is a pair (fn, args)
         # fn is a function we want to run
@@ -380,9 +372,18 @@ class Panda:
                 main_loop_wait_fnargs.append(fnargs)
                 cbargs = (callback, cb_args)
                 main_loop_wait_cbargs.append(cbargs)
-                
-        def exit_emul_loop(self):
-                self.libpanda.panda_exit_emul_loop()
+
+        def exit_cpu_loop(self):
+                self.libpanda.panda_break_cpu_loop_req = True
+
+        @blocking
+        def stop_run(self):
+                '''
+                From a blocking thread, request vl.c loop to break. Returns control flow in main thread.
+                In other words, once this is called, panda.run() will finish and your main thread will continue.
+                If you also want to unload plugins, use end_analysis instead
+                '''
+                self.libpanda.panda_break_vl_loop_req = True
 
         def revert(self, snapshot_name, now=False, finished_cb=None): # In the next main loop, revert
                 # XXX: now=True might be unsafe. Causes weird 30s hangs sometimes
@@ -392,25 +393,27 @@ class Panda:
                         charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
                         self.libpanda.panda_revert(charptr)
                 else:
-                        # vm_stop(). so stop executing guest code right now
-                        self.stop()
+                        self.vm_stop()
+
                         # queue up revert then continue
                         charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
                         self.queue_main_loop_wait_fn(self.libpanda.panda_revert, [charptr])
                         # if specified, finished_cb will run after we revert and have started to continue
                         # but before guest has a chance to execute anything
                         self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [], callback=finished_cb)
-                
+
         def cont(self): # Call after self.stop()
-#               print ("executing panda_start (vm_start)\n");
+#                print ("executing panda_start (vm_start)\n");
                 self.libpanda.panda_cont()
                 self.running.set()
+
+        def vm_stop(self, code=4): # default code of 4 = RUN_STATE_PAUSED
+                self.libpanda.panda_stop(code)
 
         def snap(self, snapshot_name):
                 if debug:
                         progress ("Creating snapshot " + snapshot_name)
-                # vm_stop(), so stop executing guest code
-                self.stop()  
+                self.vm_stop()
 
                 # queue up snapshot for when monitor gets a turn
                 charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
@@ -426,11 +429,11 @@ class Panda:
                         charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
                         self.libpanda.panda_delvm(charptr)
                 else:
-                        self.exit_emul_loop()
+                        self.exit_cpu_loop()
                         charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
                         self.queue_main_loop_wait_fn(self.libpanda.panda_delvm, [charptr])
 
-                
+
         def enable_tb_chaining(self):
                 if debug:
                         progress("Enabling TB chaining")
@@ -445,46 +448,74 @@ class Panda:
         def run(self):
                 if debug:
                         progress ("Running")
-                if not self.init_run:
-                        self.init()
 
-                assert not self.running.is_set()
+                if not self.started:
+                        self.started.set()
+
                 self.running.set()
-
-                assert not self.started.is_set()
-                self.started.set()
-
                 self.libpanda.panda_run()
+                self.running.clear()
 
-        def stop(self):
+        def end_analysis(self):
+                '''
+                Call from any thread to unload all plugins. If called from async thread, it will also stop execution and unblock panda.run()
+                '''
+                self.unload_plugins()
+                if self.running:
+                        self.queue_async(self.stop_run)
+
+        def finish(self):
                 if debug:
-                    progress ("Stopping guest")
-                if self.init_run:
-                        self.running.clear()
-                        self.libpanda.panda_stop()
-                else:
-                    raise RuntimeError("Guest not running- can't be stopped")
+                        progress ("Finishing qemu execution")
+                self.running.clear()
+                self.started.clear()
+                self.libpanda.panda_finish()
 
-        def begin_replay(self, replaypfx):
+        def set_pandalog(self, name):
+                charptr = ffi.new("char[]", bytes(name, "utf-8"))
+                self.libpanda.panda_start_pandalog(charptr)
+
+
+        def run_replay(self, replaypfx):
+                '''
+                Load a replay and run it
+                '''
                 if debug:
                         progress ("Replaying %s" % replaypfx)
+
                 charptr = ffi.new("char[]",bytes(replaypfx,"utf-8"))
                 self.libpanda.panda_replay(charptr)
+                self.run()
 
-        def load_plugin(self, name, args=[]): # TODO: this doesn't work yet
+        def load_plugin(self, name, args={}):
                 if debug:
                         progress ("Loading plugin %s" % name),
-#                       print("plugin args: [" + (" ".join(args)) + "]")
-                n = len(args)
-                cargs = []
-                assert(len(args)==0), "TODO: support arguments"
+#                        print("plugin args: [" + (" ".join(args)) + "]")
+
+                argstrs_ffi = []
+                if isinstance(args, dict):
+                        for k,v in args.items():
+                                this_arg_s = "{}={}".format(k,v)
+                                this_arg = ffi.new("char[]", bytes(this_arg_s, "utf-8"))
+                                argstrs_ffi.append(this_arg)
+
+                        n = len(args.keys())
+                elif isinstance(args, list):
+                        for arg in args:
+                                this_arg = ffi.new("char[]", bytes(arg, "utf-8"))
+                                argstrs_ffi.append(this_arg)
+                        n = len(args)
+
+                else:
+                        raise ValueError("Arguments to load plugin must be a list or dict of key/value pairs")
+
 
                 # First set qemu_path so plugins can load (may be unnecessary after the first time)
                 panda_name_ffi = ffi.new("char[]", bytes(self.panda,"utf-8"))
                 self.libpanda.panda_set_qemu_path(panda_name_ffi)
 
                 name_ffi = ffi.new("char[]", bytes(name,"utf-8"))
-                self.libpanda.panda_init_plugin(name_ffi, cargs, n)
+                self.libpanda.panda_init_plugin(name_ffi, argstrs_ffi, n)
                 self.load_plugin_library(name)
 
         def load_python_plugin(self, init_function, name):
@@ -622,16 +653,21 @@ class Panda:
         def unload_plugins(self):
                 if debug:
                         progress ("Unloading all panda plugins")
+
+                # First unload python plugins
+                for cb in self.pcb_list:
+                        if len(self.pcb_list[cb]):
+                                self.disable_callback(cb)
+
+                # Then unload C plugins
                 self.libpanda.panda_unload_plugins()
 
         def rr_get_guest_instr_count(self):
                 return self.libpanda.rr_get_guest_instr_count_external()
 
         def require(self, plugin):
-                if not self.init_run:
-                        self.init()
-                plugin_name_ptr = pyp.new("char[]", bytes(plugin,"utf-8"))
-                self.libpanda.panda_require(plugin_name_ptr)
+                charptr = pyp.new("char[]", bytes(plugin,"utf-8"))
+                self.libpanda.panda_require(charptr)
                 self.load_plugin_library(plugin)
 
         def enable_plugin(self, handle):
@@ -699,14 +735,14 @@ class Panda:
                                 '''
                                 R_ESP = 4
                                 return cpustate.env_ptr.regs[R_ESP]
-        #               else:
-        #                       esp0 = 4
-        #                       tss_base = env.tr.base + esp0
-        #                       kernel_esp = 0
-        #                       self.virtual_memory_rw(cpustate, tss_base,
+        #                else:
+        #                        esp0 = 4
+        #                        tss_base = env.tr.base + esp0
+        #                        kernel_esp = 0
+        #                        self.virtual_memory_rw(cpustate, tss_base,
                 return 0
 
-        
+
         def g_malloc0(self, size):
                 return self.libpanda.g_malloc0(size)
 
@@ -718,10 +754,10 @@ class Panda:
 
         def cpu_class_by_name(self, name, cpu_model):
                 return self.libpanda.cpu_class_by_name(name, cpu_model)
-        
+
         def object_class_by_name(self, name):
                 return self.libpanda.object_class_by_name(name)
-        
+
         def object_property_set_bool(self, obj, value, name):
                 return self.libpanda.object_property_set_bool(obj,value,name,self.libpanda.error_abort)
 
@@ -733,13 +769,13 @@ class Panda:
 
         def object_property_get_bool(self, obj, name):
                 return self.libpanda.object_property_get_bool(obj,name,self.libpanda.error_abort)
-        
+
         def object_property_set_int(self,obj, value, name):
                 return self.libpanda.object_property_set_int(obj, value, name, self.libpanda.error_abort)
 
         def object_property_get_int(self, obj, name):
                 return self.libpanda.object_property_get_int(obj, name, self.libpanda.error_abort)
-        
+
         def object_property_set_link(self, obj, val, name):
                 return self.libpanda.object_property_set_link(obj,val,name,self.libpanda.error_abort)
 
@@ -754,13 +790,13 @@ class Panda:
 
         def memory_region_add_subregion(self, mr, offset, sr):
                 return self.libpanda.memory_region_add_subregion(mr,offset,sr)
-        
+
         def memory_region_init_ram_from_file(self, mr, owner, name, size, share, path):
                 return self.libpanda.memory_region_init_ram_from_file(mr, owner, name, size, share, path, self.libpanda.error_fatal)
 
         def create_internal_gic(self, vbi, irqs, gic_vers):
                 return self.libpanda.create_internal_gic(vbi, irqs, gic_vers)
-        
+
         def create_one_flash(self, name, flashbase, flashsize, filename, mr):
                 return self.libpanda.create_one_flash(name, flashbase, flashsize, filename, mr)
 
@@ -821,7 +857,7 @@ class Panda:
         def taint_enable(self, cont=True):
                 if not self.taint_enabled:
                         progress("taint not enabled -- enabling")
-                        self.stop()                        
+                        self.vm_stop()
                         self.require("taint2")
 #                        self.queue_main_loop_wait_fn(self.require, ["taint2"])
                         self.queue_main_loop_wait_fn(self.libpanda_taint2.taint2_enable_taint, [])
@@ -843,7 +879,7 @@ class Panda:
         # returns true if any bytes in this register have any taint labels
         def taint_check_reg(self, reg_num):
 #                if debug:
-#                        progress("taint_check_reg %d" % (reg_num))                
+#                        progress("taint_check_reg %d" % (reg_num))
                 for offset in range(self.register_size):
                         if self.libpanda_taint2.taint2_query_reg(reg_num, offset) > 0:
                                 return True
@@ -852,9 +888,9 @@ class Panda:
         # None if no taint.  QueryResult struct otherwise
         def taint_get_reg(self, reg_num):
                 if debug:
-                        progress("taint_get_reg %d" % (reg_num))                
+                        progress("taint_get_reg %d" % (reg_num)) 
                 res = []
-                for offset in range(self.register_size):                        
+                for offset in range(self.register_size): 
                         if self.libpanda_taint2.taint2_query_reg(reg_num, offset) > 0:
                                 query_res = ffi.new("QueryResult *")
                                 self.libpanda_taint2.taint2_query_reg_full(reg_num, offset, query_res)
@@ -863,7 +899,6 @@ class Panda:
                         else:
                                 res.append(None)
                 return res
-        
 
         def send_monitor_async(self, cmd, finished_cb=None, finished_cb_args=[]):
                 if debug:
@@ -888,6 +923,7 @@ class Panda:
                 elif debug and r:
                         print("(Debug) Monitor command result: {}".format(r))
 
+
         def load_plugin_library(self, name):
                 if hasattr(self,"__did_load_libpanda"):
                         libpanda_path_chr = ffi.new("char[]",bytes(self.libpanda_path,"UTF-8"))
@@ -906,7 +942,7 @@ class Panda:
 #                       self.require("osi_test")
                 else:
                         print("Not supported yet for os: %s" % self.os_string)
-        
+
         def get_current_process(self, cpustate):
                 if not hasattr(self, "libpanda_osi"):
                         self.load_osi() 
@@ -919,22 +955,22 @@ class Panda:
                 if not hasattr(self, "libpanda_osi"):
                         self.load_osi() 
                 return self.libpanda_osi.get_processes(cpustate)
-        
+
         def get_libraries(self, cpustate, current):
                 if not hasattr(self, "libpanda_osi"):
                         self.load_osi() 
                 return self.libpanda_osi.get_libraries(cpustate,current)
-        
+
         def get_modules(self, cpustate):
                 if not hasattr(self, "libpanda_osi"):
                         self.load_osi() 
                 return self.libpanda_osi.get_modules(cpustate)
-        
+
         def get_current_thread(self, cpustate):
                 if not hasattr(self, "libpanda_osi"):
                         self.load_osi() 
                 return self.libpanda_osi.get_current_thread(cpustate)
-        
+
         def ppp_reg_cb(self):
                 pass
 
@@ -955,7 +991,7 @@ class Panda:
                 # we dont do this because x86 is the assumed arch
                 # ffi.cdef(open("./include/panda_x86_support.h")) 
                 return ffi.cast("CPUX86State*", cpustate.env_ptr)
-        
+
         def get_cpu_x64(self,cpustate):
                 # we dont do this because x86 is the assumed arch
                 if not hasattr(self, "x64_support"):
@@ -966,7 +1002,7 @@ class Panda:
                 if not hasattr(self, "arm_support"):
                         self.arm_support = ffi.cdef(open("./include/panda_arm_support.h").read())
                 return ffi.cast("CPUARMState*", cpustate.env_ptr)
-        
+
         def get_cpu_ppc(self,cpustate):
                 if not hasattr(self, "ppc_support"):
                         self.ppc_support = ffi.cdef(open("./include/panda_ppc_support.h").read())
@@ -1006,6 +1042,9 @@ class Panda:
         def revert_sync(self, snapshot_name):
                 self.run_monitor_cmd("loadvm {}".format(snapshot_name))
 
+        @blocking
+        def delvm_sync(self, snapshot_name):
+                self.run_monitor_cmd("delvm {}".format(snapshot_name))
 
         @blocking
         def copy_to_guest(self, copy_directory, iso_name=None):
@@ -1034,7 +1073,6 @@ class Panda:
                            .format(mount_dir = (shlex.quote(copy_directory)))
                 progress("setup_sh = [%s] " % setup_sh)
                 progress(self.run_serial_cmd(setup_sh))
-
 
         @blocking
         def record_cmd(self, guest_command, copy_directory=None, iso_name=None, recording_name="recording"):

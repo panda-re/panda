@@ -37,9 +37,6 @@
 
 #include "qemu/compatfd.h"
 
-
-extern bool panda_exit_loop;
-
 void panda_callbacks_main_loop_wait(void);
 
 /* If we have signalfd, we mask out the signals we want to handle and then

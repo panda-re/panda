@@ -176,6 +176,8 @@ static struct rcu_head dummy;
 static struct rcu_head *head = &dummy, **tail = &dummy.next;
 static int rcu_call_count;
 static QemuEvent rcu_call_ready_event;
+static QemuEvent rcu_stopped;
+static int rcu_running;
 
 static void enqueue(struct rcu_head *node)
 {
@@ -226,6 +228,14 @@ retry:
     return node;
 }
 
+void kill_rcu_thread(void) {
+    // Stop the RCU thread and unregister it
+    atomic_dec(&rcu_running); // Decrement from 1 to 0
+    qemu_event_set(&rcu_call_ready_event);
+    rcu_unregister_thread();
+    qemu_event_wait(&rcu_stopped); // Wait for thread to stop before we return
+}
+
 static void *call_rcu_thread(void *opaque)
 {
     struct rcu_head *node;
@@ -240,8 +250,11 @@ static void *call_rcu_thread(void *opaque)
          * Fetch rcu_call_count now, we only must process elements that were
          * added before synchronize_rcu() starts.
          */
+        int running = atomic_read(&rcu_running);
         while (n == 0 || (n < RCU_CALL_MIN_SIZE && ++tries <= 5)) {
             g_usleep(10000);
+            running = atomic_read(&rcu_running);
+            if (!running) break;
             if (n == 0) {
                 qemu_event_reset(&rcu_call_ready_event);
                 n = atomic_read(&rcu_call_count);
@@ -252,28 +265,33 @@ static void *call_rcu_thread(void *opaque)
             n = atomic_read(&rcu_call_count);
         }
 
-        atomic_sub(&rcu_call_count, n);
-        synchronize_rcu();
-        qemu_mutex_lock_iothread();
-        while (n > 0) {
-            node = try_dequeue();
-            while (!node) {
-                qemu_mutex_unlock_iothread();
-                qemu_event_reset(&rcu_call_ready_event);
-                node = try_dequeue();
-                if (!node) {
-                    qemu_event_wait(&rcu_call_ready_event);
-                    node = try_dequeue();
-                }
-                qemu_mutex_lock_iothread();
-            }
+        if (running) {
+          atomic_sub(&rcu_call_count, n);
+          synchronize_rcu();
+          qemu_mutex_lock_iothread();
+          while (n > 0 && atomic_read(&rcu_running)) {
+              node = try_dequeue();
+              while (!node) {
+                  qemu_mutex_unlock_iothread();
+                  qemu_event_reset(&rcu_call_ready_event);
+                  node = try_dequeue();
+                  if (!node) {
+                      qemu_event_wait(&rcu_call_ready_event);
+                      node = try_dequeue();
+                  }
+                  qemu_mutex_lock_iothread();
+              }
 
-            n--;
-            node->func(node);
+              n--;
+              node->func(node);
+          }
+          qemu_mutex_unlock_iothread();
+        }else{
+          break;
         }
-        qemu_mutex_unlock_iothread();
     }
-    abort();
+    qemu_event_set(&rcu_stopped);
+    pthread_exit(0);
 }
 
 void call_rcu1(struct rcu_head *node, void (*func)(struct rcu_head *node))
@@ -312,6 +330,8 @@ static void rcu_init_complete(void)
     /* The caller is assumed to have iothread lock, so the call_rcu thread
      * must have been quiescent even after forking, just recreate it.
      */
+    atomic_set(&rcu_running, 1);
+    qemu_event_reset(&rcu_stopped);
     qemu_thread_create(&thread, "call_rcu", call_rcu_thread,
                        NULL, QEMU_THREAD_DETACHED);
 

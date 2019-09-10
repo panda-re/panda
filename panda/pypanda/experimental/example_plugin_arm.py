@@ -17,18 +17,11 @@ from sys import argv
 arch = "arm" if len(argv) <= 1 else argv[1]
 panda = Panda(generic=arch,arch=arch)
 
-@panda.callback.init
-def init(handle):
-	progress("init in python. handle="+str(handle))
-	panda.register_callback(handle, panda.callback.before_block_exec, \
-	 						before_block_execute)
-	return True
 
-@panda.callback.before_block_exec
+@panda.cb_before_block_exec()
 def before_block_execute(cpustate,transblock):
 	arm_cpustate = panda.get_cpu(cpustate)
 	progress("PC: "+str(arm_cpustate.pc))
 	return 0
 
-panda.load_python_plugin(init,"example_plugin")
 panda.run()

@@ -29,16 +29,15 @@ void panda_disable_llvm_helpers(void);
 void panda_memsavep(FILE *f);
 
 // from panda_api.c
-int panda_pre(int argc, char **argv, char **envp);
 int panda_init(int argc, char **argv, char **envp);
 int panda_run(void);
-void panda_stop(void);
+void panda_stop(int code);
 void panda_cont(void);
+void panda_start_pandalog(const char *name);
 int panda_revert(char *snapshot_name);
 int panda_snap(char *snapshot_name);
 int panda_replay(char *replay_name);
 int panda_finish(void);
-
 
 void panda_set_qemu_path(char* filepath);
 
@@ -59,11 +58,9 @@ bool panda_in_kernel_external(CPUState *cpu);
 
 //void panda_monitor_run(char* buf, uint32_t len);
 int panda_delvm(char *snapshot_name);
-void panda_exit_emul_loop(void);
-
-
 
 #ifdef PYPANDA
+
 // Create a monitor for panda
 void panda_init_monitor(void);
 

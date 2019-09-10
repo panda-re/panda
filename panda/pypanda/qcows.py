@@ -20,7 +20,7 @@ Arch = namedtuple('Arch', ['dir',        'arch',    'binary',             'os', 
 Arch.__new__.__defaults__ = (None,None)
 SUPPORTED_ARCHES = {
         'i386':   Arch('i386-softmmu',   'i386',   'qemu-system-i386',   "linux-32-debian:3.2.0-4-686-pae", "root@debian-i386:~# ",    "wheezy_panda2.qcow2", "ide1-cd0", "root"),
-        'x86_64': Arch('x86_64-softmmu', 'x86_64', 'qemu-system-x86_64', "linux-64-debian:x.y.z-arm64-pae", "root@debian-amd64:~# ",   "wheezy_x64.qcow2",    "ide1-cd0", "root"),
+        'x86_64': Arch('x86_64-softmmu', 'x86_64', 'qemu-system-x86_64', "linux-64-debian:x.y.z-amd64-pae", "root@debian-amd64:~# ",   "wheezy_x64.qcow2",    "ide1-cd0", "root"),
         'ppc':    Arch('ppc-softmmu',    'ppc',    'qemu-system-ppc',    "linux-32-debian:x.y.z-ppc-pae",
             
             "root@debian-powerpc:~# ", "ppc_wheezy.qcow",     "ide1-cd0", "root"),

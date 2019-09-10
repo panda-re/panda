@@ -93,3 +93,11 @@ class PLogReader:
             self.chunk_data_idx = 0
 
         return msg
+
+if __name__ == "__main__":
+    print('[')
+    with PLogReader(sys.argv[1]) as plr:
+        for i, m in enumerate(plr):
+            if i > 0: print(',')
+            print(MessageToJson(m), end='')
+    print('\n]')

@@ -48,12 +48,7 @@ const int has_llvm_engine = 1;
 int generate_llvm = 0;
 int execute_llvm = 0;
 extern bool panda_tb_chaining;
-
-extern bool panda_exit_loop;
 bool panda_stopped;
-extern bool panda_revert_requested;
-extern bool panda_snap_requested ;
-char *panda_revert_name = NULL;
 
 /* -icount align implementation. */
 
@@ -76,7 +71,6 @@ typedef struct SyncClocks {
 // Needed to prevent before_block_exec_invalidate_opt from 
 // running more than once
 bool panda_bb_invalidate_done = false;
-
 
 
 static void align_clocks(SyncClocks *sc, const CPUState *cpu)
@@ -194,7 +188,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     if (cpu->tcg_exit_req == 0)
         panda_callbacks_before_block_exec(cpu, itb);
 
-    if (panda_exit_loop) {
+    if (panda_break_cpu_loop_req) {;
 //        printf ("cpu-exec.c: Exiting emul loop\n");
         cpu->can_do_io = 1;
         return TB_EXIT_REQUESTED;
@@ -653,7 +647,7 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 {
     uintptr_t ret;
 
-    if (unlikely(panda_snap_requested || atomic_read(&cpu->exit_request))) {
+    if (unlikely(atomic_read(&cpu->exit_request))) {
         return;
     }
 
@@ -793,7 +787,7 @@ int cpu_exec(CPUState *cpu)
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
         
-        if (panda_exit_loop) {
+        if (panda_break_cpu_loop_req) {
             printf ("Exiting cpu_handle_execption loop\n");
 //            vm_stop(RUN_STATE_PAUSED);                                                         
             break;
@@ -803,8 +797,8 @@ int cpu_exec(CPUState *cpu)
         int tb_exit = 0;
 
         /* Note: We usually break out of the loop manually and
-         * not because panda_exit_loop is true. */
-        while (likely(!panda_exit_loop)) {
+         * not because panda_break_cpu_loop_req is true. */
+        while (likely(!panda_break_cpu_loop_req)) {
             bool panda_invalidate_tb = false;
             debug_checkpoint(cpu);
             detect_infinite_loops();
@@ -849,7 +843,7 @@ int cpu_exec(CPUState *cpu)
             if (rr_mode == RR_REPLAY && rr_replay_finished()) {
                 rr_do_end_replay(0);
                 qemu_cpu_kick(cpu);
-                panda_exit_loop = true;
+                panda_break_cpu_loop_req = true;
                 break;
             }
 
@@ -861,7 +855,7 @@ int cpu_exec(CPUState *cpu)
                    if the guest is in advance */
                 align_clocks(&sc, cpu);
             }
-            if (panda_exit_loop) {
+            if (panda_break_cpu_loop_req) {
                 printf ("Exiting inner loop\n");
                 break;
             }
@@ -874,16 +868,6 @@ int cpu_exec(CPUState *cpu)
 
     /* fail safe : never use current_cpu outside cpu_exec() */
     current_cpu = NULL;
-
-    if (panda_revert_requested) {
-        panda_revert_requested = false;
-//        printf ("revert requested: snapshot=[%s]\n", panda_revert_name);
-        load_vmstate(panda_revert_name);
-    }
-
-    if (panda_snap_requested) {
-//        vm_stop(RUN_STATE_SAVE_VM);                                                                 
-    }
 
     return ret;
 }

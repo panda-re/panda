@@ -24,8 +24,6 @@ int before_block_exec(CPUState *env, TranslationBlock *tb);
 void check_start_snip(CPUState *env);
 void check_end_snip(CPUState *env);
 
-extern bool panda_exit_loop;
-
 static uint64_t start_count;
 static uint64_t actual_start_count;
 static uint64_t end_count;
@@ -344,11 +342,11 @@ void check_end_snip(CPUState *env) {
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     uint64_t count = rr_get_guest_instr_count();
     if (!snipping && count+tb->icount > start_count) {
-        panda_exit_loop = true;
+        panda_break_cpu_loop_req = true;
         request_start_snip = true;
     }
     if (snipping && !done && count > end_count) {
-        panda_exit_loop = true;
+        panda_break_cpu_loop_req = true;
         request_end_snip = true;
         rr_end_replay_requested = 1;
     }

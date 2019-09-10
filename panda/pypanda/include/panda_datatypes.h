@@ -864,16 +864,15 @@ void panda_disable_llvm_helpers(void);
 void panda_memsavep(FILE *f);
 
 // from panda_api.c
-int panda_pre(int argc, char **argv, char **envp);
 int panda_init(int argc, char **argv, char **envp);
 int panda_run(void);
-void panda_stop(void);
+void panda_stop(int code);
 void panda_cont(void);
+void panda_start_pandalog(const char *name);
 int panda_revert(char *snapshot_name);
 int panda_snap(char *snapshot_name);
 int panda_replay(char *replay_name);
 int panda_finish(void);
-
 
 void panda_set_qemu_path(char* filepath);
 
@@ -894,8 +893,6 @@ bool panda_in_kernel_external(CPUState *cpu);
 
 //void panda_monitor_run(char* buf, uint32_t len);
 int panda_delvm(char *snapshot_name);
-void panda_exit_emul_loop(void);
-
 
 
 // Create a monitor for panda
@@ -951,6 +948,10 @@ void panda_cleanup(void);
 void panda_set_os_name(char *os_name);
 void panda_before_find_fast(void);
 void panda_disas(FILE *out, void *code, unsigned long size);
+void panda_break_main_loop(void);
+
+extern bool panda_break_cpu_loop_req;
+extern bool panda_break_vl_loop_req;
 
 /*
  * @brief Returns the guest address space identifier.

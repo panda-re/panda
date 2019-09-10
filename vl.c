@@ -156,7 +156,12 @@ extern void panda_callbacks_pre_shutdown(void);
 extern void pandalog_cc_init_write(const char * fname);
 int pandalog = 0;
 int panda_in_main_loop = 0;
-extern bool panda_abort_requested;
+
+extern bool panda_abort_requested; // When set, we exit in after printing a help message
+bool panda_break_vl_loop_req = false; // When set, we break the main loop in vl.c
+
+char *panda_snap_name = NULL;
+const char* replay_name = NULL;
 
 #include "panda/debug.h"
 #include "panda/rr/rr_log_all.h"
@@ -233,10 +238,6 @@ int only_migratable; /* turn it off unless user states otherwise */
 
 int icount_align_option;
 
-
-bool panda_snap_requested = false;
-bool panda_revert_requested = false;
-char *panda_snap_name = NULL;
 int save_vmstate_nomon(char *name);
 
 
@@ -1902,6 +1903,13 @@ static bool main_loop_should_exit(void)
     if (qemu_suspend_requested()) {
         qemu_system_suspend();
     }
+
+    if (panda_break_vl_loop_req) {
+      panda_break_vl_loop_req = false; // Only break the loop once
+      return true;
+    }
+
+
     if (qemu_shutdown_requested()) {
         panda_callbacks_pre_shutdown();
         qemu_kill_report();
@@ -1935,10 +1943,6 @@ static bool main_loop_should_exit(void)
     if (qemu_vmstop_requested(&r)) {
         vm_stop(r);
     }
-    if (panda_snap_requested) {
-        // vm_stop(RUN_STATE_SAVE_VM);
-        vm_stop(RUN_STATE_PAUSED);
-    }
     return false;
 }
 
@@ -1951,8 +1955,6 @@ static void tcg_llvm_cleanup(void)
     }
 }
 #endif
-
-extern bool panda_exit_loop;
 
 void main_loop(void)
 {
@@ -2019,15 +2021,6 @@ void main_loop(void)
 #ifdef CONFIG_PROFILER
         dev_time += profile_getclock() - ti;
 #endif
-
-        if (panda_snap_requested) {
-            panda_snap_requested = false;
-            printf ("snap requested: snapshot=[%s]\n", panda_snap_name);
-            save_vmstate_nomon(panda_snap_name);
-        }    
-
-        if (panda_exit_loop)
-            break;
 
     } while (!main_loop_should_exit());
 }
@@ -3099,10 +3092,12 @@ void main_panda_run(void) {
     panda_in_main_loop = 0;
 }
 
+void set_replay_name(char *name) {
+    replay_name = name;
+}
+
 int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 {
-
-    if (pmm == PANDA_PRE) return 0;
     if (pmm == PANDA_RUN)    goto PANDA_MAIN_RUN;
     if (pmm == PANDA_FINISH) goto PANDA_MAIN_FINISH;
 
@@ -3152,7 +3147,6 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 
     assert(qemu_file != NULL);
 
-    const char* replay_name = NULL;
     const char* record_name = NULL;
     // In order to load PANDA plugins all at once at the end
     const char * panda_plugin_files[64] = {};
@@ -4293,7 +4287,6 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
      * Best done right after the loop.  Do not insert code here!
      */
     loc_set_none();
-
     // Now that all arguments are available, we can load plugins
     int pp_idx;
     for (pp_idx = 0; pp_idx < nb_panda_plugins; pp_idx++) {
@@ -4323,6 +4316,7 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
         error_report("could not acquire pid file: %s", strerror(errno));
         exit(1);
     }
+
 
     if (qemu_init_main_loop(&main_loop_err)) {
         error_report_err(main_loop_err);
@@ -4929,7 +4923,6 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
         error_report("rom check and register reset failed");
         exit(1);
     }
-
     replay_start();
 
     /* This checkpoint is required by replay to separate prior clock
@@ -5023,7 +5016,6 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 
     // Call PANDA post-machine init hook
     panda_callbacks_after_machine_init();
-    //printf("hit 2\n");
 
     if (pmm == PANDA_INIT) return 0;
 

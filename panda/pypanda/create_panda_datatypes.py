@@ -280,4 +280,3 @@ with open("include/panda_datatypes.h", "w") as pdth:
     # probably a better way... 
     pdth.write("typedef target_ulong target_ptr_t;\n")
     include_this("../include/panda/panda_common.h")
-

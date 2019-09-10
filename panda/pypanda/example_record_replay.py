@@ -1,32 +1,67 @@
 #!/usr/bin/env python3
-'''
-example_record_replay.py
+# Take a recording, then replay and analyze
+from pypanda import Panda, blocking
+from os import remove, path
 
-Registers asid_changed and runs a replay from a file specified.
-
-Run with: python3 example_record_replay.py i386 /path/to/recording
-'''
-from pypanda import *
-from time import sleep
-from sys import argv
-
-# Single arg of arch, defaults to i386
-arch = "i386" if len(argv) <= 1 else argv[1]
+arch = "i386"
 panda = Panda(generic=arch)
 
-replay_file = argv[2]
+# Make sure we're always saving a new recording
+recording_name = "test.recording"
+for f in [recording_name+"-rr-nondet.log", recording_name+"-rr-snp"]:
+    if path.isfile(f): remove(f)
 
-@panda.callback.init
-def init(handle):
-	panda.register_callback(handle, panda.callback.asid_changed, asid_changed)
-	return True
+@blocking
+def record_nondet(): # Run a non-deterministic command at the root snapshot, then end .run()
+    panda.record_cmd("date; cat /dev/urandom | head -n30 | md5sum", recording_name=recording_name)
+    panda.stop_run()
 
-@panda.callback.asid_changed
-def asid_changed(cpustate,old_asid, new_asid):
-	if old_asid != new_asid:
-		progress("asid changed from %d to %d" %(old_asid, new_asid))
-	return 0
+# Collect BBs or validate that our replay is good
+in_replay = False
+orig_blocks = set()
+replay_blocks = set()
+@panda.cb_before_block_exec(name="foo")
+def before_block_exec(env, tb):
+    # At each BB's execution in 'find', ensure translation is cached and add to executed_pcs
+    global in_replay, orig_blocks, replay_blocks
+    pc = panda.current_pc(env)
+    if not in_replay:
+        orig_blocks.add(pc)
+    else:
+        replay_blocks.add(pc)
+    return 0
 
-panda.load_python_plugin(init,"example_record_replay")
-panda.begin_replay(replay_file)
+print("======== TAKE RECORDING ========")
+print("Please wait ~15 seconds for the guest to execute our commands\n")
+panda.queue_async(record_nondet) # Take a recording
 panda.run()
+print("======== END RECORDING ========")
+
+print("Observed {} bbs".format(len(orig_blocks)))
+
+print("======== RUN REPLAY ========")
+print("Wait a moment for replay to start...")
+in_replay = True
+panda.run_replay(recording_name) # Load and run the replay
+print("======== FINISH REPLAY ========")
+
+orig_block_c = len(orig_blocks)
+repl_block_c = len(replay_blocks)
+rep_in_orig = sum([1 if x in orig_blocks else 0 for x in replay_blocks])
+orig_in_rep = sum([1 if x in replay_blocks else 0 for x in orig_blocks])
+
+print(f"{orig_block_c} blocks are in original execution.\n{repl_block_c} blocks captured in recording.")
+print(f"{rep_in_orig} of the recorded blocks are in the original execution.\n{orig_in_rep} of the original blocks are in replay")
+
+
+@blocking
+def second_cmd(): # Run a command at the root snapshot, then end .run()
+    panda.revert_sync("root")
+    w = panda.run_serial_cmd("whoami")
+    assert("root" in w), "Second command failed"
+    panda.stop_run()
+
+print("======= RUN AGAIN ======")
+panda.queue_async(second_cmd)
+panda.run()
+print("======= DONE =========")

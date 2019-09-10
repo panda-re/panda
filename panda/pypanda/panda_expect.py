@@ -32,7 +32,7 @@ class Expect(object):
         self.running = True
         self.expectation = expectation
 
-        # If cosuned_first is false, we'll consume a message before anything else. Requires self.expectation to be set
+        # If consumed_first is false, we'll consume a message before anything else. Requires self.expectation to be set
         self.consumed_first = True
         if consume_first:
             self.consumed_first = False
@@ -79,7 +79,7 @@ class Expect(object):
 
                     if b"\r\n" in sofar: # Serial will echo our command back, try to strip it out
                         resp = sofar.split(b"\r\n")
-                        if self.last_msg and resp[0].decode('utf8').replace(" \r", "").strip() == self.last_msg.decode('utf8').strip():
+                        if self.last_msg and resp[0].decode('utf8', 'ignore').replace(" \r", "").strip() == self.last_msg.decode('utf8', 'ignore').strip():
                             resp[:] = resp[1:] # drop last cmd
 
                         if resp[-1].decode('utf8') == expectation:

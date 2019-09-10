@@ -3,9 +3,8 @@
 from pypanda import *
 from sys import argv
 
+# XXX This doesn't work
 # Re-initialize panda object as various pandas of different archicectures
-
-# XXX: Doesn't currently work
 
 @blocking
 def run_cmd():
@@ -17,6 +16,7 @@ def run_cmd():
 def quit():
     panda.run_monitor_cmd("quit")
 
+# XXX: Generally you can't recreate the panda object, but it can be done here because the arch is changing
 for arch in ["x86_64", "i386", "arm", "ppc"]:
     progress(f"Starting {arch}")
     panda = Panda(generic=arch)
