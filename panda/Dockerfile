@@ -17,7 +17,7 @@ RUN apt-get -y install $PACKAGES
 RUN dpkg -l $PACKAGES | sort > /packages.txt
 ENV FEATURES clang pyyaml
 
-RUN git -b docker clone https://github.com/panda-re/panda
+RUN git clone -b docker  https://github.com/panda-re/panda
 
 ENV PANDA_DOCKER=1
 
