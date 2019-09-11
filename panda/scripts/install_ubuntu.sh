@@ -9,8 +9,15 @@ LIBDWARF_GIT="git://git.code.sf.net/p/libdwarf/code"
 UBUNTU_FALLBACK="xenial"
 
 # system information
-vendor=$(lsb_release --id | awk -F':[\t ]+' '{print $2}')
-codename=$(lsb_release --codename | awk -F':[\t ]+' '{print $2}')
+if [[ $PANDA_DOCKER = "1" ]]; then
+  vendor="Ubuntu"
+  codename="bionic"
+  SUDO=""
+else
+  vendor=$(lsb_release --id | awk -F':[\t ]+' '{print $2}')
+  codename=$(lsb_release --codename | awk -F':[\t ]+' '{print $2}')
+  SUDO="sudo"
+fi
 
 progress() {
   echo
@@ -29,19 +36,20 @@ ppa_list_file() {
 # Exit on error.
 set -e
 
+
 progress "Installing qemu dependencies..."
-sudo apt-get update || true
-sudo apt-get -y build-dep qemu
+$SUDO apt-get update || true
+$SUDO apt-get -y build-dep qemu
 
 progress "Installing PANDA dependencies..."
-sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
-  libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
+$SUDO apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
+  libprotobuf-c-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
   libwiretap-dev libwireshark-dev
 
 pushd /tmp
 
 if [ "$vendor" = "Ubuntu" ]; then
-  sudo apt-get -y install software-properties-common
+  $SUDO apt-get -y install software-properties-common
   panda_ppa_file=$(ppa_list_file "$PANDA_PPA" "$vendor" "$codename")
   panda_ppa_file_fallback=$(ppa_list_file "$PANDA_PPA" "$vendor" "$UBUNTU_FALLBACK")
 
@@ -51,21 +59,21 @@ if [ "$vendor" = "Ubuntu" ]; then
     xenial)  ;&
     yakkety)
       # directly supported release
-      sudo add-apt-repository -y "$PANDA_PPA"
+      $SUDO add-apt-repository -y "$PANDA_PPA"
       ;;
     *)
       # use fallback release
-      sudo rm -f "$panda_ppa_file" "$panda_ppa_file_fallback"
-      sudo add-apt-repository -y "$PANDA_PPA" || true
-      sudo sed -i "s/$codename/$UBUNTU_FALLBACK/g" "$panda_ppa_file"
-      sudo mv -f "$panda_ppa_file" "$panda_ppa_file_fallback"
+      $SUDO rm -f "$panda_ppa_file" "$panda_ppa_file_fallback"
+      $SUDO add-apt-repository -y "$PANDA_PPA" || true
+      $SUDO sed -i "s/$codename/$UBUNTU_FALLBACK/g" "$panda_ppa_file"
+      $SUDO mv -f "$panda_ppa_file" "$panda_ppa_file_fallback"
       ;;
   esac
 
   # For Ubuntu 18.04 the vendor packages are more recent than those in the PPA
   # and will be preferred.
-  sudo apt-get update
-  sudo apt-get -y install libcapstone-dev libdwarf-dev python-pycparser
+  $SUDO apt-get update
+  $SUDO apt-get -y install libcapstone-dev libdwarf-dev python-pycparser
 else
   if [ ! \( -e "/usr/local/lib/libdwarf.so" -o -e "/usr/lib/libdwarf.so" \) ]
   then
@@ -74,7 +82,7 @@ else
     progress "Installing libdwarf..."
     ./configure --prefix=/usr/local --includedir=/usr/local/include/libdwarf --enable-shared
     make -j$(nproc)
-    sudo make install
+    $SUDO make install
     popd
   else
     progress "Skipping libdwarf..."
@@ -101,15 +109,17 @@ EOF
     fi
   else
     progress "Installing pycparser..."
-    sudo -H pip install pycparser
+    $SUDO -H pip install pycparser
   fi
 fi
 
 # Upgrading protocol buffers python support
-sudo pip install --upgrade protobuf
+$SUDO pip install --upgrade protobuf
+
+$SUDO pip install colorama subprocess32
 
 progress "Trying to install LLVM 3.3..."
-if ! sudo apt-get -y install llvm-3.3-dev clang-3.3
+if ! $SUDO apt-get -y install llvm-3.3-dev clang-3.3
 then
   progress "Couldn't find OS package for LLVM 3.3. Proceeding without..."
 fi
