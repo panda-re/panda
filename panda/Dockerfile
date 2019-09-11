@@ -17,6 +17,7 @@ RUN apt-get -y install $PACKAGES
 RUN dpkg -l $PACKAGES | sort > /packages.txt
 ENV FEATURES clang pyyaml
 
+RUN mkdir /root/.panda
 RUN wget http://panda.moyix.net/~moyix/wheezy_panda2.qcow2 -O /root/.panda/wheezy_panda2.qcow2
 
 RUN git clone -b docker  https://github.com/panda-re/panda
