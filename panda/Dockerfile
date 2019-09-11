@@ -10,7 +10,7 @@ ENV PACKAGES flex bison \
     libseccomp-dev libgnutls28-dev libssh2-1-dev  libspice-server-dev \
     libspice-protocol-dev libnss3-dev libfdt-dev \
     libgtk-3-dev libvte-dev libsdl1.2-dev libpng-dev libpixman-1-dev \
-    git make ccache python-yaml gcc clang sparse wget emacs 
+    git make ccache python-yaml gcc clang sparse wget emacs genisoimage
 
 RUN apt-get -y install $PACKAGES
 
