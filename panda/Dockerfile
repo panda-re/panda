@@ -15,7 +15,7 @@ RUN apt-get -y install $PACKAGES
 RUN dpkg -l $PACKAGES | sort > /packages.txt
 ENV FEATURES clang pyyaml
 
-RUN git clone https://github.com/panda-re/panda
+RUN git -b docker clone https://github.com/panda-re/panda
 RUN cd panda && ./panda/scripts/install_ubuntu.sh
 
-ENV PATH="/panda/build/x86_64-softmmu/:${PATH}"
+#ENV PATH="/panda/build/x86_64-softmmu/:${PATH}"
