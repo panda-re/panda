@@ -302,7 +302,7 @@ void on_get_process_handles(CPUState *env, GArray **out) {
 void on_get_current_process(CPUState *env, OsiProc **out) {
     static target_ptr_t last_ts = 0x0;
     static target_ptr_t cached_taskd = 0x0;
-    static char *cached_name = NULL;
+    static char *cached_name = (char *)g_malloc0(ki.task.comm_size);
     static target_ptr_t cached_pid = -1;
     static target_ptr_t cached_ppid = -1;
     static void *cached_comm_ptr = NULL;
@@ -319,10 +319,8 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
 
             // update the cache
             cached_taskd = p->taskd;
-            if (NULL != cached_name) {
-                g_free(cached_name);
-            }
-            cached_name = g_strdup(p->name);
+            memset(cached_name, 0, ki.task.comm_size);
+            strncpy(cached_name, p->name, ki.task.comm_size);
             cached_pid = p->pid;
             cached_ppid = p->ppid;
             cached_comm_ptr = panda_map_virt_to_host(
