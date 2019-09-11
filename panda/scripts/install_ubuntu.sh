@@ -1,6 +1,8 @@
 #!/bin/bash
 # This script installs all of PANDA after first taking care of current
 # dependencies. Known to work on Debian 7 install.
+#
+# NB: This should be run from top level of cloned panda repo
 
 # some globals
 PANDA_GIT="https://github.com/panda-re/panda.git"
