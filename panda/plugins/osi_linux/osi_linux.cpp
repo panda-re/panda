@@ -314,8 +314,7 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
  */
 void on_get_current_process_handle(CPUState *env, OsiProcHandle **out) {
 	OsiProcHandle *p = NULL;
-	target_ptr_t kernel_esp = panda_current_sp(env);
-	target_ptr_t ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+	target_ptr_t ts = kernel_profile->get_current_task_struct(env);
 	if (ts) {
 		p = (OsiProcHandle *)g_malloc(sizeof(OsiProcHandle));
 		fill_osiprochandle(env, p, ts);

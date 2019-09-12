@@ -1,10 +1,14 @@
 #include "osi_linux.h"
 #include "default_profile.h"
 
+/**
+ * @brief Retrieves the task_struct address using per cpu information.
+ */
+IMPLEMENT_OFFSET_GET(get_task_struct, current_task_addr, target_ptr_t, ki.task.per_cpu_offset_0, 0)
+
 target_ptr_t default_get_current_task_struct(CPUState *cpu)
 {
-	target_ptr_t kernel_esp = panda_current_sp(cpu);
-	target_ptr_t ts = get_task_struct(cpu, (kernel_esp & THREADINFO_MASK));
+	target_ptr_t ts = get_task_struct(cpu, ki.task.current_task_addr);
 	return ts;
 }
 
