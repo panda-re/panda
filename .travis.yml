@@ -33,6 +33,7 @@ addons:
       - libvte-2.90-dev
       - sparse
       - uuid-dev
+      - linux-libc-dev
 
 # The channel name "irc.oftc.net#qemu" is encrypted against qemu/qemu
 # to prevent IRC notifications from forks. This was created using:
