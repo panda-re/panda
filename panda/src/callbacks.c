@@ -449,8 +449,8 @@ void panda_disable_plugin(void *plugin)
  */
 panda_cb_list *panda_cb_list_next(panda_cb_list *plist)
 {
-    for (panda_cb_list *node = plist->next; plist != NULL;
-         plist = plist->next) {
+    for (panda_cb_list *node = plist->next; node != NULL;
+         node = node->next) {
         if (!node || node->enabled)
             return node;
     }
