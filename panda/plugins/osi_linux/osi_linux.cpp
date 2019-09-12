@@ -312,8 +312,9 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
     target_ptr_t ts = kernel_profile->get_current_task_struct(env);
     if (0x0 != ts) {
         p = (OsiProc *)g_malloc(sizeof(*p));
-        if (ts != last_ts || 0 != strncmp((char *)cached_comm_ptr, cached_name,
-                                          ki.task.comm_size)) {
+        if ((ts != last_ts) || (NULL == cached_comm_ptr) ||
+            (0 != strncmp((char *)cached_comm_ptr, cached_name,
+                          ki.task.comm_size))) {
             last_ts = ts;
             fill_osiproc(env, p, ts);
 
