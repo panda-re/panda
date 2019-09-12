@@ -180,11 +180,33 @@ static inline target_ulong panda_current_sp(CPUState *cpu) {
     // R1 on PPC.
     return env->gpr[1];
 #else
-#error "panda_current_asid() not implemented for target architecture."
+#error "panda_current_sp() not implemented for target architecture."
     return 0;
 #endif
 }
 
+/**
+ * @brief Returns the return value of the guest.
+ * The function is only meant to provide a platform-independent
+ * abstraction for retrieving a call return value. It still has to
+ * be used in the proper context to retrieve a meaningful value.
+ */
+static inline target_ulong panda_get_retval(CPUState *cpu) {
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+#if defined(TARGET_I386)
+    // EAX for x86.
+    return env->regs[R_EAX];
+#elif defined(TARGET_ARM)
+    // R0 on ARM.
+    return env->regs[0];
+#elif defined(TARGET_PPC)
+    // R3 on PPC.
+    return env->gpr[3];
+#else
+#error "panda_get_retval() not implemented for target architecture."
+    return 0;
+#endif
+}
 
 #ifdef __cplusplus
 }
