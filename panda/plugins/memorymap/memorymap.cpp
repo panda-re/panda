@@ -135,15 +135,15 @@ bool translate_cb(CPUState *env, target_ulong pc) {
     return false;
 }
 
-void dump_process_info(const char *libtype, target_ulong pc,
+void dump_process_info(const char *in_kernel, target_ulong pc,
         uint64_t instr_count, const char *process_name, target_ptr_t pid,
         target_pid_t tid, const char *name, const char *image,
         target_ptr_t image_base)
 {
     printf("pc=0x" TARGET_FMT_lx " instr_count=%ld process=%s pid="
             TARGET_FMT_lu " tid=" TARGET_FMT_lu
-            " %sname=%s %simage=%s ", pc, instr_count,
-            process_name, pid, tid, libtype, name, libtype, image);
+            " in_kernel=%s image_name=%s image_path=%s ", pc, instr_count,
+            process_name, pid, tid, in_kernel, name, image);
     if (0 == strcmp(UNKNOWN_ITEM, name)) {
         printf("image_base=%s\n", UNKNOWN_ITEM);
     } else {
@@ -151,12 +151,12 @@ void dump_process_info(const char *libtype, target_ulong pc,
     }
 }
 
-void dump_noprocess_info(target_ulong pc, uint64_t instr_count,
-        target_pid_t tid, const char *name, const char *image,
-        target_ptr_t image_base) {
+void dump_noprocess_info(const char * in_kernel, target_ulong pc,
+        uint64_t instr_count, target_pid_t tid, const char *name,
+        const char *image, target_ptr_t image_base) {
     printf("pc=0x" TARGET_FMT_lx " instr_count=%ld process=%s pid=NA tid="
-            TARGET_FMT_lu " kernel_name=%s kernel_image=%s ", pc, instr_count,
-            NO_PROCESS, tid, name, image);
+            TARGET_FMT_lu " in_kernel=%s image_name=%s image_path=%s ", pc,
+            instr_count, NO_PROCESS, tid, in_kernel, name, image);
     if (0 == strcmp(UNKNOWN_ITEM, name)) {
         printf("image_base=%s\n", UNKNOWN_ITEM);
     } else {
@@ -198,7 +198,7 @@ int before_insn_exec_cb(CPUState *cpu, target_ulong pc) {
             for (int i = 0; i < ms->len; i++) {
                 OsiModule *m = &g_array_index(ms, OsiModule, i);
                 if ((pc >= m->base) && (pc < (m->base + m->size))) {
-                    dump_process_info("dynlib_", pc, cur_instr, pname,
+                    dump_process_info("false", pc, cur_instr, pname,
                             current->pid, tid, m->name, m->file, m->base);
                     found_lib = true;
                     break;
@@ -210,35 +210,38 @@ int before_insn_exec_cb(CPUState *cpu, target_ulong pc) {
         }
     }
 
-    // dump info on the kernel module for the current PC, if there is one
-    GArray *kms = get_modules(cpu);
-    if (kms != NULL) {
-        for (int i = 0; i < kms->len; i++) {
-            OsiModule *km = &g_array_index(kms, OsiModule, i);
-            if ((pc >= km->base) && (pc < (km->base + km->size))) {
-                if (NULL != current) {
-                    dump_process_info("kernel_", pc, cur_instr, pname,
-                            current->pid, tid, km->name, km->file, km->base);
-                    found_lib = true;
-                    break;
-                } else {
-                    dump_noprocess_info(pc, cur_instr, tid, km->name, km->file,
-                            km->base);
-                    found_lib = true;
-                    break;
+    if (!found_lib) {
+        // dump info on the kernel module for the current PC, if there is one
+        GArray *kms = get_modules(cpu);
+        if (kms != NULL) {
+            for (int i = 0; i < kms->len; i++) {
+                OsiModule *km = &g_array_index(kms, OsiModule, i);
+                if ((pc >= km->base) && (pc < (km->base + km->size))) {
+                    if (NULL != current) {
+                        dump_process_info("true", pc, cur_instr, pname,
+                                current->pid, tid, km->name, km->file,
+                                km->base);
+                        found_lib = true;
+                        break;
+                    } else {
+                        dump_noprocess_info("true", pc, cur_instr, tid,
+                                km->name, km->file, km->base);
+                        found_lib = true;
+                        break;
+                    }
                 }
             }
+            g_array_free(kms, true);
         }
-        g_array_free(kms, true);
     }
 
     if (!found_lib) {
         if (NULL != current) {
-            dump_process_info("?_", pc, cur_instr, pname, current->pid, tid,
+            dump_process_info("false", pc, cur_instr, pname, current->pid, tid,
                     UNKNOWN_ITEM, UNKNOWN_ITEM, 0);
         } else {
-            dump_noprocess_info(pc, cur_instr, tid, UNKNOWN_ITEM, UNKNOWN_ITEM,
-                    0);
+            dump_noprocess_info("false", pc, cur_instr, tid, UNKNOWN_ITEM,
+                    UNKNOWN_ITEM, 0);
         }
     }
 
