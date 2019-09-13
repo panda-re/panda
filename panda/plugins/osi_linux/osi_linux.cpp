@@ -191,7 +191,9 @@ void get_process_info(CPUState *env, GArray **out,
 	return;
 
 error:
-	g_array_free(*out, true);  // safe even when *out == NULL
+	if(*out != NULL) {
+		g_array_free(*out, true);
+	}
 	*out = NULL;
 	return;
 }
@@ -312,8 +314,7 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
  */
 void on_get_current_process_handle(CPUState *env, OsiProcHandle **out) {
 	OsiProcHandle *p = NULL;
-	target_ptr_t kernel_esp = panda_current_sp(env);
-	target_ptr_t ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+	target_ptr_t ts = kernel_profile->get_current_task_struct(env);
 	if (ts) {
 		p = (OsiProcHandle *)g_malloc(sizeof(OsiProcHandle));
 		fill_osiprochandle(env, p, ts);
@@ -367,7 +368,9 @@ void on_get_libraries(CPUState *env, OsiProc *p, GArray **out) {
 	return;
 
 error0:
-	g_array_free(*out, true);  // safe even when *out == NULL
+	if(*out != NULL) {
+		g_array_free(*out, true);
+	}
 	*out = NULL;
 	return;
 }

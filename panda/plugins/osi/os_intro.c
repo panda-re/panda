@@ -156,6 +156,14 @@ bool init_plugin(void *self) {
             printf("Looking for kconffile in %s\n", kconffile);
             kconffile_canon = realpath(kconffile, NULL);
         }
+        if (kconffile_canon == NULL) {
+            g_free(kconffile);
+            kconffile =
+                g_build_filename(progdir, "..", "lib", "panda", TARGET_NAME,
+                                 "osi_linux", "kernelinfo.conf", NULL);
+            printf("Looking for kconffile in %s\n", kconffile);
+            kconffile_canon = realpath(kconffile, NULL);
+        }
         g_free(progdir);
         assert(kconffile_canon != NULL);
 

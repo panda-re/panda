@@ -28,7 +28,7 @@ Example
 
 To collect unigram statistics during a replay:
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
         -panda callstack_instr -panda unigrams
 
 For another example of using `unigrams`, and what you can do by computing simple statistics based on the histograms it gives you, you can see the blog post [Breaking Spotify DRM with PANDA](http://moyix.blogspot.com/2014/07/breaking-spotify-drm-with-panda.html).

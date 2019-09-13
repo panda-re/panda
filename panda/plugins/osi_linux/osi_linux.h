@@ -200,11 +200,6 @@ static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _r
 ****************************************************************** */
 
 /**
- * @brief Retrieves the task_struct address using the thread_info address.
- */
-IMPLEMENT_OFFSET_GET(get_task_struct, thread_info_addr, target_ptr_t, ki.task.task_offset, 0)
-
-/**
  * @brief Retrieves the thread group address from task_struct.
  * If the thread group address points back to itself, then the task_struct
  * corresponds to a process.

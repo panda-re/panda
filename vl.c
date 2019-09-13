@@ -4255,6 +4255,13 @@ int main(int argc, char **argv, char **envp)
                         }
                         else {                        
                             char *plugin_path = panda_plugin_path((const char *) plugin_start);
+                            if (NULL == plugin_path) {
+                                fprintf(stderr,
+                                        PANDA_MSG_FMT
+                                        "Failed to resolve path for plugin.\n",
+                                        plugin_start);
+                                abort();
+                            }
                             panda_plugin_files[nb_panda_plugins] = plugin_path;
                             panda_plugin_names[nb_panda_plugins] = strdup(plugin_start);
                             nb_panda_plugins++;

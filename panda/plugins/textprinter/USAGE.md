@@ -67,7 +67,7 @@ First create a file called `tap_points.txt` with your tap points. The following 
 
 Then run PANDA with `textprinter`:
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
         -panda callstack_instr,stack_type=threaded -panda textprinter
 
 You will get output in `read_tap_buffers.txt.gz` and `write_tap_buffers.txt.gz`. This snippet of such a log file shows four bytes (`0x62 0x72 0x61 0x6e`) being written to address `0x003f3830`:

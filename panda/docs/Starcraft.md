@@ -27,7 +27,7 @@ Now `stringsearch` will watch every memory read/write for this string.
 Let's run PANDA with stringsearch turned on. It requires the
 `callstack_instr` plugin, too.
 
-	panda/qemu/i386-softmmu/qemu-system-i386 -replay starcraft4 -display none -panda 'callstack_instr;stringsearch'
+	panda/qemu/i386-softmmu/panda-system-i386 -replay starcraft4 -display none -panda 'callstack_instr;stringsearch'
 
 Now `stringsearch` will give us a bunch of matches, the first of which
 are:

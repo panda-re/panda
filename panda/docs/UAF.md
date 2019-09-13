@@ -21,7 +21,7 @@ replay that's relevant to us. We aren't quite sure what's happening, so
 let's use the replaymovie plugin to make a video of replay execution.
 Run:
 
-	panda/qemu/x86_64-softmmu/qemu-system-x86_64 -m 1024 -replay cve-2011-1255-crash \
+	panda/qemu/x86_64-softmmu/panda-system-x86_64 -m 1024 -replay cve-2011-1255-crash \
         -display none -panda 'replaymovie'
 
 This will dump out a bunch of raw image files. Luckily, the replaymovie
@@ -44,7 +44,7 @@ three lines into `search_strings.txt`:
 
 Now run the stringsearch plugin:
 	
-	panda/qemu/x86_64-softmmu/qemu-system-x86_64 -m 1024 -replay cve-2011-1255-crash \
+	panda/qemu/x86_64-softmmu/panda-system-x86_64 -m 1024 -replay cve-2011-1255-crash \
         -display none -panda 'callstack_instr;stringsearch'
 
 The output (abberviated here) will look something like:
@@ -102,7 +102,7 @@ Our reduced log will start at instruction `398546927` (which was
 reported as the first match for `<html`) and end at `1122107469`, the
 first match for `"has stopped working`.
 
-	panda/qemu/x86_64-softmmu/qemu-system-x86_64 -m 1024 -replay cve-2011-1255-crash \
+	panda/qemu/x86_64-softmmu/panda-system-x86_64 -m 1024 -replay cve-2011-1255-crash \
         -display none -panda 'scissors:start=398546927,end=1122107469,name=crash_reduced`
 
 Once this runs, we'll have a replay of around 700 million instructions
@@ -139,7 +139,7 @@ We can dump out their contents by creating a file called
 
 And then running the `textprinter` plugin:
 
-    panda/qemu/x86_64-softmmu/qemu-system-x86_64 -display none -m 1024 -replay crash_reduced \
+    panda/qemu/x86_64-softmmu/panda-system-x86_64 -display none -m 1024 -replay crash_reduced \
         -panda 'callstack_instr;textprinter'
 
 This creates two files containing all the data read and written at those
@@ -194,7 +194,7 @@ functions.
 
 Now we can run the use after free detector:
 
-    panda/qemu/x86_64-softmmu/qemu-system-x86_64 -display none -m 1024 -replay crash_reduced \
+    panda/qemu/x86_64-softmmu/panda-system-x86_64 -display none -m 1024 -replay crash_reduced \
         -panda 'callstack_instr;useafterfree'
 
 Its output contains many warnings of the form `READING INVALID POINTER`;

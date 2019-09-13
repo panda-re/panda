@@ -4,7 +4,7 @@ Time-travel debugging requires the [`checkpoint`](../plugins/checkpoint) plugin 
 
 To enable checkpoints and time-travel debugging, and halt the replay until a GDB client attaches,
 ```sh
-$PANDA_PATH/build/x86_64-softmmu/qemu-system-x86_64 -replay foo -S -s -panda checkpoint
+$PANDA_PATH/build/x86_64-softmmu/panda-system-x86_64 -replay foo -S -s -panda checkpoint
 ```
 
 To attach the GDB client and load PANDA commands, run

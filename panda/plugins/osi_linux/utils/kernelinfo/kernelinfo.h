@@ -20,7 +20,7 @@
  * Declaring the structs as packed will eliminate the false positives.
  * This may be useful when debugging osi_linux or adding support for new
  * kernels. However, packed structs may be slower to access in practice.
- * For this, we keep packing of by default and bear with the false
+ * For this, we keep packing off by default and bear with the false
  * positives.
  */
 #if 0
@@ -44,9 +44,10 @@ PACKED_STRUCT(version) {
  * @brief Information and offsets related to `struct task_struct`.
  */
 PACKED_STRUCT(task_info) {
+    uint64_t per_cpu_offset_0;
+    uint64_t current_task_addr;
 	uint64_t init_addr;			/**< Address of the `struct task_struct` of the init task. */
 	size_t size;				/**< Size of `struct task_struct`. */
-	int task_offset;			/**< Offset of task_struct in the thread_info struct. */
 	union {
 		int tasks_offset;			/**< TODO: add documentation for the rest of the struct members */
 		int next_task_offset;
@@ -166,7 +167,7 @@ PACKED_STRUCT(kernelinfo) {
 #if defined(__G_LIB_H__) || defined(DOXYGEN)
 /*!
  * \def DEFAULT_KERNELINFO_FILE
- * Default name for the kerne info configuration file.
+ * Default name for the kernel info configuration file.
  */
 #define DEFAULT_KERNELINFO_FILE "kernelinfo.conf"
 

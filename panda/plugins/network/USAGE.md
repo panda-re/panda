@@ -28,5 +28,5 @@ Example
 
 To save traffic to `foo.pcap`:
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
         -panda network:file=foo.pcap

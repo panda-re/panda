@@ -25,7 +25,7 @@ The recording files will be in
 
 You can replay with
 
-$PANDA_DIR/build/i386-softmmu/qemu-system-i386 -replay ./rcp-panda/ps-recording
+$PANDA_DIR/build/i386-softmmu/panda-system-i386 -replay ./rcp-panda/ps-recording
 
 Assuming PANDA_DIR is path to your panda directory and you built under
 the build dir. If you built somewhere else, set PANDA_BUILD env to your build
@@ -53,10 +53,10 @@ Arch = namedtuple('Arch', ['dir', 'binary', 'prompt', 'qcow', 'cdrom', 'extra_fi
 Arch.__new__.__defaults__ = (None,None)
 
 SUPPORTED_ARCHES = {
-    'i386': Arch('i386-softmmu', 'qemu-system-i386', "root@debian-i386:~#", "wheezy_panda2.qcow2", "ide1-cd0"),
-    'x86_64': Arch('x86_64-softmmu', 'qemu-system-x86_64', "root@debian-amd64:~#", "wheezy_x64.qcow2", "ide1-cd0"),
-    'ppc': Arch('ppc-softmmu', 'qemu-system-ppc', "root@debian-powerpc:~#", "ppc_wheezy.qcow", "ide1-cd0"),
-    'arm': Arch('arm-softmmu', 'qemu-system-arm', "root@debian-armel:~#", "arm_wheezy.qcow", "scsi0-cd2", 
+    'i386': Arch('i386-softmmu', 'panda-system-i386', "root@debian-i386:~#", "wheezy_panda2.qcow2", "ide1-cd0"),
+    'x86_64': Arch('x86_64-softmmu', 'panda-system-x86_64', "root@debian-amd64:~#", "wheezy_x64.qcow2", "ide1-cd0"),
+    'ppc': Arch('ppc-softmmu', 'panda-system-ppc', "root@debian-powerpc:~#", "ppc_wheezy.qcow", "ide1-cd0"),
+    'arm': Arch('arm-softmmu', 'panda-system-arm', "root@debian-armel:~#", "arm_wheezy.qcow", "scsi0-cd2", 
         extra_files=['vmlinuz-3.2.0-4-versatile', 'initrd.img-3.2.0-4-versatile'],
         extra_args='-M versatilepb -append "root=/dev/sda1" -kernel {DOT_DIR}/vmlinuz-3.2.0-4-versatile -initrd {DOT_DIR}/initrd.img-3.2.0-4-versatile')
 }

@@ -24,4 +24,4 @@ None
 Example
 -------
 
-`qemu-system-i386 -net nic -net user -replay foo -panda net`
+`panda-system-i386 -net nic -net user -replay foo -panda net`

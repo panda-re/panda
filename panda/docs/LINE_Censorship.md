@@ -57,7 +57,7 @@ writes for the UTF-8 encoded versions of these strings. Create a file
 Now, run the replay. Note that we have to pass in the dummy QCOW2 we
 created:
 
-    ../arm-softmmu/qemu-system-arm -m 2048 -replay line2 -M android_arm -android -cpu cortex-a9 -kernel /dev/null \
+    ../arm-softmmu/panda-system-arm -m 2048 -replay line2 -M android_arm -android -cpu cortex-a9 -kernel /dev/null \
       -global goldfish_mmc.sd_path=/dev/null -global goldfish_nand.system_path=dummy2.qcow2 \
       -global goldfish_nand.user_data_path=dummy.qcow2 \
       -panda 'callstack_instr;stringsearch:name=line'
@@ -101,7 +101,7 @@ information where both strings matched:
 
 And run another replay with `textprinter` turned on:
 
-    ../arm-softmmu/qemu-system-arm -m 2048 -replay line2 -M android_arm -android -cpu cortex-a9 -kernel /dev/null \
+    ../arm-softmmu/panda-system-arm -m 2048 -replay line2 -M android_arm -android -cpu cortex-a9 -kernel /dev/null \
       -global goldfish_mmc.sd_path=/dev/null -global goldfish_nand.system_path=dummy2.qcow2 \
       -global goldfish_nand.user_data_path=dummy.qcow2 \
       -panda 'callstack_instr;textprinter'
@@ -205,7 +205,7 @@ address space identifier:
 
 Now we run `bufmon`:
 
-    ../arm-softmmu/qemu-system-arm -m 2048 -replay line2 -M android_arm -android -cpu cortex-a9 -kernel /dev/null \
+    ../arm-softmmu/panda-system-arm -m 2048 -replay line2 -M android_arm -android -cpu cortex-a9 -kernel /dev/null \
       -global goldfish_mmc.sd_path=/dev/null -global goldfish_nand.system_path=dummy2.qcow2 \
       -global goldfish_nand.user_data_path=dummy.qcow2 \
       -panda 'callstack_instr;bufmon'

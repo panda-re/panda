@@ -57,7 +57,7 @@ typedef QSIMPLEQ_HEAD(ACLList, ACLRule) ACLList;
 static void usage(void)
 {
     fprintf(stderr,
-            "Usage: qemu-bridge-helper [--use-vnet] --br=bridge --fd=unixfd\n");
+            "Usage: panda-bridge-helper [--use-vnet] --br=bridge --fd=unixfd\n");
 }
 
 static int parse_acl_file(const char *filename, ACLList *acl_list)

@@ -85,11 +85,11 @@ There are a number of command line arguments available to the taint plugin:
    for precise tracking.
 
 The default invocation of of the taint plugin on a replay is:
-`<architecture>/qemu-system-<arch> -replay <replay_name> -panda taint`.
+`<architecture>/panda-system-<arch> -replay <replay_name> -panda taint`.
 
 To use any of these options, for example to use binary taint to look for any
 labeled data leaving the system from the network, the command is:
-`<architecture>/qemu-system-<arch> -replay <replay_name> -panda
+`<architecture>/panda-system-<arch> -replay <replay_name> -panda
 taint:label_mode=binary,query_outgoing_network=1`.
 
 Dealing with QEMU Helper Functions

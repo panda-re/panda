@@ -24,6 +24,15 @@ case $line in
     # save for the next definitions
     eval "$name=\$define_value"
     ;;
+ panda_*dir=*) # panda-specific directory configuration
+    name=${line%=*}
+    value=${line#*=}
+    define_name=$(echo $name | LC_ALL=C tr '[a-z]' '[A-Z]')
+    eval "define_value=\"$value\""
+    echo "#define CONFIG_$define_name \"$define_value\""
+    # save for the next definitions
+    eval "$name=\$define_value"
+    ;;
  prefix=*)
     # save for the next definitions
     prefix=${line#*=}

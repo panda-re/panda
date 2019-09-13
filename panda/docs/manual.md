@@ -86,8 +86,8 @@ To build PANDA and it's dependencies, use the install script for your OS,
 Don't worry; it won't actually install PANDA to a system
 directory, despite the name. If you already have the dependencies you can just
 run `qemu/build.sh`. Once it's built, you will find the QEMU binaries in
-`i386-softmmu/qemu-system-i386`, `x86_64-softmmu/qemu-system-x86_64`, and
-`arm-softmmu/qemu-system-arm`. You'll need to create a qcow (disk image) for use
+`i386-softmmu/panda-system-i386`, `x86_64-softmmu/panda-system-x86_64`, and
+`arm-softmmu/panda-system-arm`. You'll need to create a qcow (disk image) for use
 with PANDA; the internet has documentation on how to do this.
 
 We've found that the most effective workflow in PANDA is to collect a recording
@@ -116,7 +116,7 @@ execution.
 
 ### Replay
 
-You can replay a recording (those two files) using `qemu-system-$arch -replay
+You can replay a recording (those two files) using `panda-system-$arch -replay
 replay_name`. Make sure you pass the same memory size to the VM as you did for
 the recording. Otherwise QEMU will fail with an incomprehensible error.
 
@@ -312,26 +312,40 @@ are hoping to support dynamic configuration of code generation soon.
 
 
 #### Miscellany
-```C
-void panda_memsavep(FILE *out);
-```
-Saves a physical memory snapshot into the open file pointer `out`. This function
-is guaranteed not to perturb guest state.
-```C
-target_ulong panda_current_asid(CPUState *env);
-```
-Returns the current asid for a variety of architectures (`cr3` for x86, e.g.).
-```C
-bool panda_in_kernel(CPUState *env);
-```
-Returns true if the processor is in the privilege level corresponding to
-executing kernel code for various architectures.
-
-```C
-void panda_disas(FILE *out, void *code, unsigned long size);
-```
-Writes a textual representation of disassembly of the guest code at virtual
-address `code` of `size` bytes.
+  * ```C
+    void panda_memsavep(FILE *out);
+    ```
+    Saves a physical memory snapshot into the open file pointer `out`.
+    This function is guaranteed not to perturb guest state.
+  * ```C
+    target_ulong panda_current_asid(CPUState *cpu);
+    ```
+    Returns the current asid for any of the PANDA supported
+    architectures (e.g. `cr3` for x86).
+  * ```C
+    bool panda_in_kernel(CPUState *cpu);
+    ```
+    Returns `true` if the processor is in the privilege level
+    corresponding to executing kernel code for any of the PANDA
+    supported architectures.
+  * ```C
+    target_ulong panda_current_sp(CPUState *cpu);
+    ```
+    Returns the guest stack pointer for any of the PANDA supported
+    architectures.
+  * ```C
+    target_ulong panda_get_retval(CPUState *cpu);
+    ```
+    Retrieves the return value of a returned call for any of the
+    PANDA supported architectures. The function has to be called in
+    the proper context in order to return a meaningful value. If the
+    context is not right (i.e. the return value has already been
+    overwritten), it will return garbage.
+  * ```C
+    void panda_disas(FILE *out, void *code, unsigned long size);
+    ```
+    Writes a textual representation of disassembly of the guest code
+    at virtual address `code` of `size` bytes.
 
 ## Record/Replay Details
 

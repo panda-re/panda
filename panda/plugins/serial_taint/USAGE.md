@@ -29,7 +29,7 @@ None
 Example
 -------
 ```
-qemu-system-i386 -m 2048 \
+panda-system-i386 -m 2048 \
   -chardev pipe,id=com1,path=/tmp/com1 -device pci-serial,chardev=com1 \
   -replay serialwrite -panda stringsearch:str="hello world" \
   -panda tstringsearch -panda serial_taint
