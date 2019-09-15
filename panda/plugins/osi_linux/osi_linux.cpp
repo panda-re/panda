@@ -300,13 +300,41 @@ void on_get_process_handles(CPUState *env, GArray **out) {
  * @brief PPP callback to retrieve info about the currently running process.
  */
 void on_get_current_process(CPUState *env, OsiProc **out) {
-	OsiProc *p = NULL;
-	target_ptr_t ts = kernel_profile->get_current_task_struct(env);
-	if (ts) {
-		p = (OsiProc *)g_malloc(sizeof(OsiProc));
-		fill_osiproc(env, p, ts);
-	}
-	*out = p;
+    static target_ptr_t last_ts = 0x0;
+    static target_ptr_t cached_taskd = 0x0;
+    static char *cached_name = (char *)g_malloc0(ki.task.comm_size);
+    static target_ptr_t cached_pid = -1;
+    static target_ptr_t cached_ppid = -1;
+    static void *cached_comm_ptr = NULL;
+    // OsiPage - TODO
+
+    OsiProc *p = NULL;
+    target_ptr_t ts = kernel_profile->get_current_task_struct(env);
+    if (0x0 != ts) {
+        p = (OsiProc *)g_malloc(sizeof(*p));
+        if ((ts != last_ts) || (NULL == cached_comm_ptr) ||
+            (0 != strncmp((char *)cached_comm_ptr, cached_name,
+                          ki.task.comm_size))) {
+            last_ts = ts;
+            fill_osiproc(env, p, ts);
+
+            // update the cache
+            cached_taskd = p->taskd;
+            memset(cached_name, 0, ki.task.comm_size);
+            strncpy(cached_name, p->name, ki.task.comm_size);
+            cached_pid = p->pid;
+            cached_ppid = p->ppid;
+            cached_comm_ptr = panda_map_virt_to_host(
+                env, ts + ki.task.comm_offset, ki.task.comm_size);
+        } else {
+            p->taskd = cached_taskd;
+            p->name = g_strdup(cached_name);
+            p->pid = cached_pid;
+            p->ppid = cached_ppid;
+            p->pages = NULL;
+        }
+    }
+    *out = p;
 }
 
 /**
@@ -379,12 +407,24 @@ error0:
  * @brief PPP callback to retrieve current thread.
  */
 void on_get_current_thread(CPUState *env, OsiThread **out) {
-	OsiThread *t = NULL;
-	target_ptr_t ts = kernel_profile->get_current_task_struct(env);
-	if (ts) {
-		t = (OsiThread *)g_malloc(sizeof(OsiThread));
-		fill_osithread(env, t, ts);
-	}
+    static target_ptr_t last_ts = 0x0;
+    static target_pid_t cached_tid = 0;
+    static target_pid_t cached_pid = 0;
+
+    OsiThread *t = NULL;
+    target_ptr_t ts = kernel_profile->get_current_task_struct(env);
+    if (0x0 != ts) {
+        t = (OsiThread *)g_malloc(sizeof(OsiThread));
+        if (last_ts != ts) {
+            fill_osithread(env, t, ts);
+            cached_tid = t->tid;
+            cached_pid = t->pid;
+        } else {
+            t->tid = cached_tid;
+            t->pid = cached_pid;
+        }
+    }
+
 	*out = t;
 }
 
