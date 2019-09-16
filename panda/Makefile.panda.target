@@ -63,6 +63,10 @@ PANDA_CONFIG_FILES=$(SRC_PATH)/panda/plugins/config.panda \
 				   $(SRC_PATH)/panda/plugins/config.llvm.panda \
 				   $(if $(EXTRA_PLUGINS_PATH),$(EXTRA_PLUGINS_PATH)/panda/plugins/config.panda,)
 
+-include $(wildcard $(PLUGINS_PATH)/panda/plugins/*/plugin_plugin.d)
+
+-include $(wildcard $(EXTRA_PLUGINS_PATH)/panda/plugins/*/plugin_plugin.d)
+
 plog.proto: $(PROTO_FILES) $(PANDA_CONFIG_FILES)
 	$(call quiet-command,\
 		$(SRC_PATH)/panda/scripts/pp.py $@ $(PANDA_CONFIG_FILES),\
