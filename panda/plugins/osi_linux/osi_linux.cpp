@@ -499,7 +499,7 @@ unsigned long long  osi_linux_fd_to_pos(CPUState *env, OsiProc *p, int fd) {
 /* ******************************************************************
  Testing functions
 ****************************************************************** */
-#if (defined OSI_LINUX_TEST)
+#if defined(OSI_LINUX_TEST)
 /**
  * @brief Tests the osi_linux functionality by directly calling the
  * respective introspection functions. For testing the functions via
@@ -507,24 +507,27 @@ unsigned long long  osi_linux_fd_to_pos(CPUState *env, OsiProc *p, int fd) {
  */
 int osi_linux_test(CPUState *env, target_ulong oldval, target_ulong newval) {
 	static uint32_t asid_change_count = 0;
-	char mode = panda_in_kernel(env) ? 'K' : 'U';
+	GArray *ps = NULL;
 
-	LOG_INFO("--- START(%c) %06u ------------------------------------------", mode, asid_change_count);
-	OsiProcs *ps = NULL;
 	on_get_processes(env, &ps);
-	for (uint32_t i=0; i<ps->num; i++) {
-		OsiProc *p = &ps->proc[i];
-		LOG_INFO(TARGET_FMT_PID ":" TARGET_FMT_PID ":%s:" TARGET_PTR_FMT ":" TARGET_PTR_FMT,
-				(int)p->pid, (int)p->ppid, p->name, p->asid, p->taskd);
+	assert(ps != NULL && ps->len > 0 && "no processes retrieved");
+
+#if PANDA_LOG_LEVEL >= PANDA_LOG_INFO
+	char mode = panda_in_kernel(env) ? 'K' : 'U';
+	LOG_INFO("--- START(%c) %06u ------------------------------------------", mode, asid_change_count);
+	for (uint32_t i = 0; i < ps->len; i++) {
+		OsiProc *p = &g_array_index(ps, OsiProc, i);
+		LOG_INFO(TARGET_PID_FMT ":" TARGET_PID_FMT ":%s:" TARGET_PTR_FMT ":" TARGET_PTR_FMT,
+				 p->pid, p->ppid, p->name, p->asid, p->taskd);
 #if defined(OSI_LINUX_TEST_MODULES)
-		OsiModules *ms = NULL;
+		GArray *ms = NULL;
 		on_get_libraries(env, p, &ms);
 		if (ms != NULL) {
-			for (uint32_t j=0; j<ms->num; j++) {
-				OsiModule *m = &ms->module[j];
+			for (uint32_t j = 0; j < ms->len; j++) {
+				OsiModule *m = &g_array_index(ms, OsiModule, j);
 				LOG_INFO("\t" TARGET_PTR_FMT ":%04up:%s:%s", m->base, NPAGES(m->size), m->name, m->file);
 			}
-			on_free_osimodules(ms);
+			g_array_free(ms, true);
 		}
 #endif
 #if defined(OSI_LINUX_TEST_MODULES) && defined(OSI_LINUX_TEST_FDNAME)
@@ -540,12 +543,14 @@ int osi_linux_test(CPUState *env, target_ulong oldval, target_ulong newval) {
 		}
 #endif
 	}
-	on_free_osiprocs(ps);
 	LOG_INFO("--- END(%c)  %06u ------------------------------------------", mode, asid_change_count);
+#endif // PANDA_LOG_LEVEL >= PANDA_LOG_INFO
+
+	g_array_free(ps, true);
 	asid_change_count++;
 	return 0;
 }
-#endif
+#endif // OSI_LINUX_TEST
 
 /* ******************************************************************
  Plugin Initialization/Cleanup
@@ -556,7 +561,7 @@ int osi_linux_test(CPUState *env, target_ulong oldval, target_ulong newval) {
  */
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) || defined(TARGET_ARM)
-#if (defined OSI_LINUX_TEST)
+#if defined(OSI_LINUX_TEST)
 	panda_cb pcb = { .asid_changed = osi_linux_test };
 	panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
 #endif
