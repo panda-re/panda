@@ -63,7 +63,7 @@ PANDA_CONFIG_FILES=$(SRC_PATH)/panda/plugins/config.panda \
 				   $(SRC_PATH)/panda/plugins/config.llvm.panda \
 				   $(if $(EXTRA_PLUGINS_PATH),$(EXTRA_PLUGINS_PATH)/panda/plugins/config.panda,)
 
--include $(wildcard $(PLUGINS_PATH)/panda/plugins/*/plugin_plugin.d)
+-include $(wildcard $(SRC_PATH)/panda/plugins/*/plugin_plugin.d)
 
 -include $(wildcard $(EXTRA_PLUGINS_PATH)/panda/plugins/*/plugin_plugin.d)
 
