@@ -41,7 +41,7 @@ void on_get_libraries(CPUState *env, OsiProc *p, GArray **out);
 void on_get_current_thread(CPUState *env, OsiThread *t);
 
 struct kernelinfo ki;
-struct KernelProfile const *kernel_profile = &DEFAULT_PROFILE;
+struct KernelProfile const *kernel_profile;
 
 /* ******************************************************************
  Helpers
@@ -470,15 +470,58 @@ int osi_linux_test(CPUState *env, target_ulong oldval, target_ulong newval) {
 /* ******************************************************************
  Plugin Initialization/Cleanup
 ****************************************************************** */
+/**
+ * @brief Updates any per-cpu offsets we need for introspection.
+ * This allows kernel profiles to be independent of boot-time configuration.
+ * If ki.task.per_cpu_offsets_addr is set to 0, the values of the per-cpu
+ * offsets in the profile will not be updated.
+ *
+ * Currently the only per-cpu offset we use in osi_linux is
+ * ki.task.per_cpu_offset_0_addr.
+ */
+void init_per_cpu_offsets(CPUState *cpu) {
+	// old kernel - no per-cpu offsets to update
+	if (PROFILE_KVER_LE(ki, 2, 4, 254)) {
+		return;
+	}
+
+	// skip update because there's no per_cpu_offsets_addr
+	if (ki.task.per_cpu_offsets_addr == 0) {
+		LOG_INFO("Using profile-provided value for ki.task.per_cpu_offset_0_addr: "
+				 TARGET_PTR_FMT, (target_ptr_t)ki.task.per_cpu_offset_0_addr);
+		return;
+	}
+
+	// skip update because of failure to read from per_cpu_offsets_addr
+	target_ptr_t per_cpu_offset_0_addr;
+	auto r = struct_get(cpu, &per_cpu_offset_0_addr, ki.task.per_cpu_offsets_addr,
+			            0*sizeof(target_ptr_t));
+	if (r != struct_get_ret_t::SUCCESS) {
+		LOG_ERROR("Unable to update value of ki.task.per_cpu_offset_0_addr.");
+		assert(false);
+		return;
+	}
+
+	ki.task.per_cpu_offset_0_addr = per_cpu_offset_0_addr;
+	LOG_INFO("Updated value for ki.task.per_cpu_offset_0_addr: "
+			 TARGET_PTR_FMT, (target_ptr_t)ki.task.per_cpu_offset_0_addr);
+}
 
 /**
  * @brief Initializes plugin.
  */
 bool init_plugin(void *self) {
+	// Register callbacks to the PANDA core.
 #if defined(TARGET_I386) || defined(TARGET_ARM)
+	{
+		panda_cb pcb = { .after_machine_init = init_per_cpu_offsets };
+		panda_register_callback(self, PANDA_CB_AFTER_MACHINE_INIT, pcb);
+	}
 #if defined(OSI_LINUX_TEST)
-	panda_cb pcb = { .asid_changed = osi_linux_test };
-	panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
+	{
+		panda_cb pcb = { .asid_changed = osi_linux_test };
+		panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
+	}
 #endif
 
 	// Read the name of the kernel configuration to use.
@@ -496,8 +539,10 @@ bool init_plugin(void *self) {
 	g_free(kconf_file);
 	g_free(kconf_group);
 
-	if (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) <= KERNEL_VERSION(2, 4, 254)) {
+	if (PROFILE_KVER_LE(ki, 2, 4, 254)) {
 		kernel_profile = &KERNEL24X_PROFILE;
+	} else {
+		kernel_profile = &DEFAULT_PROFILE;
 	}
 
 	PPP_REG_CB("osi", on_get_processes, on_get_processes);

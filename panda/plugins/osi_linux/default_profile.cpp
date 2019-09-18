@@ -4,11 +4,12 @@
 /**
  * @brief Retrieves the task_struct address using per cpu information.
  */
-IMPLEMENT_OFFSET_GET(get_task_struct, current_task_addr, target_ptr_t, ki.task.per_cpu_offset_0, 0)
-
 target_ptr_t default_get_current_task_struct(CPUState *cpu)
 {
-	target_ptr_t ts = get_task_struct(cpu, ki.task.current_task_addr);
+    struct_get_ret_t err;
+    target_ptr_t ts;
+    err = struct_get(cpu, &ts, ki.task.current_task_addr, ki.task.per_cpu_offset_0_addr);
+    assert(err == struct_get_ret_t::SUCCESS && "failed to get current task struct");
 	return ts;
 }
 
