@@ -50,7 +50,8 @@ PACKED_STRUCT(version) {
  * @brief Information and offsets related to `struct task_struct`.
  */
 PACKED_STRUCT(task_info) {
-    uint64_t per_cpu_offset_0;
+    uint64_t per_cpu_offsets_addr;
+    uint64_t per_cpu_offset_0_addr;
     uint64_t current_task_addr;
 	uint64_t init_addr;			/**< Address of the `struct task_struct` of the init task. */
 	size_t size;				/**< Size of `struct task_struct`. */
