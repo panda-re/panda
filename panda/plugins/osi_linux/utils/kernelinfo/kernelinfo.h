@@ -30,6 +30,12 @@
 #endif
 
 #define KERNEL_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
+#define PROFILE_KVER_EQ(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) == KERNEL_VERSION(_va, _vb, _vc))
+#define PROFILE_KVER_NE(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) != KERNEL_VERSION(_va, _vb, _vc))
+#define PROFILE_KVER_LT(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) < KERNEL_VERSION(_va, _vb, _vc))
+#define PROFILE_KVER_GT(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) > KERNEL_VERSION(_va, _vb, _vc))
+#define PROFILE_KVER_LE(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) <= KERNEL_VERSION(_va, _vb, _vc))
+#define PROFILE_KVER_GE(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) >= KERNEL_VERSION(_va, _vb, _vc))
 
 /**
  * @brief Kernel Version information
