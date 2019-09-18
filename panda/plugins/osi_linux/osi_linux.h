@@ -79,25 +79,9 @@
 #endif
 
 /**
- * @brief Page size used by the kernel. Used to calculate THREADINFO_MASK.
- */
-#define PAGE_SIZE 4096
-
-/**
  * @brief Returns the number of pages required to store n bytes.
  */
 #define NPAGES(n) ((uint32_t)((n) >> 12))
-
-/**
- * @brief Mask to apply on ESP to get the thread_info address.
- *
- * The value should be either ~8191 or ~4095, depending on the
- * size of the stack used by the kernel.
- *
- * @see Understanding the Linux Kernel 3rd ed., pp85.
- * @todo Check if this value can be read from kernelinfo.conf.
- */
-#define THREADINFO_MASK (~(PAGE_SIZE + PAGE_SIZE - 1))
 
 extern struct kernelinfo ki;
 
