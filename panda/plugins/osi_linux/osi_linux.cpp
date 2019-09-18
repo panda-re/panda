@@ -197,6 +197,7 @@ error:
 	*out = NULL;
 	return;
 }
+
 /**
  * @brief Fills an OsiProcHandle struct.
  */
