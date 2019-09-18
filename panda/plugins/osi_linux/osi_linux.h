@@ -16,12 +16,76 @@
  * See the COPYING file in the top-level directory.
  */
 #pragma once
+#if defined(__cplusplus)
+#include <cstdint>
+#include <initializer_list>
+#include <glib.h>
+#endif
 #include "panda/plugin.h"
 #include "osi/osi_types.h"
 #include "utils/kernelinfo/kernelinfo.h"
 #include "osi_linux_debug.h"
+#include "kernel_profile.h"
 
 extern struct kernelinfo ki;
+extern struct KernelProfile const *kernel_profile;
+
+#if defined(__cplusplus)
+typedef enum : int8_t {
+	ERROR_DEREF = -10,
+	ERROR_MEMORY,
+	SUCCESS = 0
+} struct_get_ret_t;
+
+/**
+ * @brief Template function for reading a struct member given a pointer
+ * to the struct and the offset of the member.
+ * This is a proper C++ replacement for the preprocessor hack macro of
+ * IMPLEMENT_OFFSET_GET.
+ */
+template <typename T>
+struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, off_t offset) {
+	if (ptr == (target_ptr_t)NULL) {
+		memset((uint8_t *)v, 0, sizeof(T));
+		return struct_get_ret_t::ERROR_DEREF;
+	}
+    switch(panda_virtual_memory_rw(cpu, ptr+offset, (uint8_t *)v, sizeof(T), 0)) {
+		case -1:
+			memset((uint8_t *)v, 0, sizeof(T));
+			return struct_get_ret_t::ERROR_MEMORY;
+			break;
+		default:
+			return struct_get_ret_t::SUCCESS;
+			break;
+	}
+}
+
+/**
+ * @brief Template function for reading a nested struct member given a
+ * pointer to the top level struct and a series of offsets.
+ * This is a proper C++ replacement for the preprocessor hack macro of
+ * IMPLEMENT_OFFSET_GET*.
+ */
+template <typename T>
+struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, std::initializer_list<off_t> offsets) {
+	// read all but last item as pointers
+    auto it = offsets.begin();
+    auto o = *it;
+    while (true) {
+        it++;
+        if (it == offsets.end()) break;
+        auto r = struct_get(cpu, &ptr, ptr, o);
+		if (r != struct_get_ret_t::SUCCESS) {
+			memset((uint8_t *)v, 0, sizeof(T));
+			return r;
+		}
+        o = *it;
+    }
+
+	// last item is read using the size of the type of v
+    return struct_get(cpu, v, ptr, o);
+}
+#endif
 
 /**
  * @brief IMPLEMENT_OFFSET_GET is a macro for generating uniform
@@ -508,5 +572,93 @@ static inline char *get_name(CPUState *env, target_ptr_t task_struct, char *name
 
 void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr);
 void fill_osithread(CPUState *env, OsiThread *t, target_ptr_t task_addr);
+
+#if defined(__cplusplus)
+/**
+ * @brief Template function for extracting data for all running processes.
+ * This can be used to quickly implement extraction of partial process
+ * information without having to rewrite the process list traversal
+ * code.
+ *
+ * @note The ascii pictogram in kernel_structs.html roughly explains how the
+ * process list traversal works. However, it may be inacurrate for some corner
+ * cases. E.g. it doesn't explain why some inifnite loop cases manifest.
+ * Avoiding these infinite loops was mostly a trial+error process.
+ */
+template <typename ET>
+void get_process_info(CPUState *cpu, GArray **out,
+					  void (*fill_element)(CPUState *, ET *, target_ptr_t),
+					  void (*free_element_contents)(ET *)) {
+	ET element;
+	target_ptr_t ts_first, ts_current;
+	target_ptr_t UNUSED(tg_first), UNUSED(tg_next);
+
+	if (*out == NULL) {
+		// g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
+		*out = g_array_sized_new(false, false, sizeof(ET), 128);
+		g_array_set_clear_func(*out, (GDestroyNotify)free_element_contents);
+	}
+
+#if defined(OSI_LINUX_LIST_FROM_INIT)
+	// Start process enumeration from the init task.
+	ts_first = ki.task.init_addr;
+#else
+	// Start process enumeration (roughly) from the current task. This is the default.
+	ts_first = kernel_profile->get_current_task_struct(cpu);
+
+	// To avoid infinite loops, we need to actually start traversal from the next
+	// process after the thread group leader of the current task.
+	ts_first = kernel_profile->get_group_leader(cpu, ts_first);
+	ts_first = kernel_profile->get_task_struct_next(cpu, ts_first);
+#endif
+
+	ts_current = ts_first;
+	if (ts_first == (target_ptr_t)NULL) goto error;
+#if defined(OSI_LINUX_PSDEBUG)
+	LOG_INFO("START %c:%c " TARGET_PTR_FMT " " TARGET_PTR_FMT, TS_THREAD_CHR(cpu, ts_first),  TS_LEADER_CHR(cpu, ts_first), ts_first, ts_first);
+#endif
+
+	do {
+#if defined(OSI_LINUX_PSDEBUG)
+		LOG_INFO("\t %03u:" TARGET_PTR_FMT ":" TARGET_PID_FMT ":" TARGET_PID_FMT ":%c:%c", a->len, ts_current, get_pid(cpu, ts_current), get_tgid(cpu, ts_current), TS_THREAD_CHR(cpu, ts_current), TS_LEADER_CHR(cpu, ts_current));
+#endif
+		memset(&element, 0, sizeof(ET));
+		fill_element(cpu, &element, ts_current);
+		g_array_append_val(*out, element);
+		OSI_MAX_PROC_CHECK((*out)->len, "traversing process list");
+
+#if defined(OSI_LINUX_LIST_THREADS)
+		// Traverse thread group list.
+		// It is assumed that ts_current is a thread group leader.
+		tg_first = ts_current + ki.task.thread_group_offset;
+		while ((tg_next = get_thread_group(cpu, ts_current)) != tg_first) {
+			ts_current = tg_next - ki.task.thread_group_offset;
+#if defined(OSI_LINUX_PSDEBUG)
+			LOG_INFO("\t %03u:" TARGET_PTR_FMT ":" TARGET_PID_FMT ":" TARGET_PID_FMT ":%c:%c", a->len, ts_current, get_pid(cpu, ts_current), get_tgid(cpu, ts_current), TS_THREAD_CHR(cpu, ts_current), TS_LEADER_CHR(cpu, ts_current));
+#endif
+			memset(&element, 0, sizeof(ET));
+			element_fill(cpu, &element, ts_current);
+			g_array_append_val(*out, element);
+			OSI_MAX_PROC_CHECK((*out)->len, "traversing thread group list");
+		}
+		ts_current = tg_first - ki.task.thread_group_offset;
+#endif
+
+		ts_current = kernel_profile->get_task_struct_next(cpu, ts_current);
+	} while(ts_current != (target_ptr_t)NULL && ts_current != ts_first);
+
+	// memory read error
+	if (ts_current == (target_ptr_t)NULL) goto error;
+
+	return;
+
+error:
+	if(*out != NULL) {
+		g_array_free(*out, true);
+	}
+	*out = NULL;
+	return;
+}
+#endif
 
 /* vim:set tabstop=4 softtabstop=4 noexpandtab: */
