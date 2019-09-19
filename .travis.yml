@@ -30,7 +30,7 @@ addons:
       - libssh2-1-dev
       - liburcu-dev
       - libusb-1.0-0-dev
-      - libvte-2.90-dev
+      - libvte-dev
       - sparse
       - uuid-dev
       - linux-libc-dev
@@ -58,7 +58,7 @@ before_install:
 
 # PANDA
 sudo: required
-dist: trusty
+dist: xenial
 before_install:
     - sudo pip install pycparser
     - git submodule update --init dtc
