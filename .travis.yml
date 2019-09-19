@@ -7,6 +7,9 @@ compiler:
 cache: ccache
 addons:
   apt:
+    sources:
+      - sourceline: 'ppa:phulin/panda'
+      - sourceline: 'deb http://ppa.launchpad.net/phulin/panda/ubuntu xenial main'
     packages:
       # Build dependencies
       - libaio-dev
@@ -33,7 +36,26 @@ addons:
       - libvte-dev
       - sparse
       - uuid-dev
+      # PANDA stuff
       - linux-libc-dev
+      - libcapstone-dev
+      - libdwarf-dev
+      - libelf-dev
+      - libprotobuf-c0-dev
+      - libprotoc-dev
+      - libwireshark-dev
+      - libwiretap-dev
+      - llvm-3.3-dev
+      - clang-3.3
+      - protobuf-c-compiler
+      - protobuf-compiler
+      - python-pip
+      - python-protobuf
+      - python-pycparser
+
+  #git
+  #libc++-dev
+  #pkg-config \
 
 # The channel name "irc.oftc.net#qemu" is encrypted against qemu/qemu
 # to prevent IRC notifications from forks. This was created using:
