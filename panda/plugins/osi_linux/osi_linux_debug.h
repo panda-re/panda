@@ -13,19 +13,19 @@
  *  @brief Debug macros.
  */
 #define HEXDUMP(_buf, _size, _base) \
-	{ \
-		uintptr_t _b = (uintptr_t)_base; \
-		_b = (_b == 0) ? (uintptr_t)_buf : _b; \
-		for (uint32_t _i=0; _i<_size;) { \
-			if (_i % 16 == 0) { printf("%" PRIxPTR "\t", (uintptr_t)_b + _i); } \
-			printf("%02x", ((uint8_t *)_buf)[_i]); \
-			_i++; \
-			if (_i % 16 == 0) { printf("\n"); continue; } \
-			else if (_i % 8 == 0) { printf("  "); continue; } \
-			else { printf(" "); } \
-		} \
-		if (_size % 16 != 0) { printf("\n"); } \
-	}
+    { \
+        uintptr_t _b = (uintptr_t)_base; \
+        _b = (_b == 0) ? (uintptr_t)_buf : _b; \
+        for (uint32_t _i=0; _i<_size;) { \
+            if (_i % 16 == 0) { printf("%" PRIxPTR "\t", (uintptr_t)_b + _i); } \
+            printf("%02x", ((uint8_t *)_buf)[_i]); \
+            _i++; \
+            if (_i % 16 == 0) { printf("\n"); continue; } \
+            else if (_i % 8 == 0) { printf("  "); continue; } \
+            else { printf(" "); } \
+        } \
+        if (_size % 16 != 0) { printf("\n"); } \
+    }
 
 /**
  * @brief Macros to check if a task_struct is a thread (T) or process (P).
@@ -57,11 +57,11 @@
  */
 #if OSI_MAX_PROC > 0
 #define OSI_MAX_PROC_CHECK(n, s) {\
-	uint32_t __n = (n);\
-	if (__n > OSI_MAX_PROC) {\
-		fprintf(stderr, PANDA_MSG "Potential infinite loop at instruction %" PRId64 " while " s ". Breaking out.\n", rr_get_guest_instr_count());\
-		break;\
-	}\
+    uint32_t __n = (n);\
+    if (__n > OSI_MAX_PROC) {\
+        fprintf(stderr, PANDA_MSG "Potential infinite loop at instruction %" PRId64 " while " s ". Breaking out.\n", rr_get_guest_instr_count());\
+        break;\
+    }\
 }
 #else
 #define OSI_MAX_PROC_CHECK(n, s)
@@ -72,3 +72,4 @@
  */
 #define NPAGES(n) ((uint32_t)((n) >> 12))
 
+/* vim:set tabstop=4 softtabstop=4 expandtab: */

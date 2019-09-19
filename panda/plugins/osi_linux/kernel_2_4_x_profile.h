@@ -29,3 +29,5 @@ const KernelProfile KERNEL24X_PROFILE = {
     .get_group_leader = &kernel24x_get_group_leader,
     .get_files_fds = &kernel24x_get_files_fds
 };
+
+/* vim:set tabstop=4 softtabstop=4 expandtab: */

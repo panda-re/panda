@@ -53,4 +53,4 @@ target_ptr_t default_get_file_fds(CPUState *cpu, target_ptr_t files)
     return files_fds;
 }
 
-/* vim:set tabstop=4 softtabstop=4 noexpandtab: */
+/* vim:set tabstop=4 softtabstop=4 expandtab: */

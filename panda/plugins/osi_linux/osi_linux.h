@@ -32,9 +32,9 @@ extern struct KernelProfile const *kernel_profile;
 
 #if defined(__cplusplus)
 typedef enum : int8_t {
-	ERROR_DEREF = -10,
-	ERROR_MEMORY,
-	SUCCESS = 0
+    ERROR_DEREF = -10,
+    ERROR_MEMORY,
+    SUCCESS = 0
 } struct_get_ret_t;
 
 /**
@@ -45,19 +45,19 @@ typedef enum : int8_t {
  */
 template <typename T>
 struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, off_t offset) {
-	if (ptr == (target_ptr_t)NULL) {
-		memset((uint8_t *)v, 0, sizeof(T));
-		return struct_get_ret_t::ERROR_DEREF;
-	}
+    if (ptr == (target_ptr_t)NULL) {
+        memset((uint8_t *)v, 0, sizeof(T));
+        return struct_get_ret_t::ERROR_DEREF;
+    }
     switch(panda_virtual_memory_rw(cpu, ptr+offset, (uint8_t *)v, sizeof(T), 0)) {
-		case -1:
-			memset((uint8_t *)v, 0, sizeof(T));
-			return struct_get_ret_t::ERROR_MEMORY;
-			break;
-		default:
-			return struct_get_ret_t::SUCCESS;
-			break;
-	}
+        case -1:
+            memset((uint8_t *)v, 0, sizeof(T));
+            return struct_get_ret_t::ERROR_MEMORY;
+            break;
+        default:
+            return struct_get_ret_t::SUCCESS;
+            break;
+    }
 }
 
 /**
@@ -68,21 +68,21 @@ struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, off_t offset)
  */
 template <typename T>
 struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, std::initializer_list<off_t> offsets) {
-	// read all but last item as pointers
+    // read all but last item as pointers
     auto it = offsets.begin();
     auto o = *it;
     while (true) {
         it++;
         if (it == offsets.end()) break;
         auto r = struct_get(cpu, &ptr, ptr, o);
-		if (r != struct_get_ret_t::SUCCESS) {
-			memset((uint8_t *)v, 0, sizeof(T));
-			return r;
-		}
+        if (r != struct_get_ret_t::SUCCESS) {
+            memset((uint8_t *)v, 0, sizeof(T));
+            return r;
+        }
         o = *it;
     }
 
-	// last item is read using the size of the type of v
+    // last item is read using the size of the type of v
     return struct_get(cpu, v, ptr, o);
 }
 #endif
@@ -97,11 +97,11 @@ struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, std::initiali
  */
 #define IMPLEMENT_OFFSET_GET(_name, _paramName, _retType, _offset, _errorRetValue) \
 static inline _retType _name(CPUState* env, target_ptr_t _paramName) { \
-	_retType _t; \
-	if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType), 0)) { \
-		return (_errorRetValue); \
-	} \
-	return (_t); \
+    _retType _t; \
+    if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType), 0)) { \
+        return (_errorRetValue); \
+    } \
+    return (_t); \
 }
 
 /**
@@ -114,15 +114,15 @@ static inline _retType _name(CPUState* env, target_ptr_t _paramName) { \
  */
 #define IMPLEMENT_OFFSET_GET2L(_name, _paramName, _retType1, _offset1, _retType2, _offset2, _errorRetValue) \
 static inline _retType2 _name(CPUState* env, target_ptr_t _paramName) { \
-	_retType1 _t1; \
-	_retType2 _t2; \
-	if (-1 == panda_virtual_memory_rw(env, _paramName + _offset1, (uint8_t *)&_t1, sizeof(_retType1), 0)) { \
-		return (_errorRetValue); \
-	} \
-	if (-1 == panda_virtual_memory_rw(env, _t1 + _offset2, (uint8_t *)&_t2, sizeof(_retType2), 0)) { \
-		return (_errorRetValue); \
-	} \
-	return (_t2); \
+    _retType1 _t1; \
+    _retType2 _t2; \
+    if (-1 == panda_virtual_memory_rw(env, _paramName + _offset1, (uint8_t *)&_t1, sizeof(_retType1), 0)) { \
+        return (_errorRetValue); \
+    } \
+    if (-1 == panda_virtual_memory_rw(env, _t1 + _offset2, (uint8_t *)&_t2, sizeof(_retType2), 0)) { \
+        return (_errorRetValue); \
+    } \
+    return (_t2); \
 }
 
 #define OG_AUTOSIZE 0
@@ -140,14 +140,14 @@ static inline _retType2 _name(CPUState* env, target_ptr_t _paramName) { \
  */
 #define IMPLEMENT_OFFSET_GETN(_funcName, _paramName, _retType, _retName, _retSize, _offset) \
 static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _retName) { \
-	size_t ret_size = ((_retSize) == OG_AUTOSIZE) ? sizeof(_retType) : (_retSize); \
-	OG_printf(#_funcName ":1:" TARGET_PTR_FMT ":%d\n", _paramName, _offset); \
-	OG_printf(#_funcName ":2:" TARGET_PTR_FMT ":%zu\n", _paramName + _offset, ret_size); \
-	if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)_retName, ret_size, 0)) { \
-		return OG_ERROR_MEMORY; \
-	} \
-	OG_printf(#_funcName ":3:ok\n"); \
-	return OG_SUCCESS; \
+    size_t ret_size = ((_retSize) == OG_AUTOSIZE) ? sizeof(_retType) : (_retSize); \
+    OG_printf(#_funcName ":1:" TARGET_PTR_FMT ":%d\n", _paramName, _offset); \
+    OG_printf(#_funcName ":2:" TARGET_PTR_FMT ":%zu\n", _paramName + _offset, ret_size); \
+    if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)_retName, ret_size, 0)) { \
+        return OG_ERROR_MEMORY; \
+    } \
+    OG_printf(#_funcName ":3:ok\n"); \
+    return OG_SUCCESS; \
 }
 
 /**
@@ -158,23 +158,23 @@ static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _r
  */
 #define IMPLEMENT_OFFSET_GET2LN(_funcName, _paramName, _retType, _retName, _retSize, _offset1, _offset2) \
 static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _retName) { \
-	target_ptr_t _p1; \
-	size_t ret_size = ((_retSize) == OG_AUTOSIZE) ? sizeof(_retType) : (_retSize); \
-	OG_printf(#_funcName ":1:" TARGET_PTR_FMT ":%d\n", _paramName, _offset1); \
-	OG_printf(#_funcName ":2:" TARGET_PTR_FMT ":%zu\n", _paramName + _offset1, sizeof(target_ptr_t)); \
-	if (-1 == panda_virtual_memory_rw(env, _paramName + _offset1, (uint8_t *)&_p1, sizeof(target_ptr_t), 0)) { \
-		return OG_ERROR_MEMORY; \
-	} \
-	OG_printf(#_funcName ":3:" TARGET_PTR_FMT ":%d\n", _p1, _offset2); \
-	if (_p1 == (target_ptr_t)NULL) { \
-		return OG_ERROR_DEREF; \
-	} \
-	OG_printf(#_funcName ":4:" TARGET_PTR_FMT ":%zu\n", _p1 + _offset2, ret_size); \
-	if (-1 == panda_virtual_memory_rw(env, _p1 + _offset2, (uint8_t *)_retName, ret_size, 0)) { \
-		return OG_ERROR_MEMORY; \
-	} \
-	OG_printf(#_funcName ":5:ok\n"); \
-	return OG_SUCCESS; \
+    target_ptr_t _p1; \
+    size_t ret_size = ((_retSize) == OG_AUTOSIZE) ? sizeof(_retType) : (_retSize); \
+    OG_printf(#_funcName ":1:" TARGET_PTR_FMT ":%d\n", _paramName, _offset1); \
+    OG_printf(#_funcName ":2:" TARGET_PTR_FMT ":%zu\n", _paramName + _offset1, sizeof(target_ptr_t)); \
+    if (-1 == panda_virtual_memory_rw(env, _paramName + _offset1, (uint8_t *)&_p1, sizeof(target_ptr_t), 0)) { \
+        return OG_ERROR_MEMORY; \
+    } \
+    OG_printf(#_funcName ":3:" TARGET_PTR_FMT ":%d\n", _p1, _offset2); \
+    if (_p1 == (target_ptr_t)NULL) { \
+        return OG_ERROR_DEREF; \
+    } \
+    OG_printf(#_funcName ":4:" TARGET_PTR_FMT ":%zu\n", _p1 + _offset2, ret_size); \
+    if (-1 == panda_virtual_memory_rw(env, _p1 + _offset2, (uint8_t *)_retName, ret_size, 0)) { \
+        return OG_ERROR_MEMORY; \
+    } \
+    OG_printf(#_funcName ":5:ok\n"); \
+    return OG_SUCCESS; \
 }
 
 
@@ -325,17 +325,17 @@ IMPLEMENT_OFFSET_GETN(get_dentry_parent, dentry, target_ptr_t, dentry_parent, OG
  * @brief Retrieves the n-th file struct from an fd file array. (pp 479)
  */
 static inline target_ptr_t get_fd_file(CPUState *env, target_ptr_t fd_file_array, int n) {
-	target_ptr_t fd_file, fd_file_ptr;
+    target_ptr_t fd_file, fd_file_ptr;
 
-	// Compute address of the pointer to the file struct of the n-th fd.
-	fd_file_ptr = fd_file_array+n*sizeof(target_ptr_t);
+    // Compute address of the pointer to the file struct of the n-th fd.
+    fd_file_ptr = fd_file_array+n*sizeof(target_ptr_t);
 
-	// Read address of the file struct.
-	if (-1 == panda_virtual_memory_rw(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(target_ptr_t), 0)) {
-		return (target_ptr_t)NULL;
-	}
+    // Read address of the file struct.
+    if (-1 == panda_virtual_memory_rw(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(target_ptr_t), 0)) {
+        return (target_ptr_t)NULL;
+    }
 
-	return fd_file_ptr;
+    return fd_file_ptr;
 }
 
 /**
@@ -348,103 +348,103 @@ static inline target_ptr_t get_fd_file(CPUState *env, target_ptr_t fd_file_array
  * When the latter is used, the former will be set to point to it.
  */
 static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
-	char *name = NULL;
+    char *name = NULL;
 
-	// current path component
-	char *pcomp = NULL;
-	uint32_t pcomp_length = 0;
-	uint32_t pcomp_capacity = 0;
+    // current path component
+    char *pcomp = NULL;
+    uint32_t pcomp_length = 0;
+    uint32_t pcomp_capacity = 0;
 
-	// all path components read so far
-	char **pcomps = NULL;
-	uint32_t pcomps_idx = 0;
-	uint32_t pcomps_capacity = 0;
+    // all path components read so far
+    char **pcomps = NULL;
+    uint32_t pcomps_idx = 0;
+    uint32_t pcomps_capacity = 0;
 
-	// for reversing pcomps
-	char **pcomps_start, **pcomps_end;
+    // for reversing pcomps
+    char **pcomps_start, **pcomps_end;
 
-	target_ptr_t current_dentry_parent = dentry;
-	target_ptr_t current_dentry = (target_ptr_t)NULL;
-	uint8_t *d_name = (uint8_t *)g_malloc(ki.qstr.size * sizeof(uint8_t));
-	while (current_dentry_parent != current_dentry) {
-		int og_err1, og_err2;
-		current_dentry = current_dentry_parent;
-		//printf("1#%lx\n", (uintptr_t)(current_dentry + ki.path.d_name_offset));
+    target_ptr_t current_dentry_parent = dentry;
+    target_ptr_t current_dentry = (target_ptr_t)NULL;
+    uint8_t *d_name = (uint8_t *)g_malloc(ki.qstr.size * sizeof(uint8_t));
+    while (current_dentry_parent != current_dentry) {
+        int og_err1, og_err2;
+        current_dentry = current_dentry_parent;
+        //printf("1#%lx\n", (uintptr_t)(current_dentry + ki.path.d_name_offset));
 
-		// read dentry d_parent and d_name
-		memset(d_name, 0, ki.qstr.size * sizeof(uint8_t));
-		og_err1 = get_dentry_name(env, current_dentry, d_name);
-		og_err2 = get_dentry_parent(env, current_dentry, &current_dentry_parent);
-		//HEXDUMP(d_name, ki.path.qstr_size, current_dentry + ki.path.d_name_offset);
-		if (OG_SUCCESS != og_err1 || OG_SUCCESS != og_err2) {
-			break;
-		}
+        // read dentry d_parent and d_name
+        memset(d_name, 0, ki.qstr.size * sizeof(uint8_t));
+        og_err1 = get_dentry_name(env, current_dentry, d_name);
+        og_err2 = get_dentry_parent(env, current_dentry, &current_dentry_parent);
+        //HEXDUMP(d_name, ki.path.qstr_size, current_dentry + ki.path.d_name_offset);
+        if (OG_SUCCESS != og_err1 || OG_SUCCESS != og_err2) {
+            break;
+        }
 
-		// read d_dname function pointer - indicates a dynamic name
-		target_ptr_t d_dname;
-		og_err1 = get_dentry_dname(env, current_dentry, &d_dname);
-		if (OG_SUCCESS != og_err1) {
-			// static name
-			d_dname = (target_ptr_t)NULL;
-		}
+        // read d_dname function pointer - indicates a dynamic name
+        target_ptr_t d_dname;
+        og_err1 = get_dentry_dname(env, current_dentry, &d_dname);
+        if (OG_SUCCESS != og_err1) {
+            // static name
+            d_dname = (target_ptr_t)NULL;
+        }
 
-		// read component
-		pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t)) + 1; // increment pcomp_length to include the string terminator
-		if (pcomp_capacity < pcomp_length) {
-			pcomp_capacity = pcomp_length + 16;
-			pcomp = (char *)g_realloc(pcomp, pcomp_capacity * sizeof(char));
-		}
-		og_err1 = panda_virtual_memory_rw(env, *(target_ptr_t *)(d_name + ki.qstr.name_offset), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
-		//printf("2#%lx\n", (uintptr_t)*(target_ptr_t *)(d_name + 2*sizeof(uint32_t)));
-		//printf("3#%s\n", pcomp);
-		if (-1 == og_err1) {
-			break;
-		}
+        // read component
+        pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t)) + 1; // increment pcomp_length to include the string terminator
+        if (pcomp_capacity < pcomp_length) {
+            pcomp_capacity = pcomp_length + 16;
+            pcomp = (char *)g_realloc(pcomp, pcomp_capacity * sizeof(char));
+        }
+        og_err1 = panda_virtual_memory_rw(env, *(target_ptr_t *)(d_name + ki.qstr.name_offset), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
+        //printf("2#%lx\n", (uintptr_t)*(target_ptr_t *)(d_name + 2*sizeof(uint32_t)));
+        //printf("3#%s\n", pcomp);
+        if (-1 == og_err1) {
+            break;
+        }
 
-		// use the empty string for "/" components (mountpoints?)
-		if (pcomp[0] == '/' && pcomp[1] == '\0') {
-			pcomp[0] = '\0';
-		}
+        // use the empty string for "/" components (mountpoints?)
+        if (pcomp[0] == '/' && pcomp[1] == '\0') {
+            pcomp[0] = '\0';
+        }
 
-		// copy component
-		if (pcomps_idx + 1 >= pcomps_capacity) { // +1 accounts for the terminating NULL
-			pcomps_capacity += 16;
-			pcomps = (char **)g_realloc(pcomps, pcomps_capacity * sizeof(char *));
-		}
-		if (d_dname == (target_ptr_t)NULL) {
-			// static name
-			pcomps[pcomps_idx++] = g_strdup(pcomp);
-		}
-		else {
-			// XXX: full reconstruction of dynamic names in not currently supported
-			pcomps[pcomps_idx++] = g_strdup(pcomp);
-		}
-	}
+        // copy component
+        if (pcomps_idx + 1 >= pcomps_capacity) { // +1 accounts for the terminating NULL
+            pcomps_capacity += 16;
+            pcomps = (char **)g_realloc(pcomps, pcomps_capacity * sizeof(char *));
+        }
+        if (d_dname == (target_ptr_t)NULL) {
+            // static name
+            pcomps[pcomps_idx++] = g_strdup(pcomp);
+        }
+        else {
+            // XXX: full reconstruction of dynamic names in not currently supported
+            pcomps[pcomps_idx++] = g_strdup(pcomp);
+        }
+    }
 
-	// reverse components order and join them
-	g_free(d_name);
-	g_free(pcomp);
-	if (pcomps != NULL) {
-		pcomps_start = pcomps;
-		pcomps_end = &pcomps[pcomps_idx - 1];
-		while (pcomps_start < pcomps_end) {
-			pcomp = *pcomps_start;
-			*pcomps_start = *pcomps_end;
-			*pcomps_end = pcomp;
-			pcomps_start++;
-			pcomps_end--;
-		}
-		pcomps[pcomps_idx] = NULL; // NULL terminate vector
-		name = g_strjoinv("/", pcomps);
-		g_strfreev(pcomps);
-	}
+    // reverse components order and join them
+    g_free(d_name);
+    g_free(pcomp);
+    if (pcomps != NULL) {
+        pcomps_start = pcomps;
+        pcomps_end = &pcomps[pcomps_idx - 1];
+        while (pcomps_start < pcomps_end) {
+            pcomp = *pcomps_start;
+            *pcomps_start = *pcomps_end;
+            *pcomps_end = pcomp;
+            pcomps_start++;
+            pcomps_end--;
+        }
+        pcomps[pcomps_idx] = NULL; // NULL terminate vector
+        name = g_strjoinv("/", pcomps);
+        g_strfreev(pcomps);
+    }
 
 #if defined(OSI_LINUX_FDNDEBUG)
-	if (name == NULL) {
-		LOG_WARN("Error reading d_entry.");
-	}
+    if (name == NULL) {
+        LOG_WARN("Error reading d_entry.");
+    }
 #endif
-	return name;
+    return name;
 }
 
 /**
@@ -453,75 +453,75 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
  * The function traverses all the mount points to the root mount.
  */
 static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
-	char *name = NULL;
+    char *name = NULL;
 
-	// current path component
-	char *pcomp = NULL;
+    // current path component
+    char *pcomp = NULL;
 
-	// all path components read so far
-	char **pcomps = NULL;
-	uint32_t pcomps_idx = 0;
-	uint32_t pcomps_capacity = 0;
+    // all path components read so far
+    char **pcomps = NULL;
+    uint32_t pcomps_idx = 0;
+    uint32_t pcomps_capacity = 0;
 
-	target_ptr_t current_vfsmount_parent = vfsmount;
-	target_ptr_t current_vfsmount = (target_ptr_t)NULL;
-	while(current_vfsmount != current_vfsmount_parent) {
-		int og_err0, og_err1;
-		target_ptr_t current_vfsmount_dentry;
-		//int og_err2;
-		//target_ptr_t root_dentry;
-		current_vfsmount = current_vfsmount_parent;
+    target_ptr_t current_vfsmount_parent = vfsmount;
+    target_ptr_t current_vfsmount = (target_ptr_t)NULL;
+    while(current_vfsmount != current_vfsmount_parent) {
+        int og_err0, og_err1;
+        target_ptr_t current_vfsmount_dentry;
+        //int og_err2;
+        //target_ptr_t root_dentry;
+        current_vfsmount = current_vfsmount_parent;
 
-		// retrieve vfsmount members
-		og_err0 = get_vfsmount_dentry(env, current_vfsmount, &current_vfsmount_dentry);
-		og_err1 = get_vfsmount_parent(env, current_vfsmount, &current_vfsmount_parent);
-		//printf("###D:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err0, current_vfsmount, current_vfsmount_dentry);
-		//printf("###R:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err2, current_vfsmount, root_dentry);
-		//og_err2 = get_vfsmount_root_dentry(env, current_vfsmount, &root_dentry);
-		//printf("###P:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err1, current_vfsmount, current_vfsmount_parent);
+        // retrieve vfsmount members
+        og_err0 = get_vfsmount_dentry(env, current_vfsmount, &current_vfsmount_dentry);
+        og_err1 = get_vfsmount_parent(env, current_vfsmount, &current_vfsmount_parent);
+        //printf("###D:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err0, current_vfsmount, current_vfsmount_dentry);
+        //printf("###R:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err2, current_vfsmount, root_dentry);
+        //og_err2 = get_vfsmount_root_dentry(env, current_vfsmount, &root_dentry);
+        //printf("###P:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err1, current_vfsmount, current_vfsmount_parent);
 
-		// check whether we should break out
-		if (OG_SUCCESS != og_err0 || OG_SUCCESS != og_err1) {
-			break;
-		}
-		if (current_vfsmount_dentry == (target_ptr_t)NULL) {
-			break;
-		}
+        // check whether we should break out
+        if (OG_SUCCESS != og_err0 || OG_SUCCESS != og_err1) {
+            break;
+        }
+        if (current_vfsmount_dentry == (target_ptr_t)NULL) {
+            break;
+        }
 
-		// read and copy component
-		pcomp = read_dentry_name(env, current_vfsmount_dentry);
-		//printf("###S:%s\n", pcomp);
+        // read and copy component
+        pcomp = read_dentry_name(env, current_vfsmount_dentry);
+        //printf("###S:%s\n", pcomp);
 
-		// this may hapen it seems
-		if (pcomp == NULL) {
-			continue;
-		}
+        // this may hapen it seems
+        if (pcomp == NULL) {
+            continue;
+        }
 
-		if (pcomps_idx + 1 >= pcomps_capacity) { // +1 accounts for the terminating NULL
-			pcomps_capacity += 16;
-			pcomps = (char **)g_realloc(pcomps, pcomps_capacity * sizeof(char *));
-		}
-		pcomps[pcomps_idx++] = pcomp;
-	}
+        if (pcomps_idx + 1 >= pcomps_capacity) { // +1 accounts for the terminating NULL
+            pcomps_capacity += 16;
+            pcomps = (char **)g_realloc(pcomps, pcomps_capacity * sizeof(char *));
+        }
+        pcomps[pcomps_idx++] = pcomp;
+    }
 
-	// reverse components order and join them
-	if (pcomps != NULL) {
-		char **pcomps_start = pcomps;
-		char **pcomps_end = &pcomps[pcomps_idx - 1];
-		while (pcomps_start < pcomps_end) {
-			pcomp = *pcomps_start;
-			*pcomps_start = *pcomps_end;
-			*pcomps_end = pcomp;
-			pcomps_start++;
-			pcomps_end--;
-		}
-		pcomps[pcomps_idx] = NULL;			// NULL terminate vector
-		name = g_strjoinv("", pcomps);		// slashes are included in pcomps
-		g_strfreev(pcomps);
-	}
+    // reverse components order and join them
+    if (pcomps != NULL) {
+        char **pcomps_start = pcomps;
+        char **pcomps_end = &pcomps[pcomps_idx - 1];
+        while (pcomps_start < pcomps_end) {
+            pcomp = *pcomps_start;
+            *pcomps_start = *pcomps_end;
+            *pcomps_end = pcomp;
+            pcomps_start++;
+            pcomps_end--;
+        }
+        pcomps[pcomps_idx] = NULL;            // NULL terminate vector
+        name = g_strjoinv("", pcomps);        // slashes are included in pcomps
+        g_strfreev(pcomps);
+    }
 
-	//printf("###F:%s\n", name);
-	return name;
+    //printf("###F:%s\n", name);
+    return name;
 }
 
 /**
@@ -531,12 +531,12 @@ static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
  * This means that we don't have to account for the terminating '\0'.
  */
 static inline char *get_name(CPUState *env, target_ptr_t task_struct, char *name) {
-	if (name == NULL) { name = (char *)g_malloc0(ki.task.comm_size * sizeof(char)); }
-	else { name = (char *)g_realloc(name, ki.task.comm_size * sizeof(char)); }
-	if (-1 == panda_virtual_memory_rw(env, task_struct + ki.task.comm_offset, (uint8_t *)name, ki.task.comm_size * sizeof(char), 0)) {
-		strncpy(name, "N/A", ki.task.comm_size*sizeof(char));
-	}
-	return name;
+    if (name == NULL) { name = (char *)g_malloc0(ki.task.comm_size * sizeof(char)); }
+    else { name = (char *)g_realloc(name, ki.task.comm_size * sizeof(char)); }
+    if (-1 == panda_virtual_memory_rw(env, task_struct + ki.task.comm_offset, (uint8_t *)name, ki.task.comm_size * sizeof(char), 0)) {
+        strncpy(name, "N/A", ki.task.comm_size*sizeof(char));
+    }
+    return name;
 }
 
 void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr);
@@ -556,78 +556,78 @@ void fill_osithread(CPUState *env, OsiThread *t, target_ptr_t task_addr);
  */
 template <typename ET>
 void get_process_info(CPUState *cpu, GArray **out,
-					  void (*fill_element)(CPUState *, ET *, target_ptr_t),
-					  void (*free_element_contents)(ET *)) {
-	ET element;
-	target_ptr_t ts_first, ts_current;
-	target_ptr_t UNUSED(tg_first), UNUSED(tg_next);
+                      void (*fill_element)(CPUState *, ET *, target_ptr_t),
+                      void (*free_element_contents)(ET *)) {
+    ET element;
+    target_ptr_t ts_first, ts_current;
+    target_ptr_t UNUSED(tg_first), UNUSED(tg_next);
 
-	if (*out == NULL) {
-		// g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
-		*out = g_array_sized_new(false, false, sizeof(ET), 128);
-		g_array_set_clear_func(*out, (GDestroyNotify)free_element_contents);
-	}
+    if (*out == NULL) {
+        // g_array_sized_new() args: zero_term, clear, element_sz, reserved_sz
+        *out = g_array_sized_new(false, false, sizeof(ET), 128);
+        g_array_set_clear_func(*out, (GDestroyNotify)free_element_contents);
+    }
 
 #if defined(OSI_LINUX_LIST_FROM_INIT)
-	// Start process enumeration from the init task.
-	ts_first = ki.task.init_addr;
+    // Start process enumeration from the init task.
+    ts_first = ki.task.init_addr;
 #else
-	// Start process enumeration (roughly) from the current task. This is the default.
-	ts_first = kernel_profile->get_current_task_struct(cpu);
+    // Start process enumeration (roughly) from the current task. This is the default.
+    ts_first = kernel_profile->get_current_task_struct(cpu);
 
-	// To avoid infinite loops, we need to actually start traversal from the next
-	// process after the thread group leader of the current task.
-	ts_first = kernel_profile->get_group_leader(cpu, ts_first);
-	ts_first = kernel_profile->get_task_struct_next(cpu, ts_first);
+    // To avoid infinite loops, we need to actually start traversal from the next
+    // process after the thread group leader of the current task.
+    ts_first = kernel_profile->get_group_leader(cpu, ts_first);
+    ts_first = kernel_profile->get_task_struct_next(cpu, ts_first);
 #endif
 
-	ts_current = ts_first;
-	if (ts_first == (target_ptr_t)NULL) goto error;
+    ts_current = ts_first;
+    if (ts_first == (target_ptr_t)NULL) goto error;
 #if defined(OSI_LINUX_PSDEBUG)
-	LOG_INFO("START %c:%c " TARGET_PTR_FMT " " TARGET_PTR_FMT, TS_THREAD_CHR(cpu, ts_first),  TS_LEADER_CHR(cpu, ts_first), ts_first, ts_first);
+    LOG_INFO("START %c:%c " TARGET_PTR_FMT " " TARGET_PTR_FMT, TS_THREAD_CHR(cpu, ts_first),  TS_LEADER_CHR(cpu, ts_first), ts_first, ts_first);
 #endif
 
-	do {
+    do {
 #if defined(OSI_LINUX_PSDEBUG)
-		LOG_INFO("\t %03u:" TARGET_PTR_FMT ":" TARGET_PID_FMT ":" TARGET_PID_FMT ":%c:%c", a->len, ts_current, get_pid(cpu, ts_current), get_tgid(cpu, ts_current), TS_THREAD_CHR(cpu, ts_current), TS_LEADER_CHR(cpu, ts_current));
+        LOG_INFO("\t %03u:" TARGET_PTR_FMT ":" TARGET_PID_FMT ":" TARGET_PID_FMT ":%c:%c", a->len, ts_current, get_pid(cpu, ts_current), get_tgid(cpu, ts_current), TS_THREAD_CHR(cpu, ts_current), TS_LEADER_CHR(cpu, ts_current));
 #endif
-		memset(&element, 0, sizeof(ET));
-		fill_element(cpu, &element, ts_current);
-		g_array_append_val(*out, element);
-		OSI_MAX_PROC_CHECK((*out)->len, "traversing process list");
+        memset(&element, 0, sizeof(ET));
+        fill_element(cpu, &element, ts_current);
+        g_array_append_val(*out, element);
+        OSI_MAX_PROC_CHECK((*out)->len, "traversing process list");
 
 #if defined(OSI_LINUX_LIST_THREADS)
-		// Traverse thread group list.
-		// It is assumed that ts_current is a thread group leader.
-		tg_first = ts_current + ki.task.thread_group_offset;
-		while ((tg_next = get_thread_group(cpu, ts_current)) != tg_first) {
-			ts_current = tg_next - ki.task.thread_group_offset;
+        // Traverse thread group list.
+        // It is assumed that ts_current is a thread group leader.
+        tg_first = ts_current + ki.task.thread_group_offset;
+        while ((tg_next = get_thread_group(cpu, ts_current)) != tg_first) {
+            ts_current = tg_next - ki.task.thread_group_offset;
 #if defined(OSI_LINUX_PSDEBUG)
-			LOG_INFO("\t %03u:" TARGET_PTR_FMT ":" TARGET_PID_FMT ":" TARGET_PID_FMT ":%c:%c", a->len, ts_current, get_pid(cpu, ts_current), get_tgid(cpu, ts_current), TS_THREAD_CHR(cpu, ts_current), TS_LEADER_CHR(cpu, ts_current));
+            LOG_INFO("\t %03u:" TARGET_PTR_FMT ":" TARGET_PID_FMT ":" TARGET_PID_FMT ":%c:%c", a->len, ts_current, get_pid(cpu, ts_current), get_tgid(cpu, ts_current), TS_THREAD_CHR(cpu, ts_current), TS_LEADER_CHR(cpu, ts_current));
 #endif
-			memset(&element, 0, sizeof(ET));
-			element_fill(cpu, &element, ts_current);
-			g_array_append_val(*out, element);
-			OSI_MAX_PROC_CHECK((*out)->len, "traversing thread group list");
-		}
-		ts_current = tg_first - ki.task.thread_group_offset;
+            memset(&element, 0, sizeof(ET));
+            element_fill(cpu, &element, ts_current);
+            g_array_append_val(*out, element);
+            OSI_MAX_PROC_CHECK((*out)->len, "traversing thread group list");
+        }
+        ts_current = tg_first - ki.task.thread_group_offset;
 #endif
 
-		ts_current = kernel_profile->get_task_struct_next(cpu, ts_current);
-	} while(ts_current != (target_ptr_t)NULL && ts_current != ts_first);
+        ts_current = kernel_profile->get_task_struct_next(cpu, ts_current);
+    } while(ts_current != (target_ptr_t)NULL && ts_current != ts_first);
 
-	// memory read error
-	if (ts_current == (target_ptr_t)NULL) goto error;
+    // memory read error
+    if (ts_current == (target_ptr_t)NULL) goto error;
 
-	return;
+    return;
 
 error:
-	if(*out != NULL) {
-		g_array_free(*out, true);
-	}
-	*out = NULL;
-	return;
+    if(*out != NULL) {
+        g_array_free(*out, true);
+    }
+    *out = NULL;
+    return;
 }
 #endif
 
-/* vim:set tabstop=4 softtabstop=4 noexpandtab: */
+/* vim:set tabstop=4 softtabstop=4 expandtab: */
