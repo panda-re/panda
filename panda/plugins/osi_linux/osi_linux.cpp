@@ -115,28 +115,39 @@ static uint64_t get_fd_pos(CPUState *env, target_ptr_t task_struct, int fd) {
 /**
  * @brief Fills an OsiProcHandle struct.
  */
-static void fill_osiprochandle(CPUState *env, OsiProcHandle *h,
-						   target_ptr_t task_addr) {
-	h->taskd = kernel_profile->get_group_leader(env, task_addr);
-	h->asid = panda_virt_to_phys(env, get_pgd(env, task_addr));
+static void fill_osiprochandle(CPUState *cpu, OsiProcHandle *h,
+		target_ptr_t task_addr) {
+	struct_get_ret_t UNUSED(err);
+
+	// h->asid = taskd->mm->pgd (some kernel tasks are expected to return error)
+	err = struct_get(cpu, &h->asid, task_addr, {ki.task.mm_offset, ki.mm.pgd_offset});
+
+	// Convert asid to physical to be able to compare it with the pgd register.
+	h->asid = panda_virt_to_phys(cpu, h->asid);
+	h->taskd = kernel_profile->get_group_leader(cpu, task_addr);
 }
 
 /**
  * @brief Fills an OsiProc struct. Any existing contents are overwritten.
  */
-void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr) {
+void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
+	struct_get_ret_t UNUSED(err);
 	memset(p, 0, sizeof(OsiProc));
 
-	p->taskd = kernel_profile->get_group_leader(env, task_addr);
-	p->name = get_name(env, task_addr, p->name);
-	p->pid = get_tgid(env, task_addr);
-	p->ppid = get_real_parent_pid(env, task_addr);
-	p->pages = NULL;  // OsiPage - TODO
+	// p->asid = taskd->mm->pgd (some kernel tasks are expected to return error)
+	err = struct_get(cpu, &p->asid, task_addr, {ki.task.mm_offset, ki.mm.pgd_offset});
 
-	// task_struct contains the virtual address of the pgd
-	// Convert it to physycal, so it can be directly matched with the value
-	// of the pgd register.
-	p->asid = panda_virt_to_phys(env, get_pgd(env, task_addr));
+	// p->ppid = taskd->real_parent->pid
+	err = struct_get(cpu, &p->ppid, task_addr,
+			         {ki.task.real_parent_offset, ki.task.pid_offset});
+
+	// Convert asid to physical to be able to compare it with the pgd register.
+	p->asid = panda_virt_to_phys(cpu, p->asid);
+	p->taskd = kernel_profile->get_group_leader(cpu, task_addr);
+	p->name = get_name(cpu, task_addr, p->name);
+	p->pid = get_tgid(cpu, task_addr);
+	//p->ppid = get_real_parent_pid(cpu, task_addr);
+	p->pages = NULL;  // OsiPage - TODO
 }
 
 /**
@@ -357,11 +368,18 @@ void on_get_process_pid(CPUState *env, const OsiProcHandle *h, target_pid_t *pid
 /**
  * @brief PPP callback to retrieve the process parent pid from a handle.
  */
-void on_get_process_ppid(CPUState *env, const OsiProcHandle *h, target_pid_t *ppid) {
-	if (h->taskd == NULL || h->taskd == (target_ptr_t)-1) {
+void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *ppid) {
+	struct_get_ret_t UNUSED(err);
+
+	if (h->taskd == (target_ptr_t)-1) {
 		*ppid = (target_pid_t)-1;
 	} else {
-		*ppid = get_real_parent_pid(env, h->taskd);
+		// ppid = taskd->real_parent->pid
+		err = struct_get(cpu, ppid, h->taskd,
+			             {ki.task.real_parent_offset, ki.task.pid_offset});
+	    if (err != struct_get_ret_t::SUCCESS) {
+			*ppid = (target_pid_t)-1;
+		}
 	}
 }
 

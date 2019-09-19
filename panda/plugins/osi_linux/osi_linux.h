@@ -193,12 +193,6 @@ static inline int _funcName(CPUState* env, target_ptr_t _paramName, _retType* _r
 IMPLEMENT_OFFSET_GET(get_thread_group, task_struct, target_ptr_t, ki.task.thread_group_offset, 0)
 
 /**
- * @brief Retrieves the tasks address from a task_struct.
- * This is used to iterate the process list.
- */
-IMPLEMENT_OFFSET_GET(get_tasks, task_struct, target_ptr_t, ki.task.tasks_offset, 0)
-
-/**
  * @brief Retrieves the pid from a task_struct.
  */
 IMPLEMENT_OFFSET_GET(get_pid, task_struct, int, ki.task.pid_offset, 0)
@@ -207,31 +201,6 @@ IMPLEMENT_OFFSET_GET(get_pid, task_struct, int, ki.task.pid_offset, 0)
  * @brief Retrieves the tgid from a task_struct.
  */
 IMPLEMENT_OFFSET_GET(get_tgid, task_struct, int, ki.task.tgid_offset, 0)
-
-/**
- * @brief Retrieves the address of the stack from a task_struct.
- */
-IMPLEMENT_OFFSET_GET(get_stack, task_struct, target_ptr_t, ki.task.stack_offset, 0)
-
-/**
- * @brief Retrieves the original parent pid from task_struct.
- */
-IMPLEMENT_OFFSET_GET2L(get_real_parent_pid, task_struct, target_ptr_t, ki.task.real_parent_offset, int, ki.task.pid_offset, -1)
-
-/**
- * @brief Retrieves the current parent pid (that will receive SIGCHLD, SIGWAIT) from task_struct.
- */
-IMPLEMENT_OFFSET_GET2L(get_parent_pid, task_struct, target_ptr_t, ki.task.parent_offset, int, ki.task.pid_offset, -1)
-
-/**
- * @brief Retrieves the address of the page directory from a task_struct.
- */
-IMPLEMENT_OFFSET_GET2L(get_pgd, task_struct, target_ptr_t, ki.task.mm_offset, target_ptr_t, ki.mm.pgd_offset, 0)
-
-/**
- * @brief Retrieves the address of the mm_struct from a task_struct.
- */
-IMPLEMENT_OFFSET_GET(get_mm, task_struct, target_ptr_t, ki.task.mm_offset, 0)
 
 /**
  * @brief Retrieves the address of the mm_struct from a task_struct.
