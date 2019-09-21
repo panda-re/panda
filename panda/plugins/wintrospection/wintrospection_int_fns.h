@@ -99,3 +99,4 @@ uint32_t handle_table_L2_entry(uint32_t table_vaddr, uint32_t L1_table, uint32_t
 
 uint32_t handle_table_L3_entry(uint32_t table_vaddr, uint32_t L2_table, uint32_t L3);
 
+uint32_t get_eproc_peb_off(void);

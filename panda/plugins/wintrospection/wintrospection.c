@@ -611,6 +611,10 @@ uint32_t handle_table_L3_entry(uint32_t table_vaddr, uint32_t L2_table, uint32_t
     return L2_table + HANDLE_TABLE_ENTRY_SIZE * L3;
 }
 
+uint32_t get_eproc_peb_off(void) {
+    return eproc_ppeb_off;
+}
+
 
 
 // Module stuff
