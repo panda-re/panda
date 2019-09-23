@@ -160,14 +160,10 @@ unsigned int generate_value(std::vector<Device> devices, unsigned int address) {
     //fprintf(stderr, "Error: [holodeck] couldn't find any config to generate value at 0x%x. Suspending execution\n", address);
     //vm_stop(RUN_STATE_PAUSED);
     //qemu_system_suspend();
-<<<<<<< HEAD
-//    assert(0);
     
     // graceful exit that will run all uninit_plugins
     qemu_system_shutdown_request();
     return 0;
-=======
->>>>>>> f8f66d8438606863767cf5a29d11d75f76b0e788
 }
 
 //Parse a yaml tree, output in devices vector
