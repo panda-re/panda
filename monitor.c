@@ -80,6 +80,7 @@
 #include "sysemu/cpus.h"
 #include "qemu/cutils.h"
 #include "qapi/qmp/dispatch.h"
+#include "chardev/char-panda.h"
 
 #if defined(TARGET_S390X)
 #include "hw/s390x/storage-keys.h"
@@ -224,7 +225,11 @@ static mon_cmd_t info_cmds[];
 
 QmpCommandList qmp_commands, qmp_cap_negotiation_commands;
 
-Monitor *cur_mon;
+Monitor *cur_mon = NULL;
+
+// global vars for panda monitor and chardev
+PandaChardev *panda_chr = NULL;
+Monitor *panda_mon = NULL;
 
 static QEMUClockType event_clock_type = QEMU_CLOCK_REALTIME;
 
@@ -3909,6 +3914,67 @@ static void monitor_event(void *opaque, int event)
         break;
     }
 }
+
+// Create a panda chardev and monitor to interact with (panda_chr and panda_mon)
+void panda_init_monitor(void) {
+  if (panda_mon != NULL) {
+    return;
+  }
+
+  // first initialize a junk chardev that we don't care about (to get the is_first_init to work)
+  //Chardev* jnk;
+  //jnk = qemu_chardev_new("jnk", TYPE_CHARDEV_NULL,
+  //      NULL, &error_abort);
+  //monitor_init(jnk, 0);
+
+
+  Chardev* chr;
+  chr = qemu_chardev_new(NULL, TYPE_CHARDEV_PANDA,
+        NULL, &error_abort);
+
+  // Modified version of logic from monitor_init
+  int flags=0;
+  panda_mon = g_malloc(sizeof(*panda_mon));
+  monitor_data_init(panda_mon);
+
+  qemu_chr_fe_init(&panda_mon->chr, chr, &error_abort);
+  panda_mon->flags = flags;
+  qemu_chr_fe_set_handlers(&panda_mon->chr, monitor_can_read, monitor_read,
+      monitor_event, panda_mon, NULL, true);
+
+  qemu_mutex_lock(&monitor_lock);
+  QLIST_INSERT_HEAD(&mon_list, panda_mon, entry);
+  qemu_mutex_unlock(&monitor_lock);
+
+  panda_chr = PANDA_CHARDEV(chr);
+
+  // Initialize cur_mon
+  cur_mon = panda_mon;
+}
+
+char* panda_monitor_run(char * cmdline)
+{
+    if (panda_mon == NULL) {
+      panda_init_monitor();
+    }
+
+    assert(panda_mon != NULL);
+
+    Monitor *mon = panda_mon;
+
+    panda_chr->buf = NULL;
+
+    monitor_suspend(mon);
+    handle_hmp_command(mon, cmdline);
+    monitor_resume(mon);
+
+    // Wait for result.
+    // XXX: this could be terrible and cause spinlocks if called in the wrong thread
+    for(int i=0; i < 100000 && ((panda_chr->buf == NULL)); i++) {}
+
+    return panda_chr->buf;
+}
+
 
 static int
 compare_mon_cmd(const void *a, const void *b)

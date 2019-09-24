@@ -105,6 +105,7 @@ extern void synchronize_rcu(void);
  */
 extern void rcu_register_thread(void);
 extern void rcu_unregister_thread(void);
+extern void kill_rcu_thread(void);
 extern void rcu_after_fork(void);
 
 struct rcu_head;

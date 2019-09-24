@@ -11,6 +11,7 @@ PANDAENDCOMMENT */
 #include <string>
 #include <unordered_map>
 
+#include "taint2/taint2.h"
 #include "panda/plugin.h"
 
 #include "syscalls2/syscalls_ext_typedefs.h"

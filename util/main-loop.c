@@ -34,6 +34,8 @@
 #include "block/aio.h"
 #include "panda/rr/rr_log_all.h"
 
+void panda_callbacks_main_loop_wait(void);
+
 #ifndef _WIN32
 
 /* If we have signalfd, we mask out the signals we want to handle and then
@@ -214,6 +216,7 @@ static void glib_pollfds_poll(void)
         rr_begin_main_loop_wait();
         g_main_context_dispatch(context);
         rr_end_main_loop_wait();
+        panda_callbacks_main_loop_wait();
     }
 }
 
@@ -264,6 +267,7 @@ static int os_host_main_loop_wait(int64_t timeout)
     rr_begin_main_loop_wait();
     glib_pollfds_poll();
     rr_end_main_loop_wait();
+    panda_callbacks_main_loop_wait();
 
     g_main_context_release(context);
 
@@ -534,6 +538,7 @@ int main_loop_wait(int nonblocking)
     rr_begin_main_loop_wait();
     slirp_pollfds_poll(gpollfds, (ret < 0));
     rr_end_main_loop_wait();
+    panda_callbacks_main_loop_wait();
 #endif
 
     /* CPU thread can infinitely wait for event after
@@ -542,6 +547,7 @@ int main_loop_wait(int nonblocking)
     rr_begin_main_loop_wait();
     qemu_clock_run_all_timers();
     rr_end_main_loop_wait();
+    panda_callbacks_main_loop_wait();
 
     return ret;
 }

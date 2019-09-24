@@ -17,7 +17,6 @@
 extern "C" {
 
 #include "panda/rr/rr_log.h"
-#include "panda/addr.h"
 #include "panda/plog.h"
 
 #include "taint2/taint2_hypercalls.h"

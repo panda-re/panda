@@ -1667,7 +1667,7 @@ int (*monitor)(Monitor *mon, const char *cmd);
 ```
 ---
 
-`cb_cpu_restore_state`: Called inside of cpu_restore_state(), when there is a
+`cpu_restore_state`: Called inside of cpu_restore_state(), when there is a
 CPU fault/exception
 
 **Callback ID**: `PANDA_CB_CPU_RESTORE_STATE`
@@ -1681,7 +1681,7 @@ CPU fault/exception
 
 **Signature**:
 ```C
-int (*cb_cpu_restore_state)(CPUState *env, TranslationBlock *tb);
+int (*cpu_restore_state)(CPUState *env, TranslationBlock *tb);
 ```
 ---
 

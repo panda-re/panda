@@ -33,7 +33,6 @@ PANDAENDCOMMENT */
 extern "C" {
 
 #include "panda/rr/rr_log.h"
-#include "panda/addr.h"
 #include "panda/plog.h"
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"

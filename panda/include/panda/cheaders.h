@@ -16,13 +16,11 @@
 
 extern "C" {
 #endif
-
 #include "config-host.h"
 #include "config-target.h"
 #include "qemu/osdep.h"
 #include "qemu-common.h"
 #include "cpu.h"
-
 #include "panda/common.h"
 #include "exec/exec-all.h"
 #include "tcg/tcg.h"

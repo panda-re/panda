@@ -36,11 +36,11 @@ PANDAENDCOMMENT */
 #include <llvm/IR/Instruction.h>
 
 #include "panda/rr/rr_log.h"
-#include "panda/addr.h"
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 #include "panda/tcg-llvm.h"
 
+#include "addr.h"
 #include "shad.h"
 #include "llvm_taint_lib.h"
 #include "taint_ops.h"

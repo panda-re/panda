@@ -29,8 +29,8 @@ void panda_callbacks_before_mem_write(CPUState *env, target_ulong pc, target_ulo
 void panda_callbacks_after_mem_write(CPUState *env, target_ulong pc, target_ulong addr,
                                      uint32_t data_size, uint64_t val, void *ram_ptr);
 // cputlb.c
-void panda_callbacks_after_mmio_read(CPUState *env, target_ulong addr, int size, uint64_t val);
-void panda_callbacks_after_mmio_write(CPUState *env, target_ulong addr, int size, uint64_t val);
+void panda_callbacks_mmio_after_read(CPUState *env, target_ulong addr, int size, uint64_t val);
+void panda_callbacks_mmio_after_write(CPUState *env, target_ulong addr, int size, uint64_t val);
 
 // target-i386/misc_helper.c
 void panda_callbacks_cpuid(CPUState *env);
@@ -40,6 +40,8 @@ void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 void panda_callbacks_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid);
 // vl.c
 void panda_callbacks_after_machine_init(void);
+
+void panda_callbacks_during_machine_init(MachineState *machine);
 
 void panda_callbacks_top_loop(void);
 
@@ -57,5 +59,10 @@ void panda_callbacks_serial_send(CPUState *cpu, uint64_t fifo_addr,
                                  uint8_t value);
 void panda_callbacks_serial_write(CPUState *cpu, uint64_t fifo_addr,
                                   uint32_t port_addr, uint8_t value);
+
+void panda_callbacks_main_loop_wait(void);
+void panda_callbacks_pre_shutdown(void);
+
+int32_t panda_callbacks_before_handle_exception(CPUState *cpu, int32_t exception_index);
 
 #endif

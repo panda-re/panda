@@ -34,6 +34,7 @@
 #endif
 #include "sysemu/cpus.h"
 #include "sysemu/replay.h"
+#include "sysemu/sysemu.h"
 #include "panda/rr/rr_log.h"
 #include "panda/callback_support.h"
 #include "panda/common.h"
@@ -47,7 +48,7 @@ int generate_llvm = 0;
 int execute_llvm = 0;
 extern bool panda_tb_chaining;
 
-extern bool panda_exit_loop;
+bool panda_stopped;
 
 /* -icount align implementation. */
 
@@ -185,7 +186,13 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     cpu->can_do_io = !use_icount;
 
-    panda_callbacks_before_block_exec(cpu, itb);
+    if (cpu->tcg_exit_req == 0)
+        panda_callbacks_before_block_exec(cpu, itb);
+
+    if (panda_break_cpu_loop_req) {;
+        cpu->can_do_io = 1;
+        return TB_EXIT_REQUESTED;
+    }
 
     // NB: This is where we did this in panda1
     panda_bb_invalidate_done = false;
@@ -210,6 +217,13 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     /* force into variable of known size */
     exitCode = (uint8_t)tb_exit;
     panda_callbacks_after_block_exec(cpu, itb, exitCode);
+
+    // if we were asked to exit that last bb *and* didn't actually
+    // execute any of the guest code, then we shouldn't run the
+    // after-block panda callbacks
+    if (!(tb_exit == TB_EXIT_REQUESTED
+          && last_tb->pc == itb->pc))
+        panda_callbacks_after_block_exec(cpu, itb, exitCode);
 
     trace_exec_tb_exit(last_tb, tb_exit);
 
@@ -500,7 +514,8 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
         cpu_breakpoint_remove_by_instr(cpu, cpu->last_gdb_instr-1, BP_GDB);
         cpu->reverse_flags = 0;
     }
-    
+
+    cpu->exception_index = panda_callbacks_before_handle_exception(cpu, cpu->exception_index);
 
     if (cpu->exception_index >= 0) {
         if (cpu->exception_index >= EXCP_INTERRUPT) {
@@ -788,14 +803,17 @@ int cpu_exec(CPUState *cpu)
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
 
-        if (panda_exit_loop) break;
+        if (panda_break_cpu_loop_req) {
+            printf ("Exiting cpu_handle_execption loop\n");
+            break;
+        }
 
         TranslationBlock *last_tb = NULL;
         int tb_exit = 0;
 
         /* Note: We usually break out of the loop manually and
-         * not because panda_exit_loop is true. */
-        while (likely(!panda_exit_loop)) {
+         * not because panda_break_cpu_loop_req is true. */
+        while (likely(!panda_break_cpu_loop_req)) {
             bool panda_invalidate_tb = false;
             debug_checkpoint(cpu);
             detect_infinite_loops();
@@ -840,15 +858,19 @@ int cpu_exec(CPUState *cpu)
             if (rr_mode == RR_REPLAY && rr_replay_finished()) {
                 rr_do_end_replay(0);
                 qemu_cpu_kick(cpu);
-                panda_exit_loop = true;
+                panda_break_cpu_loop_req = true;
                 break;
             }
 
-            if (!rr_in_replay() || until_interrupt > 0) {
+            if ((!rr_in_replay() || until_interrupt > 0)
+                 && !panda_stopped) {
                 cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
                 /* Try to align the host and virtual clocks
                    if the guest is in advance */
                 align_clocks(&sc, cpu);
+            }
+            if (panda_break_cpu_loop_req) {
+                break;
             }
         }
     }

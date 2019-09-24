@@ -145,6 +145,8 @@ int main(int argc, char **argv)
 #include "qapi/qmp/qerror.h"
 #include "sysemu/iothread.h"
 
+#include "vl.h"
+
 extern void panda_cleanup(void);
 extern bool panda_add_arg(const char *, const char *);
 extern bool panda_load_plugin(const char *, const char *);
@@ -152,11 +154,17 @@ extern void panda_unload_plugins(void);
 extern char *panda_plugin_path(const char *name);
 void panda_set_os_name(char *os_name);
 extern void panda_callbacks_after_machine_init(void);
+extern void panda_callbacks_pre_shutdown(void);
 
-extern void pandalog_cc_init_write(const char * fname); 
+extern void pandalog_cc_init_write(const char * fname);
 int pandalog = 0;
 int panda_in_main_loop = 0;
-extern bool panda_abort_requested;
+extern bool panda_abort_requested; // When set, we exit in after printing a help message
+bool panda_break_vl_loop_req = false; // When set, we break the main loop in vl.c
+bool panda_library_mode = false; // Set if using panda from python
+
+char *panda_snap_name = NULL;
+const char* replay_name = NULL;
 
 #include "panda/debug.h"
 #include "panda/rr/rr_log_all.h"
@@ -1894,7 +1902,12 @@ static bool main_loop_should_exit(void)
     if (qemu_suspend_requested()) {
         qemu_system_suspend();
     }
+    if (panda_break_vl_loop_req) {
+      panda_break_vl_loop_req = false; // Only break the loop once
+      return true;
+    }
     if (qemu_shutdown_requested()) {
+        panda_callbacks_pre_shutdown();
         qemu_kill_report();
         qapi_event_send_shutdown(&error_abort);
         if (no_shutdown) {
@@ -1939,7 +1952,7 @@ static void tcg_llvm_cleanup(void)
 }
 #endif
 
-static void main_loop(void)
+void main_loop(void)
 {
     bool nonblocking;
     int last_io = 0;
@@ -3067,8 +3080,20 @@ static char* this_executable_path(const char* argv0){
     return realpath(argv0, NULL);
 }
 
-int main(int argc, char **argv, char **envp)
-{
+void main_panda_run(void) {
+    panda_in_main_loop = 1;
+    main_loop();
+    panda_in_main_loop = 0;
+}
+
+void set_replay_name(char *name) {
+    replay_name = name;
+}
+
+int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
+ {
+    if (pmm == PANDA_RUN)    goto PANDA_MAIN_RUN;
+    if (pmm == PANDA_FINISH) goto PANDA_MAIN_FINISH;
     int i;
     int snapshot, linux_boot;
     const char *initrd_filename;
@@ -3115,10 +3140,12 @@ int main(int argc, char **argv, char **envp)
     // PANDA stuff
     gargv = argv;
     gargc = argc;
-    qemu_file = this_executable_path(argv[0]);
+    if (pmm == PANDA_NORMAL)
+        qemu_file = this_executable_path(argv[0]);
+    else
+        qemu_file = strdup(argv[0]);
     assert(qemu_file != NULL);
 
-    const char* replay_name = NULL;
     const char* record_name = NULL;
     // In order to load PANDA plugins all at once at the end
     const char * panda_plugin_files[64] = {};
@@ -4253,7 +4280,7 @@ int main(int argc, char **argv, char **envp)
                         if (0 == strcmp("general", plugin_start)) {
                             // not really a plugin -- just used to collect general panda args
                         }
-                        else {                        
+                        else {
                             char *plugin_path = panda_plugin_path((const char *) plugin_start);
                             if (NULL == plugin_path) {
                                 fprintf(stderr,
@@ -5027,9 +5054,18 @@ int main(int argc, char **argv, char **envp)
     // Call PANDA post-machine init hook
     panda_callbacks_after_machine_init();
 
+    if (pmm == PANDA_INIT) return 0;
+
+PANDA_MAIN_RUN:
+    
+
     panda_in_main_loop = 1;
     main_loop();
     panda_in_main_loop = 0;
+
+    if (pmm == PANDA_RUN) return 0;
+
+PANDA_MAIN_FINISH:
 
     if(rr_in_record()){
         rr_do_end_record();

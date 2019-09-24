@@ -85,7 +85,8 @@ static unsigned int throttle_percentage;
 extern void panda_callbacks_top_loop(void);
 
 extern bool rr_replay_complete;
-extern bool panda_exit_loop;
+bool panda_break_cpu_loop_req = false;
+static int tcg_running;
 
 bool cpu_is_stopped(CPUState *cpu)
 {
@@ -880,7 +881,9 @@ void cpu_synchronize_all_post_init(void)
     }
 }
 
-static int do_vm_stop(RunState state)
+int do_vm_stop(RunState state);
+
+int do_vm_stop(RunState state)
 {
     int ret = 0;
 
@@ -1274,8 +1277,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
     /* process any pending work */
     cpu->exit_request = 1;
 
-    while (1) {
-
+    while (atomic_read(&tcg_running)) {
         if (!rr_replay_complete) {
             panda_callbacks_top_loop();
         }
@@ -1310,10 +1312,12 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
 
             cpu = CPU_NEXT(cpu);
 
-            if (panda_exit_loop) {
-                panda_exit_loop = false;
+            if (panda_break_cpu_loop_req) {
+                panda_break_cpu_loop_req = false;
                 break;
             }
+
+            if (!atomic_read(&tcg_running)) break;
 
         } /* while (cpu && !cpu->exit_request).. */
 
@@ -1328,7 +1332,6 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
 
         qemu_tcg_wait_io_event(QTAILQ_FIRST(&cpus));
         deal_with_unplugged_cpus();
-
     }
 
     return NULL;
@@ -1469,6 +1472,15 @@ void qemu_mutex_unlock_iothread(void)
     qemu_mutex_unlock(&qemu_global_mutex);
 }
 
+
+void kill_tcg_thread(void) {
+  atomic_set(&tcg_running, 0);
+
+  // XXX: This might be dangerous?
+  qemu_mutex_unlock_iothread();
+
+};
+
 static bool all_vcpus_paused(void)
 {
     CPUState *cpu;
@@ -1560,6 +1572,7 @@ static void qemu_tcg_init_vcpu(CPUState *cpu)
         tcg_halt_cond = cpu->halt_cond;
         snprintf(thread_name, VCPU_THREAD_NAME_SIZE, "CPU %d/TCG",
                  cpu->cpu_index);
+        atomic_set(&tcg_running, 1);
         qemu_thread_create(cpu->thread, thread_name, qemu_tcg_cpu_thread_fn,
                            cpu, QEMU_THREAD_JOINABLE);
 #ifdef _WIN32

@@ -68,7 +68,7 @@ bool panda_help_wanted = false;
 bool panda_plugin_load_failed = false;
 bool panda_abort_requested = false;
 
-bool panda_exit_loop = false;
+extern bool panda_library_mode;
 
 bool panda_add_arg(const char *plugin_name, const char *plugin_arg) {
     if (plugin_name == NULL)    // PANDA argument
@@ -81,7 +81,58 @@ bool panda_add_arg(const char *plugin_name, const char *plugin_arg) {
 // Forward declaration
 static void panda_args_set_help_wanted(const char *);
 
+bool panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr) {
+    // don't load the same plugin twice
+    uint32_t i;
+    for (i=0; i<nb_panda_plugins_loaded; i++) {
+        if (0 == (strcmp(filename, panda_plugins_loaded[i]))) {
+            fprintf(stderr, PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, filename);
+            return true;
+        }
+    }
+    // NB: this is really a list of plugins for which we have started loading
+    // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require
+    panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(filename);
+    nb_panda_plugins_loaded ++;
+    void *plugin = plugin_uuid;//going to be a handle of some sort -> dlopen(filename, RTLD_NOW);
+    bool (*init_fn)(void *) = init_fn_ptr; //normally dlsym init_fun
+
+    // Populate basic plugin info *before* calling init_fn.
+    // This allows plugins accessing handles of other plugins before
+    // initialization completes. E.g. osi does a panda_require("win7x86intro"),
+    // and then win7x86intro does a PPP_REG_CB("osi", ...) while initializing.
+    panda_plugins[nb_panda_plugins].plugin = plugin;
+    if (plugin_name) {
+        strncpy(panda_plugins[nb_panda_plugins].name, plugin_name, 256);
+    } else {
+        char *pn = g_path_get_basename((char *) filename);
+        *g_strrstr(pn, HOST_DSOSUF) = '\0';
+        strncpy(panda_plugins[nb_panda_plugins].name, pn, 256);
+        g_free(pn);
+    }
+    nb_panda_plugins++;
+
+    // Call init_fn and check status.
+    fprintf(stderr, PANDA_MSG_FMT "initializing %s\n", PANDA_CORE_NAME, panda_plugins[nb_panda_plugins-1].name);
+    panda_help_wanted = false;
+    panda_args_set_help_wanted(plugin_name);
+    if (panda_help_wanted) {
+        printf("Options for plugin %s:\n", plugin_name);
+        fprintf(stderr, "PLUGIN              ARGUMENT                REQUIRED        DESCRIPTION\n");
+        fprintf(stderr, "======              ========                ========        ===========\n");
+    }
+    if(!init_fn(plugin) || panda_plugin_load_failed) {
+        return false;
+    }
+    return true;
+}
+
+
 bool panda_load_plugin(const char *filename, const char *plugin_name) {
+  return _panda_load_plugin(filename, plugin_name, false);
+}
+
+bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode) {
     // don't load the same plugin twice
     uint32_t i;
     for (i=0; i<nb_panda_plugins_loaded; i++) {
@@ -94,6 +145,39 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
     // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require  
     panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(filename);
     nb_panda_plugins_loaded ++;
+
+    // Ensure pypanda has been dlopened so its symbols can be used in the plugin we're
+    // now loading. XXX: This should probably happen earlier and only once
+    if (library_mode) {
+      // When running as a library, load libpanda
+      const char *lib_dir = g_getenv("PANDA_BUILD_DIR");
+      char *library_path;
+      const char * lib_name =
+#if defined(TARGET_I386)
+          "/i386-softmmu/libpanda-i386.so";
+#elif defined(TARGET_x86_64)
+          "/x86_64-softmmu-softmmu/libpanda-x86_64.so";
+#elif defined(TARGET_ARM)
+          "/arm-softmmu/libpanda-arm.so";
+#else
+          "\n TODO: other architectures \n";
+          assert(0 && "Unsupported architecture in load_plugin");
+#endif
+
+      if (lib_dir != NULL) {
+        library_path = g_strdup_printf("%s%s", lib_dir, lib_name);
+      }else{
+        library_path = g_strdup_printf("../../../build/%s", lib_name); // XXX This is bad, need a less hardcoded path
+      }
+
+      void *libpanda = dlopen(library_path, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
+
+      if (!libpanda) {
+        fprintf(stderr, "Failed to load libpanda: %s\n", dlerror());
+        return false;
+      }
+    }
+
     void *plugin = dlopen(filename, RTLD_NOW);
     if(!plugin) {
         fprintf(stderr, "Failed to load %s: %s\n", filename, dlerror());
@@ -154,6 +238,10 @@ char *panda_plugin_path(const char *plugin_name) {
     }
     g_free(plugin_path);
 
+    // Note qemu_file is set in the first call to main_aux
+    // so if this is called (likely via load_plugin) qemu_file must be set directly
+    assert(qemu_file != NULL);
+
     // Second, try relative to QEMU binary.
     char *dir = g_path_get_dirname(qemu_file);
     plugin_path = g_strdup_printf("%s/panda/plugins/panda_%s" HOST_DSOSUF, dir,
@@ -176,6 +264,24 @@ char *panda_plugin_path(const char *plugin_name) {
     // Return null if plugin resolution failed.
     return NULL;
 }
+
+void panda_require_from_library(const char *plugin_name) {
+    // If we're printing help, panda_require will be a no-op.
+    if (panda_help_wanted) return;
+
+    fprintf(stderr, PANDA_MSG_FMT "loading required plugin %s\n", PANDA_CORE_NAME, plugin_name);
+
+    // translate plugin name into a path to .so
+    char *plugin_path = panda_plugin_path(plugin_name);
+
+    // load plugin same as in vl.c
+    if (!_panda_load_plugin(plugin_path, plugin_name, true)) { // Load in library mode
+        fprintf(stderr, PANDA_MSG_FMT "FAILED to load required plugin %s from %s\n", PANDA_CORE_NAME, plugin_name, plugin_path);
+        abort();
+    }
+    g_free(plugin_path);
+}
+
 
 
 void panda_require(const char *plugin_name) {
@@ -202,7 +308,7 @@ void panda_require(const char *plugin_name) {
     g_free(plugin_path);
 }
 
-// Internal: remove a plugin from the global array
+// Internal: remove a plugin from the global array panda_plugins and panda_plugins_loaded
 static void panda_delete_plugin(int i)
 {
     if (i != nb_panda_plugins - 1) { // not the last element
@@ -210,6 +316,11 @@ static void panda_delete_plugin(int i)
                 (nb_panda_plugins - i - 1) * sizeof(panda_plugin));
     }
     nb_panda_plugins--;
+
+    if (i != nb_panda_plugins_loaded -1 ) { // not the last element
+        memmove(&panda_plugins_loaded[i], &panda_plugins_loaded[i+1], (nb_panda_plugins_loaded - i - 1)*sizeof(char*));
+    }
+    nb_panda_plugins_loaded--;
 }
 
 void panda_do_unload_plugin(int plugin_idx)
@@ -233,6 +344,15 @@ void panda_unload_plugin(void *plugin)
     for (i = 0; i < nb_panda_plugins; i++) {
         if (panda_plugins[i].plugin == plugin) {
             panda_unload_plugin_idx(i);
+            break;
+        }
+    }
+}
+
+void panda_unload_plugin_by_name(const char *plugin_name) {
+    for (int i = 0; i < nb_panda_plugins; i++) {
+        if (strncmp(panda_plugins[i].name, plugin_name, 256) == 0) {
+            panda_unload_plugin(panda_plugins[i].plugin);
             break;
         }
     }
@@ -296,6 +416,22 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb)
     } else {
         panda_cbs[type] = new_list;
     }
+}
+
+/**
+ * @brief Determine if the specified callback is enabled
+ *
+ * @note Querying an unregistered callback returns false
+ */
+bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb) {
+    if (panda_cbs[type] != NULL) {
+        for (panda_cb_list *plist = panda_cbs[type]; plist != NULL; plist = plist->next) {
+            if (plist->owner == plugin && (plist->entry.cbaddr) == cb.cbaddr) {
+                return plist->enabled;
+            }
+        }
+    }
+    return false;
 }
 
 /**
@@ -1009,7 +1145,7 @@ void hmp_panda_list_plugins(Monitor *mon, const QDict *qdict) {
     PandaPluginInfoList *plugin_item = qmp_list_plugins(&err);
     monitor_printf(mon, "idx\t%-20s\taddr\n", "name");
     while (plugin_item != NULL){
-        monitor_printf(mon, "%ld\t%-20s\t%lx\n", plugin_item->value->index, 
+        monitor_printf(mon, "%ld\t%-20s\t%lx\n", plugin_item->value->index,
                         plugin_item->value->name, plugin_item->value->address);
         plugin_item = plugin_item->next;
 

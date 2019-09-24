@@ -215,7 +215,12 @@ class FastShad : public Shad
 
     TaintData *get_td_p(uint64_t guest_addr)
     {
+        // Even if the assert is disabled (prod build), this is still fatal
         tassert(guest_addr < size);
+        if (guest_addr >= size) {
+          fprintf(stderr, "PANDA[taint2]: Fatal error- taint query on invalid address 0x%lx\n", guest_addr);
+          return NULL;
+        }
         return &labels[guest_addr];
     }
 

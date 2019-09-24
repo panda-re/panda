@@ -99,10 +99,10 @@ bool init_plugin(void* self) {
 
     panda_enable_precise_pc();
 
-    pcb.after_mmio_read = buffer_mmio_read;
+    pcb.mmio_after_read = buffer_mmio_read;
     panda_register_callback(self, PANDA_CB_MMIO_AFTER_READ, pcb);
 
-    pcb.after_mmio_write = buffer_mmio_write;
+    pcb.mmio_after_write = buffer_mmio_write;
     panda_register_callback(self, PANDA_CB_MMIO_AFTER_WRITE, pcb);
 
     return true;
