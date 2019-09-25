@@ -143,6 +143,6 @@ fi
     "$@"
 make -j ${PANDA_NPROC:-$(nproc || sysctl -n hw.ncpu)}
 
-$PIP3PATH install setuptools colorama cffi
+$PIP3PATH install colorama cffi
 
 # vim: set et ts=4 sts=4 sw=4 ai ft=sh :

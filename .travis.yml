@@ -65,11 +65,13 @@ addons:
       - clang-3.3
       - protobuf-c-compiler
       - protobuf-compiler
-      - python3
-      - python3-pip
       - python-pip
       - python-protobuf
       - python-pycparser
+      # PYPANDA stuff
+      - python3
+      - python3-pip
+      - python3-setuptools
 
 # The channel name "irc.oftc.net#qemu" is encrypted against qemu/qemu
 # to prevent IRC notifications from forks. This was created using:
