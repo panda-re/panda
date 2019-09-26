@@ -839,7 +839,7 @@ static RR_log_entry *rr_read_item(void) {
                 case RR_CALL_HANDLE_PACKET:
                     RR_READ_ITEM(args->variant.handle_packet_args);
                     // mz XXX HACK
-                    args->old_buf_addr = (uint64_t)args->variant.handle_packet_args.buf;
+                    args->old_buf_addr = (uintptr_t)args->variant.handle_packet_args.buf;
                     // mz buffer length in args->variant.cpu_mem_rw_args.len
                     // mz always allocate a new one. we free it when the item is added
                     // to the recycle list
