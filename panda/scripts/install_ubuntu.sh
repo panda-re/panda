@@ -26,8 +26,20 @@ ppa_list_file() {
     "$PPA_NAME" "$3"
 }
 
+apt_enable_src() {
+  local SOURCES_LIST="/etc/apt/sources.list"
+  if grep -q "^[^#]*deb-src .* $codename .*main" "$SOURCES_LIST"; then
+    progress "deb-src already enabled in $SOURCES_LIST."
+    return 0
+  fi
+  progress "Enabling deb-src in $SOURCES_LIST."
+  sudo sed -E -i 's/^([^#]*) *# *deb-src (.*)/\1 deb-src \2/' "$SOURCES_LIST"
+}
+
 # Exit on error.
 set -e
+
+apt_enable_src
 
 progress "Installing qemu dependencies..."
 sudo apt-get update || true
