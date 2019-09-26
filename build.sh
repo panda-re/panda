@@ -16,6 +16,9 @@ PANDA_LLVM_ROOT="${PANDA_LLVM_ROOT:-"${PANDA_DIR_REL}/../llvm"}"
 PANDA_LLVM_BUILD="${PANDA_LLVM_BUILD:-Release}"
 PANDA_LLVM="$("$READLINK" -f "${PANDA_LLVM_ROOT}/${PANDA_LLVM_BUILD}" 2>/dev/null)"
 
+# Number of concurrent make jobs.
+PANDA_NPROC=${PANDA_NPROC:-$(nproc || sysctl -n hw.ncpu)}
+
 # stop on any error
 set -e
 
@@ -106,7 +109,8 @@ if [ -f "$BUILD_LOCAL" ]; then
     . "$BUILD_LOCAL"
 fi
 
-## Configure and compile.
+## Configure/compile/test.
+msg "Configuring PANDA..."
 "${PANDA_DIR_REL}/configure" \
     --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu \
     --prefix="$(pwd)/install" \
@@ -114,6 +118,13 @@ fi
     $LLVM_CONFIG \
     $MISC_CONFIG \
     "$@"
-make -j ${PANDA_NPROC:-$(nproc || sysctl -n hw.ncpu)}
+
+msg "Compiling PANDA..."
+make -j ${PANDA_NPROC}
+
+if [ "$PANDA_TEST" = "yes" ]; then
+    msg "Testing PANDA..."
+    make -j ${PANDA_NPROC} check
+fi
 
 # vim: set et ts=4 sts=4 sw=4 ai ft=sh :
