@@ -1,3 +1,4 @@
+// Manually copied from panda/plugins/osi/osi_types.h
 typedef void target_pid_t;
 
 typedef struct osi_page_struct {
@@ -6,12 +7,12 @@ typedef struct osi_page_struct {
 } OsiPage;
 
 typedef struct osi_proc_struct {
-    target_ptr_t offset;
-    char *name;
+    target_ptr_t taskd;
     target_ptr_t asid;
-    OsiPage *pages;
     target_ptr_t pid;
     target_ptr_t ppid;
+    char *name;
+    OsiPage *pages;
 } OsiProc;
 
 typedef struct osi_procs_struct {
@@ -21,10 +22,10 @@ typedef struct osi_procs_struct {
 } OsiProcs;
 
 typedef struct osi_module_struct {
-    target_ptr_t offset;
-    char *file;
+    target_ptr_t modd;
     target_ptr_t base;
     target_ptr_t size;
+    char *file;
     char *name;
 } OsiModule;
 

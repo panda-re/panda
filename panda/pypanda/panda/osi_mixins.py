@@ -38,7 +38,7 @@ class osi_mixins():
 
     def get_process_name(self, cpu):
         current = self.get_current_process(cpu)
-        if current == ffi.NULL:
+        if current == ffi.NULL or current.name == ffi.NULL:
             return 0
         current_name = ffi.string(current.name).decode('utf8', 'ignore')
         return current_name

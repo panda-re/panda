@@ -13,7 +13,7 @@ panda_dir = dirname(dirname(dirname(os.path.realpath(__file__))))
 # components of paths to be serched
 top_dirs = [panda_dir, dirname(panda_dir)]
 build_dirs = ['build-panda', 'build', 'opt-panda', 'debug-panda']
-arch_dirs = ['i386-softmmu', 'x86_64-softmmu']
+arch_dirs = ['i386-softmmu', 'x86_64-softmmu', 'ppc-softmmu', 'arm-softmmu']
 searched_paths = []
 
 for dc in itertools.product(top_dirs, build_dirs, arch_dirs):

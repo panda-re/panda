@@ -1,3 +1,10 @@
+// XXX here be dragons
+// This file was manually created in order to capture the relative offsets of important data within
+// qemus tructs for pypanda. CFFI is unable to parse complex header (with IFDEFs), so this was
+// unfortunately created by hand and may get out of sync with headers in the include directory leading
+// to incorrect behavior.
+
+// TODO: Find a way to autogenerate
 
 typedef int size_t;
 
@@ -1233,6 +1240,7 @@ typedef uint64_t vaddr;
 	    bool exit_request;
 	    uint32_t interrupt_request;
 	    int singlestep_enabled;
+      int64_t icount_budget;
 	    int64_t icount_extra;
 	   	char jmp_env[200]; // sigjmp_buf jmp_env;
 
@@ -1311,6 +1319,11 @@ typedef uint64_t vaddr;
 
 //	    bool hax_vcpu_dirty;
 //	    void* hax_vcpu; //struct hax_vcpu_state *hax_vcpu;
+    /* The pending_tlb_flush flag is set and cleared atomically to
+     * avoid potential races. The aim of the flag is to avoid
+     * unnecessary flushes.
+     */
+    uint16_t pending_tlb_flush;
 	};
 typedef struct CPUState CPUState;
 
@@ -1353,7 +1366,7 @@ struct TranslationBlock {
 //#ifdef USE_DIRECT_JUMP
     uint16_t jmp_insn_offset[2]; /* offset of native jump instruction */
 //#else
-    uintptr_t jmp_target_addr[2]; /* target address for indirect jump */
+    //uintptr_t jmp_target_addr[2]; /* target address for indirect jump */    // XXX: Assuming USE_DIRECT_JUMP is always enabled
 //#endif
     /* Each TB has an assosiated circular list of TBs jumping to this one.
      * jmp_list_first points to the first TB jumping to this one.

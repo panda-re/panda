@@ -321,7 +321,6 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         else:
             raise ValueError("Arguments to load plugin must be a list or dict of key/value pairs")
 
-
         # First set qemu_path so plugins can load (may be unnecessary after the first time)
         panda_name_ffi = ffi.new("char[]", bytes(self.panda,"utf-8"))
         self.libpanda.panda_set_qemu_path(panda_name_ffi)
