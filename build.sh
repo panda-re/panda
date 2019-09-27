@@ -17,8 +17,8 @@ fi
 TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu"
 
 # If there are arguments, the first arg is target list or 'small'. subsequent args are passed to configure
-if [ $# -ge 0 ]; then
-    if [ $1 = "small" ]; then
+if [ $# -ge 1 ]; then
+    if [ "$1" = "small" ]; then
         TARGET_LIST="i386-softmmu"
     else
         TARGET_LIST="$1"
