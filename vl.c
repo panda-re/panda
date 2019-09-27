@@ -155,6 +155,7 @@ extern char *panda_plugin_path(const char *name);
 void panda_set_os_name(char *os_name);
 extern void panda_callbacks_after_machine_init(void);
 extern void panda_callbacks_pre_shutdown(void);
+extern void panda_callbacks_main_loop_wait(void);
 
 extern void pandalog_cc_init_write(const char * fname);
 int pandalog = 0;
@@ -1965,6 +1966,7 @@ void main_loop(void)
         ti = profile_getclock();
 #endif
         last_io = main_loop_wait(nonblocking);
+        panda_callbacks_main_loop_wait();
 
         // rr: check for begin/end record/replay
         sigset_t blockset, oldset;
