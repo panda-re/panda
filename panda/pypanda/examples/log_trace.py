@@ -43,7 +43,7 @@ with open(os_path.join(bin_dir, bin_name), 'rb') as f:
                 mappings[symbol['st_value']] = symbol.name
 
 @panda.cb_after_block_exec(procname=bin_name) # After we've executed the block applying taint, make sure everything is tainted as expected
-def abe(cpu, tb):
+def abe(cpu, tb, exit):
     if tb.pc in mappings:
         print(hex(tb.pc),mappings[tb.pc])
     return 0

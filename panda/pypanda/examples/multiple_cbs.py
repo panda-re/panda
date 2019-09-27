@@ -26,7 +26,7 @@ def my_before_block_execute(cpustate, transblock):
     return 0
 
 @panda.cb_after_block_exec()
-def my_after_block_execute(cpustate,transblock):
+def my_after_block_execute(cpustate,transblock,exit):
     print("after block in python")
     global ctr
     ctr +=1

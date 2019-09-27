@@ -34,7 +34,7 @@ def before_block_execute(env, tb):
     return 0
 
 @panda.cb_after_block_exec(procname="cat")
-def before_block_execute2(env, tb):
+def before_block_execute2(env, tb, exit):
     pc = panda.current_pc(env)
     global bbs_cat
     bbs_cat.add(pc)

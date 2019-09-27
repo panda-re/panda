@@ -59,7 +59,7 @@ class callback_mixins():
             return
 
         @self.callback.after_block_exec
-        def __get_pending_procname_change(cpu, tb):
+        def __get_pending_procname_change(cpu, tb, exit_code):
             if not self.in_kernel(cpu): # Once we're out of kernel code, grab procname
                 name = self.get_process_name(cpu)
                 asid = self.libpanda.panda_current_asid(cpu)

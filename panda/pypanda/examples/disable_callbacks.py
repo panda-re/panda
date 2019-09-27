@@ -34,7 +34,7 @@ def before_block_execute(cpustate,transblock):
 	return 0
 
 @panda.cb_after_block_exec(name="after")
-def after_block_execute(cpustate,transblock):
+def after_block_execute(cpustate,transblock,exit):
 	global count
 	if count < 9:
 		print("after block in python %d" % count)
