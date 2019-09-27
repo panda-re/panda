@@ -316,14 +316,14 @@ void panda_callbacks_unassigned_io(CPUState *env, hwaddr addr, uint32_t size,
         panda_cb_list *plist;
         for(plist = panda_cbs[PANDA_CB_UNASSIGNED_IO_WRITE]; plist != NULL;
             plist = panda_cb_list_next(plist)) {
-            plist->entry.unassigned_io_write(env, env->panda_guest_pc, addr, size, val);
+            if (plist->enabled) plist->entry.unassigned_io_write(env, env->panda_guest_pc, addr, size, val);
         }
     }
     else {
         panda_cb_list *plist;
         for(plist = panda_cbs[PANDA_CB_UNASSIGNED_IO_READ]; plist != NULL;
             plist = panda_cb_list_next(plist)) {
-            plist->entry.unassigned_io_read(env, env->panda_guest_pc, addr, size, val);
+            if (plist->enabled) plist->entry.unassigned_io_read(env, env->panda_guest_pc, addr, size, val);
         }
     }
 }
