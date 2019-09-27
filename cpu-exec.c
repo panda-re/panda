@@ -218,13 +218,6 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     exitCode = (uint8_t)tb_exit;
     panda_callbacks_after_block_exec(cpu, itb, exitCode);
 
-    // if we were asked to exit that last bb *and* didn't actually
-    // execute any of the guest code, then we shouldn't run the
-    // after-block panda callbacks
-    if (!(tb_exit == TB_EXIT_REQUESTED
-          && last_tb->pc == itb->pc))
-        panda_callbacks_after_block_exec(cpu, itb, exitCode);
-
     trace_exec_tb_exit(last_tb, tb_exit);
 
     if (tb_exit > TB_EXIT_IDX1) {
