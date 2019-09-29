@@ -264,6 +264,9 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         if not self.started.is_set():
             self.started.set()
 
+        # Ensure our internal CBs are always enabled
+        self.enable_internal_callbacks()
+
         self.running.set()
         self.libpanda.panda_run() # Give control to panda
         self.running.clear() # Back from panda's execution (due to shutdown or monitor quit)

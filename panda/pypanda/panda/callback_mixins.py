@@ -135,6 +135,22 @@ class callback_mixins():
             raise RuntimeError("No callback has been registered with name '{}'".format(name))
         return self.registered_callbacks[name]['enabled']
 
+    def enable_internal_callbacks(self):
+        '''
+        Enable all our internal callbacks that start with __ such as __main_loop_wait
+        and __asid_changed. Important in case user has done a panda.end_analysis()
+        and then (re)called run
+        '''
+        for name in self.registered_callbacks.keys():
+            if name.startswith("__") and not self.registered_callbacks[name]['enabled']:
+                self.enable_callback(name)
+
+    def enable_all_callbacks(self):
+        '''
+        Enable all python callbacks that have been disabled
+        '''
+        for name in self.registered_callbacks.keys():
+            self.enable_callback(name)
 
     def enable_callback(self, name):
         '''
