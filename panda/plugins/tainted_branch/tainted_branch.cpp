@@ -155,6 +155,7 @@ bool init_plugin(void *self) {
     PPP_REG_CB("taint2", on_branch2, tbranch_on_branch_taint2);
     if (indirect_jumps) 
         PPP_REG_CB("taint2", on_indirect_jump, tbranch_on_branch_taint2);
+    panda_enable_precise_pc();
     return true;
 }
 

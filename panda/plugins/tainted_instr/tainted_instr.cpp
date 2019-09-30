@@ -150,6 +150,7 @@ bool init_plugin(void *self) {
     // this tells taint system to enable extra instrumentation
     // so it can tell when the taint state changes
     taint2_track_taint_state();
+    panda_enable_precise_pc();
     return true;
 }
 
