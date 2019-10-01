@@ -103,7 +103,8 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	if (KERNEL_VERSION(ki->version.a, ki->version.b, ki->version.c) > KERNEL_VERSION(2, 4, 254)) {
 		READ_INFO_INT(ki, task.tasks_offset, gerr, err.task, &errbmp);
 
-		READ_INFO_UINT64(ki, task.per_cpu_offset_0, gerr, err.task, &errbmp);
+		READ_INFO_UINT64(ki, task.per_cpu_offsets_addr, gerr, err.task, &errbmp);
+		READ_INFO_UINT64(ki, task.per_cpu_offset_0_addr, gerr, err.task, &errbmp);
 		READ_INFO_UINT64(ki, task.current_task_addr, gerr, err.task, &errbmp);
 		READ_INFO_INT(ki, task.group_leader_offset, gerr, err.task, &errbmp);
 		READ_INFO_INT(ki, task.stack_offset, gerr, err.task, &errbmp);

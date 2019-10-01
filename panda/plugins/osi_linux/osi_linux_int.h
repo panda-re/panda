@@ -23,4 +23,4 @@ typedef void target_ptr_t;
 
 #include "osi_linux_int_fns.h"
 
-/* vim:set tabstop=4 softtabstop=4 noexpandtab: */
+/* vim:set tabstop=4 softtabstop=4 expandtab: */

@@ -30,6 +30,12 @@
 #endif
 
 #define KERNEL_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
+#define PROFILE_KVER_EQ(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) == KERNEL_VERSION(_va, _vb, _vc))
+#define PROFILE_KVER_NE(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) != KERNEL_VERSION(_va, _vb, _vc))
+#define PROFILE_KVER_LT(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) < KERNEL_VERSION(_va, _vb, _vc))
+#define PROFILE_KVER_GT(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) > KERNEL_VERSION(_va, _vb, _vc))
+#define PROFILE_KVER_LE(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) <= KERNEL_VERSION(_va, _vb, _vc))
+#define PROFILE_KVER_GE(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) >= KERNEL_VERSION(_va, _vb, _vc))
 
 /**
  * @brief Kernel Version information
@@ -44,7 +50,8 @@ PACKED_STRUCT(version) {
  * @brief Information and offsets related to `struct task_struct`.
  */
 PACKED_STRUCT(task_info) {
-    uint64_t per_cpu_offset_0;
+    uint64_t per_cpu_offsets_addr;
+    uint64_t per_cpu_offset_0_addr;
     uint64_t current_task_addr;
 	uint64_t init_addr;			/**< Address of the `struct task_struct` of the init task. */
 	size_t size;				/**< Size of `struct task_struct`. */

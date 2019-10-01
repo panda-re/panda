@@ -13,3 +13,5 @@ const KernelProfile DEFAULT_PROFILE = {
     .get_group_leader = &default_get_group_leader,
     .get_files_fds = &default_get_file_fds
 };
+
+/* vim:set tabstop=4 softtabstop=4 expandtab: */

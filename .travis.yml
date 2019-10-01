@@ -99,9 +99,12 @@ dist: xenial
 before_install:
     - sudo pip install pycparser
     - git submodule update --init dtc
+env:
+    global:
+        - PANDA_TEST="yes"
 script:
-    - travis_wait 40 sleep infinity &
-    - sudo panda/scripts/install_ubuntu.sh && cd ./build && sudo make check
+    - travis_wait 60 sleep infinity &
+    - sudo panda/scripts/install_ubuntu.sh
 #before_script:
 #  - ./configure ${CONFIG}
 #script:
