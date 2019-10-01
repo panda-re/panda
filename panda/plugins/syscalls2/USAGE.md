@@ -133,9 +133,10 @@ Example
 In general one uses `syscalls2` with another plugin that registers callbacks for specific set of system calls. For example, one could write a plugin called `filereadmon` that intercepts calls to `NtReadFile` on Windows using something like:
 
 ```C
-#include "../syscalls2/gen_syscalls_ext_typedefs.h"
-#include "../syscalls2/syscalls_common.h"
+#include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
+#include "syscalls2/syscalls_ext_typedefs.h"
+#include "syscalls2/syscalls2_ext.h"
 
 void my_NtReadFile_enter(
         CPUState* env,
