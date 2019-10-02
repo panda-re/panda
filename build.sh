@@ -3,7 +3,7 @@
 # As part of building we need python2 for qemu and pip3 to install pypanda dependencies
 # Either use python and pip3 or use pyenv with 3.6.6 and 2.7.9
 # This is just a temporary hack until we merge with qemu 4.1 which adds supports python3
-if [ -z "${PYENV_VERSION}" ]; then
+if [ -z "${PYENV_ROOT}" ]; then
   PYTHON2PATH=$(which python2) # First try python2, then python
   if [ -z "${PYTHON2PATH}" ] || [ ! $($PYTHON2PATH --version | grep -q 'Python 2.7') ]; then
     PYTHON2PATH=$(which python)
