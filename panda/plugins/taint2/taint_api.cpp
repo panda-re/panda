@@ -167,6 +167,15 @@ void taint2_label_io(uint64_t ia, uint32_t l) {
     tp_label(a, l);
 }
 
+void taint2_label_addr(Addr a, int offset, uint32_t l) {
+    a.off = offset;
+    if (a.typ == LADDR)
+        taint_log("LABEL: Laddr[%lx] offset=%d (%d)\n", a.val.la, offset, l);
+    if (a.typ == GREG)
+        taint_log("LABEL: Greg[%lx] offset=%d (%d)\n", a.val.gr, offset, l);
+    tp_label(a, l);
+}
+
 void taint2_label_reg(int reg_num, int offset, uint32_t l) {
     Addr a = make_greg(reg_num, offset);
     tp_label(a, l);
