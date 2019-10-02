@@ -5,7 +5,7 @@ from os import devnull
 from colorama import Fore, Style
 
 # This debug variable
-debug = True
+debug = False
 
 def progress(msg):
     print(Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)

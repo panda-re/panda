@@ -142,3 +142,6 @@ class libpanda_mixins():
 
     def cleanup(self):
         self.libpanda.panda_cleanup()
+
+    def was_aborted(self):
+        return self.libpanda.panda_was_aborted()

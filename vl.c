@@ -163,6 +163,7 @@ int panda_in_main_loop = 0;
 extern bool panda_abort_requested; // When set, we exit in after printing a help message
 bool panda_break_vl_loop_req = false; // When set, we break the main loop in vl.c
 bool panda_library_mode = false; // Set if using panda from python
+bool panda_aborted = true; // Set if panda was terminated (e.g., Ctrl-C)
 
 char *panda_snap_name = NULL;
 const char* replay_name = NULL;
@@ -1686,6 +1687,7 @@ static void qemu_kill_report(void)
              * avoiding printing an odd message in that case.
              */
             error_report("terminating on signal %d", shutdown_signal);
+            panda_aborted = true;
         } else {
             char *shutdown_cmd = qemu_get_pid_name(shutdown_pid);
 

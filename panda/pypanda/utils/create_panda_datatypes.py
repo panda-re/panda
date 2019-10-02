@@ -91,7 +91,6 @@ from collections import namedtuple
 from cffi import FFI
 
 ffi = FFI()
-pyp = ffi
 
 def read_cleanup_header(fname):
     # CFFI can't handle externs, but sometimes we have to extern C (as opposed to 
@@ -194,11 +193,11 @@ class PandaState(Enum):
 
     pdty.write("""
 
-pcb = PandaCB(init = pyp.callback("bool(void*)"), 
+pcb = PandaCB(init = ffi.callback("bool(void*)"),
 """)
 
     for i in range(cbn-1):
-        pdty.write('%s = pyp.callback("%s")' % cb_types[i])
+        pdty.write('%s = ffi.callback("%s")' % cb_types[i])
         if i == cbn-2:
             pdty.write(")\n")
         else:

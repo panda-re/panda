@@ -14,10 +14,11 @@ from os import dup, getenv, devnull, environ
 from random import randint
 from inspect import signature
 from tempfile import NamedTemporaryFile
+from time import time
 
 from .taint import TaintQuery
 
-from .autogen.panda_datatypes import * # ffi, pcb come from here
+from .autogen.panda_datatypes import * # ffi, pcb, C come from here
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
 from .images import qcows
@@ -120,6 +121,9 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.current_asid_name = None
         self.asid_mapping = {}
 
+        # Shutdown stuff
+        self.exception = None # When set to an exn, we'll raise and exit
+
         # main_loop_wait functions and callbacks
         self.main_loop_wait_fnargs = [] # [(fn, args), ...]
         progress ("Panda args: [" + (" ".join(self.panda_args)) + "]")
@@ -208,11 +212,23 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         if debug:
             progress ("Loading snapshot " + snapshot_name)
 
-            # Stop guest, queue up revert, then continue
-            self.vm_stop()
-            charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
-            self.queue_main_loop_wait_fn(self.libpanda.panda_revert, [charptr])
-            self.queue_main_loop_wait_fn(self.libpanda.panda_cont)
+        # Stop guest, queue up revert, then continue
+        timer_start = time()
+        self.vm_stop()
+        charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
+        self.queue_main_loop_wait_fn(self.libpanda.panda_revert, [charptr])
+        self.queue_main_loop_wait_fn(self.libpanda.panda_cont)
+        if debug:
+            self.queue_main_loop_wait_fn(self.finish_timer, [timer_start, "Loaded snapshot"])
+
+    def reset(self): # In the next main loop, reset to boot
+        if debug:
+            progress ("Resetting machine to start state")
+
+        # Stop guest, queue up revert, then continue
+        self.vm_stop()
+        self.queue_main_loop_wait_fn(self.libpanda.panda_reset)
+        self.queue_main_loop_wait_fn(self.libpanda.panda_cont)
 
     def cont(self): # Continue execution (run after vm_stop)
         self.libpanda.panda_cont()
@@ -226,10 +242,13 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             progress ("Creating snapshot " + snapshot_name)
 
         # Stop guest execution, queue up a snapshot, then continue
+        timer_start = time()
         self.vm_stop()
         charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
         self.queue_main_loop_wait_fn(self.libpanda.panda_snap, [charptr])
         self.queue_main_loop_wait_fn(self.libpanda.panda_cont)
+        if debug:
+            self.queue_main_loop_wait_fn(self.finish_timer, [timer_start, "Saved snapshot"])
 
     def delvm(self, snapshot_name):
         if debug:
@@ -239,6 +258,13 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.vm_stop()
         charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
         self.queue_main_loop_wait_fn(self.libpanda.panda_delvm, [charptr])
+
+    def finish_timer(self, start, msg):
+        '''
+        Print how long some (main_loop_wait) task took
+        '''
+        t = time() - start
+        print(f"{msg} in {t:.08f} seconds")
 
 
     def enable_tb_chaining(self):
@@ -279,6 +305,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.unload_plugins()
         if self.running:
             self.queue_async(self.stop_run)
+            self.queue_async(self.check_crashed)
 
     def run_replay(self, replaypfx):
         '''
@@ -351,7 +378,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
     def unload_plugins(self):
         if debug:
-            progress ("Unloading all panda plugins")
+            progress ("Disabling all python plugins, unloading all C plugins")
 
         # First unload python plugins, should be safe to do anytime
         for name in self.registered_callbacks.keys():
@@ -427,6 +454,9 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             self.__setattr__(libname, library)
 
     def get_cpu(self,cpustate):
+        '''
+        XXX: Why does this exist and why 
+        '''
         if self.arch == "arm":
             return self.get_cpu_arm(cpustate)
         elif self.arch == "x86":
@@ -447,12 +477,12 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
     def get_cpu_x64(self,cpustate):
         # we dont do this because x86 is the assumed arch
         if not hasattr(self, "x64_support"):
-            self.x64_support = ffi.cdef(open("./include/panda_x64_support.h").read()) 
+            self.x64_support = ffi.cdef(open("/include/panda_x64_support.h").read()) 
         return ffi.cast("CPUX64State*", cpustate.env_ptr)
 
     def get_cpu_arm(self,cpustate):
         if not hasattr(self, "arm_support"):
-            self.arm_support = ffi.cdef(open("./include/panda_arm_support.h").read())
+            self.arm_support = ffi.cdef(open("/home/andrew/git/panda/panda/pypanda/panda/include/panda_arm_support.h").read())
         return ffi.cast("CPUARMState*", cpustate.env_ptr)
 
     def get_cpu_ppc(self,cpustate):

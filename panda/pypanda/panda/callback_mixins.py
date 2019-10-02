@@ -42,9 +42,19 @@ class callback_mixins():
             local_name = name  # We need a new varaible otherwise we have scoping issues with _generated_callback's name
             if name is None:
                 local_name = fun.__name__
-            self.register_callback(pandatype, pandatype(fun), local_name, enabled=enabled, procname=procname)
+            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
+                try:
+                    r = fun(*args, **kwargs)
+                    #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
+                    #assert(isinstance(r, int)), "Invalid return type?"
+                    return r
+                except Exception as e:
+                    self.end_analysis()
+                    self.exception = e # XXX: We can't raise here or exn won't fully be printed. Instead, we print it in check_crashed()
+            cast_rc = pandatype(_run_and_catch)
+            self.register_callback(pandatype, cast_rc, local_name, enabled=enabled, procname=procname)
             def wrapper(*args, **kw):
-                return fun(*args, **kw)
+                return _run_and_catch(*args, **kw)
             return wrapper
         return decorator
 

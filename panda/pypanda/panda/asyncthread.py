@@ -3,6 +3,7 @@ import functools
 from queue import Queue, Empty
 from time import sleep
 from colorama import Fore, Style
+from .utils import debug
 
 # Module to run a thread in parallel to QEMU's main cpu loop
 # Enables queuing up python functions from main thread and vice versa
@@ -55,7 +56,8 @@ class AsyncThread:
             if not self.running:
                 break
             try:
-                print(f"Calling {func.__name__}")
+                if debug:
+                    print(f"Calling {func.__name__}")
                 # XXX: If running become false while func is running we need a way to kill it
                 func()
             except Exception as e:

@@ -108,3 +108,18 @@ class blocking_mixins():
         self.run_monitor_cmd("end_record")
 
         print("Finished recording")
+
+    @blocking
+    def check_crashed(self):
+        '''
+        After end_analysis, check if an exn was caught in a callback.
+        If so, print traceback and kill this python instance
+        TODO: currently prints 2 stack frames too low (shows pypanda internals), should hide those
+        '''
+        if self.exception is not None:
+            import traceback, os
+            try:
+                raise self.exception
+            except:
+                traceback.print_exc()
+            os._exit(1) # Force process to exit now

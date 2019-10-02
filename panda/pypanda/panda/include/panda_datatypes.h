@@ -951,9 +951,11 @@ void panda_stop(int code);
 void panda_cont(void);
 void panda_start_pandalog(const char *name);
 int panda_revert(char *snapshot_name);
+void panda_reset(void);
 int panda_snap(char *snapshot_name);
 int panda_replay(char *replay_name);
 int panda_finish(void);
+bool panda_was_aborted(void);
 target_ulong panda_virt_to_phys_external(CPUState *cpu, target_ulong virt_addr);
 
 void panda_set_qemu_path(char* filepath);

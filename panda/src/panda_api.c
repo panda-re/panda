@@ -32,8 +32,10 @@ extern void pandalog_cc_init_write(const char * fname);
 extern int panda_in_main_loop;
 extern bool panda_stopped;
 
+// vl.c
 extern char *panda_snap_name;
 extern bool panda_library_mode;
+extern bool panda_aborted;
 
 int panda_run(void) {
     qemu_cpu_kick(first_cpu);
@@ -70,6 +72,10 @@ void panda_stop(int code) {
     do_vm_stop(code);
 }
 
+bool panda_was_aborted(void) {
+  return panda_aborted;
+}
+
 //void vm_start(void);
 
 void panda_cont(void) {
@@ -82,6 +88,10 @@ int panda_revert(char *snapshot_name) {
     int ret = load_vmstate(snapshot_name);
 //    printf ("Got back load_vmstate ret=%d\n", ret);
     return ret;
+}
+
+void panda_reset(void) {
+    qemu_system_reset_request();
 }
 
 int panda_snap(char *snapshot_name) {
