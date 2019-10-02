@@ -1,42 +1,5 @@
 #!/bin/bash
 
-# As part of building we need python2 for qemu and pip3 to install pypanda dependencies
-# Either use python and pip3 or use pyenv with 3.6.6 and 2.7.9
-# This is just a temporary hack until we merge with qemu 4.1 which adds supports python3
-if [ -z "${PYENV_ROOT}" ]; then
-  PYTHON2PATH=$(which python2) # First try python2, then python
-  if [ -z "${PYTHON2PATH}" ] || [ ! $($PYTHON2PATH --version | grep -q 'Python 2.7') ]; then
-    PYTHON2PATH=$(which python)
-    if [ -z "${PYTHON2PATH}" ] || [ ! $($PYTHON2PATH --version | grep -q 'Python 2.7') ]; then
-      echo "Could not find python2.7. Tried python2 and python"
-      exit 1
-    fi
-  fi
-  PIP3PATH=$(which pip3) # First try pip3, then pip
-  if [ -z "${PIP3PATH}" ] || [ ! $($PIP3PATH --version | grep -q 'Python 3.6') ]; then
-    PIP3PATH=$(which pip)
-    if [ -z "${PIP3PATH}" ] || [ ! $($PIP3PATH --version | grep -q 'Python 3.6') ]; then
-      echo "Could not find python3's pip. Tried pip3 and pip"
-      exit 1
-    fi
-  fi
-else
-  eval "$(pyenv init -)"
-  pyenv shell 3.6.6 2.7.9
-  PYTHON2PATH=$(pyenv which python2)
-  PIP3PATH=$(pyenv which pip3)
-  if [ -z "$PYTHON2PATH" ]; then
-      echo "Could not find python2 (tried 'python' and 'python2')"
-      exit 1
-  fi
-
-  if [ -z "$PIP3PATH" ]; then
-      echo "Could not find python3-pip (tried 'pip3' and 'pip')"
-      exit 1
-  fi
-fi
-
-
 # Default targets to build. Change with argument. small = i386-softmmu
 TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu"
 
@@ -83,6 +46,46 @@ PANDA_NPROC=${PANDA_NPROC:-$(nproc || sysctl -n hw.ncpu)}
 
 # stop on any error
 set -e
+
+# Find paths to python2.7 and pip3
+# As part of building we need python2 for qemu and pip3 to install pypanda dependencies
+# Either use python and pip3 or use pyenv with 3.6.6 and 2.7.9
+# This is just a temporary hack until we merge with qemu 4.1 which adds supports python3
+if which pyenv; then
+  eval "$(pyenv init -)"
+  pyenv shell 3.6.6 2.7.9
+  PYTHON2PATH=$(pyenv which python2)
+  PIP3PATH=$(pyenv which pip3)
+  if [ -z "$PYTHON2PATH" ]; then
+      echo "Could not find python2 (tried 'python' and 'python2')"
+      exit 1
+  fi
+
+  if [ -z "$PIP3PATH" ]; then
+      echo "Could not find python3-pip (tried 'pip3' and 'pip')"
+      exit 1
+  fi
+else
+  PYTHON2PATH=$(which python2) # First try python2, then python
+  if [ -z "${PYTHON2PATH}" ] || ! $PYTHON2PATH --version 2>&1 | grep -q 'Python 2\.7'; then
+    PYTHON2PATH=$(which python)
+    if [ -z "${PYTHON2PATH}" ] || ! $PYTHON2PATH --version 2>&1 | grep -q 'Python 2\.7'; then
+      echo "Could not find python2.7. Tried python2 and python"
+      exit 1
+    fi
+  fi
+  PIP3PATH=$(which pip3) # First try pip3, then pip
+  if [ -z "${PIP3PATH}" ] || ! $PIP3PATH --version | grep -q 'python 3\.'; then
+    PIP3PATH=$(which pip)
+    if [ -z "${PIP3PATH}" ] || ! $PIP3PATH --version | grep -q 'python 3\.'; then
+      echo "Could not find python3's pip. Tried pip3 and pip"
+      exit 1
+    fi
+  fi
+fi
+
+msg "Using python2 at: $PYTHON2PATH"
+msg "Using pip3 at: $PIP3PATH"
 
 ### Check gcc/g++ versions. 5 is currently the supported version.
 ### PANDA no longer builds with versions 4.x.
