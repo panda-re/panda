@@ -786,7 +786,7 @@ static void ide_sector_read(IDEState *s)
             RR_CALLSITE_IDE_SECTOR_READ,
             HD_TRANSFER_HD_TO_IOB,
             sector_num*512,
-            (uint64_t) s->io_buffer,
+            (uintptr_t)s->io_buffer,
             n*512);
     }
 
@@ -1068,7 +1068,7 @@ static void ide_sector_write(IDEState *s)
         rr_record_hd_transfer(
             RR_CALLSITE_IDE_SECTOR_WRITE,
             HD_TRANSFER_IOB_TO_HD,
-            (uint64_t) s->io_buffer,
+            (uintptr_t)s->io_buffer,
             sector_num*512,
             n*512);
     }
@@ -2287,7 +2287,7 @@ void ide_data_writew(void *opaque, uint32_t addr, uint32_t val)
             (RR_CALLSITE_IDE_DATA_WRITEW,
              HD_TRANSFER_PORT_TO_IOB,
              addr,
-             (uint64_t) s->data_ptr, 
+             (uintptr_t)s->data_ptr,
              2);
 	}
 
@@ -2327,7 +2327,7 @@ uint32_t ide_data_readw(void *opaque, uint32_t addr)
         rr_record_hd_transfer
             (RR_CALLSITE_IDE_DATA_READW,
              HD_TRANSFER_IOB_TO_PORT,
-             (uint64_t) s->data_ptr, 
+             (uintptr_t)s->data_ptr,
              addr, 
              2);
     }
@@ -2369,7 +2369,7 @@ void ide_data_writel(void *opaque, uint32_t addr, uint32_t val)
             (RR_CALLSITE_IDE_DATA_WRITEL,
              HD_TRANSFER_PORT_TO_IOB,
              addr, 
-             (uint64_t) s->data_ptr, 
+             (uintptr_t)s->data_ptr,
              4);
     }
 
@@ -2409,7 +2409,7 @@ uint32_t ide_data_readl(void *opaque, uint32_t addr)
         rr_record_hd_transfer
             (RR_CALLSITE_IDE_DATA_READL,
              HD_TRANSFER_IOB_TO_PORT,
-             (uint64_t) s->data_ptr, 
+             (uintptr_t)s->data_ptr,
              addr,
              4);
     }

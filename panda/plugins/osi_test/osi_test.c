@@ -34,7 +34,7 @@ int after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode);
 int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
     OsiProc *current = get_current_process(cpu);
     if(current) {
-        printf("Current process: %s PID:" TARGET_FMT_ld " PPID:" TARGET_FMT_ld "\n", current->pid > 0 ? current->name : "N/A", current->pid, current->ppid);
+        printf("Current process: %s PID:" TARGET_PID_FMT " PPID:" TARGET_PID_FMT "\n", current->pid > 0 ? current->name : "N/A", current->pid, current->ppid);
     } else {
         printf("Cannot get current process details.\n");
     }
@@ -48,7 +48,7 @@ int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
         printf("Process list (%d procs):\n", ps->len);
         for (int i = 0; i < ps->len; i++) {
             OsiProc *p = &g_array_index(ps, OsiProc, i);
-            printf("  %-16s\t" TARGET_FMT_ld "\t" TARGET_FMT_ld "\n", p->name, p->pid, p->ppid);
+            printf("  %-16s\t" TARGET_PID_FMT "\t" TARGET_PID_FMT "\n", p->name, p->pid, p->ppid);
         }
     }
 
