@@ -100,7 +100,7 @@ else:
 print "\n-----------------------------------------------------------------------------"
 print "\nFirst pass replay to figure out when to turn on taint (after file opened)\n"
 
-base_panda_args = ["-replay", replay_base, "-os", "linux-32-lava32"]
+base_panda_args = ["-replay", replay_base, "-os", "linux-32-debian:3.2.0-4-686-pae"]
 panda_args = list(base_panda_args)
 
 # replay to figure out where to turn on taint
