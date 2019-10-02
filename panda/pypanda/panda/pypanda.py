@@ -355,7 +355,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         panda_name_ffi = ffi.new("char[]", bytes(self.panda,"utf-8"))
         self.libpanda.panda_set_qemu_path(panda_name_ffi)
 
-        charptr = pyp.new("char[]", bytes(name,"utf-8"))
+        charptr = ffi.new("char[]", bytes(name,"utf-8"))
         self.libpanda.panda_require_from_library(charptr)
         self.load_plugin_library(name)
 
