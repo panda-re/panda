@@ -54,8 +54,8 @@ typedef struct osi_module_struct {
 typedef struct osi_proc_struct {
     target_ptr_t taskd;
     target_ptr_t asid;
-    target_ptr_t pid;
-    target_ptr_t ppid;
+    target_pid_t pid;
+    target_pid_t ppid;
     char *name;
     OsiPage *pages;
 } OsiProc;
