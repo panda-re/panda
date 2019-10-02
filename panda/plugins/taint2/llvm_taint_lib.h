@@ -110,6 +110,7 @@ private:
     void insertTaintBulk(Instruction &I,
             Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
             uint64_t size, Function *func);
+    void insertAfterTaintLd(Instruction &I, Value *val, Value *addr, uint64_t size);
     void insertTaintCopyOrDelete(Instruction &I,
             Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
             uint64_t size);
@@ -155,6 +156,7 @@ public:
     Function *breadcrumbF;
     Function *branchF;
     Function *copyRegToPcF;
+    Function *afterLdF;
 
     Constant *memlogConst;
     Function *memlogPopF;

@@ -36,6 +36,9 @@ typedef void (*on_indirect_jump_t) (Addr, uint64_t);
 typedef void (*on_taint_change_t) (Addr, uint64_t);
 typedef void (*on_ptr_load_t) (Addr, uint64_t, uint64_t);
 typedef void (*on_ptr_store_t) (Addr, uint64_t, uint64_t);
+typedef void (*on_after_load_t) (Addr, uint64_t, uint64_t);
+typedef void (*on_after_store_t) (Addr, uint64_t, uint64_t);
+ 
 
 
 struct ShadowState {
