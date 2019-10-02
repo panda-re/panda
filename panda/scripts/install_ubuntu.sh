@@ -36,7 +36,7 @@ sudo apt-get -y build-dep qemu
 progress "Installing PANDA dependencies..."
 sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
   libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
-  libwiretap-dev libwireshark-dev
+  libwiretap-dev libwireshark-dev python3-pip python3
 
 pushd /tmp
 
