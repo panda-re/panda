@@ -11,6 +11,7 @@
 
 #include <unordered_set>
 #include <cstdlib>
+#include <string>
 
 #include "panda/plugin.h"
 
@@ -136,31 +137,31 @@ bool translate_cb(CPUState *env, target_ulong pc) {
 }
 
 void dump_process_info(const char *in_kernel, target_ulong pc,
-        uint64_t instr_count, const char *process_name, target_ptr_t pid,
+        uint64_t instr_count, const char *process_name, target_pid_t pid,
         target_pid_t tid, const char *name, const char *image,
         target_ptr_t image_base)
 {
-    printf("pc=0x" TARGET_FMT_lx " instr_count=%ld process=%s pid="
-            TARGET_FMT_lu " tid=" TARGET_FMT_lu
-            " in_kernel=%s image_name=%s image_path=%s ", pc, instr_count,
-            process_name, pid, tid, in_kernel, name, image);
+    printf("pc=0x" TARGET_PTR_FMT " instr_count=%" PRIu64 " process=%s pid="
+           TARGET_PID_FMT " tid=" TARGET_PID_FMT " in_kernel=%s image_name="
+           "%s image_path=%s ",
+           pc, instr_count, process_name, pid, tid, in_kernel, name, image);
     if (0 == strcmp(UNKNOWN_ITEM, name)) {
         printf("image_base=%s\n", UNKNOWN_ITEM);
     } else {
-        printf("image_base=0x" TARGET_FMT_lx "\n", image_base);
+        printf("image_base=0x" TARGET_PTR_FMT "\n", image_base);
     }
 }
 
 void dump_noprocess_info(const char * in_kernel, target_ulong pc,
         uint64_t instr_count, target_pid_t tid, const char *name,
         const char *image, target_ptr_t image_base) {
-    printf("pc=0x" TARGET_FMT_lx " instr_count=%ld process=%s pid=NA tid="
-            TARGET_FMT_lu " in_kernel=%s image_name=%s image_path=%s ", pc,
-            instr_count, NO_PROCESS, tid, in_kernel, name, image);
+    printf("pc=0x" TARGET_PTR_FMT " instr_count=%" PRIu64 " process=%s pid=NA"
+           " tid=" TARGET_PID_FMT " in_kernel=%s image_name=%s image_path=%s ",
+           pc, instr_count, NO_PROCESS, tid, in_kernel, name, image);
     if (0 == strcmp(UNKNOWN_ITEM, name)) {
         printf("image_base=%s\n", UNKNOWN_ITEM);
     } else {
-        printf("image_base=0x" TARGET_FMT_lx "\n", image_base);
+        printf("image_base=0x" TARGET_PTR_FMT "\n", image_base);
     }
 }
 
