@@ -143,7 +143,7 @@ void dump_process_info(const char *in_kernel, target_ulong pc,
     printf("pc=0x" TARGET_FMT_lx " instr_count=%ld process=%s pid="
             TARGET_FMT_lu " tid=" TARGET_FMT_lu
             " in_kernel=%s image_name=%s image_path=%s ", pc, instr_count,
-	   process_name, pid, (target_ulong) tid, in_kernel, name, image);
+            process_name, pid, tid, in_kernel, name, image);
     if (0 == strcmp(UNKNOWN_ITEM, name)) {
         printf("image_base=%s\n", UNKNOWN_ITEM);
     } else {
@@ -156,7 +156,7 @@ void dump_noprocess_info(const char * in_kernel, target_ulong pc,
         const char *image, target_ptr_t image_base) {
     printf("pc=0x" TARGET_FMT_lx " instr_count=%ld process=%s pid=NA tid="
             TARGET_FMT_lu " in_kernel=%s image_name=%s image_path=%s ", pc,
-	   instr_count, NO_PROCESS, (target_ulong) tid, in_kernel, name, image);
+            instr_count, NO_PROCESS, tid, in_kernel, name, image);
     if (0 == strcmp(UNKNOWN_ITEM, name)) {
         printf("image_base=%s\n", UNKNOWN_ITEM);
     } else {
