@@ -264,7 +264,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         Print how long some (main_loop_wait) task took
         '''
         t = time() - start
-        print(f"{msg} in {t:.08f} seconds")
+        print("{} in {1:.08f} seconds".format(msg, t))
 
 
     def enable_tb_chaining(self):

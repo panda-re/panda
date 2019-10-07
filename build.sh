@@ -55,14 +55,14 @@ if which pyenv; then
   eval "$(pyenv init -)"
   pyenv shell 3.6.6 2.7.9
   PYTHON2PATH=$(pyenv which python2)
-  PIP3PATH=$(pyenv which pip3)
+  PYTHON3PATH=$(pyenv which python3) 
   if [ -z "$PYTHON2PATH" ]; then
-      echo "Could not find python2 (tried 'python' and 'python2')"
+      echo "Could not find python2"
       exit 1
   fi
 
-  if [ -z "$PIP3PATH" ]; then
-      echo "Could not find python3-pip (tried 'pip3' and 'pip')"
+  if [ -z "$PYTHON3PATH" ]; then
+      echo "Could not find python3"
       exit 1
   fi
 else
@@ -74,18 +74,19 @@ else
       exit 1
     fi
   fi
-  PIP3PATH=$(which pip3) # First try pip3, then pip
-  if [ -z "${PIP3PATH}" ] || ! $PIP3PATH --version | grep -q 'python 3\.'; then
-    PIP3PATH=$(which pip)
-    if [ -z "${PIP3PATH}" ] || ! $PIP3PATH --version | grep -q 'python 3\.'; then
-      echo "Could not find python3's pip. Tried pip3 and pip"
+
+  PYTHON3PATH=$(which python3) # First try python3, then python
+  if [ -z "${PYTHON3PATH}" ] || ! $PYTHON3PATH --version 2>&1 | grep -q 'Python 3\.'; then
+    PYTHON3PATH=$(which python)
+    if [ -z "${PYTHON3PATH}" ] || ! $PYTHON3PATH --version 2>&1 | grep -q 'Python 3\.'; then
+      echo "Could not find python3 Tried python3 and python"
       exit 1
     fi
   fi
 fi
 
 msg "Using python2 at: $PYTHON2PATH"
-msg "Using pip3 at: $PIP3PATH"
+msg "Using python3 at: $PYTHON3PATH"
 
 ### Check gcc/g++ versions. 5 is currently the supported version.
 ### PANDA no longer builds with versions 4.x.
@@ -194,6 +195,6 @@ if [ "$PANDA_TEST" = "yes" ]; then
     make -j ${PANDA_NPROC} check
 fi
 
-$PIP3PATH install colorama cffi
+$PYTHON3PATH -m pip install colorama cffi protobuf
 
 # vim: set et ts=4 sts=4 sw=4 ai ft=sh :

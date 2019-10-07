@@ -3,7 +3,7 @@ pypanda
 What is pypanda
 -
 PYPANDA is an extension of PANDA that allows for PANDA plugins to be written 
-in Python.
+in Python3.
 
 ### Installation
 See installation instructions in [here](./docs/installation.md).

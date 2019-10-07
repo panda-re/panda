@@ -57,7 +57,7 @@ class AsyncThread:
                 break
             try:
                 if debug:
-                    print(f"Calling {func.__name__}")
+                    print("Calling {}".format(func.__name__))
                 # XXX: If running become false while func is running we need a way to kill it
                 func()
             except Exception as e:
