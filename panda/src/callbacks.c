@@ -33,6 +33,20 @@ PANDAENDCOMMENT */
 
 #include "panda/common.h"
 
+#if defined(TARGET_I386)
+#define LIBRARY_PATH "/i386-softmmu/libpanda-i386.so"
+#define PLUGIN_DIR "/i386-softmmu/panda/plugins/"
+#elif defined(TARGET_x86_64)
+#define LIBRARY_PATH "/x86_64-softmmu-softmmu/libpanda-x86_64.so"
+#define PLUGIN_DIR "/x86_64-softmmu/panda/plugins/"
+#elif defined(TARGET_ARM)
+#define LIBRARY_PATH "/arm-softmmu/libpanda-arm.so"
+#define PLUGIN_DIR "/arm-softmmu/panda/plugins/"
+#elif defined(TARGET_PPC)
+#define LIBRARY_PATH "/ppc-softmmu/libpanda-ppc.so"
+#define PLUGIN_DIR "/ppc-softmmu/panda/plugins/"
+#endif
+
 const gchar *panda_bool_true_strings[] =  {"y", "yes", "true", "1", NULL};
 const gchar *panda_bool_false_strings[] = {"n", "no", "false", "0", NULL};
 
@@ -150,24 +164,16 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
     // now loading. XXX: This should probably happen earlier and only once
     if (library_mode) {
       // When running as a library, load libpanda
-      const char *lib_dir = g_getenv("PANDA_BUILD_DIR");
-      char *library_path;
-      const char * lib_name =
-#if defined(TARGET_I386)
-          "/i386-softmmu/libpanda-i386.so";
-#elif defined(TARGET_x86_64)
-          "/x86_64-softmmu-softmmu/libpanda-x86_64.so";
-#elif defined(TARGET_ARM)
-          "/arm-softmmu/libpanda-arm.so";
-#else
-          "\n TODO: other architectures \n";
-          assert(0 && "Unsupported architecture in load_plugin");
+#ifndef LIBRARY_DIR
+      assert(0 && "Library dir unset but library mode is enabled - Unsupported architecture?");
 #endif
-
+      const char *lib_dir = g_getenv("PANDA_DIR");
+      char *library_path;
       if (lib_dir != NULL) {
-        library_path = g_strdup_printf("%s%s", lib_dir, lib_name);
+        library_path = g_strdup_printf("%s%s", lib_dir, LIBRARY_PATH);
       }else{
-        library_path = g_strdup_printf("../../../build/%s", lib_name); // XXX This is bad, need a less hardcoded path
+        fprintf(stderr, "WARNING: using hacky dlopen code that will be removed soon\n");
+        library_path = g_strdup_printf("../../../build/%s", LIBRARY_PATH); // XXX This is bad, need a less hardcoded path
       }
 
       void *libpanda = dlopen(library_path, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
@@ -226,17 +232,19 @@ extern const char *qemu_file;
 // Resolve a plugin to a path. If the plugin doesn't exist in any of the search
 // paths, then NULL is returned. The search order for plugins is as follows:
 //
-//   - Relative to the PANDA_PLUGIN_DIR environment variable.
+//   - Relative to the PANDA_DIR environment variable.
 //   - Relative to the QEMU binary (for running out of the build directory).
 //   - Relative to the install prefix directory.
 char *panda_plugin_path(const char *plugin_name) {
     // First try relative to PANDA_PLUGIN_DIR
+#ifdef PLUGIN_DIR
     char *plugin_path = g_strdup_printf(
-        "%s/panda_%s" HOST_DSOSUF, g_getenv("PANDA_PLUGIN_DIR"), plugin_name);
+        "%s/%s/panda_%s" HOST_DSOSUF, g_getenv("PANDA_DIR"), PLUGIN_DIR, plugin_name);
     if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
         return plugin_path;
     }
     g_free(plugin_path);
+#endif
 
     // Note qemu_file is set in the first call to main_aux
     // so if this is called (likely via load_plugin) qemu_file must be set directly
