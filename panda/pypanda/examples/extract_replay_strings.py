@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 from time import sleep
-from sys import argv, path
+from sys import argv
 from string import printable
-path.append("..")
 from panda import Panda
 
 # Pull strings from wget out of a replay (named specified by arg 2)

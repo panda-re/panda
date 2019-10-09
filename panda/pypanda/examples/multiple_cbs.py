@@ -8,8 +8,7 @@ prints a message and sleeps each time the callback is hit.
 Run with: python3 example_multiple_callbacks.py
 '''
 from time import sleep
-from sys import argv, path
-path.append("..")
+from sys import argv
 from panda import Panda
 
 # Single arg of arch, defaults to i386

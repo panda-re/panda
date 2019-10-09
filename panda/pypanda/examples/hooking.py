@@ -4,9 +4,8 @@ Run two commands in a guest and hook two kernel functions with python callbacks
 Requires kernel symbol->address mappings which is generated with util/generate_kallsyms.py
 '''
 
-from sys import argv,  path
-path.append("..")
-from panda import Panda
+from sys import argv
+from panda import Panda, blocking
 import time
 import pickle
 

@@ -6,8 +6,7 @@ and count how many blocks we see execute, stop after 200
 '''
 
 import os
-from sys import argv, path
-path.append("..")
+from sys import argv
 from panda import Panda, blocking
 
 # Single arg of arch, defaults to i386

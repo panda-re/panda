@@ -2,10 +2,9 @@
 
 # This plugin registers the virt_mem_after_write callback and attempts to find strings in memory buffers.
 
-from sys import argv, path as syspath
+from sys import argv
 from string import ascii_letters
 from os import remove, path
-syspath.append("..")
 from panda import Panda, ffi, blocking
 
 # Single arg of arch, defaults to i386

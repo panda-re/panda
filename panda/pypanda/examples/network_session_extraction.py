@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 from time import sleep
-from sys import argv, path as syspath
+from sys import argv
 from os import path, remove
 from scapy.all import Ether, wrpcap
-syspath.append("..")
 from panda import Panda, blocking, ffi
 
 # Single arg of arch, defaults to i386

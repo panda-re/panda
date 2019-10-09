@@ -4,8 +4,7 @@ On a live system, collect basic blocks as we run cat and wget
 '''
 
 import time
-from sys import argv, path
-path.append("..")
+from sys import argv
 from panda import Panda, blocking
 
 # Record some programs running in the guest

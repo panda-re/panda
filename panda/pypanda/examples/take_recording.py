@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-from sys import argv, path
-path.append("..")
+from sys import argv
 from panda import Panda, blocking
 
 # Record some programs running in the guest

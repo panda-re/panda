@@ -1,0 +1,7 @@
+# The following are required to run some of our examples, but are not required for
+# pypanda and (as such), are not installed by default with setup.py.
+# Install with pip -r requirements.txt
+
+scappy
+numpy
+pyelftools

@@ -2,8 +2,7 @@
 
 # Use different panda libraries for different archs
 
-from sys import argv, path
-path.append("..")
+from sys import argv
 from panda import Panda, blocking
 
 

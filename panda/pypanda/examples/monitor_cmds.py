@@ -2,8 +2,7 @@
 
 import os
 from enum import Enum
-from sys import argv, path
-path.append("..")
+from sys import argv
 from panda import Panda, ffi, blocking
 
 # Single arg of arch, defaults to i386
