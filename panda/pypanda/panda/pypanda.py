@@ -313,13 +313,16 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
     def end_analysis(self):
         '''
-        Call from any thread to unload all plugins. If called from async thread, it will also
-        unblock panda.run()
+        Call from any thread to unload all plugins and stop all queued functions.
+        If called from async thread or a callback, it will also unblock panda.run()
+
+        Note here we use the async class's internal thread to process these
+        without needing to wait for tasks in the main async thread
         '''
         self.unload_plugins()
         if self.running:
-            self.queue_async(self.stop_run)
-            self.queue_async(self.check_crashed)
+            self.queue_async(self.stop_run, internal=True)
+            self.queue_async(self.check_crashed, internal=True)
 
     def run_replay(self, replaypfx):
         '''
@@ -504,7 +507,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             self.ppc_support = ffi.cdef(open("./include/panda_ppc_support.h").read())
         return ffi.cast("CPUPPCState*", cpustate.env_ptr)
 
-    def queue_async(self, f):
-        self.athread.queue(f)
+    def queue_async(self, f, internal=False):
+        self.athread.queue(f, internal=internal)
 
 # vim: expandtab:tabstop=4:
