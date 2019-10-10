@@ -34,16 +34,16 @@ PANDAENDCOMMENT */
 #include "panda/common.h"
 
 #if defined(TARGET_I386)
-#define LIBRARY_PATH "/i386-softmmu/libpanda-i386.so"
+#define LIBRARY_DIR "/i386-softmmu/libpanda-i386.so"
 #define PLUGIN_DIR "/i386-softmmu/panda/plugins/"
 #elif defined(TARGET_x86_64)
-#define LIBRARY_PATH "/x86_64-softmmu-softmmu/libpanda-x86_64.so"
+#define LIBRARY_DIR "/x86_64-softmmu-softmmu/libpanda-x86_64.so"
 #define PLUGIN_DIR "/x86_64-softmmu/panda/plugins/"
 #elif defined(TARGET_ARM)
-#define LIBRARY_PATH "/arm-softmmu/libpanda-arm.so"
+#define LIBRARY_DIR "/arm-softmmu/libpanda-arm.so"
 #define PLUGIN_DIR "/arm-softmmu/panda/plugins/"
 #elif defined(TARGET_PPC)
-#define LIBRARY_PATH "/ppc-softmmu/libpanda-ppc.so"
+#define LIBRARY_DIR "/ppc-softmmu/libpanda-ppc.so"
 #define PLUGIN_DIR "/ppc-softmmu/panda/plugins/"
 #endif
 
@@ -170,10 +170,10 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
       const char *lib_dir = g_getenv("PANDA_DIR");
       char *library_path;
       if (lib_dir != NULL) {
-        library_path = g_strdup_printf("%s%s", lib_dir, LIBRARY_PATH);
+        library_path = g_strdup_printf("%s%s", lib_dir, LIBRARY_DIR);
       }else{
         fprintf(stderr, "WARNING: using hacky dlopen code that will be removed soon\n");
-        library_path = g_strdup_printf("../../../build/%s", LIBRARY_PATH); // XXX This is bad, need a less hardcoded path
+        library_path = g_strdup_printf("../../../build/%s", LIBRARY_DIR); // XXX This is bad, need a less hardcoded path
       }
 
       void *libpanda = dlopen(library_path, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);

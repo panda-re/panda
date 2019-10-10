@@ -65,16 +65,16 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             if not (exists(self.qcow)):
                 print("Missing qcow '{}' Please go create that qcow and give it to moyix!".format(self.qcow))
 
-        build_dir  = self._find_build_dir()
-        environ["PANDA_DIR"] = build_dir
-        self.panda = pjoin(build_dir, "panda-system-%s" % self.arch)
-        self.libpanda_path = pjoin(build_dir, "{0}-softmmu/libpanda-{0}.so".format(self.arch))
+        self.build_dir  = self._find_build_dir()
+        environ["PANDA_DIR"] = self.build_dir
+        self.panda = pjoin(self.build_dir, "panda-system-%s" % self.arch)
+        self.libpanda_path = pjoin(self.build_dir, "{0}-softmmu/libpanda-{0}.so".format(self.arch))
         self.libpanda = ffi.dlopen(self.libpanda_path)
 
         self.bits, self.endianness, self.register_size = self._determine_bits()
 
         # Setup argv for panda
-        biospath = realpath(pjoin(build_dir, "pc-bios"))
+        biospath = realpath(pjoin(self.build_dir, "pc-bios"))
         self.panda_args = [self.panda, "-L", biospath]
 
         if self.qcow:
@@ -463,8 +463,8 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             self.__did_load_libpanda = self.libpanda.panda_load_libpanda(libpanda_path_chr)
         libname = "libpanda_%s" % name
         if not hasattr(self, libname):
-            assert(isfile(pjoin(*[build_dir, self.arch+"-softmmu", "panda/plugins/panda_{}.so".format(name)])))
-            library = ffi.dlopen(pjoin(*[build_dir, self.arch+"-softmmu", "panda/plugins/panda_{}.so".format(name)]))
+            assert(isfile(pjoin(*[self.build_dir, self.arch+"-softmmu", "panda/plugins/panda_{}.so".format(name)])))
+            library = ffi.dlopen(pjoin(*[self.build_dir, self.arch+"-softmmu", "panda/plugins/panda_{}.so".format(name)]))
             self.__setattr__(libname, library)
 
     def get_cpu(self,cpustate):
