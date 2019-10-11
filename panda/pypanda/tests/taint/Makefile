@@ -10,4 +10,4 @@ taint_asm: taint.s
 	ld -m elf_i386 -o taint_asm taint_asm.o
 
 clean:
-	rm -f taint
+	rm -f taint taint_asm
