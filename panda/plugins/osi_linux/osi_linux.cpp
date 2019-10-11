@@ -228,6 +228,7 @@ void on_get_process_handles(CPUState *env, GArray **out) {
 void on_get_current_process(CPUState *env, OsiProc **out) {
     static target_ptr_t last_ts = 0x0;
     static target_ptr_t cached_taskd = 0x0;
+    static target_ptr_t cached_asid = 0x0;
     static char *cached_name = (char *)g_malloc0(ki.task.comm_size);
     static target_ptr_t cached_pid = -1;
     static target_ptr_t cached_ppid = -1;
@@ -246,6 +247,7 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
 
             // update the cache
             cached_taskd = p->taskd;
+            cached_asid = p->asid;
             memset(cached_name, 0, ki.task.comm_size);
             strncpy(cached_name, p->name, ki.task.comm_size);
             cached_pid = p->pid;
@@ -254,6 +256,7 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
                 env, ts + ki.task.comm_offset, ki.task.comm_size);
         } else {
             p->taskd = cached_taskd;
+            p->asid = cached_asid;
             p->name = g_strdup(cached_name);
             p->pid = cached_pid;
             p->ppid = cached_ppid;
