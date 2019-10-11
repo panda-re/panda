@@ -96,6 +96,8 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install libffi gettext glib pixman ; fi
   - wget -O - http://people.linaro.org/~alex.bennee/qemu-submodule-git-seed.tar.xz | tar -xvJ
   - git submodule update --init --recursive
+  - cd /opt/pyenv/plugins/python-build/../.. && git pull && cd - # Update pyenv
+  - pyenv install 3.6.6
 
 # PANDA
 sudo: required
@@ -107,10 +109,9 @@ env:
     global:
         - PANDA_TEST="no" # TEMPORARY - change back to yes
 script:
-    - ls panda/pypanda/examples
-    - travis_wait 60 sleep infinity &
-    - sudo panda/scripts/install_ubuntu.sh
-    - pyenv install 3.6.6
+  #- ls panda/pypanda/examples
+  #- travis_wait 60 sleep infinity &
+  #  - sudo panda/scripts/install_ubuntu.sh
     - pyenv shell 3.6.6
     - python panda/pypanda/setup.py install
     - make -C panda/pypanda/examples
