@@ -110,11 +110,12 @@ script:
     - ls panda/pypanda/examples
     - travis_wait 60 sleep infinity &
     - sudo panda/scripts/install_ubuntu.sh
-    - python3 panda/pypanda/setup.py install
+    - pyenv shell 3.6.6
+    - python panda/pypanda/setup.py install
     - make -C panda/pypanda/examples
-    - python3 panda/pypanda/examples/multi_proc_cbs.py
-    - python3 panda/pypanda/examples/taint_ram.py
-    - python3 panda/pypanda/examples/test_ram.py
+    - python panda/pypanda/examples/multi_proc_cbs.py
+    - python panda/pypanda/examples/taint_ram.py
+    - python panda/pypanda/examples/test_ram.py
 #before_script:
 #  - ./configure ${CONFIG}
 #script:
