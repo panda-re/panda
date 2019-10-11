@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pypanda import *
+from panda import Panda, blocking
 from sys import argv
 import pickle
 

@@ -2,8 +2,7 @@
 # Displays the register state of the cpu in x86 at 10 basic blocks
 
 from time import sleep
-from sys import argv, path
-path.append("..")
+from sys import argv
 from panda import Panda, blocking
 from panda.x86.helper import *
 

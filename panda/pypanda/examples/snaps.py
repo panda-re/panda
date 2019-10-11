@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-from sys import argv,exit, path
-path.append("..")
+from sys import argv,exit
 from panda import Panda, blocking
 
 #

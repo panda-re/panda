@@ -96,6 +96,7 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install libffi gettext glib pixman ; fi
   - wget -O - http://people.linaro.org/~alex.bennee/qemu-submodule-git-seed.tar.xz | tar -xvJ
   - git submodule update --init --recursive
+  - cd /opt/pyenv/plugins/python-build/../.. && git pull && cd - # Update pyenv
 
 # PANDA
 sudo: required
@@ -105,10 +106,18 @@ before_install:
     - git submodule update --init dtc
 env:
     global:
-        - PANDA_TEST="yes"
+        - PANDA_TEST="no" # TEMPORARY - change back to yes
 script:
-    - travis_wait 60 sleep infinity &
-    - sudo panda/scripts/install_ubuntu.sh
+  #- ls panda/pypanda/examples
+  #- travis_wait 60 sleep infinity &
+  #  - sudo panda/scripts/install_ubuntu.sh
+    - pyenv install 3.6.6
+    - pyenv shell 3.6.6
+    - python panda/pypanda/setup.py install
+    - make -C panda/pypanda/examples
+    - python panda/pypanda/examples/multi_proc_cbs.py
+    - python panda/pypanda/examples/taint_ram.py
+    - python panda/pypanda/examples/test_ram.py
 #before_script:
 #  - ./configure ${CONFIG}
 #script:

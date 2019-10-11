@@ -7,9 +7,7 @@ if sys.version_info[0] < 3:
 import socket
 import threading
 
-from os.path import join as pjoin
-from os.path import realpath, exists, abspath, isfile
-
+from os.path import realpath, exists, abspath, isfile, dirname, join as pjoin
 from os import dup, getenv, devnull, environ
 from random import randint
 from inspect import signature
@@ -67,20 +65,16 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             if not (exists(self.qcow)):
                 print("Missing qcow '{}' Please go create that qcow and give it to moyix!".format(self.qcow))
 
-        self.bindir = pjoin(panda_build, "%s-softmmu" % self.arch)
-        environ["PANDA_PLUGIN_DIR"] = self.bindir+"/panda/plugins" # Set so libpanda can query, see callbacks.c:215
-        environ["PANDA_BUILD_DIR"] = panda_build
-        self.panda = pjoin(self.bindir, "qemu-system-%s" % self.arch)
-
-        self.libpanda_path = pjoin(self.bindir,"libpanda-%s.so" % self.arch)
+        self.build_dir  = self._find_build_dir()
+        environ["PANDA_DIR"] = self.build_dir
+        self.panda = pjoin(self.build_dir, "panda-system-%s" % self.arch)
+        self.libpanda_path = pjoin(self.build_dir, "{0}-softmmu/libpanda-{0}.so".format(self.arch))
         self.libpanda = ffi.dlopen(self.libpanda_path)
 
         self.bits, self.endianness, self.register_size = self._determine_bits()
 
         # Setup argv for panda
-        biospath = realpath(pjoin(self.panda,"..", "..",  "pc-bios"))
-        #self.panda_args = [self.panda, "-m", self.mem, "-display", "none", "-L", biospath]
-
+        biospath = realpath(pjoin(self.build_dir, "pc-bios"))
         self.panda_args = [self.panda, "-L", biospath]
 
         if self.qcow:
@@ -197,6 +191,26 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             ret = fn(*args)
         self.main_loop_wait_fnargs = []
 
+    def _find_build_dir(self):
+        '''
+        Find build directory containing ARCH-softmmu/libpanda-ARCH.so and ARCH-softmmu/panda/plugins/
+        1) check relative to file (in the case of installed packages)
+        2) Check in ../../../build/
+        3) raise RuntimeError
+        '''
+        archs = ['i386', 'x86_64', 'arm', 'ppc']
+        python_package = pjoin(*[dirname(__file__), "data"])
+        local_build = realpath(pjoin(dirname(__file__), "../../../build"))
+
+        pot_paths = [python_package, local_build]
+        for potential_path in pot_paths:
+            if isfile(pjoin(potential_path, "i386-softmmu/libpanda-i386.so")):
+                print("FOUND PANDA DIR AT {}".format(potential_path))
+                return potential_path
+
+        searched_paths = "\n".join(["\t"+p for p in  pot_paths])
+        raise RuntimeError("Couldn't find libpanda.so. Searched: {}".format(searched_paths))
+
 
     def queue_main_loop_wait_fn(self, fn, args=[]):
         '''
@@ -299,13 +313,16 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
     def end_analysis(self):
         '''
-        Call from any thread to unload all plugins. If called from async thread, it will also
-        unblock panda.run()
+        Call from any thread to unload all plugins and stop all queued functions.
+        If called from async thread or a callback, it will also unblock panda.run()
+
+        Note here we use the async class's internal thread to process these
+        without needing to wait for tasks in the main async thread
         '''
         self.unload_plugins()
         if self.running:
-            self.queue_async(self.stop_run)
-            self.queue_async(self.check_crashed)
+            self.queue_async(self.stop_run, internal=True)
+            self.queue_async(self.check_crashed, internal=True)
 
     def run_replay(self, replaypfx):
         '''
@@ -445,12 +462,12 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
     def load_plugin_library(self, name):
         if hasattr(self,"__did_load_libpanda"):
-            libpanda_path_chr = ffi.new("char[]",bytes(self.libpanda_path,"UTF-8"))
+            libpanda_path_chr = ffi.new("char[]",bytes(self.libpanda_path, "UTF-8"))
             self.__did_load_libpanda = self.libpanda.panda_load_libpanda(libpanda_path_chr)
         libname = "libpanda_%s" % name
         if not hasattr(self, libname):
-            assert(isfile(pjoin(self.bindir, "panda/plugins/panda_%s.so"% name)))
-            library = ffi.dlopen(pjoin(self.bindir, "panda/plugins/panda_%s.so"% name))
+            assert(isfile(pjoin(*[self.build_dir, self.arch+"-softmmu", "panda/plugins/panda_{}.so".format(name)])))
+            library = ffi.dlopen(pjoin(*[self.build_dir, self.arch+"-softmmu", "panda/plugins/panda_{}.so".format(name)]))
             self.__setattr__(libname, library)
 
     def get_cpu(self,cpustate):
@@ -490,7 +507,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             self.ppc_support = ffi.cdef(open("./include/panda_ppc_support.h").read())
         return ffi.cast("CPUPPCState*", cpustate.env_ptr)
 
-    def queue_async(self, f):
-        self.athread.queue(f)
+    def queue_async(self, f, internal=False):
+        self.athread.queue(f, internal=internal)
 
 # vim: expandtab:tabstop=4:

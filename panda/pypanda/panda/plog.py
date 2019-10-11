@@ -6,26 +6,39 @@ import zlib
 import struct
 import itertools
 from google.protobuf.json_format import MessageToJson
-from os.path import dirname
+from os.path import dirname, join, isdir
 
-panda_dir = dirname(dirname(dirname(os.path.realpath(__file__))))
+python_package = dirname(os.path.realpath(__file__)) # when installed site-packages/panda
 
-# components of paths to be serched
-top_dirs = [panda_dir, dirname(panda_dir)]
-build_dirs = ['build-panda', 'build', 'opt-panda', 'debug-panda']
-arch_dirs = ['i386-softmmu', 'x86_64-softmmu', 'ppc-softmmu', 'arm-softmmu']
-searched_paths = []
-
-for dc in itertools.product(top_dirs, build_dirs, arch_dirs):
-    d = os.path.join(*dc)
-    searched_paths.append(d)
-    if not os.path.isdir(d): continue
-    try:
+# First check if pypanda was installed as a python package with a data subdirectory
+if isdir(join(python_package, 'data')):
+    d = join(*[python_package, 'data', 'i386-softmmu'])
+    if os.path.isdir(d):
         sys.path.append(d)
-        import plog_pb2
-        break
-    except ImportError:
-        sys.path.pop()
+        try:
+            import plog_pb2
+        except ImportError:
+            pass
+
+if 'plog_pb2' not in sys.modules:
+    # Otherwise try to search relative to file in standard panda directory names
+    # components of paths to be serched
+    panda_dir = dirname(dirname(dirname(os.path.realpath(__file__))))
+    top_dirs = [panda_dir, dirname(panda_dir)]
+    build_dirs = ['build-panda', 'build', 'opt-panda', 'debug-panda']
+    arch_dirs = ['i386-softmmu', 'x86_64-softmmu', 'ppc-softmmu', 'arm-softmmu']
+    searched_paths = []
+
+    for dc in itertools.product(top_dirs, build_dirs, arch_dirs):
+        d = os.path.join(*dc)
+        searched_paths.append(d)
+        if not os.path.isdir(d): continue
+        try:
+            sys.path.append(d)
+            import plog_pb2
+            break
+        except ImportError:
+            sys.path.pop()
 
 assert 'plog_pb2' in sys.modules, "Couldn't load module plog_pb2. Searched paths:\n\t%s" % "\n\t".join(searched_paths)
 

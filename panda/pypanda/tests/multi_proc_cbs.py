@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-from sys import argv, path
-from os import path as os_path
+from sys import argv
+from os import path
 import capstone
-path.append("..")
 from panda import Panda, ffi, blocking
 
 # Single arg of arch, defaults to i386
@@ -11,7 +10,7 @@ panda = Panda(generic=arch)
 md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_32)
 
 # Take a recording of toy running in the guest if necessary
-if not os_path.isfile("toy-rr-snp"):
+if not path.isfile("toy-rr-snp"):
     @blocking
     def run_toy():
         panda.record_cmd("toy/toy toy/testsmall.bin", "toy", recording_name="toy")

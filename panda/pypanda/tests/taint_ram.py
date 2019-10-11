@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
-from sys import argv, path as syspath
+from sys import argv
 from os import path
 import capstone
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
-
-syspath.append("..")
 from panda import Panda, blocking, ffi
 from panda.x86.helper import *
 

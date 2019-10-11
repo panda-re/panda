@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pypanda import *
+from panda import panda, blocking
 from sys import argv
 
 # No arguments, i386. Otherwise argument should be guest arch
@@ -34,7 +34,7 @@ def run_osi():
     with open("osi_results.txt", "w") as f:
         f.write(r)
 
-    panda.run_monitor_cmd("quit")
+    panda.end_analysis()
 
 panda.queue_async(run_osi)
 

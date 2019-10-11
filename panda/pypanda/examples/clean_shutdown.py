@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # Example script to stop an analysis after 100 blocks
 
-from sys import argv, path
-path.append("..")
+from sys import argv
 from panda import Panda
 
 # Single arg of arch, defaults to i386

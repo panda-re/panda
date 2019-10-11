@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
-from sys import argv, exit, path
+from sys import argv, exit
 import capstone
-path.append("..")
 from panda import Panda, ffi, blocking
 
 # Single arg of arch, defaults to i386

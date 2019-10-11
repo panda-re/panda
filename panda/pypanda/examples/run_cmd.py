@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-from sys import argv, path
-path.append("..")
+from sys import argv
 from panda import blocking, Panda
 
 # No arguments, i386. Otherwise argument should be guest arch
@@ -19,13 +18,8 @@ def run_cmd():
     for line in maps.split("\n"):
         if "cat" in line:
             print(line)
-
-@blocking
-def quit():
-    print("Finished with run_it, let's quit")
-    panda.run_monitor_cmd("quit")
+    panda.end_analysis()
 
 panda.queue_async(run_cmd)
-panda.queue_async(quit)
 
 panda.run()
