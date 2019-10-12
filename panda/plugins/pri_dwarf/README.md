@@ -4,7 +4,7 @@ Plugin: pri_dwarf
 Summary
 -------
 
-The `pri_dwarf` plugin is a provider plugin for `pri` (see [pri](pri/USAGE.md)).  It examines dwarf information for an executable using `libdwarf.h`, `dwarf.h` and `elf.h`.  The plugin also hooks mmap syscalls using the `loaded` plugin (see [loaded](loaded/loaded.cpp)) in order to find shared objects loaded during the lifetime of a program's execution.  At these load points, `pri_dwarf` will load the dwarf information for the .so file if such information exists.
+The `pri_dwarf` plugin is a provider plugin for `pri` (see [pri](pri/README.md)).  It examines dwarf information for an executable using `libdwarf.h`, `dwarf.h` and `elf.h`.  The plugin also hooks mmap syscalls using the `loaded` plugin (see [loaded](loaded/loaded.cpp)) in order to find shared objects loaded during the lifetime of a program's execution.  At these load points, `pri_dwarf` will load the dwarf information for the .so file if such information exists.
 
 Arguments
 ---------
