@@ -28,6 +28,7 @@ PANDAENDCOMMENT */
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 // Doubly linked list that stores a callback, along with its owner
 typedef struct _panda_cb_list panda_cb_list;
 struct _panda_cb_list {

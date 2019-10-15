@@ -160,7 +160,8 @@ void lava_attack_point(PandaHypercallStruct phs) {
     }
 }
 
-void guest_hypercall_callback(CPUState *cpu) {
+bool guest_hypercall_callback(CPUState *cpu) {
+    bool ret = false;
 #if defined(TARGET_I386)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     if (taintEnabled) {
@@ -179,6 +180,7 @@ void guest_hypercall_callback(CPUState *cpu) {
                 printf("taint2: positional taint label\n");
                 taint2_add_taint_ram_pos(cpu, (uint64_t)buf_start, (int)buf_len, label);
             }
+            ret = true;
         }
         else {
             // LAVA Hypercall
@@ -213,6 +215,7 @@ void guest_hypercall_callback(CPUState *cpu) {
                     else {
                         printf("Unknown hypercall action %d\n", phs.action);
                     }
+                    ret = true;
                 }
                 else {
                     printf ("Invalid magic value in PHS struct: %x != 0xabcd.\n", phs.magic);
@@ -220,7 +223,6 @@ void guest_hypercall_callback(CPUState *cpu) {
             }
         }
     }
-    return;
 #elif defined(TARGET_ARM)
     // R0 is command (label or query)
     // R1 is buf_start
@@ -233,17 +235,16 @@ void guest_hypercall_callback(CPUState *cpu) {
             printf("Enabling taint processing\n");
             taint2_enable_taint();
         }
+        ret = true;
         // FIXME: do labeling here.
     }
     else if (env->regs[0] == 9) { //Query taint on label
         if (taintEnabled) {
             printf("Taint plugin: Query operation detected @ %" PRIu64 "\n", rr_get_guest_instr_count());
         }
+        ret = true;
     }
-    return;
-#else
-    // other architectures
-    return;
 #endif
+    return ret;
 }
 #endif // TAINT2_HYPERCALLS

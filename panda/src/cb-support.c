@@ -303,11 +303,16 @@ void PCB(top_loop)(CPUState *env) {
 
 
 // target-i386/misc_helpers.c
-void PCB(guest_hypercall)(CPUState *env) {
+bool PCB(guest_hypercall)(CPUState *env) {
+    int nprocessed = 0;
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_GUEST_HYPERCALL]; plist != NULL; plist = panda_cb_list_next(plist)) {
-        plist->entry.guest_hypercall(env);
+        nprocessed += plist->entry.guest_hypercall(env);
     }
+    if (nprocessed > 1) {
+        LOG_WARNING("Hypercall processed by %d > 1 plugins.", nprocessed);
+    }
+    return nprocessed ? true : false;
 }
 
 

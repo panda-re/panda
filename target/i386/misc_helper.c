@@ -27,10 +27,7 @@
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
 #endif
-
-#include "panda/callbacks/cb-support.h"
 #include "panda/helper_impl.h"
-
 
 void helper_outb(CPUX86State *env, uint32_t port, uint32_t data)
 {
@@ -107,12 +104,15 @@ void helper_into(CPUX86State *env, int next_eip_addend)
 
 void helper_cpuid(CPUX86State *env)
 {
-    uint32_t eax, ebx, ecx, edx;
 
     cpu_svm_check_intercept_param(env, SVM_EXIT_CPUID, 0, GETPC());
 
-    panda_callbacks_guest_hypercall(ENV_GET_CPU(env));
+    if (panda_callbacks_guest_hypercall(ENV_GET_CPU(env))) {
+        // cpuid processed by one of the callbacks
+        return;
+    }
 
+    uint32_t eax, ebx, ecx, edx;
     cpu_x86_cpuid(env, (uint32_t)env->regs[R_EAX], (uint32_t)env->regs[R_ECX],
                   &eax, &ebx, &ecx, &edx);
     env->regs[R_EAX] = eax;
