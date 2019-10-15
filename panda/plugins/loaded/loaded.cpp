@@ -80,7 +80,7 @@ uint32_t guest_strncpy(CPUState *cpu, char *buf, size_t maxlen, target_ulong gue
     return i;
 }
 
-#if defined(TARGET_I386)
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
 // 125 long sys_mprotect ['unsigned long start', ' size_t len', 'unsigned long prot']
 void linux_mprotect_return(CPUState* cpu,target_ulong pc,uint32_t start,uint32_t len,uint32_t prot) {
     if (debug) {
@@ -174,7 +174,7 @@ bool init_plugin(void *self) {
     assert(init_osi_api());
     panda_require("syscalls2");
 
-#if defined(TARGET_I386)
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
     {
         panda_cb pcb;
         pcb.before_block_exec = osi_foo;
