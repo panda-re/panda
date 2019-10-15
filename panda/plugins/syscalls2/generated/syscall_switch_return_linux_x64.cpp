@@ -13,7 +13,7 @@ extern "C" {
 }
 
 void syscall_return_switch_linux_x64(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx) {
-#ifdef TARGET_X86_64
+#if defined(TARGET_X86_64)
 	const syscall_info_t *call = (syscall_meta == NULL || ctx->no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx->no];
 	switch (ctx->no) {
 		// 0 long sys_read ['unsigned int fd', 'char __user *buf', 'size_t count']

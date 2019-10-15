@@ -42,19 +42,19 @@ KNOWN_ARCH = {
         'bits': 64,
         'rt_callno_reg': 'env->regs[R_EAX]',    # register holding syscall number at runtime
         'rt_sp_reg': 'env->regs[R_ESP]',        # register holding stack pointer at runtime
-        'qemu_target': 'TARGET_X86_64',         # qemu target name for this arch - used in guards
+        'qemu_target': 'defined(TARGET_X86_64)',  # qemu target name for this arch - used in guards
     },
     'x86': {
         'bits': 32,
         'rt_callno_reg': 'env->regs[R_EAX]',    # register holding syscall number at runtime
         'rt_sp_reg': 'env->regs[R_ESP]',        # register holding stack pointer at runtime
-        'qemu_target': 'TARGET_I386',           # qemu target name for this arch - used in guards
+        'qemu_target': 'defined(TARGET_I386) && !defined(TARGET_X86_64)',  # qemu target name for this arch - used in guards
     },
     'arm': {
         'bits': 32,
         'rt_callno_reg': 'env->regs[7]',        # register holding syscall number at runtime
         'rt_sp_reg': 'env->regs[13]',           # register holding stack pointer at runtime
-        'qemu_target': 'TARGET_ARM',            # qemu target name for this arch - used in guards
+        'qemu_target': 'defined(TARGET_ARM)',   # qemu target name for this arch - used in guards
     },
 }
 

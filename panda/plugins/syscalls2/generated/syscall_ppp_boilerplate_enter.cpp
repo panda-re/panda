@@ -1,4 +1,4 @@
-#ifdef TARGET_ARM
+#if defined(TARGET_ARM)
 PPP_CB_BOILERPLATE(on_ARM_breakpoint_enter)
 PPP_CB_BOILERPLATE(on_ARM_cacheflush_enter)
 PPP_CB_BOILERPLATE(on_ARM_set_tls_enter)
@@ -355,7 +355,7 @@ PPP_CB_BOILERPLATE(on_sys_waitid_enter)
 PPP_CB_BOILERPLATE(on_sys_write_enter)
 PPP_CB_BOILERPLATE(on_sys_writev_enter)
 #endif
-#ifdef TARGET_X86_64
+#if defined(TARGET_X86_64)
 PPP_CB_BOILERPLATE(on_sys_accept_enter)
 PPP_CB_BOILERPLATE(on_sys_accept4_enter)
 PPP_CB_BOILERPLATE(on_sys_access_enter)
@@ -668,7 +668,7 @@ PPP_CB_BOILERPLATE(on_sys_waitid_enter)
 PPP_CB_BOILERPLATE(on_sys_write_enter)
 PPP_CB_BOILERPLATE(on_sys_writev_enter)
 #endif
-#ifdef TARGET_I386
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
 PPP_CB_BOILERPLATE(on_NtAcceptConnectPort_enter)
 PPP_CB_BOILERPLATE(on_NtAccessCheck_enter)
 PPP_CB_BOILERPLATE(on_NtAccessCheckAndAuditAlarm_enter)

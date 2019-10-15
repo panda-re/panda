@@ -46,7 +46,7 @@ struct syscall_ctx {
 };
 typedef struct syscall_ctx syscall_ctx_t;
 
-#ifdef TARGET_ARM
+#if defined(TARGET_ARM)
 typedef void (*on_ARM_breakpoint_enter_t)(CPUState* cpu, target_ulong pc);
 typedef void (*on_ARM_breakpoint_return_t)(CPUState* cpu, target_ulong pc);
 typedef void (*on_ARM_cacheflush_enter_t)(CPUState* cpu, target_ulong pc, uint32_t start, uint32_t end, uint32_t flags);
@@ -758,7 +758,7 @@ typedef void (*on_sys_write_return_t)(CPUState* cpu, target_ulong pc, uint32_t f
 typedef void (*on_sys_writev_enter_t)(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t vec, uint32_t vlen);
 typedef void (*on_sys_writev_return_t)(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t vec, uint32_t vlen);
 #endif
-#ifdef TARGET_X86_64
+#if defined(TARGET_X86_64)
 typedef void (*on_sys_accept_enter_t)(CPUState* cpu, target_ulong pc, int32_t arg0, uint64_t arg1, uint64_t arg2);
 typedef void (*on_sys_accept_return_t)(CPUState* cpu, target_ulong pc, int32_t arg0, uint64_t arg1, uint64_t arg2);
 typedef void (*on_sys_accept4_enter_t)(CPUState* cpu, target_ulong pc, int32_t arg0, uint64_t arg1, uint64_t arg2, int32_t arg3);
@@ -1382,7 +1382,7 @@ typedef void (*on_sys_write_return_t)(CPUState* cpu, target_ulong pc, uint32_t f
 typedef void (*on_sys_writev_enter_t)(CPUState* cpu, target_ulong pc, uint64_t fd, uint64_t vec, uint64_t vlen);
 typedef void (*on_sys_writev_return_t)(CPUState* cpu, target_ulong pc, uint64_t fd, uint64_t vec, uint64_t vlen);
 #endif
-#ifdef TARGET_I386
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
 typedef void (*on_NtAcceptConnectPort_enter_t)(CPUState* cpu, target_ulong pc, uint32_t PortHandle, uint32_t PortContext, uint32_t ConnectionRequest, uint32_t AcceptConnection, uint32_t ServerView, uint32_t ClientView);
 typedef void (*on_NtAcceptConnectPort_return_t)(CPUState* cpu, target_ulong pc, uint32_t PortHandle, uint32_t PortContext, uint32_t ConnectionRequest, uint32_t AcceptConnection, uint32_t ServerView, uint32_t ClientView);
 typedef void (*on_NtAccessCheck_enter_t)(CPUState* cpu, target_ulong pc, uint32_t SecurityDescriptor, uint32_t ClientToken, uint32_t DesiredAccess, uint32_t GenericMapping, uint32_t PrivilegeSet, uint32_t PrivilegeSetLength, uint32_t GrantedAccess, uint32_t AccessStatus);
