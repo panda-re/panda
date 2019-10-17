@@ -23,33 +23,38 @@ void uninit_plugin(void *);
 using namespace std;
 
 #include<map>
-#include<ostream>
+#include<iostream>
+#include<fstream>
+#include<string>
 
 map<target_ulong,map<target_ulong,uint32_t>> scount;
+map<target_ulong,string> sname;
 
-void count_syscalls(CPUState *env, target_ulong pc, target_ulong callno) {
-  target_ulong asid = panda_current_asid(env);
-  scount[asid][callno] ++;
+void count_syscalls(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp) {
+  scount[rp->asid][call->no] ++;
+  sname[call->no] = string(call->name);
 }
 
 bool init_plugin(void *self) {
   // Setup dependencies
   panda_require("syscalls2");
   assert(init_syscalls2_api());  
-  PPP_REG_CB("syscalls2", on_all_sys_enter, count_syscalls);  
+  PPP_REG_CB("syscalls2", on_all_sys_enter2, count_syscalls);  
   return 1;
 }
 
 void uninit_plugin(void *) {
-  printf ("syshist:\n");
-  printf ("asid\tord\tcount\n");
+  ofstream outf;
+  outf.open ("syshist");
+  outf << "asid\tord\tcount\n";
   for (auto kvp: scount) {
     auto asid = kvp.first;
     for (auto kvp2 : kvp.second) {
       auto ord = kvp2.first;
       auto count = kvp2.second;
-      printf ("%llx\t%u\t%u\n", (long long unsigned) asid, (unsigned int) ord, (unsigned int) count);
+      outf << hex << asid << dec << " " << sname[ord] << " " << count << "\n";
     }
   }
+  outf.close();
 }
 
