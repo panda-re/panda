@@ -1645,9 +1645,6 @@ unprivileged, which makes development and use of the feature easier.
 They are also available across the different variants of the
 architectures.
 
-**Currently ARM support appears to be missing. So anything ARM-related
-only describes how things are meant to work eventually.**
-
 For x86, PANDA opted out from using AMD's SVM and Intel's VT hypercalls
 because they are privileged instructions. This makes them harder to
 integrate with the guest environment.
@@ -1665,15 +1662,25 @@ determine if this is a guest hypercall they need to process. Further
 parameters can be passed in other registers.
 
 If the plugin has processed the hypercall, it should return `true`.
-This prevents the regular CPUID/MCR code from running. This prevents
-register clobbering and allows hypercalls to return values to the
-guest. It also allows detecting whether a hypercall is processed
-by more than one plugins.
+On x86, this prevents the regular CPUID code from running to avoid
+clobbering of register. This allows hypercalls to return values to
+the guest. It also allows detecting when a hypercall is processed
+by more than one plugins (possible conflict of magic values).
+More importantly, an analyzed binary can't directly use the CPUID
+instrucion to probe whether it runs inside a PANDA VM.
+On ARM, the return value of callbacks is not currently used. However,
+the MCR instruction with p7 as target should result in a nop. This means
+that the state of the processor shouldn't change and any values returned
+to the guest through r0, r1 will not be clobbered.
 
 PANDA has modified translate.c to make CPUID/MCR instructions end
 translation blocks. This is useful e.g. for dynamically turning on
 LLVM and enabling heavyweight instrumentation at at a specific point
 in execution.
+
+**ARM support for PANDA hypercalls has not been thoroughly tested.
+If you have sucessfully used it, please submit a PR to remove this
+warning.**
 
 **Signature**:
 ```C
