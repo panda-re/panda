@@ -21,9 +21,8 @@
 #include "exec/exec-all.h"
 #include "exec/helper-proto.h"
 
-#include "panda/helper_impl.h"
-
 #include "helper_regs.h"
+#include "panda/helper_impl.h"
 
 /*****************************************************************************/
 /* SPR accesses */
