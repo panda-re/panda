@@ -16,6 +16,9 @@
 #ifndef QEMU_GLIB_COMPAT_H
 #define QEMU_GLIB_COMPAT_H
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <glib.h>
 
 /* GLIB version compatibility flags */

@@ -938,7 +938,7 @@ int cpu_rr_breakpoint_insert(CPUState *cpu, uint64_t rr_instr_count, int flags,
     //breakpoint_invalidate(cpu, pc);
     tb_flush(cpu);
     
-    printf("Inserted bp @ instr count %lu\n", rr_instr_count);
+    printf("Inserted bp @ instr count %" PRIu64 "\n", rr_instr_count);
 
     if (breakpoint) {
         *breakpoint = bp;

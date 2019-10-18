@@ -1684,7 +1684,8 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
     std::sort(fn_start_line_range_list.begin(), fn_start_line_range_list.end(), sortRange);
     std::sort(line_range_list.begin(), line_range_list.end(), sortRange);
     printf("Successfully loaded debug symbols for %s\n", basename);
-    printf("Number of address range to line mappings: %lu num globals: %lu\n", line_range_list.size(), global_var_list.size());
+    printf("Number of address range to line mappings: %zu num globals: %zu\n",
+           (size_t)line_range_list.size(), (size_t)global_var_list.size());
     return true;
 }
 

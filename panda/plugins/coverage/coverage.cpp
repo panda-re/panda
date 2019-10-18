@@ -117,8 +117,8 @@ void write_process_record(RecordID id, uint64_t size)
     // process and thread ID are in decimal, as that is the radix
     // used by most tools that produce human readable output
     fprintf(coveragelog,
-            "%s," TARGET_FMT_lu "," TARGET_FMT_lu ",%lu,0x"
-            TARGET_FMT_lx ",%lu\n",
+            "%s," TARGET_FMT_lu "," TARGET_FMT_lu ",%" PRIu64 ","
+            "0x" TARGET_FMT_lx ",%" PRIu64 "\n",
             process_name,
             id.pidOrAsid, id.tid, static_cast<uint64_t>(in_kernel),
             id.pc, size);
@@ -192,7 +192,7 @@ void write_asid_record(RecordID id, uint64_t size)
 {
     // Want ASID to be output in hex to match what asidstory produces
     fprintf(coveragelog,
-            "0x" TARGET_FMT_lx ",%lu,0x" TARGET_FMT_lx ",%lu\n",
+            "0x" TARGET_FMT_lx ",%" PRIu64 ",0x" TARGET_FMT_lx ",%" PRIu64 "\n",
             id.pidOrAsid,
             static_cast<uint64_t>(panda_in_kernel(first_cpu)), id.pc, size);
 }

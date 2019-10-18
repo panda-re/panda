@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
+#include <libgen.h>
 
 #define RR_LOG_STANDALONE
-#include <panda/include/panda/rr/rr_log.h>
+#include "panda/include/panda/rr/rr_log.h"
 #include "qemu/osdep.h"
 #include "cpu.h"
 
@@ -66,7 +67,7 @@ static void rr_spit_log_entry(RR_log_entry item) {
             printf("\tRR_INPUT_4 %d from %s\n", item.variant.input_4, get_callsite_string(item.header.callsite_loc));
             break;
         case RR_INPUT_8:
-            printf("\tRR_INPUT_8 %ld from %s\n", item.variant.input_8, get_callsite_string(item.header.callsite_loc));
+            printf("\tRR_INPUT_8 %" PRIu64 " from %s\n", item.variant.input_8, get_callsite_string(item.header.callsite_loc));
             break;
         case RR_INTERRUPT_REQUEST:
             printf("\tRR_INTERRUPT_REQUEST_%d from %s\n", item.variant.interrupt_request, get_callsite_string(item.header.callsite_loc));
@@ -83,7 +84,7 @@ static void rr_spit_log_entry(RR_log_entry item) {
         case RR_SKIPPED_CALL:
             {
                 RR_skipped_call_args *args = &item.variant.call_args;
-                int callbytes;
+                int callbytes = 0;
                 switch (item.variant.call_args.kind) {
                     case RR_CALL_CPU_MEM_RW:
                         callbytes = sizeof(args->variant.cpu_mem_rw_args) + args->variant.cpu_mem_rw_args.len;
@@ -96,7 +97,7 @@ static void rr_spit_log_entry(RR_log_entry item) {
                         break;
                     case RR_CALL_HD_TRANSFER:
                         callbytes = sizeof(args->variant.hd_transfer_args);
-                        printf("This is a HD transfer. Source: 0x%lx, Dest: 0x%lx, Len: %d\n",
+                        printf("This is a HD transfer. Source: 0x%" PRIx64 ", Dest: 0x%" PRIx64 ", Len: %d\n",
                             args->variant.hd_transfer_args.src_addr,
                             args->variant.hd_transfer_args.dest_addr,
                             args->variant.hd_transfer_args.num_bytes);

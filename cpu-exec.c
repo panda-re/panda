@@ -729,7 +729,7 @@ static void detect_infinite_loops(void) {
     if (last_instr_count == rr_get_guest_instr_count()) {
         loop_tries++;
         if (loop_tries > 20) {
-            fprintf(stderr, "rr_guest_instr_count = %lu\n",
+            fprintf(stderr, "rr_guest_instr_count = %" PRIu64 "\n",
                     rr_get_guest_instr_count());
             assert(false);
         }

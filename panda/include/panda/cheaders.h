@@ -21,7 +21,16 @@ extern "C" {
 #include "config-target.h"
 #include "qemu/osdep.h"
 #include "qemu-common.h"
+
+#ifdef __cplusplus
+// Temporarily turn off narrowing warnings for C++.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnarrowing"
 #include "cpu.h"
+#pragma GCC diagnostic pop
+#else
+#include "cpu.h"
+#endif
 
 #include "panda/common.h"
 #include "exec/exec-all.h"
