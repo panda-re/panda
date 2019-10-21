@@ -399,7 +399,7 @@ uint32_t get_linux_x86_argnum(CPUState *cpu, uint32_t argnum) {
 }
 
 // Argument getting (at syscall entry)
-uint32_t get_linux_x64_argnum(CPUState *cpu, uint32_t argnum) {
+uint64_t get_linux_x64_argnum(CPUState *cpu, uint32_t argnum) {
 #if defined(TARGET_X86_64)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 
