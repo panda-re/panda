@@ -4,16 +4,17 @@ Plugin: syscalls2
 Summary
 -------
 
-The `syscalls2` plugin provides callbacks that allow notification whenever system calls occur in the guest, and can provide the parameters for each system call as long as the guest OS is one of these supported by `syscalls2`.
+The `syscalls2` plugin provides callbacks that allow notification whenever system calls occur in the guest, and can provide the parameters for each system call as long as the guest operating system (OS) is one of these supported by `syscalls2`.
 
 This is accomplished by automatically generating a bunch of code based on an initial prototypes file. For full details, have a look at `syscalls2/syscall_parser.py` and one of the prototypes files, such as `syscalls2/prototypes/linux_x86_prototypes.txt`.
 
-For adding support for a new OS or updating the existing ones, see the `syscalls2` [maintenance documentation][prototypes/MAINTENANCE.md].
+For adding support for a new OS or updating the existing ones, see `MAINTENANCE.md`.
+
+The profile for the appropriate guest OS is selected automatically from the information specified in the "-os" argument to PANDA.
 
 Arguments
 ---------
 
-* `profile`: string, defaults to "linux\_x86". The guest OS profile to use. This determines how system calls (e.g. the `sysenter` instruction) will actually be interpreted. Available options are: `linux_x86`, `linux_arm`, `windows_xpsp2_x86`, `windows_xpsp3_x86`, and `windows_7_x86`.
 * `load-info`: boolean, defaults to `false`. Enables loading of system call information for the selected OS profile. This allows more generic processing of system call events, without having to implement individual hooks.
 
 Dependencies
@@ -25,7 +26,7 @@ APIs and Callbacks
 ------------------
 
 ### Callbacks
-The `syscalls2` plugin defines one callback for each system call in each operating system (far too many to list here). To see the prototypes for each one, you can look at the file `gen_syscalls_ext_typedefs.h`.
+The `syscalls2` plugin defines one callback for each system call in each operating system (far too many to list here). To see the prototypes for each one, you can look at the file `generated/syscalls_ext_typedefs.h`.
 
 Each callback is named `on_${SYSCALLNAME}_enter` for calls and `on_${SYSCALLNAME}_return` for returns. The parameters are the CPU state pointer, program counter, and then the arguments to the system call.
 
@@ -133,9 +134,9 @@ Example
 In general one uses `syscalls2` with another plugin that registers callbacks for specific set of system calls. For example, one could write a plugin called `filereadmon` that intercepts calls to `NtReadFile` on Windows using something like:
 
 ```C
-#include "../syscalls2/gen_syscalls_ext_typedefs.h"
-#include "../syscalls2/syscalls_common.h"
+#include "plugin/plugin.h"
 #include "panda/plugin_plugin.h"
+#include "syscalls2/syscalls_ext_typedefs.h"
 
 void my_NtReadFile_enter(
         CPUState* env,
@@ -171,7 +172,7 @@ And then invoke it as:
 
 ```sh
 $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
-    -os windows-32-7 -panda syscalls2:profile=windows_7_x86 -panda filereadmon
+    -os windows-32-7 -panda syscalls2 -panda filereadmon
 ```
 
-If you'd like more examples, you can have a look at `win7proc` and `file_taint`, which both use `syscalls2` extensively.
+If you'd like more examples, you can have a look at `loaded`, `filereadmon` and `file_taint`, all of which `syscalls2`.
