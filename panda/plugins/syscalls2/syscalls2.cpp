@@ -326,17 +326,6 @@ target_ulong calc_retaddr_linux_x64(CPUState* cpu, target_ulong pc) {
         target_ulong ret = pc + 2;
         assert(ret != 0x0);
         return ret;
-    } else if ((0x0F == buf[0]) && (0x34 == buf[1])) {
-    	// TODO:  although it's sometimes possible it is considered a really bad
-    	// thing to use sysenter or int 0x80 in 64-bit code; also would have to
-    	// use the 32-bit system call numbers
-    	LOG_WARNING("calc_retaddr_linux_x64 found sysenter!\n");
-    	return pc+2;
-    }
-    // Check if the instruction is int 0x80 (CD 80)
-    else if ((0xCD == buf[0]) && (0x80 == buf[1])) {
-    	LOG_WARNING("calc_retaddr_linux_x64 found int 0x80!\n");
-        return pc+2;
     }
     // shouldn't happen
     else {
@@ -659,11 +648,21 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
     }
     // Check if the instruction is int 0x80 (CD 80)
     else if (buf[0]== 0xCD && buf[1] == syscalls_profile->syscall_interrupt_number) {
+#if defined(TARGET_X86_64)
+        LOG_WARNING("32-bit system call (int 0x80) found in 64-bit replay - ignoring\n");
+        return false;
+#else
         return true;
+#endif
     }
     // Check if the instruction is sysenter (0F 34)
     else if (buf[0]== 0x0F && buf[1] == 0x34) {
+#if defined(TARGET_X86_64)
+        LOG_WARNING("32-bit sysenter found in 64-bit replay - ignoring\n");
+        return false;
+#else
         return true;
+#endif
     }
     else {
         return false;
