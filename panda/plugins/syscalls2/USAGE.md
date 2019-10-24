@@ -4,9 +4,9 @@ Plugin: syscalls2
 Summary
 -------
 
-The `syscalls2` plugin provides callbacks that allow notification whenever system calls occur in the guest, and can provide the parameters for each system call as long as the guest operating system (OS) is one of these supported by `syscalls2`.
+The `syscalls2` plugin provides callbacks that allow notification whenever system calls occur in the guest, and can provide the parameters for each system call as long as the guest operating system (OS) is one of those supported by `syscalls2`.
 
-This is accomplished by automatically generating a bunch of code based on an initial prototypes file. For full details, have a look at `syscalls2/syscall_parser.py` and one of the prototypes files, such as `syscalls2/prototypes/linux_x86_prototypes.txt`.
+This is accomplished by automatically generating a bunch of code based on an initial prototypes file. For full details, have a look at `syscalls2/scripts/syscall_parser.py` and one of the prototypes files, such as `syscalls2/generated-in/linux_x86_prototypes.txt`.
 
 For adding support for a new OS or updating the existing ones, see `MAINTENANCE.md`.
 
@@ -175,4 +175,4 @@ $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
     -os windows-32-7 -panda syscalls2 -panda filereadmon
 ```
 
-If you'd like more examples, you can have a look at `loaded`, `filereadmon` and `file_taint`, all of which `syscalls2`.
+If you'd like more examples, you can have a look at `loaded`, `filereadmon` and `file_taint`, all of which use `syscalls2`.
