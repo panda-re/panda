@@ -12,6 +12,10 @@
  *
 PANDAENDCOMMENT */
 #pragma once
+/*!
+ * @file cb-defs.h
+ * @brief Definitions of the PANDA supported callbacks.
+ */
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -102,9 +106,9 @@ typedef union panda_cb {
         TranslationBlock *tb: the TB we are about to execute
 
        Return value:
-        unused
+        none
     */
-    int (*before_block_exec)(CPUState *env, TranslationBlock *tb);
+    void (*before_block_exec)(CPUState *env, TranslationBlock *tb);
 
     /* Callback ID: PANDA_CB_AFTER_BLOCK_EXEC
 
@@ -118,9 +122,9 @@ typedef union panda_cb {
         uint8_t exitCode:     why the block execution exited
 
        Return value:
-        unused
+        none
     */
-    int (*after_block_exec)(CPUState *env, TranslationBlock *tb, uint8_t exitCode);
+    void (*after_block_exec)(CPUState *env, TranslationBlock *tb, uint8_t exitCode);
 
     /* Callback ID: PANDA_CB_BEFORE_BLOCK_TRANSLATE
 
@@ -132,9 +136,9 @@ typedef union panda_cb {
         target_ptr_t pc: the guest PC we are about to translate
 
        Return value:
-        unused
+        none
     */
-    int (*before_block_translate)(CPUState *env, target_ptr_t pc);
+    void (*before_block_translate)(CPUState *env, target_ptr_t pc);
 
     /* Callback ID: PANDA_CB_AFTER_BLOCK_TRANSLATE
 
@@ -146,7 +150,7 @@ typedef union panda_cb {
         TranslationBlock *tb: the TB we just translated
 
        Return value:
-        unused
+        none
 
        Notes:
         This is a good place to perform extra passes over the generated
@@ -154,7 +158,7 @@ typedef union panda_cb {
         FIXME: How would this actually work? By this point the out ASM
         has already been generated. Modify the IR and then regenerate?
     */
-    int (*after_block_translate)(CPUState *env, TranslationBlock *tb);
+    void (*after_block_translate)(CPUState *env, TranslationBlock *tb);
 
     /* Callback ID: PANDA_CB_AFTER_CPU_EXEC_ENTER
 
@@ -165,9 +169,9 @@ typedef union panda_cb {
         CPUState *env: the current CPU state
 
        Return value:
-        unused
+        none
     */
-    int (*after_cpu_exec_enter)(CPUState *env);
+    void (*after_cpu_exec_enter)(CPUState *env);
 
     /* Callback ID: PANDA_CB_BEFORE_CPU_EXEC_EXIT
 
@@ -179,9 +183,9 @@ typedef union panda_cb {
         bool ranBlock: true if ran a block since previous cpu_exec_enter
 
        Return value:
-        unused
+        none
     */
-    int (*before_cpu_exec_exit)(CPUState *env, bool ranBlock);
+    void (*before_cpu_exec_exit)(CPUState *env, bool ranBlock);
 
     /* Callback ID: PANDA_CB_INSN_TRANSLATE
 
@@ -208,7 +212,7 @@ typedef union panda_cb {
 
        insn_exec:
         Called before execution of any instruction identified by the
-        PANDA_CB_INSN_TRANSLATE callback
+        PANDA_CB_INSN_TRANSLATE callback.
 
        Arguments:
         CPUState *env:   the current CPU state
@@ -271,7 +275,7 @@ typedef union panda_cb {
         CPUState *env: the current CPU state
 
        Return value:
-        unused
+        none
 
        Notes:
         On x86, this is called whenever CPUID is executed. Plugins then
@@ -283,7 +287,7 @@ typedef union panda_cb {
         AMD's SVM and Intel's VT define hypercalls, but they are privileged
         instructinos, meaning the guest must be in ring 0 to execute them.
     */
-    int (*guest_hypercall)(CPUState *env);
+    void (*guest_hypercall)(CPUState *env);
 
     /* Callback ID: PANDA_CB_MONITOR
 
@@ -323,9 +327,9 @@ typedef union panda_cb {
         size_t size:       the size of the read
 
        Return value:
-        unused
+        none
     */
-    int (*virt_mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size);
+    void (*virt_mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size);
 
     /* Callback ID: PANDA_CB_VIRT_MEM_BEFORE_WRITE
 
@@ -340,9 +344,9 @@ typedef union panda_cb {
         uint8_t *buf:      pointer to the data that is to be written
 
        Return value:
-        unused
+        none
     */
-    int (*virt_mem_before_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
+    void (*virt_mem_before_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_PHYS_MEM_BEFORE_READ
 
@@ -356,15 +360,14 @@ typedef union panda_cb {
         size_t size:       the size of the read
 
        Return value:
-        unused
+        none
     */
-    int (*phys_mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size);
+    void (*phys_mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size);
 
     /* Callback ID: PANDA_CB_PHYS_MEM_BEFORE_WRITE
 
        phys_mem_write:
         Called before memory is written.
-       [exists]
 
        Arguments:
         CPUState *env:     the current CPU state
@@ -374,9 +377,9 @@ typedef union panda_cb {
         uint8_t *buf:      pointer to the data that is to be written
 
        Return value:
-        unused
+        none
     */
-    int (*phys_mem_before_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
+    void (*phys_mem_before_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_VIRT_MEM_AFTER_READ
 
@@ -391,9 +394,9 @@ typedef union panda_cb {
         uint8_t *buf:      pointer to data just read
 
        Return value:
-        unused
+        none
     */
-    int (*virt_mem_after_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
+    void (*virt_mem_after_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_VIRT_MEM_AFTER_WRITE
 
@@ -408,9 +411,9 @@ typedef union panda_cb {
         uint8_t *buf:      pointer to the data that was written
 
        Return value:
-        unused
+        none
     */
-    int (*virt_mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
+    void (*virt_mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_PHYS_MEM_AFTER_READ
 
@@ -425,9 +428,9 @@ typedef union panda_cb {
         uint8_t *buf:      pointer to data just read
 
        Return value:
-        unused
+        none
     */
-    int (*phys_mem_after_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
+    void (*phys_mem_after_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_PHYS_MEM_AFTER_WRITE
 
@@ -442,9 +445,9 @@ typedef union panda_cb {
         uint8_t *buf:      pointer to the data that was written
 
        Return value:
-        unused
+        none
     */
-    int (*phys_mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
+    void (*phys_mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_MMIO_AFTER_READ
 
@@ -458,9 +461,9 @@ typedef union panda_cb {
         uin64_t val:       the value being read
 
        Return value:
-        unused
+        none
     */
-    int (*after_mmio_read)(CPUState *env, target_ptr_t addr, int size, uint64_t val);
+    void (*after_mmio_read)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
 
     /* Callback ID: PANDA_CB_MMIO_AFTER_WRITE
 
@@ -474,13 +477,13 @@ typedef union panda_cb {
         uin64_t val:       the value being written
 
        Return value:
-        unused
+        none
     */
-    int (*after_mmio_write)(CPUState *env, target_ptr_t addr, int size, uint64_t val);
+    void (*after_mmio_write)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
 
     /* Callback ID: PANDA_CB_CPU_RESTORE_STATE
 
-       cb_cpu_restore_state:
+       cpu_restore_state:
         Called inside of cpu_restore_state(), when there is a CPU
         fault/exception.
 
@@ -489,9 +492,9 @@ typedef union panda_cb {
         TranslationBlock *tb: the current translation block
 
        Return value:
-        unused
+        none
     */
-    int (*cb_cpu_restore_state)(CPUState *env, TranslationBlock *tb);
+    void (*cpu_restore_state)(CPUState *env, TranslationBlock *tb);
 
     /* Callback ID: PANDA_CB_BEFORE_LOADVM
 
@@ -520,9 +523,9 @@ typedef union panda_cb {
         target_ptr_t newval: new asid value
 
        Return value:
-        unused
+        none
     */
-    int (*asid_changed)(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
+    void (*asid_changed)(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
 
     /* Callback ID:     PANDA_CB_REPLAY_HD_TRANSFER,
 
@@ -534,17 +537,17 @@ typedef union panda_cb {
         uint32_t type:          type of transfer  (Hd_transfer_type)
         target_ptr_t src_addr:  address for src
         target_ptr_t dest_addr: address for dest
-        uint32_t num_bytes:     size of transfer in bytes
+        size_t num_bytes:       size of transfer in bytes
 
        Return value:
-        unused
+        none
 
        Notes:
         Unlike most callbacks, this is neither a "before" or "after" callback.
         In replay the transfer doesn't really happen. We are *at* the point at
         which it happened, really.
     */
-    int (*replay_hd_transfer)(CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, uint32_t num_bytes);
+    void (*replay_hd_transfer)(CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, size_t num_bytes);
 
     /* Callback ID:     PANDA_CB_REPLAY_BEFORE_DMA,
 
@@ -554,15 +557,15 @@ typedef union panda_cb {
 
        Arguments:
         CPUState *env:      pointer to CPUState
-        uint32_t is_write:  type of transfer going on    (is_write == 1 means IO -> RAM else RAM -> IO)
-        uint8_t *buf:       the QEMU device's buffer in QEMU's virtual memory
-        target_ptr_t paddr: "physical" address of guest RAM
+        const uint8_t *buf: pointer to the QEMU's device buffer ussed in the transfer
+        hwaddr addr:        address written to in the guest RAM
         size_t size:        size of transfer
+        bool is_write:      indicates whether the DMA transfer writes to memory
 
        Return value:
-        unused
+        none
     */
-    int (*replay_before_dma)(CPUState *env, uint32_t is_write, uint8_t *src_addr, target_ptr_t dest_addr, size_t size);
+    void (*replay_before_dma)(CPUState *env, const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
 
     /* Callback ID:     PANDA_CB_REPLAY_AFTER_DMA,
 
@@ -570,15 +573,15 @@ typedef union panda_cb {
 
        Arguments:
         CPUState *env:      pointer to CPUState
-        uint32_t is_write:  type of transfer going on    (is_write == 1 means IO -> RAM else RAM -> IO)
-        uint8_t *buf:       the QEMU device's buffer in QEMU's virtual memory
-        target_ptr_t paddr: "physical" address of guest RAM
-        uint32_t num_bytes: size of transfer
+        const uint8_t *buf: pointer to the QEMU's device buffer ussed in the transfer
+        hwaddr addr:        address written to in the guest RAM
+        size_t size:        size of transfer
+        bool is_write:      indicates whether the DMA transfer writes to memory
 
        Return value:
-        unused
+        none
     */
-    int (*replay_after_dma)(CPUState *env, uint32_t is_write, uint8_t *src_addr, target_ptr_t dest_addr, uint32_t num_bytes);
+    void (*replay_after_dma)(CPUState *env, const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
 
     /* Callback ID:   PANDA_CB_REPLAY_HANDLE_PACKET,
 
@@ -587,14 +590,14 @@ typedef union panda_cb {
        Arguments:
         CPUState *env:             pointer to CPUState
         uint8_t *buf:              buffer containing packet data
-        int size:                  num bytes in buffer
+        size_t size:               num bytes in buffer
         uint8_t direction:         XXX read or write.  not sure which is which.
         target_ptr_t old_buf_addr: XXX this is a mystery
 
        Return value:
-        unused
+        none
     */
-    int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size, uint8_t direction, target_ptr_t old_buf_addr);
+    void (*replay_handle_packet)(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, target_ptr_t old_buf_addr);
 
     /* Callback ID:     PANDA_CB_REPLAY_NET_TRANSFER,
 
@@ -607,17 +610,17 @@ typedef union panda_cb {
         uint32_t type:          type of transfer  (Net_transfer_type)
         target_ptr_t src_addr:  address for src
         target_ptr_t dest_addr: address for dest
-        uint32_t num_bytes:     size of transfer in bytes
+        size_t num_bytes:       size of transfer in bytes
 
        Return value:
-        unused
+        none
 
        Notes:
         Unlike most callbacks, this is neither a "before" or "after" callback.
         In replay the transfer doesn't really happen. We are *at* the point at
         which it happened, really.
     */
-    int (*replay_net_transfer)(CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, uint32_t num_bytes);
+    void (*replay_net_transfer)(CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, size_t num_bytes);
 
     /* Callback ID:     PANDA_CB_REPLAY_SERIAL_RECEIVE,
 
@@ -632,7 +635,7 @@ typedef union panda_cb {
        Return value:
         unused
     */
-    int (*replay_serial_receive)(CPUState *env, target_ptr_t fifo_addr, uint8_t value);
+    void (*replay_serial_receive)(CPUState *env, target_ptr_t fifo_addr, uint8_t value);
 
     /* Callback ID:     PANDA_CB_REPLAY_SERIAL_READ,
 
@@ -646,9 +649,9 @@ typedef union panda_cb {
         uint8_t value:          value read
 
        Return value:
-        unused
+        none
     */
-    int (*replay_serial_read)(CPUState *env, target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
+    void (*replay_serial_read)(CPUState *env, target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
 
     /* Callback ID:     PANDA_CB_REPLAY_SERIAL_SEND,
 
@@ -661,9 +664,9 @@ typedef union panda_cb {
         uint8_t value:          value received
 
        Return value:
-        unused
+        none
     */
-    int (*replay_serial_send)(CPUState *env, target_ptr_t fifo_addr, uint8_t value);
+    void (*replay_serial_send)(CPUState *env, target_ptr_t fifo_addr, uint8_t value);
 
     /* Callback ID:     PANDA_CB_REPLAY_SERIAL_WRITE,
 
@@ -676,9 +679,9 @@ typedef union panda_cb {
         uint8_t value:          value read
 
        Return value:
-        unused
+        none
     */
-    int (*replay_serial_write)(CPUState *env, target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
+    void (*replay_serial_write)(CPUState *env, target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
 
     /* Callback ID:     PANDA_CB_AFTER_MACHINE_INIT
 
@@ -690,7 +693,7 @@ typedef union panda_cb {
         void *cpu_env: pointer to CPUState
 
        Return value:
-        unused
+        none
 
        Notes:
         This callback allows initialization of components that need
@@ -705,12 +708,12 @@ typedef union panda_cb {
         Called at the top of the loop that manages emulation.
 
        Arguments:
-        void *cpu_env: pointer to CPUState
+        none
 
        Return value:
         unused
      */
-    void (*top_loop)(CPUState *env);
+    void (*top_loop)(void);
 
     /* Dummy union member.
 
