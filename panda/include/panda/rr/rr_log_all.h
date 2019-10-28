@@ -22,30 +22,24 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
  * USA.
  */
+#pragma once
 
-#ifndef __RR_LOG_H_ALL_
-#define __RR_LOG_H_ALL_
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <signal.h>
-
-#include <stdint.h>
-#include <assert.h>
+#include <stdint.h>             /* standard integer types */
+#include <signal.h>             /* sig_atomic_t */
+#if 0
+#include <sys/types.h>          /* ??? */
+#include <sys/stat.h>           /* ??? */
+#include <unistd.h>             /* ??? */
+#endif
 
 #include "qemu/log.h"
 #include "qom/cpu.h"
+#include "panda/rr/rr_types.h"
+
 
 // Used later for enum to string macros
 #define GENERATE_ENUM(ENUM) ENUM
 #define GENERATE_STRING(STRING) #STRING
-
-typedef enum { RR_OFF, RR_RECORD, RR_REPLAY } RR_mode;
-
-typedef enum { RR_MEM_IO, RR_MEM_RAM, RR_MEM_UNKNOWN} RR_mem_type;
-
-extern volatile RR_mode rr_mode;
 
 // Log management
 void rr_create_record_log(const char* filename);
@@ -53,21 +47,12 @@ void rr_create_replay_log(const char* filename);
 void rr_destroy_log(void);
 uint8_t rr_replay_finished(void);
 
-// mz Flags set by monitor to indicate requested record/replay action
-extern volatile int rr_replay_requested;
-extern volatile int rr_record_requested;
-extern volatile int rr_end_record_requested;
-extern volatile int rr_end_replay_requested;
-extern char* rr_requested_name;
-extern char* rr_snapshot_name;
-
 // used from monitor.c
 int rr_do_begin_record(const char* name, CPUState* cpu_state);
 void rr_do_end_record(void);
 int rr_do_begin_replay(const char* name, CPUState* cpu_state);
 void rr_do_end_replay(int is_error);
 void rr_reset_state(CPUState* cpu_state);
-
 
 // mz display indication of replay progress
 extern void replay_progress(void);
@@ -110,18 +95,17 @@ extern void rr_signal_disagreement(RR_prog_point current,
 // program point) to achieve the same effect.
 
 #define FOREACH_SKIPCALL(ACTION)                                               \
-    ACTION(RR_CALL_CPU_MEM_RW), /* cpu_physical_memory_rw() */                 \
-        ACTION(                                                                \
-            RR_CALL_MEM_REGION_CHANGE), /* cpu_register_physical_memory() */   \
-        ACTION(RR_CALL_CPU_MEM_UNMAP),  /* cpu_physical_memory_unmap() */      \
-        ACTION(RR_CALL_HD_TRANSFER),    /* hd transfer */                      \
-        ACTION(RR_CALL_NET_TRANSFER),   /* network transfer in device */       \
-        ACTION(RR_CALL_HANDLE_PACKET),  /* packet handling on send/receive */  \
-        ACTION(RR_CALL_SERIAL_RECEIVE), /* receive byte on serial port */      \
-        ACTION(RR_CALL_SERIAL_READ),    /* read byte from serial rx fifo */    \
-        ACTION(RR_CALL_SERIAL_SEND),    /* send byte on serial port */         \
-        ACTION(RR_CALL_SERIAL_WRITE),   /* write byte to serial tx fifo */     \
-        ACTION(RR_CALL_CPU_REG_WRITE),   /* */     \
+        ACTION(RR_CALL_CPU_MEM_RW),        /* cpu_physical_memory_rw() */      \
+        ACTION(RR_CALL_MEM_REGION_CHANGE), /* cpu_register_physical_memory() */\
+        ACTION(RR_CALL_CPU_MEM_UNMAP),     /* cpu_physical_memory_unmap() */   \
+        ACTION(RR_CALL_HD_TRANSFER),       /* hd transfer */                   \
+        ACTION(RR_CALL_NET_TRANSFER),      /* network transfer in device */    \
+        ACTION(RR_CALL_HANDLE_PACKET),     /* send/receive network packet */   \
+        ACTION(RR_CALL_SERIAL_RECEIVE),    /* receive byte on serial port */   \
+        ACTION(RR_CALL_SERIAL_READ),       /* read byte from serial rx fifo */ \
+        ACTION(RR_CALL_SERIAL_SEND),       /* send byte on serial port */      \
+        ACTION(RR_CALL_SERIAL_WRITE),      /* write byte to serial tx fifo */  \
+        ACTION(RR_CALL_CPU_REG_WRITE),     /* */                               \
         ACTION(RR_CALL_LAST)
 
 typedef enum {
@@ -538,4 +522,3 @@ void rr_tracked_mem_regions_record(void);
 void rr_begin_main_loop_wait(void);
 void rr_end_main_loop_wait(void);
 
-#endif
