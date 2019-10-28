@@ -545,6 +545,49 @@ void panda_memsavep(FILE *f) {
 #endif
 }
 
+int panda_record_begin(const char *name, const char *snapshot) {
+    if (rr_mode != RR_OFF)
+        return RRCTRL_EINVALID;
+    if (rr_control.next != RR_NONE)
+        return RRCTRL_EPENDING;
+
+    rr_control.next = RR_RECORD;
+    rr_control.name = g_strdup(name);
+    rr_control.snapshot = (snapshot != NULL) ? g_strdup(snapshot) : NULL;
+    return RRCTRL_OK;
+}
+
+int panda_record_end(void) {
+    if (rr_mode != RR_RECORD)
+        return RRCTRL_EINVALID;
+    if (rr_control.next != RR_NONE)
+        return RRCTRL_EPENDING;
+
+    rr_control.next = RR_OFF;
+    return RRCTRL_OK;
+}
+
+int panda_replay_begin(const char *name) {
+    if (rr_mode != RR_OFF)
+        return RRCTRL_EINVALID;
+    if (rr_control.next != RR_NONE)
+        return RRCTRL_EPENDING;
+
+    rr_control.next = RR_REPLAY;
+    rr_control.name = g_strdup(name);
+    return RRCTRL_OK;
+}
+
+int panda_replay_end(void) {
+    if (rr_mode != RR_REPLAY)
+        return RRCTRL_EINVALID;
+    if (rr_control.next != RR_NONE)
+        return RRCTRL_EPENDING;
+
+    rr_control.next = RR_OFF;
+    return RRCTRL_OK;
+}
+
 // Parse out arguments and return them to caller
 static panda_arg_list *panda_get_args_internal(const char *plugin_name, bool check_only) {
     panda_arg_list *ret = NULL;
