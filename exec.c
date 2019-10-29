@@ -74,7 +74,7 @@
 #endif
 
 #include <zlib.h>
-#include "panda/callback_support.h"
+#include "panda/callbacks/cb-support.h"
 #include "panda/checkpoint.h"
 
 //#define DEBUG_SUBPAGE
@@ -2955,9 +2955,9 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
                 // During replay, this address will be translated into the physical address.
                 rr_device_mem_rw_call_record(addr, buf, l, /*is_write*/1);
             }
-            panda_callbacks_before_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 1);
+            panda_callbacks_replay_before_dma(first_cpu, buf, addr1, l, true);
             memcpy(ptr, buf, l);
-            panda_callbacks_after_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 1);
+            panda_callbacks_replay_after_dma(first_cpu, buf, addr1, l, true);
             invalidate_and_set_dirty(mr, addr1, l);
         }
 
@@ -3064,9 +3064,9 @@ MemTxResult address_space_read_continue(AddressSpace *as, hwaddr addr,
         } else {
             /* RAM case */
             ptr = qemu_ram_ptr_length(mr->ram_block, addr1, &l, false);
-            panda_callbacks_before_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 0);
+            panda_callbacks_replay_before_dma(first_cpu, buf, addr1, l, false);
             memcpy(buf, ptr, l);
-            panda_callbacks_after_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 0);
+            panda_callbacks_replay_after_dma(first_cpu, buf, addr1, l, false);
         }
 
         if (release_lock) {

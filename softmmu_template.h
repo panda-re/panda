@@ -436,9 +436,9 @@ WORD_TYPE glue(helper_le_ld_name, _panda)(CPUArchState *env, target_ulong addr,
         retaddr = GETPC();
     }
 
-    panda_callbacks_before_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (void *)haddr);
+    panda_callbacks_mem_before_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (void *)haddr);
     WORD_TYPE ret = helper_le_ld_name(env, addr, oi, retaddr);
-    panda_callbacks_after_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)ret, (void *)haddr);
+    panda_callbacks_mem_after_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)ret, (void *)haddr);
     return ret;
 }
 
@@ -465,9 +465,9 @@ void glue(helper_le_st_name, _panda)(CPUArchState *env, target_ulong addr,
         retaddr = GETPC();
     }
 
-    panda_callbacks_before_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
+    panda_callbacks_mem_before_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
     helper_le_st_name(env, addr, val, oi, retaddr);
-    panda_callbacks_after_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
+    panda_callbacks_mem_after_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
 }
 
 #if DATA_SIZE > 1
@@ -493,9 +493,9 @@ WORD_TYPE glue(helper_be_ld_name, _panda)(CPUArchState *env, target_ulong addr,
         retaddr = GETPC();
     }
 
-    panda_callbacks_before_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (void *)haddr);
+    panda_callbacks_mem_before_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (void *)haddr);
     WORD_TYPE ret = helper_be_ld_name(env, addr, oi, retaddr);
-    panda_callbacks_after_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)ret, (void *)haddr);
+    panda_callbacks_mem_after_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)ret, (void *)haddr);
     return ret;
 }
 
@@ -522,9 +522,9 @@ void glue(helper_be_st_name, _panda)(CPUArchState *env, target_ulong addr,
         retaddr = GETPC();
     }
 
-    panda_callbacks_before_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
+    panda_callbacks_mem_before_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
     helper_be_st_name(env, addr, val, oi, retaddr);
-    panda_callbacks_after_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
+    panda_callbacks_mem_after_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
 }
 
 #endif /* DATA_SIZE > 1 */
