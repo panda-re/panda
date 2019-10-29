@@ -90,6 +90,8 @@ typedef union panda_cb {
         CPUState *env:        the current CPU state
         TranslationBlock *tb: the TB we are about to execute
 
+       Helper call location: cpu-exec.c (indirectly)
+
        Return value:
         true if we should invalidate the current translation block
         and retranslate, false otherwise.
@@ -104,6 +106,8 @@ typedef union panda_cb {
        Arguments:
         CPUState *env:        the current CPU state
         TranslationBlock *tb: the TB we are about to execute
+
+       Helper call location: cpu-exec.c
 
        Return value:
         none
@@ -121,6 +125,8 @@ typedef union panda_cb {
         TranslationBlock *tb: the TB we just executed
         uint8_t exitCode:     why the block execution exited
 
+       Helper call location: cpu-exec.c
+
        Return value:
         none
     */
@@ -135,6 +141,8 @@ typedef union panda_cb {
         CPUState *env:   the current CPU state
         target_ptr_t pc: the guest PC we are about to translate
 
+       Helper call location: cpu-exec.c
+
        Return value:
         none
     */
@@ -148,6 +156,8 @@ typedef union panda_cb {
        Arguments:
         CPUState *env:        the current CPU state
         TranslationBlock *tb: the TB we just translated
+
+       Helper call location: cpu-exec.c
 
        Return value:
         none
@@ -168,6 +178,8 @@ typedef union panda_cb {
        Arguments:
         CPUState *env: the current CPU state
 
+       Helper call location: cpu-exec.c
+
        Return value:
         none
     */
@@ -182,6 +194,8 @@ typedef union panda_cb {
         CPUState *env: the current CPU state
         bool ranBlock: true if ran a block since previous cpu_exec_enter
 
+       Helper call location: cpu-exec.c
+
        Return value:
         none
     */
@@ -195,6 +209,8 @@ typedef union panda_cb {
        Arguments:
         CPUState *env:   the current CPU state
         target_ptr_t pc: the guest PC we are about to translate
+
+       Helper call location: panda/target/ARCH/translate.c
 
        Return value:
         true if PANDA should insert instrumentation into the generated code,
@@ -218,6 +234,8 @@ typedef union panda_cb {
         CPUState *env:   the current CPU state
         target_ptr_t pc: the guest PC we are about to execute
 
+       Helper call location: TBA
+
        Return value:
         unused
 
@@ -238,6 +256,8 @@ typedef union panda_cb {
         CPUState *env:   the current CPU state
         target_ptr_t pc: the next guest PC we've translated
 
+       Helper call location: panda/target/ARCH/translate.c
+
        Return value:
         true if PANDA should insert instrumentation into the generated code,
         false otherwise
@@ -257,6 +277,8 @@ typedef union panda_cb {
         CPUState *env:   the current CPU state
         target_ptr_t pc: the next guest PC already executed
 
+       Helper call location: TBA
+
        Return value:
         unused
 
@@ -274,6 +296,8 @@ typedef union panda_cb {
        Arguments:
         CPUState *env: the current CPU state
 
+       Helper call location: target/i386/misc_helper.c
+
        Return value:
         none
 
@@ -286,6 +310,7 @@ typedef union panda_cb {
         easier (we can use inline asm rather than defining the raw bytes).
         AMD's SVM and Intel's VT define hypercalls, but they are privileged
         instructinos, meaning the guest must be in ring 0 to execute them.
+        Currently ARM implementation is missing.
     */
     void (*guest_hypercall)(CPUState *env);
 
@@ -297,6 +322,8 @@ typedef union panda_cb {
        Arguments:
         Monitor *mon:    a pointer to the Monitor
         const char *cmd: the command string passed to plugin_cmd
+
+       Helper call location: TBA
 
        Return value:
         unused
@@ -326,6 +353,8 @@ typedef union panda_cb {
         target_ptr_t addr: the (virtual) address being read
         size_t size:       the size of the read
 
+       Helper call location: TBA
+
        Return value:
         none
     */
@@ -343,6 +372,8 @@ typedef union panda_cb {
         size_t size:       the size of the write
         uint8_t *buf:      pointer to the data that is to be written
 
+       Helper call location: TBA
+
        Return value:
         none
     */
@@ -358,6 +389,8 @@ typedef union panda_cb {
         target_ptr_t pc:   the guest PC doing the read
         target_ptr_t addr: the (physical) address being read
         size_t size:       the size of the read
+
+       Helper call location: TBA
 
        Return value:
         none
@@ -376,6 +409,8 @@ typedef union panda_cb {
         size_t size:       the size of the write
         uint8_t *buf:      pointer to the data that is to be written
 
+       Helper call location: TBA
+
        Return value:
         none
     */
@@ -392,6 +427,8 @@ typedef union panda_cb {
         target_ptr_t addr: the (virtual) address being read
         size_t size:       the size of the read
         uint8_t *buf:      pointer to data just read
+
+       Helper call location: TBA
 
        Return value:
         none
@@ -410,6 +447,8 @@ typedef union panda_cb {
         size_t size:       the size of the write
         uint8_t *buf:      pointer to the data that was written
 
+       Helper call location: TBA
+
        Return value:
         none
     */
@@ -426,6 +465,8 @@ typedef union panda_cb {
         target_ptr_t addr: the (physical) address being read
         size_t size:       the size of the read
         uint8_t *buf:      pointer to data just read
+
+       Helper call location: TBA
 
        Return value:
         none
@@ -444,6 +485,8 @@ typedef union panda_cb {
         size_t size:       the size of the write
         uint8_t *buf:      pointer to the data that was written
 
+       Helper call location: TBA
+
        Return value:
         none
     */
@@ -459,6 +502,8 @@ typedef union panda_cb {
         target_ptr_t addr: the (physical) address being read from
         size_t size:       the size of the read
         uin64_t val:       the value being read
+
+       Helper call location: cputlb.c
 
        Return value:
         none
@@ -476,6 +521,8 @@ typedef union panda_cb {
         size_t size:       the size of the write
         uin64_t val:       the value being written
 
+       Helper call location: cputlb.c
+
        Return value:
         none
     */
@@ -490,6 +537,8 @@ typedef union panda_cb {
        Arguments:
         CPUState *env:        the current CPU state
         TranslationBlock *tb: the current translation block
+
+       Helper call location: translate-all.c
 
        Return value:
         none
@@ -507,6 +556,8 @@ typedef union panda_cb {
        Arguments:
         none
 
+       Helper call location: TBA
+
        Return value:
         unused
     */
@@ -522,8 +573,14 @@ typedef union panda_cb {
         target_ptr_t oldval: old asid value
         target_ptr_t newval: new asid value
 
+       Helper call location: target/i386/helper.c
+
        Return value:
         none
+
+       Notes:
+        The helper is only invoked for x86. This should break a lot of the
+        plugins which rely on this callback to detect context switches.
     */
     void (*asid_changed)(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
 
@@ -539,8 +596,12 @@ typedef union panda_cb {
         target_ptr_t dest_addr: address for dest
         size_t num_bytes:       size of transfer in bytes
 
+       Helper call location: panda/src/rr/rr_log.c
+
        Return value:
         none
+
+       Helper call location: TBA
 
        Notes:
         Unlike most callbacks, this is neither a "before" or "after" callback.
@@ -562,6 +623,8 @@ typedef union panda_cb {
         size_t size:        size of transfer
         bool is_write:      indicates whether the DMA transfer writes to memory
 
+       Helper call location: exec.c
+
        Return value:
         none
     */
@@ -578,6 +641,8 @@ typedef union panda_cb {
         size_t size:        size of transfer
         bool is_write:      indicates whether the DMA transfer writes to memory
 
+       Helper call location: exec.c
+
        Return value:
         none
     */
@@ -593,6 +658,8 @@ typedef union panda_cb {
         size_t size:               num bytes in buffer
         uint8_t direction:         XXX read or write.  not sure which is which.
         target_ptr_t old_buf_addr: XXX this is a mystery
+
+       Helper call location: panda/src/rr/rr_log.c
 
        Return value:
         none
@@ -611,6 +678,8 @@ typedef union panda_cb {
         target_ptr_t src_addr:  address for src
         target_ptr_t dest_addr: address for dest
         size_t num_bytes:       size of transfer in bytes
+
+       Helper call location: panda/src/rr/rr_log.c
 
        Return value:
         none
@@ -632,6 +701,8 @@ typedef union panda_cb {
         target_ptr_t fifo_addr: address of the data within the fifo
         uint8_t value:          value received
 
+       Helper call location: panda/src/rr/rr_log.c
+
        Return value:
         unused
     */
@@ -648,6 +719,8 @@ typedef union panda_cb {
         uint32_t port_addr:     address of the IO port where data is being read (destination)
         uint8_t value:          value read
 
+       Helper call location: panda/src/rr/rr_log.c
+
        Return value:
         none
     */
@@ -662,6 +735,8 @@ typedef union panda_cb {
         CPUState *env:          pointer to CPUState
         target_ptr_t fifo_addr: address of the data within the fifo
         uint8_t value:          value received
+
+       Helper call location: panda/src/rr/rr_log.c
 
        Return value:
         none
@@ -678,6 +753,8 @@ typedef union panda_cb {
         uint32_t port_addr:     address of the IO port where data is being read (destination)
         uint8_t value:          value read
 
+       Helper call location: panda/src/rr/rr_log.c
+
        Return value:
         none
     */
@@ -691,6 +768,8 @@ typedef union panda_cb {
 
        Arguments:
         void *cpu_env: pointer to CPUState
+
+       Helper call location: TBA
 
        Return value:
         none
@@ -708,12 +787,14 @@ typedef union panda_cb {
         Called at the top of the loop that manages emulation.
 
        Arguments:
-        none
+        CPUState *env:          pointer to CPUState
+
+       Helper call location: cpus.c
 
        Return value:
         unused
      */
-    void (*top_loop)(void);
+    void (*top_loop)(CPUState *env);
 
     /* Dummy union member.
 
