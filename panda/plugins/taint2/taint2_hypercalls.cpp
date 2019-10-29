@@ -13,7 +13,6 @@
  * See the COPYING file in the top-level directory.
  */
 #ifdef TAINT2_HYPERCALLS
-
 #include <cstdio>
 #include <vector>
 #include "taint2_hypercalls.h"
@@ -161,7 +160,7 @@ void lava_attack_point(PandaHypercallStruct phs) {
     }
 }
 
-int guest_hypercall_callback(CPUState *cpu) {
+void guest_hypercall_callback(CPUState *cpu) {
 #if defined(TARGET_I386)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     if (taintEnabled) {
@@ -221,7 +220,7 @@ int guest_hypercall_callback(CPUState *cpu) {
             }
         }
     }
-    return 1;
+    return;
 #elif defined(TARGET_ARM)
     // R0 is command (label or query)
     // R1 is buf_start
@@ -241,10 +240,10 @@ int guest_hypercall_callback(CPUState *cpu) {
             printf("Taint plugin: Query operation detected @ %" PRIu64 "\n", rr_get_guest_instr_count());
         }
     }
-    return 1;
+    return;
 #else
     // other architectures
-    return 0;
+    return;
 #endif
 }
 #endif // TAINT2_HYPERCALLS
