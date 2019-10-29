@@ -108,7 +108,7 @@ fi
 
 ## Configure and compile.
 "${PANDA_DIR_REL}/configure" \
-    --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu \
+    --target-list=i386-softmmu \
     --prefix="$(pwd)/install" \
     $COMPILER_CONFIG \
     $LLVM_CONFIG \

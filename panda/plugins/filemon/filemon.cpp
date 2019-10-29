@@ -99,6 +99,11 @@ void read_enter(const std::string &filename, uint64_t file_id,
   free_osithread(thr);
 }
 
+
+int serialnum = 0;
+uint8_t *read_buffer = NULL;
+int read_buffer_len;
+
 // A normaled read_return function. Called by both Linux and Windows read return
 // implementations.
 void read_return(uint64_t file_id, uint64_t bytes_read,
@@ -127,7 +132,23 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
 
   outf << key.process_id << " " << thr->tid << " " << file_id << " " << proc->name;
   outf << " read_return " << "\n";
-  
+
+  if (read_buffer == NULL) {
+    read_buffer_len = 2*bytes_read;
+    read_buffer = (uint8_t *) malloc(read_buffer_len);
+  }
+  if (read_buffer_len < bytes_read) {
+    read_buffer_len = 2*bytes_read;
+    read_buffer = (uint8_t *) realloc(read_buffer, read_buffer_len);
+  }
+
+  panda_virtual_memory_read(first_cpu, buffer_addr, read_buffer, bytes_read);
+  char filename[128];
+  sprintf (filename, "read-%d-%d-%d-%s-%d", (int) key.process_id, (int) thr->tid, (int) file_id, proc->name, serialnum);
+  FILE *fp = fopen(filename, "w");
+  fwrite(read_buffer, 1, bytes_read, fp);
+  fclose(fp);
+  serialnum ++;  
   
   // We've seen the read, lookup the position of the file at the time of the
   // read enter.
@@ -276,6 +297,9 @@ void linux_pread_return(CPUState *cpu, target_ulong pc, uint32_t fd,
 }
 
 
+uint8_t *write_buffer = NULL;
+int write_buffer_len, write_buffer_count;
+
 
 // A normalized write_enter function.
 // Called by both Linux and Windows specific calls.
@@ -299,10 +323,19 @@ void write_enter(const std::string &filename, uint64_t file_id,
 
   outf << key.process_id << " " << thr->tid << " " << file_id << " " << proc->name;
   outf << " write_enter " << filename << "\n";
-    
+
+  char outfilename[128];
+  sprintf (outfilename, "write-%d-%d-%d-%s-%d", (int) key.process_id, (int) thr->tid, (int) file_id, proc->name, serialnum);
+  FILE *fp = fopen(outfilename, "w");
+  fwrite(write_buffer, 1, write_buffer_count, fp);
+  fclose(fp);
+  serialnum ++;
+
+
   free_osiproc(proc);
   free_osithread(thr);
 }
+
 
 // A normaled write_return function. Called by both Linux and Windows write return
 // implementations.
@@ -333,7 +366,7 @@ void write_return(uint64_t file_id, uint64_t bytes_write,
 
   outf << key.process_id << " " << thr->tid << " " << file_id << " " << proc->name;
   outf << " write_return " << "\n";    
-
+  
   // We've seen the write, lookup the position of the file at the time of the
   // write enter.
   uint64_t write_start_pos = write_positions[key];
@@ -357,6 +390,19 @@ void linux_write_enter(CPUState *cpu, target_ulong pc, uint32_t fd,
   char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
   uint64_t pos = osi_linux_fd_to_pos(cpu, proc, fd);
   write_enter(filename, fd, pos);
+
+  if (write_buffer == NULL) {
+    write_buffer_len = 2*count;
+    write_buffer = (uint8_t *) malloc(write_buffer_len);
+  }
+  if (write_buffer_len < count) {
+    write_buffer_len = 2*count;
+    write_buffer = (uint8_t *) realloc(write_buffer, write_buffer_len);
+  }
+  
+  panda_virtual_memory_read(first_cpu, buffer, write_buffer, count);
+  write_buffer_count = count;
+
   g_free(filename);
   free_osiproc(proc);
 }

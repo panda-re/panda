@@ -28,3 +28,4 @@ filereadmon
 callfunc
 mmio_trace
 syshist
+filemon
