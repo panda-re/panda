@@ -35,7 +35,7 @@
 #include "sysemu/cpus.h"
 #include "sysemu/replay.h"
 #include "panda/rr/rr_log.h"
-#include "panda/callback_support.h"
+#include "panda/callbacks/cb-support.h"
 #include "panda/common.h"
 
 #ifdef CONFIG_LLVM
@@ -811,7 +811,7 @@ int cpu_exec(CPUState *cpu)
                 break;
             }
 
-            panda_before_find_fast();
+            panda_callbacks_before_find_fast();
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
             panda_bb_invalidate_done = panda_callbacks_after_find_fast(
                     cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
