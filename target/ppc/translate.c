@@ -33,7 +33,7 @@
 #include "trace-tcg.h"
 #include "exec/log.h"
 
-#include "panda/callback_support.h"
+#include "panda/callbacks/cb-support.h"
 
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
