@@ -60,6 +60,14 @@ static std::unordered_map<FileKey, FilePosition> write_positions;
 static bool verbose = false;
 static bool pread_bits_64 = false;
 
+static int serialnum = 0;
+static uint8_t *read_buffer = NULL;
+static int read_buffer_len;
+static uint8_t *write_buffer = NULL;
+static int write_buffer_len, write_buffer_count;
+
+
+
 // Helper function that only prints if the verbose flag is set.
 void verbose_printf(const char *fmt, ...)
 {
@@ -92,17 +100,17 @@ void read_enter(const std::string &filename, uint64_t file_id,
 		 "tid=%lu fid=%lu\n",
 		 filename.c_str(), key.process_id, thr->tid, file_id);
 
-  outf << key.process_id << " " << thr->tid << " " << file_id << " " << proc->name;
-  outf << " read_enter \"" << filename << "\"\n";
+  char info[128];
+  sprintf (info, "read-enter-%d-%d-%d-%s-%d", (int) key.process_id, (int) thr->tid, (int) file_id, proc->name, serialnum);
+  outf << info << " \"" << filename << "\"\n";
+  
+  //  outf << key.process_id << " " << thr->tid << " " << file_id << " " << proc->name;
+  //  outf << " read_enter \"" << filename << "\"\n";
   
   free_osiproc(proc);
   free_osithread(thr);
 }
 
-
-int serialnum = 0;
-uint8_t *read_buffer = NULL;
-int read_buffer_len;
 
 // A normaled read_return function. Called by both Linux and Windows read return
 // implementations.
@@ -130,9 +138,10 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
 		 "(pid=%lu tid=%lu fid=%lu)\n",
 		 key.process_id, thr->tid, file_id);
 
-  outf << key.process_id << " " << thr->tid << " " << file_id << " " << proc->name;
-  outf << " read_return " << "\n";
-
+  char info[128];
+  sprintf (info, "read-return-%d-%d-%d-%s-%d", (int) key.process_id, (int) thr->tid, (int) file_id, proc->name, serialnum);
+  outf << info << "\n";
+  
   if (read_buffer == NULL) {
     read_buffer_len = 2*bytes_read;
     read_buffer = (uint8_t *) malloc(read_buffer_len);
@@ -143,9 +152,7 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
   }
 
   panda_virtual_memory_read(first_cpu, buffer_addr, read_buffer, bytes_read);
-  char filename[128];
-  sprintf (filename, "read-%d-%d-%d-%s-%d", (int) key.process_id, (int) thr->tid, (int) file_id, proc->name, serialnum);
-  FILE *fp = fopen(filename, "w");
+  FILE *fp = fopen(info, "w");
   fwrite(read_buffer, 1, bytes_read, fp);
   fclose(fp);
   serialnum ++;  
@@ -297,9 +304,6 @@ void linux_pread_return(CPUState *cpu, target_ulong pc, uint32_t fd,
 }
 
 
-uint8_t *write_buffer = NULL;
-int write_buffer_len, write_buffer_count;
-
 
 // A normalized write_enter function.
 // Called by both Linux and Windows specific calls.
@@ -321,12 +325,11 @@ void write_enter(const std::string &filename, uint64_t file_id,
 		 "tid=%lu fid=%lu\n",
 		 filename.c_str(), key.process_id, thr->tid, file_id);
 
-  outf << key.process_id << " " << thr->tid << " " << file_id << " " << proc->name;
-  outf << " write_enter " << filename << "\n";
+  char info[128];
+  sprintf (info, "write-enter-%d-%d-%d-%s-%d", (int) key.process_id, (int) thr->tid, (int) file_id, proc->name, serialnum);
+  outf << info << " \"" << filename << "\"\n";
 
-  char outfilename[128];
-  sprintf (outfilename, "write-%d-%d-%d-%s-%d", (int) key.process_id, (int) thr->tid, (int) file_id, proc->name, serialnum);
-  FILE *fp = fopen(outfilename, "w");
+  FILE *fp = fopen(info, "w");
   fwrite(write_buffer, 1, write_buffer_count, fp);
   fclose(fp);
   serialnum ++;
@@ -364,8 +367,9 @@ void write_return(uint64_t file_id, uint64_t bytes_write,
 		 key.process_id, thr->tid, file_id);
   
 
-  outf << key.process_id << " " << thr->tid << " " << file_id << " " << proc->name;
-  outf << " write_return " << "\n";    
+  char info[128];
+  sprintf (info, "write-return-%d-%d-%d-%s-%d", (int) key.process_id, (int) thr->tid, (int) file_id, proc->name, serialnum);
+  outf << info << "\n";
   
   // We've seen the write, lookup the position of the file at the time of the
   // write enter.
