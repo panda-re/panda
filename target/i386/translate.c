@@ -31,7 +31,7 @@
 extern bool panda_update_pc;
 #endif
 
-#include "panda/callback_support.h"
+#include "panda/callbacks/cb-support.h"
 
 #include "exec/helper-proto.h"
 #include "exec/helper-gen.h"
