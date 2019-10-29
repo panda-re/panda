@@ -512,7 +512,7 @@ static inline std::string context_map_t_dump(context_map_t &cm) {
  * @brief Checks if the translation block that is about to be executed
  * matches the return address of an executing system call.
  */
-static int tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
+static void tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
     auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
     auto ctxi = running_syscalls.find(k);
     int UNUSED(no) = -1;
@@ -531,7 +531,7 @@ static int tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
         LOG_DEBUG("remaining %zu: %s\n", running_syscalls.size(), remaining.c_str());
     }
 #endif
-    return 0;
+    return;
 }
 #endif
 

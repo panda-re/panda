@@ -17,6 +17,7 @@ PANDAENDCOMMENT */
 
 #include "panda/plugin.h"
 #include "panda/rr/rr_log.h"
+#include "panda/rr/rr_api.h"
 
 #include <stdio.h>
 
@@ -29,7 +30,7 @@ static const char *filename = NULL;
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-int before_block_exec(CPUState *env, TranslationBlock *tb);
+void before_block_exec(CPUState *env, TranslationBlock *tb);
 void dump_memory(void);
 
 void dump_memory(void){
@@ -39,11 +40,11 @@ void dump_memory(void){
     dump_done = true;
 
     if(should_close_after_dump)
-        rr_end_replay_requested = 1;
+        panda_end_replay();
 }
 
-int before_block_exec(CPUState *env, TranslationBlock *tb) {
-    if (dump_done) return 0;
+void before_block_exec(CPUState *env, TranslationBlock *tb) {
+    if (dump_done) return;
 
     if (instr_count && rr_get_guest_instr_count() > instr_count) {
         printf("memsavep: Instruction count reached, saving memory to %s.\n", filename);
@@ -53,7 +54,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         dump_memory();
     }
 
-    return 0;
+    return;
 }
 
 bool init_plugin(void *self) {

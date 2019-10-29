@@ -324,7 +324,7 @@ void i386_hypercall_callback(CPUState *cpu){
 #endif // TARGET_I386
 
 
-int guest_hypercall_callback(CPUState *cpu){
+void guest_hypercall_callback(CPUState *cpu){
 #ifdef TARGET_I386
     i386_hypercall_callback(cpu);
 #endif
@@ -334,7 +334,7 @@ int guest_hypercall_callback(CPUState *cpu){
     //arm_hypercall_callback(cpu);
 #endif
 
-    return 1;
+    return;
 }
 #endif
 /*
