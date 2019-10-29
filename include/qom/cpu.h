@@ -391,7 +391,7 @@ struct CPUState {
     uint32_t can_do_io;
     int32_t exception_index; /* used by m68k TCG */
     uint64_t rr_guest_instr_count;
-    uint64_t panda_guest_pc;
+    vaddr panda_guest_pc;
 
     // Used for rr reverse debugging
     uint8_t reverse_flags;
