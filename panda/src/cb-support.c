@@ -2,6 +2,7 @@
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "panda/plugin.h"
+#include "panda/callbacks/cb-support.h"
 #include "panda/common.h"
 
 #include "panda/rr/rr_log.h"
@@ -12,7 +13,7 @@
 #define PCB(n) panda_callbacks_ ## n
 
 void PCB(replay_hd_transfer)(CPUState *cpu, Hd_transfer_type type, target_ptr_t src_addr, target_ptr_t dest_addr, size_t num_bytes) {
-    if (rr_mode == RR_REPLAY) {
+    if (rr_in_replay()) {
         panda_cb_list *plist;
         for (plist = panda_cbs[PANDA_CB_REPLAY_HD_TRANSFER];
              plist != NULL;
@@ -23,7 +24,7 @@ void PCB(replay_hd_transfer)(CPUState *cpu, Hd_transfer_type type, target_ptr_t 
 }
 
 void PCB(replay_handle_packet)(CPUState *cpu, uint8_t *buf, size_t size, uint8_t direction, target_ptr_t old_buf_addr) {
-    if (rr_mode == RR_REPLAY) {
+    if (rr_in_replay()) {
         panda_cb_list *plist;
         for (plist = panda_cbs[PANDA_CB_REPLAY_HANDLE_PACKET];
              plist != NULL;
@@ -33,7 +34,7 @@ void PCB(replay_handle_packet)(CPUState *cpu, uint8_t *buf, size_t size, uint8_t
     }
 }
 void PCB(replay_net_transfer)(CPUState *cpu, Net_transfer_type type, target_ptr_t src_addr, target_ptr_t dst_addr, size_t num_bytes) {
-    if (rr_mode == RR_REPLAY) {
+    if (rr_in_replay()) {
         panda_cb_list *plist;
         for (plist = panda_cbs[PANDA_CB_REPLAY_NET_TRANSFER];
              plist != NULL;
@@ -45,7 +46,7 @@ void PCB(replay_net_transfer)(CPUState *cpu, Net_transfer_type type, target_ptr_
 
 // These are used in exec.c
 void PCB(replay_before_dma)(CPUState *cpu, const uint8_t *buf, hwaddr addr, size_t size, bool is_write) {
-    if (rr_mode == RR_REPLAY) {
+    if (rr_in_replay()) {
         panda_cb_list *plist;
         for (plist = panda_cbs[PANDA_CB_REPLAY_BEFORE_DMA];
              plist != NULL; plist = panda_cb_list_next(plist)) {
@@ -55,7 +56,7 @@ void PCB(replay_before_dma)(CPUState *cpu, const uint8_t *buf, hwaddr addr, size
 }
 
 void PCB(replay_after_dma)(CPUState *cpu, const uint8_t *buf, hwaddr addr, size_t size, bool is_write) {
-    if (rr_mode == RR_REPLAY) {
+    if (rr_in_replay()) {
         panda_cb_list *plist;
        for (plist = panda_cbs[PANDA_CB_REPLAY_AFTER_DMA];
             plist != NULL; plist = panda_cb_list_next(plist)) {
@@ -328,7 +329,7 @@ void PCB(asid_changed)(CPUState *env, target_ulong old_asid, target_ulong new_as
 
 void PCB(replay_serial_receive)(CPUState *cpu, target_ptr_t fifo_addr, uint8_t value)
 {
-    if (rr_mode == RR_REPLAY) {
+    if (rr_in_replay()) {
         panda_cb_list *plist;
         for (plist = panda_cbs[PANDA_CB_REPLAY_SERIAL_RECEIVE]; plist != NULL;
              plist = panda_cb_list_next(plist)) {
@@ -339,7 +340,7 @@ void PCB(replay_serial_receive)(CPUState *cpu, target_ptr_t fifo_addr, uint8_t v
 
 void PCB(replay_serial_read)(CPUState *cpu, target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value)
 {
-    if (rr_mode == RR_REPLAY) {
+    if (rr_in_replay()) {
         panda_cb_list *plist;
         for (plist = panda_cbs[PANDA_CB_REPLAY_SERIAL_READ]; plist != NULL;
              plist = panda_cb_list_next(plist)) {
@@ -350,7 +351,7 @@ void PCB(replay_serial_read)(CPUState *cpu, target_ptr_t fifo_addr, uint32_t por
 
 void PCB(replay_serial_send)(CPUState *cpu, target_ptr_t fifo_addr, uint8_t value)
 {
-    if (rr_mode == RR_REPLAY) {
+    if (rr_in_replay()) {
         panda_cb_list *plist;
         for (plist = panda_cbs[PANDA_CB_REPLAY_SERIAL_SEND]; plist != NULL;
              plist = panda_cb_list_next(plist)) {
@@ -361,7 +362,7 @@ void PCB(replay_serial_send)(CPUState *cpu, target_ptr_t fifo_addr, uint8_t valu
 
 void PCB(replay_serial_write)(CPUState *cpu, target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value)
 {
-    if (rr_mode == RR_REPLAY) {
+    if (rr_in_replay()) {
         panda_cb_list *plist;
         for (plist = panda_cbs[PANDA_CB_REPLAY_SERIAL_WRITE]; plist != NULL;
              plist = panda_cb_list_next(plist)) {

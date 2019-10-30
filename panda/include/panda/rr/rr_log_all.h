@@ -34,7 +34,7 @@
 
 #include "qemu/log.h"
 #include "qom/cpu.h"
-#include "panda/rr/rr_types.h"
+#include "panda/rr/rr_api.h"
 
 
 // Used later for enum to string macros
@@ -280,12 +280,7 @@ static inline int rr_prog_point_compare(RR_prog_point current,
     }
 }
 
-static inline bool rr_in_replay(void) { return rr_mode == RR_REPLAY; }
-static inline bool rr_in_record(void) { return rr_mode == RR_RECORD; }
-static inline bool rr_off(void) { return rr_mode == RR_OFF; }
-static inline bool rr_on(void) { return !rr_off(); }
-
-// Convenience routines that perform appropriate action based on rr_mode setting
+// Convenience routines that perform appropriate action based on rr_control.mode setting
 #define RR_CONVENIENCE(name, arg_type)                                  \
     static inline void rr_ ## name ## _at(RR_callsite_id call_site,     \
             arg_type* val) {                                            \
@@ -330,7 +325,7 @@ static inline void rr_replay_skipped_calls(void)
 // mz - LOCATION = one of RR_callsite_id constants
 #define RR_DO_RECORD_OR_REPLAY(ACTION, RECORD_ACTION, REPLAY_ACTION, LOCATION) \
     do {                                                                       \
-        switch (rr_mode) {                                                     \
+        switch (rr_control.mode) {                                             \
         case RR_RECORD: {                                                      \
             if (rr_record_in_progress || rr_record_in_main_loop_wait) {        \
                 ACTION;                                                        \

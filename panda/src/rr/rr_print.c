@@ -12,8 +12,8 @@
 /******************************************************************************************/
 /* GLOBALS */
 /******************************************************************************************/
-//mz record/replay mode
-volatile RR_mode rr_mode = RR_REPLAY;
+// record/replay state
+rr_control_t rr_control = {.mode = RR_REPLAY, .next = RR_NOCHANGE};
 
 //mz program execution state
 
@@ -36,13 +36,6 @@ static inline uint8_t log_is_empty(void) {
 }
 
 RR_debug_level_type rr_debug_level = RR_DEBUG_WHISPER;
-
-//mz Flags set by monitor to indicate requested record/replay action
-volatile sig_atomic_t rr_replay_requested = 0;
-volatile sig_atomic_t rr_record_requested = 0;
-volatile sig_atomic_t rr_end_record_requested = 0;
-volatile sig_atomic_t rr_end_replay_requested = 0;
-char * rr_requested_name = NULL;
 
 // write this program point to this file 
 static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {

@@ -31,6 +31,7 @@
  * pushed to other header files.
  */
 #pragma once
+#include <stdbool.h>    /* bool type */
 #include <signal.h>     /* sig_atomic_t */
 
 /** @brief Memory types. */
@@ -51,18 +52,11 @@ typedef enum {
 
 /** @brief Structure encapsulating requests to change the record/replay status. */
 typedef struct {
+    volatile sig_atomic_t mode;
     volatile sig_atomic_t next;
     char *name;
     char *snapshot;
-
-    volatile sig_atomic_t record_begin;
-    volatile sig_atomic_t record_end;
-    volatile sig_atomic_t replay_begin;
-    volatile sig_atomic_t replay_end;
 } rr_control_t;
-
-/** @brief Global containing the current PANDA mode. */
-extern volatile RR_mode rr_mode;
 
 /** @brief Global encapsulating requests to switch between PANDA modes. */
 extern rr_control_t rr_control;

@@ -31,6 +31,7 @@ PANDAENDCOMMENT */
 #endif
 
 #include "panda/common.h"
+#include "panda/rr/rr_api.h"
 
 const gchar *panda_bool_true_strings[] =  {"y", "yes", "true", "1", NULL};
 const gchar *panda_bool_false_strings[] = {"n", "no", "false", "0", NULL};
@@ -545,10 +546,15 @@ void panda_memsavep(FILE *f) {
 #endif
 }
 
+/**
+ * @brief Starts recording a PANDA trace. If \p snapshot is not NULL,
+ * then the VM state will be reverted to the specified snapshot before
+ * starting recording.
+ */
 int panda_record_begin(const char *name, const char *snapshot) {
-    if (rr_mode != RR_OFF)
+    if (rr_on())
         return RRCTRL_EINVALID;
-    if (rr_control.next != RR_NONE)
+    if (rr_control.next != RR_NOCHANGE)
         return RRCTRL_EPENDING;
 
     rr_control.next = RR_RECORD;
@@ -557,20 +563,26 @@ int panda_record_begin(const char *name, const char *snapshot) {
     return RRCTRL_OK;
 }
 
+/**
+ * @brief Ends current PANDA recording.
+ */
 int panda_record_end(void) {
-    if (rr_mode != RR_RECORD)
+    if (rr_on())
         return RRCTRL_EINVALID;
-    if (rr_control.next != RR_NONE)
+    if (rr_control.next != RR_NOCHANGE)
         return RRCTRL_EPENDING;
 
     rr_control.next = RR_OFF;
     return RRCTRL_OK;
 }
 
+/**
+ * @brief Starts replaying the specified PANDA trace.
+ */
 int panda_replay_begin(const char *name) {
-    if (rr_mode != RR_OFF)
+    if (rr_on())
         return RRCTRL_EINVALID;
-    if (rr_control.next != RR_NONE)
+    if (rr_control.next != RR_NOCHANGE)
         return RRCTRL_EPENDING;
 
     rr_control.next = RR_REPLAY;
@@ -578,10 +590,13 @@ int panda_replay_begin(const char *name) {
     return RRCTRL_OK;
 }
 
+/**
+ * @brief Stops the currently running PANDA replay.
+ */
 int panda_replay_end(void) {
-    if (rr_mode != RR_REPLAY)
+    if (!rr_in_replay())
         return RRCTRL_EINVALID;
-    if (rr_control.next != RR_NONE)
+    if (rr_control.next != RR_NOCHANGE)
         return RRCTRL_EPENDING;
 
     rr_control.next = RR_OFF;
