@@ -351,7 +351,7 @@ void before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (snipping && !done && count > end_count) {
         panda_exit_loop = true;
         request_end_snip = true;
-        panda_end_replay();
+        panda_replay_end();
     }
     return;
 }

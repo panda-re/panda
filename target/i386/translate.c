@@ -27,6 +27,7 @@
 
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
+#include "panda/rr/rr_api.h"
 #include "panda/checkpoint.h"
 extern bool panda_update_pc;
 #endif
@@ -8433,7 +8434,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
 #ifdef CONFIG_SOFTMMU
     //mz for record and replay, let's start each block with EIP = pc_start.
     //mz this way, we can chain in record and not chain in replay.
-    if (rr_mode != RR_OFF) {
+    if (rr_on()) {
         gen_jmp_im(pc_start - dc->cs_base);
     }
 #endif
@@ -8449,7 +8450,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         max_insns = TCG_MAX_INSNS;
     }
 
-    if (rr_mode == RR_REPLAY) {
+    if (rr_in_replay()) {
         uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
         if (max_insns > until_interrupt) {
             max_insns = until_interrupt;
@@ -8523,7 +8524,7 @@ generate_debug:
 #ifdef CONFIG_SOFTMMU
         //mz let's count this instruction
         // In LLVM mode we generate this more efficiently.
-        if ((rr_mode != RR_OFF || panda_update_pc) && !generate_llvm) {
+        if ((rr_on() || panda_update_pc) && !generate_llvm) {
             gen_op_update_panda_pc(pc_ptr);
             gen_op_update_rr_icount();
         }

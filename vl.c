@@ -1962,42 +1962,40 @@ static void main_loop(void)
         sigaddset(&blockset, SIGUSR2);
         sigaddset(&blockset, SIGIO);
 
-        if (__builtin_expect(rr_record_requested, 0)) {
+	if (likely(rr_control.next == RR_NOCHANGE)) {
+	    // nop
+	}
+	else if (unlikely(rr_control.next == RR_RECORD)) {
             //block signals
             sigprocmask(SIG_BLOCK, &blockset, &oldset);
-            rr_do_begin_record(rr_requested_name, first_cpu);
-            rr_record_requested = 0;
+            rr_do_begin_record(rr_control.name, first_cpu);
+            rr_control.next = RR_NOCHANGE;
             //unblock signals
             sigprocmask(SIG_SETMASK, &oldset, NULL);
-        }
-
-        if (__builtin_expect(rr_replay_requested, 0)) {
+        } else if (unlikely(rr_control.next == RR_REPLAY)) {
             //block signals
             sigprocmask(SIG_BLOCK, &blockset, &oldset);
-            if (0 != rr_do_begin_replay(rr_requested_name, first_cpu)){
+            if (0 != rr_do_begin_replay(rr_control.name, first_cpu)){
                 printf("Failed to start replay\n");
                 exit(1);
             } else { // we have to unblock signals, so we can't just continue on failure
                 qemu_rr_quit_timers();
-                rr_replay_requested = 0;
+                rr_control.next = RR_NOCHANGE;
             }
             //unblock signals
             sigprocmask(SIG_SETMASK, &oldset, NULL);
-        }
-
-        //mz 05.2012 We have the global mutex here, so this should be OK.
-        if (rr_end_record_requested && rr_in_record()) {
+        } else if (unlikely((rr_control.next == RR_OFF) && rr_in_record())) {
+	    //mz 05.2012 We have the global mutex here, so this should be OK.
             rr_do_end_record();
             rr_reset_state(first_cpu);
-            rr_end_record_requested = 0;
+            rr_control.next = RR_NOCHANGE;
             vm_start();
-        }
-        if (rr_end_replay_requested && rr_in_replay()) {
+        } else if (unlikely((rr_control.next == RR_OFF) && rr_in_replay())) {
             //mz restore timers
             qemu_clock_run_all_timers();
             //mz FIXME this is used in the monitor for do_stop()??
             rr_do_end_replay(/*is_error=*/0);
-            rr_end_replay_requested = 0;
+            rr_control.next = RR_NOCHANGE;
             vm_stop(RUN_STATE_PAUSED);
         }
 

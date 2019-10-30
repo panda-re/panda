@@ -434,7 +434,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
 #endif
     /* See if we can patch the calling TB. */
 #ifdef CONFIG_SOFTMMU
-    if (rr_mode != RR_REPLAY && panda_tb_chaining) { 
+    if (!rr_in_replay() && panda_tb_chaining) {
 #endif
     if (last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
         if (!have_tb_lock) {
@@ -714,8 +714,7 @@ __attribute__((always_inline))
     __attribute__((always_inline))
     inline void debug_checkpoint(CPUState *cpu) {
 #ifdef CONFIG_DEBUG_TCG
-    if (rr_mode != RR_OFF
-            && cpu->rr_guest_instr_count >> 17 > counter_128k) {
+    if (rr_on() && cpu->rr_guest_instr_count >> 17 > counter_128k) {
         debug_counter();
     }
 #endif
@@ -827,7 +826,7 @@ int cpu_exec(CPUState *cpu)
 #ifdef CONFIG_SOFTMMU
             uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
             if (panda_invalidate_tb
-                    || (rr_mode == RR_REPLAY && until_interrupt > 0
+                    || (rr_in_replay() && until_interrupt > 0
                         && tb->icount > until_interrupt)) {
                 /* Retranslate so that basic block boundary matches
                  * record & replay for interrupt delivery. */
@@ -837,7 +836,7 @@ int cpu_exec(CPUState *cpu)
                 continue;
             }
 #endif // CONFIG_SOFTMMU
-            if (rr_mode == RR_REPLAY && rr_replay_finished()) {
+            if (rr_in_replay() && rr_replay_finished()) {
                 rr_do_end_replay(0);
                 qemu_cpu_kick(cpu);
                 panda_exit_loop = true;

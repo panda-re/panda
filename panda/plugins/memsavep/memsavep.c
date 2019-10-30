@@ -40,7 +40,7 @@ void dump_memory(void){
     dump_done = true;
 
     if(should_close_after_dump)
-        panda_end_replay();
+        panda_replay_end();
 }
 
 void before_block_exec(CPUState *env, TranslationBlock *tb) {
