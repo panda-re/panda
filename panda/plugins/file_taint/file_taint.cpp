@@ -194,6 +194,7 @@ void windows_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
                         uint32_t Buffer, uint32_t BufferLength,
                         uint32_t ByteOffset, uint32_t Key)
 {
+    // get_handle_name will assert if the filename is null
     char *filename = get_handle_name(cpu, get_current_proc(cpu), FileHandle);
     std::string ob_path = filename;
     // Check if the file handle is absolute, if not we need to make it absolute.
@@ -259,9 +260,13 @@ void linux_read_enter(CPUState *cpu, uint32_t fd)
     OsiProc *proc = get_current_process(cpu);
     // The filename in Linux should always be absolute.
     char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
-    uint64_t pos = osi_linux_fd_to_pos(cpu, proc, fd);
-    read_enter(filename, fd, pos);
-    g_free(filename);
+    if (filename != NULL) {
+        uint64_t pos = osi_linux_fd_to_pos(cpu, proc, fd);
+        read_enter(filename, fd, pos);
+        g_free(filename);
+    } else {
+        printf("file_taint linux_read_enter: filename is null, ignoring.\n");
+    }
     free_osiproc(proc);
 }
 
@@ -286,12 +291,16 @@ void linux_pread_enter(CPUState *cpu, uint32_t fd, uint64_t pos)
     OsiProc *proc = get_current_process(cpu);
     // The filename in Linux should always be absolute.
     char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
-    if (pread_bits_64) {
-        read_enter(filename, fd, pos);
+    if (filename != NULL) {
+        if (pread_bits_64) {
+            read_enter(filename, fd, pos);
+        } else {
+            read_enter(filename, fd, (int32_t)pos);
+        }
+        g_free(filename);
     } else {
-        read_enter(filename, fd, (int32_t)pos);
+        printf("file_taint linux_pread_enter: filename is null, ignoring.\n");
     }
-    g_free(filename);
     free_osiproc(proc);
 }
 // Handle a 32-bit Linux pread enter.  Calls the common linux_pread_enter.
@@ -324,7 +333,9 @@ void linux_read_return_32(CPUState *cpu, target_ulong pc, uint32_t fd,
         "WARNING: file_taint was not initialized for 32-bit x86 Linux.\n");
     return;
 #endif
-    if (actually_read != -1) {
+    // check sign bit for 32-bit value, as negative values indicate error but
+    // probably have more than 32 bits in a ssize_t
+    if (0 == (actually_read & 0x8000000)) {
         read_return(fd, actually_read, buffer);
     } else {
         printf("file_taint linux_read_return_32: detected read failure, "
@@ -348,7 +359,7 @@ void linux_read_return_64(CPUState *cpu, target_ulong pc, uint32_t fd,
         "WARNING: file_taint was not initialized for 64-bit x86 Linux.\n");
     return;
 #endif
-    if (actually_read != -1) {
+    if (actually_read >= 0) {
         read_return(fd, actually_read, buffer);
     } else {
         printf("file_taint linux_read_return_64: detected read failure, "
