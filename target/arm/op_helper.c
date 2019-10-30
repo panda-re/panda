@@ -24,7 +24,6 @@
 #include "exec/exec-all.h"
 #include "exec/cpu_ldst.h"
 
-#include "panda/callback_support.h"
 #include "panda/helper_impl.h"
 
 #define SIGNBIT (uint32_t)0x80000000
