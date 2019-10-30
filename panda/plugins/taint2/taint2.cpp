@@ -195,8 +195,8 @@ void replay_hd_transfer_callback(CPUState *cpu, uint32_t type,
 }
 
 // network data has been transfered - transfer the associated taint too
-void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
-                           uint64_t dst_addr, uint32_t num_bytes) {
+void on_replay_net_transfer(CPUState *cpu, uint32_t type, target_ptr_t src_addr,
+                            target_ptr_t dst_addr, size_t num_bytes) {
     if (!taintEnabled)
     {
         return;
