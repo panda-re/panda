@@ -833,11 +833,11 @@ one has a README.md file linked here for further explanation.
   OSI-based automatic tainting of file input by filename. `Already ported from panda1`
 * [`tainted_branch`](../plugins/tainted_branch/README.md) - Find
   conditional branches where the choice depends on tainted data. `Already ported from panda1`
-* [`tainted_instr`](../../../panda1/qemu/panda_plugins/tainted_instr/README.md) - Find
+* [`tainted_instr`](../plugins/tainted_instr/README.md) - Find
   instructions which process tainted data.
 * [`taint_compute_numbers`](../../../panda1/qemu/panda_plugins/taint_compute_numbers/README.md)
   \- Analyze taint compute numbers (computation tree depth) for tainted data.
-* [`tstringsearch`](../../../panda1/qemu/panda_plugins/tstringsearch/README.md) - Automatically
+* [`tstringsearch`](../plugins/tstringsearch/README.md) - Automatically
   taint all occurrences of a certain string.
 
 ##### Old generation
@@ -848,9 +848,9 @@ one has a README.md file linked here for further explanation.
 #### Plugins related to [Tappan Zee (North) Bridge](http://wenke.gtisc.gatech.edu/papers/tzb.pdf)
 * [`stringsearch`](../plugins/stringsearch/README.md) - Mine memory accesses for a particular string. `Already ported from panda1`
 * [`textfinder`](../../../panda1/qemu/panda_plugins/textfinder/README.md)
-* [`textprinter`](../../../panda1/qemu/panda_plugins/textprinter/README.md)
+* [`textprinter`](../plugins/textprinter/README.md)
 * [`textprinter_fast`](../../../panda1/qemu/panda_plugins/textprinter_fast/README.md)
-* [`unigrams`](../../../panda1/qemu/panda_plugins/unigrams/README.md)
+* [`unigrams`](../plugins/unigrams/README.md)
 * [`bigrams`](../../../panda1/qemu/panda_plugins/bigrams/README.md)
 * [`memdump`](../../../panda1/qemu/panda_plugins/memdump/README.md)
 * [`keyfind`](../../../panda1/qemu/panda_plugins/keyfind/README.md)
@@ -871,7 +871,7 @@ one has a README.md file linked here for further explanation.
 * [`osi`](../plugins/osi/README.md) - Operating system introspection
   framework. `Already ported from panda1`
 * [`osi_linux`](../plugins/osi_linux/README.md) - Generic Linux OSI. `Already ported from panda1`
-* [`osi_test`](../../../panda1/qemu/panda_plugins/osi_test/README.md)
+* [`osi_test`](../plugins/osi_test/README.md)
 * [`osi_winxpsp3x86`](../../../panda1/qemu/panda_plugins/osi_winxpsp3x86/README.md) - OSI for
   Windows XP SP3 x86.
 * [`asidstory`](../plugins/asidstory/README.md) - ASCII art view of
@@ -903,7 +903,7 @@ one has a README.md file linked here for further explanation.
   traces.
 * [`bufmon`](../../../panda1/qemu/panda_plugins/bufmon/README.md) - Monitor all memory accesses
   to a particular memory region.
-* [`coverage`](../../../panda1/qemu/panda_plugins/coverage/README.md)
+* [`coverage`](../plugins/coverage/README.md)
 * [`llvm_trace`](../../../panda1/qemu/panda_plugins/llvm_trace/README.md) - Record trace of
   dynamic information necessary for later analysis.
 * [`lsmll`](../../../panda1/qemu/panda_plugins/lsmll/README.md)
@@ -911,10 +911,10 @@ one has a README.md file linked here for further explanation.
   physical memory at a given point in a replay. The dump can then be fed to
   Volatility. `Already ported from panda1`
 * [`memstats`](../../../../../panda1/qemu/panda_panda1/qemu/panda_plugins/memstats/README.md)
-* [`network`](../../../panda1/qemu/panda_plugins/network/README.md)
+* [`network`](../plugins/network/README.md)
 * [`pmemaccess`](../../../panda1/qemu/panda_plugins/pmemaccess/README.md)
 * [`rehosting`](../../../panda1/qemu/panda_plugins/rehosting/README.md)
-* [`replaymovie`](../../../panda1/qemu/panda_plugins/replaymovie/README.md) - Write a series of
+* [`replaymovie`](../plugins/replaymovie/README.md) - Write a series of
   framebuffer screenshots to the current directory. Use movie.sh to turn them
   into a movie.
 * [`sample`](../../../panda1/qemu/panda_plugins/sample/README.md)
