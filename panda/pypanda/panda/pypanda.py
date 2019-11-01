@@ -67,7 +67,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
         self.build_dir  = self._find_build_dir()
         environ["PANDA_DIR"] = self.build_dir
-        self.panda = pjoin(self.build_dir, "panda-system-%s" % self.arch)
+        self.panda = pjoin(self.build_dir, "{0}-softmmu/panda-system-{0}".format(self.arch))
         self.libpanda_path = pjoin(self.build_dir, "{0}-softmmu/libpanda-{0}.so".format(self.arch))
         self.libpanda = ffi.dlopen(self.libpanda_path)
 
