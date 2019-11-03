@@ -77,7 +77,7 @@
 #endif
 
 #include "panda/rr/rr_log.h"
-#include "panda/callback_support.h"
+#include "panda/callbacks/cb-support.h"
 
 /* #define DEBUG_TB_INVALIDATE */
 /* #define DEBUG_TB_FLUSH */
@@ -1594,7 +1594,7 @@ void tb_invalidate_phys_page_range(tb_page_addr_t start, tb_page_addr_t end,
                 /* this is a hack, but probably a necessary one. fixes
                 double-counting when SMC occurs. long-term fix: count
                 BEFORE instr executes instead of after. */
-                if (rr_mode != RR_OFF) {
+                if (rr_on()) {
                     cpu->rr_guest_instr_count--;
                 }
             }

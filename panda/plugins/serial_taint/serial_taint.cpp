@@ -25,9 +25,7 @@ uint32_t input_label;
 bool positional_labels;
 uint32_t pos_current_label = 0;
 
-int serial_receive(CPUState *cpu, uint64_t _fifo_addr, uint8_t value)
-{
-    target_ptr_t fifo_addr = (target_ptr_t)_fifo_addr;
+void serial_receive(CPUState *cpu, target_ptr_t fifo_addr, uint8_t value) {
     fprintf(stderr, "Applying taint labels to incoming serial port data.\n");
     fprintf(stderr, "  Address in IO Shadow = 0x" TARGET_PTR_FMT "\n", fifo_addr);
     fprintf(stderr, "  Value = 0x%X\n", value);
@@ -40,16 +38,15 @@ int serial_receive(CPUState *cpu, uint64_t _fifo_addr, uint8_t value)
     fprintf(stderr, "  Label = 0x%X\n", label);
     taint2_label_io(fifo_addr, label);
 
-    return 0;
+    return;
 }
 
-int serial_read(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr,
-                uint8_t value)
-{
+void serial_read(CPUState *cpu, target_ptr_t fifo_addr, uint32_t port_addr,
+                 uint8_t value) {
     if (!taint2_enabled()) {
         // Taint hasn't yet been enabled, no need to copy taint between EAX
         // and IO buffer.
-        return 0;
+        return;
     }
 
 #ifdef TARGET_I386
@@ -61,16 +58,15 @@ int serial_read(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr,
                             },
                             NULL);
 #endif
-    return 0;
+    return;
 }
 
-int serial_write(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr,
-                 uint8_t value)
-{
+void serial_write(CPUState *cpu, target_ptr_t fifo_addr, uint32_t port_addr,
+                  uint8_t value) {
     if (!taint2_enabled()) {
         // During a write, if taint hasn't been enabled we don't need to do
         // anything.
-        return 0;
+        return;
     }
 
 #ifdef TARGET_I386
@@ -85,15 +81,14 @@ int serial_write(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr,
                              &fifo_addr);
 #endif
 
-    return 0;
+    return;
 }
 
-int serial_send(CPUState *cpu, uint64_t fifo_addr, uint8_t value)
-{
+void serial_send(CPUState *cpu, target_ptr_t fifo_addr, uint8_t value) {
     if (!taint2_enabled()) {
         // During a send, if taint hasn't been enabled we don't need to do
         // anything.
-        return 0;
+        return;
     }
 
     // If the panda log is enabled, we report taint there. Otherwise, just print
@@ -113,7 +108,7 @@ int serial_send(CPUState *cpu, uint64_t fifo_addr, uint8_t value)
     } else if (taint2_query_io(fifo_addr) > 0) {
         fprintf(stderr, "Tainted Serial TX (value=0x%X)\n", value);
     }
-    return 0;
+    return;
 }
 
 bool init_plugin(void *self)

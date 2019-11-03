@@ -16,13 +16,11 @@ extern "C" {
 #include "pri_dwarf/pri_dwarf_types.h"
 #include "pri_dwarf/pri_dwarf_ext.h"
 
-    bool init_plugin(void *);
-    void uninit_plugin(void *);
-
-    int get_loglevel() ;
-    void set_loglevel(int new_loglevel);
-
-    //void on_line_change(CPUState *cpu, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno);
+bool init_plugin(void *);
+void uninit_plugin(void *);
+int get_loglevel() ;
+void set_loglevel(int new_loglevel);
+//void on_line_change(CPUState *cpu, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno);
 }
 struct args {
     CPUState *cpu;
@@ -72,17 +70,17 @@ void on_fn_start(CPUState *cpu, target_ulong pc, const char *file_Name, const ch
 }
 
 
-int virt_mem_helper(CPUState *cpu, target_ulong pc, target_ulong addr, bool isRead) {
+void virt_mem_helper(CPUState *cpu, target_ulong pc, target_ulong addr, bool isRead) {
     SrcInfo info;
     // if NOT in source code, just return
     int rc = pri_get_pc_source_info(cpu, pc, &info);
     // We are not in dwarf info
     if (rc == -1){
-        return 0;
+        return;
     }
     // We are in the first byte of a .plt function
     if (rc == 1) {
-        return 0;
+        return;
     }
     printf("==%s %ld==\n", info.filename, info.line_number);
     struct args args = {cpu, NULL, 0};
@@ -96,7 +94,7 @@ int virt_mem_helper(CPUState *cpu, target_ulong pc, target_ulong addr, bool isRe
         else {
             printf ("Virt mem write at 0x%x - (NONE)\n", addr);
         }
-        return 0;
+        return;
     }
     else {
         if (isRead) {
@@ -106,16 +104,15 @@ int virt_mem_helper(CPUState *cpu, target_ulong pc, target_ulong addr, bool isRe
             printf ("Virt mem write at 0x%x - \"%s\"\n", addr, symbol_name);
         }
     }
-    return 0;
+    return;
 }
 
-int virt_mem_read(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
-    return virt_mem_helper(cpu, pc, addr, true);
-
+void virt_mem_read(CPUState *cpu, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf) {
+    virt_mem_helper(cpu, pc, addr, true);
 }
 
-int virt_mem_write(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
-    return virt_mem_helper(cpu, pc, addr, false);
+void virt_mem_write(CPUState *cpu, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf) {
+    virt_mem_helper(cpu, pc, addr, false);
 }
 #endif
 

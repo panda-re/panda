@@ -28,7 +28,7 @@
 #include "panda/rr/rr_log.h"
 #endif
 
-#include "panda/callback_support.h"
+#include "panda/callbacks/cb-support.h"
 #include "panda/helper_impl.h"
 
 
@@ -111,7 +111,7 @@ void helper_cpuid(CPUX86State *env)
 
     cpu_svm_check_intercept_param(env, SVM_EXIT_CPUID, 0, GETPC());
 
-    panda_callbacks_cpuid(ENV_GET_CPU(env));
+    panda_callbacks_guest_hypercall(ENV_GET_CPU(env));
 
     cpu_x86_cpuid(env, (uint32_t)env->regs[R_EAX], (uint32_t)env->regs[R_ECX],
                   &eax, &ebx, &ecx, &edx);

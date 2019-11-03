@@ -349,9 +349,9 @@ void saw_proc_range(CPUState *env, OsiProc *proc, uint64_t i1, uint64_t i2) {
 // block until we succeed in determining current proc. 
 // also, if proc has changed, we record the fact that a process was seen to be running
 // from now back to last asid change
-int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+void asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
     // some fool trying to use asidstory for boot? 
-    if (new_asid == 0) return 0;
+    if (new_asid == 0) return;
     
     uint64_t curr_instr = rr_get_guest_instr_count();
     
@@ -386,7 +386,7 @@ int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong ne
     
     if (debug) printf ("asid_changed: process_mode unknown\n");
 
-    return 0;
+    return;
 }
 
 
@@ -419,7 +419,7 @@ static inline bool process_same(OsiProc *proc1, OsiProc *proc2) {
 
 
 // before every bb, mostly just trying to figure out current proc 
-int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
+void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
 /*
     {
         OsiProc *current_proc = get_current_process(env);    
@@ -446,7 +446,7 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     // all this is about figuring out if and when we know the current process
     switch (process_mode) {
     case Process_known: {
-        return 0;
+        return;
         break;
     }
     case Process_unknown: {
@@ -487,7 +487,7 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     default: {}
     }
     
-    return 0;
+    return;
 }
 
 
@@ -549,4 +549,3 @@ void uninit_plugin(void *self) {
     }
 
 }
-
