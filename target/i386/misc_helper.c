@@ -27,7 +27,7 @@
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
 #endif
-#include "panda/helper_impl.h"
+#include "panda/callbacks/cb-helper-impl.h"
 
 void helper_outb(CPUX86State *env, uint32_t port, uint32_t data)
 {

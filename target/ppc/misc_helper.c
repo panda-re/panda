@@ -22,7 +22,7 @@
 #include "exec/helper-proto.h"
 
 #include "helper_regs.h"
-#include "panda/helper_impl.h"
+#include "panda/callbacks/cb-helper-impl.h"
 
 /*****************************************************************************/
 /* SPR accesses */
