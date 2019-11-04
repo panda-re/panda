@@ -29,12 +29,10 @@ PANDAENDCOMMENT */
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
-
 bool init_plugin(void *);
 void uninit_plugin(void *);
-int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
+void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
+void mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
 }
 
 struct text_counter {
@@ -44,8 +42,9 @@ struct text_counter {
 std::map<prog_point,text_counter> read_tracker;
 std::map<prog_point,text_counter> write_tracker;
 
-static int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
-                       target_ulong size, void *buf, std::map<prog_point,text_counter> &tracker) {
+static void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                         size_t size, uint8_t *buf,
+                         std::map<prog_point, text_counter> &tracker) {
     prog_point p = {};
 
     get_prog_point(env, &p);
@@ -55,18 +54,20 @@ static int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
         uint8_t val = ((uint8_t *)buf)[i];
         tc.hist[val]++;
     }
- 
-    return 1;
+
+    return;
 }
 
-int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
-                       target_ulong size, void *buf) {
-    return mem_callback(env, pc, addr, size, buf, write_tracker);
+void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                        size_t size, uint8_t *buf) {
+    mem_callback(env, pc, addr, size, buf, write_tracker);
+    return;
 }
 
-int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
-                       target_ulong size, void *buf) {
-    return mem_callback(env, pc, addr, size, buf, read_tracker);
+void mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                       size_t size, uint8_t *buf) {
+    mem_callback(env, pc, addr, size, buf, read_tracker);
+    return;
 }
 
 bool init_plugin(void *self) {

@@ -2,7 +2,7 @@ asidstory1
 scissors
 stringsearch1
 rr-file
-rr-netstat
+#rr-netstat
 #rr-boot
 #taint1
-taint2
+#taint2

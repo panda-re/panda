@@ -136,7 +136,7 @@ typedef struct rr_log_entry_t {
 // a program-point indexed record/replay log
 typedef enum { RECORD, REPLAY } RR_log_type;
 typedef struct RR_log_t {
-    // mz TODO this field seems redundant given existence of rr_mode
+    // mz TODO this field seems redundant given existence of rr_control.mode
     RR_log_type type;              // record or replay
     RR_prog_point last_prog_point; // to report progress
 
@@ -148,8 +148,6 @@ typedef struct RR_log_t {
 } RR_log;
 
 RR_log_entry* rr_get_queue_head(void);
-
-void panda_end_replay(void);
 
 static inline uint64_t rr_get_guest_instr_count(void) {
     assert(first_cpu);

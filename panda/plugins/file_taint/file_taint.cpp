@@ -157,8 +157,8 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
         uint64_t file_pos = read_start_pos + i;
         if (range_start <= file_pos && file_pos <= range_end) {
             if (print_apply_message) {
-                printf("*** applying %s taint labels %lu..%lu to buffer @ %lu "
-                       "***\n",
+                printf("*** applying %s taint labels %" PRIu64 "..%" PRIu64
+                       " to buffer @ %" PRIu64 " ***\n",
                        positional ? "positional" : "uniform", range_start,
                        range_end, rr_get_guest_instr_count());
                 print_apply_message = false;

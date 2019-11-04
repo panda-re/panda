@@ -41,7 +41,7 @@
 #include <libgen.h>
 #include <pthread.h>
 
-#define SOCKET_PATH                "/var/lock/qemu-nbd-%s"
+#define SOCKET_PATH                "/var/lock/panda-nbd-%s"
 #define QEMU_NBD_OPT_CACHE         256
 #define QEMU_NBD_OPT_AIO           257
 #define QEMU_NBD_OPT_DISCARD       258

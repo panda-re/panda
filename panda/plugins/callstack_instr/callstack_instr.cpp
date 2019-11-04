@@ -19,14 +19,15 @@ PANDAENDCOMMENT */
 // 2019-MAY-21   add (more accurate) stack segregation option (threaded)
 #define __STDC_FORMAT_MACROS
 
+#include <cinttypes>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
-#include <cmath>
 
+#include <algorithm>
 #include <map>
 #include <set>
 #include <vector>
-#include <algorithm>
 
 #include <capstone/capstone.h>
 #if defined(TARGET_I386)
@@ -55,9 +56,9 @@ extern "C" {
 
 bool translate_callback(CPUState* cpu, target_ulong pc);
 int exec_callback(CPUState* cpu, target_ulong pc);
-int before_block_exec(CPUState* cpu, TranslationBlock *tb);
-int after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode);
-int after_block_translate(CPUState* cpu, TranslationBlock *tb);
+void before_block_exec(CPUState* cpu, TranslationBlock *tb);
+void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode);
+void after_block_translate(CPUState* cpu, TranslationBlock *tb);
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -193,7 +194,7 @@ static stackid get_heuristic_stackid(CPUArchState* env) {
     stackid cursi;
 
     // We can short-circuit the search in most cases
-    if (std::abs(sp - cached_sp) < MAX_STACK_DIFF) {
+    if (std::imaxabs(sp - cached_sp) < MAX_STACK_DIFF) {
         cursi = std::make_tuple(asid, cached_sp, 0);
     } else {
         auto &stackset = stacks_seen[asid];
@@ -208,8 +209,8 @@ static stackid get_heuristic_stackid(CPUArchState* env) {
             target_ulong stack1 = *lb;
             lb--;
             target_ulong stack2 = *lb;
-            target_ulong stack = (std::abs(stack1 - sp) < std::abs(stack2 - sp)) ? stack1 : stack2;
-            int diff = std::abs(stack-sp);
+            target_ulong stack = (std::imaxabs(stack1 - sp) < std::imaxabs(stack2 - sp)) ? stack1 : stack2;
+            int diff = std::imaxabs(stack-sp);
             if (diff < MAX_STACK_DIFF) {
                 cursi = std::make_tuple(asid, stack, 0);
             }
@@ -305,15 +306,15 @@ done2:
     return res;
 }
 
-int after_block_translate(CPUState *cpu, TranslationBlock *tb) {
+void after_block_translate(CPUState *cpu, TranslationBlock *tb) {
     CPUArchState* env = (CPUArchState*)cpu->env_ptr;
 
     call_cache[tb->pc] = disas_block(env, tb->pc, tb->size);
 
-    return 1;
+    return;
 }
 
-int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
+void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
     CPUArchState* env = (CPUArchState*)cpu->env_ptr;
 
     // if the block a call returns to was interrupted before it completed, this
@@ -339,7 +340,7 @@ int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
     if (needToCheck) {
         std::vector<stack_entry> &v = callstacks[get_stackid(env)];
         std::vector<target_ulong> &w = function_stacks[get_stackid(env)];
-        if (v.empty()) return 1;
+        if (v.empty()) return;
 
         // Search up to 10 down
         for (int i = v.size()-1; i > ((int)(v.size()-10)) && i >= 0; i--) {
@@ -357,10 +358,10 @@ int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
     }
 
 
-    return 0;
+    return;
 }
 
-int after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
+void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
     target_ulong pc;
     target_ulong cs_base;
     uint32_t flags;
@@ -408,7 +409,7 @@ int after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
         stoppedInfo[curStackid] = pc;
     }
 
-    return 1;
+    return;
 }
 
 

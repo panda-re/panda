@@ -26,8 +26,20 @@ ppa_list_file() {
     "$PPA_NAME" "$3"
 }
 
+apt_enable_src() {
+  local SOURCES_LIST="/etc/apt/sources.list"
+  if grep -q "^[^#]*deb-src .* $codename .*main" "$SOURCES_LIST"; then
+    progress "deb-src already enabled in $SOURCES_LIST."
+    return 0
+  fi
+  progress "Enabling deb-src in $SOURCES_LIST."
+  sudo sed -E -i 's/^([^#]*) *# *deb-src (.*)/\1 deb-src \2/' "$SOURCES_LIST"
+}
+
 # Exit on error.
 set -e
+
+apt_enable_src
 
 progress "Installing qemu dependencies..."
 sudo apt-get update || true
@@ -36,7 +48,7 @@ sudo apt-get -y build-dep qemu
 progress "Installing PANDA dependencies..."
 sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
   libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
-  libwiretap-dev libwireshark-dev
+  libwiretap-dev libwireshark-dev flex bison
 
 pushd /tmp
 

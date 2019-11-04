@@ -131,7 +131,7 @@ void linux_mmap_pgoff_return(CPUState *cpu,target_ulong pc,uint32_t addr,uint32_
 
 // get current process before each bb execs
 // which will probably help us actually know the current process
-int osi_foo(CPUState *cpu, TranslationBlock *tb) {
+void osi_foo(CPUState *cpu, TranslationBlock *tb) {
 
     if (panda_in_kernel(cpu)) {
 
@@ -139,23 +139,23 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
 
         //some sanity checks on what we think the current process is
         // we couldn't find the current task
-        if (p == NULL) return 0;
+        if (p == NULL) return;
         // this means we didnt find current task
-        if (p->taskd == 0) return 0;
+        if (p->taskd == 0) return;
         // or the name
-        if (p->name == 0) return 0;
+        if (p->name == 0) return;
         // this is just not ok
-        if (((int) p->pid) == -1) return 0;
+        if (((int) p->pid) == -1) return;
         uint32_t n = strnlen(p->name, 32);
         // name is one char?
-        if (n<2) return 0;
+        if (n<2) return;
         uint32_t np = 0;
         for (uint32_t i=0; i<n; i++) {
             np += (isprint(p->name[i]) != 0);
         }
         // name doesnt consist of solely printable characters
         //        printf ("np=%d n=%d\n", np, n);
-        if (np != n) return 0;
+        if (np != n) return;
         target_ulong asid = panda_current_asid(cpu);
         if (running_procs.count(asid) == 0) {
             printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->taskd);
@@ -163,7 +163,7 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
         running_procs[asid] = *p;
     }
 
-    return 0;
+    return;
 }
 bool init_plugin(void *self) {
     //panda_arg_list *args = panda_get_args("loaded");

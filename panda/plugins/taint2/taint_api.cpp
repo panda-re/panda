@@ -207,8 +207,8 @@ void taint2_add_taint_ram_pos(CPUState *cpu, uint64_t addr, uint32_t length, uin
     for (unsigned i = 0; i < length; i++){
         hwaddr pa = panda_virt_to_phys(cpu, addr + i);
         if (pa == (hwaddr)(-1)) {
-            printf("can't label addr=0x%lx: mmu hasn't mapped virt->phys, "
-                "i.e., it isnt actually there.\n", addr +i);
+            printf("can't label addr=0x%" PRIx64 ": mmu hasn't mapped virt->phys, "
+                   "i.e., it isnt actually there.\n", addr+i);
             continue;
         }
         printf("taint2: adding positional taint label %d\n", i+start_label);
@@ -223,8 +223,8 @@ void taint2_add_taint_ram_single_label(CPUState *cpu, uint64_t addr,
     for (unsigned i = 0; i < length; i++){
         hwaddr pa = panda_virt_to_phys(cpu, addr + i);
         if (pa == (hwaddr)(-1)) {
-            printf("can't label addr=0x%lx: mmu hasn't mapped virt->phys, "
-                "i.e., it isnt actually there.\n", addr +i);
+            printf("can't label addr=0x%" PRIx64 ": mmu hasn't mapped virt->phys, "
+                   "i.e., it isnt actually there.\n", addr+i);
             continue;
         }
         //taint2_label_ram(pa, label);

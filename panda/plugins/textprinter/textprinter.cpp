@@ -44,12 +44,10 @@ PANDAENDCOMMENT */
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
-
 bool init_plugin(void *);
 void uninit_plugin(void *);
-int read_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-int write_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
+void read_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
+void write_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
 }
 
 uint64_t mem_counter;
@@ -58,8 +56,8 @@ std::set<prog_point> tap_points;
 gzFile read_tap_buffers;
 gzFile write_tap_buffers;
 
-int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
-                       target_ulong size, void *buf, gzFile f) {
+void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                  size_t size, uint8_t *buf, gzFile f) {
     prog_point p = {};
     get_prog_point(env, &p);
 
@@ -82,14 +80,19 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
     }
     mem_counter++;
 
-    return 1;
+    return;
 }
 
-int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
-    return mem_callback(env, pc, addr, size, buf, read_tap_buffers);
+void mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                       size_t size, uint8_t *buf) {
+    mem_callback(env, pc, addr, size, buf, read_tap_buffers);
+    return;
 }
-int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf ) {
-    return mem_callback(env, pc, addr, size, buf, write_tap_buffers);
+
+void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                        size_t size, uint8_t *buf) {
+    mem_callback(env, pc, addr, size, buf, write_tap_buffers);
+    return;
 }
 
 bool init_plugin(void *self) {

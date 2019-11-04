@@ -29,7 +29,7 @@
 #include "hw/i386/apic_internal.h"
 #endif
 
-#include "panda/callback_support.h"
+#include "panda/callbacks/cb-support.h"
 
 static void cpu_x86_version(CPUX86State *env, int *family, int *model)
 {
