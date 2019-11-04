@@ -39,8 +39,8 @@ void pprint(std::unique_ptr<panda::LogEntry> ple) {
     }
 
     printf("\n{\n");
-    printf("\tPC = %lu\n", ple->pc());
-    printf("\tinstr = %lu\n", ple->instr());
+    printf("\tPC = %" PRId64 "\n", ple->pc());
+    printf("\tinstr = %" PRId64 "\n", ple->instr());
 
     /*if (ple->has_llvmentry()) {*/
         /*pprint_llvmentry(std::move(ple));*/

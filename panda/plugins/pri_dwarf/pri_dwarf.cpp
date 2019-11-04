@@ -1684,7 +1684,8 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
     std::sort(fn_start_line_range_list.begin(), fn_start_line_range_list.end(), sortRange);
     std::sort(line_range_list.begin(), line_range_list.end(), sortRange);
     printf("Successfully loaded debug symbols for %s\n", basename);
-    printf("Number of address range to line mappings: %lu num globals: %lu\n", line_range_list.size(), global_var_list.size());
+    printf("Number of address range to line mappings: %zu num globals: %zu\n",
+           (size_t)line_range_list.size(), (size_t)global_var_list.size());
     return true;
 }
 
@@ -2320,29 +2321,29 @@ void handle_asid_change(CPUState *cpu, target_ulong asid, OsiProc *p) {
 // XXX
 // get current process before each bb execs
 // which will probably help us actually know the current process
-int osi_foo(CPUState *cpu, TranslationBlock *tb) {
+void osi_foo(CPUState *cpu, TranslationBlock *tb) {
 
     if (panda_in_kernel(cpu)) {
 
         OsiProc *p = get_current_process(cpu);
-        if (!p) return 0;
+        if (!p) return;
 
         //some sanity checks on what we think the current process is
         // this means we didnt find current task
-        //if (p->taskd == 0) return 0;
+        //if (p->taskd == 0) return;
         //// or the name
-        //if (p->name == 0) return 0;
+        //if (p->name == 0) return;
         //// this is just not ok
-        //if (((int) p->pid) == -1) return 0;
+        //if (((int) p->pid) == -1) return;
         //uint32_t n = strnlen(p->name, 32);
         //// name is one char?
-        //if (n<2) return 0;
+        //if (n<2) return;
         //uint32_t np = 0;
         //for (uint32_t i=0; i<n; i++) {
             //np += (isprint(p->name[i]) != 0);
         //}
         //// name doesnt consist of solely printable characters
-        //if (np != n) return 0;
+        //if (np != n) return;
         target_ulong asid = panda_current_asid(cpu);
         if (running_procs.count(asid) == 0) {
             printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->taskd);
@@ -2381,7 +2382,7 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
         //main_exec_initialized = ensure_main_exec_initialized(cpu);
     //}
 
-    return 0;
+    return;
 }
 
 

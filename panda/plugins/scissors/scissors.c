@@ -10,6 +10,7 @@
 
 #include "panda/plugin.h"
 #include "panda/rr/rr_log.h"
+#include "panda/rr/rr_api.h"
 
 #include "migration/migration.h"
 #include "include/exec/address-spaces.h"
@@ -19,7 +20,7 @@
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-int before_block_exec(CPUState *env, TranslationBlock *tb);
+void before_block_exec(CPUState *env, TranslationBlock *tb);
 
 void check_start_snip(CPUState *env);
 void check_end_snip(CPUState *env);
@@ -226,7 +227,7 @@ static void start_snip(uint64_t count) {
     printf("Original ending prog point: %" PRId64 "\n", (uint64_t) orig_last_prog_point.guest_instr_count);
 
     actual_start_count = count;
-    printf("Saving snapshot at instr count %lu...\n", count);
+    printf("Saving snapshot at instr count %" PRIx64 "...\n", count);
     
     // Force running state
     global_state_store_running();
@@ -341,7 +342,7 @@ void check_end_snip(CPUState *env) {
 }
 
 
-int before_block_exec(CPUState *env, TranslationBlock *tb) {
+void before_block_exec(CPUState *env, TranslationBlock *tb) {
     uint64_t count = rr_get_guest_instr_count();
     if (!snipping && count+tb->icount > start_count) {
         panda_exit_loop = true;
@@ -350,9 +351,9 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (snipping && !done && count > end_count) {
         panda_exit_loop = true;
         request_end_snip = true;
-        rr_end_replay_requested = 1;
+        panda_replay_end();
     }
-    return 0;
+    return;
 }
 
 bool init_plugin(void *self) {

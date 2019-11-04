@@ -42,8 +42,8 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
+void mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
 
 // prototype for the register-this-callback fn
 PPP_PROT_REG_CB(on_ssm);
@@ -83,9 +83,9 @@ PPP_CB_BOILERPLATE(on_ssm)
 
 // this creates the 
 
-int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
-                       target_ulong size, void *buf, bool is_write,
-                       std::map<prog_point,string_pos> &text_tracker) {
+void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                  size_t size, uint8_t *buf, bool is_write,
+                  std::map<prog_point, string_pos> &text_tracker) {
     prog_point p = {};
     get_prog_point(env, &p);
 
@@ -102,8 +102,10 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
             if (sp.val[str_idx] == strlens[str_idx]) {
                 // Victory!
                 char *sid_string = get_stackid_string(p);
-                printf("%s Match of str %d at: instr_count=%lu :  " TARGET_FMT_lx " " TARGET_FMT_lx " %s\n",
-                       (is_write ? "WRITE" : "READ"), str_idx, rr_get_guest_instr_count(), p.caller, p.pc, sid_string);
+                printf("%s Match of str %d at: instr_count=%" PRIu64 " :  "
+                       TARGET_FMT_lx " " TARGET_FMT_lx " %s\n",
+                       (is_write ? "WRITE" : "READ"), str_idx,
+                       rr_get_guest_instr_count(), p.caller, p.pc, sid_string);
                 matches[p].val[str_idx]++;
                 sp.val[str_idx] = 0;
                 g_free(sid_string);
@@ -135,18 +137,19 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
         }
     }
  
-    return 1;
+    return;
 }
 
-int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
-                       target_ulong size, void *buf) {
-    return mem_callback(env, pc, addr, size, buf, false, read_text_tracker);
-
+void mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                       size_t size, uint8_t *buf) {
+    mem_callback(env, pc, addr, size, buf, false, read_text_tracker);
+    return;
 }
 
-int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
-                       target_ulong size, void *buf) {
-    return mem_callback(env, pc, addr, size, buf, true, write_text_tracker);
+void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                        size_t size, uint8_t *buf) {
+    mem_callback(env, pc, addr, size, buf, true, write_text_tracker);
+    return;
 }
 
 FILE *mem_report = NULL;
