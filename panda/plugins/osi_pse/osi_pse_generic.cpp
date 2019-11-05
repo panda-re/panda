@@ -68,7 +68,7 @@ int prochandle_cmp_f(gconstpointer a, gconstpointer b) {
 /**
  * @brief TBA
  */
-int asid_changed(CPUState *cpu, target_ptr_t asid_old, target_ptr_t asid_new) {
+bool asid_changed(CPUState *cpu, target_ptr_t asid_old, target_ptr_t asid_new) {
     static uint32_t UNUSED(n_asid_changed);
     //LOG_DEBUG("ASID_CHANGED\t" TARGET_PTR_FMT "\t" TARGET_PTR_FMT, asid_old, asid_new);
     //return 0;
@@ -82,7 +82,7 @@ int asid_changed(CPUState *cpu, target_ptr_t asid_old, target_ptr_t asid_new) {
     //prochandles_dump(handles);
     procs_dump(cpu, handles);
     g_array_free(handles_prev, true);
-    return 0;
+    return false;
 
     uint32_t i = 0;
     uint32_t j = 0;
@@ -135,7 +135,7 @@ int asid_changed(CPUState *cpu, target_ptr_t asid_old, target_ptr_t asid_new) {
     // clear handles from previous iteration
     g_array_free(handles_prev, true);
     handles_prev = NULL;
-    return 0;
+    return false;
 
 first_time:
     hc = &g_array_index(handles, OsiProcHandle, 0);
@@ -143,7 +143,7 @@ first_time:
         PPP_RUN_CB(on_process_start, cpu, hc);
         hc = &g_array_index(handles, OsiProcHandle, ++i);
     }
-    return 0;
+    return false;
 }
 
 bool init_osi_pse_generic(void *self) {

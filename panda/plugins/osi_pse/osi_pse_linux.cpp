@@ -499,7 +499,7 @@ void handle_sys_enter(CPUState *cpu, target_ptr_t pc,
  * to be looked up using only its asid (\p next).
  * See IMPLEMENTATION.md for details.
  */
-int asid_changed_linux(CPUState *cpu, target_ptr_t current, target_ptr_t next) {
+bool asid_changed_linux(CPUState *cpu, target_ptr_t current, target_ptr_t next) {
     // Create and init: OsiProcHandle *h; process_info_t &p; bool pexists;
     GET_PROCESS_INFO;
     process_info_t *pnext = nullptr;
@@ -783,7 +783,7 @@ int asid_changed_linux(CPUState *cpu, target_ptr_t current, target_ptr_t next) {
     }
 
     free_osiprochandle(h);
-    return 0;
+    return false;
 }
 
 /** @brief Initializes process list at start of replay. */
