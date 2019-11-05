@@ -709,10 +709,8 @@ void debug_counter(void) {
         counter_128k++;
 }
 #endif
-__attribute__((always_inline))
-    inline void debug_checkpoint(CPUState *cpu);
-    __attribute__((always_inline))
-    inline void debug_checkpoint(CPUState *cpu) {
+
+__attribute__((always_inline)) static inline void debug_checkpoint(CPUState *cpu) {
 #ifdef CONFIG_DEBUG_TCG
     if (rr_on() && cpu->rr_guest_instr_count >> 17 > counter_128k) {
         debug_counter();
@@ -720,7 +718,7 @@ __attribute__((always_inline))
 #endif
 }
 
-static void detect_infinite_loops(void) {
+__attribute__((always_inline)) static inline void detect_infinite_loops(void) {
     if (!rr_in_replay()) return;
 
     static uint64_t last_instr_count = 0;
