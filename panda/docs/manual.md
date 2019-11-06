@@ -21,6 +21,7 @@
     - [Precise program counter](#precise-program-counter)
     - [Memory access](#memory-access)
     - [LLVM control](#llvm-control)
+    - [Record control](#record-control)
     - [Miscellany](#miscellany)
 - [Record/Replay Details](#recordreplay-details)
   - [Introduction](#introduction)
@@ -310,6 +311,29 @@ translation step is added from the TCG IR to the LLVM IR, and that is executed
 on the LLVM JIT.  Currently, this only works when QEMU is starting up, but we
 are hoping to support dynamic configuration of code generation soon.
 
+#### Record control
+```C
+int panda_record_begin(const char *name, const char *snapshot);
+int panda_record_end(void);
+int panda_replay_begin(const char *name);
+int panda_replay_end(void);
+```
+These functions can be used to programatically start/stop recording on PANDA.
+Starting/stopping does not happen imediatelly at the time the functions are
+called. Instead, a request to start/stop recording is registered to be applied
+at the end of the currently executing basic block. Only one request can be
+queued at any time.
+The `name` argument is mandatory and is used to derive the snapshot/log
+filenames to be created/used.
+The `snapshot` argument is optional (i.e. can be `NULL`). If supplied,
+the state of the VM will be reverted to the QEMU snapshot with that name.
+
+Possible return values are:
+  * `RRCTRL_OK`: Request registered successfully.
+  * `RRCTRL_EPENDING`: Request ignored because another record/replay state
+    change request is pending.
+  * `RRCTRL_ERROR`: Request is invalid. E.g. because you are trying to end
+    a recording during a replay.
 
 #### Miscellany
   * ```C

@@ -1964,8 +1964,7 @@ static void main_loop(void)
 
 	if (likely(rr_control.next == RR_NOCHANGE)) {
 	    // nop
-	}
-	else if (unlikely(rr_control.next == RR_RECORD)) {
+	} else if (unlikely(rr_control.next == RR_RECORD)) {
             //block signals
             sigprocmask(SIG_BLOCK, &blockset, &oldset);
             rr_do_begin_record(rr_control.name, first_cpu);
