@@ -17,22 +17,28 @@ between plugins, increasing analysis code re-use and simplifying complex
 analysis development.
 
 It is currently being developed in collaboration with MIT Lincoln
-Laboratory, NYU, and Northeastern University.
+Laboratory, NYU, and Northeastern University. PANDA is released under
+the [GPLv2 license](LICENSE).
+
+---------------------------------------------------------------------
 
 ## Building
 
 ###  Debian, Ubuntu
 Because PANDA has a few dependencies, we've encoded the build instructions into
-a script,, [panda/scripts/install\_ubuntu.sh](panda/scripts/install\_ubuntu.sh).
-The script should actually work on the latest Debian stable/Ubuntu LTS versions.
-It should be straightforward to translate the `apt-get` commands into whatever
-package manager your distribution uses. We currently only vouch for buildability
-on the latest Debian stable/Ubuntu LTS, but we welcome pull requests to fix issues
-with other distros.
+the [install\_ubuntu.sh](panda/scripts/install\_ubuntu.sh). The script should
+work on the latest Debian stable/Ubuntu LTS versions.
+For other distributions, it should be straightforward to translate the `apt-get`
+commands into whatever package manager your distribution uses.
+We currently only vouch for buildability on the latest Debian stable/Ubuntu LTS,
+but we welcome pull requests to fix issues with other distros.
 
 Note that if you want to use our LLVM features (mainly the dynamic taint
 system), you will need to install LLVM 3.3 from OS packages or compiled from
 source. On Ubuntu this should happen automatically via `install_ubuntu.sh`.
+Additionally, it is **strongly** recommended that you only build PANDA as 64bit
+binary. Creating a 32bit build should be possible, but best avoided.
+See the limitations section for details.
 
 Alternatively, you can manually add the Ubuntu PPA we have created at
 `ppa:phulin/panda` and use the following commands to install PANDA
@@ -146,6 +152,44 @@ After installation, you can run PANDA similarly to QEMU:
 panda-system-i386 -m 2G -hda guest.img -monitor stdio
 ```
 
+---------------------------------------------------------------------
+
+## Limitations
+
+### LLVM Support
+PANDA uses the LLVM architecture from the [S2E project](https://github.com/dslab-epfl/s2e).
+This allows translating the TCG intermediate code representation used by QEMU,
+to LLVM IR. The latter has the advantages of being easier to work with, as well
+as platform independent. This enables the implementation of complex analyses
+like the `taint2` plugin.
+However, S2E is not actively updated to work with the latest LLVM toolchain.
+As a consequence, PANDA still requires specifically LLVM 3.3 in order to be
+built with taint analysis support.
+of the plugins.
+
+### Cross-architecture record/replay
+Great effort is put to maintain the PANDA trace format stable so that existing
+traces remain replayable in the future. Changes that will break existing traces
+are avoided.
+However, currently, record/replay is only guaranteed between PANDA builds of the
+same address length. E.g. you can't replay a trace captured on a 32bit build of
+PANDA on a 64bit of PANDA. The reason for this is that some raw pointers managed
+to creep into the trace format (see headers in `panda/rr`).
+
+Given the memory limitations of 32bit builds, almost all PANDA users use 64bit.
+As a result, this issue should affect only a tiny minority of users.
+This is also supported by the fact that the issue remained unreported for a
+long time (>3 years). Therefore, when a fix is to be implemented, it may be
+assessed that migrating existing recordings captured by 32bit builds is not
+worth the effort.
+
+For this, it is **strongly** recommended that you only create and use 64bit
+builds of PANDA. If you happen to already have a dataset of traces captured
+by a 32bit build of PANDA, you should contact the community ASAP to discuss
+possible options.
+
+---------------------------------------------------------------------
+
 ## Support
 
 If you need help with PANDA, or want to discuss the project, you can join our
@@ -164,6 +208,8 @@ Details about the architecture-neutral plugin interface can be found in
 
 PANDA currently supports whole-system record/replay execution, as well as time-travel debugging, of x86, x86\_64, and ARM guests. Documentation can be found in
 [the manual](panda/docs/manual.md#recordreplay-details).
+
+---------------------------------------------------------------------
 
 ## Publications
 
@@ -188,9 +234,7 @@ W. Robertson, F. Ulrich, R. Whelan. LAVA: Large-scale Automated Vulnerability
 Addition. 37th IEEE Symposium on Security and Privacy, San Jose,
 California, May 2016.
 
-## License
-
-GPLv2.
+---------------------------------------------------------------------
 
 ## Acknowledgements
 
