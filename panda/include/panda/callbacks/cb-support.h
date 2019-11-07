@@ -100,7 +100,7 @@ void panda_callbacks_replay_before_dma(CPUState *env, const uint8_t *buf, hwaddr
 void panda_callbacks_replay_after_dma(CPUState *env, const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
 
 /* invoked from panda/src/rr/rr_log.c */
-void panda_callbacks_replay_handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, target_ptr_t old_buf_addr);
+void panda_callbacks_replay_handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
 void panda_callbacks_replay_net_transfer(CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, size_t num_bytes);
 void panda_callbacks_replay_serial_receive(CPUState *env, target_ptr_t fifo_addr, uint8_t value);
 void panda_callbacks_replay_serial_read(CPUState *env, target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);

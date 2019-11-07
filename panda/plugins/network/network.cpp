@@ -27,7 +27,7 @@
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, target_ptr_t old_buf_addr);
+void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
 extern uint64_t rr_get_guest_instr_count(void);
 }
 
@@ -96,7 +96,7 @@ void uninit_plugin(void *self) {
 }
 
 void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction,
-                   target_ptr_t old_buf_addr) {
+                   uint64_t buf_addr_rec) {
     int err;
     char *err_info;
     struct timeval now_tv;

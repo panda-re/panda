@@ -23,7 +23,7 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 void on_replay_net_transfer(CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dst_addr, size_t num_bytes);
-void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, target_ptr_t old_buf_addr);
+void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
 }
 
 void on_replay_net_transfer(CPUState* env, uint32_t type, target_ptr_t src_addr,
@@ -34,9 +34,9 @@ void on_replay_net_transfer(CPUState* env, uint32_t type, target_ptr_t src_addr,
 }
 
 void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t size,
-                             uint8_t direction, target_ptr_t old_buf_addr) {
+                             uint8_t direction, uint64_t buf_addr_rec) {
     printf("handle packets: buf: %p, size: %zu, direction: %u, "
-           "old_buf_addr: " TARGET_PTR_FMT "\n", buf, size, direction, old_buf_addr);
+           "buf_addr_rec: %" PRIu64 "\n", buf, size, direction, buf_addr_rec);
         printf("start content: \n");
         for (int i = 0; i < size; i++) {
             printf("%c, ", buf[i]);

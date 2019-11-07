@@ -99,7 +99,7 @@ typedef struct {
         RR_cpu_reg_write_args cpu_reg_write_args;
     } variant;
     // mz XXX HACK
-    uint64_t old_buf_addr;
+    uint64_t buf_addr_rec;
 } RR_skipped_call_args;
 
 // an item in a program-point indexed record/replay log

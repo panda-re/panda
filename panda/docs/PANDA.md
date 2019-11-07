@@ -331,12 +331,12 @@ int (*replay_before_cpu_physical_mem_rw_ram)(
 * `uint8_t *buf`: buffer containing packet data
 * `int size`: num bytes in buffer
 * `uint8_t direction`: `PANDA_NET_RX` for receive, `PANDA_NET_TX` for transmit
-* `uint64_t old_buf_addr`: the address that the buffer had when the recording was taken
+* `uint64_t buf_addr_rec`: the address that the buffer had when the recording was taken
 
 **Signature**:
 ```C
 int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
-                            uint8_t direction, uint64_t old_buf_addr);
+                            uint8_t direction, uint64_t buf_addr_rec);
 ```
 ---
 

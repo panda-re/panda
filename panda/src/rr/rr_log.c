@@ -830,7 +830,7 @@ static RR_log_entry *rr_read_item(void) {
                 case RR_CALL_HANDLE_PACKET:
                     RR_READ_ITEM(args->variant.handle_packet_args);
                     // mz XXX HACK
-                    args->old_buf_addr = (uintptr_t)args->variant.handle_packet_args.buf;
+                    args->buf_addr_rec = (uint64_t)args->variant.handle_packet_args.buf;
                     // mz buffer length in args->variant.cpu_mem_rw_args.len
                     // mz always allocate a new one. we free it when the item is added
                     // to the recycle list
@@ -1141,7 +1141,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                 {
                     // run all callbacks registered for packet handling
                     RR_handle_packet_args hp = args.variant.handle_packet_args;
-                    panda_callbacks_replay_handle_packet(first_cpu, hp.buf, hp.size, hp.direction, args.old_buf_addr);
+                    panda_callbacks_replay_handle_packet(first_cpu, hp.buf, hp.size, hp.direction, args.buf_addr_rec);
                 } break;
             case RR_CALL_NET_TRANSFER:
                 {
