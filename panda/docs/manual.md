@@ -1278,6 +1278,13 @@ int (*before_block_translate)(CPUState *env, target_ulong pc);
 
 unused
 
+**Notes**:
+
+This is a good place to perform extra passes over the generated
+code (particularly by manipulating the LLVM code)
+**FIXME**: How would this actually work? By this point the out ASM
+has already been generated. Modify the IR and then regenerate?
+
 **Signature**:
 ```C
 int (*after_block_translate)(CPUState *env, TranslationBlock *tb);
@@ -1657,7 +1664,7 @@ int (*guest_hypercall)(CPUState *env);
 ```
 ---
 
-**monitor**: called when someone uses the `plugin_cmd` monitor command
+`monitor` called when someone uses the `plugin_cmd` monitor command
 
 **Callback ID**: `PANDA_CB_MONITOR`
 
