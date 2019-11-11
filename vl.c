@@ -2007,7 +2007,8 @@ static void main_loop(void)
 static void version(void)
 {
     printf("QEMU emulator version " QEMU_VERSION QEMU_PKGVERSION "\n"
-           QEMU_COPYRIGHT "\n");
+            "Build date " __DATE__ "\n"
+            QEMU_COPYRIGHT "\n");
 }
 
 static void help(int exitcode)
