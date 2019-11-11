@@ -1278,6 +1278,13 @@ int (*before_block_translate)(CPUState *env, target_ulong pc);
 
 unused
 
+**Notes**:
+
+This is a good place to perform extra passes over the generated
+code (particularly by manipulating the LLVM code)
+**FIXME**: How would this actually work? By this point the out ASM
+has already been generated. Modify the IR and then regenerate?
+
 **Signature**:
 ```C
 int (*after_block_translate)(CPUState *env, TranslationBlock *tb);
@@ -1657,7 +1664,7 @@ int (*guest_hypercall)(CPUState *env);
 ```
 ---
 
-**monitor**: called when someone uses the `plugin_cmd` monitor command
+`monitor` called when someone uses the `plugin_cmd` monitor command
 
 **Callback ID**: `PANDA_CB_MONITOR`
 
@@ -1895,7 +1902,7 @@ int (*replay_after_cpu_physical_mem_rw_ram)(
 * `uint8_t *buf`: buffer containing packet data
 * `int size`: num bytes in buffer
 * `uint8_t direction`: `PANDA_NET_RX` for receive, `PANDA_NET_TX` for transmit
-* `uint64_t old_buf_addr`: the address that `buf` had when the recording was
+* `uint64_t buf_addr_rec`: the address that `buf` had when the recording was
   taken
 
 **Return value**:
@@ -1905,7 +1912,7 @@ unused
 **Signature**:
 ```C
 int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
-                            uint8_t direction, uint64_t old_buf_addr);
+                            uint8_t direction, uint64_t buf_addr_rec);
 ```
 ---
 

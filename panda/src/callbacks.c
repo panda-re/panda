@@ -567,7 +567,7 @@ int panda_record_begin(const char *name, const char *snapshot) {
  * @brief Ends current PANDA recording.
  */
 int panda_record_end(void) {
-    if (rr_on())
+    if (!rr_in_record())
         return RRCTRL_EINVALID;
     if (rr_control.next != RR_NOCHANGE)
         return RRCTRL_EPENDING;

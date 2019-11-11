@@ -653,18 +653,34 @@ typedef union panda_cb {
        In replay only, we have a packet (incoming / outgoing) in hand.
 
        Arguments:
-        CPUState *env:             pointer to CPUState
-        uint8_t *buf:              buffer containing packet data
-        size_t size:               num bytes in buffer
-        uint8_t direction:         XXX read or write.  not sure which is which.
-        target_ptr_t old_buf_addr: XXX this is a mystery
+        CPUState *env:         pointer to CPUState
+        uint8_t *buf:          buffer containing packet data
+        size_t size:           num bytes in buffer
+        uint8_t direction:     either `PANDA_NET_RX` or `PANDA_NET_TX`
+        uint64_t buf_addr_rec: the address of `buf` at the time of recording
 
        Helper call location: panda/src/rr/rr_log.c
 
        Return value:
         none
+
+       Notes:
+        `buf_addr_rec` corresponds to the address of the device buffer of
+        the emulated NIC. I.e. it is the address of a VM-host-side buffer.
+        It is useful for implementing network tainting in an OS-agnostic
+        way, in conjunction with taint2_label_io().
+
+        FIXME: The `buf_addr_rec` maps to the `uint8_t *buf` field of the
+        internal `RR_handle_packet_args` struct. The field is dumped/loaded
+        to/from the trace without proper serialization/deserialization. As
+        a result, a 64bit build of PANDA will not be able to process traces
+        produced by a 32bit of PANDA, and vice-versa.
+        There are more internal structs that suffer from the same issue.
+        This is an oversight that will eventually be fixed. But as the
+        real impact is minimal (virtually nobody uses 32bit builds), 
+        the fix has a very low priority in the bugfix list.
     */
-    void (*replay_handle_packet)(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, target_ptr_t old_buf_addr);
+    void (*replay_handle_packet)(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
 
     /* Callback ID:     PANDA_CB_REPLAY_NET_TRANSFER,
 

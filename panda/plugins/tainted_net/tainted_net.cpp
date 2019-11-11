@@ -33,7 +33,7 @@ extern "C"
 // QEMU/PANDA, which is written in C
 bool init_plugin(void *self);
 void uninit_plugin(void *self);
-void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t packet_size, uint8_t direction, target_ptr_t old_buf_addr);
+void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t packet_size, uint8_t direction, uint64_t buf_addr_rec);
 }
 
 const std::string PLUGIN_NM = std::string("tainted_net");
@@ -119,7 +119,7 @@ static void output_message(const std::string &message)
 // User-specified options may limit the data that is tainted (e.g. only taint
 // bytes 56-60.)
 
-void taint_network_data(size_t packet_size, target_ptr_t old_buf_addr)
+void taint_network_data(size_t packet_size, uint64_t buf_addr_rec)
 {
     // Counts number of labels applied to this packet.
     uint32_t num_labels_applied = 0;
@@ -160,13 +160,13 @@ void taint_network_data(size_t packet_size, target_ptr_t old_buf_addr)
             }
 
             // Apply taint label
-            taint2_label_io(old_buf_addr + byte_offset, label_value);
+            taint2_label_io(buf_addr_rec + byte_offset, label_value);
         }
     }
 
     // Notify user that data is being tainted.
-    fprintf(stderr, PANDA_MSG "Applying labels to %d of %zu IO items starting at 0x" TARGET_PTR_FMT ", packet #%u\n",
-        num_labels_applied, packet_size, old_buf_addr, packet_count);
+    fprintf(stderr, PANDA_MSG "Applying labels to %d of %zu IO items starting at 0x%" PRIx64 ", packet #%u\n",
+        num_labels_applied, packet_size, buf_addr_rec, packet_count);
 }
 
 // if filtering on specific ipv4 protocols, determine if this packet matches one of the target protocols
@@ -202,11 +202,11 @@ static bool validate_ethertype(uint8_t *buf, size_t packet_size)
 }
 
 
-static void on_replay_handle_incoming_packet(CPUState *env, uint8_t *buf, size_t packet_size, target_ptr_t old_buf_addr)
+static void on_replay_handle_incoming_packet(CPUState *env, uint8_t *buf, size_t packet_size, target_ptr_t buf_addr_rec)
 {
     assert(packet_size > 0);
     assert(buf);
-    assert(old_buf_addr);
+    assert(buf_addr_rec);
 
     // determine if this is an IPV4 packet
     bool is_ipv4 = (packet_size > (MAC_HEADER_SIZE + IPV4_HEADER_MIN_SIZE)) &&
@@ -219,11 +219,11 @@ static void on_replay_handle_incoming_packet(CPUState *env, uint8_t *buf, size_t
         validate_ethertype(buf, packet_size))
     {
         // if we get here, packet has matched all filter criteria.  start tainting.
-        taint_network_data(packet_size, old_buf_addr);
+        taint_network_data(packet_size, buf_addr_rec);
     }
 }
 
-static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, size_t packet_size, target_ptr_t old_buf_addr)
+static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, size_t packet_size, target_ptr_t buf_addr_rec)
 {
     if (0 != taint2_enabled())
     {
@@ -246,7 +246,7 @@ static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, size_t
         target_ptr_t curAddr = 0;
         for (int i = 0; i < packet_size; i++)
         {
-            curAddr = old_buf_addr + i;
+            curAddr = buf_addr_rec + i;
             numLabels = taint2_query_io(curAddr);
             if (numLabels > 0)
             {
@@ -300,7 +300,7 @@ static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, size_t
 }
 
 // a packet has come in over the network, or is about to go out over the network
-void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t packet_size, uint8_t direction, target_ptr_t old_buf_addr)
+void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t packet_size, uint8_t direction, uint64_t buf_addr_rec)
 {
     // Increment packet counter.  This count should agree with the count in the
     // wireshark file that is produced by the network plugin.
@@ -311,7 +311,7 @@ void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t packet_size, ui
         if (label_incoming_network_traffic)
         {
             on_replay_handle_incoming_packet(env, buf, packet_size,
-                old_buf_addr);
+                buf_addr_rec);
         }
     }
     else if (PANDA_NET_TX == direction)
@@ -319,7 +319,7 @@ void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t packet_size, ui
         if (query_outgoing_network_traffic)
         {
             on_replay_handle_outgoing_packet(env, buf, packet_size,
-                old_buf_addr);
+                buf_addr_rec);
         }
     }
     else

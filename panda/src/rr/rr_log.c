@@ -830,7 +830,7 @@ static RR_log_entry *rr_read_item(void) {
                 case RR_CALL_HANDLE_PACKET:
                     RR_READ_ITEM(args->variant.handle_packet_args);
                     // mz XXX HACK
-                    args->old_buf_addr = (uintptr_t)args->variant.handle_packet_args.buf;
+                    args->buf_addr_rec = (uint64_t)args->variant.handle_packet_args.buf;
                     // mz buffer length in args->variant.cpu_mem_rw_args.len
                     // mz always allocate a new one. we free it when the item is added
                     // to the recycle list
@@ -1141,7 +1141,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                 {
                     // run all callbacks registered for packet handling
                     RR_handle_packet_args hp = args.variant.handle_packet_args;
-                    panda_callbacks_replay_handle_packet(first_cpu, hp.buf, hp.size, hp.direction, args.old_buf_addr);
+                    panda_callbacks_replay_handle_packet(first_cpu, hp.buf, hp.size, hp.direction, args.buf_addr_rec);
                 } break;
             case RR_CALL_NET_TRANSFER:
                 {
@@ -1428,34 +1428,30 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
         qemu_log("Begin vm record for file_name_full = %s\n", file_name_full);
         qemu_log("path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
     }
-    // first take a snapshot or load snapshot
 
-    if (rr_control.next == RR_REPLAY) {
-	if (rr_control.snapshot != NULL) {
-	    printf("loading snapshot:\t%s\n", rr_control.snapshot);
-	    snapshot_ret = load_vmstate(rr_control.snapshot);
-	    g_free(rr_control.snapshot);
-	    rr_control.snapshot = NULL;
-	}
-
-        // Force running state
-        global_state_store_running();
-        rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
-        printf("writing snapshot:\t%s\n", name_buf);
-        QIOChannelFile* ioc =
-            qio_channel_file_new_path(name_buf, O_WRONLY | O_CREAT, 0660, NULL);
-        QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
-        snapshot_ret = qemu_savevm_state(snp, NULL);
-        qemu_fclose(snp);
-        // log_all_cpu_states();
+    // load VM snapshot if needed
+    if (rr_control.snapshot != NULL) {
+        printf("loading snapshot:\t%s\n", rr_control.snapshot);
+        snapshot_ret = load_vmstate(rr_control.snapshot);
     }
+
+    // write PANDA memory snapshot
+    global_state_store_running(); // force running state
+    rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
+    printf("writing snapshot:\t%s\n", name_buf);
+    QIOChannelFile* ioc =
+        qio_channel_file_new_path(name_buf, O_WRONLY | O_CREAT, 0660, NULL);
+    QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
+    snapshot_ret = qemu_savevm_state(snp, NULL);
+    qemu_fclose(snp);
+    // log_all_cpu_states();
 
     // save the time so we can report how long record takes
     time(&rr_start_time);
 
     // second, open non-deterministic input log for write.
     rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
-    printf("opening nondet log for write :\t%s\n", name_buf);
+    printf("opening nondet log for write:\t%s\n", name_buf);
     rr_create_record_log(name_buf);
     // reset record/replay counters and flags
     rr_reset_state(cpu_state);
@@ -1495,6 +1491,15 @@ void rr_do_end_record(void)
 
     g_free(rr_path_base);
     g_free(rr_name_base);
+
+    // cleanup rr_control struct
+    assert(rr_control.name != NULL);
+    g_free(rr_control.name);
+    rr_control.name = NULL;
+    if (rr_control.snapshot != NULL) {
+	g_free(rr_control.snapshot);
+	rr_control.snapshot = NULL;
+    }
 
     // turn off logging
     rr_control.mode = RR_OFF;
