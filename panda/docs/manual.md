@@ -311,8 +311,9 @@ translation step is added from the TCG IR to the LLVM IR, and that is executed
 on the LLVM JIT.  Currently, this only works when QEMU is starting up, but we
 are hoping to support dynamic configuration of code generation soon.
 
-#### Record control
+#### Record/Replay and VM control
 ```C
+int panda_vm_quit(void);
 int panda_record_begin(const char *name, const char *snapshot);
 int panda_record_end(void);
 int panda_replay_begin(const char *name);
