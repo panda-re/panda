@@ -1420,7 +1420,9 @@ static time_t rr_start_time;
 int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
 {
 #ifdef CONFIG_SOFTMMU
+    Error* err = NULL;
     char name_buf[1024];
+
     // decompose file_name_base into path & file.
     char* rr_path_base = g_strdup(file_name_full);
     char* rr_name_base = g_strdup(file_name_full);
@@ -1445,7 +1447,7 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     QIOChannelFile* ioc =
         qio_channel_file_new_path(name_buf, O_WRONLY | O_CREAT, 0660, NULL);
     QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
-    snapshot_ret = qemu_savevm_state(snp, NULL);
+    snapshot_ret = qemu_savevm_state(snp, &err);
     qemu_fclose(snp);
     // log_all_cpu_states();
 
