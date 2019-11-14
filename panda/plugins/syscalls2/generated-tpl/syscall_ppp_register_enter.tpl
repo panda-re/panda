@@ -1,5 +1,5 @@
 {%- for arch, syscalls in syscalls_arch|dictsort -%}
-#ifdef {{architectures[arch].qemu_target}}
+#if {{architectures[arch].qemu_target}}
 {%- for syscall_name, syscall in syscalls|dictsort %}
 PPP_PROT_REG_CB(on_{{syscall.name}}_enter)
 {%- endfor %}

@@ -65,13 +65,16 @@ target_long get_return_val_arm(CPUState *cpu);
 uint32_t get_return_32_windows_x86(CPUState *cpu, uint32_t argnum);
 uint64_t get_return_64_windows_x86(CPUState *cpu, uint32_t argnum);
 uint64_t get_64_linux_x86(CPUState *cpu, uint32_t argnum);
+uint64_t get_64_linux_x64(CPUState *cpu, uint32_t argnum);
 uint64_t get_64_linux_arm(CPUState *cpu, uint32_t argnum);
 uint64_t get_64_windows_x86(CPUState *cpu, uint32_t argnum);
 uint32_t get_32_linux_x86(CPUState *cpu, uint32_t argnum);
+uint32_t get_32_linux_x64(CPUState *cpu, uint32_t argnum);
 uint32_t get_32_linux_arm(CPUState *cpu, uint32_t argnum);
 uint32_t get_32_windows_x86(CPUState *cpu, uint32_t argnum);
 target_ulong calc_retaddr_windows_x86(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_linux_x86(CPUState *cpu, target_ulong pc);
+target_ulong calc_retaddr_linux_x64(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_linux_arm(CPUState *cpu, target_ulong pc);
 
 enum ProfileType {
@@ -81,6 +84,7 @@ enum ProfileType {
     PROFILE_WINDOWS_XPSP2_X86,
     PROFILE_WINDOWS_XPSP3_X86,
     PROFILE_WINDOWS_7_X86,
+	PROFILE_LINUX_X64,
     PROFILE_LAST
 };
 
@@ -220,6 +224,23 @@ Profile profiles[PROFILE_LAST] = {
 #endif
         .windows_arg_offset = 8,
         .syscall_interrupt_number = 0x80,
+    },
+    {
+        .enter_switch = syscall_enter_switch_linux_x64,
+        .return_switch = syscall_return_switch_linux_x64,
+        .get_return_val = get_return_val_x86,
+        .calc_retaddr = calc_retaddr_linux_x64,
+        .get_32 = get_32_linux_x64,
+        .get_s32 = get_s32_generic,
+        .get_64 = get_64_linux_x64,
+        .get_s64 = get_s64_generic,
+        .get_return_32 = get_32_linux_x64,
+        .get_return_s32 = get_return_s32_generic,
+        .get_return_64 = get_64_linux_x64,
+        .get_return_s64 = get_return_s64_generic,
+        .windows_return_addr_register = -1,
+        .windows_arg_offset = -1,
+        .syscall_interrupt_number = 0x80,
     }
 };
 
@@ -230,6 +251,8 @@ static Profile *syscalls_profile;
 // Reinterpret the ulong as a long. Arch and host specific.
 target_long get_return_val_x86(CPUState *cpu){
 #if defined(TARGET_I386)
+    // this should work for X86_64 as well, as PANDA uses R_EAX to access RAX
+	// and target_ulong changes size based on the target
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     return static_cast<target_long>(env->regs[R_EAX]);
 #endif
@@ -264,7 +287,7 @@ target_ulong calc_retaddr_windows_x86(CPUState* cpu, target_ulong pc) {
 }
 
 target_ulong calc_retaddr_linux_x86(CPUState* cpu, target_ulong pc) {
-#if defined(TARGET_I386)
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
     unsigned char buf[2] = {};
     panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
     // Check if the instruction is syscall (0F 05) or  sysenter (0F 34)
@@ -281,6 +304,28 @@ target_ulong calc_retaddr_linux_x86(CPUState* cpu, target_ulong pc) {
     // Check if the instruction is int 0x80 (CD 80)
     else if (buf[0]== 0xCD && buf[1] == 0x80) {
         return pc+2;
+    }
+    // shouldn't happen
+    else {
+        assert(1==0);
+    }
+#else
+    // shouldn't happen
+    assert (1==0);
+#endif
+}
+
+target_ulong calc_retaddr_linux_x64(CPUState* cpu, target_ulong pc) {
+#if defined(TARGET_X86_64)
+    unsigned char buf[2] = {};
+    panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
+    // Check if the instruction is syscall (0F 05)
+    if ((0x0F == buf[0]) && (0x05 == buf[1])) {
+        // syscall expects the return address to be in RCX, but sometimes RCX is
+    	// still 0 at this point; so calculate the return address from the pc
+        target_ulong ret = pc + 2;
+        assert(ret != 0x0);
+        return ret;
     }
     // shouldn't happen
     else {
@@ -315,7 +360,7 @@ target_ulong calc_retaddr_linux_arm(CPUState* cpu, target_ulong pc) {
 
 // Argument getting (at syscall entry)
 uint32_t get_linux_x86_argnum(CPUState *cpu, uint32_t argnum) {
-#if defined(TARGET_I386)
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     switch (argnum) {
     case 0:
@@ -342,6 +387,43 @@ uint32_t get_linux_x86_argnum(CPUState *cpu, uint32_t argnum) {
     return 0;
 }
 
+// Argument getting (at syscall entry)
+uint64_t get_linux_x64_argnum(CPUState *cpu, uint32_t argnum) {
+#if defined(TARGET_X86_64)
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+
+    // PANDA uses x86 register names to get at the x64 registers
+    switch (argnum) {
+    case 0:
+    	// RDI
+        return env->regs[R_EDI];
+        break;
+    case 1:
+    	// RSI
+        return env->regs[R_ESI];
+        break;
+    case 2:
+    	// RDX
+        return env->regs[R_EDX];
+        break;
+    case 3:
+    	// R10
+        return env->regs[10];
+        break;
+    case 4:
+    	// R8
+        return env->regs[8];
+        break;
+    case 5:
+    	// R9
+        return env->regs[9];
+        break;
+    }
+    assert (1==0);
+#endif
+    return 0;
+}
+
 static uint32_t get_win_syscall_arg(CPUState* cpu, int nr) {
 #if defined(TARGET_I386)
     // At sysenter on Windows7, args start at env->regs[R_EDX]+8
@@ -360,6 +442,10 @@ uint32_t get_32_linux_x86 (CPUState *cpu, uint32_t argnum) {
     assert (argnum < 6);
     return (uint32_t) get_linux_x86_argnum(cpu, argnum);
 }
+uint32_t get_32_linux_x64 (CPUState *cpu, uint32_t argnum) {
+    assert (argnum < 6);
+    return (uint32_t) (get_linux_x64_argnum(cpu, argnum) & 0xFFFFFFFF);
+}
 uint32_t get_32_linux_arm (CPUState *cpu, uint32_t argnum) {
 #ifdef TARGET_ARM
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
@@ -376,6 +462,11 @@ uint32_t get_32_windows_x86 (CPUState *cpu, uint32_t argnum) {
 uint64_t get_64_linux_x86(CPUState *cpu, uint32_t argnum) {
     assert (argnum < 6);
     return (((uint64_t) get_linux_x86_argnum(cpu, argnum)) << 32) | (get_linux_x86_argnum(cpu, argnum));
+}
+
+uint64_t get_64_linux_x64(CPUState *cpu, uint32_t argnum) {
+    assert (argnum < 6);
+    return (uint64_t) get_linux_x64_argnum(cpu, argnum);
 }
 
 uint64_t get_64_linux_arm(CPUState *cpu, uint32_t argnum) {
@@ -557,11 +648,21 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
     }
     // Check if the instruction is int 0x80 (CD 80)
     else if (buf[0]== 0xCD && buf[1] == syscalls_profile->syscall_interrupt_number) {
+#if defined(TARGET_X86_64)
+        LOG_WARNING("32-bit system call (int 0x80) found in 64-bit replay - ignoring\n");
+        return false;
+#else
         return true;
+#endif
     }
     // Check if the instruction is sysenter (0F 34)
     else if (buf[0]== 0x0F && buf[1] == 0x34) {
+#if defined(TARGET_X86_64)
+        LOG_WARNING("32-bit sysenter found in 64-bit replay - ignoring\n");
+        return false;
+#else
         return true;
+#endif
     }
     else {
         return false;
@@ -672,13 +773,15 @@ bool init_plugin(void *self) {
         return false;
     }
     else if (panda_os_familyno == OS_LINUX) {
-        if (panda_os_bits != 32) {
-            std::cerr << PANDA_MSG "no support for 64-bit linux" << std::endl;
-            return false;
-        }
+
 #if defined(TARGET_I386)
+#if !defined(TARGET_X86_64)
         std::cerr << PANDA_MSG "using profile for linux x86 32-bit" << std::endl;
         syscalls_profile = &profiles[PROFILE_LINUX_X86];
+#else
+        std::cerr << PANDA_MSG "using profile for linux x64 64-bit" << std::endl;
+        syscalls_profile = &profiles[PROFILE_LINUX_X64];
+#endif
 #endif
 #if defined(TARGET_ARM)
         std::cerr << PANDA_MSG "using profile for linux arm" << std::endl;

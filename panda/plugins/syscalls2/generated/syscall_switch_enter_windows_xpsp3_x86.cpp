@@ -22,7 +22,7 @@ extern "C" {
  * system call return callbacks.
  */
 void syscall_enter_switch_windows_xpsp3_x86(CPUState *cpu, target_ptr_t pc) {
-#ifdef TARGET_I386
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
 	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 	syscall_ctx_t ctx = {0};
 	ctx.no = env->regs[R_EAX];
