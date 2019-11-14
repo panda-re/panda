@@ -194,6 +194,7 @@ void windows_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
                         uint32_t Buffer, uint32_t BufferLength,
                         uint32_t ByteOffset, uint32_t Key)
 {
+    // get_handle_name will assert if the filename is null
     char *filename = get_handle_name(cpu, get_current_proc(cpu), FileHandle);
     std::string ob_path = filename;
     // Check if the file handle is absolute, if not we need to make it absolute.
@@ -252,41 +253,74 @@ void windows_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
 }
 #endif
 
-// Handle a Linux read enter. Extract the filename and offset of the file
-// descriptor and call the normalized read enter.
-void linux_read_enter(CPUState *cpu, target_ulong pc, uint32_t fd,
-                      uint32_t buffer, uint32_t count)
+// Extract the filename and offset of the file descriptor and call the
+// normalized read enter.
+void linux_read_enter(CPUState *cpu, uint32_t fd)
 {
     OsiProc *proc = get_current_process(cpu);
     // The filename in Linux should always be absolute.
     char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
-    uint64_t pos = osi_linux_fd_to_pos(cpu, proc, fd);
-    read_enter(filename, fd, pos);
-    g_free(filename);
-    free_osiproc(proc);
-}
-
-// Handle a Linux pread enter. Extract the filename and use the position passed
-// to pread to call the normalized read enter.
-void linux_pread_enter(CPUState *cpu, target_ulong pc, uint32_t fd,
-                       uint32_t buf, uint32_t count, uint64_t pos)
-{
-    OsiProc *proc = get_current_process(cpu);
-    // The filename in Linux should always be absolute.
-    char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
-    if (pread_bits_64) {
+    if (filename != NULL) {
+        uint64_t pos = osi_linux_fd_to_pos(cpu, proc, fd);
         read_enter(filename, fd, pos);
+        g_free(filename);
     } else {
-        read_enter(filename, fd, (int32_t)pos);
+        printf("file_taint linux_read_enter: filename is null, ignoring.\n");
     }
-    g_free(filename);
     free_osiproc(proc);
 }
 
-// Handle a Linux read return. Extract the number of bytes read from EAX and
-// call the normalized read return.
-void linux_read_return(CPUState *cpu, target_ulong pc, uint32_t fd,
-                       uint32_t buffer, uint32_t count)
+// Handle a 32-bit Linux read enter.  Call the common linux_read_enter.
+void linux_read_enter_32(CPUState *cpu, target_ulong pc, uint32_t fd,
+                         uint32_t buffer, uint32_t count)
+{
+    linux_read_enter(cpu, fd);
+}
+
+// Handle a 64-bit Linux read enter.  Call the common linux_read_enter.
+void linux_read_enter_64(CPUState *cpu, target_ulong pc, uint32_t fd,
+                         uint64_t buffer, uint32_t count)
+{
+    linux_read_enter(cpu, fd);
+}
+
+// Extract the filename and use the position passed to pread to call the
+// normalized read enter.
+void linux_pread_enter(CPUState *cpu, uint32_t fd, uint64_t pos)
+{
+    OsiProc *proc = get_current_process(cpu);
+    // The filename in Linux should always be absolute.
+    char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
+    if (filename != NULL) {
+        if (pread_bits_64) {
+            read_enter(filename, fd, pos);
+        } else {
+            read_enter(filename, fd, (int32_t)pos);
+        }
+        g_free(filename);
+    } else {
+        printf("file_taint linux_pread_enter: filename is null, ignoring.\n");
+    }
+    free_osiproc(proc);
+}
+// Handle a 32-bit Linux pread enter.  Calls the common linux_pread_enter.
+void linux_pread_enter_32(CPUState *cpu, target_ulong pc, uint32_t fd,
+                          uint32_t buf, uint32_t count, uint64_t pos)
+{
+    linux_pread_enter(cpu, fd, pos);
+}
+
+// Handle a 64-bit Linux pread enter.  Calls the common linux_pread_enter.
+void linux_pread_enter_64(CPUState *cpu, target_ulong pc, uint32_t fd,
+                          uint64_t buf, uint32_t count, uint64_t pos)
+{
+    linux_pread_enter(cpu, fd, pos);
+}
+
+// Handle a 32-bit Linux read return. Extract the number of bytes read from EAX
+// and call the normalized read return.
+void linux_read_return_32(CPUState *cpu, target_ulong pc, uint32_t fd,
+                          uint32_t buffer, uint32_t count)
 {
     ssize_t actually_read = 0;
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
@@ -296,25 +330,58 @@ void linux_read_return(CPUState *cpu, target_ulong pc, uint32_t fd,
 #else
     fprintf(
         stderr,
-        "WARNING: file_taint only supports 32-bit x86 Linux and Windows.\n");
+        "WARNING: file_taint was not initialized for 32-bit x86 Linux.\n");
     return;
 #endif
-    if (actually_read != -1) {
+    // check sign bit for 32-bit value, as negative values indicate error but
+    // probably have more than 32 bits in a ssize_t
+    if (0 == (actually_read & 0x8000000)) {
         read_return(fd, actually_read, buffer);
     } else {
-        printf("file_taint linux_read_return: detected read failure, "
+        printf("file_taint linux_read_return_32: detected read failure, "
                "ignoring.\n");
     }
 }
 
-void linux_pread_return(CPUState *cpu, target_ulong pc, uint32_t fd,
-                        uint32_t buf, uint32_t count, uint64_t pos)
+// Handle a 64-bit Linux read return. Extract the number of bytes read from RAX
+// and call the normalized read return.
+void linux_read_return_64(CPUState *cpu, target_ulong pc, uint32_t fd,
+                          uint64_t buffer, uint32_t count)
 {
-    // Just call the regular linux read return
-    linux_read_return(cpu, pc, fd, buf, count);
+    ssize_t actually_read = 0;
+#if defined(TARGET_X86_64)
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+    // EAX has the number of bytes read.  (PANDA uses 32-bit names for 64-bit)
+    actually_read = env->regs[R_EAX];
+#else
+    fprintf(
+        stderr,
+        "WARNING: file_taint was not initialized for 64-bit x86 Linux.\n");
+    return;
+#endif
+    if (actually_read >= 0) {
+        read_return(fd, actually_read, buffer);
+    } else {
+        printf("file_taint linux_read_return_64: detected read failure, "
+               "ignoring.\n");
+    }
 }
 
-    bool init_plugin(void *self)
+void linux_pread_return_32(CPUState *cpu, target_ulong pc, uint32_t fd,
+                           uint32_t buf, uint32_t count, uint64_t pos)
+{
+    // Just call the regular linux read return
+    linux_read_return_32(cpu, pc, fd, buf, count);
+}
+
+void linux_pread_return_64(CPUState *cpu, target_ulong pc, uint32_t fd,
+                           uint64_t buf, uint32_t count, uint64_t pos)
+{
+    // Just call the regular linux read return
+    linux_read_return_64(cpu, pc, fd, buf, count);
+}
+
+bool init_plugin(void *self)
 {
     // Parse arguments for file_taint
     panda_arg_list *args = panda_get_args("file_taint");
@@ -362,11 +429,20 @@ void linux_pread_return(CPUState *cpu, target_ulong pc, uint32_t fd,
     } break;
     case OS_LINUX: {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-        verbose_printf("file_taint: setting up Linux file read detection\n");
-        PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter);
-        PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return);
-        PPP_REG_CB("syscalls2", on_sys_pread64_enter, linux_pread_enter);
-        PPP_REG_CB("syscalls2", on_sys_pread64_return, linux_pread_return);
+        verbose_printf("file_taint: setting up 32-bit Linux file read detection\n");
+        PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter_32);
+        PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return_32);
+        PPP_REG_CB("syscalls2", on_sys_pread64_enter, linux_pread_enter_32);
+        PPP_REG_CB("syscalls2", on_sys_pread64_return, linux_pread_return_32);
+
+        panda_require("osi_linux");
+        assert(init_osi_linux_api());
+#elif defined(TARGET_X86_64)
+        verbose_printf("file_taint: setting up 64-bit Linux file read detection\n");
+        PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter_64);
+        PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return_64);
+        PPP_REG_CB("syscalls2", on_sys_pread64_enter, linux_pread_enter_64);
+        PPP_REG_CB("syscalls2", on_sys_pread64_return, linux_pread_return_64);
 
         panda_require("osi_linux");
         assert(init_osi_linux_api());
@@ -384,4 +460,6 @@ void linux_pread_return(CPUState *cpu, target_ulong pc, uint32_t fd,
     return true;
 }
 
-void uninit_plugin(void *self) { }
+void uninit_plugin(void *self) {
+    // intentionally left blank
+}
