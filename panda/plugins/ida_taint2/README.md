@@ -36,6 +36,8 @@ This is unfortunately unpredictable. However, in each script, an IDA database
 snapshot is made before actually modifying anything. In the worst case scenario
 you may have to restore a snapshot.
 
+If one is using IDA Pro (32-bit) with the Hex-Rays Decompiler, it is also possible to use the output of the `ida_taint2` plugin with the included `hexrays_ida_taint2.py` IDAPython plugin.  Place the `hexrays_ida_taint2.py` file in the folder that your installation of IDA Pro (32-bit) checks for plugins.  A `PANDA:  Pseudocode ida_taint2` menu item will be added to the Edit>Plugins menu.  If activated while the current window is a Hex-Rays Decompiler Pseudocode window, then the user can select an ida_taint2 output file and process within that file to use to color the pseudocode lines that tainted instructions contributed toward.
+
 Arguments
 ---------
 filename - The name of the file to output (default: ida_taint2.csv).
