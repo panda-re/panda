@@ -12,27 +12,30 @@ const syscall_meta_t *syscall_meta;
 
 int load_syscall_info(void) {
     gchar *syscall_info_dlname = NULL;
-#if defined(TARGET_I386)
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
     const gchar *arch = "x86";
 #elif defined(TARGET_ARM)
     const gchar *arch = "arm";
+#elif defined(TARGET_X86_64)
+    const gchar *arch = "x64";
 #else
     // will fail on dlopen because dso file won't exist
     const gchar *arch = "unknown";
 #endif
 
     if (panda_os_familyno == OS_WINDOWS) {
+    	// don't support 64-bit Windows (yet)
+    	assert(panda_os_bits == 32);
+
         // for windows, take into account the panda_os_variant
         syscall_info_dlname = g_strdup_printf("%s_dso_info_%s_%s_%s" HOST_DSOSUF, PLUGIN_NAME, panda_os_family, panda_os_variant, arch);
     }
     else {
+    	assert((panda_os_bits == 32) || (panda_os_bits == 64));
+
         // for everything else (i.e. linux), only use panda_os_family
         syscall_info_dlname = g_strdup_printf("%s_dso_info_%s_%s" HOST_DSOSUF, PLUGIN_NAME, panda_os_family, arch);
     }
-
-    // panda_os_bits will be useful when support for 64bit operating systems is added
-    // for now, just use it in this assertion to make the compiler happy
-    assert(panda_os_bits == 32);
 
     dlerror();  // clear errors
     void *syscall_info_dl = dlopen(syscall_info_dlname, RTLD_NOW|RTLD_NODELETE);

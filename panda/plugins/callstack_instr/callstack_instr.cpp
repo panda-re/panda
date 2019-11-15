@@ -506,7 +506,14 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
 // returns true if set up OK, and false if it was not
 bool setup_osi() {
     // moved out of init_plugin case statement to mollify SonarQube
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+#if defined(TARGET_I386)
+#if defined(TARGET_X86_64)
+    if (panda_os_familyno != OS_LINUX) {
+        fprintf(stderr,
+            "ERROR:  threaded stack_type is not supported on Windows 64-bit\n");
+        return false;
+    }
+#endif
     printf("callstack_instr:  setting up threaded stack_type\n");
     panda_require("osi");
     assert(init_osi_api());
@@ -514,7 +521,7 @@ bool setup_osi() {
     // specific deriviation
     return true;
 #else
-    fprintf(stderr, "ERROR:  threaded stack_type is only supported on x86 (32-bit)\n");
+    fprintf(stderr, "ERROR:  threaded stack_type is only supported on x86\n");
     return false;
 #endif
 }
