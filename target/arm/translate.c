@@ -7541,6 +7541,20 @@ static int disas_coproc_insn(DisasContext *s, uint32_t insn)
                                                 rt, isread, false);
                 }
                 break;
+            case 7:
+                /* Coprocessor 7 is used to implement PANDA hypercalls. */
+                if (!(insn & ARM_CP_RW_BIT)) {
+                    gen_set_pc_im(s, s->pc);
+                    gen_helper_panda_guest_hypercall(cpu_env);
+
+                    /* End block here. This enables using hypercalls to
+                     * implement advanced functionality. E.g. to switch
+                     * runtime from TCG to LLVM.
+                     */
+                    gen_jmp(s, s->pc);
+                    return 0;
+                }
+                /* ---fallthrough to default case--- */
             default:
                 /* ARMv8 defines that only coprocessors 14 and 15 exist,
                  * so this can only happen if this is an ARMv7 or earlier CPU,

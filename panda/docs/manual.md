@@ -1634,33 +1634,57 @@ hypercall to pass information from inside the guest to a plugin
 
 **Return value**:
 
-unused
+`true` if the callback has processed the hypercall, `false` if the
+hypercall has been ignored.
 
 **Notes**:
 
-On x86, this is called whenever CPUID is executed. Plugins then check for magic
-values in the registers to determine if it really is a guest hypercall.
-Parameters can be passed in other registers.  We have modified translate.c to
-make CPUID instructions end translation blocks.  This is useful, if, for
-example, you want to have a hypercall that turns on LLVM and enables heavyweight
-instrumentation at a specific point in execution.
+This feature is implemented using the CPUID instruction for x86 guests
+and the MCR instructions for ARM guests. Both of these instructions are
+unprivileged, which makes development and use of the feature easier.
+They are also available across the different variants of the
+architectures.
 
-S2E accomplishes this by using a (currently) undefined opcode. We
-have instead opted to use an existing instruction to make development
-easier (we can use inline asm rather than defining the raw bytes).
+For x86, PANDA opted out from using AMD's SVM and Intel's VT hypercalls
+because they are privileged instructions. This makes them harder to
+integrate with the guest environment.
+For ARM, PANDA specifies coprocessor 7 (p7) as the target of the MCR
+instruction (move to coprocessor from register). p7 is reserved by ARM
+and not implemented in QEMU, so it can be handled without causing
+conflicts.
+PANDA also opted out from using an undefined opcode to implement the
+hypercall functionality. This is the approach taken by S2E, but it has
+the drawback that during development you need to output raw bytes
+instead of using inline assembly.
 
-AMD's SVM and Intel's VT define hypercalls, but they are privileged
-instructions, meaning the guest must be in ring 0 to execute them.
+Plugins need to check for a magic value in the registers in order to
+determine if this is a guest hypercall they need to process. Further
+parameters can be passed in other registers.
 
-For hypercalls in ARM, we use the MCR instruction (move to coprocessor from ARM
-register), moving to coprocessor 7.  CP 7 is reserved by ARM, and isn't
-implemented in QEMU.  The MCR instruction is present in all versions of ARM, and
-it is an unprivileged instruction in this scenario.  Plugins can also check for
-magic values in registers on ARM.
+If the plugin has processed the hypercall, it should return `true`.
+On x86, this prevents the regular CPUID code from running to avoid
+clobbering of register. This allows hypercalls to return values to
+the guest. It also allows detecting when a hypercall is processed
+by more than one plugins (possible conflict of magic values).
+More importantly, an analyzed binary can't directly use the CPUID
+instrucion to probe whether it runs inside a PANDA VM.
+On ARM, the return value of callbacks is not currently used. However,
+the MCR instruction with p7 as target should result in a nop. This means
+that the state of the processor shouldn't change and any values returned
+to the guest through r0, r1 will not be clobbered.
+
+PANDA has modified translate.c to make CPUID/MCR instructions end
+translation blocks. This is useful e.g. for dynamically turning on
+LLVM and enabling heavyweight instrumentation at at a specific point
+in execution.
+
+**ARM support for PANDA hypercalls has not been thoroughly tested.
+If you have sucessfully used it, please submit a PR to remove this
+warning.**
 
 **Signature**:
 ```C
-int (*guest_hypercall)(CPUState *env);
+bool (*guest_hypercall)(CPUState *env);
 ```
 ---
 

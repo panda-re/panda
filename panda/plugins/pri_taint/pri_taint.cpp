@@ -284,7 +284,8 @@ void on_fn_start(CPUState *cpu, target_ulong pc, const char *file_Name, const ch
 
 #ifdef TARGET_I386
 // Support all features of label and query program
-void i386_hypercall_callback(CPUState *cpu){
+bool i386_hypercall_callback(CPUState *cpu){
+    bool ret = false;
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     if (taint2_enabled() && pandalog) {
         // LAVA Hypercall
@@ -313,6 +314,7 @@ void i386_hypercall_callback(CPUState *cpu){
                         //pri_all_livevar_iter(cpu, pc, (liveVarCB) pfun, (void *)&args);
                         //lava_attack_point(phs);
                     }
+                    ret = true;
                 }
             }
             else {
@@ -320,13 +322,14 @@ void i386_hypercall_callback(CPUState *cpu){
             }
         }
     }
+    return ret;
 }
 #endif // TARGET_I386
 
 
-void guest_hypercall_callback(CPUState *cpu){
+bool guest_hypercall_callback(CPUState *cpu){
 #ifdef TARGET_I386
-    i386_hypercall_callback(cpu);
+    return i386_hypercall_callback(cpu);
 #endif
 
 #ifdef TARGET_ARM
@@ -334,7 +337,7 @@ void guest_hypercall_callback(CPUState *cpu){
     //arm_hypercall_callback(cpu);
 #endif
 
-    return;
+    return false;
 }
 #endif
 /*

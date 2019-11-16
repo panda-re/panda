@@ -115,7 +115,7 @@ bool panda_callbacks_after_insn_translate(CPUState *env, target_ptr_t pc);
 void panda_callbacks_asid_changed(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
 
 /* invoked from target/i386/misc_helper.c */
-void panda_callbacks_guest_hypercall(CPUState *env);
+bool panda_callbacks_guest_hypercall(CPUState *env);
 
 /* invoked from translate-all.c */
 void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb);

@@ -299,20 +299,18 @@ typedef union panda_cb {
        Helper call location: target/i386/misc_helper.c
 
        Return value:
-        none
+        true if the callback has processed the hypercall, false if the
+        hypercall has been ignored.
 
        Notes:
-        On x86, this is called whenever CPUID is executed. Plugins then
-        check for magic values in the registers to determine if it really
-        is a guest hypercall. Parameters can be passed in other registers.
-        S2E accomplishes this by using a (currently) undefined opcode. We
-        have instead opted to use an existing instruction to make development
-        easier (we can use inline asm rather than defining the raw bytes).
-        AMD's SVM and Intel's VT define hypercalls, but they are privileged
-        instructinos, meaning the guest must be in ring 0 to execute them.
-        Currently ARM implementation is missing.
+        On x86, this is called whenever CPUID is executed. On ARM, the
+        MCR instructions is used. Plugins should check for magic values
+        in the registers to determine if it really is a guest hypercall.
+        Parameters can be passed in other registers. If the plugin
+        processes the hypercall, it should return true so the execution
+        of the normal instruction is skipped.
     */
-    void (*guest_hypercall)(CPUState *env);
+    bool (*guest_hypercall)(CPUState *env);
 
     /* Callback ID: PANDA_CB_MONITOR
 
