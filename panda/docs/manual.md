@@ -1435,7 +1435,7 @@ int (*virt_mem_before_read)(CPUState *env, target_ulong pc,target_ulong addr, ta
 ```
 ---
 
-`virt_mem_before_write`: called before memory is read
+`virt_mem_before_write`: called before memory is write
 
 **Callback ID**: `PANDA_CB_VIRT_MEM_BEFORE_WRITE`
 
