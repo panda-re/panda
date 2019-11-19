@@ -48,8 +48,10 @@ typedef target_ulong target_ptr_t;
  * We use the type mostly for denoting argumant/variable semantics.
  * In principle, the pid type depends on the guest-OS. However, so
  * far we have only met cases of operating systems with 32bit pids.
+ * This is a signed type in order to match the signature of the linux
+ * kill system call.
  */
-typedef uint32_t target_pid_t;
+typedef int32_t target_pid_t;
 
 /** @brief Print format for guest VM pids. */
 #define TARGET_PID_FMT "%u"
