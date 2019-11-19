@@ -33,7 +33,7 @@ void PCB(replay_handle_packet)(CPUState *cpu, uint8_t *buf, size_t size, uint8_t
         }
     }
 }
-void PCB(replay_net_transfer)(CPUState *cpu, Net_transfer_type type, target_ptr_t src_addr, target_ptr_t dst_addr, size_t num_bytes) {
+void PCB(replay_net_transfer)(CPUState *cpu, Net_transfer_type type, uint64_t src_addr, uint64_t dst_addr, size_t num_bytes) {
     if (rr_in_replay()) {
         panda_cb_list *plist;
         for (plist = panda_cbs[PANDA_CB_REPLAY_NET_TRANSFER];

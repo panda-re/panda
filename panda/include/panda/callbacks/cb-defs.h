@@ -689,8 +689,8 @@ typedef union panda_cb {
        Arguments:
         CPUState *env:          pointer to CPUState
         uint32_t type:          type of transfer  (Net_transfer_type)
-        target_ptr_t src_addr:  address for src
-        target_ptr_t dest_addr: address for dest
+        uint64_t src_addr:      address for src
+        uint64_t dest_addr:     address for dest
         size_t num_bytes:       size of transfer in bytes
 
        Helper call location: panda/src/rr/rr_log.c
@@ -702,8 +702,10 @@ typedef union panda_cb {
         Unlike most callbacks, this is neither a "before" or "after" callback.
         In replay the transfer doesn't really happen. We are *at* the point at
         which it happened, really.
+        Also, the src_addr and dest_addr may be for either host (ie. a location
+        in the emulated network device) or guest, depending upon the type.
     */
-    void (*replay_net_transfer)(CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, size_t num_bytes);
+    void (*replay_net_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, size_t num_bytes);
 
     /* Callback ID:     PANDA_CB_REPLAY_SERIAL_RECEIVE,
 

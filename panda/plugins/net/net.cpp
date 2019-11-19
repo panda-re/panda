@@ -22,13 +22,13 @@ PANDAENDCOMMENT */
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void on_replay_net_transfer(CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dst_addr, size_t num_bytes);
+void on_replay_net_transfer(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dst_addr, size_t num_bytes);
 void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
 }
 
-void on_replay_net_transfer(CPUState* env, uint32_t type, target_ptr_t src_addr,
-                            target_ptr_t dst_addr, size_t num_bytes) {
-    printf("net transfer: src: " TARGET_PTR_FMT ", dst: " TARGET_PTR_FMT ", n: %zu\n",
+void on_replay_net_transfer(CPUState* env, uint32_t type, uint64_t src_addr,
+                            uint64_t dst_addr, size_t num_bytes) {
+    printf("net transfer: src: %" PRIx64 ", dst: %" PRIx64 ", n: %zu\n",
            src_addr, dst_addr, num_bytes);
     return;
 }
