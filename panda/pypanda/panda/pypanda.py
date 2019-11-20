@@ -51,6 +51,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
         # If specified use a generic (x86_64, i386, arm, ppc) qcow from moyix and ignore
         if generic:                                 # other args. See details in qcows.py
+            print("using generic " +str(generic))
             q = qcows.get_qcow_info(generic)
             self.arch     = q.arch
             self.os       = q.os
@@ -87,12 +88,16 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.serial_console = Expect(expectation=expect_prompt, quiet=True, consume_first=False)
         self.panda_args.extend(['-serial', 'unix:{},server,nowait'.format(self.serial_file)])
+		
+		# Configure memory options
+        self.panda_args.extend(['-m', mem])
 
         # Configure monitor - Always enabled for now
         self.monitor_file = NamedTemporaryFile(prefix="pypanda_m").name
         self.monitor_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.monitor_console = Expect(expectation="(qemu)", quiet=True, consume_first=True)
         self.panda_args.extend(['-monitor', 'unix:{},server,nowait'.format(self.monitor_file)])
+        print(self.panda_args)
 
         self.running = threading.Event()
         self.started = threading.Event()
@@ -418,6 +423,35 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             return cpustate.env_ptr.regs[R_ESP]
         else:
             raise NotImplemented("current_sp doesn't yet support arch {}".format(self.arch))
+	
+    def physical_memory_read(self, addr, length, fmt='bytearray'):
+        '''
+        Read but with an autogen'd buffer. Returns a bytearray
+        '''
+        if not hasattr(self, "_memcb"):
+            self.enable_memcb()
+        buf = ffi.new("char[]", length)
+
+        buf_a = ffi.cast("uint8_t*", buf)
+        length_a = ffi.cast("int", length)
+        self.libpanda.panda_physical_memory_read_external(addr, buf_a, length_a)
+
+        r = ffi.unpack(buf, length)
+        if fmt == 'bytearray':
+            return r
+        elif fmt=='int':
+            return int.from_bytes(r, byteorder=self.endianness)  # XXX size better be small enough to pack into an int!
+        elif fmt=='str':
+            return ffi.string(buf, length)
+        else:
+            raise ValueError("fmt={} unsupported".format(fmt))
+		
+    def physical_memory_write(self, addr, buf, length):
+        # XXX: Should update to automatically build buffer
+        if not hasattr(self, "_memcb"):
+            self.enable_memcb()
+        buf_a = ffi.cast("uint8_t*", buf)
+        return self.libpanda.panda_physical_memory_write_external(env, addr, buf, length)
 
     def virtual_memory_read(self, env, addr, length, fmt='bytearray'):
         '''

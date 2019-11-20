@@ -12,6 +12,7 @@
 extern bool panda_update_pc;
 extern bool panda_use_memcb;
 extern bool panda_tb_chaining;
+extern ram_addr_t ram_size;
 
 // from common.c I think?
 bool panda_flush_tb(void);
@@ -55,6 +56,8 @@ int rr_get_guest_instr_count_external(void);
 
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len);
 int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len);
+int panda_physical_memory_read_external(hwaddr addr, uint8_t *buf, int len);
+int panda_physical_memory_write_external(hwaddr addr, uint8_t *buf, int len);
 
 target_ulong panda_current_sp_external(CPUState *cpu);
 target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong pagesize);
