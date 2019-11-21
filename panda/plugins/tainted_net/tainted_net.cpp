@@ -202,7 +202,7 @@ static bool validate_ethertype(uint8_t *buf, size_t packet_size)
 }
 
 
-static void on_replay_handle_incoming_packet(CPUState *env, uint8_t *buf, size_t packet_size, target_ptr_t buf_addr_rec)
+static void on_replay_handle_incoming_packet(CPUState *env, uint8_t *buf, size_t packet_size, uint64_t buf_addr_rec)
 {
     assert(packet_size > 0);
     assert(buf);
@@ -223,10 +223,14 @@ static void on_replay_handle_incoming_packet(CPUState *env, uint8_t *buf, size_t
     }
 }
 
-static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, size_t packet_size, target_ptr_t buf_addr_rec)
+static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, size_t packet_size, uint64_t buf_addr_rec)
 {
     if (0 != taint2_enabled())
     {
+    	// tell user logging a packet - very handy when debugging
+        fprintf(stderr, PANDA_MSG "Logging TX Packet of %zu items starting at 0x%" PRIx64 "\n",
+            packet_size, buf_addr_rec);
+
         // the output can be rather voluminous, so send it to a file
         // just keep appending data to same file - the column headers will
         // separate the packets
@@ -243,7 +247,7 @@ static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, size_t
         fprintf(taintlogF, "\"Address\",\"Datum\",\"Labels\"\n");
 
         uint32_t numLabels = 0;
-        target_ptr_t curAddr = 0;
+        uint64_t curAddr = 0;
         for (int i = 0; i < packet_size; i++)
         {
             curAddr = buf_addr_rec + i;
@@ -265,11 +269,11 @@ static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, size_t
                 // characters
                 if (isprint(buf[i]))
                 {
-                    fprintf(taintlogF, TARGET_PTR_FMT ",%c,", curAddr, buf[i]);
+                    fprintf(taintlogF, "0x%" PRIx64 ",%c,", curAddr, buf[i]);
                 }
                 else
                 {
-                    fprintf(taintlogF, TARGET_PTR_FMT ",.,", curAddr);
+                    fprintf(taintlogF, "0x%" PRIx64 ",.,", curAddr);
                 }
                 for (int j = 0; j < numLabels; j++)
                 {
@@ -281,11 +285,11 @@ static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, size_t
             {
                 if (isprint(buf[i]))
                 {
-                    fprintf(taintlogF, TARGET_PTR_FMT ",%c, NULL\n", curAddr, buf[i]);
+                    fprintf(taintlogF, "0x%" PRIx64 ",%c, NULL\n", curAddr, buf[i]);
                 }
                 else
                 {
-                    fprintf(taintlogF, TARGET_PTR_FMT ",., NULL\n", curAddr);
+                    fprintf(taintlogF, "0x%" PRIx64 ",., NULL\n", curAddr);
                 }
             }
         } // end of loop through items in TX buffer
