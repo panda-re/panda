@@ -575,7 +575,7 @@ static Property arm_cpu_has_mpu_property =
             DEFINE_PROP_BOOL("has-mpu", ARMCPU, has_mpu, true);
 
 static Property arm_cpu_pmsav7_dregion_property =
-            DEFINE_PROP_UINT32("pmsav7-dregion", ARMCPU, pmsav7_dregion, 16);
+            DEFINE_PROP_UINT32("pmsav7-dregion", ARMCPU, pmsav7_dregion, 32);
 
 static void arm_cpu_post_init(Object *obj)
 {
@@ -1137,8 +1137,6 @@ static void cortex_r7_initfn(Object *obj)
     ARMCPU *cpu = ARM_CPU(obj);
 
     cortex_r5_initfn(obj);
-    // granth: not sure how many there actually are
-    cpu->pmsav7_dregion = 32;
 }
 
 static const ARMCPRegInfo cortexa8_cp_reginfo[] = {
@@ -1581,7 +1579,7 @@ static const ARMCPUInfo arm_cpus[] = {
                              .class_init = arm_v7m_class_init },
     { .name = "cortex-m4",   .initfn = cortex_m4_initfn,
                              .class_init = arm_v7m_class_init },
-    { .name = "cortex-r5",   .initfn = cortex_r5_initfn },
+    //{ .name = "cortex-r5",   .initfn = cortex_r5_initfn },
     { .name = "cortex-r7",   .initfn = cortex_r7_initfn },
     { .name = "cortex-a7",   .initfn = cortex_a7_initfn },
     { .name = "cortex-a8",   .initfn = cortex_a8_initfn },
