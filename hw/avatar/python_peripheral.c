@@ -5,11 +5,14 @@
 
 #ifdef TARGET_ARM
 #include "target/arm/cpu.h"
+#include "hw/avatar/arm_helper.h"
 #endif
 
 
 #define TYPE_AVATAR_PYPERIPHERAL "avatar-pyperipheral"
 #define AVATAR_PYPERIPHERAL(obj) OBJECT_CHECK(AvatarPyPeripheralState, (obj), TYPE_AVATAR_PYPERIPHERAL)
+
+
 
 typedef struct AvatarPyPeripheralState {
     SysBusDevice parent_obj;
@@ -27,15 +30,16 @@ typedef struct AvatarPyPeripheralState {
 
 
 
+
 static uint64_t avatar_pyperipheral_read(void *opaque, hwaddr offset,
                            unsigned size)
 {
     PyObject *pRes;
     uint64_t res;
     AvatarPyPeripheralState *s = (AvatarPyPeripheralState *) opaque;
-    
-    pRes = PyObject_CallMethod(s->pyperipheral, (char *) "read_memory", 
-            (char *) "li", s->address+offset, size); //pArgs);
+
+    pRes = PyObject_CallMethod(s->pyperipheral, (char *) "read_memory",
+            (char *) "lil", s->address+offset, size, get_current_pc()); //pArgs);
 
     if (pRes == NULL){
         fprintf(stderr, "[Avatar-PyPeripheral] Memory Read failed\n");
@@ -61,9 +65,9 @@ static void avatar_pyperipheral_write(void *opaque, hwaddr offset,
 {
     PyObject *pRes;
     AvatarPyPeripheralState *s = (AvatarPyPeripheralState *) opaque;
-    
+
     pRes = PyObject_CallMethod(s->pyperipheral, (char *) "write_memory",
-        (char *)"lil", s->address+offset, size, value);
+        (char *)"lill", s->address+offset, size, value, get_current_pc());
     if (pRes == NULL){
         fprintf(stderr, "[Avatar-PyPeripheral] Memory Write failed\n");
         PyErr_Print();
@@ -145,9 +149,9 @@ static void avatar_pyperipheral_realize(DeviceState *dev, Error **errp)
         PyErr_Print();
         exit(-1);
     }
-    
 
-    s->pyperipheral = PyObject_Call(pPeriphClass, pArgs, pKwargs); 
+
+    s->pyperipheral = PyObject_Call(pPeriphClass, pArgs, pKwargs);
 
     if (s->pyperipheral == NULL){
         fprintf(stderr, "[Avatar-PyPeripheral] Couldn't instantiate peripheral object\n");
