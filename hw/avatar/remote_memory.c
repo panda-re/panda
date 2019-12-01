@@ -15,6 +15,7 @@
 
 #ifdef TARGET_ARM
 #include "target/arm/cpu.h"
+#include "hw/avatar/arm_helper.h"
 #elif TARGET_MIPS
 #endif
 
@@ -22,15 +23,6 @@
 #define TYPE_AVATAR_RMEMORY "avatar-rmemory"
 #define AVATAR_RMEMORY(obj) OBJECT_CHECK(AvatarRMemoryState, (obj), TYPE_AVATAR_RMEMORY)
 
-uint64_t get_current_pc(void){
-#ifdef TARGET_ARM
-    ARMCPU *cpu = ARM_CPU(qemu_get_cpu(0));
-    return cpu->env.regs[15];
-#elif TARGET_MIPS
-    return 0; /*  implement me */
-#endif
-    return 0;
-}
 
 
 static uint64_t avatar_rmemory_read(void *opaque, hwaddr offset,

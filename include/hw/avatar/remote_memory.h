@@ -36,6 +36,4 @@ typedef struct AvatarRMemoryState {
     qemu_irq irq;
 } AvatarRMemoryState;
 
-uint64_t get_current_pc(void);
-
 #endif
