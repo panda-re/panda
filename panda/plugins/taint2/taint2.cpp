@@ -78,7 +78,7 @@ void phys_mem_write_callback(CPUState *cpu, target_ptr_t pc, target_ulong addr, 
 void phys_mem_read_callback(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf);
 
 // network related callbacks
-void on_replay_net_transfer(CPUState *cpu, uint32_t type, target_ptr_t src_addr, target_ptr_t dst_addr, size_t num_bytes);
+void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr, uint64_t dst_addr, size_t num_bytes);
 void on_replay_before_dma(CPUState *cpu, const uint8_t *src_addr, hwaddr dest_addr, size_t num_bytes, bool is_write);
 void taint_state_changed(Shad *, uint64_t, uint64_t);
 PPP_PROT_REG_CB(on_taint_change);
@@ -195,8 +195,8 @@ void replay_hd_transfer_callback(CPUState *cpu, uint32_t type,
 }
 
 // network data has been transfered - transfer the associated taint too
-void on_replay_net_transfer(CPUState *cpu, uint32_t type, target_ptr_t src_addr,
-                            target_ptr_t dst_addr, size_t num_bytes) {
+void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
+                            uint64_t dst_addr, size_t num_bytes) {
     if (!taintEnabled)
     {
         return;

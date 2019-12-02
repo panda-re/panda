@@ -126,7 +126,7 @@ fi
 msg "Configuring PANDA..."
 "${PANDA_DIR_REL}/configure" \
     --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu \
-    --prefix="$(pwd)/install" \
+    --prefix="/usr/local" \
     $COMPILER_CONFIG \
     $LLVM_CONFIG \
     $MISC_CONFIG \

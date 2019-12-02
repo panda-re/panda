@@ -38,17 +38,23 @@ logging.basicConfig(format='%(levelname)s: %(message)s', level=LOGLEVEL)
 # Details about operating systems and architectures to be processed.
 KNOWN_OS = ['linux', 'windows_7', 'windows_xpsp2', 'windows_xpsp3', 'windows_2000']
 KNOWN_ARCH = {
+    'x64': {
+        'bits': 64,
+        'rt_callno_reg': 'env->regs[R_EAX]',    # register holding syscall number at runtime
+        'rt_sp_reg': 'env->regs[R_ESP]',        # register holding stack pointer at runtime
+        'qemu_target': 'defined(TARGET_X86_64)',  # qemu target name for this arch - used in guards
+    },
     'x86': {
         'bits': 32,
         'rt_callno_reg': 'env->regs[R_EAX]',    # register holding syscall number at runtime
         'rt_sp_reg': 'env->regs[R_ESP]',        # register holding stack pointer at runtime
-        'qemu_target': 'TARGET_I386',           # qemu target name for this arch - used in guards
+        'qemu_target': 'defined(TARGET_I386) && !defined(TARGET_X86_64)',  # qemu target name for this arch - used in guards
     },
     'arm': {
         'bits': 32,
         'rt_callno_reg': 'env->regs[7]',        # register holding syscall number at runtime
         'rt_sp_reg': 'env->regs[13]',           # register holding stack pointer at runtime
-        'qemu_target': 'TARGET_ARM',            # qemu target name for this arch - used in guards
+        'qemu_target': 'defined(TARGET_ARM)',   # qemu target name for this arch - used in guards
     },
 }
 
@@ -88,10 +94,21 @@ class Argument(object):
     ''' Wraps a system call argument.
     '''
     charre = re.compile("char.*\*")
-    types = {
+    
+    # the "reserved" list consists of system call argument names that also
+    # happen to be reserved words; "cpu" is reserved because the generated
+    # callbacks for system calls also have a "CPUState *cpu" argument
+    # the "twoword" list consists of two-word argument types in the system
+    # calls which are used in a context without argument names
+    # the "ptr" list is types used in system calls which ARE pointers
+    # the other lists are just the types for the associated arch_bits which are
+    # of the size & signedness associated with the list name
+    # list for arch_bits=32
+    types32 = {
         'reserved': ['new', 'data', 'int', 'cpu'],
         'twoword': ['unsigned int', 'unsigned long'],
         'u64': ['loff_t', 'u64'],
+        's64': [],
         'u32': [
             'unsigned int', 'unsigned long', 'size_t', 'u32', 'off_t',
             'timer_t', 'key_t', 'key_serial_t', 'mqd_t', 'clockid_t',
@@ -105,16 +122,36 @@ class Argument(object):
         'u16': ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'pid_t', 'USHORT'],
         'ptr': ['cap_user_data_t', 'cap_user_header_t', '__sighandler_t', '...'],
     }
-
+    # the lists in types64 are appropriate for 64-bit linux (64-bit Windows will
+    # likely need a separate list)
+    types64 = {
+        'reserved': ['new', 'data', 'int', 'cpu'],
+        'twoword': ['unsigned int', 'unsigned long'],
+        'u64': ['loff_t', 'u64', 'unsigned long', 'off_t', 'aio_context_t'],
+        's64': ['long'],
+        'u32': [
+            'unsigned int', 'size_t', 'u32', 'rwf_t',
+            'timer_t', 'key_t', 'key_serial_t', 'mqd_t', 'clockid_t',
+            'qid_t', 'old_sigset_t', 'union semun'
+        ],
+        's32': ['int', '__s32'],
+        'u16': ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'pid_t'],
+        'ptr': ['cap_user_data_t', 'cap_user_header_t', '__sighandler_t', '...'],
+    }
+    
     def __init__(self, arg, argno=-1, arch_bits=32):
         self.no = argno
         self.raw = arg.strip()
         self.arch_bits = arch_bits
         if self.raw == '' or self.raw == 'void':
             raise EmptyArgumentError()
-
+            
+        typesforbits = Argument.types32
+        if (64 == arch_bits):
+            typesforbits = Argument.types64
+            
         # parse argument name
-        if self.raw.endswith('*') or len(self.raw.split()) == 1 or self.raw in Argument.types['twoword']:
+        if self.raw.endswith('*') or len(self.raw.split()) == 1 or self.raw in typesforbits['twoword']:
             # no argname, just type
             self.name = "arg{0}".format(self.no)
         else:
@@ -122,7 +159,7 @@ class Argument(object):
 
         # name sanitization
         self.name = self.name.lstrip('\t *')
-        if self.name in Argument.types['reserved']:
+        if self.name in typesforbits['reserved']:
             self.name = '_' + self.name
         elif self.name == ')':
             self.name = 'fn'
@@ -133,15 +170,17 @@ class Argument(object):
         # this means that e.g. mode_t will also match a umode_t agument
         if Argument.charre.search(self.raw) and not any([self.name.endswith('buf'), self.name == '...', self.name.endswith('[]')]):
             self.type = 'STR'
-        elif any(['*' in self.raw, '[]' in self.raw, any([x in self.raw for x in Argument.types['ptr']])]):
+        elif any(['*' in self.raw, '[]' in self.raw, any([x in self.raw for x in typesforbits['ptr']])]):
             self.type = 'PTR'
-        elif any([x in self.raw for x in Argument.types['u64']]):
+        elif any([x in self.raw for x in typesforbits['u64']]):
             self.type = 'U64'
-        elif any([x in self.raw for x in Argument.types['u32']]):
+        elif any([x in self.raw for x in typesforbits['s64']]):
+            self.type = 'S64'
+        elif any([x in self.raw for x in typesforbits['u32']]):
             self.type = 'U32'
-        elif any([x in self.raw for x in Argument.types['u16']]):
+        elif any([x in self.raw for x in typesforbits['u16']]):
             self.type = 'U32'   # is this correct?
-        elif any([x in self.raw for x in Argument.types['s32']]) and 'unsigned' not in self.raw:
+        elif any([x in self.raw for x in typesforbits['s32']]) and 'unsigned' not in self.raw:
             self.type = 'S32'
         elif self.raw == 'void':
             self.type = None
@@ -169,6 +208,8 @@ class Argument(object):
             return 'int32_t'
         elif self.type == 'U64':
             return 'uint64_t'
+        elif self.type == 'S64':
+            return 'int64_t'
         elif self.type == 'U16':
             return 'uint16_t'
         assert False, 'Unknown type for argument %s: %s' % (self.name, self.type)

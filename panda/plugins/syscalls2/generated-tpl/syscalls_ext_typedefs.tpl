@@ -47,7 +47,7 @@ struct syscall_ctx {
 typedef struct syscall_ctx syscall_ctx_t;
 
 {% for arch, syscalls in syscalls_arch|dictsort -%}
-#ifdef {{architectures[arch].qemu_target}}
+#if {{architectures[arch].qemu_target}}
 {%- for syscall_name, syscall in syscalls|dictsort %}
 typedef void (*on_{{syscall.name}}_enter_t)({{syscall.cargs_signature}});
 typedef void (*on_{{syscall.name}}_return_t)({{syscall.cargs_signature}});

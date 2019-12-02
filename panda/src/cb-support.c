@@ -23,17 +23,17 @@ void PCB(replay_hd_transfer)(CPUState *cpu, Hd_transfer_type type, target_ptr_t 
     }
 }
 
-void PCB(replay_handle_packet)(CPUState *cpu, uint8_t *buf, size_t size, uint8_t direction, target_ptr_t old_buf_addr) {
+void PCB(replay_handle_packet)(CPUState *cpu, uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec) {
     if (rr_in_replay()) {
         panda_cb_list *plist;
         for (plist = panda_cbs[PANDA_CB_REPLAY_HANDLE_PACKET];
              plist != NULL;
              plist = panda_cb_list_next(plist)) {
-                 plist->entry.replay_handle_packet(cpu, buf, size, direction, old_buf_addr);
+                 plist->entry.replay_handle_packet(cpu, buf, size, direction, buf_addr_rec);
         }
     }
 }
-void PCB(replay_net_transfer)(CPUState *cpu, Net_transfer_type type, target_ptr_t src_addr, target_ptr_t dst_addr, size_t num_bytes) {
+void PCB(replay_net_transfer)(CPUState *cpu, Net_transfer_type type, uint64_t src_addr, uint64_t dst_addr, size_t num_bytes) {
     if (rr_in_replay()) {
         panda_cb_list *plist;
         for (plist = panda_cbs[PANDA_CB_REPLAY_NET_TRANSFER];
@@ -303,11 +303,16 @@ void PCB(top_loop)(CPUState *env) {
 
 
 // target-i386/misc_helpers.c
-void PCB(guest_hypercall)(CPUState *env) {
+bool PCB(guest_hypercall)(CPUState *env) {
+    int nprocessed = 0;
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_GUEST_HYPERCALL]; plist != NULL; plist = panda_cb_list_next(plist)) {
-        plist->entry.guest_hypercall(env);
+        nprocessed += plist->entry.guest_hypercall(env);
     }
+    if (nprocessed > 1) {
+        LOG_WARNING("Hypercall processed by %d > 1 plugins.", nprocessed);
+    }
+    return nprocessed ? true : false;
 }
 
 

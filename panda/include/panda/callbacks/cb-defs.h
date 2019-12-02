@@ -299,20 +299,18 @@ typedef union panda_cb {
        Helper call location: target/i386/misc_helper.c
 
        Return value:
-        none
+        true if the callback has processed the hypercall, false if the
+        hypercall has been ignored.
 
        Notes:
-        On x86, this is called whenever CPUID is executed. Plugins then
-        check for magic values in the registers to determine if it really
-        is a guest hypercall. Parameters can be passed in other registers.
-        S2E accomplishes this by using a (currently) undefined opcode. We
-        have instead opted to use an existing instruction to make development
-        easier (we can use inline asm rather than defining the raw bytes).
-        AMD's SVM and Intel's VT define hypercalls, but they are privileged
-        instructinos, meaning the guest must be in ring 0 to execute them.
-        Currently ARM implementation is missing.
+        On x86, this is called whenever CPUID is executed. On ARM, the
+        MCR instructions is used. Plugins should check for magic values
+        in the registers to determine if it really is a guest hypercall.
+        Parameters can be passed in other registers. If the plugin
+        processes the hypercall, it should return true so the execution
+        of the normal instruction is skipped.
     */
-    void (*guest_hypercall)(CPUState *env);
+    bool (*guest_hypercall)(CPUState *env);
 
     /* Callback ID: PANDA_CB_MONITOR
 
@@ -653,18 +651,34 @@ typedef union panda_cb {
        In replay only, we have a packet (incoming / outgoing) in hand.
 
        Arguments:
-        CPUState *env:             pointer to CPUState
-        uint8_t *buf:              buffer containing packet data
-        size_t size:               num bytes in buffer
-        uint8_t direction:         XXX read or write.  not sure which is which.
-        target_ptr_t old_buf_addr: XXX this is a mystery
+        CPUState *env:         pointer to CPUState
+        uint8_t *buf:          buffer containing packet data
+        size_t size:           num bytes in buffer
+        uint8_t direction:     either `PANDA_NET_RX` or `PANDA_NET_TX`
+        uint64_t buf_addr_rec: the address of `buf` at the time of recording
 
        Helper call location: panda/src/rr/rr_log.c
 
        Return value:
         none
+
+       Notes:
+        `buf_addr_rec` corresponds to the address of the device buffer of
+        the emulated NIC. I.e. it is the address of a VM-host-side buffer.
+        It is useful for implementing network tainting in an OS-agnostic
+        way, in conjunction with taint2_label_io().
+
+        FIXME: The `buf_addr_rec` maps to the `uint8_t *buf` field of the
+        internal `RR_handle_packet_args` struct. The field is dumped/loaded
+        to/from the trace without proper serialization/deserialization. As
+        a result, a 64bit build of PANDA will not be able to process traces
+        produced by a 32bit of PANDA, and vice-versa.
+        There are more internal structs that suffer from the same issue.
+        This is an oversight that will eventually be fixed. But as the
+        real impact is minimal (virtually nobody uses 32bit builds), 
+        the fix has a very low priority in the bugfix list.
     */
-    void (*replay_handle_packet)(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, target_ptr_t old_buf_addr);
+    void (*replay_handle_packet)(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
 
     /* Callback ID:     PANDA_CB_REPLAY_NET_TRANSFER,
 
@@ -675,8 +689,8 @@ typedef union panda_cb {
        Arguments:
         CPUState *env:          pointer to CPUState
         uint32_t type:          type of transfer  (Net_transfer_type)
-        target_ptr_t src_addr:  address for src
-        target_ptr_t dest_addr: address for dest
+        uint64_t src_addr:      address for src
+        uint64_t dest_addr:     address for dest
         size_t num_bytes:       size of transfer in bytes
 
        Helper call location: panda/src/rr/rr_log.c
@@ -688,8 +702,10 @@ typedef union panda_cb {
         Unlike most callbacks, this is neither a "before" or "after" callback.
         In replay the transfer doesn't really happen. We are *at* the point at
         which it happened, really.
+        Also, the src_addr and dest_addr may be for either host (ie. a location
+        in the emulated network device) or guest, depending upon the type.
     */
-    void (*replay_net_transfer)(CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, size_t num_bytes);
+    void (*replay_net_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, size_t num_bytes);
 
     /* Callback ID:     PANDA_CB_REPLAY_SERIAL_RECEIVE,
 
