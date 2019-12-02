@@ -12,7 +12,6 @@
 extern bool panda_update_pc;
 extern bool panda_use_memcb;
 extern bool panda_tb_chaining;
-extern ram_addr_t ram_size;
 
 // from common.c I think?
 bool panda_flush_tb(void);
