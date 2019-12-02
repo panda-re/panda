@@ -347,11 +347,20 @@ void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb) {
 }
 
 
-void panda_callbacks_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+// Returns 1 if any registered + enabled callback returns nonzero
+int panda_callbacks_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
     panda_cb_list *plist;
+    int any_nonzero = 0;
     for(plist = panda_cbs[PANDA_CB_ASID_CHANGED]; plist != NULL; plist = panda_cb_list_next(plist)) {
-        if (plist->enabled) plist->entry.asid_changed(env, old_asid, new_asid);
+        if (plist->enabled) {
+            if (0 != plist->entry.asid_changed(env, old_asid, new_asid))  {
+                //printf ("SOME asid_changed callback returned != 0\n");
+                // Note we don't immediately return here because we allow all registered CBs to run
+                any_nonzero = 1;
+            }
+        }
     }
+    return any_nonzero;
 }
 
 void panda_callbacks_serial_receive(CPUState *cpu, uint64_t fifo_addr,

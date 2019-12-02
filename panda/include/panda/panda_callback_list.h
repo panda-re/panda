@@ -541,7 +541,7 @@ typedef union panda_cb {
         uint32_t num_bytes:   size of transfer in bytes
 
        Return value:
-        unused
+        non-zero means DONT change asid
     */
     int (*replay_hd_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
 

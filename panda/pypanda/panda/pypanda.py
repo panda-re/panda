@@ -54,6 +54,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
         # If specified use a generic (x86_64, i386, arm, ppc) qcow from moyix and ignore
         if generic:                                 # other args. See details in qcows.py
+            print("using generic " +str(generic))
             q = qcows.get_qcow_info(generic)
             self.arch     = q.arch
             self.os       = q.os
@@ -94,6 +95,9 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
         self.panda_args += extra_args
 
+        # Configure memory options
+        self.panda_args.extend(['-m', mem])
+
         # Configure serial - Always enabled for now, except in simple mode
         if not simple:
             self.serial_file = NamedTemporaryFile(prefix="pypanda_s").name
@@ -110,6 +114,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.monitor_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.monitor_console = Expect(expectation="(qemu)", quiet=True, consume_first=True)
         self.panda_args.extend(['-monitor', 'unix:{},server,nowait'.format(self.monitor_file)])
+        print(self.panda_args)
 
         self.running = threading.Event()
         self.started = threading.Event()
