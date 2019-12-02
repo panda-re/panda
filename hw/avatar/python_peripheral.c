@@ -43,7 +43,12 @@ static uint64_t avatar_pyperipheral_read(void *opaque, hwaddr offset,
         exit(-1);
     }
 
+#if PY_MAJOR_VERSION >= 3
+    res =  PyLong_AsUnsignedLongMask(pRes);
+#else
     res =  PyInt_AsUnsignedLongMask(pRes);
+#endif
+
 
     Py_DECREF(pRes);
     //TODO Evaluate Response
@@ -92,7 +97,15 @@ static void avatar_pyperipheral_realize(DeviceState *dev, Error **errp)
     AvatarPyPeripheralState *s = AVATAR_PYPERIPHERAL(dev);
 
     Py_Initialize();
+    PyObject* sysPath = PySys_GetObject((char*)"path");
+
+#if PY_MAJOR_VERSION >= 3
+    PyList_Append(sysPath, PyUnicode_FromString("."));
+    pFile = PyUnicode_FromString(s->python_file);
+#else
+    PyList_Append(sysPath, PyString_FromString("."));
     pFile = PyString_FromString(s->python_file);
+#endif
 
     pModule = PyImport_Import(pFile);
     if (pModule == NULL){

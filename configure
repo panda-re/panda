@@ -333,6 +333,7 @@ jemalloc="no"
 replication="yes"
 #AVATAR
 pyperipheral2="no"
+pyperipheral3="yes"
 
 
 supported_cpu="no"
@@ -1208,6 +1209,12 @@ for opt do
   --disable-pyperipheral2) pyperipheral2="no"
   ;;
   --enable-pyperipheral2) pyperipheral2="yes"
+      pyperipheral3="no"
+  ;;
+  --disable-pyperipheral3) pyperipheral3="no"
+  ;;
+  --enable-pyperipheral3) pyperipheral3="yes"
+      pyperipheral2="no"
   ;;
   *)
       echo "ERROR: unknown option $opt"
@@ -1457,7 +1464,8 @@ disabled with --disable-FEATURE, default is enabled if available:
   xfsctl          xfsctl support
   qom-cast-debug  cast debugging support
   tools           build qemu-io, qemu-nbd and qemu-image tools
-  pyperipheral2   avatars pyththon peripheral (based on python2.7)
+  pyperipheral2   avatar's python peripheral (based on python2.7)
+  pyperipheral3   avatar's python peripheral (based on python3.x)
 
 NOTE: The object files are built at the place where configure is launched
 EOF
@@ -5926,7 +5934,12 @@ fi
 
 if test "$pyperipheral2" = "yes" ; then
   QEMU_INCLUDES="`pkg-config --cflags-only-I python2` $QEMU_INCLUDES"
-  LIBS="-lpython2.7 $LIBS"
+  LIBS="`pkg-config --libs-only-l python2` $LIBS"
+fi
+
+if test "$pyperipheral3" = "yes" ; then
+  QEMU_INCLUDES="`pkg-config --cflags-only-I python3` $QEMU_INCLUDES"
+  LIBS="`pkg-config --libs-only-l python3` $LIBS"
 fi
 
 
@@ -6448,7 +6461,7 @@ if test "$ccache_cpp2" = "yes"; then
 fi
 
 
-if test "$pyperipheral2" = "yes" ; then
+if test "$pyperipheral2" = "yes" || test "$pyperipheral3" = "yes" ; then
   echo "CONFIG_PYPERIPHERAL=y" >> $config_target_mak
 
 fi
