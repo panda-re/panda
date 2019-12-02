@@ -971,6 +971,9 @@ int rr_get_guest_instr_count_external(void);
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len);
 int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len);
 
+int panda_physical_memory_read_external(target_ulong addr, char *buf, int len);
+int panda_physical_memory_write_external(target_ulong addr, char *buf, int len);
+
 target_ulong panda_current_sp_external(CPUState *cpu);
 target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong pagesize);
 bool panda_in_kernel_external(CPUState *cpu);

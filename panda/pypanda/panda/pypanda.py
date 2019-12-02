@@ -1,5 +1,6 @@
 import sys
 
+
 if sys.version_info[0] < 3:
     print("Please run with Python 3!")
     sys.exit(0)
@@ -39,7 +40,9 @@ panda_build = realpath(pjoin(abspath(__file__), "../../../../build"))
 class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins):
     def __init__(self, arch="i386", mem="128M",
             expect_prompt=None, os_version=None,
-            qcow=None, extra_args=[], os="linux", generic=None):
+            qcow=None, os="linux",
+            generic=None, simple=None, # Helper arguments
+            extra_args=[]):
 
         self.arch = arch
         self.mem = mem
@@ -59,6 +62,15 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             if q.extra_args:
                 extra_args.extend(q.extra_args.split(" "))
 
+        # If specified, setup an execution engine without any OS/FS/qcow ('unicorn mode')
+        if simple:
+            arch          = "qemu-system-" + simple
+            self.os       = None
+            self.qcow     = None
+            expect_prompt = None
+            extra_args.extend(["-nographic", "-M", "none"])
+
+
         if self.qcow: # Otherwise we shuld be able to do a replay with no qcow but this is probably broken
             #if self.qcow == "default": # Use arch / mem / os to find a qcow - XXX: merge with generic?
             #    self.qcow = pjoin(getenv("HOME"), ".panda", "%s-%s-%s.qcow" % (self.os, self.arch, mem))
@@ -74,7 +86,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.bits, self.endianness, self.register_size = self._determine_bits()
 
         # Setup argv for panda
-        biospath = realpath(pjoin(self.build_dir, "pc-bios"))
+        biospath = realpath(pjoin(self.build_dir, "pc-bios")) # XXX Do we want this for all archs?
         self.panda_args = [self.panda, "-L", biospath]
 
         if self.qcow:
@@ -82,11 +94,16 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
         self.panda_args += extra_args
 
-        # Configure serial - Always enabled for now
-        self.serial_file = NamedTemporaryFile(prefix="pypanda_s").name
-        self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.serial_console = Expect(expectation=expect_prompt, quiet=True, consume_first=False)
-        self.panda_args.extend(['-serial', 'unix:{},server,nowait'.format(self.serial_file)])
+        # Configure serial - Always enabled for now, except in simple mode
+        if not simple:
+            self.serial_file = NamedTemporaryFile(prefix="pypanda_s").name
+            self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            self.serial_console = Expect(expectation=expect_prompt, quiet=True, consume_first=False)
+            self.panda_args.extend(['-serial', 'unix:{},server,nowait'.format(self.serial_file)])
+        else:
+            self.serial_file = None
+            self.serial_socket = None
+            self.serial_console = None
 
         # Configure monitor - Always enabled for now
         self.monitor_file = NamedTemporaryFile(prefix="pypanda_m").name
@@ -138,7 +155,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.libpanda.panda_init(len_cargs, panda_args_ffi, cenvp)
 
         # Now we've run qemu init so we can connect to the sockets for the monitor and serial
-        if not self.serial_console.is_connected():
+        if self.serial_console and not self.serial_console.is_connected():
             self.serial_socket.connect(self.serial_file)
             self.serial_console.connect(self.serial_socket)
         if not self.monitor_console.is_connected():
@@ -419,17 +436,27 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         else:
             raise NotImplemented("current_sp doesn't yet support arch {}".format(self.arch))
 
+    def physical_memory_read(self, addr, length, fmt='bytearray'):
+        return self._memory_read(None, addr, length, physical=True, fmt=fmt)
+
     def virtual_memory_read(self, env, addr, length, fmt='bytearray'):
+        return self._memory_read(env, addr, length, physical=False, fmt=fmt)
+
+    def _memory_read(self, env, addr, length, physical=False, fmt='bytearray'):
         '''
         Read but with an autogen'd buffer. Returns a bytearray
+        Physical or virtual
         '''
-        if not hasattr(self, "_memcb"):
+        if not hasattr(self, "_memcb"): # XXX: Why do we enable memcbs for memory writes?
             self.enable_memcb()
         buf = ffi.new("char[]", length)
 
         buf_a = ffi.cast("char*", buf)
         length_a = ffi.cast("int", length)
-        self.libpanda.panda_virtual_memory_read_external(env, addr, buf_a, length_a)
+        if physical:
+            self.libpanda.panda_physical_memory_read_external(addr, buf_a, length_a)
+        else:
+            self.libpanda.panda_virtual_memory_read_external(env, addr, buf_a, length_a)
 
         r = ffi.unpack(buf, length)
         if fmt == 'bytearray':
@@ -441,12 +468,28 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         else:
             raise ValueError("fmt={} unsupported".format(fmt))
 
+    def physical_memory_write(self, addr, buf):
+        return self._memory_write(None, addr, buf, physical=True)
 
-    def virtual_memory_write(self, env, addr, buf, length):
-        # XXX: Should update to automatically build buffer
-        if not hasattr(self, "_memcb"):
+    def virtual_memory_write(self, env, addr, buf):
+        return self._memory_write(env, addr, buf, physical=False)
+
+    def _memory_write(self, env, addr, buf, physical=False):
+        '''
+        Write a bytearray into memory at the specified physical/virtual address
+        '''
+        length = len(buf)
+        c_buf = ffi.new("char[]",buf)
+        buf_a = ffi.cast("char*", c_buf)
+        length_a = ffi.cast("int", length)
+
+        if not hasattr(self, "_memcb"): # XXX: Why do we enable memcbs for memory writes?
             self.enable_memcb()
-        return self.libpanda.panda_virtual_memory_write_external(env, addr, buf, length)
+
+        if physical:
+            return self.libpanda.panda_physical_memory_write_external(addr, buf_a, length_a)
+        else:
+            return self.libpanda.panda_virtual_memory_write_external(env, addr, buf_a, length_a)
 
     def callstack_callers(self, lim, cpu): # XXX move into new directory, 'callstack' ?
         if not hasattr(self, "libpanda_callstack_instr"):
@@ -472,7 +515,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
     def get_cpu(self,cpustate):
         '''
-        XXX: Why does this exist and why 
+        XXX: Why does this exist? We actually need it sometimes for non-x86
         '''
         if self.arch == "arm":
             return self.get_cpu_arm(cpustate)
@@ -494,20 +537,25 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
     def get_cpu_x64(self,cpustate):
         # we dont do this because x86 is the assumed arch
         if not hasattr(self, "x64_support"):
-            self.x64_support = ffi.cdef(open("/include/panda_x64_support.h").read()) 
+            self.x64_support = ffi.cdef(open("include/panda_x64_support.h").read())
         return ffi.cast("CPUX64State*", cpustate.env_ptr)
 
     def get_cpu_arm(self,cpustate):
         if not hasattr(self, "arm_support"):
-            self.arm_support = ffi.cdef(open("/home/andrew/git/panda/panda/pypanda/panda/include/panda_arm_support.h").read())
+            self.arm_support = ffi.cdef(open("include/panda_arm_support.h").read())
         return ffi.cast("CPUARMState*", cpustate.env_ptr)
 
     def get_cpu_ppc(self,cpustate):
         if not hasattr(self, "ppc_support"):
-            self.ppc_support = ffi.cdef(open("./include/panda_ppc_support.h").read())
+            self.ppc_support = ffi.cdef(open("include/panda_ppc_support.h").read())
         return ffi.cast("CPUPPCState*", cpustate.env_ptr)
 
     def queue_async(self, f, internal=False):
         self.athread.queue(f, internal=internal)
+
+
+    # WIP, unicorn-like functionality requires mapping in physical memory
+    #def map_mem(self, start, length):
+    #    self.libpanda.panda_map_physical_mem(start, length)
 
 # vim: expandtab:tabstop=4:

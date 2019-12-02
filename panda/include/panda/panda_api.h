@@ -56,6 +56,9 @@ int rr_get_guest_instr_count_external(void);
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len);
 int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len);
 
+int panda_physical_memory_read_external(target_ulong addr, char *buf, int len);
+int panda_physical_memory_write_external(target_ulong addr, char *buf, int len);
+
 target_ulong panda_current_sp_external(CPUState *cpu);
 target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong pagesize);
 bool panda_in_kernel_external(CPUState *cpu);
@@ -87,5 +90,8 @@ void panda_taint_label_reg(uint32_t reg_num, uint32_t label) ;
 // returns true iff any byte in this register is tainted
 bool panda_taint_check_reg(uint32_t reg_num, uint32_t size) ;
 
+
+// Map a region of memory in the guest
+//int panda_map_physical_mem(target_ulong addr, int len);
 
 #endif

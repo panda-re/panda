@@ -52,6 +52,8 @@ class callback_mixins():
                     self.end_analysis()
                     self.exception = e # XXX: We can't raise here or exn won't fully be printed. Instead, we print it in check_crashed()
                     return 0 # XXX: Some callbacks don't expect returns, but most do. If we don't return we might trigger a separate exn and lose ours (occasionally)
+                    # If we return the wrong type, we lose the original exn (TODO)
+
             cast_rc = pandatype(_run_and_catch)
             self.register_callback(pandatype, cast_rc, local_name, enabled=enabled, procname=procname)
             def wrapper(*args, **kw):
