@@ -29,13 +29,13 @@ def generate_insns(env, tb):
     for i in md.disasm(code, tb.pc):
         insn_cache[tb.pc] += ("0x%x:\t%s\t%s\n" %(i.address, i.mnemonic, i.op_str))
 
-@panda.cb_after_block_translate(name="before", procname="find")
+@panda.cb_after_block_translate(procname="find")
 def before_block_trans(env, tb):
     # Before we translate each block in find cache its disassembly
     generate_insns(env, tb)
     return 0
 
-@panda.cb_before_block_exec(name="exec", procname="find")
+@panda.cb_before_block_exec(procname="find")
 def before_block_exec(env, tb):
     # At each BB's execution in 'find', ensure translation is cached and add to executed_pcs
     pc = panda.current_pc(env)

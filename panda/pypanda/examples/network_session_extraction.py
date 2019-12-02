@@ -26,7 +26,7 @@ if not path.isfile(recording_name+"-rr-snp"):
     panda.queue_async(take_recording)
     panda.run()
 
-@panda.cb_virt_mem_after_read(name="test_vmread", procname="wget")
+@panda.cb_virt_mem_after_read(procname="wget")
 def virt_mem_after_read(cpustate, pc, addr, size, buf):
 	curbuf = ffi.cast("char*", buf)
 	current = panda.get_current_process(cpustate)
@@ -38,7 +38,7 @@ def virt_mem_after_read(cpustate, pc, addr, size, buf):
 	return 0
 
 packets = []
-@panda.cb_replay_handle_packet(name="test_vmnet",procname="wget")
+@panda.cb_replay_handle_packet(procname="wget")
 def handle_packet(cpustate,buf,size,direction,old_buf_addr):
 	buf_uint8 = ffi.cast("uint8_t*", buf)
 	packets.append(Ether([buf_uint8[i] for i in range(size)]))
