@@ -28,7 +28,7 @@ SUPPORTED_ARCHES = {
             extra_args='-display none'),
         'arm':    Arch('arm-softmmu',    'arm',    'qemu-system-arm',    "linux-32-debian:x.y.z-arm-pae",   "root@debian-armel:~# ",   "arm_wheezy.qcow",     "scsi0-cd2", "root", 
             extra_files=['vmlinuz-3.2.0-4-versatile', 'initrd.img-3.2.0-4-versatile'],
-            extra_args='-m dispaly none -M versatilepb -append "root=/dev/sda1" -kernel {DOT_DIR}/vmlinuz-3.2.0-4-versatile -initrd {DOT_DIR}/initrd.img-3.2.0-4-versatile'.format(DOT_DIR=VM_DIR))
+            extra_args='-display none -M versatilepb -append "root=/dev/sda1" -kernel {DOT_DIR}/vmlinuz-3.2.0-4-versatile -initrd {DOT_DIR}/initrd.img-3.2.0-4-versatile'.format(DOT_DIR=VM_DIR))
         }
 
 def get_qcow_info(name=None):
