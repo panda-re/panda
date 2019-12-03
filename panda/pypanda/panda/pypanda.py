@@ -223,11 +223,12 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         archs = ['i386', 'x86_64', 'arm', 'ppc']
         python_package = pjoin(*[dirname(__file__), "data"])
         local_build = realpath(pjoin(dirname(__file__), "../../../build"))
+        path_end = "{0}-softmmu/libpanda-{0}.so".format(self.arch)
 
         pot_paths = [python_package, local_build]
         for potential_path in pot_paths:
-            if isfile(pjoin(potential_path, "i386-softmmu/libpanda-i386.so")):
-                print("FOUND PANDA DIR AT {}".format(potential_path))
+            if isfile(pjoin(potential_path, path_end)):
+                print("Loading libpanda from {}".format(potential_path))
                 return potential_path
 
         searched_paths = "\n".join(["\t"+p for p in  pot_paths])
