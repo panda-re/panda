@@ -29,3 +29,4 @@ callfunc
 mmio_trace
 syshist
 filemon
+collect_code
