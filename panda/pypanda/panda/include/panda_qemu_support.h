@@ -211,7 +211,7 @@ struct _GSList
   GSList *next;
 };
 
-const char *bios_name;
+extern const char *bios_name;
 
 typedef void (ObjectFree)(void *obj);
 
@@ -302,8 +302,8 @@ struct Error
     GString *hint;
 };
 
-Error **error_abort;
-Error **error_fatal;
+extern Error **error_abort;
+extern Error **error_fatal;
 
 typedef struct GenericList {
     struct GenericList *next;
@@ -919,7 +919,7 @@ struct Notifier
 
 typedef struct ARMCPU ARMCPU;
 
-struct CPUTailQ { struct CPUState *tqh_first; struct CPUState * *tqh_last;} cpus;
+extern struct CPUTailQ { struct CPUState *tqh_first; struct CPUState * *tqh_last;} cpus;
 
 
 typedef struct {
@@ -1017,12 +1017,12 @@ typedef struct MemMapEntry {
 
 void parse_mem_map(char *map_str);
 
-MemMapEntry dev_mem_map[MEM_REGION_COUNT];
-MemMapEntry file_mem_map[10];
+extern MemMapEntry dev_mem_map[MEM_REGION_COUNT];
+extern MemMapEntry file_mem_map[10];
 
-const int irqmap[384];
+extern const int irqmap[384];
 
-int smp_cpus;
+extern int smp_cpus;
 
 typedef struct RehostingBoardInfo {
     struct arm_boot_info bootinfo;

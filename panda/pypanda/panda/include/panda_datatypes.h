@@ -7,7 +7,7 @@
 
 
 // -----------------------------------
-// Pull number 1 from /home/andrew/git/panda/panda/include/panda/panda_callback_list.h
+// Pull number 1 from /home/andrew/panda/panda/include/panda/panda_callback_list.h
 
 
 // Just the enum defining callback numbering
@@ -549,7 +549,7 @@ typedef union panda_cb {
         uint32_t num_bytes:   size of transfer in bytes
 
        Return value:
-        unused
+        non-zero means DONT change asid
     */
     int (*replay_hd_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
 
@@ -794,7 +794,7 @@ typedef union panda_cb {
 
 
 // -----------------------------------
-// Pull number 2 from /home/andrew/git/panda/panda/include/panda/panda_plugin_mgmt.h
+// Pull number 2 from /home/andrew/panda/panda/include/panda/panda_plugin_mgmt.h
 
 //  Manage plugins (load, enable, disable, etc).
 //  and callbacks (regster, unregister, etc) .
@@ -851,7 +851,7 @@ panda_cb_list* panda_cb_list_next(panda_cb_list* plist);
 
 
 // -----------------------------------
-// Pull number 3 from /home/andrew/git/panda/panda/include/panda/panda_args.h
+// Pull number 3 from /home/andrew/panda/panda/include/panda/panda_args.h
 
 // Fns and structs to do with panda arg parsing 
 
@@ -914,7 +914,7 @@ extern int panda_argc;
 
 
 // -----------------------------------
-// Pull number 4 from /home/andrew/git/panda/panda/include/panda/panda_api.h
+// Pull number 4 from /home/andrew/panda/panda/include/panda/panda_api.h
 
 // Functions considered part of the panda api that come from
 // panda_api.c. Also some from common.c. Note that, while common.c has
@@ -968,11 +968,10 @@ void panda_disable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 
 int rr_get_guest_instr_count_external(void);
 
-int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len);
-int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len);
-
-int panda_physical_memory_read_external(target_ulong addr, char *buf, int len);
-int panda_physical_memory_write_external(target_ulong addr, char *buf, int len);
+int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len); // XXX: should we use hwaddr instead of target_ulong
+int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len); // XXX: should we use hwaddr instead of target_ulong
+int panda_physical_memory_read_external(hwaddr addr, uint8_t *buf, int len);
+int panda_physical_memory_write_external(hwaddr addr, uint8_t *buf, int len);
 
 target_ulong panda_current_sp_external(CPUState *cpu);
 target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong pagesize);
@@ -1004,10 +1003,13 @@ void panda_taint_label_reg(uint32_t reg_num, uint32_t label) ;
 bool panda_taint_check_reg(uint32_t reg_num, uint32_t size) ;
 
 
+// Map a region of memory in the guest
+//int panda_map_physical_mem(target_ulong addr, int len);
+
 
 
 // -----------------------------------
-// Pull number 5 from /home/andrew/git/panda/panda/include/panda/panda_os.h
+// Pull number 5 from /home/andrew/panda/panda/include/panda/panda_os.h
 
 // this stuff is defined / used in common.c
 
@@ -1028,7 +1030,7 @@ typedef target_ulong target_ptr_t;
 
 
 // -----------------------------------
-// Pull number 6 from /home/andrew/git/panda/panda/include/panda/panda_common.h
+// Pull number 6 from /home/andrew/panda/panda/include/panda/panda_common.h
 
 
 void panda_cleanup(void);
