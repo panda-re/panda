@@ -51,20 +51,20 @@ set -e
 # As part of building we need python2 for qemu and pip3 to install pypanda dependencies
 # Either use python and pip3 or use pyenv with 3.6.6 and 2.7.9
 # This is just a temporary hack until we merge with qemu 4.1 which adds supports python3
-if which pyenv; then
-  eval "$(pyenv init -)"
-  pyenv shell 3.6.6 2.7.9
-  PYTHON2PATH=$(pyenv which python2)
-else
-  PYTHON2PATH=$(which python2) # First try python2, then python
+#if which pyenv; then
+#  eval "$(pyenv init -)"
+#  pyenv shell 3.6.6 2.7.9
+#  PYTHON2PATH=$(pyenv which python2)
+#else
+PYTHON2PATH=$(which python2) # First try python2, then python
+if [ -z "${PYTHON2PATH}" ] || ! $PYTHON2PATH --version 2>&1 | grep -q 'Python 2\.7'; then
+  PYTHON2PATH=$(which python)
   if [ -z "${PYTHON2PATH}" ] || ! $PYTHON2PATH --version 2>&1 | grep -q 'Python 2\.7'; then
-    PYTHON2PATH=$(which python)
-    if [ -z "${PYTHON2PATH}" ] || ! $PYTHON2PATH --version 2>&1 | grep -q 'Python 2\.7'; then
-      echo "Could not find python2.7. Tried python2 and python"
-      exit 1
-    fi
+    echo "Could not find python2.7. Tried python2 and python"
+    exit 1
   fi
 fi
+#fi
 
 msg "Using python2 at: $PYTHON2PATH"
 
