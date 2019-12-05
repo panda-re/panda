@@ -104,7 +104,7 @@ dist: xenial
 before_install:
     - sudo pip install pycparser
     - git submodule update --init dtc
-    - cd $(pyenv root) && git pull
+    - cd $(pyenv root) && git checkout master && git pull
 env:
     global:
         - PANDA_TEST="no" # TEMPORARY - change back to yes
