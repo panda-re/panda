@@ -72,6 +72,9 @@ addons:
       - python3
       - python3-pip
       - python3-setuptools
+      # To build 32-bit targets for testing
+      - libc6-dev-i386
+      - gcc-multilib
 
 # The channel name "irc.oftc.net#qemu" is encrypted against qemu/qemu
 # to prevent IRC notifications from forks. This was created using:
@@ -114,6 +117,7 @@ script:
   #  - sudo panda/scripts/install_ubuntu.sh
     - pyenv install 3.6.6
     - pyenv shell 3.6.6
+    - python panda/pypanda/utils/create_panda_datatypes.py
     - python panda/pypanda/setup.py install
     - make -C panda/pypanda/tests
     - python panda/pypanda/tests/multi_proc_cbs.py
