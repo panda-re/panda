@@ -115,8 +115,9 @@ script:
   #- ls panda/pypanda/examples
   #- travis_wait 60 sleep infinity &
   #  - sudo panda/scripts/install_ubuntu.sh
-    - pyenv install 3.6.6
-    - pyenv shell 3.6.6
+    - pyenv install 2.7.9 # For core qemu
+    - pyenv install 3.6.6 # For pypanda
+    - pyenv shell 2.7.9 3.6.6 # Create a shell with both python2 and python3
     - python panda/pypanda/utils/create_panda_datatypes.py
     - python panda/pypanda/setup.py install
     - make -C panda/pypanda/tests
