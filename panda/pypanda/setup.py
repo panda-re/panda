@@ -11,7 +11,8 @@ import shutil
 ##############################
 
 from sys import path as sys_path
-sys_path.append("utils")
+util_path = os.path.join(*[os.path.dirname(__file__), "utils"])
+sys_path.append(util_path)
 from create_panda_datatypes import main as create_datatypes
 create_datatypes()
 
