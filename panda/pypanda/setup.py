@@ -28,7 +28,7 @@ root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 # find them in ../../build/. Temporrary hack is to run setup.py develop then delete lib_dir (falls back to build)
 lib_dir = os.path.join(*[root_dir, "panda", "data"])
 def copy_objs():
-    build_root = os.path.join(root_dir, "build"])
+    build_root = os.path.join(root_dir, "build")
 
     if os.path.isdir(lib_dir):
         assert('panda' in lib_dir), "Refusing to rm -rf directory without 'panda' in it"
