@@ -19,6 +19,7 @@ create_datatypes()
 ################################################
 # 2) Copy panda object files: libpanda-XYZ.so, #
 #    pc-bios/*, and all .so files for plugins  #
+#    TODO: also copy includes directories      #
 ################################################
 
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -36,7 +37,7 @@ def copy_objs():
     os.mkdir(lib_dir)
 
     # Copy bios directory
-    biosdir = os.path.join(build_root, "pc-bios")
+    biosdir = os.path.join(root_dir, "pc-bios")
     shutil.copytree(biosdir, lib_dir+"/pc-bios")
 
     for arch in ['arm', 'i386', 'x86_64', 'ppc']:
