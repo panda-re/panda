@@ -21,12 +21,14 @@ create_datatypes()
 #    pc-bios/*, and all .so files for plugins  #
 ################################################
 
-# XXX - Can we toggle this depending ond if we're run as 'setup.py develop' vs 'setup.py install'
+root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+
+# XXX - Can we toggle this depending on if we're run as 'setup.py develop' vs 'setup.py install'
 # When we're run in develop mode, we shouldn't copy the prebuild binaries and instead should
-# find them in ../../build/
-lib_dir = 'panda/data'
+# find them in ../../build/. Temporrary hack is to run setup.py develop then delete lib_dir (falls back to build)
+lib_dir = os.path.join(*[root_dir, "panda", "data"])
 def copy_objs():
-    build_root = "../../build/"
+    build_root = os.path.join(root_dir, "build"])
 
     if os.path.isdir(lib_dir):
         assert('panda' in lib_dir), "Refusing to rm -rf directory without 'panda' in it"
