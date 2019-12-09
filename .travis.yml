@@ -119,7 +119,7 @@ script:
     - pyenv shell 2.7.9 3.6.6 || travis_terminate 1; # Create a shell with both python2 and python3
     - sudo panda/scripts/install_ubuntu.sh || travis_terminate 1; # Build panda
     - python3 panda/pypanda/utils/create_panda_datatypes.py || travis_terminate 1;
-    - python3 panda/pypanda/setup.py install || travis_terminate 1;
+    - cd panda/pypanda && python3 setup.py install || travis_terminate 1; cd ../..;
     - make -C panda/pypanda/tests || travis_terminate 1;
     - python3 panda/pypanda/tests/multi_proc_cbs.py
     - python3 panda/pypanda/tests/taint_ram.py
