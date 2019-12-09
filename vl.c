@@ -155,6 +155,10 @@ extern void panda_callbacks_after_machine_init(void);
 
 extern void pandalog_cc_init_write(const char * fname); 
 int pandalog = 0;
+// this will be set to non-null if we are just writing 
+// pandalog entries as protobuf directly to a file
+FILE *pandalog_protobuf_file = NULL;
+
 int panda_in_main_loop = 0;
 extern bool panda_abort_requested;
 
@@ -4206,9 +4210,33 @@ int main(int argc, char **argv, char **envp)
                 replay_name = optarg;
                 break;
             case QEMU_OPTION_pandalog:
-                pandalog = 1;
-                pandalog_cc_init_write(optarg);
-                printf ("pandalogging to [%s]\n", optarg);
+                {
+                    pandalog = 1;
+                    size_t l = strlen(optarg);
+                    if (l > 9) {
+                        const char *prefix = "protobuf:";
+                        size_t prefix_len = strlen(prefix);
+                        const char *p = strstr(optarg, prefix);
+                        if (p != NULL) {
+                            p += prefix_len;
+                            size_t l = strlen(p);
+                            if (l < 3) {
+                                printf ("filename for protobuf output of pandalog is too short (l=%lu)\n", l);
+                                exit(1);
+                            }
+                            const char *protobuf_filename = p;
+                            // this means really we want to just output
+                            // protobuf directly (not pandalog)
+                            pandalog_protobuf_file = fopen(protobuf_filename, "w");
+                            assert (pandalog_protobuf_file != NULL);
+                            printf ("pandalog is just protobuf [%s]\n", protobuf_filename);
+                        }                    
+                    }
+                    if (pandalog_protobuf_file != NULL) {
+                        pandalog_cc_init_write(optarg);
+                        printf ("pandalogging to [%s]\n", optarg);
+                    }
+                }
                 break;
             case QEMU_OPTION_record_from:
                 record_name = optarg;

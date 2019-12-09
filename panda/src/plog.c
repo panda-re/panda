@@ -75,6 +75,8 @@ extern void pandalog_cc_init_read_bwd(const char* path);
 extern void pandalog_cc_seek(uint64_t);
 extern void pandalog_cc_close(void);
 
+extern FILE *pandalog_protobuf_file;
+
 void pandalog_open_read(const char *path, uint32_t pl_mode);
 
 
@@ -85,8 +87,12 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
 	unsigned char* buf = malloc(packed_size);
 	panda__log_entry__pack(entry, buf);
 
-	pandalog_write_packed(packed_size, buf);
-  free(buf);
+    if (pandalog_protobuf_file == NULL) 
+        pandalog_write_packed(packed_size, buf);
+    else
+        fwrite(buf, packed_size, 1, pandalog_protobuf_file);
+
+    free(buf);
 }
 
 void pandalog_open_read(const char *path, uint32_t pl_mode) {
