@@ -192,9 +192,10 @@ class PandaState(Enum):
                             for param in params.split(','):
                                 j = 1
                                 while True:
+                                    c = param[-j]
                                     if isinstance(c, str):
                                         print("Unexpected string value:", c)
-                                    c = param[-j]
+                                        print("PARAM is:", param)
                                     if not (c.isalpha() or c.isnumeric() or c=='_'):
                                         break
                                     if j == len(param):
