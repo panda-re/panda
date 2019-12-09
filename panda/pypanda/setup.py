@@ -43,9 +43,9 @@ def copy_objs():
     for arch in ['arm', 'i386', 'x86_64', 'ppc']:
         libname = "libpanda-"+arch+".so"
         softmmu = arch+"-softmmu"
-        path = os.path.join(*[build_root, softmmu, libname])
+        path      = os.path.join(*[build_root, softmmu, libname])
         plugindir = os.path.join(*[build_root, softmmu, "panda", "plugins"])
-        plog = os.path.join(*[build_root, softmmu, "plog_pb2.py"])
+        plog      = os.path.join(*[build_root, softmmu, "plog_pb2.py"])
         os.mkdir(os.path.join(lib_dir, softmmu))
 
         assert (os.path.isfile(path)), "Missing file {} - did you run build.sh from panda/build directory?".format(path)
