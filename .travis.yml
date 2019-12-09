@@ -75,6 +75,7 @@ addons:
       # To build 32-bit targets for testing
       - libc6-dev-i386
       - gcc-multilib
+      - nasm
 
 # The channel name "irc.oftc.net#qemu" is encrypted against qemu/qemu
 # to prevent IRC notifications from forks. This was created using:
@@ -115,12 +116,12 @@ script:
   #- ls panda/pypanda/examples
   #- travis_wait 60 sleep infinity &
   #  - sudo panda/scripts/install_ubuntu.sh
-    - pyenv install 2.7.9 # For core qemu
-    - pyenv install 3.6.6 # For pypanda
-    - pyenv shell 2.7.9 3.6.6 # Create a shell with both python2 and python3
-    - python panda/pypanda/utils/create_panda_datatypes.py
-    - python panda/pypanda/setup.py install
-    - make -C panda/pypanda/tests
+    - pyenv install 2.7.9 || travis_terminate 1; # For core qemu
+    - pyenv install 3.6.6 || travis_terminate 1; # For pypanda
+    - pyenv shell 2.7.9 3.6.6 || travis_terminate 1; # Create a shell with both python2 and python3
+    - python panda/pypanda/utils/create_panda_datatypes.py || travis_terminate 1;
+    - python panda/pypanda/setup.py install || travis_terminate 1;
+    - make -C panda/pypanda/tests || travis_terminate 1;
     - python panda/pypanda/tests/multi_proc_cbs.py
     - python panda/pypanda/tests/taint_ram.py
     - python panda/pypanda/tests/test_ram.py

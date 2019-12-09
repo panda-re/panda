@@ -189,9 +189,11 @@ class PandaState(Enum):
                             rvtype = foo.groups()[0]
                             params = foo.groups()[1]
                             partypes = []
-                            for param in (params.split(',')):
+                            for param in params.split(','):
                                 j = 1
                                 while True:
+                                    if isinstance(c, str):
+                                        print("Unexpected string value:", c)
                                     c = param[-j]
                                     if not (c.isalpha() or c.isnumeric() or c=='_'):
                                         break
