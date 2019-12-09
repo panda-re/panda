@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import re
 import os
+import sys
+if sys.version_info[0] < 3:
+    raise RuntimeError('Requires python3')
 
 # Autogenerate panda_datatypes.py and include/panda_datatypes.h
 #
@@ -193,9 +196,6 @@ class PandaState(Enum):
                                 j = 1
                                 while True:
                                     c = param[-j]
-                                    if isinstance(c, str):
-                                        print("Unexpected string value:", c)
-                                        print("PARAM is:", param)
                                     if not (c.isalpha() or c.isnumeric() or c=='_'):
                                         break
                                     if j == len(param):
