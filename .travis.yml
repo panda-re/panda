@@ -107,7 +107,7 @@ sudo: required
 dist: xenial
 before_install:
     - sudo pip install pycparser
-    - git submodule update --init dtc; echo "Finished DTC with exit $?"
+    - git submodule update --init dtc
     - cd $(pyenv root) && git checkout master && git pull; cd -
 env:
     global:
