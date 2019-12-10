@@ -22,7 +22,7 @@ create_datatypes()
 #    TODO: also copy includes directories      #
 ################################################
 
-root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+root_dir = os.path.join(*[os.path.dirname(__file__), "..", ".."])
 
 # XXX - Can we toggle this depending on if we're run as 'setup.py develop' vs 'setup.py install'
 # When we're run in develop mode, we shouldn't copy the prebuild binaries and instead should
@@ -38,6 +38,8 @@ def copy_objs():
 
     # Copy bios directory
     biosdir = os.path.join(root_dir, "pc-bios")
+    if not os.path.isdir(biosdir):
+        raise RuntimeError(f"Could not find PC-bios directory at {lib_dir}")
     shutil.copytree(biosdir, lib_dir+"/pc-bios")
 
     for arch in ['arm', 'i386', 'x86_64', 'ppc']:
