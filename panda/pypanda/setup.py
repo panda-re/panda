@@ -27,7 +27,7 @@ root_dir = os.path.join(*[os.path.dirname(__file__), "..", ".."])
 # XXX - Can we toggle this depending on if we're run as 'setup.py develop' vs 'setup.py install'
 # When we're run in develop mode, we shouldn't copy the prebuild binaries and instead should
 # find them in ../../build/. Temporrary hack is to run setup.py develop then delete lib_dir (falls back to build)
-lib_dir = os.path.join(*[root_dir, "panda", "data"])
+lib_dir = os.path.join("panda", "data")
 def copy_objs():
     build_root = os.path.join(root_dir, "build")
 
@@ -50,10 +50,14 @@ def copy_objs():
         plog      = os.path.join(*[build_root, softmmu, "plog_pb2.py"])
         os.mkdir(os.path.join(lib_dir, softmmu))
 
+        new_plugindir = os.path.join(lib_dir, softmmu, "panda/plugins")
+        os.mkdir(os.path.dirname(new_plugindir)) # When we copy the whole tree, it will make the plugins directory
+
         assert (os.path.isfile(path)), "Missing file {} - did you run build.sh from panda/build directory?".format(path)
         shutil.copy(    plog,       os.path.join(lib_dir, softmmu, "plog_pb2.py"))
         shutil.copy(    path,       os.path.join(lib_dir, softmmu))
-        shutil.copytree(plugindir,  os.path.join(lib_dir, softmmu, "libpanda-"+arch))
+
+        shutil.copytree(plugindir,  new_plugindir)
 
 #########################
 # 3)  Build the package #
@@ -84,7 +88,7 @@ setup(name='panda',
       url='https://github.com/panda-re/panda/',
       packages=['panda', 'panda.taint', 'panda.autogen',
                 'panda.images', 'panda.arm', 'panda.x86'],
-      package_data = { 'panda': ['data/**/*'] },
+      package_data = { 'panda': ['data/**/*', 'data/*/panda/plugins/*', 'data/*/panda/plugins/**/*'] },
       install_requires=[ 'cffi', 'colorama', 'protobuf'],
       python_requires='>=3.5',
       cmdclass={'install': custom_install, 'develop': custom_develop}

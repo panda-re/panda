@@ -147,6 +147,11 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
 }
 
 bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode) {
+    if (filename == NULL) {
+        fprintf(stderr, PANDA_MSG_FMT "Fatal error: could not find path for plugin %s\n", PANDA_CORE_NAME, plugin_name);
+    }
+    assert(filename != NULL);
+
     // don't load the same plugin twice
     uint32_t i;
     for (i=0; i<nb_panda_plugins_loaded; i++) {
@@ -233,7 +238,7 @@ extern const char *qemu_file;
 // paths, then NULL is returned. The search order for plugins is as follows:
 //
 //   - Relative to the PANDA_DIR environment variable.
-//   - Relative to the QEMU binary (for running out of the build directory).
+//   - Relative to the QEMU binary
 //   - Relative to the install prefix directory.
 char *panda_plugin_path(const char *plugin_name) {
     // First try relative to PANDA_PLUGIN_DIR
@@ -250,10 +255,11 @@ char *panda_plugin_path(const char *plugin_name) {
     // so if this is called (likely via load_plugin) qemu_file must be set directly
     assert(qemu_file != NULL);
 
-    // Second, try relative to QEMU binary.
+    // Second, try relative to PANDA binary as it would be in the build or install directory
     char *dir = g_path_get_dirname(qemu_file);
     plugin_path = g_strdup_printf("%s/panda/plugins/panda_%s" HOST_DSOSUF, dir,
                                   plugin_name);
+
     g_free(dir);
     if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
         return plugin_path;
@@ -280,7 +286,7 @@ void panda_require_from_library(const char *plugin_name) {
     fprintf(stderr, PANDA_MSG_FMT "loading required plugin %s\n", PANDA_CORE_NAME, plugin_name);
 
     // translate plugin name into a path to .so
-    char *plugin_path = panda_plugin_path(plugin_name);
+    char *plugin_path = panda_plugin_path(plugin_name); // May be NULL, would raise assert in in _panda_load_plugin
 
     // load plugin same as in vl.c
     if (!_panda_load_plugin(plugin_path, plugin_name, true)) { // Load in library mode

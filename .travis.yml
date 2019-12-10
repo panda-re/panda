@@ -108,6 +108,7 @@ dist: xenial
 before_install:
   #- sudo pip install pycparser
       #- git submodule update --init dtc
+    - sudo pip install capstone cffi colorama protobuf # Not sure if these are already getting pulled in
     - cd $(pyenv root) && git checkout master && git pull; cd -
 env:
     global:
