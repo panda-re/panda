@@ -22,8 +22,10 @@ cache:
 addons:
   apt:
     sources:
+      # up to ubuntu xenial, we can use the ppa name
       - sourceline: 'ppa:phulin/panda'
-      - sourceline: 'deb http://ppa.launchpad.net/phulin/panda/ubuntu xenial main'
+      # the ppa doesn't support later ubuntu releases -- specify url instead
+      #- sourceline: 'deb http://ppa.launchpad.net/phulin/panda/ubuntu xenial main'
     packages:
       # Build dependencies
       - libaio-dev
@@ -53,6 +55,8 @@ addons:
       - sparse
       - uuid-dev
       # PANDA stuff
+      - bison
+      - flex
       - linux-libc-dev
       - libcapstone-dev
       - libdwarf-dev

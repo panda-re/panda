@@ -33,14 +33,25 @@
  * All contributors are listed in S2E-AUTHORS file.
  *
  */
+#pragma once
 
-#ifndef TCG_LLVM_H
-#define TCG_LLVM_H
-
-#ifdef __cplusplus
-extern "C" {
+// Compatibility layer for struct/class declarations.
+// Makes header compatible with both C/C++. Hushes clang's warnings.
+// P.S.: It ain't stupid if it works.
+#if defined(__cplusplus)
+#define __class_compat_var
+#define __class_compat_decl(_name) \
+class _name;
+#else
+#define __class_compat_var struct
+#define __class_compat_decl(_name) \
+struct _name; \
+typedef struct _name _name;
 #endif
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
 #include <stdint.h>
 
 // Definition from QEMU 1.0.1
@@ -49,10 +60,31 @@ extern "C" {
 /*****************************/
 /* Functions for QEMU c code */
 
+/* defined in include/exec/exec-all.h */
 struct TranslationBlock;
-struct TCGLLVMContext;
 
-extern struct TCGLLVMContext* tcg_llvm_ctx;
+/* defined in tcg/tcg.h */
+struct TCGContext;
+
+/* defined in include/panda/tcg-llvm.h (here) */
+__class_compat_decl(TCGLLVMContext)
+struct TCGLLVMRuntime;
+
+/* defined in panda/llvm/tcg-llvm.cpp */
+extern __class_compat_var TCGLLVMContext *tcg_llvm_ctx;
+extern __class_compat_var TCGLLVMRuntime tcg_llvm_runtime;
+
+/* defined in vl.c */
+void tcg_llvm_initialize(void);
+void tcg_llvm_destroy(void);
+
+/* defined in panda/llvm/tcg-llvm.cpp */
+void tcg_llvm_tb_alloc(struct TranslationBlock *tb);
+void tcg_llvm_tb_free(struct TranslationBlock *tb);
+const char* tcg_llvm_get_func_name(struct TranslationBlock *tb);
+void tcg_llvm_gen_code(__class_compat_var TCGLLVMContext *l, struct TCGContext *s, struct TranslationBlock *tb);
+uintptr_t tcg_llvm_qemu_tb_exec(CPUArchState *env, struct TranslationBlock *tb);
+void tcg_llvm_write_module(__class_compat_var TCGLLVMContext *l, const char *path);
 
 struct TCGLLVMRuntime {
     // NOTE: The order of these are fixed !
@@ -60,71 +92,47 @@ struct TCGLLVMRuntime {
     uint64_t helper_call_addr;
     uint64_t helper_regs[3];
     // END of fixed block
-
-    TranslationBlock *last_tb;
+    struct TranslationBlock* last_tb;
 };
 
-extern struct TCGLLVMRuntime tcg_llvm_runtime;
-
-void tcg_llvm_initialize(void);
-void tcg_llvm_destroy(void);
-
-void tcg_llvm_tb_alloc(struct TranslationBlock *tb);
-void tcg_llvm_tb_free(struct TranslationBlock *tb);
-
-void tcg_llvm_gen_code(struct TCGLLVMContext *l, struct TCGContext *s,
-                       struct TranslationBlock *tb);
-const char* tcg_llvm_get_func_name(struct TranslationBlock *tb);
-
-uintptr_t tcg_llvm_qemu_tb_exec(CPUArchState *env, TranslationBlock *tb);
-
-void tcg_llvm_write_module(struct TCGLLVMContext *l, const char *path);
-
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 
-#ifdef __cplusplus
-
+#if defined(__cplusplus)
 /***********************************/
 /* External interface for C++ code */
 
 namespace llvm {
-    class Function;
-    class LLVMContext;
-    class Module;
-    class ModuleProvider;
-    class ExecutionEngine;
-    class FunctionPassManager;
-}
+class Function;
+class LLVMContext;
+class Module;
+class ModuleProvider;
+class ExecutionEngine;
+class FunctionPassManager;
+}  // namespace llvm
 
 class TCGLLVMContextPrivate;
-class TCGLLVMContext
-{
-private:
+
+class TCGLLVMContext {
+   private:
     TCGLLVMContextPrivate* m_private;
 
-public:
+   public:
     TCGLLVMContext();
     ~TCGLLVMContext();
-
     llvm::LLVMContext& getLLVMContext();
-
     llvm::Module* getModule();
     llvm::ModuleProvider* getModuleProvider();
-
     llvm::ExecutionEngine* getExecutionEngine();
-
     void deleteExecutionEngine();
     llvm::FunctionPassManager* getFunctionPassManager() const;
-
-    void generateCode(struct TCGContext *s,
-                      struct TranslationBlock *tb);
-
-    void writeModule(const char *path);
+    void generateCode(struct TCGContext* s, struct TranslationBlock* tb);
+    void writeModule(const char* path);
 };
 
 #endif
 
-#endif
+#undef __class_compat_decl
+#undef __class_compat_var
 

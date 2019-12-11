@@ -13,7 +13,7 @@ extern "C" {
 }
 
 void syscall_return_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx) {
-#ifdef {{arch_conf.qemu_target}}
+#if {{arch_conf.qemu_target}}
 	const syscall_info_t *call = (syscall_meta == NULL || ctx->no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx->no];
 	switch (ctx->no) {
 		{%- for syscall in syscalls %}

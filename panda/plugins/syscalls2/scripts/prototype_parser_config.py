@@ -44,6 +44,22 @@ import os
 ### Linux config #############################################################
 ##############################################################################
 CONFIG_LINUX = {
+    'linux:x64:generic': {
+        'bits': 64,
+        'src': os.path.expanduser('~/src/linux-4.14.55'),
+        'map_function_signature': {
+            'parser': 'parse_signature_files',
+            'locations': {
+                'include/linux/syscalls.h': r'asmlinkage (?P<signature>\w+\s+(?P<syscall>\w+)\(.*)',
+                'arch/x86/include/asm/syscalls.h': r'(asmlinkage )?(?P<signature>\w+ (?P<syscall>\w+)\(.*)',
+            },
+            'normalize': True,
+        },
+        'map_function_number': {
+            'parser': 'parse_numbers_tbl',
+            'source': 'arch/x86/entry/syscalls/syscall_64.tbl',
+        },
+    },
     'linux:x86:ubuntu': {
         'bits': 32,
         'src': os.path.expanduser('~/git/ubuntu-xenial'),

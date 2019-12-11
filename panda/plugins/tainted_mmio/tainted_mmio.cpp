@@ -16,10 +16,10 @@
 #define __STDC_FORMAT_MACROS
 
 #include "panda/plugin.h"
+#include "panda/addr.h"
 #include "taint2/taint2.h"
-#include "taint2/addr.h"
 
-extern "C" {   
+extern "C" {
 #include <assert.h>
 #include "taint2/taint2_ext.h"
 #include "panda/plog.h"
@@ -138,26 +138,26 @@ target_ulong virt_addr;
 uint64_t first_instruction;
 
 
-int enable_taint(CPUState *env, target_ulong pc) {
+void enable_taint(CPUState *env, target_ulong pc) {
     if (!taint_on 
         && rr_get_guest_instr_count() > first_instruction) {
         printf ("tainted_mmio plugin is enabling taint\n");
         taint2_enable_taint();
         taint_on = true;
     }
-    return 0;
+    return;
 }
 
 
 target_ulong bvr_pc;
 
-int before_virt_read(CPUState *env, target_ulong pc, target_ulong addr,
-                     target_ulong size) {    
+void before_virt_read(CPUState *env, target_ptr_t pc, target_ptr_t addr,
+                     size_t size) {
     // clear this before every read
     is_unassigned_io = false;    
     virt_addr = addr;
     bvr_pc = panda_current_pc(first_cpu);
-    return 1;
+    return;
 }
 
 
@@ -246,7 +246,7 @@ void label_io_read(Addr reg, uint64_t paddr, uint64_t size) {
 
         assert (reg.typ == LADDR);
         cerr << "label_io Laddr[" << reg.val.la << "]\n";
-        for (int i=0; i<size; i++) {           
+        for (int i=0; i<size; i++) {
             taint2_label_addr(reg, i, label);
         }
     }    

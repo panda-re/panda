@@ -32,12 +32,7 @@
 #include "sysemu/sysemu.h"
 
 #include "panda/rr/rr_log_all.h"
-
-//#define DEBUG_UNASSIGNED
-// TODO: conditionally do this?
-#define NO_TRANSLATION_BLOCKS
-#include "panda/callback_support.h"
-#undef NO_TRANSLATION_BLOCKS
+#include "panda/callbacks/cb-support.h"
 
 static unsigned memory_region_transaction_depth;
 static bool memory_region_update_pending;

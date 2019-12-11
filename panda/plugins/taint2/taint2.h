@@ -26,7 +26,7 @@
 #include "shad_dir_32.h"
 #include "shad_dir_64.h"
 #include "taint_defines.h"
-#include "addr.h"
+#include "panda/addr.h"
 #include "query_res.h"
 
 typedef const std::set<uint32_t> *LabelSetP;

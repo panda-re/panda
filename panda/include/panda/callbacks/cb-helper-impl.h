@@ -11,13 +11,11 @@
  * See the COPYING file in the top-level directory. 
  * 
 PANDAENDCOMMENT */
-
-#ifndef __PANDA_HELPER_IMPL_H__
-#define __PANDA_HELPER_IMPL_H__
-
+#pragma once
+#include "panda/callbacks/cb-support.h"
 #include "panda/plugin.h"
 
-void helper_panda_insn_exec(target_ulong pc) {
+void HELPER(panda_insn_exec)(target_ulong pc) {
     // PANDA instrumentation: before basic block
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_INSN_EXEC]; plist != NULL; plist = panda_cb_list_next(plist)) {
@@ -25,7 +23,7 @@ void helper_panda_insn_exec(target_ulong pc) {
     }
 }
 
-void helper_panda_after_insn_exec(target_ulong pc) {
+void HELPER(panda_after_insn_exec)(target_ulong pc) {
     // PANDA instrumentation: after basic block
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_AFTER_INSN_EXEC]; plist != NULL; plist = panda_cb_list_next(plist)) {
@@ -33,4 +31,8 @@ void helper_panda_after_insn_exec(target_ulong pc) {
     }
 }
 
+#if defined(TARGET_ARM)
+void HELPER(panda_guest_hypercall)(CPUArchState *cpu_env) {
+    panda_callbacks_guest_hypercall(ENV_GET_CPU(cpu_env));
+}
 #endif

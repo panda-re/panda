@@ -214,7 +214,7 @@ The `osi` plugin is not very useful on its own. If you want to see an example of
 <!-- place all urls here -->
 [common.c]: /panda/src/common.c
 [osi_types]: /panda/plugins/osi/osi_types.h
-[osi_linux_usage]: /panda/plugins/osi_linux/USAGE.md
+[osi_linux_usage]: /panda/plugins/osi_linux/README.md
 [garray]: https://developer.gnome.org/glib/stable/glib-Arrays.html
 [gdtypes]: https://developer.gnome.org/glib/stable/glib-data-types.html
 [galloc]: https://developer.gnome.org/glib/stable/glib-Memory-Allocation.html

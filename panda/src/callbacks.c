@@ -25,13 +25,13 @@ PANDAENDCOMMENT */
 #include "monitor/monitor.h"
 
 #ifdef CONFIG_LLVM
-//#include "panda/panda_helper_call_morph.h"
 #include "tcg.h"
 #include "panda/tcg-llvm.h"
 #include "panda/helper_runtime.h"
 #endif
 
 #include "panda/common.h"
+#include "panda/rr/rr_api.h"
 
 #if defined(TARGET_I386)
 #define LIBRARY_DIR "/i386-softmmu/libpanda-i386.so"
@@ -696,6 +696,63 @@ void panda_memsavep(FILE *f) {
 #endif
 }
 
+/**
+ * @brief Starts recording a PANDA trace. If \p snapshot is not NULL,
+ * then the VM state will be reverted to the specified snapshot before
+ * starting recording.
+ */
+int panda_record_begin(const char *name, const char *snapshot) {
+    if (rr_on())
+        return RRCTRL_EINVALID;
+    if (rr_control.next != RR_NOCHANGE)
+        return RRCTRL_EPENDING;
+
+    rr_control.next = RR_RECORD;
+    rr_control.name = g_strdup(name);
+    rr_control.snapshot = (snapshot != NULL) ? g_strdup(snapshot) : NULL;
+    return RRCTRL_OK;
+}
+
+/**
+ * @brief Ends current PANDA recording.
+ */
+int panda_record_end(void) {
+    if (!rr_in_record())
+        return RRCTRL_EINVALID;
+    if (rr_control.next != RR_NOCHANGE)
+        return RRCTRL_EPENDING;
+
+    rr_control.next = RR_OFF;
+    return RRCTRL_OK;
+}
+
+/**
+ * @brief Starts replaying the specified PANDA trace.
+ */
+int panda_replay_begin(const char *name) {
+    if (rr_on())
+        return RRCTRL_EINVALID;
+    if (rr_control.next != RR_NOCHANGE)
+        return RRCTRL_EPENDING;
+
+    rr_control.next = RR_REPLAY;
+    rr_control.name = g_strdup(name);
+    return RRCTRL_OK;
+}
+
+/**
+ * @brief Stops the currently running PANDA replay.
+ */
+int panda_replay_end(void) {
+    if (!rr_in_replay())
+        return RRCTRL_EINVALID;
+    if (rr_control.next != RR_NOCHANGE)
+        return RRCTRL_EPENDING;
+
+    rr_control.next = RR_OFF;
+    return RRCTRL_OK;
+}
+
 // Parse out arguments and return them to caller
 static panda_arg_list *panda_get_args_internal(const char *plugin_name, bool check_only) {
     panda_arg_list *ret = NULL;
@@ -1159,8 +1216,9 @@ void hmp_panda_list_plugins(Monitor *mon, const QDict *qdict) {
     PandaPluginInfoList *plugin_item = qmp_list_plugins(&err);
     monitor_printf(mon, "idx\t%-20s\taddr\n", "name");
     while (plugin_item != NULL){
-        monitor_printf(mon, "%ld\t%-20s\t%lx\n", plugin_item->value->index,
-                        plugin_item->value->name, plugin_item->value->address);
+        monitor_printf(mon, "%" PRId64 "\t%-20s\t%" PRIx64 "\n",
+                       plugin_item->value->index, plugin_item->value->name,
+                       plugin_item->value->address);
         plugin_item = plugin_item->next;
 
     }

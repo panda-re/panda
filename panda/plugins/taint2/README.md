@@ -1,160 +1,172 @@
-PIRATE: Platform for IR-based Analyses of Tainted Execution
-========
+Plugin: taint2
+===========
 
-*Last updated 10/1/14*
+Summary
+-------
 
-This is our implementation of architecture-independent dynamic taint analysis.
-To perform this analysis, we rely on dynamic code translation to the LLVM
-intermediate representation.  From there, we use our architecture-independent
-information flow models developed for LLVM to track how data flows between
-instructions.
+The `taint2` plugin tracks the flow of data through a running program. One can apply taint labels to some data, follow the flow of labeled data through the program execution, and later query data to find out what labels it has.
 
-By default, QEMU translates all guest architectures (14 in total) to it's own
-internal IR called TCG (Tiny Code Generator).  This IR is not robust enough for
-our analyses, so we leverage the translation module from S2E to translate a step
-further to LLVM.  In order to handle taint propagation through QEMU's helper
-functions, we use Clang to translate the relevant helper functions to the LLVM
-IR.  This allows us to have complete and correct information flow models for
-code that executes within QEMU, without having to worry about
-architecture-specific details.
+`taint2` provides APIs and callbacks for labeling and querying data, and does the work of propagating taint. This means it is not generally useful by itself. To introduce taint into the system, you can use plugins like `file_taint`, `tstringsearch` and `tainted_net`; to query taint you can use plugins like `tainted_instr`, `taint_compute_numbers` or `tainted_net`.
 
-Building
---------
-The taint plugin and associated artifacts are compiled as part of our QEMU build
-process, and plugins are built for each architecture in
-`panda/qemu/<architecture>/panda_plugins/panda_taint.so`.
+Note that since this notion of taint supports an arbitrary number of *labels*, the taint on a particular piece of data will typically be a *label set* rather than a single label. For example, if some quantities `a` and `b` have labels `1` and `2` respectively, then an operation such as `c = a + b` will result in `c` being tainted with the label set `{1, 2}`.
 
-Using
---------
-The taint plugin works with both QEMU user mode and QEMU whole system mode.  It
-works using the standard `-panda` switch on QEMU's command line or
-monitor, specifying the desired `panda_taint.so` to use.
+PANDA's taint system is implemented by translating TCG code to LLVM and then inserting extra LLVM operations to propagate taint as instructions execute. For more details on how PANDA's taint system works, please see the following papers:
 
-To use the plugin on QEMU whole system mode, we highly recommend using it in
-conjunction with our record/replay system.  This will allow a fast recording of
-the execution of interest without using the plugin, and subsequent replays of
-the recording with the heavyweight taint analysis enabled.
+* R. Whelan, T. Leek, D. Kaeli.  Architecture-Independent Dynamic Information Flow Tracking. 22nd International Conference on Compiler Construction (CC), Rome, Italy, March 2013.
+* B. Dolan-Gavitt, J. Hodosh, P. Hulin, T. Leek, R. Whelan. Repeatable Reverse Engineering for the Greater Good with PANDA. TR CUCS-023-14.
 
-There are many ways to perform taint labeling and querying.  The primary method
-we currently use is to make hypercalls from the guest into the hypervisor with
-the parameters.  The implementation of the hypercall can be seen in
-`panda/qemu/panda_plugins/taint/taint.cpp` at the guest hypercall callback.  An
-easy way to label and query from the guest (with a gcc compiler) can be seen in
-`panda/qemu/panda_plugins/taint/tests/include/gcc/panda_mark.h`.  Additionally,
-examples using `panda_mark.h` are in the `tests` directory.  For Windows guests,
-the utilities included in `panda/qemu/panda_tools/pirate_utils` can be
-used to label files (Note: only a subset of the functionality available in
-those tools has been ported to the taint plugin).
+Note that the `taint2` plugin replaces the original `taint` plugin and is preferred for most use. The main improvements are:
 
-There are a number of command line arguments available to the taint plugin:
+* Speed: `taint2` is much faster (rough estimate: ~10x) due to inlining taint operations into the generated LLVM code rather than accumulating taint operations in a buffer and the processing them after each basic block.
+* Memory: many analyses were simply impossible in the original `taint` plugin because the memory requirements were too high. `taint2` should solve this. Note that because it uses a large `mmap`ed area for its shadow memory, you may need to adjust the value of `vm.overcommit_memory` via `sysctl`.
+* Interface: the interface to `taint2` is somewhat cleaner, and allows things like tainted branch, tainted instruction, taint compute number counting and tainting network packets to be implemented as separate plugins.
 
-* `no_tp` (default: 0)
+Arguments
+---------
 
-   Tainted pointer (TP) mode is on by default, where we propagate taint if the
-   pointer is tainted for memory accesses.  This disables that setting.
+* `no_tp`: boolean. Whether to taint the result of dereferencing a pointer that has been tainted.
+* `inline`: boolean. Whether taint operations should be carried out in line with generated code, or through a function call.
+* `opt`:  boolean. Whether to run an optimization pass on the instrumented LLVM code.
+* `detaint_cb0`: boolean. Whether to detaint bytes whose control mask bits have become 0. Can reduce false positives when tainted data no longer influences a byte's value.
+* `max_taintset_compute_number`: maximum taint compute number (0, the default, means unlimited).
+* `max_taintset_card`: maximum taintset cardinality (i.e. number of labels; 0, the default, means unlmited).
 
-* `max_taintset_card` (default: off)
+Dependencies
+------------
 
-   Set a limit for the maximum number of labels that can be associated with an
-   address in the shadow memory.  This is to help deal with taint explosion and
-   the number of labels being tracked for complex computations.
+The `taint2` plugin uses `callstack_instr` to get the callstack when writing entries to the pandalog. `taint2` will automatically load the `callstack_instr` plugin so there is usually no need to load it explicitly.
 
-* `max_taintset_compute_number` (default: off)
+APIs and Callbacks
+------------------
 
-   Taint compute numbers track the number of computations that happen to data.
-   This parameter stops propagating taint after it goes through n computations,
-   becoming distant enough from the original input.
+Name: **on_branch2**
 
-* `compute_is_delete` (default: off)
+Signature: `typedef void (*on_branch2_t) (Addr addr, uint64_t size)`
 
-   Turns the compute taint operation into a delete operation.  This limits the
-   propagation of taint only to direct copies.
+Description: Called when a branch that depends on tainted data is encountered. The `Addr` parameter (a union of the various types of memory that can be tracked by the taint system) provides the address of the data that the tainted branch depends on.
 
-* `label_incoming_network` (default: off)
+Name: **on_taint_change**
 
-   Label data coming in from the network as tainted.
+Signature: `typedef void (*on_taint_change_t) (Addr, uint64_t)`
 
-* `query_outgoing_network` (default: off)
+Description: Called whenever the state of taint changes; i.e. when taint is propagated. The `Addr` of the newly tainted data is provided, as well as its size.
 
-   Query taint on data going out on the network.
+`taint2` also provides the following APIs:
 
-* `label_mode` (default: byte)
+    // turns on taint
+    void taint2_enable_taint(void);
 
-   Current taint labeling modes are binary and byte.  Binary mode tracks only
-   whether or not data is tainted.  Byte mode gives each new byte its own label
-   for precise tracking.
+    // returns 1 if taint is on
+    int taint2_enabled(void);
 
-The default invocation of of the taint plugin on a replay is:
-`<architecture>/panda-system-<arch> -replay <replay_name> -panda taint`.
-
-To use any of these options, for example to use binary taint to look for any
-labeled data leaving the system from the network, the command is:
-`<architecture>/panda-system-<arch> -replay <replay_name> -panda
-taint:label_mode=binary,query_outgoing_network=1`.
-
-Dealing with QEMU Helper Functions
---------
-Correctly processing QEMU helper functions is essential for our analysis to be
-complete and correct.  We have determined the necessary helper functions to be
-included in the analysis, and we deposit these into a single module at compile
-time at `panda/qemu/<architecture>/llvm-helpers.bc`.  This module is then
-consumed during the taint analysis, and information is tracked properly through
-helper functions.
-
-Supported/Tested Systems
---------
-While our system hasn't undergone significant testing, we currently expect it to
-work for any user program or operating system that can boot in QEMU 1.0.1
-(including Windows 7) for x86, x86_64, and ARM architectures (including
-Android, since that is a supported platform in PANDA).
-
-Adding additional support for other architectures that QEMU supports should be a
-minimal porting effort that takes advantage of our alredy-existing information
-flow models based on LLVM.
-
-Hard drive and network taint is now supported for x86/64 systems.
-
-Organization
---------
-* `panda/qemu/panda_plugins/taint/taint.cpp`
+    // label this phys addr in memory with label l
+    void taint2_label_ram(uint64_t pa, uint32_t l);
     
-   The main code of the plugin.  Performs initialization, defines PANDA
-   callbacks, etc.
+    // add label l to this phys addr in memory. any previous labels applied to 
+    // this address are not removed.
+    void taint2_label_ram_additive(uint64_t pa, uint32_t l);
 
-* `panda/qemu/panda_plugins/taint/llvm_taint_lib.[cpp|h]`
+    // add label l to this register. any previous labels applied to this 
+    // register are not removed.
+    void taint2_label_reg_additive(int reg_num, int offset, uint32_t l);
 
-   Code that defines our LLVM passes, and our byte-level information flow models
-   for LLVM instructions.
-   
-* `panda/qemu/panda_plugins/taint/taint_processor.[cpp|h]`
+    // label this io addr with label l
+    void taint2_label_io(uint64_t ia, uint32_t l);
+    
+    // add label l to this io addr. any previous labels applied to 
+    // this address are not removed.
+    void taint2_label_io_additive(uint64_t ia, uint32_t l);
+        
+    // query fns return 0 if untainted, else cardinality of taint set
+    uint32_t taint2_query(Addr a);
+    uint32_t taint2_query_ram(uint64_t pa);
+    uint32_t taint2_query_reg(int reg_num, int offset);
+    uint32_t taint2_query_io(uint64_t ia);
+    uint32_t taint2_query_llvm(int reg_num, int offset);
 
-   Code that defines our taint operations, and deals with processing those
-   operations on a basic block granularity.  Other relevant code, including the
-   shadow memory, is included in `panda/qemu/panda`.
+    // query set fns writes taint set contents to the specified array. the
+    // size of the array must be >= the cardianlity of the taint set.
+    void taint2_query_set(Addr a, uint32_t *out);
+    void taint2_query_set_ram(uint64_t pa, uint32_t *out);
+    void taint2_query_set_reg(int reg_num, int offset, uint32_t *out);
+    void taint2_query_set_io(uint64_t ia, uint32_t *out);
 
-* `panda/qemu/panda/panda_dynval_inst.[cpp|h]`
+    // returns cardinality and the taint set.
+    // reallocates and updates buffer size as needed.
+    uint32_t taint2_query_set_a(Addr a, uint32_t **out, uint32_t *outsz);
 
-   LLVM function pass that deals with instrumenting LLVM code to keep a log of
-   dynamic values.  This allows us to reconcile dynamic values from the
-   currently executing LLVM code.
-   
-* `panda/qemu/panda/panda_helper_call_morph.[cpp|h]`
+    // returns taint compute number associated with addr
+    uint32_t taint2_query_tcn(Addr a);
+    uint32_t taint2_query_tcn_ram(uint64_t pa);
+    uint32_t taint2_query_tcn_reg(int reg_num, int offset);
+    uint32_t taint2_query_tcn_io(uint64_t ia);
+    uint32_t taint2_query_tcn_llvm(int reg_num, int offset);
 
-   LLVM function pass for code translated from TCG that changes calls to helper
-   functions to calls of LLVM versions of helper functions.  This assumes that
-   `llvm-helpers.bc` has been linked together with the LLVM module used by the
-   LLVM JIT.
+    // Returns a mask indicating which bits are attacker-controlled (derived
+    // reversibly from input).
+    uint64_t taint2_query_cb_mask(Addr a, uint8_t size);
 
-* `panda/qemu/panda_tools/helper_call_modifier/helper_call_modifier.cpp`
+    // delete taint from this phys addr
+    void taint2_delete_ram(uint64_t pa) ;
 
-   Tool used at compile time during the generation of `llvm-helpers.bc` to
-   perform final preparations on the module that we need for our taint analysis.
-   This includes renaming helper functions to have an '_llvm' suffix, and
-   several other things.
+    // delete taint from this io addr
+    void taint2_delete_io(uint64_t ia) ;
+    
+    // apply this fn to each of the labels associated with this pa
+    // fn should return 0 to continue iteration
+    void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 
-* `panda/qemu/panda_tools/bitcode_callgraph/bitcode_callgraph.cpp`
+    // ditto, but a machine register
+    // you should be able to use R_EAX, etc as reg_num
+    // offset is byte offset withing that reg.
+    void taint2_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+    
+    // ditto, but for io address
+    void taint2_labelset_io_iter(uint64_t ia, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+    
+    // ditto, but for llvm regs.  dunno where you are getting that number
+    void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 
-   Tool used to analyze `llvm-helpers.bc` for completeness, allowing the
-   developer to verify that all relevant helper functions are included in the
-   module.  Also provides additional information about the module.
+    // returns set of so-far applied labels as a sorted array
+    // NB: This allocates memory. Caller frees.
+    uint32_t *taint2_labels_applied(void);
 
+    // just tells how big that labels_applied set will be
+    uint32_t taint2_num_labels_applied(void);
+
+    // Track whether taint state actually changed during a BB
+    void taint2_track_taint_state(void);
+
+The `taint2` plugin also supports logging taint in pandalog format:
+
+    // queries taint on this virtual addr and, if any taint there,
+    // writes an entry to pandalog with lots of stuff like
+    // label set, taint compute #, call stack
+    // offset is needed since this is likely a query in the middle of an extent (of 4, 8, or more bytes)
+    Panda__TaintQuery *taint2_query_pandalog (Addr addr, uint32_t offset) ;
+
+    // used to free memory associated with that struct
+    void pandalog_taint_query_free(Panda__TaintQuery *tq);
+
+
+Example
+-------
+
+To taint data from a file named `foo.dat` on Linux and then find out what branches depend on data from that file, placing output into the pandalog `foo.plog`:
+
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo -panda osi \
+        -panda osi_linux:kconf_group=debian-3.2.63-i686 \
+        -panda syscalls2:profile=linux_x86 \
+        -panda file_taint:filename=foo.dat \
+        -panda tainted_branch \
+        -pandalog foo.plog
+
+Note that the `taint2` plugin is not explicitly listed here because it is automatically loaded by the `file_taint` plugin. If you wanted to pass custom options to `taint2`, such as disabling tainted pointers, you could instead do:
+
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo -panda osi \
+        -panda osi_linux:kconf_group=debian-3.2.63-i686 \
+        -panda syscalls2:profile=linux_x86 \
+        -panda taint2:no_tp=y \
+        -panda file_taint:filename=foo.dat \
+        -panda tainted_branch \
+        -pandalog foo.plog

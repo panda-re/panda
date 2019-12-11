@@ -13,7 +13,6 @@
  * See the COPYING file in the top-level directory.
  */
 #ifdef TAINT2_HYPERCALLS
-
 #include <cstdio>
 #include <vector>
 #include "taint2_hypercalls.h"
@@ -161,7 +160,8 @@ void lava_attack_point(PandaHypercallStruct phs) {
     }
 }
 
-int guest_hypercall_callback(CPUState *cpu) {
+bool guest_hypercall_callback(CPUState *cpu) {
+    bool ret = false;
 #if defined(TARGET_I386)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     if (taintEnabled) {
@@ -180,6 +180,7 @@ int guest_hypercall_callback(CPUState *cpu) {
                 printf("taint2: positional taint label\n");
                 taint2_add_taint_ram_pos(cpu, (uint64_t)buf_start, (int)buf_len, label);
             }
+            ret = true;
         }
         else {
             // LAVA Hypercall
@@ -214,6 +215,7 @@ int guest_hypercall_callback(CPUState *cpu) {
                     else {
                         printf("Unknown hypercall action %d\n", phs.action);
                     }
+                    ret = true;
                 }
                 else {
                     printf ("Invalid magic value in PHS struct: %x != 0xabcd.\n", phs.magic);
@@ -221,7 +223,6 @@ int guest_hypercall_callback(CPUState *cpu) {
             }
         }
     }
-    return 1;
 #elif defined(TARGET_ARM)
     // R0 is command (label or query)
     // R1 is buf_start
@@ -230,21 +231,20 @@ int guest_hypercall_callback(CPUState *cpu) {
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     if (env->regs[0] == 7 || env->regs[0] == 8) { //Taint label
         if (!taintEnabled) {
-            printf("Taint plugin: Label operation detected @ %lu\n", rr_get_guest_instr_count());
+            printf("Taint plugin: Label operation detected @ %" PRIu64 "\n", rr_get_guest_instr_count());
             printf("Enabling taint processing\n");
             taint2_enable_taint();
         }
+        ret = true;
         // FIXME: do labeling here.
     }
     else if (env->regs[0] == 9) { //Query taint on label
         if (taintEnabled) {
-            printf("Taint plugin: Query operation detected @ %lu\n", rr_get_guest_instr_count());
+            printf("Taint plugin: Query operation detected @ %" PRIu64 "\n", rr_get_guest_instr_count());
         }
+        ret = true;
     }
-    return 1;
-#else
-    // other architectures
-    return 0;
 #endif
+    return ret;
 }
 #endif // TAINT2_HYPERCALLS

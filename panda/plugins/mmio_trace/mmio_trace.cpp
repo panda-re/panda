@@ -30,16 +30,16 @@ void uninit_plugin(void *);
 
 }
 
-int buffer_mmio_read(CPUState *env, target_ulong addr, int size, uint64_t val) {
+void buffer_mmio_read(CPUState *env, target_ptr_t addr, size_t size, uint64_t val) {
     mmio_event_t new_event{'W', env->panda_guest_pc, addr, size, val};
     mmio_events.push_back(new_event);
-    return 0;
+    return;
 }
 
-int buffer_mmio_write(CPUState *env, target_ulong addr, int size, uint64_t val) {
+void buffer_mmio_write(CPUState *env, target_ptr_t addr, size_t size, uint64_t val) {
     mmio_event_t new_event{'R', env->panda_guest_pc, addr, size, val};
     mmio_events.push_back(new_event);
-    return 0;
+    return;
 }
 
 // File I/O inside of a callback would be horridly slow, so we delay log flush until uninit_plugin()

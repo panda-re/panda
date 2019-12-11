@@ -15,8 +15,7 @@
  * @copyright This work is licensed under the terms of the GNU GPL, version 2.
  * See the COPYING file in the top-level directory.
  */
-#ifndef TAINT2_HYPERCALLS_H
-#define TAINT2_HYPERCALLS_H
+#pragma once
 #ifdef TAINT2_HYPERCALLS
 
 #include "qemu/osdep.h"
@@ -46,10 +45,9 @@ typedef struct panda_hypercall_struct {
 #ifdef __cplusplus
 extern "C" {
 #endif
-int guest_hypercall_callback(CPUState *cpu);
+bool guest_hypercall_callback(CPUState *cpu);
 #ifdef __cplusplus
 }
 #endif
 
-#endif
 #endif

@@ -24,17 +24,19 @@
 #include "panda/common.h"
 #include "qemu/memfd.h"
 
-#if defined CONFIG_LINUX && !defined CONFIG_MEMFD
+#if !defined(CONFIG_MEMFD)
+#if defined CONFIG_LINUX && defined(__NR_memfd_create)
 #include <sys/syscall.h>
 #include <asm/unistd.h>
-static int memfd_create(const char *name, unsigned int flags)
-{
-#ifdef __NR_memfd_create
+static int memfd_create(const char *name, unsigned int flags) {
     return syscall(__NR_memfd_create, name, flags);
-#else
-    return -1;
-#endif
 }
+#else
+static int memfd_create(const char *name, unsigned int flags) {
+    assert(false && "memfd_create not supported on your platform");
+    return -1;
+}
+#endif
 #endif
 
 #include "panda/checkpoint.h"
@@ -144,7 +146,7 @@ void *panda_checkpoint(void) {
     checkpoint->memfd_usage = lseek(checkpoint->memfd, 0, SEEK_CUR);
     total_usage += checkpoint->memfd_usage;
 
-    printf("Created checkpoint @ %lu. Size %.1f MB. Total usage %.1f GB\n",
+    printf("Created checkpoint @ %" PRIu64 ". Size %.1f MB. Total usage %.1f GB\n",
             instr_count, ((float) checkpoint->memfd_usage) / (1 << 20),
             ((float) total_usage) / (1 << 30));
 
@@ -166,7 +168,7 @@ void panda_restore(void *opaque) {
     assert(rr_in_replay());
     
     Checkpoint *checkpoint = (Checkpoint *)opaque;
-    printf("Restarting checkpoint @ instr count %lu\n", checkpoint->guest_instr_count);
+    printf("Restarting checkpoint @ instr count %" PRIu64 "\n", checkpoint->guest_instr_count);
         
     lseek(checkpoint->memfd, 0, SEEK_SET);
 
@@ -194,6 +196,7 @@ void panda_restore(void *opaque) {
     rr_max_num_queue_entries = checkpoint->max_num_queue_entries;
     rr_next_progress = checkpoint->next_progress;
 
+    // XXX: first_cpu->jmp_env always evaluate to true - says clang
     if (qemu_in_vcpu_thread() && first_cpu->jmp_env) {
         cpu_loop_exit(first_cpu);
     }

@@ -34,7 +34,7 @@
 
 #include "panda/rr/rr_log_all.h"
 #include "panda/rr/rr_log.h"
-#include "panda/callback_support.h"
+#include "panda/callbacks/cb-support.h"
 
 /* DEBUG defines, enable DEBUG_TLB_LOG to log to the CPU_LOG_MMU target */
 /* #define DEBUG_TLB */

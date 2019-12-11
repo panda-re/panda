@@ -20,7 +20,7 @@ PANDAENDCOMMENT */
 const double MIN_FRACTION = 0.0;
 const double MAX_FRACTION = 1.0;
 
-int before_block_callback(CPUState *env, TranslationBlock *tb);
+void before_block_callback(CPUState *env, TranslationBlock *tb);
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -32,7 +32,7 @@ float xfraction = 1.0;
 float yfraction = 1.0;
 FILE *counterslog = NULL;
 
-int before_block_callback(CPUState *env, TranslationBlock *tb) {
+void before_block_callback(CPUState *env, TranslationBlock *tb) {
     assert(rr_in_replay());
     char fname[256] = {0};
     if (total_insns == 0) {
@@ -49,11 +49,11 @@ int before_block_callback(CPUState *env, TranslationBlock *tb) {
         qmp_screendump(fname, &errp);
 
         if (save_instr_count) {
-        	// have to save some general information the first time around
-        	if (0 == num) {
-				// there isn't any way to get the width and height w/out adding
-        		// API to the console file, other than reading an output file
-				// yes, we are assuming every screen shot has same size
+            // have to save some general information the first time around
+            if (0 == num) {
+                // there isn't any way to get the width and height w/out adding
+                // API to the console file, other than reading an output file
+                // yes, we are assuming every screen shot has same size
 				FILE *f000 = fopen("replay_movie_000.ppm", "r");
 				if (f000 != NULL) {
 					// skip past the P6\n at front of file, and then read the
@@ -79,15 +79,15 @@ int before_block_callback(CPUState *env, TranslationBlock *tb) {
 					LOG_ERROR("Could not open image 0 to fetch dimensions");
 				}
 				fclose(f000);
-        	}
+            }
 
             // save current instruction count
             uint64_t curinstr = rr_get_guest_instr_count();
-            fprintf(counterslog, "%ld\n", curinstr);
+            fprintf(counterslog, "%" PRId64 "\n", curinstr);
         }
         num += 1;
     }
-    return 1;
+    return;
 }
 
 bool init_plugin(void *self) {
@@ -151,8 +151,8 @@ void uninit_plugin(void *self) {
     snprintf(fname, 255, "replay_movie_%03d.ppm", num);
     qmp_screendump(fname, &errp);
     if (save_instr_count) {
-    	fprintf(counterslog, "%ld\n", total_insns);
-    	fclose(counterslog);
+        fprintf(counterslog, "%" PRId64 "\n", total_insns);
+        fclose(counterslog);
     }
     printf("Unloading replaymovie plugin.\n");
 }

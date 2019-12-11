@@ -47,12 +47,12 @@ FastShad::FastShad(std::string name, uint64_t labelsets) : Shad(name, labelsets)
     TaintData *array;
     if (labelsets < (1UL << 24)) {
         array = (TaintData *)malloc(bytes);
-        printf("taint2: Allocating small fast_shad (%" PRIu64 " bytes) using malloc @ %lx.\n",
-                bytes, (uint64_t)array);
+        printf("taint2: Allocating small fast_shad (%" PRIu64 " bytes) using malloc @ %p.\n",
+                bytes, array);
         assert(array);
         memset(array, 0, bytes);
     } else {
-        printf("taint2: Allocating large fast_shad (%lu bytes).\n", bytes);
+        printf("taint2: Allocating large fast_shad (%" PRIu64 " bytes).\n", bytes);
         array = (TaintData *)mmap(NULL, bytes, PROT_READ | PROT_WRITE,
                 MAP_ANONYMOUS | MAP_PRIVATE | MAP_NORESERVE, -1, 0);
         if (array == (TaintData *)MAP_FAILED) {

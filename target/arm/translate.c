@@ -36,7 +36,7 @@
 #include "trace-tcg.h"
 #include "exec/log.h"
 
-#include "panda/callback_support.h"
+#include "panda/callbacks/cb-support.h"
 
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
@@ -7541,6 +7541,20 @@ static int disas_coproc_insn(DisasContext *s, uint32_t insn)
                                                 rt, isread, false);
                 }
                 break;
+            case 7:
+                /* Coprocessor 7 is used to implement PANDA hypercalls. */
+                if (!(insn & ARM_CP_RW_BIT)) {
+                    gen_set_pc_im(s, s->pc);
+                    gen_helper_panda_guest_hypercall(cpu_env);
+
+                    /* End block here. This enables using hypercalls to
+                     * implement advanced functionality. E.g. to switch
+                     * runtime from TCG to LLVM.
+                     */
+                    gen_jmp(s, s->pc);
+                    return 0;
+                }
+                /* ---fallthrough to default case--- */
             default:
                 /* ARMv8 defines that only coprocessors 14 and 15 exist,
                  * so this can only happen if this is an ARMv7 or earlier CPU,
@@ -11799,7 +11813,7 @@ void gen_intermediate_code(CPUARMState *env, TranslationBlock *tb)
         max_insns = TCG_MAX_INSNS;
     }
 
-    if (rr_mode == RR_REPLAY) {
+    if (rr_in_replay()) {
         uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
         if (max_insns > until_interrupt) {
             max_insns = until_interrupt;
@@ -11908,7 +11922,7 @@ void gen_intermediate_code(CPUARMState *env, TranslationBlock *tb)
 #ifdef CONFIG_SOFTMMU
         //mz let's count this instruction
         // In LLVM mode we generate this more efficiently.
-        if ((rr_mode != RR_OFF || panda_update_pc) && !generate_llvm) {
+        if ((rr_on() || panda_update_pc) && !generate_llvm) {
             gen_op_update_panda_pc(dc->pc);
             gen_op_update_rr_icount();
         }

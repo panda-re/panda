@@ -390,7 +390,7 @@ static void disable_cur_rr_bp_and_wp(CPUState* cpu) {
 	CPUBreakpoint* bp;
 	QTAILQ_FOREACH(bp, &cpu->breakpoints, entry) {
 		if (bp->rr_instr_count != 0 && rr_get_guest_instr_count() == bp->rr_instr_count) {
-			printf("temp removing bp at rr instr %lu\n", bp->rr_instr_count);
+			printf("temp removing bp at rr instr %" PRIu64 "\n", bp->rr_instr_count);
 			cpu_breakpoint_remove_by_instr(cpu, bp->rr_instr_count, BP_GDB);
 			cpu->temp_rr_bp_instr = bp->rr_instr_count;
 		}
@@ -1073,7 +1073,7 @@ static void gdb_handle_panda_cmd(GDBState *s, const char* p) {
 
     int chars_written;
     if (!strncmp(p, "when", 4)) {
-        snprintf(membuf, sizeof(membuf), "%lu", rr_get_guest_instr_count());
+        snprintf(membuf, sizeof(membuf), "%" PRIu64, rr_get_guest_instr_count());
 		
 		memtohex(buf, (uint8_t*)membuf, strlen(membuf));
         put_packet(s, buf);
@@ -1086,7 +1086,7 @@ static void gdb_handle_panda_cmd(GDBState *s, const char* p) {
         while (*p == ':') {
             p++;
             uint64_t bpinstr = strtoull(p, (char **)&p, 10);
-            chars_written = snprintf(membuf+membufsize, sizeof(membuf), " %lu,", bpinstr); 
+            chars_written = snprintf(membuf+membufsize, sizeof(membuf), " %" PRIu64 ",", bpinstr); 
             membufsize += chars_written;
             gdb_rr_breakpoint_insert(bpinstr, GDB_BREAKPOINT_SW);
         }
@@ -1107,7 +1107,7 @@ static void gdb_handle_panda_cmd(GDBState *s, const char* p) {
         while (*p == ':') {
             p++;
             uint64_t bpinstr = strtoull(p, (char **)&p, 10);
-            chars_written = snprintf(membuf+membufsize, sizeof(membuf), " %lu,", bpinstr); 
+            chars_written = snprintf(membuf+membufsize, sizeof(membuf), " %" PRIu64 ",", bpinstr); 
             membufsize += chars_written;
             gdb_rr_breakpoint_remove(bpinstr, GDB_BREAKPOINT_SW);
         }
@@ -1126,7 +1126,7 @@ static void gdb_handle_panda_cmd(GDBState *s, const char* p) {
 
         QTAILQ_FOREACH(bp, &s->c_cpu->breakpoints, entry) {
            if (bp->rr_instr_count != 0) {
-				chars_written = snprintf(membuf+membufsize, sizeof(membuf), "%lu\n", bp->rr_instr_count);
+				chars_written = snprintf(membuf+membufsize, sizeof(membuf), "%" PRIu64 "\n", bp->rr_instr_count);
 				membufsize += chars_written;
             }
 		}
