@@ -179,9 +179,11 @@ class callback_mixins():
         #progress("Enabling callback '{}' on '{}' handle = {}".format(name, cb.name, handle))
         self.libpanda.panda_enable_callback_helper(handle, cb.number, pcb)
 
-    def disable_callback(self, name):
+    def disable_callback(self, name, forever=False):
         '''
         Disable a panda plugin using its handle and cb.number as a unique ID
+        If forever is specified, we'll never reenable the call- useful when
+        you want to really turn off something with a procname filter.
         '''
         if name not in self.registered_callbacks.keys():
             raise RuntimeError("No callback has been registered with name '{}'".format(name))
@@ -191,3 +193,6 @@ class callback_mixins():
         pcb = self.registered_callbacks[name]['pcb']
         #progress("Disabling callback '{}' on '{}' handle={}".format(name, cb.name, handle))
         self.libpanda.panda_disable_callback_helper(handle, cb.number, pcb)
+
+        if forever:
+            del self.registered_callbacks[name]
