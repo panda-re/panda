@@ -82,7 +82,8 @@ def include_this(pdth, fn):
     global pn
     fn = os.path.join(INCLUDE_DIR_PAN, fn)
     pdth.write("\n\n// -----------------------------------\n")
-    pdth.write("// Pull number %d from %s\n" % (pn,fn))
+    shortpath= "/".join(fn.split("/")[-4:]) # Hardcoded 4, might be wrong
+    pdth.write("// Pull number %d from %s\n" % (pn,shortpath))
     for line in read_but_exclude_garbage(fn):
         pdth.write(line)
     pn += 1

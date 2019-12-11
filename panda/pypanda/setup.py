@@ -42,6 +42,16 @@ def copy_objs():
         raise RuntimeError(f"Could not find PC-bios directory at {lib_dir}")
     shutil.copytree(biosdir, lib_dir+"/pc-bios")
 
+    # Copy pypanda includes - Now just copy in place instead of moving
+
+    pypanda_inc = os.path.join(*[root_dir, "panda", "pypanda", "panda", "include"])
+    if not os.path.isdir(pypanda_inc):
+        raise RuntimeError(f"Could not find pypanda include directory at {pypanda_inc}")
+    pypanda_inc_dest = os.path.join(*["panda", "data", "pypanda", "include"])
+    if os.path.isdir(pypanda_inc_dest):
+        shutil.rmtree(pypanda_inc_dest)
+    shutil.copytree(pypanda_inc, pypanda_inc_dest)
+
     for arch in ['arm', 'i386', 'x86_64', 'ppc']:
         libname = "libpanda-"+arch+".so"
         softmmu = arch+"-softmmu"
@@ -68,6 +78,7 @@ from setuptools.command.develop import develop as develop_orig
 class custom_develop(develop_orig):
     def run(self):
         # Delete panda/data in the case of `setup.py develop`
+        # Don't copy objects, use them in the current path
         if os.path.isdir(lib_dir):
             assert('panda' in lib_dir), "Refusing to rm -rf directory without 'panda' in it"
             shutil.rmtree(lib_dir)
@@ -88,7 +99,7 @@ setup(name='panda',
       url='https://github.com/panda-re/panda/',
       packages=['panda', 'panda.taint', 'panda.autogen',
                 'panda.images', 'panda.arm', 'panda.x86'],
-      package_data = { 'panda': ['data/**/*', 'data/*/panda/plugins/*', 'data/*/panda/plugins/**/*'] },
+      package_data = { 'panda': ['data/**/*', 'data/*/panda/plugins/*', 'data/*/panda/plugins/**/*', 'data/pypanda/include/*.h'] },
       install_requires=[ 'cffi', 'colorama', 'protobuf'],
       python_requires='>=3.5',
       cmdclass={'install': custom_install, 'develop': custom_develop}

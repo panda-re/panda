@@ -392,6 +392,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             raise ValueError("Arguments to load plugin must be a list or dict of key/value pairs")
 
         # First set qemu_path so plugins can load (may be unnecessary after the first time)
+        assert(self.panda), "Unknown location of PANDA"
         panda_name_ffi = ffi.new("char[]", bytes(self.panda,"utf-8"))
         self.libpanda.panda_set_qemu_path(panda_name_ffi)
 
@@ -540,20 +541,36 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         # ffi.cdef(open("./include/panda_x86_support.h")) 
         return ffi.cast("CPUX86State*", cpustate.env_ptr)
 
+    def _get_cpu_header(self): # XXX: This only works from the repo, not with setup.py
+        base_path = dirname(self.build_dir)
+        loc1 = pjoin(*[base_path, "panda", "pypanda", "panda", "include", f"panda_{self.arch}_support.h"])
+        loc2 = pjoin(*[base_path, "data",  "pypanda", "include", f"panda_{self.arch}_support.h"])
+
+        if isfile(loc1):
+            with open(loc1) as f:
+                data = f.read()
+        elif isfile(loc2):
+            with open(loc2) as f:
+                data = f.read()
+        else:
+            raise RuntimeError(f"Couldn't find pypanda include data, searched {loc1}, {loc2}")
+
+        return data
+
     def get_cpu_x64(self,cpustate):
         # we dont do this because x86 is the assumed arch
         if not hasattr(self, "x64_support"):
-            self.x64_support = ffi.cdef(open("include/panda_x64_support.h").read())
+            self.x64_support = ffi.cdef(self._get_cpu_header())
         return ffi.cast("CPUX64State*", cpustate.env_ptr)
 
     def get_cpu_arm(self,cpustate):
         if not hasattr(self, "arm_support"):
-            self.arm_support = ffi.cdef(open("include/panda_arm_support.h").read())
+            self.arm_support = ffi.cdef(self._get_cpu_header())
         return ffi.cast("CPUARMState*", cpustate.env_ptr)
 
     def get_cpu_ppc(self,cpustate):
         if not hasattr(self, "ppc_support"):
-            self.ppc_support = ffi.cdef(open("include/panda_ppc_support.h").read())
+            self.ppc_support = ffi.cdef(self._get_cpu_header())
         return ffi.cast("CPUPPCState*", cpustate.env_ptr)
 
     def queue_async(self, f, internal=False):
