@@ -1,0 +1,2 @@
+pyelftools==0.25
+capstone==4.0.1
