@@ -160,7 +160,6 @@ extern "C" {
 
 #include "panda/rr/rr_log.h"
 #include "panda/plog.h"
-#include "panda/addr.h"
 
 #ifdef __cplusplus
 }

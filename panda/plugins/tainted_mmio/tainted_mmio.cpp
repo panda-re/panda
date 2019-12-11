@@ -16,8 +16,8 @@
 #define __STDC_FORMAT_MACROS
 
 #include "panda/plugin.h"
-#include "panda/addr.h"
 #include "taint2/taint2.h"
+#include "taint2/addr.h"
 
 extern "C" {
 #include <assert.h>
