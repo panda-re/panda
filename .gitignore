@@ -1,3 +1,4 @@
+venv
 /build
 /config-devices.*
 /config-all-devices.*
