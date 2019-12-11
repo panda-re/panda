@@ -63,6 +63,11 @@ void   panda_unload_plugin_idx(int idx);
 void   panda_unload_plugins(void);
 
 
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+
 bool panda_flush_tb(void);
 
 void panda_do_flush_tb(void);
@@ -77,6 +82,8 @@ void panda_disable_llvm_helpers(void);
 void panda_enable_tb_chaining(void);
 void panda_disable_tb_chaining(void);
 void panda_memsavep(FILE *f);
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 extern bool panda_update_pc;
 extern bool panda_use_memcb;

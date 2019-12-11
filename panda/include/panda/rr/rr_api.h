@@ -29,10 +29,17 @@
 #pragma once
 #include "panda/rr/rr_types.h"
 
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+
 int panda_record_begin(const char *name, const char *snapshot);
 int panda_record_end(void);
 int panda_replay_begin(const char *name);
 int panda_replay_end(void);
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 static inline bool rr_in_replay(void) { return rr_control.mode == RR_REPLAY; }
 static inline bool rr_in_record(void) { return rr_control.mode == RR_RECORD; }

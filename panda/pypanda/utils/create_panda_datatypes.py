@@ -35,14 +35,23 @@ pypanda_end_pattern = "// END_PYPANDA_NEEDS_THIS -- do not delete this comment!\
 pypanda_headers = []
 
 
-def create_pypanda_header(filename):
-    contents = open(filename).read()
+def trim_pypanda(contents):
+    '''
+    Trim data between pypanda_start_pattern/pypanda_end_pattern
+    return None if patterns aren't found
+    '''
     a = contents.find(pypanda_start_pattern)
     if a == -1: return None
     a += len(pypanda_start_pattern)
     b = contents.find(pypanda_end_pattern)
     if b == -1: return None
-    subcontents = contents[a:b]
+    return contents[a:b]
+
+
+def create_pypanda_header(filename):
+    contents = open(filename).read()
+    subcontents = trim_pypanda(contents)
+    if not subcontents: return
     # look for local includes
     rest = []
     (plugin_dir,fn) = os.path.split(filename)
@@ -84,6 +93,7 @@ def include_this(pdth, fn):
     pdth.write("\n\n// -----------------------------------\n")
     shortpath= "/".join(fn.split("/")[-4:]) # Hardcoded 4, might be wrong
     pdth.write("// Pull number %d from %s\n" % (pn,shortpath))
+
     for line in read_but_exclude_garbage(fn):
         pdth.write(line)
     pn += 1
@@ -104,6 +114,10 @@ def main():
                 print("Examining [%s] for pypanda-awareness" % plugin_file)
                 create_pypanda_header("%s/%s" % (plugin_dir, plugin_file))
 
+    # Also pull in rr api
+    create_pypanda_header("%s/%s" % (INCLUDE_DIR_PAN, "rr/rr_api.h"))
+    # and plugin.h
+    create_pypanda_header("%s/%s" % (INCLUDE_DIR_PAN, "plugin.h"))
     # First, create panda_datatypes.py from INCLUDE_DIR/panda_callback_list.h
     #
 

@@ -9,6 +9,23 @@
 
 // NOTE: Pls read README before editing!
 
+/*
+bool panda_flush_tb(void);
+void panda_do_flush_tb(void);
+void panda_enable_precise_pc(void);
+void panda_disable_precise_pc(void);
+void panda_enable_memcb(void);
+void panda_disable_memcb(void);
+void panda_enable_tb_chaining(void);
+void panda_disable_tb_chaining(void);
+void panda_enable_llvm(void);
+void panda_disable_llvm(void);
+void panda_enable_llvm_helpers(void);
+void panda_disable_llvm_helpers(void);
+void panda_memsavep(FILE *f);
+//int panda_begin_replay(char *replay_name);
+*/
+
 // from panda_api.c
 int panda_init(int argc, char **argv, char **envp);
 int panda_run(void);
@@ -19,7 +36,6 @@ void panda_start_pandalog(const char *name);
 int panda_revert(char *snapshot_name);
 void panda_reset(void);
 int panda_snap(char *snapshot_name);
-int panda_replay(char *replay_name);
 int panda_finish(void);
 bool panda_was_aborted(void);
 target_ulong panda_virt_to_phys_external(CPUState *cpu, target_ulong virt_addr);

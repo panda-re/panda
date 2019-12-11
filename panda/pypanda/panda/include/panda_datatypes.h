@@ -924,11 +924,7 @@ extern int panda_argc;
 
 // NOTE: Pls read README before editing!
 
-extern bool panda_update_pc;
-extern bool panda_use_memcb;
-extern bool panda_tb_chaining;
-
-// from common.c I think?
+/*
 bool panda_flush_tb(void);
 void panda_do_flush_tb(void);
 void panda_enable_precise_pc(void);
@@ -942,6 +938,8 @@ void panda_disable_llvm(void);
 void panda_enable_llvm_helpers(void);
 void panda_disable_llvm_helpers(void);
 void panda_memsavep(FILE *f);
+//int panda_begin_replay(char *replay_name);
+*/
 
 // from panda_api.c
 int panda_init(int argc, char **argv, char **envp);
@@ -953,7 +951,6 @@ void panda_start_pandalog(const char *name);
 int panda_revert(char *snapshot_name);
 void panda_reset(void);
 int panda_snap(char *snapshot_name);
-int panda_replay(char *replay_name);
 int panda_finish(void);
 bool panda_was_aborted(void);
 target_ulong panda_virt_to_phys_external(CPUState *cpu, target_ulong virt_addr);
