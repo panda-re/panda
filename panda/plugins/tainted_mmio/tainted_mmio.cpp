@@ -165,7 +165,7 @@ hwaddr unassigned_read_addr;
 target_ulong suior_pc;
 
 void saw_unassigned_io_read(CPUState *env, target_ulong pc, hwaddr addr, 
-                            uint32_t size, uint64_t *val) {
+                            size_t size, uint8_t *val) {
     cerr << "tainted_mmio: pc=" << hex << panda_current_pc(first_cpu) 
          << ": Saw unassigned io read virt_addr=" 
          << virt_addr << " addr=" << addr << dec << "\n";

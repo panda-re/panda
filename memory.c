@@ -1090,12 +1090,12 @@ static void memory_region_initfn(Object *obj)
 }
 
 static uint64_t unassigned_mem_read(void *opaque, hwaddr addr,
-                                    unsigned size)
+                                    size_t size)
 {
 #ifdef DEBUG_UNASSIGNED
     printf("Unassigned mem read " TARGET_FMT_plx "\n", addr);
 #endif
-    uint64_t val = 0;
+    uint8_t val = 0;
     if (current_cpu != NULL) {
         cpu_unassigned_access(current_cpu, addr, false, false, 0, size);
     }
@@ -1104,10 +1104,10 @@ static uint64_t unassigned_mem_read(void *opaque, hwaddr addr,
 }
 
 static void unassigned_mem_write(void *opaque, hwaddr addr,
-                                 uint64_t val, unsigned size)
+                                 uint8_t val, size_t size)
 {
 #ifdef DEBUG_UNASSIGNED
-    printf("Unassigned mem write " TARGET_FMT_plx " = 0x%"PRIx64"\n", addr, val);
+    printf("Unassigned mem write to " TARGET_FMT_plx "\n", addr);
 #endif
     if (current_cpu != NULL) {
         cpu_unassigned_access(current_cpu, addr, true, false, 0, size);

@@ -92,6 +92,13 @@ bool panda_callbacks_before_block_exec_invalidate_opt(CPUState *env, Translation
 
 /* invoked from cpus.c */
 void panda_callbacks_top_loop(CPUState *env);
+void panda_callbacks_during_machine_init(MachineState *machine);
+void panda_callbacks_main_loop_wait(void);
+void panda_callbacks_pre_shutdown(void);
+void panda_callbacks_unassigned_io_read(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint8_t *val);
+void panda_callbacks_unassigned_io_write(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint8_t *val);
+void panda_callbacks_unassigned_io(CPUState *env, hwaddr addr, size_t size, uint8_t *val, bool is_write);
+int32_t panda_callbacks_before_handle_exception(CPUState *cpu, int32_t exception_index);
 void panda_callbacks_cbaddr(void);
 
 /* invoked from cputlb.c */
@@ -110,9 +117,6 @@ void panda_callbacks_replay_serial_read(CPUState *env, target_ptr_t fifo_addr, u
 void panda_callbacks_replay_serial_send(CPUState *env, target_ptr_t fifo_addr, uint8_t value);
 void panda_callbacks_replay_serial_write(CPUState *env, target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
 
-void panda_callbacks_main_loop_wait(void);
-void panda_callbacks_pre_shutdown(void);
-int32_t panda_callbacks_before_handle_exception(CPUState *cpu, int32_t exception_index);
 /* invoked from panda/target/ARCH/translate.c */
 bool panda_callbacks_insn_translate(CPUState *env, target_ptr_t pc);
 bool panda_callbacks_after_insn_translate(CPUState *env, target_ptr_t pc);
@@ -126,9 +130,3 @@ bool panda_callbacks_guest_hypercall(CPUState *env);
 /* invoked from translate-all.c */
 void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 
-
-/* XXX */
-void panda_callbacks_during_machine_init(MachineState *machine);
-
-/* invoked from memory.c  */
-void panda_callbacks_unassigned_io(CPUState *env, hwaddr addr, uint32_t size, uint64_t *val, bool is_write);

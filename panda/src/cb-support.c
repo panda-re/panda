@@ -304,8 +304,8 @@ void PCB(during_machine_init)(MachineState *machine) {
      }
 }
 
-void PCB(unassigned_io)(CPUState *env, hwaddr addr, uint32_t size,
-        uint64_t *val, bool is_write) {
+void PCB(unassigned_io)(CPUState *env, hwaddr addr, size_t size,
+       uint8_t *val, bool is_write) {
     if (is_write) {
         panda_cb_list *plist;
         for(plist = panda_cbs[PANDA_CB_UNASSIGNED_IO_WRITE]; plist != NULL;

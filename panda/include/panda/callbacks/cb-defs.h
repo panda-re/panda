@@ -861,13 +861,38 @@ typedef union panda_cb {
      */
     void (*pre_shutdown)(void);
 
-    /* TODO: Document */
-    void (*unassigned_io_read)(CPUState *env, target_ulong pc, hwaddr addr, uint32_t size, uint64_t *val);
+    /* Callback ID:     PANDA_CB_UNASSIGNED_IO_WRITE
 
-    /* TODO: Document */
-    void (*unassigned_io_write)(CPUState *env, target_ulong pc, hwaddr addr, uint32_t size, uint64_t *val);
+      unassigned_io_read: Called when the guest attempts to read from an unmapped peripheral via MMIO
 
+       Arguments:
+         pc: Guest program counter at time of write
+         addr: Physical address written to
+         size: Size of write
+         val: Pointer to a buffer that will be passed to the guest as the result of the read
 
+       Return value:
+         None
+     */
+    void (*unassigned_io_read)(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint8_t *val);
+
+    /* Callback ID:     PANDA_CB_UNASSIGNED_IO_WRITE
+
+      unassigned_io_write: Called when the guest attempts to write to an unmapped peripheral via MMIO
+
+       Arguments:
+         pc: Guest program counter at time of write
+         addr: Physical address written to
+         size: Size of write
+         val: Pointer to buffer containing data being written
+
+       Return value:
+         None
+     */
+    void (*unassigned_io_write)(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint8_t *val);
+
+    /* Internal callback, used by unassigned_io_read and unassigned_io_write */
+    void (*unassigned_io)(CPUState *env, hwaddr addr, size_t size, uint8_t *val, bool is_write);
 
     /* Callback ID:     PANDA_CB_BEFORE_HANDLE_EXCEPTION
 
