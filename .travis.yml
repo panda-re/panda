@@ -111,8 +111,8 @@ before_install:
 sudo: required
 dist: xenial
 before_install:
-  #- sudo pip install pycparser
-      #- git submodule update --init dtc
+    #- sudo pip install pycparser
+    #- git submodule update --init dtc
     - cd $(pyenv root) && git checkout master && git pull; cd -
 env:
     global:
@@ -124,13 +124,15 @@ script:
     - pyenv shell 2.7.9 3.6.6 || travis_terminate 1; # Create a shell with both python2 and python3
     - sudo panda/scripts/install_ubuntu.sh || travis_terminate 1; # Build panda
     - python3 panda/pypanda/utils/create_panda_datatypes.py || travis_terminate 1;
-    - cd panda/pypanda && python3 setup.py install || travis_terminate 1; cd ../..;
-    - make -C panda/pypanda/tests || travis_terminate 1;
-    - pip3 install capstone cffi colorama protobuf # Dependencies for pypanda tests
-    - pip3 install -r panda/pypanda/tests/requirements.txt # Better approach to installing dependencies
-    - cd panda/pypanda/tests; python3 multi_proc_cbs.py; cd ../../..; # XXX: can we just CD once? Need to be in the dir for
-    - cd panda/pypanda/tests; python3 taint_regs.py; cd ../../..;     #      the relative path to toy to resolve
-    - cd panda/pypanda/tests; python3 taint_ram.py; cd ../../..;
+    - cd panda/pypanda
+     - python3 setup.py install || travis_terminate 1
+    - make -C tests || travis_terminate 1
+    - pip3 install cffi colorama protobuf # PYPANDA dependencies - not auto installed by setup because we don't use pip to install pypanda
+    - pip3 install -r tests/requirements.txt # Install test python dependencies (capstone, pyelftools)
+    - cd panda/tests
+    - python3 multi_proc_cbs.py
+    - python3 taint_regs.py
+    - python3 taint_ram.py
 #before_script:
 #  - ./configure ${CONFIG}
 #script:
