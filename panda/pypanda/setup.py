@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Install with python setup.py (develop|install)
+# XXX: can't be installed with `pip install .` due to some relative path to plugins?
 
 from setuptools import setup
 from setuptools.command.install import install as install_orig
@@ -18,8 +20,8 @@ create_datatypes()
 
 ################################################
 # 2) Copy panda object files: libpanda-XYZ.so, #
-#    pc-bios/*, and all .so files for plugins  #
-#    TODO: also copy includes directories      #
+#    pc-bios/*, all .so files for plugins,     #
+#    pypanda's include directory, llvm-helpers #
 ################################################
 
 root_dir = os.path.join(*[os.path.dirname(__file__), "..", ".."])
