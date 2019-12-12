@@ -76,6 +76,7 @@ addons:
       - python3
       - python3-pip
       - python3-setuptools
+      - genisoimage # To make isos for run_guest
       # To build 32-bit targets for testing
       - libc6-dev-i386
       - gcc-multilib
@@ -126,7 +127,7 @@ script:
     - cd panda/pypanda && python3 setup.py install || travis_terminate 1; cd ../..;
     - make -C panda/pypanda/tests || travis_terminate 1;
     - pip3 install capstone cffi colorama protobuf # Dependencies for pypanda tests
-    - pip3 -r panda/pypanda/tests/requirements.txt # Better approach to installing dependencies
+    - pip3 install -r panda/pypanda/tests/requirements.txt # Better approach to installing dependencies
     - python3 panda/pypanda/tests/multi_proc_cbs.py
     - python3 panda/pypanda/tests/taint_ram.py
     - python3 panda/pypanda/tests/test_ram.py
