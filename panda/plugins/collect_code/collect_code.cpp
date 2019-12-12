@@ -82,8 +82,8 @@ struct Bblock {
 
 
 
-
-map<target_ulong, set<Bblock>> pc2bb;
+// asid * pc * bblock_set
+map<target_ulong, map<target_ulong, set<Bblock>>> pc2bb;
 
 uint64_t num_unique_bb = 0;
 
@@ -91,13 +91,15 @@ Panda__BasicBlock pbb;
 
 int after_bb_translate(CPUState *env, TranslationBlock *tb) {
 	Bblock bb;
-	target_ulong pc = tb->pc;
+	target_ulong pc = tb->pc;    
+
 	bb.asid = panda_current_asid(env);
 	bb.pc = pc;
 	bb.size = tb->size;
 	bb.code = (uint8_t *) malloc(bb.size);
 	panda_virtual_memory_read(env, pc, bb.code, bb.size);
-	pc2bb[pc].insert(bb);
+
+	pc2bb[bb.asid][pc].insert(bb);
 
 	// create and write plog entry
 	pbb = PANDA__BASIC_BLOCK__INIT;
@@ -110,29 +112,23 @@ int after_bb_translate(CPUState *env, TranslationBlock *tb) {
 	ple.basic_block = &pbb;
 	pandalog_write_entry(&ple);
 
-	free(bb.code);
-
-	if (pc2bb[pc].size() > 1) {
-		cout << "Hmm for pc=" << hex << pc << dec << " -> " << (pc2bb[pc].size()) << " bb found\n"; 
-        cout << "new: " << bb.str() << "\n";
-        for (auto bb : pc2bb[pc]) {
-            cout << bb.str() << "\n";
+    // NB: code to see if we have more than one bb for asid/pc
+    // This seems to happen often but always corresponds to 
+    // getting ejected from middle of a basic block in the middle
+    // and thus ending up with 1/2 a block
+/*
+	if (pc2bb[bb.asid][pc].size() > 1) {
+		cout << "Hmm for asid=" << hex << bb.asid << " pc=" << pc << dec << " -> " << (pc2bb[bb.asid][pc].size()) << " bb found\n"; 
+        for (auto bb2 : pc2bb[bb.asid][pc]) {
+            cout << bb2.str() << "\n";
         }
 	}
+*/
+
 	num_unique_bb += 1;
 	if ((num_unique_bb % 1000) == 0) 
 		cout << "num_unique_bb " << num_unique_bb << "\n";
-	return 0;
-}
 
-
-int before_bbe (CPUState *env, TranslationBlock *tb) {
-	// create and write plog entry
-	pbb = PANDA__BASIC_BLOCK__INIT;
-	pbb.has_asid = pbb.has_size = pbb.has_code = 1;
-	Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-	ple.basic_block = &pbb;
-	pandalog_write_entry(&ple);
 	return 0;
 }
 
@@ -146,8 +142,6 @@ bool init_plugin(void *self) {
 	panda_cb pcb;
 	pcb.after_block_translate = after_bb_translate;
 	panda_register_callback(self, PANDA_CB_AFTER_BLOCK_TRANSLATE, pcb);
-	pcb.before_block_exec = before_bbe;
-	panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 
 	// gives us instr count
 	panda_enable_precise_pc();
@@ -162,6 +156,9 @@ bool init_plugin(void *self) {
 
 void uninit_plugin(void *self) {
 	
-	
+    for (auto kvp : pc2bb) {
+        auto asid = kvp.first;
+        cout << "collect_code: asid=" << hex << asid << " num pc (bbs): " << dec << (kvp.second.size()) << " \n";
+    }
 	
 }
