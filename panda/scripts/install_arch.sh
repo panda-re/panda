@@ -55,6 +55,7 @@ if check_libcxx; then
 else
     progress "Installing PANDA dependencies...libc++"
     gpg --receive-keys A2C794A986419D8A #
+    gpg --receive-keys 0FC3042e345ad05d 
     aur_install_pkg "libc++"
 fi
 
@@ -63,6 +64,7 @@ if check_llvm; then
     echo "LLVM33 is already installed"
 else
     progress "Installing PANDA dependencies...llvm33"
+    gpg --receive-keys B4468df4e95c63dc 
     aur_install_pkg "llvm33"
 fi
 
