@@ -128,9 +128,9 @@ script:
     - make -C panda/pypanda/tests || travis_terminate 1;
     - pip3 install capstone cffi colorama protobuf # Dependencies for pypanda tests
     - pip3 install -r panda/pypanda/tests/requirements.txt # Better approach to installing dependencies
-    - python3 panda/pypanda/tests/multi_proc_cbs.py
-    - python3 panda/pypanda/tests/taint_ram.py
-    - python3 panda/pypanda/tests/test_ram.py
+    - cd panda/pypanda/tests; python3 multi_proc_cbs.py; cd ../../..; # XXX: can we just CD once? Need to be in the dir for
+    - cd panda/pypanda/tests; python3 taint_regs.py; cd ../../..;     #      the relative path to toy to resolve
+    - cd panda/pypanda/tests; python3 taint_ram.py; cd ../../..;
 #before_script:
 #  - ./configure ${CONFIG}
 #script:
