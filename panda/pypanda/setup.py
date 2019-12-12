@@ -42,8 +42,7 @@ def copy_objs():
         raise RuntimeError(f"Could not find PC-bios directory at {lib_dir}")
     shutil.copytree(biosdir, lib_dir+"/pc-bios")
 
-    # Copy pypanda includes - Now just copy in place instead of moving
-
+    # Copy pypanda's include directory (different than core panda's)
     pypanda_inc = os.path.join(*[root_dir, "panda", "pypanda", "panda", "include"])
     if not os.path.isdir(pypanda_inc):
         raise RuntimeError(f"Could not find pypanda include directory at {pypanda_inc}")
@@ -52,12 +51,16 @@ def copy_objs():
         shutil.rmtree(pypanda_inc_dest)
     shutil.copytree(pypanda_inc, pypanda_inc_dest)
 
+
+    # For each arch, copy library, plugins, plog_pb2.py and llvm-helpers
     for arch in ['arm', 'i386', 'x86_64', 'ppc']:
         libname = "libpanda-"+arch+".so"
         softmmu = arch+"-softmmu"
         path      = os.path.join(*[build_root, softmmu, libname])
         plugindir = os.path.join(*[build_root, softmmu, "panda", "plugins"])
         plog      = os.path.join(*[build_root, softmmu, "plog_pb2.py"])
+        llvm1      = os.path.join(*[build_root, softmmu, "llvm-helpers.bc1"])
+        llvm2      = os.path.join(*[build_root, softmmu, f"llvm-helpers-{arch}.bc"])
         os.mkdir(os.path.join(lib_dir, softmmu))
 
         new_plugindir = os.path.join(lib_dir, softmmu, "panda/plugins")
@@ -66,6 +69,8 @@ def copy_objs():
         assert (os.path.isfile(path)), "Missing file {} - did you run build.sh from panda/build directory?".format(path)
         shutil.copy(    plog,       os.path.join(lib_dir, softmmu, "plog_pb2.py"))
         shutil.copy(    path,       os.path.join(lib_dir, softmmu))
+        shutil.copy(    llvm1,      os.path.join(lib_dir, softmmu))
+        shutil.copy(    llvm2,      os.path.join(lib_dir, softmmu))
 
         shutil.copytree(plugindir,  new_plugindir)
 
@@ -99,7 +104,13 @@ setup(name='panda',
       url='https://github.com/panda-re/panda/',
       packages=['panda', 'panda.taint', 'panda.autogen',
                 'panda.images', 'panda.arm', 'panda.x86'],
-      package_data = { 'panda': ['data/**/*', 'data/*/panda/plugins/*', 'data/*/panda/plugins/**/*', 'data/pypanda/include/*.h'] },
+      package_data = { 'panda': ['data/**/*', # Copy everything (fails?)
+          'data/*/panda/plugins/*',    # Copy all plugins
+          'data/*/panda/plugins/**/*', # Copy all plugin files
+          'data/pypanda/include/*.h',  # Copy includes files
+          'data/pypanda/include/*.h',  # Copy includes files
+          'data/*/llvm-helpers*.bc',   # Copy llvm-helpers
+          ]},
       install_requires=[ 'cffi', 'colorama', 'protobuf'],
       python_requires='>=3.5',
       cmdclass={'install': custom_install, 'develop': custom_develop}
