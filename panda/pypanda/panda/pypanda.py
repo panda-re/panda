@@ -80,8 +80,9 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
         self.build_dir  = self._find_build_dir()
         environ["PANDA_DIR"] = self.build_dir
-        self.panda = pjoin(self.build_dir, "{0}-softmmu/panda-system-{0}".format(self.arch))
         self.libpanda_path = pjoin(self.build_dir, "{0}-softmmu/libpanda-{0}.so".format(self.arch))
+        self.panda = self.libpanda_path # Necessary for realpath to work inside core-panda, may cause issues?
+        #self.panda = pjoin(self.build_dir, "{0}-softmmu/panda-system-{0}".format(self.arch)) # Path to binary
         self.libpanda = ffi.dlopen(self.libpanda_path)
 
         self.bits, self.endianness, self.register_size = self._determine_bits()
@@ -114,7 +115,6 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.monitor_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.monitor_console = Expect(expectation="(qemu)", quiet=True, consume_first=True)
         self.panda_args.extend(['-monitor', 'unix:{},server,nowait'.format(self.monitor_file)])
-        print(self.panda_args)
 
         self.running = threading.Event()
         self.started = threading.Event()
@@ -358,7 +358,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             progress ("Replaying %s" % replaypfx)
 
         charptr = ffi.new("char[]",bytes(replaypfx,"utf-8"))
-        self.libpanda.panda_replay(charptr)
+        self.libpanda.panda_replay_begin(charptr)
         self.run()
 
     def require(self, name):
