@@ -398,8 +398,13 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         panda_name_ffi = ffi.new("char[]", bytes(self.panda,"utf-8"))
         self.libpanda.panda_set_qemu_path(panda_name_ffi)
 
+        if len(argstrs_ffi):
+            plugin_args = argstrs_ffi
+        else:
+            plugin_args = ffi.NULL
+
         charptr = ffi.new("char[]", bytes(name,"utf-8"))
-        self.libpanda.panda_require_from_library(charptr, argstrs_ffi, len(argstrs_ffi))
+        self.libpanda.panda_require_from_library(charptr, plugin_args, len(argstrs_ffi))
         self.load_plugin_library(name)
 
     def procname_changed(self, name):
