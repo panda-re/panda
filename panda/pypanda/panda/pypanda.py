@@ -181,17 +181,19 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         endianness = None # String 'little' or 'big'
         if self.arch == "i386":
             bits = 32
-            endianness = 'little'
+            endianness = "little"
         elif self.arch == "x86_64":
             bits = 64
-            endianness = 'little'
+            endianness = "little"
         elif self.arch == "arm":
-            endianness = 'little' # XXX add support for arm BE
+            endianness = "little" # XXX add support for arm BE?
             bits = 32
         elif self.arch == "aarch64":
             bit = 64
+            endianness = "little" # XXX add support for arm BE?
         elif self.arch == "ppc":
             bits = 32
+            endianness = "big"
 
         assert (bits is not None), "For arch %s: I need logic to figure out num bits" % self.arch
         assert (endianness is not None), "For arch %s: I need logic to figure out endianness" % self.arch
