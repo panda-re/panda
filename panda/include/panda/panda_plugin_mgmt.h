@@ -35,7 +35,7 @@ bool panda_load_plugin(const char *filename, const char *plugin_name);
 bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode);
 char *panda_plugin_path(const char *name);
 void panda_require(const char *plugin_name);
-void panda_require_from_library(const char *plugin_name);
+void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args);
 void panda_do_unload_plugin(int index);
 void panda_unload_plugin(void* plugin);
 void panda_unload_plugin_idx(int idx);

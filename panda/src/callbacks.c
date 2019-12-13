@@ -279,9 +279,12 @@ char *panda_plugin_path(const char *plugin_name) {
     return NULL;
 }
 
-void panda_require_from_library(const char *plugin_name) {
+void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args) {
     // If we're printing help, panda_require will be a no-op.
     if (panda_help_wanted) return;
+
+    for (uint32_t i=0; i<num_args; i++)
+        panda_add_arg(plugin_name, plugin_args[i]);
 
     fprintf(stderr, PANDA_MSG_FMT "loading required plugin %s\n", PANDA_CORE_NAME, plugin_name);
 
@@ -295,8 +298,6 @@ void panda_require_from_library(const char *plugin_name) {
     }
     g_free(plugin_path);
 }
-
-
 
 void panda_require(const char *plugin_name) {
     // If we're printing help, panda_require will be a no-op.
