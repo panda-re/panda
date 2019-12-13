@@ -37,11 +37,11 @@ def get_qcow_info(name=None):
         name = "i386"
 
     if os.path.isfile(name):
-        raise RuntimeError("TODO: can't automatically determine system info from custom qcows. Use one of: {}".format(", ".join(SUPPORTED_ARCHES.keys())))
+        raise RuntimeError("TODO: can't automatically determine system info from custom qcows. Use one of: {}".format(", ".os.path.join(SUPPORTED_ARCHES.keys())))
 
     name = name.lower() # Case insensitive. Assumes supported_arches keys are lowercase
     if name not in SUPPORTED_ARCHES.keys():
-        raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".join(SUPPORTED_ARCHES.keys())))
+        raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".os.path.join(SUPPORTED_ARCHES.keys())))
 
     r = SUPPORTED_ARCHES[name]
     return r
@@ -58,7 +58,7 @@ def get_qcow(name=None):
 
     name = name.lower() # Case insensitive. Assumes supported_arches keys are lowercase
     if name not in SUPPORTED_ARCHES.keys():
-        raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".join(SUPPORTED_ARCHES.keys())))
+        raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".os.path.join(SUPPORTED_ARCHES.keys())))
 
     arch_data = SUPPORTED_ARCHES[name]
     qcow_path = os.path.join(VM_DIR,arch_data.qcow)
