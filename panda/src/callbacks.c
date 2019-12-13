@@ -883,11 +883,17 @@ help:
 }
 
 bool panda_parse_bool_req(panda_arg_list *args, const char *argname, const char *help) {
-    return panda_parse_bool_internal(args, argname, help, true);
+    bool ret= panda_parse_bool_internal(args, argname, help, true);
+    if(panda_plugin_load_failed) abort(); // If we failed to parse the required argument
+    return ret;
 }
 
 bool panda_parse_bool_opt(panda_arg_list *args, const char *argname, const char *help) {
-    return panda_parse_bool_internal(args, argname, help, false);
+    bool ret= panda_parse_bool_internal(args, argname, help, false);
+    // If parsing the optional argument failed, we allow it (returning default value)
+    // but we can't leave this set to true becasue then subsequent plugin loads will fail
+    panda_plugin_load_failed = false;
+    return ret;
 }
 
 bool panda_parse_bool(panda_arg_list *args, const char *argname) {
