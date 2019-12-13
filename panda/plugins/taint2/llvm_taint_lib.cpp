@@ -1333,7 +1333,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         } else if (ldFuncs.count(calledName) > 0) {
             Value *ptr = I.getArgOperand(1);
             insertAfterTaintLd(I, &I, ptr, getValueSize(&I));
-            if (!isa<Constant>(ptr)) {
+            if (tainted_pointer && !isa<Constant>(ptr)) {
                 insertTaintPointer(I, ptr, &I, false);
             } else {
                 insertTaintCopy(I, llvConst, &I, memConst, NULL, getValueSize(&I));
