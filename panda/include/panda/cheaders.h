@@ -25,6 +25,7 @@ extern "C" {
 // Temporarily turn off narrowing warnings for C++.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnarrowing"
+#include "cpu.h"
 #pragma GCC diagnostic pop
 #else
 #include "cpu.h"
