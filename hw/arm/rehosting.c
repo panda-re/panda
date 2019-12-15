@@ -298,6 +298,11 @@ void create_internal_gic(RehostingBoardInfo *vbi, machine_irqs *irqs, int gic_ve
     sysbus_mmio_map(busdev, 0, vbi->dev_mem_map[MPCORE_PERIPHBASE].base);
     debug_print_sysbus_dev_ranges(busdev);
 
+    if (smp_cpus > REHOSTING_MAX_CPUS) {
+      printf("Requested cpus %d is more than max %d\n", smp_cpus, REHOSTING_MAX_CPUS);
+      abort();
+    }
+
     for (i = 0; i < smp_cpus; i++) {
 
         DeviceState *cpudev = DEVICE(qemu_get_cpu(i));
@@ -316,7 +321,7 @@ void create_internal_gic(RehostingBoardInfo *vbi, machine_irqs *irqs, int gic_ve
         // PPIs: 16-31
         for (irq = GIC_NR_SGIS; irq < GIC_INTERNAL; irq++) {
             //irqs->ppi[i][irq] = qdev_get_gpio_in(dev, ppibase + irq);
-            irqs->ppi[i][irq] = qdev_get_gpio_in(dev, irq);
+            irqs->ppi[i][irq - GIC_NR_SGIS] = qdev_get_gpio_in(dev, irq);
         }
 
         // Wire GIC IRQ/FIQ to CPU inputs
