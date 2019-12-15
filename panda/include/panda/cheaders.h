@@ -16,6 +16,7 @@
 
 extern "C" {
 #endif
+
 #include "config-host.h"
 #include "config-target.h"
 #include "qemu/osdep.h"
