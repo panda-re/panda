@@ -11,6 +11,7 @@
 #include "panda/plugin.h"
 #include "panda/rr/rr_log.h"
 #include "panda/rr/rr_api.h"
+#include "panda/panda_common.h"
 
 #include "migration/migration.h"
 #include "include/exec/address-spaces.h"

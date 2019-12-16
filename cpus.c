@@ -1276,6 +1276,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
     cpu->exit_request = 1;
 
     while (1) {
+
         if (!rr_replay_complete) {
             panda_callbacks_top_loop(cpu);
         }
@@ -1288,6 +1289,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
         }
 
         while (cpu && !cpu->queued_work_first && !cpu->exit_request) {
+
             atomic_mb_set(&tcg_current_rr_cpu, cpu);
 
             qemu_clock_enable(QEMU_CLOCK_VIRTUAL,
@@ -1314,7 +1316,6 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
                 break;
             }
 
-
         } /* while (cpu && !cpu->exit_request).. */
 
         /* Does not need atomic_mb_set because a spurious wakeup is okay.  */
@@ -1328,6 +1329,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
 
         qemu_tcg_wait_io_event(QTAILQ_FIRST(&cpus));
         deal_with_unplugged_cpus();
+
     }
 
     return NULL;
@@ -1467,7 +1469,6 @@ void qemu_mutex_unlock_iothread(void)
     iothread_locked = false;
     qemu_mutex_unlock(&qemu_global_mutex);
 }
-
 
 static bool all_vcpus_paused(void)
 {
