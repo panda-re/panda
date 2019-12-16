@@ -36,8 +36,8 @@ PANDAENDCOMMENT */
 #if defined(TARGET_I386)
 #define LIBRARY_DIR "/i386-softmmu/libpanda-i386.so"
 #define PLUGIN_DIR "/i386-softmmu/panda/plugins/"
-#elif defined(TARGET_x86_64)
-#define LIBRARY_DIR "/x86_64-softmmu-softmmu/libpanda-x86_64.so"
+#elif defined(TARGET_X86_64)
+#define LIBRARY_DIR "/x86_64-softmmu/libpanda-x86_64.so"
 #define PLUGIN_DIR "/x86_64-softmmu/panda/plugins/"
 #elif defined(TARGET_ARM)
 #define LIBRARY_DIR "/arm-softmmu/libpanda-arm.so"
