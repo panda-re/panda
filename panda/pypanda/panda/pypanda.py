@@ -245,7 +245,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.main_loop_wait_fnargs.append((fn, args))
 
     def exit_cpu_loop(self):
-        self.libpanda.panda_break_cpu_loop_req = True
+        self.libpanda.panda_exit_loop = True
 
     def revert(self, snapshot_name): # In the next main loop, revert
         if debug:

@@ -419,9 +419,8 @@ void PCB(main_loop_wait)(void) {
         if (plist->enabled) plist->entry.main_loop_wait();
     }
 
-    if (panda_break_cpu_loop_req) {
-        //       printf ("Clearing panda_break_cpu_loop_req\n");
-        panda_break_cpu_loop_req = false;
+    if (panda_exit_loop) {
+        panda_exit_loop = false;
     }
 }
 

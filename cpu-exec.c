@@ -48,8 +48,6 @@ int generate_llvm = 0;
 int execute_llvm = 0;
 extern bool panda_tb_chaining;
 
-bool panda_stopped;
-
 /* -icount align implementation. */
 
 typedef struct SyncClocks {
@@ -191,7 +189,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     // If there has been a request to break the CPU
     // loop, return now. Before we execute the block
-    if (panda_break_cpu_loop_req) {
+    if (panda_exit_loop) {
         cpu->can_do_io = 1;
         // tcg_exit_req is likely already 0, but make sure it's
         // cleared now before we resume execution later
@@ -798,7 +796,7 @@ int cpu_exec(CPUState *cpu)
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
 
-        if (panda_break_cpu_loop_req) {
+        if (panda_exit_loop) {
             printf ("Exiting cpu_handle_execption loop\n");
             break;
         }
@@ -807,8 +805,8 @@ int cpu_exec(CPUState *cpu)
         int tb_exit = 0;
 
         /* Note: We usually break out of the loop manually and
-         * not because panda_break_cpu_loop_req is true. */
-        while (likely(!panda_break_cpu_loop_req)) {
+         * not because panda_exit_loop is true. */
+        while (likely(!panda_exit_loop)) {
             bool panda_invalidate_tb = false;
             debug_checkpoint(cpu);
             detect_infinite_loops();
@@ -853,18 +851,17 @@ int cpu_exec(CPUState *cpu)
             if (rr_in_replay() && rr_replay_finished()) {
                 rr_do_end_replay(0);
                 qemu_cpu_kick(cpu);
-                panda_break_cpu_loop_req = true;
+                panda_exit_loop = true;
                 break;
             }
 
-            if ((!rr_in_replay() || until_interrupt > 0)
-                 && !panda_stopped) {
+            if (!rr_in_replay() || until_interrupt > 0) { // XXX: may need panda_exit_loop check?
                 cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
                 /* Try to align the host and virtual clocks
                    if the guest is in advance */
                 align_clocks(&sc, cpu);
             }
-            if (panda_break_cpu_loop_req) {
+            if (panda_exit_loop) {
                 break;
             }
         }

@@ -343,11 +343,11 @@ void check_end_snip(CPUState *env) {
 void before_block_exec(CPUState *env, TranslationBlock *tb) {
     uint64_t count = rr_get_guest_instr_count();
     if (!snipping && count+tb->icount > start_count) {
-        panda_break_cpu_loop_req = true;
+        panda_exit_loop = true;
         request_start_snip = true;
     }
     if (snipping && !done && count > end_count) {
-        panda_break_cpu_loop_req = true;
+        panda_exit_loop = true;
         request_end_snip = true;
         panda_replay_end();
     }

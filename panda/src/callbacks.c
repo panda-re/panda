@@ -82,6 +82,7 @@ bool panda_help_wanted = false;
 bool panda_plugin_load_failed = false;
 bool panda_abort_requested = false;
 
+bool panda_exit_loop = false;
 extern bool panda_library_mode;
 
 bool panda_add_arg(const char *plugin_name, const char *plugin_arg) {

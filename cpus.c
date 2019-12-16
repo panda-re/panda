@@ -84,7 +84,7 @@ static unsigned int throttle_percentage;
 #define CPU_THROTTLE_TIMESLICE_NS 10000000
 
 extern bool rr_replay_complete;
-bool panda_break_cpu_loop_req = false;
+extern bool panda_exit_loop;
 
 bool cpu_is_stopped(CPUState *cpu)
 {
@@ -1309,8 +1309,8 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
 
             cpu = CPU_NEXT(cpu);
 
-            if (panda_break_cpu_loop_req) {
-                panda_break_cpu_loop_req = false;
+            if (panda_exit_loop) {
+                panda_exit_loop = false;
                 break;
             }
 
