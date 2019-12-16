@@ -189,8 +189,13 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     if (cpu->tcg_exit_req == 0)
         panda_callbacks_before_block_exec(cpu, itb);
 
-    if (panda_break_cpu_loop_req) {;
+    // If there has been a request to break the CPU
+    // loop, return now. Before we execute the block
+    if (panda_break_cpu_loop_req) {
         cpu->can_do_io = 1;
+        // tcg_exit_req is likely already 0, but make sure it's
+        // cleared now before we resume execution later
+        atomic_set(&cpu->tcg_exit_req, 0);
         return TB_EXIT_REQUESTED;
     }
 

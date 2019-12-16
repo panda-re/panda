@@ -29,7 +29,6 @@ void cpu_synchronize_all_post_reset(void);
 void cpu_synchronize_all_post_init(void);
 
 void qtest_clock_warp(int64_t dest);
-void kill_tcg_thread(void);
 
 #ifndef CONFIG_USER_ONLY
 /* vl.c */

@@ -85,7 +85,6 @@ static unsigned int throttle_percentage;
 
 extern bool rr_replay_complete;
 bool panda_break_cpu_loop_req = false;
-static int tcg_running;
 
 bool cpu_is_stopped(CPUState *cpu)
 {
@@ -1276,7 +1275,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
     /* process any pending work */
     cpu->exit_request = 1;
 
-    while (atomic_read(&tcg_running)) {
+    while (1) {
         if (!rr_replay_complete) {
             panda_callbacks_top_loop(cpu);
         }
@@ -1289,7 +1288,6 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
         }
 
         while (cpu && !cpu->queued_work_first && !cpu->exit_request) {
-
             atomic_mb_set(&tcg_current_rr_cpu, cpu);
 
             qemu_clock_enable(QEMU_CLOCK_VIRTUAL,
@@ -1316,7 +1314,6 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
                 break;
             }
 
-            if (!atomic_read(&tcg_running)) break;
 
         } /* while (cpu && !cpu->exit_request).. */
 
@@ -1472,14 +1469,6 @@ void qemu_mutex_unlock_iothread(void)
 }
 
 
-void kill_tcg_thread(void) {
-  atomic_set(&tcg_running, 0);
-
-  // XXX: This might be dangerous?
-  qemu_mutex_unlock_iothread();
-
-};
-
 static bool all_vcpus_paused(void)
 {
     CPUState *cpu;
@@ -1571,7 +1560,6 @@ static void qemu_tcg_init_vcpu(CPUState *cpu)
         tcg_halt_cond = cpu->halt_cond;
         snprintf(thread_name, VCPU_THREAD_NAME_SIZE, "CPU %d/TCG",
                  cpu->cpu_index);
-        atomic_set(&tcg_running, 1);
         qemu_thread_create(cpu->thread, thread_name, qemu_tcg_cpu_thread_fn,
                            cpu, QEMU_THREAD_JOINABLE);
 #ifdef _WIN32
