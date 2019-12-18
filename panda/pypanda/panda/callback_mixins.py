@@ -2,8 +2,8 @@
 Mixin for handling callbacks and generation of decorators that allow users to register their own callbacks
 such as panda.cb_before_block_exec()
 '''
-from .autogen.panda_datatypes import callback_dictionary, ffi
 from .utils import progress, make_iso, debug
+from .ffi_importer import ffi
 
 class callback_mixins():
     def register_cb_decorators(self):
@@ -118,7 +118,8 @@ class callback_mixins():
 
         if name in self.registered_callbacks:
             raise ValueError("Duplicate callback name {}".format(name))
-        cb = callback_dictionary[callback]
+
+        cb = self.callback_dictionary[callback]
 
         # Generate a unique handle for each callback type using the number of previously registered CBs of that type added to a constant
         handle = ffi.cast('void *', 0x8888 + 100*len([x for x in self.registered_callbacks.values() if x['callback'] == cb]))

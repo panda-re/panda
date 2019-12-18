@@ -1,5 +1,5 @@
 from .utils import progress
-from .autogen.panda_datatypes import ffi
+from .ffi_importer import ffi
 
 class osi_mixins():
     def load_osi(self):

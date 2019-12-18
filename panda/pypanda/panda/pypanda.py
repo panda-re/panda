@@ -15,9 +15,8 @@ from inspect import signature
 from tempfile import NamedTemporaryFile
 from time import time
 
+from .ffi_importer import ffi
 from .taint import TaintQuery
-
-from .autogen.panda_datatypes import * # ffi, pcb, C come from here
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
 from .images import qcows
@@ -42,8 +41,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             expect_prompt=None, os_version=None,
             qcow=None, os="linux",
             generic=None, simple=None, # Helper arguments
-            extra_args=[]):
-
+            extra_args=[]):	
         self.arch = arch
         self.mem = mem
         self.os = os_version
@@ -83,9 +81,20 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.libpanda_path = pjoin(self.build_dir, "{0}-softmmu/libpanda-{0}.so".format(self.arch))
         self.panda = self.libpanda_path # Necessary for realpath to work inside core-panda, may cause issues?
         #self.panda = pjoin(self.build_dir, "{0}-softmmu/panda-system-{0}".format(self.arch)) # Path to binary
-        self.libpanda = ffi.dlopen(self.libpanda_path)
 
         self.bits, self.endianness, self.register_size = self._determine_bits()
+        def do_types_import():
+            # There is almost certainly a better way to do this.
+            environ["PANDA_BITS"] = str(self.bits)
+            environ["PANDA_ARCH"] = arch
+            from .autogen.panda_datatypes import pcb, C, callback_dictionary # ffi, pcb, C come from here
+            self.callback_dictionary = callback_dictionary
+            global pcb
+            global C
+
+        do_types_import()
+        self.libpanda = ffi.dlopen(self.libpanda_path)
+
 
         # Setup argv for panda
         biospath = realpath(pjoin(self.build_dir, "pc-bios")) # XXX Do we want this for all archs?

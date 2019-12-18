@@ -33,16 +33,24 @@ PANDAENDCOMMENT */
 #include "panda/common.h"
 #include "panda/rr/rr_api.h"
 
-#if defined(TARGET_I386)
+/**
+* I do not know why this works and TARGET_ARCH
+* does not, but somehow TARGET_I386 and TARGET_X86_64
+* was true at the same time.
+*/
+#if defined(__i386__)
 #define LIBRARY_DIR "/i386-softmmu/libpanda-i386.so"
 #define PLUGIN_DIR "/i386-softmmu/panda/plugins/"
-#elif defined(TARGET_x86_64)
-#define LIBRARY_DIR "/x86_64-softmmu-softmmu/libpanda-x86_64.so"
+#endif
+#if defined(__x86_64__)
+#define LIBRARY_DIR "/x86_64-softmmu/libpanda-x86_64.so"
 #define PLUGIN_DIR "/x86_64-softmmu/panda/plugins/"
-#elif defined(TARGET_ARM)
+#endif
+#if defined(__arm__)
 #define LIBRARY_DIR "/arm-softmmu/libpanda-arm.so"
 #define PLUGIN_DIR "/arm-softmmu/panda/plugins/"
-#elif defined(TARGET_PPC)
+#endif
+#if defined(__powerpc__)
 #define LIBRARY_DIR "/ppc-softmmu/libpanda-ppc.so"
 #define PLUGIN_DIR "/ppc-softmmu/panda/plugins/"
 #endif
@@ -171,8 +179,13 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
       // When running as a library, load libpanda
 #ifndef LIBRARY_DIR
       assert(0 && "Library dir unset but library mode is enabled - Unsupported architecture?");
+	  printf("Library dir not set");
+#else
+	  printf("Library dir is set\n");
 #endif
       const char *lib_dir = g_getenv("PANDA_DIR");
+	  printf("PANDA_DIR %s\n", lib_dir);
+	  printf("LIBRARY_DIR %s\n", LIBRARY_DIR);
       char *library_path;
       if (lib_dir != NULL) {
         library_path = g_strdup_printf("%s%s", lib_dir, LIBRARY_DIR);
@@ -184,7 +197,7 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
       void *libpanda = dlopen(library_path, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
 
       if (!libpanda) {
-        fprintf(stderr, "Failed to load libpanda: %s\n", dlerror());
+        fprintf(stderr, "Failed to load libpanda: %s from %s\n", dlerror(), library_path);
         return false;
       }
     }
@@ -249,6 +262,11 @@ char *panda_plugin_path(const char *plugin_name) {
         return plugin_path;
     }
     g_free(plugin_path);
+#endif
+#ifdef PLUGIN_DIR
+	printf("PLUGIN_DIR is defined");
+#else
+	printf("PLUGIN_DIR is not defined");
 #endif
 
     // Note qemu_file is set in the first call to main_aux
