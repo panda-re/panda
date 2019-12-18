@@ -9,6 +9,9 @@
 #include "panda/plog.h"
 #include "panda/plog-cc-bridge.h"
 
+extern FILE *pandalog_protobuf_file;
+
+
 #ifdef TARGET_ARM
 /* Return the exception level which controls this address translation regime */
 static inline uint32_t regime_el(CPUARMState *env, ARMMMUIdx mmu_idx)
@@ -184,7 +187,10 @@ void panda_cleanup(void) {
     // PANDA: unload plugins
     panda_unload_plugins();
     if (pandalog) {
-        pandalog_cc_close();
+        if (pandalog_protobuf_file) 
+            fclose(pandalog_protobuf_file);
+        else
+            pandalog_cc_close();
     }
 }
 

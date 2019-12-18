@@ -76,23 +76,36 @@ extern void pandalog_cc_seek(uint64_t);
 extern void pandalog_cc_close(void);
 
 extern FILE *pandalog_protobuf_file;
+extern bool pandalog_is_pb;
 
 void pandalog_open_read(const char *path, uint32_t pl_mode);
 
 
 void pandalog_write_entry(Panda__LogEntry *entry) {
-	// Pack this entry and pass it on to a C++ interface
-		
-	size_t packed_size = panda__log_entry__get_packed_size(entry);
-	unsigned char* buf = malloc(packed_size);
-	panda__log_entry__pack(entry, buf);
 
-    if (pandalog_protobuf_file == NULL) 
+    if (pandalog_is_pb) assert (pandalog_protobuf_file != NULL);
+    
+    if (pandalog_is_pb) {
+        entry->instr = rr_get_guest_instr_count();
+        entry->pc = panda_current_pc(first_cpu);
+    }
+
+	// construct packed message	
+    size_t packed_size = panda__log_entry__get_packed_size(entry);
+    unsigned char* buf = malloc(packed_size);
+    panda__log_entry__pack(entry, buf);
+    
+    if (pandalog_is_pb) {
+        // direct protobuf output
+        uint32_t entry_size = (uint32_t) packed_size;
+        fwrite(&entry_size, sizeof(entry_size), 1, pandalog_protobuf_file);
+        fwrite(buf, entry_size, 1, pandalog_protobuf_file);
+    }
+    else 
+        // pandalog output
         pandalog_write_packed(packed_size, buf);
-    else
-        fwrite(buf, packed_size, 1, pandalog_protobuf_file);
 
-    free(buf);
+    free (buf);
 }
 
 void pandalog_open_read(const char *path, uint32_t pl_mode) {

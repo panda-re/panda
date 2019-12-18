@@ -4171,6 +4171,10 @@ DEF("pandalog", HAS_ARG, QEMU_OPTION_pandalog,
     "-pandalog <filename>\n"
     "                enable panda logging to file\n", QEMU_ARCH_ALL)
 
+DEF("pandalog-pb", HAS_ARG, QEMU_OPTION_pandalog_pb,
+    "-pandalog-pb <filename>\n"
+    "                pandalog is straight protobuf", QEMU_ARCH_ALL)
+
 DEF("panda-plugin", HAS_ARG, QEMU_OPTION_panda_plugin,
     "-panda-plugin <file>\n"
     "                load PANDA plugin from <file>\n", QEMU_ARCH_ALL)

@@ -65,6 +65,7 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
+bool summary_mode = false;
 
 // callback for when process changes
 PPP_PROT_REG_CB(on_proc_change);
@@ -340,6 +341,22 @@ void saw_proc_range(CPUState *env, OsiProc *proc, uint64_t i1, uint64_t i2) {
     for (uint64_t i=i1; i<=i2; i+=step/3) {
         saw_proc(env, proc, i);
     }
+
+    if (pandalog && !summary_mode) {
+        printf ("createing asid_info\n");
+        Panda__AsidInfo ai;
+        ai = PANDA__ASID_INFO__INIT;
+        ai.asid = proc->asid;
+        ai.name = strdup(proc->name);
+        ai.pid = proc->pid;
+        ai.start_instr = i1;
+        ai.end_instr = i2;
+        ai.has_count = 0;
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        ple.asid_info = &ai;
+        pandalog_write_entry(&ple);
+    }
+
 }
 
 
@@ -506,30 +523,31 @@ bool init_plugin(void *self) {
     
     panda_arg_list *args = panda_get_args("asidstory");
     num_cells = std::max(panda_parse_uint64_opt(args, "width", 100, "number of columns to use for display"), UINT64_C(80)) - NAMELEN - 5;
+    
+    summary_mode = panda_parse_bool_opt(args, "summary", "summary mode (for pandalog)");
+
     //    sample_rate = panda_parse_uint32(args, "sample_rate", sample_rate);
     //    sample_cutoff = panda_parse_uint32(args, "sample_cutoff", sample_cutoff);
     if (!pandalog) {
         status_c = (bool *) malloc(sizeof(bool) * num_cells);
         for (int i=0; i<num_cells; i++) status_c[i]=false;
     }
+
+    printf ("asidstory: summary_mode = %d\n", summary_mode);
     
     min_instr = 0;   
     return true;
 }
 
 void uninit_plugin(void *self) {
-//  spit_asidstory();
-
 
     printf ("user %" PRId64 "\n", user_count);
     printf ("kernel %" PRId64 "\n", kernel_count);
     for (auto &kvp : asid_count) {
-//        target_ulong asid : kvp.first;
-  //      uint64_t count : kvp.second;
         printf ("  %lx %" PRId64 "\n", (uint64_t) kvp.first, kvp.second);
     }
 
-    if (pandalog) {
+    if (pandalog && summary_mode) {
         for (auto &kvp : process_datas) {
             auto &np = kvp.first;
             auto &pd = kvp.second;
@@ -540,6 +558,7 @@ void uninit_plugin(void *self) {
             ai->pid = np.pid;
             ai->start_instr = pd.first;
             ai->end_instr = pd.last;
+            ai->has_count = 1;
             ai->count = pd.count;
             Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
             ple.asid_info = ai;
