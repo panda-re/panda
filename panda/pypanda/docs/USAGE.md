@@ -5,7 +5,7 @@ nearly anything you can do using PANDA's C/C++ APIs.
 
 ## Installation
 1) Follow instructions to build PANDA or run `scripts/panda/install_ubuntu.sh`. 
-2) Run `python panda/pypanda/setup.py install` (if you're planning to modify PANDA/PYPANDA, use `develop` instead of `install`)
+2) cd into `panda/pypanda/` and run `python3 setup.py install` (possibly in a virtual environment). This will install the `panda` python package to your system.
 
 ## Example program
 This program counts the number of basic blocks executed while running `uname -a` inside a 32-bit guest.
@@ -21,6 +21,7 @@ blocks = 0
 def before_block_execute(cpustate, transblock):
     global blocks
     blocks += 1
+    return 0
 
 # This 'blocking' function runs in a seperate thread from the main CPU loop
 # which allows for it to wait for the guest to complete commands
@@ -84,13 +85,24 @@ def my_before_block_fn(cpustate, translation_block):
 panda.enable_callback('my_callback')
 ```
 
+If a callback is decorated with a `procname` argument, it will only be enabled when that process is running.
+To permanently disable such a callback, you can use `panda.disable_callback('name', forever=True)`.
+
+## Replaying Recordings
+```
+panda = Panda(...)
+# Register functions to run on callbacks here
+panda.begin_replay("/file/path/here")
+panda.run() # Actually run the replay
+```
+
 ## Load and unload a C plugin
 
 A C plugin can be loaded from pypanda easily: `panda.load_plugin("stringsearch")`
 
 C plugins can be passed named arguments using a dictionary: `panda.load_plugin("stringsearch", {"name": "jpeg"})`
 
-Or unnamed arguments using a list: `panda.load_plugin("my_plugin", ["arg1", "arg2"]})`
+Or unnamed arguments using a list: `panda.load_plugin("my_plugin", ["arg1", "arg2"])`
 
 ## Asynchronous Activity
 When a callback is executing, the guest is suspended until the callback finishes. However, we often want to interact
@@ -125,6 +137,7 @@ def before_block_execute(cpustate, transblock):
         # Queue up the run_cmd function to drive the guest if the PC is a made up value
         panda.queue_async(run_cmd)
         panda.queue_async(second_cmd)
+        panda.disable_callback('before_block_execute') # Don't repeatedly queue up commands
 
 panda.run()
 ```

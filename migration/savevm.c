@@ -2071,7 +2071,7 @@ int qemu_loadvm_state(QEMUFile *f)
     return ret;
 }
 
-void mmonitor_printf(Monitor *mon, const char *fmt, ...) {
+void monitor_or_stdout_printf(Monitor *mon, const char *fmt, ...) {
     // Print results via monitor if available. Otherwise print via stdout
     va_list ap;
     va_start(ap, fmt);
@@ -2096,7 +2096,7 @@ int save_vmstate(Monitor *mon, const char *name)
     AioContext *aio_context;
 
     if (!bdrv_all_can_snapshot(&bs)) {
-        mmonitor_printf(mon, "Device '%s' is writable but does not "
+        monitor_or_stdout_printf(mon, "Device '%s' is writable but does not "
                         "support snapshots.\n", bdrv_get_device_name(bs));
         return ret;
     }
@@ -2114,7 +2114,7 @@ int save_vmstate(Monitor *mon, const char *name)
 
     bs = bdrv_all_find_vmstate_bs();
     if (bs == NULL) {
-        mmonitor_printf(mon, "No block device can accept snapshots\n");
+        monitor_or_stdout_printf(mon, "No block device can accept snapshots\n");
         return ret;
     }
     aio_context = bdrv_get_aio_context(bs);
@@ -2123,7 +2123,7 @@ int save_vmstate(Monitor *mon, const char *name)
 
     ret = global_state_store();
     if (ret) {
-        mmonitor_printf(mon, "Error saving global state\n");
+        monitor_or_stdout_printf(mon, "Error saving global state\n");
         return ret;
     }
     vm_stop(RUN_STATE_SAVE_VM);
@@ -2155,7 +2155,7 @@ int save_vmstate(Monitor *mon, const char *name)
     /* save the VM state */
     f = qemu_fopen_bdrv(bs, 1);
     if (!f) {
-        mmonitor_printf(mon, "Could not open VM state file\n");
+        monitor_or_stdout_printf(mon, "Could not open VM state file\n");
         goto the_end;
     }
     ret = qemu_savevm_state(f, &local_err);
@@ -2168,7 +2168,7 @@ int save_vmstate(Monitor *mon, const char *name)
 
     ret = bdrv_all_create_snapshot(sn, bs, vm_state_size, &bs);
     if (ret < 0) {
-        mmonitor_printf(mon, "Error while creating snapshot on '%s'\n",
+        monitor_or_stdout_printf(mon, "Error while creating snapshot on '%s'\n",
                            bdrv_get_device_name(bs));
         goto the_end;
     }

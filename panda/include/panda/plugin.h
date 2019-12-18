@@ -149,7 +149,7 @@ const char *panda_parse_string_opt(panda_arg_list *args, const char *argname, co
 char** str_split(char *a_str, const char a_delim);
 
 char *panda_plugin_path(const char *name);
-void panda_require_from_library(const char *plugin_name);
+void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args); // XXX: twice defined
 void panda_require(const char *plugin_name);
 bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb);
 void panda_unload_plugin_by_name(const char *plugin_name);

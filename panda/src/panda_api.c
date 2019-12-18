@@ -30,7 +30,6 @@ int panda_init(int argc, char **argv, char **envp) {
 
 extern void pandalog_cc_init_write(const char * fname);
 extern int panda_in_main_loop;
-extern bool panda_stopped;
 
 // vl.c
 extern char *panda_snap_name;
@@ -80,7 +79,7 @@ bool panda_was_aborted(void) {
 
 void panda_cont(void) {
 //    printf ("panda_api: cont cpu\n");
-    panda_stopped = false;
+    panda_exit_loop = false; // is this unnecessary?
     vm_start();
 } 
 

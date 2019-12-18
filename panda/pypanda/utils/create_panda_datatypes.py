@@ -16,6 +16,7 @@ if sys.version_info[0] < 3:
 # which isn't terriby clever.
 #
 
+#XXX: When trying to install via pip these files get copied to /tmp and then our paths are all bad
 OUTPUT_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "panda", "autogen"]))                       # panda-git/panda/pypanda/panda/autogen
 PLUGINS_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "plugins"]))                         # panda-git/panda/plugins
 INCLUDE_DIR_PYP = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "pypanda", "panda", "include"])) # panda-git/panda/pypanda/panda/include

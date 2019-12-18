@@ -75,6 +75,7 @@ addons:
       # PYPANDA stuff
       - python3
       - python3-pip
+      - python3-venv
       - python3-setuptools
       - genisoimage # To make isos for run_guest
       # To build 32-bit targets for testing
@@ -116,7 +117,7 @@ before_install:
     - cd $(pyenv root) && git checkout master && git pull; cd -
 env:
     global:
-        - PANDA_TEST="yes"
+        - PANDA_TEST="no" # These tests aren't too useful and timeout travis. They passed locally as of 2ce657c
 script:
     - travis_wait 60 sleep infinity &
     # Setup python environment with pyenv (python2 and python3)
@@ -135,6 +136,11 @@ script:
     - pip3 install -r requirements.txt || travis_terminate 1 # Install test python dependencies (capstone, pyelftools)
     - python3 multi_proc_cbs.py
     - python3 taint_reg.py
+    # Run record_then_replay on multiple architectures
+    - python3 record_then_replay.py i386
+    - python3 record_then_replay.py x86_64
+    - python3 record_then_replay.py arm
+    - python3 record_then_replay.py ppc
       #- python3 taint_ram.py # Known bad
 #before_script:
 #  - ./configure ${CONFIG}

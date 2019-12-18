@@ -190,17 +190,19 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         endianness = None # String 'little' or 'big'
         if self.arch == "i386":
             bits = 32
-            endianness = 'little'
+            endianness = "little"
         elif self.arch == "x86_64":
             bits = 64
-            endianness = 'little'
+            endianness = "little"
         elif self.arch == "arm":
-            endianness = 'little' # XXX add support for arm BE
+            endianness = "little" # XXX add support for arm BE?
             bits = 32
         elif self.arch == "aarch64":
             bit = 64
+            endianness = "little" # XXX add support for arm BE?
         elif self.arch == "ppc":
             bits = 32
+            endianness = "big"
 
         assert (bits is not None), "For arch %s: I need logic to figure out num bits" % self.arch
         assert (endianness is not None), "For arch %s: I need logic to figure out endianness" % self.arch
@@ -252,7 +254,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.main_loop_wait_fnargs.append((fn, args))
 
     def exit_cpu_loop(self):
-        self.libpanda.panda_break_cpu_loop_req = True
+        self.libpanda.panda_exit_loop = True
 
     def revert(self, snapshot_name): # In the next main loop, revert
         if debug:
@@ -405,8 +407,13 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         panda_name_ffi = ffi.new("char[]", bytes(self.panda,"utf-8"))
         self.libpanda.panda_set_qemu_path(panda_name_ffi)
 
+        if len(argstrs_ffi):
+            plugin_args = argstrs_ffi
+        else:
+            plugin_args = ffi.NULL
+
         charptr = ffi.new("char[]", bytes(name,"utf-8"))
-        self.libpanda.panda_require_from_library(charptr)
+        self.libpanda.panda_require_from_library(charptr, plugin_args, len(argstrs_ffi))
         self.load_plugin_library(name)
 
     def procname_changed(self, name):

@@ -4,10 +4,11 @@ from sys import argv, exit
 import capstone
 from panda import Panda, ffi, blocking
 
-# Single arg of arch, defaults to i386
-arch = "i386" if len(argv) <= 1 else argv[1]
+# Default arch of i386, if you change it make sure to change capstone as well
+arch="i386"
 panda = Panda(generic=arch)
-md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)
+md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_32)
+
 insn_cache = {} # address -> disassembly string
 executed_pcs = [] # List of addresses we executed
 

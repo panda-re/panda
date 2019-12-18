@@ -90,6 +90,7 @@ bool panda_help_wanted = false;
 bool panda_plugin_load_failed = false;
 bool panda_abort_requested = false;
 
+bool panda_exit_loop = false;
 extern bool panda_library_mode;
 
 bool panda_add_arg(const char *plugin_name, const char *plugin_arg) {
@@ -180,12 +181,8 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
 #ifndef LIBRARY_DIR
       assert(0 && "Library dir unset but library mode is enabled - Unsupported architecture?");
 	  printf("Library dir not set");
-#else
-	  printf("Library dir is set\n");
 #endif
       const char *lib_dir = g_getenv("PANDA_DIR");
-	  printf("PANDA_DIR %s\n", lib_dir);
-	  printf("LIBRARY_DIR %s\n", LIBRARY_DIR);
       char *library_path;
       if (lib_dir != NULL) {
         library_path = g_strdup_printf("%s%s", lib_dir, LIBRARY_DIR);
@@ -297,9 +294,12 @@ char *panda_plugin_path(const char *plugin_name) {
     return NULL;
 }
 
-void panda_require_from_library(const char *plugin_name) {
+void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args) {
     // If we're printing help, panda_require will be a no-op.
     if (panda_help_wanted) return;
+
+    for (uint32_t i=0; i<num_args; i++)
+        panda_add_arg(plugin_name, plugin_args[i]);
 
     fprintf(stderr, PANDA_MSG_FMT "loading required plugin %s\n", PANDA_CORE_NAME, plugin_name);
 
@@ -313,8 +313,6 @@ void panda_require_from_library(const char *plugin_name) {
     }
     g_free(plugin_path);
 }
-
-
 
 void panda_require(const char *plugin_name) {
     // If we're printing help, panda_require will be a no-op.
@@ -900,11 +898,15 @@ help:
 }
 
 bool panda_parse_bool_req(panda_arg_list *args, const char *argname, const char *help) {
-    return panda_parse_bool_internal(args, argname, help, true);
+    bool ret= panda_parse_bool_internal(args, argname, help, true);
+    if(panda_plugin_load_failed) abort(); // If a required arg is present but we can't parse, abort
+    return ret;
 }
 
 bool panda_parse_bool_opt(panda_arg_list *args, const char *argname, const char *help) {
-    return panda_parse_bool_internal(args, argname, help, false);
+    bool ret= panda_parse_bool_internal(args, argname, help, false);
+    if(panda_plugin_load_failed) abort(); // If the optional arg is present but we can't parse, abort
+    return ret;
 }
 
 bool panda_parse_bool(panda_arg_list *args, const char *argname) {

@@ -320,30 +320,30 @@ void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
     
     // whereas here is where we do tainted pointer mixing 
     if (tainted_pointer) {
-      
+
       // this is [1234] in our example
       TaintData ptr_td = mixed_labels(shad_ptr, ptr, ptr_size, false);
       if (src == ones) {
-	bulk_set(shad_dest, dest, size, ptr_td);
+        bulk_set(shad_dest, dest, size, ptr_td);
       } else {
-	for (unsigned i = 0; i < size; i++) {
-	  TaintData byte_td = shad_src->query_full(src + i);
-	  TaintData dest_td = TaintData::make_union(ptr_td, byte_td, false);
-          
-	  // Unions usually destroy controlled bits. Tainted pointer is
-	  // a special case.
-	  uint8_t oldCBMask = dest_td.cb_mask;
-	  dest_td.cb_mask = byte_td.cb_mask;
-	  if (detaint_cb0_bytes && (byte_td.cb_mask == 0) && (oldCBMask != 0))
-	    {
-	      taint_delete(shad_dest, (dest + i), 1);
-	      taint_log("detaint: control bits 0 for 0x%lx\n",
-			+                              (dest + i));
-	    }
-	  else
-	    {
-	      shad_dest->set_full(dest + i, dest_td);
-	    }
+        for (unsigned i = 0; i < size; i++) {
+          TaintData byte_td = shad_src->query_full(src + i);
+          TaintData dest_td = TaintData::make_union(ptr_td, byte_td, false);
+
+          // Unions usually destroy controlled bits. Tainted pointer is
+          // a special case.
+          uint8_t oldCBMask = dest_td.cb_mask;
+          dest_td.cb_mask = byte_td.cb_mask;
+          if (detaint_cb0_bytes && (byte_td.cb_mask == 0) && (oldCBMask != 0))
+          {
+            taint_delete(shad_dest, (dest + i), 1);
+            taint_log("detaint: control bits 0 for 0x%lx\n",
+                +                              (dest + i));
+          }
+          else
+          {
+            shad_dest->set_full(dest + i, dest_td);
+          }
 
         }
       }

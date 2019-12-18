@@ -20,8 +20,8 @@ recording_name = "test.recording"
 ctr = 0
 @panda.cb_before_block_exec()
 def my_before_block_execute(cpustate, transblock):
-    print("before block in python")
-    sleep(0.01) # XXX panda bug? we don't hit after block exec if we sleep for too long (1s+) here (reasonable in a live recording, less reasonable in a replay)
+    print("before block in python... sleeping 1s")
+    sleep(1)
     return 0
 
 @panda.cb_after_block_exec()
