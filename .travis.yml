@@ -117,7 +117,7 @@ before_install:
     - sudo pip install pycparser
     - git submodule update --init dtc
     - cd $(pyenv root) && git checkout master && git pull; cd - # Update pyenv
-    - sudo ulimit -c unlimited -S
+    - echo 'core_%e.%p' | sudo tee /proc/sys/kernel/core_pattern
 env:
     global:
         - PANDA_TEST="no" # These tests aren't too useful and timeout travis. They passed locally as of 2ce657c
