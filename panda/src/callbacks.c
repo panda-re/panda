@@ -33,27 +33,8 @@ PANDAENDCOMMENT */
 #include "panda/common.h"
 #include "panda/rr/rr_api.h"
 
-/**
-* I do not know why this works and TARGET_ARCH
-* does not, but somehow TARGET_I386 and TARGET_X86_64
-* was true at the same time.
-*/
-#if defined(__i386__)
-#define LIBRARY_DIR "/i386-softmmu/libpanda-i386.so"
-#define PLUGIN_DIR "/i386-softmmu/panda/plugins/"
-#endif
-#if defined(__x86_64__)
-#define LIBRARY_DIR "/x86_64-softmmu/libpanda-x86_64.so"
-#define PLUGIN_DIR "/x86_64-softmmu/panda/plugins/"
-#endif
-#if defined(__arm__)
-#define LIBRARY_DIR "/arm-softmmu/libpanda-arm.so"
-#define PLUGIN_DIR "/arm-softmmu/panda/plugins/"
-#endif
-#if defined(__powerpc__)
-#define LIBRARY_DIR "/ppc-softmmu/libpanda-ppc.so"
-#define PLUGIN_DIR "/ppc-softmmu/panda/plugins/"
-#endif
+#define LIBRARY_DIR "/" TARGET_NAME "-softmmu/libpanda-" TARGET_NAME ".so"
+#define PLUGIN_DIR "/" TARGET_NAME "-softmmu/panda/plugins/"
 
 const gchar *panda_bool_true_strings[] =  {"y", "yes", "true", "1", NULL};
 const gchar *panda_bool_false_strings[] = {"n", "no", "false", "0", NULL};
