@@ -1648,6 +1648,7 @@ void rr_do_end_replay(int is_error)
           qemu_system_reset(VMRESET_SILENT);
           panda_break_vl_loop_req = true;
         }else{
+          vm_stop(RUN_STATE_PAUSED);
           qemu_system_shutdown_request();
         }
     }
