@@ -69,14 +69,14 @@ def get_qcow(name=None):
         try:
             subprocess.check_call(["wget", "http://panda.moyix.net/~moyix/" + arch_data.qcow, "-O", qcow_path])
             for extra_file in arch_data.extra_files or []:
-                extra_file_path = join(VM_DIR, extra_file)
+                extra_file_path = os.path.join(VM_DIR, extra_file)
                 subprocess.check_call(["wget", "http://panda.moyix.net/~moyix/" + extra_file, "-O", extra_file_path])
         except Exception as e:
             logging.info("Download failed, deleting partial file(s): %s", qcow_path)
             os.remove(qcow_path)
             for extra_file in arch_data.extra_files or []:
                 try:
-                    os.remove(join(VM_DIR, extra_file))
+                    os.remove(os.path.join(VM_DIR, extra_file))
                 except: # Extra files might not exist
                     pass
             raise e # Reraise
