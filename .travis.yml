@@ -121,19 +121,27 @@ env:
 script:
     - travis_wait 60 sleep infinity &
     # Setup python environment with pyenv (python2 and python3)
+    - echo -e "travis_fold:start:$1\033[33;1m$2\033[0m"
     - pyenv install 2.7.9 || travis_terminate 1; # For core qemu
     - pyenv install 3.6.6 || travis_terminate 1; # For pypanda
     - pyenv shell 2.7.9 3.6.6 || travis_terminate 1; # Create a shell with both python2 and python3
+    - echo -e "\ntravis_fold:end:$1\r"
     # Run install script
+    - echo -e "travis_fold:start:$1\033[33;1m$2\033[0m"
     - sudo panda/scripts/install_ubuntu.sh || travis_terminate 1; # Build panda
+    - echo -e "\ntravis_fold:end:$1\r"
     # Install pypanda
+    - echo -e "travis_fold:start:$1\033[33;1m$2\033[0m"
     - cd panda/pypanda
     - python3 setup.py install || travis_terminate 1
     - pip3 install cffi colorama protobuf || travis_terminate 1 # PYPANDA dependencies - not auto installed by setup because we don't use pip to install pypanda
+    - echo -e "\ntravis_fold:end:$1\r"
     # Run pypanda tests
+    - echo -e "travis_fold:start:$1\033[33;1m$2\033[0m"
     - cd tests
     - make || travis_terminate 1
     - pip3 install -r requirements.txt || travis_terminate 1 # Install test python dependencies (capstone, pyelftools)
+    - echo -e "\ntravis_fold:end:$1\r"
     - python3 multi_proc_cbs.py
     - python3 taint_reg.py
     # Run record_then_replay on multiple architectures
