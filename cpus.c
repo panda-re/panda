@@ -1311,8 +1311,10 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
 
             cpu = CPU_NEXT(cpu);
 
-            if (panda_exit_loop) {
+            if (panda_exit_loop) { // If we have a request to break, do so and
+                                   // unset panda_exit_loop
                 panda_exit_loop = false;
+                //atomic_mb_set(&cpu->exit_request, 1); // XXX: Should we set an exit request?
                 break;
             }
 

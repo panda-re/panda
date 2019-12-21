@@ -855,14 +855,11 @@ int cpu_exec(CPUState *cpu)
                 break;
             }
 
-            if (!rr_in_replay() || until_interrupt > 0) { // XXX: may need panda_exit_loop check?
+            if (!rr_in_replay() || until_interrupt > 0) {
                 cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
                 /* Try to align the host and virtual clocks
                    if the guest is in advance */
                 align_clocks(&sc, cpu);
-            }
-            if (panda_exit_loop) {
-                break;
             }
         }
     }

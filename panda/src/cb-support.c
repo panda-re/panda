@@ -418,10 +418,6 @@ void PCB(main_loop_wait)(void) {
          plist = panda_cb_list_next(plist)) {
         if (plist->enabled) plist->entry.main_loop_wait();
     }
-
-    if (panda_exit_loop) {
-        panda_exit_loop = false;
-    }
 }
 
 void PCB(pre_shutdown)(void) {
