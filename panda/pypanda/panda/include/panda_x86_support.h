@@ -21,7 +21,7 @@ typedef struct {
 
 typedef union {
     floatx80 d; //not supported __attribute__((aligned(16)));
-    MMXReg mmx;
+    MMXReg mmx; 
 } FPReg;
 
 typedef struct {

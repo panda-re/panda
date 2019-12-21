@@ -1,7 +1,7 @@
 # Methods that directly pass data to/from libpanda with no extra logic beyond
 # argument reformatting
 
-from .autogen.panda_datatypes import ffi
+from .ffi_importer import ffi
 
 class libpanda_mixins():
     def set_pandalog(self, name):

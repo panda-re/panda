@@ -1329,6 +1329,7 @@ typedef struct CPUState CPUState;
 
 typedef uint64_t ram_addr_t;
 typedef ram_addr_t tb_page_addr_t;
+extern ram_addr_t ram_size; // ram size for code
 struct TranslationBlock {
     target_ulong pc;   /* simulated PC corresponding to this block (EIP + CS base) */
     target_ulong cs_base; /* CS base for this block */

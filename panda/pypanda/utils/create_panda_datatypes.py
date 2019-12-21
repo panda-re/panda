@@ -129,9 +129,7 @@ def main():
 from enum import Enum
 from ctypes import *
 from collections import namedtuple
-from cffi import FFI
-
-ffi = FFI()
+from ..ffi_importer import ffi
 
 def read_cleanup_header(fname):
     # CFFI can't handle externs, but sometimes we have to extern C (as opposed to 
@@ -141,9 +139,22 @@ def read_cleanup_header(fname):
     r = r.replace("extern \\"C\\" ", "") # This allows inline externs like 'extern "C" void foo(...)'
     return r
 
-ffi.cdef("typedef uint32_t target_ulong;")
+from os import environ
+
+bits = int(environ["PANDA_BITS"])
+arch = environ["PANDA_ARCH"]
+
+ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
 ffi.cdef(read_cleanup_header("{inc}/pthreadtypes.h"))
-ffi.cdef(read_cleanup_header("{inc}/panda_x86_support.h"))
+
+if arch == "i386":
+	ffi.cdef(read_cleanup_header("{inc}/panda_x86_support.h"))
+elif arch == "x86_64":
+	ffi.cdef(read_cleanup_header("{inc}/panda_x64_support.h"))
+elif arch == "arm":
+	ffi.cdef(read_cleanup_header("{inc}/panda_arm_support.h"))
+else:
+	print("PANDA_DATATYPES: Architecutre not supported")
 ffi.cdef(read_cleanup_header("{inc}/panda_qemu_support.h"))
 ffi.cdef(read_cleanup_header("{inc}/panda_datatypes.h"))
 ffi.cdef(read_cleanup_header("{inc}/panda_osi.h"))
@@ -232,7 +243,6 @@ class PandaState(Enum):
                 raise RuntimeError("Error parsing code for '{}' in panda_callback_list.h. Is it defined both in panda_cb_type enum and as a prototype later with the same name?".format(cb_types[i]))
 
         pdty.write("""
-
 pcb = PandaCB(init = ffi.callback("bool(void*)"),
 """)
 
@@ -250,7 +260,6 @@ pandacbtype = namedtuple("pandacbtype", "name number")
 """)
 
         pdty.write("""
-
 callback_dictionary = {
 pcb.init : pandacbtype("init", -1),
 """)
@@ -265,18 +274,6 @@ pcb.init : pandacbtype("init", -1),
             else:
                 pdty.write(",\n")
 
-
-        pdty.write("""
-class Hook(object):
-    def __init__(self,is_enabled=True,is_kernel=True,hook_cb=True,target_addr=0,target_library_offset=0,library_name=None,program_name=None):
-        self.is_enabled = is_enabled
-        self.is_kernel = is_kernel
-        self.hook_cb = hook_cb
-        self.target_addr = target_addr
-        self.target_library_offset = target_library_offset
-        self.library_name = library_name
-        self.program_name = program_name
-        """)
 
 
     #########################################################

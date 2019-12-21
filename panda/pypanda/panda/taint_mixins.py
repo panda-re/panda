@@ -1,5 +1,5 @@
 from .utils import progress, debug
-from .autogen.panda_datatypes import ffi
+from .ffi_importer import ffi
 from .taint import TaintQuery
 
 class taint_mixins():

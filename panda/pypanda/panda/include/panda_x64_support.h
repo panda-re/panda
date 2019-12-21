@@ -25,8 +25,91 @@ typedef struct CPUTLBEntry_x64 {
 } CPUTLBEntry_64;
 
 
+typedef struct SegmentCache {
+    uint32_t selector;
+    target_ulong base;
+    uint32_t limit;
+    uint32_t flags;
+} SegmentCache;
 
+typedef struct BNDReg {
+    uint64_t lb;
+    uint64_t ub;
+} BNDReg;
 
+typedef struct BNDCSReg {
+    uint64_t cfgu;
+    uint64_t sts;
+} BNDCSReg;
+
+typedef struct {
+    uint64_t low;
+    uint16_t high;
+} floatx80;
+typedef uint64_t Reg; //a guess
+typedef Reg MMXReg;
+typedef Reg ZMMReg;
+typedef union {
+    floatx80 d; //not supported __attribute__((aligned(16)));
+    MMXReg mmx; 
+} FPReg;
+typedef struct float_status {
+    signed char float_detect_tininess;
+    signed char float_rounding_mode;
+    uint8_t     float_exception_flags;
+    signed char floatx80_rounding_precision;
+    /* should denormalised results go to zero and set the inexact flag? */
+    uint32_t flush_to_zero; //flag flush_to_zero; guess
+    /* should denormalised inputs go to zero and set the input_denormal flag? */
+	uint32_t flush_inputs_to_zero;//    flag flush_inputs_to_zero; guess
+	uint32_t default_nan_mode; //    flag default_nan_mode; guess
+	uint32_t snan_bit_is_one; //lag snan_bit_is_one; guess
+} float_status;
+
+typedef struct MemTxAttrs {
+    unsigned int unspecified:1;
+    unsigned int secure:1;
+    unsigned int user:1;
+    unsigned int requester_id:16;
+} MemTxAttrs;
+/* CPUID feature words */
+typedef enum FeatureWord {
+    FEAT_1_EDX,         /* CPUID[1].EDX */
+    FEAT_1_ECX,         /* CPUID[1].ECX */
+    FEAT_7_0_EBX,       /* CPUID[EAX=7,ECX=0].EBX */
+    FEAT_7_0_ECX,       /* CPUID[EAX=7,ECX=0].ECX */
+    FEAT_7_0_EDX,       /* CPUID[EAX=7,ECX=0].EDX */
+    FEAT_8000_0001_EDX, /* CPUID[8000_0001].EDX */
+    FEAT_8000_0001_ECX, /* CPUID[8000_0001].ECX */
+    FEAT_8000_0007_EDX, /* CPUID[8000_0007].EDX */
+    FEAT_C000_0001_EDX, /* CPUID[C000_0001].EDX */
+    FEAT_KVM,           /* CPUID[4000_0001].EAX (KVM_CPUID_FEATURES) */
+    FEAT_HYPERV_EAX,    /* CPUID[4000_0003].EAX */
+    FEAT_HYPERV_EBX,    /* CPUID[4000_0003].EBX */
+    FEAT_HYPERV_EDX,    /* CPUID[4000_0003].EDX */
+    FEAT_SVM,           /* CPUID[8000_000A].EDX */
+    FEAT_XSAVE,         /* CPUID[EAX=0xd,ECX=1].EAX */
+    FEAT_6_EAX,         /* CPUID[6].EAX */
+    FEAT_XSAVE_COMP_LO, /* CPUID[EAX=0xd,ECX=0].EAX */
+    FEAT_XSAVE_COMP_HI, /* CPUID[EAX=0xd,ECX=0].EDX */
+    FEATURE_WORDS,
+} FeatureWord;
+typedef uint32_t FeatureWordArray[19];
+
+typedef struct {
+    uint64_t base;
+    uint64_t mask;
+} MTRRVar;
+
+typedef enum TPRAccess {
+    TPR_ACCESS_READ,
+    TPR_ACCESS_WRITE,
+} TPRAccess;
+
+typedef struct CPUIOTLBEntry {
+    uint64_t addr; //hwaddr addr;
+    MemTxAttrs attrs;
+} CPUIOTLBEntry;
 
 typedef struct CPUX64State {
     /* standard registers */
@@ -251,3 +334,5 @@ typedef struct CPUX64State {
     TPRAccess tpr_access_type;
 } CPUX64State;
 
+
+typedef CPUX64State CPUArchState;
