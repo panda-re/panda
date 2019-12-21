@@ -879,8 +879,6 @@ void cpu_synchronize_all_post_init(void)
     }
 }
 
-int do_vm_stop(RunState state);
-
 int do_vm_stop(RunState state)
 {
     int ret = 0;
