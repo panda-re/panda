@@ -260,11 +260,6 @@ char *panda_plugin_path(const char *plugin_name) {
     }
     g_free(plugin_path);
 #endif
-#ifdef PLUGIN_DIR
-	printf("PLUGIN_DIR is defined");
-#else
-	printf("PLUGIN_DIR is not defined");
-#endif
 
     // Note qemu_file is set in the first call to main_aux
     // so if this is called (likely via load_plugin) qemu_file must be set directly
