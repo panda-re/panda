@@ -121,6 +121,8 @@ before_install:
 env:
     global:
         - PANDA_TEST="no" # These tests aren't too useful and timeout travis. They passed locally as of 2ce657c
+before_script:
+    - ulimit -c unlimited -S       # enable core dumps
 script:
     - travis_wait 60 sleep infinity &
     # Setup python environment with pyenv (python2 and python3)
@@ -142,13 +144,19 @@ script:
     - make || travis_terminate 1
     - pip3 install -r requirements.txt || travis_terminate 1 # Install test python dependencies (capstone, pyelftools)
     - python3 multi_proc_cbs.py
+    - copy_cores.sh # If any core file is present, copy it to new.state.actor ftp server
     - python3 taint_reg.py
+    - copy_cores.sh # If any core file is present, copy it to new.state.actor ftp server
     # Run record_then_replay on multiple architectures
     - python3 record_then_replay.py i386
+    - copy_cores.sh # If any core file is present, copy it to new.state.actor ftp server
     - python3 record_then_replay.py x86_64
+    - copy_cores.sh # If any core file is present, copy it to new.state.actor ftp server
     - python3 record_then_replay.py arm
+    - copy_cores.sh # If any core file is present, copy it to new.state.actor ftp server
     - python3 record_then_replay.py ppc
       #- python3 taint_ram.py # Known bad
+    - copy_cores.sh # If any core file is present, copy it to new.state.actor ftp server
 
 after_failure:
   - COREFILE=$(find . -maxdepth 1 -name "core*" | head -n 1) # find core file
