@@ -4973,7 +4973,7 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 
     if (replay_name) {
         // rr: check for begin/end record/replay
-        sigset_t blockset, oldset;
+        sigset_t blockset, oldset = {0};
 
         //block signals
         sigprocmask(SIG_BLOCK, &blockset, &oldset);
