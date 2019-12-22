@@ -1,17 +1,10 @@
 # The current Travis default is a VM based 16.04 Xenial on GCE
-# Additional builds with specific requirements for a full VM need to
-# be added as additional matrix: entries later on
 dist: xenial
 language: c
 compiler:
   - gcc
 cache:
   # There is one cache per branch and compiler version.
-  # characteristics of each job are used to identify the cache:
-  # - OS name (currently, linux, osx, or windows)
-  # - OS distribution (for Linux, xenial, trusty, or precise)
-  # - macOS image name (e.g., xcode7.2)
-  # - Names and values of visible environment variables set in .travis.yml or Settings panel
   timeout: 1200
   ccache: true
   pip: true
@@ -82,84 +75,41 @@ addons:
       - libc6-dev-i386
       - gcc-multilib
       - nasm
-      # For debugging coredumps
-      - gdb
-      - curl
-
-# The channel name "irc.oftc.net#qemu" is encrypted against qemu/qemu
-# to prevent IRC notifications from forks. This was created using:
-# $ travis encrypt -r "qemu/qemu" "irc.oftc.net#qemu"
-notifications:
-  irc:
-    channels:
-      - secure: "F7GDRgjuOo5IUyRLqSkmDL7kvdU4UcH3Lm/W2db2JnDHTGCqgEdaYEYKciyCLZ57vOTsTsOgesN8iUT7hNHBd1KWKjZe9KDTZWppWRYVwAwQMzVeSOsbbU4tRoJ6Pp+3qhH1Z0eGYR9ZgKYAoTumDFgSAYRp4IscKS8jkoedOqM="
-    on_success: change
-    on_failure: always
-
-
-env:
-  global:
-    - TEST_CMD="make check -j3 V=1"
-
-git:
-  # we want to do this ourselves
-  submodules: false
-before_install:
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update ; fi
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install libffi gettext glib pixman ; fi
-  - wget -O - http://people.linaro.org/~alex.bennee/qemu-submodule-git-seed.tar.xz | tar -xvJ
-  - git submodule update --init --recursive
 
 # PANDA
 sudo: required
 dist: xenial
-before_install:
-    - sudo pip install pycparser
-    - git submodule update --init dtc
-    - cd $(pyenv root) && git checkout master && git pull; cd - # Update pyenv
-    - echo 'core_%e.%p' | sudo tee /proc/sys/kernel/core_pattern
 env:
-    global:
-        - PANDA_TEST="no" # These tests aren't too useful and timeout travis. They passed locally as of 2ce657c
+  global:
+    - PANDA_TEST="no" # These tests aren't too useful and timeout travis. They passed locally as of 2ce657c
+before_install:
+  - sudo pip install pycparser cffi colorama protobuf # pycparser is a core dependency, rest are for pypanda
+  - git submodule update --init dtc
+  - cd $(pyenv root) && git checkout master && git pull; cd - # Update pyenv
+  - echo 'core_%e.%p' | sudo tee /proc/sys/kernel/core_pattern # Store coredumps locally
 before_script:
-    - ulimit -c unlimited -S       # enable core dumps
+  - ulimit -c unlimited -S       # enable core dumps
+  # Setup python environment with pyenv (python2 and python3)
+  - pyenv install 2.7.9 || travis_terminate 1; # For core qemu
+  - pyenv install 3.6.6 || travis_terminate 1; # For pypanda
+  - pyenv shell 2.7.9 3.6.6 || travis_terminate 1; # Create a shell with both python2 and python3
+  - pip3 install cffi colorama protobuf # PYPANDA dependencies - not auto installed by setup because we don't use pip to install pypanda
+
 script:
-    - travis_wait 60 sleep infinity &
-    # Setup python environment with pyenv (python2 and python3)
-    - echo -e "travis_fold:start:$1\033[33;1m$2\033[0m"
-    - pyenv install 2.7.9 || travis_terminate 1; # For core qemu
-    - pyenv install 3.6.6 || travis_terminate 1; # For pypanda
-    - pyenv shell 2.7.9 3.6.6 || travis_terminate 1; # Create a shell with both python2 and python3
-    # Run install script
-    - echo -e "travis_fold:start:$1\033[33;1m$2\033[0m"
-    - sudo panda/scripts/install_ubuntu.sh || travis_terminate 1; # Build panda
-    # Install pypanda
-    - echo -e "travis_fold:start:$1\033[33;1m$2\033[0m"
-    - cd panda/pypanda
-    - python3 setup.py install || travis_terminate 1
-    - pip3 install cffi colorama protobuf || travis_terminate 1 # PYPANDA dependencies - not auto installed by setup because we don't use pip to install pypanda
-    # Run pypanda tests
-    - echo -e "travis_fold:start:$1\033[33;1m$2\033[0m"
-    - cd tests
-    - make || travis_terminate 1
-    - pip3 install -r requirements.txt || travis_terminate 1 # Install test python dependencies (capstone, pyelftools)
-    - python3 multi_proc_cbs.py
-    - copy_cores.sh # If any core file is present, copy it to new.state.actor ftp server
-    - python3 taint_reg.py
-    - copy_cores.sh # If any core file is present, copy it to new.state.actor ftp server
-    # Run record_then_replay on multiple architectures
-    - python3 record_then_replay.py i386
-    - copy_cores.sh # If any core file is present, copy it to new.state.actor ftp server
-    - python3 record_then_replay.py x86_64
-    - copy_cores.sh # If any core file is present, copy it to new.state.actor ftp server
-    - python3 record_then_replay.py arm
-    - copy_cores.sh # If any core file is present, copy it to new.state.actor ftp server
-    - python3 record_then_replay.py ppc
-      #- python3 taint_ram.py # Known bad
-    - copy_cores.sh # If any core file is present, copy it to new.state.actor ftp server
-
-after_failure:
-  - COREFILE=$(find . -maxdepth 1 -name "core*" | head -n 1) # find core file
-  - echo "Found corefile at $COREFILE"
-  - if [[ -f "$COREFILE" ]]; then curl -T $COREFILE ftp://travis:thisistravis@new.state.actor/core_$(date +%s%N); fi
-
+  # Run install script
+  - sudo panda/scripts/install_ubuntu.sh || travis_terminate 1; # Build panda
+  # Install pypanda
+  - cd panda/pypanda
+  - python3 setup.py install || travis_terminate 1
+  # Run pypanda tests
+  - cd tests
+  - make || travis_terminate 1
+  - pip3 install -r requirements.txt || travis_terminate 1 # Install test python dependencies (capstone, pyelftools)
+  - python3 multi_proc_cbs.py
+  - python3 taint_reg.py
+  # Run record_then_replay on multiple architectures
+  - python3 record_then_replay.py i386
+  - python3 record_then_replay.py x86_64
+  - python3 record_then_replay.py arm
+  - python3 record_then_replay.py ppc
+ #- python3 taint_ram.py # Known bad
