@@ -82,6 +82,10 @@ dist: xenial
 env:
   global:
     - PANDA_TEST="no" # These tests aren't too useful and timeout travis. They passed locally as of 2ce657c
+git:
+  # we want to do this ourselves for some reason
+  submodules: false
+
 before_install:
   - sudo pip install pycparser cffi colorama protobuf # pycparser is a core dependency, rest are for pypanda
   - git submodule update --init dtc
