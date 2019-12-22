@@ -121,6 +121,7 @@ RR_log_entry* rr_get_queue_head(void) { return rr_queue_head; }
 // 2) The only thing in the queue is RR_END_OF_LOG
 uint8_t rr_replay_finished(void)
 {
+    assert(!rr_queue_empty()); // If queue is empty early, replay is corrupt?
     return rr_log_is_empty()
         && rr_queue_head->header.kind == RR_END_OF_LOG
         && rr_get_guest_instr_count() >=
