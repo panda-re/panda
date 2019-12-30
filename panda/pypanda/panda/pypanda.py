@@ -46,6 +46,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.mem = mem
         self.os = os_version
         self.qcow = qcow
+        self.plugins = {}
 
         if isinstance(extra_args, str): # Extra args can be a string or array
             extra_args = extra_args.split()
@@ -515,12 +516,12 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             return self.libpanda.panda_virtual_memory_write_external(env, addr, buf_a, length_a)
 
     def callstack_callers(self, lim, cpu): # XXX move into new directory, 'callstack' ?
-        if not hasattr(self, "libpanda_callstack_instr"):
+        if not "plugin_callstack_instr" in self.plugins:
             progress("enabling callstack_instr plugin")
             self.require("callstack_instr")
         
         callers = ffi.new("uint32_t[%d]" % lim)
-        n = self.libpanda_callstack_instr.get_callers(callers, lim, cpu)
+        n = self.plugins['callstack_instr'].get_callers(callers, lim, cpu)
         c = []
         for pc in callers:
             c.append(pc)
@@ -530,11 +531,10 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         if hasattr(self,"__did_load_libpanda"):
             libpanda_path_chr = ffi.new("char[]",bytes(self.libpanda_path, "UTF-8"))
             self.__did_load_libpanda = self.libpanda.panda_load_libpanda(libpanda_path_chr)
-        libname = "libpanda_plugin_%s" % name
-        if not hasattr(self, libname):
+        if not name in self.plugins.keys():
             assert(isfile(pjoin(*[self.build_dir, self.arch+"-softmmu", "panda/plugins/panda_{}.so".format(name)])))
             library = ffi.dlopen(pjoin(*[self.build_dir, self.arch+"-softmmu", "panda/plugins/panda_{}.so".format(name)]))
-            self.__setattr__(libname, library)
+            self.plugins[name] = library
 
     def get_cpu(self,cpustate):
         '''
