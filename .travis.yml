@@ -71,6 +71,7 @@ addons:
       - python3-venv
       - python3-setuptools
       - genisoimage # To make isos for run_guest
+      - wget
       # To build 32-bit targets for testing
       - libc6-dev-i386
       - gcc-multilib
