@@ -63,12 +63,6 @@ PPP_CB_BOILERPLATE(on_ptr_load);
 PPP_PROT_REG_CB(on_ptr_store);
 PPP_CB_BOILERPLATE(on_ptr_store);
 
-PPP_PROT_REG_CB(on_after_load);
-PPP_CB_BOILERPLATE(on_after_load);
-
-PPP_PROT_REG_CB(on_after_store);
-PPP_CB_BOILERPLATE(on_after_store);
-
 }
 
 extern const char *qemu_file;
@@ -126,12 +120,6 @@ void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store,
         PPP_RUN_CB(on_ptr_load, ptr_addr, src, size);
     }
 }
-
-void taint_after_ld_run(uint64_t rega, uint64_t addr, uint64_t size) {
-    Addr reg = make_laddr(rega / MAXREGSIZE, 0);
-    PPP_RUN_CB(on_after_load, reg, addr, size);    
-}
-
 
 static void taint_copyRegToPc_run(Shad *shad, uint64_t src, uint64_t size)
 {
@@ -201,8 +189,6 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.resetFrameF = M.getFunction("taint_reset_frame");
     PTV.breadcrumbF = M.getFunction("taint_breadcrumb");
 
-    PTV.afterLdF = M.getFunction("taint_after_ld");
-
     llvm::Type *shadT = M.getTypeByName("class.Shad");
     assert(shadT);
     llvm::Type *shadP = PointerType::getUnqual(shadT);
@@ -271,8 +257,6 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     ADD_MAPPING(taint_breadcrumb);
 
     ADD_MAPPING(taint_memlog_pop);
-
-    ADD_MAPPING(taint_after_ld);
 
     //ADD_MAPPING(label_set_union);
     //ADD_MAPPING(label_set_singleton);
@@ -525,19 +509,6 @@ void PandaTaintVisitor::insertTaintCopy(Instruction &I,
 
     insertTaintBulk(I, shad_dest, dest, shad_src, src, size, copyF);
 }
-
-
-// load llreg from addr
-// or store llreg to addr 
-// both logically after taint transfer has occurred
-// NB: val is llvm register that is dest of store or that is source of load
-void PandaTaintVisitor::insertAfterTaintLd(Instruction &I,
-       Value *val, Value *ptr, uint64_t size) {
-    LLVMContext &ctx = I.getContext();
-    vector<Value *> args {constSlot(val), constSlot(ptr), const_uint64(ctx, size)};
-    inlineCallAfter(I, afterLdF, args);    
-}
-
 
 void PandaTaintVisitor::insertTaintBulk(Instruction &I,
         Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
@@ -1332,8 +1303,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             return;
         } else if (ldFuncs.count(calledName) > 0) {
             Value *ptr = I.getArgOperand(1);
-            insertAfterTaintLd(I, &I, ptr, getValueSize(&I));
-            if (tainted_pointer && !isa<Constant>(ptr)) {
+	    if (!isa<Constant>(ptr)) {
                 insertTaintPointer(I, ptr, &I, false);
             } else {
                 insertTaintCopy(I, llvConst, &I, memConst, NULL, getValueSize(&I));
@@ -1342,7 +1312,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         } else if (stFuncs.count(calledName) > 0) {
             Value *ptr = I.getArgOperand(1);
             Value *val = I.getArgOperand(2);
-            if (!isa<Constant>(ptr)) {
+	    if (!isa<Constant>(ptr)) {
                 insertTaintPointer(I, ptr, val, true /* is_store */ );
             } else if (isa<Constant>(val)) {
                 insertTaintDelete(I, memConst, NULL, const_uint64(ctx, getValueSize(val)));
