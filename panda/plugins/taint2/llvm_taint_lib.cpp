@@ -1303,7 +1303,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             return;
         } else if (ldFuncs.count(calledName) > 0) {
             Value *ptr = I.getArgOperand(1);
-	    if (!isa<Constant>(ptr)) {
+            if (tainted_pointer && !isa<Constant>(ptr)) {
                 insertTaintPointer(I, ptr, &I, false);
             } else {
                 insertTaintCopy(I, llvConst, &I, memConst, NULL, getValueSize(&I));
@@ -1312,7 +1312,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         } else if (stFuncs.count(calledName) > 0) {
             Value *ptr = I.getArgOperand(1);
             Value *val = I.getArgOperand(2);
-	    if (!isa<Constant>(ptr)) {
+            if (tainted_pointer && !isa<Constant>(ptr)) {
                 insertTaintPointer(I, ptr, val, true /* is_store */ );
             } else if (isa<Constant>(val)) {
                 insertTaintDelete(I, memConst, NULL, const_uint64(ctx, getValueSize(val)));

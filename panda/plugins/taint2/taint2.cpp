@@ -138,7 +138,7 @@ bool taintJustDisabled = false;
 static taint2_memlog taint_memlog;
 
 // Configuration
-uint32_t tainted_pointer = 0;
+bool tainted_pointer = true;
 bool optimize_llvm = true;
 extern bool inline_taint;
 bool debug_taint = false;
@@ -261,7 +261,7 @@ void on_replay_before_dma(CPUState *cpu, const uint8_t *src_addr,
 }  // end of function on_replay_before_dma
 
 void taint2_enable_tainted_pointer(void) {
-    tainted_pointer = 1;
+    tainted_pointer = true;
 }
 
 void taint2_enable_taint(void) {
@@ -534,8 +534,8 @@ bool init_plugin(void *self) {
 #endif
 
     // parse arguments
-    panda_arg_list *args = panda_get_args("taint2");    
-    tainted_pointer = panda_parse_uint32_opt(args, "tp", 0, "track taint through pointer dereference");
+    panda_arg_list *args = panda_get_args("taint2");
+    tainted_pointer = !panda_parse_bool_opt(args, "no_tp", "track taint through pointer dereference");
     std::cerr << PANDA_MSG "propagation via pointer dereference " << PANDA_FLAG_STATUS(tainted_pointer) << std::endl;
     inline_taint = panda_parse_bool_opt(args, "inline", "inline taint operations");
     std::cerr << PANDA_MSG "taint operations inlining " << PANDA_FLAG_STATUS(inline_taint) << std::endl;
