@@ -1116,8 +1116,7 @@ extern PandaOsFamily panda_os_familyno; // numeric identifier for family
 
 
 // -----------------------------------
-// Pull number 5 from panda/include/panda/panda_common.h
-
+// Pull number 5 from (panda-aware) panda/include/panda/common.h
 
 void panda_cleanup(void);
 void panda_set_os_name(char *os_name);
@@ -1127,6 +1126,7 @@ void panda_break_main_loop(void);
 
 extern bool panda_exit_loop;
 extern bool panda_break_vl_loop_req;
+
 
 /*
  * @brief Returns the guest address space identifier.
@@ -1138,6 +1138,7 @@ target_ulong panda_current_asid(CPUState *env);
  */
 target_ulong panda_current_pc(CPUState *cpu);
 
-
-
+/**
+ * @brief Reads/writes data into/from \p buf from/to guest physical address \p addr.
+ */
 

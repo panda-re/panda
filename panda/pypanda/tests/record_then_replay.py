@@ -83,6 +83,3 @@ for f in [recording_name+"-rr-nondet.log", recording_name+"-rr-snp"]:
 assert(rr_file_count == 2), "Didn't create expected replay files"
 assert(successes[0]), "First recording failed to run"
 assert(successes[1]), "Second recording failed to run"
-
-
-

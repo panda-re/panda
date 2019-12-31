@@ -315,10 +315,8 @@ pcb.init : pandacbtype("init", -1),
         pdth.write("#define MAX_PANDA_PLUGIN_ARGS 32\n")
 
         for filename in ["callbacks/cb-defs.h", "panda_plugin_mgmt.h",
-                         "panda_api.h", "panda_os.h"]:
+                         "panda_api.h", "panda_os.h", "common.h"]:
             include_this(pdth, filename)
-
-        include_this(pdth, "panda_common.h")
 
 if __name__ == '__main__':
     main()
