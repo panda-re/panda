@@ -73,12 +73,6 @@ enum QemuOptType {
     QEMU_OPT_SIZE,
 };
 
-
-typedef struct QTailQLink {
-    void *tql_next;
-    struct QTailQLink *tql_prev;
-} QTailQLink;
-
 typedef struct BusChild {
     DeviceState *child;
     int index;
