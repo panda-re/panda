@@ -28,6 +28,4 @@ def before_block_execute(cpu, tb):
 
     if ctr > 10: panda.end_analysis()
 
-    return 0
-
 panda.run()

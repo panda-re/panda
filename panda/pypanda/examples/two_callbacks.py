@@ -30,14 +30,12 @@ def before_block_execute(env, tb):
     pc = panda.current_pc(env)
     global bbs_wget
     bbs_wget.add(pc)
-    return 0
 
 @panda.cb_after_block_exec(procname="cat")
 def before_block_execute2(env, tb, exit):
     pc = panda.current_pc(env)
     global bbs_cat
     bbs_cat.add(pc)
-    return 0
 
 panda.queue_async(my_runcmd)
 start_time = time.time()

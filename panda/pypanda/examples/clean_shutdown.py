@@ -26,7 +26,6 @@ def before_block_execute(cpustate, transblock):
     assert(block_count <= 100), "Callback run after call to end analysis"
 
     block_count += 1
-    return 0
 
 panda.run()
 print("Finished")  # Note this won't run until after end_analysis

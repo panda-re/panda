@@ -29,7 +29,6 @@ def before_block_exec(env, tb):
         orig_blocks.add(pc)
     else:
         replay_blocks.add(pc)
-    return 0
 
 print("======== TAKE RECORDING ========")
 print("\n!!!!!! Please wait ~15 seconds for the guest to execute our commands !!!!!\n")

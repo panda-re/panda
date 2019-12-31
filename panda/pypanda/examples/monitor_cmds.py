@@ -31,7 +31,6 @@ def info_mem():
 def before_block_exec(env,tb):
     global queued, bb_count
     bb_count += 1
-    return 0
 
 panda.queue_async(my_runcmd)
 panda.queue_async(info_mem)

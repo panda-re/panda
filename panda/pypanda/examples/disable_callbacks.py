@@ -30,7 +30,6 @@ def before_block_execute(cpustate,transblock):
 	if count == 4:
 		panda.enable_callback("after")
 	count+=1
-	return 0
 
 @panda.cb_after_block_exec(name="after")
 def after_block_execute(cpustate,transblock,exit):
@@ -39,6 +38,5 @@ def after_block_execute(cpustate,transblock,exit):
 		print("after block in python %d" % count)
 	else:
 		panda.end_analysis()
-	return 0
 
 panda.run()

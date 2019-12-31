@@ -52,7 +52,7 @@ def before_block_exec(env,tb):
     global state
     global blocks
     if state == 0:
-        return 0
+        return
 
     pc = panda.current_pc(env)
 
@@ -64,7 +64,7 @@ def before_block_exec(env,tb):
         print ("\nCreating 'newroot' snapshot at 0xc101dfec")
         panda.snap("newroot")
         state = 3
-        return 1
+        return
 
     if state == 3:
         if len(blocks) <= nt: # First time: capture ordered list of PCs for basic blocks
@@ -81,12 +81,10 @@ def before_block_exec(env,tb):
             print("Block sequences matches expected value!\nRestoring 'newroot' snapshot")
             panda.revert("newroot")
             nt = 0
-        return 1
+        return
 
     if state == 4:
         pass # While an async command is queued, don't do anything
-
-    return 0
 
 panda.disable_tb_chaining()
 panda.queue_async(init)

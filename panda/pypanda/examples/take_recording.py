@@ -17,7 +17,6 @@ def bbe(env, tb):
     pc = panda.current_pc(env)
     global seen_bbs
     seen_bbs.add(pc)
-    return True
 
 # Run ls with c plugin loaded
 @blocking

@@ -45,7 +45,6 @@ with open(path.join(bin_dir, bin_name), 'rb') as f:
 def abe(cpu, tb, exit):
     if tb.pc in mappings:
         print(hex(tb.pc),mappings[tb.pc])
-    return 0
 
 panda.disable_tb_chaining()
 panda.run_replay(recording_name)

@@ -34,7 +34,6 @@ def generate_insns(env, tb):
 def before_block_trans(env, tb):
     # Before we translate each block in find cache its disassembly
     generate_insns(env, tb)
-    return 0
 
 @panda.cb_before_block_exec(procname="find")
 def before_block_exec(env, tb):
@@ -43,7 +42,6 @@ def before_block_exec(env, tb):
     if pc not in insn_cache: # If we miss the cache, update it
         generate_insns(env, tb)
     executed_pcs.append(pc)
-    return 0
 
 panda.queue_async(my_runcmd)
 panda.run()

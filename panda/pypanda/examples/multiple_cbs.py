@@ -22,7 +22,6 @@ ctr = 0
 def my_before_block_execute(cpustate, transblock):
     print("before block in python... sleeping 1s")
     sleep(1)
-    return 0
 
 @panda.cb_after_block_exec()
 def my_after_block_execute(cpustate,transblock,exit):
@@ -31,6 +30,5 @@ def my_after_block_execute(cpustate,transblock,exit):
     ctr +=1
     if ctr > 100:
         panda.end_analysis()
-    return 0
 
 panda.run()

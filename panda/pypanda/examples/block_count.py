@@ -56,7 +56,6 @@ def before_block_execute(cpustate, transblock):
                              # Which unregisters our callback while the guest
                              # is being stopped (which takes a few hundred BBs)
     blocks += 1
-    return 0
 
 # Now run the replay
 print("======== RUN REPLAY ========")
