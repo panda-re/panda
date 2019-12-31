@@ -35,6 +35,13 @@ pypanda_end_pattern = "// END_PYPANDA_NEEDS_THIS -- do not delete this comment!\
 
 pypanda_headers = []
 
+def is_panda_aware(filename):
+    contents = open(filename).read()
+    if pypanda_start_pattern in contents:
+        if not pypanda_end_pattern in contents:
+            raise RuntimeError(f"PANDA aware file {filename} missing pypanda end pattern")
+        return True
+    return False
 
 def trim_pypanda(contents):
     '''
@@ -46,7 +53,13 @@ def trim_pypanda(contents):
     a += len(pypanda_start_pattern)
     b = contents.find(pypanda_end_pattern)
     if b == -1: return None
-    return contents[a:b]
+    recurse = None
+    if len(contents[b+len(pypanda_end_pattern):]):
+        recurse = trim_pypanda(contents[b+len(pypanda_end_pattern):])
+    if recurse:
+        return contents[a:b]+recurse
+    else:
+        return contents[a:b]
 
 
 def create_pypanda_header(filename):
@@ -78,10 +91,8 @@ def read_but_exclude_garbage(filename):
     with open(filename) as thefile:
         for line in thefile:
             keep = True
-            foo = re.search("^\s*\#", line)
-            if foo:
-                foo = re.search("^\s*\#define [^_]", line)
-                if not foo:
+            if re.search("^\s*\#", line): # Has preprocessor directive
+                if not re.search("^\s*\#define [^_]", line): # Not a defines
                     keep = False
             if keep:
                 nongarbage.append(line)
@@ -91,12 +102,19 @@ pn = None
 def include_this(pdth, fn):
     global pn
     fn = os.path.join(INCLUDE_DIR_PAN, fn)
-    pdth.write("\n\n// -----------------------------------\n")
     shortpath= "/".join(fn.split("/")[-4:]) # Hardcoded 4, might be wrong
-    pdth.write("// Pull number %d from %s\n" % (pn,shortpath))
+    pdth.write("\n\n// -----------------------------------\n")
+    if is_panda_aware(fn):
+        pdth.write("// Pull number %d from (panda-aware) %s\n" % (pn,shortpath))
+        contents = open(fn).read()
+        subcontents = trim_pypanda(contents)
+        for line in subcontents:
+            pdth.write(line)
+    else:
+        pdth.write("// Pull number %d from %s\n" % (pn,shortpath))
 
-    for line in read_but_exclude_garbage(fn):
-        pdth.write(line)
+        for line in read_but_exclude_garbage(fn):
+            pdth.write(line)
     pn += 1
 
 
@@ -119,8 +137,6 @@ def main():
     create_pypanda_header("%s/%s" % (INCLUDE_DIR_PAN, "rr/rr_api.h"))
     # and plugin.h
     create_pypanda_header("%s/%s" % (INCLUDE_DIR_PAN, "plugin.h"))
-    # First, create panda_datatypes.py from INCLUDE_DIR/panda_callback_list.h
-    #
 
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
         pdty.write("""
@@ -180,7 +196,7 @@ class PandaState(Enum):
 
         cbn = 0
         cb_list = {}
-        with open (os.path.join(INCLUDE_DIR_PAN, "panda_callback_list.h")) as fp:
+        with open (os.path.join(INCLUDE_DIR_PAN, "callbacks/cb-defs.h")) as fp:
             for line in fp:
                 foo = re.search("^(\s+)PANDA_CB_([^,]+)\,", line)
                 if foo:
@@ -201,7 +217,7 @@ class PandaState(Enum):
 
         in_tdu = False
         cb_types = {}
-        with open (os.path.join(INCLUDE_DIR_PAN, "panda_callback_list.h")) as fp:
+        with open (os.path.join(INCLUDE_DIR_PAN, "callbacks/cb-defs.h")) as fp:
             for line in fp:
                 foo = re.search("typedef union panda_cb {", line)
                 if foo:
@@ -237,10 +253,10 @@ class PandaState(Enum):
                             cb_name = cb_list[i]
                             cb_types[i] = (cb_name, cb_typ)
 
-        # Sanity check: input files must match
+        # Sanity check: each callback must exist in both panda_cb_type and function definition
         for i in range(cbn-1):
             if i not in cb_types:
-                raise RuntimeError("Error parsing code for '{}' in panda_callback_list.h. Is it defined both in panda_cb_type enum and as a prototype later with the same name?".format(cb_types[i]))
+                raise RuntimeError(f"Error parsing code for '{cb_list[i]}' in callbacks/cb-defs.h. Is it defined both in panda_cb_type enum and as a prototype later with the same name?")
 
         pdty.write("""
 pcb = PandaCB(init = ffi.callback("bool(void*)"),
@@ -290,13 +306,18 @@ pcb.init : pandacbtype("init", -1),
 #define PYPANDA 1
 
 """)
-        include_this(pdth, "panda_callback_list.h")
-        include_this(pdth, "panda_plugin_mgmt.h")
-        include_this(pdth, "panda_args.h")
-        include_this(pdth, "panda_api.h")
-        include_this(pdth, "panda_os.h")
         # probably a better way... 
         pdth.write("typedef target_ulong target_ptr_t;\n")
+
+        # XXX: These are defined in plugin.h, but we can't include all of plugin.h
+        #      here without redefining things
+        pdth.write("#define MAX_PANDA_PLUGINS 16\n")
+        pdth.write("#define MAX_PANDA_PLUGIN_ARGS 32\n")
+
+        for filename in ["callbacks/cb-defs.h", "panda_plugin_mgmt.h",
+                         "panda_api.h", "panda_os.h"]:
+            include_this(pdth, filename)
+
         include_this(pdth, "panda_common.h")
 
 if __name__ == '__main__':

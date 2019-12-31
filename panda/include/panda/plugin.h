@@ -62,6 +62,24 @@ void   panda_unload_plugin(void *plugin);
 void   panda_unload_plugin_idx(int idx);
 void   panda_unload_plugins(void);
 
+extern bool panda_update_pc;
+extern bool panda_use_memcb;
+extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
+extern bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
+extern bool panda_plugin_to_unload;
+extern bool panda_tb_chaining;
+
+
+// this stuff is used by the new qemu cmd-line arg '-os os_name'
+typedef enum OSFamilyEnum { OS_UNKNOWN, OS_WINDOWS, OS_LINUX } PandaOsFamily;
+
+// these are set in panda/src/common.c via call to panda_set_os_name(os_name)
+extern char *panda_os_name;           // the full name of the os, as provided by the user
+extern char *panda_os_family;         // parsed os family
+extern char *panda_os_variant;        // parsed os variant
+extern uint32_t panda_os_bits;        // parsed os bits
+extern PandaOsFamily panda_os_familyno; // numeric identifier for family
+
 
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
 // api autogen needs it.  And don't put any compiler directives
@@ -82,30 +100,6 @@ void panda_disable_llvm_helpers(void);
 void panda_enable_tb_chaining(void);
 void panda_disable_tb_chaining(void);
 void panda_memsavep(FILE *f);
-
-// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
-
-extern bool panda_update_pc;
-extern bool panda_use_memcb;
-extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
-extern bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
-extern bool panda_plugin_to_unload;
-extern bool panda_tb_chaining;
-
-extern const gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
-extern int panda_argc;
-
-
-// this stuff is used by the new qemu cmd-line arg '-os os_name'
-typedef enum OSFamilyEnum { OS_UNKNOWN, OS_WINDOWS, OS_LINUX } PandaOsFamily;
-
-// these are set in panda/src/common.c via call to panda_set_os_name(os_name)
-extern char *panda_os_name;           // the full name of the os, as provided by the user
-extern char *panda_os_family;         // parsed os family
-extern char *panda_os_variant;        // parsed os variant
-extern uint32_t panda_os_bits;        // parsed os bits
-extern PandaOsFamily panda_os_familyno; // numeric identifier for family
-
 
 // Struct for holding a parsed key/value pair from
 // a -panda-arg plugin:key=value style argument.
@@ -147,6 +141,11 @@ const char *panda_parse_string_req(panda_arg_list *args, const char *argname, co
 const char *panda_parse_string_opt(panda_arg_list *args, const char *argname, const char *defval, const char *help);
 
 char** str_split(char *a_str, const char a_delim);
+
+extern const gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
+extern int panda_argc;
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 char *panda_plugin_path(const char *name);
 void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args); // XXX: twice defined

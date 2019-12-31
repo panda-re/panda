@@ -613,7 +613,7 @@ PANDA_CB_HD_WRITE,              // Each HDD write
 PANDA_CB_GUEST_HYPERCALL,       // Hypercall from the guest (e.g. CPUID)
 PANDA_CB_MONITOR,               // Monitor callback
 PANDA_CB_CPU_RESTORE_STATE,     // In cpu_restore_state() (fault/exception)
-PANDA_CB_BEFORE_REPLAY_LOADVM,  // At start of replay, before loadvm
+PANDA_CB_BEFORE_LOADVM,         // At start of replay, before loadvm
 PANDA_CB_ASID_CHANGED,          // After an ASID (address space identifier - aka PGD) write
 PANDA_CB_REPLAY_HD_TRANSFER,    // In replay, hd transfer
 PANDA_CB_REPLAY_NET_TRANSFER,   // In replay, transfers within network card (currently only E1000)

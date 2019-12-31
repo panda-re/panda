@@ -113,7 +113,7 @@ int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args) 
 }
 
 
-// panda_cb is defined in panda_callback_list.h
+// panda_cb is defined in callbacks/cb-defs.h
 void panda_register_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb) {
 	panda_cb cb_copy;
 	memcpy(&cb_copy,cb, sizeof(panda_cb));

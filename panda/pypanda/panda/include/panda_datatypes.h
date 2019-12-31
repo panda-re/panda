@@ -4,19 +4,13 @@
 
 #define PYPANDA 1
 
+typedef target_ulong target_ptr_t;
+#define MAX_PANDA_PLUGINS 16
+#define MAX_PANDA_PLUGIN_ARGS 32
 
 
 // -----------------------------------
-// Pull number 1 from panda/include/panda/panda_callback_list.h
-
-
-// Just the enum defining callback numbering
-// and prototypes for all those callbacks.
-
-// NOTE: Pls read README before editing!
-
-#define MAX_PANDA_PLUGINS 16
-#define MAX_PANDA_PLUGIN_ARGS 32
+// Pull number 1 from (panda-aware) include/panda/callbacks/cb-defs.h
 
 typedef enum panda_cb_type {
     PANDA_CB_BEFORE_BLOCK_TRANSLATE,    // Before translating each basic block
@@ -50,7 +44,7 @@ typedef enum panda_cb_type {
     PANDA_CB_GUEST_HYPERCALL,       // Hypercall from the guest (e.g. CPUID)
     PANDA_CB_MONITOR,               // Monitor callback
     PANDA_CB_CPU_RESTORE_STATE,     // In cpu_restore_state() (fault/exception)
-    PANDA_CB_BEFORE_REPLAY_LOADVM,  // at start of replay, before loadvm
+    PANDA_CB_BEFORE_LOADVM,         // at start of replay, before loadvm
     PANDA_CB_ASID_CHANGED,          // When CPU asid (address space identifier) changes
     PANDA_CB_REPLAY_HD_TRANSFER,    // In replay, hd transfer
     PANDA_CB_REPLAY_NET_TRANSFER,   // In replay, transfers within network card
@@ -70,10 +64,10 @@ typedef enum panda_cb_type {
     PANDA_CB_REPLAY_HANDLE_PACKET,  // In replay, packet in / out
     PANDA_CB_AFTER_CPU_EXEC_ENTER,  // Just after cpu_exec_enter is called
     PANDA_CB_BEFORE_CPU_EXEC_EXIT,  // Just before cpu_exec_exit is called
-
     PANDA_CB_AFTER_MACHINE_INIT,    // Right after the machine is initialized,
                                     // before any code runs
-    PANDA_CB_TOP_LOOP,              // At top of loop that manages emulation
+    PANDA_CB_TOP_LOOP,              // At top of loop that manages emulation.
+                                    // A good place to take a snapshot.
     PANDA_CB_DURING_MACHINE_INIT,   // At the start of machine initialization
 
     PANDA_CB_MAIN_LOOP_WAIT,        // Called after main_loop in main_loop.c runs
@@ -85,7 +79,6 @@ typedef enum panda_cb_type {
 
     PANDA_CB_BEFORE_HANDLE_EXCEPTION, // Allows you to monitor, modify,
                                       // or squash exceptions
-
     PANDA_CB_LAST
 } panda_cb_type;
 
@@ -93,111 +86,135 @@ typedef enum panda_cb_type {
 typedef union panda_cb {
     /* Callback ID: PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT
 
-       before_block_exec_invalidate_opt: called before execution of every basic
-       block, with the option to invalidate the TB
+       before_block_exec_invalidate_opt:
+        Called before execution of every basic block, with the option
+        to invalidate the TB.
 
        Arguments:
-        CPUState *env: the current CPU state
+        CPUState *env:        the current CPU state
         TranslationBlock *tb: the TB we are about to execute
+
+       Helper call location: cpu-exec.c (indirectly)
 
        Return value:
         true if we should invalidate the current translation block
-        and retranslate, false otherwise
+        and retranslate, false otherwise.
     */
     bool (*before_block_exec_invalidate_opt)(CPUState *env, TranslationBlock *tb);
 
     /* Callback ID: PANDA_CB_BEFORE_BLOCK_EXEC
 
-       before_block_exec: called before execution of every basic block
+       before_block_exec:
+        Called before execution of every basic block.
 
        Arguments:
-        CPUState *env: the current CPU state
+        CPUState *env:        the current CPU state
         TranslationBlock *tb: the TB we are about to execute
 
+       Helper call location: cpu-exec.c
+
        Return value:
-        unused
+        none
     */
-    int (*before_block_exec)(CPUState *env, TranslationBlock *tb);
+    void (*before_block_exec)(CPUState *env, TranslationBlock *tb);
 
     /* Callback ID: PANDA_CB_AFTER_BLOCK_EXEC
 
-       after_block_exec: called after execution of every basic block, although
-       if exitCode > TB_EXIT_IDX1, then the block exited early
+       after_block_exec:
+        Called after execution of every basic block.
+        If exitCode > TB_EXIT_IDX1, then the block exited early.
 
        Arguments:
-        CPUState *env: the current CPU state
+        CPUState *env:        the current CPU state
         TranslationBlock *tb: the TB we just executed
-        uint8_t exitCode:  why the block execution exited
+        uint8_t exitCode:     why the block execution exited
+
+       Helper call location: cpu-exec.c
 
        Return value:
-        unused
+        none
     */
-    int (*after_block_exec)(CPUState *env, TranslationBlock *tb, uint8_t exitCode);
+    void (*after_block_exec)(CPUState *env, TranslationBlock *tb, uint8_t exitCode);
 
     /* Callback ID: PANDA_CB_BEFORE_BLOCK_TRANSLATE
 
-       before_block_translate: called before translation of each basic block
+       before_block_translate:
+        Called before translation of each basic block.
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC we are about to translate
+        CPUState *env:   the current CPU state
+        target_ptr_t pc: the guest PC we are about to translate
+
+       Helper call location: cpu-exec.c
 
        Return value:
-        unused
+        none
     */
-    int (*before_block_translate)(CPUState *env, target_ulong pc);
+    void (*before_block_translate)(CPUState *env, target_ptr_t pc);
 
     /* Callback ID: PANDA_CB_AFTER_BLOCK_TRANSLATE
 
-       after_block_translate: called after the translation of each basic block
+       after_block_translate:
+        Called after the translation of each basic block.
 
        Arguments:
-        CPUState *env: the current CPU state
+        CPUState *env:        the current CPU state
         TranslationBlock *tb: the TB we just translated
 
+       Helper call location: cpu-exec.c
+
        Return value:
-        unused
+        none
 
        Notes:
         This is a good place to perform extra passes over the generated
-        code (particularly by manipulating the LLVM code)
+        code (particularly by manipulating the LLVM code).
         FIXME: How would this actually work? By this point the out ASM
-            has already been generated. Modify the IR and then regenerate?
+        has already been generated. Modify the IR and then regenerate?
     */
-    int (*after_block_translate)(CPUState *env, TranslationBlock *tb);
+    void (*after_block_translate)(CPUState *env, TranslationBlock *tb);
 
     /* Callback ID: PANDA_CB_AFTER_CPU_EXEC_ENTER
 
-       after_cpu_exec_enter: called after cpu_exec calls cpu_exec_enter function
+       after_cpu_exec_enter:
+        Called after cpu_exec calls cpu_exec_enter function.
 
        Arguments:
         CPUState *env: the current CPU state
 
+       Helper call location: cpu-exec.c
+
        Return value:
-        unused
+        none
     */
-    int (*after_cpu_exec_enter)(CPUState *env);
+    void (*after_cpu_exec_enter)(CPUState *env);
 
     /* Callback ID: PANDA_CB_BEFORE_CPU_EXEC_EXIT
 
-       before_cpu_exec_exit: called before cpu_exec calls cpu_exec_exit function
+       before_cpu_exec_exit:
+        Called before cpu_exec calls cpu_exec_exit function.
 
        Arguments:
         CPUState *env: the current CPU state
         bool ranBlock: true if ran a block since previous cpu_exec_enter
 
+       Helper call location: cpu-exec.c
+
        Return value:
-        unused
+        none
     */
-    int (*before_cpu_exec_exit)(CPUState *env, bool ranBlock);
+    void (*before_cpu_exec_exit)(CPUState *env, bool ranBlock);
 
     /* Callback ID: PANDA_CB_INSN_TRANSLATE
 
-       insn_translate: called before the translation of each instruction
+       insn_translate:
+        Called before the translation of each instruction.
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC we are about to translate
+        CPUState *env:   the current CPU state
+        target_ptr_t pc: the guest PC we are about to translate
+
+       Helper call location: panda/target/ARCH/translate.c
 
        Return value:
         true if PANDA should insert instrumentation into the generated code,
@@ -209,16 +226,19 @@ typedef union panda_cb {
         If you do want to instrument every single instruction, just return
         true. See the documentation for PANDA_CB_INSN_EXEC for more detail.
     */
-    bool (*insn_translate)(CPUState *env, target_ulong pc);
+    bool (*insn_translate)(CPUState *env, target_ptr_t pc);
 
     /* Callback ID: PANDA_CB_INSN_EXEC
 
-       insn_exec: called before execution of any instruction identified
-        by the PANDA_CB_INSN_TRANSLATE callback
+       insn_exec:
+        Called before execution of any instruction identified by the
+        PANDA_CB_INSN_TRANSLATE callback.
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC we are about to execute
+        CPUState *env:   the current CPU state
+        target_ptr_t pc: the guest PC we are about to execute
+
+       Helper call location: TBA
 
        Return value:
         unused
@@ -229,15 +249,18 @@ typedef union panda_cb {
         This is fairly expensive, which is why it's only enabled via
         the PANDA_CB_INSN_TRANSLATE callback.
     */
-    int (*insn_exec)(CPUState *env, target_ulong pc);
+    int (*insn_exec)(CPUState *env, target_ptr_t pc);
 
     /* Callback ID: PANDA_CB_AFTER_INSN_TRANSLATE
 
-       after_insn_translate: called after the translation of each instruction
+       after_insn_translate:
+        Called after the translation of each instruction.
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the next guest PC we've translated
+        CPUState *env:   the current CPU state
+        target_ptr_t pc: the next guest PC we've translated
+
+       Helper call location: panda/target/ARCH/translate.c
 
        Return value:
         true if PANDA should insert instrumentation into the generated code,
@@ -246,16 +269,19 @@ typedef union panda_cb {
        Notes:
         See `insn_translate`, callbacks are registered via PANDA_CB_AFTER_INSN_EXEC
     */
-    bool (*after_insn_translate)(CPUState *env, target_ulong pc);
+    bool (*after_insn_translate)(CPUState *env, target_ptr_t pc);
 
     /* Callback ID: PANDA_CB_AFTER_INSN_EXEC
 
-       after_insn_exec: called after execution of an instruction identified
-        by the PANDA_CB_AFTER_INSN_TRANSLATE callback
+       after_insn_exec:
+        Called after execution of an instruction identified by the
+        PANDA_CB_AFTER_INSN_TRANSLATE callback
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the next guest PC already executed
+        CPUState *env:   the current CPU state
+        target_ptr_t pc: the next guest PC already executed
+
+       Helper call location: TBA
 
        Return value:
         unused
@@ -263,172 +289,193 @@ typedef union panda_cb {
        Notes:
         See `insn_exec`. Enabled via the PANDA_CB_AFTER_INSN_TRANSLATE callback.
     */
-    int (*after_insn_exec)(CPUState *env, target_ulong pc);
+    int (*after_insn_exec)(CPUState *env, target_ptr_t pc);
 
     /* Callback ID: PANDA_CB_VIRT_MEM_BEFORE_READ
 
-       virt_mem_before_read: called before memory is read
+       virt_mem_before_read:
+        Called before memory is read.
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC doing the read
-        target_ulong addr: the (virtual) address being read
-        target_ulong size: the size of the read
+        CPUState *env:     the current CPU state
+        target_ptr_t pc:   the guest PC doing the read
+        target_ptr_t addr: the (virtual) address being read
+        size_t size:       the size of the read
+
+       Helper call location: TBA
 
        Return value:
-        unused
+        none
     */
-    int (*virt_mem_before_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size);
+    void (*virt_mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size);
 
     /* Callback ID: PANDA_CB_VIRT_MEM_BEFORE_WRITE
 
-       virt_mem_before_write: called before memory is written
-       [exists]
+       virt_mem_before_write:
+        Called before memory is written.
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC doing the write
-        target_ulong addr: the (virtual) address being written
-        target_ulong size: the size of the write
-        void *buf: pointer to the data that is to be written
+        CPUState *env:     the current CPU state
+        target_ptr_t pc:   the guest PC doing the write
+        target_ptr_t addr: the (virtual) address being written
+        size_t size:       the size of the write
+        uint8_t *buf:      pointer to the data that is to be written
+
+       Helper call location: TBA
 
        Return value:
-        unused
+        none
     */
-    int (*virt_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+    void (*virt_mem_before_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_PHYS_MEM_BEFORE_READ
 
-       phys_mem_before_read: called after memory is read
-       [new]
+       phys_mem_before_read:
+        Called after memory is read.
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC doing the read
-        target_ulong addr: the (physical) address being read
-        target_ulong size: the size of the read
+        CPUState *env:     the current CPU state
+        target_ptr_t pc:   the guest PC doing the read
+        target_ptr_t addr: the (physical) address being read
+        size_t size:       the size of the read
+
+       Helper call location: TBA
 
        Return value:
-        unused
+        none
     */
-    int (*phys_mem_before_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size);
+    void (*phys_mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size);
 
     /* Callback ID: PANDA_CB_PHYS_MEM_BEFORE_WRITE
 
-       phys_mem_write: called before memory is written
-       [exists]
+       phys_mem_write:
+        Called before memory is written.
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC doing the write
-        target_ulong addr: the (physical) address being written
-        target_ulong size: the size of the write
-        void *buf: pointer to the data that is to be written
+        CPUState *env:     the current CPU state
+        target_ptr_t pc:   the guest PC doing the write
+        target_ptr_t addr: the (physical) address being written
+        size_t size:       the size of the write
+        uint8_t *buf:      pointer to the data that is to be written
+
+       Helper call location: TBA
 
        Return value:
-        unused
+        none
     */
-    int (*phys_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+    void (*phys_mem_before_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_VIRT_MEM_AFTER_READ
 
-       virt_mem_after_read: called after memory is read
-       [exists]
+       virt_mem_after_read:
+        Called after memory is read.
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC doing the read
-        target_ulong addr: the (virtual) address being read
-        target_ulong size: the size of the read
-        void *buf: pointer to data just read
+        CPUState *env:     the current CPU state
+        target_ptr_t pc:   the guest PC doing the read
+        target_ptr_t addr: the (virtual) address being read
+        size_t size:       the size of the read
+        uint8_t *buf:      pointer to data just read
+
+       Helper call location: TBA
 
        Return value:
-        unused
+        none
     */
-    int (*virt_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+    void (*virt_mem_after_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_VIRT_MEM_AFTER_WRITE
 
-       virt_mem_after_write: called after memory is written
-       [new]
+       virt_mem_after_write:
+        Called after memory is written.
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC doing the write
-        target_ulong addr: the (virtual) address being written
-        target_ulong size: the size of the write
-        void *buf: pointer to the data that was written
+        CPUState *env:     the current CPU state
+        target_ptr_t pc:   the guest PC doing the write
+        target_ptr_t addr: the (virtual) address being written
+        size_t size:       the size of the write
+        uint8_t *buf:      pointer to the data that was written
+
+       Helper call location: TBA
 
        Return value:
-        unused
+        none
     */
-    int (*virt_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+    void (*virt_mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_PHYS_MEM_AFTER_READ
 
-       phys_mem_after_read: called after memory is read
-       [exists]
+       phys_mem_after_read:
+        Called after memory is read.
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC doing the read
-        target_ulong addr: the (physical) address being read
-        target_ulong size: the size of the read
-        void *buf: pointer to data just read
+        CPUState *env:     the current CPU state
+        target_ptr_t pc:   the guest PC doing the read
+        target_ptr_t addr: the (physical) address being read
+        size_t size:       the size of the read
+        uint8_t *buf:      pointer to data just read
+
+       Helper call location: TBA
 
        Return value:
-        unused
+        none
     */
-
-    int (*phys_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+    void (*phys_mem_after_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_PHYS_MEM_AFTER_WRITE
 
-       phys_mem_write: called after memory is written
-       [new]
+       phys_mem_write:
+        Called after memory is written.
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC doing the write
-        target_ulong addr: the (physical) address being written
-        target_ulong size: the size of the write
-        void *buf: pointer to the data that was written
+        CPUState *env:     the current CPU state
+        target_ptr_t pc:   the guest PC doing the write
+        target_ptr_t addr: the (physical) address being written
+        size_t size:       the size of the write
+        uint8_t *buf:      pointer to the data that was written
+
+       Helper call location: TBA
 
        Return value:
-        unused
+        none
     */
-
-    int (*phys_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+    void (*phys_mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_MMIO_AFTER_READ
 
-       mmio_after_read: called after MMIO memory is read
+       mmio_after_read:
+        Called after MMIO memory is read.
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong addr: the (physical) address being read from
-        target_ulong size: the size of the read
-        uin64_t val: the value being read
+        CPUState *env:     the current CPU state
+        target_ptr_t addr: the (physical) address being read from
+        size_t size:       the size of the read
+        uin64_t val:       the value being read
+
+       Helper call location: cputlb.c
 
        Return value:
-        unused
+        none
     */
-    int (*mmio_after_read)(CPUState *env, target_ulong addr, int size, uint64_t val);
+    void (*mmio_after_read)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
 
     /* Callback ID: PANDA_CB_MMIO_AFTER_WRITE
 
-       mmio_after_write: called after MMIO memory is written to
+       mmio_after_write:
+        Called after MMIO memory is written to.
 
        Arguments:
-        CPUState *env: the current CPU state
-        target_ulong addr: the (physical) address being written to
-        target_ulong size: the size of the write
-        uin64_t val: the value being written
+        CPUState *env:     the current CPU state
+        target_ptr_t addr: the (physical) address being written to
+        size_t size:       the size of the write
+        uin64_t val:       the value being written
+
+       Helper call location: cputlb.c
 
        Return value:
-        unused
+        none
     */
-    int (*mmio_after_write)(CPUState *env, target_ulong addr, int size, uint64_t val);
+    void (*mmio_after_write)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
 
     /* Callback ID: PANDA_CB_HD_READ
        hd_read : called when there is a hard drive read
@@ -453,31 +500,44 @@ typedef union panda_cb {
     void (*hd_write)(CPUState *env);
 
     /* Callback ID: PANDA_CB_GUEST_HYPERCALL
-       guest_hypercall: called when a program inside the guest makes a
-        hypercall to pass information from inside the guest to a plugin
+
+       guest_hypercall:
+        Called when a program inside the guest makes a hypercall to pass
+        information from inside the guest to a plugin
+
        Arguments:
         CPUState *env: the current CPU state
+
+       Helper call location: target/i386/misc_helper.c
+
        Return value:
-        unused
+        true if the callback has processed the hypercall, false if the
+        hypercall has been ignored.
+
        Notes:
-        On x86, this is called whenever CPUID is executed. Plugins then
-        check for magic values in the registers to determine if it really
-        is a guest hypercall. Parameters can be passed in other registers.
-        S2E accomplishes this by using a (currently) undefined opcode. We
-        have instead opted to use an existing instruction to make development
-        easier (we can use inline asm rather than defining the raw bytes).
-        AMD's SVM and Intel's VT define hypercalls, but they are privileged
-        instructinos, meaning the guest must be in ring 0 to execute them.
+        On x86, this is called whenever CPUID is executed. On ARM, the
+        MCR instructions is used. Plugins should check for magic values
+        in the registers to determine if it really is a guest hypercall.
+        Parameters can be passed in other registers. If the plugin
+        processes the hypercall, it should return true so the execution
+        of the normal instruction is skipped.
     */
-    int (*guest_hypercall)(CPUState *env);
+    bool (*guest_hypercall)(CPUState *env);
 
     /* Callback ID: PANDA_CB_MONITOR
-       monitor: called when someone uses the plugin_cmd monitor command
+
+       monitor:
+        Called when someone uses the plugin_cmd monitor command.
+
        Arguments:
-        Monitor *mon: a pointer to the Monitor
+        Monitor *mon:    a pointer to the Monitor
         const char *cmd: the command string passed to plugin_cmd
+
+       Helper call location: TBA
+
        Return value:
         unused
+
        Notes:
         The command is passed as a single string. No parsing is performed
         on the string before it is passed to the plugin, so each plugin
@@ -492,220 +552,288 @@ typedef union panda_cb {
     */
     int (*monitor)(Monitor *mon, const char *cmd);
 
+
     /* Callback ID: PANDA_CB_CPU_RESTORE_STATE
 
-       cpu_restore_state: called inside of cpu_restore_state(), when there is
-        a CPU fault/exception
+       cpu_restore_state:
+        Called inside of cpu_restore_state(), when there is a CPU
+        fault/exception.
 
        Arguments:
-        CPUState *env: the current CPU state
+        CPUState *env:        the current CPU state
         TranslationBlock *tb: the current translation block
+
+       Helper call location: translate-all.c
+
+       Return value:
+        none
+    */
+    void (*cpu_restore_state)(CPUState *env, TranslationBlock *tb);
+
+    /* Callback ID: PANDA_CB_BEFORE_LOADVM
+
+       before_loadvm:
+        Called at start of replay, before loadvm is called. This allows
+        us to hook devices' loadvm handlers. Remember to unregister the
+        existing handler for the device first. See the example in the
+        sample plugin.
+
+       Arguments:
+        none
+
+       Helper call location: TBA
 
        Return value:
         unused
     */
-    int (*cpu_restore_state)(CPUState *env, TranslationBlock *tb);
-
-    /* Callback ID: PANDA_CB_BEFORE_REPLAY_LOADVM
-
-       before_loadvm: called at start of replay, before loadvm is called.
-        This allows us to hook devices' loadvm handlers.
-        Remember to unregister the existing handler for the device first.
-        See the example in the sample plugin.
-
-        Arguments:
-
-        Return value:
-         unused
-    */
-    int (*before_replay_loadvm)(void);
+    int (*before_loadvm)(void);
 
     /* Callback ID: PANDA_CB_ASID_CHANGED
 
-       asid_changed: Called when asid changes.
+       asid_changed:
+        Called when asid changes.
 
        Arguments:
-        CPUState* env: pointer to CPUState
-        target_ulong oldval: old asid value
-        target_ulong newval: new asid value
+        CPUState *env:       pointer to CPUState
+        target_ptr_t oldval: old asid value
+        target_ptr_t newval: new asid value
+
+       Helper call location: target/i386/helper.c
 
        Return value:
-        unused
+        1 if the asid should be prevented from being changed
+        0 otherwise
+
+       Notes:
+        The helper is only invoked for x86. This should break a lot of the
+        plugins which rely on this callback to detect context switches.
     */
-    int (*asid_changed)(CPUState *env, target_ulong oldval, target_ulong newval);
+    int (*asid_changed)(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
 
     /* Callback ID:     PANDA_CB_REPLAY_HD_TRANSFER,
 
-       In replay only, some kind of data transfer involving hard drive.
-       NB: We are neither before nor after, really.
-       In replay the transfer doesn't really happen.
-       We are *at* the point at which it happened, really.
+       replay_hd_transfer:
+        In replay only. Some kind of data transfer involving hard drive.
 
        Arguments:
-        CPUState* env: pointer to CPUState
-        uint32_t type:        type of transfer  (Hd_transfer_type)
-        uint64_t src_addr:    address for src
-        uint64_t dest_addr:   address for dest
-        uint32_t num_bytes:   size of transfer in bytes
+        CPUState *env:          pointer to CPUState
+        uint32_t type:          type of transfer  (Hd_transfer_type)
+        target_ptr_t src_addr:  address for src
+        target_ptr_t dest_addr: address for dest
+        size_t num_bytes:       size of transfer in bytes
+
+       Helper call location: panda/src/rr/rr_log.c
 
        Return value:
-        non-zero means DONT change asid
+        none
+
+       Helper call location: TBA
+
+       Notes:
+        Unlike most callbacks, this is neither a "before" or "after" callback.
+        In replay the transfer doesn't really happen. We are *at* the point at
+        which it happened, really.
     */
-    int (*replay_hd_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
-
-    /* Callback ID:     PANDA_CB_REPLAY_NET_TRANSFER,
-
-       In replay only, some kind of data transfer within the network card
-       (currently, only the E1000 is supported).  NB: We are neither before nor
-       after, really.  In replay the transfer doesn't really happen.  We are
-       *at* the point at which it happened, really.
-
-       Arguments:
-        CPUState* env:        pointer to CPUState
-        uint32_t type:        type of transfer  (Net_transfer_type)
-        uint64_t src_addr:    address for src
-        uint64_t dest_addr:   address for dest
-        uint32_t num_bytes:   size of transfer in bytes
-
-       Return value:
-        unused
-    */
-		// XXX: This entire definition must remain on one line in order to support pypanda's create_data_types.py logic
-    int (*replay_net_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
-
-    /* Callback ID:     PANDA_CB_REPLAY_SERIAL_RECEIVE,
-
-       In replay only, called when a byte is received on the serial port.
-
-       Arguments:
-        CPUState* env:        pointer to CPUState
-        uint64_t fifo_addr:   address of the data within the fifo
-        uint8_t value:        value received
-
-       Return value:
-        unused
-    */
-
-		// XXX: This entire definition must remain on one line in order to support pypanda's create_data_types.py logic
-    int (*replay_serial_receive)(CPUState *env, uint64_t fifo_addr, uint8_t value);
-
-    /* Callback ID:     PANDA_CB_REPLAY_SERIAL_READ,
-
-       In replay only, called when a byte read from the serial RX FIFO
-
-       Arguments:
-        CPUState* env:        pointer to CPUState
-        uint64_t fifo_addr:   address of the data within the fifo (source)
-        uint32_t port_addr:   address of the IO port where data is being
-                              read (destination)
-        uint8_t value:        value read
-
-       Return value:
-        unused
-    */
-
-		// XXX: This entire definition must remain on one line in order to support pypanda's create_data_types.py logic
-    int (*replay_serial_read)(CPUState *env, uint64_t fifo_addr, uint32_t port_addr, uint8_t value);
-
-    /* Callback ID:     PANDA_CB_REPLAY_SERIAL_SEND,
-
-       In replay only, called when a byte is sent on the serial port.
-
-       Arguments:
-        CPUState* env:        pointer to CPUState
-        uint64_t fifo_addr:   address of the data within the fifo
-        uint8_t value:        value received
-
-       Return value:
-        unused
-    */
-    int (*replay_serial_send)(CPUState *env, uint64_t fifo_addr, uint8_t value);
-
-    /* Callback ID:     PANDA_CB_REPLAY_SERIAL_WRITE,
-
-       In replay only, called when a byte written to the serial TX FIFO
-
-       Arguments:
-        CPUState* env:        pointer to CPUState
-        uint64_t fifo_addr:   address of the data within the fifo (source)
-        uint32_t port_addr:   address of the IO port where data is being
-                              read (destination)
-        uint8_t value:        value read
-
-       Return value:
-        unused
-    */
-
-		// XXX: This entire definition must remain on one line in order to support pypanda's create_data_types.py logic
-    int (*replay_serial_write)(CPUState *env, uint64_t fifo_addr, uint32_t port_addr, uint8_t value);
+    void (*replay_hd_transfer)(CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, size_t num_bytes);
 
     /* Callback ID:     PANDA_CB_REPLAY_BEFORE_DMA,
 
-       In replay only, we are about to dma between qemu buffer and guest memory
+       replay_before_dma:
+        In replay only. We are about to dma between qemu buffer and
+        guest memory.
 
        Arguments:
-        CPUState* env:       pointer to CPUState
-        uint32_t is_write:   type of transfer going on    (is_write == 1 means IO -> RAM else RAM -> IO)
-        uint8_t* buf         the QEMU device's buffer in QEMU's virtual memory
-        uint64_t paddr       "physical" address of guest RAM
-        uint32_t num_bytes:  size of transfer
-    */
+        CPUState *env:      pointer to CPUState
+        const uint8_t *buf: pointer to the QEMU's device buffer ussed in the transfer
+        hwaddr addr:        address written to in the guest RAM
+        size_t size:        size of transfer
+        bool is_write:      indicates whether the DMA transfer writes to memory
 
-		// XXX: This entire definition must remain on one line in order to support pypanda's create_data_types.py logic
-    int (*replay_before_dma)(CPUState *env, uint32_t is_write, uint8_t* src_addr, uint64_t dest_addr, uint32_t num_bytes);
+       Helper call location: exec.c
+
+       Return value:
+        none
+    */
+    void (*replay_before_dma)(CPUState *env, const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
 
     /* Callback ID:     PANDA_CB_REPLAY_AFTER_DMA,
 
        In replay only, we are about to dma between qemu buffer and guest memory
 
        Arguments:
-        CPUState* env:       pointer to CPUState
-        uint32_t is_write:   type of transfer going on    (is_write == 1 means IO -> RAM else RAM -> IO)
-        uint8_t* buf         the QEMU device's buffer in QEMU's virtual memory
-        uint64_t paddr       "physical" address of guest RAM
-        uint32_t num_bytes:  size of transfer
-    */
+        CPUState *env:      pointer to CPUState
+        const uint8_t *buf: pointer to the QEMU's device buffer ussed in the transfer
+        hwaddr addr:        address written to in the guest RAM
+        size_t size:        size of transfer
+        bool is_write:      indicates whether the DMA transfer writes to memory
 
-		// XXX: This entire definition must remain on one line in order to support pypanda's create_data_types.py logic
-    int (*replay_after_dma)(CPUState *env, uint32_t is_write, uint8_t* src_addr, uint64_t dest_addr, uint32_t num_bytes);
+       Helper call location: exec.c
+
+       Return value:
+        none
+    */
+    void (*replay_after_dma)(CPUState *env, const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
 
     /* Callback ID:   PANDA_CB_REPLAY_HANDLE_PACKET,
 
        In replay only, we have a packet (incoming / outgoing) in hand.
 
        Arguments:
-        CPUState *env          pointer to CPUState
-        uint8_t *buf           buffer containing packet data
-        int size               num bytes in buffer
-        uint8_t direction      XXX read or write.  not sure which is which.
-        uint64_t old_buf_addr  XXX this is a mystery
+        CPUState *env:         pointer to CPUState
+        uint8_t *buf:          buffer containing packet data
+        size_t size:           num bytes in buffer
+        uint8_t direction:     either `PANDA_NET_RX` or `PANDA_NET_TX`
+        uint64_t buf_addr_rec: the address of `buf` at the time of recording
+
+       Helper call location: panda/src/rr/rr_log.c
+
+       Return value:
+        none
+
+       Notes:
+        `buf_addr_rec` corresponds to the address of the device buffer of
+        the emulated NIC. I.e. it is the address of a VM-host-side buffer.
+        It is useful for implementing network tainting in an OS-agnostic
+        way, in conjunction with taint2_label_io().
+
+        FIXME: The `buf_addr_rec` maps to the `uint8_t *buf` field of the
+        internal `RR_handle_packet_args` struct. The field is dumped/loaded
+        to/from the trace without proper serialization/deserialization. As
+        a result, a 64bit build of PANDA will not be able to process traces
+        produced by a 32bit of PANDA, and vice-versa.
+        There are more internal structs that suffer from the same issue.
+        This is an oversight that will eventually be fixed. But as the
+        real impact is minimal (virtually nobody uses 32bit builds), 
+        the fix has a very low priority in the bugfix list.
     */
-    int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size, uint8_t direction, uint64_t old_buf_addr);
+    void (*replay_handle_packet)(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
+
+    /* Callback ID:     PANDA_CB_REPLAY_NET_TRANSFER,
+
+       replay_net_transfer:
+       In replay only, some kind of data transfer within the network card
+       (currently, only the E1000 is supported).
+
+       Arguments:
+        CPUState *env:          pointer to CPUState
+        uint32_t type:          type of transfer  (Net_transfer_type)
+        uint64_t src_addr:      address for src
+        uint64_t dest_addr:     address for dest
+        size_t num_bytes:       size of transfer in bytes
+
+       Helper call location: panda/src/rr/rr_log.c
+
+       Return value:
+        none
+
+       Notes:
+        Unlike most callbacks, this is neither a "before" or "after" callback.
+        In replay the transfer doesn't really happen. We are *at* the point at
+        which it happened, really.
+        Also, the src_addr and dest_addr may be for either host (ie. a location
+        in the emulated network device) or guest, depending upon the type.
+    */
+    void (*replay_net_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, size_t num_bytes);
+
+    /* Callback ID:     PANDA_CB_REPLAY_SERIAL_RECEIVE,
+
+        replay_serial_receive:
+        In replay only, called when a byte is received on the serial port.
+
+       Arguments:
+        CPUState *env:          pointer to CPUState
+        target_ptr_t fifo_addr: address of the data within the fifo
+        uint8_t value:          value received
+
+       Helper call location: panda/src/rr/rr_log.c
+
+       Return value:
+        unused
+    */
+    void (*replay_serial_receive)(CPUState *env, target_ptr_t fifo_addr, uint8_t value);
+
+    /* Callback ID:     PANDA_CB_REPLAY_SERIAL_READ,
+
+       replay_serial_read:
+        In replay only, called when a byte read from the serial RX FIFO
+
+       Arguments:
+        CPUState *env:          pointer to CPUState
+        target_ptr_t fifo_addr: address of the data within the fifo (source)
+        uint32_t port_addr:     address of the IO port where data is being read (destination)
+        uint8_t value:          value read
+
+       Helper call location: panda/src/rr/rr_log.c
+
+       Return value:
+        none
+    */
+    void (*replay_serial_read)(CPUState *env, target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
+
+    /* Callback ID:     PANDA_CB_REPLAY_SERIAL_SEND,
+
+       replay_serial_send:
+        In replay only, called when a byte is sent on the serial port.
+
+       Arguments:
+        CPUState *env:          pointer to CPUState
+        target_ptr_t fifo_addr: address of the data within the fifo
+        uint8_t value:          value received
+
+       Helper call location: panda/src/rr/rr_log.c
+
+       Return value:
+        none
+    */
+    void (*replay_serial_send)(CPUState *env, target_ptr_t fifo_addr, uint8_t value);
+
+    /* Callback ID:     PANDA_CB_REPLAY_SERIAL_WRITE,
+
+       In replay only, called when a byte written to the serial TX FIFO
+
+       Arguments:
+        CPUState *env:          pointer to CPUState
+        target_ptr_t fifo_addr: address of the data within the fifo (source)
+        uint32_t port_addr:     address of the IO port where data is being read (destination)
+        uint8_t value:          value read
+
+       Helper call location: panda/src/rr/rr_log.c
+
+       Return value:
+        none
+    */
+    void (*replay_serial_write)(CPUState *env, target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
 
     /* Callback ID:     PANDA_CB_AFTER_MACHINE_INIT
 
-       after_machine_init: Called right after the machine has been
-       initialized, but before any guest code runs.
+       after_machine_init:
+        Called right after the machine has been initialized, but before
+        any guest code runs.
 
        Arguments:
         void *cpu_env: pointer to CPUState
 
+       Helper call location: TBA
+
        Return value:
-        unused
+        none
 
        Notes:
-        This callback allows initialization of components that need access
-       to the RAM, CPU object, etc. E.g. for the taint2 plugin, this is the
-       appropriate place to call taint2_enable_taint().
+        This callback allows initialization of components that need
+        access to the RAM, CPU object, etc. E.g. for the taint2 plugin,
+        this is the appropriate place to call taint2_enable_taint().
     */
     void (*after_machine_init)(CPUState *env);
 
     /* Callback ID:     PANDA_CB_TOP_LOOP
 
-       top_loop: Called at the top of the loop that manages emulation.
+       top_loop:
+        Called at the top of the loop that manages emulation.
 
        Arguments:
-        void *cpu_env: pointer to CPUState
+        CPUState *env:          pointer to CPUState
+
+       Helper call location: cpus.c
 
        Return value:
         unused
@@ -749,13 +877,38 @@ typedef union panda_cb {
      */
     void (*pre_shutdown)(void);
 
-    /* TODO: Document */
-    void (*unassigned_io_read)(CPUState *env, target_ulong pc, hwaddr addr, uint32_t size, uint64_t *val);
+    /* Callback ID:     PANDA_CB_UNASSIGNED_IO_WRITE
 
-    /* TODO: Document */
-    void (*unassigned_io_write)(CPUState *env, target_ulong pc, hwaddr addr, uint32_t size, uint64_t *val);
+      unassigned_io_read: Called when the guest attempts to read from an unmapped peripheral via MMIO
 
+       Arguments:
+         pc: Guest program counter at time of write
+         addr: Physical address written to
+         size: Size of write
+         val: Pointer to a buffer that will be passed to the guest as the result of the read
 
+       Return value:
+         None
+     */
+    void (*unassigned_io_read)(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint8_t *val);
+
+    /* Callback ID:     PANDA_CB_UNASSIGNED_IO_WRITE
+
+      unassigned_io_write: Called when the guest attempts to write to an unmapped peripheral via MMIO
+
+       Arguments:
+         pc: Guest program counter at time of write
+         addr: Physical address written to
+         size: Size of write
+         val: Pointer to buffer containing data being written
+
+       Return value:
+         None
+     */
+    void (*unassigned_io_write)(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint8_t *val);
+
+    /* Internal callback, used by unassigned_io_read and unassigned_io_write */
+    void (*unassigned_io)(CPUState *env, hwaddr addr, size_t size, uint8_t *val, bool is_write);
 
     /* Callback ID:     PANDA_CB_BEFORE_HANDLE_EXCEPTION
 
@@ -788,7 +941,7 @@ typedef union panda_cb {
        member could be used instead.
        However, cbaddr provides neutral semantics for the comparisson.
     */
-    void (* cbaddr)(void);
+    void (*cbaddr)(void);
 } panda_cb;
 
 
@@ -851,70 +1004,7 @@ panda_cb_list* panda_cb_list_next(panda_cb_list* plist);
 
 
 // -----------------------------------
-// Pull number 3 from panda/include/panda/panda_args.h
-
-// Fns and structs to do with panda arg parsing 
-
-// NOTE: Pls read README before editing!
-
-// Struct for holding a parsed key/value pair from
-// a -panda-arg plugin:key=value style argument.
-typedef struct panda_arg {
-    char *argptr;   // For internal use only
-    char *key;      // Pointer to the key string
-    char *value;    // Pointer to the value string
-} panda_arg;
-
-
-typedef struct panda_arg_list {
-    int nargs;
-    panda_arg *list;
-    char *plugin_name;
-} panda_arg_list;
-
-
-
-bool panda_add_arg(const char *plugin_name, const char *plugin_arg);
-
-// Parse out arguments and return them to caller
-panda_arg_list *panda_get_args(const char *plugin_name);
-
-// Free a list of parsed arguments
-void panda_free_args(panda_arg_list *args);
-
-bool panda_parse_bool_req(panda_arg_list *args, const char *argname, const char *help);
-bool panda_parse_bool_opt(panda_arg_list *args, const char *argname, const char *help);
-bool panda_parse_bool(panda_arg_list *args, const char *argname);
-
-target_ulong panda_parse_ulong_req(panda_arg_list *args, const char *argname, const char *help);
-target_ulong panda_parse_ulong_opt(panda_arg_list *args, const char *argname, target_ulong defval, const char *help);
-target_ulong panda_parse_ulong(panda_arg_list *args, const char *argname, target_ulong defval);
-
-uint32_t panda_parse_uint32_req(panda_arg_list *args, const char *argname, const char *help);
-uint32_t panda_parse_uint32_opt(panda_arg_list *args, const char *argname, uint32_t defval, const char *help);
-uint32_t panda_parse_uint32(panda_arg_list *args, const char *argname, uint32_t defval);
-
-uint64_t panda_parse_uint64_req(panda_arg_list *args, const char *argname, const char *help);
-uint64_t panda_parse_uint64_opt(panda_arg_list *args, const char *argname, uint64_t defval, const char *help);
-uint64_t panda_parse_uint64(panda_arg_list *args, const char *argname, uint64_t defval);
-
-double panda_parse_double_req(panda_arg_list *args, const char *argname, const char *help);
-double panda_parse_double_opt(panda_arg_list *args, const char *argname, double defval, const char *help);
-double panda_parse_double(panda_arg_list *args, const char *argname, double defval);
-
-const char *panda_parse_string_req(panda_arg_list *args, const char *argname, const char *help);
-const char *panda_parse_string_opt(panda_arg_list *args, const char *argname, const char *defval, const char *help);
-const char *panda_parse_string(panda_arg_list *args, const char *argname, const char *defval);
-
-char** str_split(char* a_str, const char a_delim);
-extern const gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
-extern int panda_argc;
-
-
-
-
-// -----------------------------------
-// Pull number 4 from panda/include/panda/panda_api.h
+// Pull number 3 from panda/include/panda/panda_api.h
 
 // Functions considered part of the panda api that come from
 // panda_api.c. Also some from common.c. Note that, while common.c has
@@ -1006,7 +1096,7 @@ bool panda_taint_check_reg(uint32_t reg_num, uint32_t size) ;
 
 
 // -----------------------------------
-// Pull number 5 from panda/include/panda/panda_os.h
+// Pull number 4 from panda/include/panda/panda_os.h
 
 // this stuff is defined / used in common.c
 
@@ -1023,11 +1113,10 @@ extern uint32_t panda_os_bits;        // parsed os bits
 extern PandaOsFamily panda_os_familyno; // numeric identifier for family
 
 
-typedef target_ulong target_ptr_t;
 
 
 // -----------------------------------
-// Pull number 6 from panda/include/panda/panda_common.h
+// Pull number 5 from panda/include/panda/panda_common.h
 
 
 void panda_cleanup(void);

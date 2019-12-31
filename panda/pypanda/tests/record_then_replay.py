@@ -35,7 +35,6 @@ def before_block_exec(env, tb):
         orig_blocks.add(pc)
     else:
         replay_blocks.add(pc)
-    return 0
 
 print("Taking recording (wait ~15s)...")
 panda.queue_async(record_nondet) # Take a recording

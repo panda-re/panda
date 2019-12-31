@@ -19,6 +19,12 @@ PANDAENDCOMMENT */
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+
 typedef enum panda_cb_type {
     PANDA_CB_BEFORE_BLOCK_TRANSLATE,    // Before translating each basic block
     PANDA_CB_AFTER_BLOCK_TRANSLATE,     // After translating each basic block
@@ -51,7 +57,7 @@ typedef enum panda_cb_type {
     PANDA_CB_GUEST_HYPERCALL,       // Hypercall from the guest (e.g. CPUID)
     PANDA_CB_MONITOR,               // Monitor callback
     PANDA_CB_CPU_RESTORE_STATE,     // In cpu_restore_state() (fault/exception)
-    PANDA_CB_BEFORE_REPLAY_LOADVM,  // at start of replay, before loadvm
+    PANDA_CB_BEFORE_LOADVM,         // at start of replay, before loadvm
     PANDA_CB_ASID_CHANGED,          // When CPU asid (address space identifier) changes
     PANDA_CB_REPLAY_HD_TRANSFER,    // In replay, hd transfer
     PANDA_CB_REPLAY_NET_TRANSFER,   // In replay, transfers within network card
@@ -298,59 +304,6 @@ typedef union panda_cb {
     */
     int (*after_insn_exec)(CPUState *env, target_ptr_t pc);
 
-    /* Callback ID: PANDA_CB_GUEST_HYPERCALL
-
-       guest_hypercall:
-        Called when a program inside the guest makes a hypercall to pass
-        information from inside the guest to a plugin
-
-       Arguments:
-        CPUState *env: the current CPU state
-
-       Helper call location: target/i386/misc_helper.c
-
-       Return value:
-        true if the callback has processed the hypercall, false if the
-        hypercall has been ignored.
-
-       Notes:
-        On x86, this is called whenever CPUID is executed. On ARM, the
-        MCR instructions is used. Plugins should check for magic values
-        in the registers to determine if it really is a guest hypercall.
-        Parameters can be passed in other registers. If the plugin
-        processes the hypercall, it should return true so the execution
-        of the normal instruction is skipped.
-    */
-    bool (*guest_hypercall)(CPUState *env);
-
-    /* Callback ID: PANDA_CB_MONITOR
-
-       monitor:
-        Called when someone uses the plugin_cmd monitor command.
-
-       Arguments:
-        Monitor *mon:    a pointer to the Monitor
-        const char *cmd: the command string passed to plugin_cmd
-
-       Helper call location: TBA
-
-       Return value:
-        unused
-
-       Notes:
-        The command is passed as a single string. No parsing is performed
-        on the string before it is passed to the plugin, so each plugin
-        must parse the string as it deems appropriate (e.g. by using strtok
-        and getopt) to do more complex option processing.
-        It is recommended that each plugin implementing this callback respond
-        to the "help" message by listing the commands supported by the plugin.
-        Note that every loaded plugin will have the opportunity to respond to
-        each plugin_cmd; thus it is a good idea to ensure that your plugin's
-        monitor commands are uniquely named, e.g. by using the plugin name
-        as a prefix ("sample_do_foo" rather than "do_foo").
-    */
-    int (*monitor)(Monitor *mon, const char *cmd);
-
     /* Callback ID: PANDA_CB_VIRT_MEM_BEFORE_READ
 
        virt_mem_before_read:
@@ -536,6 +489,82 @@ typedef union panda_cb {
         none
     */
     void (*mmio_after_write)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
+
+    /* Callback ID: PANDA_CB_HD_READ
+       hd_read : called when there is a hard drive read
+
+       Note: this was added to panda_cb_type enum but no callback prototype inserted
+       Here is a stub.  I'm not sure what the args should be.
+       Arguments
+       CPUState *env
+    */
+
+    void (*hd_read)(CPUState *env);
+
+    /* Callback ID: PANDA_CB_HD_WRITE
+       hd_write : called when there is a hard drive write
+
+       Note: this was added to panda_cb_type enum but no callback prototype inserted
+       Here is a stub.  I'm not sure what the args should be.
+       Arguments
+       CPUState *env
+    */
+
+    void (*hd_write)(CPUState *env);
+
+    /* Callback ID: PANDA_CB_GUEST_HYPERCALL
+
+       guest_hypercall:
+        Called when a program inside the guest makes a hypercall to pass
+        information from inside the guest to a plugin
+
+       Arguments:
+        CPUState *env: the current CPU state
+
+       Helper call location: target/i386/misc_helper.c
+
+       Return value:
+        true if the callback has processed the hypercall, false if the
+        hypercall has been ignored.
+
+       Notes:
+        On x86, this is called whenever CPUID is executed. On ARM, the
+        MCR instructions is used. Plugins should check for magic values
+        in the registers to determine if it really is a guest hypercall.
+        Parameters can be passed in other registers. If the plugin
+        processes the hypercall, it should return true so the execution
+        of the normal instruction is skipped.
+    */
+    bool (*guest_hypercall)(CPUState *env);
+
+    /* Callback ID: PANDA_CB_MONITOR
+
+       monitor:
+        Called when someone uses the plugin_cmd monitor command.
+
+       Arguments:
+        Monitor *mon:    a pointer to the Monitor
+        const char *cmd: the command string passed to plugin_cmd
+
+       Helper call location: TBA
+
+       Return value:
+        unused
+
+       Notes:
+        The command is passed as a single string. No parsing is performed
+        on the string before it is passed to the plugin, so each plugin
+        must parse the string as it deems appropriate (e.g. by using strtok
+        and getopt) to do more complex option processing.
+        It is recommended that each plugin implementing this callback respond
+        to the "help" message by listing the commands supported by the plugin.
+        Note that every loaded plugin will have the opportunity to respond to
+        each plugin_cmd; thus it is a good idea to ensure that your plugin's
+        monitor commands are uniquely named, e.g. by using the plugin name
+        as a prefix ("sample_do_foo" rather than "do_foo").
+    */
+    int (*monitor)(Monitor *mon, const char *cmd);
+
 
     /* Callback ID: PANDA_CB_CPU_RESTORE_STATE
 
@@ -927,6 +956,9 @@ typedef union panda_cb {
     */
     void (*cbaddr)(void);
 } panda_cb;
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
+
 #ifdef __cplusplus
 }
 #endif
