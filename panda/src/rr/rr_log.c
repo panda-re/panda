@@ -53,7 +53,7 @@
 #include "migration/qemu-file.h"
 #include "io/channel-file.h"
 #include "sysemu/sysemu.h"
-#include "panda/panda_common.h" // XXX: Maybe remove in merge?
+#include "panda/common.h"
 #include "panda/callbacks/cb-support.h"
 #include "exec/gdbstub.h"
 #include "sysemu/cpus.h"

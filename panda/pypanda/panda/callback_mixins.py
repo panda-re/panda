@@ -74,14 +74,13 @@ class callback_mixins():
         @self.callback.after_block_exec
         def __get_pending_procname_change(cpu, tb, exit_code):
             if exit_code: # Didn't actually execute block
-                return 0
+                return None
             if not self.in_kernel(cpu): # Once we're out of kernel code, grab procname
                 name = self.get_process_name(cpu)
                 asid = self.libpanda.panda_current_asid(cpu)
                 self.asid_mapping[asid] = name
                 self.procname_changed(name)
                 self.disable_callback('__get_pending_procname_change') # Disabled to begin
-            return 0
 
 
         # Local function def

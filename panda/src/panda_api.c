@@ -8,21 +8,6 @@
 #include "panda/common.h"
 #include "sysemu/sysemu.h"
 
-//extern int load_vmstate(const char *name);
-
-/*
-int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len);
-int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len);
-int rr_get_guest_instr_count_external(void);
-//void qemu_rr_quit_timers(void);
-//void qemu_cpu_kick(CPUState *cpu);
-void panda_register_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
-void panda_enable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
-void panda_disable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
-target_ulong panda_current_sp_external(CPUState *cpu);
-target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong mask);
-bool panda_in_kernel_external(CPUState *cpu);
-*/
 // call main_aux and run everything up to and including panda_callbacks_after_machine_init
 int panda_init(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_INIT);
@@ -48,14 +33,22 @@ void panda_set_library_mode(bool value) {
   panda_library_mode = value;
 };
 
-extern const char *qemu_file;
+extern int do_vm_stop(int state);
 
-void panda_set_qemu_path(char* filepath) {
-    qemu_file=filepath;
+void panda_stop(int code) {
+    // default of 4 = run_state_paused
+    do_vm_stop(code);
 }
 
-int panda_finish(void) {
-    return main_aux(0, 0, 0, PANDA_FINISH);
+void panda_cont(void) {
+//    printf ("panda_api: cont cpu\n");
+    panda_exit_loop = false; // is this unnecessary?
+    vm_start();
+} 
+
+int panda_delvm(char *snapshot_name) {
+    delvm_name(snapshot_name);
+    return 1;
 }
 
 void panda_start_pandalog(const char * name) {
@@ -63,25 +56,6 @@ void panda_start_pandalog(const char * name) {
     pandalog_cc_init_write(name);
     printf ("pandalogging to [%s]\n", name);
 }
-
-int do_vm_stop(int state);
-
-void panda_stop(int code) {
-    // default of 4 = run_state_paused
-    do_vm_stop(code);
-}
-
-bool panda_was_aborted(void) {
-  return panda_aborted;
-}
-
-//void vm_start(void);
-
-void panda_cont(void) {
-//    printf ("panda_api: cont cpu\n");
-    panda_exit_loop = false; // is this unnecessary?
-    vm_start();
-} 
 
 int panda_revert(char *snapshot_name) {
     int ret = load_vmstate(snapshot_name);
@@ -97,13 +71,19 @@ int panda_snap(char *snapshot_name) {
     return save_vmstate(NULL, snapshot_name);
 }
 
-
-
-int panda_delvm(char *snapshot_name) {
-    delvm_name(snapshot_name);
-    return 1;
+int panda_finish(void) {
+    return main_aux(0, 0, 0, PANDA_FINISH);
 }
 
+bool panda_was_aborted(void) {
+  return panda_aborted;
+}
+
+extern const char *qemu_file;
+
+void panda_set_qemu_path(char* filepath) {
+    qemu_file=filepath;
+}
 
 int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args) {
     for (uint32_t i=0; i<num_args; i++)
@@ -138,6 +118,7 @@ int rr_get_guest_instr_count_external(void){
 	return rr_get_guest_instr_count();
 }
 
+// XXX: why do we have these as _external wrappers instead of just using the real fns?
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len){
 	return panda_virtual_memory_read(env, addr, (uint8_t*) buf, len);
 }

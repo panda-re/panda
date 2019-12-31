@@ -133,10 +133,9 @@ def main():
                 print("Examining [%s] for pypanda-awareness" % plugin_file)
                 create_pypanda_header("%s/%s" % (plugin_dir, plugin_file))
 
-    # Also pull in rr api
-    create_pypanda_header("%s/%s" % (INCLUDE_DIR_PAN, "rr/rr_api.h"))
-    # and plugin.h
-    create_pypanda_header("%s/%s" % (INCLUDE_DIR_PAN, "plugin.h"))
+    # Also pull in a few header files
+    for header in ["rr/rr_api.h", "plugin.h", "common.h"]:
+        create_pypanda_header("%s/%s" % (INCLUDE_DIR_PAN, header))
 
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
         pdty.write("""
@@ -310,12 +309,12 @@ pcb.init : pandacbtype("init", -1),
         pdth.write("typedef target_ulong target_ptr_t;\n")
 
         # XXX: These are defined in plugin.h, but we can't include all of plugin.h
-        #      here without redefining things
+        #      here without redefining things. Necessary for something? cb-defs?
         pdth.write("#define MAX_PANDA_PLUGINS 16\n")
         pdth.write("#define MAX_PANDA_PLUGIN_ARGS 32\n")
 
-        for filename in ["callbacks/cb-defs.h", "panda_plugin_mgmt.h",
-                         "panda_api.h", "panda_os.h", "common.h"]:
+        for filename in ["callbacks/cb-defs.h",
+                         "panda_api.h", ]:
             include_this(pdth, filename)
 
 if __name__ == '__main__':

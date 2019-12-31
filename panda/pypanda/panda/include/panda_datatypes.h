@@ -947,89 +947,7 @@ typedef union panda_cb {
 
 
 // -----------------------------------
-// Pull number 2 from panda/include/panda/panda_plugin_mgmt.h
-
-//  Manage plugins (load, enable, disable, etc).
-//  and callbacks (regster, unregister, etc) .
-
-// NOTE: Pls read README before editing!
-
-// Doubly linked list that stores a callback, along with its owner
-typedef struct _panda_cb_list panda_cb_list;
-struct _panda_cb_list {
-    panda_cb entry;
-    void *owner;
-    panda_cb_list *next;
-    panda_cb_list *prev;
-    bool enabled;
-};
-
-// Structure to store metadata about a plugin
-typedef struct panda_plugin {
-    char name[256];     // Currently basename(filename)
-    void *plugin;       // Handle to the plugin (for use with dlsym())
-} panda_plugin;
-
-extern bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
-extern bool panda_plugin_to_unload;
-
-extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
-
-// plugin mgmt
-bool panda_load_external_plugin(const char *filename, const char *plugin_name, 
-
-                                void *plugin_uuid, void *init_fn_ptr);
-bool panda_load_plugin(const char *filename, const char *plugin_name);
-bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode);
-char *panda_plugin_path(const char *name);
-void panda_require(const char *plugin_name);
-void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args);
-void panda_do_unload_plugin(int index);
-void panda_unload_plugin(void* plugin);
-void panda_unload_plugin_idx(int idx);
-void panda_unload_plugins(void);
-void *panda_get_plugin_by_name(const char *name);
-void panda_unload_plugin_by_name(const char* name);
-void panda_enable_plugin(void *plugin);
-void panda_disable_plugin(void *plugin);
-
-// callback mgmt
-void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
-bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb);
-void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb);
-void panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb);
-void panda_unregister_callbacks(void *plugin);
-panda_cb_list* panda_cb_list_next(panda_cb_list* plist);
-
-
-
-// -----------------------------------
-// Pull number 3 from panda/include/panda/panda_api.h
-
-// Functions considered part of the panda api that come from
-// panda_api.c. Also some from common.c. Note that, while common.c has
-// a header (common.h) it is unsuitable for use with cffi since it is
-// larded with inline fns. Note that the real panda API for pypanda is
-// really in the pypanda/include/panda_datatypes.h file
-
-// NOTE: Pls read README before editing!
-
-/*
-bool panda_flush_tb(void);
-void panda_do_flush_tb(void);
-void panda_enable_precise_pc(void);
-void panda_disable_precise_pc(void);
-void panda_enable_memcb(void);
-void panda_disable_memcb(void);
-void panda_enable_tb_chaining(void);
-void panda_disable_tb_chaining(void);
-void panda_enable_llvm(void);
-void panda_disable_llvm(void);
-void panda_enable_llvm_helpers(void);
-void panda_disable_llvm_helpers(void);
-void panda_memsavep(FILE *f);
-//int panda_begin_replay(char *replay_name);
-*/
+// Pull number 2 from (panda-aware) panda/include/panda/panda_api.h
 
 // from panda_api.c
 int panda_init(int argc, char **argv, char **envp);
@@ -1037,13 +955,13 @@ int panda_run(void);
 void panda_set_library_mode(bool);
 void panda_stop(int code);
 void panda_cont(void);
+int panda_delvm(char *snapshot_name);
 void panda_start_pandalog(const char *name);
 int panda_revert(char *snapshot_name);
 void panda_reset(void);
 int panda_snap(char *snapshot_name);
 int panda_finish(void);
 bool panda_was_aborted(void);
-target_ulong panda_virt_to_phys_external(CPUState *cpu, target_ulong virt_addr);
 
 void panda_set_qemu_path(char* filepath);
 
@@ -1055,90 +973,25 @@ void panda_disable_callback_helper(void *plugin, panda_cb_type, panda_cb* cb);
 
 int rr_get_guest_instr_count_external(void);
 
-int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len); // XXX: should we use hwaddr instead of target_ulong
-int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len); // XXX: should we use hwaddr instead of target_ulong
+int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len);
+int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len);
 int panda_physical_memory_read_external(hwaddr addr, uint8_t *buf, int len);
 int panda_physical_memory_write_external(hwaddr addr, uint8_t *buf, int len);
 
+bool panda_in_kernel_external(CPUState *cpu);
 target_ulong panda_current_sp_external(CPUState *cpu);
 target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong pagesize);
-bool panda_in_kernel_external(CPUState *cpu);
+target_ulong panda_virt_to_phys_external(CPUState *cpu, target_ulong virt_addr);
 
-//void panda_monitor_run(char* buf, uint32_t len);
-int panda_delvm(char *snapshot_name);
-
+// REDEFINITIONS below here from monitor.h
 
 // Create a monitor for panda
-void panda_init_monitor(void);
+void panda_init_monitor(void); // Redefinition from monitor.h
 
 // Pass a message via the panda monitor. Create monitor if necessary'
 // returns output string from monitor. Some commands may cause spinloops
-char* panda_monitor_run(char* buf);
+char* panda_monitor_run(char* buf);// Redefinition from monitor.h
 
-// Pass a message via the panda monitor. Create monitor if necessary'
-// Does not return
-void panda_monitor_run_async(char* buf);
-
-
-// turns on taint
-void panda_taint_enable(void) ;
-
-// label this register
-void panda_taint_label_reg(uint32_t reg_num, uint32_t label) ;
-
-// returns true iff any byte in this register is tainted
-bool panda_taint_check_reg(uint32_t reg_num, uint32_t size) ;
-
-
-// Map a region of memory in the guest
+// Map a region of memory in the guest. WIP
 //int panda_map_physical_mem(target_ulong addr, int len);
-
-
-
-// -----------------------------------
-// Pull number 4 from panda/include/panda/panda_os.h
-
-// this stuff is defined / used in common.c
-
-// NOTE: Pls read README before editing!
-
-// this stuff is used by the new qemu cmd-line arg '-os os_name'
-typedef enum OSFamilyEnum { OS_UNKNOWN, OS_WINDOWS, OS_LINUX } PandaOsFamily;
-
-// these are set in panda/src/common.c via call to panda_set_os_name(os_name)
-extern char *panda_os_name;           // the full name of the os, as provided by the user
-extern char *panda_os_family;         // parsed os family
-extern char *panda_os_variant;        // parsed os variant
-extern uint32_t panda_os_bits;        // parsed os bits
-extern PandaOsFamily panda_os_familyno; // numeric identifier for family
-
-
-
-
-// -----------------------------------
-// Pull number 5 from (panda-aware) panda/include/panda/common.h
-
-void panda_cleanup(void);
-void panda_set_os_name(char *os_name);
-void panda_before_find_fast(void);
-void panda_disas(FILE *out, void *code, unsigned long size);
-void panda_break_main_loop(void);
-
-extern bool panda_exit_loop;
-extern bool panda_break_vl_loop_req;
-
-
-/*
- * @brief Returns the guest address space identifier.
- */
-target_ulong panda_current_asid(CPUState *env);
-
-/**
- * @brief Returns the guest program counter.
- */
-target_ulong panda_current_pc(CPUState *cpu);
-
-/**
- * @brief Reads/writes data into/from \p buf from/to guest physical address \p addr.
- */
 

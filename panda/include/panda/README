@@ -1,13 +1,6 @@
-WIP: Fixing these to all use PYPANDA_NEEDS_THIS for includes instead of being manually generated
-
-There are a few files in here that you should be a little careful with:
-
-panda_plugin_mgmt.h
-panda_os.h
-panda_api.h
-
-This code has been carefully curated to be parseable by cffi, in order
-for pypanda to be able to make use of it to import fn prototypes.
+Between the PYPANDA_NEEDS this comments  code has been carefully curated to
+be parseable by cffi, in order for pypanda to be able to make use of it to
+import fn prototypes.
 Plesae do not insert things into these file that will jeopardize that.
 Here's some things that are known to cause issues.
 
@@ -17,6 +10,3 @@ Here's some things that are known to cause issues.
 
 Yes, I know that there are #ifndefs etc at top and bottom but these
 are being tolerated.
-
-
-

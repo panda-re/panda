@@ -75,7 +75,6 @@ def bbe(env, tb):
                         elif reg_name == "ECX":
                             assert([10, 20, 30] == labels), "Incorrect taint on ECX"
             panda.end_analysis()
-    return 0
 
 panda.disable_tb_chaining()
 panda.run_replay(recording_name)
