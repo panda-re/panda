@@ -29,21 +29,18 @@ def ata_before_block(env, tb):
     global hit_ata
     if not hit_ata:
         hit_ata = True
-    return 0
 
 @panda.cb_before_block_exec(procname="toy")
 def toy_before_block(env, tb):
     global hit_toy
     if not hit_toy:
         hit_toy = True
-    return 0
 
 @panda.cb_before_block_exec
 def always_before_block(env, tb):
     global hit_always
     if not hit_always:
         hit_always = True
-    return 0
 
 panda.run_replay("toy")
 
