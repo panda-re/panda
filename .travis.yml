@@ -117,4 +117,4 @@ script:
   - python3 record_then_replay.py x86_64
   - python3 record_then_replay.py arm
   - python3 record_then_replay.py ppc
- #- python3 taint_ram.py # Known bad
+  - python3 taint_ram.py

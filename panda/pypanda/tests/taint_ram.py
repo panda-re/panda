@@ -80,7 +80,6 @@ def abe(cpu, tb, exit):
                 assert(panda.taint_check_ram(g_phys_addr)), "Taint2 failed to identify same address as tainted"
                 assert([idx] == panda.taint_get_ram(g_phys_addr).get_labels()), "Incorrect labels"
             print("Success! Tracked taint with no propagation (test 1 of 2)")
-    return 0
 
 @panda.cb_before_block_exec(procname=bin_name)
 def bbe(cpu, tb):
@@ -98,7 +97,6 @@ def bbe(cpu, tb):
             assert([0,2,4,6,8,10] == taint_labels), "Taint labels {} are incorrect".format(taint_labels)
             print("Success! Tracked taint propagation and final taint labels match expected (test 2 of 2)!")
             panda.end_analysis()
-    return 0
 
 panda.disable_tb_chaining()
 panda.run_replay(recording_name)
