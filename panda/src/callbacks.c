@@ -408,6 +408,7 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb)
     new_list->entry = cb;
     new_list->owner = plugin;
     new_list->enabled = true;
+    assert(type < PANDA_CB_LAST);
 
     if (panda_cbs[type] != NULL) {
         for (panda_cb_list *plist = panda_cbs[type]; plist != NULL;
@@ -430,6 +431,7 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb)
  * @note Querying an unregistered callback returns false
  */
 bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb) {
+    assert(type < PANDA_CB_LAST);
     if (panda_cbs[type] != NULL) {
         for (panda_cb_list *plist = panda_cbs[type]; plist != NULL; plist = plist->next) {
             if (plist->owner == plugin && (plist->entry.cbaddr) == cb.cbaddr) {
@@ -452,6 +454,7 @@ bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb) {
 void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb)
 {
     bool found = false;
+    assert(type < PANDA_CB_LAST);
     if (panda_cbs[type] != NULL) {
         for (panda_cb_list *plist = panda_cbs[type]; plist != NULL;
              plist = plist->next) {
@@ -481,6 +484,7 @@ void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb)
 void panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb)
 {
     bool found = false;
+    assert(type < PANDA_CB_LAST);
     if (panda_cbs[type] != NULL) {
         for (panda_cb_list *plist = panda_cbs[type]; plist != NULL;
              plist = plist->next) {
