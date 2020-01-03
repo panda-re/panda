@@ -19,12 +19,12 @@ class hooking_mixins():
     def enable_hook(self,hook):
         if not hook.is_enabled:
             hook.is_enabled = True
-            self.libpanda_hooks.enable_hook(hook.hook_cb, hook.target_addr)
+            self.plugins['hooks'].enable_hook(hook.hook_cb, hook.target_addr)
 
     def disable_hook(self,hook):
         if hook.is_enabled:
             hook.is_enabled = False
-            self.libpanda_hooks.disable_hook(hook.hook_cb)
+            self.plugins['hooks'].disable_hook(hook.hook_cb)
 
     def update_hooks_new_procname(self, name):
         for h in self.hook_list:
@@ -63,7 +63,7 @@ class hooking_mixins():
             # Ultimately, our hook resolves as a before_block_exec_invalidate_opt callback so we must match its args
             hook_cb_type = self.callback.before_block_exec_invalidate_opt # (CPUState, TranslationBlock)
 
-            if not hasattr(self, 'libpanda_hooks'):
+            if 'hooks' not in self.plugins:
                 # Enable hooks plugin on first request
                 self.load_plugin("hooks")
 
@@ -72,7 +72,7 @@ class hooking_mixins():
 
             # Inform the plugin that it has a new breakpoint at addr
             hook_cb_passed = hook_cb_type(fun)
-            self.libpanda_hooks.add_hook(addr, hook_cb_passed)
+            self.plugins['hooks'].add_hook(addr, hook_cb_passed)
             hook_to_add = Hook(is_enabled=enabled,is_kernel=kernel,target_addr=addr,library_name=libraryname,program_name=procname,hook_cb=None, target_library_offset=None)
             if libraryname: 
                 hook_to_add.target_library_offset = addr

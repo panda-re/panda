@@ -14,7 +14,7 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 #include "panda/plugin.h"
-#include "hooks.h"
+#include "hooks_int_fns.h"
 #include <iostream>
 #include <unordered_map>
 #include <vector>

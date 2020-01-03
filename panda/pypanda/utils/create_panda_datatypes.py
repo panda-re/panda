@@ -63,6 +63,10 @@ def trim_pypanda(contents):
 
 
 def create_pypanda_header(filename):
+    '''
+    Given a file name, copy it into pypanda's includes directory
+    along with all nested includes it contians
+    '''
     contents = open(filename).read()
     subcontents = trim_pypanda(contents)
     if not subcontents: return
@@ -133,7 +137,7 @@ def main():
                 print("Examining [%s] for pypanda-awareness" % plugin_file)
                 create_pypanda_header("%s/%s" % (plugin_dir, plugin_file))
 
-    # Also pull in a few header files
+    # Also pull in a few special header files outside of plugin-to-plugin APIs
     for header in ["rr/rr_api.h", "plugin.h", "common.h"]:
         create_pypanda_header("%s/%s" % (INCLUDE_DIR_PAN, header))
 
@@ -169,12 +173,11 @@ elif arch == "x86_64":
 elif arch == "arm":
 	ffi.cdef(read_cleanup_header("{inc}/panda_arm_support.h"))
 else:
-	print("PANDA_DATATYPES: Architecutre not supported")
+	print("PANDA_DATATYPES: Architecture not supported")
 ffi.cdef(read_cleanup_header("{inc}/panda_qemu_support.h"))
 ffi.cdef(read_cleanup_header("{inc}/panda_datatypes.h"))
 ffi.cdef(read_cleanup_header("{inc}/panda_osi.h"))
 ffi.cdef(read_cleanup_header("{inc}/panda_osi_linux.h"))
-ffi.cdef(read_cleanup_header("{inc}/hooks.h"))
 """.format(inc=INCLUDE_DIR_PYP))
 
         for pypanda_header in pypanda_headers:
