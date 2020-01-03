@@ -947,7 +947,147 @@ typedef union panda_cb {
 
 
 // -----------------------------------
-// Pull number 2 from (panda-aware) panda/include/panda/panda_api.h
+// Pull number 2 from (panda-aware) osi_linux/utils/kernelinfo/kernelinfo.h
+
+/**
+ * @brief Kernel Version information
+ */
+struct version {
+	int a;
+	int b;
+	int c;
+};
+
+/**
+ * @brief Information and offsets related to `struct task_struct`.
+ */
+struct task_info {
+    uint64_t per_cpu_offsets_addr;
+    uint64_t per_cpu_offset_0_addr;
+    uint64_t current_task_addr;
+	uint64_t init_addr;			/**< Address of the `struct task_struct` of the init task. */
+	size_t size;				/**< Size of `struct task_struct`. */
+	union {
+		int tasks_offset;			/**< TODO: add documentation for the rest of the struct members */
+		int next_task_offset;
+	};
+	int pid_offset;
+	int tgid_offset;
+	int group_leader_offset;
+	int thread_group_offset;
+	union {
+		int real_parent_offset;
+		int p_opptr_offset;
+	};
+	union {
+		int parent_offset;
+		int p_pptr_offset;
+	};
+	int mm_offset;
+	int stack_offset;
+	int real_cred_offset;
+	int cred_offset;
+	int comm_offset;			/**< Offset of the command name in `struct task_struct`. */
+	size_t comm_size;			/**< Size of the command name. */
+	int files_offset;			/**< Offset for open files information. */
+};
+
+/**
+ * @brief Information and offsets related to `struct cred`.
+ */
+struct cred_info {
+	int uid_offset;
+	int gid_offset;
+	int euid_offset;
+	int egid_offset;
+};
+
+/**
+ * @brief Information and offsets related to `struct mm_struct`.
+ */
+struct mm_info {
+	size_t size;				/**< Size of `struct mm_struct`. */
+	int mmap_offset;
+	int pgd_offset;
+	int arg_start_offset;
+	int start_brk_offset;
+	int brk_offset;
+	int start_stack_offset;
+};
+
+/**
+ * @brief Information and offsets related to `struct vm_area_struct`.
+ */
+struct vma_info {
+	size_t size;				/**< Size of `struct vm_area_struct`. */
+	int vm_mm_offset;
+	int vm_start_offset;
+	int vm_end_offset;
+	int vm_next_offset;
+	int vm_file_offset;
+	int vm_flags_offset;
+};
+
+/**
+ * @brief Filesystem information and offsets.
+ */
+struct fs_info {
+	union {
+		int f_path_dentry_offset;
+		int f_dentry_offset;
+	};
+	union {
+		int f_path_mnt_offset;
+		int f_vfsmnt_offset;
+	};
+	int f_pos_offset;
+	int fdt_offset;
+	int fdtab_offset;
+	int fd_offset;
+};
+
+/**
+ * @brief qstr information and offsets
+ */
+struct qstr_info {
+  size_t size;
+  size_t name_offset;
+};
+
+/**
+ * @brief Path related information and offsets.
+ */
+struct path_info {
+	int d_name_offset;
+	int d_iname_offset;
+	int d_parent_offset;
+	int d_op_offset;			/**< Offset of the dentry ops table. */
+	int d_dname_offset;			/**< Offset of dynamic name function in dentry ops. */
+	int mnt_root_offset;
+	int mnt_parent_offset;
+	int mnt_mountpoint_offset;
+};
+
+/**
+ * @brief Wrapper for the structure-specific structs.
+ */
+struct kernelinfo {
+	char *name;
+	struct version version;
+	struct task_info task;
+	struct cred_info cred;
+	struct mm_info mm;
+	struct vma_info vma;
+	struct fs_info fs;
+	struct qstr_info qstr;
+	struct path_info path;
+};
+
+
+
+
+// -----------------------------------
+// Pull number 3 from (panda-aware) panda/include/panda/panda_api.h
 
 // from panda_api.c
 int panda_init(int argc, char **argv, char **envp);

@@ -112,8 +112,15 @@ def include_this(pdth, fn):
         pdth.write("// Pull number %d from (panda-aware) %s\n" % (pn,shortpath))
         contents = open(fn).read()
         subcontents = trim_pypanda(contents)
-        for line in subcontents:
-            pdth.write(line)
+        packed_re = re.compile(r'PACKED_STRUCT([a-zA-Z0-9_-]*)')
+        if "PACKED_STRUCT" in subcontents: # Replace PACKED_STRUCT(foo) with foo. For kernelinfo.h
+            for line in subcontents.split("\n"):
+                if "PACKED_STRUCT" in line:
+                    struct_name = re.search(r'PACKED_STRUCT\(([a-zA-Z0-9_-]*)\)', line).group(1)
+                    line = line.replace(f"PACKED_STRUCT({struct_name})", f"struct {struct_name}")
+                pdth.write(line+"\n")
+        else:
+                pdth.write(subcontents)
     else:
         pdth.write("// Pull number %d from %s\n" % (pn,shortpath))
 
@@ -177,7 +184,6 @@ else:
 ffi.cdef(read_cleanup_header("{inc}/panda_qemu_support.h"))
 ffi.cdef(read_cleanup_header("{inc}/panda_datatypes.h"))
 ffi.cdef(read_cleanup_header("{inc}/panda_osi.h"))
-ffi.cdef(read_cleanup_header("{inc}/panda_osi_linux.h"))
 """.format(inc=INCLUDE_DIR_PYP))
 
         for pypanda_header in pypanda_headers:
@@ -317,6 +323,7 @@ pcb.init : pandacbtype("init", -1),
         pdth.write("#define MAX_PANDA_PLUGIN_ARGS 32\n")
 
         for filename in ["callbacks/cb-defs.h",
+                        f"{PLUGINS_DIR}/osi_linux/utils/kernelinfo/kernelinfo.h",
                          "panda_api.h", ]:
             include_this(pdth, filename)
 
