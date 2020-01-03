@@ -112,9 +112,11 @@ script:
   - pip3 install -r requirements.txt || travis_terminate 1 # Install test python dependencies (capstone, pyelftools)
   - python3 multi_proc_cbs.py
   - python3 taint_reg.py
+  - python3 taint_ram.py
   # Run record_then_replay on multiple architectures
   - python3 record_then_replay.py i386
   - python3 record_then_replay.py x86_64
   - python3 record_then_replay.py arm
   - python3 record_then_replay.py ppc
-  - python3 taint_ram.py
+  # Test hooking framework
+  - python3 hooking.py
