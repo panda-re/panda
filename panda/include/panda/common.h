@@ -32,10 +32,20 @@
 extern "C" {
 #endif
 
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+
 void panda_cleanup(void);
 void panda_set_os_name(char *os_name);
 void panda_before_find_fast(void);
 void panda_disas(FILE *out, void *code, unsigned long size);
+void panda_break_main_loop(void);
+
+extern bool panda_exit_loop;
+extern bool panda_break_vl_loop_req;
+
 
 /*
  * @brief Returns the guest address space identifier.
@@ -50,6 +60,9 @@ target_ulong panda_current_pc(CPUState *cpu);
 /**
  * @brief Reads/writes data into/from \p buf from/to guest physical address \p addr.
  */
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
+
 static inline int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
                                            bool is_write) {
     hwaddr l = len;

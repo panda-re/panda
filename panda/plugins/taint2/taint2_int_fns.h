@@ -3,7 +3,15 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "panda/addr.h"
+
+
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+
+#include "addr.h"
+#include "query_res.h"
 
 // turns on taint
 void taint2_enable_taint(void);
@@ -13,6 +21,8 @@ void taint2_enable_tainted_pointer(void);
 
 // returns 1 if taint is on
 int taint2_enabled(void);
+
+void taint2_label_addr(Addr a, int offset, uint32_t l);
 
 // label this phys addr in memory with label l, and only label l. any previous
 // labels applied to this address are removed.
@@ -95,15 +105,42 @@ uint32_t taint2_num_labels_applied(void);
 // Track whether taint state actually changed during a BB
 void taint2_track_taint_state(void);
 
+typedef uint32_t TaintLabel;
 
-// queries taint on this virtual addr and, if any taint there,
-// writes an entry to pandalog with lots of stuff like
-// label set, taint compute #, call stack
-// offset is needed since this is likely a query in the middle of an extent (of 4, 8, or more bytes)
+// Initializes the labelset label iterator in the query result
+// meaning rewinding it to first label in set
+void taint2_query_results_iter(QueryResult *qr);
+
+// Returns current label in set and moves on to next. Sets *bool to
+// true if there are no more labels and false otherwise
+uint32_t taint2_query_result_next(QueryResult *qr, bool *done);
+
+// Places taint query results for this register / offset byte in
+// returned qr.  qr's label set iterator is pre initialized, so there
+// is no need to call taint2_query_results_iter unless you want to
+// iterate through labels more than once).
+void taint2_query_reg_full(uint32_t reg_num, uint32_t offset, QueryResult *qr);
+
+
+// Places taint query results for this physical address in
+// returned qr.  qr's label set iterator is pre initialized, so there
+// is no need to call taint2_query_results_iter unless you want to
+// iterate through labels more than once).
+void taint2_query_ram_full(uint64_t pa, QueryResult *qr);
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
+
+
+// queries taint on this virtual addr and, if any taint there, writes
+// an entry to pandalog with lots of stuff like label set, taint
+// compute #, call stack offset is needed since this is likely a query
+// in the middle of an extent (of 4, 8, or more bytes)
 Panda__TaintQuery *taint2_query_pandalog (Addr addr, uint32_t offset);
 
 // used to free memory associated with that struct
 void pandalog_taint_query_free(Panda__TaintQuery *tq);
+
+
 
 #endif
 

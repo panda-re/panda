@@ -1,3 +1,5 @@
+venv
+/build
 /config-devices.*
 /config-all-devices.*
 /config-all-disas.*

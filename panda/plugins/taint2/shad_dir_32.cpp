@@ -46,7 +46,6 @@ PANDAENDCOMMENT */
 
 #include <cstdint>
 #include <cstdlib>
-#include <cassert>
 
 #include "shad_dir_32.h"
 
@@ -62,7 +61,7 @@ static SdTable *__shad_dir_table_new_32(SdDir32 *shad_dir) {
 
 static void __shad_dir_table_free_32(SdDir32 *shad_dir, SdTable *table) {
   if (shad_dir == NULL || table == NULL) return;
-  assert (table->num_non_empty == 0);
+  tassert (table->num_non_empty == 0);
   free(table->page);
   free(table);
 }
@@ -315,19 +314,19 @@ void shad_dir_remove_32(SdDir32 *shad_dir, uint32_t addr) {
   }
   // discard copy of previous labelset associated with addr
   page->labels[offset] = NULL;
-  assert (page->num_non_empty >= 0);
+  tassert (page->num_non_empty >= 0);
   if (page->num_non_empty == 0) {
     // page empty -- release it
     __shad_dir_page_free_32(shad_dir, page);
     table->page[ti] = NULL;
     table->num_non_empty--;
-    assert(table->num_non_empty >= 0);
+    tassert(table->num_non_empty >= 0);
     if (table->num_non_empty == 0) {
       // table empty -- release it
       __shad_dir_table_free_32(shad_dir, table);
       shad_dir->table[di] = NULL;
       shad_dir->num_non_empty--;
-      assert (shad_dir->num_non_empty >= 0);
+      tassert (shad_dir->num_non_empty >= 0);
     }
   }
 }

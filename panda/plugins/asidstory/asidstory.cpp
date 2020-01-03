@@ -349,9 +349,9 @@ void saw_proc_range(CPUState *env, OsiProc *proc, uint64_t i1, uint64_t i2) {
 // block until we succeed in determining current proc. 
 // also, if proc has changed, we record the fact that a process was seen to be running
 // from now back to last asid change
-void asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
     // some fool trying to use asidstory for boot? 
-    if (new_asid == 0) return;
+    if (new_asid == 0) return 0;
     
     uint64_t curr_instr = rr_get_guest_instr_count();
     
@@ -386,7 +386,7 @@ void asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong n
     
     if (debug) printf ("asid_changed: process_mode unknown\n");
 
-    return;
+    return 0;
 }
 
 

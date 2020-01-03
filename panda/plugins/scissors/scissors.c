@@ -11,6 +11,7 @@
 #include "panda/plugin.h"
 #include "panda/rr/rr_log.h"
 #include "panda/rr/rr_api.h"
+#include "panda/common.h"
 
 #include "migration/migration.h"
 #include "include/exec/address-spaces.h"
@@ -24,8 +25,6 @@ void before_block_exec(CPUState *env, TranslationBlock *tb);
 
 void check_start_snip(CPUState *env);
 void check_end_snip(CPUState *env);
-
-extern bool panda_exit_loop;
 
 static uint64_t start_count;
 static uint64_t actual_start_count;

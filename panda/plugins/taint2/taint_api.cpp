@@ -1,5 +1,6 @@
-#include "taint_api.h"
 #include "taint2.h"
+#include "taint_api.h"
+#include <set>
 
 Addr make_haddr(uint64_t a)
 {
@@ -134,7 +135,7 @@ static void tp_label_additive(Addr a, uint32_t l) {
 
     LabelSetP ls_at_a = tp_labelset_get(a);     // get the set at addr a
     LabelSetP ls_of_l = label_set_singleton(l); // get new set with label l
-    
+
     // merge the existing set at addr a and the new set containing the label l.
     // if successful, add the labelset, skip otherwise.
     LabelSetP new_ls = label_set_union(ls_at_a, ls_of_l);
@@ -163,6 +164,15 @@ void taint2_label_ram(uint64_t pa, uint32_t l) {
 // label this IO address with this label
 void taint2_label_io(uint64_t ia, uint32_t l) {
     Addr a = make_iaddr(ia);
+    tp_label(a, l);
+}
+
+void taint2_label_addr(Addr a, int offset, uint32_t l) {
+    a.off = offset;
+    if (a.typ == LADDR)
+        taint_log("LABEL: Laddr[%lx] offset=%d (%d)\n", a.val.la, offset, l);
+    if (a.typ == GREG)
+        taint_log("LABEL: Greg[%lx] offset=%d (%d)\n", a.val.gr, offset, l);
     tp_label(a, l);
 }
 
@@ -249,6 +259,8 @@ uint32_t taint2_query_reg(int reg_num, int offset) {
     LabelSetP ls = tp_labelset_get(make_greg(reg_num, offset));
     return ls ? ls->size() : 0;
 }
+
+
 
 // if IO address is untainted, return 0
 // otherwise, return the label set cardinality
@@ -478,3 +490,57 @@ int taint2_enabled() {
     return taintEnabled;
 }
 
+// from label_set.h
+// typedef const std::set<TaintLabel> *LabelSetP;
+typedef std::set<TaintLabel>::iterator LabelSetIter;
+
+void taint2_query_results_iter(QueryResult *qr) {
+
+	LabelSetIter *foo = new(LabelSetIter);
+	*foo = ((LabelSetP) qr->ls)->begin();
+	qr->it_curr = (void *) foo;
+
+	LabelSetIter *bar = new(LabelSetIter);
+	*bar = ((LabelSetP) qr->ls)->end();
+	qr->it_end = (void *) bar;
+}
+
+// Return next taint label in iteration over labelset in qr.
+// Also, sets *next to false if that was in fact the last value
+// things will go badly if you ignore that setting of *next and call this again, maybe?
+TaintLabel taint2_query_result_next(QueryResult *qr, bool *done) {
+	// get next label
+	TaintLabel l = *(*(LabelSetIter *) qr->it_curr);
+
+	// Increment iterator
+  (*(LabelSetIter*)qr->it_curr)++;
+
+	// detect if we've iterated to the end
+  *done = (*(LabelSetIter*)qr->it_curr == *(LabelSetIter*)qr->it_end);
+	return l;
+}
+
+// pass in query result pre-allocated
+void taint2_query_reg_full(uint32_t reg_num, uint32_t offset, QueryResult *qr) {
+	// Hmm.  Doesn't this allocate a LabeSetP ? 
+	// are we leaking (if so we leaking in a bunch of other places)
+	TaintData td = tp_query_full(make_greg(reg_num, offset));
+	qr->num_labels = td.ls->size();
+	qr->tcn = td.tcn;
+	qr->cb_mask = td.cb_mask;
+	qr->ls = (void *) td.ls;  // this should be a (const std::set<TaintLabel> *) type
+	taint2_query_results_iter(qr);
+}
+//
+// pass in query result pre-allocated
+void taint2_query_ram_full(uint64_t pa, QueryResult *qr) {
+	// Hmm.  Doesn't this allocate a LabeSetP?
+	// are we leaking (if so we leaking in a bunch of other places)
+	Addr a = make_maddr(pa);
+	TaintData td = tp_query_full(a);
+	qr->num_labels = td.ls->size();
+	qr->tcn = td.tcn;
+	qr->cb_mask = td.cb_mask;
+	qr->ls = (void *) td.ls;  // this should be a (const std::set<TaintLabel> *) type
+	taint2_query_results_iter(qr);
+}

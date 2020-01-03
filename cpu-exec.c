@@ -34,6 +34,7 @@
 #endif
 #include "sysemu/cpus.h"
 #include "sysemu/replay.h"
+#include "sysemu/sysemu.h"
 #include "panda/rr/rr_log.h"
 #include "panda/callbacks/cb-support.h"
 #include "panda/common.h"
@@ -46,8 +47,6 @@ const int has_llvm_engine = 1;
 int generate_llvm = 0;
 int execute_llvm = 0;
 extern bool panda_tb_chaining;
-
-extern bool panda_exit_loop;
 
 /* -icount align implementation. */
 
@@ -185,7 +184,18 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     cpu->can_do_io = !use_icount;
 
-    panda_callbacks_before_block_exec(cpu, itb);
+    if (cpu->tcg_exit_req == 0)
+        panda_callbacks_before_block_exec(cpu, itb);
+
+    // If there has been a request to break the CPU
+    // loop, return now. Before we execute the block
+    if (panda_exit_loop) {
+        cpu->can_do_io = 1;
+        // tcg_exit_req is likely already 0, but make sure it's
+        // cleared now before we resume execution later
+        atomic_set(&cpu->tcg_exit_req, 0);
+        return TB_EXIT_REQUESTED;
+    }
 
     // NB: This is where we did this in panda1
     panda_bb_invalidate_done = false;
@@ -500,7 +510,8 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
         cpu_breakpoint_remove_by_instr(cpu, cpu->last_gdb_instr-1, BP_GDB);
         cpu->reverse_flags = 0;
     }
-    
+
+    cpu->exception_index = panda_callbacks_before_handle_exception(cpu, cpu->exception_index);
 
     if (cpu->exception_index >= 0) {
         if (cpu->exception_index >= EXCP_INTERRUPT) {
@@ -785,7 +796,10 @@ int cpu_exec(CPUState *cpu)
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
 
-        if (panda_exit_loop) break;
+        if (panda_exit_loop) {
+            printf ("Exiting cpu_handle_execption loop\n");
+            break;
+        }
 
         TranslationBlock *last_tb = NULL;
         int tb_exit = 0;

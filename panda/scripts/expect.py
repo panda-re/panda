@@ -1,3 +1,5 @@
+# Custom library for interacting/expecting data via serial-like FDs
+
 import os
 import select
 import sys
@@ -44,7 +46,7 @@ class Expect(object):
                         continue
                     else: raise
                 self.logfile.write(char)
-                if not self.quiet: sys.stdout.write(char)
+                if not self.quiet: sys.stdout.write(char.decode("utf-8","ignore"))
 
                 sofar.extend(char)
                 if sofar.endswith(expectation.encode('utf8')):
@@ -62,6 +64,6 @@ class Expect(object):
         self.logfile.write(msg)
         self.logfile.flush()
 
-    def sendline(self, msg=""):
+    def sendline(self, msg=b""):
         self.send(msg + b"\n")
 

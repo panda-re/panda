@@ -19,6 +19,12 @@ PANDAENDCOMMENT */
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+
 typedef enum panda_cb_type {
     PANDA_CB_BEFORE_BLOCK_TRANSLATE,    // Before translating each basic block
     PANDA_CB_AFTER_BLOCK_TRANSLATE,     // After translating each basic block
@@ -51,7 +57,7 @@ typedef enum panda_cb_type {
     PANDA_CB_GUEST_HYPERCALL,       // Hypercall from the guest (e.g. CPUID)
     PANDA_CB_MONITOR,               // Monitor callback
     PANDA_CB_CPU_RESTORE_STATE,     // In cpu_restore_state() (fault/exception)
-    PANDA_CB_BEFORE_REPLAY_LOADVM,  // at start of replay, before loadvm
+    PANDA_CB_BEFORE_LOADVM,         // at start of replay, before loadvm
     PANDA_CB_ASID_CHANGED,          // When CPU asid (address space identifier) changes
     PANDA_CB_REPLAY_HD_TRANSFER,    // In replay, hd transfer
     PANDA_CB_REPLAY_NET_TRANSFER,   // In replay, transfers within network card
@@ -75,6 +81,17 @@ typedef enum panda_cb_type {
                                     // before any code runs
     PANDA_CB_TOP_LOOP,              // At top of loop that manages emulation.
                                     // A good place to take a snapshot.
+    PANDA_CB_DURING_MACHINE_INIT,   // At the start of machine initialization
+
+    PANDA_CB_MAIN_LOOP_WAIT,        // Called after main_loop in main_loop.c runs
+    PANDA_CB_PRE_SHUTDOWN,          // Just before shutting down
+
+    // Unassigned I/O
+    PANDA_CB_UNASSIGNED_IO_READ,
+    PANDA_CB_UNASSIGNED_IO_WRITE,
+
+    PANDA_CB_BEFORE_HANDLE_EXCEPTION, // Allows you to monitor, modify,
+                                      // or squash exceptions
     PANDA_CB_LAST
 } panda_cb_type;
 
@@ -287,59 +304,6 @@ typedef union panda_cb {
     */
     int (*after_insn_exec)(CPUState *env, target_ptr_t pc);
 
-    /* Callback ID: PANDA_CB_GUEST_HYPERCALL
-
-       guest_hypercall:
-        Called when a program inside the guest makes a hypercall to pass
-        information from inside the guest to a plugin
-
-       Arguments:
-        CPUState *env: the current CPU state
-
-       Helper call location: target/i386/misc_helper.c
-
-       Return value:
-        true if the callback has processed the hypercall, false if the
-        hypercall has been ignored.
-
-       Notes:
-        On x86, this is called whenever CPUID is executed. On ARM, the
-        MCR instructions is used. Plugins should check for magic values
-        in the registers to determine if it really is a guest hypercall.
-        Parameters can be passed in other registers. If the plugin
-        processes the hypercall, it should return true so the execution
-        of the normal instruction is skipped.
-    */
-    bool (*guest_hypercall)(CPUState *env);
-
-    /* Callback ID: PANDA_CB_MONITOR
-
-       monitor:
-        Called when someone uses the plugin_cmd monitor command.
-
-       Arguments:
-        Monitor *mon:    a pointer to the Monitor
-        const char *cmd: the command string passed to plugin_cmd
-
-       Helper call location: TBA
-
-       Return value:
-        unused
-
-       Notes:
-        The command is passed as a single string. No parsing is performed
-        on the string before it is passed to the plugin, so each plugin
-        must parse the string as it deems appropriate (e.g. by using strtok
-        and getopt) to do more complex option processing.
-        It is recommended that each plugin implementing this callback respond
-        to the "help" message by listing the commands supported by the plugin.
-        Note that every loaded plugin will have the opportunity to respond to
-        each plugin_cmd; thus it is a good idea to ensure that your plugin's
-        monitor commands are uniquely named, e.g. by using the plugin name
-        as a prefix ("sample_do_foo" rather than "do_foo").
-    */
-    int (*monitor)(Monitor *mon, const char *cmd);
-
     /* Callback ID: PANDA_CB_VIRT_MEM_BEFORE_READ
 
        virt_mem_before_read:
@@ -492,7 +456,7 @@ typedef union panda_cb {
 
     /* Callback ID: PANDA_CB_MMIO_AFTER_READ
 
-       after_mmio_read:
+       mmio_after_read:
         Called after MMIO memory is read.
 
        Arguments:
@@ -506,11 +470,11 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*after_mmio_read)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
+    void (*mmio_after_read)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
 
     /* Callback ID: PANDA_CB_MMIO_AFTER_WRITE
 
-       after_mmio_write:
+       mmio_after_write:
         Called after MMIO memory is written to.
 
        Arguments:
@@ -524,7 +488,83 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*after_mmio_write)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
+    void (*mmio_after_write)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
+
+    /* Callback ID: PANDA_CB_HD_READ
+       hd_read : called when there is a hard drive read
+
+       Note: this was added to panda_cb_type enum but no callback prototype inserted
+       Here is a stub.  I'm not sure what the args should be.
+       Arguments
+       CPUState *env
+    */
+
+    void (*hd_read)(CPUState *env);
+
+    /* Callback ID: PANDA_CB_HD_WRITE
+       hd_write : called when there is a hard drive write
+
+       Note: this was added to panda_cb_type enum but no callback prototype inserted
+       Here is a stub.  I'm not sure what the args should be.
+       Arguments
+       CPUState *env
+    */
+
+    void (*hd_write)(CPUState *env);
+
+    /* Callback ID: PANDA_CB_GUEST_HYPERCALL
+
+       guest_hypercall:
+        Called when a program inside the guest makes a hypercall to pass
+        information from inside the guest to a plugin
+
+       Arguments:
+        CPUState *env: the current CPU state
+
+       Helper call location: target/i386/misc_helper.c
+
+       Return value:
+        true if the callback has processed the hypercall, false if the
+        hypercall has been ignored.
+
+       Notes:
+        On x86, this is called whenever CPUID is executed. On ARM, the
+        MCR instructions is used. Plugins should check for magic values
+        in the registers to determine if it really is a guest hypercall.
+        Parameters can be passed in other registers. If the plugin
+        processes the hypercall, it should return true so the execution
+        of the normal instruction is skipped.
+    */
+    bool (*guest_hypercall)(CPUState *env);
+
+    /* Callback ID: PANDA_CB_MONITOR
+
+       monitor:
+        Called when someone uses the plugin_cmd monitor command.
+
+       Arguments:
+        Monitor *mon:    a pointer to the Monitor
+        const char *cmd: the command string passed to plugin_cmd
+
+       Helper call location: TBA
+
+       Return value:
+        unused
+
+       Notes:
+        The command is passed as a single string. No parsing is performed
+        on the string before it is passed to the plugin, so each plugin
+        must parse the string as it deems appropriate (e.g. by using strtok
+        and getopt) to do more complex option processing.
+        It is recommended that each plugin implementing this callback respond
+        to the "help" message by listing the commands supported by the plugin.
+        Note that every loaded plugin will have the opportunity to respond to
+        each plugin_cmd; thus it is a good idea to ensure that your plugin's
+        monitor commands are uniquely named, e.g. by using the plugin name
+        as a prefix ("sample_do_foo" rather than "do_foo").
+    */
+    int (*monitor)(Monitor *mon, const char *cmd);
+
 
     /* Callback ID: PANDA_CB_CPU_RESTORE_STATE
 
@@ -574,13 +614,14 @@ typedef union panda_cb {
        Helper call location: target/i386/helper.c
 
        Return value:
-        none
+        1 if the asid should be prevented from being changed
+        0 otherwise
 
        Notes:
         The helper is only invoked for x86. This should break a lot of the
         plugins which rely on this callback to detect context switches.
     */
-    void (*asid_changed)(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
+    int (*asid_changed)(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
 
     /* Callback ID:     PANDA_CB_REPLAY_HD_TRANSFER,
 
@@ -811,6 +852,99 @@ typedef union panda_cb {
         unused
      */
     void (*top_loop)(CPUState *env);
+    /* Callback ID:     PANDA_CB_DURING_MACHINE_INIT
+
+       during_machine_init: Called in the middle of machine initialization
+
+       Arguments:
+         MachineState *machine: pointer to the machine state
+
+       Return value:
+         None
+     */
+
+    void (*during_machine_init)(MachineState *machine);
+
+    /* Callback ID:     PANDA_CB_MAIN_LOOP_WAIT
+
+       main_loop_wait: Called in IO thread in place where monitor cmds are processed
+
+       Arguments:
+         None
+
+       Return value:
+         None
+     */
+
+    void (*main_loop_wait)(void);
+
+    /* Callback ID:     PANDA_CB_PRE_SHUTDOWN
+
+      pre_shutdown: Called just before qemu shuts down
+
+       Arguments:
+         None
+
+       Return value:
+         None
+     */
+    void (*pre_shutdown)(void);
+
+    /* Callback ID:     PANDA_CB_UNASSIGNED_IO_WRITE
+
+      unassigned_io_read: Called when the guest attempts to read from an unmapped peripheral via MMIO
+
+       Arguments:
+         pc: Guest program counter at time of write
+         addr: Physical address written to
+         size: Size of write
+         val: Pointer to a buffer that will be passed to the guest as the result of the read
+
+       Return value:
+         None
+     */
+    void (*unassigned_io_read)(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint8_t *val);
+
+    /* Callback ID:     PANDA_CB_UNASSIGNED_IO_WRITE
+
+      unassigned_io_write: Called when the guest attempts to write to an unmapped peripheral via MMIO
+
+       Arguments:
+         pc: Guest program counter at time of write
+         addr: Physical address written to
+         size: Size of write
+         val: Pointer to buffer containing data being written
+
+       Return value:
+         None
+     */
+    void (*unassigned_io_write)(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint8_t *val);
+
+    /* Internal callback, used by unassigned_io_read and unassigned_io_write */
+    void (*unassigned_io)(CPUState *env, hwaddr addr, size_t size, uint8_t *val, bool is_write);
+
+    /* Callback ID:     PANDA_CB_BEFORE_HANDLE_EXCEPTION
+
+       before_handle_exception: Called just before we are about to
+       handle an exception.
+
+       Note: only called for cpu->exception_index > 0
+
+       Aguments:
+         exception_index (the current exception number)
+
+       Return value:
+         a new exception_index.
+
+       Note: There might be more than one callback for this location.
+       First callback that returns an exception index that *differs*
+       from the one passed as an arg wins. That is what we return as
+       the new exception index, which will replace
+       cpu->exception_index
+
+     */
+
+    int32_t (*before_handle_exception)(CPUState *cpu, int32_t exception_index);
 
     /* Dummy union member.
 
@@ -822,6 +956,9 @@ typedef union panda_cb {
     */
     void (*cbaddr)(void);
 } panda_cb;
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
+
 #ifdef __cplusplus
 }
 #endif

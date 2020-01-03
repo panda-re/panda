@@ -53,7 +53,10 @@ exit 0
  ***************************************************************************/
 #include <stdbool.h>
 #include "panda/types.h"
-
+#ifndef EXEC_ALL_H
+// If this file is included from a file that doesn't define TranslationBlock (e.g., memory.c), we still need to be valid
+typedef struct {} TranslationBlock;
+#endif
 /* shared helpers for virtual/physical memory callbacks */
 void panda_callbacks_mem_before_read(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t data_size, void *ram_ptr);
 void panda_callbacks_mem_after_read(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t data_size, uint64_t result, void *ram_ptr);
@@ -89,11 +92,18 @@ bool panda_callbacks_before_block_exec_invalidate_opt(CPUState *env, Translation
 
 /* invoked from cpus.c */
 void panda_callbacks_top_loop(CPUState *env);
+void panda_callbacks_during_machine_init(MachineState *machine);
+void panda_callbacks_main_loop_wait(void);
+void panda_callbacks_pre_shutdown(void);
+void panda_callbacks_unassigned_io_read(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint8_t *val);
+void panda_callbacks_unassigned_io_write(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint8_t *val);
+void panda_callbacks_unassigned_io(CPUState *env, hwaddr addr, size_t size, uint8_t *val, bool is_write);
+int32_t panda_callbacks_before_handle_exception(CPUState *cpu, int32_t exception_index);
 void panda_callbacks_cbaddr(void);
 
 /* invoked from cputlb.c */
-void panda_callbacks_after_mmio_read(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
-void panda_callbacks_after_mmio_write(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
+void panda_callbacks_mmio_after_read(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
+void panda_callbacks_mmio_after_write(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
 
 /* invoked from exec.c */
 void panda_callbacks_replay_before_dma(CPUState *env, const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
@@ -112,7 +122,7 @@ bool panda_callbacks_insn_translate(CPUState *env, target_ptr_t pc);
 bool panda_callbacks_after_insn_translate(CPUState *env, target_ptr_t pc);
 
 /* invoked from target/i386/helper.c */
-void panda_callbacks_asid_changed(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
+int panda_callbacks_asid_changed(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
 
 /* invoked from target/i386/misc_helper.c */
 bool panda_callbacks_guest_hypercall(CPUState *env);

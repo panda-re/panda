@@ -29,6 +29,11 @@ PANDAENDCOMMENT */
 extern "C" {
 #endif
 
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+
 // Doubly linked list that stores a callback, along with its owner
 typedef struct _panda_cb_list panda_cb_list;
 struct _panda_cb_list {
@@ -53,12 +58,33 @@ void   panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void   panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void   panda_unregister_callbacks(void *plugin);
 bool   panda_load_plugin(const char *filename, const char *plugin_name);
+bool   _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode);
 bool   panda_add_arg(const char *plugin_name, const char *plugin_arg);
+bool   panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr);
 void * panda_get_plugin_by_name(const char *name);
+void   panda_unload_plugin_by_name(const char* name);
 void   panda_do_unload_plugin(int index);
 void   panda_unload_plugin(void *plugin);
 void   panda_unload_plugin_idx(int idx);
 void   panda_unload_plugins(void);
+
+extern bool panda_update_pc;
+extern bool panda_use_memcb;
+extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
+extern bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
+extern bool panda_plugin_to_unload;
+extern bool panda_tb_chaining;
+
+// this stuff is used by the new qemu cmd-line arg '-os os_name'
+typedef enum OSFamilyEnum { OS_UNKNOWN, OS_WINDOWS, OS_LINUX } PandaOsFamily;
+
+// these are set in panda/src/common.c via call to panda_set_os_name(os_name)
+extern char *panda_os_name;           // the full name of the os, as provided by the user
+extern char *panda_os_family;         // parsed os family
+extern char *panda_os_variant;        // parsed os variant
+extern uint32_t panda_os_bits;        // parsed os bits
+extern PandaOsFamily panda_os_familyno; // numeric identifier for family
+
 
 
 bool panda_flush_tb(void);
@@ -75,28 +101,6 @@ void panda_disable_llvm_helpers(void);
 void panda_enable_tb_chaining(void);
 void panda_disable_tb_chaining(void);
 void panda_memsavep(FILE *f);
-
-extern bool panda_update_pc;
-extern bool panda_use_memcb;
-extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
-extern bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
-extern bool panda_plugin_to_unload;
-extern bool panda_tb_chaining;
-
-extern const gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
-extern int panda_argc;
-
-
-// this stuff is used by the new qemu cmd-line arg '-os os_name'
-typedef enum OSFamilyEnum { OS_UNKNOWN, OS_WINDOWS, OS_LINUX } PandaOsFamily;
-
-// these are set in panda/src/common.c via call to panda_set_os_name(os_name)
-extern char *panda_os_name;           // the full name of the os, as provided by the user
-extern char *panda_os_family;         // parsed os family
-extern char *panda_os_variant;        // parsed os variant
-extern uint32_t panda_os_bits;        // parsed os bits
-extern PandaOsFamily panda_os_familyno; // numeric identifier for family
-
 
 // Struct for holding a parsed key/value pair from
 // a -panda-arg plugin:key=value style argument.
@@ -139,8 +143,15 @@ const char *panda_parse_string_opt(panda_arg_list *args, const char *argname, co
 
 char** str_split(char *a_str, const char a_delim);
 
+extern const gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
+extern int panda_argc;
+
 char *panda_plugin_path(const char *name);
+void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args);
 void panda_require(const char *plugin_name);
+bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb);
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 #ifdef __cplusplus
 }
@@ -155,7 +166,6 @@ extern "C" {
 
 #include "panda/rr/rr_log.h"
 #include "panda/plog.h"
-#include "panda/addr.h"
 
 #ifdef __cplusplus
 }

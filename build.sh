@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# Default targets to build. Change with argument. small = i386-softmmu
+TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu"
+
+# If there are arguments, the first arg is target list or 'small'. subsequent args are passed to configure
+if [ $# -ge 1 ]; then
+    if [ "$1" = "small" ]; then
+        TARGET_LIST="i386-softmmu"
+    else
+        TARGET_LIST="$1"
+    fi
+    echo "Building PANDA for target(s): $TARGET_LIST"
+    shift
+fi
+
 # Prefer greadlink over readlink if present. Important for OSX (incompatible readlink).
 if type greadlink >/dev/null 2>&1; then
     READLINK=greadlink
@@ -32,6 +46,27 @@ PANDA_NPROC=${PANDA_NPROC:-$(nproc || sysctl -n hw.ncpu)}
 
 # stop on any error
 set -e
+
+# Find paths to python2.7 and pip3
+# As part of building we need python2 for qemu and pip3 to install pypanda dependencies
+# Either use python and pip3 or use pyenv with 3.6.6 and 2.7.9
+# This is just a temporary hack until we merge with qemu 4.1 which adds supports python3
+#if which pyenv; then
+#  eval "$(pyenv init -)"
+#  pyenv shell 3.6.6 2.7.9
+#  PYTHON2PATH=$(pyenv which python2)
+#else
+PYTHON2PATH=$(which python2) # First try python2, then python
+if [ -z "${PYTHON2PATH}" ] || ! $PYTHON2PATH --version 2>&1 | grep -q 'Python 2\.7'; then
+  PYTHON2PATH=$(which python)
+  if [ -z "${PYTHON2PATH}" ] || ! $PYTHON2PATH --version 2>&1 | grep -q 'Python 2\.7'; then
+    echo "Could not find python2.7. Tried python2 and python"
+    exit 1
+  fi
+fi
+#fi
+
+msg "Using python2 at: $PYTHON2PATH"
 
 ### Check gcc/g++ versions. 5 is currently the supported version.
 ### PANDA no longer builds with versions 4.x.
@@ -99,7 +134,7 @@ else
 fi
 
 ### Set other configuration flags, depending on environment.
-MISC_CONFIG="--python=python2 --disable-vhost-net"
+MISC_CONFIG="--python=$PYTHON2PATH --disable-vhost-net"
 if pkg-config --exists --atleast-version 4.9 xencontrol; then
     ## Enable xencontrol compat API for libxen-4.9 (Ubuntu 18.04LTS).
     MISC_CONFIG="$MISC_CONFIG --extra-cflags=-DXC_WANT_COMPAT_DEVICEMODEL_API"
@@ -125,7 +160,7 @@ fi
 ## Configure/compile/test.
 msg "Configuring PANDA..."
 "${PANDA_DIR_REL}/configure" \
-    --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu \
+    --target-list=$TARGET_LIST \
     --prefix="$(pwd)/install" \
     $COMPILER_CONFIG \
     $LLVM_CONFIG \

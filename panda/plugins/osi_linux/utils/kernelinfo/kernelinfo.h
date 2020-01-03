@@ -36,6 +36,10 @@
 #define PROFILE_KVER_GT(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) > KERNEL_VERSION(_va, _vb, _vc))
 #define PROFILE_KVER_LE(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) <= KERNEL_VERSION(_va, _vb, _vc))
 #define PROFILE_KVER_GE(ki, _va, _vb, _vc) (KERNEL_VERSION(ki.version.a, ki.version.b, ki.version.c) >= KERNEL_VERSION(_va, _vb, _vc))
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
 
 /**
  * @brief Kernel Version information
@@ -170,6 +174,8 @@ PACKED_STRUCT(kernelinfo) {
 	struct qstr_info qstr;
 	struct path_info path;
 };
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 #if defined(__G_LIB_H__) || defined(DOXYGEN)
 /*!

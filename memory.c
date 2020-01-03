@@ -32,8 +32,7 @@
 #include "sysemu/sysemu.h"
 
 #include "panda/rr/rr_log_all.h"
-
-//#define DEBUG_UNASSIGNED
+#include "panda/callbacks/cb-support.h"
 
 static unsigned memory_region_transaction_depth;
 static bool memory_region_update_pending;
@@ -1091,26 +1090,29 @@ static void memory_region_initfn(Object *obj)
 }
 
 static uint64_t unassigned_mem_read(void *opaque, hwaddr addr,
-                                    unsigned size)
+                                    size_t size)
 {
 #ifdef DEBUG_UNASSIGNED
     printf("Unassigned mem read " TARGET_FMT_plx "\n", addr);
 #endif
+    uint8_t val = 0;
     if (current_cpu != NULL) {
         cpu_unassigned_access(current_cpu, addr, false, false, 0, size);
     }
-    return 0;
+    panda_callbacks_unassigned_io(first_cpu, addr, size, &val, false);
+    return val;
 }
 
 static void unassigned_mem_write(void *opaque, hwaddr addr,
-                                 uint64_t val, unsigned size)
+                                 uint8_t val, size_t size)
 {
 #ifdef DEBUG_UNASSIGNED
-    printf("Unassigned mem write " TARGET_FMT_plx " = 0x%"PRIx64"\n", addr, val);
+    printf("Unassigned mem write to " TARGET_FMT_plx "\n", addr);
 #endif
     if (current_cpu != NULL) {
         cpu_unassigned_access(current_cpu, addr, true, false, 0, size);
     }
+    panda_callbacks_unassigned_io(first_cpu, addr, size, &val, true);
 }
 
 static bool unassigned_mem_accepts(void *opaque, hwaddr addr,

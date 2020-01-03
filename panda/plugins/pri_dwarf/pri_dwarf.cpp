@@ -33,7 +33,6 @@ PANDAENDCOMMENT */
 extern "C" {
 
 #include "panda/rr/rr_log.h"
-#include "panda/addr.h"
 #include "panda/plog.h"
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
@@ -418,10 +417,12 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
     Elf32_Sym *dynsym = NULL;
     char *strtable = NULL;
     char *dynstrtable = NULL;
-    uint32_t plt_addr;
+    uint32_t plt_addr=0;
+    bool initialized_plt_addr = false;
     for (i = 0; i < ehdr.e_shnum; ++i) {
         if (strcmp(".plt", &shstrtable[shdr[i].sh_name]) == 0){
             plt_addr = shdr[i].sh_addr + 0x10;
+            initialized_plt_addr = true;
             //printf("got .plt base address: %x\n", shdr[i].sh_addr);
         }
         else if (strcmp(".strtab", &shstrtable[shdr[i].sh_name]) == 0){
@@ -471,6 +472,11 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
                 return -1;
             }
         }
+    }
+
+    if (!initialized_plt_addr) {
+        printf("Wasn't able to successfully identify plt_addr\n");
+        abort();
     }
     /* Find the maximum size of the image and allocate an appropriate
        amount of memory to handle that.  */

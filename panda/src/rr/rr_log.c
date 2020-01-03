@@ -53,6 +53,7 @@
 #include "migration/qemu-file.h"
 #include "io/channel-file.h"
 #include "sysemu/sysemu.h"
+#include "panda/common.h"
 #include "panda/callbacks/cb-support.h"
 #include "exec/gdbstub.h"
 #include "sysemu/cpus.h"
@@ -62,6 +63,7 @@
 /******************************************************************************************/
 // record/replay state
 rr_control_t rr_control = {.mode = RR_OFF, .next = RR_NOCHANGE};
+extern bool panda_library_mode;
 
 // mz FIFO queue of log entries read from the log file
 // Implemented as ring buffer.
@@ -119,6 +121,7 @@ RR_log_entry* rr_get_queue_head(void) { return rr_queue_head; }
 // 2) The only thing in the queue is RR_END_OF_LOG
 uint8_t rr_replay_finished(void)
 {
+    assert(!rr_queue_empty()); // If queue is empty early, replay is corrupt?
     return rr_log_is_empty()
         && rr_queue_head->header.kind == RR_END_OF_LOG
         && rr_get_guest_instr_count() >=
@@ -1260,7 +1263,7 @@ struct timeval replay_begin_time;
 // size)
 void replay_progress(void)
 {
-    if (rr_nondet_log) {
+    if (rr_nondet_log && !panda_library_mode) { // Silent if no nondet_log or if we're replaying in library mode
         if (rr_log_is_empty()) {
             printf("%s:  log is empty.\n", rr_nondet_log->name);
         } else {
@@ -1482,8 +1485,10 @@ void rr_do_end_record(void)
 
     time_t rr_end_time;
     time(&rr_end_time);
-    printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
-    printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
+    if (!panda_library_mode)  {
+      printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
+      printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
+    }
 
     // log_all_cpu_states();
 
@@ -1515,8 +1520,16 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     char* rr_path = g_strdup(file_name_full);
     char* rr_name = g_strdup(file_name_full);
     __attribute__((unused)) int snapshot_ret;
+
+    vm_stop(RUN_STATE_PAUSED); // Stop execution of the CPU thread while the replay is being set up
     rr_path = dirname(rr_path);
     rr_name = basename(rr_name);
+    rr_replay_complete = false;
+
+    // When we start a replay, re-initialize state
+    // so we can do this multiple times
+    rr_next_progress = 1;
+
     if (rr_debug_whisper()) {
         qemu_log("Begin vm replay for file_name_full = %s\n", file_name_full);
         qemu_log("path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
@@ -1565,6 +1578,10 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     rr_queue_head = rr_queue_tail = NULL;
     rr_queue_end = &rr_queue[RR_QUEUE_MAX_LEN];
     rr_fill_queue();
+
+    // Resume execution of the CPU thread
+    vm_start();
+
     return 0; // snapshot_ret;
 #endif
 }
@@ -1580,39 +1597,36 @@ void rr_do_end_replay(int is_error)
     replay_progress();
     if (is_error) {
         printf("ERROR: replay failed!\n");
-    } else {
-        printf("Replay completed successfully. 1\n");
     }
 
-    time_t rr_end_time;
-    time(&rr_end_time);
-    printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
+    if(!panda_library_mode) {
+      time_t rr_end_time;
+      time(&rr_end_time);
+      printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
 
-    printf("Stats:\n");
-    int i;
-    for (i = 0; i < RR_LAST; i++) {
-        printf("%s number = %llu, size = %llu bytes\n",
-               get_log_entry_kind_string(i), rr_number_of_log_entries[i],
-               rr_size_of_log_entries[i]);
-        rr_number_of_log_entries[i] = 0;
-        rr_size_of_log_entries[i] = 0;
+      printf("Stats:\n");
+      int i;
+      for (i = 0; i < RR_LAST; i++) {
+          printf("%s number = %llu, size = %llu bytes\n",
+                 get_log_entry_kind_string(i), rr_number_of_log_entries[i],
+                 rr_size_of_log_entries[i]);
+          rr_number_of_log_entries[i] = 0;
+          rr_size_of_log_entries[i] = 0;
+      }
+      printf("max_queue_len = %llu\n", rr_max_num_queue_entries);
+      printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
     }
-    printf("max_queue_len = %llu\n", rr_max_num_queue_entries);
     rr_max_num_queue_entries = 0;
-
-    printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
 
     // mz some more sanity checks - the queue should contain only the RR_LAST
     // element
-    if (rr_queue_head == rr_queue_tail && rr_queue_head != NULL &&
+    if (is_error) {
+      printf("ERROR: replay failed!\n");
+    } else if (rr_queue_head == rr_queue_tail && rr_queue_head != NULL &&
         rr_queue_head->header.kind == RR_END_OF_LOG) {
-        printf("Replay completed successfully 2.\n");
+        printf("Replay completed successfully\n");
     } else {
-        if (is_error) {
-            printf("ERROR: replay failed!\n");
-        } else {
-            printf("Replay terminated at user request.\n");
-        }
+        printf("Replay terminated at user request.\n");
     }
     rr_queue_head = NULL;
     rr_queue_tail = NULL;
@@ -1626,12 +1640,19 @@ void rr_do_end_replay(int is_error)
     rr_replay_complete = true;
     
     // mz XXX something more graceful?
+    panda_cleanup();
     if (is_error) {
-        panda_cleanup();
         abort();
     } else {
-        vm_stop(RUN_STATE_PAUSED);
-        qemu_system_shutdown_request();
+      if (panda_library_mode) {
+          // Reset the system and break out of the vl.c loop. Note we leave the cpu thread running
+          // This ensures we can run a replay, then a live guest without a hang
+          qemu_system_reset(VMRESET_SILENT);
+          panda_break_vl_loop_req = true;
+        }else{
+          vm_stop(RUN_STATE_PAUSED);
+          qemu_system_shutdown_request();
+        }
     }
 #endif // CONFIG_SOFTMMU
 }
