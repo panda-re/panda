@@ -1644,8 +1644,9 @@ void rr_do_end_replay(int is_error)
     if (is_error) {
         abort();
     } else {
-      if (panda_library_mode) { // XXX: This may be unnecessary, shutdown seems to work just fine?
+      if (panda_library_mode) {
           // Reset the system and break out of the vl.c loop. Note we leave the cpu thread running
+          // This ensures we can run a replay, then a live guest without a hang
           qemu_system_reset(VMRESET_SILENT);
           panda_break_vl_loop_req = true;
         }else{

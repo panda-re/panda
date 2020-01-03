@@ -30,7 +30,8 @@ int panda_run(void) {
 }
 
 void panda_set_library_mode(bool value) {
-  panda_library_mode = value;
+    // XXX: This should probably be done via preprocessor macros instead
+    panda_library_mode = value;
 };
 
 extern int do_vm_stop(int state);

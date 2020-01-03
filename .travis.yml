@@ -120,3 +120,5 @@ script:
   - python3 record_then_replay.py ppc
   # Test hooking framework
   - python3 hooking.py
+  # Regression tests
+  - python3 sleep_in_cb.py
