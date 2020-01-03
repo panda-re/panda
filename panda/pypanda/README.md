@@ -1,93 +1,56 @@
-pypanda
+pypanda: PANDA's Python Interface
 ========
 What is PYPANDA
 -
-PYPANDA is an interface to PANDA that allows for Python3 to control PANDA and to register
-functions that run on various PANDA callbacks.
+PYPANDA is a python interface to PANDA. With PYPANDA, you can quickly develop plugins
+to analyze behavior of a running system, record a system and analyze replays, or do
+nearly anything you can do using PANDA's C/C++ APIs.
 
-### Installation
-See installation instructions in [here](./docs/installation.md).
+### Technical details
+See detailed installation, usage and example programs [here](./docs/USAGE.md).
 
-### Usage
-See installation instructions in [here](./docs/USAGE.md).
+## Here be Dragons
+Pypanda is very new. We believe it is reasonably stable and should not break anything in PANDA's core logic,
+but there are certainly many bugs yet-to-be-discovered in the library and/or Python interface.
 
-## Example plugins
+A few notable known issues:
+* On some machines, pypanda reliably crashes at the end of a script's execution due to a heap pointer being double-freed. This is tricky to debug as the heap object is passed between Python and C and both appear to be trying to clean it up. Observed on Ubuntu 16.04.6 but not 16.04.5. This crash happens on our Travis test image.
+* Pip install does not currently work, you must run `setup.py install`.
+* After installing pypanda in a venv or on your system, you cannot remove the PANDA build directory or the pypanda directory as some paths to includes/header files still point to the old location.
+* When you return the wrong type from a callback, you get an error repeated many times combined with no useful traceback.
 
-#### [example_after_init.py](example_after_init.py)
+## Examples
+
+The following examples demonstrate how easy PANDA plugin development can be when you use the Python interface.
+
+#### [after_init.py](examples/after_init.py)
 
 This sets up the callback for `after_machine_init`, hits it, and gives the user
 a pdb trace.
 
-Run this with `python3 example_after_init.py`
-
-#### [example_coverage.py](example_coverage.py)
-
-This example demonstrates dynamic loading and unloading of the coverage plugin.
-It does so by registering the `before_block_execute` callback.
-
-#### [example_disable_callbacks.py](example_disable_callbacks.py)
+#### [disable_callbacks.py](examples/disable_callbacks.py)
 
 This example shows registering, enabling, and disabling of callbacks during 
 runtime of a program. In particular, it enables `before_block_execute` and
 `after_block_execute`. After 2 blocks hit it disables `after_block_execute`. 
 After 2 additional blocks hit it enables `after_block_execute` again.
  
-Run with: `python3 example_disable_callbacks.py`
-
-#### [example_multiple_callbacks.py](example_multiple_callbacks.py)
+#### [multiple_cbs.py](examples/multiple_cbs.py)
 
 This example shows the ability to set up multiple callbacks. The example sets up
 `before_block_exec` as well as `after_block_exec`. There is a delay of 1 second 
 every time each callback is called. 
 
-Run this with `python3 example_multiple_callbacks.py`
-
-#### [example_network.py](example_network.py)
+#### [network_session_extraction.py](examples/network_session_extraction.py)
 
 This example implements the networks same functionality as the network plugin in
 panda. It registers `replay_handle_packet` callback, converts the buffer, and
 writes the buffer out to a pcap.
 
-Run with: `python3 example_network.py i386 out.pcap /path/to/recording`
+#### [record_then_replay.py](examples/record_then_replay.py)
 
-#### [example_osi_linux_test.py](example_osi_linux_test.py)
+This example takes a recording, then replays it under analysis.
 
-This exampls shows off the functionality of `osi_linux` in pypanda. Modeled
-after the original `osi_linux` panda plugin.
+#### [dump_regs.py](examples/dump_regs.py)
 
-Runs with `python3 example_osi_linux_test.py i386 /path/to/recording`
-
-#### [example_plugin.py](example_plugin.py)
-
-This is the simplest of plugins. It registers a callback for `before_block_exec`
-and gives the user a pdb trace each time it is hit.
-
-Run this with `python3 example_plugin.py`
-
-#### [example_print_regs.py](example_print_regs.py)
-
-This example displays the register state of the cpu in x86 at each 
-`before_block_exec`.
-
-Run this with `python3 example_print_regs.py`
-
-#### [example_record_replay.py](example_record_replay.py)
-
-This example registers asid_changed and runs a replay from a file specified.
-
-Run with: `python3 example_record_replay.py i386 /path/to/recording`
-
-#### [example_virt_mem_read_callback.py](example_virt_mem_read_callback.py)
-
-This plugin registers the `virt_mem_after_write` callback and attempts to find
-strings in the buffers.
-
-Run with: `python3 example_virt_mem_read_callback.py`
-
-#### [example_watch_program.py](example_watch_program.py)
-
-This example allows us to debug a specific program by name. It registers 
-`asid_changed` and waits for the osi process name to match the name of the
-program set by the user.
-
-Run with: `python3 example_watch_program.py`
+This example prints the CPU state of an x86 guest after every basic block.
