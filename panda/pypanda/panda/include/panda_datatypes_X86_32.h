@@ -8,7 +8,7 @@ typedef uint64_t ram_addr_t;
 typedef uint64_t tb_page_addr_t;
 typedef uint64_t hwaddr;
 typedef uint64_t MemTxResult;
-typedef uint64_t Int128; // FIXME: This is a lie
+typedef uint8_t Int128[16]; 
 typedef uint64_t vaddr;
 typedef uint8_t sigjmp_buf[200];
 typedef uint8_t pthread_mutex_t[40];
@@ -184,11 +184,7 @@ struct Object {
 	void * free;
 	void * properties;
 	uint32_t ref;
-	
 	void * parent;
-	
-	
-	
 	};
 struct CharBackend;
 typedef struct CharBackend CharBackend;
