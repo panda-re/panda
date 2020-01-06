@@ -39,6 +39,9 @@ extern "C" {
 #include "panda/plugin.h"
 #include "panda/plog.h"
 
+#include "callstack_instr/callstack_instr.h"
+#include "callstack_instr/callstack_instr_ext.h"
+
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
