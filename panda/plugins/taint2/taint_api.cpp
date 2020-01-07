@@ -471,6 +471,7 @@ void pandalog_taint_query_free(Panda__TaintQuery *tq) {
         }
         free(tq->unique_label_set);
     }
+    free(tq);
 }
 
 extern bool taintEnabled;
