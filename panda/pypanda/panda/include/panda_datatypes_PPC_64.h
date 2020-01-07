@@ -5,6 +5,7 @@ typedef uint64_t target_ulong;
 */
 
 typedef uint64_t ram_addr_t;
+extern ram_addr_t ram_size; //gives us the ram_size variable
 typedef uint64_t tb_page_addr_t;
 typedef uint64_t hwaddr;
 typedef uint64_t MemTxResult;

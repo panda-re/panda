@@ -30,13 +30,14 @@ from .osi_mixins        import osi_mixins
 from .hooking_mixins    import hooking_mixins
 from .callback_mixins   import callback_mixins
 from .taint_mixins      import taint_mixins
+from .volatility_mixins import volatility_mixins
 
 import pdb
 
 # location of panda build dir
 panda_build = realpath(pjoin(abspath(__file__), "../../../../build"))
 
-class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins):
+class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins):
     def __init__(self, arch="i386", mem="128M",
             expect_prompt=None, os_version=None,
             qcow=None, os="linux",
