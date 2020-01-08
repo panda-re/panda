@@ -17,7 +17,7 @@ PANDAENDCOMMENT */
 
 /*
 extern "C" {
-
+	
 #include "config.h"
 #include "qemu-common.h"
 #include "monitor.h"
@@ -26,7 +26,8 @@ extern "C" {
 
 #include "panda_plugin.h"
 
-}*/
+}
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,75 +38,84 @@ extern "C" {
 #include <algorithm>
 
 #include "panda/plugin.h"
-#include "panda/plog.h"
 
-#include "callstack_instr/callstack_instr.h"
-#include "callstack_instr/callstack_instr_ext.h"
+//#include "panda/plog.h"
+
+#include "callstack_instr/callstack_instr.h"     // for prog_point.h, any way the plugin is dependent on callstack_instr
+#include "callstack_instr/callstack_instr_ext.h" // for init api, any way the plugin is dependent on callstack_instr
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
-extern "C" {
-
-bool init_plugin(void *);
-void uninit_plugin(void *);
-int mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-int mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
+extern "C"
+{
+    bool init_plugin(void *);
+    void uninit_plugin(void *);
+    void mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
+    void mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
 }
 
-struct prog_point {
+/*
+struct prog_point
+{
     target_ulong caller;
     target_ulong pc;
     target_ulong cr3;
-    bool operator <(const prog_point &p) const {
-        return (this->pc < p.pc) || \
-               (this->pc == p.pc && this->caller < p.caller) || \
+    bool operator<(const prog_point &p) const
+    {
+        return (this->pc < p.pc) ||
+               (this->pc == p.pc && this->caller < p.caller) ||
                (this->pc == p.pc && this->caller == p.caller && this->cr3 < p.cr3);
     }
-};
+};*/
 
-std::map<prog_point,target_ulong> read_tracker;
-std::map<prog_point,target_ulong> write_tracker;
+std::map<prog_point, target_ulong> read_tracker;
+std::map<prog_point, target_ulong> write_tracker;
 FILE *read_index;
 FILE *write_index;
 
-int mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr,
-                       target_ulong size, void *buf) {
+void mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr,
+                        size_t size, uint8_t *buf)
+{
     prog_point p = {};
+
 #ifdef TARGET_I386
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    panda_virtual_memory_rw(cpu, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, false);
-    if((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
-        p.cr3 = env->cr[3];
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+    panda_virtual_memory_rw(cpu, env->regs[R_EBP] + 4, (uint8_t *)&p.caller, 4, false);
+    if ((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
+        p.sidFirst = env->cr[3];
 #endif
     p.pc = pc;
     write_tracker[p] += size;
- 
-    return 1;
+
+    return;
 }
 
-int mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr,
-                       target_ulong size, void *buf) {
+void mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr,
+                       size_t size, uint8_t *buf)
+{
     prog_point p = {};
+
 #ifdef TARGET_I386
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    panda_virtual_memory_rw(cpu, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, false);
-    if((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
-        p.cr3 = env->cr[3];
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+    panda_virtual_memory_rw(cpu, env->regs[R_EBP] + 4, (uint8_t *)&p.caller, 4, false);
+    if ((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
+        p.sidFirst = env->cr[3];
 #endif
     p.pc = pc;
     read_tracker[p] += size;
- 
-    return 1;
+
+    return;
 }
 
-bool init_plugin(void *self) {
+bool init_plugin(void *self)
+{
     panda_require("callstack_instr");
-    if (!init_callstack_instr_api()) return false;
+    if (!init_callstack_instr_api())
+        return false;
+
     panda_cb pcb;
 
     printf("Initializing plugin tapindex\n");
-
     // Need this to get EIP with our callbacks
     panda_enable_precise_pc();
     // Enable memory logging
@@ -119,16 +129,19 @@ bool init_plugin(void *self) {
     return true;
 }
 
-void uninit_plugin(void *self) {
+void uninit_plugin(void *self)
+{
     read_index = fopen("tap_reads.idx", "w");
-    if(!read_index) {
+    if (!read_index)
+    {
         printf("Couldn't write report:\n");
         perror("fopen");
         return;
     }
 
     write_index = fopen("tap_writes.idx", "w");
-    if(!write_index) {
+    if (!write_index)
+    {
         printf("Couldn't write report:\n");
         perror("fopen");
         return;
@@ -139,8 +152,9 @@ void uninit_plugin(void *self) {
     fwrite(&target_ulong_size, sizeof(uint32_t), 1, read_index);
 
     // Save reads
-    std::map<prog_point,target_ulong>::iterator it;
-    for(it = read_tracker.begin(); it != read_tracker.end(); it++) {
+    std::map<prog_point, target_ulong>::iterator it;
+    for (it = read_tracker.begin(); it != read_tracker.end(); it++)
+    {
         fwrite(&it->first, sizeof(prog_point), 1, read_index);
         fwrite(&it->second, sizeof(target_ulong), 1, read_index);
     }
@@ -150,7 +164,8 @@ void uninit_plugin(void *self) {
     fwrite(&target_ulong_size, sizeof(uint32_t), 1, write_index);
 
     // Save writes
-    for(it = write_tracker.begin(); it != write_tracker.end(); it++) {
+    for (it = write_tracker.begin(); it != write_tracker.end(); it++)
+    {
         fwrite(&it->first, sizeof(prog_point), 1, write_index);
         fwrite(&it->second, sizeof(target_ulong), 1, write_index);
     }

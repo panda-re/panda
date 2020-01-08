@@ -881,7 +881,7 @@ one has a README.md file linked here for further explanation.
 * [`memsnap`](../../../panda1/qemu/panda_plugins/memsnap/README.md)
 * [`memstrings`](../../../panda1/qemu/panda_plugins/memstrings/README.md)
 * [`correlatetaps`](../../../panda1/qemu/panda_plugins/correlatetaps/README.md)
-* [`tapindex`](../../../panda1/qemu/panda_plugins/tapindex/README.md)
+* [`tapindex`](../plugins/tapindex/README.md) `Already ported from panda1`
 
 #### Callstack Tracking
 * [`callstack_instr`](../plugins/callstack_instr/README.md) -
