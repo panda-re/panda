@@ -44,7 +44,6 @@ addons:
       - libssh-dev
       - liburcu-dev
       - libusb-1.0-0-dev
-      - libvte-2.91-dev
       - sparse
       - uuid-dev
       # PANDA stuff
