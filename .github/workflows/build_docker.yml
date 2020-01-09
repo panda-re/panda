@@ -1,0 +1,22 @@
+name: Build Docker Container
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Docker login
+      run: docker login docker.pkg.github.com -u $GITHUB_ACTOR -p ${{secrets.GITHUB_TOKEN}}
+    - name: Build Bionic container
+      run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_18_04 -t docker.pkg.github.com/panda-re/panda/panda_bionic:latest;
+            docker push docker.pkg.github.com/panda-re/panda/panda_bionic:latest
+    - name: Build Xenial container
+      run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_16_04 -t docker.pkg.github.com/panda-re/panda/panda_xenial:latest;
+            docker push docker.pkg.github.com/panda-re/panda/panda_xenial:latest
