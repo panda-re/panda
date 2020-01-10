@@ -86,16 +86,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         #self.panda = pjoin(self.build_dir, "{0}-softmmu/panda-system-{0}".format(self.arch)) # Path to binary
 
         self.bits, self.endianness, self.register_size = self._determine_bits()
-        def do_types_import():
-            # There is almost certainly a better way to do this.
-            environ["PANDA_BITS"] = str(self.bits)
-            environ["PANDA_ARCH"] = self.arch
-            from .autogen.panda_datatypes import pcb, C, callback_dictionary # ffi, pcb, C come from here
-            self.callback_dictionary = callback_dictionary
-            global pcb
-            global C
-
-        do_types_import()
+        self._do_types_import()
         self.libpanda = ffi.dlopen(self.libpanda_path)
 
 
@@ -133,7 +124,6 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.athread = AsyncThread(self.started) # athread manages actions that need to occur outside qemu's CPU loop
 
         # Callbacks
-        self.callback = pcb
         self.register_cb_decorators()
         self.registered_callbacks = {} # name -> {procname: "bash", enabled: False, callback: None}
 
@@ -156,6 +146,17 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.main_loop_wait_fnargs = [] # [(fn, args), ...]
         progress ("Panda args: [" + (" ".join(self.panda_args)) + "]")
     # /__init__
+
+    def _do_types_import(self):
+        # Import objects from panda_datatypes which are configured by the environment variables
+        # Store these objects in self.callback and self.callback_dictionary
+
+        # There is almost certainly a better way to do this.
+        environ["PANDA_BITS"] = str(self.bits)
+        environ["PANDA_ARCH"] = self.arch
+        from .autogen.panda_datatypes import pcb, C, callback_dictionary # XXX: What is C and do we need it?
+        self.callback_dictionary = callback_dictionary
+        self.callback = pcb
 
     def _initialize_panda(self):
         '''
