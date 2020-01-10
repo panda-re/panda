@@ -27,7 +27,7 @@ RUN apt-get -y build-dep qemu
 RUN apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
     libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
     libwiretap-dev libwireshark-dev flex bison python3-pip python3 software-properties-common
-
+#
 ENV panda_ppa_file=/etc/apt/sources.list.d/phulin-ubuntu-panda-bionic.list
 ENV panda_ppa_file_fallback=/etc/apt/sources.list.d/phulin-ubuntu-panda-xenial.list
 ENV PANDA_PPA="ppa:phulin/panda"
@@ -52,10 +52,11 @@ RUN apt-get -y install libcapstone-dev libdwarf-dev python-pycparser
 RUN pip install --upgrade protobuf
 
 # Trying to install LLVM 3.3...
-RUN if ! sudo apt-get -y install llvm-3.3-dev clang-3.3; then \
-      echo "Couldn't find OS package for LLVM 3.3. Proceeding without..."; fi
+RUN apt-get -y install llvm-3.3-dev clang-3.3
 
 WORKDIR "/panda"
+RUN git fetch -a
+RUN git checkout docker-ci # XXX: WIP
 RUN git pull
 
 # Trying to update DTC submodule (if necessary)...
@@ -63,8 +64,9 @@ RUN git submodule update --init dtc || true
 
 RUN mkdir build
 
-# Update repo - Restart from here if you just want to rebuild
-#RUN git pull
+# Update repo - Run --build-arg DUMMY=`date` to force rebuild
+ARG DUMMY=unknown
+RUN DUMMY=${DUMMY} git pull
 
 WORKDIR "/panda/build"
 RUN ../build.sh

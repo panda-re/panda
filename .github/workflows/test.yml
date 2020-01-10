@@ -1,4 +1,4 @@
-name: Run tests in docker- Incremental Build
+name: Docker Tests - Incremental
 # Clone latest pre-built docker container
 # Checkout the relevant branch
 # Run make in the build directory - Note we don't build from scratch
@@ -14,9 +14,9 @@ jobs:
     steps:
     - name: Docker login
       run: docker login docker.pkg.github.com -u $GITHUB_ACTOR -p ${{secrets.GITHUB_TOKEN}}
-    - name: Fetch pre-built docker container
+    - name: Fetch pre-built bionic docker container
       run: docker pull docker.pkg.github.com/panda-re/panda/panda_bionic:latest
     - name: Download docker/update.sh script from this commit
       run: wget "https://raw.githubusercontent.com/panda-re/panda/${GITHUB_SHA}/panda/docker/update.sh"
-    - name: Inside container run update.sh to fetch this commit and rebuild PANDA
+    - name: Inside container run update.sh to fetch this commit and rebuild PANDA and run tests
       run: docker run --rm -v $(pwd)/update.sh:/update.sh docker.pkg.github.com/panda-re/panda/panda_bionic bash /update.sh $GITHUB_SHA

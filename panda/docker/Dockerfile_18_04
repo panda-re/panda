@@ -51,9 +51,8 @@ RUN apt-get -y install libcapstone-dev libdwarf-dev python-pycparser
 # Upgrading protocol buffers python support
 RUN pip install --upgrade protobuf
 
-# Trying to install LLVM 3.3...
-RUN if ! sudo apt-get -y install llvm-3.3-dev clang-3.3; then \
-      echo "Couldn't find OS package for LLVM 3.3. Proceeding without..."; fi
+# Install LLVM 3.3...
+RUN apt-get -y install llvm-3.3-dev clang-3.3
 
 WORKDIR "/panda"
 RUN git fetch -a
@@ -65,8 +64,12 @@ RUN git submodule update --init dtc || true
 
 RUN mkdir build
 
-# Update repo - Restart from here if you just want to rebuild
-#RUN git pull
+# Update repo - Run --build-arg DUMMY=`date` to force rebuild
+ARG DUMMY=unknown
+RUN DUMMY=${DUMMY} git pull
+
+# Install PYPANDA dependencies
+RUN apt-get install -y genisoimage wget libc6-dev-i386 gcc-multilib nasm
 
 WORKDIR "/panda/build"
 RUN ../build.sh
