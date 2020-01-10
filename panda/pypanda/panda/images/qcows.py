@@ -67,10 +67,10 @@ def get_qcow(name=None):
     if not os.path.isfile(qcow_path):
         print("\nQcow {} doesn't exist. Downloading from moyix. Thanks moyix!\n".format(arch_data.qcow))
         try:
-            subprocess.check_call(["wget", "http://panda.moyix.net/~moyix/" + arch_data.qcow, "-O", qcow_path])
+            subprocess.check_call(["wget", "--quiet", "http://panda.moyix.net/~moyix/" + arch_data.qcow, "-O", qcow_path])
             for extra_file in arch_data.extra_files or []:
                 extra_file_path = os.path.join(VM_DIR, extra_file)
-                subprocess.check_call(["wget", "http://panda.moyix.net/~moyix/" + extra_file, "-O", extra_file_path])
+                subprocess.check_call(["wget", "--quiet", "http://panda.moyix.net/~moyix/" + extra_file, "-O", extra_file_path])
         except Exception as e:
             logger.info("Download failed, deleting partial file(s): %s", qcow_path)
             os.remove(qcow_path)
