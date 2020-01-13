@@ -1,0 +1,30 @@
+name: Docker Tests - Clean Build
+# For PRs to master, build from a clean image
+
+# Clone latest pre-built docker container
+# Checkout the relevant branch
+# Run make in the build directory - Note we don't build from scratch
+# Run tests
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Docker login
+      run: docker login docker.pkg.github.com -u $GITHUB_ACTOR -p ${{secrets.GITHUB_TOKEN}}
+    - name: Build Bionic container
+      run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_18_04 -t bionic_test
+    - name: Build clean PANDA in bionic
+      run: docker run --rm -v bionic_test bash /panda/docker/update.sh ${GITHUB_SHA} clean
+
+    - name: Build Xenial container
+      run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_16_04 -t xenial_test
+    - name: Build clean PANDA in xenial
+      run: docker run --rm -v bionic_test bash /panda/docker/update.sh ${GITHUB_SHA} clean

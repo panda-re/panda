@@ -3,13 +3,18 @@ set -e
 
 # To be run inside panda_bionic docker container where PANDA is already built
 # Given an argument of a git SHA1, checkout that commit, build panda and run tests
+# If run with a second argument of "clean" run make clean before building
 
 NPROC=$(nproc || sysctl -n hw.ncpu)
 
 cd /panda/build
 git fetch -a
 git checkout $1
+if [ "$2" = "clean" ]; then
+    make clean
+fi
 make -j${NPROC}
+
 
 # Run test suite
 make -j${NPROC} check
