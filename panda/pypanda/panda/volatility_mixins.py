@@ -1,8 +1,3 @@
-from .volatility_cli_classes import CommandLineMoreEfficient, CommandLineRunFullCommand, StringTextRenderer
-from volatility.framework import contexts
-from volatility.framework.layers.linear import LinearlyMappedLayer
-from volatility.framework.automagic import linux
-from urllib.request import BaseHandler
 from .ffi_importer import ffi
 
 
@@ -10,7 +5,9 @@ class volatility_mixins():
     '''
     Constructs a file and file handler that volatility can't ignore to back by PANDA physical memory
     '''
-    def make_panda_file_handler(self,debug=False):
+
+    def make_panda_file_handler(self, debug=False):
+        from urllib.request import BaseHandler
         if 'PandaFileHandler' in globals():  # alread initialized
             return
         panda = self
@@ -35,7 +32,8 @@ class volatility_mixins():
                 else:
                     data = self.panda.physical_memory_read(self.pos, size)
                 if debug:
-                    print(self.classname+": Reading "+str(size)+" bytes from "+hex(self.pos))
+                    print(self.classname+": Reading " +
+                          str(size)+" bytes from "+hex(self.pos))
                 self.pos += size
                 return data
 
@@ -65,9 +63,10 @@ class volatility_mixins():
                 if 'panda.panda' in req.full_url:
                     length = panda.libpanda.ram_size
                     if length > 0xc0000000:
-                        length += 0x40000000 # 3GB hole
+                        length += 0x40000000  # 3GB hole
                     if debug:
-                        print(type(self).__name__ +": initializing PandaFile with length="+hex(length))
+                        print(type(self).__name__ +
+                              ": initializing PandaFile with length="+hex(length))
                     return PandaFile(length=length, panda=panda)
                 else:
                     return None
@@ -77,7 +76,11 @@ class volatility_mixins():
 
         globals()["PandaFileHandler"] = PandaFileHandler
 
-    def get_volatility_symbols(self,debug=False):
+    def get_volatility_symbols(self, debug=False):
+        from .volatility_cli_classes import CommandLineMoreEfficient
+        from volatility.framework import contexts
+        from volatility.framework.layers.linear import LinearlyMappedLayer
+        from volatility.framework.automagic import linux
         if self.os == "linux":
             if not hasattr(self, "_vmlinux"):
                 self.make_panda_file_handler(debug=debug)
@@ -87,13 +90,14 @@ class volatility_mixins():
                 self._vmlinux = contexts.Module(
                     constructed_original.context, constructed_original.config['vmlinux'], constructed_original.config['primary'], 0)
             else:
-                LinearlyMappedLayer.read.cache_clear() # smearing technique
+                LinearlyMappedLayer.read.cache_clear()  # smearing technique
             return self._vmlinux
         else:
             print("Unsupported.")
             return None
 
     def run_volatility(self, plugin, debug=False):
+        from .volatility_cli_classes import CommandLineRunFullCommand, StringTextRenderer
         self.make_panda_file_handler(debug=debug)
         cmd = CommandLineRunFullCommand().run("-q -f panda.panda " + plugin)
         output = StringTextRenderer().render(cmd.run())
