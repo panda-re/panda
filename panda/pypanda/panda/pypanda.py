@@ -46,6 +46,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.arch = arch
         self.mem = mem
         self.os = os_version
+        self.os_type = os
         self.qcow = qcow
         self.plugins = {}
 
@@ -88,7 +89,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         def do_types_import():
             # There is almost certainly a better way to do this.
             environ["PANDA_BITS"] = str(self.bits)
-            environ["PANDA_ARCH"] = arch
+            environ["PANDA_ARCH"] = self.arch
             from .autogen.panda_datatypes import pcb, C, callback_dictionary # ffi, pcb, C come from here
             self.callback_dictionary = callback_dictionary
             global pcb
