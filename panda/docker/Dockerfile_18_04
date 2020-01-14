@@ -56,6 +56,8 @@ RUN apt-get -y install llvm-3.3-dev clang-3.3
 
 WORKDIR "/panda"
 RUN git fetch -a
+RUN git checkout docker-ci # XXX: WIP
+RUN git pull
 
 # Trying to update DTC submodule (if necessary)...
 RUN git submodule update --init dtc || true
@@ -83,5 +85,11 @@ RUN ../configure \
     --disable-vhost-net \
     --extra-cflags=-DXC_WANT_COMPAT_DEVICEMODEL_API
 
+RUN apt-get -y install chrpath
+
 RUN make -j4
+
 RUN make install
+
+RUN echo '[remote "origin"]' >> /panda/.git/config
+RUN echo 'fetch = +refs/pull/*/head:refs/remotes/origin/pr/*' >> /panda/.git/config
