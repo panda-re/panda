@@ -304,22 +304,51 @@ void PCB(during_machine_init)(MachineState *machine) {
      }
 }
 
-void PCB(unassigned_io)(CPUState *env, hwaddr addr, size_t size,
-       uint8_t *val, bool is_write) {
-    if (is_write) {
-        panda_cb_list *plist;
-        for(plist = panda_cbs[PANDA_CB_UNASSIGNED_IO_WRITE]; plist != NULL;
-            plist = panda_cb_list_next(plist)) {
-            if (plist->enabled) plist->entry.unassigned_io_write(env, env->panda_guest_pc, addr, size, val);
+bool PCB(unassigned_io_write)(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size,
+       uint64_t val) {
+    // Returns true if any registered&enabled callback returns non-zero.
+    // If so, we'll silence the memory write error.
+
+    bool allow_invalid_write = false;
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_UNASSIGNED_IO_WRITE]; plist != NULL;
+        plist = panda_cb_list_next(plist)) {
+        if (plist->enabled) {
+            if (0 != plist->entry.unassigned_io_write(env, pc, addr, size,
+                                                        val)) {
+                // If any callbacks return nonzero, we've silenced
+                // the error and we should pretend it's a valid write
+                allow_invalid_write  = true;
+            }
         }
     }
-    else {
-        panda_cb_list *plist;
-        for(plist = panda_cbs[PANDA_CB_UNASSIGNED_IO_READ]; plist != NULL;
-            plist = panda_cb_list_next(plist)) {
-            if (plist->enabled) plist->entry.unassigned_io_read(env, env->panda_guest_pc, addr, size, val);
+
+    return allow_invalid_write;
+}
+
+bool PCB(unassigned_io_read)(CPUState *env, target_ptr_t pc, hwaddr addr,
+        size_t size, MemTxResult *val) {
+    // Returns true if any registered&enabled callback returns non-zero,
+    // if so, we'll silence the invalid memory read error and return
+    // the value provided by the last callback in `val`
+    // Note if multiple callbacks run they can each mutate val
+
+    bool changed = false; // Did a callback change this value or should we leave it as invalid?
+
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_UNASSIGNED_IO_READ]; plist != NULL;
+        plist = panda_cb_list_next(plist)) {
+        if (plist->enabled) {
+            if (0 != plist->entry.unassigned_io_read(env, pc, addr,
+                                                        size, val)) {
+                // If any callbacks return nonzero, we've changed
+                // the value and should return val instead of MEMTX_DECODE_ERROR
+                changed = true;
+            }
         }
     }
+
+    return changed;
 }
 
 void PCB(top_loop)(CPUState *env) {
