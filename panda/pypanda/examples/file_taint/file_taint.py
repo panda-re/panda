@@ -10,7 +10,17 @@ from panda.x86.helper import *
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]
-panda = Panda(generic=arch)
+
+arch = "x86_64" if len(argv) <= 1 else argv[1]
+extra = "-nographic -chardev socket,id=monitor,path=./monitor.sock,server,nowait -monitor chardev:monitor -serial telnet:127.0.0.1:4444,server,nowait  -device e1000,netdev=net0 -netdev user,id=net0,hostfwd=tcp::5555-:22 -cdrom /home/luke/workspace/qcows/instance-1-cidata.iso"
+qcow = "/home/luke/workspace/qcows/instance-1.qcow2"
+panda = Panda(arch=arch,qcow=qcow,extra_args=extra,mem="1G")
+@blocking
+def it():
+	panda.revert("cmdline")
+
+#panda.queue_async(it)
+#panda.run()
 md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_32)
 
 bin_dir = "taint"
@@ -22,7 +32,10 @@ recording_name = bin_dir+"_"+bin_name
 if not path.isfile(recording_name +"-rr-snp"):
     @blocking
     def run_it():
-        panda.record_cmd("echo 'this is a cool file' > /tmp/panda.panda && " + path.join(bin_dir, bin_name), copy_directory=bin_dir, recording_name=recording_name)
+        import pdb
+        pdb.set_trace()
+        panda.run_serial_cmd("echo hello world | tee /tmp/panda.panda")
+        panda.record_cmd(path.join(bin_dir, bin_name), copy_directory=bin_dir, recording_name=recording_name)
         panda.stop_run()
 
     print("Generating " + recording_name + " replay")
@@ -44,23 +57,7 @@ with open(path.join(bin_dir, bin_name), 'rb') as f:
 tainted = False
 g_phys_addrs = []
 
-
-def hook_vfs_read(env,tb):
-    vmlinux = panda.get_volatility_symbols()
-    # rdi, rsi, rdx, r10, r8, r9 -> arguments for kernel functions
-    regs = [env.env_ptr.regs[i] for i in [7,6,2,10,8,9]]     
-    # vfs_read(struct file * file, char *buf, )
-    
-
-
-@panda.cb_before_block_exec
-def setup_hook(env, tb):
-    vmlinux = panda.get_volatility_symbols()
-    vfs_read = vmlinux.get_symbol(symbol_name="vfs_read") | 0xffff000000000000
-    panda.hook(vfs,read, hook_vfs_read,kernel=True, enabled=True)
-    panda.disable_callback("setup_hook")
-
-#@panda.cb_before_block_exec_invalidate_opt()
+@panda.cb_before_block_exec_invalidate_opt
 def taint_it(cpu, tb):
     if tb.pc in mappings and mappings[tb.pc] == "apply_taint":
         global tainted
@@ -87,7 +84,7 @@ def taint_it(cpu, tb):
             return 1
     return 0
 
-#@panda.cb_after_block_exec(procname=bin_name) # After we've executed the block applying taint, make sure everything is tainted as expected
+#@panda.cb_after_block_exec
 def abe(cpu, tb, exit):
     if tb.pc in mappings:
         if mappings[tb.pc] == "apply_taint":
@@ -114,5 +111,59 @@ def bbe(cpu, tb):
             print("Success! Tracked taint propagation and final taint labels match expected (test 2 of 2)!")
             panda.end_analysis()
 
+
+panda.set_os_name("linux-64-ubuntu")
+panda.require("syscalls2")
+cb_name = "on_sys_read_return"
+cb_args = "CPUState *, target_ulong, uint32_t, uint64_t, uint32_t"
+ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
+
+
+def get_task_from_cr3(task_list, cr3):
+	# for some reason the cr3 we get is 32 bit from PANDA
+	matching = [t for t in task_list.tasks if t.mm and t.mm.pgd and t.mm.pgd & 0xffffffff == cr3 & 0xffffffff]
+	if matching:
+		return matching[0]
+	else:
+		return "[none]"
+
+
+info = None
+
+@ffi.callback(f"void({cb_args})")
+def on_sys_read_return(cpustate, pc, fd, buf, count):
+	global info
+	if info:
+		cr3, fd_ = info
+		if cr3 == cpustate.env_ptr.cr[3] and fd == fd_:
+			returned = cpustate.env_ptr.regs[R_EAX]
+			buf_read = panda.virtual_memory_read(cpustate, buf, returned)
+			for idx in range(returned):
+				taint_vaddr = buf+idx
+				taint_paddr = panda.virt_to_phys(cpustate, taint_vaddr) # Physical address
+				print("Taint character #{} '{}' at 0x{} (phys 0x{:x}) with label {}".format(idx, buf_read[idx], taint_vaddr, taint_paddr, idx))
+				panda.taint_label_ram(taint_paddr, idx)
+                #g_phys_addrs.append(taint_paddr)
+
+
+
+
+panda.plugins["syscalls2"].__getattr__(f"ppp_add_cb_{cb_name}")(on_sys_read_return)
+
+cb_name = "on_sys_open_return"
+cb_args = "CPUState *, target_ulong, uint64_t, int32_t, uint32_t"
+ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
+
+@ffi.callback(f"void({cb_args})")
+def on_sys_open_return(cpustate, pc, filename, flags, mode):
+	fname = panda.virtual_memory_read(cpustate, filename, 100)
+	fname_total = fname[:fname.find(b'\x00')]
+	print(f"on_sys_open_enter: {fname_total}")
+	if b"panda" in fname_total:
+		global info
+		info = cpustate.env_ptr.cr[3], cpustate.env_ptr.regs[R_EAX]
+
+
+panda.plugins["syscalls2"].__getattr__(f"ppp_add_cb_{cb_name}")(on_sys_open_return)
 panda.disable_tb_chaining()
 panda.run_replay(recording_name)

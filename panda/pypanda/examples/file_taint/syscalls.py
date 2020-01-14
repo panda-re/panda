@@ -19,9 +19,19 @@ cb_args = "CPUState *, target_ulong, uint32_t, uint64_t, uint32_t"
 ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
 
 @ffi.callback(f"void({cb_args})")
-def on_sys_read_return(cpustate,arg1, arg2, arg3, arg4):
-    import pdb
-    pdb.set_trace()
+def on_sys_read_return(cpustate, pc, fd, buf, count):
+	vmlinux = panda.get_volatility_symbols()
+	import pdb
+	pdb.set_trace()
 
 panda.plugins["syscalls2"].__getattr__(f"ppp_add_cb_{cb_name}")(on_sys_read_return)
+
+cb_name = "on_sys_read_enter"
+cb_args = "CPUState *, target_ulong, uint32_t, uint64_t, uint32_t"
+ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
+@ffi.callback(f"void({cb_args})")
+def on_sys_read_enter(cpustate, pc, fd, buf, count):
+#	vmlinux = panda.get_volatility_symbols()
+
+panda.plugins["syscalls2"].__getattr__(f"ppp_add_cb_{cb_name}")(on_sys_read_enter)
 panda.run()
