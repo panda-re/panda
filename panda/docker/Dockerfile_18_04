@@ -56,21 +56,32 @@ RUN apt-get -y install llvm-3.3-dev clang-3.3
 
 WORKDIR "/panda"
 RUN git fetch -a
-RUN git checkout docker-ci # XXX: WIP
-RUN git pull
 
 # Trying to update DTC submodule (if necessary)...
 RUN git submodule update --init dtc || true
 
 RUN mkdir build
 
-# Update repo - Run --build-arg DUMMY=`date` to force rebuild
-ARG DUMMY=unknown
-RUN DUMMY=${DUMMY} git pull
-
 # Install PYPANDA dependencies
 RUN apt-get install -y genisoimage wget libc6-dev-i386 gcc-multilib nasm
 
 WORKDIR "/panda/build"
-RUN ../build.sh
-RUN prefix=/ make install
+# build.sh logic, but simple because we're in a container
+ENV TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu"
+RUN rm -f ./qemu-options.def
+
+# NUMA disabled in docker because I can't get it to work in the container
+# If we extend this to build to produce binaries to run outside of docker, we should
+# re-enable (or make another build) with numa
+RUN ../configure \
+    --target-list=$TARGET_LIST \
+    --prefix=/ \
+    --enable-llvm \
+    --disable-numa \
+    --with-llvm=/usr/lib/llvm-3.3 \
+    --python=/usr/bin/python2 \
+    --disable-vhost-net \
+    --extra-cflags=-DXC_WANT_COMPAT_DEVICEMODEL_API
+
+RUN make -j4
+RUN make install
