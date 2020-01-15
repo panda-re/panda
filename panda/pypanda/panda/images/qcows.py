@@ -10,7 +10,8 @@ from sys import argv
 from collections import namedtuple
 
 
-logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 VM_DIR = os.path.join(os.path.expanduser("~"), ".panda")
 
@@ -33,7 +34,7 @@ SUPPORTED_ARCHES = {
 
 def get_qcow_info(name=None):
     if name is None:
-        logging.warning("No qcow name provided. Defaulting to i386")
+        logger.warning("No qcow name provided. Defaulting to i386")
         name = "i386"
 
     if os.path.isfile(name):
@@ -49,11 +50,11 @@ def get_qcow_info(name=None):
 # Given a generic name of a qcow or a path to a qcow, return the path. Defaults to i386
 def get_qcow(name=None):
     if name is None:
-        logging.warning("No qcow name provided. Defaulting to i386")
+        logger.warning("No qcow name provided. Defaulting to i386")
         name = "i386"
 
     if os.path.isfile(name):
-        logging.debug("Provided qcow name appears to be a path, returning it directly: %s", name)
+        logger.debug("Provided qcow name appears to be a path, returning it directly: %s", name)
         return name
 
     name = name.lower() # Case insensitive. Assumes supported_arches keys are lowercase
@@ -72,7 +73,7 @@ def get_qcow(name=None):
                 extra_file_path = os.path.join(VM_DIR, extra_file)
                 subprocess.check_call(["wget", "http://panda.moyix.net/~moyix/" + extra_file, "-O", extra_file_path])
         except Exception as e:
-            logging.info("Download failed, deleting partial file(s): %s", qcow_path)
+            logger.info("Download failed, deleting partial file(s): %s", qcow_path)
             os.remove(qcow_path)
             for extra_file in arch_data.extra_files or []:
                 try:
@@ -80,7 +81,7 @@ def get_qcow(name=None):
                 except: # Extra files might not exist
                     pass
             raise e # Reraise
-        logging.debug("Downloaded %s to %s", arch_data.qcow, qcow_path)
+        logger.debug("Downloaded %s to %s", arch_data.qcow, qcow_path)
     return qcow_path
 
 # Given an index into argv, call get_qcow with that arg if it exists, else with None
