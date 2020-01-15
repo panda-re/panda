@@ -74,9 +74,8 @@ def dump_regs(panda, cpu):
     '''
     Print (telescoping) each register and its values
     '''
-    c = panda.get_cpu(cpu)
     for (regname, reg) in registers.items():
-        val = c.regs[reg]
+        val = cpu.env_ptr.regs[reg]
         print("{}: 0x{:x}".format(regname, val), end="\t")
         telescope(panda, cpu, val)
 
@@ -90,8 +89,7 @@ def dump_stack(panda, cpu):
     word_size = 4
     N_WORDS = 8
 
-    c = panda.get_cpu(cpu)
-    base_reg_val = c.regs[base_reg]
+    base_reg_val = cpu.env_ptr.regs[base_reg]
     for word_idx in range(N_WORDS):
         val_b = panda.virtual_memory_read(cpu, base_reg_val+word_idx*word_size, word_size)
         val = int.from_bytes(val_b, byteorder='little')

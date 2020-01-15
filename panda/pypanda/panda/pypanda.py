@@ -539,6 +539,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             self.plugins[name] = library
 
     def get_cpu(self,cpustate):
+        raise RuntimeError("panda.get_cpu is deprecated. Remove your call to it")
         '''
         XXX: Why does this exist? We actually need it sometimes for non-x86
         '''
