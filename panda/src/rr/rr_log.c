@@ -1579,8 +1579,12 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     rr_queue_end = &rr_queue[RR_QUEUE_MAX_LEN];
     rr_fill_queue();
 
-    // Resume execution of the CPU thread
-    vm_start();
+    // Resume execution of the CPU thread when using PANDA as a library
+    // note that this means library-mode consumers can't start a replay `-s -S` to
+    // get a stopped guest that will only be started via an attached GDB
+    if (panda_library_mode) {
+        vm_start();
+    }
 
     return 0; // snapshot_ret;
 #endif
