@@ -543,6 +543,8 @@ bool init_plugin(void *self) {
         stackType = panda_parse_string_opt(args, "stack_type", "threaded",
                 "type of segregation used for stack entries (threaded, heuristic, or asid");
     }
+    panda_free_args(args);
+
     if (0 == strcmp(stackType, "asid")) {
         stack_segregation = STACK_ASID;
     } else if (0 == strcmp(stackType, "heuristic")) {

@@ -358,6 +358,8 @@ bool init_plugin(void *self) {
     hypercall_taint = panda_parse_bool_opt(args, "hypercall", "Register tainting on a panda hypercall callback");
     linechange_taint = panda_parse_bool_opt(args, "linechange", "Register tainting on every line change in the source code (default)");
     chaff_bugs = panda_parse_bool_opt(args, "chaff", "Record untainted extents for chaff bugs.");
+    panda_free_args(args);
+
     // default linechange_taint to true if there is no hypercall taint
     if (!hypercall_taint)
         linechange_taint = true;

@@ -508,6 +508,8 @@ bool init_plugin(void *self) {
     num_cells = std::max(panda_parse_uint64_opt(args, "width", 100, "number of columns to use for display"), UINT64_C(80)) - NAMELEN - 5;
     //    sample_rate = panda_parse_uint32(args, "sample_rate", sample_rate);
     //    sample_cutoff = panda_parse_uint32(args, "sample_cutoff", sample_cutoff);
+    panda_free_args(args);
+
     if (!pandalog) {
         status_c = (bool *) malloc(sizeof(bool) * num_cells);
         for (int i=0; i<num_cells; i++) status_c[i]=false;

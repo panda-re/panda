@@ -402,6 +402,7 @@ bool init_plugin(void *self)
         panda_parse_bool_opt(args, "pread_bits_64",
                              "Assume the offset passed to pread is a signed "
                              "64-bit integer (Linux specific)");
+    panda_free_args(args);
 
     // Setup dependencies
     panda_require("syscalls2");
