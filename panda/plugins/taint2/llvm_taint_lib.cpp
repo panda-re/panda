@@ -203,7 +203,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.gsvConst = const_struct_ptr(ctx, shadP, &shad->gsv);
     PTV.retConst = const_struct_ptr(ctx, shadP, &shad->ret);
 
-    PTV.dataLayout = new DataLayout(&M);
+    new (&PTV.dataLayout) DataLayout(&M);
 
     llvm::Type *memlogT = M.getTypeByName("struct.taint2_memlog");
     assert(memlogT);
@@ -365,7 +365,7 @@ int PandaSlotTracker::getLocalSlot(const Value *V) {
  * instruction).
  */
 unsigned PandaTaintVisitor::getValueSize(const Value *V) {
-    uint64_t size = dataLayout->getTypeSizeInBits(V->getType());
+    uint64_t size = dataLayout.getTypeSizeInBits(V->getType());
     return (size < 8) ? 1 : size / 8;
 }
 
@@ -1490,7 +1490,7 @@ void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I) {
     Value *aggregate = I.getAggregateOperand();
     assert(aggregate && aggregate->getType()->isStructTy());
     StructType *typ = dyn_cast<StructType>(aggregate->getType());
-    const StructLayout *structLayout = dataLayout->getStructLayout(typ);
+    const StructLayout *structLayout = dataLayout.getStructLayout(typ);
 
     assert(I.idx_begin() != I.idx_end());
     unsigned offset = structLayout->getElementOffset(*I.idx_begin());
@@ -1509,7 +1509,7 @@ void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I) {
     Value *aggregate = I.getAggregateOperand();
     assert(aggregate && aggregate->getType()->isStructTy());
     StructType *typ = dyn_cast<StructType>(aggregate->getType());
-    const StructLayout *structLayout = dataLayout->getStructLayout(typ);
+    const StructLayout *structLayout = dataLayout.getStructLayout(typ);
 
     Value *inserted = I.getInsertedValueOperand();
 
