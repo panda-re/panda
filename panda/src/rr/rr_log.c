@@ -1445,6 +1445,7 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     QIOChannelFile* ioc =
         qio_channel_file_new_path(name_buf, O_WRONLY | O_CREAT, 0660, NULL);
     QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
+    object_unref(OBJECT(ioc));
     snapshot_ret = qemu_savevm_state(snp, NULL);
     qemu_fclose(snp);
     // log_all_cpu_states();
@@ -1547,6 +1548,7 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
         abort();
     }
     QEMUFile* snp = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
+    object_unref(OBJECT(ioc));
 
     qemu_system_reset(VMRESET_SILENT);
     MigrationIncomingState* mis = migration_incoming_get_current();
