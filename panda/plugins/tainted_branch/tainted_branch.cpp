@@ -126,6 +126,7 @@ void tbranch_on_branch_taint2(Addr a, uint64_t size) {
                 for (uint32_t i=0; i<num_tainted; i++) {
                     pandalog_taint_query_free(tb->taint_query[i]);
                 }
+                free(tb->taint_query);
                 free(tb);
             }
         }
