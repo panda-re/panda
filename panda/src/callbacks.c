@@ -1123,6 +1123,7 @@ void panda_free_args(panda_arg_list *args) {
     for (i = 0; i < args->nargs; i++) {
         g_free(args->list[i].argptr);
     }
+    g_free(args->list);
     g_free(args->plugin_name);
     g_free(args);
 }
