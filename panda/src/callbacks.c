@@ -771,6 +771,7 @@ static panda_arg_list *panda_get_args_internal(const char *plugin_name, bool che
         list = (panda_arg *) g_malloc(sizeof(panda_arg)*nargs);
         if (list == NULL) goto fail;
     }
+    ret->list = list;
 
     // Put plugin name in here so we can use it
     ret->plugin_name = g_strdup(plugin_name);
@@ -800,6 +801,7 @@ static panda_arg_list *panda_get_args_internal(const char *plugin_name, bool che
             }
             if (!found_colon) {
                 // malformed argument
+                ret->nargs = ret_idx;
                 goto fail;
             }
             if (!found_equals) {
@@ -808,8 +810,6 @@ static panda_arg_list *panda_get_args_internal(const char *plugin_name, bool che
             ret_idx++;
         }
     }
-
-    ret->list = list;
 
     for (i = 0; i < ret->nargs; i++) {
         if (strcmp(ret->list[i].key, "help") == 0) {
@@ -826,8 +826,7 @@ static panda_arg_list *panda_get_args_internal(const char *plugin_name, bool che
     return ret;
 
 fail:
-    if (ret != NULL) g_free(ret);
-    if (list != NULL) g_free(list);
+    panda_free_args(ret);
     return NULL;
 }
 
