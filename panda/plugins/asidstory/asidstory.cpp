@@ -536,7 +536,7 @@ void uninit_plugin(void *self) {
             Panda__AsidInfo *ai = (Panda__AsidInfo *) malloc(sizeof(Panda__AsidInfo));
             *ai = PANDA__ASID_INFO__INIT;
             ai->asid = np.asid;
-            ai->name = strdup(np.name.c_str());
+            ai->name = const_cast<char*>(np.name.c_str());
             ai->pid = np.pid;
             ai->start_instr = pd.first;
             ai->end_instr = pd.last;
