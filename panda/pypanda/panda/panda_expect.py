@@ -1,6 +1,7 @@
 # Custom library for interacting/expecting data via serial-like FDs
 
 import os
+import re
 import select
 import sys
 import string
@@ -25,7 +26,8 @@ class Expect(object):
         self.last_msg = None
         self.bytessofar = bytearray()
         self.running = True
-        self.expectation = expectation
+        self.expectation_re = re.compile(expectation)
+        self.expectation_ends_re = re.compile(rb'.*' + expectation)
 
         # If consumed_first is false, we'll consume a message before anything else. Requires self.expectation to be set
         self.consumed_first = True
@@ -50,8 +52,7 @@ class Expect(object):
         self.running = False
 
     def expect(self, expectation=None, timeout=30):
-        if not expectation:
-            expectation = self.expectation
+        assert(not expectation), "Deprecated interface - must set expectation in class init"
         # Wait until we get expectation back, up to timeout. Return data between last_command and expectation
         sofar = bytearray()
         start_time = datetime.now()
@@ -77,7 +78,7 @@ class Expect(object):
 
                 sofar.extend(char)
 
-                if sofar.endswith(expectation.encode('utf8')):
+                if self.expectation_ends_re.match((b"\n"+sofar).split(b"\n")[-1]) != None:
                     if b"\x1b" in sofar: # Socket is echoing back when we type, try to trim it
                         sofar = sofar.split(b"\x1b")[-1][2:]
 
@@ -88,7 +89,10 @@ class Expect(object):
                         if self.last_msg and resp[0].decode('utf8', 'ignore').replace(" \r", "").strip() == self.last_msg.decode('utf8', 'ignore').strip():
                             resp[:] = resp[1:] # drop last cmd
 
-                        if resp[-1].decode('utf8') == expectation:
+                        # Need to match root@debian-i386:~# with root@debian-i386:/some/other dir#
+                        last_line = resp[-1]
+
+                        if self.expectation_re.match(last_line) != None:
                             resp[:] = resp[:-1] # drop next prompt
 
                         sofar= b"\r\n".join(resp)
