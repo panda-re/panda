@@ -102,8 +102,8 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         # Configure memory options
         self.panda_args.extend(['-m', mem])
 
-        # Configure serial - Always enabled for now, except in simple mode
-        if not simple:
+        # Configure serial - if we have an expect_prompt set. Otherwise how can we know what guest cmds are outputting?
+        if expect_prompt:
             self.serial_file = NamedTemporaryFile(prefix="pypanda_s").name
             self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.serial_console = Expect(expectation=expect_prompt, quiet=True, consume_first=False)
