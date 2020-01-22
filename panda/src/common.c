@@ -195,18 +195,12 @@ MemoryRegion* panda_find_ram(void) {
     MemoryRegion *ram = NULL;   // Sentinel, deref segfault
     MemoryRegion *sys_mem = get_system_memory();
     MemoryRegion *mr_iter;
-    const char* region_name;
 
-    // Hacky heuristic, but should work for most non-standard RAM names ("mach-virt.ram", "pc.ram", etc):
-    // - Iterate ONLY top-level subregion names (not depth-first exhaustive: faster and reduced chance of false pos)
-    // - Find LARGEST w/ case-insensitive substr match (largest b/c some boards have "sysram", "dram", "lowmem", etc)
+    // Largest top-level subregion marked as random access
     QTAILQ_FOREACH(mr_iter, &(sys_mem->subregions), subregions_link) {
-        region_name = memory_region_name(mr_iter);
-        if ((strcasestr(region_name, "ram") || strcasestr(region_name, "mem"))
-            && (mr_iter->size > curr_max))
-        {
-            ram = mr_iter;
+        if (memory_region_is_ram(mr_iter) && (mr_iter->size > curr_max)) {
             curr_max = mr_iter->size;
+            ram = mr_iter;
         }
     }
 
