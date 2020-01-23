@@ -39,4 +39,5 @@ struct QemuEvent {
 struct QemuThread {
     pthread_t thread;
 };
+
 #endif

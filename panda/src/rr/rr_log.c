@@ -1489,7 +1489,6 @@ void rr_do_end_record(void)
       printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
       printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
     }
-    printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
 
     // log_all_cpu_states();
 
