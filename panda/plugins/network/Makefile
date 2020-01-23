@@ -1,7 +1,9 @@
 # Don't forget to add your plugin to config.panda!
 
 # If you need custom CFLAGS or LIBS, set them up here
-QEMU_INCLUDES += -I/usr/include/wireshark
+QEMU_INCLUDES += -I/usr/local/include
+QEMU_INCLUDES += -I/usr/local/include/wireshark
+QEMU_INCLUDES += -I/usr/local/include/wireshark/wiretap
 LIBS += -lwiretap
 
 # The main rule for your plugin. List all object-file dependencies.

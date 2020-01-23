@@ -36,10 +36,23 @@ wtap_dumper *plugin_log;
 
 bool init_plugin(void *self) {
     panda_cb pcb;
-
+    int err;
     int i;
     char *tblog_filename = NULL;
     args = panda_get_args("network");
+
+#if (VERSION_MAJOR>=3)
+    const wtap_dump_params wdparams = {
+    .encap = WTAP_ENCAP_ETHERNET,
+    .snaplen = 65535,
+    .shb_hdrs = NULL,
+    .idb_inf = NULL,
+    .nrb_hdrs = NULL,
+    .dsbs_initial = NULL,
+    .dsbs_growing = NULL
+    };
+#endif
+
     if (args != NULL) {
         for (i = 0; i < args->nargs; i++) {
             // Format is sample:file=<file>
@@ -54,13 +67,21 @@ bool init_plugin(void *self) {
         return false;
     }
 
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 6 && VERSION_MICRO >= 0
+#if (VERSION_MAJOR >= 2 && VERSION_MINOR >= 6 && VERSION_MICRO >= 0) || (VERSION_MAJOR>=3)
     wtap_init(false);
 #elif VERSION_MAJOR == 2 && VERSION_MINOR == 2 && VERSION_MICRO >= 4
     wtap_init();
 #endif
 
-    int err;
+#if (VERSION_MAJOR>=3)
+
+    plugin_log = wtap_dump_open(
+            tblog_filename,
+            WTAP_FILE_TYPE_SUBTYPE_PCAPNG,
+            WTAP_UNCOMPRESSED,   // assuming this...
+            &wdparams,            // the new structure that wraps all the ng params
+            &err );
+#else
     plugin_log = wtap_dump_open_ng(
             /*filename*/tblog_filename,
             /*file_type_subtype*/WTAP_FILE_TYPE_SUBTYPE_PCAPNG,
@@ -73,6 +94,8 @@ bool init_plugin(void *self) {
             /*nrb_hdrs*/NULL,
 #endif
             /*err*/&err);
+#endif
+
     if(!plugin_log) {
         fprintf(stderr, "Plugin 'network': failed wtap_dump_open_ng() with error %d\n", err);
         return false;
@@ -105,7 +128,7 @@ void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction,
     snprintf(comment_buf, COMMENT_BUF_LEN, "Guest instruction count: %" PRIu64,
              rr_get_guest_instr_count());
     gboolean ret = false;
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 6 && VERSION_MICRO >= 3
+#if (VERSION_MAJOR >= 2 && VERSION_MINOR >= 6 && VERSION_MICRO >= 3) || (VERSION_MAJOR>=3)
     wtap_rec rec;
     wtap_rec_init(&rec);
     rec.rec_type = REC_TYPE_PACKET;
