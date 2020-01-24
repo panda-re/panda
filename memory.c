@@ -1089,23 +1089,26 @@ static void memory_region_initfn(Object *obj)
                         NULL, NULL, &error_abort);
 }
 
-static MemTxResult _unassigned_mem_read(void *opaque, hwaddr addr,
-                                    size_t size)
+static uint64_t _unassigned_mem_read(void *opaque, hwaddr addr,
+                                    size_t size, bool* changed)
 {
-    // We want to read size bytes from addr. Size must be <= 4
-    // to fit into a MemTxResult (32-bits)
+    // We want to read size bytes from addr. Size must be <= 8 to fit into uint64_t
 
 #ifdef DEBUG_UNASSIGNED
     printf("Unassigned mem read " TARGET_FMT_plx "\n", addr);
 #endif
 
-    MemTxResult val;
-
+    uint64_t val;
     // PANDA callback may create a value. If so, avoid error-handling code
-    if (panda_callbacks_unassigned_io_read(first_cpu, first_cpu->panda_guest_pc, addr, size, &val)) {
+    if (panda_callbacks_unassigned_io_read(current_cpu,
+                current_cpu->panda_guest_pc, addr, size, &val)) { // Modifies val
+        *changed = true; // Indicates a callback has changed the value
         return val;
     }
 
+
+    // No callback changed the value. Continue with error-processing code
+    *changed = false;
     if (current_cpu != NULL) {
         cpu_unassigned_access(current_cpu, addr, false, false, 0, size);
     }
@@ -1124,7 +1127,7 @@ static bool _unassigned_mem_write(void *opaque, hwaddr addr,
     printf("Unassigned mem write to " TARGET_FMT_plx "\n", addr);
 #endif
 
-    if (panda_callbacks_unassigned_io_write(first_cpu, first_cpu->panda_guest_pc, addr, size, val)) {
+    if (panda_callbacks_unassigned_io_write(current_cpu, current_cpu->panda_guest_pc, addr, size, val)) {
         // A plugin has decided to make this write look like it's valid
         return true;
     }
@@ -1291,14 +1294,22 @@ MemTxResult memory_region_dispatch_read(MemoryRegion *mr,
     if (!memory_region_access_valid(mr, addr, size, false)) {
         // Some part of (addr) through (addr+size) is invalid.
         // May trigger PANDA callbacks which may produce a value.
-        // If so, we set pval to the callback-generated value
-        // Otherwise it's just 0
+        // If so, we set pval to be that value and return MEMTX_OK
 
-        *pval = _unassigned_mem_read(mr, addr, size);
-        // Even if PANDA modified the value, we return an error which makes
-        // qemu re-fetch this value and then it works?
-        // XXX: Not sure if it really re-fetches but this works
-        return MEMTX_DECODE_ERROR;
+        bool changed = false;
+        uint64_t returned_val = _unassigned_mem_read(mr, addr, size, &changed);
+
+        if (changed) {
+            // Some PANDA callback created a value, set it to pval,
+            // fix endianness (?),
+            // and return OK
+            *pval =  returned_val;
+            adjust_endianness(mr, pval, size);
+            return MEMTX_OK;
+        } else {
+            // No plugin created a value, so return error code
+            return MEMTX_DECODE_ERROR;
+        }
     }
 
     r = memory_region_dispatch_read1(mr, addr, pval, size, attrs);

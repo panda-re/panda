@@ -327,7 +327,7 @@ bool PCB(unassigned_io_write)(CPUState *env, target_ptr_t pc, hwaddr addr, size_
 }
 
 bool PCB(unassigned_io_read)(CPUState *env, target_ptr_t pc, hwaddr addr,
-        size_t size, MemTxResult *val) {
+        size_t size, uint64_t *val) {
     // Returns true if any registered&enabled callback returns non-zero,
     // if so, we'll silence the invalid memory read error and return
     // the value provided by the last callback in `val`
@@ -341,8 +341,8 @@ bool PCB(unassigned_io_read)(CPUState *env, target_ptr_t pc, hwaddr addr,
         if (plist->enabled) {
             if (0 != plist->entry.unassigned_io_read(env, pc, addr,
                                                         size, val)) {
-                // If any callbacks return nonzero, we've changed
-                // the value and should return val instead of MEMTX_DECODE_ERROR
+                // If any callbacks return nonzero, that should indicate that they've written
+                // a value to val. As such, we should avoid error-processing logic in memory.c
                 changed = true;
             }
         }

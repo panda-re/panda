@@ -891,7 +891,7 @@ typedef union panda_cb {
          True if value read was changed by a PANDA plugin and should be returned
          False if error-logic (invalid write) should be run
      */
-    bool (*unassigned_io_read)(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, MemTxResult *val);
+    bool (*unassigned_io_read)(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint64_t *val);
 
     /* Callback ID:     PANDA_CB_UNASSIGNED_IO_WRITE
 
