@@ -10,7 +10,8 @@ from sys import argv
 from collections import namedtuple
 
 
-logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 VM_DIR = os.path.join(os.path.expanduser("~"), ".panda")
 
@@ -19,21 +20,20 @@ Arch = namedtuple('Arch', ['dir',        'arch',    'binary',             'os', 
                             'extra_files', 'extra_args'])
 Arch.__new__.__defaults__ = (None,None)
 SUPPORTED_ARCHES = {
-        'i386':   Arch('i386-softmmu',   'i386',   'qemu-system-i386',   "linux-32-debian:3.2.0-4-686-pae", "root@debian-i386:~# ",    "wheezy_panda2.qcow2", "ide1-cd0", "root",
+        'i386':   Arch('i386-softmmu',   'i386',   'qemu-system-i386',   "linux-32-debian:3.2.0-4-686-pae", rb"root@debian-i386:.*# ",    "wheezy_panda2.qcow2", "ide1-cd0", "root",
             extra_args='-display none'),
-        'x86_64': Arch('x86_64-softmmu', 'x86_64', 'qemu-system-x86_64', "linux-64-debian:x.y.z-amd64-pae", "root@debian-amd64:~# ",   "wheezy_x64.qcow2",    "ide1-cd0", "root",
+        'x86_64': Arch('x86_64-softmmu', 'x86_64', 'qemu-system-x86_64', "linux-64-debian:x.y.z-amd64-pae", rb"root@debian-amd64:.*# ",   "wheezy_x64.qcow2",    "ide1-cd0", "root",
             extra_args='-display none'),
-        'ppc':    Arch('ppc-softmmu',    'ppc',    'qemu-system-ppc',    "linux-32-debian:x.y.z-ppc-pae",
-            "root@debian-powerpc:~# ", "ppc_wheezy.qcow",     "ide1-cd0", "root",
+        'ppc':    Arch('ppc-softmmu',    'ppc',    'qemu-system-ppc',    "linux-32-debian:x.y.z-ppc-pae",   rb"root@debian-powerpc:.*# ", "ppc_wheezy.qcow",     "ide1-cd0", "root",
             extra_args='-display none'),
-        'arm':    Arch('arm-softmmu',    'arm',    'qemu-system-arm',    "linux-32-debian:x.y.z-arm-pae",   "root@debian-armel:~# ",   "arm_wheezy.qcow",     "scsi0-cd2", "root", 
+        'arm':    Arch('arm-softmmu',    'arm',    'qemu-system-arm',    "linux-32-debian:x.y.z-arm-pae",   rb"root@debian-armel:.*# ",   "arm_wheezy.qcow",     "scsi0-cd2", "root",
             extra_files=['vmlinuz-3.2.0-4-versatile', 'initrd.img-3.2.0-4-versatile'],
             extra_args='-display none -M versatilepb -append "root=/dev/sda1" -kernel {DOT_DIR}/vmlinuz-3.2.0-4-versatile -initrd {DOT_DIR}/initrd.img-3.2.0-4-versatile'.format(DOT_DIR=VM_DIR))
         }
 
 def get_qcow_info(name=None):
     if name is None:
-        logging.warning("No qcow name provided. Defaulting to i386")
+        logger.warning("No qcow name provided. Defaulting to i386")
         name = "i386"
 
     if os.path.isfile(name):
@@ -49,11 +49,11 @@ def get_qcow_info(name=None):
 # Given a generic name of a qcow or a path to a qcow, return the path. Defaults to i386
 def get_qcow(name=None):
     if name is None:
-        logging.warning("No qcow name provided. Defaulting to i386")
+        logger.warning("No qcow name provided. Defaulting to i386")
         name = "i386"
 
     if os.path.isfile(name):
-        logging.debug("Provided qcow name appears to be a path, returning it directly: %s", name)
+        logger.debug("Provided qcow name appears to be a path, returning it directly: %s", name)
         return name
 
     name = name.lower() # Case insensitive. Assumes supported_arches keys are lowercase
@@ -72,7 +72,7 @@ def get_qcow(name=None):
                 extra_file_path = os.path.join(VM_DIR, extra_file)
                 subprocess.check_call(["wget", "http://panda.moyix.net/~moyix/" + extra_file, "-O", extra_file_path])
         except Exception as e:
-            logging.info("Download failed, deleting partial file(s): %s", qcow_path)
+            logger.info("Download failed, deleting partial file(s): %s", qcow_path)
             os.remove(qcow_path)
             for extra_file in arch_data.extra_files or []:
                 try:
@@ -80,7 +80,7 @@ def get_qcow(name=None):
                 except: # Extra files might not exist
                     pass
             raise e # Reraise
-        logging.debug("Downloaded %s to %s", arch_data.qcow, qcow_path)
+        logger.debug("Downloaded %s to %s", arch_data.qcow, qcow_path)
     return qcow_path
 
 # Given an index into argv, call get_qcow with that arg if it exists, else with None

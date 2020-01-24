@@ -901,9 +901,10 @@ typedef union panda_cb {
          val: Pointer to a buffer that will be passed to the guest as the result of the read
 
        Return value:
-         None
+         True if value read was changed by a PANDA plugin and should be returned
+         False if error-logic (invalid write) should be run
      */
-    void (*unassigned_io_read)(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint8_t *val);
+    bool (*unassigned_io_read)(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint64_t *val);
 
     /* Callback ID:     PANDA_CB_UNASSIGNED_IO_WRITE
 
@@ -913,15 +914,14 @@ typedef union panda_cb {
          pc: Guest program counter at time of write
          addr: Physical address written to
          size: Size of write
-         val: Pointer to buffer containing data being written
+         val: Data being written, up to 8 bytes
 
        Return value:
-         None
+         True if the write should be allowed without error
+         False if normal behavior should be used (error-logic)
      */
-    void (*unassigned_io_write)(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint8_t *val);
+    bool (*unassigned_io_write)(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint64_t val);
 
-    /* Internal callback, used by unassigned_io_read and unassigned_io_write */
-    void (*unassigned_io)(CPUState *env, hwaddr addr, size_t size, uint8_t *val, bool is_write);
 
     /* Callback ID:     PANDA_CB_BEFORE_HANDLE_EXCEPTION
 

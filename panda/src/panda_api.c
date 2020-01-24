@@ -22,6 +22,7 @@ extern bool panda_library_mode;
 extern bool panda_aborted;
 
 int panda_run(void) {
+    assert(first_cpu != NULL); // If this fails, it's likely because machine init was wrong (no CPU was created)
     qemu_cpu_kick(first_cpu);
     panda_in_main_loop = 1;
     main_loop();

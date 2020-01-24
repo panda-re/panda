@@ -1089,30 +1089,53 @@ static void memory_region_initfn(Object *obj)
                         NULL, NULL, &error_abort);
 }
 
-static uint64_t unassigned_mem_read(void *opaque, hwaddr addr,
-                                    size_t size)
+static uint64_t _unassigned_mem_read(void *opaque, hwaddr addr,
+                                    size_t size, bool* changed)
 {
+    // We want to read size bytes from addr. Size must be <= 8 to fit into uint64_t
+
 #ifdef DEBUG_UNASSIGNED
     printf("Unassigned mem read " TARGET_FMT_plx "\n", addr);
 #endif
-    uint8_t val = 0;
+
+    uint64_t val;
+    // PANDA callback may create a value. If so, avoid error-handling code
+    if (panda_callbacks_unassigned_io_read(current_cpu,
+                current_cpu->panda_guest_pc, addr, size, &val)) { // Modifies val
+        *changed = true; // Indicates a callback has changed the value
+        return val;
+    }
+
+
+    // No callback changed the value. Continue with error-processing code
+    *changed = false;
     if (current_cpu != NULL) {
         cpu_unassigned_access(current_cpu, addr, false, false, 0, size);
     }
-    panda_callbacks_unassigned_io(first_cpu, addr, size, &val, false);
-    return val;
+
+    return 0;
 }
 
-static void unassigned_mem_write(void *opaque, hwaddr addr,
-                                 uint8_t val, size_t size)
+static bool _unassigned_mem_write(void *opaque, hwaddr addr,
+                                 uint64_t val, size_t size)
 {
+    // Write to unassigned memory. PANDA callback may handle this
+    // and decide to silence the error
+    // return true if error should be silenced
+
 #ifdef DEBUG_UNASSIGNED
     printf("Unassigned mem write to " TARGET_FMT_plx "\n", addr);
 #endif
+
+    if (panda_callbacks_unassigned_io_write(current_cpu, current_cpu->panda_guest_pc, addr, size, val)) {
+        // A plugin has decided to make this write look like it's valid
+        return true;
+    }
+
     if (current_cpu != NULL) {
         cpu_unassigned_access(current_cpu, addr, true, false, 0, size);
     }
-    panda_callbacks_unassigned_io(first_cpu, addr, size, &val, true);
+    return false;
 }
 
 static bool unassigned_mem_accepts(void *opaque, hwaddr addr,
@@ -1269,8 +1292,24 @@ MemTxResult memory_region_dispatch_read(MemoryRegion *mr,
     MemTxResult r;
 
     if (!memory_region_access_valid(mr, addr, size, false)) {
-        *pval = unassigned_mem_read(mr, addr, size);
-        return MEMTX_DECODE_ERROR;
+        // Some part of (addr) through (addr+size) is invalid.
+        // May trigger PANDA callbacks which may produce a value.
+        // If so, we set pval to be that value and return MEMTX_OK
+
+        bool changed = false;
+        uint64_t returned_val = _unassigned_mem_read(mr, addr, size, &changed);
+
+        if (changed) {
+            // Some PANDA callback created a value, set it to pval,
+            // fix endianness (?),
+            // and return OK
+            *pval =  returned_val;
+            adjust_endianness(mr, pval, size);
+            return MEMTX_OK;
+        } else {
+            // No plugin created a value, so return error code
+            return MEMTX_DECODE_ERROR;
+        }
     }
 
     r = memory_region_dispatch_read1(mr, addr, pval, size, attrs);
@@ -1311,8 +1350,12 @@ MemTxResult memory_region_dispatch_write(MemoryRegion *mr,
                                          MemTxAttrs attrs)
 {
     if (!memory_region_access_valid(mr, addr, size, true)) {
-        unassigned_mem_write(mr, addr, data, size);
-        return MEMTX_DECODE_ERROR;
+        if (_unassigned_mem_write(mr, addr, data, size)) {
+            // A PANDA callback wants to pretend this write is OK
+            return MEMTX_OK;
+        } else { // No callback requested a change - normal behavior (fail)
+            return MEMTX_DECODE_ERROR;
+        }
     }
 
     adjust_endianness(mr, &data, size);
