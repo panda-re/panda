@@ -463,14 +463,14 @@ typedef union panda_cb {
         CPUState *env:     the current CPU state
         target_ptr_t addr: the (physical) address being read from
         size_t size:       the size of the read
-        uin64_t val:       the value being read
+        uin64_t *val:      the value being read
 
        Helper call location: cputlb.c
 
        Return value:
         none
     */
-    void (*mmio_after_read)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
+    void (*mmio_after_read)(CPUState *env, target_ptr_t addr, size_t size, uint64_t *val);
 
     /* Callback ID: PANDA_CB_MMIO_AFTER_WRITE
 

@@ -811,7 +811,7 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
         /* replay= */ rr_input_8(&val),
         /* location= */ RR_CALLSITE_IO_READ_ALL);
 
-    panda_callbacks_mmio_after_read(cpu, physaddr, size, val);
+    panda_callbacks_mmio_after_read(cpu, physaddr, size, &val);
 
     return val;
 }

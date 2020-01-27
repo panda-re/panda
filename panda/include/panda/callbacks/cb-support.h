@@ -101,7 +101,7 @@ int32_t panda_callbacks_before_handle_exception(CPUState *cpu, int32_t exception
 void panda_callbacks_cbaddr(void);
 
 /* invoked from cputlb.c */
-void panda_callbacks_mmio_after_read(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
+void panda_callbacks_mmio_after_read(CPUState *env, target_ptr_t addr, size_t size, uint64_t *val);
 void panda_callbacks_mmio_after_write(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
 void panda_callbacks_hd_read(CPUState *env);
 void panda_callbacks_hd_write(CPUState *env);

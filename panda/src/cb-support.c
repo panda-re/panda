@@ -269,7 +269,7 @@ void PCB(mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
 }
 
 // These are used in cputlb.c
-void PCB(mmio_after_read)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val) {
+void PCB(mmio_after_read)(CPUState *env, target_ptr_t addr, size_t size, uint64_t *val) {
 
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_MMIO_AFTER_READ]; plist != NULL;

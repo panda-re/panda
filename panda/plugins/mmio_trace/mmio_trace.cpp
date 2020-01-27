@@ -33,8 +33,8 @@ extern "C" {
 // CALLBACKS -----------------------------------------------------------------------------------------------------------
 
 // PANDA_CB_MMIO_AFTER_READ callback
-void buffer_mmio_read(CPUState *env, target_ptr_t addr, size_t size, uint64_t val) {
-    mmio_event_t new_event{'R', env->panda_guest_pc, addr, size, val, default_dev_name};
+void buffer_mmio_read(CPUState *env, target_ptr_t addr, size_t size, uint64_t *val) {
+    mmio_event_t new_event{'R', env->panda_guest_pc, addr, size, *val};
     mmio_events.push_back(new_event);
     return;
 }
