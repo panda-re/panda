@@ -14,6 +14,7 @@ from random import randint
 from inspect import signature
 from tempfile import NamedTemporaryFile
 from time import time
+from math import ceil
 
 from .ffi_importer import ffi
 from .taint import TaintQuery
@@ -599,9 +600,9 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
     def queue_async(self, f, internal=False):
         self.athread.queue(f, internal=internal)
 
-
-    # WIP, unicorn-like functionality requires mapping in physical memory
-    #def map_mem(self, start, length):
-    #    self.libpanda.panda_map_physical_mem(start, length)
+    def map_memory(self, name, size, address):
+        name_c = ffi.new("char[]", bytes(name, "utf-8"))
+        size = ceil(size/1024)*1024 # Must be page-aligned
+        return self.libpanda.map_memory(name_c, size, address)
 
 # vim: expandtab:tabstop=4:

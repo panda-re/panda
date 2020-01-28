@@ -8,6 +8,12 @@
 #include "panda/common.h"
 #include "sysemu/sysemu.h"
 
+// for map_memory
+#include "exec/address-spaces.h"
+#include "exec/memory.h"
+#include "qapi/error.h"
+#include "migration/vmstate.h"
+
 // call main_aux and run everything up to and including panda_callbacks_after_machine_init
 int panda_init(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_INIT);
@@ -200,3 +206,32 @@ bool panda_load_external_plugin(const char *filename, const char *plugin_name, v
     }
     return true;
 }*/
+
+
+
+// Taken from Avatar2's Configurable Machine - see hw/avatar/configurable_machine.c
+void map_memory(char* name, uint64_t size, uint64_t address) {
+    //const char * name; /// XXX const?
+    MemoryRegion * ram;
+    bool is_rom = false; // For now, only ram
+
+    // Get memory from system. XXX may be unsafe to run too early (before machine_init)
+    MemoryRegion *sysmem = get_system_memory();
+
+    // Make memory region and initialize
+    ram =  g_new(MemoryRegion, 1);
+    g_assert(ram);
+
+    if(!is_rom) {
+        memory_region_init_ram(ram, NULL, name, size, &error_fatal);
+    } else {
+        memory_region_init_rom(ram, NULL, name, size, &error_fatal);
+    }
+    vmstate_register_ram(ram, NULL);
+
+    printf("Adding memory region %s (size: 0x%"
+           PRIx64 ") at address 0x%" PRIx64 "\n", name, size, address);
+
+    // Add memory region to sysmem
+    memory_region_add_subregion(sysmem, address, ram);
+}
