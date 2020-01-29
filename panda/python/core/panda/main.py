@@ -590,5 +590,9 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             ptr += 1
         return r.decode("utf8", "ignore")
 
+    def map_memory(self, name, size, address):
+        name_c = ffi.new("char[]", bytes(name, "utf-8"))
+        size = ceil(size/1024)*1024 # Must be page-aligned
+        return self.libpanda.map_memory(name_c, size, address)
 
 # vim: expandtab:tabstop=4:
