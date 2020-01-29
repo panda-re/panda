@@ -188,4 +188,30 @@ void panda_cleanup(void) {
     }
 }
 
+/* Board-agnostic search for RAM memory region */
+MemoryRegion* panda_find_ram(void) {
+
+    Int128 curr_max = 0;
+    MemoryRegion *ram = NULL;   // Sentinel, deref segfault
+    MemoryRegion *sys_mem = get_system_memory();
+    MemoryRegion *mr_check;
+    MemoryRegion *mr_iter;
+
+    // Largest top-level subregion marked as random access memory, accounting for possible aliases
+    QTAILQ_FOREACH(mr_iter, &(sys_mem->subregions), subregions_link) {
+
+        mr_check = mr_iter;
+
+        if (mr_iter->alias && (mr_iter->alias->size > mr_iter->size)) {
+           mr_check = mr_iter->alias;
+        }
+
+        if (memory_region_is_ram(mr_check) && (mr_check->size > curr_max)) {
+            curr_max = mr_check->size;
+            ram = mr_check;
+        }
+    }
+
+    return ram;
+}
 /* vim:set shiftwidth=4 ts=4 sts=4 et: */
