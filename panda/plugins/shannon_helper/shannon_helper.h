@@ -12,9 +12,9 @@ void uninit_plugin(void *);
 
 }
 
-
+// required when building with C++11 and above as the files below do not include it
+#include <functional>
 #include "../callstack_instr/callstack_instr.h"
 #include "../callstack_instr/callstack_instr_ext.h"
-
 
 #endif
