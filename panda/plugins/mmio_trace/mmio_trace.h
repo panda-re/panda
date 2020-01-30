@@ -14,4 +14,11 @@ typedef struct mmio_event_t {
     const char* dev_name;
 } mmio_event_t;
 
+typedef struct mmio_device_t {
+    const char* name;
+    hwaddr start_addr;
+    hwaddr end_addr;
+} mmio_device_t;
+
+typedef std::vector<mmio_device_t> MMIODevList;
 typedef std::vector<mmio_event_t> MMIOEventList;
