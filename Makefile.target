@@ -276,7 +276,7 @@ endif
 			$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)/$$p"; \
 			$(INSTALL_DATA) $$f "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)/$$p"; \
 		done; \
-		for f in $$(find panda/plugins/$$p -type f -name '*.conf'); do \
+		for f in $$(find panda/plugins/$$p -type f -name '*.conf' -o -name '*.ini'); do \
 			$(INSTALL_DIR) "$(DESTDIR)$(qemu_confdir)/$$p"; \
 			$(INSTALL_DATA) $$f "$(DESTDIR)$(qemu_confdir)/$$p"; \
 		done; \
