@@ -447,17 +447,18 @@ typedef union panda_cb {
         Called after MMIO memory is read.
 
        Arguments:
-        CPUState *env:     the current CPU state
-        target_ptr_t addr: the (physical) address being read from
-        size_t size:       the size of the read
-        uin64_t *val:      the value being read
+        CPUState *env:          the current CPU state
+        target_ptr_t physaddr:  the physical address being read from
+        target_ptr_t vaddr:     the virtual address being read from
+        size_t size:            the size of the read
+        uin64_t *val:           the value being read
 
        Helper call location: cputlb.c
 
        Return value:
         none
     */
-    void (*mmio_after_read)(CPUState *env, target_ptr_t addr, size_t size, uint64_t *val);
+    void (*mmio_after_read)(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
 
     /* Callback ID: PANDA_CB_MMIO_AFTER_WRITE
 
@@ -465,17 +466,18 @@ typedef union panda_cb {
         Called after MMIO memory is written to.
 
        Arguments:
-        CPUState *env:     the current CPU state
-        target_ptr_t addr: the (physical) address being written to
-        size_t size:       the size of the write
-        uin64_t val:       the value being written
+        CPUState *env:          the current CPU state
+        target_ptr_t physaddr:  the physical address being written to
+        target_ptr_t vaddr:     the virtual address being written to
+        size_t size:            the size of the write
+        uin64_t *val:           the value being written
 
        Helper call location: cputlb.c
 
        Return value:
         none
     */
-    void (*mmio_after_write)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
+    void (*mmio_after_write)(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
 
     /* Callback ID: PANDA_CB_HD_READ
        hd_read : called when there is a hard drive read
@@ -703,7 +705,7 @@ typedef union panda_cb {
         produced by a 32bit of PANDA, and vice-versa.
         There are more internal structs that suffer from the same issue.
         This is an oversight that will eventually be fixed. But as the
-        real impact is minimal (virtually nobody uses 32bit builds), 
+        real impact is minimal (virtually nobody uses 32bit builds),
         the fix has a very low priority in the bugfix list.
     */
     void (*replay_handle_packet)(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);

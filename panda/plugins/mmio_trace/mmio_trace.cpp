@@ -22,7 +22,6 @@ PANDAENDCOMMENT */
 
 const char* fn_str;
 MMIOEventList mmio_events;
-const char* default_dev_name = "[UNKNOWN]";
 
 // These need to be extern "C" so that the ABI is compatible with QEMU/PANDA, which is written in C
 extern "C" {
@@ -33,88 +32,17 @@ extern "C" {
 // CALLBACKS -----------------------------------------------------------------------------------------------------------
 
 // PANDA_CB_MMIO_AFTER_READ callback
-void buffer_mmio_read(CPUState *env, target_ptr_t addr, size_t size, uint64_t *val) {
-    mmio_event_t new_event{'R', env->panda_guest_pc, addr, size, *val};
+void buffer_mmio_read(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val) {
+    mmio_event_t new_event{'R', env->panda_guest_pc, physaddr, vaddr, size, *val, "TEMP"};
     mmio_events.push_back(new_event);
     return;
 }
 
 // PANDA_CB_MMIO_AFTER_WRITE callback
-void buffer_mmio_write(CPUState *env, target_ptr_t addr, size_t size, uint64_t val) {
-    mmio_event_t new_event{'W', env->panda_guest_pc, addr, size, val, default_dev_name};
+void buffer_mmio_write(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val) {
+    mmio_event_t new_event{'W', env->panda_guest_pc, physaddr, vaddr, size, *val, "TEMP"};
     mmio_events.push_back(new_event);
     return;
-}
-
-// FILE I/O ------------------------------------------------------------------------------------------------------------
-
-void add_mmio_device(MemoryRegion* mr, MMIODevList* dev_list) {
-    mmio_device_t new_dev{memory_region_name(mr), mr->addr, (hwaddr)(mr->addr + mr->size)};
-    (*dev_list).push_back(new_dev);
-}
-
-// Named device range collection, worker
-// Creates list most-to-least specific per subtree, so later O(n) lookup will find most specific match, example:
-//  0x0000 - 0xFFFF: system
-//      0x00AA - 0x00BB: bus_1
-//          0x00AD - 0x00AE: device_1
-//          0x00AE - 0x00AF: device_2
-//      0x00BB - 0x00CC: bus_2
-//          0x00BD - 0x00BE: device_3
-//          0x00BE - 0x00BF: device_4
-//  MMIODevList -> {device_1, device_2, bus_1, device_3, device_4, bus_2, system}
-void collect_mmio_dev_ranges(MemoryRegion* mr, MMIODevList* dev_list) {
-
-    MemoryRegion *subregion;
-
-    // Leaf hit
-    if QTAILQ_EMPTY(&(mr->subregions)) {
-
-        add_mmio_device(mr, dev_list);
-
-    // Search children
-    } else {
-
-        QTAILQ_FOREACH(subregion, &(mr->subregions), subregions_link) {
-            collect_mmio_dev_ranges(subregion, dev_list);
-        }
-        add_mmio_device(mr, dev_list);
-    }
-}
-
-// Named device range collection, wrapper
-MMIODevList get_mmio_dev_ranges(void) {
-
-    MemoryRegion *sys_mem = get_system_memory();
-    MMIODevList dev_list;
-
-    collect_mmio_dev_ranges(sys_mem, &dev_list);
-    return dev_list;
-}
-
-// Annotate every event with the name of the corresponding MMIO device
-void annotate_dev_names() {
-
-    MMIODevList dev_list = get_mmio_dev_ranges();
-
-    for (auto const& dev : dev_list) {
-        printf("%s\n", dev.name);
-    }
-
-    for (auto& event : mmio_events) {
-
-        auto it = std::find_if(
-            dev_list.begin(),
-            dev_list.end(),
-            [event](mmio_device_t dev) {
-                return (dev.start_addr <= event.phys_addr) && (event.phys_addr <= dev.end_addr);
-            }
-        );
-
-        if (it != dev_list.end()) {
-            event.dev_name = (*it).name;
-        }
-    }
 }
 
 // FILE I/O ------------------------------------------------------------------------------------------------------------
@@ -127,16 +55,15 @@ void flush_to_mmio_log_file() {
     std::ofstream out_log_file(fn_str);
     int hex_width = (sizeof(target_ulong) << 1);
 
-    annotate_dev_names();
-
     for (auto const& event : mmio_events) {
 
         // Write log line, hacky JSON
         out_log_file
             << std::hex << std::setfill('0') << "{ "
             << "\"type\": \"" << event.access_type << "\", "
-            << "\"guest_pc\": \"0x" << std::setw(hex_width) << event.prog_counter << "\", "
+            << "\"guest_pc\": \"0x" << std::setw(hex_width) << event.pc << "\", "
             << "\"phys_addr\": \"0x" << std::setw(hex_width) << event.phys_addr << "\", "
+            << "\"virt_addr\": \"0x" << std::setw(hex_width) << event.virt_addr << "\", "
             << "\"size\": \"0x" << std::setw(hex_width) << event.size << "\", "
             << "\"value\": \"0x" << std::setw(hex_width) << event.value << "\", "
             << "\"device\": \"" << event.dev_name << "\""
@@ -160,8 +87,6 @@ mmio_event_t* get_mmio_events(int* arr_size_ret) {
     // Note: mmio_events might be added to asynchronously as this function is executing! (but is never subtracted from)
     //  - We cannot use mmio_events.end() as a race may cause heap overflow
     //  - Instead (mmio_events.begin() + num_structs) ensures we only copy the amount present when this func read size
-
-    annotate_dev_names();
 
     // Convert and copy vector data to newly allocated heap array
     int num_structs = mmio_events.size();
