@@ -50,7 +50,7 @@ typedef enum panda_cb_type {
     PANDA_CB_PHYS_MEM_AFTER_WRITE,  // After write of physical memory
 
     PANDA_CB_MMIO_AFTER_READ,       // After each MMIO read
-    PANDA_CB_MMIO_AFTER_WRITE,      // After each MMIO write
+    PANDA_CB_MMIO_BEFORE_WRITE,     // Before each MMIO write
 
     PANDA_CB_HD_READ,               // Each HDD read
     PANDA_CB_HD_WRITE,              // Each HDD write
@@ -473,9 +473,9 @@ typedef union panda_cb {
     */
     void (*mmio_after_read)(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
 
-    /* Callback ID: PANDA_CB_MMIO_AFTER_WRITE
+    /* Callback ID: PANDA_CB_MMIO_BEFORE_WRITE
 
-       mmio_after_write:
+       mmio_before_write:
         Called after MMIO memory is written to.
 
        Arguments:
@@ -490,7 +490,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*mmio_after_write)(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
+    void (*mmio_before_write)(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
 
     /* Callback ID: PANDA_CB_HD_READ
        hd_read : called when there is a hard drive read

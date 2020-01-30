@@ -278,12 +278,12 @@ void PCB(mmio_after_read)(CPUState *env, target_ptr_t physaddr, target_ptr_t vad
     }
 }
 
-void PCB(mmio_after_write)(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val) {
+void PCB(mmio_before_write)(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val) {
 
     panda_cb_list *plist;
-    for(plist = panda_cbs[PANDA_CB_MMIO_AFTER_WRITE]; plist != NULL;
+    for(plist = panda_cbs[PANDA_CB_MMIO_BEFORE_WRITE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        if (plist->enabled) plist->entry.mmio_after_write(env, physaddr, vaddr, size, val);
+        if (plist->enabled) plist->entry.mmio_before_write(env, physaddr, vaddr, size, val);
     }
 }
 

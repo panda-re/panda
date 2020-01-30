@@ -102,7 +102,7 @@ void panda_callbacks_cbaddr(void);
 
 /* invoked from cputlb.c */
 void panda_callbacks_mmio_after_read(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
-void panda_callbacks_mmio_after_write(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
+void panda_callbacks_mmio_before_write(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
 void panda_callbacks_hd_read(CPUState *env);
 void panda_callbacks_hd_write(CPUState *env);
 

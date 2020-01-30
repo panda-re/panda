@@ -39,7 +39,7 @@ void buffer_mmio_read(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, 
     return;
 }
 
-// PANDA_CB_MMIO_AFTER_WRITE callback
+// PANDA_CB_MMIO_BEFORE_WRITE callback
 void buffer_mmio_write(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val) {
     mmio_event_t new_event{'W', env->panda_guest_pc, physaddr, vaddr, size, *val, default_dev_name};
     mmio_events.push_back(new_event);
@@ -52,6 +52,7 @@ void buffer_mmio_write(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr,
 void add_mmio_device(MemoryRegion* mr, MMIODevList* dev_list) {
     mmio_device_t new_dev{memory_region_name(mr), mr->addr, (hwaddr)(mr->addr + mr->size)};
     (*dev_list).push_back(new_dev);
+    printf("Found: %s\n", memory_region_name(mr));
 }
 
 // Named device range collection, worker
@@ -200,8 +201,8 @@ bool init_plugin(void* self) {
     pcb.mmio_after_read = buffer_mmio_read;
     panda_register_callback(self, PANDA_CB_MMIO_AFTER_READ, pcb);
 
-    pcb.mmio_after_write = buffer_mmio_write;
-    panda_register_callback(self, PANDA_CB_MMIO_AFTER_WRITE, pcb);
+    pcb.mmio_before_write = buffer_mmio_write;
+    panda_register_callback(self, PANDA_CB_MMIO_BEFORE_WRITE, pcb);
 
     return true;
 }

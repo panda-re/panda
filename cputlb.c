@@ -832,6 +832,8 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     cpu->mem_io_vaddr = addr;
     cpu->mem_io_pc = retaddr;
 
+    panda_callbacks_mmio_before_write(cpu, physaddr, addr, size, &val);
+
     if (mr->name && !strcmp(mr->name, "watch")){
         memory_region_dispatch_write(mr, physaddr, val, size, iotlbentry->attrs);
         return;
@@ -847,8 +849,6 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     } else {
         memory_region_dispatch_write(mr, physaddr, val, size, iotlbentry->attrs);
     }
-
-    panda_callbacks_mmio_after_write(cpu, physaddr, addr, size, &val);
 }
 
 /* Return true if ADDR is present in the victim tlb, and has been copied
