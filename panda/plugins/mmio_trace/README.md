@@ -19,7 +19,7 @@ None
 APIs and Callbacks
 ------------------
 
-As an alternative to the optional log file output in `uninit_plugin`, API for retrieval of sequential MMIO event tuples (`access_type`, `prog_counter`, `phys_addr`, `size`, `value`).
+As an alternative to the optional log file output in `uninit_plugin`, API for retrieval of sequential MMIO event tuples (`access_type`, `prog_counter`, `phys_addr`, `size`, `value`, `dev_name`).
 
 
 ```c

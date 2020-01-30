@@ -34,14 +34,14 @@ extern "C" {
 
 // PANDA_CB_MMIO_AFTER_READ callback
 void buffer_mmio_read(CPUState *env, target_ptr_t addr, size_t size, uint64_t val) {
-    mmio_event_t new_event{'W', env->panda_guest_pc, addr, size, val, default_dev_name};
+    mmio_event_t new_event{'R', env->panda_guest_pc, addr, size, val, default_dev_name};
     mmio_events.push_back(new_event);
     return;
 }
 
 // PANDA_CB_MMIO_AFTER_WRITE callback
 void buffer_mmio_write(CPUState *env, target_ptr_t addr, size_t size, uint64_t val) {
-    mmio_event_t new_event{'R', env->panda_guest_pc, addr, size, val, default_dev_name};
+    mmio_event_t new_event{'W', env->panda_guest_pc, addr, size, val, default_dev_name};
     mmio_events.push_back(new_event);
     return;
 }
@@ -51,11 +51,10 @@ void buffer_mmio_write(CPUState *env, target_ptr_t addr, size_t size, uint64_t v
 void add_mmio_device(MemoryRegion* mr, MMIODevList* dev_list) {
     mmio_device_t new_dev{memory_region_name(mr), mr->addr, (hwaddr)(mr->addr + mr->size)};
     (*dev_list).push_back(new_dev);
-    printf("Found %s\n", memory_region_name(mr));
 }
 
 // Named device range collection, worker
-// Creates list most-to-least specific per subtree, so later lookup will find most specific match, example:
+// Creates list most-to-least specific per subtree, so later O(n) lookup will find most specific match, example:
 //  0x0000 - 0xFFFF: system
 //      0x00AA - 0x00BB: bus_1
 //          0x00AD - 0x00AE: device_1
@@ -68,11 +67,13 @@ void collect_mmio_dev_ranges(MemoryRegion* mr, MMIODevList* dev_list) {
 
     MemoryRegion *subregion;
 
-    if QTAILQ_EMPTY(&(mr->subregions)) { // Leaf hit
+    // Leaf hit
+    if QTAILQ_EMPTY(&(mr->subregions)) {
 
         add_mmio_device(mr, dev_list);
 
-    } else { // Search children
+    // Search children
+    } else {
 
         QTAILQ_FOREACH(subregion, &(mr->subregions), subregions_link) {
             collect_mmio_dev_ranges(subregion, dev_list);
@@ -116,6 +117,8 @@ void annotate_dev_names() {
     }
 }
 
+// FILE I/O ------------------------------------------------------------------------------------------------------------
+
 // File I/O inside of a callback would be horridly slow, so we delay log flush until uninit_plugin()
 void flush_to_mmio_log_file() {
 
@@ -157,6 +160,8 @@ mmio_event_t* get_mmio_events(int* arr_size_ret) {
     // Note: mmio_events might be added to asynchronously as this function is executing! (but is never subtracted from)
     //  - We cannot use mmio_events.end() as a race may cause heap overflow
     //  - Instead (mmio_events.begin() + num_structs) ensures we only copy the amount present when this func read size
+
+    annotate_dev_names();
 
     // Convert and copy vector data to newly allocated heap array
     int num_structs = mmio_events.size();
