@@ -247,7 +247,10 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
                 return potential_path
 
         searched_paths = "\n".join(["\t"+p for p in  pot_paths])
-        raise RuntimeError("Couldn't find libpanda.so. Searched: {}".format(searched_paths))
+        raise RuntimeError(("Couldn't find libpanda-{}.so.\n"
+                            "Did you built PANDA for this architecture?\n"
+                            "Searched paths:\n{}"
+                           ).format(self.arch, searched_paths))
 
 
     def queue_main_loop_wait_fn(self, fn, args=[]):
