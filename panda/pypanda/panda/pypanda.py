@@ -35,14 +35,13 @@ from .volatility_mixins import volatility_mixins
 
 import pdb
 
-# location of panda build dir
-panda_build = realpath(pjoin(abspath(__file__), "../../../../build"))
-
 class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins):
     def __init__(self, arch="i386", mem="128M",
-            expect_prompt=None, os_version=None,
-            qcow=None, os="linux",
-            generic=None, simple=None, # Helper arguments
+            expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
+            os_version=None,
+            qcow=None, # Qcow file to load
+            os="linux",
+            generic=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
             extra_args=[]):	
         self.arch = arch
         self.mem = mem
@@ -64,15 +63,6 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             expect_prompt = q.prompt
             if q.extra_args:
                 extra_args.extend(q.extra_args.split(" "))
-
-        # If specified, setup an execution engine without any OS/FS/qcow ('unicorn mode')
-        if simple:
-            arch          = "qemu-system-" + simple
-            self.os       = None
-            self.qcow     = None
-            expect_prompt = None
-            extra_args.extend(["-nographic", "-M", "none"])
-
 
         if self.qcow: # Otherwise we shuld be able to do a replay with no qcow but this is probably broken
             #if self.qcow == "default": # Use arch / mem / os to find a qcow - XXX: merge with generic?
