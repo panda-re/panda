@@ -53,6 +53,10 @@ def copy_objs():
         shutil.rmtree(pypanda_inc_dest)
     shutil.copytree(pypanda_inc, pypanda_inc_dest)
 
+    # Check if we have llvm-support
+    with open(os.path.join(*[build_root, 'config-host.mak']), 'r') as cfg:
+        llvm_enabled = True if 'CONFIG_LLVM=y' in cfg.read() else False
+
 
     # For each arch, copy library, plugins, plog_pb2.py and llvm-helpers
     for arch in ['arm', 'i386', 'x86_64', 'ppc']:
@@ -63,16 +67,22 @@ def copy_objs():
         plog      = os.path.join(*[build_root, softmmu, "plog_pb2.py"])
         llvm1      = os.path.join(*[build_root, softmmu, "llvm-helpers.bc1"])
         llvm2      = os.path.join(*[build_root, softmmu, f"llvm-helpers-{arch}.bc"])
+
+        if os.path.isfile(path) is False:
+            print(("Missing file {} - did you run build.sh from panda/build directory?\n"
+                   "Skipping building pypanda for {}").format(path, arch))
+            continue
+
         os.mkdir(os.path.join(lib_dir, softmmu))
 
         new_plugindir = os.path.join(lib_dir, softmmu, "panda/plugins")
         os.mkdir(os.path.dirname(new_plugindir)) # When we copy the whole tree, it will make the plugins directory
 
-        assert (os.path.isfile(path)), "Missing file {} - did you run build.sh from panda/build directory?".format(path)
         shutil.copy(    plog,       os.path.join(lib_dir, softmmu, "plog_pb2.py"))
         shutil.copy(    path,       os.path.join(lib_dir, softmmu))
-        shutil.copy(    llvm1,      os.path.join(lib_dir, softmmu))
-        shutil.copy(    llvm2,      os.path.join(lib_dir, softmmu))
+        if llvm_enabled:
+            shutil.copy(    llvm1,      os.path.join(lib_dir, softmmu))
+            shutil.copy(    llvm2,      os.path.join(lib_dir, softmmu))
 
         shutil.copytree(plugindir,  new_plugindir)
 
