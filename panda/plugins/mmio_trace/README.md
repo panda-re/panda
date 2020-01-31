@@ -9,7 +9,7 @@ Log MMIO interactions within the guest.
 Arguments
 ---------
 
-* out_log (string): File to log MMIO R/Ws to (optional)
+* out_log (string): JSON file to log MMIO R/Ws to (optional)
 
 Dependencies
 ------------
@@ -19,7 +19,7 @@ None
 APIs and Callbacks
 ------------------
 
-As an alternative to the optional log file output in `uninit_plugin`, API for retrieval of sequential MMIO event tuples (`access_type`, `prog_counter`, `phys_addr`, `size`, `value`).
+As an alternative to the optional log file output in `uninit_plugin`, API for retrieval of sequential MMIO event tuples (`access_type`, `pc`, `phys_addr`, `virt_addr`, `size`, `value`, `dev_name`).
 
 
 ```c
@@ -35,6 +35,6 @@ Testing with the Debian ARM image used by PANDA's `run_debian.py --arch arm`, lo
 ```
 arm-softmmu/panda-system-arm -M versatilepb -kernel ~/.panda/vmlinuz-3.2.0-4-versatile \
     -initrd ~/.panda/initrd.img-3.2.0-4-versatile -hda ~/.panda/arm_wheezy.qcow \
-    -serial stdio -loadvm root -display none \
-    -panda mmio_trace:out_log="mmio.log"
+    -monitor stdio -loadvm root \
+    -panda mmio_trace:out_log="mmio.json"
 ```
