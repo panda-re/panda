@@ -9,16 +9,18 @@ from google.protobuf.json_format import MessageToJson
 from os.path import dirname, join, isdir
 
 python_package = dirname(os.path.realpath(__file__)) # when installed site-packages/panda
+arch_dirs = ['i386-softmmu', 'x86_64-softmmu', 'ppc-softmmu', 'arm-softmmu']
 
 # First check if pypanda was installed as a python package with a data subdirectory
 if isdir(join(python_package, 'data')):
-    d = join(*[python_package, 'data', 'i386-softmmu'])
-    if os.path.isdir(d):
-        sys.path.append(d)
-        try:
-            import plog_pb2
-        except ImportError:
-            pass
+    for d in [join(*[python_package, 'data', ad]) for ad in arch_dirs]:
+        if os.path.isdir(d):
+            sys.path.append(d)
+            try:
+                import plog_pb2
+                break
+            except ImportError:
+                pass
 
 if 'plog_pb2' not in sys.modules:
     # Otherwise try to search relative to file in standard panda directory names
@@ -26,7 +28,6 @@ if 'plog_pb2' not in sys.modules:
     panda_dir = dirname(dirname(dirname(os.path.realpath(__file__))))
     top_dirs = [panda_dir, dirname(panda_dir)]
     build_dirs = ['build-panda', 'build', 'opt-panda', 'debug-panda']
-    arch_dirs = ['i386-softmmu', 'x86_64-softmmu', 'ppc-softmmu', 'arm-softmmu']
     searched_paths = []
 
     for dc in itertools.product(top_dirs, build_dirs, arch_dirs):
