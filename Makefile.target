@@ -272,7 +272,7 @@ endif
 	for p in $(PANDA_PLUGINS) $(EXTRA_PANDA_PLUGINS); do \
 		echo $$p; \
 		$(INSTALL_LIB) panda/plugins/panda_$$p.so "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"; \
-		for f in $$(find panda/plugins/$$p -type f -not -name '*.d' -not -name '*.o' -not -name '*.h' -not -name '*.conf'); do \
+		for f in $$(find panda/plugins/$$p -type f -not -name '*.d' -not -name '*.o' -not -name '*.h' -not -name '*.conf' -not -name '*.ini'); do \
 			$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)/$$p"; \
 			$(INSTALL_DATA) $$f "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)/$$p"; \
 		done; \
