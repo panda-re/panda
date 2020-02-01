@@ -145,3 +145,6 @@ class libpanda_mixins():
 
     def was_aborted(self):
         return self.libpanda.panda_was_aborted()
+
+    def current_asid(self, cpustate):
+        return self.libpanda.panda_current_asid(cpustate)
