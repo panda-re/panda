@@ -13,8 +13,8 @@ ARM_CODE   = b"\x37\x00\xa0\xe3\x03\x10\x42\xe0" # mov r0, #0x37; sub r1, r2, r3
 ADDRESS = 0x1000
 stop_addr = ADDRESS + len(ARM_CODE)
 
-# Create a machine of type 'basic' which just has an arm CPU with no peripherals/memory
-panda = Panda("arm", extra_args=["-M", "basic", "-nographic"])
+# Create a machine of type 'configurable' but with just a CPU specified (no peripherals or memory maps)
+panda = Panda("arm", extra_args=["-M", "configurable", "-nographic"])
 
 @panda.cb_after_machine_init
 def setup(cpu):
@@ -34,6 +34,9 @@ def setup(cpu):
 
     # Set starting_pc
     cpu.env_ptr.regs[registers['IP']] = ADDRESS
+
+    # Apply taint label to r2
+    panda.taint_label_reg(registers['R2'], 10) # Taint R2 with label 10. Should prop into R1
 
 @panda.cb_insn_translate
 def should_run_on_insn(env, pc):
@@ -56,6 +59,12 @@ def on_insn(cpu, pc):
     if pc == stop_addr:
         print("Finished execution. CPU registers are:")
         dump_regs(panda, cpu)
+
+        print("Taint results\n")
+        if panda.taint_check_reg(registers['R1']):
+            for idx, byte_taint in enumerate(panda.taint_get_reg(registers['R1'])):
+                labels = byte_taint.get_labels()
+                print(f"Register R1 byte {idx} tainted by {labels}")
 
         # TODO: we need a better way to stop execution in the middle of a basic block
         os._exit(0)
