@@ -269,9 +269,11 @@ endif
 	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/python2.7/site-packages"
 	$(INSTALL_LIB) plog_pb2.py "$(DESTDIR)$(libdir)/python2.7/site-packages"
 	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"
+# N.B. the new rpath must not be longer than the old rpath or chrpath will fail
 	for p in $(PANDA_PLUGINS) $(EXTRA_PANDA_PLUGINS); do \
 		echo $$p; \
 		$(INSTALL_LIB) panda/plugins/panda_$$p.so "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"; \
+		chrpath -r "$(libdir)/panda/$(TARGET_NAME)" "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)/panda_$$p.so" >/dev/null; \
 		for f in $$(find panda/plugins/$$p -type f -not -name '*.d' -not -name '*.o' -not -name '*.h' -not -name '*.conf' -not -name '*.ini'); do \
 			$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)/$$p"; \
 			$(INSTALL_DATA) $$f "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)/$$p"; \

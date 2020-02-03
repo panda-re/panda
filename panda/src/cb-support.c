@@ -153,7 +153,7 @@ bool PCB(insn_translate)(CPUState *env, target_ptr_t pc) {
     bool panda_exec_cb = false;
     for(plist = panda_cbs[PANDA_CB_INSN_TRANSLATE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        if (plist->enabled) 
+        if (plist->enabled)
           panda_exec_cb |= plist->entry.insn_translate(env, pc);
     }
     return panda_exec_cb;
@@ -164,7 +164,7 @@ bool PCB(after_insn_translate)(CPUState *env, target_ptr_t pc) {
     bool panda_exec_cb = false;
     for(plist = panda_cbs[PANDA_CB_AFTER_INSN_TRANSLATE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        if (plist->enabled) 
+        if (plist->enabled)
           panda_exec_cb |= plist->entry.after_insn_translate(env, pc);
     }
     return panda_exec_cb;
@@ -269,21 +269,21 @@ void PCB(mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
 }
 
 // These are used in cputlb.c
-void PCB(mmio_after_read)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val) {
+void PCB(mmio_after_read)(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val) {
 
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_MMIO_AFTER_READ]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        if (plist->enabled) plist->entry.mmio_after_read(env, addr, size, val);
+        if (plist->enabled) plist->entry.mmio_after_read(env, physaddr, vaddr, size, val);
     }
 }
 
-void PCB(mmio_after_write)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val) {
+void PCB(mmio_before_write)(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val) {
 
     panda_cb_list *plist;
-    for(plist = panda_cbs[PANDA_CB_MMIO_AFTER_WRITE]; plist != NULL;
+    for(plist = panda_cbs[PANDA_CB_MMIO_BEFORE_WRITE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        if (plist->enabled) plist->entry.mmio_after_write(env, addr, size, val);
+        if (plist->enabled) plist->entry.mmio_before_write(env, physaddr, vaddr, size, val);
     }
 }
 
@@ -460,14 +460,14 @@ void PCB(pre_shutdown)(void) {
 
 
 // this callback allows us to swallow exceptions
-// 
+//
 // first callback that returns an exception index that *differs* from
 // the one passed as an arg wins. That is, that is what we return as
 // the new exception index, which will replace cpu->exception_index
-// 
-// Note: We still run all of the callbacks, but only one of them can 
+//
+// Note: We still run all of the callbacks, but only one of them can
 // change the current cpu exception.  Sorry.
-// 
+//
 int32_t PCB(before_handle_exception)(CPUState *cpu, int32_t exception_index) {
     panda_cb_list *plist;
     bool got_new_exception = false;
@@ -481,10 +481,10 @@ int32_t PCB(before_handle_exception)(CPUState *cpu, int32_t exception_index) {
                 got_new_exception = true;
                 new_exception = new_e;
             }
-        }                
+        }
     }
 
-    if (got_new_exception) 
+    if (got_new_exception)
         return new_exception;
 
     return exception_index;

@@ -1099,17 +1099,16 @@ static uint64_t _unassigned_mem_read(void *opaque, hwaddr addr,
 #endif
 
     uint64_t val;
-    // PANDA callback may create a value. If so, avoid error-handling code
-    if (panda_callbacks_unassigned_io_read(current_cpu,
-                current_cpu->panda_guest_pc, addr, size, &val)) { // Modifies val
-        *changed = true; // Indicates a callback has changed the value
-        return val;
-    }
 
-
-    // No callback changed the value. Continue with error-processing code
-    *changed = false;
     if (current_cpu != NULL) {
+        // PANDA callback may create a value. If so, avoid error-handling code
+        if (panda_callbacks_unassigned_io_read(current_cpu,
+                    current_cpu->panda_guest_pc, addr, size, &val)) { // Modifies val
+            *changed = true; // Indicates a callback has changed the value
+            return val;
+        }
+        // No callback changed the value. Continue with error-processing code
+        *changed = false;
         cpu_unassigned_access(current_cpu, addr, false, false, 0, size);
     }
 
@@ -1127,12 +1126,11 @@ static bool _unassigned_mem_write(void *opaque, hwaddr addr,
     printf("Unassigned mem write to " TARGET_FMT_plx "\n", addr);
 #endif
 
-    if (panda_callbacks_unassigned_io_write(current_cpu, current_cpu->panda_guest_pc, addr, size, val)) {
-        // A plugin has decided to make this write look like it's valid
-        return true;
-    }
-
     if (current_cpu != NULL) {
+        if (panda_callbacks_unassigned_io_write(current_cpu, current_cpu->panda_guest_pc, addr, size, val)) {
+            // A plugin has decided to make this write look like it's valid
+            return true;
+        }
         cpu_unassigned_access(current_cpu, addr, true, false, 0, size);
     }
     return false;

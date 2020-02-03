@@ -70,7 +70,8 @@ build, or `docker pull thawsystems/panda` for a third-party
 After successfully building PANDA, you can copy the build to a system-wide
 location by running `make install`. The default installation path is `/usr/local`.
 You can specify an alternate installation path through the `prefix` configuration
-option. E.g. `--prefix=/opt/panda`.
+option. E.g. `--prefix=/opt/panda`.  Note that your system must have `chrpath`
+installed in order for `make install` to succeed.
 
 If the `bin` directory containing the PANDA binaries is in your `PATH` environment
 variable, then you can run PANDA similarly to QEMU:

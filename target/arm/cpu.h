@@ -1216,6 +1216,7 @@ enum arm_features {
     ARM_FEATURE_THUMB_DSP, /* DSP insns supported in the Thumb encodings */
     ARM_FEATURE_PMU, /* has PMU support */
     ARM_FEATURE_VBAR, /* has cp15 VBAR */
+    ARM_FEATURE_CONFIGURABLE, /*  created with avatar */
 };
 
 static inline int arm_feature(CPUARMState *env, int feature)
