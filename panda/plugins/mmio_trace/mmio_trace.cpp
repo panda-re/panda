@@ -52,11 +52,11 @@ void buffer_mmio_write(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr,
 void add_mmio_device(MemoryRegion* mr, MMIODevList* dev_list) {
     mmio_device_t new_dev{memory_region_name(mr), mr->addr, (hwaddr)(mr->addr + mr->size)};
     (*dev_list).push_back(new_dev);
-    printf("Found: %s\n", memory_region_name(mr));
 }
 
 // Named device range collection, worker
 // Creates list most-to-least specific per subtree, so later O(n) lookup will find most specific match, example:
+//
 //  0x0000 - 0xFFFF: system
 //      0x00AA - 0x00BB: bus_1
 //          0x00AD - 0x00AE: device_1
@@ -64,6 +64,7 @@ void add_mmio_device(MemoryRegion* mr, MMIODevList* dev_list) {
 //      0x00BB - 0x00CC: bus_2
 //          0x00BD - 0x00BE: device_3
 //          0x00BE - 0x00BF: device_4
+//
 //  MMIODevList -> {device_1, device_2, bus_1, device_3, device_4, bus_2, system}
 void collect_mmio_dev_ranges(MemoryRegion* mr, MMIODevList* dev_list) {
 
@@ -166,7 +167,7 @@ void flush_to_mmio_log_file() {
 // EXPORTS -------------------------------------------------------------------------------------------------------------
 
 // C-compatible external API, caller responsible for freeing memory
-mmio_event_t* get_mmio_events(int* arr_size_ret) {
+mmio_event_t* get_mmio_events(int* struct_cnt_ret) {
 
     annotate_dev_names();
 
@@ -180,7 +181,7 @@ mmio_event_t* get_mmio_events(int* arr_size_ret) {
     std::copy(mmio_events.begin(), (mmio_events.begin() + num_structs), heap_arr);
 
     // Provide caller with pointer to array and it's size
-    *arr_size_ret = num_structs;
+    *struct_cnt_ret = num_structs;
     return heap_arr;
 }
 
