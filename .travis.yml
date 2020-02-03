@@ -21,6 +21,7 @@ addons:
       #- sourceline: 'deb http://ppa.launchpad.net/phulin/panda/ubuntu xenial main'
     packages:
       # Build dependencies
+      - chrpath
       - libaio-dev
       - libattr1-dev
       - libbrlapi-dev
