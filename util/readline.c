@@ -515,3 +515,13 @@ ReadLineState *readline_init(ReadLinePrintfFunc *printf_func,
 
     return rs;
 }
+
+void readline_destroy(ReadLineState *rs) {
+    int idx;
+    for (idx = 0; idx < READLINE_MAX_CMDS; idx++) {
+        if (rs->history[idx] == NULL)
+            break;
+        g_free(rs->history[idx]);
+    }
+    g_free(rs);
+}
