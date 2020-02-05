@@ -59,6 +59,9 @@ public:
 
     ~ArenaAlloc() {
         for (auto&& block : blocks) {
+            for (T *p = (T*)block.first, *end = p + block.second / sizeof(T); p <= end; ++p) {
+                p->~T();
+            }
             munmap(block.first, block.second);
         }
     }
