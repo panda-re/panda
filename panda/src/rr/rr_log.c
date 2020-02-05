@@ -1474,9 +1474,7 @@ void rr_do_end_record(void)
     // mz put in end-of-log marker
     rr_record_end_of_log();
 
-    char* rr_path_base = g_strdup(rr_nondet_log->name);
     char* rr_name_base = g_strdup(rr_nondet_log->name);
-    // char *rr_path = dirname(rr_path_base);
     char* rr_name = basename(rr_name_base);
 
     if (rr_debug_whisper()) {
@@ -1495,7 +1493,6 @@ void rr_do_end_record(void)
 
     rr_destroy_log();
 
-    g_free(rr_path_base);
     g_free(rr_name_base);
 
     // cleanup rr_control struct
@@ -1518,13 +1515,13 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
 #ifdef CONFIG_SOFTMMU
     char name_buf[1024];
     // decompose file_name_base into path & file.
-    char* rr_path = g_strdup(file_name_full);
-    char* rr_name = g_strdup(file_name_full);
+    char* rr_path_base = g_strdup(file_name_full);
+    char* rr_name_base = g_strdup(file_name_full);
     __attribute__((unused)) int snapshot_ret;
 
     vm_stop(RUN_STATE_PAUSED); // Stop execution of the CPU thread while the replay is being set up
-    rr_path = dirname(rr_path);
-    rr_name = basename(rr_name);
+    char* rr_path = dirname(rr_path_base);
+    char* rr_name = basename(rr_name_base);
     rr_replay_complete = false;
 
     // When we start a replay, re-initialize state
@@ -1569,6 +1566,8 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
 
     // second, open non-deterministic input log for read.
     rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
+    g_free(rr_name_base);
+    g_free(rr_path_base);
     printf("opening nondet log for read :\t%s\n", name_buf);
     rr_create_replay_log(name_buf);
     // reset record/replay counters and flags
