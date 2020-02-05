@@ -137,9 +137,13 @@ def on_sys_read_return(cpu, pc, fd, buf, count):
         else: # Function
             fn = faker.faking_fn
             # Function returns data to write into buf, new offset, and what to return to guest
-            (data, new_offset, ret_val) = fn(f.offset, cnt)
+            (data, new_offset, ret_val) = fn(f.offset, count)
             if data and len(data):
-                panda.virtual_memory_write(cpu, buf, data)
+                write_result = panda.virtual_memory_write(cpu, buf, data)
+                if write_result < 0: # Page not mapped. Make guest retry - Don't update our fake file's offset because this read will fail
+                    logger.info(f"\t Failed to write data into guest memory")
+                    cpu.env_ptr.regs[R_EAX] = ffi.cast("unsigned char", -11) # Return EAGAIN to make the guest retry (with page mapped, hopefully)
+                    return
             f.offset = new_offset
 
             cpu.env_ptr.regs[R_EAX] = ret_val
