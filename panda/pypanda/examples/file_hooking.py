@@ -7,6 +7,8 @@
 #   Currently just x86_64 and probably i386
 #   No support for faking/logging writes to faked FDs
 
+# Could reimplement based off filemon callbacks
+
 from sys import argv, stdout
 from os import path
 import enum
@@ -18,6 +20,7 @@ from panda.x86.helper import * # XXX omg these are 32-bit names
 
 import logging
 
+logging.basicConfig(level = logging.INFO)
 logger = logging.getLogger('panda.file_hooking')
 logger.setLevel(logging.INFO)
 
@@ -73,8 +76,8 @@ def add_file(name, contents=None, fn=None):
     r_name = re.compile(name.replace("*", ".*"))
     files_faked[r_name] = FakedFile(contents, fn)
 
-def is_hooked(fd, cr3):
-    return (fd, cr3) in file_descriptors and file_descriptors[(fd, cr3)].is_fake
+def is_hooked(fd, asid):
+    return (fd, asid) in file_descriptors and file_descriptors[(fd, asid)].is_fake
 
 # Need to initialize PANDA object before registering callback fns
 if __name__ == '__main__':
@@ -93,28 +96,40 @@ ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
 @ppp("syscalls2", f"ppp_add_cb_{cb_name}")
 @ffi.callback(f"void({cb_args})")
 def on_sys_read_return(cpu, pc, fd, buf, count):
-    cr3 = cpu.env_ptr.cr[3]
-    if is_hooked(fd, cr3):
+    asid = panda.current_asid(cpu)
+    if is_hooked(fd, asid):
         # We need to make up a file. Grab our contents/fn
-        f = file_descriptors[(fd, cr3)]
+        f = file_descriptors[(fd, asid)]
         assert(f.is_fake), "Can't fake a non-faked FD"
         faker = files_faked[f.filename]
         logger.info(f"Hooking return of read for FD={fd} corresponding to file {f.filename}")
         if faker.fake_contents: # Static file contents
                 # index into it based on f.offset return up to count
-            contents = faker.fake_contents
+            contents = faker.fake_contents+"\x00"
+            '''
             if f.first_read: # First read, don't set buffer, just return total size
                 logger.info(f"\t returning buffer size ({len(contents)})")
                 cpu.env_ptr.regs[R_EAX] = len(contents)
                 f.first_read = False
-            elif f.offset >= len(contents):  # No bytes left to read
+            elif...
+            '''
+            if f.offset >= len(contents):  # No bytes left to read
                 logger.info(f"\t Returning EOF")
                 cpu.env_ptr.regs[R_EAX] = 0
                 return
             else: # Bytes to read
                 file_contents = contents[f.offset:f.offset+count].encode("utf8")
                 logger.info(f"\t Set buffer at 0x{buf:x} to: {file_contents}")
-                panda.virtual_memory_write(cpu, buf, file_contents) # Write buffer
+                write_result = panda.virtual_memory_write(cpu, buf, file_contents) # Write buffer - May fail if page isn't mapped
+
+                if write_result < 0: # Page not mapped. Make guest retry - Don't update our fake file's offset because this read will fail
+                    logger.info(f"\t Failed to write data into guest memory")
+                    cpu.env_ptr.regs[R_EAX] = ffi.cast("unsigned char", -11) # Return EAGAIN to make the guest retry (with page mapped, hopefully)
+                    return
+
+                test = panda.virtual_memory_read(cpu, buf, 100, fmt='str') # testing
+                logger.info(f"\t READ MEMORY: {test}") # Should be equal
+
                 cpu.env_ptr.regs[R_EAX] = len(file_contents) # Bytes written
                 f.offset += len(file_contents)
                 return
@@ -137,12 +152,12 @@ ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
 
 @ppp("syscalls2", f"ppp_add_cb_{cb_name}")
 @ffi.callback(f"void({cb_args})")
-def on_sys_close_return(cpustate, pc, fd):
-    cr3 = cpustate.env_ptr.cr[3]
-    if is_hooked(fd, cr3):
+def on_sys_close_return(cpu, pc, fd):
+    asid = panda.current_asid(cpu)
+    if is_hooked(fd, asid):
         logger.info(f"Hooking return of close for FD={fd}")
-        cpustate.env_ptr.regs[R_EAX] = 0  # hide error
-        del file_descriptors[(fd, cr3)]
+        cpu.env_ptr.regs[R_EAX] = 0  # hide error
+        del file_descriptors[(fd, asid)]
 
 # Open: Update file_descriptors. If it's a file we want to fake,
 # generate a new FD and update file_descriptors
@@ -153,17 +168,17 @@ ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
 
 @ppp("syscalls2", f"ppp_add_cb_{cb_name}")
 @ffi.callback(f"void({cb_args})")
-def on_sys_open_return(cpustate, pc, filename, flags, mode):
-    cr3 = cpustate.env_ptr.cr[3]
-    fname = panda.virtual_memory_read(cpustate, filename, 255, fmt='str').decode('utf8')
+def on_sys_open_return(cpu, pc, filename, flags, mode):
+    asid = panda.current_asid(cpu)
+    fname = panda.virtual_memory_read(cpu, filename, 255, fmt='str').decode('utf8')
 
     for hooked_fname in files_faked:
         if hooked_fname.match(fname):
             break
     else:
         # No hooked filenames matched, it's a normal guest file, just track FD use
-        fd = cpustate.env_ptr.regs[R_EAX]
-        file_descriptors[(fd, cr3)] = HyperFile(fname)
+        fd = cpu.env_ptr.regs[R_EAX]
+        file_descriptors[(fd, asid)] = HyperFile(fname)
         return
 
     # A filename matched (hooked_fnam)
@@ -172,14 +187,14 @@ def on_sys_open_return(cpustate, pc, filename, flags, mode):
     # Generate a new FD that's unused. Don't go below 100 to avoid
     # FDs in use before we started tracking. Might be able to go higher
     for fd in range(255, 100, -1):
-        if (fd, cr3) not in file_descriptors:
+        if (fd, asid) not in file_descriptors:
             break
     else:
         raise RuntimeError("No available FDs to fake")
     
-    #only if cpustate.env_ptr.regs[R_EAX] > 255: because some hack for -1?
-    file_descriptors[(fd, cr3)] = HyperFile(hooked_fname, True, 0)
-    cpustate.env_ptr.regs[R_EAX] = fd
+    #only if cpu.env_ptr.regs[R_EAX] > 255: because some hack for -1?
+    file_descriptors[(fd, asid)] = HyperFile(hooked_fname, True, 0)
+    cpu.env_ptr.regs[R_EAX] = fd
 
 # fstat: Silence errors on our FD - Should probably also populate a stat object
 
@@ -197,14 +212,14 @@ stat_h = """typedef struct stat {
     long st_rdev;		/* Device number, if device.  */
     long st_size;			/* Size of file, in bytes.  */
     long st_blksize;	/* Optimal block size for I/O.  */
-    //char st_atim[10];
+    char st_atim[10];
     char st_mtim[10];
     char st_ctim[10];
   } stat;
 """
 
 # XXX just the useful fields
-stat_h = """typedef struct stat {
+stat_h2 = """typedef struct stat {
     // Assuming long is 8, int is 4
     long st_dev;		/* Device.  */
     long st_ino;		/* File serial number.	*/
@@ -234,25 +249,25 @@ ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
 
 @ppp("syscalls2", f"ppp_add_cb_{cb_name}")
 @ffi.callback(f"void({cb_args})")
-def on_sys_newfstat_return(cpustate, pc, fd, stat_ptr):
-    cr3 = cpustate.env_ptr.cr[3]
-    if is_hooked(fd, cr3):
+def on_sys_newfstat_return(cpu, pc, fd, stat_ptr):
+    asid = panda.current_asid(cpu)
+    if is_hooked(fd, asid):
         logger.info(f"Hooking return of newfstat for FD={fd}")
         # Mutate the stat buffer to set a size and hide errors
 
         # Read the object from guest memory into a cffi mutable struct
         # note that mutating c_stat affects the same memory as python_stat
-        python_stat = panda.virtual_memory_read(cpustate, stat_ptr, ffi.sizeof("stat"))
+        python_stat = panda.virtual_memory_read(cpu, stat_ptr, ffi.sizeof("stat"))
         c_stat = ffi.from_buffer('stat*', python_stat) # XXX: setting require_writable fails
                                                     # but this is giving us a mutable buffer
         # Mutate it
-        c_stat.st_ino = random.randint(100000, 1000000)
-        c_stat.st_size = files_faked[file_descriptors[(fd, cr3)].filename].get_size(8)
+        #c_stat.st_ino = random.randint(100000, 1000000)
+        c_stat.st_size = files_faked[file_descriptors[(fd, asid)].filename].get_size(8)
         c_stat.st_blksize = 8
 
         # Put it back into guest memory
-        panda.virtual_memory_write(cpustate, stat_ptr, python_stat)
-        cpustate.env_ptr.regs[R_EAX] = 0 # No error
+        panda.virtual_memory_write(cpu, stat_ptr, python_stat)
+        cpu.env_ptr.regs[R_EAX] = 0 # No error
 
 # fadvise64 - Strace shows it's unhappy but it doesn't affect output so maybe we ignore it?
 '''
@@ -262,7 +277,7 @@ ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
 
 @ppp("syscalls2", f"ppp_add_cb_{cb_name}") # Runs after our named CB
 @ffi.callback(f"void({cb_args})")
-def on_fadvise(cpustate, pc, fd, a, flags):
+def on_fadvise(cpu, pc, fd, a, flags):
     pass
 '''
 
