@@ -48,10 +48,7 @@ typedef struct syscall_ctx syscall_ctx_t;
 
 {% for arch, syscalls in syscalls_arch|dictsort -%}
 #if {{architectures[arch].qemu_target}}
-{%- for syscall_name, syscall in syscalls|dictsort %}
-typedef void (*on_{{syscall.name}}_enter_t)({{syscall.cargs_signature}});
-typedef void (*on_{{syscall.name}}_return_t)({{syscall.cargs_signature}});
-{%- endfor %}
+#include "syscalls_ext_typedefs_{{arch}}"
 #endif
 {% endfor %}
 typedef void (*on_all_sys_enter_t)(CPUState *cpu, target_ulong pc, target_ulong callno);

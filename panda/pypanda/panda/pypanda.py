@@ -79,8 +79,6 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.bits, self.endianness, self.register_size = self._determine_bits()
         self._do_types_import()
         self.libpanda = ffi.dlopen(self.libpanda_path)
-
-
         # Setup argv for panda
         biospath = realpath(pjoin(self.build_dir, "pc-bios")) # XXX Do we want this for all archs?
         self.panda_args = [self.panda, "-L", biospath]
@@ -533,60 +531,6 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             library = ffi.dlopen(pjoin(*[self.build_dir, self.arch+"-softmmu", "panda/plugins/panda_{}.so".format(name)]))
             self.plugins[name] = library
 
-    def get_cpu(self,cpustate):
-        raise RuntimeError("panda.get_cpu is deprecated. Remove your call to it")
-        '''
-        XXX: Why does this exist? We actually need it sometimes for non-x86
-        '''
-        if self.arch == "arm":
-            return self.get_cpu_arm(cpustate)
-        elif self.arch == "x86":
-            return self.get_cpu_x86(cpustate)
-        elif self.arch == "x64" or self.arch == "x86_64":
-            return self.get_cpu_x64(cpustate)
-        elif self.arch == "ppc":
-            return self.get_cpu_ppc(cpustate)
-        else:
-            return self.get_cpu_x86(cpustate)
-
-    # note: should add something to check arch in self.arch
-    def get_cpu_x86(self,cpustate):
-        # we dont do this because x86 is the assumed arch
-        # ffi.cdef(open("./include/panda_x86_support.h")) 
-        return ffi.cast("CPUX86State*", cpustate.env_ptr)
-
-    def _get_cpu_header(self): # XXX: This only works from the repo, not with setup.py
-        base_path = dirname(self.build_dir)
-        loc1 = pjoin(*[base_path, "panda", "pypanda", "panda", "include", f"panda_{self.arch}_support.h"])
-        loc2 = pjoin(*[base_path, "data",  "pypanda", "include", f"panda_{self.arch}_support.h"])
-
-        if isfile(loc1):
-            with open(loc1) as f:
-                data = f.read()
-        elif isfile(loc2):
-            with open(loc2) as f:
-                data = f.read()
-        else:
-            raise RuntimeError(f"Couldn't find pypanda include data, searched {loc1}, {loc2}")
-
-        return data
-
-    def get_cpu_x64(self,cpustate):
-        # we dont do this because x86 is the assumed arch
-        if not hasattr(self, "x64_support"):
-            self.x64_support = ffi.cdef(self._get_cpu_header())
-        return ffi.cast("CPUX64State*", cpustate.env_ptr)
-
-    def get_cpu_arm(self,cpustate):
-        if not hasattr(self, "arm_support"):
-            self.arm_support = ffi.cdef(self._get_cpu_header())
-        return ffi.cast("CPUARMState*", cpustate.env_ptr)
-
-    def get_cpu_ppc(self,cpustate):
-        if not hasattr(self, "ppc_support"):
-            self.ppc_support = ffi.cdef(self._get_cpu_header())
-        return ffi.cast("CPUPPCState*", cpustate.env_ptr)
-
     def queue_async(self, f, internal=False):
         self.athread.queue(f, internal=internal)
 
@@ -594,5 +538,20 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         name_c = ffi.new("char[]", bytes(name, "utf-8"))
         size = ceil(size/1024)*1024 # Must be page-aligned
         return self.libpanda.map_memory(name_c, size, address)
+
+    def ppp(self, plugin_name, attr):
+        '''
+        Decorator for plugin-to-plugin interface
+
+        Example usage to register my_run with syscalls2 as a 'on_sys_open_return'
+        @ppp("syscalls2", "on_sys_open_return")
+        def my_fun(cpu, pc, filename, flags, mode):
+            ...
+        '''
+        def inner(func):
+            f = ffi.callback(attr+"_t")(func)  # Automatically make the python funciton a CB
+            self.plugins[plugin_name].__getattr__("ppp_add_cb_"+attr)(f) # All PPP cbs start with this string
+            return f
+        return inner
 
 # vim: expandtab:tabstop=4:
