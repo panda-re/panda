@@ -24,13 +24,6 @@ logging.basicConfig(level = logging.INFO)
 logger = logging.getLogger('panda.file_hooking')
 logger.setLevel(logging.INFO)
 
-# TODO: move PPP decorator into core panda
-def ppp(plugin_name, attr):
-    def inner(func):
-        panda.plugins[plugin_name].__getattr__(attr)(func)
-        return func
-    return inner
-
 # Classes for tracking faked files by name and FD
 class FakedFile:
     def __init__(self, fake_contents=None, faking_fn = None):
@@ -90,11 +83,8 @@ if __name__ == '__main__':
 
 # Read: If we're reading from a FD in fake_files, return fake data
 cb_name = "on_sys_read_return"
-cb_args = "CPUState *, target_ulong, uint32_t, uint64_t, uint32_t"
-ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
 
-@ppp("syscalls2", f"ppp_add_cb_{cb_name}")
-@ffi.callback(f"void({cb_args})")
+@panda.ppp("syscalls2", "on_sys_read_return")
 def on_sys_read_return(cpu, pc, fd, buf, count):
     asid = panda.current_asid(cpu)
     if is_hooked(fd, asid):
@@ -150,12 +140,7 @@ def on_sys_read_return(cpu, pc, fd, buf, count):
 
 
 # Close: If we close a FD in fake_files, fake the close and update fake_files to be closed
-cb_name = "on_sys_close_return"
-cb_args = "CPUState *, target_ulong, uint32_t"
-ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
-
-@ppp("syscalls2", f"ppp_add_cb_{cb_name}")
-@ffi.callback(f"void({cb_args})")
+@panda.ppp("syscalls2", "on_sys_close_return")
 def on_sys_close_return(cpu, pc, fd):
     asid = panda.current_asid(cpu)
     if is_hooked(fd, asid):
@@ -166,12 +151,7 @@ def on_sys_close_return(cpu, pc, fd):
 # Open: Update file_descriptors. If it's a file we want to fake,
 # generate a new FD and update file_descriptors
 # If it's a file we aren't faking, assert if it collides with one of our FDs
-cb_name = "on_sys_open_return"
-cb_args = "CPUState *, target_ulong, uint64_t, int32_t, uint32_t"
-ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
-
-@ppp("syscalls2", f"ppp_add_cb_{cb_name}")
-@ffi.callback(f"void({cb_args})")
+@panda.ppp("syscalls2", "on_sys_open_return")
 def on_sys_open_return(cpu, pc, filename, flags, mode):
     asid = panda.current_asid(cpu)
     fname = panda.virtual_memory_read(cpu, filename, 255, fmt='str').decode('utf8')
@@ -186,7 +166,7 @@ def on_sys_open_return(cpu, pc, filename, flags, mode):
         return
 
     # A filename matched (hooked_fnam)
-    logger.info(f"Hooking return of open for filename={fname}")
+    logger.info(f"Hooking return of open for filename={fname}, asid={asid}")
 
     # Generate a new FD that's unused. Don't go below 100 to avoid
     # FDs in use before we started tracking. Might be able to go higher
@@ -246,13 +226,8 @@ ffi.cdef(stat_h)
 # st_nlink=1,
 # st_uid=1001, st_gid=1001,
 # st_blksize=4096, st_blocks=8, st_size=7,
-        
-cb_name = "on_sys_newfstat_return"
-cb_args = "CPUState *, target_ulong, uint32_t, uint64_t"
-ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
 
-@ppp("syscalls2", f"ppp_add_cb_{cb_name}")
-@ffi.callback(f"void({cb_args})")
+@panda.ppp("syscalls2", "on_sys_newfstat_return")
 def on_sys_newfstat_return(cpu, pc, fd, stat_ptr):
     asid = panda.current_asid(cpu)
     if is_hooked(fd, asid):
@@ -264,34 +239,54 @@ def on_sys_newfstat_return(cpu, pc, fd, stat_ptr):
         python_stat = panda.virtual_memory_read(cpu, stat_ptr, ffi.sizeof("stat"))
         c_stat = ffi.from_buffer('stat*', python_stat) # XXX: setting require_writable fails
                                                     # but this is giving us a mutable buffer
-        # Mutate it
-        #c_stat.st_ino = random.randint(100000, 1000000)
+        # Modify buffer - set a reasonable size
         c_stat.st_size = files_faked[file_descriptors[(fd, asid)].filename].get_size(8)
         c_stat.st_blksize = 8
 
         # Put it back into guest memory
-        panda.virtual_memory_write(cpu, stat_ptr, python_stat)
+        r = panda.virtual_memory_write(cpu, stat_ptr, python_stat)
+        assert(r >= 0), "Failed to write stat buffer"
         cpu.env_ptr.regs[R_EAX] = 0 # No error
+
+# Write: on enter check if it's our target
+@panda.ppp("syscalls2", "on_sys_write_enter")
+def on_sys_write_enter(cpu, pc, fd, buf, count):
+    asid = panda.current_asid(cpu)
+    if is_hooked(fd, asid):
+        logger.info(f"Write to FD {fd}")
+    else:
+        logger.info(f"UNHOOKED Write to FD {fd} by {asid}")
+
+
+# Write return: Mask error
+@panda.ppp("syscalls2", "on_sys_write_return")
+def on_sys_write_return(cpu, pc, fd, buf, count):
+    asid = panda.current_asid(cpu)
+    if is_hooked(fd, asid):
+        logger.info(f"Hide error writing to FD {fd}")
+        cpu.env_ptr.regs[R_EAX] = 0 # No error
+
 
 # fadvise64 - Strace shows it's unhappy but it doesn't affect output so maybe we ignore it?
 '''
-cb_name = "on_sys_fadvise64_return"
-cb_args = "CPUState *, target_ulong, uint32_t, uint32_t, uint32_t"
-ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
-
-@ppp("syscalls2", f"ppp_add_cb_{cb_name}") # Runs after our named CB
-@ffi.callback(f"void({cb_args})")
+@panda.ppp("syscalls2", "on_sys_fadvise64_return"
 def on_fadvise(cpu, pc, fd, a, flags):
     pass
+
+# Debugging, catch all
+@panda.ppp("syscalls2", "on_all_sys_return")
+def catch_all(cpu, pc, callno):
+    print(f"Syscall {callno}")
 '''
 
 if __name__== '__main__':
     # Test: Run something in the guest that reads from a fake file
     @blocking
     def mycmd():
-        panda.revert_sync("root")
-        cmd = "cat /dev/panda /manda"
-        #panda.revert_sync("strace")
+        #panda.revert_sync("root")
+        panda.revert_sync("strace")
+        cmd = "strace -f sh -c 'echo hi > /tmp/panda'"
+        #cmd = "echo 'hi' > /dev/panda ; cat /dev/panda"
         #cmd = "strace -v cat /dev/panda /manda"
         print(f"GUEST RUNNING COMMAND:\n\n# {cmd}\n" + panda.run_serial_cmd(cmd))
         panda.end_analysis()

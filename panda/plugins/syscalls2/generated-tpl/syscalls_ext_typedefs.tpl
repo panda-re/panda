@@ -48,7 +48,11 @@ typedef struct syscall_ctx syscall_ctx_t;
 
 {% for arch, syscalls in syscalls_arch|dictsort -%}
 #if {{architectures[arch].qemu_target}}
+<<<<<<< HEAD
 #include "syscalls_ext_typedefs_{{arch}}.h"
+=======
+#include "syscalls_ext_typedefs_{{arch}}"
+>>>>>>> Better PPP interface for pypanda. Adds support for syscalls2 headers (only)
 #endif
 {% endfor %}
 // WIP - How can we expose these to pypanda given that they need syscall_ctx which dependes on #DEFINES

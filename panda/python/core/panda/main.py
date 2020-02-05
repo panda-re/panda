@@ -81,11 +81,14 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.bits, self.endianness, self.register_size = self._determine_bits()
         self._do_types_import()
         self.libpanda = ffi.dlopen(self.libpanda_path)
+<<<<<<< HEAD:panda/python/core/panda/main.py
 
         # set OS name if we have one
         if self.os:
             self.set_os_name(self.os)
 
+=======
+>>>>>>> Better PPP interface for pypanda. Adds support for syscalls2 headers (only):panda/pypanda/panda/pypanda.py
         # Setup argv for panda
         self.panda_args = [self.panda]
         biospath = realpath(pjoin(self.build_dir, "pc-bios")) # XXX: necessary for network drivers for arm, so 'pc-bios' is a misleading name
@@ -594,5 +597,20 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         name_c = ffi.new("char[]", bytes(name, "utf-8"))
         size = ceil(size/1024)*1024 # Must be page-aligned
         return self.libpanda.map_memory(name_c, size, address)
+
+    def ppp(self, plugin_name, attr):
+        '''
+        Decorator for plugin-to-plugin interface
+
+        Example usage to register my_run with syscalls2 as a 'on_sys_open_return'
+        @ppp("syscalls2", "on_sys_open_return")
+        def my_fun(cpu, pc, filename, flags, mode):
+            ...
+        '''
+        def inner(func):
+            f = ffi.callback(attr+"_t")(func)  # Automatically make the python funciton a CB
+            self.plugins[plugin_name].__getattr__("ppp_add_cb_"+attr)(f) # All PPP cbs start with this string
+            return f
+        return inner
 
 # vim: expandtab:tabstop=4:
