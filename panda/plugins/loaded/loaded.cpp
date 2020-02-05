@@ -126,6 +126,7 @@ void linux_mmap_pgoff_return(CPUState *cpu,target_ulong pc,uint32_t addr,uint32_
                 "pgoff=%d)=" TARGET_FMT_lx "\n", (int) fd,
                 len, prot, flags, pgoff, env->regs[R_EAX]);
     }
+    g_free(filename);
 }
 #endif
 
