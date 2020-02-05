@@ -4303,9 +4303,8 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
                 }
             case QEMU_OPTION_panda_os_name:
             {
-                char *os_name = strdup(optarg);
                 // NB: this will complain if we provide an os name that panda doesnt know about
-                panda_set_os_name(os_name);
+                panda_set_os_name(optarg);
                 break;
             }
             default:
