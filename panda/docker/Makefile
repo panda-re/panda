@@ -13,13 +13,13 @@ push: bionic_push xenial_push
 SHA := $(shell git rev-parse HEAD)
 
 bionic_push: Dockerfile_18_04
-	docker build . -f Dockerfile_18_04 -t docker.pkg.github.com/panda-re/panda/panda_bionic:latest
-	docker tag docker.pkg.github.com/panda-re/panda/panda_bionic:latest docker.pkg.github.com/panda-re/panda/panda_bionic:$(SHA)
-	docker push docker.pkg.github.com/panda-re/panda/panda_bionic:$(SHA)
-	docker push docker.pkg.github.com/panda-re/panda/panda_bionic:latest
+	docker build . -f Dockerfile_18_04 -t fasano/panda_bionic:latest
+	docker tag fasano/panda_bionic:latest fasano/panda_bionic:$(SHA)
+	docker push fasano/panda_bionic:$(SHA)
+	docker push fasano/panda_bionic:latest
 
 xenial_push: Dockerfile_16_04
-	docker build . -f Dockerfile_16_04 -t docker.pkg.github.com/panda-re/panda/panda_xenial:latest
-	docker tag docker.pkg.github.com/panda-re/panda/panda_xenial:latest docker.pkg.github.com/panda-re/panda/panda_xenial:$(SHA)
-	docker push docker.pkg.github.com/panda-re/panda/panda_xenial:$(SHA)
-	docker push docker.pkg.github.com/panda-re/panda/panda_xenial:latest
+	docker build . -f Dockerfile_16_04 -t fasano/panda_xenial:latest
+	docker tag fasano/panda_xenial:latest fasano/panda_xenial:$(SHA)
+	docker push fasano/panda_xenial:$(SHA)
+	docker push fasano/panda_xenial:latest
