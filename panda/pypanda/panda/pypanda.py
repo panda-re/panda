@@ -463,8 +463,9 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
     def _memory_read(self, env, addr, length, physical=False, fmt='bytearray'):
         '''
-        Read but with an autogen'd buffer. Returns a bytearray
-        Physical or virtual
+        Read but with an autogen'd buffer. Returns a tuple (data, error code)
+        Supports physical or virtual addresses
+        Error code is 0 on success, negative on failure
         '''
         if not hasattr(self, "_memcb"): # XXX: Why do we enable memcbs for memory writes?
             self.enable_memcb()
@@ -473,9 +474,12 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         buf_a = ffi.cast("char*", buf)
         length_a = ffi.cast("int", length)
         if physical:
-            self.libpanda.panda_physical_memory_read_external(addr, buf_a, length_a)
+            err = self.libpanda.panda_physical_memory_read_external(addr, buf_a, length_a)
         else:
-            self.libpanda.panda_virtual_memory_read_external(env, addr, buf_a, length_a)
+            err = self.libpanda.panda_virtual_memory_read_external(env, addr, buf_a, length_a)
+
+        if err < 0:
+            raise ValueError("Memory access failed") # TODO: make a PANDA Exn class
 
         r = ffi.unpack(buf, length)
         if fmt == 'bytearray':
