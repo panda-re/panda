@@ -5,7 +5,10 @@ name: Docker Build - Incremental
 
 # Because this runs on push actions, we get $GITHUB_SHA and it's set correctly (unlike on PR)
 
-on: [push]
+on:
+  push:
+    branches-ignore: # A full clean build will run on pushes to master
+      master
 
 jobs:
   build:
