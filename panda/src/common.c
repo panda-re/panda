@@ -138,7 +138,7 @@ gchar *panda_os_variant = NULL;             // parsed os variant
 uint32_t panda_os_bits = 0;                 // parsed os bits
 PandaOsFamily panda_os_familyno = OS_UNKNOWN; // numeric identifier for family
 
-void panda_set_os_name(char *os_name) {
+void panda_set_os_name(const char *os_name) {
     // validate os_name before parsing its components
     bool os_supported = false;
     const gchar **os_re;

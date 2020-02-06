@@ -152,7 +152,7 @@ extern bool panda_add_arg(const char *, const char *);
 extern bool panda_load_plugin(const char *, const char *);
 extern void panda_unload_plugins(void);
 extern char *panda_plugin_path(const char *name);
-extern void panda_set_os_name(char *os_name);
+extern void panda_set_os_name(const char *os_name);
 extern void panda_callbacks_after_machine_init(CPUState *);
 extern void panda_callbacks_pre_shutdown(void);
 extern void panda_callbacks_main_loop_wait(void);
