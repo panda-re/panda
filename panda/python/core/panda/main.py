@@ -491,16 +491,13 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         else:
             err = self.libpanda.panda_virtual_memory_read_external(env, addr, buf_a, length_a)
 
-        if err < 0:
-            raise ValueError("Memory access failed") # TODO: make a PANDA Exn class
-
         r = ffi.unpack(buf, length)
         if fmt == 'bytearray':
-            return r
+            return (r, err)
         elif fmt=='int':
             return int.from_bytes(r, byteorder=self.endianness)  # XXX size better be small enough to pack into an int!
         elif fmt=='str':
-            return ffi.string(buf, length)
+            return (ffi.string(buf, length), err)
         else:
             raise ValueError("fmt={} unsupported".format(fmt))
 
