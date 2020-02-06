@@ -129,36 +129,21 @@ def on_sys_read_return(cpu, pc, fd, buf, count):
         assert(f.is_fake), "Can't fake a non-faked FD"
         faker = files_faked[f.filename]
         logger.debug(f"Hooking return of read for FD={fd} corresponding to file {f.filename}")
-        """
-        if faker.fake_contents: # Static file contents
-                # index into it based on f.offset return up to count
-            contents = faker.fake_contents+"\x00"
-            if f.offset >= len(contents):  # No bytes left to read
-                logger.debug(f"\t Returning EOF")
-                cpu.env_ptr.regs[R_EAX] = 0
-                return
-            else: # Bytes to read
-                file_contents = contents[f.offset:f.offset+count].encode("utf8")
-                logger.debug(f"\t Set buffer at 0x{buf:x} to: {file_contents}")
-                write_result = panda.virtual_memory_write(cpu, buf, file_contents) # Write buffer - May fail if page isn't mapped
 
-                if write_result < 0: # Page not mapped. Make guest retry - Don't update our fake file's offset because this read will fail
-                    logger.info(f"\t Failed to write data into guest memory")
-                    cpu.env_ptr.regs[R_EAX] = ffi.cast("unsigned char", -11) # Return EAGAIN to make the guest retry (with page mapped, hopefully)
-                    return
-                cpu.env_ptr.regs[R_EAX] = len(file_contents) # Bytes written
-                f.offset += len(file_contents)
-                return
-
-        else: # Function
-        """
-
-        # Write seems to be OK - call fn and update guest memory
+        # First try a junk write to see if memory write will fail (avoids calling class twice)
+        try:
+            panda.virtual_memory_write(cpu, buf, b'TEST_DATA_TEST_DATA')
+        except Exception: # Page not mapped. Make guest retry
+            cpu.env_ptr.regs[R_EAX] = ffi.cast("unsigned char", -11) # Return EAGAIN
+            return
+        # Call fn and update guest memory
         (data, ret_val) = faker.get_data(f, count)
+        print(data)
         if data and len(data):
-            write_result = panda.virtual_memory_write(cpu, buf, data)
-            if write_result < 0: # Page not mapped. Make guest retry
-                logger.info(f"\t Failed to write data into guest memory")
+            try:
+                panda.virtual_memory_write(cpu, buf, data)
+            except Exception: # Page not mapped. Make guest retry. XXX: calls get_data twice
+                logger.info(f"\t Failed to write data into guest memory. Duplicate call to get_data")
                 cpu.env_ptr.regs[R_EAX] = ffi.cast("unsigned char", -11) # Return EAGAIN
                 return
 
@@ -169,8 +154,9 @@ pending_hyperfile  = None
 @panda.ppp("syscalls2", "on_sys_open_enter")
 def on_sys_open_enter(cpu, pc, fname_ptr, flags, mode):
     global pending_hyperfile # Will be saved at return
-    (fname, err) = panda.virtual_memory_read(cpu, fname_ptr, 100, fmt='str')
-    if err != 0: # Leave pending_hyperfile = None so open_return will fail with EAGAIN
+    try:
+        fname = panda.virtual_memory_read(cpu, fname_ptr, 100, fmt='str')
+    except Exception: # Leave pending_hyperfile = None so open_return will fail with EAGAIN
         return
     fname = fname.decode("utf8")
     for hooked_fname in files_faked:
@@ -186,11 +172,42 @@ def on_sys_open_enter(cpu, pc, fname_ptr, flags, mode):
     # It is hooked - Change the filename to something we know to exist
     # XXX XXX XXX: Must be shorter than original file name or we'll CORRUPT MEMORY
     # The root directory (is a file) should always satisfy these constraints
-    # XXX: TODO no it won't - You can't write to it, the kernel knows it's a directory
-    new_fname = b"/bin/ls\x00"
-    r = panda.virtual_memory_write(cpu, fname_ptr, new_fname)
-    assert(r >=0), "Failed to write new fname into memory"
+    new_fname = b"/\x00"
+    panda.virtual_memory_write(cpu, fname_ptr, new_fname)
     pending_hyperfile = HyperFile(hooked_fname, True)
+
+    # Now we need to tell the kernel we're opening it in read mode (you can't write a dir)
+    if flags != 0:
+        modes = {
+            "O_ACCMODE"	 : 0o0000003,
+            "O_RDONLY"	 : 0o0000000,
+            "O_WRONLY"	 : 0o0000001,
+            "O_RDWR"	 : 0o0000002,
+            "O_CREAT"	 : 0o0000100,
+            "O_EXCL"	 : 0o0000200,
+            "O_NOCTTY"	 : 0o0000400,
+            "O_TRUNC"	 : 0o0001000,
+            "O_APPEND"	 : 0o0002000,
+            "O_NONBLOCK" : 0o0004000,
+            "O_DSYNC"	 : 0o0010000,
+            "FASYNC"	 : 0o0020000,
+            "O_DIRECT"	 : 0o0040000,
+            "O_LARGEFILE": 0o0100000,
+            "O_DIRECTORY": 0o0200000,
+            "O_NOFOLLOW" : 0o0400000,
+            "O_NOATIME"	 : 0o1000000,
+            "O_CLOEXEC"	 : 0o2000000
+        }
+
+        mode_s = []
+        for (mode, mask) in modes.items():
+            if flags & mask:
+                mode_s.append(mode)
+
+        logger.debug(f"{fname} was opened in mode {'|'.join(mode_s)} - Pretending it's 0")
+        assert(flags == cpu.env_ptr.regs[R_ESI]), "Open flags aren't in expected register"
+        # For x86_64 flags are in R_RSI, so we 'll mutate those (since flags var isn't mutable)
+        cpu.env_ptr.regs[R_ESI] = 0
 
 
 @panda.ppp("syscalls2", "on_sys_open_return")
@@ -199,12 +216,12 @@ def on_sys_open_return(cpu, pc, fname_ptr, flags, mode):
     fd = cpu.env_ptr.regs[R_EAX]
     global pending_hyperfile
     if not pending_hyperfile:
-        # Return EAGAIN to make the guest retry (with page mapped, hopefully)
+        # Return EAGAIN to make the guest retry from start of on_sys_open (hit other fn above)
         cpu.env_ptr.regs[R_EAX] = ffi.cast("unsigned char", -11)
         return
     file_descriptors[(fd, asid)] = pending_hyperfile
     if pending_hyperfile.is_fake:
-        logger.debug(f"Hook stored info for fake FD {fd} = {pending_hyperfile.filename}")
+        logger.info(f"Hook stored info for fake FD {fd} = {pending_hyperfile.filename}")
     pending_hyperfile = None
 
 # fstat: Silence errors on our FD - Should probably also populate a stat object
@@ -247,7 +264,7 @@ def on_sys_newfstat_return(cpu, pc, fd, stat_ptr):
 
         # Read the object from guest memory into a cffi mutable struct
         # note that mutating c_stat affects the same memory as python_stat
-        (python_stat, err) = panda.virtual_memory_read(cpu, stat_ptr, ffi.sizeof("stat"))
+        python_stat = panda.virtual_memory_read(cpu, stat_ptr, ffi.sizeof("stat"))
         c_stat = ffi.from_buffer('stat*', python_stat) # XXX: setting require_writable fails
                                                     # but this is giving us a mutable buffer
         # Modify buffer - set a reasonable size given the FakedFile object
@@ -258,8 +275,12 @@ def on_sys_newfstat_return(cpu, pc, fd, stat_ptr):
         c_stat.st_blksize = 8
 
         # Put it back into guest memory
-        r = panda.virtual_memory_write(cpu, stat_ptr, python_stat)
-        assert(r >= 0), "Failed to write stat buffer"
+        try:
+            panda.virtual_memory_write(cpu, stat_ptr, python_stat)
+        except Exception:
+            cpu.env_ptr.regs[R_EAX] = ffi.cast("unsigned char", -11) # Return EAGAIN
+            return
+
         cpu.env_ptr.regs[R_EAX] = 0 # No error
 
 # Write: on enter check if it's our target
@@ -269,8 +290,8 @@ def on_sys_write_enter(cpu, pc, fd, buf_ptr, count):
     if is_hooked(fd, asid):
         cpu.env_ptr.regs[R_EAX] = 0xFF # Invalid FD - will make kernel return an error that
                                         # we'll hide. Prevents the write from really happening
-        (buf, err) = panda.virtual_memory_read(cpu, buf_ptr, count)
-        logger.info(f"Write {buf} to faked FD {fd}")
+        buf = panda.virtual_memory_read(cpu, buf_ptr, count)
+        logger.warning(f"Saw write of data to faked FD({fd}): {buf}")
 
 # Write return: Mask error
 @panda.ppp("syscalls2", "on_sys_write_return")
@@ -280,11 +301,11 @@ def on_sys_write_return(cpu, pc, fd, buf, count):
         logger.debug(f"Hide error writing to FD {fd}")
         cpu.env_ptr.regs[R_EAX] = count # Pretend we wrote all bytes
 
-@panda.ppp("syscalls2", "on_sys_dup2_enter")
+@panda.ppp("syscalls2", "on_sys_dup2_return")
 def dup2_return(cpu, pc, oldfd, newfd):
     asid = panda.current_asid(cpu)
     if is_hooked(oldfd, asid):
-        if cpu.env_ptr.regs[R_EAX] == newfd:
+        if cpu.env_ptr.regs[R_EAX] == newfd: # Else something was wrong
             logger.debug(f"DUP2 on a fake FD. Copy {oldfd} to {newfd}")
             assert((newfd, asid) not in file_descriptors), "DUP2 with a dest FD already used"
             file_descriptors[(newfd, asid)] = file_descriptors[(oldfd, asid)]
@@ -325,10 +346,10 @@ if __name__== '__main__':
     @blocking
     def mycmd():
         panda.revert_sync("root")
-        cmd = "cat /dev/panda /testfile  /dev/panda"
         #panda.revert_sync("strace")
-        #cmd = "strace /bin/sh -c 'cat /testfile > /dev/panda'"
-        #cmd = "cat /testfile > /dev/panda"
+        #cmd = "cat /dev/panda /testfile  /dev/panda" # Works
+        cmd = "echo 'data' > /dev/panda" # Works
+        #cmd = "cat /testfile > /dev/panda" # WIP
         print(f"GUEST RUNNING COMMAND:\n\n# {cmd}\n" + panda.run_serial_cmd(cmd))
         panda.end_analysis()
 
