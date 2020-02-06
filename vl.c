@@ -4326,6 +4326,8 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
           fprintf(stderr, "FAIL: Unable to load plugin `%s'\n", panda_plugin_files[pp_idx]);
           abort();
       }
+      free((char*)panda_plugin_names[pp_idx]);
+      g_free((gchar*)panda_plugin_files[pp_idx]);
     }
 
     // This is to support having a help option in the plugins. If
