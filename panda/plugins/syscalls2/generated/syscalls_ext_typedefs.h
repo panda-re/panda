@@ -47,15 +47,6 @@ struct syscall_ctx {
 typedef struct syscall_ctx syscall_ctx_t;
 
 #if defined(TARGET_ARM)
-<<<<<<< HEAD
-#include "syscalls_ext_typedefs_arm.h"
-#endif
-#if defined(TARGET_X86_64)
-#include "syscalls_ext_typedefs_x64.h"
-#endif
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
-#include "syscalls_ext_typedefs_x86.h"
-=======
 #include "syscalls_ext_typedefs_arm"
 #endif
 #if defined(TARGET_X86_64)
@@ -63,10 +54,8 @@ typedef struct syscall_ctx syscall_ctx_t;
 #endif
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 #include "syscalls_ext_typedefs_x86"
->>>>>>> Better PPP interface for pypanda. Adds support for syscalls2 headers (only)
 #endif
 
-// WIP - How can we expose these to pypanda given that they need syscall_ctx which dependes on #DEFINES
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
 // api autogen needs it.  And don't put any compiler directives
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
