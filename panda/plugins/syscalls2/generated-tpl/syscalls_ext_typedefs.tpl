@@ -48,7 +48,7 @@ typedef struct syscall_ctx syscall_ctx_t;
 
 {% for arch, syscalls in syscalls_arch|dictsort -%}
 #if {{architectures[arch].qemu_target}}
-#include "syscalls_ext_typedefs_{{arch}}"
+#include "syscalls_ext_typedefs_{{arch}}.h"
 #endif
 {% endfor %}
 // WIP - How can we expose these to pypanda given that they need syscall_ctx which dependes on #DEFINES
