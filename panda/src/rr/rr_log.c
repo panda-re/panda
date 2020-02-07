@@ -1085,7 +1085,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
             // point
             replay_done = 1;
         } else {
-            
+
             RR_skipped_call_args args = current_item->variant.call_args;
             switch (args.kind) {
             case RR_CALL_CPU_MEM_RW: {
@@ -1579,8 +1579,12 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     rr_queue_end = &rr_queue[RR_QUEUE_MAX_LEN];
     rr_fill_queue();
 
-    // Resume execution of the CPU thread
-    vm_start();
+    // Resume execution of the CPU thread when using PANDA as a library
+    // note that this means library-mode consumers can't start a replay `-s -S` to
+    // get a stopped guest that will only be started via an attached GDB
+    if (panda_library_mode) {
+        vm_start();
+    }
 
     return 0; // snapshot_ret;
 #endif
@@ -1638,7 +1642,7 @@ void rr_do_end_replay(int is_error)
     rr_control.mode = RR_OFF;
 
     rr_replay_complete = true;
-    
+
     // mz XXX something more graceful?
     panda_cleanup();
     if (is_error) {
@@ -1679,7 +1683,13 @@ void rr_end_main_loop_wait(void) {
 
 #ifdef CONFIG_SOFTMMU
 static uint32_t rr_checksum_memory_internal(void) {
-    MemoryRegion *ram = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
+    rcu_read_lock();
+    MemoryRegion *ram = panda_find_ram();
+    rcu_read_unlock();
+    if (!ram) {
+        printf("ERROR: could not find RAM start address!\n");
+        abort();
+    }
     rcu_read_lock();
     void *ptr = qemu_map_ram_ptr(ram->ram_block, 0);
     uint32_t crc = rr_chunked_crc32(ptr, ram_size);

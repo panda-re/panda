@@ -171,17 +171,22 @@ bits = int(environ["PANDA_BITS"])
 arch = environ["PANDA_ARCH"]
 
 ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
-ffi.cdef(read_cleanup_header("{inc}/pthreadtypes.h"))
+#ffi.cdef(read_cleanup_header("{inc}/pthreadtypes.h"))
 
 if arch == "i386":
-	ffi.cdef(read_cleanup_header("{inc}/panda_x86_support.h"))
+	ffi.cdef(read_cleanup_header("{inc}/panda_datatypes_X86_32.h"))
 elif arch == "x86_64":
-	ffi.cdef(read_cleanup_header("{inc}/panda_x64_support.h"))
+	ffi.cdef(read_cleanup_header("{inc}/panda_datatypes_X86_64.h"))
 elif arch == "arm":
-	ffi.cdef(read_cleanup_header("{inc}/panda_arm_support.h"))
+	ffi.cdef(read_cleanup_header("{inc}/panda_datatypes_ARM_32.h"))
+elif arch == "ppc" and int(bits) == 32:
+    ffi.cdef(read_cleanup_header("{inc}/panda_datatypes_PPC_32.h"))
+elif arch == "ppc" and int(bits) == 64:
+    ffi.cdef(read_cleanup_header("{inc}/panda_datatypes_PPC_64.h"))
 else:
 	print("PANDA_DATATYPES: Architecture not supported")
-ffi.cdef(read_cleanup_header("{inc}/panda_qemu_support.h"))
+
+#ffi.cdef(read_cleanup_header("{inc}/panda_qemu_support.h"))
 ffi.cdef(read_cleanup_header("{inc}/panda_datatypes.h"))
 ffi.cdef(read_cleanup_header("{inc}/panda_osi.h"))
 """.format(inc=INCLUDE_DIR_PYP))

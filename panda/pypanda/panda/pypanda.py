@@ -30,13 +30,14 @@ from .osi_mixins        import osi_mixins
 from .hooking_mixins    import hooking_mixins
 from .callback_mixins   import callback_mixins
 from .taint_mixins      import taint_mixins
+from .volatility_mixins import volatility_mixins
 
 import pdb
 
 # location of panda build dir
 panda_build = realpath(pjoin(abspath(__file__), "../../../../build"))
 
-class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins):
+class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins):
     def __init__(self, arch="i386", mem="128M",
             expect_prompt=None, os_version=None,
             qcow=None, os="linux",
@@ -45,6 +46,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.arch = arch
         self.mem = mem
         self.os = os_version
+        self.os_type = os
         self.qcow = qcow
         self.plugins = {}
 
@@ -84,16 +86,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         #self.panda = pjoin(self.build_dir, "{0}-softmmu/panda-system-{0}".format(self.arch)) # Path to binary
 
         self.bits, self.endianness, self.register_size = self._determine_bits()
-        def do_types_import():
-            # There is almost certainly a better way to do this.
-            environ["PANDA_BITS"] = str(self.bits)
-            environ["PANDA_ARCH"] = arch
-            from .autogen.panda_datatypes import pcb, C, callback_dictionary # ffi, pcb, C come from here
-            self.callback_dictionary = callback_dictionary
-            global pcb
-            global C
-
-        do_types_import()
+        self._do_types_import()
         self.libpanda = ffi.dlopen(self.libpanda_path)
 
 
@@ -109,8 +102,8 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         # Configure memory options
         self.panda_args.extend(['-m', mem])
 
-        # Configure serial - Always enabled for now, except in simple mode
-        if not simple:
+        # Configure serial - if we have an expect_prompt set. Otherwise how can we know what guest cmds are outputting?
+        if expect_prompt:
             self.serial_file = NamedTemporaryFile(prefix="pypanda_s").name
             self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.serial_console = Expect(expectation=expect_prompt, quiet=True, consume_first=False)
@@ -123,7 +116,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         # Configure monitor - Always enabled for now
         self.monitor_file = NamedTemporaryFile(prefix="pypanda_m").name
         self.monitor_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.monitor_console = Expect(expectation="(qemu)", quiet=True, consume_first=True)
+        self.monitor_console = Expect(expectation=rb"(qemu)", quiet=True, consume_first=True)
         self.panda_args.extend(['-monitor', 'unix:{},server,nowait'.format(self.monitor_file)])
 
         self.running = threading.Event()
@@ -131,7 +124,6 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.athread = AsyncThread(self.started) # athread manages actions that need to occur outside qemu's CPU loop
 
         # Callbacks
-        self.callback = pcb
         self.register_cb_decorators()
         self.registered_callbacks = {} # name -> {procname: "bash", enabled: False, callback: None}
 
@@ -154,6 +146,17 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.main_loop_wait_fnargs = [] # [(fn, args), ...]
         progress ("Panda args: [" + (" ".join(self.panda_args)) + "]")
     # /__init__
+
+    def _do_types_import(self):
+        # Import objects from panda_datatypes which are configured by the environment variables
+        # Store these objects in self.callback and self.callback_dictionary
+
+        # There is almost certainly a better way to do this.
+        environ["PANDA_BITS"] = str(self.bits)
+        environ["PANDA_ARCH"] = self.arch
+        from .autogen.panda_datatypes import pcb, C, callback_dictionary # XXX: What is C and do we need it?
+        self.callback_dictionary = callback_dictionary
+        self.callback = pcb
 
     def _initialize_panda(self):
         '''
@@ -244,7 +247,10 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
                 return potential_path
 
         searched_paths = "\n".join(["\t"+p for p in  pot_paths])
-        raise RuntimeError("Couldn't find libpanda.so. Searched: {}".format(searched_paths))
+        raise RuntimeError(("Couldn't find libpanda-{}.so.\n"
+                            "Did you built PANDA for this architecture?\n"
+                            "Searched paths:\n{}"
+                           ).format(self.arch, searched_paths))
 
 
     def queue_main_loop_wait_fn(self, fn, args=[]):
@@ -537,6 +543,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             self.plugins[name] = library
 
     def get_cpu(self,cpustate):
+        raise RuntimeError("panda.get_cpu is deprecated. Remove your call to it")
         '''
         XXX: Why does this exist? We actually need it sometimes for non-x86
         '''

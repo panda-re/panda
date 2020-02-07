@@ -153,7 +153,7 @@ bool PCB(insn_translate)(CPUState *env, target_ptr_t pc) {
     bool panda_exec_cb = false;
     for(plist = panda_cbs[PANDA_CB_INSN_TRANSLATE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        if (plist->enabled) 
+        if (plist->enabled)
           panda_exec_cb |= plist->entry.insn_translate(env, pc);
     }
     return panda_exec_cb;
@@ -164,7 +164,7 @@ bool PCB(after_insn_translate)(CPUState *env, target_ptr_t pc) {
     bool panda_exec_cb = false;
     for(plist = panda_cbs[PANDA_CB_AFTER_INSN_TRANSLATE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        if (plist->enabled) 
+        if (plist->enabled)
           panda_exec_cb |= plist->entry.after_insn_translate(env, pc);
     }
     return panda_exec_cb;
@@ -269,21 +269,21 @@ void PCB(mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
 }
 
 // These are used in cputlb.c
-void PCB(mmio_after_read)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val) {
+void PCB(mmio_after_read)(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val) {
 
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_MMIO_AFTER_READ]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        if (plist->enabled) plist->entry.mmio_after_read(env, addr, size, val);
+        if (plist->enabled) plist->entry.mmio_after_read(env, physaddr, vaddr, size, val);
     }
 }
 
-void PCB(mmio_after_write)(CPUState *env, target_ptr_t addr, size_t size, uint64_t val) {
+void PCB(mmio_before_write)(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val) {
 
     panda_cb_list *plist;
-    for(plist = panda_cbs[PANDA_CB_MMIO_AFTER_WRITE]; plist != NULL;
+    for(plist = panda_cbs[PANDA_CB_MMIO_BEFORE_WRITE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        if (plist->enabled) plist->entry.mmio_after_write(env, addr, size, val);
+        if (plist->enabled) plist->entry.mmio_before_write(env, physaddr, vaddr, size, val);
     }
 }
 
@@ -304,22 +304,51 @@ void PCB(during_machine_init)(MachineState *machine) {
      }
 }
 
-void PCB(unassigned_io)(CPUState *env, hwaddr addr, size_t size,
-       uint8_t *val, bool is_write) {
-    if (is_write) {
-        panda_cb_list *plist;
-        for(plist = panda_cbs[PANDA_CB_UNASSIGNED_IO_WRITE]; plist != NULL;
-            plist = panda_cb_list_next(plist)) {
-            if (plist->enabled) plist->entry.unassigned_io_write(env, env->panda_guest_pc, addr, size, val);
+bool PCB(unassigned_io_write)(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size,
+       uint64_t val) {
+    // Returns true if any registered&enabled callback returns non-zero.
+    // If so, we'll silence the memory write error.
+
+    bool allow_invalid_write = false;
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_UNASSIGNED_IO_WRITE]; plist != NULL;
+        plist = panda_cb_list_next(plist)) {
+        if (plist->enabled) {
+            if (0 != plist->entry.unassigned_io_write(env, pc, addr, size,
+                                                        val)) {
+                // If any callbacks return nonzero, we've silenced
+                // the error and we should pretend it's a valid write
+                allow_invalid_write  = true;
+            }
         }
     }
-    else {
-        panda_cb_list *plist;
-        for(plist = panda_cbs[PANDA_CB_UNASSIGNED_IO_READ]; plist != NULL;
-            plist = panda_cb_list_next(plist)) {
-            if (plist->enabled) plist->entry.unassigned_io_read(env, env->panda_guest_pc, addr, size, val);
+
+    return allow_invalid_write;
+}
+
+bool PCB(unassigned_io_read)(CPUState *env, target_ptr_t pc, hwaddr addr,
+        size_t size, uint64_t *val) {
+    // Returns true if any registered&enabled callback returns non-zero,
+    // if so, we'll silence the invalid memory read error and return
+    // the value provided by the last callback in `val`
+    // Note if multiple callbacks run they can each mutate val
+
+    bool changed = false; // Did a callback change this value or should we leave it as invalid?
+
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_UNASSIGNED_IO_READ]; plist != NULL;
+        plist = panda_cb_list_next(plist)) {
+        if (plist->enabled) {
+            if (0 != plist->entry.unassigned_io_read(env, pc, addr,
+                                                        size, val)) {
+                // If any callbacks return nonzero, that should indicate that they've written
+                // a value to val. As such, we should avoid error-processing logic in memory.c
+                changed = true;
+            }
         }
     }
+
+    return changed;
 }
 
 void PCB(top_loop)(CPUState *env) {
@@ -431,14 +460,14 @@ void PCB(pre_shutdown)(void) {
 
 
 // this callback allows us to swallow exceptions
-// 
+//
 // first callback that returns an exception index that *differs* from
 // the one passed as an arg wins. That is, that is what we return as
 // the new exception index, which will replace cpu->exception_index
-// 
-// Note: We still run all of the callbacks, but only one of them can 
+//
+// Note: We still run all of the callbacks, but only one of them can
 // change the current cpu exception.  Sorry.
-// 
+//
 int32_t PCB(before_handle_exception)(CPUState *cpu, int32_t exception_index) {
     panda_cb_list *plist;
     bool got_new_exception = false;
@@ -452,10 +481,10 @@ int32_t PCB(before_handle_exception)(CPUState *cpu, int32_t exception_index) {
                 got_new_exception = true;
                 new_exception = new_e;
             }
-        }                
+        }
     }
 
-    if (got_new_exception) 
+    if (got_new_exception)
         return new_exception;
 
     return exception_index;

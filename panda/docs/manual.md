@@ -607,7 +607,7 @@ PANDA_CB_VIRT_MEM_AFTER_WRITE,  // After write to virtual memory
 PANDA_CB_PHYS_MEM_AFTER_READ,   // After read of physical memory
 PANDA_CB_PHYS_MEM_AFTER_WRITE,  // After write to physical memory
 PANDA_CB_MMIO_AFTER_READ,       // After each MMIO read
-PANDA_CB_MMIO_AFTER_WRITE,      // After each MMIO write
+PANDA_CB_MMIO_BEFORE_WRITE,     // Before each MMIO write
 PANDA_CB_HD_READ,               // Each HDD read
 PANDA_CB_HD_WRITE,              // Each HDD write
 PANDA_CB_GUEST_HYPERCALL,       // Hypercall from the guest (e.g. CPUID)
