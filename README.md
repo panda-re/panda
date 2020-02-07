@@ -25,12 +25,12 @@ the [GPLv2 license](LICENSE).
 ## Building
 ### Quickstart: Docker
 The latest version of PANDA's master branch is automatically built as a docker image
-from both Ubuntu Bionic and Xenial. These images are available [here](https://github.com/panda-re/panda/packages).
+from both Ubuntu Bionic (18.04) and Xenial (16.04). These images are available [here](https://hub.docker.com/r/pandare/panda).
 
 To pull the latest docker container and run PANDA
 ```
-$ docker pull docker.pkg.github.com/panda-re/panda/panda_bionic:latest
-$ docker run --rm panda_bionic -- /bin/panda-system-i386 --help
+$ docker pull pandare/panda
+$ docker run --rm panda -- /bin/panda-system-i386 --help
 ```
 
 ###  Debian, Ubuntu
