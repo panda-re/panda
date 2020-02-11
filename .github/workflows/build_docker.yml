@@ -17,7 +17,7 @@ jobs:
 
     - name: Build Bionic container
       run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_18_04 -t pandare/panda:latest;
-            docker tag  pandare/panda:latest pandare/panda:${GITHUB_SHA;
+            docker tag  pandare/panda:latest pandare/panda:${GITHUB_SHA};
             docker push pandare/panda:${GITHUB_SHA};
             docker push pandare/panda:latest
 
