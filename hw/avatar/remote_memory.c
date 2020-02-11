@@ -42,7 +42,8 @@ static uint64_t avatar_rmemory_read(void *opaque, hwaddr offset,
     ret = qemu_avatar_mq_receive(s->rx_queue, &resp, sizeof(resp));
     if(!resp.success || (resp.id != request.id)){
 
-        error_report("RemoteMemoryRead failed (%d)!\n", ret);
+        error_report("RemoteMemoryRead from 0x" TARGET_FMT_plx " failed (%d)!\n",
+                s->address+offset, ret);
         exit(1);
     }
 
@@ -67,7 +68,8 @@ static void avatar_rmemory_write(void *opaque, hwaddr offset,
     ret = qemu_avatar_mq_receive(s->rx_queue, &resp, sizeof(resp));
     if(!resp.success || (resp.id != request.id)){
 
-        error_report("RemoteMemoryWrite failed (%d)!\n", ret);
+        error_report("RemoteMemoryWrite to 0x" TARGET_FMT_plx " failed (%d)!\n",
+                s->address+offset, ret);
         exit(1);
     }
 }
