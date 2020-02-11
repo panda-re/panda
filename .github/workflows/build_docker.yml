@@ -12,17 +12,17 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - name: Docker login # TODO: we need to get the pandare account on dockerhub or push to github
-      run: docker login -u fasano -p ${{secrets.fasano_dockerhub}}
+    - name: Docker login
+      run: docker login -u pandare -p ${{secrets.pandare_dockerhub}}
 
     - name: Build Bionic container
-      run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_18_04 -t fasano/panda_bionic:latest;
-            docker tag  fasano/panda_bionic:latest fasano/panda_bionic:${GITHUB_SHA};
-            docker push fasano/panda_bionic:${GITHUB_SHA};
-            docker push fasano/panda_bionic:latest
+      run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_18_04 -t pandare/panda:latest;
+            docker tag  pandare/panda:latest pandare/panda:${GITHUB_SHA;
+            docker push pandare/panda:${GITHUB_SHA};
+            docker push pandare/panda:latest
 
     - name: Build Xenial container
-      run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_16_04 -t fasano/panda_xenial:latest;
-            docker tag  fasano/panda_xenial:latest fasano/panda_xenial:${GITHUB_SHA};
-            docker push fasano/panda_xenial:${GITHUB_SHA};
-            docker push fasano/panda_xenial:latest
+      run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_16_04 -t pandare/panda_xenial:latest;
+            docker tag  pandare/panda_xenial:latest pandare/panda_xenial:${GITHUB_SHA};
+            docker push pandare/panda_xenial:${GITHUB_SHA};
+            docker push pandare/panda_xenial:latest
