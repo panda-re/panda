@@ -23,6 +23,15 @@ the [GPLv2 license](LICENSE).
 ---------------------------------------------------------------------
 
 ## Building
+### Quickstart: Docker
+The latest version of PANDA's master branch is automatically built as a docker image
+from both Ubuntu Bionic and Xenial. These images are available [here](https://github.com/panda-re/panda/packages).
+
+To pull the latest docker container and run PANDA
+```
+$ docker pull docker.pkg.github.com/panda-re/panda/panda_bionic:latest
+$ docker run --rm panda_bionic -- /bin/panda-system-i386 --help
+```
 
 ###  Debian, Ubuntu
 Because PANDA has a few dependencies, we've encoded the build instructions into
@@ -58,13 +67,6 @@ Building on Mac is less well-tested, but has been known to work. There is a scri
 The script uses [homebrew](https://brew.sh) to install the PANDA dependencies.
 As homebrew is known to be very fast in deprecating support for older versions
 of OS X and supported packages, expect this to be broken.
-
-### Docker Image
-Finally, if you want to skip the build process altogether, there is a
-[docker image](https://hub.docker.com/r/pandare/panda).
-You can get it by running `docker pull pandare/panda` for the official
-build, or `docker pull thawsystems/panda` for a third-party
-[unofficial build](https://hub.docker.com/r/thawsystems/panda).
 
 ### Installation
 After successfully building PANDA, you can copy the build to a system-wide
