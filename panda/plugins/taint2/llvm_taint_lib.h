@@ -25,6 +25,7 @@ PANDAENDCOMMENT */
 
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/InstVisitor.h>
+#include "llvm/IR/DataLayout.h"
 
 typedef struct taint2_memlog taint2_memlog;
 typedef struct addr_struct Addr;
@@ -132,7 +133,7 @@ private:
     void insertStateOp(Instruction &I);
 
 public:
-    DataLayout *dataLayout = NULL;
+    union { DataLayout dataLayout; };
 
     Function *deleteF;
     Function *mixF;
@@ -172,7 +173,9 @@ public:
     PandaTaintVisitor(ShadowState *shad, taint2_memlog *taint_memlog)
         : shad(shad), taint_memlog(taint_memlog) {}
 
-    ~PandaTaintVisitor() {}
+    ~PandaTaintVisitor() {
+        dataLayout.~DataLayout();
+    }
 
     // Overrides.
     void visitFunction(Function& F);

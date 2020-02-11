@@ -126,6 +126,7 @@ void tbranch_on_branch_taint2(Addr a, uint64_t size) {
                 for (uint32_t i=0; i<num_tainted; i++) {
                     pandalog_taint_query_free(tb->taint_query[i]);
                 }
+                free(tb->taint_query);
                 free(tb);
             }
         }
@@ -140,10 +141,13 @@ bool init_plugin(void *self) {
     assert (init_callstack_instr_api());
     panda_require("taint2");
     assert (init_taint2_api());
+
     panda_arg_list *args = panda_get_args("tainted_branch");
     summary = panda_parse_bool_opt(args, "summary", "only print out a summary of tainted instructions");
     bool indirect_jumps = panda_parse_bool_opt(args, "indirect_jumps", "also query taint on indirect jumps and calls");
     liveness = panda_parse_bool_opt(args, "liveness", "track liveness of input bytes");
+    panda_free_args(args);
+
     if (summary) printf ("tainted_instr summary mode\n"); else printf ("tainted_instr full mode\n");
     /*
     panda_cb pcb;

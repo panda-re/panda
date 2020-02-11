@@ -78,10 +78,10 @@ void on_global_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *a
 #include "callstack_instr/callstack_instr.h"
 #include "callstack_instr/callstack_instr_ext.h"
 
-const char *guest_debug_path = NULL;
-const char *host_debug_path = NULL;
-const char *host_mount_path = NULL;
-const char *proc_to_monitor = NULL;
+std::string guest_debug_path;
+std::string host_debug_path;
+std::string host_mount_path;
+std::string proc_to_monitor;
 bool allow_just_plt = false;
 bool logCallSites = true;
 std::string bin_path;
@@ -281,6 +281,18 @@ void die(const char* fmt, ...) {
     vfprintf(stderr, fmt, args);
     vfprintf(stdout, fmt, args);
     va_end(args);
+}
+
+// basename/dirname requires mutable c-string, unfortunately c_str()
+// does not allow to returns a const one, and data() does not guarantee
+// that it will be null-terminated
+inline std::string basename(std::string path) {
+    path.c_str(); // ensure null-termination
+    return basename(path.data());
+}
+inline std::string dirname(std::string path) {
+    path.c_str(); // ensure null-termination
+    return dirname(path.data());
 }
 
 static int
@@ -1757,43 +1769,43 @@ void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, targe
     active_libs.push_back(Lib(guest_lib_name, base_addr, base_addr + size));
     //sprintf(fname, "%s/%s", debug_path, m->name);
     //printf("Trying to load symbols for %s at %#x.\n", lib_name, base_addr);
-    std::string lib = std::string(guest_lib_name);
+    std::string lib = guest_lib_name;
     std::size_t found = lib.find(guest_debug_path);
     if (found == std::string::npos){
-        char *lib_name = strdup((host_mount_path + lib).c_str());
-        printf("access(%s, F_OK): %x\n", lib_name, access(lib_name, F_OK));
-        if (access(lib_name, F_OK) == -1) {
-            fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", lib_name);
+        std::string lib_name = host_mount_path + lib;
+        printf("access(%s, F_OK): %x\n", lib_name.c_str(), access(lib_name.c_str(), F_OK));
+        if (access(lib_name.c_str(), F_OK) == -1) {
+            fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", lib_name.c_str());
             return;
         }
         if (looking_for_libc && 
             lib.find(libc_name) != std::string::npos) {
 //        if (lib.find("libc-2.13") != std::string::npos)  {
-            lib_name = strdup(libc_host_path);
-//            lib_name = strdup("/mnt/lava-32-qcow/usr/lib/debug/lib/i386-linux-gnu/i686/cmov/libc-2.13.so");
-            printf ("actually loading lib_name = %s\n", lib_name);
+            lib_name = libc_host_path;
+//            lib_name = "/mnt/lava-32-qcow/usr/lib/debug/lib/i386-linux-gnu/i686/cmov/libc-2.13.so";
+            printf ("actually loading lib_name = %s\n", lib_name.c_str());
             bool needs_reloc = true; // elf_base != base_addr;
-            read_debug_info(lib_name, basename(lib_name), base_addr, needs_reloc);
+            read_debug_info(lib_name.c_str(), basename(lib_name).c_str(), base_addr, needs_reloc);
             return;
         }
-        elf_get_baseaddr(lib_name, basename(lib_name), base_addr);
+        elf_get_baseaddr(lib_name.c_str(), basename(lib_name).c_str(), base_addr);
         return;
     }
-    //lib.replace(found, found+strlen(guest_debug_path), host_debug_path);
+    //lib.replace(found, found+guest_debug_path.length(), host_debug_path);
     std::string host_lib = lib.substr(0, found) +
                            host_debug_path +
-                           lib.substr(found+strlen(guest_debug_path));
-    char *lib_name = strdup(host_lib.c_str());
-    printf("Trying to load symbols for %s at 0x%x.\n", lib_name, base_addr);
-    printf("access(%s, F_OK): %x\n", lib_name, access(lib_name, F_OK));
-    if (access(lib_name, F_OK) == -1) {
-        fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", lib_name);
+                           lib.substr(found+guest_debug_path.length());
+    std::string lib_name = host_lib;
+    printf("Trying to load symbols for %s at 0x%x.\n", lib_name.c_str(), base_addr);
+    printf("access(%s, F_OK): %x\n", lib_name.c_str(), access(lib_name.c_str(), F_OK));
+    if (access(lib_name.c_str(), F_OK) == -1) {
+        fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", lib_name.c_str());
         return;
     }
-    uint64_t elf_base = elf_get_baseaddr(lib_name, basename(lib_name), base_addr);
+    uint64_t elf_base = elf_get_baseaddr(lib_name.c_str(), basename(lib_name).c_str(), base_addr);
     bool needs_reloc = elf_base != base_addr;
-    if (!read_debug_info(lib_name, basename(lib_name), base_addr, needs_reloc)) {
-        fprintf(stderr, "Couldn't load symbols from %s.\n", lib_name);
+    if (!read_debug_info(lib_name.c_str(), basename(lib_name).c_str(), base_addr, needs_reloc)) {
+        fprintf(stderr, "Couldn't load symbols from %s.\n", lib_name.c_str());
         return;
     }
     return;
@@ -1825,13 +1837,13 @@ bool ensure_main_exec_initialized(CPUState *cpu) {
         if (debug) {
             printf("[ensure_main_exec_initialized] looking at file %s\n", m->file);
         }
-        if (0 != strncmp(m->name, proc_to_monitor, strlen(m->name))) continue;
+        if (m->name != proc_to_monitor) continue;
         //printf("[ensure_main_exec_initialized] looking at file %s\n", m->file);
         //std::size_t found = lib.find(guest_debug_path);
         //if (found == std::string::npos) continue;
         //std::string host_name = lib.substr(0, found) +
             //host_debug_path +
-            //lib.substr(found + strlen(guest_debug_path));
+            //lib.substr(found + guest_debug_path.length());
         // TODO: change this to do a replace on guest_debug_path like above
         //std::string host_name =  host_debug_path + lib;
         //strcpy(fname, host_name.c_str());
@@ -2304,11 +2316,10 @@ void handle_asid_change(CPUState *cpu, target_ulong asid, OsiProc *p) {
     if (!p) { return; }
     if (!p->name) { return; }
     if (debug) {
-        printf("p-name: %s proc-to-monitor: %s\n", p->name, proc_to_monitor);
+        printf("p-name: %s proc-to-monitor: %s\n", p->name, proc_to_monitor.c_str());
     }
 //    printf ("...really\n");
-    //if (strcmp(p->name, proc_to_monitor) != 0) {
-    if (strncmp(p->name, proc_to_monitor, strlen(p->name)) == 0) {
+    if (p->name == proc_to_monitor) {
         target_ulong current_asid = panda_current_asid(cpu);
         monitored_asid.insert(current_asid);
         printf ("monitoring asid %x\n", current_asid);
@@ -2397,6 +2408,7 @@ bool init_plugin(void *self) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
     panda_arg_list *args_gen = panda_get_args("general");
     const char *asid_s = panda_parse_string_opt(args_gen, "asid", NULL, "asid of the process to follow for pri_trace");
+    panda_free_args(args_gen);
     if (asid_s) {
         target_ulong asid = strtoul(asid_s, NULL, 16);
         monitored_asid.insert(asid); 
@@ -2415,6 +2427,7 @@ bool init_plugin(void *self) {
     // for line range data.  could be useful for tracking calls to functions
     allow_just_plt = panda_parse_bool_opt(args, "allow_just_plt", "allow parsing of elf for dynamic symbol information if dwarf is not available");
     logCallSites = !panda_parse_bool_opt(args, "dont_log_callsites", "Turn off pandalogging of callsites in order to reduce plog output");
+    panda_free_args(args);
 
     if (0 != strcmp(libc_host_path, "None")) {
         looking_for_libc=true;
@@ -2441,7 +2454,7 @@ bool init_plugin(void *self) {
     PPP_REG_CB("callstack_instr", on_call, on_call);
     PPP_REG_CB("callstack_instr", on_ret, on_ret);
     struct stat s;
-    if (stat(host_debug_path, &s) != 0){
+    if (stat(host_debug_path.c_str(), &s) != 0){
         printf("host_debug path does not exist. exiting . . .\n");
         exit(1);
     }
@@ -2449,11 +2462,11 @@ bool init_plugin(void *self) {
     // if debug path doesn't point to a file assume debug path points to an install
     // directory on host machine, so add '/bin/' in order to get the main executable
     if (s.st_mode & S_IFDIR) {
-        bin_path = std::string(host_debug_path) + "/bin/" + proc_to_monitor;
+        bin_path = host_debug_path + "/bin/" + proc_to_monitor;
         if (stat(bin_path.c_str(), &s) != 0) {
-            bin_path = std::string(host_debug_path) + "/lib/" + proc_to_monitor;
+            bin_path = host_debug_path + "/lib/" + proc_to_monitor;
             if (stat(bin_path.c_str(), &s) != 0) {
-                bin_path = std::string(host_debug_path) + "/" + proc_to_monitor;
+                bin_path = host_debug_path + "/" + proc_to_monitor;
                 if (stat(bin_path.c_str(), &s) != 0) {
                     printf("Can\' find a valid main bin path\n");
                     printf("[WARNING] Skipping processing of main file!!!\n");
@@ -2464,19 +2477,18 @@ bool init_plugin(void *self) {
     } else if (s.st_mode & S_IFREG) {
         // if debug path actually points to a file, then make host_debug_path the
         // directory that contains the executable
-        bin_path = std::string(host_debug_path);
-        //host_debug_path = dirname(strdup(host_debug_path));
-        host_debug_path = dirname(strdup(host_debug_path));
+        bin_path = host_debug_path;
+        host_debug_path = dirname(host_debug_path);
     } else {
-        printf("Don\'t know what host_debug_path: %s is, but it is not a file or directory\n", host_debug_path);
+        printf("Don\'t know what host_debug_path: %s is, but it is not a file or directory\n", host_debug_path.c_str());
         exit(1);
     }
     if (bin_path != "") {
         // now we do this in ensure_main_exec_initialized() which is called from
         // osi_foo() TODO figure out a more efficient place to put that check
         // because it gets called too often
-        //elf_get_baseaddr(bin_path.c_str(), proc_to_monitor, 0);
-        //if (!read_debug_info(bin_path.c_str(), proc_to_monitor, 0, false)) {
+        //elf_get_baseaddr(bin_path.c_str(), proc_to_monitor.c_str(), 0);
+        //if (!read_debug_info(bin_path.c_str(), proc_to_monitor.c_str(), 0, false)) {
             //fprintf(stderr, "Couldn't load symbols from %s.\n", bin_path.c_str());
             //return false;
         //}
@@ -2517,7 +2529,7 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
     std::sort(active_libs.begin(), active_libs.end());
-    std::ofstream outfile(std::string(proc_to_monitor) + ".libs");
+    std::ofstream outfile(proc_to_monitor + ".libs");
     for (auto l : active_libs) {
         std::cout << l << "\n";
         outfile << l << "\n";

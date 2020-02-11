@@ -38,7 +38,7 @@ extern "C" {
 // files in this directory that contain subsections like this one.
 
 void panda_cleanup(void);
-void panda_set_os_name(char *os_name);
+void panda_set_os_name(const char *os_name);
 void panda_before_find_fast(void);
 void panda_disas(FILE *out, void *code, unsigned long size);
 void panda_break_main_loop(void);

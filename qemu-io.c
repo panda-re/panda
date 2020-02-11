@@ -616,6 +616,6 @@ int main(int argc, char **argv)
     bdrv_drain_all();
 
     blk_unref(qemuio_blk);
-    g_free(readline_state);
+    readline_destroy(readline_state);
     return 0;
 }

@@ -551,6 +551,7 @@ bool init_plugin(void *self) {
     max_taintset_card = panda_parse_uint32_opt(args, "max_taintset_card", 0,
         "maximum size a label set can reach before stop tracking taint on it (0=never stop)");
     std::cerr << PANDA_MSG "maximum taintset cardinality (0=unlimited) " << max_taintset_card << std::endl;
+    panda_free_args(args);
     
     // load dependencies
     panda_require("callstack_instr");
