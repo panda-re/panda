@@ -7,12 +7,11 @@ Summary
 Linux `ioctl` introspection built on top of syscalls2.
 
 **Filtered Hooking API (active):** APIs to hook IOCTLs by (in order of granularity least-to-most, can be applied to all processes or a specific process):
-    * Access (e.g. `_IOW`/`copy_to_user`)
+    * Access (e.g. `IOW`/`copy_to_user`)
     * Driver code (e.g. ASCII character supposedly unique to each driver)
     * Command (e.g. the 2nd syscall param)
 
-**Logging Functionality (passive):** Collect either of the following as JSON:
-    * Unique `ioctl` commands by process
+**Logging Functionality (passive):** Collect as JSON:
     * Sequence of all `ioctl` commands by process
 
 TODO: PyPanda client for hook APIs.
@@ -27,7 +26,8 @@ Arguments
 Dependencies
 ------------
 
-None
+* Uses **syscalls2** plugin hooks `on_sys_ioctl_enter` and `on_sys_ioctl_return`.
+* Uses **linux_osi** plugin to determine process PID and name.
 
 APIs and Callbacks
 ------------------
@@ -37,11 +37,8 @@ TODO
 Example
 -------
 
-Testing with the Debian ARM image used by PANDA's `run_debian.py --arch arm`, log to `ioctl.json`:
+Testing with temporary script, log to `ioctl.json`:
 
 ```
-arm-softmmu/panda-system-arm -M versatilepb -kernel ~/.panda/vmlinuz-3.2.0-4-versatile \
-    -initrd ~/.panda/initrd.img-3.2.0-4-versatile -hda ~/.panda/arm_wheezy.qcow \
-    -monitor stdio -loadvm root \
-    -panda ioctl:out_log="ioctl.json"
+./run_ioctl_demo.sh
 ```

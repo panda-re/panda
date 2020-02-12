@@ -13,6 +13,7 @@ PANDAENDCOMMENT */
 
 #include "ioctl.h"
 
+#include "osi_linux/osi_linux_ext.h"
 #include "syscalls2/syscalls_ext_typedefs.h"
 #include "syscalls2/syscalls2_info.h"
 #include "syscalls2/syscalls2_ext.h"
@@ -24,9 +25,7 @@ PANDAENDCOMMENT */
 #include <algorithm>
 
 const char* fn_str;
-bool log_all;
-//UniqueIoctlsByPid pid_to_unique_ioctls;
-AllIoctlsByPid pid_to_all_ioctls;
+AllIoctlsByProc proc_to_all_ioctls;
 
 // These need to be extern "C" so that the ABI is compatible with QEMU/PANDA, which is written in C
 extern "C" {
@@ -36,8 +35,23 @@ extern "C" {
 
 // CALLBACKS -----------------------------------------------------------------------------------------------------------
 
+INLINE void update_proc_ioctl_mapping(CPUState* cpu, uint32_t cmd) {
+
+    ioctl_cmd_t* new_ioc_cmd = new ioctl_cmd_t;
+    decode_ioctl_cmd(new_ioc_cmd, cmd);
+
+    // Update all IOCTLs by process
+    OsiProc* proc = get_process(cpu, get_current_process_handle(cpu));
+    auto entry = proc_to_all_ioctls.find(proc);
+    if (entry == proc_to_all_ioctls.end()) {
+        proc_to_all_ioctls.emplace(proc, AllIoctls{new_ioc_cmd});
+    } else {
+        entry->second.push_back(new_ioc_cmd);
+    }
+}
+
 void linux_32_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint32_t arg) {
-    // TODO
+    update_proc_ioctl_mapping(cpu, cmd);
 }
 
 void linux_32_ioctl_return(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint32_t arg) {
@@ -45,7 +59,7 @@ void linux_32_ioctl_return(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t
 }
 
 void linux_64_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint64_t arg) {
-    // TODO
+    update_proc_ioctl_mapping(cpu, cmd);
 }
 
 void linux_64_ioctl_return (CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint64_t arg) {
@@ -66,11 +80,10 @@ void flush_to_ioctl_log_file() {
 
     out_log_file << "[" << std::endl;
 
-    //for (auto const& pid_to_ioctls : (log_all ? pid_to_all_ioctls : pid_to_unique_ioctls)) {
-    for (auto const& pid_to_ioctls : pid_to_all_ioctls) {
+    for (auto const& proc_to_ioctls : proc_to_all_ioctls) {
 
-        auto pid = pid_to_ioctls.first;
-        auto ioctls = pid_to_ioctls.second;
+        auto proc = proc_to_ioctls.first;
+        auto ioctls = proc_to_ioctls.second;
 
         for (auto const& ioctl : ioctls) {
 
@@ -78,11 +91,14 @@ void flush_to_ioctl_log_file() {
             out_log_file
                 << optional_delim
                 << std::hex << std::setfill('0') << "{ "
-                << "\"pid\": \"" << pid << "\", "
-                << "\"access\": \"0x" << std::setw(hex_width) << ioctl.type << "\", "
-                << "\"arg_size\": \"0x" << std::setw(hex_width) << ioctl.arg_size << "\", "
-                << "\"code\": \"0x" << std::setw(hex_width) << ioctl.code << "\", "
-                << "\"func_num\": \"0x" << std::setw(hex_width) << ioctl.func_num << "\", "
+                << "\"proc_pid\": \"" << proc->pid << "\", "
+                << "\"proc_name\": \"" << proc->name << "\", "
+                << "\"raw_cmd\": \"0x" << std::setw(hex_width) << encode_ioctl_cmd(ioctl) << "\", "
+                << "\"type\": \""  << ioctl_type_to_str(ioctl->type) << "\", "
+                << "\"access\": \"0x" << std::setw(hex_width) << ioctl->type << "\", "
+                << "\"arg_size\": \"0x" << std::setw(hex_width) << ioctl->arg_size << "\", "
+                << "\"code\": \"0x" << std::setw(hex_width) << ioctl->code << "\", "
+                << "\"func_num\": \"0x" << std::setw(hex_width) << ioctl->func_num << "\", "
                 << " }";
 
             // Validate write
@@ -117,12 +133,12 @@ bool init_plugin(void* self) {
         std::cerr << "No \'out_log\' specified, unique IOCTLs py process will not be logged!" << std::endl;
     }
 
-    // TODO: Add flag for unique vs all
-
     // Setup dependencies
     panda_enable_precise_pc();
     panda_require("syscalls2");
     assert(init_syscalls2_api());
+    panda_require("osi_linux");
+    assert(init_osi_linux_api());
 
     // TODO: ARM support
     #if defined(TARGET_I386) && !defined(TARGET_X86_64)
@@ -130,16 +146,11 @@ bool init_plugin(void* self) {
         PPP_REG_CB("syscalls2", on_sys_ioctl_enter, linux_32_ioctl_enter);
         PPP_REG_CB("syscalls2", on_sys_ioctl_return, linux_32_ioctl_return);
 
-        //panda_require("osi_linux");
-        //assert(init_osi_linux_api());
-    #elif defined(TARGET_X86_64)
+   #elif defined(TARGET_X86_64)
         printf("ioctl: setting up 64-bit Linux.\n");
         PPP_REG_CB("syscalls2", on_sys_ioctl_enter, linux_64_ioctl_enter);
         PPP_REG_CB("syscalls2", on_sys_ioctl_return, linux_64_ioctl_return);
 
-
-        //panda_require("osi_linux");
-        //assert(init_osi_linux_api());
     #else
         fprintf(stderr, "ERROR: Only x86 Linux currently suppported!\n");
         return false;
