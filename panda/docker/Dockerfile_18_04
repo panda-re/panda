@@ -57,6 +57,7 @@ RUN apt-get -y install llvm-3.3-dev clang-3.3
 
 WORKDIR "/panda"
 RUN git fetch -a
+RUN git checkout spitfire
 RUN git pull
 
 # Trying to update DTC submodule (if necessary)...
