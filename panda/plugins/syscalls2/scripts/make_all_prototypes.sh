@@ -18,6 +18,7 @@ function activate_pyenv() {
 }
 
 activate_pyenv
+./prototype_parser.py -t linux:x64:generic
 ./prototype_parser.py -t linux:x86:ubuntu
 ./prototype_parser.py -t linux:arm:ubuntu
 ./prototype_parser.py -t win2000:x86:volatility

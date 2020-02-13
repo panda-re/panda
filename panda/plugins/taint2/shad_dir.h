@@ -15,6 +15,8 @@ PANDAENDCOMMENT */
 #ifndef __SHAD_DIR_H_
 #define __SHAD_DIR_H_
 
+#include "shad.h"
+
 // struct for a page
 typedef struct sd_page_struct {
   // array of pointers to label sets, one for each offset within the page

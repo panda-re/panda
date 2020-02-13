@@ -19,14 +19,15 @@ PANDAENDCOMMENT */
 // 2019-MAY-21   add (more accurate) stack segregation option (threaded)
 #define __STDC_FORMAT_MACROS
 
+#include <cinttypes>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
-#include <cmath>
 
+#include <algorithm>
 #include <map>
 #include <set>
 #include <vector>
-#include <algorithm>
 
 #include <capstone/capstone.h>
 #if defined(TARGET_I386)
@@ -55,9 +56,9 @@ extern "C" {
 
 bool translate_callback(CPUState* cpu, target_ulong pc);
 int exec_callback(CPUState* cpu, target_ulong pc);
-int before_block_exec(CPUState* cpu, TranslationBlock *tb);
-int after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode);
-int after_block_translate(CPUState* cpu, TranslationBlock *tb);
+void before_block_exec(CPUState* cpu, TranslationBlock *tb);
+void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode);
+void after_block_translate(CPUState* cpu, TranslationBlock *tb);
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -193,7 +194,7 @@ static stackid get_heuristic_stackid(CPUArchState* env) {
     stackid cursi;
 
     // We can short-circuit the search in most cases
-    if (std::abs((target_long)(sp - cached_sp)) < MAX_STACK_DIFF) {
+    if (std::imaxabs(sp - cached_sp) < MAX_STACK_DIFF) {
         cursi = std::make_tuple(asid, cached_sp, 0);
     } else {
         auto &stackset = stacks_seen[asid];
@@ -208,8 +209,8 @@ static stackid get_heuristic_stackid(CPUArchState* env) {
             target_ulong stack1 = *lb;
             lb--;
             target_ulong stack2 = *lb;
-            target_ulong stack = (std::abs((target_long)(stack1 - sp)) < std::abs((target_long)(stack2 - sp))) ? stack1 : stack2;
-            int diff = std::abs((target_long)(stack-sp));
+            target_ulong stack = (std::imaxabs(stack1 - sp) < std::imaxabs(stack2 - sp)) ? stack1 : stack2;
+            int diff = std::imaxabs(stack-sp);
             if (diff < MAX_STACK_DIFF) {
                 cursi = std::make_tuple(asid, stack, 0);
             }
@@ -305,110 +306,64 @@ done2:
     return res;
 }
 
-int after_block_translate(CPUState *cpu, TranslationBlock *tb) {
+void after_block_translate(CPUState *cpu, TranslationBlock *tb) {
     CPUArchState* env = (CPUArchState*)cpu->env_ptr;
 
     call_cache[tb->pc] = disas_block(env, tb->pc, tb->size);
 
-    return 1;
+    return;
 }
 
-int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
-    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
+void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
+  CPUArchState *env = static_cast<CPUArchState *>(cpu->env_ptr);
+  std::vector<stack_entry> &v = callstacks[get_stackid(env)];
+  std::vector<target_ulong> &w = function_stacks[get_stackid(env)];
+  if (v.empty()) {
+    return;
+  }
 
-    // if the block a call returns to was interrupted before it completed, this
-    // function will be called twice - only want to remove the return value from
-    // the stack once
-    // the return value will have been removed before the attempt to run which
-    // was stopped (as we didn't know it would be stopped then), so skip it on
-    // the retry
-    bool needToCheck = true;
-    stackid curStackid = get_stackid(env);
-    std::map<stackid, target_ulong>::const_iterator it;
-    it = stoppedInfo.find(curStackid);
-    if (it != stoppedInfo.end()) {
-        target_ulong stoppedPC = stoppedInfo[curStackid];
-        if (stoppedPC == tb->pc) {
-            stoppedInfo.erase(it);
-            needToCheck = false;
-            verbose_log("callstack_instr skipping return check", tb, curStackid,
-                    false);
-        }
+  // Search up to 10 down
+  for (int i = v.size() - 1; i > ((int)(v.size() - 10)) && i >= 0; i--) {
+    if (tb->pc == v[i].pc) {
+      // printf("Matched at depth %d\n", v.size()-i);
+      // v.erase(v.begin()+i, v.end());
+
+      PPP_RUN_CB(on_ret, cpu, w[i]);
+      v.erase(v.begin() + i, v.end());
+      w.erase(w.begin() + i, w.end());
+
+      break;
     }
-
-    if (needToCheck) {
-        std::vector<stack_entry> &v = callstacks[get_stackid(env)];
-        std::vector<target_ulong> &w = function_stacks[get_stackid(env)];
-        if (v.empty()) return 1;
-
-        // Search up to 10 down
-        for (int i = v.size()-1; i > ((int)(v.size()-10)) && i >= 0; i--) {
-            if (tb->pc == v[i].pc) {
-                //printf("Matched at depth %d\n", v.size()-i);
-                //v.erase(v.begin()+i, v.end());
-
-                PPP_RUN_CB(on_ret, cpu, w[i]);
-                v.erase(v.begin()+i, v.end());
-                w.erase(w.begin()+i, w.end());
-
-                break;
-            }
-        }
-    }
-
-
-    return 0;
+  }
 }
 
-int after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
-    target_ulong pc;
-    target_ulong cs_base;
-    uint32_t flags;
+void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
+    target_ulong pc = 0x0;
+    target_ulong cs_base = 0x0;
+    uint32_t flags = 0x0;
 
-    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
+    if (TB_EXIT_IDX1 < exitCode) {
+        return;
+    }
+
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     instr_type tb_type = call_cache[tb->pc];
     stackid curStackid = get_stackid(env);
 
-    // sometimes an attempt to run a block is interrupted, but this callback is
-    // still made - only update the callstack if the block ran to completion
-    if (exitCode <= TB_EXIT_IDX1) {
-        // this attempt is OK, so remove it from the Stopped list, if there
-        stoppedInfo.erase(curStackid);
+    if (tb_type == INSTR_CALL) {
+        stack_entry se = {tb->pc + tb->size, tb_type};
+        callstacks[curStackid].push_back(se);
 
-        if (tb_type == INSTR_CALL) {
-            stack_entry se = {tb->pc+tb->size,tb_type};
-            callstacks[curStackid].push_back(se);
-
-            // Also track the function that gets called
-            // This retrieves the pc in an architecture-neutral way
-            cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
-            function_stacks[curStackid].push_back(pc);
-
-            PPP_RUN_CB(on_call, cpu, pc);
-        }
-        else if (tb_type == INSTR_RET) {
-            //printf("Just executed a RET in TB " TARGET_FMT_lx "\n", tb->pc);
-            //if (next) printf("Next TB: " TARGET_FMT_lx "\n", next->pc);
-        }
-    }
-    // in case this block is one that a call returns to, need to note that its
-    // execution was interrupted, so don't try to remove it from the callstack
-    // when retry (as already removed it before this attempt)
-    else {
-        // verbose output is helpful in regression testing
-        if (tb_type == INSTR_CALL) {
-            verbose_log("callstack_instr not adding Stopped caller to stack",
-                    tb, curStackid, true);
-        }
-
+        // Also track the function that gets called
+        // This retrieves the pc in an architecture-neutral way
         cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
-        // C++ maps don't let you replace value of an existing key (grr)
-        // erase nicely does nothing if key DNE
-        stoppedInfo.erase(curStackid);
-        stoppedInfo[curStackid] = pc;
-    }
+        function_stacks[curStackid].push_back(pc);
 
-    return 1;
+        PPP_RUN_CB(on_call, cpu, pc);
+    } else if (tb_type == INSTR_RET) {
+        //printf("Just executed a RET in TB " TARGET_FMT_lx "\n", tb->pc);
+        //if (next) printf("Next TB: " TARGET_FMT_lx "\n", next->pc);
+    }
 }
 
 
@@ -505,7 +460,14 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
 // returns true if set up OK, and false if it was not
 bool setup_osi() {
     // moved out of init_plugin case statement to mollify SonarQube
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+#if defined(TARGET_I386)
+#if defined(TARGET_X86_64)
+    if (panda_os_familyno != OS_LINUX) {
+        fprintf(stderr,
+            "ERROR:  threaded stack_type is not supported on Windows 64-bit\n");
+        return false;
+    }
+#endif
     printf("callstack_instr:  setting up threaded stack_type\n");
     panda_require("osi");
     assert(init_osi_api());
@@ -513,7 +475,7 @@ bool setup_osi() {
     // specific deriviation
     return true;
 #else
-    fprintf(stderr, "ERROR:  threaded stack_type is only supported on x86 (32-bit)\n");
+    fprintf(stderr, "ERROR:  threaded stack_type is only supported on x86\n");
     return false;
 #endif
 }

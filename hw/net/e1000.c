@@ -706,14 +706,14 @@ process_tx_desc(E1000State *s, struct e1000_tx_desc *dp)
             if (rr_in_record()){
                 rr_record_net_transfer(RR_CALLSITE_E1000_PROCESS_TX_DESC_1,
                                        NET_TRANSFER_RAM_TO_IOB, addr,
-                                       (uint64_t)(tp->data + tp->size), bytes);
+                                       (uintptr_t)(tp->data + tp->size), bytes);
             }
             pci_dma_read(d, addr, tp->data + tp->size, bytes);
             sz = tp->size + bytes;
             if (sz >= tp->props.hdr_len && tp->size < tp->props.hdr_len) {
                 if (rr_in_record()){
                     rr_record_net_transfer(RR_CALLSITE_E1000_PROCESS_TX_DESC_MEMMOVE_1,
-                                           NET_TRANSFER_IOB_TO_IOB, (uint64_t)tp->data, (uint64_t)tp->header, tp->props.hdr_len);
+                                           NET_TRANSFER_IOB_TO_IOB, (uintptr_t)tp->data, (uintptr_t)tp->header, tp->props.hdr_len);
                 }
                 memmove(tp->header, tp->data, tp->props.hdr_len);
             }
@@ -723,7 +723,7 @@ process_tx_desc(E1000State *s, struct e1000_tx_desc *dp)
                 xmit_seg(s);
                 if (rr_in_record()){
                     rr_record_net_transfer(RR_CALLSITE_E1000_PROCESS_TX_DESC_MEMMOVE_2,
-                                           NET_TRANSFER_IOB_TO_IOB, (uint64_t)tp->header, (uint64_t)tp->data, tp->props.hdr_len);
+                                           NET_TRANSFER_IOB_TO_IOB, (uintptr_t)tp->header, (uintptr_t)tp->data, tp->props.hdr_len);
                 }
                 memmove(tp->data, tp->header, tp->props.hdr_len);
                 tp->size = tp->props.hdr_len;
@@ -739,7 +739,7 @@ process_tx_desc(E1000State *s, struct e1000_tx_desc *dp)
         // taint transfer mem->io
         if (rr_in_record()){
             rr_record_net_transfer(RR_CALLSITE_E1000_PROCESS_TX_DESC_2,
-                                   NET_TRANSFER_RAM_TO_IOB, (uint64_t)addr, (uint64_t)(tp->data + tp->size),
+                                   NET_TRANSFER_RAM_TO_IOB, (uintptr_t)addr, (uintptr_t)(tp->data + tp->size),
                                    split_size);
         }
         pci_dma_read(d, addr, tp->data + tp->size, split_size);
@@ -775,8 +775,8 @@ txdesc_writeback(E1000State *s, dma_addr_t base, struct e1000_tx_desc *dp)
     // taint transfer io->mem
     if (rr_in_record()){
         rr_record_net_transfer(RR_CALLSITE_E1000_TXDESC_WRITEBACK,
-                               NET_TRANSFER_IOB_TO_RAM, (uint64_t)(&dp->upper),
-                               (uint64_t)(base + ((char *)&dp->upper - (char *)dp)),
+                               NET_TRANSFER_IOB_TO_RAM, (uintptr_t)(&dp->upper),
+                               (uintptr_t)(base + ((char *)&dp->upper - (char *)dp)),
                                sizeof(dp->upper));
     }
     return E1000_ICR_TXDW;
@@ -810,7 +810,7 @@ start_xmit(E1000State *s)
         // taint transfer mem->io
         if (rr_in_record()){
             rr_record_net_transfer(RR_CALLSITE_E1000_START_XMIT,
-                                   NET_TRANSFER_RAM_TO_IOB, base, (uint64_t)(&desc), sizeof(desc));
+                                   NET_TRANSFER_RAM_TO_IOB, base, (uintptr_t)(&desc), sizeof(desc));
         }
         pci_dma_read(d, base, &desc, sizeof(desc));
 
@@ -958,7 +958,7 @@ e1000_receive_iov(NetClientState *nc, const struct iovec *iov, int iovcnt)
         // Hopefully this is correct
         if (rr_in_record()){
             rr_record_net_transfer(RR_CALLSITE_E1000_RECEIVE_MEMCPY_1,
-                                NET_TRANSFER_IOB_TO_IOB, (uint64_t)min_buf, (uint64_t)iov->iov_base, size);
+                                NET_TRANSFER_IOB_TO_IOB, (uintptr_t)min_buf, (uintptr_t)iov->iov_base, size);
         }
         iov_to_buf(iov, iovcnt, 0, min_buf, size);
         // RW shouldn't need to worry about this memset for taint
@@ -972,7 +972,7 @@ e1000_receive_iov(NetClientState *nc, const struct iovec *iov, int iovcnt)
         // SAC something should also happen here, if we didnt take the other branch
         if (rr_in_record()){
             rr_record_net_transfer(RR_CALLSITE_E1000_RECEIVE_MEMCPY_1,
-                                NET_TRANSFER_IOB_TO_IOB, (uint64_t)min_buf, (uint64_t)iov->iov_base, MAXIMUM_ETHERNET_HDR_LEN);
+                                NET_TRANSFER_IOB_TO_IOB, (uintptr_t)min_buf, (uintptr_t)iov->iov_base, MAXIMUM_ETHERNET_HDR_LEN);
         }
         /* This is very unlikely, but may happen. */
         iov_to_buf(iov, iovcnt, 0, min_buf, MAXIMUM_ETHERNET_HDR_LEN);
@@ -1025,7 +1025,7 @@ e1000_receive_iov(NetClientState *nc, const struct iovec *iov, int iovcnt)
         // taint transfer mem->io
         if (rr_in_record()){
             rr_record_net_transfer(RR_CALLSITE_E1000_RECEIVE_1,
-                                   NET_TRANSFER_RAM_TO_IOB, base, (uint64_t)(&desc), sizeof(desc));
+                                   NET_TRANSFER_RAM_TO_IOB, base, (uintptr_t)(&desc), sizeof(desc));
         }
         pci_dma_read(d, base, &desc, sizeof(desc));
         desc.special = vlan_special;
@@ -1062,7 +1062,7 @@ e1000_receive_iov(NetClientState *nc, const struct iovec *iov, int iovcnt)
                         // Then, record the DMA
                         rr_record_net_transfer(RR_CALLSITE_E1000_RECEIVE_2,
                                                NET_TRANSFER_IOB_TO_RAM,
-                                               (uint64_t)(iov->iov_base + iov_ofs),
+                                               (uintptr_t)(iov->iov_base + iov_ofs),
                                                ba, iov_copy);
                     }
                     copy_size -= iov_copy;
@@ -1092,7 +1092,7 @@ e1000_receive_iov(NetClientState *nc, const struct iovec *iov, int iovcnt)
         // taint transfer io->mem
         if (rr_in_record()){
             rr_record_net_transfer(RR_CALLSITE_E1000_RECEIVE_3,
-                                   NET_TRANSFER_IOB_TO_RAM, (uint64_t)(&desc), base, sizeof(desc));
+                                   NET_TRANSFER_IOB_TO_RAM, (uintptr_t)(&desc), base, sizeof(desc));
         }
 
         if (++s->mac_reg[RDH] * sizeof(desc) >= s->mac_reg[RDLEN])

@@ -20,7 +20,6 @@ uint64_t checkpoint_instr_size;
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-
 bool before_block_exec(CPUState *env, TranslationBlock *tb);
 void after_init(CPUState *env);
 
@@ -29,9 +28,9 @@ bool before_block_exec(CPUState *env, TranslationBlock *tb) {
 
     if (progress == 0 || rr_get_guest_instr_count()/checkpoint_instr_size > progress) {
         progress++;
-        printf("Taking panda checkpoint %u... at %lu\n", progress, rr_get_guest_instr_count());
+        LOG_INFO("Taking panda checkpoint %u... at %" PRIu64, progress, rr_get_guest_instr_count());
         panda_checkpoint();
-        printf("Done.\n");
+        LOG_INFO("Done.");
     }
 
     // If this found tb could contain a breakpoint or watchpoint that is set for some instruction count,
@@ -57,23 +56,21 @@ void after_init(CPUState* env) {
     parse_option_size("space", avail_space, &space_bytes, NULL );
 
     // Get approx size of each checkpoint
-    printf("Avail space %lx, ram_size %lx\n", space_bytes, ram_size);
+    LOG_INFO("Avail space %" PRIx64 ", ram_size %" PRIx64, space_bytes, ram_size);
     if (space_bytes < ram_size){
-        fprintf(stderr, "Not enough RAM for a checkpoint!\n");
+        LOG_ERROR("Not enough RAM for a checkpoint!");
         abort();
     }
     uint64_t num_checkpoints = space_bytes/ram_size;
-    printf("Number of checkpoints allowed:  %lu\n", num_checkpoints);
+    LOG_INFO("Number of checkpoints allowed:  %" PRIu64, num_checkpoints);
     checkpoint_instr_size = rr_nondet_log->last_prog_point.guest_instr_count/num_checkpoints;
-    if (checkpoint_instr_size < 500000)
+    if (checkpoint_instr_size < 500000) {
         checkpoint_instr_size = 500000;
-
-    printf("Instructions per checkpoint: %lu\n", checkpoint_instr_size);
-
+    }
+    LOG_INFO("Instructions per checkpoint: %" PRIu64, checkpoint_instr_size);
 }
 
 bool init_plugin(void *self) {
-
     panda_cb pcb;
     pcb.before_block_exec_invalidate_opt = before_block_exec ;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);

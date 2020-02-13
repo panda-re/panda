@@ -52,6 +52,7 @@
 #include "sysemu/replay.h"
 
 #include "panda/rr/rr_log.h"
+#include "panda/callbacks/cb-support.h"
 
 #ifdef CONFIG_LINUX
 
@@ -81,8 +82,6 @@ static unsigned int throttle_percentage;
 #define CPU_THROTTLE_PCT_MIN 1
 #define CPU_THROTTLE_PCT_MAX 99
 #define CPU_THROTTLE_TIMESLICE_NS 10000000
-
-extern void panda_callbacks_top_loop(void);
 
 extern bool rr_replay_complete;
 extern bool panda_exit_loop;
@@ -880,7 +879,7 @@ void cpu_synchronize_all_post_init(void)
     }
 }
 
-static int do_vm_stop(RunState state)
+int do_vm_stop(RunState state)
 {
     int ret = 0;
 
@@ -1277,7 +1276,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
     while (1) {
 
         if (!rr_replay_complete) {
-            panda_callbacks_top_loop();
+            panda_callbacks_top_loop(cpu);
         }
 
         /* Account partial waits to QEMU_CLOCK_VIRTUAL.  */
@@ -1310,8 +1309,10 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
 
             cpu = CPU_NEXT(cpu);
 
-            if (panda_exit_loop) {
+            if (panda_exit_loop) { // If we have a request to break, do so and
+                                   // unset panda_exit_loop
                 panda_exit_loop = false;
+                //atomic_mb_set(&cpu->exit_request, 1); // XXX: Should we set an exit request?
                 break;
             }
 

@@ -66,7 +66,7 @@ void taint_change(Addr a, uint64_t size) {
         && (num_tainted_instr_observed == num_tainted_instr)) {
         // analysis complete
         printf ("tainted_instr ending early -- seen enough\n");
-        panda_end_replay();
+        panda_replay_end();
         replay_ended = true;
         return;
     }

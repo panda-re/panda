@@ -28,7 +28,6 @@ PANDAENDCOMMENT */
 
 #include <cstdint>
 #include <cstdlib>
-#include <cassert>
 
 #include "shad_dir_64.h"
 
@@ -52,7 +51,7 @@ static SdTable *__shad_dir_table_new_64(SdDir64 *shad_dir, uint8_t table_table) 
 
 
 static void __shad_dir_table_free_64(SdDir64 *shad_dir, SdTable *table) {
-  assert (table->num_non_empty == 0);
+  tassert (table->num_non_empty == 0);
   if (table->table != NULL) {
     free(table->table);
   }
@@ -71,7 +70,7 @@ static SdPage *__shad_dir_page_new_64(SdDir64 *shad_dir) {
 }
 
 static void __shad_dir_page_free_64(SdDir64 *shad_dir, SdPage *page) {
-  assert (page->num_non_empty == 0);
+  tassert (page->num_non_empty == 0);
   free(page->labels);
   free(page);
 }
@@ -89,12 +88,12 @@ SdDir64 *shad_dir_new_64
      (uint32_t num_dir_bits,
       uint32_t num_table_bits,
       uint32_t num_page_bits) {
-  assert (num_dir_bits < 32 && num_table_bits < 32 && num_page_bits < 32);
+  tassert (num_dir_bits < 32 && num_table_bits < 32 && num_page_bits < 32);
   SdDir64 *shad_dir = (SdDir64 *) calloc(1, sizeof(SdDir64));
   shad_dir->num_dir_bits = num_dir_bits;
   shad_dir->num_table_bits = num_table_bits;
   shad_dir->num_page_bits = num_page_bits;
-  assert (64 == num_dir_bits + 3*num_table_bits + num_page_bits);
+  tassert (64 == num_dir_bits + 3*num_table_bits + num_page_bits);
   shad_dir->dir_size = 1 << num_dir_bits;
   shad_dir->table_size = 1 << num_table_bits;
   shad_dir->page_size = 1 << num_page_bits;
@@ -341,31 +340,31 @@ void shad_dir_remove_64(SdDir64 *shad_dir, uint64_t addr) {
     page->num_non_empty --;
   }
   page->labels[offset] = NULL;
-  assert (page->num_non_empty >= 0);
+  tassert (page->num_non_empty >= 0);
   if (page->num_non_empty == 0) {
     // page empty -- release it
     __shad_dir_page_free_64(shad_dir, page);
     table3->page[t3i] = NULL;
     table3->num_non_empty--;
-    assert (table3->num_non_empty >= 0);
+    tassert (table3->num_non_empty >= 0);
     if (table3->num_non_empty == 0) {
       // level 3 table empty -- release it
       __shad_dir_table_free_64(shad_dir, table3);
       table2->table[t2i] = NULL;
       table2->num_non_empty--;
-      assert (table2->num_non_empty >= 0);
+      tassert (table2->num_non_empty >= 0);
       if (table2->num_non_empty == 0) {
 	// level 2 table empty -- release it
 	__shad_dir_table_free_64(shad_dir, table2);
 	table1->table[t1i] = NULL;
 	table1->num_non_empty--;
-	assert (table1->num_non_empty >= 0);
+	tassert (table1->num_non_empty >= 0);
 	if (table1->num_non_empty == 0) {
 	  // level 1 table empty -- release it
 	  __shad_dir_table_free_64(shad_dir, table1);
 	  shad_dir->table[di] = NULL;
 	  shad_dir->num_non_empty--;
-	  assert (shad_dir->num_non_empty >= 0);
+	  tassert (shad_dir->num_non_empty >= 0);
 	}
       }
     }

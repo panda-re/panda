@@ -34,7 +34,7 @@
 
 #include "panda/rr/rr_log_all.h"
 #include "panda/rr/rr_log.h"
-#include "panda/callback_support.h"
+#include "panda/callbacks/cb-support.h"
 
 /* DEBUG defines, enable DEBUG_TLB_LOG to log to the CPU_LOG_MMU target */
 /* #define DEBUG_TLB */
@@ -811,7 +811,7 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
         /* replay= */ rr_input_8(&val),
         /* location= */ RR_CALLSITE_IO_READ_ALL);
 
-    panda_callbacks_after_mmio_read(cpu, physaddr, size, val);
+    panda_callbacks_mmio_after_read(cpu, physaddr, addr, size, &val);
 
     return val;
 }
@@ -832,6 +832,8 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     cpu->mem_io_vaddr = addr;
     cpu->mem_io_pc = retaddr;
 
+    panda_callbacks_mmio_before_write(cpu, physaddr, addr, size, &val);
+
     if (mr->name && !strcmp(mr->name, "watch")){
         memory_region_dispatch_write(mr, physaddr, val, size, iotlbentry->attrs);
         return;
@@ -847,8 +849,6 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     } else {
         memory_region_dispatch_write(mr, physaddr, val, size, iotlbentry->attrs);
     }
-
-    panda_callbacks_after_mmio_write(cpu, physaddr, size, val);
 }
 
 /* Return true if ADDR is present in the victim tlb, and has been copied

@@ -1,12 +1,23 @@
-#include <cstdint>
+#ifndef __TAINT_API_H_
+#define __TAINT_API_H_
 
+
+#ifdef __cplusplus
+#include <cstdint>
+#endif
+
+#ifndef PYPANDA
 #include "taint2.h"
+#endif
+
+
 
 extern "C" {
 // For the C API to taint accessible from other plugins
 void taint2_enable_taint(void);
 void taint2_enable_tainted_pointer(void);
 int taint2_enabled(void);
+void taint2_label_addr(Addr a, int offset, uint32_t l) ;
 void taint2_label_ram(uint64_t pa, uint32_t l) ;
 void taint2_label_reg(int reg_num, int offset, uint32_t l) ;
 void taint2_label_io(uint64_t ia, uint32_t l);
@@ -53,5 +64,18 @@ void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, 
 uint32_t taint2_num_labels_applied(void);
 
 void taint2_track_taint_state(void);
+
+//typedef uint32_t TaintLabel;
+
+void taint2_query_results_iter(QueryResult *qr);
+
+uint32_t taint2_query_result_next(QueryResult *qr, bool *done);
+
+void taint2_query_reg_full(uint32_t reg_num, uint32_t offset, QueryResult *qr);
+
+void taint2_query_ram_full(uint64_t pa, QueryResult *qr);
+
 }
 
+
+#endif

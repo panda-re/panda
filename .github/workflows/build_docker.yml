@@ -1,0 +1,28 @@
+name: Build and Publish Docker Container
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Docker login
+      run: docker login -u pandare -p ${{secrets.pandare_dockerhub}}
+
+    - name: Build Bionic container
+      run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_18_04 -t pandare/panda:latest;
+            docker tag  pandare/panda:latest pandare/panda:${GITHUB_SHA};
+            docker push pandare/panda:${GITHUB_SHA};
+            docker push pandare/panda:latest
+
+    - name: Build Xenial container
+      run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_16_04 -t pandare/panda_xenial:latest;
+            docker tag  pandare/panda_xenial:latest pandare/panda_xenial:${GITHUB_SHA};
+            docker push pandare/panda_xenial:${GITHUB_SHA};
+            docker push pandare/panda_xenial:latest

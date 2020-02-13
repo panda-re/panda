@@ -16,6 +16,8 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 #include <libgen.h>
+#include <limits.h>
+#include <stdlib.h>
 
 // glib provides some nifty string manipulation functions
 // https://developer.gnome.org/glib/stable/glib-String-Utility-Functions.html
@@ -128,43 +130,27 @@ bool init_plugin(void *self) {
     // figure out what kind of os introspection is needed and grab it? 
     if (panda_os_familyno == OS_LINUX) {
         // sadly, all of this is to find kernelinfo.conf file
-        const gchar *progname = qemu_file;
-        gchar *progname_path;
-        gchar *progdir;
+        gchar *progname = realpath(qemu_file, NULL);
+        gchar *progdir = g_path_get_dirname(progname);
+        gchar *kconffile = NULL;
+        gchar *kconffile_canon = NULL;
+        uint8_t UNUSED(kconffile_try) = 1;
 
-        // get absolute path to qemu program name and dir
-        if (!g_path_is_absolute(progname)) {
-            gchar *cwd = g_get_current_dir();
-            progname_path = g_build_filename(cwd, progname, NULL);
-            g_free(cwd);
-            progdir = g_path_get_dirname(progname_path);
-            g_free(progname_path);
-        }
-        else {
-            progdir = g_path_get_dirname(progname);
-        }
-
-        // get path to kconffile and canonicalize
-        gchar *kconffile = g_build_filename(progdir, "panda", "plugins", "osi_linux", "kernelinfo.conf", NULL);
-        printf("Looking for kconffile in %s\n", kconffile);
-        gchar *kconffile_canon = realpath(kconffile, NULL);
-        if (kconffile_canon == NULL) {
-            g_free(kconffile);
-            kconffile = g_build_filename(progdir, "..",
-                    "panda", "plugins",
-                    "osi_linux", "kernelinfo.conf", NULL);
-            printf("Looking for kconffile in %s\n", kconffile);
+        if (kconffile_canon == NULL) {  // from build dir
+            if (kconffile != NULL) g_free(kconffile);
+            kconffile = g_build_filename(progdir, "panda", "plugins", "osi_linux", "kernelinfo.conf", NULL);
+            LOG_INFO("Looking for kconffile attempt %u: %s", kconffile_try++, kconffile);
             kconffile_canon = realpath(kconffile, NULL);
         }
-        if (kconffile_canon == NULL) {
-            g_free(kconffile);
-            kconffile =
-                g_build_filename(progdir, "..", "lib", "panda", TARGET_NAME,
-                                 "osi_linux", "kernelinfo.conf", NULL);
-            printf("Looking for kconffile in %s\n", kconffile);
+        if (kconffile_canon == NULL) {  // from etc dir (installed location)
+            if (kconffile != NULL) g_free(kconffile);
+            kconffile = g_build_filename(CONFIG_QEMU_CONFDIR, "osi_linux", "kernelinfo.conf", NULL);
+            LOG_INFO("Looking for kconffile attempt %u: %s", kconffile_try++, kconffile);
             kconffile_canon = realpath(kconffile, NULL);
         }
+
         g_free(progdir);
+        free(progname);
         assert(kconffile_canon != NULL);
 
         // convert stdlib buffer to glib buffer
@@ -185,15 +171,15 @@ bool init_plugin(void *self) {
         g_free(plugin_arg);
 
         // print info and finish
-        g_printf("OSI grabbing Linux introspection backend.\n");
-        g_printf("Linux OSI, using group %s from %s.\n", kconfgroup, kconffile);
+        LOG_INFO("OSI grabbing Linux introspection backend.");
+        LOG_INFO("Linux OSI, using group %s from %s.", kconfgroup, kconffile);
         g_free(kconffile);
         g_free(kconfgroup);
 
         panda_require("osi_linux");
     }
     if (panda_os_familyno == OS_WINDOWS) {
-        g_printf("OSI grabbing Windows introspection backend.\n");
+        LOG_INFO("OSI grabbing Windows introspection backend.");
         panda_require("wintrospection");
     }
     return true;

@@ -43,10 +43,15 @@ typedef target_ulong target_ptr_t;
 /** @brief Print format for guest VM pointers. */
 #define TARGET_PTR_FMT TARGET_FMT_lx
 
-/** @brief Type for the guest VM pids. */
-typedef target_ulong target_pid_t;
+/**
+ * @brief Type for the guest VM pids.
+ * We use the type mostly for denoting argumant/variable semantics.
+ * In principle, the pid type depends on the guest-OS. However, so
+ * far we have only met cases of operating systems with 32bit pids.
+ */
+typedef uint32_t target_pid_t;
 
 /** @brief Print format for guest VM pids. */
-#define TARGET_PID_FMT TARGET_FMT_lu
+#define TARGET_PID_FMT "%u"
 
 /* vim:set tabstop=4 softtabstop=4 expandtab: */

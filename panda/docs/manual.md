@@ -21,6 +21,7 @@
     - [Precise program counter](#precise-program-counter)
     - [Memory access](#memory-access)
     - [LLVM control](#llvm-control)
+    - [Record control](#record-control)
     - [Miscellany](#miscellany)
 - [Record/Replay Details](#recordreplay-details)
   - [Introduction](#introduction)
@@ -310,28 +311,65 @@ translation step is added from the TCG IR to the LLVM IR, and that is executed
 on the LLVM JIT.  Currently, this only works when QEMU is starting up, but we
 are hoping to support dynamic configuration of code generation soon.
 
+#### Record control
+```C
+int panda_record_begin(const char *name, const char *snapshot);
+int panda_record_end(void);
+int panda_replay_begin(const char *name);
+int panda_replay_end(void);
+```
+These functions can be used to programatically start/stop recording on PANDA.
+Starting/stopping does not happen imediatelly at the time the functions are
+called. Instead, a request to start/stop recording is registered to be applied
+at the end of the currently executing basic block. Only one request can be
+queued at any time.
+The `name` argument is mandatory and is used to derive the snapshot/log
+filenames to be created/used.
+The `snapshot` argument is optional (i.e. can be `NULL`). If supplied,
+the state of the VM will be reverted to the QEMU snapshot with that name.
+
+Possible return values are:
+  * `RRCTRL_OK`: Request registered successfully.
+  * `RRCTRL_EPENDING`: Request ignored because another record/replay state
+    change request is pending.
+  * `RRCTRL_ERROR`: Request is invalid. E.g. because you are trying to end
+    a recording during a replay.
 
 #### Miscellany
-```C
-void panda_memsavep(FILE *out);
-```
-Saves a physical memory snapshot into the open file pointer `out`. This function
-is guaranteed not to perturb guest state.
-```C
-target_ulong panda_current_asid(CPUState *env);
-```
-Returns the current asid for a variety of architectures (`cr3` for x86, e.g.).
-```C
-bool panda_in_kernel(CPUState *env);
-```
-Returns true if the processor is in the privilege level corresponding to
-executing kernel code for various architectures.
-
-```C
-void panda_disas(FILE *out, void *code, unsigned long size);
-```
-Writes a textual representation of disassembly of the guest code at virtual
-address `code` of `size` bytes.
+  * ```C
+    void panda_memsavep(FILE *out);
+    ```
+    Saves a physical memory snapshot into the open file pointer `out`.
+    This function is guaranteed not to perturb guest state.
+  * ```C
+    target_ulong panda_current_asid(CPUState *cpu);
+    ```
+    Returns the current asid for any of the PANDA supported
+    architectures (e.g. `cr3` for x86).
+  * ```C
+    bool panda_in_kernel(CPUState *cpu);
+    ```
+    Returns `true` if the processor is in the privilege level
+    corresponding to executing kernel code for any of the PANDA
+    supported architectures.
+  * ```C
+    target_ulong panda_current_sp(CPUState *cpu);
+    ```
+    Returns the guest stack pointer for any of the PANDA supported
+    architectures.
+  * ```C
+    target_ulong panda_get_retval(CPUState *cpu);
+    ```
+    Retrieves the return value of a returned call for any of the
+    PANDA supported architectures. The function has to be called in
+    the proper context in order to return a meaningful value. If the
+    context is not right (i.e. the return value has already been
+    overwritten), it will return garbage.
+  * ```C
+    void panda_disas(FILE *out, void *code, unsigned long size);
+    ```
+    Writes a textual representation of disassembly of the guest code
+    at virtual address `code` of `size` bytes.
 
 ## Record/Replay Details
 
@@ -569,13 +607,13 @@ PANDA_CB_VIRT_MEM_AFTER_WRITE,  // After write to virtual memory
 PANDA_CB_PHYS_MEM_AFTER_READ,   // After read of physical memory
 PANDA_CB_PHYS_MEM_AFTER_WRITE,  // After write to physical memory
 PANDA_CB_MMIO_AFTER_READ,       // After each MMIO read
-PANDA_CB_MMIO_AFTER_WRITE,      // After each MMIO write
+PANDA_CB_MMIO_BEFORE_WRITE,     // Before each MMIO write
 PANDA_CB_HD_READ,               // Each HDD read
 PANDA_CB_HD_WRITE,              // Each HDD write
 PANDA_CB_GUEST_HYPERCALL,       // Hypercall from the guest (e.g. CPUID)
 PANDA_CB_MONITOR,               // Monitor callback
 PANDA_CB_CPU_RESTORE_STATE,     // In cpu_restore_state() (fault/exception)
-PANDA_CB_BEFORE_REPLAY_LOADVM,  // At start of replay, before loadvm
+PANDA_CB_BEFORE_LOADVM,         // At start of replay, before loadvm
 PANDA_CB_ASID_CHANGED,          // After an ASID (address space identifier - aka PGD) write
 PANDA_CB_REPLAY_HD_TRANSFER,    // In replay, hd transfer
 PANDA_CB_REPLAY_NET_TRANSFER,   // In replay, transfers within network card (currently only E1000)
@@ -809,104 +847,104 @@ plugin). For their prototypes, have a look at `panda_plugin.h`.
 ### Plugin Zoo
 
 We have written a bunch of generic plugins for use in analyzing replays. Each
-one has a USAGE.md file linked here for further explanation.
+one has a README.md file linked here for further explanation.
 
 #### Taint-related plugins
-* [`taint2`](../plugins/taint2/USAGE.md) - Modern taint plugin. Required by most other taint plugins. `Already ported from panda1`
-* [`ida_taint2`](../../../panda1/qemu/panda_plugins/ida_taint2/USAGE.md) - IDA taint
+* [`taint2`](../plugins/taint2/README.md) - Modern taint plugin. Required by most other taint plugins. `Already ported from panda1`
+* [`ida_taint2`](../../../panda1/qemu/panda_plugins/ida_taint2/README.md) - IDA taint
   integration.
-* [`file_taint`](../plugins/file_taint/USAGE.md) - Syscall and
+* [`file_taint`](../plugins/file_taint/README.md) - Syscall and
   OSI-based automatic tainting of file input by filename. `Already ported from panda1`
-* [`tainted_branch`](../plugins/tainted_branch/USAGE.md) - Find
+* [`tainted_branch`](../plugins/tainted_branch/README.md) - Find
   conditional branches where the choice depends on tainted data. `Already ported from panda1`
-* [`tainted_instr`](../../../panda1/qemu/panda_plugins/tainted_instr/USAGE.md) - Find
+* [`tainted_instr`](../plugins/tainted_instr/README.md) - Find
   instructions which process tainted data.
-* [`taint_compute_numbers`](../../../panda1/qemu/panda_plugins/taint_compute_numbers/USAGE.md)
+* [`taint_compute_numbers`](../../../panda1/qemu/panda_plugins/taint_compute_numbers/README.md)
   \- Analyze taint compute numbers (computation tree depth) for tainted data.
-* [`tstringsearch`](../../../panda1/qemu/panda_plugins/tstringsearch/USAGE.md) - Automatically
+* [`tstringsearch`](../plugins/tstringsearch/README.md) - Automatically
   taint all occurrences of a certain string.
 
 ##### Old generation
-* [`taint`](../../../panda1/qemu/panda_plugins/taint/USAGE.md) - Old taint plugin.
-* [`ida_taint`](../../../panda1/qemu/panda_plugins/ida_taint/USAGE.md) - IDA taint
+* [`taint`](../../../panda1/qemu/panda_plugins/taint/README.md) - Old taint plugin.
+* [`ida_taint`](../../../panda1/qemu/panda_plugins/ida_taint/README.md) - IDA taint
   integration for old taint plugin.
 
 #### Plugins related to [Tappan Zee (North) Bridge](http://wenke.gtisc.gatech.edu/papers/tzb.pdf)
-* [`stringsearch`](../plugins/stringsearch/USAGE.md) - Mine memory accesses for a particular string. `Already ported from panda1`
-* [`textfinder`](../../../panda1/qemu/panda_plugins/textfinder/USAGE.md)
-* [`textprinter`](../../../panda1/qemu/panda_plugins/textprinter/USAGE.md)
-* [`textprinter_fast`](../../../panda1/qemu/panda_plugins/textprinter_fast/USAGE.md)
-* [`unigrams`](../../../panda1/qemu/panda_plugins/unigrams/USAGE.md)
-* [`bigrams`](../../../panda1/qemu/panda_plugins/bigrams/USAGE.md)
-* [`memdump`](../../../panda1/qemu/panda_plugins/memdump/USAGE.md)
-* [`keyfind`](../../../panda1/qemu/panda_plugins/keyfind/USAGE.md)
-* [`memsnap`](../../../panda1/qemu/panda_plugins/memsnap/USAGE.md)
-* [`memstrings`](../../../panda1/qemu/panda_plugins/memstrings/USAGE.md)
-* [`correlatetaps`](../../../panda1/qemu/panda_plugins/correlatetaps/USAGE.md)
-* [`tapindex`](../../../panda1/qemu/panda_plugins/tapindex/USAGE.md)
+* [`stringsearch`](../plugins/stringsearch/README.md) - Mine memory accesses for a particular string. `Already ported from panda1`
+* [`textfinder`](../../../panda1/qemu/panda_plugins/textfinder/README.md)
+* [`textprinter`](../plugins/textprinter/README.md)
+* [`textprinter_fast`](../../../panda1/qemu/panda_plugins/textprinter_fast/README.md)
+* [`unigrams`](../plugins/unigrams/README.md)
+* [`bigrams`](../../../panda1/qemu/panda_plugins/bigrams/README.md)
+* [`memdump`](../../../panda1/qemu/panda_plugins/memdump/README.md)
+* [`keyfind`](../../../panda1/qemu/panda_plugins/keyfind/README.md)
+* [`memsnap`](../../../panda1/qemu/panda_plugins/memsnap/README.md)
+* [`memstrings`](../../../panda1/qemu/panda_plugins/memstrings/README.md)
+* [`correlatetaps`](../../../panda1/qemu/panda_plugins/correlatetaps/README.md)
+* [`tapindex`](../../../panda1/qemu/panda_plugins/tapindex/README.md)
 
 #### Callstack Tracking
-* [`callstack_instr`](../plugins/callstack_instr/USAGE.md) -
+* [`callstack_instr`](../plugins/callstack_instr/README.md) -
   Instruction-based callstack tracing. `Already ported from panda1`
-* [`fullstack`](../../../panda1/qemu/panda_plugins/fullstack/USAGE.md)
-* [`printstack`](../../../panda1/qemu/panda_plugins/printstack/USAGE.md)
-* [`callstack_block_pc`](../../../panda1/qemu/panda_plugins/callstack_block_pc/USAGE.md) -
+* [`fullstack`](../../../panda1/qemu/panda_plugins/fullstack/README.md)
+* [`printstack`](../../../panda1/qemu/panda_plugins/printstack/README.md)
+* [`callstack_block_pc`](../../../panda1/qemu/panda_plugins/callstack_block_pc/README.md) -
   Old block-based callstack tracing.
 
 #### Operating System Introspection (OSI) plugins
-* [`osi`](../plugins/osi/USAGE.md) - Operating system introspection
+* [`osi`](../plugins/osi/README.md) - Operating system introspection
   framework. `Already ported from panda1`
-* [`osi_linux`](../plugins/osi_linux/USAGE.md) - Generic Linux OSI. `Already ported from panda1`
-* [`osi_test`](../../../panda1/qemu/panda_plugins/osi_test/USAGE.md)
-* [`osi_winxpsp3x86`](../../../panda1/qemu/panda_plugins/osi_winxpsp3x86/USAGE.md) - OSI for
+* [`osi_linux`](../plugins/osi_linux/README.md) - Generic Linux OSI. `Already ported from panda1`
+* [`osi_test`](../plugins/osi_test/README.md)
+* [`osi_winxpsp3x86`](../../../panda1/qemu/panda_plugins/osi_winxpsp3x86/README.md) - OSI for
   Windows XP SP3 x86.
-* [`asidstory`](../plugins/asidstory/USAGE.md) - ASCII art view of
+* [`asidstory`](../plugins/asidstory/README.md) - ASCII art view of
   process execution inside VM. `Already ported from panda1`
-* [`linux_vmi`](../../../panda1/qemu/panda_plugins/linux_vmi/USAGE.md) - Alternate Linux OSI
+* [`linux_vmi`](../../../panda1/qemu/panda_plugins/linux_vmi/README.md) - Alternate Linux OSI
   system from DECAF.
-* [`debianwheezyx86intro`](../../../panda1/qemu/panda_plugins/debianwheezyx86intro/USAGE.md) -
+* [`debianwheezyx86intro`](../../../panda1/qemu/panda_plugins/debianwheezyx86intro/README.md) -
   OSI for Debian 7 x86.
-* [`testdebintro`](../../../panda1/qemu/panda_plugins/testdebintro/USAGE.md)
-* [`win7x86intro`](../plugins/win7x86intro/USAGE.md) - OSI for Windows
+* [`testdebintro`](../../../panda1/qemu/panda_plugins/testdebintro/README.md)
+* [`win7x86intro`](../plugins/win7x86intro/README.md) - OSI for Windows
   7 x86.
 
 #### System call logging & analysis
 
 ##### Current generation
-* [`syscalls2`](../plugins/syscalls2/USAGE.md) - Modern syscalls tracking. `Already ported from panda1`
-* [`win7proc`](../../../panda1/qemu/panda_plugins/win7proc/USAGE.md) - Semantic pandalog
+* [`syscalls2`](../plugins/syscalls2/README.md) - Modern syscalls tracking. `Already ported from panda1`
+* [`win7proc`](../../../panda1/qemu/panda_plugins/win7proc/README.md) - Semantic pandalog
   interpretation of syscalls for Windows 7 x86.
 
 ##### Old generation
-* [`syscalls`](../../../panda1/qemu/panda_plugins/syscalls/USAGE.md) - Old syscalls tracking.
-* [`fdtracker`](../../../panda1/qemu/panda_plugins/fdtracker/USAGE.md) - Old file descriptor
+* [`syscalls`](../../../panda1/qemu/panda_plugins/syscalls/README.md) - Old syscalls tracking.
+* [`fdtracker`](../../../panda1/qemu/panda_plugins/fdtracker/README.md) - Old file descriptor
   tracking.
 
 #### Miscellaneous
-* [`bir`](../../../panda1/qemu/panda_plugins/bir/USAGE.md) - Binary Information Retrieval.
+* [`bir`](../../../panda1/qemu/panda_plugins/bir/README.md) - Binary Information Retrieval.
   Used to correspond executables on disk with code executing in memory.
-* [`tralign`](../../../panda1/qemu/panda_plugins/tralign/USAGE.md) - Align parts of execution
+* [`tralign`](../../../panda1/qemu/panda_plugins/tralign/README.md) - Align parts of execution
   traces.
-* [`bufmon`](../../../panda1/qemu/panda_plugins/bufmon/USAGE.md) - Monitor all memory accesses
+* [`bufmon`](../../../panda1/qemu/panda_plugins/bufmon/README.md) - Monitor all memory accesses
   to a particular memory region.
-* [`coverage`](../../../panda1/qemu/panda_plugins/coverage/USAGE.md)
-* [`llvm_trace`](../../../panda1/qemu/panda_plugins/llvm_trace/USAGE.md) - Record trace of
+* [`coverage`](../plugins/coverage/README.md)
+* [`llvm_trace`](../../../panda1/qemu/panda_plugins/llvm_trace/README.md) - Record trace of
   dynamic information necessary for later analysis.
-* [`lsmll`](../../../panda1/qemu/panda_plugins/lsmll/USAGE.md)
-* [`memsavep`](../plugins/memsavep/USAGE.md) - Create a dump of
+* [`lsmll`](../../../panda1/qemu/panda_plugins/lsmll/README.md)
+* [`memsavep`](../plugins/memsavep/README.md) - Create a dump of
   physical memory at a given point in a replay. The dump can then be fed to
   Volatility. `Already ported from panda1`
-* [`memstats`](../../../../../panda1/qemu/panda_panda1/qemu/panda_plugins/memstats/USAGE.md)
-* [`network`](../../../panda1/qemu/panda_plugins/network/USAGE.md)
-* [`pmemaccess`](../../../panda1/qemu/panda_plugins/pmemaccess/USAGE.md)
-* [`rehosting`](../../../panda1/qemu/panda_plugins/rehosting/USAGE.md)
-* [`replaymovie`](../../../panda1/qemu/panda_plugins/replaymovie/USAGE.md) - Write a series of
+* [`memstats`](../../../../../panda1/qemu/panda_panda1/qemu/panda_plugins/memstats/README.md)
+* [`network`](../plugins/network/README.md)
+* [`pmemaccess`](../../../panda1/qemu/panda_plugins/pmemaccess/README.md)
+* [`rehosting`](../../../panda1/qemu/panda_plugins/rehosting/README.md)
+* [`replaymovie`](../plugins/replaymovie/README.md) - Write a series of
   framebuffer screenshots to the current directory. Use movie.sh to turn them
   into a movie.
-* [`sample`](../../../panda1/qemu/panda_plugins/sample/USAGE.md)
-* [`scissors`](../plugins/scissors/USAGE.md) - Cut out a smaller piece
+* [`sample`](../../../panda1/qemu/panda_plugins/sample/README.md)
+* [`scissors`](../plugins/scissors/README.md) - Cut out a smaller piece
   of a given replay. `Already ported from panda1`
-* [`useafterfree`](../../../panda1/qemu/panda_plugins/useafterfree/USAGE.md) - Track memory
+* [`useafterfree`](../../../panda1/qemu/panda_plugins/useafterfree/README.md) - Track memory
   allocations and search for uses after frees.
 
 
@@ -1200,7 +1238,7 @@ You can use custom or prebuilt plugins to analyze a replay at the full OS level.
 
 * How do I trim my replay to include the executed parts of interest?
 
-That's what the [`scissors`](../plugins/scissors/USAGE.md) plugin is for!
+That's what the [`scissors`](../plugins/scissors/README.md) plugin is for!
 
 * I'm getting an error like `Length mismatch: pc.ram: 0x100000000 in != 0x8000000: Invalid argument`, what do I do?
 
@@ -1239,6 +1277,13 @@ int (*before_block_translate)(CPUState *env, target_ulong pc);
 **Return value**:
 
 unused
+
+**Notes**:
+
+This is a good place to perform extra passes over the generated
+code (particularly by manipulating the LLVM code)
+**FIXME**: How would this actually work? By this point the out ASM
+has already been generated. Modify the IR and then regenerate?
 
 **Signature**:
 ```C
@@ -1390,7 +1435,7 @@ int (*virt_mem_before_read)(CPUState *env, target_ulong pc,target_ulong addr, ta
 ```
 ---
 
-`virt_mem_before_write`: called before memory is read
+`virt_mem_before_write`: called before memory is write
 
 **Callback ID**: `PANDA_CB_VIRT_MEM_BEFORE_WRITE`
 
@@ -1589,37 +1634,61 @@ hypercall to pass information from inside the guest to a plugin
 
 **Return value**:
 
-unused
+`true` if the callback has processed the hypercall, `false` if the
+hypercall has been ignored.
 
 **Notes**:
 
-On x86, this is called whenever CPUID is executed. Plugins then check for magic
-values in the registers to determine if it really is a guest hypercall.
-Parameters can be passed in other registers.  We have modified translate.c to
-make CPUID instructions end translation blocks.  This is useful, if, for
-example, you want to have a hypercall that turns on LLVM and enables heavyweight
-instrumentation at a specific point in execution.
+This feature is implemented using the CPUID instruction for x86 guests
+and the MCR instructions for ARM guests. Both of these instructions are
+unprivileged, which makes development and use of the feature easier.
+They are also available across the different variants of the
+architectures.
 
-S2E accomplishes this by using a (currently) undefined opcode. We
-have instead opted to use an existing instruction to make development
-easier (we can use inline asm rather than defining the raw bytes).
+For x86, PANDA opted out from using AMD's SVM and Intel's VT hypercalls
+because they are privileged instructions. This makes them harder to
+integrate with the guest environment.
+For ARM, PANDA specifies coprocessor 7 (p7) as the target of the MCR
+instruction (move to coprocessor from register). p7 is reserved by ARM
+and not implemented in QEMU, so it can be handled without causing
+conflicts.
+PANDA also opted out from using an undefined opcode to implement the
+hypercall functionality. This is the approach taken by S2E, but it has
+the drawback that during development you need to output raw bytes
+instead of using inline assembly.
 
-AMD's SVM and Intel's VT define hypercalls, but they are privileged
-instructions, meaning the guest must be in ring 0 to execute them.
+Plugins need to check for a magic value in the registers in order to
+determine if this is a guest hypercall they need to process. Further
+parameters can be passed in other registers.
 
-For hypercalls in ARM, we use the MCR instruction (move to coprocessor from ARM
-register), moving to coprocessor 7.  CP 7 is reserved by ARM, and isn't
-implemented in QEMU.  The MCR instruction is present in all versions of ARM, and
-it is an unprivileged instruction in this scenario.  Plugins can also check for
-magic values in registers on ARM.
+If the plugin has processed the hypercall, it should return `true`.
+On x86, this prevents the regular CPUID code from running to avoid
+clobbering of register. This allows hypercalls to return values to
+the guest. It also allows detecting when a hypercall is processed
+by more than one plugins (possible conflict of magic values).
+More importantly, an analyzed binary can't directly use the CPUID
+instrucion to probe whether it runs inside a PANDA VM.
+On ARM, the return value of callbacks is not currently used. However,
+the MCR instruction with p7 as target should result in a nop. This means
+that the state of the processor shouldn't change and any values returned
+to the guest through r0, r1 will not be clobbered.
+
+PANDA has modified translate.c to make CPUID/MCR instructions end
+translation blocks. This is useful e.g. for dynamically turning on
+LLVM and enabling heavyweight instrumentation at at a specific point
+in execution.
+
+**ARM support for PANDA hypercalls has not been thoroughly tested.
+If you have sucessfully used it, please submit a PR to remove this
+warning.**
 
 **Signature**:
 ```C
-int (*guest_hypercall)(CPUState *env);
+bool (*guest_hypercall)(CPUState *env);
 ```
 ---
 
-**monitor**: called when someone uses the `plugin_cmd` monitor command
+`monitor` called when someone uses the `plugin_cmd` monitor command
 
 **Callback ID**: `PANDA_CB_MONITOR`
 
@@ -1653,7 +1722,7 @@ int (*monitor)(Monitor *mon, const char *cmd);
 ```
 ---
 
-`cb_cpu_restore_state`: Called inside of cpu_restore_state(), when there is a
+`cpu_restore_state`: Called inside of cpu_restore_state(), when there is a
 CPU fault/exception
 
 **Callback ID**: `PANDA_CB_CPU_RESTORE_STATE`
@@ -1667,7 +1736,7 @@ CPU fault/exception
 
 **Signature**:
 ```C
-int (*cb_cpu_restore_state)(CPUState *env, TranslationBlock *tb);
+int (*cpu_restore_state)(CPUState *env, TranslationBlock *tb);
 ```
 ---
 
@@ -1857,7 +1926,7 @@ int (*replay_after_cpu_physical_mem_rw_ram)(
 * `uint8_t *buf`: buffer containing packet data
 * `int size`: num bytes in buffer
 * `uint8_t direction`: `PANDA_NET_RX` for receive, `PANDA_NET_TX` for transmit
-* `uint64_t old_buf_addr`: the address that `buf` had when the recording was
+* `uint64_t buf_addr_rec`: the address that `buf` had when the recording was
   taken
 
 **Return value**:
@@ -1867,7 +1936,7 @@ unused
 **Signature**:
 ```C
 int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
-                            uint8_t direction, uint64_t old_buf_addr);
+                            uint8_t direction, uint64_t buf_addr_rec);
 ```
 ---
 

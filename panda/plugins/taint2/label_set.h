@@ -18,14 +18,16 @@ PANDAENDCOMMENT */
 #include <cstdint>
 #include <set>
 
-extern "C" {
-typedef const std::set<uint32_t> *LabelSetP;
+typedef uint32_t TaintLabel;
 
+extern "C" {
+typedef const std::set<TaintLabel> *LabelSetP;
 LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2);
-LabelSetP label_set_singleton(uint32_t label);
+LabelSetP label_set_singleton(TaintLabel label);
 }
 
-void label_set_iter(LabelSetP ls, void (*leaf)(uint32_t, void *), void *user);
-std::set<uint32_t> label_set_render_set(LabelSetP ls);
+void label_set_iter(LabelSetP ls, void (*leaf)(TaintLabel, void *), void *user);
+std::set<TaintLabel> label_set_render_set(LabelSetP ls);
+
 
 #endif

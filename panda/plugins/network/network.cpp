@@ -25,14 +25,10 @@
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
-
-    bool init_plugin(void *);
-    void uninit_plugin(void *);
-
-    int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
-                uint64_t old_buf_addr);
-
-    extern uint64_t rr_get_guest_instr_count(void);
+bool init_plugin(void *);
+void uninit_plugin(void *);
+void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
+extern uint64_t rr_get_guest_instr_count(void);
 }
 
 panda_arg_list *args;
@@ -99,8 +95,8 @@ void uninit_plugin(void *self) {
     }
 }
 
-int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
-                uint64_t old_buf_addr) {
+void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction,
+                   uint64_t buf_addr_rec) {
     int err;
     char *err_info;
     struct timeval now_tv;
@@ -161,5 +157,5 @@ int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
 #endif
       fprintf(stderr, "\n");
     }
-    return 0;
+    return;
 }

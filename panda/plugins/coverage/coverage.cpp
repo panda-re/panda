@@ -117,19 +117,19 @@ void write_process_record(RecordID id, uint64_t size)
     // process and thread ID are in decimal, as that is the radix
     // used by most tools that produce human readable output
     fprintf(coveragelog,
-            "%s," TARGET_FMT_lu "," TARGET_FMT_lu ",%lu,0x"
-            TARGET_FMT_lx ",%lu\n",
+            "%s," TARGET_FMT_lu "," TARGET_FMT_lu ",%" PRIu64 ","
+            "0x" TARGET_FMT_lx ",%" PRIu64 "\n",
             process_name,
             id.pidOrAsid, id.tid, static_cast<uint64_t>(in_kernel),
             id.pc, size);
     g_free(process_name);
 }
 
-int before_block_exec_process_full(CPUState *cpu, TranslationBlock *tb)
+void before_block_exec_process_full(CPUState *cpu, TranslationBlock *tb)
 {
     // part of workaround to broken enable/disable plugin callback framework
     if (!enabled) {
-        return 0;
+        return;
     }
 
     RecordID id;
@@ -146,14 +146,14 @@ int before_block_exec_process_full(CPUState *cpu, TranslationBlock *tb)
 
     write_process_record(id, static_cast<uint64_t>(tb->size));
 
-    return 0;
+    return;
 }
 
-int before_block_exec_process_unique(CPUState *cpu, TranslationBlock *tb)
+void before_block_exec_process_unique(CPUState *cpu, TranslationBlock *tb)
 {
     // part of workaround to broken enable/disable plugin callback framework
     if (!enabled) {
-        return 0;
+        return;
     }
 
     // We keep track of PID/TID/PC tuples that we've already seen
@@ -185,23 +185,23 @@ int before_block_exec_process_unique(CPUState *cpu, TranslationBlock *tb)
         write_process_record(id, static_cast<uint64_t>(tb->size));
     }
 
-    return 0;
+    return;
 }
 
 void write_asid_record(RecordID id, uint64_t size)
 {
     // Want ASID to be output in hex to match what asidstory produces
     fprintf(coveragelog,
-            "0x" TARGET_FMT_lx ",%lu,0x" TARGET_FMT_lx ",%lu\n",
+            "0x" TARGET_FMT_lx ",%" PRIu64 ",0x" TARGET_FMT_lx ",%" PRIu64 "\n",
             id.pidOrAsid,
             static_cast<uint64_t>(panda_in_kernel(first_cpu)), id.pc, size);
 }
 
-int before_block_exec_asid_full(CPUState *cpu, TranslationBlock *tb)
+void before_block_exec_asid_full(CPUState *cpu, TranslationBlock *tb)
 {
     // part of workaround to broken enable/disable plugin callback framework
     if (!enabled) {
-        return 0;
+        return;
     }
 
     RecordID id;
@@ -209,14 +209,14 @@ int before_block_exec_asid_full(CPUState *cpu, TranslationBlock *tb)
     id.pidOrAsid = panda_current_asid(first_cpu);
     id.tid = 0;
     write_asid_record(id, static_cast<uint64_t>(tb->size));
-    return 0;
+    return;
 }
 
-int before_block_exec_asid_unique(CPUState *cpu, TranslationBlock *tb)
+void before_block_exec_asid_unique(CPUState *cpu, TranslationBlock *tb)
 {
     // part of workaround to broken enable/disable plugin callback framework
     if (!enabled) {
-        return 0;
+        return;
     }
 
     // We keep track of pairs of ASIDs and PCs that we've already seen
@@ -233,7 +233,7 @@ int before_block_exec_asid_unique(CPUState *cpu, TranslationBlock *tb)
         write_asid_record(id, static_cast<uint64_t>(tb->size));
     }
 
-    return 0;
+    return;
 }
 
 bool enable_logging(const char *filename)

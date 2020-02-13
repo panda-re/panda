@@ -145,15 +145,19 @@ int main(int argc, char **argv)
 #include "qapi/qmp/qerror.h"
 #include "sysemu/iothread.h"
 
+#include "vl.h"
+
 extern void panda_cleanup(void);
 extern bool panda_add_arg(const char *, const char *);
 extern bool panda_load_plugin(const char *, const char *);
 extern void panda_unload_plugins(void);
 extern char *panda_plugin_path(const char *name);
-void panda_set_os_name(char *os_name);
-extern void panda_callbacks_after_machine_init(void);
+extern void panda_set_os_name(char *os_name);
+extern void panda_callbacks_after_machine_init(CPUState *);
+extern void panda_callbacks_pre_shutdown(void);
+extern void panda_callbacks_main_loop_wait(void);
+extern void pandalog_cc_init_write(const char * fname);
 
-extern void pandalog_cc_init_write(const char * fname); 
 int pandalog = 0;
 
 // bool used to indicate that we are outputting
@@ -164,7 +168,13 @@ FILE *pandalog_protobuf_file = NULL;
 
 
 int panda_in_main_loop = 0;
-extern bool panda_abort_requested;
+extern bool panda_abort_requested; // When set, we exit in after printing a help message
+bool panda_break_vl_loop_req = false; // When set, we break the main loop in vl.c
+bool panda_library_mode = false; // Set if using panda from python
+bool panda_aborted = false; // Set if panda was terminated abnormally (e.g., Ctrl-C)
+
+char *panda_snap_name = NULL;
+const char* replay_name = NULL;
 
 #include "panda/debug.h"
 #include "panda/rr/rr_log_all.h"
@@ -1685,6 +1695,7 @@ static void qemu_kill_report(void)
              * avoiding printing an odd message in that case.
              */
             error_report("terminating on signal %d", shutdown_signal);
+            panda_aborted = true;
         } else {
             char *shutdown_cmd = qemu_get_pid_name(shutdown_pid);
 
@@ -1902,7 +1913,12 @@ static bool main_loop_should_exit(void)
     if (qemu_suspend_requested()) {
         qemu_system_suspend();
     }
+    if (panda_break_vl_loop_req) {
+      panda_break_vl_loop_req = false; // Only break the loop once
+      return true;
+    }
     if (qemu_shutdown_requested()) {
+        panda_callbacks_pre_shutdown();
         qemu_kill_report();
         qapi_event_send_shutdown(&error_abort);
         if (no_shutdown) {
@@ -1947,7 +1963,7 @@ static void tcg_llvm_cleanup(void)
 }
 #endif
 
-static void main_loop(void)
+void main_loop(void)
 {
     bool nonblocking;
     int last_io = 0;
@@ -1960,6 +1976,7 @@ static void main_loop(void)
         ti = profile_getclock();
 #endif
         last_io = main_loop_wait(nonblocking);
+        panda_callbacks_main_loop_wait();
 
         // rr: check for begin/end record/replay
         sigset_t blockset, oldset;
@@ -1970,42 +1987,39 @@ static void main_loop(void)
         sigaddset(&blockset, SIGUSR2);
         sigaddset(&blockset, SIGIO);
 
-        if (__builtin_expect(rr_record_requested, 0)) {
+	if (likely(rr_control.next == RR_NOCHANGE)) {
+	    // nop
+	} else if (unlikely(rr_control.next == RR_RECORD)) {
             //block signals
             sigprocmask(SIG_BLOCK, &blockset, &oldset);
-            rr_do_begin_record(rr_requested_name, first_cpu);
-            rr_record_requested = 0;
+            rr_do_begin_record(rr_control.name, first_cpu);
+            rr_control.next = RR_NOCHANGE;
             //unblock signals
             sigprocmask(SIG_SETMASK, &oldset, NULL);
-        }
-
-        if (__builtin_expect(rr_replay_requested, 0)) {
+        } else if (unlikely(rr_control.next == RR_REPLAY)) {
             //block signals
             sigprocmask(SIG_BLOCK, &blockset, &oldset);
-            if (0 != rr_do_begin_replay(rr_requested_name, first_cpu)){
+            if (0 != rr_do_begin_replay(rr_control.name, first_cpu)){
                 printf("Failed to start replay\n");
                 exit(1);
             } else { // we have to unblock signals, so we can't just continue on failure
                 qemu_rr_quit_timers();
-                rr_replay_requested = 0;
+                rr_control.next = RR_NOCHANGE;
             }
             //unblock signals
             sigprocmask(SIG_SETMASK, &oldset, NULL);
-        }
-
-        //mz 05.2012 We have the global mutex here, so this should be OK.
-        if (rr_end_record_requested && rr_in_record()) {
+        } else if (unlikely((rr_control.next == RR_OFF) && rr_in_record())) {
+	    //mz 05.2012 We have the global mutex here, so this should be OK.
             rr_do_end_record();
             rr_reset_state(first_cpu);
-            rr_end_record_requested = 0;
+            rr_control.next = RR_NOCHANGE;
             vm_start();
-        }
-        if (rr_end_replay_requested && rr_in_replay()) {
+        } else if (unlikely((rr_control.next == RR_OFF) && rr_in_replay())) {
             //mz restore timers
             qemu_clock_run_all_timers();
             //mz FIXME this is used in the monitor for do_stop()??
             rr_do_end_replay(/*is_error=*/0);
-            rr_end_replay_requested = 0;
+            rr_control.next = RR_NOCHANGE;
             vm_stop(RUN_STATE_PAUSED);
         }
 
@@ -2018,7 +2032,8 @@ static void main_loop(void)
 static void version(void)
 {
     printf("QEMU emulator version " QEMU_VERSION QEMU_PKGVERSION "\n"
-           QEMU_COPYRIGHT "\n");
+            "Build date " __DATE__ "\n"
+            QEMU_COPYRIGHT "\n");
 }
 
 static void help(int exitcode)
@@ -3075,8 +3090,20 @@ static char* this_executable_path(const char* argv0){
     return realpath(argv0, NULL);
 }
 
-int main(int argc, char **argv, char **envp)
-{
+void main_panda_run(void) {
+    panda_in_main_loop = 1;
+    main_loop();
+    panda_in_main_loop = 0;
+}
+
+void set_replay_name(char *name) {
+    replay_name = name;
+}
+
+int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
+ {
+    if (pmm == PANDA_RUN)    goto PANDA_MAIN_RUN;
+    if (pmm == PANDA_FINISH) goto PANDA_MAIN_FINISH;
     int i;
     int snapshot, linux_boot;
     const char *initrd_filename;
@@ -3123,10 +3150,12 @@ int main(int argc, char **argv, char **envp)
     // PANDA stuff
     gargv = argv;
     gargc = argc;
-    qemu_file = this_executable_path(argv[0]);
+    if (pmm == PANDA_NORMAL)
+        qemu_file = this_executable_path(argv[0]);
+    else
+        qemu_file = strdup(argv[0]);
     assert(qemu_file != NULL);
 
-    const char* replay_name = NULL;
     const char* record_name = NULL;
     // In order to load PANDA plugins all at once at the end
     const char * panda_plugin_files[64] = {};
@@ -4268,7 +4297,7 @@ int main(int argc, char **argv, char **envp)
                         if (0 == strcmp("general", plugin_start)) {
                             // not really a plugin -- just used to collect general panda args
                         }
-                        else {                        
+                        else {
                             char *plugin_path = panda_plugin_path((const char *) plugin_start);
                             if (NULL == plugin_path) {
                                 fprintf(stderr,
@@ -4959,7 +4988,7 @@ int main(int argc, char **argv, char **envp)
 
     if (replay_name) {
         // rr: check for begin/end record/replay
-        sigset_t blockset, oldset;
+        sigset_t blockset, oldset = {0};
 
         //block signals
         sigprocmask(SIG_BLOCK, &blockset, &oldset);
@@ -5040,11 +5069,20 @@ int main(int argc, char **argv, char **envp)
     os_setup_post();
 
     // Call PANDA post-machine init hook
-    panda_callbacks_after_machine_init();
+    panda_callbacks_after_machine_init(first_cpu);
+
+    if (pmm == PANDA_INIT) return 0;
+
+PANDA_MAIN_RUN:
+    
 
     panda_in_main_loop = 1;
     main_loop();
     panda_in_main_loop = 0;
+
+    if (pmm == PANDA_RUN) return 0;
+
+PANDA_MAIN_FINISH:
 
     if(rr_in_record()){
         rr_do_end_record();

@@ -29,7 +29,7 @@
 #include "hw/i386/apic_internal.h"
 #endif
 
-#include "panda/callback_support.h"
+#include "panda/callbacks/cb-support.h"
 
 static void cpu_x86_version(CPUX86State *env, int *family, int *model)
 {
@@ -644,13 +644,15 @@ void cpu_x86_update_cr3(CPUX86State *env, target_ulong new_cr3)
 {
     X86CPU *cpu = x86_env_get_cpu(env);
 
-    panda_callbacks_asid_changed(ENV_GET_CPU(env), env->cr[3], new_cr3);
+    // ret val !=0 means *dont* allow cr3 to change
+    if (0 == (panda_callbacks_asid_changed(ENV_GET_CPU(env), env->cr[3], new_cr3))) {
 
-    env->cr[3] = new_cr3;
-    if (env->cr[0] & CR0_PG_MASK) {
-        qemu_log_mask(CPU_LOG_MMU,
-                        "CR3 update: CR3=" TARGET_FMT_lx "\n", new_cr3);
-        tlb_flush(CPU(cpu));
+        env->cr[3] = new_cr3;
+        if (env->cr[0] & CR0_PG_MASK) {
+            qemu_log_mask(CPU_LOG_MMU,
+                          "CR3 update: CR3=" TARGET_FMT_lx "\n", new_cr3);
+            tlb_flush(CPU(cpu));
+        }
     }
 }
 

@@ -1,3 +1,5 @@
+venv
+/build
 /config-devices.*
 /config-all-devices.*
 /config-all-disas.*
@@ -109,6 +111,7 @@
 /docs/qemu-qmp-ref.info*
 /docs/qemu-qmp-ref.txt
 /docs/version.texi
+/panda/plugins/*/docs/
 *.tps
 .stgit-*
 cscope.*

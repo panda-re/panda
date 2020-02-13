@@ -32,10 +32,21 @@
 extern "C" {
 #endif
 
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+
 void panda_cleanup(void);
 void panda_set_os_name(char *os_name);
 void panda_before_find_fast(void);
 void panda_disas(FILE *out, void *code, unsigned long size);
+void panda_break_main_loop(void);
+MemoryRegion* panda_find_ram(void);
+
+extern bool panda_exit_loop;
+extern bool panda_break_vl_loop_req;
+
 
 /*
  * @brief Returns the guest address space identifier.
@@ -50,6 +61,9 @@ target_ulong panda_current_pc(CPUState *cpu);
 /**
  * @brief Reads/writes data into/from \p buf from/to guest physical address \p addr.
  */
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
+
 static inline int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
                                            bool is_write) {
     hwaddr l = len;
@@ -137,6 +151,25 @@ static inline int panda_virtual_memory_write(CPUState *env, target_ulong addr,
 }
 
 /**
+ * @brief Obtains a host pointer for the given virtual address.
+ */
+static inline void *panda_map_virt_to_host(CPUState *env, target_ulong addr,
+                                           int len)
+{
+    hwaddr phys = panda_virt_to_phys(env, addr);
+    hwaddr l = len;
+    hwaddr addr1;
+    MemoryRegion *mr =
+        address_space_translate(&address_space_memory, phys, &addr1, &l, true);
+
+    if (!memory_access_is_direct(mr, true)) {
+        return NULL;
+    }
+
+    return qemu_map_ram_ptr(mr->ram_block, addr1);
+}
+
+/**
  * @brief Determines if guest is currently executes in kernel mode.
  */
 static inline bool panda_in_kernel(CPUState *cpu) {
@@ -180,11 +213,33 @@ static inline target_ulong panda_current_sp(CPUState *cpu) {
     // R1 on PPC.
     return env->gpr[1];
 #else
-#error "panda_current_asid() not implemented for target architecture."
+#error "panda_current_sp() not implemented for target architecture."
     return 0;
 #endif
 }
 
+/**
+ * @brief Returns the return value of the guest.
+ * The function is only meant to provide a platform-independent
+ * abstraction for retrieving a call return value. It still has to
+ * be used in the proper context to retrieve a meaningful value.
+ */
+static inline target_ulong panda_get_retval(CPUState *cpu) {
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+#if defined(TARGET_I386)
+    // EAX for x86.
+    return env->regs[R_EAX];
+#elif defined(TARGET_ARM)
+    // R0 on ARM.
+    return env->regs[0];
+#elif defined(TARGET_PPC)
+    // R3 on PPC.
+    return env->gpr[3];
+#else
+#error "panda_get_retval() not implemented for target architecture."
+    return 0;
+#endif
+}
 
 #ifdef __cplusplus
 }

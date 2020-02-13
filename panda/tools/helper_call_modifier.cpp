@@ -106,10 +106,9 @@ int main(int argc, char **argv) {
     // Verify the new bitcode and write it out, printing errors if necessary
     std::string errstring;
     verifyModule(*Mod, PrintMessageAction, &errstring);
-    raw_fd_ostream *fstream = new raw_fd_ostream(OutputFile.c_str(), errstring);
-    WriteBitcodeToFile(Mod, *fstream);
+    raw_fd_ostream fstream(OutputFile.c_str(), errstring);
+    WriteBitcodeToFile(Mod, fstream);
     printf("%s", errstring.c_str());
-    fstream->close();
 
     return 0;
 }

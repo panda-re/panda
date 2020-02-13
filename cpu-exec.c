@@ -34,8 +34,9 @@
 #endif
 #include "sysemu/cpus.h"
 #include "sysemu/replay.h"
+#include "sysemu/sysemu.h"
 #include "panda/rr/rr_log.h"
-#include "panda/callback_support.h"
+#include "panda/callbacks/cb-support.h"
 #include "panda/common.h"
 
 #ifdef CONFIG_LLVM
@@ -46,8 +47,6 @@ const int has_llvm_engine = 1;
 int generate_llvm = 0;
 int execute_llvm = 0;
 extern bool panda_tb_chaining;
-
-extern bool panda_exit_loop;
 
 /* -icount align implementation. */
 
@@ -185,7 +184,18 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     cpu->can_do_io = !use_icount;
 
-    panda_callbacks_before_block_exec(cpu, itb);
+    if (cpu->tcg_exit_req == 0)
+        panda_callbacks_before_block_exec(cpu, itb);
+
+    // If there has been a request to break the CPU
+    // loop, return now. Before we execute the block
+    if (panda_exit_loop) {
+        cpu->can_do_io = 1;
+        // tcg_exit_req is likely already 0, but make sure it's
+        // cleared now before we resume execution later
+        atomic_set(&cpu->tcg_exit_req, 0);
+        return TB_EXIT_REQUESTED;
+    }
 
     // NB: This is where we did this in panda1
     panda_bb_invalidate_done = false;
@@ -434,7 +444,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
 #endif
     /* See if we can patch the calling TB. */
 #ifdef CONFIG_SOFTMMU
-    if (rr_mode != RR_REPLAY && panda_tb_chaining) { 
+    if (!rr_in_replay() && panda_tb_chaining) {
 #endif
     if (last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
         if (!have_tb_lock) {
@@ -500,7 +510,8 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
         cpu_breakpoint_remove_by_instr(cpu, cpu->last_gdb_instr-1, BP_GDB);
         cpu->reverse_flags = 0;
     }
-    
+
+    cpu->exception_index = panda_callbacks_before_handle_exception(cpu, cpu->exception_index);
 
     if (cpu->exception_index >= 0) {
         if (cpu->exception_index >= EXCP_INTERRUPT) {
@@ -709,19 +720,16 @@ void debug_counter(void) {
         counter_128k++;
 }
 #endif
-__attribute__((always_inline))
-    inline void debug_checkpoint(CPUState *cpu);
-    __attribute__((always_inline))
-    inline void debug_checkpoint(CPUState *cpu) {
+
+__attribute__((always_inline)) static inline void debug_checkpoint(CPUState *cpu) {
 #ifdef CONFIG_DEBUG_TCG
-    if (rr_mode != RR_OFF
-            && cpu->rr_guest_instr_count >> 17 > counter_128k) {
+    if (rr_on() && cpu->rr_guest_instr_count >> 17 > counter_128k) {
         debug_counter();
     }
 #endif
 }
 
-static void detect_infinite_loops(void) {
+__attribute__((always_inline)) static inline void detect_infinite_loops(void) {
     if (!rr_in_replay()) return;
 
     static uint64_t last_instr_count = 0;
@@ -729,7 +737,7 @@ static void detect_infinite_loops(void) {
     if (last_instr_count == rr_get_guest_instr_count()) {
         loop_tries++;
         if (loop_tries > 20) {
-            fprintf(stderr, "rr_guest_instr_count = %lu\n",
+            fprintf(stderr, "rr_guest_instr_count = %" PRIu64 "\n",
                     rr_get_guest_instr_count());
             assert(false);
         }
@@ -788,7 +796,10 @@ int cpu_exec(CPUState *cpu)
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
 
-        if (panda_exit_loop) break;
+        if (panda_exit_loop) {
+            printf ("Exiting cpu_handle_execption loop\n");
+            break;
+        }
 
         TranslationBlock *last_tb = NULL;
         int tb_exit = 0;
@@ -811,7 +822,7 @@ int cpu_exec(CPUState *cpu)
                 break;
             }
 
-            panda_before_find_fast();
+            panda_callbacks_before_find_fast();
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
             panda_bb_invalidate_done = panda_callbacks_after_find_fast(
                     cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
@@ -827,7 +838,7 @@ int cpu_exec(CPUState *cpu)
 #ifdef CONFIG_SOFTMMU
             uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
             if (panda_invalidate_tb
-                    || (rr_mode == RR_REPLAY && until_interrupt > 0
+                    || (rr_in_replay() && until_interrupt > 0
                         && tb->icount > until_interrupt)) {
                 /* Retranslate so that basic block boundary matches
                  * record & replay for interrupt delivery. */
@@ -837,7 +848,7 @@ int cpu_exec(CPUState *cpu)
                 continue;
             }
 #endif // CONFIG_SOFTMMU
-            if (rr_mode == RR_REPLAY && rr_replay_finished()) {
+            if (rr_in_replay() && rr_replay_finished()) {
                 rr_do_end_replay(0);
                 qemu_cpu_kick(cpu);
                 panda_exit_loop = true;

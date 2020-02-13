@@ -1,0 +1,7 @@
+*-rr-snp
+*.plog
+*.recording
+build
+dist
+panda.egg-info
+data

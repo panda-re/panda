@@ -513,7 +513,7 @@ int main_loop_wait(int nonblocking)
     g_array_set_size(gpollfds, 0); /* reset for new iteration */
     /* XXX: separate device handlers from system ones */
 #ifdef CONFIG_SLIRP
-    if (! (rr_in_replay() || rr_replay_requested)) {
+    if (! (rr_in_replay() || rr_replay_requested())) {
         slirp_pollfds_fill(gpollfds, &timeout);
     }
 #endif

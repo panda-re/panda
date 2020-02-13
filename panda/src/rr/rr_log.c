@@ -45,21 +45,25 @@
 #include "qmp-commands.h"
 #include "hmp.h"
 #include "panda/rr/rr_log.h"
+#include "panda/rr/rr_api.h"
+#include "panda/plugin.h"
 #include "migration/migration.h"
 #include "include/exec/address-spaces.h"
 #include "include/exec/exec-all.h"
 #include "migration/qemu-file.h"
 #include "io/channel-file.h"
 #include "sysemu/sysemu.h"
-#include "panda/callback_support.h"
+#include "panda/common.h"
+#include "panda/callbacks/cb-support.h"
 #include "exec/gdbstub.h"
 #include "sysemu/cpus.h"
 
 /******************************************************************************************/
 /* GLOBALS */
 /******************************************************************************************/
-// mz record/replay mode
-volatile RR_mode rr_mode = RR_OFF;
+// record/replay state
+rr_control_t rr_control = {.mode = RR_OFF, .next = RR_NOCHANGE};
+extern bool panda_library_mode;
 
 // mz FIFO queue of log entries read from the log file
 // Implemented as ring buffer.
@@ -77,9 +81,6 @@ volatile sig_atomic_t rr_skipped_callsite_location = 0;
 RR_log* rr_nondet_log = NULL;
 
 bool rr_replay_complete = false;
-
-#define RR_RECORD_FROM_REQUEST 2
-#define RR_RECORD_REQUEST 1
 
 // our own assertion mechanism
 #define rr_assert(exp)                                                         \
@@ -103,14 +104,6 @@ static inline uint8_t rr_log_is_empty(void) {
 
 RR_debug_level_type rr_debug_level = RR_DEBUG_NOISY;
 
-// mz Flags set by monitor to indicate requested record/replay action
-volatile sig_atomic_t rr_record_requested = 0;
-volatile sig_atomic_t rr_replay_requested = 0;
-volatile sig_atomic_t rr_end_record_requested = 0;
-volatile sig_atomic_t rr_end_replay_requested = 0;
-char* rr_requested_name = NULL;
-char* rr_snapshot_name = NULL;
-
 unsigned rr_next_progress = 1;
 
 //
@@ -128,6 +121,7 @@ RR_log_entry* rr_get_queue_head(void) { return rr_queue_head; }
 // 2) The only thing in the queue is RR_END_OF_LOG
 uint8_t rr_replay_finished(void)
 {
+    assert(!rr_queue_empty()); // If queue is empty early, replay is corrupt?
     return rr_log_is_empty()
         && rr_queue_head->header.kind == RR_END_OF_LOG
         && rr_get_guest_instr_count() >=
@@ -247,7 +241,7 @@ static inline void rr_assert_fail(const char* exp, const char* file, int line,
     }
     // just abort
     abort();
-    rr_end_replay_requested = 1;
+    panda_replay_end();
     // mz need to get out of cpu loop so that we can process the end_replay
     // request
     // mz this will call cpu_loop_exit(), which longjmps
@@ -839,7 +833,7 @@ static RR_log_entry *rr_read_item(void) {
                 case RR_CALL_HANDLE_PACKET:
                     RR_READ_ITEM(args->variant.handle_packet_args);
                     // mz XXX HACK
-                    args->old_buf_addr = (uint64_t)args->variant.handle_packet_args.buf;
+                    args->buf_addr_rec = (uint64_t)args->variant.handle_packet_args.buf;
                     // mz buffer length in args->variant.cpu_mem_rw_args.len
                     // mz always allocate a new one. we free it when the item is added
                     // to the recycle list
@@ -888,7 +882,7 @@ void rr_fill_queue(void) {
 
     // mz first, some sanity checks.  The queue should be empty when this is
     // called.
-    if (rr_mode != RR_REPLAY) return;
+    if (!rr_in_replay()) return;
     rr_assert(rr_queue_empty());
 
     while (!rr_log_is_empty() && num_entries < RR_QUEUE_MAX_LEN) {
@@ -1091,7 +1085,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
             // point
             replay_done = 1;
         } else {
-            
+
             RR_skipped_call_args args = current_item->variant.call_args;
             switch (args.kind) {
             case RR_CALL_CPU_MEM_RW: {
@@ -1144,13 +1138,13 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
             } break;
             case RR_CALL_HD_TRANSFER: {
                 RR_hd_transfer_args hdt = args.variant.hd_transfer_args;
-                panda_callbacks_hd_transfer(first_cpu, hdt.type, hdt.src_addr, hdt.dest_addr, hdt.num_bytes);
+                panda_callbacks_replay_hd_transfer(first_cpu, hdt.type, hdt.src_addr, hdt.dest_addr, hdt.num_bytes);
             } break;
             case RR_CALL_HANDLE_PACKET:
                 {
                     // run all callbacks registered for packet handling
                     RR_handle_packet_args hp = args.variant.handle_packet_args;
-                    panda_callbacks_handle_packet(first_cpu, hp.buf, hp.size, hp.direction, args.old_buf_addr);
+                    panda_callbacks_replay_handle_packet(first_cpu, hp.buf, hp.size, hp.direction, args.buf_addr_rec);
                 } break;
             case RR_CALL_NET_TRANSFER:
                 {
@@ -1158,30 +1152,23 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                     // card (E1000)
                     RR_net_transfer_args nta =
                          args.variant.net_transfer_args;
-                    panda_callbacks_net_transfer(first_cpu, nta.type, nta.src_addr, nta.dest_addr, nta.num_bytes);
+                    panda_callbacks_replay_net_transfer(first_cpu, nta.type, nta.src_addr, nta.dest_addr, nta.num_bytes);
                 } break;
                 case RR_CALL_SERIAL_RECEIVE: {
-                    RR_serial_receive_args recv =
-                        args.variant.serial_receive_args;
-                    panda_callbacks_serial_receive(first_cpu, recv.fifo_addr,
-                                                   recv.value);
+                    RR_serial_receive_args recv = args.variant.serial_receive_args;
+                    panda_callbacks_replay_serial_receive(first_cpu, recv.fifo_addr, recv.value);
                 } break;
                 case RR_CALL_SERIAL_READ: {
-                    RR_serial_read_args readargs =
-                        args.variant.serial_read_args;
-                    panda_callbacks_serial_read(first_cpu, readargs.fifo_addr,
-                                                readargs.port_addr,
-                                                readargs.value);
+                    RR_serial_read_args readargs = args.variant.serial_read_args;
+                    panda_callbacks_replay_serial_read(first_cpu, readargs.fifo_addr, readargs.port_addr, readargs.value);
                 } break;
                 case RR_CALL_SERIAL_SEND: {
                     RR_serial_send_args send = args.variant.serial_send_args;
-                    panda_callbacks_serial_send(first_cpu, send.fifo_addr,
-                                                send.value);
+                    panda_callbacks_replay_serial_send(first_cpu, send.fifo_addr, send.value);
                 } break;
                 case RR_CALL_SERIAL_WRITE: {
                     RR_serial_write_args write = args.variant.serial_write_args;
-                    panda_callbacks_serial_write(first_cpu, write.fifo_addr,
-                                                 write.port_addr, write.value);
+                    panda_callbacks_replay_serial_write(first_cpu, write.fifo_addr, write.port_addr, write.value);
                 } break;
 
                 default:
@@ -1270,13 +1257,13 @@ void rr_destroy_log(void)
     rr_nondet_log = NULL;
 }
 
-struct timeval replay_start_time;
+struct timeval replay_begin_time;
 
 // mz display a measure of replay progress (using instruction counts and log
 // size)
 void replay_progress(void)
 {
-    if (rr_nondet_log) {
+    if (rr_nondet_log && !panda_library_mode) { // Silent if no nondet_log or if we're replaying in library mode
         if (rr_log_is_empty()) {
             printf("%s:  log is empty.\n", rr_nondet_log->name);
         } else {
@@ -1358,39 +1345,33 @@ void rr_reset_state(CPUState* cpu)
 #ifdef CONFIG_SOFTMMU
 
 #include "qapi/error.h"
-void qmp_begin_record(const char* file_name, Error** errp)
+void qmp_begin_record(const char* filename, Error** errp)
 {
-    rr_record_requested = RR_RECORD_REQUEST;
-    rr_requested_name = g_strdup(file_name);
+    panda_record_begin(filename, NULL);
 }
 
-void qmp_begin_record_from(const char* snapshot, const char* file_name,
-                                  Error** errp)
+void qmp_begin_record_from(const char* snapshot, const char* filename,
+                           Error** errp)
 {
-    rr_record_requested = RR_RECORD_FROM_REQUEST;
-    rr_snapshot_name = g_strdup(snapshot);
-    rr_requested_name = g_strdup(file_name);
+    panda_record_begin(filename, snapshot);
 }
 
 void qmp_end_record(Error** errp)
 {
     qmp_stop(NULL);
-    rr_end_record_requested = 1;
+    panda_record_end();
 }
 
-void qmp_begin_replay(const char *file_name, Error **errp) {
-  rr_replay_requested = 1;
-  rr_requested_name = g_strdup(file_name);
-  gettimeofday(&replay_start_time, 0);
+void qmp_begin_replay(const char *filename, Error **errp) {
+    panda_replay_begin(filename);
+    gettimeofday(&replay_begin_time, 0);
 }
 
 void qmp_end_replay(Error** errp)
 {
     qmp_stop(NULL);
-    rr_end_replay_requested = 1;
+    panda_replay_end();
 }
-
-void panda_end_replay(void) { rr_end_replay_requested = 1; }
 
 #include "qemu-common.h"    // Monitor def
 #include "qapi/qmp/qdict.h" // QDict def
@@ -1450,40 +1431,37 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
         qemu_log("Begin vm record for file_name_full = %s\n", file_name_full);
         qemu_log("path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
     }
-    // first take a snapshot or load snapshot
 
-    if (rr_record_requested == RR_RECORD_FROM_REQUEST) {
-        printf("loading snapshot:\t%s\n", rr_snapshot_name);
-        snapshot_ret = load_vmstate(rr_snapshot_name);
-        g_free(rr_snapshot_name);
-        rr_snapshot_name = NULL;
+    // load VM snapshot if needed
+    if (rr_control.snapshot != NULL) {
+        printf("loading snapshot:\t%s\n", rr_control.snapshot);
+        snapshot_ret = load_vmstate(rr_control.snapshot);
     }
-    if (rr_record_requested == RR_RECORD_REQUEST || rr_record_requested == RR_RECORD_FROM_REQUEST) {
-        // Force running state
-        global_state_store_running();
-        rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
-        printf("writing snapshot:\t%s\n", name_buf);
-        QIOChannelFile* ioc =
-            qio_channel_file_new_path(name_buf, O_WRONLY | O_CREAT, 0660, NULL);
-        QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
-        snapshot_ret = qemu_savevm_state(snp, NULL);
-        qemu_fclose(snp);
-        // log_all_cpu_states();
-    }
+
+    // write PANDA memory snapshot
+    global_state_store_running(); // force running state
+    rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
+    printf("writing snapshot:\t%s\n", name_buf);
+    QIOChannelFile* ioc =
+        qio_channel_file_new_path(name_buf, O_WRONLY | O_CREAT, 0660, NULL);
+    QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
+    snapshot_ret = qemu_savevm_state(snp, NULL);
+    qemu_fclose(snp);
+    // log_all_cpu_states();
 
     // save the time so we can report how long record takes
     time(&rr_start_time);
 
     // second, open non-deterministic input log for write.
     rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
-    printf("opening nondet log for write :\t%s\n", name_buf);
+    printf("opening nondet log for write:\t%s\n", name_buf);
     rr_create_record_log(name_buf);
     // reset record/replay counters and flags
     rr_reset_state(cpu_state);
     g_free(rr_path_base);
     g_free(rr_name_base);
     // set global to turn on recording
-    rr_mode = RR_RECORD;
+    rr_control.mode = RR_RECORD;
     return snapshot_ret;
 #endif
 }
@@ -1507,8 +1485,10 @@ void rr_do_end_record(void)
 
     time_t rr_end_time;
     time(&rr_end_time);
-    printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
-    printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
+    if (!panda_library_mode)  {
+      printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
+      printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
+    }
 
     // log_all_cpu_states();
 
@@ -1517,12 +1497,19 @@ void rr_do_end_record(void)
     g_free(rr_path_base);
     g_free(rr_name_base);
 
+    // cleanup rr_control struct
+    assert(rr_control.name != NULL);
+    g_free(rr_control.name);
+    rr_control.name = NULL;
+    if (rr_control.snapshot != NULL) {
+	g_free(rr_control.snapshot);
+	rr_control.snapshot = NULL;
+    }
+
     // turn off logging
-    rr_mode = RR_OFF;
+    rr_control.mode = RR_OFF;
 #endif
 }
-
-extern void panda_cleanup(void);
 
 // file_name_full should be full path to the record/replay log
 int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
@@ -1533,8 +1520,16 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     char* rr_path = g_strdup(file_name_full);
     char* rr_name = g_strdup(file_name_full);
     __attribute__((unused)) int snapshot_ret;
+
+    vm_stop(RUN_STATE_PAUSED); // Stop execution of the CPU thread while the replay is being set up
     rr_path = dirname(rr_path);
     rr_name = basename(rr_name);
+    rr_replay_complete = false;
+
+    // When we start a replay, re-initialize state
+    // so we can do this multiple times
+    rr_next_progress = 1;
+
     if (rr_debug_whisper()) {
         qemu_log("Begin vm replay for file_name_full = %s\n", file_name_full);
         qemu_log("path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
@@ -1577,12 +1572,20 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     // reset record/replay counters and flags
     rr_reset_state(cpu_state);
     // set global to turn on replay
-    rr_mode = RR_REPLAY;
+    rr_control.mode = RR_REPLAY;
 
     // set up event queue
     rr_queue_head = rr_queue_tail = NULL;
     rr_queue_end = &rr_queue[RR_QUEUE_MAX_LEN];
     rr_fill_queue();
+
+    // Resume execution of the CPU thread when using PANDA as a library
+    // note that this means library-mode consumers can't start a replay `-s -S` to
+    // get a stopped guest that will only be started via an attached GDB
+    if (panda_library_mode) {
+        vm_start();
+    }
+
     return 0; // snapshot_ret;
 #endif
 }
@@ -1598,39 +1601,36 @@ void rr_do_end_replay(int is_error)
     replay_progress();
     if (is_error) {
         printf("ERROR: replay failed!\n");
-    } else {
-        printf("Replay completed successfully. 1\n");
     }
 
-    time_t rr_end_time;
-    time(&rr_end_time);
-    printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
+    if(!panda_library_mode) {
+      time_t rr_end_time;
+      time(&rr_end_time);
+      printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
 
-    printf("Stats:\n");
-    int i;
-    for (i = 0; i < RR_LAST; i++) {
-        printf("%s number = %llu, size = %llu bytes\n",
-               get_log_entry_kind_string(i), rr_number_of_log_entries[i],
-               rr_size_of_log_entries[i]);
-        rr_number_of_log_entries[i] = 0;
-        rr_size_of_log_entries[i] = 0;
+      printf("Stats:\n");
+      int i;
+      for (i = 0; i < RR_LAST; i++) {
+          printf("%s number = %llu, size = %llu bytes\n",
+                 get_log_entry_kind_string(i), rr_number_of_log_entries[i],
+                 rr_size_of_log_entries[i]);
+          rr_number_of_log_entries[i] = 0;
+          rr_size_of_log_entries[i] = 0;
+      }
+      printf("max_queue_len = %llu\n", rr_max_num_queue_entries);
+      printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
     }
-    printf("max_queue_len = %llu\n", rr_max_num_queue_entries);
     rr_max_num_queue_entries = 0;
-
-    printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
 
     // mz some more sanity checks - the queue should contain only the RR_LAST
     // element
-    if (rr_queue_head == rr_queue_tail && rr_queue_head != NULL &&
+    if (is_error) {
+      printf("ERROR: replay failed!\n");
+    } else if (rr_queue_head == rr_queue_tail && rr_queue_head != NULL &&
         rr_queue_head->header.kind == RR_END_OF_LOG) {
-        printf("Replay completed successfully 2.\n");
+        printf("Replay completed successfully\n");
     } else {
-        if (is_error) {
-            printf("ERROR: replay failed!\n");
-        } else {
-            printf("Replay terminated at user request.\n");
-        }
+        printf("Replay terminated at user request.\n");
     }
     rr_queue_head = NULL;
     rr_queue_tail = NULL;
@@ -1639,17 +1639,24 @@ void rr_do_end_replay(int is_error)
     // close logs
     rr_destroy_log();
     // turn off replay
-    rr_mode = RR_OFF;
+    rr_control.mode = RR_OFF;
 
     rr_replay_complete = true;
-    
+
     // mz XXX something more graceful?
+    panda_cleanup();
     if (is_error) {
-        panda_cleanup();
         abort();
     } else {
-        vm_stop(RUN_STATE_PAUSED);
-        qemu_system_shutdown_request();
+      if (panda_library_mode) {
+          // Reset the system and break out of the vl.c loop. Note we leave the cpu thread running
+          // This ensures we can run a replay, then a live guest without a hang
+          qemu_system_reset(VMRESET_SILENT);
+          panda_break_vl_loop_req = true;
+        }else{
+          vm_stop(RUN_STATE_PAUSED);
+          qemu_system_shutdown_request();
+        }
     }
 #endif // CONFIG_SOFTMMU
 }
@@ -1676,7 +1683,13 @@ void rr_end_main_loop_wait(void) {
 
 #ifdef CONFIG_SOFTMMU
 static uint32_t rr_checksum_memory_internal(void) {
-    MemoryRegion *ram = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
+    rcu_read_lock();
+    MemoryRegion *ram = panda_find_ram();
+    rcu_read_unlock();
+    if (!ram) {
+        printf("ERROR: could not find RAM start address!\n");
+        abort();
+    }
     rcu_read_lock();
     void *ptr = qemu_map_ram_ptr(ram->ram_block, 0);
     uint32_t crc = rr_chunked_crc32(ptr, ram_size);

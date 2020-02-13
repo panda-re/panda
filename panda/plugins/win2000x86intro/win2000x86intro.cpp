@@ -125,7 +125,8 @@ PTR get_win2000_kddebugger_data(CPUState *cpu)
     uint8_t *host_ptr = (uint8_t *)qemu_map_ram_ptr(mr->ram_block, 0);
     uint8_t signature[] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
                            0x0, 0x0, 'K', 'D', 'B', 'G'};
-    for (int i = 0; i < mr->size - KDDEBUGGER_DATA_SIZE; i++) {
+
+    for (int i = 0; i < int128_get64(mr->size) - KDDEBUGGER_DATA_SIZE; i++) {
         if (0 == memcmp(signature, host_ptr + i, sizeof(signature))) {
             // We subtract eight bytes from the current position because of the
             // list entry field size. This gives us the start of the

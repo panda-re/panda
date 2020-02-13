@@ -63,6 +63,10 @@ PANDA_CONFIG_FILES=$(SRC_PATH)/panda/plugins/config.panda \
 				   $(SRC_PATH)/panda/plugins/config.llvm.panda \
 				   $(if $(EXTRA_PLUGINS_PATH),$(EXTRA_PLUGINS_PATH)/panda/plugins/config.panda,)
 
+-include $(wildcard $(SRC_PATH)/panda/plugins/*/plugin_plugin.d)
+
+-include $(wildcard $(EXTRA_PLUGINS_PATH)/panda/plugins/*/plugin_plugin.d)
+
 plog.proto: $(PROTO_FILES) $(PANDA_CONFIG_FILES)
 	$(call quiet-command,\
 		$(SRC_PATH)/panda/scripts/pp.py $@ $(PANDA_CONFIG_FILES),\
@@ -100,7 +104,7 @@ GENERATED_FILES += $(PANDA_API_EXT)
 
 # All of these will be generated according to rules in rules.mak
 obj-y += panda/src/callbacks.o
-obj-y += panda/src/callback_support.o
+obj-y += panda/src/cb-support.o
 obj-y += panda/src/common.o
 obj-y += panda/src/plog.o
 obj-y += plog.pb-c.o

@@ -220,6 +220,9 @@ void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out)
                                         sizeof(ptr_peb_ldr_data))) {
         // We fail silently here - _PEB is part of the paged pool, so its
         // possible that this is paged out and nothing is wrong.
+#ifdef TARGET_I386
+        env->cr[3] = cur_cr3;
+#endif
         return;
     }
 
@@ -609,6 +612,10 @@ uint32_t handle_table_L2_entry(uint32_t table_vaddr, uint32_t L1_table, uint32_t
 uint32_t handle_table_L3_entry(uint32_t table_vaddr, uint32_t L2_table, uint32_t L3) {
     if (L2_table == 0) return 0;
     return L2_table + HANDLE_TABLE_ENTRY_SIZE * L3;
+}
+
+uint32_t get_eproc_peb_off(void) {
+    return eproc_ppeb_off;
 }
 
 

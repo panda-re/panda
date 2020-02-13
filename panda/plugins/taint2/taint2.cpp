@@ -70,17 +70,16 @@ bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb);
 
 // for i386 condition code adjustments
 #if defined(TARGET_I386)
-int i386_after_cpu_exec_enter(CPUState *cpu);
-int i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock);
+void i386_after_cpu_exec_enter(CPUState *cpu);
+void i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock);
 #endif
 
-int phys_mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-int phys_mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+void phys_mem_write_callback(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf);
+void phys_mem_read_callback(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf);
 
 // network related callbacks
-int on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr, uint64_t dst_addr, uint32_t num_bytes);
-int on_replay_before_dma(CPUState *cpu, uint32_t is_write, uint8_t *src_addr, uint64_t dest_addr, uint32_t num_bytes);
-
+void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr, uint64_t dst_addr, size_t num_bytes);
+void on_replay_before_dma(CPUState *cpu, const uint8_t *src_addr, hwaddr dest_addr, size_t num_bytes, bool is_write);
 void taint_state_changed(Shad *, uint64_t, uint64_t);
 PPP_PROT_REG_CB(on_taint_change);
 PPP_CB_BOILERPLATE(on_taint_change);
@@ -149,21 +148,21 @@ bool detaint_cb0_bytes = false;
  * These memory callbacks are only for whole-system mode.  User-mode memory
  * accesses are captured by IR instrumentation.
  */
-int phys_mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
+void phys_mem_write_callback(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf) {
     taint_memlog_push(&taint_memlog, addr);
-    return 0;
+    return;
 }
 
-int phys_mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size) {
+void phys_mem_read_callback(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size) {
     taint_memlog_push(&taint_memlog, addr);
-    return 0;
+    return;
 }
 
-int replay_hd_transfer_callback(CPUState *cpu, uint32_t type, uint64_t src_addr,
-                                uint64_t dst_addr, uint32_t num_bytes)
-{
+void replay_hd_transfer_callback(CPUState *cpu, uint32_t type,
+                                 target_ptr_t src_addr, target_ptr_t dst_addr,
+                                 size_t num_bytes) {
     if (!taintEnabled) {
-        return 0;
+        return;
     }
 
     Shad *src_shad, *dst_shad;
@@ -187,21 +186,20 @@ int replay_hd_transfer_callback(CPUState *cpu, uint32_t type, uint64_t src_addr,
         break;
     default:
         fprintf(stderr, "invalid HD transfer type\n");
-        return 0;
+        return;
     }
 
     Shad::copy(dst_shad, dst_addr, src_shad, src_addr, num_bytes);
 
-    return 0;
+    return;
 }
 
 // network data has been transfered - transfer the associated taint too
-int on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
-    uint64_t dst_addr, uint32_t num_bytes)
-{
+void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
+                            uint64_t dst_addr, size_t num_bytes) {
     if (!taintEnabled)
     {
-        return 0;
+        return;
     }
     
     Shad *src_shad;
@@ -222,58 +220,45 @@ int on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr,
         break;
     default:
         fprintf(stderr, "Invalid network transfer type (%d)\n", type);
-        return 0;
+        return;
     }
     Shad::copy(dst_shad, dst_addr, src_shad, src_addr, num_bytes);
-    return 0;
+    return;
 } // end of function on_replay_net_transfer
 
 // transfer between IO and RAM - transfer any taint too
-int on_replay_before_dma(CPUState *cpu, uint32_t is_write, uint8_t *src_addr,
-    uint64_t dest_addr, uint32_t num_bytes)
-{
-    // in taint1, this was PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM
-    
-    if (!taintEnabled)
-    {
-        return 0;
+void on_replay_before_dma(CPUState *cpu, const uint8_t *src_addr,
+                          hwaddr dest_addr, size_t num_bytes, bool is_write) {
+    if (!taintEnabled) {
+        return;
     }
-    
+
     // per comments in plugin.h, src_addr is really the QEMU device's buffer in
     // QEMU's virtual memory, and dest_addr is the physical address of guest RAM
     // so, the signature for the PANDA_CB_BEFORE_DMA callback in plugin.h
     // doesn't really match the comment - which is source and which is
     // destination depends upon what is_write is
-    
-    // per the comments in the code generating this event...
-    // ...is_write=1 means writing from IO buffer to RAM
-    // ...is_write=0 means writing from RAM to IO buffer
+
     Shad *src_shad;
     Shad *dst_shad;
     uint64_t ss_addr;
     uint64_t ds_addr;
-    if (1 == is_write)
-    {
+    if (is_write) {
+        // write to guest RAM
         src_shad = &shadow->io;
         dst_shad = &shadow->ram;
         ss_addr = (uint64_t)src_addr;
         ds_addr = dest_addr;
-    }
-    else if (0 == is_write)
-    {
+    } else {
+        // write to QEMU IO buffer
         src_shad = &shadow->ram;
         dst_shad = &shadow->io;
         ss_addr = dest_addr;
         ds_addr = (uint64_t)src_addr;
     }
-    else
-    {
-        fprintf(stderr, "Invalid replay before DMA write flag (%d)\n", is_write);
-        return 0;
-    }
     Shad::copy(dst_shad, ds_addr, src_shad, ss_addr, num_bytes);
-    return 0;
-} // end of function on_replay_before_dma
+    return;
+}  // end of function on_replay_before_dma
 
 void taint2_enable_tainted_pointer(void) {
     tainted_pointer = true;
@@ -365,11 +350,11 @@ void taint2_enable_taint(void) {
 // runs the enter callback.  (Apparently somebody outside of the cpu_exec needs
 // to know the real condition codes.)
 #if defined(TARGET_I386)
-int i386_after_cpu_exec_enter(CPUState *cpu) {
+void i386_after_cpu_exec_enter(CPUState *cpu) {
 
     if (!haveSavedCC)
     {
-        return 0;
+        return;
     }
 
     // as have saved data, restore it
@@ -408,11 +393,10 @@ int i386_after_cpu_exec_enter(CPUState *cpu) {
     // fortunately, it appears the feature to disable taint is not currently
     // implemented
 
-    // return value isn't used, so don't worry about it
-    return 0;
+    return;
 }
 
-int i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock) {
+void i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock) {
     // it's possible for the cpu_exec loop to enter and then leave without
     // ever executing an LLVM block - don't update the saved information in
     // that case, as may have unrestored saved information to apply yet
@@ -443,8 +427,8 @@ int i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock) {
         }
         haveSavedCC = true;
     }
-    // return value isn't used so don't worry about it
-    return 0;
+
+    return;
 }
 #endif
 

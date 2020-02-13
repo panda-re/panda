@@ -1,4 +1,5 @@
 
+#include <cinttypes>
 #include <iostream>
 #include <math.h>
 #include <fstream>
@@ -27,7 +28,7 @@ void PandaLog::create(uint32_t chunk_size) {
 void PandaLog::read_dir(){
     PlHeader *plh = read_header();
 
-    printf("Header: version: %u dir_pos: %lu chunk_size: %u\n", plh->version, plh->dir_pos, plh->chunk_size);
+    printf("Header: version: %u dir_pos: %" PRIu64 " chunk_size: %u\n", plh->version, plh->dir_pos, plh->chunk_size);
     
     this->chunk.size = plh->chunk_size;
     this->chunk.zsize = plh->chunk_size;
@@ -57,7 +58,7 @@ void PandaLog::read_dir(){
     }
 
     for (int i = 0; i< num_chunks; ++i){
-        printf("i: %d dirinstr: %lu dirpos: %lu dir.num_entries: %lu\n", i, dir.instr[i], dir.pos[i], dir.num_entries[i]);
+        printf("i: %d dirinstr: %" PRIu64 " dirpos: %" PRIu64 " dir.num_entries: %" PRIu64 "\n", i, dir.instr[i], dir.pos[i], dir.num_entries[i]);
     }
 
     // a little hack so unmarshall_chunk will work
@@ -214,7 +215,7 @@ void PandaLog::write_dir(){
     plh.dir_pos = this->file->tellp();
     plh.chunk_size = this->chunk.size;
 
-    printf("header: version=%d  dir_pos=%lu chunk_size=%d\n",
+    printf("header: version=%d  dir_pos=%" PRIu64 " chunk_size=%d\n",
             plh.version, plh.dir_pos, plh.chunk_size);
 
     // now go ahead and write dir where we are in logfile

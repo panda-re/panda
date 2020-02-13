@@ -28,13 +28,13 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 
 int asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd);
-int before_block_exec(CPUState *cpu, TranslationBlock *tb);
-int after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode);
+void before_block_exec(CPUState *cpu, TranslationBlock *tb);
+void after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode);
 
-int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
+void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
     OsiProc *current = get_current_process(cpu);
     if(current) {
-        printf("Current process: %s PID:" TARGET_FMT_ld " PPID:" TARGET_FMT_ld "\n", current->pid > 0 ? current->name : "N/A", current->pid, current->ppid);
+        printf("Current process: %s PID:" TARGET_PID_FMT " PPID:" TARGET_PID_FMT "\n", current->pid > 0 ? current->name : "N/A", current->pid, current->ppid);
     } else {
         printf("Cannot get current process details.\n");
     }
@@ -48,7 +48,7 @@ int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
         printf("Process list (%d procs):\n", ps->len);
         for (int i = 0; i < ps->len; i++) {
             OsiProc *p = &g_array_index(ps, OsiProc, i);
-            printf("  %-16s\t" TARGET_FMT_ld "\t" TARGET_FMT_ld "\n", p->name, p->pid, p->ppid);
+            printf("  %-16s\t" TARGET_PID_FMT "\t" TARGET_PID_FMT "\n", p->name, p->pid, p->ppid);
         }
     }
 
@@ -60,10 +60,10 @@ int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
         g_array_free(ps, true);
     }
 
-    return 0;
+    return;
 }
 
-int after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
+void after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
     OsiProc *current = get_current_process(cpu);
     GArray *ms = get_libraries(cpu, current);
     if (ms == NULL) {
@@ -100,7 +100,7 @@ int after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
         g_array_free(kms, true);
     }
 
-    return 0;
+    return;
 }
 
 int asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd) {
@@ -114,15 +114,21 @@ bool init_plugin(void *self) {
 #if defined(OSI_TEST_ON_ASID_CHANGED)
     // relatively short execution
     // loaded library information will be for the previously running process
-    panda_cb pcb = { .asid_changed = asid_changed };
-    panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
+    {
+        panda_cb pcb = { .asid_changed = asid_changed };
+        panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
+    }
 #else
     // expect this to take forever to run
     // prints loaded library information after the basic block executes
-    panda_cb pcb = { .before_block_exec = before_block_exec };
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-    panda_cb pcb2 = { .after_block_exec = after_block_exec };
-    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb2);
+    {
+        panda_cb pcb = { .before_block_exec = before_block_exec };
+        panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    }
+    {
+        panda_cb pcb = { .after_block_exec = after_block_exec };
+        panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
+    }
 #endif
 
     panda_require("osi");
