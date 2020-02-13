@@ -90,5 +90,9 @@ RUN make -j4
 
 RUN make install
 
+WORKDIR /panda/panda/pypanda
+RUN python3.6 ./setup.py install
+RUN python3.6 -m pip install cffi colorama protobuf pyaml
+
 RUN echo '[remote "origin"]' >> /panda/.git/config
 RUN echo 'fetch = +refs/pull/*/head:refs/remotes/origin/pr/*' >> /panda/.git/config
