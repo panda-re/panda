@@ -89,7 +89,7 @@ uint64_t num_unique_bb = 0;
 
 Panda__BasicBlock pbb;
 
-int after_bb_translate(CPUState *env, TranslationBlock *tb) {
+void after_bb_translate(CPUState *env, TranslationBlock *tb) {
 	Bblock bb;
 	target_ulong pc = tb->pc;    
 
@@ -129,7 +129,6 @@ int after_bb_translate(CPUState *env, TranslationBlock *tb) {
 	if ((num_unique_bb % 1000) == 0) 
 		cout << "num_unique_bb " << num_unique_bb << "\n";
 
-	return 0;
 }
 
 
