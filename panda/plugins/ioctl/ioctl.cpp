@@ -25,7 +25,8 @@ PANDAENDCOMMENT */
 #include <algorithm>
 
 const char* fn_str;
-AllIoctlsByProc proc_to_all_ioctls;
+AllIoctlsByPid pid_to_all_ioctls;
+NameByPid pid_to_name;
 
 // These need to be extern "C" so that the ABI is compatible with QEMU/PANDA, which is written in C
 extern "C" {
@@ -35,23 +36,25 @@ extern "C" {
 
 // CALLBACKS -----------------------------------------------------------------------------------------------------------
 
-INLINE void update_proc_ioctl_mapping(CPUState* cpu, uint32_t cmd) {
+INLINE void update_proc_ioctl_mapping(CPUState* cpu, uint32_t cmd, uint64_t arg_ptr) {
 
     ioctl_cmd_t* new_ioc_cmd = new ioctl_cmd_t;
     decode_ioctl_cmd(new_ioc_cmd, cmd);
 
     // Update all IOCTLs by process
-    OsiProc* proc = get_process(cpu, get_current_process_handle(cpu));
-    auto entry = proc_to_all_ioctls.find(proc);
-    if (entry == proc_to_all_ioctls.end()) {
-        proc_to_all_ioctls.emplace(proc, AllIoctls{new_ioc_cmd});
+    OsiProc* proc = get_current_process(cpu);
+    pid_to_name.emplace(proc->pid, proc->name);
+
+    auto entry = pid_to_all_ioctls.find(proc->pid);
+    if (entry == pid_to_all_ioctls.end()) {
+        pid_to_all_ioctls.emplace(proc->pid, AllIoctls{Ioctl{new_ioc_cmd, arg_ptr}});
     } else {
-        entry->second.push_back(new_ioc_cmd);
+        entry->second.push_back(Ioctl{new_ioc_cmd, arg_ptr});
     }
 }
 
 void linux_32_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint32_t arg) {
-    update_proc_ioctl_mapping(cpu, cmd);
+    update_proc_ioctl_mapping(cpu, cmd, (uint64_t)arg);
 }
 
 void linux_32_ioctl_return(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint32_t arg) {
@@ -59,7 +62,7 @@ void linux_32_ioctl_return(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t
 }
 
 void linux_64_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint64_t arg) {
-    update_proc_ioctl_mapping(cpu, cmd);
+    update_proc_ioctl_mapping(cpu, cmd, arg);
 }
 
 void linux_64_ioctl_return (CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint64_t arg) {
@@ -80,25 +83,31 @@ void flush_to_ioctl_log_file() {
 
     out_log_file << "[" << std::endl;
 
-    for (auto const& proc_to_ioctls : proc_to_all_ioctls) {
+    printf("ioctl: dumping log for %lu processes to %s\n", pid_to_all_ioctls.size(), fn_str);
+    for (auto const& pid_to_ioctls : pid_to_all_ioctls) {
 
-        auto proc = proc_to_ioctls.first;
-        auto ioctls = proc_to_ioctls.second;
+        auto pid = pid_to_ioctls.first;
+        auto ioctls = pid_to_ioctls.second;
+        assert(pid_to_name.find(pid) != pid_to_name.end());
+        auto name = pid_to_name.find(pid)->second;
 
-        for (auto const& ioctl : ioctls) {
+        for (auto const& request : ioctls) {
+
+            auto ioctl = request.first;
+            auto arg_ptr = request.second;
 
             // Write log line, hacky JSON
             out_log_file
                 << optional_delim
                 << std::hex << std::setfill('0') << "{ "
-                << "\"proc_pid\": \"" << proc->pid << "\", "
-                << "\"proc_name\": \"" << proc->name << "\", "
-                << "\"raw_cmd\": \"0x" << std::setw(hex_width) << encode_ioctl_cmd(ioctl) << "\", "
+                << "\"proc_pid\": \"" << pid << "\", "
+                << "\"proc_name\": \"" << name << "\", "
+                //<< "\"raw_cmd\": \"0x" << std::setw(hex_width) << encode_ioctl_cmd(ioctl) << "\", "
                 << "\"type\": \""  << ioctl_type_to_str(ioctl->type) << "\", "
-                << "\"access\": \"0x" << std::setw(hex_width) << ioctl->type << "\", "
                 << "\"arg_size\": \"0x" << std::setw(hex_width) << ioctl->arg_size << "\", "
                 << "\"code\": \"0x" << std::setw(hex_width) << ioctl->code << "\", "
                 << "\"func_num\": \"0x" << std::setw(hex_width) << ioctl->func_num << "\", "
+                << "\"arg_ptr\": \"0x" << std::setw(hex_width) << arg_ptr
                 << " }";
 
             // Validate write
@@ -137,8 +146,8 @@ bool init_plugin(void* self) {
     panda_enable_precise_pc();
     panda_require("syscalls2");
     assert(init_syscalls2_api());
-    panda_require("osi_linux");
-    assert(init_osi_linux_api());
+    panda_require("osi");
+    assert(init_osi_api());
 
     // TODO: ARM support
     #if defined(TARGET_I386) && !defined(TARGET_X86_64)
