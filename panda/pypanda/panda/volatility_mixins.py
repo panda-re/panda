@@ -81,7 +81,7 @@ class volatility_mixins():
         from volatility.framework import contexts
         from volatility.framework.layers.linear import LinearlyMappedLayer
         from volatility.framework.automagic import linux
-        if self.os == "linux":
+        if "linux" in self.os_type:
             if not hasattr(self, "_vmlinux"):
                 self.make_panda_file_handler(debug=debug)
                 constructed_original = CommandLineMoreEfficient().run()

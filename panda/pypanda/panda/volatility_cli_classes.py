@@ -6,7 +6,8 @@ from urllib.request import BaseHandler, pathname2url
 import volatility.plugins
 import volatility.symbols
 from volatility import framework
-from volatility.cli import MuteProgress, PrintedProgress, HelpfulSubparserAction
+from volatility.cli import MuteProgress, PrintedProgress
+from volatility.cli.volargparse import HelpfulSubparserAction
 from volatility.framework import automagic, constants, contexts, exceptions, interfaces, plugins, renderers, configuration
 from volatility.framework.automagic import linux
 from volatility.framework.layers.linear import LinearlyMappedLayer
