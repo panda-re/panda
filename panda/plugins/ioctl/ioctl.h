@@ -43,6 +43,12 @@ typedef struct ioctl_cmd_t {
     uint32_t func_num : IOC_FUNC_BITS;
 } ioctl_cmd_t;
 
+typedef struct ioctl_t {
+    char* file_name;
+    ioctl_cmd_t* cmd;
+    uint64_t arg_ptr;
+} ioctl_t;
+
 INLINE void decode_ioctl_cmd(ioctl_cmd_t* cmd, uint32_t val) {
     cmd->type     = val & ((1 << IOC_TYPE_BITS) - 1);
     cmd->arg_size   = (val >> IOC_TYPE_BITS) & ((1 << IOC_SIZE_BITS) - 1);
@@ -64,7 +70,6 @@ bool operator==(const ioctl_cmd_t &cmd_1, const ioctl_cmd_t &cmd_2) {
             (cmd_1.func_num == cmd_2.func_num);
 }
 
-typedef std::pair<ioctl_cmd_t*, uint64_t> Ioctl;
-typedef std::vector<Ioctl> AllIoctls;
+typedef std::vector<ioctl_t*> AllIoctls;
 typedef std::unordered_map<target_pid_t, AllIoctls> AllIoctlsByPid;
 typedef std::unordered_map<target_pid_t, std::string> NameByPid;
