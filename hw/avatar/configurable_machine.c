@@ -30,16 +30,22 @@
 #include "hw/boards.h"
 
 //plattform specific imports
-#ifdef TARGET_ARM
+#if defined(TARGET_ARM)
 #include "target/arm/cpu.h"
 #include "hw/arm/arm.h"
 #include "hw/avatar/arm_helper.h"
-#endif
+typedef ARMCPU THISCPU;
 
-#ifdef TARGET_MIPS
+#elif defined(TARGET_MIPS)
 #include "hw/mips/mips.h"
 #include "hw/mips/cpudevs.h"
 #include "target/mips/cpu.h"
+typedef  MIPSCPU THISCPU;
+
+#elif defined(TARGET_PPC)
+#include "hw/ppc/ppc.h"
+#include "target/ppc/cpu.h"
+typedef PowerPCCPU THISCPU;
 #endif
 
 //qapi imports
@@ -48,8 +54,6 @@
 #include "qapi/qmp/qobject.h"
 #include "qapi/qmp/qint.h"
 #include "qapi/qmp/qdict.h"
-
-
 
 #define QDICT_ASSERT_KEY_TYPE(_dict, _key, _type) \
     g_assert(qdict_haskey(_dict, _key) && qobject_type(qdict_get(_dict, _key)) == _type)
@@ -371,11 +375,7 @@ static void init_peripheral(QDict *device)
 }
 
 
-#ifdef TARGET_ARM
-static void set_entry_point(QDict *conf, ARMCPU *cpuu)
-#elif TARGET_MIPS
-static void set_entry_point(QDict *conf, MIPSCPU *cpuu)
-#endif
+static void set_entry_point(QDict *conf, THISCPU *cpuu)
 {
 #ifdef TARGET_ARM
     const char *entry_field = "entry_address";
@@ -390,19 +390,18 @@ static void set_entry_point(QDict *conf, MIPSCPU *cpuu)
 
     cpuu->env.regs[15] = entry & (~1);
     cpuu->env.thumb = (entry & 1) == 1 ? 1 : 0;
-#elif TARGET_MIPS
+#elif defined(TARGET_MIPS)
+    //Not implemented yet
+#elif defined(TARGET_PPC)
     //Not implemented yet
 #endif
 
 }
 
-#ifdef TARGET_ARM
-static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
+static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 {
     const char *cpu_model = ms->cpu_model;
-    ObjectClass *cpu_oc;
-    Object *cpuobj;
-    ARMCPU *cpuu;
+    THISCPU *cpuu;
     CPUState *env;
 
     if (qdict_haskey(conf, "cpu_model"))
@@ -411,6 +410,9 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
         g_assert(cpu_model);
     }
 
+#if defined(TARGET_ARM)
+    ObjectClass *cpu_oc;
+    Object *cpuobj;
     if (!cpu_model) cpu_model = "arm926";
 
     printf("Configurable: Adding processor %s\n", cpu_model);
@@ -425,58 +427,33 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
 
     object_property_set_bool(cpuobj, true, "realized", &error_fatal);
     cpuu = ARM_CPU(cpuobj);
-    env = (CPUState *) &(cpuu->env);
-    if (!env)
-    {
-        fprintf(stderr, "Unable to find CPU definition\n");
-        exit(1);
-    }
 
-    avatar_add_banked_registers(cpuu);
-    set_feature(&cpuu->env, ARM_FEATURE_CONFIGURABLE);
-    return cpuu;
-}
-#elif TARGET_MIPS
-static MIPSCPU *create_cpu(MachineState * ms, QDict *conf)
-{
-    const char *cpu_model = ms->cpu_model;
-    MIPSCPU *cpuu;
-    CPUState *cpu;
-
-    if (qdict_haskey(conf, "cpu_model"))
-    {
-        cpu_model = qdict_get_str(conf, "cpu_model");
-        g_assert(cpu_model);
-    }
-
+#elif defined(TARGET_MIPS)
     if (!cpu_model) cpu_model = "mips32r6-generic";
-
-    printf("Configurable: Adding processor %s\n", cpu_model);
-
     cpuu = cpu_mips_init(cpu_model);
-    if (cpuu == NULL) {
-        fprintf(stderr, "Unable to find CPU definition\n");
-        exit(1);
-    }
 
-    cpu = (CPUState *) &(cpuu->env);
-    if (!cpu) {
-        fprintf(stderr, "Unable to find CPU definition\n");
-        exit(1);
-    }
-
-    return cpuu;
-}
+#elif defined(TARGET_PPC)
+    if (!cpu_model) cpu_model = "e500v2_v30";
+    cpuu = cpu_ppc_init(cpu_model);
 #endif
 
+    env = (CPUState *) &(cpuu->env);
+    if (!env) {
+        fprintf(stderr, "Unable to find CPU definition\n");
+        exit(1);
+    }
+
+#ifdef TARGET_ARM
+    avatar_add_banked_registers(cpuu);
+    set_feature(&cpuu->env, ARM_FEATURE_CONFIGURABLE);
+#endif
+
+    return cpuu;
+}
 
 static void board_init(MachineState * ms)
 {
-#ifdef TARGET_ARM
-    ARMCPU *cpuu;
-#elif TARGET_MIPS
-    MIPSCPU *cpuu;
-#endif
+  THISCPU *cpuu;
 
     const char *kernel_filename = ms->kernel_filename;
     QDict * conf = NULL;
