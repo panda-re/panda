@@ -27,3 +27,6 @@ obj-$(CONFIG_E500) += e500.o mpc8544ds.o e500plat.o
 obj-$(CONFIG_E500) += mpc8544_guts.o ppce500_spin.o
 # PowerPC 440 Xilinx ML507 reference board.
 obj-$(CONFIG_XILINX) += virtex_ml507.o
+
+# PANDA misc
+obj-y += wrSbc834x.o
