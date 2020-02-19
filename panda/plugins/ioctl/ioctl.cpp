@@ -118,20 +118,20 @@ void flush_to_ioctl_log_file() {
                 //<< "\"raw_cmd\": \"0x" << std::setw(hex_width) << encode_ioctl_cmd(ioctl->cmd) << "\", "
                 << "\"type\": \""  << ioctl_type_to_str(ioctl->cmd->type) << "\", "
                 << "\"code\": \"0x" << std::setw(hex_width) << ioctl->cmd->code << "\", "
-                << "\"func_num\": \"0x" << std::setw(hex_width) << ioctl->cmd->func_num;
+                << "\"func_num\": \"0x" << std::setw(hex_width) << ioctl->cmd->func_num << "\" ";
 
             if (ioctl->cmd->arg_size) {
 
                 out_log_file
-                    << "\", "
+                    << ", "
                     << "\"arg_ptr\": \"0x" << std::setw(hex_width) << ioctl->arg_ptr << "\", "
-                    << "\"arg_size\": \"0x" << std::setw(hex_width) << ioctl->cmd->arg_size
-                    << " }";
+                    << "\"arg_size\": \"0x" << std::setw(hex_width) << ioctl->cmd->arg_size << "\" "
+                    << "}";
 
             } else {
 
                 out_log_file
-                    << " }";
+                    << "}";
 
             }
 

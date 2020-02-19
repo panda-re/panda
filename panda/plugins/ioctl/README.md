@@ -7,12 +7,12 @@ Summary
 Linux `ioctl` introspection built on top of syscalls2.
 
 **Filtered Hooking API (active):** APIs to hook IOCTLs by (in order of granularity least-to-most, can be applied to all processes or a specific process):
-    * Access (e.g. `IOW`/`copy_to_user`)
-    * Driver code (e.g. ASCII character supposedly unique to each driver)
-    * Command (e.g. the 2nd syscall param)
+* Access (e.g. `IOW`/`copy_to_user`)
+* Driver code (e.g. ASCII character supposedly unique to each driver)
+* Command (e.g. the 2nd syscall param)
 
 **Logging Functionality (passive):** Collect as JSON:
-    * Sequence of all `ioctl` commands by process
+* Sequence of all `ioctl` commands by process
 
 TODO: PyPanda client for hook APIs.
 
@@ -56,8 +56,8 @@ If `ls -l` is executed in the guest, the log will contain entries for `bash` int
 
 ```json
 ...
-{ "proc_pid": "349", "proc_name": "bash", "file_name": "/dev/ttyS0", "type": "IO", "code": "0x0000000000000054", "func_num": "0x0000000000000010 },
-{ "proc_pid": "349", "proc_name": "bash", "file_name": "/dev/ttyS0", "type": "IO", "code": "0x0000000000000054", "func_num": "0x0000000000000001 },
-{ "proc_pid": "349", "proc_name": "bash", "file_name": "/dev/ttyS0", "type": "IO", "code": "0x000000000000004b", "func_num": "0x0000000000000033 },
+{ "proc_pid": "346", "proc_name": "bash", "file_name": "/dev/ttyS0", "type": "IO", "code": "0x0000000000000054", "func_num": "0x0000000000000010" },
+{ "proc_pid": "346", "proc_name": "bash", "file_name": "/dev/ttyS0", "type": "IO", "code": "0x0000000000000054", "func_num": "0x0000000000000001" },
+{ "proc_pid": "346", "proc_name": "bash", "file_name": "/dev/ttyS0", "type": "IO", "code": "0x0000000000000054", "func_num": "0x0000000000000013" },
 ...
 ```
