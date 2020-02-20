@@ -7206,6 +7206,11 @@ void gen_intermediate_code(CPUPPCState *env, struct TranslationBlock *tb)
     ctx.sf_mode = msr_is_64bit(env, env->msr);
     ctx.has_cfar = !!(env->flags & POWERPC_FLAG_CFAR);
 #endif
+
+    // TODO: temp VxW hacks
+    ctx.le_mode = 0;
+    ctx.mem_idx = env->dmmu_idx = env->immu_idx = 1;
+
     if (env->mmu_model == POWERPC_MMU_32B ||
         env->mmu_model == POWERPC_MMU_601 ||
         (env->mmu_model & POWERPC_MMU_64B))
