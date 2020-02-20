@@ -75,6 +75,7 @@ static inline hwaddr ppc_hash32_hpt_base(PowerPCCPU *cpu)
 static inline hwaddr ppc_hash32_hpt_mask(PowerPCCPU *cpu)
 {
     return ((cpu->env.spr[SPR_SDR1] & SDR_32_HTABMASK) << 16) | 0xFFFF;
+    //return ((cpu->env.spr[SPR_SDR1] & SDR_32_HTABMASK) << 16);
 }
 
 static inline target_ulong ppc_hash32_load_hpte0(PowerPCCPU *cpu,
