@@ -322,9 +322,9 @@ enum {
 #define CPU_POWERPC_MPC5567          CPU_POWERPC_e200z6
     /* e300 family */
     /* e300 cores */
-    CPU_POWERPC_e300c1             = 0x00830010,
-    CPU_POWERPC_e300c2             = 0x00840010,
-    CPU_POWERPC_e300c3             = 0x00850010,
+    CPU_POWERPC_e300c1             = 0x80830010,
+    CPU_POWERPC_e300c2             = 0x80840010,
+    CPU_POWERPC_e300c3             = 0x80850010,
     CPU_POWERPC_e300c4             = 0x00860010,
     /* MPC83xx microcontrollers */
 #define CPU_POWERPC_MPC831x          CPU_POWERPC_e300c3
