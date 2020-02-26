@@ -4,6 +4,8 @@ This file sets a breakpoint on every basic block. Every 10000 of them it
 shows off the fact that it can determine both the program and the function
 that you are in. It uses some fancy caching mechanisms that assume cr3
 and cr3 + pc make a unique mapping (at least for duration of cache).
+
+Run with python capture_library.py [qcow]
 '''
 from sys import argv
 from volatility.framework.objects import utility, Pointer
@@ -11,9 +13,8 @@ from panda import blocking, Panda
 import pdb, yaml, pickle, os
 from functools import lru_cache
 
-# No arguments, i386. Otherwise argument should be guest arch
 arch = "x86_64"
-image = "/home/luke/.panda/bionic-server-cloudimg-amd64.qcow2"
+image = argv[1]
 extra_args = "-nographic"
 panda = Panda(arch=arch,qcow=image,extra_args=extra_args,expect_prompt=rb"root@ubuntu:.*",mem="1G")
 
