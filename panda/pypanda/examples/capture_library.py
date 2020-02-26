@@ -6,6 +6,9 @@ that you are in. It uses some fancy caching mechanisms that assume cr3
 and cr3 + pc make a unique mapping (at least for duration of cache).
 
 Run with python capture_library.py [qcow]
+
+NOTE: The big userland yml file is slow to load the first time. Let it do
+it's thing once then it will store a pickle and be fast after that.
 '''
 from sys import argv
 from volatility.framework.objects import utility, Pointer
@@ -113,7 +116,9 @@ def bbe(env,tb):
     if blocks >= 1000 and not panda.in_kernel(env):
         cr3 = env.env_ptr.cr[3]
         eip = env.env_ptr.eip
-        print(location(cr3,eip))
+        information = location(cr3,eip)
+        if information:
+            print(information)
         blocks = 0
     blocks += 1
 
