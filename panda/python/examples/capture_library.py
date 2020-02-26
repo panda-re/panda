@@ -8,6 +8,9 @@ and cr3 + pc make a unique mapping (at least for duration of cache).
 NOTE: The big userland yml file is slow to load the first time. Let it do
 it's thing once then it will store a pickle and be fast after that.
 Run with python capture_library.py [qcow]
+
+NOTE: The big userland yml file is slow to load the first time. Let it do
+it's thing once then it will store a pickle and be fast after that.
 '''
 from sys import argv
 from volatility.framework.objects import utility, Pointer
