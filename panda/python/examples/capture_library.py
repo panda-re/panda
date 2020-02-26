@@ -4,11 +4,14 @@ This file sets a breakpoint on every basic block. Every 10000 of them it
 shows off the fact that it can determine both the program and the function
 that you are in. It uses some fancy caching mechanisms that assume cr3
 and cr3 + pc make a unique mapping (at least for duration of cache).
+<<<<<<< HEAD
 
 Run with python capture_library.py [qcow]
 
 NOTE: The big userland yml file is slow to load the first time. Let it do
 it's thing once then it will store a pickle and be fast after that.
+=======
+>>>>>>> added example
 '''
 from sys import argv
 from volatility.framework.objects import utility, Pointer
@@ -16,8 +19,9 @@ from panda import blocking, Panda
 import pdb, yaml, pickle, os
 from functools import lru_cache
 
+# No arguments, i386. Otherwise argument should be guest arch
 arch = "x86_64"
-image = argv[1]
+image = "/home/luke/.panda/bionic-server-cloudimg-amd64.qcow2"
 extra_args = "-nographic"
 panda = Panda(arch=arch,qcow=image,extra_args=extra_args,expect_prompt=rb"root@ubuntu:.*",mem="1G")
 
@@ -116,9 +120,13 @@ def bbe(env,tb):
     if blocks >= 1000 and not panda.in_kernel(env):
         cr3 = env.env_ptr.cr[3]
         eip = env.env_ptr.eip
+<<<<<<< HEAD
         information = location(cr3,eip)
         if information:
             print(information)
+=======
+        print(location(cr3,eip))
+>>>>>>> added example
         blocks = 0
     blocks += 1
 
