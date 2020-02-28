@@ -34,7 +34,9 @@
 #include "target/arm/cpu.h"
 #include "hw/arm/arm.h"
 #include "hw/avatar/arm_helper.h"
+#include "hw/cpu/a9mpcore.h"
 typedef ARMCPU THISCPU;
+#endif
 
 #elif defined(TARGET_I386) || defined(TARGET_X86_64)
 #include "hw/i386/pc.h"
@@ -59,6 +61,13 @@ typedef PowerPCCPU THISCPU;
 #include "qapi/qmp/qobject.h"
 #include "qapi/qmp/qint.h"
 #include "qapi/qmp/qdict.h"
+
+
+
+
+static QDict *peripherals;
+
+
 
 #define QDICT_ASSERT_KEY_TYPE(_dict, _key, _type) \
     g_assert(qdict_haskey(_dict, _key) && qobject_type(qdict_get(_dict, _key)) == _type)
@@ -121,7 +130,6 @@ static QDict * load_configuration(const char * filename)
     return qobject_to_qdict(obj);
 }
 
-static QDict *peripherals;
 
 static void set_properties(DeviceState *dev, QList *properties)
 {
@@ -206,8 +214,19 @@ static SysBusDevice *make_configurable_device(const char *qemu_name,
 
     s = SYS_BUS_DEVICE(dev);
     sysbus_mmio_map(s, 0, address);
-    irq = qemu_allocate_irq(dummy_interrupt, dev, 1);
-    sysbus_connect_irq(s, 0, irq);
+
+    if (!strcmp(qemu_name, "a9mpcore_priv")) {
+        /*  TODO more generic irq connection */
+        printf("cooking interrupts\n");
+        sysbus_connect_irq(s, 0,
+                           qdev_get_gpio_in(DEVICE(first_cpu), ARM_CPU_IRQ));
+        sysbus_connect_irq(s, 1,
+                           qdev_get_gpio_in(DEVICE(first_cpu), ARM_CPU_FIQ));
+
+    } else {
+        irq = qemu_allocate_irq(dummy_interrupt, dev, 1);
+        sysbus_connect_irq(s, 0, irq);
+    }
 
     return s;
 }
@@ -357,7 +376,7 @@ static void init_peripheral(QDict *device)
     address = qdict_get_int(device, "address");
     name = qdict_get_str(device, "name");
 
-    printf("Configurable: Adding peripheral[%s] region %s at address 0x%" PRIx64 "\n", 
+    printf("Configurable: Adding peripheral[%s] region %s at address 0x%" PRIx64 "\n",
             qemu_name, name, address);
     if (strcmp(bus, "sysbus") == 0)
     {
@@ -372,6 +391,7 @@ static void init_peripheral(QDict *device)
 
         sb = make_configurable_device(qemu_name, address, properties);
         qdict_put_obj(peripherals, name, (QObject *)sb);
+        printf("putting %s\n", name);
     }
     else
     {
@@ -561,3 +581,19 @@ static void configurable_machine_init(void)
 }
 
 type_init(configurable_machine_init);
+
+
+
+/*  pypanda accessable methods */
+/* while this works for now, a clean programatic way accross different machines
+ * and GICs is desirable
+ * */
+
+QObject * configurable_get_peripheral(char * name) {
+    return qdict_get(peripherals, name);
+}
+
+void configurable_a9mp_inject_irq(void *opaque, int irq, int level){
+    A9MPPrivState *s = (A9MPPrivState *)opaque;
+    qemu_set_irq(qdev_get_gpio_in(DEVICE(&s->gic), irq), level);
+}
