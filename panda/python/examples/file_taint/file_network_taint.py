@@ -24,21 +24,18 @@ from panda import Panda, blocking, ffi
 from panda.x86.helper import *
 
 arch = "x86_64" if len(argv) <= 1 else argv[1]
-extra = "-nographic -chardev socket,id=monitor,path=./monitor.sock,server,nowait -monitor chardev:monitor -serial telnet:127.0.0.1:4445,server,nowait  -device e1000,netdev=net0 -netdev user,id=net0,hostfwd=tcp::5556-:22 -cdrom /home/luke/workspace/qcows/instance-1-cidata.iso"
-qcow = "/home/luke/workspace/qcows/instance-1.qcow2"
-panda = Panda(arch=arch, qcow=qcow, extra_args=extra, mem="1G")
+extra = "-nographic"
+qcow = argv[1]
+panda = Panda(arch=arch, qcow=qcow, extra_args=extra, mem="1G", expect_prompt=rb"root@ubuntu:.*")
 
 panda.set_os_name("linux-64-ubuntu")
 panda.load_plugin("callstack_instr", args={"stack_type": "asid"})
 panda.require("syscalls2")
-cb_name = "on_sys_read_return"
-cb_args = "CPUState *, target_ulong, uint32_t, uint64_t, uint32_t"
-ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
 
 file_info = None
 tainted = False
 
-@ffi.callback(f"void({cb_args})")
+@panda.ppp("syscalls2", "on_sys_read_return")
 def on_sys_read_return(cpustate, pc, fd, buf, count):
 	global file_info, tainted
 	if file_info and not tainted:
@@ -54,13 +51,7 @@ def on_sys_read_return(cpustate, pc, fd, buf, count):
 				panda.taint_label_ram(taint_paddr, idx)
 			tainted = True
 
-panda.plugins["syscalls2"].__getattr__(f"ppp_add_cb_{cb_name}")(on_sys_read_return)
-
-cb_name = "on_sys_open_return"
-cb_args = "CPUState *, target_ulong, uint64_t, int32_t, uint32_t"
-ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
-
-@ffi.callback(f"void({cb_args})")
+@panda.ppp("syscalls2", "on_sys_open_return")
 def on_sys_open_return(cpustate, pc, filename, flags, mode):
 	global file_info
 	fname = panda.virtual_memory_read(cpustate, filename, 100)
@@ -70,15 +61,9 @@ def on_sys_open_return(cpustate, pc, filename, flags, mode):
 		global info
 		file_info = cpustate.env_ptr.cr[3], cpustate.env_ptr.regs[R_EAX]
 
-panda.plugins["syscalls2"].__getattr__(f"ppp_add_cb_{cb_name}")(on_sys_open_return)
-
-cb_name = "on_sys_sendto_return"
-cb_args = "CPUState *, target_ulong, int32_t, uint64_t, uint32_t, uint32_t, uint64_t, int32_t"
-ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
-
 finished = False
 
-@ffi.callback(f"void({cb_args})")
+@panda.ppp("syscalls2", "on_sys_sendto_return")
 def on_sys_sendto_return(cpustate, a, fd, buff, length, sockaddr, z, flags):
 	global tainted, finished
 	if tainted and not finished:
@@ -89,9 +74,6 @@ def on_sys_sendto_return(cpustate, a, fd, buff, length, sockaddr, z, flags):
 				print("Result is tainted. " + str(tq) +" at "+hex(buff_physaddr + i) +" at offset "+str(i) +" in the packet")
 				finished = True
 				panda.end_analysis()
-
-
-panda.plugins["syscalls2"].__getattr__(f"ppp_add_cb_{cb_name}")(on_sys_sendto_return)
 
 panda.disable_tb_chaining()
 panda.run_replay("taint_taint")
