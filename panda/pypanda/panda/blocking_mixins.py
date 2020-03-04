@@ -76,8 +76,8 @@ class blocking_mixins():
         progress(self.run_serial_cmd(setup_sh))
 
     @blocking
-    def record_cmd(self, guest_command, copy_directory=None, iso_name=None, recording_name="recording", ignore_errors=False):
-        self.revert_sync("root") # Can't use self.revert because that would would run async and we'd keep going before the revert happens
+    def record_cmd(self, guest_command, copy_directory=None, iso_name=None, recording_name="recording", snap_name="root", ignore_errors=False):
+        self.revert_sync(snap_name) # Can't use self.revert because that would would run async and we'd keep going before the revert happens
 
         if copy_directory: # If there's a directory, build an ISO and put it in the cddrive
             # Make iso
