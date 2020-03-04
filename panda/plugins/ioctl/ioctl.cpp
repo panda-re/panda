@@ -39,7 +39,8 @@ extern "C" {
 // CALLBACKS -----------------------------------------------------------------------------------------------------------
 
 // Update all IOCTLs by process
-void update_proc_ioctl_mapping(uint32_t fd, CPUState* cpu, uint32_t cmd, uint64_t arg_ptr) {
+// Keying maps by PID for request/response consistency regardless of kthread context-switch/interweave
+void update_proc_ioctl_mapping(uint32_t fd, CPUState* cpu, uint32_t cmd, uint64_t arg_ptr, bool is_request) {
 
     if (swap_endianness) {
         cmd = bswap32(cmd);
@@ -49,39 +50,51 @@ void update_proc_ioctl_mapping(uint32_t fd, CPUState* cpu, uint32_t cmd, uint64_
     ioctl_cmd_t* new_cmd = new ioctl_cmd_t;
     decode_ioctl_cmd(new_cmd, cmd);
 
-    // Process name
+    // Process book keeping
     OsiProc* proc = get_current_process(cpu);
     pid_to_name.emplace(proc->pid, proc->name);
+    auto pid_entry = pid_to_all_ioctls.find(proc->pid);
 
     // File name
     char* file_name = osi_linux_fd_to_filename(cpu, proc, fd);
     ioctl_t* new_ioctl = new ioctl_t{file_name, new_cmd, arg_ptr};
 
-    // Log
-    auto entry = pid_to_all_ioctls.find(proc->pid);
-    if (entry == pid_to_all_ioctls.end()) {
-        pid_to_all_ioctls.emplace(proc->pid, AllIoctls{new_ioctl});
+    // Request - log a new pair
+    if (is_request) {
+
+        IoctlReqRet new_ioctl_req_ret = std::make_pair(new_ioctl, nullptr);
+
+        if (pid_entry == pid_to_all_ioctls.end()) {
+            pid_to_all_ioctls.emplace(proc->pid, AllIoctls{new_ioctl_req_ret});
+        } else {
+            pid_entry->second.push_back(new_ioctl_req_ret);
+        }
+
+    // Response - update last pair
     } else {
-        entry->second.push_back(new_ioctl);
+        assert(pid_entry != pid_to_all_ioctls.end());       // Record for process must exist
+        assert(pid_entry->second.back().second == nullptr); // Process's latest pair shouldn't have a response yet
+        pid_entry->second.back().second = new_ioctl;        // Log response corresponding to request
     }
 
+    // Callback slowdown but no memory leaks!
     free(proc);
 }
 
 void linux_32_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint32_t arg) {
-    update_proc_ioctl_mapping(fd, cpu, cmd, (uint64_t)arg);
+    update_proc_ioctl_mapping(fd, cpu, cmd, (uint64_t)arg, true);
 }
 
 void linux_32_ioctl_return(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint32_t arg) {
-    // TODO
+    update_proc_ioctl_mapping(fd, cpu, cmd, (uint64_t)arg, false);
 }
 
 void linux_64_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint64_t arg) {
-    update_proc_ioctl_mapping(fd, cpu, cmd, arg);
+    update_proc_ioctl_mapping(fd, cpu, cmd, arg, true);
 }
 
 void linux_64_ioctl_return (CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint64_t arg) {
-    // TODO
+    update_proc_ioctl_mapping(fd, cpu, cmd, arg, false);
 }
 
 // FILE I/O ------------------------------------------------------------------------------------------------------------
@@ -102,11 +115,14 @@ void flush_to_ioctl_log_file() {
     for (auto const& pid_to_ioctls : pid_to_all_ioctls) {
 
         auto pid = pid_to_ioctls.first;
-        auto ioctl_list = pid_to_ioctls.second;
+        auto ioctl_pair_list = pid_to_ioctls.second;
         assert(pid_to_name.find(pid) != pid_to_name.end());
         auto name = pid_to_name.find(pid)->second;
 
-        for (auto const& ioctl : ioctl_list) {
+        for (auto const& ioctl_pair : ioctl_pair_list) {
+
+            // TODO: also log response!
+            auto ioctl = ioctl_pair.first;
 
             // Write log line, hacky JSON
             out_log_file

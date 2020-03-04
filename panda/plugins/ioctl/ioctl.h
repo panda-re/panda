@@ -70,6 +70,14 @@ bool operator==(const ioctl_cmd_t &cmd_1, const ioctl_cmd_t &cmd_2) {
             (cmd_1.func_num == cmd_2.func_num);
 }
 
-typedef std::vector<ioctl_t*> AllIoctls;
+// Pair of ioctl request and corresponding response
+typedef std::pair<ioctl_t*, ioctl_t*> IoctlReqRet;
+
+// List of request/response pairs
+typedef std::vector<IoctlReqRet> AllIoctls;
+
+// Map of request/response lists by process
 typedef std::unordered_map<target_pid_t, AllIoctls> AllIoctlsByPid;
+
+// Map process PID to name
 typedef std::unordered_map<target_pid_t, std::string> NameByPid;
