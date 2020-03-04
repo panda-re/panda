@@ -99,20 +99,61 @@ void linux_64_ioctl_return (CPUState* cpu, target_ulong pc, uint32_t fd, uint32_
 
 // FILE I/O ------------------------------------------------------------------------------------------------------------
 
+// Write single ioctl entry to file
+void log_ioctl_line(std::ofstream &out_log_file, ioctl_t* ioctl, target_pid_t pid, std::string name, bool is_request) {
+
+    static int hex_width = (sizeof(target_ulong) << 1);
+
+    // Write log line, hacky JSON
+    if (is_request) {
+        out_log_file
+            << "\"flow\": \"req\", ";
+    } else {
+        out_log_file
+            << "\"flow\": \"res\", ";
+    }
+
+    out_log_file
+        << std::hex << std::setfill('0') << "{ "
+        << "\"proc_pid\": \"" << pid << "\", "
+        << "\"proc_name\": \"" << name << "\", "
+        << "\"file_name\": \"" << ioctl->file_name << "\", "
+        //<< "\"raw_cmd\": \"0x" << std::setw(hex_width) << encode_ioctl_cmd(ioctl->cmd) << "\", "
+        << "\"type\": \""  << ioctl_type_to_str(ioctl->cmd->type) << "\", "
+        << "\"code\": \"0x" << std::setw(hex_width) << ioctl->cmd->code << "\", "
+        << "\"func_num\": \"0x" << std::setw(hex_width) << ioctl->cmd->func_num << "\" ";
+
+    if (ioctl->cmd->arg_size) {
+        out_log_file
+            << ", "
+            << "\"arg_ptr\": \"0x" << std::setw(hex_width) << ioctl->arg_ptr << "\", "
+            << "\"arg_size\": \"0x" << std::setw(hex_width) << ioctl->cmd->arg_size << "\" "
+            << "}";
+    } else {
+        out_log_file
+            << "}";
+    }
+
+    // Validate write
+    if (!out_log_file.good()) {
+        std::cerr << "Error writing to " << fn_str << std::endl;
+        return;
+    }
+}
+
 // File I/O inside of a callback would be horridly slow, so we delay log flush until uninit_plugin()
 void flush_to_ioctl_log_file() {
 
     if (!fn_str) { return; }    // Pre-condition
 
     std::ofstream out_log_file(fn_str);
-    int hex_width = (sizeof(target_ulong) << 1);
     auto delim = ",\n";
-    auto optional_delim = "";
 
     out_log_file << "[" << std::endl;
 
     printf("ioctl: dumping log for %lu processes to %s\n", pid_to_all_ioctls.size(), fn_str);
     for (auto const& pid_to_ioctls : pid_to_all_ioctls) {
+    //for (auto it = pid_to_all_ioctls.begin(); it != pid_to_all_ioctls.end(); ++it) {
 
         auto pid = pid_to_ioctls.first;
         auto ioctl_pair_list = pid_to_ioctls.second;
@@ -121,43 +162,18 @@ void flush_to_ioctl_log_file() {
 
         for (auto const& ioctl_pair : ioctl_pair_list) {
 
-            // TODO: also log response!
-            auto ioctl = ioctl_pair.first;
+            log_ioctl_line(out_log_file, ioctl_pair.first, pid, name, true);
+            out_log_file << delim;
 
-            // Write log line, hacky JSON
-            out_log_file
-                << optional_delim
-                << std::hex << std::setfill('0') << "{ "
-                << "\"proc_pid\": \"" << pid << "\", "
-                << "\"proc_name\": \"" << name << "\", "
-                << "\"file_name\": \"" << ioctl->file_name << "\", "
-                //<< "\"raw_cmd\": \"0x" << std::setw(hex_width) << encode_ioctl_cmd(ioctl->cmd) << "\", "
-                << "\"type\": \""  << ioctl_type_to_str(ioctl->cmd->type) << "\", "
-                << "\"code\": \"0x" << std::setw(hex_width) << ioctl->cmd->code << "\", "
-                << "\"func_num\": \"0x" << std::setw(hex_width) << ioctl->cmd->func_num << "\" ";
+            log_ioctl_line(out_log_file, ioctl_pair.second, pid, name, false);
 
-            if (ioctl->cmd->arg_size) {
+            // TODO: fix so last does not have trailing
+            //if ((&ioctl_pair != &ioctl_pair_list.back()) and
+            //    (it.next() != pid_to_all_ioctls.end()) {
+                //out_log_file << delim;
+            //}
 
-                out_log_file
-                    << ", "
-                    << "\"arg_ptr\": \"0x" << std::setw(hex_width) << ioctl->arg_ptr << "\", "
-                    << "\"arg_size\": \"0x" << std::setw(hex_width) << ioctl->cmd->arg_size << "\" "
-                    << "}";
-
-            } else {
-
-                out_log_file
-                    << "}";
-
-            }
-
-            // Validate write
-            if (!out_log_file.good()) {
-                std::cerr << "Error writing to " << fn_str << std::endl;
-                return;
-            }
-
-            optional_delim = delim;
+            out_log_file << delim;
         }
     }
 
