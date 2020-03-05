@@ -13,20 +13,13 @@ import re
 import random
 from math import ceil
 from panda import Panda, blocking, ffi
-from panda.x86.helper import * # XXX omg these are 32-bit names
+from panda.x86.helper import * # XXX these are the i386 names but they do line up for x86_64. Should change
 
 import logging
 
 logging.basicConfig(level = logging.INFO)
 logger = logging.getLogger('panda.file_hooking')
 logger.setLevel(logging.INFO)
-
-# TODO: move PPP decorator into core panda
-def ppp(plugin_name, attr):
-    def inner(func):
-        panda.plugins[plugin_name].__getattr__(attr)(func)
-        return func
-    return inner
 
 # Classes for tracking faked files by name and FD
 class FakedFile:
@@ -57,6 +50,12 @@ class FakedFile:
         return (file_contents,        # Data to write into fd
                 len(file_contents))   # Num bytes read
 
+
+    def write(self, fd, new_data):
+        # Update contents from fd.offset
+        print(f"Write to hooked file with data {new_data}")
+        self.contents[fd.offset:fd.offset+len(new_data)] = new_data
+        fd.offset += len(new_data)
 
     def get_mode(self):
         return 0o664 # Regular file (octal)
@@ -160,12 +159,19 @@ def on_sys_read_return(cpu, pc, fd, buf, count):
         else: # Function
         """
 
-        # Write seems to be OK - call fn and update guest memory
+        # First try a junk write to see if memory write will fail (avoids calling class twice)
+        try:
+            panda.virtual_memory_write(cpu, buf, b'PANDA_TEST_DATA')
+        except Exception: # Page not mapped. Make guest retry
+            cpu.env_ptr.regs[R_EAX] = ffi.cast("unsigned char", -11) # Return EAGAIN
+            return
+        # Call fn and update guest memory
         (data, ret_val) = faker.get_data(f, count)
         if data and len(data):
-            write_result = panda.virtual_memory_write(cpu, buf, data)
-            if write_result < 0: # Page not mapped. Make guest retry
-                logger.info(f"\t Failed to write data into guest memory")
+            try:
+                panda.virtual_memory_write(cpu, buf, data)
+            except Exception: # Page not mapped. Make guest retry. XXX: calls get_data twice
+                logger.info(f"\t Failed to write data into guest memory. XXX Duplicate call to get_data")
                 cpu.env_ptr.regs[R_EAX] = ffi.cast("unsigned char", -11) # Return EAGAIN
                 return
 
@@ -279,25 +285,51 @@ def on_sys_write_enter(cpu, pc, fd, buf_ptr, count):
     if is_hooked(fd, asid):
         cpu.env_ptr.regs[R_EAX] = 0xFF # Invalid FD - will make kernel return an error that
                                         # we'll hide. Prevents the write from really happening
-        (buf, err) = panda.virtual_memory_read(cpu, buf_ptr, count)
-        logger.info(f"Write {buf} to faked FD {fd}")
+        buf = panda.virtual_memory_read(cpu, buf_ptr, count)
+        logger.warning(f"Saw write of data to faked FD({fd}): {buf}")
+        f = file_descriptors[(fd, asid)]
+        faker = files_faked[f.filename]
+        faker.write(f, buf)
 
 # Write return: Mask error
 @panda.ppp("syscalls2", "on_sys_write_return")
 def on_sys_write_return(cpu, pc, fd, buf, count):
     asid = panda.current_asid(cpu)
     if is_hooked(fd, asid):
-        logger.debug(f"Hide error writing to FD {fd}")
+        logger.info(f"Hide error writing to FD {fd}")
         cpu.env_ptr.regs[R_EAX] = count # Pretend we wrote all bytes
 
 @panda.ppp("syscalls2", "on_sys_dup2_enter")
 def dup2_return(cpu, pc, oldfd, newfd):
     asid = panda.current_asid(cpu)
     if is_hooked(oldfd, asid):
-        if cpu.env_ptr.regs[R_EAX] == newfd:
-            logger.debug(f"DUP2 on a fake FD. Copy {oldfd} to {newfd}")
+        if cpu.env_ptr.regs[R_EAX] == newfd: # Else something was wrong
+            logger.info(f"DUP2 on a fake FD. Copy {oldfd} to {newfd}")
             assert((newfd, asid) not in file_descriptors), "DUP2 with a dest FD already used"
             file_descriptors[(newfd, asid)] = file_descriptors[(oldfd, asid)]
+
+# Clone: When a process clones itself, add entries for all open FDs in child
+# XXX: If a parent FD is closed, is a child's?
+# XXX: There's no syscalls2 callback for clone on x86_64?
+cloning_pid = None
+@panda.ppp("syscalls2", "on_sys_clone_enter")
+def on_sys_clone_enter(cpu, pc, fd):
+    global cloning_asid
+    cloning_asid = panda.current_asid(cpu)
+
+@panda.ppp("syscalls2", "on_sys_clone_return")
+def on_sys_clone_return(cpu, pc, fd):
+    # Check if child
+    global cloning_asid, file_descriptors
+    assert(cloning_asid)
+    asid = panda.current_asid(cpu)
+    if asid != cloning_asid: # in child
+        logger.info(f"Copying FDs into child from ASID {cloning_asid} to {asid}")
+        for (fd, orig_asid) in file_descriptors.keys():
+            if orig_asid == cloning_asid: # Copy into table for child
+                file_descriptors[(fd, asid)] = file_descriptors[(fd, orig_asid)]
+
+        cloning_asid = None
 
 # Close: If it's a hooked FD, update file_descriptors and fake successful return
 @panda.ppp("syscalls2", "on_sys_close_return")
@@ -305,8 +337,19 @@ def on_sys_close_return(cpu, pc, fd):
     asid = panda.current_asid(cpu)
     if is_hooked(fd, asid):
         logger.debug(f"Close of fd {fd}")
+        print(file_descriptors)
         del file_descriptors[(fd, asid)]
+        print(file_descriptors)
         cpu.env_ptr.regs[R_EAX] = 0 # No error
+
+# MMAP: If it's a hooked FD, things aren't going to work out
+@panda.ppp("syscalls2", "on_sys_mmap_return")
+def on_sys_mmap_return(cpu, pc, addr, length, prot, flags, fd, offset):
+    asid = panda.current_asid(cpu)
+    if is_hooked(fd, asid):
+        logger.debug(f"MMAP of fd {fd}")
+        raise NotImplementedError("Yikes")
+
 
 # lseek: If it's a hooked FD, seek it!
 @panda.ppp("syscalls2", "on_sys_lseek_return")
@@ -335,13 +378,12 @@ if __name__== '__main__':
     def mycmd():
         panda.revert_sync("root")
         cmd = "cat /dev/panda /testfile  /dev/panda"
-        #panda.revert_sync("strace")
-        #cmd = "strace /bin/sh -c 'cat /testfile > /dev/panda'"
-        #cmd = "cat /testfile > /dev/panda"
+        #cmd = "echo 'data' > /dev/panda" # Works
+        #cmd = "strace -f /bin/sh -c 'cat /testfile > /dev/panda'" # WIP
         print(f"GUEST RUNNING COMMAND:\n\n# {cmd}\n" + panda.run_serial_cmd(cmd))
         panda.end_analysis()
 
-    class DynamicFile(FakedFile):
+    class CustomFile(FakedFile):
         '''
         Class that halcuinates data. Simple example that shows
         returning hardcoded string in chunks of 4 characters
@@ -356,9 +398,14 @@ if __name__== '__main__':
             fd.offset = new_offset
             return (data,         # Data to write into buffer (buffer)
                     len(data))    # Num bytes read
+
+        def write(self, fd, new_data):
+            # Just log and reset offset on each write
+            print(f"Write to TESTFILE with data {new_data}")
+            fd.offset += 0
     
     static_file = FakedFile("hello world I'm a panda\n")
-    dynamic_file = DynamicFile()
+    dynamic_file = CustomFile()
 
     add_file("*panda", static_file)
     add_file("*test", dynamic_file)
