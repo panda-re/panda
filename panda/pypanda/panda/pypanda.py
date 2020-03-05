@@ -209,13 +209,16 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         This is a fairly safe place to call into qemu internals but watch out for deadlocks caused
         by your request blocking on the guest's execution. Here any functions in main_loop_wait_fnargs will be called
         '''
-        # Then run any and all requested commands
-        if len(self.main_loop_wait_fnargs) == 0: return
-        #progress("Entering main_loop_wait_cb")
-        for fnargs in self.main_loop_wait_fnargs:
-            (fn, args) = fnargs
-            ret = fn(*args)
-        self.main_loop_wait_fnargs = []
+        try:
+            # Then run any and all requested commands
+            if len(self.main_loop_wait_fnargs) == 0: return
+            #progress("Entering main_loop_wait_cb")
+            for fnargs in self.main_loop_wait_fnargs:
+                (fn, args) = fnargs
+                ret = fn(*args)
+            self.main_loop_wait_fnargs = []
+        except KeyboardInterrupt:
+            self.end_analysis()
 
     def _find_build_dir(self):
         '''
