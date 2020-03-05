@@ -31,7 +31,7 @@ from both Ubuntu Bionic (18.04) and Xenial (16.04). These images are available [
 To pull the latest docker container and run PANDA
 ```
 $ docker pull pandare/panda
-$ docker run --rm panda -- /bin/panda-system-i386 --help
+$ docker run --rm pandare/panda -- /bin/panda-system-i386 --help
 ```
 
 ###  Debian, Ubuntu
