@@ -36,6 +36,11 @@
 #include "hw/avatar/arm_helper.h"
 typedef ARMCPU THISCPU;
 
+#elif defined(TARGET_I386) || defined(TARGET_X86_64)
+#include "hw/i386/pc.h"
+#include "target/i386/cpu.h"
+typedef  X86CPU THISCPU;
+
 #elif defined(TARGET_MIPS)
 #include "hw/mips/mips.h"
 #include "hw/mips/cpudevs.h"
@@ -377,23 +382,32 @@ static void init_peripheral(QDict *device)
 
 static void set_entry_point(QDict *conf, THISCPU *cpuu)
 {
-#ifdef TARGET_ARM
+    assert(cpuu != NULL);
+    printf("CONFIGURABLE: SET ENTRY\n");
     const char *entry_field = "entry_address";
     uint32_t entry;
 
+    if(qdict_haskey(conf, entry_field)) {
+      QDICT_ASSERT_KEY_TYPE(conf, entry_field, QTYPE_QINT);
+      entry = qdict_get_int(conf, entry_field);
+    } else {
+        entry = 0; // Continue with setup, but we'll set a meaningless entry
+                   // We keep going here so library users (pypanda) can
+                   // later set a program counter
+    }
 
-    if(!qdict_haskey(conf, entry_field))
-        return;
-
-    QDICT_ASSERT_KEY_TYPE(conf, entry_field, QTYPE_QINT);
-    entry = qdict_get_int(conf, entry_field);
-
+#ifdef TARGET_ARM
     cpuu->env.regs[15] = entry & (~1);
-    cpuu->env.thumb = (entry & 1) == 1 ? 1 : 0;
+    cpuu->env.thumb = (entry & 1) == 1 ? 1 : 0; // XXX: if using in library mode, make sure to set thumb appropriately
+#elif defined(TARGET_I386)
+    cpuu->env.eip = entry;
+
 #elif defined(TARGET_MIPS)
     //Not implemented yet
+    printf("Not yet implemented- can't start execution at 0x%x\n", entry);
 #elif defined(TARGET_PPC)
     //Not implemented yet
+    printf("Not yet implemented- can't start execution at 0x%x\n", entry);
 #endif
 
 }
@@ -428,6 +442,27 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
     object_property_set_bool(cpuobj, true, "realized", &error_fatal);
     cpuu = ARM_CPU(cpuobj);
 
+#elif defined(TARGET_I386)
+    // Logic inspired by hw/i386/pc.c:1160
+
+    if (!cpu_model) cpu_model = "qemu32";
+    ObjectClass *cpu_oc;
+    Object *cpuobj;
+
+    cpu_oc = cpu_class_by_name(TYPE_X86_CPU, cpu_model);
+    if (!cpu_oc) {
+        fprintf(stderr, "Unable to find CPU definition\n");
+        exit(1);
+    }
+    cpuobj = object_new(object_class_get_name(cpu_oc));
+
+    int64_t apic_id = 0; // ??
+    object_property_set_int(cpuobj, apic_id, "apic-id", &error_fatal);
+    object_property_set_bool(cpuobj, true, "realized", &error_fatal);
+
+    cpuu = X86_CPU(cpuobj);
+
+
 #elif defined(TARGET_MIPS)
     if (!cpu_model) cpu_model = "mips32r6-generic";
     cpuu = cpu_mips_init(cpu_model);
@@ -443,11 +478,15 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
         exit(1);
     }
 
-#ifdef TARGET_ARM
+#if defined(TARGET_ARM)
     avatar_add_banked_registers(cpuu);
     set_feature(&cpuu->env, ARM_FEATURE_CONFIGURABLE);
+#elif defined(TARGET_I386)
+    // Ensures CS register is set correctly on x86 CPU reset. See target/i386/cpu.c:3063
+    set_x86_configurable_machine();
 #endif
 
+    assert(cpuu != NULL);
     return cpuu;
 }
 
