@@ -27,6 +27,7 @@ extern "C" {
 #define EAX ((CPUArchState*)cpu->env_ptr)->regs[R_EAX]
 #define EBX ((CPUArchState*)cpu->env_ptr)->regs[R_EBX]
 #define ECX ((CPUArchState*)cpu->env_ptr)->regs[R_ECX]
+#define EDX ((CPUArchState*)cpu->env_ptr)->regs[R_EDX]
 #define EDI ((CPUArchState*)cpu->env_ptr)->regs[R_EDI]
 #endif
 
@@ -163,26 +164,138 @@ void lava_attack_point(PandaHypercallStruct phs) {
 bool guest_hypercall_callback(CPUState *cpu) {
     bool ret = false;
 #if defined(TARGET_I386)
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+//    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    if (EAX == 6) {
+        if (!taintEnabled) {
+            printf("taint2: enabling taint processing\n");
+            taint2_enable_taint();
+        }
+    }
+
     if (taintEnabled) {
-        if (EAX == 7 || EAX == 8) {
-            target_ulong buf_start = EBX;
-            target_ulong buf_len = ECX;
-            long label = EDI;
-            if (R_EAX == 7) {
+        if (EAX == 7 || EAX == 8 || EAX == 9 || EAX == 10 || EAX == 11) {
+            if (EAX == 7) {
+                target_ulong buf_start = EBX;
+                target_ulong buf_len = ECX;
+                long label = EDI;
+
                 // Standard buffer label
                 printf("taint2: single taint label\n");
                 taint2_add_taint_ram_single_label(cpu, (uint64_t)buf_start,
                                                   (int)buf_len, label);
             }
-            else if (R_EAX == 8) {
+            else if (EAX == 8) {
+                target_ulong buf_start = EBX;
+                target_ulong buf_len = ECX;
+                long label = EDI;
+
                 // Positional buffer label
                 printf("taint2: positional taint label\n");
                 taint2_add_taint_ram_pos(cpu, (uint64_t)buf_start, (int)buf_len, label);
             }
+            else if (EAX == 10) {
+                target_ulong reg_num = EBX;
+                target_ulong reg_off = ECX;
+		long label = EDI;
+
+                // positional register label
+		printf("taint2: positional register label\n");
+		taint2_label_reg(reg_num, reg_off, label);
+            }
+            else if (EAX == 11) {
+                // query taint for label on register
+                printf("taint2: query labels on register\n");
+                target_ulong reg_num = EBX;
+		target_ulong reg_off = ECX;
+		long label = EDI;
+
+		Addr greg = make_greg(reg_num,reg_off);
+
+		uint32_t num_labels = taint2_query(greg);//_reg(reg_num, reg_off);
+		bool label_found = false;
+
+                    // if at least one label exists
+                    // and storage is allocated for labels
+                    if ((num_labels > 0)/* && (taintset_storage != 0)*/) {
+                        // allocate memory for num_labels taint labels
+                        uint32_t *labels = (uint32_t *)malloc(sizeof(uint32_t) * num_labels);
+                        uint32_t **labelsptr = &labels;
+                        // query for the entire set of taint labels present on address and store them in "labels"
+                        taint2_query_set_a(greg, labelsptr, &num_labels);
+                        // once per present label
+                        for (size_t label_num = 0; label_num < num_labels; label_num++) {
+                          printf("label %08llX == %08llX\n", (unsigned long long int)label_num, (unsigned long long int)labels[label_num]);
+                            if (label == labels[label_num]) {
+                                label_found = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (label_found) {
+                        printf("taint2: assert positive taint_contains(reg: %08lX, off: %08lX, label: %08lX)\n", (long unsigned int)reg_num, (long unsigned int)reg_off, (long unsigned int)label);
+                    }
+                    else {
+                        printf("taint2: assert negative taint_contains(reg: %08lX, off: %08lX, label: %08lX)\n", (long unsigned int)reg_num, (long unsigned int)reg_off, (long unsigned int)label);
+                    }
+
+            }
+            else if (EAX == 9) {
+                // Query taint for label on byte
+                printf("taint2: query labels on memory\n");
+		//  EBX is buffer address
+		// ECX is buffer offset
+                target_ulong buf_start = EBX;
+                target_ulong buf_off = ECX;
+                long label = EDI;
+
+		// buffer address + buffer offset
+                uint32_t va = buf_start + buf_off;
+		// physical address based on va above
+                uint32_t pa =  panda_virt_to_phys(cpu, va);
+                if ((int) pa != -1) {
+                    // make an Addr from the physical address for taint query
+                    Addr a = make_maddr(pa);
+
+                    // find out how many labels are associated with the address
+                    uint32_t num_labels = taint2_query(a);
+
+//		    panda_virtual_memory_rw(cpu, labelcount, (uint8_t *)&num_labels, sizeof(uint32_t), true);
+
+                    bool label_found = false;
+
+                    // if at least one label exists
+		    // and storage is allocated for labels
+                    if ((num_labels > 0)/* && (taintset_storage != 0)*/) {
+                        // allocate memory for num_labels taint labels
+                        uint32_t *labels = (uint32_t *)malloc(sizeof(uint32_t) * num_labels);
+                        uint32_t **labelsptr = &labels;
+			// query for the entire set of taint labels present on address and store them in "labels"
+                        taint2_query_set_a(a, labelsptr, &num_labels);
+			// once per present label
+                        for (size_t label_num = 0; label_num < num_labels; label_num++) {
+//                    	    printf("label %08llX == %08llX\n", (unsigned long long int)label_num, (unsigned long long int)labels[label_num]);
+                            if (label == labels[label_num]) {
+                                label_found = true;
+                                break;
+                            }
+                        }
+		    }
+
+                    if (label_found) {
+                        printf("taint2: assert positive taint_contains(addr: %08lX, label: %08lX)\n", (long unsigned int)va, (long unsigned int)label);
+                    }
+                    else {
+                        printf("taint2: assert negative taint_contains(addr: %08lX, label: %08lX)\n", (long unsigned int)va, (long unsigned int)label);
+                    }
+
+                    // return num labels associated with address of buf
+//		    EAX = num_labels;
+                }
+            }
             ret = true;
         }
-        else {
+/*        else {
             // LAVA Hypercall
             target_ulong addr = panda_virt_to_phys(cpu, env->regs[R_EAX]);
             if ((int)addr == -1) {
@@ -221,7 +334,7 @@ bool guest_hypercall_callback(CPUState *cpu) {
                     printf ("Invalid magic value in PHS struct: %x != 0xabcd.\n", phs.magic);
                 }
             }
-        }
+        }*/
     }
 #elif defined(TARGET_ARM)
     // R0 is command (label or query)
