@@ -1,0 +1,91 @@
+
+
+How to test / evaluate a taint system.
+
+
+Let's start with the kinds of questions someone/we might ask.
+
+
+1. Does your taint system transfer taint across every guest
+instruction correctly?
+    
+    This seems a crucial question everyone would ask of a taint
+    system, so we have to have a good way of addressing it.
+
+    For PANDA. If we *assume* that the translation from guest instr
+    set to LLVM is *correct*, then can't we just turn this question
+    into a different one that's easier to answer?  "Does your taint
+    transfer taint across every LLVM op correctly?"  Are there ways in
+    which this isn't sufficient?
+
+    Subquestions.  What about floating point instructions?  What about
+    weird MMX and other oddball instructions for x86?  What about... 
+
+2. Does your whole system taint analysis handle the following kinds of
+taint transfers correctly?
+
+    2.1. process1 -> process2
+
+    2.2. process -> kernel
+
+    2.3. kernel -> process
+
+    2.4. process1 -> shared_memory -> process2
+
+    2.5. process1 -> pipe -> process2
+
+    2.6. python or bash or whatever script -- does taint transfer work
+    at all and is it useful?
+
+3. Since its whole system, does your taint analysis deal with
+permanent storage like virtual hard drive or NVRAM?
+
+
+Now we can talk about what we'll actually do, i.e., the kinds of tests
+and evalations we need to convince ourselves this taint system works,
+and that we can use to compare two taint systems.  We will need a
+variety of tests and evaluations.  Here are some possibilities.
+
+
+REALLY LOW LEVEL TESTS
+
+    Really we should have tests at the LLVM level. How about we
+    generate a bunch of random basic blocks of llvm.  Then use
+    symbolic taint to determine what taint transfer across that block
+    should be.  Then run taint analysis concretely a bunch of times
+    with random initial values and see if transfer matches the model
+    every time?
+
+LOW LEVEL TESTS
+
+    We also need some characterization of individual machine
+    instructions in terms of taint transfer.  How about, for each x86
+    instruction, individually, we randomize registers before executing
+    it and transferring taint, and then record output effect in terms
+    of final taint.  Of course, we don't know the correct answer...
+    But maybe this is useful?  We can at least identify large-scale
+    issues like instructions for which we seem to completely lose
+    taint.
+
+    Note that we want these tests for every architecture, i.e., i386,
+    x86-64, ARM, PPC, MIPS, etc.  Start off just enumerating all of
+    them and creating output that could be inspected later to
+    diagnose.
+
+HIGH LEVEL TESTS
+
+    We also need higher level, wholistic tests.  If I apply taint
+    labels to the inputs to this image processing program, do I see
+    taint labels on the output?  What about gzip?  What about md5sum?
+    What about AES.  Etc.  I guess this is really characterizing what
+    we see and blessing it, intuitivel at a high level?  Because some
+    of it will be kinda weird.  For example, say the input is C source
+    code, and the program is a compiler.  I think most lexing uses
+    hashing and then numerical tests, so we'll lose taint at some
+    point.  This is not *wrong* given how our taint system works.  
+
+
+Do we also want performance tests?  These could be to identify really
+slow things for the taint system, or things that cause label loss or
+blow-up?
+
