@@ -1,0 +1,12 @@
+message Edge { // This will have to be n at some point 
+    required uint64 begin = 1;
+    required uint64 end = 2;
+}
+
+message AsidEdges {
+    required uint64 n = 1;
+    required uint64 asid = 2; 
+    repeated Edge edges = 3;
+}
+
+optional AsidEdges edge_coverage = 41;  

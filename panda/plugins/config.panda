@@ -30,3 +30,4 @@ mmio_trace
 hooks
 memorymap
 collect_code
+edge_coverage
