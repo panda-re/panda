@@ -123,23 +123,15 @@ void uninit_plugin(void *) {
     printf("Unload coverage plugin\n");
 
     if (pandalog) {
-        //Panda__EdgeCoverage *ec = (Panda__EdgeCoverage *) malloc (sizeof(Panda__EdgeCoverage));
-        //*ec = PANDA__EDGE_COVERAGE__INIT; 
-        //ec->n = 2; // for now only 2-edge coverage 
         int map_size = asid_edges.size();
-        //Panda__AsidEdges ** ae = (Panda__AsidEdges **) malloc (sizeof (Panda__AsidEdges *) * map_size); 
         printf("asid_edges size: %d\n", map_size);
-        int i = 0;
         for (auto kvp : asid_edges) { 
             auto asid = kvp.first; // asid 
             auto edges = kvp.second; // set of edges
             Panda__AsidEdges * ae = (Panda__AsidEdges *) malloc (sizeof (Panda__AsidEdges));
-            //(ae[i]) = (Panda__AsidEdges *) malloc (sizeof (Panda__AsidEdges)); 
             *ae = PANDA__ASID_EDGES__INIT;
             ae->n = 2; // for now just do 2-edge coverage 
             ae->asid = asid; 
-            //*(ae[i]) = PANDA__ASID_EDGES__INIT;
-            //ae[i]->asid = asid;
             int num_edges = edges.size(); 
             Panda__Edge** e = (Panda__Edge **) malloc (sizeof (Panda__Edge *) * num_edges);
             printf("edges size: %d\n", num_edges);
@@ -152,17 +144,16 @@ void uninit_plugin(void *) {
                 j++;
                  
             }
+            ae->n_edges = edges.size(); 
             ae->edges = e; 
-            //ae[i]->edges = e; 
-            i++;
             Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-            ple.edge_coverage = ae; //ec; 
+            ple.edge_coverage = ae; 
             pandalog_write_entry(&ple); 
+
+            // Free everything after we are done  
+            for (int i = 0; i < num_edges; i++) free(e[i]); 
+            free(ae->edges);
+            free(ae); 
         }
-        //ec->asid_edges = ae;
-        //printf("%lu\n", ec->asid_edges[0]->edges[0]->begin); 
-
-        // free stuff here, i'll do that after pandalog works
-
     }
 }
