@@ -39,23 +39,7 @@ using namespace std;
 typedef target_ulong Asid;
 typedef target_ulong Pc;
 
-/*typedef pair<Pc, Pc> Edge; 
-typedef pair<Pc, unsigned int> Block; 
-
-map<Asid, set<Block>> blocks;
-map<Asid, set<Edge>> asid_edges;
-map<Asid, Pc> last_pc;
-
-struct ProcessData {
-    const char* name;
-    target_ulong pid;
-    target_ulong load_address;
-    target_ulong size;
-}; 
-*/
 map <Asid, vector<Pc>> asid_trace; 
-
-//map<Asid, ProcessData> process_datas;
 
 target_ulong MY_TARGET_ASID = 0; // Set to 0 to collect everything
 int n;
@@ -63,54 +47,21 @@ int n;
 // Called before each block, we have PC and ASID
 void collect_edges(CPUState *env, TranslationBlock *tb) {
 
-    //OsiProc *current = get_current_process(env); 
     target_ulong asid = panda_current_asid(env);
     target_ulong pc = panda_current_pc(env);
 
     // Only trace our asid (0 is all asids) 
     if (MY_TARGET_ASID != 0 && asid != MY_TARGET_ASID) return; 
 
-    /*if (process_datas.find(asid) == process_datas.end() && current) {
-        target_ulong load_addr = 0;
-        target_ulong size = 0;
-
-        GArray * libraries = get_libraries(env, current); 
-        if (libraries && libraries->len > 0) {
-
-            // Add this process to the asid -> process data map 
-            OsiModule *self = &g_array_index(libraries, OsiModule, 0); 
-            load_addr = self->base;
-            size = self->size;
-            if (self->file != NULL) {
-                printf("LOADED %s asid=0x" TARGET_FMT_lx " at PC 0x" TARGET_FMT_lx ": low = " TARGET_FMT_lx 
-                        ", relative= 0x" TARGET_FMT_lx "\n", self->file, asid, pc, load_addr, pc-load_addr);
-                ProcessData p;
-                p.name = current->name;
-                p.pid = current->pid;
-                p.load_address = load_addr;
-                p.size = size;
-                process_datas.insert(make_pair(asid, p));
-            }
-        }
-    }*/
-
+    // Gather the trace of pcs for this asid 
     asid_trace[asid].push_back(pc); 
-    // Actually store the PC, in both blocks and edges for now
-    /*if (last_pc.count(asid) != 0) { 
-        // If we currently have a pc stored for this ASID, 
-        // let's add an edge from the last one we saw in this ASID (process) to this new one 
-        unsigned int block_size = tb->size;
-        Block b = make_pair(pc, block_size);
-        Edge e = make_pair(last_pc[asid], pc); 
-        asid_edges[asid].insert(e);
-        blocks[asid].insert(b);
-    }
-    last_pc[asid] = pc; */
 }
 
 bool init_plugin(void *self) {
     panda_arg_list *args; 
-    args = panda_get_args("general"); 
+    args = panda_get_args("general");
+
+    // Set the default value to 1-edge or basic block coverage  
     n = panda_parse_uint64_opt(args, "n", 1, "collect up-to-and-including n-edges");
 
     panda_require("osi");
@@ -124,25 +75,30 @@ bool init_plugin(void *self) {
 
 
 void uninit_plugin(void *) {
+
     map<Asid, map<vector<Pc>, int>> final_map; 
+
+    // From the traces in each asid, collect up to n-edges 
     for (auto kvp : asid_trace) { 
         map<vector<Pc>, int> edges;
         auto asid = kvp.first;
         auto pc_trace = kvp.second; 
 
-        for (int k = 1; k <= n; k++) {
+        for (int k = 1; k <= n; k++) { 
             for (int i = 0; i < pc_trace.size(); i++) {
+                // Build the edge (vector) 
                 vector<Pc> edge;
                 for (int j = 0; j < k; j++) { 
                     edge.push_back(pc_trace[i + j]); 
                 }
+                // Add the edge to the map for this asid and update its count  
                 if (edges.find(edge) != edges.end())  edges[edge] += 1;
                 else  edges[edge] = 1; 
             }
-        }        
         final_map[asid] = edges; 
     }
 
+    // Write out each to a pandalog 
     for (auto kvp: final_map) { 
         auto asid = kvp.first;
         auto edge_map = kvp.second; 
