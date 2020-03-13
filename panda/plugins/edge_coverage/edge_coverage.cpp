@@ -76,6 +76,8 @@ bool init_plugin(void *self) {
 
 void uninit_plugin(void *) {
 
+    if (!pandalog) return; 
+
     map<Asid, map<vector<Pc>, int>> final_map; 
 
     // From the traces in each asid, collect up to n-edges 
@@ -95,6 +97,7 @@ void uninit_plugin(void *) {
                 if (edges.find(edge) != edges.end())  edges[edge] += 1;
                 else  edges[edge] = 1; 
             }
+        }
         final_map[asid] = edges; 
     }
 
@@ -135,7 +138,16 @@ void uninit_plugin(void *) {
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT; 
         ple.edge_coverage = ae; 
         pandalog_write_entry(&ple); 
-    }
+
+        // Free everything I used
+        for (int i = 0; i < edge_map.size(); i++) { 
+            free(e[i]->pc);
+            free(e[i]); 
+        }
+        free(e); 
+        free(ae); 
+    } 
+
 }
 
 
