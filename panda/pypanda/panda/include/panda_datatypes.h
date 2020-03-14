@@ -1125,6 +1125,8 @@ target_ulong panda_current_sp_external(CPUState *cpu);
 target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong pagesize);
 target_ulong panda_virt_to_phys_external(CPUState *cpu, target_ulong virt_addr);
 
+void map_memory(char* name, uint64_t size, uint64_t address);
+
 // REDEFINITIONS below here from monitor.h
 
 // Create a monitor for panda

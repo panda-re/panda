@@ -48,17 +48,20 @@ typedef struct syscall_ctx syscall_ctx_t;
 
 {% for arch, syscalls in syscalls_arch|dictsort -%}
 #if {{architectures[arch].qemu_target}}
-{%- for syscall_name, syscall in syscalls|dictsort %}
-typedef void (*on_{{syscall.name}}_enter_t)({{syscall.cargs_signature}});
-typedef void (*on_{{syscall.name}}_return_t)({{syscall.cargs_signature}});
-{%- endfor %}
+#include "syscalls_ext_typedefs_{{arch}}.h"
 #endif
 {% endfor %}
+// WIP - How can we expose these to pypanda given that they need syscall_ctx which dependes on #DEFINES
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
 typedef void (*on_all_sys_enter_t)(CPUState *cpu, target_ulong pc, target_ulong callno);
 typedef void (*on_all_sys_enter2_t)(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *ctx);
 typedef void (*on_all_sys_return_t)(CPUState *cpu, target_ulong pc, target_ulong callno);
 typedef void (*on_all_sys_return2_t)(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *ctx);
 typedef void (*on_unknown_sys_enter_t)(CPUState *cpu, target_ulong pc, target_ulong callno);
 typedef void (*on_unknown_sys_return_t)(CPUState *cpu, target_ulong pc, target_ulong callno);
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 /* vim: set tabstop=4 softtabstop=4 noexpandtab ft=cpp: */
