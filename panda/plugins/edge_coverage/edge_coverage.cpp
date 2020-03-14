@@ -1,16 +1,9 @@
-// Generate a drcov trace file from a panda recording
-// TODO: the output isn't quite right, Lighthouse shows no coverage
-
-// This needs to be defined before anything is included in order to get
-// the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
 #include <cstdio>
 
 #include "panda/plugin.h"
 
-// These need to be extern "C" so that the ABI is compatible with
-// QEMU/PANDA, which is written in C
 extern "C" {
 
     bool init_plugin(void *);
@@ -41,7 +34,7 @@ typedef target_ulong Pc;
 
 map <Asid, vector<Pc>> asid_trace; 
 
-target_ulong MY_TARGET_ASID = 0; // Set to 0 to collect everything
+// Up to n-edge coverage 
 int n;
 
 // Called before each block, we have PC and ASID
@@ -49,9 +42,6 @@ void collect_edges(CPUState *env, TranslationBlock *tb) {
 
     target_ulong asid = panda_current_asid(env);
     target_ulong pc = panda_current_pc(env);
-
-    // Only trace our asid (0 is all asids) 
-    if (MY_TARGET_ASID != 0 && asid != MY_TARGET_ASID) return; 
 
     // Gather the trace of pcs for this asid 
     asid_trace[asid].push_back(pc); 
