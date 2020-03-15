@@ -123,7 +123,7 @@ setup(name='panda',
           'data/pypanda/include/*.h',  # Copy includes files
           'data/*/llvm-helpers*.bc',   # Copy llvm-helpers
           ]},
-      install_requires=[ 'cffi', 'colorama', 'protobuf'],
+      install_requires=[ 'cffi>=1.13', 'colorama', 'protobuf'],
       python_requires='>=3.5',
       cmdclass={'install': custom_install, 'develop': custom_develop}
      )
