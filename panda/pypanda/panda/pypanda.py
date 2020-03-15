@@ -83,9 +83,16 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.bits, self.endianness, self.register_size = self._determine_bits()
         self._do_types_import()
         self.libpanda = ffi.dlopen(self.libpanda_path)
+
+        # set OS name if we have one
+        if self.os:
+            self.set_os_name(self.os)
+
         # Setup argv for panda
-        biospath = realpath(pjoin(self.build_dir, "pc-bios")) # XXX Do we want this for all archs?
-        self.panda_args = [self.panda, "-L", biospath]
+        self.panda_args = [self.panda]
+        biospath = realpath(pjoin(self.build_dir, "pc-bios")) # XXX: necessary for network drivers for arm, so 'pc-bios' is a misleading name
+        self.panda_args.append("-L")
+        self.panda_args.append(biospath)
 
         if self.qcow:
             self.panda_args.append(self.qcow)
@@ -157,8 +164,6 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         (TODO: what? register callbacks? It's something important...) before we finish initializing
         '''
         self.libpanda.panda_set_library_mode(True)
-        if self.os:
-            self.set_os_name(self.os)
 
         cenvp = ffi.new("char**", ffi.new("char[]", b""))
         len_cargs = ffi.cast("int", len(self.panda_args))
