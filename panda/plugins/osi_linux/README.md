@@ -135,7 +135,7 @@ Assuming you have a `kernelinfo.conf` in the current directory with a configurat
 Another Example
 -------
 
-PANDAS' `kernelinfo.conf` has the information for the Ubuntu kernels found on the live DVD for 18.04.3 and 18.04.4
+PANDA's `kernelinfo.conf` has the information for the Ubuntu kernels found on the live DVD for 18.04.3 and 18.04.4
 
 Newer kernels perform KASLR, however, and need a boot parameter to turn that off. This parameter is `nokaslr`. Thus, one can load an environment directly from one of these DVDs
 ```bash
