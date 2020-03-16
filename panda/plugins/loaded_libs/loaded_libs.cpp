@@ -87,8 +87,6 @@ void uninit_plugin(void *self) {
 
         Panda__LoadedLibs * ll = (Panda__LoadedLibs *) malloc (sizeof (Panda__LoadedLibs)); 
         *ll = PANDA__LOADED_LIBS__INIT; 
-        //ll->asid = asid;
-
 
         Panda__Module** m = (Panda__Module **) malloc (sizeof (Panda__Module *) * max_size);  
         i = 0; 

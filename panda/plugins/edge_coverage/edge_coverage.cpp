@@ -98,7 +98,6 @@ void uninit_plugin(void *) {
 
         Panda__AsidEdges * ae = (Panda__AsidEdges *) malloc (sizeof (Panda__AsidEdges)); 
         *ae = PANDA__ASID_EDGES__INIT; 
-        //ae->asid = asid; 
 
         ae->n_edges = edge_map.size(); 
         Panda__Edge ** e = (Panda__Edge **) malloc (sizeof (Panda__Edge *) * edge_map.size()); 
