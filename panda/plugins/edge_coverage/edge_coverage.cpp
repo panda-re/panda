@@ -98,7 +98,6 @@ void uninit_plugin(void *) {
 
         Panda__AsidEdges * ae = (Panda__AsidEdges *) malloc (sizeof (Panda__AsidEdges)); 
         *ae = PANDA__ASID_EDGES__INIT; 
-        ae->asid = asid; 
 
         ae->n_edges = edge_map.size(); 
         Panda__Edge ** e = (Panda__Edge **) malloc (sizeof (Panda__Edge *) * edge_map.size()); 
@@ -111,7 +110,7 @@ void uninit_plugin(void *) {
             e[i] = (Panda__Edge *) malloc (sizeof (Panda__Edge)); 
             *(e[i]) = PANDA__EDGE__INIT;
 
-            e[i]->n = n_edge.size(); 
+            //e[i]->n = n_edge.size(); 
             uint64_t *pc_list = (uint64_t *) malloc (sizeof (uint64_t) * (n_edge.size()));
             int j = 0;
             for (auto edge : n_edge) {
@@ -126,6 +125,8 @@ void uninit_plugin(void *) {
 
 
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT; 
+        ple.has_asid = 1;
+        ple.asid = asid; 
         ple.edge_coverage = ae; 
         pandalog_write_entry(&ple); 
 

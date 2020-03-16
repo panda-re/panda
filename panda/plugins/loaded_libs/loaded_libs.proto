@@ -6,7 +6,6 @@ message Module { // This will have to be n at some point
 }
 
 message LoadedLibs {
-    required uint64 asid = 1; 
     repeated Module modules = 2; 
 }
 

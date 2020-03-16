@@ -1,11 +1,9 @@
 message Edge { // This will have to be n at some point 
-    required uint64 n = 1; 
     repeated uint64 pc = 2;
     required uint64 hit_count = 3;
 }
 
 message AsidEdges {
-    required uint64 asid = 1; 
     repeated Edge edges = 2; // all the up-to-n edges 
 }
 
