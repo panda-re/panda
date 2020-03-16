@@ -27,3 +27,7 @@ mkdir -p build-panda && cd build-panda
 ../panda/build.sh
 ```
 
+Added the following:
+
+$ sudo apt install libcapstone-dev  // there was an include error in one of the plugins.
+$ sudo apt install libfdt*          // the build script required this device tree library.

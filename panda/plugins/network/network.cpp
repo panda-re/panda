@@ -19,7 +19,8 @@
 
 #include "panda/plugin.h"
 
-#include <wireshark/config.h>
+// #include <wireshark/config.h>
+#include <wireshark/ws_version.h>
 #include <wiretap/wtap.h>
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -41,7 +42,7 @@ bool init_plugin(void *self) {
     char *tblog_filename = NULL;
     args = panda_get_args("network");
 
-#if (VERSION_MAJOR>=3)
+#if (WIRESHARK_VERSION_MAJOR>=3)
     const wtap_dump_params wdparams = {
     .encap = WTAP_ENCAP_ETHERNET,
     .snaplen = 65535,
@@ -67,13 +68,13 @@ bool init_plugin(void *self) {
         return false;
     }
 
-#if (VERSION_MAJOR >= 2 && VERSION_MINOR >= 6 && VERSION_MICRO >= 0) || (VERSION_MAJOR>=3)
+#if (WIRESHARK_VERSION_MAJOR >= 2 && WIRESHARK_VERSION_MINOR >= 6 && WIRESHARK_VERSION_MICRO >= 0) || (WIRESHARK_VERSION_MAJOR>=3)
     wtap_init(false);
-#elif VERSION_MAJOR == 2 && VERSION_MINOR == 2 && VERSION_MICRO >= 4
+#elif WIRESHARK_VERSION_MAJOR == 2 && WIRESHARK_VERSION_MINOR == 2 && WIRESHARK_VERSION_MICRO >= 4
     wtap_init();
 #endif
 
-#if (VERSION_MAJOR>=3)
+#if (WIRESHARK_VERSION_MAJOR>=3)
 
     plugin_log = wtap_dump_open(
             tblog_filename,
@@ -90,7 +91,7 @@ bool init_plugin(void *self) {
             /*compressed*/1,
             /*shb_hdrs*/NULL,
             /*idb_inf*/NULL,
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
+#if WIRESHARK_VERSION_MAJOR >= 2 && WIRESHARK_VERSION_MINOR >= 0 && WIRESHARK_VERSION_MICRO >= 0
             /*nrb_hdrs*/NULL,
 #endif
             /*err*/&err);
@@ -128,7 +129,7 @@ void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction,
     snprintf(comment_buf, COMMENT_BUF_LEN, "Guest instruction count: %" PRIu64,
              rr_get_guest_instr_count());
     gboolean ret = false;
-#if (VERSION_MAJOR >= 2 && VERSION_MINOR >= 6 && VERSION_MICRO >= 3) || (VERSION_MAJOR>=3)
+#if (WIRESHARK_VERSION_MAJOR >= 2 && WIRESHARK_VERSION_MINOR >= 6 && WIRESHARK_VERSION_MICRO >= 3) || (WIRESHARK_VERSION_MAJOR>=3)
     wtap_rec rec;
     wtap_rec_init(&rec);
     rec.rec_type = REC_TYPE_PACKET;
@@ -150,7 +151,7 @@ void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction,
     wtap_rec_cleanup(&rec);
 #else
     struct wtap_pkthdr header;
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
+#if WIRESHARK_VERSION_MAJOR >= 2 && WIRESHARK_VERSION_MINOR >= 0 && WIRESHARK_VERSION_MICRO >= 0
     wtap_phdr_init(&header);
 #endif
     header.ts.secs = now_tv.tv_sec;
@@ -164,18 +165,18 @@ void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction,
         /*wtap_pkthdr*/ &header,
         /*buf*/ buf,
         /*err*/ &err
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
+#if WIRESHARK_VERSION_MAJOR >= 2 && WIRESHARK_VERSION_MINOR >= 0 && WIRESHARK_VERSION_MICRO >= 0
         ,
         /*err_info*/ &err_info
 #endif
     );
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
+#if WIRESHARK_VERSION_MAJOR >= 2 && WIRESHARK_VERSION_MINOR >= 0 && WIRESHARK_VERSION_MICRO >= 0
     wtap_phdr_cleanup(&header);
 #endif
 #endif
     if (!ret) {
       fprintf(stderr, "Plugin 'network': failed wtap_dump() with error %d", err);
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
+#if WIRESHARK_VERSION_MAJOR >= 2 && WIRESHARK_VERSION_MINOR >= 0 && WIRESHARK_VERSION_MICRO >= 0
       fprintf(stderr, " and error_info %s", err_info);
 #endif
       fprintf(stderr, "\n");
