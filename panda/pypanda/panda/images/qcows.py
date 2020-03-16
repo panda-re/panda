@@ -22,7 +22,7 @@ Arch.__new__.__defaults__ = (None,None)
 SUPPORTED_ARCHES = {
         'i386':   Arch('i386-softmmu',   'i386',   'qemu-system-i386',   "linux-32-debian:3.2.0-4-686-pae", rb"root@debian-i386:.*# ",    "wheezy_panda2.qcow2", "ide1-cd0", "root",
             extra_args='-display none'),
-        'x86_64': Arch('x86_64-softmmu', 'x86_64', 'qemu-system-x86_64', "linux-64-debian:3.2.0-4-amd64-pae", rb"root@debian-amd64:.*# ",   "wheezy_x64.qcow2",    "ide1-cd0", "root",
+        'x86_64': Arch('x86_64-softmmu', 'x86_64', 'qemu-system-x86_64', "linux-64-debian:3.2.0-4-amd64", rb"root@debian-amd64:.*# ",   "wheezy_x64.qcow2",    "ide1-cd0", "root",
             extra_args='-display none'),
         'ppc':    Arch('ppc-softmmu',    'ppc',    'qemu-system-ppc',    "linux-32-debian:3.2.0-4-ppc-pae",   rb"root@debian-powerpc:.*# ", "ppc_wheezy.qcow",     "ide1-cd0", "root",
             extra_args='-display none'),
