@@ -87,7 +87,7 @@ void uninit_plugin(void *self) {
 
         Panda__LoadedLibs * ll = (Panda__LoadedLibs *) malloc (sizeof (Panda__LoadedLibs)); 
         *ll = PANDA__LOADED_LIBS__INIT; 
-        ll->asid = asid;
+        //ll->asid = asid;
 
 
         Panda__Module** m = (Panda__Module **) malloc (sizeof (Panda__Module *) * max_size);  
@@ -104,6 +104,8 @@ void uninit_plugin(void *self) {
         ll->modules = m;  
         ll->n_modules = max_size;   
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT; 
+        ple.has_asid = 1;
+        ple.asid = asid;
         ple.asid_libraries =  ll; 
         pandalog_write_entry(&ple); 
 
