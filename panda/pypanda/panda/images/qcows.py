@@ -42,7 +42,7 @@ def get_qcow_info(name=None):
 
     name = name.lower() # Case insensitive. Assumes supported_arches keys are lowercase
     if name not in SUPPORTED_ARCHES.keys():
-        raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".os.path.join(SUPPORTED_ARCHES.keys())))
+        raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".join(SUPPORTED_ARCHES.keys())))
 
     r = SUPPORTED_ARCHES[name]
     return r
