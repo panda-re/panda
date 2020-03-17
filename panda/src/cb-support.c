@@ -15,22 +15,22 @@
 
 #define PCB(name) panda_callbacks_ ## name
 
-// TODO: macro names should be include return type - bools |= all cb fns, voids don't
-
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_HD_TRANSFER, replay_hd_transfer,
                     CPUState*, cpu, Hd_transfer_type, type,
                     target_ptr_t, src_addr, target_ptr_t, dest_addr,
                     size_t, num_bytes)
 
-MAKE_REPLAY_ONLY_CALLBACK(REPLAY_HANDLE_PACKET, replay_handle_packet,
-                  CPUState*, cpu, uint8_t*, buf,
-                  size_t, size, uint8_t, direction,
-                  uint64_t, buf_addr_rec)
-
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_NET_TRANSFER, replay_net_transfer,
                     CPUState*, cpu, Net_transfer_type, type,
                     uint64_t, src_addr, uint64_t, dst_addr,
                     size_t, num_bytes);
+
+// TODO: rename callback
+MAKE_CALLBACK(void, REPLAY_HANDLE_PACKET, replay_handle_packet,
+                  CPUState*, cpu, uint8_t*, buf,
+                  size_t, size, uint8_t, direction,
+                  uint64_t, buf_addr_rec)
+
 
 // These are used in exec.c
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_BEFORE_DMA, replay_before_dma,

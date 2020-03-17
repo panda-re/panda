@@ -43,6 +43,11 @@ static const uint8_t bcast[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 #include "panda/network.h"
 #include "panda/rr/rr_log_all.h"
 
+// cb-support.h is architecture specific (includes cpu.h) so we can't include it directly.
+extern void panda_callbacks_replay_handle_packet(CPUState *env, uint8_t *buf,
+                                                 size_t size, uint8_t direction,
+                                                 uint64_t buf_addr_rec);
+
 /* #define E1000_DEBUG */
 
 #ifdef E1000_DEBUG
@@ -626,6 +631,11 @@ xmit_seg(E1000State *s)
         printf("e1000 process_tx_desc in_xmit_seg\n");
         hex_dump(stdout, tp->data, tp->size);
         #endif
+        panda_callbacks_replay_handle_packet(first_cpu,
+                   /*buffer=*/ tp->vlan,
+                   /*size=*/ tp->size + 4,
+                   /*direction=*/PANDA_NET_TX,
+                   /*buf_addr_rec=*/(uint64_t)&tp->vlan);
         if (rr_in_record()){
             rr_record_handle_packet_call(RR_CALLSITE_E1000_XMIT_SEG_1, tp->vlan,
                                          tp->size + 4, PANDA_NET_TX);
@@ -636,6 +646,11 @@ xmit_seg(E1000State *s)
         printf("e1000 process_tx_desc in_xmit_seg\n");
         hex_dump(stdout, tp->data, tp->size);
         #endif
+        panda_callbacks_replay_handle_packet(first_cpu,
+                   /*buffer=*/ tp->data,
+                   /*size=*/ tp->size,
+                   /*direction=*/PANDA_NET_TX,
+                   /*buf_addr_rec=*/(uint64_t)&tp->data);
         if (rr_in_record()){
             rr_record_handle_packet_call(RR_CALLSITE_E1000_XMIT_SEG_2, tp->data,
                                          tp->size, PANDA_NET_TX);
@@ -1050,6 +1065,14 @@ e1000_receive_iov(NetClientState *nc, const struct iovec *iov, int iovcnt)
                     // RW write into the receive buffer in DMA
                     // taint transfer io->mem
                     pci_dma_write(d, ba, iov->iov_base + iov_ofs, iov_copy);
+
+                    panda_callbacks_replay_handle_packet(first_cpu,
+                               /*buffer=*/ (void *)(iov->iov_base + iov_ofs),
+                               /*size=*/ iov_copy,
+                               /*direction=*/PANDA_NET_RX,
+                               /*buf_addr_rec=*/(uint64_t)iov->iov_base + iov_ofs);
+
+
                     // SAC this is totally different from 1.0
                     // should this be inside the do-while loop?
                     // again, we have an iovec, instead of a raw buffer
