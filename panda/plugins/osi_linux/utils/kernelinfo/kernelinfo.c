@@ -21,6 +21,8 @@
 #include <linux/dcache.h>
 #include <linux/mount.h>
 #include <linux/version.h>
+#include <linux/cpu.h>
+#include <linux/percpu.h>
 
 /*
  * Include the appropriate mount.h version.
@@ -153,13 +155,50 @@ int init_module(void)
 	printk(KERN_INFO "version.a = %d\n", LINUX_VERSION_CODE >> 16);
 	printk(KERN_INFO "version.b = %d\n", (LINUX_VERSION_CODE >> 8) & 0xFF);
 	printk(KERN_INFO "version.c = %d\n", LINUX_VERSION_CODE & 0xFF);
+
+    // use kernel configuration defs
+#ifdef CONFIG_ARM
+	printk(KERN_INFO "archtype  = %d\n", 1);
+#else
+	printk(KERN_INFO "archtype  = %d\n", 0);
+#endif
+
+
+#ifdef CONFIG_SMP
 	printk(KERN_INFO "task.per_cpu_offsets_addr = %llu\n", (u64)(uintptr_t)&__per_cpu_offset);
 	printk(KERN_INFO "task.per_cpu_offset_0_addr = %llu\n", (u64)(uintptr_t)__per_cpu_offset[0]);
+#else
+    // per cpu offsets in the profile will not be updated when this file is loaded.
+    // could let this mean NO SMP.
+	printk(KERN_INFO "task.per_cpu_offsets_addr = %llu\n", (u64)(uintptr_t)0);
+	printk(KERN_INFO "task.per_cpu_offset_0_addr = %llu\n", (u64)(uintptr_t)0);
+#endif
+
+#ifdef CONFIG_ARM
+    // In the ARM kernel, current is a surrogate for current_thread_info()->task; this is a good candidate for current_task
+	printk(KERN_INFO "task.current_task_addr = %llu\n", (u64)(uintptr_t)&current);
+#else
 	printk(KERN_INFO "task.current_task_addr = %llu\n", (u64)(uintptr_t)&current_task);
+#endif
+
 	printk(KERN_INFO "task.init_addr = %llu\n", (u64)(uintptr_t)(task_struct__p));
+
+#ifdef CONFIG_SMP
 	printk(KERN_INFO "#task.per_cpu_offsets_addr = %08llX\n", (u64)(uintptr_t)&__per_cpu_offset);
 	printk(KERN_INFO "#task.per_cpu_offset_0_addr = 0x%08llX\n", (u64)(uintptr_t)__per_cpu_offset[0]);
+#else
+    // per cpu offsets in the profile will not be updated when this file is loaded.
+    // could let this mean NO SMP.
+	printk(KERN_INFO "#task.per_cpu_offsets_addr = %08llX\n", (u64)(uintptr_t)0);
+	printk(KERN_INFO "#task.per_cpu_offset_0_addr = 0x%08llX\n", (u64)(uintptr_t)0);
+#endif
+
+#ifdef CONFIG_ARM
+	printk(KERN_INFO "#task.current_task_addr = 0x%08llX\n", (u64)(uintptr_t)&current);
+#else
 	printk(KERN_INFO "#task.current_task_addr = 0x%08llX\n", (u64)(uintptr_t)&current_task);
+#endif
+
 	printk(KERN_INFO "#task.init_addr = 0x%08llX\n", (u64)(uintptr_t)task_struct__p);
 
 	PRINT_SIZE(init_task,				"size",			"task");
