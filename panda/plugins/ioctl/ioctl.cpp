@@ -26,9 +26,11 @@ PANDAENDCOMMENT */
 #include <algorithm>
 
 bool swap_endianness;
-const char* fn_str;
+const char* json_fn;
 AllIoctlsByPid pid_to_all_ioctls;
 NameByPid pid_to_name;
+
+const int hex_width = (sizeof(target_ulong) << 1);
 
 // These need to be extern "C" so that the ABI is compatible with QEMU/PANDA, which is written in C
 extern "C" {
@@ -40,7 +42,7 @@ extern "C" {
 
 // Update all IOCTLs by process
 // Keying maps by PID for request/response consistency regardless of kthread context-switch/interweave
-void update_proc_ioctl_mapping(uint32_t fd, CPUState* cpu, uint32_t cmd, uint64_t arg_ptr, bool is_request) {
+void update_proc_ioctl_mapping(uint32_t fd, CPUState* cpu, uint32_t cmd, uint64_t guest_arg_ptr, bool is_request) {
 
     if (swap_endianness) {
         cmd = bswap32(cmd);
@@ -50,14 +52,24 @@ void update_proc_ioctl_mapping(uint32_t fd, CPUState* cpu, uint32_t cmd, uint64_
     ioctl_cmd_t* new_cmd = new ioctl_cmd_t;
     decode_ioctl_cmd(new_cmd, cmd);
 
-    // Process book keeping
+    // OSI book keeping
     OsiProc* proc = get_current_process(cpu);
     pid_to_name.emplace(proc->pid, proc->name);
     auto pid_entry = pid_to_all_ioctls.find(proc->pid);
-
-    // File name
     char* file_name = osi_linux_fd_to_filename(cpu, proc, fd);
-    ioctl_t* new_ioctl = new ioctl_t{file_name, new_cmd, arg_ptr};
+
+    // IOCTL struct
+    uint8_t* guest_arg_buf;
+    if (new_cmd->arg_size) {
+        guest_arg_buf = (uint8_t*)malloc(new_cmd->arg_size);
+        if (panda_virtual_memory_read(cpu, guest_arg_ptr, guest_arg_buf, new_cmd->arg_size)) {
+            std::cerr << "Failed to read " << new_cmd->arg_size
+                << " bytes from guest 0x" << std::setw(hex_width) << guest_arg_ptr;
+        }
+    } else {
+        guest_arg_buf = nullptr;
+    }
+    ioctl_t* new_ioctl = new ioctl_t{file_name, new_cmd, guest_arg_ptr, guest_arg_buf};
 
     // Request - log a new pair
     if (is_request) {
@@ -77,7 +89,7 @@ void update_proc_ioctl_mapping(uint32_t fd, CPUState* cpu, uint32_t cmd, uint64_
         pid_entry->second.back().second = new_ioctl;        // Log response corresponding to request
     }
 
-    // Callback slowdown but no memory leaks!
+    // Clean temporaries
     free(proc);
 }
 
@@ -102,23 +114,24 @@ void linux_64_ioctl_return (CPUState* cpu, target_ulong pc, uint32_t fd, uint32_
 // Write single ioctl entry to file
 void log_ioctl_line(std::ofstream &out_log_file, ioctl_t* ioctl, target_pid_t pid, std::string name, bool is_request) {
 
-    static int hex_width = (sizeof(target_ulong) << 1);
-
-    // Write log line, hacky JSON
-    if (is_request) {
-        out_log_file
-            << "\"flow\": \"req\", ";
-    } else {
-        out_log_file
-            << "\"flow\": \"res\", ";
-    }
-
+    // TODO: Requires osi_linux
     out_log_file
         << std::hex << std::setfill('0') << "{ "
         << "\"proc_pid\": \"" << pid << "\", "
         << "\"proc_name\": \"" << name << "\", "
-        << "\"file_name\": \"" << ioctl->file_name << "\", "
-        //<< "\"raw_cmd\": \"0x" << std::setw(hex_width) << encode_ioctl_cmd(ioctl->cmd) << "\", "
+        << "\"file_name\": \"" << ioctl->file_name << "\", ";
+
+    // Write log line, hacky JSON
+    if (is_request) {
+        out_log_file
+            << "\"data_flow\": \"req\", ";
+    } else {
+        out_log_file
+            << "\"data_flow\": \"res\", ";
+    }
+
+    out_log_file
+        << "\"raw_cmd\": \"0x" << std::setw(hex_width) << encode_ioctl_cmd(ioctl->cmd) << "\", "
         << "\"type\": \""  << ioctl_type_to_str(ioctl->cmd->type) << "\", "
         << "\"code\": \"0x" << std::setw(hex_width) << ioctl->cmd->code << "\", "
         << "\"func_num\": \"0x" << std::setw(hex_width) << ioctl->cmd->func_num << "\" ";
@@ -126,9 +139,18 @@ void log_ioctl_line(std::ofstream &out_log_file, ioctl_t* ioctl, target_pid_t pi
     if (ioctl->cmd->arg_size) {
         out_log_file
             << ", "
-            << "\"arg_ptr\": \"0x" << std::setw(hex_width) << ioctl->arg_ptr << "\", "
-            << "\"arg_size\": \"0x" << std::setw(hex_width) << ioctl->cmd->arg_size << "\" "
+            << "\"guest_arg_ptr\": \"0x" << std::setw(hex_width) << ioctl->guest_arg_ptr << "\", "
+            << "\"guest_arg_size\": \"0x" << std::setw(hex_width) << ioctl->cmd->arg_size << "\" ";
+
+        for (int i = 0; i < ioctl->cmd->arg_size; ++i) {
+            out_log_file
+                << "0x" << std::hex << std::setfill('0') << std::setw(2)
+                << ioctl->guest_arg_buf[i] << " ";
+        }
+
+        out_log_file
             << "}";
+
     } else {
         out_log_file
             << "}";
@@ -136,7 +158,7 @@ void log_ioctl_line(std::ofstream &out_log_file, ioctl_t* ioctl, target_pid_t pi
 
     // Validate write
     if (!out_log_file.good()) {
-        std::cerr << "Error writing to " << fn_str << std::endl;
+        std::cerr << "Error writing to " << json_fn << std::endl;
         return;
     }
 }
@@ -144,14 +166,14 @@ void log_ioctl_line(std::ofstream &out_log_file, ioctl_t* ioctl, target_pid_t pi
 // File I/O inside of a callback would be horridly slow, so we delay log flush until uninit_plugin()
 void flush_to_ioctl_log_file() {
 
-    if (!fn_str) { return; }    // Pre-condition
+    if (!json_fn) { return; }    // Pre-condition
 
-    std::ofstream out_log_file(fn_str);
+    std::ofstream out_log_file(json_fn);
     auto delim = ",\n";
 
     out_log_file << "[" << std::endl;
 
-    printf("ioctl: dumping log for %lu processes to %s\n", pid_to_all_ioctls.size(), fn_str);
+    printf("ioctl: dumping log for %lu processes to %s\n", pid_to_all_ioctls.size(), json_fn);
     for (auto const& pid_to_ioctls : pid_to_all_ioctls) {
     //for (auto it = pid_to_all_ioctls.begin(); it != pid_to_all_ioctls.end(); ++it) {
 
@@ -183,9 +205,9 @@ void flush_to_ioctl_log_file() {
 
 // EXPORTS -------------------------------------------------------------------------------------------------------------
 
-// TODO Decode
+// TODO (tnballo): Decode
 
-// TODO Command callbacks
+// TODO (tnballo): Command callbacks
 
 // PLUGIN --------------------------------------------------------------------------------------------------------------
 
@@ -193,10 +215,12 @@ bool init_plugin(void* self) {
 
     panda_arg_list* panda_args = panda_get_args("ioctl");
 
-    fn_str = panda_parse_string_opt(panda_args, "out_log", nullptr, "JSON file to log unique IOCTLs by process.");
-    if (!fn_str) {
-        std::cerr << "No \'out_log\' specified, unique IOCTLs py process will not be logged!" << std::endl;
+    json_fn = panda_parse_string_opt(panda_args, "out_json", nullptr, "JSON file to log unique IOCTLs by process.");
+    if (!json_fn) {
+        std::cout << "No \'out_json\' specified, JSON logging disabled." << std::endl;
     }
+
+    // TODO: make OSI optional!
 
     // Setup dependencies
     panda_enable_precise_pc();
@@ -209,20 +233,20 @@ bool init_plugin(void* self) {
 
     // TODO: ARM support
     swap_endianness = false;
-    #if defined(TARGET_I386) && !defined(TARGET_X86_64)
+    #if (defined(TARGET_I386) && !defined(TARGET_X86_64)) || (defined(TARGET_ARM) && !defined(TARGET_AARCH64))
         printf("ioctl: setting up 32-bit Linux.\n");
         PPP_REG_CB("syscalls2", on_sys_ioctl_enter, linux_32_ioctl_enter);
         PPP_REG_CB("syscalls2", on_sys_ioctl_return, linux_32_ioctl_return);
         swap_endianness = true;
 
-   #elif defined(TARGET_X86_64)
+   #elif defined(TARGET_X86_64) || defined(TARGET_ARM)
         printf("ioctl: setting up 64-bit Linux.\n");
         PPP_REG_CB("syscalls2", on_sys_ioctl_enter, linux_64_ioctl_enter);
         PPP_REG_CB("syscalls2", on_sys_ioctl_return, linux_64_ioctl_return);
         swap_endianness = true;
 
     #else
-        fprintf(stderr, "ERROR: Only x86 Linux currently suppported!\n");
+        fprintf(stderr, "ERROR: Only I386/x86_64/ARM/AARCH64 Linux currently suppported!\n");
         return false;
     #endif
 
@@ -230,5 +254,7 @@ bool init_plugin(void* self) {
 }
 
 void uninit_plugin(void *self) {
-    flush_to_ioctl_log_file();
+    if (json_fn) {
+        flush_to_ioctl_log_file();
+    }
 }

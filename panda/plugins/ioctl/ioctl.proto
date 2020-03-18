@@ -1,0 +1,20 @@
+message Ioctl {
+
+    // Requires osi_linux
+    optional uint64 proc_pid = 1;
+    optional string proc_name = 2;
+    required string file_name = 3;
+
+    // Only requires syscalls2
+    required bool data_flow = 4;    // true == request, false == response
+    required uint32 raw_cmd = 5;
+    required uint32 type = 6;
+    required uint32 code = 7;
+    required uint32 func_num = 8;
+
+    // Not every ioctl will have an arg
+    optional uint64 guest_arg_ptr = 9;
+    optional uint64 guest_arg_size = 10;
+    optional bytes guest_arg_buf = 11;
+
+}

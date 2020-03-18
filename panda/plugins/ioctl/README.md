@@ -4,15 +4,16 @@ Plugin: ioctl
 Summary
 -------
 
-Linux `ioctl` introspection built on top of syscalls2.
+Linux `ioctl` introspection built on top of plugins **syscalls2** (required) and **linux_osi** (optional, needed to log PID, process names, and file names).
 
 **Filtered Hooking API (active):** APIs to hook IOCTLs by (in order of granularity least-to-most, can be applied to all processes or a specific process):
 * Access (e.g. `IOW`/`copy_to_user`)
 * Driver code (e.g. ASCII character supposedly unique to each driver)
 * Command (e.g. the 2nd syscall param)
 
-**Logging Functionality (passive):** Collect as JSON:
-* Sequence of all `ioctl` commands by process
+**Logging Functionality (passive):**
+* Sequence of all `ioctl` commands (optionally by process) to JSON
+* Sequence of all `ioctl` commands (optionally by process) serialized binary
 
 TODO: PyPanda client for hook APIs.
 
@@ -27,7 +28,7 @@ Dependencies
 ------------
 
 * Uses **syscalls2** plugin hooks `on_sys_ioctl_enter` and `on_sys_ioctl_return`.
-* Uses **linux_osi** plugin to determine process PID and name.
+* Uses **linux_osi** plugin to determine process PID and name (optional).
 
 APIs and Callbacks
 ------------------
@@ -48,11 +49,13 @@ $PANDA_PATH/panda-system-x86_64 \
     -panda osi \
     -panda osi_linux:kconf_file=./kernelinfo.conf,kconf_group=ubuntu:4.15.0-72-generic:64 \
     -panda syscalls2:profile=linux_x86_64 \
-    -panda ioctl:out_log="ioctl.json" \
+    -panda ioctl:out_json="ioctl.json" \
    ./bionic-server-cloudimg-amd64.qcow
 ```
 
-If `ls -l` is executed in the guest, the log will contain entries for `bash` interacting with `dev/ttyS0`:
+If `ls -l` is executed in the guest, the JSON log will contain entries for `bash` interacting with `dev/ttyS0`:
+
+TODO: update this
 
 ```json
 ...

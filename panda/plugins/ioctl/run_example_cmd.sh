@@ -1,9 +1,12 @@
 #! /bin/bash
 
+cd $(dirname "$0")
+PANDA_BUILD_DIR=${PANDA_BUILD_DIR:-"../../../build"}
+
 wget -nc -q --show-progress http://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64.qcow2
 wget -nc -q --show-progress http://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/kernelinfo.conf
 
-../../../build/x86_64-softmmu/panda-system-x86_64 \
+$PANDA_BUILD_DIR/x86_64-softmmu/panda-system-x86_64 \
     -m 1G \
     -loadvm root \
     -nographic \

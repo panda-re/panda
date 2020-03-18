@@ -46,7 +46,8 @@ typedef struct ioctl_cmd_t {
 typedef struct ioctl_t {
     char* file_name;
     ioctl_cmd_t* cmd;
-    uint64_t arg_ptr;
+    uint64_t guest_arg_ptr;
+    uint8_t* guest_arg_buf;
 } ioctl_t;
 
 INLINE void decode_ioctl_cmd(ioctl_cmd_t* cmd, uint32_t val) {
@@ -76,8 +77,8 @@ typedef std::pair<ioctl_t*, ioctl_t*> IoctlReqRet;
 // List of request/response pairs
 typedef std::vector<IoctlReqRet> AllIoctls;
 
-// Map of request/response lists by process
+// Map of PID to request/response lists
 typedef std::unordered_map<target_pid_t, AllIoctls> AllIoctlsByPid;
 
-// Map process PID to name
+// Map PID to process name
 typedef std::unordered_map<target_pid_t, std::string> NameByPid;
