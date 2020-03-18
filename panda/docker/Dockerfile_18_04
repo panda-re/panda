@@ -90,5 +90,16 @@ RUN make -j4
 
 RUN make install
 
+# Make python mean python3
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+
+# Install pypanda and dependencies
+WORKDIR "/panda/panda/pypanda"
+RUN pip install colorama cffi protobuf
+RUN python setup.py install
+
+WORKDIR "/panda"
+
+# Fetch all PRs in container so we can use this for testing
 RUN echo '[remote "origin"]' >> /panda/.git/config
 RUN echo 'fetch = +refs/pull/*/head:refs/remotes/origin/pr/*' >> /panda/.git/config

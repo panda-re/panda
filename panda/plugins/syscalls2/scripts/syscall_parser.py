@@ -459,6 +459,13 @@ if __name__ == '__main__':
                 logging.info("Writing %s", of.name)
                 of.write(j2tpl.render(target_context))
 
+        # Make syscalls_ext_typedefs_[arch] files
+        j2tpl = j2env.get_template('syscalls_ext_typedefs_arch.tpl')
+        of_name = '%s%s' % (args.prefix, 'syscalls_ext_typedefs_' + _arch + '.h')
+        with open(os.path.join(args.outdir, of_name), 'wb+') as of:
+            logging.info("Writing %s", of.name)
+            of.write(j2tpl.render(syscalls=syscalls_arch))
+
     # Render big files.
     for tpl, ext in GENERATED_FILES:
         j2tpl = j2env.get_template(tpl)

@@ -76,14 +76,21 @@ class blocking_mixins():
         progress(self.run_serial_cmd(setup_sh))
 
     @blocking
-    def record_cmd(self, guest_command, copy_directory=None, iso_name=None, recording_name="recording", ignore_errors=False):
-        self.revert_sync("root") # Can't use self.revert because that would would run async and we'd keep going before the revert happens
+    def record_cmd(self, guest_command, copy_directory=None, iso_name=None, setup_command=None, recording_name="recording", snap_name="root", ignore_errors=False):
+        self.revert_sync(snap_name) # Can't use self.revert because that would would run async and we'd keep going before the revert happens
 
+	# 0) Make copy_directory into an iso and copy it into the guest - It will end up at the exact same path
         if copy_directory: # If there's a directory, build an ISO and put it in the cddrive
             # Make iso
             self.copy_to_guest(copy_directory, iso_name)
 
-        # 3) type commmand (note we type command, start recording, finish command)
+	# 1) Run setup_command, if provided before we start the recording (good place to CD or install, etc)
+        if setup_command:
+            print(f"Running setup command {setup_command}")
+            r = self.run_serial_cmd(setup_command)
+            print(f"Setup command results: {r}")
+
+        # 2) type commmand (note we type command, start recording, finish command)
         self.type_serial_cmd(guest_command)
 
         # 3) start recording

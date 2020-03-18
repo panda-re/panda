@@ -14,6 +14,7 @@ from random import randint
 from inspect import signature
 from tempfile import NamedTemporaryFile
 from time import time
+from math import ceil
 
 from .ffi_importer import ffi
 from .taint import TaintQuery
@@ -31,17 +32,20 @@ from .hooking_mixins    import hooking_mixins
 from .callback_mixins   import callback_mixins
 from .taint_mixins      import taint_mixins
 from .volatility_mixins import volatility_mixins
+from .pyperiph_mixins   import pyperipheral_mixins
 
 import pdb
 
 # location of panda build dir
 panda_build = realpath(pjoin(abspath(__file__), "../../../../build"))
 
-class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins):
+class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins, pyperipheral_mixins):
     def __init__(self, arch="i386", mem="128M",
-            expect_prompt=None, os_version=None,
-            qcow=None, os="linux",
-            generic=None, simple=None, # Helper arguments
+            expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
+            os_version=None,
+            qcow=None, # Qcow file to load
+            os="linux",
+            generic=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
             extra_args=[]):	
         self.arch = arch
         self.mem = mem
@@ -64,15 +68,6 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             if q.extra_args:
                 extra_args.extend(q.extra_args.split(" "))
 
-        # If specified, setup an execution engine without any OS/FS/qcow ('unicorn mode')
-        if simple:
-            arch          = "qemu-system-" + simple
-            self.os       = None
-            self.qcow     = None
-            expect_prompt = None
-            extra_args.extend(["-nographic", "-M", "none"])
-
-
         if self.qcow: # Otherwise we shuld be able to do a replay with no qcow but this is probably broken
             #if self.qcow == "default": # Use arch / mem / os to find a qcow - XXX: merge with generic?
             #    self.qcow = pjoin(getenv("HOME"), ".panda", "%s-%s-%s.qcow" % (self.os, self.arch, mem))
@@ -89,10 +84,15 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self._do_types_import()
         self.libpanda = ffi.dlopen(self.libpanda_path)
 
+        # set OS name if we have one
+        if self.os:
+            self.set_os_name(self.os)
 
         # Setup argv for panda
-        biospath = realpath(pjoin(self.build_dir, "pc-bios")) # XXX Do we want this for all archs?
-        self.panda_args = [self.panda, "-L", biospath]
+        self.panda_args = [self.panda]
+        biospath = realpath(pjoin(self.build_dir, "pc-bios")) # XXX: necessary for network drivers for arm, so 'pc-bios' is a misleading name
+        self.panda_args.append("-L")
+        self.panda_args.append(biospath)
 
         if self.qcow:
             self.panda_args.append(self.qcow)
@@ -164,8 +164,6 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         (TODO: what? register callbacks? It's something important...) before we finish initializing
         '''
         self.libpanda.panda_set_library_mode(True)
-        if self.os:
-            self.set_os_name(self.os)
 
         cenvp = ffi.new("char**", ffi.new("char[]", b""))
         len_cargs = ffi.cast("int", len(self.panda_args))
@@ -220,13 +218,16 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         This is a fairly safe place to call into qemu internals but watch out for deadlocks caused
         by your request blocking on the guest's execution. Here any functions in main_loop_wait_fnargs will be called
         '''
-        # Then run any and all requested commands
-        if len(self.main_loop_wait_fnargs) == 0: return
-        #progress("Entering main_loop_wait_cb")
-        for fnargs in self.main_loop_wait_fnargs:
-            (fn, args) = fnargs
-            ret = fn(*args)
-        self.main_loop_wait_fnargs = []
+        try:
+            # Then run any and all requested commands
+            if len(self.main_loop_wait_fnargs) == 0: return
+            #progress("Entering main_loop_wait_cb")
+            for fnargs in self.main_loop_wait_fnargs:
+                (fn, args) = fnargs
+                ret = fn(*args)
+            self.main_loop_wait_fnargs = []
+        except KeyboardInterrupt:
+            self.end_analysis()
 
     def _find_build_dir(self):
         '''
@@ -474,8 +475,9 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
     def _memory_read(self, env, addr, length, physical=False, fmt='bytearray'):
         '''
-        Read but with an autogen'd buffer. Returns a bytearray
-        Physical or virtual
+        Read but with an autogen'd buffer. Returns a tuple (data, error code)
+        Supports physical or virtual addresses
+        Error code is 0 on success, negative on failure
         '''
         if not hasattr(self, "_memcb"): # XXX: Why do we enable memcbs for memory writes?
             self.enable_memcb()
@@ -484,9 +486,12 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         buf_a = ffi.cast("char*", buf)
         length_a = ffi.cast("int", length)
         if physical:
-            self.libpanda.panda_physical_memory_read_external(addr, buf_a, length_a)
+            err = self.libpanda.panda_physical_memory_read_external(addr, buf_a, length_a)
         else:
-            self.libpanda.panda_virtual_memory_read_external(env, addr, buf_a, length_a)
+            err = self.libpanda.panda_virtual_memory_read_external(env, addr, buf_a, length_a)
+
+        if err < 0:
+            raise ValueError("Memory access failed") # TODO: make a PANDA Exn class
 
         r = ffi.unpack(buf, length)
         if fmt == 'bytearray':
@@ -542,66 +547,27 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             library = ffi.dlopen(pjoin(*[self.build_dir, self.arch+"-softmmu", "panda/plugins/panda_{}.so".format(name)]))
             self.plugins[name] = library
 
-    def get_cpu(self,cpustate):
-        raise RuntimeError("panda.get_cpu is deprecated. Remove your call to it")
-        '''
-        XXX: Why does this exist? We actually need it sometimes for non-x86
-        '''
-        if self.arch == "arm":
-            return self.get_cpu_arm(cpustate)
-        elif self.arch == "x86":
-            return self.get_cpu_x86(cpustate)
-        elif self.arch == "x64" or self.arch == "x86_64":
-            return self.get_cpu_x64(cpustate)
-        elif self.arch == "ppc":
-            return self.get_cpu_ppc(cpustate)
-        else:
-            return self.get_cpu_x86(cpustate)
-
-    # note: should add something to check arch in self.arch
-    def get_cpu_x86(self,cpustate):
-        # we dont do this because x86 is the assumed arch
-        # ffi.cdef(open("./include/panda_x86_support.h")) 
-        return ffi.cast("CPUX86State*", cpustate.env_ptr)
-
-    def _get_cpu_header(self): # XXX: This only works from the repo, not with setup.py
-        base_path = dirname(self.build_dir)
-        loc1 = pjoin(*[base_path, "panda", "pypanda", "panda", "include", f"panda_{self.arch}_support.h"])
-        loc2 = pjoin(*[base_path, "data",  "pypanda", "include", f"panda_{self.arch}_support.h"])
-
-        if isfile(loc1):
-            with open(loc1) as f:
-                data = f.read()
-        elif isfile(loc2):
-            with open(loc2) as f:
-                data = f.read()
-        else:
-            raise RuntimeError(f"Couldn't find pypanda include data, searched {loc1}, {loc2}")
-
-        return data
-
-    def get_cpu_x64(self,cpustate):
-        # we dont do this because x86 is the assumed arch
-        if not hasattr(self, "x64_support"):
-            self.x64_support = ffi.cdef(self._get_cpu_header())
-        return ffi.cast("CPUX64State*", cpustate.env_ptr)
-
-    def get_cpu_arm(self,cpustate):
-        if not hasattr(self, "arm_support"):
-            self.arm_support = ffi.cdef(self._get_cpu_header())
-        return ffi.cast("CPUARMState*", cpustate.env_ptr)
-
-    def get_cpu_ppc(self,cpustate):
-        if not hasattr(self, "ppc_support"):
-            self.ppc_support = ffi.cdef(self._get_cpu_header())
-        return ffi.cast("CPUPPCState*", cpustate.env_ptr)
-
     def queue_async(self, f, internal=False):
         self.athread.queue(f, internal=internal)
 
+    def map_memory(self, name, size, address):
+        name_c = ffi.new("char[]", bytes(name, "utf-8"))
+        size = ceil(size/1024)*1024 # Must be page-aligned
+        return self.libpanda.map_memory(name_c, size, address)
 
-    # WIP, unicorn-like functionality requires mapping in physical memory
-    #def map_mem(self, start, length):
-    #    self.libpanda.panda_map_physical_mem(start, length)
+    def ppp(self, plugin_name, attr):
+        '''
+        Decorator for plugin-to-plugin interface
+
+        Example usage to register my_run with syscalls2 as a 'on_sys_open_return'
+        @ppp("syscalls2", "on_sys_open_return")
+        def my_fun(cpu, pc, filename, flags, mode):
+            ...
+        '''
+        def inner(func):
+            f = ffi.callback(attr+"_t")(func)  # Automatically make the python funciton a CB
+            self.plugins[plugin_name].__getattr__("ppp_add_cb_"+attr)(f) # All PPP cbs start with this string
+            return f
+        return inner
 
 # vim: expandtab:tabstop=4:
