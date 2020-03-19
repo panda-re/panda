@@ -14,5 +14,5 @@ $PANDA_BUILD_DIR/x86_64-softmmu/panda-system-x86_64 \
     -panda osi \
     -panda osi_linux:kconf_file=./kernelinfo.conf,kconf_group=ubuntu:4.15.0-72-generic:64 \
     -panda syscalls2:profile=linux_x86_64 \
-    -panda ioctl:out_log="ioctl.json" \
+    -panda ioctl:out_json="ioctl.json" \
    ./bionic-server-cloudimg-amd64.qcow2

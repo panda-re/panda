@@ -34,6 +34,7 @@ const int hex_width = (sizeof(target_ulong) << 1);
 
 // These need to be extern "C" so that the ABI is compatible with QEMU/PANDA, which is written in C
 extern "C" {
+    #include "panda/plog.h"
     bool init_plugin(void *);
     void uninit_plugin(void *);
 }
@@ -111,8 +112,8 @@ void linux_64_ioctl_return (CPUState* cpu, target_ulong pc, uint32_t fd, uint32_
 
 // FILE I/O ------------------------------------------------------------------------------------------------------------
 
-// Write single ioctl entry to file
-void log_ioctl_line(std::ofstream &out_log_file, ioctl_t* ioctl, target_pid_t pid, std::string name, bool is_request) {
+// Write single ioctl entry to JSON
+void log_line_json(std::ofstream &out_log_file, ioctl_t* ioctl, target_pid_t pid, std::string name, bool is_request) {
 
     // TODO: Requires osi_linux
     out_log_file
@@ -163,8 +164,8 @@ void log_ioctl_line(std::ofstream &out_log_file, ioctl_t* ioctl, target_pid_t pi
     }
 }
 
-// File I/O inside of a callback would be horridly slow, so we delay log flush until uninit_plugin()
-void flush_to_ioctl_log_file() {
+// Write JSON log
+void flush_json() {
 
     if (!json_fn) { return; }    // Pre-condition
 
@@ -184,10 +185,10 @@ void flush_to_ioctl_log_file() {
 
         for (auto const& ioctl_pair : ioctl_pair_list) {
 
-            log_ioctl_line(out_log_file, ioctl_pair.first, pid, name, true);
+            log_line_json(out_log_file, ioctl_pair.first, pid, name, true);
             out_log_file << delim;
 
-            log_ioctl_line(out_log_file, ioctl_pair.second, pid, name, false);
+            log_line_json(out_log_file, ioctl_pair.second, pid, name, false);
 
             // TODO: fix so last does not have trailing
             //if ((&ioctl_pair != &ioctl_pair_list.back()) and
@@ -201,6 +202,73 @@ void flush_to_ioctl_log_file() {
 
     out_log_file << std::endl << "]" << std::endl;
     out_log_file.close();
+}
+
+// Write single ioctl entry to PANDALOG
+void log_line_plog(ioctl_t* ioctl, target_pid_t pid, std::string name, bool is_request) {
+
+    if (!pandalog) { return; }    // Pre-condition
+
+    // TODO: need arg here to array of entires
+
+    // TODO: these should be optional if OSI enabled
+    ple.has_proc_pid = 1;
+    ple.has_proc_name = 1;
+    ple.has_file_name = 1;
+    ple.proc_pid = pid;
+    ple.proc_name = name;
+    ple.file_name = ioctl->file_name;
+
+    ple.data_flow = is_request;
+    ple.raw_cmd = encode_ioctl_cmd(ioctl->cmd);
+    ple.type = ioctl->cmd->type;
+    ple.code = ioctl->cmd->code;
+    ple.func_num = ioctl->cmd->func_num;
+
+    if (ioctl->cmd->arg_size) {
+        ple.has_guest_arg_size = 1;
+        ple.has_guest_arg_ptr = 1;
+        ple.has_guest_arg_buf = 1;
+        ple.guest_arg_size = ioctl->cmd->arg_size;
+        ple.guest_arg_ptr = ioctl->guest_arg_ptr;
+        ple.guest_arg_buf = ioctl->guest_arg_buf;
+    } else {
+        ple.has_guest_arg_size = 0;
+        ple.has_guest_arg_ptr = 0;
+        ple.has_guest_arg_buf = 0;
+        //ple.guest_arg_size = 0;
+        //ple.guest_arg_ptr = nullptr;
+        //ple.guest_arg_buf = nullptr;
+    }
+
+
+
+// Write PANDALOG
+void flush_plog() {
+
+    Panda__RecordedIoctls *recorded_ioctls = (Panda__RecordedIoctls*)malloc(sizeof(Panda__RecordedIoctls));
+    *recorded_ioctls = PANDA__RECORDED_IOCTLS__INIT;
+
+    // TODO: Compute total here, before malloc
+    // auto total ioctls = XXX
+    //Panda__Ioctl **ioctl_plog = (Panda__Ioctl**)malloc(sizeof(Panda__Ioctl*) * total_ioctls);
+
+    for (auto const& pid_to_ioctls : pid_to_all_ioctls) {
+
+        auto pid = pid_to_ioctls.first;
+        auto ioctl_pair_list = pid_to_ioctls.second;
+        assert(pid_to_name.find(pid) != pid_to_name.end());
+        auto name = pid_to_name.find(pid)->second;
+
+        for (auto const& ioctl_pair : ioctl_pair_list) {
+            log_line_plog(ioctl_pair.first, pid, name, true);
+            log_line_plog(ioctl_pair.second, pid, name, false);
+        }
+    }
+
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.recorded_ioctls = recorded_ioctls;
+    pandalog_write_entry(&ple);
 }
 
 // EXPORTS -------------------------------------------------------------------------------------------------------------
@@ -255,6 +323,11 @@ bool init_plugin(void* self) {
 
 void uninit_plugin(void *self) {
     if (json_fn) {
-        flush_to_ioctl_log_file();
+        flush_json();
     }
+    if (pandalog){
+        flush_plog();
+    }
+
+    // TODO: add freeing logic or move to std::unique_ptr
 }
