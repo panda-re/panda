@@ -26,7 +26,7 @@
 // Supports up to 10 elements (5 pairs)
 // Inspired by https://stackoverflow.com/a/45758785
 #define EVERY_SECOND0(...)
-#define EVERY_SECOND1_(second, ...) second 
+#define EVERY_SECOND1_(second, ...) second
 #define EVERY_SECOND1(first, ...) EVERY_SECOND1_(__VA_ARGS__)
 #define EVERY_SECOND2_(second, ...) second, EVERY_SECOND1(__VA_ARGS__)
 #define EVERY_SECOND2(first, ...) EVERY_SECOND2_(__VA_ARGS__)
@@ -39,18 +39,16 @@
 #define COUNT_PAIRS_SECOND(_1,__1,_2,__2,_3,__3,_4,__4,_5,__5,num,...) EVERY_SECOND ## num
 #define EVERY_SECOND(...) COUNT_PAIRS_SECOND(__VA_ARGS__,5,5,4,4,3,3,2,2,1,0)(__VA_ARGS__)
 
-#define ENTRY_NAME(name, ...) \
-         name (__VA_ARGS__)
+#define ENTRY_NAME(name, ...) name (__VA_ARGS__)
 
-#define ENTRY_NAME0(name) \
-         name ()
+#define ENTRY_NAME0(name) name ()
 
 // TODO: These require name and name_upper so we can both use entry.name(...) and
-//       panda_cbs[NAME]. Unfortunatley the preprocessor can't do the case conversion
-//       for us. Is there a better way?
+//       panda_cbs[NAME]. Unfortunately the preprocessor can't do the case conversion
+//       for us. Is there a better way than taking in both as arguments?
 
-// Normal callbacks. if enabled, call the function. No return values
-#define MAKE_VOID_CALLBACK(name_upper, name, ...) \
+// Call all enabled & registered functions for this callback. Return void
+#define MAKE_CALLBACK_void(name_upper, name, ...) \
     void panda_callbacks_ ## name(COMBINE_TYPES(__VA_ARGS__)) { \
         panda_cb_list *plist; \
         for (plist = panda_cbs[PANDA_CB_ ## name_upper]; \
@@ -61,9 +59,10 @@
         } \
     }
 
-// Normal callback. If enabled, call the function. OR all results together
-// and return true if any called function returns true
-#define MAKE_BOOL_CALLBACK(name_upper, name, ...) \
+// Call all enabled & registered functions for this callback. Return
+// all results together OR'd together.
+// XXX: double underscore in name is intentional
+#define MAKE_CALLBACK__Bool(name_upper, name, ...) \
     bool panda_callbacks_ ## name(COMBINE_TYPES(__VA_ARGS__)) { \
         panda_cb_list *plist; \
         bool any_true = false; \
@@ -75,6 +74,16 @@
         } \
         return any_true; \
     }
+
+// XXX: gcc/clang both stringify 'void' -> 'void' but 'bool' -> '_Bool'
+#define _GET_CB_NAME(rettype) \
+  MAKE_CALLBACK_ ## rettype
+
+// Given a return type, callback name uppercase, lowercase, and a list of
+// arg1type, arg1, arg2type, arg2.... Generate the code to call the registered
+// and enabled functions and return the correct result.
+// Supports up to 5 arguments and return types of void or bool
+#define MAKE_CALLBACK(rettype, ...) _GET_CB_NAME(rettype)(__VA_ARGS__)
 
 // Callback only to be checked if in replay. These are all void because they can't change execution
 #define MAKE_REPLAY_ONLY_CALLBACK(name_upper, name, ...) \
@@ -89,29 +98,3 @@
           } \
         } \
     }
-
-
-#if 0
-// Coming soon
-// Memory-callbacks call both virt_mem_xyz then phys_mem_xyz
-#define MAKE_VOID_MEM_CALLBACK(name_upper, name, ...) \
-    void panda_callbacks_ ## name(COMBINE_TYPES(__VA_ARGS__)) { \
-        panda_cb_list *plist; \
-        for (plist = panda_cbs[PANDA_CB_ ## name_upper]; \
-             plist != NULL; \
-             plist = panda_cb_list_next(plist)) { \
-              if (plist->enabled) \
-                plist->entry. MEM_ENTRY_NAME(virt, name, EVERY_SECOND(__VA_ARGS__)); \
-        } \
-        if (panda_cbs[PANDA_CB_PHYS_ ## name_upper]) { \
-          hwaddr paddr = get_paddr(env, addr, ram_ptr); \
-          for(plist = panda_cbs[PANDA_CB_PHYS_ ## name_upper]; plist != NULL;
-              plist = panda_cb_list_next(plist)) {
-              if (plist->enabled) plist->entry.phys_mem_before_read(env, env->panda_guest_pc,
-                                                                    paddr, data_size);
-          }
-
-        } \
-    }
-
-#endif

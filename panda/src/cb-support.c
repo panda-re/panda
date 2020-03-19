@@ -44,31 +44,31 @@ MAKE_REPLAY_ONLY_CALLBACK(REPLAY_AFTER_DMA, replay_after_dma,
                     bool, is_write)
 
 // These are used in cpu-exec.c
-MAKE_VOID_CALLBACK(BEFORE_BLOCK_EXEC, before_block_exec,
+MAKE_CALLBACK(void, BEFORE_BLOCK_EXEC, before_block_exec,
                     CPUState*, cpu, TranslationBlock*, tb);
 
-MAKE_VOID_CALLBACK(AFTER_BLOCK_EXEC, after_block_exec,
+MAKE_CALLBACK(void, AFTER_BLOCK_EXEC, after_block_exec,
                     CPUState*, cpu, TranslationBlock*, tb,
                     uint8_t, exitCode);
 
-MAKE_VOID_CALLBACK(BEFORE_BLOCK_TRANSLATE, before_block_translate,
+MAKE_CALLBACK(void, BEFORE_BLOCK_TRANSLATE, before_block_translate,
                     CPUState*, cpu, target_ptr_t, pc);
 
-MAKE_VOID_CALLBACK(AFTER_BLOCK_TRANSLATE, after_block_translate,
+MAKE_CALLBACK(void, AFTER_BLOCK_TRANSLATE, after_block_translate,
                     CPUState*, cpu, TranslationBlock*, tb);
 
-MAKE_VOID_CALLBACK(AFTER_CPU_EXEC_ENTER, after_cpu_exec_enter,
+MAKE_CALLBACK(void, AFTER_CPU_EXEC_ENTER, after_cpu_exec_enter,
                     CPUState*, cpu);
 
-MAKE_VOID_CALLBACK(BEFORE_CPU_EXEC_EXIT, before_cpu_exec_exit,
+MAKE_CALLBACK(void, BEFORE_CPU_EXEC_EXIT, before_cpu_exec_exit,
                     CPUState*, cpu, bool, ranBlock);
 
 // These are used in target-i386/translate.c
-MAKE_BOOL_CALLBACK(INSN_TRANSLATE, insn_translate,
+MAKE_CALLBACK(bool, INSN_TRANSLATE, insn_translate,
                     CPUState*, env, target_ptr_t, pc);
 
-MAKE_BOOL_CALLBACK(AFTER_INSN_TRANSLATE, after_insn_translate,
-                    CPUState*, env, target_ptr_t, pc);
+MAKE_CALLBACK(bool, AFTER_INSN_TRANSLATE, after_insn_translate,
+                    CPUState*, env, target_ptr_t, pc)
 
 // Custom CB
 static inline hwaddr get_paddr(CPUState *cpu, target_ptr_t addr, void *ram_ptr) {
@@ -87,26 +87,26 @@ static inline hwaddr get_paddr(CPUState *cpu, target_ptr_t addr, void *ram_ptr) 
 }
 
 // These are used in cputlb.c
-MAKE_VOID_CALLBACK(MMIO_AFTER_READ, mmio_after_read,
+MAKE_CALLBACK(void, MMIO_AFTER_READ, mmio_after_read,
                     CPUState*, env, target_ptr_t, physaddr,
                     target_ptr_t, vaddr, size_t, size,
                     uint64_t*, val);
 
-MAKE_VOID_CALLBACK(MMIO_BEFORE_WRITE, mmio_before_write,
+MAKE_CALLBACK(void, MMIO_BEFORE_WRITE, mmio_before_write,
                     CPUState*, env, target_ptr_t, physaddr,
                     target_ptr_t, vaddr, size_t, size,
                     uint64_t*, val);
 
 // vl.c
-MAKE_VOID_CALLBACK(AFTER_MACHINE_INIT, after_machine_init,
+MAKE_CALLBACK(void, AFTER_MACHINE_INIT, after_machine_init,
                     CPUState*, env);
 
-MAKE_VOID_CALLBACK(DURING_MACHINE_INIT, during_machine_init,
+MAKE_CALLBACK(void, DURING_MACHINE_INIT, during_machine_init,
                     MachineState*, machine);
 
 // Returns true if any registered&enabled callback returns non-zero.
 // If so, we'll silence the memory write error.
-MAKE_BOOL_CALLBACK(UNASSIGNED_IO_WRITE, unassigned_io_write,
+MAKE_CALLBACK(bool, UNASSIGNED_IO_WRITE, unassigned_io_write,
                     CPUState*, env, target_ptr_t, pc,
                     hwaddr, addr, size_t, size,
                    uint64_t, val);
@@ -115,26 +115,26 @@ MAKE_BOOL_CALLBACK(UNASSIGNED_IO_WRITE, unassigned_io_write,
 // if so, we'll silence the invalid memory read error and return
 // the value provided by the last callback in `val`
 // Note if multiple callbacks run they can each mutate val
-MAKE_BOOL_CALLBACK(UNASSIGNED_IO_READ, unassigned_io_read,
+MAKE_CALLBACK(bool, UNASSIGNED_IO_READ, unassigned_io_read,
                     CPUState*, env, target_ptr_t, pc,
                     hwaddr, addr, size_t, size,
                    uint64_t*, val);
 
-MAKE_VOID_CALLBACK(TOP_LOOP, top_loop,
+MAKE_CALLBACK(void, TOP_LOOP, top_loop,
                     CPUState*, cpu);
 
 // Returns true if any registered + enabled callback returns nonzero.
 // If so, it doesn't let the asid change
-MAKE_BOOL_CALLBACK(ASID_CHANGED, asid_changed,
+MAKE_CALLBACK(bool, ASID_CHANGED, asid_changed,
                     CPUState*, env, target_ulong, old_asid,
                     target_ulong, new_asid);
 
 
 // target-i386/misc_helpers.c
-MAKE_BOOL_CALLBACK(GUEST_HYPERCALL, guest_hypercall,
+MAKE_CALLBACK(bool, GUEST_HYPERCALL, guest_hypercall,
                     CPUState*, env);
 
-MAKE_VOID_CALLBACK(CPU_RESTORE_STATE, cpu_restore_state,
+MAKE_CALLBACK(void, CPU_RESTORE_STATE, cpu_restore_state,
                     CPUState*, env, TranslationBlock*, tb);
 
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_SERIAL_RECEIVE, replay_serial_receive,
@@ -153,12 +153,12 @@ MAKE_REPLAY_ONLY_CALLBACK(REPLAY_SERIAL_WRITE, replay_serial_write,
                     CPUState*, env, target_ptr_t, fifo_addr,
                     uint32_t, port_addr, uint8_t, value);
 
-MAKE_VOID_CALLBACK(MAIN_LOOP_WAIT, main_loop_wait, void);
+MAKE_CALLBACK(void, MAIN_LOOP_WAIT, main_loop_wait, void);
 
-MAKE_VOID_CALLBACK(PRE_SHUTDOWN, pre_shutdown, void);
+MAKE_CALLBACK(void, PRE_SHUTDOWN, pre_shutdown, void);
 
 
-// Non-standard callbacks below
+// Non-standard callbacks below here
 
 void PCB(before_find_fast)(void) {
     if (panda_plugin_to_unload) {
@@ -221,7 +221,7 @@ int32_t PCB(before_handle_exception)(CPUState *cpu, int32_t exception_index) {
     return exception_index;
 }
 
-// These are used in softmmu_template.h. They are distinct from MAKE_VOID_CALLBACK.
+// These are used in softmmu_template.h. They are distinct from MAKE_CALLBACK's standard form.
 // ram_ptr is a possible pointer into host memory from the TLB code. Can be NULL.
 void PCB(mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
                           size_t data_size, void *ram_ptr) {
@@ -303,4 +303,3 @@ void PCB(mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
         }
     }
 }
-
