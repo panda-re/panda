@@ -113,7 +113,7 @@ target_ulong savedEflags;
 // CPUArchState->eflags is marked irrelevant, so it will never have taint
 #endif
 
-int asid_changed_callback(CPUState *env, target_ulong oldval, target_ulong newval);
+bool asid_changed_callback(CPUState *env, target_ulong oldval, target_ulong newval);
 }
 
 ShadowState *shadow = nullptr; // Global shadow memory
