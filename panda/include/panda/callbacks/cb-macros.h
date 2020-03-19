@@ -15,8 +15,11 @@
 #define COMBINE_TYPES4(first, ...) first COMBINE_TYPES4_(__VA_ARGS__)
 #define COMBINE_TYPES5_(second, ...) second, COMBINE_TYPES4(__VA_ARGS__)
 #define COMBINE_TYPES5(first, ...) first COMBINE_TYPES5_(__VA_ARGS__)
+
+// Edge case: when we get a single argument we want fn(void) which is called as fn()
+#define COMBINE_TYPES_void(...) void
 #define COUNT_PAIRS_COMBINE(_1,__1,_2,__2,_3,__3,_4,__4,_5,__5,num,...) COMBINE_TYPES ## num
-#define COMBINE_TYPES(...) COUNT_PAIRS_COMBINE(__VA_ARGS__,5,ERROR,4,ERROR,3,ERROR,2,ERROR,1,ERROR)(__VA_ARGS__)
+#define COMBINE_TYPES(...) COUNT_PAIRS_COMBINE(__VA_ARGS__,5,ERROR,4,ERROR,3,ERROR,2,ERROR,1,void)(__VA_ARGS__)
 
 // The EVERY_SECOND series of macros will subselect from a list of
 // (type1, var1, type2, var2, ...) into (var1, var2, ...)
@@ -55,19 +58,6 @@
              plist = panda_cb_list_next(plist)) { \
               if (plist->enabled) \
                 plist->entry. ENTRY_NAME(name, EVERY_SECOND(__VA_ARGS__)); \
-        } \
-    }
-
-// Same as above, but the funciton takes no args
-// TODO, modify MAKE_VOID_CALLBACK to work with no arguments
-#define MAKE_VOID_CALLBACK0(name_upper, name, ...) \
-    void panda_callbacks_ ## name(void) { \
-        panda_cb_list *plist; \
-        for (plist = panda_cbs[PANDA_CB_ ## name_upper]; \
-             plist != NULL; \
-             plist = panda_cb_list_next(plist)) { \
-              if (plist->enabled) \
-                plist->entry. ENTRY_NAME0(name); \
         } \
     }
 

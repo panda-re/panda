@@ -153,10 +153,9 @@ MAKE_REPLAY_ONLY_CALLBACK(REPLAY_SERIAL_WRITE, replay_serial_write,
                     CPUState*, env, target_ptr_t, fifo_addr,
                     uint32_t, port_addr, uint8_t, value);
 
-// XXX Callbacks with no arguments
-MAKE_VOID_CALLBACK0(MAIN_LOOP_WAIT, main_loop_wait);
+MAKE_VOID_CALLBACK(MAIN_LOOP_WAIT, main_loop_wait, void);
 
-MAKE_VOID_CALLBACK0(PRE_SHUTDOWN, pre_shutdown);
+MAKE_VOID_CALLBACK(PRE_SHUTDOWN, pre_shutdown, void);
 
 
 // Non-standard callbacks below
