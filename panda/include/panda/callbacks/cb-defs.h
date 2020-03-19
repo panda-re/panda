@@ -616,14 +616,14 @@ typedef union panda_cb {
        Helper call location: target/i386/helper.c
 
        Return value:
-        1 if the asid should be prevented from being changed
-        0 otherwise
+        true if the asid should be prevented from being changed
+        false otherwise
 
        Notes:
         The helper is only invoked for x86. This should break a lot of the
         plugins which rely on this callback to detect context switches.
     */
-    int (*asid_changed)(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
+    bool (*asid_changed)(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
 
     /* Callback ID:     PANDA_CB_REPLAY_HD_TRANSFER,
 

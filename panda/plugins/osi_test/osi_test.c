@@ -27,7 +27,7 @@ PANDAENDCOMMENT */
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
-int asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd);
+bool asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd);
 void before_block_exec(CPUState *cpu, TranslationBlock *tb);
 void after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode);
 
@@ -103,11 +103,11 @@ void after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
     return;
 }
 
-int asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd) {
+bool asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd) {
     // tb argument is not used by before_block_exec()
     before_block_exec(cpu, NULL);
     after_block_exec(cpu, NULL, TB_EXIT_IDX0);
-    return 0;
+    return false;
 }
 
 bool init_plugin(void *self) {
