@@ -19,7 +19,7 @@
 // Edge case: when we get a single argument we want fn(void) which is called as fn()
 #define COMBINE_TYPES_void(...) void
 #define COUNT_PAIRS_COMBINE(_1,__1,_2,__2,_3,__3,_4,__4,_5,__5,num,...) COMBINE_TYPES ## num
-#define COMBINE_TYPES(...) COUNT_PAIRS_COMBINE(__VA_ARGS__,5,ERROR,4,ERROR,3,ERROR,2,ERROR,1,void)(__VA_ARGS__)
+#define COMBINE_TYPES(...) COUNT_PAIRS_COMBINE(__VA_ARGS__,5,ERROR,4,ERROR,3,ERROR,2,ERROR,1,_void)(__VA_ARGS__)
 
 // The EVERY_SECOND series of macros will subselect from a list of
 // (type1, var1, type2, var2, ...) into (var1, var2, ...)
