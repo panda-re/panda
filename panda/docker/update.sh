@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 # To be run inside panda_bionic docker container where PANDA is already built
 # Given an argument of a git SHA1, checkout that commit, build panda and run tests
@@ -8,6 +8,10 @@ set -e
 echo "Running update for commit $1"
 # Get the current commit
 cd /panda/build
+
+# If container modified any tracked files during build (e.g., panda_datatypes.h)
+# we need to forget abolut those before we can pull/checkout
+git reset --hard
 
 if [ "$2" = "clean" ]; then # We'll fetch by ref (for a PR)
    git fetch origin $1 # for examplerefs/pull/533/head
