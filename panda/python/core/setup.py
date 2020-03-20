@@ -12,9 +12,6 @@ import shutil
 # 1)  Populate panda/autogen #
 ##############################
 
-from sys import path as sys_path
-util_path = os.path.join(*[os.path.dirname(__file__), "utils"])
-sys_path.append(util_path)
 from create_panda_datatypes import main as create_datatypes
 create_datatypes()
 
@@ -24,7 +21,7 @@ create_datatypes()
 #    pypanda's include directory, llvm-helpers #
 ################################################
 
-root_dir = os.path.join(*[os.path.dirname(__file__), "..", ".."])
+root_dir = os.path.join(*[os.path.dirname(__file__), "..", "..", ".."]) # panda-git/ root dir
 
 # XXX - Can we toggle this depending on if we're run as 'setup.py develop' vs 'setup.py install'
 # When we're run in develop mode, we shouldn't copy the prebuild binaries and instead should
@@ -41,14 +38,14 @@ def copy_objs():
     # Copy bios directory
     biosdir = os.path.join(root_dir, "pc-bios")
     if not os.path.isdir(biosdir):
-        raise RuntimeError(f"Could not find PC-bios directory at {lib_dir}")
+        raise RuntimeError(f"Could not find PC-bios directory at {biosdir}")
     shutil.copytree(biosdir, lib_dir+"/pc-bios")
 
     # Copy pypanda's include directory (different than core panda's)
-    pypanda_inc = os.path.join(*[root_dir, "panda", "pypanda", "panda", "include"])
+    pypanda_inc = os.path.join(*[root_dir, "panda", "python", "core", "panda", "include"])
     if not os.path.isdir(pypanda_inc):
         raise RuntimeError(f"Could not find pypanda include directory at {pypanda_inc}")
-    pypanda_inc_dest = os.path.join(*["panda", "data", "pypanda", "include"])
+    pypanda_inc_dest = os.path.join(*["core", "panda", "data", "pypanda", "include"])
     if os.path.isdir(pypanda_inc_dest):
         shutil.rmtree(pypanda_inc_dest)
     shutil.copytree(pypanda_inc, pypanda_inc_dest)

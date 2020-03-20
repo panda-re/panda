@@ -79,6 +79,7 @@ typedef enum panda_cb_type {
     PANDA_CB_BEFORE_CPU_EXEC_EXIT,  // Just before cpu_exec_exit is called
     PANDA_CB_AFTER_MACHINE_INIT,    // Right after the machine is initialized,
                                     // before any code runs
+    PANDA_CB_AFTER_LOADVM,          // Right after we restore from a snapshot
     PANDA_CB_TOP_LOOP,              // At top of loop that manages emulation.
                                     // A good place to take a snapshot.
     PANDA_CB_DURING_MACHINE_INIT,   // At the start of machine initialization
@@ -616,14 +617,14 @@ typedef union panda_cb {
        Helper call location: target/i386/helper.c
 
        Return value:
-        1 if the asid should be prevented from being changed
-        0 otherwise
+        true if the asid should be prevented from being changed
+        false otherwise
 
        Notes:
         The helper is only invoked for x86. This should break a lot of the
         plugins which rely on this callback to detect context switches.
     */
-    int (*asid_changed)(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
+    bool (*asid_changed)(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
 
     /* Callback ID:     PANDA_CB_REPLAY_HD_TRANSFER,
 
@@ -839,6 +840,21 @@ typedef union panda_cb {
         this is the appropriate place to call taint2_enable_taint().
     */
     void (*after_machine_init)(CPUState *env);
+
+    /* Callback ID:     PANDA_CB_AFTER_LOADVM
+
+       after_loadvm:
+        Called right after a snapshot has been loaded (either with loadvm or replay initialization),
+        but before any guest code runs.
+
+       Arguments:
+        void *cpu_env: pointer to CPUState
+
+       Return value:
+        none
+
+    */
+    void (*after_loadvm)(CPUState *env);
 
     /* Callback ID:     PANDA_CB_TOP_LOOP
 

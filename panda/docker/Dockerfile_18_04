@@ -94,8 +94,9 @@ RUN make install
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 
 # Install pypanda and dependencies
-WORKDIR "/panda/panda/pypanda"
+WORKDIR "/panda/panda/python/core"
 RUN pip install colorama cffi protobuf
+RUN ls
 RUN python setup.py install
 
 WORKDIR "/panda"

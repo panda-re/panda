@@ -627,6 +627,7 @@ PANDA_CB_REPLAY_HANDLE_PACKET,  // In replay, packet in / out
 PANDA_CB_AFTER_CPU_EXEC_ENTER,  // Just after cpu_exec_enter is called
 PANDA_CB_BEFORE_CPU_EXEC_EXIT,  // Just before cpu_exec_exit is called
 PANDA_CB_AFTER_MACHINE_INIT,    // Right after the machine is initialized, before any code runs
+PANDA_CB_AFTER_VMLOAD,          // Right after machine state is restored from a snapshot, before any code runs
 PANDA_CB_TOP_LOOP,              // At top of loop that manages emulation.  good place to take a snapshot
 ```
 For more information on each callback, see the "Callbacks" section.
@@ -2000,4 +2001,23 @@ replay, this would be an appropriate place to call `taint2_enable_taint()`.
 **Signature**
 ```C
 void after_machine_init(CPUState *env);
+```
+---
+
+`after_vmload`: called right after a snapshot has been loaded,
+but before any guest code runs
+
+**Callback ID**: `PANDA_CB_AFTER_VMLOAD`
+
+**Arguments**:
+
+* `CPUState *env`: pointer to CPUState
+
+**Return value**:
+
+unused
+
+**Signature**
+```C
+void after_vmload(CPUState *env);
 ```
