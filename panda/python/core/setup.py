@@ -12,9 +12,6 @@ import shutil
 # 1)  Populate panda/autogen #
 ##############################
 
-from sys import path as sys_path
-util_path = os.path.join(*[os.path.dirname(__file__), "utils"])
-sys_path.append(util_path)
 from create_panda_datatypes import main as create_datatypes
 create_datatypes()
 
