@@ -80,9 +80,9 @@ void update_asid_rr_sub_factor(target_ulong old_asid, InstrRange rri) {
   update info about what instruction intervals belong to each asid
   which is, in turn, used to be able to know instruction count by asid
 */
-int asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
     // XXX I wonder why this is in here?
-    if (new_asid < 10) return 0;
+    if (new_asid < 10) return false;
     Instr instr = rr_get_guest_instr_count();
     if (old_asid != new_asid) {
         auto rri = std::make_pair(ac_instr_start, instr-1);
@@ -90,7 +90,7 @@ int asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
     }
     ac_instr_start = rr_get_guest_instr_count();        
     current_asid = new_asid;
-    return 0;
+    return false;
 }
 
 /*

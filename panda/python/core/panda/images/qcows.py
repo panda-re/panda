@@ -22,11 +22,12 @@ Arch.__new__.__defaults__ = (None,None)
 SUPPORTED_ARCHES = {
         'i386':   Arch('i386-softmmu',   'i386',   'qemu-system-i386',   "linux-32-debian:3.2.0-4-686-pae", rb"root@debian-i386:.*# ",    "wheezy_panda2.qcow2", "ide1-cd0", "root",
             extra_args='-display none'),
-        'x86_64': Arch('x86_64-softmmu', 'x86_64', 'qemu-system-x86_64', "linux-64-debian:x.y.z-amd64-pae", rb"root@debian-amd64:.*# ",   "wheezy_x64.qcow2",    "ide1-cd0", "root",
+        'x86_64': Arch('x86_64-softmmu', 'x86_64', 'qemu-system-x86_64', "linux-64-debian:3.2.0-4-amd64", rb"root@debian-amd64:.*# ",   "wheezy_x64.qcow2",    "ide1-cd0", "root",
             extra_args='-display none'),
-        'ppc':    Arch('ppc-softmmu',    'ppc',    'qemu-system-ppc',    "linux-32-debian:x.y.z-ppc-pae",   rb"root@debian-powerpc:.*# ", "ppc_wheezy.qcow",     "ide1-cd0", "root",
+        'ppc':    Arch('ppc-softmmu',    'ppc',    'qemu-system-ppc',    "linux-32-debian:3.2.0-4-ppc-pae",   rb"root@debian-powerpc:.*# ", "ppc_wheezy.qcow",     "ide1-cd0", "root",
             extra_args='-display none'),
-        'arm':    Arch('arm-softmmu',    'arm',    'qemu-system-arm',    "linux-32-debian:x.y.z-arm-pae",   rb"root@debian-armel:.*# ",   "arm_wheezy.qcow",     "scsi0-cd2", "root",
+        # XXX: generic ARM guest is currently broken
+        'arm':    Arch('arm-softmmu',    'arm',    'qemu-system-arm',    "linux-32-debian:3.2.0-4-arm-pae",   rb"root@debian-armel:.*# ",   "arm_wheezy.qcow",     "scsi0-cd2", "root",
             extra_files=['vmlinuz-3.2.0-4-versatile', 'initrd.img-3.2.0-4-versatile'],
             extra_args='-display none -M versatilepb -append "root=/dev/sda1" -kernel {DOT_DIR}/vmlinuz-3.2.0-4-versatile -initrd {DOT_DIR}/initrd.img-3.2.0-4-versatile'.format(DOT_DIR=VM_DIR))
         }
@@ -41,7 +42,7 @@ def get_qcow_info(name=None):
 
     name = name.lower() # Case insensitive. Assumes supported_arches keys are lowercase
     if name not in SUPPORTED_ARCHES.keys():
-        raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".os.path.join(SUPPORTED_ARCHES.keys())))
+        raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".join(SUPPORTED_ARCHES.keys())))
 
     r = SUPPORTED_ARCHES[name]
     return r

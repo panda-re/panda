@@ -130,3 +130,31 @@ class blocking_mixins():
             except:
                 traceback.print_exc()
             os._exit(1) # Force process to exit now
+
+    @blocking
+    def interact(self, confirm_quit=True):
+        '''
+        Expose console interactively until user types pandaquit
+        Must be run in blocking thread.
+
+        TODO: This should probably repace self.serial_console with something
+        that directly renders output to the user. Then we don't have to handle
+        buffering and other problems. But we will need to re-enable the serial_console
+        interface after this returns
+        '''
+        print("PANDA: entering interactive mode. Type pandaquit to exit")
+        prompt = self.expect_prompt.decode("utf8") if self.expect_prompt  else "$ "
+        if not prompt.endswith(" "): prompt += " "
+        while True:
+            cmd = input(prompt) # TODO: Strip all control characters - Ctrl-L breaks things
+            if cmd.strip() == 'pandaquit':
+                if confirm_quit:
+                    q = input("PANDA: Quitting interactive mode. Are you sure? (y/n) ")
+                    if len(q) and q.lower()[0] == 'y':
+                        break
+                    else:
+                        continue
+                else: # No confirm - just break
+                    break
+            r = self.run_serial_cmd(cmd) # XXX: may timeout
+            print(r)

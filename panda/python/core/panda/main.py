@@ -36,9 +36,6 @@ from .pyperiph_mixins   import pyperipheral_mixins
 
 import pdb
 
-# location of panda build dir
-panda_build = realpath(pjoin(abspath(__file__), "../../../../build"))
-
 class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins, pyperipheral_mixins):
     def __init__(self, arch="i386", mem="128M",
             expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
@@ -53,6 +50,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.os_type = os
         self.qcow = qcow
         self.plugins = {}
+        self.expect_prompt = expect_prompt
 
         if isinstance(extra_args, str): # Extra args can be a string or array
             extra_args = extra_args.split()
@@ -64,7 +62,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             self.arch     = q.arch
             self.os       = q.os
             self.qcow     = qcows.get_qcow(generic)
-            expect_prompt = q.prompt
+            self.expect_prompt = q.prompt
             if q.extra_args:
                 extra_args.extend(q.extra_args.split(" "))
 
@@ -103,10 +101,10 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.panda_args.extend(['-m', mem])
 
         # Configure serial - if we have an expect_prompt set. Otherwise how can we know what guest cmds are outputting?
-        if expect_prompt:
+        if self.expect_prompt:
             self.serial_file = NamedTemporaryFile(prefix="pypanda_s").name
             self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.serial_console = Expect(expectation=expect_prompt, quiet=True, consume_first=False)
+            self.serial_console = Expect(expectation=self.expect_prompt, quiet=True, consume_first=False)
             self.panda_args.extend(['-serial', 'unix:{},server,nowait'.format(self.serial_file)])
         else:
             self.serial_file = None
@@ -557,17 +555,40 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
     def ppp(self, plugin_name, attr):
         '''
-        Decorator for plugin-to-plugin interface
+        Decorator for plugin-to-plugin interface. Note this isn't in decorators.py
+        becuase it uses the panda object.
 
         Example usage to register my_run with syscalls2 as a 'on_sys_open_return'
         @ppp("syscalls2", "on_sys_open_return")
         def my_fun(cpu, pc, filename, flags, mode):
             ...
         '''
+
+        if plugin_name not in self.plugins: # Could automatically load it?
+            raise ValueError(f"PPP canot use unknown plugin '{plugin_name}' - Did you load it with panda.load_plugin(\"{plugin_name}\")?")
+
+
         def inner(func):
             f = ffi.callback(attr+"_t")(func)  # Automatically make the python funciton a CB
             self.plugins[plugin_name].__getattr__("ppp_add_cb_"+attr)(f) # All PPP cbs start with this string
             return f
         return inner
+
+
+    def read_str(self, cpu, ptr):
+        '''
+        Helper to read a null-terminated string from guest memory given a pointer and CPU state
+        May return an exception if the call to panda.virtual_memory_read fails (e.g., if you pass a
+        pointer to an unmapped page)
+        '''
+        r = b""
+        while True:
+            next_char = self.virtual_memory_read(cpu, ptr, 1) # If this raises an exn, don't mask it
+            if next_char == b"\x00":
+                break
+            r += next_char
+            ptr += 1
+        return r.decode("utf8", "ignore")
+
 
 # vim: expandtab:tabstop=4:
