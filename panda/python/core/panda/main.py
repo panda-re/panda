@@ -36,9 +36,6 @@ from .pyperiph_mixins   import pyperipheral_mixins
 
 import pdb
 
-# location of panda build dir
-panda_build = realpath(pjoin(abspath(__file__), "../../../../build"))
-
 class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins, pyperipheral_mixins):
     def __init__(self, arch="i386", mem="128M",
             expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
