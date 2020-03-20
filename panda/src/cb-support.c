@@ -63,6 +63,8 @@ MAKE_CALLBACK(void, AFTER_CPU_EXEC_ENTER, after_cpu_exec_enter,
 MAKE_CALLBACK(void, BEFORE_CPU_EXEC_EXIT, before_cpu_exec_exit,
                     CPUState*, cpu, bool, ranBlock);
 
+MAKE_CALLBACK(void, AFTER_LOADVM, after_loadvm, CPUState*, env);
+
 // These are used in target-i386/translate.c
 MAKE_CALLBACK(bool, INSN_TRANSLATE, insn_translate,
                     CPUState*, env, target_ptr_t, pc);
