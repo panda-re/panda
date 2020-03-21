@@ -14,3 +14,4 @@ common.h
 plugin.h
 query_res.h
 rr_api.h
+syscalls_ext_typedefs*.h

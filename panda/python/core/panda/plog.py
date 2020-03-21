@@ -25,7 +25,7 @@ if isdir(join(python_package, 'data')):
 if 'plog_pb2' not in sys.modules:
     # Otherwise try to search relative to file in standard panda directory names
     # components of paths to be serched
-    panda_dir = dirname(dirname(dirname(os.path.realpath(__file__))))
+    panda_dir = dirname(dirname(dirname(dirname(os.path.realpath(__file__)))))
     top_dirs = [panda_dir, dirname(panda_dir)]
     build_dirs = ['build-panda', 'build', 'opt-panda', 'debug-panda']
     searched_paths = []
