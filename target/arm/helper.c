@@ -37,6 +37,8 @@ static bool get_phys_addr_lpae(CPUARMState *env, target_ulong address,
 #define PMCRE   0x1
 #endif
 
+#include "panda/callbacks/cb-support.h"
+
 static int vfp_gdb_get_reg(CPUARMState *env, uint8_t *buf, int reg)
 {
     int nregs;
@@ -2576,6 +2578,7 @@ static void vmsa_tcr_el1_write(CPUARMState *env, const ARMCPRegInfo *ri,
 static void vmsa_ttbr_write(CPUARMState *env, const ARMCPRegInfo *ri,
                             uint64_t value)
 {
+	uint64_t current_value = raw_read(env,ri);
     /* 64 bit accesses to the TTBRs can change the ASID and so we
      * must flush the TLB.
      */
@@ -2584,7 +2587,10 @@ static void vmsa_ttbr_write(CPUARMState *env, const ARMCPRegInfo *ri,
 
         tlb_flush(CPU(cpu));
     }
-    raw_write(env, ri, value);
+	// ret val !=0 means *dont* allow allow to change
+	if (0 == (panda_callbacks_asid_changed(ENV_GET_CPU(env), current_value, value))){
+		raw_write(env, ri, value);
+	}
 }
 
 static void vttbr_write(CPUARMState *env, const ARMCPRegInfo *ri,
@@ -2592,15 +2598,19 @@ static void vttbr_write(CPUARMState *env, const ARMCPRegInfo *ri,
 {
     ARMCPU *cpu = arm_env_get_cpu(env);
     CPUState *cs = CPU(cpu);
+	uint64_t current_value = raw_read(env,ri);
 
-    /* Accesses to VTTBR may change the VMID so we must flush the TLB.  */
-    if (raw_read(env, ri) != value) {
-        tlb_flush_by_mmuidx(cs,
-                            (1 << ARMMMUIdx_S12NSE1) |
-                            (1 << ARMMMUIdx_S12NSE0) |
-                            (1 << ARMMMUIdx_S2NS));
-        raw_write(env, ri, value);
-    }
+	// ret val !=0 means *dont* allow allow to change
+	if (0 == (panda_callbacks_asid_changed(ENV_GET_CPU(env), current_value, value))){
+    	/* Accesses to VTTBR may change the VMID so we must flush the TLB.  */
+    	if (current_value != value) {
+    	    tlb_flush_by_mmuidx(cs,
+    	                        (1 << ARMMMUIdx_S12NSE1) |
+    	                        (1 << ARMMMUIdx_S12NSE0) |
+    	                        (1 << ARMMMUIdx_S2NS));
+    	    raw_write(env, ri, value);
+    	}
+	}
 }
 
 static const ARMCPRegInfo vmsa_pmsa_cp_reginfo[] = {
