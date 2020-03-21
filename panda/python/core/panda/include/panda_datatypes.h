@@ -62,6 +62,7 @@ typedef enum panda_cb_type {
     PANDA_CB_REPLAY_AFTER_DMA,      // In replay, just after RAM case of
                                     // cpu_physical_mem_rw
     PANDA_CB_REPLAY_HANDLE_PACKET,  // In replay, packet in / out
+    PANDA_CB_PACKET_RECV,           // Anytime a packet is received
     PANDA_CB_AFTER_CPU_EXEC_ENTER,  // Just after cpu_exec_enter is called
     PANDA_CB_BEFORE_CPU_EXEC_EXIT,  // Just before cpu_exec_exit is called
     PANDA_CB_AFTER_MACHINE_INIT,    // Right after the machine is initialized,
@@ -710,6 +711,28 @@ typedef union panda_cb {
         the fix has a very low priority in the bugfix list.
     */
     void (*replay_handle_packet)(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
+
+    /* Callback ID:   PANDA_CB_PACKET_RECV
+
+       Whenever a packet is received by the guest with the e1000 NIC.
+       Callback runs immediately after data is placed into guest memory
+
+       Arguments:
+        CPUState *env:         pointer to CPUState
+        hwaddr addr:           address to the data in the guest's RAM
+        size_t size:           num bytes in buffer
+
+       Helper call location: panda/hw/net/e1000.c
+
+       Return value:
+        none
+
+       Notes:
+         Unlike replay_handle_packet, this callback runs with live systems and returns
+         a poitner to guest memory, not host memory.
+         XXX: probably doesn't work on recordings though.
+    */
+    void (*packet_recv)(CPUState *env, hwaddr buf, size_t size);
 
     /* Callback ID:     PANDA_CB_REPLAY_NET_TRANSFER,
 

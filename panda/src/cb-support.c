@@ -25,8 +25,7 @@ MAKE_REPLAY_ONLY_CALLBACK(REPLAY_NET_TRANSFER, replay_net_transfer,
                     uint64_t, src_addr, uint64_t, dst_addr,
                     size_t, num_bytes);
 
-// TODO: rename callback
-MAKE_CALLBACK(void, REPLAY_HANDLE_PACKET, replay_handle_packet,
+MAKE_REPLAY_ONLY_CALLBACK(REPLAY_HANDLE_PACKET, replay_handle_packet,
                   CPUState*, cpu, uint8_t*, buf,
                   size_t, size, uint8_t, direction,
                   uint64_t, buf_addr_rec)
@@ -158,6 +157,11 @@ MAKE_REPLAY_ONLY_CALLBACK(REPLAY_SERIAL_WRITE, replay_serial_write,
 MAKE_CALLBACK(void, MAIN_LOOP_WAIT, main_loop_wait, void);
 
 MAKE_CALLBACK(void, PRE_SHUTDOWN, pre_shutdown, void);
+
+// hw/net/e1000.c
+MAKE_CALLBACK(void, PACKET_RECV, packet_recv,
+                  CPUState*, cpu, hwaddr, addr,
+                  size_t, size);
 
 
 // Non-standard callbacks below here

@@ -625,6 +625,7 @@ PANDA_CB_REPLAY_SERIAL_WRITE,   // In replay, right after data is pushed into th
 PANDA_CB_REPLAY_BEFORE_DMA,     // In replay, just before RAM case of cpu_physical_mem_rw
 PANDA_CB_REPLAY_AFTER_DMA,      // In replay, just after RAM case of cpu_physical_mem_rw
 PANDA_CB_REPLAY_HANDLE_PACKET,  // In replay, packet in / out
+PANDA_CB_PACKET_RECV,           // Just after a network packet is placed in the guest's memory
 PANDA_CB_AFTER_CPU_EXEC_ENTER,  // Just after cpu_exec_enter is called
 PANDA_CB_BEFORE_CPU_EXEC_EXIT,  // Just before cpu_exec_exit is called
 PANDA_CB_AFTER_MACHINE_INIT,    // Right after the machine is initialized, before any code runs
@@ -1940,6 +1941,26 @@ unused
 ```C
 int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
                             uint8_t direction, uint64_t buf_addr_rec);
+```
+---
+
+`packet_recv`: called right after a network packet is placed in guest memory
+
+**Callback ID**: `PANDA_CB_PAKCET_RECV`
+
+**Arguments**:
+
+* `CPUState *env`: pointer to CPUState
+* `hwaddr buf`:  physical address of buffer in guest memory
+* `size_t size`: num bytes in buffer
+
+**Return value**:
+
+unused
+
+**Signature**:
+```C
+void (*packet_recv)(CPUState *env, hwaddr buf, size_t size);
 ```
 ---
 
