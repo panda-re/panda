@@ -23,7 +23,7 @@ memsavep
 unigrams
 textprinter
 net
-network
+# network
 filereadmon
 callfunc
 mmio_trace
