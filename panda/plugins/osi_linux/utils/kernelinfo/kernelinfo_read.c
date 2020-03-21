@@ -109,7 +109,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	READ_INFO_INT(ki, version.b, gerr, err.version, &errbmp);
 	READ_INFO_INT(ki, version.c, gerr, err.version, &errbmp);
 
-	READ_INFO_INT(ki, archtype, gerr, err.version, &errbmp);
+	// READ_INFO_INT(ki, archtype, gerr, err.version, &errbmp);
 
 	/* read init task address */
 	READ_INFO_UINT64(ki, task.init_addr, gerr, err.task, &errbmp);
