@@ -98,7 +98,7 @@ recctrlu toggle myrecording
 ```
 
 Specifying a recording name is mandatory for both starting and stopping
-recording. However, the plugin only uses the name when startring recording.
+recording. However, the plugin only uses the name when starting recording.
 
 ### Hooking guest utility to sshd
 The `recctrlu` utility can be hooked to the linux SSH daemon in order to record
