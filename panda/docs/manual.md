@@ -311,8 +311,9 @@ translation step is added from the TCG IR to the LLVM IR, and that is executed
 on the LLVM JIT.  Currently, this only works when QEMU is starting up, but we
 are hoping to support dynamic configuration of code generation soon.
 
-#### Record control
+#### Record/Replay and VM control
 ```C
+int panda_vm_quit(void);
 int panda_record_begin(const char *name, const char *snapshot);
 int panda_record_end(void);
 int panda_replay_begin(const char *name);
@@ -938,6 +939,7 @@ one has a README.md file linked here for further explanation.
 * [`memstats`](../../../../../panda1/qemu/panda_panda1/qemu/panda_plugins/memstats/README.md)
 * [`network`](../plugins/network/README.md)
 * [`pmemaccess`](../../../panda1/qemu/panda_plugins/pmemaccess/README.md)
+* [`recctrl`](../plugins/recctrl/README.md) - Control recording from within the VM.
 * [`rehosting`](../../../panda1/qemu/panda_plugins/rehosting/README.md)
 * [`replaymovie`](../plugins/replaymovie/README.md) - Write a series of
   framebuffer screenshots to the current directory. Use movie.sh to turn them
