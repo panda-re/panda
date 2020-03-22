@@ -939,6 +939,7 @@ one has a README.md file linked here for further explanation.
 * [`memstats`](../../../../../panda1/qemu/panda_panda1/qemu/panda_plugins/memstats/README.md)
 * [`network`](../plugins/network/README.md)
 * [`pmemaccess`](../../../panda1/qemu/panda_plugins/pmemaccess/README.md)
+* [`recctrl`](../plugins/recctrl/README.md) - Control recording from within the VM.
 * [`rehosting`](../../../panda1/qemu/panda_plugins/rehosting/README.md)
 * [`replaymovie`](../plugins/replaymovie/README.md) - Write a series of
   framebuffer screenshots to the current directory. Use movie.sh to turn them
