@@ -15,6 +15,7 @@ syscalls2
 pri
 pri_dwarf
 pri_simple
+recctrl
 scissors
 stringsearch
 asid_instr_count
