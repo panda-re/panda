@@ -335,6 +335,16 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             self.libpanda.panda_disable_tb_chaining()
 
     def run(self):
+        '''
+        Start execution of guest. Blocks until guest finishes.
+        Initializes panda object, clears main_loop_wait fns, sets up internal callbacks
+        '''
+
+        if len(self.main_loop_wait_fnargs):
+            if debug:
+                print("Clearing prior main_loop_wait fns:", self.main_loop_wait_fnargs)
+            self.main_loop_wait_fnargs = [] # [(fn, args), ...]
+
         if debug:
             progress ("Running")
 
