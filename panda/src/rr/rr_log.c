@@ -1145,6 +1145,8 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                     // run all callbacks registered for packet handling
                     RR_handle_packet_args hp = args.variant.handle_packet_args;
                     panda_callbacks_replay_handle_packet(first_cpu, hp.buf, hp.size, hp.direction, args.buf_addr_rec);
+
+                    // TODO: we should also run packet_receive callback here
                 } break;
             case RR_CALL_NET_TRANSFER:
                 {

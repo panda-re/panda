@@ -34,6 +34,7 @@ extern "C"
 bool init_plugin(void *self);
 void uninit_plugin(void *self);
 void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t packet_size, uint8_t direction, uint64_t buf_addr_rec);
+void on_packet_recv(CPUState *env, hwaddr buf, size_t packet_size);
 }
 
 const std::string PLUGIN_NM = std::string("tainted_net");
@@ -113,6 +114,57 @@ static void output_message(const std::string &message)
 {
     std::cerr << PANDA_MSG << message << std::endl;
 }
+
+void taint_network_data_live(size_t packet_size, hwaddr guest_ptr)
+{
+    // Counts number of labels applied to this packet.
+    uint32_t num_labels_applied = 0;
+
+    // Default label value is 100.  This will be overwritten if semantic or positional labeling is enabled.
+    uint32_t label_value = 100;
+
+    if (0 == taint2_enabled())
+    {
+        output_message("Label operation detected (network)");
+        output_message("Enabling taint processing");
+        taint2_enable_taint();
+    }
+
+    // Loop through each byte in the packet
+    for (uint32_t byte_offset = 0; byte_offset < packet_size; byte_offset++)
+    {
+        // If only specific bytes are to be tainted, check to see if this byte should be tainted
+        if(bytes_to_taint.empty() || (bytes_to_taint.find(byte_offset)!=bytes_to_taint.end()))
+        {
+            // Label is to be applied, increment the counter.
+            num_labels_applied++;
+
+            if (semantic_labels)
+            {
+                // With semantic labels, increment the counter and write out the packet count and byte offset.
+                // The IDA taint plugin will read this data so semantic labels can be displayed in IDA.
+                label_value=++label_count;
+                assert(fprintf(semantic_labels_file, "%u,%u-%u\n", label_value, packet_count, byte_offset) > 0);
+            }
+            else if (positional_labels)
+            {
+                // Compute taint label.
+                // Set the high order bits to be the packet number.
+                // Set the low order bits to be the byte offset.
+                label_value = (packet_count << packet_size_bits) |
+                    (byte_offset & ((ONE << packet_size_bits) - ONE));
+            }
+
+            // Apply taint label - XXX physical address?
+            taint2_label_ram((uint64_t)guest_ptr + byte_offset, label_value);
+        }
+    }
+
+    // Notify user that data is being tainted.
+    fprintf(stderr, PANDA_MSG "Applying labels to %d of %zu physmem items starting at 0x%" PRIx64 ", packet #%u\n",
+        num_labels_applied, packet_size, (uint64_t)guest_ptr, packet_count);
+}
+
 
 // Called when a packet received passes all filtering criteria.
 // Data within the packet should be tainted.
@@ -206,7 +258,6 @@ static void on_replay_handle_incoming_packet(CPUState *env, uint8_t *buf, size_t
 {
     assert(packet_size > 0);
     assert(buf);
-    assert(buf_addr_rec);
 
     // determine if this is an IPV4 packet
     bool is_ipv4 = (packet_size > (MAC_HEADER_SIZE + IPV4_HEADER_MIN_SIZE)) &&
@@ -219,7 +270,13 @@ static void on_replay_handle_incoming_packet(CPUState *env, uint8_t *buf, size_t
         validate_ethertype(buf, packet_size))
     {
         // if we get here, packet has matched all filter criteria.  start tainting.
-        taint_network_data(packet_size, buf_addr_rec);
+        if (rr_in_replay()) { // Replay requires buf_addr_rec
+          assert(buf_addr_rec);
+          taint_network_data(packet_size, buf_addr_rec);
+        } else {
+          // instead of buf_addr_rec we use the guest hwaddr buffer
+          taint_network_data_live(packet_size, (hwaddr)buf_addr_rec);
+        }
     }
 }
 
@@ -303,9 +360,34 @@ static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, size_t
     } // end of care-about-outgoing-taint
 }
 
+// A packet has just come in and been placed in guest memory
+void on_packet_recv(CPUState *env, hwaddr physaddr, size_t packet_size) {
+    printf("Packet recv\n");
+    if (rr_in_replay()) return; // Don't run for replays
+    printf("\t not in replay\n");
+    ++packet_count;
+
+    uint8_t *buf;
+    buf = (uint8_t*)malloc(sizeof(uint8_t)* packet_size);
+
+    panda_physical_memory_rw(physaddr, buf, packet_size, false);
+
+    if (label_incoming_network_traffic)
+    {
+        on_replay_handle_incoming_packet(env, buf, packet_size,
+            (uint64_t)physaddr);
+    }
+
+}
+
 // a packet has come in over the network, or is about to go out over the network
 void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t packet_size, uint8_t direction, uint64_t buf_addr_rec)
 {
+
+  printf("C replay handle packet\n");
+  if (!rr_in_replay()) return; // Don't run for live systems
+  printf("\tin replay\n");
+
     // Increment packet counter.  This count should agree with the count in the
     // wireshark file that is produced by the network plugin.
     ++packet_count;
@@ -603,8 +685,13 @@ bool init_plugin(void *self)
 
     panda_require("taint2");
 
+    // Replay mode: legacy
     pcb.replay_handle_packet = on_replay_handle_packet;
     panda_register_callback(self, PANDA_CB_REPLAY_HANDLE_PACKET, pcb);
+
+    // Live mode: WIP
+    pcb.packet_recv = on_packet_recv;
+    panda_register_callback(self, PANDA_CB_PACKET_RECV, pcb);
 
     assert(init_taint2_api());
 
