@@ -13,6 +13,8 @@
 #include "hw/devices.h"
 /* For crc32 */
 #include <zlib.h>
+// cb-support.h is architecture specific (includes cpu.h) so we can't include it directly.
+extern void panda_callbacks_packet_recv(CPUState *env, hwaddr buf, size_t size);
 
 /* Number of 2k memory pages available.  */
 #define NUM_PACKETS 4
@@ -706,6 +708,11 @@ static ssize_t smc91c111_receive(NetClientState *nc, const uint8_t *buf, size_t 
     *(p++) = packetsize & 0xff;
     *(p++) = packetsize >> 8;
     memcpy(p, buf, size & ~1);
+
+    // data is now in guest memory(?) - run callback
+    // XXX: Nope, this is wrong. There's data there but it aint' ours
+    panda_callbacks_packet_recv(NULL, (hwaddr)p, size & ~1);
+
     p += (size & ~1);
     /* Pad short packets.  */
     if (size < 64) {
