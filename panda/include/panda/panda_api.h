@@ -57,5 +57,6 @@ char* panda_monitor_run(char* buf);// Redefinition from monitor.h
 // Map a region of memory in the guest. WIP
 //int panda_map_physical_mem(target_ulong addr, int len);
 
+CPUState* get_cpu(void);
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 #endif
