@@ -597,14 +597,18 @@ ifneq (,$(findstring qemu-ga,$(TOOLS)))
 endif
 endif
 
+ifneq ($(CONFIG_LINUX),)
 # The install target won't succeed if the RPATH in the .so files is longer than
 # the value need to change it to for installation purposes.  It does not matter
 # which architecture is used for the comparison - it shows up once in both the
 # new and old RPATHs, so the differences cancel out.
 # Calculate length of new RPATH.
 newrplen=$(shell newrp="$(panda_plugindir)/$(ARCH)" ; eval echo $${\#newrp})
-# Fetch current RPATH from an .so file - doesn't matter which plugin it is for.
-archdir=$(filter $(ARCH)-%,$(TARGET_DIRS))
+# Fetch current RPATH from an .so file - doesn't matter which plugin/arch it is for.
+archdir=$(lastword $(TARGET_DIRS))
+ifeq ($(archdir),)
+$(error Failed to find arch directory ${archdir})
+endif
 pwdvar=$(shell pwd)
 pathtoso=$(shell echo "$(pwdvar)/$(archdir)/panda/plugins/panda_stringsearch.so")
 cpout=$(shell chrpath -l "$(pathtoso)")
@@ -612,6 +616,7 @@ cpout=$(shell chrpath -l "$(pathtoso)")
 # adjust for that later.
 rppart=$(lastword $(cpout))
 newtoobig=$(shell oldrp="$(rppart)" ; oldrplen=`expr $${\#oldrp} - 6` ; if [ $$oldrplen -lt $(newrplen) ] ; then echo true ; else echo false ; fi)
+endif
 
 install: all $(if $(BUILD_DOCS),install-doc) install-datadir install-localstatedir
 ifeq ($(newtoobig), false)
