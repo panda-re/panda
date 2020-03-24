@@ -969,6 +969,13 @@ bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
         addrOut.off = (offset - cpu_off(gpr)) % cpu_size(gpr[0]);
         return true;
     }
+#elif defined (TARGET_MIPS)
+    if (contains_offset(active_tc.gpr)){
+        addrOut.typ = GREG;
+        addrOut.val.gr = (offset - cpu_off(active_tc.gpr)) / cpu_size(active_tc.gpr[0]);
+        addrOut.off = (offset - cpu_off(active_tc.gpr)) % cpu_size(active_tc.gpr[0]);
+        return true;
+    }
 #else
     if (contains_offset(regs)) {
         addrOut.typ = GREG;
@@ -1025,6 +1032,8 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
         if (ptrAddr == cpu_off(eip) && isStore) {
 #elif defined(TARGET_PPC)
         if (ptrAddr == cpu_off(nip) && isStore) {
+#elif defined(TARGET_MIPS)
+        if (ptrAddr == cpu_off(active_tc.PC) && isStore) {
 #else
 #error "unsupported architecture"
 #endif
