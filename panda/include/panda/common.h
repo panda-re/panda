@@ -32,6 +32,10 @@
 extern "C" {
 #endif
 
+#ifdef(TARGET_MIPS)
+#define MIPS_HFLAG_KSU    0x00003 /* kernel/supervisor/user mode mask   */
+#define MIPS_HFLAG_KM     0x00000 /* kernel mode flag                   */
+#endif
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
 // api autogen needs it.  And don't put any compiler directives
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
@@ -289,6 +293,8 @@ static inline bool panda_in_kernel(CPUState *cpu) {
     return ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC);
 #elif defined(TARGET_PPC)
     return msr_pr;
+#elif defined(TARGET_MIPS)
+    return (env->hflags & MIPS_HFLAG_KSU) == MIPS_HFLAG_KM;
 #else
 #error "panda_in_kernel() not implemented for target architecture."
     return false;
