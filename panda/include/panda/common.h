@@ -32,9 +32,15 @@
 extern "C" {
 #endif
 
-#ifdef(TARGET_MIPS)
+#if defined(TARGET_MIPS)
 #define MIPS_HFLAG_KSU    0x00003 /* kernel/supervisor/user mode mask   */
 #define MIPS_HFLAG_KM     0x00000 /* kernel mode flag                   */
+/**
+ *  Register values from: http://www.cs.uwm.edu/classes/cs315/Bacon/Lecture/HTML/ch05s03.html
+ */
+#define MIPS_SP           29      /* value for MIPS stack pointer offset into GPR */
+#define MIPS_V0           2
+#define MIPS_V1           3
 #endif
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
 // api autogen needs it.  And don't put any compiler directives
@@ -218,6 +224,8 @@ static inline target_ulong panda_current_sp(CPUState *cpu) {
 #elif defined(TARGET_PPC)
     // R1 on PPC.
     return env->gpr[1];
+#elif defined(TARGET_MIPS)
+    return env->active_tc.gpr[MIPS_SP];
 #else
 #error "panda_current_sp() not implemented for target architecture."
     return 0;
@@ -241,6 +249,9 @@ static inline target_ulong panda_get_retval(CPUState *cpu) {
 #elif defined(TARGET_PPC)
     // R3 on PPC.
     return env->gpr[3];
+#elif defined(TARGET_MIPS)
+    // MIPS has 2 return registers v0 and v1. Here we choose v0.
+    return env->active_tc.gpr[MIPS_V0];
 #else
 #error "panda_get_retval() not implemented for target architecture."
     return 0;
