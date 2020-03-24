@@ -47,13 +47,13 @@ struct syscall_ctx {
 typedef struct syscall_ctx syscall_ctx_t;
 
 #if defined(TARGET_ARM)
-#include "syscalls_ext_typedefs_arm"
+#include "syscalls_ext_typedefs_arm.h"
 #endif
 #if defined(TARGET_X86_64)
-#include "syscalls_ext_typedefs_x64"
+#include "syscalls_ext_typedefs_x64.h"
 #endif
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-#include "syscalls_ext_typedefs_x86"
+#include "syscalls_ext_typedefs_x86.h"
 #endif
 
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
