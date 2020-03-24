@@ -239,3 +239,7 @@ void map_memory(char* name, uint64_t size, uint64_t address) {
     // Add memory region to sysmem
     memory_region_add_subregion(sysmem, address, ram);
 }
+
+CPUState* get_cpu(void) {
+  return first_cpu;
+}
