@@ -31,6 +31,9 @@
 #elif defined(TARGET_PPC)
 #define NUM_REGS 32
 #define REGS(env) ((env)->gpr)
+#elif defined(TARGET_MIPS)
+#define NUM_REGS 32
+#define REGS(env) ((env)->active_tc.gpr)
 #endif
 
 #endif
