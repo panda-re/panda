@@ -10,6 +10,7 @@ import ida_kernwin
 import ida_name
 import ida_nalt
 import ida_bytes
+import ida_funcs
 
 from PyQt5.QtWidgets import QMessageBox
 
@@ -26,28 +27,20 @@ def main():
     ida_kernwin.take_database_snapshot(snapshot)
 
     for segea in Segments():
-        #for funcea in Functions(segea, SegEnd(segea)):
         for funcea in Functions(segea, idc.get_segm_end(segea)):
-            #function_name = GetFunctionName(funcea)
             function_name = idc.get_func_name(funcea)
             if function_name.startswith("TAINTED_"):
-                #MakeName(funcea, function_name.replace("TAINTED_", ""))
-                ida_name.set_name(funcea, function_name.replace("TAINTED_", "", ida_name.SN_CHECK))
-                #SetColor(funcea, CIC_FUNC, UNDO_COLOR)
-                ida_nalt.set_item_color(funcea, UNDO_COLOR)
-                print(function_name)
+                ida_name.set_name(funcea, function_name.replace("TAINTED_", ""), ida_name.SN_NOWARN)
+                idc.set_color(funcea, CIC_FUNC, UNDO_COLOR)
+                #print(function_name)
                 for (startea, endea) in Chunks(funcea):
                     for head in Heads(startea, endea):
                         #comment = str(Comment(head))
                         comment = ida_bytes.get_cmt(head, 0)
-                        print(comment)
-                        #if not comment:
-                            #comment = ""
                         if comment != None and "taint labels" in comment:
-                            print("In if-then")
-                            #SetColor(head, CIC_ITEM, UNDO_COLOR)
+                            print(comment)
                             ida_nalt.set_item_color(head, UNDO_COLOR)
                             #MakeComm(head, label_regex.sub("", comment))
-                            ida_bytes.set_cmt(head, label_regex.sub("", comment), 0)        
+                            ida_bytes.set_cmt(head, label_regex.sub("", comment), 0)
 if __name__ == "__main__":
     main()
