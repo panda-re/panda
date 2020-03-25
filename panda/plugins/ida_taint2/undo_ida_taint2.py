@@ -15,7 +15,7 @@ import ida_funcs
 from PyQt5.QtWidgets import QMessageBox
 
 UNDO_COLOR = 0xFFFFFF
-label_regex = re.compile(r"(,\s)*taint labels = \[([0-9]+,*\s*)+\]")
+label_regex = re.compile(r"(,\s)*taint labels = \[('?[0-9\-]+'?,*\s*)+\]")
 
 def main():
     button_result = QMessageBox.warning(None, "Warning", "This script will attempt to undo ida_taint2.py changes. It is not perfect and will unpredictably change comments if you've made changes to comments since running ida_taint2.py. Do you want to continue?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
@@ -32,13 +32,11 @@ def main():
             if function_name.startswith("TAINTED_"):
                 ida_name.set_name(funcea, function_name.replace("TAINTED_", ""), ida_name.SN_NOWARN)
                 idc.set_color(funcea, CIC_FUNC, UNDO_COLOR)
-                #print(function_name)
+                print(function_name)
                 for (startea, endea) in Chunks(funcea):
                     for head in Heads(startea, endea):
-                        #comment = str(Comment(head))
                         comment = ida_bytes.get_cmt(head, 0)
                         if comment != None and "taint labels" in comment:
-                            print(comment)
                             ida_nalt.set_item_color(head, UNDO_COLOR)
                             #MakeComm(head, label_regex.sub("", comment))
                             ida_bytes.set_cmt(head, label_regex.sub("", comment), 0)
