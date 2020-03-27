@@ -287,8 +287,20 @@ void uninit_plugin(void *self) {
     if (json_fn) {
         flush_json(json_fn, pid_to_all_ioctls, pid_to_name);
     }
+
     if (pandalog){
         flush_plog();
     }
-    // TODO (tnballo): add freeing logic or move to std::unique_ptr
+
+    // Cleanup globals
+    for (auto const& pid_to_ioctls : pid_to_all_ioctls) {
+        auto ioctl_pair_list = pid_to_ioctls.second;
+        for (auto const& ioctl_pair : ioctl_pair_list) {
+            free(ioctl_pair.first);
+            free(ioctl_pair.second);
+        }
+        ioctl_pair_list.clear();
+    }
+    pid_to_all_ioctls.clear();
+    pid_to_name.clear();
 }
