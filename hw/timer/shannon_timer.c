@@ -125,7 +125,8 @@ static void shannon_timer_write(void *opaque, hwaddr offset,
         }
         break;
     case 0x10:
-        shannon_timer_update(s); //disable irq if necessary
+        //shannon_timer_update(s); //disable irq if necessary
+        s->int_level = value;
         break;
     case 0x14: /* TIM_IRQ_LEVEL */
         s->int_level = value;
@@ -164,10 +165,10 @@ static const MemoryRegionOps shannon_timer_ops = {
     .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
-static void shannon_timer_init(Object *obj)
+static void shannon_timer_realize(DeviceState *dev, Error **errp)
 {
-    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
-    shannon_timer_state *s = SHANNON_TIMER(obj);
+    SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
+    shannon_timer_state *s = SHANNON_TIMER(dev);
     QEMUBH *bh;
 
     s->control = 0xffffffff;
@@ -177,17 +178,23 @@ static void shannon_timer_init(Object *obj)
     bh = qemu_bh_new(shannon_timer_tick, s);
     s->timer = ptimer_init(bh, PTIMER_POLICY_DEFAULT);
 
+    sysbus_init_irq(sbd, &s->irq);
+    s->irq = qemu_allocate_irq(shannon_timer_set_irq, s, s->irq_num);
+}
+
+static void shannon_timer_init(Object *obj)
+{
+    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+    shannon_timer_state *s = SHANNON_TIMER(obj);
     memory_region_init_io(&s->iomem, OBJECT(s), &shannon_timer_ops, s,
             TYPE_SHANNON_TIMER, 0xf0);
     sysbus_init_mmio(sbd, &s->iomem);
-    sysbus_init_irq(sbd, &s->irq);
-    s->irq = qemu_allocate_irq(shannon_timer_set_irq, s, s->irq_num);
 }
 
 
 static Property shannon_timer_properties[] = {
     DEFINE_PROP_UINT32("irq_num", shannon_timer_state, irq_num, 35),
-    DEFINE_PROP_UINT32("freq", shannon_timer_state, freq, 1000000ll),
+    DEFINE_PROP_UINT32("freq", shannon_timer_state, freq, 1000ll),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -195,6 +202,7 @@ static void shannon_timer_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *k = DEVICE_CLASS(klass);
 
+    k->realize = shannon_timer_realize;
     k->props = shannon_timer_properties;
     k->vmsd = &vmstate_shannon_timer;
 }
