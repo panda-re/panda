@@ -28,15 +28,16 @@
 
 /* #define DEBUG_GIC */
 
-#ifdef DEBUG_GIC
+//#ifdef DEBUG_GIC
 #define DEBUG_GIC_GATE 1
-#else
-#define DEBUG_GIC_GATE 0
-#endif
+//#else
+//#define DEBUG_GIC_GATE 0
+//#endif
 
 #define DPRINTF(fmt, ...) do {                                          \
         if (DEBUG_GIC_GATE) {                                           \
             fprintf(stderr, "%s: " fmt, __func__, ## __VA_ARGS__);      \
+            fflush(stderr);                                             \
         }                                                               \
     } while (0)
 
@@ -896,6 +897,7 @@ static void gic_dist_writeb(void *opaque, hwaddr offset,
 
                 if (!GIC_TEST_ENABLED(irq + i, cm)) {
                     DPRINTF("Enabled IRQ %d\n", irq + i);
+                    //exit(-1);
                     trace_gic_enable_irq(irq + i);
                 }
                 GIC_SET_ENABLED(irq + i, cm);
