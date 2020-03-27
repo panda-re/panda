@@ -254,6 +254,13 @@ uint32_t taint2_query_ram(uint64_t pa) {
     LabelSetP ls = tp_labelset_get(make_maddr(pa));
     return ls ? ls->size() : 0;
 }
+//
+// if laddr addr la is untainted, return 0.
+// else returns label set cardinality
+uint32_t taint2_query_laddr(uint64_t la, uint64_t off) {
+    LabelSetP ls = tp_labelset_get(make_laddr(la, off));
+    return ls ? ls->size() : 0;
+}
 
 uint32_t taint2_query_reg(int reg_num, int offset) {
     LabelSetP ls = tp_labelset_get(make_greg(reg_num, offset));
@@ -519,6 +526,18 @@ TaintLabel taint2_query_result_next(QueryResult *qr, bool *done) {
 	// detect if we've iterated to the end
   *done = (*(LabelSetIter*)qr->it_curr == *(LabelSetIter*)qr->it_end);
 	return l;
+}
+
+// pass in query result pre-allocated
+void taint2_query_laddr_full(uint64_t la, uint64_t offset, QueryResult *qr) {
+	// Hmm.  Doesn't this allocate a LabeSetP ? 
+	// are we leaking (if so we leaking in a bunch of other places)
+	TaintData td = tp_query_full(make_laddr(la, offset));
+	qr->num_labels = td.ls->size();
+	qr->tcn = td.tcn;
+	qr->cb_mask = td.cb_mask;
+	qr->ls = (void *) td.ls;  // this should be a (const std::set<TaintLabel> *) type
+	taint2_query_results_iter(qr);
 }
 
 // pass in query result pre-allocated

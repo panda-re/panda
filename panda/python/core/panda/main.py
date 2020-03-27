@@ -231,12 +231,12 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         '''
         Find build directory containing ARCH-softmmu/libpanda-ARCH.so and ARCH-softmmu/panda/plugins/
         1) check relative to file (in the case of installed packages)
-        2) Check in ../../../build/
+        2) Check in../ ../../../build/
         3) raise RuntimeError
         '''
         archs = ['i386', 'x86_64', 'arm', 'ppc']
         python_package = pjoin(*[dirname(__file__), "data"])
-        local_build = realpath(pjoin(dirname(__file__), "../../../build"))
+        local_build = realpath(pjoin(dirname(__file__), "../../../../build"))
         path_end = "{0}-softmmu/libpanda-{0}.so".format(self.arch)
 
         pot_paths = [python_package, local_build]
@@ -335,6 +335,16 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             self.libpanda.panda_disable_tb_chaining()
 
     def run(self):
+        '''
+        Start execution of guest. Blocks until guest finishes.
+        Initializes panda object, clears main_loop_wait fns, sets up internal callbacks
+        '''
+
+        if len(self.main_loop_wait_fnargs):
+            if debug:
+                print("Clearing prior main_loop_wait fns:", self.main_loop_wait_fnargs)
+            self.main_loop_wait_fnargs = [] # [(fn, args), ...]
+
         if debug:
             progress ("Running")
 
