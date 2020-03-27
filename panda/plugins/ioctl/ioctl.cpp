@@ -11,26 +11,24 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+#include <byteswap.h>
+#include <tuple>
+#include <algorithm>
+#include <iomanip>
+
 #include "ioctl.h"
+#include "ioctl_optional_json.h"
 
 #include "osi_linux/osi_linux_ext.h"
 #include "syscalls2/syscalls_ext_typedefs.h"
 #include "syscalls2/syscalls2_info.h"
 #include "syscalls2/syscalls2_ext.h"
 
-#include <byteswap.h>
-#include <tuple>
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <algorithm>
-
 bool swap_endianness;
+bool ioctl_force_success;
 const char* json_fn;
 AllIoctlsByPid pid_to_all_ioctls;
 NameByPid pid_to_name;
-
-const int hex_width = (sizeof(target_ulong) << 1);
 
 // These need to be extern "C" so that the ABI is compatible with QEMU/PANDA, which is written in C
 extern "C" {
@@ -39,7 +37,7 @@ extern "C" {
     void uninit_plugin(void *);
 }
 
-// CALLBACKS -----------------------------------------------------------------------------------------------------------
+// VMI -----------------------------------------------------------------------------------------------------------------
 
 // Update all IOCTLs by process
 // Keying maps by PID for request/response consistency regardless of kthread context-switch/interweave
@@ -63,9 +61,9 @@ void update_proc_ioctl_mapping(uint32_t fd, CPUState* cpu, uint32_t cmd, uint64_
     uint8_t* guest_arg_buf;
     if (new_cmd->arg_size) {
         guest_arg_buf = (uint8_t*)malloc(new_cmd->arg_size);
-        if (panda_virtual_memory_read(cpu, guest_arg_ptr, guest_arg_buf, new_cmd->arg_size)) {
+        if ((!guest_arg_buf) || panda_virtual_memory_read(cpu, guest_arg_ptr, guest_arg_buf, new_cmd->arg_size)) {
             std::cerr << "Failed to read " << new_cmd->arg_size
-                << " bytes from guest 0x" << std::setw(hex_width) << guest_arg_ptr;
+                << " bytes from guest 0x" << std::setw(hex_width) << guest_arg_ptr << std::endl;
         }
     } else {
         guest_arg_buf = nullptr;
@@ -90,9 +88,23 @@ void update_proc_ioctl_mapping(uint32_t fd, CPUState* cpu, uint32_t cmd, uint64_
         pid_entry->second.back().second = new_ioctl;        // Log response corresponding to request
     }
 
-    // Clean temporaries
+    // Cleanup
     free(proc);
 }
+
+// Multi-arch return overwrite
+INLINE void force_return(CPUState* cpu, target_ulong val) {
+
+    #if (defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM) || defined(TARGET_AARCH64))
+        ((CPUArchState*)cpu->env_ptr)->regs[0] = val;
+    #elif defined(TARGET_MIPS)
+        ((CPUArchState*)cpu->env_ptr)->regs[2] = val;
+    #else
+        std::cerr << "Cannot modify return value on unsupported architecture!" << std::endl;
+    #endif
+}
+
+// CALLBACKS -----------------------------------------------------------------------------------------------------------
 
 void linux_32_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint32_t arg) {
     update_proc_ioctl_mapping(fd, cpu, cmd, (uint64_t)arg, true);
@@ -100,6 +112,9 @@ void linux_32_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t 
 
 void linux_32_ioctl_return(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint32_t arg) {
     update_proc_ioctl_mapping(fd, cpu, cmd, (uint64_t)arg, false);
+    if (ioctl_force_success) {
+        force_return(cpu, 0);
+    }
 }
 
 void linux_64_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint64_t arg) {
@@ -108,151 +123,77 @@ void linux_64_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t 
 
 void linux_64_ioctl_return (CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint64_t arg) {
     update_proc_ioctl_mapping(fd, cpu, cmd, arg, false);
-}
-
-// FILE I/O ------------------------------------------------------------------------------------------------------------
-
-// Write single ioctl entry to JSON
-void log_line_json(std::ofstream &out_log_file, ioctl_t* ioctl, target_pid_t pid, std::string name, bool is_request) {
-
-    // TODO: Requires osi_linux
-    out_log_file
-        << std::hex << std::setfill('0') << "{ "
-        << "\"proc_pid\": \"" << pid << "\", "
-        << "\"proc_name\": \"" << name << "\", "
-        << "\"file_name\": \"" << ioctl->file_name << "\", ";
-
-    // Write log line, hacky JSON
-    if (is_request) {
-        out_log_file
-            << "\"data_flow\": \"req\", ";
-    } else {
-        out_log_file
-            << "\"data_flow\": \"res\", ";
-    }
-
-    out_log_file
-        << "\"raw_cmd\": \"0x" << std::setw(hex_width) << encode_ioctl_cmd(ioctl->cmd) << "\", "
-        << "\"type\": \""  << ioctl_type_to_str(ioctl->cmd->type) << "\", "
-        << "\"code\": \"0x" << std::setw(hex_width) << ioctl->cmd->code << "\", "
-        << "\"func_num\": \"0x" << std::setw(hex_width) << ioctl->cmd->func_num << "\" ";
-
-    if (ioctl->cmd->arg_size) {
-        out_log_file
-            << ", "
-            << "\"guest_arg_ptr\": \"0x" << std::setw(hex_width) << ioctl->guest_arg_ptr << "\", "
-            << "\"guest_arg_size\": \"0x" << std::setw(hex_width) << ioctl->cmd->arg_size << "\" ";
-
-        for (int i = 0; i < ioctl->cmd->arg_size; ++i) {
-            out_log_file
-                << "0x" << std::hex << std::setfill('0') << std::setw(2)
-                << ioctl->guest_arg_buf[i] << " ";
-        }
-
-        out_log_file
-            << "}";
-
-    } else {
-        out_log_file
-            << "}";
-    }
-
-    // Validate write
-    if (!out_log_file.good()) {
-        std::cerr << "Error writing to " << json_fn << std::endl;
-        return;
+    if (ioctl_force_success) {
+        force_return(cpu, 0);
     }
 }
 
-// Write JSON log
-void flush_json() {
+// PANDA LOG -----------------------------------------------------------------------------------------------------------
 
-    if (!json_fn) { return; }    // Pre-condition
-
-    std::ofstream out_log_file(json_fn);
-    auto delim = ",\n";
-
-    out_log_file << "[" << std::endl;
-
-    printf("ioctl: dumping log for %lu processes to %s\n", pid_to_all_ioctls.size(), json_fn);
-    for (auto const& pid_to_ioctls : pid_to_all_ioctls) {
-    //for (auto it = pid_to_all_ioctls.begin(); it != pid_to_all_ioctls.end(); ++it) {
-
-        auto pid = pid_to_ioctls.first;
-        auto ioctl_pair_list = pid_to_ioctls.second;
-        assert(pid_to_name.find(pid) != pid_to_name.end());
-        auto name = pid_to_name.find(pid)->second;
-
-        for (auto const& ioctl_pair : ioctl_pair_list) {
-
-            log_line_json(out_log_file, ioctl_pair.first, pid, name, true);
-            out_log_file << delim;
-
-            log_line_json(out_log_file, ioctl_pair.second, pid, name, false);
-
-            // TODO: fix so last does not have trailing
-            //if ((&ioctl_pair != &ioctl_pair_list.back()) and
-            //    (it.next() != pid_to_all_ioctls.end()) {
-                //out_log_file << delim;
-            //}
-
-            out_log_file << delim;
-        }
-    }
-
-    out_log_file << std::endl << "]" << std::endl;
-    out_log_file.close();
-}
-
-// Write single ioctl entry to PANDALOG
-void log_line_plog(ioctl_t* ioctl, target_pid_t pid, std::string name, bool is_request) {
+// Entry init helper
+void init_plog_ioctl(Panda__Ioctl* pli, ioctl_t* ioctl, target_pid_t pid, std::string name, bool is_request) {
 
     if (!pandalog) { return; }    // Pre-condition
 
-    // TODO: need arg here to array of entires
-
     // TODO: these should be optional if OSI enabled
-    ple.has_proc_pid = 1;
-    ple.has_proc_name = 1;
-    ple.has_file_name = 1;
-    ple.proc_pid = pid;
-    ple.proc_name = name;
-    ple.file_name = ioctl->file_name;
+    pli->has_proc_pid = 1;
+    //pli->has_proc_name = 1;
+    //pli->has_file_name = 1;
+    pli->proc_pid = pid;
+    pli->proc_name = (char*)name.c_str();
+    pli->file_name = ioctl->file_name;
 
-    ple.data_flow = is_request;
-    ple.raw_cmd = encode_ioctl_cmd(ioctl->cmd);
-    ple.type = ioctl->cmd->type;
-    ple.code = ioctl->cmd->code;
-    ple.func_num = ioctl->cmd->func_num;
+    pli->data_flow = is_request;
+    pli->raw_cmd = encode_ioctl_cmd(ioctl->cmd);
+    pli->direction = ioctl->cmd->direction;
+    pli->cmd_num = ioctl->cmd->cmd_num;
+    pli->type_num = ioctl->cmd->type_num;
 
     if (ioctl->cmd->arg_size) {
-        ple.has_guest_arg_size = 1;
-        ple.has_guest_arg_ptr = 1;
-        ple.has_guest_arg_buf = 1;
-        ple.guest_arg_size = ioctl->cmd->arg_size;
-        ple.guest_arg_ptr = ioctl->guest_arg_ptr;
-        ple.guest_arg_buf = ioctl->guest_arg_buf;
+        pli->has_guest_arg_ptr = 1;
+        pli->has_guest_arg_buf = 1;
+        pli->guest_arg_ptr = ioctl->guest_arg_ptr;
+        pli->guest_arg_buf.data = ioctl->guest_arg_buf;
+        pli->guest_arg_buf.len = ioctl->cmd->arg_size;
     } else {
-        ple.has_guest_arg_size = 0;
-        ple.has_guest_arg_ptr = 0;
-        ple.has_guest_arg_buf = 0;
-        //ple.guest_arg_size = 0;
-        //ple.guest_arg_ptr = nullptr;
-        //ple.guest_arg_buf = nullptr;
+        pli->has_guest_arg_ptr = 0;
+        pli->has_guest_arg_buf = 0;
     }
+}
 
-
+// Entry alloc helper
+Panda__Ioctl* alloc_plog_ioctl() {
+    Panda__Ioctl* entry = (Panda__Ioctl*)malloc(sizeof(Panda__Ioctl));
+    assert(entry);
+    *(entry) = PANDA__IOCTL__INIT;
+    return entry;
+}
 
 // Write PANDALOG
 void flush_plog() {
 
+    int recorded_ioctl_cnt = 0;
+    int i = 0;
+
     Panda__RecordedIoctls *recorded_ioctls = (Panda__RecordedIoctls*)malloc(sizeof(Panda__RecordedIoctls));
+    assert(recorded_ioctls);
     *recorded_ioctls = PANDA__RECORDED_IOCTLS__INIT;
 
-    // TODO: Compute total here, before malloc
-    // auto total ioctls = XXX
-    //Panda__Ioctl **ioctl_plog = (Panda__Ioctl**)malloc(sizeof(Panda__Ioctl*) * total_ioctls);
+    // Compute total captured
+    for (auto const& pid_to_ioctls : pid_to_all_ioctls) {
+        auto ioctl_pair_list = pid_to_ioctls.second;
+        for (auto const& ioctl_pair : ioctl_pair_list) {
+            assert(ioctl_pair.first);
+            assert(ioctl_pair.second);
+            recorded_ioctl_cnt += 2;
+        }
+    }
 
+    // Allocate memory for singular array of pointers to individual ioctl captures
+    Panda__Ioctl **ioctl_arr = (Panda__Ioctl**)malloc(sizeof(Panda__Ioctl*) * recorded_ioctl_cnt);
+    assert(ioctl_arr);
+
+    // Buffer data
     for (auto const& pid_to_ioctls : pid_to_all_ioctls) {
 
         auto pid = pid_to_ioctls.first;
@@ -261,14 +202,29 @@ void flush_plog() {
         auto name = pid_to_name.find(pid)->second;
 
         for (auto const& ioctl_pair : ioctl_pair_list) {
-            log_line_plog(ioctl_pair.first, pid, name, true);
-            log_line_plog(ioctl_pair.second, pid, name, false);
+            assert((i + 1) <= recorded_ioctl_cnt);
+
+            ioctl_arr[i] = alloc_plog_ioctl();
+            ioctl_arr[i + 1] = alloc_plog_ioctl();
+
+            init_plog_ioctl(ioctl_arr[i], ioctl_pair.first, pid, name, true);
+            init_plog_ioctl(ioctl_arr[i + 1], ioctl_pair.second, pid, name, false);
+
+            i += 2;
         }
     }
 
+    // Write data
+    recorded_ioctls->ioctls = ioctl_arr;
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-    ple.recorded_ioctls = recorded_ioctls;
+    ple.plog_ioctls = recorded_ioctls;
     pandalog_write_entry(&ple);
+
+    // Cleanup
+    for (i = 0; i < recorded_ioctl_cnt; ++i) {
+        free(ioctl_arr[i]);
+    }
+    free(ioctl_arr);
 }
 
 // EXPORTS -------------------------------------------------------------------------------------------------------------
@@ -281,14 +237,22 @@ void flush_plog() {
 
 bool init_plugin(void* self) {
 
-    panda_arg_list* panda_args = panda_get_args("ioctl");
 
-    json_fn = panda_parse_string_opt(panda_args, "out_json", nullptr, "JSON file to log unique IOCTLs by process.");
+    panda_arg_list* panda_args_list = panda_get_args("ioctl");
+
+    json_fn = panda_parse_string_opt(panda_args_list, "out_json", nullptr, "JSON file to log unique IOCTLs by process.");
     if (!json_fn) {
         std::cout << "No \'out_json\' specified, JSON logging disabled." << std::endl;
     }
 
-    // TODO: make OSI optional!
+    ioctl_force_success = panda_parse_bool_opt(panda_args_list, "ioctl_rehost", "Force all ioctl() calls to return success (i.e. 0)");
+    if (ioctl_force_success) {
+        std::cout << "Rehost toggled: all ioctl() calls will return 0" << std::endl;
+    }
+
+    swap_endianness = false;
+
+    // TODO (tnballo): make OSI optional!
 
     // Setup dependencies
     panda_enable_precise_pc();
@@ -299,8 +263,6 @@ bool init_plugin(void* self) {
     panda_require("osi_linux");
     assert(init_osi_linux_api());
 
-    // TODO: ARM support
-    swap_endianness = false;
     #if (defined(TARGET_I386) && !defined(TARGET_X86_64)) || (defined(TARGET_ARM) && !defined(TARGET_AARCH64))
         printf("ioctl: setting up 32-bit Linux.\n");
         PPP_REG_CB("syscalls2", on_sys_ioctl_enter, linux_32_ioctl_enter);
@@ -323,11 +285,10 @@ bool init_plugin(void* self) {
 
 void uninit_plugin(void *self) {
     if (json_fn) {
-        flush_json();
+        flush_json(json_fn, pid_to_all_ioctls, pid_to_name);
     }
     if (pandalog){
         flush_plog();
     }
-
-    // TODO: add freeing logic or move to std::unique_ptr
+    // TODO (tnballo): add freeing logic or move to std::unique_ptr
 }

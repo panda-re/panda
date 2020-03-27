@@ -1,3 +1,6 @@
+#ifndef __IOCTL_H__
+#define __IOCTL_H__
+
 #include "panda/plugin.h"
 #include "panda/common.h"
 
@@ -10,37 +13,47 @@
 
 #define INLINE __attribute__ ((always_inline)) inline
 
+#if (defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM) || defined(TARGET_AARCH64))
+    #define RET_REG(cpu) (((CPUArchState*)cpu->env_ptr)->regs[0])
+#elif defined(TARGET_MIPS)
+    #define RET_REG(cpu) (((CPUArchState*)cpu->env_ptr)->regs[2])
+#else
+    #define RET_REG(cpu) (0)
+#endif
+
+const int hex_width = (sizeof(target_ulong) << 1);
+
 // https://www.kernel.org/doc/html/latest/userspace-api/ioctl/ioctl-decoding.html
 // https://github.com/torvalds/linux/blob/master/include/uapi/asm-generic/ioctl.h
 
 #if defined(TARGET_PPC)
     #define IOC_SIZE_BITS 13
-    #define IOC_TYPE_BITS  3
+    #define IOC_DIR_BITS  3
 #else
     #define IOC_SIZE_BITS 14
-    #define IOC_TYPE_BITS  2
+    #define IOC_DIR_BITS  2
 #endif
 
 #define IOC_CODE_BITS 8
 #define IOC_FUNC_BITS 8
 
-static const char* ioctl_type_strs[] {
+static const char* ioctl_direction_strs[] {
     "IO",   // ioctl with no parameters
     "IOW",  // ioctl with read parameters  (copy_to_user)
     "IOR",  // ioctl with write parameters (copy_from_user)
     "IOWR", // ioctl with both write and read parameters
 };
 
-INLINE const char* ioctl_type_to_str(uint32_t type) {
-    assert(type <= 0x3);
-    return ioctl_type_strs[type];
+INLINE const char* ioctl_direction_to_str(uint32_t direction) {
+    assert(direction <= 0x3);
+    return ioctl_direction_strs[direction];
 }
 
 typedef struct ioctl_cmd_t {
-    uint32_t type : IOC_TYPE_BITS;
+    uint32_t direction : IOC_DIR_BITS;
     uint32_t arg_size : IOC_SIZE_BITS;
-    uint32_t code : IOC_CODE_BITS;
-    uint32_t func_num : IOC_FUNC_BITS;
+    uint32_t cmd_num : IOC_CODE_BITS;
+    uint32_t type_num : IOC_FUNC_BITS;
 } ioctl_cmd_t;
 
 typedef struct ioctl_t {
@@ -51,24 +64,24 @@ typedef struct ioctl_t {
 } ioctl_t;
 
 INLINE void decode_ioctl_cmd(ioctl_cmd_t* cmd, uint32_t val) {
-    cmd->type     = val & ((1 << IOC_TYPE_BITS) - 1);
-    cmd->arg_size   = (val >> IOC_TYPE_BITS) & ((1 << IOC_SIZE_BITS) - 1);
-    cmd->code       = (val >> (IOC_TYPE_BITS + IOC_SIZE_BITS)) & ((1 << IOC_CODE_BITS) - 1);
-    cmd->func_num   = (val >> (IOC_TYPE_BITS + IOC_SIZE_BITS + IOC_CODE_BITS)) & ((1 << IOC_FUNC_BITS) - 1);
+    cmd->direction  = val & ((1 << IOC_DIR_BITS) - 1);
+    cmd->arg_size   = (val >> IOC_DIR_BITS) & ((1 << IOC_SIZE_BITS) - 1);
+    cmd->cmd_num    = (val >> (IOC_DIR_BITS + IOC_SIZE_BITS)) & ((1 << IOC_CODE_BITS) - 1);
+    cmd->type_num   = (val >> (IOC_DIR_BITS + IOC_SIZE_BITS + IOC_CODE_BITS)) & ((1 << IOC_FUNC_BITS) - 1);
 }
 
 INLINE int32_t encode_ioctl_cmd(ioctl_cmd_t* cmd) {
-    return cmd->type
-        | cmd->arg_size << IOC_TYPE_BITS
-        | cmd->code << (IOC_TYPE_BITS + IOC_SIZE_BITS)
-        | cmd->func_num << (IOC_TYPE_BITS + IOC_SIZE_BITS + IOC_CODE_BITS);
+    return cmd->direction
+        | cmd->arg_size << IOC_DIR_BITS
+        | cmd->cmd_num << (IOC_DIR_BITS + IOC_SIZE_BITS)
+        | cmd->type_num << (IOC_DIR_BITS + IOC_SIZE_BITS + IOC_CODE_BITS);
 }
 
 bool operator==(const ioctl_cmd_t &cmd_1, const ioctl_cmd_t &cmd_2) {
-    return (cmd_1.type == cmd_2.type) &&
+    return (cmd_1.direction == cmd_2.direction) &&
             (cmd_1.arg_size == cmd_2.arg_size) &&
-            (cmd_1.code == cmd_2.code) &&
-            (cmd_1.func_num == cmd_2.func_num);
+            (cmd_1.cmd_num == cmd_2.cmd_num) &&
+            (cmd_1.type_num == cmd_2.type_num);
 }
 
 // Pair of ioctl request and corresponding response
@@ -82,3 +95,5 @@ typedef std::unordered_map<target_pid_t, AllIoctls> AllIoctlsByPid;
 
 // Map PID to process name
 typedef std::unordered_map<target_pid_t, std::string> NameByPid;
+
+#endif // __IOCTL_H__

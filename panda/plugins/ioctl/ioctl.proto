@@ -8,18 +8,17 @@ message Ioctl {
     // Only requires syscalls2
     required bool data_flow = 4;    // true == request, false == response
     required uint32 raw_cmd = 5;
-    required uint32 type = 6;
-    required uint32 code = 7;
-    required uint32 func_num = 8;
+    required uint32 direction = 6;
+    required uint32 cmd_num = 7;
+    required uint32 type_num = 8;
 
     // Not every ioctl will have an arg
     optional uint64 guest_arg_ptr = 9;
-    optional uint64 guest_arg_size = 10;
-    optional bytes guest_arg_buf = 11;
+    optional bytes guest_arg_buf = 10;  // Encodes size and data
 }
 
 message RecordedIoctls {
-    repeated Ioctl ioctl = 1;
+    repeated Ioctl ioctls = 1;
 }
 
-optional RecordedIoctls recorded_ioctls = 50;
+optional RecordedIoctls plog_ioctls = 50;

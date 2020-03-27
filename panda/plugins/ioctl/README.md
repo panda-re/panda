@@ -4,7 +4,7 @@ Plugin: ioctl
 Summary
 -------
 
-Linux `ioctl` introspection built on top of plugins **syscalls2** (required) and **linux_osi** (optional, needed to log PID, process names, and file names).
+Linux `ioctl` introspection built on top of plugins **syscalls2** (required for ioctl hooking) and **linux_osi** (currently required to log PID, process names, and file names - may be made optional in the future to forgo this info).
 
 **Filtered Hooking API (active):** APIs to hook IOCTLs by (in order of granularity least-to-most, can be applied to all processes or a specific process):
 * Access (e.g. `IOW`/`copy_to_user`)
@@ -12,17 +12,16 @@ Linux `ioctl` introspection built on top of plugins **syscalls2** (required) and
 * Command (e.g. the 2nd syscall param)
 
 **Logging Functionality (passive):**
-* Sequence of all `ioctl` commands (optionally by process) to JSON
-* Sequence of all `ioctl` commands (optionally by process) serialized binary
+* All `ioctl` requests/responses/buffers to JSON
+* All `ioctl` requests/responses/buffers pandalog (serialized binary log)
 
 TODO: PyPanda client for hook APIs.
-
-TODO: source-based command decoding.
 
 Arguments
 ---------
 
 * out_log (string): JSON file for `ioctl` logging (optional)
+* rehost_ioctl (bool): force all `ioctl` calls to return success (optional)
 
 Dependencies
 ------------
