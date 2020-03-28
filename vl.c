@@ -185,6 +185,10 @@ void tcg_llvm_destroy(void);
 #define MAX_VIRTIO_CONSOLES 1
 #define MAX_SCLP_CONSOLES 1
 
+extern const char *aflFile;
+extern unsigned long aflPanicAddr;
+extern unsigned long aflDmesgAddr;
+
 static const char *data_dir[16];
 static int data_dir_idx;
 const char *bios_name = NULL;
@@ -3433,6 +3437,15 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
                     error_report("only 90, 180, 270 deg rotation is available");
                     exit(1);
                 }
+                break;
+            case QEMU_OPTION_aflFile:
+                aflFile = (char *)optarg;
+                break;
+            case QEMU_OPTION_aflPanicAddr:
+                aflPanicAddr = strtoul(optarg, NULL, 16);
+                break;
+            case QEMU_OPTION_aflDmesgAddr:
+                aflDmesgAddr = strtoul(optarg, NULL, 16);
                 break;
             case QEMU_OPTION_kernel:
                 qemu_opts_set(qemu_find_opts("machine"), 0, "kernel", optarg,

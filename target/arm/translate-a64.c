@@ -91,6 +91,7 @@ typedef void NeonGenTwoDoubleOPFn(TCGv_i64, TCGv_i64, TCGv_i64, TCGv_ptr);
 typedef void NeonGenOneOpFn(TCGv_i64, TCGv_i64);
 typedef void CryptoTwoOpEnvFn(TCGv_ptr, TCGv_i32, TCGv_i32);
 typedef void CryptoThreeOpEnvFn(TCGv_ptr, TCGv_i32, TCGv_i32, TCGv_i32);
+void gen_aflBBlock(target_ulong pc);
 
 /* initialize TCG globals.  */
 void a64_translate_init(void)
@@ -1668,9 +1669,20 @@ static void disas_exc(DisasContext *s, uint32_t insn)
          */
         switch (op2_ll) {
         case 1:                                                     /* SVC */
-            gen_ss_advance(s);
-            gen_exception_insn(s, 0, EXCP_SWI, syn_aa64_svc(imm16),
-                               default_exception_el(s));
+            if(imm16 == 0xfa32) { // 0xd41f4641
+                TCGv_i64 tmp = read_cpu_reg_sp(s, 0, 1);
+                TCGv_i64 tmp2 = read_cpu_reg_sp(s, 1, 1);
+                TCGv_i64 tmp3 = read_cpu_reg_sp(s, 2, 1);
+                gen_helper_aflCall(tmp, cpu_env, tmp, tmp2, tmp3);
+                tcg_gen_mov_i64(cpu_reg(s, 0), tmp);
+                tcg_temp_free_i64(tmp3);
+                tcg_temp_free_i64(tmp2);
+                tcg_temp_free_i64(tmp);
+            } else {
+                gen_ss_advance(s);
+                gen_exception_insn(s, 0, EXCP_SWI, syn_aa64_svc(imm16),
+                default_exception_el(s));
+            }
             break;
         case 2:                                                     /* HVC */
             if (s->current_el == 0) {
@@ -11211,6 +11223,7 @@ void gen_intermediate_code_a64(ARMCPU *cpu, TranslationBlock *tb)
     dc->tb = tb;
 
     dc->is_jmp = DISAS_NEXT;
+    gen_aflBBlock(pc_start);
     dc->pc = pc_start;
     dc->singlestep_enabled = cs->singlestep_enabled;
     dc->condjmp = 0;

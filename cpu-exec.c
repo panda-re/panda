@@ -44,6 +44,8 @@
 const int has_llvm_engine = 1;
 #endif
 
+#include "afl/afl-qemu-cpu-inl.h"
+
 int generate_llvm = 0;
 int execute_llvm = 0;
 extern bool panda_tb_chaining;
@@ -163,6 +165,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     int tb_exit;
     uint8_t exitCode;
     uint8_t *tb_ptr = itb->tc_ptr;
+    target_ulong pc = itb->pc;
 
     qemu_log_mask_and_addr(CPU_LOG_EXEC, itb->pc,
                            "Trace %p [%d: " TARGET_FMT_lx "] %s\n",
@@ -241,13 +244,19 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
             assert(cc->set_pc);
             cc->set_pc(cpu, last_tb->pc);
         }
+    } else {
+        /* we executed it, trace it */
+        AFL_QEMU_CPU_SNIPPET2(env, pc);
     }
+
     if (tb_exit == TB_EXIT_REQUESTED) {
         /* We were asked to stop executing TBs (probably a pending
          * interrupt. We've now stopped, so clear the flag.
          */
         atomic_set(&cpu->tcg_exit_req, 0);
     }
+    if(afl_wants_cpu_to_stop)
+        cpu->exit_request = 1;
     return ret;
 }
 
@@ -426,6 +435,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
                 /* if no translated code available, then translate it now */
                 tb = tb_gen_code(cpu, pc, cs_base, flags, 0);
                 panda_callbacks_after_block_translate(cpu, tb);
+                AFL_QEMU_CPU_SNIPPET1;
             }
 
             mmap_unlock();
@@ -447,6 +457,11 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
 #ifdef CONFIG_SOFTMMU
     if (!rr_in_replay() && panda_tb_chaining) {
 #endif
+/*
+ * chaining complicates AFL's instrumentation so we disable it
+ * MM: Added during triforceAFL import, removable later as controllable by panda
+ */
+#ifdef NOPE_NOT_NEVER
     if (last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
         if (!have_tb_lock) {
             tb_lock();
@@ -456,6 +471,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
             tb_add_jump(last_tb, tb_exit, tb);
         }
     }
+#endif
 #ifdef CONFIG_SOFTMMU
     }
 #endif

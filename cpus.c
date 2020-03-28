@@ -54,6 +54,8 @@
 #include "panda/rr/rr_log.h"
 #include "panda/callbacks/cb-support.h"
 
+#include "afl/afl.h"
+
 #ifdef CONFIG_LINUX
 
 #include <sys/prctl.h>
@@ -976,6 +978,8 @@ static unsigned iothread_requesting_mutex;
 
 static QemuThread io_thread;
 
+static QemuThread *tcg_cpu_thread;
+
 /* cpu creation */
 static QemuCond qemu_cpu_cond;
 /* system init */
@@ -1231,6 +1235,9 @@ static void deal_with_unplugged_cpus(void)
     }
 }
 
+static int afl_qemuloop_pipe[2];        /* to notify mainloop to become forkserver */
+static CPUState *restart_cpu = NULL;    /* cpu to restart */
+
 /* Single-threaded TCG
  *
  * In the single-threaded case each vCPU is simulated in turn. If
@@ -1273,7 +1280,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
     /* process any pending work */
     cpu->exit_request = 1;
 
-    while (1) {
+    while (!afl_wants_cpu_to_stop) {
 
         if (!rr_replay_complete) {
             panda_callbacks_top_loop(cpu);
@@ -1330,6 +1337,22 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
         qemu_tcg_wait_io_event(QTAILQ_FIRST(&cpus));
         deal_with_unplugged_cpus();
 
+    }
+
+    if(afl_wants_cpu_to_stop) {
+        /* tell iothread to run AFL forkserver */
+        afl_wants_cpu_to_stop = 0;
+        if(write(afl_qemuloop_pipe[1], "FORK", 4) != 4)
+            perror("write afl_qemuloop_pip");
+        afl_qemuloop_pipe[1] = -1;
+
+        restart_cpu = first_cpu;
+        first_cpu = NULL;
+        cpu_disable_ticks();
+
+        /* let iothread through once ... */
+        qemu_tcg_wait_io_event(QTAILQ_FIRST(&cpus));
+        sleep(1);
     }
 
     return NULL;
@@ -1551,7 +1574,6 @@ static void qemu_tcg_init_vcpu(CPUState *cpu)
 {
     char thread_name[VCPU_THREAD_NAME_SIZE];
     static QemuCond *tcg_halt_cond;
-    static QemuThread *tcg_cpu_thread;
 
     /* share a single thread for all cpus with TCG */
     if (!tcg_cpu_thread) {
@@ -1628,8 +1650,42 @@ static void qemu_dummy_start_vcpu(CPUState *cpu)
     }
 }
 
+static void
+gotPipeNotification(void *ctx)
+{
+    CPUArchState *env;
+    char buf[4];
+
+    /* cpu thread asked us to run AFL forkserver */
+    if(read(afl_qemuloop_pipe[0], buf, 4) != 4) {
+        printf("error reading afl/qemu pipe!\n");
+        exit(1);
+    }
+
+    printf("start up afl forkserver!\n");
+    afl_setup();
+    env = NULL; //XXX for now.. if we want to share JIT to the parent we will need to pass in a real env here
+    //env = restart_cpu->env_ptr;
+    afl_forkserver(env);
+
+    /* we're now in the child! */
+    tcg_cpu_thread = NULL;
+    first_cpu = restart_cpu;
+    if(aflEnableTicks) // re-enable ticks only if asked to
+        cpu_enable_ticks();
+    qemu_tcg_init_vcpu(restart_cpu);
+
+    qemu_start_warp_timer();
+    /* continue running iothread in child process... */
+}
+
 void qemu_init_vcpu(CPUState *cpu)
 {
+    if(pipe(afl_qemuloop_pipe) == -1) {
+        perror("qemuloop pipe");
+        exit(1);
+    }
+    qemu_set_fd_handler(afl_qemuloop_pipe[0], gotPipeNotification, NULL, NULL);
     cpu->nr_cores = smp_cores;
     cpu->nr_threads = smp_threads;
     cpu->stopped = true;
