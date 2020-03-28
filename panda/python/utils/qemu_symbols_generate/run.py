@@ -19,7 +19,7 @@ In particular, it removes class item identifiers
 '''
 def line_passes(line):
 	# error messages and class identifiers
-	banned = ["die__", "public:", "private:", "protected:","DW_AT_<"]
+	banned = ["die__", "public:", "private:", "protected:", "DW_AT_<"]
 	for i in banned:
 		if i in line:
 			return False
@@ -89,6 +89,8 @@ def get_struct(name, pahole_path, elf_file):
 	if not out.strip():
 		pdb.set_trace()
 		print("empty")
+	print("struct "+name)
+	print(out)
 	return out
 
 '''
@@ -338,12 +340,23 @@ def generate_config(arch, bits, pahole_path, elf_file):
 		else:
 			break
 	
-	OUT_FILE_NAME = "/output/panda_datatypes_"+arch+"_"+str(bits)+".h"
+	OUT_FILE_NAME = "../../core/panda/include/panda_datatypes_"+arch+"_"+str(bits)+".h"
 	with open(OUT_FILE_NAME,"w") as f:
 		f.write(header.render())
 	print("Finished. Content written to "+OUT_FILE_NAME)
 
 comptries = 0
+panda_base = "../../../../build"
+
+
+# add manually. 1st field is the name for CPU*ARCH*State. 2nd is bits. 3rd is path to libpanda*.so
+archs = [#("X86", 32,"/i386-softmmu/libpanda-i386.so"),
+#		("X86", 64, "/x86_64-softmmu/libpanda-x86_64.so"),
+#		("ARM", 32, "/arm-softmmu/libpanda-arm.so"),
+#		("PPC", 32, "/ppc-softmmu/libpanda-ppc.so"),
+#		("PPC", 64, "/ppc64-softmmu/libpanda-ppc64.so")
+		("MIPS", 32, "/mips-softmmu/libpanda-mips.so")
+		]
 
 for arch in archs:
 	generate_config(arch=arch[0], bits=arch[1], pahole_path=pahole_path, elf_file=panda_base+arch[2])
