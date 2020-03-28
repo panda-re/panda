@@ -69,8 +69,8 @@ void log_line_json(
 // Write JSON log
 void flush_json(
     const char* json_fn,
-    const AllIoctlsByPid& pid_to_all_ioctls,
-    const NameByPid& pid_to_name
+    const PidToAllIoctls& pid_to_all_ioctls,
+    const PidToName& pid_to_name
 ) {
 
     if (!json_fn) { return; }    // Pre-condition

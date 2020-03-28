@@ -15,6 +15,7 @@ PANDAENDCOMMENT */
 #include <tuple>
 #include <algorithm>
 #include <iomanip>
+#include <limits>
 
 #include "ioctl.h"
 #include "ioctl_optional_json.h"
@@ -25,10 +26,10 @@ PANDAENDCOMMENT */
 #include "syscalls2/syscalls2_ext.h"
 
 bool swap_endianness;
-bool ioctl_force_success;
 const char* json_fn;
-AllIoctlsByPid pid_to_all_ioctls;
-NameByPid pid_to_name;
+PidToAllIoctls pid_to_all_ioctls;
+PidToName pid_to_name;
+HyperSuccessDevices hyper_success_devices;
 
 // These need to be extern "C" so that the ABI is compatible with QEMU/PANDA, which is written in C
 extern "C" {
@@ -41,7 +42,7 @@ extern "C" {
 
 // Update all IOCTLs by process
 // Keying maps by PID for request/response consistency regardless of kthread context-switch/interweave
-void update_proc_ioctl_mapping(uint32_t fd, CPUState* cpu, uint32_t cmd, uint64_t guest_arg_ptr, bool is_request) {
+ioctl_t* update_proc_ioctl_mapping(uint32_t fd, CPUState* cpu, uint32_t cmd, uint64_t guest_arg_ptr, bool is_request) {
 
     if (swap_endianness) {
         cmd = bswap32(cmd);
@@ -72,15 +73,12 @@ void update_proc_ioctl_mapping(uint32_t fd, CPUState* cpu, uint32_t cmd, uint64_
 
     // Request - log a new pair
     if (is_request) {
-
         IoctlReqRet new_ioctl_req_ret = std::make_pair(new_ioctl, nullptr);
-
         if (pid_entry == pid_to_all_ioctls.end()) {
             pid_to_all_ioctls.emplace(proc->pid, AllIoctls{new_ioctl_req_ret});
         } else {
             pid_entry->second.push_back(new_ioctl_req_ret);
         }
-
     // Response - update last pair
     } else {
         assert(pid_entry != pid_to_all_ioctls.end());       // Record for process must exist
@@ -88,8 +86,8 @@ void update_proc_ioctl_mapping(uint32_t fd, CPUState* cpu, uint32_t cmd, uint64_
         pid_entry->second.back().second = new_ioctl;        // Log response corresponding to request
     }
 
-    // Cleanup
     free(proc);
+    return new_ioctl;
 }
 
 // Multi-arch return overwrite
@@ -111,8 +109,9 @@ void linux_32_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t 
 }
 
 void linux_32_ioctl_return(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint32_t arg) {
-    update_proc_ioctl_mapping(fd, cpu, cmd, (uint64_t)arg, false);
-    if (ioctl_force_success) {
+    ioctl_t* new_ioctl = update_proc_ioctl_mapping(fd, cpu, cmd, (uint64_t)arg, false);
+    auto it = hyper_success_devices.find(new_ioctl->cmd->type_num);
+    if (it != hyper_success_devices.end()) {
         force_return(cpu, 0);
     }
 }
@@ -122,8 +121,9 @@ void linux_64_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t 
 }
 
 void linux_64_ioctl_return (CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint64_t arg) {
-    update_proc_ioctl_mapping(fd, cpu, cmd, arg, false);
-    if (ioctl_force_success) {
+    ioctl_t* new_ioctl = update_proc_ioctl_mapping(fd, cpu, cmd, (uint64_t)arg, false);
+    auto it = hyper_success_devices.find(new_ioctl->cmd->type_num);
+    if (it != hyper_success_devices.end()) {
         force_return(cpu, 0);
     }
 }
@@ -237,22 +237,18 @@ void flush_plog() {
 
 bool init_plugin(void* self) {
 
-
+    int rehost_dev_num = 0;
     panda_arg_list* panda_args_list = panda_get_args("ioctl");
-
     json_fn = panda_parse_string_opt(panda_args_list, "out_json", nullptr, "JSON file to log unique IOCTLs by process.");
-    if (!json_fn) {
-        std::cout << "No \'out_json\' specified, JSON logging disabled." << std::endl;
-    }
 
-    ioctl_force_success = panda_parse_bool_opt(panda_args_list, "ioctl_rehost", "Force all ioctl() calls to return success (i.e. 0)");
-    if (ioctl_force_success) {
-        std::cout << "Rehost toggled: all ioctl() calls will return 0" << std::endl;
+    // TODO (tnballo): this should be a list of devices to allow more than one!
+    rehost_dev_num = panda_parse_uint32(panda_args_list, "rehost_ioctl_device", std::numeric_limits<uint32_t>::max());
+    if (rehost_dev_num != std::numeric_limits<uint32_t>::max()) {
+        std::cout << "Rehost toggled: all ioctls to dev " << rehost_dev_num << " will return 0" << std::endl;
     }
+    hyper_success_devices.insert(rehost_dev_num);
 
     swap_endianness = false;
-
-    // TODO (tnballo): make OSI optional!
 
     // Setup dependencies
     panda_enable_precise_pc();

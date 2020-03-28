@@ -4,24 +4,19 @@ Plugin: ioctl
 Summary
 -------
 
-Linux `ioctl` introspection built on top of plugins **syscalls2** (required for ioctl hooking) and **linux_osi** (currently required to log PID, process names, and file names - may be made optional in the future to forgo this info).
+Linux `ioctl` introspection built on top of plugins **syscalls2** and **linux_osi**. It achieves the following:
 
-**Filtered Hooking API (active):** APIs to hook IOCTLs by (in order of granularity least-to-most, can be applied to all processes or a specific process):
-* Access (e.g. `IOW`/`copy_to_user`)
-* Driver code (e.g. ASCII character supposedly unique to each driver)
-* Command (e.g. the 2nd syscall param)
-
-**Logging Functionality (passive):**
-* All `ioctl` requests/responses/buffers to JSON
-* All `ioctl` requests/responses/buffers pandalog (serialized binary log)
-
-TODO: PyPanda client for hook APIs.
+* Adds context to every `ioctl` by identifying the PID and name of the process that made it, as well as the path for the associated file descriptor.
+* Decodes the 32-bit ioctl command integer into: type (e.g. device) number, function number, argument size, and direction.
+* If argument size is non-zero, reads the argument buffer out of guest memory - both on request and on return.
+* Logs all of the above information to PANDALOG (an efficient serialized binary format) and/or JSON for later analysis.
+* For rehosting: optionally uses decoded device number to make all `ioctl` requests to a specific device always succeed (zero return).
 
 Arguments
 ---------
 
-* out_log (string): JSON file for `ioctl` logging (optional)
-* rehost_ioctl (bool): force all `ioctl` calls to return success (optional)
+* `out_log` (string): JSON file for `ioctl` logging (optional)
+* `rehost_ioctl_device` (uint32_t): force all `ioctl` calls to this device to return success (optional)
 
 Dependencies
 ------------

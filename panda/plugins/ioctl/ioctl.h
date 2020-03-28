@@ -84,6 +84,9 @@ bool operator==(const ioctl_cmd_t &cmd_1, const ioctl_cmd_t &cmd_2) {
             (cmd_1.type_num == cmd_2.type_num);
 }
 
+// List of devices to force success for
+typedef std::unordered_set<uint32_t> HyperSuccessDevices;
+
 // Pair of ioctl request and corresponding response
 typedef std::pair<ioctl_t*, ioctl_t*> IoctlReqRet;
 
@@ -91,9 +94,9 @@ typedef std::pair<ioctl_t*, ioctl_t*> IoctlReqRet;
 typedef std::vector<IoctlReqRet> AllIoctls;
 
 // Map of PID to request/response lists
-typedef std::unordered_map<target_pid_t, AllIoctls> AllIoctlsByPid;
+typedef std::unordered_map<target_pid_t, AllIoctls> PidToAllIoctls;
 
 // Map PID to process name
-typedef std::unordered_map<target_pid_t, std::string> NameByPid;
+typedef std::unordered_map<target_pid_t, std::string> PidToName;
 
 #endif // __IOCTL_H__
