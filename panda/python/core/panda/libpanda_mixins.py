@@ -148,3 +148,7 @@ class libpanda_mixins():
 
     def current_asid(self, cpustate):
         return self.libpanda.panda_current_asid(cpustate)
+
+    def get_cpu(self):
+        # XXX: You rarely want this
+        return self.libpanda.get_cpu()

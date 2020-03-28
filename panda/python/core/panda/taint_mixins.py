@@ -78,3 +78,19 @@ class taint_mixins():
             return tq
         else:
             return None
+
+    # returns true if this laddr is tainted
+    def taint_check_laddr(self, addr, off):
+        if self.plugins['taint2'].taint2_query_laddr(addr, off) > 0:
+            return True
+
+    # returns array of results, one for each byte in this laddr
+    # None if no taint.  QueryResult struct otherwise
+    def taint_get_laddr(self, addr, offset):
+        if self.plugins['taint2'].taint2_query_laddr(addr, offset) > 0:
+            query_res = ffi.new("QueryResult *")
+            self.plugins['taint2'].taint2_query_laddr_full(addr, offset, query_res)
+            tq = TaintQuery(query_res, self.plugins['taint2'])
+            return tq
+        else:
+            return None

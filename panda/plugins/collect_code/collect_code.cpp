@@ -138,6 +138,11 @@ bool init_plugin(void *self) {
 
 #ifdef CONFIG_SOFTMMU
 
+  if (!pandalog) {
+    fprintf(stderr, "ERROR: collect_code requiers a pandalog. Set with -pandalog [filename]\n");
+    return  false;
+  }
+
 	panda_cb pcb;
 	pcb.after_block_translate = after_bb_translate;
 	panda_register_callback(self, PANDA_CB_AFTER_BLOCK_TRANSLATE, pcb);

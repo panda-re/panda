@@ -15,6 +15,7 @@ for f in [recording_name+"-rr-nondet.log", recording_name+"-rr-snp"]:
 
 successes = [False, False]
 
+####################### Recording ####################
 @blocking
 def record_nondet(): # Run a non-deterministic command at the root snapshot, then end .run()
     panda.record_cmd("date; cat /dev/urandom | head -n30 | md5sum", recording_name=recording_name)
@@ -41,10 +42,20 @@ panda.queue_async(record_nondet) # Take a recording
 panda.run()
 print("Done with recording. Observed {} bbs".format(len(orig_blocks)))
 
+####################### Replay ####################
 print("Starting replay. Please wait a moment...")
 in_replay = True
+panda.load_plugin('asidstory') # XXX: dependes on OSI
 panda.run_replay(recording_name) # Load and run the replay
 print("Finished replay")
+panda.unload_plugin('asidstory') # Should now create 'asidstory' file
+
+# Check ASIDSTORY output
+assert(path.isfile('asidstory')), "Asidstory didn't create output"
+with open('asidstory') as f:
+    data = f.read()
+    assert("date" in data), "Unexpected output from asidstory"
+    assert("md5sum : [" in data), "Unexpected output from asidstory"
 
 orig_block_c = len(orig_blocks)
 repl_block_c = len(replay_blocks)
@@ -57,6 +68,8 @@ print(f"{rep_in_orig} of the recorded blocks are in the original execution.\n{or
 # Some divergence  (1%) is allowed because we're a bit imprecise on the edges where we start and stop
 assert(rep_in_orig > 0.99*repl_block_c), "Not enough blocks from replay were in original"
 assert(orig_in_rep > 0.99*orig_block_c), "Not enough blocks from original were in replay"
+
+####################### Switch to live ####################
 
 @blocking
 def second_cmd(): # Run a command at the root snapshot, then end .run()
@@ -75,11 +88,19 @@ panda.queue_async(second_cmd)
 panda.run()
 print("Finished")
 
+####################### Cleanup & Check results  ####################
+
+# Count RR files that were created
 rr_file_count = 0
 for f in [recording_name+"-rr-nondet.log", recording_name+"-rr-snp"]:
-    rr_file_count+=1
-    if path.isfile(f): remove(f)
+    if path.isfile(f):
+        rr_file_count+=1
+        remove(f)
+
+# Also delete asidstory output
+remove('asidstory')
 
 assert(rr_file_count == 2), "Didn't create expected replay files"
 assert(successes[0]), "First recording failed to run"
 assert(successes[1]), "Second recording failed to run"
+
