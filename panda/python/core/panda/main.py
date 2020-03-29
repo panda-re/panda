@@ -262,7 +262,13 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
     def exit_cpu_loop(self):
         self.libpanda.panda_exit_loop = True
 
-    def revert(self, snapshot_name): # In the next main loop, revert
+    def revert_async(self, snapshot_name): # In the next main loop, revert
+        '''
+        Request a snapshot revert, eventually. This is fairly dangerous
+        because you don't know when it finishes. You should be using revert_sync
+        from a blocking function instead
+        '''
+        print("WARNING: panda.revert_async may be deprecated in the near future")
         if debug:
             progress ("Loading snapshot " + snapshot_name)
 
