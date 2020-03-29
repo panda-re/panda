@@ -577,9 +577,17 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         if plugin_name not in self.plugins: # Could automatically load it?
             raise ValueError(f"PPP canot use unknown plugin '{plugin_name}' - Did you load it with panda.load_plugin(\"{plugin_name}\")?")
 
+        if not hasattr(self, "ppp_registered_cbs"):
+            self.ppp_registered_cbs = []
+            # XXX: if  we don't save the cffi generated callbacks somewhere in Python,
+            # they may get garbage collected even though the c-code could still has a
+            # reference to them  which will lead to a crash. Keeping the reference count >0
+            # in python is the only use of this variable
 
         def inner(func):
-            f = ffi.callback(attr+"_t")(func)  # Automatically make the python funciton a CB
+            f = ffi.callback(attr+"_t")(func)  # Wrap the python fn in a c-callback.
+            self.ppp_registered_cbs.append(f) # Ensure callback isn't garbage collected
+
             self.plugins[plugin_name].__getattr__("ppp_add_cb_"+attr)(f) # All PPP cbs start with this string
             return f
         return inner
