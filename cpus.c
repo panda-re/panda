@@ -1351,7 +1351,8 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
         cpu_disable_ticks();
 
         /* let iothread through once ... */
-        qemu_tcg_wait_io_event(QTAILQ_FIRST(&cpus));
+        //qemu_tcg_wait_io_event(QTAILQ_FIRST(&cpus));
+        qemu_tcg_wait_io_event(restart_cpu);
         sleep(1);
     }
 
