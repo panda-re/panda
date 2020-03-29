@@ -93,7 +93,7 @@ def on_asid_change(env, old_asid, new_asid):
 
 @blocking
 def init():
-	panda.revert("cmdline")
+	panda.revert_sync("cmdline")
 
 
 panda.queue_async(init)
