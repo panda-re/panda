@@ -6,7 +6,7 @@ Strace(panda)
 
 @blocking
 def revert():
-    panda.revert('root')
+    panda.revert_sync('root')
     print(panda.run_serial_cmd("mount"))
     print(panda.run_serial_cmd("mkdir mydirname"))
     print(panda.run_serial_cmd("cd mydirname"))
