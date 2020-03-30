@@ -30,6 +30,8 @@ const char* json_fn;
 PidToAllIoctls pid_to_all_ioctls;
 PidToName pid_to_name;
 HyperSuccessDevices hyper_success_devices;
+NamedIoctlHooks named_ioctl_hooks;
+AllIoctlHooks all_ioctl_hooks;
 
 // These need to be extern "C" so that the ABI is compatible with QEMU/PANDA, which is written in C
 extern "C" {
@@ -91,7 +93,7 @@ ioctl_t* update_proc_ioctl_mapping(uint32_t fd, CPUState* cpu, uint32_t cmd, uin
 }
 
 // Multi-arch return overwrite
-INLINE void force_return(CPUState* cpu, target_ulong val) {
+void force_return(CPUState* cpu, target_ulong val) {
 
     #if (defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM) || defined(TARGET_AARCH64))
         ((CPUArchState*)cpu->env_ptr)->regs[0] = val;
@@ -102,6 +104,28 @@ INLINE void force_return(CPUState* cpu, target_ulong val) {
     #endif
 }
 
+// Dispatch any registered hooks or return overwrites
+void dispatch_hooks_and_overwrites(ioctl_t* ioctl) {
+
+    // Forced success
+    if (hyper_success_devices.find(new_ioctl->file_name) != hyper_success_devices.end()) {
+        force_return(cpu, 0);
+    }
+
+    // Named hooks
+    auto named_entry = named_ioctl_hooks.find(new_ioctl->file_name);
+    if (named_entry != named_ioctl_hooks.end()) {
+        for (auto &hook : named_entry->second) {
+            (*hook)(cpu, ioctl);
+        }
+    }
+
+    // All hooks
+    for (auto &hook : all_ioctl_hooks) {
+        (*hook)(cpu, ioctl);
+    }
+}
+
 // CALLBACKS -----------------------------------------------------------------------------------------------------------
 
 void linux_32_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint32_t arg) {
@@ -110,10 +134,7 @@ void linux_32_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t 
 
 void linux_32_ioctl_return(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint32_t arg) {
     ioctl_t* new_ioctl = update_proc_ioctl_mapping(fd, cpu, cmd, (uint64_t)arg, false);
-    auto it = hyper_success_devices.find(new_ioctl->cmd->type_num);
-    if (it != hyper_success_devices.end()) {
-        force_return(cpu, 0);
-    }
+    dispatch_hooks_and_overwrites(new_ioctl);
 }
 
 void linux_64_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint64_t arg) {
@@ -122,10 +143,7 @@ void linux_64_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t 
 
 void linux_64_ioctl_return (CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint64_t arg) {
     ioctl_t* new_ioctl = update_proc_ioctl_mapping(fd, cpu, cmd, (uint64_t)arg, false);
-    auto it = hyper_success_devices.find(new_ioctl->cmd->type_num);
-    if (it != hyper_success_devices.end()) {
-        force_return(cpu, 0);
-    }
+    dispatch_hooks_and_overwrites(new_ioctl);
 }
 
 // PANDA LOG -----------------------------------------------------------------------------------------------------------
@@ -229,24 +247,41 @@ void flush_plog() {
 
 // EXPORTS -------------------------------------------------------------------------------------------------------------
 
-// TODO (tnballo): Decode
+// Force ioctls to the device at the given path to always return success (0)
+void force_success(const char* path) {
+    hyper_success_devices.insert(std::string(path));
+}
 
-// TODO (tnballo): Command callbacks
+// Register a callback for all ioctls whose file descripter resolves to a path
+void add_ioctl_hook_by_path(const char* path, ioctl_hook_t hook) {
+    auto named_entry = named_ioctl_hooks.find(path);
+    if (named_entry != named_ioctl_hooks.end()) {
+        named_entry->second.push_back(hook);
+    } else {
+        named_ioctl_hooks.insert(std::string(path), {hook});
+    }
+}
+
+// Register a callback for all ioctls
+void add_all_ioctls_hook(ioctl_hook_t hook) {
+    all_ioctl_hooks.push_back(hook);
+}
 
 // PLUGIN --------------------------------------------------------------------------------------------------------------
 
 bool init_plugin(void* self) {
 
-    int rehost_dev_num = 0;
+    const char* rehost_dev_path;
     panda_arg_list* panda_args_list = panda_get_args("ioctl");
     json_fn = panda_parse_string_opt(panda_args_list, "out_json", nullptr, "JSON file to log unique IOCTLs by process.");
 
-    // TODO (tnballo): this should be a list of devices to allow more than one!
-    rehost_dev_num = panda_parse_uint32(panda_args_list, "rehost_ioctl_device", std::numeric_limits<uint32_t>::max());
-    if (rehost_dev_num != std::numeric_limits<uint32_t>::max()) {
-        std::cout << "Rehost toggled: all ioctls to dev " << rehost_dev_num << " will return 0" << std::endl;
+    // TODO: this could be a list of devices to allow more than one!
+    rehost_dev_path = panda_parse_string_opt(panda_args_list, "rehost_device_path", nullptr,
+        "Mount point for device (e.g. \'/dev/special_device\' whose ioctls should always return success (0)");
+    if (rehost_dev_path != nullptr) {
+        std::cout << "Rehost toggled: all ioctls to dev " << rehost_dev_path << " will return 0" << std::endl;
     }
-    hyper_success_devices.insert(rehost_dev_num);
+    hyper_success_devices.insert(std::string(rehost_dev_path));
 
     swap_endianness = false;
 
@@ -299,4 +334,5 @@ void uninit_plugin(void *self) {
     }
     pid_to_all_ioctls.clear();
     pid_to_name.clear();
+    hyper_success_devices.clear();
 }

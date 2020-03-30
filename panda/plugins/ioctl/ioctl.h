@@ -11,16 +11,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#define INLINE __attribute__ ((always_inline)) inline
-
-#if (defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM) || defined(TARGET_AARCH64))
-    #define RET_REG(cpu) (((CPUArchState*)cpu->env_ptr)->regs[0])
-#elif defined(TARGET_MIPS)
-    #define RET_REG(cpu) (((CPUArchState*)cpu->env_ptr)->regs[2])
-#else
-    #define RET_REG(cpu) (0)
-#endif
-
 const int hex_width = (sizeof(target_ulong) << 1);
 
 // https://www.kernel.org/doc/html/latest/userspace-api/ioctl/ioctl-decoding.html
@@ -44,7 +34,7 @@ static const char* ioctl_direction_strs[] {
     "IOWR", // ioctl with both write and read parameters
 };
 
-INLINE const char* ioctl_direction_to_str(uint32_t direction) {
+const char* ioctl_direction_to_str(uint32_t direction) {
     assert(direction <= 0x3);
     return ioctl_direction_strs[direction];
 }
@@ -63,14 +53,14 @@ typedef struct ioctl_t {
     uint8_t* guest_arg_buf;
 } ioctl_t;
 
-INLINE void decode_ioctl_cmd(ioctl_cmd_t* cmd, uint32_t val) {
+void decode_ioctl_cmd(ioctl_cmd_t* cmd, uint32_t val) {
     cmd->direction  = val & ((1 << IOC_DIR_BITS) - 1);
     cmd->arg_size   = (val >> IOC_DIR_BITS) & ((1 << IOC_SIZE_BITS) - 1);
     cmd->cmd_num    = (val >> (IOC_DIR_BITS + IOC_SIZE_BITS)) & ((1 << IOC_CODE_BITS) - 1);
     cmd->type_num   = (val >> (IOC_DIR_BITS + IOC_SIZE_BITS + IOC_CODE_BITS)) & ((1 << IOC_FUNC_BITS) - 1);
 }
 
-INLINE int32_t encode_ioctl_cmd(ioctl_cmd_t* cmd) {
+uint32_t encode_ioctl_cmd(ioctl_cmd_t* cmd) {
     return cmd->direction
         | cmd->arg_size << IOC_DIR_BITS
         | cmd->cmd_num << (IOC_DIR_BITS + IOC_SIZE_BITS)
@@ -84,8 +74,15 @@ bool operator==(const ioctl_cmd_t &cmd_1, const ioctl_cmd_t &cmd_2) {
             (cmd_1.type_num == cmd_2.type_num);
 }
 
+
+// Map device path strings to ioctl return hook functions
+typedef std::unordered_map<std::string, std::vector<ioctl_hook_t>> NamedIoctlHooks;
+
+// List of hooks functions to call on every ioctl return
+typedef std::vector<ioctl_hook_t>> AllIoctlHooks;
+
 // List of devices to force success for
-typedef std::unordered_set<uint32_t> HyperSuccessDevices;
+typedef std::unordered_set<std::string> HyperSuccessDevices;
 
 // Pair of ioctl request and corresponding response
 typedef std::pair<ioctl_t*, ioctl_t*> IoctlReqRet;
