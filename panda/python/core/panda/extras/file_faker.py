@@ -6,12 +6,11 @@ modifications around syscalls involving filenames and file
 descriptors.
 
 High-level idea:
-    When we see an open of a file we want to fake, change it to anotherfilename
+    When we see an open of a file we want to fake, change it to another filename
     that really exists and capture the file descriptor assigned to it.
-    Then whenever there are uses of that file descriptor, drop the request
+    Then whenever there are uses of that file descriptor, ignore/drop the request
     and fake return values.
 '''
-
 
 class FakeFile:
     '''
@@ -23,42 +22,55 @@ class FakeFile:
     Note: we use internal_name when calling into kernel fns. Should be same type as real file
     '''
     def __init__(self, fake_contents="", internal_name=b"/bin/ls\x00"):
-        self.data = fake_contents
         self.internal_name = internal_name
         self.filename = None
+
+        if isinstance(fake_contents, str):
+            fake_contents = fake_contents.encode("utf8")
+        fake_contents += b'\x00'
+        self.contents = fake_contents
 
     def read(self, hyperfd, size):
         '''
         Generate data for a given read of size given the current hyperfd state
         '''
-        contents = self.data
-        if isinstance(contents, str):
-            contents = contents.encode("utf8")
-        contents += b'\x00'
 
-        if hyperfd.offset >= len(contents):  # No bytes left to read
+        if hyperfd.offset >= len(self.contents):  # No bytes left to read
             return (None, 0)
         # Otherwise there are bytes left to read
-        file_contents = contents[hyperfd.offset:hyperfd.offset+size]
-        hyperfd.offset += len(contents)
+        file_contents = self.contents[hyperfd.offset:hyperfd.offset+size]
+        hyperfd.offset += len(self.contents)
 
         return (file_contents,        # Data to write into hyperfd
                 len(file_contents))   # Num bytes read
 
+    def write(self, hyperfd, write_data):
+        # Update contents from hyperfd.offset. It's a bytearray so we can't just mutate
+        print(f"WRITE TO {hyperfd}, {write_data}")
+        new_data  = self.contents[:hyperfd.offset]
+        new_data += write_data
+        new_data += self.contents[hyperfd.offset+len(new_data):]
 
-    def write(self, hyperfd, new_data):
-        # Update contents from hyperfd.offset
-        self.contents[hyperfd.offset:hyperfd.offset+len(new_data)] = new_data
-        hyperfd.offset += len(new_data)
+        self.contents = new_data
+        hyperfd.offset += len(write_data)
+
+    def close(self):
+        print(f"Closing fd backed by {self.filename} with contents:", repr(self.contents))
 
     def get_mode(self):
         return 0o664 # Regular file (octal)
 
     def get_size(self, bytesize):
-        return ceil(len(self.data)/bytesize)
+        return ceil(len(self.contents)/bytesize)
 
     def __str__(self):
         return f"Faker({self.filename} -> {self.internal_name}): {repr(self.data[:10])}..."
+
+
+    def __del__(self):
+        print("Closing FakeFile because python object is being destroyed")
+        self.close()
+
 
 """
 class FakeDevice(FakeFile):
@@ -97,6 +109,9 @@ class HyperFD:
         else:
             raise ValueError(f"Unsupported whence {whence} in seek")
 
+    def __str__(self):
+        return f"HyperFD backed by {self.filename} offset {self.offset}"
+
 
 class FileFaker(FileHook):
     '''
@@ -120,15 +135,16 @@ class FileFaker(FileHook):
 
         to_hook = {} # index of fd argument: list of names
         if panda.arch == "i386":
-            # grep 'int fd' syscall_switch_enter_linux_x86.cpp  | grep "\['int fd\|\['unsigned int fd" | \
-            #               grep -o sys_[a-zA-Z0-9_]* | sed -n -e 's/sys_\(.*\)/"\1" /p' | paste -sd "," -
+            # grep 'int fd' syscall_switch_enter_linux_x86.cpp  | grep "\['int fd\|\['unsigned int fd" | grep -o sys_[a-zA-Z0-9_]* | sed -n -e 's/sys_\(.*\)/"\1" /p' | paste -sd "," -
+            # Note the grep commands missed dup2 and dup3 which take oldfd as 1st arg
             to_hook[0] = ["read", "write", "close", "lseek", "fstat", "ioctl", "fcntl", "ftruncate", "fchmod",
                           "fchown16", "fstatfs", "newfstat", "fsync", "fchdir", "llseek", "getdents", "flock",
                           "fdatasync", "pread64", "pwrite64", "ftruncate64", "fchown", "getdents64", "fcntl64",
                           "readahead", "fsetxattr", "fgetxattr", "flistxattr", "fremovexattr", "fadvise64",
                           "fstatfs64", "fadvise64_64", "inotify_add_watch", "inotify_rm_watch", "splice",
                           "sync_file_range", "tee", "vmsplice", "fallocate", "recvmmsg", "syncfs", "sendmmsg",
-                          "setns", "finit_module", "getsockopt", "setsockopt", "sendmsg", "recvmsg" ]
+                          "setns", "finit_module", "getsockopt", "setsockopt", "sendmsg", "recvmsg", "dup2",
+                          "dup3" ]
 
             # grep 'int fd' syscall_switch_enter_linux_x86.cpp  | grep -v "\['int fd\|\['unsigned int fd" # + manual
             to_hook[2] = ["epoll_ctl"]
@@ -140,7 +156,7 @@ class FileFaker(FileHook):
                           "getdents", "fchdir", "fchmod", "fchown", "fstatfs", "readahead", "fsetxattr", "fgetxattr",
                           "flistxattr", "fremovexattr", "getdents64", "fadvise64", "inotify_add_watch",
                           "inotify_rm_watch", "splice", "tee", "sync_file_range", "vmsplice", "fallocate", "recvmmsg",
-                          "syncfs", "sendmmsg", "setns", "finit_module", "copy_file_range"]
+                          "syncfs", "sendmmsg", "setns", "finit_module", "copy_file_range", "dup2", "dup3"]
             to_hook[2] = ["epoll_ctl"]
             to_hook[3] = ["fanotify_mark"]
 
@@ -151,7 +167,7 @@ class FileFaker(FileHook):
                           "fsetxattr", "fgetxattr", "flistxattr", "fremovexattr", "fstatfs64", "arm_fadvise64_64",
                           "setsockopt", "getsockopt", "sendmsg", "recvmsg", "inotify_add_watch", "inotify_rm_watch",
                           "splice", "sync_file_range2", "tee", "vmsplice", "fallocate", "recvmmsg", "syncfs",
-                          "sendmmsg", "setns", "finit_module"]
+                          "sendmmsg", "setns", "finit_module", "dup2", "dup3"]
             to_hook[2] = ["epoll_ctl"]
             to_hook[3] = ["fanotify_mark"]
         else:
@@ -169,7 +185,7 @@ class FileFaker(FileHook):
 
         # XXX: We rename the files to real files to the guest kernel can manage FDs for us.
         #      this may need to use different real files depending on permissions requested
-        self.rename_file(filename, "/root/.bashrc") # Stdout should always be writable?
+        self.rename_file(filename, "/etc/passwd") # Stdout should always be writable?
 
     def _gen_fd_cb(self, name, fd_offset):
         '''
@@ -194,8 +210,10 @@ class FileFaker(FileHook):
 
         if (fd, asid) in self.hooked_fds:
             this_hyper_fd = self.hooked_fds[(fd, asid)][1]
-            self.logger.info(f"Entering hooked syscall for fd {fd}, filename {this_hyper_fd.filename}")
+            self.logger.info(f"Entering hooked syscall {syscall_name} for fd {fd}," + \
+                                f"filename {this_hyper_fd.filename}")
             self.currently_hooked = (fd, asid)
+
 
     def _return_fd_cb(self, syscall_name, fd_pos, args=None):
         '''
@@ -235,7 +253,30 @@ class FileFaker(FileHook):
 
         elif syscall_name == "close":
             # We want the guest to close the real FD. Delete it from our map of hooked fds
+            faker.close()
             del self.hooked_fds[(fd, asid)]
+
+        elif syscall_name == "write":
+            # read count bytes from buf, add to our hyper-fd
+            buf_ptr = args[3]
+            count   = args[4]
+            try:
+                data = self._panda.virtual_memory_read(cpu, buf_ptr, count)
+            except ValueError:
+                self.logger.error(f"Unable to read buffer that was being written")
+                return
+            faker.write(hfd, data)
+
+        elif syscall_name in ["dup2", "dup3"]:
+            # add newfd
+            oldfd = args[2]
+            newfd = args[3]
+            self.logger.info(f"Duplicating faked fd {oldfd} to {newfd}")
+
+            # We create a new entry in hooked_fds with the same FakeFile plus a new hyperFD
+            newhfd = HyperFD(hfd.filename)
+            self.hooked_fds[(newfd, asid)] = (self.hooked_fds[(oldfd, asid)][0],
+                                            newhfd)
 
         else:
             self.logger.error(f"Unsupported syscall on FakeFD: {syscall_name}. Not intercepting (Running on real guest FD)")
@@ -249,7 +290,6 @@ class FileFaker(FileHook):
         if fname in self.faked_files:
             self.pending_file_objs = (self.faked_files[fname], HyperFD(fname))
             asid = self._panda.current_asid(cpu)
-            print("FAKING FOR ASID", asid)
     
     def _after_modified_return(self, cpu, pc, syscall_name):
         '''
@@ -260,9 +300,18 @@ class FileFaker(FileHook):
             # XXX: is asid correct here?
             fd = cpu.env_ptr.regs[0] # XXX: definitely isn't true for all syscalls
             asid = self._panda.current_asid(cpu)
-            print("RETURN FOR ASID", asid)
 
             (faker, hfd) = self.pending_file_objs
             self.hooked_fds[(fd, asid)] =  (faker, hfd)
 
             self.pending_file_objs = None
+
+
+    def __del__(self):
+        # Close all open hfds
+        if len(self.hooked_fds):
+            logger.info("Cleaning up open hyper file descriptors")
+            for (faker, hfd) in self.hooked_fds:
+                del faker
+                del hfd
+

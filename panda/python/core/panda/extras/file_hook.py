@@ -1,5 +1,18 @@
 import logging
 
+# TEMP
+import sys
+root = logging.getLogger()
+root.setLevel(logging.INFO)
+
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+root.addHandler(handler)
+import coloredlogs
+# End temp
+
 class FileHook:
     '''
     Class to modify guest memory just before syscalls with filename arguments.
@@ -21,7 +34,7 @@ class FileHook:
         '''
         Store a reference to the panda object, and register
         the appropriate syscalls2 callbacks for entering and exiting
-        from all syscalls that have a char* filename argument.
+        (from all syscalls that have a char* filename argument.
         '''
 
         self._panda = panda
@@ -30,6 +43,8 @@ class FileHook:
 
         self.logger = logging.getLogger('panda.hooking')
         self.logger.setLevel(logging.DEBUG)
+
+        self.eagain = {} # cb_name: num_retries
 
         panda.load_plugin("syscalls2")
 
@@ -100,8 +115,19 @@ class FileHook:
         try:
             fname = self._panda.read_str(cpu, fname_ptr)
         except ValueError:
-            self.logger.warning(f"missed filename in call to {syscall_name}")
+            if syscall_name not in self.eagain:
+                self.eagain[syscall_name] = 0
+            self.eagain[syscall_name] += 1
+
+            if self.eagain[syscall_name] < 3:
+                self.logger.info(f"missed filename in call to {syscall_name}. Retrying")
+            else:
+                self.logger.warning(f"missed filename in call to {syscall_name}. Giving up")
             return
+
+        if syscall_name in self.eagain: # If we get here, we know the fname. Reset eagain for this syscall
+            del self.eagain[syscall_name]
+
 
         self.logger.debug(f"Entering {syscall_name} with file={fname}")
 
@@ -138,6 +164,18 @@ class FileHook:
         we need to restore whatever data was there (we may have written
         past the end of the string)
         '''
+
+        # Do we need to make the guest reissue the syscall? # XXX there are side effects here... like open FDs
+        if syscall_name in self.eagain:
+            if self.eagain[syscall_name] >= 3:
+                self.logger.warning("GIVING UP")
+                return # Just give up
+            elif self.eagain[syscall_name] > 0: # Need to retry
+                assert(args)
+                (cpu, pc) = args[0:2]
+                cpu.env_ptr.regs[0] = self._panda.to_unsigned_guest(-11)
+                return
+
         if syscall_name in self._changed_strs:
             assert(args)
             (cpu, pc) = args[0:2]
@@ -164,3 +202,6 @@ class FileHook:
         the filename. Exists to be overloaded by subclasses
         '''
         pass
+
+    def __del__(self):
+        print("File Hook destructor")
