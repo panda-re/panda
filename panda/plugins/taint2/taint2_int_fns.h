@@ -53,6 +53,7 @@ uint32_t taint2_query(Addr a);
 uint32_t taint2_query_ram(uint64_t pa);
 uint32_t taint2_query_reg(int reg_num, int offset);
 uint32_t taint2_query_io(uint64_t ia);
+uint32_t taint2_query_laddr(uint64_t ia, uint64_t offset);
 
 // query with automatic allocation of the required memory
 uint32_t taint2_query_set_a(Addr a, uint32_t **out, uint32_t *outsz);
@@ -127,6 +128,13 @@ void taint2_query_reg_full(uint32_t reg_num, uint32_t offset, QueryResult *qr);
 // is no need to call taint2_query_results_iter unless you want to
 // iterate through labels more than once).
 void taint2_query_ram_full(uint64_t pa, QueryResult *qr);
+
+// Places taint query results for this laaddress in
+// returned qr.  qr's label set iterator is pre initialized, so there
+// is no need to call taint2_query_results_iter unless you want to
+// iterate through labels more than once).
+void taint2_query_laddr_full(uint64_t la, uint64_t offset, QueryResult *qr);
+
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 

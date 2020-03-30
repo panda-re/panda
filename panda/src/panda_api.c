@@ -90,7 +90,11 @@ bool panda_was_aborted(void) {
 extern const char *qemu_file;
 
 void panda_set_qemu_path(char* filepath) {
-    qemu_file=filepath;
+    // *copy* filepath into a new buffer, also free & update qemu_file
+    if (qemu_file != NULL)
+      free((void*)qemu_file);
+
+    qemu_file=strdup(filepath);
 }
 
 int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args) {
@@ -234,4 +238,8 @@ void map_memory(char* name, uint64_t size, uint64_t address) {
 
     // Add memory region to sysmem
     memory_region_add_subregion(sysmem, address, ram);
+}
+
+CPUState* get_cpu(void) {
+  return first_cpu;
 }
