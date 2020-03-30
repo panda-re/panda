@@ -216,6 +216,8 @@ elif arch == "ppc" and int(bits) == 32:
 elif arch == "ppc" and int(bits) == 64:
     ffi.cdef(read_cleanup_header("{inc}/panda_datatypes_PPC_64.h"))
     print('WARNING: no syscalls support for PPC 64')
+elif arch == "mips" and int(bits) == 32:
+	ffi.cdef(read_cleanup_header("{inc}/panda_datatypes_MIPS_32.h"))
 else:
 	print("PANDA_DATATYPES: Architecture not supported")
 
