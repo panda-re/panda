@@ -614,5 +614,27 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             ptr += 1
         return r.decode("utf8", "ignore")
 
+    def to_unsigned_guest(self, x):
+        '''
+        Convert a singed python int to an unsigned int32/unsigned int64
+        depending on guest bit-size
+        '''
+        import ctypes
+        if self.bits == 32:
+            return ctypes.c_uint32(x).value
+        elif self.bits == 64:
+            return ctypes.c_uint64(x).value
+        else:
+            raise ValueError("Unsupported number of bits")
+
+    def from_unsigned_guest(self, x):
+        '''
+        Convert an unsigned int32/unsigned int64 from the guest
+        (depending on guest bit-size) to a (signed) python int
+        '''
+        if x >= 2**(self.bits-1): # If highest bit is set, it's negative
+            return (x - 2**self.bits)
+        else: # Else it's positive
+            return x
 
 # vim: expandtab:tabstop=4:
