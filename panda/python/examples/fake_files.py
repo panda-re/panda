@@ -16,9 +16,11 @@ faker = FileFaker(panda)
 faker.replace_file("/foo", myFakeFile)
 '''
 
+# Testing - why doesn't this work?
 faker = FileFaker(panda)
 faker.rename_file("/foo", "/etc/passwd")
 
+'''
 @blocking
 def read_it():
     panda.revert_sync('strace')
@@ -28,12 +30,16 @@ def read_it():
     panda.end_analysis()
 
 panda.queue_async(read_it)
+'''
+
+@blocking
+def nop():
+    panda.end_analysis()
+
+panda.queue_async(nop)
 panda.run()
 
 del faker
-#print(foo)
-#del foo
-
 
 #print("DO DELETE")
 #del faker
