@@ -36,6 +36,14 @@
 #include "target/mips/trace.h"
 #include "trace-tcg.h"
 #include "exec/log.h"
+#include <string.h>
+
+#include "panda/callbacks/cb-support.h"
+
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+extern bool panda_update_pc;
+#endif
 
 #define MIPS_DEBUG_DISAS 0
 
@@ -19957,6 +19965,15 @@ void gen_intermediate_code(CPUMIPSState *env, struct TranslationBlock *tb)
             gen_io_start();
         }
 
+#ifdef CONFIG_SOFTMMU 
+        //mz let's count this instruction
+        // In LLVM mode we generate this more efficiently.
+        if ((rr_on() || panda_update_pc) && !generate_llvm) {
+            printf("inside of statement\n");
+            gen_op_update_panda_pc(ctx.pc);
+            gen_op_update_rr_icount();
+        }
+#endif
         is_slot = ctx.hflags & MIPS_HFLAG_BMASK;
         if (!(ctx.hflags & MIPS_HFLAG_M16)) {
             ctx.opcode = cpu_ldl_code(env, ctx.pc);
