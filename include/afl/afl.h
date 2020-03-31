@@ -1,4 +1,12 @@
 
+#define DEBUG_AFL 1
+
+#define AFL_DPRINTF(fmt, ...) do {                                          \
+        if (DEBUG_AFL) {                                           \
+            fprintf(stderr, fmt, ## __VA_ARGS__);      \
+            fflush(stderr);                                             \
+        }                                                               \
+    } while (0)
 extern const char *aflFile;
 extern unsigned long aflPanicAddr;
 extern unsigned long aflDmesgAddr;

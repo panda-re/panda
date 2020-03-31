@@ -37,6 +37,7 @@
 #include "exec/log.h"
 
 #include "panda/callbacks/cb-support.h"
+#include "panda/common.h"
 
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
@@ -63,6 +64,7 @@ extern bool panda_update_pc;
 #else
 #define IS_USER(s) (s->user)
 #endif
+
 
 TCGv_env cpu_env;
 /* We reuse the same 64-bit temporaries for efficiency.  */
@@ -12248,7 +12250,7 @@ void restore_state_to_opc(CPUARMState *env, TranslationBlock *tb,
 
 static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks)
 {
-    //printf("pid %d: startForkServer\n", getpid()); fflush(stdout);
+    AFL_DPRINTF("pid %d: startForkServer\n", getpid());
     if(afl_fork_child) {
         /*
          * we've already started a fork server. perhaps a test case
@@ -12282,13 +12284,15 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
     FILE *fp;
     unsigned char ch;
 
-    //printf("pid %d: getWork %lx %lx\n", getpid(), ptr, sz);fflush(stdout);
+    AFL_DPRINTF("pid %d: getWork " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
+            getpid(), ptr, sz);
     assert(aflStart == 0);
     fp = fopen(aflFile, "rb");
     if(!fp) {
          perror(aflFile);
          return -1;
     }
+#if 1 // legacy triforce afl byte-by-byte input rw. To be replaced.
     retsz = 0;
     while(retsz < sz) {
         if(fread(&ch, 1, 1, fp) == 0)
@@ -12297,14 +12301,31 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
         retsz ++;
         ptr ++;
     }
+#else
+    char * buffer = 0;
+    CPUState *cpu = ENV_GET_CPU(env);
+    int length;
+
+    fseek (fp, 0, SEEK_END);
+    length = ftell (fp);
+    fseek (fp, 0, SEEK_SET);
+    buffer = malloc (length);
+    if (buffer)
+    {
+        fread (buffer, 1, length, fp);
+    }
+
+    cpu_memory_rw_debug(cpu, ptr, buffer, length, 1);
+    free(buffer);
+#endif
     fclose(fp);
     return retsz;
 }
 
 static target_ulong startWork(CPUArchState *env, target_ulong start, target_ulong end)
 {
-    //printf("pid %d: ptr %lx\n", getpid(), ptr);fflush(stdout);
-    //printf("pid %d: startWork %lx - %lx\n", getpid(), start, end);fflush(stdout);
+    AFL_DPRINTF("pid %d: startWork " TARGET_FMT_lx " - " TARGET_FMT_lx"\n",
+            getpid(), start, end);
 
     afl_start_code = start;
     afl_end_code   = end;
@@ -12315,7 +12336,7 @@ static target_ulong startWork(CPUArchState *env, target_ulong start, target_ulon
 
 static target_ulong doneWork(target_ulong val)
 {
-    //printf("pid %d: doneWork %lx\n", getpid(), val);fflush(stdout);
+    AFL_DPRINTF("pid %d: doneWork " TARGET_FMT_lx "\n", getpid(), val);
     assert(aflStart == 1);
 /* detecting logging as crashes hasnt been helpful and
    has occasionally been a problem.  We'll leave it to
