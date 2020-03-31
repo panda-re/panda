@@ -29,6 +29,7 @@ class FakeFile:
             fake_contents = fake_contents.encode("utf8")
         fake_contents += b'\x00'
         self.contents = fake_contents
+        self.initial_contents = fake_contents
 
     def read(self, hyperfd, size):
         '''
@@ -46,7 +47,7 @@ class FakeFile:
 
     def write(self, hyperfd, write_data):
         # Update contents from hyperfd.offset. It's a bytearray so we can't just mutate
-        print(f"WRITE TO {hyperfd}, {write_data}")
+        print(f"WRITE TO {hyperfd}: {write_data}")
         new_data  = self.contents[:hyperfd.offset]
         new_data += write_data
         new_data += self.contents[hyperfd.offset+len(new_data):]
@@ -55,7 +56,10 @@ class FakeFile:
         hyperfd.offset += len(write_data)
 
     def close(self):
-        print(f"Closing fd backed by {self.filename} with contents:", repr(self.contents))
+        if self.initial_contents == self.contents:
+            print(f"Closing fd backed by {self.filename} with unmodified contents")
+        else: # it was mutated!
+            print(f"Closing fd backed by {self.filename} with contents:", repr(self.contents))
 
     def get_mode(self):
         return 0o664 # Regular file (octal)
@@ -64,12 +68,15 @@ class FakeFile:
         return ceil(len(self.contents)/bytesize)
 
     def __str__(self):
-        return f"Faker({self.filename} -> {self.internal_name}): {repr(self.data[:10])}..."
+        return f"Faker({self.filename} -> {self.internal_name}): {repr(self.contents[:10])}..."
 
+
+    def _delete(self):
+        self.close()
 
     def __del__(self):
-        print("Closing FakeFile because python object is being destroyed")
-        self.close()
+        # XXX: This destructor isn't called automatically
+        self._delete()
 
 
 """
@@ -93,12 +100,14 @@ class HyperFD:
     def __init__(self,  filename, offset=0):
         self.filename = filename
         self.offset = offset
+        self.is_closed = False
 
     def seek(offset, whence):
         # From include/uapi/linux/fs.h
         SEEK_SET = 0
         SEEK_CUR = 1
         SEEK_END = 2
+        assert(not self.is_closed), "Seek on closed HFD"
 
         if whence == SEEK_SET:
             self.offset = offset
@@ -108,6 +117,10 @@ class HyperFD:
             self.offset = self.offset + offset
         else:
             raise ValueError(f"Unsupported whence {whence} in seek")
+
+    def close(self):
+        # Should we just delete it?
+        self.is_closed = True
 
     def __str__(self):
         return f"HyperFD backed by {self.filename} offset {self.offset}"
@@ -249,7 +262,7 @@ class FileFaker(FileHook):
 
             cpu.env_ptr.regs[0] = data_len
 
-            self.logger.info(f"Returning {data_len} bytes: {data}")
+            self.logger.info(f"Returning {data_len} bytes")
 
         elif syscall_name == "close":
             # We want the guest to close the real FD. Delete it from our map of hooked fds
@@ -279,7 +292,7 @@ class FileFaker(FileHook):
                                             newhfd)
 
         else:
-            self.logger.error(f"Unsupported syscall on FakeFD: {syscall_name}. Not intercepting (Running on real guest FD)")
+            self.logger.error(f"Unsupported syscall on FakeFD{fd}: {syscall_name}. Not intercepting (Running on real guest FD)")
 
             
     def _before_modified_enter(self, cpu, pc, syscall_name, fname):
@@ -307,11 +320,15 @@ class FileFaker(FileHook):
             self.pending_file_objs = None
 
 
-    def __del__(self):
+    def close(self):
         # Close all open hfds
         if len(self.hooked_fds):
-            logger.info("Cleaning up open hyper file descriptors")
-            for (faker, hfd) in self.hooked_fds:
-                del faker
-                del hfd
+            self.logger.info("Cleaning up open hyper file descriptors")
+            for ((fd, asid), (faker, hfd)) in self.hooked_fds.items():
+                faker._delete()
+                hfd.close()
 
+
+    def __del__(self):
+        # XXX: This isn't being called for some reason on destruction
+        self.close()

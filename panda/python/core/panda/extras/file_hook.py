@@ -1,16 +1,46 @@
 import logging
+from os import path
 
-# TEMP
-import sys
-root = logging.getLogger()
-root.setLevel(logging.INFO)
+# If coloredlogs is installed, use it
+try:
+    import coloredlogs
+    import sys
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    root.addHandler(handler)
+except ImportError:
+    pass
 
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-root.addHandler(handler)
-import coloredlogs
+def read_guest_str(panda, cpu, ptr):
+    # Helper fn to read a null-terminated string from guest memory
+    r = b""
+    start_ptr = ptr
+    while True:
+        try:
+            next_char = panda.virtual_memory_read(cpu, ptr, 1) # If this raises an exn, don't mask it
+        except ValueError:
+            read_length = ptr-start_ptr
+            if read_length > 10:
+                print(f"Warning: failed to read memory after {read_length} bytes")
+                try:
+                    return r.decode("utf8")
+                except:
+                    return repr(r)
+            return "(error)"
+
+        if next_char == b"\x00":
+            break
+        r += next_char
+        ptr += 1
+    try:
+        return r.decode("utf8")
+    except:
+        return repr(r)
+
 # End temp
 
 class FileHook:
@@ -45,6 +75,7 @@ class FileHook:
         self.logger.setLevel(logging.DEBUG)
 
         self.eagain = {} # cb_name: num_retries
+        self.pending_virt_read = None
 
         panda.load_plugin("syscalls2")
 
@@ -78,6 +109,35 @@ class FileHook:
             for name in names:
                 self._gen_cb(name, arg_offset)
 
+
+        # Fallback callback used when syscall with file name isn't mapped into memory
+        @self._panda.cb_virt_mem_before_read(enabled=False)
+        def before_virt_read(cpu, pc, addr, size):
+            '''
+            This callback is necessary for the case when we enter a syscall but the filename pointer is paged out.
+            When that happens, we enable this (slow) callback which checks every mem-read while we're in that syscall
+            to see if the memory has since been paged-in. It should always eventually be paged in. Once it is,
+            we mutate the memory and then disable this callback.
+
+            If this hasn't run by the time the callback returns, we give up and disable it
+            '''
+            if not self.pending_virt_read:
+                return
+
+            # Is our pending read a subset of the current read? If so try to read it
+            if addr <= self.pending_virt_read and addr+size > self.pending_virt_read:
+                try:
+                    fname = self._panda.read_str(cpu, self.pending_virt_read)
+                except ValueError:
+                    return # Still not available. Keep waiting
+                self.logger.debug(f"recovered missed filename: {fname}")
+
+                # It is available! Disable this slow callback and rerurn _enter_cb with the data
+                self.pending_virt_read = None
+                self._panda.disable_callback('before_virt_read')
+                self._enter_cb(self.pending_syscall, args=(cpu, pc), fname=fname)
+
+
     def rename_file(self, old_name, new_name):
         '''
         Mutate a given filename into a new name at the syscall interface
@@ -102,33 +162,32 @@ class FileHook:
         self._panda.ppp("syscalls2", f"on_sys_{name}_return")( \
                     lambda *args: self._return_cb(name, fname_ptr_pos, args=args))
 
-    def _enter_cb(self, syscall_name, fname_ptr_pos, args=None):
+    def _enter_cb(self, syscall_name, fname_ptr_pos=0, args=None, fname=None):
         '''
         When we return, check if we mutated the fname buffer. If so,
         we need to restore whatever data was there (we may have written
-        past the end of the string)
+        past the end of the string).
+
+        if fname is set, we skip the logic to extract it
         '''
+
         assert(args)
         (cpu, pc) = args[0:2]
-        fname_ptr = args[2+fname_ptr_pos] # offset to after (cpu, pc) in callback args
 
-        try:
-            fname = self._panda.read_str(cpu, fname_ptr)
-        except ValueError:
-            if syscall_name not in self.eagain:
-                self.eagain[syscall_name] = 0
-            self.eagain[syscall_name] += 1
+        if not fname:
+            fname_ptr = args[2+fname_ptr_pos] # offset to after (cpu, pc) in callback args
 
-            if self.eagain[syscall_name] < 3:
-                self.logger.info(f"missed filename in call to {syscall_name}. Retrying")
-            else:
-                self.logger.warning(f"missed filename in call to {syscall_name}. Giving up")
-            return
+            try:
+                fname = self._panda.read_str(cpu, fname_ptr)
+            except:
+                self.logger.debug(f"missed filename at 0x{fname_ptr:x} in call to {syscall_name}. Waiting for it")
+                self.pending_virt_read = cpu.env_ptr.regs[0]
+                self.pending_syscall = syscall_name
+                self._panda.enable_callback('before_virt_read')
+                #self._panda_enable_memcb()
+                return
 
-        if syscall_name in self.eagain: # If we get here, we know the fname. Reset eagain for this syscall
-            del self.eagain[syscall_name]
-
-
+        fname = path.normpath(fname) # Normalize it
         self.logger.debug(f"Entering {syscall_name} with file={fname}")
 
         if fname in self._renamed_files:
@@ -164,6 +223,14 @@ class FileHook:
         we need to restore whatever data was there (we may have written
         past the end of the string)
         '''
+        if self.pending_virt_read:
+            (cpu, pc) = args[0:2]
+            fname_ptr = args[2+fname_ptr_pos] # offset to after (cpu, pc) in callback args
+            self.logger.warning(f"missed filename in call to {syscall_name} with fname at 0x{fname_ptr:x}. Ignore it")
+
+            self._panda.disable_callback('before_virt_read') # No point in continuing this
+            self.pending_virt_read = None # Virtual address that we're waiting to read as soon as possible
+            return
 
         # Do we need to make the guest reissue the syscall? # XXX there are side effects here... like open FDs
         if syscall_name in self.eagain:
@@ -171,9 +238,11 @@ class FileHook:
                 self.logger.warning("GIVING UP")
                 return # Just give up
             elif self.eagain[syscall_name] > 0: # Need to retry
+                self.logger.warning("IGNORING")
                 assert(args)
                 (cpu, pc) = args[0:2]
-                cpu.env_ptr.regs[0] = self._panda.to_unsigned_guest(-11)
+                #cpu.env_ptr.regs[0] = self._panda.to_unsigned_guest(-11) # 11 for old debian?
+                #cpu.env_ptr.regs[0] = self._panda.to_unsigned_guest(-35) #  35 for modern linux. UGH
                 return
 
         if syscall_name in self._changed_strs:
@@ -202,6 +271,3 @@ class FileHook:
         the filename. Exists to be overloaded by subclasses
         '''
         pass
-
-    def __del__(self):
-        print("File Hook destructor")
