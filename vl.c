@@ -3439,7 +3439,8 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
                 }
                 break;
             case QEMU_OPTION_aflFile:
-                aflFile = (char *)optarg;
+                aflFile = malloc(strlen(optarg)+1);
+                strcpy((char *)aflFile, optarg);
                 break;
             case QEMU_OPTION_aflPanicAddr:
                 aflPanicAddr = strtoul(optarg, NULL, 16);
