@@ -359,9 +359,13 @@ static void vhost_vsock_device_realize(DeviceState *dev, Error **errp)
 
 err_vhost_dev:
     vhost_dev_cleanup(&vsock->vhost_dev);
+    /* vhost_dev_cleanup() closes the vhostfd passed to vhost_dev_init() */
+    vhostfd = -1;
 err_virtio:
     virtio_cleanup(vdev);
-    close(vhostfd);
+    if (vhostfd >= 0) {
+        close(vhostfd);
+    }
     return;
 }
 
