@@ -133,9 +133,10 @@ class FileHook:
                 self.logger.debug(f"recovered missed filename: {fname}")
 
                 # It is available! Disable this slow callback and rerurn _enter_cb with the data
+                fname_ptr = self.pending_virt_read
                 self.pending_virt_read = None
                 self._panda.disable_callback('before_virt_read')
-                self._enter_cb(self.pending_syscall, args=(cpu, pc), fname=fname)
+                self._enter_cb(self.pending_syscall, args=(cpu, pc), fname_ptr=fname_ptr)
 
 
     def rename_file(self, old_name, new_name):
@@ -162,30 +163,30 @@ class FileHook:
         self._panda.ppp("syscalls2", f"on_sys_{name}_return")( \
                     lambda *args: self._return_cb(name, fname_ptr_pos, args=args))
 
-    def _enter_cb(self, syscall_name, fname_ptr_pos=0, args=None, fname=None):
+    def _enter_cb(self, syscall_name, fname_ptr_pos=0, args=None, fname_ptr=None):
         '''
         When we return, check if we mutated the fname buffer. If so,
         we need to restore whatever data was there (we may have written
         past the end of the string).
 
-        if fname is set, we skip the logic to extract it
+        if fname_ptr is set, just skip the logic to extract it
         '''
 
         assert(args)
         (cpu, pc) = args[0:2]
 
-        if not fname:
+        if not fname_ptr:
             fname_ptr = args[2+fname_ptr_pos] # offset to after (cpu, pc) in callback args
 
-            try:
-                fname = self._panda.read_str(cpu, fname_ptr)
-            except:
-                self.logger.debug(f"missed filename at 0x{fname_ptr:x} in call to {syscall_name}. Waiting for it")
-                self.pending_virt_read = cpu.env_ptr.regs[0]
-                self.pending_syscall = syscall_name
-                self._panda.enable_callback('before_virt_read')
-                #self._panda_enable_memcb()
-                return
+        try:
+            fname = self._panda.read_str(cpu, fname_ptr)
+        except:
+            self.logger.debug(f"missed filename at 0x{fname_ptr:x} in call to {syscall_name}. Waiting for it")
+            self.pending_virt_read = cpu.env_ptr.regs[0]
+            self.pending_syscall = syscall_name
+            self._panda.enable_callback('before_virt_read')
+            #self._panda_enable_memcb()
+            return
 
         fname = path.normpath(fname) # Normalize it
         self.logger.debug(f"Entering {syscall_name} with file={fname}")
