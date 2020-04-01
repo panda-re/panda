@@ -22,6 +22,8 @@ extern "C" {
 #include<set>
 #include <iomanip>
 #include <vector>
+#include <iostream> 
+#include<string> 
 
 #ifdef CONFIG_SOFTMMU
 
@@ -36,24 +38,45 @@ map <Asid, vector<Pc>> asid_trace;
 
 // Up to n-edge coverage 
 int n;
+Pc first_instr;
+Pc last_instr;
+string program_name;
+Asid target_asid;
+bool no_kernel;
 
+vector<Pc> pc_trace;
 // Called before each block, we have PC and ASID
 void collect_edges(CPUState *env, TranslationBlock *tb) {
 
     target_ulong asid = panda_current_asid(env);
     target_ulong pc = panda_current_pc(env);
+    uint64_t instr = rr_get_guest_instr_count(); 
 
+    if (no_kernel && panda_in_kernel(env)) return;
+    //printf("asid: " TARGET_FMT_lx "pc: " TARGET_FMT_lx, asid, pc);  
+    if (target_asid == asid && instr >= first_instr && instr <= last_instr) {
+        //printf("asid: " TARGET_FMT_lx "pc: " TARGET_FMT_lx "\n", asid, pc);  
+        pc_trace.push_back(pc); 
+    }
     // Gather the trace of pcs for this asid 
     asid_trace[asid].push_back(pc); 
 }
 
 bool init_plugin(void *self) {
     panda_arg_list *args; 
-    args = panda_get_args("general");
+    args = panda_get_args("edge_coverage");
 
     // Set the default value to 1-edge or basic block coverage  
     n = panda_parse_uint64_opt(args, "n", 1, "collect up-to-and-including n-edges");
+    first_instr = panda_parse_ulong_opt(args, "first_instr", 0, "first instruction");
+    last_instr = panda_parse_ulong_opt(args, "last_instr", 0, "last instruction"); 
+    target_asid = panda_parse_ulong_opt(args, "asid", 0, "asid");  
+    no_kernel = panda_parse_bool_opt(args, "no_kernel", "disable kernel pcs"); 
 
+    printf("n: %d, first_instr: " TARGET_FMT_lx " last_instr: " TARGET_FMT_lx " asid: "
+            TARGET_FMT_lx, n, first_instr, last_instr, target_asid); 
+    cout << " Program name: " << program_name << endl;;  
+    
     panda_require("osi");
     assert(init_osi_api()); // Setup OSI inspection
     panda_cb pcb;
@@ -68,77 +91,64 @@ void uninit_plugin(void *) {
 
     if (!pandalog) return; 
 
-    map<Asid, map<vector<Pc>, int>> final_map; 
+    map<vector<Pc>, int> edges;
 
-    // From the traces in each asid, collect up to n-edges 
-    for (auto kvp : asid_trace) { 
-        map<vector<Pc>, int> edges;
-        auto asid = kvp.first;
-        auto pc_trace = kvp.second; 
-
-        for (int k = 1; k <= n; k++) { 
-            for (int i = 0; i < pc_trace.size(); i++) {
-                // Build the edge (vector) 
-                vector<Pc> edge;
-                for (int j = 0; j < k; j++) { 
-                    edge.push_back(pc_trace[i + j]); 
-                }
-                // Add the edge to the map for this asid and update its count  
-                if (edges.find(edge) != edges.end())  edges[edge] += 1;
-                else  edges[edge] = 1; 
+    for (int k = 1; k <= n; k++) { 
+        for (int i = 0; i < pc_trace.size(); i++) {
+            // Build the edge (vector) 
+            vector<Pc> edge;
+            for (int j = 0; j < k; j++) { 
+                edge.push_back(pc_trace[i + j]); 
             }
+            // Add the edge to the map for this asid and update its count  
+            if (edges.find(edge) != edges.end())  edges[edge] += 1;
+            else  edges[edge] = 1; 
         }
-        final_map[asid] = edges; 
     }
 
-    // Write out each to a pandalog 
-    for (auto kvp: final_map) { 
-        auto asid = kvp.first;
-        auto edge_map = kvp.second; 
+    Panda__AsidEdges * ae = (Panda__AsidEdges *) malloc (sizeof (Panda__AsidEdges)); 
+    *ae = PANDA__ASID_EDGES__INIT; 
 
-        Panda__AsidEdges * ae = (Panda__AsidEdges *) malloc (sizeof (Panda__AsidEdges)); 
-        *ae = PANDA__ASID_EDGES__INIT; 
+    ae->n_edges = edges.size(); 
+    Panda__Edge ** e = (Panda__Edge **) malloc (sizeof (Panda__Edge *) * edges.size()); 
 
-        ae->n_edges = edge_map.size(); 
-        Panda__Edge ** e = (Panda__Edge **) malloc (sizeof (Panda__Edge *) * edge_map.size()); 
+    int i = 0;
+    for (auto kvp : edges) { 
+        auto n_edge = kvp.first;
+        auto hit_count = kvp.second;
 
-        int i = 0;
-        for (auto kvp : edge_map) { 
-            auto n_edge = kvp.first;
-            auto hit_count = kvp.second;
+        e[i] = (Panda__Edge *) malloc (sizeof (Panda__Edge)); 
+        *(e[i]) = PANDA__EDGE__INIT;
 
-            e[i] = (Panda__Edge *) malloc (sizeof (Panda__Edge)); 
-            *(e[i]) = PANDA__EDGE__INIT;
-
-            //e[i]->n = n_edge.size(); 
-            uint64_t *pc_list = (uint64_t *) malloc (sizeof (uint64_t) * (n_edge.size()));
-            int j = 0;
-            for (auto edge : n_edge) {
-                pc_list[j++] = edge; 
-            }
-            e[i]->pc = pc_list;
-            e[i]->n_pc = n_edge.size();
-            e[i]->hit_count = hit_count; 
-            i++; 
-        } 
-        ae->edges = e; 
-
-
-        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT; 
-        ple.has_asid = 1;
-        ple.asid = asid; 
-        ple.edge_coverage = ae; 
-        pandalog_write_entry(&ple); 
-
-        // Free everything I used
-        for (int i = 0; i < edge_map.size(); i++) { 
-            free(e[i]->pc);
-            free(e[i]); 
+        //e[i]->n = n_edge.size(); 
+        uint64_t *pc_list = (uint64_t *) malloc (sizeof (uint64_t) * (n_edge.size()));
+        int j = 0;
+        for (auto edge : n_edge) {
+            pc_list[j++] = edge; 
         }
-        free(e); 
-        free(ae); 
+        e[i]->pc = pc_list;
+        e[i]->n_pc = n_edge.size();
+        e[i]->hit_count = hit_count; 
+        i++; 
     } 
+    ae->edges = e; 
 
-}
+
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT; 
+    ple.has_asid = 1;
+    ple.asid = target_asid; 
+    ple.edge_coverage = ae; 
+    pandalog_write_entry(&ple); 
+
+    // Free everything I used
+    for (int i = 0; i < edges.size(); i++) { 
+        free(e[i]->pc);
+        free(e[i]); 
+    }
+    free(e); 
+    free(ae); 
+} 
+
+//}
 
 
