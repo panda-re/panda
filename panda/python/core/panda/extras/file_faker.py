@@ -1,4 +1,5 @@
 from panda.extras.file_hook import FileHook
+import logging
 
 '''
 Framework for halucinating files inside the guest through
@@ -24,6 +25,7 @@ class FakeFile:
     def __init__(self, fake_contents="", internal_name=b"/bin/ls\x00"):
         self.internal_name = internal_name
         self.filename = None
+        self.logger = logging.getLogger('panda.hooking')
 
         if isinstance(fake_contents, str):
             fake_contents = fake_contents.encode("utf8")
@@ -57,9 +59,9 @@ class FakeFile:
 
     def close(self):
         if self.initial_contents == self.contents:
-            print(f"Closing fd backed by {self.filename} with unmodified contents")
+            self.logger.debug(f"Closing file with unmodified contents")
         else: # it was mutated!
-            print(f"Closing fd backed by {self.filename} with contents:", repr(self.contents))
+            self.logger.info(f"Closing file with contents:" + repr(self.contents))
 
     def get_mode(self):
         return 0o664 # Regular file (octal)
@@ -247,7 +249,7 @@ class FileFaker(FileHook):
         asid = self._panda.current_asid(cpu)
 
         if syscall_name == "read":
-            self.logger.info(f"Handling READ of fakeFD {fd} {hfd.filename}")
+            self.logger.debug(f"Handling READ of fakeFD {fd} {hfd.filename}")
             # Place up to `count` bytes of data into memory at `buf_ptr`
             buf_ptr = args[3]
             count   = args[4]
@@ -262,12 +264,15 @@ class FileFaker(FileHook):
 
             cpu.env_ptr.regs[0] = data_len
 
-            self.logger.info(f"Returning {data_len} bytes")
+            #self.logger.info(f"Returning {data_len} bytes")
 
         elif syscall_name == "close":
             # We want the guest to close the real FD. Delete it from our map of hooked fds
             faker.close()
-            del self.hooked_fds[(fd, asid)]
+            try:
+                del self.hooked_fds[(fd, asid)]
+            except KeyError:
+                self.logger.warning(f"Unable to close hyperfd for FD {fd} with asid {asid}")
 
         elif syscall_name == "write":
             # read count bytes from buf, add to our hyper-fd
@@ -284,7 +289,7 @@ class FileFaker(FileHook):
             # add newfd
             oldfd = args[2]
             newfd = args[3]
-            self.logger.info(f"Duplicating faked fd {oldfd} to {newfd}")
+            self.logger.debug(f"Duplicating faked fd {oldfd} to {newfd}")
 
             # We create a new entry in hooked_fds with the same FakeFile plus a new hyperFD
             newhfd = HyperFD(hfd.filename)
@@ -323,7 +328,7 @@ class FileFaker(FileHook):
     def close(self):
         # Close all open hfds
         if len(self.hooked_fds):
-            self.logger.info("Cleaning up open hyper file descriptors")
+            self.logger.debug("Cleaning up open hyper file descriptors")
             for ((fd, asid), (faker, hfd)) in self.hooked_fds.items():
                 faker._delete()
                 hfd.close()

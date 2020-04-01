@@ -6,9 +6,9 @@ try:
     import coloredlogs
     import sys
     root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
+    root.setLevel(logging.INFO)
     handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
+    handler.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
     root.addHandler(handler)
@@ -194,7 +194,7 @@ class FileHook:
         if fname in self._renamed_files:
             # It matches, now let's take our action! Either rename or callback
 
-            self.logger.info(f"Renaming {fname} in {syscall_name}  to {self._renamed_files[fname]}")
+            self.logger.debug(f"modifying filename {fname} in {syscall_name} to {self._renamed_files[fname]}")
             assert(syscall_name not in self._changed_strs), "Entering syscall that already has a pending restore"
 
             # First read a buffer of the same size as our new value. XXX the string we already read might be shorter

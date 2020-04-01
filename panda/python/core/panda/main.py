@@ -627,6 +627,14 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         else:
             raise ValueError("Unsupported number of bits")
 
-
+    def from_unsigned_guest(self, x):
+        '''
+        Convert an unsigned int32/unsigned int64 from the guest
+        (depending on guest bit-size) to a (signed) python int
+        '''
+        if x >= 2**(self.bits-1): # If highest bit is set, it's negative
+            return (x - 2**self.bits)
+        else: # Else it's positive
+            return x
 
 # vim: expandtab:tabstop=4:
