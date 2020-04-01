@@ -12282,17 +12282,21 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
 {
     target_ulong retsz;
     FILE *fp;
-    unsigned char ch;
 
     AFL_DPRINTF("pid %d: getWork " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
             getpid(), ptr, sz);
     assert(aflStart == 0);
     fp = fopen(aflFile, "rb");
+
+    //AFL_DPRINTF("Expected file: %s\n", aflFile);
+    assert(fp != 0);
     if(!fp) {
          perror(aflFile);
          return -1;
     }
+
 #if 1 // legacy triforce afl byte-by-byte input rw. To be replaced.
+    unsigned char ch;
     retsz = 0;
     while(retsz < sz) {
         if(fread(&ch, 1, 1, fp) == 0)
@@ -12302,20 +12306,13 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
         ptr ++;
     }
 #else
-    char * buffer = 0;
+    uint8_t *buffer = 0;
     CPUState *cpu = ENV_GET_CPU(env);
-    int length;
-
-    fseek (fp, 0, SEEK_END);
-    length = ftell (fp);
-    fseek (fp, 0, SEEK_SET);
-    buffer = malloc (length);
-    if (buffer)
-    {
-        fread (buffer, 1, length, fp);
-    }
-
-    cpu_memory_rw_debug(cpu, ptr, buffer, length, 1);
+    buffer = malloc(sz);
+    assert(buffer != 0);
+    retsz = fread (buffer, 1, sz, fp);
+    cpu_memory_rw_debug(cpu, ptr, buffer, retsz, 1);
+    //AFL_DPRINTF("getwork data: %s, length: %d\n", buffer, retsz);
     free(buffer);
 #endif
     fclose(fp);

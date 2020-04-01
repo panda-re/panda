@@ -26,13 +26,13 @@
 #include "qemu/log.h"
 #include "trace.h"
 
-/* #define DEBUG_GIC */
+#define DEBUG_GIC 0
 
-//#ifdef DEBUG_GIC
+#ifdef DEBUG_GIC
 #define DEBUG_GIC_GATE 1
-//#else
-//#define DEBUG_GIC_GATE 0
-//#endif
+#else
+#define DEBUG_GIC_GATE 0
+#endif
 
 #define DPRINTF(fmt, ...) do {                                          \
         if (DEBUG_GIC_GATE) {                                           \

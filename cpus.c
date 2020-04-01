@@ -1663,7 +1663,7 @@ gotPipeNotification(void *ctx)
         exit(1);
     }
 
-    printf("start up afl forkserver!\n");
+    AFL_DPRINTF("start up afl forkserver!\n");
     afl_setup();
     env = NULL; //XXX for now.. if we want to share JIT to the parent we will need to pass in a real env here
     //env = restart_cpu->env_ptr;
