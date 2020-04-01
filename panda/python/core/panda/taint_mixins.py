@@ -41,6 +41,7 @@ class taint_mixins():
 
     # returns true if any bytes in this register have any taint labels
     def taint_check_reg(self, reg_num):
+        if not self.taint_enabled: return False
 #        if debug:
 #            progress("taint_check_reg %d" % (reg_num))
         for offset in range(self.register_size):
@@ -49,12 +50,14 @@ class taint_mixins():
 
     # returns true if this physical address is tainted
     def taint_check_ram(self, addr):
+        if not self.taint_enabled: return False
         if self.plugins['taint2'].taint2_query_ram(addr) > 0:
             return True
 
     # returns array of results, one for each byte in this register
     # None if no taint.  QueryResult struct otherwise
     def taint_get_reg(self, reg_num):
+        if not self.taint_enabled: return None
         if debug:
             progress("taint_get_reg %d" % (reg_num)) 
         res = []
@@ -71,6 +74,7 @@ class taint_mixins():
     # returns array of results, one for each byte in this register
     # None if no taint.  QueryResult struct otherwise
     def taint_get_ram(self, addr):
+        if not self.taint_enabled: return None
         if self.plugins['taint2'].taint2_query_ram(addr) > 0:
             query_res = ffi.new("QueryResult *")
             self.plugins['taint2'].taint2_query_ram_full(addr, query_res)
@@ -81,12 +85,14 @@ class taint_mixins():
 
     # returns true if this laddr is tainted
     def taint_check_laddr(self, addr, off):
+        if not self.taint_enabled: return False
         if self.plugins['taint2'].taint2_query_laddr(addr, off) > 0:
             return True
 
     # returns array of results, one for each byte in this laddr
     # None if no taint.  QueryResult struct otherwise
     def taint_get_laddr(self, addr, offset):
+        if not self.taint_enabled: return None
         if self.plugins['taint2'].taint2_query_laddr(addr, offset) > 0:
             query_res = ffi.new("QueryResult *")
             self.plugins['taint2'].taint2_query_laddr_full(addr, offset, query_res)
