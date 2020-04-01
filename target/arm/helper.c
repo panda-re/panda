@@ -259,8 +259,15 @@ bool write_list_to_cpustate(ARMCPU *cpu)
          * registers where the incoming migration value doesn't match)
          */
         write_raw_cp_reg(&cpu->env, ri, v);
-        if (read_raw_cp_reg(&cpu->env, ri) != v) {
+        uint64_t v2 = read_raw_cp_reg(&cpu->env, ri);
+        if (v2 != v) {
+            printf("write_list: FAILURE read raw cp reg %s - needed %lx (from snap), read back %lx\n",
+                ri->name, v, v2);
             ok = false;
+            break;
+        } else {
+            printf("write_list: OK read raw cp reg %s - needed %lx (from snap), read back %lx\n",
+                ri->name, v, v2);
         }
     }
     return ok;
@@ -1013,7 +1020,7 @@ static uint64_t pmccntr_read(CPUARMState *env, const ARMCPRegInfo *ri)
 
     if (!arm_ccnt_enabled(env)) {
         /* Counter is disabled, do not change value */
-        return env->cp15.c15_ccnt;
+        return env->cp15.c15_ccnt & 0xffffffff;
     }
 
     total_ticks = muldiv64(qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL),
@@ -1023,7 +1030,7 @@ static uint64_t pmccntr_read(CPUARMState *env, const ARMCPRegInfo *ri)
         /* Increment once every 64 processor clock cycles */
         total_ticks /= 64;
     }
-    return total_ticks - env->cp15.c15_ccnt;
+    return (total_ticks - env->cp15.c15_ccnt) & 0xffffffff;
 }
 
 static void pmselr_write(CPUARMState *env, const ARMCPRegInfo *ri,
