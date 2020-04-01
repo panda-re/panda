@@ -78,6 +78,7 @@ int panda_callbacks_monitor(Monitor *mon, const char *cmd);
 int panda_callbacks_before_loadvm(void);
 void panda_callbacks_replay_hd_transfer(CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, size_t num_bytes);
 void panda_callbacks_after_machine_init(CPUState *env);
+void panda_callbacks_after_loadvm(CPUState *env);
 
 /* invoked from cpu-exec.c */
 void panda_callbacks_before_block_exec(CPUState *env, TranslationBlock *tb);
@@ -95,15 +96,16 @@ void panda_callbacks_top_loop(CPUState *env);
 void panda_callbacks_during_machine_init(MachineState *machine);
 void panda_callbacks_main_loop_wait(void);
 void panda_callbacks_pre_shutdown(void);
-void panda_callbacks_unassigned_io_read(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint8_t *val);
-void panda_callbacks_unassigned_io_write(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint8_t *val);
-void panda_callbacks_unassigned_io(CPUState *env, hwaddr addr, size_t size, uint8_t *val, bool is_write);
+bool panda_callbacks_unassigned_io_read(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint64_t *val);
+bool panda_callbacks_unassigned_io_write(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint64_t val);
 int32_t panda_callbacks_before_handle_exception(CPUState *cpu, int32_t exception_index);
 void panda_callbacks_cbaddr(void);
 
 /* invoked from cputlb.c */
-void panda_callbacks_mmio_after_read(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
-void panda_callbacks_mmio_after_write(CPUState *env, target_ptr_t addr, size_t size, uint64_t val);
+void panda_callbacks_mmio_after_read(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
+void panda_callbacks_mmio_before_write(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
+void panda_callbacks_hd_read(CPUState *env);
+void panda_callbacks_hd_write(CPUState *env);
 
 /* invoked from exec.c */
 void panda_callbacks_replay_before_dma(CPUState *env, const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
@@ -122,7 +124,7 @@ bool panda_callbacks_insn_translate(CPUState *env, target_ptr_t pc);
 bool panda_callbacks_after_insn_translate(CPUState *env, target_ptr_t pc);
 
 /* invoked from target/i386/helper.c */
-int panda_callbacks_asid_changed(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
+bool panda_callbacks_asid_changed(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
 
 /* invoked from target/i386/misc_helper.c */
 bool panda_callbacks_guest_hypercall(CPUState *env);

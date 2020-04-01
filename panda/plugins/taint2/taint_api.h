@@ -36,6 +36,7 @@ void pandalog_taint_query_free(Panda__TaintQuery *tq);
 
 uint32_t taint2_query(Addr a);
 uint32_t taint2_query_ram(uint64_t pa);
+uint32_t taint2_query_laddr(uint64_t la, uint64_t off);
 uint32_t taint2_query_reg(int reg_num, int offset);
 uint32_t taint2_query_io(uint64_t ia);
 uint32_t taint2_query_llvm(int reg_num, int offset);
@@ -70,6 +71,8 @@ void taint2_track_taint_state(void);
 void taint2_query_results_iter(QueryResult *qr);
 
 uint32_t taint2_query_result_next(QueryResult *qr, bool *done);
+
+void taint2_query_laddr_full(uint64_t reg_num, uint64_t offset, QueryResult *qr);
 
 void taint2_query_reg_full(uint32_t reg_num, uint32_t offset, QueryResult *qr);
 

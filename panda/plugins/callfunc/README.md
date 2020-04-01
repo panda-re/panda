@@ -1,4 +1,4 @@
-Plugin: NAME
+Plugin: callfunc
 ===========
 
 Summary

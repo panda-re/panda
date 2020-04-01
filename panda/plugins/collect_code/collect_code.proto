@@ -1,0 +1,9 @@
+
+
+message BasicBlock {	
+	optional uint64 asid = 1;
+	optional uint32 size = 3;
+	optional bytes code = 5;
+}
+
+optional BasicBlock basic_block = 42;

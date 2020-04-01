@@ -1,6 +1,7 @@
 # PANDA
 
 [![Build Status](https://travis-ci.org/panda-re/panda.svg?branch=master)](https://travis-ci.org/panda-re/panda)
+![Autobuild Docker Container](https://github.com/panda-re/panda/workflows/Build%20and%20Publish%20Docker%20Container/badge.svg)
 
 PANDA is an open-source Platform for Architecture-Neutral Dynamic Analysis. It
 is built upon the QEMU whole system emulator, and so analyses have access to all
@@ -23,6 +24,15 @@ the [GPLv2 license](LICENSE).
 ---------------------------------------------------------------------
 
 ## Building
+### Quickstart: Docker
+The latest version of PANDA's master branch is automatically built as a docker image
+from both Ubuntu Bionic (18.04) and Xenial (16.04). These images are available [here](https://hub.docker.com/r/pandare/panda).
+
+To pull the latest docker container and run PANDA
+```
+$ docker pull pandare/panda
+$ docker run --rm pandare/panda -- /bin/panda-system-i386 --help
+```
 
 ###  Debian, Ubuntu
 Because PANDA has a few dependencies, we've encoded the build instructions into
@@ -59,18 +69,12 @@ The script uses [homebrew](https://brew.sh) to install the PANDA dependencies.
 As homebrew is known to be very fast in deprecating support for older versions
 of OS X and supported packages, expect this to be broken.
 
-### Docker Image
-Finally, if you want to skip the build process altogether, there is a
-[docker image](https://hub.docker.com/r/pandare/panda).
-You can get it by running `docker pull pandare/panda` for the official
-build, or `docker pull thawsystems/panda` for a third-party
-[unofficial build](https://hub.docker.com/r/thawsystems/panda).
-
 ### Installation
 After successfully building PANDA, you can copy the build to a system-wide
 location by running `make install`. The default installation path is `/usr/local`.
 You can specify an alternate installation path through the `prefix` configuration
-option. E.g. `--prefix=/opt/panda`.
+option. E.g. `--prefix=/opt/panda`.  Note that your system must have `chrpath`
+installed in order for `make install` to succeed.
 
 If the `bin` directory containing the PANDA binaries is in your `PATH` environment
 variable, then you can run PANDA similarly to QEMU:

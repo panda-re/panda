@@ -537,6 +537,11 @@ bool init_plugin(void *self) {
     {
         panda_cb pcb = { .after_machine_init = init_per_cpu_offsets };
         panda_register_callback(self, PANDA_CB_AFTER_MACHINE_INIT, pcb);
+
+        // Whenever we load a snapshot, we need to figure out CPU offsets again.
+        // Particularly if KASLR is enabled!
+        pcb.after_loadvm = init_per_cpu_offsets;
+        panda_register_callback(self, PANDA_CB_AFTER_LOADVM, pcb);
     }
 #if defined(OSI_LINUX_TEST)
     {

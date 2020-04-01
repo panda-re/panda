@@ -693,6 +693,16 @@ void panda_memsavep(FILE *f) {
 }
 
 /**
+ * @brief Stop and then quit the PANDA VM. Wraps QMP functions for plugins,
+ * without having them to pull QMP headers.
+ */
+int panda_vm_quit(void) {
+    qmp_stop(NULL); /* wait for any dumps to finish */
+    qmp_quit(NULL); /* quit */
+    return RRCTRL_OK;
+}
+
+/**
  * @brief Starts recording a PANDA trace. If \p snapshot is not NULL,
  * then the VM state will be reverted to the specified snapshot before
  * starting recording.
