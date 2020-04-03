@@ -644,8 +644,8 @@ void cpu_x86_update_cr3(CPUX86State *env, target_ulong new_cr3)
 {
     X86CPU *cpu = x86_env_get_cpu(env);
 
-    // ret val !=0 means *dont* allow cr3 to change
-    if (0 == (panda_callbacks_asid_changed(ENV_GET_CPU(env), env->cr[3], new_cr3))) {
+    // ret false means *dont* allow cr3 to change
+    if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->cr[3], new_cr3)) {
 
         env->cr[3] = new_cr3;
         if (env->cr[0] & CR0_PG_MASK) {

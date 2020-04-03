@@ -311,8 +311,9 @@ translation step is added from the TCG IR to the LLVM IR, and that is executed
 on the LLVM JIT.  Currently, this only works when QEMU is starting up, but we
 are hoping to support dynamic configuration of code generation soon.
 
-#### Record control
+#### Record/Replay and VM control
 ```C
+int panda_vm_quit(void);
 int panda_record_begin(const char *name, const char *snapshot);
 int panda_record_end(void);
 int panda_replay_begin(const char *name);
@@ -627,6 +628,7 @@ PANDA_CB_REPLAY_HANDLE_PACKET,  // In replay, packet in / out
 PANDA_CB_AFTER_CPU_EXEC_ENTER,  // Just after cpu_exec_enter is called
 PANDA_CB_BEFORE_CPU_EXEC_EXIT,  // Just before cpu_exec_exit is called
 PANDA_CB_AFTER_MACHINE_INIT,    // Right after the machine is initialized, before any code runs
+PANDA_CB_AFTER_VMLOAD,          // Right after machine state is restored from a snapshot, before any code runs
 PANDA_CB_TOP_LOOP,              // At top of loop that manages emulation.  good place to take a snapshot
 ```
 For more information on each callback, see the "Callbacks" section.
@@ -937,6 +939,7 @@ one has a README.md file linked here for further explanation.
 * [`memstats`](../../../../../panda1/qemu/panda_panda1/qemu/panda_plugins/memstats/README.md)
 * [`network`](../plugins/network/README.md)
 * [`pmemaccess`](../../../panda1/qemu/panda_plugins/pmemaccess/README.md)
+* [`recctrl`](../plugins/recctrl/README.md) - Control recording from within the VM.
 * [`rehosting`](../../../panda1/qemu/panda_plugins/rehosting/README.md)
 * [`replaymovie`](../plugins/replaymovie/README.md) - Write a series of
   framebuffer screenshots to the current directory. Use movie.sh to turn them
@@ -2000,4 +2003,23 @@ replay, this would be an appropriate place to call `taint2_enable_taint()`.
 **Signature**
 ```C
 void after_machine_init(CPUState *env);
+```
+---
+
+`after_vmload`: called right after a snapshot has been loaded,
+but before any guest code runs
+
+**Callback ID**: `PANDA_CB_AFTER_VMLOAD`
+
+**Arguments**:
+
+* `CPUState *env`: pointer to CPUState
+
+**Return value**:
+
+unused
+
+**Signature**
+```C
+void after_vmload(CPUState *env);
 ```

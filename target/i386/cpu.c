@@ -3026,6 +3026,11 @@ void cpu_x86_cpuid(CPUX86State *env, uint32_t index, uint32_t count,
     }
 }
 
+static bool x86_configurable_machine = false;
+void set_x86_configurable_machine(void) {
+  x86_configurable_machine = true;
+}
+
 /* CPUClass::reset() */
 static void x86_cpu_reset(CPUState *s)
 {
@@ -3057,7 +3062,20 @@ static void x86_cpu_reset(CPUState *s)
     env->tr.limit = 0xffff;
     env->tr.flags = DESC_P_MASK | (11 << DESC_TYPE_SHIFT);
 
-    cpu_x86_load_seg_cache(env, R_CS, 0xf000, 0xffff0000, 0xffff,
+    // Default values for starting a system in real mode
+    unsigned int cs_selector = 0xf000;
+    target_ulong cs_base = 0xffff0000;
+    if (x86_configurable_machine) {
+      // Unicorn sets these two properties. Not sure if we should?
+      //env->hflags = 0;
+      //env->cr[0] = 0;
+
+      // For x86 configurable machine, we don't want to start in real mode
+      cs_selector = 0;
+      cs_base = 0;
+    }
+
+    cpu_x86_load_seg_cache(env, R_CS, cs_selector, cs_base, 0xffff,
                            DESC_P_MASK | DESC_S_MASK | DESC_CS_MASK |
                            DESC_R_MASK | DESC_A_MASK);
     cpu_x86_load_seg_cache(env, R_DS, 0, 0, 0xffff,
@@ -3075,6 +3093,14 @@ static void x86_cpu_reset(CPUState *s)
     cpu_x86_load_seg_cache(env, R_GS, 0, 0, 0xffff,
                            DESC_P_MASK | DESC_S_MASK | DESC_W_MASK |
                            DESC_A_MASK);
+
+    if (x86_configurable_machine) {
+      // For configurable machine, don't continue
+      // setting up initial state. These registers
+      // values should all be 0 or undefined at the start
+      // of a unicorn-style execution
+      return;
+    }
 
     env->eip = 0xfff0;
     env->regs[R_EDX] = env->cpuid_version;

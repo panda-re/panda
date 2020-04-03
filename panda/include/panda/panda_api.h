@@ -43,6 +43,8 @@ target_ulong panda_current_sp_external(CPUState *cpu);
 target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong pagesize);
 target_ulong panda_virt_to_phys_external(CPUState *cpu, target_ulong virt_addr);
 
+void map_memory(char* name, uint64_t size, uint64_t address);
+
 // REDEFINITIONS below here from monitor.h
 
 // Create a monitor for panda
@@ -55,5 +57,6 @@ char* panda_monitor_run(char* buf);// Redefinition from monitor.h
 // Map a region of memory in the guest. WIP
 //int panda_map_physical_mem(target_ulong addr, int len);
 
+CPUState* get_cpu(void);
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 #endif

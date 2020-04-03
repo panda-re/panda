@@ -260,6 +260,14 @@ void PandaLog::write_current_chunk(){
     unsigned long ccs = this->chunk.zsize;
     int ret;
 
+    if (this->filename == NULL) {
+      fprintf(stderr,"ERROR: Attempted to write to pandalog  but there isn't one! Did " \
+                     " you run with -pandalog [filename]?\n");
+      assert(false); // XXX: After this assert I'm seeing an invalid pointer get freed
+                     // and that output is really long so it's hard to see our error message.
+      return;
+    }
+
     // loop allows compress2 to fail and resize output buffer as needed
     uint32_t i;
     for (i=0; i<10; i++) {
