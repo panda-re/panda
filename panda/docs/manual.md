@@ -1434,7 +1434,7 @@ before this callback will take effect.
 
 **Signature**:
 ```C
-int (*virt_mem_before_read)(CPUState *env, target_ulong pc,target_ulong addr, target_ulong size);
+void (*virt_mem_before_read)(CPUState *env, target_ulong pc,target_ulong addr, target_ulong size);
 ```
 ---
 
@@ -1461,7 +1461,7 @@ before this callback will take effect.
 
 **Signature**:
 ```C
-int (*virt_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+void (*virt_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 ```
 ---
 
@@ -1487,7 +1487,7 @@ before this callback will take effect.
 
 **Signature**:
 ```C
-int (*phys_mem_before_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size);
+void (*phys_mem_before_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size);
 ```
 ---
 
@@ -1514,7 +1514,7 @@ before this callback will take effect.
 
 **Signature**:
 ```C
-int (*phys_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+void (*phys_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 ```
 ---
 
@@ -1541,7 +1541,7 @@ before this callback will take effect.
 
 **Signature**:
 ```C
-int (*virt_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+void (*virt_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 ```
 ---
 
@@ -1568,7 +1568,7 @@ before this callback will take effect.
 
 **Signature**:
 ```C
-int (*virt_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+void (*virt_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 ```
 ---
 
@@ -1595,7 +1595,7 @@ before this callback will take effect.
 
 **Signature**:
 ```C
-int (*phys_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+void (*phys_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 ```
 ---
 
@@ -1622,7 +1622,7 @@ before this callback will take effect.
 
 **Signature**:
 ```C
-int (*phys_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+void (*phys_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 ```
 ---
 

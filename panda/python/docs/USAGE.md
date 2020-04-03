@@ -21,7 +21,6 @@ blocks = 0
 def before_block_execute(cpustate, transblock):
     global blocks
     blocks += 1
-    return 0
 
 # This 'blocking' function runs in a seperate thread from the main CPU loop
 # which allows for it to wait for the guest to complete commands
@@ -56,7 +55,6 @@ For example: `panda = Panda(generic='i386')`
 def my_before_block_fn(cpustate, translation_block):
   pc = panda.current_pc(env)
   print("About to run the block at 0x{:x}".format(pc))
-	return 0
 ```
 
 The panda object creates decorators named `cb_[CALLBACK_NAME]` for each panda callback.
