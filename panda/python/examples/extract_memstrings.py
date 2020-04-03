@@ -37,7 +37,7 @@ def virt_mem_after_write(env, pc, addr, size, buf):
         py_str = panda.virtual_memory_read(env, addr, size, fmt='str').decode("utf-8", "strict")
     except UnicodeDecodeError: #
         string_buffer = ""
-        return 0
+        return
 
     string_buffer += "".join([x for x in py_str if x in ascii_letters or x in [' ', '\n']])
 
@@ -47,7 +47,7 @@ def virt_mem_after_write(env, pc, addr, size, buf):
 
     if len(string_buffer) < size/2:
         string_buffer = ""
-    return 0
+    return
 
 panda.enable_memcb()
 panda.run_replay(recording_name)
