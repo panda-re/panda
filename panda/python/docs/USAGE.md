@@ -4,8 +4,8 @@ to analyze behavior of a running system, record a system and analyze replays, or
 nearly anything you can do using PANDA's C/C++ APIs.
 
 ## Installation
-1) Follow instructions to build PANDA or run `scripts/panda/install_ubuntu.sh`. 
-2) cd into `panda/pypanda/` and run `python3 setup.py install` (possibly in a virtual environment). This will install the `panda` python package to your system.
+1) Follow instructions to build PANDA or run `scripts/panda/install_ubuntu.sh`.
+2) cd into `panda/python/core` and run `python3 setup.py install` (possibly in a virtual environment). This will install the `panda` python package to your system.
 
 ## Example program
 This program counts the number of basic blocks executed while running `uname -a` inside a 32-bit guest.
