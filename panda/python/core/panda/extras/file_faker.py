@@ -57,13 +57,13 @@ class FakeFile:
         self.contents = new_data
         return len(write_data)
 
-    def close(self):
+    def close(self, hfd):
         self.refcount -= 1
         if self.refcount == 0: # All FDs are now closed
             if self.initial_contents == self.contents:
-                self.logger.debug(f"All handles to Faker({self.filename}) closed. Unmodified contents")
+                self.logger.debug(f"All handles to Faker({hfd.name}) closed. Unmodified contents")
             else: # it was mutated!
-                self.logger.info(f"All handles to Faker({self.filename}) closed. Modified contents: {repr(self.contents)}")
+                self.logger.info(f"All handles to Faker({hfd.name}) closed. Modified contents: {repr(self.contents)}")
 
     def get_mode(self):
         return 0o664 # Regular file (octal)
@@ -73,14 +73,6 @@ class FakeFile:
 
     def __str__(self):
         return f"Faker({self.filename} -> {repr(self.contents[:10])}..."
-
-
-    def _delete(self):
-        self.close()
-
-    def __del__(self):
-        # XXX: This destructor isn't called automatically
-        self._delete()
 
 class HyperFD:
     '''
@@ -124,15 +116,13 @@ class HyperFD:
         Decrement the reference counter
         '''
         assert(self.file)
-        self.file.close()
-        #del self # ???
+        self.file.close(self)
 
     def seek(offset, whence):
         # From include/uapi/linux/fs.h
         SEEK_SET = 0
         SEEK_CUR = 1
         SEEK_END = 2
-        assert(not self.is_closed), "Seek on closed HFD"
 
         if whence == SEEK_SET:
             self.offset = offset
@@ -142,10 +132,6 @@ class HyperFD:
             self.offset = self.offset + offset
         else:
             raise ValueError(f"Unsupported whence {whence} in seek")
-
-    def close(self):
-        # Should we just delete it?
-        self.is_closed = True
 
     def __str__(self):
         return f"HyperFD with name {self.name} offset {self.offset} backed by {self.file}"
@@ -294,7 +280,10 @@ class FileFaker(FileHook):
         elif syscall_name == "close":
             # We want the guest to close the real FD. Delete it from our map of hooked fds
             hfd.close()
-            del self.hooked_fds[(fd, asid)]
+            try:
+                del self.hooked_fds[(fd, asid)]
+            except KeyError:
+                pass
 
         elif syscall_name == "write":
             # read count bytes from buf, add to our hyper-fd

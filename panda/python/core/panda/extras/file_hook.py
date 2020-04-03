@@ -1,5 +1,6 @@
 import logging
 from os import path
+from panda.x86.helper import dump_state
 
 # If coloredlogs is installed, use it
 try:
@@ -40,15 +41,15 @@ class FileHook:
         (from all syscalls that have a char* filename argument.
         '''
 
-        self._panda = panda
-        self._renamed_files = {} # old_fname (str): new_fname (bytes)
-        self._changed_strs = {} # callback_name: original_data
-
         self.logger = logging.getLogger('panda.hooking')
         self.logger.setLevel(logging.DEBUG)
 
-        self.eagain = {} # cb_name: num_retries
-        self.pending_virt_read = None
+        self._panda = panda
+        self._renamed_files = {} # old_fname (str): new_fname (bytes)
+        self._awaiting_pointers = {} # ASID: fname we want to read
+        self._current_fname = {} # ASID: current filename
+        self._old_data = {} # ASID: old data we clobbered
+        self._current_syscall = {} # ASID: syscall name
 
         panda.load_plugin("syscalls2")
 
@@ -82,35 +83,38 @@ class FileHook:
             for name in names:
                 self._gen_cb(name, arg_offset)
 
-
-        # Fallback callback used when syscall with file name isn't mapped into memory
-        @self._panda.cb_virt_mem_before_read(enabled=False)
-        def before_virt_read(cpu, pc, addr, size):
+        # Note this function is defined in __init__ when panda is available
+        @panda.cb_virt_mem_before_read(enabled=False)
+        def _file_hook_before_read(cpu, pc, addr, size):
             '''
-            This callback is necessary for the case when we enter a syscall but the filename pointer is paged out.
-            When that happens, we enable this (slow) callback which checks every mem-read while we're in that syscall
-            to see if the memory has since been paged-in. It should always eventually be paged in. Once it is,
-            we mutate the memory and then disable this callback.
-
-            If this hasn't run by the time the callback returns, we give up and disable it
+            Fallback, slow-path for when the fname ptr is paged out when we enter a syscall.
+            Before the guest does a virtual memory read - If it's an ASID
+            that we're currently trying to load a filename pointer from virtual memory,
+            try loading it if the current read is within 0x1k of our address.
+            If it works, run mutate_filename BEFORE the guest code has a chance to read
             '''
-            if not self.pending_virt_read:
+
+            asid = self._panda.current_asid(cpu)
+            try:
+                target = self._awaiting_pointers[asid]
+            except KeyError: # Don't need anything from this process
+                self._panda.disable_callback('_file_hook_before_read')
                 return
 
-            # Is our pending read a subset of the current read? If so try to read it
-            if addr <= self.pending_virt_read and addr+size > self.pending_virt_read:
+            if abs(addr-target) <  0x1000:
+                # If the current read is an address close to what we want, try to read it
                 try:
-                    fname = self._panda.read_str(cpu, self.pending_virt_read)
+                    fname = self._panda.read_str(cpu, self._awaiting_pointers[asid])
                 except ValueError:
-                    return # Still not available. Keep waiting
-                self.logger.debug(f"recovered missed filename: {fname}")
+                    return
 
-                # It is available! Disable this slow callback and rerurn _enter_cb with the data
-                fname_ptr = self.pending_virt_read
-                self.pending_virt_read = None
-                self._panda.disable_callback('before_virt_read')
-                self._enter_cb(self.pending_syscall, args=(cpu, pc), fname_ptr=fname_ptr)
-
+                # Successful read! Need to mutate it in guest memory
+                self._current_fname[asid] = fname
+                logger.debug(f"read pending string for 0x{asid:x}: {fname}")
+                self.mutate_if_necessary(cpu, self._current_syscall[asid], fname, self._awaiting_pointers[asid])
+                self.logger.info("Removing asid 0x{asid:x} fname 0x{fname_ptr:x}={fname} from awaiting pointers")
+                del self._awaiting_pointers[asid] # done with it
+                self._panda.disable_callback('_file_hook_before_read') # Will be re-enabled if necessary when we switch to another asid
 
     def rename_file(self, old_name, new_name):
         '''
@@ -147,48 +151,33 @@ class FileHook:
 
         assert(args)
         (cpu, pc) = args[0:2]
+        asid = self._panda.current_asid(cpu)
 
-        if not fname_ptr:
-            fname_ptr = args[2+fname_ptr_pos] # offset to after (cpu, pc) in callback args
+        fname_ptr = args[2+fname_ptr_pos] # after cpu, pc,
+        self._current_syscall[asid] = syscall_name
 
         try:
             fname = self._panda.read_str(cpu, fname_ptr)
-        except:
-            self.logger.debug(f"missed filename at 0x{fname_ptr:x} in call to {syscall_name}. Waiting for it")
-            self.pending_virt_read = cpu.env_ptr.regs[0]
-            self.pending_syscall = syscall_name
-            self._panda.enable_callback('before_virt_read')
-            #self._panda_enable_memcb()
-            return
+        except ValueError:
+            if asid in self._awaiting_pointers:
+                # This asid was ALREADY waiting for a different name- This doesn't really make sense but it _does_ happen.
+                # If it's the same syscall name, let's assume an error was raised in the syscall execution and now it's being retried.
+                # Otherwise, let's die
+                if self._current_syscall[asid] == syscall_name:
+                    self.logger.warning(f"Entered syscall {syscall_name} twice without returning")
+                else:
+                    self.logger.error(f"Was waiting on something but now another? Asid 0x{asid:x}. New syscall is {syscall_name}. Last was {self._current_syscall[asid]}")
+                    assert(0), "The same ASID entered two syscalls without ever returning"
+                    return
 
-        fname = path.normpath(fname) # Normalize it
-        self.logger.debug(f"Entering {syscall_name} with file={fname}")
+            self._awaiting_pointers[asid] = fname_ptr
+            self.logger.debug(f"Adding asid 0x{asid:x} fname 0x{fname_ptr:x} to awaiting pointers")
 
-        if fname in self._renamed_files:
-            # It matches, now let's take our action! Either rename or callback
+            self._panda.enable_callback('_file_hook_before_read')
+            return # Not gonna figure it out here
 
-            self.logger.debug(f"modifying filename {fname} in {syscall_name} to {self._renamed_files[fname]}")
-            assert(syscall_name not in self._changed_strs), "Entering syscall that already has a pending restore"
-
-            # First read a buffer of the same size as our new value. XXX the string we already read might be shorter
-            # than what we're inserting so we read again so we can later restore the old data
-            try:
-                clobbered_data = self._panda.virtual_memory_read(cpu, fname_ptr, len(self._renamed_files[fname]))
-            except ValueError:
-                self.logger.error(f"Failed to read target buffer at call into {syscall_name}")
-                return
-
-            # Now replace those bytes with our new name
-            try:
-                self._panda.virtual_memory_write(cpu, fname_ptr, self._renamed_files[fname])
-            except ValueError:
-                self.logger.warn(f"Failed to mutate filename buffer at call into {syscall_name}")
-                return
-
-            # If it all worked, save the clobbered data
-            self._changed_strs[syscall_name] = clobbered_data
-
-            self._before_modified_enter(cpu, pc, syscall_name, fname)
+        # We know the filename. Great! Mutate if necessary
+        self.mutate_if_necessary(cpu, syscall_name, fname, fname_ptr)
 
 
     def _return_cb(self, syscall_name, fname_ptr_pos, args=None):
@@ -197,40 +186,24 @@ class FileHook:
         we need to restore whatever data was there (we may have written
         past the end of the string)
         '''
-        if self.pending_virt_read:
-            (cpu, pc) = args[0:2]
-            fname_ptr = args[2+fname_ptr_pos] # offset to after (cpu, pc) in callback args
-            self.logger.warning(f"missed filename in call to {syscall_name} with fname at 0x{fname_ptr:x}. Ignore it")
+        assert(args)
+        (cpu, pc) = args[0:2]
+        asid = self._panda.current_asid(cpu)
+        fname_ptr = args[2+fname_ptr_pos] # after cpu, pc,
 
-            self._panda.disable_callback('before_virt_read') # No point in continuing this
-            self.pending_virt_read = None # Virtual address that we're waiting to read as soon as possible
+        if asid not in self._current_fname:
+            self.logger.error(f"Returning from syscall {syscall_name} but we never identified filename")
             return
 
-        # Do we need to make the guest reissue the syscall? # XXX there are side effects here... like open FDs
-        if syscall_name in self.eagain:
-            if self.eagain[syscall_name] >= 3:
-                self.logger.warning("GIVING UP")
-                return # Just give up
-            elif self.eagain[syscall_name] > 0: # Need to retry
-                self.logger.warning("IGNORING")
-                assert(args)
-                (cpu, pc) = args[0:2]
-                #cpu.env_ptr.regs[0] = self._panda.to_unsigned_guest(-11) # 11 for old debian?
-                #cpu.env_ptr.regs[0] = self._panda.to_unsigned_guest(-35) #  35 for modern linux. UGH
-                return
 
-        if syscall_name in self._changed_strs:
-            assert(args)
-            (cpu, pc) = args[0:2]
-            fname_ptr = args[2+fname_ptr_pos] # offset to after (cpu, pc) in callback args
+        if asid in self._old_data: # Need to restore data we clobbered
             try:
-                self._panda.virtual_memory_write(cpu, fname_ptr, self._changed_strs[syscall_name])
+                self._panda.virtual_memory_write(cpu, fname_ptr, self._old_data[asid])
             except ValueError:
-                self.logger.warn(f"Failed to fix filename buffer at return of {syscall_name}")
-            del self._changed_strs[syscall_name]
+                self.logger.error(f"Failed to restore filename buffer at return of {syscall_name}")
+                return
+            del self._old_data[asid]
             self._after_modified_return(cpu, pc, syscall_name)
-
-        self.logger.debug(f"Returning from {syscall_name}")
 
     def _before_modified_enter(self, cpu, pc, syscall_name, fname):
         '''
@@ -245,3 +218,35 @@ class FileHook:
         the filename. Exists to be overloaded by subclasses
         '''
         pass
+
+    def mutate_if_necessary(self, cpu, syscall_name, fname, fname_ptr):
+        '''
+        Called as soon as we know the filename for a syscall we're entering.
+        Should be run for every syscall which gives us a chance to mutate the fname
+        Check if it's in our list of names to mutate
+        '''
+
+        # Normalize path and save by ASID
+        fname = path.normpath(fname)
+        asid = self._panda.current_asid(cpu)
+        self._current_fname[asid] = fname
+
+        if fname in self._renamed_files.keys():
+            self.logger.debug(f"modifying filename {fname} in {syscall_name} to {self._renamed_files[fname]}")
+            try:
+                clobbering = self._panda.virtual_memory_read(cpu, fname_ptr, len(self._renamed_files[fname]))
+            except ValueError:
+                self.logger.error(f"Can't read clobbered data in {syscall_name}! Bailing") # Unlikely - we just read it
+                return
+
+            try:
+                self._panda.virtual_memory_write(cpu, fname_ptr, self._renamed_files[fname])
+            except ValueError:
+                self.logger.error(f"Failed to mutate filename buffer at call into {syscall_name}")
+                return
+
+            # Save the data we overwrote
+            self._old_data[asid] = clobbering
+
+            pc = self._panda.current_pc(cpu)
+            self._before_modified_enter(cpu, pc, syscall_name, fname)
