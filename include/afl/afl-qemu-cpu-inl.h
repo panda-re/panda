@@ -72,7 +72,7 @@ target_ulong afl_entry_point = 0, /* ELF entry point (_start) */
           afl_end_code = 0;    /* .text end pointer        */
 
 int aflStart = 0;               /* we've started fuzzing */
-int aflEnableTicks = 0;         /* re-enable ticks for each test */
+int aflEnableTicks = 1;         /* re-enable ticks for each test */
 int aflGotLog = 0;              /* we've seen dmesg logging */
 
 /* from command line options */
