@@ -124,9 +124,14 @@ static void shannon_timer_write(void *opaque, hwaddr offset,
             ptimer_run(s->timer, (s->control & STIMER_CTRL_PERIODIC) == 0);
         }
         break;
+    case 0x0c: //STOP?
+        ptimer_stop(s->timer);
+        //s->int_level = value;
+        break;
     case 0x10:
         //shannon_timer_update(s); //disable irq if necessary
-        s->int_level = value;
+        s->int_level = 0;
+        shannon_timer_update(s);
         break;
     case 0x14: /* TIM_IRQ_LEVEL */
         s->int_level = value;
@@ -140,6 +145,7 @@ static void shannon_timer_write(void *opaque, hwaddr offset,
 static void shannon_timer_tick(void *opaque)
 {
     shannon_timer_state *s = (shannon_timer_state *)opaque;
+    DPRINTF("Shannon timer tick (%d)\n", s->irq_num);
     s->int_level = 1;
     shannon_timer_update(s);
 }
@@ -171,7 +177,7 @@ static void shannon_timer_realize(DeviceState *dev, Error **errp)
     shannon_timer_state *s = SHANNON_TIMER(dev);
     QEMUBH *bh;
 
-    s->control = 0xffffffff;
+    s->control = 0x0;
     s->limit = 0;
     s->int_level = 0;
 
