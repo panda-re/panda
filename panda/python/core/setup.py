@@ -112,7 +112,7 @@ setup(name='panda',
       author_email='fasano@mit.edu',
       url='https://github.com/panda-re/panda/',
       packages=['panda', 'panda.taint', 'panda.autogen',
-                'panda.images', 'panda.arm', 'panda.x86'],
+                'panda.images', 'panda.arm', 'panda.x86', 'panda.extras'],
       package_data = { 'panda': ['data/**/*', # Copy everything (fails?)
           'data/*/panda/plugins/*',    # Copy all plugins
           'data/*/panda/plugins/**/*', # Copy all plugin files
