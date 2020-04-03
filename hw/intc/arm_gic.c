@@ -26,8 +26,6 @@
 #include "qemu/log.h"
 #include "trace.h"
 
-#define DEBUG_GIC 0
-
 #ifdef DEBUG_GIC
 #define DEBUG_GIC_GATE 1
 #else
