@@ -18,7 +18,7 @@ void before_block_exec(CPUState *cpuState, TranslationBlock *translationBlock)
 		OsiProc * process = get_current_process(cpuState);		// get a reference to the process this TranslationBlock belongs to
 	        if (process) 
 			{
-			fprintf(outputFile,"\n%s@%#018"PRIx64"", process->name, (translationBlock->pc));
+			fprintf(outputFile,"\n%s@%#018"PRIx64"", process->name, (long unsigned int)(translationBlock->pc));
 			free_osiproc(process);					// always free unused resources
 			}
 		} 
