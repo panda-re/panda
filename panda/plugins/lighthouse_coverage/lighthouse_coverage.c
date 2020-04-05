@@ -3,6 +3,10 @@
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 
+// function prototypes
+int before_block_exec(CPUState *cpuState, TranslationBlock *translationBlock) ;
+void uninit_plugin(void *self) ;
+
 FILE * outputFile = 0;							// pointer to output file...
 
 
