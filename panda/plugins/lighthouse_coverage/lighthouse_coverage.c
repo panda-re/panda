@@ -6,6 +6,7 @@
 // function prototypes
 int before_block_exec(CPUState *cpuState, TranslationBlock *translationBlock) ;
 void uninit_plugin(void *self) ;
+bool init_plugin(void *self) ;
 
 FILE * outputFile = 0;							// pointer to output file...
 
