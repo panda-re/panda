@@ -11,7 +11,7 @@ bool init_plugin(void *self) ;
 FILE * outputFile = 0;							// pointer to output file...
 
 
-int before_block_exec(CPUState *cpuState, TranslationBlock *translationBlock) 
+void before_block_exec(CPUState *cpuState, TranslationBlock *translationBlock) 
 {	// this function gets called right before every basic block is executed
 	if (panda_in_kernel(first_cpu) == 0)				// I'm not interested in kernel modules
 		{
@@ -22,7 +22,7 @@ int before_block_exec(CPUState *cpuState, TranslationBlock *translationBlock)
 			free_osiproc(process);					// always free unused resources
 			}
 		} 
-	return 0;
+	return;
 };
 
 bool init_plugin(void *self) 
