@@ -4,7 +4,7 @@
 #include "osi/osi_ext.h"
 
 // function prototypes
-int before_block_exec(CPUState *cpuState, TranslationBlock *translationBlock) ;
+void before_block_exec(CPUState *cpuState, TranslationBlock *translationBlock) ;
 void uninit_plugin(void *self) ;
 bool init_plugin(void *self) ;
 
