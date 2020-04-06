@@ -33,3 +33,4 @@ memorymap
 collect_code
 edge_coverage
 loaded_libs
+lighthouse_coverage
