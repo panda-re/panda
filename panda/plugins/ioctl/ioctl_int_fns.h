@@ -1,7 +1,7 @@
-#ifndef __IOCTL_INT_FNS_H__
-#define __IOCTL_INT_FNS_H__
+//#ifndef __IOCTL_INT_FNS_H__
+//#define __IOCTL_INT_FNS_H__
 
-//extern "C" {
+extern "C" {
 
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
 // api autogen needs it.  And don't put any compiler directives
@@ -21,6 +21,6 @@
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
-//}
+}
 
-#endif // __IOCTL_INT_FNS_H__
+//#endif // __IOCTL_INT_FNS_H__

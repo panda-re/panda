@@ -105,7 +105,7 @@ void force_return(CPUState* cpu, target_ulong val) {
 }
 
 // Dispatch any registered hooks or return overwrites
-void dispatch_hooks_and_overwrites(ioctl_t* ioctl) {
+void dispatch_hooks_and_overwrites(CPUState* cpu, ioctl_t* new_ioctl) {
 
     // Forced success
     if (hyper_success_devices.find(new_ioctl->file_name) != hyper_success_devices.end()) {
@@ -116,13 +116,13 @@ void dispatch_hooks_and_overwrites(ioctl_t* ioctl) {
     auto named_entry = named_ioctl_hooks.find(new_ioctl->file_name);
     if (named_entry != named_ioctl_hooks.end()) {
         for (auto &hook : named_entry->second) {
-            (*hook)(cpu, ioctl);
+            (*hook)(cpu, new_ioctl);
         }
     }
 
     // All hooks
     for (auto &hook : all_ioctl_hooks) {
-        (*hook)(cpu, ioctl);
+        (*hook)(cpu, new_ioctl);
     }
 }
 
@@ -134,7 +134,7 @@ void linux_32_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t 
 
 void linux_32_ioctl_return(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint32_t arg) {
     ioctl_t* new_ioctl = update_proc_ioctl_mapping(fd, cpu, cmd, (uint64_t)arg, false);
-    dispatch_hooks_and_overwrites(new_ioctl);
+    dispatch_hooks_and_overwrites(cpu, new_ioctl);
 }
 
 void linux_64_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint64_t arg) {
@@ -143,7 +143,7 @@ void linux_64_ioctl_enter(CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t 
 
 void linux_64_ioctl_return (CPUState* cpu, target_ulong pc, uint32_t fd, uint32_t cmd, uint64_t arg) {
     ioctl_t* new_ioctl = update_proc_ioctl_mapping(fd, cpu, cmd, (uint64_t)arg, false);
-    dispatch_hooks_and_overwrites(new_ioctl);
+    dispatch_hooks_and_overwrites(cpu, new_ioctl);
 }
 
 // PANDA LOG -----------------------------------------------------------------------------------------------------------
@@ -258,7 +258,10 @@ void add_ioctl_hook_by_path(const char* path, ioctl_hook_t hook) {
     if (named_entry != named_ioctl_hooks.end()) {
         named_entry->second.push_back(hook);
     } else {
-        named_ioctl_hooks.insert(std::string(path), {hook});
+        std::vector<ioctl_hook_t> new_hook_list;
+        new_hook_list.push_back(hook);
+        named_ioctl_hooks.insert(std::string(path), new_hook_list);
+        //named_ioctl_hooks.insert(std::string(path), {hook});
     }
 }
 

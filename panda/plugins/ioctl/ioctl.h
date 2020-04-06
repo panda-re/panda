@@ -74,12 +74,14 @@ bool operator==(const ioctl_cmd_t &cmd_1, const ioctl_cmd_t &cmd_2) {
             (cmd_1.type_num == cmd_2.type_num);
 }
 
+// For callbacks
+typedef void (*ioctl_hook_t)(CPUState*, ioctl_t*);
 
 // Map device path strings to ioctl return hook functions
 typedef std::unordered_map<std::string, std::vector<ioctl_hook_t>> NamedIoctlHooks;
 
 // List of hooks functions to call on every ioctl return
-typedef std::vector<ioctl_hook_t>> AllIoctlHooks;
+typedef std::vector<ioctl_hook_t> AllIoctlHooks;
 
 // List of devices to force success for
 typedef std::unordered_set<std::string> HyperSuccessDevices;
