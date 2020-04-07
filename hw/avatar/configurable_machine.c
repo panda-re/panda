@@ -383,7 +383,6 @@ static void init_peripheral(QDict *device)
 static void set_entry_point(QDict *conf, THISCPU *cpuu)
 {
     assert(cpuu != NULL);
-    printf("CONFIGURABLE: SET ENTRY\n");
     const char *entry_field = "entry_address";
     uint32_t entry;
 

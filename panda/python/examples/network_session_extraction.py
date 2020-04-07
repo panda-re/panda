@@ -35,7 +35,6 @@ def virt_mem_after_read(cpustate, pc, addr, size, buf):
 			buf_addr = hex(int(ffi.cast("uint64_t", buf)))
 			buf_str = ffi.string(ffi.cast("char*",buf)).decode(errors='ignore')
 			print("Read buf: %s, size: %x, at pc: %x %s" %(buf_addr[2:], size, addr, buf_str))
-	return 0
 
 packets = []
 @panda.cb_replay_handle_packet(procname="wget")

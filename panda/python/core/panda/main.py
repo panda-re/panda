@@ -265,7 +265,13 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
     def exit_cpu_loop(self):
         self.libpanda.panda_exit_loop = True
 
-    def revert(self, snapshot_name): # In the next main loop, revert
+    def revert_async(self, snapshot_name): # In the next main loop, revert
+        '''
+        Request a snapshot revert, eventually. This is fairly dangerous
+        because you don't know when it finishes. You should be using revert_sync
+        from a blocking function instead
+        '''
+        print("WARNING: panda.revert_async may be deprecated in the near future")
         if debug:
             progress ("Loading snapshot " + snapshot_name)
 
@@ -580,9 +586,17 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         if plugin_name not in self.plugins: # Could automatically load it?
             raise ValueError(f"PPP canot use unknown plugin '{plugin_name}' - Did you load it with panda.load_plugin(\"{plugin_name}\")?")
 
+        if not hasattr(self, "ppp_registered_cbs"):
+            self.ppp_registered_cbs = []
+            # XXX: if  we don't save the cffi generated callbacks somewhere in Python,
+            # they may get garbage collected even though the c-code could still has a
+            # reference to them  which will lead to a crash. Keeping the reference count >0
+            # in python is the only use of this variable
 
         def inner(func):
-            f = ffi.callback(attr+"_t")(func)  # Automatically make the python funciton a CB
+            f = ffi.callback(attr+"_t")(func)  # Wrap the python fn in a c-callback.
+            self.ppp_registered_cbs.append(f) # Ensure callback isn't garbage collected
+
             self.plugins[plugin_name].__getattr__("ppp_add_cb_"+attr)(f) # All PPP cbs start with this string
             return f
         return inner
@@ -603,5 +617,27 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             ptr += 1
         return r.decode("utf8", "ignore")
 
+    def to_unsigned_guest(self, x):
+        '''
+        Convert a singed python int to an unsigned int32/unsigned int64
+        depending on guest bit-size
+        '''
+        import ctypes
+        if self.bits == 32:
+            return ctypes.c_uint32(x).value
+        elif self.bits == 64:
+            return ctypes.c_uint64(x).value
+        else:
+            raise ValueError("Unsupported number of bits")
+
+    def from_unsigned_guest(self, x):
+        '''
+        Convert an unsigned int32/unsigned int64 from the guest
+        (depending on guest bit-size) to a (signed) python int
+        '''
+        if x >= 2**(self.bits-1): # If highest bit is set, it's negative
+            return (x - 2**self.bits)
+        else: # Else it's positive
+            return x
 
 # vim: expandtab:tabstop=4:

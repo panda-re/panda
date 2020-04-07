@@ -79,7 +79,7 @@ def before_block_exec(env,tb):
 
         if nt == 10:
             print("Block sequences matches expected value!\nRestoring 'newroot' snapshot")
-            panda.revert("newroot")
+            panda.revert_async("newroot")
             nt = 0
         return
 
