@@ -614,15 +614,16 @@ typedef union panda_cb {
         target_ptr_t oldval: old asid value
         target_ptr_t newval: new asid value
 
-       Helper call location: target/i386/helper.c
+       Helper call location: target/i386/helper.c, target/arm/helper.c
 
        Return value:
         true if the asid should be prevented from being changed
         false otherwise
 
        Notes:
-        The helper is only invoked for x86. This should break a lot of the
-        plugins which rely on this callback to detect context switches.
+        The callback is only invoked implemented for x86 and ARM.
+        This should break plugins which rely on it to detect context
+        switches in any other architecture.
     */
     bool (*asid_changed)(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
 
