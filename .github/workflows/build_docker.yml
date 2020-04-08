@@ -1,4 +1,4 @@
-name: Build and Publish Docker Container
+name: Build and Publish Docker Container # Only for main panda-re repo, not forks
 
 on:
   push:
@@ -7,9 +7,8 @@ on:
 
 jobs:
   build:
-
+    if: github.actor == 'repo-owner'
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v1
     - name: Docker login
