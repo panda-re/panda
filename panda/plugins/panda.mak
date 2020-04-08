@@ -31,9 +31,10 @@ PLUGIN_CC_UNIT=$(basename $(notdir $<))
 # QEMU_CFLAGS/QEMU_CXXFLAGS in order to filter-out some flags.
 CFLAGS+=$(if $(subst $(PLUGIN_CC_UNIT),,$(PLUGIN_NAME)),,-DPLUGIN_MAIN)
 
-# Extra flags
+# Extra flags. Note that any additions from Makefile.panda.target
+# are not propagated here!
 QEMU_CFLAGS+=-DPLUGIN_NAME=\"$(PLUGIN_NAME)\" -DNEED_CPU_H -fPIC
-QEMU_CXXFLAGS+=-DPLUGIN_NAME=\"$(PLUGIN_NAME)\" -DNEED_CPU_H -fPIC -fpermissive -std=c++11
+QEMU_CXXFLAGS+=-DPLUGIN_NAME=\"$(PLUGIN_NAME)\" -DNEED_CPU_H -fPIC
 
 # GLib flags
 QEMU_CFLAGS+=$(GLIB_CFLAGS)
@@ -44,7 +45,11 @@ QEMU_INCLUDES+=-I$(PLUGIN_SRC_DIR) -I$(PLUGIN_SRC_ROOT) -I$(SRC_PATH)/panda/plug
 QEMU_INCLUDES+=-I$(PLUGIN_TARGET_DIR) -I.. -I$(TARGET_PATH) -I$(TARGET_BUILD)
 
 # Add plugin dir to runtime library path
+ifdef CONFIG_DARWIN
+LDFLAGS_SHARED+=-Wl,-rpath $(abspath $(PLUGIN_TARGET_DIR))
+else
 LDFLAGS_SHARED+=-Wl,-rpath=$(abspath $(PLUGIN_TARGET_DIR))
+endif
 
 # These should get generated automatically and include dependency information.
 -include $(wildcard $(PLUGIN_OBJ_DIR)/*.d)

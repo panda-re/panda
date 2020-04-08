@@ -20,6 +20,9 @@ MAKEFLAGS += -rR
 %.mak:
 clean-target:
 
+# Additional C++ flags. Note that QEMU_CFLAGS have already been appended by configure.
+QEMU_CXXFLAGS += -Wno-sign-compare -std=c++11 -fPIC -fpermissive
+
 # Flags for dependency generation
 QEMU_DGFLAGS += -MMD -MP -MT $@ -MF $(@D)/$(*F).d
 
@@ -29,10 +32,10 @@ QEMU_DGFLAGS += -MMD -MP -MT $@ -MF $(@D)/$(*F).d
 # dir, one absolute and the other relative to the compiler working
 # directory. These are the same for target-independent files, but
 # different for target-dependent ones.
-QEMU_LOCAL_INCLUDES = -iquote $(BUILD_DIR)/$(@D) -iquote $(@D)
+QEMU_LOCAL_INCLUDES = -iquote $(BUILD_DIR)/$(@D) -iquote $(@D) -iquote $(BUILD_DIR)
 
 # Include PANDA headers.
-QEMU_INCLUDES += -I$(SRC_PATH)/panda/include
+QEMU_INCLUDES += -iquote $(SRC_PATH)/target/$(TARGET_BASE_ARCH) -iquote $(SRC_PATH)/panda/include
 
 WL_U := -Wl,-u,
 find-symbols = $(if $1, $(sort $(shell $(NM) -P -g $1 | $2)))
