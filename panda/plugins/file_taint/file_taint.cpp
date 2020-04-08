@@ -8,6 +8,7 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -125,8 +126,8 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
     // Construct our read key (a tuple of PID, TID, and file ID (handle or
     // descriptor).
     ReadKey key;
-    OsiProc *proc = get_current_process(first_cpu);
-    OsiThread *thr = get_current_thread(first_cpu);
+    std::unique_ptr<OsiProc, decltype(free_osiproc)*> proc { get_current_process(first_cpu), free_osiproc };
+    std::unique_ptr<OsiThread, decltype(free_osithread)*> thr { get_current_thread(first_cpu), free_osithread };
     key.process_id = proc ? proc->pid : 0;
     key.thread_id = thr->tid;
     key.file_id = file_id;
@@ -181,9 +182,6 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
     // another read enter before we can taint again for the same pid, tid and
     // file id key.
     read_positions.erase(key);
-
-    free_osiproc(proc);
-    free_osithread(thr);
 }
 
 #ifdef TARGET_I386

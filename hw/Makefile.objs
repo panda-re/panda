@@ -2,6 +2,7 @@ devices-dirs-$(call land, $(CONFIG_VIRTIO),$(call land,$(CONFIG_VIRTFS),$(CONFIG
 devices-dirs-$(CONFIG_SOFTMMU) += acpi/
 devices-dirs-$(CONFIG_SOFTMMU) += adc/
 devices-dirs-$(CONFIG_SOFTMMU) += audio/
+devices-dirs-$(CONFIG_SOFTMMU) += avatar/
 devices-dirs-$(CONFIG_SOFTMMU) += block/
 devices-dirs-$(CONFIG_SOFTMMU) += bt/
 devices-dirs-$(CONFIG_SOFTMMU) += char/

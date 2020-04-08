@@ -1,0 +1,12 @@
+message Module { // This will have to be n at some point 
+    required string name = 1;
+    required string file = 2;
+    required uint64 base_addr = 3;
+    required uint64 size = 4;
+}
+
+message LoadedLibs {
+    repeated Module modules = 2; 
+}
+
+optional LoadedLibs asid_libraries = 5;  

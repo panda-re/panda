@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2008 Free Software Foundation, Inc.
+
+     Copying and distribution of this file, with or without modification,
+     are permitted in any medium without royalty provided the copyright
+     notice and this notice are preserved.  -->
+
+<!DOCTYPE feature SYSTEM "gdb-target.dtd">
+<feature name="org.gnu.gdb.arm.banked">    
+  <reg name="sp_usr" bitsize="32" group="banked"/>
+  <reg name="lr_usr" bitsize="32" group="banked"/>
+  <reg name="r8_fiq" bitsize="32" type="uint32" group="banked"/>
+  <reg name="r9_fiq" bitsize="32" type="uint32" group="banked"/>
+  <reg name="r10_fiq" bitsize="32" type="uint32" group="banked"/>
+  <reg name="r11_fiq" bitsize="32" type="uint32" group="banked"/>
+  <reg name="r12_fiq" bitsize="32" type="uint32" group="banked"/>
+  <reg name="sp_fiq" bitsize="32" group="banked"/>
+  <reg name="lr_fiq" bitsize="32" group="banked"/>
+  <reg name="sp_irq" bitsize="32" group="banked"/>
+  <reg name="lr_irq" bitsize="32" group="banked"/>
+  <reg name="sp_svc" bitsize="32" group="banked"/>
+  <reg name="lr_svc" bitsize="32" group="banked"/>
+  <reg name="sp_abt" bitsize="32" group="banked"/>
+  <reg name="lr_abt" bitsize="32" group="banked"/>
+  <reg name="sp_und" bitsize="32" group="banked"/>
+  <reg name="lr_und" bitsize="32" group="banked"/>
+  <!--<reg name="spsr_usr" bitsize="32" group="banked"/>-->
+  <reg name="spsr_fiq" bitsize="32" group="banked"/>
+  <reg name="spsr_irq" bitsize="32" group="banked"/>
+  <reg name="spsr_svc" bitsize="32" group="banked"/>
+  <reg name="spsr_abt" bitsize="32" group="banked"/>
+  <reg name="spsr_und" bitsize="32" group="banked"/>
+</feature>

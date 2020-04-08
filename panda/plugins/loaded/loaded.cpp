@@ -17,6 +17,7 @@ PANDAENDCOMMENT */
 
 #include <cstdio>
 #include <map>
+#include <memory>
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
@@ -134,11 +135,11 @@ void osi_foo(CPUState *cpu, TranslationBlock *tb) {
 
     if (panda_in_kernel(cpu)) {
 
-        OsiProc *p = get_current_process(cpu);
+        std::unique_ptr<OsiProc, decltype(free_osiproc)*> p { get_current_process(cpu), free_osiproc };
 
         //some sanity checks on what we think the current process is
         // we couldn't find the current task
-        if (p == NULL) return;
+        if (!p) return;
         // this means we didnt find current task
         if (p->taskd == 0) return;
         // or the name

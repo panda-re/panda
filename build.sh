@@ -68,23 +68,36 @@ fi
 
 msg "Using python2 at: $PYTHON2PATH"
 
-### Check gcc/g++ versions. 5 is currently the supported version.
+### Check gcc/g++ versions. 5 and 7 are currently  supported version.
 ### PANDA no longer builds with versions 4.x.
-### Versions >5 may not compile due to more aggressive sanitization defaults.
-GCC_TOOLCHAIN_VERSION_REQ=5
+GCC_TOOLCHAIN_VERSION_MIN=5
+GCC_TOOLCHAIN_VERSION_MAX=7
 GCC_VERSION_MAJOR=$(gcc -dumpversion | cut -d. -f1)
 GCXX_VERSION_MAJOR=$(g++ -dumpversion | cut -d. -f1)
-if [ $GCC_VERSION_MAJOR -eq $GCC_TOOLCHAIN_VERSION_REQ -a $GCXX_VERSION_MAJOR -ge $GCC_TOOLCHAIN_VERSION_REQ ]; then
+
+# If c and C++ version >= min and <= max
+if [ $GCC_VERSION_MAJOR -ge $GCC_TOOLCHAIN_VERSION_MIN ] && [ $GCXX_VERSION_MAJOR -ge $GCC_TOOLCHAIN_VERSION_MIN ] && [ $GCC_VERSION_MAJOR -le $GCC_TOOLCHAIN_VERSION_MAX ] && [ $GCXX_VERSION_MAJOR -le $GCC_TOOLCHAIN_VERSION_MAX ]; then
     msg "Building with default gcc/g++."
     COMPILER_CONFIG=""
-elif (type gcc-$GCC_TOOLCHAIN_VERSION_REQ && type g++-$GCC_TOOLCHAIN_VERSION_REQ) >/dev/null 2>&1; then
-    msg "Building with gcc-$GCC_TOOLCHAIN_VERSION_REQ/g++-$GCC_TOOLCHAIN_VERSION_REQ."
-    COMPILER_CONFIG="--cc=gcc-$GCC_TOOLCHAIN_VERSION_REQ --cxx=g++-$GCC_TOOLCHAIN_VERSION_REQ"
-elif [ $GCC_VERSION_MAJOR -lt $GCC_TOOLCHAIN_VERSION_REQ -a $GCXX_VERSION_MAJOR -lt $GCC_TOOLCHAIN_VERSION_REQ ]; then
+
+
+# If we have gcc-7 (max) installed, use it
+elif (type gcc-$GCC_TOOLCHAIN_VERSION_MAX && type g++-$GCC_TOOLCHAIN_VERSION_MAX) >/dev/null 2>&1; then
+    msg "Building with gcc-$GCC_TOOLCHAIN_VERSION_MAX/g++-$GCC_TOOLCHAIN_VERSION_MAX."
+    COMPILER_CONFIG="--cc=gcc-$GCC_TOOLCHAIN_VERSION_MAX --cxx=g++-$GCC_TOOLCHAIN_VERSION_MAX"
+
+# If we have gcc-5 (min) installed, use it
+elif (type gcc-$GCC_TOOLCHAIN_VERSION_MIN && type g++-$GCC_TOOLCHAIN_VERSION_MIN) >/dev/null 2>&1; then
+    msg "Building with gcc-$GCC_TOOLCHAIN_VERSION_MIN/g++-$GCC_TOOLCHAIN_VERSION_MIN."
+    COMPILER_CONFIG="--cc=gcc-$GCC_TOOLCHAIN_VERSION_MIN --cxx=g++-$GCC_TOOLCHAIN_VERSION_MIN"
+
+# Old GCC & G++
+elif [ $GCC_VERSION_MAJOR -lt $GCC_TOOLCHAIN_VERSION_MIN -a $GCXX_VERSION_MAJOR -lt $GCC_TOOLCHAIN_VERSION_MIN ]; then
     msg "Older gcc/g++ found. Enforcing gnu11 mode."
     COMPILER_CONFIG="--extra-cflags=-std=gnu11"
+
 else
-    msg "Modern gcc/g++ found. Trying with default. This is likely to fail!"
+    msg "Unsupported gcc/g++ found. Trying with default flags. This might fail"
     COMPILER_CONFIG=""
 fi
 
@@ -157,11 +170,19 @@ if [ -f "$BUILD_LOCAL" ]; then
     . "$BUILD_LOCAL"
 fi
 
+# will install to $(pwd)/install UNLESS $prefix is set when script is run
+if [ -z "$prefix" ]; then
+    prefix="$(pwd)/install"
+    echo "Using default prefix: $prefix"
+else
+    echo "Using specified prefix: $prefix"
+fi
+
 ## Configure/compile/test.
 msg "Configuring PANDA..."
 "${PANDA_DIR_REL}/configure" \
     --target-list=$TARGET_LIST \
-    --prefix="$(pwd)/install" \
+    --prefix=$prefix \
     $COMPILER_CONFIG \
     $LLVM_CONFIG \
     $MISC_CONFIG \

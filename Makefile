@@ -597,8 +597,29 @@ ifneq (,$(findstring qemu-ga,$(TOOLS)))
 endif
 endif
 
+ifneq ($(CONFIG_LINUX),)
+# The install target won't succeed if the RPATH in the .so files is longer than
+# the value need to change it to for installation purposes.  It does not matter
+# which architecture is used for the comparison - it shows up once in both the
+# new and old RPATHs, so the differences cancel out.
+# Calculate length of new RPATH.
+newrplen=$(shell newrp="$(panda_plugindir)/$(ARCH)" ; eval echo $${\#newrp})
+# Fetch current RPATH from an .so file - doesn't matter which plugin/arch it is for.
+archdir=$(lastword $(TARGET_DIRS))
+ifeq ($(archdir),)
+$(error Failed to find arch directory ${archdir})
+endif
+pwdvar=$(shell pwd)
+pathtoso=$(shell echo "$(pwdvar)/$(archdir)/panda/plugins/panda_stringsearch.so")
+cpout=$(shell chrpath -l "$(pathtoso)")
+# The old RPATH will include a "RPATH=" prefix - the size calculation will
+# adjust for that later.
+rppart=$(lastword $(cpout))
+newtoobig=$(shell oldrp="$(rppart)" ; oldrplen=`expr $${\#oldrp} - 6` ; if [ $$oldrplen -lt $(newrplen) ] ; then echo true ; else echo false ; fi)
+endif
 
 install: all $(if $(BUILD_DOCS),install-doc) install-datadir install-localstatedir
+ifeq ($(newtoobig), false)
 ifneq ($(TOOLS),)
 	$(call install-prog,$(subst qemu-ga,qemu-ga$(EXESUF),$(TOOLS)),$(DESTDIR)$(bindir))
 endif
@@ -629,6 +650,9 @@ endif
 	for d in $(TARGET_DIRS); do \
 	$(MAKE) $(SUBDIR_MAKEFLAGS) TARGET_DIR=$$d/ -C $$d $@ || exit 1 ; \
         done
+else
+	$(error new RPATH too long - cannot adjust .so files for installation)
+endif
 
 # various test targets
 test speed: all

@@ -8532,6 +8532,7 @@ generate_debug:
 
         // PANDA: ask if anyone wants execution notification
         if (unlikely(panda_callbacks_insn_translate(ENV_GET_CPU(env), pc_ptr))) {
+            gen_update_cc_op(dc);
             gen_helper_panda_insn_exec(tcg_const_tl(pc_ptr));
         }
 
