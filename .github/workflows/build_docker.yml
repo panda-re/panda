@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    if: github.actor == 'repo-owner'
+    if: github.repository  == 'panda-re/panda'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
