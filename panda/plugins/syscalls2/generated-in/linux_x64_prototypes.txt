@@ -164,7 +164,7 @@
 169 long sys_reboot(int magic1, int magic2, unsigned int cmd, void __user *arg);
 170 long sys_sethostname(char __user *name, int len);
 171 long sys_setdomainname(char __user *name, int len);
-173 long sys_ioperm(unsigned long from, unsigned long num, int on);
+173 long sys_ioperm(unsigned long, unsigned long, int);
 175 long sys_init_module(void __user *umod, unsigned long len, const char __user *uargs);
 176 long sys_delete_module(const char __user *name_user, unsigned int flags);
 179 long sys_quotactl(unsigned int cmd, const char __user *special, qid_t id, void __user *addr);

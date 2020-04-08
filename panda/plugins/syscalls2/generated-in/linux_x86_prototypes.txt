@@ -31,7 +31,7 @@
 33 long sys_access(const char __user *filename, int mode);
 34 long sys_nice(int increment);
 36 long sys_sync(void);
-37 long sys_kill(int pid, int sig);
+37 long sys_kill(pid_t pid, int sig);
 38 long sys_rename(const char __user *oldname, const char __user *newname);
 39 long sys_mkdir(const char __user *pathname, umode_t mode);
 40 long sys_rmdir(const char __user *pathname);
@@ -161,7 +161,7 @@
 175 long sys_rt_sigprocmask(int how, sigset_t __user *set, sigset_t __user *oset, size_t sigsetsize);
 176 long sys_rt_sigpending(sigset_t __user *set, size_t sigsetsize);
 177 long sys_rt_sigtimedwait(const sigset_t __user *uthese, siginfo_t __user *uinfo, const struct timespec __user *uts, size_t sigsetsize);
-178 long sys_rt_sigqueueinfo(int pid, int sig, siginfo_t __user *uinfo);
+178 long sys_rt_sigqueueinfo(pid_t pid, int sig, siginfo_t __user *uinfo);
 179 long sys_rt_sigsuspend(sigset_t __user *unewset, size_t sigsetsize);
 180 long sys_pread64(unsigned int fd, char __user *buf, size_t count, loff_t pos);
 181 long sys_pwrite64(unsigned int fd, const char __user *buf, size_t count, loff_t pos);
@@ -217,7 +217,7 @@
 235 long sys_removexattr(const char __user *path, const char __user *name);
 236 long sys_lremovexattr(const char __user *path, const char __user *name);
 237 long sys_fremovexattr(int fd, const char __user *name);
-238 long sys_tkill(int pid, int sig);
+238 long sys_tkill(pid_t pid, int sig);
 239 long sys_sendfile64(int out_fd, int in_fd, loff_t __user *offset, size_t count);
 240 long sys_futex(u32 __user *uaddr, int op, u32 val, struct timespec __user *utime, u32 __user *uaddr2, u32 val3);
 241 long sys_sched_setaffinity(pid_t pid, unsigned int len, unsigned long __user *user_mask_ptr);
@@ -248,7 +248,7 @@
 267 long sys_clock_nanosleep(clockid_t which_clock, int flags, const struct timespec __user *rqtp, struct timespec __user *rmtp);
 268 long sys_statfs64(const char __user *path, size_t sz, struct statfs64 __user *buf);
 269 long sys_fstatfs64(unsigned int fd, size_t sz, struct statfs64 __user *buf);
-270 long sys_tgkill(int tgid, int pid, int sig);
+270 long sys_tgkill(pid_t tgid, pid_t pid, int sig);
 271 long sys_utimes(char __user *filename, struct timeval __user *utimes);
 272 long sys_fadvise64_64(int fd, loff_t offset, loff_t len, int advice);
 274 long sys_mbind(unsigned long start, unsigned long len, unsigned long mode, const unsigned long __user *nmask, unsigned long maxnode, unsigned flags);
@@ -353,3 +353,11 @@
 374 long sys_userfaultfd(int flags);
 375 long sys_membarrier(int cmd, int flags);
 376 long sys_mlock2(unsigned long start, size_t len, int flags);
+377 long sys_copy_file_range(int fd_in, loff_t __user *off_in, int fd_out, loff_t __user *off_out, size_t len, unsigned int flags);
+378 long sys_preadv2(unsigned long fd, const struct iovec __user *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h, rwf_t flags);
+379 long sys_pwritev2(unsigned long fd, const struct iovec __user *vec, unsigned long vlen, unsigned long pos_l, unsigned long pos_h, rwf_t flags);
+380 long sys_pkey_mprotect(unsigned long start, size_t len, unsigned long prot, int pkey);
+381 long sys_pkey_alloc(unsigned long flags, unsigned long init_val);
+382 long sys_pkey_free(int pkey);
+383 long sys_statx(int dfd, const char __user *path, unsigned flags, unsigned mask, struct statx __user *buffer);
+384 long sys_arch_prctl(int, unsigned long);
