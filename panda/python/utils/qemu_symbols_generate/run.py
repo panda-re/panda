@@ -1,8 +1,17 @@
 import pdb
 
+# add manually. 1st field is the name for CPU*ARCH*State. 2nd is bits. 3rd is path to libpanda*.so
+archs = [("X86", 32,"/i386-softmmu/libpanda-i386.so"),
+		("X86", 64, "/x86_64-softmmu/libpanda-x86_64.so"),
+		("ARM", 32, "/arm-softmmu/libpanda-arm.so"),
+		("PPC", 32, "/ppc-softmmu/libpanda-ppc.so")
+		]
+	#		("PPC", 64, "/ppc64-softmmu/libpanda-ppc64.so")
+panda_base = "/build"
+
 # REPLACE ME. do not use the ubuntu version from dwarves. build it.
 # https://kernel.googlesource.com/pub/scm/devel/pahole/pahole
-pahole_path = "~/workspace/pahole/build/pahole" 
+pahole_path = "/pahole/build/pahole" 
 
 '''
 This function removes anything that we can't parse in cffi later.
@@ -10,7 +19,7 @@ In particular, it removes class item identifiers
 '''
 def line_passes(line):
 	# error messages and class identifiers
-	banned = ["die__", "public:", "private:", "protected:", "DW_AT_<"]
+	banned = ["die__", "public:", "private:", "protected:","DW_AT_<"]
 	for i in banned:
 		if i in line:
 			return False
@@ -260,7 +269,6 @@ class HeaderFile(object):
 				missing = q.split('"')[1]
 			except:
 				pdb.set_trace()
-			print(missing)
 			missing_type = self.get_name(missing.split())
 			if missing_type == "void":
 				pdb.set_trace()
@@ -327,28 +335,17 @@ def generate_config(arch, bits, pahole_path, elf_file):
 			if missing not in header.structs: # truly missing
 				print("adding "+missing)
 				header.add_struct(missing)
-			print("adding dependency")
+#			print("adding dependency")
 			header.lines[line].add_dependency(header.structs[missing])
 		else:
 			break
 	
-	OUT_FILE_NAME = "../../core/panda/include/panda_datatypes_"+arch+"_"+str(bits)+".h"
+	OUT_FILE_NAME = "/output/panda_datatypes_"+arch+"_"+str(bits)+".h"
 	with open(OUT_FILE_NAME,"w") as f:
 		f.write(header.render())
 	print("Finished. Content written to "+OUT_FILE_NAME)
 
 comptries = 0
-panda_base = "../../../../build"
-
-
-# add manually. 1st field is the name for CPU*ARCH*State. 2nd is bits. 3rd is path to libpanda*.so
-archs = [#("X86", 32,"/i386-softmmu/libpanda-i386.so"),
-#		("X86", 64, "/x86_64-softmmu/libpanda-x86_64.so"),
-#		("ARM", 32, "/arm-softmmu/libpanda-arm.so"),
-#		("PPC", 32, "/ppc-softmmu/libpanda-ppc.so"),
-#		("PPC", 64, "/ppc64-softmmu/libpanda-ppc64.so")
-		("MIPS", 32, "/mips-softmmu/libpanda-mips.so")
-		]
 
 for arch in archs:
 	generate_config(arch=arch[0], bits=arch[1], pahole_path=pahole_path, elf_file=panda_base+arch[2])
