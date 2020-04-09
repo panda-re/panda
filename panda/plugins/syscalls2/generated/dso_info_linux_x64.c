@@ -5,7 +5,7 @@
 #define MAX_SYSCALL_GENERIC_NO 332
 #define MAX_SYSCALL_ARGS 6
 
-#if __GNUC__ < 5
+#if !defined(__clang__) && __GNUC__ < 5
 #if 0
 	The system call arguments array has variable size.
 	This prevents initializing the whole syscall_info statically.

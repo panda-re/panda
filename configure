@@ -230,6 +230,27 @@ have_backend () {
     echo "$trace_backends" | grep "$1" >/dev/null
 }
 
+# disable specific panda plugins
+panda_disable_plugins() {
+  local plugin_list="$1"
+  local config_file="$2"
+  local re_fmt='s/^ *(%s) ?.*/###&/'
+  local plugin_list_safe=$(echo "$plugin_list" | sed 's/[^a-z0-9_,]//gI; s/,/|/g')
+  if test -f "$config_file"; then
+    sed -i -E -e "$(printf "$re_fmt" "$plugin_list_safe")" "$config_file"
+    printf "PANDA plugins %s disabled in %s.\n" "$plugin_list" "$config_file" >> config.log 2>&1
+  fi
+}
+
+# enable all panda plugins disabled by panda_disable_plugins() (marked with '###')
+panda_reenable_plugins() {
+  local config_file="$1"
+  if test -f "$config_file"; then
+    sed -i -e 's/^###//' "$config_file"
+    printf "Disabled PANDA plugins re-enabled in %s.\n" "$config_file" >> config.log 2>&1
+  fi
+}
+
 # default parameters
 source_path=$(dirname "$0")
 cpu=""
@@ -249,9 +270,11 @@ cc_i386=i386-pc-linux-gnu-gcc
 libs_qga=""
 debug_info="yes"
 stack_protector=""
+git_submodules=""
 protobuf="yes"
 llvm="no"
 llvmver="3.3"
+reenable_plugins="no"
 
 # Don't accept a target_list environment variable.
 unset target_list
@@ -1272,6 +1295,10 @@ for opt do
   --enable-pyperipheral3) pyperipheral3="yes"
       pyperipheral2="no"
   ;;
+  --disable-plugins=*) disable_plugins="$optarg"
+  ;;
+  --re-enable-plugins=*) reenable_plugins="yes"
+  ;;
   *)
       echo "ERROR: unknown option $opt"
       echo "Try '$0 --help' for more information"
@@ -1448,6 +1475,9 @@ PANDA related options:
   --enable-llvm                enable LLVM support (for all targets)
   --with-llvm=PATH             LLVM path (PATH/bin/llvm-config must exist)
   --extra-plugins-path=PATH    also compile plugins at this PATH
+  --disable-plugins=p1,...,pn  list of PANDA plugins to disable (alters panda.config)
+  --re-enable-plugins          re-enable any previously disabled plugins
+                               (applied before --disable-plugins)
 
 Optional features, enabled with --enable-FEATURE and
 disabled with --disable-FEATURE, default is enabled if available:
@@ -3610,27 +3640,31 @@ EOF
   if compile_prog "" "$fdt_libs" ; then
     # system DTC is good - use it
     fdt=yes
-  elif test -d ${source_path}/dtc/libfdt ; then
-    # have submodule DTC - use it
-    fdt=yes
-    dtc_internal="yes"
-    mkdir -p dtc
-    if [ "$pwd_is_source_path" != "y" ] ; then
-       symlink "$source_path/dtc/Makefile" "dtc/Makefile"
-       symlink "$source_path/dtc/scripts" "dtc/scripts"
-    fi
-    fdt_cflags="-I\$(SRC_PATH)/dtc/libfdt"
-    fdt_libs="-L\$(BUILD_DIR)/dtc/libfdt $fdt_libs"
-  elif test "$fdt" = "yes" ; then
-    # have neither and want - prompt for system/submodule install
-    error_exit "DTC (libfdt) version >= 1.4.2 not present. Your options:" \
-        "  (1) Preferred: Install the DTC (libfdt) devel package" \
-        "  (2) Fetch the DTC submodule, using:" \
-        "      git submodule update --init dtc"
   else
-    # don't have and don't want
-    fdt_libs=
-    fdt=no
+      # have GIT checkout, so activate dtc submodule
+      if test -e "${source_path}/.git" ; then
+          git_submodules="${git_submodules} dtc"
+      fi
+      if test -d "${source_path}/dtc/libfdt" || test -e "${source_path}/.git" ; then
+          fdt=yes
+          dtc_internal="yes"
+          mkdir -p dtc
+          if [ "$pwd_is_source_path" != "y" ] ; then
+              symlink "$source_path/dtc/Makefile" "dtc/Makefile"
+              symlink "$source_path/dtc/scripts" "dtc/scripts"
+          fi
+          fdt_cflags="-I\$(SRC_PATH)/dtc/libfdt"
+          fdt_ldflags="-L\$(BUILD_DIR)/dtc/libfdt"
+          fdt_libs="$fdt_libs"
+      elif test "$fdt" = "yes" ; then
+          # Not a git build & no libfdt found, prompt for system install
+          error_exit "DTC (libfdt) version >= 1.4.2 not present." \
+                     "Please install the DTC (libfdt) devel package"
+      else
+          # don't have and don't want
+          fdt_libs=
+          fdt=no
+      fi
   fi
 fi
 
@@ -4450,6 +4484,9 @@ if test "$capstone" != no; then
   if $pkg_config capstone; then
     capstone=yes
     QEMU_CFLAGS="$QEMU_CFLAGS $($pkg_config --cflags capstone)"
+    if test $targetos = "Darwin"; then
+      QEMU_CFLAGS="$QEMU_CFLAGS $($pkg_config --cflags capstone)/capstone"
+    fi
     LIBS="$($pkg_config --libs capstone) $LIBS"
   else
     if test "$capstone" = yes; then
@@ -5281,6 +5318,7 @@ echo_version() {
 
 # prepend pixman and ftd flags after all config tests are done
 QEMU_CFLAGS="$pixman_cflags $fdt_cflags $QEMU_CFLAGS"
+QEMU_LDFLAGS="$fdt_ldflags $QEMU_LDFLAGS"
 libs_softmmu="$pixman_libs $libs_softmmu"
 
 echo "Install prefix    $prefix"
@@ -5300,7 +5338,7 @@ echo "local state directory   queried at runtime"
 echo "Windows SDK       $win_sdk"
 fi
 echo "Source path       $source_path"
-echo "Extra plugins path $extra_plugins_path"
+echo "GIT submodules    $git_submodules"
 echo "C compiler        $cc"
 echo "Host C compiler   $host_cc"
 echo "C++ compiler      $cxx"
@@ -5309,6 +5347,7 @@ echo "ARFLAGS           $ARFLAGS"
 echo "CFLAGS            $CFLAGS"
 echo "QEMU_CFLAGS       $QEMU_CFLAGS"
 echo "LDFLAGS           $LDFLAGS"
+echo "QEMU_LDFLAGS      $QEMU_LDFLAGS"
 echo "make              $make"
 echo "install           $install"
 echo "python            $python"
@@ -5375,7 +5414,6 @@ echo "Install blobs     $blobs"
 echo "KVM support       $kvm"
 echo "HAX support       $hax"
 echo "RDMA support      $rdma"
-echo "LLVM support      $llvm"
 echo "TCG interpreter   $tcg_interpreter"
 echo "fdt support       $fdt"
 echo "preadv support    $preadv"
@@ -5427,6 +5465,8 @@ echo "replication support $replication"
 echo "capstone          $capstone"
 echo "LLVM support      $llvm"
 echo "extra plugins path $extra_plugins_path"
+echo "disabled plugins $disable_plugins"
+echo "re-enable plugins $reenable_plugins"
 
 if test "$sdl_too_old" = "yes"; then
 echo "-> Your SDL version is too old - please upgrade to have SDL support"
@@ -5484,6 +5524,7 @@ fi
 echo "qemu_helperdir=$libexecdir" >> $config_host_mak
 echo "qemu_localedir=$qemu_localedir" >> $config_host_mak
 echo "libs_softmmu=$libs_softmmu" >> $config_host_mak
+echo "GIT_SUBMODULES=$git_submodules" >> $config_host_mak
 
 echo "ARCH=$ARCH" >> $config_host_mak
 
@@ -5601,6 +5642,22 @@ echo "PKGVERSION=$pkgversion" >>$config_host_mak
 echo "SRC_PATH=$source_path" >> $config_host_mak
 if test ! -z "$extra_plugins_path"; then
   echo "EXTRA_PLUGINS_PATH=$extra_plugins_path" >> $config_host_mak
+fi
+if test "$reenable_plugins" = "yes"; then
+  panda_reenable_plugins "$source_path"/panda/plugins/config.panda
+  panda_reenable_plugins "$source_path"/panda/plugins/config.llvm.panda
+  if test ! -z "$extra_plugins_path"; then
+    panda_reenable_plugins "$extra_plugins_path"/panda/plugins/config.panda
+    panda_reenable_plugins "$extra_plugins_path"/panda/plugins/config.llvm.panda
+  fi
+fi
+if test ! -z "$disable_plugins"; then
+  panda_disable_plugins "$disable_plugins" "$source_path"/panda/plugins/config.panda
+  panda_disable_plugins "$disable_plugins" "$source_path"/panda/plugins/config.llvm.panda
+  if test ! -z "$extra_plugins_path"; then
+    panda_disable_plugins "$disable_plugins" "$extra_plugins_path"/panda/plugins/config.panda
+    panda_disable_plugins "$disable_plugins" "$extra_plugins_path"/panda/plugins/config.llvm.panda
+  fi
 fi
 echo "TARGET_DIRS=$target_list" >> $config_host_mak
 if [ "$docs" = "yes" ] ; then
@@ -6063,12 +6120,12 @@ fi
 
 if test "$pyperipheral2" = "yes" ; then
   QEMU_INCLUDES="`pkg-config --cflags-only-I python2` $QEMU_INCLUDES"
-  LIBS="`pkg-config --libs-only-l python2` $LIBS"
+  LIBS="`pkg-config --libs python2` $LIBS"
 fi
 
 if test "$pyperipheral3" = "yes" ; then
   QEMU_INCLUDES="`pkg-config --cflags-only-I python3` $QEMU_INCLUDES"
-  LIBS="`pkg-config --libs-only-l python3` $LIBS"
+  LIBS="`pkg-config --libs python3` $LIBS"
 fi
 
 

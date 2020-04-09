@@ -220,6 +220,14 @@ static inline void g_hash_table_add(GHashTable *hash_table, gpointer key)
 {
     g_hash_table_replace(hash_table, key, key);
 }
+
+static inline gboolean g_hash_table_contains(GHashTable *hash_table,
+                                             gpointer key)
+{
+    return g_hash_table_lookup_extended(hash_table, key, NULL, NULL);
+}
+#define G_SOURCE_CONTINUE TRUE
+#define G_SOURCE_REMOVE FALSE
 #endif
 
 #ifndef g_assert_true
@@ -351,5 +359,12 @@ g_test_add_data_func_full(const char *path,
 }
 #endif
 
+/* Small compat shim from glib 2.32 */
+#ifndef G_SOURCE_CONTINUE
+#define G_SOURCE_CONTINUE TRUE
+#endif
+#ifndef G_SOURCE_REMOVE
+#define G_SOURCE_REMOVE FALSE
+#endif
 
 #endif
