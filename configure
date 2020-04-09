@@ -6071,12 +6071,12 @@ fi
 
 if test "$pyperipheral2" = "yes" ; then
   QEMU_INCLUDES="`pkg-config --cflags-only-I python2` $QEMU_INCLUDES"
-  LIBS="`pkg-config --libs-only-l python2` $LIBS"
+  LIBS="`pkg-config --libs python2` $LIBS"
 fi
 
 if test "$pyperipheral3" = "yes" ; then
   QEMU_INCLUDES="`pkg-config --cflags-only-I python3` $QEMU_INCLUDES"
-  LIBS="`pkg-config --libs-only-l python3` $LIBS"
+  LIBS="`pkg-config --libs python3` $LIBS"
 fi
 
 
