@@ -5,6 +5,7 @@ coverage
 libfi
 loaded
 osi
+osi_pse
 osi_test
 osi_linux
 wintrospection
