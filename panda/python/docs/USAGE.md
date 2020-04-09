@@ -4,8 +4,8 @@ to analyze behavior of a running system, record a system and analyze replays, or
 nearly anything you can do using PANDA's C/C++ APIs.
 
 ## Installation
-1) Follow instructions to build PANDA or run `scripts/panda/install_ubuntu.sh`. 
-2) cd into `panda/pypanda/` and run `python3 setup.py install` (possibly in a virtual environment). This will install the `panda` python package to your system.
+1) Follow instructions to build PANDA or run `scripts/panda/install_ubuntu.sh`.
+2) cd into `panda/python/core` and run `python3 setup.py install` (possibly in a virtual environment). This will install the `panda` python package to your system.
 
 ## Example program
 This program counts the number of basic blocks executed while running `uname -a` inside a 32-bit guest.
@@ -21,7 +21,6 @@ blocks = 0
 def before_block_execute(cpustate, transblock):
     global blocks
     blocks += 1
-    return 0
 
 # This 'blocking' function runs in a seperate thread from the main CPU loop
 # which allows for it to wait for the guest to complete commands
@@ -56,7 +55,6 @@ For example: `panda = Panda(generic='i386')`
 def my_before_block_fn(cpustate, translation_block):
   pc = panda.current_pc(env)
   print("About to run the block at 0x{:x}".format(pc))
-	return 0
 ```
 
 The panda object creates decorators named `cb_[CALLBACK_NAME]` for each panda callback.

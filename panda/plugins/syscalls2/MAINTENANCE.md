@@ -28,16 +28,16 @@ It is recommended to use the Ubuntu sources, as it includes a number of addition
 Ubuntu sources have the peculiarity that some of the headers required by the extraction script have to be generated. Following are the rough steps to prepare an Ubuntu source tree.
 
 ```sh
-git clone git://kernel.ubuntu.com/ubuntu/ubuntu-xenial.git
-cd ubuntu-xenial
-git checkout Ubuntu-4.4.0-130.156
+git clone git://kernel.ubuntu.com/ubuntu/ubuntu-bionic.git
+cd ubuntu-bionic
+git checkout Ubuntu-4.15.0-97.98
 cat ./debian.master/config/{config.common.ubuntu,i386/config.common.i386,i386/config.flavour.generic} > .config
 make
 ```
 
 Compilation may fail after this but it doesn't matter, as long as the required `unistd` header files were generated.
 
-Then, modify `make_all_prototypes.sh` to add a call to `prototype_parser.py` for your new target.
+Then, modify either `make_all_prototypes.sh` or `prototype_parser_config.py` to point to your source tree.
 
 Execute `make_all_prototypes.sh` to create a mytarget_prototypes.txt file in the `generated-in` folder.  If only a few prototypes need to be (re)generated, you can also call `prototype_parser.py` individually for each one. 
 

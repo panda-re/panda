@@ -1,5 +1,6 @@
-# necessary for QEMU headers to compile in C++ code.
-QEMU_CXXFLAGS += -Wno-pointer-arith
+# C++ flags only for PANDA sources.
+QEMU_CFLAGS += -DNEED_CPU_H
+QEMU_CXXFLAGS += -Wno-pointer-arith -DNEED_CPU_H
 
 # determine list of plugins
 # remove spaces from lines. skip lines starting with a #. concatenate the rest into a space-delimited list

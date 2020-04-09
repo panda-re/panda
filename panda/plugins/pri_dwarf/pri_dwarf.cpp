@@ -1811,6 +1811,7 @@ bool ensure_main_exec_initialized(CPUState *cpu) {
     OsiProc *p = get_current_process(cpu);
     GArray *libs = NULL;
     libs = get_libraries(cpu, p);
+    free_osiproc(p);
     if (!libs)
         return false;
 

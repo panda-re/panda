@@ -2264,6 +2264,14 @@ namespace syscalls2 {
 			const int sys_userfaultfd = 374;
 			const int sys_membarrier = 375;
 			const int sys_mlock2 = 376;
+			const int sys_copy_file_range = 377;
+			const int sys_preadv2 = 378;
+			const int sys_pwritev2 = 379;
+			const int sys_pkey_mprotect = 380;
+			const int sys_pkey_alloc = 381;
+			const int sys_pkey_free = 382;
+			const int sys_statx = 383;
+			const int sys_arch_prctl = 384;
 		}
 	}
 }
