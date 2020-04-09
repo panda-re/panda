@@ -4787,7 +4787,7 @@ static inline void gen_mfhc0_load64(TCGv arg, target_ulong off, int shift)
 
 static inline void gen_mfc0_load32 (TCGv arg, target_ulong off)
 { 
-#ifndef CONFIG_SOFTMMU
+#ifdef CONFIG_SOFTMMU
     CPUState* cpustate = cpus.tqh_first;
     CPUMIPSState* cpu = cpustate->env_ptr;
     uint32_t* regref = (uint32_t*)cpu+off;

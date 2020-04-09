@@ -15,8 +15,12 @@ if not isfile(vmlinux_out):
 
 panda = Panda(generic="mips",extra_args="-monitor telnet:127.0.0.1:4444,server,nowait")
 
-replay = True
+replay = False
 if replay:
 	panda.run_replay("sample")
 else:
+	@blocking
+	def q():
+		panda.revert_sync("root")
+#	panda.queue_async(q)
 	panda.run()
