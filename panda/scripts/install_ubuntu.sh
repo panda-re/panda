@@ -11,6 +11,7 @@ UBUNTU_FALLBACK="xenial"
 # system information
 vendor=$(lsb_release --id | awk -F':[\t ]+' '{print $2}')
 codename=$(lsb_release --codename | awk -F':[\t ]+' '{print $2}')
+version=$(lsb_release -d | awk '{print $3}'| awk -F'.' '{print $1}')
 
 progress() {
   echo
@@ -46,10 +47,16 @@ sudo apt-get update || true
 sudo apt-get -y build-dep qemu
 
 progress "Installing PANDA dependencies..."
-sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
-  libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
-  libwiretap-dev libwireshark-dev flex bison python3-pip python3
-
+if [ "$version" -ge "19" ]; then
+  progress "Ubuntu 19 or higher"
+  sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
+    libprotobuf-c-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
+    libwiretap-dev libwireshark-dev flex bison python3-pip python3
+else
+  sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
+    libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
+    libwiretap-dev libwireshark-dev flex bison python3-pip python3
+fi
 pushd /tmp
 
 if [ "$vendor" = "Ubuntu" ]; then
@@ -153,6 +160,13 @@ fi
 progress "Building PANDA..."
 mkdir build
 cd build
+if [ "$version" -ge "19" ]; then
+  if [ -z "$@" ]; then
+    ../build.sh "x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu --disable-werror" 
+  else
+    ../build.sh "$@" 
+  fi
+else
 ../build.sh "$@"
-
+fi
 progress "PANDA is built and ready to use in panda/build/[arch]-softmmu/panda-system-[arch]."
