@@ -23,6 +23,5 @@ def virt_mem_after_read(cpustate, pc, addr, size, buf):
 			progress("Read buf: %s, size: %x, at pc: %x %s" %(buf_addr[2:], size, addr, b))
 	else:
 		progress("current is NULL")
-	return 0
 
 panda.run_replay(argv[2])
