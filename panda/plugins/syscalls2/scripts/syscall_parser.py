@@ -118,8 +118,8 @@ class Argument(object):
             'PULARGE_INTEGER', 'PULONG', 'PULONG_PTR',
             'PUNICODE_STRING', 'PVOID', 'PWSTR'
         ],
-        's32': ['int', 'long', '__s32', 'LONG'],
-        'u16': ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'pid_t', 'USHORT'],
+        's32': ['int', 'long', '__s32', 'pid_t', 'LONG'],
+        'u16': ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'USHORT'],
         'ptr': ['cap_user_data_t', 'cap_user_header_t', '__sighandler_t', '...'],
     }
     # the lists in types64 are appropriate for 64-bit linux (64-bit Windows will
@@ -134,8 +134,8 @@ class Argument(object):
             'timer_t', 'key_t', 'key_serial_t', 'mqd_t', 'clockid_t',
             'qid_t', 'old_sigset_t', 'union semun'
         ],
-        's32': ['int', '__s32'],
-        'u16': ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'pid_t'],
+        's32': ['int', '__s32', 'pid_t'],
+        'u16': ['old_uid_t', 'uid_t', 'mode_t', 'gid_t'],
         'ptr': ['cap_user_data_t', 'cap_user_header_t', '__sighandler_t', '...'],
     }
     

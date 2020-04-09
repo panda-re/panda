@@ -46,7 +46,7 @@ import os
 CONFIG_LINUX = {
     'linux:x64:generic': {
         'bits': 64,
-        'src': os.path.expanduser('~/src/linux-4.14.55'),
+        'src': os.path.expanduser('~/git/ubuntu-bionic'),
         'map_function_signature': {
             'parser': 'parse_signature_files',
             'locations': {
@@ -62,7 +62,7 @@ CONFIG_LINUX = {
     },
     'linux:x86:ubuntu': {
         'bits': 32,
-        'src': os.path.expanduser('~/git/ubuntu-xenial'),
+        'src': os.path.expanduser('~/git/ubuntu-bionic'),
         'map_function_signature': {
             'parser': 'parse_signature_files',
             'locations': {
@@ -78,7 +78,7 @@ CONFIG_LINUX = {
     },
     'linux:arm:ubuntu': {
         'bits': 32,
-        'src': os.path.expanduser('~/git/ubuntu-xenial'),
+        'src': os.path.expanduser('~/git/ubuntu-bionic'),
         'extrasigs': 'linux_arm_extrasigs.json',
         'map_function_signature': {
             'parser': 'parse_signature_files',
