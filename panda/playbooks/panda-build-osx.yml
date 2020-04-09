@@ -19,16 +19,20 @@
     # configuration options
     panda_targets: ["x86_64-softmmu", "i386-softmmu", "arm-softmmu", "ppc-softmmu"]
     panda_extra_pkgconfig:
+      - "$(brew --repo)/lib/pkgconfig"
+        # ncurses not symlinked in homebrew dir
       - "$(brew --prefix ncurses)/lib/pkgconfig"
     panda_extra_cflags:
       - "-I$(xcrun --show-sdk-path)/usr/include"
-      - "$(pkg-config --cflags libjpeg)"
+        # libelf not properly probed by the configure script
       - "$(pkg-config --cflags libelf)"
+        # libdwarf does not include a pkg-config file
       - "-I$(brew --prefix libdwarf)/include"
       - "-DNCURSES_WIDECHAR=1"
     panda_extra_ldflags:
-      - "$(pkg-config --libs-only-L libjpeg)"
+        # libelf not properly probed by the configure script
       - "$(pkg-config --libs-only-L libelf)"
+        # libdwarf does not include a pkg-config file
       - "-L$(brew --prefix libdwarf)/lib"
     panda_disable_plugins: ["network"]
     panda_config_args:
