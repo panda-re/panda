@@ -598,9 +598,9 @@ void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t *buf, int si
 }
 
 void rr_record_hd_transfer(RR_callsite_id call_site,
-				  Hd_transfer_type transfer_type,
-				  uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) {
-	rr_record_skipped_call((RR_skipped_call_args) {
+                  Hd_transfer_type transfer_type,
+                  uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) {
+    rr_record_skipped_call((RR_skipped_call_args) {
         .kind = RR_CALL_HD_TRANSFER,
         .variant.hd_transfer_args = {
             .type = transfer_type,
@@ -1110,7 +1110,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                             args.variant.mem_region_change_args.size);
                     MemoryRegion *parent = rr_memory_region_find_parent(get_system_memory(),
                             mrs.mr);
-		    if (parent)
+            if (parent)
                         memory_region_del_subregion(parent, mrs.mr);
                 }
             } break;
@@ -1504,8 +1504,8 @@ void rr_do_end_record(void)
     g_free(rr_control.name);
     rr_control.name = NULL;
     if (rr_control.snapshot != NULL) {
-	g_free(rr_control.snapshot);
-	rr_control.snapshot = NULL;
+        g_free(rr_control.snapshot);
+        rr_control.snapshot = NULL;
     }
 
     // turn off logging
