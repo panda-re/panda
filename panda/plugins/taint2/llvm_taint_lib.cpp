@@ -636,13 +636,6 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     LLVMContext &ctx = I.getContext();
     if (!dest) dest = &I;
 
-    if ((false == src1->getType()->isIntegerTy()) ||
-        (false == src2->getType()->isIntegerTy())) {
-        printf("Warning: encountered floating point value, not attempting "
-               "propagate taint through mul instruction.\n");
-        return;
-    }
-
     if (isa<Constant>(src1) && isa<Constant>(src2)) {
         return; // do nothing, should not happen in optimized code
     } else if (isa<Constant>(src1)) {
@@ -674,8 +667,34 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     Value *src1slot = constSlot(src1);
     Value *src2slot = constSlot(src2);
     Value *dslot = constSlot(dest);
-    Value *arg1 = b.CreateSExtOrBitCast(src1, Type::getIntNTy(ctx, 128));
-    Value *arg2 = b.CreateSExtOrBitCast(src2, Type::getIntNTy(ctx, 128));
+    Value *arg1 = NULL;
+    // N-bit float -> bit cast 64-bit integer -> Sign Extend to 128-bit
+    if (src1->getType()->isFloatingPointTy()) {
+        // if we've encountered a float, we need to convert it to the 128-bit
+        // representation.
+        arg1 = b.CreateSExtOrBitCast(
+            b.CreateSExtOrBitCast(
+                src1, Type::getIntNTy(
+                          ctx, src1->getType()->getPrimitiveSizeInBits())),
+            Type::getIntNTy(ctx, 128));
+    } else {
+        arg1 = b.CreateSExtOrBitCast(src1, Type::getIntNTy(ctx, 128));
+    }
+
+    Value *arg2 = NULL;
+    // N-bit float -> bit cast 64-bit integer -> Sign Extend to 128-bit
+    if (src2->getType()->isFloatingPointTy()) {
+        // if we've encountered a float, we need to convert it to the 128-bit
+        // representation.
+        arg2 = b.CreateSExtOrBitCast(
+            b.CreateSExtOrBitCast(
+                src2, Type::getIntNTy(
+                          ctx, src2->getType()->getPrimitiveSizeInBits())),
+            Type::getIntNTy(ctx, 128));
+    } else {
+        arg2 = b.CreateSExtOrBitCast(src2, Type::getIntNTy(ctx, 128));
+    }
+
     vector<Value*> args{
         llvConst, dslot, dest_size,
         src1slot, src2slot, src_size,
