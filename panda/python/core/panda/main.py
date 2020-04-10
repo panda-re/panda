@@ -203,9 +203,12 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         elif self.arch == "ppc":
             bits = 32
             endianness = "big"
-        elif self.arch == "mips": # XXX add support for other MIPS
+        elif self.arch == "mips":
             bits = 32
             endianness = "big"
+        elif self.arch == "mipsel":
+            bits = 32
+            endianness = "little"
 
         assert (bits is not None), "For arch %s: I need logic to figure out num bits" % self.arch
         assert (endianness is not None), "For arch %s: I need logic to figure out endianness" % self.arch
