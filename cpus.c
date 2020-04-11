@@ -1342,13 +1342,15 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
     if(afl_wants_cpu_to_stop) {
         /* tell iothread to run AFL forkserver */
         afl_wants_cpu_to_stop = 0;
-        if(write(afl_qemuloop_pipe[1], "FORK", 4) != 4)
-            perror("write afl_qemuloop_pip");
-        afl_qemuloop_pipe[1] = -1;
 
         restart_cpu = first_cpu;
         first_cpu = NULL;
         cpu_disable_ticks();
+
+        if(write(afl_qemuloop_pipe[1], "FORK", 4) != 4)
+            perror("write afl_qemuloop_pip");
+        afl_qemuloop_pipe[1] = -1;
+
 
         /* let iothread through once ... */
         //qemu_tcg_wait_io_event(QTAILQ_FIRST(&cpus));
@@ -1662,16 +1664,18 @@ gotPipeNotification(void *ctx)
         printf("error reading afl/qemu pipe!\n");
         exit(1);
     }
-
     AFL_DPRINTF("start up afl forkserver!\n");
-    afl_setup();
     env = NULL; //XXX for now.. if we want to share JIT to the parent we will need to pass in a real env here
     //env = restart_cpu->env_ptr;
-    afl_forkserver(env);
+
+    tcg_cpu_thread = NULL;
+    qemu_mutex_unlock_iothread();
+
+    afl_setup();
+    afl_forkserver(restart_cpu->env_ptr);
+    first_cpu = restart_cpu;
 
     /* we're now in the child! */
-    tcg_cpu_thread = NULL;
-    first_cpu = restart_cpu;
     //if(aflEnableTicks) // re-enable ticks only if asked to
     cpu_enable_ticks(); // Shannon needs timer to swtch tasks
     qemu_tcg_init_vcpu(restart_cpu);
