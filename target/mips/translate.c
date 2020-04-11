@@ -4798,6 +4798,7 @@ static inline void gen_mfc0_load32 (TCGv arg, target_ulong off)
         /*replay=*/rr_input_4(&reg),
         /*location=*/RR_CALLSITE_READ_4);
     TCGv_i32 t0 = tcg_temp_new_internal_i32(reg);
+    tcg_gen_ld_i32(t0, cpu_env, off);
     tcg_gen_ext_i32_tl(arg, t0);
     tcg_temp_free_i32(t0);
 #else
