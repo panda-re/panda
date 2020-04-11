@@ -2745,9 +2745,9 @@ target_ulong helper_rdhwr_cc(CPUMIPSState *env)
 #ifdef CONFIG_USER_ONLY
     count = env->CP0_Count;
 #else
-    qemu_mutex_lock_iothread();
+    //qemu_mutex_lock_iothread();
     count = (int32_t)cpu_mips_get_count(env);
-    qemu_mutex_unlock_iothread();
+    //qemu_mutex_unlock_iothread();
 #endif
     return count;
 }
