@@ -1,5 +1,7 @@
+#ifndef __AFL_QEMU_COMMON
+#define __AFL_QEMU_COMMON
 
-#define DEBUG_AFL 1
+#define DEBUG_AFL 0
 
 #define AFL_DPRINTF(fmt, ...) do {                                          \
         if (DEBUG_AFL) {                                           \
@@ -22,3 +24,4 @@ void afl_setup(void);
 void afl_forkserver(CPUArchState*);
 
 
+#endif

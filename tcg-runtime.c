@@ -160,6 +160,8 @@ static void *atomic_mmu_lookup(CPUArchState *env, target_ulong addr,
     return g2h(addr);
 }
 
+
+
 /* Macro to call the above, with local variables from the use context.  */
 #define ATOMIC_MMU_LOOKUP  atomic_mmu_lookup(env, addr, DATA_SIZE, GETPC())
 
@@ -199,3 +201,4 @@ static void *atomic_mmu_lookup(CPUArchState *env, target_ulong addr,
 #endif /* CONFIG_ATOMIC128 */
 
 #endif /* !CONFIG_SOFTMMU */
+

@@ -72,6 +72,7 @@ const char *aflFile = "/tmp/work";
 unsigned long aflPanicAddr = (unsigned long)-1;
 unsigned long aflDmesgAddr = (unsigned long)-1;
 
+__thread target_ulong afl_prev_loc;
 /* Set in the child process in forkserver mode: */
 
 unsigned char afl_fork_child = 0;

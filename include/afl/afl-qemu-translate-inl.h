@@ -27,15 +27,40 @@
    have a look at afl-showmap.c.
 
  */
-
 #include "afl/config.h"
 #include "tcg-op.h"
+#include "afl/afl.h"
 
 /* Declared in afl-qemu-cpu-inl.h */
 extern unsigned char *afl_area_ptr;
 extern unsigned int afl_inst_rms;
 extern target_ulong afl_start_code, afl_end_code;
+extern  __thread target_ulong afl_prev_loc;
 extern int aflStart;
+
+#if (defined(__x86_64__) || defined(__i386__)) && defined(AFL_QEMU_NOT_ZERO)
+#define INC_AFL_AREA(loc)           \
+  asm volatile(                     \
+      "incb (%0, %1, 1)\n"          \
+      "adcb $0, (%0, %1, 1)\n"      \
+      : /* no out */                \
+      : "r"(afl_area_ptr), "r"(loc) \
+      : "memory", "eax")
+#else
+#define INC_AFL_AREA(loc) afl_area_ptr[loc]++
+#endif
+
+void HELPER(afl_maybe_log)(target_ulong cur_loc) {
+
+  register uintptr_t afl_idx = cur_loc ^ afl_prev_loc;
+
+  INC_AFL_AREA(afl_idx);
+
+  afl_prev_loc = cur_loc >> 1;
+
+}
+
+
 
 static inline target_ulong aflHash(target_ulong cur_loc)
 {
@@ -87,30 +112,26 @@ static void afl_gen_trace(target_ulong cur_loc)
 {
 
 
+  if (!aflStart || cur_loc > afl_end_code ||
+      cur_loc < afl_start_code /*|| !afl_area_ptr*/)  // not needed because of
+                                                      // static dummy buffer
+    return;
 
-  static __thread target_ulong prev_loc;
-  TCGv index, count, new_prev_loc;
-  TCGv_ptr prev_loc_ptr, count_ptr;
+  /* Looks like QEMU always maps to fixed locations, so ASLR is not a
+     concern. Phew. But instruction addresses may be aligned. Let's mangle
+     the value to get something quasi-uniform. */
 
-  cur_loc = aflHash(cur_loc);
-  if(!cur_loc) return;
+  cur_loc = (cur_loc >> 4) ^ (cur_loc << 8);
+  cur_loc &= MAP_SIZE - 1;
 
-  /* index = prev_loc ^ cur_loc */
-  prev_loc_ptr = tcg_const_ptr(&prev_loc);
-  index = tcg_temp_new();
-  tcg_gen_ld_tl(index, prev_loc_ptr, 0);
-  tcg_gen_xori_tl(index, index, cur_loc);
+  /* Implement probabilistic instrumentation by looking at scrambled block
+     address. This keeps the instrumented locations stable across runs. */
 
-  /* afl_area_ptr[index]++ */
-  count_ptr = tcg_const_ptr(afl_area_ptr);
-  tcg_gen_add_ptr(count_ptr, count_ptr, TCGV_NAT_TO_PTR(index));
-  count = tcg_temp_new();
-  tcg_gen_ld8u_tl(count, count_ptr, 0);
-  tcg_gen_addi_tl(count, count, 1);
-  tcg_gen_st8_tl(count, count_ptr, 0);
+  if (cur_loc >= afl_inst_rms) return;
 
-  /* prev_loc = cur_loc >> 1 */
-  new_prev_loc = tcg_const_tl(cur_loc >> 1);
-  tcg_gen_st_tl(new_prev_loc, prev_loc_ptr, 0);
+  TCGv cur_loc_v = tcg_const_tl(cur_loc);
+  gen_helper_afl_maybe_log(cur_loc_v);
+  tcg_temp_free(cur_loc_v);
+
 }
 
