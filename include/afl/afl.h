@@ -23,5 +23,9 @@ extern int afl_wants_cpu_to_stop;
 void afl_setup(void);
 void afl_forkserver(CPUArchState*);
 
+void afl_persistent_loop(void);
+extern unsigned char  is_persistent;
+
+
 
 #endif

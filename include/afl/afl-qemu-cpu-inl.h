@@ -54,7 +54,9 @@
 
 /* This is equivalent to afl-as.h: */
 
-unsigned char *afl_area_ptr; /* Exported for afl_gen_trace */
+static unsigned char
+               dummy[MAP_SIZE]; /* costs MAP_SIZE but saves a few instructions */
+unsigned char *afl_area_ptr = dummy;          /* Exported for afl_gen_trace */
 
 
 /* Exported variables populated by the code patched into elfload.c: */
@@ -62,6 +64,13 @@ unsigned char *afl_area_ptr; /* Exported for afl_gen_trace */
 target_ulong afl_entry_point = 0, /* ELF entry point (_start) */
           afl_start_code = 0,  /* .text start pointer      */
           afl_end_code = 0;    /* .text end pointer        */
+
+target_ulong    afl_persistent_addr, afl_persistent_ret_addr;
+unsigned int afl_persistent_cnt;
+unsigned char is_persistent;
+
+static int forkserver_installed = 0;
+
 
 int aflStart = 0;               /* we've started fuzzing */
 int aflEnableTicks = 0;         /* re-enable ticks for each test */
@@ -181,7 +190,14 @@ void afl_forkserver(CPUArchState *env) {
 
   static unsigned char tmp[4];
 
-  if (!afl_area_ptr) return;
+  if (forkserver_installed == 1) return;
+  forkserver_installed = 1;
+
+  // if (!afl_area_ptr) return; // not necessary because of fixed dummy buffer
+
+  pid_t child_pid;
+  int   t_fd[2];
+  u8    child_stopped = 0;
 
   /* Tell the parent that we're alive. If the parent doesn't want
      to talk, assume that we're not running in forkserver mode. */
@@ -190,41 +206,68 @@ void afl_forkserver(CPUArchState *env) {
 
   afl_forksrv_pid = getpid();
 
+  int first_run = 1;
+
   /* All right, let's await orders... */
 
   while (1) {
 
-    pid_t child_pid;
-    int status, t_fd[2];
+    int status;
+    u32 was_killed;
 
     /* Whoops, parent dead? */
 
-    if (uninterrupted_read(FORKSRV_FD, tmp, 4) != 4) exit(2);
+    if (read(FORKSRV_FD, &was_killed, 4) != 4) exit(2);
 
-    /* Establish a channel with child to grab translation commands. We'll 
+    /* If we stopped the child in persistent mode, but there was a race
+       condition and afl-fuzz already issued SIGKILL, write off the old
+       process. */
+
+    if (child_stopped && was_killed) {
+
+      child_stopped = 0;
+      if (waitpid(child_pid, &status, 0) < 0) exit(8);
+
+    }
+
+    if (!child_stopped) {
+
+      /* Establish a channel with child to grab translation commands. We'll
        read from t_fd[0], child will write to TSL_FD. */
 
-    if (pipe(t_fd) || dup2(t_fd[1], TSL_FD) < 0) exit(3);
-    close(t_fd[1]);
+      if (pipe(t_fd) || dup2(t_fd[1], TSL_FD) < 0) exit(3);
+      close(t_fd[1]);
 
-    child_pid = fork();
-    if (child_pid < 0) exit(4);
+      child_pid = fork();
+      if (child_pid < 0) exit(4);
 
-    if (!child_pid) {
+      if (!child_pid) {
 
-      /* Child process. Close descriptors and run free. */
+        /* Child process. Close descriptors and run free. */
 
-      afl_fork_child = 1;
-      close(FORKSRV_FD);
-      close(FORKSRV_FD + 1);
-      close(t_fd[0]);
-      return;
+        afl_fork_child = 1;
+        close(FORKSRV_FD);
+        close(FORKSRV_FD + 1);
+        close(t_fd[0]);
+        return;
+
+      }
+
+      /* Parent. */
+
+      close(TSL_FD);
+
+    } else {
+
+      /* Special handling for persistent mode: if the child is alive but
+         currently stopped, simply restart it with SIGCONT. */
+
+      kill(child_pid, SIGCONT);
+      child_stopped = 0;
 
     }
 
     /* Parent. */
-
-    close(TSL_FD);
 
     if (write(FORKSRV_FD + 1, &child_pid, 4) != 4) exit(5);
 
@@ -234,11 +277,90 @@ void afl_forkserver(CPUArchState *env) {
 
     /* Get and relay exit status to parent. */
 
-    if (waitpid(child_pid, &status, 0) < 0) exit(6);
+    if (waitpid(child_pid, &status, is_persistent ? WUNTRACED : 0) < 0) exit(6);
+
+    /* In persistent mode, the child stops itself with SIGSTOP to indicate
+       a successful run. In this case, we want to wake it up without forking
+       again. */
+
+    if (WIFSTOPPED(status))
+      child_stopped = 1;
+    else if (unlikely(first_run && is_persistent)) {
+
+      fprintf(stderr, "[AFL] ERROR: no persistent iteration executed\n");
+      exit(12);  // Persistent is wrong
+
+    }
+
+    first_run = 0;
+
     if (write(FORKSRV_FD + 1, &status, 4) != 4) exit(7);
 
   }
 
+}
+
+/* A simplified persistent mode handler, used as explained in
+ * llvm_mode/README.md. */
+
+void afl_persistent_loop(void) {
+
+  static u32            cycle_cnt;
+  static struct afl_tsl exit_cmd_tsl = {{-1, 0, 0}, '\0'};
+
+  if (!afl_fork_child) return;
+
+  //*  In shannon fuzz, we don't need this as triforce is keeping track of the
+  //   state */
+  /*if (persistent_first_pass) {*/
+
+  /*    *//* Make sure that every iteration of __AFL_LOOP() starts with a clean slate.*/
+  /*On subsequent calls, the parent will take care of that, but on the first*/
+  /*iteration, it's our job to erase any trace of whatever happened*/
+  /*       before the loop. */
+
+  /*if (is_persistent) {*/
+
+  /*memset(afl_area_ptr, 0, MAP_SIZE);*/
+  /*afl_area_ptr[0] = 1;*/
+  /*afl_prev_loc = 0;*/
+
+  /*}*/
+
+  /*cycle_cnt = afl_persistent_cnt;*/
+  /*persistent_first_pass = 0;*/
+  /*persistent_stack_offset = TARGET_LONG_BITS / 8;*/
+
+  /*return;*/
+
+  /*}*/
+
+  if (is_persistent) {
+
+    if (--cycle_cnt) {
+
+      if (write(TSL_FD, &exit_cmd_tsl, sizeof(struct afl_tsl)) !=
+          sizeof(struct afl_tsl)) {
+
+        /* Exit the persistent loop on pipe error */
+        afl_area_ptr = dummy;
+        exit(0);
+
+      }
+
+      raise(SIGSTOP);
+
+      afl_area_ptr[0] = 1;
+      afl_prev_loc = 0;
+
+    } else {
+
+      afl_area_ptr = dummy;
+      exit(0);
+
+    }
+
+  }
 }
 
 
@@ -281,6 +403,17 @@ static void afl_request_tsl(target_ulong pc, target_ulong cb, uint32_t flags,
   if (write(TSL_FD, &t, sizeof(struct afl_tsl)) != sizeof(struct afl_tsl))
     return;
 
+  if (t.is_chain) {
+
+    c.last_tb.pc = last_tb->pc;
+    c.last_tb.cs_base = last_tb->cs_base;
+    c.last_tb.flags = last_tb->flags;
+    c.tb_exit = tb_exit;
+
+    if (write(TSL_FD, &c, sizeof(struct afl_chain)) != sizeof(struct afl_chain))
+      return;
+
+  }
 }
 
 
@@ -332,4 +465,7 @@ static void afl_wait_tsl(CPUArchState *env, int fd) {
   close(fd);
 
 }
+
+
+
 
