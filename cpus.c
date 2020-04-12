@@ -1676,8 +1676,8 @@ gotPipeNotification(void *ctx)
     first_cpu = restart_cpu;
 
     /* we're now in the child! */
-    //if(aflEnableTicks) // re-enable ticks only if asked to
-    cpu_enable_ticks(); // Shannon needs timer to swtch tasks
+    if(aflEnableTicks)
+        cpu_enable_ticks();
     qemu_tcg_init_vcpu(restart_cpu);
 
     qemu_start_warp_timer();
