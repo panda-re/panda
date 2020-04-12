@@ -459,9 +459,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
 #endif
 /*
  * chaining complicates AFL's instrumentation so we disable it
- * MM: Added during triforceAFL import, removable later as controllable by panda
  */
-#ifdef NOPE_NOT_NEVER
     if (last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
         if (!have_tb_lock) {
             tb_lock();
@@ -471,7 +469,6 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
             tb_add_jump(last_tb, tb_exit, tb);
         }
     }
-#endif
 #ifdef CONFIG_SOFTMMU
     }
 #endif

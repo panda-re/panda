@@ -72,6 +72,9 @@
 #include "exec/log.h"
 #include "sysemu/cpus.h"
 
+#include "afl/afl-qemu-translate-inl.h"
+
+
 #ifdef CONFIG_LLVM
 #include "panda/tcg-llvm.h"
 #endif
@@ -1348,6 +1351,7 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     tcg_func_start(&tcg_ctx);
 
     tcg_ctx.cpu = ENV_GET_CPU(env);
+    afl_gen_trace(pc);
     gen_intermediate_code(env, tb);
     tcg_ctx.cpu = NULL;
 

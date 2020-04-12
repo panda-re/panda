@@ -53,7 +53,6 @@
       afl_forkserver(env); \
       aflStart = 1; \
     } \
-    afl_maybe_log(pc); \
   } while (0)
 
 /* We use one additional file descriptor to relay "needs translation"
@@ -63,7 +62,8 @@
 
 /* This is equivalent to afl-as.h: */
 
-static unsigned char *afl_area_ptr = 0;
+unsigned char *afl_area_ptr; /* Exported for afl_gen_trace */
+
 
 /* Exported variables populated by the code patched into elfload.c: */
 
@@ -88,11 +88,11 @@ unsigned int afl_forksrv_pid;
 
 /* Instrumentation ratio: */
 
-static unsigned int afl_inst_rms = MAP_SIZE;
+unsigned int afl_inst_rms = MAP_SIZE; /* Exported for afl_gen_trace */
+
 
 /* Function declarations. */
 
-static inline void afl_maybe_log(target_ulong);
 
 static void afl_wait_tsl(CPUArchState*, int);
 static void afl_request_tsl(target_ulong, target_ulong, uint64_t);
@@ -234,51 +234,6 @@ void afl_forkserver(CPUArchState *env) {
 
 }
 
-static inline target_ulong aflHash(target_ulong cur_loc)
-{
-  if(!aflStart)
-    return 0;
-
-  /* Optimize for cur_loc > afl_end_code, which is the most likely case on
-     Linux systems. */
-
-  if (cur_loc > afl_end_code || cur_loc < afl_start_code || !afl_area_ptr)
-    return 0;
-
-#ifdef DEBUG_EDGES
-  if(1) {
-    printf("exec %lx\n", cur_loc);
-    fflush(stdout);
-  }
-#endif
-
-  /* Looks like QEMU always maps to fixed locations, so ASAN is not a
-     concern. Phew. But instruction addresses may be aligned. Let's mangle
-     the value to get something quasi-uniform. */
-
-  target_ulong h = cur_loc;
-#if TARGET_LONG_BITS == 32
-  h ^= cur_loc >> 16;
-  h *= 0x85ebca6b;
-  h ^= h >> 13;
-  h *= 0xc2b2ae35;
-  h ^= h >> 16;
-#else
-  h ^= cur_loc >> 33;
-  h *= 0xff51afd7ed558ccd;
-  h ^= h >> 33;
-  h *= 0xc4ceb9fe1a85ec53;
-  h ^= h >> 33;
-#endif
-
-  h &= MAP_SIZE - 1;
-
-  /* Implement probabilistic instrumentation by looking at scrambled block
-     address. This keeps the instrumented locations stable across runs. */
-
-  if (h >= afl_inst_rms) return 0;
-  return h;
-}
 
 /* todo: generate calls to helper_aflMaybeLog during translation */
 static inline void helper_aflMaybeLog(target_ulong cur_loc) {
@@ -290,11 +245,11 @@ static inline void helper_aflMaybeLog(target_ulong cur_loc) {
 
 /* The equivalent of the tuple logging routine from afl-as.h. */
 
-static inline void afl_maybe_log(target_ulong cur_loc) {
-  cur_loc = aflHash(cur_loc);
-  if(cur_loc)
-    helper_aflMaybeLog(cur_loc);
-}
+/*static inline void afl_maybe_log(target_ulong cur_loc) {*/
+/*cur_loc = aflHash(cur_loc);*/
+/*if(cur_loc)*/
+/*helper_aflMaybeLog(cur_loc);*/
+/*}*/
 
 
 /* This code is invoked whenever QEMU decides that it doesn't have a
