@@ -244,9 +244,6 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
             assert(cc->set_pc);
             cc->set_pc(cpu, last_tb->pc);
         }
-    } else {
-        /* we executed it, trace it */
-        AFL_QEMU_CPU_SNIPPET2(env, pc);
     }
 
     if (tb_exit == TB_EXIT_REQUESTED) {
@@ -435,7 +432,6 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
                 /* if no translated code available, then translate it now */
                 tb = tb_gen_code(cpu, pc, cs_base, flags, 0);
                 panda_callbacks_after_block_translate(cpu, tb);
-                AFL_QEMU_CPU_SNIPPET1;
             }
 
             mmap_unlock();

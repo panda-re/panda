@@ -1,32 +1,32 @@
-+/*
-+   american fuzzy lop - high-performance binary-only instrumentation
-+   -----------------------------------------------------------------
-+
-+   Written by Andrew Griffiths <agriffiths@google.com> and
-+              Michal Zalewski <lcamtuf@google.com>
-+
-+   Idea & design very much by Andrew Griffiths.
-+
-+   TCG instrumentation by Andrea Biondo <andrea.biondo965@gmail.com>
-+
-+   Copyright 2015, 2016, 2017 Google Inc. All rights reserved.
-+
-+   Licensed under the Apache License, Version 2.0 (the "License");
-+   you may not use this file except in compliance with the License.
-+   You may obtain a copy of the License at:
-+
-+     http://www.apache.org/licenses/LICENSE-2.0
-+
-+   This code is a shim patched into the separately-distributed source
-+   code of QEMU 2.10.0. It leverages the built-in QEMU tracing functionality
-+   to implement AFL-style instrumentation and to take care of the remaining
-+   parts of the AFL fork server logic.
-+
-+   The resulting QEMU binary is essentially a standalone instrumentation
-+   tool; for an example of how to leverage it for other purposes, you can
-+   have a look at afl-showmap.c.
-+
-+ */
+/*
+   american fuzzy lop - high-performance binary-only instrumentation
+   -----------------------------------------------------------------
+
+   Written by Andrew Griffiths <agriffiths@google.com> and
+              Michal Zalewski <lcamtuf@google.com>
+
+   Idea & design very much by Andrew Griffiths.
+
+   TCG instrumentation by Andrea Biondo <andrea.biondo965@gmail.com>
+
+   Copyright 2015, 2016, 2017 Google Inc. All rights reserved.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at:
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+   This code is a shim patched into the separately-distributed source
+   code of QEMU 2.10.0. It leverages the built-in QEMU tracing functionality
+   to implement AFL-style instrumentation and to take care of the remaining
+   parts of the AFL fork server logic.
+
+   The resulting QEMU binary is essentially a standalone instrumentation
+   tool; for an example of how to leverage it for other purposes, you can
+   have a look at afl-showmap.c.
+
+ */
 
 #include "afl/config.h"
 #include "tcg-op.h"
