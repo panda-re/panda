@@ -1,7 +1,7 @@
 #ifndef __AFL_QEMU_COMMON
 #define __AFL_QEMU_COMMON
 
-#define DEBUG_AFL 0
+#define DEBUG_AFL 1
 
 #define AFL_DPRINTF(fmt, ...) do {                                          \
         if (DEBUG_AFL) {                                           \
@@ -24,7 +24,8 @@ void afl_setup(void);
 void afl_forkserver(CPUArchState*);
 
 void afl_persistent_loop(void);
-extern unsigned char  is_persistent;
+extern unsigned char is_persistent;
+extern unsigned int afl_persistent_cnt;
 
 
 

@@ -68,6 +68,7 @@ target_ulong afl_entry_point = 0, /* ELF entry point (_start) */
 target_ulong    afl_persistent_addr, afl_persistent_ret_addr;
 unsigned int afl_persistent_cnt;
 unsigned char is_persistent;
+unsigned char persistent_first_pass = 1;
 
 static int forkserver_installed = 0;
 
@@ -310,44 +311,45 @@ void afl_persistent_loop(void) {
 
   if (!afl_fork_child) return;
 
-  //*  In shannon fuzz, we don't need this as triforce is keeping track of the
-  //   state */
-  /*if (persistent_first_pass) {*/
+  if (persistent_first_pass) {
 
-  /*    *//* Make sure that every iteration of __AFL_LOOP() starts with a clean slate.*/
-  /*On subsequent calls, the parent will take care of that, but on the first*/
-  /*iteration, it's our job to erase any trace of whatever happened*/
-  /*       before the loop. */
+      /* Make sure that every iteration of __AFL_LOOP() starts with a clean slate.
+       * On subsequent calls, the parent will take care of that, but on the first
+       * iteration, it's our job to erase any trace of whatever happened
+       * before the loop. */
 
-  /*if (is_persistent) {*/
+          if (is_persistent) {
 
-  /*memset(afl_area_ptr, 0, MAP_SIZE);*/
-  /*afl_area_ptr[0] = 1;*/
-  /*afl_prev_loc = 0;*/
+              memset(afl_area_ptr, 0, MAP_SIZE);
+              afl_area_ptr[0] = 1;
+              afl_prev_loc = 0;
 
-  /*}*/
+          }
 
-  /*cycle_cnt = afl_persistent_cnt;*/
-  /*persistent_first_pass = 0;*/
-  /*persistent_stack_offset = TARGET_LONG_BITS / 8;*/
+      cycle_cnt = afl_persistent_cnt;
+      persistent_first_pass = 0;
+      //persistent_stack_offset = TARGET_LONG_BITS / 8;
 
-  /*return;*/
+      return;
 
-  /*}*/
+  }
 
   if (is_persistent) {
 
     if (--cycle_cnt) {
 
+      printf("lets write to pipe\n");
       if (write(TSL_FD, &exit_cmd_tsl, sizeof(struct afl_tsl)) !=
           sizeof(struct afl_tsl)) {
 
+          printf("OHNO\n");
         /* Exit the persistent loop on pipe error */
         afl_area_ptr = dummy;
         exit(0);
 
       }
 
+      printf("Time to stop\n");
       raise(SIGSTOP);
 
       afl_area_ptr[0] = 1;

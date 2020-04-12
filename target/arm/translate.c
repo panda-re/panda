@@ -12248,7 +12248,8 @@ void restore_state_to_opc(CPUARMState *env, TranslationBlock *tb,
 // XXX lots of shared code here could be factored out
 #include "afl/afl.h"
 
-static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks)
+static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks,
+        target_ulong persistent)
 {
     AFL_DPRINTF("pid %d: startForkServer\n", getpid());
     if(afl_fork_child) {
@@ -12273,6 +12274,14 @@ static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks)
      */
     aflEnableTicks = enableTicks;
     afl_wants_cpu_to_stop = 1;
+
+    /*  argument two are the  */
+    if (persistent) {
+        is_persistent = 1;
+        afl_persistent_cnt = persistent;
+        AFL_DPRINTF("Enabling persistent mode with cnt %d\n",
+                afl_persistent_cnt);
+    }
 #endif
     return 0;
 }
@@ -12324,6 +12333,8 @@ static target_ulong startWork(CPUArchState *env, target_ulong start, target_ulon
     afl_end_code   = end;
     aflGotLog = 0;
     aflStart = 1;
+    if (is_persistent)
+        afl_persistent_loop();
     return 0;
 }
 
@@ -12340,7 +12351,12 @@ static target_ulong doneWork(target_ulong val)
     if(aflGotLog)
         exit(64 | val);
 #endif
-    exit(val); /* exit forkserver child */
+    if (is_persistent) {
+        aflStart = 0; /* Stop capturing coverage */
+    } else {
+        exit(val); /* exit forkserver child */
+    }
+    return 0;
 }
 
 // TODO not tested
@@ -12362,7 +12378,7 @@ uint32_t helper_aflCall32(CPUArchState *env, uint32_t code, uint32_t a0, uint32_
 
 target_ulong helper_aflCall(CPUArchState *env, target_ulong code, target_ulong a0, target_ulong a1) {
     switch(code) {
-    case 1: return (uint32_t)startForkserver(env, a0);
+    case 1: return (uint32_t)startForkserver(env, a0, a1);
     case 2: return (uint32_t)getWork(env, a0, a1);
     case 3: return (uint32_t)startWork(env, a0, a1);
     case 4: return (uint32_t)doneWork(a0);
