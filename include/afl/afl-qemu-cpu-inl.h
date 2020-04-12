@@ -30,18 +30,10 @@
 #include "afl/afl.h"
 #include "afl/config.h"
 
+#include "tcg-op.h"
 /***************************
  * VARIOUS AUXILIARY STUFF *
  ***************************/
-
-/* A snippet patched into tb_find_slow to inform the parent process that
-   we have hit a new block that hasn't been translated yet, and to tell
-   it to translate within its own context, too (this avoids translation
-   overhead in the next forked-off copy). */
-
-#define AFL_QEMU_CPU_SNIPPET1 do { \
-    afl_request_tsl(pc, cs_base, flags); \
-  } while (0)
 
 /* This snippet kicks in when the instruction pointer is positioned at
    _start and does the usual forkserver stuff, not very different from
@@ -95,19 +87,33 @@ unsigned int afl_inst_rms = MAP_SIZE; /* Exported for afl_gen_trace */
 
 
 static void afl_wait_tsl(CPUArchState*, int);
-static void afl_request_tsl(target_ulong, target_ulong, uint64_t);
+static void afl_request_tsl(target_ulong, target_ulong, uint32_t, TranslationBlock*, int);
 
-static TranslationBlock *tb_find_slow(CPUArchState*, target_ulong,
-                                      target_ulong, uint64_t);
+
+TranslationBlock *tb_htable_lookup(CPUState*, target_ulong, target_ulong, uint32_t);
+static inline TranslationBlock *tb_find(CPUState*, TranslationBlock*, int);
+/*static TranslationBlock *tb_find_slow(CPUArchState*, target_ulong,*/
+/*target_ulong, uint64_t);*/
 
 
 /* Data structure passed around by the translate handlers: */
 
-struct afl_tsl {
+struct afl_tb {
   target_ulong pc;
   target_ulong cs_base;
-  uint64_t flags;
+  uint32_t flags;
 };
+
+struct afl_tsl {
+  struct afl_tb tb;
+  char is_chain;
+};
+
+struct afl_chain {
+  struct afl_tb last_tb;
+  int tb_exit;
+};
+
 
 
 /*************************
@@ -257,15 +263,19 @@ static inline void helper_aflMaybeLog(target_ulong cur_loc) {
    we tell the parent to mirror the operation, so that the next fork() has a
    cached copy. */
 
-static void afl_request_tsl(target_ulong pc, target_ulong cb, uint64_t flags) {
+static void afl_request_tsl(target_ulong pc, target_ulong cb, uint32_t flags,
+                            TranslationBlock *last_tb, int tb_exit) {
 
   struct afl_tsl t;
+  struct afl_chain c;
+
 
   if (!afl_fork_child) return;
 
-  t.pc      = pc;
-  t.cs_base = cb;
-  t.flags   = flags;
+  t.tb.pc      = pc;
+  t.tb.cs_base = cb;
+  t.tb.flags   = flags;
+  t.is_chain   = (last_tb != NULL);
 
   if (write(TSL_FD, &t, sizeof(struct afl_tsl)) != sizeof(struct afl_tsl))
     return;
@@ -278,7 +288,11 @@ static void afl_request_tsl(target_ulong pc, target_ulong cb, uint64_t flags) {
 
 static void afl_wait_tsl(CPUArchState *env, int fd) {
 
+  CPUState * cpu = ENV_GET_CPU(env);
   struct afl_tsl t;
+  struct afl_chain c;
+  TranslationBlock *tb, *last_tb;
+
 
   while (1) {
 
@@ -287,25 +301,29 @@ static void afl_wait_tsl(CPUArchState *env, int fd) {
     if (read(fd, &t, sizeof(struct afl_tsl)) != sizeof(struct afl_tsl))
       break;
 
-    if(0 && env) {
-#ifdef CONFIG_USER_ONLY
-        tb_find_slow(env, t.pc, t.cs_base, t.flags);
-#else
-        /* if the child system emulator pages in new code and then JITs it, 
-        and sends its address to the server, the server cannot also JIT it 
-        without having it's guest's kernel page the data in !  
-        so we will only JIT kernel code segment which shouldnt page.
-        */
-        // XXX this monstrosity must go!
-        if(t.pc >= 0xffffffff81000000 && t.pc <= 0xffffffff81ffffff) {
-            //printf("wait_tsl %lx -- jit\n", t.pc); fflush(stdout);
-            tb_find_slow(env, t.pc, t.cs_base, t.flags);
-        } else {
-            //printf("wait_tsl %lx -- ignore nonkernel\n", t.pc); fflush(stdout);
+    tb = tb_htable_lookup(cpu, t.tb.pc, t.tb.cs_base, t.tb.flags);
+
+    if(!tb) {
+      mmap_lock();
+      tb_lock();
+      tb = tb_gen_code(cpu, t.tb.pc, t.tb.cs_base, t.tb.flags, 0);
+      mmap_unlock();
+      tb_unlock();
+    }
+
+    if (t.is_chain) {
+      if (read(fd, &c, sizeof(struct afl_chain)) != sizeof(struct afl_chain))
+        break;
+
+      last_tb = tb_htable_lookup(cpu, c.last_tb.pc, c.last_tb.cs_base,
+                                 c.last_tb.flags);
+      if (last_tb) {
+        tb_lock();
+        if (!tb->invalid) {
+          tb_add_jump(last_tb, c.tb_exit, tb);
         }
-#endif
-    } else {
-        //printf("wait_tsl %lx -- ignore\n", t.pc); fflush(stdout);
+        tb_unlock();
+      }
     }
 
   }

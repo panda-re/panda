@@ -376,7 +376,7 @@ static bool tb_cmp(const void *p, const void *d)
     return false;
 }
 
-static TranslationBlock *tb_htable_lookup(CPUState *cpu,
+TranslationBlock *tb_htable_lookup(CPUState *cpu,
                                           target_ulong pc,
                                           target_ulong cs_base,
                                           uint32_t flags)
@@ -403,7 +403,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
     TranslationBlock *tb;
     target_ulong cs_base, pc;
     uint32_t flags;
-    bool have_tb_lock = false;
+    bool have_tb_lock = false, was_translated = false, was_chained = false;
 
     /* we record a subset of the CPU state. It will
        always be the same before a given translated block
@@ -431,6 +431,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
                 panda_callbacks_before_block_translate(cpu, pc);
                 /* if no translated code available, then translate it now */
                 tb = tb_gen_code(cpu, pc, cs_base, flags, 0);
+                was_translated = true;
                 panda_callbacks_after_block_translate(cpu, tb);
             }
 
@@ -463,6 +464,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
         }
         if (!tb->invalid) {
             tb_add_jump(last_tb, tb_exit, tb);
+            was_chained = true;
         }
     }
 #ifdef CONFIG_SOFTMMU
@@ -472,6 +474,10 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
         tb_unlock();
     }
     return tb;
+    if (was_translated || was_chained) {
+        afl_request_tsl(pc, cs_base, flags, was_chained ? last_tb : NULL,
+                        tb_exit);
+    }
 }
 
 static inline bool cpu_handle_halt(CPUState *cpu)
