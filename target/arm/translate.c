@@ -12295,7 +12295,7 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
          return -1;
     }
 
-#if 1 // legacy triforce afl byte-by-byte input rw. To be replaced.
+#if 0 // legacy triforce afl byte-by-byte input rw. To be replaced.
     unsigned char ch;
     retsz = 0;
     while(retsz < sz) {
@@ -12306,14 +12306,10 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
         ptr ++;
     }
 #else
-    uint8_t *buffer = 0;
-    CPUState *cpu = ENV_GET_CPU(env);
-    buffer = malloc(sz);
-    assert(buffer != 0);
+    uint8_t buffer[4096]; //testcase max size for shannon
     retsz = fread (buffer, 1, sz, fp);
-    cpu_memory_rw_debug(cpu, ptr, buffer, retsz, 1);
-    //AFL_DPRINTF("getwork data: %s, length: %d\n", buffer, retsz);
-    free(buffer);
+    // Shannon has one contigous address space, so we can directly write physmem
+    cpu_physical_memory_rw(ptr, buffer, retsz, 1); 
 #endif
     fclose(fp);
     return retsz;
