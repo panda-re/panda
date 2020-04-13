@@ -13,6 +13,7 @@ vendor=$(lsb_release --id | awk -F':[\t ]+' '{print $2}')
 codename=$(lsb_release --codename | awk -F':[\t ]+' '{print $2}')
 version=$(lsb_release -r| awk '{print $2}' | awk -F'.' '{print $1}')
 
+
 progress() {
   echo
   echo -e "\e[32m[panda_install]\e[0m \e[1m$1\e[0m"
@@ -63,7 +64,6 @@ else
   sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
     libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
     libwiretap-dev libwireshark-dev flex bison python3-pip python3
-
 fi
 pushd /tmp
 
