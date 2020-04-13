@@ -117,8 +117,8 @@ class KernelInfo(gdb.Command):
 			print_offset_from_member("struct mount",	"mnt", "mnt_mountpoint",	"path");
 		else:
 			# fields in struct vfsmount 
-			print_offset(vfsmount__p,			mnt_parent,				"path");
-			print_offset(vfsmount__p,			mnt_mountpoint,			"path");
+			print_offset("struct vfsmount",			"mnt_parent",				"path");
+			print_offset("struct vfsmount",			"mnt_mountpoint",			"path");
 		print( "---KERNELINFO-END---",file=file_out);	
 		if file_out != sys.stdout:
 			file_out.close()
