@@ -36,10 +36,23 @@ wtap_dumper *plugin_log;
 
 bool init_plugin(void *self) {
     panda_cb pcb;
-
+    int err;
     int i;
     char *tblog_filename = NULL;
     args = panda_get_args("network");
+
+    #if (VERSION_MAJOR>=3)
+    const wtap_dump_params wdparams = {
+    .encap = WTAP_ENCAP_ETHERNET,
+    .snaplen = 65535,
+    .shb_hdrs = NULL,
+    .idb_inf = NULL,
+    .nrb_hdrs = NULL,
+    .dsbs_initial = NULL,
+    .dsbs_growing = NULL
+    };
+    #endif
+
     if (args != NULL) {
         for (i = 0; i < args->nargs; i++) {
             // Format is sample:file=<file>
@@ -54,13 +67,20 @@ bool init_plugin(void *self) {
         return false;
     }
 
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 6 && VERSION_MICRO >= 0
+    #if (VERSION_MAJOR == 2 && VERSION_MINOR >= 6 ) || (VERSION_MAJOR>=3)
     wtap_init(false);
-#elif VERSION_MAJOR == 2 && VERSION_MINOR == 2 && VERSION_MICRO >= 4
+    #elif VERSION_MAJOR == 2 && VERSION_MINOR == 2 && VERSION_MICRO >= 4
     wtap_init();
-#endif
+    #endif
 
-    int err;
+    #if (VERSION_MAJOR>=3)
+    plugin_log = wtap_dump_open(
+            tblog_filename,
+            WTAP_FILE_TYPE_SUBTYPE_PCAPNG,
+            WTAP_UNCOMPRESSED,   // assuming this...
+            &wdparams,            // the new structure that wraps all the ng params
+            &err );
+    #else
     plugin_log = wtap_dump_open_ng(
             /*filename*/tblog_filename,
             /*file_type_subtype*/WTAP_FILE_TYPE_SUBTYPE_PCAPNG,
@@ -69,10 +89,12 @@ bool init_plugin(void *self) {
             /*compressed*/1,
             /*shb_hdrs*/NULL,
             /*idb_inf*/NULL,
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
+	#if VERSION_MAJOR == 2
             /*nrb_hdrs*/NULL,
-#endif
+	#endif
             /*err*/&err);
+    #endif
+
     if(!plugin_log) {
         fprintf(stderr, "Plugin 'network': failed wtap_dump_open_ng() with error %d\n", err);
         return false;
@@ -80,7 +102,6 @@ bool init_plugin(void *self) {
 
     pcb.replay_handle_packet = handle_packet;
     panda_register_callback(self, PANDA_CB_REPLAY_HANDLE_PACKET, pcb);
-
     return true;
 }
 
@@ -105,9 +126,9 @@ void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction,
     snprintf(comment_buf, COMMENT_BUF_LEN, "Guest instruction count: %" PRIu64,
              rr_get_guest_instr_count());
     gboolean ret = false;
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 6 && VERSION_MICRO >= 3
+    #if (VERSION_MAJOR >= 2 && VERSION_MINOR >= 6 && VERSION_MICRO >= 3) || (VERSION_MAJOR>=3)
     wtap_rec rec;
-    wtap_rec_init(&rec);
+    memset(&rec, 0, sizeof rec);
     rec.rec_type = REC_TYPE_PACKET;
     rec.ts.secs = now_tv.tv_sec;
     rec.ts.nsecs = now_tv.tv_usec * 1000;
@@ -116,20 +137,17 @@ void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction,
     rec.rec_header.packet_header.pkt_encap = WTAP_ENCAP_ETHERNET;
     rec.opt_comment = comment_buf;
     rec.has_comment_changed = true;
-
     ret = wtap_dump(
         /*wtap_dumper*/ plugin_log,
         /*wtap_rec*/ &rec,
         /*buf*/ buf,
         /*err*/ &err,
         /*err_info*/ &err_info);
-
-    wtap_rec_cleanup(&rec);
-#else
+    #else
     struct wtap_pkthdr header;
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
-    wtap_phdr_init(&header);
-#endif
+	#if VERSION_MAJOR >= 2
+    	wtap_phdr_init(&header);
+	#endif
     header.ts.secs = now_tv.tv_sec;
     header.ts.nsecs = now_tv.tv_usec * 1000;
     header.caplen = size;
@@ -141,21 +159,22 @@ void handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction,
         /*wtap_pkthdr*/ &header,
         /*buf*/ buf,
         /*err*/ &err
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
+	#if VERSION_MAJOR >= 2
         ,
         /*err_info*/ &err_info
-#endif
+	#endif
     );
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
-    wtap_phdr_cleanup(&header);
-#endif
-#endif
+	#if VERSION_MAJOR >= 2
+	wtap_phdr_cleanup(&header);
+	#endif
+    #endif
     if (!ret) {
       fprintf(stderr, "Plugin 'network': failed wtap_dump() with error %d", err);
-#if VERSION_MAJOR >= 2 && VERSION_MINOR >= 0 && VERSION_MICRO >= 0
+      #if VERSION_MAJOR >= 2
       fprintf(stderr, " and error_info %s", err_info);
-#endif
+      #endif
       fprintf(stderr, "\n");
     }
     return;
 }
+
