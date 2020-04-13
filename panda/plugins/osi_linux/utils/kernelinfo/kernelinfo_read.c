@@ -79,27 +79,12 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	memset(ki, 0, sizeof(struct kernelinfo));
 	keyfile = g_key_file_new();
 	g_key_file_load_from_file (keyfile, (file != NULL ? file : DEFAULT_KERNELINFO_FILE), G_KEY_FILE_NONE, &gerr);
-	if (gerr != NULL) 
-    { 
-        rval = -1; 
-        goto end; 
-    }
+	if (gerr != NULL) { rval = -1; goto end; }
 
 	/* get group */
-	if (group != NULL) 
-    {
-        group_real = g_strdup(group);
-    }
-	else 
-    {
-        group_real = g_key_file_get_start_group(keyfile);
-    }
-
-	if (!g_key_file_has_group(keyfile, group_real)) 
-    { 
-        rval = -1; 
-        goto end; 
-    }
+	if (group != NULL) group_real = g_strdup(group);
+	else group_real = g_key_file_get_start_group(keyfile);
+	if (!g_key_file_has_group(keyfile, group_real)) { rval = -1; goto end; }
 
 	/* read kernel full name */
 	READ_INFO_STRING(ki, name, gerr, err.name, &errbmp);
@@ -108,8 +93,6 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	READ_INFO_INT(ki, version.a, gerr, err.version, &errbmp);
 	READ_INFO_INT(ki, version.b, gerr, err.version, &errbmp);
 	READ_INFO_INT(ki, version.c, gerr, err.version, &errbmp);
-
-	// READ_INFO_INT(ki, archtype, gerr, err.version, &errbmp);
 
 	/* read init task address */
 	READ_INFO_UINT64(ki, task.init_addr, gerr, err.task, &errbmp);
@@ -122,9 +105,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 
 		READ_INFO_UINT64(ki, task.per_cpu_offsets_addr, gerr, err.task, &errbmp);
 		READ_INFO_UINT64(ki, task.per_cpu_offset_0_addr, gerr, err.task, &errbmp);
-
 		READ_INFO_UINT64(ki, task.current_task_addr, gerr, err.task, &errbmp);
-
 		READ_INFO_INT(ki, task.group_leader_offset, gerr, err.task, &errbmp);
 		READ_INFO_INT(ki, task.stack_offset, gerr, err.task, &errbmp);
 		READ_INFO_INT(ki, task.real_cred_offset, gerr, err.task, &errbmp);
@@ -143,9 +124,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 		READ_INFO_INT(ki, fs.fdt_offset, gerr, err.fs, &errbmp);
 		READ_INFO_INT(ki, fs.fdtab_offset, gerr, err.fs, &errbmp);
 		READ_INFO_INT(ki, path.d_dname_offset, gerr, err.path, &errbmp);
-
 	} else if (KERNEL_VERSION(ki->version.a, ki->version.b, ki->version.c) >= KERNEL_VERSION(2, 4, 0)) {
-
 		READ_INFO_INT(ki, task.p_opptr_offset, gerr, err.task, &errbmp);
 		READ_INFO_INT(ki, task.p_pptr_offset, gerr, err.task, &errbmp);
 		READ_INFO_INT(ki, task.next_task_offset, gerr, err.task, &errbmp);
