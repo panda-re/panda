@@ -429,7 +429,6 @@ static void afl_request_tsl(target_ulong pc, target_ulong cb, uint32_t flags,
    afl-fuzz simply killing the child, we can just wait until the pipe breaks. */
 
 static void afl_wait_tsl(CPUArchState *env, int fd) {
-
   CPUState * cpu = ENV_GET_CPU(env);
   struct afl_tsl t;
   struct afl_chain c;
@@ -443,7 +442,7 @@ static void afl_wait_tsl(CPUArchState *env, int fd) {
     if (read(fd, &t, sizeof(struct afl_tsl)) != sizeof(struct afl_tsl))
       break;
 
-    if(t.tb.pc == -1) break;
+    if(t.tb.pc == -1) return;
     tb = tb_htable_lookup(cpu, t.tb.pc, t.tb.cs_base, t.tb.flags);
 
     if(!tb) {

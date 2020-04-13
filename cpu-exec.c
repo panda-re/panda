@@ -473,11 +473,11 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
     if (have_tb_lock) {
         tb_unlock();
     }
-    return tb;
     if (was_translated || was_chained) {
         afl_request_tsl(pc, cs_base, flags, was_chained ? last_tb : NULL,
                         tb_exit);
     }
+    return tb;
 }
 
 static inline bool cpu_handle_halt(CPUState *cpu)
