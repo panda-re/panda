@@ -40,8 +40,6 @@ bool init_plugin(void *self) {
     int i;
     char *tblog_filename = NULL;
     args = panda_get_args("network");
-    printf("init\n");
-
 
     #if (VERSION_MAJOR>=3)
     const wtap_dump_params wdparams = {
