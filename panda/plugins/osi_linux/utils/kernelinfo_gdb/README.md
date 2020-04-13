@@ -6,7 +6,7 @@ First. Go read the normal kernelinfo [readme](https://github.com/panda-re/panda/
 
 - GDB 8 or above. This is needed for the GDB API to support `gdb.execute(to_string=True)`.
 - Python 3.6 or above. This is to support fstrings.
-- A kernel vmlinux file for linux 3.0.0 or later that is *not stripped*.
+- A kernel vmlinux file for linux 3.0.0 or later that is *not stripped and has debug symbols*.
 
 ## Where does this apply?
 
