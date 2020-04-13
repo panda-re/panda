@@ -25,6 +25,9 @@
    have a look at afl-showmap.c.
 
  */
+#include<stdio.h>
+#include<signal.h>
+#include<unistd.h>
 
 #include <sys/shm.h>
 #include "afl/afl.h"
@@ -58,6 +61,7 @@ static unsigned char
                dummy[MAP_SIZE]; /* costs MAP_SIZE but saves a few instructions */
 unsigned char *afl_area_ptr = dummy;          /* Exported for afl_gen_trace */
 
+static u32            cycle_cnt;
 
 /* Exported variables populated by the code patched into elfload.c: */
 
@@ -284,8 +288,10 @@ void afl_forkserver(CPUArchState *env) {
        a successful run. In this case, we want to wake it up without forking
        again. */
 
-    if (WIFSTOPPED(status))
+    if (WIFSTOPPED(status)){
       child_stopped = 1;
+      status = 0;
+    }
     else if (unlikely(first_run && is_persistent)) {
 
       fprintf(stderr, "[AFL] ERROR: no persistent iteration executed\n");
@@ -304,10 +310,8 @@ void afl_forkserver(CPUArchState *env) {
 /* A simplified persistent mode handler, used as explained in
  * llvm_mode/README.md. */
 
-void afl_persistent_loop(void) {
+void afl_persistent_start(void) {
 
-  static u32            cycle_cnt;
-  static struct afl_tsl exit_cmd_tsl = {{-1, 0, 0}, '\0'};
 
   if (!afl_fork_child) return;
 
@@ -333,23 +337,25 @@ void afl_persistent_loop(void) {
       return;
 
   }
+}
 
+void afl_persistent_stop(void) {
+  static struct afl_tsl exit_cmd_tsl = {{-1, 0, 0}, '\0'};
+
+  if (!afl_fork_child) return;
   if (is_persistent) {
 
     if (--cycle_cnt) {
 
-      printf("lets write to pipe\n");
       if (write(TSL_FD, &exit_cmd_tsl, sizeof(struct afl_tsl)) !=
           sizeof(struct afl_tsl)) {
 
-          printf("OHNO\n");
         /* Exit the persistent loop on pipe error */
         afl_area_ptr = dummy;
         exit(0);
 
       }
 
-      printf("Time to stop\n");
       raise(SIGSTOP);
 
       afl_area_ptr[0] = 1;
@@ -437,6 +443,7 @@ static void afl_wait_tsl(CPUArchState *env, int fd) {
     if (read(fd, &t, sizeof(struct afl_tsl)) != sizeof(struct afl_tsl))
       break;
 
+    if(t.tb.pc == -1) break;
     tb = tb_htable_lookup(cpu, t.tb.pc, t.tb.cs_base, t.tb.flags);
 
     if(!tb) {

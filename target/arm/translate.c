@@ -12251,7 +12251,8 @@ void restore_state_to_opc(CPUARMState *env, TranslationBlock *tb,
 static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks,
         target_ulong persistent)
 {
-    AFL_DPRINTF("pid %d: startForkServer\n", getpid());
+    int pid = getpid();
+    AFL_DPRINTF("pid %d: startForkServer\n", pid);
     if(afl_fork_child) {
         /*
          * we've already started a fork server. perhaps a test case
@@ -12279,7 +12280,7 @@ static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks,
     if (persistent) {
         is_persistent = 1;
         afl_persistent_cnt = persistent;
-        AFL_DPRINTF("Enabling persistent mode with cnt %d\n",
+        AFL_DPRINTF("pid %d: Enabling persistent mode with cnt %d\n", pid,
                 afl_persistent_cnt);
     }
 #endif
@@ -12334,7 +12335,7 @@ static target_ulong startWork(CPUArchState *env, target_ulong start, target_ulon
     aflGotLog = 0;
     aflStart = 1;
     if (is_persistent)
-        afl_persistent_loop();
+        afl_persistent_start();
     return 0;
 }
 
@@ -12353,6 +12354,7 @@ static target_ulong doneWork(target_ulong val)
 #endif
     if (is_persistent) {
         aflStart = 0; /* Stop capturing coverage */
+        afl_persistent_stop();
     } else {
         exit(val); /* exit forkserver child */
     }
