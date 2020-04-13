@@ -23,3 +23,15 @@ That script creates a command `kernel_info`. That command takes an argument for 
 
 Inside of the script you can see the gdb magic required to get offsets and whatnot for kernel information.
  
+## How do I use it?
+
+Run `run.sh` with a vmlinux and an output file.
+`./run.sh vmlinux file.out`
+
+Alternatively, 
+- start up gdb on the `vmlinux` file: `gdb ./vmlinux`
+- load our python script: `source extract_kernelinfo.py`
+- run our python script: `kernel_info output.file`
+- quit: `q`
+
+
