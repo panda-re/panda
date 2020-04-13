@@ -12275,14 +12275,7 @@ static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks,
      */
     aflEnableTicks = enableTicks;
     afl_wants_cpu_to_stop = 1;
-
-    /*  argument two are the  */
-    if (persistent > 1 && !getenv("SHANNON_DISABLE_PERSISTENT_MODE")) {
-        is_persistent = 1;
-        afl_persistent_cnt = persistent;
-        AFL_DPRINTF("pid %d: Enabling persistent mode with cnt %d\n", pid,
-                afl_persistent_cnt);
-    }
+    afl_persistent_cnt = persistent;
 #endif
     return 0;
 }

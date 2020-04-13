@@ -111,10 +111,10 @@ static inline target_ulong aflHash(target_ulong cur_loc)
 static void afl_gen_trace(target_ulong cur_loc)
 {
 
+  /*  shannon traces all ...
+   *  otherwise there would be checks for start and end_code right here */
 
-  if (!aflStart || cur_loc > afl_end_code ||
-      cur_loc < afl_start_code /*|| !afl_area_ptr*/)  // not needed because of
-                                                      // static dummy buffer
+  if (is_persistent && !aflStart)
     return;
 
   /* Looks like QEMU always maps to fixed locations, so ASLR is not a

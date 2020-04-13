@@ -186,6 +186,7 @@ void tcg_llvm_destroy(void);
 #define MAX_SCLP_CONSOLES 1
 
 extern const char *aflFile;
+extern char is_persistent;
 extern unsigned long aflPanicAddr;
 extern unsigned long aflDmesgAddr;
 
@@ -3096,6 +3097,11 @@ void set_replay_name(char *name) {
 
 int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
  {
+
+    /* shannon afl mod for persistent mode */
+    if (getenv("SHANNON_ENABLE_PERSISTENT_MODE"))
+       is_persistent = 1;
+
     if (pmm == PANDA_RUN)    goto PANDA_MAIN_RUN;
     if (pmm == PANDA_FINISH) goto PANDA_MAIN_FINISH;
     int i;

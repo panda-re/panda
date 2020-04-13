@@ -46,7 +46,6 @@
     if(pc == afl_entry_point && pc && getenv("AFLGETWORK") == 0) { \
       afl_setup(); \
       afl_forkserver(env); \
-      aflStart = 1; \
     } \
   } while (0)
 
@@ -67,7 +66,7 @@ static u32            cycle_cnt;
 
 target_ulong afl_entry_point = 0, /* ELF entry point (_start) */
           afl_start_code = 0,  /* .text start pointer      */
-          afl_end_code = 0;    /* .text end pointer        */
+          afl_end_code = 0xffffffff;    /* .text end pointer        */
 
 target_ulong    afl_persistent_addr, afl_persistent_ret_addr;
 unsigned int afl_persistent_cnt;
@@ -171,6 +170,7 @@ void afl_setup(void) {
 
 
   }
+
 
   if (getenv("AFL_INST_LIBS")) {
 
@@ -434,7 +434,6 @@ static void afl_wait_tsl(CPUArchState *env, int fd) {
   struct afl_chain c;
   TranslationBlock *tb, *last_tb;
 
-
   while (1) {
 
     /* Broken pipe means it's time to return to the fork server routine. */
@@ -451,6 +450,7 @@ static void afl_wait_tsl(CPUArchState *env, int fd) {
       tb = tb_gen_code(cpu, t.tb.pc, t.tb.cs_base, t.tb.flags, 0);
       mmap_unlock();
       tb_unlock();
+
     }
 
     if (t.is_chain) {
