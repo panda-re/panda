@@ -4,9 +4,9 @@ First. Go read the normal kernelinfo [readme](https://github.com/panda-re/panda/
 
 ## Requirements
 
-- GDB 8 or above. This is needed for the GDB API to support `gdb.execute(to_string=True)`
+- GDB 8 or above. This is needed for the GDB API to support `gdb.execute(to_string=True)`.
 - Python 3.6 or above. This is to support fstrings.
-- A kernel vmlinux that is not stripped
+- A kernel vmlinux that is not stripped.
 
 ## Where does this apply?
 
@@ -17,11 +17,9 @@ Example: `vmlinux: ELF 32-bit MSB executable, MIPS, MIPS32 rel2 version 1 (SYSV)
 
 ## How does this work?
 
-This crux of this is python script run inside of gdb. 
+This crux of this is python script run inside of gdb to gather DWARF symbols.
 
-That script creates a command `kernel_info`. That command takes an argument for the file to output to. Otherwise it prints to stdout.
-
-Inside of the script you can see the gdb magic required to get offsets and whatnot for kernel information.
+That script creates a command `kernel_info` which runs a bunch of GDB commands to gather information from the DWARF symbols and output it.
  
 ## How do I use it?
 
