@@ -244,6 +244,7 @@ void afl_forkserver(CPUArchState *env) {
       if (pipe(t_fd) || dup2(t_fd[1], TSL_FD) < 0) exit(3);
       close(t_fd[1]);
 
+      aflStart=0;
       child_pid = fork();
       if (child_pid < 0) exit(4);
 
@@ -341,21 +342,13 @@ void afl_persistent_start(void) {
 }
 
 void afl_persistent_stop(void) {
-  static struct afl_tsl exit_cmd_tsl = {{-1, 0, 0}, '\0', EXIT_TSL};
 
   if (!afl_fork_child) return;
   if (is_persistent) {
 
     if (--cycle_cnt) {
 
-      if (write(TSL_FD, &exit_cmd_tsl, sizeof(struct afl_tsl)) !=
-          sizeof(struct afl_tsl)) {
-
-        /* Exit the persistent loop on pipe error */
-        afl_area_ptr = dummy;
-        exit(0);
-
-      }
+      afl_request_tsl(0, 0, 0, 0, 0, EXIT_TSL);
 
       raise(SIGSTOP);
 
@@ -410,8 +403,11 @@ void afl_request_tsl(target_ulong pc, target_ulong cb, uint32_t flags,
   t.is_chain   = (last_tb != NULL);
   t.cmd        = cmd;
 
-  if (write(TSL_FD, &t, sizeof(struct afl_tsl)) != sizeof(struct afl_tsl))
+  if (write(TSL_FD, &t, sizeof(struct afl_tsl)) != sizeof(struct afl_tsl)){
+    afl_area_ptr = dummy;
+    exit(0);
     return;
+  }
 
   if (t.is_chain) {
 
@@ -420,9 +416,11 @@ void afl_request_tsl(target_ulong pc, target_ulong cb, uint32_t flags,
     c.last_tb.flags = last_tb->flags;
     c.tb_exit = tb_exit;
 
-    if (write(TSL_FD, &c, sizeof(struct afl_chain)) != sizeof(struct afl_chain))
+    if (write(TSL_FD, &c, sizeof(struct afl_chain)) != sizeof(struct afl_chain)){
+      afl_area_ptr = dummy;
+      exit(0);
       return;
-
+    }
   }
 }
 
