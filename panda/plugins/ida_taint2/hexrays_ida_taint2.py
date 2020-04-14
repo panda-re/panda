@@ -279,7 +279,7 @@ class hexrays_ida_taint2_t(ida_idaapi.plugin_t):
         else:
             # PLUGIN_SKIP means don't load the plugin
             return idaapi.PLUGIN_SKIP
-            
+             
     def term(self):
         # nothing to do when plugin is unloaded
         pass
