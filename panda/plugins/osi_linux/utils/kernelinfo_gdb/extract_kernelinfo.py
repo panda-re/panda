@@ -35,6 +35,8 @@ class KernelInfo(gdb.Command):
 		print(f"name = {uts_release}|{uts_version}|{uts_machine}",file=file_out)
 		release = get_symbol_as_string("init_uts_ns->name->release")
 		version_a,version_b,version_c = release.split(".")
+		if "-" in version_c: # version.c can be of the form 0-42-generic
+			version_c = version_c.split("-")[0]
 		print(f"version.a = {version_a}",file=file_out)
 		print(f"version.b = {version_b}",file=file_out)
 		print(f"version.c = {version_c}",file=file_out)
