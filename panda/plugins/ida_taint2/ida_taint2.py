@@ -116,6 +116,7 @@ def main():
     input_file = open(filename, "r")
     reader = csv.reader(input_file)
     labels_for_pc = {}
+    # skip header
     next(reader, None)
     for row in reader:
         pid = int(row[1])

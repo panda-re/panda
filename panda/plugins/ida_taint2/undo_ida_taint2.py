@@ -38,7 +38,6 @@ def main():
                         comment = ida_bytes.get_cmt(head, 0)
                         if comment != None and "taint labels" in comment:
                             ida_nalt.set_item_color(head, UNDO_COLOR)
-                            #MakeComm(head, label_regex.sub("", comment))
                             ida_bytes.set_cmt(head, label_regex.sub("", comment), 0)
 if __name__ == "__main__":
     main()
