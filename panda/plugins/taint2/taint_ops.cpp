@@ -237,8 +237,14 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
 
 void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                        uint64_t src1, uint64_t src2, uint64_t src_size,
-                       llvm::Instruction *inst, unsigned __int128 arg1, unsigned __int128 arg2)
+                       llvm::Instruction *inst, uint64_t arg1_lo,
+                       uint64_t arg1_hi, uint64_t arg2_lo, uint64_t arg2_hi)
 {
+    unsigned __int128 arg1 = (static_cast<unsigned __int128>(arg1_hi) << 64) |
+                             static_cast<unsigned __int128>(arg1_lo);
+    unsigned __int128 arg2 = (static_cast<unsigned __int128>(arg2_hi) << 64) |
+                             static_cast<unsigned __int128>(arg2_lo);
+
     bool isTainted1 = false;
     bool isTainted2 = false;
     for (int i = 0; i < src_size; ++i) {

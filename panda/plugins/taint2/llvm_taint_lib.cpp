@@ -695,10 +695,19 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
         arg2 = b.CreateSExtOrBitCast(src2, Type::getIntNTy(ctx, 128));
     }
 
+    // Now break arg1 and arg2 into hi and lo
+    Value *arg1_lo = b.CreateTrunc(arg1, Type::getInt64Ty(ctx));
+    Value *arg1_hi =
+        b.CreateTrunc(b.CreateLShr(arg1, 64), Type::getInt64Ty(ctx));
+
+    Value *arg2_lo = b.CreateTrunc(arg2, Type::getInt64Ty(ctx));
+    Value *arg2_hi =
+        b.CreateTrunc(b.CreateLShr(arg2, 64), Type::getInt64Ty(ctx));
+
     vector<Value*> args{
         llvConst, dslot, dest_size,
         src1slot, src2slot, src_size,
-        constInstr(&I), arg1, arg2
+        constInstr(&I), arg1_lo, arg1_hi, arg2_lo, arg2_hi
     };
     b.CreateCall(mulCompF, args);
 }
