@@ -1,0 +1,8 @@
+#!/bin/bash
+if [ "$#" -ne 2 ]; then
+   echo "run.sh [debuggable vmlinux file] [output file]"
+   exit
+fi
+VMLINUX=$1
+OUTPUT_FILE=$2
+gdb $VMLINUX -ex "source extract_kernelinfo.py" -ex "kernel_info $OUTPUT_FILE" -ex "q"
