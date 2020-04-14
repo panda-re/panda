@@ -101,7 +101,6 @@ unsigned int afl_inst_rms = MAP_SIZE; /* Exported for afl_gen_trace */
 
 
 static void afl_wait_tsl(CPUArchState*, int);
-static void afl_request_tsl(target_ulong, target_ulong, uint32_t, TranslationBlock*, int);
 
 
 TranslationBlock *tb_htable_lookup(CPUState*, target_ulong, target_ulong, uint32_t);
@@ -112,6 +111,7 @@ static inline TranslationBlock *tb_find(CPUState*, TranslationBlock*, int);
 
 /* Data structure passed around by the translate handlers: */
 
+
 struct afl_tb {
   target_ulong pc;
   target_ulong cs_base;
@@ -121,6 +121,7 @@ struct afl_tb {
 struct afl_tsl {
   struct afl_tb tb;
   char is_chain;
+  char cmd;
 };
 
 struct afl_chain {
@@ -340,7 +341,7 @@ void afl_persistent_start(void) {
 }
 
 void afl_persistent_stop(void) {
-  static struct afl_tsl exit_cmd_tsl = {{-1, 0, 0}, '\0'};
+  static struct afl_tsl exit_cmd_tsl = {{-1, 0, 0}, '\0', EXIT_TSL};
 
   if (!afl_fork_child) return;
   if (is_persistent) {
@@ -394,8 +395,8 @@ static inline void helper_aflMaybeLog(target_ulong cur_loc) {
    we tell the parent to mirror the operation, so that the next fork() has a
    cached copy. */
 
-static void afl_request_tsl(target_ulong pc, target_ulong cb, uint32_t flags,
-                            TranslationBlock *last_tb, int tb_exit) {
+void afl_request_tsl(target_ulong pc, target_ulong cb, uint32_t flags,
+                            TranslationBlock *last_tb, int tb_exit, char cmd) {
 
   struct afl_tsl t;
   struct afl_chain c;
@@ -407,6 +408,7 @@ static void afl_request_tsl(target_ulong pc, target_ulong cb, uint32_t flags,
   t.tb.cs_base = cb;
   t.tb.flags   = flags;
   t.is_chain   = (last_tb != NULL);
+  t.cmd        = cmd;
 
   if (write(TSL_FD, &t, sizeof(struct afl_tsl)) != sizeof(struct afl_tsl))
     return;
@@ -441,7 +443,13 @@ static void afl_wait_tsl(CPUArchState *env, int fd) {
     if (read(fd, &t, sizeof(struct afl_tsl)) != sizeof(struct afl_tsl))
       break;
 
-    if(t.tb.pc == -1) return;
+    switch (t.cmd){
+        case EXIT_TSL: return;
+        case START_AFL: aflStart = 1; continue;
+        case STOP_AFL: aflStart = 0; continue;
+        default: break;
+    }
+
     tb = tb_htable_lookup(cpu, t.tb.pc, t.tb.cs_base, t.tb.flags);
 
     if(!tb) {

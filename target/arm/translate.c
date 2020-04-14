@@ -12327,6 +12327,7 @@ static target_ulong startWork(CPUArchState *env, target_ulong start, target_ulon
     afl_end_code   = end;
     aflGotLog = 0;
     aflStart = 1;
+    afl_request_tsl(0, 0, 0, 0, 0, START_AFL);
     if (is_persistent)
         afl_persistent_start();
     return 0;
@@ -12345,6 +12346,7 @@ static target_ulong doneWork(target_ulong val)
     if(aflGotLog)
         exit(64 | val);
 #endif
+    afl_request_tsl(0, 0, 0, 0, 0, STOP_AFL);
     if (is_persistent) {
         aflStart = 0; /* Stop capturing coverage */
         afl_persistent_stop();

@@ -28,6 +28,14 @@ void afl_persistent_stop(void);
 extern unsigned char is_persistent;
 extern unsigned int afl_persistent_cnt;
 
+void afl_request_tsl(target_ulong, target_ulong, uint32_t, TranslationBlock*, int, char cmd);
+
+enum tsl_cmd {
+    TRANSLATE = 0,
+    EXIT_TSL = 1, // needed for persistent mode
+    START_AFL = 2,
+    STOP_AFL = 3
+};
 
 
 #endif

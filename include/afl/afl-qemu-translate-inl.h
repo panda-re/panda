@@ -114,7 +114,7 @@ static void afl_gen_trace(target_ulong cur_loc)
   /*  shannon traces all ...
    *  otherwise there would be checks for start and end_code right here */
 
-  if (is_persistent && !aflStart)
+  if (!aflStart)
     return;
 
   /* Looks like QEMU always maps to fixed locations, so ASLR is not a
