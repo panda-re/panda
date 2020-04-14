@@ -4,6 +4,7 @@ callfunc
 callstack_instr
 checkpoint
 collect_code
+correlatetaps
 coverage
 edge_coverage
 filereadmon
