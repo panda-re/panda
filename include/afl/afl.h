@@ -32,9 +32,10 @@ void afl_request_tsl(target_ulong, target_ulong, uint32_t, TranslationBlock*, in
 
 enum tsl_cmd {
     TRANSLATE = 0,
-    EXIT_TSL = 1, // needed for persistent mode
-    START_AFL = 2,
-    STOP_AFL = 3
+    IS_CHAIN = 1,
+    EXIT_TSL = 2, // needed for persistent mode
+    START_AFL = 3,
+    STOP_AFL = 4
 };
 
 

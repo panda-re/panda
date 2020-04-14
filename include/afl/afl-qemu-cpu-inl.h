@@ -120,7 +120,6 @@ struct afl_tb {
 
 struct afl_tsl {
   struct afl_tb tb;
-  char is_chain;
   char cmd;
 };
 
@@ -400,8 +399,10 @@ void afl_request_tsl(target_ulong pc, target_ulong cb, uint32_t flags,
   t.tb.pc      = pc;
   t.tb.cs_base = cb;
   t.tb.flags   = flags;
-  t.is_chain   = (last_tb != NULL);
   t.cmd        = cmd;
+
+  if ( cmd = TRANSLATE && last_tb != NULL)
+      t.cmd = IS_CHAIN;
 
   if (write(TSL_FD, &t, sizeof(struct afl_tsl)) != sizeof(struct afl_tsl)){
     afl_area_ptr = dummy;
@@ -409,7 +410,7 @@ void afl_request_tsl(target_ulong pc, target_ulong cb, uint32_t flags,
     return;
   }
 
-  if (t.is_chain) {
+  if (t.cmd == IS_CHAIN) {
 
     c.last_tb.pc = last_tb->pc;
     c.last_tb.cs_base = last_tb->cs_base;
@@ -459,7 +460,7 @@ static void afl_wait_tsl(CPUArchState *env, int fd) {
 
     }
 
-    if (t.is_chain) {
+    if (t.cmd == IS_CHAIN) {
       if (read(fd, &c, sizeof(struct afl_chain)) != sizeof(struct afl_chain))
         break;
 
