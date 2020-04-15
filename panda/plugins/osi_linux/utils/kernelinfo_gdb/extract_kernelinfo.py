@@ -113,7 +113,7 @@ class KernelInfo(gdb.Command):
 		print_offset("struct dentry",				"d_op",					"path");
 		print_offset("struct dentry_operations",	"d_dname",				"path");
 		print_offset("struct vfsmount",			"mnt_root",				"path");
-		if int(version_a) >=3 and int(version_b) >= 3 and int(version_c) >= 0:
+		if (int(version_a),int(version_b),int(version_c)) >= (3,0,0):
 			# fields in struct mount 
 			print_offset_from_member("struct mount",	"mnt", "mnt_parent",		"path");
 			print_offset_from_member("struct mount",	"mnt", "mnt_mountpoint",	"path");
