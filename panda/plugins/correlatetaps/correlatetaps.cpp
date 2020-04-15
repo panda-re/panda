@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 // This needs to be defined before anything is included in order to get
 // the PRIx64 macro
@@ -61,7 +61,7 @@ int history_pos = 0;
 std::map<std::pair<prog_point,prog_point>,int> correlated;
 
 void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
-                       target_ulong size, void *buf) {
+                        size_t size, uint8_t *buf) {
     prog_point p = {};
     get_prog_point(env, &p);
 
@@ -74,7 +74,7 @@ void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
     }
 
     // Handle cases like rep stosd. We want to keep extending the
-    // range if the program point hasn't changed and the new range 
+    // range if the program point hasn't changed and the new range
     // is contiguous. If it's not contiguous, keep the most recent
     // one. Either way, don't add to the history until the program
     // point has actually changed.
@@ -99,7 +99,7 @@ void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
         history[history_pos].start_addr = addr;
         history[history_pos].end_addr = addr+size;
     }
- 
+
     return;
 }
 
