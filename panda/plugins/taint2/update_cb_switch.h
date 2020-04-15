@@ -153,11 +153,11 @@ PANDAENDCOMMENT */
 
         case llvm::Instruction::Shl:
             tassert(last_literal != ~0UL);
-            
+
             // assuming the item being shifted by LShr is at most 64 bits, as
             // the masks can't handle anything larger
-            tassert(last_literal < 64);
-            
+            // tassert(last_literal < 64);
+
             cb_mask <<= last_literal;
             one_mask <<= last_literal;
             zero_mask <<= last_literal;
