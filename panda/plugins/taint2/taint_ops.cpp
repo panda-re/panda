@@ -256,7 +256,9 @@ void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         return; //nothing to propagate
     } else if (!(isTainted1 && isTainted2)){ //the case we do special stuff
         unsigned __int128 cleanArg = isTainted1 ? arg2 : arg1;
-        taint_log("mul_com: one untainted arg %lu \n", cleanArg);
+        taint_log("mul_com: one untainted arg lo=%lu hi=%lu \n",
+                  static_cast<uint64_t>(cleanArg),
+                  static_cast<uint64_t>(cleanArg >> 64));
         if (cleanArg == 0) return ; // mul X untainted 0 -> no taint prop
         else if (cleanArg == 1) { //mul X untainted 1(one) should be a parallel taint
             taint_parallel_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
