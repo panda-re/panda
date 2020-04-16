@@ -2,6 +2,9 @@ import sys
 import ctypes
 import logging
 
+# Only for logger, should probably move it to a separate file
+from panda.extras.file_hook import FileHook
+
 # TODO: OSI integration for process pid, name, and file path
 # TODO: Ability to fake buffers for specific commands
 
@@ -13,29 +16,35 @@ config.IOC_SIZE_BITS = 14
 config.IOC_DIR_BITS  = 2
 config.SUCCESS_RET   = 0
 
-class IoctlCmdBits(ctypes.LitteEndianStructure):
+class IoctlCmdBits(ctypes.LittleEndianStructure):
 
     '''
     Pythonic bit-packing without 3rd party libs
     '''
 
-    __fields__ = [
+    _fields_ = [
         ("direction", ctypes.c_uint8, config.IOC_DIR_BITS),
         ("arg_size", ctypes.c_uint16, config.IOC_SIZE_BITS),
         ("cmd_num", ctypes.c_uint8, config.IOC_CMD_BITS),
         ("type_num", ctypes.c_uint8, config.IOC_TYPE_BITS)
     ]
 
-class IoctlCmd(ctypes.Union):
+class IoctlCmdUnion(ctypes.Union):
 
     '''
     Python alternative to bit-packed struct
     '''
 
-    __fields__ = [
+    _fields_ = [
         ("bits", IoctlCmdBits),
-        ("asUnsigned32", ctypes.c_uint32)
+        ("asUnsigned32", ctypes.c_uint32),
     ]
+
+class IoctlCmd(IoctlCmdUnion):
+
+    '''
+    Human-readable ioctl command
+    '''
 
     def __str__(self):
 
@@ -54,7 +63,7 @@ class IoctlCmd(ctypes.Union):
             direction,
             self.bits.arg_size,
             self.bits.cmd_num,
-            self.bits.type
+            self.bits.type_num
         )
 
     def __eq__(self, other):
