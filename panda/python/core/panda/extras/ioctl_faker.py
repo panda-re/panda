@@ -124,7 +124,7 @@ class Ioctl():
     def __str__(self):
 
         if self.osi:
-            self_str = "\'{}\' using \'{}\' - ".format()
+            self_str = "\'{}\' using \'{}\' - ".format(self.proc_name, self.file_name)
         else:
             self_str = ""
 
@@ -150,12 +150,14 @@ class Ioctl():
             self.cmd == other.cmd and
             self.has_buf == other.has_buf and
             self.guest_ptr == other.guest_ptr and
-            self.guest_buf == other.guest_buf
+            self.guest_buf == other.guest_buf and
+            self.proc_name == self.proc_name and
+            self.file_name == self.file_name
         )
 
     def __hash__(self):
 
-        return hash((self.cmd, self.has_buf, self.guest_ptr, self.guest_buf))
+        return hash((self.cmd, self.has_buf, self.guest_ptr, self.guest_buf, self.proc_name, self.file_name))
 
 class IoctlFaker():
 
