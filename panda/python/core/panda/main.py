@@ -27,7 +27,7 @@ from .utils import progress, make_iso, debug
 # Mixins to extend Panda class functionality
 from .libpanda_mixins   import libpanda_mixins
 from .blocking_mixins   import blocking_mixins
-from .osi_mixins        import osi_mixins
+from .osi_mixins        import osi_mixins, osi_linux_mixins
 from .hooking_mixins    import hooking_mixins
 from .callback_mixins   import callback_mixins
 from .taint_mixins      import taint_mixins
@@ -36,14 +36,14 @@ from .pyperiph_mixins   import pyperipheral_mixins
 
 import pdb
 
-class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins, pyperipheral_mixins):
+class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins, pyperipheral_mixins):
     def __init__(self, arch="i386", mem="128M",
             expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
             os_version=None,
             qcow=None, # Qcow file to load
             os="linux",
             generic=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
-            extra_args=[]):	
+            extra_args=[]):
         self.arch = arch
         self.mem = mem
         self.os = os_version
@@ -386,7 +386,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         '''
         if not isfile(replaypfx+"-rr-snp") or not isfile(replaypfx+"-rr-nondet.log"):
             raise ValueError("Replay files not present to run replay of {}".format(replaypfx))
-        
+
         if debug:
             progress ("Replaying %s" % replaypfx)
 
@@ -544,7 +544,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         if not "plugin_callstack_instr" in self.plugins:
             progress("enabling callstack_instr plugin")
             self.require("callstack_instr")
-        
+
         callers = ffi.new("uint32_t[%d]" % lim)
         n = self.plugins['callstack_instr'].get_callers(callers, lim, cpu)
         c = []

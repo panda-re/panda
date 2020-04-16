@@ -43,3 +43,15 @@ class osi_mixins():
         current_name = ffi.string(current.name).decode('utf8', 'ignore')
         return current_name
 
+class osi_linux_mixins(osi_mixins):
+    def require_osi_linux(self):
+        if not 'osi_linux' in self.plugins:
+            self.load_osi()
+
+    def osi_linux_fd_to_filename(self, cpustate, p, fd):
+        self.require_osi_linux()
+        return self.plugins['osi_linux'].osi_linux_fd_to_filename(cpustate, p, fd)
+
+    def osi_linux_fd_to_pos(self, cpustate, p, fd):
+        self.require_osi_linux()
+        return self.plugins['osi_linux'].osi_linux_fd_to_pos(cpustate, p, fd)
