@@ -23,10 +23,10 @@ class IoctlCmdBits(ctypes.LittleEndianStructure):
     '''
 
     _fields_ = [
-        ("direction", ctypes.c_uint8, config.IOC_DIR_BITS),
-        ("arg_size", ctypes.c_uint16, config.IOC_SIZE_BITS),
+        ("type_num", ctypes.c_uint8, config.IOC_TYPE_BITS),
         ("cmd_num", ctypes.c_uint8, config.IOC_CMD_BITS),
-        ("type_num", ctypes.c_uint8, config.IOC_TYPE_BITS)
+        ("arg_size", ctypes.c_uint16, config.IOC_SIZE_BITS),
+        ("direction", ctypes.c_uint8, config.IOC_DIR_BITS),
     ]
 
 class IoctlCmdUnion(ctypes.Union):
@@ -189,3 +189,53 @@ class IoctlFaker():
     def get_unmodified_returns(self, with_buf_only = False):
 
         return self._get_returns(self._success_returns, with_buf_only)
+
+if __name__ == "__main__":
+
+    '''
+    Bash will issue ioctls on /dev/ttys0 - this is just a simple test to make sure they're being captured
+    '''
+
+    from panda import blocking, Panda
+
+    # No arguments, i386. Otherwise argument should be guest arch
+    generic_type = sys.argv[1] if len(sys.argv) > 1 else "i386"
+    panda = Panda(generic=generic_type)
+
+    def print_list_elems(l):
+
+        if not l:
+            print("None")
+        else:
+            for e in l:
+                print(e)
+
+    @blocking
+    def run_cmd():
+
+        # Setup faker
+        ioctl_faker = IoctlFaker(panda)
+
+        print("\nRunning \'ls -l\' to ensure ioctl() capture is working...\n")
+
+        # First revert to root snapshot, then type a command via serial
+        panda.revert_sync("root")
+        panda.run_serial_cmd("cd / && ls -l")
+
+        # Check faker's results
+        faked_rets = ioctl_faker.get_forced_returns()
+        normal_rets = ioctl_faker.get_unmodified_returns()
+
+        print("{} faked ioctl returns:".format(len(faked_rets)))
+        print_list_elems(faked_rets)
+        print("\n")
+
+        print("{} normal ioctl returns:".format(len(normal_rets)))
+        print_list_elems(normal_rets)
+        print("\n")
+
+        # Cleanup
+        panda.end_analysis()
+
+    panda.queue_async(run_cmd)
+    panda.run()
