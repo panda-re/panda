@@ -53,6 +53,13 @@ extern bool detaint_cb0_bytes;
 void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size);
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);
 
+static inline int ctz128(unsigned __int128 val)
+{
+    uint64_t hi = static_cast<uint64_t>(val >> 64);
+    uint64_t lo = static_cast<uint64_t>(val);
+    return 0 != lo ? ctz64(lo) : ctz64(hi) + ctz64(lo);
+}
+
 // Remove the taint marker from any bytes whose control mask bits go to 0.
 // A 0 control mask bit means that bit does not impact the value in the byte (or
 // impacts it in an irreversible fashion, so they gave up on calculating the
