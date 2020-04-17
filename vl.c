@@ -187,7 +187,7 @@ void tcg_llvm_destroy(void);
 
 extern const char *aflFile;
 extern char is_persistent;
-extern unsigned long aflPanicAddr;
+extern unsigned long aflPanicAddr[255];
 extern unsigned long aflDmesgAddr;
 
 static const char *data_dir[16];
@@ -3449,7 +3449,22 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
                 strcpy((char *)aflFile, optarg);
                 break;
             case QEMU_OPTION_aflPanicAddr:
-                aflPanicAddr = strtoul(optarg, NULL, 16);
+                {
+                    unsigned char idx = 0;
+                    char *optarg_cpy = strdup(optarg);
+
+                    char *opt_start = optarg_cpy, *opt_end = optarg_cpy;
+                        // first round: cound number of panic addresses
+                    while (opt_end != NULL) {
+                        opt_end = strchr(opt_start, ',');
+                        if (opt_end != NULL) *opt_end = '\0';
+                             aflPanicAddr[idx] = strtoul(opt_start, NULL, 16);
+                             fprintf(stderr, "adding aflPanicAddr 0x%x\n",aflPanicAddr[idx]);
+                             opt_start = opt_end + 1;
+                             idx += 1;
+                    }
+                    aflPanicAddr[idx] = 0;
+                }
                 break;
             case QEMU_OPTION_aflDmesgAddr:
                 aflDmesgAddr = strtoul(optarg, NULL, 16);

@@ -12421,8 +12421,13 @@ void helper_aflInterceptPanic(void)
 
 void gen_aflBBlock(target_ulong pc)
 {
-    if(pc == aflPanicAddr)
-        gen_helper_aflInterceptPanic();
-    if(pc == aflDmesgAddr)
-        gen_helper_aflInterceptLog(cpu_env);
+    unsigned char idx = 0;
+
+    while (aflPanicAddr[idx] != 0) {
+        if(pc == aflPanicAddr[idx])
+            gen_helper_aflInterceptPanic();
+        idx++;
+    }
+    //if(pc == aflDmesgAddr)
+        //gen_helper_aflInterceptLog(cpu_env);
 }
