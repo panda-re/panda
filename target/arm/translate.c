@@ -12354,7 +12354,7 @@ static target_ulong doneWork(CPUArchState *env, target_ulong val)
     afl_request_tsl(0, 0, 0, 0, 0, STOP_AFL);
     new_state = cpu_ldq_data(env, aflStateAddr);
     AFL_DPRINTF("State at done work: 0x%x\n", new_state);
-    if (new_state != afl_state_var){
+    if ((uint8_t) new_state != (uint8_t) afl_state_var){
         exit(64 | val);
     }
 
