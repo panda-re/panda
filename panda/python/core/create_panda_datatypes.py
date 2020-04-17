@@ -223,7 +223,7 @@ elif arch == "ppc" and int(bits) == 64:
 else:
 	print("PANDA_DATATYPES: Architecture not supported")
 
-ffi.cdef(read_cleanup_header("{inc}/callstack_isntr.h"))
+ffi.cdef(read_cleanup_header("{inc}/callstack_instr.h"))
 # END PPP headers
 
 #ffi.cdef(read_cleanup_header("{inc}/panda_qemu_support.h"))
