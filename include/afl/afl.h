@@ -11,7 +11,7 @@
     } while (0)
 extern const char *aflFile;
 extern unsigned long aflPanicAddr[255];
-extern unsigned long aflDmesgAddr;
+extern unsigned long aflStateAddr;
 
 extern int aflEnableTicks;
 extern int aflStart;

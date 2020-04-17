@@ -188,7 +188,7 @@ void tcg_llvm_destroy(void);
 extern const char *aflFile;
 extern char is_persistent;
 extern unsigned long aflPanicAddr[255];
-extern unsigned long aflDmesgAddr;
+extern unsigned long aflStateAddr;
 
 static const char *data_dir[16];
 static int data_dir_idx;
@@ -3465,8 +3465,8 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
                     aflPanicAddr[idx] = 0;
                 }
                 break;
-            case QEMU_OPTION_aflDmesgAddr:
-                aflDmesgAddr = strtoul(optarg, NULL, 16);
+            case QEMU_OPTION_aflStateAddr:
+                aflStateAddr = strtoul(optarg, NULL, 16);
                 break;
             case QEMU_OPTION_kernel:
                 qemu_opts_set(qemu_find_opts("machine"), 0, "kernel", optarg,

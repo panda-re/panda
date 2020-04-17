@@ -84,6 +84,7 @@ static const char *regnames[] =
     { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
       "r8", "r9", "r10", "r11", "r12", "r13", "r14", "pc" };
 
+static target_ulong afl_state_var;
 void gen_aflBBlock(target_ulong pc);
 
 /* initialize TCG globals.  */
@@ -12273,6 +12274,8 @@ static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks,
      * execution.
      * N.B. We assume a single cpu here!
      */
+    afl_state_var = cpu_ldq_data(env, aflStateAddr);
+    AFL_DPRINTF("State at start work: 0x%x\n", afl_state_var);
     aflEnableTicks = enableTicks;
     afl_wants_cpu_to_stop = 1;
     afl_persistent_cnt = persistent;
@@ -12323,6 +12326,7 @@ static target_ulong startWork(CPUArchState *env, target_ulong start, target_ulon
     AFL_DPRINTF("pid %d: startWork " TARGET_FMT_lx " - " TARGET_FMT_lx"\n",
             getpid(), start, end);
 
+
     afl_start_code = start;
     afl_end_code   = end;
     aflGotLog = 0;
@@ -12333,8 +12337,9 @@ static target_ulong startWork(CPUArchState *env, target_ulong start, target_ulon
     return 0;
 }
 
-static target_ulong doneWork(target_ulong val)
+static target_ulong doneWork(CPUArchState *env, target_ulong val)
 {
+    target_ulong new_state;
     AFL_DPRINTF("pid %d: doneWork " TARGET_FMT_lx "\n", getpid(), val);
     assert(aflStart == 1);
 /* detecting logging as crashes hasnt been helpful and
@@ -12347,6 +12352,12 @@ static target_ulong doneWork(target_ulong val)
         exit(64 | val);
 #endif
     afl_request_tsl(0, 0, 0, 0, 0, STOP_AFL);
+    new_state = cpu_ldq_data(env, aflStateAddr);
+    AFL_DPRINTF("State at done work: 0x%x\n", new_state);
+    if (new_state != afl_state_var){
+        exit(64 | val);
+    }
+
     if (is_persistent) {
         aflStart = 0; /* Stop capturing coverage */
         afl_persistent_stop();
@@ -12378,7 +12389,7 @@ target_ulong helper_aflCall(CPUArchState *env, target_ulong code, target_ulong a
     case 1: return (uint32_t)startForkserver(env, a0, a1);
     case 2: return (uint32_t)getWork(env, a0, a1);
     case 3: return (uint32_t)startWork(env, a0, a1);
-    case 4: return (uint32_t)doneWork(a0);
+    case 4: return (uint32_t)doneWork(env, a0);
     case 5: return (uint32_t)qputs(a0);
     default: return -1;
     }
