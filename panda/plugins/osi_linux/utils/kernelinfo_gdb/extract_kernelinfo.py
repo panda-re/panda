@@ -97,8 +97,8 @@ class KernelInfo(gdb.Command):
 		print_offset("struct vm_area_struct",		"vm_file",		"vma");
 
 		# used in reading file information 
-		print_offset("struct file",				"f_path.dentry",	"fs");
-		print_offset("struct file",				"f_path.mnt",		"fs"); # XXX: check if this changes across versions
+		print_offset("struct file",				"f_path_dentry",	"fs");
+		print_offset("struct file",				"f_path_mnt",		"fs"); # XXX: check if this changes across versions
 		print_offset("struct file",				"f_pos",			"fs");
 		print_offset("struct files_struct",		"fdt",			"fs");
 		print_offset("struct files_struct",		"fdtab",			"fs");
