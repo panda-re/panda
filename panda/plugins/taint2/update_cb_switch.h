@@ -96,11 +96,12 @@ PANDAENDCOMMENT */
         { //TODO can implement this through strength reduction to shift and sub
             tassert(last_literal != ~0UL);
             // Powers of two in last_literal destroy reversibility.
-            uint64_t trailing_zeroes = ctz64(last_literal);
+            int trailing_zeroes = ctz128(last_literal);
             cb_mask <<= trailing_zeroes;
             // cast so works on large numbers too, or any shift over 31 not
             // handled properly
-            zero_mask = ((uint64_t)1 << trailing_zeroes) - 1;
+            zero_mask =
+                (static_cast<unsigned __int128>(1) << trailing_zeroes) - 1;
             one_mask = 0;
             break;
         }
@@ -156,7 +157,7 @@ PANDAENDCOMMENT */
 
             // assuming the item being shifted by LShr is at most 64 bits, as
             // the masks can't handle anything larger
-            // tassert(last_literal < 64);
+            tassert(last_literal < 64);
 
             cb_mask <<= last_literal;
             one_mask <<= last_literal;
