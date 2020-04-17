@@ -3454,7 +3454,6 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
                     char *optarg_cpy = strdup(optarg);
 
                     char *opt_start = optarg_cpy, *opt_end = optarg_cpy;
-                        // first round: cound number of panic addresses
                     while (opt_end != NULL) {
                         opt_end = strchr(opt_start, ',');
                         if (opt_end != NULL) *opt_end = '\0';
