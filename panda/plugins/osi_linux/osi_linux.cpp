@@ -583,6 +583,7 @@ bool init_plugin(void *self) {
     LOG_INFO(PLUGIN_NAME " initialization complete.");
     return true;
 #else
+    fprintf(stderr, "[osi_linux]: Unsupported guest architecture\n");
     goto error;
 #endif
 
