@@ -19,8 +19,10 @@ jobs:
             docker tag  pandare/panda:latest pandare/panda:${GITHUB_SHA};
             docker push pandare/panda:${GITHUB_SHA};
             docker push pandare/panda:latest;
-            docker system prune -a;
-            docker rmi $(docker images -a -q)
+            docker stop $(docker ps -a -q);
+            docker rm $(docker ps -a -q);
+            docker rmi $(docker images -a -q);
+            docker rmi -f $(docker images -a -q)
 
     - name: Build Xenial container
       run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_16_04 -t pandare/panda_xenial:latest;
