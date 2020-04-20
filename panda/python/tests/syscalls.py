@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from panda import Panda, blocking, ffi
 panda = Panda(generic="i386")
 
