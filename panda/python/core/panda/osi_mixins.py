@@ -23,9 +23,9 @@ class osi_mixins():
         self.require_osi()
         return self.plugins['osi'].get_processes(cpustate)
 
-    def get_libraries(self, cpustate, current):
+    def get_mappings(self, cpustate, current):
         self.require_osi()
-        return self.plugins['osi'].get_libraries(cpustate,current)
+        return self.plugins['osi'].get_mappings(cpustate,current)
 
     def get_modules(self, cpustate):
         self.require_osi()

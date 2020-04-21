@@ -178,7 +178,7 @@ void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out) {
     }
 }
 
-void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out)
+void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out)
 {
     *out = NULL;
     if (p == NULL) {
@@ -808,7 +808,7 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
     PPP_REG_CB("osi", on_get_process_pid, on_get_process_pid);
     PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);
-    PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
+    PPP_REG_CB("osi", on_get_mappings, on_get_mappings);
     PPP_REG_CB("osi", on_get_modules, on_get_modules);
 
     return true;

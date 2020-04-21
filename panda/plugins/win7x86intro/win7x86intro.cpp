@@ -26,7 +26,7 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void on_get_libraries(CPUState *, OsiProc *p, GArray **out);
+void on_get_mappings(CPUState *, OsiProc *p, GArray **out);
 PTR get_win7_kpcr(CPUState *cpu);
 HandleObject *get_win7_handle_object(CPUState *cpu, uint32_t eproc, uint32_t handle);
 PTR get_win7_kdbg(CPUState *cpu);

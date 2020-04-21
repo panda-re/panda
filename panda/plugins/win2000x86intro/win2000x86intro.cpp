@@ -32,7 +32,7 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void on_get_libraries(CPUState *cpu, OsiProc *p, GArray **out);
+void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out);
 PTR get_win2000_kpcr(CPUState *cpu);
 HandleObject *get_win2000_handle_object(CPUState *cpu, uint32_t eproc, uint32_t handle);
 PTR get_win2000_kddebugger_data(CPUState *cpu);

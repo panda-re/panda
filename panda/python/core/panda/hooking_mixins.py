@@ -34,7 +34,7 @@ class hooking_mixins():
                         self.enable_hook(h)
                     elif hook.program_name != current_name and hook.is_enabled:
                         self.disable_hook(h)
-                libs = self.get_libraries(cpustate,current)
+                libs = self.get_mappings(cpustate,current)
                 if h.library_name:
                     lowest_matching_lib = None
                     if libs == ffi.NULL: continue

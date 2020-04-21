@@ -26,9 +26,9 @@ bool asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd);
 const char* program_name; 
 
 bool asid_changed(CPUState *env, target_ulong old_pgd, target_ulong new_pgd) {
-    OsiProc *current =  get_current_process(env); 
-    target_ulong asid = panda_current_asid(env); 
-    GArray *ms = get_libraries(env, current); 
+    OsiProc *current =  get_current_process(env);
+    target_ulong asid = panda_current_asid(env);
+    GArray *ms = get_mappings(env, current);
 
     //if (current) printf("current->name: %s  asid: " TARGET_FMT_lx "\n", current->name, asid);
     if (program_name != NULL && strcmp(current->name, program_name) != 0) return false; 
