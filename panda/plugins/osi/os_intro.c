@@ -186,3 +186,12 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) { }
+
+// Helper function to get a single element. Should only be used with library mode
+// when g_array_index can't be used directly.
+// TODO: Can these be moved to a seperate file? Do we need implementations for more types?
+
+OsiModule* get_one_module(GArray *osimodules, unsigned int idx) {
+    OsiModule *m = &g_array_index(osimodules, OsiModule, idx);
+    return m;
+}

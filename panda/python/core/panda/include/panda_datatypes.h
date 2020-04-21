@@ -1157,3 +1157,5 @@ char* panda_monitor_run(char* buf);// Redefinition from monitor.h
 //int panda_map_physical_mem(target_ulong addr, int len);
 
 CPUState* get_cpu(void);
+
+unsigned long garray_len(GArray *list);
