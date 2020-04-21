@@ -27,7 +27,7 @@ from .utils import progress, make_iso, debug
 # Mixins to extend Panda class functionality
 from .libpanda_mixins   import libpanda_mixins
 from .blocking_mixins   import blocking_mixins
-from .osi_mixins        import osi_mixins, osi_linux_mixins
+from .osi_mixins        import osi_mixins
 from .hooking_mixins    import hooking_mixins
 from .callback_mixins   import callback_mixins
 from .taint_mixins      import taint_mixins
@@ -36,7 +36,7 @@ from .pyperiph_mixins   import pyperipheral_mixins
 
 import pdb
 
-class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins, pyperipheral_mixins):
+class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins, pyperipheral_mixins):
     def __init__(self, arch="i386", mem="128M",
             expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
             os_version=None,

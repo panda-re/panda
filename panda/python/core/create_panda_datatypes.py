@@ -154,7 +154,15 @@ def main():
     pn = 1
     # examine all plugin dirs looking for pypanda-aware headers and pull
     # out pypanda bits to go in INCLUDE_DIR files
-    for plugin in os.listdir(PLUGINS_DIR):
+    plugin_dirs = os.listdir(PLUGINS_DIR)
+
+    # Pull in osi/osi_types.h first - it's needed by other plugins too
+    if os.path.exists("%s/%s" % (PLUGINS_DIR, 'osi')):
+        print("Examining [%s] for pypanda-awareness" % 'osi_types.h')
+        create_pypanda_header("%s/osi/osi_types.h" % PLUGINS_DIR)
+
+
+    for plugin in plugin_dirs:
         if plugin == ".git": continue
         plugin_dir = PLUGINS_DIR + "/" + plugin
         if os.path.isdir(plugin_dir):
@@ -187,52 +195,59 @@ from ctypes import *
 from collections import namedtuple
 from ..ffi_importer import ffi
 
-def read_cleanup_header(fname):
+def define_clean_header(ffi, fname):
     # CFFI can't handle externs, but sometimes we have to extern C (as opposed to 
     r = open(fname).read()
     for line in r.split("\\n"):
         assert("extern \\"C\\" {{" not in line), "Externs unsupported by CFFI. Change {{}} to a single line without braces".format(r)
     r = r.replace("extern \\"C\\" ", "") # This allows inline externs like 'extern "C" void foo(...)'
-    return r
+    try:
+        ffi.cdef(r)
+    except Exception as e: # it's a cffi.CDefError, but cffi isn't imported
+        print(f"\\nError parsing header from {{fname}}\\n")
+        raise
 
 from os import environ
 
 bits = int(environ["PANDA_BITS"])
 arch = environ["PANDA_ARCH"]
 
+# For OSI
+ffi.cdef("typedef void GArray;")
+ffi.cdef("typedef int target_pid_t;")
+
 ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
-#ffi.cdef(read_cleanup_header("{inc}/pthreadtypes.h"))
+#define_clean_header(ffi, "{inc}/pthreadtypes.h")
 
 # PPP Headers
 # Syscalls - load architecture-specific headers
 if arch == "i386":
-	ffi.cdef(read_cleanup_header("{inc}/panda_datatypes_X86_32.h"))
-	ffi.cdef(read_cleanup_header("{inc}/syscalls_ext_typedefs_x86.h"))
+	define_clean_header(ffi, "{inc}/panda_datatypes_X86_32.h")
+	define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_x86.h")
 elif arch == "x86_64":
-	ffi.cdef(read_cleanup_header("{inc}/panda_datatypes_X86_64.h"))
-	ffi.cdef(read_cleanup_header("{inc}/syscalls_ext_typedefs_x64.h"))
+	define_clean_header(ffi, "{inc}/panda_datatypes_X86_64.h")
+	define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_x64.h")
 elif arch == "arm":
-	ffi.cdef(read_cleanup_header("{inc}/panda_datatypes_ARM_32.h"))
-	ffi.cdef(read_cleanup_header("{inc}/syscalls_ext_typedefs_arm.h"))
+	define_clean_header(ffi, "{inc}/panda_datatypes_ARM_32.h")
+	define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_arm.h")
 elif arch == "ppc" and int(bits) == 32:
-    ffi.cdef(read_cleanup_header("{inc}/panda_datatypes_PPC_32.h"))
+    define_clean_header(ffi, "{inc}/panda_datatypes_PPC_32.h")
     print('WARNING: no syscalls support for PPC 32')
 elif arch == "ppc" and int(bits) == 64:
-    ffi.cdef(read_cleanup_header("{inc}/panda_datatypes_PPC_64.h"))
+    define_clean_header(ffi, "{inc}/panda_datatypes_PPC_64.h")
     print('WARNING: no syscalls support for PPC 64')
 else:
 	print("PANDA_DATATYPES: Architecture not supported")
 
-ffi.cdef(read_cleanup_header("{inc}/callstack_instr.h"))
+define_clean_header(ffi, "{inc}/callstack_instr.h")
 # END PPP headers
 
-#ffi.cdef(read_cleanup_header("{inc}/panda_qemu_support.h"))
-ffi.cdef(read_cleanup_header("{inc}/panda_datatypes.h"))
-ffi.cdef(read_cleanup_header("{inc}/panda_osi.h"))
+#define_clean_header(ffi, "{inc}/panda_qemu_support.h")
+define_clean_header(ffi, "{inc}/panda_datatypes.h")
 """.format(inc=INCLUDE_DIR_PYP))
 
         for pypanda_header in pypanda_headers:
-            pdty.write('ffi.cdef(read_cleanup_header("%s"))\n' % pypanda_header)
+            pdty.write('define_clean_header(ffi, "%s")\n' % pypanda_header)
 
         pdty.write("""
 # so we need access to some data structures, but don't actually
