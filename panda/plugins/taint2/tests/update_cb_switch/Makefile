@@ -6,7 +6,11 @@ INCDIR5 = /usr/lib/x86_64-linux-gnu/glib-2.0/include
 
 INCDIRS = -I$(INCDIR1) -I$(INCDIR2) -I$(INCDIR3) -I$(INCDIR4) -I$(INCDIR5)
 
-LDFLAGS = -Wl,-L../../../../../../../install/lib -Wl,-lLLVMCore -Wl,-lLLVMSupport -Wl,-ldl -Wl,-lpthread
+#LDFLAGS = -Wl,-L../../../../../../../install/lib -Wl,-lLLVMCore -Wl,-lLLVMSupport -Wl,-ldl -Wl,-lpthread,-lcurses
+
+LLVM_CONFIG = ../../../../../../../install/bin/llvm-config
+
+LDFLAGS = -L$(shell $(LLVM_CONFIG) --libdir) $(shell $(LLVM_CONFIG) --libs) -lcurses -ldl -pthread
 
 update_cb_switch: update_cb_switch.c
 	g++ -O0 -g update_cb_switch.c $(INCDIRS) -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -o update_cb_switch $(LDFLAGS)
