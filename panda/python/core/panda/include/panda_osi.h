@@ -1,5 +1,5 @@
 // Manually copied from panda/plugins/osi/osi_types.h
-typedef void target_pid_t;
+typedef int target_pid_t; // XXX: tested on x86 and x86_64 - is it right?
 
 typedef struct osi_page_struct {
     target_ptr_t start;
@@ -9,8 +9,8 @@ typedef struct osi_page_struct {
 typedef struct osi_proc_struct {
     target_ptr_t taskd;
     target_ptr_t asid;
-    target_ptr_t pid;
-    target_ptr_t ppid;
+    target_pid_t pid;
+    target_pid_t ppid;
     char *name;
     OsiPage *pages;
 } OsiProc;

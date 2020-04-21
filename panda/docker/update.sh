@@ -57,15 +57,15 @@ make # Build binaries we run in guest
 
 pip3 install -q -r requirements.txt
 
-python3 multi_proc_cbs.py
-python3 taint_reg.py
-python3 taint_ram.py
-# Run record_then_replay on multiple architectures
-python3 record_then_replay.py i386
-python3 record_then_replay.py x86_64
-python3 record_then_replay.py arm
-python3 record_then_replay.py ppc
-# Test hooking framework
-python3 hooking.py
-# Regression tests
-python3 sleep_in_cb.py
+# Read enabled_tests.txt and run each. If any exit 0 log failure but run the rest
+failures=()
+while read test_line; do
+    echo -e "\n./$test_line"
+    ./$test_line
+    [ $? != 0 ] && echo "Failure $test_line" && failures+=($test_line)
+done < enabled_tests.txt
+
+if [ "${#failures[@]}" -ge "1" ]; then
+  echo "Test(s) failed: $failures"
+  exit 1
+fi
