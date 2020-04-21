@@ -52,7 +52,7 @@ OsiModules *get_modules(CPUState *env);
 
 // returns operating system introspection info for each userspace loaded library in the specified process
 // returns the same type as get_modules
-OsiModules *get_libraries(CPUState *env, OsiProc *p);
+OsiModules *get_mappings(CPUState *env, OsiProc *p);
 
 // returns the current thread
 OsiThread *get_current_thread(CPUState *env);

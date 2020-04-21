@@ -9,8 +9,8 @@ OsiThread *get_current_thread(CPUState *cpu);
 // returns information about the modules loaded by the guest OS kernel
 GArray *get_modules(CPUState *cpu);
 
-// returns information about the libraries loaded by a guest OS process
-GArray *get_libraries(CPUState *cpu, OsiProc *p);
+// returns information about the memory mappings of libraries loaded by a guest OS process
+GArray *get_mappings(CPUState *cpu, OsiProc *p);
 
 // returns operating system introspection info for each process in an array
 GArray *get_processes(CPUState *cpu);
