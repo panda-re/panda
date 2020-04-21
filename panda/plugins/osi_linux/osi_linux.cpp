@@ -21,6 +21,7 @@
 
 #include "default_profile.h"
 #include "kernel_2_4_x_profile.h"
+#include "kernelinfo_downloader.h"
 
 /*
  * Functions interfacing with QEMU/PANDA should be linked as C.
@@ -559,7 +560,17 @@ bool init_plugin(void *self) {
     // Load kernel offsets.
     if (read_kernelinfo(kconf_file, kconf_group, &ki) != 0) {
         LOG_ERROR("Failed to read group %s from %s.", kconf_group, kconf_file);
-        goto error;
+		LOG_INFO("Attempting to download file from panda-re.mit.edu");
+		if (download_kernelinfo(kconf_file, kconf_group) == 0) {
+			LOG_ERROR("Downloaded file from panda-re.mit.edu");
+			if (read_kernelinfo(kconf_file, kconf_group, &ki) != 0) {
+				LOG_ERROR("Downloaded file didn't contain correct group");
+        		goto error;
+			}
+		}else{
+			LOG_ERROR("Download failed. No such file.");
+			goto error;
+		}
     }
     LOG_INFO("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
     g_free(kconf_file);
