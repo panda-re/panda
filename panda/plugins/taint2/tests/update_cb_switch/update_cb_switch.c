@@ -25,6 +25,20 @@
 // needed by the switch
 #define tassert(cond) assert((cond))
 
+static inline int clz128(unsigned __int128 val)
+{
+    uint64_t hi = static_cast<uint64_t>(val >> 64);
+    uint64_t lo = static_cast<uint64_t>(val);
+    return 0 != hi ? clz64(hi) : clz64(hi) + clz64(lo);
+}
+
+static inline int ctz128(unsigned __int128 val)
+{
+    uint64_t hi = static_cast<uint64_t>(val >> 64);
+    uint64_t lo = static_cast<uint64_t>(val);
+    return 0 != lo ? ctz64(lo) : ctz64(hi) + ctz64(lo);
+}
+
 /*
  * Run a test, and print out the results.  Note that not all arguments are used
  * by all tests, and may be dummied up for those tests.
@@ -42,17 +56,20 @@
  *    expected_one_mask:  The expected one mask
  */
 void runTest(const char *ocname, unsigned int opcode, uint64_t literals1,
-    uint64_t last_literal, uint64_t size, uint64_t orig_cb_mask,
-    uint64_t orig_zero_mask, uint64_t orig_one_mask, uint64_t expected_cb_mask,
-    uint64_t expected_zero_mask, uint64_t expected_one_mask)
+             uint64_t last_literal, uint64_t size,
+             unsigned __int128 orig_cb_mask, unsigned __int128 orig_zero_mask,
+             unsigned __int128 orig_one_mask,
+             unsigned __int128 expected_cb_mask,
+             unsigned __int128 expected_zero_mask,
+             unsigned __int128 expected_one_mask)
 {
 
     // set up some variables needed by the update_cb switch
     int log2 = 0;
-    uint64_t cb_mask = orig_cb_mask;
-    uint64_t zero_mask = orig_zero_mask;
-    uint64_t one_mask = orig_one_mask;
-    
+    unsigned __int128 cb_mask = orig_cb_mask;
+    unsigned __int128 zero_mask = orig_zero_mask;
+    unsigned __int128 one_mask = orig_one_mask;
+
     // fake Instruction object that will never be used, just so will compile
     llvm::Instruction *I = NULL;
 
@@ -66,18 +83,33 @@ void runTest(const char *ocname, unsigned int opcode, uint64_t literals1,
 #include "../../update_cb_switch.h"
 
     // and the answers are...
-    printf("%s (%d):  size=%ld, lastlit=0x%lx, orig (cb,0,1) (0x%lx, 0x%lx, 0x%lx) => new (0x%lx, 0x%lx, 0x%lx) - ",
-        ocname, opcode, size, last_literal, orig_cb_mask, orig_zero_mask,
-        orig_one_mask, cb_mask, zero_mask, one_mask);
+    printf("%s (%d):  size=%ld, lastlit=0x%lx, orig (cb,0,1) (hi: 0x%lx lo: "
+           "0x%lx, hi: 0x%lx lo: 0x%lx, hi: 0x%lx lo: 0x%lx) => new hi: 0x%lx "
+           "lo: 0x%lx, hi: 0x%lx lo: 0x%lx, hi: 0x%lx lo: 0x%lx) - ",
+           ocname, opcode, size, last_literal,
+           static_cast<uint64_t>(orig_cb_mask >> 64),
+           static_cast<uint64_t>(orig_cb_mask),
+           static_cast<uint64_t>(orig_zero_mask >> 64),
+           static_cast<uint64_t>(orig_zero_mask),
+           static_cast<uint64_t>(orig_one_mask >> 64),
+           static_cast<uint64_t>(orig_one_mask),
+           static_cast<uint64_t>(cb_mask >> 64), static_cast<uint64_t>(cb_mask),
+           static_cast<uint64_t>(zero_mask >> 64),
+           static_cast<uint64_t>(zero_mask),
+           static_cast<uint64_t>(one_mask >> 64),
+           static_cast<uint64_t>(one_mask));
     if ((cb_mask == expected_cb_mask) && (zero_mask == expected_zero_mask) &&
-        (one_mask == expected_one_mask))
-    {
+        (one_mask == expected_one_mask)) {
         printf("GOOD\n");
-    }
-    else
-    {
-        printf("BAD - expected (0x%lx, 0x%lx, 0x%lx)\n", expected_cb_mask,
-            expected_zero_mask, expected_one_mask);
+    } else {
+        printf("BAD (hi: 0x%lx lo: 0x%lx, hi: 0x%lx lo: 0x%lx, hi: 0x%lx lo: "
+               "0x%lx)\n",
+               static_cast<uint64_t>(expected_cb_mask >> 64),
+               static_cast<uint64_t>(expected_cb_mask),
+               static_cast<uint64_t>(expected_zero_mask >> 64),
+               static_cast<uint64_t>(expected_zero_mask),
+               static_cast<uint64_t>(expected_one_mask >> 64),
+               static_cast<uint64_t>(expected_one_mask));
     }
 }
 
@@ -99,12 +131,12 @@ int main(int argc, char **argv)
 
     // as the same calculation is done for zero and one masks, can test 2
     // scenarios with one test (the controlled bits mask isn't changed)
-    uint64_t cb_mask = 0xfeedface;
-    uint64_t expect_cb = cb_mask;
-    uint64_t zero_mask = 0xfffffffffffffffe;
-    uint64_t expect_zero = 0xfffffffffffffff8;
-    uint64_t one_mask = 0xbaadf00d;
-    uint64_t expect_one = 0xbaadf008;
+    unsigned __int128 cb_mask = 0xfeedface;
+    unsigned __int128 expect_cb = cb_mask;
+    unsigned __int128 zero_mask = 0xfffffffffffffffe;
+    unsigned __int128 expect_zero = 0xfffffffffffffff8;
+    unsigned __int128 one_mask = 0xbaadf00d;
+    unsigned __int128 expect_one = 0xbaadf008;
     runTest("Add", opcode, literals1, last_literal, size, cb_mask, zero_mask,
        one_mask, expect_cb, expect_zero, expect_one);
 
@@ -283,7 +315,7 @@ int main(int argc, char **argv)
     
     last_literal = 0x1000000000;
     cb_mask = 0x600df00d;
-    expect_cb = 0xdf00d000000000;
+    expect_cb = static_cast<unsigned __int128>(0x6) << 64 | 0x00df00d000000000;
     zero_mask = cb_mask;
     expect_zero = 0xfffffffff;
     runTest("Mul", opcode, literals1, last_literal, size, cb_mask, zero_mask,
