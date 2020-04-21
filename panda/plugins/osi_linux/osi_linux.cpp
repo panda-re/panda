@@ -38,7 +38,7 @@ void on_get_process_handles(CPUState *env, GArray **out);
 void on_get_current_process(CPUState *env, OsiProc **out_p);
 void on_get_current_process_handle(CPUState *env, OsiProcHandle **out_p);
 void on_get_process(CPUState *, const OsiProcHandle *, OsiProc **);
-void on_get_libraries(CPUState *env, OsiProc *p, GArray **out);
+void on_get_mappings(CPUState *env, OsiProc *p, GArray **out);
 void on_get_current_thread(CPUState *env, OsiThread *t);
 
 struct kernelinfo ki;
@@ -302,7 +302,7 @@ void on_get_process(CPUState *env, const OsiProcHandle *h, OsiProc **out) {
  *
  * @todo Remove duplicates from results.
  */
-void on_get_libraries(CPUState *env, OsiProc *p, GArray **out) {
+void on_get_mappings(CPUState *env, OsiProc *p, GArray **out) {
     OsiModule m;
     target_ptr_t vma_first, vma_current;
 
@@ -458,7 +458,7 @@ int osi_linux_test(CPUState *env, target_ulong oldval, target_ulong newval) {
                  p->pid, p->ppid, p->name, p->asid, p->taskd);
 #if defined(OSI_LINUX_TEST_MODULES)
         GArray *ms = NULL;
-        on_get_libraries(env, p, &ms);
+        on_get_mappings(env, p, &ms);
         if (ms != NULL) {
             for (uint32_t j = 0; j < ms->len; j++) {
                 OsiModule *m = &g_array_index(ms, OsiModule, j);
@@ -587,7 +587,7 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
     PPP_REG_CB("osi", on_get_current_process_handle, on_get_current_process_handle);
     PPP_REG_CB("osi", on_get_process, on_get_process);
-    PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
+    PPP_REG_CB("osi", on_get_mappings, on_get_mappings);
     PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
     PPP_REG_CB("osi", on_get_process_pid, on_get_process_pid);
     PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);

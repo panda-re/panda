@@ -243,3 +243,10 @@ void map_memory(char* name, uint64_t size, uint64_t address) {
 CPUState* get_cpu(void) {
   return first_cpu;
 }
+
+// Get the length of a GArray list
+unsigned long garray_len(GArray *list) {
+    if (list == NULL)
+        return 0;
+    return list->len;
+}

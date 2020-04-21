@@ -194,12 +194,12 @@ Implementation behaviour: The implementation should populate a [`GArray`][garray
 
 ---
 
-Name: **on\_get\_libraries**
+Name: **on\_get\_mappings**
 
 Signature:
 
 ```C
-typedef void (*on_get_libraries_t)(CPUState *, OsiProc *, GArray**)
+typedef void (*on_get_mappings_t)(CPUState *, OsiProc *, GArray**)
 ```
 
 Description: Retrieves the shared libraries loaded for the specified process of the guest OS. The process `OsiProc` can be aquired via a previous call to `on_get_current_process` or `on_get_processes`.

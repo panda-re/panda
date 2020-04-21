@@ -41,7 +41,7 @@ PPP_PROT_REG_CB(on_get_current_process)
 PPP_PROT_REG_CB(on_get_current_process_handle)
 PPP_PROT_REG_CB(on_get_process)
 PPP_PROT_REG_CB(on_get_modules)
-PPP_PROT_REG_CB(on_get_libraries)
+PPP_PROT_REG_CB(on_get_mappings)
 PPP_PROT_REG_CB(on_get_current_thread)
 PPP_PROT_REG_CB(on_get_process_pid)
 PPP_PROT_REG_CB(on_get_process_ppid)
@@ -52,7 +52,7 @@ PPP_CB_BOILERPLATE(on_get_current_process)
 PPP_CB_BOILERPLATE(on_get_current_process_handle)
 PPP_CB_BOILERPLATE(on_get_process)
 PPP_CB_BOILERPLATE(on_get_modules)
-PPP_CB_BOILERPLATE(on_get_libraries)
+PPP_CB_BOILERPLATE(on_get_mappings)
 PPP_CB_BOILERPLATE(on_get_current_thread)
 PPP_CB_BOILERPLATE(on_get_process_pid)
 PPP_CB_BOILERPLATE(on_get_process_ppid)
@@ -97,9 +97,9 @@ GArray *get_modules(CPUState *cpu) {
     return m;
 }
 
-GArray *get_libraries(CPUState *cpu, OsiProc *p) {
+GArray *get_mappings(CPUState *cpu, OsiProc *p) {
     GArray *m = NULL;
-    PPP_RUN_CB(on_get_libraries, cpu, p, &m);
+    PPP_RUN_CB(on_get_mappings, cpu, p, &m);
     return m;
 }
 
@@ -186,3 +186,12 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) { }
+
+// Helper function to get a single element. Should only be used with library mode
+// when g_array_index can't be used directly.
+// TODO: Can these be moved to a seperate file? Do we need implementations for more types?
+
+OsiModule* get_one_module(GArray *osimodules, unsigned int idx) {
+    OsiModule *m = &g_array_index(osimodules, OsiModule, idx);
+    return m;
+}
