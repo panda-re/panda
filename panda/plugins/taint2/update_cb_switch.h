@@ -41,19 +41,16 @@ PANDAENDCOMMENT */
             
             // can't use the standard __builtin_clz, because its argument is an
             // unsigned int, which may not be 64 bits on this machine
-            log2 = 64 - clz64(last_literal);
+            log2 = 128 - clz128(last_literal);
             // FIXME: this isn't quite right. for example, if all bits ones,
             // adding one makes all bits zero.
-            if (log2 < 64)
-            {
+            if (log2 < 128) {
                 // darned compiler does bit twiddling in 32 bits even though all
                 // the variables are uint64_t, so have to force it to 64 bits or
                 // answers will be wrong in some cases
-                one_mask &= ~(((uint64_t)1 << log2) - 1);
-                zero_mask &= ~(((uint64_t)1 << log2) - 1);
-            }
-            else
-            {
+                one_mask &= ~(((unsigned __int128)1 << log2) - 1);
+                zero_mask &= ~(((unsigned __int128)1 << log2) - 1);
+            } else {
                 one_mask = 0;
                 zero_mask = 0;
             }
@@ -82,11 +79,10 @@ PANDAENDCOMMENT */
 
         case llvm::Instruction::Trunc:
             // explicitly cast or will get wrong answer when size=4
-            if (size < 8)
-            {
-                cb_mask &= ((uint64_t)1 << (size * 8)) - 1;
-                one_mask &= ((uint64_t)1 << (size * 8)) - 1;
-                zero_mask &= ((uint64_t)1 << (size * 8)) - 1;
+            if (size < 16) {
+                cb_mask &= ((unsigned __int128)1 << (size * 8)) - 1;
+                one_mask &= ((unsigned __int128)1 << (size * 8)) - 1;
+                zero_mask &= ((unsigned __int128)1 << (size * 8)) - 1;
             }
             // if truncating to 8 bytes, not really truncating, as largest
             // number we can handle (currently) is 64 bits - thus no change
@@ -110,10 +106,9 @@ PANDAENDCOMMENT */
         case llvm::Instruction::SRem:
             tassert(last_literal != ~0UL);
             tassert(last_literal != 0UL);  // /0 makes these LLVM ops undefined
-            log2 = 64 - clz64(last_literal);
-            if (log2 < 64)
-            {
-                cb_mask &= ((uint64_t)1 << log2) - 1;
+            log2 = 128 - clz128(last_literal);
+            if (log2 < 128) {
+                cb_mask &= ((unsigned __int128)1 << log2) - 1;
             }
             // if no leading zeros, then keep the whole mask - no-op
             one_mask = 0;
@@ -123,13 +118,10 @@ PANDAENDCOMMENT */
         case llvm::Instruction::UDiv:
         case llvm::Instruction::SDiv:
             tassert(last_literal != ~0UL);
-            log2 = 64 - clz64(last_literal);
-            if (log2 < 64)
-            {
+            log2 = 128 - clz128(last_literal);
+            if (log2 < 128) {
                 cb_mask >>= log2;
-            }
-            else
-            {
+            } else {
                 cb_mask = 0;
             }
             one_mask = 0;
@@ -157,12 +149,12 @@ PANDAENDCOMMENT */
 
             // assuming the item being shifted by LShr is at most 64 bits, as
             // the masks can't handle anything larger
-            tassert(last_literal < 64);
+            // tassert(last_literal < 64);
 
             cb_mask <<= last_literal;
             one_mask <<= last_literal;
             zero_mask <<= last_literal;
-            zero_mask |= ((uint64_t)1 << last_literal) - 1;
+            zero_mask |= ((unsigned __int128)1 << last_literal) - 1;
             break;
 
         case llvm::Instruction::LShr:
@@ -176,7 +168,8 @@ PANDAENDCOMMENT */
                 zero_mask >>= last_literal;
             
                 // (size * 8) is the number of bits in the item LLVM is shifting
-                zero_mask |= ~(((uint64_t)1 << ((size * 8) - last_literal)) - 1);
+                zero_mask |= ~(
+                    ((unsigned __int128)1 << ((size * 8) - last_literal)) - 1);
             }
             break;
 
@@ -191,11 +184,17 @@ PANDAENDCOMMENT */
                 zero_mask >>= last_literal;
 
                 // See if high bit is a last_literal
-                if (orig_one_mask & ((uint64_t)1 << ((size * 8) - 1))) {
-                    one_mask |= ~(((uint64_t)1 << ((size * 8) - last_literal)) - 1);
-                } else if (orig_zero_mask & ((uint64_t)1 << ((size * 8) - 1))) {
-                    zero_mask |= ~(((uint64_t)1 << ((size * 8) - last_literal)) - 1);
-               }
+                if (orig_one_mask &
+                    ((unsigned __int128)1 << ((size * 8) - 1))) {
+                    one_mask |= ~(
+                        ((unsigned __int128)1 << ((size * 8) - last_literal)) -
+                        1);
+                } else if (orig_zero_mask &
+                           ((unsigned __int128)1 << ((size * 8) - 1))) {
+                    zero_mask |= ~(
+                        ((unsigned __int128)1 << ((size * 8) - last_literal)) -
+                        1);
+                }
             }
             break;
 
