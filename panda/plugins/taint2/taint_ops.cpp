@@ -53,6 +53,13 @@ extern bool detaint_cb0_bytes;
 void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size);
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);
 
+static inline int clz128(unsigned __int128 val)
+{
+    uint64_t hi = static_cast<uint64_t>(val >> 64);
+    uint64_t lo = static_cast<uint64_t>(val);
+    return 0 != hi ? clz64(hi) : clz64(hi) + clz64(lo);
+}
+
 static inline int ctz128(unsigned __int128 val)
 {
     uint64_t hi = static_cast<uint64_t>(val >> 64);
@@ -196,8 +203,14 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
             (cb_mask_1.one_mask & cb_mask_2.cb_mask) |
             (cb_mask_2.one_mask & cb_mask_1.cb_mask);
     }
-    // taint_log("pcompute_cb: %#lx + %#lx = %lx ",
-    //        cb_mask_1.cb_mask, cb_mask_2.cb_mask, cb_mask_out.cb_mask);
+    taint_log("pcompute_cb: (lo: %#lx, hi: %#lx) + (lo: %#lx, hi: %#lx) = (lo: "
+              "%#lx, hi: %#lx)",
+              static_cast<uint64_t>(cb_mask_1.cb_mask),
+              static_cast<uint64_t>(cb_mask_1.cb_mask >> 64),
+              static_cast<uint64_t>(cb_mask_2.cb_mask),
+              static_cast<uint64_t>(cb_mask_2.cb_mask >> 64),
+              static_cast<uint64_t>(cb_mask_out.cb_mask),
+              static_cast<uint64_t>(cb_mask_out.cb_mask >> 64));
     taint_log_labels(shad, dest, src_size);
     write_cb_masks(shad, dest, src_size, cb_mask_out);
 
@@ -600,10 +613,22 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
         // tested without calling a function (which would slow things down even more)
 #include "update_cb_switch.h"
 
-        // taint_log("update_cb: %s[%lx+%lx] CB %#lx -> 0x%#lx, 0 %#lx -> %#lx,
-        // 1 %#lx -> %#lx\n",
-        //        shad_dest->name(), dest, size, orig_cb_mask, cb_mask,
-        //        orig_zero_mask, zero_mask, orig_one_mask, one_mask);
+        taint_log("update_cb: %s[%lx+%lx] CB (lo=%#lx, hi=%#lx) -> (lo=%#lx, "
+                  "hi=%#lx), 0 (lo=%#lx, hi=%#lx) -> (lo=%#lx, hi=%#lx), 1 "
+                  "(lo=%#lx, hi=%#lx) -> (lo=%#lx, hi=%#lx)\n",
+                  shad_dest->name(), dest, size,
+                  static_cast<uint64_t>(orig_cb_mask),
+                  static_cast<uint64_t>(orig_cb_mask >> 64),
+                  static_cast<uint64_t>(cb_mask),
+                  static_cast<uint64_t>(cb_mask >> 64),
+                  static_cast<uint64_t>(orig_one_mask),
+                  static_cast<uint64_t>(orig_one_mask >> 64),
+                  static_cast<uint64_t>(one_mask),
+                  static_cast<uint64_t>(one_mask >> 64),
+                  static_cast<uint64_t>(orig_zero_mask),
+                  static_cast<uint64_t>(orig_zero_mask >> 64),
+                  static_cast<uint64_t>(zero_mask),
+                  static_cast<uint64_t>(zero_mask >> 64));
 
         write_cb_masks(shad_dest, dest, size, cb_masks);
     }
