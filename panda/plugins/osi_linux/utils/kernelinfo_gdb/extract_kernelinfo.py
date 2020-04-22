@@ -97,8 +97,13 @@ class KernelInfo(gdb.Command):
 		print_offset("struct vm_area_struct",		"vm_file",		"vma");
 
 		# used in reading file information 
-		print_offset("struct file",				"f_path_dentry",	"fs");
-		print_offset("struct file",				"f_path_mnt",		"fs"); # XXX: check if this changes across versions
+		# This is gross because the name doesn't match the symbol identifier.
+		fstruct = "struct file"
+		f_path_offset = gdb.execute(f'printf "%d",(int)&(({fstruct}*)0)->f_path.dentry',to_string=True)
+		print(f"file.f_path_dentry_offset = {f_path_offset}",file=file_out)
+		offset = gdb.execute(f'printf "%d",(int)&(({fstruct}*)0)->f_path.mnt',to_string=True)
+		print(f"file.f_path_mnt_offset = {offset}",file=file_out)
+
 		print_offset("struct file",				"f_pos",			"fs");
 		print_offset("struct files_struct",		"fdt",			"fs");
 		print_offset("struct files_struct",		"fdtab",			"fs");
