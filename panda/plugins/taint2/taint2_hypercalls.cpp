@@ -260,6 +260,7 @@ bool guest_hypercall_callback(CPUState *cpu) {
                 // EDI holds label value
                 target_ulong buf_start = EBX;
                 target_ulong buf_off = ECX;
+		long positive = EDX;
                 long label = EDI;
 		// buffer address + buffer offset
                 uint32_t va = buf_start + buf_off;
@@ -288,18 +289,41 @@ bool guest_hypercall_callback(CPUState *cpu) {
                         }
                         free(labels);
 		    }
-                    if (label_found) {
-                        sprintf(taint2_log_msg,
-                        "assert positive taint_contains(addr: %s, label: %08lX)\n",
-                        address_to_string((long unsigned int)va).c_str(), (long unsigned int)label);
+
+                    if (positive) {
+                        if (label_found) {
+                            sprintf(taint2_log_msg,
+                            "pass: label %08lX found for addr %s\n",
+                            (long unsigned int)label, address_to_string((long unsigned int)va).c_str());
+                        }
+                        else {
+                            sprintf(taint2_log_msg,
+                            "fail: label %08lX not found for addr %s\n",
+                            (long unsigned int)label, address_to_string((long unsigned int)va).c_str());
+                        }
                     }
                     else {
-                        sprintf(taint2_log_msg,
-                        "assert negative taint_contains(addr: %s, label: %08lX)\n",
-                        address_to_string((long unsigned int)va).c_str(), (long unsigned int)label);
+                        if (label_found) {
+                            sprintf(taint2_log_msg,
+                            "fail: label %08lX found for addr %s\n",
+                            (long unsigned int)label, address_to_string((long unsigned int)va).c_str());
+                        }
+                        else {
+                            sprintf(taint2_log_msg,
+                            "pass: label %08lX not found for addr %s\n",
+                            (long unsigned int)label, address_to_string((long unsigned int)va).c_str());
+                        }
                     }
                     head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
                     fprintf(taint2_log_file, "%s", head.str().c_str());
+                }
+                else {
+                    sprintf(taint2_log_msg,
+                            "fail: panda_virt_to_phys failed for addr %08lX\n",
+                            (long unsigned int)va);
+                    head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
+                    fprintf(taint2_log_file, "%s", head.str().c_str());
+                    // bad address
                 }
             }
             else if (EAX == 10) {
@@ -324,6 +348,7 @@ bool guest_hypercall_callback(CPUState *cpu) {
 //                fprintf(taint2_log_file, "%s", head.str().c_str());
                 target_ulong reg_num = EBX;
 		target_ulong reg_off = ECX;
+		long positive = EDX;
 		long label = EDI;
 		Addr reg_as_addr = make_greg(reg_num,reg_off);
 		uint32_t num_labels = taint2_query(reg_as_addr);
@@ -343,15 +368,31 @@ bool guest_hypercall_callback(CPUState *cpu) {
                     }
                     free(labels);
                 }
-                if (label_found) {
-                    sprintf(taint2_log_msg,
-                            "assert positive taint_contains(reg: %08lX, off: %08lX, label: %08lX)\n",
-                            (long unsigned int)reg_num, (long unsigned int)reg_off, (long unsigned int)label);
+
+                if (positive) {
+                    if (label_found) {
+                        sprintf(taint2_log_msg,
+                                "pass: label %08lX found for reg,off %08lX,%08lX\n",
+                                (long unsigned int)label, (long unsigned int)reg_num, (long unsigned int)reg_off);
+                    }
+                    else {
+                        sprintf(taint2_log_msg,
+                                "fail: label %08lX not found for reg,off %08lX,%08lX\n",
+                                (long unsigned int)label, (long unsigned int)reg_num, (long unsigned int)reg_off);
+                    }
                 }
                 else {
-                    sprintf(taint2_log_msg,
-                            "assert negative taint_contains(reg: %08lX, off: %08lX, label: %08lX)\n",
-                            (long unsigned int)reg_num, (long unsigned int)reg_off, (long unsigned int)label);
+                    if (label_found) {
+                        sprintf(taint2_log_msg,
+                                "fail: label %08lX found for reg,off %08lX,%08lX\n",
+                                (long unsigned int)label, (long unsigned int)reg_num, (long unsigned int)reg_off);
+                    }
+                    else {
+                        sprintf(taint2_log_msg,
+                                "pass: label %08lX not found for reg,off %08lX,%08lX\n",
+                                (long unsigned int)label, (long unsigned int)reg_num, (long unsigned int)reg_off);
+                    }
+
                 }
                 head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
                 fprintf(taint2_log_file, "%s", head.str().c_str());
