@@ -3,6 +3,9 @@ PLUGIN_OBJ_FILES=$(PLUGIN_OBJ_DIR)/kernelinfo_read.o
 
 PLUGIN_OBJ_FILES+=$(PLUGIN_OBJ_DIR)/default_profile.o
 PLUGIN_OBJ_FILES+=$(PLUGIN_OBJ_DIR)/kernel_2_4_x_profile.o
+PLUGIN_OBJ_FILES+=$(PLUGIN_OBJ_DIR)/kernelinfo_downloader.o
+
+LIBS += -lcurl
 
 ### Preprocessor flags.
 # Process enumeration starts from approximately the current task by

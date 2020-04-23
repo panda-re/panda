@@ -44,7 +44,10 @@ class blocking_mixins():
 
     @blocking
     def revert_sync(self, snapshot_name):
-        self.run_monitor_cmd("loadvm {}".format(snapshot_name))
+        result = self.run_monitor_cmd("loadvm {}".format(snapshot_name))
+        if result.startswith("Length mismatch"):
+            raise MemoryError
+        return result
 
     @blocking
     def delvm_sync(self, snapshot_name):

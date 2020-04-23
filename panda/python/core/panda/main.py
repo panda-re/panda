@@ -43,7 +43,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             qcow=None, # Qcow file to load
             os="linux",
             generic=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
-            extra_args=[]):	
+            extra_args=[]):
         self.arch = arch
         self.mem = mem
         self.os = os_version
@@ -392,7 +392,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         '''
         if not isfile(replaypfx+"-rr-snp") or not isfile(replaypfx+"-rr-nondet.log"):
             raise ValueError("Replay files not present to run replay of {}".format(replaypfx))
-        
+
         if debug:
             progress ("Replaying %s" % replaypfx)
 
@@ -550,7 +550,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         if not "plugin_callstack_instr" in self.plugins:
             progress("enabling callstack_instr plugin")
             self.require("callstack_instr")
-        
+
         callers = ffi.new("uint32_t[%d]" % lim)
         n = self.plugins['callstack_instr'].get_callers(callers, lim, cpu)
         c = []

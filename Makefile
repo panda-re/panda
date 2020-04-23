@@ -14,6 +14,12 @@ ifneq ($(wildcard config-host.mak),)
 all:
 include config-host.mak
 
+# Metadata for build
+GIT_VERSION := '$(shell git describe --dirty --always)'
+BUILD_DATE  := '$(shell date)'
+QEMU_CFLAGS  +=-DGIT_VERSION=\"$(GIT_VERSION)\" -DBUILD_DATE=\"$(BUILD_DATE)\"
+QEMU_CXXFLAGS+=-DGIT_VERSION=\"$(GIT_VERSION)\" -DBUILD_DATE=\"$(BUILD_DATE)\"
+
 git-submodule-update:
 
 .PHONY: git-submodule-update

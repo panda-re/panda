@@ -65,7 +65,7 @@ void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
 
 void after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
     OsiProc *current = get_current_process(cpu);
-    GArray *ms = get_libraries(cpu, current);
+    GArray *ms = get_mappings(cpu, current);
     if (ms == NULL) {
         printf("No mapped dynamic libraries.\n");
     } else {

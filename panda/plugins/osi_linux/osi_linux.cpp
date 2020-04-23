@@ -21,6 +21,7 @@
 
 #include "default_profile.h"
 #include "kernel_2_4_x_profile.h"
+#include "kernelinfo_downloader.h"
 
 /*
  * Functions interfacing with QEMU/PANDA should be linked as C.
@@ -37,7 +38,7 @@ void on_get_process_handles(CPUState *env, GArray **out);
 void on_get_current_process(CPUState *env, OsiProc **out_p);
 void on_get_current_process_handle(CPUState *env, OsiProcHandle **out_p);
 void on_get_process(CPUState *, const OsiProcHandle *, OsiProc **);
-void on_get_libraries(CPUState *env, OsiProc *p, GArray **out);
+void on_get_mappings(CPUState *env, OsiProc *p, GArray **out);
 void on_get_current_thread(CPUState *env, OsiThread *t);
 
 struct kernelinfo ki;
@@ -301,7 +302,7 @@ void on_get_process(CPUState *env, const OsiProcHandle *h, OsiProc **out) {
  *
  * @todo Remove duplicates from results.
  */
-void on_get_libraries(CPUState *env, OsiProc *p, GArray **out) {
+void on_get_mappings(CPUState *env, OsiProc *p, GArray **out) {
     OsiModule m;
     target_ptr_t vma_first, vma_current;
 
@@ -457,7 +458,7 @@ int osi_linux_test(CPUState *env, target_ulong oldval, target_ulong newval) {
                  p->pid, p->ppid, p->name, p->asid, p->taskd);
 #if defined(OSI_LINUX_TEST_MODULES)
         GArray *ms = NULL;
-        on_get_libraries(env, p, &ms);
+        on_get_mappings(env, p, &ms);
         if (ms != NULL) {
             for (uint32_t j = 0; j < ms->len; j++) {
                 OsiModule *m = &g_array_index(ms, OsiModule, j);
@@ -559,7 +560,17 @@ bool init_plugin(void *self) {
     // Load kernel offsets.
     if (read_kernelinfo(kconf_file, kconf_group, &ki) != 0) {
         LOG_ERROR("Failed to read group %s from %s.", kconf_group, kconf_file);
-        goto error;
+		LOG_INFO("Attempting to download file from panda-re.mit.edu");
+		if (download_kernelinfo(kconf_file, kconf_group) == 0) {
+			LOG_ERROR("Downloaded file from panda-re.mit.edu");
+			if (read_kernelinfo(kconf_file, kconf_group, &ki) != 0) {
+				LOG_ERROR("Downloaded file didn't contain correct group");
+        		goto error;
+			}
+		}else{
+			LOG_ERROR("Download failed. No such file.");
+			goto error;
+		}
     }
     LOG_INFO("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
     g_free(kconf_file);
@@ -576,13 +587,14 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
     PPP_REG_CB("osi", on_get_current_process_handle, on_get_current_process_handle);
     PPP_REG_CB("osi", on_get_process, on_get_process);
-    PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
+    PPP_REG_CB("osi", on_get_mappings, on_get_mappings);
     PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
     PPP_REG_CB("osi", on_get_process_pid, on_get_process_pid);
     PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);
     LOG_INFO(PLUGIN_NAME " initialization complete.");
     return true;
 #else
+    fprintf(stderr, "[osi_linux]: Unsupported guest architecture\n");
     goto error;
 #endif
 

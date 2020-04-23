@@ -152,3 +152,6 @@ class libpanda_mixins():
     def get_cpu(self):
         # XXX: You rarely want this
         return self.libpanda.get_cpu()
+
+    def garray_len(self, garray):
+        return self.libpanda.garray_len(garray)

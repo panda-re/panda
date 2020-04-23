@@ -35,6 +35,8 @@ class KernelInfo(gdb.Command):
 		print(f"name = {uts_release}|{uts_version}|{uts_machine}",file=file_out)
 		release = get_symbol_as_string("init_uts_ns->name->release")
 		version_a,version_b,version_c = release.split(".")
+		if "-" in version_c: # version.c can be of the form 0-42-generic
+			version_c = version_c.split("-")[0]
 		print(f"version.a = {version_a}",file=file_out)
 		print(f"version.b = {version_b}",file=file_out)
 		print(f"version.c = {version_c}",file=file_out)
@@ -95,8 +97,13 @@ class KernelInfo(gdb.Command):
 		print_offset("struct vm_area_struct",		"vm_file",		"vma");
 
 		# used in reading file information 
-		print_offset("struct file",				"f_path.dentry",	"fs");
-		print_offset("struct file",				"f_path.mnt",		"fs"); # XXX: check if this changes across versions
+		# This is gross because the name doesn't match the symbol identifier.
+		fstruct = "struct file"
+		f_path_offset = gdb.execute(f'printf "%d",(int)&(({fstruct}*)0)->f_path.dentry',to_string=True)
+		print(f"file.f_path_dentry_offset = {f_path_offset}",file=file_out)
+		offset = gdb.execute(f'printf "%d",(int)&(({fstruct}*)0)->f_path.mnt',to_string=True)
+		print(f"file.f_path_mnt_offset = {offset}",file=file_out)
+
 		print_offset("struct file",				"f_pos",			"fs");
 		print_offset("struct files_struct",		"fdt",			"fs");
 		print_offset("struct files_struct",		"fdtab",			"fs");
@@ -111,7 +118,7 @@ class KernelInfo(gdb.Command):
 		print_offset("struct dentry",				"d_op",					"path");
 		print_offset("struct dentry_operations",	"d_dname",				"path");
 		print_offset("struct vfsmount",			"mnt_root",				"path");
-		if int(version_a) >=3 and int(version_b) >= 3 and int(version_c) >= 0:
+		if (int(version_a),int(version_b),int(version_c)) >= (3,0,0):
 			# fields in struct mount 
 			print_offset_from_member("struct mount",	"mnt", "mnt_parent",		"path");
 			print_offset_from_member("struct mount",	"mnt", "mnt_mountpoint",	"path");
