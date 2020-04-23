@@ -43,13 +43,14 @@
  *    expected_zero_mask:  The expected zero mask
  *    expected_one_mask:  The expected one mask
  */
-void runTest(const char *ocname, unsigned int opcode, uint64_t literals1,
-             uint64_t last_literal, uint64_t size,
-             unsigned __int128 orig_cb_mask, unsigned __int128 orig_zero_mask,
-             unsigned __int128 orig_one_mask,
-             unsigned __int128 expected_cb_mask,
-             unsigned __int128 expected_zero_mask,
-             unsigned __int128 expected_one_mask)
+static void runTest(const char *ocname, unsigned int opcode, uint64_t literals1,
+                    uint64_t last_literal, uint64_t size,
+                    unsigned __int128 orig_cb_mask,
+                    unsigned __int128 orig_zero_mask,
+                    unsigned __int128 orig_one_mask,
+                    unsigned __int128 expected_cb_mask,
+                    unsigned __int128 expected_zero_mask,
+                    unsigned __int128 expected_one_mask)
 {
 
     // set up some variables needed by the update_cb switch
