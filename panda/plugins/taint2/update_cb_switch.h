@@ -154,7 +154,7 @@ PANDAENDCOMMENT */
             cb_mask <<= last_literal;
             one_mask <<= last_literal;
             zero_mask <<= last_literal;
-            zero_mask |= ((unsigned __int128)1 << last_literal) - 1;
+            zero_mask |= (((unsigned __int128)1) << last_literal) - 1;
             break;
 
         case llvm::Instruction::LShr:
