@@ -70,7 +70,7 @@ void map_address(uint32_t addr) {
 
 std::string address_to_string(uint32_t addr) {
     if(addressMap.count(addr) == 0) {
-        return "ADDRESS_UNLABELED";
+        return "ADDRESS_NOT_LABELED_EXPLICTTLY";
     }
     else {
         return addressMap[addr];
@@ -202,9 +202,11 @@ void lava_attack_point(PandaHypercallStruct phs) {
     }
 }
 
+char hypercall_msg[256];
+
 bool guest_hypercall_callback(CPUState *cpu) {
     bool ret = false;
-#if defined(TARGET_I386) || defined(TARGET_X86_64)
+#if defined(TARGET_I386)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     if (EAX == 6) {
         if (!taintEnabled) {
@@ -214,7 +216,7 @@ bool guest_hypercall_callback(CPUState *cpu) {
 	}
     }
     if (taintEnabled) {
-        if (EAX == 7 || EAX == 8 || EAX == 9 || EAX == 10 || EAX == 11) {
+        if (EAX == 7 || EAX == 8 || EAX == 9 || EAX == 10 || EAX == 11 || EAX == 12) {
             if (EAX == 7) {
                 // Standard buffer label
                 target_ulong buf_start = EBX;
@@ -225,6 +227,8 @@ bool guest_hypercall_callback(CPUState *cpu) {
 		    map_address(buf_start+label_index);
                 }
                 sprintf(taint2_log_msg,
+//                        "apply_single_label(addr: %08lX, len: %d, label: %08lX)\n",
+//                        (long unsigned int)buf_start, (int)buf_len,
                         "apply_single_label(addr: %s, len: %d, label: %08lX)\n",
                         address_to_string(buf_start).c_str(), (int)buf_len,
                         (long unsigned int)label);
@@ -241,7 +245,9 @@ bool guest_hypercall_callback(CPUState *cpu) {
                 long label = EDI;
 		map_address(buf_start);
                 sprintf(taint2_log_msg,
-                        "apply_single_label(addr: %s, off: %d, label: %08lX)\n",
+//                        "apply_positional_label(addr: %08lX, off: %d, label: %08lX)\n",
+//                        (long unsigned int)buf_start, (int)buf_len,
+                        "apply_positional_label(addr: %s, off: %d, label: %08lX)\n",
                         address_to_string(buf_start).c_str(), (int)buf_len,
                         (long unsigned int)label);
                 std::stringstream head;
@@ -251,9 +257,9 @@ bool guest_hypercall_callback(CPUState *cpu) {
             }
             else if (EAX == 9) {
                 // Query taint for label on byte (assert existence of label on byte)
-                sprintf(taint2_log_msg, "query labels on memory\n");
+//                sprintf(taint2_log_msg, "query labels on memory\n");
                 std::stringstream head;
-                head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
+//                head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
 //                fprintf(taint2_log_file, "%s", head.str().c_str());
 		// EBX holds buffer start address
 		// ECX holds buffer byte offset
@@ -293,25 +299,33 @@ bool guest_hypercall_callback(CPUState *cpu) {
                     if (positive) {
                         if (label_found) {
                             sprintf(taint2_log_msg,
-                            "pass: label %08lX found for addr %s\n",
-                            (long unsigned int)label, address_to_string((long unsigned int)va).c_str());
-                        }
+//                            "pass: label %08lX found for addr %08lX\n",
+//                            (long unsigned int)label, (long unsigned int)va);
+                             "pass: label %08lX found for addr %s\n",
+                            (long unsigned int)label, address_to_string(va).c_str());
+                       }
                         else {
                             sprintf(taint2_log_msg,
+//                            "fail: label %08lX not found for addr %08lX\n",
+//                            (long unsigned int)label, (long unsigned int)va);
                             "fail: label %08lX not found for addr %s\n",
-                            (long unsigned int)label, address_to_string((long unsigned int)va).c_str());
+                            (long unsigned int)label, address_to_string(va).c_str());
                         }
                     }
                     else {
                         if (label_found) {
                             sprintf(taint2_log_msg,
+//                            "fail: label %08lX found for addr %08lX\n",
+//                            (long unsigned int)label, (long unsigned int)va);
                             "fail: label %08lX found for addr %s\n",
-                            (long unsigned int)label, address_to_string((long unsigned int)va).c_str());
+                            (long unsigned int)label, address_to_string(va).c_str());
                         }
                         else {
                             sprintf(taint2_log_msg,
+//                            "pass: label %08lX not found for addr %08lX\n",
+//                            (long unsigned int)label, (long unsigned int)va);
                             "pass: label %08lX not found for addr %s\n",
-                            (long unsigned int)label, address_to_string((long unsigned int)va).c_str());
+                            (long unsigned int)label, address_to_string(va).c_str());
                         }
                     }
                     head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
@@ -332,7 +346,7 @@ bool guest_hypercall_callback(CPUState *cpu) {
                 target_ulong reg_off = ECX;
 		long label = EDI;
 		sprintf(taint2_log_msg,
-                        "apply_register_label(reg: %08lX, off: %d, label: %08lX\n",
+                        "apply_register_label(reg: %08lX, off: %d, label: %08lX)\n",
                         (long unsigned int)reg_num, (int)reg_off,
                         (long unsigned int)label);
                 std::stringstream head;
@@ -342,9 +356,9 @@ bool guest_hypercall_callback(CPUState *cpu) {
             }
             else if (EAX == 11) {
                 // query taint for label on register
-                sprintf(taint2_log_msg, "query labels on register\n");
+//                sprintf(taint2_log_msg, "query labels on register\n");
                 std::stringstream head;
-                head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
+//                head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
 //                fprintf(taint2_log_file, "%s", head.str().c_str());
                 target_ulong reg_num = EBX;
 		target_ulong reg_off = ECX;
@@ -372,29 +386,45 @@ bool guest_hypercall_callback(CPUState *cpu) {
                 if (positive) {
                     if (label_found) {
                         sprintf(taint2_log_msg,
-                                "pass: label %08lX found for reg,off %08lX,%08lX\n",
-                                (long unsigned int)label, (long unsigned int)reg_num, (long unsigned int)reg_off);
+                                "pass: label %08lX found for reg,off %08lX,%d\n",
+                                (long unsigned int)label, (long unsigned int)reg_num, (int)reg_off);
                     }
                     else {
                         sprintf(taint2_log_msg,
-                                "fail: label %08lX not found for reg,off %08lX,%08lX\n",
-                                (long unsigned int)label, (long unsigned int)reg_num, (long unsigned int)reg_off);
+                                "fail: label %08lX not found for reg,off %08lX,%d\n",
+                                (long unsigned int)label, (long unsigned int)reg_num, (int)reg_off);
                     }
                 }
                 else {
                     if (label_found) {
                         sprintf(taint2_log_msg,
-                                "fail: label %08lX found for reg,off %08lX,%08lX\n",
-                                (long unsigned int)label, (long unsigned int)reg_num, (long unsigned int)reg_off);
+                                "fail: label %08lX found for reg,off %08lX,%d\n",
+                                (long unsigned int)label, (long unsigned int)reg_num, (int)reg_off);
                     }
                     else {
                         sprintf(taint2_log_msg,
-                                "pass: label %08lX not found for reg,off %08lX,%08lX\n",
-                                (long unsigned int)label, (long unsigned int)reg_num, (long unsigned int)reg_off);
+                                "pass: label %08lX not found for reg,off %08lX,%d\n",
+                                (long unsigned int)label, (long unsigned int)reg_num, (int)reg_off);
                     }
 
                 }
                 head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
+                fprintf(taint2_log_file, "%s", head.str().c_str());
+            }
+            else if (EAX == 12) {
+                // print a string located in guest memory to taint2 log
+                // EBX == string length in bytes (max 256 incl null term)
+                // ECX == pointer in guest memory to string
+                target_ulong string_len = EBX;
+                target_ulong string_addr = ECX;
+
+                if(string_len > 256) {
+                    string_len = 256;
+                }
+                panda_virtual_memory_rw(cpu, (uint32_t)string_addr, (uint8_t *)hypercall_msg, string_len-1, false);
+                hypercall_msg[string_len-1] = 0;
+                std::stringstream head;
+                head << PANDA_MSG << std::string(hypercall_msg) << std::endl;
                 fprintf(taint2_log_file, "%s", head.str().c_str());
             }
 
