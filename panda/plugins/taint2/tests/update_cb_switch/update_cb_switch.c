@@ -590,7 +590,7 @@ int main(int argc, char **argv)
         one_mask, expect_cb, expect_zero, expect_one);
 
     cb_mask = 0xbadfaceba01c1234;
-    expect_cb = 0xeb7eb3ae807048d0;
+    expect_cb = static_cast<unsigned __int128>(0x2) << 64 | 0xeb7eb3ae807048d0;
     zero_mask = 0x80000000;
     expect_zero = 0x200000003;
     one_mask = 0xe66600df00d;
@@ -599,7 +599,7 @@ int main(int argc, char **argv)
         one_mask, expect_cb, expect_zero, expect_one);
 
     cb_mask = 0xbadfaceba01c1234;
-    expect_cb = 0xeb7eb3ae807048d0;
+    expect_cb = static_cast<unsigned __int128>(0x2) << 64 | 0xeb7eb3ae807048d0;
     zero_mask = 0x8000000000000;
     expect_zero = 0x20000000000003;
     one_mask = 0xe66600df00d;
@@ -608,9 +608,9 @@ int main(int argc, char **argv)
         one_mask, expect_cb, expect_zero, expect_one);
 
     cb_mask = 0xbadfaceba01c1234;
-    expect_cb = 0xeb7eb3ae807048d0;
+    expect_cb = static_cast<unsigned __int128>(0x2) << 64 | 0xeb7eb3ae807048d0;
     zero_mask = 0x8000000000000000;
-    expect_zero = 0x3;
+    expect_zero = static_cast<unsigned __int128>(0x2) << 64 | 0x3;
     one_mask = 0xe66600df00d;
     expect_one = 0x39998037c034;
     runTest("Shl", opcode, literals1, last_literal, size, cb_mask, zero_mask,
@@ -631,25 +631,27 @@ int main(int argc, char **argv)
     zero_mask = 0x80000000;
     expect_zero = 0x80000000ffffff;
     one_mask = 0xe66600df00d;
-    expect_one = 0x66600df00d000000;
+    expect_one = static_cast<unsigned __int128>(0xe) << 64 | 0x66600df00d000000;
     runTest("Shl", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
 
     cb_mask = 0xbadfaceba01c1234;
-    expect_cb = 0xeba01c1234000000;
+    expect_cb =
+        static_cast<unsigned __int128>(0xbadfac) << 64 | 0xeba01c1234000000;
     zero_mask = 0x8000000000000;
-    expect_zero = 0xffffff;
+    expect_zero = static_cast<unsigned __int128>(0x800) << 64 | 0xffffff;
     one_mask = 0xe66600df00d;
-    expect_one = 0x66600df00d000000;
+    expect_one = static_cast<unsigned __int128>(0xe) << 64 | 0x66600df00d000000;
     runTest("Shl", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
 
     cb_mask = 0xbadfaceba01c1234;
-    expect_cb = 0xeba01c1234000000;
+    expect_cb =
+        static_cast<unsigned __int128>(0xbadfac) << 64 | 0xeba01c1234000000;
     zero_mask = 0x8000000000000000;
-    expect_zero = 0xffffff;
+    expect_zero = static_cast<unsigned __int128>(0x800000) << 64 | 0xffffff;
     one_mask = 0xe66600df00d;
-    expect_one = 0x66600df00d000000;
+    expect_one = static_cast<unsigned __int128>(0xe) << 64 | 0x66600df00d000000;
     runTest("Shl", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
 
@@ -667,27 +669,34 @@ int main(int argc, char **argv)
     cb_mask = 0;
     expect_cb = 0;
     zero_mask = 0xfade;
-    expect_zero = 0xadefffffffffffff;
+    expect_zero =
+        static_cast<unsigned __int128>(0xf) << 64 | 0xadefffffffffffff;
     one_mask = 0xaa;
     expect_one = 0xaa0000000000000;
     runTest("Shl", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
     
     cb_mask = 0xfeedface;
-    expect_cb = 0xace0000000000000;
+    expect_cb =
+        static_cast<unsigned __int128>(0xfeedf) << 64 | 0xace0000000000000;
     zero_mask = 0x80000000;
-    expect_zero = 0xfffffffffffff;
+    expect_zero =
+        static_cast<unsigned __int128>(0x80000) << 64 | 0xfffffffffffff;
     one_mask = 0xe66600df00d;
-    expect_one = 0xd0000000000000;
+    expect_one =
+        static_cast<unsigned __int128>(0xe66600df) << 64 | 0xd0000000000000;
     runTest("Shl", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
 
     cb_mask = 0xbadfaceba01c1234;
-    expect_cb = 0x2340000000000000;
+    expect_cb = static_cast<unsigned __int128>(0xbadfaceba01c1) << 64 |
+                0x2340000000000000;
     zero_mask = 0x8000000000000;
-    expect_zero = 0xfffffffffffff;
+    expect_zero =
+        static_cast<unsigned __int128>(0x8000000000) << 64 | 0xfffffffffffff;
     one_mask = 0xe66600df00d;
-    expect_one = 0xd0000000000000;
+    expect_one =
+        static_cast<unsigned __int128>(0xe66600df) << 64 | 0xd0000000000000;
     runTest("Shl", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
     
