@@ -718,7 +718,8 @@ int main(int argc, char **argv)
     
     last_literal = 4;
     expect_cb = 0;
-    expect_zero = 0xf000000000000000;
+    expect_zero = static_cast<unsigned __int128>(0xffffffffffffffff) << 64 |
+                  0xf000000000000000;
     expect_one = 0xa;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
@@ -736,7 +737,8 @@ int main(int argc, char **argv)
     last_literal = 4;
     cb_mask = 0xbadfaceba01c1234;
     expect_cb = 0xbadfaceba01c123;
-    expect_zero = 0xf000000000000600;
+    expect_zero = static_cast<unsigned __int128>(0xffffffffffffffff) << 64 |
+                  0xf000000000000600;
     expect_one = 0xe66600df00;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
@@ -744,7 +746,8 @@ int main(int argc, char **argv)
     last_literal = 32;
     cb_mask = 0;
     expect_cb = 0;
-    expect_zero = 0xffffffff00000000;
+    expect_zero = static_cast<unsigned __int128>(0xffffffffffffffff) << 64 |
+                  0xffffffff00000000;
     one_mask = 0xaa;
     expect_one = 0;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
@@ -753,7 +756,8 @@ int main(int argc, char **argv)
     last_literal = 40;
     cb_mask = 0;
     expect_cb = 0;
-    expect_zero = 0xffffffffff000000;
+    expect_zero = static_cast<unsigned __int128>(0xffffffffffffffff) << 64 |
+                  0xffffffffff000000;
     one_mask = 0xaa;
     expect_one = 0;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
@@ -772,14 +776,16 @@ int main(int argc, char **argv)
     last_literal = 4;
     cb_mask = 0xfeedface;
     expect_cb = 0xfeedfac;
-    expect_zero = 0xf00000000600df00;
+    expect_zero = static_cast<unsigned __int128>(0xffffffffffffffff) << 64 |
+                  0xf00000000600df00;
     expect_one = 0xe66600df00;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
 
     last_literal = 32;
     expect_cb = 0;
-    expect_zero = 0xffffffff00000000;
+    expect_zero = static_cast<unsigned __int128>(0xffffffffffffffff) << 64 |
+                  0xffffffff00000000;
     one_mask = 0xe66600df00d;
     expect_one = 0xe66;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
@@ -788,7 +794,8 @@ int main(int argc, char **argv)
     last_literal = 40;
     cb_mask = 0;
     expect_cb = 0;
-    expect_zero = 0xffffffffff000000;
+    expect_zero = static_cast<unsigned __int128>(0xffffffffffffffff) << 64 |
+                  0xffffffffff000000;
     expect_one = 0xe;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
@@ -806,14 +813,14 @@ int main(int argc, char **argv)
     last_literal = 4;
     cb_mask = 0xfeedface;
     expect_cb = 0xfeedfac;
-    expect_zero = 0xf00000000ae66f00;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xf00000000ae66f00;
     expect_one = 0xe66600df00;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
 
     last_literal = 32;
     expect_cb = 0;
-    expect_zero = 0xffffffff00000000;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xffffffff00000000;
     one_mask = 0xbadfaceba01c1234;
     expect_one = 0xbadfaceb;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
@@ -822,7 +829,7 @@ int main(int argc, char **argv)
     last_literal = 40;
     cb_mask = 0;
     expect_cb = 0;
-    expect_zero = 0xffffffffff000000;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xffffffffff000000;
     expect_one = 0xbadfac;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
@@ -840,14 +847,14 @@ int main(int argc, char **argv)
     last_literal = 4;
     cb_mask = 0xfeedface;
     expect_cb = 0xfeedfac;
-    expect_zero = 0xf00000600de66f00;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xf00000600de66f00;
     expect_one = 0xe66600df00;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
 
     last_literal = 32;
     expect_cb = 0;
-    expect_zero = 0xffffffff00000600;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xffffffff00000600;
     one_mask = 0xbadfaceba01c1234;
     expect_one = 0xbadfaceb;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
@@ -856,7 +863,7 @@ int main(int argc, char **argv)
     last_literal = 40;
     cb_mask = 0;
     expect_cb = 0;
-    expect_zero = 0xffffffffff000006;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xffffffffff000006;
     expect_one = 0xbadfac;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
@@ -865,7 +872,7 @@ int main(int argc, char **argv)
     cb_mask = 0xbadc110;
     expect_cb = 0xbadc11;
     zero_mask = 0xaaaa555588881111;
-    expect_zero = 0xfaaaa55558888111;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xfaaaa55558888111;
     one_mask = 0xbad8111a49;
     expect_one = 0xbad8111a4;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
@@ -875,7 +882,7 @@ int main(int argc, char **argv)
     cb_mask = 0xbadc110;
     expect_cb = 0xbadc11;
     zero_mask = 0xaa;
-    expect_zero = 0xf00000000000000a;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xf00000000000000a;
     one_mask = 0xbad8111a49;
     expect_one = 0xbad8111a4;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
@@ -885,7 +892,7 @@ int main(int argc, char **argv)
     cb_mask = 0x42;
     expect_cb = 0x10;
     zero_mask = 0x5;
-    expect_zero = 0xc000000000000001;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xc000000000000001;
     one_mask = 0xfa;
     expect_one = 0x3e;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
@@ -904,7 +911,7 @@ int main(int argc, char **argv)
     
     last_literal = 4;
     expect_cb = 0;
-    expect_zero = 0xfffffffff0000000;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xfffffffff0000000;
     expect_one = 0xa;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
@@ -922,7 +929,7 @@ int main(int argc, char **argv)
     last_literal = 4;
     cb_mask = 0xbadfaceba01c1234;
     expect_cb = 0xbadfaceba01c123;
-    expect_zero = 0xfffffffff0000600;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xfffffffff0000600;
     expect_one = 0xe66600df00;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
@@ -940,7 +947,7 @@ int main(int argc, char **argv)
     last_literal = 4;
     cb_mask = 0xfeedface;
     expect_cb = 0xfeedfac;
-    expect_zero = 0xfffffffff600df00;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xfffffffff600df00;
     expect_one = 0xe66600df00;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
@@ -958,7 +965,7 @@ int main(int argc, char **argv)
     last_literal = 4;
     cb_mask = 0xfeedface;
     expect_cb = 0xfeedfac;
-    expect_zero = 0xfffffffffae66f00;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xfffffffffae66f00;
     expect_one = 0xe66600df00;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
@@ -967,7 +974,7 @@ int main(int argc, char **argv)
     cb_mask = 0xbadc110;
     expect_cb = 0xbadc11;
     zero_mask = 0xaa;
-    expect_zero = 0xfffffffff000000a;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xfffffffff000000a;
     one_mask = 0xbad8111a49;
     expect_one = 0xbad8111a4;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
@@ -977,7 +984,7 @@ int main(int argc, char **argv)
     cb_mask = 0x42;
     expect_cb = 0x10;
     zero_mask = 0x5;
-    expect_zero = 0xffffffffc0000001;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xffffffffc0000001;
     one_mask = 0xfa;
     expect_one = 0x3e;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
@@ -996,7 +1003,7 @@ int main(int argc, char **argv)
     
     last_literal = 4;
     expect_cb = 0;
-    expect_zero = 0xfffffffffffff000;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xfffffffffffff000;
     expect_one = 0xa;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
@@ -1014,7 +1021,7 @@ int main(int argc, char **argv)
     last_literal = 4;
     cb_mask = 0xbadfaceba01c1234;
     expect_cb = 0xbadfaceba01c123;
-    expect_zero = 0xfffffffffffff600;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xfffffffffffff600;
     expect_one = 0xe66600df00;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
@@ -1023,7 +1030,7 @@ int main(int argc, char **argv)
     cb_mask = 0xbadc110;
     expect_cb = 0xbadc11;
     zero_mask = 0xaa;
-    expect_zero = 0xfffffffffffff00a;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xfffffffffffff00a;
     one_mask = 0xbad8111a49;
     expect_one = 0xbad8111a4;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
@@ -1033,7 +1040,7 @@ int main(int argc, char **argv)
     cb_mask = 0x42;
     expect_cb = 0x10;
     zero_mask = 0x5;
-    expect_zero = 0xffffffffffffc001;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xffffffffffffc001;
     one_mask = 0xfa;
     expect_one = 0x3e;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
@@ -1052,7 +1059,7 @@ int main(int argc, char **argv)
     
     last_literal = 4;
     expect_cb = 0;
-    expect_zero = 0xfffffffffffffff0;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xfffffffffffffff0;
     expect_one = 0xa;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
@@ -1061,7 +1068,7 @@ int main(int argc, char **argv)
     cb_mask = 0xbadc110;
     expect_cb = 0xbadc11;
     zero_mask = 0xaa;
-    expect_zero = 0xfffffffffffffffa;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xfffffffffffffffa;
     one_mask = 0xbad8111a49;
     expect_one = 0xbad8111a4;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
@@ -1071,7 +1078,7 @@ int main(int argc, char **argv)
     cb_mask = 0x42;
     expect_cb = 0x10;
     zero_mask = 0x5;
-    expect_zero = 0xffffffffffffffc1;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xffffffffffffffc1;
     one_mask = 0xfa;
     expect_one = 0x3e;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
