@@ -22,22 +22,10 @@
 #include "qemu/osdep.h"        // needed for host-utils.h
 #include "qemu/host-utils.h"   // needed for clz64 and ctz64
 
+#include "taint_utils.h"
+
 // needed by the switch
 #define tassert(cond) assert((cond))
-
-static inline int clz128(unsigned __int128 val)
-{
-    uint64_t hi = static_cast<uint64_t>(val >> 64);
-    uint64_t lo = static_cast<uint64_t>(val);
-    return 0 != hi ? clz64(hi) : clz64(hi) + clz64(lo);
-}
-
-static inline int ctz128(unsigned __int128 val)
-{
-    uint64_t hi = static_cast<uint64_t>(val >> 64);
-    uint64_t lo = static_cast<uint64_t>(val);
-    return 0 != lo ? ctz64(lo) : ctz64(hi) + ctz64(lo);
-}
 
 /*
  * Run a test, and print out the results.  Note that not all arguments are used
@@ -84,7 +72,7 @@ void runTest(const char *ocname, unsigned int opcode, uint64_t literals1,
 
     // and the answers are...
     printf("%s (%d):  size=%ld, lastlit=0x%lx, orig (cb,0,1) (hi: 0x%lx lo: "
-           "0x%lx, hi: 0x%lx lo: 0x%lx, hi: 0x%lx lo: 0x%lx) => new hi: 0x%lx "
+           "0x%lx, hi: 0x%lx lo: 0x%lx, hi: 0x%lx lo: 0x%lx) => new (hi: 0x%lx "
            "lo: 0x%lx, hi: 0x%lx lo: 0x%lx, hi: 0x%lx lo: 0x%lx) - ",
            ocname, opcode, size, last_literal,
            static_cast<uint64_t>(orig_cb_mask >> 64),
