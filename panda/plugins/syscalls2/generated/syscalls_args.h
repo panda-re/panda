@@ -251,6 +251,12 @@
 	const uint32_t &UNUSED(pref##sigsetsize) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]);
 #endif
 
+// long sys_rt_sigreturn ['void']
+#undef locals_LINUX__X64_sys_rt_sigreturn
+#if defined(__cplusplus)
+#undef references_LINUX__X64_sys_rt_sigreturn
+#endif
+
 // long sys_ioctl ['unsigned int fd', 'unsigned int cmd', 'unsigned long arg']
 #define locals_LINUX__X64_sys_ioctl(ctx, pref) \
 	uint32_t UNUSED(pref##fd) = *(uint32_t *)((ctx)->args[0]); \
@@ -877,6 +883,56 @@
 	const int32_t &UNUSED(pref##optname) = *reinterpret_cast<const int32_t *>((ctx)->args[2]); \
 	const uint64_t &UNUSED(pref##optval) = *reinterpret_cast<const uint64_t *>((ctx)->args[3]); \
 	const uint64_t &UNUSED(pref##optlen) = *reinterpret_cast<const uint64_t *>((ctx)->args[4]);
+#endif
+
+// long sys_clone ['unsigned long', 'unsigned long', 'int __user *', 'int __user *', 'unsigned long']
+#define locals_LINUX__X64_sys_clone(ctx, pref) \
+	uint64_t UNUSED(pref##arg0) = *(uint64_t *)((ctx)->args[0]); \
+	uint64_t UNUSED(pref##arg1) = *(uint64_t *)((ctx)->args[1]); \
+	uint64_t UNUSED(pref##arg2) = *(uint64_t *)((ctx)->args[2]); \
+	uint64_t UNUSED(pref##arg3) = *(uint64_t *)((ctx)->args[3]); \
+	uint64_t UNUSED(pref##arg4) = *(uint64_t *)((ctx)->args[4]);
+#if defined(__cplusplus)
+#define references_LINUX__X64_sys_clone(ctx, pref) \
+	uint64_t &UNUSED(pref##arg0) = *reinterpret_cast<uint64_t *>((ctx)->args[0]); \
+	uint64_t &UNUSED(pref##arg1) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
+	uint64_t &UNUSED(pref##arg2) = *reinterpret_cast<uint64_t *>((ctx)->args[2]); \
+	uint64_t &UNUSED(pref##arg3) = *reinterpret_cast<uint64_t *>((ctx)->args[3]); \
+	uint64_t &UNUSED(pref##arg4) = *reinterpret_cast<uint64_t *>((ctx)->args[4]);
+#define creferences_LINUX__X64_sys_clone(ctx, pref) \
+	const uint64_t &UNUSED(pref##arg0) = *reinterpret_cast<const uint64_t *>((ctx)->args[0]); \
+	const uint64_t &UNUSED(pref##arg1) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
+	const uint64_t &UNUSED(pref##arg2) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]); \
+	const uint64_t &UNUSED(pref##arg3) = *reinterpret_cast<const uint64_t *>((ctx)->args[3]); \
+	const uint64_t &UNUSED(pref##arg4) = *reinterpret_cast<const uint64_t *>((ctx)->args[4]);
+#endif
+
+// long sys_fork ['void']
+#undef locals_LINUX__X64_sys_fork
+#if defined(__cplusplus)
+#undef references_LINUX__X64_sys_fork
+#endif
+
+// long sys_vfork ['void']
+#undef locals_LINUX__X64_sys_vfork
+#if defined(__cplusplus)
+#undef references_LINUX__X64_sys_vfork
+#endif
+
+// long sys_execve ['const char __user *filename', 'const char __user *const __user *argv', 'const char __user *const __user *envp']
+#define locals_LINUX__X64_sys_execve(ctx, pref) \
+	uint64_t UNUSED(pref##filename) = *(uint64_t *)((ctx)->args[0]); \
+	uint64_t UNUSED(pref##argv) = *(uint64_t *)((ctx)->args[1]); \
+	uint64_t UNUSED(pref##envp) = *(uint64_t *)((ctx)->args[2]);
+#if defined(__cplusplus)
+#define references_LINUX__X64_sys_execve(ctx, pref) \
+	uint64_t &UNUSED(pref##filename) = *reinterpret_cast<uint64_t *>((ctx)->args[0]); \
+	uint64_t &UNUSED(pref##argv) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
+	uint64_t &UNUSED(pref##envp) = *reinterpret_cast<uint64_t *>((ctx)->args[2]);
+#define creferences_LINUX__X64_sys_execve(ctx, pref) \
+	const uint64_t &UNUSED(pref##filename) = *reinterpret_cast<const uint64_t *>((ctx)->args[0]); \
+	const uint64_t &UNUSED(pref##argv) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
+	const uint64_t &UNUSED(pref##envp) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]);
 #endif
 
 // long sys_exit ['int error_code']
@@ -2289,6 +2345,16 @@
 #define creferences_LINUX__X64_sys_setdomainname(ctx, pref) \
 	const uint64_t &UNUSED(pref##name) = *reinterpret_cast<const uint64_t *>((ctx)->args[0]); \
 	const int32_t &UNUSED(pref##len) = *reinterpret_cast<const int32_t *>((ctx)->args[1]);
+#endif
+
+// long sys_iopl ['unsigned int']
+#define locals_LINUX__X64_sys_iopl(ctx, pref) \
+	uint32_t UNUSED(pref##arg0) = *(uint32_t *)((ctx)->args[0]);
+#if defined(__cplusplus)
+#define references_LINUX__X64_sys_iopl(ctx, pref) \
+	uint32_t &UNUSED(pref##arg0) = *reinterpret_cast<uint32_t *>((ctx)->args[0]);
+#define creferences_LINUX__X64_sys_iopl(ctx, pref) \
+	const uint32_t &UNUSED(pref##arg0) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]);
 #endif
 
 // long sys_ioperm ['unsigned long', 'unsigned long', 'int']
@@ -4575,6 +4641,28 @@
 	const int32_t &UNUSED(pref##cmd) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint64_t &UNUSED(pref##attr) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##size) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]);
+#endif
+
+// long sys_execveat ['int dfd', 'const char __user *filename', 'const char __user *const __user *argv', 'const char __user *const __user *envp', 'int flags']
+#define locals_LINUX__X64_sys_execveat(ctx, pref) \
+	int32_t UNUSED(pref##dfd) = *(int32_t *)((ctx)->args[0]); \
+	uint64_t UNUSED(pref##filename) = *(uint64_t *)((ctx)->args[1]); \
+	uint64_t UNUSED(pref##argv) = *(uint64_t *)((ctx)->args[2]); \
+	uint64_t UNUSED(pref##envp) = *(uint64_t *)((ctx)->args[3]); \
+	int32_t UNUSED(pref##flags) = *(int32_t *)((ctx)->args[4]);
+#if defined(__cplusplus)
+#define references_LINUX__X64_sys_execveat(ctx, pref) \
+	int32_t &UNUSED(pref##dfd) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	uint64_t &UNUSED(pref##filename) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
+	uint64_t &UNUSED(pref##argv) = *reinterpret_cast<uint64_t *>((ctx)->args[2]); \
+	uint64_t &UNUSED(pref##envp) = *reinterpret_cast<uint64_t *>((ctx)->args[3]); \
+	int32_t &UNUSED(pref##flags) = *reinterpret_cast<int32_t *>((ctx)->args[4]);
+#define creferences_LINUX__X64_sys_execveat(ctx, pref) \
+	const int32_t &UNUSED(pref##dfd) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const uint64_t &UNUSED(pref##filename) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
+	const uint64_t &UNUSED(pref##argv) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]); \
+	const uint64_t &UNUSED(pref##envp) = *reinterpret_cast<const uint64_t *>((ctx)->args[3]); \
+	const int32_t &UNUSED(pref##flags) = *reinterpret_cast<const int32_t *>((ctx)->args[4]);
 #endif
 
 // long sys_userfaultfd ['int flags']
