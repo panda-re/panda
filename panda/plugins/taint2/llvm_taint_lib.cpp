@@ -636,6 +636,16 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     LLVMContext &ctx = I.getContext();
     if (!dest) dest = &I;
 
+    const uint64_t maxBitWidth = 128;
+    unsigned src1BitWidth = src1->getType()->getPrimitiveSizeInBits();
+    unsigned src2BitWidth = src1->getType()->getPrimitiveSizeInBits();
+    if ((src1BitWidth > maxBitWidth) || (src2BitWidth > maxBitWidth)) {
+        printf("warning: encountered a value greater than %lu bits - not "
+               "attempting to propagate taint through mul instruction\n",
+               maxBitWidth);
+        return;
+    }
+
     if (isa<Constant>(src1) && isa<Constant>(src2)) {
         return; // do nothing, should not happen in optimized code
     } else if (isa<Constant>(src1)) {
@@ -668,7 +678,7 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     Value *src2slot = constSlot(src2);
     Value *dslot = constSlot(dest);
     Value *arg1 = NULL;
-    // N-bit float -> bit cast 64-bit integer -> Sign Extend to 128-bit
+    // N-bit float -> bit cast N-bit integer -> Sign Extend to 128-bit
     if (src1->getType()->isFloatingPointTy()) {
         // if we've encountered a float, we need to convert it to the 128-bit
         // representation.
@@ -682,7 +692,7 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     }
 
     Value *arg2 = NULL;
-    // N-bit float -> bit cast 64-bit integer -> Sign Extend to 128-bit
+    // N-bit float -> bit cast N-bit integer -> Sign Extend to 128-bit
     if (src2->getType()->isFloatingPointTy()) {
         // if we've encountered a float, we need to convert it to the 128-bit
         // representation.
