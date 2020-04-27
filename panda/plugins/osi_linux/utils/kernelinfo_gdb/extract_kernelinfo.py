@@ -100,9 +100,9 @@ class KernelInfo(gdb.Command):
 		# This is gross because the name doesn't match the symbol identifier.
 		fstruct = "struct file"
 		f_path_offset = gdb.execute(f'printf "%d",(int)&(({fstruct}*)0)->f_path.dentry',to_string=True)
-		print(f"file.f_path_dentry_offset = {f_path_offset}",file=file_out)
+		print(f"fs.f_path_dentry_offset = {f_path_offset}",file=file_out)
 		offset = gdb.execute(f'printf "%d",(int)&(({fstruct}*)0)->f_path.mnt',to_string=True)
-		print(f"file.f_path_mnt_offset = {offset}",file=file_out)
+		print(f"fs.f_path_mnt_offset = {offset}",file=file_out)
 
 		print_offset("struct file",				"f_pos",			"fs");
 		print_offset("struct files_struct",		"fdt",			"fs");
