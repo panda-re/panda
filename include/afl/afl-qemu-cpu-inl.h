@@ -83,7 +83,8 @@ int aflGotLog = 0;              /* we've seen dmesg logging */
 /* from command line options */
 const char *aflFile = "/tmp/work";
 unsigned long aflPanicAddr[255] = {0};
-unsigned long aflStateAddr = 0;
+unsigned long aflStateAddr[255] = {0};
+uint8_t aflStateAddrEntries = 0;
 
 __thread target_ulong afl_prev_loc;
 /* Set in the child process in forkserver mode: */

@@ -11,7 +11,9 @@
     } while (0)
 extern const char *aflFile;
 extern unsigned long aflPanicAddr[255];
-extern unsigned long aflStateAddr;
+extern unsigned long aflStateAddr[255];
+extern uint8_t aflStateAddrEntries;
+
 
 extern int aflEnableTicks;
 extern int aflStart;
@@ -37,6 +39,5 @@ enum tsl_cmd {
     START_AFL = 3,
     STOP_AFL = 4
 };
-
 
 #endif

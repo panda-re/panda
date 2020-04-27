@@ -188,7 +188,8 @@ void tcg_llvm_destroy(void);
 extern const char *aflFile;
 extern char is_persistent;
 extern unsigned long aflPanicAddr[255];
-extern unsigned long aflStateAddr;
+extern unsigned long aflStateAddr[255];
+extern uint8_t aflStateAddrEntries;
 
 static const char *data_dir[16];
 static int data_dir_idx;
@@ -3458,7 +3459,7 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
                         opt_end = strchr(opt_start, ',');
                         if (opt_end != NULL) *opt_end = '\0';
                              aflPanicAddr[idx] = strtoul(opt_start, NULL, 16);
-                             fprintf(stderr, "adding aflPanicAddr 0x%x\n",aflPanicAddr[idx]);
+                             fprintf(stderr, "adding aflPanicAddr 0x%08x\n",aflPanicAddr[idx]);
                              opt_start = opt_end + 1;
                              idx += 1;
                     }
@@ -3466,7 +3467,21 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
                 }
                 break;
             case QEMU_OPTION_aflStateAddr:
-                aflStateAddr = strtoul(optarg, NULL, 16);
+                {
+                    unsigned char idx = 0;
+                    char *optarg_cpy = strdup(optarg);
+
+                    char *opt_start = optarg_cpy, *opt_end = optarg_cpy;
+                    while (opt_end != NULL) {
+                        opt_end = strchr(opt_start, ',');
+                        if (opt_end != NULL) *opt_end = '\0';
+                             aflStateAddr[idx] = strtoul(opt_start, NULL, 16);
+                             fprintf(stderr, "adding aflStateAddr 0x%08x\n",aflStateAddr[idx]);
+                             opt_start = opt_end + 1;
+                             idx += 1;
+                    }
+                    aflStateAddrEntries = idx;
+                }
                 break;
             case QEMU_OPTION_kernel:
                 qemu_opts_set(qemu_find_opts("machine"), 0, "kernel", optarg,

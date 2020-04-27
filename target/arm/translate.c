@@ -12274,14 +12274,20 @@ static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks,
      * execution.
      * N.B. We assume a single cpu here!
      */
-    afl_state_var = cpu_ldq_data(env, aflStateAddr);
-    AFL_DPRINTF("State at start work: 0x%x\n", afl_state_var);
+    //afl_state_var = cpu_ldq_data(env, aflStateAddr);
+    //AFL_DPRINTF("State at start work: 0x%x\n", afl_state_var);
     aflEnableTicks = enableTicks;
     afl_wants_cpu_to_stop = 1;
     afl_persistent_cnt = persistent;
 #endif
     return 0;
 }
+
+
+typedef struct state_patch_entry {
+    uint8_t addr;
+    uint8_t val;
+} spe_t;
 
 /* copy work into ptr[0..sz].  Assumes memory range is locked. */
 static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz)
@@ -12298,7 +12304,7 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
     assert(fp != 0);
     if(!fp) {
          perror(aflFile);
-         return -1;
+         return 0;
     }
 
 #if 0 // legacy triforce afl byte-by-byte input rw. To be replaced.
@@ -12314,6 +12320,18 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
 #else
     uint8_t buffer[4096]; //testcase max size for shannon
     retsz = fread (buffer, 1, sz, fp);
+
+    void * delim = memmem(buffer, 4096, "\xff\xff", 2);
+    if(!delim){
+        return 0;
+    }
+    for(int i=0 ; buffer+i < delim ; i+=2){
+        if (buffer[i] >= aflStateAddrEntries) return 0; //exit(0); //out of bounds :(
+        cpu_stb_data(env, aflStateAddr[buffer[i]], buffer[i+1]);
+
+    }
+
+
     // Shannon has one contigous address space, so we can directly write physmem
     cpu_physical_memory_rw(ptr, buffer, retsz, 1); 
 #endif
@@ -12339,7 +12357,7 @@ static target_ulong startWork(CPUArchState *env, target_ulong start, target_ulon
 
 static target_ulong doneWork(CPUArchState *env, target_ulong val)
 {
-    target_ulong new_state;
+    //target_ulong new_state;
     AFL_DPRINTF("pid %d: doneWork " TARGET_FMT_lx "\n", getpid(), val);
     assert(aflStart == 1);
 /* detecting logging as crashes hasnt been helpful and
@@ -12352,11 +12370,11 @@ static target_ulong doneWork(CPUArchState *env, target_ulong val)
         exit(64 | val);
 #endif
     afl_request_tsl(0, 0, 0, 0, 0, STOP_AFL);
-    new_state = cpu_ldq_data(env, aflStateAddr);
-    AFL_DPRINTF("State at done work: 0x%x\n", new_state);
-    if ((uint8_t) new_state != (uint8_t) afl_state_var){
-        exit(64 | val);
-    }
+    //new_state = cpu_ldq_data(env, aflStateAddr);
+    //AFL_DPRINTF("State at done work: 0x%x\n", new_state);
+    //if ((uint8_t) new_state != (uint8_t) afl_state_var){
+    //exit(64 | val);
+    //}
 
     if (is_persistent) {
         aflStart = 0; /* Stop capturing coverage */
