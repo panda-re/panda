@@ -12321,14 +12321,16 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
     uint8_t buffer[4096]; //testcase max size for shannon
     retsz = fread (buffer, 1, sz, fp);
 
-    void * delim = memmem(buffer, 4096, "\xff\xff", 2);
-    if(!delim){
-        return 0;
-    }
-    for(int i=0 ; buffer+i < delim ; i+=2){
-        if (buffer[i] >= aflStateAddrEntries) return 0; //exit(0); //out of bounds :(
-        cpu_stb_data(env, aflStateAddr[buffer[i]], buffer[i+1]);
+    if (aflStateAddrEntries > 0) {
 
+        void * delim = memmem(buffer, 4096, "\xff\xff", 2);
+        if(!delim){
+            return 0;
+        }
+        for(int i=0 ; buffer+i < delim ; i+=2){
+            if (buffer[i] >= aflStateAddrEntries) return 0;
+            cpu_stb_data(env, aflStateAddr[buffer[i]], buffer[i+1]);
+        }
     }
 
 
