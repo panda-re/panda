@@ -9,9 +9,13 @@
             fflush(stderr);                                             \
         }                                                               \
     } while (0)
+
+#define AFL_MAX_STATE_ADDR 256
+#define AFL_MAX_PANIC_ADDR 256
+
 extern const char *aflFile;
-extern unsigned long aflPanicAddr[255];
-extern unsigned long aflStateAddr[255];
+extern unsigned long aflPanicAddr[AFL_MAX_PANIC_ADDR];
+extern unsigned long aflStateAddr[AFL_MAX_STATE_ADDR];
 extern uint8_t aflStateAddrEntries;
 
 

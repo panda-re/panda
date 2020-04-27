@@ -12319,23 +12319,33 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
     }
 #else
     uint8_t buffer[4096]; //testcase max size for shannon
+    uint8_t * bufptr = buffer;
+
     retsz = fread (buffer, 1, sz, fp);
 
-    if (aflStateAddrEntries > 0) {
+    if (retsz == 0) {
+      assert(!ferror(fp));
+      return 0;
+    }
 
-        void * delim = memmem(buffer, 4096, "\xff\xff", 2);
+    if (aflStateAddrEntries > 0) {
+        uint8_t delim_bytes[] = { 0xff, 0xff };
+        uint8_t * delim = memmem(bufptr, retsz, delim_bytes, sizeof(delim_bytes));
         if(!delim){
             return 0;
         }
-        for(int i=0 ; buffer+i < delim ; i+=2){
-            if (buffer[i] >= aflStateAddrEntries) return 0;
-            cpu_stb_data(env, aflStateAddr[buffer[i]], buffer[i+1]);
+        for(int i=0 ; bufptr+i < delim ; i+=2){
+            if (bufptr[i] >= aflStateAddrEntries) return 0;
+            cpu_stb_data(env, aflStateAddr[bufptr[i]], bufptr[i+1]);
         }
+
+        bufptr = delim + sizeof(delim_bytes);
+        retsz = retsz - (bufptr - buffer);
     }
 
 
     // Shannon has one contigous address space, so we can directly write physmem
-    cpu_physical_memory_rw(ptr, buffer, retsz, 1); 
+    cpu_physical_memory_rw(ptr, bufptr, retsz, 1); 
 #endif
     fclose(fp);
     return retsz;

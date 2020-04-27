@@ -187,8 +187,8 @@ void tcg_llvm_destroy(void);
 
 extern const char *aflFile;
 extern char is_persistent;
-extern unsigned long aflPanicAddr[255];
-extern unsigned long aflStateAddr[255];
+extern unsigned long aflPanicAddr[256];
+extern unsigned long aflStateAddr[256];
 extern uint8_t aflStateAddrEntries;
 
 static const char *data_dir[16];
@@ -3458,10 +3458,10 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
                     while (opt_end != NULL) {
                         opt_end = strchr(opt_start, ',');
                         if (opt_end != NULL) *opt_end = '\0';
-                             aflPanicAddr[idx] = strtoul(opt_start, NULL, 16);
-                             fprintf(stderr, "adding aflPanicAddr 0x%08x\n",aflPanicAddr[idx]);
-                             opt_start = opt_end + 1;
-                             idx += 1;
+                        aflPanicAddr[idx] = strtoul(opt_start, NULL, 16);
+                        fprintf(stderr, "adding aflPanicAddr 0x%08x\n",aflPanicAddr[idx]);
+                        opt_start = opt_end + 1;
+                        idx += 1;
                     }
                     aflPanicAddr[idx] = 0;
                 }
@@ -3473,14 +3473,20 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 
                     char *opt_start = optarg_cpy, *opt_end = optarg_cpy;
                     while (opt_end != NULL) {
+                        if (idx >= 256) {
+                          fprintf(stderr, "Exceeded maximum AFL state entries\n");
+                          break;
+                        }
+
                         opt_end = strchr(opt_start, ',');
                         if (opt_end != NULL) *opt_end = '\0';
-                             aflStateAddr[idx] = strtoul(opt_start, NULL, 16);
-                             fprintf(stderr, "adding aflStateAddr 0x%08x\n",aflStateAddr[idx]);
-                             opt_start = opt_end + 1;
-                             idx += 1;
+                        aflStateAddr[idx] = strtoul(opt_start, NULL, 16);
+                        fprintf(stderr, "adding aflStateAddr 0x%08x\n",aflStateAddr[idx]);
+                        opt_start = opt_end + 1;
+                        idx += 1;
                     }
                     aflStateAddrEntries = idx;
+                    free(optarg_cpy);
                 }
                 break;
             case QEMU_OPTION_kernel:

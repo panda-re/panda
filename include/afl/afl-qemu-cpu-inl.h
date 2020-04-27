@@ -82,8 +82,8 @@ int aflGotLog = 0;              /* we've seen dmesg logging */
 
 /* from command line options */
 const char *aflFile = "/tmp/work";
-unsigned long aflPanicAddr[255] = {0};
-unsigned long aflStateAddr[255] = {0};
+unsigned long aflPanicAddr[AFL_MAX_PANIC_ADDR] = {0};
+unsigned long aflStateAddr[AFL_MAX_STATE_ADDR] = {0};
 uint8_t aflStateAddrEntries = 0;
 
 __thread target_ulong afl_prev_loc;
@@ -402,7 +402,7 @@ void afl_request_tsl(target_ulong pc, target_ulong cb, uint32_t flags,
   t.tb.flags   = flags;
   t.cmd        = cmd;
 
-  if ( cmd = TRANSLATE && last_tb != NULL)
+  if ( cmd == TRANSLATE && last_tb != NULL)
       t.cmd = IS_CHAIN;
 
   if (write(TSL_FD, &t, sizeof(struct afl_tsl)) != sizeof(struct afl_tsl)){
