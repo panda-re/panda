@@ -490,9 +490,9 @@ static void sdl_send_mouse_event(int dx, int dy, int x, int y, int state)
 
     if (qemu_input_is_absolute()) {
         qemu_input_queue_abs(dcl->con, INPUT_AXIS_X, x,
-                             real_screen->w);
+                             0, real_screen->w);
         qemu_input_queue_abs(dcl->con, INPUT_AXIS_Y, y,
-                             real_screen->h);
+                             0, real_screen->h);
     } else {
         if (guest_cursor) {
             x -= guest_x;
@@ -837,7 +837,7 @@ static void sdl_refresh(DisplayChangeListener *dcl)
         case SDL_QUIT:
             if (!no_quit) {
                 no_shutdown = 0;
-                qemu_system_shutdown_request();
+                qemu_system_shutdown_request(SHUTDOWN_CAUSE_HOST_UI);
             }
             break;
         case SDL_MOUSEMOTION:

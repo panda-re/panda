@@ -117,7 +117,7 @@ QDict *qtest_qmp_receive(QTestState *s);
  * @s: #QTestState instance to operate on.
  * @s: #event event to wait for.
  *
- * Continuosly polls for QMP responses until it receives the desired event.
+ * Continuously polls for QMP responses until it receives the desired event.
  */
 void qtest_qmp_eventwait(QTestState *s, const char *event);
 
@@ -126,17 +126,18 @@ void qtest_qmp_eventwait(QTestState *s, const char *event);
  * @s: #QTestState instance to operate on.
  * @s: #event event to wait for.
  *
- * Continuosly polls for QMP responses until it receives the desired event.
+ * Continuously polls for QMP responses until it receives the desired event.
  * Returns a copy of the event for further investigation.
  */
 QDict *qtest_qmp_eventwait_ref(QTestState *s, const char *event);
 
 /**
- * qtest_hmpv:
+ * qtest_hmp:
  * @s: #QTestState instance to operate on.
  * @fmt...: HMP command to send to QEMU
  *
  * Send HMP command to QEMU via QMP's human-monitor-command.
+ * QMP events are discarded.
  *
  * Returns: the command's output.  The caller should g_free() it.
  */
@@ -149,6 +150,7 @@ char *qtest_hmp(QTestState *s, const char *fmt, ...);
  * @ap: HMP command arguments
  *
  * Send HMP command to QEMU via QMP's human-monitor-command.
+ * QMP events are discarded.
  *
  * Returns: the command's output.  The caller should g_free() it.
  */
@@ -569,7 +571,7 @@ static inline QDict *qmp_receive(void)
  * qmp_eventwait:
  * @s: #event event to wait for.
  *
- * Continuosly polls for QMP responses until it receives the desired event.
+ * Continuously polls for QMP responses until it receives the desired event.
  */
 static inline void qmp_eventwait(const char *event)
 {
@@ -580,7 +582,7 @@ static inline void qmp_eventwait(const char *event)
  * qmp_eventwait_ref:
  * @s: #event event to wait for.
  *
- * Continuosly polls for QMP responses until it receives the desired event.
+ * Continuously polls for QMP responses until it receives the desired event.
  * Returns a copy of the event for further investigation.
  */
 static inline QDict *qmp_eventwait_ref(const char *event)
@@ -916,5 +918,13 @@ void qmp_fd_sendv(int fd, const char *fmt, va_list ap);
 void qmp_fd_send(int fd, const char *fmt, ...);
 QDict *qmp_fdv(int fd, const char *fmt, va_list ap);
 QDict *qmp_fd(int fd, const char *fmt, ...);
+
+/**
+ * qtest_cb_for_every_machine:
+ * @cb: Pointer to the callback function
+ *
+ *  Call a callback function for every name of all available machines.
+ */
+void qtest_cb_for_every_machine(void (*cb)(const char *machine));
 
 #endif

@@ -182,7 +182,9 @@ void qemu_set_cloexec(int fd)
 {
     int f;
     f = fcntl(fd, F_GETFD);
-    fcntl(fd, F_SETFD, f | FD_CLOEXEC);
+    assert(f != -1);
+    f = fcntl(fd, F_SETFD, f | FD_CLOEXEC);
+    assert(f != -1);
 }
 
 /*
@@ -205,53 +207,6 @@ int qemu_pipe(int pipefd[2])
     }
 
     return ret;
-}
-
-int qemu_utimens(const char *path, const struct timespec *times)
-{
-    struct timeval tv[2], tv_now;
-    struct stat st;
-    int i;
-#ifdef CONFIG_UTIMENSAT
-    int ret;
-
-    ret = utimensat(AT_FDCWD, path, times, AT_SYMLINK_NOFOLLOW);
-    if (ret != -1 || errno != ENOSYS) {
-        return ret;
-    }
-#endif
-    /* Fallback: use utimes() instead of utimensat() */
-
-    /* happy if special cases */
-    if (times[0].tv_nsec == UTIME_OMIT && times[1].tv_nsec == UTIME_OMIT) {
-        return 0;
-    }
-    if (times[0].tv_nsec == UTIME_NOW && times[1].tv_nsec == UTIME_NOW) {
-        return utimes(path, NULL);
-    }
-
-    /* prepare for hard cases */
-    if (times[0].tv_nsec == UTIME_NOW || times[1].tv_nsec == UTIME_NOW) {
-        gettimeofday(&tv_now, NULL);
-    }
-    if (times[0].tv_nsec == UTIME_OMIT || times[1].tv_nsec == UTIME_OMIT) {
-        stat(path, &st);
-    }
-
-    for (i = 0; i < 2; i++) {
-        if (times[i].tv_nsec == UTIME_NOW) {
-            tv[i].tv_sec = tv_now.tv_sec;
-            tv[i].tv_usec = tv_now.tv_usec;
-        } else if (times[i].tv_nsec == UTIME_OMIT) {
-            tv[i].tv_sec = (i == 0) ? st.st_atime : st.st_mtime;
-            tv[i].tv_usec = 0;
-        } else {
-            tv[i].tv_sec = times[i].tv_sec;
-            tv[i].tv_usec = times[i].tv_nsec / 1000;
-        }
-    }
-
-    return utimes(path, &tv[0]);
 }
 
 char *
@@ -447,7 +402,7 @@ void os_mem_prealloc(int fd, char *area, size_t memory, int smp_cpus,
     /* touch pages simultaneously */
     if (touch_all_pages(area, hpagesize, numpages, smp_cpus)) {
         error_setg(errp, "os_mem_prealloc: Insufficient free host memory "
-            "pages available to allocate guest RAM\n");
+            "pages available to allocate guest RAM");
     }
 
     ret = sigaction(SIGBUS, &oldact, NULL);
@@ -456,72 +411,6 @@ void os_mem_prealloc(int fd, char *area, size_t memory, int smp_cpus,
         perror("os_mem_prealloc: failed to reinstall signal handler");
         exit(1);
     }
-}
-
-
-static struct termios oldtty;
-
-static void term_exit(void)
-{
-    tcsetattr(0, TCSANOW, &oldtty);
-}
-
-static void term_init(void)
-{
-    struct termios tty;
-
-    tcgetattr(0, &tty);
-    oldtty = tty;
-
-    tty.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP
-                          |INLCR|IGNCR|ICRNL|IXON);
-    tty.c_oflag |= OPOST;
-    tty.c_lflag &= ~(ECHO|ECHONL|ICANON|IEXTEN);
-    tty.c_cflag &= ~(CSIZE|PARENB);
-    tty.c_cflag |= CS8;
-    tty.c_cc[VMIN] = 1;
-    tty.c_cc[VTIME] = 0;
-
-    tcsetattr(0, TCSANOW, &tty);
-
-    atexit(term_exit);
-}
-
-int qemu_read_password(char *buf, int buf_size)
-{
-    uint8_t ch;
-    int i, ret;
-
-    printf("password: ");
-    fflush(stdout);
-    term_init();
-    i = 0;
-    for (;;) {
-        ret = read(0, &ch, 1);
-        if (ret == -1) {
-            if (errno == EAGAIN || errno == EINTR) {
-                continue;
-            } else {
-                break;
-            }
-        } else if (ret == 0) {
-            ret = -1;
-            break;
-        } else {
-            if (ch == '\r' ||
-                ch == '\n') {
-                ret = 0;
-                break;
-            }
-            if (i < (buf_size - 1)) {
-                buf[i++] = ch;
-            }
-        }
-    }
-    term_exit();
-    buf[i] = '\0';
-    printf("\n");
-    return ret;
 }
 
 
@@ -697,7 +586,7 @@ void qemu_free_stack(void *stack, size_t sz)
 void sigaction_invoke(struct sigaction *action,
                       struct qemu_signalfd_siginfo *info)
 {
-    siginfo_t si = { 0 };
+    siginfo_t si = {};
     si.si_signo = info->ssi_signo;
     si.si_errno = info->ssi_errno;
     si.si_code = info->ssi_code;

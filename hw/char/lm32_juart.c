@@ -21,7 +21,7 @@
 #include "hw/hw.h"
 #include "hw/sysbus.h"
 #include "trace.h"
-#include "sysemu/char.h"
+#include "chardev/char-fe.h"
 
 #include "hw/char/lm32_juart.h"
 
@@ -119,7 +119,7 @@ static void lm32_juart_realize(DeviceState *dev, Error **errp)
     LM32JuartState *s = LM32_JUART(dev);
 
     qemu_chr_fe_set_handlers(&s->chr, juart_can_rx, juart_rx,
-                             juart_event, s, NULL, true);
+                             juart_event, NULL, s, NULL, true);
 }
 
 static const VMStateDescription vmstate_lm32_juart = {

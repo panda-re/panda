@@ -59,7 +59,7 @@ function _timed_wait_for()
     do
         if [ -z "${silent}" ]; then
             echo "${resp}" | _filter_testdir | _filter_qemu \
-                           | _filter_qemu_io | _filter_qmp
+                           | _filter_qemu_io | _filter_qmp | _filter_hmp
         fi
         grep -q "${*}" < <(echo ${resp})
         if [ $? -eq 0 ]; then
@@ -153,14 +153,19 @@ function _launch_qemu()
     mkfifo "${fifo_out}"
     mkfifo "${fifo_in}"
 
+    object_options=
+    if [ -n "$IMGKEYSECRET" ]; then
+        object_options="--object secret,id=keysec0,data=$IMGKEYSECRET"
+    fi
+
     if [ -z "$keep_stderr" ]; then
         QEMU_NEED_PID='y'\
-        ${QEMU} -nographic -serial none ${comm} "${@}" >"${fifo_out}" \
+        ${QEMU} ${object_options} -nographic -serial none ${comm} "${@}" >"${fifo_out}" \
                                                        2>&1 \
                                                        <"${fifo_in}" &
     elif [ "$keep_stderr" = "y" ]; then
         QEMU_NEED_PID='y'\
-        ${QEMU} -nographic -serial none ${comm} "${@}" >"${fifo_out}" \
+        ${QEMU} ${object_options} -nographic -serial none ${comm} "${@}" >"${fifo_out}" \
                                                        <"${fifo_in}" &
     else
         exit 1
@@ -217,10 +222,13 @@ function _cleanup_qemu()
 
         if [ -n "${wait}" ]; then
             cat <&${QEMU_OUT[$i]} | _filter_testdir | _filter_qemu \
-                                  | _filter_qemu_io | _filter_qmp
+                                  | _filter_qemu_io | _filter_qmp | _filter_hmp
         fi
         rm -f "${QEMU_FIFO_IN}_${i}" "${QEMU_FIFO_OUT}_${i}"
         eval "exec ${QEMU_IN[$i]}<&-"   # close file descriptors
         eval "exec ${QEMU_OUT[$i]}<&-"
+
+        unset QEMU_IN[$i]
+        unset QEMU_OUT[$i]
     done
 }

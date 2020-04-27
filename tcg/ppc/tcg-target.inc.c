@@ -1932,6 +1932,7 @@ static void tcg_target_qemu_prologue(TCGContext *s)
 
     /* Epilogue */
     tcg_debug_assert(tb_ret_addr == s->code_ptr);
+    s->code_gen_epilogue = tb_ret_addr;
 
     tcg_out_ld(s, TCG_TYPE_PTR, TCG_REG_R0, TCG_REG_R1, FRAME_SIZE+LR_OFFSET);
     for (i = 0; i < ARRAY_SIZE(tcg_target_callee_save_regs); ++i) {
@@ -1985,6 +1986,11 @@ static void tcg_out_op(TCGContext *s, TCGOpcode opc, const TCGArg *args,
         s->code_ptr++;
 #endif
         s->tb_jmp_reset_offset[args[0]] = tcg_current_code_size(s);
+        break;
+    case INDEX_op_goto_ptr:
+        tcg_out32(s, MTSPR | RS(args[0]) | CTR);
+        tcg_out_movi(s, TCG_TYPE_PTR, TCG_REG_R3, 0);
+        tcg_out32(s, BCCTR | BO_ALWAYS);
         break;
     case INDEX_op_br:
         {
@@ -2555,6 +2561,7 @@ static const TCGTargetOpDef ppc_op_defs[] = {
     { INDEX_op_exit_tb, { } },
     { INDEX_op_goto_tb, { } },
     { INDEX_op_br, { } },
+    { INDEX_op_goto_ptr, { "r" } },
 
     { INDEX_op_ld8u_i32, { "r", "r" } },
     { INDEX_op_ld8s_i32, { "r", "r" } },
@@ -2813,14 +2820,11 @@ void tcg_register_jit(void *buf, size_t buf_size)
 }
 #endif /* __ELF__ */
 
-static size_t dcache_bsize = 16;
-static size_t icache_bsize = 16;
-
 void flush_icache_range(uintptr_t start, uintptr_t stop)
 {
     uintptr_t p, start1, stop1;
-    size_t dsize = dcache_bsize;
-    size_t isize = icache_bsize;
+    size_t dsize = qemu_dcache_linesize;
+    size_t isize = qemu_icache_linesize;
 
     start1 = start & ~(dsize - 1);
     stop1 = (stop + dsize - 1) & ~(dsize - 1);
@@ -2837,67 +2841,3 @@ void flush_icache_range(uintptr_t start, uintptr_t stop)
     asm volatile ("sync" : : : "memory");
     asm volatile ("isync" : : : "memory");
 }
-
-#if defined _AIX
-#include <sys/systemcfg.h>
-
-static void __attribute__((constructor)) tcg_cache_init(void)
-{
-    icache_bsize = _system_configuration.icache_line;
-    dcache_bsize = _system_configuration.dcache_line;
-}
-
-#elif defined __linux__
-static void __attribute__((constructor)) tcg_cache_init(void)
-{
-    unsigned long dsize = qemu_getauxval(AT_DCACHEBSIZE);
-    unsigned long isize = qemu_getauxval(AT_ICACHEBSIZE);
-
-    if (dsize == 0 || isize == 0) {
-        if (dsize == 0) {
-            fprintf(stderr, "getauxval AT_DCACHEBSIZE failed\n");
-        }
-        if (isize == 0) {
-            fprintf(stderr, "getauxval AT_ICACHEBSIZE failed\n");
-        }
-        exit(1);
-    }
-    dcache_bsize = dsize;
-    icache_bsize = isize;
-}
-
-#elif defined __APPLE__
-#include <sys/sysctl.h>
-
-static void __attribute__((constructor)) tcg_cache_init(void)
-{
-    size_t len;
-    unsigned cacheline;
-    int name[2] = { CTL_HW, HW_CACHELINE };
-
-    len = sizeof(cacheline);
-    if (sysctl(name, 2, &cacheline, &len, NULL, 0)) {
-        perror("sysctl CTL_HW HW_CACHELINE failed");
-        exit(1);
-    }
-    dcache_bsize = cacheline;
-    icache_bsize = cacheline;
-}
-
-#elif defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
-#include <sys/sysctl.h>
-
-static void __attribute__((constructor)) tcg_cache_init(void)
-{
-    size_t len = 4;
-    unsigned cacheline;
-
-    if (sysctlbyname ("machdep.cacheline_size", &cacheline, &len, NULL, 0)) {
-        fprintf(stderr, "sysctlbyname machdep.cacheline_size failed: %s\n",
-                strerror(errno));
-        exit(1);
-    }
-    dcache_bsize = cacheline;
-    icache_bsize = cacheline;
-}
-#endif

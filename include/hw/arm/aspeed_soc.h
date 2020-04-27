@@ -20,8 +20,10 @@
 #include "hw/i2c/aspeed_i2c.h"
 #include "hw/ssi/aspeed_smc.h"
 #include "hw/watchdog/wdt_aspeed.h"
+#include "hw/net/ftgmac100.h"
 
 #define ASPEED_SPIS_NUM  2
+#define ASPEED_WDTS_NUM  3
 
 typedef struct AspeedSoCState {
     /*< private >*/
@@ -38,7 +40,8 @@ typedef struct AspeedSoCState {
     AspeedSMCState fmc;
     AspeedSMCState spi[ASPEED_SPIS_NUM];
     AspeedSDMCState sdmc;
-    AspeedWDTState wdt;
+    AspeedWDTState wdt[ASPEED_WDTS_NUM];
+    FTGMAC100State ftgmac100;
 } AspeedSoCState;
 
 #define TYPE_ASPEED_SOC "aspeed-soc"
@@ -54,6 +57,7 @@ typedef struct AspeedSoCInfo {
     const hwaddr *spi_bases;
     const char *fmc_typename;
     const char **spi_typename;
+    int wdts_num;
 } AspeedSoCInfo;
 
 typedef struct AspeedSoCClass {

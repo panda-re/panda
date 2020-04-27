@@ -27,7 +27,7 @@
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "hw/hw.h"
-#include "sysemu/char.h"
+#include "chardev/char-fe.h"
 #include "hw/isa/isa.h"
 #include "hw/i386/pc.h"
 
@@ -87,12 +87,12 @@ static const MemoryRegionOps debugcon_ops = {
 
 static void debugcon_realize_core(DebugconState *s, Error **errp)
 {
-    if (!qemu_chr_fe_get_driver(&s->chr)) {
+    if (!qemu_chr_fe_backend_connected(&s->chr)) {
         error_setg(errp, "Can't create debugcon device, empty char device");
         return;
     }
 
-    qemu_chr_fe_set_handlers(&s->chr, NULL, NULL, NULL, s, NULL, true);
+    qemu_chr_fe_set_handlers(&s->chr, NULL, NULL, NULL, NULL, s, NULL, true);
 }
 
 static void debugcon_isa_realizefn(DeviceState *dev, Error **errp)

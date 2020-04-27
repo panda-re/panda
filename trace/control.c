@@ -65,8 +65,15 @@ void trace_event_register_group(TraceEvent **events)
     size_t i;
     for (i = 0; events[i] != NULL; i++) {
         events[i]->id = next_id++;
-        if (events[i]->vcpu_id != TRACE_VCPU_EVENT_NONE) {
+        if (events[i]->vcpu_id == TRACE_VCPU_EVENT_NONE) {
+            continue;
+        }
+
+        if (likely(next_vcpu_id < CPU_TRACE_DSTATE_MAX_EVENTS)) {
             events[i]->vcpu_id = next_vcpu_id++;
+        } else {
+            error_report("WARNING: too many vcpu trace events; dropping '%s'",
+                         events[i]->name);
         }
     }
     event_groups = g_renew(TraceEventGroup, event_groups, nevent_groups + 1);
@@ -171,8 +178,8 @@ static void do_trace_enable_events(const char *line_buf)
     while ((ev = trace_event_iter_next(&iter)) != NULL) {
         if (!trace_event_get_state_static(ev)) {
             if (!is_pattern) {
-                error_report("WARNING: trace event '%s' is not traceable",
-                             line_ptr);
+                warn_report("trace event '%s' is not traceable",
+                            line_ptr);
                 return;
             }
             continue;
@@ -186,8 +193,8 @@ static void do_trace_enable_events(const char *line_buf)
     }
 
     if (!is_pattern) {
-        error_report("WARNING: trace event '%s' does not exist",
-                     line_ptr);
+        warn_report("trace event '%s' does not exist",
+                    line_ptr);
     }
 }
 

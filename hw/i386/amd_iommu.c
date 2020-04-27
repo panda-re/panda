@@ -21,6 +21,7 @@
  */
 #include "qemu/osdep.h"
 #include "hw/i386/amd_iommu.h"
+#include "qapi/error.h"
 #include "qemu/error-report.h"
 #include "trace.h"
 
@@ -51,7 +52,7 @@ struct AMDVIAddressSpace {
     uint8_t bus_num;            /* bus number                           */
     uint8_t devfn;              /* device function                      */
     AMDVIState *iommu_state;    /* AMDVI - one per machine              */
-    MemoryRegion iommu;         /* Device's address translation region  */
+    IOMMUMemoryRegion iommu;    /* Device's address translation region  */
     MemoryRegion iommu_ir;      /* Device's interrupt remapping region  */
     AddressSpace as;            /* device's corresponding address space */
 };
@@ -986,8 +987,8 @@ static inline bool amdvi_is_interrupt_addr(hwaddr addr)
     return addr >= AMDVI_INT_ADDR_FIRST && addr <= AMDVI_INT_ADDR_LAST;
 }
 
-static IOMMUTLBEntry amdvi_translate(MemoryRegion *iommu, hwaddr addr,
-                                     bool is_write)
+static IOMMUTLBEntry amdvi_translate(IOMMUMemoryRegion *iommu, hwaddr addr,
+                                     IOMMUAccessFlags flag)
 {
     AMDVIAddressSpace *as = container_of(iommu, AMDVIAddressSpace, iommu);
     AMDVIState *s = as->iommu_state;
@@ -1016,7 +1017,7 @@ static IOMMUTLBEntry amdvi_translate(MemoryRegion *iommu, hwaddr addr,
         return ret;
     }
 
-    amdvi_do_translate(as, addr, is_write, &ret);
+    amdvi_do_translate(as, addr, flag & IOMMU_WO, &ret);
     trace_amdvi_translation_result(as->bus_num, PCI_SLOT(as->devfn),
             PCI_FUNC(as->devfn), addr, ret.translated_addr);
     return ret;
@@ -1043,9 +1044,13 @@ static AddressSpace *amdvi_host_dma_iommu(PCIBus *bus, void *opaque, int devfn)
         iommu_as[devfn]->devfn = (uint8_t)devfn;
         iommu_as[devfn]->iommu_state = s;
 
-        memory_region_init_iommu(&iommu_as[devfn]->iommu, OBJECT(s),
-                                 &s->iommu_ops, "amd-iommu", UINT64_MAX);
-        address_space_init(&iommu_as[devfn]->as, &iommu_as[devfn]->iommu,
+        memory_region_init_iommu(&iommu_as[devfn]->iommu,
+                                 sizeof(iommu_as[devfn]->iommu),
+                                 TYPE_AMD_IOMMU_MEMORY_REGION,
+                                 OBJECT(s),
+                                 "amd-iommu", UINT64_MAX);
+        address_space_init(&iommu_as[devfn]->as,
+                           MEMORY_REGION(&iommu_as[devfn]->iommu),
                            "amd-iommu");
     }
     return &iommu_as[devfn]->as;
@@ -1066,7 +1071,7 @@ static const MemoryRegionOps mmio_mem_ops = {
     }
 };
 
-static void amdvi_iommu_notify_flag_changed(MemoryRegion *iommu,
+static void amdvi_iommu_notify_flag_changed(IOMMUMemoryRegion *iommu,
                                             IOMMUNotifierFlag old,
                                             IOMMUNotifierFlag new)
 {
@@ -1084,8 +1089,6 @@ static void amdvi_init(AMDVIState *s)
 {
     amdvi_iotlb_reset(s);
 
-    s->iommu_ops.translate = amdvi_translate;
-    s->iommu_ops.notify_flag_changed = amdvi_iommu_notify_flag_changed;
     s->devtab_len = 0;
     s->cmdbuf_len = 0;
     s->cmdbuf_head = 0;
@@ -1137,7 +1140,19 @@ static void amdvi_realize(DeviceState *dev, Error **err)
     int ret = 0;
     AMDVIState *s = AMD_IOMMU_DEVICE(dev);
     X86IOMMUState *x86_iommu = X86_IOMMU_DEVICE(dev);
-    PCIBus *bus = PC_MACHINE(qdev_get_machine())->bus;
+    MachineState *ms = MACHINE(qdev_get_machine());
+    MachineClass *mc = MACHINE_GET_CLASS(ms);
+    PCMachineState *pcms =
+        PC_MACHINE(object_dynamic_cast(OBJECT(ms), TYPE_PC_MACHINE));
+    PCIBus *bus;
+
+    if (!pcms) {
+        error_setg(err, "Machine-type '%s' not supported by amd-iommu",
+                   mc->name);
+        return;
+    }
+
+    bus = pcms->bus;
     s->iotlb = g_hash_table_new_full(amdvi_uint64_hash,
                                      amdvi_uint64_equal, g_free, g_free);
 
@@ -1145,13 +1160,23 @@ static void amdvi_realize(DeviceState *dev, Error **err)
     x86_iommu->type = TYPE_AMD;
     qdev_set_parent_bus(DEVICE(&s->pci), &bus->qbus);
     object_property_set_bool(OBJECT(&s->pci), true, "realized", err);
-    s->capab_offset = pci_add_capability(&s->pci.dev, AMDVI_CAPAB_ID_SEC, 0,
-                                         AMDVI_CAPAB_SIZE);
-    assert(s->capab_offset > 0);
-    ret = pci_add_capability(&s->pci.dev, PCI_CAP_ID_MSI, 0, AMDVI_CAPAB_REG_SIZE);
-    assert(ret > 0);
-    ret = pci_add_capability(&s->pci.dev, PCI_CAP_ID_HT, 0, AMDVI_CAPAB_REG_SIZE);
-    assert(ret > 0);
+    ret = pci_add_capability(&s->pci.dev, AMDVI_CAPAB_ID_SEC, 0,
+                                         AMDVI_CAPAB_SIZE, err);
+    if (ret < 0) {
+        return;
+    }
+    s->capab_offset = ret;
+
+    ret = pci_add_capability(&s->pci.dev, PCI_CAP_ID_MSI, 0,
+                             AMDVI_CAPAB_REG_SIZE, err);
+    if (ret < 0) {
+        return;
+    }
+    ret = pci_add_capability(&s->pci.dev, PCI_CAP_ID_HT, 0,
+                             AMDVI_CAPAB_REG_SIZE, err);
+    if (ret < 0) {
+        return;
+    }
 
     /* set up MMIO */
     memory_region_init_io(&s->mmio, OBJECT(s), &mmio_mem_ops, s, "amdvi-mmio",
@@ -1186,6 +1211,8 @@ static void amdvi_class_init(ObjectClass *klass, void* data)
     dc->vmsd = &vmstate_amdvi;
     dc->hotpluggable = false;
     dc_class->realize = amdvi_realize;
+    /* Supported by the pc-q35-* machine types */
+    dc->user_creatable = true;
 }
 
 static const TypeInfo amdvi = {
@@ -1202,10 +1229,25 @@ static const TypeInfo amdviPCI = {
     .instance_size = sizeof(AMDVIPCIState),
 };
 
+static void amdvi_iommu_memory_region_class_init(ObjectClass *klass, void *data)
+{
+    IOMMUMemoryRegionClass *imrc = IOMMU_MEMORY_REGION_CLASS(klass);
+
+    imrc->translate = amdvi_translate;
+    imrc->notify_flag_changed = amdvi_iommu_notify_flag_changed;
+}
+
+static const TypeInfo amdvi_iommu_memory_region_info = {
+    .parent = TYPE_IOMMU_MEMORY_REGION,
+    .name = TYPE_AMD_IOMMU_MEMORY_REGION,
+    .class_init = amdvi_iommu_memory_region_class_init,
+};
+
 static void amdviPCI_register_types(void)
 {
     type_register_static(&amdviPCI);
     type_register_static(&amdvi);
+    type_register_static(&amdvi_iommu_memory_region_info);
 }
 
 type_init(amdviPCI_register_types);

@@ -13,6 +13,7 @@
 #include "qapi/error.h"
 #include "qapi/visitor.h"
 #include "hw/qdev.h"
+#include "qemu/error-report.h"
 #include "qemu/bitops.h"
 #include "qemu/error-report.h"
 #include "exec/address-spaces.h"
@@ -21,11 +22,33 @@
 #include "hw/s390x/css.h"
 #include "trace.h"
 #include "hw/s390x/s390_flic.h"
+#include "hw/s390x/s390-virtio-ccw.h"
 
 typedef struct CrwContainer {
     CRW crw;
     QTAILQ_ENTRY(CrwContainer) sibling;
 } CrwContainer;
+
+static const VMStateDescription vmstate_crw = {
+    .name = "s390_crw",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT16(flags, CRW),
+        VMSTATE_UINT16(rsid, CRW),
+        VMSTATE_END_OF_LIST()
+    },
+};
+
+static const VMStateDescription vmstate_crw_container = {
+    .name = "s390_crw_container",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_STRUCT(crw, CrwContainer, 0, vmstate_crw, CRW),
+        VMSTATE_END_OF_LIST()
+    },
+};
 
 typedef struct ChpInfo {
     uint8_t in_use;
@@ -33,22 +56,256 @@ typedef struct ChpInfo {
     uint8_t is_virtual;
 } ChpInfo;
 
+static const VMStateDescription vmstate_chp_info = {
+    .name = "s390_chp_info",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT8(in_use, ChpInfo),
+        VMSTATE_UINT8(type, ChpInfo),
+        VMSTATE_UINT8(is_virtual, ChpInfo),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
 typedef struct SubchSet {
     SubchDev *sch[MAX_SCHID + 1];
     unsigned long schids_used[BITS_TO_LONGS(MAX_SCHID + 1)];
     unsigned long devnos_used[BITS_TO_LONGS(MAX_SCHID + 1)];
 } SubchSet;
 
+static const VMStateDescription vmstate_scsw = {
+    .name = "s390_scsw",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT16(flags, SCSW),
+        VMSTATE_UINT16(ctrl, SCSW),
+        VMSTATE_UINT32(cpa, SCSW),
+        VMSTATE_UINT8(dstat, SCSW),
+        VMSTATE_UINT8(cstat, SCSW),
+        VMSTATE_UINT16(count, SCSW),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
+static const VMStateDescription vmstate_pmcw = {
+    .name = "s390_pmcw",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT32(intparm, PMCW),
+        VMSTATE_UINT16(flags, PMCW),
+        VMSTATE_UINT16(devno, PMCW),
+        VMSTATE_UINT8(lpm, PMCW),
+        VMSTATE_UINT8(pnom, PMCW),
+        VMSTATE_UINT8(lpum, PMCW),
+        VMSTATE_UINT8(pim, PMCW),
+        VMSTATE_UINT16(mbi, PMCW),
+        VMSTATE_UINT8(pom, PMCW),
+        VMSTATE_UINT8(pam, PMCW),
+        VMSTATE_UINT8_ARRAY(chpid, PMCW, 8),
+        VMSTATE_UINT32(chars, PMCW),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
+static const VMStateDescription vmstate_schib = {
+    .name = "s390_schib",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_STRUCT(pmcw, SCHIB, 0, vmstate_pmcw, PMCW),
+        VMSTATE_STRUCT(scsw, SCHIB, 0, vmstate_scsw, SCSW),
+        VMSTATE_UINT64(mba, SCHIB),
+        VMSTATE_UINT8_ARRAY(mda, SCHIB, 4),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
+
+static const VMStateDescription vmstate_ccw1 = {
+    .name = "s390_ccw1",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT8(cmd_code, CCW1),
+        VMSTATE_UINT8(flags, CCW1),
+        VMSTATE_UINT16(count, CCW1),
+        VMSTATE_UINT32(cda, CCW1),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
+static const VMStateDescription vmstate_ciw = {
+    .name = "s390_ciw",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT8(type, CIW),
+        VMSTATE_UINT8(command, CIW),
+        VMSTATE_UINT16(count, CIW),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
+static const VMStateDescription vmstate_sense_id = {
+    .name = "s390_sense_id",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT8(reserved, SenseId),
+        VMSTATE_UINT16(cu_type, SenseId),
+        VMSTATE_UINT8(cu_model, SenseId),
+        VMSTATE_UINT16(dev_type, SenseId),
+        VMSTATE_UINT8(dev_model, SenseId),
+        VMSTATE_UINT8(unused, SenseId),
+        VMSTATE_STRUCT_ARRAY(ciw, SenseId, MAX_CIWS, 0, vmstate_ciw, CIW),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
+static const VMStateDescription vmstate_orb = {
+    .name = "s390_orb",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT32(intparm, ORB),
+        VMSTATE_UINT16(ctrl0, ORB),
+        VMSTATE_UINT8(lpm, ORB),
+        VMSTATE_UINT8(ctrl1, ORB),
+        VMSTATE_UINT32(cpa, ORB),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
+static bool vmstate_schdev_orb_needed(void *opaque)
+{
+    return css_migration_enabled();
+}
+
+static const VMStateDescription vmstate_schdev_orb = {
+    .name = "s390_subch_dev/orb",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .needed = vmstate_schdev_orb_needed,
+    .fields = (VMStateField[]) {
+        VMSTATE_STRUCT(orb, SubchDev, 1, vmstate_orb, ORB),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
+static int subch_dev_post_load(void *opaque, int version_id);
+static void subch_dev_pre_save(void *opaque);
+
+const char err_hint_devno[] = "Devno mismatch, tried to load wrong section!"
+    " Likely reason: some sequences of plug and unplug  can break"
+    " migration for machine versions prior to  2.7 (known design flaw).";
+
+const VMStateDescription vmstate_subch_dev = {
+    .name = "s390_subch_dev",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .post_load = subch_dev_post_load,
+    .pre_save = subch_dev_pre_save,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT8_EQUAL(cssid, SubchDev, "Bug!"),
+        VMSTATE_UINT8_EQUAL(ssid, SubchDev, "Bug!"),
+        VMSTATE_UINT16(migrated_schid, SubchDev),
+        VMSTATE_UINT16_EQUAL(devno, SubchDev, err_hint_devno),
+        VMSTATE_BOOL(thinint_active, SubchDev),
+        VMSTATE_STRUCT(curr_status, SubchDev, 0, vmstate_schib, SCHIB),
+        VMSTATE_UINT8_ARRAY(sense_data, SubchDev, 32),
+        VMSTATE_UINT64(channel_prog, SubchDev),
+        VMSTATE_STRUCT(last_cmd, SubchDev, 0, vmstate_ccw1, CCW1),
+        VMSTATE_BOOL(last_cmd_valid, SubchDev),
+        VMSTATE_STRUCT(id, SubchDev, 0, vmstate_sense_id, SenseId),
+        VMSTATE_BOOL(ccw_fmt_1, SubchDev),
+        VMSTATE_UINT8(ccw_no_data_cnt, SubchDev),
+        VMSTATE_END_OF_LIST()
+    },
+    .subsections = (const VMStateDescription * []) {
+        &vmstate_schdev_orb,
+        NULL
+    }
+};
+
+typedef struct IndAddrPtrTmp {
+    IndAddr **parent;
+    uint64_t addr;
+    int32_t len;
+} IndAddrPtrTmp;
+
+static int post_load_ind_addr(void *opaque, int version_id)
+{
+    IndAddrPtrTmp *ptmp = opaque;
+    IndAddr **ind_addr = ptmp->parent;
+
+    if (ptmp->len != 0) {
+        *ind_addr = get_indicator(ptmp->addr, ptmp->len);
+    } else {
+        *ind_addr = NULL;
+    }
+    return 0;
+}
+
+static void pre_save_ind_addr(void *opaque)
+{
+    IndAddrPtrTmp *ptmp = opaque;
+    IndAddr *ind_addr = *(ptmp->parent);
+
+    if (ind_addr != NULL) {
+        ptmp->len = ind_addr->len;
+        ptmp->addr = ind_addr->addr;
+    } else {
+        ptmp->len = 0;
+        ptmp->addr = 0L;
+    }
+}
+
+const VMStateDescription vmstate_ind_addr_tmp = {
+    .name = "s390_ind_addr_tmp",
+    .pre_save = pre_save_ind_addr,
+    .post_load = post_load_ind_addr,
+
+    .fields = (VMStateField[]) {
+        VMSTATE_INT32(len, IndAddrPtrTmp),
+        VMSTATE_UINT64(addr, IndAddrPtrTmp),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
+const VMStateDescription vmstate_ind_addr = {
+    .name = "s390_ind_addr_tmp",
+    .fields = (VMStateField[]) {
+        VMSTATE_WITH_TMP(IndAddr*, IndAddrPtrTmp, vmstate_ind_addr_tmp),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
 typedef struct CssImage {
     SubchSet *sch_set[MAX_SSID + 1];
     ChpInfo chpids[MAX_CHPID + 1];
 } CssImage;
 
+static const VMStateDescription vmstate_css_img = {
+    .name = "s390_css_img",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        /* Subchannel sets have no relevant state. */
+        VMSTATE_STRUCT_ARRAY(chpids, CssImage, MAX_CHPID + 1, 0,
+                             vmstate_chp_info, ChpInfo),
+        VMSTATE_END_OF_LIST()
+    }
+
+};
+
 typedef struct IoAdapter {
     uint32_t id;
     uint8_t type;
     uint8_t isc;
-    QTAILQ_ENTRY(IoAdapter) sibling;
+    uint8_t flags;
 } IoAdapter;
 
 typedef struct ChannelSubSys {
@@ -62,9 +319,33 @@ typedef struct ChannelSubSys {
     uint64_t chnmon_area;
     CssImage *css[MAX_CSSID + 1];
     uint8_t default_cssid;
-    QTAILQ_HEAD(, IoAdapter) io_adapters;
+    /* don't migrate, see css_register_io_adapters */
+    IoAdapter *io_adapters[CSS_IO_ADAPTER_TYPE_NUMS][MAX_ISC + 1];
+    /* don't migrate, see get_indicator and IndAddrPtrTmp */
     QTAILQ_HEAD(, IndAddr) indicator_addresses;
 } ChannelSubSys;
+
+static const VMStateDescription vmstate_css = {
+    .name = "s390_css",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_QTAILQ_V(pending_crws, ChannelSubSys, 1, vmstate_crw_container,
+                         CrwContainer, sibling),
+        VMSTATE_BOOL(sei_pending, ChannelSubSys),
+        VMSTATE_BOOL(do_crw_mchk, ChannelSubSys),
+        VMSTATE_BOOL(crws_lost, ChannelSubSys),
+        /* These were kind of migrated by virtio */
+        VMSTATE_UINT8(max_cssid, ChannelSubSys),
+        VMSTATE_UINT8(max_ssid, ChannelSubSys),
+        VMSTATE_BOOL(chnmon_active, ChannelSubSys),
+        VMSTATE_UINT64(chnmon_area, ChannelSubSys),
+        VMSTATE_ARRAY_OF_POINTER_TO_STRUCT(css, ChannelSubSys, MAX_CSSID + 1,
+                0, vmstate_css_img, CssImage),
+        VMSTATE_UINT8(default_cssid, ChannelSubSys),
+        VMSTATE_END_OF_LIST()
+    }
+};
 
 static ChannelSubSys channel_subsys = {
     .pending_crws = QTAILQ_HEAD_INITIALIZER(channel_subsys.pending_crws),
@@ -73,10 +354,64 @@ static ChannelSubSys channel_subsys = {
     .do_crw_mchk = true,
     .crws_lost = false,
     .chnmon_active = false,
-    .io_adapters = QTAILQ_HEAD_INITIALIZER(channel_subsys.io_adapters),
     .indicator_addresses =
         QTAILQ_HEAD_INITIALIZER(channel_subsys.indicator_addresses),
 };
+
+static void subch_dev_pre_save(void *opaque)
+{
+    SubchDev *s = opaque;
+
+    /* Prepare remote_schid for save */
+    s->migrated_schid = s->schid;
+}
+
+static int subch_dev_post_load(void *opaque, int version_id)
+{
+
+    SubchDev *s = opaque;
+
+    /* Re-assign the subchannel to remote_schid if necessary */
+    if (s->migrated_schid != s->schid) {
+        if (css_find_subch(true, s->cssid, s->ssid, s->schid) == s) {
+            /*
+             * Cleanup the slot before moving to s->migrated_schid provided
+             * it still belongs to us, i.e. it was not changed by previous
+             * invocation of this function.
+             */
+            css_subch_assign(s->cssid, s->ssid, s->schid, s->devno, NULL);
+        }
+        /* It's OK to re-assign without a prior de-assign. */
+        s->schid = s->migrated_schid;
+        css_subch_assign(s->cssid, s->ssid, s->schid, s->devno, s);
+    }
+
+    if (css_migration_enabled()) {
+        /* No compat voodoo to do ;) */
+        return 0;
+    }
+    /*
+     * Hack alert. If we don't migrate the channel subsystem status
+     * we still need to find out if the guest enabled mss/mcss-e.
+     * If the subchannel is enabled, it certainly was able to access it,
+     * so adjust the max_ssid/max_cssid values for relevant ssid/cssid
+     * values. This is not watertight, but better than nothing.
+     */
+    if (s->curr_status.pmcw.flags & PMCW_FLAGS_MASK_ENA) {
+        if (s->ssid) {
+            channel_subsys.max_ssid = MAX_SSID;
+        }
+        if (s->cssid != channel_subsys.default_cssid) {
+            channel_subsys.max_cssid = MAX_CSSID;
+        }
+    }
+    return 0;
+}
+
+void css_register_vmstate(void)
+{
+    vmstate_register(NULL, 0, &vmstate_css, &channel_subsys);
+}
 
 IndAddr *get_indicator(hwaddr ind_addr, int len)
 {
@@ -156,44 +491,70 @@ int css_create_css_image(uint8_t cssid, bool default_image)
     return 0;
 }
 
-int css_register_io_adapter(uint8_t type, uint8_t isc, bool swap,
-                            bool maskable, uint32_t *id)
+uint32_t css_get_adapter_id(CssIoAdapterType type, uint8_t isc)
 {
+    if (type >= CSS_IO_ADAPTER_TYPE_NUMS || isc > MAX_ISC ||
+        !channel_subsys.io_adapters[type][isc]) {
+        return -1;
+    }
+
+    return channel_subsys.io_adapters[type][isc]->id;
+}
+
+/**
+ * css_register_io_adapters: Register I/O adapters per ISC during init
+ *
+ * @swap: an indication if byte swap is needed.
+ * @maskable: an indication if the adapter is subject to the mask operation.
+ * @flags: further characteristics of the adapter.
+ *         e.g. suppressible, an indication if the adapter is subject to AIS.
+ * @errp: location to store error information.
+ */
+void css_register_io_adapters(CssIoAdapterType type, bool swap, bool maskable,
+                              uint8_t flags, Error **errp)
+{
+    uint32_t id;
+    int ret, isc;
     IoAdapter *adapter;
-    bool found = false;
-    int ret;
     S390FLICState *fs = s390_get_flic();
     S390FLICStateClass *fsc = S390_FLIC_COMMON_GET_CLASS(fs);
 
-    *id = 0;
-    QTAILQ_FOREACH(adapter, &channel_subsys.io_adapters, sibling) {
-        if ((adapter->type == type) && (adapter->isc == isc)) {
-            *id = adapter->id;
-            found = true;
-            ret = 0;
+    /*
+     * Disallow multiple registrations for the same device type.
+     * Report an error if registering for an already registered type.
+     */
+    if (channel_subsys.io_adapters[type][0]) {
+        error_setg(errp, "Adapters for type %d already registered", type);
+    }
+
+    for (isc = 0; isc <= MAX_ISC; isc++) {
+        id = (type << 3) | isc;
+        ret = fsc->register_io_adapter(fs, id, isc, swap, maskable, flags);
+        if (ret == 0) {
+            adapter = g_new0(IoAdapter, 1);
+            adapter->id = id;
+            adapter->isc = isc;
+            adapter->type = type;
+            adapter->flags = flags;
+            channel_subsys.io_adapters[type][isc] = adapter;
+        } else {
+            error_setg_errno(errp, -ret, "Unexpected error %d when "
+                             "registering adapter %d", ret, id);
             break;
         }
-        if (adapter->id >= *id) {
-            *id = adapter->id + 1;
+    }
+
+    /*
+     * No need to free registered adapters in kvm: kvm will clean up
+     * when the machine goes away.
+     */
+    if (ret) {
+        for (isc--; isc >= 0; isc--) {
+            g_free(channel_subsys.io_adapters[type][isc]);
+            channel_subsys.io_adapters[type][isc] = NULL;
         }
     }
-    if (found) {
-        goto out;
-    }
-    adapter = g_new0(IoAdapter, 1);
-    ret = fsc->register_io_adapter(fs, *id, isc, swap, maskable);
-    if (ret == 0) {
-        adapter->id = *id;
-        adapter->isc = isc;
-        adapter->type = type;
-        QTAILQ_INSERT_TAIL(&channel_subsys.io_adapters, adapter, sibling);
-    } else {
-        g_free(adapter);
-        fprintf(stderr, "Unexpected error %d when registering adapter %d\n",
-                ret, *id);
-    }
-out:
-    return ret;
+
 }
 
 static void css_clear_io_interrupt(uint16_t subchannel_id,
@@ -238,7 +599,7 @@ uint16_t css_build_subchannel_id(SubchDev *sch)
     return css_do_build_subchannel_id(sch->cssid, sch->ssid);
 }
 
-static void css_inject_io_interrupt(SubchDev *sch)
+void css_inject_io_interrupt(SubchDev *sch)
 {
     uint8_t isc = (sch->curr_status.pmcw.flags & PMCW_FLAGS_MASK_ISC) >> 11;
 
@@ -273,12 +634,52 @@ void css_conditional_io_interrupt(SubchDev *sch)
     }
 }
 
-void css_adapter_interrupt(uint8_t isc)
+int css_do_sic(CPUS390XState *env, uint8_t isc, uint16_t mode)
 {
+    S390FLICState *fs = s390_get_flic();
+    S390FLICStateClass *fsc = S390_FLIC_COMMON_GET_CLASS(fs);
+    int r;
+
+    if (env->psw.mask & PSW_MASK_PSTATE) {
+        r = -PGM_PRIVILEGED;
+        goto out;
+    }
+
+    trace_css_do_sic(mode, isc);
+    switch (mode) {
+    case SIC_IRQ_MODE_ALL:
+    case SIC_IRQ_MODE_SINGLE:
+        break;
+    default:
+        r = -PGM_OPERAND;
+        goto out;
+    }
+
+    r = fsc->modify_ais_mode(fs, isc, mode) ? -PGM_OPERATION : 0;
+out:
+    return r;
+}
+
+void css_adapter_interrupt(CssIoAdapterType type, uint8_t isc)
+{
+    S390FLICState *fs = s390_get_flic();
+    S390FLICStateClass *fsc = S390_FLIC_COMMON_GET_CLASS(fs);
     uint32_t io_int_word = (isc << 27) | IO_INT_WORD_AI;
+    IoAdapter *adapter = channel_subsys.io_adapters[type][isc];
+
+    if (!adapter) {
+        return;
+    }
 
     trace_css_adapter_interrupt(isc);
-    s390_io_interrupt(0, 0, 0, io_int_word);
+    if (fs->ais_supported) {
+        if (fsc->inject_airq(fs, type, isc, adapter->flags)) {
+            error_report("Failed to inject airq with AIS supported");
+            exit(1);
+        }
+    } else {
+        s390_io_interrupt(0, 0, 0, io_int_word);
+    }
 }
 
 static void sch_handle_clear_func(SubchDev *sch)
@@ -394,6 +795,10 @@ static int css_interpret_ccw(SubchDev *sch, hwaddr ccw_addr,
     if (!ccw_addr) {
         return -EIO;
     }
+    /* Check doubleword aligned and 31 or 24 (fmt 0) bit addressable. */
+    if (ccw_addr & (sch->ccw_fmt_1 ? 0x80000007 : 0xff000007)) {
+        return -EINVAL;
+    }
 
     /* Translate everything to format-1 ccws - the information is the same. */
     ccw = copy_ccw_from_guest(ccw_addr, sch->ccw_fmt_1);
@@ -408,6 +813,11 @@ static int css_interpret_ccw(SubchDev *sch, hwaddr ccw_addr,
     }
     if (!sch->ccw_fmt_1 && (ccw.count == 0) &&
         (ccw.cmd_code != CCW_CMD_TIC)) {
+        return -EINVAL;
+    }
+
+    /* We don't support MIDA. */
+    if (ccw.flags & CCW_FLAG_MIDA) {
         return -EINVAL;
     }
 
@@ -475,7 +885,8 @@ static int css_interpret_ccw(SubchDev *sch, hwaddr ccw_addr,
             ret = -EINVAL;
             break;
         }
-        if (ccw.flags & (CCW_FLAG_CC | CCW_FLAG_DC)) {
+        if (ccw.flags || ccw.count) {
+            /* We have already sanitized these if converted from fmt 0. */
             ret = -EINVAL;
             break;
         }
@@ -503,7 +914,7 @@ static int css_interpret_ccw(SubchDev *sch, hwaddr ccw_addr,
     return ret;
 }
 
-static void sch_handle_start_func(SubchDev *sch, ORB *orb)
+static void sch_handle_start_func_virtual(SubchDev *sch)
 {
 
     PMCW *p = &sch->curr_status.pmcw;
@@ -517,10 +928,10 @@ static void sch_handle_start_func(SubchDev *sch, ORB *orb)
 
     if (!(s->ctrl & SCSW_ACTL_SUSP)) {
         /* Start Function triggered via ssch, i.e. we have an ORB */
+        ORB *orb = &sch->orb;
         s->cstat = 0;
         s->dstat = 0;
         /* Look at the orb and try to execute the channel program. */
-        assert(orb != NULL); /* resume does not pass an orb */
         p->intparm = orb->intparm;
         if (!(orb->lpm & path)) {
             /* Generate a deferred cc 3 condition. */
@@ -534,8 +945,7 @@ static void sch_handle_start_func(SubchDev *sch, ORB *orb)
         sch->ccw_no_data_cnt = 0;
         suspend_allowed = !!(orb->ctrl0 & ORB_CTRL0_MASK_SPND);
     } else {
-        /* Start Function resumed via rsch, i.e. we don't have an
-         * ORB */
+        /* Start Function resumed via rsch */
         s->ctrl &= ~(SCSW_ACTL_SUSP | SCSW_ACTL_RESUME_PEND);
         /* The channel program had been suspended before. */
         suspend_allowed = true;
@@ -555,6 +965,9 @@ static void sch_handle_start_func(SubchDev *sch, ORB *orb)
                     SCSW_STCTL_STATUS_PEND;
             s->dstat = SCSW_DSTAT_CHANNEL_END | SCSW_DSTAT_DEVICE_END;
             s->cpa = sch->channel_prog + 8;
+            break;
+        case -EIO:
+            /* I/O errors, status depends on specific devices */
             break;
         case -ENOSYS:
             /* unsupported command, generate unit check (command reject) */
@@ -602,13 +1015,59 @@ static void sch_handle_start_func(SubchDev *sch, ORB *orb)
 
 }
 
+static int sch_handle_start_func_passthrough(SubchDev *sch)
+{
+
+    PMCW *p = &sch->curr_status.pmcw;
+    SCSW *s = &sch->curr_status.scsw;
+    int ret;
+
+    ORB *orb = &sch->orb;
+    if (!(s->ctrl & SCSW_ACTL_SUSP)) {
+        assert(orb != NULL);
+        p->intparm = orb->intparm;
+    }
+
+    /*
+     * Only support prefetch enable mode.
+     * Only support 64bit addressing idal.
+     */
+    if (!(orb->ctrl0 & ORB_CTRL0_MASK_PFCH) ||
+        !(orb->ctrl0 & ORB_CTRL0_MASK_C64)) {
+        return -EINVAL;
+    }
+
+    ret = s390_ccw_cmd_request(orb, s, sch->driver_data);
+    switch (ret) {
+    /* Currently we don't update control block and just return the cc code. */
+    case 0:
+        break;
+    case -EBUSY:
+        break;
+    case -ENODEV:
+        break;
+    case -EACCES:
+        /* Let's reflect an inaccessible host device by cc 3. */
+        ret = -ENODEV;
+        break;
+    default:
+       /*
+        * All other return codes will trigger a program check,
+        * or set cc to 1.
+        */
+       break;
+    };
+
+    return ret;
+}
+
 /*
  * On real machines, this would run asynchronously to the main vcpus.
  * We might want to make some parts of the ssch handling (interpreting
  * read/writes) asynchronous later on if we start supporting more than
  * our current very simple devices.
  */
-static void do_subchannel_work(SubchDev *sch, ORB *orb)
+int do_subchannel_work_virtual(SubchDev *sch)
 {
 
     SCSW *s = &sch->curr_status.scsw;
@@ -619,12 +1078,45 @@ static void do_subchannel_work(SubchDev *sch, ORB *orb)
         sch_handle_halt_func(sch);
     } else if (s->ctrl & SCSW_FCTL_START_FUNC) {
         /* Triggered by both ssch and rsch. */
-        sch_handle_start_func(sch, orb);
+        sch_handle_start_func_virtual(sch);
     } else {
         /* Cannot happen. */
-        return;
+        return 0;
     }
     css_inject_io_interrupt(sch);
+    return 0;
+}
+
+int do_subchannel_work_passthrough(SubchDev *sch)
+{
+    int ret;
+    SCSW *s = &sch->curr_status.scsw;
+
+    if (s->ctrl & SCSW_FCTL_CLEAR_FUNC) {
+        /* TODO: Clear handling */
+        sch_handle_clear_func(sch);
+        ret = 0;
+    } else if (s->ctrl & SCSW_FCTL_HALT_FUNC) {
+        /* TODO: Halt handling */
+        sch_handle_halt_func(sch);
+        ret = 0;
+    } else if (s->ctrl & SCSW_FCTL_START_FUNC) {
+        ret = sch_handle_start_func_passthrough(sch);
+    } else {
+        /* Cannot happen. */
+        return -ENODEV;
+    }
+
+    return ret;
+}
+
+static int do_subchannel_work(SubchDev *sch)
+{
+    if (sch->do_subchannel_work) {
+        return sch->do_subchannel_work(sch);
+    } else {
+        return -EINVAL;
+    }
 }
 
 static void copy_pmcw_to_guest(PMCW *dest, const PMCW *src)
@@ -647,7 +1139,7 @@ static void copy_pmcw_to_guest(PMCW *dest, const PMCW *src)
     dest->chars = cpu_to_be32(src->chars);
 }
 
-static void copy_scsw_to_guest(SCSW *dest, const SCSW *src)
+void copy_scsw_to_guest(SCSW *dest, const SCSW *src)
 {
     dest->flags = cpu_to_be16(src->flags);
     dest->ctrl = cpu_to_be16(src->ctrl);
@@ -828,7 +1320,7 @@ int css_do_csch(SubchDev *sch)
     s->ctrl &= ~(SCSW_CTRL_MASK_FCTL | SCSW_CTRL_MASK_ACTL);
     s->ctrl |= SCSW_FCTL_CLEAR_FUNC | SCSW_ACTL_CLEAR_PEND;
 
-    do_subchannel_work(sch, NULL);
+    do_subchannel_work(sch);
     ret = 0;
 
 out:
@@ -869,7 +1361,7 @@ int css_do_hsch(SubchDev *sch)
     }
     s->ctrl |= SCSW_ACTL_HALT_PEND;
 
-    do_subchannel_work(sch, NULL);
+    do_subchannel_work(sch);
     ret = 0;
 
 out:
@@ -938,13 +1430,13 @@ int css_do_ssch(SubchDev *sch, ORB *orb)
     if (channel_subsys.chnmon_active) {
         css_update_chnmon(sch);
     }
+    sch->orb = *orb;
     sch->channel_prog = orb->cpa;
     /* Trigger the start function. */
     s->ctrl |= (SCSW_FCTL_START_FUNC | SCSW_ACTL_START_PEND);
     s->flags &= ~SCSW_FLAGS_MASK_PNO;
 
-    do_subchannel_work(sch, orb);
-    ret = 0;
+    ret = do_subchannel_work(sch);
 
 out:
     return ret;
@@ -1223,7 +1715,7 @@ int css_do_rsch(SubchDev *sch)
     }
 
     s->ctrl |= SCSW_ACTL_RESUME_PEND;
-    do_subchannel_work(sch, NULL);
+    do_subchannel_work(sch);
     ret = 0;
 
 out:
@@ -1282,7 +1774,29 @@ bool css_schid_final(int m, uint8_t cssid, uint8_t ssid, uint16_t schid)
                                  (MAX_SCHID + 1) / sizeof(unsigned long));
 }
 
-static int css_add_virtual_chpid(uint8_t cssid, uint8_t chpid, uint8_t type)
+unsigned int css_find_free_chpid(uint8_t cssid)
+{
+    CssImage *css = channel_subsys.css[cssid];
+    unsigned int chpid;
+
+    if (!css) {
+        return MAX_CHPID + 1;
+    }
+
+    for (chpid = 0; chpid <= MAX_CHPID; chpid++) {
+        /* skip reserved chpid */
+        if (chpid == VIRTIO_CCW_CHPID) {
+            continue;
+        }
+        if (!css->chpids[chpid].in_use) {
+            return chpid;
+        }
+    }
+    return MAX_CHPID + 1;
+}
+
+static int css_add_chpid(uint8_t cssid, uint8_t chpid, uint8_t type,
+                         bool is_virt)
 {
     CssImage *css;
 
@@ -1296,7 +1810,7 @@ static int css_add_virtual_chpid(uint8_t cssid, uint8_t chpid, uint8_t type)
     }
     css->chpids[chpid].in_use = 1;
     css->chpids[chpid].type = type;
-    css->chpids[chpid].is_virtual = 1;
+    css->chpids[chpid].is_virtual = is_virt;
 
     css_generate_chp_crws(cssid, chpid);
 
@@ -1320,7 +1834,7 @@ void css_sch_build_virtual_schib(SubchDev *sch, uint8_t chpid, uint8_t type)
     p->pam = 0x80;
     p->chpid[0] = chpid;
     if (!css->chpids[chpid].in_use) {
-        css_add_virtual_chpid(sch->cssid, chpid, type);
+        css_add_chpid(sch->cssid, chpid, type, true);
     }
 
     memset(s, 0, sizeof(SCSW));
@@ -1618,162 +2132,6 @@ int css_enable_mss(void)
     return 0;
 }
 
-void subch_device_save(SubchDev *s, QEMUFile *f)
-{
-    int i;
-
-    qemu_put_byte(f, s->cssid);
-    qemu_put_byte(f, s->ssid);
-    qemu_put_be16(f, s->schid);
-    qemu_put_be16(f, s->devno);
-    qemu_put_byte(f, s->thinint_active);
-    /* SCHIB */
-    /*     PMCW */
-    qemu_put_be32(f, s->curr_status.pmcw.intparm);
-    qemu_put_be16(f, s->curr_status.pmcw.flags);
-    qemu_put_be16(f, s->curr_status.pmcw.devno);
-    qemu_put_byte(f, s->curr_status.pmcw.lpm);
-    qemu_put_byte(f, s->curr_status.pmcw.pnom);
-    qemu_put_byte(f, s->curr_status.pmcw.lpum);
-    qemu_put_byte(f, s->curr_status.pmcw.pim);
-    qemu_put_be16(f, s->curr_status.pmcw.mbi);
-    qemu_put_byte(f, s->curr_status.pmcw.pom);
-    qemu_put_byte(f, s->curr_status.pmcw.pam);
-    qemu_put_buffer(f, s->curr_status.pmcw.chpid, 8);
-    qemu_put_be32(f, s->curr_status.pmcw.chars);
-    /*     SCSW */
-    qemu_put_be16(f, s->curr_status.scsw.flags);
-    qemu_put_be16(f, s->curr_status.scsw.ctrl);
-    qemu_put_be32(f, s->curr_status.scsw.cpa);
-    qemu_put_byte(f, s->curr_status.scsw.dstat);
-    qemu_put_byte(f, s->curr_status.scsw.cstat);
-    qemu_put_be16(f, s->curr_status.scsw.count);
-    qemu_put_be64(f, s->curr_status.mba);
-    qemu_put_buffer(f, s->curr_status.mda, 4);
-    /* end SCHIB */
-    qemu_put_buffer(f, s->sense_data, 32);
-    qemu_put_be64(f, s->channel_prog);
-    /* last cmd */
-    qemu_put_byte(f, s->last_cmd.cmd_code);
-    qemu_put_byte(f, s->last_cmd.flags);
-    qemu_put_be16(f, s->last_cmd.count);
-    qemu_put_be32(f, s->last_cmd.cda);
-    qemu_put_byte(f, s->last_cmd_valid);
-    qemu_put_byte(f, s->id.reserved);
-    qemu_put_be16(f, s->id.cu_type);
-    qemu_put_byte(f, s->id.cu_model);
-    qemu_put_be16(f, s->id.dev_type);
-    qemu_put_byte(f, s->id.dev_model);
-    qemu_put_byte(f, s->id.unused);
-    for (i = 0; i < ARRAY_SIZE(s->id.ciw); i++) {
-        qemu_put_byte(f, s->id.ciw[i].type);
-        qemu_put_byte(f, s->id.ciw[i].command);
-        qemu_put_be16(f, s->id.ciw[i].count);
-    }
-    qemu_put_byte(f, s->ccw_fmt_1);
-    qemu_put_byte(f, s->ccw_no_data_cnt);
-}
-
-int subch_device_load(SubchDev *s, QEMUFile *f)
-{
-    SubchDev *old_s;
-    Error *err = NULL;
-    uint16_t old_schid = s->schid;
-    uint16_t old_devno = s->devno;
-    int i;
-
-    s->cssid = qemu_get_byte(f);
-    s->ssid = qemu_get_byte(f);
-    s->schid = qemu_get_be16(f);
-    s->devno = qemu_get_be16(f);
-    if (s->devno != old_devno) {
-        /* Only possible if machine < 2.7 (no css_dev_path) */
-
-        error_setg(&err, "%x != %x", old_devno,  s->devno);
-        error_append_hint(&err, "Devno mismatch, tried to load wrong section!"
-                          " Likely reason: some sequences of plug and unplug"
-                          " can break migration for machine versions prior to"
-                          " 2.7 (known design flaw).\n");
-        error_report_err(err);
-        return -EINVAL;
-    }
-    /* Re-assign subch. */
-    if (old_schid != s->schid) {
-        old_s = channel_subsys.css[s->cssid]->sch_set[s->ssid]->sch[old_schid];
-        /*
-         * (old_s != s) means that some other device has its correct
-         * subchannel already assigned (in load).
-         */
-        if (old_s == s) {
-            css_subch_assign(s->cssid, s->ssid, old_schid, s->devno, NULL);
-        }
-        /* It's OK to re-assign without a prior de-assign. */
-        css_subch_assign(s->cssid, s->ssid, s->schid, s->devno, s);
-    }
-    s->thinint_active = qemu_get_byte(f);
-    /* SCHIB */
-    /*     PMCW */
-    s->curr_status.pmcw.intparm = qemu_get_be32(f);
-    s->curr_status.pmcw.flags = qemu_get_be16(f);
-    s->curr_status.pmcw.devno = qemu_get_be16(f);
-    s->curr_status.pmcw.lpm = qemu_get_byte(f);
-    s->curr_status.pmcw.pnom  = qemu_get_byte(f);
-    s->curr_status.pmcw.lpum = qemu_get_byte(f);
-    s->curr_status.pmcw.pim = qemu_get_byte(f);
-    s->curr_status.pmcw.mbi = qemu_get_be16(f);
-    s->curr_status.pmcw.pom = qemu_get_byte(f);
-    s->curr_status.pmcw.pam = qemu_get_byte(f);
-    qemu_get_buffer(f, s->curr_status.pmcw.chpid, 8);
-    s->curr_status.pmcw.chars = qemu_get_be32(f);
-    /*     SCSW */
-    s->curr_status.scsw.flags = qemu_get_be16(f);
-    s->curr_status.scsw.ctrl = qemu_get_be16(f);
-    s->curr_status.scsw.cpa = qemu_get_be32(f);
-    s->curr_status.scsw.dstat = qemu_get_byte(f);
-    s->curr_status.scsw.cstat = qemu_get_byte(f);
-    s->curr_status.scsw.count = qemu_get_be16(f);
-    s->curr_status.mba = qemu_get_be64(f);
-    qemu_get_buffer(f, s->curr_status.mda, 4);
-    /* end SCHIB */
-    qemu_get_buffer(f, s->sense_data, 32);
-    s->channel_prog = qemu_get_be64(f);
-    /* last cmd */
-    s->last_cmd.cmd_code = qemu_get_byte(f);
-    s->last_cmd.flags = qemu_get_byte(f);
-    s->last_cmd.count = qemu_get_be16(f);
-    s->last_cmd.cda = qemu_get_be32(f);
-    s->last_cmd_valid = qemu_get_byte(f);
-    s->id.reserved = qemu_get_byte(f);
-    s->id.cu_type = qemu_get_be16(f);
-    s->id.cu_model = qemu_get_byte(f);
-    s->id.dev_type = qemu_get_be16(f);
-    s->id.dev_model = qemu_get_byte(f);
-    s->id.unused = qemu_get_byte(f);
-    for (i = 0; i < ARRAY_SIZE(s->id.ciw); i++) {
-        s->id.ciw[i].type = qemu_get_byte(f);
-        s->id.ciw[i].command = qemu_get_byte(f);
-        s->id.ciw[i].count = qemu_get_be16(f);
-    }
-    s->ccw_fmt_1 = qemu_get_byte(f);
-    s->ccw_no_data_cnt = qemu_get_byte(f);
-    /*
-     * Hack alert. We don't migrate the channel subsystem status (no
-     * device!), but we need to find out if the guest enabled mss/mcss-e.
-     * If the subchannel is enabled, it certainly was able to access it,
-     * so adjust the max_ssid/max_cssid values for relevant ssid/cssid
-     * values. This is not watertight, but better than nothing.
-     */
-    if (s->curr_status.pmcw.flags & PMCW_FLAGS_MASK_ENA) {
-        if (s->ssid) {
-            channel_subsys.max_ssid = MAX_SSID;
-        }
-        if (s->cssid != channel_subsys.default_cssid) {
-            channel_subsys.max_cssid = MAX_CSSID;
-        }
-    }
-    return 0;
-}
-
 void css_reset_sch(SubchDev *sch)
 {
     PMCW *p = &sch->curr_status.pmcw;
@@ -1900,7 +2258,7 @@ out:
     g_free(str);
 }
 
-PropertyInfo css_devid_propinfo = {
+const PropertyInfo css_devid_propinfo = {
     .name = "str",
     .description = "Identifier of an I/O device in the channel "
                    "subsystem, example: fe.1.23ab",
@@ -1908,27 +2266,65 @@ PropertyInfo css_devid_propinfo = {
     .set = set_css_devid,
 };
 
-SubchDev *css_create_virtual_sch(CssDevId bus_id, Error **errp)
+const PropertyInfo css_devid_ro_propinfo = {
+    .name = "str",
+    .description = "Read-only identifier of an I/O device in the channel "
+                   "subsystem, example: fe.1.23ab",
+    .get = get_css_devid,
+};
+
+SubchDev *css_create_sch(CssDevId bus_id, bool is_virtual, bool squash_mcss,
+                         Error **errp)
 {
     uint16_t schid = 0;
     SubchDev *sch;
 
     if (bus_id.valid) {
-        /* Enforce use of virtual cssid. */
-        if (bus_id.cssid != VIRTUAL_CSSID) {
-            error_setg(errp, "cssid %hhx not valid for virtual devices",
-                       bus_id.cssid);
+        if (is_virtual != (bus_id.cssid == VIRTUAL_CSSID)) {
+            error_setg(errp, "cssid %hhx not valid for %s devices",
+                       bus_id.cssid,
+                       (is_virtual ? "virtual" : "non-virtual"));
             return NULL;
         }
+    }
+
+    if (bus_id.valid) {
+        if (squash_mcss) {
+            bus_id.cssid = channel_subsys.default_cssid;
+        } else if (!channel_subsys.css[bus_id.cssid]) {
+            css_create_css_image(bus_id.cssid, false);
+        }
+
         if (!css_find_free_subch_for_devno(bus_id.cssid, bus_id.ssid,
                                            bus_id.devid, &schid, errp)) {
             return NULL;
         }
-    } else {
-        bus_id.cssid = VIRTUAL_CSSID;
+    } else if (squash_mcss || is_virtual) {
+        bus_id.cssid = channel_subsys.default_cssid;
+
         if (!css_find_free_subch_and_devno(bus_id.cssid, &bus_id.ssid,
                                            &bus_id.devid, &schid, errp)) {
             return NULL;
+        }
+    } else {
+        for (bus_id.cssid = 0; bus_id.cssid < MAX_CSSID; ++bus_id.cssid) {
+            if (bus_id.cssid == VIRTUAL_CSSID) {
+                continue;
+            }
+
+            if (!channel_subsys.css[bus_id.cssid]) {
+                css_create_css_image(bus_id.cssid, false);
+            }
+
+            if   (css_find_free_subch_and_devno(bus_id.cssid, &bus_id.ssid,
+                                                &bus_id.devid, &schid,
+                                                NULL)) {
+                break;
+            }
+            if (bus_id.cssid == MAX_CSSID) {
+                error_setg(errp, "Virtual channel subsystem is full!");
+                return NULL;
+            }
         }
     }
 
@@ -1939,4 +2335,148 @@ SubchDev *css_create_virtual_sch(CssDevId bus_id, Error **errp)
     sch->schid = schid;
     css_subch_assign(sch->cssid, sch->ssid, schid, sch->devno, sch);
     return sch;
+}
+
+static int css_sch_get_chpids(SubchDev *sch, CssDevId *dev_id)
+{
+    char *fid_path;
+    FILE *fd;
+    uint32_t chpid[8];
+    int i;
+    PMCW *p = &sch->curr_status.pmcw;
+
+    fid_path = g_strdup_printf("/sys/bus/css/devices/%x.%x.%04x/chpids",
+                               dev_id->cssid, dev_id->ssid, dev_id->devid);
+    fd = fopen(fid_path, "r");
+    if (fd == NULL) {
+        error_report("%s: open %s failed", __func__, fid_path);
+        g_free(fid_path);
+        return -EINVAL;
+    }
+
+    if (fscanf(fd, "%x %x %x %x %x %x %x %x",
+        &chpid[0], &chpid[1], &chpid[2], &chpid[3],
+        &chpid[4], &chpid[5], &chpid[6], &chpid[7]) != 8) {
+        fclose(fd);
+        g_free(fid_path);
+        return -EINVAL;
+    }
+
+    for (i = 0; i < ARRAY_SIZE(p->chpid); i++) {
+        p->chpid[i] = chpid[i];
+    }
+
+    fclose(fd);
+    g_free(fid_path);
+
+    return 0;
+}
+
+static int css_sch_get_path_masks(SubchDev *sch, CssDevId *dev_id)
+{
+    char *fid_path;
+    FILE *fd;
+    uint32_t pim, pam, pom;
+    PMCW *p = &sch->curr_status.pmcw;
+
+    fid_path = g_strdup_printf("/sys/bus/css/devices/%x.%x.%04x/pimpampom",
+                               dev_id->cssid, dev_id->ssid, dev_id->devid);
+    fd = fopen(fid_path, "r");
+    if (fd == NULL) {
+        error_report("%s: open %s failed", __func__, fid_path);
+        g_free(fid_path);
+        return -EINVAL;
+    }
+
+    if (fscanf(fd, "%x %x %x", &pim, &pam, &pom) != 3) {
+        fclose(fd);
+        g_free(fid_path);
+        return -EINVAL;
+    }
+
+    p->pim = pim;
+    p->pam = pam;
+    p->pom = pom;
+    fclose(fd);
+    g_free(fid_path);
+
+    return 0;
+}
+
+static int css_sch_get_chpid_type(uint8_t chpid, uint32_t *type,
+                                  CssDevId *dev_id)
+{
+    char *fid_path;
+    FILE *fd;
+
+    fid_path = g_strdup_printf("/sys/devices/css%x/chp0.%02x/type",
+                               dev_id->cssid, chpid);
+    fd = fopen(fid_path, "r");
+    if (fd == NULL) {
+        error_report("%s: open %s failed", __func__, fid_path);
+        g_free(fid_path);
+        return -EINVAL;
+    }
+
+    if (fscanf(fd, "%x", type) != 1) {
+        fclose(fd);
+        g_free(fid_path);
+        return -EINVAL;
+    }
+
+    fclose(fd);
+    g_free(fid_path);
+
+    return 0;
+}
+
+/*
+ * We currently retrieve the real device information from sysfs to build the
+ * guest subchannel information block without considering the migration feature.
+ * We need to revisit this problem when we want to add migration support.
+ */
+int css_sch_build_schib(SubchDev *sch, CssDevId *dev_id)
+{
+    CssImage *css = channel_subsys.css[sch->cssid];
+    PMCW *p = &sch->curr_status.pmcw;
+    SCSW *s = &sch->curr_status.scsw;
+    uint32_t type;
+    int i, ret;
+
+    assert(css != NULL);
+    memset(p, 0, sizeof(PMCW));
+    p->flags |= PMCW_FLAGS_MASK_DNV;
+    /* We are dealing with I/O subchannels only. */
+    p->devno = sch->devno;
+
+    /* Grab path mask from sysfs. */
+    ret = css_sch_get_path_masks(sch, dev_id);
+    if (ret) {
+        return ret;
+    }
+
+    /* Grab chpids from sysfs. */
+    ret = css_sch_get_chpids(sch, dev_id);
+    if (ret) {
+        return ret;
+    }
+
+   /* Build chpid type. */
+    for (i = 0; i < ARRAY_SIZE(p->chpid); i++) {
+        if (p->chpid[i] && !css->chpids[p->chpid[i]].in_use) {
+            ret = css_sch_get_chpid_type(p->chpid[i], &type, dev_id);
+            if (ret) {
+                return ret;
+            }
+            css_add_chpid(sch->cssid, p->chpid[i], type, false);
+        }
+    }
+
+    memset(s, 0, sizeof(SCSW));
+    sch->curr_status.mba = 0;
+    for (i = 0; i < ARRAY_SIZE(sch->curr_status.mda); i++) {
+        sch->curr_status.mda[i] = 0;
+    }
+
+    return 0;
 }

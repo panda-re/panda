@@ -146,11 +146,13 @@ int load_image_targphys_as(const char *filename,
     int size;
 
     size = get_image_size(filename);
-    if (size > max_sz) {
+    if (size < 0 || size > max_sz) {
         return -1;
     }
     if (size > 0) {
-        rom_add_file_fixed_as(filename, addr, -1, as);
+        if (rom_add_file_fixed_as(filename, addr, -1, as) < 0) {
+            return -1;
+        }
     }
     return size;
 }
@@ -166,7 +168,7 @@ int load_image_mr(const char *filename, MemoryRegion *mr)
 
     size = get_image_size(filename);
 
-    if (size > memory_region_size(mr)) {
+    if (size < 0 || size > memory_region_size(mr)) {
         return -1;
     }
     if (size > 0) {
@@ -611,8 +613,9 @@ static int load_uboot_image(const char *filename, hwaddr *ep, hwaddr *loadaddr,
         return -1;
 
     size = read(fd, hdr, sizeof(uboot_image_header_t));
-    if (size < 0)
+    if (size < sizeof(uboot_image_header_t)) {
         goto out;
+    }
 
     bswap_uboot_header(hdr);
 

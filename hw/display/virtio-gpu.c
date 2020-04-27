@@ -19,7 +19,7 @@
 #include "hw/virtio/virtio.h"
 #include "hw/virtio/virtio-gpu.h"
 #include "hw/virtio/virtio-bus.h"
-#include "migration/migration.h"
+#include "migration/blocker.h"
 #include "qemu/log.h"
 #include "qapi/error.h"
 
@@ -258,41 +258,22 @@ void virtio_gpu_get_display_info(VirtIOGPU *g,
 static pixman_format_code_t get_pixman_format(uint32_t virtio_gpu_format)
 {
     switch (virtio_gpu_format) {
-#ifdef HOST_WORDS_BIGENDIAN
     case VIRTIO_GPU_FORMAT_B8G8R8X8_UNORM:
-        return PIXMAN_b8g8r8x8;
+        return PIXMAN_BE_b8g8r8x8;
     case VIRTIO_GPU_FORMAT_B8G8R8A8_UNORM:
-        return PIXMAN_b8g8r8a8;
+        return PIXMAN_BE_b8g8r8a8;
     case VIRTIO_GPU_FORMAT_X8R8G8B8_UNORM:
-        return PIXMAN_x8r8g8b8;
+        return PIXMAN_BE_x8r8g8b8;
     case VIRTIO_GPU_FORMAT_A8R8G8B8_UNORM:
-        return PIXMAN_a8r8g8b8;
+        return PIXMAN_BE_a8r8g8b8;
     case VIRTIO_GPU_FORMAT_R8G8B8X8_UNORM:
-        return PIXMAN_r8g8b8x8;
+        return PIXMAN_BE_r8g8b8x8;
     case VIRTIO_GPU_FORMAT_R8G8B8A8_UNORM:
-        return PIXMAN_r8g8b8a8;
+        return PIXMAN_BE_r8g8b8a8;
     case VIRTIO_GPU_FORMAT_X8B8G8R8_UNORM:
-        return PIXMAN_x8b8g8r8;
+        return PIXMAN_BE_x8b8g8r8;
     case VIRTIO_GPU_FORMAT_A8B8G8R8_UNORM:
-        return PIXMAN_a8b8g8r8;
-#else
-    case VIRTIO_GPU_FORMAT_B8G8R8X8_UNORM:
-        return PIXMAN_x8r8g8b8;
-    case VIRTIO_GPU_FORMAT_B8G8R8A8_UNORM:
-        return PIXMAN_a8r8g8b8;
-    case VIRTIO_GPU_FORMAT_X8R8G8B8_UNORM:
-        return PIXMAN_b8g8r8x8;
-    case VIRTIO_GPU_FORMAT_A8R8G8B8_UNORM:
-        return PIXMAN_b8g8r8a8;
-    case VIRTIO_GPU_FORMAT_R8G8B8X8_UNORM:
-        return PIXMAN_x8b8g8r8;
-    case VIRTIO_GPU_FORMAT_R8G8B8A8_UNORM:
-        return PIXMAN_a8b8g8r8;
-    case VIRTIO_GPU_FORMAT_X8B8G8R8_UNORM:
-        return PIXMAN_r8g8b8x8;
-    case VIRTIO_GPU_FORMAT_A8B8G8R8_UNORM:
-        return PIXMAN_r8g8b8a8;
-#endif
+        return PIXMAN_BE_a8b8g8r8;
     default:
         return 0;
     }
@@ -948,28 +929,14 @@ static int virtio_gpu_ui_info(void *opaque, uint32_t idx, QemuUIInfo *info)
     return 0;
 }
 
-static void virtio_gpu_gl_block(void *opaque, bool block)
-{
-    VirtIOGPU *g = opaque;
-
-    if (block) {
-        g->renderer_blocked++;
-    } else {
-        g->renderer_blocked--;
-    }
-    assert(g->renderer_blocked >= 0);
-
-    if (g->renderer_blocked == 0) {
-        virtio_gpu_process_cmdq(g);
-    }
-}
-
 const GraphicHwOps virtio_gpu_ops = {
     .invalidate = virtio_gpu_invalidate_display,
     .gfx_update = virtio_gpu_update_display,
     .text_update = virtio_gpu_text_update,
     .ui_info = virtio_gpu_ui_info,
+#ifdef CONFIG_VIRGL
     .gl_block = virtio_gpu_gl_block,
+#endif
 };
 
 static const VMStateDescription vmstate_virtio_gpu_scanout = {
@@ -995,7 +962,7 @@ static const VMStateDescription vmstate_virtio_gpu_scanouts = {
     .version_id = 1,
     .fields = (VMStateField[]) {
         VMSTATE_INT32(enable, struct VirtIOGPU),
-        VMSTATE_UINT32_EQUAL(conf.max_outputs, struct VirtIOGPU),
+        VMSTATE_UINT32_EQUAL(conf.max_outputs, struct VirtIOGPU, NULL),
         VMSTATE_STRUCT_VARRAY_UINT32(scanout, struct VirtIOGPU,
                                      conf.max_outputs, 1,
                                      vmstate_virtio_gpu_scanout,
@@ -1125,7 +1092,9 @@ static int virtio_gpu_load(QEMUFile *f, void *opaque, size_t size,
 
         dpy_gfx_replace_surface(scanout->con, scanout->ds);
         dpy_gfx_update(scanout->con, 0, 0, scanout->width, scanout->height);
-        update_cursor(g, &scanout->cursor);
+        if (scanout->cursor.resource_id) {
+            update_cursor(g, &scanout->cursor);
+        }
         res->scanout_bitmask |= (1 << i);
     }
 
@@ -1170,8 +1139,8 @@ static void virtio_gpu_device_realize(DeviceState *qdev, Error **errp)
     virtio_init(VIRTIO_DEVICE(g), "virtio-gpu", VIRTIO_ID_GPU,
                 g->config_size);
 
-    g->req_state[0].width = 1024;
-    g->req_state[0].height = 768;
+    g->req_state[0].width = g->conf.xres;
+    g->req_state[0].height = g->conf.yres;
 
     if (virtio_gpu_virgl_enabled(g->conf)) {
         /* use larger control queue in 3d mode */
@@ -1291,6 +1260,8 @@ static Property virtio_gpu_properties[] = {
     DEFINE_PROP_BIT("stats", VirtIOGPU, conf.flags,
                     VIRTIO_GPU_FLAG_STATS_ENABLED, false),
 #endif
+    DEFINE_PROP_UINT32("xres", VirtIOGPU, conf.xres, 1024),
+    DEFINE_PROP_UINT32("yres", VirtIOGPU, conf.yres, 768),
     DEFINE_PROP_END_OF_LIST(),
 };
 

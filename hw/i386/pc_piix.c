@@ -52,8 +52,10 @@
 #include <xen/hvm/hvm_info_table.h>
 #include "hw/xen/xen_pt.h"
 #endif
-#include "migration/migration.h"
+#include "migration/global_state.h"
+#include "migration/misc.h"
 #include "kvm_i386.h"
+#include "sysemu/numa.h"
 
 #define MAX_IDE_BUS 2
 
@@ -129,10 +131,10 @@ static void pc_init1(MachineState *machine,
                     lowmem = 0xc0000000;
                 }
                 if (lowmem & ((1ULL << 30) - 1)) {
-                    error_report("Warning: Large machine and max_ram_below_4g "
-                                 "(%" PRIu64 ") not a multiple of 1G; "
-                                 "possible bad performance.",
-                                 pcms->max_ram_below_4g);
+                    warn_report("Large machine and max_ram_below_4g "
+                                "(%" PRIu64 ") not a multiple of 1G; "
+                                "possible bad performance.",
+                                pcms->max_ram_below_4g);
                 }
             }
         }
@@ -312,12 +314,9 @@ static void pc_init1(MachineState *machine,
 static void pc_compat_2_3(MachineState *machine)
 {
     PCMachineState *pcms = PC_MACHINE(machine);
-    savevm_skip_section_footers();
     if (kvm_enabled()) {
         pcms->smm = ON_OFF_AUTO_OFF;
     }
-    global_state_set_optional();
-    savevm_skip_configuration();
 }
 
 static void pc_compat_2_2(MachineState *machine)
@@ -437,11 +436,23 @@ static void pc_i440fx_machine_options(MachineClass *m)
     m->default_display = "std";
 }
 
-static void pc_i440fx_2_9_machine_options(MachineClass *m)
+static void pc_i440fx_2_10_machine_options(MachineClass *m)
 {
     pc_i440fx_machine_options(m);
     m->alias = "pc";
     m->is_default = 0;
+}
+
+DEFINE_I440FX_MACHINE(v2_10, "pc-i440fx-2.10", NULL,
+                      pc_i440fx_2_10_machine_options);
+
+static void pc_i440fx_2_9_machine_options(MachineClass *m)
+{
+    pc_i440fx_2_10_machine_options(m);
+    m->is_default = 0;
+    m->alias = NULL;
+    SET_MACHINE_COMPAT(m, PC_COMPAT_2_9);
+    m->numa_auto_assign_ram = numa_legacy_auto_assign_ram;
 }
 
 DEFINE_I440FX_MACHINE(v2_9, "pc-i440fx-2.9", NULL,
@@ -475,6 +486,7 @@ static void pc_i440fx_2_6_machine_options(MachineClass *m)
     PCMachineClass *pcmc = PC_MACHINE_CLASS(m);
     pc_i440fx_2_7_machine_options(m);
     pcmc->legacy_cpu_hotplug = true;
+    pcmc->linuxboot_dma_enabled = false;
     SET_MACHINE_COMPAT(m, PC_COMPAT_2_6);
 }
 

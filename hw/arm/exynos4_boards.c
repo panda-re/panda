@@ -22,6 +22,8 @@
  */
 
 #include "qemu/osdep.h"
+#include "qapi/error.h"
+#include "qemu/error-report.h"
 #include "qemu-common.h"
 #include "cpu.h"
 #include "sysemu/sysemu.h"
@@ -54,6 +56,12 @@ typedef enum Exynos4BoardType {
     EXYNOS4_BOARD_SMDKC210,
     EXYNOS4_NUM_OF_BOARDS
 } Exynos4BoardType;
+
+typedef struct Exynos4BoardState {
+    Exynos4210State *soc;
+    MemoryRegion dram0_mem;
+    MemoryRegion dram1_mem;
+} Exynos4BoardState;
 
 static int exynos4_board_id[EXYNOS4_NUM_OF_BOARDS] = {
     [EXYNOS4_BOARD_NURI]     = 0xD33,
@@ -95,15 +103,38 @@ static void lan9215_init(uint32_t base, qemu_irq irq)
     }
 }
 
-static Exynos4210State *exynos4_boards_init_common(MachineState *machine,
-                                                   Exynos4BoardType board_type)
+static void exynos4_boards_init_ram(Exynos4BoardState *s,
+                                    MemoryRegion *system_mem,
+                                    unsigned long ram_size)
 {
+    unsigned long mem_size = ram_size;
+
+    if (mem_size > EXYNOS4210_DRAM_MAX_SIZE) {
+        memory_region_init_ram(&s->dram1_mem, NULL, "exynos4210.dram1",
+                               mem_size - EXYNOS4210_DRAM_MAX_SIZE,
+                               &error_fatal);
+        memory_region_add_subregion(system_mem, EXYNOS4210_DRAM1_BASE_ADDR,
+                                    &s->dram1_mem);
+        mem_size = EXYNOS4210_DRAM_MAX_SIZE;
+    }
+
+    memory_region_init_ram(&s->dram0_mem, NULL, "exynos4210.dram0", mem_size,
+                           &error_fatal);
+    memory_region_add_subregion(system_mem, EXYNOS4210_DRAM0_BASE_ADDR,
+                                &s->dram0_mem);
+}
+
+static Exynos4BoardState *
+exynos4_boards_init_common(MachineState *machine,
+                           Exynos4BoardType board_type)
+{
+    Exynos4BoardState *s = g_new(Exynos4BoardState, 1);
     MachineClass *mc = MACHINE_GET_CLASS(machine);
 
     if (smp_cpus != EXYNOS4210_NCPUS && !qtest_enabled()) {
-        fprintf(stderr, "%s board supports only %d CPU cores. Ignoring smp_cpus"
-                " value.\n",
-                mc->name, EXYNOS4210_NCPUS);
+        error_report("%s board supports only %d CPU cores, ignoring smp_cpus"
+                     " value",
+                     mc->name, EXYNOS4210_NCPUS);
     }
 
     exynos4_board_binfo.ram_size = exynos4_board_ram_size[board_type];
@@ -126,8 +157,12 @@ static Exynos4210State *exynos4_boards_init_common(MachineState *machine,
             machine->kernel_cmdline,
             machine->initrd_filename);
 
-    return exynos4210_init(get_system_memory(),
-            exynos4_board_ram_size[board_type]);
+    exynos4_boards_init_ram(s, get_system_memory(),
+                            exynos4_board_ram_size[board_type]);
+
+    s->soc = exynos4210_init(get_system_memory());
+
+    return s;
 }
 
 static void nuri_init(MachineState *machine)
@@ -139,11 +174,11 @@ static void nuri_init(MachineState *machine)
 
 static void smdkc210_init(MachineState *machine)
 {
-    Exynos4210State *s = exynos4_boards_init_common(machine,
-                                                    EXYNOS4_BOARD_SMDKC210);
+    Exynos4BoardState *s = exynos4_boards_init_common(machine,
+                                                      EXYNOS4_BOARD_SMDKC210);
 
     lan9215_init(SMDK_LAN9118_BASE_ADDR,
-            qemu_irq_invert(s->irq_table[exynos4210_get_irq(37, 1)]));
+            qemu_irq_invert(s->soc->irq_table[exynos4210_get_irq(37, 1)]));
     arm_load_kernel(ARM_CPU(first_cpu), &exynos4_board_binfo);
 }
 

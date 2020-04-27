@@ -32,7 +32,6 @@
 #include "hw/mips/mips.h"
 #include "hw/mips/cpudevs.h"
 #include "hw/pci/pci.h"
-#include "sysemu/char.h"
 #include "sysemu/sysemu.h"
 #include "audio/audio.h"
 #include "qemu/log.h"
@@ -111,16 +110,19 @@ static int64_t load_kernel (CPUMIPSState *env)
 {
     int64_t kernel_entry, kernel_low, kernel_high;
     int index = 0;
-    long initrd_size;
+    long kernel_size, initrd_size;
     ram_addr_t initrd_offset;
     uint32_t *prom_buf;
     long prom_size;
 
-    if (load_elf(loaderparams.kernel_filename, cpu_mips_kseg0_to_phys, NULL,
-                 (uint64_t *)&kernel_entry, (uint64_t *)&kernel_low,
-                 (uint64_t *)&kernel_high, 0, EM_MIPS, 1, 0) < 0) {
-        fprintf(stderr, "qemu: could not load kernel '%s'\n",
-                loaderparams.kernel_filename);
+    kernel_size = load_elf(loaderparams.kernel_filename, cpu_mips_kseg0_to_phys,
+                           NULL, (uint64_t *)&kernel_entry,
+                           (uint64_t *)&kernel_low, (uint64_t *)&kernel_high,
+                           0, EM_MIPS, 1, 0);
+    if (kernel_size < 0) {
+        error_report("qemu: could not load kernel '%s': %s",
+                     loaderparams.kernel_filename,
+                     load_elf_strerror(kernel_size));
         exit(1);
     }
 
@@ -297,7 +299,6 @@ static void mips_fulong2e_init(MachineState *machine)
     memory_region_allocate_system_memory(ram, NULL, "fulong2e.ram", ram_size);
     memory_region_init_ram(bios, NULL, "fulong2e.bios", bios_size,
                            &error_fatal);
-    vmstate_register_ram_global(bios);
     memory_region_set_readonly(bios, true);
 
     memory_region_add_subregion(address_space_mem, 0, ram);

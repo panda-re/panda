@@ -31,7 +31,7 @@
 #include "qemu/error-report.h"
 #include "qemu/module.h"
 #include "qemu/bswap.h"
-#include "migration/migration.h"
+#include "migration/blocker.h"
 #include "qemu/cutils.h"
 #include <zlib.h>
 
@@ -242,10 +242,11 @@ static void vmdk_free_last_extent(BlockDriverState *bs)
     s->extents = g_renew(VmdkExtent, s->extents, s->num_extents);
 }
 
-static uint32_t vmdk_read_cid(BlockDriverState *bs, int parent)
+/* Return -ve errno, or 0 on success and write CID into *pcid. */
+static int vmdk_read_cid(BlockDriverState *bs, int parent, uint32_t *pcid)
 {
     char *desc;
-    uint32_t cid = 0xffffffff;
+    uint32_t cid;
     const char *p_name, *cid_str;
     size_t cid_str_size;
     BDRVVmdkState *s = bs->opaque;
@@ -254,8 +255,7 @@ static uint32_t vmdk_read_cid(BlockDriverState *bs, int parent)
     desc = g_malloc0(DESC_SIZE);
     ret = bdrv_pread(bs->file, s->desc_offset, desc, DESC_SIZE);
     if (ret < 0) {
-        g_free(desc);
-        return 0;
+        goto out;
     }
 
     if (parent) {
@@ -268,13 +268,21 @@ static uint32_t vmdk_read_cid(BlockDriverState *bs, int parent)
 
     desc[DESC_SIZE - 1] = '\0';
     p_name = strstr(desc, cid_str);
-    if (p_name != NULL) {
-        p_name += cid_str_size;
-        sscanf(p_name, "%" SCNx32, &cid);
+    if (p_name == NULL) {
+        ret = -EINVAL;
+        goto out;
     }
+    p_name += cid_str_size;
+    if (sscanf(p_name, "%" SCNx32, &cid) != 1) {
+        ret = -EINVAL;
+        goto out;
+    }
+    *pcid = cid;
+    ret = 0;
 
+out:
     g_free(desc);
-    return cid;
+    return ret;
 }
 
 static int vmdk_write_cid(BlockDriverState *bs, uint32_t cid)
@@ -322,7 +330,10 @@ static int vmdk_is_cid_valid(BlockDriverState *bs)
     if (!s->cid_checked && bs->backing) {
         BlockDriverState *p_bs = bs->backing->bs;
 
-        cur_pcid = vmdk_read_cid(p_bs, 0);
+        if (vmdk_read_cid(p_bs, 0, &cur_pcid) != 0) {
+            /* read failure: report as not valid */
+            return 0;
+        }
         if (s->parent_cid != cur_pcid) {
             /* CID not valid */
             return 0;
@@ -975,8 +986,14 @@ static int vmdk_open(BlockDriverState *bs, QDict *options, int flags,
     if (ret) {
         goto fail;
     }
-    s->cid = vmdk_read_cid(bs, 0);
-    s->parent_cid = vmdk_read_cid(bs, 1);
+    ret = vmdk_read_cid(bs, 0, &s->cid);
+    if (ret) {
+        goto fail;
+    }
+    ret = vmdk_read_cid(bs, 1, &s->parent_cid);
+    if (ret) {
+        goto fail;
+    }
     qemu_co_mutex_init(&s->lock);
 
     /* Disable migration when VMDK images are used */
@@ -1714,7 +1731,7 @@ static int vmdk_create_extent(const char *filename, int64_t filesize,
     blk_set_allow_write_beyond_eof(blk, true);
 
     if (flat) {
-        ret = blk_truncate(blk, filesize, errp);
+        ret = blk_truncate(blk, filesize, PREALLOC_MODE_OFF, errp);
         goto exit;
     }
     magic = cpu_to_be32(VMDK4_MAGIC);
@@ -1777,7 +1794,8 @@ static int vmdk_create_extent(const char *filename, int64_t filesize,
         goto exit;
     }
 
-    ret = blk_truncate(blk, le64_to_cpu(header.grain_offset) << 9, errp);
+    ret = blk_truncate(blk, le64_to_cpu(header.grain_offset) << 9,
+                       PREALLOC_MODE_OFF, errp);
     if (ret < 0) {
         goto exit;
     }
@@ -2007,8 +2025,11 @@ static int vmdk_create(const char *filename, QemuOpts *opts, Error **errp)
             ret = -EINVAL;
             goto exit;
         }
-        parent_cid = vmdk_read_cid(blk_bs(blk), 0);
+        ret = vmdk_read_cid(blk_bs(blk), 0, &parent_cid);
         blk_unref(blk);
+        if (ret) {
+            goto exit;
+        }
         snprintf(parent_desc_line, BUF_SIZE,
                 "parentFileNameHint=\"%s\"", backing_file);
     }
@@ -2086,7 +2107,7 @@ static int vmdk_create(const char *filename, QemuOpts *opts, Error **errp)
     /* bdrv_pwrite write padding zeros to align to sector, we don't need that
      * for description file */
     if (desc_offset == 0) {
-        ret = blk_truncate(new_blk, desc_len, errp);
+        ret = blk_truncate(new_blk, desc_len, PREALLOC_MODE_OFF, errp);
     }
 exit:
     if (new_blk) {
@@ -2215,6 +2236,7 @@ static int vmdk_check(BlockDriverState *bs, BdrvCheckResult *result,
             fprintf(stderr,
                     "ERROR: could not find extent for sector %" PRId64 "\n",
                     sector_num);
+            ret = -EINVAL;
             break;
         }
         ret = get_cluster_offset(bs, extent, NULL,
@@ -2226,19 +2248,28 @@ static int vmdk_check(BlockDriverState *bs, BdrvCheckResult *result,
                     PRId64 "\n", sector_num);
             break;
         }
-        if (ret == VMDK_OK &&
-            cluster_offset >= bdrv_getlength(extent->file->bs))
-        {
-            fprintf(stderr,
-                    "ERROR: cluster offset for sector %"
-                    PRId64 " points after EOF\n", sector_num);
-            break;
+        if (ret == VMDK_OK) {
+            int64_t extent_len = bdrv_getlength(extent->file->bs);
+            if (extent_len < 0) {
+                fprintf(stderr,
+                        "ERROR: could not get extent file length for sector %"
+                        PRId64 "\n", sector_num);
+                ret = extent_len;
+                break;
+            }
+            if (cluster_offset >= extent_len) {
+                fprintf(stderr,
+                        "ERROR: cluster offset for sector %"
+                        PRId64 " points after EOF\n", sector_num);
+                ret = -EINVAL;
+                break;
+            }
         }
         sector_num += extent->cluster_sectors;
     }
 
     result->corruptions++;
-    return 0;
+    return ret;
 }
 
 static ImageInfoSpecific *vmdk_get_specific_info(BlockDriverState *bs)

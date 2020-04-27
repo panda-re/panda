@@ -36,6 +36,7 @@
 #include "hw/timer/mc146818rtc.h"
 #include "hw/xen/xen.h"
 #include "sysemu/kvm.h"
+#include "kvm_i386.h"
 #include "hw/kvm/clock.h"
 #include "hw/pci-host/q35.h"
 #include "exec/address-spaces.h"
@@ -46,7 +47,7 @@
 #include "hw/ide/ahci.h"
 #include "hw/usb.h"
 #include "qemu/error-report.h"
-#include "migration/migration.h"
+#include "sysemu/numa.h"
 
 /* ICH9 AHCI has 6 ports */
 #define MAX_SATA_PORTS     6
@@ -100,9 +101,9 @@ static void pc_q35_init(MachineState *machine)
         lowmem = pcms->max_ram_below_4g;
         if (machine->ram_size - lowmem > lowmem &&
             lowmem & ((1ULL << 30) - 1)) {
-            error_report("Warning: Large machine and max_ram_below_4g(%"PRIu64
-                         ") not a multiple of 1G; possible bad performance.",
-                         pcms->max_ram_below_4g);
+            warn_report("Large machine and max_ram_below_4g(%"PRIu64
+                        ") not a multiple of 1G; possible bad performance.",
+                        pcms->max_ram_below_4g);
         }
     }
 
@@ -241,8 +242,8 @@ static void pc_q35_init(MachineState *machine)
                                                true, "ich9-ahci");
         idebus[0] = qdev_get_child_bus(&ahci->qdev, "ide.0");
         idebus[1] = qdev_get_child_bus(&ahci->qdev, "ide.1");
-        g_assert(MAX_SATA_PORTS == ICH_AHCI(ahci)->ahci.ports);
-        ide_drive_get(hd, ICH_AHCI(ahci)->ahci.ports);
+        g_assert(MAX_SATA_PORTS == ahci_get_num_ports(ahci));
+        ide_drive_get(hd, ahci_get_num_ports(ahci));
         ahci_ide_create_devs(ahci, hd);
     } else {
         idebus[0] = idebus[1] = NULL;
@@ -301,10 +302,21 @@ static void pc_q35_machine_options(MachineClass *m)
     m->max_cpus = 288;
 }
 
-static void pc_q35_2_9_machine_options(MachineClass *m)
+static void pc_q35_2_10_machine_options(MachineClass *m)
 {
     pc_q35_machine_options(m);
     m->alias = "q35";
+    m->numa_auto_assign_ram = numa_legacy_auto_assign_ram;
+}
+
+DEFINE_Q35_MACHINE(v2_10, "pc-q35-2.10", NULL,
+                   pc_q35_2_10_machine_options);
+
+static void pc_q35_2_9_machine_options(MachineClass *m)
+{
+    pc_q35_2_10_machine_options(m);
+    m->alias = NULL;
+    SET_MACHINE_COMPAT(m, PC_COMPAT_2_9);
 }
 
 DEFINE_Q35_MACHINE(v2_9, "pc-q35-2.9", NULL,
@@ -313,7 +325,6 @@ DEFINE_Q35_MACHINE(v2_9, "pc-q35-2.9", NULL,
 static void pc_q35_2_8_machine_options(MachineClass *m)
 {
     pc_q35_2_9_machine_options(m);
-    m->alias = NULL;
     SET_MACHINE_COMPAT(m, PC_COMPAT_2_8);
 }
 
@@ -335,6 +346,7 @@ static void pc_q35_2_6_machine_options(MachineClass *m)
     PCMachineClass *pcmc = PC_MACHINE_CLASS(m);
     pc_q35_2_7_machine_options(m);
     pcmc->legacy_cpu_hotplug = true;
+    pcmc->linuxboot_dma_enabled = false;
     SET_MACHINE_COMPAT(m, PC_COMPAT_2_6);
 }
 

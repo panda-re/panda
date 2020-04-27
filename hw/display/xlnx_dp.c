@@ -515,7 +515,7 @@ static void xlnx_dp_aux_set_command(XlnxDPState *s, uint32_t value)
     s->core_registers[DP_INTERRUPT_SIGNAL_STATE] |= 0x04;
 }
 
-static void xlnx_dp_set_dpdma(Object *obj, const char *name, Object *val,
+static void xlnx_dp_set_dpdma(const Object *obj, const char *name, Object *val,
                               Error **errp)
 {
     XlnxDPState *s = XLNX_DP(obj);
@@ -623,6 +623,9 @@ static void xlnx_dp_change_graphic_fmt(XlnxDPState *s)
     switch (s->avbufm_registers[AV_BUF_FORMAT] & DP_NL_VID_FMT_MASK) {
     case 0:
         s->v_plane.format = PIXMAN_x8b8g8r8;
+        break;
+    case DP_NL_VID_Y0_CB_Y1_CR:
+        s->v_plane.format = PIXMAN_yuy2;
         break;
     case DP_NL_VID_RGBA8880:
         s->v_plane.format = PIXMAN_x8b8g8r8;

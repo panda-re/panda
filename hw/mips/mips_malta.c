@@ -37,7 +37,6 @@
 #include "hw/mips/mips.h"
 #include "hw/mips/cpudevs.h"
 #include "hw/pci/pci.h"
-#include "sysemu/char.h"
 #include "sysemu/sysemu.h"
 #include "sysemu/arch_init.h"
 #include "qemu/log.h"
@@ -470,7 +469,7 @@ static void malta_fpga_write(void *opaque, hwaddr addr,
     /* SOFTRES Register */
     case 0x00500:
         if (val == 0x42)
-            qemu_system_reset_request ();
+            qemu_system_reset_request(SHUTDOWN_CAUSE_GUEST_RESET);
         break;
 
     /* BRKRES Register */
@@ -571,7 +570,7 @@ static MaltaFPGAState *malta_fpga_init(MemoryRegion *address_space,
     chr = qemu_chr_new("fpga", "vc:320x200");
     qemu_chr_fe_init(&s->display, chr, NULL);
     qemu_chr_fe_set_handlers(&s->display, NULL, NULL,
-                             malta_fgpa_display_event, s, NULL, true);
+                             malta_fgpa_display_event, NULL, s, NULL, true);
 
     s->uart = serial_mm_init(address_space, base + 0x900, 3, uart_irq,
                              230400, uart_chr, DEVICE_NATIVE_ENDIAN);
@@ -795,7 +794,7 @@ static void GCC_FMT_ATTR(3, 4) prom_set(uint32_t* prom_buf, int index,
 static int64_t load_kernel (void)
 {
     int64_t kernel_entry, kernel_high;
-    long initrd_size;
+    long kernel_size, initrd_size;
     ram_addr_t initrd_offset;
     int big_endian;
     uint32_t *prom_buf;
@@ -809,31 +808,30 @@ static int64_t load_kernel (void)
     big_endian = 0;
 #endif
 
-    if (load_elf(loaderparams.kernel_filename, cpu_mips_kseg0_to_phys, NULL,
-                 (uint64_t *)&kernel_entry, NULL, (uint64_t *)&kernel_high,
-                 big_endian, EM_MIPS, 1, 0) < 0) {
-        fprintf(stderr, "qemu: could not load kernel '%s'\n",
-                loaderparams.kernel_filename);
+    kernel_size = load_elf(loaderparams.kernel_filename, cpu_mips_kseg0_to_phys,
+                           NULL, (uint64_t *)&kernel_entry, NULL,
+                           (uint64_t *)&kernel_high, big_endian, EM_MIPS, 1, 0);
+    if (kernel_size < 0) {
+        error_report("qemu: could not load kernel '%s': %s",
+                     loaderparams.kernel_filename,
+                     load_elf_strerror(kernel_size));
         exit(1);
     }
 
-    /* Sanity check where the kernel has been linked */
-    if (kvm_enabled()) {
-        if (kernel_entry & 0x80000000ll) {
+    /* Check where the kernel has been linked */
+    if (kernel_entry & 0x80000000ll) {
+        if (kvm_enabled()) {
             error_report("KVM guest kernels must be linked in useg. "
                          "Did you forget to enable CONFIG_KVM_GUEST?");
             exit(1);
         }
 
-        xlate_to_kseg0 = cpu_mips_kvm_um_phys_to_kseg0;
-    } else {
-        if (!(kernel_entry & 0x80000000ll)) {
-            error_report("KVM guest kernels aren't supported with TCG. "
-                         "Did you unintentionally enable CONFIG_KVM_GUEST?");
-            exit(1);
-        }
-
         xlate_to_kseg0 = cpu_mips_phys_to_kseg0;
+    } else {
+        /* if kernel entry is in useg it is probably a KVM T&E kernel */
+        mips_um_ksegs_enable();
+
+        xlate_to_kseg0 = cpu_mips_kvm_um_phys_to_kseg0;
     }
 
     /* load initrd */
@@ -842,8 +840,12 @@ static int64_t load_kernel (void)
     if (loaderparams.initrd_filename) {
         initrd_size = get_image_size (loaderparams.initrd_filename);
         if (initrd_size > 0) {
-            initrd_offset = (kernel_high + ~INITRD_PAGE_MASK) & INITRD_PAGE_MASK;
-            if (initrd_offset + initrd_size > ram_size) {
+            /* The kernel allocates the bootmap memory in the low memory after
+               the initrd.  It takes at most 128kiB for 2GB RAM and 4kiB
+               pages.  */
+            initrd_offset = (loaderparams.ram_low_size - initrd_size - 131072
+                             - ~INITRD_PAGE_MASK) & INITRD_PAGE_MASK;
+            if (kernel_high >= initrd_offset) {
                 fprintf(stderr,
                         "qemu: memory too small for initial ram disk '%s'\n",
                         loaderparams.initrd_filename);
@@ -1178,7 +1180,7 @@ void mips_malta_init(MachineState *machine)
      * handled by an overlapping region as the resulting ROM code subpage
      * regions are not executable.
      */
-    memory_region_init_ram(bios_copy, NULL, "bios.1fc", BIOS_SIZE,
+    memory_region_init_ram_nomigrate(bios_copy, NULL, "bios.1fc", BIOS_SIZE,
                            &error_fatal);
     if (!rom_copy(memory_region_get_ram_ptr(bios_copy),
                   FLASH_ADDRESS, BIOS_SIZE)) {

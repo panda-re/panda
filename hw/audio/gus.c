@@ -24,7 +24,7 @@
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "hw/hw.h"
-#include "hw/audio/audio.h"
+#include "hw/audio/soundhw.h"
 #include "audio/audio.h"
 #include "hw/isa/isa.h"
 #include "gusemu.h"
@@ -53,7 +53,7 @@ typedef struct GUSState {
     uint32_t freq;
     uint32_t port;
     int pos, left, shift, irqs;
-    GUSsample *mixbuf;
+    int16_t *mixbuf;
     uint8_t himem[1024 * 1024 + 32 + 4096];
     int samples;
     SWVoiceOut *voice;

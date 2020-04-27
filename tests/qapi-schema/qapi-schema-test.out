@@ -1,27 +1,23 @@
-alternate AltIntNum
+alternate AltEnumBool
     tag type
-    case i: int
-    case n: number
-alternate AltNumInt
-    tag type
-    case n: number
-    case i: int
-alternate AltNumStr
-    tag type
-    case n: number
-    case s: str
-alternate AltStrBool
-    tag type
-    case s: str
+    case e: EnumOne
     case b: bool
-alternate AltStrInt
+alternate AltEnumInt
     tag type
-    case s: str
+    case e: EnumOne
     case i: int
-alternate AltStrNum
+alternate AltEnumNum
+    tag type
+    case e: EnumOne
+    case n: number
+alternate AltNumEnum
+    tag type
+    case n: number
+    case e: EnumOne
+alternate AltStrObj
     tag type
     case s: str
-    case n: number
+    case o: TestStruct
 event EVENT_A None
    boxed=False
 event EVENT_B None
@@ -54,7 +50,7 @@ object NestedEnumsOne
     member enum4: EnumOne optional=True
 enum QEnumTwo ['value1', 'value2']
     prefix QENUM_TWO
-enum QType ['none', 'qnull', 'qint', 'qstring', 'qdict', 'qlist', 'qfloat', 'qbool']
+enum QType ['none', 'qnull', 'qnum', 'qstring', 'qdict', 'qlist', 'qbool']
     prefix QTYPE
 object TestStruct
     member integer: int optional=False
@@ -66,8 +62,9 @@ object UserDefA
 alternate UserDefAlternate
     tag type
     case udfu: UserDefFlatUnion
-    case s: str
+    case e: EnumOne
     case i: int
+    case n: null
 object UserDefB
     member intb: int optional=False
     member a-b: bool optional=True

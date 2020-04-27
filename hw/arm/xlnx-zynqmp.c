@@ -30,6 +30,8 @@
 #define ARM_PHYS_TIMER_PPI  30
 #define ARM_VIRT_TIMER_PPI  27
 
+#define GEM_REVISION        0x40070106
+
 #define GIC_BASE_ADDR       0xf9000000
 #define GIC_DIST_ADDR       0xf9010000
 #define GIC_CPU_ADDR        0xf9020000
@@ -226,7 +228,6 @@ static void xlnx_zynqmp_realize(DeviceState *dev, Error **errp)
 
         memory_region_init_ram(&s->ocm_ram[i], NULL, ocm_name,
                                XLNX_ZYNQMP_OCM_RAM_SIZE, &error_fatal);
-        vmstate_register_ram_global(&s->ocm_ram[i]);
         memory_region_add_subregion(get_system_memory(),
                                     XLNX_ZYNQMP_OCM_RAM_0_ADDRESS +
                                         i * XLNX_ZYNQMP_OCM_RAM_SIZE,
@@ -334,8 +335,10 @@ static void xlnx_zynqmp_realize(DeviceState *dev, Error **errp)
             qemu_check_nic_model(nd, TYPE_CADENCE_GEM);
             qdev_set_nic_properties(DEVICE(&s->gem[i]), nd);
         }
+        object_property_set_int(OBJECT(&s->gem[i]), GEM_REVISION, "revision",
+                                &error_abort);
         object_property_set_int(OBJECT(&s->gem[i]), 2, "num-priority-queues",
-                                  &error_abort);
+                                &error_abort);
         object_property_set_bool(OBJECT(&s->gem[i]), true, "realized", &err);
         if (err) {
             error_propagate(errp, err);
@@ -439,12 +442,6 @@ static void xlnx_zynqmp_class_init(ObjectClass *oc, void *data)
 
     dc->props = xlnx_zynqmp_props;
     dc->realize = xlnx_zynqmp_realize;
-
-    /*
-     * Reason: creates an ARM CPU, thus use after free(), see
-     * arm_cpu_class_init()
-     */
-    dc->cannot_destroy_with_object_finalize_yet = true;
 }
 
 static const TypeInfo xlnx_zynqmp_type_info = {

@@ -45,7 +45,7 @@ BlockDeviceInfo *bdrv_block_device_info(BlockBackend *blk,
     info->ro                     = bs->read_only;
     info->drv                    = g_strdup(bs->drv->format_name);
     info->encrypted              = bs->encrypted;
-    info->encryption_key_missing = bdrv_key_required(bs);
+    info->encryption_key_missing = false;
 
     info->cache = g_new(BlockdevCacheInfo, 1);
     *info->cache = (BlockdevCacheInfo) {
@@ -145,8 +145,9 @@ BlockDeviceInfo *bdrv_block_device_info(BlockBackend *blk,
 
         /* Skip automatically inserted nodes that the user isn't aware of for
          * query-block (blk != NULL), but not for query-named-block-nodes */
-        while (blk && bs0 && bs0->drv && bs0->implicit) {
+        while (blk && bs0->drv && bs0->implicit) {
             bs0 = backing_bs(bs0);
+            assert(bs0);
         }
     }
 
@@ -330,6 +331,7 @@ static void bdrv_query_info(BlockBackend *blk, BlockInfo **p_info,
 {
     BlockInfo *info = g_malloc0(sizeof(*info));
     BlockDriverState *bs = blk_bs(blk);
+    char *qdev;
 
     /* Skip automatically inserted nodes that the user isn't aware of */
     while (bs && bs->drv && bs->implicit) {
@@ -340,6 +342,14 @@ static void bdrv_query_info(BlockBackend *blk, BlockInfo **p_info,
     info->type = g_strdup("unknown");
     info->locked = blk_dev_is_medium_locked(blk);
     info->removable = blk_dev_has_removable_media(blk);
+
+    qdev = blk_get_attached_dev_id(blk);
+    if (qdev && *qdev) {
+        info->has_qdev = true;
+        info->qdev = qdev;
+    } else {
+        g_free(qdev);
+    }
 
     if (blk_dev_has_tray(blk)) {
         info->has_tray_open = true;
@@ -463,7 +473,7 @@ static BlockStats *bdrv_query_bds_stats(BlockDriverState *bs,
         s->node_name = g_strdup(bdrv_get_node_name(bs));
     }
 
-    s->stats->wr_highest_offset = bs->wr_highest_offset;
+    s->stats->wr_highest_offset = stat64_get(&bs->wr_highest_offset);
 
     if (bs->file) {
         s->has_parent = true;
@@ -484,8 +494,14 @@ BlockInfoList *qmp_query_block(Error **errp)
     BlockBackend *blk;
     Error *local_err = NULL;
 
-    for (blk = blk_next(NULL); blk; blk = blk_next(blk)) {
-        BlockInfoList *info = g_malloc0(sizeof(*info));
+    for (blk = blk_all_next(NULL); blk; blk = blk_all_next(blk)) {
+        BlockInfoList *info;
+
+        if (!*blk_name(blk) && !blk_get_attached_dev(blk)) {
+            continue;
+        }
+
+        info = g_malloc0(sizeof(*info));
         bdrv_query_info(blk, &info->value, &local_err);
         if (local_err) {
             error_propagate(errp, local_err);
@@ -617,9 +633,11 @@ static void dump_qobject(fprintf_function func_fprintf, void *f,
                          int comp_indent, QObject *obj)
 {
     switch (qobject_type(obj)) {
-        case QTYPE_QINT: {
-            QInt *value = qobject_to_qint(obj);
-            func_fprintf(f, "%" PRId64, qint_get_int(value));
+        case QTYPE_QNUM: {
+            QNum *value = qobject_to_qnum(obj);
+            char *tmp = qnum_to_string(value);
+            func_fprintf(f, "%s", tmp);
+            g_free(tmp);
             break;
         }
         case QTYPE_QSTRING: {
@@ -635,11 +653,6 @@ static void dump_qobject(fprintf_function func_fprintf, void *f,
         case QTYPE_QLIST: {
             QList *value = qobject_to_qlist(obj);
             dump_qlist(func_fprintf, f, comp_indent, value);
-            break;
-        }
-        case QTYPE_QFLOAT: {
-            QFloat *value = qobject_to_qfloat(obj);
-            func_fprintf(f, "%g", qfloat_get_double(value));
             break;
         }
         case QTYPE_QBOOL: {

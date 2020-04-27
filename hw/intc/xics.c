@@ -38,61 +38,6 @@
 #include "monitor/monitor.h"
 #include "hw/intc/intc.h"
 
-int xics_get_cpu_index_by_dt_id(int cpu_dt_id)
-{
-    PowerPCCPU *cpu = ppc_get_vcpu_by_dt_id(cpu_dt_id);
-
-    if (cpu) {
-        return cpu->parent_obj.cpu_index;
-    }
-
-    return -1;
-}
-
-void xics_cpu_destroy(XICSFabric *xi, PowerPCCPU *cpu)
-{
-    CPUState *cs = CPU(cpu);
-    ICPState *icp = xics_icp_get(xi, cs->cpu_index);
-
-    assert(icp);
-    assert(cs == icp->cs);
-
-    icp->output = NULL;
-    icp->cs = NULL;
-}
-
-void xics_cpu_setup(XICSFabric *xi, PowerPCCPU *cpu)
-{
-    CPUState *cs = CPU(cpu);
-    CPUPPCState *env = &cpu->env;
-    ICPState *icp = xics_icp_get(xi, cs->cpu_index);
-    ICPStateClass *icpc;
-
-    assert(icp);
-
-    icp->cs = cs;
-
-    icpc = ICP_GET_CLASS(icp);
-    if (icpc->cpu_setup) {
-        icpc->cpu_setup(icp, cpu);
-    }
-
-    switch (PPC_INPUT(env)) {
-    case PPC_FLAGS_INPUT_POWER7:
-        icp->output = env->irq_inputs[POWER7_INPUT_INT];
-        break;
-
-    case PPC_FLAGS_INPUT_970:
-        icp->output = env->irq_inputs[PPC970_INPUT_INT];
-        break;
-
-    default:
-        error_report("XICS interrupt controller does not support this CPU "
-                     "bus model");
-        abort();
-    }
-}
-
 void icp_pic_print_info(ICPState *icp, Monitor *mon)
 {
     int cpu_index = icp->cs ? icp->cs->cpu_index : -1;
@@ -336,6 +281,7 @@ static const VMStateDescription vmstate_icp_server = {
 static void icp_reset(void *dev)
 {
     ICPState *icp = ICP(dev);
+    ICPStateClass *icpc = ICP_GET_CLASS(icp);
 
     icp->xirr = 0;
     icp->pending_priority = 0xff;
@@ -343,33 +289,78 @@ static void icp_reset(void *dev)
 
     /* Make all outputs are deasserted */
     qemu_set_irq(icp->output, 0);
+
+    if (icpc->reset) {
+        icpc->reset(icp);
+    }
 }
 
 static void icp_realize(DeviceState *dev, Error **errp)
 {
     ICPState *icp = ICP(dev);
+    ICPStateClass *icpc = ICP_GET_CLASS(dev);
+    PowerPCCPU *cpu;
+    CPUPPCState *env;
     Object *obj;
     Error *err = NULL;
 
-    obj = object_property_get_link(OBJECT(dev), "xics", &err);
+    obj = object_property_get_link(OBJECT(dev), ICP_PROP_XICS, &err);
     if (!obj) {
-        error_setg(errp, "%s: required link 'xics' not found: %s",
+        error_setg(errp, "%s: required link '" ICP_PROP_XICS "' not found: %s",
                    __func__, error_get_pretty(err));
         return;
     }
 
     icp->xics = XICS_FABRIC(obj);
 
+    obj = object_property_get_link(OBJECT(dev), ICP_PROP_CPU, &err);
+    if (!obj) {
+        error_setg(errp, "%s: required link '" ICP_PROP_CPU "' not found: %s",
+                   __func__, error_get_pretty(err));
+        return;
+    }
+
+    cpu = POWERPC_CPU(obj);
+    cpu->intc = OBJECT(icp);
+    icp->cs = CPU(obj);
+
+    env = &cpu->env;
+    switch (PPC_INPUT(env)) {
+    case PPC_FLAGS_INPUT_POWER7:
+        icp->output = env->irq_inputs[POWER7_INPUT_INT];
+        break;
+
+    case PPC_FLAGS_INPUT_970:
+        icp->output = env->irq_inputs[PPC970_INPUT_INT];
+        break;
+
+    default:
+        error_setg(errp, "XICS interrupt controller does not support this CPU bus model");
+        return;
+    }
+
+    if (icpc->realize) {
+        icpc->realize(icp, errp);
+    }
+
     qemu_register_reset(icp_reset, dev);
+    vmstate_register(NULL, icp->cs->cpu_index, &vmstate_icp_server, icp);
 }
 
+static void icp_unrealize(DeviceState *dev, Error **errp)
+{
+    ICPState *icp = ICP(dev);
+
+    vmstate_unregister(NULL, &vmstate_icp_server, icp);
+    qemu_unregister_reset(icp_reset, dev);
+}
 
 static void icp_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    dc->vmsd = &vmstate_icp_server;
     dc->realize = icp_realize;
+    dc->unrealize = icp_unrealize;
 }
 
 static const TypeInfo icp_info = {
@@ -586,7 +577,7 @@ static const VMStateDescription vmstate_ics_simple = {
     .post_load = ics_simple_dispatch_post_load,
     .fields = (VMStateField[]) {
         /* Sanity check */
-        VMSTATE_UINT32_EQUAL(nr_irqs, ICSState),
+        VMSTATE_UINT32_EQUAL(nr_irqs, ICSState, NULL),
 
         VMSTATE_STRUCT_VARRAY_POINTER_UINT32(irqs, ICSState, nr_irqs,
                                              vmstate_ics_simple_irq,
@@ -602,10 +593,8 @@ static void ics_simple_initfn(Object *obj)
     ics->offset = XICS_IRQ_BASE;
 }
 
-static void ics_simple_realize(DeviceState *dev, Error **errp)
+static void ics_simple_realize(ICSState *ics, Error **errp)
 {
-    ICSState *ics = ICS_SIMPLE(dev);
-
     if (!ics->nr_irqs) {
         error_setg(errp, "Number of interrupts needs to be greater 0");
         return;
@@ -613,7 +602,7 @@ static void ics_simple_realize(DeviceState *dev, Error **errp)
     ics->irqs = g_malloc0(ics->nr_irqs * sizeof(ICSIRQState));
     ics->qirqs = qemu_allocate_irqs(ics_simple_set_irq, ics, ics->nr_irqs);
 
-    qemu_register_reset(ics_simple_reset, dev);
+    qemu_register_reset(ics_simple_reset, ics);
 }
 
 static Property ics_simple_properties[] = {
@@ -650,9 +639,9 @@ static void ics_base_realize(DeviceState *dev, Error **errp)
     Object *obj;
     Error *err = NULL;
 
-    obj = object_property_get_link(OBJECT(dev), "xics", &err);
+    obj = object_property_get_link(OBJECT(dev), ICS_PROP_XICS, &err);
     if (!obj) {
-        error_setg(errp, "%s: required link 'xics' not found: %s",
+        error_setg(errp, "%s: required link '" ICS_PROP_XICS "' not found: %s",
                    __func__, error_get_pretty(err));
         return;
     }
@@ -660,7 +649,7 @@ static void ics_base_realize(DeviceState *dev, Error **errp)
 
 
     if (icsc->realize) {
-        icsc->realize(dev, errp);
+        icsc->realize(ics, errp);
     }
 }
 

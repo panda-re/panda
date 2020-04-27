@@ -37,6 +37,7 @@ typedef enum {
     S390_FEAT_TYPE_KMO,
     S390_FEAT_TYPE_PCC,
     S390_FEAT_TYPE_PPNO,
+    S390_FEAT_TYPE_KMA,
 } S390FeatType;
 
 /* Definition of a CPU feature */
@@ -74,6 +75,9 @@ typedef enum {
     S390_FEAT_GROUP_MSA_EXT_3,
     S390_FEAT_GROUP_MSA_EXT_4,
     S390_FEAT_GROUP_MSA_EXT_5,
+    S390_FEAT_GROUP_MSA_EXT_6,
+    S390_FEAT_GROUP_MSA_EXT_7,
+    S390_FEAT_GROUP_MSA_EXT_8,
     S390_FEAT_GROUP_MAX,
 } S390FeatGroup;
 
@@ -88,6 +92,13 @@ typedef struct {
 const S390FeatGroupDef *s390_feat_group_def(S390FeatGroup group);
 
 #define BE_BIT_NR(BIT) (BIT ^ (BITS_PER_LONG - 1))
-#define BE_BIT(BIT) (1ULL < BE_BIT_NR(BIT))
 
+static inline void set_be_bit(unsigned int bit_nr, uint8_t *array)
+{
+    array[bit_nr / 8] |= 0x80 >> (bit_nr % 8);
+}
+static inline bool test_be_bit(unsigned int bit_nr, const uint8_t *array)
+{
+    return array[bit_nr / 8] & (0x80 >> (bit_nr % 8));
+}
 #endif /* TARGET_S390X_CPU_FEATURES_H */

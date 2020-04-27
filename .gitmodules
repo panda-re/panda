@@ -28,9 +28,9 @@
 [submodule "dtc"]
 	path = dtc
 	url = git://git.qemu-project.org/dtc.git
-[submodule "roms/u-boot"]
-	path = roms/u-boot
-	url = git://git.qemu-project.org/u-boot.git
 [submodule "roms/skiboot"]
 	path = roms/skiboot
 	url = git://git.qemu.org/skiboot.git
+[submodule "roms/QemuMacDrivers"]
+	path = roms/QemuMacDrivers
+	url = git://git.qemu.org/QemuMacDrivers.git

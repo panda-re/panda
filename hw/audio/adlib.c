@@ -25,7 +25,7 @@
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "hw/hw.h"
-#include "hw/audio/audio.h"
+#include "hw/audio/soundhw.h"
 #include "audio/audio.h"
 #include "hw/isa/isa.h"
 
@@ -33,11 +33,7 @@
 
 #define ADLIB_KILL_TIMERS 1
 
-#ifdef HAS_YMF262
-#define ADLIB_DESC "Yamaha YMF262 (OPL3)"
-#else
 #define ADLIB_DESC "Yamaha YM3812 (OPL2)"
-#endif
 
 #ifdef DEBUG
 #include "qemu/timer.h"
@@ -50,14 +46,8 @@
 #define ldebug(...)
 #endif
 
-#ifdef HAS_YMF262
-#include "ymf262.h"
-void YMF262UpdateOneQEMU (int which, INT16 *dst, int length);
-#define SHIFT 2
-#else
 #include "fmopl.h"
 #define SHIFT 1
-#endif
 
 #define TYPE_ADLIB "adlib"
 #define ADLIB(obj) OBJECT_CHECK(AdlibState, (obj), TYPE_ADLIB)
@@ -80,21 +70,13 @@ typedef struct {
     SWVoiceOut *voice;
     int left, pos, samples;
     QEMUAudioTimeStamp ats;
-#ifndef HAS_YMF262
     FM_OPL *opl;
-#endif
     PortioList port_list;
 } AdlibState;
 
-static AdlibState *glob_adlib;
-
 static void adlib_stop_opl_timer (AdlibState *s, size_t n)
 {
-#ifdef HAS_YMF262
-    YMF262TimerOver (0, n);
-#else
     OPLTimerOver (s->opl, n);
-#endif
     s->ticking[n] = 0;
 }
 
@@ -131,11 +113,7 @@ static void adlib_write(void *opaque, uint32_t nport, uint32_t val)
 
     adlib_kill_timers (s);
 
-#ifdef HAS_YMF262
-    YMF262Write (0, a, val);
-#else
     OPLWrite (s->opl, a, val);
-#endif
 }
 
 static uint32_t adlib_read(void *opaque, uint32_t nport)
@@ -145,18 +123,14 @@ static uint32_t adlib_read(void *opaque, uint32_t nport)
     int a = nport & 3;
 
     adlib_kill_timers (s);
-
-#ifdef HAS_YMF262
-    data = YMF262Read (0, a);
-#else
     data = OPLRead (s->opl, a);
-#endif
+
     return data;
 }
 
-static void timer_handler (int c, double interval_Sec)
+static void timer_handler (void *opaque, int c, double interval_Sec)
 {
-    AdlibState *s = glob_adlib;
+    AdlibState *s = opaque;
     unsigned n = c & 1;
 #ifdef DEBUG
     double interval;
@@ -240,11 +214,7 @@ static void adlib_callback (void *opaque, int free)
         return;
     }
 
-#ifdef HAS_YMF262
-    YMF262UpdateOneQEMU (0, s->mixbuf + s->pos * 2, samples);
-#else
     YM3812UpdateOne (s->opl, s->mixbuf + s->pos, samples);
-#endif
 
     while (samples) {
         written = write_audio (s, samples);
@@ -263,14 +233,10 @@ static void adlib_callback (void *opaque, int free)
 
 static void Adlib_fini (AdlibState *s)
 {
-#ifdef HAS_YMF262
-    YMF262Shutdown ();
-#else
     if (s->opl) {
         OPLDestroy (s->opl);
         s->opl = NULL;
     }
-#endif
 
     g_free(s->mixbuf);
 
@@ -291,32 +257,15 @@ static void adlib_realizefn (DeviceState *dev, Error **errp)
     AdlibState *s = ADLIB(dev);
     struct audsettings as;
 
-    if (glob_adlib) {
-        error_setg (errp, "Cannot create more than 1 adlib device");
-        return;
-    }
-    glob_adlib = s;
-
-#ifdef HAS_YMF262
-    if (YMF262Init (1, 14318180, s->freq)) {
-        error_setg (errp, "YMF262Init %d failed", s->freq);
-        return;
-    }
-    else {
-        YMF262SetTimerHandler (0, timer_handler, 0);
-        s->enabled = 1;
-    }
-#else
-    s->opl = OPLCreate (OPL_TYPE_YM3812, 3579545, s->freq);
+    s->opl = OPLCreate (3579545, s->freq);
     if (!s->opl) {
         error_setg (errp, "OPLCreate %d failed", s->freq);
         return;
     }
     else {
-        OPLSetTimerHandler (s->opl, timer_handler, 0);
+        OPLSetTimerHandler(s->opl, timer_handler, s);
         s->enabled = 1;
     }
-#endif
 
     as.freq = s->freq;
     as.nchannels = SHIFT;

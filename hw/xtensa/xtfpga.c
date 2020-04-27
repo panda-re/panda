@@ -40,7 +40,7 @@
 #include "hw/sysbus.h"
 #include "hw/block/flash.h"
 #include "sysemu/block-backend.h"
-#include "sysemu/char.h"
+#include "chardev/char.h"
 #include "sysemu/device_tree.h"
 #include "qemu/error-report.h"
 #include "bootparam.h"
@@ -100,7 +100,7 @@ static void lx60_fpga_write(void *opaque, hwaddr addr,
 
     case 0x10: /*board reset*/
         if (val == 0xdead) {
-            qemu_system_reset_request();
+            qemu_system_reset_request(SHUTDOWN_CAUSE_GUEST_RESET);
         }
         break;
     }
@@ -147,7 +147,7 @@ static void lx60_net_init(MemoryRegion *address_space,
             sysbus_mmio_get_region(s, 1));
 
     ram = g_malloc(sizeof(*ram));
-    memory_region_init_ram(ram, OBJECT(s), "open_eth.ram", 16384,
+    memory_region_init_ram_nomigrate(ram, OBJECT(s), "open_eth.ram", 16384,
                            &error_fatal);
     vmstate_register_ram_global(ram);
     memory_region_add_subregion(address_space, buffers, ram);
@@ -251,7 +251,6 @@ static void lx_init(const LxBoardDesc *board, MachineState *machine)
     ram = g_malloc(sizeof(*ram));
     memory_region_init_ram(ram, NULL, "lx60.dram", machine->ram_size,
                            &error_fatal);
-    vmstate_register_ram_global(ram);
     memory_region_add_subregion(system_memory, 0, ram);
 
     system_io = g_malloc(sizeof(*system_io));
@@ -294,7 +293,6 @@ static void lx_init(const LxBoardDesc *board, MachineState *machine)
         rom = g_malloc(sizeof(*rom));
         memory_region_init_ram(rom, NULL, "lx60.sram", board->sram_size,
                                &error_fatal);
-        vmstate_register_ram_global(rom);
         memory_region_add_subregion(system_memory, 0xfe000000, rom);
 
         if (kernel_cmdline) {

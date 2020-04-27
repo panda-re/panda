@@ -26,10 +26,13 @@
 #include "qemu/notify.h"
 #include "qemu/log.h"
 #include "exec/log.h"
+#include "exec/cpu-common.h"
 #include "qemu/error-report.h"
 #include "sysemu/sysemu.h"
 #include "hw/qdev-properties.h"
 #include "trace-root.h"
+
+CPUInterruptHandler cpu_interrupt_handler;
 
 bool cpu_exists(int64_t id)
 {
@@ -264,7 +267,6 @@ void cpu_reset(CPUState *cpu)
 static void cpu_common_reset(CPUState *cpu)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
-    int i;
 
     if (qemu_loglevel_mask(CPU_LOG_RESET)) {
         qemu_log("CPU Reset (CPU %d)\n", cpu->cpu_index);
@@ -282,13 +284,9 @@ static void cpu_common_reset(CPUState *cpu)
     cpu->crash_occurred = false;
 
     if (tcg_enabled()) {
-        for (i = 0; i < TB_JMP_CACHE_SIZE; ++i) {
-            atomic_set(&cpu->tb_jmp_cache[i], NULL);
-        }
+        cpu_tb_jmp_cache_clear(cpu);
 
-#ifdef CONFIG_SOFTMMU
-        tlb_flush(cpu, 0);
-#endif
+        tcg_flush_softmmu_tlb(cpu);
     }
 }
 
@@ -386,15 +384,11 @@ static void cpu_common_initfn(Object *obj)
     QTAILQ_INIT(&cpu->breakpoints);
     QTAILQ_INIT(&cpu->watchpoints);
 
-    cpu->trace_dstate = bitmap_new(trace_get_vcpu_event_count());
-
     cpu_exec_initfn(cpu);
 }
 
 static void cpu_common_finalize(Object *obj)
 {
-    CPUState *cpu = CPU(obj);
-    g_free(cpu->trace_dstate);
 }
 
 static int64_t cpu_common_get_arch_id(CPUState *cpu)
@@ -406,6 +400,17 @@ static vaddr cpu_adjust_watchpoint_address(CPUState *cpu, vaddr addr, int len)
 {
     return addr;
 }
+
+static void generic_handle_interrupt(CPUState *cpu, int mask)
+{
+    cpu->interrupt_request |= mask;
+
+    if (!qemu_cpu_is_self(cpu)) {
+        qemu_cpu_kick(cpu);
+    }
+}
+
+CPUInterruptHandler cpu_interrupt_handler = generic_handle_interrupt;
 
 static void cpu_class_init(ObjectClass *klass, void *data)
 {
@@ -435,6 +440,7 @@ static void cpu_class_init(ObjectClass *klass, void *data)
     set_bit(DEVICE_CATEGORY_CPU, dc->categories);
     dc->realize = cpu_common_realizefn;
     dc->unrealize = cpu_common_unrealizefn;
+    dc->props = cpu_common_props;
     /*
      * Reason: CPUs still need special care by board code: wiring up
      * IRQs, adding reset handlers, halting non-first CPUs, ...

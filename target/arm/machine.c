@@ -99,8 +99,8 @@ static bool m_needed(void *opaque)
 
 static const VMStateDescription vmstate_m = {
     .name = "cpu/m",
-    .version_id = 3,
-    .minimum_version_id = 3,
+    .version_id = 4,
+    .minimum_version_id = 4,
     .needed = m_needed,
     .fields = (VMStateField[]) {
         VMSTATE_UINT32(env.v7m.vecbase, ARMCPU),
@@ -112,6 +112,7 @@ static const VMStateDescription vmstate_m = {
         VMSTATE_UINT32(env.v7m.dfsr, ARMCPU),
         VMSTATE_UINT32(env.v7m.mmfar, ARMCPU),
         VMSTATE_UINT32(env.v7m.bfar, ARMCPU),
+        VMSTATE_UINT32(env.v7m.mpu_ctrl, ARMCPU),
         VMSTATE_INT32(env.v7m.exception, ARMCPU),
         VMSTATE_END_OF_LIST()
     }
@@ -142,7 +143,7 @@ static bool pmsav7_needed(void *opaque)
     ARMCPU *cpu = opaque;
     CPUARMState *env = &cpu->env;
 
-    return arm_feature(env, ARM_FEATURE_MPU) &&
+    return arm_feature(env, ARM_FEATURE_PMSA) &&
            arm_feature(env, ARM_FEATURE_V7);
 }
 
@@ -150,7 +151,7 @@ static bool pmsav7_rgnr_vmstate_validate(void *opaque, int version_id)
 {
     ARMCPU *cpu = opaque;
 
-    return cpu->env.cp15.c6_rgnr < cpu->pmsav7_dregion;
+    return cpu->env.pmsav7.rnr < cpu->pmsav7_dregion;
 }
 
 static const VMStateDescription vmstate_pmsav7 = {
@@ -166,6 +167,29 @@ static const VMStateDescription vmstate_pmsav7 = {
         VMSTATE_VARRAY_UINT32(env.pmsav7.dracr, ARMCPU, pmsav7_dregion, 0,
                               vmstate_info_uint32, uint32_t),
         VMSTATE_VALIDATE("rgnr is valid", pmsav7_rgnr_vmstate_validate),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
+static bool pmsav7_rnr_needed(void *opaque)
+{
+    ARMCPU *cpu = opaque;
+    CPUARMState *env = &cpu->env;
+
+    /* For R profile cores pmsav7.rnr is migrated via the cpreg
+     * "RGNR" definition in helper.h. For M profile we have to
+     * migrate it separately.
+     */
+    return arm_feature(env, ARM_FEATURE_M);
+}
+
+static const VMStateDescription vmstate_pmsav7_rnr = {
+    .name = "cpu/pmsav7-rnr",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .needed = pmsav7_rnr_needed,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT32(env.pmsav7.rnr, ARMCPU),
         VMSTATE_END_OF_LIST()
     }
 };
@@ -376,6 +400,11 @@ const VMStateDescription vmstate_arm_cpu = {
         &vmstate_iwmmxt,
         &vmstate_m,
         &vmstate_thumb2ee,
+        /* pmsav7_rnr must come before pmsav7 so that we have the
+         * region number before we test it in the VMSTATE_VALIDATE
+         * in vmstate_pmsav7.
+         */
+        &vmstate_pmsav7_rnr,
         &vmstate_pmsav7,
         NULL
     }

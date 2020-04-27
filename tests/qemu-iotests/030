@@ -63,8 +63,8 @@ class TestSingleDrive(iotests.QMPTestCase):
     def test_stream_intermediate(self):
         self.assert_no_active_block_jobs()
 
-        self.assertNotEqual(qemu_io('-f', 'raw', '-c', 'map', backing_img),
-                            qemu_io('-f', iotests.imgfmt, '-c', 'map', mid_img),
+        self.assertNotEqual(qemu_io('-f', 'raw', '-rU', '-c', 'map', backing_img),
+                            qemu_io('-f', iotests.imgfmt, '-rU', '-c', 'map', mid_img),
                             'image file map matches backing file before streaming')
 
         result = self.vm.qmp('block-stream', device='mid', job_id='stream-mid')
@@ -89,18 +89,19 @@ class TestSingleDrive(iotests.QMPTestCase):
         result = self.vm.qmp('block-job-pause', device='drive0')
         self.assert_qmp(result, 'return', {})
 
-        time.sleep(1)
+        self.vm.resume_drive('drive0')
+        self.pause_job('drive0')
+
         result = self.vm.qmp('query-block-jobs')
         offset = self.dictpath(result, 'return[0]/offset')
 
-        time.sleep(1)
+        time.sleep(0.5)
         result = self.vm.qmp('query-block-jobs')
         self.assert_qmp(result, 'return[0]/offset', offset)
 
         result = self.vm.qmp('block-job-resume', device='drive0')
         self.assert_qmp(result, 'return', {})
 
-        self.vm.resume_drive('drive0')
         self.wait_until_completed()
 
         self.assert_no_active_block_jobs()
@@ -114,7 +115,7 @@ class TestSingleDrive(iotests.QMPTestCase):
         self.assert_no_active_block_jobs()
 
         # The image map is empty before the operation
-        empty_map = qemu_io('-f', iotests.imgfmt, '-c', 'map', test_img)
+        empty_map = qemu_io('-f', iotests.imgfmt, '-rU', '-c', 'map', test_img)
 
         # This is a no-op: no data should ever be copied from the base image
         result = self.vm.qmp('block-stream', device='drive0', base=mid_img)
@@ -145,6 +146,10 @@ class TestSingleDrive(iotests.QMPTestCase):
 
     def test_device_not_found(self):
         result = self.vm.qmp('block-stream', device='nonexistent')
+        self.assert_qmp(result, 'error/class', 'GenericError')
+
+    def test_job_id_missing(self):
+        result = self.vm.qmp('block-stream', device='mid')
         self.assert_qmp(result, 'error/class', 'GenericError')
 
 
@@ -197,8 +202,8 @@ class TestParallelOps(iotests.QMPTestCase):
 
         # Check that the maps don't match before the streaming operations
         for i in range(2, self.num_imgs, 2):
-            self.assertNotEqual(qemu_io('-f', iotests.imgfmt, '-c', 'map', self.imgs[i]),
-                                qemu_io('-f', iotests.imgfmt, '-c', 'map', self.imgs[i-1]),
+            self.assertNotEqual(qemu_io('-f', iotests.imgfmt, '-rU', '-c', 'map', self.imgs[i]),
+                                qemu_io('-f', iotests.imgfmt, '-rU', '-c', 'map', self.imgs[i-1]),
                                 'image file map matches backing file before streaming')
 
         # Create all streaming jobs
@@ -351,8 +356,8 @@ class TestParallelOps(iotests.QMPTestCase):
     def test_stream_base_node_name(self):
         self.assert_no_active_block_jobs()
 
-        self.assertNotEqual(qemu_io('-f', iotests.imgfmt, '-c', 'map', self.imgs[4]),
-                            qemu_io('-f', iotests.imgfmt, '-c', 'map', self.imgs[3]),
+        self.assertNotEqual(qemu_io('-f', iotests.imgfmt, '-rU', '-c', 'map', self.imgs[4]),
+                            qemu_io('-f', iotests.imgfmt, '-rU', '-c', 'map', self.imgs[3]),
                             'image file map matches backing file before streaming')
 
         # Error: the base node does not exist
@@ -422,8 +427,8 @@ class TestQuorum(iotests.QMPTestCase):
         if not iotests.supports_quorum():
             return
 
-        self.assertNotEqual(qemu_io('-f', iotests.imgfmt, '-c', 'map', self.children[0]),
-                            qemu_io('-f', iotests.imgfmt, '-c', 'map', self.backing[0]),
+        self.assertNotEqual(qemu_io('-f', iotests.imgfmt, '-rU', '-c', 'map', self.children[0]),
+                            qemu_io('-f', iotests.imgfmt, '-rU', '-c', 'map', self.backing[0]),
                             'image file map matches backing file before streaming')
 
         self.assert_no_active_block_jobs()

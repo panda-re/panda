@@ -37,7 +37,6 @@
 #include "qapi/qobject-output-visitor.h"
 #include "qapi/qmp/qdict.h"
 #include "qapi/qmp/qjson.h"
-#include "qapi/qmp/qint.h"
 #include "qapi/qmp/qstring.h"
 #include "qemu/cutils.h"
 
@@ -47,7 +46,7 @@ typedef struct BDRVNBDState {
     NBDClientSession client;
 
     /* For nbd_refresh_filename() */
-    SocketAddressFlat *saddr;
+    SocketAddress *saddr;
     char *export, *tlscredsid;
 } BDRVNBDState;
 
@@ -198,16 +197,16 @@ static void nbd_parse_filename(const char *filename, QDict *options,
         qdict_put_str(options, "server.type", "unix");
         qdict_put_str(options, "server.path", unixpath);
     } else {
-        InetSocketAddress *addr = NULL;
+        InetSocketAddress *addr = g_new(InetSocketAddress, 1);
 
-        addr = inet_parse(host_spec, errp);
-        if (!addr) {
-            goto out;
+        if (inet_parse(addr, host_spec, errp)) {
+            goto out_inet;
         }
 
         qdict_put_str(options, "server.type", "inet");
         qdict_put_str(options, "server.host", addr->host);
         qdict_put_str(options, "server.port", addr->port);
+    out_inet:
         qapi_free_InetSocketAddress(addr);
     }
 
@@ -258,10 +257,10 @@ static bool nbd_process_legacy_socket_options(QDict *output_options,
     return true;
 }
 
-static SocketAddressFlat *nbd_config(BDRVNBDState *s, QDict *options,
-                                     Error **errp)
+static SocketAddress *nbd_config(BDRVNBDState *s, QDict *options,
+                                 Error **errp)
 {
-    SocketAddressFlat *saddr = NULL;
+    SocketAddress *saddr = NULL;
     QDict *addr = NULL;
     QObject *crumpled_addr = NULL;
     Visitor *iv = NULL;
@@ -287,7 +286,7 @@ static SocketAddressFlat *nbd_config(BDRVNBDState *s, QDict *options,
      * visitor expects the former.
      */
     iv = qobject_input_visitor_new(crumpled_addr);
-    visit_type_SocketAddressFlat(iv, NULL, &saddr, &local_err);
+    visit_type_SocketAddress(iv, NULL, &saddr, &local_err);
     if (local_err) {
         error_propagate(errp, local_err);
         goto done;
@@ -306,10 +305,9 @@ NBDClientSession *nbd_get_client_session(BlockDriverState *bs)
     return &s->client;
 }
 
-static QIOChannelSocket *nbd_establish_connection(SocketAddressFlat *saddr_flat,
+static QIOChannelSocket *nbd_establish_connection(SocketAddress *saddr,
                                                   Error **errp)
 {
-    SocketAddress *saddr = socket_address_crumple(saddr_flat);
     QIOChannelSocket *sioc;
     Error *local_err = NULL;
 
@@ -319,7 +317,6 @@ static QIOChannelSocket *nbd_establish_connection(SocketAddressFlat *saddr_flat,
     qio_channel_socket_connect_sync(sioc,
                                     saddr,
                                     &local_err);
-    qapi_free_SocketAddress(saddr);
     if (local_err) {
         object_unref(OBJECT(sioc));
         error_propagate(errp, local_err);
@@ -412,7 +409,7 @@ static int nbd_open(BlockDriverState *bs, QDict *options, int flags,
         goto error;
     }
 
-    /* Translate @host, @port, and @path to a SocketAddressFlat */
+    /* Translate @host, @port, and @path to a SocketAddress */
     if (!nbd_process_legacy_socket_options(options, opts, errp)) {
         goto error;
     }
@@ -433,7 +430,7 @@ static int nbd_open(BlockDriverState *bs, QDict *options, int flags,
         }
 
         /* TODO SOCKET_ADDRESS_KIND_FD where fd has AF_INET or AF_INET6 */
-        if (s->saddr->type != SOCKET_ADDRESS_FLAT_TYPE_INET) {
+        if (s->saddr->type != SOCKET_ADDRESS_TYPE_INET) {
             error_setg(errp, "TLS only supported over IP sockets");
             goto error;
         }
@@ -460,7 +457,7 @@ static int nbd_open(BlockDriverState *bs, QDict *options, int flags,
         object_unref(OBJECT(tlscreds));
     }
     if (ret < 0) {
-        qapi_free_SocketAddressFlat(s->saddr);
+        qapi_free_SocketAddress(s->saddr);
         g_free(s->export);
         g_free(s->tlscredsid);
     }
@@ -475,9 +472,17 @@ static int nbd_co_flush(BlockDriverState *bs)
 
 static void nbd_refresh_limits(BlockDriverState *bs, Error **errp)
 {
-    bs->bl.max_pdiscard = NBD_MAX_BUFFER_SIZE;
-    bs->bl.max_pwrite_zeroes = NBD_MAX_BUFFER_SIZE;
-    bs->bl.max_transfer = NBD_MAX_BUFFER_SIZE;
+    NBDClientSession *s = nbd_get_client_session(bs);
+    uint32_t max = MIN_NON_ZERO(NBD_MAX_BUFFER_SIZE, s->info.max_block);
+
+    bs->bl.max_pdiscard = max;
+    bs->bl.max_pwrite_zeroes = max;
+    bs->bl.max_transfer = max;
+
+    if (s->info.opt_block &&
+        s->info.opt_block > bs->bl.opt_transfer) {
+        bs->bl.opt_transfer = s->info.opt_block;
+    }
 }
 
 static void nbd_close(BlockDriverState *bs)
@@ -486,7 +491,7 @@ static void nbd_close(BlockDriverState *bs)
 
     nbd_client_close(bs);
 
-    qapi_free_SocketAddressFlat(s->saddr);
+    qapi_free_SocketAddress(s->saddr);
     g_free(s->export);
     g_free(s->tlscredsid);
 }
@@ -495,7 +500,7 @@ static int64_t nbd_getlength(BlockDriverState *bs)
 {
     BDRVNBDState *s = bs->opaque;
 
-    return s->client.size;
+    return s->client.info.size;
 }
 
 static void nbd_detach_aio_context(BlockDriverState *bs)
@@ -517,13 +522,13 @@ static void nbd_refresh_filename(BlockDriverState *bs, QDict *options)
     Visitor *ov;
     const char *host = NULL, *port = NULL, *path = NULL;
 
-    if (s->saddr->type == SOCKET_ADDRESS_FLAT_TYPE_INET) {
+    if (s->saddr->type == SOCKET_ADDRESS_TYPE_INET) {
         const InetSocketAddress *inet = &s->saddr->u.inet;
         if (!inet->has_ipv4 && !inet->has_ipv6 && !inet->has_to) {
             host = inet->host;
             port = inet->port;
         }
-    } else if (s->saddr->type == SOCKET_ADDRESS_FLAT_TYPE_UNIX) {
+    } else if (s->saddr->type == SOCKET_ADDRESS_TYPE_UNIX) {
         path = s->saddr->u.q_unix.path;
     } /* else can't represent as pseudo-filename */
 
@@ -544,7 +549,7 @@ static void nbd_refresh_filename(BlockDriverState *bs, QDict *options)
     }
 
     ov = qobject_output_visitor_new(&saddr_qdict);
-    visit_type_SocketAddressFlat(ov, NULL, &s->saddr, &error_abort);
+    visit_type_SocketAddress(ov, NULL, &s->saddr, &error_abort);
     visit_complete(ov, &saddr_qdict);
     visit_free(ov);
     qdict_put_obj(opts, "server", saddr_qdict);

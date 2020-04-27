@@ -89,11 +89,12 @@ class TestSingleDrive(iotests.QMPTestCase):
         self.assert_qmp(result, 'return', {})
 
         self.vm.resume_drive('drive0')
-        time.sleep(1)
+        self.pause_job('drive0')
+
         result = self.vm.qmp('query-block-jobs')
         offset = self.dictpath(result, 'return[0]/offset')
 
-        time.sleep(1)
+        time.sleep(0.5)
         result = self.vm.qmp('query-block-jobs')
         self.assert_qmp(result, 'return[0]/offset', offset)
 
@@ -302,11 +303,12 @@ class TestSingleTransaction(iotests.QMPTestCase):
         self.assert_qmp(result, 'return', {})
 
         self.vm.resume_drive('drive0')
-        time.sleep(1)
+        self.pause_job('drive0')
+
         result = self.vm.qmp('query-block-jobs')
         offset = self.dictpath(result, 'return[0]/offset')
 
-        time.sleep(1)
+        time.sleep(0.5)
         result = self.vm.qmp('query-block-jobs')
         self.assert_qmp(result, 'return[0]/offset', offset)
 
@@ -458,17 +460,18 @@ class TestDriveCompression(iotests.QMPTestCase):
         except OSError:
             pass
 
-    def do_prepare_drives(self, fmt, args):
+    def do_prepare_drives(self, fmt, args, attach_target):
         self.vm = iotests.VM().add_drive(test_img)
 
         qemu_img('create', '-f', fmt, blockdev_target_img,
                  str(TestDriveCompression.image_len), *args)
-        self.vm.add_drive(blockdev_target_img, format=fmt, interface="none")
+        if attach_target:
+            self.vm.add_drive(blockdev_target_img, format=fmt, interface="none")
 
         self.vm.launch()
 
-    def do_test_compress_complete(self, cmd, format, **args):
-        self.do_prepare_drives(format['type'], format['args'])
+    def do_test_compress_complete(self, cmd, format, attach_target, **args):
+        self.do_prepare_drives(format['type'], format['args'], attach_target)
 
         self.assert_no_active_block_jobs()
 
@@ -484,15 +487,16 @@ class TestDriveCompression(iotests.QMPTestCase):
 
     def test_complete_compress_drive_backup(self):
         for format in TestDriveCompression.fmt_supports_compression:
-            self.do_test_compress_complete('drive-backup', format,
+            self.do_test_compress_complete('drive-backup', format, False,
                                            target=blockdev_target_img, mode='existing')
 
     def test_complete_compress_blockdev_backup(self):
         for format in TestDriveCompression.fmt_supports_compression:
-            self.do_test_compress_complete('blockdev-backup', format, target='drive1')
+            self.do_test_compress_complete('blockdev-backup', format, True,
+                                           target='drive1')
 
-    def do_test_compress_cancel(self, cmd, format, **args):
-        self.do_prepare_drives(format['type'], format['args'])
+    def do_test_compress_cancel(self, cmd, format, attach_target, **args):
+        self.do_prepare_drives(format['type'], format['args'], attach_target)
 
         self.assert_no_active_block_jobs()
 
@@ -506,15 +510,16 @@ class TestDriveCompression(iotests.QMPTestCase):
 
     def test_compress_cancel_drive_backup(self):
         for format in TestDriveCompression.fmt_supports_compression:
-            self.do_test_compress_cancel('drive-backup', format,
+            self.do_test_compress_cancel('drive-backup', format, False,
                                          target=blockdev_target_img, mode='existing')
 
     def test_compress_cancel_blockdev_backup(self):
        for format in TestDriveCompression.fmt_supports_compression:
-            self.do_test_compress_cancel('blockdev-backup', format, target='drive1')
+            self.do_test_compress_cancel('blockdev-backup', format, True,
+                                         target='drive1')
 
-    def do_test_compress_pause(self, cmd, format, **args):
-        self.do_prepare_drives(format['type'], format['args'])
+    def do_test_compress_pause(self, cmd, format, attach_target, **args):
+        self.do_prepare_drives(format['type'], format['args'], attach_target)
 
         self.assert_no_active_block_jobs()
 
@@ -526,11 +531,12 @@ class TestDriveCompression(iotests.QMPTestCase):
         self.assert_qmp(result, 'return', {})
 
         self.vm.resume_drive('drive0')
-        time.sleep(1)
+        self.pause_job('drive0')
+
         result = self.vm.qmp('query-block-jobs')
         offset = self.dictpath(result, 'return[0]/offset')
 
-        time.sleep(1)
+        time.sleep(0.5)
         result = self.vm.qmp('query-block-jobs')
         self.assert_qmp(result, 'return[0]/offset', offset)
 
@@ -546,12 +552,13 @@ class TestDriveCompression(iotests.QMPTestCase):
 
     def test_compress_pause_drive_backup(self):
         for format in TestDriveCompression.fmt_supports_compression:
-            self.do_test_compress_pause('drive-backup', format,
+            self.do_test_compress_pause('drive-backup', format, False,
                                         target=blockdev_target_img, mode='existing')
 
     def test_compress_pause_blockdev_backup(self):
         for format in TestDriveCompression.fmt_supports_compression:
-            self.do_test_compress_pause('blockdev-backup', format, target='drive1')
+            self.do_test_compress_pause('blockdev-backup', format, True,
+                                        target='drive1')
 
 if __name__ == '__main__':
     iotests.main(supported_fmts=['raw', 'qcow2'])

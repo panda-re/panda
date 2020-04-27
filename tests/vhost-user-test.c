@@ -16,7 +16,7 @@
 #include "qemu/option.h"
 #include "qemu/range.h"
 #include "qemu/sockets.h"
-#include "sysemu/char.h"
+#include "chardev/char-fe.h"
 #include "sysemu/sysemu.h"
 #include "libqos/libqos.h"
 #include "libqos/pci-pc.h"
@@ -464,7 +464,7 @@ static void test_server_create_chr(TestServer *server, const gchar *opt)
 
     qemu_chr_fe_init(&server->chr, chr, &error_abort);
     qemu_chr_fe_set_handlers(&server->chr, chr_can_read, chr_read,
-                             chr_event, server, NULL, true);
+                             chr_event, NULL, server, NULL, true);
 }
 
 static void test_server_listen(TestServer *server)
@@ -488,10 +488,8 @@ static inline void test_server_connect(TestServer *server)
 static gboolean _test_server_free(TestServer *server)
 {
     int i;
-    Chardev *chr = qemu_chr_fe_get_driver(&server->chr);
 
-    qemu_chr_fe_deinit(&server->chr);
-    qemu_chr_delete(chr);
+    qemu_chr_fe_deinit(&server->chr, true);
 
     for (i = 0; i < server->fds_num; i++) {
         close(server->fds[i]);

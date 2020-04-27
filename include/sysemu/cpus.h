@@ -28,6 +28,7 @@ void cpu_synchronize_all_states(void);
 void cpu_synchronize_all_post_reset(void);
 void cpu_synchronize_all_post_init(void);
 int do_vm_stop(RunState state);
+void cpu_synchronize_all_pre_loadvm(void);
 
 void qtest_clock_warp(int64_t dest);
 

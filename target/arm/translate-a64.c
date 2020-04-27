@@ -101,21 +101,27 @@ void a64_translate_init(void)
         offsetof(CPUARMState, exclusive_high), "exclusive_high");
 }
 
-static inline ARMMMUIdx get_a64_user_mem_index(DisasContext *s)
+static inline int get_a64_user_mem_index(DisasContext *s)
 {
-    /* Return the mmu_idx to use for A64 "unprivileged load/store" insns:
+    /* Return the core mmu_idx to use for A64 "unprivileged load/store" insns:
      *  if EL1, access as if EL0; otherwise access at current EL
      */
+    ARMMMUIdx useridx;
+
     switch (s->mmu_idx) {
     case ARMMMUIdx_S12NSE1:
-        return ARMMMUIdx_S12NSE0;
+        useridx = ARMMMUIdx_S12NSE0;
+        break;
     case ARMMMUIdx_S1SE1:
-        return ARMMMUIdx_S1SE0;
+        useridx = ARMMMUIdx_S1SE0;
+        break;
     case ARMMMUIdx_S2NS:
         g_assert_not_reached();
     default:
-        return s->mmu_idx;
+        useridx = s->mmu_idx;
+        break;
     }
+    return arm_to_core_mmu_idx(useridx);
 }
 
 void aarch64_cpu_dump_state(CPUState *cs, FILE *f,
@@ -373,7 +379,7 @@ static inline void gen_goto_tb(DisasContext *s, int n, uint64_t dest)
         } else if (s->singlestep_enabled) {
             gen_exception_internal(EXCP_DEBUG);
         } else {
-            tcg_gen_exit_tb(0);
+            tcg_gen_lookup_and_goto_ptr(cpu_pc);
             s->is_jmp = DISAS_TB_JUMP;
         }
     }
@@ -1387,7 +1393,7 @@ static void handle_sync(DisasContext *s, uint32_t insn,
          * a self-modified code correctly and also to take
          * any pending interrupts immediately.
          */
-        s->is_jmp = DISAS_UPDATE;
+        gen_goto_tb(s, 0, s->pc);
         return;
     default:
         unallocated_encoding(s);
@@ -1416,7 +1422,9 @@ static void handle_msr_i(DisasContext *s, uint32_t insn,
         gen_helper_msr_i_pstate(cpu_env, tcg_op, tcg_imm);
         tcg_temp_free_i32(tcg_imm);
         tcg_temp_free_i32(tcg_op);
-        s->is_jmp = DISAS_UPDATE;
+        /* For DAIFClear, exit the cpu loop to re-evaluate pending IRQs.  */
+        gen_a64_set_pc_im(s->pc);
+        s->is_jmp = (op == 0x1f ? DISAS_EXIT : DISAS_JUMP);
         break;
     }
     default:
@@ -1780,7 +1788,8 @@ static void disas_uncond_b_reg(DisasContext *s, uint32_t insn)
             return;
         }
         gen_helper_exception_return(cpu_env);
-        s->is_jmp = DISAS_JUMP;
+        /* Must exit loop to check un-masked IRQs */
+        s->is_jmp = DISAS_EXIT;
         return;
     case 5: /* DRPS */
         if (rn != 0x1f) {
@@ -1844,29 +1853,43 @@ static void disas_b_exc_sys(DisasContext *s, uint32_t insn)
 static void gen_load_exclusive(DisasContext *s, int rt, int rt2,
                                TCGv_i64 addr, int size, bool is_pair)
 {
-    TCGv_i64 tmp = tcg_temp_new_i64();
-    TCGMemOp memop = s->be_data + size;
+    int idx = get_mem_index(s);
+    TCGMemOp memop = s->be_data;
 
     g_assert(size <= 3);
-    tcg_gen_qemu_ld_i64(tmp, addr, get_mem_index(s), memop);
-
     if (is_pair) {
-        TCGv_i64 addr2 = tcg_temp_new_i64();
-        TCGv_i64 hitmp = tcg_temp_new_i64();
-
         g_assert(size >= 2);
-        tcg_gen_addi_i64(addr2, addr, 1 << size);
-        tcg_gen_qemu_ld_i64(hitmp, addr2, get_mem_index(s), memop);
-        tcg_temp_free_i64(addr2);
-        tcg_gen_mov_i64(cpu_exclusive_high, hitmp);
-        tcg_gen_mov_i64(cpu_reg(s, rt2), hitmp);
-        tcg_temp_free_i64(hitmp);
+        if (size == 2) {
+            /* The pair must be single-copy atomic for the doubleword.  */
+            memop |= MO_64 | MO_ALIGN;
+            tcg_gen_qemu_ld_i64(cpu_exclusive_val, addr, idx, memop);
+            if (s->be_data == MO_LE) {
+                tcg_gen_extract_i64(cpu_reg(s, rt), cpu_exclusive_val, 0, 32);
+                tcg_gen_extract_i64(cpu_reg(s, rt2), cpu_exclusive_val, 32, 32);
+            } else {
+                tcg_gen_extract_i64(cpu_reg(s, rt), cpu_exclusive_val, 32, 32);
+                tcg_gen_extract_i64(cpu_reg(s, rt2), cpu_exclusive_val, 0, 32);
+            }
+        } else {
+            /* The pair must be single-copy atomic for *each* doubleword, not
+               the entire quadword, however it must be quadword aligned.  */
+            memop |= MO_64;
+            tcg_gen_qemu_ld_i64(cpu_exclusive_val, addr, idx,
+                                memop | MO_ALIGN_16);
+
+            TCGv_i64 addr2 = tcg_temp_new_i64();
+            tcg_gen_addi_i64(addr2, addr, 8);
+            tcg_gen_qemu_ld_i64(cpu_exclusive_high, addr2, idx, memop);
+            tcg_temp_free_i64(addr2);
+
+            tcg_gen_mov_i64(cpu_reg(s, rt), cpu_exclusive_val);
+            tcg_gen_mov_i64(cpu_reg(s, rt2), cpu_exclusive_high);
+        }
+    } else {
+        memop |= size | MO_ALIGN;
+        tcg_gen_qemu_ld_i64(cpu_exclusive_val, addr, idx, memop);
+        tcg_gen_mov_i64(cpu_reg(s, rt), cpu_exclusive_val);
     }
-
-    tcg_gen_mov_i64(cpu_exclusive_val, tmp);
-    tcg_gen_mov_i64(cpu_reg(s, rt), tmp);
-
-    tcg_temp_free_i64(tmp);
     tcg_gen_mov_i64(cpu_exclusive_addr, addr);
 }
 
@@ -1899,14 +1922,15 @@ static void gen_store_exclusive(DisasContext *s, int rd, int rt, int rt2,
     tmp = tcg_temp_new_i64();
     if (is_pair) {
         if (size == 2) {
-            TCGv_i64 val = tcg_temp_new_i64();
-            tcg_gen_concat32_i64(tmp, cpu_reg(s, rt), cpu_reg(s, rt2));
-            tcg_gen_concat32_i64(val, cpu_exclusive_val, cpu_exclusive_high);
-            tcg_gen_atomic_cmpxchg_i64(tmp, addr, val, tmp,
+            if (s->be_data == MO_LE) {
+                tcg_gen_concat32_i64(tmp, cpu_reg(s, rt), cpu_reg(s, rt2));
+            } else {
+                tcg_gen_concat32_i64(tmp, cpu_reg(s, rt2), cpu_reg(s, rt));
+            }
+            tcg_gen_atomic_cmpxchg_i64(tmp, addr, cpu_exclusive_val, tmp,
                                        get_mem_index(s),
-                                       size | MO_ALIGN | s->be_data);
-            tcg_gen_setcond_i64(TCG_COND_NE, tmp, tmp, val);
-            tcg_temp_free_i64(val);
+                                       MO_64 | MO_ALIGN | s->be_data);
+            tcg_gen_setcond_i64(TCG_COND_NE, tmp, tmp, cpu_exclusive_val);
         } else if (s->be_data == MO_LE) {
             gen_helper_paired_cmpxchg64_le(tmp, cpu_env, addr, cpu_reg(s, rt),
                                            cpu_reg(s, rt2));
@@ -4039,26 +4063,15 @@ static void handle_rev16(DisasContext *s, unsigned int sf,
     TCGv_i64 tcg_rd = cpu_reg(s, rd);
     TCGv_i64 tcg_tmp = tcg_temp_new_i64();
     TCGv_i64 tcg_rn = read_cpu_reg(s, rn, sf);
+    TCGv_i64 mask = tcg_const_i64(sf ? 0x00ff00ff00ff00ffull : 0x00ff00ff);
 
-    tcg_gen_andi_i64(tcg_tmp, tcg_rn, 0xffff);
-    tcg_gen_bswap16_i64(tcg_rd, tcg_tmp);
+    tcg_gen_shri_i64(tcg_tmp, tcg_rn, 8);
+    tcg_gen_and_i64(tcg_rd, tcg_rn, mask);
+    tcg_gen_and_i64(tcg_tmp, tcg_tmp, mask);
+    tcg_gen_shli_i64(tcg_rd, tcg_rd, 8);
+    tcg_gen_or_i64(tcg_rd, tcg_rd, tcg_tmp);
 
-    tcg_gen_shri_i64(tcg_tmp, tcg_rn, 16);
-    tcg_gen_andi_i64(tcg_tmp, tcg_tmp, 0xffff);
-    tcg_gen_bswap16_i64(tcg_tmp, tcg_tmp);
-    tcg_gen_deposit_i64(tcg_rd, tcg_rd, tcg_tmp, 16, 16);
-
-    if (sf) {
-        tcg_gen_shri_i64(tcg_tmp, tcg_rn, 32);
-        tcg_gen_andi_i64(tcg_tmp, tcg_tmp, 0xffff);
-        tcg_gen_bswap16_i64(tcg_tmp, tcg_tmp);
-        tcg_gen_deposit_i64(tcg_rd, tcg_rd, tcg_tmp, 32, 16);
-
-        tcg_gen_shri_i64(tcg_tmp, tcg_rn, 48);
-        tcg_gen_bswap16_i64(tcg_tmp, tcg_tmp);
-        tcg_gen_deposit_i64(tcg_rd, tcg_rd, tcg_tmp, 48, 16);
-    }
-
+    tcg_temp_free_i64(mask);
     tcg_temp_free_i64(tcg_tmp);
 }
 
@@ -11187,10 +11200,10 @@ static void disas_a64_insn(CPUARMState *env, DisasContext *s)
     free_tmp_a64(s);
 }
 
-void gen_intermediate_code_a64(ARMCPU *cpu, TranslationBlock *tb)
+void gen_intermediate_code_a64(CPUState *cs, TranslationBlock *tb)
 {
-    CPUState *cs = CPU(cpu);
-    CPUARMState *env = &cpu->env;
+    CPUARMState *env = cs->env_ptr;
+    ARMCPU *cpu = arm_env_get_cpu(env);
     DisasContext dc1, *dc = &dc1;
     target_ulong pc_start;
     target_ulong next_page_start;
@@ -11217,7 +11230,7 @@ void gen_intermediate_code_a64(ARMCPU *cpu, TranslationBlock *tb)
     dc->be_data = ARM_TBFLAG_BE_DATA(tb->flags) ? MO_BE : MO_LE;
     dc->condexec_mask = 0;
     dc->condexec_cond = 0;
-    dc->mmu_idx = ARM_TBFLAG_MMUIDX(tb->flags);
+    dc->mmu_idx = core_to_arm_mmu_idx(env, ARM_TBFLAG_MMUIDX(tb->flags));
     dc->tbi0 = ARM_TBFLAG_TBI0(tb->flags);
     dc->tbi1 = ARM_TBFLAG_TBI1(tb->flags);
     dc->current_el = arm_mmu_idx_to_el(dc->mmu_idx);
@@ -11361,13 +11374,8 @@ void gen_intermediate_code_a64(ARMCPU *cpu, TranslationBlock *tb)
         case DISAS_NEXT:
             gen_goto_tb(dc, 1, dc->pc);
             break;
-        default:
-        case DISAS_UPDATE:
-            gen_a64_set_pc_im(dc->pc);
-            /* fall through */
         case DISAS_JUMP:
-            /* indicate that the hash table must be used to find the next TB */
-            tcg_gen_exit_tb(0);
+            tcg_gen_lookup_and_goto_ptr(cpu_pc);
             break;
         case DISAS_TB_JUMP:
         case DISAS_EXC:
@@ -11390,6 +11398,13 @@ void gen_intermediate_code_a64(ARMCPU *cpu, TranslationBlock *tb)
             /* The helper doesn't necessarily throw an exception, but we
              * must go back to the main loop to check for interrupts anyway.
              */
+            tcg_gen_exit_tb(0);
+            break;
+        case DISAS_UPDATE:
+            gen_a64_set_pc_im(dc->pc);
+            /* fall through */
+        case DISAS_EXIT:
+        default:
             tcg_gen_exit_tb(0);
             break;
         }

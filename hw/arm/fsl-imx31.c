@@ -27,7 +27,7 @@
 #include "sysemu/sysemu.h"
 #include "exec/address-spaces.h"
 #include "hw/boards.h"
-#include "sysemu/char.h"
+#include "chardev/char.h"
 
 static void fsl_imx31_init(Object *obj)
 {
@@ -247,7 +247,6 @@ static void fsl_imx31_realize(DeviceState *dev, Error **errp)
     }
     memory_region_add_subregion(get_system_memory(), FSL_IMX31_IRAM_ADDR,
                                 &s->iram);
-    vmstate_register_ram_global(&s->iram);
 
     /* internal RAM (16 KB) is aliased over 256 MB - 16 KB */
     memory_region_init_alias(&s->iram_alias, NULL, "imx31.iram_alias",
@@ -262,11 +261,6 @@ static void fsl_imx31_class_init(ObjectClass *oc, void *data)
 
     dc->realize = fsl_imx31_realize;
 
-    /*
-     * Reason: creates an ARM CPU, thus use after free(), see
-     * arm_cpu_class_init()
-     */
-    dc->cannot_destroy_with_object_finalize_yet = true;
     dc->desc = "i.MX31 SOC";
 }
 

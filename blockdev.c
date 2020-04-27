@@ -50,6 +50,7 @@
 #include "qmp-commands.h"
 #include "block/trace.h"
 #include "sysemu/arch_init.h"
+#include "sysemu/qtest.h"
 #include "qemu/cutils.h"
 #include "qemu/help_option.h"
 #include "qemu/throttle-options.h"
@@ -334,8 +335,9 @@ static bool parse_stats_intervals(BlockAcctStats *stats, QList *intervals,
             break;
         }
 
-        case QTYPE_QINT: {
-            int64_t length = qint_get_int(qobject_to_qint(entry->value));
+        case QTYPE_QNUM: {
+            int64_t length = qnum_get_int(qobject_to_qnum(entry->value));
+
             if (length > 0 && length <= UINT_MAX) {
                 block_acct_add_interval(stats, (unsigned) length);
             } else {
@@ -591,11 +593,7 @@ static BlockBackend *blockdev_init(const char *file, QDict *bs_opts,
 
         bs->detect_zeroes = detect_zeroes;
 
-        if (bdrv_key_required(bs)) {
-            autostart = 0;
-        }
-
-        block_acct_init(blk_get_stats(blk), account_invalid, account_failed);
+        block_acct_setup(blk_get_stats(blk), account_invalid, account_failed);
 
         if (!parse_stats_intervals(blk_get_stats(blk), interval_list, errp)) {
             blk_unref(blk);
@@ -797,6 +795,9 @@ DriveInfo *drive_new(QemuOpts *all_opts, BlockInterfaceType block_default_type)
     const char *filename;
     Error *local_err = NULL;
     int i;
+    const char *deprecated[] = {
+        "serial", "trans", "secs", "heads", "cyls", "addr"
+    };
 
     /* Change legacy command line options into QMP ones */
     static const struct {
@@ -880,6 +881,16 @@ DriveInfo *drive_new(QemuOpts *all_opts, BlockInterfaceType block_default_type)
                 "update your scripts.\n");
     }
 
+    /* Other deprecated options */
+    if (!qtest_enabled()) {
+        for (i = 0; i < ARRAY_SIZE(deprecated); i++) {
+            if (qemu_opt_get(legacy_opts, deprecated[i]) != NULL) {
+                error_report("'%s' is deprecated, please use the corresponding "
+                             "option of '-device' instead", deprecated[i]);
+            }
+        }
+    }
+
     /* Media type */
     value = qemu_opt_get(legacy_opts, "media");
     if (value) {
@@ -899,7 +910,7 @@ DriveInfo *drive_new(QemuOpts *all_opts, BlockInterfaceType block_default_type)
     copy_on_read = qemu_opt_get_bool(legacy_opts, "copy-on-read", false);
 
     if (read_only && copy_on_read) {
-        error_report("warning: disabling copy-on-read on read-only drive");
+        warn_report("disabling copy-on-read on read-only drive");
         copy_on_read = false;
     }
 
@@ -1362,12 +1373,10 @@ out_aio_context:
 static BdrvDirtyBitmap *block_dirty_bitmap_lookup(const char *node,
                                                   const char *name,
                                                   BlockDriverState **pbs,
-                                                  AioContext **paio,
                                                   Error **errp)
 {
     BlockDriverState *bs;
     BdrvDirtyBitmap *bitmap;
-    AioContext *aio_context;
 
     if (!node) {
         error_setg(errp, "Node cannot be NULL");
@@ -1383,29 +1392,17 @@ static BdrvDirtyBitmap *block_dirty_bitmap_lookup(const char *node,
         return NULL;
     }
 
-    aio_context = bdrv_get_aio_context(bs);
-    aio_context_acquire(aio_context);
-
     bitmap = bdrv_find_dirty_bitmap(bs, name);
     if (!bitmap) {
         error_setg(errp, "Dirty bitmap '%s' not found", name);
-        goto fail;
+        return NULL;
     }
 
     if (pbs) {
         *pbs = bs;
     }
-    if (paio) {
-        *paio = aio_context;
-    } else {
-        aio_context_release(aio_context);
-    }
 
     return bitmap;
-
- fail:
-    aio_context_release(aio_context);
-    return NULL;
 }
 
 /* New and old BlockDriverState structs for atomic group operations */
@@ -1713,7 +1710,8 @@ static void external_snapshot_prepare(BlkActionState *common,
         }
 
         flags = state->old_bs->open_flags;
-        flags &= ~(BDRV_O_SNAPSHOT | BDRV_O_NO_BACKING | BDRV_O_COPY_ON_READ);
+        flags &= ~(BDRV_O_SNAPSHOT | BDRV_O_COPY_ON_READ);
+        flags |= BDRV_O_NO_BACKING;
 
         /* create new image w/backing file */
         mode = s->has_mode ? s->mode : NEW_IMAGE_MODE_ABSOLUTE_PATHS;
@@ -1726,7 +1724,7 @@ static void external_snapshot_prepare(BlkActionState *common,
             bdrv_img_create(new_image_file, format,
                             state->old_bs->filename,
                             state->old_bs->drv->format_name,
-                            NULL, size, flags, &local_err, false);
+                            NULL, size, flags, false, &local_err);
             if (local_err) {
                 error_propagate(errp, local_err);
                 return;
@@ -1738,8 +1736,6 @@ static void external_snapshot_prepare(BlkActionState *common,
             qdict_put_str(options, "node-name", snapshot_node_name);
         }
         qdict_put_str(options, "driver", format);
-
-        flags |= BDRV_O_NO_BACKING;
     }
 
     state->new_bs = bdrv_open(new_image_file, snapshot_ref, options, flags,
@@ -1791,7 +1787,7 @@ static void external_snapshot_commit(BlkActionState *common)
     /* We don't need (or want) to use the transactional
      * bdrv_reopen_multiple() across all the entries at once, because we
      * don't want to abort all of them if one of them fails the reopen */
-    if (!state->old_bs->copy_on_read) {
+    if (!atomic_read(&state->old_bs->copy_on_read)) {
         bdrv_reopen(state->old_bs, state->old_bs->open_flags & ~BDRV_O_RDWR,
                     NULL);
     }
@@ -1803,7 +1799,11 @@ static void external_snapshot_abort(BlkActionState *common)
                              DO_UPCAST(ExternalSnapshotState, common, common);
     if (state->new_bs) {
         if (state->overlay_appended) {
+            bdrv_ref(state->old_bs);   /* we can't let bdrv_set_backind_hd()
+                                          close state->old_bs; we need it */
+            bdrv_set_backing_hd(state->new_bs, NULL, &error_abort);
             bdrv_replace_node(state->new_bs, state->old_bs, &error_abort);
+            bdrv_unref(state->old_bs); /* bdrv_replace_node() ref'ed old_bs */
         }
     }
 }
@@ -1982,6 +1982,8 @@ static void block_dirty_bitmap_add_prepare(BlkActionState *common,
     /* AIO context taken and released within qmp_block_dirty_bitmap_add */
     qmp_block_dirty_bitmap_add(action->node, action->name,
                                action->has_granularity, action->granularity,
+                               action->has_persistent, action->persistent,
+                               action->has_autoload, action->autoload,
                                &local_err);
 
     if (!local_err) {
@@ -2021,7 +2023,6 @@ static void block_dirty_bitmap_clear_prepare(BlkActionState *common,
     state->bitmap = block_dirty_bitmap_lookup(action->node,
                                               action->name,
                                               &state->bs,
-                                              &state->aio_context,
                                               errp);
     if (!state->bitmap) {
         return;
@@ -2032,6 +2033,9 @@ static void block_dirty_bitmap_clear_prepare(BlkActionState *common,
         return;
     } else if (!bdrv_dirty_bitmap_enabled(state->bitmap)) {
         error_setg(errp, "Cannot clear a disabled bitmap");
+        return;
+    } else if (bdrv_dirty_bitmap_readonly(state->bitmap)) {
+        error_setg(errp, "Cannot clear a readonly bitmap");
         return;
     }
 
@@ -2261,24 +2265,8 @@ void qmp_block_passwd(bool has_device, const char *device,
                       bool has_node_name, const char *node_name,
                       const char *password, Error **errp)
 {
-    Error *local_err = NULL;
-    BlockDriverState *bs;
-    AioContext *aio_context;
-
-    bs = bdrv_lookup_bs(has_device ? device : NULL,
-                        has_node_name ? node_name : NULL,
-                        &local_err);
-    if (local_err) {
-        error_propagate(errp, local_err);
-        return;
-    }
-
-    aio_context = bdrv_get_aio_context(bs);
-    aio_context_acquire(aio_context);
-
-    bdrv_add_key(bs, password, errp);
-
-    aio_context_release(aio_context);
+    error_setg(errp,
+               "Setting block passwords directly is no longer supported");
 }
 
 /*
@@ -2587,12 +2575,6 @@ void qmp_blockdev_change_medium(bool has_device, const char *device,
         goto fail;
     }
 
-    bdrv_add_key(medium_bs, NULL, &err);
-    if (err) {
-        error_propagate(errp, err);
-        goto fail;
-    }
-
     rc = do_open_tray(has_device ? device : NULL,
                       has_id ? id : NULL,
                       false, &err);
@@ -2727,10 +2709,12 @@ out:
 
 void qmp_block_dirty_bitmap_add(const char *node, const char *name,
                                 bool has_granularity, uint32_t granularity,
+                                bool has_persistent, bool persistent,
+                                bool has_autoload, bool autoload,
                                 Error **errp)
 {
-    AioContext *aio_context;
     BlockDriverState *bs;
+    BdrvDirtyBitmap *bitmap;
 
     if (!name || name[0] == '\0') {
         error_setg(errp, "Bitmap name cannot be empty");
@@ -2742,34 +2726,53 @@ void qmp_block_dirty_bitmap_add(const char *node, const char *name,
         return;
     }
 
-    aio_context = bdrv_get_aio_context(bs);
-    aio_context_acquire(aio_context);
-
     if (has_granularity) {
         if (granularity < 512 || !is_power_of_2(granularity)) {
             error_setg(errp, "Granularity must be power of 2 "
                              "and at least 512");
-            goto out;
+            return;
         }
     } else {
         /* Default to cluster size, if available: */
         granularity = bdrv_get_default_bitmap_granularity(bs);
     }
 
-    bdrv_create_dirty_bitmap(bs, granularity, name, errp);
+    if (!has_persistent) {
+        persistent = false;
+    }
+    if (!has_autoload) {
+        autoload = false;
+    }
 
- out:
-    aio_context_release(aio_context);
+    if (has_autoload && !persistent) {
+        error_setg(errp, "Autoload flag must be used only for persistent "
+                         "bitmaps");
+        return;
+    }
+
+    if (persistent &&
+        !bdrv_can_store_new_dirty_bitmap(bs, name, granularity, errp))
+    {
+        return;
+    }
+
+    bitmap = bdrv_create_dirty_bitmap(bs, granularity, name, errp);
+    if (bitmap == NULL) {
+        return;
+    }
+
+    bdrv_dirty_bitmap_set_persistance(bitmap, persistent);
+    bdrv_dirty_bitmap_set_autoload(bitmap, autoload);
 }
 
 void qmp_block_dirty_bitmap_remove(const char *node, const char *name,
                                    Error **errp)
 {
-    AioContext *aio_context;
     BlockDriverState *bs;
     BdrvDirtyBitmap *bitmap;
+    Error *local_err = NULL;
 
-    bitmap = block_dirty_bitmap_lookup(node, name, &bs, &aio_context, errp);
+    bitmap = block_dirty_bitmap_lookup(node, name, &bs, errp);
     if (!bitmap || !bs) {
         return;
     }
@@ -2778,13 +2781,19 @@ void qmp_block_dirty_bitmap_remove(const char *node, const char *name,
         error_setg(errp,
                    "Bitmap '%s' is currently frozen and cannot be removed",
                    name);
-        goto out;
+        return;
     }
+
+    if (bdrv_dirty_bitmap_get_persistance(bitmap)) {
+        bdrv_remove_persistent_dirty_bitmap(bs, name, &local_err);
+        if (local_err != NULL) {
+            error_propagate(errp, local_err);
+            return;
+        }
+    }
+
     bdrv_dirty_bitmap_make_anon(bitmap);
     bdrv_release_dirty_bitmap(bs, bitmap);
-
- out:
-    aio_context_release(aio_context);
 }
 
 /**
@@ -2794,11 +2803,10 @@ void qmp_block_dirty_bitmap_remove(const char *node, const char *name,
 void qmp_block_dirty_bitmap_clear(const char *node, const char *name,
                                   Error **errp)
 {
-    AioContext *aio_context;
     BdrvDirtyBitmap *bitmap;
     BlockDriverState *bs;
 
-    bitmap = block_dirty_bitmap_lookup(node, name, &bs, &aio_context, errp);
+    bitmap = block_dirty_bitmap_lookup(node, name, &bs, errp);
     if (!bitmap || !bs) {
         return;
     }
@@ -2807,18 +2815,43 @@ void qmp_block_dirty_bitmap_clear(const char *node, const char *name,
         error_setg(errp,
                    "Bitmap '%s' is currently frozen and cannot be modified",
                    name);
-        goto out;
+        return;
     } else if (!bdrv_dirty_bitmap_enabled(bitmap)) {
         error_setg(errp,
                    "Bitmap '%s' is currently disabled and cannot be cleared",
                    name);
-        goto out;
+        return;
+    } else if (bdrv_dirty_bitmap_readonly(bitmap)) {
+        error_setg(errp, "Bitmap '%s' is readonly and cannot be cleared", name);
+        return;
     }
 
     bdrv_clear_dirty_bitmap(bitmap, NULL);
+}
 
- out:
-    aio_context_release(aio_context);
+BlockDirtyBitmapSha256 *qmp_x_debug_block_dirty_bitmap_sha256(const char *node,
+                                                              const char *name,
+                                                              Error **errp)
+{
+    BdrvDirtyBitmap *bitmap;
+    BlockDriverState *bs;
+    BlockDirtyBitmapSha256 *ret = NULL;
+    char *sha256;
+
+    bitmap = block_dirty_bitmap_lookup(node, name, &bs, errp);
+    if (!bitmap || !bs) {
+        return NULL;
+    }
+
+    sha256 = bdrv_dirty_bitmap_sha256(bitmap, errp);
+    if (sha256 == NULL) {
+        return NULL;
+    }
+
+    ret = g_new(BlockDirtyBitmapSha256, 1);
+    ret->sha256 = sha256;
+
+    return ret;
 }
 
 void hmp_drive_del(Monitor *mon, const QDict *qdict)
@@ -2924,7 +2957,7 @@ void qmp_block_resize(bool has_device, const char *device,
     }
 
     bdrv_drained_begin(bs);
-    ret = blk_truncate(blk, size, errp);
+    ret = blk_truncate(blk, size, PREALLOC_MODE_OFF, errp);
     bdrv_drained_end(bs);
 
 out:
@@ -3118,7 +3151,7 @@ void qmp_block_commit(bool has_job_id, const char *job_id, const char *device,
         }
         commit_active_start(has_job_id ? job_id : NULL, bs, base_bs,
                             BLOCK_JOB_DEFAULT, speed, on_error,
-                            filter_node_name, NULL, NULL, &local_err, false);
+                            filter_node_name, NULL, NULL, false, &local_err);
     } else {
         BlockDriverState *overlay_bs = bdrv_find_overlay(bs, top_bs);
         if (bdrv_op_is_blocked(overlay_bs, BLOCK_OP_TYPE_COMMIT_TARGET, errp)) {
@@ -3216,10 +3249,10 @@ static BlockJob *do_drive_backup(DriveBackup *backup, BlockJobTxn *txn,
         if (source) {
             bdrv_img_create(backup->target, backup->format, source->filename,
                             source->drv->format_name, NULL,
-                            size, flags, &local_err, false);
+                            size, flags, false, &local_err);
         } else {
             bdrv_img_create(backup->target, backup->format, NULL, NULL, NULL,
-                            size, flags, &local_err, false);
+                            size, flags, false, &local_err);
         }
     }
 
@@ -3514,13 +3547,16 @@ void qmp_drive_mirror(DriveMirror *arg, Error **errp)
         backing_mode = MIRROR_OPEN_BACKING_CHAIN;
     }
 
+    /* Don't open backing image in create() */
+    flags |= BDRV_O_NO_BACKING;
+
     if ((arg->sync == MIRROR_SYNC_MODE_FULL || !source)
         && arg->mode != NEW_IMAGE_MODE_EXISTING)
     {
         /* create new image w/o backing file */
         assert(format);
         bdrv_img_create(arg->target, format,
-                        NULL, NULL, NULL, size, flags, &local_err, false);
+                        NULL, NULL, NULL, size, flags, false, &local_err);
     } else {
         switch (arg->mode) {
         case NEW_IMAGE_MODE_EXISTING:
@@ -3530,7 +3566,7 @@ void qmp_drive_mirror(DriveMirror *arg, Error **errp)
             bdrv_img_create(arg->target, format,
                             source->filename,
                             source->drv->format_name,
-                            NULL, size, flags, &local_err, false);
+                            NULL, size, flags, false, &local_err);
             break;
         default:
             abort();
@@ -3553,8 +3589,7 @@ void qmp_drive_mirror(DriveMirror *arg, Error **errp)
     /* Mirroring takes care of copy-on-write using the source's backing
      * file.
      */
-    target_bs = bdrv_open(arg->target, NULL, options,
-                          flags | BDRV_O_NO_BACKING, errp);
+    target_bs = bdrv_open(arg->target, NULL, options, flags, errp);
     if (!target_bs) {
         goto out;
     }
@@ -3715,7 +3750,6 @@ void qmp_block_job_resume(const char *device, Error **errp)
     }
 
     trace_qmp_block_job_resume(job);
-    block_job_iostatus_reset(job);
     block_job_user_resume(job);
     aio_context_release(aio_context);
 }
@@ -3853,6 +3887,7 @@ void qmp_blockdev_add(BlockdevOptions *options, Error **errp)
     QObject *obj;
     Visitor *v = qobject_output_visitor_new(&obj);
     QDict *qdict;
+    const QDictEntry *ent;
     Error *local_err = NULL;
 
     visit_type_BlockdevOptions(v, NULL, &options, &local_err);
@@ -3866,6 +3901,19 @@ void qmp_blockdev_add(BlockdevOptions *options, Error **errp)
 
     qdict_flatten(qdict);
 
+    /*
+     * Rewrite "backing": null to "backing": ""
+     * TODO Rewrite "" to null instead, and perhaps not even here
+     */
+    for (ent = qdict_first(qdict); ent; ent = qdict_next(qdict, ent)) {
+        char *dot = strrchr(ent->key, '.');
+
+        if (!strcmp(dot ? dot + 1 : ent->key, "backing")
+            && qobject_type(ent->value) == QTYPE_QNULL) {
+            qdict_put(qdict, ent->key, qstring_new());
+        }
+    }
+
     if (!qdict_get_try_str(qdict, "node-name")) {
         error_setg(errp, "'node-name' must be specified for the root node");
         goto fail;
@@ -3877,13 +3925,6 @@ void qmp_blockdev_add(BlockdevOptions *options, Error **errp)
     }
 
     QTAILQ_INSERT_TAIL(&monitor_bdrv_states, bs, monitor_list);
-
-    if (bs && bdrv_key_required(bs)) {
-        QTAILQ_REMOVE(&monitor_bdrv_states, bs, monitor_list);
-        bdrv_unref(bs);
-        error_setg(errp, "blockdev-add doesn't support encrypted devices");
-        goto fail;
-    }
 
 fail:
     visit_free(v);

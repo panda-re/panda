@@ -34,7 +34,8 @@
 #include "strongarm.h"
 #include "qemu/error-report.h"
 #include "hw/arm/arm.h"
-#include "sysemu/char.h"
+#include "chardev/char-fe.h"
+#include "chardev/char-serial.h"
 #include "sysemu/sysemu.h"
 #include "hw/ssi/ssi.h"
 #include "qemu/cutils.h"
@@ -1105,7 +1106,7 @@ static void strongarm_uart_tx(void *opaque)
 
     if (s->utcr3 & UTCR3_LBM) /* loopback */ {
         strongarm_uart_receive(s, &s->tx_fifo[s->tx_start], 1);
-    } else if (qemu_chr_fe_get_driver(&s->chr)) {
+    } else if (qemu_chr_fe_backend_connected(&s->chr)) {
         /* XXX this blocks entire thread. Rewrite to use
          * qemu_chr_fe_write and background I/O callbacks */
         qemu_chr_fe_write_all(&s->chr, &s->tx_fifo[s->tx_start], 1);
@@ -1246,7 +1247,7 @@ static void strongarm_uart_realize(DeviceState *dev, Error **errp)
                              strongarm_uart_can_receive,
                              strongarm_uart_receive,
                              strongarm_uart_event,
-                             s, NULL, true);
+                             NULL, s, NULL, true);
 }
 
 static void strongarm_uart_reset(DeviceState *dev)

@@ -65,11 +65,11 @@ class TestBlockdevDel(iotests.QMPTestCase):
     # Add a BlockDriverState that will be used as overlay for the base_img BDS
     def addBlockDriverStateOverlay(self, node):
         self.checkBlockDriverState(node, False)
-        iotests.qemu_img('create', '-f', iotests.imgfmt,
+        iotests.qemu_img('create', '-u', '-f', iotests.imgfmt,
                          '-b', base_img, new_img, '1M')
         opts = {'driver': iotests.imgfmt,
                 'node-name': node,
-                'backing': '',
+                'backing': None,
                 'file': {'driver': 'file',
                          'filename': new_img}}
         result = self.vm.qmp('blockdev-add', conv_keys = False, **opts)

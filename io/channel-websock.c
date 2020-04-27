@@ -26,7 +26,7 @@
 #include "trace.h"
 
 
-/* Max amount to allow in rawinput/rawoutput buffers */
+/* Max amount to allow in rawinput/encoutput buffers */
 #define QIO_CHANNEL_WEBSOCK_MAX_BUFFER 8192
 
 #define QIO_CHANNEL_WEBSOCK_CLIENT_KEY_LEN 24
@@ -856,7 +856,7 @@ static ssize_t qio_channel_websock_readv(QIOChannel *ioc,
     ssize_t ret;
 
     if (wioc->io_err) {
-        *errp = error_copy(wioc->io_err);
+        error_propagate(errp, error_copy(wioc->io_err));
         return -1;
     }
 
@@ -902,7 +902,7 @@ static ssize_t qio_channel_websock_writev(QIOChannel *ioc,
     ssize_t ret;
 
     if (wioc->io_err) {
-        *errp = error_copy(wioc->io_err);
+        error_propagate(errp, error_copy(wioc->io_err));
         return -1;
     }
 
@@ -1006,7 +1006,7 @@ qio_channel_websock_source_prepare(GSource *source,
     if (wsource->wioc->rawinput.offset) {
         cond |= G_IO_IN;
     }
-    if (wsource->wioc->rawoutput.offset < QIO_CHANNEL_WEBSOCK_MAX_BUFFER) {
+    if (wsource->wioc->encoutput.offset < QIO_CHANNEL_WEBSOCK_MAX_BUFFER) {
         cond |= G_IO_OUT;
     }
 
@@ -1022,7 +1022,7 @@ qio_channel_websock_source_check(GSource *source)
     if (wsource->wioc->rawinput.offset) {
         cond |= G_IO_IN;
     }
-    if (wsource->wioc->rawoutput.offset < QIO_CHANNEL_WEBSOCK_MAX_BUFFER) {
+    if (wsource->wioc->encoutput.offset < QIO_CHANNEL_WEBSOCK_MAX_BUFFER) {
         cond |= G_IO_OUT;
     }
 
@@ -1041,7 +1041,7 @@ qio_channel_websock_source_dispatch(GSource *source,
     if (wsource->wioc->rawinput.offset) {
         cond |= G_IO_IN;
     }
-    if (wsource->wioc->rawoutput.offset < QIO_CHANNEL_WEBSOCK_MAX_BUFFER) {
+    if (wsource->wioc->encoutput.offset < QIO_CHANNEL_WEBSOCK_MAX_BUFFER) {
         cond |= G_IO_OUT;
     }
 

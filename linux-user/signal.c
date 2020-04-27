@@ -3346,7 +3346,7 @@ static void setup_rt_frame(int sig, struct target_sigaction *ka,
     *
     *   a0 = signal number
     *   a1 = pointer to siginfo_t
-    *   a2 = pointer to struct ucontext
+    *   a2 = pointer to ucontext_t
     *
     * $25 and PC point to the signal handler, $29 points to the
     * struct sigframe.
@@ -3471,6 +3471,30 @@ static abi_ulong get_sigframe(struct target_sigaction *ka,
     return (sp - frame_size) & -8ul;
 }
 
+/* Notice when we're in the middle of a gUSA region and reset.
+   Note that this will only occur for !parallel_cpus, as we will
+   translate such sequences differently in a parallel context.  */
+static void unwind_gusa(CPUSH4State *regs)
+{
+    /* If the stack pointer is sufficiently negative, and we haven't
+       completed the sequence, then reset to the entry to the region.  */
+    /* ??? The SH4 kernel checks for and address above 0xC0000000.
+       However, the page mappings in qemu linux-user aren't as restricted
+       and we wind up with the normal stack mapped above 0xF0000000.
+       That said, there is no reason why the kernel should be allowing
+       a gUSA region that spans 1GB.  Use a tighter check here, for what
+       can actually be enabled by the immediate move.  */
+    if (regs->gregs[15] >= -128u && regs->pc < regs->gregs[0]) {
+        /* Reset the PC to before the gUSA region, as computed from
+           R0 = region end, SP = -(region size), plus one more for the
+           insn that actually initializes SP to the region size.  */
+        regs->pc = regs->gregs[0] + regs->gregs[15] - 2;
+
+        /* Reset the SP to the saved version in R1.  */
+        regs->gregs[15] = regs->gregs[1];
+    }
+}
+
 static void setup_sigcontext(struct target_sigcontext *sc,
                              CPUSH4State *regs, unsigned long mask)
 {
@@ -3525,6 +3549,7 @@ static void restore_sigcontext(CPUSH4State *regs, struct target_sigcontext *sc)
     __get_user(regs->fpul, &sc->sc_fpul);
 
     regs->tra = -1;         /* disable syscall checks */
+    regs->flags &= ~(DELAY_SLOT_MASK | GUSA_MASK);
 }
 
 static void setup_frame(int sig, struct target_sigaction *ka,
@@ -3533,6 +3558,8 @@ static void setup_frame(int sig, struct target_sigaction *ka,
     struct target_sigframe *frame;
     abi_ulong frame_addr;
     int i;
+
+    unwind_gusa(regs);
 
     frame_addr = get_sigframe(ka, regs->gregs[15], sizeof(*frame));
     trace_user_setup_frame(regs, frame_addr);
@@ -3566,6 +3593,7 @@ static void setup_frame(int sig, struct target_sigaction *ka,
     regs->gregs[5] = 0;
     regs->gregs[6] = frame_addr += offsetof(typeof(*frame), sc);
     regs->pc = (unsigned long) ka->_sa_handler;
+    regs->flags &= ~(DELAY_SLOT_MASK | GUSA_MASK);
 
     unlock_user_struct(frame, frame_addr, 1);
     return;
@@ -3582,6 +3610,8 @@ static void setup_rt_frame(int sig, struct target_sigaction *ka,
     struct target_rt_sigframe *frame;
     abi_ulong frame_addr;
     int i;
+
+    unwind_gusa(regs);
 
     frame_addr = get_sigframe(ka, regs->gregs[15], sizeof(*frame));
     trace_user_setup_rt_frame(regs, frame_addr);
@@ -3626,6 +3656,7 @@ static void setup_rt_frame(int sig, struct target_sigaction *ka,
     regs->gregs[5] = frame_addr + offsetof(typeof(*frame), info);
     regs->gregs[6] = frame_addr + offsetof(typeof(*frame), uc);
     regs->pc = (unsigned long) ka->_sa_handler;
+    regs->flags &= ~(DELAY_SLOT_MASK | GUSA_MASK);
 
     unlock_user_struct(frame, frame_addr, 1);
     return;
@@ -3733,7 +3764,7 @@ struct target_signal_frame {
 
 struct rt_signal_frame {
     siginfo_t info;
-    struct ucontext uc;
+    ucontext_t uc;
     uint32_t tramp[2];
 };
 
@@ -3949,7 +3980,7 @@ struct rt_signal_frame {
     siginfo_t *pinfo;
     void *puc;
     siginfo_t info;
-    struct ucontext uc;
+    ucontext_t uc;
     uint16_t retcode[4];      /* Trampoline code. */
 };
 
@@ -4411,7 +4442,7 @@ static void setup_sigcontext(struct target_sigcontext *sc,
                              CPUOpenRISCState *regs,
                              unsigned long mask)
 {
-    unsigned long usp = regs->gpr[1];
+    unsigned long usp = cpu_get_gpr(regs, 1);
 
     /* copy the regs. they are first in sc so we can use sc directly */
 
@@ -4436,7 +4467,7 @@ static inline abi_ulong get_sigframe(struct target_sigaction *ka,
                                      CPUOpenRISCState *regs,
                                      size_t frame_size)
 {
-    unsigned long sp = regs->gpr[1];
+    unsigned long sp = cpu_get_gpr(regs, 1);
     int onsigstack = on_sig_stack(sp);
 
     /* redzone */
@@ -4484,12 +4515,13 @@ static void setup_rt_frame(int sig, struct target_sigaction *ka,
         tswap_siginfo(&frame->info, info);
     }
 
-    /*err |= __clear_user(&frame->uc, offsetof(struct ucontext, uc_mcontext));*/
+    /*err |= __clear_user(&frame->uc, offsetof(ucontext_t, uc_mcontext));*/
     __put_user(0, &frame->uc.tuc_flags);
     __put_user(0, &frame->uc.tuc_link);
     __put_user(target_sigaltstack_used.ss_sp,
                &frame->uc.tuc_stack.ss_sp);
-    __put_user(sas_ss_flags(env->gpr[1]), &frame->uc.tuc_stack.ss_flags);
+    __put_user(sas_ss_flags(cpu_get_gpr(env, 1)),
+               &frame->uc.tuc_stack.ss_flags);
     __put_user(target_sigaltstack_used.ss_size,
                &frame->uc.tuc_stack.ss_size);
     setup_sigcontext(&frame->sc, env, set->sig[0]);
@@ -4512,13 +4544,13 @@ static void setup_rt_frame(int sig, struct target_sigaction *ka,
 
     /* Set up registers for signal handler */
     env->pc = (unsigned long)ka->_sa_handler; /* what we enter NOW */
-    env->gpr[9] = (unsigned long)return_ip;     /* what we enter LATER */
-    env->gpr[3] = (unsigned long)sig;           /* arg 1: signo */
-    env->gpr[4] = (unsigned long)&frame->info;  /* arg 2: (siginfo_t*) */
-    env->gpr[5] = (unsigned long)&frame->uc;    /* arg 3: ucontext */
+    cpu_set_gpr(env, 9, (unsigned long)return_ip);     /* what we enter LATER */
+    cpu_set_gpr(env, 3, (unsigned long)sig);           /* arg 1: signo */
+    cpu_set_gpr(env, 4, (unsigned long)&frame->info);  /* arg 2: (siginfo_t*) */
+    cpu_set_gpr(env, 5, (unsigned long)&frame->uc);    /* arg 3: ucontext */
 
     /* actually move the usp to reflect the stacked frame */
-    env->gpr[1] = (unsigned long)frame;
+    cpu_set_gpr(env, 1, (unsigned long)frame);
 
     return;
 
@@ -4975,7 +5007,7 @@ enum {
 
 struct target_ucontext {
     target_ulong tuc_flags;
-    target_ulong tuc_link;    /* struct ucontext __user * */
+    target_ulong tuc_link;    /* ucontext_t __user * */
     struct target_sigaltstack tuc_stack;
 #if !defined(TARGET_PPC64)
     int32_t tuc_pad[7];

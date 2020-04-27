@@ -9,7 +9,7 @@
  */
 
 #include "qemu/osdep.h"
-#include "sysemu/char.h"
+#include "chardev/char-fe.h"
 #include "qemu/error-report.h"
 #include "qemu/sockets.h"
 #include "ccid.h"
@@ -264,10 +264,7 @@ static void ccid_card_vscard_handle_message(PassthruState *card,
 
 static void ccid_card_vscard_drop_connection(PassthruState *card)
 {
-    Chardev *chr = qemu_chr_fe_get_driver(&card->cs);
-
-    qemu_chr_fe_deinit(&card->cs);
-    qemu_chr_delete(chr);
+    qemu_chr_fe_deinit(&card->cs, true);
     card->vscard_in_pos = card->vscard_in_hdr = 0;
 }
 
@@ -325,7 +322,7 @@ static void passthru_apdu_from_guest(
 {
     PassthruState *card = PASSTHRU_CCID_CARD(base);
 
-    if (!qemu_chr_fe_get_driver(&card->cs)) {
+    if (!qemu_chr_fe_backend_connected(&card->cs)) {
         printf("ccid-passthru: no chardev, discarding apdu length %d\n", len);
         return;
     }
@@ -346,12 +343,12 @@ static int passthru_initfn(CCIDCardState *base)
 
     card->vscard_in_pos = 0;
     card->vscard_in_hdr = 0;
-    if (qemu_chr_fe_get_driver(&card->cs)) {
+    if (qemu_chr_fe_backend_connected(&card->cs)) {
         DPRINTF(card, D_INFO, "initing chardev\n");
         qemu_chr_fe_set_handlers(&card->cs,
             ccid_card_vscard_can_read,
             ccid_card_vscard_read,
-            ccid_card_vscard_event, card, NULL, true);
+            ccid_card_vscard_event, NULL, card, NULL, true);
         ccid_card_vscard_send_init(card);
     } else {
         error_report("missing chardev");

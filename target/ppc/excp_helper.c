@@ -17,6 +17,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 #include "qemu/osdep.h"
+#include "qemu/main-loop.h"
 #include "cpu.h"
 #include "exec/helper-proto.h"
 #include "exec/exec-all.h"
@@ -286,6 +287,7 @@ static inline void powerpc_excp(PowerPCCPU *cpu, int excp_model, int excp)
              * precise in the MSR.
              */
             msr |= 0x00100000;
+            env->spr[SPR_BOOKE_ESR] = ESR_FP;
             break;
         case POWERPC_EXCP_INVAL:
             LOG_EXCP("Invalid instruction at " TARGET_FMT_lx "\n", env->nip);
@@ -732,6 +734,9 @@ static inline void powerpc_excp(PowerPCCPU *cpu, int excp_model, int excp)
     cs->exception_index = POWERPC_EXCP_NONE;
     env->error_code = 0;
 
+    /* Reset the reservation */
+    env->reserve_addr = -1;
+
     /* Any interrupt is context synchronizing, check if TCG TLB
      * needs a delayed flush on ppc64
      */
@@ -1004,6 +1009,9 @@ static inline void do_rfi(CPUPPCState *env, target_ulong nip, target_ulong msr)
      */
     cs->interrupt_request |= CPU_INTERRUPT_EXITTB;
 
+    /* Reset the reservation */
+    env->reserve_addr = -1;
+
     /* Context synchronizing: check if TCG TLB needs flush */
     check_tlb_flush(env, false);
 }
@@ -1138,6 +1146,7 @@ void helper_msgsnd(target_ulong rb)
         return;
     }
 
+    qemu_mutex_lock_iothread();
     CPU_FOREACH(cs) {
         PowerPCCPU *cpu = POWERPC_CPU(cs);
         CPUPPCState *cenv = &cpu->env;
@@ -1147,5 +1156,6 @@ void helper_msgsnd(target_ulong rb)
             cpu_interrupt(cs, CPU_INTERRUPT_HARD);
         }
     }
+    qemu_mutex_unlock_iothread();
 }
 #endif

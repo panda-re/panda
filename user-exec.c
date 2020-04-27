@@ -167,7 +167,7 @@ int cpu_signal_handler(int host_signum, void *pinfo,
 #elif defined(__OpenBSD__)
     struct sigcontext *uc = puc;
 #else
-    struct ucontext *uc = puc;
+    ucontext_t *uc = puc;
 #endif
     unsigned long pc;
     int trapno;
@@ -222,7 +222,7 @@ int cpu_signal_handler(int host_signum, void *pinfo,
 #elif defined(__OpenBSD__)
     struct sigcontext *uc = puc;
 #else
-    struct ucontext *uc = puc;
+    ucontext_t *uc = puc;
 #endif
 
     pc = PC_sig(uc);
@@ -289,7 +289,7 @@ int cpu_signal_handler(int host_signum, void *pinfo,
 #if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
     ucontext_t *uc = puc;
 #else
-    struct ucontext *uc = puc;
+    ucontext_t *uc = puc;
 #endif
     unsigned long pc;
     int is_write;
@@ -316,7 +316,7 @@ int cpu_signal_handler(int host_signum, void *pinfo,
                            void *puc)
 {
     siginfo_t *info = pinfo;
-    struct ucontext *uc = puc;
+    ucontext_t *uc = puc;
     uint32_t *pc = uc->uc_mcontext.sc_pc;
     uint32_t insn = *pc;
     int is_write = 0;
@@ -414,7 +414,7 @@ int cpu_signal_handler(int host_signum, void *pinfo,
 #if defined(__NetBSD__)
     ucontext_t *uc = puc;
 #else
-    struct ucontext *uc = puc;
+    ucontext_t *uc = puc;
 #endif
     unsigned long pc;
     int is_write;
@@ -441,7 +441,7 @@ int cpu_signal_handler(int host_signum, void *pinfo,
 int cpu_signal_handler(int host_signum, void *pinfo, void *puc)
 {
     siginfo_t *info = pinfo;
-    struct ucontext *uc = puc;
+    ucontext_t *uc = puc;
     uintptr_t pc = uc->uc_mcontext.pc;
     uint32_t insn = *(uint32_t *)pc;
     bool is_write;
@@ -464,13 +464,48 @@ int cpu_signal_handler(int host_signum, void *pinfo, void *puc)
                              is_write, &uc->uc_sigmask);
 }
 
+#elif defined(__ia64)
+
+#ifndef __ISR_VALID
+  /* This ought to be in <bits/siginfo.h>... */
+# define __ISR_VALID    1
+#endif
+
+int cpu_signal_handler(int host_signum, void *pinfo, void *puc)
+{
+    siginfo_t *info = pinfo;
+    ucontext_t *uc = puc;
+    unsigned long ip;
+    int is_write = 0;
+
+    ip = uc->uc_mcontext.sc_ip;
+    switch (host_signum) {
+    case SIGILL:
+    case SIGFPE:
+    case SIGSEGV:
+    case SIGBUS:
+    case SIGTRAP:
+        if (info->si_code && (info->si_segvflags & __ISR_VALID)) {
+            /* ISR.W (write-access) is bit 33:  */
+            is_write = (info->si_isr >> 33) & 1;
+        }
+        break;
+
+    default:
+        break;
+    }
+    return handle_cpu_signal(ip, (unsigned long)info->si_addr,
+                             is_write,
+                             (sigset_t *)&uc->uc_sigmask);
+}
+
 #elif defined(__s390__)
 
 int cpu_signal_handler(int host_signum, void *pinfo,
                        void *puc)
 {
     siginfo_t *info = pinfo;
-    struct ucontext *uc = puc;
+    ucontext_t *uc = puc;
     unsigned long pc;
     uint16_t *pinsn;
     int is_write = 0;
@@ -523,7 +558,7 @@ int cpu_signal_handler(int host_signum, void *pinfo,
                        void *puc)
 {
     siginfo_t *info = pinfo;
-    struct ucontext *uc = puc;
+    ucontext_t *uc = puc;
     greg_t pc = uc->uc_mcontext.pc;
     int is_write;
 

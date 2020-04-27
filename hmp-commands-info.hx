@@ -100,9 +100,9 @@ ETEXI
 
     {
         .name       = "registers",
-        .args_type  = "",
-        .params     = "",
-        .help       = "show the cpu registers",
+        .args_type  = "cpustate_all:-a",
+        .params     = "[-a]",
+        .help       = "show the cpu registers (-a: all - show register info for all cpus)",
         .cmd        = hmp_info_registers,
     },
 
@@ -261,6 +261,7 @@ STEXI
 Show memory tree.
 ETEXI
 
+#if defined(CONFIG_TCG)
     {
         .name       = "jit",
         .args_type  = "",
@@ -268,6 +269,7 @@ ETEXI
         .help       = "show dynamic compiler info",
         .cmd        = hmp_info_jit,
     },
+#endif
 
 STEXI
 @item info jit
@@ -275,6 +277,7 @@ STEXI
 Show dynamic compiler info.
 ETEXI
 
+#if defined(CONFIG_TCG)
     {
         .name       = "opcount",
         .args_type  = "",
@@ -282,6 +285,7 @@ ETEXI
         .help       = "show dynamic compiler opcode counters",
         .cmd        = hmp_info_opcount,
     },
+#endif
 
 STEXI
 @item info opcount
@@ -773,6 +777,22 @@ STEXI
 Display the value of a storage key (s390 only)
 ETEXI
 
+#if defined(TARGET_S390X)
+    {
+        .name       = "cmma",
+        .args_type  = "addr:l,count:l?",
+        .params     = "address [count]",
+        .help       = "Display the values of the CMMA storage attributes for a range of pages",
+        .cmd        = hmp_info_cmma,
+    },
+#endif
+
+STEXI
+@item info cmma @var{address}
+@findex cmma
+Display the values of the CMMA storage attributes for a range of pages (s390 only)
+ETEXI
+
     {
         .name       = "dump",
         .args_type  = "",
@@ -785,6 +805,20 @@ STEXI
 @item info dump
 @findex dump
 Display the latest dump status.
+ETEXI
+
+    {
+        .name       = "ramblock",
+        .args_type  = "",
+        .params     = "",
+        .help       = "Display system ramblock information",
+        .cmd        = hmp_info_ramblock,
+    },
+
+STEXI
+@item info ramblock
+@findex ramblock
+Dump all the ramblocks of the system.
 ETEXI
 
     {

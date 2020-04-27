@@ -9,6 +9,35 @@
 #include "qom/object.h"
 #include "qom/cpu.h"
 
+/**
+ * memory_region_allocate_system_memory - Allocate a board's main memory
+ * @mr: the #MemoryRegion to be initialized
+ * @owner: the object that tracks the region's reference count
+ * @name: name of the memory region
+ * @ram_size: size of the region in bytes
+ *
+ * This function allocates the main memory for a board model, and
+ * initializes @mr appropriately. It also arranges for the memory
+ * to be migrated (by calling vmstate_register_ram_global()).
+ *
+ * Memory allocated via this function will be backed with the memory
+ * backend the user provided using "-mem-path" or "-numa node,memdev=..."
+ * if appropriate; this is typically used to cause host huge pages to be
+ * used. This function should therefore be called by a board exactly once,
+ * for the primary or largest RAM area it implements.
+ *
+ * For boards where the major RAM is split into two parts in the memory
+ * map, you can deal with this by calling memory_region_allocate_system_memory()
+ * once to get a MemoryRegion with enough RAM for both parts, and then
+ * creating alias MemoryRegions via memory_region_init_alias() which
+ * alias into different parts of the RAM MemoryRegion and can be mapped
+ * into the memory map in the appropriate places.
+ *
+ * Smaller pieces of memory (display RAM, static RAMs, etc) don't need
+ * to be backed via the -mem-path memory backend and can simply
+ * be created via memory_region_allocate_aux_memory() or
+ * memory_region_init_ram().
+ */
 void memory_region_allocate_system_memory(MemoryRegion *mr, Object *owner,
                                           const char *name,
                                           uint64_t ram_size);
@@ -32,6 +61,7 @@ void memory_region_allocate_system_memory(MemoryRegion *mr, Object *owner,
 MachineClass *find_default_machine(void);
 extern MachineState *current_machine;
 
+void machine_run_board_init(MachineState *machine);
 bool machine_usb(MachineState *machine);
 bool machine_kernel_irqchip_allowed(MachineState *machine);
 bool machine_kernel_irqchip_required(MachineState *machine);
@@ -42,6 +72,9 @@ bool machine_dump_guest_core(MachineState *machine);
 bool machine_mem_merge(MachineState *machine);
 void machine_register_compat_props(MachineState *machine);
 HotpluggableCPUList *machine_query_hotpluggable_cpus(MachineState *machine);
+void machine_set_cpu_numa_node(MachineState *machine,
+                               const CpuInstanceProperties *props,
+                               Error **errp);
 
 /**
  * CPUArchId:
@@ -74,7 +107,10 @@ typedef struct {
  *    of HotplugHandler object, which handles hotplug operation
  *    for a given @dev. It may return NULL if @dev doesn't require
  *    any actions to be performed by hotplug handler.
- * @cpu_index_to_socket_id:
+ * @cpu_index_to_instance_props:
+ *    used to provide @cpu_index to socket/core/thread number mapping, allowing
+ *    legacy code to perform maping from cpu_index to topology properties
+ *    Returns: tuple of socket/core/thread ids given cpu_index belongs to.
  *    used to provide @cpu_index to socket number mapping, allowing
  *    a machine to group CPU threads belonging to the same socket/package
  *    Returns: socket number given cpu_index belongs to.
@@ -136,10 +172,13 @@ struct MachineClass {
     int minimum_page_bits;
     bool has_hotpluggable_cpus;
     int numa_mem_align_shift;
+    void (*numa_auto_assign_ram)(MachineClass *mc, NodeInfo *nodes,
+                                 int nb_nodes, ram_addr_t size);
 
     HotplugHandler *(*get_hotplug_handler)(MachineState *machine,
                                            DeviceState *dev);
-    unsigned (*cpu_index_to_socket_id)(unsigned cpu_index);
+    CpuInstanceProperties (*cpu_index_to_instance_props)(MachineState *machine,
+                                                         unsigned cpu_index);
     const CPUArchIdList *(*possible_cpu_arch_ids)(MachineState *machine);
 };
 

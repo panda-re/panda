@@ -220,12 +220,18 @@ vubr_handle_tx(VuDev *dev, int qidx)
     free(elem);
 }
 
+
+/* this function reverse the effect of iov_discard_front() it must be
+ * called with 'front' being the original struct iovec and 'bytes'
+ * being the number of bytes you shaved off
+ */
 static void
 iov_restore_front(struct iovec *front, struct iovec *iov, size_t bytes)
 {
     struct iovec *cur;
 
-    for (cur = front; front != iov; cur++) {
+    for (cur = front; cur != iov; cur++) {
+        assert(bytes >= cur->iov_len);
         bytes -= cur->iov_len;
     }
 
@@ -302,7 +308,8 @@ vubr_backend_recv_cb(int sock, void *ctx)
             }
             iov_from_buf(sg, elem->in_num, 0, &hdr, sizeof hdr);
             total += hdrlen;
-            assert(iov_discard_front(&sg, &num, hdrlen) == hdrlen);
+            ret = iov_discard_front(&sg, &num, hdrlen);
+            assert(ret == hdrlen);
         }
 
         struct msghdr msg = {
@@ -459,11 +466,18 @@ vubr_panic(VuDev *dev, const char *msg)
     vubr->quit = 1;
 }
 
+static bool
+vubr_queue_is_processed_in_order(VuDev *dev, int qidx)
+{
+    return true;
+}
+
 static const VuDevIface vuiface = {
     .get_features = vubr_get_features,
     .set_features = vubr_set_features,
     .process_msg = vubr_process_msg,
     .queue_set_started = vubr_queue_set_started,
+    .queue_is_processed_in_order = vubr_queue_is_processed_in_order,
 };
 
 static void

@@ -14,12 +14,7 @@
 #define QEMU_COLO_H
 
 #include "qemu-common.h"
-#include "migration/migration.h"
-#include "qemu/coroutine_int.h"
-#include "qemu/thread.h"
-#include "qemu/main-loop.h"
 
-bool colo_supported(void);
 void colo_info_init(void);
 
 void migrate_start_colo_process(MigrationState *s);

@@ -81,7 +81,7 @@ vu_panic(VuDev *dev, const char *msg, ...)
     va_list ap;
 
     va_start(ap, msg);
-    (void)vasprintf(&buf, msg, ap);
+    buf = g_strdup_vprintf(msg, ap);
     va_end(ap);
 
     dev->broken = true;
@@ -161,7 +161,7 @@ vu_message_read(VuDev *dev, int conn_fd, VhostUserMsg *vmsg)
         rc = recvmsg(conn_fd, &msg, 0);
     } while (rc < 0 && (errno == EINTR || errno == EAGAIN));
 
-    if (rc <= 0) {
+    if (rc < 0) {
         vu_panic(dev, "Error while recvmsg: %s", strerror(errno));
         return false;
     }
@@ -521,6 +521,19 @@ vu_set_vring_addr_exec(VuDev *dev, VhostUserMsg *vmsg)
 
     vq->used_idx = vq->vring.used->idx;
 
+    if (vq->last_avail_idx != vq->used_idx) {
+        bool resume = dev->iface->queue_is_processed_in_order &&
+            dev->iface->queue_is_processed_in_order(dev, index);
+
+        DPRINT("Last avail index != used index: %u != %u%s\n",
+               vq->last_avail_idx, vq->used_idx,
+               resume ? ", resuming" : "");
+
+        if (resume) {
+            vq->shadow_avail_idx = vq->last_avail_idx = vq->used_idx;
+        }
+    }
+
     return false;
 }
 
@@ -806,6 +819,8 @@ vu_process_message(VuDev *dev, VhostUserMsg *vmsg)
         return vu_get_queue_num_exec(dev, vmsg);
     case VHOST_USER_SET_VRING_ENABLE:
         return vu_set_vring_enable_exec(dev, vmsg);
+    case VHOST_USER_NONE:
+        break;
     default:
         vmsg_close_fds(vmsg);
         vu_panic(dev, "Unhandled request: %d", vmsg->request);
@@ -1031,6 +1046,11 @@ vu_queue_get_avail_bytes(VuDev *dev, VuVirtq *vq, unsigned int *in_bytes,
     idx = vq->last_avail_idx;
 
     total_bufs = in_total = out_total = 0;
+    if (unlikely(dev->broken) ||
+        unlikely(!vq->vring.avail)) {
+        goto done;
+    }
+
     while ((rc = virtqueue_num_heads(dev, vq, idx)) > 0) {
         unsigned int max, num_bufs, indirect = 0;
         struct vring_desc *desc;
@@ -1121,11 +1141,16 @@ vu_queue_avail_bytes(VuDev *dev, VuVirtq *vq, unsigned int in_bytes,
 
 /* Fetch avail_idx from VQ memory only when we really need to know if
  * guest has added some buffers. */
-int
+bool
 vu_queue_empty(VuDev *dev, VuVirtq *vq)
 {
+    if (unlikely(dev->broken) ||
+        unlikely(!vq->vring.avail)) {
+        return true;
+    }
+
     if (vq->shadow_avail_idx != vq->last_avail_idx) {
-        return 0;
+        return false;
     }
 
     return vring_avail_idx(vq) == vq->last_avail_idx;
@@ -1174,7 +1199,8 @@ vring_notify(VuDev *dev, VuVirtq *vq)
 void
 vu_queue_notify(VuDev *dev, VuVirtq *vq)
 {
-    if (unlikely(dev->broken)) {
+    if (unlikely(dev->broken) ||
+        unlikely(!vq->vring.avail)) {
         return;
     }
 
@@ -1291,7 +1317,8 @@ vu_queue_pop(VuDev *dev, VuVirtq *vq, size_t sz)
     struct vring_desc *desc;
     int rc;
 
-    if (unlikely(dev->broken)) {
+    if (unlikely(dev->broken) ||
+        unlikely(!vq->vring.avail)) {
         return NULL;
     }
 
@@ -1445,7 +1472,8 @@ vu_queue_fill(VuDev *dev, VuVirtq *vq,
 {
     struct vring_used_elem uelem;
 
-    if (unlikely(dev->broken)) {
+    if (unlikely(dev->broken) ||
+        unlikely(!vq->vring.avail)) {
         return;
     }
 
@@ -1474,7 +1502,8 @@ vu_queue_flush(VuDev *dev, VuVirtq *vq, unsigned int count)
 {
     uint16_t old, new;
 
-    if (unlikely(dev->broken)) {
+    if (unlikely(dev->broken) ||
+        unlikely(!vq->vring.avail)) {
         return;
     }
 

@@ -77,10 +77,25 @@ void coroutine_fn qemu_co_queue_wait(CoQueue *queue, CoMutex *mutex)
 void qemu_co_queue_run_restart(Coroutine *co)
 {
     Coroutine *next;
+    QSIMPLEQ_HEAD(, Coroutine) tmp_queue_wakeup =
+        QSIMPLEQ_HEAD_INITIALIZER(tmp_queue_wakeup);
 
     trace_qemu_co_queue_run_restart(co);
-    while ((next = QSIMPLEQ_FIRST(&co->co_queue_wakeup))) {
-        QSIMPLEQ_REMOVE_HEAD(&co->co_queue_wakeup, co_queue_next);
+
+    /* Because "co" has yielded, any coroutine that we wakeup can resume it.
+     * If this happens and "co" terminates, co->co_queue_wakeup becomes
+     * invalid memory.  Therefore, use a temporary queue and do not touch
+     * the "co" coroutine as soon as you enter another one.
+     *
+     * In its turn resumed "co" can pupulate "co_queue_wakeup" queue with
+     * new coroutines to be woken up.  The caller, who has resumed "co",
+     * will be responsible for traversing the same queue, which may cause
+     * a different wakeup order but not any missing wakeups.
+     */
+    QSIMPLEQ_CONCAT(&tmp_queue_wakeup, &co->co_queue_wakeup);
+
+    while ((next = QSIMPLEQ_FIRST(&tmp_queue_wakeup))) {
+        QSIMPLEQ_REMOVE_HEAD(&tmp_queue_wakeup, co_queue_next);
         qemu_coroutine_enter(next);
     }
 }
@@ -387,6 +402,21 @@ void qemu_co_rwlock_unlock(CoRwlock *lock)
     qemu_co_mutex_unlock(&lock->mutex);
 }
 
+void qemu_co_rwlock_downgrade(CoRwlock *lock)
+{
+    Coroutine *self = qemu_coroutine_self();
+
+    /* lock->mutex critical section started in qemu_co_rwlock_wrlock or
+     * qemu_co_rwlock_upgrade.
+     */
+    assert(lock->reader == 0);
+    lock->reader++;
+    qemu_co_mutex_unlock(&lock->mutex);
+
+    /* The rest of the read-side critical section is run without the mutex.  */
+    self->locks_held++;
+}
+
 void qemu_co_rwlock_wrlock(CoRwlock *lock)
 {
     qemu_co_mutex_lock(&lock->mutex);
@@ -400,4 +430,24 @@ void qemu_co_rwlock_wrlock(CoRwlock *lock)
      * the mutex taken, so that lock->reader remains zero.
      * There is no need to update self->locks_held.
      */
+}
+
+void qemu_co_rwlock_upgrade(CoRwlock *lock)
+{
+    Coroutine *self = qemu_coroutine_self();
+
+    qemu_co_mutex_lock(&lock->mutex);
+    assert(lock->reader > 0);
+    lock->reader--;
+    lock->pending_writer++;
+    while (lock->reader) {
+        qemu_co_queue_wait(&lock->queue, &lock->mutex);
+    }
+    lock->pending_writer--;
+
+    /* The rest of the write-side critical section is run with
+     * the mutex taken, similar to qemu_co_rwlock_wrlock.  Do
+     * not account for the lock twice in self->locks_held.
+     */
+    self->locks_held--;
 }

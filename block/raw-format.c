@@ -259,12 +259,12 @@ static int64_t coroutine_fn raw_co_get_block_status(BlockDriverState *bs,
     *pnum = nb_sectors;
     *file = bs->file->bs;
     sector_num += s->offset / BDRV_SECTOR_SIZE;
-    return BDRV_BLOCK_RAW | BDRV_BLOCK_OFFSET_VALID | BDRV_BLOCK_DATA |
+    return BDRV_BLOCK_RAW | BDRV_BLOCK_OFFSET_VALID |
            (sector_num << BDRV_SECTOR_BITS);
 }
 
 static int coroutine_fn raw_co_pwrite_zeroes(BlockDriverState *bs,
-                                             int64_t offset, int count,
+                                             int64_t offset, int bytes,
                                              BdrvRequestFlags flags)
 {
     BDRVRawState *s = bs->opaque;
@@ -272,18 +272,18 @@ static int coroutine_fn raw_co_pwrite_zeroes(BlockDriverState *bs,
         return -EINVAL;
     }
     offset += s->offset;
-    return bdrv_co_pwrite_zeroes(bs->file, offset, count, flags);
+    return bdrv_co_pwrite_zeroes(bs->file, offset, bytes, flags);
 }
 
 static int coroutine_fn raw_co_pdiscard(BlockDriverState *bs,
-                                        int64_t offset, int count)
+                                        int64_t offset, int bytes)
 {
     BDRVRawState *s = bs->opaque;
     if (offset > UINT64_MAX - s->offset) {
         return -EINVAL;
     }
     offset += s->offset;
-    return bdrv_co_pdiscard(bs->file->bs, offset, count);
+    return bdrv_co_pdiscard(bs->file->bs, offset, bytes);
 }
 
 static int64_t raw_getlength(BlockDriverState *bs)
@@ -312,6 +312,31 @@ static int64_t raw_getlength(BlockDriverState *bs)
     return s->size;
 }
 
+static BlockMeasureInfo *raw_measure(QemuOpts *opts, BlockDriverState *in_bs,
+                                     Error **errp)
+{
+    BlockMeasureInfo *info;
+    int64_t required;
+
+    if (in_bs) {
+        required = bdrv_getlength(in_bs);
+        if (required < 0) {
+            error_setg_errno(errp, -required, "Unable to get image size");
+            return NULL;
+        }
+    } else {
+        required = ROUND_UP(qemu_opt_get_size_del(opts, BLOCK_OPT_SIZE, 0),
+                            BDRV_SECTOR_SIZE);
+    }
+
+    info = g_new(BlockMeasureInfo, 1);
+    info->required = required;
+
+    /* Unallocated sectors count towards the file size in raw images */
+    info->fully_allocated = info->required;
+    return info;
+}
+
 static int raw_get_info(BlockDriverState *bs, BlockDriverInfo *bdi)
 {
     return bdrv_get_info(bs->file->bs, bdi);
@@ -327,21 +352,24 @@ static void raw_refresh_limits(BlockDriverState *bs, Error **errp)
     }
 }
 
-static int raw_truncate(BlockDriverState *bs, int64_t offset)
+static int raw_truncate(BlockDriverState *bs, int64_t offset,
+                        PreallocMode prealloc, Error **errp)
 {
     BDRVRawState *s = bs->opaque;
 
     if (s->has_size) {
+        error_setg(errp, "Cannot resize fixed-size raw disks");
         return -ENOTSUP;
     }
 
     if (INT64_MAX - offset < s->offset) {
+        error_setg(errp, "Disk size too large for the chosen offset");
         return -EINVAL;
     }
 
     s->size = offset;
     offset += s->offset;
-    return bdrv_truncate(bs->file, offset, NULL);
+    return bdrv_truncate(bs->file, offset, prealloc, errp);
 }
 
 static int raw_media_changed(BlockDriverState *bs)
@@ -477,6 +505,7 @@ BlockDriver bdrv_raw = {
     .bdrv_truncate        = &raw_truncate,
     .bdrv_getlength       = &raw_getlength,
     .has_variable_length  = true,
+    .bdrv_measure         = &raw_measure,
     .bdrv_get_info        = &raw_get_info,
     .bdrv_refresh_limits  = &raw_refresh_limits,
     .bdrv_probe_blocksizes = &raw_probe_blocksizes,

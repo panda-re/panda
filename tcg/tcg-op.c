@@ -2587,6 +2587,18 @@ void tcg_gen_goto_tb(unsigned idx)
     tcg_gen_op1i(INDEX_op_goto_tb, idx);
 }
 
+void tcg_gen_lookup_and_goto_ptr(TCGv addr)
+{
+    if (TCG_TARGET_HAS_goto_ptr && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
+        TCGv_ptr ptr = tcg_temp_new_ptr();
+        gen_helper_lookup_tb_ptr(ptr, tcg_ctx.tcg_env, addr);
+        tcg_gen_op1i(INDEX_op_goto_ptr, GET_TCGV_PTR(ptr));
+        tcg_temp_free_ptr(ptr);
+    } else {
+        tcg_gen_exit_tb(0);
+    }
+}
+
 static inline TCGMemOp tcg_canonicalize_memop(TCGMemOp op, bool is64, bool st)
 {
     /* Trigger the asserts within as early as possible.  */
@@ -2861,6 +2873,9 @@ void tcg_gen_atomic_cmpxchg_i64(TCGv_i64 retv, TCGv addr, TCGv_i64 cmpv,
 #endif
 #else
         gen_helper_exit_atomic(tcg_ctx.tcg_env);
+        /* Produce a result, so that we have a well-formed opcode stream
+           with respect to uses of the result in the (dead) code following.  */
+        tcg_gen_movi_i64(retv, 0);
 #endif /* CONFIG_ATOMIC64 */
     } else {
         TCGv_i32 c32 = tcg_temp_new_i32();
@@ -2966,6 +2981,9 @@ static void do_atomic_op_i64(TCGv_i64 ret, TCGv addr, TCGv_i64 val,
 #endif
 #else
         gen_helper_exit_atomic(tcg_ctx.tcg_env);
+        /* Produce a result, so that we have a well-formed opcode stream
+           with respect to uses of the result in the (dead) code following.  */
+        tcg_gen_movi_i64(ret, 0);
 #endif /* CONFIG_ATOMIC64 */
     } else {
         TCGv_i32 v32 = tcg_temp_new_i32();

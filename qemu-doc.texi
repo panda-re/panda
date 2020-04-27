@@ -1,11 +1,12 @@
 \input texinfo @c -*- texinfo -*-
 @c %**start of header
 @setfilename qemu-doc.info
+@include version.texi
 
 @documentlanguage en
 @documentencoding UTF-8
 
-@settitle QEMU Emulator User Documentation
+@settitle QEMU version @value{VERSION} User Documentation
 @exampleindent 0
 @paragraphindent 0
 @c %**end of header
@@ -19,7 +20,7 @@
 @iftex
 @titlepage
 @sp 7
-@center @titlefont{QEMU Emulator}
+@center @titlefont{QEMU version @value{VERSION}}
 @sp 1
 @center @titlefont{User Documentation}
 @sp 3
@@ -34,8 +35,10 @@
 * Introduction::
 * QEMU PC System emulator::
 * QEMU System emulator for non PC targets::
+* QEMU Guest Agent::
 * QEMU User space emulator::
 * Implementation notes::
+* Deprecated features::
 * License::
 * Index::
 @end menu
@@ -182,7 +185,7 @@ Gravis Ultrasound GF1 sound card
 @item
 CS4231A compatible sound card
 @item
-PCI UHCI USB controller and a virtual USB hub.
+PCI UHCI, OHCI, EHCI or XHCI USB controller and a virtual USB-1.1 hub.
 @end itemize
 
 SMP is supported with up to 255 CPUs.
@@ -384,11 +387,9 @@ CPU registers by prefixing them with @emph{$}.
 @node disk_images
 @section Disk Images
 
-Since version 0.6.1, QEMU supports many disk image formats, including
-growable disk images (their size increase as non empty sectors are
-written), compressed and encrypted disk images. Version 0.8.3 added
-the new qcow2 disk image format which is essential to support VM
-snapshots.
+QEMU supports many disk image formats, including growable disk images
+(their size increase as non empty sectors are written), compressed and
+encrypted disk images.
 
 @menu
 * disk_images_quickstart::    Quick start for disk image creation
@@ -396,7 +397,6 @@ snapshots.
 * vm_snapshots::              VM snapshots
 * qemu_img_invocation::       qemu-img Invocation
 * qemu_nbd_invocation::       qemu-nbd Invocation
-* qemu_ga_invocation::        qemu-ga Invocation
 * disk_images_formats::       Disk image file formats
 * host_drives::               Using host drives
 * disk_images_fat_images::    Virtual FAT disk images
@@ -490,11 +490,6 @@ state is not saved or restored properly (in particular USB).
 
 @include qemu-nbd.texi
 
-@node qemu_ga_invocation
-@subsection @code{qemu-ga} Invocation
-
-@include qemu-ga.texi
-
 @node disk_images_formats
 @subsection Disk image file formats
 
@@ -546,10 +541,20 @@ File name of a base image (see @option{create} subcommand)
 @item backing_fmt
 Image format of the base image
 @item encryption
-If this option is set to @code{on}, the image is encrypted with 128-bit AES-CBC.
+This option is deprecated and equivalent to @code{encrypt.format=aes}
 
-The use of encryption in qcow and qcow2 images is considered to be flawed by
-modern cryptography standards, suffering from a number of design problems:
+@item encrypt.format
+
+If this is set to @code{luks}, it requests that the qcow2 payload (not
+qcow2 header) be encrypted using the LUKS format. The passphrase to
+use to unlock the LUKS key slot is given by the @code{encrypt.key-secret}
+parameter. LUKS encryption parameters can be tuned with the other
+@code{encrypt.*} parameters.
+
+If this is set to @code{aes}, the image is encrypted with 128-bit AES-CBC.
+The encryption key is given by the @code{encrypt.key-secret} parameter.
+This encryption format is considered to be flawed by modern cryptography
+standards, suffering from a number of design problems:
 
 @itemize @minus
 @item The AES-CBC cipher is used with predictable initialization vectors based
@@ -564,10 +569,45 @@ original file must then be securely erased using a program like shred,
 though even this is ineffective with many modern storage technologies.
 @end itemize
 
-Use of qcow / qcow2 encryption with QEMU is deprecated, and support for
-it will go away in a future release.  Users are recommended to use an
-alternative encryption technology such as the Linux dm-crypt / LUKS
-system.
+The use of this is no longer supported in system emulators. Support only
+remains in the command line utilities, for the purposes of data liberation
+and interoperability with old versions of QEMU. The @code{luks} format
+should be used instead.
+
+@item encrypt.key-secret
+
+Provides the ID of a @code{secret} object that contains the passphrase
+(@code{encrypt.format=luks}) or encryption key (@code{encrypt.format=aes}).
+
+@item encrypt.cipher-alg
+
+Name of the cipher algorithm and key length. Currently defaults
+to @code{aes-256}. Only used when @code{encrypt.format=luks}.
+
+@item encrypt.cipher-mode
+
+Name of the encryption mode to use. Currently defaults to @code{xts}.
+Only used when @code{encrypt.format=luks}.
+
+@item encrypt.ivgen-alg
+
+Name of the initialization vector generator algorithm. Currently defaults
+to @code{plain64}. Only used when @code{encrypt.format=luks}.
+
+@item encrypt.ivgen-hash-alg
+
+Name of the hash algorithm to use with the initialization vector generator
+(if required). Defaults to @code{sha256}. Only used when @code{encrypt.format=luks}.
+
+@item encrypt.hash-alg
+
+Name of the hash algorithm to use for PBKDF algorithm
+Defaults to @code{sha256}. Only used when @code{encrypt.format=luks}.
+
+@item encrypt.iter-time
+
+Amount of time, in milliseconds, to use for PBKDF algorithm per key slot.
+Defaults to @code{2000}. Only used when @code{encrypt.format=luks}.
 
 @item cluster_size
 Changes the qcow2 cluster size (must be between 512 and 2M). Smaller cluster
@@ -642,7 +682,69 @@ Supported options:
 @item backing_file
 File name of a base image (see @option{create} subcommand)
 @item encryption
-If this option is set to @code{on}, the image is encrypted.
+This option is deprecated and equivalent to @code{encrypt.format=aes}
+
+@item encrypt.format
+If this is set to @code{aes}, the image is encrypted with 128-bit AES-CBC.
+The encryption key is given by the @code{encrypt.key-secret} parameter.
+This encryption format is considered to be flawed by modern cryptography
+standards, suffering from a number of design problems enumerated previously
+against the @code{qcow2} image format.
+
+The use of this is no longer supported in system emulators. Support only
+remains in the command line utilities, for the purposes of data liberation
+and interoperability with old versions of QEMU.
+
+Users requiring native encryption should use the @code{qcow2} format
+instead with @code{encrypt.format=luks}.
+
+@item encrypt.key-secret
+
+Provides the ID of a @code{secret} object that contains the encryption
+key (@code{encrypt.format=aes}).
+
+@end table
+
+@item luks
+
+LUKS v1 encryption format, compatible with Linux dm-crypt/cryptsetup
+
+Supported options:
+@table @code
+
+@item key-secret
+
+Provides the ID of a @code{secret} object that contains the passphrase.
+
+@item cipher-alg
+
+Name of the cipher algorithm and key length. Currently defaults
+to @code{aes-256}.
+
+@item cipher-mode
+
+Name of the encryption mode to use. Currently defaults to @code{xts}.
+
+@item ivgen-alg
+
+Name of the initialization vector generator algorithm. Currently defaults
+to @code{plain64}.
+
+@item ivgen-hash-alg
+
+Name of the hash algorithm to use with the initialization vector generator
+(if required). Defaults to @code{sha256}.
+
+@item hash-alg
+
+Name of the hash algorithm to use for PBKDF algorithm
+Defaults to @code{sha256}.
+
+@item iter-time
+
+Amount of time, in milliseconds, to use for PBKDF algorithm per key slot.
+Defaults to @code{2000}.
+
 @end table
 
 @item vdi
@@ -1357,10 +1459,10 @@ monitor (@pxref{pcsys_keys}).
 @node pcsys_usb
 @section USB emulation
 
-QEMU emulates a PCI UHCI USB controller. You can virtually plug
-virtual USB devices or real host USB devices (experimental, works only
-on Linux hosts).  QEMU will automatically create and connect virtual USB hubs
-as necessary to connect multiple USB devices.
+QEMU can emulate a PCI UHCI, OHCI, EHCI or XHCI USB controller. You can
+plug virtual USB devices or real host USB devices (only works with certain
+host operating systems). QEMU will automatically create and connect virtual
+USB hubs as necessary to connect multiple USB devices.
 
 @menu
 * usb_devices::
@@ -1369,53 +1471,64 @@ as necessary to connect multiple USB devices.
 @node usb_devices
 @subsection Connecting USB devices
 
-USB devices can be connected with the @option{-usbdevice} commandline option
-or the @code{usb_add} monitor command.  Available devices are:
+USB devices can be connected with the @option{-device usb-...} command line
+option or the @code{device_add} monitor command. Available devices are:
 
 @table @code
-@item mouse
+@item usb-mouse
 Virtual Mouse.  This will override the PS/2 mouse emulation when activated.
-@item tablet
+@item usb-tablet
 Pointer device that uses absolute coordinates (like a touchscreen).
 This means QEMU is able to report the mouse position without having
 to grab the mouse.  Also overrides the PS/2 mouse emulation when activated.
-@item disk:@var{file}
-Mass storage device based on @var{file} (@pxref{disk_images})
-@item host:@var{bus.addr}
-Pass through the host device identified by @var{bus.addr}
-(Linux only)
-@item host:@var{vendor_id:product_id}
-Pass through the host device identified by @var{vendor_id:product_id}
-(Linux only)
-@item wacom-tablet
+@item usb-storage,drive=@var{drive_id}
+Mass storage device backed by @var{drive_id} (@pxref{disk_images})
+@item usb-uas
+USB attached SCSI device, see
+@url{http://git.qemu.org/?p=qemu.git;a=blob_plain;f=docs/usb-storage.txt,usb-storage.txt}
+for details
+@item usb-bot
+Bulk-only transport storage device, see
+@url{http://git.qemu.org/?p=qemu.git;a=blob_plain;f=docs/usb-storage.txt,usb-storage.txt}
+for details here, too
+@item usb-mtp,x-root=@var{dir}
+Media transfer protocol device, using @var{dir} as root of the file tree
+that is presented to the guest.
+@item usb-host,hostbus=@var{bus},hostaddr=@var{addr}
+Pass through the host device identified by @var{bus} and @var{addr}
+@item usb-host,vendorid=@var{vendor},productid=@var{product}
+Pass through the host device identified by @var{vendor} and @var{product} ID
+@item usb-wacom-tablet
 Virtual Wacom PenPartner tablet.  This device is similar to the @code{tablet}
 above but it can be used with the tslib library because in addition to touch
 coordinates it reports touch pressure.
-@item keyboard
+@item usb-kbd
 Standard USB keyboard.  Will override the PS/2 keyboard (if present).
-@item serial:[vendorid=@var{vendor_id}][,product_id=@var{product_id}]:@var{dev}
+@item usb-serial,chardev=@var{id}
 Serial converter. This emulates an FTDI FT232BM chip connected to host character
-device @var{dev}. The available character devices are the same as for the
-@code{-serial} option. The @code{vendorid} and @code{productid} options can be
-used to override the default 0403:6001. For instance,
-@example
-usb_add serial:productid=FA00:tcp:192.168.0.2:4444
-@end example
-will connect to tcp port 4444 of ip 192.168.0.2, and plug that to the virtual
-serial converter, faking a Matrix Orbital LCD Display (USB ID 0403:FA00).
-@item braille
+device @var{id}.
+@item usb-braille,chardev=@var{id}
 Braille device.  This will use BrlAPI to display the braille output on a real
-or fake device.
-@item net:@var{options}
-Network adapter that supports CDC ethernet and RNDIS protocols.  @var{options}
-specifies NIC options as with @code{-net nic,}@var{options} (see description).
+or fake device referenced by @var{id}.
+@item usb-net[,netdev=@var{id}]
+Network adapter that supports CDC ethernet and RNDIS protocols.  @var{id}
+specifies a netdev defined with @code{-netdev @dots{},id=@var{id}}.
 For instance, user-mode networking can be used with
 @example
-qemu-system-i386 [...OPTIONS...] -net user,vlan=0 -usbdevice net:vlan=0
+qemu-system-i386 [...] -netdev user,id=net0 -device usb-net,netdev=net0
 @end example
-Currently this cannot be used in machines that support PCI NICs.
-@item bt[:@var{hci-type}]
-Bluetooth dongle whose type is specified in the same format as with
+@item usb-ccid
+Smartcard reader device
+@item usb-audio
+USB audio device
+@item usb-bt-dongle
+Bluetooth dongle for the transport layer of HCI. It is connected to HCI
+scatternet 0 by default (corresponds to @code{-bt hci,vlan=0}).
+Note that the syntax for the @code{-device usb-bt-dongle} option is not as
+useful yet as it was with the legacy @code{-usbdevice} option. So to
+configure an USB bluetooth device, you might need to use
+"@code{-usbdevice bt}[:@var{hci-type}]" instead. This configures a
+bluetooth dongle whose type is specified in the same format as with
 the @option{-bt hci} option, @pxref{bt-hcis,,allowed HCI types}.  If
 no type is given, the HCI logic corresponds to @code{-bt hci,vlan=0}.
 This USB device implements the USB Transport Layer of HCI.  Example
@@ -1460,11 +1573,11 @@ hubs, it won't work).
 
 @item Add the device in QEMU by using:
 @example
-usb_add host:1234:5678
+device_add usb-host,vendorid=0x1234,productid=0x5678
 @end example
 
-Normally the guest OS should report that a new USB device is
-plugged. You can use the option @option{-usbdevice} to do the same.
+Normally the guest OS should report that a new USB device is plugged.
+You can use the option @option{-device usb-host,...} to do the same.
 
 @item Now you can try to use the host USB device in QEMU.
 
@@ -1732,37 +1845,45 @@ SASL service config /etc/sasl2/qemu.conf. If running QEMU as an
 unprivileged user, an environment variable SASL_CONF_PATH can be used
 to make it search alternate locations for the service config.
 
-The default configuration might contain
+If the TLS option is enabled for VNC, then it will provide session encryption,
+otherwise the SASL mechanism will have to provide encryption. In the latter
+case the list of possible plugins that can be used is drastically reduced. In
+fact only the GSSAPI SASL mechanism provides an acceptable level of security
+by modern standards. Previous versions of QEMU referred to the DIGEST-MD5
+mechanism, however, it has multiple serious flaws described in detail in
+RFC 6331 and thus should never be used any more. The SCRAM-SHA-1 mechanism
+provides a simple username/password auth facility similar to DIGEST-MD5, but
+does not support session encryption, so can only be used in combination with
+TLS.
 
-@example
-mech_list: digest-md5
-sasldb_path: /etc/qemu/passwd.db
-@end example
-
-This says to use the 'Digest MD5' mechanism, which is similar to the HTTP
-Digest-MD5 mechanism. The list of valid usernames & passwords is maintained
-in the /etc/qemu/passwd.db file, and can be updated using the saslpasswd2
-command. While this mechanism is easy to configure and use, it is not
-considered secure by modern standards, so only suitable for developers /
-ad-hoc testing.
-
-A more serious deployment might use Kerberos, which is done with the 'gssapi'
-mechanism
+When not using TLS the recommended configuration is
 
 @example
 mech_list: gssapi
 keytab: /etc/qemu/krb5.tab
 @end example
 
-For this to work the administrator of your KDC must generate a Kerberos
-principal for the server, with a name of  'qemu/somehost.example.com@@EXAMPLE.COM'
-replacing 'somehost.example.com' with the fully qualified host name of the
-machine running QEMU, and 'EXAMPLE.COM' with the Kerberos Realm.
+This says to use the 'GSSAPI' mechanism with the Kerberos v5 protocol, with
+the server principal stored in /etc/qemu/krb5.tab. For this to work the
+administrator of your KDC must generate a Kerberos principal for the server,
+with a name of 'qemu/somehost.example.com@@EXAMPLE.COM' replacing
+'somehost.example.com' with the fully qualified host name of the machine
+running QEMU, and 'EXAMPLE.COM' with the Kerberos Realm.
 
-Other configurations will be left as an exercise for the reader. It should
-be noted that only Digest-MD5 and GSSAPI provides a SSF layer for data
-encryption. For all other mechanisms, VNC should always be configured to
-use TLS and x509 certificates to protect security credentials from snooping.
+When using TLS, if username+password authentication is desired, then a
+reasonable configuration is
+
+@example
+mech_list: scram-sha-1
+sasldb_path: /etc/qemu/passwd.db
+@end example
+
+The saslpasswd2 program can be used to populate the passwd.db file with
+accounts.
+
+Other SASL configurations will be left as an exercise for the reader. Note that
+all mechanisms except GSSAPI, should be combined with use of TLS to ensure a
+secure data channel.
 
 @node gdb_usage
 @section GDB usage
@@ -1878,8 +1999,8 @@ resolution modes which the Cirrus Logic BIOS does not support (i.e. >=
 Windows 9x does not correctly use the CPU HLT
 instruction. The result is that it takes host CPU cycles even when
 idle. You can install the utility from
-@url{http://www.user.cityline.ru/~maxamn/amnhltm.zip} to solve this
-problem. Note that no such tool is needed for NT, 2000 or XP.
+@url{http://web.archive.org/web/20060212132151/http://www.user.cityline.ru/~maxamn/amnhltm.zip}
+to solve this problem. Note that no such tool is needed for NT, 2000 or XP.
 
 @subsubsection Windows 2000 disk full problem
 
@@ -1927,9 +2048,9 @@ vvfat block device ("-hdb fat:directory_which_holds_the_SP").
 @subsubsection CPU usage reduction
 
 DOS does not correctly use the CPU HLT instruction. The result is that
-it takes host CPU cycles even when idle. You can install the utility
-from @url{http://www.vmware.com/software/dosidle210.zip} to solve this
-problem.
+it takes host CPU cycles even when idle. You can install the utility from
+@url{http://web.archive.org/web/20051222085335/http://www.vmware.com/software/dosidle210.zip}
+to solve this problem.
 
 @node QEMU System emulator for non PC targets
 @chapter QEMU System emulator for non PC targets
@@ -2551,6 +2672,8 @@ so should only be used with trusted guest OS.
 
 @end table
 
+@c man end
+
 @node ColdFire System emulator
 @section ColdFire System emulator
 @cindex system emulation (ColdFire)
@@ -2594,6 +2717,8 @@ Note that this allows guest direct access to the host filesystem,
 so should only be used with trusted guest OS.
 
 @end table
+
+@c man end
 
 @node Cris System emulator
 @section Cris System emulator
@@ -2666,6 +2791,14 @@ Note that this allows guest direct access to the host filesystem,
 so should only be used with trusted guest OS.
 
 @end table
+
+@c man end
+
+@node QEMU Guest Agent
+@chapter QEMU Guest Agent invocation
+
+@include qemu-ga.texi
+
 @node QEMU User space emulator
 @chapter QEMU User space emulator
 
@@ -2996,15 +3129,197 @@ Run the emulation in single step mode.
 
 @include qemu-tech.texi
 
+@node Deprecated features
+@appendix Deprecated features
+
+In general features are intended to be supported indefinitely once
+introduced into QEMU. In the event that a feature needs to be removed,
+it will be listed in this appendix. The feature will remain functional
+for 2 releases prior to actual removal. Deprecated features may also
+generate warnings on the console when QEMU starts up, or if activated
+via a monitor command, however, this is not a mandatory requirement.
+
+Prior to the 2.10.0 release there was no official policy on how
+long features would be deprecated prior to their removal, nor
+any documented list of which features were deprecated. Thus
+any features deprecated prior to 2.10.0 will be treated as if
+they were first deprecated in the 2.10.0 release.
+
+What follows is a list of all features currently marked as
+deprecated.
+
+@section System emulator command line arguments
+
+@subsection -drive boot=on|off (since 1.3.0)
+
+The ``boot=on|off'' option to the ``-drive'' argument is
+ignored. Applications should use the ``bootindex=N'' parameter
+to set an absolute ordering between devices instead.
+
+@subsection -tdf (since 1.3.0)
+
+The ``-tdf'' argument is ignored. The behaviour implemented
+by this argument is now the default when using the KVM PIT,
+but can be requested explicitly using
+``-global kvm-pit.lost_tick_policy=slew''.
+
+@subsection -no-kvm-pit-reinjection (since 1.3.0)
+
+The ``-no-kvm-pit-reinjection'' argument is now a
+synonym for setting ``-global kvm-pit.lost_tick_policy=discard''.
+
+@subsection -no-kvm-irqchip (since 1.3.0)
+
+The ``-no-kvm-irqchip'' argument is now a synonym for
+setting ``-machine kernel_irqchip=off''.
+
+@subsection -no-kvm-pit (since 1.3.0)
+
+The ``-no-kvm-pit'' argument is ignored. It is no longer
+possible to disable the KVM PIT directly.
+
+@subsection -no-kvm (since 1.3.0)
+
+The ``-no-kvm'' argument is now a synonym for setting
+``-machine accel=tcg''.
+
+@subsection -mon default=on (since 2.4.0)
+
+The ``default'' option to the ``-mon'' argument is
+now ignored. When multiple monitors were enabled, it
+indicated which monitor would receive log messages
+from the various subsystems. This feature is no longer
+required as messages are now only sent to the monitor
+in response to explicitly monitor commands.
+
+@subsection -vnc tls (since 2.5.0)
+
+The ``-vnc tls'' argument is now a synonym for setting
+``-object tls-creds-anon,id=tls0'' combined with
+``-vnc tls-creds=tls0'
+
+@subsection -vnc x509 (since 2.5.0)
+
+The ``-vnc x509=/path/to/certs'' argument is now a
+synonym for setting
+``-object tls-creds-x509,dir=/path/to/certs,id=tls0,verify-peer=no''
+combined with ``-vnc tls-creds=tls0'
+
+@subsection -vnc x509verify (since 2.5.0)
+
+The ``-vnc x509verify=/path/to/certs'' argument is now a
+synonym for setting
+``-object tls-creds-x509,dir=/path/to/certs,id=tls0,verify-peer=yes''
+combined with ``-vnc tls-creds=tls0'
+
+@subsection -tftp (since 2.6.0)
+
+The ``-tftp /some/dir'' argument is now a synonym for setting
+the ``-netdev user,tftp=/some/dir' argument. The new syntax
+allows different settings to be provided per NIC.
+
+@subsection -bootp (since 2.6.0)
+
+The ``-bootp /some/file'' argument is now a synonym for setting
+the ``-netdev user,bootp=/some/file' argument. The new syntax
+allows different settings to be provided per NIC.
+
+@subsection -redir (since 2.6.0)
+
+The ``-redir ARGS'' argument is now a synonym for setting
+the ``-netdev user,hostfwd=ARGS'' argument instead. The new
+syntax allows different settings to be provided per NIC.
+
+@subsection -smb (since 2.6.0)
+
+The ``-smb /some/dir'' argument is now a synonym for setting
+the ``-netdev user,smb=/some/dir'' argument instead. The new
+syntax allows different settings to be provided per NIC.
+
+@subsection -net channel (since 2.6.0)
+
+The ``--net channel,ARGS'' argument is now a synonym for setting
+the ``-netdev user,guestfwd=ARGS'' argument instead.
+
+@subsection -net vlan (since 2.9.0)
+
+The ``-net vlan=NN'' argument is partially replaced with the
+new ``-netdev'' argument. The remaining use cases will no
+longer be directly supported in QEMU.
+
+@subsection -drive if=scsi (since 2.9.0)
+
+The ``-drive if=scsi'' argument is replaced by the the
+``-device BUS-TYPE'' argument combined with ``-drive if=none''.
+
+@subsection -net dump (since 2.10.0)
+
+The ``--net dump'' argument is now replaced with the
+``-object filter-dump'' argument which works in combination
+with the modern ``-netdev`` backends instead.
+
+@subsection -hdachs (since 2.10.0)
+
+The ``-hdachs'' argument is now a synonym for setting
+the ``cyls'', ``heads'', ``secs'', and ``trans'' properties
+on the ``ide-hd'' device using the ``-device'' argument.
+The new syntax allows different settings to be provided
+per disk.
+
+@subsection -usbdevice (since 2.10.0)
+
+The ``-usbdevice DEV'' argument is now a synonym for setting
+the ``-device usb-DEV'' argument instead. The deprecated syntax
+would automatically enable USB support on the machine type.
+If using the new syntax, USB support must be explicitly
+enabled via the ``-machine usb=on'' argument.
+
+@section qemu-img command line arguments
+
+@subsection convert -s (since 2.0.0)
+
+The ``convert -s snapshot_id_or_name'' argument is obsoleted
+by the ``convert -l snapshot_param'' argument instead.
+
+@section System emulator human monitor commands
+
+@subsection host_net_add (since 2.10.0)
+
+The ``host_net_add'' command is replaced by the ``netdev_add'' command.
+
+@subsection host_net_remove (since 2.10.0)
+
+The ``host_net_remove'' command is replaced by the ``netdev_del'' command.
+
+@subsection usb_add (since 2.10.0)
+
+The ``usb_add'' command is replaced by the ``device_add'' command.
+
+@subsection usb_del (since 2.10.0)
+
+The ``usb_del'' command is replaced by the ``device_del'' command.
+
+@section System emulator devices
+
+@subsection ivshmem (since 2.6.0)
+
+The ``ivshmem'' device type is replaced by either the ``ivshmem-plain''
+or ``ivshmem-doorbell`` device types.
+
+@subsection spapr-pci-vfio-host-bridge (since 2.6.0)
+
+The ``spapr-pci-vfio-host-bridge'' device type is replaced by
+the ``spapr-pci-host-bridge'' device type.
+
 @node License
 @appendix License
 
 QEMU is a trademark of Fabrice Bellard.
 
-QEMU is released under the GNU General Public License (TODO: add link).
-Parts of QEMU have specific licenses, see file LICENSE.
-
-TODO (refer to file LICENSE, include it, include the GPL?)
+QEMU is released under the
+@url{https://www.gnu.org/licenses/gpl-2.0.txt,GNU General Public License},
+version 2. Parts of QEMU have specific licenses, see file
+@url{http://git.qemu.org/?p=qemu.git;a=blob_plain;f=LICENSE,LICENSE}.
 
 @node Index
 @appendix Index

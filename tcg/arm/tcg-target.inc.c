@@ -329,11 +329,6 @@ static const uint8_t tcg_cond_to_arm_cond[] = {
     [TCG_COND_GTU] = COND_HI,
 };
 
-static inline void tcg_out_bx(TCGContext *s, int cond, int rn)
-{
-    tcg_out32(s, (cond << 28) | 0x012fff10 | rn);
-}
-
 static inline void tcg_out_b(TCGContext *s, int cond, int32_t offset)
 {
     tcg_out32(s, (cond << 28) | 0x0a000000 |
@@ -402,6 +397,18 @@ static inline void tcg_out_mov_reg(TCGContext *s, int cond, int rd, int rm)
     }
 }
 
+static inline void tcg_out_bx(TCGContext *s, int cond, TCGReg rn)
+{
+    /* Unless the C portion of QEMU is compiled as thumb, we don't
+       actually need true BX semantics; merely a branch to an address
+       held in a register.  */
+    if (use_armv5t_instructions) {
+        tcg_out32(s, (cond << 28) | 0x012fff10 | rn);
+    } else {
+        tcg_out_mov_reg(s, cond, TCG_REG_PC, rn);
+    }
+}
+
 static inline void tcg_out_dat_imm(TCGContext *s,
                 int cond, int opc, int rd, int rn, int im)
 {
@@ -411,23 +418,37 @@ static inline void tcg_out_dat_imm(TCGContext *s,
 
 static void tcg_out_movi32(TCGContext *s, int cond, int rd, uint32_t arg)
 {
-    int rot, opc, rn;
+    int rot, opc, rn, diff;
 
-    /* For armv7, make sure not to use movw+movt when mov/mvn would do.
-       Speed things up by only checking when movt would be required.
-       Prior to armv7, have one go at fully rotated immediates before
-       doing the decomposition thing below.  */
-    if (!use_armv7_instructions || (arg & 0xffff0000)) {
-        rot = encode_imm(arg);
+    /* Check a single MOV/MVN before anything else.  */
+    rot = encode_imm(arg);
+    if (rot >= 0) {
+        tcg_out_dat_imm(s, cond, ARITH_MOV, rd, 0,
+                        rotl(arg, rot) | (rot << 7));
+        return;
+    }
+    rot = encode_imm(~arg);
+    if (rot >= 0) {
+        tcg_out_dat_imm(s, cond, ARITH_MVN, rd, 0,
+                        rotl(~arg, rot) | (rot << 7));
+        return;
+    }
+
+    /* Check for a pc-relative address.  This will usually be the TB,
+       or within the TB, which is immediately before the code block.  */
+    diff = arg - ((intptr_t)s->code_ptr + 8);
+    if (diff >= 0) {
+        rot = encode_imm(diff);
         if (rot >= 0) {
-            tcg_out_dat_imm(s, cond, ARITH_MOV, rd, 0,
-                            rotl(arg, rot) | (rot << 7));
+            tcg_out_dat_imm(s, cond, ARITH_ADD, rd, TCG_REG_PC,
+                            rotl(diff, rot) | (rot << 7));
             return;
         }
-        rot = encode_imm(~arg);
+    } else {
+        rot = encode_imm(-diff);
         if (rot >= 0) {
-            tcg_out_dat_imm(s, cond, ARITH_MVN, rd, 0,
-                            rotl(~arg, rot) | (rot << 7));
+            tcg_out_dat_imm(s, cond, ARITH_SUB, rd, TCG_REG_PC,
+                            rotl(-diff, rot) | (rot << 7));
             return;
         }
     }
@@ -977,7 +998,7 @@ static inline void tcg_out_st8(TCGContext *s, int cond,
  * with the code buffer limited to 16MB we wouldn't need the long case.
  * But we also use it for the tail-call to the qemu_ld/st helpers, which does.
  */
-static inline void tcg_out_goto(TCGContext *s, int cond, tcg_insn_unit *addr)
+static void tcg_out_goto(TCGContext *s, int cond, tcg_insn_unit *addr)
 {
     intptr_t addri = (intptr_t)addr;
     ptrdiff_t disp = tcg_pcrel_diff(s, addr);
@@ -987,15 +1008,9 @@ static inline void tcg_out_goto(TCGContext *s, int cond, tcg_insn_unit *addr)
         return;
     }
 
+    assert(use_armv5t_instructions || (addri & 1) == 0);
     tcg_out_movi32(s, cond, TCG_REG_TMP, addri);
-    if (use_armv5t_instructions) {
-        tcg_out_bx(s, cond, TCG_REG_TMP);
-    } else {
-        if (addri & 1) {
-            tcg_abort();
-        }
-        tcg_out_mov_reg(s, cond, TCG_REG_PC, TCG_REG_TMP);
-    }
+    tcg_out_bx(s, cond, TCG_REG_TMP);
 }
 
 /* The call case is mostly used for helpers - so it's not unreasonable
@@ -1023,16 +1038,6 @@ static void tcg_out_call(TCGContext *s, tcg_insn_unit *addr)
         tcg_out_ld32_12(s, COND_AL, TCG_REG_PC, TCG_REG_PC, -4);
         tcg_out32(s, addri);
     }
-}
-
-void arm_tb_set_jmp_target(uintptr_t jmp_addr, uintptr_t addr)
-{
-    tcg_insn_unit *code_ptr = (tcg_insn_unit *)jmp_addr;
-    tcg_insn_unit *target = (tcg_insn_unit *)addr;
-
-    /* we could use a ldr pc, [pc, #-4] kind of branch and avoid the flush */
-    reloc_pc24_atomic(code_ptr, target);
-    flush_icache_range(jmp_addr, jmp_addr + 4);
 }
 
 static inline void tcg_out_goto_label(TCGContext *s, int cond, TCGLabel *l)
@@ -1218,7 +1223,7 @@ static TCGReg tcg_out_tlb_read(TCGContext *s, TCGReg addrlo, TCGReg addrhi,
     /* Load the tlb addend.  */
     tcg_out_ld32_12(s, COND_AL, TCG_REG_R2, TCG_REG_R2, add_off);
 
-    tcg_out_dat_reg(s, (s_bits ? COND_EQ : COND_AL), ARITH_CMP, 0,
+    tcg_out_dat_reg(s, (a_bits ? COND_EQ : COND_AL), ARITH_CMP, 0,
                     TCG_REG_R0, TCG_REG_TMP, SHIFT_IMM_LSL(TARGET_PAGE_BITS));
 
     if (TARGET_LONG_BITS == 64) {
@@ -1654,21 +1659,40 @@ static inline void tcg_out_op(TCGContext *s, TCGOpcode opc,
 
     switch (opc) {
     case INDEX_op_exit_tb:
-        tcg_out_movi32(s, COND_AL, TCG_REG_R0, args[0]);
-        tcg_out_goto(s, COND_AL, tb_ret_addr);
+        /* Reuse the zeroing that exists for goto_ptr.  */
+        a0 = args[0];
+        if (a0 == 0) {
+            tcg_out_goto(s, COND_AL, s->code_gen_epilogue);
+        } else {
+            tcg_out_movi32(s, COND_AL, TCG_REG_R0, args[0]);
+            tcg_out_goto(s, COND_AL, tb_ret_addr);
+        }
         break;
     case INDEX_op_goto_tb:
-        if (s->tb_jmp_insn_offset) {
-            /* Direct jump method */
-            s->tb_jmp_insn_offset[args[0]] = tcg_current_code_size(s);
-            tcg_out_b_noaddr(s, COND_AL);
-        } else {
+        {
             /* Indirect jump method */
-            intptr_t ptr = (intptr_t)(s->tb_jmp_target_addr + args[0]);
-            tcg_out_movi32(s, COND_AL, TCG_REG_R0, ptr & ~0xfff);
-            tcg_out_ld32_12(s, COND_AL, TCG_REG_PC, TCG_REG_R0, ptr & 0xfff);
+            intptr_t ptr, dif, dil;
+            TCGReg base = TCG_REG_PC;
+
+            tcg_debug_assert(s->tb_jmp_insn_offset == 0);
+            ptr = (intptr_t)(s->tb_jmp_target_addr + args[0]);
+            dif = ptr - ((intptr_t)s->code_ptr + 8);
+            dil = sextract32(dif, 0, 12);
+            if (dif != dil) {
+                /* The TB is close, but outside the 12 bits addressable by
+                   the load.  We can extend this to 20 bits with a sub of a
+                   shifted immediate from pc.  In the vastly unlikely event
+                   the code requires more than 1MB, we'll use 2 insns and
+                   be no worse off.  */
+                base = TCG_REG_R0;
+                tcg_out_movi32(s, COND_AL, base, ptr - dil);
+            }
+            tcg_out_ld32_12(s, COND_AL, TCG_REG_PC, base, dil);
+            s->tb_jmp_reset_offset[args[0]] = tcg_current_code_size(s);
         }
-        s->tb_jmp_reset_offset[args[0]] = tcg_current_code_size(s);
+        break;
+    case INDEX_op_goto_ptr:
+        tcg_out_bx(s, COND_AL, args[0]);
         break;
     case INDEX_op_br:
         tcg_out_goto_label(s, COND_AL, arg_label(args[0]));
@@ -1960,6 +1984,7 @@ static const TCGTargetOpDef arm_op_defs[] = {
     { INDEX_op_exit_tb, { } },
     { INDEX_op_goto_tb, { } },
     { INDEX_op_br, { } },
+    { INDEX_op_goto_ptr, { "r" } },
 
     { INDEX_op_ld8u_i32, { "r", "r" } },
     { INDEX_op_ld8s_i32, { "r", "r" } },
@@ -2135,9 +2160,16 @@ static void tcg_target_qemu_prologue(TCGContext *s)
     tcg_out_mov(s, TCG_TYPE_PTR, TCG_AREG0, tcg_target_call_iarg_regs[0]);
 
     tcg_out_bx(s, COND_AL, tcg_target_call_iarg_regs[1]);
-    tb_ret_addr = s->code_ptr;
 
-    /* Epilogue.  We branch here via tb_ret_addr.  */
+    /*
+     * Return path for goto_ptr. Set return value to 0, a-la exit_tb,
+     * and fall through to the rest of the epilogue.
+     */
+    s->code_gen_epilogue = s->code_ptr;
+    tcg_out_movi(s, TCG_TYPE_PTR, TCG_REG_R0, 0);
+
+    /* TB epilogue */
+    tb_ret_addr = s->code_ptr;
     tcg_out_dat_rI(s, COND_AL, ARITH_ADD, TCG_REG_CALL_STACK,
                    TCG_REG_CALL_STACK, stack_addend, 1);
 

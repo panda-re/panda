@@ -24,6 +24,22 @@
 
 #ifndef CONFIG_USER_ONLY
 
+void superh_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
+                                    MMUAccessType access_type,
+                                    int mmu_idx, uintptr_t retaddr)
+{
+    switch (access_type) {
+    case MMU_INST_FETCH:
+    case MMU_DATA_LOAD:
+        cs->exception_index = 0x0e0;
+        break;
+    case MMU_DATA_STORE:
+        cs->exception_index = 0x100;
+        break;
+    }
+    cpu_loop_exit_restore(cs, retaddr);
+}
+
 void tlb_fill(CPUState *cs, target_ulong addr, MMUAccessType access_type,
               int mmu_idx, uintptr_t retaddr)
 {
@@ -32,10 +48,7 @@ void tlb_fill(CPUState *cs, target_ulong addr, MMUAccessType access_type,
     ret = superh_cpu_handle_mmu_fault(cs, addr, access_type, mmu_idx);
     if (ret) {
         /* now we have a real cpu fault */
-        if (retaddr) {
-            cpu_restore_state(cs, retaddr);
-        }
-        cpu_loop_exit(cs);
+        cpu_loop_exit_restore(cs, retaddr);
     }
 }
 
@@ -59,10 +72,7 @@ static inline void QEMU_NORETURN raise_exception(CPUSH4State *env, int index,
     CPUState *cs = CPU(sh_env_get_cpu(env));
 
     cs->exception_index = index;
-    if (retaddr) {
-        cpu_restore_state(cs, retaddr);
-    }
-    cpu_loop_exit(cs);
+    cpu_loop_exit_restore(cs, retaddr);
 }
 
 void helper_raise_illegal_instruction(CPUSH4State *env)
@@ -103,6 +113,12 @@ void helper_trapa(CPUSH4State *env, uint32_t tra)
 {
     env->tra = tra << 2;
     raise_exception(env, 0x160, 0);
+}
+
+void helper_exclusive(CPUSH4State *env)
+{
+    /* We do not want cpu_restore_state to run.  */
+    cpu_loop_exit_atomic(ENV_GET_CPU(env), 0);
 }
 
 void helper_movcal(CPUSH4State *env, uint32_t address, uint32_t value)
@@ -209,29 +225,29 @@ static void update_fpscr(CPUSH4State *env, uintptr_t retaddr)
 
     xcpt = get_float_exception_flags(&env->fp_status);
 
-    /* Clear the flag entries */
-    env->fpscr &= ~FPSCR_FLAG_MASK;
+    /* Clear the cause entries */
+    env->fpscr &= ~FPSCR_CAUSE_MASK;
 
     if (unlikely(xcpt)) {
         if (xcpt & float_flag_invalid) {
-            env->fpscr |= FPSCR_FLAG_V;
+            env->fpscr |= FPSCR_CAUSE_V;
         }
         if (xcpt & float_flag_divbyzero) {
-            env->fpscr |= FPSCR_FLAG_Z;
+            env->fpscr |= FPSCR_CAUSE_Z;
         }
         if (xcpt & float_flag_overflow) {
-            env->fpscr |= FPSCR_FLAG_O;
+            env->fpscr |= FPSCR_CAUSE_O;
         }
         if (xcpt & float_flag_underflow) {
-            env->fpscr |= FPSCR_FLAG_U;
+            env->fpscr |= FPSCR_CAUSE_U;
         }
         if (xcpt & float_flag_inexact) {
-            env->fpscr |= FPSCR_FLAG_I;
+            env->fpscr |= FPSCR_CAUSE_I;
         }
 
-        /* Accumulate in cause entries */
-        env->fpscr |= (env->fpscr & FPSCR_FLAG_MASK)
-                      << (FPSCR_CAUSE_SHIFT - FPSCR_FLAG_SHIFT);
+        /* Accumulate in flag entries */
+        env->fpscr |= (env->fpscr & FPSCR_CAUSE_MASK)
+                      >> (FPSCR_CAUSE_SHIFT - FPSCR_FLAG_SHIFT);
 
         /* Generate an exception if enabled */
         cause = (env->fpscr & FPSCR_CAUSE_MASK) >> FPSCR_CAUSE_SHIFT;
@@ -240,16 +256,6 @@ static void update_fpscr(CPUSH4State *env, uintptr_t retaddr)
             raise_exception(env, 0x120, retaddr);
         }
     }
-}
-
-float32 helper_fabs_FT(float32 t0)
-{
-    return float32_abs(t0);
-}
-
-float64 helper_fabs_DT(float64 t0)
-{
-    return float64_abs(t0);
 }
 
 float32 helper_fadd_FT(CPUSH4State *env, float32 t0, float32 t1)
@@ -268,56 +274,44 @@ float64 helper_fadd_DT(CPUSH4State *env, float64 t0, float64 t1)
     return t0;
 }
 
-void helper_fcmp_eq_FT(CPUSH4State *env, float32 t0, float32 t1)
+uint32_t helper_fcmp_eq_FT(CPUSH4State *env, float32 t0, float32 t1)
 {
     int relation;
 
     set_float_exception_flags(0, &env->fp_status);
     relation = float32_compare(t0, t1, &env->fp_status);
-    if (unlikely(relation == float_relation_unordered)) {
-        update_fpscr(env, GETPC());
-    } else {
-        env->sr_t = (relation == float_relation_equal);
-    }
+    update_fpscr(env, GETPC());
+    return relation == float_relation_equal;
 }
 
-void helper_fcmp_eq_DT(CPUSH4State *env, float64 t0, float64 t1)
+uint32_t helper_fcmp_eq_DT(CPUSH4State *env, float64 t0, float64 t1)
 {
     int relation;
 
     set_float_exception_flags(0, &env->fp_status);
     relation = float64_compare(t0, t1, &env->fp_status);
-    if (unlikely(relation == float_relation_unordered)) {
-        update_fpscr(env, GETPC());
-    } else {
-        env->sr_t = (relation == float_relation_equal);
-    }
+    update_fpscr(env, GETPC());
+    return relation == float_relation_equal;
 }
 
-void helper_fcmp_gt_FT(CPUSH4State *env, float32 t0, float32 t1)
+uint32_t helper_fcmp_gt_FT(CPUSH4State *env, float32 t0, float32 t1)
 {
     int relation;
 
     set_float_exception_flags(0, &env->fp_status);
     relation = float32_compare(t0, t1, &env->fp_status);
-    if (unlikely(relation == float_relation_unordered)) {
-        update_fpscr(env, GETPC());
-    } else {
-        env->sr_t = (relation == float_relation_greater);
-    }
+    update_fpscr(env, GETPC());
+    return relation == float_relation_greater;
 }
 
-void helper_fcmp_gt_DT(CPUSH4State *env, float64 t0, float64 t1)
+uint32_t helper_fcmp_gt_DT(CPUSH4State *env, float64 t0, float64 t1)
 {
     int relation;
 
     set_float_exception_flags(0, &env->fp_status);
     relation = float64_compare(t0, t1, &env->fp_status);
-    if (unlikely(relation == float_relation_unordered)) {
-        update_fpscr(env, GETPC());
-    } else {
-        env->sr_t = (relation == float_relation_greater);
-    }
+    update_fpscr(env, GETPC());
+    return relation == float_relation_greater;
 }
 
 float64 helper_fcnvsd_FT_DT(CPUSH4State *env, float32 t0)
@@ -396,11 +390,6 @@ float64 helper_fmul_DT(CPUSH4State *env, float64 t0, float64 t1)
     return t0;
 }
 
-float32 helper_fneg_T(float32 t0)
-{
-    return float32_chs(t0);
-}
-
 float32 helper_fsqrt_FT(CPUSH4State *env, float32 t0)
 {
     set_float_exception_flags(0, &env->fp_status);
@@ -413,6 +402,22 @@ float64 helper_fsqrt_DT(CPUSH4State *env, float64 t0)
 {
     set_float_exception_flags(0, &env->fp_status);
     t0 = float64_sqrt(t0, &env->fp_status);
+    update_fpscr(env, GETPC());
+    return t0;
+}
+
+float32 helper_fsrra_FT(CPUSH4State *env, float32 t0)
+{
+    set_float_exception_flags(0, &env->fp_status);
+    /* "Approximate" 1/sqrt(x) via actual computation.  */
+    t0 = float32_sqrt(t0, &env->fp_status);
+    t0 = float32_div(float32_one, t0, &env->fp_status);
+    /* Since this is supposed to be an approximation, an imprecision
+       exception is required.  One supposes this also follows the usual
+       IEEE rule that other exceptions take precidence.  */
+    if (get_float_exception_flags(&env->fp_status) == 0) {
+        set_float_exception_flags(float_flag_inexact, &env->fp_status);
+    }
     update_fpscr(env, GETPC());
     return t0;
 }

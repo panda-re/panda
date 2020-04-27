@@ -28,7 +28,6 @@
 #include "hw/hw.h"
 #include "hw/sysbus.h"
 #include "hw/boards.h"
-#include "sysemu/char.h"
 #include "qemu/log.h"
 #include "qapi/error.h"
 #include "hw/xen/xen_backend.h"
@@ -43,8 +42,6 @@ BusState *xen_sysbus;
 /* ------------------------------------------------------------- */
 
 /* public */
-xc_interface *xen_xc = NULL;
-xenforeignmemory_handle *xen_fmem = NULL;
 struct xs_handle *xenstore = NULL;
 const char *xen_protocol;
 
@@ -149,7 +146,7 @@ static struct XenDevice *xen_be_get_xendev(const char *type, int dom, int dev,
         qdev_unplug(DEVICE(xendev), NULL);
         return NULL;
     }
-    fcntl(xenevtchn_fd(xendev->evtchndev), F_SETFD, FD_CLOEXEC);
+    qemu_set_cloexec(xenevtchn_fd(xendev->evtchndev));
 
     if (ops->flags & DEVOPS_FLAG_NEED_GNTDEV) {
         xendev->gnttabdev = xengnttab_open(NULL, 0);
@@ -585,6 +582,9 @@ void xen_be_register_common(void)
     xen_be_register("console", &xen_console_ops);
     xen_be_register("vkbd", &xen_kbdmouse_ops);
     xen_be_register("qdisk", &xen_blkdev_ops);
+#ifdef CONFIG_VIRTFS
+    xen_be_register("9pfs", &xen_9pfs_ops);
+#endif
 #ifdef CONFIG_USB_LIBUSB
     xen_be_register("qusb", &xen_usb_ops);
 #endif
@@ -618,6 +618,8 @@ static void xendev_class_init(ObjectClass *klass, void *data)
 
     dc->props = xendev_properties;
     set_bit(DEVICE_CATEGORY_MISC, dc->categories);
+    /* xen-backend devices can be plugged/unplugged dynamically */
+    dc->user_creatable = true;
 }
 
 static const TypeInfo xendev_type_info = {

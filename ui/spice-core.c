@@ -30,12 +30,11 @@
 #include "qemu-x509.h"
 #include "qemu/sockets.h"
 #include "qmp-commands.h"
-#include "qapi/qmp/qint.h"
 #include "qapi/qmp/qbool.h"
 #include "qapi/qmp/qstring.h"
 #include "qapi/qmp/qjson.h"
 #include "qemu/notify.h"
-#include "migration/migration.h"
+#include "migration/misc.h"
 #include "hw/hw.h"
 #include "ui/spice-display.h"
 #include "qapi-event.h"
@@ -847,6 +846,7 @@ void qemu_spice_init(void)
             exit(1);
         }
         display_opengl = 1;
+        spice_opengl = 1;
     }
 #endif
 }

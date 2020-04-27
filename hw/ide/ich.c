@@ -69,7 +69,7 @@
 #include "sysemu/block-backend.h"
 #include "sysemu/dma.h"
 #include "hw/ide/pci.h"
-#include "hw/ide/ahci.h"
+#include "hw/ide/ahci_internal.h"
 
 #define ICH9_MSI_CAP_OFFSET     0x80
 #define ICH9_SATA_CAP_OFFSET    0xA8
@@ -130,7 +130,7 @@ static void pci_ich9_ahci_realize(PCIDevice *dev, Error **errp)
     pci_register_bar(dev, ICH9_MEM_BAR, PCI_BASE_ADDRESS_SPACE_MEMORY,
                      &d->ahci.mem);
 
-    sata_cap_offset = pci_add_capability2(dev, PCI_CAP_ID_SATA,
+    sata_cap_offset = pci_add_capability(dev, PCI_CAP_ID_SATA,
                                           ICH9_SATA_CAP_OFFSET, SATA_CAP_SIZE,
                                           errp);
     if (sata_cap_offset < 0) {

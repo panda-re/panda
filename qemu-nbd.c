@@ -17,6 +17,10 @@
  */
 
 #include "qemu/osdep.h"
+#include <getopt.h>
+#include <libgen.h>
+#include <pthread.h>
+
 #include "qapi/error.h"
 #include "qemu-common.h"
 #include "qemu/cutils.h"
@@ -36,10 +40,7 @@
 #include "io/channel-socket.h"
 #include "crypto/init.h"
 #include "trace/control.h"
-
-#include <getopt.h>
-#include <libgen.h>
-#include <pthread.h>
+#include "qemu-version.h"
 
 #define SOCKET_PATH                "/var/lock/panda-nbd-%s"
 #define QEMU_NBD_OPT_CACHE         256
@@ -122,17 +123,17 @@ static void usage(const char *name)
 "      --detect-zeroes=MODE  set detect-zeroes mode (off, on, unmap)\n"
 "      --image-opts          treat FILE as a full set of image options\n"
 "\n"
-"Report bugs to <qemu-devel@nongnu.org>\n"
+QEMU_HELP_BOTTOM "\n"
     , name, NBD_DEFAULT_PORT, "DEVICE");
 }
 
 static void version(const char *name)
 {
     printf(
-"%s version 0.0.1\n"
+"%s " QEMU_VERSION QEMU_PKGVERSION "\n"
 "Written by Anthony Liguori.\n"
 "\n"
-"Copyright (C) 2006 Anthony Liguori <anthony@codemonkey.ws>.\n"
+QEMU_COPYRIGHT "\n"
 "This is free software; see the source for copying conditions.  There is NO\n"
 "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n"
     , name);
@@ -255,8 +256,7 @@ static void *show_parts(void *arg)
 static void *nbd_client_thread(void *arg)
 {
     char *device = arg;
-    off_t size;
-    uint16_t nbdflags;
+    NBDExportInfo info = { .request_sizes = false, };
     QIOChannelSocket *sioc;
     int fd;
     int ret;
@@ -271,9 +271,8 @@ static void *nbd_client_thread(void *arg)
         goto out;
     }
 
-    ret = nbd_receive_negotiate(QIO_CHANNEL(sioc), NULL, &nbdflags,
-                                NULL, NULL, NULL,
-                                &size, &local_error);
+    ret = nbd_receive_negotiate(QIO_CHANNEL(sioc), NULL,
+                                NULL, NULL, NULL, &info, &local_error);
     if (ret < 0) {
         if (local_error) {
             error_report_err(local_error);
@@ -288,8 +287,9 @@ static void *nbd_client_thread(void *arg)
         goto out_socket;
     }
 
-    ret = nbd_init(fd, sioc, nbdflags, size);
+    ret = nbd_init(fd, sioc, &info, &local_error);
     if (ret < 0) {
+        error_report_err(local_error);
         goto out_fd;
     }
 
@@ -395,13 +395,12 @@ static SocketAddress *nbd_build_socket_address(const char *sockpath,
 
     saddr = g_new0(SocketAddress, 1);
     if (sockpath) {
-        saddr->type = SOCKET_ADDRESS_KIND_UNIX;
-        saddr->u.q_unix.data = g_new0(UnixSocketAddress, 1);
-        saddr->u.q_unix.data->path = g_strdup(sockpath);
+        saddr->type = SOCKET_ADDRESS_TYPE_UNIX;
+        saddr->u.q_unix.path = g_strdup(sockpath);
     } else {
         InetSocketAddress *inet;
-        saddr->type = SOCKET_ADDRESS_KIND_INET;
-        inet = saddr->u.inet.data = g_new0(InetSocketAddress, 1);
+        saddr->type = SOCKET_ADDRESS_TYPE_INET;
+        inet = &saddr->u.inet;
         inet->host = g_strdup(bindto);
         if (port) {
             inet->port = g_strdup(port);

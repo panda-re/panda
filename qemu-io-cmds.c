@@ -451,13 +451,13 @@ fail:
 }
 
 static int do_pread(BlockBackend *blk, char *buf, int64_t offset,
-                    int64_t count, int64_t *total)
+                    int64_t bytes, int64_t *total)
 {
-    if (count > INT_MAX) {
+    if (bytes > INT_MAX) {
         return -ERANGE;
     }
 
-    *total = blk_pread(blk, offset, (uint8_t *)buf, count);
+    *total = blk_pread(blk, offset, (uint8_t *)buf, bytes);
     if (*total < 0) {
         return *total;
     }
@@ -465,13 +465,13 @@ static int do_pread(BlockBackend *blk, char *buf, int64_t offset,
 }
 
 static int do_pwrite(BlockBackend *blk, char *buf, int64_t offset,
-                     int64_t count, int flags, int64_t *total)
+                     int64_t bytes, int flags, int64_t *total)
 {
-    if (count > INT_MAX) {
+    if (bytes > INT_MAX) {
         return -ERANGE;
     }
 
-    *total = blk_pwrite(blk, offset, (uint8_t *)buf, count, flags);
+    *total = blk_pwrite(blk, offset, (uint8_t *)buf, bytes, flags);
     if (*total < 0) {
         return *total;
     }
@@ -481,7 +481,7 @@ static int do_pwrite(BlockBackend *blk, char *buf, int64_t offset,
 typedef struct {
     BlockBackend *blk;
     int64_t offset;
-    int64_t count;
+    int64_t bytes;
     int64_t *total;
     int flags;
     int ret;
@@ -492,7 +492,7 @@ static void coroutine_fn co_pwrite_zeroes_entry(void *opaque)
 {
     CoWriteZeroes *data = opaque;
 
-    data->ret = blk_co_pwrite_zeroes(data->blk, data->offset, data->count,
+    data->ret = blk_co_pwrite_zeroes(data->blk, data->offset, data->bytes,
                                      data->flags);
     data->done = true;
     if (data->ret < 0) {
@@ -500,23 +500,23 @@ static void coroutine_fn co_pwrite_zeroes_entry(void *opaque)
         return;
     }
 
-    *data->total = data->count;
+    *data->total = data->bytes;
 }
 
 static int do_co_pwrite_zeroes(BlockBackend *blk, int64_t offset,
-                               int64_t count, int flags, int64_t *total)
+                               int64_t bytes, int flags, int64_t *total)
 {
     Coroutine *co;
     CoWriteZeroes data = {
         .blk    = blk,
         .offset = offset,
-        .count  = count,
+        .bytes  = bytes,
         .total  = total,
         .flags  = flags,
         .done   = false,
     };
 
-    if (count > INT_MAX) {
+    if (bytes > INT_MAX) {
         return -ERANGE;
     }
 
@@ -533,19 +533,19 @@ static int do_co_pwrite_zeroes(BlockBackend *blk, int64_t offset,
 }
 
 static int do_write_compressed(BlockBackend *blk, char *buf, int64_t offset,
-                               int64_t count, int64_t *total)
+                               int64_t bytes, int64_t *total)
 {
     int ret;
 
-    if (count >> 9 > BDRV_REQUEST_MAX_SECTORS) {
+    if (bytes >> 9 > BDRV_REQUEST_MAX_SECTORS) {
         return -ERANGE;
     }
 
-    ret = blk_pwrite_compressed(blk, offset, buf, count);
+    ret = blk_pwrite_compressed(blk, offset, buf, bytes);
     if (ret < 0) {
         return ret;
     }
-    *total = count;
+    *total = bytes;
     return 1;
 }
 
@@ -740,13 +740,13 @@ static int read_f(BlockBackend *blk, int argc, char **argv)
     }
 
     if (bflag) {
-        if (offset & 0x1ff) {
-            printf("offset %" PRId64 " is not sector aligned\n",
+        if (!QEMU_IS_ALIGNED(offset, BDRV_SECTOR_SIZE)) {
+            printf("%" PRId64 " is not a sector-aligned value for 'offset'\n",
                    offset);
             return 0;
         }
-        if (count & 0x1ff) {
-            printf("count %"PRId64" is not sector aligned\n",
+        if (!QEMU_IS_ALIGNED(count, BDRV_SECTOR_SIZE)) {
+            printf("%"PRId64" is not a sector-aligned value for 'count'\n",
                    count);
             return 0;
         }
@@ -1050,14 +1050,14 @@ static int write_f(BlockBackend *blk, int argc, char **argv)
     }
 
     if (bflag || cflag) {
-        if (offset & 0x1ff) {
-            printf("offset %" PRId64 " is not sector aligned\n",
+        if (!QEMU_IS_ALIGNED(offset, BDRV_SECTOR_SIZE)) {
+            printf("%" PRId64 " is not a sector-aligned value for 'offset'\n",
                    offset);
             return 0;
         }
 
-        if (count & 0x1ff) {
-            printf("count %"PRId64" is not sector aligned\n",
+        if (!QEMU_IS_ALIGNED(count, BDRV_SECTOR_SIZE)) {
+            printf("%"PRId64" is not a sector-aligned value for 'count'\n",
                    count);
             return 0;
         }
@@ -1577,7 +1577,7 @@ static int truncate_f(BlockBackend *blk, int argc, char **argv)
         return 0;
     }
 
-    ret = blk_truncate(blk, offset, &local_err);
+    ret = blk_truncate(blk, offset, PREALLOC_MODE_OFF, &local_err);
     if (ret < 0) {
         error_report_err(local_err);
         return 0;
@@ -1701,7 +1701,7 @@ static int discard_f(BlockBackend *blk, int argc, char **argv)
     struct timeval t1, t2;
     bool Cflag = false, qflag = false;
     int c, ret;
-    int64_t offset, count;
+    int64_t offset, bytes;
 
     while ((c = getopt(argc, argv, "Cq")) != -1) {
         switch (c) {
@@ -1727,11 +1727,11 @@ static int discard_f(BlockBackend *blk, int argc, char **argv)
     }
 
     optind++;
-    count = cvtnum(argv[optind]);
-    if (count < 0) {
-        print_cvtnum_err(count, argv[optind]);
+    bytes = cvtnum(argv[optind]);
+    if (bytes < 0) {
+        print_cvtnum_err(bytes, argv[optind]);
         return 0;
-    } else if (count >> BDRV_SECTOR_BITS > BDRV_REQUEST_MAX_SECTORS) {
+    } else if (bytes >> BDRV_SECTOR_BITS > BDRV_REQUEST_MAX_SECTORS) {
         printf("length cannot exceed %"PRIu64", given %s\n",
                (uint64_t)BDRV_REQUEST_MAX_SECTORS << BDRV_SECTOR_BITS,
                argv[optind]);
@@ -1739,7 +1739,7 @@ static int discard_f(BlockBackend *blk, int argc, char **argv)
     }
 
     gettimeofday(&t1, NULL);
-    ret = blk_pdiscard(blk, offset, count);
+    ret = blk_pdiscard(blk, offset, bytes);
     gettimeofday(&t2, NULL);
 
     if (ret < 0) {
@@ -1750,7 +1750,7 @@ static int discard_f(BlockBackend *blk, int argc, char **argv)
     /* Finally, report back -- -C gives a parsable format */
     if (!qflag) {
         t2 = tsub(t2, t1);
-        print_report("discard", &t2, offset, count, count, 1, Cflag);
+        print_report("discard", &t2, offset, bytes, bytes, 1, Cflag);
     }
 
 out:
@@ -1760,59 +1760,63 @@ out:
 static int alloc_f(BlockBackend *blk, int argc, char **argv)
 {
     BlockDriverState *bs = blk_bs(blk);
-    int64_t offset, sector_num, nb_sectors, remaining;
+    int64_t offset, start, remaining, count;
     char s1[64];
-    int num, ret;
-    int64_t sum_alloc;
+    int ret;
+    int64_t num, sum_alloc;
 
-    offset = cvtnum(argv[1]);
+    start = offset = cvtnum(argv[1]);
     if (offset < 0) {
         print_cvtnum_err(offset, argv[1]);
         return 0;
-    } else if (offset & 0x1ff) {
-        printf("offset %" PRId64 " is not sector aligned\n",
+    } else if (!QEMU_IS_ALIGNED(offset, BDRV_SECTOR_SIZE)) {
+        printf("%" PRId64 " is not a sector-aligned value for 'offset'\n",
                offset);
         return 0;
     }
 
     if (argc == 3) {
-        nb_sectors = cvtnum(argv[2]);
-        if (nb_sectors < 0) {
-            print_cvtnum_err(nb_sectors, argv[2]);
+        count = cvtnum(argv[2]);
+        if (count < 0) {
+            print_cvtnum_err(count, argv[2]);
             return 0;
-        } else if (nb_sectors > INT_MAX) {
-            printf("length argument cannot exceed %d, given %s\n",
-                   INT_MAX, argv[2]);
+        } else if (count > INT_MAX * BDRV_SECTOR_SIZE) {
+            printf("length argument cannot exceed %llu, given %s\n",
+                   INT_MAX * BDRV_SECTOR_SIZE, argv[2]);
             return 0;
         }
     } else {
-        nb_sectors = 1;
+        count = BDRV_SECTOR_SIZE;
+    }
+    if (!QEMU_IS_ALIGNED(count, BDRV_SECTOR_SIZE)) {
+        printf("%" PRId64 " is not a sector-aligned value for 'count'\n",
+               count);
+        return 0;
     }
 
-    remaining = nb_sectors;
+    remaining = count;
     sum_alloc = 0;
-    sector_num = offset >> 9;
     while (remaining) {
-        ret = bdrv_is_allocated(bs, sector_num, remaining, &num);
+        ret = bdrv_is_allocated(bs, offset, remaining, &num);
         if (ret < 0) {
             printf("is_allocated failed: %s\n", strerror(-ret));
             return 0;
         }
-        sector_num += num;
+        offset += num;
         remaining -= num;
         if (ret) {
             sum_alloc += num;
         }
         if (num == 0) {
-            nb_sectors -= remaining;
+            count -= remaining;
             remaining = 0;
         }
     }
 
-    cvtstr(offset, s1, sizeof(s1));
+    cvtstr(start, s1, sizeof(s1));
 
-    printf("%"PRId64"/%"PRId64" sectors allocated at offset %s\n",
-           sum_alloc, nb_sectors, s1);
+    printf("%"PRId64"/%"PRId64" bytes allocated at offset %s\n",
+           sum_alloc, count, s1);
     return 0;
 }
 
@@ -1822,19 +1826,20 @@ static const cmdinfo_t alloc_cmd = {
     .argmin     = 1,
     .argmax     = 2,
     .cfunc      = alloc_f,
-    .args       = "off [sectors]",
-    .oneline    = "checks if a sector is present in the file",
+    .args       = "offset [count]",
+    .oneline    = "checks if offset is allocated in the file",
 };
 
 
-static int map_is_allocated(BlockDriverState *bs, int64_t sector_num,
-                            int64_t nb_sectors, int64_t *pnum)
+static int map_is_allocated(BlockDriverState *bs, int64_t offset,
+                            int64_t bytes, int64_t *pnum)
 {
-    int num, num_checked;
+    int64_t num;
+    int num_checked;
     int ret, firstret;
 
-    num_checked = MIN(nb_sectors, INT_MAX);
-    ret = bdrv_is_allocated(bs, sector_num, num_checked, &num);
+    num_checked = MIN(bytes, BDRV_REQUEST_MAX_BYTES);
+    ret = bdrv_is_allocated(bs, offset, num_checked, &num);
     if (ret < 0) {
         return ret;
     }
@@ -1842,12 +1847,12 @@ static int map_is_allocated(BlockDriverState *bs, int64_t sector_num,
     firstret = ret;
     *pnum = num;
 
-    while (nb_sectors > 0 && ret == firstret) {
-        sector_num += num;
-        nb_sectors -= num;
+    while (bytes > 0 && ret == firstret) {
+        offset += num;
+        bytes -= num;
 
-        num_checked = MIN(nb_sectors, INT_MAX);
-        ret = bdrv_is_allocated(bs, sector_num, num_checked, &num);
+        num_checked = MIN(bytes, BDRV_REQUEST_MAX_BYTES);
+        ret = bdrv_is_allocated(bs, offset, num_checked, &num);
         if (ret == firstret && num) {
             *pnum += num;
         } else {
@@ -1860,25 +1865,21 @@ static int map_is_allocated(BlockDriverState *bs, int64_t sector_num,
 
 static int map_f(BlockBackend *blk, int argc, char **argv)
 {
-    int64_t offset;
-    int64_t nb_sectors, total_sectors;
-    char s1[64];
+    int64_t offset, bytes;
+    char s1[64], s2[64];
     int64_t num;
     int ret;
     const char *retstr;
 
     offset = 0;
-    total_sectors = blk_nb_sectors(blk);
-    if (total_sectors < 0) {
-        error_report("Failed to query image length: %s",
-                     strerror(-total_sectors));
+    bytes = blk_getlength(blk);
+    if (bytes < 0) {
+        error_report("Failed to query image length: %s", strerror(-bytes));
         return 0;
     }
 
-    nb_sectors = total_sectors;
-
-    do {
-        ret = map_is_allocated(blk_bs(blk), offset, nb_sectors, &num);
+    while (bytes) {
+        ret = map_is_allocated(blk_bs(blk), offset, bytes, &num);
         if (ret < 0) {
             error_report("Failed to get allocation status: %s", strerror(-ret));
             return 0;
@@ -1888,14 +1889,14 @@ static int map_f(BlockBackend *blk, int argc, char **argv)
         }
 
         retstr = ret ? "    allocated" : "not allocated";
-        cvtstr(offset << 9ULL, s1, sizeof(s1));
-        printf("[% 24" PRId64 "] % 8" PRId64 "/% 8" PRId64 " sectors %s "
-               "at offset %s (%d)\n",
-               offset << 9ULL, num, nb_sectors, retstr, s1, ret);
+        cvtstr(num, s1, sizeof(s1));
+        cvtstr(offset, s2, sizeof(s2));
+        printf("%s (0x%" PRIx64 ") bytes %s at offset %s (0x%" PRIx64 ")\n",
+               s1, num, retstr, s2, offset);
 
         offset += num;
-        nb_sectors -= num;
-    } while (offset < total_sectors);
+        bytes -= num;
+    }
 
     return 0;
 }
@@ -1919,6 +1920,7 @@ static void reopen_help(void)
 " 'reopen -o lazy-refcounts=on' - activates lazy refcount writeback on a qcow2 image\n"
 "\n"
 " -r, -- Reopen the image read-only\n"
+" -w, -- Reopen the image read-write\n"
 " -c, -- Change the cache mode to the given value\n"
 " -o, -- Changes block driver options (cf. 'open' command)\n"
 "\n");
@@ -1941,7 +1943,7 @@ static const cmdinfo_t reopen_cmd = {
        .argmin         = 0,
        .argmax         = -1,
        .cfunc          = reopen_f,
-       .args           = "[-r] [-c cache] [-o options]",
+       .args           = "[(-r|-w)] [-c cache] [-o options]",
        .oneline        = "reopens an image with new options",
        .help           = reopen_help,
 };
@@ -1954,11 +1956,12 @@ static int reopen_f(BlockBackend *blk, int argc, char **argv)
     int c;
     int flags = bs->open_flags;
     bool writethrough = !blk_enable_write_cache(blk);
+    bool has_rw_option = false;
 
     BlockReopenQueue *brq;
     Error *local_err = NULL;
 
-    while ((c = getopt(argc, argv, "c:o:r")) != -1) {
+    while ((c = getopt(argc, argv, "c:o:rw")) != -1) {
         switch (c) {
         case 'c':
             if (bdrv_parse_cache_mode(optarg, &flags, &writethrough) < 0) {
@@ -1973,7 +1976,20 @@ static int reopen_f(BlockBackend *blk, int argc, char **argv)
             }
             break;
         case 'r':
+            if (has_rw_option) {
+                error_report("Only one -r/-w option may be given");
+                return 0;
+            }
             flags &= ~BDRV_O_RDWR;
+            has_rw_option = true;
+            break;
+        case 'w':
+            if (has_rw_option) {
+                error_report("Only one -r/-w option may be given");
+                return 0;
+            }
+            flags |= BDRV_O_RDWR;
+            has_rw_option = true;
             break;
         default:
             qemu_opts_reset(&reopen_opts);

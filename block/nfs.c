@@ -1,7 +1,7 @@
 /*
  * QEMU Block driver for native access to files on NFS shares
  *
- * Copyright (c) 2014-2016 Peter Lieven <pl@kamp.de>
+ * Copyright (c) 2014-2017 Peter Lieven <pl@kamp.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,6 @@
 #include "qemu/cutils.h"
 #include "sysemu/sysemu.h"
 #include "qapi/qmp/qdict.h"
-#include "qapi/qmp/qint.h"
 #include "qapi/qmp/qstring.h"
 #include "qapi-visit.h"
 #include "qapi/qobject-input-visitor.h"
@@ -495,9 +494,9 @@ out:
 
 
 static int64_t nfs_client_open(NFSClient *client, QDict *options,
-                               int flags, Error **errp, int open_flags)
+                               int flags, int open_flags, Error **errp)
 {
-    int ret = -EINVAL;
+    int64_t ret = -EINVAL;
     QemuOpts *opts = NULL;
     Error *local_err = NULL;
     struct stat st;
@@ -564,8 +563,8 @@ static int64_t nfs_client_open(NFSClient *client, QDict *options,
         }
         client->readahead = qemu_opt_get_number(opts, "readahead-size", 0);
         if (client->readahead > QEMU_NFS_MAX_READAHEAD_SIZE) {
-            error_report("NFS Warning: Truncating NFS readahead "
-                         "size to %d", QEMU_NFS_MAX_READAHEAD_SIZE);
+            warn_report("Truncating NFS readahead size to %d",
+                        QEMU_NFS_MAX_READAHEAD_SIZE);
             client->readahead = QEMU_NFS_MAX_READAHEAD_SIZE;
         }
         nfs_set_readahead(client->context, client->readahead);
@@ -585,8 +584,8 @@ static int64_t nfs_client_open(NFSClient *client, QDict *options,
         }
         client->pagecache = qemu_opt_get_number(opts, "page-cache-size", 0);
         if (client->pagecache > QEMU_NFS_MAX_PAGECACHE_SIZE) {
-            error_report("NFS Warning: Truncating NFS pagecache "
-                         "size to %d pages", QEMU_NFS_MAX_PAGECACHE_SIZE);
+            warn_report("Truncating NFS pagecache size to %d pages",
+                        QEMU_NFS_MAX_PAGECACHE_SIZE);
             client->pagecache = QEMU_NFS_MAX_PAGECACHE_SIZE;
         }
         nfs_set_pagecache(client->context, client->pagecache);
@@ -601,8 +600,8 @@ static int64_t nfs_client_open(NFSClient *client, QDict *options,
         /* limit the maximum debug level to avoid potential flooding
          * of our log files. */
         if (client->debug > QEMU_NFS_MAX_DEBUG_LEVEL) {
-            error_report("NFS Warning: Limiting NFS debug level "
-                         "to %d", QEMU_NFS_MAX_DEBUG_LEVEL);
+            warn_report("Limiting NFS debug level to %d",
+                        QEMU_NFS_MAX_DEBUG_LEVEL);
             client->debug = QEMU_NFS_MAX_DEBUG_LEVEL;
         }
         nfs_set_debug(client->context, client->debug);
@@ -662,7 +661,7 @@ static int nfs_file_open(BlockDriverState *bs, QDict *options, int flags,
 
     ret = nfs_client_open(client, options,
                           (flags & BDRV_O_RDWR) ? O_RDWR : O_RDONLY,
-                          errp, bs->open_flags);
+                          bs->open_flags, errp);
     if (ret < 0) {
         return ret;
     }
@@ -687,8 +686,7 @@ static QemuOptsList nfs_create_opts = {
 
 static int nfs_file_create(const char *url, QemuOpts *opts, Error **errp)
 {
-    int ret = 0;
-    int64_t total_size = 0;
+    int64_t ret, total_size;
     NFSClient *client = g_new0(NFSClient, 1);
     QDict *options = NULL;
 
@@ -704,7 +702,7 @@ static int nfs_file_create(const char *url, QemuOpts *opts, Error **errp)
         goto out;
     }
 
-    ret = nfs_client_open(client, options, O_CREAT, errp, 0);
+    ret = nfs_client_open(client, options, O_CREAT, 0, errp);
     if (ret < 0) {
         goto out;
     }
@@ -735,7 +733,9 @@ nfs_get_allocated_file_size_cb(int ret, struct nfs_context *nfs, void *data,
     if (task->ret < 0) {
         error_report("NFS Error: %s", nfs_get_error(nfs));
     }
-    task->complete = 1;
+
+    /* Set task->complete before reading bs->wakeup.  */
+    atomic_mb_set(&task->complete, 1);
     bdrv_wakeup(task->bs);
 }
 
@@ -763,10 +763,25 @@ static int64_t nfs_get_allocated_file_size(BlockDriverState *bs)
     return (task.ret < 0 ? task.ret : st.st_blocks * 512);
 }
 
-static int nfs_file_truncate(BlockDriverState *bs, int64_t offset)
+static int nfs_file_truncate(BlockDriverState *bs, int64_t offset,
+                             PreallocMode prealloc, Error **errp)
 {
     NFSClient *client = bs->opaque;
-    return nfs_ftruncate(client->context, client->fh, offset);
+    int ret;
+
+    if (prealloc != PREALLOC_MODE_OFF) {
+        error_setg(errp, "Unsupported preallocation mode '%s'",
+                   PreallocMode_lookup[prealloc]);
+        return -ENOTSUP;
+    }
+
+    ret = nfs_ftruncate(client->context, client->fh, offset);
+    if (ret < 0) {
+        error_setg_errno(errp, -ret, "Failed to truncate file");
+        return ret;
+    }
+
+    return 0;
 }
 
 /* Note that this will not re-establish a connection with the NFS server

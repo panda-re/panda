@@ -70,7 +70,7 @@ typedef struct ScsiMbr {
     uint8_t magic[4];
     uint32_t version_id;
     uint8_t reserved[8];
-    ScsiBlockPtr blockptr;
+    ScsiBlockPtr blockptr[];
 } __attribute__ ((packed)) ScsiMbr;
 
 #define ZIPL_MAGIC              "zIPL"
@@ -264,28 +264,6 @@ typedef enum {
 
 /* utility code below */
 
-static const unsigned char ebc2asc[256] =
-      /* 0123456789abcdef0123456789abcdef */
-        "................................" /* 1F */
-        "................................" /* 3F */
-        " ...........<(+|&.........!$*);." /* 5F first.chr.here.is.real.space */
-        "-/.........,%_>?.........`:#@'=\""/* 7F */
-        ".abcdefghi.......jklmnopqr......" /* 9F */
-        "..stuvwxyz......................" /* BF */
-        ".ABCDEFGHI.......JKLMNOPQR......" /* DF */
-        "..STUVWXYZ......0123456789......";/* FF */
-
-static inline void ebcdic_to_ascii(const char *src,
-                                   char *dst,
-                                   unsigned int size)
-{
-    unsigned int i;
-    for (i = 0; i < size; i++) {
-        unsigned c = src[i];
-        dst[i] = ebc2asc[c];
-    }
-}
-
 static inline void print_volser(const void *volser)
 {
     char ascii[8];
@@ -344,32 +322,6 @@ static inline int _memcmp(const void *s1, const void *s2, size_t n)
     }
 
     return 0;
-}
-
-/* from include/qemu/bswap.h */
-
-/* El Torito is always little-endian */
-static inline uint16_t bswap16(uint16_t x)
-{
-    return ((x & 0x00ff) << 8) | ((x & 0xff00) >> 8);
-}
-
-static inline uint32_t bswap32(uint32_t x)
-{
-    return ((x & 0x000000ffU) << 24) | ((x & 0x0000ff00U) <<  8) |
-           ((x & 0x00ff0000U) >>  8) | ((x & 0xff000000U) >> 24);
-}
-
-static inline uint64_t bswap64(uint64_t x)
-{
-    return ((x & 0x00000000000000ffULL) << 56) |
-           ((x & 0x000000000000ff00ULL) << 40) |
-           ((x & 0x0000000000ff0000ULL) << 24) |
-           ((x & 0x00000000ff000000ULL) <<  8) |
-           ((x & 0x000000ff00000000ULL) >>  8) |
-           ((x & 0x0000ff0000000000ULL) >> 24) |
-           ((x & 0x00ff000000000000ULL) >> 40) |
-           ((x & 0xff00000000000000ULL) >> 56);
 }
 
 static inline uint32_t iso_733_to_u32(uint64_t x)

@@ -49,7 +49,7 @@
  * Again, all this is handled internally and is mostly transparent to
  * the outside. The 'throttle_timers' field however has an additional
  * constraint because it may be temporarily invalid (see for example
- * bdrv_set_aio_context()). Therefore in this file a thread will
+ * blk_set_aio_context()). Therefore in this file a thread will
  * access some other BlockBackend's timers only after verifying that
  * that BlockBackend has throttled requests in the queue.
  */
@@ -61,6 +61,7 @@ typedef struct ThrottleGroup {
     QLIST_HEAD(, BlockBackendPublic) head;
     BlockBackend *tokens[2];
     bool any_timer_armed[2];
+    QEMUClockType clock_type;
 
     /* These two are protected by the global throttle_groups_lock */
     unsigned refcount;
@@ -98,6 +99,12 @@ ThrottleState *throttle_group_incref(const char *name)
     if (!tg) {
         tg = g_new0(ThrottleGroup, 1);
         tg->name = g_strdup(name);
+        tg->clock_type = QEMU_CLOCK_REALTIME;
+
+        if (qtest_enabled()) {
+            /* For testing block IO throttling only */
+            tg->clock_type = QEMU_CLOCK_VIRTUAL;
+        }
         qemu_mutex_init(&tg->lock);
         throttle_init(&tg->ts);
         QLIST_INIT(&tg->head);
@@ -240,7 +247,7 @@ static bool throttle_group_schedule_timer(BlockBackend *blk, bool is_write)
     ThrottleGroup *tg = container_of(ts, ThrottleGroup, ts);
     bool must_wait;
 
-    if (blkp->io_limits_disabled) {
+    if (atomic_read(&blkp->io_limits_disabled)) {
         return false;
     }
 
@@ -258,6 +265,25 @@ static bool throttle_group_schedule_timer(BlockBackend *blk, bool is_write)
     }
 
     return must_wait;
+}
+
+/* Start the next pending I/O request for a BlockBackend.  Return whether
+ * any request was actually pending.
+ *
+ * @blk:       the current BlockBackend
+ * @is_write:  the type of operation (read/write)
+ */
+static bool coroutine_fn throttle_group_co_restart_queue(BlockBackend *blk,
+                                                         bool is_write)
+{
+    BlockBackendPublic *blkp = blk_get_public(blk);
+    bool ret;
+
+    qemu_co_mutex_lock(&blkp->throttled_reqs_lock);
+    ret = qemu_co_queue_next(&blkp->throttled_reqs[is_write]);
+    qemu_co_mutex_unlock(&blkp->throttled_reqs_lock);
+
+    return ret;
 }
 
 /* Look for the next pending I/O request and schedule it.
@@ -287,12 +313,12 @@ static void schedule_next_request(BlockBackend *blk, bool is_write)
     if (!must_wait) {
         /* Give preference to requests from the current blk */
         if (qemu_in_coroutine() &&
-            qemu_co_queue_next(&blkp->throttled_reqs[is_write])) {
+            throttle_group_co_restart_queue(blk, is_write)) {
             token = blk;
         } else {
             ThrottleTimers *tt = &blk_get_public(token)->throttle_timers;
-            int64_t now = qemu_clock_get_ns(tt->clock_type);
-            timer_mod(tt->timers[is_write], now + 1);
+            int64_t now = qemu_clock_get_ns(tg->clock_type);
+            timer_mod(tt->timers[is_write], now);
             tg->any_timer_armed[is_write] = true;
         }
         tg->tokens[is_write] = token;
@@ -326,7 +352,10 @@ void coroutine_fn throttle_group_co_io_limits_intercept(BlockBackend *blk,
     if (must_wait || blkp->pending_reqs[is_write]) {
         blkp->pending_reqs[is_write]++;
         qemu_mutex_unlock(&tg->lock);
-        qemu_co_queue_wait(&blkp->throttled_reqs[is_write], NULL);
+        qemu_co_mutex_lock(&blkp->throttled_reqs_lock);
+        qemu_co_queue_wait(&blkp->throttled_reqs[is_write],
+                           &blkp->throttled_reqs_lock);
+        qemu_co_mutex_unlock(&blkp->throttled_reqs_lock);
         qemu_mutex_lock(&tg->lock);
         blkp->pending_reqs[is_write]--;
     }
@@ -340,15 +369,52 @@ void coroutine_fn throttle_group_co_io_limits_intercept(BlockBackend *blk,
     qemu_mutex_unlock(&tg->lock);
 }
 
+typedef struct {
+    BlockBackend *blk;
+    bool is_write;
+} RestartData;
+
+static void coroutine_fn throttle_group_restart_queue_entry(void *opaque)
+{
+    RestartData *data = opaque;
+    BlockBackend *blk = data->blk;
+    bool is_write = data->is_write;
+    BlockBackendPublic *blkp = blk_get_public(blk);
+    ThrottleGroup *tg = container_of(blkp->throttle_state, ThrottleGroup, ts);
+    bool empty_queue;
+
+    empty_queue = !throttle_group_co_restart_queue(blk, is_write);
+
+    /* If the request queue was empty then we have to take care of
+     * scheduling the next one */
+    if (empty_queue) {
+        qemu_mutex_lock(&tg->lock);
+        schedule_next_request(blk, is_write);
+        qemu_mutex_unlock(&tg->lock);
+    }
+
+    g_free(data);
+}
+
+static void throttle_group_restart_queue(BlockBackend *blk, bool is_write)
+{
+    Coroutine *co;
+    RestartData *rd = g_new0(RestartData, 1);
+
+    rd->blk = blk;
+    rd->is_write = is_write;
+
+    co = qemu_coroutine_create(throttle_group_restart_queue_entry, rd);
+    aio_co_enter(blk_get_aio_context(blk), co);
+}
+
 void throttle_group_restart_blk(BlockBackend *blk)
 {
     BlockBackendPublic *blkp = blk_get_public(blk);
-    int i;
 
-    for (i = 0; i < 2; i++) {
-        while (qemu_co_enter_next(&blkp->throttled_reqs[i])) {
-            ;
-        }
+    if (blkp->throttle_state) {
+        throttle_group_restart_queue(blk, 0);
+        throttle_group_restart_queue(blk, 1);
     }
 }
 
@@ -362,22 +428,13 @@ void throttle_group_restart_blk(BlockBackend *blk)
 void throttle_group_config(BlockBackend *blk, ThrottleConfig *cfg)
 {
     BlockBackendPublic *blkp = blk_get_public(blk);
-    ThrottleTimers *tt = &blkp->throttle_timers;
     ThrottleState *ts = blkp->throttle_state;
     ThrottleGroup *tg = container_of(ts, ThrottleGroup, ts);
     qemu_mutex_lock(&tg->lock);
-    /* throttle_config() cancels the timers */
-    if (timer_pending(tt->timers[0])) {
-        tg->any_timer_armed[0] = false;
-    }
-    if (timer_pending(tt->timers[1])) {
-        tg->any_timer_armed[1] = false;
-    }
-    throttle_config(ts, tt, cfg);
+    throttle_config(ts, tg->clock_type, cfg);
     qemu_mutex_unlock(&tg->lock);
 
-    qemu_co_enter_next(&blkp->throttled_reqs[0]);
-    qemu_co_enter_next(&blkp->throttled_reqs[1]);
+    throttle_group_restart_blk(blk);
 }
 
 /* Get the throttle configuration from a particular group. Similar to
@@ -408,7 +465,6 @@ static void timer_cb(BlockBackend *blk, bool is_write)
     BlockBackendPublic *blkp = blk_get_public(blk);
     ThrottleState *ts = blkp->throttle_state;
     ThrottleGroup *tg = container_of(ts, ThrottleGroup, ts);
-    bool empty_queue;
 
     /* The timer has just been fired, so we can update the flag */
     qemu_mutex_lock(&tg->lock);
@@ -416,17 +472,7 @@ static void timer_cb(BlockBackend *blk, bool is_write)
     qemu_mutex_unlock(&tg->lock);
 
     /* Run the request that was waiting for this timer */
-    aio_context_acquire(blk_get_aio_context(blk));
-    empty_queue = !qemu_co_enter_next(&blkp->throttled_reqs[is_write]);
-    aio_context_release(blk_get_aio_context(blk));
-
-    /* If the request queue was empty then we have to take care of
-     * scheduling the next one */
-    if (empty_queue) {
-        qemu_mutex_lock(&tg->lock);
-        schedule_next_request(blk, is_write);
-        qemu_mutex_unlock(&tg->lock);
-    }
+    throttle_group_restart_queue(blk, is_write);
 }
 
 static void read_timer_cb(void *opaque)
@@ -452,13 +498,6 @@ void throttle_group_register_blk(BlockBackend *blk, const char *groupname)
     BlockBackendPublic *blkp = blk_get_public(blk);
     ThrottleState *ts = throttle_group_incref(groupname);
     ThrottleGroup *tg = container_of(ts, ThrottleGroup, ts);
-    int clock_type = QEMU_CLOCK_REALTIME;
-
-    if (qtest_enabled()) {
-        /* For testing block IO throttling only */
-        clock_type = QEMU_CLOCK_VIRTUAL;
-    }
-
     blkp->throttle_state = ts;
 
     qemu_mutex_lock(&tg->lock);
@@ -473,7 +512,7 @@ void throttle_group_register_blk(BlockBackend *blk, const char *groupname)
 
     throttle_timers_init(&blkp->throttle_timers,
                          blk_get_aio_context(blk),
-                         clock_type,
+                         tg->clock_type,
                          read_timer_cb,
                          write_timer_cb,
                          blk);

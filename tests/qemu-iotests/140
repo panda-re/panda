@@ -33,6 +33,7 @@ status=1	# failure is the default!
 
 _cleanup()
 {
+    _cleanup_qemu
     _cleanup_test_img
     rm -f "$TEST_DIR/nbd"
 }
@@ -51,8 +52,15 @@ _make_test_img 64k
 
 $QEMU_IO -c 'write -P 42 0 64k' "$TEST_IMG" | _filter_qemu_io
 
+if test "$IMGOPTSSYNTAX" = "true"
+then
+    SYSEMU_DRIVE_ARG=if=none,media=cdrom,id=drv,"$TEST_IMG"
+else
+    SYSEMU_DRIVE_ARG=if=none,media=cdrom,id=drv,file="$TEST_IMG",driver=$IMGFMT
+fi
+
 keep_stderr=y \
-_launch_qemu -drive if=none,media=cdrom,id=drv,file="$TEST_IMG",format=$IMGFMT \
+_launch_qemu -drive $SYSEMU_DRIVE_ARG \
     2> >(_filter_nbd)
 
 _send_qemu_cmd $QEMU_HANDLE \
@@ -70,7 +78,7 @@ _send_qemu_cmd $QEMU_HANDLE \
        'arguments': { 'device': 'drv' }}" \
     'return'
 
-$QEMU_IO_PROG -f raw -c 'read -P 42 0 64k' \
+$QEMU_IO_PROG -f raw -r -c 'read -P 42 0 64k' \
     "nbd+unix:///drv?socket=$TEST_DIR/nbd" 2>&1 \
     | _filter_qemu_io | _filter_nbd
 
@@ -79,7 +87,7 @@ _send_qemu_cmd $QEMU_HANDLE \
        'arguments': { 'device': 'drv' }}" \
     'return'
 
-$QEMU_IO_PROG -f raw -c close \
+$QEMU_IO_PROG -f raw -r -c close \
     "nbd+unix:///drv?socket=$TEST_DIR/nbd" 2>&1 \
     | _filter_qemu_io | _filter_nbd
 

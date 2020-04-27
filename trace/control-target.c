@@ -1,7 +1,7 @@
 /*
  * Interface for configuring and controlling the state of tracing events.
  *
- * Copyright (C) 2014-2016 Lluís Vilanova <vilanova@ac.upc.edu>
+ * Copyright (C) 2014-2017 Lluís Vilanova <vilanova@ac.upc.edu>
  *
  * This work is licensed under the terms of the GNU GPL, version 2 or later.
  * See the COPYING file in the top-level directory.
@@ -38,12 +38,16 @@ void trace_event_set_state_dynamic(TraceEvent *ev, bool state)
 {
     CPUState *vcpu;
     assert(trace_event_get_state_static(ev));
-    if (trace_event_is_vcpu(ev)) {
+    if (trace_event_is_vcpu(ev) && likely(first_cpu != NULL)) {
         CPU_FOREACH(vcpu) {
             trace_event_set_vcpu_state_dynamic(vcpu, ev, state);
         }
     } else {
-        /* Without the "vcpu" property, dstate can only be 1 or 0 */
+        /*
+         * Without the "vcpu" property, dstate can only be 1 or 0. With it, we
+         * haven't instantiated any vCPU yet, so we will set a global state
+         * instead, and trace_init_vcpu will reconcile it afterwards.
+         */
         bool state_pre = *ev->dstate;
         if (state_pre != state) {
             if (state) {
@@ -55,6 +59,14 @@ void trace_event_set_state_dynamic(TraceEvent *ev, bool state)
             }
         }
     }
+}
+
+static void trace_event_synchronize_vcpu_state_dynamic(
+    CPUState *vcpu, run_on_cpu_data ignored)
+{
+    bitmap_copy(vcpu->trace_dstate, vcpu->trace_dstate_delayed,
+                CPU_TRACE_DSTATE_MAX_EVENTS);
+    cpu_tb_jmp_cache_clear(vcpu);
 }
 
 void trace_event_set_vcpu_state_dynamic(CPUState *vcpu,
@@ -69,13 +81,20 @@ void trace_event_set_vcpu_state_dynamic(CPUState *vcpu,
     if (state_pre != state) {
         if (state) {
             trace_events_enabled_count++;
-            set_bit(vcpu_id, vcpu->trace_dstate);
+            set_bit(vcpu_id, vcpu->trace_dstate_delayed);
             (*ev->dstate)++;
         } else {
             trace_events_enabled_count--;
-            clear_bit(vcpu_id, vcpu->trace_dstate);
+            clear_bit(vcpu_id, vcpu->trace_dstate_delayed);
             (*ev->dstate)--;
         }
+        /*
+         * Delay changes until next TB; we want all TBs to be built from a
+         * single set of dstate values to ensure consistency of generated
+         * tracing code.
+         */
+        async_run_on_cpu(vcpu, trace_event_synchronize_vcpu_state_dynamic,
+                         RUN_ON_CPU_NULL);
     }
 }
 

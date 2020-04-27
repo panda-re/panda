@@ -24,17 +24,81 @@
 EGLDisplay *qemu_egl_display;
 EGLConfig qemu_egl_config;
 
-/* ---------------------------------------------------------------------- */
+/* ------------------------------------------------------------------ */
 
-static bool egl_gles;
-static int egl_debug;
+void egl_fb_destroy(egl_fb *fb)
+{
+    if (!fb->framebuffer) {
+        return;
+    }
 
-#define egl_dbg(_x ...)                          \
-    do {                                         \
-        if (egl_debug) {                         \
-            fprintf(stderr, "egl: " _x);         \
-        }                                        \
-    } while (0);
+    if (fb->delete_texture) {
+        glDeleteTextures(1, &fb->texture);
+        fb->delete_texture = false;
+    }
+    glDeleteFramebuffers(1, &fb->framebuffer);
+
+    fb->width = 0;
+    fb->height = 0;
+    fb->texture = 0;
+    fb->framebuffer = 0;
+}
+
+void egl_fb_setup_default(egl_fb *fb, int width, int height)
+{
+    fb->width = width;
+    fb->height = height;
+    fb->framebuffer = 0; /* default framebuffer */
+}
+
+void egl_fb_create_for_tex(egl_fb *fb, int width, int height, GLuint texture)
+{
+    fb->width = width;
+    fb->height = height;
+    fb->texture = texture;
+    if (!fb->framebuffer) {
+        glGenFramebuffers(1, &fb->framebuffer);
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER_EXT, fb->framebuffer);
+    glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
+                              GL_TEXTURE_2D, fb->texture, 0);
+}
+
+void egl_fb_create_new_tex(egl_fb *fb, int width, int height)
+{
+    GLuint texture;
+
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height,
+                 0, GL_BGRA, GL_UNSIGNED_BYTE, 0);
+
+    egl_fb_create_for_tex(fb, width, height, texture);
+    fb->delete_texture = true;
+}
+
+void egl_fb_blit(egl_fb *dst, egl_fb *src, bool flip)
+{
+    GLuint y1, y2;
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, src->framebuffer);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst->framebuffer);
+    glViewport(0, 0, dst->width, dst->height);
+    y1 = flip ? src->height : 0;
+    y2 = flip ? 0 : src->height;
+    glBlitFramebuffer(0, y1, src->width, y2,
+                      0, 0, dst->width, dst->height,
+                      GL_COLOR_BUFFER_BIT, GL_LINEAR);
+}
+
+void egl_fb_read(void *dst, egl_fb *src)
+{
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, src->framebuffer);
+    glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
+    glReadPixels(0, 0, src->width, src->height,
+                 GL_BGRA, GL_UNSIGNED_BYTE, dst);
+}
 
 /* ---------------------------------------------------------------------- */
 
@@ -92,6 +156,7 @@ static int qemu_egl_rendernode_open(const char *rendernode)
 int egl_rendernode_init(const char *rendernode)
 {
     qemu_egl_rn_fd = -1;
+    int rc;
 
     qemu_egl_rn_fd = qemu_egl_rendernode_open(rendernode);
     if (qemu_egl_rn_fd == -1) {
@@ -105,7 +170,11 @@ int egl_rendernode_init(const char *rendernode)
         goto err;
     }
 
-    qemu_egl_init_dpy((EGLNativeDisplayType)qemu_egl_rn_gbm_dev, false, false);
+    rc = qemu_egl_init_dpy_mesa((EGLNativeDisplayType)qemu_egl_rn_gbm_dev);
+    if (rc != 0) {
+        /* qemu_egl_init_dpy_mesa reports error */
+        goto err;
+    }
 
     if (!epoxy_has_egl_extension(qemu_egl_display,
                                  "EGL_KHR_surfaceless_context")) {
@@ -171,8 +240,6 @@ EGLSurface qemu_egl_init_surface_x11(EGLContext ectx, Window win)
     EGLSurface esurface;
     EGLBoolean b;
 
-    egl_dbg("eglCreateWindowSurface (x11 win id 0x%lx) ...\n",
-            (unsigned long) win);
     esurface = eglCreateWindowSurface(qemu_egl_display,
                                       qemu_egl_config,
                                       (EGLNativeWindowType)win, NULL);
@@ -220,20 +287,19 @@ EGLSurface qemu_egl_init_surface_x11(EGLContext ectx, Window win)
  * platform extensions (EGL_KHR_platform_gbm and friends) yet it doesn't seem
  * like mesa will be able to advertise these (even though it can do EGL 1.5).
  */
-static EGLDisplay qemu_egl_get_display(void *native)
+static EGLDisplay qemu_egl_get_display(EGLNativeDisplayType native,
+                                       EGLenum platform)
 {
     EGLDisplay dpy = EGL_NO_DISPLAY;
 
-#ifdef EGL_MESA_platform_gbm
     /* In practise any EGL 1.5 implementation would support the EXT extension */
     if (epoxy_has_egl_extension(NULL, "EGL_EXT_platform_base")) {
         PFNEGLGETPLATFORMDISPLAYEXTPROC getPlatformDisplayEXT =
             (void *) eglGetProcAddress("eglGetPlatformDisplayEXT");
-        if (getPlatformDisplayEXT) {
-            dpy = getPlatformDisplayEXT(EGL_PLATFORM_GBM_MESA, native, NULL);
+        if (getPlatformDisplayEXT && platform != 0) {
+            dpy = getPlatformDisplayEXT(platform, native, NULL);
         }
     }
-#endif
 
     if (dpy == EGL_NO_DISPLAY) {
         /* fallback */
@@ -242,7 +308,8 @@ static EGLDisplay qemu_egl_get_display(void *native)
     return dpy;
 }
 
-int qemu_egl_init_dpy(EGLNativeDisplayType dpy, bool gles, bool debug)
+static int qemu_egl_init_dpy(EGLNativeDisplayType dpy,
+                             EGLenum platform)
 {
     static const EGLint conf_att_gl[] = {
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
@@ -253,75 +320,66 @@ int qemu_egl_init_dpy(EGLNativeDisplayType dpy, bool gles, bool debug)
         EGL_ALPHA_SIZE, 0,
         EGL_NONE,
     };
-    static const EGLint conf_att_gles[] = {
-        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-        EGL_RED_SIZE,   5,
-        EGL_GREEN_SIZE, 5,
-        EGL_BLUE_SIZE,  5,
-        EGL_ALPHA_SIZE, 0,
-        EGL_NONE,
-    };
     EGLint major, minor;
     EGLBoolean b;
     EGLint n;
 
-    if (debug) {
-        egl_debug = 1;
-        setenv("EGL_LOG_LEVEL", "debug", true);
-        setenv("LIBGL_DEBUG", "verbose", true);
-    }
-
-    egl_dbg("qemu_egl_get_display (dpy %p) ...\n", dpy);
-    qemu_egl_display = qemu_egl_get_display(dpy);
+    qemu_egl_display = qemu_egl_get_display(dpy, platform);
     if (qemu_egl_display == EGL_NO_DISPLAY) {
         error_report("egl: eglGetDisplay failed");
         return -1;
     }
 
-    egl_dbg("eglInitialize ...\n");
     b = eglInitialize(qemu_egl_display, &major, &minor);
     if (b == EGL_FALSE) {
         error_report("egl: eglInitialize failed");
         return -1;
     }
 
-    egl_dbg("eglBindAPI ...\n");
-    b = eglBindAPI(gles ? EGL_OPENGL_ES_API : EGL_OPENGL_API);
+    b = eglBindAPI(EGL_OPENGL_API);
     if (b == EGL_FALSE) {
         error_report("egl: eglBindAPI failed");
         return -1;
     }
 
-    egl_dbg("eglChooseConfig ...\n");
-    b = eglChooseConfig(qemu_egl_display,
-                        gles ? conf_att_gles : conf_att_gl,
+    b = eglChooseConfig(qemu_egl_display, conf_att_gl,
                         &qemu_egl_config, 1, &n);
     if (b == EGL_FALSE || n != 1) {
         error_report("egl: eglChooseConfig failed");
         return -1;
     }
-
-    egl_gles = gles;
     return 0;
+}
+
+int qemu_egl_init_dpy_x11(EGLNativeDisplayType dpy)
+{
+#ifdef EGL_KHR_platform_x11
+    return qemu_egl_init_dpy(dpy, EGL_PLATFORM_X11_KHR);
+#else
+    return qemu_egl_init_dpy(dpy, 0);
+#endif
+}
+
+int qemu_egl_init_dpy_mesa(EGLNativeDisplayType dpy)
+{
+#ifdef EGL_MESA_platform_gbm
+    return qemu_egl_init_dpy(dpy, EGL_PLATFORM_GBM_MESA);
+#else
+    return qemu_egl_init_dpy(dpy, 0);
+#endif
 }
 
 EGLContext qemu_egl_init_ctx(void)
 {
     static const EGLint ctx_att_gl[] = {
+        EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
         EGL_NONE
     };
-    static const EGLint ctx_att_gles[] = {
-        EGL_CONTEXT_CLIENT_VERSION, 2,
-        EGL_NONE
-    };
-
     EGLContext ectx;
     EGLBoolean b;
 
-    egl_dbg("eglCreateContext ...\n");
     ectx = eglCreateContext(qemu_egl_display, qemu_egl_config, EGL_NO_CONTEXT,
-                            egl_gles ? ctx_att_gles : ctx_att_gl);
+                            ctx_att_gl);
     if (ectx == EGL_NO_CONTEXT) {
         error_report("egl: eglCreateContext failed");
         return NULL;

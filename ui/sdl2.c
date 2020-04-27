@@ -298,8 +298,8 @@ static void sdl_send_mouse_event(struct sdl2_console *scon, int dx, int dy,
                 }
             }
         }
-        qemu_input_queue_abs(scon->dcl.con, INPUT_AXIS_X, off_x + x, max_w);
-        qemu_input_queue_abs(scon->dcl.con, INPUT_AXIS_Y, off_y + y, max_h);
+        qemu_input_queue_abs(scon->dcl.con, INPUT_AXIS_X, off_x + x, 0, max_w);
+        qemu_input_queue_abs(scon->dcl.con, INPUT_AXIS_Y, off_y + y, 0, max_h);
     } else {
         if (guest_cursor) {
             x -= guest_x;
@@ -568,7 +568,7 @@ static void handle_windowevent(SDL_Event *ev)
     case SDL_WINDOWEVENT_CLOSE:
         if (!no_quit) {
             no_shutdown = 0;
-            qemu_system_shutdown_request();
+            qemu_system_shutdown_request(SHUTDOWN_CAUSE_HOST_UI);
         }
         break;
     case SDL_WINDOWEVENT_SHOWN:
@@ -611,7 +611,7 @@ void sdl2_poll_events(struct sdl2_console *scon)
         case SDL_QUIT:
             if (!no_quit) {
                 no_shutdown = 0;
-                qemu_system_shutdown_request();
+                qemu_system_shutdown_request(SHUTDOWN_CAUSE_HOST_UI);
             }
             break;
         case SDL_MOUSEMOTION:
@@ -804,6 +804,7 @@ void sdl_display_init(DisplayState *ds, int full_screen, int no_frame)
     sdl2_console = g_new0(struct sdl2_console, sdl2_num_outputs);
     for (i = 0; i < sdl2_num_outputs; i++) {
         QemuConsole *con = qemu_console_lookup_by_index(i);
+        assert(con != NULL);
         if (!qemu_console_is_graphic(con)) {
             sdl2_console[i].hidden = true;
         }
