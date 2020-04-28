@@ -766,12 +766,13 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     }
 
     cpu->mem_io_vaddr = addr;
+    // af: if we're reading a watchpoint, don't bother locking or with panda callbacks/rr
     if (mr->name && !strcmp(mr->name, "watch")){
         memory_region_dispatch_read(mr, physaddr, &val, size, iotlbentry->attrs);
         return val;
     }
 
-    if (mr->global_locking) {
+    if (mr->global_locking && !qemu_mutex_iothread_locked()) {
         qemu_mutex_lock_iothread();
         locked = true;
     }
@@ -781,9 +782,6 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
         /* record= */ rr_input_8(&val),
         /* replay= */ rr_input_8(&val),
         /* location= */ RR_CALLSITE_IO_READ_ALL);
-    if (locked) {
-        qemu_mutex_unlock_iothread();
-    }
 
     if (locked) {
         qemu_mutex_unlock_iothread();
@@ -816,7 +814,7 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
         memory_region_dispatch_write(mr, physaddr, val, size, iotlbentry->attrs);
         return;
     }
-    if (mr->global_locking) {
+    if (mr->global_locking && !qemu_mutex_iothread_locked()) {
         qemu_mutex_lock_iothread();
         locked = true;
     }

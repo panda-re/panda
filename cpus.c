@@ -204,7 +204,7 @@ void qemu_tcg_configure(QemuOpts *opts, Error **errp)
     mttcg_enabled = false;
     const char *t = qemu_opt_get(opts, "thread");
     if (t) {
-        error_printf("PANDA is always single-threaded. -thread argument is isngored.\n");
+        error_printf("PANDA is always single-threaded. -thread argument is ignored.\n");
         return;
 
         if (strcmp(t, "multi") == 0) {
@@ -1294,7 +1294,6 @@ static int tcg_cpu_exec(CPUState *cpu)
         cpu->icount_decr.u16.low = decr;
         cpu->icount_extra = count;
     }
-    qemu_mutex_unlock_iothread();
     cpu_exec_start(cpu);
     ret = cpu_exec(cpu);
     cpu_exec_end(cpu);

@@ -221,7 +221,7 @@ typedef struct CPUBreakpoint {
 } CPUBreakpoint;
 
 struct CPUWatchpoint {
-    vaddr virtaddr;
+    vaddr virtaddr; /* af: changed from vaddr vaddr because that's invalid c++ */
     vaddr len;
     vaddr hitaddr;
     MemTxAttrs hitattrs;
@@ -278,10 +278,13 @@ struct qemu_work_item;
  * @unplug: Indicates a pending CPU unplug request.
  * @crash_occurred: Indicates the OS reported a crash (panic) for this CPU
  * @tcg_exit_req: Set to force TCG to stop executing linked TBs for this
- *           CPU and return to its top level loop.
+ *           VPU and return to its top level loop. af: this was removed from qemu
+ *           but we're stil using it in PANDA for some of the llvm stuff
  * @singlestep_enabled: Flags for single-stepping.
  * @icount_extra: Instructions until next timer event.
- * @icount_decr: Number of cycles left, with interrupt flag in high bit.
+ * @icount_decr: Low 16 bits: number of cycles left, only used in icount mode.
+ * High 16 bits: Set to -1 to force TCG to stop executing linked TBs for this
+ * CPU and return to its top level loop (even in non-icount mode).
  * This allows a single read-compare-cbranch-write sequence to test
  * for both decrementer underflow and exceptions.
  * @can_do_io: Nonzero if memory-mapped IO is safe. Deterministic execution
@@ -382,10 +385,6 @@ struct CPUState {
     /* TODO Move common fields from CPUArchState here. */
     int cpu_index; /* used by alpha TCG */
     uint32_t halted; /* used by alpha, cris, ppc TCG */
-    union {
-        uint32_t u32;
-        icount_decr_u16 u16;
-    } icount_decr;
     uint32_t can_do_io;
     int32_t exception_index; /* used by m68k TCG */
     uint64_t rr_guest_instr_count;
@@ -410,6 +409,10 @@ struct CPUState {
        (absolute value) offset as small as possible.  This reduces code
        size, especially for hosts without large memory offsets.  */
     uint32_t tcg_exit_req;
+    union {
+      uint32_t u32;
+      icount_decr_u16 u16;
+    } icount_decr;
 
     struct hax_vcpu_state *hax_vcpu;
 
@@ -1037,11 +1040,6 @@ void cpu_watchpoint_remove_by_ref(CPUState *cpu, CPUWatchpoint *watchpoint);
 void cpu_watchpoint_remove_all(CPUState *cpu, int mask);
 
 void cpu_rcont_check_restore(CPUState* cpu, uint64_t rr_instr_count);
-
-//#ifdef CONFIG_SOFTMMU
-//#include "../exec/cpu-defs.h"
-//void invalidate_single_tb(CPUState *env, target_ulong pc);
-//h#endif
 
 /**
  * cpu_get_address_space:
