@@ -2131,9 +2131,9 @@ static inline int arm_to_core_mmu_idx(ARMMMUIdx mmu_idx)
 static inline ARMMMUIdx core_to_arm_mmu_idx(CPUARMState *env, int mmu_idx)
 {
     if (arm_feature(env, ARM_FEATURE_M)) {
-        return mmu_idx | ARM_MMU_IDX_M;
+        return (ARMMMUIdx)(mmu_idx | ARM_MMU_IDX_M);
     } else {
-        return mmu_idx | ARM_MMU_IDX_A;
+        return (ARMMMUIdx)(mmu_idx | ARM_MMU_IDX_A);
     }
 }
 
@@ -2170,7 +2170,7 @@ static inline int cpu_mmu_index(CPUARMState *env, bool ifetch)
     }
 
     if (el < 2 && arm_is_secure_below_el3(env)) {
-        return arm_to_core_mmu_idx(ARMMMUIdx_S1SE0 + el);
+        return arm_to_core_mmu_idx((ARMMMUIdx)(ARMMMUIdx_S1SE0 + el));
     }
     return el;
 }
