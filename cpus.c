@@ -265,19 +265,22 @@ void cpu_update_icount(CPUState *cpu)
 
 int64_t cpu_get_icount_raw(void)
 {
-    int64_t icount;
     CPUState *cpu = current_cpu;
 
-    icount = timers_state.qemu_icount;
-    if (cpu) {
+    if (cpu && cpu->running) {
         if (!cpu->can_do_io) {
             fprintf(stderr, "Bad icount read\n");
             exit(1);
         }
         /* Take into account what has run */
-        icount -= (cpu->icount_decr.u16.low + cpu->icount_extra);
+        cpu_update_icount(cpu);
     }
-    return icount;
+#ifdef CONFIG_ATOMIC64
+    return atomic_read__nocheck(&timers_state.qemu_icount);
+#else /* FIXME: we need 64bit atomics to do this safely */
+    return timers_state.qemu_icount;
+#endif
+
 }
 
 /* Return the virtual CPU time, based on the instruction counter.  */
@@ -1252,7 +1255,6 @@ static void prepare_icount_for_run(CPUState *cpu)
     }
 }
 
-#if 0
 static void process_icount_data(CPUState *cpu)
 {
     if (use_icount) {
@@ -1267,7 +1269,6 @@ static void process_icount_data(CPUState *cpu)
         replay_account_executed_instructions();
     }
 }
-#endif
 
 static int tcg_cpu_exec(CPUState *cpu)
 {
@@ -1280,20 +1281,6 @@ static int tcg_cpu_exec(CPUState *cpu)
     ti = profile_getclock();
 #endif
     qemu_mutex_unlock_iothread();
-    if (use_icount) {
-        int64_t count;
-        int decr;
-        timers_state.qemu_icount -= (cpu->icount_decr.u16.low
-                                    + cpu->icount_extra);
-        cpu->icount_decr.u16.low = 0;
-        cpu->icount_extra = 0;
-        count = tcg_get_icount_limit();
-        timers_state.qemu_icount += count;
-        decr = (count > 0xffff) ? 0xffff : count;
-        count -= decr;
-        cpu->icount_decr.u16.low = decr;
-        cpu->icount_extra = count;
-    }
     cpu_exec_start(cpu);
     ret = cpu_exec(cpu);
     cpu_exec_end(cpu);
@@ -1301,15 +1288,6 @@ static int tcg_cpu_exec(CPUState *cpu)
 #ifdef CONFIG_PROFILER
     tcg_time += profile_getclock() - ti;
 #endif
-    if (use_icount) {
-        /* Fold pending instructions back into the
-           instruction counter, and clear the interrupt flag.  */
-        timers_state.qemu_icount -= (cpu->icount_decr.u16.low
-                        + cpu->icount_extra);
-        cpu->icount_decr.u32 = 0;
-        cpu->icount_extra = 0;
-        replay_account_executed_instructions();
-    }
     return ret;
 }
 
@@ -1408,7 +1386,7 @@ static void *qemu_tcg_rr_cpu_thread_fn(void *arg)
                 prepare_icount_for_run(cpu);
                 r = tcg_cpu_exec(cpu);
 
-                //process_icount_data(cpu);
+                process_icount_data(cpu);
 
                 if (r == EXCP_DEBUG) {
                     cpu_handle_guest_debug(cpu);
