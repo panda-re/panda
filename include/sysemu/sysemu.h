@@ -91,7 +91,6 @@ void qemu_remove_exit_notifier(Notifier *notify);
 void qemu_add_machine_init_done_notifier(Notifier *notify);
 void qemu_remove_machine_init_done_notifier(Notifier *notify);
 
-void monitor_or_stdout_printf(Monitor *mon, const char *fmt, ...);
 void qemu_announce_self(void);
 
 extern int autostart;

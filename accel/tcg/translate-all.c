@@ -879,6 +879,9 @@ void tb_free(TranslationBlock *tb)
     if (tcg_ctx.tb_ctx.nb_tbs > 0 &&
             tb == tcg_ctx.tb_ctx.tbs[tcg_ctx.tb_ctx.nb_tbs - 1]) {
         size_t struct_size = ROUND_UP(sizeof(*tb), qemu_icache_linesize);
+#if defined(CONFIG_LLVM)
+        tcg_llvm_tb_free(tb);
+#endif
 
         tcg_ctx.code_gen_ptr = tb->tc_ptr - struct_size;
         tcg_ctx.tb_ctx.nb_tbs--;
@@ -954,7 +957,7 @@ static void do_tb_flush(CPUState *cpu, run_on_cpu_data tb_flush_count)
 #if defined(CONFIG_LLVM)
     int i2;
     for(i2 = 0; i2 < tcg_ctx.tb_ctx.nb_tbs; ++i2){
-        tcg_llvm_tb_free(&tcg_ctx.tb_ctx.tbs[i2]);
+        tcg_llvm_tb_free(tcg_ctx.tb_ctx.tbs[i2]);
     }
 #endif
 
@@ -1410,7 +1413,7 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     int i;
     if (generate_llvm) {
         for (i = 0; i < tcg_ctx.tb_ctx.nb_tbs; i++) {
-            TranslationBlock *other = &tcg_ctx.tb_ctx.tbs[i];
+            TranslationBlock *other = tcg_ctx.tb_ctx.tbs[i];
             if (tb == other) continue;
             if (other->llvm_tc_ptr <= tb->llvm_tc_ptr &&
                     tb->llvm_tc_ptr < other->llvm_tc_end) {
@@ -1750,7 +1753,7 @@ static TranslationBlock *tb_find_pc(uintptr_t tc_ptr)
         }
         /* then do linear search. */
         for (m = 0; m < tcg_ctx.tb_ctx.nb_tbs; m++) {
-            tb = &tcg_ctx.tb_ctx.tbs[m];
+            tb = tcg_ctx.tb_ctx.tbs[m];
             if (tb->llvm_function
                     && tc_ptr >= (uintptr_t)tb->llvm_tc_ptr
                     && tc_ptr <  (uintptr_t)tb->llvm_tc_end) {

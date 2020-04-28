@@ -2,7 +2,7 @@
 #define CHAR_PD_H
 
 #include "io/channel.h"
-#include "sysemu/char.h"
+#include "chardev/char.h"
 
 typedef struct PandaChardev {
     Chardev parent;

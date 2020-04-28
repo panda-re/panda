@@ -4108,7 +4108,7 @@ void panda_init_monitor(void) {
   qemu_chr_fe_init(&panda_mon->chr, chr, &error_abort);
   panda_mon->flags = flags;
   qemu_chr_fe_set_handlers(&panda_mon->chr, monitor_can_read, monitor_read,
-      monitor_event, panda_mon, NULL, true);
+     monitor_event, NULL, panda_mon, NULL, true);
 
   qemu_mutex_lock(&monitor_lock);
   QLIST_INSERT_HEAD(&mon_list, panda_mon, entry);

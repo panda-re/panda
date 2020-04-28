@@ -1,7 +1,7 @@
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "qemu-common.h"
-#include "sysemu/char.h"
+#include "chardev/char.h"
 #include "char-panda.h"
 
 static void chardev_open(Chardev *chr, ChardevBackend *backend,

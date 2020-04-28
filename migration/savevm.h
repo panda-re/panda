@@ -55,4 +55,8 @@ void qemu_savevm_send_postcopy_ram_discard(QEMUFile *f, const char *name,
 int qemu_loadvm_state(QEMUFile *f);
 void qemu_loadvm_state_cleanup(void);
 
+// panda
+int delvm_name(char *name);
+int qemu_savevm_state(QEMUFile *f, Error **errp);
+
 #endif

@@ -501,8 +501,7 @@ for opt do
   --cpu=*) cpu="$optarg"
   ;;
   --extra-cflags=*) QEMU_CFLAGS="$QEMU_CFLAGS $optarg"
-  ;;
-  --extra-cxxflags=*) QEMU_CXXFLAGS="$QEMU_CXXFLAGS $optarg"
+                    EXTRA_CFLAGS="$optarg"
   ;;
   --extra-cxxflags=*) QEMU_CXXFLAGS="$QEMU_CXXFLAGS $optarg"
                       EXTRA_CXXFLAGS="$optarg"
@@ -826,6 +825,7 @@ SunOS)
   solaris="yes"
   make="${MAKE-gmake}"
   install="${INSTALL-ginstall}"
+  ld="gld"
   smbd="${SMBD-/usr/sfw/sbin/smbd}"
   if test -f /usr/include/sys/soundcard.h ; then
     audio_drv_list="oss"
@@ -1449,6 +1449,7 @@ case "$cpu" in
 esac
 
 QEMU_CFLAGS="$CPU_CFLAGS $QEMU_CFLAGS"
+EXTRA_CFLAGS="$CPU_CFLAGS $EXTRA_CFLAGS"
 
 # For user-mode emulation the host arch has to be one we explicitly
 # support, even if we're using TCI.
@@ -5217,15 +5218,16 @@ fi
 # check for _Static_assert()
 
 have_static_assert=no
-cat > $TMPC << EOF
-_Static_assert(1, "success");
-int main(void) {
-    return 0;
-}
-EOF
-if compile_prog "" "" ; then
-    have_static_assert=yes
-fi
+# af: disabled for panda?
+#cat > $TMPC << EOF
+#_Static_assert(1, "success");
+#int main(void) {
+#    return 0;
+#}
+#EOF
+#if compile_prog "" "" ; then
+#    have_static_assert=yes
+#fi
 
 ##########################################
 # check for utmpx.h, it is missing e.g. on OpenBSD

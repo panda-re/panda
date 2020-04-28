@@ -57,7 +57,7 @@ typedef PowerPCCPU THISCPU;
 #include "qapi/error.h"
 #include "qapi/qmp/qjson.h"
 #include "qapi/qmp/qobject.h"
-#include "qapi/qmp/qint.h"
+#include "qapi/qmp/qnum.h"
 #include "qapi/qmp/qdict.h"
 
 #define QDICT_ASSERT_KEY_TYPE(_dict, _key, _type) \
@@ -143,7 +143,7 @@ static void set_properties(DeviceState *dev, QList *properties)
 
         if(!strcmp(type, "serial"))
         {
-            QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QINT);
+            QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QNUM);
             const int value = qdict_get_int(property, "value");
             qdev_prop_set_chr(dev, name, serial_hds[value]);
         }
@@ -155,25 +155,25 @@ static void set_properties(DeviceState *dev, QList *properties)
         }
         else if(!strcmp(type, "int32"))
         {
-            QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QINT);
+            QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QNUM);
             const int value = qdict_get_int(property, "value");
             qdev_prop_set_int32(dev, name, value);
         }
         else if(!strcmp(type, "uint32"))
         {
-            QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QINT);
+            QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QNUM);
             const int value = qdict_get_int(property, "value");
             qdev_prop_set_uint32(dev, name, value);
         }
         else if(!strcmp(type, "int64"))
         {
-            QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QINT);
+            QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QNUM);
             const int64_t value = qdict_get_int(property, "value");
             qdev_prop_set_uint64(dev, name, value);
         }
         else if(!strcmp(type, "uint64"))
         {
-            QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QINT);
+            QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QNUM);
             const uint64_t value = qdict_get_int(property, "value");
             qdev_prop_set_uint64(dev, name, value);
         }
@@ -258,7 +258,7 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
     MemoryRegion *sysmem = get_system_memory();
 
     QDICT_ASSERT_KEY_TYPE(mapping, "name", QTYPE_QSTRING);
-    QDICT_ASSERT_KEY_TYPE(mapping, "size", QTYPE_QINT);
+    QDICT_ASSERT_KEY_TYPE(mapping, "size", QTYPE_QNUM);
     //g_assert((qdict_get_int(mapping, "size") & ((1 << 12) - 1)) == 0);
 
     if(qdict_haskey(mapping, "is_rom")) {
@@ -281,7 +281,7 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
     }
     vmstate_register_ram(ram, NULL);
 
-    QDICT_ASSERT_KEY_TYPE(mapping, "address", QTYPE_QINT);
+    QDICT_ASSERT_KEY_TYPE(mapping, "address", QTYPE_QNUM);
     address = qdict_get_int(mapping, "address");
 
     printf("Configurable: Adding memory region %s (size: 0x%"
@@ -347,7 +347,7 @@ static void init_peripheral(QDict *device)
     const char * name;
     uint64_t address;
 
-    QDICT_ASSERT_KEY_TYPE(device, "address", QTYPE_QINT);
+    QDICT_ASSERT_KEY_TYPE(device, "address", QTYPE_QNUM);
     QDICT_ASSERT_KEY_TYPE(device, "qemu_name", QTYPE_QSTRING);
     QDICT_ASSERT_KEY_TYPE(device, "bus", QTYPE_QSTRING);
     QDICT_ASSERT_KEY_TYPE(device, "name", QTYPE_QSTRING);
@@ -387,7 +387,7 @@ static void set_entry_point(QDict *conf, THISCPU *cpuu)
     uint32_t entry;
 
     if(qdict_haskey(conf, entry_field)) {
-      QDICT_ASSERT_KEY_TYPE(conf, entry_field, QTYPE_QINT);
+      QDICT_ASSERT_KEY_TYPE(conf, entry_field, QTYPE_QNUM);
       entry = qdict_get_int(conf, entry_field);
     } else {
         entry = 0; // Continue with setup, but we'll set a meaningless entry
