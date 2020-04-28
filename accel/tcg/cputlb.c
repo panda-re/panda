@@ -771,17 +771,19 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
         return val;
     }
 
-    if (mr->global_locking && !qemu_mutex_iothread_locked()) {
+    if (mr->global_locking) {
         qemu_mutex_lock_iothread();
         locked = true;
     }
-
     RR_DO_RECORD_OR_REPLAY(
         /* action= */
         memory_region_dispatch_read(mr, physaddr, &val, size, iotlbentry->attrs),
         /* record= */ rr_input_8(&val),
         /* replay= */ rr_input_8(&val),
         /* location= */ RR_CALLSITE_IO_READ_ALL);
+    if (locked) {
+        qemu_mutex_unlock_iothread();
+    }
 
     panda_callbacks_mmio_after_read(cpu, physaddr, addr, size, &val);
     if (locked) {
@@ -804,7 +806,6 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     if (mr != &io_mem_rom && mr != &io_mem_notdirty && !cpu->can_do_io) {
         cpu_io_recompile(cpu, retaddr);
     }
-
     cpu->mem_io_vaddr = addr;
     cpu->mem_io_pc = retaddr;
 
@@ -814,12 +815,10 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
         memory_region_dispatch_write(mr, physaddr, val, size, iotlbentry->attrs);
         return;
     }
-
-    if (mr->global_locking && !qemu_mutex_iothread_locked()) {
+    if (mr->global_locking) {
         qemu_mutex_lock_iothread();
         locked = true;
     }
-
     if (mr != &io_mem_rom && mr != &io_mem_notdirty) {
         RR_DO_RECORD_OR_REPLAY(
             /* action= */
