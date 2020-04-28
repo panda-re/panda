@@ -1030,8 +1030,6 @@ static void qemu_init_sigbus(void)
 #endif /* !CONFIG_LINUX */
 
 static QemuMutex qemu_global_mutex;
-static QemuCond qemu_io_proceeded_cond;
-//static unsigned iothread_requesting_mutex;
 
 static QemuThread io_thread;
 
@@ -1045,7 +1043,6 @@ void qemu_init_cpu_loop(void)
     qemu_init_sigbus();
     qemu_cond_init(&qemu_cpu_cond);
     qemu_cond_init(&qemu_pause_cond);
-    qemu_cond_init(&qemu_io_proceeded_cond);
     qemu_mutex_init(&qemu_global_mutex);
 
     qemu_thread_get_self(&io_thread);
@@ -1297,6 +1294,7 @@ static int tcg_cpu_exec(CPUState *cpu)
         cpu->icount_decr.u16.low = decr;
         cpu->icount_extra = count;
     }
+    qemu_mutex_unlock_iothread();
     cpu_exec_start(cpu);
     ret = cpu_exec(cpu);
     cpu_exec_end(cpu);
