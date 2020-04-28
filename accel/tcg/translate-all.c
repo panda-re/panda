@@ -70,6 +70,7 @@
 #include "qemu/bitmap.h"
 #include "qemu/error-report.h"
 #include "qemu/timer.h"
+#include "qemu/main-loop.h"
 #include "exec/log.h"
 #include "sysemu/cpus.h"
 
@@ -864,6 +865,9 @@ static TranslationBlock *tb_alloc(target_ulong pc)
         ctx->tbs_size *= 2;
         ctx->tbs = g_renew(TranslationBlock *, ctx->tbs, ctx->tbs_size);
     }
+#ifdef CONFIG_LLVM
+    tcg_llvm_tb_alloc(tb);
+#endif
     ctx->tbs[ctx->nb_tbs++] = tb;
     return tb;
 }
@@ -1609,7 +1613,7 @@ void tb_invalidate_phys_page_range(tb_page_addr_t start, tb_page_addr_t end,
 #ifdef CONFIG_SOFTMMU
 /* len must be <= 8 and start must be a multiple of len.
  * Called via softmmu_template.h when code areas are written to with
- * tb_lock held.
+ * iothread mutex not held.
  */
 void tb_invalidate_phys_page_fast(tb_page_addr_t start, int len)
 {
@@ -1834,7 +1838,10 @@ void tb_check_watchpoint(CPUState *cpu)
 
 #ifndef CONFIG_USER_ONLY
 /* in deterministic execution mode, instructions doing device I/Os
-   must be at the end of the TB */
+ * must be at the end of the TB.
+ *
+ * Called by softmmu_template.h, with iothread mutex not held.
+ */
 void cpu_io_recompile(CPUState *cpu, uintptr_t retaddr)
 {
 #if defined(TARGET_MIPS) || defined(TARGET_SH4)
@@ -2047,8 +2054,9 @@ void dump_opcount_info(FILE *f, fprintf_function cpu_fprintf)
 
 void cpu_interrupt(CPUState *cpu, int mask)
 {
+    g_assert(qemu_mutex_iothread_locked());
     cpu->interrupt_request |= mask;
-    cpu->tcg_exit_req = 1;
+    cpu->icount_decr.u16.high = -1;
 }
 
 /*
