@@ -79,13 +79,13 @@ static void trigger_prot_fault(CPUS390XState *env, target_ulong vaddr,
         return;
     }
 
-    trigger_access_exception(env, PGM_PROTECTION, ILEN_LATER_INC, tec);
+    trigger_access_exception(env, PGM_PROTECTION, ILEN_AUTO, tec);
 }
 
 static void trigger_page_fault(CPUS390XState *env, target_ulong vaddr,
                                uint32_t type, uint64_t asc, int rw, bool exc)
 {
-    int ilen = ILEN_LATER;
+    int ilen = ILEN_AUTO;
     uint64_t tec;
 
     tec = vaddr | (rw == MMU_DATA_STORE ? FS_WRITE : FS_READ) | asc >> 46;
@@ -108,7 +108,7 @@ static void trigger_page_fault(CPUS390XState *env, target_ulong vaddr,
  * Translate real address to absolute (= physical)
  * address by taking care of the prefix mapping.
  */
-static target_ulong mmu_real2abs(CPUS390XState *env, target_ulong raddr)
+target_ulong mmu_real2abs(CPUS390XState *env, target_ulong raddr)
 {
     if (raddr < 0x2000) {
         return raddr + env->psa;    /* Map the lowcore. */
@@ -142,8 +142,6 @@ static int mmu_translate_pte(CPUS390XState *env, target_ulong vaddr,
 
     return 0;
 }
-
-#define VADDR_PX    0xff000         /* Page index bits */
 
 /* Decode segment table entry */
 static int mmu_translate_segment(CPUS390XState *env, target_ulong vaddr,
@@ -433,7 +431,7 @@ static int translate_pages(S390CPU *cpu, vaddr addr, int nr_pages,
     for (i = 0; i < nr_pages; i++) {
         /* Low-address protection? */
         if (lowprot && (addr < 512 || (addr >= 4096 && addr < 4096 + 512))) {
-            trigger_access_exception(env, PGM_PROTECTION, ILEN_LATER_INC, 0);
+            trigger_access_exception(env, PGM_PROTECTION, ILEN_AUTO, 0);
             return -EACCES;
         }
         ret = mmu_translate(env, addr, is_write, asc, &pages[i], &pflags, true);
@@ -442,7 +440,7 @@ static int translate_pages(S390CPU *cpu, vaddr addr, int nr_pages,
         }
         if (!address_space_access_valid(&address_space_memory, pages[i],
                                         TARGET_PAGE_SIZE, is_write)) {
-            program_interrupt(env, PGM_ADDRESSING, 0);
+            program_interrupt(env, PGM_ADDRESSING, ILEN_AUTO);
             return -EFAULT;
         }
         addr += TARGET_PAGE_SIZE;

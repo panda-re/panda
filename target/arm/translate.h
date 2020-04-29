@@ -31,6 +31,7 @@ typedef struct DisasContext {
     bool vfp_enabled; /* FP enabled via FPSCR.EN */
     int vec_len;
     int vec_stride;
+    bool v7m_handler_mode;
     /* Immediate value in AArch32 SVC insn; must be set if is_jmp == DISAS_SWI
      * so that top level loop can generate correct syndrome information.
      */
@@ -87,7 +88,7 @@ static inline int arm_dc_feature(DisasContext *dc, int feature)
 
 static inline int get_mem_index(DisasContext *s)
 {
-    return s->mmu_idx;
+    return arm_to_core_mmu_idx(s->mmu_idx);
 }
 
 /* Function used to determine the target exception EL when otherwise not known
@@ -134,10 +135,21 @@ static void disas_set_insn_syndrome(DisasContext *s, uint32_t syn)
 #define DISAS_HVC 8
 #define DISAS_SMC 9
 #define DISAS_YIELD 10
+/* M profile branch which might be an exception return (and so needs
+ * custom end-of-TB code)
+ */
+#define DISAS_BX_EXCRET 11
+/* For instructions which want an immediate exit to the main loop,
+ * as opposed to attempting to use lookup_and_goto_ptr. Unlike
+ * DISAS_UPDATE this doesn't write the PC on exiting the translation
+ * loop so you need to ensure something (gen_a64_set_pc_im or runtime
+ * helper) has done so before we reach return from cpu_tb_exec.
+ */
+#define DISAS_EXIT 12
 
 #ifdef TARGET_AARCH64
 void a64_translate_init(void);
-void gen_intermediate_code_a64(ARMCPU *cpu, TranslationBlock *tb);
+void gen_intermediate_code_a64(CPUState *cpu, TranslationBlock *tb);
 void gen_a64_set_pc_im(uint64_t val);
 void aarch64_cpu_dump_state(CPUState *cs, FILE *f,
                             fprintf_function cpu_fprintf, int flags);
@@ -146,7 +158,7 @@ static inline void a64_translate_init(void)
 {
 }
 
-static inline void gen_intermediate_code_a64(ARMCPU *cpu, TranslationBlock *tb)
+static inline void gen_intermediate_code_a64(CPUState *cpu, TranslationBlock *tb)
 {
 }
 

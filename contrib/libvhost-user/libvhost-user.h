@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <sys/poll.h>
 #include <linux/vhost.h>
 #include "standard-headers/linux/virtio_ring.h"
 
@@ -131,6 +132,7 @@ typedef void (*vu_set_features_cb) (VuDev *dev, uint64_t features);
 typedef int (*vu_process_msg_cb) (VuDev *dev, VhostUserMsg *vmsg,
                                   int *do_reply);
 typedef void (*vu_queue_set_started_cb) (VuDev *dev, int qidx, bool started);
+typedef bool (*vu_queue_is_processed_in_order_cb) (VuDev *dev, int qidx);
 
 typedef struct VuDevIface {
     /* called by VHOST_USER_GET_FEATURES to get the features bitmask */
@@ -147,6 +149,12 @@ typedef struct VuDevIface {
     vu_process_msg_cb process_msg;
     /* tells when queues can be processed */
     vu_queue_set_started_cb queue_set_started;
+    /*
+     * If the queue is processed in order, in which case it will be
+     * resumed to vring.used->idx. This can help to support resuming
+     * on unmanaged exit/crash.
+     */
+    vu_queue_is_processed_in_order_cb queue_is_processed_in_order;
 } VuDevIface;
 
 typedef void (*vu_queue_handler_cb) (VuDev *dev, int qidx);
@@ -192,11 +200,11 @@ typedef struct VuVirtq {
 } VuVirtq;
 
 enum VuWatchCondtion {
-    VU_WATCH_IN = 1 << 0,
-    VU_WATCH_OUT = 1 << 1,
-    VU_WATCH_PRI = 1 << 2,
-    VU_WATCH_ERR = 1 << 3,
-    VU_WATCH_HUP = 1 << 4,
+    VU_WATCH_IN = POLLIN,
+    VU_WATCH_OUT = POLLOUT,
+    VU_WATCH_PRI = POLLPRI,
+    VU_WATCH_ERR = POLLERR,
+    VU_WATCH_HUP = POLLHUP,
 };
 
 typedef void (*vu_panic_cb) (VuDev *dev, const char *err);
@@ -327,13 +335,13 @@ void vu_queue_set_notification(VuDev *dev, VuVirtq *vq, int enable);
 bool vu_queue_enabled(VuDev *dev, VuVirtq *vq);
 
 /**
- * vu_queue_enabled:
+ * vu_queue_empty:
  * @dev: a VuDev context
  * @vq: a VuVirtq queue
  *
- * Returns: whether the queue is empty.
+ * Returns: true if the queue is empty or not ready.
  */
-int vu_queue_empty(VuDev *dev, VuVirtq *vq);
+bool vu_queue_empty(VuDev *dev, VuVirtq *vq);
 
 /**
  * vu_queue_notify:

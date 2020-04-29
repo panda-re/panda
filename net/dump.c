@@ -194,6 +194,9 @@ int net_init_dump(const Netdev *netdev, const char *name,
 
     assert(peer);
 
+    error_report("'-net dump' is deprecated. "
+                 "Please use '-object filter-dump' instead.");
+
     if (dump->has_file) {
         file = dump->file;
     } else {
@@ -325,7 +328,7 @@ static void filter_dump_instance_init(Object *obj)
 
     nfds->maxlen = 65536;
 
-    object_property_add(obj, "maxlen", "int", filter_dump_get_maxlen,
+    object_property_add(obj, "maxlen", "uint32", filter_dump_get_maxlen,
                         filter_dump_set_maxlen, NULL, NULL, NULL);
     object_property_add_str(obj, "file", file_dump_get_filename,
                             file_dump_set_filename, NULL);

@@ -32,7 +32,7 @@
 #include "sysemu/dma.h"
 #include "hw/ide/internal.h"
 #include "hw/ide/pci.h"
-#include "hw/ide/ahci.h"
+#include "hw/ide/ahci_internal.h"
 
 #define DEBUG_AHCI 0
 
@@ -1495,6 +1495,7 @@ void ahci_uninit(AHCIState *s)
 
             ide_exit(s);
         }
+        object_unparent(OBJECT(&ad->port));
     }
 
     g_free(s->dev);
@@ -1669,7 +1670,7 @@ const VMStateDescription vmstate_ahci = {
         VMSTATE_UINT32(control_regs.impl, AHCIState),
         VMSTATE_UINT32(control_regs.version, AHCIState),
         VMSTATE_UINT32(idp_index, AHCIState),
-        VMSTATE_INT32_EQUAL(ports, AHCIState),
+        VMSTATE_INT32_EQUAL(ports, AHCIState, NULL),
         VMSTATE_END_OF_LIST()
     },
 };
@@ -1832,6 +1833,14 @@ static void sysbus_ahci_register_types(void)
 }
 
 type_init(sysbus_ahci_register_types)
+
+int32_t ahci_get_num_ports(PCIDevice *dev)
+{
+    AHCIPCIState *d = ICH_AHCI(dev);
+    AHCIState *ahci = &d->ahci;
+
+    return ahci->ports;
+}
 
 void ahci_ide_create_devs(PCIDevice *dev, DriveInfo **hd)
 {

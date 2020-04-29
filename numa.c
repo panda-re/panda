@@ -51,6 +51,7 @@ static int max_numa_nodeid; /* Highest specified NUMA node ID, plus one.
                              * For all nodes, nodeid < max_numa_nodeid
                              */
 int nb_numa_nodes;
+bool have_numa_distance;
 NodeInfo numa_info[MAX_NODES];
 
 void numa_set_mem_node_id(ram_addr_t addr, uint64_t size, uint32_t node)
@@ -140,10 +141,12 @@ uint32_t numa_get_node(ram_addr_t addr, Error **errp)
     return -1;
 }
 
-static void numa_node_parse(NumaNodeOptions *node, QemuOpts *opts, Error **errp)
+static void parse_numa_node(MachineState *ms, NumaNodeOptions *node,
+                            QemuOpts *opts, Error **errp)
 {
     uint16_t nodenr;
     uint16List *cpus = NULL;
+    MachineClass *mc = MACHINE_GET_CLASS(ms);
 
     if (node->has_nodeid) {
         nodenr = node->nodeid;
@@ -162,7 +165,12 @@ static void numa_node_parse(NumaNodeOptions *node, QemuOpts *opts, Error **errp)
         return;
     }
 
+    if (!mc->cpu_index_to_instance_props) {
+        error_report("NUMA is not supported by this machine-type");
+        exit(1);
+    }
     for (cpus = node->cpus; cpus; cpus = cpus->next) {
+        CpuInstanceProperties props;
         if (cpus->value >= max_cpus) {
             error_setg(errp,
                        "CPU index (%" PRIu16 ")"
@@ -170,11 +178,14 @@ static void numa_node_parse(NumaNodeOptions *node, QemuOpts *opts, Error **errp)
                        cpus->value, max_cpus);
             return;
         }
-        bitmap_set(numa_info[nodenr].node_cpu, cpus->value, 1);
+        props = mc->cpu_index_to_instance_props(ms, cpus->value);
+        props.node_id = nodenr;
+        props.has_node_id = true;
+        machine_set_cpu_numa_node(ms, &props, &error_fatal);
     }
 
     if (node->has_mem && node->has_memdev) {
-        error_setg(errp, "qemu: cannot specify both mem= and memdev=");
+        error_setg(errp, "cannot specify both mem= and memdev=");
         return;
     }
 
@@ -182,7 +193,7 @@ static void numa_node_parse(NumaNodeOptions *node, QemuOpts *opts, Error **errp)
         have_memdevs = node->has_memdev;
     }
     if (node->has_memdev != have_memdevs) {
-        error_setg(errp, "qemu: memdev option must be specified for either "
+        error_setg(errp, "memdev option must be specified for either "
                    "all or no nodes");
         return;
     }
@@ -205,16 +216,53 @@ static void numa_node_parse(NumaNodeOptions *node, QemuOpts *opts, Error **errp)
         }
 
         object_ref(o);
-        numa_info[nodenr].node_mem = object_property_get_int(o, "size", NULL);
+        numa_info[nodenr].node_mem = object_property_get_uint(o, "size", NULL);
         numa_info[nodenr].node_memdev = MEMORY_BACKEND(o);
     }
     numa_info[nodenr].present = true;
     max_numa_nodeid = MAX(max_numa_nodeid, nodenr + 1);
 }
 
+static void parse_numa_distance(NumaDistOptions *dist, Error **errp)
+{
+    uint16_t src = dist->src;
+    uint16_t dst = dist->dst;
+    uint8_t val = dist->val;
+
+    if (src >= MAX_NODES || dst >= MAX_NODES) {
+        error_setg(errp,
+                   "Invalid node %d, max possible could be %d",
+                   MAX(src, dst), MAX_NODES);
+        return;
+    }
+
+    if (!numa_info[src].present || !numa_info[dst].present) {
+        error_setg(errp, "Source/Destination NUMA node is missing. "
+                   "Please use '-numa node' option to declare it first.");
+        return;
+    }
+
+    if (val < NUMA_DISTANCE_MIN) {
+        error_setg(errp, "NUMA distance (%" PRIu8 ") is invalid, "
+                   "it shouldn't be less than %d.",
+                   val, NUMA_DISTANCE_MIN);
+        return;
+    }
+
+    if (src == dst && val != NUMA_DISTANCE_MIN) {
+        error_setg(errp, "Local distance of node %d should be %d.",
+                   src, NUMA_DISTANCE_MIN);
+        return;
+    }
+
+    numa_info[src].distance[dst] = val;
+    have_numa_distance = true;
+}
+
 static int parse_numa(void *opaque, QemuOpts *opts, Error **errp)
 {
     NumaOptions *object = NULL;
+    MachineState *ms = opaque;
     Error *err = NULL;
 
     {
@@ -229,11 +277,32 @@ static int parse_numa(void *opaque, QemuOpts *opts, Error **errp)
 
     switch (object->type) {
     case NUMA_OPTIONS_TYPE_NODE:
-        numa_node_parse(&object->u.node, opts, &err);
+        parse_numa_node(ms, &object->u.node, opts, &err);
         if (err) {
             goto end;
         }
         nb_numa_nodes++;
+        break;
+    case NUMA_OPTIONS_TYPE_DIST:
+        parse_numa_distance(&object->u.dist, &err);
+        if (err) {
+            goto end;
+        }
+        break;
+    case NUMA_OPTIONS_TYPE_CPU:
+        if (!object->u.cpu.has_node_id) {
+            error_setg(&err, "Missing mandatory node-id property");
+            goto end;
+        }
+        if (!numa_info[object->u.cpu.node_id].present) {
+            error_setg(&err, "Invalid node-id=%" PRId64 ", NUMA node must be "
+                "defined with -numa node,nodeid=ID before it's used with "
+                "-numa cpu,node-id=ID", object->u.cpu.node_id);
+            goto end;
+        }
+
+        machine_set_cpu_numa_node(ms, qapi_NumaCpuOptions_base(&object->u.cpu),
+                                  &err);
         break;
     default:
         abort();
@@ -249,60 +318,117 @@ end:
     return 0;
 }
 
-static char *enumerate_cpus(unsigned long *cpus, int max_cpus)
+/* If all node pair distances are symmetric, then only distances
+ * in one direction are enough. If there is even one asymmetric
+ * pair, though, then all distances must be provided. The
+ * distance from a node to itself is always NUMA_DISTANCE_MIN,
+ * so providing it is never necessary.
+ */
+static void validate_numa_distance(void)
 {
-    int cpu;
-    bool first = true;
-    GString *s = g_string_new(NULL);
+    int src, dst;
+    bool is_asymmetrical = false;
 
-    for (cpu = find_first_bit(cpus, max_cpus);
-        cpu < max_cpus;
-        cpu = find_next_bit(cpus, max_cpus, cpu + 1)) {
-        g_string_append_printf(s, "%s%d", first ? "" : " ", cpu);
-        first = false;
-    }
-    return g_string_free(s, FALSE);
-}
+    for (src = 0; src < nb_numa_nodes; src++) {
+        for (dst = src; dst < nb_numa_nodes; dst++) {
+            if (numa_info[src].distance[dst] == 0 &&
+                numa_info[dst].distance[src] == 0) {
+                if (src != dst) {
+                    error_report("The distance between node %d and %d is "
+                                 "missing, at least one distance value "
+                                 "between each nodes should be provided.",
+                                 src, dst);
+                    exit(EXIT_FAILURE);
+                }
+            }
 
-static void validate_numa_cpus(void)
-{
-    int i;
-    unsigned long *seen_cpus = bitmap_new(max_cpus);
-
-    for (i = 0; i < nb_numa_nodes; i++) {
-        if (bitmap_intersects(seen_cpus, numa_info[i].node_cpu, max_cpus)) {
-            bitmap_and(seen_cpus, seen_cpus,
-                       numa_info[i].node_cpu, max_cpus);
-            error_report("CPU(s) present in multiple NUMA nodes: %s",
-                         enumerate_cpus(seen_cpus, max_cpus));
-            g_free(seen_cpus);
-            exit(EXIT_FAILURE);
+            if (numa_info[src].distance[dst] != 0 &&
+                numa_info[dst].distance[src] != 0 &&
+                numa_info[src].distance[dst] !=
+                numa_info[dst].distance[src]) {
+                is_asymmetrical = true;
+            }
         }
-        bitmap_or(seen_cpus, seen_cpus,
-                  numa_info[i].node_cpu, max_cpus);
     }
 
-    if (!bitmap_full(seen_cpus, max_cpus)) {
-        char *msg;
-        bitmap_complement(seen_cpus, seen_cpus, max_cpus);
-        msg = enumerate_cpus(seen_cpus, max_cpus);
-        error_report("warning: CPU(s) not present in any NUMA nodes: %s", msg);
-        error_report("warning: All CPU(s) up to maxcpus should be described "
-                     "in NUMA config");
-        g_free(msg);
+    if (is_asymmetrical) {
+        for (src = 0; src < nb_numa_nodes; src++) {
+            for (dst = 0; dst < nb_numa_nodes; dst++) {
+                if (src != dst && numa_info[src].distance[dst] == 0) {
+                    error_report("At least one asymmetrical pair of "
+                            "distances is given, please provide distances "
+                            "for both directions of all node pairs.");
+                    exit(EXIT_FAILURE);
+                }
+            }
+        }
     }
-    g_free(seen_cpus);
 }
 
-void parse_numa_opts(MachineClass *mc)
+static void complete_init_numa_distance(void)
+{
+    int src, dst;
+
+    /* Fixup NUMA distance by symmetric policy because if it is an
+     * asymmetric distance table, it should be a complete table and
+     * there would not be any missing distance except local node, which
+     * is verified by validate_numa_distance above.
+     */
+    for (src = 0; src < nb_numa_nodes; src++) {
+        for (dst = 0; dst < nb_numa_nodes; dst++) {
+            if (numa_info[src].distance[dst] == 0) {
+                if (src == dst) {
+                    numa_info[src].distance[dst] = NUMA_DISTANCE_MIN;
+                } else {
+                    numa_info[src].distance[dst] = numa_info[dst].distance[src];
+                }
+            }
+        }
+    }
+}
+
+void numa_legacy_auto_assign_ram(MachineClass *mc, NodeInfo *nodes,
+                                 int nb_nodes, ram_addr_t size)
 {
     int i;
+    uint64_t usedmem = 0;
 
-    for (i = 0; i < MAX_NODES; i++) {
-        numa_info[i].node_cpu = bitmap_new(max_cpus);
+    /* Align each node according to the alignment
+     * requirements of the machine class
+     */
+
+    for (i = 0; i < nb_nodes - 1; i++) {
+        nodes[i].node_mem = (size / nb_nodes) &
+                            ~((1 << mc->numa_mem_align_shift) - 1);
+        usedmem += nodes[i].node_mem;
     }
+    nodes[i].node_mem = size - usedmem;
+}
 
-    if (qemu_opts_foreach(qemu_find_opts("numa"), parse_numa, NULL, NULL)) {
+void numa_default_auto_assign_ram(MachineClass *mc, NodeInfo *nodes,
+                                  int nb_nodes, ram_addr_t size)
+{
+    int i;
+    uint64_t usedmem = 0, node_mem;
+    uint64_t granularity = size / nb_nodes;
+    uint64_t propagate = 0;
+
+    for (i = 0; i < nb_nodes - 1; i++) {
+        node_mem = (granularity + propagate) &
+                   ~((1 << mc->numa_mem_align_shift) - 1);
+        propagate = granularity + propagate - node_mem;
+        nodes[i].node_mem = node_mem;
+        usedmem += node_mem;
+    }
+    nodes[i].node_mem = size - usedmem;
+}
+
+void parse_numa_opts(MachineState *ms)
+{
+    int i;
+    MachineClass *mc = MACHINE_GET_CLASS(ms);
+
+    if (qemu_opts_foreach(qemu_find_opts("numa"), parse_numa, ms, NULL)) {
         exit(1);
     }
 
@@ -336,17 +462,8 @@ void parse_numa_opts(MachineClass *mc)
             }
         }
         if (i == nb_numa_nodes) {
-            uint64_t usedmem = 0;
-
-            /* Align each node according to the alignment
-             * requirements of the machine class
-             */
-            for (i = 0; i < nb_numa_nodes - 1; i++) {
-                numa_info[i].node_mem = (ram_size / nb_numa_nodes) &
-                                        ~((1 << mc->numa_mem_align_shift) - 1);
-                usedmem += numa_info[i].node_mem;
-            }
-            numa_info[i].node_mem = ram_size - usedmem;
+            assert(mc->numa_auto_assign_ram);
+            mc->numa_auto_assign_ram(mc, numa_info, nb_numa_nodes, ram_size);
         }
 
         numa_total = 0;
@@ -366,47 +483,44 @@ void parse_numa_opts(MachineClass *mc)
 
         numa_set_mem_ranges();
 
-        for (i = 0; i < nb_numa_nodes; i++) {
-            if (!bitmap_empty(numa_info[i].node_cpu, max_cpus)) {
-                break;
-            }
-        }
-        /* Historically VCPUs were assigned in round-robin order to NUMA
-         * nodes. However it causes issues with guest not handling it nice
-         * in case where cores/threads from a multicore CPU appear on
-         * different nodes. So allow boards to override default distribution
-         * rule grouping VCPUs by socket so that VCPUs from the same socket
-         * would be on the same node.
+        /* QEMU needs at least all unique node pair distances to build
+         * the whole NUMA distance table. QEMU treats the distance table
+         * as symmetric by default, i.e. distance A->B == distance B->A.
+         * Thus, QEMU is able to complete the distance table
+         * initialization even though only distance A->B is provided and
+         * distance B->A is not. QEMU knows the distance of a node to
+         * itself is always 10, so A->A distances may be omitted. When
+         * the distances of two nodes of a pair differ, i.e. distance
+         * A->B != distance B->A, then that means the distance table is
+         * asymmetric. In this case, the distances for both directions
+         * of all node pairs are required.
          */
-        if (i == nb_numa_nodes) {
-            for (i = 0; i < max_cpus; i++) {
-                unsigned node_id = i % nb_numa_nodes;
-                if (mc->cpu_index_to_socket_id) {
-                    node_id = mc->cpu_index_to_socket_id(i) % nb_numa_nodes;
-                }
+        if (have_numa_distance) {
+            /* Validate enough NUMA distance information was provided. */
+            validate_numa_distance();
 
-                set_bit(i, numa_info[node_id].node_cpu);
-            }
+            /* Validation succeeded, now fill in any missing distances. */
+            complete_init_numa_distance();
         }
-
-        validate_numa_cpus();
     } else {
         numa_set_mem_node_id(0, ram_size, 0);
     }
 }
 
-void numa_post_machine_init(void)
+void numa_cpu_pre_plug(const CPUArchId *slot, DeviceState *dev, Error **errp)
 {
-    CPUState *cpu;
-    int i;
+    int node_id = object_property_get_int(OBJECT(dev), "node-id", &error_abort);
 
-    CPU_FOREACH(cpu) {
-        for (i = 0; i < nb_numa_nodes; i++) {
-            assert(cpu->cpu_index < max_cpus);
-            if (test_bit(cpu->cpu_index, numa_info[i].node_cpu)) {
-                cpu->numa_node = i;
-            }
+    if (node_id == CPU_UNSET_NUMA_NODE_ID) {
+        /* due to bug in libvirt, it doesn't pass node-id from props on
+         * device_add as expected, so we have to fix it up here */
+        if (slot->props.has_node_id) {
+            object_property_set_int(OBJECT(dev), slot->props.node_id,
+                                    "node-id", errp);
         }
+    } else if (node_id != slot->props.node_id) {
+        error_setg(errp, "node-id=%d must match numa node specified "
+                   "with -numa option", node_id);
     }
 }
 
@@ -428,14 +542,14 @@ static void allocate_system_memory_nonnuma(MemoryRegion *mr, Object *owner,
             /* Legacy behavior: if allocation failed, fall back to
              * regular RAM allocation.
              */
-            memory_region_init_ram(mr, owner, name, ram_size, &error_fatal);
+            memory_region_init_ram_nomigrate(mr, owner, name, ram_size, &error_fatal);
         }
 #else
         fprintf(stderr, "-mem-path not supported on this host\n");
         exit(1);
 #endif
     } else {
-        memory_region_init_ram(mr, owner, name, ram_size, &error_fatal);
+        memory_region_init_ram_nomigrate(mr, owner, name, ram_size, &error_fatal);
     }
     vmstate_register_ram_global(mr);
 }
@@ -527,8 +641,8 @@ static int query_memdev(Object *obj, void *opaque)
         m->value->id = object_property_get_str(obj, "id", NULL);
         m->value->has_id = !!m->value->id;
 
-        m->value->size = object_property_get_int(obj, "size",
-                                                 &error_abort);
+        m->value->size = object_property_get_uint(obj, "size",
+                                                  &error_abort);
         m->value->merge = object_property_get_bool(obj, "merge",
                                                    &error_abort);
         m->value->dump = object_property_get_bool(obj, "dump",
@@ -558,20 +672,6 @@ MemdevList *qmp_query_memdev(Error **errp)
 
     object_child_foreach(obj, query_memdev, &list);
     return list;
-}
-
-int numa_get_node_for_cpu(int idx)
-{
-    int i;
-
-    assert(idx < max_cpus);
-
-    for (i = 0; i < nb_numa_nodes; i++) {
-        if (test_bit(idx, numa_info[i].node_cpu)) {
-            break;
-        }
-    }
-    return i;
 }
 
 void ram_block_notifier_add(RAMBlockNotifier *n)

@@ -36,6 +36,7 @@ typedef struct virtio_net_conf
     int32_t txburst;
     char *tx;
     uint16_t rx_queue_size;
+    uint16_t tx_queue_size;
     uint16_t mtu;
 } virtio_net_conf;
 
@@ -97,6 +98,7 @@ typedef struct VirtIONet {
     QEMUTimer *announce_timer;
     int announce_counter;
     bool needs_vnet_hdr_swap;
+    bool mtu_bypass_backend;
 } VirtIONet;
 
 void virtio_net_set_netclient_name(VirtIONet *n, const char *name,

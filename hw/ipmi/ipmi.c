@@ -44,14 +44,14 @@ static int ipmi_do_hw_op(IPMIInterface *s, enum ipmi_op op, int checkonly)
         if (checkonly) {
             return 0;
         }
-        qemu_system_reset_request();
+        qemu_system_reset_request(SHUTDOWN_CAUSE_GUEST_RESET);
         return 0;
 
     case IPMI_POWEROFF_CHASSIS:
         if (checkonly) {
             return 0;
         }
-        qemu_system_shutdown_request();
+        qemu_system_shutdown_request(SHUTDOWN_CAUSE_GUEST_SHUTDOWN);
         return 0;
 
     case IPMI_SEND_NMI:
@@ -90,7 +90,7 @@ static TypeInfo ipmi_interface_type_info = {
     .class_init = ipmi_interface_class_init,
 };
 
-static void isa_ipmi_bmc_check(Object *obj, const char *name,
+static void isa_ipmi_bmc_check(const Object *obj, const char *name,
                                Object *val, Error **errp)
 {
     IPMIBmc *bmc = IPMI_BMC(val);

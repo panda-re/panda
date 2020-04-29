@@ -30,10 +30,9 @@
 #include "hw/xen/xen_backend.h"
 #include "monitor/qdev.h"
 #include "qapi/qmp/qbool.h"
-#include "qapi/qmp/qint.h"
 #include "qapi/qmp/qstring.h"
 
-#include <xen/io/ring.h>
+#include "hw/xen/io/ring.h"
 #include <xen/io/usbif.h>
 
 /*

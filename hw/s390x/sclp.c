@@ -23,6 +23,7 @@
 #include "hw/s390x/sclp.h"
 #include "hw/s390x/event-facility.h"
 #include "hw/s390x/s390-pci-bus.h"
+#include "hw/s390x/ipl.h"
 
 static inline SCLPDevice *get_sclp_device(void)
 {
@@ -57,6 +58,7 @@ static void read_SCP_info(SCLPDevice *sclp, SCCB *sccb)
     int cpu_count = 0;
     int rnsize, rnmax;
     int slots = MIN(machine->ram_slots, s390_get_memslot_count(kvm_state));
+    IplParameterBlock *ipib = s390_ipl_get_iplb();
 
     CPU_FOREACH(cpu) {
         cpu_count++;
@@ -127,6 +129,13 @@ static void read_SCP_info(SCLPDevice *sclp, SCCB *sccb)
     } else {
         read_info->rnmax = cpu_to_be16(0);
         read_info->rnmax2 = cpu_to_be64(rnmax);
+    }
+
+    if (ipib && ipib->flags & DIAG308_FLAGS_LP_VALID) {
+        memcpy(&read_info->loadparm, &ipib->loadparm,
+               sizeof(read_info->loadparm));
+    } else {
+        s390_ipl_set_loadparm(read_info->loadparm);
     }
 
     sccb->h.response_code = cpu_to_be16(SCLP_RC_NORMAL_READ_COMPLETION);
@@ -264,7 +273,6 @@ static void assign_storage(SCLPDevice *sclp, SCCB *sccb)
              * instead of doing it via the ref count of the MemoryRegion. */
             object_ref(OBJECT(standby_ram));
             object_unparent(OBJECT(standby_ram));
-            vmstate_register_ram_global(standby_ram);
             memory_region_add_subregion(sysmem, offset, standby_ram);
         }
         /* The specified subregion is no longer in standby */
@@ -496,10 +504,10 @@ static void sclp_realize(DeviceState *dev, Error **errp)
 
     ret = s390_set_memory_limit(machine->maxram_size, &hw_limit);
     if (ret == -E2BIG) {
-        error_setg(&err, "qemu: host supports a maximum of %" PRIu64 " GB",
+        error_setg(&err, "host supports a maximum of %" PRIu64 " GB",
                    hw_limit >> 30);
     } else if (ret) {
-        error_setg(&err, "qemu: setting the guest size failed");
+        error_setg(&err, "setting the guest size failed");
     }
 
 out:

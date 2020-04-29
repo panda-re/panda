@@ -42,9 +42,7 @@ static void virtio_blk_init_request(VirtIOBlock *s, VirtQueue *vq,
 
 static void virtio_blk_free_request(VirtIOBlockReq *req)
 {
-    if (req) {
-        g_free(req);
-    }
+    g_free(req);
 }
 
 static void virtio_blk_req_complete(VirtIOBlockReq *req, unsigned char status)
@@ -52,7 +50,7 @@ static void virtio_blk_req_complete(VirtIOBlockReq *req, unsigned char status)
     VirtIOBlock *s = req->dev;
     VirtIODevice *vdev = VIRTIO_DEVICE(s);
 
-    trace_virtio_blk_req_complete(req, status);
+    trace_virtio_blk_req_complete(vdev, req, status);
 
     stb_p(&req->in->status, status);
     virtqueue_push(req->vq, &req->elem, req->in_len);
@@ -90,12 +88,13 @@ static void virtio_blk_rw_complete(void *opaque, int ret)
 {
     VirtIOBlockReq *next = opaque;
     VirtIOBlock *s = next->dev;
+    VirtIODevice *vdev = VIRTIO_DEVICE(s);
 
     aio_context_acquire(blk_get_aio_context(s->conf.conf.blk));
     while (next) {
         VirtIOBlockReq *req = next;
         next = req->mr_next;
-        trace_virtio_blk_rw_complete(req, ret);
+        trace_virtio_blk_rw_complete(vdev, req, ret);
 
         if (req->qiov.nalloc != -1) {
             /* If nalloc is != 1 req->qiov is a local copy of the original
@@ -357,7 +356,8 @@ static inline void submit_requests(BlockBackend *blk, MultiReqBuffer *mrb,
             mrb->reqs[i - 1]->mr_next = mrb->reqs[i];
         }
 
-        trace_virtio_blk_submit_multireq(mrb, start, num_reqs,
+        trace_virtio_blk_submit_multireq(VIRTIO_DEVICE(mrb->reqs[start]->dev),
+                                         mrb, start, num_reqs,
                                          sector_num << BDRV_SECTOR_BITS,
                                          qiov->size, is_write);
         block_acct_merge_done(blk_get_stats(blk),
@@ -528,11 +528,11 @@ static int virtio_blk_handle_request(VirtIOBlockReq *req, MultiReqBuffer *mrb)
 
         if (is_write) {
             qemu_iovec_init_external(&req->qiov, iov, out_num);
-            trace_virtio_blk_handle_write(req, req->sector_num,
+            trace_virtio_blk_handle_write(vdev, req, req->sector_num,
                                           req->qiov.size / BDRV_SECTOR_SIZE);
         } else {
             qemu_iovec_init_external(&req->qiov, in_iov, in_num);
-            trace_virtio_blk_handle_read(req, req->sector_num,
+            trace_virtio_blk_handle_read(vdev, req, req->sector_num,
                                          req->qiov.size / BDRV_SECTOR_SIZE);
         }
 
@@ -730,6 +730,7 @@ static void virtio_blk_update_config(VirtIODevice *vdev, uint8_t *config)
     BlockConf *conf = &s->conf.conf;
     struct virtio_blk_config blkcfg;
     uint64_t capacity;
+    int64_t length;
     int blk_size = conf->logical_block_size;
 
     blk_get_geometry(s->blk, &capacity);
@@ -752,7 +753,8 @@ static void virtio_blk_update_config(VirtIODevice *vdev, uint8_t *config)
      * divided by 512 - instead it is the amount of blk_size blocks
      * per track (cylinder).
      */
-    if (blk_getlength(s->blk) /  conf->heads / conf->secs % blk_size) {
+    length = blk_getlength(s->blk);
+    if (length > 0 && length / conf->heads / conf->secs % blk_size) {
         blkcfg.geometry.sectors = conf->secs & ~s->sector_mask;
     } else {
         blkcfg.geometry.sectors = conf->secs;
@@ -983,10 +985,6 @@ static void virtio_blk_instance_init(Object *obj)
 {
     VirtIOBlock *s = VIRTIO_BLK(obj);
 
-    object_property_add_link(obj, "iothread", TYPE_IOTHREAD,
-                             (Object **)&s->conf.iothread,
-                             qdev_prop_allow_set_link_before_realize,
-                             OBJ_PROP_LINK_UNREF_ON_RELEASE, NULL);
     device_add_bootindex_property(obj, &s->conf.conf.bootindex,
                                   "bootindex", "/disk@0,0",
                                   DEVICE(obj), NULL);
@@ -1014,6 +1012,8 @@ static Property virtio_blk_properties[] = {
     DEFINE_PROP_BIT("request-merging", VirtIOBlock, conf.request_merging, 0,
                     true),
     DEFINE_PROP_UINT16("num-queues", VirtIOBlock, conf.num_queues, 1),
+    DEFINE_PROP_LINK("iothread", VirtIOBlock, conf.iothread, TYPE_IOTHREAD,
+                     IOThread *),
     DEFINE_PROP_END_OF_LIST(),
 };
 

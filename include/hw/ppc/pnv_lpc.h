@@ -19,6 +19,8 @@
 #ifndef _PPC_PNV_LPC_H
 #define _PPC_PNV_LPC_H
 
+#include "hw/ppc/pnv_psi.h"
+
 #define TYPE_PNV_LPC "pnv-lpc"
 #define PNV_LPC(obj) \
      OBJECT_CHECK(PnvLpcController, (obj), TYPE_PNV_LPC)
@@ -62,6 +64,12 @@ typedef struct PnvLpcController {
 
     /* XSCOM registers */
     MemoryRegion xscom_regs;
+
+    /* PSI to generate interrupts */
+    PnvPsi *psi;
 } PnvLpcController;
+
+qemu_irq *pnv_lpc_isa_irq_create(PnvLpcController *lpc, int chip_type,
+                                 int nirqs);
 
 #endif /* _PPC_PNV_LPC_H */

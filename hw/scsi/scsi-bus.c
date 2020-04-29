@@ -282,9 +282,9 @@ void scsi_bus_legacy_handle_cmdline(SCSIBus *bus, bool deprecated)
                 continue;       /* claimed */
             }
             if (!dinfo->is_default) {
-                error_report("warning: bus=%d,unit=%d is deprecated with this"
-                             " machine type",
-                             bus->busnr, unit);
+                warn_report("bus=%d,unit=%d is deprecated with this"
+                            " machine type",
+                            bus->busnr, unit);
             }
         }
         scsi_bus_legacy_add_drive(bus, blk_by_legacy_dinfo(dinfo),
@@ -516,7 +516,14 @@ static size_t scsi_sense_len(SCSIRequest *req)
 static int32_t scsi_target_send_command(SCSIRequest *req, uint8_t *buf)
 {
     SCSITargetReq *r = DO_UPCAST(SCSITargetReq, req, req);
+    int fixed_sense = (req->cmd.buf[1] & 1) == 0;
 
+    if (req->lun != 0 &&
+        buf[0] != INQUIRY && buf[0] != REQUEST_SENSE) {
+        scsi_req_build_sense(req, SENSE_CODE(LUN_NOT_SUPPORTED));
+        scsi_req_complete(req, CHECK_CONDITION);
+        return 0;
+    }
     switch (buf[0]) {
     case REPORT_LUNS:
         if (!scsi_target_emulate_report_luns(r)) {
@@ -530,9 +537,28 @@ static int32_t scsi_target_send_command(SCSIRequest *req, uint8_t *buf)
         break;
     case REQUEST_SENSE:
         scsi_target_alloc_buf(&r->req, scsi_sense_len(req));
-        r->len = scsi_device_get_sense(r->req.dev, r->buf,
-                                       MIN(req->cmd.xfer, r->buf_len),
-                                       (req->cmd.buf[1] & 1) == 0);
+        if (req->lun != 0) {
+            const struct SCSISense sense = SENSE_CODE(LUN_NOT_SUPPORTED);
+
+            if (fixed_sense) {
+                r->buf[0] = 0x70;
+                r->buf[2] = sense.key;
+                r->buf[10] = 10;
+                r->buf[12] = sense.asc;
+                r->buf[13] = sense.ascq;
+                r->len = MIN(req->cmd.xfer, SCSI_SENSE_LEN);
+            } else {
+                r->buf[0] = 0x72;
+                r->buf[1] = sense.key;
+                r->buf[2] = sense.asc;
+                r->buf[3] = sense.ascq;
+                r->len = 8;
+            }
+        } else {
+            r->len = scsi_device_get_sense(r->req.dev, r->buf,
+                                           MIN(req->cmd.xfer, r->buf_len),
+                                           fixed_sense);
+        }
         if (r->req.dev->sense_is_ua) {
             scsi_device_unit_attention_reported(req->dev);
             r->req.dev->sense_len = 0;
@@ -542,7 +568,7 @@ static int32_t scsi_target_send_command(SCSIRequest *req, uint8_t *buf)
     case TEST_UNIT_READY:
         break;
     default:
-        scsi_req_build_sense(req, SENSE_CODE(LUN_NOT_SUPPORTED));
+        scsi_req_build_sense(req, SENSE_CODE(INVALID_OPCODE));
         scsi_req_complete(req, CHECK_CONDITION);
         return 0;
     illegal_request:

@@ -8,12 +8,14 @@
  * directory.
  */
 
+#include "libc.h"
 #include "s390-ccw.h"
 #include "virtio.h"
 
 char stack[PAGE_SIZE * 8] __attribute__((__aligned__(PAGE_SIZE)));
 static SubChannelId blk_schid = { .one = 1 };
 IplParameterBlock iplb __attribute__((__aligned__(PAGE_SIZE)));
+static char loadparm[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
 /*
  * Priniciples of Operations (SA22-7832-09) chapter 17 requires that
@@ -29,12 +31,31 @@ void write_subsystem_identification(void)
     *zeroes = 0;
 }
 
-
 void panic(const char *string)
 {
     sclp_print(string);
     disabled_wait();
     while (1) { }
+}
+
+unsigned int get_loadparm_index(void)
+{
+    const char *lp = loadparm;
+    int i;
+    unsigned int idx = 0;
+
+    for (i = 0; i < 8; i++) {
+        char c = lp[i];
+
+        if (c < '0' || c > '9') {
+            break;
+        }
+
+        idx *= 10;
+        idx += c - '0';
+    }
+
+    return idx;
 }
 
 static bool find_dev(Schib *schib, int dev_no)
@@ -73,6 +94,7 @@ static void virtio_setup(void)
     int ssid;
     bool found = false;
     uint16_t dev_no;
+    char ldp[] = "LOADPARM=[________]\n";
     VDev *vdev = virtio_get_device();
 
     /*
@@ -81,6 +103,10 @@ static void virtio_setup(void)
      * with the consequences.
      */
     enable_mss_facility();
+
+    sclp_get_loadparm_ascii(loadparm);
+    memcpy(ldp + 10, loadparm, 8);
+    sclp_print(ldp);
 
     if (store_iplb(&iplb)) {
         switch (iplb.pbt) {
@@ -118,7 +144,7 @@ static void virtio_setup(void)
         sclp_print("Network boot device detected\n");
         vdev->netboot_start_addr = iplb.ccw.netboot_start_addr;
     } else {
-        virtio_setup_device(blk_schid);
+        virtio_blk_setup_device(blk_schid);
 
         IPL_assert(virtio_ipl_disk_is_valid(), "No valid IPL device detected");
     }

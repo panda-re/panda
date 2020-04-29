@@ -18,12 +18,6 @@ typedef unsigned short     u16;
 typedef unsigned int       u32;
 typedef unsigned long long u64;
 typedef unsigned long      ulong;
-typedef long               size_t;
-typedef int                bool;
-typedef unsigned char      uint8_t;
-typedef unsigned short     uint16_t;
-typedef unsigned int       uint32_t;
-typedef unsigned long long uint64_t;
 typedef unsigned char      __u8;
 typedef unsigned short     __u16;
 typedef unsigned int       __u32;
@@ -42,6 +36,15 @@ typedef unsigned long long __u64;
 #ifndef NULL
 #define NULL    0
 #endif
+#ifndef MIN
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+#ifndef MIN_NON_ZERO
+#define MIN_NON_ZERO(a, b) ((a) == 0 ? (b) : \
+                            ((b) == 0 ? (a) : (MIN(a, b))))
+#endif
+
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 #include "cio.h"
 #include "iplb.h"
@@ -62,34 +65,24 @@ void consume_sclp_int(void);
 void panic(const char *string);
 void write_subsystem_identification(void);
 extern char stack[PAGE_SIZE * 8] __attribute__((__aligned__(PAGE_SIZE)));
+unsigned int get_loadparm_index(void);
 
-/* sclp-ascii.c */
+/* sclp.c */
 void sclp_print(const char *string);
 void sclp_setup(void);
+void sclp_get_loadparm_ascii(char *loadparm);
 
 /* virtio.c */
 unsigned long virtio_load_direct(ulong rec_list1, ulong rec_list2,
                                  ulong subchan_id, void *load_addr);
 bool virtio_is_supported(SubChannelId schid);
-void virtio_setup_device(SubChannelId schid);
+void virtio_blk_setup_device(SubChannelId schid);
 int virtio_read(ulong sector, void *load_addr);
 int enable_mss_facility(void);
 ulong get_second(void);
 
 /* bootmap.c */
 void zipl_load(void);
-
-static inline void *memset(void *s, int c, size_t n)
-{
-    int i;
-    unsigned char *p = s;
-
-    for (i = 0; i < n; i++) {
-        p[i] = c;
-    }
-
-    return s;
-}
 
 static inline void fill_hex(char *out, unsigned char val)
 {
@@ -160,17 +153,6 @@ static inline void sleep(unsigned int seconds)
     }
 }
 
-static inline void *memcpy(void *s1, const void *s2, size_t n)
-{
-    uint8_t *p1 = s1;
-    const uint8_t *p2 = s2;
-
-    while (n--) {
-        p1[n] = p2[n];
-    }
-    return s1;
-}
-
 static inline void IPL_assert(bool term, const char *message)
 {
     if (!term) {
@@ -186,6 +168,19 @@ static inline void IPL_check(bool term, const char *message)
         sclp_print("\n! WARNING: ");
         sclp_print(message);
         sclp_print(" !\n");
+    }
+}
+
+extern const unsigned char ebc2asc[256];
+static inline void ebcdic_to_ascii(const char *src,
+                                   char *dst,
+                                   unsigned int size)
+{
+    unsigned int i;
+
+    for (i = 0; i < size; i++) {
+        unsigned c = src[i];
+        dst[i] = ebc2asc[c];
     }
 }
 

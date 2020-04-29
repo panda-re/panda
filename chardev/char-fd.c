@@ -25,11 +25,11 @@
 #include "qemu/sockets.h"
 #include "qapi/error.h"
 #include "qemu-common.h"
-#include "sysemu/char.h"
+#include "chardev/char.h"
 #include "io/channel-file.h"
 
-#include "char-fd.h"
-#include "char-io.h"
+#include "chardev/char-fd.h"
+#include "chardev/char-io.h"
 
 /* Called with chr_write_lock held.  */
 static int fd_chr_write(Chardev *chr, const uint8_t *buf, int len)
@@ -58,7 +58,7 @@ static gboolean fd_chr_read(QIOChannel *chan, GIOCondition cond, void *opaque)
     ret = qio_channel_read(
         chan, (gchar *)buf, len, NULL);
     if (ret == 0) {
-        remove_fd_in_watch(chr, NULL);
+        remove_fd_in_watch(chr);
         qemu_chr_be_event(chr, CHR_EVENT_CLOSED);
         return FALSE;
     }
@@ -89,9 +89,9 @@ static void fd_chr_update_read_handler(Chardev *chr,
 {
     FDChardev *s = FD_CHARDEV(chr);
 
-    remove_fd_in_watch(chr, NULL);
+    remove_fd_in_watch(chr);
     if (s->ioc_in) {
-        chr->fd_in_tag = io_add_watch_poll(chr, s->ioc_in,
+        chr->gsource = io_add_watch_poll(chr, s->ioc_in,
                                            fd_chr_read_poll,
                                            fd_chr_read, chr,
                                            context);
@@ -103,7 +103,7 @@ static void char_fd_finalize(Object *obj)
     Chardev *chr = CHARDEV(obj);
     FDChardev *s = FD_CHARDEV(obj);
 
-    remove_fd_in_watch(chr, NULL);
+    remove_fd_in_watch(chr);
     if (s->ioc_in) {
         object_unref(OBJECT(s->ioc_in));
     }
@@ -141,7 +141,6 @@ void qemu_chr_open_fd(Chardev *chr,
     qio_channel_set_name(QIO_CHANNEL(s->ioc_out), name);
     g_free(name);
     qemu_set_nonblock(fd_out);
-    s->chr = chr;
 }
 
 static void char_fd_class_init(ObjectClass *oc, void *data)

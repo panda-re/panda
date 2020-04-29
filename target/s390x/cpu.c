@@ -32,7 +32,6 @@
 #include "qemu/error-report.h"
 #include "trace.h"
 #include "qapi/visitor.h"
-#include "migration/vmstate.h"
 #include "exec/exec-all.h"
 #ifndef CONFIG_USER_ONLY
 #include "hw/hw.h"
@@ -92,9 +91,10 @@ static void s390_cpu_initial_reset(CPUState *s)
     int i;
 
     s390_cpu_reset(s);
-    /* initial reset does not touch regs,fregs and aregs */
-    memset(&env->fpc, 0, offsetof(CPUS390XState, end_reset_fields) -
-                         offsetof(CPUS390XState, fpc));
+    /* initial reset does not clear everything! */
+    memset(&env->start_initial_reset_fields, 0,
+        offsetof(CPUS390XState, end_reset_fields) -
+        offsetof(CPUS390XState, start_initial_reset_fields));
 
     /* architectured initial values for CR 0 and 14 */
     env->cregs[0] = CR0_RESET;
@@ -417,7 +417,9 @@ static void s390_cpu_class_init(ObjectClass *oc, void *data)
     cc->reset = s390_cpu_full_reset;
     cc->class_by_name = s390_cpu_class_by_name,
     cc->has_work = s390_cpu_has_work;
+#ifdef CONFIG_TCG
     cc->do_interrupt = s390_cpu_do_interrupt;
+#endif
     cc->dump_state = s390_cpu_dump_state;
     cc->set_pc = s390_cpu_set_pc;
     cc->gdb_read_register = s390_cpu_gdb_read_register;
@@ -428,8 +430,11 @@ static void s390_cpu_class_init(ObjectClass *oc, void *data)
     cc->get_phys_page_debug = s390_cpu_get_phys_page_debug;
     cc->vmsd = &vmstate_s390_cpu;
     cc->write_elf64_note = s390_cpu_write_elf64_note;
+#ifdef CONFIG_TCG
     cc->cpu_exec_interrupt = s390_cpu_exec_interrupt;
     cc->debug_excp_handler = s390x_cpu_debug_excp_handler;
+    cc->do_unaligned_access = s390x_cpu_do_unaligned_access;
+#endif
 #endif
     cc->disas_set_info = s390_cpu_disas_set_info;
 

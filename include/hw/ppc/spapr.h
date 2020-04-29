@@ -11,15 +11,28 @@
 struct VIOsPAPRBus;
 struct sPAPRPHBState;
 struct sPAPRNVRAM;
-typedef struct sPAPRConfigureConnectorState sPAPRConfigureConnectorState;
 typedef struct sPAPREventLogEntry sPAPREventLogEntry;
 typedef struct sPAPREventSource sPAPREventSource;
+typedef struct sPAPRPendingHPT sPAPRPendingHPT;
 
 #define HPTE64_V_HPTE_DIRTY     0x0000000000000040ULL
 #define SPAPR_ENTRY_POINT       0x100
 
 #define SPAPR_TIMEBASE_FREQ     512000000ULL
 
+#define TYPE_SPAPR_RTC "spapr-rtc"
+
+#define SPAPR_RTC(obj)                                  \
+    OBJECT_CHECK(sPAPRRTCState, (obj), TYPE_SPAPR_RTC)
+
+typedef struct sPAPRRTCState sPAPRRTCState;
+struct sPAPRRTCState {
+    /*< private >*/
+    DeviceState parent_obj;
+    int64_t ns_offset;
+};
+
+typedef struct sPAPRDIMMState sPAPRDIMMState;
 typedef struct sPAPRMachineClass sPAPRMachineClass;
 
 #define TYPE_SPAPR_MACHINE      "spapr-machine"
@@ -29,6 +42,13 @@ typedef struct sPAPRMachineClass sPAPRMachineClass;
     OBJECT_GET_CLASS(sPAPRMachineClass, obj, TYPE_SPAPR_MACHINE)
 #define SPAPR_MACHINE_CLASS(klass) \
     OBJECT_CLASS_CHECK(sPAPRMachineClass, klass, TYPE_SPAPR_MACHINE)
+
+typedef enum {
+    SPAPR_RESIZE_HPT_DEFAULT = 0,
+    SPAPR_RESIZE_HPT_DISABLED,
+    SPAPR_RESIZE_HPT_ENABLED,
+    SPAPR_RESIZE_HPT_REQUIRED,
+} sPAPRResizeHPT;
 
 /**
  * sPAPRMachineClass:
@@ -41,10 +61,12 @@ struct sPAPRMachineClass {
     bool dr_lmb_enabled;       /* enable dynamic-reconfig/hotplug of LMBs */
     bool use_ohci_by_default;  /* use USB-OHCI instead of XHCI */
     const char *tcg_default_cpu; /* which (TCG) CPU to simulate by default */
+    bool pre_2_10_has_unused_icps;
     void (*phb_placement)(sPAPRMachineState *spapr, uint32_t index,
                           uint64_t *buid, hwaddr *pio, 
                           hwaddr *mmio32, hwaddr *mmio64,
                           unsigned n_dma, uint32_t *liobns, Error **errp);
+    sPAPRResizeHPT resize_hpt_default;
 };
 
 /**
@@ -58,11 +80,14 @@ struct sPAPRMachineState {
     QLIST_HEAD(, sPAPRPHBState) phbs;
     struct sPAPRNVRAM *nvram;
     ICSState *ics;
-    DeviceState *rtc;
+    sPAPRRTCState rtc;
 
+    sPAPRResizeHPT resize_hpt;
     void *htab;
     uint32_t htab_shift;
     uint64_t patb_entry; /* Process tbl registed in H_REGISTER_PROCESS_TABLE */
+    sPAPRPendingHPT *pending_hpt; /* in-progress resize */
+
     hwaddr rma_size;
     int vrma_adjust;
     ssize_t rtas_size;
@@ -74,29 +99,34 @@ struct sPAPRMachineState {
     uint64_t rtc_offset; /* Now used only during incoming migration */
     struct PPCTimebase tb;
     bool has_graphics;
-    sPAPROptionVector *ov5;         /* QEMU-supported option vectors */
-    sPAPROptionVector *ov5_cas;     /* negotiated (via CAS) option vectors */
-    bool cas_reboot;
 
     Notifier epow_notifier;
     QTAILQ_HEAD(, sPAPREventLogEntry) pending_events;
     bool use_hotplug_event_source;
     sPAPREventSource *event_sources;
 
+    /* ibm,client-architecture-support option negotiation */
+    bool cas_reboot;
+    bool cas_legacy_guest_workaround;
+    sPAPROptionVector *ov5;         /* QEMU-supported option vectors */
+    sPAPROptionVector *ov5_cas;     /* negotiated (via CAS) option vectors */
+    uint32_t max_compat_pvr;
+
     /* Migration state */
     int htab_save_index;
     bool htab_first_pass;
     int htab_fd;
 
-    /* RTAS state */
-    QTAILQ_HEAD(, sPAPRConfigureConnectorState) ccs_list;
+    /* Pending DIMM unplug cache. It is populated when a LMB
+     * unplug starts. It can be regenerated if a migration
+     * occurs during the unplug process. */
+    QTAILQ_HEAD(, sPAPRDIMMState) pending_dimm_unplugs;
 
     /*< public >*/
     char *kvm_type;
     MemoryHotplugState hotplug_memory;
 
-    uint32_t nr_servers;
-    ICPState *icps;
+    const char *icp_type;
 };
 
 #define H_SUCCESS         0
@@ -349,6 +379,11 @@ struct sPAPRMachineState {
 #define H_XIRR_X                0x2FC
 #define H_RANDOM                0x300
 #define H_SET_MODE              0x31C
+#define H_RESIZE_HPT_PREPARE    0x36C
+#define H_RESIZE_HPT_COMMIT     0x370
+#define H_CLEAN_SLB             0x374
+#define H_INVALIDATE_PID        0x378
+#define H_REGISTER_PROC_TBL     0x37C
 #define H_SIGNAL_SYS_RESET      0x380
 #define MAX_HCALL_OPCODE        H_SIGNAL_SYS_RESET
 
@@ -356,9 +391,8 @@ struct sPAPRMachineState {
  * as well.
  *
  * We also need some hcalls which are specific to qemu / KVM-on-POWER.
- * So far we just need one for H_RTAS, but in future we'll need more
- * for extensions like virtio.  We put those into the 0xf000-0xfffc
- * range which is reserved by PAPR for "platform-specific" hcalls.
+ * We put those into the 0xf000-0xfffc range which is reserved by PAPR
+ * for "platform-specific" hcalls.
  */
 #define KVMPPC_HCALL_BASE       0xf000
 #define KVMPPC_H_RTAS           (KVMPPC_HCALL_BASE + 0x0)
@@ -562,6 +596,10 @@ typedef struct sPAPRTCETable sPAPRTCETable;
 #define SPAPR_TCE_TABLE(obj) \
     OBJECT_CHECK(sPAPRTCETable, (obj), TYPE_SPAPR_TCE_TABLE)
 
+#define TYPE_SPAPR_IOMMU_MEMORY_REGION "spapr-iommu-memory-region"
+#define SPAPR_IOMMU_MEMORY_REGION(obj) \
+        OBJECT_CHECK(IOMMUMemoryRegion, (obj), TYPE_SPAPR_IOMMU_MEMORY_REGION)
+
 struct sPAPRTCETable {
     DeviceState parent;
     uint32_t liobn;
@@ -574,7 +612,8 @@ struct sPAPRTCETable {
     bool bypass;
     bool need_vfio;
     int fd;
-    MemoryRegion root, iommu;
+    MemoryRegion root;
+    IOMMUMemoryRegion iommu;
     struct VIOsPAPRDevice *vdev; /* for @bypass migration compatibility only */
     QLIST_ENTRY(sPAPRTCETable) list;
 };
@@ -582,9 +621,9 @@ struct sPAPRTCETable {
 sPAPRTCETable *spapr_tce_find_by_liobn(target_ulong liobn);
 
 struct sPAPREventLogEntry {
-    int log_type;
-    bool exception;
-    void *data;
+    uint32_t summary;
+    uint32_t extended_length;
+    void *extended_log;
     QTAILQ_ENTRY(sPAPREventLogEntry) next;
 };
 
@@ -593,6 +632,9 @@ void spapr_dt_events(sPAPRMachineState *sm, void *fdt);
 int spapr_h_cas_compose_response(sPAPRMachineState *sm,
                                  target_ulong addr, target_ulong size,
                                  sPAPROptionVector *ov5_updates);
+void close_htab_fd(sPAPRMachineState *spapr);
+void spapr_setup_hpt_and_vrma(sPAPRMachineState *spapr);
+void spapr_free_hpt(sPAPRMachineState *spapr);
 sPAPRTCETable *spapr_tce_new_table(DeviceState *owner, uint32_t liobn);
 void spapr_tce_table_enable(sPAPRTCETable *tcet,
                             uint32_t page_shift, uint64_t bus_offset,
@@ -616,24 +658,20 @@ void spapr_hotplug_req_add_by_count_indexed(sPAPRDRConnectorType drc_type,
                                             uint32_t count, uint32_t index);
 void spapr_hotplug_req_remove_by_count_indexed(sPAPRDRConnectorType drc_type,
                                                uint32_t count, uint32_t index);
-void *spapr_populate_hotplug_cpu_dt(CPUState *cs, int *fdt_offset,
-                                    sPAPRMachineState *spapr);
+void spapr_cpu_parse_features(sPAPRMachineState *spapr);
+int spapr_hpt_shift_for_ramsize(uint64_t ramsize);
+void spapr_reallocate_hpt(sPAPRMachineState *spapr, int shift,
+                          Error **errp);
+void spapr_clear_pending_events(sPAPRMachineState *spapr);
 
-/* rtas-configure-connector state */
-struct sPAPRConfigureConnectorState {
-    uint32_t drc_index;
-    int fdt_offset;
-    int fdt_depth;
-    QTAILQ_ENTRY(sPAPRConfigureConnectorState) next;
-};
+/* CPU and LMB DRC release callbacks. */
+void spapr_core_release(DeviceState *dev);
+void spapr_lmb_release(DeviceState *dev);
 
-void spapr_ccs_reset_hook(void *opaque);
+void spapr_rtc_read(sPAPRRTCState *rtc, struct tm *tm, uint32_t *ns);
+int spapr_rtc_import_offset(sPAPRRTCState *rtc, int64_t legacy_offset);
 
-#define TYPE_SPAPR_RTC "spapr-rtc"
 #define TYPE_SPAPR_RNG "spapr-rng"
-
-void spapr_rtc_read(DeviceState *dev, struct tm *tm, uint32_t *ns);
-int spapr_rtc_import_offset(DeviceState *dev, int64_t legacy_offset);
 
 int spapr_rng_populate_dt(void *fdt);
 
@@ -664,5 +702,7 @@ int spapr_rng_populate_dt(void *fdt);
 #define SPAPR_LMB_FLAGS_RESERVED 0x00000080
 
 void spapr_do_system_reset_on_cpu(CPUState *cs, run_on_cpu_data arg);
+
+#define HTAB_SIZE(spapr)        (1ULL << ((spapr)->htab_shift))
 
 #endif /* HW_SPAPR_H */

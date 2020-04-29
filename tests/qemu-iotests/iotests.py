@@ -27,6 +27,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'scripts'))
 import qtest
 import struct
 import json
+import signal
 
 
 # This will not work if arguments contain spaces but is necessary if we
@@ -132,10 +133,32 @@ chown_re = re.compile(r"chown [0-9]+:[0-9]+")
 def filter_chown(msg):
     return chown_re.sub("chown UID:GID", msg)
 
+def filter_qmp_event(event):
+    '''Filter a QMP event dict'''
+    event = dict(event)
+    if 'timestamp' in event:
+        event['timestamp']['seconds'] = 'SECS'
+        event['timestamp']['microseconds'] = 'USECS'
+    return event
+
 def log(msg, filters=[]):
     for flt in filters:
         msg = flt(msg)
     print msg
+
+class Timeout:
+    def __init__(self, seconds, errmsg = "Timeout"):
+        self.seconds = seconds
+        self.errmsg = errmsg
+    def __enter__(self):
+        signal.signal(signal.SIGALRM, self.timeout)
+        signal.setitimer(signal.ITIMER_REAL, self.seconds)
+        return self
+    def __exit__(self, type, value, traceback):
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        return False
+    def timeout(self, signum, frame):
+        raise Exception(self.errmsg)
 
 class VM(qtest.QEMUQtestMachine):
     '''A QEMU VM'''
@@ -183,6 +206,11 @@ class VM(qtest.QEMUQtestMachine):
             self._args.append(opts)
         else:
             self._args.append(','.join(opts))
+        return self
+
+    def add_incoming(self, addr):
+        self._args.append('-incoming')
+        self._args.append(addr)
         return self
 
     def pause_drive(self, drive, event=None):
@@ -345,6 +373,18 @@ class QMPTestCase(unittest.TestCase):
 
         event = self.wait_until_completed(drive=drive)
         self.assert_qmp(event, 'data/type', 'mirror')
+
+    def pause_job(self, job_id='job0'):
+        result = self.vm.qmp('block-job-pause', device=job_id)
+        self.assert_qmp(result, 'return', {})
+
+        with Timeout(1, "Timeout waiting for job to pause"):
+            while True:
+                result = self.vm.qmp('query-block-jobs')
+                for job in result['return']:
+                    if job['device'] == job_id and job['paused'] == True and job['busy'] == False:
+                        return job
+
 
 def notrun(reason):
     '''Skip this test suite'''

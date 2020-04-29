@@ -20,11 +20,13 @@
 #include "qemu/readline.h"
 #include "qemu/log.h"
 #include "qapi/qmp/qstring.h"
+#include "qapi/qmp/qbool.h"
 #include "qom/object_interfaces.h"
 #include "sysemu/block-backend.h"
 #include "block/block_int.h"
 #include "trace/control.h"
 #include "crypto/init.h"
+#include "qemu-version.h"
 
 #define CMD_NOFILE_OK   0x01
 
@@ -53,10 +55,10 @@ static const cmdinfo_t close_cmd = {
     .oneline    = "close the current open file",
 };
 
-static int openfile(char *name, int flags, bool writethrough, QDict *opts)
+static int openfile(char *name, int flags, bool writethrough, bool force_share,
+                    QDict *opts)
 {
     Error *local_err = NULL;
-    BlockDriverState *bs;
 
     if (qemuio_blk) {
         error_report("file open already, try 'help close'");
@@ -64,6 +66,18 @@ static int openfile(char *name, int flags, bool writethrough, QDict *opts)
         return 1;
     }
 
+    if (force_share) {
+        if (!opts) {
+            opts = qdict_new();
+        }
+        if (qdict_haskey(opts, BDRV_OPT_FORCE_SHARE)
+            && !qdict_get_bool(opts, BDRV_OPT_FORCE_SHARE)) {
+            error_report("-U conflicts with image options");
+            QDECREF(opts);
+            return 1;
+        }
+        qdict_put_bool(opts, BDRV_OPT_FORCE_SHARE, true);
+    }
     qemuio_blk = blk_new_open(name, NULL, opts, flags, &local_err);
     if (!qemuio_blk) {
         error_reportf_err(local_err, "can't open%s%s: ",
@@ -71,28 +85,9 @@ static int openfile(char *name, int flags, bool writethrough, QDict *opts)
         return 1;
     }
 
-    bs = blk_bs(qemuio_blk);
-    if (bdrv_is_encrypted(bs) && bdrv_key_required(bs)) {
-        char password[256];
-        printf("Disk image '%s' is encrypted.\n", name);
-        if (qemu_read_password(password, sizeof(password)) < 0) {
-            error_report("No password given");
-            goto error;
-        }
-        if (bdrv_set_key(bs, password) < 0) {
-            error_report("invalid password");
-            goto error;
-        }
-    }
-
     blk_set_enable_write_cache(qemuio_blk, !writethrough);
 
     return 0;
-
- error:
-    blk_unref(qemuio_blk);
-    qemuio_blk = NULL;
-    return 1;
 }
 
 static void open_help(void)
@@ -108,6 +103,7 @@ static void open_help(void)
 " -r, -- open file read-only\n"
 " -s, -- use snapshot file\n"
 " -n, -- disable host cache, short for -t none\n"
+" -U, -- force shared permissions\n"
 " -k, -- use kernel AIO implementation (on Linux only)\n"
 " -t, -- use the given cache mode for the image\n"
 " -d, -- use the given discard mode for the image\n"
@@ -124,7 +120,7 @@ static const cmdinfo_t open_cmd = {
     .argmin     = 1,
     .argmax     = -1,
     .flags      = CMD_NOFILE_OK,
-    .args       = "[-rsnk] [-t cache] [-d discard] [-o options] [path]",
+    .args       = "[-rsnkU] [-t cache] [-d discard] [-o options] [path]",
     .oneline    = "open the file specified by path",
     .help       = open_help,
 };
@@ -147,8 +143,9 @@ static int open_f(BlockBackend *blk, int argc, char **argv)
     int c;
     QemuOpts *qopts;
     QDict *opts;
+    bool force_share = false;
 
-    while ((c = getopt(argc, argv, "snro:kt:d:")) != -1) {
+    while ((c = getopt(argc, argv, "snro:kt:d:U")) != -1) {
         switch (c) {
         case 's':
             flags |= BDRV_O_SNAPSHOT;
@@ -188,6 +185,9 @@ static int open_f(BlockBackend *blk, int argc, char **argv)
                 return 0;
             }
             break;
+        case 'U':
+            force_share = true;
+            break;
         default:
             qemu_opts_reset(&empty_opts);
             return qemuio_command_usage(&open_cmd);
@@ -211,13 +211,14 @@ static int open_f(BlockBackend *blk, int argc, char **argv)
     qemu_opts_reset(&empty_opts);
 
     if (optind == argc - 1) {
-        return openfile(argv[optind], flags, writethrough, opts);
+        openfile(argv[optind], flags, writethrough, force_share, opts);
     } else if (optind == argc) {
-        return openfile(NULL, flags, writethrough, opts);
+        openfile(NULL, flags, writethrough, force_share, opts);
     } else {
         QDECREF(opts);
-        return qemuio_command_usage(&open_cmd);
+        qemuio_command_usage(&open_cmd);
     }
+    return 0;
 }
 
 static int quit_f(BlockBackend *blk, int argc, char **argv)
@@ -257,11 +258,13 @@ static void usage(const char *name)
 "  -T, --trace [[enable=]<pattern>][,events=<file>][,file=<file>]\n"
 "                       specify tracing options\n"
 "                       see qemu-img(1) man page for full description\n"
+"  -U, --force-share    force shared permissions\n"
 "  -h, --help           display this help and exit\n"
 "  -V, --version        output version information and exit\n"
 "\n"
-"See '%s -c help' for information on available commands."
-"\n",
+"See '%s -c help' for information on available commands.\n"
+"\n"
+QEMU_HELP_BOTTOM "\n",
     name, name);
 }
 
@@ -436,7 +439,7 @@ static QemuOptsList file_opts = {
 int main(int argc, char **argv)
 {
     int readonly = 0;
-    const char *sopt = "hVc:d:f:rsnmkt:T:";
+    const char *sopt = "hVc:d:f:rsnmkt:T:U";
     const struct option lopt[] = {
         { "help", no_argument, NULL, 'h' },
         { "version", no_argument, NULL, 'V' },
@@ -452,6 +455,7 @@ int main(int argc, char **argv)
         { "trace", required_argument, NULL, 'T' },
         { "object", required_argument, NULL, OPTION_OBJECT },
         { "image-opts", no_argument, NULL, OPTION_IMAGE_OPTS },
+        { "force-share", no_argument, 0, 'U'},
         { NULL, 0, NULL, 0 }
     };
     int c;
@@ -462,6 +466,7 @@ int main(int argc, char **argv)
     QDict *opts = NULL;
     const char *format = NULL;
     char *trace_file = NULL;
+    bool force_share = false;
 
 #ifdef CONFIG_POSIX
     signal(SIGPIPE, SIG_IGN);
@@ -519,11 +524,15 @@ int main(int argc, char **argv)
             trace_file = trace_opt_parse(optarg);
             break;
         case 'V':
-            printf("%s version %s\n", progname, QEMU_VERSION);
+            printf("%s version " QEMU_VERSION QEMU_PKGVERSION "\n"
+                   QEMU_COPYRIGHT "\n", progname);
             exit(0);
         case 'h':
             usage(progname);
             exit(0);
+        case 'U':
+            force_share = true;
+            break;
         case OPTION_OBJECT: {
             QemuOpts *qopts;
             qopts = qemu_opts_parse_noisily(&qemu_object_opts,
@@ -595,7 +604,7 @@ int main(int argc, char **argv)
                 exit(1);
             }
             opts = qemu_opts_to_qdict(qopts, NULL);
-            if (openfile(NULL, flags, writethrough, opts)) {
+            if (openfile(NULL, flags, writethrough, force_share, opts)) {
                 exit(1);
             }
         } else {
@@ -603,7 +612,8 @@ int main(int argc, char **argv)
                 opts = qdict_new();
                 qdict_put_str(opts, "driver", format);
             }
-            if (openfile(argv[optind], flags, writethrough, opts)) {
+            if (openfile(argv[optind], flags, writethrough,
+                         force_share, opts)) {
                 exit(1);
             }
         }

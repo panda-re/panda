@@ -134,6 +134,7 @@ void error_vprepend(Error **errp, const char *fmt, va_list ap)
     newmsg = g_string_new(NULL);
     g_string_vprintf(newmsg, fmt, ap);
     g_string_append(newmsg, (*errp)->msg);
+    g_free((*errp)->msg);
     (*errp)->msg = g_string_free(newmsg, 0);
 }
 
@@ -231,6 +232,15 @@ void error_report_err(Error *err)
     error_free(err);
 }
 
+void warn_report_err(Error *err)
+{
+    warn_report("%s", error_get_pretty(err));
+    if (err->hint) {
+        error_printf_unless_qmp("%s", err->hint->str);
+    }
+    error_free(err);
+}
+
 void error_reportf_err(Error *err, const char *fmt, ...)
 {
     va_list ap;
@@ -239,6 +249,17 @@ void error_reportf_err(Error *err, const char *fmt, ...)
     error_vprepend(&err, fmt, ap);
     va_end(ap);
     error_report_err(err);
+}
+
+
+void warn_reportf_err(Error *err, const char *fmt, ...)
+{
+    va_list ap;
+
+    va_start(ap, fmt);
+    error_vprepend(&err, fmt, ap);
+    va_end(ap);
+    warn_report_err(err);
 }
 
 void error_free(Error *err)

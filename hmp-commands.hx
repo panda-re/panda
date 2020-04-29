@@ -526,6 +526,38 @@ Dump 80 16 bit values at the start of the video memory.
 ETEXI
 
     {
+        .name       = "gpa2hva",
+        .args_type  = "addr:l",
+        .params     = "addr",
+        .help       = "print the host virtual address corresponding to a guest physical address",
+        .cmd        = hmp_gpa2hva,
+    },
+
+STEXI
+@item gpa2hva @var{addr}
+@findex gpa2hva
+Print the host virtual address at which the guest's physical address @var{addr}
+is mapped.
+ETEXI
+
+#ifdef CONFIG_LINUX
+    {
+        .name       = "gpa2hpa",
+        .args_type  = "addr:l",
+        .params     = "addr",
+        .help       = "print the host physical address corresponding to a guest physical address",
+        .cmd        = hmp_gpa2hpa,
+    },
+#endif
+
+STEXI
+@item gpa2hpa @var{addr}
+@findex gpa2hpa
+Print the host physical address at which the guest's physical address @var{addr}
+is mapped.
+ETEXI
+
+    {
         .name       = "p|print",
         .args_type  = "fmt:/,val:l",
         .params     = "/fmt expr",
@@ -644,7 +676,8 @@ ETEXI
 STEXI
 @item usb_add @var{devname}
 @findex usb_add
-Add the USB device @var{devname}.  For details of available devices see
+Add the USB device @var{devname}. This command is deprecated, please
+use @code{device_add} instead. For details of available devices see
 @ref{usb_devices}
 ETEXI
 
@@ -661,7 +694,8 @@ STEXI
 @findex usb_del
 Remove the USB device @var{devname} from the QEMU virtual USB
 hub. @var{devname} has the syntax @code{bus.addr}. Use the monitor
-command @code{info usb} to see the devices you can remove.
+command @code{info usb} to see the devices you can remove. This
+command is deprecated, please use @code{device_del} instead.
 ETEXI
 
     {
@@ -1119,6 +1153,22 @@ STEXI
 Save guest storage keys to a file.
 ETEXI
 
+#if defined(TARGET_S390X)
+    {
+        .name       = "migration_mode",
+        .args_type  = "mode:i",
+        .params     = "mode",
+        .help       = "Enables or disables migration mode\n",
+        .cmd        = hmp_migrationmode,
+    },
+#endif
+
+STEXI
+@item migration_mode @var{mode}
+@findex migration_mode
+Enables or disables migration mode.
+ETEXI
+
     {
         .name       = "snapshot_blkdev",
         .args_type  = "reuse:-n,device:B,snapshot-file:s?,format:s?",
@@ -1264,7 +1314,7 @@ ETEXI
         .name       = "host_net_add",
         .args_type  = "device:s,opts:s?",
         .params     = "tap|user|socket|vde|netmap|bridge|vhost-user|dump [options]",
-        .help       = "add host VLAN client",
+        .help       = "add host VLAN client (deprecated, use netdev_add instead)",
         .cmd        = hmp_host_net_add,
         .command_completion = host_net_add_completion,
     },
@@ -1272,14 +1322,14 @@ ETEXI
 STEXI
 @item host_net_add
 @findex host_net_add
-Add host VLAN client.
+Add host VLAN client. Deprecated, please use @code{netdev_add} instead.
 ETEXI
 
     {
         .name       = "host_net_remove",
         .args_type  = "vlan_id:i,device:s",
         .params     = "vlan_id name",
-        .help       = "remove host VLAN client",
+        .help       = "remove host VLAN client (deprecated, use netdev_del instead)",
         .cmd        = hmp_host_net_remove,
         .command_completion = host_net_remove_completion,
     },
@@ -1287,7 +1337,7 @@ ETEXI
 STEXI
 @item host_net_remove
 @findex host_net_remove
-Remove host VLAN client.
+Remove host VLAN client. Deprecated, please use @code{netdev_del} instead.
 ETEXI
 
     {
@@ -1612,6 +1662,8 @@ STEXI
 @item block_passwd @var{device} @var{password}
 @findex block_passwd
 Set the encrypted device @var{device} password to @var{password}
+
+This command is now obsolete and will always return an error since 2.10
 ETEXI
 
     {
@@ -1690,7 +1742,23 @@ ETEXI
 STEXI
 @item chardev-add args
 @findex chardev-add
-chardev_add accepts the same parameters as the -chardev command line switch.
+chardev-add accepts the same parameters as the -chardev command line switch.
+
+ETEXI
+
+    {
+        .name       = "chardev-change",
+        .args_type  = "id:s,args:s",
+        .params     = "id args",
+        .help       = "change chardev",
+        .cmd        = hmp_chardev_change,
+    },
+
+STEXI
+@item chardev-change args
+@findex chardev-change
+chardev-change accepts existing chardev @var{id} and then the same arguments
+as the -chardev command line switch (except for "id").
 
 ETEXI
 
@@ -1707,6 +1775,22 @@ STEXI
 @item chardev-remove id
 @findex chardev-remove
 Removes the chardev @var{id}.
+
+ETEXI
+
+    {
+        .name       = "chardev-send-break",
+        .args_type  = "id:s",
+        .params     = "id",
+        .help       = "send a break on chardev",
+        .cmd        = hmp_chardev_send_break,
+        .command_completion = chardev_remove_completion,
+    },
+
+STEXI
+@item chardev-send-break id
+@findex chardev-send-break
+Send a break on the chardev @var{id}.
 
 ETEXI
 

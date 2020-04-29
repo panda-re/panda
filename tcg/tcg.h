@@ -698,8 +698,8 @@ struct TCGContext {
        here, because there's too much arithmetic throughout that relies
        on addition and subtraction working on bytes.  Rely on the GCC
        extension that allows arithmetic on void*.  */
-    int code_gen_max_blocks;
     void *code_gen_prologue;
+    void *code_gen_epilogue;
     void *code_gen_buffer;
     size_t code_gen_buffer_size;
     void *code_gen_ptr;
@@ -756,17 +756,17 @@ static inline bool tcg_op_buf_full(void)
 /* tb_lock must be held for tcg_malloc_internal. */
 void *tcg_malloc_internal(TCGContext *s, int size);
 void tcg_pool_reset(TCGContext *s);
-
-void tb_lock(void);
-void tb_unlock(void);
-void tb_lock_reset(void);
+TranslationBlock *tcg_tb_alloc(TCGContext *s);
 
 /* Called with tb_lock held.  */
 static inline void *tcg_malloc(int size)
 {
     TCGContext *s = &tcg_ctx;
     uint8_t *ptr, *ptr_end;
-    size = (size + sizeof(long) - 1) & ~(sizeof(long) - 1);
+
+    /* ??? This is a weak placeholder for minimum malloc alignment.  */
+    size = QEMU_ALIGN_UP(size, 8);
+
     ptr = s->pool_cur;
     ptr_end = ptr + size;
     if (unlikely(ptr_end > s->pool_end)) {

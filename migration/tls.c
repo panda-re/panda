@@ -19,7 +19,9 @@
  */
 
 #include "qemu/osdep.h"
-#include "migration/migration.h"
+#include "channel.h"
+#include "migration.h"
+#include "tls.h"
 #include "io/channel-tls.h"
 #include "crypto/tlscreds.h"
 #include "qemu/error-report.h"
@@ -72,7 +74,7 @@ static void migration_tls_incoming_handshake(QIOTask *task,
         error_report_err(err);
     } else {
         trace_migration_tls_incoming_handshake_complete();
-        migration_channel_process_incoming(migrate_get_current(), ioc);
+        migration_channel_process_incoming(ioc);
     }
     object_unref(OBJECT(ioc));
 }
@@ -116,7 +118,6 @@ static void migration_tls_outgoing_handshake(QIOTask *task,
 
     if (qio_task_propagate_error(task, &err)) {
         trace_migration_tls_outgoing_handshake_error(error_get_pretty(err));
-        s->to_dst_file = NULL;
         migrate_fd_error(s, err);
         error_free(err);
     } else {

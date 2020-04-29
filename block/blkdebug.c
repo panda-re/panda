@@ -31,7 +31,6 @@
 #include "qemu/module.h"
 #include "qapi/qmp/qbool.h"
 #include "qapi/qmp/qdict.h"
-#include "qapi/qmp/qint.h"
 #include "qapi/qmp/qstring.h"
 #include "sysemu/qtest.h"
 
@@ -576,7 +575,7 @@ static int blkdebug_co_flush(BlockDriverState *bs)
 }
 
 static int coroutine_fn blkdebug_co_pwrite_zeroes(BlockDriverState *bs,
-                                                  int64_t offset, int count,
+                                                  int64_t offset, int bytes,
                                                   BdrvRequestFlags flags)
 {
     uint32_t align = MAX(bs->bl.request_alignment,
@@ -587,29 +586,29 @@ static int coroutine_fn blkdebug_co_pwrite_zeroes(BlockDriverState *bs,
      * preferred alignment (so that we test the fallback to writes on
      * unaligned portions), and check that the block layer never hands
      * us anything unaligned that crosses an alignment boundary.  */
-    if (count < align) {
+    if (bytes < align) {
         assert(QEMU_IS_ALIGNED(offset, align) ||
-               QEMU_IS_ALIGNED(offset + count, align) ||
+               QEMU_IS_ALIGNED(offset + bytes, align) ||
                DIV_ROUND_UP(offset, align) ==
-               DIV_ROUND_UP(offset + count, align));
+               DIV_ROUND_UP(offset + bytes, align));
         return -ENOTSUP;
     }
     assert(QEMU_IS_ALIGNED(offset, align));
-    assert(QEMU_IS_ALIGNED(count, align));
+    assert(QEMU_IS_ALIGNED(bytes, align));
     if (bs->bl.max_pwrite_zeroes) {
-        assert(count <= bs->bl.max_pwrite_zeroes);
+        assert(bytes <= bs->bl.max_pwrite_zeroes);
     }
 
-    err = rule_check(bs, offset, count);
+    err = rule_check(bs, offset, bytes);
     if (err) {
         return err;
     }
 
-    return bdrv_co_pwrite_zeroes(bs->file, offset, count, flags);
+    return bdrv_co_pwrite_zeroes(bs->file, offset, bytes, flags);
 }
 
 static int coroutine_fn blkdebug_co_pdiscard(BlockDriverState *bs,
-                                             int64_t offset, int count)
+                                             int64_t offset, int bytes)
 {
     uint32_t align = bs->bl.pdiscard_alignment;
     int err;
@@ -617,29 +616,39 @@ static int coroutine_fn blkdebug_co_pdiscard(BlockDriverState *bs,
     /* Only pass through requests that are larger than requested
      * minimum alignment, and ensure that unaligned requests do not
      * cross optimum discard boundaries. */
-    if (count < bs->bl.request_alignment) {
+    if (bytes < bs->bl.request_alignment) {
         assert(QEMU_IS_ALIGNED(offset, align) ||
-               QEMU_IS_ALIGNED(offset + count, align) ||
+               QEMU_IS_ALIGNED(offset + bytes, align) ||
                DIV_ROUND_UP(offset, align) ==
-               DIV_ROUND_UP(offset + count, align));
+               DIV_ROUND_UP(offset + bytes, align));
         return -ENOTSUP;
     }
     assert(QEMU_IS_ALIGNED(offset, bs->bl.request_alignment));
-    assert(QEMU_IS_ALIGNED(count, bs->bl.request_alignment));
-    if (align && count >= align) {
+    assert(QEMU_IS_ALIGNED(bytes, bs->bl.request_alignment));
+    if (align && bytes >= align) {
         assert(QEMU_IS_ALIGNED(offset, align));
-        assert(QEMU_IS_ALIGNED(count, align));
+        assert(QEMU_IS_ALIGNED(bytes, align));
     }
     if (bs->bl.max_pdiscard) {
-        assert(count <= bs->bl.max_pdiscard);
+        assert(bytes <= bs->bl.max_pdiscard);
     }
 
-    err = rule_check(bs, offset, count);
+    err = rule_check(bs, offset, bytes);
     if (err) {
         return err;
     }
 
-    return bdrv_co_pdiscard(bs->file->bs, offset, count);
+    return bdrv_co_pdiscard(bs->file->bs, offset, bytes);
+}
+
+static int64_t coroutine_fn blkdebug_co_get_block_status(
+    BlockDriverState *bs, int64_t sector_num, int nb_sectors, int *pnum,
+    BlockDriverState **file)
+{
+    *pnum = nb_sectors;
+    *file = bs->file->bs;
+    return BDRV_BLOCK_RAW | BDRV_BLOCK_OFFSET_VALID |
+        (sector_num << BDRV_SECTOR_BITS);
 }
 
 static void blkdebug_close(BlockDriverState *bs)
@@ -812,9 +821,10 @@ static int64_t blkdebug_getlength(BlockDriverState *bs)
     return bdrv_getlength(bs->file->bs);
 }
 
-static int blkdebug_truncate(BlockDriverState *bs, int64_t offset)
+static int blkdebug_truncate(BlockDriverState *bs, int64_t offset,
+                             PreallocMode prealloc, Error **errp)
 {
-    return bdrv_truncate(bs->file, offset, NULL);
+    return bdrv_truncate(bs->file, offset, prealloc, errp);
 }
 
 static void blkdebug_refresh_filename(BlockDriverState *bs, QDict *options)
@@ -916,6 +926,7 @@ static BlockDriver bdrv_blkdebug = {
     .bdrv_co_flush_to_disk  = blkdebug_co_flush,
     .bdrv_co_pwrite_zeroes  = blkdebug_co_pwrite_zeroes,
     .bdrv_co_pdiscard       = blkdebug_co_pdiscard,
+    .bdrv_co_get_block_status = blkdebug_co_get_block_status,
 
     .bdrv_debug_event           = blkdebug_debug_event,
     .bdrv_debug_breakpoint      = blkdebug_debug_breakpoint,

@@ -37,7 +37,6 @@
 #include "hw/pci/pci_bus.h"
 #include "qapi/error.h"
 #include "qom/qom-qobject.h"
-#include "qapi/qmp/qint.h"
 
 //#define DEBUG
 
@@ -63,16 +62,53 @@ typedef struct AcpiPciHpFind {
 static int acpi_pcihp_get_bsel(PCIBus *bus)
 {
     Error *local_err = NULL;
-    int64_t bsel = object_property_get_int(OBJECT(bus), ACPI_PCIHP_PROP_BSEL,
-                                           &local_err);
+    uint64_t bsel = object_property_get_uint(OBJECT(bus), ACPI_PCIHP_PROP_BSEL,
+                                             &local_err);
 
-    if (local_err || bsel < 0 || bsel >= ACPI_PCIHP_MAX_HOTPLUG_BUS) {
+    if (local_err || bsel >= ACPI_PCIHP_MAX_HOTPLUG_BUS) {
         if (local_err) {
             error_free(local_err);
         }
         return -1;
     } else {
         return bsel;
+    }
+}
+
+/* Assign BSEL property to all buses.  In the future, this can be changed
+ * to only assign to buses that support hotplug.
+ */
+static void *acpi_set_bsel(PCIBus *bus, void *opaque)
+{
+    unsigned *bsel_alloc = opaque;
+    unsigned *bus_bsel;
+
+    if (qbus_is_hotpluggable(BUS(bus))) {
+        bus_bsel = g_malloc(sizeof *bus_bsel);
+
+        *bus_bsel = (*bsel_alloc)++;
+        object_property_add_uint32_ptr(OBJECT(bus), ACPI_PCIHP_PROP_BSEL,
+                                       bus_bsel, &error_abort);
+    }
+
+    return bsel_alloc;
+}
+
+static void acpi_set_pci_info(void)
+{
+    static bool bsel_is_set;
+    PCIBus *bus;
+    unsigned bsel_alloc = ACPI_PCIHP_BSEL_DEFAULT;
+
+    if (bsel_is_set) {
+        return;
+    }
+    bsel_is_set = true;
+
+    bus = find_i440fx(); /* TODO: Q35 support */
+    if (bus) {
+        /* Scan all PCI buses. Set property to enable acpi based hotplug. */
+        pci_for_each_bus_depth_first(bus, acpi_set_bsel, NULL, &bsel_alloc);
     }
 }
 
@@ -178,6 +214,7 @@ static void acpi_pcihp_update(AcpiPciHpState *s)
 
 void acpi_pcihp_reset(AcpiPciHpState *s)
 {
+    acpi_set_pci_info();
     acpi_pcihp_update(s);
 }
 
@@ -274,7 +311,7 @@ static void pci_write(void *opaque, hwaddr addr, uint64_t data,
                       addr, data);
         break;
     case PCI_SEL_BASE:
-        s->hotplug_select = data;
+        s->hotplug_select = s->legacy_piix ? ACPI_PCIHP_BSEL_DEFAULT : data;
         ACPI_PCIHP_DPRINTF("pcisel write %" HWADDR_PRIx " <== %" PRIu64 "\n",
                       addr, data);
     default:

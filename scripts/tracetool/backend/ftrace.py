@@ -29,19 +29,24 @@ def generate_h(event, group):
     if len(event.args) > 0:
         argnames = ", " + argnames
 
-    out('        {',
-        '            char ftrace_buf[MAX_TRACE_STRLEN];',
-        '            int unused __attribute__ ((unused));',
-        '            int trlen;',
-        '            if (trace_event_get_state(%(event_id)s)) {',
-        '                trlen = snprintf(ftrace_buf, MAX_TRACE_STRLEN,',
-        '                                 "%(name)s " %(fmt)s "\\n" %(argnames)s);',
-        '                trlen = MIN(trlen, MAX_TRACE_STRLEN - 1);',
-        '                unused = write(trace_marker_fd, ftrace_buf, trlen);',
-        '            }',
+    out('    {',
+        '        char ftrace_buf[MAX_TRACE_STRLEN];',
+        '        int unused __attribute__ ((unused));',
+        '        int trlen;',
+        '        if (trace_event_get_state(%(event_id)s)) {',
+        '            trlen = snprintf(ftrace_buf, MAX_TRACE_STRLEN,',
+        '                             "%(name)s " %(fmt)s "\\n" %(argnames)s);',
+        '            trlen = MIN(trlen, MAX_TRACE_STRLEN - 1);',
+        '            unused = write(trace_marker_fd, ftrace_buf, trlen);',
         '        }',
+        '    }',
         name=event.name,
         args=event.args,
         event_id="TRACE_" + event.name.upper(),
         fmt=event.fmt.rstrip("\n"),
         argnames=argnames)
+
+
+def generate_h_backend_dstate(event, group):
+    out('    trace_event_get_state_dynamic_by_id(%(event_id)s) || \\',
+        event_id="TRACE_" + event.name.upper())

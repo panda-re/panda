@@ -45,6 +45,7 @@
 #include "qapi-visit.h"
 #include "qapi/opts-visitor.h"
 #include "sysemu/sysemu.h"
+#include "sysemu/qtest.h"
 #include "net/filter.h"
 #include "qapi/string-output-visitor.h"
 
@@ -491,6 +492,7 @@ void qemu_set_vnet_hdr_len(NetClientState *nc, int len)
         return;
     }
 
+    nc->vnet_hdr_len = len;
     nc->info->set_vnet_hdr_len(nc, len);
 }
 
@@ -1149,6 +1151,12 @@ void hmp_host_net_add(Monitor *mon, const QDict *qdict)
     const char *opts_str = qdict_get_try_str(qdict, "opts");
     Error *local_err = NULL;
     QemuOpts *opts;
+    static bool warned;
+
+    if (!warned && !qtest_enabled()) {
+        error_report("host_net_add is deprecated, use netdev_add instead");
+        warned = true;
+    }
 
     if (!net_host_check_device(device)) {
         monitor_printf(mon, "invalid host network device %s\n", device);
@@ -1175,6 +1183,12 @@ void hmp_host_net_remove(Monitor *mon, const QDict *qdict)
     NetClientState *nc;
     int vlan_id = qdict_get_int(qdict, "vlan_id");
     const char *device = qdict_get_str(qdict, "device");
+    static bool warned;
+
+    if (!warned && !qtest_enabled()) {
+        error_report("host_net_remove is deprecated, use netdev_del instead");
+        warned = true;
+    }
 
     nc = net_hub_find_client_by_name(vlan_id, device);
     if (!nc) {
@@ -1602,11 +1616,14 @@ QemuOptsList qemu_net_opts = {
 };
 
 void net_socket_rs_init(SocketReadState *rs,
-                        SocketReadStateFinalize *finalize)
+                        SocketReadStateFinalize *finalize,
+                        bool vnet_hdr)
 {
     rs->state = 0;
+    rs->vnet_hdr = vnet_hdr;
     rs->index = 0;
     rs->packet_len = 0;
+    rs->vnet_hdr_len = 0;
     memset(rs->buf, 0, sizeof(rs->buf));
     rs->finalize = finalize;
 }
@@ -1621,8 +1638,12 @@ int net_fill_rstate(SocketReadState *rs, const uint8_t *buf, int size)
     unsigned int l;
 
     while (size > 0) {
-        /* reassemble a packet from the network */
-        switch (rs->state) { /* 0 = getting length, 1 = getting data */
+        /* Reassemble a packet from the network.
+         * 0 = getting length.
+         * 1 = getting vnet header length.
+         * 2 = getting data.
+         */
+        switch (rs->state) {
         case 0:
             l = 4 - rs->index;
             if (l > size) {
@@ -1636,10 +1657,31 @@ int net_fill_rstate(SocketReadState *rs, const uint8_t *buf, int size)
                 /* got length */
                 rs->packet_len = ntohl(*(uint32_t *)rs->buf);
                 rs->index = 0;
-                rs->state = 1;
+                if (rs->vnet_hdr) {
+                    rs->state = 1;
+                } else {
+                    rs->state = 2;
+                    rs->vnet_hdr_len = 0;
+                }
             }
             break;
         case 1:
+            l = 4 - rs->index;
+            if (l > size) {
+                l = size;
+            }
+            memcpy(rs->buf + rs->index, buf, l);
+            buf += l;
+            size -= l;
+            rs->index += l;
+            if (rs->index == 4) {
+                /* got vnet header length */
+                rs->vnet_hdr_len = ntohl(*(uint32_t *)rs->buf);
+                rs->index = 0;
+                rs->state = 2;
+            }
+            break;
+        case 2:
             l = rs->packet_len - rs->index;
             if (l > size) {
                 l = size;

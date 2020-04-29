@@ -32,6 +32,7 @@ typedef struct QemuSpiceKbd {
     SpiceKbdInstance sin;
     int ledstate;
     bool emul0;
+    size_t pauseseq;
 } QemuSpiceKbd;
 
 static void kbd_push_key(SpiceKbdInstance *sin, uint8_t frag);
@@ -49,6 +50,7 @@ static const SpiceKbdInterface kbd_interface = {
 
 static void kbd_push_key(SpiceKbdInstance *sin, uint8_t scancode)
 {
+    static const uint8_t pauseseq[] = { 0xe1, 0x1d, 0x45, 0xe1, 0x9d, 0xc5 };
     QemuSpiceKbd *kbd = container_of(sin, QemuSpiceKbd, sin);
     int keycode;
     bool up;
@@ -57,6 +59,18 @@ static void kbd_push_key(SpiceKbdInstance *sin, uint8_t scancode)
         kbd->emul0 = true;
         return;
     }
+
+    if (scancode == pauseseq[kbd->pauseseq]) {
+        kbd->pauseseq++;
+        if (kbd->pauseseq == G_N_ELEMENTS(pauseseq)) {
+            qemu_input_event_send_key_qcode(NULL, Q_KEY_CODE_PAUSE, true);
+            kbd->pauseseq = 0;
+        }
+        return;
+    } else {
+        kbd->pauseseq = 0;
+    }
+
     keycode = scancode & ~SCANCODE_UP;
     up = scancode & SCANCODE_UP;
     if (kbd->emul0) {
@@ -87,7 +101,7 @@ static void kbd_leds(void *opaque, int ledstate)
     if (ledstate & QEMU_CAPS_LOCK_LED) {
         kbd->ledstate |= SPICE_KEYBOARD_MODIFIER_FLAGS_CAPS_LOCK;
     }
-    spice_server_kbd_leds(&kbd->sin, ledstate);
+    spice_server_kbd_leds(&kbd->sin, kbd->ledstate);
 }
 
 /* mouse bits */
@@ -172,8 +186,8 @@ static void tablet_position(SpiceTabletInstance* sin, int x, int y,
     QemuSpicePointer *pointer = container_of(sin, QemuSpicePointer, tablet);
 
     spice_update_buttons(pointer, 0, buttons_state);
-    qemu_input_queue_abs(NULL, INPUT_AXIS_X, x, pointer->width);
-    qemu_input_queue_abs(NULL, INPUT_AXIS_Y, y, pointer->height);
+    qemu_input_queue_abs(NULL, INPUT_AXIS_X, x, 0, pointer->width);
+    qemu_input_queue_abs(NULL, INPUT_AXIS_Y, y, 0, pointer->height);
     qemu_input_event_sync();
 }
 

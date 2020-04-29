@@ -495,8 +495,7 @@ static int os_host_main_loop_wait(int64_t timeout)
 
 #define RR_MAIN_WAIT_LOOP_TIMEOUT_IN_REPLAY 1000
 
-
-int main_loop_wait(int nonblocking)
+void main_loop_wait(int nonblocking)
 {
     int ret;
     uint32_t timeout = UINT32_MAX;
@@ -512,11 +511,9 @@ int main_loop_wait(int nonblocking)
     /* poll any events */
     g_array_set_size(gpollfds, 0); /* reset for new iteration */
     /* XXX: separate device handlers from system ones */
-#ifdef CONFIG_SLIRP
     if (! (rr_in_replay() || rr_replay_requested())) {
         slirp_pollfds_fill(gpollfds, &timeout);
     }
-#endif
 
     if (timeout == UINT32_MAX) {
         timeout_ns = -1;
@@ -529,12 +526,9 @@ int main_loop_wait(int nonblocking)
                                           &main_loop_tlg));
 
     ret = os_host_main_loop_wait(timeout_ns);
-
-#ifdef CONFIG_SLIRP
     rr_begin_main_loop_wait();
     slirp_pollfds_poll(gpollfds, (ret < 0));
     rr_end_main_loop_wait();
-#endif
 
     /* CPU thread can infinitely wait for event after
        missing the warp */
@@ -542,8 +536,6 @@ int main_loop_wait(int nonblocking)
     rr_begin_main_loop_wait();
     qemu_clock_run_all_timers();
     rr_end_main_loop_wait();
-
-    return ret;
 }
 
 /* Functions to operate on the main QEMU AioContext.  */

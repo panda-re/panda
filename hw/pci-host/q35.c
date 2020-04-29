@@ -129,12 +129,11 @@ static void q35_host_get_mmcfg_size(Object *obj, Visitor *v, const char *name,
                                     void *opaque, Error **errp)
 {
     PCIExpressHost *e = PCIE_HOST_BRIDGE(obj);
-    uint32_t value = e->size;
 
-    visit_type_uint32(v, name, &value, errp);
+    visit_type_uint64(v, name, &e->size, errp);
 }
 
-static Property mch_props[] = {
+static Property q35_host_props[] = {
     DEFINE_PROP_UINT64(PCIE_HOST_MCFG_BASE, Q35PCIHost, parent_obj.base_addr,
                         MCH_HOST_BRIDGE_PCIEXBAR_DEFAULT),
     DEFINE_PROP_SIZE(PCI_HOST_PROP_PCI_HOLE64_SIZE, Q35PCIHost,
@@ -154,7 +153,7 @@ static void q35_host_class_init(ObjectClass *klass, void *data)
 
     hc->root_bus_path = q35_host_root_bus_path;
     dc->realize = q35_host_realize;
-    dc->props = mch_props;
+    dc->props = q35_host_props;
     /* Reason: needs to be wired up by pc_q35_init */
     dc->user_creatable = false;
     set_bit(DEVICE_CATEGORY_BRIDGE, dc->categories);
@@ -173,26 +172,26 @@ static void q35_host_initfn(Object *obj)
 
     object_initialize(&s->mch, sizeof(s->mch), TYPE_MCH_PCI_DEVICE);
     object_property_add_child(OBJECT(s), "mch", OBJECT(&s->mch), NULL);
-    qdev_prop_set_uint32(DEVICE(&s->mch), "addr", PCI_DEVFN(0, 0));
+    qdev_prop_set_int32(DEVICE(&s->mch), "addr", PCI_DEVFN(0, 0));
     qdev_prop_set_bit(DEVICE(&s->mch), "multifunction", false);
 
-    object_property_add(obj, PCI_HOST_PROP_PCI_HOLE_START, "int",
+    object_property_add(obj, PCI_HOST_PROP_PCI_HOLE_START, "uint32",
                         q35_host_get_pci_hole_start,
                         NULL, NULL, NULL, NULL);
 
-    object_property_add(obj, PCI_HOST_PROP_PCI_HOLE_END, "int",
+    object_property_add(obj, PCI_HOST_PROP_PCI_HOLE_END, "uint32",
                         q35_host_get_pci_hole_end,
                         NULL, NULL, NULL, NULL);
 
-    object_property_add(obj, PCI_HOST_PROP_PCI_HOLE64_START, "int",
+    object_property_add(obj, PCI_HOST_PROP_PCI_HOLE64_START, "uint64",
                         q35_host_get_pci_hole64_start,
                         NULL, NULL, NULL, NULL);
 
-    object_property_add(obj, PCI_HOST_PROP_PCI_HOLE64_END, "int",
+    object_property_add(obj, PCI_HOST_PROP_PCI_HOLE64_END, "uint64",
                         q35_host_get_pci_hole64_end,
                         NULL, NULL, NULL, NULL);
 
-    object_property_add(obj, PCIE_HOST_MCFG_SIZE, "int",
+    object_property_add(obj, PCIE_HOST_MCFG_SIZE, "uint64",
                         q35_host_get_mmcfg_size,
                         NULL, NULL, NULL, NULL);
 
@@ -369,7 +368,7 @@ static void mch_update_smram(MCHPCIState *mch)
             tseg_size = 1024 * 1024 * 8;
             break;
         default:
-            tseg_size = 0;
+            tseg_size = 1024 * 1024 * (uint32_t)mch->ext_tseg_mbytes;
             break;
         }
     } else {
@@ -390,6 +389,17 @@ static void mch_update_smram(MCHPCIState *mch)
                                    mch->below_4g_mem_size - tseg_size);
 
     memory_region_transaction_commit();
+}
+
+static void mch_update_ext_tseg_mbytes(MCHPCIState *mch)
+{
+    PCIDevice *pd = PCI_DEVICE(mch);
+    uint8_t *reg = pd->config + MCH_HOST_BRIDGE_EXT_TSEG_MBYTES;
+
+    if (mch->ext_tseg_mbytes > 0 &&
+        pci_get_word(reg) == MCH_HOST_BRIDGE_EXT_TSEG_MBYTES_QUERY) {
+        pci_set_word(reg, mch->ext_tseg_mbytes);
+    }
 }
 
 static void mch_write_config(PCIDevice *d,
@@ -413,6 +423,11 @@ static void mch_write_config(PCIDevice *d,
                        MCH_HOST_BRIDGE_SMRAM_SIZE)) {
         mch_update_smram(mch);
     }
+
+    if (ranges_overlap(address, len, MCH_HOST_BRIDGE_EXT_TSEG_MBYTES,
+                       MCH_HOST_BRIDGE_EXT_TSEG_MBYTES_SIZE)) {
+        mch_update_ext_tseg_mbytes(mch);
+    }
 }
 
 static void mch_update(MCHPCIState *mch)
@@ -420,6 +435,7 @@ static void mch_update(MCHPCIState *mch)
     mch_update_pciexbar(mch);
     mch_update_pam(mch);
     mch_update_smram(mch);
+    mch_update_ext_tseg_mbytes(mch);
 }
 
 static int mch_post_load(void *opaque, int version_id)
@@ -457,6 +473,11 @@ static void mch_reset(DeviceState *qdev)
     d->wmask[MCH_HOST_BRIDGE_SMRAM] = MCH_HOST_BRIDGE_SMRAM_WMASK;
     d->wmask[MCH_HOST_BRIDGE_ESMRAMC] = MCH_HOST_BRIDGE_ESMRAMC_WMASK;
 
+    if (mch->ext_tseg_mbytes > 0) {
+        pci_set_word(d->config + MCH_HOST_BRIDGE_EXT_TSEG_MBYTES,
+                     MCH_HOST_BRIDGE_EXT_TSEG_MBYTES_QUERY);
+    }
+
     mch_update(mch);
 }
 
@@ -464,6 +485,12 @@ static void mch_realize(PCIDevice *d, Error **errp)
 {
     int i;
     MCHPCIState *mch = MCH_PCI_DEVICE(d);
+
+    if (mch->ext_tseg_mbytes > MCH_HOST_BRIDGE_EXT_TSEG_MBYTES_MAX) {
+        error_setg(errp, "invalid extended-tseg-mbytes value: %" PRIu16,
+                   mch->ext_tseg_mbytes);
+        return;
+    }
 
     /* setup pci memory mapping */
     pc_pci_as_mapping_init(OBJECT(mch), mch->system_memory,
@@ -530,6 +557,12 @@ uint64_t mch_mcfg_base(void)
     return MCH_HOST_BRIDGE_PCIEXBAR_DEFAULT;
 }
 
+static Property mch_props[] = {
+    DEFINE_PROP_UINT16("extended-tseg-mbytes", MCHPCIState, ext_tseg_mbytes,
+                       16),
+    DEFINE_PROP_END_OF_LIST(),
+};
+
 static void mch_class_init(ObjectClass *klass, void *data)
 {
     PCIDeviceClass *k = PCI_DEVICE_CLASS(klass);
@@ -538,6 +571,7 @@ static void mch_class_init(ObjectClass *klass, void *data)
     k->realize = mch_realize;
     k->config_write = mch_write_config;
     dc->reset = mch_reset;
+    dc->props = mch_props;
     set_bit(DEVICE_CATEGORY_BRIDGE, dc->categories);
     dc->desc = "Host bridge";
     dc->vmsd = &vmstate_mch;

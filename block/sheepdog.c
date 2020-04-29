@@ -16,7 +16,6 @@
 #include "qapi-visit.h"
 #include "qapi/error.h"
 #include "qapi/qmp/qdict.h"
-#include "qapi/qmp/qint.h"
 #include "qapi/qobject-input-visitor.h"
 #include "qemu/uri.h"
 #include "qemu/error-report.h"
@@ -391,6 +390,7 @@ struct BDRVSheepdogState {
     QLIST_HEAD(inflight_aio_head, AIOReq) inflight_aio_head;
     QLIST_HEAD(failed_aio_head, AIOReq) failed_aio_head;
 
+    CoMutex queue_lock;
     CoQueue overlapping_queue;
     QLIST_HEAD(inflight_aiocb_head, SheepdogAIOCB) inflight_aiocb_head;
 };
@@ -489,7 +489,7 @@ static void wait_for_overlapping_aiocb(BDRVSheepdogState *s, SheepdogAIOCB *acb)
 retry:
     QLIST_FOREACH(cb, &s->inflight_aiocb_head, aiocb_siblings) {
         if (AIOCBOverlapping(acb, cb)) {
-            qemu_co_queue_wait(&s->overlapping_queue, NULL);
+            qemu_co_queue_wait(&s->overlapping_queue, &s->queue_lock);
             goto retry;
         }
     }
@@ -526,8 +526,10 @@ static void sd_aio_setup(SheepdogAIOCB *acb, BDRVSheepdogState *s,
         return;
     }
 
+    qemu_co_mutex_lock(&s->queue_lock);
     wait_for_overlapping_aiocb(s, acb);
     QLIST_INSERT_HEAD(&s->inflight_aiocb_head, acb, aiocb_siblings);
+    qemu_co_mutex_unlock(&s->queue_lock);
 }
 
 static SocketAddress *sd_socket_address(const char *path,
@@ -536,14 +538,12 @@ static SocketAddress *sd_socket_address(const char *path,
     SocketAddress *addr = g_new0(SocketAddress, 1);
 
     if (path) {
-        addr->type = SOCKET_ADDRESS_KIND_UNIX;
-        addr->u.q_unix.data = g_new0(UnixSocketAddress, 1);
-        addr->u.q_unix.data->path = g_strdup(path);
+        addr->type = SOCKET_ADDRESS_TYPE_UNIX;
+        addr->u.q_unix.path = g_strdup(path);
     } else {
-        addr->type = SOCKET_ADDRESS_KIND_INET;
-        addr->u.inet.data = g_new0(InetSocketAddress, 1);
-        addr->u.inet.data->host = g_strdup(host ?: SD_DEFAULT_ADDR);
-        addr->u.inet.data->port = g_strdup(port ?: stringify(SD_DEFAULT_PORT));
+        addr->type = SOCKET_ADDRESS_TYPE_INET;
+        addr->u.inet.host = g_strdup(host ?: SD_DEFAULT_ADDR);
+        addr->u.inet.port = g_strdup(port ?: stringify(SD_DEFAULT_PORT));
     }
 
     return addr;
@@ -554,7 +554,6 @@ static SocketAddress *sd_server_config(QDict *options, Error **errp)
     QDict *server = NULL;
     QObject *crumpled_server = NULL;
     Visitor *iv = NULL;
-    SocketAddressFlat *saddr_flat = NULL;
     SocketAddress *saddr = NULL;
     Error *local_err = NULL;
 
@@ -574,16 +573,13 @@ static SocketAddress *sd_server_config(QDict *options, Error **errp)
      * visitor expects the former.
      */
     iv = qobject_input_visitor_new(crumpled_server);
-    visit_type_SocketAddressFlat(iv, NULL, &saddr_flat, &local_err);
+    visit_type_SocketAddress(iv, NULL, &saddr, &local_err);
     if (local_err) {
         error_propagate(errp, local_err);
         goto done;
     }
 
-    saddr = socket_address_crumple(saddr_flat);
-
 done:
-    qapi_free_SocketAddressFlat(saddr_flat);
     visit_free(iv);
     qobject_decref(crumpled_server);
     QDECREF(server);
@@ -595,9 +591,9 @@ static int connect_to_sdog(BDRVSheepdogState *s, Error **errp)
 {
     int fd;
 
-    fd = socket_connect(s->addr, errp, NULL, NULL);
+    fd = socket_connect(s->addr, NULL, NULL, errp);
 
-    if (s->addr->type == SOCKET_ADDRESS_KIND_INET && fd >= 0) {
+    if (s->addr->type == SOCKET_ADDRESS_TYPE_INET && fd >= 0) {
         int ret = socket_set_nodelay(fd);
         if (ret < 0) {
             error_report("%s", strerror(errno));
@@ -704,7 +700,8 @@ out:
 
     srco->co = NULL;
     srco->ret = ret;
-    srco->finished = true;
+    /* Set srco->finished before reading bs->wakeup.  */
+    atomic_mb_set(&srco->finished, true);
     if (srco->bs) {
         bdrv_wakeup(srco->bs);
     }
@@ -791,6 +788,7 @@ static coroutine_fn void reconnect_to_sdog(void *opaque)
      * have to move all the inflight requests to the failed queue before
      * resend_aioreq() is called.
      */
+    qemu_co_mutex_lock(&s->queue_lock);
     QLIST_FOREACH_SAFE(aio_req, &s->inflight_aio_head, aio_siblings, next) {
         QLIST_REMOVE(aio_req, aio_siblings);
         QLIST_INSERT_HEAD(&s->failed_aio_head, aio_req, aio_siblings);
@@ -800,8 +798,11 @@ static coroutine_fn void reconnect_to_sdog(void *opaque)
     while (!QLIST_EMPTY(&s->failed_aio_head)) {
         aio_req = QLIST_FIRST(&s->failed_aio_head);
         QLIST_REMOVE(aio_req, aio_siblings);
+        qemu_co_mutex_unlock(&s->queue_lock);
         resend_aioreq(s, aio_req);
+        qemu_co_mutex_lock(&s->queue_lock);
     }
+    qemu_co_mutex_unlock(&s->queue_lock);
 }
 
 /*
@@ -893,7 +894,10 @@ static void coroutine_fn aio_read_response(void *opaque)
     */
     s->co_recv = NULL;
 
+    qemu_co_mutex_lock(&s->queue_lock);
     QLIST_REMOVE(aio_req, aio_siblings);
+    qemu_co_mutex_unlock(&s->queue_lock);
+
     switch (rsp.result) {
     case SD_RES_SUCCESS:
         break;
@@ -1313,7 +1317,9 @@ static void coroutine_fn add_aio_request(BDRVSheepdogState *s, AIOReq *aio_req,
     uint64_t old_oid = aio_req->base_oid;
     bool create = aio_req->create;
 
+    qemu_co_mutex_lock(&s->queue_lock);
     QLIST_INSERT_HEAD(&s->inflight_aio_head, aio_req, aio_siblings);
+    qemu_co_mutex_unlock(&s->queue_lock);
 
     if (!nr_copies) {
         error_report("bug");
@@ -1684,6 +1690,7 @@ static int sd_open(BlockDriverState *bs, QDict *options, int flags,
     bs->total_sectors = s->inode.vdi_size / BDRV_SECTOR_SIZE;
     pstrcpy(s->name, sizeof(s->name), vdi);
     qemu_co_mutex_init(&s->lock);
+    qemu_co_mutex_init(&s->queue_lock);
     qemu_co_queue_init(&s->overlapping_queue);
     qemu_opts_del(opts);
     g_free(buf);
@@ -2159,26 +2166,31 @@ static int64_t sd_getlength(BlockDriverState *bs)
     return s->inode.vdi_size;
 }
 
-static int sd_truncate(BlockDriverState *bs, int64_t offset)
+static int sd_truncate(BlockDriverState *bs, int64_t offset,
+                       PreallocMode prealloc, Error **errp)
 {
-    Error *local_err = NULL;
     BDRVSheepdogState *s = bs->opaque;
     int ret, fd;
     unsigned int datalen;
     uint64_t max_vdi_size;
 
+    if (prealloc != PREALLOC_MODE_OFF) {
+        error_setg(errp, "Unsupported preallocation mode '%s'",
+                   PreallocMode_lookup[prealloc]);
+        return -ENOTSUP;
+    }
+
     max_vdi_size = (UINT64_C(1) << s->inode.block_size_shift) * MAX_DATA_OBJS;
     if (offset < s->inode.vdi_size) {
-        error_report("shrinking is not supported");
+        error_setg(errp, "shrinking is not supported");
         return -EINVAL;
     } else if (offset > max_vdi_size) {
-        error_report("too big image size");
+        error_setg(errp, "too big image size");
         return -EINVAL;
     }
 
-    fd = connect_to_sdog(s, &local_err);
+    fd = connect_to_sdog(s, errp);
     if (fd < 0) {
-        error_report_err(local_err);
         return fd;
     }
 
@@ -2191,7 +2203,7 @@ static int sd_truncate(BlockDriverState *bs, int64_t offset)
     close(fd);
 
     if (ret < 0) {
-        error_report("failed to update an inode.");
+        error_setg_errno(errp, -ret, "failed to update an inode");
     }
 
     return ret;
@@ -2439,12 +2451,16 @@ static void coroutine_fn sd_co_rw_vector(SheepdogAIOCB *acb)
 
 static void sd_aio_complete(SheepdogAIOCB *acb)
 {
+    BDRVSheepdogState *s;
     if (acb->aiocb_type == AIOCB_FLUSH_CACHE) {
         return;
     }
 
+    s = acb->s;
+    qemu_co_mutex_lock(&s->queue_lock);
     QLIST_REMOVE(acb, aiocb_siblings);
-    qemu_co_queue_restart_all(&acb->s->overlapping_queue);
+    qemu_co_queue_restart_all(&s->overlapping_queue);
+    qemu_co_mutex_unlock(&s->queue_lock);
 }
 
 static coroutine_fn int sd_co_writev(BlockDriverState *bs, int64_t sector_num,
@@ -2456,7 +2472,7 @@ static coroutine_fn int sd_co_writev(BlockDriverState *bs, int64_t sector_num,
     BDRVSheepdogState *s = bs->opaque;
 
     if (offset > s->inode.vdi_size) {
-        ret = sd_truncate(bs, offset);
+        ret = sd_truncate(bs, offset, PREALLOC_MODE_OFF, NULL);
         if (ret < 0) {
             return ret;
         }
@@ -2943,7 +2959,7 @@ static int sd_load_vmstate(BlockDriverState *bs, QEMUIOVector *qiov,
 
 
 static coroutine_fn int sd_co_pdiscard(BlockDriverState *bs, int64_t offset,
-                                      int count)
+                                      int bytes)
 {
     SheepdogAIOCB acb;
     BDRVSheepdogState *s = bs->opaque;
@@ -2961,11 +2977,11 @@ static coroutine_fn int sd_co_pdiscard(BlockDriverState *bs, int64_t offset,
     iov.iov_len = sizeof(zero);
     discard_iov.iov = &iov;
     discard_iov.niov = 1;
-    if (!QEMU_IS_ALIGNED(offset | count, BDRV_SECTOR_SIZE)) {
+    if (!QEMU_IS_ALIGNED(offset | bytes, BDRV_SECTOR_SIZE)) {
         return -ENOTSUP;
     }
     sd_aio_setup(&acb, s, &discard_iov, offset >> BDRV_SECTOR_BITS,
-                 count >> BDRV_SECTOR_BITS, AIOCB_DISCARD_OBJ);
+                 bytes >> BDRV_SECTOR_BITS, AIOCB_DISCARD_OBJ);
     sd_co_rw_vector(&acb);
     sd_aio_complete(&acb);
 

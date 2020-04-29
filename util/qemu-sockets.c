@@ -22,6 +22,7 @@
 #endif /* CONFIG_AF_VSOCK */
 
 #include "monitor/monitor.h"
+#include "qapi/clone-visitor.h"
 #include "qapi/error.h"
 #include "qemu/sockets.h"
 #include "qemu/main-loop.h"
@@ -103,17 +104,16 @@ NetworkAddressFamily inet_netfamily(int family)
  *   f     t       PF_INET6
  *   t     -       PF_INET
  *   t     f       PF_INET
- *   t     t       PF_INET6
+ *   t     t       PF_INET6/PF_UNSPEC
  *
  * NB, this matrix is only about getting the necessary results
  * from getaddrinfo(). Some of the cases require further work
  * after reading results from getaddrinfo in order to fully
- * apply the logic the end user wants. eg with the last case
- * ipv4=t + ipv6=t + PF_INET6, getaddrinfo alone can only
- * guarantee the ipv6=t part of the request - we need more
- * checks to provide ipv4=t part of the guarantee. This is
- * outside scope of this method and not currently handled by
- * callers at all.
+ * apply the logic the end user wants.
+ *
+ * In the first and last cases, we must set IPV6_V6ONLY=0
+ * when binding, to allow a single listener to potentially
+ * accept both IPv4+6 addresses.
  */
 int inet_ai_family_from_address(InetSocketAddress *addr,
                                 Error **errp)
@@ -122,6 +122,23 @@ int inet_ai_family_from_address(InetSocketAddress *addr,
         !addr->ipv6 && !addr->ipv4) {
         error_setg(errp, "Cannot disable IPv4 and IPv6 at same time");
         return PF_UNSPEC;
+    }
+    if ((addr->has_ipv6 && addr->ipv6) && (addr->has_ipv4 && addr->ipv4)) {
+        /*
+         * Some backends can only do a single listener. In that case
+         * we want empty hostname to resolve to "::" and then use the
+         * flag IPV6_V6ONLY==0 to get both protocols on 1 socket. This
+         * doesn't work for addresses other than "", so they're just
+         * inevitably broken until multiple listeners can be used,
+         * and thus we honour getaddrinfo automatic protocol detection
+         * Once all backends do multi-listener, remove the PF_INET6
+         * branch entirely.
+         */
+        if (!addr->host || g_str_equal(addr->host, "")) {
+            return PF_INET6;
+        } else {
+            return PF_UNSPEC;
+        }
     }
     if ((addr->has_ipv6 && addr->ipv6) || (addr->has_ipv4 && !addr->ipv4)) {
         return PF_INET6;
@@ -207,22 +224,43 @@ static int inet_listen_saddr(InetSocketAddress *saddr,
         }
 
         socket_set_fast_reuse(slisten);
-#ifdef IPV6_V6ONLY
-        if (e->ai_family == PF_INET6) {
-            /* listen on both ipv4 and ipv6 */
-            const int off = 0;
-            qemu_setsockopt(slisten, IPPROTO_IPV6, IPV6_V6ONLY, &off,
-                            sizeof(off));
-        }
-#endif
 
         port_min = inet_getport(e);
         port_max = saddr->has_to ? saddr->to + port_offset : port_min;
         for (p = port_min; p <= port_max; p++) {
+#ifdef IPV6_V6ONLY
+            /*
+             * Deals with first & last cases in matrix in comment
+             * for inet_ai_family_from_address().
+             */
+            int v6only =
+                ((!saddr->has_ipv4 && !saddr->has_ipv6) ||
+                 (saddr->has_ipv4 && saddr->ipv4 &&
+                  saddr->has_ipv6 && saddr->ipv6)) ? 0 : 1;
+#endif
             inet_setport(e, p);
+#ifdef IPV6_V6ONLY
+        rebind:
+            if (e->ai_family == PF_INET6) {
+                qemu_setsockopt(slisten, IPPROTO_IPV6, IPV6_V6ONLY, &v6only,
+                                sizeof(v6only));
+            }
+#endif
             if (bind(slisten, e->ai_addr, e->ai_addrlen) == 0) {
                 goto listen;
             }
+
+#ifdef IPV6_V6ONLY
+            /* If we got EADDRINUSE from an IPv6 bind & V6ONLY is unset,
+             * it could be that the IPv4 port is already claimed, so retry
+             * with V6ONLY set
+             */
+            if (e->ai_family == PF_INET6 && errno == EADDRINUSE && !v6only) {
+                v6only = 1;
+                goto rebind;
+            }
+#endif
+
             if (p == port_max) {
                 if (!e->ai_next) {
                     error_setg_errno(errp, errno, "Failed to bind socket");
@@ -427,8 +465,9 @@ static struct addrinfo *inet_parse_connect_saddr(InetSocketAddress *saddr,
  * function succeeds, callback will be called when the connection
  * completes, with the file descriptor on success, or -1 on error.
  */
-int inet_connect_saddr(InetSocketAddress *saddr, Error **errp,
-                       NonBlockingConnectHandler *callback, void *opaque)
+int inet_connect_saddr(InetSocketAddress *saddr,
+                       NonBlockingConnectHandler *callback, void *opaque,
+                       Error **errp)
 {
     Error *local_err = NULL;
     struct addrinfo *res, *e;
@@ -577,16 +616,15 @@ err:
 }
 
 /* compatibility wrapper */
-InetSocketAddress *inet_parse(const char *str, Error **errp)
+int inet_parse(InetSocketAddress *addr, const char *str, Error **errp)
 {
-    InetSocketAddress *addr;
     const char *optstr, *h;
     char host[65];
     char port[33];
     int to;
     int pos;
 
-    addr = g_new0(InetSocketAddress, 1);
+    memset(addr, 0, sizeof(*addr));
 
     /* parse address */
     if (str[0] == ':') {
@@ -594,23 +632,19 @@ InetSocketAddress *inet_parse(const char *str, Error **errp)
         host[0] = '\0';
         if (sscanf(str, ":%32[^,]%n", port, &pos) != 1) {
             error_setg(errp, "error parsing port in address '%s'", str);
-            goto fail;
+            return -1;
         }
     } else if (str[0] == '[') {
         /* IPv6 addr */
         if (sscanf(str, "[%64[^]]]:%32[^,]%n", host, port, &pos) != 2) {
             error_setg(errp, "error parsing IPv6 address '%s'", str);
-            goto fail;
+            return -1;
         }
-        addr->ipv6 = addr->has_ipv6 = true;
     } else {
         /* hostname or IPv4 addr */
         if (sscanf(str, "%64[^:]:%32[^,]%n", host, port, &pos) != 2) {
             error_setg(errp, "error parsing address '%s'", str);
-            goto fail;
-        }
-        if (host[strspn(host, "0123456789.")] == '\0') {
-            addr->ipv4 = addr->has_ipv4 = true;
+            return -1;
         }
     }
 
@@ -625,7 +659,7 @@ InetSocketAddress *inet_parse(const char *str, Error **errp)
         if (sscanf(h, "%d%n", &to, &pos) != 1 ||
             (h[pos] != '\0' && h[pos] != ',')) {
             error_setg(errp, "error parsing to= argument");
-            goto fail;
+            return -1;
         }
         addr->has_to = true;
         addr->to = to;
@@ -636,11 +670,7 @@ InetSocketAddress *inet_parse(const char *str, Error **errp)
     if (strstr(optstr, ",ipv6")) {
         addr->ipv6 = addr->has_ipv6 = true;
     }
-    return addr;
-
-fail:
-    qapi_free_InetSocketAddress(addr);
-    return NULL;
+    return 0;
 }
 
 
@@ -655,13 +685,12 @@ fail:
 int inet_connect(const char *str, Error **errp)
 {
     int sock = -1;
-    InetSocketAddress *addr;
+    InetSocketAddress *addr = g_new(InetSocketAddress, 1);
 
-    addr = inet_parse(str, errp);
-    if (addr != NULL) {
-        sock = inet_connect_saddr(addr, errp, NULL, NULL);
-        qapi_free_InetSocketAddress(addr);
+    if (!inet_parse(addr, str, errp)) {
+        sock = inet_connect_saddr(addr, NULL, NULL, errp);
     }
+    qapi_free_InetSocketAddress(addr);
     return sock;
 }
 
@@ -727,9 +756,10 @@ static int vsock_connect_addr(const struct sockaddr_vm *svm, bool *in_progress,
     return sock;
 }
 
-static int vsock_connect_saddr(VsockSocketAddress *vaddr, Error **errp,
+static int vsock_connect_saddr(VsockSocketAddress *vaddr,
                                NonBlockingConnectHandler *callback,
-                               void *opaque)
+                               void *opaque,
+                               Error **errp)
 {
     struct sockaddr_vm svm;
     int sock = -1;
@@ -791,26 +821,25 @@ static int vsock_listen_saddr(VsockSocketAddress *vaddr,
     return slisten;
 }
 
-static VsockSocketAddress *vsock_parse(const char *str, Error **errp)
+static int vsock_parse(VsockSocketAddress *addr, const char *str,
+                       Error **errp)
 {
-    VsockSocketAddress *addr = NULL;
     char cid[33];
     char port[33];
     int n;
 
     if (sscanf(str, "%32[^:]:%32[^,]%n", cid, port, &n) != 2) {
         error_setg(errp, "error parsing address '%s'", str);
-        return NULL;
+        return -1;
     }
     if (str[n] != '\0') {
         error_setg(errp, "trailing characters in address '%s'", str);
-        return NULL;
+        return -1;
     }
 
-    addr = g_new0(VsockSocketAddress, 1);
     addr->cid = g_strdup(cid);
     addr->port = g_strdup(port);
-    return addr;
+    return 0;
 }
 #else
 static void vsock_unsupported(Error **errp)
@@ -818,9 +847,9 @@ static void vsock_unsupported(Error **errp)
     error_setg(errp, "socket family AF_VSOCK unsupported");
 }
 
-static int vsock_connect_saddr(VsockSocketAddress *vaddr, Error **errp,
+static int vsock_connect_saddr(VsockSocketAddress *vaddr,
                                NonBlockingConnectHandler *callback,
-                               void *opaque)
+                               void *opaque, Error **errp)
 {
     vsock_unsupported(errp);
     return -1;
@@ -833,10 +862,11 @@ static int vsock_listen_saddr(VsockSocketAddress *vaddr,
     return -1;
 }
 
-static VsockSocketAddress *vsock_parse(const char *str, Error **errp)
+static int vsock_parse(VsockSocketAddress *addr, const char *str,
+                        Error **errp)
 {
     vsock_unsupported(errp);
-    return NULL;
+    return -1;
 }
 #endif /* CONFIG_AF_VSOCK */
 
@@ -848,6 +878,8 @@ static int unix_listen_saddr(UnixSocketAddress *saddr,
 {
     struct sockaddr_un un;
     int sock, fd;
+    char *pathbuf = NULL;
+    const char *path;
 
     sock = qemu_socket(PF_UNIX, SOCK_STREAM, 0);
     if (sock < 0) {
@@ -855,20 +887,22 @@ static int unix_listen_saddr(UnixSocketAddress *saddr,
         return -1;
     }
 
-    memset(&un, 0, sizeof(un));
-    un.sun_family = AF_UNIX;
-    if (saddr->path && strlen(saddr->path)) {
-        snprintf(un.sun_path, sizeof(un.sun_path), "%s", saddr->path);
+    if (saddr->path && saddr->path[0]) {
+        path = saddr->path;
     } else {
         const char *tmpdir = getenv("TMPDIR");
         tmpdir = tmpdir ? tmpdir : "/tmp";
-        if (snprintf(un.sun_path, sizeof(un.sun_path), "%s/qemu-socket-XXXXXX",
-                     tmpdir) >= sizeof(un.sun_path)) {
-            error_setg_errno(errp, errno,
-                             "TMPDIR environment variable (%s) too large", tmpdir);
-            goto err;
-        }
+        path = pathbuf = g_strdup_printf("%s/qemu-socket-XXXXXX", tmpdir);
+    }
 
+    if (strlen(path) > sizeof(un.sun_path)) {
+        error_setg(errp, "UNIX socket path '%s' is too long", path);
+        error_append_hint(errp, "Path must be less than %zu bytes\n",
+                          sizeof(un.sun_path));
+        goto err;
+    }
+
+    if (pathbuf != NULL) {
         /*
          * This dummy fd usage silences the mktemp() unsecure warning.
          * Using mkstemp() doesn't make things more secure here
@@ -876,26 +910,27 @@ static int unix_listen_saddr(UnixSocketAddress *saddr,
          * to unlink first and thus re-open the race window.  The
          * worst case possible is bind() failing, i.e. a DoS attack.
          */
-        fd = mkstemp(un.sun_path);
+        fd = mkstemp(pathbuf);
         if (fd < 0) {
             error_setg_errno(errp, errno,
-                             "Failed to make a temporary socket name in %s", tmpdir);
+                             "Failed to make a temporary socket %s", pathbuf);
             goto err;
         }
         close(fd);
-        if (update_addr) {
-            g_free(saddr->path);
-            saddr->path = g_strdup(un.sun_path);
-        }
     }
 
-    if (unlink(un.sun_path) < 0 && errno != ENOENT) {
+    if (unlink(path) < 0 && errno != ENOENT) {
         error_setg_errno(errp, errno,
-                         "Failed to unlink socket %s", un.sun_path);
+                         "Failed to unlink socket %s", path);
         goto err;
     }
+
+    memset(&un, 0, sizeof(un));
+    un.sun_family = AF_UNIX;
+    strncpy(un.sun_path, path, sizeof(un.sun_path));
+
     if (bind(sock, (struct sockaddr*) &un, sizeof(un)) < 0) {
-        error_setg_errno(errp, errno, "Failed to bind socket to %s", un.sun_path);
+        error_setg_errno(errp, errno, "Failed to bind socket to %s", path);
         goto err;
     }
     if (listen(sock, 1) < 0) {
@@ -903,15 +938,23 @@ static int unix_listen_saddr(UnixSocketAddress *saddr,
         goto err;
     }
 
+    if (update_addr && pathbuf) {
+        g_free(saddr->path);
+        saddr->path = pathbuf;
+    } else {
+        g_free(pathbuf);
+    }
     return sock;
 
 err:
+    g_free(pathbuf);
     closesocket(sock);
     return -1;
 }
 
-static int unix_connect_saddr(UnixSocketAddress *saddr, Error **errp,
-                              NonBlockingConnectHandler *callback, void *opaque)
+static int unix_connect_saddr(UnixSocketAddress *saddr,
+                              NonBlockingConnectHandler *callback, void *opaque,
+                              Error **errp)
 {
     struct sockaddr_un un;
     ConnectState *connect_state = NULL;
@@ -934,9 +977,16 @@ static int unix_connect_saddr(UnixSocketAddress *saddr, Error **errp,
         qemu_set_nonblock(sock);
     }
 
+    if (strlen(saddr->path) > sizeof(un.sun_path)) {
+        error_setg(errp, "UNIX socket path '%s' is too long", saddr->path);
+        error_append_hint(errp, "Path must be less than %zu bytes\n",
+                          sizeof(un.sun_path));
+        goto err;
+    }
+
     memset(&un, 0, sizeof(un));
     un.sun_family = AF_UNIX;
-    snprintf(un.sun_path, sizeof(un.sun_path), "%s", saddr->path);
+    strncpy(un.sun_path, saddr->path, sizeof(un.sun_path));
 
     /* connect to peer */
     do {
@@ -958,13 +1008,18 @@ static int unix_connect_saddr(UnixSocketAddress *saddr, Error **errp,
     }
 
     if (rc < 0) {
-        error_setg_errno(errp, -rc, "Failed to connect socket");
-        close(sock);
-        sock = -1;
+        error_setg_errno(errp, -rc, "Failed to connect socket %s",
+                         saddr->path);
+        goto err;
     }
 
     g_free(connect_state);
     return sock;
+
+ err:
+    close(sock);
+    g_free(connect_state);
+    return -1;
 }
 
 #else
@@ -978,8 +1033,9 @@ static int unix_listen_saddr(UnixSocketAddress *saddr,
     return -1;
 }
 
-static int unix_connect_saddr(UnixSocketAddress *saddr, Error **errp,
-                              NonBlockingConnectHandler *callback, void *opaque)
+static int unix_connect_saddr(UnixSocketAddress *saddr,
+                              NonBlockingConnectHandler *callback, void *opaque,
+                              Error **errp)
 {
     error_setg(errp, "unix sockets are not available on windows");
     errno = ENOTSUP;
@@ -1025,7 +1081,7 @@ int unix_connect(const char *path, Error **errp)
 
     saddr = g_new0(UnixSocketAddress, 1);
     saddr->path = g_strdup(path);
-    sock = unix_connect_saddr(saddr, errp, NULL, NULL);
+    sock = unix_connect_saddr(saddr, NULL, NULL, errp);
     qapi_free_UnixSocketAddress(saddr);
     return sock;
 }
@@ -1041,29 +1097,25 @@ SocketAddress *socket_parse(const char *str, Error **errp)
             error_setg(errp, "invalid Unix socket address");
             goto fail;
         } else {
-            addr->type = SOCKET_ADDRESS_KIND_UNIX;
-            addr->u.q_unix.data = g_new(UnixSocketAddress, 1);
-            addr->u.q_unix.data->path = g_strdup(str + 5);
+            addr->type = SOCKET_ADDRESS_TYPE_UNIX;
+            addr->u.q_unix.path = g_strdup(str + 5);
         }
     } else if (strstart(str, "fd:", NULL)) {
         if (str[3] == '\0') {
             error_setg(errp, "invalid file descriptor address");
             goto fail;
         } else {
-            addr->type = SOCKET_ADDRESS_KIND_FD;
-            addr->u.fd.data = g_new(String, 1);
-            addr->u.fd.data->str = g_strdup(str + 3);
+            addr->type = SOCKET_ADDRESS_TYPE_FD;
+            addr->u.fd.str = g_strdup(str + 3);
         }
     } else if (strstart(str, "vsock:", NULL)) {
-        addr->type = SOCKET_ADDRESS_KIND_VSOCK;
-        addr->u.vsock.data = vsock_parse(str + strlen("vsock:"), errp);
-        if (addr->u.vsock.data == NULL) {
+        addr->type = SOCKET_ADDRESS_TYPE_VSOCK;
+        if (vsock_parse(&addr->u.vsock, str + strlen("vsock:"), errp)) {
             goto fail;
         }
     } else {
-        addr->type = SOCKET_ADDRESS_KIND_INET;
-        addr->u.inet.data = inet_parse(str, errp);
-        if (addr->u.inet.data == NULL) {
+        addr->type = SOCKET_ADDRESS_TYPE_INET;
+        if (inet_parse(&addr->u.inet, str, errp)) {
             goto fail;
         }
     }
@@ -1074,30 +1126,30 @@ fail:
     return NULL;
 }
 
-int socket_connect(SocketAddress *addr, Error **errp,
-                   NonBlockingConnectHandler *callback, void *opaque)
+int socket_connect(SocketAddress *addr, NonBlockingConnectHandler *callback,
+                   void *opaque, Error **errp)
 {
     int fd;
 
     switch (addr->type) {
-    case SOCKET_ADDRESS_KIND_INET:
-        fd = inet_connect_saddr(addr->u.inet.data, errp, callback, opaque);
+    case SOCKET_ADDRESS_TYPE_INET:
+        fd = inet_connect_saddr(&addr->u.inet, callback, opaque, errp);
         break;
 
-    case SOCKET_ADDRESS_KIND_UNIX:
-        fd = unix_connect_saddr(addr->u.q_unix.data, errp, callback, opaque);
+    case SOCKET_ADDRESS_TYPE_UNIX:
+        fd = unix_connect_saddr(&addr->u.q_unix, callback, opaque, errp);
         break;
 
-    case SOCKET_ADDRESS_KIND_FD:
-        fd = monitor_get_fd(cur_mon, addr->u.fd.data->str, errp);
+    case SOCKET_ADDRESS_TYPE_FD:
+        fd = monitor_get_fd(cur_mon, addr->u.fd.str, errp);
         if (fd >= 0 && callback) {
             qemu_set_nonblock(fd);
             callback(fd, NULL, opaque);
         }
         break;
 
-    case SOCKET_ADDRESS_KIND_VSOCK:
-        fd = vsock_connect_saddr(addr->u.vsock.data, errp, callback, opaque);
+    case SOCKET_ADDRESS_TYPE_VSOCK:
+        fd = vsock_connect_saddr(&addr->u.vsock, callback, opaque, errp);
         break;
 
     default:
@@ -1111,20 +1163,20 @@ int socket_listen(SocketAddress *addr, Error **errp)
     int fd;
 
     switch (addr->type) {
-    case SOCKET_ADDRESS_KIND_INET:
-        fd = inet_listen_saddr(addr->u.inet.data, 0, false, errp);
+    case SOCKET_ADDRESS_TYPE_INET:
+        fd = inet_listen_saddr(&addr->u.inet, 0, false, errp);
         break;
 
-    case SOCKET_ADDRESS_KIND_UNIX:
-        fd = unix_listen_saddr(addr->u.q_unix.data, false, errp);
+    case SOCKET_ADDRESS_TYPE_UNIX:
+        fd = unix_listen_saddr(&addr->u.q_unix, false, errp);
         break;
 
-    case SOCKET_ADDRESS_KIND_FD:
-        fd = monitor_get_fd(cur_mon, addr->u.fd.data->str, errp);
+    case SOCKET_ADDRESS_TYPE_FD:
+        fd = monitor_get_fd(cur_mon, addr->u.fd.str, errp);
         break;
 
-    case SOCKET_ADDRESS_KIND_VSOCK:
-        fd = vsock_listen_saddr(addr->u.vsock.data, errp);
+    case SOCKET_ADDRESS_TYPE_VSOCK:
+        fd = vsock_listen_saddr(&addr->u.vsock, errp);
         break;
 
     default:
@@ -1139,12 +1191,12 @@ void socket_listen_cleanup(int fd, Error **errp)
 
     addr = socket_local_address(fd, errp);
 
-    if (addr->type == SOCKET_ADDRESS_KIND_UNIX
-        && addr->u.q_unix.data->path) {
-        if (unlink(addr->u.q_unix.data->path) < 0 && errno != ENOENT) {
+    if (addr->type == SOCKET_ADDRESS_TYPE_UNIX
+        && addr->u.q_unix.path) {
+        if (unlink(addr->u.q_unix.path) < 0 && errno != ENOENT) {
             error_setg_errno(errp, errno,
                              "Failed to unlink socket %s",
-                             addr->u.q_unix.data->path);
+                             addr->u.q_unix.path);
         }
     }
 
@@ -1156,13 +1208,13 @@ int socket_dgram(SocketAddress *remote, SocketAddress *local, Error **errp)
     int fd;
 
     /*
-     * TODO SOCKET_ADDRESS_KIND_FD when fd is AF_INET or AF_INET6
+     * TODO SOCKET_ADDRESS_TYPE_FD when fd is AF_INET or AF_INET6
      * (although other address families can do SOCK_DGRAM, too)
      */
     switch (remote->type) {
-    case SOCKET_ADDRESS_KIND_INET:
-        fd = inet_dgram_saddr(remote->u.inet.data,
-                              local ? local->u.inet.data : NULL, errp);
+    case SOCKET_ADDRESS_TYPE_INET:
+        fd = inet_dgram_saddr(&remote->u.inet,
+                              local ? &local->u.inet : NULL, errp);
         break;
 
     default:
@@ -1195,8 +1247,8 @@ socket_sockaddr_to_address_inet(struct sockaddr_storage *sa,
     }
 
     addr = g_new0(SocketAddress, 1);
-    addr->type = SOCKET_ADDRESS_KIND_INET;
-    inet = addr->u.inet.data = g_new0(InetSocketAddress, 1);
+    addr->type = SOCKET_ADDRESS_TYPE_INET;
+    inet = &addr->u.inet;
     inet->host = g_strdup(host);
     inet->port = g_strdup(serv);
     if (sa->ss_family == AF_INET) {
@@ -1219,11 +1271,9 @@ socket_sockaddr_to_address_unix(struct sockaddr_storage *sa,
     struct sockaddr_un *su = (struct sockaddr_un *)sa;
 
     addr = g_new0(SocketAddress, 1);
-    addr->type = SOCKET_ADDRESS_KIND_UNIX;
-    addr->u.q_unix.data = g_new0(UnixSocketAddress, 1);
+    addr->type = SOCKET_ADDRESS_TYPE_UNIX;
     if (su->sun_path[0]) {
-        addr->u.q_unix.data->path = g_strndup(su->sun_path,
-                                              sizeof(su->sun_path));
+        addr->u.q_unix.path = g_strndup(su->sun_path, sizeof(su->sun_path));
     }
 
     return addr;
@@ -1241,8 +1291,8 @@ socket_sockaddr_to_address_vsock(struct sockaddr_storage *sa,
     struct sockaddr_vm *svm = (struct sockaddr_vm *)sa;
 
     addr = g_new0(SocketAddress, 1);
-    addr->type = SOCKET_ADDRESS_KIND_VSOCK;
-    addr->u.vsock.data = vaddr = g_new0(VsockSocketAddress, 1);
+    addr->type = SOCKET_ADDRESS_TYPE_VSOCK;
+    vaddr = &addr->u.vsock;
     vaddr->cid = g_strdup_printf("%u", svm->svm_cid);
     vaddr->port = g_strdup_printf("%u", svm->svm_port);
 
@@ -1308,64 +1358,36 @@ SocketAddress *socket_remote_address(int fd, Error **errp)
     return socket_sockaddr_to_address(&ss, sslen, errp);
 }
 
-char *socket_address_to_string(struct SocketAddress *addr, Error **errp)
+
+SocketAddress *socket_address_flatten(SocketAddressLegacy *addr_legacy)
 {
-    char *buf;
-    InetSocketAddress *inet;
+    SocketAddress *addr;
 
-    switch (addr->type) {
-    case SOCKET_ADDRESS_KIND_INET:
-        inet = addr->u.inet.data;
-        if (strchr(inet->host, ':') == NULL) {
-            buf = g_strdup_printf("%s:%s", inet->host, inet->port);
-        } else {
-            buf = g_strdup_printf("[%s]:%s", inet->host, inet->port);
-        }
-        break;
-
-    case SOCKET_ADDRESS_KIND_UNIX:
-        buf = g_strdup(addr->u.q_unix.data->path);
-        break;
-
-    case SOCKET_ADDRESS_KIND_FD:
-        buf = g_strdup(addr->u.fd.data->str);
-        break;
-
-    case SOCKET_ADDRESS_KIND_VSOCK:
-        buf = g_strdup_printf("%s:%s",
-                              addr->u.vsock.data->cid,
-                              addr->u.vsock.data->port);
-        break;
-
-    default:
-        abort();
+    if (!addr_legacy) {
+        return NULL;
     }
-    return buf;
-}
 
-SocketAddress *socket_address_crumple(SocketAddressFlat *addr_flat)
-{
-    SocketAddress *addr = g_new(SocketAddress, 1);
+    addr = g_new(SocketAddress, 1);
 
-    switch (addr_flat->type) {
-    case SOCKET_ADDRESS_FLAT_TYPE_INET:
-        addr->type = SOCKET_ADDRESS_KIND_INET;
-        addr->u.inet.data = QAPI_CLONE(InetSocketAddress,
-                                       &addr_flat->u.inet);
+    switch (addr_legacy->type) {
+    case SOCKET_ADDRESS_LEGACY_KIND_INET:
+        addr->type = SOCKET_ADDRESS_TYPE_INET;
+        QAPI_CLONE_MEMBERS(InetSocketAddress, &addr->u.inet,
+                           addr_legacy->u.inet.data);
         break;
-    case SOCKET_ADDRESS_FLAT_TYPE_UNIX:
-        addr->type = SOCKET_ADDRESS_KIND_UNIX;
-        addr->u.q_unix.data = QAPI_CLONE(UnixSocketAddress,
-                                         &addr_flat->u.q_unix);
+    case SOCKET_ADDRESS_LEGACY_KIND_UNIX:
+        addr->type = SOCKET_ADDRESS_TYPE_UNIX;
+        QAPI_CLONE_MEMBERS(UnixSocketAddress, &addr->u.q_unix,
+                           addr_legacy->u.q_unix.data);
         break;
-    case SOCKET_ADDRESS_FLAT_TYPE_VSOCK:
-        addr->type = SOCKET_ADDRESS_KIND_VSOCK;
-        addr->u.vsock.data = QAPI_CLONE(VsockSocketAddress,
-                                        &addr_flat->u.vsock);
+    case SOCKET_ADDRESS_LEGACY_KIND_VSOCK:
+        addr->type = SOCKET_ADDRESS_TYPE_VSOCK;
+        QAPI_CLONE_MEMBERS(VsockSocketAddress, &addr->u.vsock,
+                           addr_legacy->u.vsock.data);
         break;
-    case SOCKET_ADDRESS_FLAT_TYPE_FD:
-        addr->type = SOCKET_ADDRESS_KIND_FD;
-        addr->u.fd.data = QAPI_CLONE(String, &addr_flat->u.fd);
+    case SOCKET_ADDRESS_LEGACY_KIND_FD:
+        addr->type = SOCKET_ADDRESS_TYPE_FD;
+        QAPI_CLONE_MEMBERS(String, &addr->u.fd, addr_legacy->u.fd.data);
         break;
     default:
         abort();

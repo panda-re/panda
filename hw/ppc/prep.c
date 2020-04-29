@@ -781,9 +781,6 @@ static void ibm_40p_init(MachineState *machine)
     qbus_walk_children(BUS(isa_bus), prep_set_cmos_checksum, NULL, NULL, NULL,
                        &cmos_checksum);
 
-    /* initialize audio subsystem */
-    audio_init();
-
     /* add some more devices */
     if (defaults_enabled()) {
         isa_create_simple(isa_bus, "i8042");

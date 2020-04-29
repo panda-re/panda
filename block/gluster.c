@@ -321,7 +321,7 @@ static int parse_volume_options(BlockdevOptionsGluster *gconf, char *path)
 static int qemu_gluster_parse_uri(BlockdevOptionsGluster *gconf,
                                   const char *filename)
 {
-    SocketAddressFlat *gsconf;
+    SocketAddress *gsconf;
     URI *uri;
     QueryParams *qp = NULL;
     bool is_unix = false;
@@ -332,21 +332,20 @@ static int qemu_gluster_parse_uri(BlockdevOptionsGluster *gconf,
         return -EINVAL;
     }
 
-    gconf->server = g_new0(SocketAddressFlatList, 1);
-    gconf->server->value = gsconf = g_new0(SocketAddressFlat, 1);
+    gconf->server = g_new0(SocketAddressList, 1);
+    gconf->server->value = gsconf = g_new0(SocketAddress, 1);
 
     /* transport */
     if (!uri->scheme || !strcmp(uri->scheme, "gluster")) {
-        gsconf->type = SOCKET_ADDRESS_FLAT_TYPE_INET;
+        gsconf->type = SOCKET_ADDRESS_TYPE_INET;
     } else if (!strcmp(uri->scheme, "gluster+tcp")) {
-        gsconf->type = SOCKET_ADDRESS_FLAT_TYPE_INET;
+        gsconf->type = SOCKET_ADDRESS_TYPE_INET;
     } else if (!strcmp(uri->scheme, "gluster+unix")) {
-        gsconf->type = SOCKET_ADDRESS_FLAT_TYPE_UNIX;
+        gsconf->type = SOCKET_ADDRESS_TYPE_UNIX;
         is_unix = true;
     } else if (!strcmp(uri->scheme, "gluster+rdma")) {
-        gsconf->type = SOCKET_ADDRESS_FLAT_TYPE_INET;
-        error_report("Warning: rdma feature is not supported, falling "
-                     "back to tcp");
+        gsconf->type = SOCKET_ADDRESS_TYPE_INET;
+        warn_report("rdma feature is not supported, falling back to tcp");
     } else {
         ret = -EINVAL;
         goto out;
@@ -396,7 +395,7 @@ static struct glfs *qemu_gluster_glfs_init(BlockdevOptionsGluster *gconf,
     struct glfs *glfs;
     int ret;
     int old_errno;
-    SocketAddressFlatList *server;
+    SocketAddressList *server;
     unsigned long long port;
 
     glfs = glfs_find_preopened(gconf->volume);
@@ -413,11 +412,11 @@ static struct glfs *qemu_gluster_glfs_init(BlockdevOptionsGluster *gconf,
 
     for (server = gconf->server; server; server = server->next) {
         switch (server->value->type) {
-        case SOCKET_ADDRESS_FLAT_TYPE_UNIX:
+        case SOCKET_ADDRESS_TYPE_UNIX:
             ret = glfs_set_volfile_server(glfs, "unix",
                                    server->value->u.q_unix.path, 0);
             break;
-        case SOCKET_ADDRESS_FLAT_TYPE_INET:
+        case SOCKET_ADDRESS_TYPE_INET:
             if (parse_uint_full(server->value->u.inet.port, &port, 10) < 0 ||
                 port > 65535) {
                 error_setg(errp, "'%s' is not a valid port number",
@@ -429,8 +428,8 @@ static struct glfs *qemu_gluster_glfs_init(BlockdevOptionsGluster *gconf,
                                    server->value->u.inet.host,
                                    (int)port);
             break;
-        case SOCKET_ADDRESS_FLAT_TYPE_VSOCK:
-        case SOCKET_ADDRESS_FLAT_TYPE_FD:
+        case SOCKET_ADDRESS_TYPE_VSOCK:
+        case SOCKET_ADDRESS_TYPE_FD:
         default:
             abort();
         }
@@ -450,7 +449,7 @@ static struct glfs *qemu_gluster_glfs_init(BlockdevOptionsGluster *gconf,
         error_setg(errp, "Gluster connection for volume %s, path %s failed"
                          " to connect", gconf->volume, gconf->path);
         for (server = gconf->server; server; server = server->next) {
-            if (server->value->type  == SOCKET_ADDRESS_FLAT_TYPE_UNIX) {
+            if (server->value->type  == SOCKET_ADDRESS_TYPE_UNIX) {
                 error_append_hint(errp, "hint: failed on socket %s ",
                                   server->value->u.q_unix.path);
             } else {
@@ -487,14 +486,13 @@ static int qemu_gluster_parse_json(BlockdevOptionsGluster *gconf,
                                   QDict *options, Error **errp)
 {
     QemuOpts *opts;
-    SocketAddressFlat *gsconf = NULL;
-    SocketAddressFlatList *curr = NULL;
+    SocketAddress *gsconf = NULL;
+    SocketAddressList *curr = NULL;
     QDict *backing_options = NULL;
     Error *local_err = NULL;
     char *str = NULL;
     const char *ptr;
-    size_t num_servers;
-    int i, type;
+    int i, type, num_servers;
 
     /* create opts info from runtime_json_opts list */
     opts = qemu_opts_create(&runtime_json_opts, NULL, 0, &error_abort);
@@ -542,14 +540,14 @@ static int qemu_gluster_parse_json(BlockdevOptionsGluster *gconf,
             goto out;
 
         }
-        gsconf = g_new0(SocketAddressFlat, 1);
+        gsconf = g_new0(SocketAddress, 1);
         if (!strcmp(ptr, "tcp")) {
             ptr = "inet";       /* accept legacy "tcp" */
         }
-        type = qapi_enum_parse(SocketAddressFlatType_lookup, ptr,
-                               SOCKET_ADDRESS_FLAT_TYPE__MAX, -1, NULL);
-        if (type != SOCKET_ADDRESS_FLAT_TYPE_INET
-            && type != SOCKET_ADDRESS_FLAT_TYPE_UNIX) {
+        type = qapi_enum_parse(SocketAddressType_lookup, ptr,
+                               SOCKET_ADDRESS_TYPE__MAX, -1, NULL);
+        if (type != SOCKET_ADDRESS_TYPE_INET
+            && type != SOCKET_ADDRESS_TYPE_UNIX) {
             error_setg(&local_err,
                        "Parameter '%s' may be 'inet' or 'unix'",
                        GLUSTER_OPT_TYPE);
@@ -559,7 +557,7 @@ static int qemu_gluster_parse_json(BlockdevOptionsGluster *gconf,
         gsconf->type = type;
         qemu_opts_del(opts);
 
-        if (gsconf->type == SOCKET_ADDRESS_FLAT_TYPE_INET) {
+        if (gsconf->type == SOCKET_ADDRESS_TYPE_INET) {
             /* create opts info from runtime_inet_opts list */
             opts = qemu_opts_create(&runtime_inet_opts, NULL, 0, &error_abort);
             qemu_opts_absorb_qdict(opts, backing_options, &local_err);
@@ -628,11 +626,11 @@ static int qemu_gluster_parse_json(BlockdevOptionsGluster *gconf,
         }
 
         if (gconf->server == NULL) {
-            gconf->server = g_new0(SocketAddressFlatList, 1);
+            gconf->server = g_new0(SocketAddressList, 1);
             gconf->server->value = gsconf;
             curr = gconf->server;
         } else {
-            curr->next = g_new0(SocketAddressFlatList, 1);
+            curr->next = g_new0(SocketAddressList, 1);
             curr->next->value = gsconf;
             curr = curr->next;
         }
@@ -648,7 +646,7 @@ static int qemu_gluster_parse_json(BlockdevOptionsGluster *gconf,
 
 out:
     error_propagate(errp, local_err);
-    qapi_free_SocketAddressFlat(gsconf);
+    qapi_free_SocketAddress(gsconf);
     qemu_opts_del(opts);
     g_free(str);
     QDECREF(backing_options);
@@ -964,29 +962,6 @@ static coroutine_fn int qemu_gluster_co_pwrite_zeroes(BlockDriverState *bs,
     qemu_coroutine_yield();
     return acb.ret;
 }
-
-static inline bool gluster_supports_zerofill(void)
-{
-    return 1;
-}
-
-static inline int qemu_gluster_zerofill(struct glfs_fd *fd, int64_t offset,
-                                        int64_t size)
-{
-    return glfs_zerofill(fd, offset, size);
-}
-
-#else
-static inline bool gluster_supports_zerofill(void)
-{
-    return 0;
-}
-
-static inline int qemu_gluster_zerofill(struct glfs_fd *fd, int64_t offset,
-                                        int64_t size)
-{
-    return 0;
-}
 #endif
 
 static int qemu_gluster_create(const char *filename,
@@ -996,9 +971,10 @@ static int qemu_gluster_create(const char *filename,
     struct glfs *glfs;
     struct glfs_fd *fd;
     int ret = 0;
-    int prealloc = 0;
+    PreallocMode prealloc;
     int64_t total_size = 0;
     char *tmp = NULL;
+    Error *local_err = NULL;
 
     gconf = g_new0(BlockdevOptionsGluster, 1);
     gconf->debug = qemu_opt_get_number_del(opts, GLUSTER_OPT_DEBUG,
@@ -1026,13 +1002,12 @@ static int qemu_gluster_create(const char *filename,
                           BDRV_SECTOR_SIZE);
 
     tmp = qemu_opt_get_del(opts, BLOCK_OPT_PREALLOC);
-    if (!tmp || !strcmp(tmp, "off")) {
-        prealloc = 0;
-    } else if (!strcmp(tmp, "full") && gluster_supports_zerofill()) {
-        prealloc = 1;
-    } else {
-        error_setg(errp, "Invalid preallocation mode: '%s'"
-                         " or GlusterFS doesn't support zerofill API", tmp);
+    prealloc = qapi_enum_parse(PreallocMode_lookup, tmp,
+                               PREALLOC_MODE__MAX, PREALLOC_MODE_OFF,
+                               &local_err);
+    g_free(tmp);
+    if (local_err) {
+        error_propagate(errp, local_err);
         ret = -EINVAL;
         goto out;
     }
@@ -1041,21 +1016,48 @@ static int qemu_gluster_create(const char *filename,
                     O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, S_IRUSR | S_IWUSR);
     if (!fd) {
         ret = -errno;
-    } else {
+        goto out;
+    }
+
+    switch (prealloc) {
+#ifdef CONFIG_GLUSTERFS_FALLOCATE
+    case PREALLOC_MODE_FALLOC:
+        if (glfs_fallocate(fd, 0, 0, total_size)) {
+            error_setg(errp, "Could not preallocate data for the new file");
+            ret = -errno;
+        }
+        break;
+#endif /* CONFIG_GLUSTERFS_FALLOCATE */
+#ifdef CONFIG_GLUSTERFS_ZEROFILL
+    case PREALLOC_MODE_FULL:
         if (!glfs_ftruncate(fd, total_size)) {
-            if (prealloc && qemu_gluster_zerofill(fd, 0, total_size)) {
+            if (glfs_zerofill(fd, 0, total_size)) {
+                error_setg(errp, "Could not zerofill the new file");
                 ret = -errno;
             }
         } else {
+            error_setg(errp, "Could not resize file");
             ret = -errno;
         }
+        break;
+#endif /* CONFIG_GLUSTERFS_ZEROFILL */
+    case PREALLOC_MODE_OFF:
+        if (glfs_ftruncate(fd, total_size) != 0) {
+            ret = -errno;
+            error_setg(errp, "Could not resize file");
+        }
+        break;
+    default:
+        ret = -EINVAL;
+        error_setg(errp, "Unsupported preallocation mode: %s",
+                   PreallocMode_lookup[prealloc]);
+        break;
+    }
 
-        if (glfs_close(fd) != 0) {
-            ret = -errno;
-        }
+    if (glfs_close(fd) != 0) {
+        ret = -errno;
     }
 out:
-    g_free(tmp);
     qapi_free_BlockdevOptionsGluster(gconf);
     glfs_clear_preopened(glfs);
     return ret;
@@ -1092,14 +1094,23 @@ static coroutine_fn int qemu_gluster_co_rw(BlockDriverState *bs,
     return acb.ret;
 }
 
-static int qemu_gluster_truncate(BlockDriverState *bs, int64_t offset)
+static int qemu_gluster_truncate(BlockDriverState *bs, int64_t offset,
+                                 PreallocMode prealloc, Error **errp)
 {
     int ret;
     BDRVGlusterState *s = bs->opaque;
 
+    if (prealloc != PREALLOC_MODE_OFF) {
+        error_setg(errp, "Unsupported preallocation mode '%s'",
+                   PreallocMode_lookup[prealloc]);
+        return -ENOTSUP;
+    }
+
     ret = glfs_ftruncate(s->fd, offset);
     if (ret < 0) {
-        return -errno;
+        ret = -errno;
+        error_setg_errno(errp, -ret, "Failed to truncate file");
+        return ret;
     }
 
     return 0;
@@ -1272,7 +1283,14 @@ static int find_allocation(BlockDriverState *bs, off_t start,
     if (offs < 0) {
         return -errno;          /* D3 or D4 */
     }
-    assert(offs >= start);
+
+    if (offs < start) {
+        /* This is not a valid return by lseek().  We are safe to just return
+         * -EIO in this case, and we'll treat it like D4. Unfortunately some
+         *  versions of gluster server will return offs < start, so an assert
+         *  here will unnecessarily abort QEMU. */
+        return -EIO;
+    }
 
     if (offs > start) {
         /* D2: in hole, next data at offs */
@@ -1304,7 +1322,14 @@ static int find_allocation(BlockDriverState *bs, off_t start,
     if (offs < 0) {
         return -errno;          /* D1 and (H3 or H4) */
     }
-    assert(offs >= start);
+
+    if (offs < start) {
+        /* This is not a valid return by lseek().  We are safe to just return
+         * -EIO in this case, and we'll treat it like H4. Unfortunately some
+         *  versions of gluster server will return offs < start, so an assert
+         *  here will unnecessarily abort QEMU. */
+        return -EIO;
+    }
 
     if (offs > start) {
         /*

@@ -25,11 +25,11 @@
 #include "hw/pci/msi.h"
 #include "hw/pci/msix.h"
 #include "sysemu/kvm.h"
-#include "migration/migration.h"
+#include "migration/blocker.h"
 #include "qemu/error-report.h"
 #include "qemu/event_notifier.h"
 #include "qom/object_interfaces.h"
-#include "sysemu/char.h"
+#include "chardev/char-fe.h"
 #include "sysemu/hostmem.h"
 #include "sysemu/qtest.h"
 #include "qapi/visitor.h"
@@ -491,9 +491,9 @@ static void setup_interrupt(IVShmemState *s, int vector, Error **errp)
 
 static void process_msg_shmem(IVShmemState *s, int fd, Error **errp)
 {
+    Error *local_err = NULL;
     struct stat buf;
     size_t size;
-    void *ptr;
 
     if (s->ivshmem_bar2) {
         error_setg(errp, "server sent unexpected shared memory message");
@@ -522,15 +522,13 @@ static void process_msg_shmem(IVShmemState *s, int fd, Error **errp)
     }
 
     /* mmap the region and map into the BAR2 */
-    ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (ptr == MAP_FAILED) {
-        error_setg_errno(errp, errno, "Failed to mmap shared memory");
-        close(fd);
+    memory_region_init_ram_from_fd(&s->server_bar2, OBJECT(s),
+                                   "ivshmem.bar2", size, true, fd, &local_err);
+    if (local_err) {
+        error_propagate(errp, local_err);
         return;
     }
-    memory_region_init_ram_ptr(&s->server_bar2, OBJECT(s),
-                               "ivshmem.bar2", size, ptr);
-    memory_region_set_fd(&s->server_bar2, fd);
+
     s->ivshmem_bar2 = &s->server_bar2;
 }
 
@@ -644,7 +642,10 @@ static int64_t ivshmem_recv_msg(IVShmemState *s, int *pfd, Error **errp)
     do {
         ret = qemu_chr_fe_read_all(&s->server_chr, (uint8_t *)&msg + n,
                                    sizeof(msg) - n);
-        if (ret < 0 && ret != -EINTR) {
+        if (ret < 0) {
+            if (ret == -EINTR) {
+                continue;
+            }
             error_setg_errno(errp, -ret, "read from server failed");
             return INT64_MIN;
         }
@@ -896,7 +897,7 @@ static void ivshmem_common_realize(PCIDevice *dev, Error **errp)
         }
 
         qemu_chr_fe_set_handlers(&s->server_chr, ivshmem_can_receive,
-                                 ivshmem_read, NULL, s, NULL, true);
+                                 ivshmem_read, NULL, NULL, s, NULL, true);
 
         if (ivshmem_setup_interrupts(s, errp) < 0) {
             error_prepend(errp, "Failed to initialize interrupts: ");
@@ -1011,18 +1012,6 @@ static const TypeInfo ivshmem_common_info = {
     .class_init    = ivshmem_common_class_init,
 };
 
-static void ivshmem_check_memdev_is_busy(Object *obj, const char *name,
-                                         Object *val, Error **errp)
-{
-    if (host_memory_backend_is_mapped(MEMORY_BACKEND(val))) {
-        char *path = object_get_canonical_path_component(val);
-        error_setg(errp, "can't use already busy memdev: %s", path);
-        g_free(path);
-    } else {
-        qdev_prop_allow_set_link_before_realize(obj, name, val, errp);
-    }
-}
-
 static const VMStateDescription ivshmem_plain_vmsd = {
     .name = TYPE_IVSHMEM_PLAIN,
     .version_id = 0,
@@ -1039,6 +1028,8 @@ static const VMStateDescription ivshmem_plain_vmsd = {
 
 static Property ivshmem_plain_properties[] = {
     DEFINE_PROP_ON_OFF_AUTO("master", IVShmemState, master, ON_OFF_AUTO_OFF),
+    DEFINE_PROP_LINK("memdev", IVShmemState, hostmem, TYPE_MEMORY_BACKEND,
+                     HostMemoryBackend *),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -1046,11 +1037,6 @@ static void ivshmem_plain_init(Object *obj)
 {
     IVShmemState *s = IVSHMEM_PLAIN(obj);
 
-    object_property_add_link(obj, "memdev", TYPE_MEMORY_BACKEND,
-                             (Object **)&s->hostmem,
-                             ivshmem_check_memdev_is_busy,
-                             OBJ_PROP_LINK_UNREF_ON_RELEASE,
-                             &error_abort);
     s->not_legacy_32bit = 1;
 }
 
@@ -1060,6 +1046,11 @@ static void ivshmem_plain_realize(PCIDevice *dev, Error **errp)
 
     if (!s->hostmem) {
         error_setg(errp, "You must specify a 'memdev'");
+        return;
+    } else if (host_memory_backend_is_mapped(s->hostmem)) {
+        char *path = object_get_canonical_path_component(OBJECT(s->hostmem));
+        error_setg(errp, "can't use already busy memdev: %s", path);
+        g_free(path);
         return;
     }
 
@@ -1130,7 +1121,7 @@ static void ivshmem_doorbell_realize(PCIDevice *dev, Error **errp)
 {
     IVShmemState *s = IVSHMEM_COMMON(dev);
 
-    if (!qemu_chr_fe_get_driver(&s->server_chr)) {
+    if (!qemu_chr_fe_backend_connected(&s->server_chr)) {
         error_setg(errp, "You must specify a 'chardev'");
         return;
     }
@@ -1259,7 +1250,7 @@ static void ivshmem_realize(PCIDevice *dev, Error **errp)
                      " or ivshmem-doorbell instead");
     }
 
-    if (!!qemu_chr_fe_get_driver(&s->server_chr) + !!s->shmobj != 1) {
+    if (qemu_chr_fe_backend_connected(&s->server_chr) + !!s->shmobj != 1) {
         error_setg(errp, "You must specify either 'shm' or 'chardev'");
         return;
     }

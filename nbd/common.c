@@ -20,14 +20,14 @@
 #include "qapi/error.h"
 #include "nbd-internal.h"
 
-ssize_t nbd_wr_syncv(QIOChannel *ioc,
-                     struct iovec *iov,
-                     size_t niov,
-                     size_t length,
-                     bool do_read)
+/* nbd_wr_syncv
+ * The function may be called from coroutine or from non-coroutine context.
+ * When called from non-coroutine context @ioc must be in blocking mode.
+ */
+ssize_t nbd_rwv(QIOChannel *ioc, struct iovec *iov, size_t niov, size_t length,
+                bool do_read, Error **errp)
 {
     ssize_t done = 0;
-    Error *local_err = NULL;
     struct iovec *local_iov = g_new(struct iovec, niov);
     struct iovec *local_iov_head = local_iov;
     unsigned int nlocal_iov = niov;
@@ -37,22 +37,17 @@ ssize_t nbd_wr_syncv(QIOChannel *ioc,
     while (nlocal_iov > 0) {
         ssize_t len;
         if (do_read) {
-            len = qio_channel_readv(ioc, local_iov, nlocal_iov, &local_err);
+            len = qio_channel_readv(ioc, local_iov, nlocal_iov, errp);
         } else {
-            len = qio_channel_writev(ioc, local_iov, nlocal_iov, &local_err);
+            len = qio_channel_writev(ioc, local_iov, nlocal_iov, errp);
         }
         if (len == QIO_CHANNEL_ERR_BLOCK) {
-            if (qemu_in_coroutine()) {
-                qio_channel_yield(ioc, do_read ? G_IO_IN : G_IO_OUT);
-            } else {
-                return -EAGAIN;
-            }
+            /* errp should not be set */
+            assert(qemu_in_coroutine());
+            qio_channel_yield(ioc, do_read ? G_IO_IN : G_IO_OUT);
             continue;
         }
         if (len < 0) {
-            TRACE("I/O error: %s", error_get_pretty(local_err));
-            error_free(local_err);
-            /* XXX handle Error objects */
             done = -EIO;
             goto cleanup;
         }
@@ -70,15 +65,131 @@ ssize_t nbd_wr_syncv(QIOChannel *ioc,
     return done;
 }
 
+/* Discard length bytes from channel.  Return -errno on failure and 0 on
+ * success */
+int nbd_drop(QIOChannel *ioc, size_t size, Error **errp)
+{
+    ssize_t ret = 0;
+    char small[1024];
+    char *buffer;
+
+    buffer = sizeof(small) >= size ? small : g_malloc(MIN(65536, size));
+    while (size > 0) {
+        ssize_t count = MIN(65536, size);
+        ret = nbd_read(ioc, buffer, MIN(65536, size), errp);
+
+        if (ret < 0) {
+            goto cleanup;
+        }
+        size -= count;
+    }
+
+ cleanup:
+    if (buffer != small) {
+        g_free(buffer);
+    }
+    return ret;
+}
+
 
 void nbd_tls_handshake(QIOTask *task,
                        void *opaque)
 {
     struct NBDTLSHandshakeData *data = opaque;
 
-    if (qio_task_propagate_error(task, &data->error)) {
-        TRACE("TLS failed %s", error_get_pretty(data->error));
-    }
+    qio_task_propagate_error(task, &data->error);
     data->complete = true;
     g_main_loop_quit(data->loop);
+}
+
+
+const char *nbd_opt_lookup(uint32_t opt)
+{
+    switch (opt) {
+    case NBD_OPT_EXPORT_NAME:
+        return "export name";
+    case NBD_OPT_ABORT:
+        return "abort";
+    case NBD_OPT_LIST:
+        return "list";
+    case NBD_OPT_STARTTLS:
+        return "starttls";
+    case NBD_OPT_INFO:
+        return "info";
+    case NBD_OPT_GO:
+        return "go";
+    case NBD_OPT_STRUCTURED_REPLY:
+        return "structured reply";
+    default:
+        return "<unknown>";
+    }
+}
+
+
+const char *nbd_rep_lookup(uint32_t rep)
+{
+    switch (rep) {
+    case NBD_REP_ACK:
+        return "ack";
+    case NBD_REP_SERVER:
+        return "server";
+    case NBD_REP_INFO:
+        return "info";
+    case NBD_REP_ERR_UNSUP:
+        return "unsupported";
+    case NBD_REP_ERR_POLICY:
+        return "denied by policy";
+    case NBD_REP_ERR_INVALID:
+        return "invalid";
+    case NBD_REP_ERR_PLATFORM:
+        return "platform lacks support";
+    case NBD_REP_ERR_TLS_REQD:
+        return "TLS required";
+    case NBD_REP_ERR_UNKNOWN:
+        return "export unknown";
+    case NBD_REP_ERR_SHUTDOWN:
+        return "server shutting down";
+    case NBD_REP_ERR_BLOCK_SIZE_REQD:
+        return "block size required";
+    default:
+        return "<unknown>";
+    }
+}
+
+
+const char *nbd_info_lookup(uint16_t info)
+{
+    switch (info) {
+    case NBD_INFO_EXPORT:
+        return "export";
+    case NBD_INFO_NAME:
+        return "name";
+    case NBD_INFO_DESCRIPTION:
+        return "description";
+    case NBD_INFO_BLOCK_SIZE:
+        return "block size";
+    default:
+        return "<unknown>";
+    }
+}
+
+
+const char *nbd_cmd_lookup(uint16_t cmd)
+{
+    switch (cmd) {
+    case NBD_CMD_READ:
+        return "read";
+    case NBD_CMD_WRITE:
+        return "write";
+    case NBD_CMD_DISC:
+        return "disconnect";
+    case NBD_CMD_FLUSH:
+        return "flush";
+    case NBD_CMD_TRIM:
+        return "trim";
+    case NBD_CMD_WRITE_ZEROES:
+        return "write zeroes";
+    default:
+        return "<unknown>";
+    }
 }

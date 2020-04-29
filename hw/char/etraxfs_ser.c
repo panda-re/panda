@@ -24,7 +24,7 @@
 
 #include "qemu/osdep.h"
 #include "hw/sysbus.h"
-#include "sysemu/char.h"
+#include "chardev/char-fe.h"
 #include "qemu/log.h"
 
 #define D(x)
@@ -233,7 +233,7 @@ static void etraxfs_ser_realize(DeviceState *dev, Error **errp)
 
     qemu_chr_fe_set_handlers(&s->chr,
                              serial_can_receive, serial_receive,
-                             serial_event, s, NULL, true);
+                             serial_event, NULL, s, NULL, true);
 }
 
 static void etraxfs_ser_class_init(ObjectClass *klass, void *data)

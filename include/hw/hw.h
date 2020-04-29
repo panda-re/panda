@@ -11,6 +11,7 @@
 #include "exec/memory.h"
 #include "hw/irq.h"
 #include "migration/vmstate.h"
+#include "migration/qemu-file-types.h"
 #include "qemu/module.h"
 #include "sysemu/reset.h"
 

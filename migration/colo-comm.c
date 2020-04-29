@@ -12,7 +12,9 @@
  */
 
 #include "qemu/osdep.h"
+#include "migration.h"
 #include "migration/colo.h"
+#include "migration/vmstate.h"
 #include "trace.h"
 
 typedef struct {

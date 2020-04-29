@@ -26,7 +26,6 @@
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "qemu-common.h"
-#include "cpu.h"
 #include "qemu/error-report.h"
 #include "ui/console.h"
 #include "hw/sysbus.h"
@@ -95,7 +94,8 @@ static void cg3_update_display(void *opaque)
     uint32_t dval;
     int x, y, y_start;
     unsigned int width, height;
-    ram_addr_t page, page_min, page_max;
+    ram_addr_t page;
+    DirtyBitmapSnapshot *snap = NULL;
 
     if (surface_bits_per_pixel(surface) != 32) {
         return;
@@ -104,28 +104,31 @@ static void cg3_update_display(void *opaque)
     height = s->height;
 
     y_start = -1;
-    page_min = -1;
-    page_max = 0;
-    page = 0;
     pix = memory_region_get_ram_ptr(&s->vram_mem);
     data = (uint32_t *)surface_data(surface);
 
-    memory_region_sync_dirty_bitmap(&s->vram_mem);
-    for (y = 0; y < height; y++) {
-        int update = s->full_update;
+    if (!s->full_update) {
+        memory_region_sync_dirty_bitmap(&s->vram_mem);
+        snap = memory_region_snapshot_and_clear_dirty(&s->vram_mem, 0x0,
+                                              memory_region_size(&s->vram_mem),
+                                              DIRTY_MEMORY_VGA);
+    }
 
-        page = (y * width) & TARGET_PAGE_MASK;
-        update |= memory_region_get_dirty(&s->vram_mem, page, page + width,
-                                          DIRTY_MEMORY_VGA);
+    for (y = 0; y < height; y++) {
+        int update;
+
+        page = (ram_addr_t)y * width;
+
+        if (s->full_update) {
+            update = 1;
+        } else {
+            update = memory_region_snapshot_get_dirty(&s->vram_mem, snap, page,
+                                                      width);
+        }
+
         if (update) {
             if (y_start < 0) {
                 y_start = y;
-            }
-            if (page < page_min) {
-                page_min = page;
-            }
-            if (page > page_max) {
-                page_max = page;
             }
 
             for (x = 0; x < width; x++) {
@@ -135,7 +138,7 @@ static void cg3_update_display(void *opaque)
             }
         } else {
             if (y_start >= 0) {
-                dpy_gfx_update(s->con, 0, y_start, s->width, y - y_start);
+                dpy_gfx_update(s->con, 0, y_start, width, y - y_start);
                 y_start = -1;
             }
             pix += width;
@@ -144,18 +147,14 @@ static void cg3_update_display(void *opaque)
     }
     s->full_update = 0;
     if (y_start >= 0) {
-        dpy_gfx_update(s->con, 0, y_start, s->width, y - y_start);
-    }
-    if (page_max >= page_min) {
-        memory_region_reset_dirty(&s->vram_mem,
-                              page_min, page_max - page_min + TARGET_PAGE_SIZE,
-                              DIRTY_MEMORY_VGA);
+        dpy_gfx_update(s->con, 0, y_start, width, y - y_start);
     }
     /* vsync interrupt? */
     if (s->regs[0] & CG3_CR_ENABLE_INTS) {
         s->regs[1] |= CG3_SR_PENDING_INT;
         qemu_irq_raise(s->irq);
     }
+    g_free(snap);
 }
 
 static void cg3_invalidate_display(void *opaque)
@@ -284,7 +283,7 @@ static void cg3_initfn(Object *obj)
     SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
     CG3State *s = CG3(obj);
 
-    memory_region_init_ram(&s->rom, obj, "cg3.prom", FCODE_MAX_ROM_SIZE,
+    memory_region_init_ram_nomigrate(&s->rom, obj, "cg3.prom", FCODE_MAX_ROM_SIZE,
                            &error_fatal);
     memory_region_set_readonly(&s->rom, true);
     sysbus_init_mmio(sbd, &s->rom);
@@ -305,8 +304,7 @@ static void cg3_realizefn(DeviceState *dev, Error **errp)
     vmstate_register_ram_global(&s->rom);
     fcode_filename = qemu_find_file(QEMU_FILE_TYPE_BIOS, CG3_ROM_FILE);
     if (fcode_filename) {
-        ret = load_image_targphys(fcode_filename, s->prom_addr,
-                                  FCODE_MAX_ROM_SIZE);
+        ret = load_image_mr(fcode_filename, &s->rom);
         g_free(fcode_filename);
         if (ret < 0 || ret > FCODE_MAX_ROM_SIZE) {
             error_report("cg3: could not load prom '%s'", CG3_ROM_FILE);
@@ -316,7 +314,6 @@ static void cg3_realizefn(DeviceState *dev, Error **errp)
     memory_region_init_ram(&s->vram_mem, NULL, "cg3.vram", s->vram_size,
                            &error_fatal);
     memory_region_set_log(&s->vram_mem, true, DIRTY_MEMORY_VGA);
-    vmstate_register_ram_global(&s->vram_mem);
     sysbus_init_mmio(sbd, &s->vram_mem);
 
     sysbus_init_irq(sbd, &s->irq);
@@ -371,7 +368,6 @@ static Property cg3_properties[] = {
     DEFINE_PROP_UINT16("width",        CG3State, width,     -1),
     DEFINE_PROP_UINT16("height",       CG3State, height,    -1),
     DEFINE_PROP_UINT16("depth",        CG3State, depth,     -1),
-    DEFINE_PROP_UINT64("prom-addr",    CG3State, prom_addr, -1),
     DEFINE_PROP_END_OF_LIST(),
 };
 

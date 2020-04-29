@@ -6,7 +6,7 @@ Simple built-in backend.
 """
 
 __author__     = "Lluís Vilanova <vilanova@ac.upc.edu>"
-__copyright__  = "Copyright 2012-2014, Lluís Vilanova <vilanova@ac.upc.edu>"
+__copyright__  = "Copyright 2012-2017, Lluís Vilanova <vilanova@ac.upc.edu>"
 __license__    = "GPL version 2 or (at your option) any later version"
 
 __maintainer__ = "Stefan Hajnoczi"
@@ -37,9 +37,14 @@ def generate_h_begin(events, group):
 
 
 def generate_h(event, group):
-    out('        _simple_%(api)s(%(args)s);',
+    out('    _simple_%(api)s(%(args)s);',
         api=event.api(),
         args=", ".join(event.args.names()))
+
+
+def generate_h_backend_dstate(event, group):
+    out('    trace_event_get_state_dynamic_by_id(%(event_id)s) || \\',
+        event_id="TRACE_" + event.name.upper())
 
 
 def generate_c_begin(events, group):

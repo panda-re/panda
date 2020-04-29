@@ -29,7 +29,7 @@ typedef struct {
     uint32_t rsdp_addr;
     AcpiRsdpDescriptor rsdp_table;
     AcpiRsdtDescriptorRev1 rsdt_table;
-    AcpiFadtDescriptorRev1 fadt_table;
+    AcpiFadtDescriptorRev3 fadt_table;
     AcpiFacsDescriptorRev1 facs_table;
     uint32_t *rsdt_tables_addr;
     int rsdt_tables_nr;
@@ -108,7 +108,7 @@ static void test_acpi_rsdt_table(test_data *data)
     /* compute the table entries in rsdt */
     tables_nr = (rsdt_table->length - sizeof(AcpiRsdtDescriptorRev1)) /
                 sizeof(uint32_t);
-    g_assert_cmpint(tables_nr, >, 0);
+    g_assert(tables_nr > 0);
 
     /* get the addresses of the tables pointed by rsdt */
     tables = g_new0(uint32_t, tables_nr);
@@ -126,7 +126,7 @@ static void test_acpi_rsdt_table(test_data *data)
 
 static void test_acpi_fadt_table(test_data *data)
 {
-    AcpiFadtDescriptorRev1 *fadt_table = &data->fadt_table;
+    AcpiFadtDescriptorRev3 *fadt_table = &data->fadt_table;
     uint32_t addr;
 
     /* FADT table comes first */
@@ -168,10 +168,23 @@ static void test_acpi_fadt_table(test_data *data)
     ACPI_READ_FIELD(fadt_table->day_alrm, addr);
     ACPI_READ_FIELD(fadt_table->mon_alrm, addr);
     ACPI_READ_FIELD(fadt_table->century, addr);
-    ACPI_READ_FIELD(fadt_table->reserved4, addr);
-    ACPI_READ_FIELD(fadt_table->reserved4a, addr);
-    ACPI_READ_FIELD(fadt_table->reserved4b, addr);
+    ACPI_READ_FIELD(fadt_table->boot_flags, addr);
+    ACPI_READ_FIELD(fadt_table->reserved, addr);
     ACPI_READ_FIELD(fadt_table->flags, addr);
+    ACPI_READ_GENERIC_ADDRESS(fadt_table->reset_register, addr);
+    ACPI_READ_FIELD(fadt_table->reset_value, addr);
+    ACPI_READ_FIELD(fadt_table->arm_boot_flags, addr);
+    ACPI_READ_FIELD(fadt_table->minor_revision, addr);
+    ACPI_READ_FIELD(fadt_table->x_facs, addr);
+    ACPI_READ_FIELD(fadt_table->x_dsdt, addr);
+    ACPI_READ_GENERIC_ADDRESS(fadt_table->xpm1a_event_block, addr);
+    ACPI_READ_GENERIC_ADDRESS(fadt_table->xpm1b_event_block, addr);
+    ACPI_READ_GENERIC_ADDRESS(fadt_table->xpm1a_control_block, addr);
+    ACPI_READ_GENERIC_ADDRESS(fadt_table->xpm1b_control_block, addr);
+    ACPI_READ_GENERIC_ADDRESS(fadt_table->xpm2_control_block, addr);
+    ACPI_READ_GENERIC_ADDRESS(fadt_table->xpm_timer_block, addr);
+    ACPI_READ_GENERIC_ADDRESS(fadt_table->xgpe0_block, addr);
+    ACPI_READ_GENERIC_ADDRESS(fadt_table->xgpe1_block, addr);
 
     ACPI_ASSERT_CMP(fadt_table->signature, "FACP");
     g_assert(!acpi_calc_checksum((uint8_t *)fadt_table, fadt_table->length));
@@ -710,7 +723,8 @@ static void test_acpi_piix4_tcg_cphp(void)
     data.machine = MACHINE_PC;
     data.variant = ".cphp";
     test_acpi_one("-smp 2,cores=3,sockets=2,maxcpus=6"
-                  " -numa node -numa node",
+                  " -numa node -numa node"
+                  " -numa dist,src=0,dst=1,val=21",
                   &data);
     free_test_data(&data);
 }
@@ -723,7 +737,8 @@ static void test_acpi_q35_tcg_cphp(void)
     data.machine = MACHINE_Q35;
     data.variant = ".cphp";
     test_acpi_one(" -smp 2,cores=3,sockets=2,maxcpus=6"
-                  " -numa node -numa node",
+                  " -numa node -numa node"
+                  " -numa dist,src=0,dst=1,val=21",
                   &data);
     free_test_data(&data);
 }
@@ -772,7 +787,10 @@ static void test_acpi_q35_tcg_memhp(void)
     memset(&data, 0, sizeof(data));
     data.machine = MACHINE_Q35;
     data.variant = ".memhp";
-    test_acpi_one(" -m 128,slots=3,maxmem=1G -numa node", &data);
+    test_acpi_one(" -m 128,slots=3,maxmem=1G"
+                  " -numa node -numa node"
+                  " -numa dist,src=0,dst=1,val=21",
+                  &data);
     free_test_data(&data);
 }
 
@@ -783,7 +801,10 @@ static void test_acpi_piix4_tcg_memhp(void)
     memset(&data, 0, sizeof(data));
     data.machine = MACHINE_PC;
     data.variant = ".memhp";
-    test_acpi_one(" -m 128,slots=3,maxmem=1G -numa node", &data);
+    test_acpi_one(" -m 128,slots=3,maxmem=1G"
+                  " -numa node -numa node"
+                  " -numa dist,src=0,dst=1,val=21",
+                  &data);
     free_test_data(&data);
 }
 

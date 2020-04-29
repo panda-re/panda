@@ -50,6 +50,7 @@ export IMGPROTO=file
 export IMGOPTS=""
 export CACHEMODE="writeback"
 export QEMU_IO_OPTIONS=""
+export QEMU_IO_OPTIONS_NO_FMT=""
 export CACHEMODE_IS_DEFAULT=true
 export QEMU_OPTIONS="-nodefaults -machine accel=qtest"
 export VALGRIND_QEMU=
@@ -86,7 +87,8 @@ s/ .*//p
     elif $xgroup
     then
         # arg after -x
-        [ ! -s $tmp.list ] && ls [0-9][0-9][0-9] [0-9][0-9][0-9][0-9] >$tmp.list 2>/dev/null
+        # Populate $tmp.list with all tests
+        awk '/^[0-9]{3,}/ {print $1}' "${source_iotests}/group" > $tmp.list 2>/dev/null
         group_list=`sed -n <"$source_iotests/group" -e 's/$/ /' -e "/^[0-9][0-9][0-9].* $r /"'{
 s/ .*//p
 }'`
@@ -138,7 +140,7 @@ common options
     -v                  verbose
     -d                  debug
 
-check options
+image format options
     -raw                test raw (default)
     -bochs              test bochs
     -cloop              test cloop
@@ -150,13 +152,18 @@ check options
     -vpc                test vpc
     -vhdx               test vhdx
     -vmdk               test vmdk
+    -luks               test luks
+
+image protocol options
     -file               test file (default)
     -rbd                test rbd
     -sheepdog           test sheepdog
     -nbd                test nbd
     -ssh                test ssh
     -nfs                test nfs
-    -luks               test luks
+    -vxhs               test vxhs
+
+other options
     -xdiff              graphical mode diff
     -nocache            use O_DIRECT on backing file
     -misalign           misalign memory allocations
@@ -257,6 +264,11 @@ testlist options
 
         -nbd)
             IMGPROTO=nbd
+            xpand=false
+            ;;
+
+        -vxhs)
+            IMGPROTO=vxhs
             xpand=false
             ;;
 
@@ -402,10 +414,11 @@ BEGIN        { for (t='$start'; t<='$end'; t++) printf "%03d\n",t }' \
 done
 
 # Set qemu-io cache mode with $CACHEMODE we have
-if [ "$IMGOPTSSYNTAX" = "true" ]; then
-    QEMU_IO_OPTIONS="$QEMU_IO_OPTIONS --cache $CACHEMODE"
-else
-    QEMU_IO_OPTIONS="$QEMU_IO_OPTIONS -f $IMGFMT --cache $CACHEMODE"
+QEMU_IO_OPTIONS="$QEMU_IO_OPTIONS --cache $CACHEMODE"
+
+QEMU_IO_OPTIONS_NO_FMT="$QEMU_IO_OPTIONS"
+if [ "$IMGOPTSSYNTAX" != "true" ]; then
+    QEMU_IO_OPTIONS="$QEMU_IO_OPTIONS -f $IMGFMT"
 fi
 
 # Set default options for qemu-img create -o if they were not specified

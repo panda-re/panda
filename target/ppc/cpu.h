@@ -30,6 +30,8 @@
 #define TARGET_LONG_BITS 64
 #define TARGET_PAGE_BITS 12
 
+#define TCG_GUEST_DEFAULT_MO 0
+
 /* Note that the official physical address space bits is 62-M where M
    is implementation dependent.  I've not looked up M for the set of
    cpus we emulate at the system level.  */
@@ -480,6 +482,8 @@ struct ppc_slb_t {
 #define DSISR_ISSTORE            0x02000000
 /* Not permitted by virtual page class key protection */
 #define DSISR_AMR                0x00200000
+/* Unsupported Radix Tree Configuration */
+#define DSISR_R_BADCONFIG        0x00080000
 
 /* SRR1 error code fields */
 
@@ -943,6 +947,10 @@ struct ppc_segment_page_sizes {
     struct ppc_one_seg_page_size sps[PPC_PAGE_SIZES_MAX_SZ];
 };
 
+struct ppc_radix_page_info {
+    uint32_t count;
+    uint32_t entries[PPC_PAGE_SIZES_MAX_SZ];
+};
 
 /*****************************************************************************/
 /* The whole PowerPC CPU context */
@@ -1181,7 +1189,6 @@ typedef struct PPCVirtualHypervisorClass PPCVirtualHypervisorClass;
  * PowerPCCPU:
  * @env: #CPUPPCState
  * @cpu_dt_id: CPU index used in the device tree. KVM uses this index too
- * @max_compat: Maximal supported logical PVR from the command line
  * @compat_pvr: Current logical PVR, zero if in "raw" mode
  *
  * A PowerPC CPU.
@@ -1193,9 +1200,10 @@ struct PowerPCCPU {
 
     CPUPPCState env;
     int cpu_dt_id;
-    uint32_t max_compat;
     uint32_t compat_pvr;
     PPCVirtualHypervisor *vhyp;
+    Object *intc;
+    int32_t node_id; /* NUMA node this CPU belongs to */
 
     /* Fields related to migration compatibility hacks */
     bool pre_2_8_migration;
@@ -1203,6 +1211,7 @@ struct PowerPCCPU {
     uint64_t mig_insns_flags;
     uint64_t mig_insns_flags2;
     uint32_t mig_nb_BATs;
+    bool pre_2_10_migration;
 };
 
 static inline PowerPCCPU *ppc_env_get_cpu(CPUPPCState *env)
@@ -1216,6 +1225,7 @@ static inline PowerPCCPU *ppc_env_get_cpu(CPUPPCState *env)
 
 PowerPCCPUClass *ppc_cpu_class_by_pvr(uint32_t pvr);
 PowerPCCPUClass *ppc_cpu_class_by_pvr_mask(uint32_t pvr);
+PowerPCCPUClass *ppc_cpu_get_family_class(PowerPCCPUClass *pcc);
 
 struct PPCVirtualHypervisor {
     Object parent;
@@ -1364,6 +1374,9 @@ void ppc_set_compat(PowerPCCPU *cpu, uint32_t compat_pvr, Error **errp);
 void ppc_set_compat_all(uint32_t compat_pvr, Error **errp);
 #endif
 int ppc_compat_max_threads(PowerPCCPU *cpu);
+void ppc_compat_add_property(Object *obj, const char *name,
+                             uint32_t *compat_pvr, const char *basedesc,
+                             Error **errp);
 #endif /* defined(TARGET_PPC64) */
 
 #include "exec/cpu-all.h"
@@ -1438,6 +1451,7 @@ int ppc_compat_max_threads(PowerPCCPU *cpu);
 #define SPR_TEXASR            (0x082)
 #define SPR_TEXASRU           (0x083)
 #define SPR_UCTRL             (0x088)
+#define SPR_TIDR              (0x090)
 #define SPR_MPC_CMPA          (0x090)
 #define SPR_MPC_CMPB          (0x091)
 #define SPR_MPC_CMPC          (0x092)
@@ -1757,6 +1771,7 @@ int ppc_compat_max_threads(PowerPCCPU *cpu);
 #define SPR_IC                (0x350)
 #define SPR_VTB               (0x351)
 #define SPR_MMCRC             (0x353)
+#define SPR_PSSCR             (0x357)
 #define SPR_440_INV0          (0x370)
 #define SPR_440_INV1          (0x371)
 #define SPR_440_INV2          (0x372)
