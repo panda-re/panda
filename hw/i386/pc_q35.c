@@ -221,7 +221,13 @@ static void pc_q35_init(MachineState *machine)
 
     pc_register_ferr_irq(pcms->gsi[13]);
 
+    /*
+    g_assert(xen_enabled() == true && "PANDA: requires xen enabled");
     assert(pcms->vmport != ON_OFF_AUTO__MAX);
+    if (pcms->vmport == ON_OFF_AUTO_AUTO) {
+        pcms->vmport = xen_enabled() ? ON_OFF_AUTO_OFF : ON_OFF_AUTO_ON;
+    }
+    */
     if (pcms->vmport == ON_OFF_AUTO_AUTO) {
         pcms->vmport = ON_OFF_AUTO_OFF;
     }

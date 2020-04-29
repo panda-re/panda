@@ -230,7 +230,13 @@ static void pc_init1(MachineState *machine,
 
     pc_vga_init(isa_bus, pcmc->pci_enabled ? pci_bus : NULL);
 
+    /*
+    g_assert(xen_enabled() == true && "PANDA: requires xen enabled");
     assert(pcms->vmport != ON_OFF_AUTO__MAX);
+    if (pcms->vmport == ON_OFF_AUTO_AUTO) {
+        pcms->vmport = xen_enabled() ? ON_OFF_AUTO_OFF : ON_OFF_AUTO_ON;
+    }
+    */
     if (pcms->vmport == ON_OFF_AUTO_AUTO) {
         pcms->vmport = ON_OFF_AUTO_OFF;
     }
@@ -440,7 +446,7 @@ static void pc_i440fx_2_10_machine_options(MachineClass *m)
 {
     pc_i440fx_machine_options(m);
     m->alias = "pc";
-    m->is_default = 0;
+    m->is_default = 1;
 }
 
 DEFINE_I440FX_MACHINE(v2_10, "pc-i440fx-2.10", NULL,
@@ -461,8 +467,6 @@ DEFINE_I440FX_MACHINE(v2_9, "pc-i440fx-2.9", NULL,
 static void pc_i440fx_2_8_machine_options(MachineClass *m)
 {
     pc_i440fx_2_9_machine_options(m);
-    m->is_default = 1;
-    m->alias = NULL;
     SET_MACHINE_COMPAT(m, PC_COMPAT_2_8);
 }
 
@@ -473,7 +477,6 @@ DEFINE_I440FX_MACHINE(v2_8, "pc-i440fx-2.8", NULL,
 static void pc_i440fx_2_7_machine_options(MachineClass *m)
 {
     pc_i440fx_2_8_machine_options(m);
-    m->is_default = 0;
     SET_MACHINE_COMPAT(m, PC_COMPAT_2_7);
 }
 
