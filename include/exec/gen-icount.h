@@ -41,7 +41,7 @@ static inline void gen_tb_start(TranslationBlock *tb)
 
     tcg_gen_brcondi_i32(TCG_COND_LT, count, 0, icount_label);
 
-    g_assert(tb->cflags & CF_USE_ICOUNT)
+    g_assert(tb->cflags & CF_USE_ICOUNT);
 
     tcg_gen_st16_i32(count, tcg_ctx.tcg_env,
                      -ENV_OFFSET + offsetof(CPUState, icount_decr.u16.low));

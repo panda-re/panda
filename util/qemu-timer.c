@@ -29,8 +29,10 @@
 #include "sysemu/sysemu.h"
 #include "sysemu/cpus.h"
 
+#ifdef NEED_CPU_H
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log_all.h"
+#endif
 #endif
 
 #ifdef CONFIG_POSIX
@@ -586,8 +588,10 @@ int64_t timerlistgroup_deadline_ns(QEMUTimerListGroup *tlg)
     QEMUClockType type;
     bool play = replay_mode == REPLAY_MODE_PLAY;
 
+#ifdef NEED_CPU_H
 #ifdef CONFIG_SOFTMMU
     if (rr_in_replay() || rr_replay_requested()) return RR_REPLAY_DEADLINE;
+#endif
 #endif
 
     for (type = 0; type < QEMU_CLOCK_MAX; type++) {

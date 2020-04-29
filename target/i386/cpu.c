@@ -2427,15 +2427,6 @@ static void x86_cpu_load_def(X86CPU *cpu, X86CPUDefinition *def, Error **errp)
 
 }
 
-static gchar *x86_gdb_arch_name(CPUState *cs)
-{
-#ifdef TARGET_X86_64
-        return g_strdup("i386:x86-64");
-#else
-            return g_strdup("i386");
-#endif
-}
-
 /* Return a QDict containing keys for all properties that can be included
  * in static expansion of CPU models. All properties set by x86_cpu_load_def()
  * must be included in the dictionary.

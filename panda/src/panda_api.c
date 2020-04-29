@@ -14,6 +14,9 @@
 #include "qapi/error.h"
 #include "migration/vmstate.h"
 
+#include "migration/savevm.h"
+#include "migration/snapshot.h"
+
 // call main_aux and run everything up to and including panda_callbacks_after_machine_init
 int panda_init(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_INIT);
@@ -55,8 +58,7 @@ void panda_cont(void) {
 } 
 
 int panda_delvm(char *snapshot_name) {
-    delvm_name(snapshot_name);
-    return 1;
+    return delvm_name(snapshot_name);
 }
 
 void panda_start_pandalog(const char * name) {
@@ -66,17 +68,17 @@ void panda_start_pandalog(const char * name) {
 }
 
 int panda_revert(char *snapshot_name) {
-    int ret = load_vmstate(snapshot_name);
-//    printf ("Got back load_vmstate ret=%d\n", ret);
+    int ret = load_snapshot(snapshot_name, &error_fatal);
+//    printf ("Got back load_snapshot ret=%d\n", ret);
     return ret;
 }
 
 void panda_reset(void) {
-    qemu_system_reset_request();
+    qemu_system_reset_request(SHUTDOWN_CAUSE_NONE);
 }
 
 int panda_snap(char *snapshot_name) {
-    return save_vmstate(NULL, snapshot_name);
+    return save_snapshot( snapshot_name, &error_fatal);
 }
 
 int panda_finish(void) {

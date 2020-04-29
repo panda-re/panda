@@ -52,7 +52,9 @@
 #include "qemu/cutils.h"
 #include "io/channel-buffer.h"
 #include "io/channel-file.h"
+#ifdef NEED_CPU_H
 #include "panda/callbacks/cb-support.h"
+#endif
 
 #ifndef ETH_P_RARP
 #define ETH_P_RARP 0x8035
@@ -2081,7 +2083,9 @@ int qemu_loadvm_state(QEMUFile *f)
 
     qemu_loadvm_state_cleanup();
     cpu_synchronize_all_post_init();
+#ifdef NEED_CPU_H
     panda_callbacks_after_loadvm(first_cpu);
+#endif
 
 
     return ret;

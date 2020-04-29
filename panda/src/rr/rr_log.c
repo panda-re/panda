@@ -48,15 +48,21 @@
 #include "panda/rr/rr_api.h"
 #include "panda/plugin.h"
 #include "migration/migration.h"
+#include "migration/qemu-file-channel.h"
+#include "migration/global_state.h"
+#include "migration/snapshot.h"
+#include "migration/channel.h"
+#include "migration/savevm.h"
+#include "migration/qemu-file.h"
 #include "include/exec/address-spaces.h"
 #include "include/exec/exec-all.h"
-#include "migration/qemu-file.h"
 #include "io/channel-file.h"
 #include "sysemu/sysemu.h"
 #include "panda/common.h"
 #include "panda/callbacks/cb-support.h"
 #include "exec/gdbstub.h"
 #include "sysemu/cpus.h"
+#include "qapi/error.h" // for error_fatal ?
 
 /******************************************************************************************/
 /* GLOBALS */
@@ -1437,7 +1443,7 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     // load VM snapshot if needed
     if (rr_control.snapshot != NULL) {
         printf("loading snapshot:\t%s\n", rr_control.snapshot);
-        snapshot_ret = load_vmstate(rr_control.snapshot);
+        snapshot_ret = load_snapshot(rr_control.snapshot, &error_fatal);
     }
 
     // write PANDA memory snapshot
@@ -1550,7 +1556,7 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     }
     QEMUFile* snp = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
 
-    qemu_system_reset(VMRESET_SILENT);
+    qemu_system_reset(SHUTDOWN_CAUSE_NONE);
     MigrationIncomingState* mis = migration_incoming_get_current();
     mis->from_src_file = snp;
     snapshot_ret = qemu_loadvm_state(snp);
@@ -1651,13 +1657,13 @@ void rr_do_end_replay(int is_error)
         abort();
     } else {
       if (panda_library_mode) {
-          // Reset the system and break out of the vl.c loop. Note we leave the cpu thread running
+          // Break out of the vl.c loop. Note we leave the cpu thread running
           // This ensures we can run a replay, then a live guest without a hang
-          qemu_system_reset(VMRESET_SILENT);
+          qemu_system_reset(SHUTDOWN_CAUSE_NONE);
           panda_break_vl_loop_req = true;
         }else{
           vm_stop(RUN_STATE_PAUSED);
-          qemu_system_shutdown_request();
+          qemu_system_shutdown_request(SHUTDOWN_CAUSE_NONE);
         }
     }
 #endif // CONFIG_SOFTMMU

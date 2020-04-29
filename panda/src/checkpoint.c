@@ -17,6 +17,9 @@
 #include "io/channel-file.h"
 #include "migration/migration.h"
 #include "migration/qemu-file.h"
+#include "migration/qemu-file-channel.h"
+#include "migration/global_state.h"
+#include "migration/savevm.h"
 #include "sysemu/cpus.h"
 #include "sysemu/sysemu.h"
 
@@ -174,7 +177,7 @@ void panda_restore(void *opaque) {
 
     QIOChannelFile *iochannel = qio_channel_file_new_fd(checkpoint->memfd);
     QEMUFile *file = qemu_fopen_channel_input(QIO_CHANNEL(iochannel));
-    qemu_system_reset(VMRESET_SILENT);
+    qemu_system_reset(SHUTDOWN_CAUSE_NONE);
     MigrationIncomingState* mis = migration_incoming_get_current();
     mis->from_src_file = file;
 

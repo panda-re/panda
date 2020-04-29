@@ -18,6 +18,7 @@
  */
 
 #include "qemu/osdep.h"
+#include "qemu/main-loop.h"
 #include "cpu.h"
 #include "exec/exec-all.h"
 #include "exec/memory.h"
@@ -756,6 +757,7 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     hwaddr physaddr = iotlbentry->addr;
     MemoryRegion *mr = iotlb_to_region(cpu, physaddr, iotlbentry->attrs);
     uint64_t val;
+    bool locked = false;
 
     physaddr = (physaddr & TARGET_PAGE_MASK) + addr;
     cpu->mem_io_pc = retaddr;
@@ -767,6 +769,7 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     if (mr->name && !strcmp(mr->name, "watch")){
         memory_region_dispatch_read(mr, physaddr, &val, size, iotlbentry->attrs);
         return val;
+    }
 
     if (mr->global_locking && !qemu_mutex_iothread_locked()) {
         qemu_mutex_lock_iothread();
@@ -795,6 +798,7 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     CPUState *cpu = ENV_GET_CPU(env);
     hwaddr physaddr = iotlbentry->addr;
     MemoryRegion *mr = iotlb_to_region(cpu, physaddr, iotlbentry->attrs);
+    bool locked = false;
 
     physaddr = (physaddr & TARGET_PAGE_MASK) + addr;
     if (mr != &io_mem_rom && mr != &io_mem_notdirty && !cpu->can_do_io) {
@@ -809,6 +813,7 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     if (mr->name && !strcmp(mr->name, "watch")){
         memory_region_dispatch_write(mr, physaddr, val, size, iotlbentry->attrs);
         return;
+    }
 
     if (mr->global_locking && !qemu_mutex_iothread_locked()) {
         qemu_mutex_lock_iothread();

@@ -843,7 +843,7 @@ static inline IOMMUMemoryRegion *memory_region_get_iommu(MemoryRegion *mr)
 static inline IOMMUMemoryRegionClass *memory_region_get_iommu_class_nocheck(
         IOMMUMemoryRegion *iommu_mr)
 {
-    return (IOMMUMemoryRegionClass *) (((Object *)iommu_mr)->class);
+    return (IOMMUMemoryRegionClass *) (((Object *)iommu_mr)->klass);
 }
 
 #define memory_region_is_iommu(mr) (memory_region_get_iommu(mr) != NULL)

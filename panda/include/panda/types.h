@@ -29,6 +29,10 @@
 #define UNUSED(x) x
 #endif
 
+#ifndef NEED_CPU_H
+#error "Can't use panda/types.h in architecturee-agnostic file"
+#endif
+
 #if defined(__cplusplus)
 extern "C" {
 #endif

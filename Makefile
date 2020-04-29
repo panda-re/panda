@@ -312,6 +312,7 @@ dummy := $(call unnest-vars,, \
 ifneq ($(wildcard config-host.mak),)
 include $(SRC_PATH)/panda/Makefile.panda
 include $(SRC_PATH)/tests/Makefile.include
+endif
 
 all: $(DOCS) $(TOOLS) $(HELPERS-y) recurse-all modules
 

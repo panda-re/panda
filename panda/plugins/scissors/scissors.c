@@ -13,7 +13,9 @@
 #include "panda/rr/rr_api.h"
 #include "panda/common.h"
 
-#include "migration/migration.h"
+#include "migration/savevm.h"
+#include "migration/qemu-file-channel.h"
+#include "migration/global_state.h"
 #include "include/exec/address-spaces.h"
 #include "migration/qemu-file.h"
 #include "io/channel-file.h"

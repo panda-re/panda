@@ -2086,7 +2086,6 @@ static int img_convert(int argc, char **argv)
     if (qemu_opts_foreach(&qemu_object_opts,
                           user_creatable_add_opts_foreach,
                           NULL, NULL)) {
-        ret = -1;
         goto fail_getopt;
     }
 
@@ -2234,13 +2233,6 @@ static int img_convert(int argc, char **argv)
     s.target_has_backing = (bool) out_baseimg;
 
     if (s.src_num > 1 && out_baseimg) {
-        error_report("Having a backing file for the target makes no sense when "
-                     "concatenating multiple input images");
-        ret = -1;
-        goto out;
-    }
-
-    if (bs_n > 1 && out_baseimg) {
         error_report("Having a backing file for the target makes no sense when "
                      "concatenating multiple input images");
         ret = -1;
