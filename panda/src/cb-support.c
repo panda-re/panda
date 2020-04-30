@@ -223,6 +223,30 @@ int32_t PCB(before_handle_exception)(CPUState *cpu, int32_t exception_index) {
     return exception_index;
 }
 
+
+int32_t PCB(before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request) {
+    panda_cb_list *plist;
+    bool got_new_interrupt = false;
+    int32_t new_interrupt;
+
+    for (plist = panda_cbs[PANDA_CB_BEFORE_HANDLE_INTERRUPT]; plist != NULL;
+         plist = panda_cb_list_next(plist)) {
+        if (plist->enabled) {
+            int32_t new_i = plist->entry.before_handle_interrupt(cpu, interrupt_request);
+            if (!got_new_interrupt && new_i != interrupt_request) {
+                got_new_interrupt = true;
+                new_interrupt = new_i;
+            }
+        }
+    }
+
+    if (got_new_interrupt)
+        return new_interrupt;
+
+    return interrupt_request;
+}
+
+
 // These are used in softmmu_template.h. They are distinct from MAKE_CALLBACK's standard form.
 // ram_ptr is a possible pointer into host memory from the TLB code. Can be NULL.
 void PCB(mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
