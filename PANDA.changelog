@@ -1,0 +1,4 @@
+2.10:
+  * disable SMM by default for i386 machines- when it's enabled, we fail to populate memory at 0x38000 for some reason
+
+Logging begins with stable PANDA code based off qemu-2.9

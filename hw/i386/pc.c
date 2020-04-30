@@ -2226,7 +2226,7 @@ static void pc_machine_initfn(Object *obj)
     PCMachineState *pcms = PC_MACHINE(obj);
 
     pcms->max_ram_below_4g = 0; /* use default */
-    pcms->smm = ON_OFF_AUTO_AUTO;
+    pcms->smm = ON_OFF_AUTO_OFF; // af: panda needs this?
     pcms->vmport = ON_OFF_AUTO_AUTO;
     /* nvdimm is disabled on default. */
     pcms->acpi_nvdimm_state.is_enabled = false;
