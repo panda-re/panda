@@ -771,7 +771,7 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
         return val;
     }
 
-    if (mr->global_locking) {
+    if (mr->global_locking && !qemu_mutex_iothread_locked()) {
         qemu_mutex_lock_iothread();
         locked = true;
     }
@@ -786,9 +786,6 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     }
 
     panda_callbacks_mmio_after_read(cpu, physaddr, addr, size, &val);
-    if (locked) {
-        qemu_mutex_unlock_iothread();
-    }
 
     return val;
 }
@@ -815,7 +812,7 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
         memory_region_dispatch_write(mr, physaddr, val, size, iotlbentry->attrs);
         return;
     }
-    if (mr->global_locking) {
+    if (mr->global_locking && !qemu_mutex_iothread_locked()) {
         qemu_mutex_lock_iothread();
         locked = true;
     }

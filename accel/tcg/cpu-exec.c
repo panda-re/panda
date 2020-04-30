@@ -29,6 +29,7 @@
 #include "qemu/rcu.h"
 #include "exec/tb-hash.h"
 #include "exec/log.h"
+#include "qemu/main-loop.h"
 #if defined(TARGET_I386) && !defined(CONFIG_USER_ONLY)
 #include "hw/i386/apic.h"
 #endif
@@ -66,7 +67,7 @@ typedef struct SyncClocks {
 #define MAX_DELAY_PRINT_RATE 2000000000LL
 #define MAX_NB_PRINTS 100
 
-// Needed to prevent before_block_exec_invalidate_opt from 
+// Needed to prevent before_block_exec_invalidate_opt from
 // running more than once
 bool panda_bb_invalidate_done = false;
 
@@ -580,6 +581,7 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
     //time via a signal.  Thus, we want to make sure that we
     //record the same value in the log as the one being used in
     //these decisions.
+    //af: this might've gotten messed up in the 2.10 merge
     rr_skipped_callsite_location = RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE;
     rr_interrupt_request(&interrupt_request);
 
@@ -587,6 +589,8 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
         cpu->interrupt_request = interrupt_request;
     }
 #endif
+
+
     if (unlikely(atomic_read(&interrupt_request))) {
         qemu_mutex_lock_iothread();
         if (unlikely(cpu->singlestep_enabled & SSTEP_NOIRQ)) {
@@ -661,7 +665,10 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
     }
 
 
-    if (unlikely(atomic_read(&cpu->exit_request) || replay_has_interrupt())) {
+    /* Finally, check if we need to exit to the main loop.  */
+    if (unlikely(atomic_read(&cpu->exit_request)
+        || (use_icount && cpu->icount_decr.u16.low + cpu->icount_extra == 0))) {
+
         atomic_set(&cpu->exit_request, 0);
         cpu->exception_index = EXCP_INTERRUPT;
         return true;
@@ -769,7 +776,7 @@ int cpu_exec(CPUState *cpu)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
     int ret = -1;
-    SyncClocks sc;
+    SyncClocks sc = { 0 };
 
     /* replay_interrupt may need current_cpu */
     current_cpu = cpu;
@@ -845,7 +852,7 @@ int cpu_exec(CPUState *cpu)
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
             panda_bb_invalidate_done = panda_callbacks_after_find_fast(
                     cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
-        
+
             if (unlikely(cpu->temp_rr_bp_instr) && rr_get_guest_instr_count() > cpu->temp_rr_bp_instr) {
                 // Restore rr breakpoint if one was disabled for continue
                 cpu_rr_breakpoint_insert(cpu, cpu->temp_rr_bp_instr, BP_GDB, NULL);
@@ -886,9 +893,6 @@ int cpu_exec(CPUState *cpu)
     panda_callbacks_before_cpu_exec_exit(cpu, ranBlockSinceEnter);
     cc->cpu_exec_exit(cpu);
     rcu_read_unlock();
-
-    /* fail safe : never use current_cpu outside cpu_exec() */
-    current_cpu = NULL;
 
     return ret;
 }
