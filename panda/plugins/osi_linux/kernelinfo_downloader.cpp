@@ -31,6 +31,7 @@ int download_kernelinfo(const char *file, const char *group){
 		curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+		curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 		std::cout << readBuffer << std::endl;
 		res = curl_easy_perform(curl);
 		curl_easy_cleanup(curl);
@@ -40,7 +41,9 @@ int download_kernelinfo(const char *file, const char *group){
 	  		kernelinfo_file << "\n" << readBuffer << std::endl;
 	  		kernelinfo_file.close();
 	  		return 0;
-		}else{
+		}else if(res == CURLE_HTTP_RETURNED_ERROR) {
+			std::cout << "config not found on server" << std::endl;
+    }else{
 			std::cout << "didn't take" << std::endl;
 		}
 	}

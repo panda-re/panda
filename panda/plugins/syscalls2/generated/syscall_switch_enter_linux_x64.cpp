@@ -251,6 +251,11 @@ void syscall_enter_switch_linux_x64(CPUState *cpu, target_ptr_t pc) {
 		}
 		PPP_RUN_CB(on_sys_rt_sigprocmask_enter, cpu, pc, arg0, arg1, arg2, arg3);
 	}; break;
+	// 15 long sys_rt_sigreturn ['void']
+	case 15: {
+		panda_noreturn = false;
+		PPP_RUN_CB(on_sys_rt_sigreturn_enter, cpu, pc);
+	}; break;
 	// 16 long sys_ioctl ['unsigned int fd', 'unsigned int cmd', 'unsigned long arg']
 	case 16: {
 		panda_noreturn = false;
@@ -832,6 +837,50 @@ void syscall_enter_switch_linux_x64(CPUState *cpu, target_ptr_t pc) {
 			memcpy(ctx.args[4], &arg4, sizeof(uint64_t));
 		}
 		PPP_RUN_CB(on_sys_getsockopt_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
+	}; break;
+	// 56 long sys_clone ['unsigned long', 'unsigned long', 'int __user *', 'int __user *', 'unsigned long']
+	case 56: {
+		panda_noreturn = false;
+		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg3 = get_64(cpu, 3);
+		uint64_t arg4 = get_64(cpu, 4);
+		if (PPP_CHECK_CB(on_all_sys_enter2) ||
+			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
+					PPP_CHECK_CB(on_sys_clone_return)))) {
+			memcpy(ctx.args[0], &arg0, sizeof(uint64_t));
+			memcpy(ctx.args[1], &arg1, sizeof(uint64_t));
+			memcpy(ctx.args[2], &arg2, sizeof(uint64_t));
+			memcpy(ctx.args[3], &arg3, sizeof(uint64_t));
+			memcpy(ctx.args[4], &arg4, sizeof(uint64_t));
+		}
+		PPP_RUN_CB(on_sys_clone_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
+	}; break;
+	// 57 long sys_fork ['void']
+	case 57: {
+		panda_noreturn = false;
+		PPP_RUN_CB(on_sys_fork_enter, cpu, pc);
+	}; break;
+	// 58 long sys_vfork ['void']
+	case 58: {
+		panda_noreturn = false;
+		PPP_RUN_CB(on_sys_vfork_enter, cpu, pc);
+	}; break;
+	// 59 long sys_execve ['const char __user *filename', 'const char __user *const __user *argv', 'const char __user *const __user *envp']
+	case 59: {
+		panda_noreturn = false;
+		uint64_t arg0 = get_64(cpu, 0);
+		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg2 = get_64(cpu, 2);
+		if (PPP_CHECK_CB(on_all_sys_enter2) ||
+			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
+					PPP_CHECK_CB(on_sys_execve_return)))) {
+			memcpy(ctx.args[0], &arg0, sizeof(uint64_t));
+			memcpy(ctx.args[1], &arg1, sizeof(uint64_t));
+			memcpy(ctx.args[2], &arg2, sizeof(uint64_t));
+		}
+		PPP_RUN_CB(on_sys_execve_enter, cpu, pc, arg0, arg1, arg2);
 	}; break;
 	// 60 long sys_exit ['int error_code']
 	case 60: {
@@ -2221,6 +2270,17 @@ void syscall_enter_switch_linux_x64(CPUState *cpu, target_ptr_t pc) {
 			memcpy(ctx.args[1], &arg1, sizeof(int32_t));
 		}
 		PPP_RUN_CB(on_sys_setdomainname_enter, cpu, pc, arg0, arg1);
+	}; break;
+	// 172 long sys_iopl ['unsigned int']
+	case 172: {
+		panda_noreturn = false;
+		uint32_t arg0 = get_32(cpu, 0);
+		if (PPP_CHECK_CB(on_all_sys_enter2) ||
+			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
+					PPP_CHECK_CB(on_sys_iopl_return)))) {
+			memcpy(ctx.args[0], &arg0, sizeof(uint32_t));
+		}
+		PPP_RUN_CB(on_sys_iopl_enter, cpu, pc, arg0);
 	}; break;
 	// 173 long sys_ioperm ['unsigned long', 'unsigned long', 'int']
 	case 173: {
@@ -4320,6 +4380,25 @@ void syscall_enter_switch_linux_x64(CPUState *cpu, target_ptr_t pc) {
 			memcpy(ctx.args[2], &arg2, sizeof(uint32_t));
 		}
 		PPP_RUN_CB(on_sys_bpf_enter, cpu, pc, arg0, arg1, arg2);
+	}; break;
+	// 322 long sys_execveat ['int dfd', 'const char __user *filename', 'const char __user *const __user *argv', 'const char __user *const __user *envp', 'int flags']
+	case 322: {
+		panda_noreturn = false;
+		int32_t arg0 = get_s32(cpu, 0);
+		uint64_t arg1 = get_64(cpu, 1);
+		uint64_t arg2 = get_64(cpu, 2);
+		uint64_t arg3 = get_64(cpu, 3);
+		int32_t arg4 = get_s32(cpu, 4);
+		if (PPP_CHECK_CB(on_all_sys_enter2) ||
+			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
+					PPP_CHECK_CB(on_sys_execveat_return)))) {
+			memcpy(ctx.args[0], &arg0, sizeof(int32_t));
+			memcpy(ctx.args[1], &arg1, sizeof(uint64_t));
+			memcpy(ctx.args[2], &arg2, sizeof(uint64_t));
+			memcpy(ctx.args[3], &arg3, sizeof(uint64_t));
+			memcpy(ctx.args[4], &arg4, sizeof(int32_t));
+		}
+		PPP_RUN_CB(on_sys_execveat_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 	}; break;
 	// 323 long sys_userfaultfd ['int flags']
 	case 323: {
