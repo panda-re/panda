@@ -381,7 +381,10 @@ void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
     while (!(src == ones && srcsel == ones)) {
         if (srcsel == selector) { // bingo!
             if (src != ones) { // otherwise it's a constant.
+                taint_log("select (copy): %s[%lx+%lx] <- %s[%lx+%lx] ",
+                          shad->name(), dest, size, shad->name(), src, size);
                 Shad::copy(shad, dest, shad, src, size);
+                taint_log_labels(shad, dest, size);
             }
             return;
         }
