@@ -167,6 +167,7 @@ done:
 }
 
 
+bool pandalog_trace = false;
 
 bool init_plugin(void *self) {
 
@@ -179,6 +180,7 @@ bool init_plugin(void *self) {
     // Set the default value to 1-edge or basic block coverage  
     n = panda_parse_uint64_opt(args, "n", 1, "collect up-to-and-including n-edges");
     //    no_kernel = panda_parse_bool_opt(args, "no_kernel", "disable kernel pcs"); 
+    pandalog_trace = panda_parse_bool_opt(args, "trace", "output trace to pandalog");
     const char *start_main_str = panda_parse_string_opt(args, "main", nullptr,
                                             "hex addr of main");
     if (start_main_str != nullptr) {
