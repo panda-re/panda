@@ -408,7 +408,7 @@ struct TranslationBlock {
 //    uint8_t tcg_op_buf_full;
 
     // indicates if this block was split up abnormally
-//    uint8_t was_split;
+    uint8_t was_split;
 
 };
 

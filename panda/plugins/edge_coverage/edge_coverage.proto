@@ -8,3 +8,10 @@ message AsidEdges {
 }
 
 optional AsidEdges edge_coverage = 41;  
+
+
+message AsidTrace {
+    repeated uint64 pcs = 1; 
+}   
+
+optional AsidTrace trace = 43;
