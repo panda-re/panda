@@ -20,7 +20,7 @@ int download_kernelinfo(const char *file, const char *group){
 	std::cout << "Attempting to download from panda-re.mit.edu" << std::endl;
 	CURL *curl;
 	CURLcode res;
-	std::string url = "http://panda-re.mit.edu/kernelinfos/";
+	std::string url = "https://panda-re.mit.edu/kernelinfos/";
 	url.append(group);
 	url.append(".conf");
 	std::cout << "Downloading uri " << url << " to file "<< file << std::endl;
