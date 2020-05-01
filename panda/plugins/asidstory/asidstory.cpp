@@ -67,12 +67,18 @@ void uninit_plugin(void *);
 
 bool summary_mode = false;
 
+
 // callback for when process changes
 PPP_PROT_REG_CB(on_proc_change);
 
 }
 
 PPP_CB_BOILERPLATE(on_proc_change);
+
+#include<string>
+#include <iostream>
+
+using namespace std;
 
 /*
 
@@ -125,7 +131,7 @@ uint64_t min_instr;
 uint64_t max_instr = 0;
 double scale = 0;
 
-bool debug = false;
+bool debug = false; 
 //bool debug = true;
  
 #define MILLION 1000000
@@ -269,6 +275,8 @@ static inline bool pid_ok(int pid) {
 
 static inline bool check_proc(OsiProc *proc) {
     if (!proc) return false;
+    if (proc->asid == 0 || proc->asid == -1) 
+        return false;
     if (pid_ok(proc->pid)) {
         int l = strlen(proc->name);
         for (int i=0; i<l; i++) 
@@ -337,13 +345,11 @@ void saw_proc_range(CPUState *env, OsiProc *proc, uint64_t i1, uint64_t i2) {
     // assume that last process was running from last asid change to basically now
     saw_proc(env, proc, i1);
     saw_proc(env, proc, i2);
-//    printf ("step = %d\n", (int) step/3);
     for (uint64_t i=i1; i<=i2; i+=step/3) {
         saw_proc(env, proc, i);
     }
 
     if (pandalog && !summary_mode) {
-        printf ("createing asid_info\n");
         Panda__AsidInfo ai;
         ai = PANDA__ASID_INFO__INIT;
         ai.asid = proc->asid;
@@ -356,7 +362,6 @@ void saw_proc_range(CPUState *env, OsiProc *proc, uint64_t i1, uint64_t i2) {
         ple.asid_info = &ai;
         pandalog_write_entry(&ple);
     }
-
 }
 
 
@@ -372,7 +377,7 @@ bool asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong n
     
     uint64_t curr_instr = rr_get_guest_instr_count();
     
-    if (debug) printf ("\nasid changed @ %" PRIu64 "\n", curr_instr);
+    if (debug) printf ("\nasid changed @ %" PRIu64 " new_asid=%" PRIx64 "\n", (uint64_t) curr_instr, (uint64_t) new_asid);
     
     if (process_mode == Process_known) {
         
@@ -437,15 +442,6 @@ static inline bool process_same(OsiProc *proc1, OsiProc *proc2) {
 
 // before every bb, mostly just trying to figure out current proc 
 void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
-/*
-    {
-        OsiProc *current_proc = get_current_process(env);    
-        if (check_proc(current_proc)) {
-            // first good proc 
-            printf ("instr %" PRId64 " proc %d %" PRIx64 " %s\n", rr_get_guest_instr_count(), (int) current_proc->pid, (uint64_t) current_proc->asid, current_proc->name);
-        }
-}
-*/
 
     if (panda_in_kernel(env)) 
         kernel_count ++;
@@ -459,12 +455,34 @@ void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
         scale = ((double) num_cells) / ((double) max_instr); 
         if (debug) printf("max_instr = %" PRId64 "\n", max_instr);
     }
-
+    
     // all this is about figuring out if and when we know the current process
     switch (process_mode) {
+        
     case Process_known: {
-        return;
-        break;
+        OsiProc *current_proc = get_current_process(env);
+        if (check_proc(current_proc)) {
+            if (0 != strcmp(current_proc->name, first_good_proc->name)) {
+                // process name changed -- execve?
+                uint64_t curr_instr = rr_get_guest_instr_count();
+                saw_proc_range(env, first_good_proc, instr_first_good_proc, curr_instr - 100);                
+
+                if (debug) {
+                    cout << rr_get_guest_instr_count() << " process name changed while known\n";
+                    printf("old=%s new=%s\n", first_good_proc->name, current_proc->name);
+                }
+                
+                first_good_proc = copy_osiproc(current_proc, first_good_proc);
+                instr_first_good_proc = rr_get_guest_instr_count(); 
+                process_mode = Process_suspicious;
+                process_counter = PROCESS_GOOD_NUM;
+
+                PPP_RUN_CB(on_proc_change, env, asid_at_asid_changed, first_good_proc);
+ 
+            }
+        }
+        free_osiproc(current_proc);
+        break;        
     }
     case Process_unknown: {
         if (debug) printf("before_bb: process_mode unknown\n");
@@ -508,6 +526,7 @@ void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
 }
 
 
+
 bool init_plugin(void *self) {    
     panda_require("osi");
    
@@ -520,7 +539,7 @@ bool init_plugin(void *self) {
     
     pcb.before_block_exec = asidstory_before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-    
+
     panda_arg_list *args = panda_get_args("asidstory");
     num_cells = std::max(panda_parse_uint64_opt(args, "width", 100, "number of columns to use for display"), UINT64_C(80)) - NAMELEN - 5;
     
