@@ -108,9 +108,9 @@ class Ioctl():
 
         # Optional OSI usage: process and file name
         if self.osi:
-            proc = panda.get_current_process(cpu)
+            proc = panda.plugins['osi'].get_current_process(cpu)
             proc_name_ptr = proc.name
-            file_name_ptr = panda.osi_linux_fd_to_filename(cpu, proc, fd)
+            file_name_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, fd)
             self.proc_name = ffi.string(proc_name_ptr).decode(config.STR_ENCODING)
             self.file_name = ffi.string(file_name_ptr).decode(config.STR_ENCODING)
         else:
@@ -171,6 +171,8 @@ class IoctlFaker():
         self.osi = use_osi_linux
         self._panda = panda
         self._panda.load_plugin("syscalls2")
+        self._panda.load_plugin("osi")
+        self._panda.load_plugin("osi_linux")
 
         self._logger = logging.getLogger('panda.hooking')
         self._logger.setLevel(logging.DEBUG)
