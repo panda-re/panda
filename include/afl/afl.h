@@ -17,6 +17,7 @@ extern const char *aflFile;
 extern unsigned long aflPanicAddr[AFL_MAX_PANIC_ADDR];
 extern unsigned long aflStateAddr[AFL_MAX_STATE_ADDR];
 extern uint8_t aflStateAddrEntries;
+extern uint8_t aflPanicAddrEntries;
 
 
 extern int aflEnableTicks;

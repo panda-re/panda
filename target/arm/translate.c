@@ -12464,10 +12464,11 @@ void gen_aflBBlock(target_ulong pc)
 {
     unsigned char idx = 0;
 
-    while (aflPanicAddr[idx] != 0) {
-        if(pc == aflPanicAddr[idx])
+    for (int i = 0; i < aflPanicAddrEntries; i++) {
+        if(pc == aflPanicAddr[i]) {
             gen_helper_aflInterceptPanic();
-        idx++;
+            break;
+        }
     }
     //if(pc == aflDmesgAddr)
         //gen_helper_aflInterceptLog(cpu_env);

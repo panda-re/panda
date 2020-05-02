@@ -85,6 +85,7 @@ const char *aflFile = "/tmp/work";
 unsigned long aflPanicAddr[AFL_MAX_PANIC_ADDR] = {0};
 unsigned long aflStateAddr[AFL_MAX_STATE_ADDR] = {0};
 uint8_t aflStateAddrEntries = 0;
+uint8_t aflPanicAddrEntries = 0;
 
 __thread target_ulong afl_prev_loc;
 /* Set in the child process in forkserver mode: */

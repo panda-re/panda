@@ -190,6 +190,7 @@ extern char is_persistent;
 extern unsigned long aflPanicAddr[256];
 extern unsigned long aflStateAddr[256];
 extern uint8_t aflStateAddrEntries;
+extern uint8_t aflPanicAddrEntries;
 
 static const char *data_dir[16];
 static int data_dir_idx;
@@ -3463,7 +3464,8 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
                         opt_start = opt_end + 1;
                         idx += 1;
                     }
-                    aflPanicAddr[idx] = 0;
+
+                    aflPanicAddrEntries = idx;
                 }
                 break;
             case QEMU_OPTION_aflStateAddr:
