@@ -14,6 +14,8 @@
 #define AFL_MAX_PANIC_ADDR 256
 
 extern const char *aflFile;
+extern const char *aflOutFile;
+extern FILE *aflOutFP;
 extern unsigned long aflPanicAddr[AFL_MAX_PANIC_ADDR];
 extern unsigned long aflStateAddr[AFL_MAX_STATE_ADDR];
 extern uint8_t aflStateAddrEntries;

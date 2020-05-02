@@ -3007,6 +3007,8 @@ ETEXI
 
 DEF("aflFile", HAS_ARG, QEMU_OPTION_aflFile, \
     "-aflFile fname  AFL input sourced from fname\n", QEMU_ARCH_ALL)
+DEF("aflOutFile", HAS_ARG, QEMU_OPTION_aflOutFile, \
+    "-aflOutFile fname  AFL output concatenated in persistent mode\n", QEMU_ARCH_ALL)
 DEF("aflPanicAddr", HAS_ARG, QEMU_OPTION_aflPanicAddr, \
     "-aflPanicAddr hexaddr  Address of OS panic function\n", QEMU_ARCH_ALL)
 DEF("aflStateAddr", HAS_ARG, QEMU_OPTION_aflStateAddr, \

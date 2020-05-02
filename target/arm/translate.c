@@ -12300,6 +12300,7 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
     assert(aflStart == 0);
     fp = fopen(aflFile, "rb");
 
+
     //AFL_DPRINTF("Expected file: %s\n", aflFile);
     assert(fp != 0);
     if(!fp) {
@@ -12346,6 +12347,20 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
 
     // Shannon has one contigous address space, so we can directly write physmem
     cpu_physical_memory_rw(ptr, bufptr, retsz, 1); 
+
+    // log to aflOutFile if requested
+    if (aflOutFP != NULL){
+        const char * eoi = "EOI\0";
+        if(fwrite(buffer, 1, retsz, aflOutFP) != retsz) {
+            perror("Writing to aflOutFile failed: ");
+        }
+        if(fwrite(eoi, strlen(eoi)+1, 1,aflOutFP) != 1){
+            perror("Writing EOI marker to aflOutFile failed: ");
+        }
+        fflush(aflOutFP);
+    }
+
+
 #endif
     fclose(fp);
     return retsz;

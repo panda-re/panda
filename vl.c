@@ -186,6 +186,7 @@ void tcg_llvm_destroy(void);
 #define MAX_SCLP_CONSOLES 1
 
 extern const char *aflFile;
+extern const char *aflOutFile;
 extern char is_persistent;
 extern unsigned long aflPanicAddr[256];
 extern unsigned long aflStateAddr[256];
@@ -3449,6 +3450,10 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
             case QEMU_OPTION_aflFile:
                 aflFile = malloc(strlen(optarg)+1);
                 strcpy((char *)aflFile, optarg);
+                break;
+            case QEMU_OPTION_aflOutFile:
+                aflOutFile = malloc(strlen(optarg)+1);
+                strcpy((char *)aflOutFile, optarg);
                 break;
             case QEMU_OPTION_aflPanicAddr:
                 {

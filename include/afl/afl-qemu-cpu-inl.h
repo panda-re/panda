@@ -82,6 +82,8 @@ int aflGotLog = 0;              /* we've seen dmesg logging */
 
 /* from command line options */
 const char *aflFile = "/tmp/work";
+const char *aflOutFile = NULL;
+FILE * aflOutFP = NULL;
 unsigned long aflPanicAddr[AFL_MAX_PANIC_ADDR] = {0};
 unsigned long aflStateAddr[AFL_MAX_STATE_ADDR] = {0};
 uint8_t aflStateAddrEntries = 0;
@@ -194,7 +196,6 @@ static ssize_t uninterrupted_read(int fd, void *buf, size_t cnt)
 /* Fork server logic, invoked once we hit _start. */
 
 void afl_forkserver(CPUArchState *env) {
-
   static unsigned char tmp[4];
 
   if (forkserver_installed == 1) return;
@@ -214,6 +215,10 @@ void afl_forkserver(CPUArchState *env) {
   afl_forksrv_pid = getpid();
 
   int first_run = 1;
+
+  if(aflOutFile != NULL){
+      aflOutFP = fopen(aflOutFile, "w");
+  }
 
   /* All right, let's await orders... */
 
@@ -246,6 +251,12 @@ void afl_forkserver(CPUArchState *env) {
       close(t_fd[1]);
 
       aflStart=0;
+
+      // delete log file for previous testinputs if necessary
+      if(aflOutFP != NULL) {
+          aflOutFP = freopen(aflOutFile, "w", aflOutFP);
+      }
+
       child_pid = fork();
       if (child_pid < 0) exit(4);
 
