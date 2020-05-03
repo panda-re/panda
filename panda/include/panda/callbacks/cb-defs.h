@@ -95,6 +95,7 @@ typedef enum panda_cb_type {
                                       // or squash exceptions
 
     PANDA_CB_BEFORE_HANDLE_INTERRUPT, // ditto, for interrupts
+    PANDA_CB_ON_ENTER_SVC,            // Called when an arm guest enters SVC (privileged) mode
 
     PANDA_CB_LAST
 } panda_cb_type;
@@ -967,6 +968,18 @@ typedef union panda_cb {
 
     int32_t (*before_handle_exception)(CPUState *cpu, int32_t exception_index);
 
+    /* Callback ID:     PANDA_CB_ON_ENTER_SVC
+
+       on_enter_svc: Called when an arm guest enters SVC (privileged) mode
+
+       Return value:
+         None
+     */
+
+    void (*on_enter_svc)(CPUState *cpu);
+
+    int32_t (*before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request);
+
     /* Dummy union member.
 
        This union only contains function pointers.
@@ -976,8 +989,6 @@ typedef union panda_cb {
        However, cbaddr provides neutral semantics for the comparisson.
     */
 
-
-    int32_t (*before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request);
 
     void (*cbaddr)(void);
 } panda_cb;

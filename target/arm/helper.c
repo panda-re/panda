@@ -6624,6 +6624,7 @@ static void arm_cpu_do_interrupt_aarch32(CPUState *cs)
         new_mode = ARM_CPU_MODE_SVC;
         addr = 0x08;
         mask = CPSR_I;
+        panda_callbacks_on_enter_svc(cs);
         /* The PC already points to the next instruction.  */
         offset = 0;
         break;

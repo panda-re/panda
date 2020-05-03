@@ -33,6 +33,7 @@
 #include "sysemu/sysemu.h"
 #include "sysemu/hw_accel.h"
 #include "kvm_arm.h"
+#include "panda/callbacks/cb-support.h"
 
 static void arm_cpu_set_pc(CPUState *cs, vaddr value)
 {
@@ -178,6 +179,9 @@ static void arm_cpu_reset(CPUState *s)
 #else
     /* SVC mode with interrupts disabled.  */
     env->uncached_cpsr = ARM_CPU_MODE_SVC;
+
+    panda_callbacks_on_enter_svc(s);
+
     env->daif = PSTATE_D | PSTATE_A | PSTATE_I | PSTATE_F;
 
     if (arm_feature(env, ARM_FEATURE_M)) {

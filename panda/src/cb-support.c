@@ -99,6 +99,10 @@ MAKE_CALLBACK(void, MMIO_BEFORE_WRITE, mmio_before_write,
                     target_ptr_t, vaddr, size_t, size,
                     uint64_t*, val);
 
+// ARM ONLY: target/arm/cpu.c, target/arm/helper.c
+MAKE_CALLBACK(void, ON_ENTER_SVC, on_enter_svc,
+                    CPUState*, env);
+
 // vl.c
 MAKE_CALLBACK(void, AFTER_MACHINE_INIT, after_machine_init,
                     CPUState*, env);

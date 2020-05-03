@@ -80,6 +80,10 @@ typedef enum panda_cb_type {
 
     PANDA_CB_BEFORE_HANDLE_EXCEPTION, // Allows you to monitor, modify,
                                       // or squash exceptions
+
+    PANDA_CB_BEFORE_HANDLE_INTERRUPT, // ditto, for interrupts
+    PANDA_CB_ON_ENTER_SVC,            // Called when an arm guest enters SVC (privileged) mode
+
     PANDA_CB_LAST
 } panda_cb_type;
 
@@ -601,16 +605,15 @@ typedef union panda_cb {
         target_ptr_t oldval: old asid value
         target_ptr_t newval: new asid value
 
-       Helper call location: target/i386/helper.c, target/arm/helper.c
+       Helper call location: target/i386/helper.c
 
        Return value:
         true if the asid should be prevented from being changed
         false otherwise
 
        Notes:
-        The callback is only invoked implemented for x86 and ARM.
-        This should break plugins which rely on it to detect context
-        switches in any other architecture.
+        The helper is only invoked for x86. This should break a lot of the
+        plugins which rely on this callback to detect context switches.
     */
     bool (*asid_changed)(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
 
@@ -952,6 +955,16 @@ typedef union panda_cb {
 
     int32_t (*before_handle_exception)(CPUState *cpu, int32_t exception_index);
 
+    /* Callback ID:     PANDA_CB_ON_ENTER_SVC
+
+       on_enter_svc: Called when an arm guest enters SVC (privileged) mode
+
+       Return value:
+         None
+     */
+
+    void (*on_enter_svc)(CPUState *cpu);
+
     /* Dummy union member.
 
        This union only contains function pointers.
@@ -960,6 +973,10 @@ typedef union panda_cb {
        member could be used instead.
        However, cbaddr provides neutral semantics for the comparisson.
     */
+
+
+    int32_t (*before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request);
+
     void (*cbaddr)(void);
 } panda_cb;
 
