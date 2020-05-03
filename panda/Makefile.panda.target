@@ -103,6 +103,8 @@ GENERATED_FILES += $(PANDA_API_EXT)
 		$(SRC_PATH)/panda/scripts/apigen.py $< $@ -I$(SRC_PATH)/panda/include/fake_libc_include $(QEMU_INCLUDES),\
 		"API     $(TARGET_DIR)$(subst $(BUILD_DIR)/,,$@)")
 
+panda/src/callbacks.o: $(SRC_PATH)/panda/include/panda/callbacks/cb-support.h $(SRC_PATH)/panda/include/panda/callbacks/cb-defs.h
+
 # All of these will be generated according to rules in rules.mak
 obj-y += panda/src/callbacks.o
 obj-y += panda/src/cb-support.o
