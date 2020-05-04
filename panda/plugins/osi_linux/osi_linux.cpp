@@ -555,22 +555,27 @@ bool init_plugin(void *self) {
     panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
     char *kconf_file = g_strdup(panda_parse_string_req(plugin_args, "kconf_file", "file containing kernel configuration information"));
     char *kconf_group = g_strdup(panda_parse_string_req(plugin_args, "kconf_group", "kernel profile to use"));
+    bool load_now = panda_parse_bool_opt(plugin_args, "load_now", "Immediately initialize OSI instead of waiting for first syscall");
     panda_free_args(plugin_args);
 
     // Load kernel offsets.
     if (read_kernelinfo(kconf_file, kconf_group, &ki) != 0) {
         LOG_ERROR("Failed to read group %s from %s.", kconf_group, kconf_file);
-		LOG_INFO("Attempting to download file from panda-re.mit.edu");
-		if (download_kernelinfo(kconf_file, kconf_group) == 0) {
-			LOG_ERROR("Downloaded file from panda-re.mit.edu");
-			if (read_kernelinfo(kconf_file, kconf_group, &ki) != 0) {
-				LOG_ERROR("Downloaded file didn't contain correct group");
-        		goto error;
-			}
-		}else{
-			LOG_ERROR("Download failed. No such file.");
-			goto error;
-		}
+        LOG_INFO("Attempting to download file from panda-re.mit.edu");
+        if (download_kernelinfo(kconf_file, kconf_group) == 0) {
+            LOG_ERROR("Downloaded file from panda-re.mit.edu");
+            if (read_kernelinfo(kconf_file, kconf_group, &ki) != 0) {
+              LOG_ERROR("Downloaded file didn't contain correct group");
+              goto error;
+            }
+        }else{
+          LOG_ERROR("Download failed. No such file.");
+            // Log all valid groups in your kconf file - user might've just specified the argument wrong
+            printf("Valid kconf_groups in %s:\n", kconf_file);
+            list_kernelinfo_groups(kconf_file);
+            printf("\n");
+            goto error;
+        }
     }
     LOG_INFO("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
     g_free(kconf_file);
