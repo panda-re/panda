@@ -23,6 +23,7 @@ from .asyncthread import AsyncThread
 from .images import qcows
 from .plog import PLogReader
 from .utils import progress, make_iso, debug
+from .plugin_list import plugin_list
 
 # Mixins to extend Panda class functionality
 from .libpanda_mixins   import libpanda_mixins
@@ -49,7 +50,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.os = os_version
         self.os_type = os
         self.qcow = qcow
-        self.plugins = {}
+        self.plugins = plugin_list(self)
         self.expect_prompt = expect_prompt
 
         if isinstance(extra_args, str): # Extra args can be a string or array
@@ -581,7 +582,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         '''
 
         if plugin_name not in self.plugins: # Could automatically load it?
-            raise ValueError(f"PPP canot use unknown plugin '{plugin_name}' - Did you load it with panda.load_plugin(\"{plugin_name}\")?")
+            print(f"PPP automatically loaded plugin {plugin_name}")
 
         if not hasattr(self, "ppp_registered_cbs"):
             self.ppp_registered_cbs = []
