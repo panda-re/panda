@@ -189,6 +189,7 @@ extern "C" {
 #endif
 
 int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki);
+void list_kernelinfo_groups(gchar const *file);
 #ifdef __cplusplus
 }
 #endif

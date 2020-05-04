@@ -230,4 +230,27 @@ end:
 		return rval;
 }
 
+/*!
+ * @brief Print a list of valid groupnames in a kernelinfo file
+ */
+void list_kernelinfo_groups(gchar const *file) {
+    GKeyFile *keyfile;
+	gchar ** groups;
+	GError *gerr = NULL;
+	int idx = 0;
+	const char* fname = (file != NULL ? file : DEFAULT_KERNELINFO_FILE);
+
+	keyfile = g_key_file_new();
+	g_key_file_load_from_file (keyfile, fname, G_KEY_FILE_NONE, &gerr);
+	if (gerr != NULL) {
+		printf("error parsing %s\n", fname);
+		return;
+	}
+
+	groups = g_key_file_get_groups(keyfile, NULL);
+	while (groups[idx] != NULL) {
+		printf("\t%s\n", groups[idx]);
+		idx++;
+	}
+}
 /* vim:set tabstop=4 softtabstop=4 noexpandtab: */
