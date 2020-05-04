@@ -97,8 +97,6 @@ bool ppp_remove_cb_##cb_name(cb_name##_t fptr) {					\
   return found;														\
 }
 
-		
-
 #define PPP_CB_EXTERN(cb_name) \
 extern cb_name##_t ppp_##cb_name##_cb[PPP_MAX_CB]; \
 extern int ppp_##cb_name##_num_cb;
@@ -139,10 +137,5 @@ to add a callback to be run inside of plugin A.
     assert (add_cb != 0); \
     add_cb (cb_func);							\
   }
-
-#define PPP
-
-
-
 
 #endif // __PANDA_PLUGIN_PLUGIN_H_
