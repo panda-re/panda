@@ -18,10 +18,9 @@ panda.set_os_name("linux-32-debian:4.9.99")
 panda.load_plugin("callstack_instr", args={"stack_type": "asid"})
 panda.load_plugin("syscalls2")
 
-# At first execve, enable on_enter_svc callback
-@panda.ppp("syscalls2", "on_sys_execve_enter")
-def first_syscall(cpu, pc, fname_ptr, argv_ptr, envp):
-    #TODO: change to run on first syscall, not just execve?
+# At first syscall, guest is booted - enable on_enter_svc callback
+@panda.ppp("syscalls2", "on_all_sys_enter")
+def first_syscall(cpu, pc, callno):
     panda.enable_callback('enter_svc')
     #panda.disable_callback("first_syscall") # XXX: can't disable because it's a PPP fn (Issue #644)
 

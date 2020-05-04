@@ -965,6 +965,8 @@ typedef union panda_cb {
 
     void (*on_enter_svc)(CPUState *cpu);
 
+    int32_t (*before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request);
+
     /* Dummy union member.
 
        This union only contains function pointers.
@@ -974,8 +976,6 @@ typedef union panda_cb {
        However, cbaddr provides neutral semantics for the comparisson.
     */
 
-
-    int32_t (*before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request);
 
     void (*cbaddr)(void);
 } panda_cb;
