@@ -185,7 +185,6 @@ bool init_plugin(void *self) {
                                             "hex addr of main");
     if (start_main_str != nullptr) {
         start_main = strtoul(start_main_str, NULL, 16);
-        //        printf ("edge coverage for just one program: start_main = 0x%" PRIx64 "\n", (uint64_t) start_main);
         printf ("edge coverage for just one program: start_main = 0x" TARGET_FMT_lx "\n", start_main);
     }
     else 
@@ -273,8 +272,6 @@ void uninit_plugin(void *) {
             for (auto edge : n_edge) {
                 pc_list[j++] = edge; 
             }
-            if (pc_list[0] == 0x7ffff7ad9810 && pc_list[1] == 0x7ffff7ad9810)
-                printf ("Blah blah blah\n");
 
             e[i]->pc = pc_list;
             e[i]->n_pc = n_edge.size();
