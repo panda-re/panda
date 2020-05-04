@@ -24,23 +24,15 @@ def first_syscall(cpu, pc, callno):
     panda.enable_callback('enter_svc')
     #panda.disable_callback("first_syscall") # XXX: can't disable because it's a PPP fn (Issue #644)
 
+current_task = None
 @panda.cb_on_enter_svc(enabled=False)
 def enter_svc(cpu):
     '''
-    whenever we go into kernel, run a callback on our next basic block
-    to try getting thread info
+    When we siwtch into SVC (kernel) mode, grab the kernel
+    stack pointer and use it to find the current task struct
+    Print the task pointer if it changed
     '''
-    global bbe_ctr
-    panda.enable_callback("bbe")
-
-current_task = None
-@panda.cb_before_block_exec(enabled=False)
-def bbe(cpu, tb):
-    '''
-    For the first block that runs in the kernel, grab the current task struct
-    the kernel stack pointer and use it to find the current task struct
-    '''
-    panda.disable_callback("bbe")
+    panda.disable_callback("enter_svc")
     global current_task
 
     sp = cpu.env_ptr.regs[R_SP]

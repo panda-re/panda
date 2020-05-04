@@ -180,8 +180,6 @@ static void arm_cpu_reset(CPUState *s)
     /* SVC mode with interrupts disabled.  */
     env->uncached_cpsr = ARM_CPU_MODE_SVC;
 
-    panda_callbacks_on_enter_svc(s);
-
     env->daif = PSTATE_D | PSTATE_A | PSTATE_I | PSTATE_F;
 
     if (arm_feature(env, ARM_FEATURE_M)) {
@@ -251,6 +249,9 @@ static void arm_cpu_reset(CPUState *s)
 
     hw_breakpoint_update_all(cpu);
     hw_watchpoint_update_all(cpu);
+
+    // At CPU reset, we're in SVC mode
+    panda_callbacks_on_enter_svc(s);
 }
 
 bool arm_cpu_exec_interrupt(CPUState *cs, int interrupt_request)

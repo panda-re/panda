@@ -6624,7 +6624,6 @@ static void arm_cpu_do_interrupt_aarch32(CPUState *cs)
         new_mode = ARM_CPU_MODE_SVC;
         addr = 0x08;
         mask = CPSR_I;
-        panda_callbacks_on_enter_svc(cs);
         /* The PC already points to the next instruction.  */
         offset = 0;
         break;
@@ -6741,6 +6740,10 @@ static void arm_cpu_do_interrupt_aarch32(CPUState *cs)
     }
     env->regs[14] = env->regs[15] + offset;
     env->regs[15] = addr;
+
+    if (cs->exception_index == EXCP_SWI) { // SWI forced us into SVC mode
+        panda_callbacks_on_enter_svc(cs);
+    }
 }
 
 /* Handle exception entry to a target EL which is using AArch64 */
