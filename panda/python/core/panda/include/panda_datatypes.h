@@ -960,6 +960,7 @@ typedef union panda_cb {
        member could be used instead.
        However, cbaddr provides neutral semantics for the comparisson.
     */
+
     void (*cbaddr)(void);
 } panda_cb;
 

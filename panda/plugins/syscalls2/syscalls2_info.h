@@ -9,6 +9,11 @@
 #include <cstdint>
 #endif
 
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+
 /**
  * @brief Meta-information about system calls.
  */
@@ -43,6 +48,7 @@ typedef struct {
     uint8_t *argsz;
     bool noreturn;
 } syscall_info_t;
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 #if defined(__cplusplus)
 extern "C" {
