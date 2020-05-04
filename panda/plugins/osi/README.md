@@ -29,6 +29,10 @@ The key is that you can swap out the bottom layer to support a new operating sys
   };
   ```
 
+## Plugin Arguments
+
+* `disable-autoload`: bool, defaults to false. OSI will try to automatically load an OSI provider plugin unless this set. Useful if you need to initialize an OSI provider plugin with non-default arguments.
+
 ## Dependencies
 Depends on some OS-specific plugin to register callbacks that implement the various APIs OSI exposes. Otherwise, any call to OSI will simply fail to return any useful data, as the OSI plugin itself does not know anything about specific operating systems.
 

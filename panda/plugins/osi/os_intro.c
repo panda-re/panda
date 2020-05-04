@@ -127,6 +127,15 @@ bool init_plugin(void *self) {
     // No os supplied on command line? E.g. -os linux-32-ubuntu:4.4.0-130-generic
     assert (!(panda_os_familyno == OS_UNKNOWN));
 
+    bool disable_os_autoload;
+    panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
+    disable_os_autoload = panda_parse_bool_opt(plugin_args, "disable-autoload", "When set, OSI won't automatically load osi_linux/wintrospection");
+    panda_free_args(plugin_args);
+
+    if (disable_os_autoload) {
+        return true;
+    }
+
     // figure out what kind of os introspection is needed and grab it? 
     if (panda_os_familyno == OS_LINUX) {
         // sadly, all of this is to find kernelinfo.conf file
