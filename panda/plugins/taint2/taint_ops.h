@@ -109,7 +109,7 @@ void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
                   ...);
 
 void taint_host_copy(uint64_t env_ptr, uint64_t addr, Shad *llv,
-                     uint64_t llv_offset, Shad *greg, Shad *gspec,
+                     uint64_t llv_offset, Shad *greg, Shad *gspec, Shad *mem,
                      uint64_t size, uint64_t labels_per_reg, bool is_store);
 
 void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
