@@ -47,11 +47,13 @@ in the list at the right point.
 extern "C" { \
 void ppp_add_cb_##cb_name(cb_name##_t fptr) ;				\
 void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) ; \
+bool ppp_remove_cb_##cb_name(cb_name##_t fptr) ; \
 }
 #else
 #define PPP_PROT_REG_CB(cb_name) \
 void ppp_add_cb_##cb_name(cb_name##_t fptr) ;				\
-void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) ;
+void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) ; \
+bool ppp_remove_cb_##cb_name(cb_name##_t fptr) ;
 #endif
 
 /*
@@ -79,7 +81,23 @@ void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) {	\
   assert (slot_num < PPP_MAX_CB);					\
   ppp_##cb_name##_cb[slot_num] = fptr;					\
   ppp_##cb_name##_num_cb = MAX(slot_num, ppp_##cb_name##_num_cb);	\
-}									
+}																	\
+bool ppp_remove_cb_##cb_name(cb_name##_t fptr) {					\
+  int i = 0;														\
+  bool found = false;												\
+  for (; i<MIN(PPP_MAX_CB,ppp_##cb_name##_num_cb); i++){			\
+	if (!found && fptr == ppp_##cb_name##_cb[i]) {					\
+		found = true;												\
+		ppp_##cb_name##_num_cb--;									\
+	}																\
+	if (found && i < PPP_MAX_CB -2 ){ 								\
+		ppp_##cb_name##_cb[i] = ppp_##cb_name##_cb[i+1];			\
+	}																\
+  }																	\
+  return found;														\
+}
+
+		
 
 #define PPP_CB_EXTERN(cb_name) \
 extern cb_name##_t ppp_##cb_name##_cb[PPP_MAX_CB]; \
@@ -121,6 +139,8 @@ to add a callback to be run inside of plugin A.
     assert (add_cb != 0); \
     add_cb (cb_func);							\
   }
+
+#define PPP
 
 
 
