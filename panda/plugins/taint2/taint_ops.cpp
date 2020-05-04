@@ -54,6 +54,12 @@ extern bool detaint_cb0_bytes;
 void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size);
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);
 
+static inline bool is_ram_ptr(uint64_t addr)
+{
+    return RAM_ADDR_INVALID !=
+           qemu_ram_addr_from_host(reinterpret_cast<void *>(addr));
+}
+
 // Remove the taint marker from any bytes whose control mask bits go to 0.
 // A 0 control mask bit means that bit does not impact the value in the byte (or
 // impacts it in an irreversible fashion, so they gave up on calculating the
@@ -444,32 +450,44 @@ bool is_irrelevant(int64_t offset) {
 
 // This should only be called on loads/stores from CPUArchState.
 void taint_host_copy(uint64_t env_ptr, uint64_t addr, Shad *llv,
-                     uint64_t llv_offset, Shad *greg, Shad *gspec,
+                     uint64_t llv_offset, Shad *greg, Shad *gspec, Shad *mem,
                      uint64_t size, uint64_t labels_per_reg, bool is_store)
 {
+    Shad *shad_src = NULL;
+    uint64_t src = UINT64_MAX;
+    Shad *shad_dest = NULL;
+    uint64_t dest = UINT64_MAX;
+
     int64_t offset = addr - env_ptr;
-    if (is_irrelevant(offset)) {
+
+    if (true == is_ram_ptr(addr)) {
+        ram_addr_t ram_addr;
+        RAMBlock *ram_block = qemu_ram_block_from_host(
+            reinterpret_cast<void *>(addr), false, &ram_addr);
+        assert(NULL != ram_block);
+
+        shad_src = is_store ? llv : mem;
+        src = is_store ? llv_offset : ram_addr;
+        shad_dest = is_store ? mem : llv;
+        dest = is_store ? ram_addr : llv_offset;
+    } else if (is_irrelevant(offset)) {
         // Irrelevant
         taint_log("hostcopy: irrelevant\n");
         return;
+    } else {
+        Shad *state_shad = NULL;
+        uint64_t state_addr = 0;
+
+        find_offset(greg, gspec, (uint64_t)offset, labels_per_reg, &state_shad,
+                    &state_addr);
+
+        shad_src = is_store ? llv : state_shad;
+        src = is_store ? llv_offset : state_addr;
+        shad_dest = is_store ? state_shad : llv;
+        dest = is_store ? state_addr : llv_offset;
     }
-
-    Shad *state_shad = NULL;
-    uint64_t state_addr = 0;
-
-    find_offset(greg, gspec, (uint64_t)offset, labels_per_reg,
-            &state_shad, &state_addr);
-
-    Shad *shad_src = is_store ? llv : state_shad;
-    uint64_t src = is_store ? llv_offset : state_addr;
-    Shad *shad_dest = is_store ? state_shad : llv;
-    uint64_t dest = is_store ? state_addr : llv_offset;
-
-    //taint_log("taint_host_copy\n");
-    //taint_log("\tenv: %lx, addr: %lx, llv: %lx, offset: %lx\n", env_ptr, addr, llv_ptr, llv_offset);
-    //taint_log("\tgreg: %lx, gspec: %lx, size: %lx, is_store: %u\n", greg_ptr, gspec_ptr, size, is_store);
-    taint_log("hostcopy: %s[%lx+%lx] <- %s[%lx] (offset %lx) ",
-            shad_dest->name(), dest, size, shad_src->name(), src, offset);
+    taint_log("hostcopy: %s[%lx+%lx] <- %s[%lx+%lx] ", shad_dest->name(), dest,
+              size, shad_src->name(), src, size);
     taint_log_labels(shad_src, src, size);
     Shad::copy(shad_dest, dest, shad_src, src, size);
 }

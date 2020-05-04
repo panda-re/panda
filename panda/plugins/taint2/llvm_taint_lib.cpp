@@ -1094,7 +1094,7 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
     } else {
         vector<Value *> args{
             const_uint64_ptr(ctx, first_cpu->env_ptr), ptrToInt(ptr, I),
-            llvConst, constSlot(val), grvConst, gsvConst,
+            llvConst, constSlot(val), grvConst, gsvConst, memConst,
             const_uint64(ctx, size), const_uint64(ctx, sizeof(target_ulong)),
             ConstantInt::get(llvm::Type::getInt1Ty(ctx), isStore)
         };
