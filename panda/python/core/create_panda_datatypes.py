@@ -244,7 +244,11 @@ define_clean_header(ffi, "{inc}/callstack_instr.h")
 
 #define_clean_header(ffi, "{inc}/panda_qemu_support.h")
 define_clean_header(ffi, "{inc}/panda_datatypes.h")
-""".format(inc=INCLUDE_DIR_PYP))
+define_clean_header(ffi, "{inc}/breakpoints.h")
+""".format(inc=INCLUDE_DIR_PYP,
+        GLOBAL_MAX_SYSCALL_ARG_SIZE=64, # It's sizeof(uint64_t) so that's always 64
+        GLOBAL_MAX_SYSCALL_ARGS=17 # Constant from syscalls2/generated/syscalls_ext_typedefs.h
+        ))
 
         for pypanda_header in pypanda_headers:
             pdty.write('define_clean_header(ffi, "%s")\n' % pypanda_header)
@@ -381,6 +385,7 @@ pcb.init : pandacbtype("init", -1),
         #      here without redefining things. Necessary for something? cb-defs?
         pdth.write("#define MAX_PANDA_PLUGINS 16\n")
         pdth.write("#define MAX_PANDA_PLUGIN_ARGS 32\n")
+
 
         for filename in ["callbacks/cb-defs.h",
                         f"{PLUGINS_DIR}/osi_linux/utils/kernelinfo/kernelinfo.h",
