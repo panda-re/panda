@@ -34,10 +34,11 @@ from .callback_mixins   import callback_mixins
 from .taint_mixins      import taint_mixins
 from .volatility_mixins import volatility_mixins
 from .pyperiph_mixins   import pyperipheral_mixins
+from .gdb_mixins        import gdb_mixins
 
 import pdb
 
-class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins, pyperipheral_mixins):
+class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins, pyperipheral_mixins, gdb_mixins):
     def __init__(self, arch="i386", mem="128M",
             expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
             os_version=None,
@@ -477,8 +478,12 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
 
     def current_sp(self, cpustate): # under construction
         if self.arch == "i386":
-            from x86.helper import R_ESP
+            # XXX see far more complex logic in panda/include/panda/common.h
+            from panda.x86.helper import R_ESP
             return cpustate.env_ptr.regs[R_ESP]
+        elif self.arch == "arm":
+            from panda.arm.helper import R_SP
+            return cpustate.env_ptr.regs[R_SP]
         else:
             raise NotImplemented("current_sp doesn't yet support arch {}".format(self.arch))
 
