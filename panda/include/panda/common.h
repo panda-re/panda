@@ -109,7 +109,7 @@ static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
     int l;
     int ret;
     hwaddr phys_addr;
-    target_ulong page;
+    vaddr page;
 
     while (len > 0) {
         page = addr & TARGET_PAGE_MASK;
