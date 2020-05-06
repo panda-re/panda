@@ -32,3 +32,8 @@ class osi_mixins():
         maps = self.plugins['osi'].get_mappings(cpu, current)
         map_len = self.garray_len(maps)
         return GArrayIterator(self.plugins['osi'].get_one_module, maps, map_len)
+
+    def get_processes(self, cpu):
+        processes = self.plugins['osi'].get_processes(cpu)
+        processes_len = self.garray_len(processes)
+        return GArrayIterator(self.plugins['osi'].get_one_proc, processes, processes_len)
