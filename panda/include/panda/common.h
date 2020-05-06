@@ -102,7 +102,24 @@ static inline hwaddr panda_virt_to_phys(CPUState *env, target_ulong addr) {
 }
 
 /**
+ * @brief If required for the target architecture, enter into a high-privilege mode in
+ * order to conduct some memory access. Returns true if a switch into high-privilege
+ * mode has been made. A NO-OP on systems where such changes are unnecessary.
+ */
+bool enter_priv(CPUState* cpu);
+
+/**
+ * @brief Revert the guest to the privilege mode it was in prior to the last call
+ * to enter_priv(). A NO-OP for architectures where enter_prov is a NO-OP.
+ */
+void exit_priv(CPUState* cpu);
+
+
+/**
  * @brief Reads/writes data into/from \p buf from/to guest virtual address \p addr.
+ *
+ * For ARM we switch CPSR into SVC (privileged) mode if the access fails. The mode is always reset
+ * before we return.
  */
 static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
                                           uint8_t *buf, int len, bool is_write) {
@@ -110,27 +127,46 @@ static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
     int ret;
     hwaddr phys_addr;
     target_ulong page;
+    bool changed_priv = false;
 
     while (len > 0) {
         page = addr & TARGET_PAGE_MASK;
         phys_addr = cpu_get_phys_page_debug(env, page);
-        if (phys_addr == -1) {
-            // no physical page mapped
+        // If we failed and we aren't in priv mode and we CAN go into it, toggle modes and try again
+        if (phys_addr == -1  && !changed_priv && (changed_priv=enter_priv(env))) {
+            phys_addr = cpu_get_phys_page_debug(env, page);
+            //if (phys_addr != -1) printf("[panda dbg] virt->phys failed until privileged mode\n");
+        }
+
+        // No physical page mapped, even after potential privileged switch, abort
+        if (phys_addr == -1)  {
+            if (changed_priv) exit_priv(env); // Cleanup mode if necessary
             return -1;
         }
+
         l = (page + TARGET_PAGE_SIZE) - addr;
         if (l > len) {
             l = len;
         }
         phys_addr += (addr & ~TARGET_PAGE_MASK);
         ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
+
+        // Failed and privileged mode wasn't already enabled - enable priv and retry if we can
+        if (ret != MEMTX_OK && !changed_priv && (changed_priv = enter_priv(env))) {
+            ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
+            //if (ret == MEMTX_OK) printf("[panda dbg] accessing phys failed until privileged mode\n");
+        }
+        // Still failed, even after potential privileged switch, abort
         if (ret != MEMTX_OK) {
+            if (changed_priv) exit_priv(env); // Cleanup mode if necessary
             return ret;
         }
+
         len -= l;
         buf += l;
         addr += l;
     }
+    if (changed_priv) exit_priv(env); // Clear privileged mode if necessary
     return 0;
 }
 
