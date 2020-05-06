@@ -666,42 +666,6 @@ error:
     return false;
 }
 
-#ifdef TARGET_ARM
-#define CPSR_M (0x1fU)
-#define ARM_CPU_MODE_SVC 0x13
-static int saved_cpsr = -1;
-static int og_r13 = -1;
-// Force the guest into supervisor mode by directly modifying its cpsr and r13
-// See https://developer.arm.com/docs/ddi0595/b/aarch32-system-registers/cpsr
-void enter_svc(CPUState* cpu) {
-    CPUARMState* env = ((CPUARMState*)cpu->env_ptr);
-
-    saved_cpsr = env->uncached_cpsr;
-    env->uncached_cpsr = (env->uncached_cpsr) | (ARM_CPU_MODE_SVC & CPSR_M); // 13 is SVC
-
-    og_r13 = env->regs[13];
-    // If we're not already in SVC mode, load the saved SVC r13 from banked_r13[1]
-    if ((((CPUARMState*)cpu->env_ptr)->uncached_cpsr & CPSR_M) != ARM_CPU_MODE_SVC) {
-        env->regs[13] = env->banked_r13[ /*SVC_MODE=>*/ 1 ];
-    }
-}
-
-// return to whatever mode we were in previously (might be a NO-OP if we were in svc)
-// Assumes you've called enter_svc first
-void exit_svc(CPUState* cpu) {
-    assert(saved_cpsr != -1 && "Must call enter_svc before reverting with exit_svc");
-    CPUARMState* env = ((CPUARMState*)cpu->env_ptr);
-
-    env->uncached_cpsr = saved_cpsr;
-    env->regs[13] = og_r13;
-}
-
-
-#else
-void enter_svc(CPUState* cpu) {};
-void exit_svc(CPUState* cpu) {};
-#endif
-
 /**
  * @brief Plugin cleanup.
  */

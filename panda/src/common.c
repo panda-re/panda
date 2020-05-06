@@ -223,4 +223,53 @@ MemoryRegion* panda_find_ram(void) {
 
     return ram;
 }
+
+#ifdef TARGET_ARM
+#define CPSR_M (0x1fU)
+#define ARM_CPU_MODE_SVC 0x13
+static int saved_cpsr = -1;
+static int saved_r13 = -1;
+static bool in_fake_svc = false;
+
+// Force the guest into supervisor mode by directly modifying its cpsr and r13
+// See https://developer.arm.com/docs/ddi0595/b/aarch32-system-registers/cpsr
+bool enter_svc(CPUState* cpu) {
+    // XXX: should we also restore other banked regs like r_14?
+    CPUARMState* env = ((CPUARMState*)cpu->env_ptr);
+
+    saved_cpsr = env->uncached_cpsr;
+    env->uncached_cpsr = (env->uncached_cpsr) | (ARM_CPU_MODE_SVC & CPSR_M); // 13 is SVC
+    //printf("CLOBBERING CSPR FROM 0x%x -> 0x%x\n", saved_cpsr, env->uncached_cpsr);
+    assert(!in_fake_svc && "enter called when already entered");
+
+    saved_r13 = env->regs[13];
+    // If we're not already in SVC mode, load the saved SVC r13 from banked_r13[1]
+    if ((((CPUARMState*)cpu->env_ptr)->uncached_cpsr & CPSR_M) != ARM_CPU_MODE_SVC) {
+        env->regs[13] = env->banked_r13[ /*SVC_MODE=>*/ 1 ];
+    }
+    in_fake_svc = true;
+    return true;
+}
+
+// return to whatever mode we were in previously (might be a NO-OP if we were in svc)
+// Assumes you've called enter_svc first
+bool exit_svc(CPUState* cpu) {
+    //printf("RESTORING CSPR TO 0x%x\n", saved_cpsr);
+    assert(in_fake_svc && "exit called when not faked");
+
+    assert(saved_cpsr != -1 && "Must call enter_svc before reverting with exit_svc");
+    CPUARMState* env = ((CPUARMState*)cpu->env_ptr);
+
+    env->uncached_cpsr = saved_cpsr;
+    env->regs[13] = saved_r13;
+    in_fake_svc = false;
+    return true;
+}
+
+
+#else
+bool enter_svc(CPUState* cpu) {return false;};
+bool exit_svc(CPUState* cpu)  {return false;};
+#endif
+
 /* vim:set shiftwidth=4 ts=4 sts=4 et: */

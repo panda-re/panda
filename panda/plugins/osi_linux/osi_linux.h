@@ -30,10 +30,6 @@
 extern struct kernelinfo ki;
 extern struct KernelProfile const *kernel_profile;
 
-void enter_svc(CPUState* cpu);
-void exit_svc(CPUState* cpu);
-
-
 #if defined(__cplusplus)
 typedef enum : int8_t {
     ERROR_DEREF = -10,
@@ -54,7 +50,6 @@ struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, off_t offset)
         memset((uint8_t *)v, 0, sizeof(T));
         return struct_get_ret_t::ERROR_DEREF;
     }
-    enter_svc(cpu); // Only real on ARM - change CPSR so we can read anything
     struct_get_ret_t ret;
     switch(panda_virtual_memory_rw(cpu, ptr+offset, (uint8_t *)v, sizeof(T), 0)) {
         case -1:
@@ -65,7 +60,6 @@ struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, off_t offset)
             ret = struct_get_ret_t::SUCCESS;
             break;
     }
-    exit_svc(cpu); // Only real on ARM - restore CPSR to old value
     return ret;
 }
 

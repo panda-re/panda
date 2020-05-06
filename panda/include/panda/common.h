@@ -101,8 +101,15 @@ static inline hwaddr panda_virt_to_phys(CPUState *env, target_ulong addr) {
     return phys_addr;
 }
 
+// Return TRUE if the guest can change svc mode
+bool enter_svc(CPUState* cpu);
+bool exit_svc(CPUState* cpu);
+
+
 /**
  * @brief Reads/writes data into/from \p buf from/to guest virtual address \p addr.
+ *
+ * For ARM we switch CPSR into SVC mode if the access fails. The mode is always reset before returnning.
  */
 static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
                                           uint8_t *buf, int len, bool is_write) {
@@ -110,27 +117,46 @@ static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
     int ret;
     hwaddr phys_addr;
     target_ulong page;
+    bool changed_svc = false;
 
     while (len > 0) {
         page = addr & TARGET_PAGE_MASK;
         phys_addr = cpu_get_phys_page_debug(env, page);
-        if (phys_addr == -1) {
-            // no physical page mapped
+        // If we failed and we aren't in svc mode and we CAN go into it, toggle modes and try again
+        if (phys_addr == -1  && !changed_svc && (changed_svc=enter_svc(env))) {
+            phys_addr = cpu_get_phys_page_debug(env, page);
+            //if (phys_addr != -1) printf("[panda dbg] virt->phys failed until SVC mode\n");
+        }
+
+        // No physical page mapped, even after potential SVC switch, abort
+        if (phys_addr == -1)  {
+            if (changed_svc) exit_svc(env); // Cleanup mode if necessary
             return -1;
         }
+
         l = (page + TARGET_PAGE_SIZE) - addr;
         if (l > len) {
             l = len;
         }
         phys_addr += (addr & ~TARGET_PAGE_MASK);
         ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
+
+        // Failed and SVC wasn't already enabled - enable SVC and retry if we can
+        if (ret != MEMTX_OK && !changed_svc && (changed_svc = enter_svc(env))) {
+            ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
+            //if (ret == MEMTX_OK) printf("[panda dbg] accessing phys failed until SVC mode\n");
+        }
+        // Still failed, even after potential SVC switch, abort
         if (ret != MEMTX_OK) {
+            if (changed_svc) exit_svc(env); // Cleanup mode if necessary
             return ret;
         }
+
         len -= l;
         buf += l;
         addr += l;
     }
+    if (changed_svc) exit_svc(env); // Clear SVC mode if necessary
     return 0;
 }
 
