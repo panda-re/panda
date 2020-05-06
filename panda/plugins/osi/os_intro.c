@@ -195,3 +195,10 @@ OsiModule* get_one_module(GArray *osimodules, unsigned int idx) {
     OsiModule *m = &g_array_index(osimodules, OsiModule, idx);
     return m;
 }
+
+// Helper function to get a single element. Should only be used with library mode
+// when g_array_index can't be used directly.
+OsiProc* get_one_proc(GArray *osiprocs, unsigned int idx) {
+    OsiProc *m = &g_array_index(osiprocs, OsiProc, idx);
+    return m;
+}
