@@ -147,7 +147,7 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
                      {ki.task.real_parent_offset, ki.task.pid_offset});
 
     // Convert asid to physical to be able to compare it with the pgd register.
-    p->asid = panda_virt_to_phys(cpu, p->asid);
+    p->asid = p->asid ? panda_virt_to_phys(cpu, p->asid) : (target_ulong) NULL;
     p->taskd = kernel_profile->get_group_leader(cpu, task_addr);
     p->name = get_name(cpu, task_addr, p->name);
     p->pid = get_tgid(cpu, task_addr);
@@ -665,6 +665,42 @@ bool init_plugin(void *self) {
 error:
     return false;
 }
+
+#ifdef TARGET_ARM
+#define CPSR_M (0x1fU)
+#define ARM_CPU_MODE_SVC 0x13
+static int saved_cpsr = -1;
+static int og_r13 = -1;
+// Force the guest into supervisor mode by directly modifying its cpsr and r13
+// See https://developer.arm.com/docs/ddi0595/b/aarch32-system-registers/cpsr
+void enter_svc(CPUState* cpu) {
+    CPUARMState* env = ((CPUARMState*)cpu->env_ptr);
+
+    saved_cpsr = env->uncached_cpsr;
+    env->uncached_cpsr = (env->uncached_cpsr) | (ARM_CPU_MODE_SVC & CPSR_M); // 13 is SVC
+
+    og_r13 = env->regs[13];
+    // If we're not already in SVC mode, load the saved SVC r13 from banked_r13[1]
+    if ((((CPUARMState*)cpu->env_ptr)->uncached_cpsr & CPSR_M) != ARM_CPU_MODE_SVC) {
+        env->regs[13] = env->banked_r13[ /*SVC_MODE=>*/ 1 ];
+    }
+}
+
+// return to whatever mode we were in previously (might be a NO-OP if we were in svc)
+// Assumes you've called enter_svc first
+void exit_svc(CPUState* cpu) {
+    assert(saved_cpsr != -1 && "Must call enter_svc before reverting with exit_svc");
+    CPUARMState* env = ((CPUARMState*)cpu->env_ptr);
+
+    env->uncached_cpsr = saved_cpsr;
+    env->regs[13] = og_r13;
+}
+
+
+#else
+void enter_svc(CPUState* cpu) {};
+void exit_svc(CPUState* cpu) {};
+#endif
 
 /**
  * @brief Plugin cleanup.

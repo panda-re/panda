@@ -1,5 +1,18 @@
 #include "osi_linux.h"
 #include "default_profile.h"
+#ifdef TARGET_ARM
+/**
+ * @brief Returns the current kernel stack pointer for ARM guest
+ */
+target_ptr_t get_ksp (CPUState* cpu) {
+    if ((((CPUARMState*)cpu->env_ptr)->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC) {
+        return ((CPUARMState*)cpu->env_ptr)->regs[13];
+    }else{
+        return ((CPUARMState*)cpu->env_ptr)->banked_r13[1];
+    }
+}
+#endif
+
 
 
 /**
@@ -11,24 +24,24 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
     target_ptr_t current_task_addr;
     target_ptr_t ts; // Returned task struct
 #ifdef TARGET_ARM
-    // Read banked R13 for SVC mode to get the kernel SP (1=>SVC bank from target/arm/internals.h)
-    unsigned long kernel_sp =  ((CPUARMState*)cpu->env_ptr)->banked_r13[1];
+    target_ptr_t kernel_sp = get_ksp(cpu);
 
     // XXX: This should use THREADINFO_MASK but that's hardcoded and wrong for my test system
+    printf("0x%x ", kernel_sp);
     target_ptr_t task_thread_info = kernel_sp & ~(0x2000 -1);
+    printf("=> masks to 0x%x ", task_thread_info);
 
     current_task_addr=task_thread_info+0xC;
 #else
     current_task_addr = ki.task.current_task_addr;
 #endif
-    if (current_task_addr ==(target_ptr_t)NULL) {
-        printf("[OSI PROFILE] current task is NULL\n");
-        return (target_ptr_t)NULL;
-    }
     err = struct_get(cpu, &ts, current_task_addr, ki.task.per_cpu_offset_0_addr);
     if (err != struct_get_ret_t::SUCCESS) {
-        printf("[OSI_PROFILE] failed to get current task struct\n");
-        return (target_ptr_t)NULL;
+        printf("fail\n");
+        ts = (target_ptr_t)NULL;
+
+    }else{
+        printf("success\n");
     }
     return ts;
 }
@@ -42,7 +55,7 @@ target_ptr_t default_get_task_struct_next(CPUState *cpu, target_ptr_t task_struc
     target_ptr_t tasks;
     err = struct_get(cpu, &tasks, task_struct, ki.task.tasks_offset);
     if (err != struct_get_ret_t::SUCCESS) {
-        printf("[OSI PROFILE] failed to get next task\n");
+        //printf("[OSI PROFILE] failed to get next task\n");
         return (target_ptr_t)NULL;
     }
     return tasks-ki.task.tasks_offset;
@@ -58,7 +71,7 @@ target_ptr_t default_get_group_leader(CPUState *cpu, target_ptr_t ts)
 
     err = struct_get(cpu, &group_leader, ts, ki.task.group_leader_offset);
     if (err != struct_get_ret_t::SUCCESS) {
-        printf("[OSI PROFILE] failed to get group leader for task\n");
+        //printf("[OSI PROFILE] failed to get group leader for task\n");
         return (target_ptr_t)NULL;
     }
     return group_leader;

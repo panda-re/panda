@@ -41,10 +41,10 @@ def test_cb(cpu, *args):
 def test_execve_enter(cpu, pc, *args):
     proc = panda.plugins['osi'].get_current_process(cpu)
     if proc == ffi.NULL:
-        print(f"OSI failure in execve_enter at pc=0x{panda.current_pc(cpu)}, kernel=", panda.in_kernel(cpu))
+        print(f"OSI failure in execve_enter at pc=0x{panda.current_pc(cpu):x}, kernel=", panda.in_kernel(cpu))
         panda.enable_callback("next_bb_break")
     else:
-        print(f"OSI success in execve_enter, process {ffi.string(proc.name)}")
+        print(f"OSI success in execve_enter, process {ffi.string(proc.name) if proc.name != ffi.NULL else 'null'}")
 
 
 #@panda.ppp("syscalls2", "on_sys_close_enter")
@@ -54,7 +54,7 @@ def test_close(cpu, pc, fd):
     '''
     proc = panda.plugins['osi'].get_current_process(cpu)
     if proc == ffi.NULL:
-        print(f"CLOSE_ENTER had OSI failure, pc=0x{panda.current_pc(cpu)} kernel=", panda.in_kernel(cpu))
+        print(f"CLOSE_ENTER had OSI failure, pc=0x{panda.current_pc(cpu):x} kernel=", panda.in_kernel(cpu))
         panda.enable_callback("next_bb_break")
     else:
         print(f"Process {ffi.string(proc.name)} has fd {fd} backed by:", ffi.string(panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, fd)))
@@ -80,7 +80,8 @@ def pstree(cpu):
         procs[proc.pid] = (ffi.string(proc.name).decode('utf8'), proc.ppid)
 
     if len(procs):
-        _print_procs(procs, 0)
+        #_print_procs(procs, 0)
+        print("Success, found procs")
     else:
         print("Error getting processes")
 
@@ -100,10 +101,9 @@ def next_bb_break(cpu, tb):
 
     proc = panda.plugins['osi'].get_current_process(cpu)
     if proc != ffi.NULL:
-        print(f"Process {ffi.string(proc.name)} fd1:", ffi.string(panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, 1)))
-
-
-        print("\n")
+        fd1 = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, 1)
+        fd_str = ffi.string(fd1) if fd1 != ffi.NULL else "unknown"
+        print(f"Process {ffi.string(proc.name) if proc.name != ffi.NULL else 'unknown'} fd1: {fd_str}\n")
         return False
 
     #print("BREAKPOINT")
