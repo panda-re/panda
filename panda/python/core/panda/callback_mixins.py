@@ -51,6 +51,8 @@ class callback_mixins():
                 except Exception as e:
                     self.end_analysis()
                     print("\n" + "--"*30 + f"\n\nException in callback `{fun.__name__}`: {e}\n")
+                    import traceback
+                    traceback.print_exc()
                     self.exception = e # XXX: We can't raise here or exn won't fully be printed. Instead, we print it in check_crashed()
                     return # XXX: Some callbacks don't expect returns, but most do. If we don't return we might trigger a separate exn and lose ours (occasionally)
                     # If we return the wrong type, we lose the original exn (TODO)
