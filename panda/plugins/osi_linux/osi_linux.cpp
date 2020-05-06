@@ -18,6 +18,7 @@
 #include "osi/os_intro.h"
 #include "utils/kernelinfo/kernelinfo.h"
 #include "osi_linux.h"
+#include "syscalls2/syscalls_ext_typedefs.h"
 
 #include "default_profile.h"
 #include "kernel_2_4_x_profile.h"
@@ -30,6 +31,7 @@
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
+void first_syscall(CPUState *cpu, target_ulong pc, target_ulong callno);
 #include "osi_linux_int_fns.h"
 }
 
@@ -43,6 +45,8 @@ void on_get_current_thread(CPUState *env, OsiThread *t);
 
 struct kernelinfo ki;
 struct KernelProfile const *kernel_profile;
+
+static bool load_now;
 
 /* ******************************************************************
  Helpers
@@ -211,6 +215,10 @@ void fill_osithread(CPUState *env, OsiThread *t,
  *
  */
 void on_get_processes(CPUState *env, GArray **out) {
+    if (!load_now) {
+        out = NULL;
+        return;
+    }
     // instantiate and call function from get_process_info template
     get_process_info<>(env, out, fill_osiproc, free_osiproc_contents);
 }
@@ -219,6 +227,10 @@ void on_get_processes(CPUState *env, GArray **out) {
  * @brief PPP callback to retrieve process handles from the running OS.
  */
 void on_get_process_handles(CPUState *env, GArray **out) {
+    if (!load_now) {
+        out = NULL;
+        return;
+    }
     // instantiate and call function from get_process_info template
     get_process_info<>(env, out, fill_osiprochandle, free_osiprochandle_contents);
 }
@@ -227,6 +239,11 @@ void on_get_process_handles(CPUState *env, GArray **out) {
  * @brief PPP callback to retrieve info about the currently running process.
  */
 void on_get_current_process(CPUState *env, OsiProc **out) {
+    if (!load_now) {
+        printf("BAIL\n");
+        out = NULL;
+        return;
+    }
     static target_ptr_t last_ts = 0x0;
     static target_ptr_t cached_taskd = 0x0;
     static target_ptr_t cached_asid = 0x0;
@@ -271,6 +288,10 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
  * @brief PPP callback to the handle of the currently running process.
  */
 void on_get_current_process_handle(CPUState *env, OsiProcHandle **out) {
+    if (!load_now) {
+        out = NULL;
+        return;
+    }
     OsiProcHandle *p = NULL;
     target_ptr_t ts = kernel_profile->get_current_task_struct(env);
     if (ts) {
@@ -285,6 +306,10 @@ void on_get_current_process_handle(CPUState *env, OsiProcHandle **out) {
  * handle.
  */
 void on_get_process(CPUState *env, const OsiProcHandle *h, OsiProc **out) {
+    if (!load_now) {
+        out = NULL;
+        return;
+    }
     OsiProc *p = NULL;
     if (h != NULL && h->taskd != (target_ptr_t)NULL) {
         p = (OsiProc *)g_malloc(sizeof(OsiProc));
@@ -303,6 +328,10 @@ void on_get_process(CPUState *env, const OsiProcHandle *h, OsiProc **out) {
  * @todo Remove duplicates from results.
  */
 void on_get_mappings(CPUState *env, OsiProc *p, GArray **out) {
+    if (!load_now) {
+        out = NULL;
+        return;
+    }
     OsiModule m;
     target_ptr_t vma_first, vma_current;
 
@@ -340,6 +369,10 @@ void on_get_current_thread(CPUState *env, OsiThread **out) {
     static target_ptr_t last_ts = 0x0;
     static target_pid_t cached_tid = 0;
     static target_pid_t cached_pid = 0;
+    if (!load_now) {
+        out = NULL;
+        return;
+    }
 
     OsiThread *t = NULL;
     target_ptr_t ts = kernel_profile->get_current_task_struct(env);
@@ -362,6 +395,9 @@ void on_get_current_thread(CPUState *env, OsiThread **out) {
  * @brief PPP callback to retrieve the process pid from a handle.
  */
 void on_get_process_pid(CPUState *env, const OsiProcHandle *h, target_pid_t *pid) {
+    if (!load_now) {
+        return;
+    }
     if (h->taskd == NULL || h->taskd == (target_ptr_t)-1) {
         *pid = (target_pid_t)-1;
     } else {
@@ -374,6 +410,9 @@ void on_get_process_pid(CPUState *env, const OsiProcHandle *h, target_pid_t *pid
  */
 void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *ppid) {
     struct_get_ret_t UNUSED(err);
+    if (!load_now) {
+        return; // should we set something to NULL?
+    }
 
     if (h->taskd == (target_ptr_t)-1) {
         *ppid = (target_pid_t)-1;
@@ -530,6 +569,16 @@ void init_per_cpu_offsets(CPUState *cpu) {
 }
 
 /**
+ * @brief When we first detect a syscall, enable OSI if necessary
+ * TODO: Unregister this PPP-fn after it runs the first time (Issue #644)
+ */
+
+inline void first_syscall(CPUState *cpu, target_ulong pc, target_ulong callno) {
+    load_now = true; // Now callbacks will actually run
+}
+
+
+/**
  * @brief Initializes plugin.
  */
 bool init_plugin(void *self) {
@@ -555,7 +604,7 @@ bool init_plugin(void *self) {
     panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
     char *kconf_file = g_strdup(panda_parse_string_req(plugin_args, "kconf_file", "file containing kernel configuration information"));
     char *kconf_group = g_strdup(panda_parse_string_req(plugin_args, "kconf_group", "kernel profile to use"));
-    bool load_now = panda_parse_bool_opt(plugin_args, "load_now", "Immediately initialize OSI instead of waiting for first syscall");
+    load_now = panda_parse_bool_opt(plugin_args, "load_now", "Immediately initialize OSI instead of waiting for first syscall"); // XXX
     panda_free_args(plugin_args);
 
     // Load kernel offsets.
@@ -596,7 +645,17 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
     PPP_REG_CB("osi", on_get_process_pid, on_get_process_pid);
     PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);
-    LOG_INFO(PLUGIN_NAME " initialization complete.");
+
+    if (load_now) {
+      LOG_INFO(PLUGIN_NAME " initialization complete.");
+    }else{
+      LOG_INFO(PLUGIN_NAME " deffering OSI initialization until first syscall.");
+      panda_require("syscalls2");
+
+      PPP_REG_CB("syscalls2", on_all_sys_enter, first_syscall);
+    }
+
+
     return true;
 #else
     fprintf(stderr, "[osi_linux]: Unsupported guest architecture\n");
