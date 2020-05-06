@@ -4,6 +4,7 @@
 
 /**
  * @brief Page size used by the kernel. Used to calculate THREADINFO_MASK.
+ * XXX THIS SHOULD BE CONFIGURED PER KERNEL
  */
 #define PAGE_SIZE 4096
 
