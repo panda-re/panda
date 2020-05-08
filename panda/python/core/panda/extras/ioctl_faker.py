@@ -7,6 +7,7 @@ from panda import ffi
 from panda.extras.file_hook import FileHook
 
 # TODO: Ability to fake buffers for specific commands
+
 ioctl_initialized = False
 def do_ioctl_init(arch):
 	# Default config (x86, x86-64, ARM, AArch 64) with options for PPC
@@ -125,8 +126,10 @@ class IoctlFaker():
         self.osi = use_osi_linux
         self._panda = panda
         self._panda.load_plugin("syscalls2")
-        self._panda.load_plugin("osi")
-        self._panda.load_plugin("osi_linux")
+
+        if self.osi:
+            self._panda.load_plugin("osi")
+            self._panda.load_plugin("osi_linux")
 
         self._logger = logging.getLogger('panda.hooking')
         self._logger.setLevel(logging.DEBUG)
