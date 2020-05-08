@@ -243,7 +243,7 @@ void list_kernelinfo_groups(gchar const *file) {
 	keyfile = g_key_file_new();
 	g_key_file_load_from_file (keyfile, fname, G_KEY_FILE_NONE, &gerr);
 	if (gerr != NULL) {
-		printf("error parsing %s\n", fname);
+		printf("\tError parsing %s\n", fname);
 		return;
 	}
 

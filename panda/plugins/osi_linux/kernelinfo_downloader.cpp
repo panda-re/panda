@@ -17,13 +17,12 @@ int download_kernelinfo(const char *file, const char *group){
 	// we'll create a file, but we won't make one without a filename
 	if  (file == NULL)
 		return -1;
-	std::cout << "Attempting to download from panda-re.mit.edu" << std::endl;
+	std::cout << "Attempting to download kernelinfo.conf from panda-re.mit.edu... ";
 	CURL *curl;
 	CURLcode res;
 	std::string url = "https://panda-re.mit.edu/kernelinfos/";
 	url.append(group);
 	url.append(".conf");
-	std::cout << "Downloading uri " << url << " to file "<< file << std::endl;
 	std::string readBuffer;
 
 	curl = curl_easy_init();
@@ -32,7 +31,6 @@ int download_kernelinfo(const char *file, const char *group){
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 		curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
-		std::cout << readBuffer << std::endl;
 		res = curl_easy_perform(curl);
 		curl_easy_cleanup(curl);
 		if (readBuffer.length() > 0 && res == CURLE_OK){
@@ -40,11 +38,12 @@ int download_kernelinfo(const char *file, const char *group){
 	  		kernelinfo_file.open (file, std::ifstream::app);
 	  		kernelinfo_file << "\n" << readBuffer << std::endl;
 	  		kernelinfo_file.close();
+        std::cout << " OK" << std::endl;
 	  		return 0;
 		}else if(res == CURLE_HTTP_RETURNED_ERROR) {
-			std::cout << "config not found on server" << std::endl;
+			std::cout << " FAIL: config not found on server" << std::endl;
     }else{
-			std::cout << "didn't take" << std::endl;
+			std::cout << " FAIL: error" << std::endl;
 		}
 	}
 	return -1;
