@@ -1222,7 +1222,40 @@ int main(int argc, char **argv)
     expect_one = 0x600df0;
     runTest("AShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
-    
+
+    last_literal = 96;
+    size = 16;
+    cb_mask = static_cast<unsigned __int128>(0xfeedface600df00d) << 64;
+    expect_cb = 0xfeedface;
+    zero_mask = 0xfeedface600df00d;
+    expect_zero = 0;
+    one_mask = static_cast<unsigned __int128>(0x800df00dfeedface) << 64;
+    expect_one = static_cast<unsigned __int128>(-1) << 64 | 0xffffffff800df00d;
+    runTest("AShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
+            one_mask, expect_cb, expect_zero, expect_one);
+
+    last_literal = 96;
+    size = 16;
+    cb_mask = static_cast<unsigned __int128>(0xfeedface600df00d) << 64;
+    expect_cb = 0xfeedface;
+    zero_mask = 0xfeedface600df00d;
+    expect_zero = 0;
+    one_mask = static_cast<unsigned __int128>(0x800df00dfeedface) << 64;
+    expect_one = static_cast<unsigned __int128>(-1) << 64 | 0xffffffff800df00d;
+    runTest("AShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
+            one_mask, expect_cb, expect_zero, expect_one);
+
+    last_literal = 96;
+    size = 16;
+    cb_mask = static_cast<unsigned __int128>(0xfeedface600df00d) << 64;
+    expect_cb = 0xfeedface;
+    zero_mask = static_cast<unsigned __int128>(0x800df00dfeedface) << 64;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xffffffff800df00d;
+    one_mask = 0xfeedface600df00d;
+    expect_one = 0;
+    runTest("AShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
+            one_mask, expect_cb, expect_zero, expect_one);
+
     // LLVM FAdd and the others in that group are not problemeatic
     
     // LLVM GetElementPtr is not problematic
