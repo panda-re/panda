@@ -136,58 +136,11 @@ bool init_plugin(void *self) {
         return true;
     }
 
-    // figure out what kind of os introspection is needed and grab it? 
+    // If not disabled_os_autoload, load OSI_linux or wintrospection (with no arguments) automatically
     if (panda_os_familyno == OS_LINUX) {
-        // sadly, all of this is to find kernelinfo.conf file
-        gchar *progname = realpath(qemu_file, NULL);
-        gchar *progdir = g_path_get_dirname(progname);
-        gchar *kconffile = NULL;
-        gchar *kconffile_canon = NULL;
-        uint8_t UNUSED(kconffile_try) = 1;
-
-        if (kconffile_canon == NULL) {  // from build dir
-            if (kconffile != NULL) g_free(kconffile);
-            kconffile = g_build_filename(progdir, "panda", "plugins", "osi_linux", "kernelinfo.conf", NULL);
-            LOG_INFO("Looking for kconffile attempt %u: %s", kconffile_try++, kconffile);
-            kconffile_canon = realpath(kconffile, NULL);
-        }
-        if (kconffile_canon == NULL) {  // from etc dir (installed location)
-            if (kconffile != NULL) g_free(kconffile);
-            kconffile = g_build_filename(CONFIG_QEMU_CONFDIR, "osi_linux", "kernelinfo.conf", NULL);
-            LOG_INFO("Looking for kconffile attempt %u: %s", kconffile_try++, kconffile);
-            kconffile_canon = realpath(kconffile, NULL);
-        }
-
-        g_free(progdir);
-        free(progname);
-        assert(kconffile_canon != NULL);
-
-        // convert stdlib buffer to glib buffer
-        g_free(kconffile);
-        kconffile = g_strdup(kconffile_canon);
-        free(kconffile_canon);
-
-        // get kconfgroup
-        gchar *kconfgroup = g_strdup_printf("%s:%d", panda_os_variant, panda_os_bits);
-
-        // add arguments to panda
-        gchar *plugin_arg;
-        plugin_arg = g_strdup_printf("kconf_file=%s", kconffile);
-        panda_add_arg("osi_linux", plugin_arg);
-        g_free(plugin_arg);
-        plugin_arg = g_strdup_printf("kconf_group=%s", kconfgroup);
-        panda_add_arg("osi_linux", plugin_arg);
-        g_free(plugin_arg);
-
-        // print info and finish
         LOG_INFO("OSI grabbing Linux introspection backend.");
-        LOG_INFO("Linux OSI, using group %s from %s.", kconfgroup, kconffile);
-        g_free(kconffile);
-        g_free(kconfgroup);
-
         panda_require("osi_linux");
-    }
-    if (panda_os_familyno == OS_WINDOWS) {
+    }else if (panda_os_familyno == OS_WINDOWS) {
         LOG_INFO("OSI grabbing Windows introspection backend.");
         panda_require("wintrospection");
     }
