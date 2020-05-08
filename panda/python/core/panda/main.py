@@ -44,6 +44,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             qcow=None, # Qcow file to load
             os="linux",
             generic=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
+            raw_monitor = False, # When set, don't specify a -monitor. arg Allows for use of -nographic in args with ctrl-A+C for interactive qemu prompt.
             extra_args=[]):
         self.arch = arch
         self.mem = mem
@@ -115,8 +116,10 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         # Configure monitor - Always enabled for now
         self.monitor_file = NamedTemporaryFile(prefix="pypanda_m").name
         self.monitor_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.monitor_console = Expect(expectation=rb"(qemu)", quiet=True, consume_first=True)
-        self.panda_args.extend(['-monitor', 'unix:{},server,nowait'.format(self.monitor_file)])
+        self.raw_monitor = raw_monitor
+        if not self.raw_monitor:
+            self.monitor_console = Expect(expectation=rb"(qemu)", quiet=True, consume_first=True)
+            self.panda_args.extend(['-monitor', 'unix:{},server,nowait'.format(self.monitor_file)])
 
         self.running = threading.Event()
         self.started = threading.Event()
@@ -173,7 +176,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         if self.serial_console and not self.serial_console.is_connected():
             self.serial_socket.connect(self.serial_file)
             self.serial_console.connect(self.serial_socket)
-        if not self.monitor_console.is_connected():
+        if not self.raw_monitor and not self.monitor_console.is_connected():
             self.monitor_socket.connect(self.monitor_file)
             self.monitor_console.connect(self.monitor_socket)
 
