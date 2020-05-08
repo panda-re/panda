@@ -72,9 +72,12 @@ static void runTest(const char *ocname, unsigned int opcode, uint64_t literals1,
 #include "../../update_cb_switch.h"
 
     // and the answers are...
-    printf("%s (%d):  size=%ld, lastlit=0x%lx, orig (cb,0,1) (hi: 0x%lx lo: "
-           "0x%lx, hi: 0x%lx lo: 0x%lx, hi: 0x%lx lo: 0x%lx) => new (hi: 0x%lx "
-           "lo: 0x%lx, hi: 0x%lx lo: 0x%lx, hi: 0x%lx lo: 0x%lx) - ",
+    printf("%s (%d):  size=%ld, lastlit=0x%lx, orig (cb,0,1) (hi: 0x%016lx lo: "
+           "0x%016lx, hi: 0x%016lx lo: 0x%016lx, hi: 0x%016lx lo: 0x%016lx) => "
+           "new "
+           "(hi: 0x%016lx "
+           "lo: 0x%016lx, hi: 0x%016lx lo: 0x%016lx, hi: 0x%016lx lo: "
+           "0x%016lx) - ",
            ocname, opcode, size, last_literal,
            static_cast<uint64_t>(orig_cb_mask >> 64),
            static_cast<uint64_t>(orig_cb_mask),
@@ -91,8 +94,9 @@ static void runTest(const char *ocname, unsigned int opcode, uint64_t literals1,
         (one_mask == expected_one_mask)) {
         printf("GOOD\n");
     } else {
-        printf("BAD (hi: 0x%lx lo: 0x%lx, hi: 0x%lx lo: 0x%lx, hi: 0x%lx lo: "
-               "0x%lx)\n",
+        printf("BAD (hi: 0x%016lx lo: 0x%016lx, hi: 0x%016lx lo: 0x%016lx, hi: "
+               "0x%016lx lo: "
+               "0x%016lx)\n",
                static_cast<uint64_t>(expected_cb_mask >> 64),
                static_cast<uint64_t>(expected_cb_mask),
                static_cast<uint64_t>(expected_zero_mask >> 64),
@@ -688,7 +692,18 @@ int main(int argc, char **argv)
         static_cast<unsigned __int128>(0xe66600df) << 64 | 0xd0000000000000;
     runTest("Shl", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
-    
+
+    last_literal = 96;
+    cb_mask = 0xbadfaceba01c1234;
+    expect_cb = static_cast<unsigned __int128>(0xa01c123400000000) << 64;
+    zero_mask = 0x8000000000000;
+    expect_zero = static_cast<unsigned __int128>(0xffffffff) << 64 |
+                  static_cast<unsigned __int128>(0xffffffffffffffff);
+    one_mask = 0xcafebabe0;
+    expect_one = static_cast<unsigned __int128>(0xafebabe0) << 96;
+    runTest("Shl", opcode, literals1, last_literal, size, cb_mask, zero_mask,
+            one_mask, expect_cb, expect_zero, expect_one);
+
     // TODO LLVM LShr
     // cb_mask and one_mask updates are the same, trivial operations
     // zero_mask is the only one that really needs tested
@@ -1072,7 +1087,30 @@ int main(int argc, char **argv)
     expect_one = 0x3e;
     runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
         one_mask, expect_cb, expect_zero, expect_one);
-    
+
+    last_literal = 4;
+    cb_mask = static_cast<unsigned __int128>(0xffffffffffffffff) << 64;
+    expect_cb = static_cast<unsigned __int128>(0x0fffffffffffffff) << 64 |
+                0xf000000000000000;
+    zero_mask = 0xaa;
+    expect_zero = static_cast<unsigned __int128>(-1) << 64 | 0xfffffffffffffffa;
+    one_mask = 0xbad8111a49;
+    expect_one = 0xbad8111a4;
+    runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
+            one_mask, expect_cb, expect_zero, expect_one);
+
+    last_literal = 96;
+    size = 16;
+    cb_mask = static_cast<unsigned __int128>(0xf) << 64;
+    expect_cb = 0x0;
+    zero_mask = 0xaa;
+    expect_zero =
+        (static_cast<unsigned __int128>(-1) << 64) | 0xffffffff00000000;
+    one_mask = 0xbad8111a49;
+    expect_one = 0x0;
+    runTest("LShr", opcode, literals1, last_literal, size, cb_mask, zero_mask,
+            one_mask, expect_cb, expect_zero, expect_one);
+
     // TODO LLVM AShr
     // cb_mask is trivial; one and zero masks have special twiddling
     printf("===== TESTING LLVM ASHR INSTRUCTION =====\n");
