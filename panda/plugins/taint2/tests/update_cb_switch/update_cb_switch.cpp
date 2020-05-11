@@ -72,12 +72,9 @@ static void runTest(const char *ocname, unsigned int opcode, uint64_t literals1,
 #include "../../update_cb_switch.h"
 
     // and the answers are...
-    printf("%s (%d):  size=%ld, lastlit=0x%lx, orig (cb,0,1) (hi: 0x%016lx lo: "
-           "0x%016lx, hi: 0x%016lx lo: 0x%016lx, hi: 0x%016lx lo: 0x%016lx) => "
-           "new "
-           "(hi: 0x%016lx "
-           "lo: 0x%016lx, hi: 0x%016lx lo: 0x%016lx, hi: 0x%016lx lo: "
-           "0x%016lx) - ",
+    printf("%s (%d):  size=%ld, lastlit=0x%lx, orig (cb,0,1) (0x%.16lx%.16lx, "
+           "0x%.16lx%.16lx, 0x%.16lx%.16lx) => new (0x%.16lx%.16lx, "
+           "0x%.16lx%.16lx, 0x%.16lx%.16lx) - ",
            ocname, opcode, size, last_literal,
            static_cast<uint64_t>(orig_cb_mask >> 64),
            static_cast<uint64_t>(orig_cb_mask),
@@ -94,9 +91,7 @@ static void runTest(const char *ocname, unsigned int opcode, uint64_t literals1,
         (one_mask == expected_one_mask)) {
         printf("GOOD\n");
     } else {
-        printf("BAD (hi: 0x%016lx lo: 0x%016lx, hi: 0x%016lx lo: 0x%016lx, hi: "
-               "0x%016lx lo: "
-               "0x%016lx)\n",
+        printf("BAD (%.16lx%.16lx, %.16lx%.16lx, %.16lx%.16lx\n",
                static_cast<uint64_t>(expected_cb_mask >> 64),
                static_cast<uint64_t>(expected_cb_mask),
                static_cast<uint64_t>(expected_zero_mask >> 64),
