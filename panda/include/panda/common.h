@@ -206,6 +206,79 @@ static inline void *panda_map_virt_to_host(CPUState *env, target_ulong addr,
 }
 
 /**
+ * @brief Translate a physical address to a RAM Offset (needed for the taint system)
+ * Returns MEMTX_OK on success.
+ */
+static inline MemTxResult PandaPhysicalAddressToRamOffset(ram_addr_t* out, hwaddr addr, bool is_write)
+{
+    hwaddr TranslatedAddress;
+    hwaddr AccessLength = 1;
+    MemoryRegion* mr;
+    ram_addr_t RamOffset;
+
+    rcu_read_lock();
+    mr = address_space_translate(&address_space_memory, addr, &TranslatedAddress, &AccessLength, is_write);
+
+    if (!mr || !memory_region_is_ram(mr) || memory_region_is_ram_device(mr) || memory_region_is_romd(mr) || (is_write && mr->readonly))
+    {
+        /*
+            We only want actual RAM.
+            I can't find a concrete instance of a RAM Device,
+            but from the docs/comments I can find, this seems
+            like the appropriate check.
+        */
+        rcu_read_unlock();
+        return MEMTX_ERROR;
+    }
+
+    if ((RamOffset = memory_region_get_ram_addr(mr)) == RAM_ADDR_INVALID)
+    {
+        rcu_read_unlock();
+        return MEMTX_ERROR;
+    }
+
+    rcu_read_unlock();
+
+    RamOffset += TranslatedAddress;
+
+    if (RamOffset >= ram_size)
+    {
+        /*
+            HACK
+            For the moment, the taint system (the only consumer of this) will die in very unfortunate
+            ways if the translated offset exceeds the size of "RAM" (the argument given to -m in
+            qemu's invocation)...
+            Unfortunately there's other "RAM" qemu tracks that's not differentiable in a target-independent
+            way. For instance: the PC BIOS memory and VGA memory. In the future it would probably be easier
+            to modify the taint system to use last_ram_offset() rather tham ram_size, and/or register an
+            address space listener to update it's shadow RAM with qemu's hotpluggable memory.
+            From brief observation, the qemu machine implementations seem to map the system "RAM"
+            people are most likely thinking about when they say "RAM" first, so the ram_addr_t values
+            below ram_size should belong to those memory regions. This isn't required however, so beware.
+        */
+        fprintf(stderr, "PandaPhysicalAddressToRamOffset: Translated Physical Address 0x" TARGET_FMT_plx " has RAM Offset Above ram_size (0x" RAM_ADDR_FMT " >= 0x" RAM_ADDR_FMT ")\n", addr, RamOffset, ram_size);
+        return MEMTX_DECODE_ERROR;
+    }
+
+    if (out)
+        *out = RamOffset;
+
+    return MEMTX_OK;
+}
+
+/**
+ * @brief Translate a virtual address to a RAM Offset (needed for the taint system)
+ * Returns MEMTX_OK on success.
+ */
+static inline MemTxResult PandaVirtualAddressToRamOffset(ram_addr_t* out, CPUState* cpu, target_ulong addr, bool is_write)
+{
+    hwaddr PhysicalAddress = panda_virt_to_phys(cpu, addr);
+    if (PhysicalAddress == (hwaddr)-1)
+        return MEMTX_ERROR;
+    return PandaPhysicalAddressToRamOffset(out, PhysicalAddress, is_write);
+}
+
+/**
  * @brief Determines if guest is currently executes in kernel mode.
  */
 static inline bool panda_in_kernel(CPUState *cpu) {
