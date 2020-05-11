@@ -723,8 +723,6 @@ CPUState *qemu_get_cpu(int index)
 
 #if !defined(CONFIG_USER_ONLY)
 
-MemoryListener rr_listener;
-
 static RR_mem_type rr_mem_region_type(MemoryRegion* mr) {
     RR_mem_type mtype = RR_MEM_UNKNOWN;
     if (!(memory_region_is_ram(mr) || memory_region_is_romd(mr))) {
@@ -777,9 +775,10 @@ void cpu_address_space_init(CPUState *cpu, AddressSpace *as, int asidx)
         memory_listener_register(&newas->tcg_as_listener, as);
 
         // PANDA Record and Replay
-        rr_listener.region_add = rr_mem_region_added_cb;
-        rr_listener.region_del = rr_mem_region_deleted_cb;
-        memory_listener_register(&rr_listener, as);
+        MemoryListener *rr_listener = (MemoryListener*)calloc(sizeof(MemoryListener), 1);
+        rr_listener->region_add = rr_mem_region_added_cb;
+        rr_listener->region_del = rr_mem_region_deleted_cb;
+        memory_listener_register(rr_listener, as);
     }
 }
 
