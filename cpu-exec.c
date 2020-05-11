@@ -537,13 +537,13 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
             *ret = cpu->exception_index;
             cpu->exception_index = -1;
             return true;
-#else  
-            if (replay_exception()) {          // *
+#else
+            if (replay_exception()) {
 #ifdef TARGET_PPC
                 rr_exception_index_at(RR_CALLSITE_CPU_EXCEPTION_INDEX, &cpu->exception_index);
 #endif
-                CPUClass *cc = CPU_GET_CLASS(cpu);   /// *
-                cc->do_interrupt(cpu); 
+                CPUClass *cc = CPU_GET_CLASS(cpu);
+                cc->do_interrupt(cpu);
                 cpu->exception_index = -1;
             } else if (!replay_has_interrupt()) {
                 /* give a chance to iothread in replay mode */
@@ -569,7 +569,7 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
                                         TranslationBlock **last_tb)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
-    
+
     int interrupt_request = cpu->interrupt_request;
 
 #ifdef CONFIG_SOFTMMU
@@ -782,7 +782,6 @@ int cpu_exec(CPUState *cpu)
 
     /* prepare setjmp context for exception handling */
     if (sigsetjmp(cpu->jmp_env, 0) != 0) {
-
 #if defined(__clang__) || !QEMU_GNUC_PREREQ(4, 6)
         /* Some compilers wrongly smash all local variables after
          * siglongjmp. There were bug reports for gcc 4.5.0 and clang.
