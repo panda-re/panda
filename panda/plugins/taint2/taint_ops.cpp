@@ -608,10 +608,25 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
         for (auto it = I->value_op_begin(); it != I->value_op_end(); it++) {
             const llvm::Value *arg = *it;
             const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(arg);
-            uint64_t literal = CI ? CI->getZExtValue() : ~0UL;
+            uint64_t literal = ~0UL;
+            if (NULL != CI) {
+                if (64 < CI->getBitWidth()) {
+                    fprintf(stderr, "WARNING: Constant is greater than 64 "
+                                    "bits, control bits may be incorrect.\n");
+                    literal = CI->getValue().trunc(64).getZExtValue();
+                } else {
+                    literal = CI->getZExtValue();
+                }
+            }
             literals.push_back(literal);
             if (literal != ~0UL) last_literal = literal;
         }
+        if (~0UL == last_literal) {
+            fprintf(stderr,
+                    "WARNING: Could not find last literal value, control "
+                    "bits may be incorrect.\n");
+        }
+
         int log2 = 0;
 
         unsigned int opcode = I->getOpcode();
