@@ -234,9 +234,9 @@ class FileFaker(FileHook):
         Register syscalls2 PPP callback on enter and return for the given name
         which has an argument of fd at fd_offset in the argument list
         '''
-        self._panda.ppp("syscalls2", f"on_sys_{name}_enter")( \
+        self._panda.ppp("syscalls2", f"on_sys_{name}_enter", name=f"file_faker_enter_{name}")( \
                     lambda *args: self._enter_fd_cb(name, fd_offset, args=args))
-        self._panda.ppp("syscalls2", f"on_sys_{name}_return")( \
+        self._panda.ppp("syscalls2", f"on_sys_{name}_return", name=f"file_faker_return_{name}")( \
                     lambda *args: self._return_fd_cb(name, fd_offset, args=args))
 
     def _enter_fd_cb(self, syscall_name, fd_pos, args=None):

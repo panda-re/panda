@@ -213,8 +213,6 @@ void fill_osithread(CPUState *env, OsiThread *t,
 ****************************************************************** */
 /**
  * @brief When necessary, after the first syscall ensure we can read current task
- * and then enable OSI
- * TODO: Unregister this PPP-fn after it runs the first time (Issue #644)
  */
 
 void on_first_syscall(CPUState *cpu, target_ulong pc, target_ulong callno) {
@@ -224,6 +222,7 @@ void on_first_syscall(CPUState *cpu, target_ulong pc, target_ulong callno) {
     if (!osi_initialized)
       LOG_INFO(PLUGIN_NAME " initialization complete.");
     osi_initialized=true;
+    PPP_REMOVE_CB("syscalls2", on_all_sys_enter, on_first_syscall);
 }
 
 /**
@@ -256,7 +255,8 @@ bool osi_guest_is_ready(CPUState *cpu, void** ret) {
 
         // Try to load current, if it works, return true
         if (can_read_current(cpu)) {
-            // TODO: disable on_first_syscall PPP callback because we're all set. Needs Issue #644 to be fixed
+            // Disable on_first_syscall PPP callback because we're all set
+            PPP_REMOVE_CB("syscalls2", on_all_sys_enter, on_first_syscall);
             LOG_INFO(PLUGIN_NAME " initialization complete.");
             osi_initialized=true;
             return true;
