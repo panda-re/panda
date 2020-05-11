@@ -196,8 +196,7 @@ void taint2_label_io_additive(uint64_t ia, uint32_t l) {
     tp_label_additive(a, l);
 }
 
-void label_byte(CPUState *cpu, target_ulong virt_addr, uint32_t label_num) {
-    hwaddr pa = panda_virt_to_phys(cpu, virt_addr);
+static void label_byte(target_ulong virt_addr, hwaddr pa, ram_addr_t RamOffset, uint32_t label_num) {
     if (pandalog) {
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.has_taint_label_virtual_addr = 1;
@@ -208,7 +207,7 @@ void label_byte(CPUState *cpu, target_ulong virt_addr, uint32_t label_num) {
         ple.taint_label_number = label_num;
         pandalog_write_entry(&ple);
     }
-    taint2_label_ram(pa, label_num);
+    taint2_label_ram(RamOffset, label_num);
 }
 
 
@@ -221,8 +220,14 @@ void taint2_add_taint_ram_pos(CPUState *cpu, uint64_t addr, uint32_t length, uin
                    "i.e., it isnt actually there.\n", addr+i);
             continue;
         }
+        ram_addr_t RamOffset = RAM_ADDR_INVALID;
+        if (PandaPhysicalAddressToRamOffset(&RamOffset, pa, false) != MEMTX_OK)
+        {
+            printf("can't label addr=0x%" PRIx64 " paddr=0x" TARGET_FMT_plx ": physical map is not RAM.\n", addr + i, pa);
+            continue;
+        }
         printf("taint2: adding positional taint label %d\n", i+start_label);
-        label_byte(cpu, addr+i, i+start_label);
+        label_byte(addr + i, pa, RamOffset, i+start_label);
     }
 }
 
@@ -237,9 +242,15 @@ void taint2_add_taint_ram_single_label(CPUState *cpu, uint64_t addr,
                    "i.e., it isnt actually there.\n", addr+i);
             continue;
         }
+        ram_addr_t RamOffset = RAM_ADDR_INVALID;
+        if (PandaPhysicalAddressToRamOffset(&RamOffset, pa, false) != MEMTX_OK)
+        {
+            printf("can't label addr=0x%" PRIx64 " paddr=0x" TARGET_FMT_plx ": physical map is not RAM.\n", addr + i, pa);
+            continue;
+        }
         //taint2_label_ram(pa, label);
         printf("taint2: adding single taint label %lu\n", label);
-        label_byte(cpu, addr+i, label);
+        label_byte(addr + i, pa, RamOffset, label);
     }
 }
 
