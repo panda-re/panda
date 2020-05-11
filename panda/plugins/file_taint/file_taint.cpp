@@ -166,13 +166,23 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
                 print_apply_message = false;
             }
             hwaddr shadow_addr = panda_virt_to_phys(first_cpu, buffer_addr + i);
+            if (shadow_addr == (hwaddr)(-1))
+            {
+                printf("file_taint can't label file_pos=%lu buffer_addr=0x%" PRIx64 ": mmu hasn't mapped virt->phys, i.e., it isnt actually there.\n", file_pos, buffer_addr + i);
+            }
+            ram_addr_t RamOffset = RAM_ADDR_INVALID;
+            if (PandaPhysicalAddressToRamOffset(&RamOffset, shadow_addr, false) != MEMTX_OK)
+            {
+                printf("file_taint can't label file_pos=%lu buffer_addr=0x%" PRIx64 " shadow_addr=0x%" PRIx64 ": physical map is not RAM.\n", file_pos, buffer_addr + i, shadow_addr);
+                continue;
+            }
             verbose_printf(
                 "file_taint applying label: file_pos=%lu buffer_addr=%lu\n",
                 file_pos, buffer_addr + i);
             if (positional) {
-                taint2_label_ram(shadow_addr, file_pos);
+                taint2_label_ram(RamOffset, file_pos);
             } else {
-                taint2_label_ram(shadow_addr, static_label);
+                taint2_label_ram(RamOffset, static_label);
             }
             tainted_byte_count++;
         }
