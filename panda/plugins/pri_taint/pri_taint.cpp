@@ -115,13 +115,13 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
     CPUState *cpu = first_cpu;
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     bool is_strnlen = ((int) buf_len == -1);
-    extern ram_addr_t ram_size;
-    target_ulong phys = loc_t == LocMem ? panda_virt_to_phys(cpu, buf) : 0;
+    hwaddr phys = loc_t == LocMem ? panda_virt_to_phys(cpu, buf) : 0;
+    ram_addr_t RamOffset = RAM_ADDR_INVALID;
 
-    if (phys == -1 || phys > ram_size) return;
+    if (phys == (hwaddr)-1 || PandaPhysicalAddressToRamOffset(&RamOffset, phys, false) != MEMTX_OK) return;
 
     if (debug) {
-        printf("Querying \"%s\": " TARGET_FMT_lu " bytes @ 0x" TARGET_FMT_lx " phys 0x" TARGET_FMT_lx ", strnlen=%d", astnodename, buf_len, buf, phys, is_strnlen);
+        printf("Querying \"%s\": " TARGET_FMT_lu " bytes @ 0x" TARGET_FMT_lx " phys 0x" TARGET_FMT_plx ", strnlen=%d", astnodename, buf_len, buf, phys, is_strnlen);
         print_membytes(cpu, buf, is_strnlen? 32 : buf_len);
         printf("\n");
     }
@@ -151,7 +151,7 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
     // is there *any* taint on this extent
     uint32_t num_tainted = 0;
     for (uint32_t i = 0; i < len; i++) {
-        Addr a = loc_t == LocMem ? make_maddr(phys + i) : make_greg(buf, i);
+        Addr a = loc_t == LocMem ? make_maddr(RamOffset + i) : make_greg(buf, i); /* HACK: presumes for the same physical page ram_addr_t(x + i) == ram_addr_t(x) + i */
         if (taint2_query(a)) num_tainted++;
     }
 
@@ -180,8 +180,7 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
     // 2. iterate over the bytes in the extent and pandalog detailed info about taint
     std::vector<Panda__TaintQuery *> tq;
     for (uint32_t offset = 0; offset < len; offset++) {
-        uint32_t pa_indexed = phys + offset;
-        Addr a = loc_t == LocMem ? make_maddr(pa_indexed) : make_greg(buf, offset);
+        Addr a = loc_t == LocMem ? make_maddr(RamOffset + offset) : make_greg(buf, offset); /* HACK: presumes for the same physical page ram_addr_t(x + i) == ram_addr_t(x) + i */
         if (taint2_query(a)) {
             if (loc_t == LocMem) {
                 dprintf("\"%s\" @ 0x%x is tainted\n", astnodename, buf + offset);
