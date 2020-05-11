@@ -67,17 +67,25 @@ void taint_query_hypercall(PandaHypercallStruct phs) {
         uint32_t offset=0;
         while (true) {
             uint32_t va = phs.buf + offset;
-            uint32_t pa =  panda_virt_to_phys(cpu, va);
+            hwaddr pa =  panda_virt_to_phys(cpu, va);
             if (is_strnlen) {
                 uint8_t c;
                 panda_virtual_memory_rw(cpu, pa, &c, 1, false);
                 // null terminator
                 if (c==0) break;
             }
-            if ((int) pa != -1) {
-                Addr a = make_maddr(pa);
-                if (taint2_query(a)) {
-                    num_tainted ++;
+            if ((int) pa != (hwaddr)-1) {
+                ram_addr_t RamOffset = RAM_ADDR_INVALID;
+                if (PandaPhysicalAddressToRamOffset(&RamOffset, pa, false) != MEMTX_OK)
+                {
+                    printf("taint_query_hypercall: can't query va=0x%" PRIx32 " pa=0x" TARGET_FMT_plx ": physical map is not RAM.\n", va, pa);
+                }
+                else
+                {
+                    Addr a = make_maddr(RamOffset);
+                    if (taint2_query(a)) {
+                        num_tainted ++;
+                    }
                 }
             }
             offset ++;
@@ -118,11 +126,19 @@ void taint_query_hypercall(PandaHypercallStruct phs) {
             std::vector<Panda__TaintQuery *> tq;
             for (uint32_t offset=0; offset<len; offset++) {
                 uint32_t va = phs.buf + offset;
-                uint32_t pa =  panda_virt_to_phys(cpu, va);
-                if ((int) pa != -1) {
-                    Addr a = make_maddr(pa);
-                    if (taint2_query(a)) {
-                        tq.push_back(taint2_query_pandalog(a, offset));
+                hwaddr pa =  panda_virt_to_phys(cpu, va);
+                if ((int) pa != (hwaddr)-1) {
+                    ram_addr_t RamOffset = RAM_ADDR_INVALID;
+                    if (PandaPhysicalAddressToRamOffset(&RamOffset, pa, false) != MEMTX_OK)
+                    {
+                        printf("taint_query_hypercall: can't query va=0x%" PRIx32 " pa=0x" TARGET_FMT_plx ": physical map is not RAM.\n", va, pa);
+                    }
+                    else
+                    {
+                        Addr a = make_maddr(RamOffset);
+                        if (taint2_query(a)) {
+                            tq.push_back(taint2_query_pandalog(a, offset));
+                        }
                     }
                 }
             }
