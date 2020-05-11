@@ -578,36 +578,6 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         size = ceil(size/1024)*1024 # Must be page-aligned
         return self.libpanda.map_memory(name_c, size, address)
 
-    def ppp(self, plugin_name, attr):
-        '''
-        Decorator for plugin-to-plugin interface. Note this isn't in decorators.py
-        becuase it uses the panda object.
-
-        Example usage to register my_run with syscalls2 as a 'on_sys_open_return'
-        @ppp("syscalls2", "on_sys_open_return")
-        def my_fun(cpu, pc, filename, flags, mode):
-            ...
-        '''
-
-        if plugin_name not in self.plugins: # Could automatically load it?
-            print(f"PPP automatically loaded plugin {plugin_name}")
-
-        if not hasattr(self, "ppp_registered_cbs"):
-            self.ppp_registered_cbs = []
-            # XXX: if  we don't save the cffi generated callbacks somewhere in Python,
-            # they may get garbage collected even though the c-code could still has a
-            # reference to them  which will lead to a crash. Keeping the reference count >0
-            # in python is the only use of this variable
-
-        def inner(func):
-            f = ffi.callback(attr+"_t")(func)  # Wrap the python fn in a c-callback.
-            self.ppp_registered_cbs.append(f) # Ensure callback isn't garbage collected
-
-            self.plugins[plugin_name].__getattr__("ppp_add_cb_"+attr)(f) # All PPP cbs start with this string
-            return f
-        return inner
-
-
     def read_str(self, cpu, ptr):
         '''
         Helper to read a null-terminated string from guest memory given a pointer and CPU state

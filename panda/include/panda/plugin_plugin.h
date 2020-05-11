@@ -124,7 +124,6 @@ to add a callback to be run inside of plugin A.
 
 
 // Use this in the very begining of plugin B's init_plugin fn 
-// 
 #define PPP_REG_CB(other_plugin, cb_name, cb_func)                                          \
   {                                                                                         \
     dlerror();                                                                              \
@@ -136,6 +135,21 @@ to add a callback to be run inside of plugin A.
     void (*add_cb)(cb_name##_t fptr) = (void (*)(cb_name##_t)) dlsym(op, "ppp_add_cb_" #cb_name); \
     assert (add_cb != 0);                                                                   \
     add_cb (cb_func);                                                                       \
+  }
+
+
+// Use to disable (delete) a ppp-callback
+#define PPP_REMOVE_CB(other_plugin, cb_name, cb_func)                                               \
+  {                                                                                                 \
+    dlerror();                                                                                      \
+    void *op = panda_get_plugin_by_name(other_plugin);                                              \
+    if (!op) {                                                                                      \
+      printf("In trying to remove plugin callback, couldn't load %s plugin\n", other_plugin);       \
+      assert (op);                                                                                  \
+    }                                                                                               \
+    void (*rm_cb)(cb_name##_t fptr) = (void (*)(cb_name##_t)) dlsym(op, "ppp_remove_cb_" #cb_name); \
+    assert (rm_cb != 0);                                                                            \
+    rm_cb (cb_func);                                                                                \
   }
 
 #endif // __PANDA_PLUGIN_PLUGIN_H_

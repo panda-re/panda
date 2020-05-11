@@ -63,6 +63,7 @@ def trim_pypanda(contents):
 
 def copy_ppp_header(filename):
     # For the PPP-like headers we look for typedefs and then make the void ppp_add_cb(name)(name_t); functions
+    # and the bool ppp_remove_cb(name)(name_t)
     # This probably won't support everything
     pypanda_h = os.path.join(INCLUDE_DIR_PYP, os.path.split(filename)[-1])
     print("Creating pypanda PPP header [%s] for [%s]" % (pypanda_h, filename))
@@ -77,6 +78,7 @@ def copy_ppp_header(filename):
         if m:
             name = m.groups(1)[0]
             new_contents.append(f"void ppp_add_cb_{name}({name}_t);")
+            new_contents.append(f"bool ppp_remove_cb_{name}({name}_t);")
             # void ppp_add_cb_{cb_name}(void (*)({cb_args}))
     with open(pypanda_h, "w") as outfile:
         outfile.write("\n".join(new_contents))

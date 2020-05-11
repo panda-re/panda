@@ -5,19 +5,28 @@ panda = Panda(generic="i386")
 
 panda.load_plugin("syscalls2")
 
-(execve_entered, execve_returned) = (False, False)
+(open_entered, open_returned) = (False, False)
+run_count = 0
 
-# Callback to run when we enter execve
-@panda.ppp("syscalls2", "on_sys_execve_enter")
-def on_sys_execve_enter(cpu, pc, fname_ptr, argv_ptr, envp):
-    global execve_entered
-    execve_entered = True
+# Run on any syscall, but disable after the very first one
+# to test disablging PPP callbacks
+@panda.ppp("syscalls2", "on_all_sys_enter")
+def any_syscall(cpu, pc, callno):
+    global run_count
+    run_count += 1
+    panda.disable_ppp("any_syscall")
 
-# Callback to run when we return from execve
-@panda.ppp("syscalls2", "on_sys_execve_return")
-def on_sys_execve_return(cpu, pc, fname_ptr, argv_ptr, envp):
-    global execve_returned
-    execve_returned = True
+# Callback to run when we enter an open
+@panda.ppp("syscalls2", "on_sys_open_enter")
+def on_sys_open_enter(cpu, pc, fname_ptr, flags, mode):
+    global open_entered
+    open_entered = True
+
+# Callback to run when we return from open
+@panda.ppp("syscalls2", "on_sys_open_return")
+def on_sys_open_return(cpu, pc, fname_ptr, flags, mode):
+    global open_returned
+    open_returned = True
 
 # In a separate thread, revert the test, run `whoami` and then end our analysis
 @blocking
@@ -30,5 +39,6 @@ def guest_cmds():
 panda.queue_async(guest_cmds)
 panda.run()
 
-assert(execve_entered), "Syscalls never called execve enter"
-#assert(execve_returned), "Syscalls never called execve return" # XXX: Known failure - see issue 392
+assert(open_entered), "Syscalls never called open enter"
+assert(run_count == 1), f"PPP callback didn't run once, it ran {run_count} times"
+assert(open_returned), "Syscalls never called open return"
