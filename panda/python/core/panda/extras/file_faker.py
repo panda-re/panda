@@ -13,6 +13,35 @@ High-level idea:
     and fake return values.
 '''
 
+
+from cffi import FFI
+ffi = FFI()
+
+ffi.cdef("""
+// struct for arm little endian. likely the same as yours, but check
+struct stat {
+	unsigned long  st_dev;
+	unsigned long  st_ino;
+	unsigned short st_mode;
+	unsigned short st_nlink;
+	unsigned short st_uid;
+	unsigned short st_gid;
+	unsigned long  st_rdev;
+	unsigned long  st_size;
+	unsigned long  st_blksize;
+	unsigned long  st_blocks;
+	unsigned long  st_atime;
+	unsigned long  st_atime_nsec;
+	unsigned long  st_mtime;
+	unsigned long  st_mtime_nsec;
+	unsigned long  st_ctime;
+	unsigned long  st_ctime_nsec;
+	unsigned long  __unused4;
+	unsigned long  __unused5;
+};
+""")
+
+
 class FakeFile:
     '''
     A fake file behind a hyperFD - this class will generate data when the
@@ -82,6 +111,8 @@ class FakeFile:
         # XXX: This destructor isn't called automatically
         self._delete()
 
+
+
 class HyperFD:
     '''
     A HyperFD is what we use to track the state of a faked FD in the guest.
@@ -127,7 +158,7 @@ class HyperFD:
         self.file.close()
         #del self # ???
 
-    def seek(offset, whence):
+    def seek(self, offset, whence):
         # From include/uapi/linux/fs.h
         SEEK_SET = 0
         SEEK_CUR = 1
@@ -142,6 +173,16 @@ class HyperFD:
             self.offset = self.offset + offset
         else:
             raise ValueError(f"Unsupported whence {whence} in seek")
+
+    def stat(self):
+        stat = ffi.new("struct stat*")        
+        if hasattr(self.file, "stat"):
+            self.file.stat(stat)
+        return stat
+
+    def ioctl(self, cmd, arg):
+        if hasattr(self.file, "ioctl"):
+            self.file.ioctl(cmd,arg)
 
     def close(self):
         # Should we just delete it?
@@ -187,7 +228,6 @@ class FileFaker(FileHook):
             # grep 'int fd' syscall_switch_enter_linux_x86.cpp  | grep -v "\['int fd\|\['unsigned int fd" # + manual
             to_hook[2] = ["epoll_ctl"]
             to_hook[3] = ["fanotify_mark"]
-
         elif panda.arch == "x86_64":
             to_hook[0] = ["read", "write", "close", "newfstat", "lseek", "ioctl", "pread64", "pwrite64", "sendmsg",
                           "recvmsg", "setsockopt", "getsockopt", "fcntl", "flock", "fsync", "fdatasync", "ftruncate",
@@ -205,7 +245,7 @@ class FileFaker(FileHook):
                           "fsetxattr", "fgetxattr", "flistxattr", "fremovexattr", "fstatfs64", "arm_fadvise64_64",
                           "setsockopt", "getsockopt", "sendmsg", "recvmsg", "inotify_add_watch", "inotify_rm_watch",
                           "splice", "sync_file_range2", "tee", "vmsplice", "fallocate", "recvmmsg", "syncfs",
-                          "sendmmsg", "setns", "finit_module", "dup2", "dup3"]
+                          "sendmmsg", "setns", "finit_module", "dup", "dup2", "dup3", "lseek", "llseek", "syncfs"]
             to_hook[2] = ["epoll_ctl"]
             to_hook[3] = ["fanotify_mark"]
         else:
@@ -250,8 +290,8 @@ class FileFaker(FileHook):
         # so we know to mutate it when it returns
         if (fd, asid) in self.hooked_fds:
             hfd = self.hooked_fds[(fd, asid)]
-            self.logger.info(f"Entering hooked syscall {syscall_name} for fd {fd}, " + \
-                                f"filename {hfd.name}")
+#            self.logger.info(f"Entering hooked syscall {syscall_name} for fd {fd}, " + \
+#                                f"filename {hfd.name}")
             self.currently_hooked = (fd, asid)
 
 
@@ -308,6 +348,14 @@ class FileFaker(FileHook):
 
             bytes_written = hfd.write(data)
             cpu.env_ptr.regs[0] = bytes_written
+        elif syscall_name == "dup":
+            oldfd = args[2]
+            newfd = cpu.env_ptr.regs[0]
+            self.logger.debug(f"Duplicating faked fd {oldfd} to {newfd}")
+
+            # Duplicate the old hfd - but not the file behind it
+            new_hfd = HyperFD(hfd.name, hfd.file, hfd.offset)
+            self.hooked_fds[(newfd, asid)] = new_hfd
 
         elif syscall_name in ["dup2", "dup3"]:
             # add newfd
@@ -318,7 +366,45 @@ class FileFaker(FileHook):
             # Duplicate the old hfd - but not the file behind it
             new_hfd = HyperFD(hfd.name, hfd.file, hfd.offset)
             self.hooked_fds[(newfd, asid)] = new_hfd
-
+        elif syscall_name == "llseek":
+            # int _llseek(unsigned int fd, unsigned long offset_high,unsigned long offset_low, loff_t *result, unsigned int whence);
+            offset_high = args[3]
+            offset_low = args[4]
+            result = offset_high << 32 + offset_low
+            args[5] = result
+            whence = args[6]
+            hfd.seek(result, whence)
+        elif "lseek"  == syscall_name:
+            offset = args[3]
+            whence = args[4]
+            hfd.seek(offset,whence)
+        elif syscall_name  == "ioctl":
+            cmd = args[3]
+            arg = args[4]
+            hfd.ioctl(cmd, arg)		
+            cpu.env_ptr.regs[0] = 0
+        elif syscall_name == "fcntl64":
+            cmd = args[3]
+            if cmd == 0: #DUPFD
+                oldfd = args[2]
+                newfd = cpu.env_ptr.regs[0]
+                self.logger.debug(f"Duplicating faked fd {oldfd} to {newfd}")
+                # Duplicate the old hfd - but not the file behind it
+                new_hfd = HyperFD(hfd.name, hfd.file, hfd.offset)
+                self.hooked_fds[(newfd, asid)] = new_hfd
+            elif cmd == 2: #CLOEXEC -> does this close when the process forks? 
+                CLOEXEC = False
+                cpu.env_ptr.regs[0] = 1 if CLOEXEC else 0
+            else:
+                print(f"Missing fnctl64 cmd = {cmd}")
+        elif syscall_name == "newfstat":
+            statbuf = args[2]
+            newstat = hfd.stat()
+            newstatbuf = ffi.unpack(ffi.cast("char*", newstat),ffi.sizeof("struct stat"))
+            self._panda.virtual_memory_write(cpu,statbuf, newstatbuf)
+            cpu.env_ptr.regs[0] = 0
+        elif syscall_name == "syncfs":
+            cpu.env_ptr.regs[0] = 0
         else:
             self.logger.error(f"Unsupported syscall on FakeFD{fd}: {syscall_name}. Not intercepting (Running on real guest FD)")
 
