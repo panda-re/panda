@@ -466,7 +466,7 @@ void taint_host_copy(uint64_t env_ptr, uint64_t addr, Shad *llv,
 
     if (true == is_ram_ptr(addr)) {
         ram_addr_t ram_addr;
-        RAMBlock *ram_block = qemu_ram_block_from_host(
+        __attribute__((unused)) RAMBlock *ram_block = qemu_ram_block_from_host(
             reinterpret_cast<void *>(addr), false, &ram_addr);
         assert(NULL != ram_block);
 
