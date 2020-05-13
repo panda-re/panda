@@ -39,17 +39,11 @@ PANDAENDCOMMENT */
         case llvm::Instruction::Add:
             tassert(last_literal != NOT_LITERAL);
 
-            // can't use the standard __builtin_clz, because its argument is an
-            // unsigned int, which may not be 64 bits on this machine
-            log2 =
-                last_literal.getBitWidth() - last_literal.countLeadingZeros();
+            log2 = CB_WIDTH - last_literal.countLeadingZeros();
             // FIXME: this isn't quite right. for example, if all bits ones,
             // adding one makes all bits zero.
-            if (log2 < 128) {
-                // darned compiler does bit twiddling in 32 bits even though all
-                // the variables are uint64_t, so have to force it to 64 bits or
-                // answers will be wrong in some cases
-                llvm::APInt mask = ~((llvm::APInt(128, 1ul) << log2) - 1);
+            if (log2 < CB_WIDTH) {
+                llvm::APInt mask = ~((llvm::APInt(CB_WIDTH, 1ul) << log2) - 1);
                 one_mask &= mask;
                 zero_mask &= mask;
             } else {
@@ -81,14 +75,15 @@ PANDAENDCOMMENT */
 
         case llvm::Instruction::Trunc:
             // explicitly cast or will get wrong answer when size=4
-            if (size < 16) {
-                llvm::APInt mask = (llvm::APInt(128, 1ul) << (size * 8)) - 1;
+            if (size < (CB_WIDTH / 8)) {
+                llvm::APInt mask =
+                    (llvm::APInt(CB_WIDTH, 1ul) << (size * 8)) - 1;
                 cb_mask &= mask;
                 one_mask &= mask;
                 zero_mask &= mask;
             }
-            // if truncating to 8 bytes, not really truncating, as largest
-            // number we can handle (currently) is 64 bits - thus no change
+            // if truncating to (CB_WIDTH / 8) bytes, not really truncating, as
+            // largest number we can handle is CB_WIDTH bits - thus no change
             break;
 
         case llvm::Instruction::Mul:
@@ -99,7 +94,7 @@ PANDAENDCOMMENT */
             cb_mask <<= trailing_zeroes;
             // cast so works on large numbers too, or any shift over 31 not
             // handled properly
-            zero_mask = (llvm::APInt(128, 1) << trailing_zeroes) - 1;
+            zero_mask = (llvm::APInt(CB_WIDTH, 1) << trailing_zeroes) - 1;
             one_mask = 0;
             break;
         }
@@ -108,9 +103,9 @@ PANDAENDCOMMENT */
         case llvm::Instruction::SRem:
             tassert(last_literal != NOT_LITERAL);
             tassert(last_literal != 0UL);  // /0 makes these LLVM ops undefined
-            log2 = 128 - last_literal.countLeadingZeros();
-            if (log2 < 128) {
-                cb_mask &= (llvm::APInt(128, 1) << log2) - 1;
+            log2 = CB_WIDTH - last_literal.countLeadingZeros();
+            if (log2 < CB_WIDTH) {
+                cb_mask &= (llvm::APInt(CB_WIDTH, 1) << log2) - 1;
             }
             // if no leading zeros, then keep the whole mask - no-op
             one_mask = 0;
@@ -120,8 +115,8 @@ PANDAENDCOMMENT */
         case llvm::Instruction::UDiv:
         case llvm::Instruction::SDiv:
             tassert(last_literal != NOT_LITERAL);
-            log2 = 128 - last_literal.countLeadingZeros();
-            if (log2 < 128) {
+            log2 = CB_WIDTH - last_literal.countLeadingZeros();
+            if (log2 < CB_WIDTH) {
                 cb_mask = cb_mask.lshr(log2);
             } else {
                 cb_mask = 0;
@@ -149,12 +144,12 @@ PANDAENDCOMMENT */
         case llvm::Instruction::Shl:
             tassert(last_literal != NOT_LITERAL);
 
-            // assuming the item being shifted by LShr is at most 64 bits, as
-            // the masks can't handle anything larger
-            if (last_literal.getZExtValue() > cb_mask.getBitWidth()) {
+            // assuming the item being shifted by Shl is at most CB_WIDTH bits,
+            // as the masks can't handle anything larger
+            if (last_literal.getZExtValue() > CB_WIDTH) {
                 fprintf(stderr,
                         "WARNING: Shift amount was greater than bit mask size, "
-                        "control bits are probably incorrect!\n");
+                        "control bits will be incorrect!\n");
 
                 // Preserve previous behavior
                 cb_mask = 0;
@@ -164,8 +159,9 @@ PANDAENDCOMMENT */
                 cb_mask <<= last_literal.getZExtValue();
                 one_mask <<= last_literal.getZExtValue();
                 zero_mask <<= last_literal.getZExtValue();
-                zero_mask |=
-                    (llvm::APInt(128, 1ul) << last_literal.getZExtValue()) - 1;
+                zero_mask |= (llvm::APInt(CB_WIDTH, 1ul)
+                              << last_literal.getZExtValue()) -
+                             1;
             }
             break;
 
@@ -180,7 +176,7 @@ PANDAENDCOMMENT */
                 zero_mask = zero_mask.lshr(last_literal);
 
                 // (size * 8) is the number of bits in the item LLVM is shifting
-                zero_mask |= ~((llvm::APInt(128, 1ul)
+                zero_mask |= ~((llvm::APInt(CB_WIDTH, 1ul)
                                 << ((size * 8) - last_literal.getZExtValue())) -
                                1);
             }
@@ -190,7 +186,7 @@ PANDAENDCOMMENT */
             tassert(last_literal != NOT_LITERAL);
 
             // if not really shifting, should be getting back what started with
-            if (last_literal.getZExtValue() > 128) {
+            if (last_literal.getZExtValue() > CB_WIDTH) {
                 fprintf(stderr,
                         "WARNING: Shift amount was greater than bit mask size, "
                         "control bits are probably incorrect!\n");
@@ -203,10 +199,10 @@ PANDAENDCOMMENT */
                 zero_mask = zero_mask.lshr(last_literal);
 
                 // See if high bit is a last_literal
-                llvm::APInt orig_mask = llvm::APInt(128, 1ul)
+                llvm::APInt orig_mask = llvm::APInt(CB_WIDTH, 1ul)
                                         << ((size * 8) - 1);
                 llvm::APInt mask =
-                    ~((llvm::APInt(128, 1ul)
+                    ~((llvm::APInt(CB_WIDTH, 1ul)
                        << ((size * 8) - last_literal.getZExtValue())) -
                       1);
                 if ((orig_one_mask & orig_mask).ugt(0)) {

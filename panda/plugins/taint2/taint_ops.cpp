@@ -54,6 +54,9 @@ extern bool detaint_cb0_bytes;
 void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size);
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);
 
+const int CB_WIDTH = 128;
+const llvm::APInt NOT_LITERAL(CB_WIDTH, ~0UL, true);
+
 static inline bool is_ram_ptr(uint64_t addr)
 {
     return RAM_ADDR_INVALID !=
@@ -126,7 +129,9 @@ struct CBMasks {
     llvm::APInt one_mask;
     llvm::APInt zero_mask;
 
-    CBMasks() : cb_mask(128, 0UL), one_mask(128, 0UL), zero_mask(128, 0UL)
+    CBMasks()
+        : cb_mask(CB_WIDTH, 0UL), one_mask(CB_WIDTH, 0UL),
+          zero_mask(CB_WIDTH, 0UL)
     {
     }
 };
@@ -544,8 +549,9 @@ void taint_host_delete(uint64_t env_ptr, uint64_t dest_addr, Shad *greg,
 // to reconstruct and deconstruct the full mask.
 static inline CBMasks compile_cb_masks(Shad *shad, uint64_t addr, uint64_t size)
 {
-    // as our masks are only 128 bits in size, can't handle more than 16 bytes
-    tassert(size <= 16);
+    // Control bit masks are assumed to have a width of CB_WIDTH, we can't
+    // handle more than CB_WIDTH / 8 bytes.
+    tassert(size <= (CB_WIDTH / 8));
 
     CBMasks result;
     for (int i = size - 1; i >= 0; i--) {
@@ -577,8 +583,6 @@ static inline void write_cb_masks(Shad *shad, uint64_t addr, uint64_t size,
         shad->set_full(addr + i, td);
     }
 }
-
-const llvm::APInt NOT_LITERAL(128, ~0UL, true);
 
 //seems implied via callers that for dyadic operations 'I' will have one tainted and one untainted arg
 static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
@@ -614,7 +618,7 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
             const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(arg);
             llvm::APInt literal = NOT_LITERAL;
             if (NULL != CI) {
-                literal = CI->getValue().zextOrSelf(128);
+                literal = CI->getValue().zextOrSelf(CB_WIDTH);
             }
             literals.push_back(literal);
             if (literal != NOT_LITERAL)
