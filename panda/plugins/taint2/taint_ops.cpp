@@ -54,21 +54,6 @@ extern bool detaint_cb0_bytes;
 void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size);
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);
 
-static inline uint64_t apint_hi_bits(llvm::APInt value)
-{
-    return value.lshr(64).trunc(64).getZExtValue();
-}
-
-static inline uint64_t apint_lo_bits(llvm::APInt value)
-{
-    return value.trunc(64).getZExtValue();
-}
-
-static inline llvm::APInt make_128bit_apint(uint64_t hi, uint64_t lo)
-{
-    return (llvm::APInt(128, hi) << 64) | llvm::APInt(128, lo);
-}
-
 static inline bool is_ram_ptr(uint64_t addr)
 {
     return RAM_ADDR_INVALID !=
