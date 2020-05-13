@@ -26,7 +26,8 @@
 // needed by the switch
 #define tassert(cond) assert((cond))
 
-const llvm::APInt NOT_LITERAL(128, ~0UL);
+const int CB_WIDTH = 128;
+const llvm::APInt NOT_LITERAL(CB_WIDTH, ~0UL);
 
 /*
  * Run a test, and print out the results.  Note that not all arguments are used
