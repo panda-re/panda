@@ -677,42 +677,32 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     Value *src1slot = constSlot(src1);
     Value *src2slot = constSlot(src2);
     Value *dslot = constSlot(dest);
-    Value *arg1 = NULL;
-    // N-bit float -> bit cast N-bit integer -> Sign Extend to 128-bit
-    if (src1->getType()->isFloatingPointTy()) {
-        // if we've encountered a float, we need to convert it to the 128-bit
-        // representation.
-        arg1 = b.CreateSExtOrBitCast(
-            b.CreateSExtOrBitCast(
-                src1, Type::getIntNTy(
-                          ctx, src1->getType()->getPrimitiveSizeInBits())),
-            Type::getIntNTy(ctx, 128));
+
+    Value *arg1_lo = NULL;
+    Value *arg1_hi = NULL;
+    if (64 < src1BitWidth) {
+        arg1_lo = b.CreateTrunc(src1, Type::getInt64Ty(ctx));
+        arg1_hi = b.CreateTrunc(b.CreateLShr(src1, 64), Type::getInt64Ty(ctx));
     } else {
-        arg1 = b.CreateSExtOrBitCast(src1, Type::getIntNTy(ctx, 128));
+        arg1_lo = b.CreateSExtOrBitCast(src1, Type::getInt64Ty(ctx));
+        Value *tmp =
+            b.CreateTrunc(b.CreateLShr(arg1_lo, 63), Type::getInt1Ty(ctx));
+        arg1_hi = b.CreateSelect(tmp, const_uint64(ctx, ~0UL),
+                                 const_uint64(ctx, 0UL));
     }
 
-    Value *arg2 = NULL;
-    // N-bit float -> bit cast N-bit integer -> Sign Extend to 128-bit
-    if (src2->getType()->isFloatingPointTy()) {
-        // if we've encountered a float, we need to convert it to the 128-bit
-        // representation.
-        arg2 = b.CreateSExtOrBitCast(
-            b.CreateSExtOrBitCast(
-                src2, Type::getIntNTy(
-                          ctx, src2->getType()->getPrimitiveSizeInBits())),
-            Type::getIntNTy(ctx, 128));
+    Value *arg2_lo = NULL;
+    Value *arg2_hi = NULL;
+    if (64 < src1BitWidth) {
+        arg2_lo = b.CreateTrunc(src2, Type::getInt64Ty(ctx));
+        arg2_hi = b.CreateTrunc(b.CreateLShr(src2, 64), Type::getInt64Ty(ctx));
     } else {
-        arg2 = b.CreateSExtOrBitCast(src2, Type::getIntNTy(ctx, 128));
+        arg2_lo = b.CreateSExtOrBitCast(src2, Type::getInt64Ty(ctx));
+        Value *tmp =
+            b.CreateTrunc(b.CreateLShr(arg2_lo, 63), Type::getInt1Ty(ctx));
+        arg2_hi = b.CreateSelect(tmp, const_uint64(ctx, ~0UL),
+                                 const_uint64(ctx, 0UL));
     }
-
-    // Now break arg1 and arg2 into hi and lo
-    Value *arg1_lo = b.CreateTrunc(arg1, Type::getInt64Ty(ctx));
-    Value *arg1_hi =
-        b.CreateTrunc(b.CreateLShr(arg1, 64), Type::getInt64Ty(ctx));
-
-    Value *arg2_lo = b.CreateTrunc(arg2, Type::getInt64Ty(ctx));
-    Value *arg2_hi =
-        b.CreateTrunc(b.CreateLShr(arg2, 64), Type::getInt64Ty(ctx));
 
     vector<Value*> args{
         llvConst, dslot, dest_size,
