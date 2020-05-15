@@ -578,8 +578,8 @@ static inline void write_cb_masks(Shad *shad, uint64_t addr, uint64_t size,
         td.zero_mask =
             static_cast<uint8_t>(cb_masks.zero_mask.trunc(8).getZExtValue());
         cb_masks.cb_mask = cb_masks.cb_mask.lshr(8);
-        cb_masks.one_mask = cb_masks.cb_mask.lshr(8);
-        cb_masks.zero_mask = cb_masks.cb_mask.lshr(8);
+        cb_masks.one_mask = cb_masks.one_mask.lshr(8);
+        cb_masks.zero_mask = cb_masks.zero_mask.lshr(8);
         shad->set_full(addr + i, td);
     }
 }
