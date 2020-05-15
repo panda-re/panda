@@ -176,9 +176,14 @@ PANDAENDCOMMENT */
                 zero_mask = zero_mask.lshr(last_literal);
 
                 // (size * 8) is the number of bits in the item LLVM is shifting
-                zero_mask |= ~((llvm::APInt(CB_WIDTH, 1ul)
-                                << ((size * 8) - last_literal.getZExtValue())) -
-                               1);
+                if ((size * 8) - last_literal.getZExtValue() > CB_WIDTH) {
+                    zero_mask |= llvm::APInt(CB_WIDTH, 0ul);
+                } else {
+                    zero_mask |=
+                        ~((llvm::APInt(CB_WIDTH, 1ul)
+                           << ((size * 8) - last_literal.getZExtValue())) -
+                          1);
+                }
             }
             break;
 
