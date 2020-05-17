@@ -245,7 +245,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         2) Check in../ ../../../build/
         3) raise RuntimeError
         '''
-        archs = ['i386', 'x86_64', 'arm', 'ppc']
+        archs = ['i386', 'x86_64', 'arm', 'ppc', 'mipsel', 'mips']
         python_package = pjoin(*[dirname(__file__), "data"])
         local_build = realpath(pjoin(dirname(__file__), "../../../../build"))
         path_end = "{0}-softmmu/libpanda-{0}.so".format(self.arch)
