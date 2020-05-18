@@ -11,6 +11,9 @@ import ida_name
 import ida_nalt
 import ida_bytes
 import ida_funcs
+import ida_segment
+
+import idautils
 
 from PyQt5.QtWidgets import QMessageBox
 
@@ -26,14 +29,13 @@ def main():
     snapshot.desc = "Before undo_ida_taint2.py @ %s" % (datetime.datetime.now())
     ida_kernwin.take_database_snapshot(snapshot)
 
-    for segea in Segments():
-        for funcea in Functions(segea, idc.get_segm_end(segea)):
-            function_name = idc.get_func_name(funcea)
+    for segea in idautils.Segments():
+        for funcea in Functions(segea, ida_segment.getseg(segea).end_ea):
+            function_name = ida_funcs.get_func_name(funcea)
             if function_name.startswith("TAINTED_"):
                 ida_name.set_name(funcea, function_name.replace("TAINTED_", ""), ida_name.SN_NOWARN)
-                idc.set_color(funcea, CIC_FUNC, UNDO_COLOR)
-                print(function_name)
-                for (startea, endea) in Chunks(funcea):
+                ida_funcs.get_func(funcea).color = UNDO_COLOR
+                for (startea, endea) in idautils.Chunks(funcea):
                     for head in Heads(startea, endea):
                         comment = ida_bytes.get_cmt(head, 0)
                         if comment != None and "taint labels" in comment:

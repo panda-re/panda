@@ -134,7 +134,7 @@ def main():
         if not fn:
             continue
         fn_start = fn.start_ea
-        fn_name = get_func_name(fn_start)
+        fn_name = ida_funcs.get_func_name(fn_start)
         if "TAINTED" not in fn_name:
             ida_name.set_name(fn_start, "TAINTED_" + fn_name, ida_name.SN_CHECK)
         fn.color = FUNC_COLOR
