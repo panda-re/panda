@@ -147,10 +147,6 @@ PANDAENDCOMMENT */
             // assuming the item being shifted by Shl is at most CB_WIDTH bits,
             // as the masks can't handle anything larger
             if (last_literal.getZExtValue() > CB_WIDTH) {
-                fprintf(stderr,
-                        "WARNING: Shift amount was greater than bit mask size, "
-                        "control bits will be incorrect!\n");
-
                 // Preserve previous behavior
                 cb_mask = 0;
                 one_mask = 0;
@@ -192,9 +188,6 @@ PANDAENDCOMMENT */
 
             // if not really shifting, should be getting back what started with
             if (last_literal.getZExtValue() > CB_WIDTH) {
-                fprintf(stderr,
-                        "WARNING: Shift amount was greater than bit mask size, "
-                        "control bits are probably incorrect!\n");
                 cb_mask = 0;
                 one_mask = 0;
                 zero_mask = 0;
