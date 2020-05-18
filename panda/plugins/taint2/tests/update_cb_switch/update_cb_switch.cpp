@@ -40,7 +40,6 @@ const llvm::APInt NOT_LITERAL(CB_WIDTH, ~0UL);
  *    size:  The number of bytes the LLVM instruction operates upon
  *    orig_cb_mask:  The original cb mask for the bytes being operated on
  *    orig_zero_mask:  The original zero mask for the bytes being operated on
- *    wj/liters
  *    orig_one_mask:  The original one mask for the bytes being operated on
  *    expected_cb_mask:  The expected cb mask for the bytes being operated on
  *    expected_zero_mask:  The expected zero mask
