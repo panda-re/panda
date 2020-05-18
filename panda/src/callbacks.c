@@ -137,6 +137,15 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
 }
 
 bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode) {
+
+#ifndef CONFIG_LLVM
+    // Taint2 seems to be our most commonly used LLVM plugin and it causes some confusion
+    // when users build PANDA without LLVM and then claim taint2 is "missing"
+    if (strcmp(plugin_name, "taint2") == 0) {
+        fprintf(stderr, PANDA_MSG_FMT "Fatal error: PANDA was built with LLVM disabled but LLVM is required for the taint2 plugin\n");
+    }
+#endif
+
     if (filename == NULL) {
         fprintf(stderr, PANDA_MSG_FMT "Fatal error: could not find path for plugin %s\n", PANDA_CORE_NAME, plugin_name);
     }
