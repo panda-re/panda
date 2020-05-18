@@ -232,14 +232,17 @@ extern const char *qemu_file;
 //   - Relative to the QEMU binary
 //   - Relative to the install prefix directory.
 char *panda_plugin_path(const char *plugin_name) {
+char *plugin_path;
     // First try relative to PANDA_PLUGIN_DIR
 #ifdef PLUGIN_DIR
-    char *plugin_path = g_strdup_printf(
-        "%s/%s/panda_%s" HOST_DSOSUF, g_getenv("PANDA_DIR"), PLUGIN_DIR, plugin_name);
-    if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
-        return plugin_path;
+    if (g_getenv("PANDA_DIR") != NULL) {
+      plugin_path = g_strdup_printf(
+          "%s/%s/panda_%s" HOST_DSOSUF, g_getenv("PANDA_DIR"), PLUGIN_DIR, plugin_name);
+      if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
+          return plugin_path;
+      }
+      g_free(plugin_path);
     }
-    g_free(plugin_path);
 #endif
 
     // Note qemu_file is set in the first call to main_aux
