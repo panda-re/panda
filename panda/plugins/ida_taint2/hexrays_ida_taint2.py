@@ -11,6 +11,7 @@ reselect them.
 """
 import csv
 import idaapi
+import ida_idaapi
 import ida_kernwin
 import ida_hexrays
 import ida_lines
@@ -148,7 +149,7 @@ class HIT2_ProcessSelectDialog(QDialog):
 class hexrays_ida_taint2_t(ida_idaapi.plugin_t):
     # PLUGIN_PROC means to load plugin when load new database, and unload it
     # when the database is closed
-    flags = idaapi.PLUGIN_PROC
+    flags = ida_idaapi.PLUGIN_PROC
     comment = "Use ida_taint2 output to color tainted pseudocode lines"
     help = "Use Alt-F5 to select process to taint with"
     wanted_name = "PANDA:  Pseudocode ida_taint2"
@@ -191,7 +192,7 @@ class hexrays_ida_taint2_t(ida_idaapi.plugin_t):
                         if (anchor.is_citem_anchor() and
                             not anchor.is_blkcmt_anchor()):
                             address = cfunc.treeitems.at(addr_tag).ea
-                            if (address != idaapi.BADADDR):
+                            if (address != ida_idaapi.BADADDR):
                                 if (address in tainted_pcs):
                                     sv[i].bgcolor = INST_COLOR
                     curline = curline[skipcode_index:]
@@ -263,12 +264,12 @@ class hexrays_ida_taint2_t(ida_idaapi.plugin_t):
         return 1
     
     def init(self):
-        if (ida_kernwin.init_hexrays_plugin()):
+        if (idaapi.init_hexrays_plugin()):
             # the plugin will terminate right away if return PLUGIN_OK instead
-            return idaapi.PLUGIN_KEEP
+            return ida_idaapi.PLUGIN_KEEP
         else:
             # PLUGIN_SKIP means don't load the plugin
-            return idaapi.PLUGIN_SKIP
+            return ida_idaapi.PLUGIN_SKIP
 
     def term(self):
         # nothing to do when plugin is unloaded
@@ -278,7 +279,7 @@ class hexrays_ida_taint2_t(ida_idaapi.plugin_t):
         global tainted_pcs
         # this is called when select the plugin from the Edit>Plugins menu
         curwidget = ida_kernwin.get_current_widget()
-        if (ida_kernwin.BWN_PSEUDOCODE == ida_hexrays.get_widget_type(curwidget)):
+        if (ida_kernwin.BWN_PSEUDOCODE == ida_kernwin.get_widget_type(curwidget)):
             reuse = HIT2_ReuseDialog.GET_NEW_PROCESS
             clear_old = False
             if (len(tainted_pcs) > 0):
@@ -293,5 +294,5 @@ class hexrays_ida_taint2_t(ida_idaapi.plugin_t):
         else:
             ida_kernwin.msg("Current window is not a pseudocode window\n")
 
-    def PLUGIN_ENTRY():
-        return hexrays_ida_taint2_t()
+def PLUGIN_ENTRY():
+    return hexrays_ida_taint2_t()
