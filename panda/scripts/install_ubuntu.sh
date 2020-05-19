@@ -61,14 +61,12 @@ if [ "$version" -ge "20" ]; then
     sudo add-apt-repository "deb http://mirrors.kernel.org/ubuntu/ xenial main"
 
     # Additional LLVM 3.3 deps we have to do manually
-    is_x86=false
     if [ "$arch" == "x86_64" ]; then
       is_x86=true
       libcloog_deb="libcloog-isl4_0.18.4-1_amd64.deb"
       llvm_libc_deb="libc++1_3.7.0-1_amd64.deb"
       llvm_libc_dev_deb="libc++-dev_3.7.0-1_amd64.deb"
     elif [ "$arch" == "i386" ]; then
-      is_x86=true
       libcloog_deb="libcloog-isl4_0.18.4-1_i386.deb"
       llvm_libc_deb="libc++1_3.7.0-1_i386.deb"
       llvm_libc_dev_deb="libc++-dev_3.7.0-1_i386.deb"
@@ -76,7 +74,7 @@ if [ "$version" -ge "20" ]; then
       progress "Can't do LLVM 3.3 dependecy patching on non-x86 Ubuntu 20.04 system. Proceeding without..."
     fi
 
-    if [ "$is_x86" = true ] ; then
+    if [[ "$arch" == "x86_64" || "$arch" == "i386" ]]; then
       llvm_libc_helpers_deb="libc++-helpers_3.7.0-1_all.deb"
       wget -q -nc --show-progress http://archive.ubuntu.com/ubuntu/pool/universe/c/cloog/$libcloog_deb
       wget -q -nc --show-progress http://archive.ubuntu.com/ubuntu/pool/universe/libc/libc++/$llvm_libc_deb
