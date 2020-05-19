@@ -277,7 +277,6 @@ class hexrays_ida_taint2_t(ida_idaapi.plugin_t):
     def run(self, arg):
         global tainted_pcs
         # this is called when select the plugin from the Edit>Plugins menu
-        #curwidget = idaapi.get_current_tform()
         curwidget = ida_kernwin.get_current_widget()
         if (ida_kernwin.BWN_PSEUDOCODE == ida_hexrays.get_widget_type(curwidget)):
             reuse = HIT2_ReuseDialog.GET_NEW_PROCESS

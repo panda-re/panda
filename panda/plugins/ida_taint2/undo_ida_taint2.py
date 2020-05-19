@@ -36,7 +36,7 @@ def main():
                 ida_name.set_name(funcea, function_name.replace("TAINTED_", ""), ida_name.SN_NOWARN)
                 ida_funcs.get_func(funcea).color = UNDO_COLOR
                 for (startea, endea) in idautils.Chunks(funcea):
-                    for head in Heads(startea, endea):
+                    for head in idautils.Heads(startea, endea):
                         comment = ida_bytes.get_cmt(head, 0)
                         if comment != None and "taint labels" in comment:
                             ida_nalt.set_item_color(head, UNDO_COLOR)
