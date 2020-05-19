@@ -1,5 +1,5 @@
 from panda.extras.file_faker import FakeFile, ffi
-import logging
+import logging,struct 
 
 
 
@@ -24,40 +24,56 @@ class KeyValuePair:
             else:
                 print(f"We discarded {inp}")
 
-    def __str__(self):
+    def bytestr(self):
         retstr = b""
         for key in self.dictionary.keys():
-            retstr+= key+b"="+self.dictionary[key]+chr(0).encode()
+            retstr+= key+b"="+self.dictionary[key]+chr(0).encode() + chr(0).encode()
         return retstr
     def __getitem__(self, key):
         if isinstance(key, int):
             if key < self.__len__():
-               return self.__str__()[key]
+               return self.bytestr()[key]
         elif isinstance(key, slice):
-            return self.__str__()[key]
+            return self.bytestr()[key]
         else:
             print(type(key))
     def __iter__(self):
-        for i in self.__str__():
+        for i in self.bytestr():
             yield i
     def __len__(self):
-        return len(self.__str__())
+        return len(self.bytestr())
 
 class NVRAM(FakeFile):
     def __init__(self):
         self.logger = logging.getLogger('panda.hooking')
         self.contents = KeyValuePair()
-        with open("kvp_new.out") as f:
-            for line in f.readlines():
-                self.contents.write(line.encode() + b"\x00")
+        #with open("kvp_new.out") as f:
+        #    for line in f.readlines():
+        #        self.contents.write(line.encode() + b"\x00")
         self.refcount = 0
 
-    def read(self, size, offset):
+    def read(self, panda, cpustate, size, offset, buf_ptr=None):
         
         '''
         Generate data for a given read of size.  Returns data.
         '''
-        
+        self.logger.warn(f"Got to NVRAM read with buf_ptr={hex(buf_ptr)}")
+
+        try:
+            request = panda.virtual_memory_read(cpustate,buf_ptr, size,fmt='bytearray')
+        except:
+            self.logger.error(f"virtual memory read fail on {buf_ptr}")
+            request = ""
+        self.logger.error("Got to read in nvram")
+        if request:
+            if request in self.contents.dictionary:
+                self.logger.error(f"Found {request} in dictionary")
+                pos = self.contents.bytestr().find(request) + len(request) + 1
+                buf = struct.pack("<i", pos)
+                self.logger.error(f"Writing {length} to {hex(location)} with buf {str(buf)}")
+                return buf
+            else:
+                return b""
         if offset >= len(self.contents):  # No bytes left to read. So we make more!
             return b""
         
@@ -75,7 +91,14 @@ class NVRAM(FakeFile):
         self.contents.write(write_data)
         return len(write_data) #writes always succeed
 
-    def ioctl(self, cmd, arg):
+    def ioctl(self, panda, cpustate, cmd, arg):
+        if cmd == 1:
+            length = len(self.contents)
+            location = arg
+            buf = struct.pack("<i", length)
+            self.logger.error(f"Writing {length} to {hex(location)} with buf {str(buf)}")
+            panda.virtual_memory_write(cpustate, location, buf)
+
         self.logger.warning(f"got ioctl and it was cmd:{hex(cmd)} arg:{hex(arg)}")
 
     def stat(self, stat_struct):

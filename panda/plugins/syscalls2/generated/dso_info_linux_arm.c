@@ -158,6 +158,8 @@ static syscall_argtype_t argt_87[] = {SYSCALL_ARG_STR, SYSCALL_ARG_S32};
 static uint8_t argsz_87[] = {sizeof(uint32_t), sizeof(int32_t)};
 static syscall_argtype_t argt_88[] = {SYSCALL_ARG_S32, SYSCALL_ARG_S32, SYSCALL_ARG_U32, SYSCALL_ARG_PTR};
 static uint8_t argsz_88[] = {sizeof(int32_t), sizeof(int32_t), sizeof(uint32_t), sizeof(uint32_t)};
+static syscall_argtype_t argt_90[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_U32, SYSCALL_ARG_U32};
+static uint8_t argsz_90[] = {sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_91[] = {SYSCALL_ARG_U32, SYSCALL_ARG_U32};
 static uint8_t argsz_91[] = {sizeof(uint32_t), sizeof(uint32_t)};
 static syscall_argtype_t argt_92[] = {SYSCALL_ARG_STR, SYSCALL_ARG_S32};
@@ -1287,6 +1289,14 @@ syscall_info_t __syscall_info_a[] = {
 		.argsz = argsz_88,
 		.noreturn = false
 	},
+	[90] = {
+		.no = 90,
+		.name = "sys_mmap",
+		.nargs = 6,
+		.argt = argt_90,
+		.argsz = argsz_90,
+		.noreturn = false
+	},
 	[91] = {
 		.no = 91,
 		.name = "sys_munmap",
@@ -1977,7 +1987,7 @@ syscall_info_t __syscall_info_a[] = {
 	},
 	[192] = {
 		.no = 192,
-		.name = "do_mmap2",
+		.name = "sys_mmap2",
 		.nargs = 6,
 		.argt = argt_192,
 		.argsz = argsz_192,

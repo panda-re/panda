@@ -1220,6 +1220,7 @@ namespace syscalls2 {
 			const int sys_uselib = 86;
 			const int sys_swapon = 87;
 			const int sys_reboot = 88;
+			const int sys_mmap = 90;
 			const int sys_munmap = 91;
 			const int sys_truncate = 92;
 			const int sys_ftruncate = 93;
@@ -1306,7 +1307,7 @@ namespace syscalls2 {
 			const int sys_sendfile = 187;
 			const int sys_vfork = 190;
 			const int sys_getrlimit = 191;
-			const int do_mmap2 = 192;
+			const int sys_mmap2 = 192;
 			const int sys_truncate64 = 193;
 			const int sys_ftruncate64 = 194;
 			const int sys_stat64 = 195;

@@ -666,6 +666,24 @@ void syscall_return_switch_linux_arm(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_reboot_return, cpu, pc, arg0, arg1, arg2, arg3) ;
 		}; break;
+		// 90 long sys_mmap ['unsigned long addr', 'unsigned long len', 'unsigned long prot', 'unsigned long flags', 'unsigned long fd', 'unsigned long pgoff']
+		case 90: {
+			uint32_t arg0;
+			uint32_t arg1;
+			uint32_t arg2;
+			uint32_t arg3;
+			uint32_t arg4;
+			uint32_t arg5;
+			if (PPP_CHECK_CB(on_sys_mmap_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
+				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
+				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
+				memcpy(&arg3, ctx->args[3], sizeof(uint32_t));
+				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
+				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_sys_mmap_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
+		}; break;
 		// 91 long sys_munmap ['unsigned long addr', 'size_t len']
 		case 91: {
 			uint32_t arg0;
@@ -1582,7 +1600,7 @@ void syscall_return_switch_linux_arm(CPUState *cpu, target_ptr_t pc, const sysca
 			}
 			PPP_RUN_CB(on_sys_getrlimit_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 192 long do_mmap2 ['unsigned long addr', 'unsigned long len', 'unsigned long prot', 'unsigned long flags', 'unsigned long fd', 'unsigned long pgoff']
+		// 192 long sys_mmap2 ['unsigned long addr', 'unsigned long len', 'unsigned long prot', 'unsigned long flags', 'unsigned long fd', 'unsigned long pgoff']
 		case 192: {
 			uint32_t arg0;
 			uint32_t arg1;
@@ -1590,7 +1608,7 @@ void syscall_return_switch_linux_arm(CPUState *cpu, target_ptr_t pc, const sysca
 			uint32_t arg3;
 			uint32_t arg4;
 			uint32_t arg5;
-			if (PPP_CHECK_CB(on_do_mmap2_return) || PPP_CHECK_CB(on_all_sys_return2)) {
+			if (PPP_CHECK_CB(on_sys_mmap2_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
 				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
@@ -1598,7 +1616,7 @@ void syscall_return_switch_linux_arm(CPUState *cpu, target_ptr_t pc, const sysca
 				memcpy(&arg4, ctx->args[4], sizeof(uint32_t));
 				memcpy(&arg5, ctx->args[5], sizeof(uint32_t));
 			}
-			PPP_RUN_CB(on_do_mmap2_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
+			PPP_RUN_CB(on_sys_mmap2_return, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5) ;
 		}; break;
 		// 193 long sys_truncate64 ['const char __user *path', 'loff_t length']
 		case 193: {

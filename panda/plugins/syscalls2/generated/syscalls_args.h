@@ -21013,6 +21013,31 @@
 	const uint32_t &UNUSED(pref##arg) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]);
 #endif
 
+// long sys_mmap ['unsigned long addr', 'unsigned long len', 'unsigned long prot', 'unsigned long flags', 'unsigned long fd', 'unsigned long pgoff']
+#define locals_LINUX__ARM_sys_mmap(ctx, pref) \
+	uint32_t UNUSED(pref##addr) = *(uint32_t *)((ctx)->args[0]); \
+	uint32_t UNUSED(pref##len) = *(uint32_t *)((ctx)->args[1]); \
+	uint32_t UNUSED(pref##prot) = *(uint32_t *)((ctx)->args[2]); \
+	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[3]); \
+	uint32_t UNUSED(pref##fd) = *(uint32_t *)((ctx)->args[4]); \
+	uint32_t UNUSED(pref##pgoff) = *(uint32_t *)((ctx)->args[5]);
+#if defined(__cplusplus)
+#define references_LINUX__ARM_sys_mmap(ctx, pref) \
+	uint32_t &UNUSED(pref##addr) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	uint32_t &UNUSED(pref##len) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	uint32_t &UNUSED(pref##prot) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
+	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[3]); \
+	uint32_t &UNUSED(pref##fd) = *reinterpret_cast<uint32_t *>((ctx)->args[4]); \
+	uint32_t &UNUSED(pref##pgoff) = *reinterpret_cast<uint32_t *>((ctx)->args[5]);
+#define creferences_LINUX__ARM_sys_mmap(ctx, pref) \
+	const uint32_t &UNUSED(pref##addr) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const uint32_t &UNUSED(pref##len) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const uint32_t &UNUSED(pref##prot) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
+	const uint32_t &UNUSED(pref##flags) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]); \
+	const uint32_t &UNUSED(pref##fd) = *reinterpret_cast<const uint32_t *>((ctx)->args[4]); \
+	const uint32_t &UNUSED(pref##pgoff) = *reinterpret_cast<const uint32_t *>((ctx)->args[5]);
+#endif
+
 // long sys_munmap ['unsigned long addr', 'size_t len']
 #define locals_LINUX__ARM_sys_munmap(ctx, pref) \
 	uint32_t UNUSED(pref##addr) = *(uint32_t *)((ctx)->args[0]); \
@@ -22211,8 +22236,8 @@
 	const uint32_t &UNUSED(pref##rlim) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]);
 #endif
 
-// long do_mmap2 ['unsigned long addr', 'unsigned long len', 'unsigned long prot', 'unsigned long flags', 'unsigned long fd', 'unsigned long pgoff']
-#define locals_LINUX__ARM_do_mmap2(ctx, pref) \
+// long sys_mmap2 ['unsigned long addr', 'unsigned long len', 'unsigned long prot', 'unsigned long flags', 'unsigned long fd', 'unsigned long pgoff']
+#define locals_LINUX__ARM_sys_mmap2(ctx, pref) \
 	uint32_t UNUSED(pref##addr) = *(uint32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##len) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##prot) = *(uint32_t *)((ctx)->args[2]); \
@@ -22220,14 +22245,14 @@
 	uint32_t UNUSED(pref##fd) = *(uint32_t *)((ctx)->args[4]); \
 	uint32_t UNUSED(pref##pgoff) = *(uint32_t *)((ctx)->args[5]);
 #if defined(__cplusplus)
-#define references_LINUX__ARM_do_mmap2(ctx, pref) \
+#define references_LINUX__ARM_sys_mmap2(ctx, pref) \
 	uint32_t &UNUSED(pref##addr) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##len) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##prot) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[3]); \
 	uint32_t &UNUSED(pref##fd) = *reinterpret_cast<uint32_t *>((ctx)->args[4]); \
 	uint32_t &UNUSED(pref##pgoff) = *reinterpret_cast<uint32_t *>((ctx)->args[5]);
-#define creferences_LINUX__ARM_do_mmap2(ctx, pref) \
+#define creferences_LINUX__ARM_sys_mmap2(ctx, pref) \
 	const uint32_t &UNUSED(pref##addr) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##len) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##prot) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \

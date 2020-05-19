@@ -844,6 +844,27 @@ void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc) {
 		}
 		PPP_RUN_CB(on_sys_reboot_enter, cpu, pc, arg0, arg1, arg2, arg3);
 	}; break;
+	// 90 long sys_mmap ['unsigned long addr', 'unsigned long len', 'unsigned long prot', 'unsigned long flags', 'unsigned long fd', 'unsigned long pgoff']
+	case 90: {
+		panda_noreturn = false;
+		uint32_t arg0 = get_32(cpu, 0);
+		uint32_t arg1 = get_32(cpu, 1);
+		uint32_t arg2 = get_32(cpu, 2);
+		uint32_t arg3 = get_32(cpu, 3);
+		uint32_t arg4 = get_32(cpu, 4);
+		uint32_t arg5 = get_32(cpu, 5);
+		if (PPP_CHECK_CB(on_all_sys_enter2) ||
+			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
+					PPP_CHECK_CB(on_sys_mmap_return)))) {
+			memcpy(ctx.args[0], &arg0, sizeof(uint32_t));
+			memcpy(ctx.args[1], &arg1, sizeof(uint32_t));
+			memcpy(ctx.args[2], &arg2, sizeof(uint32_t));
+			memcpy(ctx.args[3], &arg3, sizeof(uint32_t));
+			memcpy(ctx.args[4], &arg4, sizeof(uint32_t));
+			memcpy(ctx.args[5], &arg5, sizeof(uint32_t));
+		}
+		PPP_RUN_CB(on_sys_mmap_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
+	}; break;
 	// 91 long sys_munmap ['unsigned long addr', 'size_t len']
 	case 91: {
 		panda_noreturn = false;
@@ -2002,7 +2023,7 @@ void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc) {
 		}
 		PPP_RUN_CB(on_sys_getrlimit_enter, cpu, pc, arg0, arg1);
 	}; break;
-	// 192 long do_mmap2 ['unsigned long addr', 'unsigned long len', 'unsigned long prot', 'unsigned long flags', 'unsigned long fd', 'unsigned long pgoff']
+	// 192 long sys_mmap2 ['unsigned long addr', 'unsigned long len', 'unsigned long prot', 'unsigned long flags', 'unsigned long fd', 'unsigned long pgoff']
 	case 192: {
 		panda_noreturn = false;
 		uint32_t arg0 = get_32(cpu, 0);
@@ -2013,7 +2034,7 @@ void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc) {
 		uint32_t arg5 = get_32(cpu, 5);
 		if (PPP_CHECK_CB(on_all_sys_enter2) ||
 			(!panda_noreturn && (PPP_CHECK_CB(on_all_sys_return2) ||
-					PPP_CHECK_CB(on_do_mmap2_return)))) {
+					PPP_CHECK_CB(on_sys_mmap2_return)))) {
 			memcpy(ctx.args[0], &arg0, sizeof(uint32_t));
 			memcpy(ctx.args[1], &arg1, sizeof(uint32_t));
 			memcpy(ctx.args[2], &arg2, sizeof(uint32_t));
@@ -2021,7 +2042,7 @@ void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc) {
 			memcpy(ctx.args[4], &arg4, sizeof(uint32_t));
 			memcpy(ctx.args[5], &arg5, sizeof(uint32_t));
 		}
-		PPP_RUN_CB(on_do_mmap2_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
+		PPP_RUN_CB(on_sys_mmap2_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 	}; break;
 	// 193 long sys_truncate64 ['const char __user *path', 'loff_t length']
 	case 193: {

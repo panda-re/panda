@@ -61,7 +61,7 @@ class FakeFile:
         self.initial_contents = fake_contents
         self.refcount = 0 # Reference count
 
-    def read(self, size, offset):
+    def read(self, panda, cpustate, size, offset, buf_ptr):
         '''
         Generate data for a given read of size.  Returns data.
         '''
@@ -125,14 +125,14 @@ class HyperFD:
         self.file.refcount+=1 # Count of open FDs pointing to the file
         self.offset = offset
 
-    def read(self, size):
+    def read(self,panda,cpustate,size,buf_ptr=None):
         '''
         Read from the file descriptor. Determine current offset
         and then pass request through to FakeFile
         Returns (data read, count)
         '''
         assert(self.file)
-        data = self.file.read(size, self.offset)
+        data = self.file.read(panda,cpustate,size, self.offset, buf_ptr)
         self.offset+=len(data)
         return (data, len(data))
 
@@ -180,9 +180,9 @@ class HyperFD:
             self.file.stat(stat)
         return stat
 
-    def ioctl(self, cmd, arg):
+    def ioctl(self, panda,cpustate, cmd, arg):
         if hasattr(self.file, "ioctl"):
-            self.file.ioctl(cmd,arg)
+            self.file.ioctl(panda,cpustate,cmd,arg)
 
     def close(self):
         # Should we just delete it?
@@ -248,6 +248,7 @@ class FileFaker(FileHook):
                           "sendmmsg", "setns", "finit_module", "dup", "dup2", "dup3", "lseek", "llseek", "syncfs"]
             to_hook[2] = ["epoll_ctl"]
             to_hook[3] = ["fanotify_mark"]
+            to_hook[4] = ["mmap", "mmap2"]
         else:
             raise ValueError(f"Unsupported PANDA arch: {panda.arch}")
 
@@ -255,7 +256,7 @@ class FileFaker(FileHook):
             for name in names:
                 self._gen_fd_cb(name, arg_offset)
 
-    def replace_file(self, filename, faker):
+    def replace_file(self, filename, faker, rename="/etc/passwd"):
         '''
         Replace all accesses to filename with accesses to the fake file instead
         '''
@@ -263,7 +264,7 @@ class FileFaker(FileHook):
 
         # XXX: We rename the files to real files to the guest kernel can manage FDs for us.
         #      this may need to use different real files depending on permissions requested
-        self.rename_file(filename, "/etc/passwd") # Stdout should always be writable?
+        self.rename_file(filename, rename) # Stdout should always be writable?
 
     def _gen_fd_cb(self, name, fd_offset):
         '''
@@ -290,8 +291,8 @@ class FileFaker(FileHook):
         # so we know to mutate it when it returns
         if (fd, asid) in self.hooked_fds:
             hfd = self.hooked_fds[(fd, asid)]
-#            self.logger.info(f"Entering hooked syscall {syscall_name} for fd {fd}, " + \
-#                                f"filename {hfd.name}")
+            self.logger.info(f"Entering hooked syscall {syscall_name} for fd {fd}, " + \
+                                f"filename {hfd.name}")
             self.currently_hooked = (fd, asid)
 
 
@@ -308,6 +309,7 @@ class FileFaker(FileHook):
 
         self.currently_hooked = None
         assert(args)
+        self.logger.error(f"syscall_name: {syscall_name}")
 
         (cpu, pc) = args[0:2]
         fd = args[2+fd_pos]
@@ -319,7 +321,7 @@ class FileFaker(FileHook):
             buf_ptr = args[3]
             count   = args[4]
 
-            (data, data_len) = hfd.read(count)
+            (data, data_len) = hfd.read(self._panda, cpu, count,buf_ptr=buf_ptr)
             if data:
                 try:
                     self._panda.virtual_memory_write(cpu, buf_ptr, data)
@@ -381,7 +383,7 @@ class FileFaker(FileHook):
         elif syscall_name  == "ioctl":
             cmd = args[3]
             arg = args[4]
-            hfd.ioctl(cmd, arg)		
+            hfd.ioctl(self._panda, cpu, cmd, arg)		
             cpu.env_ptr.regs[0] = 0
         elif syscall_name == "fcntl64":
             cmd = args[3]
@@ -405,6 +407,15 @@ class FileFaker(FileHook):
             cpu.env_ptr.regs[0] = 0
         elif syscall_name == "syncfs":
             cpu.env_ptr.regs[0] = 0
+
+        elif "mmap" in syscall_name:
+            self.logger.error(syscall_name)
+            region = cpu.env_ptr.regs[0]
+            length = args[2]
+            content = hfd.file.read(self._panda,cpu,length, 0,0)
+            print(f"Writing to memory region {hex(region)} with length: {hex(length)}")
+            print(f"result: {self._panda.virtual_memory_write(cpu,region, content)}")
+            
         else:
             self.logger.error(f"Unsupported syscall on FakeFD{fd}: {syscall_name}. Not intercepting (Running on real guest FD)")
 
