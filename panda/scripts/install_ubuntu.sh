@@ -53,29 +53,37 @@ progress "Installing PANDA dependencies..."
 if [ "$version" -ge "20" ]; then
   progress "Ubuntu 20 or higher"
   sudo apt-get -y install wget git protobuf-compiler protobuf-c-compiler \
-    libprotobuf-c-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
+    libprotobuf-c-dev libprotoc-dev python-protobuf libelf-dev pkg-config \
     libwiretap-dev libwireshark-dev flex bison python3-pip python3 \
     libglib2.0-dev libpixman-1-dev libsdl2-dev libcurl4-gnutls-dev
 
     # Enable 16.04/xenial repos for dependencies for the LLVM 3.3 packages in ppa:phulin/panda
     sudo add-apt-repository "deb http://mirrors.kernel.org/ubuntu/ xenial main"
 
-    # Additional LLVM 3.3 dep deleted from xenial repos
+    # Additional LLVM 3.3 deps we have to do manually
     is_x86=false
     if [ "$arch" == "x86_64" ]; then
       is_x86=true
       libcloog_deb="libcloog-isl4_0.18.4-1_amd64.deb"
+      llvm_libc_deb="libc++1_3.7.0-1_amd64.deb"
+      llvm_libc_dev_deb="libc++-dev_3.7.0-1_amd64.deb"
     elif [ "$arch" == "i386" ]; then
       is_x86=true
       libcloog_deb="libcloog-isl4_0.18.4-1_i386.deb"
+      llvm_libc_deb="libc++1_3.7.0-1_i386.deb"
+      llvm_libc_dev_deb="libc++-dev_3.7.0-1_i386.deb"
     else
       progress "Can't do LLVM 3.3 dependecy patching on non-x86 Ubuntu 20.04 system. Proceeding without..."
     fi
 
     if [ "$is_x86" = true ] ; then
+      llvm_libc_helpers_deb="libc++-helpers_3.7.0-1_all.deb"
       wget -q -nc --show-progress http://archive.ubuntu.com/ubuntu/pool/universe/c/cloog/$libcloog_deb
-      sudo apt -y install ./$libcloog_deb
-      rm ./$libcloog_deb
+      wget -q -nc --show-progress http://archive.ubuntu.com/ubuntu/pool/universe/libc/libc++/$llvm_libc_deb
+      wget -q -nc --show-progress http://archive.ubuntu.com/ubuntu/pool/universe/libc/libc++/$llvm_libc_helpers_deb
+      wget -q -nc --show-progress http://archive.ubuntu.com/ubuntu/pool/universe/libc/libc++/$llvm_libc_dev_deb
+      sudo apt -y install ./$libcloog_deb ./$llvm_libc_deb ./$llvm_libc_helpers_deb ./$llvm_libc_dev_deb
+      rm ./$libcloog_deb ./$llvm_libc_deb ./$llvm_libc_helpers_deb ./$llvm_libc_dev_deb
     fi
 
 elif [ "$version" -eq "19" ]; then
