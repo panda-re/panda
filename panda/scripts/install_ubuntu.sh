@@ -52,10 +52,10 @@ fi
 progress "Installing PANDA dependencies..."
 if [ "$version" -ge "20" ]; then
   progress "Ubuntu 20 or higher"
-  sudo apt-get -y install git protobuf-compiler protobuf-c-compiler \
+  sudo apt-get -y install wget git protobuf-compiler protobuf-c-compiler \
     libprotobuf-c-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
     libwiretap-dev libwireshark-dev flex bison python3-pip python3 \
-    libglib2.0-dev libpixman-1-dev libsdl2-dev wget
+    libglib2.0-dev libpixman-1-dev libsdl2-dev libcurl4-gnutls-dev
 
     # Enable 16.04/xenial repos for dependencies for the LLVM 3.3 packages in ppa:phulin/panda
     sudo add-apt-repository "deb http://mirrors.kernel.org/ubuntu/ xenial main"
