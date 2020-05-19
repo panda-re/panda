@@ -74,7 +74,7 @@ if [ "$version" -ge "20" ]; then
 
     if [ "$is_x86" = true ] ; then
       wget -q -nc --show-progress http://archive.ubuntu.com/ubuntu/pool/universe/c/cloog/$libcloog_deb
-      sudo apt install ./$libcloog_deb
+      sudo apt -y install ./$libcloog_deb
       rm ./$libcloog_deb
     fi
 
