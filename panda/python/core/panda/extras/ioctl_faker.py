@@ -91,7 +91,7 @@ class Ioctl():
 
         bits = self.cmd.bits
         direction = ffi.string(ffi.cast("enum ioctl_direction", bits.direction))
-        ioctl_desc = f"dir={direction},arg_size={bits.arg_size:x},cmd={bits.cmd_num:x},type={bits.type_num:x}"
+        ioctl_desc = f"dir={direction},arg_size={bits.arg_size:x},cmd=0x{bits.cmd_num:x},type=0x{bits.type_num:x}"
         if (self.guest_ptr == None):
             self_str += f"ioctl({ioctl_desc}) -> {self.original_ret_code}"
         else:
@@ -121,7 +121,7 @@ class IoctlFaker():
     Bin all returns into failures (needed forcing) and successes, store for later retrival/analysis.
     '''
 
-    def __init__(self, panda, use_osi_linux = False, log = False):
+    def __init__(self, panda, use_osi_linux = False, log = False, ignore=[]):
 
         self.osi = use_osi_linux
         self._panda = panda
@@ -153,14 +153,15 @@ class IoctlFaker():
             ioctl = Ioctl(self._panda, cpu, fd, cmd, arg, self.osi)
             ioctl.set_ret_code(self._panda.from_unsigned_guest(cpu.env_ptr.regs[0]))
 
-            if (ioctl.original_ret_code != 0):
-                self._fail_returns.add(ioctl)
-                cpu.env_ptr.regs[0] = 0
-                if ioctl.has_buf and self._log:
-                    self._logger.warning("Forcing success return for data-containing {}".format(ioctl))
-                elif self._log:
-                    self._logger.info("Forcing success return for data-less {}".format(ioctl))
-            else:
+            if (ioctl.original_ret_code == -25): # Error indicating no driver is present
+                if ioctl.cmd.bits.cmd_num not in ignore: # Allow ignoring specific commands
+                    self._fail_returns.add(ioctl)
+                    cpu.env_ptr.regs[0] = 0
+                    if ioctl.has_buf and self._log:
+                        self._logger.warning("Forcing success return for data-containing {}".format(ioctl))
+                    else:
+                        self._logger.info("Forcing success return for data-less {}".format(ioctl))
+            else: #TODO log successes vs unmodified ignores
                 self._success_returns.add(ioctl)
 
     def _get_returns(self, source, with_buf_only):
