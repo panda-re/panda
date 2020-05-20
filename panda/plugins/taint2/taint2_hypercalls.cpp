@@ -15,8 +15,8 @@
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
 #endif
-#include <iostream>
 #ifdef TAINT2_HYPERCALLS
+#include <iostream>
 #include <cstdio>
 #include <sstream>
 #include <string>
@@ -494,7 +494,7 @@ bool guest_hypercall_callback(CPUState *cpu) {
         }
 #endif // defined(TARGET_I386)
     }
-#endif // defined(TARGET_I389) || defined(TARGET_X86_64) || defined(TARGET_ARM)
+#endif // defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM)
     return ret;
 }
 #endif // TAINT2_HYPERCALLS
