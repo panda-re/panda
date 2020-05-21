@@ -1,0 +1,17 @@
+message Edge { // This will have to be n at some point 
+    repeated uint64 pc = 2;
+    required uint64 hit_count = 3;
+}
+
+message AsidEdges {
+    repeated Edge edges = 2; // all the up-to-n edges 
+}
+
+optional AsidEdges edge_coverage = 41;  
+
+
+message AsidTrace {
+    repeated uint64 pcs = 1; 
+}   
+
+optional AsidTrace trace = 43;

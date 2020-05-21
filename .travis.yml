@@ -104,12 +104,12 @@ script:
   # Run install script
   - sudo panda/scripts/install_ubuntu.sh || travis_terminate 1; # Build panda
   # Install pypanda
-  - cd panda/pypanda
+  - cd panda/python/core
   - python3 setup.py install || travis_terminate 1
   # Run pypanda tests
-  - cd tests
-  - make || travis_terminate 1
-  - pip3 install -r requirements.txt || travis_terminate 1 # Install test python dependencies (capstone, pyelftools)
+    # - cd ../tests
+    #- make || travis_terminate 1
+    #- pip3 install -r requirements.txt || travis_terminate 1 # Install test python dependencies (capstone, pyelftools)
     #  - python3 multi_proc_cbs.py
     #  - python3 taint_reg.py
     #  - python3 taint_ram.py

@@ -101,8 +101,9 @@ When taking a recording to be used with `osi_linux`, ASLR must be disabled in th
 Arguments
 ---------
 
-* `kconf_file`: string, defaults to "kernelinfo.conf". The location of the configuration file that gives the required offsets for different versions of Linux.
+* `kconf_file`: string, by default searches build directory then install directory for "kernelinfo.conf". The location of the configuration file that gives the required offsets for different versions of Linux.
 * `kconf_group`: string, defaults to "debian-3.2.65-i686". The specific configuration desired from the kernelinfo file (multiple configurations can be stored in a single `kernelinfo.conf`).
+* `load_now`: bool, defaults to false. When set, we will raise a fatal error if OSI cannot be initialized immediately. Otherwise, the plugin will attempt to provide introspection immediately, but if that fails, it will wait until the first syscall. If OSI is still unavailable at the first syscall, a fatal error will always be raised.
 
 Dependencies
 ------------
@@ -131,4 +132,28 @@ Assuming you have a `kernelinfo.conf` in the current directory with a configurat
     $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 -replay foo \
         -panda osi -panda osi_linux:kconf_file=kernelinfo.conf,kconf_group=my_kernel_info \
         -panda osi_test
+```
+Another Example
+-------
+
+PANDA's `kernelinfo.conf` has the information for the Ubuntu kernels found on the live DVD for 18.04.3 and 18.04.4
+
+Newer kernels perform KASLR, however, and need a boot parameter to turn that off. This parameter is `nokaslr`. Thus, one can load an environment directly from one of these DVDs
+```bash
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 --monitor stdio \
+    -m 4096 \
+    -cdrom 'ubuntu-18.04.4-desktop-amd64.iso'
+```
+Being careful to add the `nokaslr` boot parameter.  Then just add the binaries of interest to the live environment and start recording. The osi_test can be executed in the following way:
+
+```bash
+    $PANDA_PATH/x86_64-softmmu/panda-system-x86_64 \
+    -m 4096 -replay foo -panda osi\
+    -panda osi_linux:kconf_group=ubuntu:5.3.0-28-generic:64 \
+    -os linux-64-ubuntu -panda osi_test > ositest.txt
+```
+
+Note, it is often helpful to turn off ASLR for user mode programs as well. This can be done with
+```
+echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
 ```

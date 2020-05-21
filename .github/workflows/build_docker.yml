@@ -1,4 +1,4 @@
-name: Build and Publish Docker Container
+name: Build and Publish Docker Container # Only for main panda-re repo, not forks
 
 on:
   push:
@@ -7,9 +7,8 @@ on:
 
 jobs:
   build:
-
+    if: github.repository  == 'panda-re/panda'
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v1
     - name: Docker login
@@ -19,7 +18,11 @@ jobs:
       run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_18_04 -t pandare/panda:latest;
             docker tag  pandare/panda:latest pandare/panda:${GITHUB_SHA};
             docker push pandare/panda:${GITHUB_SHA};
-            docker push pandare/panda:latest
+            docker push pandare/panda:latest;
+            docker stop $(docker ps -a -q) || true;
+            docker rm $(docker ps -a -q) || true;
+            docker rmi $(docker images -a -q) || true;
+            docker rmi -f $(docker images -a -q) || true
 
     - name: Build Xenial container
       run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_16_04 -t pandare/panda_xenial:latest;

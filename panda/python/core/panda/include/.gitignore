@@ -1,0 +1,20 @@
+*_int_fns
+*_int_fns_pypanda.h
+*_int_fns.h
+
+# Automatically copied from elsewhere
+# by panda_create_datatypes.py. Trimmed to
+# only include content within the
+# PYPANDA_NEEDS_THIS /END_PYPANDA_NEEDS
+# comments
+
+addr.h
+cb-defs.h
+common.h
+plugin.h
+query_res.h
+rr_api.h
+syscalls_ext_typedefs*.h
+callstack_instr.h
+osi_types.h
+syscalls2_info.h

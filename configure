@@ -91,10 +91,13 @@ update_cxxflags() {
     # Set QEMU_CXXFLAGS from QEMU_CFLAGS by filtering out those
     # options which some versions of GCC's C++ compiler complain about
     # because they only make sense for C programs.
-    QEMU_CXXFLAGS=
+    # -Wall is also excluded because it resets any warnings we have
+    # previously hushed. QEMU_CXXFLAGS set -Wall seperately.
+    QEMU_CXXFLAGS="$QEMU_CXXFLAGS -D__STDC_LIMIT_MACROS"
+
     for arg in $QEMU_CFLAGS; do
         case $arg in
-            -std=*|\
+            -std=*|-Wall|\
             -Wstrict-prototypes|-Wmissing-prototypes|-Wnested-externs|\
             -Wold-style-declaration|-Wold-style-definition|-Wredundant-decls)
                 ;;
@@ -103,6 +106,39 @@ update_cxxflags() {
                 ;;
         esac
     done
+}
+
+update_clangxxflags() {
+    # Set QEMU_CXXFLAGS from QEMU_CFLAGS by filtering out those
+    # options which some versions of clang++ compiler complain about
+    # because they don't understand.
+    # -Wall is also excluded because it resets any warnings we have
+    # previously hushed. QEMU_CXXFLAGS set -Wall seperately.
+    QEMU_CXXFLAGS="$QEMU_CXXFLAGS -D__STDC_LIMIT_MACROS"
+
+    for arg in $QEMU_CFLAGS; do
+        case $arg in
+            -std=*|-Wall|\
+            -Wold-style-declaration)
+                ;;
+            *)
+                QEMU_CXXFLAGS=${QEMU_CXXFLAGS:+$QEMU_CXXFLAGS }$arg
+                ;;
+        esac
+    done
+
+    # Finally filter-out flags only understood by g++.
+    local QEMU_CXXFLAGSL=""
+    for arg in $QEMU_CXXFLAGS; do
+        case $arg in
+            -Wno-shift-negative-value)
+                ;;
+            *)
+                QEMU_CXXFLAGSL=${QEMU_CXXFLAGSL:+$QEMU_CXXFLAGSL }$arg
+                ;;
+        esac
+    done
+    QEMU_CXXFLAGS="$QEMU_CXXFLAGSL"
 }
 
 compile_object() {
@@ -119,8 +155,32 @@ compile_prog() {
 compile_prog_cxx() {
   local_cxxflags="$1"
   local_ldflags="$2"
-  echo $cxx $QEMU_CFLAGS $local_cxxflags -o $TMPE $TMPC $LDFLAGS $local_ldflags >> config.log
-  $cxx $QEMU_CFLAGS $QEMU_CXXFLAGS $local_cxxflags -o $TMPE $TMPCXX $LDFLAGS $local_ldflags >> config.log 2>&1
+  local qemu_cxxflags_bak="$QEMU_CXXFLAGS"
+  local ret=0
+
+  update_cxxflags
+  do_cxx $QEMU_CXXFLAGS $local_cxxflags -o $TMPE $TMPCXX $LDFLAGS $local_ldflags
+  ret=$?
+
+  QEMU_CXXFLAGS="$qemu_cxxflags_bak"
+  return $ret
+}
+
+compile_prog_clangxx() {
+  local_cxxflags="$1"
+  local_ldflags="$2"
+  local cxx_bak="$cxx"
+  local qemu_cxxflags_bak="$QEMU_CXXFLAGS"
+  local ret=0
+
+  update_clangxxflags
+  cxx="${clangxx:-clang++}"
+  do_cxx $QEMU_CXXFLAGS $local_cxxflags -o $TMPE $TMPCXX $LDFLAGS $local_ldflags
+  ret=$?
+
+  cxx="$cxx_bak"
+  QEMU_CXXFLAGS="$qemu_cxxflags_bak"
+  return $ret
 }
 
 # symbolically link $1 to $2.  Portable version of "ln -sf".
@@ -189,6 +249,8 @@ cc_i386=i386-pc-linux-gnu-gcc
 libs_qga=""
 debug_info="yes"
 stack_protector=""
+git_submodules=""
+protobuf="yes"
 llvm="no"
 llvmver="3.3"
 
@@ -276,7 +338,6 @@ cocoa="no"
 softmmu="yes"
 linux_user="no"
 bsd_user="no"
-aix="no"
 blobs="yes"
 pkgversion=""
 pie=""
@@ -290,8 +351,10 @@ libusb=""
 usb_redir=""
 opengl=""
 opengl_dmabuf="no"
+cpuid_h="no"
 avx2_opt="no"
 zlib="yes"
+capstone=""
 lzo=""
 snappy=""
 bzip2=""
@@ -355,7 +418,8 @@ for opt do
   --cpu=*) cpu="$optarg"
   ;;
   --extra-cflags=*) QEMU_CFLAGS="$QEMU_CFLAGS $optarg"
-                    EXTRA_CFLAGS="$optarg"
+  ;;
+  --extra-cxxflags=*) QEMU_CXXFLAGS="$QEMU_CXXFLAGS $optarg"
   ;;
   --extra-ldflags=*) LDFLAGS="$LDFLAGS $optarg"
                      EXTRA_LDFLAGS="$optarg"
@@ -415,7 +479,8 @@ QEMU_CFLAGS="-fPIC -fno-strict-aliasing -fno-common -fwrapv $QEMU_CFLAGS"
 QEMU_CFLAGS="-Wall -Wwrite-strings -Wmissing-prototypes $QEMU_CFLAGS"
 QEMU_CFLAGS="-Wstrict-prototypes -Wredundant-decls $QEMU_CFLAGS"
 QEMU_CFLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE $QEMU_CFLAGS"
-QEMU_INCLUDES="-I. -I\$(SRC_PATH) -I\$(SRC_PATH)/include"
+QEMU_INCLUDES="-iquote . -iquote \$(SRC_PATH) -iquote \$(SRC_PATH)/include"
+QEMU_CXXFLAGS="-Wall $QEMU_CXXFLAGS"
 if test "$debug_info" = "yes"; then
     CFLAGS="-g $CFLAGS"
     LDFLAGS="-g $LDFLAGS"
@@ -466,8 +531,22 @@ elif check_define __sun__ ; then
   targetos='SunOS'
 elif check_define __HAIKU__ ; then
   targetos='Haiku'
+elif check_define __FreeBSD__ ; then
+  targetos='FreeBSD'
+elif check_define __FreeBSD_kernel__ && check_define __GLIBC__; then
+  targetos='GNU/kFreeBSD'
+elif check_define __DragonFly__ ; then
+  targetos='DragonFly'
+elif check_define __NetBSD__; then
+  targetos='NetBSD'
+elif check_define __APPLE__; then
+  targetos='Darwin'
 else
-  targetos=$(uname -s)
+  # This is a fatal error, but don't report it yet, because we
+  # might be going to just print the --help text, or it might
+  # be the result of a missing compiler.
+  targetos='bogus'
+  bogus_os='yes'
 fi
 
 # Some host OSes need non-standard checks for which CPU to use.
@@ -516,8 +595,6 @@ elif check_define _ARCH_PPC ; then
   fi
 elif check_define __mips__ ; then
   cpu="mips"
-elif check_define __ia64__ ; then
-  cpu="ia64"
 elif check_define __s390__ ; then
   if check_define __s390x__ ; then
     cpu="s390x"
@@ -539,9 +616,6 @@ case "$cpu" in
   ppc|ppc64|s390|s390x|sparc64|x32)
     cpu="$cpu"
     supported_cpu="yes"
-  ;;
-  ia64)
-    cpu="$cpu"
   ;;
   i386|i486|i586|i686|i86pc|BePC)
     cpu="i386"
@@ -650,33 +724,20 @@ Darwin)
   # Disable attempts to use ObjectiveC features in os/object.h since they
   # won't work when we're compiling with gcc as a C compiler.
   QEMU_CFLAGS="-DOS_OBJECT_USE_OBJC=0 $QEMU_CFLAGS"
+  # Hush clang warnings. Appended because QEMU_CFLAGS includes -Wall.
+  #   -Wno-extern-c-compat -> for start_init_save/end_init_save dummy markers in cpu.h
+  #   -Wno-address-of-packed-member ->
+  #   -Wno-unused-private-field -> unused private fields for classes in tcg-llvm.h
+  #   -Wno-availability -> warnings generated by system's zlib.h (WTF Apple?)
+  QEMU_CFLAGS="$QEMU_CFLAGS -Wno-extern-c-compat -Wno-address-of-packed-member -Wno-unused-private-field -Wno-availability"
   HOST_VARIANT_DIR="darwin"
-  LIBS="-lprotobuf-c -lprotobuf $LIBS"
   supported_os="yes"
 ;;
 SunOS)
   solaris="yes"
   make="${MAKE-gmake}"
   install="${INSTALL-ginstall}"
-  ld="gld"
   smbd="${SMBD-/usr/sfw/sbin/smbd}"
-  needs_libsunmath="no"
-  solarisrev=$(uname -r | cut -f2 -d.)
-  if [ "$cpu" = "i386" -o "$cpu" = "x86_64" ] ; then
-    if test "$solarisrev" -le 9 ; then
-      if test -f /opt/SUNWspro/prod/lib/libsunmath.so.1; then
-        needs_libsunmath="yes"
-        QEMU_CFLAGS="-I/opt/SUNWspro/prod/include/cc $QEMU_CFLAGS"
-        LDFLAGS="-L/opt/SUNWspro/prod/lib -R/opt/SUNWspro/prod/lib $LDFLAGS"
-        LIBS="-lsunmath $LIBS"
-      else
-        error_exit "QEMU will not link correctly on Solaris 8/X86 or 9/x86 without" \
-            "libsunmath from the Sun Studio compilers tools, due to a lack of" \
-            "C99 math features in libm.so in Solaris 8/x86 and Solaris 9/x86" \
-            "Studio 11 can be downloaded from www.sun.com."
-      fi
-    fi
-  fi
   if test -f /usr/include/sys/soundcard.h ; then
     audio_drv_list="oss"
   fi
@@ -689,10 +750,6 @@ SunOS)
   solarisnetlibs="-lsocket -lnsl -lresolv"
   LIBS="$solarisnetlibs $LIBS"
   libs_qga="$solarisnetlibs $libs_qga"
-;;
-AIX)
-  aix="yes"
-  make="${MAKE-gmake}"
 ;;
 Haiku)
   haiku="yes"
@@ -709,14 +766,8 @@ Linux)
   vhost_scsi="yes"
   vhost_vsock="yes"
   QEMU_INCLUDES="-I\$(SRC_PATH)/linux-headers -I$(pwd)/linux-headers $QEMU_INCLUDES"
-  LIBS="-ldl  -lprotobuf-c -lprotobuf  $LIBS"
   supported_os="yes"
-;;
-*)
-  # This is a fatal error, but don't report it yet, because we
-  # might be going to just print the --help text, or it might
-  # be the result of a missing compiler.
-  bogus_os="yes"
+  LIBS="-ldl $LIBS"
 ;;
 esac
 
@@ -801,6 +852,8 @@ for opt do
   ;;
   --extra-cflags=*)
   ;;
+  --extra-cxxflags=*)
+  ;;
   --extra-ldflags=*)
   ;;
   --enable-debug-info)
@@ -816,8 +869,6 @@ for opt do
   --cpu=*)
   ;;
   --target-list=*) target_list="$optarg"
-  ;;
-  --extra-plugins-path=*) extra_plugins_path="$optarg"
   ;;
   --enable-trace-backends=*) trace_backends="$optarg"
   ;;
@@ -953,10 +1004,6 @@ for opt do
   --disable-bluez) bluez="no"
   ;;
   --enable-bluez) bluez="yes"
-  ;;
-  --enable-llvm) llvm="yes"
-  ;;
-  --with-llvm=*) llvmdir="$optarg"
   ;;
   --disable-kvm) kvm="no"
   ;;
@@ -1206,6 +1253,16 @@ for opt do
   ;;
   --enable-replication) replication="yes"
   ;;
+  --disable-capstone) capstone="no"
+  ;;
+  --enable-capstone) capstone="yes"
+  ;;
+  --enable-llvm) llvm="yes"
+  ;;
+  --with-llvm=*) llvmdir="$optarg"
+  ;;
+  --extra-plugins-path=*) extra_plugins_path="$optarg"
+  ;;
   --disable-pyperipheral2) pyperipheral2="no"
   ;;
   --enable-pyperipheral2) pyperipheral2="yes"
@@ -1286,7 +1343,6 @@ case "$cpu" in
 esac
 
 QEMU_CFLAGS="$CPU_CFLAGS $QEMU_CFLAGS"
-EXTRA_CFLAGS="$CPU_CFLAGS $EXTRA_CFLAGS"
 
 # For user-mode emulation the host arch has to be one we explicitly
 # support, even if we're using TCI.
@@ -1327,7 +1383,6 @@ Standard options:
   --target-list=LIST       set target list (default: build everything)
 $(echo Available targets: $default_target_list | \
   fold -s -w 53 | sed -e 's/^/                           /')
-  --extra-plugins-path=PATH also compile plugins at this PATH
 
 Advanced options (experts only):
   --source-path=PATH       path of source code [$source_path]
@@ -1339,6 +1394,7 @@ Advanced options (experts only):
   --cxx=CXX                use C++ compiler CXX [$cxx]
   --objcc=OBJCC            use Objective-C compiler OBJCC [$objcc]
   --extra-cflags=CFLAGS    append extra C compiler flags QEMU_CFLAGS
+  --extra-cxxflags=CXXFLAGS append extra C++ compiler flags QEMU_CXXFLAGS
   --extra-ldflags=LDFLAGS  append extra linker flags LDFLAGS
   --make=MAKE              use specified make [$make]
   --install=INSTALL        use specified install [$install]
@@ -1389,8 +1445,10 @@ Advanced options (experts only):
   --enable-debug-stack-usage
                            track the maximum stack usage of stacks created by qemu_alloc_stack
 
-  --enable-llvm            enable LLVM support (for all targets)"
-  --with-llvm=PATH         LLVM path (PATH/bin/llvm-config must exist)"
+PANDA related options:
+  --enable-llvm                enable LLVM support (for all targets)
+  --with-llvm=PATH             LLVM path (PATH/bin/llvm-config must exist)
+  --extra-plugins-path=PATH    also compile plugins at this PATH
 
 Optional features, enabled with --enable-FEATURE and
 disabled with --disable-FEATURE, default is enabled if available:
@@ -1464,6 +1522,7 @@ disabled with --disable-FEATURE, default is enabled if available:
   xfsctl          xfsctl support
   qom-cast-debug  cast debugging support
   tools           build qemu-io, qemu-nbd and qemu-image tools
+  capstone        capstone disassembler support
   pyperipheral2   avatar's python peripheral (based on python2.7)
   pyperipheral3   avatar's python peripheral (based on python3.x)
 
@@ -1509,38 +1568,7 @@ if test "$bogus_os" = "yes"; then
     # the compiler works (so the results of the check_defines we used
     # to identify the OS are reliable), if we didn't recognize the
     # host OS we should stop now.
-    error_exit "Unrecognized host OS $targetos"
-fi
-
-# Check that the C++ compiler exists and works with the C compiler
-if has $cxx; then
-    cat > $TMPC <<EOF
-int c_function(void);
-int main(void) { return c_function(); }
-EOF
-
-    compile_object
-
-    cat > $TMPCXX <<EOF
-extern "C" {
-   int c_function(void);
-}
-int c_function(void) { return 42; }
-EOF
-
-    update_cxxflags
-
-    if do_cxx $QEMU_CXXFLAGS -o $TMPE $TMPCXX $TMPO $LDFLAGS; then
-        # C++ compiler $cxx works ok with C compiler $cc
-        :
-    else
-        echo "C++ compiler $cxx does not work with C compiler $cc"
-        echo "Disabling C++ specific optional code"
-        cxx=
-    fi
-else
-    echo "No C++ compiler available; disabling C++ specific optional code"
-    cxx=
+    error_exit "Unrecognized host OS (uname -s reports '$(uname -s)')"
 fi
 
 gcc_flags="-Wold-style-declaration -Wold-style-definition -Wtype-limits"
@@ -1549,6 +1577,7 @@ gcc_flags="-Wno-missing-include-dirs -Wempty-body -Wnested-externs $gcc_flags"
 gcc_flags="-Wendif-labels -Wno-shift-negative-value $gcc_flags"
 gcc_flags="-Wno-initializer-overrides $gcc_flags"
 gcc_flags="-Wno-string-plus-int $gcc_flags"
+gcc_flags="-Wno-error=address-of-packed-member $gcc_flags"
 # Note that we do not add -Werror to gcc_flags here, because that would
 # enable it for all configure tests. If a configure test failed due
 # to -Werror this would just silently disable some features,
@@ -1890,24 +1919,6 @@ EOF
   if ! compile_object ; then
     feature_not_found "nptl" "Install glibc and linux kernel headers."
   fi
-fi
-
-##########################################
-# avx2 optimization requirement check
-
-cat > $TMPC << EOF
-#pragma GCC push_options
-#pragma GCC target("avx2")
-#include <cpuid.h>
-#include <immintrin.h>
-static int bar(void *a) {
-    __m256i x = *(__m256i *)a;
-    return _mm256_testz_si256(x, x);
-}
-int main(int argc, char *argv[]) { return bar(argv[0]); }
-EOF
-if compile_object "" ; then
-  avx2_opt="yes"
 fi
 
 #########################################
@@ -3028,18 +3039,19 @@ if test "$curses" != "no" ; then
 #include <curses.h>
 #include <wchar.h>
 int main(void) {
-  const char *s = curses_version();
   wchar_t wch = L'w';
   setlocale(LC_ALL, "");
   resize_term(0, 0);
   addwstr(L"wide chars\n");
   addnwstr(&wch, 1);
   add_wch(WACS_DEGREE);
-  return s != 0;
+  return 0;
 }
 EOF
   IFS=:
   for curses_inc in $curses_inc_list; do
+    # Make sure we get the wide character prototypes
+    curses_inc="-DNCURSES_WIDECHAR $curses_inc"
     IFS=:
     for curses_lib in $curses_lib_list; do
       unset IFS
@@ -3237,83 +3249,92 @@ else
 fi
 
 ##########################################
-# llvm support probe
+# llvm components probe - final test for llvm at the end
 
 if test "$llvm" != "no" ; then
-  cat > $TMPCXX << EOF
-#include <llvm/IR/LLVMContext.h>
-int main(void) { llvm::LLVMContext& c = llvm::getGlobalContext(); return 0; }
-EOF
-  if test "$llvmdir" != ""; then
-    if [ -x "$llvmdir/bin/llvm-config-$llvmver" ]; then
-      llvm_config="$llvmdir/bin/llvm-config-$llvmver"
-    else
-      llvm_config="$llvmdir/bin/llvm-config"
-    fi
-  else
-      llvm_config="llvm-config"
-  fi
-  if ! "$llvm_config" --version >> config.log 2>&1; then
-    feature_not_found "llvm (required for --enable-llvm)"
+  if [ -x "$llvmdir/bin/llvm-config" ] ; then
+    : llvm_config found
+    llvm_config="$llvmdir/bin/llvm-config"
+  elif [ -x "$llvmdir/bin/llvm-config-$llvmver" ]; then
+    : llvm_config found
+    llvm_config="$llvmdir/bin/llvm-config-$llvmver"
+  elif llvm-config --version >/dev/null 2>&1; then
+    : llvm_config found
+    llvm_config="llvm-config"
+  elif llvm-config-"$llvmver" --version >/dev/null 2>&1; then
+    : llvm_config found
+    llvm_config="llvm-config-$llvmver"
+  elif test "$llvm" = "yes"; then
+    feature_not_found "llvm-link (required for --enable-llvm)"
     exit 1
-  fi
-  #llvm_components="jit bitreader bitwriter asmparser ipo linker engine"
-  llvm_components=""
-  llvm_cxxflags=`$llvm_config $llvm_components --cxxflags 2> /dev/null`
-
-  llvm_ldflags=`$llvm_config $llvm_components --ldflags 2> /dev/null`
-  llvm_ldflags="$llvm_ldflags"
-  llvm_libs=`$llvm_config $llvm_components --libs 2> /dev/null`
-
-  if compile_prog_cxx "$llvm_cxxflags" "$llvm_libs $llvm_ldflags" ; then
-    : LLVM found
   else
-    feature_not_found "llvm (required for --enable-llvm)"
-    exit 1
+    llvm="no"
   fi
-fi
-
-if test "$llvm" != "no" ; then
-  llvm="yes"
-  #These will be automatically added by klee and we don't want
-  #duplicated libs on the command line.
-  #if [ "x$s2e" != "xyes" ]; then
-    LIBS="$llvm_libs $LIBS $llvm_ldflags"
-  #fi
-  linker="$cxx"
+  "$llvm_config" --version >> config.log 2>&1
 fi
 
 if test "$llvm" != "no" ; then
   if [ -x "$llvmdir/bin/clang" ]; then
-    clang="$llvmdir/bin/clang"
-  elif clang --version >> config.log 2>&1; then
     : clang found
-    clang=`which clang`
-  else
-    feature_not_found "clang (required to be built with LLVM)"
+    clang="$llvmdir/bin/clang"
+  elif [ -x "$llvmdir/bin/clang-$llvmver" ] ; then
+    : clang found
+    clang="$llvmdir/bin/clang-$llvmver"
+  elif clang-"$llvmver" --version >/dev/null 2>&1; then
+    : clang found
+    clang="clang-$llvmver"
+  elif clang --version >/dev/null 2>&1; then
+    : clang found
+    clang="clang"
+  elif test "$llvm" = "yes"; then
+    feature_not_found "clang (required for --enable-llvm)"
     exit 1
+  else
+    llvm="no"
   fi
+  "$clang" --version >> config.log 2>&1
+fi
 
+if test "$llvm" != "no" ; then
   if [ -x "$llvmdir/bin/clang++" ]; then
-    clangxx="$llvmdir/bin/clang++"
-  elif clang++ --version >> config.log 2>&1; then
     : clang++ found
-    clangxx=`which clang++`
-  else
-    feature_not_found "clang++ (required to be built with LLVM)"
+    clangxx="$llvmdir/bin/clang++"
+  elif [ -x "$llvmdir/bin/clang++-$llvmver" ] ; then
+    : clang++ found
+    clang="$llvmdir/bin/clang++-$llvmver"
+  elif clang++ --version >/dev/null 2>&1; then
+    : clang++ found
+    clangxx="clang++"
+  elif clang++-"$llvmver" --version >/dev/null 2>&1; then
+    : clang++ found
+    clangxx="clang++-$llvmver"
+  elif test "$llvm" = "yes"; then
+    feature_not_found "clang++ (required for --enable-llvm)"
     exit 1
+  else
+    llvm="no"
   fi
+  "$clangxx" --version >> config.log 2>&1
+fi
 
-  if [ -e "$llvmdir/bin/llvm-link" ] ; then
-    llvm_link=`cd $llvmdir/bin/ && find \`pwd\` -name llvm-link`
-  elif [ -e "$llvmdir/bin/llvm-link-$llvmver" ] ; then
-    llvm_link=`cd $llvmdir/bin/ && find \`pwd\` -name llvm-link-$llvmver`
-  fi
-  if [ -x "$llvm_link" ]; then
+if test "$llvm" != "no" ; then
+  if [ -x "$llvmdir/bin/llvm-link" ] ; then
     : llvm_link found
-  else
-    feature_not_found "llvm-link (required to be built with LLVM)"
+    llvm_link="$llvmdir/bin/llvm-link"
+  elif [ -x "$llvmdir/bin/llvm-link-$llvmver" ] ; then
+    : llvm_link found
+    llvm_link="$llvmdir/bin/llvm-link-$llvmver"
+  elif llvm-link --version >/dev/null 2>&1; then
+    : llvm_link found
+    llvm_link="llvm-link"
+  elif llvm-link-"$llvmver" --version >/dev/null 2>&1; then
+    : llvm_link found
+    llvm_link="llvm-link-$llvmver"
+  elif test "$llvm" = "yes"; then
+    feature_not_found "llvm-link (required for --enable-llvm)"
     exit 1
+  else
+    llvm="no"
   fi
 fi
 
@@ -3590,27 +3611,31 @@ EOF
   if compile_prog "" "$fdt_libs" ; then
     # system DTC is good - use it
     fdt=yes
-  elif test -d ${source_path}/dtc/libfdt ; then
-    # have submodule DTC - use it
-    fdt=yes
-    dtc_internal="yes"
-    mkdir -p dtc
-    if [ "$pwd_is_source_path" != "y" ] ; then
-       symlink "$source_path/dtc/Makefile" "dtc/Makefile"
-       symlink "$source_path/dtc/scripts" "dtc/scripts"
-    fi
-    fdt_cflags="-I\$(SRC_PATH)/dtc/libfdt"
-    fdt_libs="-L\$(BUILD_DIR)/dtc/libfdt $fdt_libs"
-  elif test "$fdt" = "yes" ; then
-    # have neither and want - prompt for system/submodule install
-    error_exit "DTC (libfdt) version >= 1.4.2 not present. Your options:" \
-        "  (1) Preferred: Install the DTC (libfdt) devel package" \
-        "  (2) Fetch the DTC submodule, using:" \
-        "      git submodule update --init dtc"
   else
-    # don't have and don't want
-    fdt_libs=
-    fdt=no
+      # have GIT checkout, so activate dtc submodule
+      if test -e "${source_path}/.git" ; then
+          git_submodules="${git_submodules} dtc"
+      fi
+      if test -d "${source_path}/dtc/libfdt" || test -e "${source_path}/.git" ; then
+          fdt=yes
+          dtc_internal="yes"
+          mkdir -p dtc
+          if [ "$pwd_is_source_path" != "y" ] ; then
+              symlink "$source_path/dtc/Makefile" "dtc/Makefile"
+              symlink "$source_path/dtc/scripts" "dtc/scripts"
+          fi
+          fdt_cflags="-I\$(SRC_PATH)/dtc/libfdt"
+          fdt_ldflags="-L\$(BUILD_DIR)/dtc/libfdt"
+          fdt_libs="$fdt_libs"
+      elif test "$fdt" = "yes" ; then
+          # Not a git build & no libfdt found, prompt for system install
+          error_exit "DTC (libfdt) version >= 1.4.2 not present." \
+                     "Please install the DTC (libfdt) devel package"
+      else
+          # don't have and don't want
+          fdt_libs=
+          fdt=no
+      fi
   fi
 fi
 
@@ -4175,8 +4200,6 @@ if compile_prog "" "" ; then
     true
 fi
 
-
-
 ##########################################
 # Do we have libiscsi >= 1.9.0
 if test "$libiscsi" != "no" ; then
@@ -4231,7 +4254,7 @@ elif compile_prog "" "$pthread_lib -lrt" ; then
 fi
 
 if test "$darwin" != "yes" -a "$mingw32" != "yes" -a "$solaris" != yes -a \
-        "$aix" != "yes" -a "$haiku" != "yes" ; then
+        "$haiku" != "yes" ; then
     libs_softmmu="-lutil $libs_softmmu"
 fi
 
@@ -4408,6 +4431,40 @@ EOF
 fi
 
 ##########################################
+# protobuf probe
+
+if test "$protobuf" != "no"; then
+  if $pkg_config --exists libprotobuf-c protobuf; then
+    protobuf="yes"
+    protobuf_libs=$($pkg_config --libs libprotobuf-c protobuf)
+    protobuf_cflags=$($pkg_config --cflags libprotobuf-c protobuf)
+    libs_softmmu="$libs_softmmu $protobuf_libs"
+    QEMU_CFLAGS="$QEMU_CFLAGS $protobuf_cflags"
+  else
+    protobuf="no"
+    if test "$protobuf" = "yes" ; then
+      feature_not_found "protobuf" "Please install protobuf and protobuf-c"
+    fi
+  fi
+fi
+
+##########################################
+# capstone
+
+if test "$capstone" != no; then
+  if $pkg_config capstone; then
+    capstone=yes
+    QEMU_CFLAGS="$QEMU_CFLAGS $($pkg_config --cflags capstone)"
+    LIBS="$($pkg_config --libs capstone) $LIBS"
+  else
+    if test "$capstone" = yes; then
+      feature_not_found capstone
+    fi
+    capstone=no
+  fi
+fi
+
+##########################################
 # check if we have fdatasync
 
 fdatasync=no
@@ -4580,9 +4637,6 @@ if test "$coroutine" = "gthread" -a "$coroutine_pool" = "yes"; then
 fi
 
 if test "$debug_stack_usage" = "yes"; then
-  if test "$cpu" = "ia64" -o "$cpu" = "hppa"; then
-    error_exit "stack usage debugging is not supported for $cpu"
-  fi
   if test "$coroutine_pool" = "yes"; then
     echo "WARN: disabling coroutine pool for stack usage debugging"
     coroutine_pool=no
@@ -4632,7 +4686,6 @@ fi
 pragma_disable_unused_but_set=no
 cat > $TMPC << EOF
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #pragma GCC diagnostic ignored "-Wstrict-prototypes"
 #pragma GCC diagnostic pop
 
@@ -4678,7 +4731,6 @@ fi
 ########################################
 # check if cpuid.h is usable.
 
-cpuid_h=no
 cat > $TMPC << EOF
 #include <cpuid.h>
 int main(void) {
@@ -4698,6 +4750,29 @@ int main(void) {
 EOF
 if compile_prog "" "" ; then
     cpuid_h=yes
+fi
+
+##########################################
+# avx2 optimization requirement check
+#
+# There is no point enabling this if cpuid.h is not usable,
+# since we won't be able to select the new routines.
+
+if test $cpuid_h = yes; then
+  cat > $TMPC << EOF
+#pragma GCC push_options
+#pragma GCC target("avx2")
+#include <cpuid.h>
+#include <immintrin.h>
+static int bar(void *a) {
+    __m256i x = *(__m256i *)a;
+    return _mm256_testz_si256(x, x);
+}
+int main(int argc, char *argv[]) { return bar(argv[0]); }
+EOF
+  if compile_object "" ; then
+    avx2_opt="yes"
+  fi
 fi
 
 ########################################
@@ -5141,6 +5216,68 @@ EOF
   fi
 fi
 
+# Check that the C++ compiler exists and works with the C compiler.
+# All the QEMU_CXXFLAGS are based on QEMU_CFLAGS. Keep this at the end to don't miss any other that could be added.
+if has $cxx; then
+    cat > $TMPC <<EOF
+int c_function(void);
+int main(void) { return c_function(); }
+EOF
+
+    compile_object
+
+    cat > $TMPCXX <<EOF
+extern "C" {
+   int c_function(void);
+}
+int c_function(void) { return 42; }
+EOF
+
+    update_cxxflags
+
+    if do_cxx $QEMU_CXXFLAGS -o $TMPE $TMPCXX $TMPO $LDFLAGS; then
+        # C++ compiler $cxx works ok with C compiler $cc
+        :
+    else
+        echo "C++ compiler $cxx does not work with C compiler $cc"
+        echo "Disabling C++ specific optional code"
+        cxx=
+    fi
+else
+    echo "No C++ compiler available; disabling C++ specific optional code"
+    cxx=
+fi
+
+# Check that the llvm C++ compiler exists and works with the C compiler.
+# Any QEMU_CXXFLAGS/QEMU_CFLAGS are used by compile_prog_clangxx.
+# Keep this at the end to don't miss any other that could be added.
+if test "$llvm" != "no"; then
+  cat > $TMPCXX <<-EOF
+	#include <llvm/IR/LLVMContext.h>
+    int main(void) { llvm::LLVMContext& c = llvm::getGlobalContext(); return 0; }
+	EOF
+
+  llvm_components=""
+  llvm_cxxflags=$($llvm_config $llvm_components --cxxflags 2> /dev/null)
+  llvm_ldflags=$($llvm_config $llvm_components --ldflags 2> /dev/null)
+  llvm_libs=$($llvm_config $llvm_components --libs 2> /dev/null)
+
+  if compile_prog_clangxx "$llvm_cxxflags -Wno-unused-variable" "$llvm_libs $llvm_ldflags" ; then
+    : LLVM found
+  elif test "$llvm" = "yes"; then
+    feature_not_found "llvm (required for --enable-llvm)"
+    exit 1
+  else
+    llvm="no"
+  fi
+fi
+
+if test "$llvm" != "no" ; then
+  llvm="yes"
+  LIBS="$llvm_libs $LIBS $llvm_ldflags"
+  linker="$cxx"
+fi
+
 echo_version() {
     if test "$1" = "yes" ; then
         echo "($2)"
@@ -5149,6 +5286,7 @@ echo_version() {
 
 # prepend pixman and ftd flags after all config tests are done
 QEMU_CFLAGS="$pixman_cflags $fdt_cflags $QEMU_CFLAGS"
+QEMU_LDFLAGS="$fdt_ldflags $QEMU_LDFLAGS"
 libs_softmmu="$pixman_libs $libs_softmmu"
 
 echo "Install prefix    $prefix"
@@ -5168,7 +5306,7 @@ echo "local state directory   queried at runtime"
 echo "Windows SDK       $win_sdk"
 fi
 echo "Source path       $source_path"
-echo "Extra plugins path $extra_plugins_path"
+echo "GIT submodules    $git_submodules"
 echo "C compiler        $cc"
 echo "Host C compiler   $host_cc"
 echo "C++ compiler      $cxx"
@@ -5177,6 +5315,7 @@ echo "ARFLAGS           $ARFLAGS"
 echo "CFLAGS            $CFLAGS"
 echo "QEMU_CFLAGS       $QEMU_CFLAGS"
 echo "LDFLAGS           $LDFLAGS"
+echo "QEMU_LDFLAGS      $QEMU_LDFLAGS"
 echo "make              $make"
 echo "install           $install"
 echo "python            $python"
@@ -5247,6 +5386,7 @@ echo "LLVM support      $llvm"
 echo "TCG interpreter   $tcg_interpreter"
 echo "fdt support       $fdt"
 echo "preadv support    $preadv"
+echo "protobuf support  $protobuf"
 echo "fdatasync         $fdatasync"
 echo "madvise           $madvise"
 echo "posix_madvise     $posix_madvise"
@@ -5291,6 +5431,9 @@ echo "tcmalloc support  $tcmalloc"
 echo "jemalloc support  $jemalloc"
 echo "avx2 optimization $avx2_opt"
 echo "replication support $replication"
+echo "capstone          $capstone"
+echo "LLVM support      $llvm"
+echo "extra plugins path $extra_plugins_path"
 
 if test "$sdl_too_old" = "yes"; then
 echo "-> Your SDL version is too old - please upgrade to have SDL support"
@@ -5346,10 +5489,9 @@ if test "$mingw32" = "no" ; then
   echo "qemu_localstatedir=$local_statedir" >> $config_host_mak
 fi
 echo "qemu_helperdir=$libexecdir" >> $config_host_mak
-echo "extra_cflags=$EXTRA_CFLAGS" >> $config_host_mak
-echo "extra_ldflags=$EXTRA_LDFLAGS" >> $config_host_mak
 echo "qemu_localedir=$qemu_localedir" >> $config_host_mak
 echo "libs_softmmu=$libs_softmmu" >> $config_host_mak
+echo "GIT_SUBMODULES=$git_submodules" >> $config_host_mak
 
 echo "ARCH=$ARCH" >> $config_host_mak
 
@@ -5402,16 +5544,8 @@ if test "$darwin" = "yes" ; then
   echo "CONFIG_DARWIN=y" >> $config_host_mak
 fi
 
-if test "$aix" = "yes" ; then
-  echo "CONFIG_AIX=y" >> $config_host_mak
-fi
-
 if test "$solaris" = "yes" ; then
   echo "CONFIG_SOLARIS=y" >> $config_host_mak
-  echo "CONFIG_SOLARIS_VERSION=$solarisrev" >> $config_host_mak
-  if test "$needs_libsunmath" = "yes" ; then
-    echo "CONFIG_NEEDS_LIBSUNMATH=y" >> $config_host_mak
-  fi
 fi
 if test "$haiku" = "yes" ; then
   echo "CONFIG_HAIKU=y" >> $config_host_mak
@@ -5473,7 +5607,7 @@ qemu_version=$(head $source_path/VERSION)
 echo "VERSION=$qemu_version" >>$config_host_mak
 echo "PKGVERSION=$pkgversion" >>$config_host_mak
 echo "SRC_PATH=$source_path" >> $config_host_mak
-if [ ! -z "$extra_plugins_path" ]; then
+if test ! -z "$extra_plugins_path"; then
   echo "EXTRA_PLUGINS_PATH=$extra_plugins_path" >> $config_host_mak
 fi
 echo "TARGET_DIRS=$target_list" >> $config_host_mak
@@ -5710,6 +5844,9 @@ fi
 if test "$tcg_interpreter" = "yes" ; then
   echo "CONFIG_TCG_INTERPRETER=y" >> $config_host_mak
 fi
+if test "$protobuf" = "yes" ; then
+  echo "CONFIG_PROTOBUF=y" >> $config_host_mak
+fi
 if test "$fdatasync" = "yes" ; then
   echo "CONFIG_FDATASYNC=y" >> $config_host_mak
 fi
@@ -5934,12 +6071,12 @@ fi
 
 if test "$pyperipheral2" = "yes" ; then
   QEMU_INCLUDES="`pkg-config --cflags-only-I python2` $QEMU_INCLUDES"
-  LIBS="`pkg-config --libs-only-l python2` $LIBS"
+  LIBS="`pkg-config --libs python2` $LIBS"
 fi
 
 if test "$pyperipheral3" = "yes" ; then
   QEMU_INCLUDES="`pkg-config --cflags-only-I python3` $QEMU_INCLUDES"
-  LIBS="`pkg-config --libs-only-l python3` $LIBS"
+  LIBS="`pkg-config --libs python3` $LIBS"
 fi
 
 
@@ -5950,6 +6087,10 @@ fi
 
 if test "$have_sysmacros" = "yes" ; then
   echo "CONFIG_SYSMACROS=y" >> $config_host_mak
+fi
+
+if test "$capstone" = "yes" ; then
+  echo "CONFIG_CAPSTONE=y" >> $config_host_mak
 fi
 
 # Hold two types of flag:
@@ -5963,19 +6104,19 @@ if test "$pthread_setname_np" = "yes" ; then
 fi
 
 if test "$tcg_interpreter" = "yes"; then
-  QEMU_INCLUDES="-I\$(SRC_PATH)/tcg/tci $QEMU_INCLUDES"
+  QEMU_INCLUDES="-iquote \$(SRC_PATH)/tcg/tci $QEMU_INCLUDES"
 elif test "$ARCH" = "sparc64" ; then
-  QEMU_INCLUDES="-I\$(SRC_PATH)/tcg/sparc $QEMU_INCLUDES"
+  QEMU_INCLUDES="-iquote \$(SRC_PATH)/tcg/sparc $QEMU_INCLUDES"
 elif test "$ARCH" = "s390x" ; then
-  QEMU_INCLUDES="-I\$(SRC_PATH)/tcg/s390 $QEMU_INCLUDES"
+  QEMU_INCLUDES="-iquote \$(SRC_PATH)/tcg/s390 $QEMU_INCLUDES"
 elif test "$ARCH" = "x86_64" -o "$ARCH" = "x32" ; then
-  QEMU_INCLUDES="-I\$(SRC_PATH)/tcg/i386 $QEMU_INCLUDES"
+  QEMU_INCLUDES="-iquote \$(SRC_PATH)/tcg/i386 $QEMU_INCLUDES"
 elif test "$ARCH" = "ppc64" ; then
-  QEMU_INCLUDES="-I\$(SRC_PATH)/tcg/ppc $QEMU_INCLUDES"
+  QEMU_INCLUDES="-iquote \$(SRC_PATH)/tcg/ppc $QEMU_INCLUDES"
 else
-  QEMU_INCLUDES="-I\$(SRC_PATH)/tcg/\$(ARCH) $QEMU_INCLUDES"
+  QEMU_INCLUDES="-iquote \$(SRC_PATH)/tcg/\$(ARCH) $QEMU_INCLUDES"
 fi
-QEMU_INCLUDES="-I\$(SRC_PATH)/tcg $QEMU_INCLUDES"
+QEMU_INCLUDES="-iquote \$(SRC_PATH)/tcg $QEMU_INCLUDES"
 
 echo "TOOLS=$tools" >> $config_host_mak
 echo "ROMS=$roms" >> $config_host_mak
@@ -6006,6 +6147,7 @@ echo "WINDRES=$windres" >> $config_host_mak
 echo "CFLAGS=$CFLAGS" >> $config_host_mak
 echo "CFLAGS_NOPIE=$CFLAGS_NOPIE" >> $config_host_mak
 echo "QEMU_CFLAGS=$QEMU_CFLAGS" >> $config_host_mak
+echo "QEMU_CXXFLAGS=$QEMU_CXXFLAGS" >> $config_host_mak
 echo "QEMU_INCLUDES=$QEMU_INCLUDES" >> $config_host_mak
 if test "$sparse" = "yes" ; then
   echo "CC           := REAL_CC=\"\$(CC)\" cgcc"       >> $config_host_mak
@@ -6021,6 +6163,7 @@ else
 fi
 echo "LDFLAGS=$LDFLAGS" >> $config_host_mak
 echo "LDFLAGS_NOPIE=$LDFLAGS_NOPIE" >> $config_host_mak
+echo "QEMU_LDFLAGS=$QEMU_LDFLAGS" >> $config_host_mak
 echo "LD_REL_FLAGS=$LD_REL_FLAGS" >> $config_host_mak
 echo "LD_I386_EMULATION=$ld_i386_emulation" >> $config_host_mak
 echo "LIBS+=$LIBS" >> $config_host_mak
@@ -6371,9 +6514,6 @@ for i in $ARCH $TARGET_BASE_ARCH ; do
   i386|x86_64|x32)
     disas_config "I386"
   ;;
-  ia64*)
-    disas_config "IA64"
-  ;;
   lm32)
     disas_config "LM32"
   ;;
@@ -6544,6 +6684,46 @@ cat <<EOD >config.status
 # Compiler output produced by configure, useful for debugging
 # configure, is in config.log if it exists.
 EOD
+
+preserve_env() {
+    envname=$1
+
+    eval envval=\$$envname
+
+    if test -n "$envval"
+    then
+	echo "$envname='$envval'" >> config.status
+	echo "export $envname" >> config.status
+    else
+	echo "unset $envname" >> config.status
+    fi
+}
+
+# Preserve various env variables that influence what
+# features/build target configure will detect
+preserve_env AR
+preserve_env AS
+preserve_env CC
+preserve_env CPP
+preserve_env CXX
+preserve_env INSTALL
+preserve_env LD
+preserve_env LD_LIBRARY_PATH
+preserve_env LIBTOOL
+preserve_env MAKE
+preserve_env NM
+preserve_env OBJCOPY
+preserve_env PATH
+preserve_env PKG_CONFIG
+preserve_env PKG_CONFIG_LIBDIR
+preserve_env PKG_CONFIG_PATH
+preserve_env PYTHON
+preserve_env SDL_CONFIG
+preserve_env SDL2_CONFIG
+preserve_env SMBD
+preserve_env STRIP
+preserve_env WINDRES
+
 printf "exec" >>config.status
 printf " '%s'" "$0" "$@" >>config.status
 echo ' "$@"' >>config.status

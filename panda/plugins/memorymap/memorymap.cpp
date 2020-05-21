@@ -194,7 +194,7 @@ int before_insn_exec_cb(CPUState *cpu, target_ulong pc) {
         }
 
         // dump info on the dynamic library for the current PC, if there is one
-        GArray *ms = get_libraries(cpu, current);
+        GArray *ms = get_mappings(cpu, current);
         if (ms != NULL) {
             for (int i = 0; i < ms->len; i++) {
                 OsiModule *m = &g_array_index(ms, OsiModule, i);

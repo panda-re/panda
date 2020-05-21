@@ -13,6 +13,7 @@
 12 long sys_brk(unsigned long brk);
 13 long sys_rt_sigaction(int, const struct sigaction __user *, struct sigaction __user *, size_t);
 14 long sys_rt_sigprocmask(int how, sigset_t __user *set, sigset_t __user *oset, size_t sigsetsize);
+15 long sys_rt_sigreturn(void);
 16 long sys_ioctl(unsigned int fd, unsigned int cmd, unsigned long arg);
 17 long sys_pread64(unsigned int fd, char __user *buf, size_t count, loff_t pos);
 18 long sys_pwrite64(unsigned int fd, const char __user *buf, size_t count, loff_t pos);
@@ -53,6 +54,10 @@
 53 long sys_socketpair(int, int, int, int __user *);
 54 long sys_setsockopt(int fd, int level, int optname, char __user *optval, int optlen);
 55 long sys_getsockopt(int fd, int level, int optname, char __user *optval, int __user *optlen);
+56 long sys_clone(unsigned long, unsigned long, int __user *, int __user *, unsigned long);
+57 long sys_fork(void);
+58 long sys_vfork(void);
+59 long sys_execve(const char __user *filename, const char __user *const __user *argv, const char __user *const __user *envp);
 60 long sys_exit(int error_code);
 61 long sys_wait4(pid_t pid, int __user *stat_addr, int options, struct rusage __user *ru);
 62 long sys_kill(pid_t pid, int sig);
@@ -164,7 +169,8 @@
 169 long sys_reboot(int magic1, int magic2, unsigned int cmd, void __user *arg);
 170 long sys_sethostname(char __user *name, int len);
 171 long sys_setdomainname(char __user *name, int len);
-173 long sys_ioperm(unsigned long from, unsigned long num, int on);
+172 long sys_iopl(unsigned int);
+173 long sys_ioperm(unsigned long, unsigned long, int);
 175 long sys_init_module(void __user *umod, unsigned long len, const char __user *uargs);
 176 long sys_delete_module(const char __user *name_user, unsigned int flags);
 179 long sys_quotactl(unsigned int cmd, const char __user *special, qid_t id, void __user *addr);
@@ -299,6 +305,7 @@
 319 long sys_memfd_create(const char __user *uname_ptr, unsigned int flags);
 320 long sys_kexec_file_load(int kernel_fd, int initrd_fd, unsigned long cmdline_len, const char __user *cmdline_ptr, unsigned long flags);
 321 long sys_bpf(int cmd, union bpf_attr *attr, unsigned int size);
+322 long sys_execveat(int dfd, const char __user *filename, const char __user *const __user *argv, const char __user *const __user *envp, int flags);
 323 long sys_userfaultfd(int flags);
 324 long sys_membarrier(int cmd, int flags);
 325 long sys_mlock2(unsigned long start, size_t len, int flags);

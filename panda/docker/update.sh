@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 # To be run inside panda_bionic docker container where PANDA is already built
 # Given an argument of a git SHA1, checkout that commit, build panda and run tests
@@ -8,6 +8,10 @@ set -e
 echo "Running update for commit $1"
 # Get the current commit
 cd /panda/build
+
+# If container modified any tracked files during build (e.g., panda_datatypes.h)
+# we need to forget abolut those before we can pull/checkout
+git reset --hard
 
 if [ "$2" = "clean" ]; then # We'll fetch by ref (for a PR)
    git fetch origin $1 # for examplerefs/pull/533/head
@@ -31,7 +35,7 @@ make -j${NPROC}
 #make -j${NPROC} check
 
 # Install Pypanda for Bionic and newer
-cd /panda/panda/pypanda
+cd /panda/panda/python/core/
 pip3 install -q pycparser cffi colorama protobuf # Pypanda dependencies
 python3 setup.py install >/dev/null
 
@@ -53,15 +57,15 @@ make # Build binaries we run in guest
 
 pip3 install -q -r requirements.txt
 
-python3 multi_proc_cbs.py
-python3 taint_reg.py
-python3 taint_ram.py
-# Run record_then_replay on multiple architectures
-python3 record_then_replay.py i386
-python3 record_then_replay.py x86_64
-python3 record_then_replay.py arm
-python3 record_then_replay.py ppc
-# Test hooking framework
-python3 hooking.py
-# Regression tests
-python3 sleep_in_cb.py
+# Read enabled_tests.txt and run each. If any exit 0 log failure but run the rest
+failures=()
+while read test_line; do
+    echo -e "\n./$test_line"
+    ./$test_line
+    [ $? != 0 ] && echo "Failure $test_line" && failures+=($test_line)
+done < enabled_tests.txt
+
+if [ "${#failures[@]}" -ge "1" ]; then
+  echo "Test(s) failed: $failures"
+  exit 1
+fi

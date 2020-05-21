@@ -102,7 +102,24 @@ static inline hwaddr panda_virt_to_phys(CPUState *env, target_ulong addr) {
 }
 
 /**
+ * @brief If required for the target architecture, enter into a high-privilege mode in
+ * order to conduct some memory access. Returns true if a switch into high-privilege
+ * mode has been made. A NO-OP on systems where such changes are unnecessary.
+ */
+bool enter_priv(CPUState* cpu);
+
+/**
+ * @brief Revert the guest to the privilege mode it was in prior to the last call
+ * to enter_priv(). A NO-OP for architectures where enter_prov is a NO-OP.
+ */
+void exit_priv(CPUState* cpu);
+
+
+/**
  * @brief Reads/writes data into/from \p buf from/to guest virtual address \p addr.
+ *
+ * For ARM we switch CPSR into SVC (privileged) mode if the access fails. The mode is always reset
+ * before we return.
  */
 static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
                                           uint8_t *buf, int len, bool is_write) {
@@ -110,27 +127,46 @@ static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
     int ret;
     hwaddr phys_addr;
     target_ulong page;
+    bool changed_priv = false;
 
     while (len > 0) {
         page = addr & TARGET_PAGE_MASK;
         phys_addr = cpu_get_phys_page_debug(env, page);
-        if (phys_addr == -1) {
-            // no physical page mapped
+        // If we failed and we aren't in priv mode and we CAN go into it, toggle modes and try again
+        if (phys_addr == -1  && !changed_priv && (changed_priv=enter_priv(env))) {
+            phys_addr = cpu_get_phys_page_debug(env, page);
+            //if (phys_addr != -1) printf("[panda dbg] virt->phys failed until privileged mode\n");
+        }
+
+        // No physical page mapped, even after potential privileged switch, abort
+        if (phys_addr == -1)  {
+            if (changed_priv) exit_priv(env); // Cleanup mode if necessary
             return -1;
         }
+
         l = (page + TARGET_PAGE_SIZE) - addr;
         if (l > len) {
             l = len;
         }
         phys_addr += (addr & ~TARGET_PAGE_MASK);
         ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
+
+        // Failed and privileged mode wasn't already enabled - enable priv and retry if we can
+        if (ret != MEMTX_OK && !changed_priv && (changed_priv = enter_priv(env))) {
+            ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
+            //if (ret == MEMTX_OK) printf("[panda dbg] accessing phys failed until privileged mode\n");
+        }
+        // Still failed, even after potential privileged switch, abort
         if (ret != MEMTX_OK) {
+            if (changed_priv) exit_priv(env); // Cleanup mode if necessary
             return ret;
         }
+
         len -= l;
         buf += l;
         addr += l;
     }
+    if (changed_priv) exit_priv(env); // Clear privileged mode if necessary
     return 0;
 }
 
@@ -167,6 +203,79 @@ static inline void *panda_map_virt_to_host(CPUState *env, target_ulong addr,
     }
 
     return qemu_map_ram_ptr(mr->ram_block, addr1);
+}
+
+/**
+ * @brief Translate a physical address to a RAM Offset (needed for the taint system)
+ * Returns MEMTX_OK on success.
+ */
+static inline MemTxResult PandaPhysicalAddressToRamOffset(ram_addr_t* out, hwaddr addr, bool is_write)
+{
+    hwaddr TranslatedAddress;
+    hwaddr AccessLength = 1;
+    MemoryRegion* mr;
+    ram_addr_t RamOffset;
+
+    rcu_read_lock();
+    mr = address_space_translate(&address_space_memory, addr, &TranslatedAddress, &AccessLength, is_write);
+
+    if (!mr || !memory_region_is_ram(mr) || memory_region_is_ram_device(mr) || memory_region_is_romd(mr) || (is_write && mr->readonly))
+    {
+        /*
+            We only want actual RAM.
+            I can't find a concrete instance of a RAM Device,
+            but from the docs/comments I can find, this seems
+            like the appropriate check.
+        */
+        rcu_read_unlock();
+        return MEMTX_ERROR;
+    }
+
+    if ((RamOffset = memory_region_get_ram_addr(mr)) == RAM_ADDR_INVALID)
+    {
+        rcu_read_unlock();
+        return MEMTX_ERROR;
+    }
+
+    rcu_read_unlock();
+
+    RamOffset += TranslatedAddress;
+
+    if (RamOffset >= ram_size)
+    {
+        /*
+            HACK
+            For the moment, the taint system (the only consumer of this) will die in very unfortunate
+            ways if the translated offset exceeds the size of "RAM" (the argument given to -m in
+            qemu's invocation)...
+            Unfortunately there's other "RAM" qemu tracks that's not differentiable in a target-independent
+            way. For instance: the PC BIOS memory and VGA memory. In the future it would probably be easier
+            to modify the taint system to use last_ram_offset() rather tham ram_size, and/or register an
+            address space listener to update it's shadow RAM with qemu's hotpluggable memory.
+            From brief observation, the qemu machine implementations seem to map the system "RAM"
+            people are most likely thinking about when they say "RAM" first, so the ram_addr_t values
+            below ram_size should belong to those memory regions. This isn't required however, so beware.
+        */
+        fprintf(stderr, "PandaPhysicalAddressToRamOffset: Translated Physical Address 0x" TARGET_FMT_plx " has RAM Offset Above ram_size (0x" RAM_ADDR_FMT " >= 0x" RAM_ADDR_FMT ")\n", addr, RamOffset, ram_size);
+        return MEMTX_DECODE_ERROR;
+    }
+
+    if (out)
+        *out = RamOffset;
+
+    return MEMTX_OK;
+}
+
+/**
+ * @brief Translate a virtual address to a RAM Offset (needed for the taint system)
+ * Returns MEMTX_OK on success.
+ */
+static inline MemTxResult PandaVirtualAddressToRamOffset(ram_addr_t* out, CPUState* cpu, target_ulong addr, bool is_write)
+{
+    hwaddr PhysicalAddress = panda_virt_to_phys(cpu, addr);
+    if (PhysicalAddress == (hwaddr)-1)
+        return MEMTX_ERROR;
+    return PandaPhysicalAddressToRamOffset(out, PhysicalAddress, is_write);
 }
 
 /**

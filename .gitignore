@@ -82,6 +82,7 @@ venv
 *.gcda
 *.gcno
 *.swp
+.*.sw*
 /pc-bios/bios-pq/status
 /pc-bios/vgabios-pq/status
 /pc-bios/optionrom/linuxboot.asm
@@ -114,6 +115,7 @@ venv
 /panda/plugins/*/docs/
 *.tps
 .stgit-*
+.git-submodule-status
 cscope.*
 tags
 TAGS

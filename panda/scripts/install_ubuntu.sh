@@ -11,6 +11,8 @@ UBUNTU_FALLBACK="xenial"
 # system information
 vendor=$(lsb_release --id | awk -F':[\t ]+' '{print $2}')
 codename=$(lsb_release --codename | awk -F':[\t ]+' '{print $2}')
+version=$(lsb_release -r| awk '{print $2}' | awk -F'.' '{print $1}')
+
 
 progress() {
   echo
@@ -43,13 +45,26 @@ apt_enable_src
 
 progress "Installing qemu dependencies..."
 sudo apt-get update || true
-sudo apt-get -y build-dep qemu
+if [ "$version" -le "19" ]; then
+  sudo apt-get -y build-dep qemu
+fi
 
 progress "Installing PANDA dependencies..."
-sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
-  libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
-  libwiretap-dev libwireshark-dev flex bison python3-pip python3
-
+if [ "$version" -ge "20" ]; then
+  progress "Ubuntu 20 or higher"
+  sudo apt-get -y install git protobuf-compiler protobuf-c-compiler \
+    libprotobuf-c-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
+    libwiretap-dev libwireshark-dev flex bison python3-pip python3 \
+    libglib2.0-dev libpixman-1-dev libsdl2-dev
+elif [ "$version" -eq "19" ]; then
+  sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
+    libprotobuf-c-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
+    libwiretap-dev libwireshark-dev flex bison python3-pip python3
+else
+  sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
+    libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
+    libwiretap-dev libwireshark-dev flex bison python3-pip python3
+fi
 pushd /tmp
 
 if [ "$vendor" = "Ubuntu" ]; then
@@ -118,8 +133,9 @@ EOF
 fi
 
 # Upgrading protocol buffers python support
-sudo pip install --upgrade protobuf
-
+if [ "$version" -le "19" ]; then
+  sudo pip install --upgrade protobuf
+fi
 progress "Trying to install LLVM 3.3..."
 if ! sudo apt-get -y install llvm-3.3-dev clang-3.3
 then
@@ -153,6 +169,19 @@ fi
 progress "Building PANDA..."
 mkdir build
 cd build
+if [ "$version" -eq "20" ]; then
+  if [ -z "$@" ]; then
+    ../build.sh "x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu --disable-werror --disable-pyperipheral3" 
+  else
+    ../build.sh "$@" 
+  fi
+elif [ "$version" -eq "19" ]; then
+  if [ -z "$@" ]; then
+    ../build.sh "x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu --disable-werror" 
+  else
+    ../build.sh "$@" 
+  fi
+else
 ../build.sh "$@"
-
+fi
 progress "PANDA is built and ready to use in panda/build/[arch]-softmmu/panda-system-[arch]."

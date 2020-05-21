@@ -1100,16 +1100,16 @@ static uint64_t _unassigned_mem_read(void *opaque, hwaddr addr,
 
     uint64_t val;
 
-    if (current_cpu != NULL) {
+    if (first_cpu != NULL) {
         // PANDA callback may create a value. If so, avoid error-handling code
-        if (panda_callbacks_unassigned_io_read(current_cpu,
-                    current_cpu->panda_guest_pc, addr, size, &val)) { // Modifies val
+        if (panda_callbacks_unassigned_io_read(first_cpu,
+                    first_cpu->panda_guest_pc, addr, size, &val)) { // Modifies val
             *changed = true; // Indicates a callback has changed the value
             return val;
         }
         // No callback changed the value. Continue with error-processing code
         *changed = false;
-        cpu_unassigned_access(current_cpu, addr, false, false, 0, size);
+        cpu_unassigned_access(first_cpu, addr, false, false, 0, size);
     }
 
     return 0;
@@ -1126,12 +1126,12 @@ static bool _unassigned_mem_write(void *opaque, hwaddr addr,
     printf("Unassigned mem write to " TARGET_FMT_plx "\n", addr);
 #endif
 
-    if (current_cpu != NULL) {
-        if (panda_callbacks_unassigned_io_write(current_cpu, current_cpu->panda_guest_pc, addr, size, val)) {
+    if (first_cpu != NULL) {
+        if (panda_callbacks_unassigned_io_write(first_cpu, first_cpu->panda_guest_pc, addr, size, val)) {
             // A plugin has decided to make this write look like it's valid
             return true;
         }
-        cpu_unassigned_access(current_cpu, addr, true, false, 0, size);
+        cpu_unassigned_access(first_cpu, addr, true, false, 0, size);
     }
     return false;
 }
@@ -1292,16 +1292,16 @@ MemTxResult memory_region_dispatch_read(MemoryRegion *mr,
     if (!memory_region_access_valid(mr, addr, size, false)) {
         // Some part of (addr) through (addr+size) is invalid.
         // May trigger PANDA callbacks which may produce a value.
-        // If so, we set pval to be that value and return MEMTX_OK
+        // If so, return MEMTX_OK despite the invalid access
+        // Either way, assign pval to the result (seems strange, but otherwise tests fail)
 
         bool changed = false;
-        uint64_t returned_val = _unassigned_mem_read(mr, addr, size, &changed);
+        *pval = _unassigned_mem_read(mr, addr, size, &changed);
 
         if (changed) {
-            // Some PANDA callback created a value, set it to pval,
-            // fix endianness (?),
+            // Some PANDA callback created a value, 
+            // fix endianness (similar to a normal read)
             // and return OK
-            *pval =  returned_val;
             adjust_endianness(mr, pval, size);
             return MEMTX_OK;
         } else {

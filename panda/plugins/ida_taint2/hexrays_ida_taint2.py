@@ -11,11 +11,18 @@ reselect them.
 """
 import csv
 import idaapi
+import ida_idaapi
+import ida_kernwin
+import ida_hexrays
+import ida_lines
+
 
 from copy import copy
 
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (QDialog, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
+        QPushButton, QVBoxLayout, QCheckBox, QTableWidget, QTableWidgetItem,QAbstractItemView, 
+        QHeaderView, QFileDialog)
 
 # unique action identifiers
 LOAD_ACTION_NAME = "hexrays_ida_taint2:Load ida_taint2"
@@ -139,10 +146,10 @@ class HIT2_ProcessSelectDialog(QDialog):
             return psd.selectedProcess()
         return None
 
-class hexrays_ida_taint2_t(idaapi.plugin_t):
+class hexrays_ida_taint2_t(ida_idaapi.plugin_t):
     # PLUGIN_PROC means to load plugin when load new database, and unload it
     # when the database is closed
-    flags = idaapi.PLUGIN_PROC
+    flags = ida_idaapi.PLUGIN_PROC
     comment = "Use ida_taint2 output to color tainted pseudocode lines"
     help = "Use Alt-F5 to select process to taint with"
     wanted_name = "PANDA:  Pseudocode ida_taint2"
@@ -170,11 +177,11 @@ class hexrays_ida_taint2_t(idaapi.plugin_t):
         # invaluable in determining how to extract the effective addresses
         # from each pseudocode line
         sv = cfunc.get_pseudocode()
-        anchor = idaapi.ctree_anchor_t()
+        anchor = ida_hexrays.ctree_anchor_t()
         for i in range(len(sv)):
             curline = copy(sv[i].line)
             while (len(curline) > 0):
-                skipcode_index = idaapi.tag_skipcode(curline)
+                skipcode_index = ida_lines.tag_skipcode(curline)
                 if (0 == skipcode_index):
                     # no code found, go to next character
                     curline = curline[1:]
@@ -185,7 +192,7 @@ class hexrays_ida_taint2_t(idaapi.plugin_t):
                         if (anchor.is_citem_anchor() and
                             not anchor.is_blkcmt_anchor()):
                             address = cfunc.treeitems.at(addr_tag).ea
-                            if (address != idaapi.BADADDR):
+                            if (address != ida_idaapi.BADADDR):
                                 if (address in tainted_pcs):
                                     sv[i].bgcolor = INST_COLOR
                     curline = curline[skipcode_index:]
@@ -195,11 +202,11 @@ class hexrays_ida_taint2_t(idaapi.plugin_t):
         global selected_pid
         global tainted_pcs
         
-        vu = idaapi.get_widget_vdui(widget)
-
+        vu = ida_hexrays.get_widget_vdui(widget)
+        
         cfunc = vu.cfunc
         if cfunc is None:
-            idaapi.msg("hexrays_ida_taint2:  Widget has no " +
+            ida_kernwin.msg("hexrays_ida_taint2:  Widget has no " +
                 "decompiled pseudocode!\n")
             return True
             
@@ -210,8 +217,7 @@ class hexrays_ida_taint2_t(idaapi.plugin_t):
                 "CSV Files (*.csv)")
             if filename == "":
                 return
-            idaapi.msg("hexrays_ida_taint2:  file selected is " +
-                filename + "\n")
+            ida_kernwin.msg("hexrays_ida_taint2:  file selected is " + filename + "\n")
             
             processes = set()
             input_file = open(filename, "r")
@@ -242,31 +248,29 @@ class hexrays_ida_taint2_t(idaapi.plugin_t):
                     tainted_pcs.add(pc)
             input_file.close()
         else:
-            idaapi.msg("hexrays_ida_taint2:  reusing " + filename +
-                " and process " + str(selected_pid) + "\n")
+            ida_kernwin.msg("hexrays_ida_taint2:  reusing " + filename + " and process " + str(selected_pid) + "\n")
         
         if (clear_old):
             self.clear_colors(cfunc)
             
         if (len(tainted_pcs) > 0):
             self.color_eas(cfunc, tainted_pcs)
-            idaapi.refresh_idaview_anyway()
+            ida_kernwin.refresh_idaview_anyway()
         else:
             if (clear_old):
-                idaapi.refresh_idaview_anyway()
-            idaapi.msg("hexrays_ida_taint2:  no tainted PCs found " +
-                "for selected process\n")
+                ida_kernwin.refresh_idaview_anyway()
+            ida_kernwin.msg("hexrays_ida_taint2:  no tainted PCs found " + "for selected process\n")
             
         return 1
     
     def init(self):
         if (idaapi.init_hexrays_plugin()):
             # the plugin will terminate right away if return PLUGIN_OK instead
-            return idaapi.PLUGIN_KEEP
+            return ida_idaapi.PLUGIN_KEEP
         else:
             # PLUGIN_SKIP means don't load the plugin
-            return idaapi.PLUGIN_SKIP
-            
+            return ida_idaapi.PLUGIN_SKIP
+
     def term(self):
         # nothing to do when plugin is unloaded
         pass
@@ -274,8 +278,8 @@ class hexrays_ida_taint2_t(idaapi.plugin_t):
     def run(self, arg):
         global tainted_pcs
         # this is called when select the plugin from the Edit>Plugins menu
-        curwidget = idaapi.get_current_tform()
-        if (idaapi.BWN_PSEUDOCODE == idaapi.get_widget_type(curwidget)):
+        curwidget = ida_kernwin.get_current_widget()
+        if (ida_kernwin.BWN_PSEUDOCODE == ida_kernwin.get_widget_type(curwidget)):
             reuse = HIT2_ReuseDialog.GET_NEW_PROCESS
             clear_old = False
             if (len(tainted_pcs) > 0):
@@ -288,7 +292,7 @@ class hexrays_ida_taint2_t(idaapi.plugin_t):
             if (HIT2_ReuseDialog.CANCEL_REQUEST != reuse):
                 self.color_pseudocode(curwidget, clear_old)
         else:
-            idaapi.msg("Current window is not a pseudocode window\n")
+            ida_kernwin.msg("Current window is not a pseudocode window\n")
 
 def PLUGIN_ENTRY():
     return hexrays_ida_taint2_t()

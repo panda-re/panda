@@ -14,6 +14,33 @@ ifneq ($(wildcard config-host.mak),)
 all:
 include config-host.mak
 
+# Metadata for build
+GIT_VERSION := '$(shell git describe --dirty --always)'
+BUILD_DATE  := '$(shell date)'
+QEMU_CFLAGS  +=-DGIT_VERSION=\"$(GIT_VERSION)\" -DBUILD_DATE=\"$(BUILD_DATE)\"
+QEMU_CXXFLAGS+=-DGIT_VERSION=\"$(GIT_VERSION)\" -DBUILD_DATE=\"$(BUILD_DATE)\"
+
+git-submodule-update:
+
+.PHONY: git-submodule-update
+
+ifeq (0,$(MAKELEVEL))
+  git_module_status := $(shell \
+    cd '$(SRC_PATH)' && \
+    ./scripts/git-submodule.sh status $(GIT_SUBMODULES); \
+    echo $$?; \
+  )
+
+ifeq (1,$(git_module_status))
+git-submodule-update:
+	$(call quiet-command, \
+          (cd $(SRC_PATH) && ./scripts/git-submodule.sh update $(GIT_SUBMODULES)), \
+          "GIT","$(GIT_SUBMODULES)")
+endif
+endif
+
+.git-submodule-status: git-submodule-update
+
 # Check that we're not trying to do an out-of-tree build from
 # a tree that's been used for an in-tree build.
 ifneq ($(realpath $(SRC_PATH)),$(realpath .))
@@ -84,6 +111,7 @@ endif
 GENERATED_FILES += $(TRACE_HEADERS)
 GENERATED_FILES += $(TRACE_SOURCES)
 GENERATED_FILES += $(BUILD_DIR)/trace-events-all
+GENERATED_FILES += .git-submodule-status
 
 trace-group-name = $(shell dirname $1 | sed -e 's/[^a-zA-Z0-9]/_/g')
 
@@ -341,7 +369,7 @@ DTC_MAKE_ARGS=-I$(SRC_PATH)/dtc VPATH=$(SRC_PATH)/dtc -C dtc V="$(V)" LIBFDT_src
 DTC_CFLAGS=$(CFLAGS) $(QEMU_CFLAGS)
 DTC_CPPFLAGS=-I$(BUILD_DIR)/dtc -I$(SRC_PATH)/dtc -I$(SRC_PATH)/dtc/libfdt
 
-subdir-dtc:dtc/libfdt dtc/tests
+subdir-dtc: .git-submodule-status dtc/libfdt dtc/tests
 	$(call quiet-command,$(MAKE) $(DTC_MAKE_ARGS) CPPFLAGS="$(DTC_CPPFLAGS)" CFLAGS="$(DTC_CFLAGS)" LDFLAGS="$(LDFLAGS)" ARFLAGS="$(ARFLAGS)" CC="$(CC)" AR="$(AR)" LD="$(LD)" $(SUBDIR_MAKEFLAGS) libfdt/libfdt.a,)
 
 dtc/%:
@@ -597,14 +625,18 @@ ifneq (,$(findstring qemu-ga,$(TOOLS)))
 endif
 endif
 
+ifneq ($(CONFIG_LINUX),)
 # The install target won't succeed if the RPATH in the .so files is longer than
 # the value need to change it to for installation purposes.  It does not matter
 # which architecture is used for the comparison - it shows up once in both the
 # new and old RPATHs, so the differences cancel out.
 # Calculate length of new RPATH.
 newrplen=$(shell newrp="$(panda_plugindir)/$(ARCH)" ; eval echo $${\#newrp})
-# Fetch current RPATH from an .so file - doesn't matter which plugin it is for.
-archdir=$(filter $(ARCH)-%,$(TARGET_DIRS))
+# Fetch current RPATH from an .so file - doesn't matter which plugin/arch it is for.
+archdir=$(lastword $(TARGET_DIRS))
+ifeq ($(archdir),)
+$(error Failed to find arch directory ${archdir})
+endif
 pwdvar=$(shell pwd)
 pathtoso=$(shell echo "$(pwdvar)/$(archdir)/panda/plugins/panda_stringsearch.so")
 cpout=$(shell chrpath -l "$(pathtoso)")
@@ -612,6 +644,7 @@ cpout=$(shell chrpath -l "$(pathtoso)")
 # adjust for that later.
 rppart=$(lastword $(cpout))
 newtoobig=$(shell oldrp="$(rppart)" ; oldrplen=`expr $${\#oldrp} - 6` ; if [ $$oldrplen -lt $(newrplen) ] ; then echo true ; else echo false ; fi)
+endif
 
 install: all $(if $(BUILD_DOCS),install-doc) install-datadir install-localstatedir
 ifeq ($(newtoobig), false)

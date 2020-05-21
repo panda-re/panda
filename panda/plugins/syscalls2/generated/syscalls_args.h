@@ -251,6 +251,12 @@
 	const uint32_t &UNUSED(pref##sigsetsize) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]);
 #endif
 
+// long sys_rt_sigreturn ['void']
+#undef locals_LINUX__X64_sys_rt_sigreturn
+#if defined(__cplusplus)
+#undef references_LINUX__X64_sys_rt_sigreturn
+#endif
+
 // long sys_ioctl ['unsigned int fd', 'unsigned int cmd', 'unsigned long arg']
 #define locals_LINUX__X64_sys_ioctl(ctx, pref) \
 	uint32_t UNUSED(pref##fd) = *(uint32_t *)((ctx)->args[0]); \
@@ -879,6 +885,56 @@
 	const uint64_t &UNUSED(pref##optlen) = *reinterpret_cast<const uint64_t *>((ctx)->args[4]);
 #endif
 
+// long sys_clone ['unsigned long', 'unsigned long', 'int __user *', 'int __user *', 'unsigned long']
+#define locals_LINUX__X64_sys_clone(ctx, pref) \
+	uint64_t UNUSED(pref##arg0) = *(uint64_t *)((ctx)->args[0]); \
+	uint64_t UNUSED(pref##arg1) = *(uint64_t *)((ctx)->args[1]); \
+	uint64_t UNUSED(pref##arg2) = *(uint64_t *)((ctx)->args[2]); \
+	uint64_t UNUSED(pref##arg3) = *(uint64_t *)((ctx)->args[3]); \
+	uint64_t UNUSED(pref##arg4) = *(uint64_t *)((ctx)->args[4]);
+#if defined(__cplusplus)
+#define references_LINUX__X64_sys_clone(ctx, pref) \
+	uint64_t &UNUSED(pref##arg0) = *reinterpret_cast<uint64_t *>((ctx)->args[0]); \
+	uint64_t &UNUSED(pref##arg1) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
+	uint64_t &UNUSED(pref##arg2) = *reinterpret_cast<uint64_t *>((ctx)->args[2]); \
+	uint64_t &UNUSED(pref##arg3) = *reinterpret_cast<uint64_t *>((ctx)->args[3]); \
+	uint64_t &UNUSED(pref##arg4) = *reinterpret_cast<uint64_t *>((ctx)->args[4]);
+#define creferences_LINUX__X64_sys_clone(ctx, pref) \
+	const uint64_t &UNUSED(pref##arg0) = *reinterpret_cast<const uint64_t *>((ctx)->args[0]); \
+	const uint64_t &UNUSED(pref##arg1) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
+	const uint64_t &UNUSED(pref##arg2) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]); \
+	const uint64_t &UNUSED(pref##arg3) = *reinterpret_cast<const uint64_t *>((ctx)->args[3]); \
+	const uint64_t &UNUSED(pref##arg4) = *reinterpret_cast<const uint64_t *>((ctx)->args[4]);
+#endif
+
+// long sys_fork ['void']
+#undef locals_LINUX__X64_sys_fork
+#if defined(__cplusplus)
+#undef references_LINUX__X64_sys_fork
+#endif
+
+// long sys_vfork ['void']
+#undef locals_LINUX__X64_sys_vfork
+#if defined(__cplusplus)
+#undef references_LINUX__X64_sys_vfork
+#endif
+
+// long sys_execve ['const char __user *filename', 'const char __user *const __user *argv', 'const char __user *const __user *envp']
+#define locals_LINUX__X64_sys_execve(ctx, pref) \
+	uint64_t UNUSED(pref##filename) = *(uint64_t *)((ctx)->args[0]); \
+	uint64_t UNUSED(pref##argv) = *(uint64_t *)((ctx)->args[1]); \
+	uint64_t UNUSED(pref##envp) = *(uint64_t *)((ctx)->args[2]);
+#if defined(__cplusplus)
+#define references_LINUX__X64_sys_execve(ctx, pref) \
+	uint64_t &UNUSED(pref##filename) = *reinterpret_cast<uint64_t *>((ctx)->args[0]); \
+	uint64_t &UNUSED(pref##argv) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
+	uint64_t &UNUSED(pref##envp) = *reinterpret_cast<uint64_t *>((ctx)->args[2]);
+#define creferences_LINUX__X64_sys_execve(ctx, pref) \
+	const uint64_t &UNUSED(pref##filename) = *reinterpret_cast<const uint64_t *>((ctx)->args[0]); \
+	const uint64_t &UNUSED(pref##argv) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
+	const uint64_t &UNUSED(pref##envp) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]);
+#endif
+
 // long sys_exit ['int error_code']
 #define locals_LINUX__X64_sys_exit(ctx, pref) \
 	int32_t UNUSED(pref##error_code) = *(int32_t *)((ctx)->args[0]);
@@ -891,18 +947,18 @@
 
 // long sys_wait4 ['pid_t pid', 'int __user *stat_addr', 'int options', 'struct rusage __user *ru']
 #define locals_LINUX__X64_sys_wait4(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint64_t UNUSED(pref##stat_addr) = *(uint64_t *)((ctx)->args[1]); \
 	int32_t UNUSED(pref##options) = *(int32_t *)((ctx)->args[2]); \
 	uint64_t UNUSED(pref##ru) = *(uint64_t *)((ctx)->args[3]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_wait4(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint64_t &UNUSED(pref##stat_addr) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
 	int32_t &UNUSED(pref##options) = *reinterpret_cast<int32_t *>((ctx)->args[2]); \
 	uint64_t &UNUSED(pref##ru) = *reinterpret_cast<uint64_t *>((ctx)->args[3]);
 #define creferences_LINUX__X64_sys_wait4(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint64_t &UNUSED(pref##stat_addr) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##options) = *reinterpret_cast<const int32_t *>((ctx)->args[2]); \
 	const uint64_t &UNUSED(pref##ru) = *reinterpret_cast<const uint64_t *>((ctx)->args[3]);
@@ -910,14 +966,14 @@
 
 // long sys_kill ['pid_t pid', 'int sig']
 #define locals_LINUX__X64_sys_kill(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	int32_t UNUSED(pref##sig) = *(int32_t *)((ctx)->args[1]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_kill(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	int32_t &UNUSED(pref##sig) = *reinterpret_cast<int32_t *>((ctx)->args[1]);
 #define creferences_LINUX__X64_sys_kill(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const int32_t &UNUSED(pref##sig) = *reinterpret_cast<const int32_t *>((ctx)->args[1]);
 #endif
 
@@ -1511,15 +1567,15 @@
 
 // long sys_setpgid ['pid_t pid', 'pid_t pgid']
 #define locals_LINUX__X64_sys_setpgid(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pgid) = *(uint32_t *)((ctx)->args[1]);
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pgid) = *(int32_t *)((ctx)->args[1]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_setpgid(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pgid) = *reinterpret_cast<uint32_t *>((ctx)->args[1]);
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pgid) = *reinterpret_cast<int32_t *>((ctx)->args[1]);
 #define creferences_LINUX__X64_sys_setpgid(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pgid) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]);
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pgid) = *reinterpret_cast<const int32_t *>((ctx)->args[1]);
 #endif
 
 // long sys_getppid ['void']
@@ -1658,12 +1714,12 @@
 
 // long sys_getpgid ['pid_t pid']
 #define locals_LINUX__X64_sys_getpgid(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]);
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_getpgid(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]);
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]);
 #define creferences_LINUX__X64_sys_getpgid(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]);
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]);
 #endif
 
 // long sys_setfsuid ['uid_t uid']
@@ -1688,12 +1744,12 @@
 
 // long sys_getsid ['pid_t pid']
 #define locals_LINUX__X64_sys_getsid(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]);
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_getsid(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]);
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]);
 #define creferences_LINUX__X64_sys_getsid(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]);
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]);
 #endif
 
 // long sys_capget ['cap_user_header_t header', 'cap_user_data_t dataptr']
@@ -1756,16 +1812,16 @@
 
 // long sys_rt_sigqueueinfo ['pid_t pid', 'int sig', 'siginfo_t __user *uinfo']
 #define locals_LINUX__X64_sys_rt_sigqueueinfo(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	int32_t UNUSED(pref##sig) = *(int32_t *)((ctx)->args[1]); \
 	uint64_t UNUSED(pref##uinfo) = *(uint64_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_rt_sigqueueinfo(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	int32_t &UNUSED(pref##sig) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	uint64_t &UNUSED(pref##uinfo) = *reinterpret_cast<uint64_t *>((ctx)->args[2]);
 #define creferences_LINUX__X64_sys_rt_sigqueueinfo(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const int32_t &UNUSED(pref##sig) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const uint64_t &UNUSED(pref##uinfo) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]);
 #endif
@@ -1921,54 +1977,54 @@
 
 // long sys_sched_setparam ['pid_t pid', 'struct sched_param __user *param']
 #define locals_LINUX__X64_sys_sched_setparam(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint64_t UNUSED(pref##param) = *(uint64_t *)((ctx)->args[1]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_sched_setparam(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint64_t &UNUSED(pref##param) = *reinterpret_cast<uint64_t *>((ctx)->args[1]);
 #define creferences_LINUX__X64_sys_sched_setparam(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint64_t &UNUSED(pref##param) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]);
 #endif
 
 // long sys_sched_getparam ['pid_t pid', 'struct sched_param __user *param']
 #define locals_LINUX__X64_sys_sched_getparam(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint64_t UNUSED(pref##param) = *(uint64_t *)((ctx)->args[1]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_sched_getparam(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint64_t &UNUSED(pref##param) = *reinterpret_cast<uint64_t *>((ctx)->args[1]);
 #define creferences_LINUX__X64_sys_sched_getparam(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint64_t &UNUSED(pref##param) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]);
 #endif
 
 // long sys_sched_setscheduler ['pid_t pid', 'int policy', 'struct sched_param __user *param']
 #define locals_LINUX__X64_sys_sched_setscheduler(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	int32_t UNUSED(pref##policy) = *(int32_t *)((ctx)->args[1]); \
 	uint64_t UNUSED(pref##param) = *(uint64_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_sched_setscheduler(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	int32_t &UNUSED(pref##policy) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	uint64_t &UNUSED(pref##param) = *reinterpret_cast<uint64_t *>((ctx)->args[2]);
 #define creferences_LINUX__X64_sys_sched_setscheduler(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const int32_t &UNUSED(pref##policy) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const uint64_t &UNUSED(pref##param) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]);
 #endif
 
 // long sys_sched_getscheduler ['pid_t pid']
 #define locals_LINUX__X64_sys_sched_getscheduler(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]);
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_sched_getscheduler(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]);
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]);
 #define creferences_LINUX__X64_sys_sched_getscheduler(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]);
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]);
 #endif
 
 // long sys_sched_get_priority_max ['int policy']
@@ -1993,14 +2049,14 @@
 
 // long sys_sched_rr_get_interval ['pid_t pid', 'struct timespec __user *interval']
 #define locals_LINUX__X64_sys_sched_rr_get_interval(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint64_t UNUSED(pref##interval) = *(uint64_t *)((ctx)->args[1]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_sched_rr_get_interval(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint64_t &UNUSED(pref##interval) = *reinterpret_cast<uint64_t *>((ctx)->args[1]);
 #define creferences_LINUX__X64_sys_sched_rr_get_interval(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint64_t &UNUSED(pref##interval) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]);
 #endif
 
@@ -2291,20 +2347,30 @@
 	const int32_t &UNUSED(pref##len) = *reinterpret_cast<const int32_t *>((ctx)->args[1]);
 #endif
 
-// long sys_ioperm ['unsigned long from', 'unsigned long num', 'int on']
+// long sys_iopl ['unsigned int']
+#define locals_LINUX__X64_sys_iopl(ctx, pref) \
+	uint32_t UNUSED(pref##arg0) = *(uint32_t *)((ctx)->args[0]);
+#if defined(__cplusplus)
+#define references_LINUX__X64_sys_iopl(ctx, pref) \
+	uint32_t &UNUSED(pref##arg0) = *reinterpret_cast<uint32_t *>((ctx)->args[0]);
+#define creferences_LINUX__X64_sys_iopl(ctx, pref) \
+	const uint32_t &UNUSED(pref##arg0) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]);
+#endif
+
+// long sys_ioperm ['unsigned long', 'unsigned long', 'int']
 #define locals_LINUX__X64_sys_ioperm(ctx, pref) \
-	uint64_t UNUSED(pref##from) = *(uint64_t *)((ctx)->args[0]); \
-	uint64_t UNUSED(pref##num) = *(uint64_t *)((ctx)->args[1]); \
-	int32_t UNUSED(pref##on) = *(int32_t *)((ctx)->args[2]);
+	uint64_t UNUSED(pref##arg0) = *(uint64_t *)((ctx)->args[0]); \
+	uint64_t UNUSED(pref##arg1) = *(uint64_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##arg2) = *(int32_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_ioperm(ctx, pref) \
-	uint64_t &UNUSED(pref##from) = *reinterpret_cast<uint64_t *>((ctx)->args[0]); \
-	uint64_t &UNUSED(pref##num) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
-	int32_t &UNUSED(pref##on) = *reinterpret_cast<int32_t *>((ctx)->args[2]);
+	uint64_t &UNUSED(pref##arg0) = *reinterpret_cast<uint64_t *>((ctx)->args[0]); \
+	uint64_t &UNUSED(pref##arg1) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##arg2) = *reinterpret_cast<int32_t *>((ctx)->args[2]);
 #define creferences_LINUX__X64_sys_ioperm(ctx, pref) \
-	const uint64_t &UNUSED(pref##from) = *reinterpret_cast<const uint64_t *>((ctx)->args[0]); \
-	const uint64_t &UNUSED(pref##num) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
-	const int32_t &UNUSED(pref##on) = *reinterpret_cast<const int32_t *>((ctx)->args[2]);
+	const uint64_t &UNUSED(pref##arg0) = *reinterpret_cast<const uint64_t *>((ctx)->args[0]); \
+	const uint64_t &UNUSED(pref##arg1) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##arg2) = *reinterpret_cast<const int32_t *>((ctx)->args[2]);
 #endif
 
 // long sys_init_module ['void __user *umod', 'unsigned long len', 'const char __user *uargs']
@@ -2589,14 +2655,14 @@
 
 // long sys_tkill ['pid_t pid', 'int sig']
 #define locals_LINUX__X64_sys_tkill(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	int32_t UNUSED(pref##sig) = *(int32_t *)((ctx)->args[1]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_tkill(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	int32_t &UNUSED(pref##sig) = *reinterpret_cast<int32_t *>((ctx)->args[1]);
 #define creferences_LINUX__X64_sys_tkill(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const int32_t &UNUSED(pref##sig) = *reinterpret_cast<const int32_t *>((ctx)->args[1]);
 #endif
 
@@ -2637,32 +2703,32 @@
 
 // long sys_sched_setaffinity ['pid_t pid', 'unsigned int len', 'unsigned long __user *user_mask_ptr']
 #define locals_LINUX__X64_sys_sched_setaffinity(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##len) = *(uint32_t *)((ctx)->args[1]); \
 	uint64_t UNUSED(pref##user_mask_ptr) = *(uint64_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_sched_setaffinity(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##len) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint64_t &UNUSED(pref##user_mask_ptr) = *reinterpret_cast<uint64_t *>((ctx)->args[2]);
 #define creferences_LINUX__X64_sys_sched_setaffinity(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##len) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint64_t &UNUSED(pref##user_mask_ptr) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]);
 #endif
 
 // long sys_sched_getaffinity ['pid_t pid', 'unsigned int len', 'unsigned long __user *user_mask_ptr']
 #define locals_LINUX__X64_sys_sched_getaffinity(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##len) = *(uint32_t *)((ctx)->args[1]); \
 	uint64_t UNUSED(pref##user_mask_ptr) = *(uint64_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_sched_getaffinity(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##len) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint64_t &UNUSED(pref##user_mask_ptr) = *reinterpret_cast<uint64_t *>((ctx)->args[2]);
 #define creferences_LINUX__X64_sys_sched_getaffinity(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##len) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint64_t &UNUSED(pref##user_mask_ptr) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]);
 #endif
@@ -3038,17 +3104,17 @@
 
 // long sys_tgkill ['pid_t tgid', 'pid_t pid', 'int sig']
 #define locals_LINUX__X64_sys_tgkill(ctx, pref) \
-	uint32_t UNUSED(pref##tgid) = *(uint32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##tgid) = *(int32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[1]); \
 	int32_t UNUSED(pref##sig) = *(int32_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_tgkill(ctx, pref) \
-	uint32_t &UNUSED(pref##tgid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##tgid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	int32_t &UNUSED(pref##sig) = *reinterpret_cast<int32_t *>((ctx)->args[2]);
 #define creferences_LINUX__X64_sys_tgkill(ctx, pref) \
-	const uint32_t &UNUSED(pref##tgid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##tgid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##sig) = *reinterpret_cast<const int32_t *>((ctx)->args[2]);
 #endif
 
@@ -3252,20 +3318,20 @@
 // long sys_waitid ['int which', 'pid_t pid', 'struct siginfo __user *infop', 'int options', 'struct rusage __user *ru']
 #define locals_LINUX__X64_sys_waitid(ctx, pref) \
 	int32_t UNUSED(pref##which) = *(int32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[1]); \
 	uint64_t UNUSED(pref##infop) = *(uint64_t *)((ctx)->args[2]); \
 	int32_t UNUSED(pref##options) = *(int32_t *)((ctx)->args[3]); \
 	uint64_t UNUSED(pref##ru) = *(uint64_t *)((ctx)->args[4]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_waitid(ctx, pref) \
 	int32_t &UNUSED(pref##which) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	uint64_t &UNUSED(pref##infop) = *reinterpret_cast<uint64_t *>((ctx)->args[2]); \
 	int32_t &UNUSED(pref##options) = *reinterpret_cast<int32_t *>((ctx)->args[3]); \
 	uint64_t &UNUSED(pref##ru) = *reinterpret_cast<uint64_t *>((ctx)->args[4]);
 #define creferences_LINUX__X64_sys_waitid(ctx, pref) \
 	const int32_t &UNUSED(pref##which) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const uint64_t &UNUSED(pref##infop) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]); \
 	const int32_t &UNUSED(pref##options) = *reinterpret_cast<const int32_t *>((ctx)->args[3]); \
 	const uint64_t &UNUSED(pref##ru) = *reinterpret_cast<const uint64_t *>((ctx)->args[4]);
@@ -3400,18 +3466,18 @@
 
 // long sys_migrate_pages ['pid_t pid', 'unsigned long maxnode', 'const unsigned long __user *from', 'const unsigned long __user *to']
 #define locals_LINUX__X64_sys_migrate_pages(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint64_t UNUSED(pref##maxnode) = *(uint64_t *)((ctx)->args[1]); \
 	uint64_t UNUSED(pref##from) = *(uint64_t *)((ctx)->args[2]); \
 	uint64_t UNUSED(pref##to) = *(uint64_t *)((ctx)->args[3]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_migrate_pages(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint64_t &UNUSED(pref##maxnode) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
 	uint64_t &UNUSED(pref##from) = *reinterpret_cast<uint64_t *>((ctx)->args[2]); \
 	uint64_t &UNUSED(pref##to) = *reinterpret_cast<uint64_t *>((ctx)->args[3]);
 #define creferences_LINUX__X64_sys_migrate_pages(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint64_t &UNUSED(pref##maxnode) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
 	const uint64_t &UNUSED(pref##from) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]); \
 	const uint64_t &UNUSED(pref##to) = *reinterpret_cast<const uint64_t *>((ctx)->args[3]);
@@ -3822,7 +3888,7 @@
 
 // long sys_move_pages ['pid_t pid', 'unsigned long nr_pages', 'const void __user * __user *pages', 'const int __user *nodes', 'int __user *status', 'int flags']
 #define locals_LINUX__X64_sys_move_pages(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint64_t UNUSED(pref##nr_pages) = *(uint64_t *)((ctx)->args[1]); \
 	uint64_t UNUSED(pref##pages) = *(uint64_t *)((ctx)->args[2]); \
 	uint64_t UNUSED(pref##nodes) = *(uint64_t *)((ctx)->args[3]); \
@@ -3830,14 +3896,14 @@
 	int32_t UNUSED(pref##flags) = *(int32_t *)((ctx)->args[5]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_move_pages(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint64_t &UNUSED(pref##nr_pages) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
 	uint64_t &UNUSED(pref##pages) = *reinterpret_cast<uint64_t *>((ctx)->args[2]); \
 	uint64_t &UNUSED(pref##nodes) = *reinterpret_cast<uint64_t *>((ctx)->args[3]); \
 	uint64_t &UNUSED(pref##status) = *reinterpret_cast<uint64_t *>((ctx)->args[4]); \
 	int32_t &UNUSED(pref##flags) = *reinterpret_cast<int32_t *>((ctx)->args[5]);
 #define creferences_LINUX__X64_sys_move_pages(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint64_t &UNUSED(pref##nr_pages) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
 	const uint64_t &UNUSED(pref##pages) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]); \
 	const uint64_t &UNUSED(pref##nodes) = *reinterpret_cast<const uint64_t *>((ctx)->args[3]); \
@@ -4125,19 +4191,19 @@
 
 // long sys_rt_tgsigqueueinfo ['pid_t tgid', 'pid_t pid', 'int sig', 'siginfo_t __user *uinfo']
 #define locals_LINUX__X64_sys_rt_tgsigqueueinfo(ctx, pref) \
-	uint32_t UNUSED(pref##tgid) = *(uint32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##tgid) = *(int32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[1]); \
 	int32_t UNUSED(pref##sig) = *(int32_t *)((ctx)->args[2]); \
 	uint64_t UNUSED(pref##uinfo) = *(uint64_t *)((ctx)->args[3]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_rt_tgsigqueueinfo(ctx, pref) \
-	uint32_t &UNUSED(pref##tgid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##tgid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	int32_t &UNUSED(pref##sig) = *reinterpret_cast<int32_t *>((ctx)->args[2]); \
 	uint64_t &UNUSED(pref##uinfo) = *reinterpret_cast<uint64_t *>((ctx)->args[3]);
 #define creferences_LINUX__X64_sys_rt_tgsigqueueinfo(ctx, pref) \
-	const uint32_t &UNUSED(pref##tgid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##tgid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##sig) = *reinterpret_cast<const int32_t *>((ctx)->args[2]); \
 	const uint64_t &UNUSED(pref##uinfo) = *reinterpret_cast<const uint64_t *>((ctx)->args[3]);
 #endif
@@ -4145,20 +4211,20 @@
 // long sys_perf_event_open ['struct perf_event_attr __user *attr_uptr', 'pid_t pid', 'int cpu', 'int group_fd', 'unsigned long flags']
 #define locals_LINUX__X64_sys_perf_event_open(ctx, pref) \
 	uint64_t UNUSED(pref##attr_uptr) = *(uint64_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[1]); \
 	int32_t UNUSED(pref##_cpu) = *(int32_t *)((ctx)->args[2]); \
 	int32_t UNUSED(pref##group_fd) = *(int32_t *)((ctx)->args[3]); \
 	uint64_t UNUSED(pref##flags) = *(uint64_t *)((ctx)->args[4]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_perf_event_open(ctx, pref) \
 	uint64_t &UNUSED(pref##attr_uptr) = *reinterpret_cast<uint64_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	int32_t &UNUSED(pref##_cpu) = *reinterpret_cast<int32_t *>((ctx)->args[2]); \
 	int32_t &UNUSED(pref##group_fd) = *reinterpret_cast<int32_t *>((ctx)->args[3]); \
 	uint64_t &UNUSED(pref##flags) = *reinterpret_cast<uint64_t *>((ctx)->args[4]);
 #define creferences_LINUX__X64_sys_perf_event_open(ctx, pref) \
 	const uint64_t &UNUSED(pref##attr_uptr) = *reinterpret_cast<const uint64_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##_cpu) = *reinterpret_cast<const int32_t *>((ctx)->args[2]); \
 	const int32_t &UNUSED(pref##group_fd) = *reinterpret_cast<const int32_t *>((ctx)->args[3]); \
 	const uint64_t &UNUSED(pref##flags) = *reinterpret_cast<const uint64_t *>((ctx)->args[4]);
@@ -4223,18 +4289,18 @@
 
 // long sys_prlimit64 ['pid_t pid', 'unsigned int resource', 'const struct rlimit64 __user *new_rlim', 'struct rlimit64 __user *old_rlim']
 #define locals_LINUX__X64_sys_prlimit64(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##resource) = *(uint32_t *)((ctx)->args[1]); \
 	uint64_t UNUSED(pref##new_rlim) = *(uint64_t *)((ctx)->args[2]); \
 	uint64_t UNUSED(pref##old_rlim) = *(uint64_t *)((ctx)->args[3]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_prlimit64(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##resource) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint64_t &UNUSED(pref##new_rlim) = *reinterpret_cast<uint64_t *>((ctx)->args[2]); \
 	uint64_t &UNUSED(pref##old_rlim) = *reinterpret_cast<uint64_t *>((ctx)->args[3]);
 #define creferences_LINUX__X64_sys_prlimit64(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##resource) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint64_t &UNUSED(pref##new_rlim) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]); \
 	const uint64_t &UNUSED(pref##old_rlim) = *reinterpret_cast<const uint64_t *>((ctx)->args[3]);
@@ -4351,7 +4417,7 @@
 
 // long sys_process_vm_readv ['pid_t pid', 'const struct iovec __user *lvec', 'unsigned long liovcnt', 'const struct iovec __user *rvec', 'unsigned long riovcnt', 'unsigned long flags']
 #define locals_LINUX__X64_sys_process_vm_readv(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint64_t UNUSED(pref##lvec) = *(uint64_t *)((ctx)->args[1]); \
 	uint64_t UNUSED(pref##liovcnt) = *(uint64_t *)((ctx)->args[2]); \
 	uint64_t UNUSED(pref##rvec) = *(uint64_t *)((ctx)->args[3]); \
@@ -4359,14 +4425,14 @@
 	uint64_t UNUSED(pref##flags) = *(uint64_t *)((ctx)->args[5]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_process_vm_readv(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint64_t &UNUSED(pref##lvec) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
 	uint64_t &UNUSED(pref##liovcnt) = *reinterpret_cast<uint64_t *>((ctx)->args[2]); \
 	uint64_t &UNUSED(pref##rvec) = *reinterpret_cast<uint64_t *>((ctx)->args[3]); \
 	uint64_t &UNUSED(pref##riovcnt) = *reinterpret_cast<uint64_t *>((ctx)->args[4]); \
 	uint64_t &UNUSED(pref##flags) = *reinterpret_cast<uint64_t *>((ctx)->args[5]);
 #define creferences_LINUX__X64_sys_process_vm_readv(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint64_t &UNUSED(pref##lvec) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
 	const uint64_t &UNUSED(pref##liovcnt) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]); \
 	const uint64_t &UNUSED(pref##rvec) = *reinterpret_cast<const uint64_t *>((ctx)->args[3]); \
@@ -4376,7 +4442,7 @@
 
 // long sys_process_vm_writev ['pid_t pid', 'const struct iovec __user *lvec', 'unsigned long liovcnt', 'const struct iovec __user *rvec', 'unsigned long riovcnt', 'unsigned long flags']
 #define locals_LINUX__X64_sys_process_vm_writev(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint64_t UNUSED(pref##lvec) = *(uint64_t *)((ctx)->args[1]); \
 	uint64_t UNUSED(pref##liovcnt) = *(uint64_t *)((ctx)->args[2]); \
 	uint64_t UNUSED(pref##rvec) = *(uint64_t *)((ctx)->args[3]); \
@@ -4384,14 +4450,14 @@
 	uint64_t UNUSED(pref##flags) = *(uint64_t *)((ctx)->args[5]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_process_vm_writev(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint64_t &UNUSED(pref##lvec) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
 	uint64_t &UNUSED(pref##liovcnt) = *reinterpret_cast<uint64_t *>((ctx)->args[2]); \
 	uint64_t &UNUSED(pref##rvec) = *reinterpret_cast<uint64_t *>((ctx)->args[3]); \
 	uint64_t &UNUSED(pref##riovcnt) = *reinterpret_cast<uint64_t *>((ctx)->args[4]); \
 	uint64_t &UNUSED(pref##flags) = *reinterpret_cast<uint64_t *>((ctx)->args[5]);
 #define creferences_LINUX__X64_sys_process_vm_writev(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint64_t &UNUSED(pref##lvec) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
 	const uint64_t &UNUSED(pref##liovcnt) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]); \
 	const uint64_t &UNUSED(pref##rvec) = *reinterpret_cast<const uint64_t *>((ctx)->args[3]); \
@@ -4401,21 +4467,21 @@
 
 // long sys_kcmp ['pid_t pid1', 'pid_t pid2', 'int type', 'unsigned long idx1', 'unsigned long idx2']
 #define locals_LINUX__X64_sys_kcmp(ctx, pref) \
-	uint32_t UNUSED(pref##pid1) = *(uint32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pid2) = *(uint32_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##pid1) = *(int32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid2) = *(int32_t *)((ctx)->args[1]); \
 	int32_t UNUSED(pref##type) = *(int32_t *)((ctx)->args[2]); \
 	uint64_t UNUSED(pref##idx1) = *(uint64_t *)((ctx)->args[3]); \
 	uint64_t UNUSED(pref##idx2) = *(uint64_t *)((ctx)->args[4]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_kcmp(ctx, pref) \
-	uint32_t &UNUSED(pref##pid1) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pid2) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##pid1) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid2) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	int32_t &UNUSED(pref##type) = *reinterpret_cast<int32_t *>((ctx)->args[2]); \
 	uint64_t &UNUSED(pref##idx1) = *reinterpret_cast<uint64_t *>((ctx)->args[3]); \
 	uint64_t &UNUSED(pref##idx2) = *reinterpret_cast<uint64_t *>((ctx)->args[4]);
 #define creferences_LINUX__X64_sys_kcmp(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid1) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pid2) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##pid1) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid2) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##type) = *reinterpret_cast<const int32_t *>((ctx)->args[2]); \
 	const uint64_t &UNUSED(pref##idx1) = *reinterpret_cast<const uint64_t *>((ctx)->args[3]); \
 	const uint64_t &UNUSED(pref##idx2) = *reinterpret_cast<const uint64_t *>((ctx)->args[4]);
@@ -4439,34 +4505,34 @@
 
 // long sys_sched_setattr ['pid_t pid', 'struct sched_attr __user *attr', 'unsigned int flags']
 #define locals_LINUX__X64_sys_sched_setattr(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint64_t UNUSED(pref##attr) = *(uint64_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_sched_setattr(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint64_t &UNUSED(pref##attr) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[2]);
 #define creferences_LINUX__X64_sys_sched_setattr(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint64_t &UNUSED(pref##attr) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##flags) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]);
 #endif
 
 // long sys_sched_getattr ['pid_t pid', 'struct sched_attr __user *attr', 'unsigned int size', 'unsigned int flags']
 #define locals_LINUX__X64_sys_sched_getattr(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint64_t UNUSED(pref##attr) = *(uint64_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##size) = *(uint32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[3]);
 #if defined(__cplusplus)
 #define references_LINUX__X64_sys_sched_getattr(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint64_t &UNUSED(pref##attr) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##size) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[3]);
 #define creferences_LINUX__X64_sys_sched_getattr(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint64_t &UNUSED(pref##attr) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##size) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##flags) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]);
@@ -4575,6 +4641,28 @@
 	const int32_t &UNUSED(pref##cmd) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint64_t &UNUSED(pref##attr) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##size) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]);
+#endif
+
+// long sys_execveat ['int dfd', 'const char __user *filename', 'const char __user *const __user *argv', 'const char __user *const __user *envp', 'int flags']
+#define locals_LINUX__X64_sys_execveat(ctx, pref) \
+	int32_t UNUSED(pref##dfd) = *(int32_t *)((ctx)->args[0]); \
+	uint64_t UNUSED(pref##filename) = *(uint64_t *)((ctx)->args[1]); \
+	uint64_t UNUSED(pref##argv) = *(uint64_t *)((ctx)->args[2]); \
+	uint64_t UNUSED(pref##envp) = *(uint64_t *)((ctx)->args[3]); \
+	int32_t UNUSED(pref##flags) = *(int32_t *)((ctx)->args[4]);
+#if defined(__cplusplus)
+#define references_LINUX__X64_sys_execveat(ctx, pref) \
+	int32_t &UNUSED(pref##dfd) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	uint64_t &UNUSED(pref##filename) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
+	uint64_t &UNUSED(pref##argv) = *reinterpret_cast<uint64_t *>((ctx)->args[2]); \
+	uint64_t &UNUSED(pref##envp) = *reinterpret_cast<uint64_t *>((ctx)->args[3]); \
+	int32_t &UNUSED(pref##flags) = *reinterpret_cast<int32_t *>((ctx)->args[4]);
+#define creferences_LINUX__X64_sys_execveat(ctx, pref) \
+	const int32_t &UNUSED(pref##dfd) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const uint64_t &UNUSED(pref##filename) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
+	const uint64_t &UNUSED(pref##argv) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]); \
+	const uint64_t &UNUSED(pref##envp) = *reinterpret_cast<const uint64_t *>((ctx)->args[3]); \
+	const int32_t &UNUSED(pref##flags) = *reinterpret_cast<const int32_t *>((ctx)->args[4]);
 #endif
 
 // long sys_userfaultfd ['int flags']
@@ -20620,15 +20708,15 @@
 
 // long sys_setpgid ['pid_t pid', 'pid_t pgid']
 #define locals_LINUX__ARM_sys_setpgid(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pgid) = *(uint32_t *)((ctx)->args[1]);
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pgid) = *(int32_t *)((ctx)->args[1]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_setpgid(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pgid) = *reinterpret_cast<uint32_t *>((ctx)->args[1]);
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pgid) = *reinterpret_cast<int32_t *>((ctx)->args[1]);
 #define creferences_LINUX__ARM_sys_setpgid(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pgid) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]);
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pgid) = *reinterpret_cast<const int32_t *>((ctx)->args[1]);
 #endif
 
 // long sys_umask ['int mask']
@@ -21153,18 +21241,18 @@
 
 // long sys_wait4 ['pid_t pid', 'int __user *stat_addr', 'int options', 'struct rusage __user *ru']
 #define locals_LINUX__ARM_sys_wait4(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##stat_addr) = *(uint32_t *)((ctx)->args[1]); \
 	int32_t UNUSED(pref##options) = *(int32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##ru) = *(uint32_t *)((ctx)->args[3]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_wait4(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##stat_addr) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	int32_t &UNUSED(pref##options) = *reinterpret_cast<int32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##ru) = *reinterpret_cast<uint32_t *>((ctx)->args[3]);
 #define creferences_LINUX__ARM_sys_wait4(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##stat_addr) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##options) = *reinterpret_cast<const int32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##ru) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]);
@@ -21372,12 +21460,12 @@
 
 // long sys_getpgid ['pid_t pid']
 #define locals_LINUX__ARM_sys_getpgid(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]);
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_getpgid(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]);
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]);
 #define creferences_LINUX__ARM_sys_getpgid(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]);
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]);
 #endif
 
 // long sys_fchdir ['unsigned int fd']
@@ -21572,12 +21660,12 @@
 
 // long sys_getsid ['pid_t pid']
 #define locals_LINUX__ARM_sys_getsid(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]);
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_getsid(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]);
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]);
 #define creferences_LINUX__ARM_sys_getsid(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]);
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]);
 #endif
 
 // long sys_fdatasync ['unsigned int fd']
@@ -21644,54 +21732,54 @@
 
 // long sys_sched_setparam ['pid_t pid', 'struct sched_param __user *param']
 #define locals_LINUX__ARM_sys_sched_setparam(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##param) = *(uint32_t *)((ctx)->args[1]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_sched_setparam(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##param) = *reinterpret_cast<uint32_t *>((ctx)->args[1]);
 #define creferences_LINUX__ARM_sys_sched_setparam(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##param) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]);
 #endif
 
 // long sys_sched_getparam ['pid_t pid', 'struct sched_param __user *param']
 #define locals_LINUX__ARM_sys_sched_getparam(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##param) = *(uint32_t *)((ctx)->args[1]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_sched_getparam(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##param) = *reinterpret_cast<uint32_t *>((ctx)->args[1]);
 #define creferences_LINUX__ARM_sys_sched_getparam(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##param) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]);
 #endif
 
 // long sys_sched_setscheduler ['pid_t pid', 'int policy', 'struct sched_param __user *param']
 #define locals_LINUX__ARM_sys_sched_setscheduler(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	int32_t UNUSED(pref##policy) = *(int32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##param) = *(uint32_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_sched_setscheduler(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	int32_t &UNUSED(pref##policy) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##param) = *reinterpret_cast<uint32_t *>((ctx)->args[2]);
 #define creferences_LINUX__ARM_sys_sched_setscheduler(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const int32_t &UNUSED(pref##policy) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##param) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]);
 #endif
 
 // long sys_sched_getscheduler ['pid_t pid']
 #define locals_LINUX__ARM_sys_sched_getscheduler(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]);
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_sched_getscheduler(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]);
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]);
 #define creferences_LINUX__ARM_sys_sched_getscheduler(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]);
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]);
 #endif
 
 // long sys_sched_yield ['void']
@@ -21722,14 +21810,14 @@
 
 // long sys_sched_rr_get_interval ['pid_t pid', 'struct timespec __user *interval']
 #define locals_LINUX__ARM_sys_sched_rr_get_interval(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##interval) = *(uint32_t *)((ctx)->args[1]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_sched_rr_get_interval(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##interval) = *reinterpret_cast<uint32_t *>((ctx)->args[1]);
 #define creferences_LINUX__ARM_sys_sched_rr_get_interval(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##interval) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]);
 #endif
 
@@ -22809,32 +22897,32 @@
 
 // long sys_sched_setaffinity ['pid_t pid', 'unsigned int len', 'unsigned long __user *user_mask_ptr']
 #define locals_LINUX__ARM_sys_sched_setaffinity(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##len) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##user_mask_ptr) = *(uint32_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_sched_setaffinity(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##len) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##user_mask_ptr) = *reinterpret_cast<uint32_t *>((ctx)->args[2]);
 #define creferences_LINUX__ARM_sys_sched_setaffinity(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##len) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##user_mask_ptr) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]);
 #endif
 
 // long sys_sched_getaffinity ['pid_t pid', 'unsigned int len', 'unsigned long __user *user_mask_ptr']
 #define locals_LINUX__ARM_sys_sched_getaffinity(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##len) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##user_mask_ptr) = *(uint32_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_sched_getaffinity(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##len) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##user_mask_ptr) = *reinterpret_cast<uint32_t *>((ctx)->args[2]);
 #define creferences_LINUX__ARM_sys_sched_getaffinity(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##len) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##user_mask_ptr) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]);
 #endif
@@ -23393,20 +23481,20 @@
 // long sys_waitid ['int which', 'pid_t pid', 'struct siginfo __user *infop', 'int options', 'struct rusage __user *ru']
 #define locals_LINUX__ARM_sys_waitid(ctx, pref) \
 	int32_t UNUSED(pref##which) = *(int32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##infop) = *(uint32_t *)((ctx)->args[2]); \
 	int32_t UNUSED(pref##options) = *(int32_t *)((ctx)->args[3]); \
 	uint32_t UNUSED(pref##ru) = *(uint32_t *)((ctx)->args[4]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_waitid(ctx, pref) \
 	int32_t &UNUSED(pref##which) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##infop) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	int32_t &UNUSED(pref##options) = *reinterpret_cast<int32_t *>((ctx)->args[3]); \
 	uint32_t &UNUSED(pref##ru) = *reinterpret_cast<uint32_t *>((ctx)->args[4]);
 #define creferences_LINUX__ARM_sys_waitid(ctx, pref) \
 	const int32_t &UNUSED(pref##which) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##infop) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
 	const int32_t &UNUSED(pref##options) = *reinterpret_cast<const int32_t *>((ctx)->args[3]); \
 	const uint32_t &UNUSED(pref##ru) = *reinterpret_cast<const uint32_t *>((ctx)->args[4]);
@@ -24510,7 +24598,7 @@
 
 // long sys_move_pages ['pid_t pid', 'unsigned long nr_pages', 'const void __user * __user *pages', 'const int __user *nodes', 'int __user *status', 'int flags']
 #define locals_LINUX__ARM_sys_move_pages(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##nr_pages) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##pages) = *(uint32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##nodes) = *(uint32_t *)((ctx)->args[3]); \
@@ -24518,14 +24606,14 @@
 	int32_t UNUSED(pref##flags) = *(int32_t *)((ctx)->args[5]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_move_pages(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##nr_pages) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##pages) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##nodes) = *reinterpret_cast<uint32_t *>((ctx)->args[3]); \
 	uint32_t &UNUSED(pref##status) = *reinterpret_cast<uint32_t *>((ctx)->args[4]); \
 	int32_t &UNUSED(pref##flags) = *reinterpret_cast<int32_t *>((ctx)->args[5]);
 #define creferences_LINUX__ARM_sys_move_pages(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##nr_pages) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##pages) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##nodes) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]); \
@@ -24829,19 +24917,19 @@
 
 // long sys_rt_tgsigqueueinfo ['pid_t tgid', 'pid_t pid', 'int sig', 'siginfo_t __user *uinfo']
 #define locals_LINUX__ARM_sys_rt_tgsigqueueinfo(ctx, pref) \
-	uint32_t UNUSED(pref##tgid) = *(uint32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##tgid) = *(int32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[1]); \
 	int32_t UNUSED(pref##sig) = *(int32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##uinfo) = *(uint32_t *)((ctx)->args[3]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_rt_tgsigqueueinfo(ctx, pref) \
-	uint32_t &UNUSED(pref##tgid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##tgid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	int32_t &UNUSED(pref##sig) = *reinterpret_cast<int32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##uinfo) = *reinterpret_cast<uint32_t *>((ctx)->args[3]);
 #define creferences_LINUX__ARM_sys_rt_tgsigqueueinfo(ctx, pref) \
-	const uint32_t &UNUSED(pref##tgid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##tgid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##sig) = *reinterpret_cast<const int32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##uinfo) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]);
 #endif
@@ -24849,20 +24937,20 @@
 // long sys_perf_event_open ['struct perf_event_attr __user *attr_uptr', 'pid_t pid', 'int cpu', 'int group_fd', 'unsigned long flags']
 #define locals_LINUX__ARM_sys_perf_event_open(ctx, pref) \
 	uint32_t UNUSED(pref##attr_uptr) = *(uint32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[1]); \
 	int32_t UNUSED(pref##_cpu) = *(int32_t *)((ctx)->args[2]); \
 	int32_t UNUSED(pref##group_fd) = *(int32_t *)((ctx)->args[3]); \
 	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[4]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_perf_event_open(ctx, pref) \
 	uint32_t &UNUSED(pref##attr_uptr) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	int32_t &UNUSED(pref##_cpu) = *reinterpret_cast<int32_t *>((ctx)->args[2]); \
 	int32_t &UNUSED(pref##group_fd) = *reinterpret_cast<int32_t *>((ctx)->args[3]); \
 	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[4]);
 #define creferences_LINUX__ARM_sys_perf_event_open(ctx, pref) \
 	const uint32_t &UNUSED(pref##attr_uptr) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##_cpu) = *reinterpret_cast<const int32_t *>((ctx)->args[2]); \
 	const int32_t &UNUSED(pref##group_fd) = *reinterpret_cast<const int32_t *>((ctx)->args[3]); \
 	const uint32_t &UNUSED(pref##flags) = *reinterpret_cast<const uint32_t *>((ctx)->args[4]);
@@ -24946,18 +25034,18 @@
 
 // long sys_prlimit64 ['pid_t pid', 'unsigned int resource', 'const struct rlimit64 __user *new_rlim', 'struct rlimit64 __user *old_rlim']
 #define locals_LINUX__ARM_sys_prlimit64(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##resource) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##new_rlim) = *(uint32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##old_rlim) = *(uint32_t *)((ctx)->args[3]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_prlimit64(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##resource) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##new_rlim) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##old_rlim) = *reinterpret_cast<uint32_t *>((ctx)->args[3]);
 #define creferences_LINUX__ARM_sys_prlimit64(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##resource) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##new_rlim) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##old_rlim) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]);
@@ -25058,7 +25146,7 @@
 
 // long sys_process_vm_readv ['pid_t pid', 'const struct iovec __user *lvec', 'unsigned long liovcnt', 'const struct iovec __user *rvec', 'unsigned long riovcnt', 'unsigned long flags']
 #define locals_LINUX__ARM_sys_process_vm_readv(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##lvec) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##liovcnt) = *(uint32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##rvec) = *(uint32_t *)((ctx)->args[3]); \
@@ -25066,14 +25154,14 @@
 	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[5]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_process_vm_readv(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##lvec) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##liovcnt) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##rvec) = *reinterpret_cast<uint32_t *>((ctx)->args[3]); \
 	uint32_t &UNUSED(pref##riovcnt) = *reinterpret_cast<uint32_t *>((ctx)->args[4]); \
 	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[5]);
 #define creferences_LINUX__ARM_sys_process_vm_readv(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##lvec) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##liovcnt) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##rvec) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]); \
@@ -25083,7 +25171,7 @@
 
 // long sys_process_vm_writev ['pid_t pid', 'const struct iovec __user *lvec', 'unsigned long liovcnt', 'const struct iovec __user *rvec', 'unsigned long riovcnt', 'unsigned long flags']
 #define locals_LINUX__ARM_sys_process_vm_writev(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##lvec) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##liovcnt) = *(uint32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##rvec) = *(uint32_t *)((ctx)->args[3]); \
@@ -25091,14 +25179,14 @@
 	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[5]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_process_vm_writev(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##lvec) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##liovcnt) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##rvec) = *reinterpret_cast<uint32_t *>((ctx)->args[3]); \
 	uint32_t &UNUSED(pref##riovcnt) = *reinterpret_cast<uint32_t *>((ctx)->args[4]); \
 	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[5]);
 #define creferences_LINUX__ARM_sys_process_vm_writev(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##lvec) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##liovcnt) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##rvec) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]); \
@@ -25108,21 +25196,21 @@
 
 // long sys_kcmp ['pid_t pid1', 'pid_t pid2', 'int type', 'unsigned long idx1', 'unsigned long idx2']
 #define locals_LINUX__ARM_sys_kcmp(ctx, pref) \
-	uint32_t UNUSED(pref##pid1) = *(uint32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pid2) = *(uint32_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##pid1) = *(int32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid2) = *(int32_t *)((ctx)->args[1]); \
 	int32_t UNUSED(pref##type) = *(int32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##idx1) = *(uint32_t *)((ctx)->args[3]); \
 	uint32_t UNUSED(pref##idx2) = *(uint32_t *)((ctx)->args[4]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_kcmp(ctx, pref) \
-	uint32_t &UNUSED(pref##pid1) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pid2) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##pid1) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid2) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	int32_t &UNUSED(pref##type) = *reinterpret_cast<int32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##idx1) = *reinterpret_cast<uint32_t *>((ctx)->args[3]); \
 	uint32_t &UNUSED(pref##idx2) = *reinterpret_cast<uint32_t *>((ctx)->args[4]);
 #define creferences_LINUX__ARM_sys_kcmp(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid1) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pid2) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##pid1) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid2) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##type) = *reinterpret_cast<const int32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##idx1) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]); \
 	const uint32_t &UNUSED(pref##idx2) = *reinterpret_cast<const uint32_t *>((ctx)->args[4]);
@@ -25146,34 +25234,34 @@
 
 // long sys_sched_setattr ['pid_t pid', 'struct sched_attr __user *attr', 'unsigned int flags']
 #define locals_LINUX__ARM_sys_sched_setattr(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##attr) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_sched_setattr(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##attr) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[2]);
 #define creferences_LINUX__ARM_sys_sched_setattr(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##attr) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##flags) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]);
 #endif
 
 // long sys_sched_getattr ['pid_t pid', 'struct sched_attr __user *attr', 'unsigned int size', 'unsigned int flags']
 #define locals_LINUX__ARM_sys_sched_getattr(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##attr) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##size) = *(uint32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[3]);
 #if defined(__cplusplus)
 #define references_LINUX__ARM_sys_sched_getattr(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##attr) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##size) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[3]);
 #define creferences_LINUX__ARM_sys_sched_getattr(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##attr) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##size) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##flags) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]);
@@ -32990,16 +33078,16 @@
 
 // long sys_waitpid ['pid_t pid', 'int __user *stat_addr', 'int options']
 #define locals_LINUX__X86_sys_waitpid(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##stat_addr) = *(uint32_t *)((ctx)->args[1]); \
 	int32_t UNUSED(pref##options) = *(int32_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_waitpid(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##stat_addr) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	int32_t &UNUSED(pref##options) = *reinterpret_cast<int32_t *>((ctx)->args[2]);
 #define creferences_LINUX__X86_sys_waitpid(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##stat_addr) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##options) = *reinterpret_cast<const int32_t *>((ctx)->args[2]);
 #endif
@@ -33304,7 +33392,7 @@
 #undef references_LINUX__X86_sys_sync
 #endif
 
-// long sys_kill ['int pid', 'int sig']
+// long sys_kill ['pid_t pid', 'int sig']
 #define locals_LINUX__X86_sys_kill(ctx, pref) \
 	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	int32_t UNUSED(pref##sig) = *(int32_t *)((ctx)->args[1]);
@@ -33491,15 +33579,15 @@
 
 // long sys_setpgid ['pid_t pid', 'pid_t pgid']
 #define locals_LINUX__X86_sys_setpgid(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pgid) = *(uint32_t *)((ctx)->args[1]);
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pgid) = *(int32_t *)((ctx)->args[1]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_setpgid(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pgid) = *reinterpret_cast<uint32_t *>((ctx)->args[1]);
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pgid) = *reinterpret_cast<int32_t *>((ctx)->args[1]);
 #define creferences_LINUX__X86_sys_setpgid(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pgid) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]);
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pgid) = *reinterpret_cast<const int32_t *>((ctx)->args[1]);
 #endif
 
 // long sys_olduname ['struct oldold_utsname __user *']
@@ -34158,18 +34246,18 @@
 
 // long sys_wait4 ['pid_t pid', 'int __user *stat_addr', 'int options', 'struct rusage __user *ru']
 #define locals_LINUX__X86_sys_wait4(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##stat_addr) = *(uint32_t *)((ctx)->args[1]); \
 	int32_t UNUSED(pref##options) = *(int32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##ru) = *(uint32_t *)((ctx)->args[3]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_wait4(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##stat_addr) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	int32_t &UNUSED(pref##options) = *reinterpret_cast<int32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##ru) = *reinterpret_cast<uint32_t *>((ctx)->args[3]);
 #define creferences_LINUX__X86_sys_wait4(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##stat_addr) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##options) = *reinterpret_cast<const int32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##ru) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]);
@@ -34389,12 +34477,12 @@
 
 // long sys_getpgid ['pid_t pid']
 #define locals_LINUX__X86_sys_getpgid(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]);
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_getpgid(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]);
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]);
 #define creferences_LINUX__X86_sys_getpgid(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]);
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]);
 #endif
 
 // long sys_fchdir ['unsigned int fd']
@@ -34589,12 +34677,12 @@
 
 // long sys_getsid ['pid_t pid']
 #define locals_LINUX__X86_sys_getsid(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]);
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_getsid(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]);
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]);
 #define creferences_LINUX__X86_sys_getsid(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]);
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]);
 #endif
 
 // long sys_fdatasync ['unsigned int fd']
@@ -34661,54 +34749,54 @@
 
 // long sys_sched_setparam ['pid_t pid', 'struct sched_param __user *param']
 #define locals_LINUX__X86_sys_sched_setparam(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##param) = *(uint32_t *)((ctx)->args[1]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_sched_setparam(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##param) = *reinterpret_cast<uint32_t *>((ctx)->args[1]);
 #define creferences_LINUX__X86_sys_sched_setparam(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##param) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]);
 #endif
 
 // long sys_sched_getparam ['pid_t pid', 'struct sched_param __user *param']
 #define locals_LINUX__X86_sys_sched_getparam(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##param) = *(uint32_t *)((ctx)->args[1]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_sched_getparam(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##param) = *reinterpret_cast<uint32_t *>((ctx)->args[1]);
 #define creferences_LINUX__X86_sys_sched_getparam(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##param) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]);
 #endif
 
 // long sys_sched_setscheduler ['pid_t pid', 'int policy', 'struct sched_param __user *param']
 #define locals_LINUX__X86_sys_sched_setscheduler(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	int32_t UNUSED(pref##policy) = *(int32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##param) = *(uint32_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_sched_setscheduler(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	int32_t &UNUSED(pref##policy) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##param) = *reinterpret_cast<uint32_t *>((ctx)->args[2]);
 #define creferences_LINUX__X86_sys_sched_setscheduler(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const int32_t &UNUSED(pref##policy) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##param) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]);
 #endif
 
 // long sys_sched_getscheduler ['pid_t pid']
 #define locals_LINUX__X86_sys_sched_getscheduler(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]);
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_sched_getscheduler(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]);
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]);
 #define creferences_LINUX__X86_sys_sched_getscheduler(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]);
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]);
 #endif
 
 // long sys_sched_yield ['void']
@@ -34739,14 +34827,14 @@
 
 // long sys_sched_rr_get_interval ['pid_t pid', 'struct timespec __user *interval']
 #define locals_LINUX__X86_sys_sched_rr_get_interval(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##interval) = *(uint32_t *)((ctx)->args[1]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_sched_rr_get_interval(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##interval) = *reinterpret_cast<uint32_t *>((ctx)->args[1]);
 #define creferences_LINUX__X86_sys_sched_rr_get_interval(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##interval) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]);
 #endif
 
@@ -34976,7 +35064,7 @@
 	const uint32_t &UNUSED(pref##sigsetsize) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]);
 #endif
 
-// long sys_rt_sigqueueinfo ['int pid', 'int sig', 'siginfo_t __user *uinfo']
+// long sys_rt_sigqueueinfo ['pid_t pid', 'int sig', 'siginfo_t __user *uinfo']
 #define locals_LINUX__X86_sys_rt_sigqueueinfo(ctx, pref) \
 	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	int32_t UNUSED(pref##sig) = *(int32_t *)((ctx)->args[1]); \
@@ -35776,7 +35864,7 @@
 	const uint32_t &UNUSED(pref##name) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]);
 #endif
 
-// long sys_tkill ['int pid', 'int sig']
+// long sys_tkill ['pid_t pid', 'int sig']
 #define locals_LINUX__X86_sys_tkill(ctx, pref) \
 	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	int32_t UNUSED(pref##sig) = *(int32_t *)((ctx)->args[1]);
@@ -35835,32 +35923,32 @@
 
 // long sys_sched_setaffinity ['pid_t pid', 'unsigned int len', 'unsigned long __user *user_mask_ptr']
 #define locals_LINUX__X86_sys_sched_setaffinity(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##len) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##user_mask_ptr) = *(uint32_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_sched_setaffinity(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##len) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##user_mask_ptr) = *reinterpret_cast<uint32_t *>((ctx)->args[2]);
 #define creferences_LINUX__X86_sys_sched_setaffinity(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##len) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##user_mask_ptr) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]);
 #endif
 
 // long sys_sched_getaffinity ['pid_t pid', 'unsigned int len', 'unsigned long __user *user_mask_ptr']
 #define locals_LINUX__X86_sys_sched_getaffinity(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##len) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##user_mask_ptr) = *(uint32_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_sched_getaffinity(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##len) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##user_mask_ptr) = *reinterpret_cast<uint32_t *>((ctx)->args[2]);
 #define creferences_LINUX__X86_sys_sched_getaffinity(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##len) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##user_mask_ptr) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]);
 #endif
@@ -36245,7 +36333,7 @@
 	const uint32_t &UNUSED(pref##buf) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]);
 #endif
 
-// long sys_tgkill ['int tgid', 'int pid', 'int sig']
+// long sys_tgkill ['pid_t tgid', 'pid_t pid', 'int sig']
 #define locals_LINUX__X86_sys_tgkill(ctx, pref) \
 	int32_t UNUSED(pref##tgid) = *(int32_t *)((ctx)->args[0]); \
 	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[1]); \
@@ -36480,20 +36568,20 @@
 // long sys_waitid ['int which', 'pid_t pid', 'struct siginfo __user *infop', 'int options', 'struct rusage __user *ru']
 #define locals_LINUX__X86_sys_waitid(ctx, pref) \
 	int32_t UNUSED(pref##which) = *(int32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##infop) = *(uint32_t *)((ctx)->args[2]); \
 	int32_t UNUSED(pref##options) = *(int32_t *)((ctx)->args[3]); \
 	uint32_t UNUSED(pref##ru) = *(uint32_t *)((ctx)->args[4]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_waitid(ctx, pref) \
 	int32_t &UNUSED(pref##which) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##infop) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	int32_t &UNUSED(pref##options) = *reinterpret_cast<int32_t *>((ctx)->args[3]); \
 	uint32_t &UNUSED(pref##ru) = *reinterpret_cast<uint32_t *>((ctx)->args[4]);
 #define creferences_LINUX__X86_sys_waitid(ctx, pref) \
 	const int32_t &UNUSED(pref##which) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##infop) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
 	const int32_t &UNUSED(pref##options) = *reinterpret_cast<const int32_t *>((ctx)->args[3]); \
 	const uint32_t &UNUSED(pref##ru) = *reinterpret_cast<const uint32_t *>((ctx)->args[4]);
@@ -36628,18 +36716,18 @@
 
 // long sys_migrate_pages ['pid_t pid', 'unsigned long maxnode', 'const unsigned long __user *from', 'const unsigned long __user *to']
 #define locals_LINUX__X86_sys_migrate_pages(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##maxnode) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##from) = *(uint32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##to) = *(uint32_t *)((ctx)->args[3]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_migrate_pages(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##maxnode) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##from) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##to) = *reinterpret_cast<uint32_t *>((ctx)->args[3]);
 #define creferences_LINUX__X86_sys_migrate_pages(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##maxnode) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##from) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##to) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]);
@@ -37050,7 +37138,7 @@
 
 // long sys_move_pages ['pid_t pid', 'unsigned long nr_pages', 'const void __user * __user *pages', 'const int __user *nodes', 'int __user *status', 'int flags']
 #define locals_LINUX__X86_sys_move_pages(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##nr_pages) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##pages) = *(uint32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##nodes) = *(uint32_t *)((ctx)->args[3]); \
@@ -37058,14 +37146,14 @@
 	int32_t UNUSED(pref##flags) = *(int32_t *)((ctx)->args[5]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_move_pages(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##nr_pages) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##pages) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##nodes) = *reinterpret_cast<uint32_t *>((ctx)->args[3]); \
 	uint32_t &UNUSED(pref##status) = *reinterpret_cast<uint32_t *>((ctx)->args[4]); \
 	int32_t &UNUSED(pref##flags) = *reinterpret_cast<int32_t *>((ctx)->args[5]);
 #define creferences_LINUX__X86_sys_move_pages(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##nr_pages) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##pages) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##nodes) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]); \
@@ -37350,19 +37438,19 @@
 
 // long sys_rt_tgsigqueueinfo ['pid_t tgid', 'pid_t pid', 'int sig', 'siginfo_t __user *uinfo']
 #define locals_LINUX__X86_sys_rt_tgsigqueueinfo(ctx, pref) \
-	uint32_t UNUSED(pref##tgid) = *(uint32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##tgid) = *(int32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[1]); \
 	int32_t UNUSED(pref##sig) = *(int32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##uinfo) = *(uint32_t *)((ctx)->args[3]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_rt_tgsigqueueinfo(ctx, pref) \
-	uint32_t &UNUSED(pref##tgid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##tgid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	int32_t &UNUSED(pref##sig) = *reinterpret_cast<int32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##uinfo) = *reinterpret_cast<uint32_t *>((ctx)->args[3]);
 #define creferences_LINUX__X86_sys_rt_tgsigqueueinfo(ctx, pref) \
-	const uint32_t &UNUSED(pref##tgid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##tgid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##sig) = *reinterpret_cast<const int32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##uinfo) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]);
 #endif
@@ -37370,20 +37458,20 @@
 // long sys_perf_event_open ['struct perf_event_attr __user *attr_uptr', 'pid_t pid', 'int cpu', 'int group_fd', 'unsigned long flags']
 #define locals_LINUX__X86_sys_perf_event_open(ctx, pref) \
 	uint32_t UNUSED(pref##attr_uptr) = *(uint32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[1]); \
 	int32_t UNUSED(pref##_cpu) = *(int32_t *)((ctx)->args[2]); \
 	int32_t UNUSED(pref##group_fd) = *(int32_t *)((ctx)->args[3]); \
 	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[4]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_perf_event_open(ctx, pref) \
 	uint32_t &UNUSED(pref##attr_uptr) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	int32_t &UNUSED(pref##_cpu) = *reinterpret_cast<int32_t *>((ctx)->args[2]); \
 	int32_t &UNUSED(pref##group_fd) = *reinterpret_cast<int32_t *>((ctx)->args[3]); \
 	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[4]);
 #define creferences_LINUX__X86_sys_perf_event_open(ctx, pref) \
 	const uint32_t &UNUSED(pref##attr_uptr) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##_cpu) = *reinterpret_cast<const int32_t *>((ctx)->args[2]); \
 	const int32_t &UNUSED(pref##group_fd) = *reinterpret_cast<const int32_t *>((ctx)->args[3]); \
 	const uint32_t &UNUSED(pref##flags) = *reinterpret_cast<const uint32_t *>((ctx)->args[4]);
@@ -37448,18 +37536,18 @@
 
 // long sys_prlimit64 ['pid_t pid', 'unsigned int resource', 'const struct rlimit64 __user *new_rlim', 'struct rlimit64 __user *old_rlim']
 #define locals_LINUX__X86_sys_prlimit64(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##resource) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##new_rlim) = *(uint32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##old_rlim) = *(uint32_t *)((ctx)->args[3]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_prlimit64(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##resource) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##new_rlim) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##old_rlim) = *reinterpret_cast<uint32_t *>((ctx)->args[3]);
 #define creferences_LINUX__X86_sys_prlimit64(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##resource) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##new_rlim) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##old_rlim) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]);
@@ -37560,7 +37648,7 @@
 
 // long sys_process_vm_readv ['pid_t pid', 'const struct iovec __user *lvec', 'unsigned long liovcnt', 'const struct iovec __user *rvec', 'unsigned long riovcnt', 'unsigned long flags']
 #define locals_LINUX__X86_sys_process_vm_readv(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##lvec) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##liovcnt) = *(uint32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##rvec) = *(uint32_t *)((ctx)->args[3]); \
@@ -37568,14 +37656,14 @@
 	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[5]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_process_vm_readv(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##lvec) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##liovcnt) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##rvec) = *reinterpret_cast<uint32_t *>((ctx)->args[3]); \
 	uint32_t &UNUSED(pref##riovcnt) = *reinterpret_cast<uint32_t *>((ctx)->args[4]); \
 	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[5]);
 #define creferences_LINUX__X86_sys_process_vm_readv(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##lvec) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##liovcnt) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##rvec) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]); \
@@ -37585,7 +37673,7 @@
 
 // long sys_process_vm_writev ['pid_t pid', 'const struct iovec __user *lvec', 'unsigned long liovcnt', 'const struct iovec __user *rvec', 'unsigned long riovcnt', 'unsigned long flags']
 #define locals_LINUX__X86_sys_process_vm_writev(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##lvec) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##liovcnt) = *(uint32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##rvec) = *(uint32_t *)((ctx)->args[3]); \
@@ -37593,14 +37681,14 @@
 	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[5]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_process_vm_writev(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##lvec) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##liovcnt) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##rvec) = *reinterpret_cast<uint32_t *>((ctx)->args[3]); \
 	uint32_t &UNUSED(pref##riovcnt) = *reinterpret_cast<uint32_t *>((ctx)->args[4]); \
 	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[5]);
 #define creferences_LINUX__X86_sys_process_vm_writev(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##lvec) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##liovcnt) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##rvec) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]); \
@@ -37610,21 +37698,21 @@
 
 // long sys_kcmp ['pid_t pid1', 'pid_t pid2', 'int type', 'unsigned long idx1', 'unsigned long idx2']
 #define locals_LINUX__X86_sys_kcmp(ctx, pref) \
-	uint32_t UNUSED(pref##pid1) = *(uint32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##pid2) = *(uint32_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##pid1) = *(int32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid2) = *(int32_t *)((ctx)->args[1]); \
 	int32_t UNUSED(pref##type) = *(int32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##idx1) = *(uint32_t *)((ctx)->args[3]); \
 	uint32_t UNUSED(pref##idx2) = *(uint32_t *)((ctx)->args[4]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_kcmp(ctx, pref) \
-	uint32_t &UNUSED(pref##pid1) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##pid2) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##pid1) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid2) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
 	int32_t &UNUSED(pref##type) = *reinterpret_cast<int32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##idx1) = *reinterpret_cast<uint32_t *>((ctx)->args[3]); \
 	uint32_t &UNUSED(pref##idx2) = *reinterpret_cast<uint32_t *>((ctx)->args[4]);
 #define creferences_LINUX__X86_sys_kcmp(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid1) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##pid2) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##pid1) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid2) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##type) = *reinterpret_cast<const int32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##idx1) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]); \
 	const uint32_t &UNUSED(pref##idx2) = *reinterpret_cast<const uint32_t *>((ctx)->args[4]);
@@ -37648,34 +37736,34 @@
 
 // long sys_sched_setattr ['pid_t pid', 'struct sched_attr __user *attr', 'unsigned int flags']
 #define locals_LINUX__X86_sys_sched_setattr(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##attr) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[2]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_sched_setattr(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##attr) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[2]);
 #define creferences_LINUX__X86_sys_sched_setattr(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##attr) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##flags) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]);
 #endif
 
 // long sys_sched_getattr ['pid_t pid', 'struct sched_attr __user *attr', 'unsigned int size', 'unsigned int flags']
 #define locals_LINUX__X86_sys_sched_getattr(ctx, pref) \
-	uint32_t UNUSED(pref##pid) = *(uint32_t *)((ctx)->args[0]); \
+	int32_t UNUSED(pref##pid) = *(int32_t *)((ctx)->args[0]); \
 	uint32_t UNUSED(pref##attr) = *(uint32_t *)((ctx)->args[1]); \
 	uint32_t UNUSED(pref##size) = *(uint32_t *)((ctx)->args[2]); \
 	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[3]);
 #if defined(__cplusplus)
 #define references_LINUX__X86_sys_sched_getattr(ctx, pref) \
-	uint32_t &UNUSED(pref##pid) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	int32_t &UNUSED(pref##pid) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
 	uint32_t &UNUSED(pref##attr) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
 	uint32_t &UNUSED(pref##size) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
 	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[3]);
 #define creferences_LINUX__X86_sys_sched_getattr(ctx, pref) \
-	const uint32_t &UNUSED(pref##pid) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const int32_t &UNUSED(pref##pid) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##attr) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const uint32_t &UNUSED(pref##size) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
 	const uint32_t &UNUSED(pref##flags) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]);
@@ -38093,6 +38181,158 @@
 	const uint32_t &UNUSED(pref##start) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
 	const uint32_t &UNUSED(pref##len) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
 	const int32_t &UNUSED(pref##flags) = *reinterpret_cast<const int32_t *>((ctx)->args[2]);
+#endif
+
+// long sys_copy_file_range ['int fd_in', 'loff_t __user *off_in', 'int fd_out', 'loff_t __user *off_out', 'size_t len', 'unsigned int flags']
+#define locals_LINUX__X86_sys_copy_file_range(ctx, pref) \
+	int32_t UNUSED(pref##fd_in) = *(int32_t *)((ctx)->args[0]); \
+	uint32_t UNUSED(pref##off_in) = *(uint32_t *)((ctx)->args[1]); \
+	int32_t UNUSED(pref##fd_out) = *(int32_t *)((ctx)->args[2]); \
+	uint32_t UNUSED(pref##off_out) = *(uint32_t *)((ctx)->args[3]); \
+	uint32_t UNUSED(pref##len) = *(uint32_t *)((ctx)->args[4]); \
+	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[5]);
+#if defined(__cplusplus)
+#define references_LINUX__X86_sys_copy_file_range(ctx, pref) \
+	int32_t &UNUSED(pref##fd_in) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	uint32_t &UNUSED(pref##off_in) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	int32_t &UNUSED(pref##fd_out) = *reinterpret_cast<int32_t *>((ctx)->args[2]); \
+	uint32_t &UNUSED(pref##off_out) = *reinterpret_cast<uint32_t *>((ctx)->args[3]); \
+	uint32_t &UNUSED(pref##len) = *reinterpret_cast<uint32_t *>((ctx)->args[4]); \
+	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[5]);
+#define creferences_LINUX__X86_sys_copy_file_range(ctx, pref) \
+	const int32_t &UNUSED(pref##fd_in) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const uint32_t &UNUSED(pref##off_in) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const int32_t &UNUSED(pref##fd_out) = *reinterpret_cast<const int32_t *>((ctx)->args[2]); \
+	const uint32_t &UNUSED(pref##off_out) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]); \
+	const uint32_t &UNUSED(pref##len) = *reinterpret_cast<const uint32_t *>((ctx)->args[4]); \
+	const uint32_t &UNUSED(pref##flags) = *reinterpret_cast<const uint32_t *>((ctx)->args[5]);
+#endif
+
+// long sys_preadv2 ['unsigned long fd', 'const struct iovec __user *vec', 'unsigned long vlen', 'unsigned long pos_l', 'unsigned long pos_h', 'rwf_t flags']
+#define locals_LINUX__X86_sys_preadv2(ctx, pref) \
+	uint32_t UNUSED(pref##fd) = *(uint32_t *)((ctx)->args[0]); \
+	uint32_t UNUSED(pref##vec) = *(uint32_t *)((ctx)->args[1]); \
+	uint32_t UNUSED(pref##vlen) = *(uint32_t *)((ctx)->args[2]); \
+	uint32_t UNUSED(pref##pos_l) = *(uint32_t *)((ctx)->args[3]); \
+	uint32_t UNUSED(pref##pos_h) = *(uint32_t *)((ctx)->args[4]); \
+	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[5]);
+#if defined(__cplusplus)
+#define references_LINUX__X86_sys_preadv2(ctx, pref) \
+	uint32_t &UNUSED(pref##fd) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	uint32_t &UNUSED(pref##vec) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	uint32_t &UNUSED(pref##vlen) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
+	uint32_t &UNUSED(pref##pos_l) = *reinterpret_cast<uint32_t *>((ctx)->args[3]); \
+	uint32_t &UNUSED(pref##pos_h) = *reinterpret_cast<uint32_t *>((ctx)->args[4]); \
+	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[5]);
+#define creferences_LINUX__X86_sys_preadv2(ctx, pref) \
+	const uint32_t &UNUSED(pref##fd) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const uint32_t &UNUSED(pref##vec) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const uint32_t &UNUSED(pref##vlen) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
+	const uint32_t &UNUSED(pref##pos_l) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]); \
+	const uint32_t &UNUSED(pref##pos_h) = *reinterpret_cast<const uint32_t *>((ctx)->args[4]); \
+	const uint32_t &UNUSED(pref##flags) = *reinterpret_cast<const uint32_t *>((ctx)->args[5]);
+#endif
+
+// long sys_pwritev2 ['unsigned long fd', 'const struct iovec __user *vec', 'unsigned long vlen', 'unsigned long pos_l', 'unsigned long pos_h', 'rwf_t flags']
+#define locals_LINUX__X86_sys_pwritev2(ctx, pref) \
+	uint32_t UNUSED(pref##fd) = *(uint32_t *)((ctx)->args[0]); \
+	uint32_t UNUSED(pref##vec) = *(uint32_t *)((ctx)->args[1]); \
+	uint32_t UNUSED(pref##vlen) = *(uint32_t *)((ctx)->args[2]); \
+	uint32_t UNUSED(pref##pos_l) = *(uint32_t *)((ctx)->args[3]); \
+	uint32_t UNUSED(pref##pos_h) = *(uint32_t *)((ctx)->args[4]); \
+	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[5]);
+#if defined(__cplusplus)
+#define references_LINUX__X86_sys_pwritev2(ctx, pref) \
+	uint32_t &UNUSED(pref##fd) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	uint32_t &UNUSED(pref##vec) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	uint32_t &UNUSED(pref##vlen) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
+	uint32_t &UNUSED(pref##pos_l) = *reinterpret_cast<uint32_t *>((ctx)->args[3]); \
+	uint32_t &UNUSED(pref##pos_h) = *reinterpret_cast<uint32_t *>((ctx)->args[4]); \
+	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[5]);
+#define creferences_LINUX__X86_sys_pwritev2(ctx, pref) \
+	const uint32_t &UNUSED(pref##fd) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const uint32_t &UNUSED(pref##vec) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const uint32_t &UNUSED(pref##vlen) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
+	const uint32_t &UNUSED(pref##pos_l) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]); \
+	const uint32_t &UNUSED(pref##pos_h) = *reinterpret_cast<const uint32_t *>((ctx)->args[4]); \
+	const uint32_t &UNUSED(pref##flags) = *reinterpret_cast<const uint32_t *>((ctx)->args[5]);
+#endif
+
+// long sys_pkey_mprotect ['unsigned long start', 'size_t len', 'unsigned long prot', 'int pkey']
+#define locals_LINUX__X86_sys_pkey_mprotect(ctx, pref) \
+	uint32_t UNUSED(pref##start) = *(uint32_t *)((ctx)->args[0]); \
+	uint32_t UNUSED(pref##len) = *(uint32_t *)((ctx)->args[1]); \
+	uint32_t UNUSED(pref##prot) = *(uint32_t *)((ctx)->args[2]); \
+	int32_t UNUSED(pref##pkey) = *(int32_t *)((ctx)->args[3]);
+#if defined(__cplusplus)
+#define references_LINUX__X86_sys_pkey_mprotect(ctx, pref) \
+	uint32_t &UNUSED(pref##start) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	uint32_t &UNUSED(pref##len) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	uint32_t &UNUSED(pref##prot) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
+	int32_t &UNUSED(pref##pkey) = *reinterpret_cast<int32_t *>((ctx)->args[3]);
+#define creferences_LINUX__X86_sys_pkey_mprotect(ctx, pref) \
+	const uint32_t &UNUSED(pref##start) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const uint32_t &UNUSED(pref##len) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const uint32_t &UNUSED(pref##prot) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
+	const int32_t &UNUSED(pref##pkey) = *reinterpret_cast<const int32_t *>((ctx)->args[3]);
+#endif
+
+// long sys_pkey_alloc ['unsigned long flags', 'unsigned long init_val']
+#define locals_LINUX__X86_sys_pkey_alloc(ctx, pref) \
+	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[0]); \
+	uint32_t UNUSED(pref##init_val) = *(uint32_t *)((ctx)->args[1]);
+#if defined(__cplusplus)
+#define references_LINUX__X86_sys_pkey_alloc(ctx, pref) \
+	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[0]); \
+	uint32_t &UNUSED(pref##init_val) = *reinterpret_cast<uint32_t *>((ctx)->args[1]);
+#define creferences_LINUX__X86_sys_pkey_alloc(ctx, pref) \
+	const uint32_t &UNUSED(pref##flags) = *reinterpret_cast<const uint32_t *>((ctx)->args[0]); \
+	const uint32_t &UNUSED(pref##init_val) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]);
+#endif
+
+// long sys_pkey_free ['int pkey']
+#define locals_LINUX__X86_sys_pkey_free(ctx, pref) \
+	int32_t UNUSED(pref##pkey) = *(int32_t *)((ctx)->args[0]);
+#if defined(__cplusplus)
+#define references_LINUX__X86_sys_pkey_free(ctx, pref) \
+	int32_t &UNUSED(pref##pkey) = *reinterpret_cast<int32_t *>((ctx)->args[0]);
+#define creferences_LINUX__X86_sys_pkey_free(ctx, pref) \
+	const int32_t &UNUSED(pref##pkey) = *reinterpret_cast<const int32_t *>((ctx)->args[0]);
+#endif
+
+// long sys_statx ['int dfd', 'const char __user *path', 'unsigned flags', 'unsigned mask', 'struct statx __user *buffer']
+#define locals_LINUX__X86_sys_statx(ctx, pref) \
+	int32_t UNUSED(pref##dfd) = *(int32_t *)((ctx)->args[0]); \
+	uint32_t UNUSED(pref##path) = *(uint32_t *)((ctx)->args[1]); \
+	uint32_t UNUSED(pref##flags) = *(uint32_t *)((ctx)->args[2]); \
+	uint32_t UNUSED(pref##mask) = *(uint32_t *)((ctx)->args[3]); \
+	uint32_t UNUSED(pref##buffer) = *(uint32_t *)((ctx)->args[4]);
+#if defined(__cplusplus)
+#define references_LINUX__X86_sys_statx(ctx, pref) \
+	int32_t &UNUSED(pref##dfd) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	uint32_t &UNUSED(pref##path) = *reinterpret_cast<uint32_t *>((ctx)->args[1]); \
+	uint32_t &UNUSED(pref##flags) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
+	uint32_t &UNUSED(pref##mask) = *reinterpret_cast<uint32_t *>((ctx)->args[3]); \
+	uint32_t &UNUSED(pref##buffer) = *reinterpret_cast<uint32_t *>((ctx)->args[4]);
+#define creferences_LINUX__X86_sys_statx(ctx, pref) \
+	const int32_t &UNUSED(pref##dfd) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const uint32_t &UNUSED(pref##path) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]); \
+	const uint32_t &UNUSED(pref##flags) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
+	const uint32_t &UNUSED(pref##mask) = *reinterpret_cast<const uint32_t *>((ctx)->args[3]); \
+	const uint32_t &UNUSED(pref##buffer) = *reinterpret_cast<const uint32_t *>((ctx)->args[4]);
+#endif
+
+// long sys_arch_prctl ['int', 'unsigned long']
+#define locals_LINUX__X86_sys_arch_prctl(ctx, pref) \
+	int32_t UNUSED(pref##arg0) = *(int32_t *)((ctx)->args[0]); \
+	uint32_t UNUSED(pref##arg1) = *(uint32_t *)((ctx)->args[1]);
+#if defined(__cplusplus)
+#define references_LINUX__X86_sys_arch_prctl(ctx, pref) \
+	int32_t &UNUSED(pref##arg0) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
+	uint32_t &UNUSED(pref##arg1) = *reinterpret_cast<uint32_t *>((ctx)->args[1]);
+#define creferences_LINUX__X86_sys_arch_prctl(ctx, pref) \
+	const int32_t &UNUSED(pref##arg0) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
+	const uint32_t &UNUSED(pref##arg1) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]);
 #endif
 
 

@@ -1810,7 +1810,8 @@ bool ensure_main_exec_initialized(CPUState *cpu) {
     //if (!correct_asid(cpu)) return;
     OsiProc *p = get_current_process(cpu);
     GArray *libs = NULL;
-    libs = get_libraries(cpu, p);
+    libs = get_mappings(cpu, p);
+    free_osiproc(p);
     if (!libs)
         return false;
 
@@ -2372,7 +2373,7 @@ void osi_foo(CPUState *cpu, TranslationBlock *tb) {
             //if (current_libs) {
                 //g_array_free(current_libs, true);
             //}
-            //current_libs = get_libraries(cpu, current_proc);
+            //current_libs = get_mappings(cpu, current_proc);
             //if (current_libs) {
                 //for (unsigned i=0; i<current_libs->len; i++) {
                     //OsiModule *m = &(current_libs->module[i]);

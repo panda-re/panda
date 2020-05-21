@@ -6,6 +6,12 @@
 #include <gmodule.h>
 #include "panda/types.h"
 
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+
+
 /**
  * @brief Minimal handle for a process. Contains a unique identifier \p asid
  * and a task descriptor pointer \p taskd that can be used to retrieve the full
@@ -59,6 +65,7 @@ typedef struct osi_proc_struct {
     char *name;
     OsiPage *pages;
 } OsiProc;
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 
 /* ******************************************************************

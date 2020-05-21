@@ -20,6 +20,7 @@ typedef void CPUState;
 typedef void OsiProcHandle;
 typedef void OsiThread;
 typedef void OsiProc;
+typedef void OsiModule;
 typedef void GArray;
 typedef void target_pid_t;
 

@@ -27,6 +27,7 @@ namespace syscalls2 {
 			const int sys_brk = 12;
 			const int sys_rt_sigaction = 13;
 			const int sys_rt_sigprocmask = 14;
+			const int sys_rt_sigreturn = 15;
 			const int sys_ioctl = 16;
 			const int sys_pread64 = 17;
 			const int sys_pwrite64 = 18;
@@ -67,6 +68,10 @@ namespace syscalls2 {
 			const int sys_socketpair = 53;
 			const int sys_setsockopt = 54;
 			const int sys_getsockopt = 55;
+			const int sys_clone = 56;
+			const int sys_fork = 57;
+			const int sys_vfork = 58;
+			const int sys_execve = 59;
 			const int sys_exit = 60;
 			const int sys_wait4 = 61;
 			const int sys_kill = 62;
@@ -178,6 +183,7 @@ namespace syscalls2 {
 			const int sys_reboot = 169;
 			const int sys_sethostname = 170;
 			const int sys_setdomainname = 171;
+			const int sys_iopl = 172;
 			const int sys_ioperm = 173;
 			const int sys_init_module = 175;
 			const int sys_delete_module = 176;
@@ -313,6 +319,7 @@ namespace syscalls2 {
 			const int sys_memfd_create = 319;
 			const int sys_kexec_file_load = 320;
 			const int sys_bpf = 321;
+			const int sys_execveat = 322;
 			const int sys_userfaultfd = 323;
 			const int sys_membarrier = 324;
 			const int sys_mlock2 = 325;
@@ -2264,6 +2271,14 @@ namespace syscalls2 {
 			const int sys_userfaultfd = 374;
 			const int sys_membarrier = 375;
 			const int sys_mlock2 = 376;
+			const int sys_copy_file_range = 377;
+			const int sys_preadv2 = 378;
+			const int sys_pwritev2 = 379;
+			const int sys_pkey_mprotect = 380;
+			const int sys_pkey_alloc = 381;
+			const int sys_pkey_free = 382;
+			const int sys_statx = 383;
+			const int sys_arch_prctl = 384;
 		}
 	}
 }

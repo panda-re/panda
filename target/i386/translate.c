@@ -8363,6 +8363,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
     int num_insns;
     int max_insns;
 
+
     /* generate intermediate code */
     pc_start = tb->pc;
     cs_base = tb->cs_base;
@@ -8450,11 +8451,22 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         max_insns = TCG_MAX_INSNS;
     }
 
+
+//    if (pc_ptr == 0x00007ffff7b7248b)
+//        printf ("translate.c: pc is magic\n");
+
+//    bool replay_interrupt = false;
+
     if (rr_in_replay()) {
+//        tb->replay_interrupt = false;
         uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
         if (max_insns > until_interrupt) {
             max_insns = until_interrupt;
+//            tb->replay_interrupt = true;
+//            replay_interrupt = true;
         }
+//        tb->tcg_op_buf_full = false;
+        tb->was_split = false;
     }
 
     uint64_t rr_updated_instr_count = rr_get_guest_instr_count();
@@ -8576,6 +8588,11 @@ generate_debug:
         if (tcg_op_buf_full() ||
             (pc_ptr - pc_start) >= (TARGET_PAGE_SIZE - 32) ||
             num_insns >= max_insns) {
+//            if (replay_interrupt)
+//                tb->replay_interrupt = true;
+//            if (tcg_op_buf_full())
+//                tb->tcg_op_buf_full = true;
+            tb->was_split = true;
             gen_jmp_im(pc_ptr - dc->cs_base);
             gen_eob(dc);
             break;
