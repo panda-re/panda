@@ -4,13 +4,19 @@ common-obj-$(CONFIG_VIRTIO_PCI) += virtio-pci.o
 common-obj-y += virtio-bus.o
 common-obj-y += virtio-mmio.o
 
-obj-y += virtio.o virtio-balloon.o 
-obj-$(CONFIG_LINUX) += vhost.o vhost-backend.o vhost-user.o
-obj-$(CONFIG_VHOST_VSOCK) += vhost-vsock.o
-obj-y += virtio-crypto.o
-obj-$(CONFIG_VIRTIO_PCI) += virtio-crypto-pci.o
+common-obj-$(CONFIG_VIRTIO_MMIO) += virtio-mmio.o
+obj-$(CONFIG_VIRTIO_BALLOON) += virtio-balloon.o
+obj-$(CONFIG_VIRTIO_CRYPTO) += virtio-crypto.o
+obj-$(CONFIG_VHOST_USER_FS) += vhost-user-fs.o
+obj-$(call land,$(CONFIG_VIRTIO_CRYPTO),$(CONFIG_VIRTIO_PCI)) += virtio-crypto-pci.o
+obj-$(CONFIG_VIRTIO_PMEM) += virtio-pmem.o
+common-obj-$(call land,$(CONFIG_VIRTIO_PMEM),$(CONFIG_VIRTIO_PCI)) += virtio-pmem-pci.o
+obj-$(call land,$(CONFIG_VHOST_USER_FS),$(CONFIG_VIRTIO_PCI)) += vhost-user-fs-pci.o
+obj-$(CONFIG_VIRTIO_IOMMU) += virtio-iommu.o
+obj-$(CONFIG_VHOST_VSOCK) += vhost-vsock-common.o vhost-vsock.o
+obj-$(CONFIG_VHOST_USER_VSOCK) += vhost-vsock-common.o vhost-user-vsock.o
 obj-$(CONFIG_VHOST_VSOCK) += vhost-vsock-pci.o
-endif
 
 common-obj-$(call lnot,$(CONFIG_LINUX)) += vhost-stub.o
 common-obj-$(CONFIG_ALL) += vhost-stub.o
+endif
