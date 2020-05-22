@@ -72,8 +72,8 @@ class Ioctl():
             proc = panda.plugins['osi'].get_current_process(cpu)
             proc_name_ptr = proc.name
             file_name_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, fd)
-            self.proc_name = ffi.string(proc_name_ptr).decode()
-            self.file_name = ffi.string(file_name_ptr).decode()
+            self.proc_name = ffi.string(proc_name_ptr).decode() if proc_name_ptr != ffi.NULL else "unknown"
+            self.file_name = ffi.string(file_name_ptr).decode() if file_name_ptr != ffi.NULL else "unknown"
         else:
             self.proc_name = None
             self.file_name = None
@@ -122,11 +122,15 @@ class IoctlFaker():
     '''
 
     def __init__(self, panda, use_osi_linux = False, log = False, ignore=[]):
+        '''
+        If set, ignores should be a list of tuples - (filename, cmd#) to be ignored
+        '''
 
         self.osi = use_osi_linux
         self._panda = panda
         self._panda.load_plugin("syscalls2")
         self._log = log
+        self.ignore = ignore
 
         if self.osi:
             self._panda.load_plugin("osi")
@@ -154,7 +158,7 @@ class IoctlFaker():
             ioctl.set_ret_code(self._panda.from_unsigned_guest(cpu.env_ptr.regs[0]))
 
             if (ioctl.original_ret_code == -25): # Error indicating no driver is present
-                if ioctl.cmd.bits.cmd_num not in ignore: # Allow ignoring specific commands
+                if (ioctl.file_name, ioctl.cmd.bits.cmd_num) not in self.ignore: # Allow ignoring specific commands on specific files
                     self._fail_returns.add(ioctl)
                     cpu.env_ptr.regs[0] = 0
                     if ioctl.has_buf and self._log:
