@@ -18,30 +18,6 @@
 #include "qemu/iov.h"
 #include "monitor/monitor.h"
 
-const int feature_bits[] = {
-    VIRTIO_VSOCK_F_SEQPACKET,
-    VHOST_INVALID_FEATURE_BIT
-};
-
-uint64_t vhost_vsock_common_get_features(VirtIODevice *vdev, uint64_t features,
-                                         Error **errp)
-{
-    VHostVSockCommon *vvc = VHOST_VSOCK_COMMON(vdev);
-
-    if (vvc->seqpacket != ON_OFF_AUTO_OFF) {
-        virtio_add_feature(&features, VIRTIO_VSOCK_F_SEQPACKET);
-    }
-
-    features = vhost_get_features(&vvc->vhost_dev, feature_bits, features);
-
-    if (vvc->seqpacket == ON_OFF_AUTO_ON &&
-        !virtio_has_feature(features, VIRTIO_VSOCK_F_SEQPACKET)) {
-        error_setg(errp, "vhost-vsock backend doesn't support seqpacket");
-    }
-
-    return features;
-}
-
 int vhost_vsock_common_start(VirtIODevice *vdev)
 {
     VHostVSockCommon *vvc = VHOST_VSOCK_COMMON(vdev);
@@ -250,24 +226,17 @@ void vhost_vsock_common_unrealize(VirtIODevice *vdev)
 
     vhost_vsock_common_post_load_timer_cleanup(vvc);
 
-    virtio_delete_queue(vvc->recv_vq);
-    virtio_delete_queue(vvc->trans_vq);
-    virtio_delete_queue(vvc->event_vq);
+    virtio_del_queue(vvc->recv_vq);
+    virtio_del_queue(vvc->trans_vq);
+    virtio_del_queue(vvc->event_vq);
     virtio_cleanup(vdev);
 }
-
-static Property vhost_vsock_common_properties[] = {
-    DEFINE_PROP_ON_OFF_AUTO("seqpacket", VHostVSockCommon, seqpacket,
-                            ON_OFF_AUTO_AUTO),
-    DEFINE_PROP_END_OF_LIST(),
-};
 
 static void vhost_vsock_common_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
     VirtioDeviceClass *vdc = VIRTIO_DEVICE_CLASS(klass);
 
-    device_class_set_props(dc, vhost_vsock_common_properties);
     set_bit(DEVICE_CATEGORY_MISC, dc->categories);
     vdc->guest_notifier_mask = vhost_vsock_common_guest_notifier_mask;
     vdc->guest_notifier_pending = vhost_vsock_common_guest_notifier_pending;
