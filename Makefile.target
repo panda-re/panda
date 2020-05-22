@@ -269,6 +269,11 @@ endif
 	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/python2.7/site-packages"
 	$(INSTALL_LIB) plog_pb2.py "$(DESTDIR)$(libdir)/python2.7/site-packages"
 	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"
+	$(INSTALL_DIR) "$(DESTDIR)$(qemu_datadir)/scripts"
+	for f in $$(find $(SRC_PATH)/panda/scripts -type f); do \
+		echo $$f; \
+		$(INSTALL_PROG) $$f "$(DESTDIR)$(qemu_datadir)/scripts"; \
+	done
 # N.B. the new rpath must not be longer than the old rpath or chrpath will fail
 	for p in $(PANDA_PLUGINS) $(EXTRA_PANDA_PLUGINS); do \
 		echo $$p; \
