@@ -90,7 +90,7 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     
     panda_arg_list *args; 
-    args = panda_get_args("general"); 
+    args = panda_get_args("loaded_libs"); 
     program_name = panda_parse_string_opt(args, "program_name", NULL, "program name to collect libraries for"); 
     return true;
 }
