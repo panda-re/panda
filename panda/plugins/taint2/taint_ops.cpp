@@ -40,6 +40,7 @@ PANDAENDCOMMENT */
 #include "shad.h"
 #include "label_set.h"
 #include "taint_ops.h"
+#include "taint_utils.h"
 
 uint64_t labelset_count;
 
@@ -52,6 +53,15 @@ extern bool detaint_cb0_bytes;
 
 void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size);
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);
+
+const int CB_WIDTH = 128;
+const llvm::APInt NOT_LITERAL(CB_WIDTH, ~0UL, true);
+
+static inline bool is_ram_ptr(uint64_t addr)
+{
+    return RAM_ADDR_INVALID !=
+           qemu_ram_addr_from_host(reinterpret_cast<void *>(addr));
+}
 
 // Remove the taint marker from any bytes whose control mask bits go to 0.
 // A 0 control mask bit means that bit does not impact the value in the byte (or
@@ -115,9 +125,15 @@ void taint_pop_frame(Shad *shad)
 }
 
 struct CBMasks {
-    uint64_t cb_mask;
-    uint64_t one_mask;
-    uint64_t zero_mask;
+    llvm::APInt cb_mask;
+    llvm::APInt one_mask;
+    llvm::APInt zero_mask;
+
+    CBMasks()
+        : cb_mask(CB_WIDTH, 0UL), one_mask(CB_WIDTH, 0UL),
+          zero_mask(CB_WIDTH, 0UL)
+    {
+    }
 };
 
 static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
@@ -171,7 +187,7 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
     // of the way e.g. the deposit TCG op is lifted to LLVM.
     CBMasks cb_mask_1 = compile_cb_masks(shad, src1, src_size);
     CBMasks cb_mask_2 = compile_cb_masks(shad, src2, src_size);
-    CBMasks cb_mask_out = {0};
+    CBMasks cb_mask_out;
     if (I && I->getOpcode() == llvm::Instruction::Or) {
         cb_mask_out.one_mask = cb_mask_1.one_mask | cb_mask_2.one_mask;
         cb_mask_out.zero_mask = cb_mask_1.zero_mask & cb_mask_2.zero_mask;
@@ -189,8 +205,11 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
             (cb_mask_1.one_mask & cb_mask_2.cb_mask) |
             (cb_mask_2.one_mask & cb_mask_1.cb_mask);
     }
-    taint_log("pcompute_cb: %#lx + %#lx = %lx ",
-            cb_mask_1.cb_mask, cb_mask_2.cb_mask, cb_mask_out.cb_mask);
+    taint_log(
+        "pcompute_cb: 0x%.16lx%.16lx +  0x%.16lx%.16lx = 0x%.16lx%.16lx",
+        apint_hi_bits(cb_mask_1.cb_mask), apint_lo_bits(cb_mask_1.cb_mask),
+        apint_hi_bits(cb_mask_2.cb_mask), apint_lo_bits(cb_mask_2.cb_mask),
+        apint_hi_bits(cb_mask_out.cb_mask), apint_lo_bits(cb_mask_out.cb_mask));
     taint_log_labels(shad, dest, src_size);
     write_cb_masks(shad, dest, src_size, cb_mask_out);
 
@@ -237,8 +256,12 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
 
 void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                        uint64_t src1, uint64_t src2, uint64_t src_size,
-                       llvm::Instruction *inst, uint64_t arg1, uint64_t arg2)
+                       llvm::Instruction *inst, uint64_t arg1_lo,
+                       uint64_t arg1_hi, uint64_t arg2_lo, uint64_t arg2_hi)
 {
+    llvm::APInt arg1 = make_128bit_apint(arg1_hi, arg1_lo);
+    llvm::APInt arg2 = make_128bit_apint(arg2_hi, arg2_lo);
+
     bool isTainted1 = false;
     bool isTainted2 = false;
     for (int i = 0; i < src_size; ++i) {
@@ -249,8 +272,9 @@ void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         taint_log("mul_com: untainted args \n");
         return; //nothing to propagate
     } else if (!(isTainted1 && isTainted2)){ //the case we do special stuff
-        uint64_t cleanArg = isTainted1 ? arg2 : arg1;
-        taint_log("mul_com: one untainted arg %lu \n", cleanArg);
+        llvm::APInt cleanArg = isTainted1 ? arg2 : arg1;
+        taint_log("mul_com: one untainted arg 0x%.16lx%.16lx \n",
+                  apint_hi_bits(cleanArg), apint_lo_bits(cleanArg));
         if (cleanArg == 0) return ; // mul X untainted 0 -> no taint prop
         else if (cleanArg == 1) { //mul X untainted 1(one) should be a parallel taint
             taint_parallel_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
@@ -367,7 +391,10 @@ void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
     while (!(src == ones && srcsel == ones)) {
         if (srcsel == selector) { // bingo!
             if (src != ones) { // otherwise it's a constant.
+                taint_log("select (copy): %s[%lx+%lx] <- %s[%lx+%lx] ",
+                          shad->name(), dest, size, shad->name(), src, size);
                 Shad::copy(shad, dest, shad, src, size);
+                taint_log_labels(shad, dest, size);
             }
             return;
         }
@@ -427,32 +454,44 @@ bool is_irrelevant(int64_t offset) {
 
 // This should only be called on loads/stores from CPUArchState.
 void taint_host_copy(uint64_t env_ptr, uint64_t addr, Shad *llv,
-                     uint64_t llv_offset, Shad *greg, Shad *gspec,
+                     uint64_t llv_offset, Shad *greg, Shad *gspec, Shad *mem,
                      uint64_t size, uint64_t labels_per_reg, bool is_store)
 {
+    Shad *shad_src = NULL;
+    uint64_t src = UINT64_MAX;
+    Shad *shad_dest = NULL;
+    uint64_t dest = UINT64_MAX;
+
     int64_t offset = addr - env_ptr;
-    if (is_irrelevant(offset)) {
+
+    if (true == is_ram_ptr(addr)) {
+        ram_addr_t ram_addr;
+        __attribute__((unused)) RAMBlock *ram_block = qemu_ram_block_from_host(
+            reinterpret_cast<void *>(addr), false, &ram_addr);
+        assert(NULL != ram_block);
+
+        shad_src = is_store ? llv : mem;
+        src = is_store ? llv_offset : ram_addr;
+        shad_dest = is_store ? mem : llv;
+        dest = is_store ? ram_addr : llv_offset;
+    } else if (is_irrelevant(offset)) {
         // Irrelevant
         taint_log("hostcopy: irrelevant\n");
         return;
+    } else {
+        Shad *state_shad = NULL;
+        uint64_t state_addr = 0;
+
+        find_offset(greg, gspec, (uint64_t)offset, labels_per_reg, &state_shad,
+                    &state_addr);
+
+        shad_src = is_store ? llv : state_shad;
+        src = is_store ? llv_offset : state_addr;
+        shad_dest = is_store ? state_shad : llv;
+        dest = is_store ? state_addr : llv_offset;
     }
-
-    Shad *state_shad = NULL;
-    uint64_t state_addr = 0;
-
-    find_offset(greg, gspec, (uint64_t)offset, labels_per_reg,
-            &state_shad, &state_addr);
-
-    Shad *shad_src = is_store ? llv : state_shad;
-    uint64_t src = is_store ? llv_offset : state_addr;
-    Shad *shad_dest = is_store ? state_shad : llv;
-    uint64_t dest = is_store ? state_addr : llv_offset;
-
-    //taint_log("taint_host_copy\n");
-    //taint_log("\tenv: %lx, addr: %lx, llv: %lx, offset: %lx\n", env_ptr, addr, llv_ptr, llv_offset);
-    //taint_log("\tgreg: %lx, gspec: %lx, size: %lx, is_store: %u\n", greg_ptr, gspec_ptr, size, is_store);
-    taint_log("hostcopy: %s[%lx+%lx] <- %s[%lx] (offset %lx) ",
-            shad_dest->name(), dest, size, shad_src->name(), src, offset);
+    taint_log("hostcopy: %s[%lx+%lx] <- %s[%lx+%lx] ", shad_dest->name(), dest,
+              size, shad_src->name(), src, size);
     taint_log_labels(shad_src, src, size);
     Shad::copy(shad_dest, dest, shad_src, src, size);
 }
@@ -510,10 +549,11 @@ void taint_host_delete(uint64_t env_ptr, uint64_t dest_addr, Shad *greg,
 // to reconstruct and deconstruct the full mask.
 static inline CBMasks compile_cb_masks(Shad *shad, uint64_t addr, uint64_t size)
 {
-    // as our masks are only 64 bits in size, can't handle more than 8 bytes
-    tassert(size <= 8);
-    
-    CBMasks result = {0};
+    // Control bit masks are assumed to have a width of CB_WIDTH, we can't
+    // handle more than CB_WIDTH / 8 bytes.
+    tassert(size <= (CB_WIDTH / 8));
+
+    CBMasks result;
     for (int i = size - 1; i >= 0; i--) {
         TaintData td = shad->query_full(addr + i);
         result.cb_mask <<= 8;
@@ -531,12 +571,15 @@ static inline void write_cb_masks(Shad *shad, uint64_t addr, uint64_t size,
 {
     for (unsigned i = 0; i < size; i++) {
         TaintData td = shad->query_full(addr + i);
-        td.cb_mask = (uint8_t)cb_masks.cb_mask;
-        td.one_mask = (uint8_t)cb_masks.one_mask;
-        td.zero_mask = (uint8_t)cb_masks.zero_mask;
-        cb_masks.cb_mask >>= 8;
-        cb_masks.one_mask >>= 8;
-        cb_masks.zero_mask >>= 8;
+        td.cb_mask =
+            static_cast<uint8_t>(cb_masks.cb_mask.trunc(8).getZExtValue());
+        td.one_mask =
+            static_cast<uint8_t>(cb_masks.one_mask.trunc(8).getZExtValue());
+        td.zero_mask =
+            static_cast<uint8_t>(cb_masks.zero_mask.trunc(8).getZExtValue());
+        cb_masks.cb_mask = cb_masks.cb_mask.lshr(8);
+        cb_masks.one_mask = cb_masks.one_mask.lshr(8);
+        cb_masks.zero_mask = cb_masks.zero_mask.lshr(8);
         shad->set_full(addr + i, td);
     }
 }
@@ -560,23 +603,43 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
 
     if (tainted) {
         CBMasks cb_masks = compile_cb_masks(shad_src, src, size);
-        uint64_t &cb_mask = cb_masks.cb_mask;
-        uint64_t &one_mask = cb_masks.one_mask;
-        uint64_t &zero_mask = cb_masks.zero_mask;
+        llvm::APInt &cb_mask = cb_masks.cb_mask;
+        llvm::APInt &one_mask = cb_masks.one_mask;
+        llvm::APInt &zero_mask = cb_masks.zero_mask;
 
-        uint64_t orig_one_mask = one_mask, orig_zero_mask = zero_mask;
-        __attribute__((unused)) uint64_t orig_cb_mask = cb_mask;
-        std::vector<uint64_t> literals;
-        uint64_t last_literal = ~0UL; // last valid literal.
+        llvm::APInt orig_one_mask = one_mask, orig_zero_mask = zero_mask;
+        __attribute__((unused)) llvm::APInt orig_cb_mask = cb_mask;
+        std::vector<llvm::APInt> literals;
+        llvm::APInt last_literal = NOT_LITERAL; // last valid literal.
         literals.reserve(I->getNumOperands());
 
         for (auto it = I->value_op_begin(); it != I->value_op_end(); it++) {
             const llvm::Value *arg = *it;
             const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(arg);
-            uint64_t literal = CI ? CI->getZExtValue() : ~0UL;
+            llvm::APInt literal = NOT_LITERAL;
+            if (NULL != CI) {
+                literal = CI->getValue().zextOrSelf(CB_WIDTH);
+            }
             literals.push_back(literal);
-            if (literal != ~0UL) last_literal = literal;
+            if (literal != NOT_LITERAL)
+                last_literal = literal;
         }
+
+        static int warning_count = 0;
+        if (10 > warning_count && NOT_LITERAL == last_literal) {
+            fprintf(stderr,
+                    "%sWARNING: Could not find last literal value, control "
+                    "bits may be incorrect.\n",
+                    PANDA_MSG);
+            warning_count++;
+            if (warning_count == 10) {
+                fprintf(stderr,
+                        "%sLast literal warning emitted %d times, suppressing "
+                        "warning.\n",
+                        PANDA_MSG, warning_count);
+            }
+        }
+
         int log2 = 0;
 
         unsigned int opcode = I->getOpcode();
@@ -585,9 +648,16 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
         // tested without calling a function (which would slow things down even more)
 #include "update_cb_switch.h"
 
-        taint_log("update_cb: %s[%lx+%lx] CB %#lx -> 0x%#lx, 0 %#lx -> %#lx, 1 %#lx -> %#lx\n",
-                shad_dest->name(), dest, size, orig_cb_mask, cb_mask,
-                orig_zero_mask, zero_mask, orig_one_mask, one_mask);
+        taint_log("update_cb: %s[%lx+%lx] CB (0x%.16lx%.16lx) -> "
+                  "(0x%.16lx%.16lx), 0 (0x%.16lx%.16lx) -> (0x%.16lx%.16lx), 1 "
+                  "(0x%.16lx%.16lx) -> (0x%.16lx%.16lx)\n",
+                  shad_dest->name(), dest, size, apint_hi_bits(orig_cb_mask),
+                  apint_lo_bits(orig_cb_mask), apint_hi_bits(cb_mask),
+                  apint_lo_bits(cb_mask), apint_hi_bits(orig_one_mask),
+                  apint_lo_bits(orig_one_mask), apint_hi_bits(one_mask),
+                  apint_lo_bits(one_mask), apint_hi_bits(orig_zero_mask),
+                  apint_lo_bits(orig_zero_mask), apint_hi_bits(zero_mask),
+                  apint_lo_bits(zero_mask));
 
         write_cb_masks(shad_dest, dest, size, cb_masks);
     }

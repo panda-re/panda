@@ -78,7 +78,8 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
 //for mul or fmul. can do parallel or mixed or no prop depending on vals and their taints
 void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                        uint64_t src1, uint64_t src2, uint64_t src_size,
-                       llvm::Instruction *inst, uint64_t arg1, uint64_t arg2);
+                       llvm::Instruction *inst, uint64_t arg1_lo,
+                       uint64_t arg1_hi, uint64_t arg2_lo, uint64_t arg2_hi);
 
 // Clear taint.
 void taint_delete(Shad *shad, uint64_t dest, uint64_t size);
@@ -108,7 +109,7 @@ void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
                   ...);
 
 void taint_host_copy(uint64_t env_ptr, uint64_t addr, Shad *llv,
-                     uint64_t llv_offset, Shad *greg, Shad *gspec,
+                     uint64_t llv_offset, Shad *greg, Shad *gspec, Shad *mem,
                      uint64_t size, uint64_t labels_per_reg, bool is_store);
 
 void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,

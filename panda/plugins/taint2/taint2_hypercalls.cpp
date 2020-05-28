@@ -134,7 +134,8 @@ void taint_query_hypercall(PandaHypercallStruct phs) {
                 uint8_t c;
                 panda_virtual_memory_rw(cpu, pa, &c, 1, false);
                 // null terminator
-                if (c==0) break;
+                if (c == 0)
+                    break;
             }
             if ((int) pa != (hwaddr)-1) {
                 ram_addr_t RamOffset = RAM_ADDR_INVALID;
@@ -239,6 +240,17 @@ void lava_attack_point(PandaHypercallStruct phs) {
 }
 #endif // defined(TARGET_I386)
 
+#if defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM)
+static void write_taint_log(const std::string &msg)
+{
+    if (NULL == taint2_log_file) {
+        return;
+    }
+
+    fprintf(taint2_log_file, "%s", msg.c_str());
+}
+#endif
+
 bool guest_hypercall_callback(CPUState *cpu) {
     bool ret = false;
 #if defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM)
@@ -294,7 +306,7 @@ bool guest_hypercall_callback(CPUState *cpu) {
                         label);
                 std::stringstream head;
                 head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
-                fprintf(taint2_log_file, "%s", head.str().c_str());
+                write_taint_log(head.str());
                 taint2_add_taint_ram_single_label(cpu, (uint64_t)buf_start,
                                                   (int)buf_len, label);
             }
@@ -310,7 +322,7 @@ bool guest_hypercall_callback(CPUState *cpu) {
                         label);
                 std::stringstream head;
                 head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
-                fprintf(taint2_log_file, "%s", head.str().c_str());
+                write_taint_log(head.str());
                 taint2_add_taint_ram_pos(cpu, (uint64_t)buf_start, (int)buf_len, label);
             }
             else if (REG_CMD == QUERY_BUFFER) {
@@ -373,7 +385,7 @@ bool guest_hypercall_callback(CPUState *cpu) {
                         }
                     }
                     head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
-                    fprintf(taint2_log_file, "%s", head.str().c_str());
+                    write_taint_log(head.str());
                 }
                 else {
                     // bad address
@@ -381,7 +393,7 @@ bool guest_hypercall_callback(CPUState *cpu) {
                             "fail: panda_virt_to_phys failed for addr 0x%" PRIXPTR "\n",
                             (uintptr_t)va);
                     head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
-                    fprintf(taint2_log_file, "%s", head.str().c_str());
+                    write_taint_log(head.str());
                 }
             }
             else if (REG_CMD == LABEL_REGISTER) {
@@ -395,8 +407,8 @@ bool guest_hypercall_callback(CPUState *cpu) {
                         label);
                 std::stringstream head;
                 head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
-                fprintf(taint2_log_file, "%s", head.str().c_str());
-		taint2_label_reg(reg_num, reg_off, label);
+                write_taint_log(head.str());
+                taint2_label_reg(reg_num, reg_off, label);
             }
             else if (REG_CMD == QUERY_REGISTER) {
                 // query taint for label on register
@@ -449,7 +461,7 @@ bool guest_hypercall_callback(CPUState *cpu) {
 
                 }
                 head << PANDA_MSG << std::string(taint2_log_msg) << std::endl;
-                fprintf(taint2_log_file, "%s", head.str().c_str());
+                write_taint_log(head.str());
             }
             else if (REG_CMD == LOG) {
                 // print a string located in guest memory to taint2 log
@@ -462,7 +474,7 @@ bool guest_hypercall_callback(CPUState *cpu) {
                 hypercall_msg[string_len-1] = 0;
                 std::stringstream head;
                 head << PANDA_MSG << std::string(hypercall_msg) << std::endl;
-                fprintf(taint2_log_file, "%s", head.str().c_str());
+                write_taint_log(head.str());
             }
             fflush(taint2_log_file);
             ret = true;

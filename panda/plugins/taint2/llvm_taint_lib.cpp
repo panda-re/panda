@@ -636,12 +636,13 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     LLVMContext &ctx = I.getContext();
     if (!dest) dest = &I;
 
-    const uint64_t maxBitWidth = 64;
+    const uint64_t maxBitWidth = 128;
     unsigned src1BitWidth = src1->getType()->getPrimitiveSizeInBits();
     unsigned src2BitWidth = src1->getType()->getPrimitiveSizeInBits();
     if ((src1BitWidth > maxBitWidth) || (src2BitWidth > maxBitWidth)) {
-        printf("warning: encountered a value greater than 64 bits - not "
-               "attempting to propagate taint through mul instruction\n");
+        printf("warning: encountered a value greater than %lu bits - not "
+               "attempting to propagate taint through mul instruction\n",
+               maxBitWidth);
         return;
     }
 
@@ -676,12 +677,37 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     Value *src1slot = constSlot(src1);
     Value *src2slot = constSlot(src2);
     Value *dslot = constSlot(dest);
-    Value *arg1 = b.CreateSExtOrBitCast(src1, Type::getInt64Ty(ctx));
-    Value *arg2 = b.CreateSExtOrBitCast(src2, Type::getInt64Ty(ctx));
+
+    Value *arg1_lo = NULL;
+    Value *arg1_hi = NULL;
+    if (64 < src1BitWidth) {
+        arg1_lo = b.CreateTrunc(src1, Type::getInt64Ty(ctx));
+        arg1_hi = b.CreateTrunc(b.CreateLShr(src1, 64), Type::getInt64Ty(ctx));
+    } else {
+        arg1_lo = b.CreateSExtOrBitCast(src1, Type::getInt64Ty(ctx));
+        Value *tmp =
+            b.CreateTrunc(b.CreateLShr(arg1_lo, 63), Type::getInt1Ty(ctx));
+        arg1_hi = b.CreateSelect(tmp, const_uint64(ctx, ~0UL),
+                                 const_uint64(ctx, 0UL));
+    }
+
+    Value *arg2_lo = NULL;
+    Value *arg2_hi = NULL;
+    if (64 < src1BitWidth) {
+        arg2_lo = b.CreateTrunc(src2, Type::getInt64Ty(ctx));
+        arg2_hi = b.CreateTrunc(b.CreateLShr(src2, 64), Type::getInt64Ty(ctx));
+    } else {
+        arg2_lo = b.CreateSExtOrBitCast(src2, Type::getInt64Ty(ctx));
+        Value *tmp =
+            b.CreateTrunc(b.CreateLShr(arg2_lo, 63), Type::getInt1Ty(ctx));
+        arg2_hi = b.CreateSelect(tmp, const_uint64(ctx, ~0UL),
+                                 const_uint64(ctx, 0UL));
+    }
+
     vector<Value*> args{
         llvConst, dslot, dest_size,
         src1slot, src2slot, src_size,
-        constInstr(&I), arg1, arg2
+        constInstr(&I), arg1_lo, arg1_hi, arg2_lo, arg2_hi
     };
     b.CreateCall(mulCompF, args);
 }
@@ -1058,7 +1084,7 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
     } else {
         vector<Value *> args{
             const_uint64_ptr(ctx, first_cpu->env_ptr), ptrToInt(ptr, I),
-            llvConst, constSlot(val), grvConst, gsvConst,
+            llvConst, constSlot(val), grvConst, gsvConst, memConst,
             const_uint64(ctx, size), const_uint64(ctx, sizeof(target_ulong)),
             ConstantInt::get(llvm::Type::getInt1Ty(ctx), isStore)
         };
