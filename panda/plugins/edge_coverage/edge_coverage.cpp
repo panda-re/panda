@@ -183,7 +183,7 @@ bool init_plugin(void *self) {
                                             "hex addr of main");
     if (start_main_str != nullptr) {
         start_main = strtoul(start_main_str, NULL, 16);
-        printf ("edge coverage for just one program: start_main = 0x%" PRIx64 "\n", start_main);
+        printf ("edge coverage for just one program: start_main = 0x" TARGET_FMT_lx "\n", start_main);
     }
     else 
         printf ("edge coverage for all asids and all code\n");
