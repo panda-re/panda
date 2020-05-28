@@ -16,12 +16,13 @@ extern "C" {
 #include "osi/osi_ext.h"
 #include "track_intexc/track_intexc_ext.h"
 
+
 }
 
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <set>
+#include<fstream>
+#include<iostream>
+#include<map>
+#include<set>
 #include <iomanip>
 #include <vector>
 
@@ -44,6 +45,7 @@ bool debug=false;
 int n;
 
 
+
 map<target_ulong,target_ulong> last_bb_start;
 map<target_ulong,bool> last_bb_was_split;
 map<target_ulong,bool> last_bb_was_exception;
@@ -60,7 +62,7 @@ void after_block(CPUState *env, TranslationBlock *tb, uint8_t exitCode) {
         return;
 
     target_ulong asid = panda_current_asid(env);
-    
+
     // dont record pc if we are in exception or interrupt code
     if (check_in_exception() || check_in_interrupt()) 
         return;
@@ -71,31 +73,29 @@ void after_block(CPUState *env, TranslationBlock *tb, uint8_t exitCode) {
     
     // keep track of if last bb was split
     last_bb_was_split[asid] = tb->was_split; 
-    
 }
 
 
 void before_block(CPUState *env, TranslationBlock *tb) {
-    
+
     if (start_main) {
         // we are only paying attention to edges within some program
         // and are waiting to see main
         if (tb->pc == start_main) {
-            //   printf("saw main");
             saw_main = true;
         }
         if (!saw_main)
             return;
     }
-    
+
     target_ulong asid = panda_current_asid(env);
     bool intexc = (check_in_exception() || check_in_interrupt());
-    
-    // we can only know transition if we know where we were for this asid last
+
+    // we can only know trans if we know where we were for this asid last
     if (last_bb_intexc.count(asid) != 0) {
         
         // four possibilities
-        
+
         // 1. transition from reg to intexc code
         if (!last_bb_intexc[asid] && intexc) {
             // remember start pc of last bb before intexc
@@ -105,7 +105,7 @@ void before_block(CPUState *env, TranslationBlock *tb) {
             last_bb_before_intexc[asid] = last_bb_start[asid];
             goto done;
         }
-        
+
         // 2. transition from int/exc code to reg
         if (last_bb_intexc[asid] && !intexc) {
             // if this bb is just same as the last one before
@@ -126,7 +126,7 @@ void before_block(CPUState *env, TranslationBlock *tb) {
                      << hex << asid << "]=" << last_bb_before_intexc[asid] << "\n";
                 cout << "and setting last_bb_start[" << hex << asid << "]=" << tb->pc << "\n";
             }
-
+	    
             asid_trace[asid].push_back(last_bb_before_intexc[asid]);                     
             // update pc in case we get longjmped
             last_bb_start[asid] = tb->pc;
@@ -148,7 +148,7 @@ void before_block(CPUState *env, TranslationBlock *tb) {
                      << hex << asid << "]=" << last_bb_start[asid] << "\n";        
                 cout << "and setting last_bb_start[" << asid << "]=" << tb->pc << "\n";
             }
-            
+
             // update trace in normal way
             asid_trace[asid].push_back(last_bb_start[asid]);                 
             // update pc in case we get longjmped
@@ -167,7 +167,6 @@ done:
 }
 
 
-bool pandalog_trace = false;
 
 bool init_plugin(void *self) {
 
@@ -179,17 +178,15 @@ bool init_plugin(void *self) {
 
     // Set the default value to 1-edge or basic block coverage  
     n = panda_parse_uint64_opt(args, "n", 1, "collect up-to-and-including n-edges");
-    //    no_kernel = panda_parse_bool_opt(args, "no_kernel", "disable kernel pcs"); 
-    pandalog_trace = panda_parse_bool_opt(args, "trace", "output trace to pandalog");
     const char *start_main_str = panda_parse_string_opt(args, "main", nullptr,
                                             "hex addr of main");
     if (start_main_str != nullptr) {
         start_main = strtoul(start_main_str, NULL, 16);
-        printf ("edge coverage for just one program: start_main = 0x" TARGET_FMT_lx "\n", start_main);
+        printf ("edge coverage for just one program: start_main = 0x%" PRIx64 "\n", start_main);
     }
     else 
         printf ("edge coverage for all asids and all code\n");
-    
+
     panda_require("osi");
     assert(init_osi_api()); // Setup OSI inspection
     panda_cb pcb;
@@ -200,7 +197,6 @@ bool init_plugin(void *self) {
     printf("Initialized coverage plugin\n");
     return true;
 }
-
 
 
 void uninit_plugin(void *) {
@@ -228,23 +224,21 @@ void uninit_plugin(void *) {
                 else  edges[edge] = 1; 
             }
         }
-        if (pandalog_trace) {
-            Panda__AsidTrace *at = (Panda__AsidTrace *) malloc (sizeof(Panda__AsidTrace));
-            *at = PANDA__ASID_TRACE__INIT;
-            at->pcs = (uint64_t *) malloc(sizeof(uint64_t) * pc_trace.size());
-            int i=0;
-            for (auto pc : pc_trace) 
-                at->pcs[i++] = pc;
-            at->n_pcs = pc_trace.size();	  
-            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-            ple.has_asid = 1;
-            ple.asid = asid;
-            ple.trace = at;
-            pandalog_write_entry(&ple);
-            free(at->pcs);
-            free(at);
-            final_map[asid] = edges; 
-        }
+        Panda__AsidTrace *at = (Panda__AsidTrace *) malloc (sizeof(Panda__AsidTrace));
+        *at = PANDA__ASID_TRACE__INIT;
+        at->pcs = (uint64_t *) malloc(sizeof(uint64_t) * pc_trace.size());
+        int i=0;
+        for (auto pc : pc_trace) 
+            at->pcs[i++] = pc;
+        at->n_pcs = pc_trace.size();
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        ple.has_asid = 1;
+        ple.asid = asid;
+        ple.trace = at;
+        pandalog_write_entry(&ple);
+        free(at->pcs);
+        free(at);
+        final_map[asid] = edges; 
     }
 
     // Write out each to a pandalog 
@@ -279,7 +273,6 @@ void uninit_plugin(void *) {
             i++; 
         } 
         ae->edges = e; 
-
 
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT; 
         ple.has_asid = 1;
