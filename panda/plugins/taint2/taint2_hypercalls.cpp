@@ -240,6 +240,7 @@ void lava_attack_point(PandaHypercallStruct phs) {
 }
 #endif // defined(TARGET_I386)
 
+#if defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM)
 static void write_taint_log(const std::string &msg)
 {
     if (NULL == taint2_log_file) {
@@ -248,6 +249,7 @@ static void write_taint_log(const std::string &msg)
 
     fprintf(taint2_log_file, "%s", msg.c_str());
 }
+#endif
 
 bool guest_hypercall_callback(CPUState *cpu) {
     bool ret = false;
