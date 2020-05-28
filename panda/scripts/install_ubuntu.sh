@@ -55,7 +55,7 @@ if [ "$version" -ge "20" ]; then
   sudo apt-get -y install wget git protobuf-compiler protobuf-c-compiler \
     libprotobuf-c-dev libprotoc-dev python-protobuf libelf-dev pkg-config \
     libwiretap-dev libwireshark-dev flex bison python3-pip python3 \
-    libglib2.0-dev libpixman-1-dev libsdl2-dev libcurl4-gnutls-dev
+    libglib2.0-dev libpixman-1-dev libsdl2-dev libcurl4-gnutls-dev zip
 
     # Enable 16.04/xenial repos for dependencies for the LLVM 3.3 packages in ppa:phulin/panda
     sudo add-apt-repository "deb http://mirrors.kernel.org/ubuntu/ xenial main"
@@ -87,11 +87,11 @@ if [ "$version" -ge "20" ]; then
 elif [ "$version" -eq "19" ]; then
   sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
     libprotobuf-c-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
-    libwiretap-dev libwireshark-dev flex bison python3-pip python3
+    libwiretap-dev libwireshark-dev flex bison python3-pip python3 zip
 else
   sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
     libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
-    libwiretap-dev libwireshark-dev flex bison python3-pip python3
+    libwiretap-dev libwireshark-dev flex bison python3-pip python3 zip
 fi
 pushd /tmp
 
