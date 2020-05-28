@@ -1261,6 +1261,10 @@ for opt do
   ;;
   --with-llvm=*) llvmdir="$optarg"
   ;;
+  --enable-aflpp) aflpp="yes"
+  ;;
+  --with-aflpp=*) aflppdir="$optarg"
+  ;;
   --extra-plugins-path=*) extra_plugins_path="$optarg"
   ;;
   --disable-pyperipheral2) pyperipheral2="no"
@@ -1448,6 +1452,8 @@ Advanced options (experts only):
 PANDA related options:
   --enable-llvm                enable LLVM support (for all targets)
   --with-llvm=PATH             LLVM path (PATH/bin/llvm-config must exist)
+  --enable-aflpp               enable AFL++ support
+  --with-aflpp=PATH            AFL++ path (PATH/config.h must exist)
   --extra-plugins-path=PATH    also compile plugins at this PATH
 
 Optional features, enabled with --enable-FEATURE and
@@ -3339,6 +3345,20 @@ if test "$llvm" != "no" ; then
 fi
 
 ##########################################
+# AFL++ probe
+if test "$aflpp" != "no" ; then
+  if [ -f "$aflppdir/config.h" ]; then
+    : AFL++ found
+  elif [ -f "../../AFLplusplus/config.h" ]; then
+    aflppdir="../../AFLplusplus/" # default
+    : AFL++ found
+  else
+    feature_not_found "AFL++ (required for --aflpp)"
+    exit 1
+  fi
+fi
+
+##########################################
 # pycparser probe
 
 if ! $python <<EOF
@@ -4256,6 +4276,21 @@ fi
 if test "$darwin" != "yes" -a "$mingw32" != "yes" -a "$solaris" != yes -a \
         "$haiku" != "yes" ; then
     libs_softmmu="-lutil $libs_softmmu"
+fi
+
+##########################################
+cat > $TMPC << EOF
+#include <dlfcn.h>
+#include <stdlib.h>
+int main(int argc, char **argv) { return dlopen("libc.so", RTLD_NOW) != NULL; }
+EOF
+if compile_prog "" "" ; then
+  :
+elif compile_prog "" "-ldl" ; then
+  LIBS="-ldl $LIBS"
+  libs_qga="-ldl $libs_qga"
+else
+  error_exit "libdl check failed"
 fi
 
 ##########################################
@@ -5797,6 +5832,11 @@ if test "$llvm" = "yes" ; then
   echo "LLVM_CXXFLAGS=\$(filter-out $FILTERFLAGS,$llvm_cxxflags)" >> $config_host_mak
   echo "LLVMDIR=$llvmdir" >> $config_host_mak
 fi
+
+if test "$aflpp" = "yes"; then
+  echo "AFLPP_DIR=$aflppdir" >> $config_host_mak
+fi
+
 
 if test "$xen" = "yes" ; then
   echo "CONFIG_XEN_BACKEND=y" >> $config_host_mak

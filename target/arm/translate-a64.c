@@ -36,6 +36,8 @@
 
 #include "trace-tcg.h"
 
+#include "panda/aflpp/afl-qemu-cpu-translate-inl.h"
+
 static TCGv_i64 cpu_X[32];
 static TCGv_i64 cpu_pc;
 
@@ -2941,6 +2943,12 @@ static void disas_add_sub_imm(DisasContext *s, uint32_t insn)
         return;
     }
 
+    if (rd == 31 && sub_op) { // cmp xX, imm
+      TCGv_i64 tcg_imm = tcg_const_i64(imm);
+      afl_gen_compcov(s->pc, tcg_rn, tcg_imm, is_64bit ? MO_64 : MO_32, 1);
+      tcg_temp_free_i64(tcg_imm);
+    }
+
     tcg_result = tcg_temp_new_i64();
     if (!setflags) {
         if (sub_op) {
@@ -3549,6 +3557,9 @@ static void disas_add_sub_ext_reg(DisasContext *s, uint32_t insn)
     tcg_rm = read_cpu_reg(s, rm, sf);
     ext_and_shift_reg(tcg_rm, tcg_rm, option, imm3);
 
+    if (rd == 31 && sub_op) // cmp xX, xY
+      afl_gen_compcov(s->pc, tcg_rn, tcg_rm, sf ? MO_64 : MO_32, 0);
+
     tcg_result = tcg_temp_new_i64();
 
     if (!setflags) {
@@ -3612,6 +3623,9 @@ static void disas_add_sub_reg(DisasContext *s, uint32_t insn)
     tcg_rm = read_cpu_reg(s, rm, sf);
 
     shift_reg_imm(tcg_rm, tcg_rm, sf, shift_type, imm6);
+
+    if (rd == 31 && sub_op) // cmp xX, xY
+      afl_gen_compcov(s->pc, tcg_rn, tcg_rm, sf ? MO_64 : MO_32, 0);
 
     tcg_result = tcg_temp_new_i64();
 
@@ -3823,6 +3837,8 @@ static void disas_cc(DisasContext *s, uint32_t insn)
         tcg_y = cpu_reg(s, y);
     }
     tcg_rn = cpu_reg(s, rn);
+
+    afl_gen_compcov(s->pc, tcg_rn, tcg_y, sf ? MO_64 : MO_32, is_imm);
 
     /* Set the flags for the new comparison.  */
     tcg_tmp = tcg_temp_new_i64();
@@ -11147,6 +11163,8 @@ static void disas_data_proc_simd_fp(DisasContext *s, uint32_t insn)
 static void disas_a64_insn(CPUARMState *env, DisasContext *s)
 {
     uint32_t insn;
+
+    AFL_QEMU_TARGET_ARM64_SNIPPET
 
     insn = arm_ldl_code(env, s->pc, s->sctlr_b);
     s->insn = insn;

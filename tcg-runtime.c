@@ -146,6 +146,8 @@ void HELPER(exit_atomic)(CPUArchState *env)
     cpu_loop_exit_atomic(ENV_GET_CPU(env), GETPC());
 }
 
+#include "panda/aflpp/afl-qemu-tcg-runtime-inl.h"
+
 #ifndef CONFIG_SOFTMMU
 /* The softmmu versions of these helpers are in cputlb.c.  */
 

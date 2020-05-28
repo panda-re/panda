@@ -44,6 +44,8 @@
 const int has_llvm_engine = 1;
 #endif
 
++#include "panda/aflpp/afl-qemu-cpu-inl.h"
+
 int generate_llvm = 0;
 int execute_llvm = 0;
 extern bool panda_tb_chaining;
@@ -398,6 +400,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
     target_ulong cs_base, pc;
     uint32_t flags;
     bool have_tb_lock = false;
+    bool was_translated = false, was_chained = false;
 
     /* we record a subset of the CPU state. It will
        always be the same before a given translated block
@@ -421,6 +424,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
              * taking the locks so we check again inside the lock.
              */
             tb = tb_htable_lookup(cpu, pc, cs_base, flags);
+            was_translated = true;
             if (!tb) {
                 panda_callbacks_before_block_translate(cpu, pc);
                 /* if no translated code available, then translate it now */
@@ -454,7 +458,11 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
         }
         if (!tb->invalid) {
             tb_add_jump(last_tb, tb_exit, tb);
+            was_chained = true;
         }
+    }
+    if (was_translated || was_chained) {
+        afl_request_tsl(pc, cs_base, flags, cf_mask, was_chained ? last_tb : NULL, tb_exit);
     }
 #ifdef CONFIG_SOFTMMU
     }

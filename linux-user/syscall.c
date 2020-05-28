@@ -111,6 +111,9 @@
 #include "uname.h"
 
 #include "qemu.h"
+#include <linux/sockios.h>
+
+extern unsigned int afl_forksrv_pid;
 
 #ifndef CLONE_IO
 #define CLONE_IO                0x80000000      /* Clone io context */
@@ -250,7 +253,8 @@ static type name (type1 arg1,type2 arg2,type3 arg3,type4 arg4,type5 arg5,	\
 #endif
 
 #ifdef __NR_gettid
-_syscall0(int, gettid)
+#define __NR_sys_gettid __NR_gettid
+_syscall0(int, sys_gettid)
 #else
 /* This is a replacement for the host gettid() and must return a host
    errno. */
@@ -6210,7 +6214,7 @@ static void *clone_func(void *arg)
     cpu = ENV_GET_CPU(env);
     thread_cpu = cpu;
     ts = (TaskState *)cpu->opaque;
-    info->tid = gettid();
+    info->tid = sys_gettid();
     cpu->host_tid = info->tid;
     task_settid(ts);
     if (info->child_tidptr)
@@ -6356,9 +6360,9 @@ static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
                mapping.  We can't repeat the spinlock hack used above because
                the child process gets its own copy of the lock.  */
             if (flags & CLONE_CHILD_SETTID)
-                put_user_u32(gettid(), child_tidptr);
+                put_user_u32(sys_gettid(), child_tidptr);
             if (flags & CLONE_PARENT_SETTID)
-                put_user_u32(gettid(), parent_tidptr);
+                put_user_u32(sys_gettid(), parent_tidptr);
             ts = (TaskState *)cpu->opaque;
             if (flags & CLONE_SETTLS)
                 cpu_set_tls (env, newtls);
@@ -7401,7 +7405,8 @@ static int open_self_cmdline(void *cpu_env, int fd)
     return close(fd_orig);
 }
 
-static int open_self_maps(void *cpu_env, int fd)
+int open_self_maps(void *cpu_env, int fd);
+int open_self_maps(void *cpu_env, int fd)
 {
     CPUState *cpu = ENV_GET_CPU((CPUArchState *)cpu_env);
     TaskState *ts = cpu->opaque;
@@ -8116,10 +8121,12 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
 #ifdef TARGET_NR_stime /* not on alpha */
     case TARGET_NR_stime:
         {
-            time_t host_time;
-            if (get_user_sal(host_time, arg1))
+            struct timespec ts;
+            ts.tv_nsec = 0;
+            if (get_user_sal(ts.tv_sec, arg1)) {
                 goto efault;
-            ret = get_errno(stime(&host_time));
+            }
+            ret = get_errno(clock_settime(CLOCK_REALTIME, &ts));
         }
         break;
 #endif
@@ -11351,7 +11358,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         break;
 #endif
     case TARGET_NR_gettid:
-        ret = get_errno(gettid());
+        ret = get_errno(sys_gettid());
         break;
 #ifdef TARGET_NR_readahead
     case TARGET_NR_readahead:
@@ -11637,8 +11644,19 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         break;
 
     case TARGET_NR_tgkill:
-        ret = get_errno(safe_tgkill((int)arg1, (int)arg2,
-                        target_to_host_signal(arg3)));
+        {
+          int pid  = (int)arg1,
+              tgid = (int)arg2,
+              sig  = (int)arg3;
+
+          /* Not entirely sure if the below is correct for all architectures. */
+
+          if(afl_forksrv_pid && afl_forksrv_pid == pid && sig == SIGABRT)
+              pid = tgid = getpid();
+
+          ret = get_errno(safe_tgkill(pid, tgid, target_to_host_signal(sig)));
+
+        }
         break;
 
 #ifdef TARGET_NR_set_robust_list

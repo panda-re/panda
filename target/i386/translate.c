@@ -33,6 +33,8 @@ extern bool panda_update_pc;
 #endif
 
 #include "panda/callbacks/cb-support.h"
+#include "panda/aflpp/afl-qemu-cpu-translate-inl.h"
+#include "panda/aflpp/afl-qemu-common.h"
 
 #include "exec/helper-proto.h"
 #include "exec/helper-gen.h"
@@ -1323,9 +1325,11 @@ static void gen_op(DisasContext *s1, int op, TCGMemOp ot, int d)
             tcg_gen_atomic_fetch_add_tl(cpu_cc_srcT, cpu_A0, cpu_T0,
                                         s1->mem_index, ot | MO_LE);
             tcg_gen_sub_tl(cpu_T0, cpu_cc_srcT, cpu_T1);
+            afl_gen_compcov(s1->pc, s1->cc_srcT, s1->T1, ot, d == OR_EAX);
         } else {
             tcg_gen_mov_tl(cpu_cc_srcT, cpu_T0);
             tcg_gen_sub_tl(cpu_T0, cpu_T0, cpu_T1);
+            afl_gen_compcov(s1->pc, s1->T0, s1->T1, ot, d == OR_EAX);
             gen_op_st_rm_T0_A0(s1, ot, d);
         }
         gen_op_update2_cc();
@@ -4427,6 +4431,9 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
     s->rip_offset = 0; /* for relative ip address */
     s->vex_l = 0;
     s->vex_v = 0;
+
+    AFL_QEMU_TARGET_I386_SNIPPET
+
  next_byte:
     /* x86 has an upper limit of 15 bytes for an instruction. Since we
      * do not want to decode and generate IR for an illegal
@@ -4979,6 +4986,9 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 tcg_gen_ext16u_tl(cpu_T0, cpu_T0);
             }
             next_eip = s->pc - s->cs_base;
+            if (__afl_cmp_map && next_eip >= afl_start_code &&
+                next_eip < afl_end_code)
+              gen_helper_afl_cmplog_rtn(cpu_env);
             tcg_gen_movi_tl(cpu_T1, next_eip);
             gen_push_v(s, cpu_T1);
             gen_op_jmp_v(cpu_T0);
@@ -6470,6 +6480,9 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 tval = (int16_t)insn_get(env, s, MO_16);
             }
             next_eip = s->pc - s->cs_base;
+            if (__afl_cmp_map && next_eip >= afl_start_code &&
+                next_eip < afl_end_code)
+              gen_helper_afl_cmplog_rtn(cpu_env);
             tval += next_eip;
             if (dflag == MO_16) {
                 tval &= 0xffff;
@@ -8529,6 +8542,13 @@ generate_debug:
                     goto done_generating;
                 }
         }
+
+        // XXX: might be in the wrong place
+        if (pc_ptr == afl_entry_point) {
+          afl_setup();
+          gen_helper_afl_entry_routine(cpu_env);
+        }
+
         if (num_insns == max_insns && (tb->cflags & CF_LAST_IO)) {
             gen_io_start();
         }

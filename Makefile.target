@@ -15,6 +15,11 @@ QEMU_CFLAGS += -iquote .. -iquote $(SRC_PATH)/target/$(TARGET_BASE_ARCH) -DNEED_
 
 QEMU_CFLAGS+=-iquote $(SRC_PATH)/include
 
+ifdef AFLPP_DIR
+QEMU_CFLAGS+=-I$(AFLPP_DIR)
+endif # AFLPP_PATH
+
+
 ifdef CONFIG_USER_ONLY
 # user emulator name
 QEMU_PROG=panda-$(TARGET_NAME)

@@ -26,6 +26,17 @@ DEF_HELPER_FLAGS_1(ctpop_i64, TCG_CALL_NO_RWG_SE, i64, i64)
 
 DEF_HELPER_FLAGS_1(exit_atomic, TCG_CALL_NO_WG, noreturn, env)
 
+DEF_HELPER_FLAGS_1(afl_entry_routine, TCG_CALL_NO_RWG, void, env)
+DEF_HELPER_FLAGS_1(afl_maybe_log, TCG_CALL_NO_RWG, void, tl)
+DEF_HELPER_FLAGS_3(afl_compcov_16, TCG_CALL_NO_RWG, void, tl, tl, tl)
+DEF_HELPER_FLAGS_3(afl_compcov_32, TCG_CALL_NO_RWG, void, tl, tl, tl)
+DEF_HELPER_FLAGS_3(afl_compcov_64, TCG_CALL_NO_RWG, void, tl, tl, tl)
+DEF_HELPER_FLAGS_3(afl_cmplog_8, TCG_CALL_NO_RWG, void, tl, tl, tl)
+DEF_HELPER_FLAGS_3(afl_cmplog_16, TCG_CALL_NO_RWG, void, tl, tl, tl)
+DEF_HELPER_FLAGS_3(afl_cmplog_32, TCG_CALL_NO_RWG, void, tl, tl, tl)
+DEF_HELPER_FLAGS_3(afl_cmplog_64, TCG_CALL_NO_RWG, void, tl, tl, tl)
+DEF_HELPER_FLAGS_1(afl_cmplog_rtn, TCG_CALL_NO_RWG, void, env)
+
 #ifdef CONFIG_SOFTMMU
 
 DEF_HELPER_FLAGS_5(atomic_cmpxchgb, TCG_CALL_NO_WG,

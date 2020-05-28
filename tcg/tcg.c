@@ -726,6 +726,8 @@ int tcg_check_temp_count(void)
 }
 #endif
 
+#include "panda/aflpp/afl-qemu-tcg-inl.h"
+
 /* Note: we convert the 64 bit args to 32 bit and do some alignment
    and endian swap. Maybe it would be better to do the alignment
    and endian swap in tcg_reg_alloc_call(). */
