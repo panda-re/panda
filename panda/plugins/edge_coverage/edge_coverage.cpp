@@ -82,7 +82,8 @@ void before_block(CPUState *env, TranslationBlock *tb) {
         // we are only paying attention to edges within some program
         // and are waiting to see main
         if (tb->pc == start_main) {
-            saw_main = true;
+	  printf ("saw main \n");
+	  saw_main = true;
         }
         if (!saw_main)
             return;
