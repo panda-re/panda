@@ -1,0 +1,35 @@
+name: Parallel QEMU Checks
+# Clone latest pre-built docker container
+# Checkout the relevant branch
+# Run make in the build directory - Note we don't build from scratch
+
+# Because this runs on push actions, we get $GITHUB_SHA and it's set correctly (unlike on PR)
+
+on:
+  push:
+    branches-ignore: # A full clean build will run on pushes to master
+      master
+
+jobs:
+  build_and_check:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-softmmu, i386-softmmu, arm-softmmu, aarch64-softmmu, ppc-softmmu, mips-softmmu]
+
+    steps:
+    - name: Docker login
+      run: docker login -u pandare -p ${{secrets.pandare_dockerhub}}
+
+    - name: Fetch pre-built bionic docker container
+      run: docker pull pandare/panda:latest
+
+    - name: Download docker/update.sh script from this commit
+      run: wget "https://raw.githubusercontent.com/panda-re/panda/${GITHUB_SHA}/panda/docker/update.sh"
+
+    - name: Start a persistent container, run update.sh to fetch this commit and rebuild PANDA and run tests
+      run: docker run --name panda_test -v $(pwd)/update.sh:/update.sh --rm -td pandare/panda bash /update.sh $GITHUB_SHA
+
+    - name: Inside container, run QEMU checks
+      run: docker exec -t -e PANDA_TEST=yes panda_test bash -c "cd /panda/build; ../build.sh ${{ matrix.target }}"
