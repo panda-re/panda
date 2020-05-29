@@ -510,7 +510,7 @@ bool init_plugin(void *self) {
     panda_disable_tb_chaining();
 
     // hook taint2 callbacks
-#ifdef TAINT2_HYPERCALLS
+#if 0
     panda_cb pcb;
     pcb.guest_hypercall = guest_hypercall_callback;
     panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
