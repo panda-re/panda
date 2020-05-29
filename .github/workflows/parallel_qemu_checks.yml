@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [x86_64-softmmu, i386-softmmu, arm-softmmu, aarch64-softmmu, ppc-softmmu, mips-softmmu]
+        target: [x86_64-softmmu, i386-softmmu]
 
     steps:
     - name: Docker login
