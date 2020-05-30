@@ -598,9 +598,9 @@ void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t *buf, int si
 }
 
 void rr_record_hd_transfer(RR_callsite_id call_site,
-				  Hd_transfer_type transfer_type,
-				  uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) {
-	rr_record_skipped_call((RR_skipped_call_args) {
+                  Hd_transfer_type transfer_type,
+                  uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) {
+    rr_record_skipped_call((RR_skipped_call_args) {
         .kind = RR_CALL_HD_TRANSFER,
         .variant.hd_transfer_args = {
             .type = transfer_type,
@@ -1110,7 +1110,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                             args.variant.mem_region_change_args.size);
                     MemoryRegion *parent = rr_memory_region_find_parent(get_system_memory(),
                             mrs.mr);
-		    if (parent)
+            if (parent)
                         memory_region_del_subregion(parent, mrs.mr);
                 }
             } break;
@@ -1310,6 +1310,61 @@ uint64_t replay_get_total_num_instructions(void)
 /******************************************************************************************/
 // mz from vl.c
 
+#if 0
+typedef enum {
+    RR_COMP_ANY = 0,
+    RR_COMP_NONE,
+    RR_COMP_ZLIB,
+    RR_COMP_LAST
+} rr_compression_t;
+
+const char *rr_comp_ext[] = {
+    ".0123456789", /* expected to be the longest extension */
+    "",
+    ".gz",
+    ".987654321"
+};
+
+static inline char *rr_get_file_r(const char *rr_path, const char *rr_name,
+                                  const char *rr_suff, rr_compression_t z)
+{
+    rr_assert(z >= RR_COMP_ANY && z < RR_COMP_LAST);
+
+    /* construct filename using the longest extension */
+    char *fname = g_strdup_printf("%s/%s%s%s", rr_path, rr_name, rr_suff,
+                                  rr_comp_ext[RR_COMP_ANY])
+    char *fext = g_strrstr(fname, ".");
+
+    int i;
+    bool found = false;
+    const int zfirst = (z > RR_COMP_ANY) ? z : RR_COMP_NONE;
+    const int zlast = (z < RR_COMP_LAST) ? z + 1 : RR_COMP_LAST;
+    for (i = zfirst; i < zlast; i++) {
+        g_strlcpy(fext, rr_comp_ext[i], sizeof(rr_comp_ext[RR_COMP_ANY]));
+        if (g_file_test(fname, G_FILE_TEST_IS_REGULAR)) {
+            found = true;
+            break;
+        }
+    }
+    if (!found) goto end;
+
+    switch(i) {
+
+        case RR_COMP_ZLIB:
+
+        case RR_COMP_NONE:
+        default:
+    }
+
+end:
+    g_free(fname);
+    return NULL;
+}
+static inline void rr_get_file_w() {
+
+}
+#endif
+
 // rr_name is the current rec/replay name.
 // here we compute the snapshot name to use for rec/replay
 static inline void rr_get_snapshot_file_name(char* rr_name, char* rr_path,
@@ -1504,8 +1559,8 @@ void rr_do_end_record(void)
     g_free(rr_control.name);
     rr_control.name = NULL;
     if (rr_control.snapshot != NULL) {
-	g_free(rr_control.snapshot);
-	rr_control.snapshot = NULL;
+        g_free(rr_control.snapshot);
+        rr_control.snapshot = NULL;
     }
 
     // turn off logging
