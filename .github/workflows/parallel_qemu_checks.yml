@@ -13,10 +13,11 @@ on:
 jobs:
   build_and_check:
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       matrix:
-        target: [x86_64-softmmu, i386-softmmu]
+        #target: [x86_64-softmmu, i386-softmmu, arm-softmmu, aarch64-softmmu, ppc-softmmu, mips-softmmu]
+        target: [x86_64-softmmu, i386-softmmu, arm-softmmu]
 
     steps:
     - name: Docker login
@@ -33,3 +34,8 @@ jobs:
 
     - name: Inside container, run QEMU checks
       run: docker exec -t -e PANDA_TEST=yes panda_test bash -c "cd /panda/build; ../build.sh ${{ matrix.target }}"
+
+    - name: Cleanup container/images
+      run: |
+        docker rm -vf panda_test
+        docker system prune -af --volumes
