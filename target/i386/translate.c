@@ -8466,7 +8466,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
 //            replay_interrupt = true;
         }
 //        tb->tcg_op_buf_full = false;
-//        tb->was_split = false;
+        tb->was_split = false;
     }
 
     uint64_t rr_updated_instr_count = rr_get_guest_instr_count();
@@ -8592,7 +8592,7 @@ generate_debug:
 //                tb->replay_interrupt = true;
 //            if (tcg_op_buf_full())
 //                tb->tcg_op_buf_full = true;
-//            tb->was_split = true;
+            tb->was_split = true;
             gen_jmp_im(pc_ptr - dc->cs_base);
             gen_eob(dc);
             break;

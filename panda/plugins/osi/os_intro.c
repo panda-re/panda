@@ -127,58 +127,20 @@ bool init_plugin(void *self) {
     // No os supplied on command line? E.g. -os linux-32-ubuntu:4.4.0-130-generic
     assert (!(panda_os_familyno == OS_UNKNOWN));
 
-    // figure out what kind of os introspection is needed and grab it? 
-    if (panda_os_familyno == OS_LINUX) {
-        // sadly, all of this is to find kernelinfo.conf file
-        gchar *progname = realpath(qemu_file, NULL);
-        gchar *progdir = g_path_get_dirname(progname);
-        gchar *kconffile = NULL;
-        gchar *kconffile_canon = NULL;
-        uint8_t UNUSED(kconffile_try) = 1;
+    bool disable_os_autoload;
+    panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
+    disable_os_autoload = panda_parse_bool_opt(plugin_args, "disable-autoload", "When set, OSI won't automatically load osi_linux/wintrospection");
+    panda_free_args(plugin_args);
 
-        if (kconffile_canon == NULL) {  // from build dir
-            if (kconffile != NULL) g_free(kconffile);
-            kconffile = g_build_filename(progdir, "panda", "plugins", "osi_linux", "kernelinfo.conf", NULL);
-            LOG_INFO("Looking for kconffile attempt %u: %s", kconffile_try++, kconffile);
-            kconffile_canon = realpath(kconffile, NULL);
-        }
-        if (kconffile_canon == NULL) {  // from etc dir (installed location)
-            if (kconffile != NULL) g_free(kconffile);
-            kconffile = g_build_filename(CONFIG_QEMU_CONFDIR, "osi_linux", "kernelinfo.conf", NULL);
-            LOG_INFO("Looking for kconffile attempt %u: %s", kconffile_try++, kconffile);
-            kconffile_canon = realpath(kconffile, NULL);
-        }
-
-        g_free(progdir);
-        free(progname);
-        assert(kconffile_canon != NULL);
-
-        // convert stdlib buffer to glib buffer
-        g_free(kconffile);
-        kconffile = g_strdup(kconffile_canon);
-        free(kconffile_canon);
-
-        // get kconfgroup
-        gchar *kconfgroup = g_strdup_printf("%s:%d", panda_os_variant, panda_os_bits);
-
-        // add arguments to panda
-        gchar *plugin_arg;
-        plugin_arg = g_strdup_printf("kconf_file=%s", kconffile);
-        panda_add_arg("osi_linux", plugin_arg);
-        g_free(plugin_arg);
-        plugin_arg = g_strdup_printf("kconf_group=%s", kconfgroup);
-        panda_add_arg("osi_linux", plugin_arg);
-        g_free(plugin_arg);
-
-        // print info and finish
-        LOG_INFO("OSI grabbing Linux introspection backend.");
-        LOG_INFO("Linux OSI, using group %s from %s.", kconfgroup, kconffile);
-        g_free(kconffile);
-        g_free(kconfgroup);
-
-        panda_require("osi_linux");
+    if (disable_os_autoload) {
+        return true;
     }
-    if (panda_os_familyno == OS_WINDOWS) {
+
+    // If not disabled_os_autoload, load OSI_linux or wintrospection (with no arguments) automatically
+    if (panda_os_familyno == OS_LINUX) {
+        LOG_INFO("OSI grabbing Linux introspection backend.");
+        panda_require("osi_linux");
+    }else if (panda_os_familyno == OS_WINDOWS) {
         LOG_INFO("OSI grabbing Windows introspection backend.");
         panda_require("wintrospection");
     }
@@ -193,5 +155,12 @@ void uninit_plugin(void *self) { }
 
 OsiModule* get_one_module(GArray *osimodules, unsigned int idx) {
     OsiModule *m = &g_array_index(osimodules, OsiModule, idx);
+    return m;
+}
+
+// Helper function to get a single element. Should only be used with library mode
+// when g_array_index can't be used directly.
+OsiProc* get_one_proc(GArray *osiprocs, unsigned int idx) {
+    OsiProc *m = &g_array_index(osiprocs, OsiProc, idx);
     return m;
 }

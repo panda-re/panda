@@ -25,6 +25,8 @@ OsiProc *get_current_process(CPUState *cpu);
 
 OsiModule* get_one_module(GArray *osimodules, unsigned int idx);
 
+OsiProc* get_one_proc(GArray *osiprocs, unsigned int idx);
+
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 // gets the currently running process handle

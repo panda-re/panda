@@ -51,6 +51,8 @@ class callback_mixins():
                 except Exception as e:
                     self.end_analysis()
                     print("\n" + "--"*30 + f"\n\nException in callback `{fun.__name__}`: {e}\n")
+                    import traceback
+                    traceback.print_exc()
                     self.exception = e # XXX: We can't raise here or exn won't fully be printed. Instead, we print it in check_crashed()
                     return # XXX: Some callbacks don't expect returns, but most do. If we don't return we might trigger a separate exn and lose ours (occasionally)
                     # If we return the wrong type, we lose the original exn (TODO)
@@ -197,3 +199,70 @@ class callback_mixins():
 
         if forever:
             del self.registered_callbacks[name]
+
+    ###########################
+    ### PPP-style callbacks ###
+    ###########################
+
+    def ppp(self, plugin_name, attr, name=None):
+        '''
+        Decorator for plugin-to-plugin interface. Note this isn't in decorators.py
+        becuase it uses the panda object.
+
+        Example usage to register my_run with syscalls2 as a 'on_sys_open_return'
+        @ppp("syscalls2", "on_sys_open_return")
+        def my_fun(cpu, pc, filename, flags, mode):
+            ...
+        '''
+
+        if plugin_name not in self.plugins: # Could automatically load it?
+            print(f"PPP automatically loaded plugin {plugin_name}")
+
+        if not hasattr(self, "ppp_registered_cbs"):
+            self.ppp_registered_cbs = {}
+            # We use this to traak fn_names->fn_pointers so we can later disable by name
+
+            # XXX: if  we don't save the cffi generated callbacks somewhere in Python,
+            # they may get garbage collected even though the c-code could still has a
+            # reference to them  which will lead to a crash. If we stop using this to track
+            # function names, we need to keep it or something similar to ensure the reference
+            # count remains >0 in python
+
+        def decorator(func):
+            local_name = name  # We need a new varaible otherwise we have scoping issues, maybe
+            if local_name is None:
+                local_name = func.__name__
+            f = ffi.callback(attr+"_t")(func)  # Wrap the python fn in a c-callback.
+            assert (local_name not in self.ppp_registered_cbs), f"Two callbacks with conflicting name: {local_name}"
+
+            # Ensure function isn't garbage collected, and keep the name->(fn, plugin_name, attr) map for disabling
+            self.ppp_registered_cbs[local_name] = (f, plugin_name, attr)
+
+            self.plugins[plugin_name].__getattr__("ppp_add_cb_"+attr)(f) # All PPP cbs start with this string
+            return f
+        return decorator
+
+    def disable_ppp(self, name):
+        '''
+        Disable a ppp-style callback by name.
+        Unlike regular panda callbacks which can be enabled/disabled/deleted, PPP callbacks are only enabled/deleted (which we call disabled)
+
+        Example usage to register my_run with syscalls2 as a 'on_sys_open_return' and then disable:
+        @ppp("syscalls2", "on_sys_open_return")
+        def my_fun(cpu, pc, filename, flags, mode):
+            ...
+
+        panda.disable_ppp("my_fun")
+
+        -- OR --
+
+        @ppp("syscalls2", "on_sys_open_return", name="custom")
+        def my_fun(cpu, pc, filename, flags, mode):
+            ...
+
+        panda.disable_ppp("custom")
+        '''
+
+        (f, plugin_name, attr) = self.ppp_registered_cbs[name]
+        self.plugins[plugin_name].__getattr__("ppp_remove_cb_"+attr)(f) # All PPP cbs start with this string
+        del self.ppp_registered_cbs[name] # It's now safe to be garbage collected

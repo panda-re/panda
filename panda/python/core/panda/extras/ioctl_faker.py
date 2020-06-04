@@ -1,5 +1,4 @@
 import sys
-import ctypes
 import logging
 
 from panda import ffi
@@ -7,78 +6,40 @@ from panda import ffi
 # TODO: only for logger, should probably move it to a separate file
 from panda.extras.file_hook import FileHook
 
-
 # TODO: Ability to fake buffers for specific commands
 
-# Default config (x86, x86-64, ARM, AArch 64)
-config = sys.modules[__name__]
-config.IOC_TYPE_BITS = 8
-config.IOC_CMD_BITS  = 8
-config.IOC_SIZE_BITS = 14
-config.IOC_DIR_BITS  = 2
-config.SUCCESS_RET   = 0
-config.STR_ENCODING  = "utf-8"
-
-class IoctlCmdBits(ctypes.LittleEndianStructure):
-
-    '''
-    Pythonic bit-packing without 3rd party libs
-    '''
-
-    _fields_ = [
-        ("type_num", ctypes.c_uint8, config.IOC_TYPE_BITS),
-        ("cmd_num", ctypes.c_uint8, config.IOC_CMD_BITS),
-        ("arg_size", ctypes.c_uint16, config.IOC_SIZE_BITS),
-        ("direction", ctypes.c_uint8, config.IOC_DIR_BITS),
-    ]
-
-class IoctlCmdUnion(ctypes.Union):
-
-    '''
-    Python alternative to bit-packed struct
-    '''
-
-    _fields_ = [
-        ("bits", IoctlCmdBits),
-        ("asUnsigned32", ctypes.c_uint32),
-    ]
-
-class IoctlCmd(IoctlCmdUnion):
-
-    '''
-    Human-readable ioctl command
-    '''
-
-    def __str__(self):
-
-        if self.bits.direction == 0x0:
-            direction = "IO"
-        elif self.bits.direction == 0x1:
-            direction = "IOW"
-        elif self.bits.direction == 0x2:
-            direction = "IOR"
-        elif self.bits.direction == 0x3:
-            direction = "IOWR"
-        else:
-            raise RuntimeError("Invalid ioctl direction decode!")
-
-        return "dir={},arg_size={:x},cmd={:x},type={:x}".format(
-            direction,
-            self.bits.arg_size,
-            self.bits.cmd_num,
-            self.bits.type_num
-        )
-
-    def __eq__(self, other):
-
-        return (
-            self.__class__ == other.__class__ and
-            self.asUnsigned32 == other.asUnsigned32
-        )
-
-    def __hash__(self):
-
-        return hash(self.asUnsigned32)
+ioctl_initialized = False
+def do_ioctl_init(arch):
+	# Default config (x86, x86-64, ARM, AArch 64) with options for PPC
+	global ioctl_initialized
+	if ioctl_initialized:
+		return
+	ioctl_initialized = True
+	TYPE_BITS = 8
+	CMD_BITS = 8
+	SIZE_BITS = 14 if arch != "ppc" else 13
+	DIR_BITS = 2 if arch != "ppc" else 3
+	
+	ffi.cdef("""
+	struct IoctlCmdBits {
+		uint8_t type_num:%d;
+		uint8_t cmd_num:%d;
+		uint16_t arg_size:%d;
+		uint8_t direction:%d;
+	};
+	
+	union IoctlCmdUnion {
+		struct IoctlCmdBits bits;
+		uint32_t asUnsigned32;
+	};
+	
+	enum ioctl_direction {
+		IO = 0,
+		IOW = 1,
+		IOR = 2,
+		IOWR = 3
+	};
+	""" % (TYPE_BITS, CMD_BITS, SIZE_BITS, DIR_BITS) ,packed=True)
 
 class Ioctl():
 
@@ -87,8 +48,8 @@ class Ioctl():
     '''
 
     def __init__(self, panda, cpu, fd, cmd, guest_ptr, use_osi_linux = False):
-
-        self.cmd = IoctlCmd()
+        do_ioctl_init(panda.arch)
+        self.cmd = ffi.new("union IoctlCmdUnion*")
         self.cmd.asUnsigned32 = cmd
         self.original_ret_code = None
         self.osi = use_osi_linux
@@ -108,11 +69,11 @@ class Ioctl():
 
         # Optional OSI usage: process and file name
         if self.osi:
-            proc = panda.get_current_process(cpu)
+            proc = panda.plugins['osi'].get_current_process(cpu)
             proc_name_ptr = proc.name
-            file_name_ptr = panda.osi_linux_fd_to_filename(cpu, proc, fd)
-            self.proc_name = ffi.string(proc_name_ptr).decode(config.STR_ENCODING)
-            self.file_name = ffi.string(file_name_ptr).decode(config.STR_ENCODING)
+            file_name_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, fd)
+            self.proc_name = ffi.string(proc_name_ptr).decode()
+            self.file_name = ffi.string(file_name_ptr).decode()
         else:
             self.proc_name = None
             self.file_name = None
@@ -128,26 +89,20 @@ class Ioctl():
         else:
             self_str = ""
 
+        bits = self.cmd.bits
+        direction = ffi.string(ffi.cast("enum ioctl_direction", bits.direction))
+        ioctl_desc = f"dir={direction},arg_size={bits.arg_size:x},cmd={bits.cmd_num:x},type={bits.type_num:x}"
         if (self.guest_ptr == None):
-            self_str += "ioctl({}) -> {}".format(
-                str(self.cmd),
-                self.original_ret_code
-            )
+            self_str += f"ioctl({ioctl_desc}) -> {self.original_ret_code}"
         else:
-            self_str += "ioctl({},ptr={:08x},buf={}) -> {}".format(
-                str(self.cmd),
-                self.guest_ptr,
-                self.guest_buf,
-                self.original_ret_code
-            )
-
+            self_str += f"ioctl({ioctl_desc},ptr={self.guest_ptr:08x},buf={self.guest_buf}) -> {self.original_ret_code}"
         return self_str
 
     def __eq__(self, other):
 
         return (
             self.__class__ == other.__class__ and
-            self.cmd == other.cmd and
+            self.cmd.asUnsigned32 == other.cmd.asUnsigned32 and
             self.has_buf == other.has_buf and
             self.guest_ptr == other.guest_ptr and
             self.guest_buf == other.guest_buf and
@@ -157,7 +112,7 @@ class Ioctl():
 
     def __hash__(self):
 
-        return hash((self.cmd, self.has_buf, self.guest_ptr, self.guest_buf, self.proc_name, self.file_name))
+        return hash((self.cmd.asUnsigned32, self.has_buf, self.guest_ptr, self.guest_buf, self.proc_name, self.file_name))
 
 class IoctlFaker():
 
@@ -172,6 +127,10 @@ class IoctlFaker():
         self._panda = panda
         self._panda.load_plugin("syscalls2")
 
+        if self.osi:
+            self._panda.load_plugin("osi")
+            self._panda.load_plugin("osi_linux")
+
         self._logger = logging.getLogger('panda.hooking')
         self._logger.setLevel(logging.DEBUG)
 
@@ -179,10 +138,11 @@ class IoctlFaker():
         self._fail_returns = set()
         self._success_returns = set()
 
+		
         # PPC (other arches use the default config)
         if self._panda.arch == "ppc":
-            config.IOC_SIZE_BITS = 13
-            config.IOC_DIR_BITS  = 3
+            SIZE_BITS = 13
+            DIR_BITS  = 3
 
         # Force success returns for missing drivers/peripherals
         @self._panda.ppp("syscalls2", "on_sys_ioctl_return")
@@ -191,7 +151,7 @@ class IoctlFaker():
             ioctl = Ioctl(self._panda, cpu, fd, cmd, arg, self.osi)
             ioctl.set_ret_code(self._panda.from_unsigned_guest(cpu.env_ptr.regs[0]))
 
-            if (ioctl.original_ret_code != config.SUCCESS_RET):
+            if (ioctl.original_ret_code != 0):
                 self._fail_returns.add(ioctl)
                 cpu.env_ptr.regs[0] = 0
                 if ioctl.has_buf:

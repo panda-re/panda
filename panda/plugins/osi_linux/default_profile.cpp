@@ -1,5 +1,19 @@
 #include "osi_linux.h"
 #include "default_profile.h"
+#ifdef TARGET_ARM
+/**
+ * @brief Returns the current kernel stack pointer for ARM guest
+ */
+target_ptr_t get_ksp (CPUState* cpu) {
+    if ((((CPUARMState*)cpu->env_ptr)->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC) {
+        return ((CPUARMState*)cpu->env_ptr)->regs[13];
+    }else{
+        // Read banked R13 for SVC mode to get the kernel SP (1=>SVC bank from target/arm/internals.h)
+        return ((CPUARMState*)cpu->env_ptr)->banked_r13[1];
+    }
+}
+#endif
+
 
 /**
  * @brief Retrieves the task_struct address using per cpu information.
@@ -7,8 +21,19 @@
 target_ptr_t default_get_current_task_struct(CPUState *cpu)
 {
     struct_get_ret_t err;
+    target_ptr_t current_task_addr;
     target_ptr_t ts;
-    err = struct_get(cpu, &ts, ki.task.current_task_addr, ki.task.per_cpu_offset_0_addr);
+#ifdef TARGET_ARM
+    target_ptr_t kernel_sp = get_ksp(cpu);
+
+    // XXX: This should use THREADINFO_MASK but that's hardcoded and wrong for my test system
+    target_ptr_t task_thread_info = kernel_sp & ~(0x2000 -1);
+
+    current_task_addr=task_thread_info+0xC;
+#else
+    current_task_addr = ki.task.current_task_addr;
+#endif
+    err = struct_get(cpu, &ts, current_task_addr, ki.task.per_cpu_offset_0_addr);
     assert(err == struct_get_ret_t::SUCCESS && "failed to get current task struct");
     return ts;
 }

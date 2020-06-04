@@ -403,12 +403,8 @@ struct TranslationBlock {
     struct TranslationBlock* llvm_tb_next[2];
 #endif
 
-    // to support panda callbacks on interrupts
-//    uint8_t replay_interrupt;
-//    uint8_t tcg_op_buf_full;
-
     // indicates if this block was split up abnormally
-//    uint8_t was_split;
+    uint8_t was_split;
 
 };
 

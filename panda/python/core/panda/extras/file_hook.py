@@ -1,4 +1,5 @@
 import logging
+from panda.ffi_importer import ffi
 from os import path
 
 # If coloredlogs is installed, use it
@@ -47,7 +48,6 @@ class FileHook:
         self.logger = logging.getLogger('panda.hooking')
         self.logger.setLevel(logging.DEBUG)
 
-        self.eagain = {} # cb_name: num_retries
         self.pending_virt_read = None
 
         panda.load_plugin("syscalls2")
@@ -126,14 +126,23 @@ class FileHook:
 
         self._renamed_files[old_name] = new_name
 
+    def _get_fname(self, cpu, fd):
+        fname_s = None
+        proc = self._panda.plugins['osi'].get_current_process(cpu)
+        if proc != ffi.NULL:
+            fname = self._panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, fd)
+            if fname != ffi.NULL:
+                fname_s = ffi.string(fname).decode('utf8', 'ignore')
+        return fname_s
+
     def _gen_cb(self, name, fname_ptr_pos):
         '''
         Register syscalls2 PPP callback on enter and return for the given name
         which has an argument of char* filename at fname_ptr_pos in the arguments list
         '''
-        self._panda.ppp("syscalls2", f"on_sys_{name}_enter")( \
+        self._panda.ppp("syscalls2", f"on_sys_{name}_enter", name = f"file_hook_enter_{name}")( \
                     lambda *args: self._enter_cb(name, fname_ptr_pos, args=args))
-        self._panda.ppp("syscalls2", f"on_sys_{name}_return")( \
+        self._panda.ppp("syscalls2", f"on_sys_{name}_return", name = f"file_hook_return_{name}")( \
                     lambda *args: self._return_cb(name, fname_ptr_pos, args=args))
 
     def _enter_cb(self, syscall_name, fname_ptr_pos=0, args=None, fname_ptr=None):
@@ -154,12 +163,17 @@ class FileHook:
         try:
             fname = self._panda.read_str(cpu, fname_ptr)
         except:
-            self.logger.debug(f"missed filename at 0x{fname_ptr:x} in call to {syscall_name}. Waiting for it")
-            self.pending_virt_read = cpu.env_ptr.regs[0]
-            self.pending_syscall = syscall_name
-            self._panda.enable_callback('before_virt_read')
-            #self._panda_enable_memcb()
-            return
+            fname = self._get_fname(cpu, args[2+fname_ptr_pos])
+
+            if fname:
+                self.logger.info(f"OSI found fname after simple logic missed it in call to {syscall_name}")
+            else:
+                self.logger.debug(f"missed filename at 0x{fname_ptr:x} in call to {syscall_name} - trying to find")
+                self.pending_virt_read = cpu.env_ptr.regs[0]
+                self.pending_syscall = syscall_name
+                self._panda.enable_callback('before_virt_read')
+                #self._panda_enable_memcb()
+                return
 
         fname = path.normpath(fname) # Normalize it
         self.logger.debug(f"Entering {syscall_name} with file={fname}")
@@ -200,24 +214,12 @@ class FileHook:
         if self.pending_virt_read:
             (cpu, pc) = args[0:2]
             fname_ptr = args[2+fname_ptr_pos] # offset to after (cpu, pc) in callback args
-            self.logger.warning(f"missed filename in call to {syscall_name} with fname at 0x{fname_ptr:x}. Ignore it")
+
+            self.logger.warning(f"missed filename in call to {syscall_name} with fname at 0x{fname_ptr:x}. Ignoring it")
 
             self._panda.disable_callback('before_virt_read') # No point in continuing this
             self.pending_virt_read = None # Virtual address that we're waiting to read as soon as possible
             return
-
-        # Do we need to make the guest reissue the syscall? # XXX there are side effects here... like open FDs
-        if syscall_name in self.eagain:
-            if self.eagain[syscall_name] >= 3:
-                self.logger.warning("GIVING UP")
-                return # Just give up
-            elif self.eagain[syscall_name] > 0: # Need to retry
-                self.logger.warning("IGNORING")
-                assert(args)
-                (cpu, pc) = args[0:2]
-                #cpu.env_ptr.regs[0] = self._panda.to_unsigned_guest(-11) # 11 for old debian?
-                #cpu.env_ptr.regs[0] = self._panda.to_unsigned_guest(-35) #  35 for modern linux. UGH
-                return
 
         if syscall_name in self._changed_strs:
             assert(args)

@@ -295,6 +295,7 @@ class FastShad : public Shad
 
     TaintData query_full(uint64_t addr) override
     {
+        tassert(addr < size);
         return labels[addr];
     }
 

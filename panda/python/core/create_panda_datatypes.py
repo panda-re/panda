@@ -63,6 +63,7 @@ def trim_pypanda(contents):
 
 def copy_ppp_header(filename):
     # For the PPP-like headers we look for typedefs and then make the void ppp_add_cb(name)(name_t); functions
+    # and the bool ppp_remove_cb(name)(name_t)
     # This probably won't support everything
     pypanda_h = os.path.join(INCLUDE_DIR_PYP, os.path.split(filename)[-1])
     print("Creating pypanda PPP header [%s] for [%s]" % (pypanda_h, filename))
@@ -77,15 +78,18 @@ def copy_ppp_header(filename):
         if m:
             name = m.groups(1)[0]
             new_contents.append(f"void ppp_add_cb_{name}({name}_t);")
+            new_contents.append(f"bool ppp_remove_cb_{name}({name}_t);")
             # void ppp_add_cb_{cb_name}(void (*)({cb_args}))
     with open(pypanda_h, "w") as outfile:
         outfile.write("\n".join(new_contents))
     return pypanda_h
 
-def create_pypanda_header(filename):
+def create_pypanda_header(filename, no_record=False):
     '''
     Given a file name, copy it into pypanda's includes directory
     along with all nested includes it contians
+    if no_record is set, we don't save it into the pypanda_headers list
+    so you'll have to manually include it
     '''
     contents = open(filename).read()
     subcontents = trim_pypanda(contents)
@@ -108,7 +112,8 @@ def create_pypanda_header(filename):
     print("Creating pypanda header [%s] for [%s]" % (pypanda_h, filename))
     with open(pypanda_h, "w") as pyph:
         pyph.write(new_contents)
-    pypanda_headers.append(pypanda_h)
+    if not no_record:
+        pypanda_headers.append(pypanda_h)
 
 def read_but_exclude_garbage(filename):
     nongarbage = []
@@ -182,6 +187,8 @@ def main():
     for header in os.listdir(syscalls_gen_dir):
         if header.startswith("syscalls_ext_typedefs_"):
             copy_ppp_header("%s/%s" % (syscalls_gen_dir, header))
+    create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/syscalls2", "syscalls2_info.h"), no_record=True) # Get syscall_info_t, syscall_meta_t, syscall_argtype_t
+    copy_ppp_header("%s/%s" % (syscalls_gen_dir, "syscalls_ext_typedefs.h")) # Get a few arch-agnostic typedefs for PPP headers
 
     #   other PPP headers: callstack_instr. TODO: more
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/callstack_instr", "callstack_instr.h"))
@@ -196,6 +203,7 @@ from collections import namedtuple
 from ..ffi_importer import ffi
 
 def define_clean_header(ffi, fname):
+    #print("Pulling cdefs from ", fname)
     # CFFI can't handle externs, but sometimes we have to extern C (as opposed to 
     r = open(fname).read()
     for line in r.split("\\n"):
@@ -243,12 +251,35 @@ elif arch == "mipsel" and int(bits) == 32:
 else:
 	print("PANDA_DATATYPES: Architecture not supported")
 
+# Define some common panda datatypes
+#define_clean_header(ffi, "{inc}/panda_qemu_support.h")
+define_clean_header(ffi, "{inc}/panda_datatypes.h")
+
+# Now syscalls2 common:
+define_clean_header(ffi, "{inc}/syscalls2_info.h")
+
+# A few more CFFI types now that we have common datatypes
+# Manually define syscall_ctx_t - taken from syscalls2/generated/syscalls_ext_typedefs.h
+# It uses a #DEFINES as part of the array size so CFFI can't hanle that :
+ffi.cdef(''' typedef struct syscall_ctx {{
+        int no;               /**< number */
+        target_ptr_t asid;    /**< calling process asid */
+        target_ptr_t retaddr; /**< return address */
+        uint8_t args[{GLOBAL_MAX_SYSCALL_ARGS}]
+             [{GLOBAL_MAX_SYSCALL_ARG_SIZE}]; /**< arguments */
+    }} syscall_ctx_t;
+''')
+
+define_clean_header(ffi, "{inc}/syscalls_ext_typedefs.h")
+
 define_clean_header(ffi, "{inc}/callstack_instr.h")
 # END PPP headers
 
-#define_clean_header(ffi, "{inc}/panda_qemu_support.h")
-define_clean_header(ffi, "{inc}/panda_datatypes.h")
-""".format(inc=INCLUDE_DIR_PYP))
+define_clean_header(ffi, "{inc}/breakpoints.h")
+""".format(inc=INCLUDE_DIR_PYP,
+        GLOBAL_MAX_SYSCALL_ARG_SIZE=64, # It's sizeof(uint64_t) so that's always 64
+        GLOBAL_MAX_SYSCALL_ARGS=17 # Constant from syscalls2/generated/syscalls_ext_typedefs.h
+        ))
 
         for pypanda_header in pypanda_headers:
             pdty.write('define_clean_header(ffi, "%s")\n' % pypanda_header)
@@ -385,6 +416,7 @@ pcb.init : pandacbtype("init", -1),
         #      here without redefining things. Necessary for something? cb-defs?
         pdth.write("#define MAX_PANDA_PLUGINS 16\n")
         pdth.write("#define MAX_PANDA_PLUGIN_ARGS 32\n")
+
 
         for filename in ["callbacks/cb-defs.h",
                         f"{PLUGINS_DIR}/osi_linux/utils/kernelinfo/kernelinfo.h",

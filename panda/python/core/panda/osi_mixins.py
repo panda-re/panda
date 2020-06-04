@@ -32,3 +32,18 @@ class osi_mixins():
         maps = self.plugins['osi'].get_mappings(cpu, current)
         map_len = self.garray_len(maps)
         return GArrayIterator(self.plugins['osi'].get_one_module, maps, map_len)
+
+    def get_processes(self, cpu):
+        processes = self.plugins['osi'].get_processes(cpu)
+        processes_len = self.garray_len(processes)
+        return GArrayIterator(self.plugins['osi'].get_one_proc, processes, processes_len)
+
+    def get_processes_dict(self, cpu):
+        procs = {} #pid: {name: X, pid: Y, parent_pid: Z})
+
+        for proc in self.get_processes(cpu):
+            assert(proc != ffi.NULL)
+            assert(proc.pid not in procs)
+            procs[proc.pid] = {"name": ffi.string(proc.name).decode('utf8', 'ignore'), 'pid': proc.pid, 'parent_pid': proc.ppid}
+            assert(not (proc.pid != 0 and proc.pid == proc.ppid)) # No cycles allowed other than at 0
+        return procs

@@ -5,11 +5,16 @@ IDAPython Script to ingest a coverage PANDA plugin report.
 import csv
 import datetime
 
+import ida_bytes
+import ida_funcs
 import ida_kernwin
 import ida_loader
+import ida_nalt
 
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QAbstractItemView, QCheckBox, QDialog, \
+    QFileDialog, QHBoxLayout, QHeaderView, QPushButton, QTableWidget, \
+    QTableWidgetItem, QVBoxLayout
 
 FUNC_COLOR = 0x90EE90
 INST_COLOR = 0x55AAFF
@@ -103,21 +108,21 @@ class ProcessSelectDialog(QDialog):
         return None
         
 def color_blocks(fn, pc, size):
-    fn_start = fn.startEA
-    fn_name = GetFunctionName(fn_start)
+    fn_start = fn.start_ea
+    fn_name = ida_funcs.get_func_name(fn_start)
     if ("COVERED_" not in fn_name):
-        MakeName(fn_start, "COVERED_" + fn_name)
-    SetColor(pc, CIC_FUNC, FUNC_COLOR)
+        ida_name.set_name(fn_start, "COVERED_" + fn_name, ida_name.SN_CHECK)
+    fn.color = FUNC_COLOR
     # PANDA blocks may be shorter than IDA blocks
     # so use the size to color just what PANDA executed
     i = 0
     while ((pc + i) < (pc + size)):
-        SetColor(pc + i, CIC_ITEM, INST_COLOR)
+        ida_nalt.set_item_color(pc + i, INST_COLOR)
         i = i + 1
 
 def add_comments(info_for_pcs, selections):
-    for pc, info in info_for_pcs.iteritems():
-        comment = Comment(pc)
+    for pc, info in info_for_pcs.items():
+        comment = ida_bytes.get_cmt(pc, 0)
         if (not comment):
             comment = ""
         if (selections['add_tids'] and selections['add_seqs']):
@@ -130,7 +135,7 @@ def add_comments(info_for_pcs, selections):
             comment = label_portion
         else:
             comment = comment + ", " + label_portion
-        MakeComm(pc, comment)
+        ida_bytes.set_cmt(pc, comment, 0)
         
 def main():
     filename, _ = QFileDialog.getOpenFileName(None, "Open file", ".", "CSV Files(*.csv)")
