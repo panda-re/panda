@@ -48,16 +48,20 @@ void disable_hooking() {
 }
 
 void update_hook(hook_func_t hook, target_ulong value){
-	for (auto it = hooks.begin(); it != hooks.end(); ++it){
+    for (auto it = hooks.begin(); it != hooks.end(); ++it){
 		if (it->first == value) continue;
-		std::vector<hook_func_t> hook_pile = it->second;
-		for (auto it=hook_pile.begin(); it!=hook_pile.end(); ++it){
-			if (*it == hook){
-				hook_pile.erase(it);				
-				it--;
-			}
-		}
-	}
+        std::vector<hook_func_t> hook_pile = it->second;
+        auto i = hook_pile.begin();
+        while (i != hook_pile.end()){
+            if (hook == *i){
+                i = hook_pile.erase(i);
+            }else{
+                ++i;
+            }
+
+        }
+       it->second = hook_pile;
+    }
 	hooks[value].push_back(hook);
 }
 
@@ -67,7 +71,19 @@ void enable_hook(hook_func_t hook, target_ulong value){
 }
 
 void disable_hook(hook_func_t hook){
-	update_hook(hook,0);
+    for (auto it = hooks.begin(); it != hooks.end(); ++it){
+        std::vector<hook_func_t> hook_pile = it->second;
+        auto i = hook_pile.begin();
+        while (i != hook_pile.end()){
+            if (hook == *i){
+                i = hook_pile.erase(i);
+            }else{
+                ++i;
+            }
+
+        }
+       it->second = hook_pile;
+    }
 }
 
 
