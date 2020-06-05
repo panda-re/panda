@@ -296,7 +296,7 @@ static inline bool panda_in_kernel(CPUState *cpu) {
 #if defined(TARGET_I386)
     return ((env->hflags & HF_CPL_MASK) == 0);
 #elif defined(TARGET_ARM)
-    return ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC);
+    return ((env->uncached_cpsr & CPSR_M) > ARM_CPU_MODE_USR);
 #elif defined(TARGET_PPC)
     return msr_pr;
 #elif defined(TARGET_MIPS)

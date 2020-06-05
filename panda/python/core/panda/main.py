@@ -520,7 +520,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             err = self.libpanda.panda_virtual_memory_read_external(env, addr, buf_a, length_a)
 
         if err < 0:
-            raise ValueError("Memory access failed") # TODO: make a PANDA Exn class
+            raise ValueError(f"Memory access failed with err={err}") # TODO: make a PANDA Exn class
 
         r = ffi.unpack(buf, length)
         if fmt == 'bytearray':

@@ -11,20 +11,28 @@ class Hook(object):
         self.program_name = program_name
 
 class hooking_mixins():
-    def update_hook(self,hook,addr):
-        if addr != hook.target_addr:
-            hook.target_addr = addr
-            self.enable_hook(hook)
+    def update_hook(self,hook_name,addr):
+        if hook_name in self.named_hooks:
+            hook = self.named_hooks[hook_name]
+            if addr != hook.target_addr:
+                hook.target_addr = addr
+                self.enable_hook(hook)
 
-    def enable_hook(self,hook):
-        if not hook.is_enabled:
-            hook.is_enabled = True
-            self.plugins['hooks'].enable_hook(hook.hook_cb, hook.target_addr)
+    def enable_hook(self,hook_name):
+        if hook_name in self.named_hooks:
+            hook = self.named_hooks[hook_name]
+            if not hook.is_enabled:
+                hook.is_enabled = True
+                self.plugins['hooks'].enable_hook(hook.hook_cb, hook.target_addr)
 
-    def disable_hook(self,hook):
-        if hook.is_enabled:
-            hook.is_enabled = False
-            self.plugins['hooks'].disable_hook(hook.hook_cb)
+    def disable_hook(self,hook_name):
+        if hook_name in self.named_hooks:
+            hook = self.named_hooks[hook_name]
+            if hook.is_enabled:
+                hook.is_enabled = False
+                self.plugins['hooks'].disable_hook(hook.hook_cb)
+        else:
+            print(f"{hook_name} not in list of hooks")
 
     def update_hooks_new_procname(self, name):
         for h in self.hook_list:
@@ -52,7 +60,7 @@ class hooking_mixins():
                     else:
                         self.disable_hook(h)
 
-    def hook(self, addr, enabled=True, kernel=True, libraryname=None, procname=None):
+    def hook(self, addr, enabled=True, kernel=True, libraryname=None, procname=None, name=None):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
@@ -81,6 +89,10 @@ class hooking_mixins():
             else:
                 hook_to_add.hook_cb = hook_cb_passed
             self.hook_list.append(hook_to_add)
+            if name:
+                if not hasattr(self, "named_hooks"):
+                    self.named_hooks = {}
+                self.named_hooks[name] = hook_to_add
             if libraryname or procname:
                 self.disable_hook(hook_to_add)
 
