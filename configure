@@ -141,6 +141,20 @@ update_clangxxflags() {
     QEMU_CXXFLAGS="$QEMU_CXXFLAGSL"
 }
 
+update_clangldflags() {
+    local LDFLAGSL=""
+    for arg in $LDFLAGS; do
+        case $arg in
+            -fprofile-arcs|-ftest-coverage)
+                ;;
+            *)
+                LDFLAGSL=${LDFLAGSL:+$LDFLAGSL }$arg
+                ;;
+        esac
+    done
+    LDFLAGS="$LDFLAGSL"
+}
+
 compile_object() {
   local_cflags="$1"
   do_cc $QEMU_CFLAGS $local_cflags -c -o $TMPO $TMPC
@@ -171,15 +185,18 @@ compile_prog_clangxx() {
   local_ldflags="$2"
   local cxx_bak="$cxx"
   local qemu_cxxflags_bak="$QEMU_CXXFLAGS"
+  local ldflags_bak="$LDFLAGS"
   local ret=0
 
   update_clangxxflags
+  update_clangldflags
   cxx="${clangxx:-clang++}"
   do_cxx $QEMU_CXXFLAGS $local_cxxflags -o $TMPE $TMPCXX $LDFLAGS $local_ldflags
   ret=$?
 
   cxx="$cxx_bak"
   QEMU_CXXFLAGS="$qemu_cxxflags_bak"
+  LDFLAGS="$ldflags_bak"
   return $ret
 }
 
