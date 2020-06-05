@@ -2,7 +2,7 @@ import argparse
 import subprocess
 import yaml
 from os import walk, path
-from os.path import isfile
+from os.path import isfile, relpath
 
 parser = argparse.ArgumentParser(
     description='Pull symbols out of guest file system for all executables.')
@@ -40,7 +40,8 @@ for f in files:
                     if len(elements) == 3:
                         symbolmapping[elements[2].decode()] = HexInt(
                             int(elements[0], 16))  # why? standardizes output
-                foutname = f[1:]  # "./bin/bash" -> "/bin/bash"
+                foutname = relpath(f, args.fspath)
+                print(f"Processing file {foutname}")
                 elfsymbolmappings[foutname] = symbolmapping
 
 args.out.write(yaml.dump(elfsymbolmappings))
