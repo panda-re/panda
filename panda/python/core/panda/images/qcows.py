@@ -29,7 +29,13 @@ SUPPORTED_ARCHES = {
         # XXX: generic ARM guest is currently broken
         'arm':    Arch('arm-softmmu',    'arm',    'qemu-system-arm',    "linux-32-debian:3.2.0-4-arm-pae",   rb"root@debian-armel:.*# ",   "arm_wheezy.qcow",     "scsi0-cd2", "root",
             extra_files=['vmlinuz-3.2.0-4-versatile', 'initrd.img-3.2.0-4-versatile'],
-            extra_args='-display none -M versatilepb -append "root=/dev/sda1" -kernel {DOT_DIR}/vmlinuz-3.2.0-4-versatile -initrd {DOT_DIR}/initrd.img-3.2.0-4-versatile'.format(DOT_DIR=VM_DIR))
+            extra_args='-display none -M versatilepb -append "root=/dev/sda1" -kernel {DOT_DIR}/vmlinuz-3.2.0-4-versatile -initrd {DOT_DIR}/initrd.img-3.2.0-4-versatile'.format(DOT_DIR=VM_DIR)),
+        'mips':    Arch('mips-softmmu',    'mips',    'qemu-system-mips',    "linux-32-debian:3.2.0-4-4kc-malta",   None,   "debian_wheezy_mips_standard.qcow",     "ide1-cd0", "root",
+            extra_files=['vmlinux-3.2.0-4-4kc-malta',],
+            extra_args='-M malta -kernel {DOT_DIR}/vmlinux-3.2.0-4-4kc-malta -append "root=/dev/sda1" -nographic'.format(DOT_DIR=VM_DIR)),
+        'mipsel':  Arch('mipsel-softmmu',    'mipsel',     'qemu-system-mipsel',    "linux-32-debian:3.2.0-4-4kc-malta",   None,   "debian_wheezy_mipsel_standard.qcow2",     "ide1-cd0", "root",
+            extra_files=['vmlinux-3.2.0-4-4kc-malta.mipsel',],
+            extra_args='-M malta -kernel {DOT_DIR}/vmlinux-3.2.0-4-4kc-malta.mipsel -append "root=/dev/sda1" -nographic'.format(DOT_DIR=VM_DIR))
         }
 
 def get_qcow_info(name=None):

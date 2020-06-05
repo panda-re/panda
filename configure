@@ -633,7 +633,7 @@ case "$cpu" in
     cpu="aarch64"
     supported_cpu="yes"
   ;;
-  mips*)
+  mips|mipsel)
     cpu="mips"
     supported_cpu="yes"
   ;;

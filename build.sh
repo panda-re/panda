@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Default targets to build. Change with argument. small = i386-softmmu
-TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu"
+TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
 
 # If there are arguments, the first arg is target list or 'small'. subsequent args are passed to configure
 if [ $# -ge 1 ]; then

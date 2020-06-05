@@ -418,12 +418,17 @@ static void find_offset(Shad *greg, Shad *gspec, uint64_t offset,
 {
 #ifdef TARGET_PPC
     if (cpu_contains(gpr, offset)) {
+#elif defined TARGET_MIPS
+    if (cpu_contains(active_tc.gpr, offset)) {
 #else
     if (cpu_contains(regs, offset)) {
 #endif
         *dest = greg;
 #ifdef TARGET_PPC
         *addr = (offset - cpu_off(gpr)) * labels_per_reg / sizeof(((CPUArchState *)0)->gpr[0]);
+#elif defined TARGET_MIPS
+        // env->active_tc.gpr
+        *addr = (offset - cpu_off(active_tc.gpr)) * labels_per_reg / sizeof(((CPUArchState *)0)->active_tc.gpr[0]);
 #else
         *addr = (offset - cpu_off(regs)) * labels_per_reg / sizeof(((CPUArchState *)0)->regs[0]);
 #endif
