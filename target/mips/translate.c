@@ -4787,26 +4787,26 @@ static inline void gen_mfhc0_load64(TCGv arg, target_ulong off, int shift)
 
 static inline void gen_mfc0_load32 (TCGv arg, target_ulong off)
 { 
-#ifdef CONFIG_SOFTMMU
-    CPUState* cpustate = cpus.tqh_first;
-    CPUMIPSState* cpu = cpustate->env_ptr;
-    uint32_t* regref = (uint32_t*)cpu+off;
-    uint32_t reg;
-    RR_DO_RECORD_OR_REPLAY(
-        /*action=*/ reg = *regref,
-        /*record=*/rr_input_4(&reg),
-        /*replay=*/rr_input_4(&reg),
-        /*location=*/RR_CALLSITE_READ_4);
-    TCGv_i32 t0 = tcg_temp_new_internal_i32(reg);
-    tcg_gen_ld_i32(t0, cpu_env, off);
-    tcg_gen_ext_i32_tl(arg, t0);
-    tcg_temp_free_i32(t0);
-#else
+//#ifdef CONFIG_SOFTMMU
+//    CPUState* cpustate = cpus.tqh_first;
+//    CPUMIPSState* cpu = cpustate->env_ptr;
+//    uint32_t* regref = (uint32_t*)cpu+off;
+//    uint32_t reg;
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/ reg = *regref,
+//        /*record=*/rr_input_4(&reg),
+//        /*replay=*/rr_input_4(&reg),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    TCGv_i32 t0 = tcg_temp_new_internal_i32(reg);
+//    tcg_gen_ld_i32(t0, cpu_env, off);
+//    tcg_gen_ext_i32_tl(arg, t0);
+//    tcg_temp_free_i32(t0);
+//#else
     TCGv_i32 t0 = tcg_temp_new_i32();
     tcg_gen_ld_i32(t0, cpu_env, off);
     tcg_gen_ext_i32_tl(arg, t0);
     tcg_temp_free_i32(t0);
-#endif
+//#endif
     
 }
 
