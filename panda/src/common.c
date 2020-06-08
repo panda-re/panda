@@ -110,6 +110,9 @@ target_ulong panda_current_asid(CPUState *cpu) {
 #elif defined(TARGET_PPC)
   CPUArchState *env = (CPUArchState *)cpu->env_ptr;
   return env->sr[0];
+#elif defined(TARGET_MIPS)
+  CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+  return (env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask);
 #else
 #error "panda_current_asid() not implemented for target architecture."
   return 0;

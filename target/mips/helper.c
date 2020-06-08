@@ -24,6 +24,10 @@
 #include "exec/cpu_ldst.h"
 #include "exec/log.h"
 
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
+
 enum {
     TLBRET_XI = -6,
     TLBRET_RI = -5,
@@ -883,16 +887,25 @@ void mips_cpu_do_interrupt(CPUState *cs)
 
 bool mips_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
 {
+    MIPSCPU *cpu = MIPS_CPU(cs);
+    CPUMIPSState *env = &cpu->env;
+    #ifdef CONFIG_SOFTMMU
+    rr_pending_interrupts_at(
+            RR_CALLSITE_CPU_PENDING_INTERRUPTS_BEFORE,
+            (uint32_t*)&env->error_code);
+    #endif
     if (interrupt_request & CPU_INTERRUPT_HARD) {
-        MIPSCPU *cpu = MIPS_CPU(cs);
-        CPUMIPSState *env = &cpu->env;
-
         if (cpu_mips_hw_interrupts_enabled(env) &&
             cpu_mips_hw_interrupts_pending(env)) {
             /* Raise it */
             cs->exception_index = EXCP_EXT_INTERRUPT;
             env->error_code = 0;
             mips_cpu_do_interrupt(cs);
+            #ifdef CONFIG_SOFTMMU
+            rr_pending_interrupts_at(
+                RR_CALLSITE_CPU_PENDING_INTERRUPTS_AFTER,
+                (uint32_t*)&env->error_code);
+            #endif
             return true;
         }
     }

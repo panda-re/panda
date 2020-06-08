@@ -9,7 +9,7 @@ from google.protobuf.json_format import MessageToJson
 from os.path import dirname, join, isdir
 
 python_package = dirname(os.path.realpath(__file__)) # when installed site-packages/panda
-arch_dirs = ['i386-softmmu', 'x86_64-softmmu', 'ppc-softmmu', 'arm-softmmu']
+arch_dirs = ['i386-softmmu', 'x86_64-softmmu', 'ppc-softmmu', 'arm-softmmu', 'mips-softmmu']
 
 # First check if pypanda was installed as a python package with a data subdirectory
 if isdir(join(python_package, 'data')):

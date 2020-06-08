@@ -36,6 +36,14 @@
 #include "target/mips/trace.h"
 #include "trace-tcg.h"
 #include "exec/log.h"
+#include <string.h>
+
+#include "panda/callbacks/cb-support.h"
+
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+extern bool panda_update_pc;
+#endif
 
 #define MIPS_DEBUG_DISAS 0
 
@@ -4778,12 +4786,28 @@ static inline void gen_mfhc0_load64(TCGv arg, target_ulong off, int shift)
 }
 
 static inline void gen_mfc0_load32 (TCGv arg, target_ulong off)
-{
+{ 
+//#ifdef CONFIG_SOFTMMU
+//    CPUState* cpustate = cpus.tqh_first;
+//    CPUMIPSState* cpu = cpustate->env_ptr;
+//    uint32_t* regref = (uint32_t*)cpu+off;
+//    uint32_t reg;
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/ reg = *regref,
+//        /*record=*/rr_input_4(&reg),
+//        /*replay=*/rr_input_4(&reg),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    TCGv_i32 t0 = tcg_temp_new_internal_i32(reg);
+//    tcg_gen_ld_i32(t0, cpu_env, off);
+//    tcg_gen_ext_i32_tl(arg, t0);
+//    tcg_temp_free_i32(t0);
+//#else
     TCGv_i32 t0 = tcg_temp_new_i32();
-
     tcg_gen_ld_i32(t0, cpu_env, off);
     tcg_gen_ext_i32_tl(arg, t0);
     tcg_temp_free_i32(t0);
+//#endif
+    
 }
 
 static inline void gen_mfc0_load64 (TCGv arg, target_ulong off)
@@ -4959,12 +4983,14 @@ static void gen_mfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
 {
     const char *rn = "invalid";
 
+    //printf("%s %d %d\n", __func__, reg, sel);
+
     if (sel != 0)
         check_insn(ctx, ISA_MIPS32);
 
     switch (reg) {
     case 0:
-        switch (sel) {
+        switch (sel) { 
         case 0:
             gen_mfc0_load32(arg, offsetof(CPUMIPSState, CP0_Index));
             rn = "Index";
@@ -19934,6 +19960,15 @@ void gen_intermediate_code(CPUMIPSState *env, struct TranslationBlock *tb)
     if (max_insns > TCG_MAX_INSNS) {
         max_insns = TCG_MAX_INSNS;
     }
+    
+    if (rr_in_replay()) {
+        uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
+        if (max_insns > until_interrupt) {
+            max_insns = until_interrupt;
+        }
+    }
+
+    uint64_t rr_updated_instr_count = rr_get_guest_instr_count();
 
     LOG_DISAS("\ntb %p idx %d hflags %04x\n", tb, ctx.mem_idx, ctx.hflags);
     gen_tb_start(tb);
@@ -19941,7 +19976,7 @@ void gen_intermediate_code(CPUMIPSState *env, struct TranslationBlock *tb)
         tcg_gen_insn_start(ctx.pc, ctx.hflags & MIPS_HFLAG_BMASK, ctx.btarget);
         num_insns++;
 
-        if (unlikely(cpu_breakpoint_test(cs, ctx.pc, BP_ANY))) {
+        if (unlikely(cpu_breakpoint_test(cs, ctx.pc, BP_ANY))|| unlikely(cpu_breakpoint_test(cs, rr_updated_instr_count, BP_ANY))) {
             save_cpu_state(&ctx, 1);
             ctx.bstate = BS_BRANCH;
             gen_helper_raise_exception_debug(cpu_env);
@@ -19957,6 +19992,14 @@ void gen_intermediate_code(CPUMIPSState *env, struct TranslationBlock *tb)
             gen_io_start();
         }
 
+#ifdef CONFIG_SOFTMMU 
+        //mz let's count this instruction
+        // In LLVM mode we generate this more efficiently.
+        if ((rr_on() || panda_update_pc) && !generate_llvm) {
+            gen_op_update_panda_pc(ctx.pc);
+            gen_op_update_rr_icount();
+        }
+#endif
         is_slot = ctx.hflags & MIPS_HFLAG_BMASK;
         if (!(ctx.hflags & MIPS_HFLAG_M16)) {
             ctx.opcode = cpu_ldl_code(env, ctx.pc);
@@ -19975,7 +20018,7 @@ void gen_intermediate_code(CPUMIPSState *env, struct TranslationBlock *tb)
 
         if (ctx.hflags & MIPS_HFLAG_BMASK) {
             if (!(ctx.hflags & (MIPS_HFLAG_BDS16 | MIPS_HFLAG_BDS32 |
-                                MIPS_HFLAG_FBNSLOT))) {
+                                MIPS_HFLAG_FBNSLOT))) { 
                 /* force to generate branch as there is neither delay nor
                    forbidden slot */
                 is_slot = 1;
