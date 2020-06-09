@@ -148,7 +148,7 @@ class IoctlFaker():
 
         # Force success returns for missing drivers/peripherals
         @self._panda.ppp("syscalls2", "on_sys_ioctl_return")
-        def on_sys_ioctl_return(cpu, pc, fd, cmd, arg):
+        def ioctl_faker_on_sys_ioctl_return(cpu, pc, fd, cmd, arg):
 
             ioctl = Ioctl(self._panda, cpu, fd, cmd, arg, self.osi)
             ioctl.set_ret_code(self._panda.from_unsigned_guest(cpu.env_ptr.regs[0]))

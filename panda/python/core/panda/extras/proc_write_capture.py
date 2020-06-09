@@ -30,7 +30,7 @@ class ProcWriteCapture():
 
         # Mirror writes
         @self._panda.ppp("syscalls2", "on_sys_write_enter")
-        def on_sys_write_enter(cpu, pc, fd, buf, cnt):
+        def proc_write_capture_on_sys_write_enter(cpu, pc, fd, buf, cnt):
 
             curr_proc = panda.plugins['osi'].get_current_process(cpu)
             curr_proc_name = ffi.string(curr_proc.name).decode()
