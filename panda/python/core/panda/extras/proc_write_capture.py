@@ -23,8 +23,6 @@ class ProcWriteCapture():
 
         # Setup logging dir
         self._log_dir.mkdir(parents=True, exist_ok=True)
-        self._stdout_log_file = self._log_dir.joinpath(proc_name + "_stdout.txt")
-        self._stderr_log_file = self._log_dir.joinpath(proc_name + "_stderr.txt")
         if self._rm:
             shutil.rmtree(self._log_dir)
 
@@ -41,15 +39,16 @@ class ProcWriteCapture():
                 except ValueError:
                     raise RuntimeError("Failed to read buffer: proc \'{}\', addr 0x{:016x}".format(curr_proc_name, buf))
 
-                if fd == 1:
-                    log_file = self._stdout_log_file
-                elif fd == 2:
-                    log_file = self._stderr_log_file
-                else:
-                    file_name_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, curr_proc, fd)
-                    file_path = ffi.string(file_name_ptr).decode()
-                    log_file = self._log_dir.joinpath(file_path.replace("//", "_").replace("/", "_"))
+                file_name_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, curr_proc, fd)
+                file_path = ffi.string(file_name_ptr).decode()
 
+                # For informational purposes only, collection not reliant on this exact mapping
+                if fd == 1: # POSIX stdout
+                    file_path += ".stdout"
+                elif fd == 2: # POSIX stderr
+                    file_path += ".stderr"
+
+                log_file = self._log_dir.joinpath(file_path.replace("//", "_").replace("/", "_"))
                 with open(log_file, "ab") as f:
                     f.write(data)
 
