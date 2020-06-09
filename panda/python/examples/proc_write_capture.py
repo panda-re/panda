@@ -1,6 +1,5 @@
 '''
-Capture stdout of "whoami" from the hypervisor, write to a log file on the host
-Also works for stderr and any file written by the target process
+Capture output of "dhclient" process from the hypervisor, mirror to log files on the host
 '''
 
 import sys
@@ -15,7 +14,7 @@ panda = Panda(generic=generic_type)
 @blocking
 def run_cmd():
 
-    pwc = ProcWriteCapture(panda, "dhclient", log_dir = "./poc_log")
+    pwc = ProcWriteCapture(panda, "dhclient", log_dir = "./pwc_log")
 
     panda.revert_sync("root")
     panda.run_serial_cmd("dhclient -v -4")

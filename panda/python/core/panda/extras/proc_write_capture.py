@@ -5,7 +5,7 @@ from panda import ffi
 class ProcWriteCapture():
 
     '''
-    For a named process, capture stdout and any file writes from the hypervisor, mirror results to log directory.
+    For a named process, capture stdout/stderr and any file writes from the hypervisor, mirror results to log directory.
     Requires Linux OSI.
     '''
 
