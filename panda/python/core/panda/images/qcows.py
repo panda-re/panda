@@ -15,28 +15,127 @@ logger.setLevel(logging.DEBUG)
 
 VM_DIR = os.path.join(os.path.expanduser("~"), ".panda")
 
-# TODO: add os_version strings are mostly just made up to specify 32 bit?
-Arch = namedtuple('Arch', ['dir',        'arch',    'binary',             'os',                              'prompt',                  'qcow',                'cdrom',    'snapshot',
-                            'extra_files', 'extra_args'])
-Arch.__new__.__defaults__ = (None,None)
-SUPPORTED_ARCHES = {
-        'i386':   Arch('i386-softmmu',   'i386',   'qemu-system-i386',   "linux-32-debian:3.2.0-4-686-pae", rb"root@debian-i386:.*# ",    "wheezy_panda2.qcow2", "ide1-cd0", "root",
-            extra_args='-display none'),
-        'x86_64': Arch('x86_64-softmmu', 'x86_64', 'qemu-system-x86_64', "linux-64-debian:3.2.0-4-amd64", rb"root@debian-amd64:.*# ",   "wheezy_x64.qcow2",    "ide1-cd0", "root",
-            extra_args='-display none'),
-        'ppc':    Arch('ppc-softmmu',    'ppc',    'qemu-system-ppc',    "linux-32-debian:3.2.0-4-ppc-pae",   rb"root@debian-powerpc:.*# ", "ppc_wheezy.qcow",     "ide1-cd0", "root",
-            extra_args='-display none'),
-        # XXX: generic ARM guest is currently broken
-        'arm':    Arch('arm-softmmu',    'arm',    'qemu-system-arm',    "linux-32-debian:3.2.0-4-arm-pae",   rb"root@debian-armel:.*# ",   "arm_wheezy.qcow",     "scsi0-cd2", "root",
+Image = namedtuple('Image', ['arch', 'os', 'prompt', 'cdrom', 'snapshot', 'url', 'extra_files', 'qcow', 'default_mem', 'extra_args'])
+Image.__new__.__defaults__ = (None,) * len(Image._fields)
+# arch is a Arch for the given architecture
+# OS is an os string we can pass to panda with -os
+# Prompt is a regex to detect a bash prompt after loading the snapshot and sending commands
+# Qcow, optional name to save qcow as
+# cdrom: name to use for cd-drive when inserting an ISO via monitor
+# URL: where to download the qcow
+# default_mem: memory to use for the root snapshot
+# Extra files: other files (assumed to be in same directory on server) that we also need
+# Extra args: Extra arguments to pass to PANDA
+
+SUPPORTED_IMAGES = {
+    # Debian: support for 4 arches on Wheezy
+    'i386_wheezy': Image(
+            arch = 'i386',
+            os="linux-32-debian:3.2.0-4-686-pae",
+            prompt=rb"root@debian-i386:.*# ",
+            qcow="wheezy_panda2.qcow2", # Backwards compatability
+            cdrom="ide1-cd0",
+            snapshot="root",
+            default_mem='128M',
+            url="https://panda-re.mit.edu/qcows/linux/debian/7.3/x86/debian_7.3_x86.qcow",
+            extra_args="-display none"),
+
+    'x86_64_wheezy': Image(
+            arch='x86_64',
+            os="linux-64-debian:3.2.0-4-amd64",
+            prompt=rb"root@debian-amd64:.*# ",
+            qcow="wheezy_x64.qcow2",# Backwards compatability 
+            cdrom="ide1-cd0",
+            snapshot="root",
+            default_mem='128M',
+            url="https://panda-re.mit.edu/qcows/linux/debian/7.3/x86_64/debian_7.3_x86_64.qcow",
+            extra_args="-display none"),
+
+    'ppc_wheezy': Image(
+            arch='ppc',
+            os="linux-64-debian:3.2.0-4-ppc-pae",
+            prompt=rb"root@debian-powerpc:.*# ",
+            qcow="ppc_wheezy.qcow2",# Backwards compatability 
+            cdrom="ide1-cd0",
+            default_mem='128M',
+            snapshot="root",
+            url="https://panda-re.mit.edu/qcows/linux/debian/7.3/ppc/debian_7.3_ppc.qcow",
+            extra_args="-display none"),
+
+    'arm_wheezy': Image(
+            arch='arm',
+            os="linux-32-debian:3.2.0-4-versatile-arm",
+            prompt=rb"root@debian-armel:.*# ",
+            qcow="arm_wheezy.qcow",# Backwards compatability 
+            cdrom="scsi0-cd2",
+            default_mem='128M',
+            snapshot="root",
+            url="https://panda-re.mit.edu/qcows/linux/debian/7.3/arm/debian_7.3_arm.qcow",
             extra_files=['vmlinuz-3.2.0-4-versatile', 'initrd.img-3.2.0-4-versatile'],
             extra_args='-display none -M versatilepb -append "root=/dev/sda1" -kernel {DOT_DIR}/vmlinuz-3.2.0-4-versatile -initrd {DOT_DIR}/initrd.img-3.2.0-4-versatile'.format(DOT_DIR=VM_DIR)),
-        'mips':    Arch('mips-softmmu',    'mips',    'qemu-system-mips',    "linux-32-debian:3.2.0-4-4kc-malta",   None,   "debian_wheezy_mips_standard.qcow",     "ide1-cd0", "root",
-            extra_files=['vmlinux-3.2.0-4-4kc-malta',],
+
+    'mips_wheezy': Image(
+            arch='mips',
+            os="linux-64-debian:3.2.0-4-arm-pae", # XXX wrong
+            prompt=rb"root@debian-mips:.*# ",
+            cdrom="ide1-cd0",
+            snapshot="root",
+            url="https://panda-re.mit.edu/qcows/linux/debian/7.3/mips/debian_7.3_mips.qcow",
+            default_mem='1g',
+            extra_files=['vmlinux-3.2.0-4-4kc-malta'],
             extra_args='-M malta -kernel {DOT_DIR}/vmlinux-3.2.0-4-4kc-malta -append "root=/dev/sda1" -nographic'.format(DOT_DIR=VM_DIR)),
-        'mipsel':  Arch('mipsel-softmmu',    'mipsel',     'qemu-system-mipsel',    "linux-32-debian:3.2.0-4-4kc-malta",   None,   "debian_wheezy_mipsel_standard.qcow2",     "ide1-cd0", "root",
+
+    'mipsel_wheezy':  Image(
+            arch='mipsel',
+            os = "linux-32-debian:3.2.0-4-4kc-malta",
+            prompt=rb"root@debian-mipsel:.*# ",
+            cdrom="ide1-cd0",
+            snapshot="root",
+            default_mem='1g',
+            url="https://panda-re.mit.edu/qcows/linux/debian/7.3/mipsel/debian_7.3_mipsel.qcow",
             extra_files=['vmlinux-3.2.0-4-4kc-malta.mipsel',],
-            extra_args='-M malta -kernel {DOT_DIR}/vmlinux-3.2.0-4-4kc-malta.mipsel -append "root=/dev/sda1" -nographic'.format(DOT_DIR=VM_DIR))
-        }
+            extra_args='-M malta -kernel {DOT_DIR}/vmlinux-3.2.0-4-4kc-malta.mipsel -append "root=/dev/sda1" -nographic'.format(DOT_DIR=VM_DIR)),
+
+    # Ubuntu: x86/x86_64 support for 16.04, x86_64 support for 18.04
+    'i386_ubuntu_1604': Image(
+            arch = 'i386',
+            os="linux-32-ubuntu:4.4.200-170-generic", # Version.c is 200 but name is 4.4.0. Not sure why
+            prompt=rb"root@instance-1:.*#",
+            cdrom="ide1-cd0",
+            snapshot="root",
+            default_mem='1024',
+            url="https://panda-re.mit.edu/qcows/linux/ubuntu/1604/x86/ubuntu_1604_x86.qcow",
+            extra_args="-display none"),
+
+    #'x86_64_ubuntu_1604': Image( # XXX: This one is broken
+    #        arch='x86_64',
+    #        os="linux-64-ubuntu:4.4.0-180-pae",
+    #        prompt=rb"root@instance-1:.*#",
+    #        cdrom="ide1-cd0",
+    #        snapshot="root",
+    #        default_mem='1024',
+    #        url="https://panda-re.mit.edu/qcows/linux/ubuntu/1604/x86_64/ubuntu_1604_x86_64.qcow",
+    #        extra_files=['xenial-server-cloudimg-amd64-disk1.img',],
+    #        extra_args="-display none"),
+
+    'x86_64_ubuntu_1804': Image(
+            arch='x86_64',
+            os="linux-64-ubuntu:4.15.0-72-generic-noaslr-nokaslr",
+            prompt=rb"root@ubuntu:.*#",
+            cdrom="ide1-cd0",
+            snapshot="root",
+            default_mem='1024',
+            url="https://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2",
+            extra_args="-display none"),
+}
+
+# Default values
+SUPPORTED_IMAGES['x86_64'] = SUPPORTED_IMAGES['x86_64_ubuntu_1804']
+SUPPORTED_IMAGES['i386']   = SUPPORTED_IMAGES['i386_ubuntu_1604']
+SUPPORTED_IMAGES['ppc']    = SUPPORTED_IMAGES['ppc_wheezy']
+SUPPORTED_IMAGES['arm']    = SUPPORTED_IMAGES['arm_wheezy']
+SUPPORTED_IMAGES['mips']   = SUPPORTED_IMAGES['mips_wheezy']
+SUPPORTED_IMAGES['mipsel'] = SUPPORTED_IMAGES['mipsel_wheezy']
 
 def get_qcow_info(name=None):
     if name is None:
@@ -44,13 +143,14 @@ def get_qcow_info(name=None):
         name = "i386"
 
     if os.path.isfile(name):
-        raise RuntimeError("TODO: can't automatically determine system info from custom qcows. Use one of: {}".format(", ".os.path.join(SUPPORTED_ARCHES.keys())))
+        raise RuntimeError("TODO: can't automatically determine system info from custom qcows. Use one of: {}".format(", ".os.path.join(SUPPORTED_IMAGES.keys())))
 
     name = name.lower() # Case insensitive. Assumes supported_arches keys are lowercase
-    if name not in SUPPORTED_ARCHES.keys():
-        raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".join(SUPPORTED_ARCHES.keys())))
+    if name not in SUPPORTED_IMAGES.keys():
+        raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".join(SUPPORTED_IMAGES.keys())))
 
-    r = SUPPORTED_ARCHES[name]
+    r = SUPPORTED_IMAGES[name]
+    # Move properties in .arch to being in the main object
     return r
 
 # Given a generic name of a qcow or a path to a qcow, return the path. Defaults to i386
@@ -63,31 +163,35 @@ def get_qcow(name=None):
         logger.debug("Provided qcow name appears to be a path, returning it directly: %s", name)
         return name
 
-    name = name.lower() # Case insensitive. Assumes supported_arches keys are lowercase
-    if name not in SUPPORTED_ARCHES.keys():
-        raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".os.path.join(SUPPORTED_ARCHES.keys())))
+    name = name.lower() # Case insensitive. Assumes supported_images keys are lowercase
+    if name not in SUPPORTED_IMAGES.keys():
+        raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".os.path.join(SUPPORTED_IMAGES.keys())))
 
-    arch_data = SUPPORTED_ARCHES[name]
-    qcow_path = os.path.join(VM_DIR,arch_data.qcow)
+    image_data = SUPPORTED_IMAGES[name]
+    qc = image_data.qcow
+    if not qc: # Default, get name from url
+        qc = image_data.url.split("/")[-1]
+    qcow_path = os.path.join(VM_DIR,qc)
     os.makedirs(VM_DIR, exist_ok=True)
 
     if not os.path.isfile(qcow_path):
-        print("\nQcow {} doesn't exist. Downloading from moyix. Thanks moyix!\n".format(arch_data.qcow))
+        print("\nQcow {} doesn't exist. Downloading from https://panda-re.mit.edu. Thanks MIT!\n".format(qc))
         try:
-            subprocess.check_call(["wget", "--quiet", "http://panda.moyix.net/~moyix/" + arch_data.qcow, "-O", qcow_path])
-            for extra_file in arch_data.extra_files or []:
+            subprocess.check_call(["wget", "--quiet", image_data.url, "-O", qcow_path])
+            for extra_file in image_data.extra_files or []:
                 extra_file_path = os.path.join(VM_DIR, extra_file)
-                subprocess.check_call(["wget", "--quiet", "http://panda.moyix.net/~moyix/" + extra_file, "-O", extra_file_path])
+                url = image_data.url[:image_data.url.rfind("/")] + "/" + extra_file # Truncate url to last /, then add extra_file
+                subprocess.check_call(["wget", "--quiet", url, "-O", extra_file_path])
         except Exception as e:
             logger.info("Download failed, deleting partial file(s): %s", qcow_path)
             os.remove(qcow_path)
-            for extra_file in arch_data.extra_files or []:
+            for extra_file in image_data.extra_files or []:
                 try:
                     os.remove(os.path.join(VM_DIR, extra_file))
                 except: # Extra files might not exist
                     pass
             raise e # Reraise
-        logger.debug("Downloaded %s to %s", arch_data.qcow, qcow_path)
+        logger.debug("Downloaded %s to %s", qc, qcow_path)
     return qcow_path
 
 # Given an index into argv, call get_qcow with that arg if it exists, else with None
