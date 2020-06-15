@@ -654,13 +654,13 @@ bool init_plugin(void *self) {
         if (kconffile_canon == NULL) {  // from build dir
             if (kconf_file != NULL) g_free(kconf_file);
             kconf_file = g_build_filename(progdir, "panda", "plugins", "osi_linux", "kernelinfo.conf", NULL);
-            LOG_INFO("Looking for kconf_file attempt %u: %s", kconf_file_try++, kconf_file);
+            LOG_INFO("Looking for kconf_file attempt %u: %s", kconffile_try++, kconf_file);
             kconffile_canon = realpath(kconf_file, NULL);
         }
         if (kconffile_canon == NULL) {  // from etc dir (installed location)
             if (kconf_file != NULL) g_free(kconf_file);
             kconf_file = g_build_filename(CONFIG_QEMU_CONFDIR, "osi_linux", "kernelinfo.conf", NULL);
-            LOG_INFO("Looking for kconf_file attempt %u: %s", kconf_file_try++, kconf_file);
+            LOG_INFO("Looking for kconf_file attempt %u: %s", kconffile_try++, kconf_file);
             kconffile_canon = realpath(kconf_file, NULL);
         }
 
