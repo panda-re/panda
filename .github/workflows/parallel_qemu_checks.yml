@@ -16,8 +16,8 @@ jobs:
     runs-on: self-hosted
     strategy:
       matrix:
-        #target: [x86_64-softmmu, i386-softmmu, arm-softmmu, aarch64-softmmu, ppc-softmmu, mips-softmmu]
-        target: [x86_64-softmmu, i386-softmmu, arm-softmmu]
+        # NOTE: aarch64-softmmu currently unsupported
+        target: [x86_64-softmmu, i386-softmmu, arm-softmmu, ppc-softmmu, mips-softmmu]
 
     steps:
     - name: Docker login
