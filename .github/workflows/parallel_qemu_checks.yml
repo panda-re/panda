@@ -26,7 +26,13 @@ jobs:
       run: wget "https://raw.githubusercontent.com/panda-re/panda/${GITHUB_SHA}/panda/docker/update.sh"
 
     - name: Start container, run update.sh clean build, and run QEMU tests by arch
-      run: docker run --name panda_test_${{ matrix.target }} -v $(pwd)/update.sh:/update.sh --rm -t -e PANDA_TEST=yes --cap-add SYS_NICE pandare/panda bash -c "/update.sh $GITHUB_REF clean; cd /panda/build; ../build.sh ${{ matrix.target }}"
+      run: >-
+        docker run --name panda_test_${{ matrix.target }}
+        -v $(pwd)/update.sh:/update.sh --rm -t
+        -e PANDA_TEST=yes --cap-add SYS_NICE
+        pandare/panda bash -c "/update.sh $GITHUB_REF clean;
+        cd /panda/build;
+        ../build.sh ${{ matrix.target }}"
 
     - name: Cleanup images
       run: docker system prune -af --volumes
