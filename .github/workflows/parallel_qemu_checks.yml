@@ -1,23 +1,19 @@
 name: Parallel QEMU Checks
-# Clone latest pre-built docker container
-# Checkout the relevant branch
-# Run make in the build directory - Note we don't build from scratch
-
-# Because this runs on push actions, we get $GITHUB_SHA and it's set correctly (unlike on PR)
 
 on:
   push:
-    branches-ignore: # A full clean build will run on pushes to master
-      master
+    branches:
+      - split_out_ci
+  pull_request:
+    branches:
+      - master
 
 jobs:
   build_and_check:
-
     runs-on: self-hosted
     strategy:
       matrix:
-        # NOTE: aarch64-softmmu currently unsupported
-        target: [x86_64-softmmu, i386-softmmu, arm-softmmu, ppc-softmmu, mips-softmmu]
+        target: [x86_64-softmmu, i386-softmmu, arm-softmmu, ppc-softmmu, mips-softmmu] # NOTE: aarch64-softmmu currently unsupported
 
     steps:
     - name: Docker login
@@ -29,8 +25,8 @@ jobs:
     - name: Download docker/update.sh script from this commit
       run: wget "https://raw.githubusercontent.com/panda-re/panda/${GITHUB_SHA}/panda/docker/update.sh"
 
-    - name: Start container, run update.sh to fetch this commit and rebuild PANDA and run QEMU tests
-      run: docker run --name panda_test_${{ matrix.target }} -v $(pwd)/update.sh:/update.sh --rm -t -e PANDA_TEST=yes --cap-add SYS_NICE pandare/panda bash -c "/update.sh $GITHUB_SHA; cd /panda/build; ../build.sh ${{ matrix.target }}"
+    - name: Start container, run update.sh clean build, and run QEMU tests by arch
+      run: docker run --name panda_test_${{ matrix.target }} -v $(pwd)/update.sh:/update.sh --rm -t -e PANDA_TEST=yes --cap-add SYS_NICE pandare/panda bash -c "/update.sh $GITHUB_REF clean; cd /panda/build; ../build.sh ${{ matrix.target }}"
 
     - name: Cleanup images
       run: docker system prune -af --volumes
