@@ -13,7 +13,7 @@ jobs:
     runs-on: self-hosted
     strategy:
       matrix:
-        target: [x86_64-softmmu, i386-softmmu, arm-softmmu, ppc-softmmu, mips-softmmu] # NOTE: aarch64-softmmu currently unsupported
+        target: [x86_64-softmmu, i386-softmmu, arm-softmmu, mips-softmmu] # NOTE: aarch64-softmmu currently unsupported
 
     steps:
     - name: Docker login
@@ -27,7 +27,7 @@ jobs:
 
     - name: Start container, run update.sh clean build, and run QEMU tests by arch
       run: >-
-        docker run --name panda_test_${{ matrix.target }}
+        docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
         -v $(pwd)/update.sh:/update.sh --rm -t
         -e PANDA_TEST=yes --cap-add SYS_NICE
         pandare/panda bash -c "/update.sh $GITHUB_REF clean;
