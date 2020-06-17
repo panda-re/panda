@@ -26,8 +26,6 @@ jobs:
       run: wget "https://raw.githubusercontent.com/panda-re/panda/${GITHUB_SHA}/panda/docker/update.sh"
 
     #-v '$(pwd)/update.sh:/update.sh'
-    # sed -i '/^\s*$/d' taint2_log;
-    # cat taint2_log;
     - name: Start container, run update.sh clean build, and run taint unit tests
       run: >-
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
@@ -41,8 +39,9 @@ jobs:
         cd ./panda_test/tests/taint2;
         python3 taint2_${{ matrix.target }}_record.py;
         python3 taint2_${{ matrix.target }}_replay.py;
-        echo "Failures:";
-        grep 'fail' taint2_log;"
-
+        sed -i '/^\s*$/d' taint2_log;
+        cat taint2_log;
+        echo -e '\nFailures:';
+        if grep 'fail' taint2_log; then echo 'TEST FAILED!' || exit 1; else echo -e 'None.\nTEST PASSED!' || exit 0; fi"
     - name: Cleanup images
       run: docker system prune -af --volumes
