@@ -13,7 +13,7 @@ jobs:
     runs-on: self-hosted
     strategy:
       matrix:
-        target: [i386-softmmu]
+        target: [i386]
 
     steps:
     - name: Docker login
@@ -26,6 +26,8 @@ jobs:
       run: wget "https://raw.githubusercontent.com/panda-re/panda/${GITHUB_SHA}/panda/docker/update.sh"
 
     #-v '$(pwd)/update.sh:/update.sh'
+    # sed -i '/^\s*$/d' taint2_log;
+    # cat taint2_log;
     - name: Start container, run update.sh clean build, and run taint unit tests
       run: >-
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
@@ -37,9 +39,10 @@ jobs:
         /panda/update.sh $GITHUB_REF clean;
         git clone https://github.com/panda-re/panda_test;
         cd ./panda_test/tests/taint2;
-        python3 taint2_i386_replay.py;
-        cat taint2_log;
-        grep 'fail' taint2_log && exit 1;"
+        python3 taint2_${{ matrix.target }}_record.py;
+        python3 taint2_${{ matrix.target }}_replay.py;
+        echo "Failures:";
+        grep 'fail' taint2_log;"
 
     - name: Cleanup images
       run: docker system prune -af --volumes
