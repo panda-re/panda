@@ -43,5 +43,6 @@ jobs:
         if cat taint2_log; then echo 'Taint unit test log found!'; else echo 'Taint unit test log NOT found!' && exit 1; fi;
         echo -e '\nFailures:';
         if grep 'fail' taint2_log; then echo 'TEST FAILED!' && exit 1; else echo -e 'None.\nTEST PASSED!' && exit 0; fi"
+
     - name: Cleanup images
       run: docker system prune -af --volumes
