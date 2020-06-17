@@ -1,4 +1,4 @@
-name: Parallel QEMU Checks
+name: QEMU Checks
 
 on:
   push:
