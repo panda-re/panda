@@ -9,7 +9,7 @@ on:
       - master
 
 jobs:
-  build_and_run_taint_unit:
+  run_taint_unit:
     runs-on: self-hosted
     strategy:
       matrix:
@@ -25,7 +25,7 @@ jobs:
     - name: Download docker/update.sh script from this commit
       run: wget "https://raw.githubusercontent.com/panda-re/panda/${GITHUB_SHA}/panda/docker/update.sh"
 
-    #-v '$(pwd)/update.sh:/update.sh'
+    #--mount type=bind,source=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2,target=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
     - name: Start container, run update.sh clean build, and run taint unit tests
       run: >-
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
@@ -40,8 +40,8 @@ jobs:
         python3 taint2_multi_arch_record_or_replay.py --arch ${{ matrix.target }} --mode record;
         python3 taint2_multi_arch_record_or_replay.py --arch ${{ matrix.target }} --mode replay;
         sed -i '/^\s*$/d' taint2_log;
-        cat taint2_log;
+        if cat taint2_log; then echo 'Taint unit test log found!'; else echo 'Taint unit test log NOT found!' && exit 1; fi;
         echo -e '\nFailures:';
-        if grep 'fail' taint2_log; then echo 'TEST FAILED!' || exit 1; else echo -e 'None.\nTEST PASSED!' || exit 0; fi"
+        if grep 'fail' taint2_log; then echo 'TEST FAILED!' && exit 1; else echo -e 'None.\nTEST PASSED!' && exit 0; fi"
     - name: Cleanup images
       run: docker system prune -af --volumes
