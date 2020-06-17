@@ -13,7 +13,7 @@ jobs:
     runs-on: self-hosted
     strategy:
       matrix:
-        target: [i386]
+        target: [i386, x86_64]
 
     steps:
     - name: Docker login
@@ -37,8 +37,8 @@ jobs:
         /panda/update.sh $GITHUB_REF clean;
         git clone https://github.com/panda-re/panda_test;
         cd ./panda_test/tests/taint2;
-        python3 taint2_${{ matrix.target }}_record.py;
-        python3 taint2_${{ matrix.target }}_replay.py;
+        python3 taint2_multi_arch_record_or_replay.py --arch ${{ matrix.target }} --mode record;
+        python3 taint2_multi_arch_record_or_replay.py --arch ${{ matrix.target }} --mode replay;
         sed -i '/^\s*$/d' taint2_log;
         cat taint2_log;
         echo -e '\nFailures:';
