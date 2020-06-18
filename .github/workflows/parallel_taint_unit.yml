@@ -13,7 +13,7 @@ jobs:
     runs-on: self-hosted
     strategy:
       matrix:
-        target: [i386, x86_64]
+        target: [i386] #x86_64 needs debug
 
     steps:
     - name: Docker login
