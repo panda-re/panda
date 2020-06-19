@@ -4,7 +4,7 @@
 # 	-DTAINT2_DEBUG enables debug output.
 # 	-DTAINT2_HYPERCALLS enables taint-related PANDA hypercalls, as used by LAVA
 #
-TAINT2_FLAGS   += -DTAINT2_HYPERCALLS
+TAINT2_FLAGS   += -DTAINT2_HYPERCALLS -DTAINT2_DEBUG
 
 ### Flags setup #####################################################
 QEMU_CXXFLAGS += $(LLVM_CXXFLAGS) -Wno-type-limits -Wno-cast-qual $(TAINT2_FLAGS)

@@ -118,9 +118,9 @@ private:
     void insertTaintMix(Instruction &I, Value *src);
     void insertTaintMix(Instruction &I, Value *dest, Value *src);
     void insertTaintCompute(Instruction &I,
-            Value *src1, Value *src2, bool is_mixed);
+            Value *src1, Value *src2, bool is_mixed, bool is_cmp);
     void insertTaintCompute(Instruction &I, Value *dest,
-            Value *src1, Value *src2, bool is_mixed);
+            Value *src1, Value *src2, bool is_mixed, bool is_cmp);
     void insertTaintMul(Instruction &I, Value *dest,
             Value *src1, Value *src2);
     void insertTaintSext(Instruction &I, Value *src);
@@ -160,6 +160,9 @@ public:
 
     Constant *memlogConst;
     Function *memlogPopF;
+
+    Function *logCmpF;
+    Function *nopF;
 
     Constant *llvConst;
     Constant *memConst;

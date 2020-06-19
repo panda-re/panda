@@ -96,6 +96,13 @@ void taint_after_ld(uint64_t reg, uint64_t memaddr, uint64_t size);
 void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
                uint64_t src_size, llvm::Instruction *I);
 
+// Tainted compare. woo
+// TYPE: 0 = const, 1: var
+void log_tainted_cmp(Shad *shad, uint64_t src1, uint64_t src1_size,
+                       uint64_t src2, uint64_t src2_size,
+                       llvm::Instruction *ignored,
+                       uint64_t type1, uint64_t type2);
+
 // Tainted pointer load in tainted pointer mode.
 // Mixes the ptr labels and parallels that with each src label.
 void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
@@ -121,6 +128,8 @@ void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
 
 void taint_host_delete(uint64_t env_ptr, uint64_t dest_addr, Shad *greg,
                        Shad *gspec, uint64_t size, uint64_t labels_per_reg);
+
+
 
 } // extern "C"
 

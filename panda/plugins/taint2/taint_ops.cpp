@@ -684,3 +684,32 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
         detaint_on_cb0(shad_dest, dest, size);
     }
 }
+
+// based on taint_mul_compute. Need to call on 
+void log_tainted_cmp(Shad *shad, uint64_t src1, uint64_t src1_size,
+                       uint64_t src2, uint64_t src2_size,
+                       llvm::Instruction *inst,
+                       uint64_t isConst1, uint64_t isConst2)
+{
+    taint_log("\n\nCompare of 0x%lx  (%lx) and 0x%lx (%lx)\n", src1, isConst1, src2, isConst2);
+    bool t1 = 0;
+    bool t2 = 0;
+
+    assert(src1_size == src2_size);
+
+    // For each byte, check if tainted report
+    for (int i = 0; i < src1_size; ++i) {
+      // Constants can't be taint checked -  if it's a const and keep tX as false
+      if (isConst1 == 0) t1 = shad->query(src1+i) != NULL;
+      if (isConst2 == 0) t2 = shad->query(src2+i) != NULL;
+
+      if (t1 && !t2) { // Value 2 is of interst
+          taint_log("tainted_log: untainted 0x%lx compared against tainted 0x%lx byte %d\n", src2, src1, i);
+      } else if (!t1 && t2) { // Value 1 is of interst
+          taint_log("tainted_log: untainted 0x%lx compared against tainted 0x%lx byte %d\n", src1, src2, i);
+      }else if (t2 && t2) { // Both are interesting
+          taint_log("tainted_log: tainted 0x%lx compared against tainted 0x%lx byte %d\n", src1, src2, i);
+      }
+    }
+
+}

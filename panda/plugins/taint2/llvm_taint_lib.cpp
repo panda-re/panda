@@ -202,6 +202,8 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.breadcrumbF = M.getFunction("taint_breadcrumb");
 
     PTV.afterLdF = M.getFunction("taint_after_ld");
+    PTV.logCmpF = M.getFunction("log_tainted_cmp"); // WIP
+    PTV.nopF = M.getFunction("nop_tainted_cmp"); // WIP
 
     llvm::Type *shadT = M.getTypeByName("class.Shad");
     assert(shadT);
@@ -621,40 +623,74 @@ void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *dest, Value *src) 
     inlineCallAfter(I, mixF, args);
 }
 
-void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *src1, Value *src2, bool is_mixed) {
-    insertTaintCompute(I, &I, src1, src2, is_mixed);
+void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *src1, Value *src2, bool is_mixed, bool is_cmp) {
+    insertTaintCompute(I, &I, src1, src2, is_mixed, is_cmp);
 }
 
 // Compute operations
-void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *src1, Value *src2, bool is_mixed) {
+void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *src1, Value *src2, bool is_mixed, bool is_cmp) {
     LLVMContext &ctx = I.getContext();
     if (!dest) dest = &I;
 
+    // When we go from a Value* to a uint64_t we lose a bunch of info
+    // need to also pass type info to logCmpF so we know if it's a const
+    // or a ptr
+
+    // Optimization - only compute these early if is_cmp, otherwise might not need
+    Constant *dest_size = const_uint64(ctx, getValueSize(dest));
+    Constant *src_size = const_uint64(ctx, getValueSize(src1));
+
+    // src1 must always == src2
+    assert(getValueSize(src1) == getValueSize(src2));
+ 
+    // If it's a comparison, we'll throw in a call to logCmpF after it
+    // Note src2 must be same size as src1 because we just asserted.
+    vector<Value *> cargs{
+        llvConst,
+        constSlot(src1), src_size, constSlot(src2), src_size,
+        constInstr(&I)
+    };
+    // Add isConst1/isConst2 to cargs
+    if (isa<Constant>(src1)) cargs.push_back(const_uint64(ctx, 1));
+    else if (isa<ConstantInt>(src1)) cargs.push_back(const_uint64(ctx, 2));
+    else cargs.push_back(const_uint64(ctx, 0));
+
+    if (isa<Constant>(src2)) cargs.push_back(const_uint64(ctx, 1));
+    else if (isa<ConstantInt>(src2)) cargs.push_back(const_uint64(ctx, 2));
+    else cargs.push_back(const_uint64(ctx, 0));
+
     if (isa<Constant>(src1) && isa<Constant>(src2)) {
+        if (is_cmp) inlineCallAfter(I, logCmpF, cargs);
         return; // do nothing.
-    } else if (isa<Constant>(src1) || isa<Constant>(src2)) {
+    }
+    
+    if (isa<Constant>(src1) || isa<Constant>(src2)) {
         Value *tainted = isa<Constant>(src1) ? src2 : src1;
         if (is_mixed) {
             insertTaintMix(I, tainted);
         } else {
             insertTaintCopy(I, llvConst, dest, llvConst, tainted, getValueSize(src2));
         }
+        if (is_cmp) inlineCallAfter(I, logCmpF, cargs);
         return;
     }
 
-    if (!is_mixed) {
+    // Neither const:
+    // Comparison - log tainted args
+    if (is_cmp) inlineCallAfter(I, logCmpF, cargs);
+
+    if (!is_mixed) { // Not mixed: src1 must == dest
         assert(getValueSize(dest) == getValueSize(src1));
     }
-    assert(getValueSize(src1) == getValueSize(src2));
 
-    Constant *dest_size = const_uint64(ctx, getValueSize(dest));
-    Constant *src_size = const_uint64(ctx, getValueSize(src1));
+    // Then we'll always call mixCompF/parallelCompF as needed
 
     vector<Value *> args{
         llvConst, constSlot(dest), dest_size,
         constSlot(src1), constSlot(src2), src_size,
         constInstr(&I)
     };
+
     inlineCallAfter(I, is_mixed ? mixCompF : parallelCompF, args);
 }
 
@@ -948,7 +984,7 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
             assert(false && "Bad BinaryOperator!!");
     }
 
-    insertTaintCompute(I, &I, I.getOperand(0), I.getOperand(1), is_mixed);
+    insertTaintCompute(I, &I, I.getOperand(0), I.getOperand(1), is_mixed, false);
 }
 
 // Memory operators
@@ -1222,6 +1258,8 @@ void PandaTaintVisitor::visitCastInst(CastInst &I) {
  */
 void PandaTaintVisitor::visitCmpInst(CmpInst &I) {
     LoadInst *LI = dyn_cast<LoadInst>(I.getOperand(0));
+    // DEBUG - dump all compares, TODO filter for just tainted?
+    //I.dump();
     if (LI) {
         IntToPtrInst *I2PI = dyn_cast<IntToPtrInst>(LI->getOperand(0));
         if (I2PI) {
@@ -1234,7 +1272,7 @@ void PandaTaintVisitor::visitCmpInst(CmpInst &I) {
             }
         }
     }
-    insertTaintCompute(I, &I, I.getOperand(0), I.getOperand(1), true);
+    insertTaintCompute(I, &I, I.getOperand(0), I.getOperand(1), true, /*isCmp=*/true);
 }
 
 void PandaTaintVisitor::visitPHINode(PHINode &I) {
@@ -1340,7 +1378,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
 
         switch (calledF->getIntrinsicID()) {
             case Intrinsic::uadd_with_overflow:
-                insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), 1);
+                insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), 1, false);
                 return;
             case Intrinsic::bswap:
             case Intrinsic::ctlz:
@@ -1397,7 +1435,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             insertTaintMix(I, I.getArgOperand(0));
             return;
         } else if (calledName == "ldexp" || calledName == "atan2") {
-            insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), true);
+            insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), true, false);
             return;
 #ifdef TARGET_I386
         } else if (calledName == "helper_outb") {
@@ -1632,7 +1670,7 @@ void PandaTaintVisitor::visitInsertElementInst(InsertElementInst &I) {
 
 void PandaTaintVisitor::visitShuffleVectorInst(ShuffleVectorInst &I) {
     assert(I.getType()->getBitWidth() <= 8 * MAXREGSIZE);
-    insertTaintCompute(I, I.getOperand(0), I.getOperand(1), true);
+    insertTaintCompute(I, I.getOperand(0), I.getOperand(1), true, false);
 }
 
 // Unhandled
