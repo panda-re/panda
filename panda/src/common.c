@@ -9,7 +9,7 @@
 #include "panda/plog.h"
 #include "panda/plog-cc-bridge.h"
 
-#ifdef TARGET_ARM
+#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
 /* Return the exception level which controls this address translation regime */
 static inline uint32_t regime_el(CPUARMState *env, ARMMMUIdx mmu_idx)
 {
@@ -99,7 +99,7 @@ target_ulong panda_current_asid(CPUState *cpu) {
 #if defined(TARGET_I386)
   CPUArchState *env = (CPUArchState *)cpu->env_ptr;
   return env->cr[3];
-#elif defined(TARGET_ARM)
+#elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
   target_ulong table;
   bool rc = arm_get_vaddr_table(cpu,
           &table,

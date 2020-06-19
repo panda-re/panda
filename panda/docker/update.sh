@@ -30,10 +30,6 @@ fi
 
 make -j${NPROC}
 
-
-# Run test suite
-#make -j${NPROC} check
-
 # Install Pypanda for Bionic and newer
 cd /panda/panda/python/core/
 pip3 install -q pycparser cffi colorama protobuf # Pypanda dependencies
