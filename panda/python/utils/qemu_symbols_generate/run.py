@@ -89,6 +89,8 @@ def get_struct(name, pahole_path, elf_file):
 	if not out.strip():
 		pdb.set_trace()
 		print("empty")
+	print("struct "+name)
+	print(out)
 	return out
 
 '''

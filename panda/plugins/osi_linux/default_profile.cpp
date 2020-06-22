@@ -27,6 +27,7 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
     target_ptr_t kernel_sp = get_ksp(cpu);
 
     // XXX: This should use THREADINFO_MASK but that's hardcoded and wrong for my test system
+    // We need to expose that as a part of the OSI config - See issue #651
     target_ptr_t task_thread_info = kernel_sp & ~(0x2000 -1);
 
     current_task_addr=task_thread_info+0xC;

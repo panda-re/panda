@@ -1717,6 +1717,8 @@ uint32_t rr_checksum_regs(void) {
     uint32_t crc = crc32(0, Z_NULL, 0);
 #if defined(TARGET_PPC)
     crc = crc32(crc, (unsigned char *)env->gpr, sizeof(env->gpr));
+#elif defined(TARGET_MIPS)
+    crc = crc32(crc, (unsigned char*)env->active_tc.gpr,sizeof(env->active_tc.gpr));
 #else
     crc = crc32(crc, (unsigned char *)env->regs, sizeof(env->regs));
 #endif

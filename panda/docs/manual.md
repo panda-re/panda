@@ -377,8 +377,10 @@ Possible return values are:
 ### Introduction
 
 PANDA supports whole system deterministic record and replay in whole
-system mode on the `i386`, `x86_64`, and `arm` targets. We hope to add more
-soon; for example, partial SPARC support exists but is not yet reliable.
+system mode on the `i386`, `x86_64`, and `arm` targets. We also support
+running in live mode on `mips`, but not yet record and replay. We hope 
+to add more soon; for example, partial SPARC support exists but is not 
+yet reliable.
 
 ### Background
 

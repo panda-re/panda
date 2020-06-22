@@ -208,6 +208,12 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         elif self.arch == "ppc":
             bits = 32
             endianness = "big"
+        elif self.arch == "mips":
+            bits = 32
+            endianness = "big"
+        elif self.arch == "mipsel":
+            bits = 32
+            endianness = "little"
 
         assert (bits is not None), "For arch %s: I need logic to figure out num bits" % self.arch
         assert (endianness is not None), "For arch %s: I need logic to figure out endianness" % self.arch
@@ -514,7 +520,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             err = self.libpanda.panda_virtual_memory_read_external(env, addr, buf_a, length_a)
 
         if err < 0:
-            raise ValueError("Memory access failed") # TODO: make a PANDA Exn class
+            raise ValueError(f"Memory access failed with err={err}") # TODO: make a PANDA Exn class
 
         r = ffi.unpack(buf, length)
         if fmt == 'bytearray':

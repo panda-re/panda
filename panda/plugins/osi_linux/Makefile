@@ -38,4 +38,13 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
 	$(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o \
 	$(PLUGIN_OBJ_FILES)
 
-all: $(PLUGIN_OBJ_DIR)/kernelinfo.conf
+$(PLUGIN_OBJ_DIR)/kernelinfo.zip:
+	$(call quiet-command,zip -qr $@ $(PLUGIN_SRC_DIR)/utils/kernelinfo,"ZIP      $(TARGET_DIR)$@")
+
+$(PLUGIN_OBJ_DIR)/kernelinfo24.zip:
+	$(call quiet-command,zip -qr $@ $(PLUGIN_SRC_DIR)/utils/kernelinfo24,"ZIP      $(TARGET_DIR)$@")
+
+.PHONY: $(PLUGIN_OBJ_DIR)/kernelinfo.zip $(PLUGIN_OBJ_DIR)/kernelinfo24.zip
+
+all: $(PLUGIN_OBJ_DIR)/kernelinfo.conf $(PLUGIN_OBJ_DIR)/kernelinfo.zip $(PLUGIN_OBJ_DIR)/kernelinfo24.zip
+

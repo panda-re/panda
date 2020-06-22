@@ -597,7 +597,7 @@ static inline std::string context_map_t_dump(context_map_t &cm) {
 }
 #endif
 
-#if defined(TARGET_PPC)
+#if defined(TARGET_PPC) || defined(TARGET_MIPS)
 #else
 /**
  * @brief Checks if the translation block that is about to be executed
@@ -692,8 +692,10 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
         }
     }
     return false;
-#elif defined(TARGET_PPC)
+#elif defined(TARGET_PPC) || defined(TARGET_MIPS)
     return false;
+#else
+    return false; // helpful as a catchall for other architectures
 #endif
 }
 
