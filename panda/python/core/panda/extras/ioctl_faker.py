@@ -121,9 +121,12 @@ class IoctlFaker():
     Bin all returns into failures (needed forcing) and successes, store for later retrival/analysis.
     '''
 
-    def __init__(self, panda, use_osi_linux = False, log = False, ignore=[]):
+    def __init__(self, panda, use_osi_linux = False, log = False, ignore=[], intercept_values=[-25]):
         '''
-        If set, ignores should be a list of tuples - (filename, cmd#) to be ignored
+        Log enables/disables logging.
+        Ignore contains a list of tuples (filename, cmd#) to be ignored
+        intercept_values is a list of ioctl return values that should be intercepted. By default
+          we just intercept just -25 which indicates that a driver is not present to handle the ioctl.
         '''
 
         self.osi = use_osi_linux
@@ -131,18 +134,19 @@ class IoctlFaker():
         self._panda.load_plugin("syscalls2")
         self._log = log
         self.ignore = ignore
+        self.intercept_values = intercept_values
 
         if self.osi:
             self._panda.load_plugin("osi")
             self._panda.load_plugin("osi_linux")
 
         if self._log:
-            self._logger = logging.getLogger('panda.hooking')
+            self._logger = logging.getLogger('panda.ioctls')
             self._logger.setLevel(logging.DEBUG)
 
-        # Save runtime memory with sets instead of lists (no duplicates)
-        self._fail_returns = set()
-        self._success_returns = set()
+        # Track ioctls in two sets: modified (forced_returns) and unmodified
+        self._forced_returns = set()
+        self._unmodified_returns = set()
 
 
         # PPC (other arches use the default config)
@@ -157,16 +161,16 @@ class IoctlFaker():
             ioctl = Ioctl(self._panda, cpu, fd, cmd, arg, self.osi)
             ioctl.set_ret_code(self._panda.from_unsigned_guest(cpu.env_ptr.regs[0]))
 
-            if (ioctl.original_ret_code == -25): # Error indicating no driver is present
-                if (ioctl.file_name, ioctl.cmd.bits.cmd_num) not in self.ignore: # Allow ignoring specific commands on specific files
-                    self._fail_returns.add(ioctl)
-                    cpu.env_ptr.regs[0] = 0
-                    if ioctl.has_buf and self._log:
-                        self._logger.warning("Forcing success return for data-containing {}".format(ioctl))
-                    else:
-                        self._logger.info("Forcing success return for data-less {}".format(ioctl))
-            else: #TODO log successes vs unmodified ignores
-                self._success_returns.add(ioctl)
+            if ioctl.original_ret_code in self.intercept_values and \
+                        (ioctl.file_name, ioctl.cmd.bits.cmd_num) not in self.ignore: # Allow ignoring specific commands on specific files
+                cpu.env_ptr.regs[0] = 0
+                self._forced_returns.add(ioctl)
+                if ioctl.has_buf and self._log:
+                    self._logger.warning("Forcing success return for data-containing {}".format(ioctl))
+                else:
+                    self._logger.info("Forcing success return for data-less {}".format(ioctl))
+            else:
+                self._unmodified_returns.add(ioctl)
 
     def _get_returns(self, source, with_buf_only):
 
@@ -177,11 +181,11 @@ class IoctlFaker():
 
     def get_forced_returns(self, with_buf_only = False):
 
-        return self._get_returns(self._fail_returns, with_buf_only)
+        return self._get_returns(self._forced_returns, with_buf_only)
 
     def get_unmodified_returns(self, with_buf_only = False):
 
-        return self._get_returns(self._success_returns, with_buf_only)
+        return self._get_returns(self._unmodified_returns, with_buf_only)
 
 if __name__ == "__main__":
 
