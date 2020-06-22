@@ -178,8 +178,9 @@ class blocking_mixins():
     def do_panda_finish(self):
         '''
         Call panda_finish. Note this isn't really blocking - the
-        guest should have exited by now, but we just
+        guest should have exited by now, but queue this after
+        (blocking) shutdown commands in our internal async queue
+        so it must also be labeled as blocking.
         '''
         assert (not self.running.is_set()), "Can't finish while still running"
-        progress("Execution ended. Finishing...")
         self.panda_finish()
