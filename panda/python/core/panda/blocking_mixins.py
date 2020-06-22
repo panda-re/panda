@@ -173,3 +173,13 @@ class blocking_mixins():
                     break
             r = self.run_serial_cmd(cmd) # XXX: may timeout
             print(r)
+
+    @blocking
+    def do_panda_finish(self):
+        '''
+        Call panda_finish. Note this isn't really blocking - the
+        guest should have exited by now, but we just
+        '''
+        assert (not self.running.is_set()), "Can't finish while still running"
+        progress("Execution ended. Finishing...")
+        self.panda_finish()

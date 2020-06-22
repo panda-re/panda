@@ -387,9 +387,12 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         without needing to wait for tasks in the main async thread
         '''
         self.unload_plugins()
-        if self.running:
+        if self.running.is_set():
+            # If we were running, stop the execution and check if we crashed
             self.queue_async(self.stop_run, internal=True)
             self.queue_async(self.check_crashed, internal=True)
+        # Even if we weren't running, we can now call finish
+        self.queue_async(self.do_panda_finish, internal=True)
 
     def run_replay(self, replaypfx):
         '''
