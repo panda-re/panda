@@ -1418,6 +1418,11 @@ static time_t rr_start_time;
 // mz file_name_full should be full path to desired record/replay log file
 int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
 {
+#ifdef TARGET_MIPS
+  fprintf(stderr, "Record/replay unsupported on MIPS\n");
+  exit(1);
+#endif
+
 #ifdef CONFIG_SOFTMMU
     Error* err = NULL;
     char name_buf[1024];
@@ -1515,6 +1520,12 @@ void rr_do_end_record(void)
 // file_name_full should be full path to the record/replay log
 int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
 {
+
+#ifdef TARGET_MIPS
+  fprintf(stderr, "Record/replay unsupported on MIPS\n");
+  exit(1);
+#endif
+
 #ifdef CONFIG_SOFTMMU
     char name_buf[1024];
     // decompose file_name_base into path & file.
