@@ -154,8 +154,6 @@ typedef uint32_t Cell;
 typedef uint64_t Count;
 typedef uint64_t Instr;
     
-// if we see svchost more than once, e.g., we use this to append 1, 2, 3, etc to the name in our output
-static std::map<std::string, unsigned> name_count;
 
 //bool spit_out_total_instr_once = false;
 
@@ -242,7 +240,9 @@ static unsigned digits(uint64_t num) {
    register that we saw this proc at this instr count
    updating first / last instr and cell counts
 */
-void saw_proc(std::map<NamePid, ProcessData> &process_datas, NamePid namepid, uint64_t instr_count) {
+void saw_proc(std::map<NamePid, ProcessData> &process_datas, 
+              std::map<std::string, unsigned> &name_count,
+              NamePid namepid, uint64_t instr_count) {
 
     ProcessData &pd = process_datas[namepid];
     if (pd.first == 0) {
@@ -279,17 +279,18 @@ void saw_proc(std::map<NamePid, ProcessData> &process_datas, NamePid namepid, ui
 }
 
 
-void process_all_proc_ranges(std::map<NamePid, ProcessData> &process_datas) {
+void process_all_proc_ranges(std::map<NamePid, ProcessData> &process_datas,
+                             std::map<std::string, unsigned> &name_count) {
 
     // XXX what on earth is all this /2 and then step/3 about?
     uint64_t step = floor(1.0 / scale) / 2;
 
     for (auto ptup : proc_ranges) {
         auto [ namepid, i1, i2 ] = ptup;
-        saw_proc(process_datas, namepid, i1);
-        saw_proc(process_datas, namepid, i2);
+        saw_proc(process_datas, name_count, namepid, i1);
+        saw_proc(process_datas, name_count, namepid, i2);
         for (uint64_t i=i1; i<=i2; i+=step/3) 
-            saw_proc(process_datas, namepid, i);
+            saw_proc(process_datas, name_count, namepid, i);
     }
 }
 
@@ -297,8 +298,10 @@ void process_all_proc_ranges(std::map<NamePid, ProcessData> &process_datas) {
 void spit_asidstory() {
 
     std::map<NamePid, ProcessData> process_datas;
+    // if we see svchost more than once, e.g., we use this to append 1, 2, 3, etc to the name in our output
+    std::map<std::string, unsigned> name_count;
 
-    process_all_proc_ranges(process_datas);
+    process_all_proc_ranges(process_datas, name_count);
 
     // if pandalog we dont write asidstory file
     if (pandalog) return;
@@ -666,9 +669,10 @@ void uninit_plugin(void *self) {
     if (pandalog && summary_mode) {
 
         std::map<NamePid, ProcessData> process_datas;
+        std::map<std::string, unsigned> name_count;
         
-        process_all_proc_ranges(process_datas);
-
+        process_all_proc_ranges(process_datas, name_count);
+        
         for (auto &kvp : process_datas) {
             auto &np = kvp.first;
             auto &pd = kvp.second;
