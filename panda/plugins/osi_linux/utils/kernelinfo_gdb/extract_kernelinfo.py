@@ -135,6 +135,5 @@ class KernelInfo(gdb.Command):
         if file_out != sys.stdout:
             file_out.close()
 
-
 # This registers our class to the gdb runtime at "source" time.
 KernelInfo()
