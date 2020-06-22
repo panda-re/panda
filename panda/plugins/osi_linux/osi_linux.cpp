@@ -693,6 +693,7 @@ bool init_plugin(void *self) {
             goto error;
         }
     }
+    printf ("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
     LOG_INFO("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
     g_free(kconf_file);
     g_free(kconf_group);
