@@ -300,14 +300,12 @@ void spit_asidstory() {
 
     process_all_proc_ranges(process_datas);
 
-    printf ("I'm in your spit_asidstory\n");
-
     // if pandalog we dont write asidstory file
     if (pandalog) return;
 
-    printf ("no pandalog -- output to file\n");
+    printf ("no pandalog -- output to file named asidstory\n");
 
-    FILE *fp = fopen("asidstoryQQQ", "w");
+    FILE *fp = fopen("asidstory", "w");
 
     std::vector<ProcessKV> count_sorted_pds(process_datas.begin(), process_datas.end());
     std::sort(count_sorted_pds.begin(), count_sorted_pds.end(),
@@ -382,12 +380,6 @@ uint64_t check_proc_null = 0;
 
 static inline bool check_proc(OsiProc *proc) {
 
-    if (1==0 && (check_proc_tot % 100) == 0) {
-        cout << "check_proc_succ = " << check_proc_succ << "\n";
-        cout << "check_proc_tot  = " << check_proc_tot << "\n";
-        cout << "check_proc_null = " << check_proc_null << "\n";
-    }
-
     check_proc_tot++;
 
     if (!proc) check_proc_null ++;
@@ -444,8 +436,6 @@ void save_proc_range(OsiProc *proc, uint64_t i1, uint64_t i2) {
 // from now back to last asid change
 bool asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
 
-//    printf ("I'm in asidstory_asid_changed\n");
-
     // some fool trying to use asidstory for boot? 
     if (new_asid == 0) return false;
     
@@ -464,16 +454,20 @@ bool asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong n
         if (!pandalog) {        
             // just trying to arrange it so that we only spit out asidstory plot
             // for a cell once.
-/*
-            int cell = curr_instr * scale; 
 
-            bool anychange = false;
-            for (int i=0; i<cell; i++) {
-                if (!status_c[i]) anychange=true;
-                status_c[i] = true;
+            // only in replay do we know ahead of time scale
+            // and thus can know when we've updated a new time cell
+            if (rr_in_replay()) {
+                int cell = curr_instr * scale; 
+
+                bool anychange = false;
+                for (int i=0; i<cell; i++) {
+                    if (!status_c[i]) anychange=true;
+                    status_c[i] = true;
+                }
+                if (anychange) spit_asidstory();
             }
-             if (anychange) spit_asidstory();
-*/
+
         }
     }    
     else {
@@ -516,26 +510,21 @@ static inline bool process_same(OsiProc *proc1, OsiProc *proc2) {
 }
 
 
-double next_check_time = 1; // at 1 second in
+uint64_t start_time, next_check_time;
 
 // before every bb, mostly just trying to figure out current proc 
 void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
 
-    struct timeval t;
-    gettimeofday(&t, NULL);
-
-    double ts = (t.tv_sec * 1000000.0 + t.tv_usec) / 1000000.0;
-
-    if (ts > next_check_time) {
-        spit_asidstory();
-        while (ts > next_check_time) 
-            next_check_time += 0.5;
-    }
-    
-    if (!rr_in_replay())
+    if (!rr_in_replay()) {
+        // live -- spit asidstory once every second
+        struct timeval t;
+        gettimeofday(&t, NULL);        
+        if (t.tv_sec > next_check_time) {
+            spit_asidstory();
+            next_check_time = t.tv_sec;
+        }
         instr_count += tb->icount; // num instr in this block
-
-//     printf ("I'm in asidstory_before_block_exec\n");
+    }
 
     if (panda_in_kernel(env)) 
         kernel_count ++;
@@ -544,12 +533,15 @@ void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     asid_count[panda_current_asid(env)] ++;   
 
     // NB: we only know max instr *after* replay has started which is why this is here
-    if (rr_in_replay() && max_instr == 0) {
-        max_instr = replay_get_total_num_instructions();// get_total_num_instructions();
-        scale = ((double) num_cells) / ((double) max_instr); 
-//        if (debug) printf("max_instr = %" PRId64 "\n", max_instr);
+    if (rr_in_replay()) {
+        if (max_instr == 0) {
+            max_instr = replay_get_total_num_instructions();// get_total_num_instructions();
+            scale = ((double) num_cells) / ((double) max_instr); 
+            if (debug) cout << "max_instr = " << max_instr << " scale = " << scale << "\n"; // %" PRId64 "\n", max_instr);
+        }
     }
     else {
+        // live!
         max_instr = instr_count;
         scale = ((double) num_cells) / ((double) max_instr); 
     }
@@ -619,7 +611,7 @@ void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     }
     default: {}
     }
-    
+
     return;
 }
 
@@ -628,7 +620,7 @@ void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
 
 
 bool init_plugin(void *self) {    
-//    panda_require("osi");
+    panda_require("osi");
    
     // this sets up OS introspection API
     assert(init_osi_api());
@@ -655,6 +647,10 @@ bool init_plugin(void *self) {
 
     printf ("asidstory: summary_mode = %d\n", summary_mode);
     
+    struct timeval t;
+    gettimeofday(&t, NULL);
+
+    next_check_time = t.tv_sec+1;
 
     return true;
 }

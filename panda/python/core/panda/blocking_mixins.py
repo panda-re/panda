@@ -182,5 +182,5 @@ class blocking_mixins():
         (blocking) shutdown commands in our internal async queue
         so it must also be labeled as blocking.
         '''
-        assert (not self.running.is_set()), "Can't finish while still running"
+#        assert (not self.running.is_set()), "Can't finish while still running"
         self.panda_finish()
