@@ -46,7 +46,7 @@ class blocking_mixins():
     def revert_sync(self, snapshot_name):
         result = self.run_monitor_cmd("loadvm {}".format(snapshot_name))
         if result.startswith("Length mismatch"):
-            raise MemoryError
+            raise RuntimeError("QEMU machine's RAM size doesn't match snapshot RAM size!")
         return result
 
     @blocking
