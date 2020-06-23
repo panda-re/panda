@@ -244,14 +244,14 @@ ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
 # PPP Headers
 # Syscalls - load architecture-specific headers
 if arch == "i386":
-	define_clean_header(ffi, "{inc}/panda_datatypes_X86_32.h")
-	define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_x86.h")
+    define_clean_header(ffi, "{inc}/panda_datatypes_X86_32.h")
+    define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_x86.h")
 elif arch == "x86_64":
-	define_clean_header(ffi, "{inc}/panda_datatypes_X86_64.h")
-	define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_x64.h")
+    define_clean_header(ffi, "{inc}/panda_datatypes_X86_64.h")
+    define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_x64.h")
 elif arch == "arm":
-	define_clean_header(ffi, "{inc}/panda_datatypes_ARM_32.h")
-	define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_arm.h")
+    define_clean_header(ffi, "{inc}/panda_datatypes_ARM_32.h")
+    define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_arm.h")
 elif arch == "ppc" and int(bits) == 32:
     define_clean_header(ffi, "{inc}/panda_datatypes_PPC_32.h")
     print('WARNING: no syscalls support for PPC 32')
@@ -259,11 +259,13 @@ elif arch == "ppc" and int(bits) == 64:
     define_clean_header(ffi, "{inc}/panda_datatypes_PPC_64.h")
     print('WARNING: no syscalls support for PPC 64')
 elif arch == "mips" and int(bits) == 32:
-	define_clean_header(ffi, "{inc}/panda_datatypes_MIPS_32.h")
+    define_clean_header(ffi, "{inc}/panda_datatypes_MIPS_32.h")
+    define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_mips.h")
 elif arch == "mipsel" and int(bits) == 32:
-	define_clean_header(ffi, "{inc}/panda_datatypes_MIPS_32.h") # XXX?
+    define_clean_header(ffi, "{inc}/panda_datatypes_MIPS_32.h") # XXX?
+    define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_mips.h")
 else:
-	print("PANDA_DATATYPES: Architecture not supported")
+    print("PANDA_DATATYPES: Architecture not supported")
 
 # Define some common panda datatypes
 #define_clean_header(ffi, "{inc}/panda_qemu_support.h")

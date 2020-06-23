@@ -29,8 +29,7 @@ For Windows prototypes, whose signatures do not change between OS releases (thou
 Caveats
 ----
 
-Linux x86 and ARM, as well as several versions of Windows x86 are currently supported. 64-bit versions of Windows are not currently supported, because we have not yet implemented the 64-bit Windows system call ABI. Patches for 64-bit support would be greatly appreciated!
-
+Linux x86, x86_64, ARM,  and MIPS as well as several versions of Windows x86 are currently supported. 64-bit versions of Windows are not currently supported, because we have not yet implemented the 64-bit Windows system call ABI. Patches for 64-bit support would be greatly appreciated!
 
 Use
 ----
@@ -151,7 +150,11 @@ Finally, for each OS, we will have two files that contain the code responsible f
 Adding Support for a New Operating System
 ----
 
-Adding support for a new operating system is relatively simple, provided you have a prototypes file in the correct format. For example, suppose you want to add `newos`, which is an operating system for x86. The prototypes file would be named `newos_x86_prototypes.txt`. Then:
+Adding support for a new OS requires two steps: generating/creating a prototypes file and then updating syscalls2 to support it.
+
+To generate a prototypes file, you can use grep, expert knowledge, or the `prototype_parser.py` script. If you chose to use the script for a new linux architecture, you'll need to clone a linux kernel and add new entries for the architecture describing which files should be searched to find the syscalls.
+
+Once you have the prototypes file, adding support for a new operating system is relatively simple. For example, suppose you want to add `newos`, which is an operating system for x86. The prototypes file would be named `newos_x86_prototypes.txt`. Then:
 
 1. Add `newos` to the `KNOWN_OS` variable in syscall_parser.py
 2. Edit `recreate_all_os_arch.sh` and add `newos x86` to the end of the command line.

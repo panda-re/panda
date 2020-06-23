@@ -56,6 +56,12 @@ KNOWN_ARCH = {
         'rt_sp_reg': 'env->regs[13]',           # register holding stack pointer at runtime
         'qemu_target': 'defined(TARGET_ARM)',   # qemu target name for this arch - used in guards
     },
+    'mips': {
+        'bits': 32,
+        'rt_callno_reg': 'env->active_tc.gpr[2]', # register holding syscall number at runtime
+        'rt_sp_reg': 'env->active_tc.gpr[29]',    # register holding stack pointer at runtime
+        'qemu_target': 'defined(TARGET_MIPS)',    # qemu target name for this arch - used in guards
+    }
 }
 
 # This is the the maximum generic syscall number.
