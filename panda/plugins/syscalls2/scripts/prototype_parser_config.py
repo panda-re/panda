@@ -103,6 +103,23 @@ CONFIG_LINUX = {
             'cpp_flags': ['-D__ARM_EABI__', '-D__KERNEL__',],
         },
     },
+    # Generate using stock linux kernel at v5.8
+    'linux:mips:generic': {
+        'bits': 32,
+        'src': os.path.expanduser('~/git/linux'),
+        'map_function_signature': {
+            'parser': 'parse_signature_files',
+            'locations': {
+                'include/linux/syscalls.h': r'asmlinkage (?P<signature>\w+\s+(?P<syscall>\w+)\(.*)',
+                'arch/mips/kernel/signal.c': r'asmlinkage (?P<signature>\w+\s+(?P<syscall>\w+)\(.*)',
+            },
+            'normalize': True,
+        },
+        'map_function_number': {
+            'parser': 'parse_numbers_tbl',
+            'source': 'arch/mips/kernel/syscalls/syscall_o32.tbl',
+        },
+    },
 }
 
 ##############################################################################
