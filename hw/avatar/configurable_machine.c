@@ -402,8 +402,8 @@ static void set_entry_point(QDict *conf, THISCPU *cpuu)
     cpuu->env.eip = entry;
 
 #elif defined(TARGET_MIPS)
-    //Not implemented yet
-    printf("Not yet implemented- can't start execution at 0x%x\n", entry);
+    cpuu->env.active_tc.PC = entry;
+
 #elif defined(TARGET_PPC)
     //Not implemented yet
     printf("Not yet implemented- can't start execution at 0x%x\n", entry);
