@@ -54,6 +54,8 @@ void panda_disas(FILE *out, void *code, unsigned long size);
 void panda_break_main_loop(void);
 MemoryRegion* panda_find_ram(void);
 
+void panda_insert_call(target_ulong pc, void (*callee)(CPUState *cpu, target_ulong pc));
+
 extern bool panda_exit_loop;
 extern bool panda_break_vl_loop_req;
 

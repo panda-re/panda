@@ -9,6 +9,10 @@
 #include "panda/plog.h"
 #include "panda/plog-cc-bridge.h"
 
+#include "tcg-op.h"
+#include "exec/helper-proto.h"
+#include "exec/helper-gen.h"
+
 #ifdef TARGET_ARM
 /* Return the exception level which controls this address translation regime */
 static inline uint32_t regime_el(CPUARMState *env, ARMMMUIdx mmu_idx)
@@ -225,6 +229,11 @@ MemoryRegion* panda_find_ram(void) {
     }
 
     return ram;
+}
+
+void panda_insert_call(target_ulong pc, void (*callee)(CPUState *cpu, target_ulong pc))
+{
+    gen_helper_panda_insert_call_wrapper(tcg_const_tl(pc), tcg_const_ptr((void *)callee));
 }
 
 #ifdef TARGET_ARM
