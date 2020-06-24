@@ -628,12 +628,17 @@ class Panda(libpanda_mixins, libqemu_mixins, blocking_mixins, osi_mixins, hookin
             self.enable_memcb()
         buf = ffi.new("char[]", length)
 
+        # Force CFFI to parse addr as an unsigned value. Otherwise we get OverflowErrors
+        # when it decides that it's negative
+        ptr_typ = f'uint{self.bits}_t'
+        addr_u = int(ffi.cast(ptr_typ, addr))
+
         buf_a = ffi.cast("char*", buf)
         length_a = ffi.cast("int", length)
         if physical:
-            err = self.libpanda.panda_physical_memory_read_external(addr, buf_a, length_a)
+            err = self.libpanda.panda_physical_memory_read_external(addr_u, buf_a, length_a)
         else:
-            err = self.libpanda.panda_virtual_memory_read_external(env, addr, buf_a, length_a)
+            err = self.libpanda.panda_virtual_memory_read_external(env, addr_u, buf_a, length_a)
 
         if err < 0:
             raise ValueError(f"Memory access failed with err={err}") # TODO: make a PANDA Exn class
