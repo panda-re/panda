@@ -20000,6 +20000,12 @@ void gen_intermediate_code(CPUMIPSState *env, struct TranslationBlock *tb)
             gen_op_update_rr_icount();
         }
 #endif
+        // PANDA: ask if anyone wants execution notification
+        if (unlikely(panda_callbacks_insn_translate(cs, ctx.pc))) {
+            // PANDA: Insert the instrumentation
+            gen_helper_panda_insn_exec(tcg_const_tl(ctx.pc));
+        }
+
         is_slot = ctx.hflags & MIPS_HFLAG_BMASK;
         if (!(ctx.hflags & MIPS_HFLAG_M16)) {
             ctx.opcode = cpu_ldl_code(env, ctx.pc);
@@ -20034,6 +20040,11 @@ void gen_intermediate_code(CPUMIPSState *env, struct TranslationBlock *tb)
             gen_branch(&ctx, insn_bytes);
         }
         ctx.pc += insn_bytes;
+
+        if (unlikely(panda_callbacks_after_insn_translate(cs, ctx.pc))
+                && !is_slot) { // XXX: af - unsure about is_slot?
+            gen_helper_panda_after_insn_exec(tcg_const_tl(ctx.pc));
+        }
 
         /* Execute a branch and its delay slot as a single instruction.
            This is what GDB expects and is consistent with what the
