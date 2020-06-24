@@ -24,6 +24,8 @@
 #include "exec/cpu_ldst.h"
 #include "exec/log.h"
 
+#include "panda/callbacks/cb-support.h"
+
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
 #endif

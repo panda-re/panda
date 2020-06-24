@@ -25,9 +25,7 @@
 #include "exec/cpu_ldst.h"
 #include "sysemu/kvm.h"
 
-#ifdef CONFIG_SOFTMMU
-#include "panda/rr/rr_log.h"
-#endif
+#include "panda/callbacks/cb-helper-impl.h"
 
 /*****************************************************************************/
 /* Exceptions processing helpers */
