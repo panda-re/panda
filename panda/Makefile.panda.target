@@ -161,6 +161,7 @@ llvm-y =
 # linked together to make helper bitcode available for use by PANDA plugins
 llvmmorph-y =
 
+# Helper list is just from panda/target/arch/*help.c and change .c to .bc2
 X86_HELPERS = helper.bc2 bpt_helper.bc2 excp_helper.bc2 fpu_helper.bc2
 X86_HELPERS += excp_helper.bc2 fpu_helper.bc2 cc_helper.bc2 int_helper.bc2
 X86_HELPERS += svm_helper.bc2 smm_helper.bc2 misc_helper.bc2 mem_helper.bc2 seg_helper.bc2
@@ -181,11 +182,24 @@ llvm-$(TARGET_ARM) += fpu/softfloat.bc2
 llvm-$(TARGET_ARM) += $(addprefix target/arm/,$(ARM_HELPERS))
 llvmmorph-$(TARGET_ARM) += llvm-helpers-arm.bc
 
-PPC_HELPERS = excp_helper.bc2 fpu_helper.bc2 timebase_helper.bc2 misc_helper.bc2 mmu_helper.bc2 mem_helper.bc2 int_helper.bc2
+PPC_HELPERS = excp_helper.bc2 fpu_helper.bc2 timebase_helper.bc2 misc_helper.bc2
+PPC_HELPERS += mmu_helper.bc2 mem_helper.bc2 int_helper.bc2
 
 llvm-$(TARGET_PPC) += fpu/softfloat.bc2
 llvm-$(TARGET_PPC) += $(addprefix target/ppc/,$(PPC_HELPERS))
 llvmmorph-$(TARGET_PPC) += llvm-helpers-ppc.bc
+
+MIPS_HELPERS = dsp_helper.bc2 helper.bc2 lmi_helper.bc2 msa_helper.bc2
+MIPS_HELPERS += op_helper.bc2
+llvm-$(TARGET_MIPS) += fpu/softfloat.bc2
+llvm-$(TARGET_MIPS) += $(addprefix target/mips/,$(MIPS_HELPERS))
+
+ifdef __MIPSEL__
+llvmmorph-$(TARGET_MIPS) += llvm-helpers-mipsel.bc
+endif
+ifdef __MIPSEB__
+llvmmorph-$(TARGET_MIPS) += llvm-helpers-mipsbe.bc
+endif
 
 CLANG_FILTER = -Wold-style-declaration -fstack-protector-strong -Wno-error=cpp -g -O0 -O1 -O3 -mcx16 -Wno-shift-negative-value
 QEMU_BC2FLAGS:=$(filter-out $(CLANG_FILTER),$(QEMU_CFLAGS) $(CFLAGS)) -O2 -I../target/$(TARGET_BASE_ARCH)
