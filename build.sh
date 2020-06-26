@@ -68,38 +68,12 @@ fi
 
 msg "Using python2 at: $PYTHON2PATH"
 
-### Check gcc/g++ versions. 5 and 7 are currently  supported version.
-### PANDA no longer builds with versions 4.x.
-GCC_TOOLCHAIN_VERSION_MIN=5
-GCC_TOOLCHAIN_VERSION_MAX=7
-GCC_VERSION_MAJOR=$(gcc -dumpversion | cut -d. -f1)
-GCXX_VERSION_MAJOR=$(g++ -dumpversion | cut -d. -f1)
+### Check gcc/g++ versions: 7.1 is minimum supported. If you want to build with clang, you might need to disable this
+gcc --version | awk '/gcc/ && ($3+0)<7.1{print "Fatal error: GCC too old"; exit 1}' || exit 1
+g++ --version | awk '/g\+\+/ && ($3+0)<7.1{print "Fatal error: G++ too old"; exit 1}' || exit 1
 
-# If c and C++ version >= min and <= max
-if [ $GCC_VERSION_MAJOR -ge $GCC_TOOLCHAIN_VERSION_MIN ] && [ $GCXX_VERSION_MAJOR -ge $GCC_TOOLCHAIN_VERSION_MIN ] && [ $GCC_VERSION_MAJOR -le $GCC_TOOLCHAIN_VERSION_MAX ] && [ $GCXX_VERSION_MAJOR -le $GCC_TOOLCHAIN_VERSION_MAX ]; then
-    msg "Building with default gcc/g++."
-    COMPILER_CONFIG=""
-
-
-# If we have gcc-7 (max) installed, use it
-elif (type gcc-$GCC_TOOLCHAIN_VERSION_MAX && type g++-$GCC_TOOLCHAIN_VERSION_MAX) >/dev/null 2>&1; then
-    msg "Building with gcc-$GCC_TOOLCHAIN_VERSION_MAX/g++-$GCC_TOOLCHAIN_VERSION_MAX."
-    COMPILER_CONFIG="--cc=gcc-$GCC_TOOLCHAIN_VERSION_MAX --cxx=g++-$GCC_TOOLCHAIN_VERSION_MAX"
-
-# If we have gcc-5 (min) installed, use it
-elif (type gcc-$GCC_TOOLCHAIN_VERSION_MIN && type g++-$GCC_TOOLCHAIN_VERSION_MIN) >/dev/null 2>&1; then
-    msg "Building with gcc-$GCC_TOOLCHAIN_VERSION_MIN/g++-$GCC_TOOLCHAIN_VERSION_MIN."
-    COMPILER_CONFIG="--cc=gcc-$GCC_TOOLCHAIN_VERSION_MIN --cxx=g++-$GCC_TOOLCHAIN_VERSION_MIN"
-
-# Old GCC & G++
-elif [ $GCC_VERSION_MAJOR -lt $GCC_TOOLCHAIN_VERSION_MIN -a $GCXX_VERSION_MAJOR -lt $GCC_TOOLCHAIN_VERSION_MIN ]; then
-    msg "Older gcc/g++ found. Enforcing gnu11 mode."
-    COMPILER_CONFIG="--extra-cflags=-std=gnu11"
-
-else
-    msg "Unsupported gcc/g++ found. Trying with default flags. This might fail"
-    COMPILER_CONFIG=""
-fi
+#COMPILER_CONFIG="--cc=gcc-$GCC_TOOLCHAIN_VERSION_MAX --cxx=g++-$GCC_TOOLCHAIN_VERSION_MAX"
+#COMPILER_CONFIG="--extra-cflags=-std=gnu11 --extra-cxxflags=-std=gnu++1z --cc=gcc --cxx=g++"
 
 ### Check for protobuf v2.
 if ! pkg-config --exists protobuf; then
