@@ -86,7 +86,6 @@ bool arm_get_vaddr_table(CPUState *cpu, uint32_t *table, uint32_t address)
         }
         *table = regime_ttbr(env, mmu_idx, 0) & tcr->base_mask;
     }
-    *table |= (address >> 18) & 0x3ffc;
     return true;
 }
 #endif
