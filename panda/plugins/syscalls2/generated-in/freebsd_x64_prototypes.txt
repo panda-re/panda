@@ -39,15 +39,15 @@
 38 int stat(const char *path, struct ostat *ub);
 39 pid_t getppid(void);
 40 int lstat(const char *path, struct ostat *ub);
-41 int dup(u_int fd);
+41 int dup(unsigned fd);
 42 int pipe(void);
 43 gid_t getegid(void);
-44 int profil(char *samples, size_t size, size_t offset, u_int scale);
+44 int profil(char *samples, size_t size, size_t offset, unsigned scale);
 45 int ktrace(const char *fname, int ops, int facs, int pid);
 46 int sigaction(int signum, struct osigaction *nsa, struct osigaction *osa);
 47 gid_t getgid(void);
 48 int sigprocmask(int how, osigset_t mask);
-49 int getlogin(char *namebuf, u_int namelen);
+49 int getlogin(char *namebuf, unsigned namelen);
 50 int setlogin(const char *namebuf);
 51 int acct(const char *path);
 52 int sigpending(void);
@@ -75,18 +75,18 @@
 75 int madvise(void *addr, size_t len, int behav);
 
 78 int mincore(const void *addr, size_t len, char *vec);
-79 int getgroups(u_int gidsetsize, gid_t *gidset);
-80 int setgroups(u_int gidsetsize, gid_t *gidset);
+79 int getgroups(unsigned gidsetsize, gid_t *gidset);
+80 int setgroups(unsigned gidsetsize, gid_t *gidset);
 81 int getpgrp(void);
 82 int setpgid(int pid, int pgid);
-83 int setitimer(u_int which, struct itimerval *itv, struct itimerval *oitv);
+83 int setitimer(unsigned which, struct itimerval *itv, struct itimerval *oitv);
 84 int wait(void);
 85 int swapon(const char *name);
-86 int getitimer(u_int which, struct itimerval *itv);
-87 int gethostname(char *hostname, u_int len);
-88 int sethostname(char *hostname, u_int len);
+86 int getitimer(unsigned which, struct itimerval *itv);
+87 int gethostname(char *hostname, unsigned len);
+88 int sethostname(char *hostname, unsigned len);
 89 int getdtablesize(void);
-90 int dup2(u_int from, u_int to);
+90 int dup2(unsigned from, unsigned to);
 
 92 int fcntl(int fd, int cmd, long arg);
 93 int select(int nd, fd_set *in, fd_set *ou, fd_set *ex, struct timeval *tv);
@@ -116,8 +116,8 @@
 117 int getrusage(int who, struct rusage *rusage);
 118 int getsockopt(int s, int level, int name, void *val,  int *avalsize);
 
-120 int readv(int fd, struct iovec *iovp, u_int iovcnt);
-121 int writev(int fd, struct iovec *iovp, u_int iovcnt);
+120 int readv(int fd, struct iovec *iovp, unsigned iovcnt);
+121 int writev(int fd, struct iovec *iovp, unsigned iovcnt);
 122 int settimeofday(struct timeval *tv, struct timezone *tzp);
 123 int fchown(int fd, int uid, int gid);
 124 int fchmod(int fd, mode_t mode);
@@ -140,8 +140,8 @@
 141 int getpeername(int fdes, struct sockaddr *asa, int *alen);
 142 long gethostid(void);
 143 int sethostid(long hostid);
-144 int getrlimit(u_int which, struct orlimit *rlp);
-145 int setrlimit(u_int which, struct orlimit *rlp);
+144 int getrlimit(unsigned which, struct orlimit *rlp);
+145 int setrlimit(unsigned which, struct orlimit *rlp);
 146 int killpg(int pgid, int signum);
 147 int setsid(void);
 148 int quotactl(const char *path, int cmd, int uid, void *arg);
@@ -150,7 +150,7 @@
 
 154 int nlm_syscall(int debug_level, int grace_period, int addr_count, char **addrs);
 155 int nfssvc(int flag, void *argp);
-156 int getdirentries(int fd, char *buf, u_int count, long *basep);
+156 int getdirentries(int fd, char *buf, unsigned count, long *basep);
 157 int statfs(const char *path, struct ostatfs *buf);
 158 int fstatfs(int fd, struct ostatfs *buf);
 
@@ -178,21 +178,21 @@
 191 int pathconf(const char *path, int name);
 192 int fpathconf(int fd, int name);
 
-194 int getrlimit(u_int which, struct rlimit *rlp);
-195 int setrlimit(u_int which, struct rlimit *rlp);
-196 int getdirentries(int fd, char *buf, u_int count, long *basep);
+194 int getrlimit(unsigned which, struct rlimit *rlp);
+195 int setrlimit(unsigned which, struct rlimit *rlp);
+196 int getdirentries(int fd, char *buf, unsigned count, long *basep);
 197 void *mmap(void *addr, size_t len, int prot, int flags, int fd, int pad, off_t pos);
 198 int nosys(void);
 199 off_t lseek(int fd, int pad, off_t offset, int whence);
 200 int truncate(const char *path, int pad, off_t length);
 201 int ftruncate(int fd, int pad, off_t length);
-202 int __sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, const void *new, size_t newlen);
+202 int __sysctl(int *name, unsigned namelen, void *old, size_t *oldlenp, const void *new, size_t newlen);
 203 int mlock(const void *addr, size_t len);
 204 int munlock(const void *addr, size_t len);
 205 int undelete(const char *path);
 206 int futimes(int fd, struct timeval *tptr);
 207 int getpgid(pid_t pid);
-209 int poll(struct pollfd *fds, u_int nfds, int timeout);
+209 int poll(struct pollfd *fds, unsigned nfds, int timeout);
 
 220 int __semctl(int semid, int semnum, int cmd, union semun_old *arg);
 221 int semget(key_t key, int nsems, int semflg);
@@ -242,8 +242,8 @@
 279 int nfstat(int fd, struct nstat *sb);
 280 int nlstat(const char *path, struct nstat *ub);
 
-289 ssize_t preadv(int fd, struct iovec *iovp, u_int iovcnt, off_t offset);
-290 ssize_t pwritev(int fd, struct iovec *iovp, u_int iovcnt, off_t offset);
+289 ssize_t preadv(int fd, struct iovec *iovp, unsigned iovcnt, off_t offset);
+290 ssize_t pwritev(int fd, struct iovec *iovp, unsigned iovcnt, off_t offset);
 
 297 int fhstatfs(const struct fhandle *u_fhp, struct ostatfs *buf);
 298 int fhopen(const struct fhandle *u_fhp, int flags);
@@ -379,14 +379,14 @@
 442 int thr_suspend(const struct timespec *timeout);
 443 int thr_wake(long id);
 444 int kldunloadf(int fileid, int flags);
-445 int audit(const void *record, u_int length);
-446 int auditon(int cmd, void *data, u_int length);
+445 int audit(const void *record, unsigned length);
+446 int auditon(int cmd, void *data, unsigned length);
 447 int getauid(uid_t *auid);
 448 int setauid(uid_t *auid);
 449 int getaudit(struct auditinfo *auditinfo);
 450 int setaudit(struct auditinfo *auditinfo);
-451 int getaudit_addr(struct auditinfo_addr *auditinfo_addr, u_int length);
-452 int setaudit_addr(struct auditinfo_addr *auditinfo_addr, u_int length);
+451 int getaudit_addr(struct auditinfo_addr *auditinfo_addr, unsigned length);
+452 int setaudit_addr(struct auditinfo_addr *auditinfo_addr, unsigned length);
 453 int auditctl(const char *path);
 454 int _umtx_op(void *obj, int op, u_long val, void *uaddr1, void *uaddr2);
 455 int thr_new(struct thr_param *param, int param_size);
@@ -449,7 +449,7 @@
 
 515 int __cap_rights_get(int version, int fd, cap_rights_t *rightsp);
 516 int cap_enter(void);
-517 int cap_getmode(u_int *modep);
+517 int cap_getmode(unsigned *modep);
 518 int pdfork(int *fdp, int flags);
 519 int pdkill(int fd, int signum);
 520 int pdgetpid(int fd, pid_t *pidp);
@@ -477,7 +477,7 @@
 542 int pipe2(int *fildes, int flags);
 543 int aio_mlock(struct aiocb *aiocbp);
 544 int procctl(idtype_t idtype, id_t id, int com, void *data);
-545 int ppoll(struct pollfd *fds, u_int nfds, const struct timespec *ts, const sigset_t *set);
+545 int ppoll(struct pollfd *fds, unsigned nfds, const struct timespec *ts, const sigset_t *set);
 546 int futimens(int fd, struct timespec *times);
 547 int utimensat(int fd, const char *path, struct timespec *times, int flag);
 
@@ -506,5 +506,5 @@
 572 int shm_rename(const char *path_from, const char *path_to, int flags);
 573 int sigfastblock(int cmd, uint32_t *ptr);
 574 int __realpathat(int fd, const char *path, char *buf, size_t size, int flags);
-575 int close_range(u_int lowfd, u_int highfd, int flags);
+575 int close_range(unsigned lowfd, unsigned highfd, int flags);
 576 int rpctls_syscall(int op, const char *path);
