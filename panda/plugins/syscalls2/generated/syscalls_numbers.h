@@ -29,7 +29,6 @@ namespace syscalls2 {
 			const int chmod = 15;
 			const int chown = 16;
 			const int getfsstat = 18;
-			const int lseek = 19;
 			const int getpid = 20;
 			const int mount = 21;
 			const int unmount = 22;
@@ -58,11 +57,9 @@ namespace syscalls2 {
 			const int ktrace = 45;
 			const int sigaction = 46;
 			const int getgid = 47;
-			const int sigprocmask = 48;
 			const int getlogin = 49;
 			const int setlogin = 50;
 			const int acct = 51;
-			const int sigpending = 52;
 			const int sigaltstack = 53;
 			const int ioctl = 54;
 			const int reboot = 55;
@@ -129,8 +126,6 @@ namespace syscalls2 {
 			const int setreuid = 126;
 			const int setregid = 127;
 			const int rename = 128;
-			const int truncate = 129;
-			const int ftruncate = 130;
 			const int flock = 131;
 			const int mkfifo = 132;
 			const int sendto = 133;
@@ -163,8 +158,6 @@ namespace syscalls2 {
 			const int sysarch = 165;
 			const int rtprio = 166;
 			const int semsys = 169;
-			const int pread = 173;
-			const int pwrite = 174;
 			const int setfib = 175;
 			const int ntp_adjtime = 176;
 			const int setgid = 181;
@@ -179,9 +172,6 @@ namespace syscalls2 {
 			const int setrlimit = 195;
 			const int getdirentries = 196;
 			const int nosys = 198;
-			const int lseek = 199;
-			const int truncate = 200;
-			const int ftruncate = 201;
 			const int __sysctl = 202;
 			const int mlock = 203;
 			const int munlock = 204;

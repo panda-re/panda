@@ -181,9 +181,7 @@
 196 int getdirentries(int fd, char *buf, unsigned count, long *basep);
 197 void *mmap(void *addr, size_t len, int prot, int flags, int fd, int pad, off_t pos);
 198 int nosys(void);
-199 off_t lseek(int fd, int pad, off_t offset, int whence);
-200 int truncate(const char *path, int pad, off_t length);
-201 int ftruncate(int fd, int pad, off_t length);
+
 202 int __sysctl(int *name, unsigned namelen, void *old, size_t *oldlenp, const void *new, size_t newlen);
 203 int mlock(const void *addr, size_t len);
 204 int munlock(const void *addr, size_t len);

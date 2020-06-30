@@ -243,19 +243,18 @@ Profile profiles[PROFILE_LAST] = {
         .windows_arg_offset = -1,
         .syscall_interrupt_number = 0x80,
     },
-    // TODO: this needs testing/modification for FREEBSD
     {
-        .enter_switch = syscall_enter_switch_linux_x64,
-        .return_switch = syscall_return_switch_linux_x64,
+        .enter_switch = syscall_enter_switch_freebsd_x64,
+        .return_switch = syscall_return_switch_freebsd_x64,
         .get_return_val = get_return_val_x86,
-        .calc_retaddr = calc_retaddr_linux_x64,
-        .get_32 = get_32_linux_x64,
+        .calc_retaddr = calc_retaddr_linux_x64, // Not auto-gen, using the Linux impl
+        .get_32 = get_32_linux_x64,             // Not auto-gen, using the Linux impl
         .get_s32 = get_s32_generic,
-        .get_64 = get_64_linux_x64,
+        .get_64 = get_64_linux_x64,             // Not auto-gen, using the Linux impl
         .get_s64 = get_s64_generic,
-        .get_return_32 = get_32_linux_x64,
+        .get_return_32 = get_32_linux_x64,      // Not auto-gen, using the Linux impl
         .get_return_s32 = get_return_s32_generic,
-        .get_return_64 = get_64_linux_x64,
+        .get_return_64 = get_64_linux_x64,      // Not auto-gen, using the Linux impl
         .get_return_s64 = get_return_s64_generic,
         .windows_return_addr_register = -1,
         .windows_arg_offset = -1,

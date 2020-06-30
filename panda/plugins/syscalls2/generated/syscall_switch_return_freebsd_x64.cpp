@@ -184,18 +184,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_getfsstat_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
-		// 19 long lseek ['int fd', 'long offset', 'int whence']
-		case 19: {
-			int32_t arg0;
-			int64_t arg1;
-			int32_t arg2;
-			if (PPP_CHECK_CB(on_lseek_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(int32_t));
-			}
-			PPP_RUN_CB(on_lseek_return, cpu, pc, arg0, arg1, arg2) ;
-		}; break;
 		// 20 pid_t getpid ['void']
 		case 20: {
 			if (PPP_CHECK_CB(on_getpid_return) || PPP_CHECK_CB(on_all_sys_return2)) {
@@ -476,16 +464,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_getgid_return, cpu, pc) ;
 		}; break;
-		// 48 int sigprocmask ['int how', 'osigset_t mask']
-		case 48: {
-			int32_t arg0;
-			uint32_t arg1;
-			if (PPP_CHECK_CB(on_sigprocmask_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
-			}
-			PPP_RUN_CB(on_sigprocmask_return, cpu, pc, arg0, arg1) ;
-		}; break;
 		// 49 int getlogin ['char *namebuf', 'unsigned namelen']
 		case 49: {
 			uint64_t arg0;
@@ -511,12 +489,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
 			}
 			PPP_RUN_CB(on_acct_return, cpu, pc, arg0) ;
-		}; break;
-		// 52 int sigpending ['void']
-		case 52: {
-			if (PPP_CHECK_CB(on_sigpending_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-			}
-			PPP_RUN_CB(on_sigpending_return, cpu, pc) ;
 		}; break;
 		// 53 int sigaltstack ['stack_t *ss', 'stack_t *oss']
 		case 53: {
@@ -1210,26 +1182,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_rename_return, cpu, pc, arg0, arg1) ;
 		}; break;
-		// 129 int truncate ['const char *path', 'long length']
-		case 129: {
-			uint64_t arg0;
-			int64_t arg1;
-			if (PPP_CHECK_CB(on_truncate_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int64_t));
-			}
-			PPP_RUN_CB(on_truncate_return, cpu, pc, arg0, arg1) ;
-		}; break;
-		// 130 int ftruncate ['int fd', 'long length']
-		case 130: {
-			int32_t arg0;
-			int64_t arg1;
-			if (PPP_CHECK_CB(on_ftruncate_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int64_t));
-			}
-			PPP_RUN_CB(on_ftruncate_return, cpu, pc, arg0, arg1) ;
-		}; break;
 		// 131 int flock ['int fd', 'int how']
 		case 131: {
 			int32_t arg0;
@@ -1568,38 +1520,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			}
 			PPP_RUN_CB(on_semsys_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
 		}; break;
-		// 173 ssize_t pread ['int fd', 'void *buf', 'size_t nbyte', 'int pad', 'off_t offset']
-		case 173: {
-			int32_t arg0;
-			uint64_t arg1;
-			uint32_t arg2;
-			int32_t arg3;
-			uint64_t arg4;
-			if (PPP_CHECK_CB(on_pread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
-				memcpy(&arg3, ctx->args[3], sizeof(int32_t));
-				memcpy(&arg4, ctx->args[4], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_pread_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
-		}; break;
-		// 174 ssize_t pwrite ['int fd', 'const void *buf', 'size_t nbyte', 'int pad', 'off_t offset']
-		case 174: {
-			int32_t arg0;
-			uint64_t arg1;
-			uint32_t arg2;
-			int32_t arg3;
-			uint64_t arg4;
-			if (PPP_CHECK_CB(on_pwrite_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(uint64_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint32_t));
-				memcpy(&arg3, ctx->args[3], sizeof(int32_t));
-				memcpy(&arg4, ctx->args[4], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_pwrite_return, cpu, pc, arg0, arg1, arg2, arg3, arg4) ;
-		}; break;
 		// 175 int setfib ['int fibnum']
 		case 175: {
 			int32_t arg0;
@@ -1729,44 +1649,6 @@ void syscall_return_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc, const sys
 			if (PPP_CHECK_CB(on_nosys_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 			}
 			PPP_RUN_CB(on_nosys_return, cpu, pc) ;
-		}; break;
-		// 199 off_t lseek ['int fd', 'int pad', 'off_t offset', 'int whence']
-		case 199: {
-			int32_t arg0;
-			int32_t arg1;
-			uint64_t arg2;
-			int32_t arg3;
-			if (PPP_CHECK_CB(on_lseek_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint64_t));
-				memcpy(&arg3, ctx->args[3], sizeof(int32_t));
-			}
-			PPP_RUN_CB(on_lseek_return, cpu, pc, arg0, arg1, arg2, arg3) ;
-		}; break;
-		// 200 int truncate ['const char *path', 'int pad', 'off_t length']
-		case 200: {
-			uint64_t arg0;
-			int32_t arg1;
-			uint64_t arg2;
-			if (PPP_CHECK_CB(on_truncate_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(uint64_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_truncate_return, cpu, pc, arg0, arg1, arg2) ;
-		}; break;
-		// 201 int ftruncate ['int fd', 'int pad', 'off_t length']
-		case 201: {
-			int32_t arg0;
-			int32_t arg1;
-			uint64_t arg2;
-			if (PPP_CHECK_CB(on_ftruncate_return) || PPP_CHECK_CB(on_all_sys_return2)) {
-				memcpy(&arg0, ctx->args[0], sizeof(int32_t));
-				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
-				memcpy(&arg2, ctx->args[2], sizeof(uint64_t));
-			}
-			PPP_RUN_CB(on_ftruncate_return, cpu, pc, arg0, arg1, arg2) ;
 		}; break;
 		// 202 int __sysctl ['int *name', 'unsigned namelen', 'void *old', 'size_t *oldlenp', 'const void *new', 'size_t newlen']
 		case 202: {

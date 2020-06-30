@@ -236,22 +236,6 @@
 	const int32_t &UNUSED(pref##mode) = *reinterpret_cast<const int32_t *>((ctx)->args[2]);
 #endif
 
-// long lseek ['int fd', 'long offset', 'int whence']
-#define locals_FREEBSD__X64_lseek(ctx, pref) \
-	int32_t UNUSED(pref##fd) = *(int32_t *)((ctx)->args[0]); \
-	int64_t UNUSED(pref##offset) = *(int64_t *)((ctx)->args[1]); \
-	int32_t UNUSED(pref##whence) = *(int32_t *)((ctx)->args[2]);
-#if defined(__cplusplus)
-#define references_FREEBSD__X64_lseek(ctx, pref) \
-	int32_t &UNUSED(pref##fd) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
-	int64_t &UNUSED(pref##offset) = *reinterpret_cast<int64_t *>((ctx)->args[1]); \
-	int32_t &UNUSED(pref##whence) = *reinterpret_cast<int32_t *>((ctx)->args[2]);
-#define creferences_FREEBSD__X64_lseek(ctx, pref) \
-	const int32_t &UNUSED(pref##fd) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
-	const int64_t &UNUSED(pref##offset) = *reinterpret_cast<const int64_t *>((ctx)->args[1]); \
-	const int32_t &UNUSED(pref##whence) = *reinterpret_cast<const int32_t *>((ctx)->args[2]);
-#endif
-
 // pid_t getpid ['void']
 #undef locals_FREEBSD__X64_getpid
 #if defined(__cplusplus)
@@ -608,19 +592,6 @@
 #undef references_FREEBSD__X64_getgid
 #endif
 
-// int sigprocmask ['int how', 'osigset_t mask']
-#define locals_FREEBSD__X64_sigprocmask(ctx, pref) \
-	int32_t UNUSED(pref##how) = *(int32_t *)((ctx)->args[0]); \
-	uint32_t UNUSED(pref##mask) = *(uint32_t *)((ctx)->args[1]);
-#if defined(__cplusplus)
-#define references_FREEBSD__X64_sigprocmask(ctx, pref) \
-	int32_t &UNUSED(pref##how) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
-	uint32_t &UNUSED(pref##mask) = *reinterpret_cast<uint32_t *>((ctx)->args[1]);
-#define creferences_FREEBSD__X64_sigprocmask(ctx, pref) \
-	const int32_t &UNUSED(pref##how) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
-	const uint32_t &UNUSED(pref##mask) = *reinterpret_cast<const uint32_t *>((ctx)->args[1]);
-#endif
-
 // int getlogin ['char *namebuf', 'unsigned namelen']
 #define locals_FREEBSD__X64_getlogin(ctx, pref) \
 	uint64_t UNUSED(pref##namebuf) = *(uint64_t *)((ctx)->args[0]); \
@@ -652,12 +623,6 @@
 	uint64_t &UNUSED(pref##path) = *reinterpret_cast<uint64_t *>((ctx)->args[0]);
 #define creferences_FREEBSD__X64_acct(ctx, pref) \
 	const uint64_t &UNUSED(pref##path) = *reinterpret_cast<const uint64_t *>((ctx)->args[0]);
-#endif
-
-// int sigpending ['void']
-#undef locals_FREEBSD__X64_sigpending
-#if defined(__cplusplus)
-#undef references_FREEBSD__X64_sigpending
 #endif
 
 // int sigaltstack ['stack_t *ss', 'stack_t *oss']
@@ -1561,32 +1526,6 @@
 	const uint64_t &UNUSED(pref##to) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]);
 #endif
 
-// int truncate ['const char *path', 'long length']
-#define locals_FREEBSD__X64_truncate(ctx, pref) \
-	uint64_t UNUSED(pref##path) = *(uint64_t *)((ctx)->args[0]); \
-	int64_t UNUSED(pref##length) = *(int64_t *)((ctx)->args[1]);
-#if defined(__cplusplus)
-#define references_FREEBSD__X64_truncate(ctx, pref) \
-	uint64_t &UNUSED(pref##path) = *reinterpret_cast<uint64_t *>((ctx)->args[0]); \
-	int64_t &UNUSED(pref##length) = *reinterpret_cast<int64_t *>((ctx)->args[1]);
-#define creferences_FREEBSD__X64_truncate(ctx, pref) \
-	const uint64_t &UNUSED(pref##path) = *reinterpret_cast<const uint64_t *>((ctx)->args[0]); \
-	const int64_t &UNUSED(pref##length) = *reinterpret_cast<const int64_t *>((ctx)->args[1]);
-#endif
-
-// int ftruncate ['int fd', 'long length']
-#define locals_FREEBSD__X64_ftruncate(ctx, pref) \
-	int32_t UNUSED(pref##fd) = *(int32_t *)((ctx)->args[0]); \
-	int64_t UNUSED(pref##length) = *(int64_t *)((ctx)->args[1]);
-#if defined(__cplusplus)
-#define references_FREEBSD__X64_ftruncate(ctx, pref) \
-	int32_t &UNUSED(pref##fd) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
-	int64_t &UNUSED(pref##length) = *reinterpret_cast<int64_t *>((ctx)->args[1]);
-#define creferences_FREEBSD__X64_ftruncate(ctx, pref) \
-	const int32_t &UNUSED(pref##fd) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
-	const int64_t &UNUSED(pref##length) = *reinterpret_cast<const int64_t *>((ctx)->args[1]);
-#endif
-
 // int flock ['int fd', 'int how']
 #define locals_FREEBSD__X64_flock(ctx, pref) \
 	int32_t UNUSED(pref##fd) = *(int32_t *)((ctx)->args[0]); \
@@ -2027,50 +1966,6 @@
 	const int32_t &UNUSED(pref##a5) = *reinterpret_cast<const int32_t *>((ctx)->args[4]);
 #endif
 
-// ssize_t pread ['int fd', 'void *buf', 'size_t nbyte', 'int pad', 'off_t offset']
-#define locals_FREEBSD__X64_pread(ctx, pref) \
-	int32_t UNUSED(pref##fd) = *(int32_t *)((ctx)->args[0]); \
-	uint64_t UNUSED(pref##buf) = *(uint64_t *)((ctx)->args[1]); \
-	uint32_t UNUSED(pref##nbyte) = *(uint32_t *)((ctx)->args[2]); \
-	int32_t UNUSED(pref##pad) = *(int32_t *)((ctx)->args[3]); \
-	uint64_t UNUSED(pref##offset) = *(uint64_t *)((ctx)->args[4]);
-#if defined(__cplusplus)
-#define references_FREEBSD__X64_pread(ctx, pref) \
-	int32_t &UNUSED(pref##fd) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
-	uint64_t &UNUSED(pref##buf) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
-	uint32_t &UNUSED(pref##nbyte) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
-	int32_t &UNUSED(pref##pad) = *reinterpret_cast<int32_t *>((ctx)->args[3]); \
-	uint64_t &UNUSED(pref##offset) = *reinterpret_cast<uint64_t *>((ctx)->args[4]);
-#define creferences_FREEBSD__X64_pread(ctx, pref) \
-	const int32_t &UNUSED(pref##fd) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
-	const uint64_t &UNUSED(pref##buf) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
-	const uint32_t &UNUSED(pref##nbyte) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
-	const int32_t &UNUSED(pref##pad) = *reinterpret_cast<const int32_t *>((ctx)->args[3]); \
-	const uint64_t &UNUSED(pref##offset) = *reinterpret_cast<const uint64_t *>((ctx)->args[4]);
-#endif
-
-// ssize_t pwrite ['int fd', 'const void *buf', 'size_t nbyte', 'int pad', 'off_t offset']
-#define locals_FREEBSD__X64_pwrite(ctx, pref) \
-	int32_t UNUSED(pref##fd) = *(int32_t *)((ctx)->args[0]); \
-	uint64_t UNUSED(pref##buf) = *(uint64_t *)((ctx)->args[1]); \
-	uint32_t UNUSED(pref##nbyte) = *(uint32_t *)((ctx)->args[2]); \
-	int32_t UNUSED(pref##pad) = *(int32_t *)((ctx)->args[3]); \
-	uint64_t UNUSED(pref##offset) = *(uint64_t *)((ctx)->args[4]);
-#if defined(__cplusplus)
-#define references_FREEBSD__X64_pwrite(ctx, pref) \
-	int32_t &UNUSED(pref##fd) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
-	uint64_t &UNUSED(pref##buf) = *reinterpret_cast<uint64_t *>((ctx)->args[1]); \
-	uint32_t &UNUSED(pref##nbyte) = *reinterpret_cast<uint32_t *>((ctx)->args[2]); \
-	int32_t &UNUSED(pref##pad) = *reinterpret_cast<int32_t *>((ctx)->args[3]); \
-	uint64_t &UNUSED(pref##offset) = *reinterpret_cast<uint64_t *>((ctx)->args[4]);
-#define creferences_FREEBSD__X64_pwrite(ctx, pref) \
-	const int32_t &UNUSED(pref##fd) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
-	const uint64_t &UNUSED(pref##buf) = *reinterpret_cast<const uint64_t *>((ctx)->args[1]); \
-	const uint32_t &UNUSED(pref##nbyte) = *reinterpret_cast<const uint32_t *>((ctx)->args[2]); \
-	const int32_t &UNUSED(pref##pad) = *reinterpret_cast<const int32_t *>((ctx)->args[3]); \
-	const uint64_t &UNUSED(pref##offset) = *reinterpret_cast<const uint64_t *>((ctx)->args[4]);
-#endif
-
 // int setfib ['int fibnum']
 #define locals_FREEBSD__X64_setfib(ctx, pref) \
 	int32_t UNUSED(pref##fibnum) = *(int32_t *)((ctx)->args[0]);
@@ -2235,57 +2130,6 @@
 #undef locals_FREEBSD__X64_nosys
 #if defined(__cplusplus)
 #undef references_FREEBSD__X64_nosys
-#endif
-
-// off_t lseek ['int fd', 'int pad', 'off_t offset', 'int whence']
-#define locals_FREEBSD__X64_lseek(ctx, pref) \
-	int32_t UNUSED(pref##fd) = *(int32_t *)((ctx)->args[0]); \
-	int32_t UNUSED(pref##pad) = *(int32_t *)((ctx)->args[1]); \
-	uint64_t UNUSED(pref##offset) = *(uint64_t *)((ctx)->args[2]); \
-	int32_t UNUSED(pref##whence) = *(int32_t *)((ctx)->args[3]);
-#if defined(__cplusplus)
-#define references_FREEBSD__X64_lseek(ctx, pref) \
-	int32_t &UNUSED(pref##fd) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
-	int32_t &UNUSED(pref##pad) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
-	uint64_t &UNUSED(pref##offset) = *reinterpret_cast<uint64_t *>((ctx)->args[2]); \
-	int32_t &UNUSED(pref##whence) = *reinterpret_cast<int32_t *>((ctx)->args[3]);
-#define creferences_FREEBSD__X64_lseek(ctx, pref) \
-	const int32_t &UNUSED(pref##fd) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
-	const int32_t &UNUSED(pref##pad) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
-	const uint64_t &UNUSED(pref##offset) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]); \
-	const int32_t &UNUSED(pref##whence) = *reinterpret_cast<const int32_t *>((ctx)->args[3]);
-#endif
-
-// int truncate ['const char *path', 'int pad', 'off_t length']
-#define locals_FREEBSD__X64_truncate(ctx, pref) \
-	uint64_t UNUSED(pref##path) = *(uint64_t *)((ctx)->args[0]); \
-	int32_t UNUSED(pref##pad) = *(int32_t *)((ctx)->args[1]); \
-	uint64_t UNUSED(pref##length) = *(uint64_t *)((ctx)->args[2]);
-#if defined(__cplusplus)
-#define references_FREEBSD__X64_truncate(ctx, pref) \
-	uint64_t &UNUSED(pref##path) = *reinterpret_cast<uint64_t *>((ctx)->args[0]); \
-	int32_t &UNUSED(pref##pad) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
-	uint64_t &UNUSED(pref##length) = *reinterpret_cast<uint64_t *>((ctx)->args[2]);
-#define creferences_FREEBSD__X64_truncate(ctx, pref) \
-	const uint64_t &UNUSED(pref##path) = *reinterpret_cast<const uint64_t *>((ctx)->args[0]); \
-	const int32_t &UNUSED(pref##pad) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
-	const uint64_t &UNUSED(pref##length) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]);
-#endif
-
-// int ftruncate ['int fd', 'int pad', 'off_t length']
-#define locals_FREEBSD__X64_ftruncate(ctx, pref) \
-	int32_t UNUSED(pref##fd) = *(int32_t *)((ctx)->args[0]); \
-	int32_t UNUSED(pref##pad) = *(int32_t *)((ctx)->args[1]); \
-	uint64_t UNUSED(pref##length) = *(uint64_t *)((ctx)->args[2]);
-#if defined(__cplusplus)
-#define references_FREEBSD__X64_ftruncate(ctx, pref) \
-	int32_t &UNUSED(pref##fd) = *reinterpret_cast<int32_t *>((ctx)->args[0]); \
-	int32_t &UNUSED(pref##pad) = *reinterpret_cast<int32_t *>((ctx)->args[1]); \
-	uint64_t &UNUSED(pref##length) = *reinterpret_cast<uint64_t *>((ctx)->args[2]);
-#define creferences_FREEBSD__X64_ftruncate(ctx, pref) \
-	const int32_t &UNUSED(pref##fd) = *reinterpret_cast<const int32_t *>((ctx)->args[0]); \
-	const int32_t &UNUSED(pref##pad) = *reinterpret_cast<const int32_t *>((ctx)->args[1]); \
-	const uint64_t &UNUSED(pref##length) = *reinterpret_cast<const uint64_t *>((ctx)->args[2]);
 #endif
 
 // int __sysctl ['int *name', 'unsigned namelen', 'void *old', 'size_t *oldlenp', 'const void *new', 'size_t newlen']
