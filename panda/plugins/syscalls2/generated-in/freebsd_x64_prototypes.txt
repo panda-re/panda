@@ -17,7 +17,7 @@
 16 int chown(const char *path, int uid, int gid);
 17 void *break(char *nsize);
 18 int getfsstat(struct ostatfs *buf, long bufsize, int mode);
-19 long lseek(int fd, long offset, int whence);
+
 20 pid_t getpid(void);
 21 int mount(const char *type, const char *path, int flags, void *data);
 22 int unmount(const char *path, int flags);
@@ -46,11 +46,11 @@
 45 int ktrace(const char *fname, int ops, int facs, int pid);
 46 int sigaction(int signum, struct osigaction *nsa, struct osigaction *osa);
 47 gid_t getgid(void);
-48 int sigprocmask(int how, osigset_t mask);
+
 49 int getlogin(char *namebuf, unsigned namelen);
 50 int setlogin(const char *namebuf);
 51 int acct(const char *path);
-52 int sigpending(void);
+
 53 int sigaltstack(stack_t *ss, stack_t *oss);
 54 int ioctl(int fd, u_long com, char *data);
 55 int reboot(int opt);
@@ -125,8 +125,7 @@
 126 int setreuid(int ruid, int euid);
 127 int setregid(int rgid, int egid);
 128 int rename(const char *from, const char *to);
-129 int truncate(const char *path, long length);
-130 int ftruncate(int fd, long length);
+
 131 int flock(int fd, int how);
 132 int mkfifo(const char *path, mode_t mode);
 133 int sendto(int s, const void *buf, size_t len, int flags, const struct sockaddr *to, int tolen);
@@ -163,8 +162,7 @@
 166 int rtprio(int function, pid_t pid, struct rtprio *rtp);
 
 169 int semsys(int which, int a2, int a3, int a4, int a5);
-173 ssize_t pread(int fd, void *buf, size_t nbyte, int pad, off_t offset);
-174 ssize_t pwrite(int fd, const void *buf, size_t nbyte, int pad, off_t offset);
+
 175 int setfib(int fibnum);
 176 int ntp_adjtime(struct timex *tp);
 
