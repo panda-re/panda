@@ -30,6 +30,7 @@ PANDAENDCOMMENT */
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Value.h>
+#include <llvm/IR/Function.h>
 
 #include "qemu/osdep.h"        // needed for host-utils.h
 #include "qemu/host-utils.h"   // needed for clz64 and ctz64
@@ -76,7 +77,7 @@ void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size)
     {
         curAddr = addr + i;
         TaintData td = shad->query_full(curAddr);
-        
+
         // query_full ALWAYS returns a TaintData object - but there's not really
         // any taint (controlled or not) unless there are labels too
         if ((td.cb_mask == 0) && (td.ls != NULL) && (td.ls->size() > 0))
@@ -685,31 +686,168 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
     }
 }
 
-// based on taint_mul_compute. Need to call on 
-void log_tainted_cmp(Shad *shad, uint64_t src1, uint64_t src1_size,
-                       uint64_t src2, uint64_t src2_size,
-                       llvm::Instruction *inst,
-                       uint64_t isConst1, uint64_t isConst2)
+void back_slice (Shad *shad, llvm::Instruction*);
+void back_slice (Shad *shad, llvm::Instruction* insn)
 {
-    taint_log("\n\nCompare of 0x%lx  (%lx) and 0x%lx (%lx)\n", src1, isConst1, src2, isConst2);
-    bool t1 = 0;
-    bool t2 = 0;
+  /* Recursively dump prior references to variables in insn
+   * Base case with no variable operands: no-op
+   * Normal case: recurse on operands
+   *
+   * For some reasons only variables/instruction references
+   * are counting as operands, not constants?
+   *
+   * This finds the history of a variable before the compare.
+   * i.e., if we load eax, sub 88 and then cmp 0, we're checking
+   *  eax-88 vs 0 == eax vs 88
+   */
 
-    assert(src1_size == src2_size);
+    assert(insn != NULL);
+    //auto this_type = v->getType();
+    const char* opname = insn->getOpcodeName();
+    int num_ops = insn->getNumOperands();
+    //printf("INSN %s with %d operand(s)\n", opname, num_ops);
 
-    // For each byte, check if tainted report
-    for (int i = 0; i < src1_size; ++i) {
-      // Constants can't be taint checked -  if it's a const and keep tX as false
-      if (isConst1 == 0) t1 = shad->query(src1+i) != NULL;
-      if (isConst2 == 0) t2 = shad->query(src2+i) != NULL;
-
-      if (t1 && !t2) { // Value 2 is of interst
-          taint_log("tainted_log: untainted 0x%lx compared against tainted 0x%lx byte %d\n", src2, src1, i);
-      } else if (!t1 && t2) { // Value 1 is of interst
-          taint_log("tainted_log: untainted 0x%lx compared against tainted 0x%lx byte %d\n", src1, src2, i);
-      }else if (t2 && t2) { // Both are interesting
-          taint_log("tainted_log: tainted 0x%lx compared against tainted 0x%lx byte %d\n", src1, src2, i);
+    if (llvm::isa<llvm::CastInst>(insn)) {
+      llvm::CastInst *cast = llvm::dyn_cast<llvm::CastInst>(insn);
+      // Is it an llvm::ZExtInst? Others?
+      auto dest_ty = cast->getDestTy();
+      if (dest_ty->isIntegerTy()) {
+        // Int of fixed size
+        llvm::IntegerType *IT = llvm::dyn_cast<llvm::IntegerType>(dest_ty);
+        printf("\tCast/Trunc to integer with %d bits\n", IT->getBitWidth());
+      }else if (dest_ty->isPtrOrPtrVectorTy()) {
+        printf("Ptr cast? TODO\n");
+      }else{
+        int dest_ty_id = dest_ty->getTypeID();
+        printf("Unknown cast: %d\n", dest_ty_id);
       }
+
+    }else if (llvm::isa<llvm::CallInst>(insn)) {
+      // Function calls. If it's a panda_helper, abort
+      // otherwise TODO?
+      llvm::CallInst *CI = llvm::dyn_cast<llvm::CallInst>(insn);
+      llvm::Function *F = CI->getCalledFunction();
+      if (F->getName().startswith("helper_panda_")) {
+        printf("FIN: panda-helper\n---\n");
+        return;
+      }
+    }else if (llvm::isa<llvm::LoadInst>(insn)) {
+      // The LOAD fills the value from qemu state - don't care
+      // about qemu-loading logic that runs before here (i.e., load the
+      // pointer to eax and dereference it to get the value of eax)
+      printf("FIN: load\n---\n");
+      return;
     }
 
+    // Dump each 'operand' - the args to this instruction
+    //FIRST PASS - Check for any ConstantInts (used in add/sub/mul...)
+    for (int op_idx = 0; op_idx < num_ops; op_idx++) {
+      auto op = insn->getOperand(op_idx);
+
+      // Debugging- Dump ops
+      op->dump();
+
+      // Capture consts
+      if (llvm::isa<llvm::ConstantInt>(op)) {
+        const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(op);
+        uint64_t raw_value = CI->getZExtValue();
+        printf("CONST: %s of %ld\n", opname, raw_value);
+      }
+    }
+    fflush(NULL);
+
+    // Recurse on each operand
+    for (int op_idx = 0; op_idx < num_ops; op_idx++) {
+      auto op = insn->getOperand(op_idx);
+      if (llvm::isa<llvm::Instruction>(op)) {
+        llvm::Instruction *i = llvm::dyn_cast<llvm::Instruction>(op);
+        back_slice(shad, i);
+      }
+    }
+    if (num_ops == 0) {
+      printf("FIN: no ops\n---\n");
+    }
+
+#if 0
+    // Get prior use of the insn?
+    for (auto use = insn->use_begin(); use != insn->use_end(); use++) {
+      use->dump();
+      fflush(NULL);
+    }
+#endif
+
+    fflush(NULL);
+
+    // Custom logic per opcode?
+    //auto op = insn->getOpcode();
+    assert(insn->isBinaryOp() && "Can't handle non-binary ops?");
+}
+
+void log_value(Shad *shad, llvm::Value *v, uint64_t slot);
+void log_value(Shad *shad, llvm::Value *v, uint64_t slot) {
+    /* Given a value, log if it's a const int or kick off a back_trace for an insn */
+    // TODO: only log const ints if the other side of the compare is a tainted instr?
+
+    if (llvm::isa<llvm::ConstantInt>(v)) {
+        const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(v);
+        uint64_t raw_value = CI->getZExtValue();
+        if (NULL != CI) {
+            printf("\tconst int %ld\n", raw_value);
+        }
+    }else if (llvm::isa<llvm::Instruction>(v)) {
+      // Tainted instruction - do a backwards slice
+      if (shad->query(slot) != NULL) {
+        llvm::Instruction *i = llvm::dyn_cast<llvm::Instruction>(v);
+        back_slice(shad, i);
+        fflush(NULL);
+      }
+    } else {
+      printf("\tUnknown type\n");
+    }
+    fflush(NULL); // Ensure dumps happen after the print
+}
+
+void log_tainted_cmp(Shad *shad, llvm::Instruction *I, uint64_t slot1, uint64_t slot2)
+{
+    llvm::CmpInst *cmpI = llvm::dyn_cast<llvm::CmpInst>(I);
+    assert(cmpI && "log_tainted_cmp called on non cmpI instruction?"); // Will fail with floats
+
+    llvm::CmpInst::Predicate p = cmpI->getPredicate();
+
+#if 0
+    // Notable predicate values
+    ICMP_EQ    = 32,  ///< equal
+    ICMP_NE    = 33,  ///< not equal
+    ICMP_UGT   = 34,  ///< unsigned greater than
+    ICMP_UGE   = 35,  ///< unsigned greater or equal
+    ICMP_ULT   = 36,  ///< unsigned less than
+    ICMP_ULE   = 37,  ///< unsigned less or equal
+    ICMP_SGT   = 38,  ///< signed greater than
+    ICMP_SGE   = 39,  ///< signed greater or equal
+    ICMP_SLT   = 40,  ///< signed less than
+    ICMP_SLE   = 41,  ///< signed less or equal
+#endif
+    // XXX when we printf %d slots sometimes they're <0 and then querying shadow memory seems to fail
+    // is this a sane check?
+    if ( !(((int)slot1 >= 0  && shad->query(slot1) != NULL) ||  ((int)slot2 >= 0  && shad->query(slot2) != NULL))) {
+      return; // no taint
+    }
+
+    printf("\n\nTAINT COMPARE: type %d (slot1=%ld, slot2=%ld)\n\n", (int)p, slot1, slot2);
+
+    llvm::Value *v1 = cmpI->getOperand(0);
+    llvm::Value *v2 = cmpI->getOperand(1);
+
+    // TWO OPS: If we have a const and an instr - query taint on the instr - if tainted log!
+    // %12 = trunc i32 %tmp-25_v to i8
+    // %tmp-25_v = sub i32 %eax_v, 88
+
+    // OP 1
+    printf("OP 1:\n");
+    fflush(NULL); // Ensure dumps happen after the print
+    log_value(shad, v1, slot1);
+
+    printf("OP 2:\n");
+    fflush(NULL); // Ensure dumps happen after the print
+    log_value(shad, v2, slot2);
 }
