@@ -1,0 +1,25 @@
+#ifndef COVERAGE2_PCRANGE_PREDICATE_H
+#define COVERAGE2_PCRANGE_PREDICATE_H
+
+#include "Predicate.h"
+
+namespace coverage2
+{
+
+/**
+ * A predicate that determines if the PC falls in a given range.
+ */
+class PcRangePredicate : public Predicate
+{
+public:
+    PcRangePredicate(target_ulong start, target_ulong end);
+
+    bool eval(CPUState *cpu, target_ulong pc) override;
+private:
+    target_ulong pc_start;
+    target_ulong pc_end;
+};
+
+}
+
+#endif
