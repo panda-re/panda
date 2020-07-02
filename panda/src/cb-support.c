@@ -43,6 +43,8 @@ MAKE_REPLAY_ONLY_CALLBACK(REPLAY_AFTER_DMA, replay_after_dma,
                     hwaddr, addr, size_t ,size,
                     bool, is_write)
 
+MAKE_CALLBACK(void, BEFORE_TCG_CODEGEN, before_tcg_codegen, CPUState*, cpu, TranslationBlock*, tb);
+
 // These are used in cpu-exec.c
 MAKE_CALLBACK(void, BEFORE_BLOCK_EXEC, before_block_exec,
                     CPUState*, cpu, TranslationBlock*, tb);
