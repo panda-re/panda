@@ -140,7 +140,8 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	READ_INFO_INT(ki, task.comm_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.comm_size, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.files_offset, gerr, err.task, &errbmp);
-
+	READ_INFO_INT(ki, task.start_time_offset, gerr, err.task, &errbmp);
+        
 	/* read mm information */
 	READ_INFO_INT(ki, mm.size, gerr, err.mm, &errbmp);
 	READ_INFO_INT(ki, mm.mmap_offset, gerr, err.mm, &errbmp);
