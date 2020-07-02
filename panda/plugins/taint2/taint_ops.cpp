@@ -26,6 +26,8 @@ PANDAENDCOMMENT */
 
 #include <cstdio>
 #include <cstdarg>
+//#include <sstream>      // std::ostringstream
+//#include <string>       // std::string
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
@@ -42,6 +44,7 @@ PANDAENDCOMMENT */
 #include "label_set.h"
 #include "taint_ops.h"
 #include "taint_utils.h"
+#include"z3++.h"
 
 uint64_t labelset_count;
 
@@ -686,8 +689,28 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
     }
 }
 
-void back_slice (Shad *shad, llvm::Instruction*);
-void back_slice (Shad *shad, llvm::Instruction* insn)
+char* hack(llvm::StringRef*);
+
+char* hack(llvm::StringRef *s) {
+  // Stringify a StringRef. For some reason s->str().c_str() was crashing?
+  if (s == NULL) {
+    return NULL;
+  }
+  if (s->empty()) {
+    return NULL;
+  }
+
+  char* r = (char*)malloc(s->size()+1);
+  const char* old = s->data();
+  memcpy(r, old, s->size());
+  r[s->size()] = 0; // Null term
+  return r;
+}
+
+char* back_slice (Shad *shad, llvm::Instruction*);
+//std::string back_slice (Shad *shad, llvm::Instruction*);
+//std::string back_slice (Shad *shad, llvm::Instruction* insn)
+char* back_slice (Shad *shad, llvm::Instruction* insn)
 {
   /* Recursively dump prior references to variables in insn
    * Base case with no variable operands: no-op
@@ -700,111 +723,191 @@ void back_slice (Shad *shad, llvm::Instruction* insn)
    * i.e., if we load eax, sub 88 and then cmp 0, we're checking
    *  eax-88 vs 0 == eax vs 88
    */
+  insn->dump();
+  fflush(NULL);
 
     assert(insn != NULL);
     //auto this_type = v->getType();
     const char* opname = insn->getOpcodeName();
     int num_ops = insn->getNumOperands();
-    //printf("INSN %s with %d operand(s)\n", opname, num_ops);
+
+		//std::ostringstream str;
+#define RES_SZ 1024 
+		char *res = (char*)malloc(RES_SZ); // XXX: probably overflowable
+    char  *res_head, *res_tail;
+    res_head = res;
+    res_tail = res_head + RES_SZ;
+
+    // We support cast/trunc and binary ops
+    // For those, we will convert to Z3 and recurse on the prior uses
+    // of each argument
 
     if (llvm::isa<llvm::CastInst>(insn)) {
+      // CAST: grab new size and recurse on whatever's being cast
       llvm::CastInst *cast = llvm::dyn_cast<llvm::CastInst>(insn);
       // Is it an llvm::ZExtInst? Others?
       auto dest_ty = cast->getDestTy();
       if (dest_ty->isIntegerTy()) {
         // Int of fixed size
         llvm::IntegerType *IT = llvm::dyn_cast<llvm::IntegerType>(dest_ty);
-        printf("\tCast/Trunc to integer with %d bits\n", IT->getBitWidth());
+        printf("\tCast/Trunc (%s) to integer with %d bits: ", opname, IT->getBitWidth());
+				//str << "cast(" << IT->getBitWidth() << ",";
+				res_head+= snprintf(res_head, res_tail-res_head, "cast(%d, ", IT->getBitWidth());
+
       }else if (dest_ty->isPtrOrPtrVectorTy()) {
         printf("Ptr cast? TODO\n");
+				//str << "XXXptrcast(";
+				res_head += snprintf(res_head, res_tail-res_head, "xxxptrcast(");
       }else{
         int dest_ty_id = dest_ty->getTypeID();
         printf("Unknown cast: %d\n", dest_ty_id);
+				//str << "XXXcast(";
+				res_head += snprintf(res_head, res_tail-res_head, "xxxcast(");
+      }
+
+      // Now grab what's being cast and recurse - It's in operand(0)?
+      auto op = insn->getOperand(0);
+      if (llvm::isa<llvm::Instruction>(op)) { // INSN - recurse unless ending type
+        llvm::Instruction *i = llvm::dyn_cast<llvm::Instruction>(op);
+          if (!llvm::isa<llvm::LoadInst>(i) && !llvm::isa<llvm::CallInst>(i)) {
+            printf("Insn - recurse!\n");
+            //std::string res = back_slice(shad, i);
+						//str << res << ")";
+            char* rec_res = back_slice(shad, i);
+				    res_head += snprintf(res_head, res_tail-res_head, "%s", rec_res);
+          }else{
+            printf("INSN - terminate (pretend it's const)\n");
+						//str << "constXXX" << ")";
+				    res_head += snprintf(res_head, res_tail-res_head, "constXXX");
+          }
+      }else{
+				//str << "errorXXX" << ")";
+			  res_head += snprintf(res_head, res_tail-res_head, "errorXXX");
+        printf("Non-insn?\n");
+      }
+
+    }else if (llvm::isa<llvm::BinaryOperator>(insn)) {
+      // BINOP  - each arg is either const or insn. If insn recurse unless it's an 'ending' type
+      llvm::BinaryOperator *binop = llvm::dyn_cast<llvm::BinaryOperator>(insn);
+      auto opcode = binop->getOpcode(); // See Instruction.def for these IDs, can check vs things like Instruction::And
+      printf("\tBINOP %d: %s\n", (int)opcode, opname);
+			//str << opname << "(";
+			res_head += snprintf(res_head, res_tail-res_head, "%s(", opname);
+
+      // For each insn figure out if we need to recurse of if it's a const
+      for (int op_idx = 0; op_idx < num_ops; op_idx++) {
+        auto op = insn->getOperand(op_idx);
+
+        if (llvm::isa<llvm::Instruction>(op)) { // INSN - recurse unless ending
+          printf("\t\tBinop(%s) arg %d is insn", opname, op_idx);
+          llvm::Instruction *i = llvm::dyn_cast<llvm::Instruction>(op);
+          if (!llvm::isa<llvm::LoadInst>(i) && !llvm::isa<llvm::CallInst>(i)) {
+            // Needs recursion
+              printf(" - recurse!\n");
+              //std::string res = back_slice(shad, i);
+							//str << res;
+              char* rec_res = back_slice(shad, i);
+			        res_head += snprintf(res_head, res_tail-res_head, "%s", rec_res);
+
+          }else if (llvm::isa<llvm::LoadInst>(i)){
+            llvm::LoadInst *li = llvm::dyn_cast<llvm::LoadInst>(i);
+            printf(" - terminate (pretend it's const)\n");
+						//str << "constXXX";
+              llvm::StringRef sref = li->getName();
+              printf("NAME %d %s\n", (int)sref.size(), hack(&sref));
+			        res_head += snprintf(res_head, res_tail-res_head, "const_%s", hack(&sref));
+
+			      //res_head += snprintf(res_head, res_tail-res_head, "const_%s", hack());
+          }else if (llvm::isa<llvm::CallInst>(i)){
+            if (i->getName().empty()) {
+              printf("EMPTY CALL\n");
+            }else{
+              printf("CALL todo %d\n", (int)i->getName().size());
+            }
+          }
+
+        }else if (llvm::isa<llvm::ConstantInt>(op)) { // Constant - don't recurse
+          const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(op);
+          uint64_t raw_value = CI->getZExtValue();
+          printf("\t\tBinop(%s) arg %d const: %ld\n", opname, op_idx, raw_value);
+					//str << raw_value;
+			    res_head += snprintf(res_head, res_tail-res_head, "%ld", raw_value);
+
+        }else{ // Unimplemented?
+          printf("\tNon-const, unknown at %d\n", op_idx);
+				  //str << "non_constXXX";
+			    res_head += snprintf(res_head, res_tail-res_head, "non_constXXX");
+        }
+
+				if (op_idx < num_ops-1) { // Commas after all but last
+          //str << ", ";
+			    res_head += snprintf(res_head, res_tail-res_head, ", ");
+        }
       }
 
     }else if (llvm::isa<llvm::CallInst>(insn)) {
-      // Function calls. If it's a panda_helper, abort
-      // otherwise TODO?
+      // Function calls - Not sure how to handle. Probaly need special case for
+      // panda helpers?
       llvm::CallInst *CI = llvm::dyn_cast<llvm::CallInst>(insn);
       llvm::Function *F = CI->getCalledFunction();
       if (F->getName().startswith("helper_panda_")) {
         printf("FIN: panda-helper\n---\n");
-        return;
       }
     }else if (llvm::isa<llvm::LoadInst>(insn)) {
       // The LOAD fills the value from qemu state - don't care
       // about qemu-loading logic that runs before here (i.e., load the
       // pointer to eax and dereference it to get the value of eax)
       printf("FIN: load\n---\n");
-      return;
+    }else{
+      printf("OTHER INSNS %s with %d operand(s)\n", opname, num_ops);
     }
 
-    // Dump each 'operand' - the args to this instruction
-    //FIRST PASS - Check for any ConstantInts (used in add/sub/mul...)
-    for (int op_idx = 0; op_idx < num_ops; op_idx++) {
-      auto op = insn->getOperand(op_idx);
-
-      // Debugging- Dump ops
-      op->dump();
-
-      // Capture consts
-      if (llvm::isa<llvm::ConstantInt>(op)) {
-        const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(op);
-        uint64_t raw_value = CI->getZExtValue();
-        printf("CONST: %s of %ld\n", opname, raw_value);
-      }
-    }
-    fflush(NULL);
-
-    // Recurse on each operand
-    for (int op_idx = 0; op_idx < num_ops; op_idx++) {
-      auto op = insn->getOperand(op_idx);
-      if (llvm::isa<llvm::Instruction>(op)) {
-        llvm::Instruction *i = llvm::dyn_cast<llvm::Instruction>(op);
-        back_slice(shad, i);
-      }
-    }
-    if (num_ops == 0) {
-      printf("FIN: no ops\n---\n");
-    }
-
-#if 0
-    // Get prior use of the insn?
-    for (auto use = insn->use_begin(); use != insn->use_end(); use++) {
-      use->dump();
-      fflush(NULL);
-    }
-#endif
-
-    fflush(NULL);
-
-    // Custom logic per opcode?
-    //auto op = insn->getOpcode();
-    assert(insn->isBinaryOp() && "Can't handle non-binary ops?");
+    //return str.str();
+    *(res_head++) = ')';
+    *(res_head++) = 0; // Null terminate
+    return res;
 }
 
-void log_value(Shad *shad, llvm::Value *v, uint64_t slot);
-void log_value(Shad *shad, llvm::Value *v, uint64_t slot) {
+char* str_value(Shad *shad, llvm::Value *v, uint64_t slot);
+char* str_value(Shad *shad, llvm::Value *v, uint64_t slot) {
     /* Given a value, log if it's a const int or kick off a back_trace for an insn */
     // TODO: only log const ints if the other side of the compare is a tainted instr?
+    char * result;
 
     if (llvm::isa<llvm::ConstantInt>(v)) {
         const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(v);
         uint64_t raw_value = CI->getZExtValue();
+        result = (char*)malloc(10);
         if (NULL != CI) {
-            printf("\tconst int %ld\n", raw_value);
+            snprintf(result, 10, "%ld", raw_value);
+        }else{
+            snprintf(result, 10, "??");
         }
     }else if (llvm::isa<llvm::Instruction>(v)) {
       // Tainted instruction - do a backwards slice
       if (shad->query(slot) != NULL) {
         llvm::Instruction *i = llvm::dyn_cast<llvm::Instruction>(v);
-        back_slice(shad, i);
-        fflush(NULL);
+        //std::string res = back_slice(shad, i);
+        result = back_slice(shad, i);
+      }else{
+        result = (char*)malloc(10);
+        snprintf(result, 10, "no_taint"); 
       }
     } else {
-      printf("\tUnknown type\n");
+      result = (char*)malloc(10);
+      snprintf(result, 10, "???");
     }
-    fflush(NULL); // Ensure dumps happen after the print
+    return result;
+}
+
+char * cmp_name(int idx);
+char * cmp_name(int idx) {
+  char * ret = (char*) malloc(10);
+  switch(idx) {
+    case llvm::ICmpInst::ICMP_EQ: strncpy(ret, "equality", 10); break;
+    default: printf("ERROR\n"); ret[0] = 0;
+  }
+  return ret;
 }
 
 void log_tainted_cmp(Shad *shad, llvm::Instruction *I, uint64_t slot1, uint64_t slot2)
@@ -842,12 +945,7 @@ void log_tainted_cmp(Shad *shad, llvm::Instruction *I, uint64_t slot1, uint64_t 
     // %12 = trunc i32 %tmp-25_v to i8
     // %tmp-25_v = sub i32 %eax_v, 88
 
-    // OP 1
-    printf("OP 1:\n");
-    fflush(NULL); // Ensure dumps happen after the print
-    log_value(shad, v1, slot1);
-
-    printf("OP 2:\n");
-    fflush(NULL); // Ensure dumps happen after the print
-    log_value(shad, v2, slot2);
+    printf("%s(%s, %s)\n", cmp_name((int)p), 
+      str_value(shad, v1, slot1),
+      str_value(shad, v2, slot2));
 }
