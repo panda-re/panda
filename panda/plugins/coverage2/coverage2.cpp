@@ -26,6 +26,7 @@ PANDAENDCOMMENT */
 
 #include "CoverageMode.h"
 #include "AsidBlockCoverageMode.h"
+#include "OsiBlockCoverageMode.h"
 
 const char *DEFAULT_FILE = "coverage.csv";
 
@@ -71,39 +72,47 @@ static void log_message(const char *message1, const char *message2)
 //    printf("%s%s %d\n", PANDA_MSG, message, number);
 //}
 
-static void my_func(TranslationBlock *tb)
+static void my_func(CPUState *cpu, TranslationBlock *tb)
+//static void my_func()
 {
-    printf("tb=%p pc=" TARGET_FMT_lx "\n", tb, tb->pc);
+    if (!predicate->eval(cpu, tb)) {
+        return;
+    }
+    mode->process_block(cpu, tb);
+    //printf("tb=%p pc=" TARGET_FMT_lx " size=%d\n", tb, tb->pc, tb->size);
 }
 
-void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
+static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 {
-    //fprintf(stderr, "before:\n");
-    //tcg_dump_ops(&tcg_ctx);
-    //tcg_op_insert_before(&tcg_ctx, &tcg_ctx.gen_op_buf[0], INDEX_op_call, 0
-    //TCGOp *new_op = tcg_op_insert_before(&tcg_ctx, &tcg_ctx.gen_op_buf[tcg_op_buf_count()-1], INDEX_op_call, 1);
-    //TCGArg *new_args = &tcg_ctx.gen_opparam_buf[new_op->args];
-    //new_args[0] = reinterpret_cast<TCGArg>(&my_func);
-    //fprintf(stderr, "after:\n");
-    //tcg_dump_ops(&tcg_ctx);
+    // Locate the last GUEST instruction in our TCG context.
+    TCGOp *op = NULL, *last_guest_insn_mark = NULL;
+    for (int oi = tcg_ctx.gen_op_buf[0].next; oi != 0; oi = op->next) {
+        op = &tcg_ctx.gen_op_buf[oi];
+        if (INDEX_op_insn_start == op->opc) {
+            last_guest_insn_mark = op;
+        }
+    }
+    assert(NULL != last_guest_insn_mark);
 
-    fprintf(stderr, "codegen pc=" TARGET_FMT_lx "\n", tb->pc);
+    // now lets insert a call after the mark
+    auto tb_tmp = tcg_temp_new_i64();
+    TCGOp *tb_store_op = tcg_op_insert_after(&tcg_ctx, last_guest_insn_mark, INDEX_op_movi_i64, 2);
+    TCGArg *tb_store_args = &tcg_ctx.gen_opparam_buf[tb_store_op->args];
+    tb_store_args[0] = GET_TCGV_I64(tb_tmp);
+    tb_store_args[1] = reinterpret_cast<TCGArg>(tb);
 
-    // Load the CPUState pointer into a temporary?
-    auto tmp = tcg_temp_new_i64();
-    TCGOp *new_op = tcg_op_insert_before(&tcg_ctx, &tcg_ctx.gen_op_buf[tcg_op_buf_count()-1], INDEX_op_movi_i64, 2);
-    TCGArg *new_args = &tcg_ctx.gen_opparam_buf[new_op->args];
-    new_args[0] = GET_TCGV_I64(tmp);
-    new_args[1] = reinterpret_cast<TCGArg>(tb);
+    auto cpu_tmp = tcg_temp_new_i64();
+    TCGOp *cpu_store_op = tcg_op_insert_after(&tcg_ctx, tb_store_op, INDEX_op_movi_i64, 2);
+    TCGArg *cpu_store_args = &tcg_ctx.gen_opparam_buf[cpu_store_op->args];
+    cpu_store_args[0] = GET_TCGV_I64(cpu_tmp);
+    cpu_store_args[1] = reinterpret_cast<TCGArg>(cpu);
 
-    // Insert the call into our function.
-    new_op = tcg_op_insert_after(&tcg_ctx, new_op, INDEX_op_call, 2);
-    new_op->calli = 1;
-    new_args = &tcg_ctx.gen_opparam_buf[new_op->args];
-    new_args[1] = reinterpret_cast<TCGArg>(&my_func);
-    new_args[0] = GET_TCGV_I64(tmp);
-
-    tcg_dump_ops(&tcg_ctx);    
+    TCGOp *call_op = tcg_op_insert_after(&tcg_ctx, cpu_store_op, INDEX_op_call, 3);
+    call_op->calli = 2;
+    TCGArg *call_args = &tcg_ctx.gen_opparam_buf[call_op->args];
+    call_args[2] = reinterpret_cast<TCGArg>(&my_func);
+    call_args[1] = GET_TCGV_I64(tb_tmp);
+    call_args[0] = GET_TCGV_I64(cpu_tmp);
 }
 
 bool enable_instrumentation()
@@ -227,7 +236,13 @@ bool init_plugin(void *self)
         predicate = std::unique_ptr<Predicate>(new CompoundPredicate(std::move(predicate), std::move(uosipred)));
     }
 
-    mode = std::unique_ptr<CoverageMode>(new AsidBlockCoverageMode("test.csv"));
+    std::string mode_arg = panda_parse_string_opt(args, "mode", "asid-block", "coverage mode");
+    if ("asid-block" == mode_arg) {
+        mode = std::unique_ptr<CoverageMode>(new AsidBlockCoverageMode("test.csv"));
+    } else if ("osi-block" == mode_arg) {
+        mode = std::unique_ptr<CoverageMode>(new OsiBlockCoverageMode("test.csv"));
+        //mode = std::unique_ptr<CoverageMode>(new OsiBlockCoverageMode("test.csv"));
+    }
 
     panda_cb pcb;
 

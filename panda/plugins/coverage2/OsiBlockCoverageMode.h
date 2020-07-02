@@ -1,5 +1,5 @@
-#ifndef COVERAGE2_ASIDBLOCK_COVERAGEMODE_H
-#define COVERAGE2_ASIDBLOCK_COVERAGEMODE_H
+#ifndef COVERAGE2_OSIBLOCK_COVERAGEMODE_H
+#define COVERAGE2_OSIBLOCK_COVERAGEMODE_H
 
 #include <fstream>
 #include <string>
@@ -9,10 +9,10 @@
 namespace coverage2
 {
 
-class AsidBlockCoverageMode : public CoverageMode
+class OsiBlockCoverageMode : public CoverageMode
 {
 public:
-    AsidBlockCoverageMode(const std::string &filename);
+    OsiBlockCoverageMode(const std::string &filename);
 
     void process_block(CPUState *cpu, TranslationBlock *tb) override;
 private:

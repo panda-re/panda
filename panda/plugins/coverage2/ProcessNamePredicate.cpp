@@ -13,7 +13,7 @@ ProcessNamePredicate::ProcessNamePredicate(const std::string& pname)
 {
 }
 
-bool ProcessNamePredicate::eval(CPUState *cpu, target_ulong pc)
+bool ProcessNamePredicate::eval(CPUState *cpu, TranslationBlock *tb)
 {
     std::unique_ptr<OsiProc, void(*)(OsiProc *)> proc(get_current_process(cpu), free_osiproc);
     return nullptr != proc && process_name == proc->name;

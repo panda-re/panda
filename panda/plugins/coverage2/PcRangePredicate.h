@@ -14,7 +14,7 @@ class PcRangePredicate : public Predicate
 public:
     PcRangePredicate(target_ulong start, target_ulong end);
 
-    bool eval(CPUState *cpu, target_ulong pc) override;
+    bool eval(CPUState *cpu, TranslationBlock *tb) override;
 private:
     target_ulong pc_start;
     target_ulong pc_end;

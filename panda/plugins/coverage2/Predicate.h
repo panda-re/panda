@@ -16,7 +16,7 @@ public:
      * Implemented by Predicate classes to determine if the guest is in a
      * particular state.
      */
-    virtual bool eval(CPUState *cpu, target_ulong pc) = 0;    
+    virtual bool eval(CPUState *cpu, TranslationBlock *tb) = 0;    
 };
 
 }

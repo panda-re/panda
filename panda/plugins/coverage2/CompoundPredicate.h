@@ -20,7 +20,7 @@ public:
     /**
      * Returns true if the two predicates are also evaluated as true.
      */
-    bool eval(CPUState *cpu, target_ulong pc) override;
+    bool eval(CPUState *cpu, TranslationBlock *tb) override;
 private:
     std::unique_ptr<Predicate> predicate1;
     std::unique_ptr<Predicate> predicate2;

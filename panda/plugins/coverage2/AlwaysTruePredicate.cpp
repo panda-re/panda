@@ -3,7 +3,7 @@
 namespace coverage2
 {
 
-bool AlwaysTruePredicate::eval(CPUState *cpu, target_ulong pc)
+bool AlwaysTruePredicate::eval(CPUState *cpu, TranslationBlock *tb)
 {
     return true;
 }

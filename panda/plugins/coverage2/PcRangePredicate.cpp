@@ -8,9 +8,9 @@ PcRangePredicate::PcRangePredicate(target_ulong start, target_ulong end)
 {
 }
 
-bool PcRangePredicate::eval(CPUState *cpu, target_ulong pc)
+bool PcRangePredicate::eval(CPUState *cpu, TranslationBlock *tb)
 {
-    return pc_start <= pc && pc <= pc_end;
+    return pc_start <= tb->pc && (tb->pc + tb->size) < pc_end;
 }
 
 }

@@ -13,7 +13,7 @@ class ProcessNamePredicate : public Predicate
 public:
     ProcessNamePredicate(const std::string& pname);
 
-    bool eval(CPUState *cpu, target_ulong pc) override;
+    bool eval(CPUState *cpu, TranslationBlock *tb) override;
 private:
     std::string process_name;
 };

@@ -11,7 +11,7 @@ class CoverageMode
 public:
     virtual ~CoverageMode() = 0;
 
-    virtual void process_block(CPUState *cpu, target_ulong pc) = 0;
+    virtual void process_block(CPUState *cpu, TranslationBlock *tb) = 0;
 };
 
 }

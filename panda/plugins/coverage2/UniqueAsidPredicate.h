@@ -39,7 +39,7 @@ namespace coverage2
 class UniqueAsidPredicate : public Predicate
 {
 public:
-    bool eval(CPUState *cpu, target_ulong pc) override;
+    bool eval(CPUState *cpu, TranslationBlock *tb) override;
 private:
     std::unordered_set<UniqueAsidRecord> seen;
 };

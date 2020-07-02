@@ -9,9 +9,9 @@ CompoundPredicate::CompoundPredicate(std::unique_ptr<Predicate> p1,
 {
 }
 
-bool CompoundPredicate::eval(CPUState *cpu, target_ulong pc)
+bool CompoundPredicate::eval(CPUState *cpu, TranslationBlock *tb)
 {
-    return predicate1->eval(cpu, pc) && predicate2->eval(cpu, pc);
+    return predicate1->eval(cpu, tb) && predicate2->eval(cpu, tb);
 }
 
 }
