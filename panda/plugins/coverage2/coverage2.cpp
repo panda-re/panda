@@ -46,6 +46,9 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
+#include "tcg.h"
+//extern TCGContext tcg_ctx;
+
 }
 
 static bool enabled = false;
@@ -59,6 +62,7 @@ static void log_message(const char *message)
 
 static void log_message(const char *message1, const char *message2)
 {
+
     printf("%s%s %s\n", PANDA_MSG, message1, message2);
 }
 
@@ -67,32 +71,39 @@ static void log_message(const char *message1, const char *message2)
 //    printf("%s%s %d\n", PANDA_MSG, message, number);
 //}
 
-static bool do_insert = false;
-
-static void block_callback(CPUState *cpu, target_ulong pc)
+static void my_func(TranslationBlock *tb)
 {
-    if (!predicate->eval(cpu, pc)) {
-        return;
-    }
-    mode->process_block(cpu, pc);
-    //printf("hello from block_entry_callback! pc=0x" TARGET_FMT_lx "\n", pc);
+    printf("tb=%p pc=" TARGET_FMT_lx "\n", tb, tb->pc);
 }
 
-static void before_block_translate(CPUState *cpu, target_ulong pc)
+void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 {
-    do_insert = true;
-}
+    //fprintf(stderr, "before:\n");
+    //tcg_dump_ops(&tcg_ctx);
+    //tcg_op_insert_before(&tcg_ctx, &tcg_ctx.gen_op_buf[0], INDEX_op_call, 0
+    //TCGOp *new_op = tcg_op_insert_before(&tcg_ctx, &tcg_ctx.gen_op_buf[tcg_op_buf_count()-1], INDEX_op_call, 1);
+    //TCGArg *new_args = &tcg_ctx.gen_opparam_buf[new_op->args];
+    //new_args[0] = reinterpret_cast<TCGArg>(&my_func);
+    //fprintf(stderr, "after:\n");
+    //tcg_dump_ops(&tcg_ctx);
 
-static bool insn_translate(CPUState *cpu, target_ulong pc)
-{
-    if (!do_insert) {
-        return false;
-    }
-    do_insert = false;
+    fprintf(stderr, "codegen pc=" TARGET_FMT_lx "\n", tb->pc);
 
-    panda_insert_call(pc, block_callback);
+    // Load the CPUState pointer into a temporary?
+    auto tmp = tcg_temp_new_i64();
+    TCGOp *new_op = tcg_op_insert_before(&tcg_ctx, &tcg_ctx.gen_op_buf[tcg_op_buf_count()-1], INDEX_op_movi_i64, 2);
+    TCGArg *new_args = &tcg_ctx.gen_opparam_buf[new_op->args];
+    new_args[0] = GET_TCGV_I64(tmp);
+    new_args[1] = reinterpret_cast<TCGArg>(tb);
 
-    return false;
+    // Insert the call into our function.
+    new_op = tcg_op_insert_after(&tcg_ctx, new_op, INDEX_op_call, 2);
+    new_op->calli = 1;
+    new_args = &tcg_ctx.gen_opparam_buf[new_op->args];
+    new_args[1] = reinterpret_cast<TCGArg>(&my_func);
+    new_args[0] = GET_TCGV_I64(tmp);
+
+    tcg_dump_ops(&tcg_ctx);    
 }
 
 bool enable_instrumentation()
@@ -220,11 +231,8 @@ bool init_plugin(void *self)
 
     panda_cb pcb;
 
-    pcb.before_block_translate = before_block_translate;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb);
-
-    pcb.insn_translate = insn_translate;
-    panda_register_callback(self, PANDA_CB_INSN_TRANSLATE, pcb);
+    pcb.before_tcg_codegen = before_tcg_codegen;
+    panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb);
 
     bool start_disabled = panda_parse_bool_opt(args, "start_disabled",
             "start the plugin with instrumentation disabled");
