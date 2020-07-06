@@ -95,25 +95,6 @@ cd llvm
 cd -
 ```
 
-### diStorm
-
-[diStorm](https://code.google.com/p/distorm/) is a binary
-disassembler library. It is used by some of the PANDA plugins,
-and may also come handy when writing your own plugins.
-The following commands will download, build and install diStorm
-on your system.
-
-```sh
-cd ~/software
-svn checkout http://distorm.googlecode.com/svn/trunk/ distorm
-cd distorm/make/linux
-make
-sudo make install
-cd -
-cd distorm/include
-sudo cp * /usr/local/include
-```
-
 ### libdwarf
 
 [libdwarf](https://www.prevanders.net/dwarf.html) is a DWARF
