@@ -23,4 +23,5 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
     $(PLUGIN_OBJ_DIR)/UniqueOsiPredicate.o \
     $(PLUGIN_OBJ_DIR)/CoverageMode.o \
     $(PLUGIN_OBJ_DIR)/AsidBlockCoverageMode.o \
-    $(PLUGIN_OBJ_DIR)/OsiBlockCoverageMode.o
+    $(PLUGIN_OBJ_DIR)/OsiBlockCoverageMode.o \
+    $(PLUGIN_OBJ_DIR)/EdgeCoverageMode.o

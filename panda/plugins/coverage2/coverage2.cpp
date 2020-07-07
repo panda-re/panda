@@ -27,6 +27,7 @@ PANDAENDCOMMENT */
 #include "CoverageMode.h"
 #include "AsidBlockCoverageMode.h"
 #include "OsiBlockCoverageMode.h"
+#include "EdgeCoverageMode.h"
 
 const char *DEFAULT_FILE = "coverage.csv";
 
@@ -72,47 +73,9 @@ static void log_message(const char *message1, const char *message2)
 //    printf("%s%s %d\n", PANDA_MSG, message, number);
 //}
 
-static void my_func(CPUState *cpu, TranslationBlock *tb)
-//static void my_func()
-{
-    if (!predicate->eval(cpu, tb)) {
-        return;
-    }
-    mode->process_block(cpu, tb);
-    //printf("tb=%p pc=" TARGET_FMT_lx " size=%d\n", tb, tb->pc, tb->size);
-}
-
 static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 {
-    // Locate the last GUEST instruction in our TCG context.
-    TCGOp *op = NULL, *last_guest_insn_mark = NULL;
-    for (int oi = tcg_ctx.gen_op_buf[0].next; oi != 0; oi = op->next) {
-        op = &tcg_ctx.gen_op_buf[oi];
-        if (INDEX_op_insn_start == op->opc) {
-            last_guest_insn_mark = op;
-        }
-    }
-    assert(NULL != last_guest_insn_mark);
-
-    // now lets insert a call after the mark
-    auto tb_tmp = tcg_temp_new_i64();
-    TCGOp *tb_store_op = tcg_op_insert_after(&tcg_ctx, last_guest_insn_mark, INDEX_op_movi_i64, 2);
-    TCGArg *tb_store_args = &tcg_ctx.gen_opparam_buf[tb_store_op->args];
-    tb_store_args[0] = GET_TCGV_I64(tb_tmp);
-    tb_store_args[1] = reinterpret_cast<TCGArg>(tb);
-
-    auto cpu_tmp = tcg_temp_new_i64();
-    TCGOp *cpu_store_op = tcg_op_insert_after(&tcg_ctx, tb_store_op, INDEX_op_movi_i64, 2);
-    TCGArg *cpu_store_args = &tcg_ctx.gen_opparam_buf[cpu_store_op->args];
-    cpu_store_args[0] = GET_TCGV_I64(cpu_tmp);
-    cpu_store_args[1] = reinterpret_cast<TCGArg>(cpu);
-
-    TCGOp *call_op = tcg_op_insert_after(&tcg_ctx, cpu_store_op, INDEX_op_call, 3);
-    call_op->calli = 2;
-    TCGArg *call_args = &tcg_ctx.gen_opparam_buf[call_op->args];
-    call_args[2] = reinterpret_cast<TCGArg>(&my_func);
-    call_args[1] = GET_TCGV_I64(tb_tmp);
-    call_args[0] = GET_TCGV_I64(cpu_tmp);
+    mode->process_block(cpu, tb);
 }
 
 bool enable_instrumentation()
@@ -242,6 +205,8 @@ bool init_plugin(void *self)
     } else if ("osi-block" == mode_arg) {
         mode = std::unique_ptr<CoverageMode>(new OsiBlockCoverageMode("test.csv"));
         //mode = std::unique_ptr<CoverageMode>(new OsiBlockCoverageMode("test.csv"));
+    } else if ("edge" == mode_arg) {
+        mode = std::unique_ptr<CoverageMode>(new EdgeCoverageMode);
     }
 
     panda_cb pcb;
