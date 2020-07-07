@@ -592,8 +592,12 @@ int net_init_bridge(const Netdev *netdev, const char *name,
         return -1;
     }
 
-    fcntl(fd, F_SETFL, O_NONBLOCK);
-    vnet_hdr = tap_probe_vnet_hdr(fd);
+    qemu_set_nonblock(fd);
+    vnet_hdr = tap_probe_vnet_hdr(fd, errp);
+    if (vnet_hdr < 0) {
+        close(fd);
+        return -1;
+    }
     s = net_tap_fd_init(peer, "bridge", name, fd, vnet_hdr);
 
     snprintf(s->nc.info_str, sizeof(s->nc.info_str), "helper=%s,br=%s", helper,
@@ -781,7 +785,11 @@ int net_init_tap(const Netdev *netdev, const char *name,
 
         fcntl(fd, F_SETFL, O_NONBLOCK);
 
-        vnet_hdr = tap_probe_vnet_hdr(fd);
+        vnet_hdr = tap_probe_vnet_hdr(fd, errp);
+        if (vnet_hdr < 0) {
+            close(fd);
+            return -1;
+        }
 
         net_init_tap_one(tap, peer, "tap", name, NULL,
                          script, downscript,
@@ -827,8 +835,11 @@ int net_init_tap(const Netdev *netdev, const char *name,
             fcntl(fd, F_SETFL, O_NONBLOCK);
 
             if (i == 0) {
-                vnet_hdr = tap_probe_vnet_hdr(fd);
-            } else if (vnet_hdr != tap_probe_vnet_hdr(fd)) {
+                vnet_hdr = tap_probe_vnet_hdr(fd, errp);
+                if (vnet_hdr < 0) {
+                    goto free_fail;
+                }
+            } else if (vnet_hdr != tap_probe_vnet_hdr(fd, NULL)) {
                 error_setg(errp,
                            "vnet_hdr not consistent across given tap fds");
                 goto free_fail;
@@ -871,8 +882,12 @@ free_fail:
             return -1;
         }
 
-        fcntl(fd, F_SETFL, O_NONBLOCK);
-        vnet_hdr = tap_probe_vnet_hdr(fd);
+        qemu_set_nonblock(fd);
+        vnet_hdr = tap_probe_vnet_hdr(fd, errp);
+        if (vnet_hdr < 0) {
+            close(fd);
+            return -1;
+        }
 
         net_init_tap_one(tap, peer, "bridge", name, ifname,
                          script, downscript, vhostfdname,
