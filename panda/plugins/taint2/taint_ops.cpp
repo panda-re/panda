@@ -707,6 +707,94 @@ char* hack(llvm::StringRef *s) {
   return r;
 }
 
+// Stringify LLVM Ops to Z3
+// NOTE "In Z3Py, the operators <, <=, >, >=, /, % and >> correspond to the signed versions. The corresponding unsigned operators are ULT, ULE, UGT, UGE, UDiv, URem and LShR." - https://ericpony.github.io/z3py-tutorial/guide-examples.htm
+
+bool get_mid_op(int code, char ret[]);
+bool get_mid_op(int code, char ret[]) {
+  // Ret should be a zero'd char[4] which we populated
+  // return indicates success/failure
+  // Ops to use between terms: i.e., A + B
+/*
+ID  LLVM-name
+ 8, Add
+ 9, FAdd
+10, Sub
+11, FSub
+12, Mul
+13, FMul
+14, UDiv          SPECIAL
+15, SDiv
+16, FDiv
+17, URem          SPECIAL
+18, SRem
+19, FRem
+
+// Logical operators (integer operands)
+20, Shl  // Shift left  (logical)
+21, LShr // Shift right (logical)     SPECIAL
+22, AShr // Shift right (arithmetic)
+23, And
+24, Or
+25, Xor
+ */
+
+  switch(code) {
+    case 8:  case 9:  ret[0] = '+'; break;
+    case 10: case 11: ret[0] = '-'; break;
+    case 12: case 13: ret[0] = '*'; break;
+    case 15: case 16: ret[0] = '/'; break; // Note we don't use a / for unsigned div
+    case 18: case 19: ret[0] = '%'; break; // Note we don't use % for unsigned rem
+
+    // Simple shifts - << and >> (two characters)
+    case 20: ret[0] = '<'; ret[1] = '<'; break;
+    case 22: ret[0] = '>'; ret[1] = '>'; break;
+
+    case 23: ret[0] = '&'; break;
+    case 24: ret[0] = '|'; break;
+    case 25: ret[0] = '^'; break;
+    default:
+              return false;
+  }
+  return true;
+}
+
+char * cmp_sym(int idx);
+char * cmp_sym(int idx) {
+  char * ret = (char*) malloc(4);
+/*
+ICMP_EQ    = 32,  ///< equal
+ICMP_NE    = 33,  ///< not equal
+ICMP_UGT   = 34,  ///< unsigned greater than
+ICMP_UGE   = 35,  ///< unsigned greater or equal
+ICMP_ULT   = 36,  ///< unsigned less than
+ICMP_ULE   = 37,  ///< unsigned less or equal
+ICMP_SGT   = 38,  ///< signed greater than
+ICMP_SGE   = 39,  ///< signed greater or equal
+ICMP_SLT   = 40,  ///< signed less than
+ICMP_SLE   = 41,  ///< signed less or equal
+ */
+  // XXX: how to handle signed/unsigned compares?
+  switch(idx) {
+    case llvm::ICmpInst::ICMP_EQ: strncpy(ret, "==", 4); break;
+    case llvm::ICmpInst::ICMP_NE: strncpy(ret, "!=", 4); break;
+
+    case llvm::ICmpInst::ICMP_SGT: strncpy(ret, ">", 4); break;
+    case llvm::ICmpInst::ICMP_SGE: strncpy(ret, ">=", 4); break;
+    case llvm::ICmpInst::ICMP_SLT: strncpy(ret, "<", 4); break;
+    case llvm::ICmpInst::ICMP_SLE: strncpy(ret, "<=", 4); break;
+
+    case llvm::ICmpInst::ICMP_UGT: strncpy(ret, "UGT", 4); break;
+    case llvm::ICmpInst::ICMP_UGE: strncpy(ret, "UGE", 4); break;
+    case llvm::ICmpInst::ICMP_ULT: strncpy(ret, "ULT", 4); break;
+    case llvm::ICmpInst::ICMP_ULE: strncpy(ret, "ULE", 4); break;
+
+    default: strncpy(ret, "??", 4); break;
+  }
+  return ret;
+}
+
+
 char* back_slice (Shad *shad, llvm::Instruction*);
 //std::string back_slice (Shad *shad, llvm::Instruction*);
 //std::string back_slice (Shad *shad, llvm::Instruction* insn)
@@ -731,9 +819,9 @@ char* back_slice (Shad *shad, llvm::Instruction* insn)
     const char* opname = insn->getOpcodeName();
     int num_ops = insn->getNumOperands();
 
-		//std::ostringstream str;
-#define RES_SZ 1024 
-		char *res = (char*)malloc(RES_SZ); // XXX: probably overflowable
+    //std::ostringstream str;
+#define RES_SZ 1024
+    char *res = (char*)malloc(RES_SZ); // XXX: probably overflowable
     char  *res_head, *res_tail;
     res_head = res;
     res_tail = res_head + RES_SZ;
@@ -743,58 +831,85 @@ char* back_slice (Shad *shad, llvm::Instruction* insn)
     // of each argument
 
     if (llvm::isa<llvm::CastInst>(insn)) {
-      // CAST: grab new size and recurse on whatever's being cast
+      // CAST: grab op, new size and recurse on whatever's being cast
       llvm::CastInst *cast = llvm::dyn_cast<llvm::CastInst>(insn);
-      // Is it an llvm::ZExtInst? Others?
       auto dest_ty = cast->getDestTy();
-      if (dest_ty->isIntegerTy()) {
-        // Int of fixed size
+      if (dest_ty->isIntegerTy()) { // Casting to int of fixed size
         llvm::IntegerType *IT = llvm::dyn_cast<llvm::IntegerType>(dest_ty);
-        printf("\tCast/Trunc (%s) to integer with %d bits: ", opname, IT->getBitWidth());
-				//str << "cast(" << IT->getBitWidth() << ",";
-				res_head+= snprintf(res_head, res_tail-res_head, "cast(%d, ", IT->getBitWidth());
 
+        // Is it a truncation / zero-extend / sign extend? Or unhandled?
+        if(llvm::isa<llvm::TruncInst>(insn)) {
+          // XXX: extract(size, start, val) but is start ever non-zero?
+          res_head+= snprintf(res_head, res_tail-res_head, "Extract(%d, 0, ", IT->getBitWidth());
+
+        }else if (llvm::isa<llvm::ZExtInst>(insn)) {
+          res_head+= snprintf(res_head, res_tail-res_head, "ZeroExt(%d, ", IT->getBitWidth());
+
+        }else if (llvm::isa<llvm::SExtInst>(insn)) {
+          res_head+= snprintf(res_head, res_tail-res_head, "SignExt(%d, ", IT->getBitWidth());
+
+        } else { // This could also catch non-int dest_ty values
+          printf("ERROR: Unhandled cast/truncation\n");
+          res_head+= snprintf(res_head, res_tail-res_head, "ERROR(");
+        }
       }else if (dest_ty->isPtrOrPtrVectorTy()) {
-        printf("Ptr cast? TODO\n");
-				//str << "XXXptrcast(";
-				res_head += snprintf(res_head, res_tail-res_head, "xxxptrcast(");
+        res_head += snprintf(res_head, res_tail-res_head, "xxxptrcast(");
       }else{
         int dest_ty_id = dest_ty->getTypeID();
-        printf("Unknown cast: %d\n", dest_ty_id);
-				//str << "XXXcast(";
-				res_head += snprintf(res_head, res_tail-res_head, "xxxcast(");
+        res_head += snprintf(res_head, res_tail-res_head, "xxxcast(%d,", dest_ty_id);
       }
 
-      // Now grab what's being cast and recurse - It's in operand(0)?
+      // Now grab what's being cast and recurse - It's in operand(0)
       auto op = insn->getOperand(0);
-      if (llvm::isa<llvm::Instruction>(op)) { // INSN - recurse unless ending type
+      if (llvm::isa<llvm::Instruction>(op)) { // INSN - recurse unless it's of 'ending' type
         llvm::Instruction *i = llvm::dyn_cast<llvm::Instruction>(op);
           if (!llvm::isa<llvm::LoadInst>(i) && !llvm::isa<llvm::CallInst>(i)) {
             printf("Insn - recurse!\n");
             //std::string res = back_slice(shad, i);
-						//str << res << ")";
+            //str << res << ")";
             char* rec_res = back_slice(shad, i);
-				    res_head += snprintf(res_head, res_tail-res_head, "%s", rec_res);
+            res_head += snprintf(res_head, res_tail-res_head, "%s", rec_res);
+            free(rec_res);
           }else{
             printf("INSN - terminate (pretend it's const)\n");
-						//str << "constXXX" << ")";
-				    res_head += snprintf(res_head, res_tail-res_head, "constXXX");
+            //str << "constXXX" << ")";
+            res_head += snprintf(res_head, res_tail-res_head, "constXXX");
           }
       }else{
-				//str << "errorXXX" << ")";
-			  res_head += snprintf(res_head, res_tail-res_head, "errorXXX");
+        //str << "errorXXX" << ")";
+        res_head += snprintf(res_head, res_tail-res_head, "errorXXX");
         printf("Non-insn?\n");
       }
 
     }else if (llvm::isa<llvm::BinaryOperator>(insn)) {
       // BINOP  - each arg is either const or insn. If insn recurse unless it's an 'ending' type
       llvm::BinaryOperator *binop = llvm::dyn_cast<llvm::BinaryOperator>(insn);
-      auto opcode = binop->getOpcode(); // See Instruction.def for these IDs, can check vs things like Instruction::And
+      // Depending on the instruction we'll want either A + B with the op in the middle
+      // or UDiv(a,b) with the op as a function. UGH!
+      // Only UDiv and LShr need to be functions, others are just ops in the middle
+
+      // See Instruction.def for these IDs, can check vs things like Instruction::And
+      int opcode = binop->getOpcode();
       printf("\tBINOP %d: %s\n", (int)opcode, opname);
-			//str << opname << "(";
-			res_head += snprintf(res_head, res_tail-res_head, "%s(", opname);
+      bool op_in_mid = true;
+
+      // Wrap binop in parens: either (A+B) or (UDiv(A,B))
+      res_head += snprintf(res_head, res_tail-res_head, "(");
+
+      if (opcode == llvm::Instruction::UDiv || opcode == llvm::Instruction::LShr \
+          || opcode == llvm::Instruction::URem) {
+        // Just need OP(arg0, arg1)
+        op_in_mid = false;
+        if (opcode == llvm::Instruction::UDiv)
+          res_head += snprintf(res_head, res_tail-res_head, "UDiv(");
+        else if (opcode == llvm::Instruction::LShr)
+          res_head += snprintf(res_head, res_tail-res_head, "LShr(");
+        else if (opcode == llvm::Instruction::URem)
+          res_head += snprintf(res_head, res_tail-res_head, "URem(");
+      }
 
       // For each insn figure out if we need to recurse of if it's a const
+      assert(num_ops == 2); // Binop - always two ops
       for (int op_idx = 0; op_idx < num_ops; op_idx++) {
         auto op = insn->getOperand(op_idx);
 
@@ -805,19 +920,21 @@ char* back_slice (Shad *shad, llvm::Instruction* insn)
             // Needs recursion
               printf(" - recurse!\n");
               //std::string res = back_slice(shad, i);
-							//str << res;
+              //str << res;
               char* rec_res = back_slice(shad, i);
-			        res_head += snprintf(res_head, res_tail-res_head, "%s", rec_res);
+              res_head += snprintf(res_head, res_tail-res_head, "%s", rec_res);
+              free(rec_res);
 
           }else if (llvm::isa<llvm::LoadInst>(i)){
             llvm::LoadInst *li = llvm::dyn_cast<llvm::LoadInst>(i);
-            printf(" - terminate (pretend it's const)\n");
-						//str << "constXXX";
-              llvm::StringRef sref = li->getName();
-              printf("NAME %d %s\n", (int)sref.size(), hack(&sref));
-			        res_head += snprintf(res_head, res_tail-res_head, "const_%s", hack(&sref));
+            //printf(" - terminate (pretend it's const)\n");
+            //str << "constXXX";
+            llvm::StringRef sref = li->getName();
+            char *stringified = hack(&sref);
+            res_head += snprintf(res_head, res_tail-res_head, "const_%s", stringified);
+            free(stringified);
 
-			      //res_head += snprintf(res_head, res_tail-res_head, "const_%s", hack());
+            //res_head += snprintf(res_head, res_tail-res_head, "const_%s", hack());
           }else if (llvm::isa<llvm::CallInst>(i)){
             if (i->getName().empty()) {
               printf("EMPTY CALL\n");
@@ -830,20 +947,27 @@ char* back_slice (Shad *shad, llvm::Instruction* insn)
           const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(op);
           uint64_t raw_value = CI->getZExtValue();
           printf("\t\tBinop(%s) arg %d const: %ld\n", opname, op_idx, raw_value);
-					//str << raw_value;
-			    res_head += snprintf(res_head, res_tail-res_head, "%ld", raw_value);
+          //str << raw_value;
+          res_head += snprintf(res_head, res_tail-res_head, "%ld", raw_value);
 
         }else{ // Unimplemented?
           printf("\tNon-const, unknown at %d\n", op_idx);
-				  //str << "non_constXXX";
-			    res_head += snprintf(res_head, res_tail-res_head, "non_constXXX");
+          //str << "non_constXXX";
+          res_head += snprintf(res_head, res_tail-res_head, "non_constXXX");
         }
 
-				if (op_idx < num_ops-1) { // Commas after all but last
-          //str << ", ";
-			    res_head += snprintf(res_head, res_tail-res_head, ", ");
+        if (op_idx == 0) { // Between args
+          char op_char[4] = {0};
+          op_char[0] = ',';
+          if (op_in_mid) { // If necessary, put binop symbol in op_char
+            if (!get_mid_op(opcode, op_char)) {
+              op_char[0] = '?'; // Error
+            }
+          }
+          // Insert , or binop symbol
+          res_head += snprintf(res_head, res_tail-res_head, " %s ", op_char);
         }
-      }
+      } // End for loop on args
 
     }else if (llvm::isa<llvm::CallInst>(insn)) {
       // Function calls - Not sure how to handle. Probaly need special case for
@@ -891,7 +1015,7 @@ char* str_value(Shad *shad, llvm::Value *v, uint64_t slot) {
         result = back_slice(shad, i);
       }else{
         result = (char*)malloc(10);
-        snprintf(result, 10, "no_taint"); 
+        snprintf(result, 10, "no_taint");
       }
     } else {
       result = (char*)malloc(10);
@@ -899,17 +1023,6 @@ char* str_value(Shad *shad, llvm::Value *v, uint64_t slot) {
     }
     return result;
 }
-
-char * cmp_name(int idx);
-char * cmp_name(int idx) {
-  char * ret = (char*) malloc(10);
-  switch(idx) {
-    case llvm::ICmpInst::ICMP_EQ: strncpy(ret, "equality", 10); break;
-    default: printf("ERROR\n"); ret[0] = 0;
-  }
-  return ret;
-}
-
 void log_tainted_cmp(Shad *shad, llvm::Instruction *I, uint64_t slot1, uint64_t slot2)
 {
     llvm::CmpInst *cmpI = llvm::dyn_cast<llvm::CmpInst>(I);
@@ -945,7 +1058,21 @@ void log_tainted_cmp(Shad *shad, llvm::Instruction *I, uint64_t slot1, uint64_t 
     // %12 = trunc i32 %tmp-25_v to i8
     // %tmp-25_v = sub i32 %eax_v, 88
 
-    printf("%s(%s, %s)\n", cmp_name((int)p), 
-      str_value(shad, v1, slot1),
-      str_value(shad, v2, slot2));
+    char* s1= str_value(shad, v1, slot1);
+    char* s2 = str_value(shad, v2, slot2);
+    char* cmp = cmp_sym((int)p);
+
+    // Four special cases - usnigned comparisons where we want CMP(A,B)
+    if ( p == llvm::ICmpInst::ICMP_UGT || p == llvm::ICmpInst::ICMP_UGE || \
+         p == llvm::ICmpInst::ICMP_ULT || p == llvm::ICmpInst::ICMP_ULE) {
+        printf("%s((%s),(%s))\n", cmp, s1, s2);
+
+    }else {
+      // Otherwise compare goes in the middle
+      printf("((%s) %s (%s))\n", s1, cmp, s2);
+    }
+
+    free(cmp);
+    free(s1);
+    free(s2);
 }
