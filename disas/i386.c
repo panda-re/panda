@@ -3682,7 +3682,7 @@ static char scale_char;
 int
 print_insn_i386 (bfd_vma pc, disassemble_info *info)
 {
-  intel_syntax = -1;
+  intel_syntax = 1;
 
   return print_insn (pc, info);
 }
