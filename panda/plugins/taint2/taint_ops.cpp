@@ -862,7 +862,7 @@ char* back_slice (Shad *shad, llvm::Instruction* insn)
       // Now grab what's being cast and recurse - It's in operand(0)
       auto op = insn->getOperand(0);
       if (llvm::isa<llvm::Instruction>(op)) { // INSN - recurse unless it's of 'ending' type
-        llvm::Instruction *i = llvm::dyn_cast<llvm::Instruction>(op);
+          llvm::Instruction *i = llvm::dyn_cast<llvm::Instruction>(op);
           if (!llvm::isa<llvm::LoadInst>(i) && !llvm::isa<llvm::CallInst>(i)) {
             printf("Insn - recurse!\n");
             //std::string res = back_slice(shad, i);
@@ -873,7 +873,45 @@ char* back_slice (Shad *shad, llvm::Instruction* insn)
           }else{
             printf("INSN - terminate (pretend it's const)\n");
             //str << "constXXX" << ")";
-            res_head += snprintf(res_head, res_tail-res_head, "constXXX");
+            if (llvm::isa<llvm::LoadInst>(i)) {
+              res_head += snprintf(res_head, res_tail-res_head, "loadXXX");
+            }else{
+              // Call _should_ be a panda_helper_... which loads data from memory
+              llvm::CallInst *calli = llvm::dyn_cast<llvm::CallInst>(op);
+              Function *callee = calli->getCalledFunction();
+              llvm::StringRef callee_name = callee->getName();
+              char *stringified = hack(&callee_name);
+
+              if (callee_name.startswith("helper_") && callee_name.endswith("_panda")) {
+                // Some LLVM memory load panda helper like ldub (load unsigned byte)
+                if (callee_name.equals("helper_ret_ldub_mmu_panda")) {
+                  // helper_ret_ldub_mmu_panda(%struct.CPUX86State* %0, i32 %tmp2_v6, i32 2, i64 3735928559)
+                  // cpustate, addr, TCGMemOpIdx, retaddr
+                  // addr is the address being read from (an IR var)
+                  // retaddr is a constant
+                  // Generate load_[type](recurse to get address)
+                  llvm::Value* read_addr = calli->getOperand(1); // Address loading from
+                  if (llvm::isa<llvm::Instruction>(read_addr)) { // Reading result of an insn
+                    llvm::Instruction *read_insn = llvm::dyn_cast<llvm::Instruction>(read_addr);
+                    // Recurse on address we're loading from
+                    char* rec_res = back_slice(shad, read_insn);
+                    res_head += snprintf(res_head, res_tail-res_head, "load_%s(%s)", stringified, rec_res);
+                    free(rec_res);
+
+                  }else if (llvm::isa<llvm::ConstantInt>(read_addr)) { // Constant - don't recurse
+                    const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(op);
+                    uint64_t raw_value = CI->getZExtValue();
+                    res_head += snprintf(res_head, res_tail-res_head, "load_%s(%ld)", stringified, raw_value);
+
+                  }else{ //Unknown type being loaded
+                    res_head += snprintf(res_head, res_tail-res_head, "load_%s(TODO)", stringified);
+
+                  }
+                }
+              }else{
+                res_head += snprintf(res_head, res_tail-res_head, "callXXX_%s", stringified);
+              }
+            }
           }
       }else{
         //str << "errorXXX" << ")";
