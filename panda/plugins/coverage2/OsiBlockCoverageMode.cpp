@@ -29,4 +29,8 @@ void OsiBlockCoverageMode::process_block(CPUState *cpu, TranslationBlock *tb)
     output_stream << "\n";
 }
 
+void OsiBlockCoverageMode::process_results()
+{
+}
+
 }

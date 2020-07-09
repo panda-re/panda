@@ -206,7 +206,7 @@ bool init_plugin(void *self)
         mode = std::unique_ptr<CoverageMode>(new OsiBlockCoverageMode("test.csv"));
         //mode = std::unique_ptr<CoverageMode>(new OsiBlockCoverageMode("test.csv"));
     } else if ("edge" == mode_arg) {
-        mode = std::unique_ptr<CoverageMode>(new EdgeCoverageMode);
+        mode = std::unique_ptr<CoverageMode>(new EdgeCoverageMode("test.csv"));
     }
 
     panda_cb pcb;
@@ -238,4 +238,5 @@ bool init_plugin(void *self)
 
 void uninit_plugin(void *self)
 {
+    mode->process_results();
 }

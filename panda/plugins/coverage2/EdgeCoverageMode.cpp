@@ -5,24 +5,31 @@
 namespace coverage2
 {
 
-static void callback(std::set<Edge> *edges,
-                     std::pair<target_ulong, target_ulong> *cur,
-                     std::pair<target_ulong, target_ulong> **pprev)
+static void callback(std::unordered_set<Edge> *edges,
+                     Block *cur,
+                     Block **pprev)
 {
-    Edge e(*cur, **pprev);
+    Edge e {
+        .from = cur,
+        .to = *pprev
+    };
     edges->insert(e);
     *pprev = cur;
 }
 
-EdgeCoverageMode::EdgeCoverageMode() :
-    dummy_previous_block(0, 0), previous_block_key_ptr(&dummy_previous_block)
+EdgeCoverageMode::EdgeCoverageMode(const std::string& filename) :
+    previous_block_key_ptr(&dummy_previous_block), output_stream(filename)
 {
 }
 
 void EdgeCoverageMode::process_block(CPUState *cpu, TranslationBlock *tb)
 {
-    auto key = std::make_pair(panda_current_asid(cpu), tb->pc);
-    auto result = blocks.insert(key);
+    Block block {
+        .asid = panda_current_asid(cpu),
+        .pc = tb->pc,
+        .size = tb->size
+    };
+    auto result = blocks.insert(block);
 
     auto current_block_key_ptr = &(*std::get<0>(result));
 
@@ -70,30 +77,19 @@ void EdgeCoverageMode::process_block(CPUState *cpu, TranslationBlock *tb)
     call_args[2] = GET_TCGV_I64(prev_key_pptr_tmp);
     call_args[1] = GET_TCGV_I64(block_key_ptr_tmp);
     call_args[0] = GET_TCGV_I64(edge_set_ptr_tmp);
+}
 
-    //fprintf(stderr, "Current TCG context:\n");
-    //fprintf(stderr, "ptr = %p\n", current_block_key_ptr);
-    //tcg_dump_ops(&tcg_ctx);
-
-
-/*    auto tb_tmp = tcg_temp_new_i64();
-    TCGOp *tb_store_op = tcg_op_insert_after(&tcg_ctx, last_guest_insn_mark, INDEX_op_movi_i64, 2);
-    TCGArg *tb_store_args = &tcg_ctx.gen_opparam_buf[tb_store_op->args];
-    tb_store_args[0] = GET_TCGV_I64(tb_tmp);
-    tb_store_args[1] = reinterpret_cast<TCGArg>(tb);
-
-    auto cpu_tmp = tcg_temp_new_i64();
-    TCGOp *cpu_store_op = tcg_op_insert_after(&tcg_ctx, tb_store_op, INDEX_op_movi_i64, 2);
-    TCGArg *cpu_store_args = &tcg_ctx.gen_opparam_buf[cpu_store_op->args];
-    cpu_store_args[0] = GET_TCGV_I64(cpu_tmp);
-    cpu_store_args[1] = reinterpret_cast<TCGArg>(cpu);
-
-    TCGOp *call_op = tcg_op_insert_after(&tcg_ctx, cpu_store_op, INDEX_op_call, 3);
-    call_op->calli = 2;
-    TCGArg *call_args = &tcg_ctx.gen_opparam_buf[call_op->args];
-    call_args[2] = reinterpret_cast<TCGArg>(&my_func);
-    call_args[1] = GET_TCGV_I64(tb_tmp);
-    call_args[0] = GET_TCGV_I64(cpu_tmp); */
+void EdgeCoverageMode::process_results()
+{
+    output_stream << "from asid,from pc,from size,to asid,to pc,to size\n";
+    for (Edge edge : edges) {
+        output_stream << std::hex << edge.from->asid << ","
+                      << std::hex << edge.from->pc   << ","
+                      << std::dec << edge.from->size << ","
+                      << std::hex << edge.to->asid   << ","
+                      << std::hex << edge.to->pc     << ","
+                      << std::dec << edge.to->size   << "\n";
+    }
 }
 
 }

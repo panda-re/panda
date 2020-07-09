@@ -15,6 +15,7 @@ public:
     AsidBlockCoverageMode(const std::string &filename);
 
     void process_block(CPUState *cpu, TranslationBlock *tb) override;
+    void process_results() override;
 private:
     std::ofstream output_stream;
 };

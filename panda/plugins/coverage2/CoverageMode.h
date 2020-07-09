@@ -12,6 +12,8 @@ public:
     virtual ~CoverageMode() = 0;
 
     virtual void process_block(CPUState *cpu, TranslationBlock *tb) = 0;
+
+    virtual void process_results() = 0;
 };
 
 }

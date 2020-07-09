@@ -18,4 +18,9 @@ void AsidBlockCoverageMode::process_block(CPUState *cpu, TranslationBlock *tb)
     output_stream << std::dec << tb->size << "\n";
 }
 
+
+void AsidBlockCoverageMode::process_results()
+{
+}
+
 }
