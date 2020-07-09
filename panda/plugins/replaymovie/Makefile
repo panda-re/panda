@@ -4,11 +4,9 @@
 # CFLAGS+=
 # LIBS+=
 
-.PHONY: $(PLUGIN_OBJ_DIR)/moviecounter.sh
 $(PLUGIN_OBJ_DIR)/moviecounter.sh: $(PLUGIN_SRC_DIR)/moviecounter.sh
 	$(call quiet-command,cp $< $@,"CP      $(TARGET_DIR)$@")
 
-.PHONY: $(PLUGIN_OBJ_DIR)/movie.sh
 $(PLUGIN_OBJ_DIR)/movie.sh: $(PLUGIN_SRC_DIR)/movie.sh
 	$(call quiet-command,cp $< $@,"CP      $(TARGET_DIR)$@")
 
