@@ -25,19 +25,18 @@ PANDAENDCOMMENT */
 #include "UniqueOsiPredicate.h"
 
 #include "CoverageMode.h"
-#include "AsidBlockCoverageMode.h"
-#include "OsiBlockCoverageMode.h"
-#include "EdgeCoverageMode.h"
+
+#include "MonitorRequest.h"
+#include "DisableMonitorRequest.h"
+#include "EnableMonitorRequest.h"
 
 const char *DEFAULT_FILE = "coverage.csv";
 
 // commands that can be accessed through the QEMU monitor
 const char *MONITOR_HELP = "help";
 constexpr size_t MONITOR_HELP_LEN = 4;
-const char *MONITOR_ENABLE = "coverage_enable";
-constexpr size_t MONITOR_ENABLE_LEN = 15;
-const char *MONITOR_DISABLE = "coverage_disable";
-constexpr size_t MONITOR_DISABLE_LEN = 16;
+const std::string MONITOR_ENABLE = "coverage_enable";
+const std::string MONITOR_DISABLE = "coverage_disable";
 
 using namespace coverage2;
 
@@ -53,14 +52,9 @@ void uninit_plugin(void *);
 
 }
 
-static bool enabled = false;
+static std::unique_ptr<MonitorRequest> monitor_request;
 static std::unique_ptr<Predicate> predicate;
 static std::unique_ptr<CoverageMode> mode;
-
-static void log_message(const char *message)
-{
-    printf("%s%s\n", PANDA_MSG, message);
-}
 
 static void log_message(const char *message1, const char *message2)
 {
@@ -75,100 +69,36 @@ static void log_message(const char *message1, const char *message2)
 
 static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 {
+    if (nullptr != monitor_request) {
+        monitor_request->handle();
+        monitor_request.reset();
+    }
+
     if (!predicate->eval(cpu, tb)) {
         return;
     }
-    mode->process_block(cpu, tb);
-}
 
-bool enable_instrumentation()
-{
-    // register the translation callbacks
-
-    // flush translation blocks
-    return true;
-}
-
-void disable_instrumentation()
-{
-    //if (coveragelog != NULL) {
-        // this is where we would like to call panda_disable_callback (assuming
-        // the callback has been registered), if the framework were using the
-        // callback's enabled flag properly - see public PANDA issue 451
-    //    fclose(coveragelog);
-    //    coveragelog = NULL;
-    enabled = false;
-    //}
-}
-
-
-void process_enable_cmd(char *word)
-{
-    char *pequal;
-    size_t wordlen;
-
-    pequal=strchr(word, '=');
-    if (pequal != NULL) {
-        // extract after = as new filename
-        wordlen = strlen(word);
-        if (wordlen > (MONITOR_ENABLE_LEN+1)) {
-            // I really, really don't want to allocate new memory
-            // for the file name every time enable, and as I can't
-            // predict the maximum filename length that doesn't
-            // leave me with much choice on how to send the filename
-            // to enable_logging
-            //enable_logging(pequal+1);
-        } else {
-            log_message("Instrumentation enabled without filename, "
-                "using default of", DEFAULT_FILE);
-            //enable_logging(DEFAULT_FILE);
-        }
-    } else {
-        log_message("Instrumentation enabled without filename, "
-            "using default of", DEFAULT_FILE);
-        //enable_logging(DEFAULT_FILE);
+    if (nullptr != mode) {
+        mode->process_block(cpu, tb);
     }
-    // if enable_logging failed, it will already have spit out a
-    // warning, which is most can do here
 }
 
-int monitor_callback(Monitor *mon, const char *cmd)
+int monitor_callback(Monitor *mon, const char *cmd_cstr)
 {
-    char *cmd_copy = g_strdup(cmd);
-    char *word;
-    char *tokstatus;
+    panda_do_flush_tb();
 
-    word = strtok_r(cmd_copy, " ", &tokstatus);
-    do {
-        if (0 == strncmp(MONITOR_HELP, word, MONITOR_HELP_LEN)) {
-            // yes there is a nice monitor_printf function in monitor.h, but
-            // attempting to include that file in a plugin causes great grief
-            log_message("coverage_enable=filename:  start logging "
-                    "coverage information to the named file");
-            log_message("coverage_disable:  stop logging coverage "
-                    "information and close the current file");
-        } else if (0 == strncmp(MONITOR_DISABLE, word, MONITOR_DISABLE_LEN)) {
-            if (enabled) {
-                disable_instrumentation();
-            } else {
-                log_message(
-                  "Instrumentation not enabled, ignoring request to disable");
-            }
-        } else if (0 == strncmp(MONITOR_ENABLE, word, MONITOR_ENABLE_LEN)) {
-            // we know word at least STARTS with coverage_enable
-            if (!enabled) {
-                process_enable_cmd(word);
-            } else {
-                log_message("Instrumentation already enabled, ignoring "
-                        "request to enable");
-            }
-        }
-        word = strtok_r(NULL, " ", &tokstatus);
-    } while (word != NULL);
-    g_free(cmd_copy);
-
-    // return value is ignored, so doesn't matter what return
-    return 1;
+    std::string cmd = cmd_cstr;
+    auto index = cmd.find("=");
+    std::string filename = DEFAULT_FILE;
+    if (std::string::npos != index) {
+        filename = cmd.substr(index+1);
+    }
+    if (0 == cmd.find(MONITOR_DISABLE)) {
+        monitor_request.reset(new DisableMonitorRequest(mode));
+    } else if (0 == cmd.find(MONITOR_ENABLE)) {
+        monitor_request.reset(new EnableMonitorRequest(mode, filename));
+    }
+    return 0;
 }
 
 
@@ -202,16 +132,6 @@ bool init_plugin(void *self)
         predicate = std::unique_ptr<Predicate>(new CompoundPredicate(std::move(predicate), std::move(uosipred)));
     }
 
-    std::string mode_arg = panda_parse_string_opt(args, "mode", "asid-block", "coverage mode");
-    if ("asid-block" == mode_arg) {
-        mode = std::unique_ptr<CoverageMode>(new AsidBlockCoverageMode("test.csv"));
-    } else if ("osi-block" == mode_arg) {
-        mode = std::unique_ptr<CoverageMode>(new OsiBlockCoverageMode("test.csv"));
-        //mode = std::unique_ptr<CoverageMode>(new OsiBlockCoverageMode("test.csv"));
-    } else if ("edge" == mode_arg) {
-        mode = std::unique_ptr<CoverageMode>(new EdgeCoverageMode("test.csv"));
-    }
-
     panda_cb pcb;
 
     pcb.before_tcg_codegen = before_tcg_codegen;
@@ -224,7 +144,7 @@ bool init_plugin(void *self)
     bool all_ok = true;
     if (!start_disabled)
     {
-        //all_ok = enable_logging(filename);
+        monitor_request.reset(new EnableMonitorRequest(mode, DEFAULT_FILE));
     }
 
     if (all_ok)
@@ -233,13 +153,13 @@ bool init_plugin(void *self)
         panda_register_callback(self, PANDA_CB_MONITOR, pcb);
     }
 
-    //panda_require("osi");
-    //assert(init_osi_api());
-
     return all_ok;
 }
 
 void uninit_plugin(void *self)
 {
-    mode->process_results();
+    if (nullptr != mode) {
+        mode->process_results();
+        mode.reset();
+    }
 }

@@ -15,6 +15,9 @@
 # The main rule for your plugin. List all object-file dependencies.
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
 	$(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o \
+    $(PLUGIN_OBJ_DIR)/MonitorRequest.o \
+    $(PLUGIN_OBJ_DIR)/DisableMonitorRequest.o \
+    $(PLUGIN_OBJ_DIR)/EnableMonitorRequest.o \
     $(PLUGIN_OBJ_DIR)/ProcessNamePredicate.o \
     $(PLUGIN_OBJ_DIR)/PcRangePredicate.o \
     $(PLUGIN_OBJ_DIR)/CompoundPredicate.o \

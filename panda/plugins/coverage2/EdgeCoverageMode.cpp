@@ -97,9 +97,9 @@ void EdgeCoverageMode::process_results()
 {
     output_stream << "from pc,from size,to pc,to size\n";
     for (Edge edge : edges) {
-        output_stream << std::hex << edge.from->pc   << ","
+        output_stream << "0x" << std::hex << edge.from->pc   << ","
                       << std::dec << edge.from->size << ","
-                      << std::hex << edge.to->pc     << ","
+                      << "0x" << std::hex << edge.to->pc     << ","
                       << std::dec << edge.to->size   << "\n";
     }
 }
