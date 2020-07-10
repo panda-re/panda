@@ -24,9 +24,9 @@ PANDAENDCOMMENT */
 
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Linker.h>
+#include <llvm/Linker/Linker.h>
 #include <llvm/IRReader/IRReader.h>
-#include <llvm/Analysis/Verifier.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/LLVMContext.h>
@@ -140,7 +140,7 @@ static void taint_copyRegToPc_run(Shad *shad, uint64_t src, uint64_t size)
     PPP_RUN_CB(on_indirect_jump, a, size);
 }
 
-extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }
+extern "C" { extern TCGLLVMTranslator *tcg_llvm_translator; }
 bool PandaTaintFunctionPass::doInitialization(Module &M) {
     // Add taint functions to module
     // First try binary relative path.
@@ -151,12 +151,12 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 
     LLVMContext &ctx = M.getContext();
     SMDiagnostic Err;
-    Module *taintopmod(ParseIRFile(bitcode, Err, ctx));
+    std::unique_ptr<Module> taintopmod(parseIRFile(bitcode, Err, ctx));
     if (nullptr == taintopmod) {
         // If binary relative path fails, try the install path.
         bitcode = CONFIG_PANDA_PLUGINDIR;
         bitcode.append("/" TARGET_NAME "/taint2/panda_taint2_ops.bc");
-        taintopmod = ParseIRFile(bitcode, Err, ctx);
+        taintopmod = parseIRFile(bitcode, Err, ctx);
     }
     if (!taintopmod) {
         Err.print("qemu", llvm::errs());
@@ -164,23 +164,21 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     }
     std::cout << "taint2: Linking taint ops from " << bitcode << std::endl;
 
-    MDNode *md = MDNode::get(ctx, ArrayRef<Value *>());
+    MDNode *md = MDNode::get(ctx, ArrayRef<Metadata *>());
     for (auto it = taintopmod->begin(); it != taintopmod->end(); it++) {
         if (it->size() == 0) continue;
         if (it->front().size() == 0) continue;
         it->front().front().setMetadata("tainted", md);
     }
 
-    std::string err;
-    Linker::LinkModules(&M, taintopmod, Linker::DestroySource, &err);
-    if (!err.empty()) {
-        std::cerr << err << std::endl;
+    if(Linker::linkModules(M, std::move(taintopmod))) {
+        std::cerr << "Linker::linkModules failed" << std::endl;
         return false;
     }
-    verifyModule(M, llvm::AbortProcessAction, &err);
-    if (!err.empty()) {
-        std::cerr << err << std::endl;
-        return true;
+
+    if(verifyModule(M, &llvm::errs())) {
+        std::cerr << "Failed to verify module" << std::endl;
+        return false;
     }
 
     PTV.deleteF = M.getFunction("taint_delete"),
@@ -228,7 +226,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 
     PTV.prevBbConst = const_i64p(ctx, &shad->prev_bb);
 
-    ExecutionEngine *EE = tcg_llvm_ctx->getExecutionEngine();
+    ExecutionEngine *EE = tcg_llvm_translator->getExecutionEngine();
     vector<llvm::Type *> argTs{
         shadP, llvm::Type::getInt64Ty(ctx), llvm::Type::getInt64Ty(ctx)
     };
@@ -343,11 +341,11 @@ void PandaSlotTracker::processFunction() {
     // Add all of the basic blocks and instructions with no names.
     for (Function::iterator BB = TheFunction->begin(),
             E = TheFunction->end(); BB != E; ++BB) {
-        CreateFunctionSlot(BB);
+        CreateFunctionSlot(&*BB);
         for (BasicBlock::iterator I = BB->begin(), E = BB->end(); I != E;
             ++I) {
             if (I->getType() != llvm::Type::getVoidTy(TheFunction->getContext())) {
-                CreateFunctionSlot(I);
+                CreateFunctionSlot(&*I);
             }
         }
     }
@@ -489,7 +487,7 @@ void PandaTaintVisitor::visitBasicBlock(BasicBlock &BB) {
         inlineCallBefore(*BB.getFirstNonPHI(), resetFrameF, args);
 
         // Two things: Insert "tainted" metadata.
-        MDNode *md = MDNode::get(ctx, ArrayRef<Value *>());
+        MDNode *md = MDNode::get(ctx, ArrayRef<Metadata *>());
 
         BB.front().setMetadata("tainted", md);
     } else {
@@ -833,7 +831,7 @@ void PandaTaintVisitor::visitReturnInst(ReturnInst &I) {
         inlineCallBefore(I, copyF, args);
     }
 
-    visitTerminatorInst(I);
+    //visitTerminatorInst(I);
 }
 
 void PandaTaintVisitor::visitBranchInst(BranchInst &I) {
@@ -849,9 +847,9 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I) {
 }
 
 // On a branch we just have to log the previous BB.
-void PandaTaintVisitor::visitTerminatorInst(TerminatorInst &I) {
+//void PandaTaintVisitor::visitTerminatorInst(TerminatorInst &I) {
     // BB logging is in the previous stuff.
-}
+//}
 
 void PandaTaintVisitor::visitInvokeInst(InvokeInst &I) {
     assert(false && "Can't handle invoke!!");

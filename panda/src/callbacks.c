@@ -673,7 +673,7 @@ void panda_disable_llvm(void) {
     execute_llvm = 0;
     generate_llvm = 0;
     tcg_llvm_destroy();
-    tcg_llvm_ctx = NULL;
+    tcg_llvm_translator = NULL;
 }
 
 void panda_enable_llvm_helpers(void) {

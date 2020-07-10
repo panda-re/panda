@@ -1381,7 +1381,7 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
 
 #if defined(CONFIG_LLVM)
     if (generate_llvm)
-        tcg_llvm_gen_code(tcg_llvm_ctx, &tcg_ctx, tb);
+        tcg_llvm_gen_code(tcg_llvm_translator, &tcg_ctx, tb);
 #endif
 
     if (unlikely(gen_code_size < 0)) {
