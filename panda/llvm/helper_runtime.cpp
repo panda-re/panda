@@ -30,12 +30,12 @@ extern "C" {
 #include <libgen.h>
 }
 
-#include "llvm/Linker.h"
+#include "llvm/Linker/Linker.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/IR/Module.h"
-#include "llvm/PassManager.h"
+#include "llvm/IR/PassManager.h"
 #include "llvm/PassRegistry.h"
-#include "llvm/Analysis/Verifier.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/raw_ostream.h"
@@ -111,7 +111,7 @@ void PandaHelperCallVisitor::visitCallInst(CallInst &I) {
     Module *m = I.getParent()->getParent()->getParent();
     assert(m);
 
-    std::string name = f->getName();
+    std::string name = f->getName().str();
     if (f->isIntrinsic() || !f->hasName()
             || ignore_funcs.count(name) > 0) {
         return; // Ignore intrinsics, declarations, memory, and I/O  functions
@@ -162,12 +162,12 @@ static bool helpers_initialized = false;
 void init_llvm_helpers() {
     if (helpers_initialized) return;
 
-    assert(tcg_llvm_ctx);
-    //llvm::ExecutionEngine *ee = tcg_llvm_ctx->getExecutionEngine();
+    assert(tcg_llvm_translator);
+    //llvm::ExecutionEngine *ee = tcg_llvm_translator->getExecutionEngine();
     //assert(ee);
-    llvm::FunctionPassManager *fpm = tcg_llvm_ctx->getFunctionPassManager();
+    llvm::legacy::FunctionPassManager *fpm = tcg_llvm_translator->getFunctionPassManager();
     assert(fpm);
-    llvm::Module *mod = tcg_llvm_ctx->getModule();
+    llvm::Module *mod = tcg_llvm_translator->getModule();
     assert(mod);
     llvm::LLVMContext &ctx = mod->getContext();
 
@@ -179,11 +179,11 @@ void init_llvm_helpers() {
     bitcode.append("/llvm-helpers-" TARGET_NAME ".bc");
 
     llvm::SMDiagnostic Err;
-    llvm::Module *helpermod = ParseIRFile(bitcode, Err, ctx);
+    std::unique_ptr<llvm::Module> helpermod = parseIRFile(bitcode, Err, ctx);
     if (nullptr == helpermod) {
         std::string bitcode =
             CONFIG_QEMU_DATADIR "/llvm-helpers-" TARGET_NAME ".bc";
-        helpermod = ParseIRFile(bitcode, Err, ctx);
+        helpermod = parseIRFile(bitcode, Err, ctx);
     }
 
     if (!helpermod) {
@@ -191,21 +191,18 @@ void init_llvm_helpers() {
         exit(1);
     }
 
-    std::string err;
-    llvm::Linker::LinkModules(mod, helpermod, llvm::Linker::DestroySource, &err);
-    if (!err.empty()) {
-        printf("%s\n", err.c_str());
+    if(llvm::Linker::linkModules(*mod, std::move(helpermod))) {
+        printf("llvm::Linker::linkModules failed\n");
         exit(1);
     }
-    verifyModule(*mod, llvm::AbortProcessAction, &err);
-    if (!err.empty()) {
-        printf("%s\n", err.c_str());
+
+    if(llvm::verifyModule(*mod, &llvm::outs())) {
         exit(1);
     }
 
     /*std::stringstream mod_file;
     mod_file << "/tmp/llvm-mod-" << getpid() << ".bc";
-    tcg_llvm_ctx->writeModule(mod_file.str().c_str());*/
+    tcg_llvm_translator->writeModule(mod_file.str().c_str());*/
 
     // Create call morph pass and add to function pass manager
     llvm::FunctionPass *fp = new llvm::PandaCallMorphFunctionPass();
@@ -224,6 +221,7 @@ void uninit_llvm_helpers() {
      * with LLVM.  Switching between TCG and LLVM works fine when passes aren't
      * added to LLVM.
      */
+    /*
     llvm::PassRegistry *pr = llvm::PassRegistry::getPassRegistry();
     const llvm::PassInfo *pi =
         pr->getPassInfo("PandaCallMorph");
@@ -232,6 +230,7 @@ void uninit_llvm_helpers() {
     } else {
         pr->unregisterPass(*pi);
     }
+    */
     helpers_initialized = false;
 }
 

@@ -24,7 +24,7 @@ PANDAENDCOMMENT */
 #include <set>
 
 #include <llvm/ADT/DenseMap.h>
-#include <llvm/InstVisitor.h>
+#include <llvm/IR/InstVisitor.h>
 
 typedef struct taint2_memlog taint2_memlog;
 typedef struct addr_struct Addr;
@@ -201,7 +201,7 @@ public:
     void visitBranchInst(BranchInst &I);
     void visitIndirectBrInst(IndirectBrInst &I);
     void visitSwitchInst(SwitchInst &I);
-    void visitTerminatorInst(TerminatorInst &I);
+    //void visitTerminatorInst(TerminatorInst &I);
     void visitCastInst(CastInst &I);
     void visitCmpInst(CmpInst &I);
     void visitMemCpyInst(MemTransferInst &I);

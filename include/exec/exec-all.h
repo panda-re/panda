@@ -327,12 +327,13 @@ static inline void tlb_flush_by_mmuidx_all_cpus_synced(CPUState *cpu,
 #endif
 
 #ifdef CONFIG_LLVM
-#include "panda/tcg-llvm.h"
 #ifdef __cplusplus
 namespace llvm { class Function; }
 using llvm::Function;
+class TCGLLVMTranslator;
 #else
 struct Function;
+struct TCGLLVMTranslator;
 #endif
 #endif
 
@@ -391,11 +392,12 @@ struct TranslationBlock {
     uintptr_t jmp_list_first;
 
 #ifdef CONFIG_LLVM
-    /* pointer to LLVM translated code */
-    TCGLLVMContext *tcg_llvm_context;
 #ifdef __cplusplus
+    /* pointer to LLVM translated code */
+    TCGLLVMTranslator *tcg_llvm_context;
     Function *llvm_function;
 #else
+    struct TCGLLVMTranslator *tcg_llvm_context;
     struct Function *llvm_function;
 #endif
     uint8_t *llvm_tc_ptr;

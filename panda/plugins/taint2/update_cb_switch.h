@@ -241,7 +241,8 @@ PANDAENDCOMMENT */
 
         default:
             printf("Unknown instruction in update_cb: ");
-            I->dump();
+            //dump only available if LLVM compiled with dump enabled
+            //I->dump();
             fflush(stdout);
             return;
     }
