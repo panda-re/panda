@@ -11,6 +11,8 @@ namespace coverage2
 ProcessNamePredicate::ProcessNamePredicate(const std::string& pname)
         : process_name(pname)
 {
+    panda_require("osi");
+    assert(init_osi_api());
 }
 
 bool ProcessNamePredicate::eval(CPUState *cpu, TranslationBlock *tb)

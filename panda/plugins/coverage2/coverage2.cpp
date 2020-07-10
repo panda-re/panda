@@ -75,6 +75,9 @@ static void log_message(const char *message1, const char *message2)
 
 static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 {
+    if (!predicate->eval(cpu, tb)) {
+        return;
+    }
     mode->process_block(cpu, tb);
 }
 
@@ -230,8 +233,8 @@ bool init_plugin(void *self)
         panda_register_callback(self, PANDA_CB_MONITOR, pcb);
     }
 
-    panda_require("osi");
-    assert(init_osi_api());
+    //panda_require("osi");
+    //assert(init_osi_api());
 
     return all_ok;
 }

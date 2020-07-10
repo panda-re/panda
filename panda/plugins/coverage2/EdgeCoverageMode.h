@@ -4,6 +4,7 @@
 #include <fstream>
 #include <functional>
 #include <unordered_set>
+#include <unordered_map>
 #include <utility>
 
 #include "CoverageMode.h"
@@ -76,8 +77,7 @@ private:
     std::unordered_set<Block> blocks;
     std::unordered_set<Edge> edges;
 
-    Block dummy_previous_block;
-    Block *previous_block_key_ptr;
+    std::unordered_map<target_pid_t, Block *> previous_blocks;
 
     std::ofstream output_stream;
 };
