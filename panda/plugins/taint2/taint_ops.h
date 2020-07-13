@@ -88,6 +88,9 @@ void taint_delete(Shad *shad, uint64_t dest, uint64_t size);
 void taint_set(Shad *shad_dest, uint64_t dest, uint64_t dest_size,
                Shad *shad_src, uint64_t src);
 
+// reg is the register number into which the load went or out of which the store happened
+void taint_after_ld(uint64_t reg, uint64_t memaddr, uint64_t size);
+
 // Union all labels within here: [1,2,3] -> [123,123,123]
 // A mixed compute becomes two mixes followed by a parallel.
 void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
