@@ -68,9 +68,13 @@ fi
 
 msg "Using python2 at: $PYTHON2PATH"
 
-### Check gcc/g++ versions: 7.1 is minimum supported. If you want to build with clang, you might need to disable this
+### Check gcc/g++ versions: 7.1-8.4 are supported. If you want to build with clang, you might need to disable this
 gcc --version | awk '/gcc/ && ($3+0)<7.1{print "Fatal error: GCC too old"; exit 1}' || exit 1
 g++ --version | awk '/g\+\+/ && ($3+0)<7.1{print "Fatal error: G++ too old"; exit 1}' || exit 1
+
+# Untested GCC - it's probably going to have some warnings - Just disable Werror and hope it works
+gcc --version | awk '/gcc/   && ($3+0)>8.4{print "WARNING: Your GCC is too new: disabling -Werror and hoping this builds"; exit 1}' || COMPILER_CONFIG="--extra-cflags=-Wno-error"
+g++ --version | awk '/g\+\+/ && ($3+0)>8.4{print "WARNING: Your G++ is too new: disabling -Werror and hoping this builds"; exit 1}' ||  COMPILER_CONFIG="--extra-cxxflags=-Wno-error"
 
 #COMPILER_CONFIG="--cc=gcc-$GCC_TOOLCHAIN_VERSION_MAX --cxx=g++-$GCC_TOOLCHAIN_VERSION_MAX"
 #COMPILER_CONFIG="--extra-cflags=-std=gnu11 --extra-cxxflags=-std=gnu++1z --cc=gcc --cxx=g++"
