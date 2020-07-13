@@ -171,15 +171,13 @@ public:
 */
 
 TCGLLVMTranslator::TCGLLVMTranslator()
-    : m_module(new Module("tcg-llvm", m_context)),
-      m_builder(m_module->getContext()),
+    : m_builder(m_context),
       m_tbCount(0), m_tcgContext(NULL), m_tbFunction(NULL), m_tbType(NULL) {
 
     std::memset(m_values, 0, sizeof(m_values));
     std::memset(m_memValuesPtr, 0, sizeof(m_memValuesPtr));
     std::memset(m_globalsIdx, 0, sizeof(m_globalsIdx));
 
-    m_functionPassManager = new legacy::FunctionPassManager(m_module.get());
     /*
     m_functionPassManager->add(createReassociatePass());
     m_functionPassManager->add(createConstantPropagationPass());
@@ -190,19 +188,20 @@ TCGLLVMTranslator::TCGLLVMTranslator()
     m_functionPassManager->add(createPromoteMemoryToRegisterPass());
     */
 
+    initMemoryHelpers();
     m_cpuType = NULL;
     m_cpuState = NULL;
     m_eip = NULL;
     m_ccop = NULL;
 
+    m_module = std::make_unique<Module>("tcg-llvm", m_context);
+
+    m_functionPassManager = new legacy::FunctionPassManager(m_module.get());
+
     //m_jitMemoryManager = new TJITMemoryManager();
 
     //std::string error;
     char *error;
-
-    LLVMLinkInMCJIT();
-    LLVMInitializeNativeTarget();
-    LLVMInitializeNativeAsmPrinter();
 
     LLVMExecutionEngineRef executionEngineRef;
 
@@ -229,10 +228,10 @@ TCGLLVMTranslator::TCGLLVMTranslator()
 
     // TODO: is this necessary?
     m_functionPassManager->add(
-            new DataLayout(*m_executionEngine->getDataLayout()));
+            new DataLayout(m_executionEngine->getDataLayout()));
     */
 
-    m_functionPassManager->doInitialization();
+    //m_functionPassManager->doInitialization();
 
 #define XSTR(x) STR(x)
 #define STR(x) #x
@@ -242,7 +241,6 @@ TCGLLVMTranslator::TCGLLVMTranslator()
 #undef XSTR
     //initializeNativeCpuState();
     //initializeHelpers();
-    initMemoryHelpers();
 }
 
 /*
@@ -1622,6 +1620,11 @@ void tcg_llvm_initialize()
 {
     assert(tcg_llvm_translator == nullptr);
     //assert(llvm_start_multithreaded());
+
+    LLVMLinkInMCJIT();
+    LLVMInitializeNativeTarget();
+    LLVMInitializeNativeAsmPrinter();
+
     tcg_llvm_translator = new TCGLLVMTranslator;
 }
 
