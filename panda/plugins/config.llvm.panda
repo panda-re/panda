@@ -6,5 +6,6 @@ serial_taint
 taint2
 tainted_branch
 tainted_instr
+tainted_mmio
 tainted_net
 tstringsearch
