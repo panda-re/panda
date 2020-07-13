@@ -12,7 +12,7 @@ CODE = b"""
 jmp .start
 
 .start:
-inc eax
+mov ebx, [ebx]
 cmp ebx, eax
 je .true
 
@@ -42,33 +42,27 @@ panda = Panda("i386", extra_args=["-M", "configurable", "-nographic",
                     ],
                     raw_monitor=True)
 panda.load_plugin("taint2")
-#panda.enable_llvm()
-#panda.disable_llvm_helpers()
 
 
 @panda.cb_after_machine_init
 def setup(cpu):
     # After our CPU has been created, allocate memory and set starting state
 
-    # Set a fake CR0_PG_MASK?
-    #cpu.env_ptr.cr[0] = 1<<31
-
     # Setup a region of memory
     panda.map_memory("mymem", 2 * 1024 * 1024, ADDRESS)
     # Write code into memory
     panda.physical_memory_write(ADDRESS, bytes(encoding))
-    #panda.physical_memory_write(0x2000, bytes([1,2,3,4]))
 
     # Set starting registers
     cpu.env_ptr.eip = ADDRESS
     cpu.env_ptr.regs[registers["EAX"]] = 0x11
+    cpu.env_ptr.regs[registers["EBX"]] = ADDRESS
 
-    # Taint EAX, EBX
+    # Taint register(s)
     panda.taint_label_reg(registers["EAX"], 10)
     #panda.taint_label_reg(registers["EBX"], 11)
 
 # Before every instruction, disassemble it with capstone
-#panda.cb_insn_translate(lambda x,y: True)
 md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_32)
 
 # CFFI can't typedef structures with unions, like addrs, so this is a hack to fix it
@@ -83,8 +77,7 @@ ffi.cdef("""
 ffi.cdef('typedef void (*on_branch2_t) (FakeAddr, uint64_t);', override=True)
 ffi.cdef('void ppp_add_cb_on_branch2(on_branch2_t);')
 
-# After the first block - shutdown
-'''
+# After the tainted compare block - shutdown
 @panda.cb_after_block_exec
 def after(cpu, tb, rc):
     pc = panda.current_pc(cpu)
@@ -92,7 +85,6 @@ def after(cpu, tb, rc):
         print("\nSTOP\n")
         dump_regs(panda, cpu)
         os._exit(0) # TODO: we need a better way to stop here
-'''
 
 @panda.ppp("taint2", "on_branch2")
 def tainted_branch(addr, size):
@@ -104,10 +96,6 @@ def tainted_branch(addr, size):
             taint_labels = tq.get_labels()
             print(taint_labels)
             print("\n")
-
-            #cpu = panda.get_cpu()
-            #pc = panda.current_pc(cpu)
-            #print(f"TAINTED BRANCH at 0x{pc:x}, labels: {taint_labels}\n")
 
 panda.enable_precise_pc()
 
