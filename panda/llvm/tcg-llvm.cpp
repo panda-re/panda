@@ -1084,14 +1084,24 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
         v = m_builder.CreateShl(                                    \
                 m_builder.CreateZExt(                               \
                     getValue(args[3]), intType(bits*2)),            \
-                bits);                                              \
+                m_builder.CreateZExt(                               \
+                    ConstantInt::get(intType(bits), bits),          \
+                    intType(bits*2)));                              \
         v = m_builder.CreateOr(v,                                   \
                 m_builder.CreateZExt(                               \
                     getValue(args[2]), intType(bits*2)));           \
-        setValue(args[0], m_builder.Create ## signE ## Div(         \
-                v, getValue(args[4])));                             \
-        setValue(args[1], m_builder.Create ## signE ## Rem(         \
-                v, getValue(args[4])));                             \
+        setValue(args[0], m_builder.CreateTrunc(                    \
+                m_builder.Create ## signE ## Div(                   \
+                v, m_builder.CreateZExt(                            \
+                        getValue(args[4]), intType(bits*2))         \
+                ),                                                  \
+                intType(bits)));                                    \
+        setValue(args[1], m_builder.CreateTrunc(                    \
+                m_builder.Create ## signE ## Rem(                   \
+                v, m_builder.CreateZExt(                            \
+                        getValue(args[4]), intType(bits*2))         \
+                        ),                                          \
+                        intType(bits)));                            \
         break;
 
 #define __ARITH_OP_ROT(opc_name, op1, op2, bits)                    \

@@ -1239,7 +1239,7 @@ void PandaTaintVisitor::visitMemCpyInst(MemTransferInst &I) {
 }
 
 void PandaTaintVisitor::visitMemMoveInst(MemTransferInst &I) {
-    assert(false && "MemMove unhandled!");
+    printf("taint2: Warning: MemMove unhandled!  Taint may be lost!\n");
 }
 
 void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
@@ -1247,16 +1247,20 @@ void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
 
     Value *dest = I.getDest();
     Value *size = I.getLength();
-    assert(isa<Constant>(I.getValue()));
+    if (isa<Constant>(I.getValue())) {
 
-    PtrToIntInst *P2II = new PtrToIntInst(dest, llvm::Type::getInt64Ty(ctx), "", &I);
-    assert(P2II);
+        PtrToIntInst *P2II = new PtrToIntInst(dest, llvm::Type::getInt64Ty(ctx), "", &I);
+        assert(P2II);
 
-    vector<Value *> args{
-        const_uint64_ptr(ctx, first_cpu->env_ptr), P2II,
-        grvConst, gsvConst, size, const_uint64(ctx, sizeof(target_ulong))
-    };
-    inlineCallAfter(I, hostDeleteF, args);
+        vector<Value *> args{
+            const_uint64_ptr(ctx, first_cpu->env_ptr), P2II,
+            grvConst, gsvConst, size, const_uint64(ctx, sizeof(target_ulong))
+        };
+        inlineCallAfter(I, hostDeleteF, args);
+    } else {
+        printf("taint2: Warning: MemSet with non-constant fill unhandled!  "
+                "Taint may be lost!\n");
+    }
 }
 
 const static std::set<std::string> ldFuncs{
