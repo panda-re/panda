@@ -53,6 +53,25 @@ RUN apt-get -y install libcapstone-dev libdwarf-dev python-pycparser
 # Trying to install LLVM 3.3...
 RUN apt-get -y install llvm-3.3-dev clang-3.3
 
+# Install g++-7 / gcc-7 and make default cc and c++
+RUN apt-get update && \
+    apt-get install -y software-properties-common python-software-properties
+RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
+    apt-get update && \
+    apt install -y g++-7
+
+RUN update-alternatives \
+  --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 \
+  --slave /usr/bin/gcc-ar gcc-ar /usr/bin/gcc-ar-7 \
+  --slave /usr/bin/gcc-nm gcc-nm /usr/bin/gcc-nm-7 \
+  --slave /usr/bin/gcc-ranlib gcc-ranlib /usr/bin/gcc-ranlib-7
+
+RUN update-alternatives --install /usr/bin/cc cc /usr/bin/gcc 30 && \
+  update-alternatives --set cc /usr/bin/gcc && \
+  update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++ 30 && \
+  update-alternatives --set c++ /usr/bin/g++ && \
+  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 100
+
 WORKDIR "/panda"
 RUN git fetch -a
 RUN git pull

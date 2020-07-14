@@ -480,31 +480,31 @@ void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *pp
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
     target_ptr_t ts_current = p->taskd;
     char *filename = NULL;
-    const char *err = NULL;
+    //const char *err = NULL;
 
     if (ts_current == 0) {
-        err = "can't get task";
+        //err = "can't get task";
         goto end;
     }
 
     filename = get_fd_name(env, ts_current, fd);
     if (unlikely(filename == NULL)) {
-        err = "can't get filename";
+        //err = "can't get filename";
         goto end;
     }
 
     filename = g_strchug(filename);
     if (unlikely(g_strcmp0(filename, "") == 0)) {
-        err = "filename is empty";
+        //err = "filename is empty";
         g_free(filename);
         filename = NULL;
         goto end;
     }
 
 end:
-    if (unlikely(err != NULL)) {
-        LOG_ERROR("%s -- (pid=%d, fd=%d)", err, (int)p->pid, fd);
-    }
+    //if (unlikely(err != NULL)) {
+    //    LOG_ERROR("%s -- (pid=%d, fd=%d)", err, (int)p->pid, fd);
+    //}
     return filename;
 }
 
@@ -693,6 +693,7 @@ bool init_plugin(void *self) {
             goto error;
         }
     }
+    printf ("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
     LOG_INFO("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
     g_free(kconf_file);
     g_free(kconf_group);
