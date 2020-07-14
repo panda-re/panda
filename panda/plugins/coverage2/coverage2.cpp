@@ -113,7 +113,7 @@ int monitor_callback(Monitor *mon, const char *cmd_cstr)
 
 bool init_plugin(void *self)
 {
-    predicate = std::unique_ptr<Predicate>(new AlwaysTruePredicate);
+    predicate.reset(new AlwaysTruePredicate);
 
     panda_arg_list *args = panda_get_args("coverage2");
     std::string pc_arg = panda_parse_string_opt(args, "pc", "",
@@ -123,13 +123,13 @@ bool init_plugin(void *self)
         auto start_pc = static_cast<target_ulong>(std::stoull(pc_arg.substr(0, dash_idx), NULL, 0));
         auto end_pc = static_cast<target_ulong>(std::stoull(pc_arg.substr(dash_idx + 1), NULL, 0));
         std::unique_ptr<Predicate> pcrp(new PcRangePredicate(start_pc, end_pc));
-        predicate = std::unique_ptr<Predicate>(new CompoundPredicate(std::move(predicate), std::move(pcrp)));
+        predicate.reset((new CompoundPredicate(std::move(predicate), std::move(pcrp)));
     }
 
     std::string process_name = panda_parse_string_opt(args, "process_name", "", "the process to collect coverage from");
     if ("" != process_name) {
         std::unique_ptr<Predicate> pnpred(new ProcessNamePredicate(process_name));
-        predicate = std::unique_ptr<Predicate>(new CompoundPredicate(std::move(predicate), std::move(pnpred)));
+        predicate.reset(new CompoundPredicate(std::move(predicate), std::move(pnpred));
     }
 
     panda_cb pcb;
