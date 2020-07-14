@@ -25,10 +25,9 @@ PANDAENDCOMMENT */
 #include "UniqueOsiPredicate.h"
 
 #include "CoverageMode.h"
-
-#include "MonitorRequest.h"
-#include "DisableMonitorRequest.h"
-#include "EnableMonitorRequest.h"
+#include "AsidBlockCoverageMode.h"
+#include "OsiBlockCoverageMode.h"
+#include "EdgeCoverageMode.h"
 
 const char *DEFAULT_FILE = "coverage.csv";
 
@@ -47,12 +46,8 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
-#include "tcg.h"
-//extern TCGContext tcg_ctx;
-
 }
 
-static std::unique_ptr<MonitorRequest> monitor_request;
 static std::unique_ptr<Predicate> predicate;
 static std::unique_ptr<CoverageMode> mode;
 
@@ -69,11 +64,6 @@ static void log_message(const char *message1, const char *message2)
 
 static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 {
-    if (nullptr != monitor_request) {
-        monitor_request->handle();
-        monitor_request.reset();
-    }
-
     if (!predicate->eval(cpu, tb)) {
         return;
     }
@@ -83,10 +73,31 @@ static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
     }
 }
 
-int monitor_callback(Monitor *mon, const char *cmd_cstr)
+static void disable_instrumentation()
 {
     panda_do_flush_tb();
+    if (nullptr != mode) {
+        mode->process_results();
+        mode.reset();
+    }
+}
 
+static void enable_instrumentation(const std::string& filename)
+{
+    panda_do_flush_tb();
+    std::unique_ptr<panda_arg_list, void(*)(panda_arg_list*)> args(panda_get_args("coverage2"), panda_free_args);
+    std::string mode_arg = panda_parse_string_opt(args.get(), "mode", "asid-block", "coverage mode");
+    if ("asid-block" == mode_arg) {
+        mode.reset(new AsidBlockCoverageMode(filename));
+    } else if ("osi-block" == mode_arg) {
+        mode.reset(new OsiBlockCoverageMode(filename));
+    } else if ("edge" == mode_arg) {
+        mode.reset(new EdgeCoverageMode(filename));
+    }
+}
+
+int monitor_callback(Monitor *mon, const char *cmd_cstr)
+{
     std::string cmd = cmd_cstr;
     auto index = cmd.find("=");
     std::string filename = DEFAULT_FILE;
@@ -94,9 +105,9 @@ int monitor_callback(Monitor *mon, const char *cmd_cstr)
         filename = cmd.substr(index+1);
     }
     if (0 == cmd.find(MONITOR_DISABLE)) {
-        monitor_request.reset(new DisableMonitorRequest(mode));
+        disable_instrumentation();
     } else if (0 == cmd.find(MONITOR_ENABLE)) {
-        monitor_request.reset(new EnableMonitorRequest(mode, filename));
+        enable_instrumentation(filename);
     }
     return 0;
 }
@@ -144,7 +155,7 @@ bool init_plugin(void *self)
     bool all_ok = true;
     if (!start_disabled)
     {
-        monitor_request.reset(new EnableMonitorRequest(mode, DEFAULT_FILE));
+        enable_instrumentation(DEFAULT_FILE);
     }
 
     if (all_ok)
@@ -158,8 +169,5 @@ bool init_plugin(void *self)
 
 void uninit_plugin(void *self)
 {
-    if (nullptr != mode) {
-        mode->process_results();
-        mode.reset();
-    }
+    disable_instrumentation();
 }
