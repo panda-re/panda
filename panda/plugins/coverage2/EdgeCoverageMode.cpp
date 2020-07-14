@@ -28,7 +28,7 @@ static void callback(std::unordered_set<Edge> *edges,
         .to = cur
     };
     edges->insert(e);
-    pprevs->at(thread->tid) = cur;
+    (*pprevs)[thread->tid] = cur;
 }
 
 EdgeCoverageMode::EdgeCoverageMode(const std::string& filename) :

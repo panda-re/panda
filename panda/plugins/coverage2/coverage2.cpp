@@ -21,8 +21,6 @@ PANDAENDCOMMENT */
 #include "PcRangePredicate.h"
 #include "CompoundPredicate.h"
 #include "ProcessNamePredicate.h"
-#include "UniqueAsidPredicate.h"
-#include "UniqueOsiPredicate.h"
 
 #include "CoverageMode.h"
 #include "AsidBlockCoverageMode.h"
@@ -132,15 +130,6 @@ bool init_plugin(void *self)
     if ("" != process_name) {
         std::unique_ptr<Predicate> pnpred(new ProcessNamePredicate(process_name));
         predicate = std::unique_ptr<Predicate>(new CompoundPredicate(std::move(predicate), std::move(pnpred)));
-    }
-
-    std::string unique = panda_parse_string_opt(args, "unique", "", "only output unique blocks (asid or osi)");
-    if ("asid" == unique) {
-        std::unique_ptr<Predicate> uapred(new UniqueAsidPredicate);
-        predicate = std::unique_ptr<Predicate>(new CompoundPredicate(std::move(predicate), std::move(uapred)));
-    } else if ("osi" == unique) {
-        std::unique_ptr<Predicate> uosipred(new UniqueOsiPredicate);
-        predicate = std::unique_ptr<Predicate>(new CompoundPredicate(std::move(predicate), std::move(uosipred)));
     }
 
     panda_cb pcb;

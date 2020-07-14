@@ -20,8 +20,6 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
     $(PLUGIN_OBJ_DIR)/PcRangePredicate.o \
     $(PLUGIN_OBJ_DIR)/CompoundPredicate.o \
     $(PLUGIN_OBJ_DIR)/AlwaysTruePredicate.o \
-    $(PLUGIN_OBJ_DIR)/UniqueAsidPredicate.o \
-    $(PLUGIN_OBJ_DIR)/UniqueOsiPredicate.o \
     $(PLUGIN_OBJ_DIR)/CoverageMode.o \
     $(PLUGIN_OBJ_DIR)/AsidBlockCoverageMode.o \
     $(PLUGIN_OBJ_DIR)/OsiBlockCoverageMode.o \
