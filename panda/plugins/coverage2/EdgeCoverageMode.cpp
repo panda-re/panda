@@ -24,8 +24,8 @@ static void callback(std::unordered_set<Edge> *edges,
     Block *prev = result.first->second;
 
     Edge e {
-        .from = cur,
-        .to = prev
+        .from = prev,
+        .to = cur
     };
     edges->insert(e);
     pprevs->at(thread->tid) = cur;
@@ -62,6 +62,11 @@ void EdgeCoverageMode::process_results()
 {
     output_stream << "from pc,from size,to pc,to size\n";
     for (Edge edge : edges) {
+        if (&dummy == edge.from) {
+            // skip edges with the dummy block, not a real edge!
+            continue;
+        }
+
         output_stream << "0x" << std::hex << edge.from->pc   << ","
                       << std::dec << edge.from->size << ","
                       << "0x" << std::hex << edge.to->pc     << ","

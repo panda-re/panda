@@ -1,7 +1,16 @@
 #include "AsidBlockCoverageMode.h"
+#include "utils.h"
 
 namespace coverage2
 {
+
+static void callback(std::ostream *os, CPUState *cpu, TranslationBlock *tb)
+{
+    *os << "0x" << std::hex << panda_current_asid(cpu) << ",";
+    *os << std::dec << panda_in_kernel(cpu) << ",";
+    *os << "0x" << std::hex << tb->pc << ",";
+    *os << std::dec << tb->size << "\n";
+}
 
 AsidBlockCoverageMode::AsidBlockCoverageMode(const std::string &filename)
         : output_stream(filename)
@@ -12,12 +21,9 @@ AsidBlockCoverageMode::AsidBlockCoverageMode(const std::string &filename)
 
 void AsidBlockCoverageMode::process_block(CPUState *cpu, TranslationBlock *tb)
 {
-    output_stream << "0x" << std::hex << panda_current_asid(cpu) << ",";
-    output_stream << std::dec << panda_in_kernel(cpu) << ",";
-    output_stream << "0x" << std::hex << tb->pc << ",";
-    output_stream << std::dec << tb->size << "\n";
+    TCGOp *insert_point = find_first_guest_insn();
+    insert_call(&insert_point, &callback, &output_stream, cpu, tb);
 }
-
 
 void AsidBlockCoverageMode::process_results()
 {

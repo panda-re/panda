@@ -51,7 +51,7 @@ std::vector<intptr_t> insert_args(TCGOp **after_op, First arg, Args... args)
 
 /**
  * A template function that inserts a call into the TCG context. Currently
- * limited to functions that return void.
+ * limited to functions that return void and take at least one argument.
  */
 template<typename F, typename... A>
 void insert_call(TCGOp **after_op, F *func_ptr, A... args)
