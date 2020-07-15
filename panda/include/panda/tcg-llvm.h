@@ -243,9 +243,6 @@ class TCGLLVMTranslator {
     llvm::Type *wordType() {
         return intType(TCG_TARGET_REG_BITS);
     }
-    llvm::Type *wordType(int bits) {
-        return intType(bits);
-    }
     llvm::Type *wordPtrType() {
         return intPtrType(TCG_TARGET_REG_BITS);
     }
@@ -253,6 +250,10 @@ class TCGLLVMTranslator {
     
     llvm::Constant* constInt(int bits, uint64_t value) {
         return llvm::ConstantInt::get(intType(bits), value);
+    }
+
+    llvm::Constant* constWord(uint64_t value) {
+        return llvm::ConstantInt::get(wordType(), value);
     }
 
     void adjustTypeSize(unsigned target, llvm::Value **v1);
