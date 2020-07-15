@@ -286,8 +286,8 @@ llvm::Value *TCGLLVMTranslator::getPtrForValue(int idx)
         if(temp.fixed_reg) {
             assert(false);
         } else {
-            Value *v = m_builder.CreateAdd(m_envInt, ConstantInt::get(
-                        wordType(), temp.mem_offset));
+            Value *v = m_builder.CreateAdd(m_envInt,
+                    constWord(temp.mem_offset));
             m_memValuesPtr[idx] = m_builder.CreateIntToPtr(
                     v, tcgPtrType(temp.type),
                     StringRef(temp.name) + "_ptr");
@@ -515,10 +515,11 @@ inline llvm::Value *TCGLLVMTranslator::generateQemuMemOp(bool ld,
     argValues.reserve(4);
     argValues.push_back(getEnv());
     argValues.push_back(addr);
-    if(!ld)
+    if(!ld) {
         argValues.push_back(value);
-    argValues.push_back(ConstantInt::get(intType(8*sizeof(int)), mem_index));
-    argValues.push_back(ConstantInt::get(intType(8*sizeof(uintptr_t)), ret_addr));
+    }
+    argValues.push_back(constInt(8*sizeof(int), mem_index));
+    argValues.push_back(constInt(8*sizeof(uintptr_t), ret_addr));
 
     std::vector<llvm::Type*> argTypes;
     argTypes.reserve(4);
@@ -582,8 +583,7 @@ inline llvm::Value *TCGLLVMTranslator::generateQemuMemOp(bool ld,
 #else // CONFIG_SOFTMMU
     std::vector<Value*> argValues2;
     addr = m_builder.CreateZExt(addr, wordType());
-    addr = m_builder.CreateAdd(addr,
-        ConstantInt::get(wordType(), GUEST_BASE));
+    addr = m_builder.CreateAdd(addr, constWord(GUEST_BASE));
     addr = m_builder.CreateIntToPtr(addr, intPtrType(bits));
     if(ld) {
         return m_builder.CreateLoad(addr);
@@ -632,9 +632,9 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
 
             //args[0] contains ptr to store to. Set return type based on it
             llvm::Type* retType = nb_oargs == 0 ?
-                llvm::Type::getVoidTy(m_context) : wordType(getValueBits(args[0]));
+                llvm::Type::getVoidTy(m_context) : intType(getValueBits(args[0]));
 
-            Value* helperAddr = ConstantInt::get(intType(sizeof(uintptr_t)*8),
+            Value* helperAddr = constInt(sizeof(uintptr_t)*8,
                 args[nb_oargs + nb_iargs]);
             Value* result;
 
@@ -777,7 +777,7 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
         break;
 
     case INDEX_op_movi_i32:
-        setValue(args[0], ConstantInt::get(intType(32), args[1]));
+        setValue(args[0], constInt(32, args[1]));
         break;
 
     case INDEX_op_mov_i32:
@@ -790,7 +790,7 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
 
 #if TCG_TARGET_REG_BITS == 64
     case INDEX_op_movi_i64:
-        setValue(args[0], ConstantInt::get(intType(64), args[1]));
+        setValue(args[0], constInt(64, args[1]));
         break;
 
     case INDEX_op_mov_i64:
@@ -914,8 +914,8 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
                 m_builder.CreateZExt(                               \
                     getValue(args[3]), intType(bits*2)),            \
                 m_builder.CreateZExt(                               \
-                    ConstantInt::get(intType(bits), bits),          \
-                    intType(bits*2)));                              \
+                    constInt(bits, bits),                           \
+                    intType(bits * 2)));                            \
         v = m_builder.CreateOr(v,                                   \
                 m_builder.CreateZExt(                               \
                     getValue(args[2]), intType(bits*2)));           \
@@ -938,7 +938,7 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
         assert(getValue(args[1])->getType() == intType(bits));      \
         assert(getValue(args[2])->getType() == intType(bits));      \
         v = m_builder.CreateSub(                                    \
-                ConstantInt::get(intType(bits), bits),              \
+                constInt(bits, bits),                               \
                 getValue(args[2]));                                 \
         setValue(args[0], m_builder.CreateOr(                       \
                 m_builder.Create ## op1 (                           \
@@ -951,7 +951,7 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
     case opc_name:                                                  \
         assert(getValue(args[1])->getType() == intType(bits));      \
         setValue(args[0], m_builder.Create ## op(                   \
-                    ConstantInt::get(intType(bits), i),             \
+                    constInt(bits, i),                              \
                     getValue(args[1])));                            \
         break;
 
@@ -969,8 +969,8 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
     /* for ops of type op out_lo, out_hi, in, in */
 #define __ARITH_OP_DECOMPOSE(opc_name, op, extend, bits)            \
     case opc_name: {                                                \
-        assert(getValue(args[2])->getType() == intType(bits));     \
-        assert(getValue(args[3])->getType() == intType(bits));     \
+        assert(getValue(args[2])->getType() == intType(bits));      \
+        assert(getValue(args[3])->getType() == intType(bits));      \
         Value *ext1 = m_builder.Create ## extend(                   \
                 getValue(args[2]), intType(bits * 2));              \
         Value *ext2 = m_builder.Create ## extend(                   \
@@ -995,21 +995,21 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
         Value *ext2 = m_builder.CreateShl(                             \
                 m_builder.CreateZExt(                                  \
                     getValue(args[3]), intType(bits*2)),               \
-                bits);                                 \
+                bits);                                                 \
         Value *first_arg = m_builder.CreateOr(ext1, ext2);             \
         Value *ext3 = m_builder.CreateZExt(                            \
                 getValue(args[4]), intType(bits*2));                   \
         Value *ext4 = m_builder.CreateShl(                             \
                 m_builder.CreateZExt(                                  \
                     getValue(args[5]), intType(bits*2)),               \
-                bits);                                 \
+                bits);                                                 \
         Value *second_arg = m_builder.CreateOr(ext3, ext4);            \
-        Value *full = m_builder.Create ## op(first_arg, second_arg);    \
-        setValue(args[0], m_builder.CreateTrunc(                        \
-                    full, intType(bits)));                              \
-        setValue(args[1], m_builder.CreateTrunc(                        \
-                    m_builder.CreateLShr(full, bits),                   \
-                    intType(bits)));                                    \
+        Value *full = m_builder.Create ## op(first_arg, second_arg);   \
+        setValue(args[0], m_builder.CreateTrunc(                       \
+                    full, intType(bits)));                             \
+        setValue(args[1], m_builder.CreateTrunc(                       \
+                    m_builder.CreateLShr(full, bits),                  \
+                    intType(bits)));                                   \
         } break;
 
     __ARITH_OP(INDEX_op_add_i32, Add, 32)
@@ -1157,7 +1157,7 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
 #undef __OP_QEMU_ST
 
     case INDEX_op_exit_tb:
-        m_builder.CreateRet(ConstantInt::get(wordType(), args[0]));
+        m_builder.CreateRet(constWord(args[0]));
         break;
 
     case INDEX_op_goto_tb:
@@ -1390,7 +1390,7 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
 
     /* Finalize function */
     if(!isa<ReturnInst>(m_tbFunction->back().back())) {
-        m_builder.CreateRet(ConstantInt::get(wordType(), 0));
+        m_builder.CreateRet(constWord(0));
     }
 
     /* Clean up unused m_values */
@@ -1559,7 +1559,7 @@ Value* TCGLLVMTranslator::getEnvOffsetPtr(int64_t offset, TCGTemp &temp) {
             }
         }
 
-        Value *v = m_builder.CreateAdd(m_envInt, ConstantInt::get(wordType(), offset));
+        Value *v = m_builder.CreateAdd(m_envInt, constWord(offset));
         v = m_builder.CreateIntToPtr(
                 v, tcgPtrType(temp.type),
                 temp.name ? StringRef(temp.name) + "_ptr": "");
