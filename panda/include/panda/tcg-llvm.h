@@ -181,7 +181,7 @@ class TCGLLVMTranslator {
     int m_globalsIdx[TCG_MAX_TEMPS];
 
     //std::unordered_map<TCGLabel *, llvm::BasicBlock *> m_labels;
-    llvm::BasicBlock * m_labels[TCG_MAX_LABELS];
+    llvm::BasicBlock *m_labels[TCG_MAX_LABELS];
 
     llvm::FunctionType *m_tbType;
     llvm::Type *m_cpuType;
@@ -211,9 +211,11 @@ class TCGLLVMTranslator {
 
     static TCGLLVMTranslator *create(const std::string &bitcodeLibraryPath);
     
+    /*
     llvm::LLVMContext &getContext() const {
         return m_module->getContext();
     }
+    */
 
     llvm::Module *getModule() const {
         return m_module.get();
@@ -233,7 +235,7 @@ class TCGLLVMTranslator {
 
     /* Shortcuts */
     llvm::Type *intType(int w) {
-        return llvm::IntegerType::get(getContext(), w);
+        return llvm::IntegerType::get(m_context, w);
     }
     llvm::Type *intPtrType(int w) {
         return llvm::PointerType::get(intType(w), 0);
