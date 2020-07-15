@@ -174,6 +174,7 @@ TCGLLVMTranslator::TCGLLVMTranslator()
     : m_builder(m_context),
       m_tbCount(0), m_tcgContext(NULL), m_tbFunction(NULL), m_tbType(NULL) {
 
+    std::memset(m_labels, 0, sizeof(m_labels));
     std::memset(m_values, 0, sizeof(m_values));
     std::memset(m_memValuesPtr, 0, sizeof(m_memValuesPtr));
     std::memset(m_globalsIdx, 0, sizeof(m_globalsIdx));
@@ -211,7 +212,6 @@ TCGLLVMTranslator::TCGLLVMTranslator()
     }
 
     m_executionEngine = unwrap(executionEngineRef);
-
 
     /*
     m_executionEngine = EngineBuilder(m_module.get())
@@ -297,17 +297,25 @@ llvm::Value *TCGLLVMTranslator::getPtrForValue(int idx)
     return m_memValuesPtr[idx];
 }
 
+static inline void freeValue(Value *V) {
+    if(V && V->use_empty() && !isa<Constant>(V)) {
+        if(!isa<Instruction>(V) || !cast<Instruction>(V)->getParent()) {
+            V->deleteValue();
+        }
+    }
+}
+
 inline void TCGLLVMTranslator::delValue(int idx)
 {
     assert(idx >= 0 && idx < TCG_MAX_TEMPS);
-    m_values[idx]->deleteValue();
+    freeValue(m_values[idx]);
     m_values[idx] = nullptr;
 }
 
 inline void TCGLLVMTranslator::delPtrForValue(int idx)
 {
     assert(idx >= 0 && idx < TCG_MAX_TEMPS);
-    m_memValuesPtr[idx]->deleteValue();
+    freeValue(m_memValuesPtr[idx]);
     m_memValuesPtr[idx] = nullptr;
 }
 
@@ -1363,7 +1371,7 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
 
         if (opc == INDEX_op_insn_start) {
             // volatile store of current PC
-            Constant *PC = ConstantInt::get(intType(64), args[0]);
+            Constant *PC = constInt(64, args[0]);
             Instruction *GuestPCSt = m_builder.CreateStore(PC, GuestPCPtr, true);
             // TRL 2014 hack to annotate that last instruction as the one
             // that sets PC
@@ -1400,7 +1408,7 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
     }
 
     for (auto &it : m_envOffsetValues) {
-        it.second->deleteValue();
+        freeValue(it.second);
     }
     m_envOffsetValues.clear();
 
@@ -1569,8 +1577,9 @@ Value* TCGLLVMTranslator::getEnvOffsetPtr(int64_t offset, TCGTemp &temp) {
 inline void TCGLLVMTranslator::delLabel(int idx)
 {
     if(m_labels[idx] && m_labels[idx]->use_empty() &&
-            !m_labels[idx]->getParent())
+            !m_labels[idx]->getParent()) {
         delete m_labels[idx];
+    }
     m_labels[idx] = nullptr;
 }
 
@@ -1590,6 +1599,7 @@ inline Value* TCGLLVMTranslator::getEnv() {
 /* External interface for C++ code */
 
 
+// TODO: is this used?
 void TCGLLVMTranslator::deleteExecutionEngine()
 {
     if (m_executionEngine) {
@@ -1622,8 +1632,9 @@ void tcg_llvm_initialize()
     //assert(llvm_start_multithreaded());
 
     LLVMLinkInMCJIT();
-    LLVMInitializeNativeTarget();
-    LLVMInitializeNativeAsmPrinter();
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+    llvm::InitializeNativeTargetAsmParser();
 
     tcg_llvm_translator = new TCGLLVMTranslator;
 }
