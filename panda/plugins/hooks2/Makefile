@@ -4,12 +4,12 @@
 # CFLAGS+=
 # LIBS+=
 
+ifeq ($(filter $(TARGET_ARM) $(TARGET_I386) $(TARGET_X86_64),y),)
+PLUGIN_OBJFILES = $(PLUGIN_OBJ_DIR)/hooks2_stub.o
+else
+PLUGIN_OBJFILES = $(PLUGIN_OBJ_DIR)/hooks2.o
+endif
 
-PLUGIN_OBJFILES = \
-	$(PLUGIN_OBJ_DIR)/hooks2.o
-
-$(info $(PLUGIN_TARGET_DIR))
-$(info $(PLUGIN_NAME))
-$(info $(PLUGIN_OBJFILES))
+$(info HOOKS=$(PLUGIN_OBJFILES))
 
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(PLUGIN_OBJFILES)

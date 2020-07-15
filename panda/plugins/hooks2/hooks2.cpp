@@ -686,12 +686,11 @@ on_sys_clone_return(
     if (ret == 0) {
         OsiThread *pThread = get_current_thread(cpu);
         printf("retval for sys_clone() is 0!!\n");
-        printf("  %d,%d,%d,%d,%d\n",
-               proc->pid,
-               get_syscall_retval(cpu),
-               (int)((CPUArchState*)cpu->env_ptr)->regs[0],
-               pThread->pid,
-               pThread->tid);
+        printf("  %d,%d,%d,%d\n",
+               (int)proc->pid,
+               (int)ret,
+               (int)pThread->pid,
+               (int)pThread->tid);
     }
 
     on_start_thread_or_proc(
@@ -749,11 +748,11 @@ static void
 on_sys_execveat_enter(
     CPUState *cpu,
     target_ulong pc,
-    target_long dfd,
+    int32_t dfd,
     target_ulong filename,
     target_ulong argv,
     target_ulong envp,
-    target_long flags)
+    int32_t flags)
 {
     char procname[MAX_PATHNAME];
 
