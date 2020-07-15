@@ -14,34 +14,25 @@ namespace coverage2
 static Block dummy;
 
 static void callback(std::unordered_set<Edge> *edges,
-                     std::unordered_map<target_pid_t, Block *> *pprevs,
+                     Block **prev,
                      Block *cur)
 {
-    std::unique_ptr<OsiThread, void(*)(OsiThread*)> thread(
-        get_current_thread(first_cpu), free_osithread);
-
-    auto result = pprevs->insert({ thread->tid, &dummy });
-    Block *prev = result.first->second;
-
     Edge e {
-        .from = prev,
+        .from = *prev,
         .to = cur
     };
     edges->insert(e);
-    (*pprevs)[thread->tid] = cur;
+    *prev = cur;
 }
 
 EdgeCoverageMode::EdgeCoverageMode(const std::string& filename) :
-    output_stream(filename)
+    output_stream(filename), prev(&dummy)
 {
-    panda_require("osi");
-    assert(init_osi_api());
 }
 
 void EdgeCoverageMode::process_block(CPUState *cpu, TranslationBlock *tb)
 {
     Block block {
-        .asid = panda_current_asid(cpu),
         .pc = tb->pc,
         .size = tb->size
     };
@@ -54,7 +45,7 @@ void EdgeCoverageMode::process_block(CPUState *cpu, TranslationBlock *tb)
     assert(NULL != insert_point);
 
     // now lets insert our callback after the first instruction mark
-    insert_call(&insert_point, &callback, &edges, &previous_blocks,
+    insert_call(&insert_point, &callback, &edges, &prev,
                 current_block_key_ptr);
 }
 

@@ -11,7 +11,6 @@
 
 struct Block
 {
-    target_ulong asid;
     target_ulong pc;
     target_ulong size;
 };
@@ -23,17 +22,16 @@ template <> class hash<Block>
 public:
     size_t operator()(Block const &blk) const noexcept
     {
-        size_t const h1 = std::hash<target_ulong>{}(blk.asid);
-        size_t const h2 = std::hash<target_ulong>{}(blk.pc);
-        size_t const h3 = std::hash<target_ulong>{}(blk.size);
-        return h1 ^ (h2 << 2) ^ (h3 << 2);
+        size_t const h1 = std::hash<target_ulong>{}(blk.pc);
+        size_t const h2 = std::hash<target_ulong>{}(blk.size);
+        return h1 ^ (h2 << 2);
     }
 };
 }
 
 static inline bool operator==(const Block &lhs, const Block &rhs)
 {
-    return (lhs.asid == rhs.asid) && (lhs.pc == rhs.pc) && (lhs.size == rhs.size);
+    return (lhs.pc == rhs.pc) && (lhs.size == rhs.size);
 }
 
 struct Edge
@@ -77,9 +75,11 @@ private:
     std::unordered_set<Block> blocks;
     std::unordered_set<Edge> edges;
 
-    std::unordered_map<target_pid_t, Block *> previous_blocks;
-
     std::ofstream output_stream;
+
+    Block *prev;
+
+    //std::unordered_map<target_pid_t, Block *> previous_blocks;
 };
 
 }
