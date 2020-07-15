@@ -26,14 +26,31 @@ int add_hooks2(
 void enable_hooks2(int id);
 void disable_hooks2(int id);
 
-typedef void (*on_prog_start_t)(
-    CPUState *env,
-    OsiProc *proc);
+typedef void (*on_process_start_t)(
+    CPUState *cpu,
+    const char *procname,
+    target_ulong asid,
+    target_pid_t pid);
 
-typedef void (*on_prog_end_t)(
-    CPUState *env,
-    OsiProc *proc,
-    int32_t error_code);
+typedef void (*on_process_end_t)(
+    CPUState *cpu,
+    const char *procname,
+    target_ulong asid,
+    target_pid_t pid);
+
+typedef void (*on_thread_start_t)(
+    CPUState* cpu,
+    const char *procname,
+    target_ulong asid,
+    target_pid_t pid,
+    target_pid_t tid);
+
+typedef void (*on_thread_end_t)(
+    CPUState* cpu,
+    const char *procname,
+    target_ulong asid,
+    target_pid_t pid,
+    target_pid_t tid);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
