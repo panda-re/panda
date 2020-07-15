@@ -8,3 +8,4 @@ tainted_branch
 tainted_instr
 tainted_net
 tstringsearch
+query_file_writes
