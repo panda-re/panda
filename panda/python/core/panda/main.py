@@ -166,7 +166,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         After initializing the class, the user has a chance to do something
         (TODO: what? register callbacks? It's something important...) before we finish initializing
         '''
-        self.libpanda.panda_set_library_mode(True)
+        self.libpanda._panda_set_library_mode(True)
 
         cenvp = ffi.new("char**", ffi.new("char[]", b""))
         len_cargs = ffi.cast("int", len(self.panda_args))
