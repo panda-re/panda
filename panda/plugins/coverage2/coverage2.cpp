@@ -22,6 +22,7 @@ PANDAENDCOMMENT */
 #include "PcRangePredicate.h"
 #include "CompoundPredicate.h"
 #include "ProcessNamePredicate.h"
+#include "InKernelPredicate.h"
 
 #include "Block.h"
 #include "Edge.h"
@@ -174,6 +175,15 @@ bool init_plugin(void *self)
     if ("" != process_name) {
         std::unique_ptr<Predicate> pnpred(new ProcessNamePredicate(process_name));
         predicate.reset(new CompoundPredicate(std::move(predicate), std::move(pnpred)));
+    }
+
+    std::string privilege = panda_parse_string_opt(args, "privilege", "all", "collect coverage for a specific privilege mode" );
+    if ("user" == privilege) {
+        std::unique_ptr<Predicate> ikpred(new InKernelPredicate(false));
+        predicate.reset(new CompoundPredicate(std::move(predicate), std::move(ikpred)));
+    } else if ("kernel" == privilege) {
+        std::unique_ptr<Predicate> ikpred(new InKernelPredicate(true));
+        predicate.reset(new CompoundPredicate(std::move(predicate), std::move(ikpred)));
     }
 
     panda_cb pcb;

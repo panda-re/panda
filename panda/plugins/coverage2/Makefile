@@ -16,6 +16,7 @@
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
 	$(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o \
     $(PLUGIN_OBJ_DIR)/utils.o \
+    $(PLUGIN_OBJ_DIR)/InKernelPredicate.o \
     $(PLUGIN_OBJ_DIR)/ProcessNamePredicate.o \
     $(PLUGIN_OBJ_DIR)/PcRangePredicate.o \
     $(PLUGIN_OBJ_DIR)/CompoundPredicate.o \
