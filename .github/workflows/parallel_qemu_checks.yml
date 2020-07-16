@@ -3,7 +3,7 @@ name: QEMU Checks
 on:
   push:
     branches:
-      - split_out_ci
+      - ci
   pull_request:
     branches:
       - master
@@ -27,7 +27,7 @@ jobs:
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
         -v $(pwd)/update.sh:/update.sh --rm -t
         -e PANDA_TEST=yes --cap-add SYS_NICE
-        pandare/panda bash -c "/update.sh $GITHUB_REF clean;
+        pandare/panda bash -c "bash /update.sh $GITHUB_REF clean;
         cd /panda/build;
         ../build.sh ${{ matrix.target }}"
 

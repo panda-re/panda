@@ -3,7 +3,7 @@ name: Taint Unit Tests
 on:
   push:
     branches:
-      - split_out_ci
+      - ci
   pull_request:
     branches:
       - master
