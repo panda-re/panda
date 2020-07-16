@@ -10,6 +10,7 @@ PANDAENDCOMMENT */
 
 #include <memory>
 #include <string>
+#include <unordered_set>
 
 #include "panda/plugin.h"
 
@@ -22,10 +23,24 @@ PANDAENDCOMMENT */
 #include "CompoundPredicate.h"
 #include "ProcessNamePredicate.h"
 
-#include "CoverageMode.h"
-#include "AsidBlockCoverageMode.h"
-#include "OsiBlockCoverageMode.h"
-#include "EdgeCoverageMode.h"
+#include "Block.h"
+#include "Edge.h"
+#include "RecordProcessor.h"
+#include "EdgeCsvWriter.h"
+#include "EdgeGenerator.h"
+#include "UniqueFilter.h"
+
+#include "AsidBlock.h"
+#include "AsidBlockGenerator.h"
+#include "AsidBlockCsvWriter.h"
+
+#include "OsiBlock.h"
+#include "OsiBlockGenerator.h"
+#include "OsiBlockCsvWriter.h"
+
+#include "utils.h"
+
+using namespace coverage2;
 
 const char *DEFAULT_FILE = "coverage.csv";
 
@@ -34,8 +49,6 @@ const char *MONITOR_HELP = "help";
 constexpr size_t MONITOR_HELP_LEN = 4;
 const std::string MONITOR_ENABLE = "coverage_enable";
 const std::string MONITOR_DISABLE = "coverage_disable";
-
-using namespace coverage2;
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -47,7 +60,6 @@ void uninit_plugin(void *);
 }
 
 static std::unique_ptr<Predicate> predicate;
-static std::unique_ptr<CoverageMode> mode;
 
 static void log_message(const char *message1, const char *message2)
 {
@@ -60,37 +72,67 @@ static void log_message(const char *message1, const char *message2)
 //    printf("%s%s %d\n", PANDA_MSG, message, number);
 //}
 
+static std::unordered_set<Block> blocks;
+static std::unique_ptr<RecordProcessor<Block>> processor;
+
+static void callback(Block *block)
+{
+    processor->handle(*block);
+}
+
 static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 {
-    if (!predicate->eval(cpu, tb)) {
+    // Determine if we should instrument the current block.
+    if (nullptr == processor || !predicate->eval(cpu, tb)) {
         return;
     }
 
-    if (nullptr != mode) {
-        mode->process_block(cpu, tb);
-    }
+    // Instrument!
+    Block block {
+        .addr = tb->pc,
+        .size = tb->size
+    };
+    auto result = blocks.insert(block);
+    auto block_ptr = &(*std::get<0>(result));
+
+    TCGOp *insert_point = find_first_guest_insn();
+    assert(NULL != insert_point);
+
+    insert_call(&insert_point, &callback, block_ptr);
 }
 
 static void disable_instrumentation()
 {
     panda_do_flush_tb();
-    if (nullptr != mode) {
-        mode->process_results();
-        mode.reset();
-    }
+    processor.reset();
 }
 
 static void enable_instrumentation(const std::string& filename)
 {
     panda_do_flush_tb();
     std::unique_ptr<panda_arg_list, void(*)(panda_arg_list*)> args(panda_get_args("coverage2"), panda_free_args);
+
+    bool unique_output = panda_parse_bool_opt(args.get(), "unique", "output unique records only");
+
     std::string mode_arg = panda_parse_string_opt(args.get(), "mode", "asid-block", "coverage mode");
     if ("asid-block" == mode_arg) {
-        mode.reset(new AsidBlockCoverageMode(filename));
+        std::unique_ptr<RecordProcessor<AsidBlock>> writer(new AsidBlockCsvWriter(filename));
+        if (unique_output) {
+            writer.reset(new UniqueFilter<AsidBlock>(std::move(writer)));
+        }
+        processor.reset(new AsidBlockGenerator(first_cpu, std::move(writer)));
     } else if ("osi-block" == mode_arg) {
-        mode.reset(new OsiBlockCoverageMode(filename));
+        std::unique_ptr<RecordProcessor<OsiBlock>> writer(new OsiBlockCsvWriter(filename));
+        if (unique_output) {
+            writer.reset(new UniqueFilter<OsiBlock>(std::move(writer)));
+        }
+        processor.reset(new OsiBlockGenerator(first_cpu, std::move(writer)));
     } else if ("edge" == mode_arg) {
-        mode.reset(new EdgeCoverageMode(filename));
+        std::unique_ptr<RecordProcessor<Edge>> writer(new EdgeCsvWriter(filename));
+        if (unique_output) {
+            writer.reset(new UniqueFilter<Edge>(std::move(writer)));
+        }
+        processor.reset(new EdgeGenerator(std::move(writer)));
     }
 }
 
@@ -110,10 +152,12 @@ int monitor_callback(Monitor *mon, const char *cmd_cstr)
     return 0;
 }
 
-
 bool init_plugin(void *self)
 {
     predicate.reset(new AlwaysTruePredicate);
+    
+    //std::unique_ptr<RecordProcessor<Edge>> edge_writer(new EdgeCsvWriter("test.csv"));
+    //processor.reset(new EdgeGenerator(std::move(edge_writer)));
 
     panda_arg_list *args = panda_get_args("coverage2");
     std::string pc_arg = panda_parse_string_opt(args, "pc", "",
