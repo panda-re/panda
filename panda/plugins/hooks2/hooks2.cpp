@@ -54,6 +54,7 @@ enum ThreadStartType {
     ASID_CHANGE,
 };
 
+/* The hashable OSI thread allows us to store threads in a set */
 struct HashableOsiThread {
     target_pid_t pid;
     target_pid_t tid;
@@ -412,6 +413,13 @@ on_process_start_internal(
     target_ulong asid,
     target_pid_t pid)
 {
+    PPP_RUN_CB(
+        on_process_start,
+        cpu,
+        procname,
+        asid,
+        pid);
+
     if (!asid)
         return;
 
@@ -433,6 +441,36 @@ on_process_start_internal(
 
 
 static void
+on_process_end_internal(
+    CPUState* cpu,
+    const char *procname,
+    target_ulong asid,
+    target_pid_t pid)
+{
+    PPP_RUN_CB(
+        on_process_end,
+        cpu,
+        procname,
+        asid,
+        pid);
+
+    if (!asid)
+        return;
+
+    auto it = plugin.map_active_utraces.find(asid);
+    if (it != plugin.map_active_utraces.end()) {
+        auto trace_list = it->second;
+        trace_list.clear();
+        plugin.map_active_utraces.erase(it);
+    }
+
+    if (!plugin.kernel_traces.size()) {
+        disable_callback(plugin.cb_tracing);
+    }
+}
+
+
+static void
 on_thread_end_internal(
     CPUState* cpu,
     const char *procname,
@@ -440,6 +478,14 @@ on_thread_end_internal(
     target_pid_t pid,
     target_pid_t tid)
 {
+    PPP_RUN_CB(
+        on_thread_end,
+        cpu,
+        procname,
+        asid,
+        pid,
+        tid);
+
     if (!asid)
         return;
 
@@ -459,25 +505,20 @@ on_thread_end_internal(
 
 
 static void
-on_process_end_internal(
+on_thread_start_internal(
     CPUState* cpu,
     const char *procname,
     target_ulong asid,
-    target_pid_t pid)
+    target_pid_t pid,
+    target_pid_t tid)
 {
-    if (!asid)
-        return;
-
-    auto it = plugin.map_active_utraces.find(asid);
-    if (it != plugin.map_active_utraces.end()) {
-        auto trace_list = it->second;
-        trace_list.clear();
-        plugin.map_active_utraces.erase(it);
-    }
-
-    if (!plugin.kernel_traces.size()) {
-        disable_callback(plugin.cb_tracing);
-    }
+    PPP_RUN_CB(
+        on_thread_start,
+        cpu,
+        procname,
+        asid,
+        pid,
+        tid);
 }
 
 
@@ -564,8 +605,7 @@ on_start_thread_or_proc(
                 }
             } else {
                 /* We are replacing this process.*/
-                PPP_RUN_CB(
-                    on_process_end,
+                on_process_end_internal(
                     cpu,
                     info->name.c_str(),
                     info->asid,
@@ -596,8 +636,7 @@ on_start_thread_or_proc(
     info->threads.insert(thread);
 
     if (is_new_proc) {
-        PPP_RUN_CB(
-            on_process_start,
+        on_process_start_internal(
             cpu,
             procname,
             asid,
@@ -605,10 +644,7 @@ on_start_thread_or_proc(
     }
 
     if (is_new_thread) {
-        //printf("  is new thread\n");
-
-        PPP_RUN_CB(
-            on_thread_start,
+        on_thread_start_internal(
             cpu,
             procname,
             asid,
@@ -812,8 +848,7 @@ on_sys_exit_enter_common(
          }
 
          if (thread.pid != thread.tid) {
-             PPP_RUN_CB(
-                 on_thread_end,
+             on_thread_end_internal(
                  cpu,
                  info->name.c_str(),
                  info->asid,
@@ -822,8 +857,7 @@ on_sys_exit_enter_common(
          }
 
          if (exit_group || info->threads.empty()) {
-             PPP_RUN_CB(
-                 on_process_end,
+             on_process_end_internal(
                  cpu,
                  info->name.c_str(),
                  info->asid,
@@ -831,8 +865,7 @@ on_sys_exit_enter_common(
              plugin.map_running_procs.erase(it);
          }
      } else {
-         PPP_RUN_CB(
-             on_process_end,
+         on_process_end_internal(
              cpu,
              proc->name,
              panda_current_asid(cpu),
@@ -1022,10 +1055,6 @@ init_plugin(void *self)
     PPP_REG_CB("syscalls2", on_sys_vfork_return, on_sys_vfork_return);
     PPP_REG_CB("syscalls2", on_sys_exit_enter, on_sys_exit_enter);
     PPP_REG_CB("syscalls2", on_sys_exit_group_enter, on_sys_exit_group_enter);
-
-    ppp_add_cb_on_thread_end(on_thread_end_internal);
-    ppp_add_cb_on_process_end(on_process_end_internal);
-    ppp_add_cb_on_process_start(on_process_start_internal);
 
     return true;
 }
