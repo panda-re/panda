@@ -155,3 +155,6 @@ class libpanda_mixins():
 
     def garray_len(self, garray):
         return self.libpanda.garray_len(garray)
+
+    def panda_finish(self):
+        return self.libpanda.panda_finish()
