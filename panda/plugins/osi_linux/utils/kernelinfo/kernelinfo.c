@@ -158,9 +158,9 @@ int init_module(void)
 
     // use kernel configuration defs
 #ifdef CONFIG_ARM
-	printk(KERN_INFO "archtype  = %d\n", 1);
+	printk(KERN_INFO "arch  = arm\n");
 #else
-	printk(KERN_INFO "archtype  = %d\n", 0);
+	printk(KERN_INFO "arch  = i386\n");
 #endif
 
 
@@ -175,8 +175,7 @@ int init_module(void)
 #endif
 
 #ifdef CONFIG_ARM
-    // In the ARM kernel, current is a surrogate for current_thread_info()->task; this is a good candidate for current_task
-	printk(KERN_INFO "task.current_task_addr = %llu\n", (u64)(uintptr_t)&current);
+	printk(KERN_INFO "task.current_task_addr = %llu\n", (u64)(uintptr_t)&init_task);
 #else
 	printk(KERN_INFO "task.current_task_addr = %llu\n", (u64)(uintptr_t)&current_task);
 #endif
@@ -194,7 +193,7 @@ int init_module(void)
 #endif
 
 #ifdef CONFIG_ARM
-	printk(KERN_INFO "#task.current_task_addr = 0x%08llX\n", (u64)(uintptr_t)&current);
+	printk(KERN_INFO "#task.current_task_addr = 0x%08llX\n", (u64)(uintptr_t)&init_task);
 #else
 	printk(KERN_INFO "#task.current_task_addr = 0x%08llX\n", (u64)(uintptr_t)&current_task);
 #endif
