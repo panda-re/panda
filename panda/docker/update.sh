@@ -1,30 +1,22 @@
 #!/bin/bash
 set -ex
 
-# To be run inside panda_bionic docker container where PANDA is already built
-# Given an argument of a git SHA1, checkout that commit, build panda and run tests
-# If run with a second argument of "clean" run make clean before building
+# To be run inside panda docker container where PANDA is already built
+# in /panda/build (from pre-built container) and /panda.new is mapped in
+# from host with newer panda source.
 
-echo "Running update for commit $1"
-# Get the current commit
+# The /panda.new code will be copied on top of the (old) /panda directory
+# Then /panda will be rebuilt
+# If called with an argument of 'clean' /panda will first be made clean
+
+# Sync new code on top of old - Preservs old build artifacts
+time rsync -rh  /panda.new /panda
 cd /panda/build
-
-# If container modified any tracked files during build (e.g., panda_datatypes.h)
-# we need to forget abolut those before we can pull/checkout
-git reset --hard
-
-if [ "$2" = "clean" ]; then # We'll fetch by ref (for a PR)
-   git fetch origin $1 # for examplerefs/pull/533/head
-   git checkout FETCH_HEAD
-else
-  git fetch -a
-  git checkout --force $1
-fi
 
 # Build 
 NPROC=$(nproc || sysctl -n hw.ncpu)
 
-if [ "$2" = "clean" ]; then # We'll fetch by ref
+if [ "$1" = "clean" ]; then
     make clean
 fi
 
@@ -35,8 +27,11 @@ cd /panda/panda/python/core/
 pip3 install -q pycparser cffi colorama protobuf # Pypanda dependencies
 python3 setup.py install >/dev/null
 
-# For now disabling tests here since they'll be run in Jenkins
+# XXX: For now disabling tests here since they'll be run in Jenkins
 exit 0
+
+
+#####################
 
 major_version=$(lsb_release --release | awk -F':[\t ]+' '{print $2}' | awk -F'.' '{print $1}')
 
