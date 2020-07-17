@@ -19,7 +19,7 @@ def do_ioctl_init(arch):
 	CMD_BITS = 8
 	SIZE_BITS = 14 if arch != "ppc" else 13
 	DIR_BITS = 2 if arch != "ppc" else 3
-	
+
 	ffi.cdef("""
 	struct IoctlCmdBits {
 		uint8_t type_num:%d;
@@ -27,12 +27,12 @@ def do_ioctl_init(arch):
 		uint16_t arg_size:%d;
 		uint8_t direction:%d;
 	};
-	
+
 	union IoctlCmdUnion {
 		struct IoctlCmdBits bits;
 		uint32_t asUnsigned32;
 	};
-	
+
 	enum ioctl_direction {
 		IO = 0,
 		IOW = 1,
@@ -72,8 +72,8 @@ class Ioctl():
             proc = panda.plugins['osi'].get_current_process(cpu)
             proc_name_ptr = proc.name
             file_name_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, fd)
-            self.proc_name = ffi.string(proc_name_ptr).decode()
-            self.file_name = ffi.string(file_name_ptr).decode()
+            self.proc_name = ffi.string(proc_name_ptr).decode() if proc_name_ptr != ffi.NULL else "unknown"
+            self.file_name = ffi.string(file_name_ptr).decode() if file_name_ptr != ffi.NULL else "unknown"
         else:
             self.proc_name = None
             self.file_name = None
@@ -91,7 +91,7 @@ class Ioctl():
 
         bits = self.cmd.bits
         direction = ffi.string(ffi.cast("enum ioctl_direction", bits.direction))
-        ioctl_desc = f"dir={direction},arg_size={bits.arg_size:x},cmd={bits.cmd_num:x},type={bits.type_num:x}"
+        ioctl_desc = f"dir={direction},arg_size={bits.arg_size:x},cmd=0x{bits.cmd_num:x},type=0x{bits.type_num:x}"
         if (self.guest_ptr == None):
             self_str += f"ioctl({ioctl_desc}) -> {self.original_ret_code}"
         else:
@@ -121,24 +121,34 @@ class IoctlFaker():
     Bin all returns into failures (needed forcing) and successes, store for later retrival/analysis.
     '''
 
-    def __init__(self, panda, use_osi_linux = False):
+    def __init__(self, panda, use_osi_linux = False, log = False, ignore=[], intercept_values=[-25]):
+        '''
+        Log enables/disables logging.
+        Ignore contains a list of tuples (filename, cmd#) to be ignored
+        intercept_values is a list of ioctl return values that should be intercepted. By default
+          we just intercept just -25 which indicates that a driver is not present to handle the ioctl.
+        '''
 
         self.osi = use_osi_linux
         self._panda = panda
         self._panda.load_plugin("syscalls2")
+        self._log = log
+        self.ignore = ignore
+        self.intercept_values = intercept_values
 
         if self.osi:
             self._panda.load_plugin("osi")
             self._panda.load_plugin("osi_linux")
 
-        self._logger = logging.getLogger('panda.hooking')
-        self._logger.setLevel(logging.DEBUG)
+        if self._log:
+            self._logger = logging.getLogger('panda.ioctls')
+            self._logger.setLevel(logging.DEBUG)
 
-        # Save runtime memory with sets instead of lists (no duplicates)
-        self._fail_returns = set()
-        self._success_returns = set()
+        # Track ioctls in two sets: modified (forced_returns) and unmodified
+        self._forced_returns = set()
+        self._unmodified_returns = set()
 
-		
+
         # PPC (other arches use the default config)
         if self._panda.arch == "ppc":
             SIZE_BITS = 13
@@ -146,20 +156,21 @@ class IoctlFaker():
 
         # Force success returns for missing drivers/peripherals
         @self._panda.ppp("syscalls2", "on_sys_ioctl_return")
-        def on_sys_ioctl_return(cpu, pc, fd, cmd, arg):
+        def ioctl_faker_on_sys_ioctl_return(cpu, pc, fd, cmd, arg):
 
             ioctl = Ioctl(self._panda, cpu, fd, cmd, arg, self.osi)
             ioctl.set_ret_code(self._panda.from_unsigned_guest(cpu.env_ptr.regs[0]))
 
-            if (ioctl.original_ret_code != 0):
-                self._fail_returns.add(ioctl)
+            if ioctl.original_ret_code in self.intercept_values and \
+                        (ioctl.file_name, ioctl.cmd.bits.cmd_num) not in self.ignore: # Allow ignoring specific commands on specific files
                 cpu.env_ptr.regs[0] = 0
-                if ioctl.has_buf:
+                self._forced_returns.add(ioctl)
+                if ioctl.has_buf and self._log:
                     self._logger.warning("Forcing success return for data-containing {}".format(ioctl))
                 else:
                     self._logger.info("Forcing success return for data-less {}".format(ioctl))
             else:
-                self._success_returns.add(ioctl)
+                self._unmodified_returns.add(ioctl)
 
     def _get_returns(self, source, with_buf_only):
 
@@ -170,11 +181,11 @@ class IoctlFaker():
 
     def get_forced_returns(self, with_buf_only = False):
 
-        return self._get_returns(self._fail_returns, with_buf_only)
+        return self._get_returns(self._forced_returns, with_buf_only)
 
     def get_unmodified_returns(self, with_buf_only = False):
 
-        return self._get_returns(self._success_returns, with_buf_only)
+        return self._get_returns(self._unmodified_returns, with_buf_only)
 
 if __name__ == "__main__":
 

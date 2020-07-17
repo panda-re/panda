@@ -1,0 +1,35 @@
+name: QEMU Checks
+
+on:
+  push:
+    branches:
+      - ci
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build_and_check:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        target: [x86_64-softmmu, i386-softmmu, arm-softmmu, mips-softmmu] # NOTE: aarch64-softmmu currently unsupported
+
+    steps:
+    - name: Fetch pre-built bionic docker container
+      run: docker pull pandare/panda:latest
+
+    - name: Download docker/update.sh script from this commit
+      run: wget "https://raw.githubusercontent.com/panda-re/panda/${GITHUB_SHA}/panda/docker/update.sh"
+
+    - name: Start container, run update.sh clean build, and run QEMU tests by arch
+      run: >-
+        docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
+        -v $(pwd)/update.sh:/update.sh --rm -t
+        -e PANDA_TEST=yes --cap-add SYS_NICE
+        pandare/panda bash -c "bash /update.sh $GITHUB_REF clean;
+        cd /panda/build;
+        ../build.sh ${{ matrix.target }}"
+
+    - name: Cleanup images
+      run: docker system prune -af --volumes

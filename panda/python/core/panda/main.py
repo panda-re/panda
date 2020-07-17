@@ -166,7 +166,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         After initializing the class, the user has a chance to do something
         (TODO: what? register callbacks? It's something important...) before we finish initializing
         '''
-        self.libpanda.panda_set_library_mode(True)
+        self.libpanda._panda_set_library_mode(True)
 
         cenvp = ffi.new("char**", ffi.new("char[]", b""))
         len_cargs = ffi.cast("int", len(self.panda_args))
@@ -377,6 +377,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.running.set()
         self.libpanda.panda_run() # Give control to panda
         self.running.clear() # Back from panda's execution (due to shutdown or monitor quit)
+        self.libpanda.panda_unload_plugins() # Unload c plugins - should be safe now since exec has stopped
 
     def end_analysis(self):
         '''
@@ -387,7 +388,8 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         without needing to wait for tasks in the main async thread
         '''
         self.unload_plugins()
-        if self.running:
+        if self.running.is_set():
+            # If we were running, stop the execution and check if we crashed
             self.queue_async(self.stop_run, internal=True)
             self.queue_async(self.check_crashed, internal=True)
 
@@ -467,6 +469,14 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.libpanda.panda_unload_plugin_by_name(name_ffi)
 
     def unload_plugins(self):
+        '''
+        Disable all python plugins and request to unload all c plugins
+        at the next main_loop_wait.
+
+        XXX: If called during shutdown/exit, c plugins won't be unloaded
+        because the next main_loop_wait will never happen. Instead, call
+        panda.panda_finish directly (which is done at the end of panda.run())
+        '''
         if debug:
             progress ("Disabling all python plugins, unloading all C plugins")
 

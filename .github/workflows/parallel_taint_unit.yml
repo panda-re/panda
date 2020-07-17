@@ -1,0 +1,45 @@
+name: Taint Unit Tests
+
+on:
+  push:
+    branches:
+      - ci
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  run_taint_unit:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        target: [i386, x86_64]
+
+    steps:
+    - name: Fetch pre-built bionic docker container
+      run: docker pull pandare/panda:latest
+
+    - name: Download docker/update.sh script from this commit
+      run: wget "https://raw.githubusercontent.com/panda-re/panda/${GITHUB_SHA}/panda/docker/update.sh"
+
+    - name: Start container, run update.sh clean build, and run taint unit tests
+      run: >-
+        docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
+        --mount type=bind,source="$(pwd)"/update.sh,target=/update.sh
+        --mount type=bind,source=/home/panda/regdir/qcows/wheezy_panda2.qcow2,target=/home/panda/regdir/qcows/wheezy_panda2.qcow2
+        --mount type=bind,source=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2,target=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
+        --rm -t pandare/panda bash -c
+        "cp /update.sh /panda/update.sh;
+        chmod u+x /panda/update.sh;
+        /panda/update.sh $GITHUB_REF clean;
+        git clone https://github.com/panda-re/panda_test;
+        cd ./panda_test/tests/taint2;
+        python3 taint2_multi_arch_record_or_replay.py --arch ${{ matrix.target }} --mode record;
+        python3 taint2_multi_arch_record_or_replay.py --arch ${{ matrix.target }} --mode replay;
+        sed -i '/^\s*$/d' taint2_log;
+        if cat taint2_log; then echo 'Taint unit test log found!'; else echo 'Taint unit test log NOT found!' && exit 1; fi;
+        echo -e '\nFailures:';
+        if grep 'fail' taint2_log; then echo 'TEST FAILED!' && exit 1; else echo -e 'None.\nTEST PASSED!' && exit 0; fi"
+
+    - name: Cleanup images
+      run: docker system prune -af --volumes

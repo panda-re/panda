@@ -41,6 +41,7 @@ extern int madvise(caddr_t, size_t, int);
 static bool fips_enabled = false;
 
 static const char *hw_version = QEMU_HW_VERSION;
+static bool panda_library_mode = false;
 
 int socket_set_cork(int fd, int v)
 {
@@ -314,6 +315,16 @@ void qemu_set_hw_version(const char *version)
 const char *qemu_hw_version(void)
 {
     return hw_version;
+}
+
+void panda_set_library_mode(const bool b)
+{
+    panda_library_mode = b;
+}
+
+bool panda_get_library_mode(void)
+{
+    return panda_library_mode;
 }
 
 void fips_set_state(bool requested)

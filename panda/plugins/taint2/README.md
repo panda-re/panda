@@ -28,8 +28,8 @@ Arguments
 * `inline`: boolean. Whether taint operations should be carried out in line with generated code, or through a function call.
 * `opt`:  boolean. Whether to run an optimization pass on the instrumented LLVM code.
 * `detaint_cb0`: boolean. Whether to detaint bytes whose control mask bits have become 0. Can reduce false positives when tainted data no longer influences a byte's value.
-* `max_taintset_compute_number`: maximum taint compute number (0, the default, means unlimited).
-* `max_taintset_card`: maximum taintset cardinality (i.e. number of labels; 0, the default, means unlmited).
+* `max_taintset_compute_number`: uint32_t. maximum taint compute number (0, the default, means unlimited).
+* `max_taintset_card`: uint32_t. maximum taintset cardinality (i.e. number of labels; 0, the default, means unlmited).
 
 Dependencies
 ------------

@@ -46,7 +46,7 @@ class blocking_mixins():
     def revert_sync(self, snapshot_name):
         result = self.run_monitor_cmd("loadvm {}".format(snapshot_name))
         if result.startswith("Length mismatch"):
-            raise MemoryError
+            raise RuntimeError("QEMU machine's RAM size doesn't match snapshot RAM size!")
         return result
 
     @blocking
@@ -80,26 +80,38 @@ class blocking_mixins():
 
     @blocking
     def record_cmd(self, guest_command, copy_directory=None, iso_name=None, setup_command=None, recording_name="recording", snap_name="root", ignore_errors=False):
-        self.revert_sync(snap_name) # Can't use self.revert because that would would run async and we'd keep going before the revert happens
+        '''
+        Take a recording as follows:
+            0) Revert to the specified snapshot name if one is set. By default 'root'. Set to `None` if you have already set up the guest and are ready to record with no revert
+            1) Create an ISO of files that need to be copied into the guest if copy_directory is specified. Copy them in
+            2) Run the setup_command in the guest, if provided
+            3) Type the command you wish to record but do not press enter to begin execution. This avoids the recording capturing the command being typed
+            4) Begin the recording (name controlled by recording_name)
+            5) Press enter in the guest to begin the command. Wait until it finishes.
+            6) End the recording
+        '''
+        # 0) Revert to the specified snapshot
+        if snap_name is not None:
+            self.revert_sync(snap_name) # Can't use self.revert because that would would run async and we'd keep going before the revert happens
 
-	# 0) Make copy_directory into an iso and copy it into the guest - It will end up at the exact same path
+	# 1) Make copy_directory into an iso and copy it into the guest - It will end up at the exact same path
         if copy_directory: # If there's a directory, build an ISO and put it in the cddrive
             # Make iso
             self.copy_to_guest(copy_directory, iso_name)
 
-	# 1) Run setup_command, if provided before we start the recording (good place to CD or install, etc)
+	# 2) Run setup_command, if provided before we start the recording (good place to CD or install, etc)
         if setup_command:
             print(f"Running setup command {setup_command}")
             r = self.run_serial_cmd(setup_command)
             print(f"Setup command results: {r}")
 
-        # 2) type commmand (note we type command, start recording, finish command)
+        # 3) type commmand (note we type command, start recording, finish command)
         self.type_serial_cmd(guest_command)
 
-        # 3) start recording
+        # 4) start recording
         self.run_monitor_cmd("begin_record {}".format(recording_name))
 
-        # 4) finish command
+        # 5) finish command
         result = self.finish_serial_cmd()
 
         if debug:
@@ -114,7 +126,7 @@ class blocking_mixins():
             print("Bad output running command: {}".format(result))
             raise RuntimeError("Could not execute binary while taking recording")
 
-        # 5) End recording
+        # 6) End recording
         self.run_monitor_cmd("end_record")
 
         print("Finished recording")
@@ -161,3 +173,14 @@ class blocking_mixins():
                     break
             r = self.run_serial_cmd(cmd) # XXX: may timeout
             print(r)
+
+    @blocking
+    def do_panda_finish(self):
+        '''
+        Call panda_finish. Note this isn't really blocking - the
+        guest should have exited by now, but queue this after
+        (blocking) shutdown commands in our internal async queue
+        so it must also be labeled as blocking.
+        '''
+#        assert (not self.running.is_set()), "Can't finish while still running"
+        self.panda_finish()
