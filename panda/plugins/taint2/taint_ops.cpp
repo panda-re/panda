@@ -369,6 +369,15 @@ void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
     }
 }
 
+void taint_after_ld_run(uint64_t reg, uint64_t addr, uint64_t size);
+
+// logically after taint transfer has happened for ld *or* st
+void taint_after_ld(uint64_t reg, uint64_t memaddr, uint64_t size) {
+    taint_after_ld_run(reg, memaddr, size);
+}
+
+
+
 void taint_sext(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
                 uint64_t src_size)
 {

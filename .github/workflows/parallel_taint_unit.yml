@@ -3,7 +3,7 @@ name: Taint Unit Tests
 on:
   push:
     branches:
-      - split_out_ci
+      - ci
   pull_request:
     branches:
       - master
@@ -16,9 +16,6 @@ jobs:
         target: [i386, x86_64]
 
     steps:
-    - name: Docker login
-      run: docker login -u pandare -p ${{secrets.pandare_dockerhub}}
-
     - name: Fetch pre-built bionic docker container
       run: docker pull pandare/panda:latest
 

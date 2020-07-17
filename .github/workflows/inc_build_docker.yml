@@ -16,9 +16,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Docker login
-      run: docker login -u pandare -p ${{secrets.pandare_dockerhub}}
-
     - name: Fetch pre-built bionic docker container
       run: docker pull pandare/panda:latest
 
