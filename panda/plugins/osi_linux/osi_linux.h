@@ -203,6 +203,12 @@ IMPLEMENT_OFFSET_GET(get_pid, task_struct, int, ki.task.pid_offset, 0)
 IMPLEMENT_OFFSET_GET(get_tgid, task_struct, int, ki.task.tgid_offset, 0)
 
 /**
+ * @brief Retrieves the start_time from a task_struct.
+ */
+IMPLEMENT_OFFSET_GET(get_start_time, task_struct, uint64_t, ki.task.start_time_offset, 0)
+
+
+/**
  * @brief Retrieves the address of the mm_struct from a task_struct.
  */
 IMPLEMENT_OFFSET_GET(get_mm_start_brk, mm_struct, target_ptr_t, ki.mm.start_brk_offset, 0)

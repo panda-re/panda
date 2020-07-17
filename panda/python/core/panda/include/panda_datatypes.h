@@ -1016,6 +1016,7 @@ struct task_info {
 	int comm_offset;			/**< Offset of the command name in `struct task_struct`. */
 	size_t comm_size;			/**< Size of the command name. */
 	int files_offset;			/**< Offset for open files information. */
+        int start_time_offset;                  /** offset of start_time */
 };
 
 /**
