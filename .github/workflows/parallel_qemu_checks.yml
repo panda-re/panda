@@ -10,6 +10,7 @@ on:
 
 jobs:
   build_and_check:
+    if: github.repository  == 'panda-re/panda'
     runs-on: self-hosted
     strategy:
       matrix:
@@ -32,3 +33,17 @@ jobs:
 
     - name: Cleanup images # TODO can we run once at the end?
       run: docker system prune -af --volumes
+
+  build_and_check_fork: # Forked repos can't use self-hosted test suite - just run make check
+    if: github.repository != 'panda-re/panda'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Fetch pre-built bionic docker container
+      run: docker pull pandare/panda:latest
+
+    - uses: actions/checkout@v1 # Checks out to /home/runner/work/panda/panda/
+
+    # Note we test in /panda.new - ignoring old build artifacts in /panda
+    - name: Remake with new code in container and run QEMU tests for all architectures
+      run: docker run --rm -v /home/runner/work/panda/panda/:/panda.new pandare/panda bash -c "rsync -rh /panda.new /panda && cd /panda/build && make -j$(nproc || sysctl -n hw.ncpu) && make check"
