@@ -39,9 +39,9 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
 	$(PLUGIN_OBJ_FILES)
 
 $(PLUGIN_OBJ_DIR)/kernelinfo.zip: $(addprefix $(PLUGIN_SRC_DIR)/utils/kernelinfo/,Makefile kernel.conf kernelinfo.c kernelinfo.h kernelinfo_read.c kernelinfo_size.c kernelinfo_cmp.py kernelinfo_parse.py)
-	$(call quiet-command,zip -qr $@ $(PLUGIN_SRC_DIR)/utils/kernelinfo,"ZIP      $(TARGET_DIR)$@")
+	$(call quiet-command,cd $(PLUGIN_SRC_DIR)/utils && zip -qr $(CURDIR)/$@ kernelinfo,"ZIP      $(TARGET_DIR)$@")
 
 $(PLUGIN_OBJ_DIR)/kernelinfo24.zip: $(addprefix $(PLUGIN_SRC_DIR)/utils/kernelinfo24/,Makefile kernelinfo24.c kernelinfo24.sh)
-	$(call quiet-command,zip -qr $@ $(PLUGIN_SRC_DIR)/utils/kernelinfo24,"ZIP      $(TARGET_DIR)$@")
+	$(call quiet-command,cd $(PLUGIN_SRC_DIR)/utils && zip -qr $(CURDIR)/$@ kernelinfo24,"ZIP      $(TARGET_DIR)$@")
 
 all: $(PLUGIN_OBJ_DIR)/kernelinfo.conf $(PLUGIN_OBJ_DIR)/kernelinfo.zip $(PLUGIN_OBJ_DIR)/kernelinfo24.zip
