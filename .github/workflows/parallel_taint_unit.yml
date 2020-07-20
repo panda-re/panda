@@ -10,6 +10,7 @@ on:
 
 jobs:
   run_taint_unit:
+    if: github.repository  == 'panda-re/panda'
     runs-on: self-hosted
     strategy:
       matrix:
