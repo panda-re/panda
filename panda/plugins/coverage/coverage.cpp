@@ -58,6 +58,7 @@ static void log_message(const char *fmt, ...)
     std::string msg_fmt = PANDA_MSG;
     msg_fmt += " ";
     msg_fmt += fmt;
+    msg_fmt += "\n";
     va_list arglist;
     va_start(arglist, fmt);
     vprintf(msg_fmt.c_str(), arglist);
@@ -92,21 +93,19 @@ static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 
 static void disable_instrumentation()
 {
-    log_message("Disabling Instrumentation\n");
     panda_do_flush_tb();
     processor.reset();
 }
 
 static void enable_instrumentation(const std::string& filename)
 {
-    log_message("Enabling Instrumentation\n");
     panda_do_flush_tb();
     std::unique_ptr<panda_arg_list, void(*)(panda_arg_list*)> args(
         panda_get_args("coverage"), panda_free_args);
 
     bool log_all_records = panda_parse_bool_opt(args.get(), "full",
             "log all records instead of just uniquely identified ones");
-    log_message("log all records", PANDA_FLAG_STATUS(log_all_records));
+    log_message("log all records %s", PANDA_FLAG_STATUS(log_all_records));
     std::string mode_arg = panda_parse_string_opt(args.get(), "mode",
         "asid-block", "coverage mode");
 
@@ -122,14 +121,30 @@ static void enable_instrumentation(const std::string& filename)
 int monitor_callback(Monitor *mon, const char *cmd_cstr)
 {
     std::string cmd = cmd_cstr;
-    auto index = cmd.find("=");
-    std::string filename = DEFAULT_FILE;
-    if (std::string::npos != index) {
-        filename = cmd.substr(index+1);
-    }
     if (0 == cmd.find(MONITOR_DISABLE)) {
+        if (nullptr == processor) {
+            log_message("Instrumentation not enabled, ignoring request to "
+                "disable.");
+            return 0;
+        }
+        log_message("Disabling instrumentation.");
         disable_instrumentation();
     } else if (0 == cmd.find(MONITOR_ENABLE)) {
+        if (nullptr != processor) {
+            log_message("Instrumentation already enabled, ignoring request to "
+                "enable.");
+            return 0;
+        }
+        auto index = cmd.find("=");
+        std::string filename = DEFAULT_FILE;
+        if (std::string::npos != index) {
+            filename = cmd.substr(index+1);
+            log_message("Enabling instrumentation with filename: %s",
+                filename.c_str());
+        } else {
+            log_message("Enabling instrumentation with default filename: %s",
+                filename.c_str());
+        }
         enable_instrumentation(filename);
     }
     return 0;
@@ -148,38 +163,38 @@ bool init_plugin(void *self)
     if ("" != pc_arg) {
         auto dash_idx = pc_arg.find("-");
         if (std::string::npos == dash_idx) {
-            log_message("Could not parse \"pc\" argument. Format: <Start PC>-<End PC>\n");
+            log_message("Could not parse \"pc\" argument. Format: <Start PC>-<End PC>");
             return false;
         }
         try {
             auto start_pc = try_parse<target_ulong>(pc_arg.substr(0, dash_idx));
             auto end_pc = try_parse<target_ulong>(pc_arg.substr(dash_idx + 1));
-            log_message("PC Range Filter = [" TARGET_FMT_lx ", " TARGET_FMT_lx "]\n", start_pc, end_pc);
+            log_message("PC Range Filter = [" TARGET_FMT_lx ", " TARGET_FMT_lx "]", start_pc, end_pc);
             pb.with_pc_range(start_pc, end_pc);
         } catch (std::invalid_argument& e) {
-            log_message("Could not parse PC Range argument: %s\n", pc_arg.c_str());
+            log_message("Could not parse PC Range argument: %s", pc_arg.c_str());
             return false;
         } catch (std::overflow_error& e) {
-            log_message("PC range outside of valid address space for target.\n");
+            log_message("PC range outside of valid address space for target.");
             return false;
         }
     }
 
     std::string process_name = panda_parse_string_opt(args.get(), "process_name", "", "the process to collect coverage from");
     if ("" != process_name) {
-        log_message("Process Name Filter = %s\n", process_name.c_str());
+        log_message("Process Name Filter = %s", process_name.c_str());
         pb.with_process_name(process_name);
     }
 
     std::string privilege = panda_parse_string_opt(args.get(), "privilege", "all", "collect coverage for a specific privilege mode" );
     if ("user" == privilege) {
-        log_message("Privilege Filter = user mode\n");
+        log_message("Privilege Filter = user mode");
         pb.in_kernel(false);
     } else if ("kernel" == privilege) {
-        log_message("Privilege Filter = kernel mode\n");
+        log_message("Privilege Filter = kernel mode");
         pb.in_kernel(true);
     } else if ("all" != privilege) {
-        log_message("Privilege filter must be be user, kernel, or all.\n");
+        log_message("Privilege filter must be be user, kernel, or all.");
         return false;
     }
 
@@ -192,21 +207,21 @@ bool init_plugin(void *self)
 
     bool start_disabled = panda_parse_bool_opt(args.get(), "start_disabled",
             "start the plugin with instrumentation disabled");
-    log_message("start disabled", PANDA_FLAG_STATUS(start_disabled));
+    log_message("start disabled %s", PANDA_FLAG_STATUS(start_disabled));
 
-    bool all_ok = true;
+    std::string filename = panda_parse_string_opt(args.get(), "filename",
+        DEFAULT_FILE, "the filename to use for output");
+    log_message("output file name %s", filename.c_str());
+
     if (!start_disabled)
     {
-        enable_instrumentation(DEFAULT_FILE);
+        enable_instrumentation(filename);
     }
 
-    if (all_ok)
-    {
-        pcb.monitor = monitor_callback;
-        panda_register_callback(self, PANDA_CB_MONITOR, pcb);
-    }
+    pcb.monitor = monitor_callback;
+    panda_register_callback(self, PANDA_CB_MONITOR, pcb);
 
-    return all_ok;
+    return true;
 }
 
 void uninit_plugin(void *self)
