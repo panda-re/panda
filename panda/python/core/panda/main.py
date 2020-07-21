@@ -64,6 +64,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             q = qcows.get_qcow_info(generic)
             self.arch     = q.arch
             self.os       = q.os
+            self.mem      = q.default_mem # Might clobber a specified argument, but required if you want snapshots
             self.qcow     = qcows.get_qcow(generic)
             self.expect_prompt = q.prompt
             if q.extra_args:
@@ -73,7 +74,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             #if self.qcow == "default": # Use arch / mem / os to find a qcow - XXX: merge with generic?
             #    self.qcow = pjoin(getenv("HOME"), ".panda", "%s-%s-%s.qcow" % (self.os, self.arch, mem))
             if not (exists(self.qcow)):
-                print("Missing qcow '{}' Please go create that qcow and give it to moyix!".format(self.qcow))
+                print("Missing qcow '{}' Please go create that qcow and give it to the PANDA maintainers".format(self.qcow))
 
         self.build_dir  = self._find_build_dir()
         environ["PANDA_DIR"] = self.build_dir
@@ -101,7 +102,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
         self.panda_args += extra_args
 
         # Configure memory options
-        self.panda_args.extend(['-m', mem])
+        self.panda_args.extend(['-m', self.mem])
 
         # Configure serial - if we have an expect_prompt set. Otherwise how can we know what guest cmds are outputting?
         if self.expect_prompt:
