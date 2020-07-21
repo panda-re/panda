@@ -21,9 +21,11 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
     $(PLUGIN_OBJ_DIR)/PcRangePredicate.o \
     $(PLUGIN_OBJ_DIR)/CompoundPredicate.o \
     $(PLUGIN_OBJ_DIR)/AlwaysTruePredicate.o \
+    $(PLUGIN_OBJ_DIR)/PredicateBuilder.o \
     $(PLUGIN_OBJ_DIR)/AsidBlockGenerator.o \
     $(PLUGIN_OBJ_DIR)/AsidBlockCsvWriter.o \
     $(PLUGIN_OBJ_DIR)/OsiBlockGenerator.o \
     $(PLUGIN_OBJ_DIR)/OsiBlockCsvWriter.o \
     $(PLUGIN_OBJ_DIR)/EdgeCsvWriter.o \
-    $(PLUGIN_OBJ_DIR)/EdgeGenerator.o
+    $(PLUGIN_OBJ_DIR)/EdgeGenerator.o \
+    $(PLUGIN_OBJ_DIR)/BlockProcessorBuilder.o

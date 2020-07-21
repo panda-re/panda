@@ -18,26 +18,11 @@ PANDAENDCOMMENT */
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 
-#include "AlwaysTruePredicate.h"
-#include "PcRangePredicate.h"
-#include "CompoundPredicate.h"
-#include "ProcessNamePredicate.h"
-#include "InKernelPredicate.h"
+#include "PredicateBuilder.h"
 
 #include "Block.h"
-#include "Edge.h"
 #include "RecordProcessor.h"
-#include "EdgeCsvWriter.h"
-#include "EdgeGenerator.h"
-#include "UniqueFilter.h"
-
-#include "AsidBlock.h"
-#include "AsidBlockGenerator.h"
-#include "AsidBlockCsvWriter.h"
-
-#include "OsiBlock.h"
-#include "OsiBlockGenerator.h"
-#include "OsiBlockCsvWriter.h"
+#include "BlockProcessorBuilder.h"
 
 #include "utils.h"
 
@@ -62,16 +47,19 @@ void uninit_plugin(void *);
 
 static std::unique_ptr<Predicate> predicate;
 
-static void log_message(const char *message1, const char *message2)
+/**
+ * Logs a message to stdout.
+ */
+static void log_message(const char *fmt, ...)
 {
-
-    printf("%s%s %s\n", PANDA_MSG, message1, message2);
+    std::string msg_fmt = PANDA_MSG;
+    msg_fmt += " ";
+    msg_fmt += fmt;
+    va_list arglist;
+    va_start(arglist, fmt);
+    vprintf(msg_fmt.c_str(), arglist);
+    va_end(arglist);
 }
-
-//static void log_message(const char *message, uint32_t number)
-//{
-//    printf("%s%s %d\n", PANDA_MSG, message, number);
-//}
 
 static std::unordered_set<Block> blocks;
 static std::unique_ptr<RecordProcessor<Block>> processor;
@@ -104,37 +92,27 @@ static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 
 static void disable_instrumentation()
 {
+    log_message("Disabling Instrumentation\n");
     panda_do_flush_tb();
     processor.reset();
 }
 
 static void enable_instrumentation(const std::string& filename)
 {
+    log_message("Enabling Instrumentation\n");
     panda_do_flush_tb();
     std::unique_ptr<panda_arg_list, void(*)(panda_arg_list*)> args(panda_get_args("coverage2"), panda_free_args);
 
     bool unique_output = panda_parse_bool_opt(args.get(), "unique", "output unique records only");
-
     std::string mode_arg = panda_parse_string_opt(args.get(), "mode", "asid-block", "coverage mode");
-    if ("asid-block" == mode_arg) {
-        std::unique_ptr<RecordProcessor<AsidBlock>> writer(new AsidBlockCsvWriter(filename));
-        if (unique_output) {
-            writer.reset(new UniqueFilter<AsidBlock>(std::move(writer)));
-        }
-        processor.reset(new AsidBlockGenerator(first_cpu, std::move(writer)));
-    } else if ("osi-block" == mode_arg) {
-        std::unique_ptr<RecordProcessor<OsiBlock>> writer(new OsiBlockCsvWriter(filename));
-        if (unique_output) {
-            writer.reset(new UniqueFilter<OsiBlock>(std::move(writer)));
-        }
-        processor.reset(new OsiBlockGenerator(first_cpu, std::move(writer)));
-    } else if ("edge" == mode_arg) {
-        std::unique_ptr<RecordProcessor<Edge>> writer(new EdgeCsvWriter(filename));
-        if (unique_output) {
-            writer.reset(new UniqueFilter<Edge>(std::move(writer)));
-        }
-        processor.reset(new EdgeGenerator(std::move(writer)));
+
+    BlockProcessorBuilder b;
+    b.with_filename(filename);
+    b.with_output_mode(mode_arg);
+    if (unique_output) {
+        b.with_unique_filter();
     }
+    processor = b.build();
 }
 
 int monitor_callback(Monitor *mon, const char *cmd_cstr)
@@ -155,10 +133,7 @@ int monitor_callback(Monitor *mon, const char *cmd_cstr)
 
 bool init_plugin(void *self)
 {
-    predicate.reset(new AlwaysTruePredicate);
-    
-    //std::unique_ptr<RecordProcessor<Edge>> edge_writer(new EdgeCsvWriter("test.csv"));
-    //processor.reset(new EdgeGenerator(std::move(edge_writer)));
+    PredicateBuilder pb;
 
     panda_arg_list *args = panda_get_args("coverage2");
     std::string pc_arg = panda_parse_string_opt(args, "pc", "",
@@ -167,24 +142,26 @@ bool init_plugin(void *self)
         auto dash_idx = pc_arg.find("-");
         auto start_pc = static_cast<target_ulong>(std::stoull(pc_arg.substr(0, dash_idx), NULL, 0));
         auto end_pc = static_cast<target_ulong>(std::stoull(pc_arg.substr(dash_idx + 1), NULL, 0));
-        std::unique_ptr<Predicate> pcrp(new PcRangePredicate(start_pc, end_pc));
-        predicate.reset(new CompoundPredicate(std::move(predicate), std::move(pcrp)));
+        log_message("PC Range Filter = [" TARGET_FMT_lx ", " TARGET_FMT_lx "]\n", start_pc, end_pc);
+        pb.with_pc_range(start_pc, end_pc);
     }
 
     std::string process_name = panda_parse_string_opt(args, "process_name", "", "the process to collect coverage from");
     if ("" != process_name) {
-        std::unique_ptr<Predicate> pnpred(new ProcessNamePredicate(process_name));
-        predicate.reset(new CompoundPredicate(std::move(predicate), std::move(pnpred)));
+        log_message("Process Name Filter = %s\n", process_name.c_str());
+        pb.with_process_name(process_name);
     }
 
     std::string privilege = panda_parse_string_opt(args, "privilege", "all", "collect coverage for a specific privilege mode" );
     if ("user" == privilege) {
-        std::unique_ptr<Predicate> ikpred(new InKernelPredicate(false));
-        predicate.reset(new CompoundPredicate(std::move(predicate), std::move(ikpred)));
+        log_message("Privilege Filter = user mode\n");
+        pb.in_kernel(false);
     } else if ("kernel" == privilege) {
-        std::unique_ptr<Predicate> ikpred(new InKernelPredicate(true));
-        predicate.reset(new CompoundPredicate(std::move(predicate), std::move(ikpred)));
+        log_message("Privilege Filter = kernel mode\n");
+        pb.in_kernel(true);
     }
+
+    predicate = pb.build();
 
     panda_cb pcb;
 
