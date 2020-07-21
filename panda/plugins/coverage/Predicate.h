@@ -1,5 +1,5 @@
-#ifndef COVERAGE2_PREDICATE_H
-#define COVERAGE2_PREDICATE_H
+#ifndef COVERAGE_PREDICATE_H
+#define COVERAGE_PREDICATE_H
 
 #include "panda/plugin.h"
 
@@ -12,6 +12,8 @@ namespace coverage
 class Predicate
 {
 public:
+    virtual ~Predicate() = 0;
+
     /**
      * Implemented by Predicate classes to determine if the guest is in a
      * particular state.

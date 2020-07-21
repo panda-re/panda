@@ -1,10 +1,13 @@
-#ifndef COVERAGE2_EDGE_H
-#define COVERAGE2_EDGE_H
+#ifndef COVERAGE_EDGE_H
+#define COVERAGE_EDGE_H
 
 #include <functional>
 
 #include "Block.h"
 
+/**
+ * A structure representing edges.
+ */
 struct Edge
 {
     Block from;

@@ -1,5 +1,5 @@
-#ifndef COVERAGE2_UNIQUEFILTER_H
-#define COVERAGE2_UNIQUEFILTER_H
+#ifndef COVERAGE_UNIQUEFILTER_H
+#define COVERAGE_UNIQUEFILTER_H
 
 #include <memory>
 #include <unordered_set>
@@ -9,14 +9,26 @@
 namespace coverage
 {
 
+/**
+ * A generic record processor that filters out unique records before passing
+ * them to a delegate RecordProcessor of the same record type.
+ */
 template<typename RecordType>
 class UniqueFilter : public RecordProcessor<RecordType>
 {
 public:
-    UniqueFilter(std::unique_ptr<RecordProcessor<RecordType>> d) : delegate(std::move(d))
+    /**
+     * Constructs a new UniqueFilter and takes ownership of the delegate.
+     */
+    UniqueFilter(std::unique_ptr<RecordProcessor<RecordType>> d)
+        : delegate(std::move(d))
     {
     }
 
+    /**
+     * Try inserting the record into a set. If the item isn't in the set, call
+     * the delegate's handle method.
+     */
     void handle(RecordType record) override
     {
         if (seen.insert(record).second) {

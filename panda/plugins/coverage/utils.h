@@ -1,5 +1,5 @@
-#ifndef COVERAGE2_UTILS_H
-#define COVERAGE2_UTILS_H
+#ifndef COVERAGE_UTILS_H
+#define COVERAGE_UTILS_H
 
 #include <limits>
 #include <stdexcept>
@@ -15,7 +15,8 @@
 TCGOp *find_first_guest_insn();
 
 /**
- * Template that converts host pointers to TCG constants.
+ * Template that converts host pointers to TCG constants. Not really intended
+ * to be called directly.
  */
 template<typename A>
 intptr_t insert_tcg_tmp(TCGOp **after_op, A *value)
@@ -29,7 +30,8 @@ intptr_t insert_tcg_tmp(TCGOp **after_op, A *value)
 }
 
 /**
- * Base case for call argument insertion.
+ * Base case for call argument insertion. Not really intended to be called
+ * directly.
  */
 template<typename Arg>
 std::vector<intptr_t> insert_args(TCGOp **after_op, Arg arg)
@@ -39,7 +41,8 @@ std::vector<intptr_t> insert_args(TCGOp **after_op, Arg arg)
 }
 
 /**
- * Recursive case for call argument insertion.
+ * Recursive case for call argument insertion. Not really intended to be called
+ * directly.
  */
 template<typename First, typename... Args>
 std::vector<intptr_t> insert_args(TCGOp **after_op, First arg, Args... args)
@@ -54,6 +57,16 @@ std::vector<intptr_t> insert_args(TCGOp **after_op, First arg, Args... args)
 /**
  * A template function that inserts a call into the TCG context. Currently
  * limited to functions that return void and take at least one argument.
+ *
+ * Arguments: 
+ *   after_op: The TCG op to insert after. After inserting the call, this value
+ *             is updated so that subsequent calls to insert_call can be made.
+ *
+ *   func_ptr: A pointer to the function we want to call.
+ *
+ *   args ...: Variable length list of arguments to pass into the function at
+ *             call time. Note that these arguments should not refer to
+ *             something that will go out of scope (such as a stack variable).
  */
 template<typename F, typename... A>
 void insert_call(TCGOp **after_op, F *func_ptr, A... args)
@@ -73,6 +86,11 @@ void insert_call(TCGOp **after_op, F *func_ptr, A... args)
     call_args[ia.size()] = reinterpret_cast<TCGArg>(func_ptr);
 }
 
+/**
+ * Helper function to parse a numeric value from a std::string. Throws an
+ * exception if the value couldn't be parsed or doesn't fit into the
+ * destination type.
+ */
 template<typename T>
 T try_parse(const std::string& value)
 {

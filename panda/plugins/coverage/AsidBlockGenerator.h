@@ -1,5 +1,5 @@
-#ifndef COVERAGE2_ASIDBLOCK_GENERATOR_H
-#define COVERAGE2_ASIDBLOCK_GENERATOR_H
+#ifndef COVERAGE_ASIDBLOCK_GENERATOR_H
+#define COVERAGE_ASIDBLOCK_GENERATOR_H
 
 #include <memory>
 
@@ -9,6 +9,10 @@
 namespace coverage
 {
 
+/**
+ * A RecordProcessor that constructs an AsidBlock before passing it to a
+ * delegate RecordProcessor.
+ */
 class AsidBlockGenerator : public RecordProcessor<Block>
 {
 public:

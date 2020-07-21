@@ -1,5 +1,5 @@
-#ifndef COVERAGE2_PREDICATE_BUILDER_H
-#define COVERAGE2_PREDICATE_BUILDER_H
+#ifndef COVERAGE_PREDICATE_BUILDER_H
+#define COVERAGE_PREDICATE_BUILDER_H
 
 #include <memory>
 
@@ -8,6 +8,10 @@
 namespace coverage
 {
 
+/**
+ * A class that wraps the construction of predicates into an easy to use
+ * interface.
+ */
 class PredicateBuilder
 {
 public:

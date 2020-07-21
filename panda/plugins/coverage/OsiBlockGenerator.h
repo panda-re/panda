@@ -1,5 +1,5 @@
-#ifndef COVERAGE2_OSIBLOCK_GENERATOR_H
-#define COVERAGE2_OSIBLOCK_GENERATOR_H
+#ifndef COVERAGE_OSIBLOCK_GENERATOR_H
+#define COVERAGE_OSIBLOCK_GENERATOR_H
 
 #include <memory>
 
@@ -9,6 +9,9 @@
 namespace coverage
 {
 
+/**
+ * Transforms a regular Block struct into an OsiBlock.
+ */
 class OsiBlockGenerator : public RecordProcessor<Block>
 {
 public:

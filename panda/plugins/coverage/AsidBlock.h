@@ -1,5 +1,5 @@
-#ifndef COVERAGE2_ASID_BLOCK_H
-#define COVERAGE2_ASID_BLOCK_H
+#ifndef COVERAGE_ASID_BLOCK_H
+#define COVERAGE_ASID_BLOCK_H
 
 #include <functional>
 
@@ -7,6 +7,9 @@
 
 #include "Block.h"
 
+/**
+ * A structure that stores the ASID along with a block.
+ */
 struct AsidBlock
 {
     target_ulong asid;

@@ -1,5 +1,5 @@
-#ifndef COVERAGE2_ASIDBLOCK_CSVWRITER_H
-#define COVERAGE2_ASIDBLOCK_CSVWRITER_H
+#ifndef COVERAGE_ASIDBLOCK_CSVWRITER_H
+#define COVERAGE_ASIDBLOCK_CSVWRITER_H
 
 #include <fstream>
 #include <string>
@@ -10,6 +10,9 @@
 namespace coverage
 {
 
+/**
+ * A RecordProcessor that writes AsidBlock structs to a CSV file.
+ */
 class AsidBlockCsvWriter : public RecordProcessor<AsidBlock>
 {
 public:

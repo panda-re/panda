@@ -1,5 +1,5 @@
-#ifndef COVERAGE2_EDGEGENERATOR_H
-#define COVERAGE2_EDGEGENERATOR_H
+#ifndef COVERAGE_EDGEGENERATOR_H
+#define COVERAGE_EDGEGENERATOR_H
 
 #include <memory>
 
@@ -10,6 +10,9 @@
 namespace coverage
 {
 
+/**
+ * Converts blocks into edges by emitting an Edge every other call to handle.
+ */
 class EdgeGenerator : public RecordProcessor<Block>
 {
 public:

@@ -1,5 +1,5 @@
-#ifndef COVERAGE2_OSIBLOCK_CSVWRITER_H
-#define COVERAGE2_OSIBLOCK_CSVWRITER_H
+#ifndef COVERAGE_OSIBLOCK_CSVWRITER_H
+#define COVERAGE_OSIBLOCK_CSVWRITER_H
 
 #include <fstream>
 #include <string>
@@ -10,6 +10,9 @@
 namespace coverage
 {
 
+/**
+ * Writes OsiBlock structs to a CSV file.
+ */
 class OsiBlockCsvWriter : public RecordProcessor<OsiBlock>
 {
 public:

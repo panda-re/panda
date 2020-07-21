@@ -1,5 +1,5 @@
-#ifndef COVERAGE2_OSI_BLOCK_H
-#define COVERAGE2_OSI_BLOCK_H
+#ifndef COVERAGE_OSI_BLOCK_H
+#define COVERAGE_OSI_BLOCK_H
 
 #include <functional>
 #include <string>
@@ -9,6 +9,9 @@
 
 #include "Block.h"
 
+/**
+ * A struct type that adds OSI information to a block.
+ */
 struct OsiBlock
 {
     target_pid_t pid;

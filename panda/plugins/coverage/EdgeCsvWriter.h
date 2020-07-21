@@ -1,5 +1,5 @@
-#ifndef COVERAGE2_EDGECSVWRITER_H
-#define COVERAGE2_EDGECSVWRITER_H
+#ifndef COVERAGE_EDGECSVWRITER_H
+#define COVERAGE_EDGECSVWRITER_H
 
 #include <fstream>
 #include <string>
@@ -10,6 +10,9 @@
 namespace coverage
 {
 
+/**
+ * Writes Edge structs into a CSV file.
+ */
 class EdgeCsvWriter : public RecordProcessor<Edge>
 {
 public:

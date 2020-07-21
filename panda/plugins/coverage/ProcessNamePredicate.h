@@ -1,5 +1,5 @@
-#ifndef COVERAGE2_PROCESSNAME_PREDICATE_H
-#define COVERAGE2_PROCESSNAME_PREDICATE_H
+#ifndef COVERAGE_PROCESSNAME_PREDICATE_H
+#define COVERAGE_PROCESSNAME_PREDICATE_H
 
 #include <string>
 
@@ -8,6 +8,9 @@
 namespace coverage
 {
 
+/**
+ * A predicate for filtering on process name.
+ */
 class ProcessNamePredicate : public Predicate
 {
 public:
