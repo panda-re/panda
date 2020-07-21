@@ -309,9 +309,12 @@ target_long get_return_val_arm(CPUState *cpu){
 
 target_long get_return_val_mips(CPUState *cpu){
 #if defined(TARGET_MIPS)
-    // Return val is in $ra which is reg 31
+    // Return values are in $v0, $v1 (regs 2 and 3 respectively)
+    // $v0 only for almost all for Linux syscalls
+    // $v1 returns 2nd file descriptor only for pipe(2) - we'll just ignore this edge case
+    // See: https://www.linux-mips.org/wiki/Syscall
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    return static_cast<target_long>(env->active_tc.gpr[31]);
+    return static_cast<target_long>(env->active_tc.gpr[2]);
 #endif
     return 0;
 }
@@ -409,8 +412,10 @@ target_ulong calc_retaddr_linux_arm(CPUState* cpu, target_ulong pc) {
 
 target_ulong calc_retaddr_linux_mips(CPUState* cpu, target_ulong pc) {
 #if defined(TARGET_MIPS)
-    // TODO - no idea how mips does this
-    return pc+4;
+    // Normal calls: return address is in $ra which is reg 31
+    // System calls: address of instruction that caused the interrupt is in $EPC, a special register for co-processor 0
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    return env->CP0_EPC;
 #else
     // shouldnt happen
     assert (1==0);
@@ -552,9 +557,9 @@ uint64_t get_64_linux_arm(CPUState *cpu, uint32_t argnum) {
 
 uint64_t get_64_linux_mips(CPUState *cpu, uint32_t argnum) {
 #ifdef TARGET_MIPS
-   // Args are in a0-a3 which are registers 4-7
+   // Args are in $a0-$a3 which are registers 4-7
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    assert (argnum < 4);
+    assert (argnum < 5);
     return (((uint64_t) env->active_tc.gpr[argnum+4]) << 32) | (env->active_tc.gpr[argnum+5]);
 #else
     return 0;
@@ -774,7 +779,23 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
         }
     }
     return false;
-#elif defined(TARGET_PPC) || defined(TARGET_MIPS)
+#elif defined(TARGET_MIPS)
+
+    unsigned char buf[4] = {};
+
+    int res = panda_virtual_memory_read(cpu, pc, buf, 4);
+    if(res < 0){
+        return -1; // TODO: does caller even handle error case? Not every arch does it...
+    }
+
+    // 32-bit MIPS "syscall" instruction
+    if ((buf[3] ==  0x0c) && (buf[2] == 0x00) && (buf[1] == 0x00) && (buf[0] == 0x00)) {
+        return true;
+    }
+
+    return false;
+
+#elif defined(TARGET_PPC)
     return false;
 #else
     return false; // helpful as a catchall for other architectures

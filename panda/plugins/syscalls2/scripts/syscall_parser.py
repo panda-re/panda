@@ -58,8 +58,8 @@ KNOWN_ARCH = {
     },
     'mips': {
         'bits': 32,
-        'rt_callno_reg': 'env->active_tc.gpr[2]', # register holding syscall number at runtime
-        'rt_sp_reg': 'env->active_tc.gpr[29]',    # register holding stack pointer at runtime
+        'rt_callno_reg': 'env->active_tc.gpr[2]', # register holding syscall number at runtime ($v0)
+        'rt_sp_reg': 'env->active_tc.gpr[29]',    # register holding stack pointer at runtime ($sp)
         'qemu_target': 'defined(TARGET_MIPS)',    # qemu target name for this arch - used in guards
     }
 }
@@ -67,6 +67,7 @@ KNOWN_ARCH = {
 # This is the the maximum generic syscall number.
 # We use this to tell apart arch-specific system calls (see last lines in arm prototypes).
 MAX_GENERIC_SYSCALL = 1023
+MAX_GENERIC_SYSCALL_ALT = 5000 # Compensate for MIPS ABI offsets
 
 # Templates for per-arch typedefs and callback registration code files.
 # Generated files will contain definitions for multiple architectures in guarded #ifdef blocks.
@@ -310,9 +311,11 @@ class SysCall(object):
         if fields is None:
             raise SysCallDefError()
 
+        max_generic_syscall = MAX_GENERIC_SYSCALL_ALT if target_context['arch'] == 'mips' else MAX_GENERIC_SYSCALL
+
         # set properties inferred from prototype
         self.no = int(fields.group(1))
-        self.generic = False if self.no > MAX_GENERIC_SYSCALL else True
+        self.generic = False if self.no > max_generic_syscall else True
         self.rettype = fields.group(2)
         self.name = fields.group(3)
         self.args_raw = [arg.strip() for arg in fields.group(4).split(',')]
