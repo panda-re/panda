@@ -3,7 +3,7 @@
 
 #include "Predicate.h"
 
-namespace coverage2
+namespace coverage
 {
 
 class InKernelPredicate : public Predicate

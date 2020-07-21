@@ -5,7 +5,7 @@
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 
-namespace coverage2
+namespace coverage
 {
 
 ProcessNamePredicate::ProcessNamePredicate(const std::string& pname)

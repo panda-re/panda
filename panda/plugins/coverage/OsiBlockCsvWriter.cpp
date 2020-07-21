@@ -1,6 +1,6 @@
 #include "OsiBlockCsvWriter.h"
 
-namespace coverage2
+namespace coverage
 {
 
 OsiBlockCsvWriter::OsiBlockCsvWriter(const std::string &filename) : os(filename)

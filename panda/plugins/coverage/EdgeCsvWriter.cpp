@@ -1,6 +1,6 @@
 #include "EdgeCsvWriter.h"
 
-namespace coverage2
+namespace coverage
 {
 
 EdgeCsvWriter::EdgeCsvWriter(const std::string &filename) : os(filename)

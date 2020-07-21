@@ -7,7 +7,7 @@
 #include "OsiBlock.h"
 #include "RecordProcessor.h"
 
-namespace coverage2
+namespace coverage
 {
 
 class OsiBlockCsvWriter : public RecordProcessor<OsiBlock>

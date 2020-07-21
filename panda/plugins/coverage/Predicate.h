@@ -3,7 +3,7 @@
 
 #include "panda/plugin.h"
 
-namespace coverage2
+namespace coverage
 {
 
 /**

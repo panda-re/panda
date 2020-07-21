@@ -26,7 +26,7 @@ PANDAENDCOMMENT */
 
 #include "utils.h"
 
-using namespace coverage2;
+using namespace coverage;
 
 const char *DEFAULT_FILE = "coverage.csv";
 
@@ -101,7 +101,7 @@ static void enable_instrumentation(const std::string& filename)
 {
     log_message("Enabling Instrumentation\n");
     panda_do_flush_tb();
-    std::unique_ptr<panda_arg_list, void(*)(panda_arg_list*)> args(panda_get_args("coverage2"), panda_free_args);
+    std::unique_ptr<panda_arg_list, void(*)(panda_arg_list*)> args(panda_get_args("coverage"), panda_free_args);
 
     bool unique_output = panda_parse_bool_opt(args.get(), "unique", "output unique records only");
     std::string mode_arg = panda_parse_string_opt(args.get(), "mode", "asid-block", "coverage mode");
@@ -135,7 +135,7 @@ bool init_plugin(void *self)
 {
     PredicateBuilder pb;
 
-    panda_arg_list *args = panda_get_args("coverage2");
+    panda_arg_list *args = panda_get_args("coverage");
     std::string pc_arg = panda_parse_string_opt(args, "pc", "",
                                                 "program counter range");
     if ("" != pc_arg) {

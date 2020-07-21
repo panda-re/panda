@@ -4,7 +4,7 @@
 
 #include "OsiBlockGenerator.h"
 
-namespace coverage2
+namespace coverage
 {
 
 OsiBlockGenerator::OsiBlockGenerator(

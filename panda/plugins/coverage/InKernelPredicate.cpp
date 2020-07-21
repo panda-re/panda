@@ -1,6 +1,6 @@
 #include "InKernelPredicate.h"
 
-namespace coverage2
+namespace coverage
 {
 
 InKernelPredicate::InKernelPredicate(bool ik) : in_kernel(ik)

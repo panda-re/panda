@@ -1,6 +1,6 @@
 #include "AsidBlockGenerator.h"
 
-namespace coverage2
+namespace coverage
 {
 
 AsidBlockGenerator::AsidBlockGenerator(

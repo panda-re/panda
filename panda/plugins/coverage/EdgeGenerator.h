@@ -7,7 +7,7 @@
 #include "Edge.h"
 #include "RecordProcessor.h"
 
-namespace coverage2
+namespace coverage
 {
 
 class EdgeGenerator : public RecordProcessor<Block>

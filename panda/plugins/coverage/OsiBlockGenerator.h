@@ -6,7 +6,7 @@
 #include "OsiBlock.h"
 #include "RecordProcessor.h"
 
-namespace coverage2
+namespace coverage
 {
 
 class OsiBlockGenerator : public RecordProcessor<Block>

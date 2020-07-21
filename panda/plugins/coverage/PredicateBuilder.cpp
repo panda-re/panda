@@ -6,7 +6,7 @@
 #include "PcRangePredicate.h"
 #include "ProcessNamePredicate.h"
 
-namespace coverage2
+namespace coverage
 {
 
 PredicateBuilder::PredicateBuilder() : predicate(new AlwaysTruePredicate)

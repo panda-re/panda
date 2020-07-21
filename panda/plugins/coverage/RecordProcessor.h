@@ -1,7 +1,7 @@
 #ifndef COVERAGE2_RECORDPROCESSOR_H
 #define COVERAGE2_RECORDPROCESSOR_H
 
-namespace coverage2
+namespace coverage
 {
 
 template<typename RecordType>

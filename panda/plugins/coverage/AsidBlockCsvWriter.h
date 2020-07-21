@@ -7,7 +7,7 @@
 #include "AsidBlock.h"
 #include "RecordProcessor.h"
 
-namespace coverage2
+namespace coverage
 {
 
 class AsidBlockCsvWriter : public RecordProcessor<AsidBlock>

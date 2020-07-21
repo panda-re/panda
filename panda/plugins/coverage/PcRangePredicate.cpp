@@ -1,6 +1,6 @@
 #include "PcRangePredicate.h"
 
-namespace coverage2
+namespace coverage
 {
 
 PcRangePredicate::PcRangePredicate(target_ulong start, target_ulong end)

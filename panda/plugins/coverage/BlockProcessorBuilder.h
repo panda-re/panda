@@ -10,7 +10,7 @@
 #include "Edge.h"
 #include "RecordProcessor.h"
 
-namespace coverage2
+namespace coverage
 {
 
 class BlockProcessorBuilder

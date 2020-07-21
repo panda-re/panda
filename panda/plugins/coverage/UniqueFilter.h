@@ -6,7 +6,7 @@
 
 #include "RecordProcessor.h"
 
-namespace coverage2
+namespace coverage
 {
 
 template<typename RecordType>

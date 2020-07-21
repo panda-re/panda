@@ -1,6 +1,6 @@
 #include "AlwaysTruePredicate.h"
 
-namespace coverage2
+namespace coverage
 {
 
 bool AlwaysTruePredicate::eval(CPUState *cpu, TranslationBlock *tb)

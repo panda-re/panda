@@ -1,6 +1,6 @@
 #include "CompoundPredicate.h"
 
-namespace coverage2
+namespace coverage
 {
 
 CompoundPredicate::CompoundPredicate(std::unique_ptr<Predicate> p1,

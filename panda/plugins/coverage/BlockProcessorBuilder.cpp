@@ -13,7 +13,7 @@
 
 #include "BlockProcessorBuilder.h"
 
-namespace coverage2
+namespace coverage
 {
 
 BlockProcessorBuilder::BlockProcessorBuilder() :

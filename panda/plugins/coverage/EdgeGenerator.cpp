@@ -1,6 +1,6 @@
 #include "EdgeGenerator.h"
 
-namespace coverage2
+namespace coverage
 {
 
 static Block dummy {
