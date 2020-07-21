@@ -8,6 +8,7 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+#include <exception>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -46,6 +47,8 @@ void uninit_plugin(void *);
 }
 
 static std::unique_ptr<Predicate> predicate;
+static std::unique_ptr<RecordProcessor<Block>> processor;
+static std::unordered_set<Block> blocks;
 
 /**
  * Logs a message to stdout.
@@ -60,9 +63,6 @@ static void log_message(const char *fmt, ...)
     vprintf(msg_fmt.c_str(), arglist);
     va_end(arglist);
 }
-
-static std::unordered_set<Block> blocks;
-static std::unique_ptr<RecordProcessor<Block>> processor;
 
 static void callback(Block *block)
 {
@@ -101,15 +101,19 @@ static void enable_instrumentation(const std::string& filename)
 {
     log_message("Enabling Instrumentation\n");
     panda_do_flush_tb();
-    std::unique_ptr<panda_arg_list, void(*)(panda_arg_list*)> args(panda_get_args("coverage"), panda_free_args);
+    std::unique_ptr<panda_arg_list, void(*)(panda_arg_list*)> args(
+        panda_get_args("coverage"), panda_free_args);
 
-    bool unique_output = panda_parse_bool_opt(args.get(), "unique", "output unique records only");
-    std::string mode_arg = panda_parse_string_opt(args.get(), "mode", "asid-block", "coverage mode");
+    bool log_all_records = panda_parse_bool_opt(args.get(), "full",
+            "log all records instead of just uniquely identified ones");
+    log_message("log all records", PANDA_FLAG_STATUS(log_all_records));
+    std::string mode_arg = panda_parse_string_opt(args.get(), "mode",
+        "asid-block", "coverage mode");
 
     BlockProcessorBuilder b;
     b.with_filename(filename);
     b.with_output_mode(mode_arg);
-    if (unique_output) {
+    if (!log_all_records) {
         b.with_unique_filter();
     }
     processor = b.build();
@@ -135,30 +139,48 @@ bool init_plugin(void *self)
 {
     PredicateBuilder pb;
 
-    panda_arg_list *args = panda_get_args("coverage");
-    std::string pc_arg = panda_parse_string_opt(args, "pc", "",
-                                                "program counter range");
+    std::unique_ptr<panda_arg_list, void(*)(panda_arg_list*)> args(
+        panda_get_args("coverage"), panda_free_args);
+
+    // Parse PC range argument.
+    std::string pc_arg = panda_parse_string_opt(args.get(), "pc", "",
+        "program counter range");
     if ("" != pc_arg) {
         auto dash_idx = pc_arg.find("-");
-        auto start_pc = static_cast<target_ulong>(std::stoull(pc_arg.substr(0, dash_idx), NULL, 0));
-        auto end_pc = static_cast<target_ulong>(std::stoull(pc_arg.substr(dash_idx + 1), NULL, 0));
-        log_message("PC Range Filter = [" TARGET_FMT_lx ", " TARGET_FMT_lx "]\n", start_pc, end_pc);
-        pb.with_pc_range(start_pc, end_pc);
+        if (std::string::npos == dash_idx) {
+            log_message("Could not parse \"pc\" argument. Format: <Start PC>-<End PC>\n");
+            return false;
+        }
+        try {
+            auto start_pc = try_parse<target_ulong>(pc_arg.substr(0, dash_idx));
+            auto end_pc = try_parse<target_ulong>(pc_arg.substr(dash_idx + 1));
+            log_message("PC Range Filter = [" TARGET_FMT_lx ", " TARGET_FMT_lx "]\n", start_pc, end_pc);
+            pb.with_pc_range(start_pc, end_pc);
+        } catch (std::invalid_argument& e) {
+            log_message("Could not parse PC Range argument: %s\n", pc_arg.c_str());
+            return false;
+        } catch (std::overflow_error& e) {
+            log_message("PC range outside of valid address space for target.\n");
+            return false;
+        }
     }
 
-    std::string process_name = panda_parse_string_opt(args, "process_name", "", "the process to collect coverage from");
+    std::string process_name = panda_parse_string_opt(args.get(), "process_name", "", "the process to collect coverage from");
     if ("" != process_name) {
         log_message("Process Name Filter = %s\n", process_name.c_str());
         pb.with_process_name(process_name);
     }
 
-    std::string privilege = panda_parse_string_opt(args, "privilege", "all", "collect coverage for a specific privilege mode" );
+    std::string privilege = panda_parse_string_opt(args.get(), "privilege", "all", "collect coverage for a specific privilege mode" );
     if ("user" == privilege) {
         log_message("Privilege Filter = user mode\n");
         pb.in_kernel(false);
     } else if ("kernel" == privilege) {
         log_message("Privilege Filter = kernel mode\n");
         pb.in_kernel(true);
+    } else if ("all" != privilege) {
+        log_message("Privilege filter must be be user, kernel, or all.\n");
+        return false;
     }
 
     predicate = pb.build();
@@ -168,7 +190,7 @@ bool init_plugin(void *self)
     pcb.before_tcg_codegen = before_tcg_codegen;
     panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb);
 
-    bool start_disabled = panda_parse_bool_opt(args, "start_disabled",
+    bool start_disabled = panda_parse_bool_opt(args.get(), "start_disabled",
             "start the plugin with instrumentation disabled");
     log_message("start disabled", PANDA_FLAG_STATUS(start_disabled));
 

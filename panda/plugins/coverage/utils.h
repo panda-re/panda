@@ -1,6 +1,8 @@
 #ifndef COVERAGE2_UTILS_H
 #define COVERAGE2_UTILS_H
 
+#include <limits>
+#include <stdexcept>
 #include <vector>
 
 #include "panda/plugin.h"
@@ -71,5 +73,14 @@ void insert_call(TCGOp **after_op, F *func_ptr, A... args)
     call_args[ia.size()] = reinterpret_cast<TCGArg>(func_ptr);
 }
 
+template<typename T>
+T try_parse(const std::string& value)
+{
+    auto tmp = std::stoull(value, NULL, 0);
+    if (std::numeric_limits<T>::max() < tmp) {
+        throw std::overflow_error("Value is larger than target_ulong's maximum size.");
+    }
+    return static_cast<T>(tmp);
+}
 
 #endif
