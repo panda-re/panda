@@ -27,6 +27,8 @@ OsiModule* get_one_module(GArray *osimodules, unsigned int idx);
 
 OsiProc* get_one_proc(GArray *osiprocs, unsigned int idx);
 
+void cleanup_garray(GArray *g);
+
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 // gets the currently running process handle
