@@ -49,13 +49,11 @@ static void term_exit(void)
     fcntl(0, F_SETFL, old_fd0_flags);
 }
 
-extern bool panda_library_mode;
-
 static void qemu_chr_set_echo_stdio(Chardev *chr, bool echo)
 {
     struct termios tty;
 
-    if (panda_library_mode) {
+    if (panda_get_library_mode()) {
       return;
     }
 

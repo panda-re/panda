@@ -3,7 +3,7 @@ name: QEMU Checks
 on:
   push:
     branches:
-      - split_out_ci
+      - ci
   pull_request:
     branches:
       - master
@@ -16,9 +16,6 @@ jobs:
         target: [x86_64-softmmu, i386-softmmu, arm-softmmu, mips-softmmu] # NOTE: aarch64-softmmu currently unsupported
 
     steps:
-    - name: Docker login
-      run: docker login -u pandare -p ${{secrets.pandare_dockerhub}}
-
     - name: Fetch pre-built bionic docker container
       run: docker pull pandare/panda:latest
 
@@ -30,7 +27,7 @@ jobs:
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
         -v $(pwd)/update.sh:/update.sh --rm -t
         -e PANDA_TEST=yes --cap-add SYS_NICE
-        pandare/panda bash -c "/update.sh $GITHUB_REF clean;
+        pandare/panda bash -c "bash /update.sh $GITHUB_REF clean;
         cd /panda/build;
         ../build.sh ${{ matrix.target }}"
 

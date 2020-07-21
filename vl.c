@@ -162,7 +162,6 @@ int pandalog = 0;
 int panda_in_main_loop = 0;
 extern bool panda_abort_requested; // When set, we exit in after printing a help message
 bool panda_break_vl_loop_req = false; // When set, we break the main loop in vl.c
-bool panda_library_mode = false; // Set if using panda from python
 bool panda_aborted = false; // Set if panda was terminated abnormally (e.g., Ctrl-C)
 
 char *panda_snap_name = NULL;
