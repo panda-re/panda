@@ -64,6 +64,7 @@ typedef struct osi_proc_struct {
     target_pid_t ppid;
     char *name;
     OsiPage *pages;
+    uint64_t create_time;
 } OsiProc;
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
