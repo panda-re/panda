@@ -882,43 +882,83 @@ char* back_slice (Shad *shad, llvm::Instruction* insn)
               llvm::StringRef callee_name = callee->getName();
               char *stringified = hack(&callee_name);
 
+              // We'll render this as load(endian/ret, is_store, size, is_signed, value)
+              res_head += snprintf(res_head, res_tail-res_head, "load(");
+
               if (callee_name.startswith("helper_") && callee_name.endswith("_panda")) {
-                // Some LLVM memory load panda helper like ldub (load unsigned byte)
-                if (callee_name.equals("helper_ret_ldub_mmu_panda")) {
+                // Some LLVM memory load panda helper like ldub (load unsigned byte) - see helper_runtime.cpp:71
+                if (callee_name.equals("helper_ret")) {
+                  res_head += snprintf(res_head, res_tail-res_head, "0,");
+                }else if (callee_name.equals("helper_le")) {
+                  res_head += snprintf(res_head, res_tail-res_head, "1,");
+                }else if (callee_name.equals("helper_be")) {
+                  res_head += snprintf(res_head, res_tail-res_head, "2,");
+                }
+
+                if (callee_name.find("_ld") != llvm::StringRef::npos) {
+                  res_head += snprintf(res_head, res_tail-res_head, "0,"); // Load
+                }else{
+                  res_head += snprintf(res_head, res_tail-res_head, "1,"); // Store
+                }
+
+/*
+ldq - load qword          8
+ldul -load unsigned long  4
+lduw - load unsigned word 2
+ldub - load unsigned byte 1
+ldsl - load signed long
+ldsw - load signed word?
+ldsb - load signed byte
+stq - store qword
+stl - store long
+stw - store word
+stb - store byte
+*/
+
+                if (callee_name.find("q_mmu") != llvm::StringRef::npos) {
+                  res_head += snprintf(res_head, res_tail-res_head, "8,0,"); // qword, unsigned (sign doesn't matter)
+                }else if (callee_name.find("ul_mmu") != llvm::StringRef::npos) {
+                  res_head += snprintf(res_head, res_tail-res_head, "4,0,"); // long, unsigned
+                }else if (callee_name.find("sl_mmu") != llvm::StringRef::npos) {
+                  res_head += snprintf(res_head, res_tail-res_head, "4,1,"); // long, signed
+                }else if (callee_name.find("uw_mmu") != llvm::StringRef::npos) {
+                  res_head += snprintf(res_head, res_tail-res_head, "2,0,"); // word, unsigned
+                }else if (callee_name.find("sw_mmu") != llvm::StringRef::npos) {
+                  res_head += snprintf(res_head, res_tail-res_head, "2,1,"); // word, signed
+                }else if (callee_name.find("ub_mmu") != llvm::StringRef::npos) {
+                  res_head += snprintf(res_head, res_tail-res_head, "1,0,"); // byte, unsigned
+                }else if (callee_name.find("sb_mmu") != llvm::StringRef::npos) {
+                  res_head += snprintf(res_head, res_tail-res_head, "1,1,"); // byte, signed
+                }
+
                   // helper_ret_ldub_mmu_panda(%struct.CPUX86State* %0, i32 %tmp2_v6, i32 2, i64 3735928559)
                   // cpustate, addr, TCGMemOpIdx, retaddr
                   // addr is the address being read from (an IR var)
                   // retaddr is a constant
-                  // Generate load_[type](recurse to get address)
+                  // Recurse to get address
                   llvm::Value* read_addr = calli->getOperand(1); // Address loading from
                   if (llvm::isa<llvm::Instruction>(read_addr)) { // Reading result of an insn
                     llvm::Instruction *read_insn = llvm::dyn_cast<llvm::Instruction>(read_addr);
                     // Recurse on address we're loading from
                     char* rec_res = back_slice(shad, read_insn);
-                    res_head += snprintf(res_head, res_tail-res_head, "load_%s(%s)", stringified, rec_res);
+                    res_head += snprintf(res_head, res_tail-res_head, "%s", rec_res);
                     free(rec_res);
 
                   }else if (llvm::isa<llvm::ConstantInt>(read_addr)) { // Constant - don't recurse
                     const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(op);
                     uint64_t raw_value = CI->getZExtValue();
-                    res_head += snprintf(res_head, res_tail-res_head, "load_%s(%ld)", stringified, raw_value);
+                    res_head += snprintf(res_head, res_tail-res_head, "%ld", raw_value);
 
-                  }else{ //Unknown type being loaded
-                    res_head += snprintf(res_head, res_tail-res_head, "load_%s(TODO)", stringified);
-
+                  }else{ //Unknown type being loaded: todo
+                    res_head += snprintf(res_head, res_tail-res_head, "XXX_unknown");
                   }
+                }else{ // Call to something other than panda_helper... 
+                  res_head += snprintf(res_head, res_tail-res_head, "XXX_unk_%s", stringified);
                 }
-              }else{
-                res_head += snprintf(res_head, res_tail-res_head, "callXXX_%s", stringified);
+                res_head += snprintf(res_head, res_tail-res_head, ")"); // Close the load(...)
               }
             }
           }
-      }else{
-        //str << "errorXXX" << ")";
-        res_head += snprintf(res_head, res_tail-res_head, "errorXXX");
-        printf("Non-insn?\n");
-      }
-
     }else if (llvm::isa<llvm::BinaryOperator>(insn)) {
       // BINOP  - each arg is either const or insn. If insn recurse unless it's an 'ending' type
       llvm::BinaryOperator *binop = llvm::dyn_cast<llvm::BinaryOperator>(insn);

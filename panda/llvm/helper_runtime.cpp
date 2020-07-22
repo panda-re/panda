@@ -68,6 +68,16 @@ bool PandaCallMorphFunctionPass::runOnFunction(Function &F) {
  *** PandaHelperCallVisitor
  ***/
 
+// helper_[le: little endian OR be: big endian OR ret: return?]_[ld: load OR st: store][size/signed]_mmu
+// where size/signed is:
+// q: qword
+// ul: unsigned long
+// uw: unsigned word
+// ub: unsigned byte
+// sl: signed long
+// sw: signed word
+// sb: signed byte
+// note that for store ops, no sign is specified: just q/l/w/b
 const static std::set<std::string> append_panda_funcs{
     "helper_le_ldq_mmu", "helper_le_ldul_mmu", "helper_le_lduw_mmu",
     "helper_le_ldub_mmu", "helper_le_ldsl_mmu", "helper_le_ldsw_mmu",

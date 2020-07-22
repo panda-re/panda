@@ -12,7 +12,7 @@ CODE = b"""
 jmp .start
 
 .start:
-mov ebx, [ebx]
+mov bx, [ebx]
 cmp ebx, eax
 je .true
 
