@@ -10,6 +10,7 @@ on:
 
 jobs:
   run_taint_unit:
+    if: github.repository  == 'panda-re/panda'
     runs-on: self-hosted
     strategy:
       matrix:
@@ -19,19 +20,24 @@ jobs:
     - name: Fetch pre-built bionic docker container
       run: docker pull pandare/panda:latest
 
-    - name: Download docker/update.sh script from this commit
-      run: wget "https://raw.githubusercontent.com/panda-re/panda/${GITHUB_SHA}/panda/docker/update.sh"
+    - uses: actions/checkout@v1 # Checks out to ${RUNNER_WORKSPACE}/panda/
 
-    - name: Start container, run update.sh clean build, and run taint unit tests
+    # Note we test in /panda.new - ignoring old build artifacts in /panda
+    - name: Clean build in container with new source and run taint unit tests
       run: >-
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
-        --mount type=bind,source="$(pwd)"/update.sh,target=/update.sh
         --mount type=bind,source=/home/panda/regdir/qcows/wheezy_panda2.qcow2,target=/home/panda/regdir/qcows/wheezy_panda2.qcow2
         --mount type=bind,source=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2,target=/home/panda/regdir/qcows/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2
+        -v ${RUNNER_WORKSPACE}/panda/:/panda.new
+        --user $(id -u):$(id -g)
         --rm -t pandare/panda bash -c
-        "cp /update.sh /panda/update.sh;
-        chmod u+x /panda/update.sh;
-        /panda/update.sh $GITHUB_REF clean;
+        "mkdir /panda.new/build;
+        cd /panda.new/build;
+        ../build.sh ${{ matrix.target }}-softmmu
+        cd /panda.new/panda/python/core
+        pip3 install -q pycparser cffi colorama protobuf
+        python setup.py install >/dev/null
+
         git clone https://github.com/panda-re/panda_test;
         cd ./panda_test/tests/taint2;
         python3 taint2_multi_arch_record_or_replay.py --arch ${{ matrix.target }} --mode record;
@@ -41,5 +47,5 @@ jobs:
         echo -e '\nFailures:';
         if grep 'fail' taint2_log; then echo 'TEST FAILED!' && exit 1; else echo -e 'None.\nTEST PASSED!' && exit 0; fi"
 
-    - name: Cleanup images
+    - name: Cleanup images # TODO can we run once at the end?
       run: docker system prune -af --volumes

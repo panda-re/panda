@@ -3,7 +3,7 @@
 from sys import argv
 from panda import Panda, blocking, ffi
 
-panda = Panda(generic="i386")
+panda = Panda(generic="x86_64" if len(argv) < 2 else argv[1])
 
 @blocking
 def run_cmd():
