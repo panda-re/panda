@@ -105,8 +105,10 @@ static inline _retType _name(CPUState* env, target_ptr_t _paramName) { \
 }
 
 /**
- * @brief IMPLEMENT_OFFSET_GET is a macro for generating uniform
- * inlines for retrieving data based on a location+offset.
+ * @brief IMPLEMENT_OPTIONAL_OFFSET_GET is a macro for generating uniform
+ * inlines for retrieving data based on a location+offset as above, but
+ * it returns 0 if the underlying offset was not read in the first place
+ * and was optional.
  *
  * @deprecated Directly returning a value complicates error handling
  * and doesn't work for arrays or simple structs.
