@@ -105,6 +105,28 @@ static inline _retType _name(CPUState* env, target_ptr_t _paramName) { \
 }
 
 /**
+ * @brief IMPLEMENT_OFFSET_GET is a macro for generating uniform
+ * inlines for retrieving data based on a location+offset.
+ *
+ * @deprecated Directly returning a value complicates error handling
+ * and doesn't work for arrays or simple structs.
+ * Use IMPLEMENT_OFFSET_GETN instead.
+ */
+#define IMPLEMENT_OPTIONAL_OFFSET_GET(_name, _paramName, _retType, _offset, _errorRetValue) \
+static inline _retType _name(CPUState* env, target_ptr_t _paramName) { \
+    _retType _t; \
+    if (_offset == NULL)\
+        return 0; \
+    if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType), 0)) { \
+        return (_errorRetValue); \
+    } \
+    return (_t); \
+}
+
+
+
+
+/**
  * @brief IMPLEMENT_OFFSET_GET2L is a macro for generating uniform
  * inlines for retrieving data based on a *(location+offset1) + offset2.
  *
@@ -205,7 +227,7 @@ IMPLEMENT_OFFSET_GET(get_tgid, task_struct, int, ki.task.tgid_offset, 0)
 /**
  * @brief Retrieves the start_time from a task_struct.
  */
-IMPLEMENT_OFFSET_GET(get_start_time, task_struct, uint64_t, ki.task.start_time_offset, 0)
+IMPLEMENT_OPTIONAL_OFFSET_GET(get_start_time, task_struct, uint64_t, ki.task.start_time_offset, 0)
 
 
 /**
