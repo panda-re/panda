@@ -48,7 +48,6 @@ void uninit_plugin(void *);
 
 static std::unique_ptr<Predicate> predicate;
 static std::unique_ptr<RecordProcessor<Block>> processor;
-static std::unordered_set<Block> blocks;
 
 /**
  * Logs a message to stdout.
@@ -65,9 +64,13 @@ static void log_message(const char *fmt, ...)
     va_end(arglist);
 }
 
-static void callback(Block *block)
+static void callback(TranslationBlock *tb)
 {
-    processor->handle(*block);
+    Block block {
+        .addr = tb->pc,
+        .size = tb->size
+    };
+    processor->handle(block);
 }
 
 static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
@@ -78,17 +81,9 @@ static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
     }
 
     // Instrument!
-    Block block {
-        .addr = tb->pc,
-        .size = tb->size
-    };
-    auto result = blocks.insert(block);
-    auto block_ptr = &(*std::get<0>(result));
-
     TCGOp *insert_point = find_first_guest_insn();
     assert(NULL != insert_point);
-
-    insert_call(&insert_point, &callback, block_ptr);
+    insert_call(&insert_point, &callback, tb);
 }
 
 static void disable_instrumentation()
