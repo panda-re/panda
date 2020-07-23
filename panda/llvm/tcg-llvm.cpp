@@ -537,8 +537,6 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
                 helperFunc = Function::Create(
                         FunctionType::get(retType, argTypes, false),
                         Function::ExternalLinkage, funcName, m_module.get());
-                llvm::sys::DynamicLibrary::AddSymbol(funcName,
-                                                    (void*) helperAddrC);
             }
 
             result = m_builder.CreateCall(helperFunc,
