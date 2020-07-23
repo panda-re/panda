@@ -189,6 +189,7 @@ def main():
             copy_ppp_header("%s/%s" % (syscalls_gen_dir, header))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/syscalls2", "syscalls2_info.h"), no_record=True) # Get syscall_info_t, syscall_meta_t, syscall_argtype_t
     copy_ppp_header("%s/%s" % (syscalls_gen_dir, "syscalls_ext_typedefs.h")) # Get a few arch-agnostic typedefs for PPP headers
+    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/syscalls2_errors", "syscalls2_errors.h"))
 
     #   other PPP headers: callstack_instr. TODO: more
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/callstack_instr", "callstack_instr.h"))
@@ -271,6 +272,8 @@ ffi.cdef(''' typedef struct syscall_ctx {{
 ''')
 
 define_clean_header(ffi, "{inc}/syscalls_ext_typedefs.h")
+
+define_clean_header(ffi, "{inc}/syscalls2_errors.h")
 
 define_clean_header(ffi, "{inc}/callstack_instr.h")
 # END PPP headers
