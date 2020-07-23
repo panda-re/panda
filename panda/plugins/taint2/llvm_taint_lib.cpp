@@ -23,6 +23,7 @@ PANDAENDCOMMENT */
 #include <vector>
 
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/ExecutionEngine/JITSymbol.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Linker/Linker.h>
 #include <llvm/IRReader/IRReader.h>
@@ -109,11 +110,13 @@ static inline Constant *const_struct_ptr(LLVMContext &C, llvm::Type *ptrT, void 
     return ConstantExpr::getIntToPtr(const_uint64_ptr(C, ptr), ptrT);
 }
 
-static void taint_branch_run(Shad *shad, uint64_t src, uint64_t size)
+extern "C" {
+void taint_branch_run(Shad *shad, uint64_t src, uint64_t size)
 {
     // this arg should be the register number
     Addr a = make_laddr(src / MAXREGSIZE, 0);
     PPP_RUN_CB(on_branch2, a, size);
+}
 }
 
 void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store, uint64_t size) {
@@ -133,20 +136,46 @@ void taint_after_ld_run(uint64_t rega, uint64_t addr, uint64_t size) {
 }
 
 
-static void taint_copyRegToPc_run(Shad *shad, uint64_t src, uint64_t size)
+extern "C" {
+void taint_copyRegToPc_run(Shad *shad, uint64_t src, uint64_t size)
 {
     // this arg should be the register number
     Addr a = make_laddr(src / MAXREGSIZE, 0);
     PPP_RUN_CB(on_indirect_jump, a, size);
 }
+}
 
-extern "C" { extern TCGLLVMTranslator *tcg_llvm_translator; }
+extern TCGLLVMTranslator *tcg_llvm_translator;
+
+static llvm::Function *taintFunction(const char *function_name,
+        Module &module) {
+
+    llvm::Function *function = module.getFunction(function_name);
+    if(!function) {
+        std::cout << function_name << std::endl;
+        assert(false);
+        /*
+        llvm::LLVMContext &ctx = module.getContext();
+        function = Function::Create(
+            FunctionType::get(llvm::Type::getVoidTy(ctx), argTs, va_args),
+            GlobalVariable::ExternalLinkage, function_name, module);
+        MDNode *md = MDNode::get(ctx, ArrayRef<Metadata *>());
+        */
+    }
+    assert(function);
+    llvm::LLVMContext &ctx = module.getContext();
+    MDNode *md = MDNode::get(ctx, ArrayRef<Metadata *>());
+    function->front().front().setMetadata("tainted", md);
+    return function;
+}
+
 bool PandaTaintFunctionPass::doInitialization(Module &M) {
     // Add taint functions to module
     // First try binary relative path.
     char *exe = g_strdup(qemu_file);
     std::string bitcode = dirname(exe);
     g_free(exe);
+    // TODO: this bitcode load is unnecessary - remove and fix
     bitcode.append("/panda/plugins/taint2/panda_taint2_ops.bc");
 
     LLVMContext &ctx = M.getContext();
@@ -162,52 +191,47 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
         Err.print("qemu", llvm::errs());
         return false;
     }
-    std::cout << "taint2: Linking taint ops from " << bitcode << std::endl;
+    std::cout << "taint2: Linking taint ops" << std::endl;
 
+    /*
+    TODO: have we accounted for setting the tainted flag on everything in
+          this module?
     MDNode *md = MDNode::get(ctx, ArrayRef<Metadata *>());
     for (auto it = taintopmod->begin(); it != taintopmod->end(); it++) {
         if (it->size() == 0) continue;
         if (it->front().size() == 0) continue;
         it->front().front().setMetadata("tainted", md);
     }
+    */
 
     if(Linker::linkModules(M, std::move(taintopmod))) {
         std::cerr << "Linker::linkModules failed" << std::endl;
         return false;
     }
 
-    if(verifyModule(M, &llvm::errs())) {
-        std::cerr << "Failed to verify module" << std::endl;
-        return false;
-    }
-
-    PTV.deleteF = M.getFunction("taint_delete"),
-    PTV.mixF = M.getFunction("taint_mix"),
-    PTV.pointerF = M.getFunction("taint_pointer"),
-    PTV.mixCompF = M.getFunction("taint_mix_compute"),
-    PTV.mulCompF = M.getFunction("taint_mul_compute"),
-    PTV.parallelCompF = M.getFunction("taint_parallel_compute"),
-    PTV.copyF = M.getFunction("taint_copy");
-    PTV.sextF = M.getFunction("taint_sext");
-    PTV.selectF = M.getFunction("taint_select");
-    PTV.hostCopyF = M.getFunction("taint_host_copy");
-    PTV.hostMemcpyF = M.getFunction("taint_host_memcpy");
-    PTV.hostDeleteF = M.getFunction("taint_host_delete");
-
-    PTV.pushFrameF = M.getFunction("taint_push_frame");
-    PTV.popFrameF = M.getFunction("taint_pop_frame");
-    PTV.resetFrameF = M.getFunction("taint_reset_frame");
-    PTV.breadcrumbF = M.getFunction("taint_breadcrumb");
-
-    PTV.afterLdF = M.getFunction("taint_after_ld");
+    llvm::Type *instrT = M.getTypeByName("class.llvm::Instruction");
+    assert(instrT);
+    PTV.instrT = PointerType::getUnqual(instrT);
 
     llvm::Type *shadT = M.getTypeByName("class.Shad");
     assert(shadT);
     llvm::Type *shadP = PointerType::getUnqual(shadT);
 
-    llvm::Type *instrT = M.getTypeByName("class.llvm::Instruction");
-    assert(instrT);
-    PTV.instrT = PointerType::getUnqual(instrT);
+    PTV.mixF = taintFunction("taint_mix", M);
+    PTV.pointerF = taintFunction("taint_pointer", M);
+    PTV.mixCompF = taintFunction("taint_mix_compute", M);
+    PTV.parallelCompF = taintFunction("taint_parallel_compute", M);
+    PTV.mulCompF = taintFunction("taint_mul_compute", M);
+    PTV.copyF = taintFunction("taint_copy", M);
+    PTV.sextF = taintFunction("taint_sext", M);
+    PTV.selectF = taintFunction("taint_select", M);
+    PTV.hostCopyF = taintFunction("taint_host_copy", M);
+    PTV.hostMemcpyF = taintFunction("taint_host_memcpy", M);
+    PTV.hostDeleteF = taintFunction("taint_host_delete", M);
+    PTV.pushFrameF = taintFunction("taint_push_frame", M);
+    PTV.popFrameF = taintFunction("taint_pop_frame", M);
+    PTV.resetFrameF = taintFunction("taint_reset_frame", M);
+    PTV.breadcrumbF = taintFunction("taint_breadcrumb", M);
 
     PTV.llvConst = const_struct_ptr(ctx, shadP, &shad->llv);
     PTV.memConst = const_struct_ptr(ctx, shadP, &shad->ram);
@@ -215,66 +239,36 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.gsvConst = const_struct_ptr(ctx, shadP, &shad->gsv);
     PTV.retConst = const_struct_ptr(ctx, shadP, &shad->ret);
 
+    // TODO: is this right?  What is this used for?
     PTV.dataLayout = new DataLayout(&M);
 
     llvm::Type *memlogT = M.getTypeByName("struct.taint2_memlog");
     assert(memlogT);
     llvm::Type *memlogP = PointerType::getUnqual(memlogT);
 
-    PTV.memlogPopF = M.getFunction("taint_memlog_pop");
+    PTV.memlogPopF = taintFunction("taint_memlog_pop", M);
     PTV.memlogConst = const_struct_ptr(ctx, memlogP, taint_memlog);
 
     PTV.prevBbConst = const_i64p(ctx, &shad->prev_bb);
 
-    ExecutionEngine *EE = tcg_llvm_translator->getExecutionEngine();
-    vector<llvm::Type *> argTs{
-        shadP, llvm::Type::getInt64Ty(ctx), llvm::Type::getInt64Ty(ctx)
-    };
-    PTV.branchF = M.getFunction("taint_branch");
-    if (!PTV.branchF) { // insert
-        PTV.branchF = Function::Create(
-            FunctionType::get(llvm::Type::getVoidTy(ctx), argTs, false /*isVarArg*/),
-            GlobalVariable::ExternalLinkage, "taint_branch", &M);
-    }
-    assert(PTV.branchF);
-    EE->addGlobalMapping(PTV.branchF, (void *)taint_branch_run);
+    PTV.deleteF = taintFunction("taint_delete", M);
 
-    PTV.copyRegToPcF = M.getFunction("taint_copyRegToPc");
-    if (!PTV.copyRegToPcF) { // insert
-        PTV.copyRegToPcF = Function::Create(
-            FunctionType::get(llvm::Type::getVoidTy(ctx), argTs, false /*isVarArg*/),
-            GlobalVariable::ExternalLinkage, "taint_copyRegToPc", &M);
-    }
-    assert(PTV.copyRegToPcF);
-    EE->addGlobalMapping(PTV.copyRegToPcF, (void *)taint_copyRegToPc_run);
-#define ADD_MAPPING(func) \
-    EE->addGlobalMapping(M.getFunction(#func), (void *)(func));\
-    M.getFunction(#func)->deleteBody();
-    ADD_MAPPING(taint_delete);
-    ADD_MAPPING(taint_mix);
-    ADD_MAPPING(taint_pointer);
-    ADD_MAPPING(taint_mix_compute);
-    ADD_MAPPING(taint_mul_compute);
-    ADD_MAPPING(taint_parallel_compute);
-    ADD_MAPPING(taint_copy);
-    ADD_MAPPING(taint_sext);
-    ADD_MAPPING(taint_select);
-    ADD_MAPPING(taint_host_copy);
-    ADD_MAPPING(taint_host_memcpy);
-    ADD_MAPPING(taint_host_delete);
+    llvm::Type *int64T = llvm::Type::getInt64Ty(ctx);
 
-    ADD_MAPPING(taint_push_frame);
-    ADD_MAPPING(taint_pop_frame);
-    ADD_MAPPING(taint_reset_frame);
-    ADD_MAPPING(taint_breadcrumb);
+    std::vector<llvm::Type *> argTs({ shadP, int64T, int64T });
 
-    ADD_MAPPING(taint_memlog_pop);
+    PTV.branchF = Function::Create(
+        FunctionType::get(llvm::Type::getVoidTy(ctx), argTs, false),
+        GlobalVariable::ExternalLinkage, "taint_branch_run", M);
+    
+    PTV.copyRegToPcF = Function::Create(
+        FunctionType::get(llvm::Type::getVoidTy(ctx), argTs, false),
+        GlobalVariable::ExternalLinkage, "taint_copyRegToPc_run", M);
 
-    ADD_MAPPING(taint_after_ld);
-
-    //ADD_MAPPING(label_set_union);
-    //ADD_MAPPING(label_set_singleton);
-#undef ADD_MAPPING
+    argTs = { int64T, int64T, int64T };
+    PTV.afterLdF = Function::Create(
+        FunctionType::get(llvm::Type::getVoidTy(ctx), argTs, false),
+        GlobalVariable::ExternalLinkage, "taint_after_ld_run", M);
 
     std::cout << "taint2: Done initializing taint transformation." << std::endl;
 
@@ -285,8 +279,8 @@ bool PandaTaintFunctionPass::runOnFunction(Function &F) {
 #ifdef TAINT2_DEBUG
     //printf("\n\n%s\n", F.getName().str().c_str());
 #endif
-    if (F.front().front().getMetadata("tainted") ||
-            F.getName().startswith("taint")) { // already processed!!
+    if (F.getName().startswith("taint") ||
+            F.front().front().getMetadata("tainted")) { // already processed!!
         return false;
     }
     // Avoid Instrumentation in helper functions
@@ -1541,6 +1535,7 @@ void PandaTaintVisitor::portStoreHelper(Value *srcval, Value *dstval, int len) {
 */
 
 void PandaTaintVisitor::visitSelectInst(SelectInst &I) {
+/* TODO: fix select
     LLVMContext &ctx = I.getContext();
     Value *cond = I.getCondition();
     ZExtInst *ZEI = new ZExtInst(cond, Type::getInt64Ty(ctx), "", &I);
@@ -1554,6 +1549,7 @@ void PandaTaintVisitor::visitSelectInst(SelectInst &I) {
                 constWeakSlot(I.getFalseValue()),
                 ConstantInt::get(ctx, APInt(64, 0))));
     insertTaintSelect(I, &I, ZEI, selections);
+*/
 }
 
 void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I) {

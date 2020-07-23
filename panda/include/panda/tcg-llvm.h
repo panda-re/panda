@@ -123,13 +123,7 @@ extern "C++" {
 #include <llvm/Support/Threading.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Scalar/GVN.h>
-
-/*
-class TCGLLVMContextPrivate {
-
-    // Members that don't exist in new tcg-llvm
-    ExecutionEngine *m_executionEngine;
-*/
+#include <llvm/ExecutionEngine/Orc/LLJIT.h>
 
 /* Old TCGLLVMContextPrivate public methods
 
@@ -140,23 +134,27 @@ class TCGLLVMContextPrivate {
 class TCGLLVMTranslator {
    private:
     std::map<std::pair<int64_t, llvm::Type *>, llvm::Value *> m_envOffsetValues;
-    //const std::string m_bitcodeLibraryPath;
     std::unique_ptr<llvm::Module> m_module;
-    llvm::LLVMContext m_context;
+    std::unique_ptr<llvm::LLVMContext> m_context = std::make_unique<llvm::LLVMContext>();
     llvm::IRBuilder<> m_builder;
-    //TJITMemoryManager *m_jitMemoryManager;
-    llvm::ExecutionEngine *m_executionEngine;
     std::string m_CPUArchStateName;
     llvm::Value *m_envInt;
     llvm::StructType *m_CPUArchStateType = nullptr;
-    
+    llvm::ExitOnError ExitOnErr;
+
+    std::unique_ptr<llvm::orc::LLLazyJIT> jit = ExitOnErr(llvm::orc::LLLazyJITBuilder().create());
+
+    llvm::orc::JITTargetMachineBuilder JTMB = ExitOnErr(llvm::orc::JITTargetMachineBuilder::detectHost());
+
+    llvm::DataLayout DL = jit->getDataLayout();
+
     void delLabel(int idx);
 
     llvm::Value* getEnvOffsetPtr(int64_t offset, TCGTemp &temp);
 
     /* Function pass manager (used for optimizing the code) */
     llvm::legacy::FunctionPassManager *m_functionPassManager;
-    
+
     /* Count of generated translation blocks */
     int m_tbCount;
 
@@ -166,7 +164,7 @@ class TCGLLVMTranslator {
     TCGContext* m_tcgContext;
 
     TranslationBlock *m_tb;
-    
+
     /* Function for current translation block */
     llvm::Function *m_tbFunction;
 
@@ -209,8 +207,16 @@ class TCGLLVMTranslator {
 
     void initMemoryHelpers();
 
+    llvm::orc::LLLazyJIT *getJit() {
+        return &*jit;
+    }
+
+    llvm::orc::ExecutionSession &getExecutionSession() {
+        return jit->getExecutionSession();
+    }
+
     static TCGLLVMTranslator *create(const std::string &bitcodeLibraryPath);
-    
+
     /*
     llvm::LLVMContext &getContext() const {
         return m_module->getContext();
@@ -235,7 +241,7 @@ class TCGLLVMTranslator {
 
     /* Shortcuts */
     llvm::Type *intType(int w) {
-        return llvm::IntegerType::get(m_context, w);
+        return llvm::IntegerType::get(*m_context, w);
     }
     llvm::Type *intPtrType(int w) {
         return llvm::PointerType::get(intType(w), 0);
@@ -247,7 +253,7 @@ class TCGLLVMTranslator {
         return intPtrType(TCG_TARGET_REG_BITS);
     }
     llvm::FunctionType *tbType();
-    
+
     llvm::Constant* constInt(int bits, uint64_t value) {
         return llvm::ConstantInt::get(intType(bits), value);
     }
@@ -300,7 +306,7 @@ class TCGLLVMTranslator {
     /* Code generation */
     llvm::Value *generateQemuMemOp(bool ld, llvm::Value *value, llvm::Value *addr, int flags, int mem_index, int bits, uintptr_t ret_addr);
     //llvm::Value *generateQemuMemOp(bool ld, llvm::Value *value, llvm::Value *addr, int mem_index, int bits);
-    
+
     int generateOperation(int opc, const TCGOp *op, const TCGArg *args);
     //int generateOperation(const TCGOp *op);
 

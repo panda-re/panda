@@ -123,7 +123,15 @@ void PandaHelperCallVisitor::visitCallInst(CallInst &I) {
         name.append("_llvm");
     }
     Function *newFunction = m->getFunction(name);
-    assert(newFunction);
+    if(!newFunction) {
+        Function *theFunction = m->getFunction(f->getName());
+        if(theFunction) {
+            // TODO: add a warning here that can be enabled at compile time
+            return;
+        }
+        std::cerr << "Failed to get function " << name << std::endl;
+        assert(newFunction);
+    }
     I.setCalledFunction(newFunction);
     f = newFunction;
 
@@ -179,6 +187,8 @@ void init_llvm_helpers() {
     bitcode.append("/llvm-helpers-" TARGET_NAME ".bc");
 
     llvm::SMDiagnostic Err;
+    // TODO: is this bitcode load necessary? I think this one is, but verify
+    // exactly what is going on here.
     std::unique_ptr<llvm::Module> helpermod = parseIRFile(bitcode, Err, ctx);
     if (nullptr == helpermod) {
         std::string bitcode =
@@ -205,6 +215,8 @@ void init_llvm_helpers() {
     tcg_llvm_translator->writeModule(mod_file.str().c_str());*/
 
     // Create call morph pass and add to function pass manager
+    // TODO: this functionpass is also installed in tcg-llvm
+    // write a utility to install all fpms for a module
     llvm::FunctionPass *fp = new llvm::PandaCallMorphFunctionPass();
     fpm->add(fp);
     helpers_initialized = true;
