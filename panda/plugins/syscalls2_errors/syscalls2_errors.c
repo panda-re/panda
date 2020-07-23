@@ -12,7 +12,7 @@ PANDAENDCOMMENT */
 #include "syscalls2_errors.h"
 #include <stdlib.h>
 #include <stdio.h>
-bool debug = true;
+bool debug = false;
 
 /*
 * https://git.musl-libc.org/cgit/musl/tree/src/internal/syscall_ret.c?h=v1.1.15
