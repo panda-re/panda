@@ -131,9 +131,6 @@ llvm::PandaTaintFunctionPass *PTFP = nullptr;
 // becomes disabled when a query operation subsequently occurs
 bool taintEnabled = false;
 
-// Lets us know right when taint was disabled
-bool taintJustDisabled = false;
-
 // Taint memlog
 static taint2_memlog taint_memlog;
 

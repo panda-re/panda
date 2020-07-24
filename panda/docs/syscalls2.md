@@ -1,6 +1,8 @@
 System calls 2 plugin 
 ====
 
+Note this documentation is largely out of date - check [panda/plugins/syscalls2/README.md](/panda/plugins/syscalls2/README.md).
+
 The `syscalls2` plugin provides callbacks for system call entry and exit for a few operating systems and architectures.
 This kind of "operating system introspection" can be invaluable when reverse engineering.
 Without it, PANDA provides little more than a replay of an opaque intruction stream. 
@@ -35,8 +37,7 @@ Use
 
 If all you want to do is use this plugin, just read this bit. 
 
-Let's say you want to write a plugin that does something when certain Win7 system calls are encountered along a trace
-on replay (note that plugins only operate on replay).
+Let's say you want to write a plugin that does something when certain Win7 system calls are encountered along a trace of a replay.
 For instance, you might want to know when a process is created and when one is destroyed, performing some interrogation
 of the associated Windows data structures at those points in time to ascertain things like pid and process names.
 

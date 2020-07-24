@@ -14,6 +14,9 @@
 #include "qapi/error.h"
 #include "migration/vmstate.h"
 
+// for panda_{set/get}_library_mode
+#include "qemu/osdep.h"
+
 // call main_aux and run everything up to and including panda_callbacks_after_machine_init
 int panda_init(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_INIT);
@@ -24,7 +27,6 @@ extern int panda_in_main_loop;
 
 // vl.c
 extern char *panda_snap_name;
-extern bool panda_library_mode;
 extern bool panda_aborted;
 
 int panda_run(void) {
@@ -35,11 +37,6 @@ int panda_run(void) {
     panda_in_main_loop = 0;
     return 0;
 }
-
-void panda_set_library_mode(bool value) {
-    // XXX: This should probably be done via preprocessor macros instead
-    panda_library_mode = value;
-};
 
 extern int do_vm_stop(int state);
 
@@ -249,4 +246,10 @@ unsigned long garray_len(GArray *list) {
     if (list == NULL)
         return 0;
     return list->len;
+}
+
+// For enabling library mode
+void _panda_set_library_mode(const bool b) {
+  panda_set_library_mode(b);
+
 }

@@ -52,6 +52,7 @@ class FakeFile:
         Return how much HyperFD offset should be incremented by
         XXX what about writes past end of the file?
         '''
+        self.logger.info("FakeFD({self.filename}) writing {new_data} at offset {self.offset}")
         new_data  = self.contents[:offset]
         new_data += write_data
         new_data += self.contents[offset+len(new_data):]
@@ -103,8 +104,6 @@ class HyperFD:
         Returns (data read, count)
         '''
         assert(self.file)
-        if not self.file.filename: # Store filename into FakeFile object, just for debug printing
-            self.file.filename = self.filename
         data = self.file.read(size, self.offset)
         self.offset+=len(data)
         return (data, len(data))
@@ -131,12 +130,11 @@ class HyperFD:
         self.file.close()
         #del self # ???
 
-    def seek(offset, whence):
+    def seek(self, offset, whence):
         # From include/uapi/linux/fs.h
         SEEK_SET = 0
         SEEK_CUR = 1
         SEEK_END = 2
-        assert(not self.is_closed), "Seek on closed HFD"
 
         if whence == SEEK_SET:
             self.offset = offset
@@ -146,10 +144,6 @@ class HyperFD:
             self.offset = self.offset + offset
         else:
             raise ValueError(f"Unsupported whence {whence} in seek")
-
-    def close(self):
-        # Should we just delete it?
-        self.is_closed = True
 
     def __str__(self):
         return f"HyperFD with name {self.name} offset {self.offset} backed by {self.file}"
@@ -227,7 +221,7 @@ class FileFaker(FileHook):
 
         # XXX: We rename the files to real files to the guest kernel can manage FDs for us.
         #      this may need to use different real files depending on permissions requested
-        self.rename_file(filename, "/etc/passwd") # Stdout should always be writable?
+        self.rename_file(filename, "/etc/passwd")
 
     def _gen_fd_cb(self, name, fd_offset):
         '''
@@ -328,6 +322,12 @@ class FileFaker(FileHook):
 
             bytes_written = hfd.write(data)
             cpu.env_ptr.regs[0] = bytes_written
+
+        elif syscall_name == "lseek": # LLSEEK?
+            offset = args[2]
+            whence = args[3]
+            hfd.seek(offset, whence)
+
 
         elif syscall_name in ["dup2", "dup3"]:
             # add newfd

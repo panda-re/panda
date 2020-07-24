@@ -1,7 +1,7 @@
 # Don't forget to add your plugin to config.panda!
 
 # If you need custom CFLAGS or LIBS, set them up here
-CFLAGS+=-lm
+CFLAGS+= -std=c++1z
 # LIBS+=
 
 # The main rule for your plugin. List all object-file dependencies.

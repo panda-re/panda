@@ -18,8 +18,12 @@ Note that the module initialization will (intentionally) always fail. But
 the required offset will have been printed in the kernel log before that.
 
 To copy the source for the module in your VM in order to compile and run
-it, use the following oneliner:
-
+it, you can `git clone` the PANDA repository in order to get this directory, 
+you can download a snapshot of this directory from July 2020:
+```
+wget https://panda-re.mit.edu/kernelinfos/generator_july20.tgz
+```
+or you can try to use SVN to download this directory (seems to no longer work as of 2020):
 ```
 svn export https://github.com/panda-re/panda/trunk/panda/plugins/osi_linux/utils/kernelinfo
 ```

@@ -125,11 +125,14 @@ int process_counter=PROCESS_GOOD_NUM;
 // used to control spit_asidstory printout frequency
 bool *status_c=NULL;
 
-// divide replay up into this many temporal cells
+// number of cells in the ascii art figure representing window 
+// of last max_instr instructions
 uint32_t num_cells = 80;
-uint64_t min_instr;
 uint64_t max_instr = 0;
+
+
 double scale = 0;
+
 
 bool debug = false; 
 //bool debug = true;
@@ -151,8 +154,6 @@ typedef uint32_t Cell;
 typedef uint64_t Count;
 typedef uint64_t Instr;
     
-// if we see svchost more than once, e.g., we use this to append 1, 2, 3, etc to the name in our output
-static std::map<std::string, unsigned> name_count;
 
 //bool spit_out_total_instr_once = false;
 
@@ -193,16 +194,119 @@ struct ProcessData {
     ProcessData() : count(0), first(0), last(0) {}
 };
 
-std::map<NamePid, ProcessData> process_datas;
+
+
 typedef std::pair<NamePid, ProcessData> ProcessKV;
+
+// process ranges, as observed in time order
+vector<tuple<NamePid,uint64_t,uint64_t>> proc_ranges;
+
+
+
+// count for non-replay
+uint64_t instr_count = 0;
+
+// returns an instr count
+// either using rr (if we are in replay)
+// or by computing it if we are live
+uint64_t get_instr_count() {
+    if (rr_in_replay()) 
+        return rr_get_guest_instr_count();
+    else
+        return instr_count;
+}
+
+#if 0
+// for replay, this is meaningful
+// for live, we return either current max
+uint64_t get_total_num_instructions() {
+    if (rr_in_replay()) {
+        return replay_get_total_num_instructions();
+    }
+    else {
+        return instr
+    }
+}}
+#endif
 
 static unsigned digits(uint64_t num) {
     return std::to_string(num).size();
 }
 
+
+
+/* 
+   proc assumed to be ok.
+   register that we saw this proc at this instr count
+   updating first / last instr and cell counts
+*/
+void saw_proc(std::map<NamePid, ProcessData> &process_datas, 
+              std::map<std::string, unsigned> &name_count,
+              NamePid namepid, uint64_t instr_count) {
+
+    ProcessData &pd = process_datas[namepid];
+    if (pd.first == 0) {
+        // first encounter of this name/pid -- create reasonable shortname
+        pd.first = instr_count;
+        unsigned count = ++name_count[namepid.name];
+        std::string count_str(std::to_string(count));
+        std::string shortname(namepid.name);
+        if (shortname.size() >= 4 && shortname.compare(shortname.size() - 4, 4, ".exe") == 0) {
+            shortname = shortname.substr(0, shortname.size() - 4); 
+        }
+        if (count > 1) {
+            if (shortname.size() + count_str.size() > NAMELEN) {
+                shortname = shortname.substr(0, NAMELEN - count_str.size()) + count_str;
+            } else {
+                shortname += count_str;
+            }
+        } else if (shortname.size() > NAMELEN) {
+            shortname = shortname.substr(0, NAMELEN);
+        }
+        pd.shortname = "";
+        for (uint32_t i=0; i<shortname.length(); i++) {
+            if (isprint(shortname[i])) 
+                pd.shortname += shortname[i];
+            else
+                pd.shortname += '_';
+        }
+        pd.shortname = shortname;
+    }
+    pd.count++;
+    uint32_t cell = instr_count * scale;
+    pd.cells[cell]++;
+    pd.last = std::max(pd.last, instr_count);
+}
+
+
+void process_all_proc_ranges(std::map<NamePid, ProcessData> &process_datas,
+                             std::map<std::string, unsigned> &name_count) {
+
+    // XXX what on earth is all this /2 and then step/3 about?
+    uint64_t step = floor(1.0 / scale) / 2;
+
+    for (auto ptup : proc_ranges) {
+        auto [ namepid, i1, i2 ] = ptup;
+        saw_proc(process_datas, name_count, namepid, i1);
+        saw_proc(process_datas, name_count, namepid, i2);
+        for (uint64_t i=i1; i<=i2; i+=step/3) 
+            saw_proc(process_datas, name_count, namepid, i);
+    }
+}
+
+
 void spit_asidstory() {
+
+    std::map<NamePid, ProcessData> process_datas;
+    // if we see svchost more than once, e.g., we use this to append 1, 2, 3, etc to the name in our output
+    std::map<std::string, unsigned> name_count;
+
+    process_all_proc_ranges(process_datas, name_count);
+
     // if pandalog we dont write asidstory file
     if (pandalog) return;
+
+    printf ("no pandalog -- output to file named asidstory\n");
 
     FILE *fp = fopen("asidstory", "w");
 
@@ -273,7 +377,15 @@ static inline bool pid_ok(int pid) {
 }
 
 
+uint64_t check_proc_succ = 0;
+uint64_t check_proc_tot = 0;
+uint64_t check_proc_null = 0;
+
 static inline bool check_proc(OsiProc *proc) {
+
+    check_proc_tot++;
+
+    if (!proc) check_proc_null ++;
     if (!proc) return false;
     if (proc->asid == 0 || proc->asid == -1) 
         return false;
@@ -287,67 +399,22 @@ static inline bool check_proc(OsiProc *proc) {
     // we don't believe 1-character cmd names
     // are there any?
     if (strlen(proc->name) < 2) return false;
+    check_proc_succ++;
     return true;
-}
-
-
-/* 
-   proc assumed to be ok.
-   register that we saw this proc at this instr count
-   updating first / last instr and cell counts
-*/
-void saw_proc(CPUState *env, OsiProc *proc, uint64_t instr_count) {
-
-    const NamePid namepid(proc->name ? proc->name : "", proc->pid, proc->asid);        
-    ProcessData &pd = process_datas[namepid];
-    if (pd.first == 0) {
-        // first encounter of this name/pid -- create reasonable shortname
-        pd.first = instr_count;
-        unsigned count = ++name_count[namepid.name];
-        std::string count_str(std::to_string(count));
-        std::string shortname(namepid.name);
-        if (shortname.size() >= 4 && shortname.compare(shortname.size() - 4, 4, ".exe") == 0) {
-            shortname = shortname.substr(0, shortname.size() - 4); 
-        }
-        if (count > 1) {
-            if (shortname.size() + count_str.size() > NAMELEN) {
-                shortname = shortname.substr(0, NAMELEN - count_str.size()) + count_str;
-            } else {
-                shortname += count_str;
-            }
-        } else if (shortname.size() > NAMELEN) {
-            shortname = shortname.substr(0, NAMELEN);
-        }
-        pd.shortname = "";
-        for (uint32_t i=0; i<shortname.length(); i++) {
-            if (isprint(shortname[i])) 
-                pd.shortname += shortname[i];
-            else
-                pd.shortname += '_';
-        }
-        pd.shortname = shortname;
-    }
-    pd.count++;
-    uint32_t cell = instr_count * scale;
-    pd.cells[cell]++;
-    pd.last = std::max(pd.last, instr_count);
 }
 
 
 
 // proc was seen from instr i1 to i2
-void saw_proc_range(CPUState *env, OsiProc *proc, uint64_t i1, uint64_t i2) {
+// store that info for later use
+void save_proc_range(OsiProc *proc, uint64_t i1, uint64_t i2) {
     if (debug) 
         printf ("saw_proc_range [%s,%d] (%" PRId64 " ..%" PRId64 ")\n", 
                 proc->name, (int) proc->pid, i1, i2);
 
-     uint64_t step = floor(1.0 / scale) / 2;
-    // assume that last process was running from last asid change to basically now
-    saw_proc(env, proc, i1);
-    saw_proc(env, proc, i2);
-    for (uint64_t i=i1; i<=i2; i+=step/3) {
-        saw_proc(env, proc, i);
-    }
+    const NamePid namepid(proc->name ? proc->name : "", proc->pid, proc->asid);        
+    auto ptup = make_tuple(namepid, i1, i2);
+    proc_ranges.push_back(ptup);
 
     if (pandalog && !summary_mode) {
         Panda__AsidInfo ai;
@@ -365,17 +432,17 @@ void saw_proc_range(CPUState *env, OsiProc *proc, uint64_t i1, uint64_t i2) {
 }
 
 
-
 // when asid changes, try to figure out current proc, which can fail in which case
 // the before_block_exec callback will try again at the start of each subsequent
 // block until we succeed in determining current proc. 
 // also, if proc has changed, we record the fact that a process was seen to be running
 // from now back to last asid change
 bool asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+
     // some fool trying to use asidstory for boot? 
     if (new_asid == 0) return false;
     
-    uint64_t curr_instr = rr_get_guest_instr_count();
+    uint64_t curr_instr = get_instr_count();
     
     if (debug) printf ("\nasid changed @ %" PRIu64 " new_asid=%" PRIx64 "\n", (uint64_t) curr_instr, (uint64_t) new_asid);
     
@@ -385,18 +452,25 @@ bool asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong n
         
         // this means we knew the process during the last asid interval
         // so we'll record that info for later display
-        saw_proc_range(env, first_good_proc, instr_first_good_proc, curr_instr - 100);
+        save_proc_range(first_good_proc, instr_first_good_proc, curr_instr - 100);
         
         if (!pandalog) {        
             // just trying to arrange it so that we only spit out asidstory plot
             // for a cell once.
-            int cell = curr_instr * scale; 
-            bool anychange = false;
-            for (int i=0; i<cell; i++) {
-                if (!status_c[i]) anychange=true;
-                status_c[i] = true;
+
+            // only in replay do we know ahead of time scale
+            // and thus can know when we've updated a new time cell
+            if (rr_in_replay()) {
+                int cell = curr_instr * scale; 
+
+                bool anychange = false;
+                for (int i=0; i<cell; i++) {
+                    if (!status_c[i]) anychange=true;
+                    status_c[i] = true;
+                }
+                if (anychange) spit_asidstory();
             }
-            if (anychange) spit_asidstory();
+
         }
     }    
     else {
@@ -439,9 +513,21 @@ static inline bool process_same(OsiProc *proc1, OsiProc *proc2) {
 }
 
 
+uint64_t start_time, next_check_time;
 
 // before every bb, mostly just trying to figure out current proc 
 void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
+
+    if (!rr_in_replay()) {
+        // live -- spit asidstory once every second
+        struct timeval t;
+        gettimeofday(&t, NULL);        
+        if (t.tv_sec > next_check_time) {
+            spit_asidstory();
+            next_check_time = t.tv_sec;
+        }
+        instr_count += tb->icount; // num instr in this block
+    }
 
     if (panda_in_kernel(env)) 
         kernel_count ++;
@@ -450,10 +536,17 @@ void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     asid_count[panda_current_asid(env)] ++;   
 
     // NB: we only know max instr *after* replay has started which is why this is here
-    if (max_instr == 0) {
-        max_instr = replay_get_total_num_instructions();
+    if (rr_in_replay()) {
+        if (max_instr == 0) {
+            max_instr = replay_get_total_num_instructions();// get_total_num_instructions();
+            scale = ((double) num_cells) / ((double) max_instr); 
+            if (debug) cout << "max_instr = " << max_instr << " scale = " << scale << "\n"; // %" PRId64 "\n", max_instr);
+        }
+    }
+    else {
+        // live!
+        max_instr = instr_count;
         scale = ((double) num_cells) / ((double) max_instr); 
-        if (debug) printf("max_instr = %" PRId64 "\n", max_instr);
     }
     
     // all this is about figuring out if and when we know the current process
@@ -464,16 +557,16 @@ void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
         if (check_proc(current_proc)) {
             if (0 != strcmp(current_proc->name, first_good_proc->name)) {
                 // process name changed -- execve?
-                uint64_t curr_instr = rr_get_guest_instr_count();
-                saw_proc_range(env, first_good_proc, instr_first_good_proc, curr_instr - 100);                
+                uint64_t curr_instr = get_instr_count();
+                save_proc_range(first_good_proc, instr_first_good_proc, curr_instr - 100);                
 
                 if (debug) {
-                    cout << rr_get_guest_instr_count() << " process name changed while known\n";
+                    cout << curr_instr << " process name changed while known\n";
                     printf("old=%s new=%s\n", first_good_proc->name, current_proc->name);
                 }
                 
                 first_good_proc = copy_osiproc(current_proc, first_good_proc);
-                instr_first_good_proc = rr_get_guest_instr_count(); 
+                instr_first_good_proc = curr_instr;
                 process_mode = Process_suspicious;
                 process_counter = PROCESS_GOOD_NUM;
 
@@ -490,7 +583,7 @@ void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
         if (check_proc(current_proc)) {
             // first good proc 
             first_good_proc = copy_osiproc(current_proc, first_good_proc);
-            instr_first_good_proc = rr_get_guest_instr_count(); 
+            instr_first_good_proc = get_instr_count(); 
             process_mode = Process_suspicious;
             process_counter = PROCESS_GOOD_NUM;
             if (debug) printf ("before_bb: process_mode suspicious.  %d %s\n", (int) current_proc->pid, current_proc->name);
@@ -521,9 +614,11 @@ void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     }
     default: {}
     }
-    
+
     return;
 }
+
+
 
 
 
@@ -545,13 +640,21 @@ bool init_plugin(void *self) {
     
     summary_mode = panda_parse_bool_opt(args, "summary", "summary mode (for pandalog)");
     if (!pandalog) {
+        printf ("NOT pandalooging\n");
         status_c = (bool *) malloc(sizeof(bool) * num_cells);
         for (int i=0; i<num_cells; i++) status_c[i]=false;
+    }
+    else {
+        printf ("pandalogging on\n");
     }
 
     printf ("asidstory: summary_mode = %d\n", summary_mode);
     
-    min_instr = 0;   
+    struct timeval t;
+    gettimeofday(&t, NULL);
+
+    next_check_time = t.tv_sec+1;
+
     return true;
 }
 
@@ -564,6 +667,12 @@ void uninit_plugin(void *self) {
     }
 
     if (pandalog && summary_mode) {
+
+        std::map<NamePid, ProcessData> process_datas;
+        std::map<std::string, unsigned> name_count;
+        
+        process_all_proc_ranges(process_datas, name_count);
+        
         for (auto &kvp : process_datas) {
             auto &np = kvp.first;
             auto &pd = kvp.second;
@@ -582,5 +691,10 @@ void uninit_plugin(void *self) {
             free(ai);
         }
     }
+
+    spit_asidstory();
+
+    cout << "check_proc_succ = " << check_proc_succ << "\n";
+    cout << "check_proc_tot  = " << check_proc_tot << "\n";
 
 }

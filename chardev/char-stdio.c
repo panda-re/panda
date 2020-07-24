@@ -53,6 +53,10 @@ static void qemu_chr_set_echo_stdio(Chardev *chr, bool echo)
 {
     struct termios tty;
 
+    if (panda_get_library_mode()) {
+      return;
+    }
+
     stdio_echo_state = echo;
     tty = oldtty;
     if (!echo) {
