@@ -84,6 +84,12 @@ void insert_call(TCGOp **after_op, F *func_ptr, A... args)
         call_args[i] = ia.at(i);
     }
     call_args[ia.size()] = reinterpret_cast<TCGArg>(func_ptr);
+
+    // TCG Calls have flags that are used by the optimizer. The argument array
+    // may have left over data, so we have to explicitly zero the flags out. If
+    // we don't, some calls may get optimized out!
+    uint32_t* flag_ptr = reinterpret_cast<uint32_t*>(&call_args[ia.size() + 1]);
+    *flag_ptr = 0x0;
 }
 
 /**
