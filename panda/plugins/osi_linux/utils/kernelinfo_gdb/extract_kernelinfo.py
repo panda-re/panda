@@ -37,6 +37,8 @@ class KernelInfo(gdb.Command):
         version_a,version_b,version_c = release.split(".")
         if "-" in version_c: # version.c can be of the form 0-42-generic
             version_c = version_c.split("-")[0]
+        if version_c.endswith("+"): # Indicates it was built with symbols
+            version_c = version.c[:-1]
         print(f"version.a = {version_a}",file=file_out)
         print(f"version.b = {version_b}",file=file_out)
         print(f"version.c = {version_c}",file=file_out)
