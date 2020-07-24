@@ -156,8 +156,8 @@ static void tp_ls_iter(LabelSetP ls, int (*app)(uint32_t, void *), void *opaque)
 }
 
 // label this phys addr in memory with this label
-void taint2_label_ram(uint64_t pa, uint32_t l) {
-    Addr a = make_maddr(pa);
+void taint2_label_ram(uint64_t RamOffset, uint32_t l) {
+    Addr a = make_maddr(RamOffset);
     tp_label(a, l);
 }
 
@@ -181,8 +181,8 @@ void taint2_label_reg(int reg_num, int offset, uint32_t l) {
     tp_label(a, l);
 }
 
-void taint2_label_ram_additive(uint64_t pa, uint32_t l) {
-    Addr a = make_maddr(pa);
+void taint2_label_ram_additive(uint64_t RamOffset, uint32_t l) {
+    Addr a = make_maddr(RamOffset);
     tp_label_additive(a, l);
 }
 
@@ -196,8 +196,7 @@ void taint2_label_io_additive(uint64_t ia, uint32_t l) {
     tp_label_additive(a, l);
 }
 
-void label_byte(CPUState *cpu, target_ulong virt_addr, uint32_t label_num) {
-    hwaddr pa = panda_virt_to_phys(cpu, virt_addr);
+static void label_byte(target_ulong virt_addr, hwaddr pa, ram_addr_t RamOffset, uint32_t label_num) {
     if (pandalog) {
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.has_taint_label_virtual_addr = 1;
@@ -208,7 +207,7 @@ void label_byte(CPUState *cpu, target_ulong virt_addr, uint32_t label_num) {
         ple.taint_label_number = label_num;
         pandalog_write_entry(&ple);
     }
-    taint2_label_ram(pa, label_num);
+    taint2_label_ram(RamOffset, label_num);
 }
 
 
@@ -221,8 +220,14 @@ void taint2_add_taint_ram_pos(CPUState *cpu, uint64_t addr, uint32_t length, uin
                    "i.e., it isnt actually there.\n", addr+i);
             continue;
         }
+        ram_addr_t RamOffset = RAM_ADDR_INVALID;
+        if (PandaPhysicalAddressToRamOffset(&RamOffset, pa, false) != MEMTX_OK)
+        {
+            printf("can't label addr=0x%" PRIx64 " paddr=0x" TARGET_FMT_plx ": physical map is not RAM.\n", addr + i, pa);
+            continue;
+        }
         printf("taint2: adding positional taint label %d\n", i+start_label);
-        label_byte(cpu, addr+i, i+start_label);
+        label_byte(addr + i, pa, RamOffset, i+start_label);
     }
 }
 
@@ -237,9 +242,15 @@ void taint2_add_taint_ram_single_label(CPUState *cpu, uint64_t addr,
                    "i.e., it isnt actually there.\n", addr+i);
             continue;
         }
+        ram_addr_t RamOffset = RAM_ADDR_INVALID;
+        if (PandaPhysicalAddressToRamOffset(&RamOffset, pa, false) != MEMTX_OK)
+        {
+            printf("can't label addr=0x%" PRIx64 " paddr=0x" TARGET_FMT_plx ": physical map is not RAM.\n", addr + i, pa);
+            continue;
+        }
         //taint2_label_ram(pa, label);
         printf("taint2: adding single taint label %lu\n", label);
-        label_byte(cpu, addr+i, label);
+        label_byte(addr + i, pa, RamOffset, label);
     }
 }
 
@@ -248,10 +259,10 @@ uint32_t taint2_query(Addr a) {
     return ls ? ls->size() : 0;
 }
 
-// if phys addr pa is untainted, return 0.
+// if RAM offset is untainted, return 0.
 // else returns label set cardinality
-uint32_t taint2_query_ram(uint64_t pa) {
-    LabelSetP ls = tp_labelset_get(make_maddr(pa));
+uint32_t taint2_query_ram(uint64_t RamOffset) {
+    LabelSetP ls = tp_labelset_get(make_maddr(RamOffset));
     return ls ? ls->size() : 0;
 }
 //
@@ -327,8 +338,8 @@ extern "C" void taint2_query_set(Addr a, uint32_t *out) {
 	}
 }
 
-extern "C" void taint2_query_set_ram(uint64_t pa, uint32_t *out) {
-	auto set = tp_labelset_get(make_maddr(pa));
+extern "C" void taint2_query_set_ram(uint64_t RamOffset, uint32_t *out) {
+	auto set = tp_labelset_get(make_maddr(RamOffset));
 	if (set == nullptr || set->empty()) return;
 
 	auto it = set->begin();
@@ -361,8 +372,8 @@ uint32_t taint2_query_tcn(Addr a) {
     return tp_query_full(a).tcn;
 }
 
-uint32_t taint2_query_tcn_ram(uint64_t pa) {
-    return taint2_query_tcn(make_maddr(pa));
+uint32_t taint2_query_tcn_ram(uint64_t RamOffset) {
+    return taint2_query_tcn(make_maddr(RamOffset));
 }
 
 uint32_t taint2_query_tcn_reg(int reg_num, int offset) {
@@ -385,8 +396,8 @@ uint32_t taint2_num_labels_applied(void) {
     return labels_applied.size();
 }
 
-void taint2_delete_ram(uint64_t pa) {
-    Addr a = make_maddr(pa);
+void taint2_delete_ram(uint64_t RamOffset) {
+    Addr a = make_maddr(RamOffset);
     tp_delete(a);
 }
 
@@ -404,8 +415,8 @@ void taint2_labelset_addr_iter(Addr a, int (*app)(uint32_t el, void *stuff1), vo
     tp_ls_iter(tp_labelset_get(a), app, stuff2);
 }
 
-void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
-    tp_ls_iter(tp_labelset_get(make_maddr(pa)), app, stuff2);
+void taint2_labelset_ram_iter(uint64_t RamOffset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    tp_ls_iter(tp_labelset_get(make_maddr(RamOffset)), app, stuff2);
 }
 
 void taint2_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
@@ -553,10 +564,10 @@ void taint2_query_reg_full(uint32_t reg_num, uint32_t offset, QueryResult *qr) {
 }
 //
 // pass in query result pre-allocated
-void taint2_query_ram_full(uint64_t pa, QueryResult *qr) {
+void taint2_query_ram_full(uint64_t RamOffset, QueryResult *qr) {
 	// Hmm.  Doesn't this allocate a LabeSetP?
 	// are we leaking (if so we leaking in a bunch of other places)
-	Addr a = make_maddr(pa);
+	Addr a = make_maddr(RamOffset);
 	TaintData td = tp_query_full(a);
 	qr->num_labels = td.ls->size();
 	qr->tcn = td.tcn;

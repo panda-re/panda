@@ -82,6 +82,7 @@ PACKED_STRUCT(task_info) {
 	int comm_offset;			/**< Offset of the command name in `struct task_struct`. */
 	size_t comm_size;			/**< Size of the command name. */
 	int files_offset;			/**< Offset for open files information. */
+        int start_time_offset;                  /** offset of start_time */
 };
 
 /**
@@ -190,6 +191,7 @@ extern "C" {
 #endif
 
 int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki);
+void list_kernelinfo_groups(gchar const *file);
 #ifdef __cplusplus
 }
 #endif

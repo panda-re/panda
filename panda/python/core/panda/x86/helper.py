@@ -4,6 +4,7 @@ Work in progress
 '''
 
 import binascii
+from panda.utils import telescope
 
 R_EAX = 0
 R_ECX = 1
@@ -23,47 +24,6 @@ registers = {
     "EBP": R_EBP,
     "ESI": R_ESI,
     "EDI": R_EDI}
-
-def telescope(panda, cpu, val):
-    '''
-    Given a value, check if it's a pointer by seeing if we can map it to physical memory.
-    If so, recursively print where it points
-    to until
-    1) It points to a string (then print the string)
-    2) It's code (then disassembly the insn)
-    3) It's an invalid pointer
-    4) It's the 5th time we've done this, break
-
-    TODO Should use memory protections to determine string/code/data
-    '''
-    for _ in range(5): # Max chain of 5
-        potential_ptr =  panda.virt_to_phys(cpu, val)
-        if potential_ptr == 0xffffffff:
-            print()
-            return
-        else:
-            print("-> 0x{:0>8x}".format(val), end="\t")
-
-            if val == 0:
-                print()
-                return
-            # Consider that val points to a string. Test and print
-            str_data = panda.virtual_memory_read(cpu, val, 16)
-            str_val = ""
-            for d in str_data:
-                if d >= 0x20 and d < 0x7F:
-                    str_val += chr(d)
-                else:
-                    break
-            if len(str_val) > 2:
-                print("== \"{}\"".format(str_val))
-                return
-
-
-            data = str_data[:4] # Truncate to 4 bytes
-            val = int.from_bytes(data, byteorder='little')
-
-    print("-> ...")
 
 def dump_regs(panda, cpu):
     '''
@@ -94,9 +54,6 @@ def dump_stack(panda, cpu):
         telescope(panda, cpu, val)
 
 def dump_state(panda, cpu):
-    '''
-    X86 only (for now)
-    '''
     dump_regs(panda, cpu)
     print("")
     dump_stack(panda, cpu)

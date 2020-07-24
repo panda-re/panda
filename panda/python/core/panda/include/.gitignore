@@ -15,3 +15,6 @@ plugin.h
 query_res.h
 rr_api.h
 syscalls_ext_typedefs*.h
+callstack_instr.h
+osi_types.h
+syscalls2_info.h

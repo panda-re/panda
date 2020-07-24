@@ -26,6 +26,8 @@
 #include "exec/cpu_ldst.h"
 #include "exec/log.h"
 
+#include "panda/callbacks/cb-support.h"
+
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
 #endif
@@ -1249,12 +1251,12 @@ static void do_interrupt_all(X86CPU *cpu, int intno, int is_int,
     }
     if (env->cr[0] & CR0_PE_MASK) {
 #if !defined(CONFIG_USER_ONLY)
-        if (env->hflags & HF_SVMI_MASK) {
+        if (env->hflags & HF_SVMI_MASK) {                                   
             handle_even_inj(env, intno, is_int, error_code, is_hw, 0);
         }
 #endif
 #ifdef TARGET_X86_64
-        if (env->hflags & HF_LMA_MASK) {
+        if (env->hflags & HF_LMA_MASK) {                                    
             do_interrupt64(env, intno, is_int, error_code, next_eip, is_hw);
         } else
 #endif
@@ -1290,6 +1292,9 @@ void x86_cpu_do_interrupt(CPUState *cs)
     X86CPU *cpu = X86_CPU(cs);
     CPUX86State *env = &cpu->env;
 
+    qemu_log_mask(CPU_LOG_TB_IN_ASM,
+                  "An exception happend\n");
+
 #if defined(CONFIG_USER_ONLY)
     /* if user mode only, we simulate a fake exception
        which will be handled outside the cpu execution
@@ -1305,7 +1310,7 @@ void x86_cpu_do_interrupt(CPUState *cs)
         assert(env->old_exception == -1);
         do_vmexit(env, cs->exception_index - EXCP_VMEXIT, env->error_code);
     } else {
-        do_interrupt_all(cpu, cs->exception_index,
+        do_interrupt_all(cpu, cs->exception_index,           
                          env->exception_is_int,
                          env->error_code,
                          env->exception_next_eip, 0);
@@ -1373,6 +1378,9 @@ bool x86_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
                 /*record=*/rr_input_4((uint32_t*)&intno),
                 /*replay=*/if (!rr_replay_intno((uint32_t*)&intno)) { return false; },
                 /*location=*/ RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO);
+
+            // panda callback might swallow interrupt or exception
+            intno = panda_callbacks_before_handle_interrupt(cs, intno);
 
             qemu_log_mask(CPU_LOG_TB_IN_ASM,
                           "Servicing hardware INT=0x%02x\n", intno);

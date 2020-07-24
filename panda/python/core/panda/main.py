@@ -23,33 +23,36 @@ from .asyncthread import AsyncThread
 from .images import qcows
 from .plog import PLogReader
 from .utils import progress, make_iso, debug
+from .plugin_list import plugin_list
 
 # Mixins to extend Panda class functionality
 from .libpanda_mixins   import libpanda_mixins
 from .blocking_mixins   import blocking_mixins
-from .osi_mixins        import osi_mixins, osi_linux_mixins
+from .osi_mixins        import osi_mixins
 from .hooking_mixins    import hooking_mixins
 from .callback_mixins   import callback_mixins
 from .taint_mixins      import taint_mixins
 from .volatility_mixins import volatility_mixins
 from .pyperiph_mixins   import pyperipheral_mixins
+from .gdb_mixins        import gdb_mixins
 
 import pdb
 
-class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins, pyperipheral_mixins):
+class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins, pyperipheral_mixins, gdb_mixins):
     def __init__(self, arch="i386", mem="128M",
             expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
             os_version=None,
             qcow=None, # Qcow file to load
             os="linux",
             generic=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
+            raw_monitor = False, # When set, don't specify a -monitor. arg Allows for use of -nographic in args with ctrl-A+C for interactive qemu prompt.
             extra_args=[]):
         self.arch = arch
         self.mem = mem
         self.os = os_version
         self.os_type = os
         self.qcow = qcow
-        self.plugins = {}
+        self.plugins = plugin_list(self)
         self.expect_prompt = expect_prompt
 
         if isinstance(extra_args, str): # Extra args can be a string or array
@@ -61,6 +64,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hook
             q = qcows.get_qcow_info(generic)
             self.arch     = q.arch
             self.os       = q.os
+            self.mem      = q.default_mem # Might clobber a specified argument, but required if you want snapshots
             self.qcow     = qcows.get_qcow(generic)
             self.expect_prompt = q.prompt
             if q.extra_args:
@@ -70,7 +74,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hook
             #if self.qcow == "default": # Use arch / mem / os to find a qcow - XXX: merge with generic?
             #    self.qcow = pjoin(getenv("HOME"), ".panda", "%s-%s-%s.qcow" % (self.os, self.arch, mem))
             if not (exists(self.qcow)):
-                print("Missing qcow '{}' Please go create that qcow and give it to moyix!".format(self.qcow))
+                print("Missing qcow '{}' Please go create that qcow and give it to the PANDA maintainers".format(self.qcow))
 
         self.build_dir  = self._find_build_dir()
         environ["PANDA_DIR"] = self.build_dir
@@ -98,7 +102,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hook
         self.panda_args += extra_args
 
         # Configure memory options
-        self.panda_args.extend(['-m', mem])
+        self.panda_args.extend(['-m', self.mem])
 
         # Configure serial - if we have an expect_prompt set. Otherwise how can we know what guest cmds are outputting?
         if self.expect_prompt:
@@ -114,8 +118,10 @@ class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hook
         # Configure monitor - Always enabled for now
         self.monitor_file = NamedTemporaryFile(prefix="pypanda_m").name
         self.monitor_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.monitor_console = Expect(expectation=rb"(qemu)", quiet=True, consume_first=True)
-        self.panda_args.extend(['-monitor', 'unix:{},server,nowait'.format(self.monitor_file)])
+        self.raw_monitor = raw_monitor
+        if not self.raw_monitor:
+            self.monitor_console = Expect(expectation=rb"(qemu)", quiet=True, consume_first=True)
+            self.panda_args.extend(['-monitor', 'unix:{},server,nowait'.format(self.monitor_file)])
 
         self.running = threading.Event()
         self.started = threading.Event()
@@ -161,7 +167,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hook
         After initializing the class, the user has a chance to do something
         (TODO: what? register callbacks? It's something important...) before we finish initializing
         '''
-        self.libpanda.panda_set_library_mode(True)
+        self.libpanda._panda_set_library_mode(True)
 
         cenvp = ffi.new("char**", ffi.new("char[]", b""))
         len_cargs = ffi.cast("int", len(self.panda_args))
@@ -172,7 +178,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hook
         if self.serial_console and not self.serial_console.is_connected():
             self.serial_socket.connect(self.serial_file)
             self.serial_console.connect(self.serial_socket)
-        if not self.monitor_console.is_connected():
+        if not self.raw_monitor and not self.monitor_console.is_connected():
             self.monitor_socket.connect(self.monitor_file)
             self.monitor_console.connect(self.monitor_socket)
 
@@ -203,6 +209,12 @@ class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hook
         elif self.arch == "ppc":
             bits = 32
             endianness = "big"
+        elif self.arch == "mips":
+            bits = 32
+            endianness = "big"
+        elif self.arch == "mipsel":
+            bits = 32
+            endianness = "little"
 
         assert (bits is not None), "For arch %s: I need logic to figure out num bits" % self.arch
         assert (endianness is not None), "For arch %s: I need logic to figure out endianness" % self.arch
@@ -366,6 +378,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hook
         self.running.set()
         self.libpanda.panda_run() # Give control to panda
         self.running.clear() # Back from panda's execution (due to shutdown or monitor quit)
+        self.libpanda.panda_unload_plugins() # Unload c plugins - should be safe now since exec has stopped
 
     def end_analysis(self):
         '''
@@ -376,7 +389,8 @@ class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hook
         without needing to wait for tasks in the main async thread
         '''
         self.unload_plugins()
-        if self.running:
+        if self.running.is_set():
+            # If we were running, stop the execution and check if we crashed
             self.queue_async(self.stop_run, internal=True)
             self.queue_async(self.check_crashed, internal=True)
 
@@ -456,6 +470,14 @@ class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hook
         self.libpanda.panda_unload_plugin_by_name(name_ffi)
 
     def unload_plugins(self):
+        '''
+        Disable all python plugins and request to unload all c plugins
+        at the next main_loop_wait.
+
+        XXX: If called during shutdown/exit, c plugins won't be unloaded
+        because the next main_loop_wait will never happen. Instead, call
+        panda.panda_finish directly (which is done at the end of panda.run())
+        '''
         if debug:
             progress ("Disabling all python plugins, unloading all C plugins")
 
@@ -476,8 +498,12 @@ class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hook
 
     def current_sp(self, cpustate): # under construction
         if self.arch == "i386":
-            from x86.helper import R_ESP
+            # XXX see far more complex logic in panda/include/panda/common.h
+            from panda.x86.helper import R_ESP
             return cpustate.env_ptr.regs[R_ESP]
+        elif self.arch == "arm":
+            from panda.arm.helper import R_SP
+            return cpustate.env_ptr.regs[R_SP]
         else:
             raise NotImplemented("current_sp doesn't yet support arch {}".format(self.arch))
 
@@ -505,7 +531,7 @@ class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hook
             err = self.libpanda.panda_virtual_memory_read_external(env, addr, buf_a, length_a)
 
         if err < 0:
-            raise ValueError("Memory access failed") # TODO: make a PANDA Exn class
+            raise ValueError(f"Memory access failed with err={err}") # TODO: make a PANDA Exn class
 
         r = ffi.unpack(buf, length)
         if fmt == 'bytearray':
@@ -568,36 +594,6 @@ class Panda(libpanda_mixins, blocking_mixins, osi_linux_mixins, osi_mixins, hook
         name_c = ffi.new("char[]", bytes(name, "utf-8"))
         size = ceil(size/1024)*1024 # Must be page-aligned
         return self.libpanda.map_memory(name_c, size, address)
-
-    def ppp(self, plugin_name, attr):
-        '''
-        Decorator for plugin-to-plugin interface. Note this isn't in decorators.py
-        becuase it uses the panda object.
-
-        Example usage to register my_run with syscalls2 as a 'on_sys_open_return'
-        @ppp("syscalls2", "on_sys_open_return")
-        def my_fun(cpu, pc, filename, flags, mode):
-            ...
-        '''
-
-        if plugin_name not in self.plugins: # Could automatically load it?
-            raise ValueError(f"PPP canot use unknown plugin '{plugin_name}' - Did you load it with panda.load_plugin(\"{plugin_name}\")?")
-
-        if not hasattr(self, "ppp_registered_cbs"):
-            self.ppp_registered_cbs = []
-            # XXX: if  we don't save the cffi generated callbacks somewhere in Python,
-            # they may get garbage collected even though the c-code could still has a
-            # reference to them  which will lead to a crash. Keeping the reference count >0
-            # in python is the only use of this variable
-
-        def inner(func):
-            f = ffi.callback(attr+"_t")(func)  # Wrap the python fn in a c-callback.
-            self.ppp_registered_cbs.append(f) # Ensure callback isn't garbage collected
-
-            self.plugins[plugin_name].__getattr__("ppp_add_cb_"+attr)(f) # All PPP cbs start with this string
-            return f
-        return inner
-
 
     def read_str(self, cpu, ptr):
         '''

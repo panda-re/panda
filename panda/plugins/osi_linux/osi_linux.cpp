@@ -18,9 +18,11 @@
 #include "osi/os_intro.h"
 #include "utils/kernelinfo/kernelinfo.h"
 #include "osi_linux.h"
+#include "syscalls2/syscalls_ext_typedefs.h"
 
 #include "default_profile.h"
 #include "kernel_2_4_x_profile.h"
+#include "kernelinfo_downloader.h"
 
 /*
  * Functions interfacing with QEMU/PANDA should be linked as C.
@@ -31,17 +33,22 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 #include "osi_linux_int_fns.h"
 }
+void on_first_syscall(CPUState *cpu, target_ulong pc, target_ulong callno);
 
 void on_get_processes(CPUState *env, GArray **out);
 void on_get_process_handles(CPUState *env, GArray **out);
 void on_get_current_process(CPUState *env, OsiProc **out_p);
 void on_get_current_process_handle(CPUState *env, OsiProcHandle **out_p);
 void on_get_process(CPUState *, const OsiProcHandle *, OsiProc **);
-void on_get_libraries(CPUState *env, OsiProc *p, GArray **out);
+void on_get_mappings(CPUState *env, OsiProc *p, GArray **out);
 void on_get_current_thread(CPUState *env, OsiThread *t);
 
 struct kernelinfo ki;
 struct KernelProfile const *kernel_profile;
+
+extern const char *qemu_file;
+static bool osi_initialized;
+static bool first_osi_check = true;
 
 /* ******************************************************************
  Helpers
@@ -142,12 +149,13 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
                      {ki.task.real_parent_offset, ki.task.pid_offset});
 
     // Convert asid to physical to be able to compare it with the pgd register.
-    p->asid = panda_virt_to_phys(cpu, p->asid);
+    p->asid = p->asid ? panda_virt_to_phys(cpu, p->asid) : (target_ulong) NULL;
     p->taskd = kernel_profile->get_group_leader(cpu, task_addr);
     p->name = get_name(cpu, task_addr, p->name);
     p->pid = get_tgid(cpu, task_addr);
     //p->ppid = get_real_parent_pid(cpu, task_addr);
     p->pages = NULL;  // OsiPage - TODO
+    p->create_time = get_start_time(cpu, task_addr);
 }
 
 /**
@@ -202,6 +210,70 @@ void fill_osithread(CPUState *env, OsiThread *t,
 }
 
 /* ******************************************************************
+ Initialization logic
+****************************************************************** */
+/**
+ * @brief When necessary, after the first syscall ensure we can read current task
+ */
+
+void on_first_syscall(CPUState *cpu, target_ulong pc, target_ulong callno) {
+    // Make sure we can now read current. Note this isn't like all the other on_...
+    // functions that are registered as OSI callbacks
+    assert(can_read_current(cpu) && "Couldn't find current task struct at first syscall");
+    if (!osi_initialized)
+      LOG_INFO(PLUGIN_NAME " initialization complete.");
+    osi_initialized=true;
+    PPP_REMOVE_CB("syscalls2", on_all_sys_enter, on_first_syscall);
+}
+
+/**
+ * @brief Test to see if we can read the current task struct
+ */
+inline bool can_read_current(CPUState *cpu) {
+    target_ptr_t ts = kernel_profile->get_current_task_struct(cpu);
+    return 0x0 != ts;
+}
+
+/**
+ * @brief Check if we've successfully initialized OSI for the guest.
+ * Returns true if introspection is available.
+ *
+ * If introspection is unavailable at the first check, this will register a PPP-style
+ * callback with syscalls2 to try reinitializing at the first syscall.
+ *
+ * If that fails, then we raise an assertion because OSI has really failed.
+ */
+bool osi_guest_is_ready(CPUState *cpu, void** ret) {
+
+    if (osi_initialized) // If osi_initialized is set, the guest must be ready
+      return true;      // or, if it isn't, the user wants an assertion error
+
+
+    // If it's the very first time, try reading current, if we can't
+    // wait until first sycall and try again
+    if (first_osi_check) {
+        first_osi_check = false;
+
+        // Try to load current, if it works, return true
+        if (can_read_current(cpu)) {
+            // Disable on_first_syscall PPP callback because we're all set
+            PPP_REMOVE_CB("syscalls2", on_all_sys_enter, on_first_syscall);
+            LOG_INFO(PLUGIN_NAME " initialization complete.");
+            osi_initialized=true;
+            return true;
+        }
+
+        // We can't read the current task right now. This isn't a surprise,
+        // it could be happening because we're in boot.
+        // Wait until on_first_syscall runs, everything should work then
+        LOG_INFO(PLUGIN_NAME " cannot find current task struct. Deferring OSI initialization until first syscall.");
+    }
+    // Not yet initialized, just set the caller's result buffer to NULL
+    ret = NULL;
+    return false;
+}
+
+/* ******************************************************************
  PPP Callbacks
 ****************************************************************** */
 
@@ -210,6 +282,7 @@ void fill_osithread(CPUState *env, OsiThread *t,
  *
  */
 void on_get_processes(CPUState *env, GArray **out) {
+    if (!osi_guest_is_ready(env, (void**)out)) return;
     // instantiate and call function from get_process_info template
     get_process_info<>(env, out, fill_osiproc, free_osiproc_contents);
 }
@@ -218,6 +291,8 @@ void on_get_processes(CPUState *env, GArray **out) {
  * @brief PPP callback to retrieve process handles from the running OS.
  */
 void on_get_process_handles(CPUState *env, GArray **out) {
+    if (!osi_guest_is_ready(env, (void**)out)) return;
+
     // instantiate and call function from get_process_info template
     get_process_info<>(env, out, fill_osiprochandle, free_osiprochandle_contents);
 }
@@ -226,6 +301,8 @@ void on_get_process_handles(CPUState *env, GArray **out) {
  * @brief PPP callback to retrieve info about the currently running process.
  */
 void on_get_current_process(CPUState *env, OsiProc **out) {
+    if (!osi_guest_is_ready(env, (void**)out)) return;
+
     static target_ptr_t last_ts = 0x0;
     static target_ptr_t cached_taskd = 0x0;
     static target_ptr_t cached_asid = 0x0;
@@ -233,6 +310,7 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
     static target_ptr_t cached_pid = -1;
     static target_ptr_t cached_ppid = -1;
     static void *cached_comm_ptr = NULL;
+    static uint64_t cached_start_time = 0;
     // OsiPage - TODO
 
     OsiProc *p = NULL;
@@ -252,6 +330,7 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
             strncpy(cached_name, p->name, ki.task.comm_size);
             cached_pid = p->pid;
             cached_ppid = p->ppid;
+	    cached_start_time = p->create_time;
             cached_comm_ptr = panda_map_virt_to_host(
                 env, ts + ki.task.comm_offset, ki.task.comm_size);
         } else {
@@ -261,6 +340,7 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
             p->pid = cached_pid;
             p->ppid = cached_ppid;
             p->pages = NULL;
+	    p->create_time = cached_start_time;
         }
     }
     *out = p;
@@ -270,6 +350,8 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
  * @brief PPP callback to the handle of the currently running process.
  */
 void on_get_current_process_handle(CPUState *env, OsiProcHandle **out) {
+    if (!osi_guest_is_ready(env, (void**)out)) return;
+
     OsiProcHandle *p = NULL;
     target_ptr_t ts = kernel_profile->get_current_task_struct(env);
     if (ts) {
@@ -284,6 +366,8 @@ void on_get_current_process_handle(CPUState *env, OsiProcHandle **out) {
  * handle.
  */
 void on_get_process(CPUState *env, const OsiProcHandle *h, OsiProc **out) {
+    if (!osi_guest_is_ready(env, (void**)out)) return;
+
     OsiProc *p = NULL;
     if (h != NULL && h->taskd != (target_ptr_t)NULL) {
         p = (OsiProc *)g_malloc(sizeof(OsiProc));
@@ -301,7 +385,9 @@ void on_get_process(CPUState *env, const OsiProcHandle *h, OsiProc **out) {
  *
  * @todo Remove duplicates from results.
  */
-void on_get_libraries(CPUState *env, OsiProc *p, GArray **out) {
+void on_get_mappings(CPUState *env, OsiProc *p, GArray **out) {
+    if (!osi_guest_is_ready(env, (void**)out)) return;
+
     OsiModule m;
     target_ptr_t vma_first, vma_current;
 
@@ -340,6 +426,8 @@ void on_get_current_thread(CPUState *env, OsiThread **out) {
     static target_pid_t cached_tid = 0;
     static target_pid_t cached_pid = 0;
 
+    if (!osi_guest_is_ready(env, (void**)out)) return;
+
     OsiThread *t = NULL;
     target_ptr_t ts = kernel_profile->get_current_task_struct(env);
     if (0x0 != ts) {
@@ -361,6 +449,8 @@ void on_get_current_thread(CPUState *env, OsiThread **out) {
  * @brief PPP callback to retrieve the process pid from a handle.
  */
 void on_get_process_pid(CPUState *env, const OsiProcHandle *h, target_pid_t *pid) {
+    if (!osi_guest_is_ready(env, (void**)pid)) return;
+
     if (h->taskd == NULL || h->taskd == (target_ptr_t)-1) {
         *pid = (target_pid_t)-1;
     } else {
@@ -373,6 +463,7 @@ void on_get_process_pid(CPUState *env, const OsiProcHandle *h, target_pid_t *pid
  */
 void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *ppid) {
     struct_get_ret_t UNUSED(err);
+    if (!osi_guest_is_ready(cpu, (void**)ppid)) return;
 
     if (h->taskd == (target_ptr_t)-1) {
         *ppid = (target_pid_t)-1;
@@ -393,31 +484,31 @@ void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *pp
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
     target_ptr_t ts_current = p->taskd;
     char *filename = NULL;
-    const char *err = NULL;
+    //const char *err = NULL;
 
     if (ts_current == 0) {
-        err = "can't get task";
+        //err = "can't get task";
         goto end;
     }
 
     filename = get_fd_name(env, ts_current, fd);
     if (unlikely(filename == NULL)) {
-        err = "can't get filename";
+        //err = "can't get filename";
         goto end;
     }
 
     filename = g_strchug(filename);
     if (unlikely(g_strcmp0(filename, "") == 0)) {
-        err = "filename is empty";
+        //err = "filename is empty";
         g_free(filename);
         filename = NULL;
         goto end;
     }
 
 end:
-    if (unlikely(err != NULL)) {
-        LOG_ERROR("%s -- (pid=%d, fd=%d)", err, (int)p->pid, fd);
-    }
+    //if (unlikely(err != NULL)) {
+    //    LOG_ERROR("%s -- (pid=%d, fd=%d)", err, (int)p->pid, fd);
+    //}
     return filename;
 }
 
@@ -457,7 +548,7 @@ int osi_linux_test(CPUState *env, target_ulong oldval, target_ulong newval) {
                  p->pid, p->ppid, p->name, p->asid, p->taskd);
 #if defined(OSI_LINUX_TEST_MODULES)
         GArray *ms = NULL;
-        on_get_libraries(env, p, &ms);
+        on_get_mappings(env, p, &ms);
         if (ms != NULL) {
             for (uint32_t j = 0; j < ms->len; j++) {
                 OsiModule *m = &g_array_index(ms, OsiModule, j);
@@ -552,15 +643,62 @@ bool init_plugin(void *self) {
 
     // Read the name of the kernel configuration to use.
     panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
-    char *kconf_file = g_strdup(panda_parse_string_req(plugin_args, "kconf_file", "file containing kernel configuration information"));
-    char *kconf_group = g_strdup(panda_parse_string_req(plugin_args, "kconf_group", "kernel profile to use"));
+    char *kconf_file = g_strdup(panda_parse_string_opt(plugin_args, "kconf_file", NULL, "file containing kernel configuration information"));
+    char *kconf_group = g_strdup(panda_parse_string_opt(plugin_args, "kconf_group", NULL, "kernel profile to use"));
+    osi_initialized = panda_parse_bool_opt(plugin_args, "load_now", "Raise a fatal error if OSI cannot be initialized immediately");
     panda_free_args(plugin_args);
+
+    if (!kconf_file) {
+        // Search build dir and installed location for kernelinfo.conf
+        gchar *progname = realpath(qemu_file, NULL);
+        gchar *progdir = g_path_get_dirname(progname);
+        gchar *kconffile_canon = NULL;
+        uint8_t UNUSED(kconffile_try) = 1;
+
+        if (kconffile_canon == NULL) {  // from build dir
+            if (kconf_file != NULL) g_free(kconf_file);
+            kconf_file = g_build_filename(progdir, "panda", "plugins", "osi_linux", "kernelinfo.conf", NULL);
+            LOG_INFO("Looking for kconf_file attempt %u: %s", kconffile_try++, kconf_file);
+            kconffile_canon = realpath(kconf_file, NULL);
+        }
+        if (kconffile_canon == NULL) {  // from etc dir (installed location)
+            if (kconf_file != NULL) g_free(kconf_file);
+            kconf_file = g_build_filename(CONFIG_QEMU_CONFDIR, "osi_linux", "kernelinfo.conf", NULL);
+            LOG_INFO("Looking for kconf_file attempt %u: %s", kconffile_try++, kconf_file);
+            kconffile_canon = realpath(kconf_file, NULL);
+        }
+
+        g_free(progdir);
+        free(progname);
+        assert(kconffile_canon != NULL && "Could not find default kernelinfo.conf file");
+        free(kconffile_canon);
+    }
+
+    if (!kconf_group) {
+        kconf_group = g_strdup_printf("%s:%d", panda_os_variant, panda_os_bits);
+    }
+
 
     // Load kernel offsets.
     if (read_kernelinfo(kconf_file, kconf_group, &ki) != 0) {
         LOG_ERROR("Failed to read group %s from %s.", kconf_group, kconf_file);
-        goto error;
+        if (download_kernelinfo(kconf_file, kconf_group) == 0) {
+            LOG_INFO("Downloaded file from panda-re.mit.edu");
+            if (read_kernelinfo(kconf_file, kconf_group, &ki) != 0) {
+                LOG_ERROR("Downloaded file didn't contain correct group");
+                goto error;
+            }
+        }else{
+            LOG_ERROR("Download failed. No such file.");
+            // Log all valid groups in your kconf file - user might've just specified the argument wrong
+            printf("Valid kconf_groups in %s:\n", kconf_file);
+            list_kernelinfo_groups(kconf_file);
+            printf("\n");
+            goto error;
+        }
     }
+    // LOG_INFO puts \n at end of message; printf has to do so explicitly
+    printf ("Read kernel info from group \"%s\" of file \"%s\".\n", kconf_group, kconf_file);
     LOG_INFO("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
     g_free(kconf_file);
     g_free(kconf_group);
@@ -576,13 +714,21 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
     PPP_REG_CB("osi", on_get_current_process_handle, on_get_current_process_handle);
     PPP_REG_CB("osi", on_get_process, on_get_process);
-    PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
+    PPP_REG_CB("osi", on_get_mappings, on_get_mappings);
     PPP_REG_CB("osi", on_get_current_thread, on_get_current_thread);
     PPP_REG_CB("osi", on_get_process_pid, on_get_process_pid);
     PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);
-    LOG_INFO(PLUGIN_NAME " initialization complete.");
+
+    // By default, we'll request syscalls2 to load on first syscall
+    if (!osi_initialized) {
+      panda_require("syscalls2");
+      PPP_REG_CB("syscalls2", on_all_sys_enter, on_first_syscall);
+    }
+
+
     return true;
 #else
+    fprintf(stderr, PLUGIN_NAME "Unsupported guest architecture\n");
     goto error;
 #endif
 

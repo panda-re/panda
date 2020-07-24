@@ -316,6 +316,10 @@ def write_prototypes(fsigs, fnums, nnums, config, outdir):
 
     # directly match numbers from fnums_r to signatures
     for number, function in sorted(fnums_r.items()):
+        # sidestep ptregs issue
+        foo = re.search("(.*)/ptregs", function)
+        if foo:
+            function = foo.groups()[0]            
         if function in fsigs:
             numsigs[number] = fsigs[function]
             fsigs.pop(function)

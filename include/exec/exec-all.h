@@ -403,6 +403,9 @@ struct TranslationBlock {
     struct TranslationBlock* llvm_tb_next[2];
 #endif
 
+    // indicates if this block was split up abnormally
+    uint8_t was_split;
+
 };
 
 void tb_free(TranslationBlock *tb);

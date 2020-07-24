@@ -93,6 +93,9 @@ typedef enum panda_cb_type {
 
     PANDA_CB_BEFORE_HANDLE_EXCEPTION, // Allows you to monitor, modify,
                                       // or squash exceptions
+
+    PANDA_CB_BEFORE_HANDLE_INTERRUPT, // ditto, for interrupts
+
     PANDA_CB_LAST
 } panda_cb_type;
 
@@ -973,6 +976,10 @@ typedef union panda_cb {
        member could be used instead.
        However, cbaddr provides neutral semantics for the comparisson.
     */
+
+
+    int32_t (*before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request);
+
     void (*cbaddr)(void);
 } panda_cb;
 

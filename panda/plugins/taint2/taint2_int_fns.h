@@ -24,9 +24,9 @@ int taint2_enabled(void);
 
 void taint2_label_addr(Addr a, int offset, uint32_t l);
 
-// label this phys addr in memory with label l, and only label l. any previous
-// labels applied to this address are removed.
-void taint2_label_ram(uint64_t pa, uint32_t l);
+// label this RAM offset in memory with label l, and only label l. any previous
+// labels applied to this RAM offset are removed.
+void taint2_label_ram(uint64_t RamOffset, uint32_t l);
 
 // label this reg with label l, and only label l. any previous labels applied 
 // to this address are removed.
@@ -36,9 +36,9 @@ void taint2_label_reg(int reg_num, int offset, uint32_t l);
 // labels applied to this address are removed.
 void taint2_label_io(uint64_t ia, uint32_t l);
 
-// add label l to this phys addr in memory. any previous labels applied to this
-// address are not removed.
-void taint2_label_ram_additive(uint64_t pa, uint32_t l);
+// add label l to this RAM offset in memory. any previous labels applied to this
+// RAM offset are not removed.
+void taint2_label_ram_additive(uint64_t RamOffset, uint32_t l);
 
 // add label l to this register. any previous labels applied to this register
 // are not removed.
@@ -50,7 +50,7 @@ void taint2_label_io_additive(uint64_t ia, uint32_t l);
 
 // query fns return 0 if untainted, else cardinality of taint set
 uint32_t taint2_query(Addr a);
-uint32_t taint2_query_ram(uint64_t pa);
+uint32_t taint2_query_ram(uint64_t RamOffset);
 uint32_t taint2_query_reg(int reg_num, int offset);
 uint32_t taint2_query_io(uint64_t ia);
 uint32_t taint2_query_laddr(uint64_t ia, uint64_t offset);
@@ -61,13 +61,13 @@ uint32_t taint2_query_set_a(Addr a, uint32_t **out, uint32_t *outsz);
 // query set fns writes taint set contents to the specified array. the size of
 // the array must be >= the cardianlity of the taint set.
 void taint2_query_set(Addr a, uint32_t *out);
-void taint2_query_set_ram(uint64_t pa, uint32_t *out);
+void taint2_query_set_ram(uint64_t RamOffset, uint32_t *out);
 void taint2_query_set_reg(int reg_num, int offset, uint32_t *out);
 void taint2_query_set_io(uint64_t ia, uint32_t *out);
 
 // returns taint compute number associated with addr
 uint32_t taint2_query_tcn(Addr a);
-uint32_t taint2_query_tcn_ram(uint64_t pa);
+uint32_t taint2_query_tcn_ram(uint64_t RamOffset);
 uint32_t taint2_query_tcn_reg(int reg_num, int offset);
 uint32_t taint2_query_tcn_io(uint64_t ia);
 
@@ -75,8 +75,8 @@ uint32_t taint2_query_tcn_io(uint64_t ia);
 // reversibly from input).
 uint64_t taint2_query_cb_mask(Addr a, uint8_t size);
 
-// delete taint from this phys addr
-void taint2_delete_ram(uint64_t pa);
+// delete taint from this RAM Offset
+void taint2_delete_ram(uint64_t RamOffset);
 
 // delete taint from this register
 void taint2_delete_reg(int reg_num, int offset);
@@ -87,9 +87,9 @@ void taint2_delete_io(uint64_t ia);
 // addr is an opaque.  it should be &a if a is known to be an Addr
 void taint2_labelset_addr_iter(Addr addr, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 
-// apply this fn to each of the labels associated with this pa
+// apply this fn to each of the labels associated with this RAM offset
 // fn should return 0 to continue iteration
-void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+void taint2_labelset_ram_iter(uint64_t RamOffset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 
 // ditto, but a machine register
 // you should be able to use R_EAX, etc as reg_num
@@ -123,11 +123,11 @@ uint32_t taint2_query_result_next(QueryResult *qr, bool *done);
 void taint2_query_reg_full(uint32_t reg_num, uint32_t offset, QueryResult *qr);
 
 
-// Places taint query results for this physical address in
+// Places taint query results for this RAM offset in
 // returned qr.  qr's label set iterator is pre initialized, so there
 // is no need to call taint2_query_results_iter unless you want to
 // iterate through labels more than once).
-void taint2_query_ram_full(uint64_t pa, QueryResult *qr);
+void taint2_query_ram_full(uint64_t RamOffset, QueryResult *qr);
 
 // Places taint query results for this laaddress in
 // returned qr.  qr's label set iterator is pre initialized, so there

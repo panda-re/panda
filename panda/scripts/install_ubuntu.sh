@@ -12,7 +12,7 @@ UBUNTU_FALLBACK="xenial"
 vendor=$(lsb_release --id | awk -F':[\t ]+' '{print $2}')
 codename=$(lsb_release --codename | awk -F':[\t ]+' '{print $2}')
 version=$(lsb_release -r| awk '{print $2}' | awk -F'.' '{print $1}')
-
+arch=$(uname -m)
 
 progress() {
   echo
@@ -52,18 +52,46 @@ fi
 progress "Installing PANDA dependencies..."
 if [ "$version" -ge "20" ]; then
   progress "Ubuntu 20 or higher"
-  sudo apt-get -y install git protobuf-compiler protobuf-c-compiler \
-    libprotobuf-c-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
+  sudo apt-get -y install wget git protobuf-compiler protobuf-c-compiler \
+    libprotobuf-c-dev libprotoc-dev python-protobuf libelf-dev pkg-config \
     libwiretap-dev libwireshark-dev flex bison python3-pip python3 \
-    libglib2.0-dev libpixman-1-dev libsdl2-dev
+    libglib2.0-dev libpixman-1-dev libsdl2-dev libcurl4-gnutls-dev zip
+
+    # Enable 16.04/xenial repos for dependencies for the LLVM 3.3 packages in ppa:phulin/panda
+    sudo add-apt-repository "deb http://mirrors.kernel.org/ubuntu/ xenial main"
+
+    # Additional LLVM 3.3 deps we have to do manually
+    if [ "$arch" == "x86_64" ]; then
+      is_x86=true
+      libcloog_deb="libcloog-isl4_0.18.4-1_amd64.deb"
+      llvm_libc_deb="libc++1_3.7.0-1_amd64.deb"
+      llvm_libc_dev_deb="libc++-dev_3.7.0-1_amd64.deb"
+    elif [ "$arch" == "i386" ]; then
+      libcloog_deb="libcloog-isl4_0.18.4-1_i386.deb"
+      llvm_libc_deb="libc++1_3.7.0-1_i386.deb"
+      llvm_libc_dev_deb="libc++-dev_3.7.0-1_i386.deb"
+    else
+      progress "Can't do LLVM 3.3 dependecy patching on non-x86 Ubuntu 20.04 system. Proceeding without..."
+    fi
+
+    if [[ "$arch" == "x86_64" || "$arch" == "i386" ]]; then
+      llvm_libc_helpers_deb="libc++-helpers_3.7.0-1_all.deb"
+      wget -q -nc --show-progress http://archive.ubuntu.com/ubuntu/pool/universe/c/cloog/$libcloog_deb
+      wget -q -nc --show-progress http://archive.ubuntu.com/ubuntu/pool/universe/libc/libc++/$llvm_libc_deb
+      wget -q -nc --show-progress http://archive.ubuntu.com/ubuntu/pool/universe/libc/libc++/$llvm_libc_helpers_deb
+      wget -q -nc --show-progress http://archive.ubuntu.com/ubuntu/pool/universe/libc/libc++/$llvm_libc_dev_deb
+      sudo apt -y install ./$libcloog_deb ./$llvm_libc_deb ./$llvm_libc_helpers_deb ./$llvm_libc_dev_deb
+      rm ./$libcloog_deb ./$llvm_libc_deb ./$llvm_libc_helpers_deb ./$llvm_libc_dev_deb
+    fi
+
 elif [ "$version" -eq "19" ]; then
   sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
     libprotobuf-c-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
-    libwiretap-dev libwireshark-dev flex bison python3-pip python3
+    libwiretap-dev libwireshark-dev flex bison python3-pip python3 zip
 else
   sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
     libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
-    libwiretap-dev libwireshark-dev flex bison python3-pip python3
+    libwiretap-dev libwireshark-dev flex bison python3-pip python3 zip
 fi
 pushd /tmp
 
@@ -171,15 +199,15 @@ mkdir build
 cd build
 if [ "$version" -eq "20" ]; then
   if [ -z "$@" ]; then
-    ../build.sh "x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu --disable-werror --disable-pyperipheral3" 
+    ../build.sh "x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu --disable-werror --disable-pyperipheral3"
   else
-    ../build.sh "$@" 
+    ../build.sh "$@"
   fi
 elif [ "$version" -eq "19" ]; then
   if [ -z "$@" ]; then
-    ../build.sh "x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu --disable-werror" 
+    ../build.sh "x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu --disable-werror"
   else
-    ../build.sh "$@" 
+    ../build.sh "$@"
   fi
 else
 ../build.sh "$@"

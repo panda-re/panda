@@ -1,4 +1,5 @@
 from panda.extras.file_hook import FileHook
+from panda.ffi_importer import ffi
 import logging
 
 '''
@@ -22,7 +23,7 @@ class FakeFile:
     Note: a single FileFaker might be opened and in use by multiple FDs in the guest
 
     '''
-    def __init__(self, fake_contents=""):
+    def __init__(self, fake_contents="", filename=None):
         self.logger = logging.getLogger('panda.hooking')
 
         if isinstance(fake_contents, str):
@@ -31,6 +32,7 @@ class FakeFile:
         self.contents = fake_contents
         self.initial_contents = fake_contents
         self.refcount = 0 # Reference count
+        self.filename = filename # Just for debug printing
 
     def read(self, size, offset):
         '''
@@ -50,6 +52,7 @@ class FakeFile:
         Return how much HyperFD offset should be incremented by
         XXX what about writes past end of the file?
         '''
+        self.logger.info("FakeFD({self.filename}) writing {new_data} at offset {self.offset}")
         new_data  = self.contents[:offset]
         new_data += write_data
         new_data += self.contents[offset+len(new_data):]
@@ -127,12 +130,11 @@ class HyperFD:
         self.file.close()
         #del self # ???
 
-    def seek(offset, whence):
+    def seek(self, offset, whence):
         # From include/uapi/linux/fs.h
         SEEK_SET = 0
         SEEK_CUR = 1
         SEEK_END = 2
-        assert(not self.is_closed), "Seek on closed HFD"
 
         if whence == SEEK_SET:
             self.offset = offset
@@ -142,10 +144,6 @@ class HyperFD:
             self.offset = self.offset + offset
         else:
             raise ValueError(f"Unsupported whence {whence} in seek")
-
-    def close(self):
-        # Should we just delete it?
-        self.is_closed = True
 
     def __str__(self):
         return f"HyperFD with name {self.name} offset {self.offset} backed by {self.file}"
@@ -223,16 +221,16 @@ class FileFaker(FileHook):
 
         # XXX: We rename the files to real files to the guest kernel can manage FDs for us.
         #      this may need to use different real files depending on permissions requested
-        self.rename_file(filename, "/etc/passwd") # Stdout should always be writable?
+        self.rename_file(filename, "/etc/passwd")
 
     def _gen_fd_cb(self, name, fd_offset):
         '''
         Register syscalls2 PPP callback on enter and return for the given name
         which has an argument of fd at fd_offset in the argument list
         '''
-        self._panda.ppp("syscalls2", f"on_sys_{name}_enter")( \
+        self._panda.ppp("syscalls2", f"on_sys_{name}_enter", name=f"file_faker_enter_{name}")( \
                     lambda *args: self._enter_fd_cb(name, fd_offset, args=args))
-        self._panda.ppp("syscalls2", f"on_sys_{name}_return")( \
+        self._panda.ppp("syscalls2", f"on_sys_{name}_return", name=f"file_faker_return_{name}")( \
                     lambda *args: self._return_fd_cb(name, fd_offset, args=args))
 
     def _enter_fd_cb(self, syscall_name, fd_pos, args=None):
@@ -245,6 +243,21 @@ class FileFaker(FileHook):
         (cpu, pc) = args[0:2]
         fd = args[2+fd_pos]
         asid = self._panda.current_asid(cpu)
+
+        if fd == 0xffffffff:
+            self.logger.debug(f"Got -1 for fd in enter of {syscall_name}")
+            return
+
+        assert(fd < 0xffffffff), "FD overflow?"
+
+        # Looks like this file isn't hooked. Let's use OSI and confirm
+        if (fd, asid) not in self.hooked_fds:
+            # Let's use OSI to figure out the backing filename here
+            fname = self._get_fname(cpu, fd)
+            if fname in self.faked_files:
+                self.logger.warning("Entering {syscall_name} with fd {fd} backed by {fname} but we missed it earlier - adding it now")
+                hfd = HyperFD(fname, self.faked_files[fname]) # Create HFD
+                self.hooked_fds[(fd, asid)] =  hfd
 
         # If this file descriptor is already hooked, update currently_hooked
         # so we know to mutate it when it returns
@@ -294,7 +307,8 @@ class FileFaker(FileHook):
         elif syscall_name == "close":
             # We want the guest to close the real FD. Delete it from our map of hooked fds
             hfd.close()
-            del self.hooked_fds[(fd, asid)]
+            if (fd, asid) in self.hooked_fds:
+                del self.hooked_fds[(fd, asid)]
 
         elif syscall_name == "write":
             # read count bytes from buf, add to our hyper-fd
@@ -308,6 +322,12 @@ class FileFaker(FileHook):
 
             bytes_written = hfd.write(data)
             cpu.env_ptr.regs[0] = bytes_written
+
+        elif syscall_name == "lseek": # LLSEEK?
+            offset = args[2]
+            whence = args[3]
+            hfd.seek(offset, whence)
+
 
         elif syscall_name in ["dup2", "dup3"]:
             # add newfd

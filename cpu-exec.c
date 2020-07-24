@@ -184,7 +184,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     cpu->can_do_io = !use_icount;
 
-    if (cpu->tcg_exit_req == 0)
+    if (!panda_exit_loop)
         panda_callbacks_before_block_exec(cpu, itb);
 
     // If there has been a request to break the CPU
@@ -211,6 +211,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 #else
     ret = tcg_qemu_tb_exec(env, tb_ptr);
 #endif // CONFIG_LLVM
+
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
     ranBlockSinceEnter = true;
@@ -511,9 +512,8 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
         cpu->reverse_flags = 0;
     }
 
-    cpu->exception_index = panda_callbacks_before_handle_exception(cpu, cpu->exception_index);
-
     if (cpu->exception_index >= 0) {
+
         if (cpu->exception_index >= EXCP_INTERRUPT) {
             /* exit request from the cpu execution loop */
             *ret = cpu->exception_index;
@@ -523,6 +523,9 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
             cpu->exception_index = -1;
             return true;
         } else {
+
+            cpu->exception_index = panda_callbacks_before_handle_exception(cpu, cpu->exception_index);
+
 #if defined(CONFIG_USER_ONLY)
             /* if user mode only, we simulate a fake exception
                which will be handled outside the cpu execution
@@ -566,7 +569,9 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
                                         TranslationBlock **last_tb)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
+
     int interrupt_request = cpu->interrupt_request;
+
 #ifdef CONFIG_SOFTMMU
     //mz Record and Replay.
     //mz it is important to do this in the order written, as

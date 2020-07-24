@@ -35,7 +35,13 @@ TAINT2_OBJ  = $(patsubst %.cpp,$(PLUGIN_OBJ_DIR)/%.o,$(TAINT2_SRC))
 $(PLUGIN_OBJ_DIR)/panda_taint2_ops.bc: $(PLUGIN_OBJ_DIR)/taint_ops_llvm.bc
 	$(call quiet-command, $(LLVM_LINK) -o $@ $^,"LLVMLD  $(TARGET_DIR)$@")
 
+$(PLUGIN_OBJ_DIR)/update_cb_switch:
+	$(call quiet-command,$(CXX) $(QEMU_INCLUDES) $(QEMU_CXXFLAGS) \
+		$(PLUGIN_SRC_DIR)/tests/update_cb_switch/update_cb_switch.cpp \
+		-o $@ $(LIBS),"CXX $@")
+
 $(PLUGIN_TARGET_DIR)/panda_taint2.so: $(TAINT2_OBJ)
 
-all: $(PLUGIN_OBJ_DIR)/panda_taint2_ops.bc
+all: $(PLUGIN_OBJ_DIR)/panda_taint2_ops.bc $(PLUGIN_OBJ_DIR)/update_cb_switch
+
 

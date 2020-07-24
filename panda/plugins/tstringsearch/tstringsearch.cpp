@@ -113,10 +113,20 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
 
         for (int i = 0; i < matched_string_length; i++) {
             hwaddr pa = panda_virt_to_phys(env, addr + i);
+            if (pa == (hwaddr)(-1)) {
+                printf("tstringsearch: can't label addr=0x" TARGET_FMT_lx ": mmu hasn't mapped virt->phys, i.e., it isnt actually there.\n", addr + i);
+                continue;
+            }
+            ram_addr_t RamOffset = RAM_ADDR_INVALID;
+            if (PandaPhysicalAddressToRamOffset(&RamOffset, pa, false) != MEMTX_OK)
+            {
+                printf("tstringsearch: can't label addr=0x" TARGET_FMT_lx " paddr=0x" TARGET_FMT_plx ": physical map is not RAM.\n", addr + i, pa);
+                continue;
+            }
             if (positional_tainting) {
-                taint2_label_ram(pa, i);
+                taint2_label_ram(RamOffset, i);
             } else {
-                taint2_label_ram(pa, 10);
+                taint2_label_ram(RamOffset, 10);
             }
         }
         first_time = false;

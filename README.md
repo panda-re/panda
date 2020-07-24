@@ -1,7 +1,9 @@
 # PANDA
 
-[![Build Status](https://travis-ci.org/panda-re/panda.svg?branch=master)](https://travis-ci.org/panda-re/panda)
-![Autobuild Docker Container](https://github.com/panda-re/panda/workflows/Build%20and%20Publish%20Docker%20Container/badge.svg)
+![Core Emulation Tests](https://github.com/panda-re/panda/workflows/QEMU%20Checks/badge.svg)
+![Taint System Tests](https://github.com/panda-re/panda/workflows/Taint%20Unit%20Tests/badge.svg)
+![Publish Docker Container](https://github.com/panda-re/panda/workflows/Build%20and%20Publish%20Docker%20Container/badge.svg)
+
 
 PANDA is an open-source Platform for Architecture-Neutral Dynamic Analysis. It
 is built upon the QEMU whole system emulator, and so analyses have access to all

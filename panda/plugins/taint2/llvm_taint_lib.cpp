@@ -63,6 +63,12 @@ PPP_CB_BOILERPLATE(on_ptr_load);
 PPP_PROT_REG_CB(on_ptr_store);
 PPP_CB_BOILERPLATE(on_ptr_store);
 
+PPP_PROT_REG_CB(on_after_load);
+PPP_CB_BOILERPLATE(on_after_load);
+
+PPP_PROT_REG_CB(on_after_store);
+PPP_CB_BOILERPLATE(on_after_store);
+
 }
 
 extern const char *qemu_file;
@@ -120,6 +126,12 @@ void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store,
         PPP_RUN_CB(on_ptr_load, ptr_addr, src, size);
     }
 }
+
+void taint_after_ld_run(uint64_t rega, uint64_t addr, uint64_t size) {
+    Addr reg = make_laddr(rega / MAXREGSIZE, 0);
+    PPP_RUN_CB(on_after_load, reg, addr, size);    
+}
+
 
 static void taint_copyRegToPc_run(Shad *shad, uint64_t src, uint64_t size)
 {
@@ -189,6 +201,8 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.resetFrameF = M.getFunction("taint_reset_frame");
     PTV.breadcrumbF = M.getFunction("taint_breadcrumb");
 
+    PTV.afterLdF = M.getFunction("taint_after_ld");
+
     llvm::Type *shadT = M.getTypeByName("class.Shad");
     assert(shadT);
     llvm::Type *shadP = PointerType::getUnqual(shadT);
@@ -257,6 +271,8 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     ADD_MAPPING(taint_breadcrumb);
 
     ADD_MAPPING(taint_memlog_pop);
+
+    ADD_MAPPING(taint_after_ld);
 
     //ADD_MAPPING(label_set_union);
     //ADD_MAPPING(label_set_singleton);
@@ -510,6 +526,19 @@ void PandaTaintVisitor::insertTaintCopy(Instruction &I,
     insertTaintBulk(I, shad_dest, dest, shad_src, src, size, copyF);
 }
 
+
+// load llreg from addr
+// or store llreg to addr 
+// both logically after taint transfer has occurred
+// NB: val is llvm register that is dest of store or that is source of load
+void PandaTaintVisitor::insertAfterTaintLd(Instruction &I,
+       Value *val, Value *ptr, uint64_t size) {
+    LLVMContext &ctx = I.getContext();
+    vector<Value *> args {constSlot(val), constSlot(ptr), const_uint64(ctx, size)};
+    inlineCallAfter(I, afterLdF, args);    
+}
+
+
 void PandaTaintVisitor::insertTaintBulk(Instruction &I,
         Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
         uint64_t size, Function *func) {
@@ -636,12 +665,13 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     LLVMContext &ctx = I.getContext();
     if (!dest) dest = &I;
 
-    const uint64_t maxBitWidth = 64;
+    const uint64_t maxBitWidth = 128;
     unsigned src1BitWidth = src1->getType()->getPrimitiveSizeInBits();
     unsigned src2BitWidth = src1->getType()->getPrimitiveSizeInBits();
     if ((src1BitWidth > maxBitWidth) || (src2BitWidth > maxBitWidth)) {
-        printf("warning: encountered a value greater than 64 bits - not "
-               "attempting to propagate taint through mul instruction\n");
+        printf("warning: encountered a value greater than %lu bits - not "
+               "attempting to propagate taint through mul instruction\n",
+               maxBitWidth);
         return;
     }
 
@@ -676,12 +706,37 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     Value *src1slot = constSlot(src1);
     Value *src2slot = constSlot(src2);
     Value *dslot = constSlot(dest);
-    Value *arg1 = b.CreateSExtOrBitCast(src1, Type::getInt64Ty(ctx));
-    Value *arg2 = b.CreateSExtOrBitCast(src2, Type::getInt64Ty(ctx));
+
+    Value *arg1_lo = NULL;
+    Value *arg1_hi = NULL;
+    if (64 < src1BitWidth) {
+        arg1_lo = b.CreateTrunc(src1, Type::getInt64Ty(ctx));
+        arg1_hi = b.CreateTrunc(b.CreateLShr(src1, 64), Type::getInt64Ty(ctx));
+    } else {
+        arg1_lo = b.CreateSExtOrBitCast(src1, Type::getInt64Ty(ctx));
+        Value *tmp =
+            b.CreateTrunc(b.CreateLShr(arg1_lo, 63), Type::getInt1Ty(ctx));
+        arg1_hi = b.CreateSelect(tmp, const_uint64(ctx, ~0UL),
+                                 const_uint64(ctx, 0UL));
+    }
+
+    Value *arg2_lo = NULL;
+    Value *arg2_hi = NULL;
+    if (64 < src1BitWidth) {
+        arg2_lo = b.CreateTrunc(src2, Type::getInt64Ty(ctx));
+        arg2_hi = b.CreateTrunc(b.CreateLShr(src2, 64), Type::getInt64Ty(ctx));
+    } else {
+        arg2_lo = b.CreateSExtOrBitCast(src2, Type::getInt64Ty(ctx));
+        Value *tmp =
+            b.CreateTrunc(b.CreateLShr(arg2_lo, 63), Type::getInt1Ty(ctx));
+        arg2_hi = b.CreateSelect(tmp, const_uint64(ctx, ~0UL),
+                                 const_uint64(ctx, 0UL));
+    }
+
     vector<Value*> args{
         llvConst, dslot, dest_size,
         src1slot, src2slot, src_size,
-        constInstr(&I), arg1, arg2
+        constInstr(&I), arg1_lo, arg1_hi, arg2_lo, arg2_hi
     };
     b.CreateCall(mulCompF, args);
 }
@@ -969,6 +1024,13 @@ bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
         addrOut.off = (offset - cpu_off(gpr)) % cpu_size(gpr[0]);
         return true;
     }
+#elif defined (TARGET_MIPS)
+    if (contains_offset(active_tc.gpr)){
+        addrOut.typ = GREG;
+        addrOut.val.gr = (offset - cpu_off(active_tc.gpr)) / cpu_size(active_tc.gpr[0]);
+        addrOut.off = (offset - cpu_off(active_tc.gpr)) % cpu_size(active_tc.gpr[0]);
+        return true;
+    }
 #else
     if (contains_offset(regs)) {
         addrOut.typ = GREG;
@@ -1025,6 +1087,8 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
         if (ptrAddr == cpu_off(eip) && isStore) {
 #elif defined(TARGET_PPC)
         if (ptrAddr == cpu_off(nip) && isStore) {
+#elif defined(TARGET_MIPS)
+        if (ptrAddr == cpu_off(active_tc.PC) && isStore) {
 #else
 #error "unsupported architecture"
 #endif
@@ -1058,7 +1122,7 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
     } else {
         vector<Value *> args{
             const_uint64_ptr(ctx, first_cpu->env_ptr), ptrToInt(ptr, I),
-            llvConst, constSlot(val), grvConst, gsvConst,
+            llvConst, constSlot(val), grvConst, gsvConst, memConst,
             const_uint64(ctx, size), const_uint64(ctx, sizeof(target_ulong)),
             ConstantInt::get(llvm::Type::getInt1Ty(ctx), isStore)
         };
@@ -1204,7 +1268,7 @@ void PandaTaintVisitor::visitMemCpyInst(MemTransferInst &I) {
 }
 
 void PandaTaintVisitor::visitMemMoveInst(MemTransferInst &I) {
-    assert(false && "MemMove unhandled!");
+    printf("taint2: Warning: MemMove unhandled!  Taint may be lost!\n");
 }
 
 void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
@@ -1212,16 +1276,20 @@ void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
 
     Value *dest = I.getDest();
     Value *size = I.getLength();
-    assert(isa<Constant>(I.getValue()));
+    if (isa<Constant>(I.getValue())) {
 
-    PtrToIntInst *P2II = new PtrToIntInst(dest, llvm::Type::getInt64Ty(ctx), "", &I);
-    assert(P2II);
+        PtrToIntInst *P2II = new PtrToIntInst(dest, llvm::Type::getInt64Ty(ctx), "", &I);
+        assert(P2II);
 
-    vector<Value *> args{
-        const_uint64_ptr(ctx, first_cpu->env_ptr), P2II,
-        grvConst, gsvConst, size, const_uint64(ctx, sizeof(target_ulong))
-    };
-    inlineCallAfter(I, hostDeleteF, args);
+        vector<Value *> args{
+            const_uint64_ptr(ctx, first_cpu->env_ptr), P2II,
+            grvConst, gsvConst, size, const_uint64(ctx, sizeof(target_ulong))
+        };
+        inlineCallAfter(I, hostDeleteF, args);
+    } else {
+        printf("taint2: Warning: MemSet with non-constant fill unhandled!  "
+                "Taint may be lost!\n");
+    }
 }
 
 const static std::set<std::string> ldFuncs{
@@ -1303,6 +1371,11 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             return;
         } else if (ldFuncs.count(calledName) > 0) {
             Value *ptr = I.getArgOperand(1);
+            // insertAfterTaintLd mainly used for tainted_mmio
+            //   where we could expect ptr to be non-constant 
+            if (!isa<Constant>(ptr)) {
+                insertAfterTaintLd(I, &I, ptr, getValueSize(&I));
+            }
             if (tainted_pointer && !isa<Constant>(ptr)) {
                 insertTaintPointer(I, ptr, &I, false);
             } else {

@@ -277,6 +277,12 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
 
 #elif defined(TARGET_PPC)
     csh handle = cs_handle_32;
+#elif defined(TARGET_MIPS)
+    #if defined(TARGET_MIPS64)
+        csh handle = cs_handle_64;
+    #else
+        csh handle = cs_handle_32;
+    #endif
 #endif
 
     cs_insn *insn;

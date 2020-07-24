@@ -72,7 +72,6 @@ bool panda_plugin_load_failed = false;
 bool panda_abort_requested = false;
 
 bool panda_exit_loop = false;
-extern bool panda_library_mode;
 
 bool panda_add_arg(const char *plugin_name, const char *plugin_arg) {
     if (plugin_name == NULL)    // PANDA argument
@@ -137,6 +136,15 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
 }
 
 bool _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode) {
+
+#ifndef CONFIG_LLVM
+    // Taint2 seems to be our most commonly used LLVM plugin and it causes some confusion
+    // when users build PANDA without LLVM and then claim taint2 is "missing"
+    if (strcmp(plugin_name, "taint2") == 0) {
+        fprintf(stderr, PANDA_MSG_FMT "Fatal error: PANDA was built with LLVM disabled but LLVM is required for the taint2 plugin\n");
+    }
+#endif
+
     if (filename == NULL) {
         fprintf(stderr, PANDA_MSG_FMT "Fatal error: could not find path for plugin %s\n", PANDA_CORE_NAME, plugin_name);
     }
@@ -232,14 +240,17 @@ extern const char *qemu_file;
 //   - Relative to the QEMU binary
 //   - Relative to the install prefix directory.
 char *panda_plugin_path(const char *plugin_name) {
+char *plugin_path;
     // First try relative to PANDA_PLUGIN_DIR
 #ifdef PLUGIN_DIR
-    char *plugin_path = g_strdup_printf(
-        "%s/%s/panda_%s" HOST_DSOSUF, g_getenv("PANDA_DIR"), PLUGIN_DIR, plugin_name);
-    if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
-        return plugin_path;
+    if (g_getenv("PANDA_DIR") != NULL) {
+      plugin_path = g_strdup_printf(
+          "%s/%s/panda_%s" HOST_DSOSUF, g_getenv("PANDA_DIR"), PLUGIN_DIR, plugin_name);
+      if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
+          return plugin_path;
+      }
+      g_free(plugin_path);
     }
-    g_free(plugin_path);
 #endif
 
     // Note qemu_file is set in the first call to main_aux
