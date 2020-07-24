@@ -620,9 +620,9 @@ class Panda(libpanda_mixins, libqemu_mixins, blocking_mixins, osi_mixins, hookin
 
     def _memory_read(self, env, addr, length, physical=False, fmt='bytearray'):
         '''
-        Read but with an autogen'd buffer. Returns a tuple (data, error code)
+        Read but with an autogen'd buffer
         Supports physical or virtual addresses
-        Error code is 0 on success, negative on failure
+        Raises ValueError if read fails
         '''
         if not hasattr(self, "_memcb"): # XXX: Why do we enable memcbs for memory writes?
             self.enable_memcb()
@@ -650,6 +650,19 @@ class Panda(libpanda_mixins, libqemu_mixins, blocking_mixins, osi_mixins, hookin
             return int.from_bytes(r, byteorder=self.endianness)  # XXX size better be small enough to pack into an int!
         elif fmt=='str':
             return ffi.string(buf, length)
+        elif fmt=='ptrlist':
+            # This one is weird. Chunmk the memory into byte-sequences of (self.bits/8) bytes and flip endianness as approperiate
+            # return a list
+            bytelen = int(self.bits/8)
+            if (length % bytelen != 0):
+                raise ValueError(f"Memory of size {length} does not evenly divide into {bytelen} byte chunks")
+            chunks = []
+            for start in range(0, length, bytelen):
+                data = r[start:start+bytelen]
+                int_data = int.from_bytes(data, byteorder=self.endianness)
+                chunks.append(int_data)
+            return chunks
+
         else:
             raise ValueError("fmt={} unsupported".format(fmt))
 
