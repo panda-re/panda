@@ -83,13 +83,19 @@ void insert_call(TCGOp **after_op, F *func_ptr, A... args)
     for (int i = 0; i < ia.size(); i++) {
         call_args[i] = ia.at(i);
     }
+
+    // The function and flag arguments come after the input and output args for
+    // call TCG ops. So we are intentionally looking past the number of input
+    // args (since there are no output args).
+    
+    // Set the function pointer for the call
     call_args[ia.size()] = reinterpret_cast<TCGArg>(func_ptr);
 
-    // TCG Calls have flags that are used by the optimizer. The argument array
-    // may have left over data, so we have to explicitly zero the flags out. If
-    // we don't, some calls may get optimized out!
-    uint32_t* flag_ptr = reinterpret_cast<uint32_t*>(&call_args[ia.size() + 1]);
-    *flag_ptr = 0x0;
+    // Set the call op flags. Note that TCG calls ops have flags that are used
+    // by the optimizer. The argument array may have left over data, so we have
+    // to explicitly zero the flags out. If we don't, some calls may get
+    // optimized out leading to incorrect coverage data.
+    call_args[ia.size() + 1] = 0;
 }
 
 /**
