@@ -24,18 +24,15 @@ struct OsiBlock
 namespace std
 {
 
-template <> class hash<OsiBlock> {
+template<>
+class hash<OsiBlock> {
 public:
-    using argument_type = OsiBlock;
-    using result_type = size_t;
-    result_type operator()(argument_type const &s) const noexcept
+    size_t operator()(OsiBlock const &s) const noexcept
     {
         // Combining hashes, see C++ reference:
         // https://en.cppreference.com/w/cpp/utility/hash
-        result_type const h1 = std::hash<target_pid_t>{}(s.pid);
-        result_type const h2 = std::hash<target_pid_t>{}(s.tid);
-        result_type const h3 = std::hash<Block>{}(s.block);
-        return h1 ^ (h2 << 1) ^ (h3 << 2);
+        size_t const bh = std::hash<Block>{}(s.block);
+        return s.pid ^ (s.tid << 1) ^ (bh << 2);
     }
 };
 

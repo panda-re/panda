@@ -19,17 +19,14 @@ struct Block
 namespace std
 {
 
-template <> class hash<Block> {
+template<>
+class hash<Block> {
 public:
-    using argument_type = Block;
-    using result_type = size_t;
-    result_type operator()(argument_type const &s) const noexcept
+    size_t operator()(Block const &s) const noexcept
     {
         // Combining hashes, see C++ reference:
         // https://en.cppreference.com/w/cpp/utility/hash
-        result_type const h1 = std::hash<target_ulong>{}(s.addr);
-        result_type const h2 = std::hash<target_ulong>{}(s.size);
-        return h1 ^ (h2 << 1);
+        return s.addr ^ (s.size << 1);
     }
 };
 
