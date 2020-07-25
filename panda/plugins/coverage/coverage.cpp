@@ -164,6 +164,10 @@ bool init_plugin(void *self)
         try {
             auto start_pc = try_parse<target_ulong>(pc_arg.substr(0, dash_idx));
             auto end_pc = try_parse<target_ulong>(pc_arg.substr(dash_idx + 1));
+            if (end_pc < start_pc) {
+                log_message("End PC must be smaller than Start PC.");
+                return false;
+            }
             log_message("PC Range Filter = [" TARGET_FMT_lx ", " TARGET_FMT_lx "]", start_pc, end_pc);
             pb.with_pc_range(start_pc, end_pc);
         } catch (std::invalid_argument& e) {

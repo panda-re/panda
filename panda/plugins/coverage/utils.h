@@ -2,6 +2,7 @@
 #define COVERAGE_UTILS_H
 
 #include <limits>
+#include <sstream>
 #include <stdexcept>
 #include <vector>
 
@@ -106,9 +107,12 @@ void insert_call(TCGOp **after_op, F *func_ptr, A... args)
 template<typename T>
 T try_parse(const std::string& value)
 {
+    auto max_value = std::numeric_limits<T>::max();
     auto tmp = std::stoull(value, NULL, 0);
-    if (std::numeric_limits<T>::max() < tmp) {
-        throw std::overflow_error("Value is larger than target_ulong's maximum size.");
+    if (max_value < tmp) {
+        std::stringstream ss;
+        ss << "Value cannot be larger than " <<  max_value << ".";
+        throw std::overflow_error(ss.str());
     }
     return static_cast<T>(tmp);
 }
