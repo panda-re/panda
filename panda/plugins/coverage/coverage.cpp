@@ -105,8 +105,8 @@ static void enable_instrumentation(const std::string& filename)
         "asid-block", "coverage mode");
 
     BlockProcessorBuilder b;
-    b.with_filename(filename);
-    b.with_output_mode(mode_arg);
+    b.with_filename(filename)
+     .with_output_mode(mode_arg);
     if (!log_all_records) {
         b.with_unique_filter();
     }

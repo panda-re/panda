@@ -25,17 +25,17 @@ public:
     /**
      * Sets the output mode for the resulting record processor object.
      */
-    void with_output_mode(const std::string &m);
+    BlockProcessorBuilder& with_output_mode(const std::string &m);
 
     /**
      * Turns on unique filtering for the resulting record processor object.
      */
-    void with_unique_filter();
+    BlockProcessorBuilder& with_unique_filter();
 
     /**
      * Sets the output filename.
      */
-    void with_filename(const std::string &f);
+    BlockProcessorBuilder& with_filename(const std::string &f);
 
     /**
      * Constructs the record processor object.

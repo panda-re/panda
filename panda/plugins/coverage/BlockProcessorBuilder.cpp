@@ -21,19 +21,22 @@ BlockProcessorBuilder::BlockProcessorBuilder() :
 {
 }
 
-void BlockProcessorBuilder::with_output_mode(const std::string& m)
+BlockProcessorBuilder& BlockProcessorBuilder::with_output_mode(const std::string& m)
 {
-    mode = m;    
+    mode = m;
+    return *this;
 }
 
-void BlockProcessorBuilder::with_unique_filter()
+BlockProcessorBuilder& BlockProcessorBuilder::with_unique_filter()
 {
     unique = true;
+    return *this;
 }
 
-void BlockProcessorBuilder::with_filename(const std::string& f)
+BlockProcessorBuilder& BlockProcessorBuilder::with_filename(const std::string& f)
 {
     filename = f;
+    return *this;
 }
 
 std::unique_ptr<RecordProcessor<Block>> BlockProcessorBuilder::build()
