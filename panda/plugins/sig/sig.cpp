@@ -90,21 +90,26 @@ bool init_plugin(void *_self) {
     assert(init_osi_linux_api());
 
     // Setup signature
-    //#if (defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS))
-    #if (defined(TARGET_I386) || defined(TARGET_ARM))
-        printf("sig: setting up 32-bit Linux.\n");
-        PPP_REG_CB("syscalls2", on_sys_kill_enter, sig_mitm);
-
-    #elif (defined(TARGET_X86_64) || defined(TARGET_AARCH64))
-        printf("sig: setting up 64-bit Linux.\n");
-        PPP_REG_CB("syscalls2", on_sys_kill_enter, sig_mitm);
-
-    #else
-        fprintf(stderr, "ERROR: Only suppported architecture!\n");
-        return false;
-    #endif
-
-    return true;
+    switch (panda_os_familyno) {
+       case OS_LINUX: {
+            //#if (defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS))
+            #if (defined(TARGET_I386) || defined(TARGET_ARM))
+                printf("sig: setting up 32-bit Linux.\n");
+                PPP_REG_CB("syscalls2", on_sys_kill_enter, sig_mitm);
+            #elif (defined(TARGET_X86_64) || defined(TARGET_AARCH64))
+                printf("sig: setting up 64-bit Linux.\n");
+                PPP_REG_CB("syscalls2", on_sys_kill_enter, sig_mitm);
+            #else
+                fprintf(stderr, "sig: [ERROR] Unsuppported architecture!\n");
+                return false;
+            #endif
+            return true;
+        } break;
+        default: {
+            fprintf(stderr, "sig: [ERROR] Unsuppported operating system!\n");
+            return false;
+        }
+    }
 }
 
 void uninit_plugin(void *self) {
