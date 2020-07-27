@@ -36,7 +36,7 @@ LOGLEVEL = logging.INFO
 logging.basicConfig(format='%(levelname)s: %(message)s', level=LOGLEVEL)
 
 # Details about operating systems and architectures to be processed.
-KNOWN_OS = ['linux', 'windows_7', 'windows_xpsp2', 'windows_xpsp3', 'windows_2000']
+KNOWN_OS = ['linux', 'windows_7', 'windows_xpsp2', 'windows_xpsp3', 'windows_2000', 'freebsd']
 KNOWN_ARCH = {
     'x64': {
         'bits': 64,
@@ -94,7 +94,7 @@ class Argument(object):
     ''' Wraps a system call argument.
     '''
     charre = re.compile("char.*\*")
-    
+
     # the "reserved" list consists of system call argument names that also
     # happen to be reserved words; "cpu" is reserved because the generated
     # callbacks for system calls also have a "CPUState *cpu" argument
@@ -138,18 +138,18 @@ class Argument(object):
         'u16': ['old_uid_t', 'uid_t', 'mode_t', 'gid_t'],
         'ptr': ['cap_user_data_t', 'cap_user_header_t', '__sighandler_t', '...'],
     }
-    
+
     def __init__(self, arg, argno=-1, arch_bits=32):
         self.no = argno
         self.raw = arg.strip()
         self.arch_bits = arch_bits
         if self.raw == '' or self.raw == 'void':
             raise EmptyArgumentError()
-            
+
         typesforbits = Argument.types32
         if (64 == arch_bits):
             typesforbits = Argument.types64
-            
+
         # parse argument name
         if self.raw.endswith('*') or len(self.raw.split()) == 1 or self.raw in typesforbits['twoword']:
             # no argname, just type

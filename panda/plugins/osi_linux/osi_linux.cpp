@@ -155,6 +155,7 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
     p->pid = get_tgid(cpu, task_addr);
     //p->ppid = get_real_parent_pid(cpu, task_addr);
     p->pages = NULL;  // OsiPage - TODO
+    p->create_time = get_start_time(cpu, task_addr);
 }
 
 /**
@@ -309,6 +310,7 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
     static target_ptr_t cached_pid = -1;
     static target_ptr_t cached_ppid = -1;
     static void *cached_comm_ptr = NULL;
+    static uint64_t cached_start_time = 0;
     // OsiPage - TODO
 
     OsiProc *p = NULL;
@@ -328,6 +330,7 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
             strncpy(cached_name, p->name, ki.task.comm_size);
             cached_pid = p->pid;
             cached_ppid = p->ppid;
+	    cached_start_time = p->create_time;
             cached_comm_ptr = panda_map_virt_to_host(
                 env, ts + ki.task.comm_offset, ki.task.comm_size);
         } else {
@@ -337,6 +340,7 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
             p->pid = cached_pid;
             p->ppid = cached_ppid;
             p->pages = NULL;
+	    p->create_time = cached_start_time;
         }
     }
     *out = p;
@@ -654,13 +658,13 @@ bool init_plugin(void *self) {
         if (kconffile_canon == NULL) {  // from build dir
             if (kconf_file != NULL) g_free(kconf_file);
             kconf_file = g_build_filename(progdir, "panda", "plugins", "osi_linux", "kernelinfo.conf", NULL);
-            LOG_INFO("Looking for kconf_file attempt %u: %s", kconf_file_try++, kconf_file);
+            LOG_INFO("Looking for kconf_file attempt %u: %s", kconffile_try++, kconf_file);
             kconffile_canon = realpath(kconf_file, NULL);
         }
         if (kconffile_canon == NULL) {  // from etc dir (installed location)
             if (kconf_file != NULL) g_free(kconf_file);
             kconf_file = g_build_filename(CONFIG_QEMU_CONFDIR, "osi_linux", "kernelinfo.conf", NULL);
-            LOG_INFO("Looking for kconf_file attempt %u: %s", kconf_file_try++, kconf_file);
+            LOG_INFO("Looking for kconf_file attempt %u: %s", kconffile_try++, kconf_file);
             kconffile_canon = realpath(kconf_file, NULL);
         }
 

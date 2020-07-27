@@ -76,7 +76,7 @@ extern bool panda_plugin_to_unload;
 extern bool panda_tb_chaining;
 
 // this stuff is used by the new qemu cmd-line arg '-os os_name'
-typedef enum OSFamilyEnum { OS_UNKNOWN, OS_WINDOWS, OS_LINUX } PandaOsFamily;
+typedef enum OSFamilyEnum { OS_UNKNOWN, OS_WINDOWS, OS_LINUX, OS_FREEBSD } PandaOsFamily;
 
 // these are set in panda/src/common.c via call to panda_set_os_name(os_name)
 extern char *panda_os_name;           // the full name of the os, as provided by the user

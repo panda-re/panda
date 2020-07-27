@@ -8,11 +8,12 @@ class GArrayIterator():
     that takes arguments of the GArray and list index. e.g., osi's
     get_one_module.
     '''
-    def __init__(self, func, garray, garray_len):
+    def __init__(self, func, garray, garray_len, cleanup_fn):
         self.garray = garray
         self.garray_len = garray_len
         self.current_idx = 0
         self.func = func
+        self.cleanup_func = cleanup_fn
 
     def __iter__(self):
         self.current_idx = 0
@@ -26,17 +27,20 @@ class GArrayIterator():
         self.current_idx += 1
         return ret
 
+    def __del__(self):
+        self.cleanup_func(self.garray)
+
 class osi_mixins():
     def get_mappings(self, cpu):
         current = self.plugins['osi'].get_current_process(cpu)
         maps = self.plugins['osi'].get_mappings(cpu, current)
         map_len = self.garray_len(maps)
-        return GArrayIterator(self.plugins['osi'].get_one_module, maps, map_len)
+        return GArrayIterator(self.plugins['osi'].get_one_module, maps, map_len, self.plugins['osi'].cleanup_garray)
 
     def get_processes(self, cpu):
         processes = self.plugins['osi'].get_processes(cpu)
         processes_len = self.garray_len(processes)
-        return GArrayIterator(self.plugins['osi'].get_one_proc, processes, processes_len)
+        return GArrayIterator(self.plugins['osi'].get_one_proc, processes, processes_len, self.plugins['osi'].cleanup_garray)
 
     def get_processes_dict(self, cpu):
         procs = {} #pid: {name: X, pid: Y, parent_pid: Z})

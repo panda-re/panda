@@ -85,6 +85,7 @@ enum ProfileType {
     PROFILE_WINDOWS_XPSP3_X86,
     PROFILE_WINDOWS_7_X86,
 	PROFILE_LINUX_X64,
+	PROFILE_FREEBSD_X64,
     PROFILE_LAST
 };
 
@@ -237,6 +238,23 @@ Profile profiles[PROFILE_LAST] = {
         .get_return_32 = get_32_linux_x64,
         .get_return_s32 = get_return_s32_generic,
         .get_return_64 = get_64_linux_x64,
+        .get_return_s64 = get_return_s64_generic,
+        .windows_return_addr_register = -1,
+        .windows_arg_offset = -1,
+        .syscall_interrupt_number = 0x80,
+    },
+    {
+        .enter_switch = syscall_enter_switch_freebsd_x64,
+        .return_switch = syscall_return_switch_freebsd_x64,
+        .get_return_val = get_return_val_x86,
+        .calc_retaddr = calc_retaddr_linux_x64, // Not auto-gen, using the Linux impl
+        .get_32 = get_32_linux_x64,             // Not auto-gen, using the Linux impl
+        .get_s32 = get_s32_generic,
+        .get_64 = get_64_linux_x64,             // Not auto-gen, using the Linux impl
+        .get_s64 = get_s64_generic,
+        .get_return_32 = get_32_linux_x64,      // Not auto-gen, using the Linux impl
+        .get_return_s32 = get_return_s32_generic,
+        .get_return_64 = get_64_linux_x64,      // Not auto-gen, using the Linux impl
         .get_return_s64 = get_return_s64_generic,
         .windows_return_addr_register = -1,
         .windows_arg_offset = -1,
@@ -812,6 +830,15 @@ bool init_plugin(void *self) {
             std::cerr << PANDA_MSG "using profile for windows 2000 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWS_2000_X86];
         }
+#endif
+    } else if (panda_os_familyno == OS_FREEBSD) {
+#if defined(TARGET_X86_64)
+    std::cerr << PANDA_MSG "using profile for freebsd x64 64-bit" << std::endl;
+    syscalls_profile = &profiles[PROFILE_FREEBSD_X64];
+#else
+    std::cerr << PANDA_MSG "ERROR: using profile for freebsd x86 32-bit not yet supported!" << std::endl;
+    //syscalls_profile = &profiles[PROFILE_FREEBSD_X86];
+    return false;
 #endif
     }
 

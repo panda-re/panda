@@ -164,3 +164,9 @@ OsiProc* get_one_proc(GArray *osiprocs, unsigned int idx) {
     OsiProc *m = &g_array_index(osiprocs, OsiProc, idx);
     return m;
 }
+
+void cleanup_garray(GArray *g) {
+    // Maybe this should just be in panda api instead of OSI?
+    // but for now we only expose GArrays via library mode with OSI
+    g_array_free(g, true);
+}

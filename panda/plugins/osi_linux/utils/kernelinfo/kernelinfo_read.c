@@ -55,6 +55,16 @@ struct kernelinfo_errors {
 	READ_INFO_X(g_key_file_get_string, ki, memb, gerr, errcount, errbmp)
 
 
+#define OPTIONAL_READ_INFO_X(key_file_get, ki, memb, gerr, errcount, errbmp)\
+	((ki)->memb) = key_file_get(keyfile, group_real, #memb, &gerr);\
+	if (gerr != NULL) { g_error_free(gerr); gerr = NULL; LOG_WARNING("failed to read " #memb); ((ki)->memb) = (uint64_t)NULL;}\
+	memset(&(errbmp)->memb, 0xff, sizeof((errbmp)->memb));
+
+#define OPTIONAL_READ_INFO_INT(ki, memb, gerr, errcount, errbmp)\
+	OPTIONAL_READ_INFO_X(g_key_file_get_integer, ki, memb, gerr, errcount, errbmp)
+
+
+
 /*! Reads kernel information (struct offsets and such) from the specified file.
  *
  * Each file may contain several contain information for many different kernels
@@ -140,7 +150,8 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	READ_INFO_INT(ki, task.comm_offset, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.comm_size, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.files_offset, gerr, err.task, &errbmp);
-
+	OPTIONAL_READ_INFO_INT(ki, task.start_time_offset, gerr, err.task, &errbmp);
+        
 	/* read mm information */
 	READ_INFO_INT(ki, mm.size, gerr, err.mm, &errbmp);
 	READ_INFO_INT(ki, mm.mmap_offset, gerr, err.mm, &errbmp);

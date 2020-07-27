@@ -177,6 +177,7 @@ int init_module(void)
 	PRINT_OFFSET(task_struct__p,		comm,			"task");
 	PRINT_SIZE(task_struct__p->comm,	"comm_size",	"task");
 	PRINT_OFFSET(task_struct__p,		files,			"task");
+	PRINT_OFFSET(task_struct__p,		start_time,			"task");
 
 	PRINT_OFFSET(cred__p,				uid,			"cred");
 	PRINT_OFFSET(cred__p,				gid,			"cred");

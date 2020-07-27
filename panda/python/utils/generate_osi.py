@@ -14,8 +14,10 @@ def run_osi():
 
     panda.revert_sync("root")
     # XXX: First we're updating sources.list to be up to date just for the provided qcows :(
+    # Also pull down new keys that are expired
     payload = """sed -i 's/ftp/archive/g' /etc/apt/sources.list # Update sources.list for old wheezy VMs
     sed -i 's/http:\/\/security.debian.org\//http:\/\/archive.debian.org\/debian-security/g' /etc/apt/sources.list
+    apt-key adv --keyserver keys.gnupg.net --recv-keys 473041FA B98321F9 46925553 65FFB764
     apt-get update
     hwclock -s # Update system clock from hardware clock (qemu should provide this by default)
     apt-get install -y --force-yes build-essential linux-headers-$(uname -r)* python subversion

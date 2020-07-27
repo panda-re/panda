@@ -62,7 +62,7 @@ class blocking_mixins():
 
         copy_directory = path.split(copy_directory)[-1] # Get dirname
 
-        # 1) we insert the CD drive
+        # 1) we insert the CD drive TODO: the cd-drive name should be a config option, see the values in qcow.py
         self.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
 
         # 2) run setup script

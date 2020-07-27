@@ -140,6 +140,8 @@ const char * valid_os_re[] = {
     "windows[-_]32[-_]2000",
     "linux[-_]32[-_].+",
     "linux[-_]64[-_].+",
+    "freebsd[-_]32[-_].+",
+    "freebsd[-_]64[-_].+",
     NULL
 };
 
@@ -169,6 +171,7 @@ void panda_set_os_name(char *os_name) {
     // set os type
     if (0 == g_ascii_strncasecmp("windows", osparts[0], strlen("windows"))) { panda_os_familyno = OS_WINDOWS; }
     else if (0 == g_ascii_strncasecmp("linux", osparts[0], strlen("linux"))) { panda_os_familyno = OS_LINUX; }
+    else if (0 == g_ascii_strncasecmp("freebsd", osparts[0], strlen("freebsd"))) { panda_os_familyno = OS_FREEBSD; }
     else { panda_os_familyno = OS_UNKNOWN; }
 
     // set os bits
