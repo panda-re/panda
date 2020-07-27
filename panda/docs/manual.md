@@ -183,6 +183,9 @@ Here is how some of the plugins fit into that emulation sequence.
 * `PANDA_CB_BEFORE_BLOCK_TRANSLATE` is before the initial translation of guest
   code. We don't know length of the block at this point.
 
+* `PANDA_CB_BEFORE_TCG_CODEGEN` is before host code is generated from TCG. In
+  this callback, we know the length of the block.
+
 * `PANDA_CB_AFTER_BLOCK_TRANSLATE` is after the translation of guest code. In this
   case we know how long the block is.
 
@@ -593,6 +596,7 @@ callback, and `cb` is used for the callback itself (`panda_cb` is a union of all
 possible callback signatures).
 ```C
 PANDA_CB_BEFORE_BLOCK_TRANSLATE,// Before translating each basic block
+PANDA_CB_BEFORE_TCG_CODEGEN,    // Before host codegen of each basic block.
 PANDA_CB_AFTER_BLOCK_TRANSLATE, // After translating each basic block
 PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT,    // Before executing each basic block (with option to invalidate, may trigger retranslation)
 PANDA_CB_BEFORE_BLOCK_EXEC,     // Before executing each basic block
@@ -1266,8 +1270,29 @@ unused
 
 **Signature**:
 ```C
-int (*before_block_translate)(CPUState *env, target_ulong pc);
+void (*before_block_translate)(CPUState *env, target_ulong pc);
 ```
+---
+
+`before_tcg_codegen`: called after lifting a guest basic block to TCG but before optimization and host code generation
+
+**Callback ID**: `PANDA_CB_BEFORE_TCG_CODEGEN`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `TranslationBlock *tb`: the TB that is about to be just-in-time (JIT) compiled
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+This is a good place to inspect or modify the TCG block right after a guest
+basic block has been lifted to TCG. For an example use, see the `coverage`
+plugin source code.
+
 ---
 
 `after_block_translate`: called after the translation of each basic block
