@@ -43,7 +43,7 @@ std::vector<sig_event_t> hyper_sig_events;
 std::set<int32_t> hyper_blocked_sigs;
 std::map<std::string, std::set<int32_t>> hyper_blocked_sigs_by_proc;
 
-// API -----------------------------------------------------------------------------------------------------------------
+// Python CFFI API -----------------------------------------------------------------------------------------------------
 
 // Block a signal for all processes
 void block_sig(int32_t sig) {
@@ -66,8 +66,36 @@ void block_sig_by_proc(int32_t sig, char* proc_name) {
 
 // Core ----------------------------------------------------------------------------------------------------------------
 
+// Per Luke C., we'll supress by swapping to SIGWINCH instead of re-directing control flow from the hypervisor
 bool supress_curr_sig(CPUState* cpu) {
-    // TODO: arch-specific signal supression logic here
+
+    target_ulong sigwinch_num = 28;
+
+    #if defined(TARGET_I386)
+        // int 0x80 -> ecx
+        // https://en.wikibooks.org/wiki/X86_Assembly/Interfacing_with_Linux#int_0x80
+        #define SIG_ARG_REG &(((CPUArchState*)cpu->env_ptr)->regs[1])
+    #elif defined(TARGET_X86_64)
+        // syscall -> rsi
+        // https://en.wikibooks.org/wiki/X86_Assembly/Interfacing_with_Linux#syscall
+        #define SIG_ARG_REG &(((CPUArchState*)cpu->env_ptr)->regs[6])
+    #elif defined(TARGET_ARM)
+        // swi -> r1
+        // https://jumpnowtek.com/shellcode/linux-arm-shellcode-part1.html
+        #define SIG_ARG_REG &(((CPUArchState*)cpu->env_ptr)->regs[1])
+    #elif defined(TARGET_AARCH64)
+        // swi -> x1
+        // https://jumpnowtek.com/shellcode/linux-arm-shellcode-part1.html
+        #define SIG_ARG_REG &(((CPUArchState*)cpu->env_ptr)->xregs[1])
+    #elif defined(TARGET_MIPS)
+        // a1
+        #define SIG_ARG_REG &(((CPUArchState*)cpu->env_ptr)->active_tc.gpr[5])
+    #else
+        // NOP for unsupported architectures
+        #define SIG_ARG_REG &sigwinch_num
+    #endif
+
+    *SIG_ARG_REG = sigwinch_num;
     return true;
 }
 
