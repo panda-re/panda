@@ -13,6 +13,7 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 #include <set>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -38,13 +39,29 @@ extern "C" {
 
 // Globals -------------------------------------------------------------------------------------------------------------
 
-std::set<int32_t> hyper_blocked_sigs;       // Ordered set -> O(1) lookup
-std::vector<sig_event_t> hyper_sig_events;  // Buffer before write to PANDA LOG
+std::vector<sig_event_t> hyper_sig_events;
+std::set<int32_t> hyper_blocked_sigs;
+std::map<std::string, std::set<int32_t>> hyper_blocked_sigs_by_proc;
 
 // API -----------------------------------------------------------------------------------------------------------------
 
+// Block a signal for all processes
 void block_sig(int32_t sig) {
     hyper_blocked_sigs.insert(sig);
+}
+
+// Block a signal only for a named process
+void block_sig_by_proc(int32_t sig, char* proc_name) {
+
+    std::string name(proc_name);
+    auto named_block = hyper_blocked_sigs_by_proc.find(name);
+
+    if (named_block == hyper_blocked_sigs_by_proc.end()) {
+        std::set<int32_t> new_sig_set{sig};
+        hyper_blocked_sigs_by_proc.insert(std::make_pair(proc_name, new_sig_set));
+    } else {
+        named_block->second.insert(sig);
+    }
 }
 
 // Core ----------------------------------------------------------------------------------------------------------------
@@ -58,9 +75,29 @@ void sig_mitm(CPUState* cpu, target_ulong pc, int32_t pid, int32_t sig) {
 
     bool suppressed = false;
 
+    // pid -> signal destination process name
+    std::string dst_proc_name("UNKOWN_DST_PROC");
+    GArray *proc_list = get_processes(cpu);
+    if (proc_list != NULL) {
+        for (int i = 0; i < proc_list->len; i++) {
+            OsiProc *proc = &g_array_index(proc_list, OsiProc, i);
+            if (proc->pid == pid) {
+                dst_proc_name = proc->name;
+                break;
+            }
+        }
+    }
+
     // Optional supression
     if (hyper_blocked_sigs.find(sig) != hyper_blocked_sigs.end()) {
         suppressed = supress_curr_sig(cpu);
+    } else {
+        auto named_block = hyper_blocked_sigs_by_proc.find(dst_proc_name);
+        if (named_block != hyper_blocked_sigs_by_proc.end()) {
+            if (named_block->second.find(sig) != named_block->second.end()) {
+                suppressed = supress_curr_sig(cpu);
+            }
+        }
     }
 
     // Logging
@@ -69,7 +106,7 @@ void sig_mitm(CPUState* cpu, target_ulong pc, int32_t pid, int32_t sig) {
         sig,
         suppressed,
         curr_proc->name,
-        "UNKOWN_DST_PROC", //TODO: how to get actual dest name from pid?
+        dst_proc_name,
         curr_proc->pid,
         pid,
     };
