@@ -132,7 +132,7 @@ llvm::PandaTaintFunctionPass *PTFP = nullptr;
 bool taintEnabled = false;
 
 // Taint memlog
-static taint2_memlog taint_memlog;
+taint2_memlog taint_memlog;
 
 // Configuration
 bool tainted_pointer = true;
