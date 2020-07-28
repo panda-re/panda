@@ -25,6 +25,7 @@ PANDAENDCOMMENT */
 
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/Pass.h>
 
 typedef struct taint2_memlog taint2_memlog;
 typedef struct addr_struct Addr;
@@ -89,10 +90,12 @@ private:
     // for counting up slots used by called subroutines
     std::unique_ptr<PandaSlotTracker> subframePST;
 
+    ConstantInt *const_uint64(uint64_t val);
+    ConstantInt *const_uint64_ptr(void *ptr);
     Constant *constSlot(Value *value);
     Constant *constWeakSlot(Value *value);
     Constant *constInstr(Instruction *I);
-    Constant *constNull(LLVMContext &C);
+    Constant *constNull(Module *m);
     int intValue(Value *value);
     unsigned getValueSize(const Value *V);
     ConstantInt *valueSizeValue(const Value *V);
@@ -101,40 +104,49 @@ private:
     bool isCPUStateAdd(BinaryOperator *AI);
     bool isIrrelevantAdd(BinaryOperator *AI);
     void inlineCall(CallInst *CI);
-    void inlineCallAfter(Instruction &I, Function *F, vector<Value *> &args);
-    void inlineCallBefore(Instruction &I, Function *F, vector<Value *> &args);
+    Value *ptrToInt(Value *ptr, Instruction &I);
+    Function *getFunction(Module *m, const char *func,
+        std::vector<llvm::Type *> &argTs, bool varArgs,
+        llvm::Type *retT);
+    CallInst *inlineCall(Instruction &I, const char *func,
+        vector<Value *> &args, vector<Type *> &argTs, bool before,
+        bool tryInline, bool varArgs, Type *retT);
+    void inlineCallAfter(Instruction &I, const char *func,
+        vector<Value *> &args, vector<Type *> &argTs, bool varArgs);
+    void inlineCallBefore(Instruction &I, const char *func,
+        vector<Value *> &args, vector<Type *> &argTs);
     CallInst *insertLogPop(Instruction &after);
-    void insertTaintCopy(Instruction &I,
-            Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
-            uint64_t size);
-    void insertTaintBulk(Instruction &I,
-            Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
-            uint64_t size, Function *func);
+    void insertTaintCopy(Instruction &I, Constant *shad_dest, Value *dest,
+        Constant *shad_src, Value *src, uint64_t size);
+    void insertTaintBulk(Instruction &I, Constant *shad_dest, Value *dest,
+        Constant *shad_src, Value *src, uint64_t size);
     void insertAfterTaintLd(Instruction &I, Value *val, Value *addr, uint64_t size);
-    void insertTaintCopyOrDelete(Instruction &I,
-            Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
-            uint64_t size);
-    void insertTaintPointer(Instruction &I, Value *ptr, Value *val, bool is_store);
+    void insertTaintCopyOrDelete(Instruction &I, Constant *shad_dest,
+        Value *dest, Constant *shad_src, Value *src, uint64_t size);
+    void insertTaintPointer(Instruction &I, Value *ptr, Value *val,
+        bool is_store);
     void insertTaintMix(Instruction &I, Value *src);
     void insertTaintMix(Instruction &I, Value *dest, Value *src);
     void insertTaintCompute(Instruction &I,
-            Value *src1, Value *src2, bool is_mixed);
+        Value *src1, Value *src2, bool is_mixed);
     void insertTaintCompute(Instruction &I, Value *dest,
-            Value *src1, Value *src2, bool is_mixed);
+        Value *src1, Value *src2, bool is_mixed);
     void insertTaintMul(Instruction &I, Value *dest,
-            Value *src1, Value *src2);
+        Value *src1, Value *src2);
     void insertTaintSext(Instruction &I, Value *src);
     void insertTaintSelect(Instruction &after, Value *dest,
-            Value *selector, vector<pair<Value *, Value *>> &selections);
-    void insertTaintDelete(Instruction &I,
-            Constant *shad, Value *dest, Value *size);
+        Value *selector, vector<pair<Value *, Value *>> &selections);
+    void insertTaintDelete(Instruction &I, Constant *shad, Value *dest,
+        Value *size);
     void insertTaintBranch(Instruction &I, Value *cond);
     void insertTaintQueryNonConstPc(Instruction &I, Value *cond);
     void insertStateOp(Instruction &I);
 
 public:
+    llvm::LLVMContext *ctx;
     DataLayout *dataLayout = NULL;
 
+    /*
     Function *deleteF;
     Function *mixF;
     Function *pointerF;
@@ -160,21 +172,30 @@ public:
 
     Constant *memlogConst;
     Function *memlogPopF;
+    */
 
     Constant *llvConst;
     Constant *memConst;
     Constant *grvConst;
     Constant *gsvConst;
     Constant *retConst;
-
     Constant *prevBbConst;
 
-    Type *instrT;
+    llvm::Type *instrP;
+    llvm::Type *shadP;
+    llvm::Type *memlogP;
+    llvm::Type *voidT;
+    llvm::IntegerType *int1T;
+    llvm::IntegerType *int64T;
+    llvm::PointerType *int64P;
 
     PandaTaintVisitor(ShadowState *shad, taint2_memlog *taint_memlog)
         : shad(shad), taint_memlog(taint_memlog) {}
 
     ~PandaTaintVisitor() {}
+
+    Constant *const_i64p(void *ptr);
+    Constant *const_struct_ptr(llvm::Type *ptrT, void *ptr);
 
     // Overrides.
     void visitFunction(Function& F);
@@ -222,10 +243,14 @@ private:
 
 public:
     static char ID;
-    PandaTaintVisitor PTV; // Our LLVM instruction visitor
+    PandaTaintVisitor *PTV; // Our LLVM instruction visitor
 
     PandaTaintFunctionPass(ShadowState *shad, taint2_memlog *taint_memlog)
-        : FunctionPass(ID), shad(shad), taint_memlog(taint_memlog), PTV(shad, taint_memlog) {}
+        : FunctionPass(ID), shad(shad), taint_memlog(taint_memlog), PTV(new PandaTaintVisitor(shad, taint_memlog)) {}
+
+    // TODO: what should we be doing with ID here?
+    PandaTaintFunctionPass(PandaTaintFunctionPass &ptfp)
+        : FunctionPass(ID), shad(ptfp.shad), taint_memlog(ptfp.taint_memlog), PTV(ptfp.PTV) {}
 
     ~PandaTaintFunctionPass() { }
 

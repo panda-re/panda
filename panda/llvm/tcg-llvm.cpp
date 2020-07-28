@@ -86,8 +86,7 @@ extern CPUState *env;
 using namespace llvm;
 
 TCGLLVMTranslator::TCGLLVMTranslator()
-    : m_builder(*m_context), m_tbCount(0), m_tcgContext(NULL),
-    m_tbFunction(NULL), m_tbType(NULL) {
+    : m_tbCount(0), m_tcgContext(NULL), m_tbFunction(NULL), m_tbType(NULL) {
 
     std::memset(m_labels, 0, sizeof(m_labels));
     std::memset(m_values, 0, sizeof(m_values));
@@ -591,7 +590,7 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
             default:                                                \
                 tcg_abort();                                        \
         }                                                           \
-        BasicBlock* bb = BasicBlock::Create(*m_context);             \
+        BasicBlock* bb = BasicBlock::Create(*m_context);            \
         m_builder.CreateCondBr(v,                                   \
             getLabel(arg_label(args[3])->id), bb);                  \
         startNewBasicBlock(bb);                                     \
@@ -1220,10 +1219,9 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
     /* Prepare globals and temps information */
     initGlobalsAndLocalTemps();
 
-    LLVMContext &C = *m_context;
-    MDNode *PCUpdateMD = MDNode::get(C, MDString::get(C, "pcupdate"));
-    MDNode *RRUpdateMD = MDNode::get(C, MDString::get(C, "rrupdate"));
-    MDNode *RuntimeMD = MDNode::get(C, MDString::get(C, "runtime"));
+    MDNode *PCUpdateMD = MDNode::get(*m_context, MDString::get(*m_context, "pcupdate"));
+    MDNode *RRUpdateMD = MDNode::get(*m_context, MDString::get(*m_context, "rrupdate"));
+    MDNode *RuntimeMD = MDNode::get(*m_context, MDString::get(*m_context, "runtime"));
 
     /* Init int for adding offsets to env */
     m_envInt = m_builder.CreatePtrToInt(m_tbFunction->arg_begin(), wordType());
@@ -1308,16 +1306,18 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
     if(execute_llvm || qemu_loglevel_mask(CPU_LOG_LLVM_ASM)) {
 
         if(jit->addLazyIRModule(llvm::orc::ThreadSafeModule(
-                std::move(m_module), std::move(m_context)))) {
+                std::move(m_module), m_tsc))) {
             std::cerr << "Cannot add module to JIT" << std::endl;
             assert(false);
         }
 
-        m_context = std::make_unique<llvm::LLVMContext>();
         m_module = std::make_unique<Module>(("tcg-llvm" +
             std::to_string(m_tbCount)).c_str(), *m_context);
         m_functionPassManager = new legacy::FunctionPassManager(m_module.get());
         m_functionPassManager->add(new llvm::PandaCallMorphFunctionPass());
+        for(auto cb : newModuleCallbacks) {
+            cb(m_module.get(), m_functionPassManager);
+        }
 
         auto symbol = jit->lookup(fName.str());
         assert(symbol);
@@ -1339,10 +1339,10 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
 
     if(qemu_loglevel_mask(CPU_LOG_LLVM_IR)) {
         std::string fcnString;
-        llvm::raw_string_ostream s(fcnString);
-        s << *m_tbFunction;
+        llvm::raw_string_ostream ss(fcnString);
+        ss << *m_tbFunction;
         qemu_log("OUT (LLVM IR):\n");
-        qemu_log("%s", s.str().c_str());
+        qemu_log("%s", ss.str().c_str());
         qemu_log("\n");
         qemu_log_flush();
     }
