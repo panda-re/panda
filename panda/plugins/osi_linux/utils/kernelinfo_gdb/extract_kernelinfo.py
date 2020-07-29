@@ -1,5 +1,6 @@
 import gdb
 import sys
+import re
 
 file_out = sys.stdout
 
@@ -33,12 +34,9 @@ class KernelInfo(gdb.Command):
         uts_version = get_symbol_as_string("init_uts_ns->name->version")
         uts_machine = get_symbol_as_string("init_uts_ns->name->machine")
         print(f"name = {uts_release}|{uts_version}|{uts_machine}",file=file_out)
-        release = get_symbol_as_string("init_uts_ns->name->release")
-        version_a,version_b,version_c = release.split(".")
-        if "-" in version_c: # version.c can be of the form 0-42-generic
-            version_c = version_c.split("-")[0]
-        if version_c.endswith("+"): # Indicates it was built with symbols
-            version_c = version.c[:-1]
+        version_a,version_b,version_c_all,*_ = release.split(".")
+        # version c is customizable. We just care about the numbers at the beginning
+        version_c = re.search("\d+",version_c_all).group(0)
         print(f"version.a = {version_a}",file=file_out)
         print(f"version.b = {version_b}",file=file_out)
         print(f"version.c = {version_c}",file=file_out)
