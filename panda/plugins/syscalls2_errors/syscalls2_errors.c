@@ -14,6 +14,10 @@ PANDAENDCOMMENT */
 #include <stdio.h>
 bool debug = false;
 
+
+
+
+
 /*
 * https://git.musl-libc.org/cgit/musl/tree/src/internal/syscall_ret.c?h=v1.1.15
 */
@@ -48,8 +52,10 @@ void catch_all_sys_return(CPUState* cpu, target_ulong pc, const syscall_info_t *
 
 
 bool init_plugin(void *self) {
+    panda_add_arg("syscalls2", "load-info=true");
     panda_require("syscalls2");
     assert(init_syscalls2_api());
+    PPP_REG_CB("syscalls2", on_all_sys_return2, catch_all_sys_return);
     PPP_REG_CB("syscalls2", on_all_sys_return2, catch_all_sys_return);
     return true;
 }
