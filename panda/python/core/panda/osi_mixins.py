@@ -38,17 +38,18 @@ class osi_mixins():
     def set_os_name(self, os_name):
         """
         Set OS target. Equivalent to "-os" flag on the command line. Matches the form of:
+        
             "windows[-_]32[-_]xpsp[23]",
             "windows[-_]32[-_]7",
             "windows[-_]32[-_]2000",
             "linux[-_]32[-_].+",
             "linux[-_]64[-_].+",
 
-        Parameters:
-            os_name: string matching the format for the os flag.
-        
-        Returns:
-            None
+            Parameters:
+                os_name: string matching the format for the os flag.
+            
+            Returns:
+                None
         """
         os_name_new = ffi.new("char[]", bytes(os_name, "utf-8"))
         self.libpanda.panda_set_os_name(os_name_new)

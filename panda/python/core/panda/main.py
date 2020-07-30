@@ -30,6 +30,7 @@ from .plugin_list import plugin_list
 
 # Mixins to extend Panda class functionality
 from .libpanda_mixins   import libpanda_mixins
+from .libqemu_mixins    import libqemu_mixins
 from .blocking_mixins   import blocking_mixins
 from .osi_mixins        import osi_mixins
 from .hooking_mixins    import hooking_mixins
@@ -41,11 +42,28 @@ from .gdb_mixins        import gdb_mixins
 
 import pdb
 
-class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins, pyperipheral_mixins, gdb_mixins):
+class Panda(libpanda_mixins, libqemu_mixins, blocking_mixins, osi_mixins, hooking_mixins, callback_mixins, taint_mixins, volatility_mixins, pyperipheral_mixins, gdb_mixins):
     """
     This is the object used to interact with PANDA. Initializing it creates a virtual machine to interact with.
 
     It attempts to be less complicated by using mixins. All mixin methods are avaiable to the main PANDA object.
+
+        Attributes:
+            arch : architecture string (e.g. "i386", "x86_64", "arm", "mips", "mipsel")
+            mem : size of memory for machine (e.g. "128M", "1G")
+            expect_prompt : Regular expression describing the prompt exposed by the guest 
+                on a serial console. Used so we know when a running command has finished 
+                with its output.
+            os_version : analagous to -os string.
+            qcow : qcow file to load as a path
+            os : type of OS (e.g. "linux")
+            generic : specify a generic qcow to use and set other arguments. Supported 
+                values: arm/ppc/x86_64/i386. Will download qcow automatically
+            raw_monitor : When set, don't specify a -monitor. arg Allows for use of 
+                -nographic in args with ctrl-A+C for interactive qemu prompt.
+            extra_args : extra arguments to pass to PANDA as either a string or an 
+                array. (e.g. "-nographic" or ["-nographic", "-net", "none"])
+
     """
     def __init__(self, arch="i386", mem="128M",
             expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
@@ -760,5 +778,6 @@ class Panda(libpanda_mixins, blocking_mixins, osi_mixins, hooking_mixins, callba
             return (x - 2**self.bits)
         else: # Else it's positive
             return x
+
 
 # vim: expandtab:tabstop=4:
