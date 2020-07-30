@@ -10,3 +10,4 @@ tainted_mmio
 tainted_net
 tstringsearch
 query_file_writes
+taintissue
