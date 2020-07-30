@@ -1376,6 +1376,7 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
        the tcg optimization currently hidden inside tcg_gen_code.  All
        that should be required is to flush the TBs, allocate a new TB,
        re-initialize it per above, and re-do the actual code generation.  */
+    panda_callbacks_before_tcg_codegen(first_cpu, tb);
     gen_code_size = tcg_gen_code(&tcg_ctx, tb);
 
 #if defined(CONFIG_LLVM)
