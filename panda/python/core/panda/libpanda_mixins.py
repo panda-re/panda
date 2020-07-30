@@ -9,10 +9,6 @@ class libpanda_mixins():
         charptr = ffi.new("char[]", bytes(name, "utf-8"))
         self.libpanda.panda_start_pandalog(charptr)
 
-    def set_os_name(self, os_name):
-        os_name_new = ffi.new("char[]", bytes(os_name, "utf-8"))
-        self.libpanda.panda_set_os_name(os_name_new)
-
     def enable_memcb(self):
         self._memcb = True
         self.libpanda.panda_enable_memcb()
