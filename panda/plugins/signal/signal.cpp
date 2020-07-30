@@ -27,8 +27,7 @@ PANDAENDCOMMENT */
 #include "osi/osi_ext.h"
 #include "osi_linux/osi_linux_ext.h"
 
-#include "sig.h"
-#include "sig_int_fns.h"
+#include "signal_int_fns.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -37,11 +36,30 @@ extern "C" {
     void uninit_plugin(void *);
 }
 
+// If a future API is to retrive events thus far (using CFFI and not PANDALOG)
+//#define IN_MEM_BUF
+
+// Structs -------------------------------------------------------------------------------------------------------------
+
+// Captured signal event
+typedef struct sig_event_t {
+    int32_t sig;
+    bool suppressed;
+    std::string src_name;
+    std::string dst_name;
+    target_pid_t src_pid;
+    target_pid_t dst_pid;
+} sig_event_t;
+
 // Globals -------------------------------------------------------------------------------------------------------------
 
-std::vector<sig_event_t> hyper_sig_events;
 std::set<int32_t> hyper_blocked_sigs;
 std::map<std::string, std::set<int32_t>> hyper_blocked_sigs_by_proc;
+Panda__SignalEvent pse;
+
+#ifdef IN_MEM_BUF
+    std::vector<sig_event_t> hyper_sig_events;
+#endif
 
 // Python CFFI API -----------------------------------------------------------------------------------------------------
 
@@ -66,7 +84,28 @@ void block_sig_by_proc(int32_t sig, char* proc_name) {
 
 // Core ----------------------------------------------------------------------------------------------------------------
 
+// Incremental log update
+void flush_to_plog(sig_event_t* se_ptr) {
+
+    if (!pandalog) { return; }    // Pre-condition
+
+    // Load event
+    pse = PANDA__SIGNAL_EVENT__INIT;
+    pse.sig = se_ptr->sig;
+    pse.suppressed = se_ptr->suppressed;
+    pse.src_name = (char*)se_ptr->src_name.c_str();
+    pse.dst_name = (char*)se_ptr->dst_name.c_str();
+    pse.src_pid = se_ptr->src_pid;
+    pse.dst_pid = se_ptr->dst_pid;
+
+    // Flush event
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.signal_event = &pse;
+	pandalog_write_entry(&ple);
+}
+
 // Per Luke C., we'll supress by swapping to SIGWINCH instead of re-directing control flow from the hypervisor
+// Andrew F. also suggested setting an illegal sig num and supressing the error on syscall return - noting in case we decide to switch to that impl
 bool supress_curr_sig(CPUState* cpu) {
 
     target_ulong sigwinch_num = 28;
@@ -89,6 +128,7 @@ bool supress_curr_sig(CPUState* cpu) {
         #define SIG_ARG_REG &(((CPUArchState*)cpu->env_ptr)->xregs[1])
     #elif defined(TARGET_MIPS)
         // a1
+        // https://www.linux-mips.org/wiki/Syscall
         #define SIG_ARG_REG &(((CPUArchState*)cpu->env_ptr)->active_tc.gpr[5])
     #else
         // NOP for unsupported architectures
@@ -138,12 +178,21 @@ void sig_mitm(CPUState* cpu, target_ulong pc, int32_t pid, int32_t sig) {
         curr_proc->pid,
         pid,
     };
-    hyper_sig_events.push_back(sig_event);
+    flush_to_plog(&sig_event);
+
+    #ifdef IN_MEM_BUF
+        hyper_sig_events.push_back(sig_event);
+    #endif
 }
 
 // Setup/Teardown ------------------------------------------------------------------------------------------------------
 
 bool init_plugin(void *_self) {
+
+    if (!pandalog) {
+        fprintf(stderr, "[ERROR] signal: Set with -pandalog [filename]\n");
+        return  false;
+    }
 
     // Setup dependencies
     panda_enable_precise_pc();
@@ -156,27 +205,27 @@ bool init_plugin(void *_self) {
 
     // Setup signature
     switch (panda_os_familyno) {
-       case OS_LINUX: {
+        case OS_LINUX: {
             //#if (defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS))
             #if (defined(TARGET_I386) || defined(TARGET_ARM))
-                printf("sig: setting up 32-bit Linux.\n");
+                printf("signal: setting up 32-bit Linux.\n");
                 PPP_REG_CB("syscalls2", on_sys_kill_enter, sig_mitm);
             #elif (defined(TARGET_X86_64) || defined(TARGET_AARCH64))
-                printf("sig: setting up 64-bit Linux.\n");
+                printf("signal: setting up 64-bit Linux.\n");
                 PPP_REG_CB("syscalls2", on_sys_kill_enter, sig_mitm);
             #else
-                fprintf(stderr, "sig: [ERROR] Unsuppported architecture!\n");
+                fprintf(stderr, "[ERROR] signal: Unsuppported architecture!\n");
                 return false;
             #endif
             return true;
         } break;
         default: {
-            fprintf(stderr, "sig: [ERROR] Unsuppported operating system!\n");
+            fprintf(stderr, "[ERROR] signal: Unsuppported operating system!\n");
             return false;
         }
     }
 }
 
 void uninit_plugin(void *self) {
-    // TODO: flush events to panda log here
+    // N/A
 }
