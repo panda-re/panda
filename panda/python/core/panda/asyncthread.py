@@ -1,3 +1,8 @@
+"""
+Module to run a thread in parallel to QEMU's main cpu loop.
+Enables queuing up python functions from main thread and vice versa
+"""
+
 import threading
 import functools
 from queue import Queue, Empty
@@ -5,8 +10,6 @@ from time import sleep
 from colorama import Fore, Style
 from panda.utils import debug
 
-# Module to run a thread in parallel to QEMU's main cpu loop
-# Enables queuing up python functions from main thread and vice versa
 
 def progress(msg):
     print(Fore.CYAN + '[asyncthread.py] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)

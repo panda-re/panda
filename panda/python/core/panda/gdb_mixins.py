@@ -1,3 +1,8 @@
+"""
+Provides the ability to interact with a QEMU attached gdb session by setting and clearing breakpoints. Experimental.
+"""
+
+
 from .ffi_importer import ffi
 
 class gdb_mixins():

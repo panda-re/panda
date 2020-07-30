@@ -1,7 +1,9 @@
-# Helper library for managing qcows on your filesystem.
-# Given an architecture, it can download a qcow from moyix to ~/.panda/ and then use that
-# Given a path to a qcow, it can use that
-# A qcow loaded by architecture can then be queried to get the name of the root snapshot or prompt
+"""
+Helper library for managing qcows on your filesystem.
+Given an architecture, it can download a qcow from moyix to ~/.panda/ and then use that
+Given a path to a qcow, it can use that
+A qcow loaded by architecture can then be queried to get the name of the root snapshot or prompt
+"""
 
 import os
 import subprocess
@@ -16,16 +18,18 @@ logger.setLevel(logging.DEBUG)
 VM_DIR = os.path.join(os.path.expanduser("~"), ".panda")
 
 Image = namedtuple('Image', ['arch', 'os', 'prompt', 'cdrom', 'snapshot', 'url', 'extra_files', 'qcow', 'default_mem', 'extra_args'])
+Image.__doc__ = """The Image class stores important information about an image."""
+Image.arch.__doc__ =  """Arch for the given architecture."""
+Image.os.__doc__ = """an os string we can pass to panda with -os"""
+Image.prompt.__doc__ = """a regex to detect a bash prompt after loading the snapshot and sending commands"""
+Image.cdrom.__doc__ = """name to use for cd-drive when inserting an ISO via monitor"""
+Image.qcow.__doc__ = """optional name to save qcow as"""
+Image.url.__doc__ = """url to download the qcow (e.g. http:// website.com/yourqcow.qcow2)"""
+Image.default_mem.__doc__ = """memory to use for the root snapshot (e.g. 1G)"""
+Image.extra_files.__doc__ = """other files (assumed to be in same directory on server) that we also need"""
+Image.extra_args.__doc__ = """Extra arguments to pass to PANDA (e.g. '-nographic') """
+
 Image.__new__.__defaults__ = (None,) * len(Image._fields)
-# arch is a Arch for the given architecture
-# OS is an os string we can pass to panda with -os
-# Prompt is a regex to detect a bash prompt after loading the snapshot and sending commands
-# Qcow, optional name to save qcow as
-# cdrom: name to use for cd-drive when inserting an ISO via monitor
-# URL: where to download the qcow
-# default_mem: memory to use for the root snapshot
-# Extra files: other files (assumed to be in same directory on server) that we also need
-# Extra args: Extra arguments to pass to PANDA
 
 SUPPORTED_IMAGES = {
     # Debian: support for 4 arches on Wheezy
@@ -138,6 +142,15 @@ SUPPORTED_IMAGES['mips']   = SUPPORTED_IMAGES['mips_wheezy']
 SUPPORTED_IMAGES['mipsel'] = SUPPORTED_IMAGES['mipsel_wheezy']
 
 def get_qcow_info(name=None):
+    '''
+    Return information about supported image as specified by name.
+
+        Parameters:
+            name: python string idenfifying a qcow supported
+        
+        Returns:
+            Image class for qcow
+    '''
     if name is None:
         logger.warning("No qcow name provided. Defaulting to i386")
         name = "i386"
@@ -153,8 +166,16 @@ def get_qcow_info(name=None):
     # Move properties in .arch to being in the main object
     return r
 
-# Given a generic name of a qcow or a path to a qcow, return the path. Defaults to i386
 def get_qcow(name=None):
+    '''
+    Given a generic name of a qcow or a path to a qcow, return the path. Defaults to i386
+
+        Parameters:
+            name: generic name or path to qcow
+        
+        Returns:
+            path to qcow
+    '''
     if name is None:
         logger.warning("No qcow name provided. Defaulting to i386")
         name = "i386"
@@ -194,8 +215,8 @@ def get_qcow(name=None):
         logger.debug("Downloaded %s to %s", qc, qcow_path)
     return qcow_path
 
-# Given an index into argv, call get_qcow with that arg if it exists, else with None
 def qcow_from_arg(idx=1):
+    ''' Given an index into argv, call get_qcow with that arg if it exists, else with None'''
     if (len(argv) > idx):
         return get_qcow(argv[idx])
     else:

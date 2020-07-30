@@ -1,3 +1,8 @@
+"""
+Utilities to integrate Volatility with PANDA. Highly experimental.
+"""
+
+
 from .ffi_importer import ffi
 
 

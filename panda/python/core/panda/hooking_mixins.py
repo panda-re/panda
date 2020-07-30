@@ -1,6 +1,13 @@
+"""
+Provides the ability to interact with the hooks2 plugin and receive callbacks based on user-provided criteria.
+"""
+
 from .ffi_importer import ffi
 from .utils import debug
 class Hook(object):
+    '''
+    Maintains the state of a hook as defined by a user.
+    '''
     def __init__(self,is_enabled=True,is_kernel=True,hook_cb=True,target_addr=0,target_library_offset=0,library_name=None,program_name=None):
         self.is_enabled = is_enabled
         self.is_kernel = is_kernel
@@ -12,6 +19,9 @@ class Hook(object):
 
 class hooking_mixins():
     def update_hook(self,hook_name,addr):
+        '''
+        Update hook to point to a different addres.
+        '''
         if hook_name in self.named_hooks:
             hook = self.named_hooks[hook_name]
             if addr != hook.target_addr:
@@ -19,6 +29,9 @@ class hooking_mixins():
                 self.enable_hook(hook)
 
     def enable_hook(self,hook_name):
+        '''
+        Set hook status to active.        
+        '''
         if hook_name in self.named_hooks:
             hook = self.named_hooks[hook_name]
             if not hook.is_enabled:
@@ -26,6 +39,9 @@ class hooking_mixins():
                 self.plugins['hooks'].enable_hook(hook.hook_cb, hook.target_addr)
 
     def disable_hook(self,hook_name):
+        '''
+        Set hook status to inactive.
+        '''
         if hook_name in self.named_hooks:
             hook = self.named_hooks[hook_name]
             if hook.is_enabled:
@@ -35,6 +51,10 @@ class hooking_mixins():
             print(f"{hook_name} not in list of hooks")
 
     def update_hooks_new_procname(self, name):
+        '''
+        Uses user-defined information to update the state of hooks based on things such as libraryname, procname and whether 
+        or not the hook points to kernel space.
+        '''
         for h in self.hook_list:
             if not h.is_kernel and ffi.NULL != current:
                 if h.program_name:

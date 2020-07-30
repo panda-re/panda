@@ -1,3 +1,7 @@
+"""
+The decorator submodule provide the basis for syntactic sugar on callbacks.
+"""
+
 # Decorator to ensure a function isn't called in the main thread
 
 import threading

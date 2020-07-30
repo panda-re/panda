@@ -1,3 +1,7 @@
+"""
+Utilities to provide blocking interactions with PANDA. This includes serial and monitor interactions as well as file copy to the guest.
+"""
+
 # XXX: Do not call any of the following from the main thread- they depend on the CPU loop running
 from .decorators import blocking
 from .utils import progress, make_iso, debug

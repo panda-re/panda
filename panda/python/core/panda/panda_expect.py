@@ -1,4 +1,4 @@
-# Custom library for interacting/expecting data via serial-like FDs
+""" Custom library for interacting/expecting data via serial-like FDs"""
 
 import os
 import re

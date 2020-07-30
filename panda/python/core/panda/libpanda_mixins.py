@@ -1,5 +1,6 @@
-# Methods that directly pass data to/from libpanda with no extra logic beyond
-# argument reformatting
+'''
+Methods that directly pass data to/from libpanda with no extra logic beyond argument reformatting.
+'''
 
 from .ffi_importer import ffi
 
@@ -158,3 +159,9 @@ class libpanda_mixins():
 
     def panda_finish(self):
         return self.libpanda.panda_finish()
+
+    def rr_get_guest_instr_count(self):
+        '''
+        Returns record/replay guest instruction count.
+        '''
+        return self.libpanda.rr_get_guest_instr_count_external()

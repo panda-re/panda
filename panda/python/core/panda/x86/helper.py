@@ -54,6 +54,7 @@ def dump_stack(panda, cpu):
         telescope(panda, cpu, val)
 
 def dump_state(panda, cpu):
+    """Dumps registers and stack to stdout."""
     dump_regs(panda, cpu)
     print("")
     dump_stack(panda, cpu)

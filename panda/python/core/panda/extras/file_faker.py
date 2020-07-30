@@ -1,8 +1,4 @@
-from panda.extras.file_hook import FileHook
-from panda.ffi_importer import ffi
-import logging
-
-'''
+"""
 Framework for halucinating files inside the guest through
 modifications around syscalls involving filenames and file
 descriptors.
@@ -12,7 +8,13 @@ High-level idea:
     that really exists and capture the file descriptor assigned to it.
     Then whenever there are uses of that file descriptor, ignore/drop the request
     and fake return values.
-'''
+"""
+
+
+from panda.extras.file_hook import FileHook
+from panda.ffi_importer import ffi
+import logging
+
 
 class FakeFile:
     '''
