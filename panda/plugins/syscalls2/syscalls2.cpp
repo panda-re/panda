@@ -788,10 +788,18 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
         return -1; // TODO: does caller even handle error case? Not every arch does it...
     }
 
-    // 32-bit MIPS "syscall" instruction
-    if ((buf[3] ==  0x0c) && (buf[2] == 0x00) && (buf[1] == 0x00) && (buf[0] == 0x00)) {
-        return true;
-    }
+    // ifdef guard prevents us from misinterpreting "syscall" as "jal 0x0000" or "ehb"
+    #if defined(TARGET_WORDS_BIGENDIAN)
+        // 32-bit MIPS "syscall" instruction - big endian
+        if ((buf[3] ==  0x0c) && (buf[2] == 0x00) && (buf[1] == 0x00) && (buf[0] == 0x00)) {
+            return true;
+        }
+    #else
+        // 32-bit MIPS "syscall" instruction - little endian
+        if ((buf[3] ==  0x00) && (buf[2] == 0x00) && (buf[1] == 0x00) && (buf[0] == 0x0c)) {
+            return true;
+        }
+    #endif
 
     return false;
 
