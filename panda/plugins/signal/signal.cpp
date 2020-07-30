@@ -205,6 +205,7 @@ bool init_plugin(void *_self) {
 
     // Setup signature
     switch (panda_os_familyno) {
+
         case OS_LINUX: {
             //#if (defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS))
             #if (defined(TARGET_I386) || defined(TARGET_ARM))
@@ -214,11 +215,23 @@ bool init_plugin(void *_self) {
                 printf("signal: setting up 64-bit Linux.\n");
                 PPP_REG_CB("syscalls2", on_sys_kill_enter, sig_mitm);
             #else
-                fprintf(stderr, "[ERROR] signal: Unsuppported architecture!\n");
+                fprintf(stderr, "[ERROR] signal: Unsuppported architecture for Linux!\n");
                 return false;
             #endif
             return true;
         } break;
+
+        case OS_FREEBSD: {
+            #if defined(TARGET_X86_64)
+                printf("signal: setting up 64-bit FreeBSD.\n");
+                PPP_REG_CB("syscalls2", on_kill_enter, sig_mitm);
+            #else
+                fprintf(stderr, "[ERROR] signal: Unsuppported architecture for FreeBSD!\n");
+                return false;
+            #endif
+            return true;
+        }
+
         default: {
             fprintf(stderr, "[ERROR] signal: Unsuppported operating system!\n");
             return false;
