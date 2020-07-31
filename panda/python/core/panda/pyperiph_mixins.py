@@ -1,3 +1,7 @@
+"""
+Mixin to allow interaction with pyperipherals.
+"""
+
 from inspect import signature
 from struct import pack_into
 

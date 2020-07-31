@@ -86,7 +86,7 @@ class callback_mixins():
                     return None # Couldn't figure out the process
                 asid = self.libpanda.panda_current_asid(cpu)
                 self.asid_mapping[asid] = name
-                self.procname_changed(name)
+                self._procname_changed(name)
                 self.disable_callback('__get_pending_procname_change') # Disabled to begin
 
 
@@ -95,9 +95,9 @@ class callback_mixins():
         def __asid_changed(cpustate, old_asid, new_asid):
             '''
             When the ASID changes, check if we know its procname (in self.asid_mapping),
-            if so, call panda.procname_changed(name). Otherwise, we enable __get_pending_procname_change CB, which
+            if so, call panda._procname_changed(name). Otherwise, we enable __get_pending_procname_change CB, which
             waits until the procname changes. Then we grab the new procname, update self.asid_mapping and call
-            panda.procname_changed(name)
+            panda._procname_changed(name)
             '''
             if old_asid == new_asid:
                 return 0
@@ -106,7 +106,7 @@ class callback_mixins():
                 if not self.is_callback_enabled('__get_pending_procname_change'):
                     self.enable_callback('__get_pending_procname_change')
             else: # We do know this ASID->procname, just call procname_changed
-                self.procname_changed(self.asid_mapping[new_asid])
+                self._procname_changed(self.asid_mapping[new_asid])
 
             return 0
 

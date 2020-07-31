@@ -1,3 +1,7 @@
+"""
+Convenience functions to interact with the Operating System Instrospection (OSI) class of plugins.
+"""
+
 from .utils import progress
 from .ffi_importer import ffi
 
@@ -31,18 +35,75 @@ class GArrayIterator():
         self.cleanup_func(self.garray)
 
 class osi_mixins():
+    def set_os_name(self, os_name):
+        """
+        Set OS target. Equivalent to "-os" flag on the command line. Matches the form of:
+        
+            "windows[-_]32[-_]xpsp[23]",
+            "windows[-_]32[-_]7",
+            "windows[-_]32[-_]2000",
+            "linux[-_]32[-_].+",
+            "linux[-_]64[-_].+",
+
+            Parameters:
+                os_name: string matching the format for the os flag.
+            
+            Returns:
+                None
+        """
+        os_name_new = ffi.new("char[]", bytes(os_name, "utf-8"))
+        self.libpanda.panda_set_os_name(os_name_new)
+
+
     def get_mappings(self, cpu):
+        '''
+        Get all active memory mappings in the system.
+
+            Requires: OSI
+
+            Parameters:
+                cpu: CPUState struct
+
+            Returns:
+                Iterator of `OsiModule` structures
+        '''
         current = self.plugins['osi'].get_current_process(cpu)
         maps = self.plugins['osi'].get_mappings(cpu, current)
         map_len = self.garray_len(maps)
         return GArrayIterator(self.plugins['osi'].get_one_module, maps, map_len, self.plugins['osi'].cleanup_garray)
 
     def get_processes(self, cpu):
+        '''
+        Get all running processes in the system. Includes kernel modules on Linux.
+
+            Requires: OSI
+
+            Parameters:
+                cpu: CPUState struct
+
+            Returns:
+                Iterator of `OsiProc` structures
+        '''
         processes = self.plugins['osi'].get_processes(cpu)
         processes_len = self.garray_len(processes)
         return GArrayIterator(self.plugins['osi'].get_one_proc, processes, processes_len, self.plugins['osi'].cleanup_garray)
 
     def get_processes_dict(self, cpu):
+        '''
+        Get all running processes for the system at this moment in time as a dictionary.
+
+        The dictionary maps proceses by their PID. Each mapping returns a dictionary containing the process name, its pid,
+        and its parent pid (ppid).
+
+            Requires: OSI
+
+            Parameters:
+                cpu: CPUState struct
+
+            Returns:
+                Dictionary as described above.
+        '''
+
         procs = {} #pid: {name: X, pid: Y, parent_pid: Z})
 
         for proc in self.get_processes(cpu):

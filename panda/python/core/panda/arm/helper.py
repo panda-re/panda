@@ -29,6 +29,7 @@ registers = {
     "LR": R_LR,
     "IP": R_IP,
     }
+"""Register array for ARM"""
 
 def dump_regs(panda, cpu):
     '''
@@ -57,6 +58,7 @@ def dump_stack(panda, cpu):
         telescope(panda, cpu, val)
 
 def dump_state(panda, cpu):
+    """Dumps registers and stack to stdout."""
     print("Registers:")
     dump_regs(panda, cpu)
     print("Stack:")

@@ -1,3 +1,8 @@
+"""
+Second method of interacting with volatility via their CLI options. Less preferred. Highly experimental.
+"""
+
+
 from io import StringIO
 from volatility.framework.renderers import format_hints
 import datetime

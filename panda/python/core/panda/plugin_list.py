@@ -1,3 +1,4 @@
+""" Wrapper class around list of active C plugins """
 class plugin_list(dict):
 	def __init__(self,panda):
 		self._panda = panda

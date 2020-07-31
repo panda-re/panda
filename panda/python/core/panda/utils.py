@@ -1,3 +1,8 @@
+"""
+Useful utilities for use in pypanda.
+"""
+
+
 import sys
 import subprocess
 import shlex
@@ -8,9 +13,11 @@ from colorama import Fore, Style
 debug = False
 
 def progress(msg):
+    """Helpful printing utility"""
     print(Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
 
 def make_iso(directory, iso_path):
+    """Generates iso from path"""
     with open(devnull, "w") as DEVNULL:
         if sys.platform.startswith('linux'):
             subprocess.check_call([

@@ -1,9 +1,16 @@
+"""
+Convenience methods for interacting with the taint subsystem.
+"""
+
 from .utils import progress, debug
 from .ffi_importer import ffi
 from .taint import TaintQuery
 
 class taint_mixins():
     def taint_enable(self, cont=True):
+        """
+        Inform python that taint is enabled.
+        """
         if not self.taint_enabled:
             progress("taint not enabled -- enabling")
             self.vm_stop()
