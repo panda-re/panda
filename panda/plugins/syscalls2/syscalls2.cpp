@@ -286,7 +286,10 @@ Profile profiles[PROFILE_LAST] = {
 
 static Profile *syscalls_profile;
 
-
+// TODO (tnballo): MIPS has weird ABI variations and we eventually need a way to support them via external param/config,
+// this includes ordinal number variations (4XXX, 5XXX, 6XXX). See: https://www.linux-mips.org/wiki/P32_Linux_ABI
+// For now, let's just be biased toward O32 here - seems to be most of our dataset?
+#define MIPS_O32_ABI
 
 // Reinterpret the ulong as a long. Arch and host specific.
 target_long get_return_val_x86(CPUState *cpu){
@@ -522,10 +525,47 @@ uint32_t get_32_linux_arm (CPUState *cpu, uint32_t argnum) {
 
 uint32_t get_32_linux_mips (CPUState *cpu, uint32_t argnum) {
 #ifdef TARGET_MIPS
-    // Arg in $a0-$a3 which are regs 4-7 in gpr
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    assert (argnum < 5);
-    return (uint32_t) env->active_tc.gpr[argnum+4];
+
+    // https://www.linux-mips.org/wiki/P32_Linux_ABI
+    #ifdef MIPS_O32_ABI
+        assert (argnum < 8);
+
+        // Args 1-4 in $a0-$a3 which are regs 4-7 in gpr
+        if (argnum < 4) {
+
+            return (uint32_t) env->active_tc.gpr[argnum+4];
+
+        // Args 5-8 on the stack
+        // 4 <= argnum < 8
+        } else {
+
+            unsigned char buf[4] = {};
+            target_ulong arg_stack_addr = env->active_tc.gpr[29] + 16 + ((argnum - 4) * 4);
+            int res = panda_virtual_memory_read(cpu, arg_stack_addr, buf, 4);
+
+            if (res < 0) {
+                // TODO: we need an error propagation methodology in this codebase, func sig assumes success
+            }
+
+            #if defined(TARGET_WORDS_BIGENDIAN)
+                return (((uint32_t)buf[0] << 24)
+                      + ((uint32_t)buf[1] << 16)
+                      + ((uint32_t)buf[2] << 8)
+                      +  (uint32_t)buf[3]);
+            #else
+                return ((uint32_t)buf[0]
+                     + ((uint32_t)buf[1] << 8)
+                     + ((uint32_t)buf[2] << 16)
+                     + ((uint32_t)buf[3] << 24));
+            #endif
+        }
+    #else
+        // Args 1-6 in $a0-$a5 which are regs 4-9 in gpr
+        assert (argnum < 6);
+        return (uint32_t) env->active_tc.gpr[argnum+4];
+    #endif
+
 #else
     return 0;
 #endif
@@ -557,10 +597,10 @@ uint64_t get_64_linux_arm(CPUState *cpu, uint32_t argnum) {
 
 uint64_t get_64_linux_mips(CPUState *cpu, uint32_t argnum) {
 #ifdef TARGET_MIPS
-   // Args are in $a0-$a3 which are registers 4-7
+    // Args 1-6 in $a0-$a5 which are regs 4-9 in gpr
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    assert (argnum < 5);
-    return (((uint64_t) env->active_tc.gpr[argnum+4]) << 32) | (env->active_tc.gpr[argnum+5]);
+    assert (argnum < 6);
+    return env->active_tc.gpr[argnum+4];
 #else
     return 0;
 #endif
@@ -791,14 +831,10 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
     // ifdef guard prevents us from misinterpreting "syscall" as "jal 0x0000" or "ehb"
     #if defined(TARGET_WORDS_BIGENDIAN)
         // 32-bit MIPS "syscall" instruction - big endian
-        if ((buf[3] ==  0x0c) && (buf[2] == 0x00) && (buf[1] == 0x00) && (buf[0] == 0x00)) {
-            return true;
-        }
+        return ((buf[3] == 0x0c) && (buf[2] == 0x00) && (buf[1] == 0x00) && (buf[0] == 0x00));
     #else
         // 32-bit MIPS "syscall" instruction - little endian
-        if ((buf[3] ==  0x00) && (buf[2] == 0x00) && (buf[1] == 0x00) && (buf[0] == 0x0c)) {
-            return true;
-        }
+        return ((buf[3] == 0x00) && (buf[2] == 0x00) && (buf[1] == 0x00) && (buf[0] == 0x0c));
     #endif
 
     return false;
