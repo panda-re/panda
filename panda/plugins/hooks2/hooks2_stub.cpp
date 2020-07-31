@@ -23,6 +23,8 @@ PPP_PROT_REG_CB(on_process_start);
 PPP_PROT_REG_CB(on_process_end);
 PPP_PROT_REG_CB(on_thread_start);
 PPP_PROT_REG_CB(on_thread_end);
+PPP_PROT_REG_CB(on_thread_end);
+PPP_PROT_REG_CB(on_mmap_updated);
 
 }
 
@@ -31,6 +33,7 @@ PPP_CB_BOILERPLATE(on_process_start);
 PPP_CB_BOILERPLATE(on_process_end);
 PPP_CB_BOILERPLATE(on_thread_start);
 PPP_CB_BOILERPLATE(on_thread_end);
+PPP_CB_BOILERPLATE(on_mmap_updated);
 
 int
 add_hooks2(

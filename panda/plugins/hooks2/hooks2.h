@@ -52,6 +52,12 @@ typedef void (*on_thread_end_t)(
     target_pid_t pid,
     target_pid_t tid);
 
+typedef void (*on_mmap_updated_t)(
+        CPUState* cpu,
+        const char *libname,
+        target_ulong base,
+        target_ulong size);
+
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 typedef int (*_add_hooks2_t)(
@@ -68,8 +74,12 @@ typedef int (*_add_hooks2_t)(
 typedef void (*_enable_hooks2_t)(int id);
 typedef void (*_disable_hooks2_t)(int id);
 
+
+#define ADD_HOOKS2_ALWAYS(hook, cb_data, procname, libname) \
+    ADD_HOOKS2(hook, cb_data, false, procname, libname, 0, 0, 0, 0)
+
 #define ADD_HOOKS2_SINGLE_INSN(hook, cb_data, procname, libname, pc) \
-    ADD_HOOKS2(hook, cb_data, false, procname, libname, pc, pc, 0, 0x80000000)
+    ADD_HOOKS2(hook, cb_data, false, procname, libname, pc, pc, 0, 0)
 
 #define ADD_HOOKS2(...)                                                 \
     ({                                                                  \

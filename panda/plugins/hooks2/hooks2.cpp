@@ -17,6 +17,7 @@ PANDAENDCOMMENT */
 #include <memory>
 #include <unordered_set>
 #include <sstream>
+#include <libgen.h>
 
 #include "panda/plugin.h"
 #include "osi/osi_types.h"
@@ -38,6 +39,7 @@ PPP_PROT_REG_CB(on_process_start);
 PPP_PROT_REG_CB(on_process_end);
 PPP_PROT_REG_CB(on_thread_start);
 PPP_PROT_REG_CB(on_thread_end);
+PPP_PROT_REG_CB(on_mmap_updated);
 
 }
 
@@ -45,6 +47,7 @@ PPP_CB_BOILERPLATE(on_process_start);
 PPP_CB_BOILERPLATE(on_process_end);
 PPP_CB_BOILERPLATE(on_thread_start);
 PPP_CB_BOILERPLATE(on_thread_end);
+PPP_CB_BOILERPLATE(on_mmap_updated);
 
 enum ThreadStartType {
     NEW_THREAD,
@@ -99,11 +102,10 @@ struct hook_cfg {
 struct active_trace {
     std::shared_ptr<struct hook_cfg> cfg;
     std::unordered_set<HashableOsiThread> active_threads;
-    bool resolved;
-    target_ulong resolved_trace_start;
-    target_ulong resolved_trace_stop;
-    target_ulong resolved_range_begin;
-    target_ulong resolved_range_end;
+    std::unordered_set<HashableOsiThread> inactive_threads;
+    bool base_valid;
+    target_ulong lib_base;
+    target_ulong lib_size;
 };
 
 struct process_info {
@@ -194,7 +196,6 @@ handle_userspace_traces(
     TranslationBlock *tb,
     std::shared_ptr<struct active_trace> &trace)
 {
-
     OsiThread *pThread = get_current_thread(cpu);
     if (pThread == NULL)
         return;
@@ -209,6 +210,20 @@ handle_userspace_traces(
         return;
     }
 
+    if (!trace->base_valid) {
+        return;
+    }
+
+    target_ulong resolved_trace_start = trace->lib_base + trace->cfg->trace_start;
+    target_ulong resolved_trace_stop = trace->lib_base + trace->cfg->trace_stop;
+    target_ulong resolved_range_begin = trace->lib_base + trace->cfg->range_begin;
+    target_ulong resolved_range_end = trace->lib_base + trace->lib_size;
+    if (trace->cfg->range_end) {
+        resolved_range_end = std::min(
+            resolved_range_end,
+            trace->lib_base + trace->cfg->range_end);
+    }
+
     bool active = true;
     auto search = trace->active_threads.find(thread);
     if (search == trace->active_threads.end()) {
@@ -216,20 +231,20 @@ handle_userspace_traces(
     }
 
     if (!active) {
-        if (in_range(tb, trace->resolved_trace_start)) {
+        if (!trace->cfg->trace_start || in_range(tb, resolved_trace_start)) {
             trace->active_threads.insert(thread);
             active = true;
         }
     }
 
     if (active) {
-        if ((tb->pc >= trace->resolved_range_begin) &&
-            (tb->pc <= trace->resolved_range_end)) {
+        if ((tb->pc >= resolved_range_begin) &&
+            (tb->pc <= resolved_range_end)) {
 
             trace->cfg->hook_func(cpu, tb, trace->cfg->cb_data);
         }
 
-        if (in_range(tb, trace->resolved_trace_stop)) {
+        if (trace->cfg->trace_stop && in_range(tb, resolved_trace_stop)) {
             trace->active_threads.erase(thread);
         }
     }
@@ -310,7 +325,7 @@ update_active_userspace_traces(
         std::shared_ptr<struct active_trace> trace = std::make_shared<struct active_trace>();
 
         trace->cfg = cfg;
-        trace->resolved = false;
+        trace->base_valid = false;
         trace_list.push_back(trace);
         changed = true;
     }
@@ -333,13 +348,10 @@ update_active_userspace_libs(CPUState *cpu, target_ulong asid)
     for (auto &trace: trace_list) {
         if (trace->cfg->libname) {
             do_get_mappings = true;
-            trace->resolved = false;
         } else {
-            trace->resolved = true;
-            trace->resolved_trace_start = trace->cfg->trace_start;
-            trace->resolved_trace_stop = trace->cfg->trace_stop;
-            trace->resolved_range_begin = trace->cfg->range_begin;
-            trace->resolved_range_end = trace->cfg->range_end;
+            trace->lib_base = 0;
+            trace->lib_size = (target_ulong)-1;
+            trace->base_valid = true;
         }
     }
 
@@ -365,21 +377,29 @@ update_active_userspace_libs(CPUState *cpu, target_ulong asid)
 
         for (int i = 0; i < ms->len; i++) {
             OsiModule *m = &g_array_index(ms, OsiModule, i);
-            if (m->name && (*trace->cfg->libname == m->name)) {
-                if (!m_text || (m->base < m_text->base)) {
-                    m_text = m;
+            if (m->name) {
+                char *libname = basename(m->name);
+                if (*trace->cfg->libname == libname) {
+                    if (!m_text || (m->base < m_text->base)) {
+                        m_text = m;
+                    }
                 }
             }
         }
 
         if (m_text) {
-            trace->resolved = true;
-            trace->resolved_trace_start = m_text->base + trace->cfg->trace_start;
-            trace->resolved_trace_stop = m_text->base + trace->cfg->trace_stop;
-            trace->resolved_range_begin = m_text->base + trace->cfg->range_begin;
-            trace->resolved_range_end = std::min(
-                m_text->base + m_text->size,
-                m_text->base + trace->cfg->range_end);
+            if (!trace->base_valid || (m_text->base != trace->lib_base))
+            {
+                trace->base_valid = true;
+                trace->lib_base = m_text->base;
+                trace->lib_size = m_text->size;
+                PPP_RUN_CB(
+                    on_mmap_updated,
+                    cpu,
+                    m_text->name,
+                    m_text->base,
+                    m_text->size);
+            }
         }
     }
 
