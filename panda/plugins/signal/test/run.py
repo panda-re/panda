@@ -40,7 +40,7 @@ def run_in_guest():
         # SIGSEGV
         f"kill -s 11 $(ps aux | grep \'[{str(BIN_NAME)[0]}]{str(BIN_NAME)[1:]}\' | awk \'{{print $2}}\')",
 
-        # SIGIABRT
+        # SIGABRT
         f"kill -s 6 $(ps aux | grep \'[{str(BIN_NAME)[0]}]{str(BIN_NAME)[1:]}\' | awk \'{{print $2}}\')",
     ]
 
@@ -48,8 +48,23 @@ def run_in_guest():
         print(panda.run_serial_cmd(cmd, no_timeout=True))
 
     print("Captured logs:")
-    for fw in pwc.get_files_written():
-        print(fw)
+    hyper_mirrored_file_paths = pwc.get_files_written()
+    for fp in hyper_mirrored_file_paths:
+        print(fp)
+
+    # Captured a single log file
+    assert(len(hyper_mirrored_file_paths) == 1)
+    log = Path(next(iter(hyper_mirrored_file_paths)))
+    assert(log.is_file())
+
+    # Signals successfully supressed (via swap to SIGWINCH)
+    with log.open() as f:
+        lines = f.readlines()
+        for l in lines:
+            assert("SIGABRT" not in l)
+            assert("SIGSEGV" not in l)
+            assert("SIGINT" not in l)
+            assert("SIGWINCH" in l)
 
 if __name__ == "__main__":
 
