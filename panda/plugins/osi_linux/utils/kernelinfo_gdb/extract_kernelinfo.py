@@ -1,5 +1,6 @@
 import gdb
 import sys
+import re
 
 file_out = sys.stdout
 
@@ -34,16 +35,21 @@ class KernelInfo(gdb.Command):
         uts_machine = get_symbol_as_string("init_uts_ns->name->machine")
         print(f"name = {uts_release}|{uts_version}|{uts_machine}",file=file_out)
         release = get_symbol_as_string("init_uts_ns->name->release")
-        version_a,version_b,version_c = release.split(".")
-        if "-" in version_c: # version.c can be of the form 0-42-generic
-            version_c = version_c.split("-")[0]
-        print(f"version.a = {version_a}",file=file_out)
-        print(f"version.b = {version_b}",file=file_out)
-        print(f"version.c = {version_c}",file=file_out)
+        versions = release.split(".")
+        # version.c can have a bunch of junk - just extract a number
+        versions[2] = re.search("\d+",versions[2]).group(0)
+        print(f"version.a = {versions[0]}",file=file_out)
+        print(f"version.b = {versions[1]}",file=file_out)
+        print(f"version.c = {versions[2]}",file=file_out)
+
+        # TODO: we should use this to generate the file. See issue 651
+        print(f"#arch  = {uts_machine}", file=file_out)
         try:
             per_cpu_offset_addr = gdb.execute('printf "%llu", &__per_cpu_offset',to_string=True)
             per_cpu_offset_0_addr = gdb.execute('printf "%llu", __per_cpu_offset[0]',to_string=True)
         except:
+            # This should be an arch-specific requirement, arm/mips don't have it (#651)
+            assert("x86" not in uts_machine), "Failed to find __per_cpu_offset_data"
             per_cpu_offset_addr = 0
             per_cpu_offset_0_addr = 0
         print(f"task.per_cpu_offsets_addr = {per_cpu_offset_addr}",file=file_out)
