@@ -87,7 +87,7 @@ RUN DUMMY=${DUMMY} git pull
 
 WORKDIR "/panda/build"
 # build.sh logic, but simple because we're in a container
-ENV TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu"
+ENV TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
 RUN rm -f ./qemu-options.def
 
 # NUMA disabled in docker because I can't get it to work in the container
