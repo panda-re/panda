@@ -1,5 +1,10 @@
 #include "osi_linux.h"
 #include "default_profile.h"
+
+#ifdef TARGET_MIPS
+extern target_ulong last_r28;
+#endif
+
 #ifdef TARGET_ARM
 /**
  * @brief Returns the current kernel stack pointer for ARM guest
@@ -13,7 +18,6 @@ target_ptr_t get_ksp (CPUState* cpu) {
     }
 }
 #endif
-
 
 /**
  * @brief Retrieves the task_struct address using per cpu information.
@@ -31,6 +35,11 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
     target_ptr_t task_thread_info = kernel_sp & ~(0x2000 -1);
 
     current_task_addr=task_thread_info+0xC;
+#elif defined(TARGET_MIPS)
+    // __current_thread_info is stored in KERNEL r28
+    // userspace clobbers it but kernel restores (somewhow?)
+    // First field of struct is task - no offset needed
+    current_task_addr=last_r28;
 #else
     current_task_addr = ki.task.current_task_addr;
 #endif

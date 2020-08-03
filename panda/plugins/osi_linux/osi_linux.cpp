@@ -620,6 +620,27 @@ void init_per_cpu_offsets(CPUState *cpu) {
 }
 
 /**
+ * @brief Cache the last R28 observed while in kernel for MIPS
+ */
+
+#ifdef TARGET_MIPS
+target_ulong last_r28 = 0;
+
+void r28_cache(CPUState *cpu, TranslationBlock *tb) {
+
+  if (unlikely(((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28] != last_r28) && panda_in_kernel(cpu)) {
+
+      target_ulong potential = ((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28];
+      // XXX: af: We need this filter but I have no idea why
+      if (potential > 0x80000000) {
+        last_r28 = potential;
+      }
+  }
+}
+#endif
+
+
+/**
  * @brief Initializes plugin.
  */
 bool init_plugin(void *self) {
@@ -634,6 +655,12 @@ bool init_plugin(void *self) {
         pcb.after_loadvm = init_per_cpu_offsets;
         panda_register_callback(self, PANDA_CB_AFTER_LOADVM, pcb);
     }
+
+#if defined(TARGET_MIPS)
+        panda_cb pcb2 = { .before_block_exec = r28_cache };
+        panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb2);
+#endif
+
 #if defined(OSI_LINUX_TEST)
     {
         panda_cb pcb = { .asid_changed = osi_linux_test };
