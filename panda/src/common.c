@@ -275,6 +275,39 @@ void exit_priv(CPUState* cpu) {
 }
 
 
+#elif defined(TARGET_MIPS)
+// MIPS
+static int saved_hflags = -1;
+static bool in_fake_priv = false;
+
+// Force the guest into supervisor mode by modifying env->hflags
+// save old hflags and restore after the read
+bool enter_priv(CPUState* cpu) {
+    saved_hflags = ((CPUMIPSState*)cpu->env_ptr)->hflags;
+    CPUMIPSState *env =  (CPUMIPSState*)cpu->env_ptr;
+
+    // Already in kernel mode?
+    if (!(env->hflags & MIPS_HFLAG_UM) && !(env->hflags & MIPS_HFLAG_SM)) {
+        // No point in changing permissions
+        return false;
+    }
+
+    // Disable usermode & supervisor mode - puts us in kernel mode
+    ((CPUMIPSState*)cpu->env_ptr)->hflags = ((CPUMIPSState*)cpu->env_ptr)->hflags & ~MIPS_HFLAG_UM;
+    ((CPUMIPSState*)cpu->env_ptr)->hflags = ((CPUMIPSState*)cpu->env_ptr)->hflags & ~MIPS_HFLAG_SM;
+
+    in_fake_priv = true;
+
+    return true;
+}
+
+void exit_priv(CPUState* cpu) {
+    assert(in_fake_priv && "exit called when not faked");
+    ((CPUMIPSState*)cpu->env_ptr)->hflags = saved_hflags;
+    in_fake_priv = false;
+}
+
+
 #else
 // Non-ARM architectures don't require special permissions for PANDA's memory access fns
 bool enter_priv(CPUState* cpu) {return false;};
