@@ -66,6 +66,7 @@ Panda__SignalEvent pse;
 // Block a signal for all processes
 void block_sig(int32_t sig) {
     hyper_blocked_sigs.insert(sig);
+    printf("signal: suppressing %d universally.\n", sig);
 }
 
 // Block a signal only for a named process
@@ -80,6 +81,8 @@ void block_sig_by_proc(int32_t sig, char* proc_name) {
     } else {
         named_block->second.insert(sig);
     }
+
+    printf("signal: suppressing %d only for process \'%s\'.\n", sig, proc_name);
 }
 
 // Core ----------------------------------------------------------------------------------------------------------------
@@ -239,6 +242,6 @@ bool init_plugin(void *_self) {
     }
 }
 
-void uninit_plugin(void *self) {
+void uninit_plugin(void *_self) {
     // N/A
 }

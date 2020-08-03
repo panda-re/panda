@@ -22,6 +22,7 @@ def host_build_test_progs():
 @blocking
 def run_in_guest():
 
+    # Setup write capture, mirrors files create to hyper visor
     pwc = ProcWriteCapture(panda, f"{BIN_NAME}", log_dir = "./pwc_log")
 
     panda.revert_sync("root")
@@ -72,11 +73,16 @@ if __name__ == "__main__":
 
     panda = Panda(
         generic = "x86_64_ubuntu_1804",
-        #arch = "x86_64",
-        extra_args = "-nographic",
+        extra_args = "-nographic -pandalog test_sig_suppress.plog",
         expect_prompt = rb"root@ubuntu:.*",
         mem = "1G"
     )
+
+    # Apply signal supression by process, for the 3 signals we're about to send
+    bin_name_str = f"{BIN_NAME}".encode('ascii')
+    panda.plugins['signal'].block_sig_by_proc(2, bin_name_str)
+    panda.plugins['signal'].block_sig_by_proc(11, bin_name_str)
+    panda.plugins['signal'].block_sig_by_proc(6, bin_name_str)
 
     panda.queue_async(run_in_guest)
     panda.run()
