@@ -147,11 +147,13 @@ class TCGLLVMTranslator {
     llvm::StructType *m_CPUArchStateType = nullptr;
     llvm::ExitOnError ExitOnErr;
 
-    std::unique_ptr<llvm::orc::LLLazyJIT> jit =
-        ExitOnErr(llvm::orc::LLLazyJITBuilder().create());
-
     llvm::orc::JITTargetMachineBuilder JTMB =
         ExitOnErr(llvm::orc::JITTargetMachineBuilder::detectHost());
+
+    std::unique_ptr<llvm::orc::LLLazyJIT> jit =
+        ExitOnErr(llvm::orc::LLLazyJITBuilder().
+            setJITTargetMachineBuilder(JTMB).
+            create());
 
     llvm::DataLayout DL = jit->getDataLayout();
 
