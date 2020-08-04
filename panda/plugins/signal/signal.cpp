@@ -39,6 +39,9 @@ extern "C" {
 // If a future API is to retrive events thus far (using CFFI and not PANDALOG)
 //#define IN_MEM_BUF
 
+// Verbose print to console
+#define DEBUG
+
 // Structs -------------------------------------------------------------------------------------------------------------
 
 // Captured signal event
@@ -138,6 +141,13 @@ bool supress_curr_sig(CPUState* cpu) {
         #define SIG_ARG_REG &sigwinch_num
     #endif
 
+    #if defined(DEBUG)
+        printf("[DEBUG] signal: suppressing %d -> %d\n",
+            (int)*SIG_ARG_REG,
+            (int)sigwinch_num
+        );
+    #endif
+
     *SIG_ARG_REG = sigwinch_num;
     return true;
 }
@@ -182,6 +192,17 @@ void sig_mitm(CPUState* cpu, target_ulong pc, int32_t pid, int32_t sig) {
         pid,
     };
     flush_to_plog(&sig_event);
+
+    #if defined(DEBUG)
+        printf("[DEBUG] signal (%d): %s (%d) -> %s (%d). %s.\n",
+            sig_event.sig,
+            sig_event.src_name.c_str(),
+            sig_event.src_pid,
+            sig_event.dst_name.c_str(),
+            sig_event.dst_pid,
+            (sig_event.suppressed ? "Suppressed" : "Passed through")
+        );
+    #endif
 
     #ifdef IN_MEM_BUF
         hyper_sig_events.push_back(sig_event);

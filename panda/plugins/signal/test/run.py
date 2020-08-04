@@ -20,6 +20,15 @@ def host_build_test_progs():
     assert(HOST_PROG_PATH.is_file())
 
 @blocking
+def prepare_plugins():
+
+    # Apply signal supression by process, for the 3 signals we're about to send
+    bin_name_str = f"{BIN_NAME}".encode('ascii')
+    panda.plugins['signal'].block_sig_by_proc(2, bin_name_str)
+    panda.plugins['signal'].block_sig_by_proc(11, bin_name_str)
+    panda.plugins['signal'].block_sig_by_proc(6, bin_name_str)
+
+@blocking
 def run_in_guest():
 
     # Setup write capture, mirrors files create to hyper visor
@@ -78,11 +87,6 @@ if __name__ == "__main__":
         mem = "1G"
     )
 
-    # Apply signal supression by process, for the 3 signals we're about to send
-    bin_name_str = f"{BIN_NAME}".encode('ascii')
-    panda.plugins['signal'].block_sig_by_proc(2, bin_name_str)
-    panda.plugins['signal'].block_sig_by_proc(11, bin_name_str)
-    panda.plugins['signal'].block_sig_by_proc(6, bin_name_str)
-
+    panda.queue_async(prepare_plugins)
     panda.queue_async(run_in_guest)
     panda.run()
