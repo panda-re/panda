@@ -194,11 +194,12 @@ MIPS_HELPERS += op_helper.bc2
 llvm-$(TARGET_MIPS) += fpu/softfloat.bc2
 llvm-$(TARGET_MIPS) += $(addprefix target/mips/,$(MIPS_HELPERS))
 
-ifdef __MIPSEL__
+# If non mips we take the else branch and the .bc file to llvmmorph-n which is ignored
+# buf it it is mips, add the right one to llvmmorph-y
+ifeq ($(TARGET_NAME),mipsel)
 llvmmorph-$(TARGET_MIPS) += llvm-helpers-mipsel.bc
-endif
-ifdef __MIPSEB__
-llvmmorph-$(TARGET_MIPS) += llvm-helpers-mipsbe.bc
+else
+llvmmorph-$(TARGET_MIPS) +=  llvm-helpers-mips.bc
 endif
 
 CLANG_FILTER = -Wold-style-declaration -fstack-protector-strong -Wno-error=cpp -g -O0 -O1 -O3 -mcx16 -Wno-shift-negative-value
