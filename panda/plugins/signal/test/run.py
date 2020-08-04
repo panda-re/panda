@@ -74,9 +74,13 @@ def run_in_guest():
     with log.open() as f:
         lines = f.readlines()
         for l in lines:
+
+            # Negative test
             assert("SIGABRT" not in l)
             assert("SIGSEGV" not in l)
             assert("SIGINT" not in l)
+
+            # Postive test
             assert("SIGWINCH" in l)
 
     print("\nTEST OK! Signals sucessfully supressed\n")
