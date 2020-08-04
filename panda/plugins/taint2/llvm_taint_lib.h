@@ -95,7 +95,7 @@ private:
     Constant *constSlot(Value *value);
     Constant *constWeakSlot(Value *value);
     Constant *constInstr(Instruction *I);
-    Constant *constNull(Module *m);
+    Constant *constNull(void);
     int intValue(Value *value);
     unsigned getValueSize(const Value *V);
     ConstantInt *valueSizeValue(const Value *V);
@@ -169,8 +169,6 @@ public:
     Function *branchF;
     Function *copyRegToPcF;
     Function *afterLdF;
-
-    Constant *memlogConst;
     Function *memlogPopF;
     */
 
@@ -180,7 +178,9 @@ public:
     Constant *gsvConst;
     Constant *retConst;
     Constant *prevBbConst;
+    Constant *memlogConst;
 
+    llvm::Constant *nullInstrP;
     llvm::Type *instrP;
     llvm::Type *shadP;
     llvm::Type *memlogP;

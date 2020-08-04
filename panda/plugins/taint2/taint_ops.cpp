@@ -164,7 +164,7 @@ void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
 
 void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
                             uint64_t src1, uint64_t src2, uint64_t src_size,
-                            llvm::Instruction *I)
+                            uint64_t opcode, uint64_t result)
 {
     uint64_t shad_size = shad->get_size();
     if (unlikely(dest >= shad_size || src1 >= shad_size || src2 >= shad_size)) {
@@ -188,7 +188,7 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
     CBMasks cb_mask_1 = compile_cb_masks(shad, src1, src_size);
     CBMasks cb_mask_2 = compile_cb_masks(shad, src2, src_size);
     CBMasks cb_mask_out;
-    if (I && I->getOpcode() == llvm::Instruction::Or) {
+    if (opcode == llvm::Instruction::Or) {
         cb_mask_out.one_mask = cb_mask_1.one_mask | cb_mask_2.one_mask;
         cb_mask_out.zero_mask = cb_mask_1.zero_mask & cb_mask_2.zero_mask;
         // Anything that's a literal zero in one operand will not affect
@@ -196,7 +196,7 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
         cb_mask_out.cb_mask =
             (cb_mask_1.zero_mask & cb_mask_2.cb_mask) |
             (cb_mask_2.zero_mask & cb_mask_1.cb_mask);
-    } else if (I && I->getOpcode() == llvm::Instruction::And) {
+    } else if (opcode == llvm::Instruction::And) {
         cb_mask_out.one_mask = cb_mask_1.one_mask & cb_mask_2.one_mask;
         cb_mask_out.zero_mask = cb_mask_1.zero_mask | cb_mask_2.zero_mask;
         // Anything that's a literal one in one operand will not affect
@@ -242,7 +242,7 @@ static inline void bulk_set(Shad *shad, uint64_t addr, uint64_t size,
 
 void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                        uint64_t src1, uint64_t src2, uint64_t src_size,
-                       llvm::Instruction *ignored)
+                       uint64_t opcode, uint64_t result)
 {
     TaintData td = TaintData::make_union(
             mixed_labels(shad, src1, src_size, false),
@@ -277,12 +277,12 @@ void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                   apint_hi_bits(cleanArg), apint_lo_bits(cleanArg));
         if (cleanArg == 0) return ; // mul X untainted 0 -> no taint prop
         else if (cleanArg == 1) { //mul X untainted 1(one) should be a parallel taint
-            taint_parallel_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
+            taint_parallel_compute(shad, dest, dest_size, src1, src2,  src_size, 0,0); // TODO: fix
             taint_log("mul_com: mul X 1\n");
             return;
         }
     }
-    taint_mix_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
+    taint_mix_compute(shad, dest, dest_size, src1, src2,  src_size, 0,0); // TODO: fix
 }
 
 void taint_delete(Shad *shad, uint64_t dest, uint64_t size)

@@ -178,6 +178,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV->int64T = llvm::Type::getInt64Ty(*PTV->ctx);
     PTV->int64P = llvm::Type::getInt64PtrTy(*PTV->ctx);
     PTV->voidT = llvm::Type::getVoidTy(*PTV->ctx);
+    PTV->nullInstrP = PTV->const_struct_ptr(PTV->instrP, nullptr);
 
     PTV->llvConst = PTV->const_struct_ptr(PTV->shadP, &shad->llv);
     PTV->memConst = PTV->const_struct_ptr(PTV->shadP, &shad->ram);
@@ -185,6 +186,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV->gsvConst = PTV->const_struct_ptr(PTV->shadP, &shad->gsv);
     PTV->retConst = PTV->const_struct_ptr(PTV->shadP, &shad->ret);
     PTV->prevBbConst = PTV->const_i64p(&shad->prev_bb);
+    PTV->memlogConst = PTV->const_struct_ptr(PTV->memlogP, taint_memlog);
 
     // TODO: is this right?  What is this used for?
     PTV->dataLayout = new DataLayout(&M);
@@ -407,10 +409,6 @@ Constant *PandaTaintVisitor::constInstr(Instruction *I) {
     return const_struct_ptr(instrP, I);
 }
 
-Constant *PandaTaintVisitor::constNull(Module *m) {
-    return const_struct_ptr(instrP, nullptr);
-}
-
 Constant *PandaTaintVisitor::constSlot(Value *value) {
     assert(value && !isa<Constant>(value));
     int slot = PST->getLocalSlot(value);
@@ -485,7 +483,7 @@ void PandaTaintVisitor::visitBasicBlock(BasicBlock &BB) {
 CallInst *PandaTaintVisitor::insertLogPop(Instruction &after) {
 
     std::vector<llvm::Type *> argTs { memlogP };
-    vector<Value *> args { const_struct_ptr(memlogP, taint_memlog) };
+    vector<Value *> args { memlogConst };
     return this->inlineCall(after, "taint_memlog_pop", args, argTs, false,
         false, false, int64T);
 }
@@ -638,6 +636,22 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest,
     const char *func = is_mixed ? "taint_mix_compute" :
         "taint_parallel_compute";
 
+    Instruction *next;
+    Instruction *iResult = &I;
+    next = I.getNextNonDebugInstruction();
+
+    if(I.getType()->isVectorTy()) {
+        iResult = ExtractElementInst::Create(iResult, const_uint64(0), "",
+            next);
+        iResult = CastInst::CreateIntegerCast(iResult, int64T, false, "",
+            next);
+    } else if(I.getType()->isFloatingPointTy()) {
+        iResult = new FPToSIInst(iResult, int64T, "", next);
+    } else {
+        iResult = CastInst::CreateIntegerCast(iResult, int64T, false, "",
+            next);
+    }
+
     if (!is_mixed) {
         assert(getValueSize(dest) == getValueSize(src1));
     }
@@ -645,15 +659,16 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest,
 
     Constant *dest_size = const_uint64(getValueSize(dest));
     Constant *src_size = const_uint64(getValueSize(src1));
+    Constant *opcode = const_uint64(I.getOpcode());
 
-    vector<Value *> args { llvConst,
-        constSlot(dest), dest_size, constSlot(src1), constSlot(src2), src_size,
-        constInstr(&I) };
+    vector<Value *> args { llvConst, constSlot(dest), dest_size,
+        constSlot(src1), constSlot(src2), src_size,
+        opcode, iResult };
 
     std::vector<llvm::Type *> argTs { shadP, int64T, int64T, int64T, int64T,
-        int64T, instrP };
+        int64T, int64T, int64T };
 
-    inlineCallAfter(I, func, args, argTs);
+    inlineCallAfter(*next, func, args, argTs);
 }
 
 // if we multiply tainted_val * 0, and 0 is untainted,
@@ -852,7 +867,7 @@ void PandaTaintVisitor::visitReturnInst(ReturnInst &I) {
     } else {
         std::vector<llvm::Value *> args { retConst, const_uint64(0),
             llvConst, constSlot(retV), const_uint64(getValueSize(retV)),
-            constNull(I.getModule()) };
+            nullInstrP };
         std::vector<llvm::Type *> argTs { shadP, int64T, shadP, int64T, int64T,
             instrP };
         inlineCallBefore(I, "taint_copy", args, argTs);
@@ -1535,7 +1550,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             vector<Value *> args {
                 llvConst, arg_dest,
                 llvConst, constSlot(arg),
-                arg_bytes, constNull(I.getModule()) };
+                arg_bytes, nullInstrP };
 
             std::vector<llvm::Type *> argTs { shadP, int64T, shadP, int64T,
                 int64T, instrP };
@@ -1550,7 +1565,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         vector<Value *> args { llvConst,
             constSlot(&I), retConst,
             const_uint64(0), const_uint64(MAXREGSIZE),
-            constNull(I.getModule()) } ;
+            nullInstrP } ;
 
         std::vector<llvm::Type *> argTs { shadP, int64T, shadP, int64T,
             int64T, instrP };

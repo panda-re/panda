@@ -67,13 +67,13 @@ void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
 // Parallel compute: take labelset vectors [1,2,3] + [4,5,6] -> [14,25,36]
 void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
                             uint64_t src1, uint64_t src2, uint64_t src_size,
-                            llvm::Instruction *I);
+                            uint64_t opcode, uint64_t result);
 
 // Mixed compute: [1,2] + [3,4] -> [1234,1234]
 // Note that dest_size and src_size can differ.
 void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                        uint64_t src1, uint64_t src2, uint64_t src_size,
-                       llvm::Instruction *ignored);
+                       uint64_t opcode, uint64_t result);
 
 //for mul or fmul. can do parallel or mixed or no prop depending on vals and their taints
 void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
