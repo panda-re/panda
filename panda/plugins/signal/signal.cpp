@@ -40,7 +40,7 @@ extern "C" {
 //#define IN_MEM_BUF
 
 // Verbose print to console
-#define DEBUG
+//#define DEBUG
 
 // Structs -------------------------------------------------------------------------------------------------------------
 
@@ -116,7 +116,7 @@ bool supress_curr_sig(CPUState* cpu) {
 
     target_ulong sigwinch_num = 28;
 
-    #if defined(TARGET_I386)
+    #if defined(TARGET_I386) and !defined(TARGET_X86_64)
         // int 0x80 -> ecx
         // https://en.wikibooks.org/wiki/X86_Assembly/Interfacing_with_Linux#int_0x80
         #define SIG_ARG_REG &(((CPUArchState*)cpu->env_ptr)->regs[1])
@@ -124,7 +124,7 @@ bool supress_curr_sig(CPUState* cpu) {
         // syscall -> rsi
         // https://en.wikibooks.org/wiki/X86_Assembly/Interfacing_with_Linux#syscall
         #define SIG_ARG_REG &(((CPUArchState*)cpu->env_ptr)->regs[6])
-    #elif defined(TARGET_ARM)
+    #elif defined(TARGET_ARM) and !defined(TARGET_AARCH64)
         // swi -> r1
         // https://jumpnowtek.com/shellcode/linux-arm-shellcode-part1.html
         #define SIG_ARG_REG &(((CPUArchState*)cpu->env_ptr)->regs[1])
@@ -133,19 +133,12 @@ bool supress_curr_sig(CPUState* cpu) {
         // https://jumpnowtek.com/shellcode/linux-arm-shellcode-part1.html
         #define SIG_ARG_REG &(((CPUArchState*)cpu->env_ptr)->xregs[1])
     #elif defined(TARGET_MIPS)
-        // a1
+        // syscall -> a1
         // https://www.linux-mips.org/wiki/Syscall
         #define SIG_ARG_REG &(((CPUArchState*)cpu->env_ptr)->active_tc.gpr[5])
     #else
         // NOP for unsupported architectures
         #define SIG_ARG_REG &sigwinch_num
-    #endif
-
-    #if defined(DEBUG)
-        printf("[DEBUG] signal: suppressing %d -> %d\n",
-            (int)*SIG_ARG_REG,
-            (int)sigwinch_num
-        );
     #endif
 
     *SIG_ARG_REG = sigwinch_num;

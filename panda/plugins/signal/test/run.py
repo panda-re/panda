@@ -1,5 +1,6 @@
 import wget
 import subprocess
+import shutil
 from pathlib import Path
 
 from panda import blocking, Panda
@@ -32,7 +33,9 @@ def prepare_plugins():
 def run_in_guest():
 
     # Setup write capture, mirrors files create to hyper visor
-    pwc = ProcWriteCapture(panda, f"{BIN_NAME}", log_dir = "./pwc_log")
+    host_log_dir = "./pwc_log"
+    shutil.rmtree(host_log_dir)
+    pwc = ProcWriteCapture(panda, f"{BIN_NAME}", log_dir = host_log_dir)
 
     panda.revert_sync("root")
     panda.copy_to_guest(str(HOST_PROG_DIR))
@@ -75,6 +78,8 @@ def run_in_guest():
             assert("SIGSEGV" not in l)
             assert("SIGINT" not in l)
             assert("SIGWINCH" in l)
+
+    print("\nTEST OK! Signals sucessfully supressed\n")
 
 if __name__ == "__main__":
 
