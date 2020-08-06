@@ -22,6 +22,7 @@
 #include "qemu/host-utils.h"   // needed for clz64 and ctz64
 
 #include "taint_utils.h"
+#include "taint2/taint_ops_ins_flags.h"
 
 // needed by the switch
 #define tassert(cond) assert((cond))
@@ -60,8 +61,8 @@ static void runTest(const char *ocname, unsigned int opcode,
     llvm::APInt zero_mask = orig_zero_mask;
     llvm::APInt one_mask = orig_one_mask;
 
-    // fake Instruction object that will never be used, just so will compile
-    llvm::Instruction *I = NULL;
+    // fake flags int that will never be used, just so will compile
+    uint64_t instruction_flags = 0;
 
     // really only need literals[1], and then only for some tests
     std::vector<llvm::APInt> literals;
