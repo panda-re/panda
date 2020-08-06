@@ -1,5 +1,4 @@
 Plugin: signal
-
 ===========
 
 Summary
