@@ -227,13 +227,10 @@ PANDAENDCOMMENT */
 
         case llvm::Instruction::GetElementPtr:
         {
-            llvm::GetElementPtrInst *GEPI =
-                llvm::dyn_cast<llvm::GetElementPtrInst>(I);
-            tassert(GEPI);
             one_mask = 0;
             zero_mask = 0;
             // Constant indices => fully reversible
-            if (GEPI->hasAllConstantIndices()) break;
+            if (instruction_flags & INSTRUCTION_FLAG_GEP_HAS_CONSTANT_INDICES) break;
             // Otherwise we know nothing.
             cb_mask = 0;
             break;

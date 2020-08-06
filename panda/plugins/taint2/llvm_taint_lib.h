@@ -70,6 +70,50 @@ public:
     unsigned getMaxSlot();
 };
 
+class TaintOpsFunction {
+public:
+    TaintOpsFunction() {
+    }
+
+    TaintOpsFunction(const TaintOpsFunction &p) {
+        name = p.name;
+        argTys = p.argTys;
+        retTy = p.retTy;
+        varArgs = p.varArgs;
+    }
+
+    TaintOpsFunction(const char *name, void *addr, vector<Type *> &argTys,
+            Type *retTy, bool varArgs, orc::ExecutionSession &ES,
+            orc::SymbolMap &symbols) :
+        name(name), argTys(argTys), retTy(retTy), varArgs(varArgs) {
+
+        symbols[ES.intern(name)] = *new JITEvaluatedSymbol(
+            pointerToJITTargetAddress(addr), JITSymbolFlags::Exported);
+    }
+
+    const char *getName() const {
+        return name;
+    }
+
+    Type *getRetTy() const {
+        return retTy;
+    }
+
+    vector<Type *>getArgTys() const {
+        return argTys;
+    }
+
+    bool hasVarArgs() const {
+        return varArgs;
+    }
+
+private:
+    const char *name = nullptr;
+    vector<Type *> argTys;
+    Type *retTy = nullptr;
+    bool varArgs = false;
+};
+
 class ReturnInst;
 class BranchInst;
 class BinaryOperator;
@@ -90,7 +134,6 @@ private:
     // for counting up slots used by called subroutines
     std::unique_ptr<PandaSlotTracker> subframePST;
 
-    ConstantInt *const_uint64(uint64_t val);
     ConstantInt *const_uint64_ptr(void *ptr);
     Constant *constSlot(Value *value);
     Constant *constWeakSlot(Value *value);
@@ -103,18 +146,17 @@ private:
     bool isEnvPtr(Value *V);
     bool isCPUStateAdd(BinaryOperator *AI);
     bool isIrrelevantAdd(BinaryOperator *AI);
+    void addOperandsToArgumentList(vector<Value *> &args, Instruction &I,
+        Instruction *before);
     void inlineCall(CallInst *CI);
     Value *ptrToInt(Value *ptr, Instruction &I);
-    Function *getFunction(Module *m, const char *func,
-        std::vector<llvm::Type *> &argTs, bool varArgs,
-        llvm::Type *retT);
-    CallInst *inlineCall(Instruction &I, const char *func,
-        vector<Value *> &args, vector<Type *> &argTs, bool before,
-        bool tryInline, bool varArgs, Type *retT);
-    void inlineCallAfter(Instruction &I, const char *func,
-        vector<Value *> &args, vector<Type *> &argTs, bool varArgs);
-    void inlineCallBefore(Instruction &I, const char *func,
-        vector<Value *> &args, vector<Type *> &argTs);
+    Function *getFunction(Module *m, TaintOpsFunction &func);
+    CallInst *insertCall(Instruction &I, TaintOpsFunction &func,
+        vector<Value *> &args, bool before, bool tryInline);
+    void insertCallAfter(Instruction &I, TaintOpsFunction &func,
+        vector<Value *> &args);
+    void insertCallBefore(Instruction &I, TaintOpsFunction &func,
+        vector<Value *> &args);
     CallInst *insertLogPop(Instruction &after);
     void insertTaintCopy(Instruction &I, Constant *shad_dest, Value *dest,
         Constant *shad_src, Value *src, uint64_t size);
@@ -141,36 +183,32 @@ private:
     void insertTaintBranch(Instruction &I, Value *cond);
     void insertTaintQueryNonConstPc(Instruction &I, Value *cond);
     void insertStateOp(Instruction &I);
+    uint64_t getInstructionFlags(Instruction &I);
 
 public:
-    llvm::LLVMContext *ctx;
+    LLVMContext *ctx;
     DataLayout *dataLayout = NULL;
 
-    /*
-    Function *deleteF;
-    Function *mixF;
-    Function *pointerF;
-    Function *mixCompF;
-    Function *mulCompF;
-    Function *parallelCompF;
-    Function *copyF;
-    Function *moveF;
-    Function *setF;
-    Function *sextF;
-    Function *selectF;
-    Function *hostCopyF;
-    Function *hostMemcpyF;
-    Function *hostDeleteF;
-
-    Function *pushFrameF;
-    Function *popFrameF;
-    Function *resetFrameF;
-    Function *breadcrumbF;
-    Function *branchF;
-    Function *copyRegToPcF;
-    Function *afterLdF;
-    Function *memlogPopF;
-    */
+    TaintOpsFunction breadcrumbF;
+    TaintOpsFunction mixF;
+    TaintOpsFunction pointerF;
+    TaintOpsFunction mix_computeF;
+    TaintOpsFunction parallel_computeF;
+    TaintOpsFunction mul_computeF;
+    TaintOpsFunction copyF;
+    TaintOpsFunction sextF;
+    TaintOpsFunction selectF;
+    TaintOpsFunction host_copyF;
+    TaintOpsFunction host_memcpyF;
+    TaintOpsFunction host_deleteF;
+    TaintOpsFunction push_frameF;
+    TaintOpsFunction pop_frameF;
+    TaintOpsFunction reset_frameF;
+    TaintOpsFunction memlog_popF;
+    TaintOpsFunction deleteF;
+    TaintOpsFunction branch_runF;
+    TaintOpsFunction copyRegToPc_runF;
+    TaintOpsFunction afterLdF;
 
     Constant *llvConst;
     Constant *memConst;
@@ -180,22 +218,24 @@ public:
     Constant *prevBbConst;
     Constant *memlogConst;
 
-    llvm::Constant *nullInstrP;
-    llvm::Type *instrP;
-    llvm::Type *shadP;
-    llvm::Type *memlogP;
-    llvm::Type *voidT;
-    llvm::IntegerType *int1T;
-    llvm::IntegerType *int64T;
-    llvm::PointerType *int64P;
+    ConstantInt *zeroConst;
+
+    Type *instrP;
+    Type *shadP;
+    Type *memlogP;
+    Type *voidT;
+    IntegerType *int1T;
+    IntegerType *int64T;
+    PointerType *int64P;
 
     PandaTaintVisitor(ShadowState *shad, taint2_memlog *taint_memlog)
         : shad(shad), taint_memlog(taint_memlog) {}
 
     ~PandaTaintVisitor() {}
 
+    ConstantInt *const_uint64(uint64_t val);
     Constant *const_i64p(void *ptr);
-    Constant *const_struct_ptr(llvm::Type *ptrT, void *ptr);
+    Constant *const_struct_ptr(Type *ptrT, void *ptr);
 
     // Overrides.
     void visitFunction(Function& F);
