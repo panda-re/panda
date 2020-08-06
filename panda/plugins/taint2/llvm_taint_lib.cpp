@@ -1795,8 +1795,8 @@ void PandaTaintVisitor::visitShuffleVectorInst(ShuffleVectorInst &I) {
 // Unhandled
 void PandaTaintVisitor::visitInstruction(Instruction &I) {
     //dump only available if LLVM compiled with dump enabled
-    //I.dump();
-    printf("Error: Unhandled instruction\n");
+    printf("Error: Unhandled instruction:\n");
+    I.dump();
     //TODO: uncomment assertion
     //assert(1==0);
 }
