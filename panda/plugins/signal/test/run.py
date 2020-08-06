@@ -85,6 +85,8 @@ def run_in_guest():
             assert("SIGWINCH" in l)
 
     print("\nTEST OK! Signals sucessfully supressed\n")
+    panda.panda_finish() # TODO: does not return? Either way, PANDALOG written
+    panda.end_analysis()
 
 if __name__ == "__main__":
 
