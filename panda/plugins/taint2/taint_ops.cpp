@@ -215,8 +215,8 @@ void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
 }
 
 void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
-                            uint64_t src1, uint64_t src2, uint64_t src_size,
-                            uint64_t opcode, uint64_t result)
+        uint64_t src1, uint64_t src2, uint64_t src_size, uint64_t opcode,
+        uint64_t result_unused)
 {
     uint64_t shad_size = shad->get_size();
     if (unlikely(dest >= shad_size || src1 >= shad_size || src2 >= shad_size)) {
@@ -293,8 +293,8 @@ static inline void bulk_set(Shad *shad, uint64_t addr, uint64_t size,
 }
 
 void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
-                       uint64_t src1, uint64_t src2, uint64_t src_size,
-                       uint64_t opcode, uint64_t result)
+        uint64_t src1, uint64_t src2, uint64_t src_size, uint64_t opcode,
+        uint64_t result_unused)
 {
     TaintData td = TaintData::make_union(
             mixed_labels(shad, src1, src_size, false),
