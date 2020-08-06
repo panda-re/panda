@@ -34,7 +34,8 @@ def run_in_guest():
 
     # Setup write capture, mirrors files create to hyper visor
     host_log_dir = "./pwc_log"
-    shutil.rmtree(host_log_dir)
+    if Path(host_log_dir).exists() and Path(host_log_dir).is_dir():
+        shutil.rmtree(host_log_dir)
     pwc = ProcWriteCapture(panda, f"{BIN_NAME}", log_dir = host_log_dir)
 
     panda.revert_sync("root")

@@ -56,9 +56,9 @@ typedef struct sig_event_t {
 
 // Globals -------------------------------------------------------------------------------------------------------------
 
+Panda__SignalEvent pse;  // Global faster than malloc, size is fixed
 std::set<int32_t> hyper_blocked_sigs;
 std::map<std::string, std::set<int32_t>> hyper_blocked_sigs_by_proc;
-Panda__SignalEvent pse;
 
 #ifdef IN_MEM_BUF
     std::vector<sig_event_t> hyper_sig_events;
@@ -107,7 +107,7 @@ void flush_to_plog(sig_event_t* se_ptr) {
     // Flush event
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
     ple.signal_event = &pse;
-	pandalog_write_entry(&ple);
+    pandalog_write_entry(&ple);
 }
 
 // Per Luke C., we'll supress by swapping to SIGWINCH instead of re-directing control flow from the hypervisor

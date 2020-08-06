@@ -7,7 +7,7 @@ Summary
 
 Linux process-to-process signal interception:
 
-* Log the 5 tuple (`sig_num`, `suppressed_bool`, `src_proc_name`, `dst_proc_name`, `src_pid`, `dst_pid`) to PANDALOG (serialized binary format).
+* Log the 5 tuple (`sig_num`, `suppressed_bool`, `src_proc_name`, `src_pid`, `dst_proc_name`, `dst_pid`) to PANDALOG (serialized binary format).
 * Optionally suppress signals globally (by number) or for a specific process (by number and process name)
 
 Arguments
@@ -47,3 +47,9 @@ panda.plugins['signal'].block_sig(6)
 ```
 
 See [`test/run.py`](./test/run.py) for full, runnable test.
+
+TODO
+-------
+
+* Kernel-to-process interception?
+* Python API to retreive currently collected events at any time (alternative to PANDALOG)
