@@ -17,6 +17,8 @@ PANDAENDCOMMENT */
 
 #include <cstdint>
 
+#define INSTRUCTION_FLAG_GEP_HAS_CONSTANT_INDICES (UINT64_C(1)<<0)
+
 namespace llvm { class Instruction; }
 
 class Shad;
@@ -61,7 +63,8 @@ void taint_branch(Shad *shad, uint64_t src);
 // These are all the taint operations which we will inline into the LLVM code
 // as it JITs.
 void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
-                uint64_t size, llvm::Instruction *I);
+        uint64_t size, uint64_t opcode, uint64_t instruction_flags,
+        uint64_t num_operands, ...);
 
 // Two compute models: parallel and mixed. Parallel for bitwise, mixed otherwise.
 // Parallel compute: take labelset vectors [1,2,3] + [4,5,6] -> [14,25,36]
