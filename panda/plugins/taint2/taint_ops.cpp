@@ -66,6 +66,20 @@ static inline bool is_ram_ptr(uint64_t addr)
            qemu_ram_addr_from_host(reinterpret_cast<void *>(addr));
 }
 
+static std::vector<const llvm::ConstantInt *> getOperands(
+        const uint64_t num_operands, va_list ap) {
+
+    auto ctx = tcg_llvm_translator->getContext();
+    auto *int64T = llvm::Type::getInt64Ty(*ctx);
+
+    std::vector<const llvm::ConstantInt *> operands;
+    for(uint64_t i=0; i<num_operands; i++) {
+        operands.push_back(llvm::ConstantInt::get(int64T,
+            va_arg(ap, uint64_t)));
+    }
+    return operands;
+}
+
 // Remove the taint marker from any bytes whose control mask bits go to 0.
 // A 0 control mask bit means that bit does not impact the value in the byte (or
 // impacts it in an irreversible fashion, so they gave up on calculating the
@@ -163,9 +177,6 @@ void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
         return;
     }
 
-    auto ctx = tcg_llvm_translator->getContext();
-    auto *int64T = llvm::Type::getInt64Ty(*ctx);
-
     taint_log("copy: %s[%lx+%lx] <- %s[%lx] ", shad_dest->name(), dest, size,
         shad_src->name(), src);
 
@@ -173,13 +184,10 @@ void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
 
     Shad::copy(shad_dest, dest, shad_src, src, size);
 
-    std::vector<const llvm::ConstantInt *> operands;
     va_list ap;
     va_start(ap, num_operands);
-    for(uint64_t i=0; i<num_operands; i++) {
-        operands.push_back(llvm::ConstantInt::get(int64T,
-            va_arg(ap, uint64_t)));
-    }
+    std::vector<const llvm::ConstantInt *> operands = getOperands(num_operands,
+        ap);
     va_end(ap);
 
     update_cb(shad_dest, dest, shad_src, src, size, opcode, instruction_flags,
