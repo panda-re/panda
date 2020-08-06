@@ -174,11 +174,6 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     auto &ES = tcg_llvm_translator->getExecutionSession();
     PTV->ctx = tcg_llvm_translator->getContext();
 
-    Type *instrT = StructType::create(*PTV->ctx,
-        "class.llvm::Instruction");
-    assert(instrT);
-    PTV->instrP = PointerType::getUnqual(instrT);
-
     Type *shadT = StructType::create(*PTV->ctx, "class.Shad");
     assert(shadT);
     PTV->shadP = PointerType::getUnqual(shadT);
@@ -235,8 +230,8 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
         symbols);
 
     argTys = { PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T,
-        PTV->int64T, PTV->int64T, PTV->instrP, PTV->int64T, PTV->int64T,
-        PTV->int64T, PTV->int64T };
+        PTV->int64T, PTV->int64T, PTV->int64T, PTV->int64T,
+        PTV->int64T, PTV->int64T, PTV->int64T, PTV->int64T };
 
     PTV->mul_computeF = TaintOpsFunction("taint_mul_compute",
         (void *) &taint_mul_compute, argTys, PTV->voidT, false, ES,
@@ -503,11 +498,6 @@ void PandaTaintVisitor::insertCallBefore(Instruction &I,
     insertCall(I, func, args, true, true);
 }
 
-Constant *PandaTaintVisitor::constInstr(Instruction *I) {
-    assert(I);
-    return const_struct_ptr(instrP, I);
-}
-
 Constant *PandaTaintVisitor::constSlot(Value *value) {
     assert(value && !isa<Constant>(value));
     int slot = PST->getLocalSlot(value);
@@ -644,7 +634,7 @@ void PandaTaintVisitor::insertTaintBulk(Instruction &I,
     Constant *instruction_flags = const_uint64(getInstructionFlags(I));
 
     Instruction *after = srcCI ? srcCI : (destCI ? destCI : &I);
-    Instruction *next = after->getNextNonDebugInstruction();
+    Instruction *next = after->getNextNode();
 
     vector<Value *> args { shad_dest, dest, shad_src, src,
         const_uint64(size), opcode, instruction_flags,
@@ -716,7 +706,7 @@ void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *dest,
         constSlot(src), src_size, opcode, instruction_flags,
         const_uint64(I.getNumOperands()) };
 
-    Instruction *next = I.getNextNonDebugInstruction();
+    Instruction *next = I.getNextNode();
 
     addOperandsToArgumentList(args, I, next);
 
@@ -751,7 +741,7 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest,
 
     Instruction *next;
     Instruction *iResult = &I;
-    next = I.getNextNonDebugInstruction();
+    next = I.getNextNode();
 
     if(I.getType()->isVectorTy()) {
         iResult = ExtractElementInst::Create(iResult, zeroConst, "",
@@ -838,10 +828,8 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest,
         arg1_hi = b.CreateTrunc(b.CreateLShr(src1, 64), int64T);
     } else {
         arg1_lo = b.CreateSExtOrBitCast(src1, int64T);
-        Value *tmp =
-            b.CreateTrunc(b.CreateLShr(arg1_lo, 63), int1T);
-        arg1_hi = b.CreateSelect(tmp, const_uint64(~0UL),
-                                 const_uint64(0UL));
+        Value *tmp = b.CreateTrunc(b.CreateLShr(arg1_lo, 63), int1T);
+        arg1_hi = b.CreateSelect(tmp, const_uint64(~0UL), zeroConst);
     }
 
     Value *arg2_lo = NULL;
@@ -851,15 +839,21 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest,
         arg2_hi = b.CreateTrunc(b.CreateLShr(src2, 64), int64T);
     } else {
         arg2_lo = b.CreateSExtOrBitCast(src2, int64T);
-        Value *tmp =
-            b.CreateTrunc(b.CreateLShr(arg2_lo, 63), int1T);
-        arg2_hi = b.CreateSelect(tmp, const_uint64(~0UL),
-                                 const_uint64(0UL));
+        Value *tmp = b.CreateTrunc(b.CreateLShr(arg2_lo, 63), int1T);
+        arg2_hi = b.CreateSelect(tmp, const_uint64(~0UL), zeroConst);
     }
 
-    vector<Value *> args { llvConst,
-        dslot, dest_size, src1slot, src2slot, src_size, constInstr(&I),
-        arg1_lo, arg1_hi, arg2_lo, arg2_hi };
+    Value *iResult;
+
+    if(I.getType()->isFloatingPointTy()) {
+        iResult = b.CreateFPToSI(&I, int64T);
+    } else {
+        iResult = b.CreateIntCast(&I, int64T, false);
+    }
+
+    vector<Value *> args { llvConst, dslot, dest_size, src1slot, src2slot,
+        src_size, arg1_lo, arg1_hi, arg2_lo, arg2_hi,
+        const_uint64(I.getOpcode()), iResult };
 
     Function *mulCompF = getFunction(I.getModule(), mul_computeF);
 
@@ -1585,7 +1579,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
                 opcode, instruction_flags,
                 const_uint64(I.getNumOperands()) };
 
-            Instruction *next = I.getNextNonDebugInstruction();
+            Instruction *next = I.getNextNode();
             addOperandsToArgumentList(args, I, next);
 
             insertCall(*next, copyF, args, false, false);

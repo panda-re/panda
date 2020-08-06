@@ -307,9 +307,9 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
 }
 
 void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
-                       uint64_t src1, uint64_t src2, uint64_t src_size,
-                       llvm::Instruction *inst, uint64_t arg1_lo,
-                       uint64_t arg1_hi, uint64_t arg2_lo, uint64_t arg2_hi)
+        uint64_t src1, uint64_t src2, uint64_t src_size, uint64_t arg1_lo,
+        uint64_t arg1_hi, uint64_t arg2_lo, uint64_t arg2_hi,
+        uint64_t opcode, uint64_t result_unused)
 {
     llvm::APInt arg1 = make_128bit_apint(arg1_hi, arg1_lo);
     llvm::APInt arg2 = make_128bit_apint(arg2_hi, arg2_lo);
@@ -329,12 +329,14 @@ void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                   apint_hi_bits(cleanArg), apint_lo_bits(cleanArg));
         if (cleanArg == 0) return ; // mul X untainted 0 -> no taint prop
         else if (cleanArg == 1) { //mul X untainted 1(one) should be a parallel taint
-            taint_parallel_compute(shad, dest, dest_size, src1, src2,  src_size, 0,0); // TODO: fix
+            taint_parallel_compute(shad, dest, dest_size, src1, src2, src_size,
+                opcode, result_unused);
             taint_log("mul_com: mul X 1\n");
             return;
         }
     }
-    taint_mix_compute(shad, dest, dest_size, src1, src2,  src_size, 0,0); // TODO: fix
+    taint_mix_compute(shad, dest, dest_size, src1, src2,  src_size, opcode,
+        result_unused);
 }
 
 void taint_delete(Shad *shad, uint64_t dest, uint64_t size)

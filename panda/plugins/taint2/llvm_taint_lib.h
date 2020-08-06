@@ -137,7 +137,6 @@ private:
     ConstantInt *const_uint64_ptr(void *ptr);
     Constant *constSlot(Value *value);
     Constant *constWeakSlot(Value *value);
-    Constant *constInstr(Instruction *I);
     Constant *constNull(void);
     int intValue(Value *value);
     unsigned getValueSize(const Value *V);
@@ -220,7 +219,6 @@ public:
 
     ConstantInt *zeroConst;
 
-    Type *instrP;
     Type *shadP;
     Type *memlogP;
     Type *voidT;
