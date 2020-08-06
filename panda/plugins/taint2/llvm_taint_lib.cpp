@@ -212,10 +212,10 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
         (void *) &taint_breadcrumb, argTys, PTV->voidT, false, ES, symbols);
 
     argTys = { PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T,
-        PTV->int64T, PTV->instrP };
+        PTV->int64T, PTV->int64T, PTV->int64T, PTV->int64T };
 
     PTV->mixF = TaintOpsFunction("taint_mix", (void *) &taint_mix,
-        argTys, PTV->voidT, false, ES, symbols);
+        argTys, PTV->voidT, true, ES, symbols);
 
     argTys = { PTV->shadP, PTV->int64T, PTV->shadP, PTV->int64T,
         PTV->int64T, PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T };
@@ -695,17 +695,27 @@ void PandaTaintVisitor::insertTaintPointer(Instruction &I,
 void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *src) {
     insertTaintMix(I, &I, src);
 }
-void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *dest, Value *src) {
+
+void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *dest,
+        Value *src) {
     if (isa<Constant>(src)) return;
 
     if (!dest) dest = &I;
     Constant *dest_size = const_uint64(getValueSize(dest));
     Constant *src_size = const_uint64(getValueSize(src));
 
-    vector<Value *> args{ llvConst,
-        constSlot(dest), dest_size, constSlot(src), src_size, constInstr(&I) };
+    Constant *opcode = const_uint64(I.getOpcode());
+    Constant *instruction_flags = const_uint64(getInstructionFlags(I));
 
-    insertCallAfter(I, mixF, args);
+    vector<Value *> args{ llvConst, constSlot(dest), dest_size,
+        constSlot(src), src_size, opcode, instruction_flags,
+        const_uint64(I.getNumOperands()) };
+
+    Instruction *next = I.getNextNonDebugInstruction();
+
+    addOperandsToArgumentList(args, I, next);
+
+    insertCallBefore(*next, mixF, args);
 }
 
 void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *src1,

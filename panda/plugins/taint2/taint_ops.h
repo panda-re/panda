@@ -17,7 +17,7 @@ PANDAENDCOMMENT */
 
 #include <cstdint>
 
-#define INSTRUCTION_FLAG_GEP_HAS_CONSTANT_INDICES (UINT64_C(1)<<0)
+#include "taint_ops_ins_flags.h"
 
 namespace llvm { class Instruction; }
 
@@ -97,7 +97,8 @@ void taint_after_ld(uint64_t reg, uint64_t memaddr, uint64_t size);
 // Union all labels within here: [1,2,3] -> [123,123,123]
 // A mixed compute becomes two mixes followed by a parallel.
 void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
-               uint64_t src_size, llvm::Instruction *I);
+        uint64_t src_size, uint64_t opcode, uint64_t instruction_flags,
+        uint64_t num_operands, ...);
 
 // Tainted pointer load in tainted pointer mode.
 // Mixes the ptr labels and parallels that with each src label.
