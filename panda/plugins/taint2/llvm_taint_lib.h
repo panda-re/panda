@@ -256,6 +256,7 @@ public:
 
     void visitReturnInst(ReturnInst &I);
     void visitBinaryOperator(BinaryOperator &I);
+    void visitUnaryOperator(UnaryOperator &I);
     void visitPHINode(PHINode &I);
     void visitInstruction(Instruction &I);
 
