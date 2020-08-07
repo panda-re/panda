@@ -1496,11 +1496,18 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
 
         switch (calledF->getIntrinsicID()) {
             case Intrinsic::uadd_with_overflow:
-                insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), 1);
+            case Intrinsic::sadd_sat:
+            case Intrinsic::ssub_sat:
+            case Intrinsic::usub_sat:
+                insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), true);
                 return;
             case Intrinsic::bswap:
+            case Intrinsic::ceil:
             case Intrinsic::ctlz:
             case Intrinsic::cttz:
+            case Intrinsic::fabs:
+            case Intrinsic::floor:
+            case Intrinsic::rint:
                 insertTaintMix(I, I.getArgOperand(0));
                 return;
             case Intrinsic::dbg_declare:
