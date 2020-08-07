@@ -750,6 +750,9 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest,
     Instruction *iResult = &I;
     next = I.getNextNode();
 
+    // Extract result (or an element of the result for vector operations)
+    // and pass to taint ops function to prevent JIT optimizer from
+    // optimizing out I
     if(I.getType()->isVectorTy()) {
         iResult = ExtractElementInst::Create(iResult, zeroConst, "",
             next);
