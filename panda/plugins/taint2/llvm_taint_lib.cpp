@@ -521,7 +521,7 @@ Constant *PandaTaintVisitor::constWeakSlot(Value *value) {
     assert(value);
     int slot = PST->getLocalSlot(value);
     assert(isa<Constant>(value) || slot >= 0);
-    return const_uint64(slot < 0 ? ~0UL : MAXREGSIZE * slot);
+    return const_uint64(slot < 0 ? UINT64_C(~0) : MAXREGSIZE * slot);
 }
 
 int PandaTaintVisitor::intValue(Value *value) {
