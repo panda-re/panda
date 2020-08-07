@@ -58,13 +58,13 @@ private:
     bool FunctionProcessed;
     ValueMap fMap;
     unsigned fNext;
-    void CreateFunctionSlot(const Value *V);
     //void CreateMetadataSlot(const MDNode *N);
     void processFunction();
 
 public:
     PandaSlotTracker(Function *F) : TheFunction(F),
         FunctionProcessed(false), fNext(0) {}
+    unsigned CreateFunctionSlot(const Value *V);
     int getLocalSlot(const Value *V);
     void initialize();
     unsigned getMaxSlot();
@@ -218,6 +218,8 @@ public:
     Constant *memlogConst;
 
     ConstantInt *zeroConst;
+    ConstantInt *oneConst;
+    ConstantInt *maxConst; // == "ones" in taint_ops.cpp
 
     Type *shadP;
     Type *memlogP;

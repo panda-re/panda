@@ -97,7 +97,16 @@ extern TCGLLVMTranslator *tcg_llvm_translator;
 //X("PandaTaint", "Analyze each instruction in a function for taint operations");
 
 ConstantInt *PandaTaintVisitor::const_uint64(uint64_t val) {
-    return ConstantInt::get(int64T, val);
+    switch(val) {
+        case 0:
+            return zeroConst;
+        case 1:
+            return oneConst;
+        case UINT64_C(~0):
+            return maxConst;
+        default:
+            return ConstantInt::get(int64T, val);
+    }
 }
 
 ConstantInt *PandaTaintVisitor::const_uint64_ptr(void *ptr) {
@@ -194,7 +203,9 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV->retConst = PTV->const_struct_ptr(PTV->shadP, &shad->ret);
     PTV->prevBbConst = PTV->const_i64p(&shad->prev_bb);
     PTV->memlogConst = PTV->const_struct_ptr(PTV->memlogP, taint_memlog);
-    PTV->zeroConst = PTV->const_uint64(0);
+    PTV->zeroConst = ConstantInt::get(PTV->int64T, 0);
+    PTV->oneConst = ConstantInt::get(PTV->int64T, 1);
+    PTV->maxConst = ConstantInt::get(PTV->int64T, UINT64_C(~0));
 
     // TODO: is this right?  What is this used for?
     PTV->dataLayout = new DataLayout(&M);
@@ -399,9 +410,10 @@ void PandaSlotTracker::processFunction() {
     FunctionProcessed = true;
 }
 
-void PandaSlotTracker::CreateFunctionSlot(const Value *V) {
+unsigned PandaSlotTracker::CreateFunctionSlot(const Value *V) {
     unsigned DestSlot = fNext++;
     fMap[V] = DestSlot;
+    return DestSlot;
 }
 
 unsigned PandaSlotTracker::getMaxSlot() {
@@ -829,7 +841,7 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest,
     } else {
         arg1_lo = b.CreateSExtOrBitCast(src1, int64T);
         Value *tmp = b.CreateTrunc(b.CreateLShr(arg1_lo, 63), int1T);
-        arg1_hi = b.CreateSelect(tmp, const_uint64(~0UL), zeroConst);
+        arg1_hi = b.CreateSelect(tmp, maxConst, zeroConst);
     }
 
     Value *arg2_lo = NULL;
@@ -840,7 +852,7 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest,
     } else {
         arg2_lo = b.CreateSExtOrBitCast(src2, int64T);
         Value *tmp = b.CreateTrunc(b.CreateLShr(arg2_lo, 63), int1T);
-        arg2_hi = b.CreateSelect(tmp, const_uint64(~0UL), zeroConst);
+        arg2_hi = b.CreateSelect(tmp, maxConst, zeroConst);
     }
 
     Value *iResult;
@@ -877,15 +889,14 @@ void PandaTaintVisitor::insertTaintSelect(Instruction &after, Value *dest,
 
     Constant *dest_size = const_uint64(getValueSize(dest));
 
-    vector<Value *> args { llvConst,
-        constSlot(dest), dest_size, selector };
+    vector<Value *> args { llvConst, constSlot(dest), dest_size, selector };
 
     for (auto &selection : selections) {
         args.push_back(selection.first);
         args.push_back(selection.second);
     }
-    args.push_back(const_uint64(~0UL));
-    args.push_back(const_uint64(~0UL));
+    args.push_back(maxConst);
+    args.push_back(maxConst);
     insertCallAfter(after, selectF, args);
 }
 
@@ -1556,7 +1567,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             // Call taint_copy to copy taint from LLVM to the EAX register. We
             // have to copy taint here to ensure that EAX becomes tainted.
             vector<Value *> args { grvConst, const_uint64(R_EAX), llvConst,
-                constWeakSlot(I.getArgOperand(2)), const_uint64(1),
+                constWeakSlot(I.getArgOperand(2)), oneConst,
                 opcode, instruction_flags,
                 const_uint64(I.getNumOperands()) };
 
@@ -1575,7 +1586,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             // return value is the value on the IO port and so the taint data
             // (if any) will be associated with the return value.
             vector<Value *> args { llvConst, constSlot(&I), grvConst,
-                const_uint64(R_EAX), const_uint64(1),
+                const_uint64(R_EAX), oneConst,
                 opcode, instruction_flags,
                 const_uint64(I.getNumOperands()) };
 
@@ -1702,20 +1713,41 @@ void PandaTaintVisitor::portStoreHelper(Value *srcval, Value *dstval, int len) {
 */
 
 void PandaTaintVisitor::visitSelectInst(SelectInst &I) {
-/* TODO: fix select
     Value *cond = I.getCondition();
-    ZExtInst *ZEI = new ZExtInst(cond, int64T, "", &I);
-    assert(ZEI);
 
-    vector<pair<Value *, Value *>> selections;
-    selections.push_back(std::make_pair(
-                constWeakSlot(I.getTrueValue()),
-                ConstantInt::get(ctx, APInt(64, 1))));
-    selections.push_back(std::make_pair(
-                constWeakSlot(I.getFalseValue()),
-                ConstantInt::get(ctx, APInt(64, 0))));
-    insertTaintSelect(I, &I, ZEI, selections);
-*/
+    if(cond->getType()->isVectorTy()) {
+        Instruction *next = I.getNextNode();
+        unsigned numElements =
+            dyn_cast<VectorType>(cond->getType())->getNumElements();
+        for(unsigned i=0; i<numElements; i++) {
+            Value *iVal = const_uint64(i);
+            Instruction *EEI = ExtractElementInst::Create(cond,
+                iVal, "", &I);
+            Instruction *TI = ExtractElementInst::Create(I.getTrueValue(),
+                iVal, "", &I);
+            Instruction *FI = ExtractElementInst::Create(I.getFalseValue(),
+                iVal, "", &I);
+            Instruction *dest = ExtractElementInst::Create(&I,
+                iVal, "", next);
+            ZExtInst *ZEI = new ZExtInst(EEI, int64T, "", &I);
+            vector<pair<Value *, Value *>> selections;
+            selections.push_back(std::make_pair(
+                const_uint64(PST->CreateFunctionSlot(TI)), oneConst));
+            selections.push_back(std::make_pair(
+                const_uint64(PST->CreateFunctionSlot(FI)), zeroConst));
+            PST->CreateFunctionSlot(dest);
+            insertTaintSelect(*dest, dest, ZEI, selections);
+        }
+    } else {
+        ZExtInst *ZEI = new ZExtInst(cond, int64T, "", &I);
+
+        vector<pair<Value *, Value *>> selections;
+        selections.push_back(std::make_pair(
+            constWeakSlot(I.getTrueValue()), oneConst));
+        selections.push_back(std::make_pair(
+            constWeakSlot(I.getFalseValue()), zeroConst));
+        insertTaintSelect(I, &I, ZEI, selections);
+    }
 }
 
 void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I) {
