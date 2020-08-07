@@ -1477,10 +1477,7 @@ const static std::set<std::string> inoutFuncs{
     "helper_inb", "helper_inw", "helper_inl", "helper_inq",
     "helper_outb", "helper_outw", "helper_outl", "helper_outq"
 };
-const static std::set<std::string> unaryMathFuncs{
-    "sin", "cos", "tan", "log", "__isinf", "__isnan", "rint", "floor", "abs",
-    "fabs", "ceil", "exp2"
-};
+
 void PandaTaintVisitor::visitCallInst(CallInst &I) {
     Function *calledF = I.getCalledFunction();
     Value *calledV = I.getCalledValue();
@@ -1560,12 +1557,6 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             } else {
                 insertTaintCopy(I, memConst, NULL, llvConst, val, getValueSize(val));
             }
-            return;
-        } else if (unaryMathFuncs.count(calledName) > 0) {
-            insertTaintMix(I, I.getArgOperand(0));
-            return;
-        } else if (calledName == "ldexp" || calledName == "atan2") {
-            insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), true);
             return;
 #ifdef TARGET_I386
         } else if (calledName == "helper_outb") {
@@ -1847,6 +1838,10 @@ void PandaTaintVisitor::visitShuffleVectorInst(ShuffleVectorInst &I) {
             8 * MAXREGSIZE);
     }
     insertTaintCompute(I, I.getOperand(0), I.getOperand(1), true);
+}
+
+void PandaTaintVisitor::visitUnaryOperator(UnaryOperator &I) {
+    insertTaintMix(I, I.getOperand(0));
 }
 
 // Unhandled
