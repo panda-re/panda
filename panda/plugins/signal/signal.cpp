@@ -224,8 +224,7 @@ bool init_plugin(void *_self) {
     switch (panda_os_familyno) {
 
         case OS_LINUX: {
-            //#if (defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS))
-            #if (defined(TARGET_I386) || defined(TARGET_ARM))
+            #if ((defined(TARGET_I386) && !defined(TARGET_X86_64)) || (defined(TARGET_ARM) && !defined(TARGET_AARCH64)) || defined(TARGET_MIPS))
                 printf("signal: setting up 32-bit Linux.\n");
                 PPP_REG_CB("syscalls2", on_sys_kill_enter, sig_mitm);
             #elif (defined(TARGET_X86_64) || defined(TARGET_AARCH64))
