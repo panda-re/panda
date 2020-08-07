@@ -352,7 +352,7 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
         operands);
 }
 
-static const uint64_t ones = ~0UL;
+static const uint64_t ones = UINT64_C(~0);
 
 void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store, uint64_t size);
 
