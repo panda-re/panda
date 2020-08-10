@@ -98,7 +98,10 @@ target_ulong panda_current_asid(CPUState *cpu) {
 #if defined(TARGET_I386)
   CPUArchState *env = (CPUArchState *)cpu->env_ptr;
   return env->cr[3];
-#elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+#elif defined(TARGET_ARM)
+#if defined(TARGET_AARCH64)
+  return 0; // XXX: TODO
+#else
   target_ulong table;
   bool rc = arm_get_vaddr_table(cpu,
           &table,
@@ -106,6 +109,7 @@ target_ulong panda_current_asid(CPUState *cpu) {
   assert(rc);
   return table;
   /*return arm_get_vaddr_table(env, panda_current_pc(env));*/
+#endif
 #elif defined(TARGET_PPC)
   CPUArchState *env = (CPUArchState *)cpu->env_ptr;
   return env->sr[0];
