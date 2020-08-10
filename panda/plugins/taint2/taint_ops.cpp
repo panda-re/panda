@@ -887,12 +887,15 @@ char* back_slice (Shad *shad, llvm::Instruction* insn)
 
               if (callee_name.startswith("helper_") && callee_name.endswith("_panda")) {
                 // Some LLVM memory load panda helper like ldub (load unsigned byte) - see helper_runtime.cpp:71
-                if (callee_name.equals("helper_ret")) {
+                if (callee_name.find("helper_ret") != llvm::StringRef::npos) {
                   res_head += snprintf(res_head, res_tail-res_head, "0,");
-                }else if (callee_name.equals("helper_le")) {
+                }else if (callee_name.find("helper_le") != llvm::StringRef::npos) {
                   res_head += snprintf(res_head, res_tail-res_head, "1,");
-                }else if (callee_name.equals("helper_be")) {
+                }else if (callee_name.find("helper_be") != llvm::StringRef::npos) {
                   res_head += snprintf(res_head, res_tail-res_head, "2,");
+                }else{
+                  res_head += snprintf(res_head, res_tail-res_head, "ERROR,");
+                  printf("ERROR: What is this function? %s\n", stringified);
                 }
 
                 if (callee_name.find("_ld") != llvm::StringRef::npos) {
@@ -929,6 +932,9 @@ stb - store byte
                   res_head += snprintf(res_head, res_tail-res_head, "1,0,"); // byte, unsigned
                 }else if (callee_name.find("sb_mmu") != llvm::StringRef::npos) {
                   res_head += snprintf(res_head, res_tail-res_head, "1,1,"); // byte, signed
+                }else{
+                  res_head += snprintf(res_head, res_tail-res_head, "ERROR,");
+                  printf("ERROR: What is this function? %s\n", stringified);
                 }
 
                   // helper_ret_ldub_mmu_panda(%struct.CPUX86State* %0, i32 %tmp2_v6, i32 2, i64 3735928559)

@@ -6,24 +6,34 @@ Work in progress
 import binascii
 from panda.utils import telescope
 
-R_EAX = 0
-R_ECX = 1
-R_EDX = 2
-R_EBX = 3
-R_ESP = 4
-R_EBP = 5
-R_ESI = 6
-R_EDI = 7
 
-registers = {
-    "EAX": R_EAX,
-    "EBX": R_EBX,
-    "ECX": R_ECX,
-    "EDX": R_EDX,
-    "ESP": R_ESP,
-    "EBP": R_EBP,
-    "ESI": R_ESI,
-    "EDI": R_EDI}
+# See target/i386/cpu.h
+# types:
+#   0 full-width: env_ptr->regs[X]
+#   1 sub-register
+#   2 segment registers env_ptr->segs[X]
+all_registers = { # Name: (IDX, type, size)
+    "EAX":    (0, 0, 32),
+    "EBX":    (1, 0, 32),
+    "ECX":    (2, 0, 32),
+    "EDX":    (3, 0, 32),
+    "ESP":    (4, 0, 32),
+    "EBP":    (5, 0, 32),
+    "ESI":    (6, 0, 32),
+    "EDI":    (7, 0, 32),
+
+    # TODO: subregisters
+
+    # XXX names might be bad?
+    "ES": (0, 2, 32),
+    "CS": (1, 2, 32),
+    "SS": (2, 2, 32),
+    "DS": (3, 2, 32),
+    "FS": (4, 2, 32),
+    "GS": (5, 2, 32),
+}
+
+registers = {name:idx for name, (idx, typ, sz) in all_registers.items() if typ == 0}
 
 def dump_regs(panda, cpu):
     '''
