@@ -12,8 +12,9 @@ CODE = b"""
 jmp .start
 
 .start:
-mov bx, [ebx]
-cmp ebx, eax
+inc edx
+mov ecx, [ebx]
+cmp ecx, eax
 je .true
 
 jmp .false
@@ -60,7 +61,7 @@ def setup(cpu):
 
     # Taint register(s)
     panda.taint_label_reg(registers["EAX"], 10)
-    #panda.taint_label_reg(registers["EBX"], 11)
+    #panda.taint_label_reg(registers["EDX"], 11)
 
 # Before every instruction, disassemble it with capstone
 md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_32)
@@ -92,10 +93,26 @@ def tainted_branch(addr, size):
     for offset in range(0, size):
         if panda.taint_check_laddr(addr.addr_val, offset):
             print("TAINTED BRANCH")
+
+            # At the time of the branch we need to determine CONCRETE values for non-tainted
+            # registers. As such, let's generate vars for each of them:
+
             tq = panda.taint_get_laddr(addr.addr_val, offset)
             taint_labels = tq.get_labels()
             print(taint_labels)
             print("\n")
+
+ffi.cdef('typedef void (*on_branch2_constraints_t) (char*);')
+ffi.cdef('void ppp_add_cb_on_branch2_constraints(on_branch2_constraints_t);')
+
+@panda.ppp("taint2", "on_branch2_constraints")
+def taint_cmp(s):
+    if s == ffi.NULL:
+        print("ERR")
+        return
+    data = ffi.string(s)
+    print(data)
+
 
 panda.enable_precise_pc()
 

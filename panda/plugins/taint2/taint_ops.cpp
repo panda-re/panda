@@ -41,10 +41,10 @@ PANDAENDCOMMENT */
 #include "panda/plugin_plugin.h"
 
 #include "shad.h"
+#include "taint2.h"
 #include "label_set.h"
 #include "taint_ops.h"
 #include "taint_utils.h"
-#include"z3++.h"
 
 uint64_t labelset_count;
 
@@ -52,6 +52,9 @@ extern "C" {
 
 extern bool tainted_pointer;
 extern bool detaint_cb0_bytes;
+
+PPP_PROT_REG_CB(on_branch2_constraints);
+PPP_CB_BOILERPLATE(on_branch2_constraints);
 
 }
 
@@ -379,8 +382,6 @@ void taint_after_ld_run(uint64_t reg, uint64_t addr, uint64_t size);
 void taint_after_ld(uint64_t reg, uint64_t memaddr, uint64_t size) {
     taint_after_ld_run(reg, memaddr, size);
 }
-
-
 
 void taint_sext(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
                 uint64_t src_size)
@@ -759,7 +760,6 @@ ID  LLVM-name
   return true;
 }
 
-char * cmp_sym(int idx);
 char * cmp_sym(int idx) {
   char * ret = (char*) malloc(4);
 /*
@@ -1009,10 +1009,9 @@ stb - store byte
             //str << "constXXX";
             llvm::StringRef sref = li->getName();
             char *stringified = hack(&sref);
-            res_head += snprintf(res_head, res_tail-res_head, "const_%s", stringified);
+            res_head += snprintf(res_head, res_tail-res_head, "regs['%s']", stringified);
             free(stringified);
-
-            //res_head += snprintf(res_head, res_tail-res_head, "const_%s", hack());
+            printf("\n");
           }else if (llvm::isa<llvm::CallInst>(i)){
             if (i->getName().empty()) {
               printf("EMPTY CALL\n");
@@ -1070,7 +1069,6 @@ stb - store byte
     return res;
 }
 
-char* str_value(Shad *shad, llvm::Value *v, uint64_t slot);
 char* str_value(Shad *shad, llvm::Value *v, uint64_t slot) {
     /* Given a value, log if it's a const int or kick off a back_trace for an insn */
     // TODO: only log const ints if the other side of the compare is a tainted instr?
@@ -1101,10 +1099,12 @@ char* str_value(Shad *shad, llvm::Value *v, uint64_t slot) {
     }
     return result;
 }
-void log_tainted_cmp(Shad *shad, llvm::Instruction *I, uint64_t slot1, uint64_t slot2)
+
+// In the IR this is called afterTaintedBranch
+void after_tainted_branch(Shad *shad, llvm::Instruction *I, uint64_t slot1, uint64_t slot2)
 {
     llvm::CmpInst *cmpI = llvm::dyn_cast<llvm::CmpInst>(I);
-    assert(cmpI && "log_tainted_cmp called on non cmpI instruction?"); // Will fail with floats
+    assert(cmpI && "after_tainted_branch called on non cmpI instruction?"); // Will fail with floats
 
     llvm::CmpInst::Predicate p = cmpI->getPredicate();
 
@@ -1124,10 +1124,10 @@ void log_tainted_cmp(Shad *shad, llvm::Instruction *I, uint64_t slot1, uint64_t 
     // XXX when we printf %d slots sometimes they're <0 and then querying shadow memory seems to fail
     // is this a sane check?
     if ( !(((int)slot1 >= 0  && shad->query(slot1) != NULL) ||  ((int)slot2 >= 0  && shad->query(slot2) != NULL))) {
-      return; // no taint
+      return;
     }
 
-    printf("\n\nTAINT COMPARE: type %d (slot1=%ld, slot2=%ld)\n\n", (int)p, slot1, slot2);
+    //printf("\n\nTAINT COMPARE: type %d (slot1=%ld, slot2=%ld)\n\n", (int)p, slot1, slot2);
 
     llvm::Value *v1 = cmpI->getOperand(0);
     llvm::Value *v2 = cmpI->getOperand(1);
@@ -1140,17 +1140,21 @@ void log_tainted_cmp(Shad *shad, llvm::Instruction *I, uint64_t slot1, uint64_t 
     char* s2 = str_value(shad, v2, slot2);
     char* cmp = cmp_sym((int)p);
 
+    char* result = (char*)malloc(1024);
     // Four special cases - usnigned comparisons where we want CMP(A,B)
     if ( p == llvm::ICmpInst::ICMP_UGT || p == llvm::ICmpInst::ICMP_UGE || \
          p == llvm::ICmpInst::ICMP_ULT || p == llvm::ICmpInst::ICMP_ULE) {
-        printf("%s((%s),(%s))\n", cmp, s1, s2);
+        snprintf(result, 1024, "%s((%s),(%s))", cmp, s1, s2);
 
     }else {
       // Otherwise compare goes in the middle
-      printf("((%s) %s (%s))\n", s1, cmp, s2);
+      snprintf(result, 1024, "((%s) %s (%s))", s1, cmp, s2);
     }
 
     free(cmp);
     free(s1);
     free(s2);
+
+    PPP_RUN_CB(on_branch2_constraints, result);
+    free(result);
 }

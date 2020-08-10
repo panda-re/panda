@@ -155,13 +155,15 @@ public:
     Function *resetFrameF;
     Function *breadcrumbF;
     Function *branchF;
+
+    Function *afterTaintedBranch;
+
     Function *copyRegToPcF;
     Function *afterLdF;
 
     Constant *memlogConst;
     Function *memlogPopF;
 
-    Function *logCmpF;
 
     Constant *llvConst;
     Constant *memConst;

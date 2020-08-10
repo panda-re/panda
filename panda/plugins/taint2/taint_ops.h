@@ -53,8 +53,11 @@ void taint_pop_frame(Shad *shad);
 // Bookkeeping.
 void taint_breadcrumb(uint64_t *dest_ptr, uint64_t bb_slot);
 
-// Call out to PPP callback.
+// Call out to PPP callbacks.
 void taint_branch(Shad *shad, uint64_t src);
+
+void after_tainted_branch(Shad *shad, llvm::Instruction *I, uint64_t slot1, uint64_t slot2);
+
 
 // Taint operations
 //
@@ -97,9 +100,10 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
                uint64_t src_size, llvm::Instruction *I);
 
 int get_pred(llvm::CmpInst::Predicate p);
-// Tainted compare. woo
-// TYPE: 0 = const, 1: var
-void log_tainted_cmp(Shad *shad, llvm::Instruction *I, uint64_t slot1, uint64_t slot2);
+
+// Helpers for tainted compares
+char* str_value(Shad *shad, llvm::Value *v, uint64_t slot);
+char * cmp_sym(int idx);
 
 // Tainted pointer load in tainted pointer mode.
 // Mixes the ptr labels and parallels that with each src label.
