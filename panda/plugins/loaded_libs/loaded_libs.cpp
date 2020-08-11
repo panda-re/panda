@@ -33,26 +33,29 @@ const char* program_name;
 void get_libs(CPUState *env) {
     OsiProc *current =  get_current_process(env); 
     target_ulong asid = panda_current_asid(env); 
-    GArray *ms = get_mappings(env, current); 
 
-    //if (current) printf("current->name: %s  asid: " TARGET_FMT_lx "\n", current->name, asid);
-    if (program_name != NULL && strcmp(current->name, program_name) != 0) return; 
-    if (ms == NULL) return; 
+    if (current != NULL) {
+        GArray *ms = get_mappings(env, current); 
 
-    vector<OsiModule> module_list;
-    for (int i = 0; i < ms->len; i++) { 
-        OsiModule *m = &g_array_index(ms, OsiModule, i); 
-        OsiModule mm; 
-        mm.modd = m->modd;
-        mm.base = m->base;
-        mm.size = m->size; 
-        if (m->file) mm.file = strdup(m->file); 
-        else mm.file = strdup("Unknown_file"); 
-        if (m->name) mm.name = strdup(m->name); 
-        else mm.name = strdup("Unknown_name");
-        module_list.push_back(mm); 
+        //if (current) printf("current->name: %s  asid: " TARGET_FMT_lx "\n", current->name, asid);
+        if (program_name != NULL && strcmp(current->name, program_name) != 0) return; 
+        if (ms == NULL) return; 
+
+        vector<OsiModule> module_list;
+        for (int i = 0; i < ms->len; i++) { 
+            OsiModule *m = &g_array_index(ms, OsiModule, i); 
+            OsiModule mm; 
+            mm.modd = m->modd;
+            mm.base = m->base;
+            mm.size = m->size; 
+            if (m->file) mm.file = strdup(m->file); 
+            else mm.file = strdup("Unknown_file"); 
+            if (m->name) mm.name = strdup(m->name); 
+            else mm.name = strdup("Unknown_name");
+            module_list.push_back(mm); 
+        }
+        asid_module_list[asid].push_back(module_list); 
     }
-    asid_module_list[asid].push_back(module_list); 
 
 }
 
