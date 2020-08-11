@@ -934,7 +934,7 @@ stb - store byte
                   res_head += snprintf(res_head, res_tail-res_head, "1,1,"); // byte, signed
                 }else{
                   res_head += snprintf(res_head, res_tail-res_head, "ERROR,");
-                  printf("ERROR: What is this function? %s\n", stringified);
+                  printf("ERROR: What is this type? %s\n", stringified);
                 }
 
                   // helper_ret_ldub_mmu_panda(%struct.CPUX86State* %0, i32 %tmp2_v6, i32 2, i64 3735928559)
@@ -1096,8 +1096,12 @@ char* str_value(Shad *shad, llvm::Value *v, uint64_t slot) {
         //std::string res = back_slice(shad, i);
         result = back_slice(shad, i);
       }else{
+        // TEST
+        llvm::Instruction *i = llvm::dyn_cast<llvm::Instruction>(v);
+        i->dump();
+        //end test
         result = (char*)malloc(10);
-        snprintf(result, 10, "no_taint");
+        snprintf(result, 10, "no_taint"); // TODO
       }
     } else {
       result = (char*)malloc(10);

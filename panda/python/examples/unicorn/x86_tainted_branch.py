@@ -14,8 +14,11 @@ CODE = b"""
 jmp .start
 
 .start:
-#mov ebx, [ebx]
-add ebx, 8
+mov eax, [ecx]
+
+add eax, edx
+imul eax, 2
+
 cmp ebx, eax
 je .true
 
@@ -31,6 +34,9 @@ jmp .false
 .end:
 nop
 """
+
+# XXX: Bug: if a register starts as untainted but later gets tainted, we'll ID it as 
+#           tainted and therefore unconstrained instead of starting it at a known val
 
 ks = keystone.Ks(keystone.KS_ARCH_X86, keystone.KS_MODE_32)
 ADDRESS = 0x1000
@@ -51,29 +57,46 @@ def setup(cpu):
     panda.map_memory("mymem", 2 * 1024 * 1024, ADDRESS)
     # Write code into memory
     panda.physical_memory_write(ADDRESS, bytes(encoding))
-
+ 
     # Set starting registers
     cpu.env_ptr.eip = ADDRESS
     print("EIP:", cpu.env_ptr.eip)
-    cpu.env_ptr.regs[registers["EAX"]] = 11
-    cpu.env_ptr.regs[registers["EBX"]] = 29
-    #cpu.env_ptr.regs[registers["EBX"]] = ADDRESS
+
+    # Set [ecx] to 0x41424344 - Uncontrolled
+    panda.physical_memory_write(ADDRESS+100, bytes([0x41, 0x42, 0x43, 0x43]))
+
+    # "Uncontrolled" (non-tainted) registers
+    cpu.env_ptr.regs[registers["EAX"]] = 0
+    cpu.env_ptr.regs[registers["ECX"]] = ADDRESS+100
+
+    # "Controlled" (tainted) registers
+    # Last BB: 0x100D
+    #cpu.env_ptr.regs[registers["EBX"]] = 0xf5ede5e0
+    #cpu.env_ptr.regs[registers["EDX"]] = 0xffffffff
+    # Last BB:  16
+    cpu.env_ptr.regs[registers["EBX"]] = 0x82848686
+    cpu.env_ptr.regs[registers["EDX"]] = 0x0
 
     # Taint register(s)
-    panda.taint_label_reg(registers["EAX"], 10)
+    panda.taint_label_reg(registers["EBX"], 10)
     #panda.taint_label_reg(registers["EDX"], 11)
+
+# Before every block disassemble it with capstone
+md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_32)
+@panda.cb_before_block_exec
+def before(cpu, tb):
+    code = panda.virtual_memory_read(cpu, tb.pc, tb.size)
+    for i in md.disasm(code, tb.pc):
+        print("0x%x:\t%s\t%s" %(i.address, i.mnemonic, i.op_str))
 
 # After the tainted compare block - shutdown
 @panda.cb_after_block_exec
 def after(cpu, tb, rc):
     pc = panda.current_pc(cpu)
-    if pc > 0x1005: # Ran 2 blocks: now stop
+    if pc >= stop_addr-6:
         print("\nSTOP\n")
         dump_regs(panda, cpu)
         os._exit(0) # TODO: we need a better way to stop here
-
-# Before every instruction, disassemble it with capstone
-md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_32)
 
 # CFFI can't typedef structures with unions, like addrs, so this is a hack to fix it
 ffi.cdef("""
@@ -108,6 +131,7 @@ ffi.cdef('void ppp_add_cb_on_branch2_constraints(on_branch2_constraints_t);')
 
 @panda.ppp("taint2", "on_branch2_constraints")
 def taint_cmp(s):
+    print("TAINT CMP")
     if s == ffi.NULL:
         print("ERR")
         return
@@ -121,7 +145,7 @@ def taint_cmp(s):
     # constants
 
     regs = {}
-
+    tainted_regs = []
     # For each register, create concrete (BitVecVal) or symbolic (BitVec)
     # depending on taint
     for name, (qemu_idx, typ, size) in all_registers.items():
@@ -129,7 +153,10 @@ def taint_cmp(s):
         if typ == 0:
             # Normal registers
             if panda.taint_check_reg(qemu_idx):
+                print("Register", name, qemu_idx, "is tainted!")
                 regs[name+"_v"] = z3.BitVec(name, size)
+                tainted_regs.append(name+"_v")
+
             else:
                 val = cpu.env_ptr.regs[qemu_idx]
                 regs[name+"_v"] = z3.BitVecVal(val, size)
@@ -146,23 +173,49 @@ def taint_cmp(s):
         end = start+size-1
         return z3.Extract(end, start, val)
 
-    def load(endian, is_store, bit_sz, signed, addr):
-        # TODO: actually use endianness
+    def load(endian, is_store, num_bytes, signed, addr):
         assert(not is_store), "NYI"
 
         # assumes it's not tainted
-        conc_data = panda.virtual_memory_read(cpu, addr, bit_sz*8, fmt='int') # TODO
-        return z3.BitVecVal(conc_data, bit_sz*8)
+        addr_z3_int = z3.BV2Int(addr)
+        if addr_z3_int.is_int(): # Concretize and read real data
+            addr_conc = int(z3.simplify(addr_z3_int).as_long())
+            print(f"Read concrete data from 0x{addr_conc:x}:")
+            conc_data = panda.virtual_memory_read(cpu, addr_conc, num_bytes, fmt='int')
+            if endian == 1: # Z3 works on big endian? need to swap data read if little-endian
+                conc_data = int.from_bytes(conc_data.to_bytes(num_bytes, byteorder='little'), byteorder='big', signed=signed)
+            print(f"\tConcrete: 0x{conc_data:x}")
+            return z3.BitVecVal(conc_data, num_bytes*8)
+        else:
+            print("WARNING: Variable mem read - assuming unconstrained")
+            # Variable address - assume it can return anything
+            return z3.BitVec(f'load_{addr}', num_bytes*8)
+
+    def model_to_dict(model):
+        # Given a model, return a dict of strings_name: int_val
+        # This is fairly terrible, there's certainly a better way
+        model_str = str(model)[1:-1] # trim []'s
+        r = {}
+        for entry in model_str.split(", "):
+            name, val = entry.split(" = ")
+            name = name.strip()
+            val = int(val)
+            r[name] = val
+        return r
 
     # XXX: this uses evals!!!
 
-    print(f"\nTainted comparison at: 0x{panda.current_pc(cpu)} {data.decode()}")
+    print(f"\nTainted comparison at: 0x{panda.current_pc(cpu):x} {data.decode()}")
+    print("\tSimplified condition:", eval(f"z3.simplify({data.decode()})"))
 
     s_true = z3.Solver()
     eval(f"s_true.add({data.decode()})")
+
     if s_true.check():
         print("Solution found for TRUE branch:")
-        print(s_true.model())
+        m = s_true.model()
+        for (reg, val) in model_to_dict(m).items():
+            print(f"\t {reg} = 0x{val:x}")
     else:
         print("TRUE branch UNSAT")
 
@@ -170,7 +223,9 @@ def taint_cmp(s):
     eval(f"s_false.add(z3.Not({data.decode()}))")
     if s_false.check():
         print("Solution found for FALSE branch:")
-        print(s_false.model())
+        m = s_false.model()
+        for (reg, val) in model_to_dict(m).items():
+            print(f"\t {reg} = 0x{val:x}")
     else:
         print("FALSE branch UNSAT")
 
