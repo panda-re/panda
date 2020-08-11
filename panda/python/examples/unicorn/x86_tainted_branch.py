@@ -15,21 +15,17 @@ jmp .start
 
 .start:
 mov eax, [ecx]
-
-add eax, edx
-imul eax, 2
-
 cmp ebx, eax
 je .true
 
 jmp .false
 
 .true:
-    mov edx, 3333
+    mov edx, 0x3333
     jmp .end
 
 .false:
-    mov edx, 4444
+    mov edx, 0x4444
 
 .end:
 nop
@@ -60,22 +56,20 @@ def setup(cpu):
  
     # Set starting registers
     cpu.env_ptr.eip = ADDRESS
-    print("EIP:", cpu.env_ptr.eip)
-
-    # Set [ecx] to 0x41424344 - Uncontrolled
-    panda.physical_memory_write(ADDRESS+100, bytes([0x41, 0x42, 0x43, 0x43]))
 
     # "Uncontrolled" (non-tainted) registers
     cpu.env_ptr.regs[registers["EAX"]] = 0
     cpu.env_ptr.regs[registers["ECX"]] = ADDRESS+100
+    # Set [ecx] to 0x41424344 - Uncontrolled
+    panda.physical_memory_write(ADDRESS+100, b'ABCD')
 
     # "Controlled" (tainted) registers
-    # Last BB: 0x100D
-    #cpu.env_ptr.regs[registers["EBX"]] = 0xf5ede5e0
-    #cpu.env_ptr.regs[registers["EDX"]] = 0xffffffff
-    # Last BB:  16
-    cpu.env_ptr.regs[registers["EBX"]] = 0x82848686
     cpu.env_ptr.regs[registers["EDX"]] = 0x0
+
+    # TRUE:
+    #cpu.env_ptr.regs[registers["EBX"]] = 0x41424344
+    # FALSE:
+    cpu.env_ptr.regs[registers["EBX"]] = 0x12345678
 
     # Taint register(s)
     panda.taint_label_reg(registers["EBX"], 10)
@@ -180,11 +174,11 @@ def taint_cmp(s):
         addr_z3_int = z3.BV2Int(addr)
         if addr_z3_int.is_int(): # Concretize and read real data
             addr_conc = int(z3.simplify(addr_z3_int).as_long())
-            print(f"Read concrete data from 0x{addr_conc:x}:")
+            #print(f"Read concrete data from 0x{addr_conc:x}:")
             conc_data = panda.virtual_memory_read(cpu, addr_conc, num_bytes, fmt='int')
             if endian == 1: # Z3 works on big endian? need to swap data read if little-endian
                 conc_data = int.from_bytes(conc_data.to_bytes(num_bytes, byteorder='little'), byteorder='big', signed=signed)
-            print(f"\tConcrete: 0x{conc_data:x}")
+            #print(f"\tConcrete: 0x{conc_data:x}")
             return z3.BitVecVal(conc_data, num_bytes*8)
         else:
             print("WARNING: Variable mem read - assuming unconstrained")
