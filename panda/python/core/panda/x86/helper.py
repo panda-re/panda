@@ -14,9 +14,9 @@ from panda.utils import telescope
 #   2 segment registers env_ptr->segs[X]
 all_registers = { # Name: (IDX, type, size)
     "EAX":    (0, 0, 32),
-    "EBX":    (1, 0, 32),
-    "ECX":    (2, 0, 32),
-    "EDX":    (3, 0, 32),
+    "EBX":    (3, 0, 32), # XXX Note the IDX order is weird - EAX, ECX, EDX, EBX
+    "ECX":    (1, 0, 32),
+    "EDX":    (2, 0, 32),
     "ESP":    (4, 0, 32),
     "EBP":    (5, 0, 32),
     "ESI":    (6, 0, 32),

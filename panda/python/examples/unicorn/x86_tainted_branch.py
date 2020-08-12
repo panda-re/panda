@@ -14,12 +14,14 @@ CODE = b"""
 jmp .start
 
 .start:
-    mov ecx, [ecx] #XXX why is this broken?
-    shl ecx, 4
-    cmp ebx, ecx
+    mov edx, [ecx]
+    shl edx, 4
+    add ebx, eax
+    #mul ebx         # eax = ebx*eax
+    cmp ebx, edx
     je .equal
 
-    mov edi, 0x3333
+    mov esi, 0x3333
     jmp .end
 
 .equal:
@@ -32,6 +34,9 @@ nop
 
 # XXX: Bug: if a register starts as untainted but later gets tainted, we'll ID it as 
 #           tainted and therefore unconstrained instead of starting it at a known val
+#
+# BUG: if a value changes during the block, we'll grab it's (modified) value at the
+# branch instead of it's value at the start of the block.
 
 ks = keystone.Ks(keystone.KS_ARCH_X86, keystone.KS_MODE_32)
 ADDRESS = 0x1000
@@ -56,27 +61,24 @@ def setup(cpu):
     # Set starting registers
     cpu.env_ptr.eip = ADDRESS
 
-    # XXX: memory rw isn't making any sense - do we need to
-    # initialize segments better?
-    cpu.env_ptr.segs[all_registers["DS"][0]].base = 0
-
     # "Uncontrolled" (non-tainted) registers
-    cpu.env_ptr.regs[registers["EAX"]] = 1
     cpu.env_ptr.regs[registers["ECX"]] = ADDRESS+100
+    cpu.env_ptr.regs[registers["EDX"]] = 0x0
     # Set [ecx] to 0x41424344 - Uncontrolled
     panda.physical_memory_write(ADDRESS+100, bytes([0x41, 0x42, 0x43, 0x44]))
 
-    # "Controlled" (tainted) registers
-    cpu.env_ptr.regs[registers["EDX"]] = 0x0
+    # "Controlled" (tainted) registers: EAX, EBX
+    # NO JUMP: EAX = 3333
+    #cpu.env_ptr.regs[registers["EAX"]] = 0
+    #cpu.env_ptr.regs[registers["EBX"]] = 0xbbbcbdbe
 
-    # No jump: EDX=0x4444
-    cpu.env_ptr.regs[registers["EBX"]] = 0
-    # Take jump: EDX=0x3333
-    #cpu.env_ptr.regs[registers["EBX"]] = 0x10640
+    # Take jump: EAX= 4444
+    cpu.env_ptr.regs[registers["EAX"]] = 0
+    cpu.env_ptr.regs[registers["EBX"]] = 0x44342410
 
     # Taint register(s)
-    panda.taint_label_reg(registers["EBX"], 10)
-    #panda.taint_label_reg(registers["EDX"], 11)
+    panda.taint_label_reg(registers["EAX"], 1)
+    panda.taint_label_reg(registers["EBX"], 2)
 
 # Before every block disassemble it with capstone
 md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_32)
@@ -130,15 +132,10 @@ ffi.cdef('void ppp_add_cb_on_branch2_constraints(on_branch2_constraints_t);')
 
 @panda.ppp("taint2", "on_branch2_constraints")
 def taint_cmp(s):
-    print("TAINT CMP")
-
     if s == ffi.NULL:
         print("ERR")
         return
-
     cpu = panda.get_cpu()
-    dump_regs(panda, cpu)
-
     data = ffi.string(s)
 
     # For each register we need to create a base value
@@ -176,11 +173,18 @@ def taint_cmp(s):
 
     # Unsigned <
     def ULT(a, b):
-        pass
+        return z3.ULT(a, b)
 
     # Unsigned >
     def UGT(a, b):
-        pass
+        return z3.UGT(a, b)
+
+    # Logical shift right
+    def LShr(a, b):
+        return z3.LShr(a, b)
+
+    def ZeroExt(a, b):
+        return z3.ZeroExt(a, b)
 
     def load(endian, is_store, num_bytes, signed, addr):
         assert(not is_store), "NYI"
@@ -191,9 +195,8 @@ def taint_cmp(s):
             addr_conc = int(z3.simplify(addr_z3_int).as_long())
             #print(f"Read concrete data from 0x{addr_conc:x}:")
             conc_data = panda.virtual_memory_read(cpu, addr_conc, num_bytes, fmt='int')
-            if endian == 1: # Z3 works on big endian? need to swap data read if little-endian
+            if endian == 2: # Flip if big-endian
                 conc_data = int.from_bytes(conc_data.to_bytes(num_bytes, byteorder='little'), byteorder='big', signed=signed)
-            #print(f"\tConcrete: 0x{conc_data:x}")
             return z3.BitVecVal(conc_data, num_bytes*8)
         else:
             print("WARNING: Variable mem read - assuming unconstrained")
@@ -209,9 +212,6 @@ def taint_cmp(s):
             name, val = entry.split(" = ")
             name = name.strip()
             val = int(val)
-            # Flip endianness - seems wrong
-            #val = int.from_bytes(val.to_bytes(4, byteorder='little'),
-            #        byteorder='big', signed=False)
             r[name] = val
         return r
 

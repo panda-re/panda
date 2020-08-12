@@ -843,7 +843,7 @@ char* back_slice (Shad *shad, llvm::Instruction* insn)
           res_head+= snprintf(res_head, res_tail-res_head, "Extract(%d, 0, ", IT->getBitWidth());
 
         }else if (llvm::isa<llvm::ZExtInst>(insn)) {
-          res_head+= snprintf(res_head, res_tail-res_head, "ZeroExt(%d, ", IT->getBitWidth());
+          res_head+= snprintf(res_head, res_tail-res_head, "ZeroExt(%d, ", IT->getBitWidth()); // XXX missing 2nd arg?
 
         }else if (llvm::isa<llvm::SExtInst>(insn)) {
           res_head+= snprintf(res_head, res_tail-res_head, "SignExt(%d, ", IT->getBitWidth());
@@ -871,11 +871,15 @@ char* back_slice (Shad *shad, llvm::Instruction* insn)
             res_head += snprintf(res_head, res_tail-res_head, "%s", rec_res);
             free(rec_res);
           }else{
-            printf("INSN - terminate (pretend it's const)\n");
             //str << "constXXX" << ")";
             if (llvm::isa<llvm::LoadInst>(i)) {
-              res_head += snprintf(res_head, res_tail-res_head, "loadXXX");
+              // Recurse
+              //res_head += snprintf(res_head, res_tail-res_head, "loadXXX"); // Nope?
+              char* rec_res = back_slice(shad, i);
+              res_head += snprintf(res_head, res_tail-res_head, "%s", rec_res);
+              free(rec_res);
             }else{
+              printf("INSN - terminate (pretend it's const)\n");
               // Call _should_ be a panda_helper_... which loads data from memory
               llvm::CallInst *calli = llvm::dyn_cast<llvm::CallInst>(op);
               Function *callee = calli->getCalledFunction();
@@ -987,7 +991,7 @@ stb - store byte
         if (opcode == llvm::Instruction::UDiv)
           res_head += snprintf(res_head, res_tail-res_head, "UDiv(");
         else if (opcode == llvm::Instruction::LShr)
-          res_head += snprintf(res_head, res_tail-res_head, "LShr(");
+          res_head += snprintf(res_head, res_tail-res_head, "LShr("); // XXX missing 2nd arg?
         else if (opcode == llvm::Instruction::URem)
           res_head += snprintf(res_head, res_tail-res_head, "URem(");
       }
