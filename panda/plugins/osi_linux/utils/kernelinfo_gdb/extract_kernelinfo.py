@@ -29,7 +29,6 @@ class KernelInfo(gdb.Command):
         if arg:
             file_out = open(arg, "w+")  
             print(f"Printing output to {arg}") 
-        print("--KERNELINFO-BEGIN--",file=file_out)
         uts_release = get_symbol_as_string("init_uts_ns->name->release")
         uts_version = get_symbol_as_string("init_uts_ns->name->version")
         uts_machine = get_symbol_as_string("init_uts_ns->name->machine")
@@ -129,7 +128,7 @@ class KernelInfo(gdb.Command):
         print_offset("struct dentry",               "d_op",                 "path");
         print_offset("struct dentry_operations",    "d_dname",              "path");
         print_offset("struct vfsmount",         "mnt_root",             "path");
-        if (int(version_a),int(version_b),int(version_c)) >= (3,0,0):
+        if int(versions[0]) >= 3:
             # fields in struct mount 
             print_offset_from_member("struct mount",    "mnt", "mnt_parent",        "path");
             print_offset_from_member("struct mount",    "mnt", "mnt_mountpoint",    "path");
@@ -137,7 +136,6 @@ class KernelInfo(gdb.Command):
             # fields in struct vfsmount 
             print_offset("struct vfsmount",         "mnt_parent",               "path");
             print_offset("struct vfsmount",         "mnt_mountpoint",           "path");
-        print( "---KERNELINFO-END---",file=file_out);   
         if file_out != sys.stdout:
             file_out.close()
 

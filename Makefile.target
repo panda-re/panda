@@ -205,6 +205,7 @@ all-obj-$(CONFIG_SOFTMMU) += $(block-obj-y) $(chardev-obj-y)
 all-obj-$(CONFIG_USER_ONLY) += $(crypto-aes-obj-y)
 all-obj-$(CONFIG_SOFTMMU) += $(crypto-obj-y)
 all-obj-$(CONFIG_SOFTMMU) += $(io-obj-y)
+all-obj-$(CONFIG_SOFTMMU) += panda/src/panda_api.o
 
 ifdef CONFIG_SOFTMMU
 panda-all-obj-y += $(filter-out %main.o, $(common-obj-y))
