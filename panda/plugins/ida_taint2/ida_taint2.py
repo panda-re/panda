@@ -104,7 +104,8 @@ def main():
     input_file.close()
 
     selected_pid = ProcessSelectDialog.selectProcess(processes)
-    if not selected_pid:
+    # N.B.:  0 is a valid process ID
+    if (None == selected_pid):
         return
 
     semantic_labels = read_semantic_labels(filename + ".semantic_labels")
