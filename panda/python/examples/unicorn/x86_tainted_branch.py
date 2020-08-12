@@ -14,18 +14,17 @@ CODE = b"""
 jmp .start
 
 .start:
-mov eax, [ecx]
-cmp ebx, eax
-je .true
+    mov ecx, [ecx] #XXX why is this broken?
+    shl ecx, 4
+    cmp ebx, ecx
+    je .equal
 
-jmp .false
-
-.true:
-    mov edx, 0x3333
+    mov edi, 0x3333
     jmp .end
 
-.false:
-    mov edx, 0x4444
+.equal:
+    mov esi, 0x4444
+    jmp .end
 
 .end:
 nop
@@ -57,19 +56,23 @@ def setup(cpu):
     # Set starting registers
     cpu.env_ptr.eip = ADDRESS
 
+    # XXX: memory rw isn't making any sense - do we need to
+    # initialize segments better?
+    cpu.env_ptr.segs[all_registers["DS"][0]].base = 0
+
     # "Uncontrolled" (non-tainted) registers
-    cpu.env_ptr.regs[registers["EAX"]] = 0
+    cpu.env_ptr.regs[registers["EAX"]] = 1
     cpu.env_ptr.regs[registers["ECX"]] = ADDRESS+100
     # Set [ecx] to 0x41424344 - Uncontrolled
-    panda.physical_memory_write(ADDRESS+100, b'ABCD')
+    panda.physical_memory_write(ADDRESS+100, bytes([0x41, 0x42, 0x43, 0x44]))
 
     # "Controlled" (tainted) registers
     cpu.env_ptr.regs[registers["EDX"]] = 0x0
 
-    # TRUE:
-    #cpu.env_ptr.regs[registers["EBX"]] = 0x41424344
-    # FALSE:
-    cpu.env_ptr.regs[registers["EBX"]] = 0x12345678
+    # No jump: EDX=0x4444
+    cpu.env_ptr.regs[registers["EBX"]] = 0
+    # Take jump: EDX=0x3333
+    #cpu.env_ptr.regs[registers["EBX"]] = 0x10640
 
     # Taint register(s)
     panda.taint_label_reg(registers["EBX"], 10)
@@ -79,15 +82,17 @@ def setup(cpu):
 md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_32)
 @panda.cb_before_block_exec
 def before(cpu, tb):
-    code = panda.virtual_memory_read(cpu, tb.pc, tb.size)
-    for i in md.disasm(code, tb.pc):
+    pc = panda.current_pc(cpu)
+    print(f"Before block at 0x{pc:x}")
+    code = panda.virtual_memory_read(cpu, pc, tb.size)
+    for i in md.disasm(code, pc):
         print("0x%x:\t%s\t%s" %(i.address, i.mnemonic, i.op_str))
 
 # After the tainted compare block - shutdown
 @panda.cb_after_block_exec
 def after(cpu, tb, rc):
     pc = panda.current_pc(cpu)
-    if pc >= stop_addr-6:
+    if pc >= stop_addr-2:
         print("\nSTOP\n")
         dump_regs(panda, cpu)
         os._exit(0) # TODO: we need a better way to stop here
@@ -126,11 +131,13 @@ ffi.cdef('void ppp_add_cb_on_branch2_constraints(on_branch2_constraints_t);')
 @panda.ppp("taint2", "on_branch2_constraints")
 def taint_cmp(s):
     print("TAINT CMP")
+
     if s == ffi.NULL:
         print("ERR")
         return
 
     cpu = panda.get_cpu()
+    dump_regs(panda, cpu)
 
     data = ffi.string(s)
 
@@ -167,6 +174,14 @@ def taint_cmp(s):
         end = start+size-1
         return z3.Extract(end, start, val)
 
+    # Unsigned <
+    def ULT(a, b):
+        pass
+
+    # Unsigned >
+    def UGT(a, b):
+        pass
+
     def load(endian, is_store, num_bytes, signed, addr):
         assert(not is_store), "NYI"
 
@@ -194,6 +209,9 @@ def taint_cmp(s):
             name, val = entry.split(" = ")
             name = name.strip()
             val = int(val)
+            # Flip endianness - seems wrong
+            #val = int.from_bytes(val.to_bytes(4, byteorder='little'),
+            #        byteorder='big', signed=False)
             r[name] = val
         return r
 
