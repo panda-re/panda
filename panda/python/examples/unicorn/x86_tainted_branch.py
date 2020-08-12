@@ -69,13 +69,13 @@ def setup(cpu):
     panda.physical_memory_write(ADDRESS+100, bytes([0x41, 0x42, 0x43, 0x44]))
 
     # "Controlled" (tainted) registers: EAX, EBX
-    # NO JUMP: EAX = 3333
-    #cpu.env_ptr.regs[registers["EAX"]] = 0
-    #cpu.env_ptr.regs[registers["EBX"]] = 0xbbbcbdbe
+    # Not equal (False): ESI = 3333
+    #cpu.env_ptr.regs[registers["EAX"]] = 1
+    #cpu.env_ptr.regs[registers["EBX"]] = 0x44342410
 
-    # Take jump: EAX= 4444
-    cpu.env_ptr.regs[registers["EAX"]] = 1
-    cpu.env_ptr.regs[registers["EBX"]] = 0x44342410
+    # equal (True): ESI = 3333
+    cpu.env_ptr.regs[registers["EAX"]] = 0x668d3d17
+    cpu.env_ptr.regs[registers["EBX"]] = 0x0
 
     # Taint register(s)
     #panda.taint_label_reg(registers["EAX"], 1)
@@ -182,7 +182,7 @@ def taint_cmp(s):
 
     # Logical shift right
     def LShr(a, b):
-        return z3.LShr(a, b)
+        return z3.LShR(a, b)
 
     def ZeroExt(a, b):
         return z3.ZeroExt(a, b)
@@ -230,7 +230,7 @@ def taint_cmp(s):
     if s_true.check():
         print("Solution found for TRUE branch:")
         m = s_true.model()
-        for (reg, val) in model_to_dict(m).items():
+        for (reg, val) in sorted(model_to_dict(m).items()):
             print(f"\t {reg} = 0x{val:x}")
     else:
         print("TRUE branch UNSAT")
@@ -240,7 +240,7 @@ def taint_cmp(s):
     if s_false.check():
         print("Solution found for FALSE branch:")
         m = s_false.model()
-        for (reg, val) in model_to_dict(m).items():
+        for (reg, val) in sorted(model_to_dict(m).items()):
             print(f"\t {reg} = 0x{val:x}")
     else:
         print("FALSE branch UNSAT")

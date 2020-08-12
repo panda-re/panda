@@ -862,7 +862,7 @@ char* back_slice (Shad *shad, llvm::Value* val)
         // Now grab what's being cast and recurse - It's in operand(0)
         llvm::Value *op = insn->getOperand(0);
         char* rec_res = back_slice(shad, op);
-        res_head += snprintf(res_head, res_tail-res_head, "%s", rec_res);
+        res_head += snprintf(res_head, res_tail-res_head, "%s)", rec_res); // CLOSE paren of function call
         free(rec_res);
 
       }else if (llvm::isa<llvm::BinaryOperator>(insn)) {
@@ -884,14 +884,13 @@ char* back_slice (Shad *shad, llvm::Value* val)
           // Just need OP(arg0, arg1)
           op_in_mid = false;
           if (opcode == llvm::Instruction::UDiv)
-            res_head += snprintf(res_head, res_tail-res_head, "UDiv(");
+            res_head += snprintf(res_head, res_tail-res_head, "UDiv");
           else if (opcode == llvm::Instruction::LShr)
-            res_head += snprintf(res_head, res_tail-res_head, "LShr(");
+            res_head += snprintf(res_head, res_tail-res_head, "LShr");
           else if (opcode == llvm::Instruction::URem)
-            res_head += snprintf(res_head, res_tail-res_head, "URem(");
-        }else{
-          res_head += snprintf(res_head, res_tail-res_head, "(");
+            res_head += snprintf(res_head, res_tail-res_head, "URem");
         }
+        res_head += snprintf(res_head, res_tail-res_head, "("); // OPEN paren for whole binop
 
         // For each insn figure out if we need to recurse of if it's a const
         assert(num_ops == 2); // Binop - always two ops
@@ -900,7 +899,7 @@ char* back_slice (Shad *shad, llvm::Value* val)
 
           printf("\t\tBinop(%s) arg %d", opname, op_idx);
           char* rec_res = back_slice(shad, op);
-          res_head += snprintf(res_head, res_tail-res_head, "%s", rec_res);
+          res_head += snprintf(res_head, res_tail-res_head, "(%s)", rec_res); // XXX: open paren because result will close it
           free(rec_res);
 
           if (op_idx == 0) { // Between args
@@ -918,7 +917,7 @@ char* back_slice (Shad *shad, llvm::Value* val)
             res_head += snprintf(res_head, res_tail-res_head, " %s ", op_char);
           }
         } // End for loop on args
-        res_head += snprintf(res_head, res_tail-res_head, ")"); // Close parens around binop
+        res_head += snprintf(res_head, res_tail-res_head, ")"); // CLOSE paren for whole binop
 
       }else if (llvm::isa<llvm::CallInst>(insn)) {
         // Call _should_ be a panda_helper_... which loads data from memory
@@ -1006,13 +1005,12 @@ char* back_slice (Shad *shad, llvm::Value* val)
 
     // After we recurse and update res_head to be like foo([recurse]  we add a closing )
     // base case of (reg['x'] -> (reg['x'])
-    *(res_head++) = ')';
     *(res_head++) = 0; // Null terminate
     return res;
 }
 
 char* str_value(Shad *shad, llvm::Value *v, uint64_t slot) {
-    /* Given a value, log if it's a const int or kick off a back_trace for an insn */
+    /* Given a value, stringify if it's a const int or kick off a back_trace for an insn */
     // TODO: only log const ints if the other side of the compare is a tainted instr?
     char * result;
 
@@ -1032,7 +1030,7 @@ char* str_value(Shad *shad, llvm::Value *v, uint64_t slot) {
         //std::string res = back_slice(shad, i);
         result = back_slice(shad, i);
       }else{
-        // TEST
+        // TEST TODO?
         llvm::Instruction *i = llvm::dyn_cast<llvm::Instruction>(v);
         i->dump();
         //end test
@@ -1082,11 +1080,12 @@ void after_tainted_branch(Shad *shad, llvm::Instruction *I, uint64_t slot1, uint
     // %12 = trunc i32 %tmp-25_v to i8
     // %tmp-25_v = sub i32 %eax_v, 88
 
-    char* s1= str_value(shad, v1, slot1);
+    char* s1 = str_value(shad, v1, slot1);
     char* s2 = str_value(shad, v2, slot2);
     char* cmp = cmp_sym((int)p);
 
     char* result = (char*)malloc(1024);
+    printf("S1 = %s\n", s1);
     // Four special cases - usnigned comparisons where we want CMP(A,B)
     if ( p == llvm::ICmpInst::ICMP_UGT || p == llvm::ICmpInst::ICMP_UGE || \
          p == llvm::ICmpInst::ICMP_ULT || p == llvm::ICmpInst::ICMP_ULE) {
