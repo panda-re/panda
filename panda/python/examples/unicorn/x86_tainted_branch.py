@@ -14,10 +14,11 @@ CODE = b"""
 jmp .start
 
 .start:
-    mov edx, [ecx]
-    shl edx, 4
-    add ebx, eax
-    #mul ebx         # eax = ebx*eax
+    #mov edx, [ecx]
+    #shl edx, 4
+    #add ebx, eax
+
+    mul ebx         # eax = ebx*eax
     cmp ebx, edx
     je .equal
 
@@ -73,11 +74,11 @@ def setup(cpu):
     #cpu.env_ptr.regs[registers["EBX"]] = 0xbbbcbdbe
 
     # Take jump: EAX= 4444
-    cpu.env_ptr.regs[registers["EAX"]] = 0
+    cpu.env_ptr.regs[registers["EAX"]] = 1
     cpu.env_ptr.regs[registers["EBX"]] = 0x44342410
 
     # Taint register(s)
-    panda.taint_label_reg(registers["EAX"], 1)
+    #panda.taint_label_reg(registers["EAX"], 1)
     panda.taint_label_reg(registers["EBX"], 2)
 
 # Before every block disassemble it with capstone
@@ -185,6 +186,9 @@ def taint_cmp(s):
 
     def ZeroExt(a, b):
         return z3.ZeroExt(a, b)
+
+    def URem(a, b):
+        return z3.URem(a, b)
 
     def load(endian, is_store, num_bytes, signed, addr):
         assert(not is_store), "NYI"
