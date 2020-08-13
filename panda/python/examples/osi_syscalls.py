@@ -5,14 +5,14 @@ panda = Panda(generic="x86_64")
 
 panda.load_plugin("syscalls2")
 panda.load_plugin("osi")
-panda.load_plugin("osi_linux")
 
 @panda.ppp("syscalls2", "on_sys_read_return")
 def on_sys_read_return(cpu, pc, fd, buf, count):
-    proc = panda.get_current_process(cpu)
+    proc = panda.plugins['osi'].get_current_process(cpu)
+    procname = ffi.string(proc.name) if proc != ffi.NULL else "error"
     fname_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, fd)
-    fname = ffi.string(fname_ptr)
-    print("Reading from", fname)
+    fname = ffi.string(fname_ptr) if fname_ptr != ffi.NULL else "error"
+    print(f"[PANDA] {procname} read from {fname}")
 
 
 @blocking
