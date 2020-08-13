@@ -27,8 +27,7 @@ if os.path.exists(outfname):
 # Get number of instructions
 try:
     with open(base + '-rr-nondet.log', 'rb') as f:
-        # num_guest_insns is 64-bit int at offset 16
-        f.seek(16)
+        # num_guest_insns is 64-bit int at offset 0
         num_guest_insns = struct.unpack("<Q", f.read(8))[0]
 except EnvironmentError:
     print >>sys.stderr, "Failed to open", base + '-rr-nondet.log. Aborting.'
