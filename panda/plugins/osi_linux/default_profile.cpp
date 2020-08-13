@@ -40,11 +40,13 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
     // userspace clobbers it but kernel restores (somewhow?)
     // First field of struct is task - no offset needed
     current_task_addr=last_r28;
-#else
+
+#else // x86/64
     current_task_addr = ki.task.current_task_addr;
 #endif
     err = struct_get(cpu, &ts, current_task_addr, ki.task.per_cpu_offset_0_addr);
     assert(err == struct_get_ret_t::SUCCESS && "failed to get current task struct");
+    fixupendian(ts);
     return ts;
 }
 
@@ -56,6 +58,7 @@ target_ptr_t default_get_task_struct_next(CPUState *cpu, target_ptr_t task_struc
     struct_get_ret_t err;
     target_ptr_t tasks;
     err = struct_get(cpu, &tasks, task_struct, ki.task.tasks_offset);
+    fixupendian(tasks);
     assert(err == struct_get_ret_t::SUCCESS && "failed to get next task");
     return tasks-ki.task.tasks_offset;
 }
@@ -68,6 +71,7 @@ target_ptr_t default_get_group_leader(CPUState *cpu, target_ptr_t ts)
     struct_get_ret_t err;
     target_ptr_t group_leader;
     err = struct_get(cpu, &group_leader, ts, ki.task.group_leader_offset);
+    fixupendian(group_leader);
     assert(err == struct_get_ret_t::SUCCESS && "failed to get group leader for task");
     return group_leader;
 }
@@ -85,6 +89,7 @@ target_ptr_t default_get_file_fds(CPUState *cpu, target_ptr_t files)
         LOG_ERROR("Failed to retrieve file structs (error code: %d)", err);
         return (target_ptr_t)NULL;
     }
+    fixupendian(files_fds);
     return files_fds;
 }
 
