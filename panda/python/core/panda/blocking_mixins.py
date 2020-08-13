@@ -7,6 +7,7 @@ from .decorators import blocking
 from .utils import progress, make_iso, debug
 from shlex import quote as shlex_quote
 from os import path
+from time import sleep
 
 class blocking_mixins():
     @blocking
@@ -21,14 +22,25 @@ class blocking_mixins():
         self.libpanda.panda_break_vl_loop_req = True
 
     @blocking
-    def run_serial_cmd(self, cmd, no_timeout=False):
+    def run_serial_cmd(self, cmd, no_timeout=False, timeout=30):
         self.running.wait() # Can only run serial when guest is running
         self.serial_console.sendline(cmd.encode("utf8"))
         if no_timeout:
             result = self.serial_console.expect(timeout=9999)
         else:
-            result = self.serial_console.expect()
+            result = self.serial_console.expect(timeout=timeout)
         return result
+
+    @blocking
+    def run_serial_cmd_async(self, cmd, delay=1):
+        '''
+        Type a command and press enter in the guest. Return immediately. No results available
+        Only use this if you know what you're doing!
+        '''
+        self.running.wait() # Can only run serial when guest is running
+        self.serial_console.sendline(cmd.encode("utf8"))
+        if delay:
+            sleep(delay) # Ensure it has a chance to run
 
     @blocking
     def type_serial_cmd(self, cmd):
