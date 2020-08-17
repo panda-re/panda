@@ -167,7 +167,7 @@ class IoctlFaker():
                 self._forced_returns.add(ioctl)
                 if ioctl.has_buf and self._log:
                     self._logger.warning("Forcing success return for data-containing {}".format(ioctl))
-                else:
+                elif self._log:
                     self._logger.info("Forcing success return for data-less {}".format(ioctl))
             else:
                 self._unmodified_returns.add(ioctl)
