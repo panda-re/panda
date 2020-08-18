@@ -29,6 +29,18 @@ PANDAENDCOMMENT */
 
 #include "signal_int_fns.h"
 
+#include <capstone/capstone.h>
+#if defined(TARGET_I386)
+#include <capstone/x86.h>
+#elif defined(TARGET_ARM)
+#include <capstone/arm.h>
+#elif defined(TARGET_PPC)
+#include <capstone/ppc.h>
+#elif defined(TARGET_MIPS)
+#include <capstone/mips.h>
+#endif
+
+
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
@@ -59,6 +71,8 @@ typedef struct sig_event_t {
 Panda__SignalEvent pse;  // Global faster than malloc, size is fixed
 std::set<int32_t> hyper_blocked_sigs;
 std::map<std::string, std::set<int32_t>> hyper_blocked_sigs_by_proc;
+target_ulong do_signal_kaddr = 0;
+target_ulong get_signal_kaddr = 0;
 
 #ifdef IN_MEM_BUF
     std::vector<sig_event_t> hyper_sig_events;
@@ -88,6 +102,18 @@ void block_sig_by_proc(int32_t sig, char* proc_name) {
     printf("signal: suppressing %d only for process \'%s\'.\n", sig, proc_name);
 }
 
+// Address of Linux kernel's get_signal() function (for kernel-to-process interception)
+// https://elixir.bootlin.com/linux/v5.8/source/kernel/signal.c#L2526
+void register_kernel_get_signal_addr(target_ulong addr) {
+    get_signal_kaddr = addr;
+}
+
+// Address of Linux kernel's do_signal() function (for kernel-to-process interception)
+// https://elixir.bootlin.com/linux/v5.8/source/arch/arm/kernel/signal.c#L578
+void register_kernel_do_signal_addr(target_ulong addr) {
+    do_signal_kaddr = addr;
+}
+
 // Core ----------------------------------------------------------------------------------------------------------------
 
 // Incremental log update
@@ -110,9 +136,9 @@ void flush_to_plog(sig_event_t* se_ptr) {
     pandalog_write_entry(&ple);
 }
 
-// Per Luke C., we'll supress by swapping to SIGWINCH instead of re-directing control flow from the hypervisor
+// Per Luke C., we'll suppress by swapping to SIGWINCH instead of re-directing control flow from the hypervisor
 // Andrew F. also suggested setting an illegal sig num and supressing the error on syscall return - noting in case we decide to switch to that impl
-bool supress_curr_sig(CPUState* cpu) {
+bool suppress_curr_sig(CPUState* cpu) {
 
     target_ulong sigwinch_num = 28;
 
@@ -145,6 +171,7 @@ bool supress_curr_sig(CPUState* cpu) {
     return true;
 }
 
+// Process-to-kernel-to-process logging/suppression
 void sig_mitm(CPUState* cpu, target_ulong pc, int32_t pid, int32_t sig) {
 
     bool suppressed = false;
@@ -164,12 +191,12 @@ void sig_mitm(CPUState* cpu, target_ulong pc, int32_t pid, int32_t sig) {
 
     // Optional supression
     if (hyper_blocked_sigs.find(sig) != hyper_blocked_sigs.end()) {
-        suppressed = supress_curr_sig(cpu);
+        suppressed = surppress_curr_sig(cpu);
     } else {
         auto named_block = hyper_blocked_sigs_by_proc.find(dst_proc_name);
         if (named_block != hyper_blocked_sigs_by_proc.end()) {
             if (named_block->second.find(sig) != named_block->second.end()) {
-                suppressed = supress_curr_sig(cpu);
+                suppressed = suppress_curr_sig(cpu);
             }
         }
     }
@@ -202,6 +229,93 @@ void sig_mitm(CPUState* cpu, target_ulong pc, int32_t pid, int32_t sig) {
     #endif
 }
 
+// Kernel-to-process logging/suppression
+void kernel_call_handler(CPUState *cpu, target_ulong func) {
+
+    // Max call stack entries to retrieve
+    #define CALLER_MAX_CNT 4
+
+    // Max instruction encoding length
+    #if defined(TARGET_I386)
+        #define MAX_INSTR_LEN 15
+    #else
+        #define MAX_INSTR_LEN 4
+    #endif
+
+    target_ulong curr_pc = cpu->panda_guest_pc;
+    bool do_signal_callee = false;
+
+    target_ulong caller_addrs[CALLER_MAX_CNT];
+    uint8_t instr_buf[MAX_INSTR_LEN];
+    int caller_cnt;
+    int res;
+    csh handle;
+	cs_insn *insn;
+	size_t count;
+
+    if ((!do_signal_kaddr) || (!get_signal_kaddr) || !panda_in_kernel(cpu)) {
+        return;
+    }
+
+    // Verify that we're in do_signal's callframe
+    caller_cnt = get_callers(caller_addrs, CALLER_MAX_CNT, cpu);
+    for (int i = 0; i < caller_cnt; i++) {
+        if (caller_addrs[i] == do_signal_kaddr) {
+            do_signal_callee = true;
+        }
+    }
+
+    if (!do_signal_callee) {
+        return;
+    }
+
+    // Read out call instruction bytes
+    res = panda_virtual_memory_read(cpu, curr_pc, instr_buf, MAX_INSTR_LEN);
+    if (res < 0) {
+        fprintf(stderr, "[ERROR] signal: Failed to read guest memory from PC 0x%016x!\n", curr_pc);
+        return;
+    }
+
+    // Init Capstone
+    #if defined(TARGET_I386) and !defined(TARGET_X86_64)
+        if (cs_open(CS_ARCH_X86, CS_MODE_32, &handle) != CS_ERR_OK) {
+            fprintf(stderr, "[ERROR] signal: Failed to init Capstone for x86!\n");
+		    return;
+        }
+    #elif defined(TARGET_X86_64)
+        if (cs_open(CS_ARCH_X86, CS_MODE_64, &handle) != CS_ERR_OK) {
+            fprintf(stderr, "[ERROR] signal: Failed to init Capstone for x64!\n");
+		    return;
+        }
+    #elif defined(TARGET_ARM) and !defined(TARGET_AARCH64)
+        if (cs_open(CS_ARCH_ARM, CS_MODE_ARM, &handle) != CS_ERR_OK) {
+            fprintf(stderr, "[ERROR] signal: Failed to init Capstone for ARM!\n");
+		    return;
+        }
+    #elif defined(TARGET_AARCH64)
+        if (cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &handle) != CS_ERR_OK) {
+            fprintf(stderr, "[ERROR] signal: Failed to init Capstone for AARCH64!\n");
+		    return;
+        }
+    #elif defined(TARGET_MIPS)
+        if (cs_open(CS_ARCH_MIPS, CS_MODE_MIPS32, &handle) != CS_ERR_OK) {
+            fprintf(stderr, "[ERROR] signal: Failed to init Capstone for MIPS!\n");
+		    return;
+        }
+    #else
+        fprintf(stderr, "[ERROR] signal: Unsuppported architecture for kernel hooking!\n");
+        return;
+    #endif
+
+    // Disassemble call instruction
+    count = cs_disasm(handle, instr_buf, MAX_INSTR_LEN, curr_pc, 1, &insn);
+    if (count > 0) {
+        // TODO
+    }
+
+    // TODO: detail for call target, check against get_signal, retreive struct
+}
+
 // Setup/Teardown ------------------------------------------------------------------------------------------------------
 
 bool init_plugin(void *_self) {
@@ -219,6 +333,8 @@ bool init_plugin(void *_self) {
     assert(init_osi_api());
     panda_require("osi_linux");
     assert(init_osi_linux_api());
+    panda_require("callstack_instr");
+    assert(init_callstack_instr_api());
 
     // Setup signature
     switch (panda_os_familyno) {
@@ -227,9 +343,11 @@ bool init_plugin(void *_self) {
             #if ((defined(TARGET_I386) && !defined(TARGET_X86_64)) || (defined(TARGET_ARM) && !defined(TARGET_AARCH64)) || defined(TARGET_MIPS))
                 printf("signal: setting up 32-bit Linux.\n");
                 PPP_REG_CB("syscalls2", on_sys_kill_enter, sig_mitm);
+                PPP_REG_CB("callstack_instr", on_call, kernel_call_handler);
             #elif (defined(TARGET_X86_64) || defined(TARGET_AARCH64))
                 printf("signal: setting up 64-bit Linux.\n");
                 PPP_REG_CB("syscalls2", on_sys_kill_enter, sig_mitm);
+                PPP_REG_CB("callstack_instr", on_call, kernel_call_handler);
             #else
                 fprintf(stderr, "[ERROR] signal: Unsuppported architecture for Linux!\n");
                 return false;
@@ -237,16 +355,20 @@ bool init_plugin(void *_self) {
             return true;
         } break;
 
+        /*
+        // TODO: need OSI and kernel function hooking logic to support FreeBSD
         case OS_FREEBSD: {
             #if defined(TARGET_X86_64)
                 printf("signal: setting up 64-bit FreeBSD.\n");
                 PPP_REG_CB("syscalls2", on_kill_enter, sig_mitm);
+                PPP_REG_CB("callstack_instr", on_call, kernel_call_handler);
             #else
                 fprintf(stderr, "[ERROR] signal: Unsuppported architecture for FreeBSD!\n");
                 return false;
             #endif
             return true;
         }
+        */
 
         default: {
             fprintf(stderr, "[ERROR] signal: Unsuppported operating system!\n");
