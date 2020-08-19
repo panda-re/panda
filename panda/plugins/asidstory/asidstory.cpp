@@ -517,6 +517,8 @@ uint64_t start_time, next_check_time;
 
 // before every bb, mostly just trying to figure out current proc 
 void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
+    if (!osi_ready())
+      return; // OSI not ready (i.e., guest is booting?)
 
     if (!rr_in_replay()) {
         // live -- spit asidstory once every second

@@ -240,7 +240,16 @@ inline bool can_read_current(CPUState *cpu) {
 }
 
 /**
- * @brief Check if we've successfully initialized OSI for the guest.
+ * @brief Check if we have (but do not attempt to) initialize OSI for the guest.
+ * use osi's generic osi_ready() function instead of this linux-specific implementation
+ * Returns true if introspection is available.
+ */
+bool _osi_ready(void) {
+    return osi_initialized;
+}
+
+/**
+ * @brief Check if we have or attempt to initialize OSI for the guest.
  * Returns true if introspection is available.
  *
  * If introspection is unavailable at the first check, this will register a PPP-style

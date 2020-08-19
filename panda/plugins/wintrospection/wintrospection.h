@@ -33,3 +33,5 @@ typedef struct {
 // Given an object header, we can find the body of the object at this offset.
 // This seems stable across versions of Windows (at least Win 2k SP4 - 7 SP1).
 #define OBJECT_HEADER_BODY_OFFSET 0x18
+
+bool _osi_ready(void);

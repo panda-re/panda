@@ -589,6 +589,7 @@ static inline char *get_name(CPUState *env, target_ptr_t task_struct, char *name
 
 void fill_osiproc(CPUState *env, OsiProc *p, target_ptr_t task_addr);
 void fill_osithread(CPUState *env, OsiThread *t, target_ptr_t task_addr);
+bool _osi_ready(void);
 
 #if defined(__cplusplus)
 /**

@@ -823,4 +823,15 @@ void uninit_plugin(void *self) {
     printf("Unloading wintrospection plugin\n");
 }
 
+/**
+ * @brief Check if we have (but do not attempt to) initialize OSI for the guest.
+ * use osi's generic osi_ready() function instead of this windows-specific implementation
+ *
+ * XXX: Wintrospection does currently not have a way to identify when the guest is booting
+ * and disable OSI - as such this function always returns true, for now.
+ */
+bool _osi_ready(void) {
+    return true;
+}
+
 /* vim: set tabstop=4 softtabstop=4 expandtab: */

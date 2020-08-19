@@ -208,4 +208,6 @@ static inline OsiModule *copy_osimod(OsiModule *from, OsiModule *to) {
     return to;
 }
 
+// XXX: af: I think this should go in osi_ext.h but creating that file breaks the build?
+bool osi_ready(void);
 /* vim:set tabstop=4 softtabstop=4 expandtab: */

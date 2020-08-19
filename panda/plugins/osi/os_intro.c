@@ -123,10 +123,9 @@ target_pid_t get_process_ppid(CPUState *cpu, const OsiProcHandle *h) {
 
 extern const char *qemu_file;
 
-bool init_plugin(void *self) {
-    // No os supplied on command line? E.g. -os linux-32-ubuntu:4.4.0-130-generic
-    assert (!(panda_os_familyno == OS_UNKNOWN));
+int provider = 0; // 0: none, 1: linux, 2: windows
 
+bool init_plugin(void *self) {
     bool disable_os_autoload;
     panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
     disable_os_autoload = panda_parse_bool_opt(plugin_args, "disable-autoload", "When set, OSI won't automatically load osi_linux/wintrospection");
@@ -136,18 +135,32 @@ bool init_plugin(void *self) {
         return true;
     }
 
+    // No os supplied on command line? E.g. -os linux-32-ubuntu:4.4.0-130-generic
+    // and the user isn't manually loading the right OSI provider (e.g., osi_linux)
+    assert (!(panda_os_familyno == OS_UNKNOWN));
+
     // If not disabled_os_autoload, load OSI_linux or wintrospection (with no arguments) automatically
     if (panda_os_familyno == OS_LINUX) {
         LOG_INFO("OSI grabbing Linux introspection backend.");
         panda_require("osi_linux");
+        provider = 1;
     }else if (panda_os_familyno == OS_WINDOWS) {
         LOG_INFO("OSI grabbing Windows introspection backend.");
         panda_require("wintrospection");
+        provider = 2;
     }
     return true;
 }
 
 void uninit_plugin(void *self) { }
+
+// Implemented in provider
+#if 0
+bool osi_ready() {
+  if (provider == 0) return false; // Can't be ready without a provider
+  else: return _osi_ready();
+}
+#endif
 
 // Helper function to get a single element. Should only be used with library mode
 // when g_array_index can't be used directly.
