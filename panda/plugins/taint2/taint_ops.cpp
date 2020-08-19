@@ -897,7 +897,7 @@ char* back_slice (Shad *shad, llvm::Value* val)
         for (int op_idx = 0; op_idx < num_ops; op_idx++) {
           llvm::Value* op = insn->getOperand(op_idx);
 
-          printf("\t\tBinop(%s) arg %d", opname, op_idx);
+          printf("\t\tBinop(%s) arg %d ", opname, op_idx);
           char* rec_res = back_slice(shad, op);
           res_head += snprintf(res_head, res_tail-res_head, "(%s)", rec_res); // XXX: open paren because result will close it
           free(rec_res);
@@ -982,6 +982,8 @@ char* back_slice (Shad *shad, llvm::Value* val)
         }else{ // Call to something other than panda_helper? Whatever it is, we haven't implemented it...
           res_head += snprintf(res_head, res_tail-res_head, "XXX_unk_%s", stringified);
         }
+        // After we recursed on what we're loading we need to CLOSE paren of function call
+        res_head += snprintf(res_head, res_tail-res_head, ")");
       }else if (llvm::isa<llvm::LoadInst>(insn)) { // BASE CASE: qemu state
         // Loading an instruction from qemu state - just stringify and don't recurse
         llvm::LoadInst *li = llvm::dyn_cast<llvm::LoadInst>(insn);
@@ -1003,7 +1005,6 @@ char* back_slice (Shad *shad, llvm::Value* val)
       res_head += snprintf(res_head, res_tail-res_head, "Error_bad_value");
     }
 
-    // After we recurse and update res_head to be like foo([recurse]  we add a closing )
     // base case of (reg['x'] -> (reg['x'])
     *(res_head++) = 0; // Null terminate
     return res;
@@ -1083,9 +1084,9 @@ void after_tainted_branch(Shad *shad, llvm::Instruction *I, uint64_t slot1, uint
     char* s1 = str_value(shad, v1, slot1);
     char* s2 = str_value(shad, v2, slot2);
     char* cmp = cmp_sym((int)p);
+    printf("S2=%s\n", s2);
 
     char* result = (char*)malloc(1024);
-    printf("S1 = %s\n", s1);
     // Four special cases - usnigned comparisons where we want CMP(A,B)
     if ( p == llvm::ICmpInst::ICMP_UGT || p == llvm::ICmpInst::ICMP_UGE || \
          p == llvm::ICmpInst::ICMP_ULT || p == llvm::ICmpInst::ICMP_ULE) {

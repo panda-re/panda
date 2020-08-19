@@ -9,17 +9,28 @@ import z3
 
 from panda import Panda, ffi
 from panda.x86.helper import dump_regs, registers, all_registers
+# just load and compare:
+# ((((regs['ebx_v'])  - (Extract(32, 0, load(1,0,4,0,((regs['ecx_v'])  + (regs['ds_base_v']))))))) == (0))
+
+# load, mul, compare:
+# ((((regs['ebx_v'])  - (Extract(32, 0, LShr((((ZeroExt(64, regs['ebx_v']))  * (ZeroExt(64, regs['eax_v'])))) , (32)))))) == (0))
+
+
 
 CODE = b"""
 jmp .start
 
 .start:
-    #mov edx, [ecx]
-    #shl edx, 4
-    #add ebx, eax
+    # Load data from memory mutate it in EDX a bit - this is the right side of the cmp
+    mov edx, [ecx]
 
-    mul ebx         # eax = ebx*eax
-    cmp ebx, edx
+    # Multiply INPUT ebx by a const
+    imul ebx, 0x2
+
+    # Add INPUT ebx
+    add ebx, 1
+
+    cmp ebx, edx    # EBX is mutated input, EDX is related to ABCD
     je .equal
 
     mov esi, 0x3333
@@ -33,17 +44,17 @@ jmp .start
 nop
 """
 
-# XXX: Bug: if a register starts as untainted but later gets tainted, we'll ID it as 
-#           tainted and therefore unconstrained instead of starting it at a known val
-#
-# BUG: if a value changes during the block, we'll grab it's (modified) value at the
-# branch instead of it's value at the start of the block.
+# XXX: Both concrete values AND taint labels change during a block. For a given tainted
+#      compare, our analysis begins at the start of the basic block when state is
+#      loaded from the CPUState into the IR. But when the tainted compare
+#      actually happens, we have the mid-block concrete values and taint labels
+#      to avoid things getting weird, we cache the values and taint labels for each
+#      register at the start of every basic block. This is very slow :(
 
 ks = keystone.Ks(keystone.KS_ARCH_X86, keystone.KS_MODE_32)
 ADDRESS = 0x1000
 encoding, count = ks.asm(CODE, ADDRESS)
 stop_addr = ADDRESS + len(encoding)
-#print([hex(x) for x in encoding])
 
 # Create a machine of type 'configurable' but with just a CPU specified (no peripherals or memory maps)
 panda = Panda("i386", extra_args=["-M", "configurable", "-nographic"])
@@ -68,17 +79,17 @@ def setup(cpu):
     # Set [ecx] to 0x41424344 - Uncontrolled
     panda.physical_memory_write(ADDRESS+100, bytes([0x41, 0x42, 0x43, 0x44]))
 
-    # "Controlled" (tainted) registers: EAX, EBX
-    # Not equal (False): ESI = 3333
-    #cpu.env_ptr.regs[registers["EAX"]] = 1
-    #cpu.env_ptr.regs[registers["EBX"]] = 0x44342410
+    # "Controlled" (tainted) registers: EAX, EBX - note EAX doesn't matter for this example
+    cpu.env_ptr.regs[registers["EAX"]] = 0
 
-    # equal (True): ESI = 3333
-    cpu.env_ptr.regs[registers["EAX"]] = 0x668d3d17
-    cpu.env_ptr.regs[registers["EBX"]] = 0x0
+    # Not equal (False): ESI = 3333
+    #cpu.env_ptr.regs[registers["EBX"]] =  0x0
+
+    # equal (True): ESI = 4444 - note EAX doesn't matter
+    cpu.env_ptr.regs[registers["EBX"]] =  0x2221a120
 
     # Taint register(s)
-    #panda.taint_label_reg(registers["EAX"], 1)
+    panda.taint_label_reg(registers["EAX"], 1)
     panda.taint_label_reg(registers["EBX"], 2)
 
 # Before every block disassemble it with capstone
@@ -98,6 +109,13 @@ def after(cpu, tb, rc):
     if pc >= stop_addr-2:
         print("\nSTOP\n")
         dump_regs(panda, cpu)
+        print("\n" + "="*30)
+        if cpu.env_ptr.regs[registers["ESI"]] == 0x4444:
+            print("SATISFIED CONDITION")
+        else:
+            print("FAILED TO SATISFY CONDITION")
+        print("="*30)
+
         os._exit(0) # TODO: we need a better way to stop here
 
 # CFFI can't typedef structures with unions, like addrs, so this is a hack to fix it
@@ -131,6 +149,27 @@ def tainted_branch(addr, size):
 ffi.cdef('typedef void (*on_branch2_constraints_t) (char*);')
 ffi.cdef('void ppp_add_cb_on_branch2_constraints(on_branch2_constraints_t);')
 
+# Register values at the start of the last BB
+reg_cache = {}
+
+@panda.cb_before_block_exec
+def cache(cpu, tb):
+    '''
+    Cache register values at the start of each BB. Ugh
+    WIP: for now, just normal registers
+    '''
+    global reg_cache
+
+    for name, (qemu_idx, typ, size) in all_registers.items():
+        name = name.lower()
+        if typ == 0:
+            # Normal registers
+            if panda.taint_check_reg(qemu_idx):
+                reg_cache[name+"_v"] = None
+            else:
+                val = cpu.env_ptr.regs[qemu_idx]
+                reg_cache[name+"_v"] = val
+
 @panda.ppp("taint2", "on_branch2_constraints")
 def taint_cmp(s):
     if s == ffi.NULL:
@@ -150,7 +189,16 @@ def taint_cmp(s):
     for name, (qemu_idx, typ, size) in all_registers.items():
         name = name.lower()
         if typ == 0:
-            # Normal registers
+            # Normal registers - Grab value from reg_cache
+            if reg_cache[name+"_v"]: # Concrete val from cache
+                val = reg_cache[name+"_v"]
+                regs[name+"_v"] = z3.BitVecVal(val, size)
+            else:
+                # Was tainted at start of block - leave unconstrained
+                regs[name+"_v"] = z3.BitVec(name, size)
+                tainted_regs.append(name+"_v")
+
+            '''
             if panda.taint_check_reg(qemu_idx):
                 print("Register", name, qemu_idx, "is tainted!")
                 regs[name+"_v"] = z3.BitVec(name, size)
@@ -159,6 +207,7 @@ def taint_cmp(s):
             else:
                 val = cpu.env_ptr.regs[qemu_idx]
                 regs[name+"_v"] = z3.BitVecVal(val, size)
+            '''
         elif typ == 1:
             pass
         elif typ == 2:
@@ -227,7 +276,7 @@ def taint_cmp(s):
     s_true = z3.Solver()
     eval(f"s_true.add({data.decode()})")
 
-    if s_true.check():
+    if s_true.check() == z3.sat:
         print("Solution found for TRUE branch:")
         m = s_true.model()
         for (reg, val) in sorted(model_to_dict(m).items()):
@@ -237,7 +286,7 @@ def taint_cmp(s):
 
     s_false = z3.Solver()
     eval(f"s_false.add(z3.Not({data.decode()}))")
-    if s_false.check():
+    if s_false.check() == z3.sat:
         print("Solution found for FALSE branch:")
         m = s_false.model()
         for (reg, val) in sorted(model_to_dict(m).items()):
