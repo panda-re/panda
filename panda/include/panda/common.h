@@ -68,18 +68,31 @@ target_ulong panda_current_asid(CPUState *env);
  */
 target_ulong panda_current_pc(CPUState *cpu);
 
-// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
-
 /**
  * @brief Reads/writes data into/from \p buf from/to guest physical address \p addr.
  */
 
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
+
 static inline int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
                                            bool is_write) {
-    rcu_read_lock();
-    MemTxResult r = cpu_physical_memory_rw_ex(addr, buf, len, is_write, true);
-    rcu_read_unlock();
-    return r;
+    hwaddr l = len;
+    hwaddr addr1;
+    MemoryRegion *mr = address_space_translate(&address_space_memory, addr,
+                                               &addr1, &l, is_write);
+
+    if (!memory_access_is_direct(mr, is_write)) {
+        // fail for MMIO regions of physical address space
+        return MEMTX_ERROR;
+    }
+    void *ram_ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
+
+    if (is_write) {
+        memcpy(ram_ptr, buf, len);
+    } else {
+        memcpy(buf, ram_ptr, len);
+    }
+    return MEMTX_OK;
 }
 
 /**
@@ -115,7 +128,7 @@ void exit_priv(CPUState* cpu);
 /**
  * @brief Reads/writes data into/from \p buf from/to guest virtual address \p addr.
  *
- * For ARM/MIPS we switch into privileged mode if the access fails. The mode is always reset
+ * For ARM we switch CPSR into SVC (privileged) mode if the access fails. The mode is always reset
  * before we return.
  */
 static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
