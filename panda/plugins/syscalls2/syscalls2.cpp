@@ -540,25 +540,15 @@ uint32_t get_32_linux_mips (CPUState *cpu, uint32_t argnum) {
         // 4 <= argnum < 8
         } else {
 
-            unsigned char buf[4] = {};
+            uint32_t buf;
             target_ulong arg_stack_addr = env->active_tc.gpr[29] + 16 + ((argnum - 4) * 4);
-            int res = panda_virtual_memory_read(cpu, arg_stack_addr, buf, 4);
+            int res = panda_virtual_memory_read(cpu, arg_stack_addr, (uint8_t*)&buf, 4);
 
             if (res < 0) {
                 // TODO: we need an error propagation methodology in this codebase, func sig assumes success
             }
 
-            #if defined(TARGET_WORDS_BIGENDIAN)
-                return (((uint32_t)buf[0] << 24)
-                      + ((uint32_t)buf[1] << 16)
-                      + ((uint32_t)buf[2] << 8)
-                      +  (uint32_t)buf[3]);
-            #else
-                return ((uint32_t)buf[0]
-                     + ((uint32_t)buf[1] << 8)
-                     + ((uint32_t)buf[2] << 16)
-                     + ((uint32_t)buf[3] << 24));
-            #endif
+            return buf;
         }
     #else
         // Args 1-6 in $a0-$a5 which are regs 4-9 in gpr
@@ -831,7 +821,7 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
     // ifdef guard prevents us from misinterpreting "syscall" as "jal 0x0000" or "ehb"
     #if defined(TARGET_WORDS_BIGENDIAN)
         // 32-bit MIPS "syscall" instruction - big endian
-        return ((buf[3] == 0x0c) && (buf[2] == 0x00) && (buf[1] == 0x00) && (buf[0] == 0x00));
+        return ((buf[0] == 0x00) && (buf[1] == 0x00) && (buf[2] == 0x00) && (buf[3] == 0x0c));
     #else
         // 32-bit MIPS "syscall" instruction - little endian
         return ((buf[3] == 0x00) && (buf[2] == 0x00) && (buf[1] == 0x00) && (buf[0] == 0x0c));

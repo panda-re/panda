@@ -26,13 +26,16 @@ class Expect(object):
         self.last_msg = None
         self.bytessofar = bytearray()
         self.running = True
-        self.expectation_re = re.compile(expectation)
-        self.expectation_ends_re = re.compile(rb'.*' + expectation)
+        self.update_expectation(expectation)
 
         # If consumed_first is false, we'll consume a message before anything else. Requires self.expectation to be set
         self.consumed_first = True
         if consume_first:
             self.consumed_first = False
+
+    def update_expectation(self, expectation):
+        self.expectation_re = re.compile(expectation)
+        self.expectation_ends_re = re.compile(rb'.*' + expectation)
 
     def connect(self, filelike):
         if type(filelike) == int:
@@ -107,6 +110,7 @@ class Expect(object):
 
         self.logfile.flush()
         if not self.quiet: sys.stdout.flush()
+
         self.sofar = sofar.decode('utf8')
         raise TimeoutExpired("Read message \n{}\n".format(self.sofar))
 
