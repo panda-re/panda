@@ -534,7 +534,9 @@ void PandaTaintVisitor::insertTaintCopy(Instruction &I,
 void PandaTaintVisitor::insertAfterTaintLd(Instruction &I,
        Value *val, Value *ptr, uint64_t size) {
     LLVMContext &ctx = I.getContext();
-    vector<Value *> args {constSlot(val), constSlot(ptr), const_uint64(ctx, size)};
+    Instruction *cast = llvm::CastInst::CreateZExtOrBitCast(ptr,
+        llvm::Type::getInt64Ty(ctx), "", &I);
+    vector<Value *> args { constSlot(val), cast, const_uint64(ctx, size) };
     inlineCallAfter(I, afterLdF, args);    
 }
 
