@@ -1761,13 +1761,23 @@ static TranslationBlock *tb_find_pc(uintptr_t tc_ptr)
 #ifdef CONFIG_LLVM
     if (execute_llvm) {
         /* first check last tb. optimization for coming from generated code. */
+        /* TODO: observation of a single regression test reveals that this path
+        is always taken.  If this is always true, then this is a simple fix.
+        If this is not always true, then we have a problem, because the
+        commented out code below is very much dependent on LLVM 3.  For LLVM 10
+        we'll need another way to convert an arbitrary address to an LLVM
+        block. */
         tb = tcg_llvm_runtime.last_tb;
+        return tb;
+        /*
         if (tb && tb->llvm_function
                 && tc_ptr >= (uintptr_t)tb->llvm_tc_ptr
                 && tc_ptr <  (uintptr_t)tb->llvm_tc_end) {
             return tb;
         }
+        */
         /* then do linear search. */
+        /*
         for (m = 0; m < tcg_ctx.tb_ctx.nb_tbs; m++) {
             tb = &tcg_ctx.tb_ctx.tbs[m];
             if (tb->llvm_function
@@ -1777,6 +1787,7 @@ static TranslationBlock *tb_find_pc(uintptr_t tc_ptr)
             }
         }
         return NULL;
+        */
     }
 #endif
 
