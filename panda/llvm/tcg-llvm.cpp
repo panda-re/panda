@@ -135,21 +135,19 @@ TCGLLVMTranslator::TCGLLVMTranslator()
         DL.getGlobalPrefix())));
 }
 
-/*
-    void adjustTypeSize(unsigned target, Value **v1) {
-        Value *va = *v1;
-        if (va->getType() == intType(target)) {
-            return;
-        } else if (va == m_tbFunction->arg_begin()
-                && target == sizeof(uintptr_t) * 8) {
-            *v1 = m_envInt;
-        } else if (target == 32 && va->getType() == intType(64)) {
-            *v1 = m_builder.CreateTrunc(va, intType(target));
-        } else {
-            assert(false);
-        }
+void TCGLLVMTranslator::adjustTypeSize(unsigned target, llvm::Value **v1) {
+    Value *va = *v1;
+    if (va->getType() == intType(target)) {
+        return;
+    } else if (va == m_tbFunction->arg_begin()
+            && target == sizeof(uintptr_t) * 8) {
+        *v1 = m_envInt;
+    } else if (target == 32 && va->getType() == intType(64)) {
+        *v1 = m_builder.CreateTrunc(va, intType(target));
+    } else {
+        assert(false);
     }
-*/
+}
 
 llvm::Value *TCGLLVMTranslator::attachCurrentPc(llvm::Value *v) {
     return v;
@@ -1353,6 +1351,7 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
 // bool TCGLLVMTranslator::GetStaticBranchTarget(const llvm::BasicBlock *BB, uint64_t *target) {
 
 
+/*
 void TCGLLVMTranslator::adjustTypeSize(unsigned target, llvm::Value **v1) {
     Value *va = *v1;
     if (target == 32) {
@@ -1363,6 +1362,7 @@ void TCGLLVMTranslator::adjustTypeSize(unsigned target, llvm::Value **v1) {
         }
     }
 }
+*/
 
 /*
 uint64_t TCGLLVMTranslator::toInteger(llvm::Value *v) const {
