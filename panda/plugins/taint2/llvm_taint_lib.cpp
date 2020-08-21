@@ -1852,7 +1852,11 @@ void PandaTaintVisitor::visitUnaryOperator(UnaryOperator &I) {
 void PandaTaintVisitor::visitInstruction(Instruction &I) {
     //dump only available if LLVM compiled with dump enabled
     printf("Error: Unhandled instruction:\n");
-    I.dump();
+    //TODO: need a way to turn on/off calls to dump - would be ideal if we
+    // could determine during compile if dump was available - maybe add a
+    // test to the configure script since there doesn't seem to be a way
+    // to interogate llvm-config to determine if dump is available
+    //I.dump();
     //TODO: uncomment assertion
     //assert(1==0);
 }
