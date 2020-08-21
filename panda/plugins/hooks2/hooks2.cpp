@@ -163,12 +163,18 @@ read_string(CPUState *cpu, target_ulong addr, char *buffer)
     bool done = false;
     int idx = 0;
 
-    while (!done) {
-        panda_virtual_memory_read(
+    // XXX: if a stack smash is happening it is here
+    while (!done && idx < MAX_PATHNAME) {
+        int err = panda_virtual_memory_read(
             cpu,
-            addr,
+            addr + idx,
             (uint8_t *)(buffer + idx),
             32);
+        if(err){
+            // if the read fails just give up
+            buffer[idx] = 0;
+            break;
+        }
         for (int j = 0; j < 32; j++) {
             if (buffer[idx] == 0) {
                 done = true;

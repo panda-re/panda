@@ -45,6 +45,7 @@ Issues
   limited to the first 16 characters?
 * I've only used this against 1 re-hosted ARM firmware. It compiles for X86 and
   X64; however, I haven't verified that it works.
+* Sometimes thread names are passed into on_process_start (example: "rs:main Q:Reg" from rsyslog)
 
 Arguments
 ---------
