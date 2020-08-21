@@ -105,15 +105,15 @@ const static std::set<std::string> ignore_funcs{
     "helper_outb", "helper_outw", "helper_outl", "helper_outq"
 };
 void PandaHelperCallVisitor::visitCallInst(CallInst &I) {
-    Function *f = I.getCalledFunction();
-    assert(f);
+    Function *oldFunction = I.getCalledFunction();
+    assert(oldFunction);
 
-    Module *m = I.getParent()->getParent()->getParent();
-    assert(m);
+    Module *module = I.getParent()->getParent()->getParent();
+    assert(module);
 
-    std::string name = f->getName().str();
-    if (f->isIntrinsic() || !f->hasName()
-            || ignore_funcs.count(name) > 0) {
+    std::string name = oldFunction->getName().str();
+    if (oldFunction->isIntrinsic() || !oldFunction->hasName() ||
+            ignore_funcs.count(name) > 0) {
         return; // Ignore intrinsics, declarations, memory, and I/O  functions
     } else if (append_panda_funcs.count(name) > 0) {
         std::cout << "modifying " << name << "\n";
@@ -122,38 +122,14 @@ void PandaHelperCallVisitor::visitCallInst(CallInst &I) {
         // Call LLVM version of helper
         name.append("_llvm");
     }
-    Function *newFunction = m->getFunction(name);
+
+    Function *newFunction = module->getFunction(name);
     if(!newFunction) {
-        Function *theFunction = m->getFunction(f->getName());
-        if(theFunction) {
-            // TODO: add a warning here that can be enabled at compile time
-            return;
-        }
-        std::cerr << "Failed to get function " << name << std::endl;
-        assert(newFunction);
+        newFunction = Function::Create(oldFunction->getFunctionType(),
+            Function::ExternalLinkage, name, module);
     }
     I.setCalledFunction(newFunction);
-    f = newFunction;
 
-    // Fix up argument types to match LLVM function signature
-    Function::arg_iterator func_arg = f->arg_begin();
-    unsigned call_arg_idx = 0;
-    for (; func_arg != f->arg_end(); func_arg++, call_arg_idx++) {
-        assert (call_arg_idx != I.getNumArgOperands());
-        Value *call_arg = I.getArgOperand(call_arg_idx);
-        if (call_arg->getType() == func_arg->getType()) {
-            continue; // No cast required
-        }
-        assert(CastInst::isCastable(call_arg->getType(), func_arg->getType()));
-        // False arguments assume things are unsigned, and I'm pretty sure
-        // this is a correct assumption, especially since LLVM integers
-        // don't have a sign bit.  Signedness will be handled (if necessary)
-        // inside of the helper function.
-        Instruction::CastOps opc =
-            CastInst::getCastOpcode(call_arg, false, func_arg->getType(), false);
-        CastInst *CI = CastInst::Create(opc, call_arg, func_arg->getType(), "", &I);
-        I.setArgOperand(call_arg_idx, CI); // Replace old operand with CastInst
-    }
     PCMFP->functionChanged = true;
 }
 
