@@ -39,6 +39,7 @@
 #include "panda/callbacks/cb-support.h"
 #include "panda/common.h"
 
+
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
 extern bool panda_update_pc;
@@ -86,6 +87,11 @@ static const char *regnames[] =
 
 static target_ulong afl_state_var;
 void gen_aflBBlock(target_ulong pc);
+
+#include "afl/types.h"
+extern u8 * shared_buf;
+extern u32 *shared_buf_len;
+extern u8   sharedmem_fuzzing;
 
 /* initialize TCG globals.  */
 void arm_translate_init(void)
@@ -12295,9 +12301,18 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
     target_ulong retsz;
     FILE *fp;
 
+
     AFL_DPRINTF("pid %d: getWork " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
             getpid(), ptr, sz);
     assert(aflStart == 0);
+    if (sharedmem_fuzzing) {
+        cpu_physical_memory_rw(ptr, shared_buf, *shared_buf_len, 1);
+        AFL_DPRINTF("pid %d: getWork %20s (%d)\n", getpid(), shared_buf, *shared_buf_len);
+        return *shared_buf_len;
+    }
+
+
+
     fp = fopen(aflFile, "rb");
 
 
@@ -12346,7 +12361,7 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
 
 
     // Shannon has one contigous address space, so we can directly write physmem
-    cpu_physical_memory_rw(ptr, bufptr, retsz, 1); 
+    cpu_physical_memory_rw(ptr, bufptr, retsz, 1);
 
     // log to aflOutFile if requested
     if (aflOutFP != NULL){
