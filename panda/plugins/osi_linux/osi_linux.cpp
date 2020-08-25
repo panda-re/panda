@@ -25,6 +25,8 @@
 #include "kernelinfo_downloader.h"
 #include "endian_helpers.h"
 
+#define KERNEL_CONF "/" TARGET_NAME "-softmmu/panda/plugins/osi_linux/kernelinfo.conf"
+
 /*
  * Functions interfacing with QEMU/PANDA should be linked as C.
  * C++ function name mangling breaks linkage.
@@ -697,6 +699,12 @@ bool init_plugin(void *self) {
             if (kconf_file != NULL) g_free(kconf_file);
             kconf_file = g_build_filename(CONFIG_QEMU_CONFDIR, "osi_linux", "kernelinfo.conf", NULL);
             LOG_INFO("Looking for kconf_file attempt %u: %s", 2, kconf_file);
+            kconffile_canon = realpath(kconf_file, NULL);
+        }
+        if (kconffile_canon == NULL) { // from PANDA_DIR
+            if (kconf_file != NULL) g_free(kconf_file);
+            const char* panda_dir = g_getenv("PANDA_DIR");
+            kconf_file = g_strdup_printf("%s%s", panda_dir, KERNEL_CONF);
             kconffile_canon = realpath(kconf_file, NULL);
         }
 
