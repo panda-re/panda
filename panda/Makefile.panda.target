@@ -202,8 +202,8 @@ else
 llvmmorph-$(TARGET_MIPS) +=  llvm-helpers-mips.bc
 endif
 
-CLANG_FILTER = -Wold-style-declaration -fstack-protector-strong -Wno-error=cpp -g -O0 -O1 -O3 -mcx16 -Wno-shift-negative-value
-QEMU_BC2FLAGS:=$(filter-out $(CLANG_FILTER),$(QEMU_CFLAGS) $(CFLAGS)) -O2 -I../target/$(TARGET_BASE_ARCH)
+CLANG_FILTER = -Wold-style-declaration -fstack-protector-strong -Wno-error=cpp -g -O0 -O1 -O2 -O3 -mcx16 -Wno-shift-negative-value
+QEMU_BC2FLAGS:=$(filter-out $(CLANG_FILTER),$(QEMU_CFLAGS) $(CFLAGS)) -O1 -I../target/$(TARGET_BASE_ARCH)
 %.bc2: %.c $(GENERATED_FILES)
 	$(call quiet-command,\
 		$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_BC2FLAGS) $(QEMU_DGFLAGS) -c -emit-llvm -o $@ $<,\
