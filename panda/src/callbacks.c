@@ -184,8 +184,10 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
 
       if (!libpanda) {
         fprintf(stderr, "Failed to load libpanda: %s from %s\n", dlerror(), library_path);
+        g_free(library_path);
         return false;
       }
+      g_free(library_path);
     }
 
     void *plugin = dlopen(filename, RTLD_NOW);

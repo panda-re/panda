@@ -68,11 +68,11 @@ target_ulong panda_current_asid(CPUState *env);
  */
 target_ulong panda_current_pc(CPUState *cpu);
 
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
+
 /**
  * @brief Reads/writes data into/from \p buf from/to guest physical address \p addr.
  */
-
-// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 static inline int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
                                            bool is_write) {
@@ -128,7 +128,7 @@ void exit_priv(CPUState* cpu);
 /**
  * @brief Reads/writes data into/from \p buf from/to guest virtual address \p addr.
  *
- * For ARM we switch CPSR into SVC (privileged) mode if the access fails. The mode is always reset
+ * For ARM/MIPS we switch into privileged mode if the access fails. The mode is always reset
  * before we return.
  */
 static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,

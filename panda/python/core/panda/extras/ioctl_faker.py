@@ -10,44 +10,55 @@ from panda.extras.file_hook import FileHook
 
 ioctl_initialized = False
 def do_ioctl_init(arch):
-	# Default config (x86, x86-64, ARM, AArch 64) with options for PPC
-	global ioctl_initialized
-	if ioctl_initialized:
-		return
-	ioctl_initialized = True
-	TYPE_BITS = 8
-	CMD_BITS = 8
-	SIZE_BITS = 14 if arch != "ppc" else 13
-	DIR_BITS = 2 if arch != "ppc" else 3
 
-	ffi.cdef("""
-	struct IoctlCmdBits {
-		uint8_t type_num:%d;
-		uint8_t cmd_num:%d;
-		uint16_t arg_size:%d;
-		uint8_t direction:%d;
-	};
+    '''
+    One-time init for arch-specific bit-packed ioctl cmd struct.
+    '''
 
-	union IoctlCmdUnion {
-		struct IoctlCmdBits bits;
-		uint32_t asUnsigned32;
-	};
+    # Default config (x86, x86-64, ARM, AArch 64) with options for PPC
+    global ioctl_initialized
+    if ioctl_initialized:
+        return
 
-	enum ioctl_direction {
-		IO = 0,
-		IOW = 1,
-		IOR = 2,
-		IOWR = 3
-	};
-	""" % (TYPE_BITS, CMD_BITS, SIZE_BITS, DIR_BITS) ,packed=True)
+    ioctl_initialized = True
+    TYPE_BITS = 8
+    CMD_BITS = 8
+    SIZE_BITS = 14 if arch != "ppc" else 13
+    DIR_BITS = 2 if arch != "ppc" else 3
+
+    ffi.cdef("""
+    struct IoctlCmdBits {
+        uint8_t type_num:%d;
+        uint8_t cmd_num:%d;
+        uint16_t arg_size:%d;
+        uint8_t direction:%d;
+    };
+
+    union IoctlCmdUnion {
+        struct IoctlCmdBits bits;
+        uint32_t asUnsigned32;
+    };
+
+    enum ioctl_direction {
+        IO = 0,
+        IOW = 1,
+        IOR = 2,
+        IOWR = 3
+    };
+    """ % (TYPE_BITS, CMD_BITS, SIZE_BITS, DIR_BITS), packed=True)
 
 class Ioctl():
 
     '''
-    Unpacked ioctl command with optional buffer
+    Unpacked ioctl command with optional buffer.
     '''
 
     def __init__(self, panda, cpu, fd, cmd, guest_ptr, use_osi_linux = False):
+
+        '''
+        Do unpacking, optionally using OSI for process and file name info.
+        '''
+
         do_ioctl_init(panda.arch)
         self.cmd = ffi.new("union IoctlCmdUnion*")
         self.cmd.asUnsigned32 = cmd
@@ -78,9 +89,21 @@ class Ioctl():
             self.proc_name = None
             self.file_name = None
 
-    def set_ret_code(self, code):
+    def get_ret_code(self, panda, cpu):
 
-        self.original_ret_code = code
+        ''''
+        Helper retrive original return code, handles arch-specifc ABI
+        '''
+
+        if panda.arch == "mipsel" or panda.arch == "mips":
+            # Note: return values are in $v0, $v1 (regs 2 and 3 respectively), but here we only use first
+            self.original_ret_code = panda.from_unsigned_guest(cpu.env_ptr.active_tc.gpr[2])
+        elif panda.arch == "aarch64":
+            self.original_ret_code = panda.from_unsigned_guest(cpu.env_ptr.xregs[0])
+        elif panda.arch == "ppc":
+            raise RuntimeError("PPC currently unsupported!")
+        else: # x86/x64/ARM
+            self.original_ret_code = panda.from_unsigned_guest(cpu.env_ptr.regs[0])
 
     def __str__(self):
 
@@ -117,16 +140,26 @@ class Ioctl():
 class IoctlFaker():
 
     '''
-    Interpose ioctl() syscall returns, forcing successes for any failures to simulate missing drivers/peripherals.
+    Interpose ioctl() syscall returns, forcing successes for specific error codes to simulate missing drivers/peripherals.
     Bin all returns into failures (needed forcing) and successes, store for later retrival/analysis.
     '''
 
-    def __init__(self, panda, use_osi_linux = False, log = False, ignore=[], intercept_values=[-25]):
+    def __init__(
+            self,
+            panda,
+            use_osi_linux = False,
+            log = False,
+            ignore = [],
+            intercept_ret_vals = [-25],
+            intercept_all_non_zero = False
+        ):
+
         '''
         Log enables/disables logging.
-        Ignore contains a list of tuples (filename, cmd#) to be ignored
-        intercept_values is a list of ioctl return values that should be intercepted. By default
+        ignore contains a list of tuples (filename, cmd#) to be ignored.
+        intercept_ret_vals is a list of ioctl return values that should be intercepted. By default
           we just intercept just -25 which indicates that a driver is not present to handle the ioctl.
+        intercept_all_non_zero is aggressive setting that takes precedence if set - any non-zero return code id changed to zero.
         '''
 
         self.osi = use_osi_linux
@@ -134,7 +167,8 @@ class IoctlFaker():
         self._panda.load_plugin("syscalls2")
         self._log = log
         self.ignore = ignore
-        self.intercept_values = intercept_values
+        self.intercept_ret_vals = intercept_ret_vals
+        self.intercept_all_non_zero = intercept_all_non_zero
 
         if self.osi:
             self._panda.load_plugin("osi")
@@ -148,27 +182,35 @@ class IoctlFaker():
         self._forced_returns = set()
         self._unmodified_returns = set()
 
-
-        # PPC (other arches use the default config)
-        if self._panda.arch == "ppc":
-            SIZE_BITS = 13
-            DIR_BITS  = 3
-
         # Force success returns for missing drivers/peripherals
         @self._panda.ppp("syscalls2", "on_sys_ioctl_return")
         def ioctl_faker_on_sys_ioctl_return(cpu, pc, fd, cmd, arg):
 
             ioctl = Ioctl(self._panda, cpu, fd, cmd, arg, self.osi)
-            ioctl.set_ret_code(self._panda.from_unsigned_guest(cpu.env_ptr.regs[0]))
+            ioctl.get_ret_code(self._panda, cpu)
 
-            if ioctl.original_ret_code in self.intercept_values and \
+            # Modify
+            if (self.intercept_all_non_zero and ioctl.original_ret_code != 0) or \
+                ioctl.original_ret_code in self.intercept_ret_vals and \
                         (ioctl.file_name, ioctl.cmd.bits.cmd_num) not in self.ignore: # Allow ignoring specific commands on specific files
-                cpu.env_ptr.regs[0] = 0
+
+                if panda.arch == "mipsel" or panda.arch == "mips":
+                    cpu.env_ptr.active_tc.gpr[2] = 0
+                elif panda.arch == "aarch64":
+                    cpu.env_ptr.xregs[0] = 0
+                elif panda.arch == "ppc":
+                    raise RuntimeError("PPC currently unsupported!")
+                else: # x86/x64/ARM
+                    cpu.env_ptr.regs[0] = 0
+
                 self._forced_returns.add(ioctl)
+
                 if ioctl.has_buf and self._log:
                     self._logger.warning("Forcing success return for data-containing {}".format(ioctl))
-                else:
+                elif self._log:
                     self._logger.info("Forcing success return for data-less {}".format(ioctl))
+
+            # Don't modify
             else:
                 self._unmodified_returns.add(ioctl)
 
@@ -181,9 +223,17 @@ class IoctlFaker():
 
     def get_forced_returns(self, with_buf_only = False):
 
+        '''
+        Retrieve ioctls whose error codes where overwritten
+        '''
+
         return self._get_returns(self._forced_returns, with_buf_only)
 
     def get_unmodified_returns(self, with_buf_only = False):
+
+        '''
+        Retrieve ioctl that completed normally
+        '''
 
         return self._get_returns(self._unmodified_returns, with_buf_only)
 
