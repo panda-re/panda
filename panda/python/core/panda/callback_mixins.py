@@ -237,6 +237,9 @@ class callback_mixins():
             if local_name is None:
                 local_name = func.__name__
             f = ffi.callback(attr+"_t")(func)  # Wrap the python fn in a c-callback.
+            if local_name == "<lambda>":
+                local_name = f"<lambda_{self.lambda_cnt}>"
+                self.lambda_cnt += 1
             assert (local_name not in self.ppp_registered_cbs), f"Two callbacks with conflicting name: {local_name}"
 
             # Ensure function isn't garbage collected, and keep the name->(fn, plugin_name, attr) map for disabling
