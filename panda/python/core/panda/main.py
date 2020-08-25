@@ -80,6 +80,7 @@ class Panda(libpanda_mixins, libqemu_mixins, blocking_mixins, osi_mixins, hookin
         self.qcow = qcow
         self.plugins = plugin_list(self)
         self.expect_prompt = expect_prompt
+        self.lambda_cnt = 0
 
         if isinstance(extra_args, str): # Extra args can be a string or array
             extra_args = extra_args.split()
