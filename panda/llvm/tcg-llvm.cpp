@@ -1326,6 +1326,7 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
         tb->llvm_tc_end = tb->llvm_tc_ptr +
                 m_jitMemoryManager->getFunctionSize(m_tbFunction);
                 */
+        // TODO: function size calculation is wrong - can this be removed?
         auto functionSize = m_tbFunction->size();
         assert(functionSize > 0);
 
