@@ -239,6 +239,7 @@ ffi.cdef("typedef void GArray;")
 ffi.cdef("typedef int target_pid_t;")
 
 ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
+ffi.cdef("typedef int"+str(bits)+"_t target_long;")
 #define_clean_header(ffi, "{inc}/pthreadtypes.h")
 
 # PPP Headers
