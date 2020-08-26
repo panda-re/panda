@@ -40,13 +40,14 @@ class ProcWriteCapture():
         @self._panda.ppp("syscalls2", "on_sys_write_enter")
         def proc_write_capture_on_sys_write_enter(cpu, pc, fd, buf, cnt):
 
+            try_read = False
+
             # Capture console output
             if self._console_capture:
 
-                try_read = False
-
-                # Fun trick: lazy eval of OSI since only available post-boot
+                # Fun trick: lazy eval of OSI
                 # Based on the idea that a non-POSIX FD will only be used after boot is finished an OSI is functional
+                # Note: doesn't capture boot logs (would require hooking kernel's printk, not write syscall)
                 if (fd == 1) or (fd == 2) or (fd == 3):
                     try_read = True
                 else:
@@ -80,10 +81,11 @@ class ProcWriteCapture():
 
                 if self._proc_name == curr_proc_name:
 
-                    try:
-                        data = panda.virtual_memory_read(cpu, buf, cnt)
-                    except ValueError:
-                        raise RuntimeError(f"Failed to read buffer: proc \'{curr_proc_name}\', addr 0x{buf:016x}")
+                    if not try_read: # If we didn't already read this data in once for console capture
+                        try:
+                            data = panda.virtual_memory_read(cpu, buf, cnt)
+                        except ValueError:
+                            raise RuntimeError(f"Failed to read buffer: proc \'{curr_proc_name}\', addr 0x{buf:016x}")
 
                     file_name_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, curr_proc, fd)
                     file_path = ffi.string(file_name_ptr).decode()
