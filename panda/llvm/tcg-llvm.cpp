@@ -109,8 +109,6 @@ TCGLLVMTranslator::TCGLLVMTranslator()
     m_eip = NULL;
     m_ccop = NULL;
 
-    m_module = std::make_unique<Module>("tcg-llvm", *m_context);
-
     m_functionPassManager = new legacy::FunctionPassManager(m_module.get());
 
     /*
@@ -415,8 +413,8 @@ inline llvm::Value *TCGLLVMTranslator::generateQemuMemOp(bool ld,
 
     FunctionType* helperFunctionTy;
     if (ld) {
-        helperFunctionTy = FunctionType::get(intType(bits),
-            argTypes, false);
+        helperFunctionTy = FunctionType::get(
+            intType(sizeof(tcg_target_ulong)*8), argTypes, false);
     } else {
         helperFunctionTy = FunctionType::get(llvm::Type::getVoidTy(*m_context),
             argTypes, false);
@@ -1557,6 +1555,8 @@ void tcg_llvm_tb_free(TranslationBlock *tb)
 
 const char* tcg_llvm_get_func_name(TranslationBlock *tb)
 {
+    // TODO: not safe anymore - llvm_function gets deleted as soon as the
+    // function is jitted
     if (tb->llvm_function) {
         return tb->llvm_function->getName().str().c_str();
     } else {

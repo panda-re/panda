@@ -322,6 +322,10 @@ class TCGLLVMTranslator {
     void addNewModuleCallback(NewModuleCallback newModuleCallback) {
         newModuleCallbacks.push_back(newModuleCallback);
     }
+
+    llvm::DataLayout *getDataLayout() {
+        return &DL;
+    }
 };
 
 }
