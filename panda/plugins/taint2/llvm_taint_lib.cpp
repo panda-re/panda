@@ -207,8 +207,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV->oneConst = ConstantInt::get(PTV->int64T, 1);
     PTV->maxConst = ConstantInt::get(PTV->int64T, UINT64_C(~0));
 
-    // TODO: is this right?  What is this used for?
-    PTV->dataLayout = new DataLayout(&M);
+    PTV->dataLayout = tcg_llvm_translator->getDataLayout();
 
     orc::SymbolMap symbols;
 
