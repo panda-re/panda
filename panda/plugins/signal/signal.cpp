@@ -26,6 +26,8 @@ PANDAENDCOMMENT */
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 #include "osi_linux/osi_linux_ext.h"
+#include "callstack_instr/callstack_instr.h"
+#include "callstack_instr/callstack_instr_ext.h"
 
 #include "signal_int_fns.h"
 
@@ -137,7 +139,7 @@ void flush_to_plog(sig_event_t* se_ptr) {
 }
 
 // Per Luke C., we'll suppress by swapping to SIGWINCH instead of re-directing control flow from the hypervisor
-// Andrew F. also suggested setting an illegal sig num and supressing the error on syscall return - noting in case we decide to switch to that impl
+// Andrew F. also suggested setting an illegal sig num and suppressing the error on syscall return - noting in case we decide to switch to that impl
 bool suppress_curr_sig(CPUState* cpu) {
 
     target_ulong sigwinch_num = 28;
@@ -191,7 +193,7 @@ void sig_mitm(CPUState* cpu, target_ulong pc, int32_t pid, int32_t sig) {
 
     // Optional supression
     if (hyper_blocked_sigs.find(sig) != hyper_blocked_sigs.end()) {
-        suppressed = surppress_curr_sig(cpu);
+        suppressed = suppress_curr_sig(cpu);
     } else {
         auto named_block = hyper_blocked_sigs_by_proc.find(dst_proc_name);
         if (named_block != hyper_blocked_sigs_by_proc.end()) {
@@ -230,6 +232,7 @@ void sig_mitm(CPUState* cpu, target_ulong pc, int32_t pid, int32_t sig) {
 }
 
 // Kernel-to-process logging/suppression
+// For capstone APIs, see: https://github.com/aquynh/capstone/blob/master/include/capstone/capstone.h
 void kernel_call_handler(CPUState *cpu, target_ulong func) {
 
     // Max call stack entries to retrieve
@@ -244,6 +247,7 @@ void kernel_call_handler(CPUState *cpu, target_ulong func) {
 
     target_ulong curr_pc = cpu->panda_guest_pc;
     bool do_signal_callee = false;
+    bool is_call = false;
 
     target_ulong caller_addrs[CALLER_MAX_CNT];
     uint8_t instr_buf[MAX_INSTR_LEN];
@@ -251,8 +255,10 @@ void kernel_call_handler(CPUState *cpu, target_ulong func) {
     int res;
     csh handle;
 	cs_insn *insn;
+    cs_detail *detail;
 	size_t count;
 
+    // Short-circuit if addrs not initialized or not in kernel
     if ((!do_signal_kaddr) || (!get_signal_kaddr) || !panda_in_kernel(cpu)) {
         return;
     }
@@ -272,7 +278,7 @@ void kernel_call_handler(CPUState *cpu, target_ulong func) {
     // Read out call instruction bytes
     res = panda_virtual_memory_read(cpu, curr_pc, instr_buf, MAX_INSTR_LEN);
     if (res < 0) {
-        fprintf(stderr, "[ERROR] signal: Failed to read guest memory from PC 0x%016x!\n", curr_pc);
+        fprintf(stderr, "[ERROR] signal: Failed to read guest memory from PC 0x" TARGET_PTR_FMT "!\n", curr_pc);
         return;
     }
 
@@ -307,11 +313,38 @@ void kernel_call_handler(CPUState *cpu, target_ulong func) {
         return;
     #endif
 
+    // Request detailed disassembly
+    if (cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON) != CS_ERR_OK) {
+        fprintf(stderr, "[ERROR] signal: Failed to set Capstone options!\n");
+        return;
+    }
+
     // Disassemble call instruction
     count = cs_disasm(handle, instr_buf, MAX_INSTR_LEN, curr_pc, 1, &insn);
     if (count > 0) {
-        // TODO
+        assert(count == 1);
+
+        // Arch neutral verify of call instr
+        detail = insn[0].detail;
+        if (detail->groups_count > 0) {
+            for (int i = 0; i < detail->groups_count; i++) {
+                if (detail->groups[i] == CS_GRP_CALL) {
+                    is_call = true;
+                }
+            }
+        }
+        assert(is_call);
+
+        // TODO: get call target
+
+        // TODO: check if call target is get_signal address
+
+        // TODO: if so, pull out signal number from ksignal struct
+        // https://elixir.bootlin.com/linux/v5.8/source/include/linux/signal_types.h#L65
+
+        cs_free(insn, count);
     }
+    cs_close(&handle);
 
     // TODO: detail for call target, check against get_signal, retreive struct
 }
