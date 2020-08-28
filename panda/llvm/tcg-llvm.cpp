@@ -1546,7 +1546,6 @@ void tcg_llvm_tb_alloc(TranslationBlock *tb)
 void tcg_llvm_tb_free(TranslationBlock *tb)
 {
     if(tb->llvm_function) {
-        tb->llvm_function->eraseFromParent();
         tb->llvm_function = nullptr;
         tb->llvm_tc_ptr = nullptr;
         tb->llvm_tc_end = nullptr;
