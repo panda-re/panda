@@ -17,10 +17,10 @@ See `branchtrace` for example usage.
 Future Ideas
 ------------
 
-* Provide mmap mappings.. Maybe a callback whenever they change.
+* [x] Provide mmap mappings.. Maybe a callback whenever they change.
 * Add ability to filter on other callbacks (ie. `after_block_exec`)
 * wildcard library and process names.
-* Currently hooks do not start until *trace_start* is executed. I need to
+* [x] Currently hooks do not start until *trace_start* is executed. I need to
   add a mode where it starts immediately, so we can trace from when the
   program starts.
 * Likewise for thread's starting.. It would be nice if we are actively tracing
@@ -40,9 +40,13 @@ Issues
 
 * On a new thread, the syscall return value for `sys_clone()` occasionally
   is 0.
-* The process name returned by OSI (eg. get_current_process) is not the complete
-  string. For example, `branchtest_multithreaded` is `branchtest_multi`. Is it
-  limited to the first 16 characters?
+* ~~The process name returned by OSI (eg. get_current_process) is not the
+  complete string. For example, `branchtest_multithreaded` is
+  `branchtest_multi`. Is it limited to the first 16 characters?~~ This is a
+  result from OSI using the `comm` member of task_struct which limited to 16
+  bytes. I've made a change to OSI to optionally return `task_struct.mm.exe_file`
+  which provides the full path. This plugin use exe_file if it's present;
+  otherwise, it will default to `comm`.
 * I've only used this against 1 re-hosted ARM firmware. It compiles for X86 and
   X64; however, I haven't verified that it works.
 * Sometimes thread names are passed into on_process_start (example: "rs:main Q:Reg" from rsyslog)
@@ -123,6 +127,22 @@ void on_thread_end(
     target_ulong asid,
     target_pid_t pid,
     target_pid_t tid);
+```
+
+Description:
+
+---
+
+Name: **on\_mmap\_updated**
+
+Signature:
+
+```C
+void on_mmap_updated(
+    CPUState* cpu,
+    const char *libname,
+    target_ulong base,
+    target_ulong size);
 ```
 
 Description:

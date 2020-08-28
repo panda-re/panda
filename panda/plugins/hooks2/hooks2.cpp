@@ -134,6 +134,23 @@ struct global_hooks2_data {
 
 static struct global_hooks2_data plugin;
 
+static char *
+get_procname(OsiProc *proc, bool get_basename)
+{
+    char *full;
+
+    if (proc->exe_file) {
+        full = proc->exe_file;
+    } else {
+        full = proc->name;
+    }
+
+    if (get_basename) {
+        return basename(full);
+    }
+    return full;
+}
+
 
 static void
 register_callback(struct callback_info &cb)
@@ -293,10 +310,13 @@ update_active_userspace_traces(
     target_ulong asid)
 {
     bool changed = false;
+    char *procname;
 
     OsiProc *proc = get_current_process(cpu);
     if (!proc)
         return changed;
+
+    procname = get_procname(proc, true);
 
     auto &trace_list = plugin.map_active_utraces[asid];
 
@@ -304,7 +324,7 @@ update_active_userspace_traces(
         bool needs_update = false;
         for (auto &trace : trace_list) {
             if (trace->cfg->procname != NULL) {
-                if (*trace->cfg->procname != proc->name) {
+                if (*trace->cfg->procname != procname) {
                     needs_update = true;
                 }
             }
@@ -324,7 +344,7 @@ update_active_userspace_traces(
         if (cfg->is_kernel)
             continue;
         if (cfg->procname) {
-            if ((!proc->name) || (*cfg->procname != proc->name))
+            if ((!procname) || (*cfg->procname != procname))
                 continue;
         }
 
@@ -699,7 +719,7 @@ on_sys_brk_enter(
         SYS_BRK,
         -1,
         panda_current_asid(cpu),
-        proc->name);
+        get_procname(proc, true));
 }
 
 
@@ -760,7 +780,7 @@ on_sys_clone_return(
         type,
         ret,
         asid,
-        proc->name);
+        get_procname(proc, true));
 
     free_osiproc(proc);
 }
@@ -893,7 +913,7 @@ on_sys_exit_enter_common(
      } else {
          on_process_end_internal(
              cpu,
-             proc->name,
+             get_procname(proc, true),
              panda_current_asid(cpu),
              thread.pid);
      }
@@ -946,7 +966,7 @@ cb_pending_procname_after_block_exec(
         ASID_CHANGE,
         -1,
         panda_current_asid(cpu),
-        proc->name);
+        get_procname(proc, true));
 }
 
 
