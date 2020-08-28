@@ -610,7 +610,10 @@ void PandaTaintVisitor::addOperandsToArgumentList(vector<Value *> &args,
     Instruction &I, Instruction *before) {
 
     for(auto it = I.value_op_begin(); it != I.value_op_end(); it++) {
-        if(it->getType()->isIntegerTy()) {
+        if(it->getType()->isIntegerTy(64)) {
+            args.push_back(*it);
+        } else if(it->getType()->isIntegerTy()) {
+            assert(it->getType()->getPrimitiveSizeInBits() < 64);
             args.push_back(CastInst::CreateIntegerCast(*it, int64T, false,
                 "", before));
         } else {
