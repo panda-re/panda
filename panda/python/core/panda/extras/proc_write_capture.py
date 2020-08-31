@@ -31,9 +31,11 @@ class ProcWriteCapture():
 
         # Setup logging dir
         self._console_log_dir.mkdir(parents=True, exist_ok=True)
-        self._proc_log_dir.mkdir(parents=True, exist_ok=True)
+        if proc_name:
+            self._proc_log_dir.mkdir(parents=True, exist_ok=True)
         if self._rm:
-            shutil.rmtree(self._proc_log_dir)
+            if proc_name:
+                shutil.rmtree(self._proc_log_dir)
             shutil.rmtree(self._console_log_dir)
 
         # Mirror writes
