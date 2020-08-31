@@ -257,6 +257,8 @@ void kernel_call_handler(CPUState *cpu, target_ulong func) {
 	cs_insn *insn;
     cs_detail *detail;
 	size_t count;
+    int op_idx;
+    target_ulong call_abs_trgt;
 
     // Short-circuit if addrs not initialized or not in kernel
     if ((!do_signal_kaddr) || (!get_signal_kaddr) || !panda_in_kernel(cpu)) {
@@ -309,7 +311,7 @@ void kernel_call_handler(CPUState *cpu, target_ulong func) {
 		    return;
         }
     #else
-        fprintf(stderr, "[ERROR] signal: Unsuppported architecture for kernel hooking!\n");
+        fprintf(stderr, "[ERROR] signal: Unsuppported architecture for kernel hooking! Cannot init Capstone.\n");
         return;
     #endif
 
@@ -334,8 +336,63 @@ void kernel_call_handler(CPUState *cpu, target_ulong func) {
             }
         }
         assert(is_call);
+        assert(cs_op_count(handle, &insn, CS_OP_IMM) == 1);
+        op_idx = cs_op_index(handle, &insn, CS_OP_IMM, 1);
 
-        // TODO: get call target
+        // Get call target
+        #if defined(TARGET_I386) or defined(TARGET_X86_64)
+            // Different encodings of "call" have same mnemonic, so differiante by encoding
+            // TODO: endianess correct for opcode index?
+
+            // Relative call
+            if (detail->x86.opcode[0] == 0xe8) {
+                call_abs_trgt = curr_pc + detail->x86.operands[op_idx].imm;
+            // Absolute call
+            } else if (detail->x86.opcode[0] == 0x9a) {
+                call_abs_trgt = detail->x86.operands[op_idx].imm;
+            // Unsupported encoding
+            // TODO: handle all encodings: https://c9x.me/x86/html/file_module_x86_id_26.html
+            } else {
+                fprintf(stderr, "[ERROR] signal: Unsuppported x86/x64 call encoding.\n");
+                return;
+            }
+        #elif defined(TARGET_ARM) and !defined(TARGET_AARCH64)
+            // Different branch types use relative and absolute addresses, so we can differentiate by mnemonic
+            // See: https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/branch-and-call-sequences-explained
+
+            // Warning: unmodeled sequence examples:
+            // - pop {..., pc}
+            // - ldr pc, <addr>
+
+            // Relative calls
+            if (strncasecmp(insn.mnemonic, "b")) {
+                call_abs_trgt = curr_pc + detail->arm.operands[op_idx].imm;
+            } else if (strncasecmp(insn.mnemonic, "bl")) {
+                call_abs_trgt = curr_pc + detail->arm.operands[op_idx].imm;
+
+            // Ambiguous
+            } else if (strncasecmp(insn.mnemonic, "blx")) {
+                fprintf(stderr, "[ERROR] signal: Ambiguous ARM branch encoding.\n");
+                return;
+
+            // Unsupported encoding or unmodeled sequence
+           } else {
+                fprintf(stderr, "[ERROR] signal: Unsuppported ARM branch encoding.\n");
+                return;
+            }
+        #elif defined(TARGET_AARCH64)
+            fprintf(stderr, "[ERROR] signal: Determining call target for AArch64 currently unsupported!\n");
+            return;
+        #elif defined(TARGET_MIPS)
+
+            // TODO: support
+
+        #else
+            fprintf(stderr, "[ERROR] signal: Unsuppported architecture for kernel hooking! Cannot determine call target.\n");
+            return;
+        #endif
+
+
 
         // TODO: check if call target is get_signal address
 
