@@ -99,7 +99,6 @@ RUN ../configure \
     --enable-llvm \
     --disable-numa \
     --with-llvm=/usr/lib/llvm-3.3 \
-    --python=/usr/bin/python2 \
     --disable-vhost-net \
     --extra-cflags=-DXC_WANT_COMPAT_DEVICEMODEL_API
 

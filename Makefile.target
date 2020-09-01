@@ -267,8 +267,10 @@ endif
 ifdef CONFIG_LLVM
 	$(INSTALL_DATA) $(llvmmorph-y) "$(DESTDIR)$(qemu_datadir)/"
 endif
-	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/python2.7/site-packages"
-	$(INSTALL_LIB) plog_pb2.py "$(DESTDIR)$(libdir)/python2.7/site-packages"
+	# Install into [prefix]/usr/lib/python3/dist-packages which should work with any Python3.x install unlike site-packages which
+	# contains minor version numbers in the path. See https://stackoverflow.com/a/54239729
+	$(INSTALL_DIR) "$(DESTDIR)$(pythondir)"
+	$(INSTALL_LIB) plog_pb2.py "$(DESTDIR)$(pythondir)/"
 	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"
 	$(INSTALL_DIR) "$(DESTDIR)$(qemu_datadir)/scripts"
 	for f in $$(find $(SRC_PATH)/panda/scripts -type f); do \
