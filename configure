@@ -339,6 +339,7 @@ mandir="\${prefix}/share/man"
 datadir="\${prefix}/share"
 qemu_docdir="\${prefix}/share/doc/qemu"
 bindir="\${prefix}/bin"
+pythondir="\${prefix}/usr/lib/python3/dist-packages"
 libdir="\${prefix}/lib"
 libexecdir="\${prefix}/libexec"
 includedir="\${prefix}/include"
@@ -920,6 +921,8 @@ for opt do
   ;;
   --libdir=*) libdir="$optarg"
   ;;
+  --pythondir=*) pythondir="$optarg"
+  ;;
   --libexecdir=*) libexecdir="$optarg"
   ;;
   --includedir=*) includedir="$optarg"
@@ -1423,6 +1426,7 @@ Advanced options (experts only):
   --docdir=PATH            install documentation in PATH$confsuffix
   --bindir=PATH            install binaries in PATH
   --libdir=PATH            install libraries in PATH
+  --pythondir=PATH         install python packages to PATH
   --sysconfdir=PATH        install config in PATH$confsuffix
   --localstatedir=PATH     install local state in PATH (set at runtime on win32)
   --with-confsuffix=SUFFIX suffix for QEMU data inside datadir/libdir/sysconfdir [$confsuffix]
@@ -5375,6 +5379,7 @@ echo "Install prefix    $prefix"
 echo "BIOS directory    $(eval echo $qemu_datadir)"
 echo "binary directory  $(eval echo $bindir)"
 echo "library directory $(eval echo $libdir)"
+echo "python directory  $(eval echo $pythondir)"
 echo "module directory  $(eval echo $qemu_moddir)"
 echo "libexec directory $(eval echo $libexecdir)"
 echo "include directory $(eval echo $includedir)"
@@ -5558,6 +5563,7 @@ echo all: >> $config_host_mak
 echo "prefix=$prefix" >> $config_host_mak
 echo "bindir=$bindir" >> $config_host_mak
 echo "libdir=$libdir" >> $config_host_mak
+echo "pythondir=$pythondir" >> $config_host_mak
 echo "libexecdir=$libexecdir" >> $config_host_mak
 echo "includedir=$includedir" >> $config_host_mak
 echo "mandir=$mandir" >> $config_host_mak
