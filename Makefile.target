@@ -267,8 +267,8 @@ endif
 ifdef CONFIG_LLVM
 	$(INSTALL_DATA) $(llvmmorph-y) "$(DESTDIR)$(qemu_datadir)/"
 endif
-	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/python2.7/site-packages"
-	$(INSTALL_LIB) plog_pb2.py "$(DESTDIR)$(libdir)/python2.7/site-packages"
+	$(INSTALL_DIR) "$(shell python -m site --user-site)
+	$(INSTALL_LIB) plog_pb2.py $(shell python -m site --user-site)"/${INSTALL_DIR}"
 	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"
 	$(INSTALL_DIR) "$(DESTDIR)$(qemu_datadir)/scripts"
 	for f in $$(find $(SRC_PATH)/panda/scripts -type f); do \
