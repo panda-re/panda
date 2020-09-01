@@ -1,6 +1,6 @@
-#!/usr/bin/python2.7
+#!/usr/bin/python3
 
-from __future__ import print_function
+
 import sys
 import os
 import zlib
@@ -53,7 +53,7 @@ class PLogReader:
         self.f.close()
         self.f = self.chunk_data = None
 
-    def next(self):
+    def __next__(self):
         # ran out of chunks
         if not self.chunk_idx < self.nchunks:
             raise StopIteration
