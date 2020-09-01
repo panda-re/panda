@@ -1274,6 +1274,10 @@ for opt do
   ;;
   --enable-capstone) capstone="yes"
   ;;
+  --enable-capstone=git) capstone="git"
+  ;;
+  --enable-capstone=system) capstone="system"
+  ;;
   --enable-llvm) llvm="yes"
   ;;
   --with-llvm=*) llvmdir="$optarg"
@@ -1297,21 +1301,6 @@ for opt do
   ;;
   esac
 done
-
-if ! has $python; then
-  error_exit "Python not found. Use --python=/path/to/python"
-fi
-
-# Note that if the Python conditional here evaluates True we will exit
-# with status 1 which is a shell 'false' value.
-if ! $python -c 'import sys; sys.exit(sys.version_info < (2,6) or sys.version_info >= (3,))'; then
-  error_exit "Cannot use '$python', Python 2.6 or later is required." \
-      "Note that Python 3 or later is not yet supported." \
-      "Use --python=/path/to/python to specify a supported Python."
-fi
-
-# Suppress writing compiled files
-python="$python -B"
 
 case "$cpu" in
     ppc)
@@ -1548,6 +1537,35 @@ EOF
 exit 0
 fi
 
+if ! has $python; then
+  error_exit "Python not found. Use --python=/path/to/python"
+fi
+
+# Note that if the Python conditional here evaluates True we will exit
+# with status 1 which is a shell 'false' value.
+if ! $python -c 'import sys; sys.exit(sys.version_info < (2,6))'; then
+  error_exit "Cannot use '$python', Python 2 >= 2.6 or Python 3 is required." \
+      "Use --python=/path/to/python to specify a supported Python."
+fi
+
+# Suppress writing compiled files
+python="$python -B"
+
+
+# Check that the C compiler works. Doing this here before testing
+# the host CPU ensures that we had a valid CC to autodetect the
+# $cpu var (and we should bail right here if that's not the case).
+# It also allows the help message to be printed without a CC.
+write_c_skeleton;
+if compile_object ; then
+  : C compiler works ok
+else
+    error_exit "\"$cc\" either does not exist or does not work"
+fi
+if ! compile_prog ; then
+    error_exit "\"$cc\" cannot build an executable (is your linker broken?)"
+fi
+
 # Now we have handled --enable-tcg-interpreter and know we're not just
 # printing the help message, bail out if the host CPU isn't supported.
 if test "$ARCH" = "unknown"; then
@@ -1782,7 +1800,7 @@ if test "$solaris" = "yes" ; then
 fi
 
 if test -z "${target_list+xxx}" ; then
-    target_list="i386-softmmu x86_64-softmmu arm-softmmu ppc-softmmu"
+    target_list="i386-softmmu x86_64-softmmu arm-softmmu ppc-softmmu mipsel-softmmu mips-softmmu"
 else
     target_list=$(echo "$target_list" | sed -e 's/,/ /g')
 fi
@@ -4468,18 +4486,54 @@ fi
 ##########################################
 # capstone
 
-if test "$capstone" != no; then
-  if $pkg_config capstone; then
-    capstone=yes
+case "$capstone" in
+  "" | yes)
+    if $pkg_config capstone; then
+      capstone=system
+    elif test -e "${source_path}/.git" ; then
+      capstone=git
+    elif test -e "${source_path}/capstone/Makefile" ; then
+      capstone=internal
+    elif test -z "$capstone" ; then
+      capstone=no
+    else
+      feature_not_found "capstone" "Install capstone devel or git submodule"
+    fi
+    ;;
+
+  system)
+    if ! $pkg_config capstone; then
+      feature_not_found "capstone" "Install capstone devel"
+    fi
+    ;;
+esac
+
+case "$capstone" in
+  git | internal)
+    if test "$capstone" = git; then
+      git_submodules="${git_submodules} capstone"
+    fi
+    mkdir -p capstone
+    QEMU_CFLAGS="$QEMU_CFLAGS -I\$(SRC_PATH)/capstone/include"
+    if test "$mingw32" = "yes"; then
+      LIBCAPSTONE=capstone.lib
+    else
+      LIBCAPSTONE=libcapstone.a
+    fi
+    LIBS="-L\$(BUILD_DIR)/capstone -lcapstone $LIBS"
+    ;;
+
+  system)
     QEMU_CFLAGS="$QEMU_CFLAGS $($pkg_config --cflags capstone)"
     LIBS="$($pkg_config --libs capstone) $LIBS"
-  else
-    if test "$capstone" = yes; then
-      feature_not_found capstone
-    fi
-    capstone=no
-  fi
-fi
+    ;;
+
+  no)
+    ;;
+  *)
+    error_exit "Unknown state for capstone: $capstone"
+    ;;
+esac
 
 ##########################################
 # check if we have fdatasync
