@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 import sys, os
 import subprocess
@@ -14,14 +14,14 @@ RRPACK_MAGIC = "PANDA_RR"
 # 0x20: archive data in .tar.xz format
 
 if len(sys.argv) != 2:
-    print >>sys.stderr, "usage: %s <rr_basename>" % sys.argv[0]
+    print("usage: %s <rr_basename>" % sys.argv[0], file=sys.stderr)
     sys.exit(1)
 
 base = sys.argv[1]
 outfname = base + '.rr'
 
 if os.path.exists(outfname):
-    print >>sys.stderr, "%s already exists; will not overwrite. Aborting." % outfname
+    print("%s already exists; will not overwrite. Aborting." % outfname, file=sys.stderr)
     sys.exit(1)
 
 # Get number of instructions
@@ -31,10 +31,10 @@ try:
         f.seek(16)
         num_guest_insns = struct.unpack("<Q", f.read(8))[0]
 except EnvironmentError:
-    print >>sys.stderr, "Failed to open", base + '-rr-nondet.log. Aborting.'
+    print("Failed to open", base + '-rr-nondet.log. Aborting.', file=sys.stderr)
     sys.exit(1)
 
-print "Packing RR log %s with %d instructions..." % (base, num_guest_insns)
+print("Packing RR log %s with %d instructions..." % (base, num_guest_insns))
 outf = open(outfname, 'wb')
 outf.write(RRPACK_MAGIC)
 outf.write(struct.pack("<Q", num_guest_insns))
@@ -43,7 +43,7 @@ outf.flush()
 subprocess.check_call(['tar', 'cJf', '-', base + '-rr-snp', base + '-rr-nondet.log'], stdout=outf)
 outf.close()
 
-print "Calculating checksum...",
+print("Calculating checksum...", end=' ')
 outf = open(outfname, 'r+b')
 outf.seek(0x20)
 m = hashlib.md5()
@@ -55,4 +55,4 @@ digest = m.digest()
 outf.seek(0x10)
 outf.write(digest)
 outf.close()
-print "Done."
+print("Done.")
