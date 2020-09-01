@@ -27,6 +27,8 @@
 // needed by the switch
 #define tassert(cond) assert((cond))
 
+#define PANDA_MSG ""
+
 const int CB_WIDTH = 128;
 const llvm::APInt NOT_LITERAL(CB_WIDTH, ~0UL);
 
