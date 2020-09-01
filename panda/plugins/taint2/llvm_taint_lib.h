@@ -145,8 +145,8 @@ private:
     bool isEnvPtr(Value *V);
     bool isCPUStateAdd(BinaryOperator *AI);
     bool isIrrelevantAdd(BinaryOperator *AI);
-    void addOperandsToArgumentList(vector<Value *> &args, Instruction &I,
-        Instruction *before);
+    void addInstructionDetailsToArgumentList(vector<Value *> &args,
+        Instruction &I, Instruction *before);
     void inlineCall(CallInst *CI);
     Value *ptrToInt(Value *ptr, Instruction &I);
     Function *getFunction(Module *m, TaintOpsFunction &func);
@@ -183,6 +183,7 @@ private:
     void insertTaintQueryNonConstPc(Instruction &I, Value *cond);
     void insertStateOp(Instruction &I);
     uint64_t getInstructionFlags(Instruction &I);
+    Instruction *getResult(Instruction *I);
 
 public:
     LLVMContext *ctx;

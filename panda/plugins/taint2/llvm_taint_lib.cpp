@@ -606,8 +606,43 @@ void PandaTaintVisitor::insertAfterTaintLd(Instruction &I,
     insertCallAfter(I, afterLdF, args);    
 }
 
-void PandaTaintVisitor::addOperandsToArgumentList(vector<Value *> &args,
-    Instruction &I, Instruction *before) {
+void PandaTaintVisitor::addInstructionDetailsToArgumentList(
+    vector<Value *> &args, Instruction &I, Instruction *before) {
+
+    // taint_copy() (taint_ops.cpp) assumes opcode 0 is not a valid opcode
+    Constant *opcode = const_uint64(I.getOpcode());
+    Constant *instruction_flags = const_uint64(getInstructionFlags(I));
+
+    args.push_back(opcode);
+    args.push_back(instruction_flags);
+
+    switch(I.getOpcode()) {
+        // If taint_ops aren't going to act on the operands, don't bother
+        // passing them to the taint_ops function.
+        case llvm::Instruction::Trunc:
+        case llvm::Instruction::ZExt:
+        case llvm::Instruction::IntToPtr:
+        case llvm::Instruction::PtrToInt:
+        case llvm::Instruction::BitCast:
+        case llvm::Instruction::SExt:
+        case llvm::Instruction::Store:
+        case llvm::Instruction::Load:
+        case llvm::Instruction::ExtractValue:
+        case llvm::Instruction::InsertValue:
+        case llvm::Instruction::FAdd:
+        case llvm::Instruction::FSub:
+        case llvm::Instruction::FMul:
+        case llvm::Instruction::FDiv:
+        case llvm::Instruction::FRem:
+        case llvm::Instruction::Call:
+        case llvm::Instruction::ICmp:
+        case llvm::Instruction::FCmp:
+            args.push_back(const_uint64(0));
+            return;
+        default:
+            break;
+    }
+    args.push_back(const_uint64(I.getNumOperands()));
 
     for(auto it = I.value_op_begin(); it != I.value_op_end(); it++) {
         if(it->getType()->isIntegerTy(64)) {
@@ -639,22 +674,13 @@ void PandaTaintVisitor::insertTaintBulk(Instruction &I,
         dest = (destCI = insertLogPop(I));
     }
 
-    auto opc = I.getOpcode();
-
-    // taint_copy() (taint_ops.cpp) assumes opcode 0 is not a valid opcode
-    assert(opc != 0);
-
-    Constant *opcode = const_uint64(opc);
-    Constant *instruction_flags = const_uint64(getInstructionFlags(I));
-
     Instruction *after = srcCI ? srcCI : (destCI ? destCI : &I);
     Instruction *next = after->getNextNode();
 
     vector<Value *> args { shad_dest, dest, shad_src, src,
-        const_uint64(size), opcode, instruction_flags,
-        const_uint64(I.getNumOperands()) };
+        const_uint64(size) };
 
-    addOperandsToArgumentList(args, I, next);
+    addInstructionDetailsToArgumentList(args, I, next);
 
     insertCallBefore(*next, copyF, args);
 
@@ -713,16 +739,12 @@ void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *dest,
     Constant *dest_size = const_uint64(getValueSize(dest));
     Constant *src_size = const_uint64(getValueSize(src));
 
-    Constant *opcode = const_uint64(I.getOpcode());
-    Constant *instruction_flags = const_uint64(getInstructionFlags(I));
-
-    vector<Value *> args{ llvConst, constSlot(dest), dest_size,
-        constSlot(src), src_size, opcode, instruction_flags,
-        const_uint64(I.getNumOperands()) };
+    vector<Value *> args { llvConst, constSlot(dest), dest_size,
+        constSlot(src), src_size };
 
     Instruction *next = I.getNextNode();
 
-    addOperandsToArgumentList(args, I, next);
+    addInstructionDetailsToArgumentList(args, I, next);
 
     insertCallBefore(*next, mixF, args);
 }
@@ -730,6 +752,32 @@ void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *dest,
 void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *src1,
         Value *src2, bool is_mixed) {
     insertTaintCompute(I, &I, src1, src2, is_mixed);
+}
+
+Instruction *PandaTaintVisitor::getResult(Instruction *I) {
+
+    Instruction *iResult = I;
+    Instruction *next = iResult->getNextNode();
+
+    // Extract result (or an element of the result for vector operations)
+    // and pass to taint ops function to prevent JIT optimizer from
+    // optimizing out I
+    if(iResult->getType()->isVectorTy()) {
+        iResult = ExtractElementInst::Create(iResult, const_uint64(0), "",
+            next);
+    }
+
+    if(iResult->getType()->isAggregateType()) {
+        iResult = ExtractValueInst::Create(iResult, ArrayRef<unsigned>(0), "", next);
+    }
+
+    if(iResult->getType()->isFloatingPointTy()) {
+        iResult = new FPToSIInst(iResult, int64T, "", next);
+    } else if(!iResult->getType()->isIntegerTy(64)) {
+        iResult = CastInst::CreateIntegerCast(iResult, int64T, false, "", next);
+    }
+
+    return iResult;
 }
 
 // Compute operations
@@ -753,24 +801,7 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest,
 
     TaintOpsFunction &func = is_mixed ? mix_computeF : parallel_computeF;
 
-    Instruction *next;
-    Instruction *iResult = &I;
-    next = I.getNextNode();
-
-    // Extract result (or an element of the result for vector operations)
-    // and pass to taint ops function to prevent JIT optimizer from
-    // optimizing out I
-    if(I.getType()->isVectorTy()) {
-        iResult = ExtractElementInst::Create(iResult, zeroConst, "",
-            next);
-        iResult = CastInst::CreateIntegerCast(iResult, int64T, false, "",
-            next);
-    } else if(I.getType()->isFloatingPointTy()) {
-        iResult = new FPToSIInst(iResult, int64T, "", next);
-    } else {
-        iResult = CastInst::CreateIntegerCast(iResult, int64T, false, "",
-            next);
-    }
+    Instruction *iResult = getResult(&I);
 
     if (!is_mixed) {
         assert(getValueSize(dest) == getValueSize(src1));
@@ -860,13 +891,7 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest,
         arg2_hi = b.CreateSelect(tmp, maxConst, zeroConst);
     }
 
-    Value *iResult;
-
-    if(I.getType()->isFloatingPointTy()) {
-        iResult = b.CreateFPToSI(&I, int64T);
-    } else {
-        iResult = b.CreateIntCast(&I, int64T, false);
-    }
+    Value *iResult = getResult(&I);
 
     vector<Value *> args { llvConst, dslot, dest_size, src1slot, src2slot,
         src_size, arg1_lo, arg1_hi, arg2_lo, arg2_hi,
@@ -1563,38 +1588,26 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
 #ifdef TARGET_I386
         } else if (calledName == "helper_outb") {
 
-            Constant *opcode = const_uint64(I.getOpcode());
-            Constant *instruction_flags =
-                const_uint64(getInstructionFlags(I));
-
             // Call taint_copy to copy taint from LLVM to the EAX register. We
             // have to copy taint here to ensure that EAX becomes tainted.
             vector<Value *> args { grvConst, const_uint64(R_EAX), llvConst,
-                constWeakSlot(I.getArgOperand(2)), oneConst,
-                opcode, instruction_flags,
-                const_uint64(I.getNumOperands()) };
+                constWeakSlot(I.getArgOperand(2)), oneConst };
 
-            addOperandsToArgumentList(args, I, &I);
+            addInstructionDetailsToArgumentList(args, I, &I);
 
             insertCall(I, copyF, args, true, false);
             // For output, we have to propagate taint before the helper function
             // is executed because the helper would likely have some side effect
             // on the device.
         } else if (calledName == "helper_inb") {
-            Constant *opcode = const_uint64(I.getOpcode());
-            Constant *instruction_flags =
-                const_uint64(getInstructionFlags(I));
-
             // Call taint_copy to copy taint from EAX to LLVM. The helper's
             // return value is the value on the IO port and so the taint data
             // (if any) will be associated with the return value.
             vector<Value *> args { llvConst, constSlot(&I), grvConst,
-                const_uint64(R_EAX), oneConst,
-                opcode, instruction_flags,
-                const_uint64(I.getNumOperands()) };
+                const_uint64(R_EAX), oneConst };
 
             Instruction *next = I.getNextNode();
-            addOperandsToArgumentList(args, I, next);
+            addInstructionDetailsToArgumentList(args, I, next);
 
             insertCall(*next, copyF, args, false, false);
             // For input, we have to propagate taint after the helper function
