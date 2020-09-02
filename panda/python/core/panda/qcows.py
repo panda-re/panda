@@ -1,21 +1,14 @@
-"""
-Helper library for managing qcows on your filesystem.
-Given an architecture, it can download a qcow from moyix to ~/.panda/ and then use that
-Given a path to a qcow, it can use that
-A qcow loaded by architecture can then be queried to get the name of the root snapshot or prompt
-"""
-
-import os
-import subprocess
+from os import path, remove, makedirs
 import logging
 from sys import argv
+from subprocess import check_call
 from collections import namedtuple
 
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-VM_DIR = os.path.join(os.path.expanduser("~"), ".panda")
+VM_DIR = path.join(path.expanduser("~"), ".panda")
 
 Image = namedtuple('Image', ['arch', 'os', 'prompt', 'cdrom', 'snapshot', 'url', 'extra_files', 'qcow', 'default_mem', 'extra_args'])
 Image.__doc__ = """The Image class stores important information about an image."""
@@ -141,83 +134,93 @@ SUPPORTED_IMAGES['arm']    = SUPPORTED_IMAGES['arm_wheezy']
 SUPPORTED_IMAGES['mips']   = SUPPORTED_IMAGES['mips_wheezy']
 SUPPORTED_IMAGES['mipsel'] = SUPPORTED_IMAGES['mipsel_wheezy']
 
-def get_qcow_info(name=None):
+class Qcows():
     '''
-    Return information about supported image as specified by name.
-
-        Parameters:
-            name: python string idenfifying a qcow supported
-        
-        Returns:
-            Image class for qcow
+    Helper library for managing qcows on your filesystem.
+    Given an architecture, it can download a qcow from panda-re.mit.edu to ~/.panda/ and then use that.
+    Alternatively, if a path to a qcow is provided, it can just use that.
+    A qcow loaded by architecture can then be queried to get the name of the root snapshot or prompt
     '''
-    if name is None:
-        logger.warning("No qcow name provided. Defaulting to i386")
-        name = "i386"
 
-    if os.path.isfile(name):
-        raise RuntimeError("TODO: can't automatically determine system info from custom qcows. Use one of: {}".format(", ".os.path.join(SUPPORTED_IMAGES.keys())))
+    def get_qcow_info(name=None):
+        '''
+        Return information about supported image as specified by name.
 
-    name = name.lower() # Case insensitive. Assumes supported_arches keys are lowercase
-    if name not in SUPPORTED_IMAGES.keys():
-        raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".join(SUPPORTED_IMAGES.keys())))
+            Parameters:
+                name: python string idenfifying a qcow supported
+            
+            Returns:
+                Image class for qcow
+        '''
+        if name is None:
+            logger.warning("No qcow name provided. Defaulting to i386")
+            name = "i386"
 
-    r = SUPPORTED_IMAGES[name]
-    # Move properties in .arch to being in the main object
-    return r
+        if path.isfile(name):
+            raise RuntimeError("TODO: can't automatically determine system info from custom qcows. Use one of: {}".format(", ".join(SUPPORTED_IMAGES.keys())))
 
-def get_qcow(name=None):
-    '''
-    Given a generic name of a qcow or a path to a qcow, return the path. Defaults to i386
+        name = name.lower() # Case insensitive. Assumes supported_arches keys are lowercase
+        if name not in SUPPORTED_IMAGES.keys():
+            raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".join(SUPPORTED_IMAGES.keys())))
 
-        Parameters:
-            name: generic name or path to qcow
-        
-        Returns:
-            path to qcow
-    '''
-    if name is None:
-        logger.warning("No qcow name provided. Defaulting to i386")
-        name = "i386"
+        r = SUPPORTED_IMAGES[name]
+        # Move properties in .arch to being in the main object
+        return r
 
-    if os.path.isfile(name):
-        logger.debug("Provided qcow name appears to be a path, returning it directly: %s", name)
-        return name
+    def get_qcow(name=None):
+        '''
+        Given a generic name of a qcow or a path to a qcow, return the path. Defaults to i386
 
-    name = name.lower() # Case insensitive. Assumes supported_images keys are lowercase
-    if name not in SUPPORTED_IMAGES.keys():
-        raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".os.path.join(SUPPORTED_IMAGES.keys())))
+            Parameters:
+                name: generic name or path to qcow
+            
+            Returns:
+                path to qcow
+        '''
+        if name is None:
+            logger.warning("No qcow name provided. Defaulting to i386")
+            name = "i386"
 
-    image_data = SUPPORTED_IMAGES[name]
-    qc = image_data.qcow
-    if not qc: # Default, get name from url
-        qc = image_data.url.split("/")[-1]
-    qcow_path = os.path.join(VM_DIR,qc)
-    os.makedirs(VM_DIR, exist_ok=True)
+        if path.isfile(name):
+            logger.debug("Provided qcow name appears to be a path, returning it directly: %s", name)
+            return name
 
-    if not os.path.isfile(qcow_path):
-        print("\nQcow {} doesn't exist. Downloading from https://panda-re.mit.edu. Thanks MIT!\n".format(qc))
-        try:
-            subprocess.check_call(["wget", "--quiet", image_data.url, "-O", qcow_path])
-            for extra_file in image_data.extra_files or []:
-                extra_file_path = os.path.join(VM_DIR, extra_file)
-                url = image_data.url[:image_data.url.rfind("/")] + "/" + extra_file # Truncate url to last /, then add extra_file
-                subprocess.check_call(["wget", "--quiet", url, "-O", extra_file_path])
-        except Exception as e:
-            logger.info("Download failed, deleting partial file(s): %s", qcow_path)
-            os.remove(qcow_path)
-            for extra_file in image_data.extra_files or []:
-                try:
-                    os.remove(os.path.join(VM_DIR, extra_file))
-                except: # Extra files might not exist
-                    pass
-            raise e # Reraise
-        logger.debug("Downloaded %s to %s", qc, qcow_path)
-    return qcow_path
+        name = name.lower() # Case insensitive. Assumes supported_images keys are lowercase
+        if name not in SUPPORTED_IMAGES.keys():
+            raise RuntimeError("Architecture {} is not in list of supported names: {}".format(name, ", ".join(SUPPORTED_IMAGES.keys())))
 
-def qcow_from_arg(idx=1):
-    ''' Given an index into argv, call get_qcow with that arg if it exists, else with None'''
-    if (len(argv) > idx):
-        return get_qcow(argv[idx])
-    else:
-        return get_qcow()
+        image_data = SUPPORTED_IMAGES[name]
+        qc = image_data.qcow
+        if not qc: # Default, get name from url
+            qc = image_data.url.split("/")[-1]
+        qcow_path = path.join(VM_DIR,qc)
+        makedirs(VM_DIR, exist_ok=True)
+
+        if not path.isfile(qcow_path):
+            print("\nQcow {} doesn't exist. Downloading from https://panda-re.mit.edu. Thanks MIT!\n".format(qc))
+            try:
+                check_call(["wget", "--quiet", image_data.url, "-O", qcow_path])
+                for extra_file in image_data.extra_files or []:
+                    extra_file_path = path.join(VM_DIR, extra_file)
+                    url = image_data.url[:image_data.url.rfind("/")] + "/" + extra_file # Truncate url to last /, then add extra_file
+                    check_call(["wget", "--quiet", url, "-O", extra_file_path])
+            except Exception as e:
+                logger.info("Download failed, deleting partial file(s): %s", qcow_path)
+                remove(qcow_path)
+                for extra_file in image_data.extra_files or []:
+                    try:
+                        remove(path.join(VM_DIR, extra_file))
+                    except: # Extra files might not exist
+                        pass
+                raise e # Reraise
+            logger.debug("Downloaded %s to %s", qc, qcow_path)
+        return qcow_path
+
+    def qcow_from_arg(idx=1):
+        '''
+        Given an index into argv, call get_qcow with that arg if it exists, else with None
+        '''
+        if (len(argv) > idx):
+            return get_qcow(argv[idx])
+        else:
+            return get_qcow()

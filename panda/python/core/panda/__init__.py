@@ -10,7 +10,6 @@ ancestors.
 Check out our example plugins here: https://github.com/panda-re/panda/tree/master/panda/python/examples
 """
 
-from .main import Panda
-from .decorators import blocking
+from .main import Panda, blocking
 from .ffi_importer import ffi
 from .extras import *

@@ -21,7 +21,7 @@ we alert if it is tainted.
 from sys import argv
 from os import path
 from panda import Panda, blocking, ffi
-from panda.x86.helper import *
+from panda.helper.x86 import *
 
 arch = "x86_64" if len(argv) <= 1 else argv[1]
 extra = "-nographic"
