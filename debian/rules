@@ -1,0 +1,156 @@
+#!/usr/bin/make -f
+SHELL = /bin/sh -e
+
+# get DEB_VERSION
+include /usr/share/dpkg/pkg-info.mk
+# get DEB_HOST_ARCH DEB_HOST_ARCH_OS DEB_HOST_GNU_TYPE DEB_BUILD_GNU_TYPE
+include /usr/share/dpkg/architecture.mk
+# get CFLAGS LDFLAGS etc
+include /usr/share/dpkg/buildflags.mk
+
+ifeq ($(shell dpkg-vendor --derives-from Ubuntu && echo yes),yes)
+VENDOR := UBUNTU
+DEB_BUILD_PARALLEL = yes
+else
+VENDOR := DEBIAN
+endif
+
+# support parallel build using DEB_BUILD_OPTIONS=parallel=N
+ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+  MAKEFLAGS += -j$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+endif
+
+# verbose build
+V ?= 1
+
+# list of packages we're supposed to build
+BUILD_PACKAGES = $(call dpkg_late_eval,BUILD_PACKAGES,dh_listpackages)
+
+DATAPATH = /usr/share/panda
+
+# we add another set of configure options from debian/control
+common_configure_opts = \
+	--with-pkgversion="Debian $(DEB_VERSION)" \
+	--extra-cflags="$(CFLAGS) $(CPPFLAGS) -DCONFIG_QEMU_DATAPATH='\"${DATAPATH}\"' -DVENDOR_$(VENDOR)" \
+	--extra-ldflags="$(LDFLAGS) -Wl,--as-needed" \
+	--prefix=/usr \
+	--sysconfdir=/etc \
+	--libexecdir=/usr/lib/panda \
+	--localstatedir=/var \
+	--disable-blobs \
+	--disable-strip \
+	--with-system-pixman \
+	--localstatedir=/var \
+	--disable-docs \
+	--disable-libiscsi \
+	--disable-pie \
+	--disable-xen \
+
+	# Old panda config:
+	#./configure --prefix=/usr --disable-pie --disable-xen \
+	#	--disable-docs --disable-libiscsi --extra-ldflags="-lpthread" \
+	#	--target-list=x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmubb --disable-strip
+
+# list of system (softmmu) targets, from ./configure
+system_targets = \
+ i386 x86_64 arm mips mipsel ppc 
+
+# qemu-system subpackages, from d/control # XXX: No longer needed?
+sys_systems = arm mips ppc sparc x86
+systems = ${sys_systems}
+sysarch_arm   = $(filter aarch64 arm,${system_targets})
+sysarch_mips  = $(filter mips mipsel,${system_targets}) # XXX: removed  mips64 mips64el
+sysarch_ppc   = $(filter ppc,${system_targets}) # XXX: removed ppc64 ppcemb
+sysarch_x86   = $(filter i386 x86_64,${system_targets})
+
+configure-stamp: configure
+	dh_testdir
+
+	# system build
+	rm -rf panda-build; mkdir panda-build
+	cd panda-build && \
+	    ../configure ${common_configure_opts} --disable-user \
+		--enable-system \
+		$(shell sh debian/extract-config-opts \
+		    $(DEB_HOST_ARCH_OS)-$(DEB_HOST_ARCH) debian/control) \
+		$(QEMU_CONFIGURE_OPTIONS) || \
+	 { echo ===== CONFIGURE FAILED ===; tail -n 50 config.log; exit 1; }
+
+	touch $@
+
+build: build-arch build-indep
+build-arch: build-stamp
+build-indep: build-stamp
+build-stamp: configure-stamp
+	dh_testdir
+
+	# system and utils build
+	$(MAKE) -C panda-build V=${V}
+	dtc -o panda-build/pc-bios/bamboo.dtb pc-bios/bamboo.dts
+
+	touch $@
+
+clean:	debian/control
+	dh_testdir
+	rm -rf panda-build user-static-build
+	rm -f configure-stamp build-stamp
+	find scripts/ -name '*.pyc' -delete || :
+	dh_clean
+
+# define ${ai} variable to be one of -i (indep), -a (arch) or nothing (both)
+ai :=
+binary-indep: ai := -i
+binary-indep: install
+binary-arch: ai := -a
+binary-arch: install
+binary: install
+
+define inst-system
+# remove alternatives handling for jessie+1
+# remove alternatives in system-$1 for testing->jessie upgrade path
+	sed 's/@ARCH@/${sysarch_$1}/' debian/panda-system-alternatives.in > debian/panda-system-$1.postinst.debhelper
+	mkdir -p debian/panda-system-$1/usr/share/man/man1 debian/panda-system-$1/usr/bin
+	for t in ${sysarch_$1}; do \
+	    mv debian/tmp/usr/bin/panda-system-$$t debian/panda-system-$1/usr/bin/; \
+	    echo ".so man1/panda-system.1" > debian/panda-system-$1/usr/share/man/man1/panda-system-$$t.1; \
+	done
+	echo sysarch:$1=${sysarch_$1} > debian/panda-system-$1.substvars
+	echo sysprovides:$1=${addprefix panda-system-,${filter-out $1,${sysarch_$1}}} | \
+	  sed -e 's/ /, /g' -e 'y/_/-/' >> debian/panda-system-$1.substvars
+	dh_link -ppanda-system-$1 usr/share/doc/panda-system-common usr/share/doc/panda-system-$1/common
+
+endef
+
+install: build-stamp
+	dh_testdir
+	dh_testroot
+	dh_prep
+	dh_installdirs -a
+
+	# system and utils install
+	$(MAKE) -C panda-build DESTDIR=$(CURDIR)/debian/tmp install
+
+	# panda-system subpackages
+	mv debian/tmp/usr/share/man/man1/panda.1 debian/tmp/usr/share/man/man1/panda-system.1
+	$(foreach s,${systems},$(call inst-system,$s))
+# remove alternatives handling for jessie+1
+# remove alternatives in qemu-system (metapkg) for wheezy->jessie upgrade path
+	#sed 's/@ARCH@/${system_targets}/' debian/qemu-system-alternatives.in > debian/qemu-system.postinst.debhelper # XXX?
+
+# install whole thing so --list-missing works right
+	dh_install --list-missing
+# install the rest for arch/indep as needed
+
+ifneq (,$(wildcard debian/control-in))
+# only include rules for debian/control if debian/control-in is present
+debian/control: debian/control-in debian/rules
+	sed -e 's/^:$(shell echo ${VENDOR} | tr '[A-Z]' '[a-z]')://' \
+		-e '/^:[a-z]*:/D' $< > $@.tmp
+	mv -f $@.tmp $@
+endif
+
+get-orig-source:
+	./debian/get-orig-source.sh ${DEB_VERSION}
+
+.PHONY: build clean binary-indep binary-arch binary install get-orig-source
+

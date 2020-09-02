@@ -1,0 +1,83 @@
+Source: panda
+Section: otherosfs
+Priority: extra
+Maintainer: Andrew Fasano <fasano@mit.edu>
+Build-Depends: debhelper (>= 9.0.0),
+# PANDA packages
+ libarchive-dev,
+# normal QEMU packages
+ libattr1-dev,
+ libcap-dev,
+ libcurl4-gnutls-dev,
+ libglib2.0-dev,
+ libgnutls-dev | libgnutls28-dev,
+ libncurses5-dev,
+ libpcap-dev,
+ libpng12-dev | libpng-dev,
+ libsdl1.2-dev (>> 1.2.1),
+ libssl-dev,
+ libtool,
+ uuid-dev,
+ nasm,
+ zlib1g-dev
+Build-Conflicts: oss4-dev
+Standards-Version: 3.9.5
+Homepage: https://panda-re.mit.edu/
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-qemu/qemu.git
+Vcs-Git: git@github.com:panda-re/panda.git 
+
+
+Package: panda
+Section: otherosfs
+Priority: extra
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends} panda-system (>= ${source:version})
+Description: dynamic analysis platform
+ Platform for Architecture Neutral Dynamic Analysis (PANDA) is a processor
+ emulator designed to support analyses of guest code. PANDA supports record-
+ and-replay based analyses as well as analyses on live systems. PANDA is forked
+ from the QEMU emulator.
+ Panda currently supports i386, x86_64, ARM, MIPS, and PPC.
+ This package is a metapackage depending on all PANDA packages.
+
+# If we build another package for panda helpers (i.e., panda-common) we can add it as a dependency here
+
+# DEBUG: removed some panda-system deps
+#panda-system-arm,
+#panda-system-mips,
+#panda-system-ppc, 
+
+Package: panda-system
+Architecture: amd64
+Depends: ${misc:Depends},
+ panda-system-x86,
+Description: dynamic analysis platform
+ Platform for Architecture Neutral Dynamic Analysis (PANDA) is a processor
+ emulator designed to support analyses of guest code. PANDA supports record-
+ and-replay based analyses as well as analyses on live systems. PANDA is forked
+ from the QEMU emulator.
+ Panda currently supports i386, x86_64, ARM, MIPS, and PPC.
+ This package is a metapackage depending on all PANDA packages.
+ This metapackage provides the full system emulation binaries for all supported
+ targets, by depending on all per-architecture system emulation packages which
+ PANDA supports.
+
+Package: panda-system-arm
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: PANDA full system emulation/analysis binaries (arm)
+
+Package: panda-system-mips
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: PANDA full system emulation/analysis binaries (mips)
+
+Package: panda-system-ppc
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: PANDA full system emulation/analysis binaries (ppc)
+
+Package: panda-system-x86
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: PANDA full system emulation/analysis binaries (x86)
