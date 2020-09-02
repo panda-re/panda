@@ -4,7 +4,7 @@
 from time import sleep
 from sys import argv
 from panda import Panda, blocking
-from panda.x86.helper import *
+from panda.helper.x86 import *
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]

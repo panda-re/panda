@@ -7,7 +7,7 @@ import capstone
 import os
 
 from panda import Panda, ffi
-from panda.arm.helper import dump_regs, registers
+from panda.helper.arm import dump_regs, registers
 
 ARM_CODE   = b"\x37\x00\xa0\xe3\x03\x10\x42\xe0" # mov r0, #0x37; sub r1, r2, r3
 ADDRESS = 0x1000

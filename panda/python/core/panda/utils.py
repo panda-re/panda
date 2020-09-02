@@ -1,37 +1,36 @@
-"""
-Useful utilities for use in pypanda.
-"""
+# Helper utilities functions and classes for use in pypanda.
 
-
-import sys
-import subprocess
-import shlex
-from os import devnull
 from colorama import Fore, Style
+from functools import wraps
+from os import devnull
+from subprocess import check_call, STDOUT
+from sys import platform
+from threading import current_thread, main_thread
 
-# This debug variable
+# Set to enable pypanda debugging
 debug = False
 
 def progress(msg):
-    """Helpful printing utility"""
-    print(Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
+    """
+    Print a message with a green "[PYPANDA]" prefix
+    """
+    print(Fore.GREEN + '[PYPANDA] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
 
 def make_iso(directory, iso_path):
-    """Generates iso from path"""
+    '''
+    Generate an iso from a directory
+    '''
     with open(devnull, "w") as DEVNULL:
-        if sys.platform.startswith('linux'):
-            subprocess.check_call([
+        if platform.startswith('linux'):
+            check_call([
                 'genisoimage', '-RJ', '-max-iso9660-filenames', '-o', iso_path, directory
-            ], stderr=subprocess.STDOUT if debug else DEVNULL)
-        elif sys.platform == 'darwin':
-            subprocess.check_call([
+            ], stderr=STDOUT if debug else DEVNULL)
+        elif platform == 'darwin':
+            check_call([
                 'hdiutil', 'makehybrid', '-hfs', '-joliet', '-iso', '-o', iso_path, directory
-            ], stderr=subprocess.STDOUT if debug else DEVNULL)
+            ], stderr=STDOUT if debug else DEVNULL)
         else:
             raise NotImplementedError("Unsupported operating system!")
-
-def disasemble(panda, addr, size):
-    raise NotImplementedError()
 
 def telescope(panda, cpu, val):
     '''
@@ -74,3 +73,68 @@ def telescope(panda, cpu, val):
 
     print("-> ...")
 
+def blocking(func):
+    """
+    Decorator to ensure a function isn't run in the main thread
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        assert (current_thread() is not main_thread()), "Blocking function run in main thread"
+        return func(*args, **kwargs)
+    wrapper.__blocking__ = True
+    wrapper.__name__ = func.__name__ + " (with async thread)"
+    return wrapper
+
+class Hook(object):
+    '''
+    Maintains the state of a hook as defined by a user.
+    '''
+    def __init__(self,is_enabled=True,is_kernel=True,hook_cb=True,target_addr=0,target_library_offset=0,library_name=None,program_name=None):
+        self.is_enabled = is_enabled
+        self.is_kernel = is_kernel
+        self.hook_cb = hook_cb
+        self.target_addr = target_addr
+        self.target_library_offset = target_library_offset
+        self.library_name = library_name
+        self.program_name = program_name
+
+class GArrayIterator():
+    '''
+    Iterator which will run a function on each iteration incrementing
+    the second argument. Useful for GArrays with an accessor function
+    that takes arguments of the GArray and list index. e.g., osi's
+    get_one_module.
+    '''
+    def __init__(self, func, garray, garray_len, cleanup_fn):
+        self.garray = garray
+        self.garray_len = garray_len
+        self.current_idx = 0
+        self.func = func
+        self.cleanup_func = cleanup_fn
+
+    def __iter__(self):
+        self.current_idx = 0
+        return self
+
+    def __next__(self):
+        if self.current_idx >= self.garray_len:
+            raise StopIteration
+        # Would need to make this configurable before using MappingIter with other types
+        ret = self.func(self.garray, self.current_idx)
+        self.current_idx += 1
+        return ret
+
+    def __del__(self):
+        self.cleanup_func(self.garray)
+
+class plugin_list(dict):
+    '''
+    Wrapper class around list of active C plugins
+    '''
+    def __init__(self,panda):
+        self._panda = panda
+        super().__init__()
+    def __getitem__(self,plugin_name):
+        if plugin_name not in self:
+            self._panda.load_plugin(plugin_name)
+        return super().__getitem__(plugin_name)

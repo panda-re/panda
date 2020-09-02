@@ -7,7 +7,7 @@ import capstone
 import os
 
 from panda import Panda, ffi
-from panda.x86.helper import dump_regs, registers
+from panda.helper.x86 import dump_regs, registers
 
 X86_CODE   = b"\x40\x01\xC3\x41" # inc eax; add ebx, eax; inc ecx;
 ADDRESS = 0x1000

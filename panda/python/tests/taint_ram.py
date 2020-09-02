@@ -6,7 +6,7 @@ import capstone
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
 from panda import Panda, blocking, ffi
-from panda.x86.helper import *
+from panda.helper.x86 import *
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]
