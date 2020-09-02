@@ -10,17 +10,21 @@ logger.setLevel(logging.DEBUG)
 
 VM_DIR = path.join(path.expanduser("~"), ".panda")
 
-Image = namedtuple('Image', ['arch', 'os', 'prompt', 'cdrom', 'snapshot', 'url', 'extra_files', 'qcow', 'default_mem', 'extra_args'])
-Image.__doc__ = """The Image class stores important information about an image."""
-Image.arch.__doc__ =  """Arch for the given architecture."""
-Image.os.__doc__ = """an os string we can pass to panda with -os"""
-Image.prompt.__doc__ = """a regex to detect a bash prompt after loading the snapshot and sending commands"""
-Image.cdrom.__doc__ = """name to use for cd-drive when inserting an ISO via monitor"""
-Image.qcow.__doc__ = """optional name to save qcow as"""
-Image.url.__doc__ = """url to download the qcow (e.g. http:// website.com/yourqcow.qcow2)"""
-Image.default_mem.__doc__ = """memory to use for the root snapshot (e.g. 1G)"""
-Image.extra_files.__doc__ = """other files (assumed to be in same directory on server) that we also need"""
-Image.extra_args.__doc__ = """Extra arguments to pass to PANDA (e.g. '-nographic') """
+class Image(namedtuple('Image', ['arch', 'os', 'prompt', 'cdrom', 'snapshot', 'url', 'extra_files', 'qcow', 'default_mem', 'extra_args'])):
+    '''
+    The Image class stores information about a supported PANDA image:
+
+        Fields:
+            arch : Arch for the given architecture.
+            os : an os string we can pass to panda with -os
+            prompt : a regex to detect a bash prompt after loading the snapshot and sending commands
+            cdrom : name to use for cd-drive when inserting an ISO via monitor
+            qcow : optional name to save qcow as
+            url : url to download the qcow (e.g. https:// website.com/yourqcow.qcow2)
+            default_mem : memory to use for the root snapshot (e.g. 1G)
+            extra_files : other files (assumed to be in same directory on server) that we also need
+            extra_args : Extra arguments to pass to PANDA (e.g. '-nographic')
+    '''
 
 Image.__new__.__defaults__ = (None,) * len(Image._fields)
 

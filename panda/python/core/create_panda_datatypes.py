@@ -222,17 +222,14 @@ def define_clean_header(ffi, fname):
 
 from os import environ
 
-if "PANDA_BITS" in environ:
-    bits = int(environ["PANDA_BITS"])
-else:
-    print("DOCUMENT MODE")
+if "PANDA_BITS" not in environ and "PANDA_ARCH" not in environ:
+    print("Environment lacks PANDA_BITS and PANDA_ARCH. Assuming we're in documentation mode for 32-bit i386")
     bits = 32
-
-if "PANDA_ARCH" in environ:
-    arch = environ["PANDA_ARCH"]
-else:
-    print("DOCUMENT MODE")
     arch = "i386"
+else:
+    # If only one is set that's weird and we should crash
+    bits = int(environ["PANDA_BITS"])
+    arch = environ["PANDA_ARCH"]
 
 # For OSI
 ffi.cdef("typedef void GArray;")

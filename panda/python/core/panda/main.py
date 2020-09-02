@@ -36,17 +36,8 @@ from .plog import PLogReader
 class Panda():
     '''
     This is the object used to interact with PANDA. Initializing it creates a virtual machine to interact with.
-    '''
-    def __init__(self, arch="i386", mem="128M",
-            expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
-            os_version=None,
-            qcow=None, # Qcow file to load
-            os="linux",
-            generic=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
-            raw_monitor = False, # When set, don't specify a -monitor. arg Allows for use of -nographic in args with ctrl-A+C for interactive qemu prompt.
-            extra_args=[]):
-        '''
-        Attributes:
+
+        Parameters:
             arch : architecture string (e.g. "i386", "x86_64", "arm", "mips", "mipsel")
             mem : size of memory for machine (e.g. "128M", "1G")
             expect_prompt : Regular expression describing the prompt exposed by the guest 
@@ -61,7 +52,17 @@ class Panda():
                 -nographic in args with ctrl-A+C for interactive qemu prompt.
             extra_args : extra arguments to pass to PANDA as either a string or an 
                 array. (e.g. "-nographic" or ["-nographic", "-net", "none"])
-        '''
+
+    Note that multiple PANDA objects cannot coexist in the same Python instance.
+    '''
+    def __init__(self, arch="i386", mem="128M",
+            expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
+            os_version=None,
+            qcow=None, # Qcow file to load
+            os="linux",
+            generic=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
+            raw_monitor = False, # When set, don't specify a -monitor. arg Allows for use of -nographic in args with ctrl-A+C for interactive qemu prompt.
+            extra_args=[]):
         self.arch = arch
         self.mem = mem
         self.os = os_version
@@ -1697,10 +1698,14 @@ class Panda():
         globals()["PandaFileHandler"] = PandaFileHandler
 
     def get_volatility_symbols(self, debug=False):
-        from .volatility_cli_classes import CommandLineMoreEfficient
-        from volatility.framework import contexts
-        from volatility.framework.layers.linear import LinearlyMappedLayer
-        from volatility.framework.automagic import linux
+        try:
+            from .volatility_cli_classes import CommandLineMoreEfficient
+            from volatility.framework import contexts
+            from volatility.framework.layers.linear import LinearlyMappedLayer
+            from volatility.framework.automagic import linux
+        except ImportError:
+            print("Warning: Failed to import volatility")
+            return None
         if "linux" in self.os_type:
             if not hasattr(self, "_vmlinux"):
                 self.make_panda_file_handler(debug=debug)
@@ -1717,7 +1722,11 @@ class Panda():
             return None
 
     def run_volatility(self, plugin, debug=False):
-        from .volatility_cli_classes import CommandLineRunFullCommand, StringTextRenderer
+        try:
+            from .volatility_cli_classes import CommandLineRunFullCommand, StringTextRenderer
+        except ImportError:
+            print("Warning: Failed to import volatility")
+            return None
         self.make_panda_file_handler(debug=debug)
         cmd = CommandLineRunFullCommand().run("-q -f panda.panda " + plugin)
         output = StringTextRenderer().render(cmd.run())
@@ -2171,17 +2180,21 @@ class Panda():
         Unlike regular panda callbacks which can be enabled/disabled/deleted, PPP callbacks are only enabled/deleted (which we call disabled)
 
         Example usage to register my_run with syscalls2 as a 'on_sys_open_return' and then disable:
+        ```
         @ppp("syscalls2", "on_sys_open_return")
         def my_fun(cpu, pc, filename, flags, mode):
             ...
 
         panda.disable_ppp("my_fun")
+        ```
 
         -- OR --
 
+        ```
         @ppp("syscalls2", "on_sys_open_return", name="custom")
         def my_fun(cpu, pc, filename, flags, mode):
             ...
+        ```
 
         panda.disable_ppp("custom")
         '''
