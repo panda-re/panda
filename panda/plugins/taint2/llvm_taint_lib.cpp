@@ -193,6 +193,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 
     PTV->int1T = Type::getInt1Ty(*PTV->ctx);
     PTV->int64T = Type::getInt64Ty(*PTV->ctx);
+    PTV->int128T = Type::getInt128Ty(*PTV->ctx);
     PTV->int64P = Type::getInt64PtrTy(*PTV->ctx);
     PTV->voidT = Type::getVoidTy(*PTV->ctx);
 
@@ -644,13 +645,17 @@ void PandaTaintVisitor::addInstructionDetailsToArgumentList(
     }
     args.push_back(const_uint64(I.getNumOperands()));
 
+    const int target_ulong_in_bits = sizeof(target_ulong) * 8;
+
     for(auto it = I.value_op_begin(); it != I.value_op_end(); it++) {
-        if(it->getType()->isIntegerTy(64)) {
+        if(it->getType()->isIntegerTy(2 * target_ulong_in_bits)) {
             args.push_back(*it);
         } else if(it->getType()->isIntegerTy()) {
-            assert(it->getType()->getPrimitiveSizeInBits() < 64);
-            args.push_back(CastInst::CreateIntegerCast(*it, int64T, false,
-                "", before));
+            assert(it->getType()->getPrimitiveSizeInBits() <
+                (2 * target_ulong_in_bits));
+            args.push_back(CastInst::CreateIntegerCast(*it,
+                (target_ulong_in_bits == 64) ? int128T : int64T,
+                false, "", before));
         } else {
             args.push_back(zeroConst);
         }
