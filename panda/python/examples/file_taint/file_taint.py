@@ -14,7 +14,6 @@ import capstone
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
 from panda import Panda, blocking, ffi
-from panda.helper.x86 import *
 
 arch = "x86_64" if len(argv) <= 1 else argv[1]
 extra = "-nographic -chardev socket,id=monitor,path=./monitor.sock,server,nowait -monitor chardev:monitor -serial telnet:127.0.0.1:4445,server,nowait  -device e1000,netdev=net0 -netdev user,id=net0,hostfwd=tcp::5556-:22 -cdrom /home/luke/workspace/qcows/instance-1-cidata.iso"
@@ -44,7 +43,7 @@ def bbe(cpu, tb):
 		print('\nRunning function: {}'.format(mappings[tb.pc]))
 		if mappings[tb.pc] == "query_taint":
 			assert(tainted), "Can't query taint before tainting"
-			# EAX contains our result variable which should be tainted
+			# RAX contains our result variable which should be tainted
 			virt_addr = cpu.env_ptr.regs[7]
 			phys_addr = panda.virt_to_phys(cpu, virt_addr)
 			assert(panda.taint_check_ram(phys_addr)
@@ -71,7 +70,7 @@ def on_sys_read_return(cpustate, pc, fd, buf, count):
 	if info and not tainted:
 		cr3, fd1 = info
 		if cr3 == cpustate.env_ptr.cr[3] and fd == fd1:
-			returned = cpustate.env_ptr.regs[R_EAX]
+			returned = panda.arch.get_reg(cpustate, "RAX")
 			buf_read = panda.virtual_memory_read(cpustate, buf, returned)
 			for idx in range(returned):
 				taint_vaddr = buf+idx
@@ -94,7 +93,7 @@ def on_sys_open_return(cpustate, pc, filename, flags, mode):
 	print(f"on_sys_open_enter: {fname_total}")
 	if b"panda" in fname_total:
 		global info
-		info = cpustate.env_ptr.cr[3], cpustate.env_ptr.regs[R_EAX]
+		info = panda.current_asid(cpustate), panda.arch.get_reg(cpustate, "RAX")
 
 panda.plugins["syscalls2"].__getattr__(f"ppp_add_cb_{cb_name}")(on_sys_open_return)
 panda.disable_tb_chaining()
