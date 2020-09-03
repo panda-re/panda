@@ -199,13 +199,13 @@ mkdir build
 cd build
 if [ "$version" -eq "20" ]; then
   if [ -z "$@" ]; then
-    ../build.sh "x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu --disable-werror --disable-pyperipheral3"
+    ../build.sh "x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu --disable-werror --disable-pyperipheral3"
   else
     ../build.sh "$@"
   fi
 elif [ "$version" -eq "19" ]; then
   if [ -z "$@" ]; then
-    ../build.sh "x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu --disable-werror"
+    ../build.sh "x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu --disable-werror"
   else
     ../build.sh "$@"
   fi
