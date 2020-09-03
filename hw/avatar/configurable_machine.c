@@ -36,7 +36,6 @@
 #include "hw/avatar/arm_helper.h"
 #include "hw/cpu/a9mpcore.h"
 typedef ARMCPU THISCPU;
-#endif
 
 #elif defined(TARGET_I386) || defined(TARGET_X86_64)
 #include "hw/i386/pc.h"
@@ -215,6 +214,7 @@ static SysBusDevice *make_configurable_device(const char *qemu_name,
     s = SYS_BUS_DEVICE(dev);
     sysbus_mmio_map(s, 0, address);
 
+#if defined(TARGET_ARM)
     if (!strcmp(qemu_name, "a9mpcore_priv")) {
         /*  TODO more generic irq connection */
         printf("cooking interrupts\n");
@@ -227,6 +227,10 @@ static SysBusDevice *make_configurable_device(const char *qemu_name,
         irq = qemu_allocate_irq(dummy_interrupt, dev, 1);
         sysbus_connect_irq(s, 0, irq);
     }
+#else
+    irq = qemu_allocate_irq(dummy_interrupt, dev, 1);
+    sysbus_connect_irq(s, 0, irq);
+#endif
 
     return s;
 }
@@ -593,7 +597,9 @@ QObject * configurable_get_peripheral(char * name) {
     return qdict_get(peripherals, name);
 }
 
+#if defined(TARGET_ARM)
 void configurable_a9mp_inject_irq(void *opaque, int irq, int level){
     A9MPPrivState *s = (A9MPPrivState *)opaque;
     qemu_set_irq(qdev_get_gpio_in(DEVICE(&s->gic), irq), level);
 }
+#endif

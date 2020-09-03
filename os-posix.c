@@ -47,7 +47,7 @@ static struct passwd *user_pwd;
 static const char *chroot_dir;
 static int daemonize;
 static int daemon_pipe;
-extern bool panda_library_mode;
+//extern bool panda_library_mode;
 
 extern void (*panda_external_signal_handler)(int, siginfo_t*,void*);
 
@@ -73,7 +73,7 @@ static void termsig_handler(int signal, siginfo_t *info, void *c)
 
 void os_setup_signal_handling(void)
 {
-    if (panda_library_mode) return;
+    if (panda_get_library_mode()) return;
 
     struct sigaction act;
 
@@ -303,7 +303,7 @@ void os_setup_post(void)
 
         close(fd);
 
-        do {        
+        do {
             len = write(daemon_pipe, &status, 1);
         } while (len < 0 && errno == EINTR);
         if (len != 1) {
