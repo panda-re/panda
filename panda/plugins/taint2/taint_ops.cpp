@@ -69,13 +69,21 @@ static inline bool is_ram_ptr(uint64_t addr)
 static std::vector<const llvm::ConstantInt *> getOperands(
         const uint64_t num_operands, va_list ap) {
 
+    const int target_ulong_in_bits = sizeof(target_ulong) * 8;
+
     auto ctx = tcg_llvm_translator->getContext();
     auto *int64T = llvm::Type::getInt64Ty(*ctx);
+    auto *int128T = llvm::Type::getInt128Ty(*ctx);
 
     std::vector<const llvm::ConstantInt *> operands;
     for(uint64_t i=0; i<num_operands; i++) {
-        operands.push_back(llvm::ConstantInt::get(int64T,
-            va_arg(ap, uint64_t)));
+        if(target_ulong_in_bits == 64) {
+            operands.push_back(llvm::ConstantInt::get(int128T,
+                va_arg(ap, __uint128_t)));
+        } else {
+            operands.push_back(llvm::ConstantInt::get(int64T,
+                va_arg(ap, uint64_t)));
+        }
     }
     return operands;
 }

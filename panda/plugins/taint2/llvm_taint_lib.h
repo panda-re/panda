@@ -227,6 +227,7 @@ public:
     Type *voidT;
     IntegerType *int1T;
     IntegerType *int64T;
+    IntegerType *int128T;
     PointerType *int64P;
 
     PandaTaintVisitor(ShadowState *shad, taint2_memlog *taint_memlog)
