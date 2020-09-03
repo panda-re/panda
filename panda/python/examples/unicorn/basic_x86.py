@@ -7,7 +7,6 @@ import capstone
 import os
 
 from panda import Panda, ffi
-from panda.helper.x86 import dump_regs, registers
 
 X86_CODE   = b"\x40\x01\xC3\x41" # inc eax; add ebx, eax; inc ecx;
 ADDRESS = 0x1000
@@ -28,17 +27,17 @@ def setup(cpu):
     panda.physical_memory_write(ADDRESS, X86_CODE)
 
     # Set up registers
-    cpu.env_ptr.regs[registers["EAX"]] = 0x1
-    cpu.env_ptr.regs[registers["EBX"]] = 0x2
-    cpu.env_ptr.regs[registers["ECX"]] = 0x3
-    cpu.env_ptr.regs[registers["EDX"]] = 0x4
+    panda.arch.set_reg(cpu, "EAX", 0x1)
+    panda.arch.set_reg(cpu, "EBX", 0x2)
+    panda.arch.set_reg(cpu, "ECX", 0x3)
+    panda.arch.set_reg(cpu, "EDX", 0x4)
 
     # Set starting_pc
-    cpu.env_ptr.eip = ADDRESS
-    print(f"PC is 0x{cpu.env_ptr.eip:x}")
+    panda.arch.set_pc(cpu, ADDRESS)
+    print(f"PC is 0x{panda.arch.get_pc(cpu):x}")
 
     # Apply taint label to EAX
-    panda.taint_label_reg(registers["EAX"], 10) # Taint eax with label 10. Should prop into ebx
+    panda.taint_label_reg(panda.arch.registers["EAX"], 10) # Taint eax with label 10. Should prop into ebx
 
 @panda.cb_insn_translate
 def should_run_on_insn(env, pc):
@@ -60,11 +59,11 @@ def on_insn(cpu, pc):
     '''
     if pc == stop_addr:
         print("Finished execution. CPU registers are:")
-        dump_regs(panda, cpu)
+        panda.arch.dump_regs(cpu)
 
         print("Taint results\n")
-        if panda.taint_check_reg(registers["EBX"]):
-            for idx, byte_taint in enumerate(panda.taint_get_reg(registers["EBX"])):
+        if panda.taint_check_reg(panda.arch.registers["EBX"]):
+            for idx, byte_taint in enumerate(panda.taint_get_reg(panda.arch.registers["EBX"])):
                 labels = byte_taint.get_labels()
                 print(f"Register EBX byte {idx} tainted by {labels}")
 
