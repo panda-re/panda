@@ -7,7 +7,6 @@ import capstone
 import os
 
 from panda import Panda, ffi
-from panda.helper.arm import dump_regs, registers
 
 ARM_CODE   = b"\x37\x00\xa0\xe3\x03\x10\x42\xe0" # mov r0, #0x37; sub r1, r2, r3
 ADDRESS = 0x1000
@@ -28,15 +27,15 @@ def setup(cpu):
     panda.physical_memory_write(ADDRESS, ARM_CODE)
 
     # Set up registers
-    cpu.env_ptr.regs[registers['R0']] = 0x1234
-    cpu.env_ptr.regs[registers['R2']] = 0x6789
-    cpu.env_ptr.regs[registers['R3']] = 0x3333
+    panda.arch.set_reg(cpu, "R0", 0x1234)
+    panda.arch.set_reg(cpu, "R2", 0x6789)
+    panda.arch.set_reg(cpu, "R3", 0x3333)
 
     # Set starting_pc
-    cpu.env_ptr.regs[registers['IP']] = ADDRESS
+    panda.arch.set_pc(cpu, ADDRESS)
 
     # Apply taint label to r2
-    panda.taint_label_reg(registers['R2'], 10) # Taint R2 with label 10. Should prop into R1
+    panda.taint_label_reg(panda.arch.registers['R2'], 10) # Taint R2 with label 10. Should prop into R1
 
 @panda.cb_insn_translate
 def should_run_on_insn(env, pc):
@@ -58,11 +57,11 @@ def on_insn(cpu, pc):
     '''
     if pc == stop_addr:
         print("Finished execution. CPU registers are:")
-        dump_regs(panda, cpu)
+        panda.arch.dump_regs(cpu)
 
         print("Taint results\n")
-        if panda.taint_check_reg(registers['R1']):
-            for idx, byte_taint in enumerate(panda.taint_get_reg(registers['R1'])):
+        if panda.taint_check_reg(panda.arch.registers['R1']):
+            for idx, byte_taint in enumerate(panda.taint_get_reg(panda.arch.registers['R1'])):
                 labels = byte_taint.get_labels()
                 print(f"Register R1 byte {idx} tainted by {labels}")
 

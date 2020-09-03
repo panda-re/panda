@@ -4,10 +4,9 @@
 from time import sleep
 from sys import argv
 from panda import Panda, blocking
-from panda.helper.x86 import *
 
 # Single arg of arch, defaults to i386
-arch = "i386" if len(argv) <= 1 else argv[1]
+arch = "i386"
 panda = Panda(generic=arch)
 
 @blocking
@@ -24,7 +23,7 @@ def before_block_execute(cpu, tb):
     ctr += 1
 
     print("\n\n===== State after block {} =====".format(ctr))
-    dump_state(panda, cpu)
+    panda.arch.dump_state(cpu)
 
     if ctr > 10: panda.end_analysis()
 
