@@ -12,14 +12,14 @@ sudo apt-get build-dep qemu
 
 # install generic dependencies
 sudo apt-get install git python-pip libc++-dev libelf-dev libdwarf-dev \
-  libelf-dev libdwarf-dev libwiretap-dev wireshark-dev python-pycparser
+  libelf-dev libdwarf-dev libwiretap-dev wireshark-dev python3-pycparser
 
 # install llvm dependencies from ppa:phulin/panda
 sudo apt-get install llvm-3.3 clang-3.3
 
 # install protobuf dependencies
 sudo apt-get install protobuf-compiler protobuf-c-compiler python-protobuf \
-  libprotoc-dev libprotobuf-dev libprotobuf-c-dev
+ python3-protobuf libprotoc-dev libprotobuf-dev libprotobuf-c-dev
 
 # clone and build PANDA
 git clone https://github.com/panda-re/panda

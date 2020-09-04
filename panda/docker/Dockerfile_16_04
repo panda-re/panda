@@ -48,7 +48,7 @@ RUN add-apt-repository -y "$PANDA_PPA"
 #RUN mv -f "$panda_ppa_file" "$panda_ppa_file_fallback"
 
 RUN apt-get update
-RUN apt-get -y install libcapstone-dev libdwarf-dev python-pycparser
+RUN apt-get -y install libcapstone-dev libdwarf-dev python3-pycparser
 
 # Trying to install LLVM 3.3...
 RUN apt-get -y install llvm-3.3-dev clang-3.3
