@@ -21,7 +21,6 @@ we alert if it is tainted.
 from sys import argv
 from os import path
 from panda import Panda, blocking, ffi
-from panda.helper.x86 import *
 
 arch = "x86_64" if len(argv) <= 1 else argv[1]
 extra = "-nographic"
@@ -41,7 +40,7 @@ def on_sys_read_return(cpustate, pc, fd, buf, count):
 	if file_info and not tainted:
 		cr3, fd1 = file_info
 		if cr3 == cpustate.env_ptr.cr[3] and fd == fd1:
-			returned = cpustate.env_ptr.regs[R_EAX]
+			returned = panda.arch.get_reg(cpustate, "EAX")
 			buf_read = panda.virtual_memory_read(cpustate, buf, returned)
 			for idx in range(returned):
 				taint_vaddr = buf+idx
@@ -59,7 +58,7 @@ def on_sys_open_return(cpustate, pc, filename, flags, mode):
 	print(f"on_sys_open_enter: {fname_total}")
 	if b"panda" in fname_total:
 		global info
-		file_info = cpustate.env_ptr.cr[3], cpustate.env_ptr.regs[R_EAX]
+		file_info = panda.current_asid(cpustate), panda.arch.get_reg(cpustate, "EAX")
 
 finished = False
 

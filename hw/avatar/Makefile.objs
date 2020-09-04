@@ -2,4 +2,5 @@ obj-$(TARGET_ARM)  += avatar_posix.o configurable_machine.o remote_memory.o arm_
 obj-$(TARGET_MIPS) += avatar_posix.o configurable_machine.o remote_memory.o
 obj-$(TARGET_PPC) += configurable_machine.o
 obj-$(TARGET_I386) += configurable_machine.o
+obj-$(TARGET_X86_64) += configurable_machine.o
 obj-$(CONFIG_PYPERIPHERAL) += python_peripheral.o

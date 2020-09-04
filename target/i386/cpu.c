@@ -3026,9 +3026,9 @@ void cpu_x86_cpuid(CPUX86State *env, uint32_t index, uint32_t count,
     }
 }
 
-static bool x86_configurable_machine = false;
-void set_x86_configurable_machine(void) {
-  x86_configurable_machine = true;
+static int x86_configurable_machine_mode = 0;
+void set_x86_configurable_machine(int mode) {
+  x86_configurable_machine_mode = mode;
 }
 
 /* CPUClass::reset() */
@@ -3065,7 +3065,7 @@ static void x86_cpu_reset(CPUState *s)
     // Default values for starting a system in real mode
     unsigned int cs_selector = 0xf000;
     target_ulong cs_base = 0xffff0000;
-    if (x86_configurable_machine) {
+    if (x86_configurable_machine_mode != 0) {
       // Unicorn sets these two properties. Not sure if we should?
       //env->hflags = 0; // Note we set this below!
       //env->cr[0] = 0;
@@ -3094,15 +3094,18 @@ static void x86_cpu_reset(CPUState *s)
                            DESC_P_MASK | DESC_S_MASK | DESC_W_MASK |
                            DESC_A_MASK);
 
-    if (x86_configurable_machine) {
+    if (x86_configurable_machine_mode == 32) {
       // For configurable machine, don't continue
       // setting up initial state. These registers
       // values should all be 0 or undefined at the start
       // of a unicorn-style execution
 
       // But do set hflags so we're in 32-bit mode (else we end up in 16-bit)
-      // Not exposed to users as an option (yet)
       env->hflags |= HF_CS32_MASK;
+      return;
+    }else if (x86_configurable_machine_mode == 64) {
+      // Set hflags so we're in 64-bit mode (else we end up in 16-bit)
+      env->hflags |= HF_CS64_MASK;
       return;
     }
 

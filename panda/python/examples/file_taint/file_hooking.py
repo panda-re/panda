@@ -21,7 +21,6 @@ we alert if it is tainted.
 from sys import argv
 from os import path
 from panda import Panda, blocking, ffi
-from panda.helper.x86 import *
 
 arch = "x86_64" if len(argv) <= 1 else argv[1]
 extra = "-nographic"
@@ -47,7 +46,7 @@ def on_sys_read_return(cpustate, pc, fd, buf, count):
 	if file_info:
 		cr3, fd1 = file_info
 		if cr3 == cpustate.env_ptr.cr[3] and fd == fd1:
-			returned = cpustate.env_ptr.regs[R_EAX]
+			returned = panda.arch.get_reg(cpustate, "RAX")
 			if returned >= 0:
 				a_buf  = (10 * b"a") + b"\x00"
 				buf_read = panda.virtual_memory_write(cpustate, buf, a_buf)
@@ -67,10 +66,10 @@ def on_sys_open_return(cpustate, pc, filename, flags, mode):
 	if interesting_file_name in fname_total:
 		print(f"on_sys_open_enter: {fname_total}")
 		global info
-		if cpustate.env_ptr.regs[R_EAX] > 255: # hack for -1
+		if panda.arch.get_reg(cpustate, "RAX") > 255: # hack for -1
 			print("Changing return value to 99")
-			cpustate.env_ptr.regs[R_EAX] = 99
-		file_info = cpustate.env_ptr.cr[3], cpustate.env_ptr.regs[R_EAX]
+                        panda.arch.set_reg(cpu, "RAX", 99)
+		file_info = cpustate.current_asid(cpustate), panda.arch.get_reg(cpustate, "RAX")
 		
 
 panda.plugins["syscalls2"].__getattr__(f"ppp_add_cb_{cb_name}")(on_sys_open_return)

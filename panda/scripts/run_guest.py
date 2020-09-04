@@ -1,16 +1,16 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 import json
 import os
 import pipes
 import socket
-import subprocess32
+import subprocess
 import sys
 import time
 
 from colorama import Fore, Style
 from errno import EEXIST
 from os.path import abspath, join, realpath
-from subprocess32 import STDOUT
+from subprocess import STDOUT
 from traceback import print_exception
 
 from expect import Expect
@@ -19,11 +19,11 @@ from tempdir import TempDir
 debug = True
 
 def env_to_list(env):
-    return ["{}='{}'".format(k, v) for k, v in env.iteritems()]
+    return ["{}='{}'".format(k, v) for k, v in env.items()]
 
 def progress(msg):
-    print Fore.GREEN + '[run_guest.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
-    print
+    print(Fore.GREEN + '[run_guest.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL)
+    print()
 
 class Qemu(object):
     def __init__(self, qemu_path, qcow, snapshot, tempdir, expect_prompt,
@@ -42,17 +42,17 @@ class Qemu(object):
     # types a command into the qemu monitor and waits for it to complete
     def run_monitor(self, cmd):
         if debug:
-            print "monitor cmd: [%s]" % cmd
-        print Style.BRIGHT + "(qemu)" + Style.RESET_ALL,
+            print("monitor cmd: [%s]" % cmd)
+        print(Style.BRIGHT + "(qemu)" + Style.RESET_ALL, end=' ')
         self.monitor.sendline(cmd)
         self.monitor.expect("(qemu)")
-        print
-        print
+        print()
+        print()
 
     def type_console(self, cmd):
         assert (not self.boot)
         if debug:
-            print "console cmd: [%s]" % cmd
+            print("console cmd: [%s]" % cmd)
         self.console.send(cmd)
 
     # types a command into the guest os and waits for it to complete
@@ -60,11 +60,11 @@ class Qemu(object):
         assert (not self.boot)
         if cmd is not None:
             self.type_console(cmd)
-        print Style.BRIGHT + self.expect_prompt + Style.RESET_ALL,
+        print(Style.BRIGHT + self.expect_prompt + Style.RESET_ALL, end=' ')
         self.console.sendline()
         self.console.expect(self.expect_prompt, timeout=timeout)
-        print
-        print
+        print()
+        print()
 
     def __enter__(self):
         monitor_path = join(self.tempdir, 'monitor')
@@ -86,9 +86,9 @@ class Qemu(object):
         if self.perf: qemu_args = ['perf', 'record'] + qemu_args
 
         progress("Running qemu with args:")
-        print subprocess32.list2cmdline(qemu_args)
+        print(subprocess.list2cmdline(qemu_args))
 
-        self.qemu = subprocess32.Popen(qemu_args) # , stdout=DEVNULL, stderr=DEVNULL)
+        self.qemu = subprocess.Popen(qemu_args) # , stdout=DEVNULL, stderr=DEVNULL)
         while not os.path.exists(monitor_path):
             time.sleep(0.1)
         if not self.boot:
@@ -107,12 +107,12 @@ class Qemu(object):
 
         # Make sure monitor/console are in right state.
         self.monitor.expect("(qemu)")
-        print
+        print()
         if not self.boot:
             self.console.sendline()
             self.console.expect(self.expect_prompt)
-        print
-        print
+        print()
+        print()
 
         return self
 
@@ -127,20 +127,20 @@ class Qemu(object):
 
         try:
             self.qemu.wait(timeout=3)
-        except subprocess32.TimeoutExpired:
+        except subprocess.TimeoutExpired:
             progress("Qemu stailed. Sending SIGTERM...")
             self.qemu.terminate()
 
-        print
+        print()
 
 def make_iso(directory, iso_path):
     with open(os.devnull, "w") as DEVNULL:
         if sys.platform.startswith('linux'):
-            subprocess32.check_call([
+            subprocess.check_call([
                 'genisoimage', '-RJ', '-max-iso9660-filenames', '-o', iso_path, directory
             ], stderr=STDOUT if debug else DEVNULL)
         elif sys.platform == 'darwin':
-            subprocess32.check_call([
+            subprocess.check_call([
                 'hdiutil', 'makehybrid', '-hfs', '-joliet', '-iso', '-o', iso_path, directory
             ], stderr=STDOUT if debug else DEVNULL)
         else:
@@ -178,7 +178,7 @@ def create_recording(qemu_path, qcow, snapshot, command, copy_directory,
         # Important that we type command into console before recording starts and only
         # hit enter once we've started the recording.
         progress("Running command inside guest.")
-        qemu.type_console(subprocess32.list2cmdline(env_to_list(env) + command))
+        qemu.type_console(subprocess.list2cmdline(env_to_list(env) + command))
 
         # start PANDA recording
         qemu.run_monitor("begin_record \"{}\"".format(recording_path))
@@ -210,7 +210,7 @@ def create_boot_recording(qemu_path, qcow, recording_path, boot_time):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print >>sys.stderr, "Usage: python project.json"
+        print("Usage: python project.json", file=sys.stderr)
         sys.exit(1)
 
     project_file = abspath(sys.argv[1])
