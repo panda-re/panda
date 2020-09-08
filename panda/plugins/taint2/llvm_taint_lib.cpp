@@ -1823,12 +1823,7 @@ void PandaTaintVisitor::visitInsertElementInst(InsertElementInst &I) {
 }
 
 void PandaTaintVisitor::visitShuffleVectorInst(ShuffleVectorInst &I) {
-    //TODO: fix assertion
-    //assert(I.getType()->getBitWidth() <= 8 * MAXREGSIZE);
-    if(I.getType()->getBitWidth() > 8 * MAXREGSIZE) {
-        printf("visitShuffleVectorInst: %d > %d\n", I.getType()->getBitWidth(),
-            8 * MAXREGSIZE);
-    }
+    assert(I.getType()->getBitWidth() <= 8 * MAXREGSIZE);
     insertTaintCompute(I, I.getOperand(0), I.getOperand(1), true);
 }
 
@@ -1845,6 +1840,5 @@ void PandaTaintVisitor::visitInstruction(Instruction &I) {
     // test to the configure script since there doesn't seem to be a way
     // to interogate llvm-config to determine if dump is available
     //I.dump();
-    //TODO: uncomment assertion
-    //assert(1==0);
+    assert(1==0);
 }
