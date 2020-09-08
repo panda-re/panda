@@ -6,6 +6,11 @@
 
 typedef __int128_t Int128;
 
+#ifdef __clang__
+#define inline __attribute__((always_inline))
+#pragma clang diagnostic ignored "-Wunused-function"
+#endif
+
 static inline Int128 int128_make64(uint64_t a)
 {
     return a;
