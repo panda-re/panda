@@ -1738,37 +1738,6 @@ void PandaTaintVisitor::visitSelectInst(SelectInst &I) {
 
     if(cond->getType()->isVectorTy()) {
         printf("Ignoring select instruction with vector arguments\n");
-
-        /*
-
-        TODO: this isn't right, but other vector operations in this file
-        look suspicious too - need to figure out how to apply taint to
-        vector operations such as this
-
-        Instruction *next = I.getNextNode();
-        unsigned numElements =
-            dyn_cast<VectorType>(cond->getType())->getNumElements();
-        for(unsigned i=0; i<numElements; i++) {
-            Value *iVal = const_uint64(i);
-            Instruction *EEI = ExtractElementInst::Create(cond,
-                iVal, "", &I);
-            Instruction *TI = ExtractElementInst::Create(I.getTrueValue(),
-                iVal, "", &I);
-            Instruction *FI = ExtractElementInst::Create(I.getFalseValue(),
-                iVal, "", &I);
-            Instruction *dest = ExtractElementInst::Create(&I,
-                iVal, "", next);
-            ZExtInst *ZEI = new ZExtInst(EEI, int64T, "", &I);
-            vector<pair<Value *, Value *>> selections;
-            // figure out how to correctly map vector elements to slots
-            selections.push_back(std::make_pair(
-                const_uint64(constWeakSlot(TI)), oneConst));
-            selections.push_back(std::make_pair(
-                const_uint64(constWeakSlot(FI)), zeroConst));
-            PST->CreateFunctionSlot(dest);
-            insertTaintSelect(*dest, dest, ZEI, selections);
-        }
-        */
     } else {
         ZExtInst *ZEI = new ZExtInst(cond, int64T, "", &I);
 
