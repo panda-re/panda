@@ -291,7 +291,6 @@ public:
     PandaTaintFunctionPass(ShadowState *shad, taint2_memlog *taint_memlog)
         : FunctionPass(ID), shad(shad), taint_memlog(taint_memlog), PTV(new PandaTaintVisitor(shad, taint_memlog)) {}
 
-    // TODO: what should we be doing with ID here?
     PandaTaintFunctionPass(PandaTaintFunctionPass &ptfp)
         : FunctionPass(ID), shad(ptfp.shad), taint_memlog(ptfp.taint_memlog), PTV(ptfp.PTV) {}
 
