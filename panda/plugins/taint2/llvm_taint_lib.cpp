@@ -1760,8 +1760,6 @@ void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I) {
 
     assert(I.idx_begin() != I.idx_end());
     unsigned offset = structLayout->getElementOffset(*I.idx_begin());
-    //TODO: examine this aggregate operation for correctness
-    //assert(offset < MAXREGSIZE);
     uint64_t src = MAXREGSIZE * PST->getLocalSlot(aggregate) + offset;
 
     insertTaintCopy(I, llvConst, constSlot(&I), llvConst,
@@ -1780,8 +1778,6 @@ void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I) {
 
     assert(I.idx_begin() != I.idx_end());
     unsigned offset = structLayout->getElementOffset(*I.idx_begin());
-    //TODO: examine this aggregate operation for correctness
-    //assert(offset < MAXREGSIZE);
     uint64_t dest = MAXREGSIZE * PST->getLocalSlot(&I);
 
     // First copy the aggregate value, then copy the inserted taint over
