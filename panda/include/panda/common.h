@@ -296,6 +296,8 @@ static inline bool panda_in_kernel(CPUState *cpu) {
 #if defined(TARGET_I386)
     return ((env->hflags & HF_CPL_MASK) == 0);
 #elif defined(TARGET_ARM)
+    // Note: returns true for non-SVC modes (hypervisor, monitor, system, etc).
+    // See: https://www.keil.com/pack/doc/cmsis/Core_A/html/group__CMSIS__CPSR__M.html
     return ((env->uncached_cpsr & CPSR_M) > ARM_CPU_MODE_USR);
 #elif defined(TARGET_PPC)
     return msr_pr;

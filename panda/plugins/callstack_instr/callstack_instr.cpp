@@ -17,6 +17,7 @@ PANDAENDCOMMENT */
 // 2019-JAN-29   do not put an entry in the callstack if the block was stopped
 //               before the call at the end was made
 // 2019-MAY-21   add (more accurate) stack segregation option (threaded)
+// 2020-SEPT-8   add MIPS32 support, switch to central "panda_in_kernel()"
 #define __STDC_FORMAT_MACROS
 
 #include <cinttypes>
@@ -36,6 +37,8 @@ PANDAENDCOMMENT */
 #include <capstone/arm.h>
 #elif defined(TARGET_PPC)
 #include <capstone/ppc.h>
+#elif defined(TARGET_MIPS)
+#include <capstone/mips.h>
 #endif
 
 #include "panda/plugin.h"
@@ -149,21 +152,15 @@ void verbose_log(const char *msg, TranslationBlock *tb, stackid curStackid,
     // end of function verbose_log
 }
 
-static inline bool in_kernelspace(CPUArchState* env) {
-#if defined(TARGET_I386)
-    return ((env->hflags & HF_CPL_MASK) == 0);
-#elif defined(TARGET_ARM)
-    return ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC);
-#else
-    return false;
-#endif
-}
-
 static inline target_ulong get_stack_pointer(CPUArchState* env) {
 #if defined(TARGET_I386)
     return env->regs[R_ESP];
 #elif defined(TARGET_ARM)
     return env->regs[13];
+#elif defined(TARGET_MIPS)
+    return env->active_tc.gpr[29]; // $sp
+#elif defined(TARGET_PPC)
+    return env->gpr[1]; // r1
 #else
     return 0;
 #endif
@@ -171,14 +168,15 @@ static inline target_ulong get_stack_pointer(CPUArchState* env) {
 
 // get the stackid when the heuristic stack segregation method is in use
 // assumes stack_segregation is STACK_HEURISTIC
-static stackid get_heuristic_stackid(CPUArchState* env) {
+static stackid get_heuristic_stackid(CPUState* cpu) {
     // why is this part of get_stackid removed from it? to make SonarQube stop
     // complaining about get_stackid having too many return statements without
     // causing it to complain about if statements being nested too deep
     target_ulong asid;
+    CPUArchState *env = static_cast<CPUArchState *>(cpu->env_ptr);
 
     // Track all kernel-mode stacks together
-    if (in_kernelspace(env)) {
+    if (panda_in_kernel(cpu)) {
         asid = 0;
     } else {
         asid = panda_current_asid(ENV_GET_CPU(env));
@@ -224,10 +222,13 @@ static stackid get_heuristic_stackid(CPUArchState* env) {
     return cursi;
 }
 
-static stackid get_stackid(CPUArchState* env) {
-    int in_kernel = in_kernelspace(env);
+static stackid get_stackid(CPUState* cpu) {
+
+    int in_kernel = panda_in_kernel(cpu);
+    CPUArchState *env = static_cast<CPUArchState *>(cpu->env_ptr);
+
     if (STACK_HEURISTIC == stack_segregation) {
-        return get_heuristic_stackid(env);
+        return get_heuristic_stackid(cpu);
     } else if (STACK_THREADED == stack_segregation) {
         OsiThread *thr = get_current_thread(first_cpu);
         stackid cursi;
@@ -313,7 +314,7 @@ done2:
 }
 
 void after_block_translate(CPUState *cpu, TranslationBlock *tb) {
-    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
+    CPUArchState *env = static_cast<CPUArchState *>(cpu->env_ptr);
 
     call_cache[tb->pc] = disas_block(env, tb->pc, tb->size);
 
@@ -321,9 +322,8 @@ void after_block_translate(CPUState *cpu, TranslationBlock *tb) {
 }
 
 void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
-  CPUArchState *env = static_cast<CPUArchState *>(cpu->env_ptr);
-  std::vector<stack_entry> &v = callstacks[get_stackid(env)];
-  std::vector<target_ulong> &w = function_stacks[get_stackid(env)];
+  std::vector<stack_entry> &v = callstacks[get_stackid(cpu)];
+  std::vector<target_ulong> &w = function_stacks[get_stackid(cpu)];
   if (v.empty()) {
     return;
   }
@@ -354,7 +354,7 @@ void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
 
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     instr_type tb_type = call_cache[tb->pc];
-    stackid curStackid = get_stackid(env);
+    stackid curStackid = get_stackid(cpu);
 
     if (tb_type == INSTR_CALL) {
         stack_entry se = {tb->pc + tb->size, tb_type};
@@ -377,8 +377,7 @@ void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
  * @brief Fills preallocated buffer \p callers with up to \p n call addresses.
  */
 uint32_t get_callers(target_ulong callers[], uint32_t n, CPUState* cpu) {
-    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
-    std::vector<stack_entry> &v = callstacks[get_stackid(env)];
+    std::vector<stack_entry> &v = callstacks[get_stackid(cpu)];
 
     n = std::min((uint32_t)v.size(), n);
     for (uint32_t i=0; i<n; i++) { callers[i] = v[v.size()-1-i].pc; }
@@ -392,8 +391,7 @@ uint32_t get_callers(target_ulong callers[], uint32_t n, CPUState* cpu) {
  */
 Panda__CallStack *pandalog_callstack_create() {
     assert(pandalog);
-    CPUArchState* env = (CPUArchState*)first_cpu->env_ptr;
-    std::vector<stack_entry> &v = callstacks[get_stackid(env)];
+    std::vector<stack_entry> &v = callstacks[get_stackid(first_cpu)];
 
     Panda__CallStack *cs = (Panda__CallStack *)malloc(sizeof(Panda__CallStack));
     *cs = PANDA__CALL_STACK__INIT;
@@ -419,8 +417,7 @@ void pandalog_callstack_free(Panda__CallStack *cs) {
  * @brief Fills preallocated buffer \p functions with up to \p n function addresses.
  */
 uint32_t get_functions(target_ulong functions[], uint32_t n, CPUState* cpu) {
-    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
-    std::vector<target_ulong> &v = function_stacks[get_stackid(env)];
+    std::vector<target_ulong> &v = function_stacks[get_stackid(cpu)];
 
     n = std::min((uint32_t)v.size(), n);
     for (uint32_t i=0; i<n; i++) { functions[i] = v[v.size()-1-i]; }
@@ -428,14 +425,15 @@ uint32_t get_functions(target_ulong functions[], uint32_t n, CPUState* cpu) {
 }
 
 void get_prog_point(CPUState* cpu, prog_point *p) {
-    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
     if (!p) return;
 
+    CPUArchState *env = static_cast<CPUArchState *>(cpu->env_ptr);
+
     // Get stack ID
-    stackid curStackid = get_stackid(env);
+    stackid curStackid = get_stackid(cpu);
 
     // Lump all kernel-mode CR3s together
-    if(!in_kernelspace(env)) {
+    if(!panda_in_kernel(cpu)) {
         p->sidFirst = std::get<0>(curStackid);
         p->sidSecond = std::get<1>(curStackid);
     }
@@ -448,13 +446,16 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
     n_callers = get_callers(&p->caller, 1, cpu);
 
     if (n_callers == 0) {
-#ifdef TARGET_I386
+#if defined(TARGET_I386)
         // fall back to EBP on x86
         int word_size = (env->hflags & HF_LMA_MASK) ? 8 : 4;
         panda_virtual_memory_rw(cpu, env->regs[R_EBP]+word_size, (uint8_t *)&p->caller, word_size, 0);
-#endif
-#ifdef TARGET_ARM
+#elif defined(TARGET_ARM)
         p->caller = env->regs[14]; // LR
+#elif defined(TARGET_MIPS)
+        p->caller = env->active_tc.gpr[31]; // $ra
+#elif defined(TARGET_PPC)
+        p->caller = env->lr; // LR
 #endif
 
     }
@@ -515,25 +516,31 @@ bool init_plugin(void *self) {
         return false;
     }
 
-#if defined(TARGET_I386)
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
     if (cs_open(CS_ARCH_X86, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
         return false;
-#if defined(TARGET_X86_64)
+#elif defined(TARGET_X86_64)
     if (cs_open(CS_ARCH_X86, CS_MODE_64, &cs_handle_64) != CS_ERR_OK)
         return false;
-#endif
 #elif defined(TARGET_ARM)
     if (cs_open(CS_ARCH_ARM, CS_MODE_ARM, &cs_handle_32) != CS_ERR_OK)
         return false;
 #elif defined(TARGET_PPC)
     if (cs_open(CS_ARCH_PPC, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
         return false;
+#elif defined(TARGET_MIPS) && !defined(TARGET_MIPS64)
+    if (cs_open(CS_ARCH_MIPS, CS_MODE_MIPS32, &cs_handle_32) != CS_ERR_OK)
+        return false;
+#elif defined(TARGET_MIPS64)
+    if (cs_open(CS_ARCH_MIPS, CS_MODE_MIPS64, &cs_handle_64) != CS_ERR_OK)
+        return false;
 #endif
 
-    // Need details in capstone to have instruction groupings
-    cs_option(cs_handle_32, CS_OPT_DETAIL, CS_OPT_ON);
-#if defined(TARGET_X86_64)
+// Need details in capstone to have instruction groupings
+#if defined(TARGET_X86_64) || defined(TARGET_MIPS64)
     cs_option(cs_handle_64, CS_OPT_DETAIL, CS_OPT_ON);
+#else
+    cs_option(cs_handle_32, CS_OPT_DETAIL, CS_OPT_ON);
 #endif
 
     panda_cb pcb;
