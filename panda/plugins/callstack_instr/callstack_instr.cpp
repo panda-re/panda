@@ -179,7 +179,7 @@ static stackid get_heuristic_stackid(CPUState* cpu) {
     if (panda_in_kernel(cpu)) {
         asid = 0;
     } else {
-        asid = panda_current_asid(ENV_GET_CPU(env));
+        asid = panda_current_asid(cpu);
     }
 
     // Invalidate cached stack pointer on ASID change
@@ -225,7 +225,6 @@ static stackid get_heuristic_stackid(CPUState* cpu) {
 static stackid get_stackid(CPUState* cpu) {
 
     int in_kernel = panda_in_kernel(cpu);
-    CPUArchState *env = static_cast<CPUArchState *>(cpu->env_ptr);
 
     if (STACK_HEURISTIC == stack_segregation) {
         return get_heuristic_stackid(cpu);
@@ -242,7 +241,7 @@ static stackid get_stackid(CPUState* cpu) {
         return cursi;
     } else {
         // STACK_ASID
-        target_ulong asid = panda_current_asid(ENV_GET_CPU(env));
+        target_ulong asid = panda_current_asid(cpu);
         return std::make_tuple(asid, 0, 0);
     }
     // end of function get_stackid
@@ -289,6 +288,7 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
     cs_insn *insn;
     cs_insn *end;
     size_t count = cs_disasm(handle, buf, size, pc, 0, &insn);
+
     if (count <= 0) goto done2;
 
     for (end = insn + count - 1; end >= insn; end--) {
@@ -305,6 +305,21 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
     } else {
         res = INSTR_UNKNOWN;
     }
+
+    // Temporary workaround for https://github.com/aquynh/capstone/issues/1680
+    // Mnemonic/operand comparision as fallback for incorrect grouping
+    #if defined(TARGET_MIPS)
+        #define MAX_MNEMONIC_LEN 32 // CS_MNEMONIC_SIZE not imported?
+        if (res == INSTR_UNKNOWN) {
+            if (!strncasecmp(insn->mnemonic, "jal", 32)) {
+                res = INSTR_CALL;   // Direct call
+            } else if  (!strncasecmp(insn->mnemonic, "jalr", 32)) {
+                res = INSTR_CALL;   // Jump table call
+            } else if (cs_insn_group(handle, end, CS_GRP_JUMP) && strcasestr(insn->op_str, "$ra")) {
+                res = INSTR_RET;    // Jump to LR -> ret
+            }
+        }
+    #endif
 
 done:
     cs_free(insn, count);
@@ -467,14 +482,14 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
 // returns true if set up OK, and false if it was not
 bool setup_osi() {
     // moved out of init_plugin case statement to mollify SonarQube
-#if defined(TARGET_I386)
-#if defined(TARGET_X86_64)
+#if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
+    #if defined(TARGET_X86_64)
     if (panda_os_familyno != OS_LINUX) {
         fprintf(stderr,
             "ERROR:  threaded stack_type is not supported on Windows 64-bit\n");
         return false;
     }
-#endif
+    #endif
     printf("callstack_instr:  setting up threaded stack_type\n");
     panda_require("osi");
     assert(init_osi_api());
@@ -482,7 +497,7 @@ bool setup_osi() {
     // specific deriviation
     return true;
 #else
-    fprintf(stderr, "ERROR:  threaded stack_type is only supported on x86\n");
+    fprintf(stderr, "ERROR:  threaded stack_type is only supported on OSI architectures: x86/ARM/MIPS.\n");
     return false;
 #endif
 }
@@ -529,11 +544,22 @@ bool init_plugin(void *self) {
     if (cs_open(CS_ARCH_PPC, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
         return false;
 #elif defined(TARGET_MIPS) && !defined(TARGET_MIPS64)
-    if (cs_open(CS_ARCH_MIPS, CS_MODE_MIPS32, &cs_handle_32) != CS_ERR_OK)
-        return false;
+    #if defined(TARGET_WORDS_BIGENDIAN)
+        if (cs_open(CS_ARCH_MIPS, (cs_mode)(CS_MODE_MIPS32 + CS_MODE_BIG_ENDIAN), &cs_handle_32) != CS_ERR_OK)
+            return false;
+    #else
+        if (cs_open(CS_ARCH_MIPS, CS_MODE_MIPS32, &cs_handle_32) != CS_ERR_OK)
+            return false;
+    #endif
+
 #elif defined(TARGET_MIPS64)
-    if (cs_open(CS_ARCH_MIPS, CS_MODE_MIPS64, &cs_handle_64) != CS_ERR_OK)
-        return false;
+    #if defined(TARGET_WORDS_BIGENDIAN)
+        if (cs_open(CS_ARCH_MIPS, (cs_mode)(CS_MODE_MIPS64 + CS_MODE_BIG_ENDIAN), &cs_handle_64) != CS_ERR_OK)
+            return false;
+    #else
+        if (cs_open(CS_ARCH_MIPS, CS_MODE_MIPS64, &cs_handle_64) != CS_ERR_OK)
+            return false;
+    #endif
 #endif
 
 // Need details in capstone to have instruction groupings
