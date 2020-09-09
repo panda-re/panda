@@ -51,6 +51,7 @@ RUN apt-get -y install libcapstone-dev libdwarf-dev python3-pycparser
 
 # Upgrading protocol buffers python support
 RUN pip install --upgrade protobuf
+RUN pip install pycparser
 
 # Install LLVM 3.3...
 RUN apt-get -y install llvm-3.3-dev clang-3.3
@@ -89,17 +90,12 @@ RUN make -j4
 
 RUN make install
 
-# Make python mean python3
+# Make sure python meanss python3
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 
 # Install pypanda and dependencies
 WORKDIR "/panda/panda/python/core"
 RUN pip install colorama cffi protobuf
-RUN ls
 RUN python setup.py install
 
 WORKDIR "/panda"
-
-# Fetch all PRs in container so we can use this for testing
-RUN echo '[remote "origin"]' >> /panda/.git/config
-RUN echo 'fetch = +refs/pull/*/head:refs/remotes/origin/pr/*' >> /panda/.git/config
