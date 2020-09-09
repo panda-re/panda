@@ -452,7 +452,10 @@ void PandaTaintVisitor::inlineCall(CallInst *CI) {
     assert(CI);
     if (inline_taint) {
         InlineFunctionInfo IFI;
+        // LLVM-10
         if (!InlineFunction(CI, IFI)) {
+        // LLVM-11
+        //if (!InlineFunction(*CI, IFI).isSuccess()) {
             printf("Inlining failed!\n");
         }
     }
@@ -867,7 +870,7 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest,
     Constant *dest_size = const_uint64(getValueSize(dest));
     Constant *src_size = const_uint64(getValueSize(src1));
 
-    auto b = IRBuilder<>(*ctx);
+    IRBuilder<> b(*ctx);
     Instruction *nextI = I.getNextNode();
     b.SetInsertPoint(nextI);
     Value *src1slot = constSlot(src1);
@@ -1433,11 +1436,11 @@ void PandaTaintVisitor::visitCmpInst(CmpInst &I) {
 }
 
 void PandaTaintVisitor::visitPHINode(PHINode &I) {
-    LoadInst *LI = new LoadInst(prevBbConst);
-    assert(LI != NULL);
     assert(I.getParent()->getFirstNonPHI() != NULL);
 
-    LI->insertBefore(I.getParent()->getFirstNonPHI());
+    LoadInst *LI = new LoadInst(int64T, prevBbConst, "",
+        I.getParent()->getFirstNonPHI());
+
     vector<pair<Value *,Value *>> selections;
     for (unsigned i = 0; i < I.getNumIncomingValues(); ++i) {
         Constant *value = constWeakSlot(I.getIncomingValue(i));
@@ -1512,7 +1515,7 @@ const static std::set<std::string> inoutFuncs{
 
 void PandaTaintVisitor::visitCallInst(CallInst &I) {
     Function *calledF = I.getCalledFunction();
-    Value *calledV = I.getCalledValue();
+    Value *calledV = I.getCalledOperand();
     assert(calledV);
 
     Type *valueType = calledV->getType();
@@ -1820,7 +1823,7 @@ void PandaTaintVisitor::visitInsertElementInst(InsertElementInst &I) {
 }
 
 void PandaTaintVisitor::visitShuffleVectorInst(ShuffleVectorInst &I) {
-    assert(I.getType()->getBitWidth() <= 8 * MAXREGSIZE);
+    assert(I.getType()->getIntegerBitWidth() <= 8 * MAXREGSIZE);
     insertTaintCompute(I, I.getOperand(0), I.getOperand(1), true);
 }
 

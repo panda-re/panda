@@ -86,7 +86,8 @@ extern CPUState *env;
 using namespace llvm;
 
 TCGLLVMTranslator::TCGLLVMTranslator()
-    : m_tbCount(0), m_tcgContext(NULL), m_tbFunction(NULL), m_tbType(NULL) {
+    : m_builder(*m_context), m_tbCount(0), m_tcgContext(NULL),
+      m_tbFunction(NULL), m_tbType(NULL) {
 
     std::memset(m_labels, 0, sizeof(m_labels));
     std::memset(m_values, 0, sizeof(m_values));
