@@ -139,7 +139,7 @@ class TCGLLVMTranslator {
     llvm::orc::ThreadSafeContext m_tsc = llvm::orc::ThreadSafeContext(
         std::move(std::make_unique<llvm::LLVMContext>()));
     llvm::LLVMContext *m_context = m_tsc.getContext();
-    llvm::IRBuilder<> m_builder = llvm::IRBuilder<>(*m_context);
+    llvm::IRBuilder<> m_builder;
     std::unique_ptr<llvm::Module> m_module =
         std::make_unique<llvm::Module>("tcg-llvm", *m_context);
     std::string m_CPUArchStateName;
