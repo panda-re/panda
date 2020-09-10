@@ -1,4 +1,4 @@
-name: Build and Publish Docker Container # Only for main panda-re repo, not forks
+name: Build and Publish Docker Container and Pypanda Docs # Only for main panda-re repo, not forks
 
 on:
   push:
@@ -10,22 +10,30 @@ jobs:
     if: github.repository  == 'panda-re/panda'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - name: Checkout PANDA
+      uses: actions/checkout@v1
+
     - name: Docker login
       run: docker login -u pandare -p ${{secrets.pandare_dockerhub}}
 
-    - name: Build Bionic container
+    - name: Build Bionic container and generate pypanda docs
       run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_18_04 -t pandare/panda:latest;
             docker tag  pandare/panda:latest pandare/panda:${GITHUB_SHA};
+            docker run --rm -v /home/runner/work/panda-re.github.io:/out pandare/panda:latest /bin/sh -c 'pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --force -o /out panda'
             docker push pandare/panda:${GITHUB_SHA};
             docker push pandare/panda:latest;
-            docker stop $(docker ps -a -q) || true;
-            docker rm $(docker ps -a -q) || true;
-            docker rmi $(docker images -a -q) || true;
-            docker rmi -f $(docker images -a -q) || true
 
-    - name: Build Xenial container
-      run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_16_04 -t pandare/panda_xenial:latest;
-            docker tag  pandare/panda_xenial:latest pandare/panda_xenial:${GITHUB_SHA};
-            docker push pandare/panda_xenial:${GITHUB_SHA};
-            docker push pandare/panda_xenial:latest
+    - name: Checkout docs and reset
+      run: rm -rf "${GITHUB_WORKSPACE}/auto_pydoc";
+           git clone https://panda-jenkins-ci:${{ secrets.PANDABOT_GITHUB_API }}@github.com/panda-re/panda-re.github.io.git --branch=master ${GITHUB_WORKSPACE}/auto_pydoc/panda
+
+    - name: Update PYPANDA docs in container
+      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc/:/out pandare/panda:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --force -o /out panda"
+
+    - name: Push Pypanda docs to GitHub Pages
+      run: cd "${GITHUB_WORKSPACE}/auto_pydoc/panda" &&
+           git config --global user.email "panda-ci@panda-re.mit.edu" &&
+           git config --global user.name "PANDA Bot" &&
+           git add . &&
+           git commit -m "Documentation update for PANDA commit ${{ github.sha  }}" &&
+           git push

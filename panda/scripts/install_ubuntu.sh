@@ -156,13 +156,16 @@ EOF
     fi
   else
     progress "Installing pycparser..."
-    sudo -H pip install pycparser
+    sudo -H pip3 install pycparser
   fi
 fi
 
+# PyPanda misc
+pip3 install colorama cffi
+
 # Upgrading protocol buffers python support
 if [ "$version" -le "19" ]; then
-  sudo pip install --upgrade protobuf
+  sudo pip3 install --upgrade protobuf
 fi
 progress "Trying to install LLVM 3.3..."
 if ! sudo apt-get -y install llvm-3.3-dev clang-3.3
