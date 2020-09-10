@@ -165,7 +165,7 @@ def run_and_create_recording():
         qcow = join(dot_dir, arch_data.qcow)
 
     if not os.path.isfile(qcow):
-        print("\nQcow %s doesn't exist. Downloading from moyix. Thanks moyix!\n" % qcow)
+        print(("\nQcow %s doesn't exist. Downloading from moyix. Thanks moyix!\n" % qcow))
         sp.check_call(["wget", "http://panda.moyix.net/~moyix/" + arch_data.qcow, "-O", qcow])
         for extra_file in arch_data.extra_files or []:
             extra_file_path = join(dot_dir, extra_file)
@@ -182,9 +182,9 @@ def run_and_create_recording():
     new_guest_cmd = list(map(transform_arg_copy, guest_cmd))
     exename = basename(new_guest_cmd[0])
 
-    print("args =", guest_cmd)
-    print("new_guest_cmd =", new_guest_cmd)
-    print("env = ", env)
+    print(("args =", guest_cmd))
+    print(("new_guest_cmd =", new_guest_cmd))
+    print(("env = ", env))
 
     if args.replaybase is None:
         replay_base = join(binary_dir, binary_basename)
