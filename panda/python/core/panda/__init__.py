@@ -17,3 +17,5 @@ from .extras import *
 __pdoc__ = {}
 
 __pdoc__['volatility_cli_classes'] = False
+__pdoc__['data'] = False
+__pdoc__['autogen'] = False
