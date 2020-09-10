@@ -53,7 +53,7 @@ progress "Installing PANDA dependencies..."
 if [ "$version" -ge "20" ]; then
   progress "Ubuntu 20 or higher"
   sudo apt-get -y install wget git protobuf-compiler protobuf-c-compiler \
-    libprotobuf-c-dev libprotoc-dev python-protobuf libelf-dev pkg-config \
+    libprotobuf-c-dev libprotoc-dev python3-protobuf libelf-dev pkg-config \
     libwiretap-dev libwireshark-dev flex bison python3-pip python3 \
     libglib2.0-dev libpixman-1-dev libsdl2-dev libcurl4-gnutls-dev zip
 
@@ -85,12 +85,12 @@ if [ "$version" -ge "20" ]; then
     fi
 
 elif [ "$version" -eq "19" ]; then
-  sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
-    libprotobuf-c-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
+  sudo apt-get -y install python3-pip git protobuf-compiler protobuf-c-compiler \
+    libprotobuf-c-dev libprotoc-dev python3-protobuf libelf-dev libc++-dev pkg-config \
     libwiretap-dev libwireshark-dev flex bison python3-pip python3 zip
 else
-  sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
-    libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
+  sudo apt-get -y install python3-pip git protobuf-compiler protobuf-c-compiler \
+    libprotobuf-c0-dev libprotoc-dev python3-protobuf libelf-dev libc++-dev pkg-config \
     libwiretap-dev libwireshark-dev flex bison python3-pip python3 zip
 fi
 pushd /tmp
@@ -120,7 +120,7 @@ if [ "$vendor" = "Ubuntu" ]; then
   # For Ubuntu 18.04 the vendor packages are more recent than those in the PPA
   # and will be preferred.
   sudo apt-get update
-  sudo apt-get -y install libcapstone-dev libdwarf-dev python3-pycparser chrpath
+  sudo apt-get -y install libcapstone-dev libdwarf-dev chrpath
 else
   if [ ! \( -e "/usr/local/lib/libdwarf.so" -o -e "/usr/lib/libdwarf.so" \) ]
   then
@@ -135,13 +135,13 @@ else
     progress "Skipping libdwarf..."
   fi
 
-  if python -c 'import pycparser' 2>/dev/null
+  if python3 -c 'import pycparser' 2>/dev/null
   then
-    if python <<EOF
+    if python3 <<EOF
 import sys
 import pycparser
 version = [int(x) for x in pycparser.__version__.split(".")]
-if version[0] < 2 or (version[0] == 2 and version[1] < 10):
+if version[0] < 2 or (version[0] == 2 and version[1] <= 18):
   print "pycparser too old. Please upgrade it!"
   sys.exit(1)
 else:
@@ -151,7 +151,7 @@ EOF
     then
       progress "Skipping pycparser..."
     else
-      progress "Your pycparser is too old. Please upgrade using your method of choice."
+      progress "Your pycparser is too old. Please upgrade from pip"
       exit 1
     fi
   else
