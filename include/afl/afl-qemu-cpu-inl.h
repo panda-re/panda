@@ -283,7 +283,7 @@ void afl_forkserver(CPUArchState *env) {
   u32   was_killed;
   int   status = 0;
 
-  sharedmem_fuzzing = 1;
+  if (getenv("__AFL_SHM_FUZZ_ID")) sharedmem_fuzzing = 1;
   // with the max ID value
   if (MAP_SIZE <= FS_OPT_MAX_MAPSIZE)
     status |= (FS_OPT_SET_MAPSIZE(MAP_SIZE) | FS_OPT_MAPSIZE);
@@ -303,7 +303,6 @@ void afl_forkserver(CPUArchState *env) {
   int first_run = 1;
 
   if (sharedmem_fuzzing) {
-    printf("QEMU knows\n");
 
     if (read(FORKSRV_FD, &was_killed, 4) != 4) exit(2);
 
