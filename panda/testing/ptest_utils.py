@@ -132,7 +132,7 @@ def run_test_debian(replay_args, replayname, arch, rdir = replaydir, clear_tmpou
         os.chdir(tmpoutdir)
         output = sp.check_output(cmd.split())                
         # full output of replay goes here
-        with open (tmpfulloutfile, "a") as out:
+        with open (tmpfulloutfile, "ab") as out:
             out.write(output)
         msg = ("Test %s succeeded" % testname)
         progress(msg)
