@@ -1132,10 +1132,6 @@ static bool _unassigned_mem_write(void *opaque, hwaddr addr,
             return true;
         }
         cpu_unassigned_access(current_cpu, addr, true, false, 0, size);
-    }else{
-      // This case is run a bunch during make check so I guess it's normal behavior.
-      // No need to spam the output
-      // printf("WARNING: Unassigned memory write with no CPU\n");
     }
     return false;
 }
@@ -1303,7 +1299,7 @@ MemTxResult memory_region_dispatch_read(MemoryRegion *mr,
         *pval = _unassigned_mem_read(mr, addr, size, &changed);
 
         if (changed) {
-            // Some PANDA callback created a value, 
+            // Some PANDA callback created a value,
             // fix endianness (similar to a normal read)
             // and return OK
             adjust_endianness(mr, pval, size);
