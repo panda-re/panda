@@ -119,6 +119,7 @@ struct global_hooks2_data {
     bool disable_chaining;
     std::list<std::shared_ptr<struct hook_cfg> > hook_cfg;
     int hook_idx;
+    bool use_exe_file;
 
     /* Dynamic */
     struct callback_info cb_tracing;
@@ -139,7 +140,7 @@ get_procname(OsiProc *proc, bool get_basename)
 {
     char *full;
 
-    if (proc->exe_file) {
+    if (plugin.use_exe_file && proc->exe_file) {
         full = proc->exe_file;
     } else {
         full = proc->name;
@@ -466,7 +467,7 @@ on_process_start_internal(
         asid,
         pid);
 
-    if (!asid)
+    if (asid == HOOKS2_UNKNOWN_ASID)
         return;
 
     if (update_active_userspace_traces(cpu, asid)) {
@@ -500,7 +501,7 @@ on_process_end_internal(
         asid,
         pid);
 
-    if (!asid)
+    if (asid == HOOKS2_UNKNOWN_ASID)
         return;
 
     auto it = plugin.map_active_utraces.find(asid);
@@ -604,6 +605,72 @@ on_sys_munmap_return(
     update_active_userspace_libs(cpu, panda_current_asid(cpu));
 }
 
+
+static void
+cleanup_processes(CPUState *cpu)
+{
+    GArray *ps = get_processes(cpu);
+    if (!ps) {
+        return;
+    }
+
+    /* Removing any processes that no longer exist. */
+    for (auto &proc_pair : plugin.map_running_procs) {
+        target_pid_t pid = proc_pair.first;
+        std::shared_ptr<process_info> proc_info = proc_pair.second;
+        bool found = false;
+        for (int i = 0; i < ps->len; i++) {
+            OsiProc *p = &g_array_index(ps, OsiProc, i);
+            if (p->pid == pid) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            printf("Cleaning up process: %s, %d, %d\n",
+                   proc_info->name.c_str(),
+                   (int)proc_info->asid,
+                   (int)pid);
+
+            on_process_end_internal(
+                cpu,
+                proc_info->name.c_str(),
+                proc_info->asid,
+                pid);
+            plugin.map_running_procs.erase(pid);
+        }
+    }
+
+    /* Add any processes that we didn't catch. */
+    for (int i = 0; i < ps->len; i++) {
+        OsiProc *p = &g_array_index(ps, OsiProc, i);
+
+        auto search = plugin.map_running_procs.find(p->pid);
+        if (search != plugin.map_running_procs.end())
+            continue;
+
+        HashableOsiThread thread;
+        std::shared_ptr<process_info> info;
+        char *procname = get_procname(p, true);
+
+        thread.pid = p->pid;
+        thread.tid = p->pid;
+        info = std::make_shared<process_info>();
+        info->name = std::string(procname);
+        info->asid = p->asid;
+        info->threads.insert(thread);
+        plugin.map_running_procs[p->pid] = info;
+
+        on_process_start_internal(
+            cpu,
+            procname,
+            p->asid,
+            thread.pid);
+    }
+    g_array_free(ps, true);
+}
+
+
 static void
 on_start_thread_or_proc(
     CPUState* cpu,
@@ -656,7 +723,6 @@ on_start_thread_or_proc(
                     info->name.c_str(),
                     info->asid,
                     thread.pid);
-                plugin.map_running_procs.erase(it);
             }
         } else {
             info = std::make_shared<process_info>();
@@ -697,6 +763,8 @@ on_start_thread_or_proc(
             thread.pid,
             thread.tid);
     }
+
+    cleanup_processes(cpu);
 }
 
 
@@ -756,7 +824,7 @@ on_sys_clone_return(
         asid = panda_current_asid(cpu);
     } else {
         type = FORK;
-        asid = 0;
+        asid = HOOKS2_UNKNOWN_ASID;
     }
 
     target_long ret = get_syscall_retval(cpu);
@@ -854,7 +922,6 @@ on_sys_execveat_enter(
         procname);
 }
 
-
 static void
 on_sys_exit_enter_common(
     CPUState* cpu,
@@ -876,6 +943,7 @@ on_sys_exit_enter_common(
         free_osithread(pThread);
         return;
     }
+
 
     thread.pid = pThread->pid;
     thread.tid = pThread->tid;
@@ -941,6 +1009,55 @@ on_sys_exit_group_enter(
     on_sys_exit_enter_common(cpu, pc, error_code, true);
 }
 
+
+static void
+on_sys_kill_return(
+    CPUState* cpu,
+    target_ulong pc,
+    int32_t pid,
+    int32_t sig)
+{
+    (void)pc;
+    (void)pid;
+    (void)sig;
+
+    /* For signals, we can't determine how the application handled it. We just
+       have to loop through the task list to find out if an application ended.
+
+       This also isn't without issue. On an abort, I've observed that an
+       application calls tgkill() with it's own pid. It's immediately followed
+       by a rt_sigprocmask(), and then the application dies. Therefore, the
+       application is dead when the tgkill_return is executed. */
+    cleanup_processes(cpu);
+}
+
+static void
+on_sys_tkill_return(
+    CPUState* cpu,
+    target_ulong pc,
+    int32_t pid,
+    int32_t sig)
+{
+    (void)pc;
+    (void)pid;
+    (void)sig;
+    cleanup_processes(cpu);
+}
+
+static void
+on_sys_tgkill_return(
+    CPUState* cpu,
+    target_ulong pc,
+    int32_t tgid,
+    int32_t pid,
+    int32_t sig)
+{
+    (void)pc;
+    (void)tgid;
+    (void)pid;
+    (void)sig;
+    cleanup_processes(cpu);
+}
 
 
 static void
@@ -1064,8 +1181,12 @@ init_plugin(void *self)
     assert(init_osi_api());
     assert(init_syscalls2_api());
 
+    panda_arg_list *args = panda_get_args(PLUGIN_NAME);
+
     plugin.self = self;
     plugin.hook_idx = 0;
+    plugin.use_exe_file = panda_parse_bool_opt(
+        args, "use_exe_file", "Use exe_file instead of comm[16] field for process name");
 
     plugin.cb_asid_changed.cb.asid_changed = cb_asid_changed;
     plugin.cb_asid_changed.type = PANDA_CB_ASID_CHANGED;
@@ -1101,6 +1222,9 @@ init_plugin(void *self)
     PPP_REG_CB("syscalls2", on_sys_vfork_return, on_sys_vfork_return);
     PPP_REG_CB("syscalls2", on_sys_exit_enter, on_sys_exit_enter);
     PPP_REG_CB("syscalls2", on_sys_exit_group_enter, on_sys_exit_group_enter);
+    PPP_REG_CB("syscalls2", on_sys_kill_return, on_sys_kill_return);
+    PPP_REG_CB("syscalls2", on_sys_tgkill_return, on_sys_tgkill_return);
+    PPP_REG_CB("syscalls2", on_sys_tkill_return, on_sys_tkill_return);
 
     return true;
 }

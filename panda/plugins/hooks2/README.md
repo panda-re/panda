@@ -26,10 +26,10 @@ Future Ideas
 * Likewise for thread's starting.. It would be nice if we are actively tracing
   and a thread starts up, we could continue tracing the new thread. Maybe
   add a follow_threads option.
-* This currently only catches new threads/processes created after the plugin
+* [x] This currently only catches new threads/processes created after the plugin
   starts. We could use OSI's `on_get_processes` whenever the plugin is loaded to
   see what's currently running.
-* Use OSI's `on_get_proccesses` to ensure that we haven't missed a thread
+* [x] Use OSI's `on_get_proccesses` to ensure that we haven't missed a thread
   starting/stopping.
 * ignore list of applications that we never want to trace.
 * Lacks support for mips and ppc because of lack of OSI/syscalls support (I
