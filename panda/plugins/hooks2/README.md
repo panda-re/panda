@@ -34,6 +34,8 @@ Future Ideas
 * ignore list of applications that we never want to trace.
 * Lacks support for mips and ppc because of lack of OSI/syscalls support (I
   think).
+* Add ability to hook function call. Possibly implemented but needs to be
+  tested.
 
 Issues
 -----
@@ -50,6 +52,9 @@ Issues
 * I've only used this against 1 re-hosted ARM firmware. It compiles for X86 and
   X64; however, I haven't verified that it works.
 * Sometimes thread names are passed into on_process_start (example: "rs:main Q:Reg" from rsyslog)
+* Very little testing has been performed on the ADD_HOOKS2_FUNCTION() call.
+  It appears to work on ARM, but I haven't tried it on X86. Specifically,
+  get_return_pc() needs to be looked at.
 
 Arguments
 ---------
@@ -187,7 +192,24 @@ int ADD_HOOKS2_SINGLE_INSN(
 
 Description:
 
+---
 
+Name: ADD\_HOOKS2\_FUNCTION
+
+Signature:
+
+```C
+int ADD_HOOKS2_FUNCTION(
+    hooks2_func_t hook_enter,
+    hooks2_func_t hook_return,
+    void *cb_data,
+    bool is_kernel,
+    const char *procname,
+    const char *libname,
+    target_ulong offset);
+```
+
+Description:
 ---
 
 Name: ENABLE\_HOOKS2

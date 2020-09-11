@@ -85,6 +85,7 @@ struct callback_info {
 
 struct hook_cfg {
     bool is_kernel;
+    bool is_func_hook;
     std::shared_ptr<std::string> procname;
     std::shared_ptr<std::string> libname;
     target_ulong trace_start;
@@ -92,6 +93,8 @@ struct hook_cfg {
     target_ulong range_begin;
     target_ulong range_end;
     hooks2_func_t hook_func;
+    hooks2_func_t hook_func_enter;
+    hooks2_func_t hook_func_return;
     void *cb_data;
 
     int index;
@@ -207,11 +210,110 @@ read_string(CPUState *cpu, target_ulong addr, char *buffer)
     }
 }
 
+static target_ulong
+get_return_pc(CPUState *cpu) {
+#if defined(TARGET_ARM)
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    return env->regs[14];
+#elif defined(TARGET_I386)
+    /* TODO: Is this always correct? */
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    int word_size = (env->hflags & HF_LMA_MASK) ? 8 : 4;
+    target_ulong ret;
+    panda_virtual_memory_rw(
+        cpu,
+        env->regs[R_EBP]+word_size,
+        (uint8_t *)&ret,
+        word_size,
+        0);
+    return ret;
+#else
+    /* TODO: Implement for other targets */
+    return 0;
+#endif
+}
+
+
 
 static bool
 in_range(TranslationBlock *tb, target_ulong value)
 {
     return ((value >= tb->pc) && (value < (tb->pc + tb->size)));
+}
+
+static void
+handle_userspace_traces_func(
+    CPUState *cpu,
+    TranslationBlock *tb,
+    std::shared_ptr<struct active_trace> &trace,
+    bool active,
+    HashableOsiThread &thread)
+{
+    target_ulong resolved_trace_start = trace->lib_base + trace->cfg->trace_start;
+
+    if (!active) {
+        if (!trace->cfg->trace_start || in_range(tb, resolved_trace_start)) {
+            if (trace->cfg->hook_func_return) {
+                trace->active_threads.insert(thread);
+                trace->cfg->trace_stop = get_return_pc(cpu);
+                active = true;
+            }
+
+            if (trace->cfg->hook_func_enter) {
+                trace->cfg->hook_func_enter(cpu, tb, trace->cfg->cb_data);
+            }
+        }
+    }
+
+    if (active) {
+        if (in_range(tb, trace->cfg->trace_stop)) {
+            trace->active_threads.erase(thread);
+
+            if (trace->cfg->hook_func_return) {
+                trace->cfg->hook_func_return(cpu, tb, trace->cfg->cb_data);
+            }
+        }
+    }
+
+}
+
+static void
+handle_userspace_traces_range(
+    CPUState *cpu,
+    TranslationBlock *tb,
+    std::shared_ptr<struct active_trace> &trace,
+    bool active,
+    HashableOsiThread &thread)
+{
+    target_ulong resolved_trace_start = trace->lib_base + trace->cfg->trace_start;
+    target_ulong resolved_trace_stop = trace->lib_base + trace->cfg->trace_stop;
+    target_ulong resolved_range_begin = trace->lib_base + trace->cfg->range_begin;
+    target_ulong resolved_range_end = trace->lib_base + trace->lib_size;
+
+    if (trace->cfg->range_end) {
+        resolved_range_end = std::min(
+            resolved_range_end,
+            trace->lib_base + trace->cfg->range_end);
+    }
+
+    if (!active) {
+        if (!trace->cfg->trace_start || in_range(tb, resolved_trace_start)) {
+            trace->active_threads.insert(thread);
+            active = true;
+        }
+    }
+
+    if (active) {
+        if ((tb->pc >= resolved_range_begin) &&
+            (tb->pc <= resolved_range_end)) {
+
+            trace->cfg->hook_func(cpu, tb, trace->cfg->cb_data);
+        }
+
+        if (trace->cfg->trace_stop && in_range(tb, resolved_trace_stop)) {
+            trace->active_threads.erase(thread);
+        }
+    }
 }
 
 static void
@@ -238,39 +340,16 @@ handle_userspace_traces(
         return;
     }
 
-    target_ulong resolved_trace_start = trace->lib_base + trace->cfg->trace_start;
-    target_ulong resolved_trace_stop = trace->lib_base + trace->cfg->trace_stop;
-    target_ulong resolved_range_begin = trace->lib_base + trace->cfg->range_begin;
-    target_ulong resolved_range_end = trace->lib_base + trace->lib_size;
-    if (trace->cfg->range_end) {
-        resolved_range_end = std::min(
-            resolved_range_end,
-            trace->lib_base + trace->cfg->range_end);
-    }
-
     bool active = true;
     auto search = trace->active_threads.find(thread);
     if (search == trace->active_threads.end()) {
         active = false;
     }
 
-    if (!active) {
-        if (!trace->cfg->trace_start || in_range(tb, resolved_trace_start)) {
-            trace->active_threads.insert(thread);
-            active = true;
-        }
-    }
-
-    if (active) {
-        if ((tb->pc >= resolved_range_begin) &&
-            (tb->pc <= resolved_range_end)) {
-
-            trace->cfg->hook_func(cpu, tb, trace->cfg->cb_data);
-        }
-
-        if (trace->cfg->trace_stop && in_range(tb, resolved_trace_stop)) {
-            trace->active_threads.erase(thread);
-        }
+    if (trace->cfg->is_func_hook) {
+        handle_userspace_traces_func(cpu, tb, trace, active, thread);
+    } else {
+        handle_userspace_traces_range(cpu, tb, trace, active, thread);
     }
 }
 
@@ -287,19 +366,36 @@ handle_kernel_traces(
 
     if (!cfg->active) {
         if (in_range(tb, cfg->trace_start)) {
-            cfg->active = true;
+            if (cfg->is_func_hook) {
+
+                cfg->hook_func_enter(cpu, tb, cfg->cb_data);
+
+                if (cfg->hook_func_return) {
+                    cfg->trace_stop = get_return_pc(cpu);
+                    cfg->active = true;
+                }
+            } else {
+                cfg->active = true;
+            }
         }
     }
 
     if (cfg->active) {
-        if ((tb->pc >= cfg->range_begin) &&
-            (tb->pc <= cfg->range_end)) {
+        if (cfg->is_func_hook) {
+            if (in_range(tb, cfg->trace_stop)) {
+                cfg->active = false;
+                cfg->hook_func_return(cpu, tb, cfg->cb_data);
+            }
+        } else {
+            if ((tb->pc >= cfg->range_begin) &&
+                ((tb->pc <= cfg->range_end) || (!cfg->range_end))) {
 
-            cfg->hook_func(cpu, tb, cfg->cb_data);
-        }
+                cfg->hook_func(cpu, tb, cfg->cb_data);
+            }
 
-        if (in_range(tb, cfg->trace_stop)) {
-            cfg->active = false;
+            if (in_range(tb, cfg->trace_stop)) {
+                cfg->active = false;
+            }
         }
     }
 }
@@ -1135,6 +1231,7 @@ add_hooks2(
     else
         cfg->libname = NULL;
 
+    cfg->is_func_hook = false;
     cfg->hook_func = hook;
     cfg->cb_data = cb_data;
     cfg->is_kernel = is_kernel;
@@ -1142,6 +1239,49 @@ add_hooks2(
     cfg->trace_stop = trace_stop;
     cfg->range_begin = range_begin;
     cfg->range_end = range_end;
+    cfg->enabled = true;
+    cfg->index = plugin.hook_idx++;
+    plugin.hook_cfg.push_back(cfg);
+
+    if (is_kernel) {
+        plugin.kernel_traces.push_back(cfg);
+        enable_callback(plugin.cb_tracing);
+    }
+
+    return cfg->index;
+}
+
+int
+add_hooks2_function(
+    hooks2_func_t hook_enter,
+    hooks2_func_t hook_return,
+    void *cb_data,
+    bool is_kernel,
+    const char *procname,
+    const char *libname,
+    target_ulong offset)
+{
+    std::shared_ptr<struct hook_cfg> cfg = std::make_shared<struct hook_cfg>();
+
+    if (procname)
+        cfg->procname = std::make_shared<std::string>(procname);
+    else
+        cfg->procname = NULL;
+
+    if (libname)
+        cfg->libname = std::make_shared<std::string>(libname);
+    else
+        cfg->libname = NULL;
+
+    cfg->is_func_hook = true;
+    cfg->hook_func_enter = hook_enter;
+    cfg->hook_func_return = hook_return;
+    cfg->cb_data = cb_data;
+    cfg->is_kernel = is_kernel;
+    cfg->trace_start = offset;
+    cfg->trace_stop = 0;
+    cfg->range_begin = 0;
+    cfg->range_end = 0;
     cfg->enabled = true;
     cfg->index = plugin.hook_idx++;
     plugin.hook_cfg.push_back(cfg);
