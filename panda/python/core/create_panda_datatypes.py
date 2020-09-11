@@ -193,6 +193,9 @@ def main():
     #   other PPP headers: callstack_instr. TODO: more
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/callstack_instr", "callstack_instr.h"))
 
+    create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
+    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2_ppp.h"))
+
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
         pdty.write("""
 \"\"\"
