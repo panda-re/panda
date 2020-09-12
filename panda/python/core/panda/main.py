@@ -356,13 +356,23 @@ class Panda():
             self.disabled_tb_chaining = True
             self.libpanda.panda_disable_tb_chaining()
 
-    def run(self):
+    def run(self, from_snapshot=None):
         '''
         This function starts our running PANDA instance from Python. At termination this function returns and the script continues to run after it.
         
         This function starts execution of the guest. It blocks until guest finishes.
         It also initializes panda object, clears main_loop_wait fns, and sets up internal callbacks.
+
+        Parameters:
+            from_snapshot: This is the name of a snapshot to load at the start. OPTIONAL.
         '''
+
+        if from_snapshot:
+            @blocking
+            def load_vm_snapshot():
+                print(f"GOT TO REVERT SYNC with argument {from_snapshot}")
+                self.revert_sync(from_snapshot)
+            self.queue_async(load_vm_snapshot)
 
         if len(self.main_loop_wait_fnargs):
             if debug:
