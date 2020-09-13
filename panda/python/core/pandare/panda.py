@@ -787,7 +787,7 @@ class Panda():
     # Methods that directly pass data to/from PANDA with no extra logic beyond argument reformatting.
     def set_pandalog(self, name):
         '''
-        Start up pandalog with specified file
+        Enable recording to a pandalog (plog) named `name`
 
             Parameters:
                 name: file to output data to
