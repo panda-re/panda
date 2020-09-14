@@ -311,9 +311,9 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
     #if defined(TARGET_MIPS)
         #define MAX_MNEMONIC_LEN 32 // CS_MNEMONIC_SIZE not imported?
         if (res == INSTR_UNKNOWN) {
-            if (!strncasecmp(insn->mnemonic, "jal", 32)) {
+            if (!strncasecmp(insn->mnemonic, "jal", MAX_MNEMONIC_LEN)) {
                 res = INSTR_CALL;   // Direct call
-            } else if  (!strncasecmp(insn->mnemonic, "jalr", 32)) {
+            } else if  (!strncasecmp(insn->mnemonic, "jalr", MAX_MNEMONIC_LEN)) {
                 res = INSTR_CALL;   // Jump table call
             } else if (cs_insn_group(handle, end, CS_GRP_JUMP) && strcasestr(insn->op_str, "$ra")) {
                 res = INSTR_RET;    // Jump to LR -> ret

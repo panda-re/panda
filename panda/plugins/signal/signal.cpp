@@ -308,6 +308,17 @@ void kernel_call_handler(CPUState *cpu, target_ulong func) {
                 }
             }
         }
+
+        // Temporary workaround for https://github.com/aquynh/capstone/issues/1680
+        // Mnemonic/operand comparision as fallback for incorrect grouping
+        #if defined(TARGET_MIPS)
+        if (!strncasecmp(insn->mnemonic, "jal", MAX_MNEMONIC_LEN)) {
+            is_call = true;
+        } else if  (!strncasecmp(insn->mnemonic, "jalr", MAX_MNEMONIC_LEN)) {
+            is_call = true;
+        }
+        #endif
+
         assert(is_call);
         assert(cs_op_count(handle, insn, CS_OP_IMM) == 1);
 
@@ -341,17 +352,17 @@ void kernel_call_handler(CPUState *cpu, target_ulong func) {
             // - ldr pc, <addr>
 
             // Relative calls
-            if (strncasecmp(insn->mnemonic, "b", CS_MNEMONIC_SIZE)) {
+            if (!strncasecmp(insn->mnemonic, "b", CS_MNEMONIC_SIZE)) {
                 call_abs_trgt = curr_pc + detail->arm.operands[op_idx].imm;
-            } else if (strncasecmp(insn->mnemonic, "bl", CS_MNEMONIC_SIZE)) {
+            } else if (!strncasecmp(insn->mnemonic, "bl", CS_MNEMONIC_SIZE)) {
                 call_abs_trgt = curr_pc + detail->arm.operands[op_idx].imm;
 
             // Absolute call
-            } else if (strncasecmp(insn->mnemonic, "bx", CS_MNEMONIC_SIZE)) {
+            } else if (!strncasecmp(insn->mnemonic, "bx", CS_MNEMONIC_SIZE)) {
                 call_abs_trgt = detail->arm.operands[op_idx].imm;
 
             // Ambiguous
-            } else if (strncasecmp(insn->mnemonic, "blx", CS_MNEMONIC_SIZE)) {
+            } else if (!strncasecmp(insn->mnemonic, "blx", CS_MNEMONIC_SIZE)) {
                 fprintf(stderr, "[ERROR] signal: Ambiguous ARM branch encoding.\n");
                 return;
 
@@ -367,8 +378,13 @@ void kernel_call_handler(CPUState *cpu, target_ulong func) {
             int op_idx = cs_op_index(handle, insn, CS_OP_IMM, 1);
             // See: http://www.mrc.uidaho.edu/mrc/people/jff/digital/MIPSir.html
             // Relative calls
-            if (strncasecmp(insn->mnemonic, "jal", CS_MNEMONIC_SIZE)) {
+            if (!strncasecmp(!insn->mnemonic, "jal", CS_MNEMONIC_SIZE)) {
                 call_abs_trgt = (curr_pc & 0xf0000000) | (detail->mips.operands[op_idx].imm << 2);
+            } else if  (!strncasecmp(insn->mnemonic, "jalr", CS_MNEMONIC_SIZE)) {
+                // TODO: code to grab value of operand register
+                fprintf(stderr, "[ERROR] signal: MIPS \'jalr\' operand grab not yet supported!\n");
+                return;
+            }
 
             // Unsupported encoding
             } else {
@@ -419,8 +435,6 @@ void kernel_call_handler(CPUState *cpu, target_ulong func) {
         cs_free(insn, count);
     }
     cs_close(&handle);
-
-    // TODO: detail for call target, check against get_signal, retreive struct
 }
 
 // Per Luke C., we'll suppress by swapping to SIGWINCH instead of re-directing control flow from the hypervisor
