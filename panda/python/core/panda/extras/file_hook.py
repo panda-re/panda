@@ -34,16 +34,17 @@ class FileHook:
         hook.rename_file("/rename_this", "/to_this")
     '''
 
-    def __init__(self, panda):
+    def __init__(self, panda, use_osi=True):
         '''
         Store a reference to the panda object, and register
         the appropriate syscalls2 callbacks for entering and exiting
-        (from all syscalls that have a char* filename argument.
+        from all syscalls that have a char* filename argument.
         '''
 
         self._panda = panda
         self._renamed_files = {} # old_fname (str): new_fname (bytes)
         self._changed_strs = {} # callback_name: original_data
+        self.use_osi = use_osi
 
         self.logger = logging.getLogger('panda.hooking')
         self.logger.setLevel(logging.DEBUG)
@@ -127,6 +128,12 @@ class FileHook:
         self._renamed_files[old_name] = new_name
 
     def _get_fname(self, cpu, fd):
+        '''
+        Use OSI to get the filename behind a file descriptor.
+        If not self.use_osi, return None
+        '''
+        if not self.use_osi:
+            return None
         fname_s = None
         proc = self._panda.plugins['osi'].get_current_process(cpu)
         if proc != ffi.NULL:

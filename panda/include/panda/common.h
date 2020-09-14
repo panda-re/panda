@@ -76,10 +76,23 @@ target_ulong panda_current_pc(CPUState *cpu);
 
 static inline int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
                                            bool is_write) {
-    rcu_read_lock();
-    MemTxResult r = cpu_physical_memory_rw_ex(addr, buf, len, is_write, true);
-    rcu_read_unlock();
-    return r;
+    hwaddr l = len;
+    hwaddr addr1;
+    MemoryRegion *mr = address_space_translate(&address_space_memory, addr,
+                                               &addr1, &l, is_write);
+
+    if (!memory_access_is_direct(mr, is_write)) {
+        // fail for MMIO regions of physical address space
+        return MEMTX_ERROR;
+    }
+    void *ram_ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
+
+    if (is_write) {
+        memcpy(ram_ptr, buf, len);
+    } else {
+        memcpy(buf, ram_ptr, len);
+    }
+    return MEMTX_OK;
 }
 
 /**
@@ -283,6 +296,8 @@ static inline bool panda_in_kernel(CPUState *cpu) {
 #if defined(TARGET_I386)
     return ((env->hflags & HF_CPL_MASK) == 0);
 #elif defined(TARGET_ARM)
+    // Note: returns true for non-SVC modes (hypervisor, monitor, system, etc).
+    // See: https://www.keil.com/pack/doc/cmsis/Core_A/html/group__CMSIS__CPSR__M.html
     return ((env->uncached_cpsr & CPSR_M) > ARM_CPU_MODE_USR);
 #elif defined(TARGET_PPC)
     return msr_pr;
