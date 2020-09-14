@@ -723,11 +723,6 @@ cleanup_processes(CPUState *cpu)
             }
         }
         if (!found) {
-            printf("Cleaning up process: %s, %d, %d\n",
-                   proc_info->name.c_str(),
-                   (int)proc_info->asid,
-                   (int)pid);
-
             on_process_end_internal(
                 cpu,
                 proc_info->name.c_str(),
