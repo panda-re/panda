@@ -745,18 +745,14 @@ string read_guest_null_terminated_string(CPUState *cpu, uint64_t addr) {
 
 
 // 59 long sys_execve(const char __user *filename, const char __user *const __user *argv, const char __user *const __user *envp);
-void execve(CPUState *cpu, target_ulong pc, uint64_t filename, uint64_t argv, uint64_t envp) {
+void execve_cb(CPUState *cpu, target_ptr_t pc, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp) {
     string filename_s = read_guest_null_terminated_string(cpu, filename);
     cout << "Entering execve -- filename = [" << filename_s << "\n";
 }
 
 
 // 322 long sys_execveat(int dfd, const char __user *filename, const char __user *const __user *argv, const char __user *const __user *envp, int flags);
-// /home/tleek/git/panda-leet-tsm/panda/include/panda/plugin_plugin.h:137:20: error: invalid conversion from ‘void (*)(CPUState*, target_ulong, uint64_t, uint64_t, uint64_t, int) {aka void (*)(CPUState*, long unsigned int, long unsigned int, long unsigned int, long unsigned int, int)}’ to 
-// ‘on_sys_execveat_enter_t {aka void (*)(CPUState*, long unsigned int, int, long unsigned int, long unsigned int, long unsigned int, int)}’ [-Werror=permissive]
-
-void execveat(CPUState*cpu, long unsigned int pc, int filename, long unsigned int, long unsigned int argv, long unsigned int envp, int flags) {
-
+void execveat_cb (CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp, int flags) {
 //void execveat(CPUState *cpu, target_ulong pc, uint64_t filename, uint64_t argv, uint64_t envp, int flags) {
     string filename_s = read_guest_null_terminated_string(cpu, filename);
     cout << "Entering execveat -- filename = [" << filename_s << "\n";
@@ -779,8 +775,8 @@ bool init_plugin(void *self) {
 
     panda_require("syscalls2");
     assert(init_syscalls2_api());
-    PPP_REG_CB("syscalls2", on_sys_execve_enter, execve);
-    PPP_REG_CB("syscalls2", on_sys_execveat_enter, execveat);
+    PPP_REG_CB("syscalls2", on_sys_execve_enter, execve_cb);
+    PPP_REG_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
 
     panda_arg_list *args = panda_get_args("asidstory");
     num_cells = std::max(panda_parse_uint64_opt(args, "width", 100, "number of columns to use for display"), UINT64_C(80)) - NAMELEN - 5;

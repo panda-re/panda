@@ -81,6 +81,7 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
         psyscall.pid = current->pid;
         psyscall.ppid = current->ppid;
         psyscall.tid = othread->tid;
+        psyscall.retcode = get_syscall_retval(cpu);
         psyscall.create_time = current->create_time;
         psyscall.call_name = strdup(call->name);
         psyscall.args = (Panda__SyscallArg **) malloc (sizeof(Panda__SyscallArg *) * call->nargs);
