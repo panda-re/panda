@@ -47,27 +47,6 @@ PANDA_NPROC=${PANDA_NPROC:-$(nproc || sysctl -n hw.ncpu)}
 # stop on any error
 set -e
 
-# Find paths to python2.7 and pip3
-# As part of building we need python2 for qemu and pip3 to install pypanda dependencies
-# Either use python and pip3 or use pyenv with 3.6.6 and 2.7.9
-# This is just a temporary hack until we merge with qemu 4.1 which adds supports python3
-#if which pyenv; then
-#  eval "$(pyenv init -)"
-#  pyenv shell 3.6.6 2.7.9
-#  PYTHON2PATH=$(pyenv which python2)
-#else
-PYTHON2PATH=$(which python2) # First try python2, then python
-if [ -z "${PYTHON2PATH}" ] || ! $PYTHON2PATH --version 2>&1 | grep -q 'Python 2\.7'; then
-  PYTHON2PATH=$(which python)
-  if [ -z "${PYTHON2PATH}" ] || ! $PYTHON2PATH --version 2>&1 | grep -q 'Python 2\.7'; then
-    echo "Could not find python2.7. Tried python2 and python"
-    exit 1
-  fi
-fi
-#fi
-
-msg "Using python2 at: $PYTHON2PATH"
-
 ### Check gcc/g++ versions: 7.1-8.4 are supported. If you want to build with clang, you might need to disable this
 gcc --version | awk '/gcc/ && ($3+0)<7.1{print "Fatal error: GCC too old"; exit 1}' || exit 1
 g++ --version | awk '/g\+\+/ && ($3+0)<7.1{print "Fatal error: G++ too old"; exit 1}' || exit 1
@@ -125,7 +104,7 @@ else
 fi
 
 ### Set other configuration flags, depending on environment.
-MISC_CONFIG="--python=$PYTHON2PATH --disable-vhost-net --enable-capstone"
+MISC_CONFIG="--disable-vhost-net --enable-capstone"
 if pkg-config --exists --atleast-version 4.9 xencontrol; then
     ## Enable xencontrol compat API for libxen-4.9 (Ubuntu 18.04LTS).
     MISC_CONFIG="$MISC_CONFIG --extra-cflags=-DXC_WANT_COMPAT_DEVICEMODEL_API"

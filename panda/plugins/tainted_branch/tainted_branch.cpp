@@ -67,6 +67,10 @@ std::map<uint64_t,std::set<uint64_t>> tainted_branch;
 // a taint label is just a uint32
 typedef uint32_t Tlabel;
 
+// name for CSV output file (if that is requested)
+const char *csv_filename = NULL;
+FILE *csv_file;
+
 // liveness[pos] is # of branches byte pos in file was used to decide up to this point
 std::map <Tlabel, uint64_t> liveness_map;
 
@@ -132,6 +136,50 @@ void tbranch_on_branch_taint2(Addr a, uint64_t size) {
     }
 }
 
+// taint label iterator callback for CSV output
+// it just prints the current label to the CSV file
+// input tl is the taint label
+// stuff is not used
+// output is 0 to continue iteration
+int taint_branch_csv_aux(Tlabel tl, void *stuff) {
+    fprintf(csv_file, " %u", tl);
+    return 0;
+}
+
+// panda callback used for CSV output
+// input a is the address type and value (only LADDR is acceptable)
+// input size is the number of bytes in the item being reported
+void tbranch_on_branch_to_csv(Addr a, uint64_t size) {
+    // a is an llvm reg
+    assert (a.typ == LADDR);
+    // count number of tainted bytes on this reg
+    uint32_t num_tainted = 0;
+    Addr ao = a;
+    for (uint32_t o=0; o<size; o++) {
+        ao.off = o;
+        num_tainted += (taint2_query(ao) != 0);
+    }
+    if (num_tainted > 0) {
+        if (summary) {
+            CPUState *cpu = first_cpu;
+            target_ulong asid = panda_current_asid(cpu);
+            tainted_branch[asid].insert(panda_current_pc(cpu));
+        }
+        else {
+            CPUState *cpu = first_cpu;
+            target_ulong cur_pc = panda_current_pc(cpu);
+            uint64_t cur_instr = rr_get_guest_instr_count();
+            for (uint32_t cur_off = 0; cur_off < size; cur_off++) {
+                ao.off = cur_off;
+                fprintf(csv_file, "0x" TARGET_FMT_lx ",%" PRId64 ",", cur_pc,
+                        cur_instr);
+                // print each taint label that is on this byte
+                taint2_labelset_addr_iter(a, taint_branch_csv_aux, NULL);
+                fprintf(csv_file, "\n");
+            }
+        }
+    }
+}
 
 #endif
 
@@ -144,34 +192,82 @@ bool init_plugin(void *self) {
     summary = panda_parse_bool_opt(args, "summary", "only print out a summary of tainted instructions");
     bool indirect_jumps = panda_parse_bool_opt(args, "indirect_jumps", "also query taint on indirect jumps and calls");
     liveness = panda_parse_bool_opt(args, "liveness", "track liveness of input bytes");
-    if (summary) printf ("tainted_instr summary mode\n"); else printf ("tainted_instr full mode\n");
+    csv_filename = panda_parse_string_opt(args, "csvfile", NULL,
+            "name of CSV file, if CSV output desired");
+
+    if (NULL != csv_filename) {
+        if (liveness) {
+            LOG_ERROR("cannot enable CSV output and liveness output at same time\n");
+            return false;
+        } else if (pandalog) {
+            LOG_ERROR("cannot enable CSV output and PLOG output at same time\n");
+            return false;
+        }
+    }
+    // as it was historically possible to run this with no PLOG, it is now
+    // possible to run tainted_branch with neither PLOG nor csvfile
+
+    if (summary) {
+        printf("tainted_branch summary mode\n");
+    }
+    else {
+        printf ("tainted_branch full mode\n");
+    }
     /*
     panda_cb pcb;
     pcb.after_block_exec = tbranch_after_block_exec;
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     */
-    PPP_REG_CB("taint2", on_branch2, tbranch_on_branch_taint2);
-    if (indirect_jumps) 
-        PPP_REG_CB("taint2", on_indirect_jump, tbranch_on_branch_taint2);
+
+    if (NULL == csv_filename) {
+        PPP_REG_CB("taint2", on_branch2, tbranch_on_branch_taint2);
+        if (indirect_jumps) {
+            PPP_REG_CB("taint2", on_indirect_jump, tbranch_on_branch_taint2);
+        }
+    } else {
+        PPP_REG_CB("taint2", on_branch2, tbranch_on_branch_to_csv);
+        if (indirect_jumps) {
+            PPP_REG_CB("taint2", on_indirect_jump, tbranch_on_branch_to_csv);
+        }
+        if (!summary) {
+            csv_file = fopen(csv_filename, "w");
+            fprintf(csv_file, "PC,Instruction,Labels\n");
+        }
+    }
+
     return true;
 }
 
 
 void uninit_plugin(void *self) {
     if (summary) {
-        Panda__TaintedBranchSummary *tbs = (Panda__TaintedBranchSummary *) malloc(sizeof(Panda__TaintedBranchSummary));
-        for (auto kvp : tainted_branch) {
-            uint64_t asid = kvp.first;
-            for (auto pc : kvp.second) {
-                *tbs = PANDA__TAINTED_BRANCH_SUMMARY__INIT;
-                tbs->asid = asid;
-                tbs->pc = pc;
-                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-                ple.tainted_branch_summary = tbs;
-                pandalog_write_entry(&ple);
+        if (NULL == csv_filename) {
+            Panda__TaintedBranchSummary *tbs = (Panda__TaintedBranchSummary *) malloc(sizeof(Panda__TaintedBranchSummary));
+            for (auto kvp : tainted_branch) {
+                uint64_t asid = kvp.first;
+                for (auto pc : kvp.second) {
+                    *tbs = PANDA__TAINTED_BRANCH_SUMMARY__INIT;
+                    tbs->asid = asid;
+                    tbs->pc = pc;
+                    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+                    ple.tainted_branch_summary = tbs;
+                    pandalog_write_entry(&ple);
+                }
             }
+            free(tbs);
+        } else {
+            csv_file = fopen(csv_filename, "w");
+            fprintf(csv_file, "ASID,PC\n");
+            for (auto kvp : tainted_branch) {
+                uint64_t asid = kvp.first;
+                for (auto pc : kvp.second) {
+                    fprintf(csv_file, "0x%" PRIx64 ",0x%" PRIx64 "\n", asid, pc);
+                }
+            }
+            fclose(csv_file);
         }
-        free(tbs);
+    } else if (NULL != csv_filename) {
+        fclose(csv_file);
     }
 
     if (liveness) {

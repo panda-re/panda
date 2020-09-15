@@ -157,7 +157,33 @@ void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
             shad_dest->name(), dest, size, shad_src->name(), src);
     taint_log_labels(shad_src, src, size);
 
-    Shad::copy(shad_dest, dest, shad_src, src, size);
+    if (I && (I->getOpcode() == llvm::Instruction::And ||
+            I->getOpcode() == llvm::Instruction::Or)) {
+        llvm::Value *consted = llvm::isa<llvm::Constant>(I->getOperand(0)) ?
+                I->getOperand(0) : I->getOperand(1);
+        assert(consted);
+        llvm::ConstantInt *intval = llvm::dyn_cast<llvm::ConstantInt>(consted);
+        assert(intval);
+        uint64_t val = intval->getValue().getLimitedValue();
+
+        for (uint64_t i = 0; i < size; i++) {
+            uint8_t mask = (val >> (8*i))&0xff;
+            if (I->getOpcode() == llvm::Instruction::And) {
+                if (mask == 0)
+                    shad_dest->set_full(dest + i, TaintData());
+                else
+                    shad_dest->set_full(dest + i, shad_src->query_full(src+i));
+            }
+            else if (I->getOpcode() == llvm::Instruction::Or) {
+                if (mask == 0xff)
+                    shad_dest->set_full(dest + i, TaintData());
+                else
+                    shad_dest->set_full(dest + i, shad_src->query_full(src+i));
+            }
+        }
+    } else {
+        Shad::copy(shad_dest, dest, shad_src, src, size);
+    }
 
     if (I) update_cb(shad_dest, dest, shad_src, src, size, I);
 }

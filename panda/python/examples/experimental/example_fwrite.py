@@ -4,7 +4,7 @@ import time
 import pickle
 path.append("..")
 from panda import Panda
-from panda.x86.helper import *
+from panda.helper.x86 import *
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # /* PANDABEGINCOMMENT
 # *
 # * Authors:
@@ -17,7 +17,7 @@
 ''' PANDA tool for generating different code files from system call definitions.
 '''
 
-from __future__ import print_function
+
 import jinja2
 import json
 import sys
@@ -257,7 +257,7 @@ class Argument(object):
             runtime value to it.
         '''
         ctype = self.ctype
-        ctype_bits = int(filter(str.isdigit, ctype))
+        ctype_bits = int(list(filter(str.isdigit, ctype)))
         assert ctype_bits in [32, 64], 'Invalid number of bits for type %s' % ctype
         ctype_get = 'get_%d' % ctype_bits if ctype.startswith('uint') else 'get_s%d' % ctype_bits
         return '{0} arg{1} = {2}(cpu, {1});'.format(ctype, self.no, ctype_get)
@@ -423,7 +423,7 @@ if __name__ == '__main__':
         }
         if _target in context_target_extra:
             d = context_target_extra[_target]
-            assert all([k not in target_context for k in d.keys()]), 'target context for %s overwrites values' % (_target)
+            assert all([k not in target_context for k in list(d.keys())]), 'target context for %s overwrites values' % (_target)
             target_context.update(d)
 
         # Parse prototype file contents. Extra context is passed to set

@@ -193,6 +193,9 @@ def main():
     #   other PPP headers: callstack_instr. TODO: more
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/callstack_instr", "callstack_instr.h"))
 
+    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2_ppp.h"))
+    create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
+
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
         pdty.write("""
 \"\"\"
@@ -222,23 +225,21 @@ def define_clean_header(ffi, fname):
 
 from os import environ
 
-if "PANDA_BITS" in environ:
-    bits = int(environ["PANDA_BITS"])
-else:
-    print("DOCUMENT MODE")
+if "PANDA_BITS" not in environ and "PANDA_ARCH" not in environ:
+    print("Environment lacks PANDA_BITS and PANDA_ARCH. Assuming we're in documentation mode for 32-bit i386")
     bits = 32
-
-if "PANDA_ARCH" in environ:
-    arch = environ["PANDA_ARCH"]
-else:
-    print("DOCUMENT MODE")
     arch = "i386"
+else:
+    # If only one is set that's weird and we should crash
+    bits = int(environ["PANDA_BITS"])
+    arch = environ["PANDA_ARCH"]
 
 # For OSI
 ffi.cdef("typedef void GArray;")
 ffi.cdef("typedef int target_pid_t;")
 
 ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
+ffi.cdef("typedef int"+str(bits)+"_t target_long;")
 #define_clean_header(ffi, "{inc}/pthreadtypes.h")
 
 # PPP Headers
@@ -289,6 +290,8 @@ ffi.cdef(''' typedef struct syscall_ctx {{
 define_clean_header(ffi, "{inc}/syscalls_ext_typedefs.h")
 
 define_clean_header(ffi, "{inc}/callstack_instr.h")
+
+define_clean_header(ffi, "{inc}/hooks2_ppp.h")
 # END PPP headers
 
 define_clean_header(ffi, "{inc}/breakpoints.h")
