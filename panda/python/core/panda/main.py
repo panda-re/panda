@@ -2339,17 +2339,31 @@ class Panda():
         return decorator
     
          ############# GHIDRA MIXINS ###############
+    
     def delete_all_ghidra_memory_segments(self,memory, monitor):
         for block in memory.getBlocks(): 
             memory.removeBlock(block,monitor)
 
 
-    def populate_ghidra(self,cpu, pc, bridge, analyze=True):
+    def populate_ghidra(self,cpu, pc, bridge, namespace, analyze=True):
+        globals().update(namespace)
         tid = currentProgram.startTransaction("BRIDGE: Change Memory Sections")
         memory = currentProgram.getMemory()
         self.delete_all_ghidra_memory_segments(memory,monitor)
+
+        def read_memory(cpu, start, size):
+            output = b""
+            pos = start
+            while len(output) < size:
+                try:
+                    output += self.virtual_memory_read(cpu, pos, 0x100)
+                except:
+                    output += b"\x00"*0x100
+                pos += 0x100
+            return output
+
         names = set()
-        for mapping in panda.get_mappings(cpu):
+        for mapping in self.get_mappings(cpu):
             if mapping.file != ffi.NULL:
                 name = ffi.string(mapping.file).decode()
             else:
