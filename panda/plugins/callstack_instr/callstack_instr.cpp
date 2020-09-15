@@ -152,19 +152,6 @@ void verbose_log(const char *msg, TranslationBlock *tb, stackid curStackid,
     // end of function verbose_log
 }
 
-static inline target_ulong get_stack_pointer(CPUArchState* env) {
-#if defined(TARGET_I386)
-    return env->regs[R_ESP];
-#elif defined(TARGET_ARM)
-    return env->regs[13];
-#elif defined(TARGET_MIPS)
-    return env->active_tc.gpr[29]; // $sp
-#elif defined(TARGET_PPC)
-    return env->gpr[1]; // r1
-#else
-    return 0;
-#endif
-}
 
 // get the stackid when the heuristic stack segregation method is in use
 // assumes stack_segregation is STACK_HEURISTIC
@@ -173,7 +160,6 @@ static stackid get_heuristic_stackid(CPUState* cpu) {
     // complaining about get_stackid having too many return statements without
     // causing it to complain about if statements being nested too deep
     target_ulong asid;
-    CPUArchState *env = static_cast<CPUArchState *>(cpu->env_ptr);
 
     // Track all kernel-mode stacks together
     if (panda_in_kernel(cpu)) {
@@ -188,7 +174,7 @@ static stackid get_heuristic_stackid(CPUState* cpu) {
         cached_asid = asid;
     }
 
-    target_ulong sp = get_stack_pointer(env);
+    target_ulong sp = panda_current_sp(cpu);
     stackid cursi;
 
     // We can short-circuit the search in most cases
