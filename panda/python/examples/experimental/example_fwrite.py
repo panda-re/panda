@@ -15,7 +15,7 @@ with open("libc_syms.pickle", "rb") as f:
     libc = pickle.load(f)
 
 f = open("fwrite.out","wb")
-@panda.hook(libc["fwrite"],libraryname="libc",kernel=False)
+@panda.hook_single_insn("fwrite_hook", libc["fwrite"],libraryname="libc",kernel=False)
 def fwrite_hook(cpustate, tb):
 	# grab arguments ESP, arg1, arg2, arg3...
 	ret = ffi.new("uint32_t[]", 5)
