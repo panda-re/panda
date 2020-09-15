@@ -166,7 +166,7 @@ class Panda():
         self._initialized_panda = False
         self.disabled_tb_chaining = False
         self.taint_enabled = False
-        self.hook_list = []
+        self.hook_list = {}
 
         # Asid stuff
         self.current_asid_name = None
@@ -2233,6 +2233,11 @@ class Panda():
             # Inform the plugin that it has a new breakpoint at addr
             
             hook_cb_passed = hook_cb_type(fun)
+            if not hasattr(self, "hook_gc_list"):
+                self.hook_gc_list = [hook_cb_passed]
+            else:
+                self.hook_gc_list.append(hook_cb_passed)
+
             # I don't know what this is/does
             cb_data = ffi.NULL
             hook_number = self.plugins['hooks2'].add_hooks2(hook_cb_passed, cb_data, kernel, \
@@ -2247,7 +2252,7 @@ class Panda():
             return wrapper
         return decorator
     
-    def hook_single_insn(self, name, pc, kernel=False, procname=None, libname=None):
+    def hook_single_insn(self, name, pc, kernel=False, procname=ffi.NULL, libname=ffi.NULL):
         return self.hook(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
     
 
