@@ -5,20 +5,6 @@
 extern target_ulong last_r28;
 #endif
 
-#ifdef TARGET_ARM
-/**
- * @brief Returns the current kernel stack pointer for ARM guest
- */
-target_ptr_t get_ksp (CPUState* cpu) {
-    if ((((CPUARMState*)cpu->env_ptr)->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC) {
-        return ((CPUARMState*)cpu->env_ptr)->regs[13];
-    }else{
-        // Read banked R13 for SVC mode to get the kernel SP (1=>SVC bank from target/arm/internals.h)
-        return ((CPUARMState*)cpu->env_ptr)->banked_r13[1];
-    }
-}
-#endif
-
 /**
  * @brief Retrieves the task_struct address using per cpu information.
  */
@@ -28,7 +14,7 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
     target_ptr_t current_task_addr;
     target_ptr_t ts;
 #ifdef TARGET_ARM
-    target_ptr_t kernel_sp = get_ksp(cpu);
+    target_ptr_t kernel_sp = panda_current_ksp(cpu);
 
     // XXX: This should use THREADINFO_MASK but that's hardcoded and wrong for my test system
     // We need to expose that as a part of the OSI config - See issue #651
