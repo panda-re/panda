@@ -1,9 +1,10 @@
 #include "osi_linux.h"
 #include "kernel_2_4_x_profile.h"
 
+
 target_ptr_t kernel24x_get_current_task_struct(CPUState *cpu)
 {
-    target_ptr_t kernel_esp = panda_current_sp(cpu);
+    target_ptr_t kernel_esp = panda_current_ksp(cpu);
     if (false == panda_in_kernel(cpu)) {
       // INT 80h pushes 20 bytes - we are emulating that here if not in kernel mode.
       kernel_esp -= 20;
