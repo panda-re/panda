@@ -56,6 +56,8 @@
 #include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
+
 #include <iostream>
 #include <sstream>
 #include <map>
@@ -77,13 +79,68 @@ static const char *qemu_st_helper_names[16];
 extern "C" {
     TCGLLVMTranslator *tcg_llvm_translator = nullptr;
 
-    /* These data is accessible from generated code */
+    /* This data is accessible from generated code */
     TCGLLVMRuntime tcg_llvm_runtime = {};
+
+    /* the TB whose host assembly size still needs to be determined */
+    struct TranslationBlock *pending_tb;
+    bool need_section_size = false;
+    uint64_t section_size = 0;
 }
 
 extern CPUState *env;
 
 using namespace llvm;
+
+/*
+ * This callback is executed just after the host assembly code corresponding to
+ * an LLVM function is generated.  We need to extract the number of bytes in the
+ * generated code (aka the section size) for use in the associated
+ * TranslationBlock.
+ */
+void getLLVMAssemblySize(llvm::orc::VModuleKey,
+        const llvm::object::ObjectFile &obj,
+        const llvm::RuntimeDyld::LoadedObjectInfo &objInfo) {
+    if (!need_section_size) {
+        return;
+    }
+    /*
+     * There are multiple symbols associated with the just JITted code.  One of
+     * them has the same name as the LLVM function currently being processed.
+     */
+    for (llvm::object::symbol_iterator cur_sym = obj.symbol_begin(),
+            end_sym = obj.symbol_end(); cur_sym != end_sym; ++cur_sym) {
+        /* don't waste time with undefined symbols */
+        uint32_t flags = cur_sym->getFlags();
+        if (flags & llvm::object::SymbolRef::SF_Undefined) {
+            continue;
+        }
+
+        /* is this the symbol for the LLVM function currently being JITted? */
+        StringRef name;
+        if (auto name_or_err = cur_sym->getName()) {
+            name = *name_or_err;
+        } else {
+            /* hopefully it's not the one we want, and can just continue */
+            std::cerr << "Could not get section name" << std::endl;
+            continue;
+        }
+        if (0 == name.str().find(pending_tb->llvm_fn_name)) {
+            llvm::object::section_iterator sec_it = obj.section_end();
+            if (auto si_or_err = cur_sym->getSection()) {
+                sec_it = *si_or_err;
+                // save section size so can calculate end after have start
+                section_size = (*sec_it).getSize();
+                need_section_size = false;
+                break;
+            } else {
+                std::cerr << "Error getting section for " <<
+                        pending_tb->llvm_fn_name << std::endl;
+                assert(false);
+            }
+        }
+    }
+}
 
 TCGLLVMTranslator::TCGLLVMTranslator()
     : m_builder(*m_context), m_tbCount(0), m_tcgContext(NULL),
@@ -132,6 +189,11 @@ TCGLLVMTranslator::TCGLLVMTranslator()
     jit->getMainJITDylib().addGenerator(cantFail(
         llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
         DL.getGlobalPrefix())));
+
+    llvm::orc::RTDyldObjectLinkingLayer::NotifyLoadedFunction notify_loaded_fn =
+            getLLVMAssemblySize;
+    static_cast<llvm::orc::RTDyldObjectLinkingLayer&>(
+            jit->getObjLinkingLayer()).setNotifyLoaded(notify_loaded_fn);
 }
 
 void TCGLLVMTranslator::adjustTypeSize(unsigned target, llvm::Value **v1) {
@@ -1183,6 +1245,8 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
     /* TODO: compute the checksum of the tb to see if we can reuse some code */
     std::ostringstream fName;
 
+    // this is where TranslationBlock gets the size for llvm_fn_name (and
+    // knowing PANDA never builds with CONFIG_USER_ONLY)
     fName << "tcg-llvm-tb-" << (m_tbCount++) << "-" << std::hex << tb->pc;
 
 #ifdef CONFIG_USER_ONLY
@@ -1321,18 +1385,45 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
         tb->llvm_tc_ptr = (uint8_t *) symbol->getAddress();
         assert(tb->llvm_tc_ptr);
 
-        /*
-        tb->llvm_tc_end = tb->llvm_tc_ptr +
-                m_jitMemoryManager->getFunctionSize(m_tbFunction);
-                */
-        // TODO: function size calculation is wrong - can this be removed?
-        auto functionSize = m_tbFunction->size();
-        assert(functionSize > 0);
+        // it is not possible to determine the number of bytes in the generated
+        // host assembly for this LLVM function until the function is JITted,
+        // which can be forcibly done by looking up the associated symbol in the
+        // proper symbol table and registering a NotifyLoadedFunction callback
+        // (as was done above) to get the size of the associated section
+        // first, we need to save the LLVM function name to find the desired
+        // section (adding 1 to size to force null onto end)
+        strncpy(tb->llvm_fn_name, fName.str().c_str(), fName.str().size() + 1);
 
-        tb->llvm_tc_end = tb->llvm_tc_ptr + functionSize;
+        // then, need to look up the LLVM function symbol in the magic symbol
+        // table - this is NOT the main symbol table that is searched by default
+        // the only way to get the special symbol table is by name, and there's
+        // no programmatic way to get the name.  Fortunately, the symbol table
+        // name is hardcoded in LLVM's
+        // CompileOnDemandLayer::getPerDylibResources().  A CompileOnDemandLayer
+        // is constructed and used by LLLazyJIT.  This implementation detail is
+        // relied upon to look up the proper symbol instance, which provides the
+        // starting address, and kicks off the NotifyLoadedFunction callback
+        // which finds the length of the generated assembly code in bytes and
+        // stores it in section_size.
+        tb->llvm_tc_end = nullptr;
+        pending_tb = tb;
+        need_section_size = true;
+        auto dylib = jit->getJITDylibByName("<main>.impl");
+        auto fnsym = jit->lookup(*dylib, tb->llvm_fn_name);
+        // assert forces the return value to be checked for an error, so don't
+        // fail the next step
+        assert(fnsym);
+        tb->llvm_asm_ptr = (uint8_t *)fnsym->getAddress();
+        if (need_section_size) {
+            std::cerr << "Cannot determine section size for " <<
+                    tb->llvm_fn_name << std::endl;
+            assert(false);
+        }
+        tb->llvm_tc_end = tb->llvm_asm_ptr + section_size;
     } else {
         tb->llvm_tc_ptr = 0;
         tb->llvm_tc_end = 0;
+        tb->llvm_asm_ptr = 0;
     }
 
     if(qemu_loglevel_mask(CPU_LOG_LLVM_IR)) {
@@ -1558,7 +1649,7 @@ const char* tcg_llvm_get_func_name(TranslationBlock *tb)
     // TODO: not safe anymore - llvm_function gets deleted as soon as the
     // function is jitted
     if (tb->llvm_function) {
-        return tb->llvm_function->getName().str().c_str();
+        return tb->llvm_fn_name;
     } else {
         return "";
     }

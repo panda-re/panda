@@ -1386,9 +1386,12 @@ struct TranslationBlock {
 //#else
 //    struct Function *llvm_function;
 //#endif
-    uint8_t *llvm_tc_ptr;
+    uint8_t *llvm_tc_ptr; /* pointer to JIT-or-execute instruction */
     uint8_t *llvm_tc_end;
     struct TranslationBlock* llvm_tb_next[2];
+    uint8_t *llvm_asm_ptr; /* pointer to host equivalent assembly of the LLVM code */
+    /* WARNING:  fixed max size assumes PANDA never builds CONFIG_USER_ONLY */
+    char llvm_fn_name[64];
 //#endif
 
 };
