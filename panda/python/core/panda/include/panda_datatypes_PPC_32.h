@@ -174,9 +174,12 @@ struct TranslationBlock {
 	uint8_t *                  llvm_tc_ptr;          /*   128     8 */
 	uint8_t *                  llvm_tc_end;          /*   136     8 */
 	struct TranslationBlock *  llvm_tb_next[2];      /*   144    16 */
-	/* size: 160, cachelines: 3, members: 21 */
-	/* sum members: 158, holes: 1, sum holes: 2 */
-	/* last cacheline: 32 bytes */
+	uint8_t *                  llvm_asm_ptr;         /*   160     8 */
+	char                       llvm_fn_name[64];     /*   168    64 */
+	/* --- cacheline 3 boundary (192) was 40 bytes ago --- */
+	/* size: 232, cachelines: 4, members: 23 */
+	/* sum members: 230, holes: 1, sum holes: 2 */
+	/* last cacheline: 40 bytes */
 };
 struct Object;
 typedef struct Object Object;

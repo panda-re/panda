@@ -400,9 +400,18 @@ struct TranslationBlock {
     struct TCGLLVMTranslator *tcg_llvm_context;
     struct Function *llvm_function;
 #endif
+    /* pointer to JIT-or-execute instruction for the host equivalent assembly */
     uint8_t *llvm_tc_ptr;
     uint8_t *llvm_tc_end;
     struct TranslationBlock* llvm_tb_next[2];
+    /* pointer to the host equivalent assembly of the LLVM code */
+    uint8_t *llvm_asm_ptr;
+    /*
+     * really don't want to allocate and deallocate memory a lot, and as the
+     * function name follows a strict pattern, and PANDA is never built with
+     * CONFIG_USER_ONLY, can determine a maximum size
+     */
+    char llvm_fn_name[64];
 #endif
 
     // indicates if this block was split up abnormally
