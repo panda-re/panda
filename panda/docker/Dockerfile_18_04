@@ -27,7 +27,7 @@ RUN apt-get -y build-dep qemu
 RUN apt-get -y install git protobuf-compiler protobuf-c-compiler \
     libprotobuf-c0-dev libprotoc-dev python3-protobuf libelf-dev libc++-dev pkg-config \
     libwiretap-dev libwireshark-dev flex bison python3-pip python3 software-properties-common \
-    chrpath zip libcapstone-dev libdwarf-dev
+    chrpath zip libcapstone-dev libdwarf-dev libjsoncpp-dev
 
 # There's no python2 in this container - make python->python3 for convenience
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
