@@ -1234,6 +1234,19 @@ Function *TCGLLVMTranslator::createTbFunction(const std::string &name) {
 
 // void TCGLLVMTranslator::removeInterruptExit() {
 
+void TCGLLVMTranslator::checkAndLogLLVMIR()
+{
+    if(qemu_loglevel_mask(CPU_LOG_LLVM_IR)) {
+        std::string fcnString;
+        llvm::raw_string_ostream ss(fcnString);
+        ss << *m_tbFunction;
+        qemu_log("OUT (LLVM IR):\n");
+        qemu_log("%s", ss.str().c_str());
+        qemu_log("\n");
+        qemu_log_flush();
+    }
+}
+
 void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
 {
     assert(tb->tcg_llvm_context == nullptr);
@@ -1385,6 +1398,10 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
         tb->llvm_tc_ptr = (uint8_t *) symbol->getAddress();
         assert(tb->llvm_tc_ptr);
 
+        // if desired, have to log the LLVM IR before JIT the Function, as
+        // JITting will trash the Function instance
+        checkAndLogLLVMIR();
+
         // it is not possible to determine the number of bytes in the generated
         // host assembly for this LLVM function until the function is JITted,
         // which can be forcibly done by looking up the associated symbol in the
@@ -1424,16 +1441,7 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
         tb->llvm_tc_ptr = 0;
         tb->llvm_tc_end = 0;
         tb->llvm_asm_ptr = 0;
-    }
-
-    if(qemu_loglevel_mask(CPU_LOG_LLVM_IR)) {
-        std::string fcnString;
-        llvm::raw_string_ostream ss(fcnString);
-        ss << *m_tbFunction;
-        qemu_log("OUT (LLVM IR):\n");
-        qemu_log("%s", ss.str().c_str());
-        qemu_log("\n");
-        qemu_log_flush();
+        checkAndLogLLVMIR();
     }
 }
 
