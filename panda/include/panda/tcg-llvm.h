@@ -205,6 +205,8 @@ class TCGLLVMTranslator {
 
     llvm::Value *getEnv();
 
+    void checkAndLogLLVMIR();
+
     public:
     TCGLLVMTranslator();
     ~TCGLLVMTranslator();
