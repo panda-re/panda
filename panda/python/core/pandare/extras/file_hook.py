@@ -1,5 +1,5 @@
 import logging
-from panda.ffi_importer import ffi
+from pandare.ffi_importer import ffi
 from os import path
 
 # If coloredlogs is installed, use it
@@ -28,7 +28,7 @@ class FileHook:
     just using the OSI plugin.
 
     usage:
-        from panda import Panda, extras
+        from pandare import Panda, extras
         panda = Panda(...)
         hook = extras.Hook(panda)
         hook.rename_file("/rename_this", "/to_this")

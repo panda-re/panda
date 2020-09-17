@@ -4,8 +4,8 @@ Capture output of "dhclient" process from the hypervisor, mirror to log files on
 
 import sys
 
-from panda import blocking, Panda
-from panda.extras.proc_write_capture import ProcWriteCapture
+from pandare import blocking, Panda
+from pandare.extras.proc_write_capture import ProcWriteCapture
 
 # No arguments, i386. Otherwise argument should be guest arch
 generic_type = sys.argv[1] if len(sys.argv) > 1 else "i386"

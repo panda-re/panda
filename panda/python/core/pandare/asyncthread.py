@@ -8,7 +8,7 @@ import functools
 from queue import Queue, Empty
 from time import sleep
 from colorama import Fore, Style
-from panda.utils import debug
+from .utils import debug
 
 
 def progress(msg):

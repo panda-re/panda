@@ -8,7 +8,7 @@ hit and the ends the analysis
 Run with: python3 after_init.py
 '''
 from sys import argv
-from panda import Panda
+from pandare import Panda
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]

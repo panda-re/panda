@@ -2,7 +2,7 @@
 vol_extract_elfs: demo of cool volatility stuff.
 By: Luke Craig
 '''
-from panda import Panda, blocking
+from pandare import Panda, blocking
 from sys import argv
 from time import time
 from volatility.framework.objects.utility import array_to_string as a2s

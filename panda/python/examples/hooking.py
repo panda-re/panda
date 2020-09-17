@@ -5,7 +5,7 @@ Requires kernel symbol->address mappings which is generated with util/generate_k
 '''
 
 from sys import argv
-from panda import Panda, blocking
+from pandare import Panda, blocking
 import time
 import pickle
 

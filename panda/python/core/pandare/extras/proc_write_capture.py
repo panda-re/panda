@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from panda import ffi
+from pandare import ffi
 
 class ProcWriteCapture():
 
