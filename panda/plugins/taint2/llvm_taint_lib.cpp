@@ -641,24 +641,32 @@ void PandaTaintVisitor::addInstructionDetailsToArgumentList(
         case llvm::Instruction::Call:
         case llvm::Instruction::ICmp:
         case llvm::Instruction::FCmp:
-            args.push_back(const_uint64(0));
+            args.push_back(zeroConst);
             return;
         default:
+            args.push_back(const_uint64(I.getNumOperands()));
             break;
     }
-    args.push_back(const_uint64(I.getNumOperands()));
-
-    const int target_ulong_in_bits = sizeof(target_ulong) * 8;
 
     for(auto it = I.value_op_begin(); it != I.value_op_end(); it++) {
-        if(it->getType()->isIntegerTy(2 * target_ulong_in_bits)) {
-            args.push_back(*it);
-        } else if(it->getType()->isIntegerTy()) {
-            assert(it->getType()->getPrimitiveSizeInBits() <
-                (2 * target_ulong_in_bits));
-            args.push_back(CastInst::CreateIntegerCast(*it,
-                (target_ulong_in_bits == 64) ? int128T : int64T,
-                false, "", before));
+        if(it->getType()->isIntegerTy()) {
+            Instruction *lshr;
+            unsigned size_in_bits = it->getType()->getScalarSizeInBits();
+            args.push_back(const_uint64(size_in_bits));
+            switch(size_in_bits) {
+                case 128:
+                    args.push_back(new TruncInst(*it, int64T, "", before));
+                    lshr = BinaryOperator::CreateLShr(*it, const_uint64(64));
+                    lshr->insertBefore(before);
+                    args.push_back(new TruncInst(lshr, int64T, "", before));
+                    break;
+                case 0:
+                    assert(false);
+                    break;
+                default:
+                    args.push_back(*it);
+                    break;
+            }
         } else {
             args.push_back(zeroConst);
         }
