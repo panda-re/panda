@@ -25,7 +25,7 @@ from time import sleep
 from cffi import FFI
 
 from .ffi_importer import ffi
-from .utils import progress, make_iso, debug, blocking, GArrayIterator, Hook, plugin_list
+from .utils import progress, make_iso, debug, blocking, GArrayIterator, plugin_list
 from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
