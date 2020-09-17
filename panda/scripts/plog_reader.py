@@ -32,7 +32,8 @@ assert 'plog_pb2' in sys.modules, "Couldn't load module plog_pb2. Searched paths
 
 class PLogReader:
     def __init__(self, fn):
-        self.f = open(fn)
+        self.f = open(fn, 'rb')
+#        b = self.f.read(24)
         self.version, _, self.dir_pos, _, self.chunk_gsize = struct.unpack('<IIQII', self.f.read(24))
 
         self.f.seek(self.dir_pos)
