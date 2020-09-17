@@ -53,7 +53,7 @@ sysaccess_ran_ctr = 0
 # something went wrong
 need_sysaccess = False
 
-@panda.hook(kallsyms["system_call"])
+@panda.hook_single_insn("call_hook", kallsyms["system_call"], kernel=True)
 def call_hook(env, tb):
     pc = panda.current_pc(env)
     syscall_num = env.env_ptr.regs[0]
@@ -68,7 +68,7 @@ def call_hook(env, tb):
 
     return False
 
-@panda.hook(kallsyms["sys_access"])
+@panda.hook("call_hook2", kallsyms["sys_access"], kernel=True, kernel=True)
 def call_hook2(env, tb):
     pc = panda.current_pc(env)
     global sysaccess_ran_ctr, need_sysaccess
