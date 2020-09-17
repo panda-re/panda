@@ -81,8 +81,7 @@ static std::vector<const llvm::ConstantInt *> getOperands(
 
         if(operand_size_in_bits > 0) {
 
-            llvm::IntegerType *intTy = llvm::IntegerType::get(*ctx,
-                operand_size_in_bits == 128 ? 64 : operand_size_in_bits);
+            llvm::IntegerType *intTy = nullptr;
             uint64_t lo;
             uint64_t hi;
 
@@ -90,14 +89,17 @@ static std::vector<const llvm::ConstantInt *> getOperands(
                 case 1:
                 case 8:
                 case 16: // small types get promoted to int
+                    intTy = llvm::IntegerType::get(*ctx, operand_size_in_bits);
                     operand = llvm::ConstantInt::get(intTy,
                         va_arg(ap, unsigned int));
                     break;
                 case 32:
+                    intTy = llvm::IntegerType::get(*ctx, operand_size_in_bits);
                     operand = llvm::ConstantInt::get(intTy,
                         va_arg(ap, uint32_t));
                     break;
                 case 64:
+                    intTy = llvm::IntegerType::get(*ctx, operand_size_in_bits);
                     operand = llvm::ConstantInt::get(intTy,
                         va_arg(ap, uint64_t));
                     break;
