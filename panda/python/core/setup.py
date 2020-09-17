@@ -8,12 +8,10 @@ from setuptools.command.develop import develop as develop_orig
 import os
 import shutil
 
-##############################
-# 1)  Populate panda/autogen #
-##############################
-
+##########################################
+# 1) Grab create_datatypes so we can run #
+#########################################
 from create_panda_datatypes import main as create_datatypes
-create_datatypes()
 
 ################################################
 # 2) Copy panda object files: libpanda-XYZ.so, #
@@ -23,11 +21,12 @@ create_datatypes()
 
 root_dir = os.path.join(*[os.path.dirname(__file__), "..", "..", ".."]) # panda-git/ root dir
 
-# XXX - Can we toggle this depending on if we're run as 'setup.py develop' vs 'setup.py install'
-# When we're run in develop mode, we shouldn't copy the prebuild binaries and instead should
-# find them in ../../build/. Temporrary hack is to run setup.py develop then delete lib_dir (falls back to build)
 lib_dir = os.path.join("panda", "data")
 def copy_objs():
+    '''
+    Run to copy objects into a (local and temporary) python module before installing to the system.
+    Shouldn't be run if you're just installing in develop mode
+    '''
     build_root = os.path.join(root_dir, "build")
 
     if os.path.isdir(lib_dir):
@@ -41,11 +40,11 @@ def copy_objs():
         raise RuntimeError(f"Could not find PC-bios directory at {biosdir}")
     shutil.copytree(biosdir, lib_dir+"/pc-bios")
 
-    # Copy pypanda's include directory (different than core panda's)
+    # Copy pypanda's include directory (different than core panda's) into a datadir
     pypanda_inc = os.path.join(*[root_dir, "panda", "python", "core", "panda", "include"])
     if not os.path.isdir(pypanda_inc):
         raise RuntimeError(f"Could not find pypanda include directory at {pypanda_inc}")
-    pypanda_inc_dest = os.path.join(*["core", "panda", "data", "pypanda", "include"])
+    pypanda_inc_dest = os.path.join(*["panda", "data", "pypanda", "include"])
     if os.path.isdir(pypanda_inc_dest):
         shutil.rmtree(pypanda_inc_dest)
     shutil.copytree(pypanda_inc, pypanda_inc_dest)
@@ -53,7 +52,6 @@ def copy_objs():
     # Check if we have llvm-support
     with open(os.path.join(*[build_root, 'config-host.mak']), 'r') as cfg:
         llvm_enabled = True if 'CONFIG_LLVM=y' in cfg.read() else False
-
 
     # For each arch, copy library, plugins, plog_pb2.py and llvm-helpers
     for arch in ['arm', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']:
@@ -83,6 +81,7 @@ def copy_objs():
 
         shutil.copytree(plugindir,  new_plugindir)
 
+
 #########################
 # 3)  Build the package #
 #########################
@@ -90,17 +89,29 @@ def copy_objs():
 from setuptools.command.install import install as install_orig
 from setuptools.command.develop import develop as develop_orig
 class custom_develop(develop_orig):
+    '''
+    Install as a local module (not to system) by
+        1) Creating datatype files for local-use
+        2) Running regular setup tools logic
+    '''
     def run(self):
         # Delete panda/data in the case of `setup.py develop`
         # Don't copy objects, use them in the current path
         if os.path.isdir(lib_dir):
             assert('panda' in lib_dir), "Refusing to rm -rf directory without 'panda' in it"
             shutil.rmtree(lib_dir)
+        create_datatypes(install=False)
         super().run()
 
 class custom_install(install_orig):
-    # Run copy_objs before we install in the case of `setup.py install`
+    '''
+    Install to the system by:
+        1) Creating datatype files for an install
+        2) Copying objects into local module
+        3) Running regular setup tools logic
+    '''
     def run(self):
+        create_datatypes(install=True)
         copy_objs()
         super().run()
 
@@ -116,7 +127,6 @@ setup(name='panda',
       package_data = { 'panda': ['data/**/*', # Copy everything (fails?)
           'data/*/panda/plugins/*',    # Copy all plugins
           'data/*/panda/plugins/**/*', # Copy all plugin files
-          'data/pypanda/include/*.h',  # Copy includes files
           'data/pypanda/include/*.h',  # Copy includes files
           'data/*/llvm-helpers*.bc',   # Copy llvm-helpers
           ]},
