@@ -2,8 +2,8 @@
 # Test to ensure the file_hook plugin is working
 
 import sys
-from panda import *
-from panda.extras.file_hook import FileHook
+from pandare import *
+from pandare.extras.file_hook import FileHook
 
 arch = sys.argv[1] if len(sys.argv) > 1 else "i386"
 panda = Panda(generic=arch)

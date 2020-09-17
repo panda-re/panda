@@ -3,8 +3,8 @@ from sys import argv, path
 import time
 import pickle
 path.append("..")
-from panda import Panda
-from panda.helper.x86 import *
+from pandare import Panda
+from pandare.helper.x86 import *
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]

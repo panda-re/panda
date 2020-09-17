@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from sys import argv
-from panda import Panda, blocking, ffi
+from pandarere import Panda, blocking, ffi
 
 panda = Panda(generic="x86_64" if len(argv) < 2 else argv[1])
 

@@ -30,8 +30,11 @@ from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
 from .qcows import Qcows
-from .plog import PLogReader
 from .arch import ArmArch, MipsArch, X86Arch, X86_64Arch
+
+# Might be worth importing and auto-initilizing a PLogReader
+# object within Panda for the current architecture?
+#from .plog import PLogReader
 
 
 class Panda():

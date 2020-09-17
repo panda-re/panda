@@ -3,7 +3,7 @@
 
 from time import sleep
 from sys import argv
-from panda import Panda, blocking
+from pandare import Panda, blocking
 
 # Single arg of arch, defaults to i386
 arch = "i386"

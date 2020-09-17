@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from time import sleep
-from panda import Panda, blocking
+from pandare import Panda, blocking
 
 '''
 Blocking function hangs
