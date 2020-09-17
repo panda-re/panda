@@ -27,7 +27,7 @@ RUN apt-get -y build-dep qemu
 RUN apt-get -y install python3-pip git protobuf-compiler protobuf-c-compiler \
     libprotobuf-c0-dev libprotoc-dev libelf-dev libc++-dev pkg-config \
     libwiretap-dev libwireshark-dev flex bison python3 software-properties-common \
-    chrpath zip libcapstone-dev libdwarf-dev
+    chrpath zip libcapstone-dev libdwarf-dev libjsoncpp-dev
 
 # Core PANDA python3 dependencies to install via pip
 RUN pip3 install pycparser protobuf

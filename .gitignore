@@ -146,3 +146,6 @@ trace-ust-all.c
 
 # Pypanda Examples
 pwc_log
+
+# PANDALOG dumps
+*.plog
