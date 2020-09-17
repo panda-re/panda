@@ -75,11 +75,14 @@ static void runTest(const char *ocname, unsigned int opcode,
     // the real code being tested
 #include "../../update_cb_switch.h"
 
+    // opcode is needed by update_cb_switch.h, but as it changes from LLVM
+    // version to version, it is not printed out below
+
     // and the answers are...
-    printf("%s (%d):  size=%ld, lastlit=0x%.16lx%.16lx, orig (cb,0,1) "
+    printf("%s:  size=%ld, lastlit=0x%.16lx%.16lx, orig (cb,0,1) "
            "(0x%.16lx%.16lx, 0x%.16lx%.16lx, 0x%.16lx%.16lx) => new "
            "(0x%.16lx%.16lx, 0x%.16lx%.16lx, 0x%.16lx%.16lx) - ",
-           ocname, opcode, size, apint_hi_bits(last_literal),
+           ocname, size, apint_hi_bits(last_literal),
            apint_lo_bits(last_literal), apint_hi_bits(orig_cb_mask),
            apint_lo_bits(orig_cb_mask), apint_hi_bits(orig_zero_mask),
            apint_lo_bits(orig_zero_mask), apint_hi_bits(orig_one_mask),
