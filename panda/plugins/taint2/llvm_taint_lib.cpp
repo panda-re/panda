@@ -207,6 +207,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV->zeroConst = ConstantInt::get(PTV->int64T, 0);
     PTV->oneConst = ConstantInt::get(PTV->int64T, 1);
     PTV->maxConst = ConstantInt::get(PTV->int64T, UINT64_C(~0));
+    PTV->i64Of128Const = ConstantInt::get(PTV->int128T, 64);
 
     PTV->dataLayout = tcg_llvm_translator->getDataLayout();
 
@@ -655,7 +656,8 @@ void PandaTaintVisitor::addInstructionDetailsToArgumentList(
             switch(size_in_bits) {
                 case 128:
                     args.push_back(new TruncInst(*it, int64T, "", before));
-                    lshr = BinaryOperator::CreateLShr(*it, const_uint64(64));
+                    // operands to LSHR must be same size (128 bits in this case)
+                    lshr = BinaryOperator::CreateLShr(*it, i64Of128Const);
                     lshr->insertBefore(before);
                     args.push_back(new TruncInst(lshr, int64T, "", before));
                     break;

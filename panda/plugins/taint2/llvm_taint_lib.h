@@ -222,6 +222,9 @@ public:
     ConstantInt *oneConst;
     ConstantInt *maxConst; // == "ones" in taint_ops.cpp
 
+    // needed for creating LSHR Instructions on 128 bit value
+    ConstantInt *i64Of128Const;
+
     Type *shadP;
     Type *memlogP;
     Type *voidT;
