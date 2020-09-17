@@ -69,8 +69,6 @@
 #if defined(CONFIG_SOFTMMU)
 
 // To support other architectures, make similar minor changes to op_helper.c
-static void *qemu_ld_helpers[16];
-static void *qemu_st_helpers[16];
 static const char *qemu_ld_helper_names[16];
 static const char *qemu_st_helper_names[16];
 
@@ -468,55 +466,68 @@ inline llvm::Value *TCGLLVMTranslator::generateQemuMemOp(bool ld,
     argValues.push_back(constInt(8*sizeof(int), mem_index));
     argValues.push_back(constInt(8*sizeof(uintptr_t), ret_addr));
 
-    std::vector<llvm::Type*> argTypes;
-    argTypes.reserve(4);
-    for(int i=0; i<(ld?4:5); ++i) {
-        argTypes.push_back(argValues[i]->getType());
-    }
-
-    FunctionType* helperFunctionTy;
-    if (ld) {
-        helperFunctionTy = FunctionType::get(
-            intType(sizeof(tcg_target_ulong)*8), argTypes, false);
-    } else {
-        helperFunctionTy = FunctionType::get(llvm::Type::getVoidTy(*m_context),
-            argTypes, false);
-    }
-
     const char *funcName;
     funcName = ld ? qemu_ld_helper_names[memIdx]:
         qemu_st_helper_names[memIdx];
     assert(funcName);
     Function *helperFunction = m_module->getFunction(funcName);
     if(!helperFunction) {
+
+        std::vector<llvm::Type*> argTypes;
+        argTypes.reserve(4);
+        for(int i=0; i<(ld?4:5); ++i) {
+            argTypes.push_back(argValues[i]->getType());
+        }
+
+        FunctionType* helperFunctionTy;
+        if (ld) {
+            int bits;
+            switch (opc & MO_SSIZE) {
+                case MO_SB:
+                case MO_UB:
+                    bits = 8;
+                    break;
+                case MO_SW:
+                case MO_UW:
+                    bits = 16;
+                    break;
+#if TCG_TARGET_REG_BITS == 64
+                case MO_SL:
+#endif
+                case MO_UL:
+                    bits = 32;
+                    break;
+                default:
+                    assert(false);
+                case MO_Q:
+                    bits = 64;
+                    break;
+            }
+            helperFunctionTy = FunctionType::get(intType(bits), argTypes,
+                false);
+        } else {
+            helperFunctionTy = FunctionType::get(
+                llvm::Type::getVoidTy(*m_context), argTypes, false);
+        }
+
         helperFunction = Function::Create(helperFunctionTy,
             Function::ExternalLinkage, funcName, m_module.get());
     }
 
-    Value *loadedValue = m_builder.CreateCall(helperFunction, ArrayRef<Value*>(argValues));
+    Value *loadedValue = m_builder.CreateCall(helperFunction,
+        ArrayRef<Value*>(argValues));
+
     switch (opc & MO_SSIZE) {
     case MO_SB:
-        loadedValue = m_builder.CreateTrunc(loadedValue, intType(8));
-        return m_builder.CreateSExt(loadedValue, intType(TCG_TARGET_REG_BITS));
     case MO_SW:
-        loadedValue = m_builder.CreateTrunc(loadedValue, intType(16));
-        return m_builder.CreateSExt(loadedValue, intType(TCG_TARGET_REG_BITS));
 #if TCG_TARGET_REG_BITS == 64
     case MO_SL:
-        loadedValue = m_builder.CreateTrunc(loadedValue, intType(32));
-        return m_builder.CreateSExt(loadedValue, intType(TCG_TARGET_REG_BITS));
 #endif
+        return m_builder.CreateSExt(loadedValue, intType(TCG_TARGET_REG_BITS));
     case MO_UB:
-        if (loadedValue->getType()->isVoidTy()) return loadedValue;
-        loadedValue = m_builder.CreateTrunc(loadedValue, intType(8));
-        return loadedValue;
     case MO_UW:
-        if (loadedValue->getType()->isVoidTy()) return loadedValue;
-        loadedValue = m_builder.CreateTrunc(loadedValue, intType(16));
-        return loadedValue;
     case MO_UL:
         if (loadedValue->getType()->isVoidTy()) return loadedValue;
-        loadedValue = m_builder.CreateTrunc(loadedValue, intType(32));
         return loadedValue;
     case MO_Q:
         return loadedValue;
@@ -1502,13 +1513,6 @@ TCGLLVMTranslator::~TCGLLVMTranslator()
 }
 
 void TCGLLVMTranslator::initMemoryHelpers() {
-    qemu_ld_helpers[MO_UB] = (void *)helper_ret_ldub_mmu_panda;
-    qemu_ld_helpers[MO_LEUW] = (void *)helper_le_lduw_mmu_panda;
-    qemu_ld_helpers[MO_LEUL] = (void *)helper_le_ldul_mmu_panda;
-    qemu_ld_helpers[MO_LEQ] = (void *)helper_le_ldq_mmu_panda;
-    qemu_ld_helpers[MO_BEUW] = (void *)helper_be_lduw_mmu_panda;
-    qemu_ld_helpers[MO_BEUL] = (void *)helper_be_ldul_mmu_panda;
-    qemu_ld_helpers[MO_BEQ] = (void *)helper_be_ldq_mmu_panda;
     qemu_ld_helper_names[MO_UB] = "helper_ret_ldub_mmu_panda";
     qemu_ld_helper_names[MO_LEUW] = "helper_le_lduw_mmu_panda";
     qemu_ld_helper_names[MO_LEUL] = "helper_le_ldul_mmu_panda";
@@ -1516,13 +1520,6 @@ void TCGLLVMTranslator::initMemoryHelpers() {
     qemu_ld_helper_names[MO_BEUW] = "helper_be_lduw_mmu_panda";
     qemu_ld_helper_names[MO_BEUL] = "helper_be_ldul_mmu_panda";
     qemu_ld_helper_names[MO_BEQ] = "helper_be_ldq_mmu_panda";
-    qemu_st_helpers[MO_UB] = (void *)helper_ret_stb_mmu_panda;
-    qemu_st_helpers[MO_LEUW] = (void *)helper_le_stw_mmu_panda;
-    qemu_st_helpers[MO_LEUL] = (void *)helper_le_stl_mmu_panda;
-    qemu_st_helpers[MO_LEQ] = (void *)helper_le_stq_mmu_panda;
-    qemu_st_helpers[MO_BEUW] = (void *)helper_be_stw_mmu_panda;
-    qemu_st_helpers[MO_BEUL] = (void *)helper_be_stl_mmu_panda;
-    qemu_st_helpers[MO_BEQ] = (void *)helper_be_stq_mmu_panda;
     qemu_st_helper_names[MO_UB] = "helper_ret_stb_mmu_panda";
     qemu_st_helper_names[MO_LEUW] = "helper_le_stw_mmu_panda";
     qemu_st_helper_names[MO_LEUL] = "helper_le_stl_mmu_panda";
