@@ -112,7 +112,6 @@ extern "C++" {
 /***********************************/
 /* External interface for C++ code */
 
-#include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/Orc/ThreadSafeModule.h>
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
 #include <llvm/IR/DataLayout.h>
@@ -314,10 +313,6 @@ class TCGLLVMTranslator {
 
     static bool GetStaticBranchTarget(const llvm::BasicBlock *bb,
         uint64_t *target);
-
-    llvm::ExecutionEngine *getExecutionEngine();
-
-    void deleteExecutionEngine();
 
     void writeModule(const char* path);
 

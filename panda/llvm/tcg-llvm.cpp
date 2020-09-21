@@ -35,8 +35,6 @@
  */
 
 #include <llvm/Support/TargetSelect.h>
-#include <llvm/ExecutionEngine/SectionMemoryManager.h>
-#include <llvm/ExecutionEngine/ExecutionEngine.h>
 
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
@@ -1486,15 +1484,6 @@ TCGLLVMTranslator::~TCGLLVMTranslator()
         delete m_functionPassManager;
         m_functionPassManager = nullptr;
     }
-
-    // the following line will also delete
-    // m_moduleProvider, m_module and all its functions
-    /*
-    if (m_executionEngine) {
-        delete m_executionEngine;
-        m_executionEngine = nullptr;
-    }
-    */
 
     /*if (llvm::llvm_is_multithreaded()) {
         LLVMStopMultithreaded();
