@@ -171,7 +171,7 @@ void taint_copyRegToPc_run(Shad *shad, uint64_t src, uint64_t size) {
 
 static void llvmTaintLibNewModuleCallback(Module *module,
         legacy::FunctionPassManager *functionPassManager) {
-    functionPassManager->add(new PandaTaintFunctionPass(*ptfp));
+    functionPassManager->add(ptfp);
 }
 
 bool PandaTaintFunctionPass::doInitialization(Module &M) {
