@@ -167,22 +167,12 @@ TCGLLVMTranslator::TCGLLVMTranslator()
 
     m_functionPassManager = new legacy::FunctionPassManager(m_module.get());
 
-    /*
-    // TODO: is this necessary?
-    m_functionPassManager->add(
-            new DataLayout(m_executionEngine->getDataLayout()));
-    */
-
-    //m_functionPassManager->doInitialization();
-
 #define XSTR(x) STR(x)
 #define STR(x) #x
     m_CPUArchStateName = XSTR(CPUArchState);
     m_CPUArchStateName[6] = '.'; // Replace space with dot.
 #undef STR
 #undef XSTR
-    //initializeNativeCpuState();
-    //initializeHelpers();
 
     jit->getMainJITDylib().addGenerator(cantFail(
         llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
@@ -1399,7 +1389,6 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
         m_module = std::make_unique<Module>(("tcg-llvm" +
             std::to_string(m_tbCount)).c_str(), *m_context);
         m_functionPassManager = new legacy::FunctionPassManager(m_module.get());
-        m_functionPassManager->add(new llvm::PandaCallMorphFunctionPass());
         for(auto cb : newModuleCallbacks) {
             cb(m_module.get(), m_functionPassManager);
         }

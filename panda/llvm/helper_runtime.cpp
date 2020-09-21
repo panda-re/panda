@@ -55,6 +55,7 @@ namespace llvm {
  ***/
 
 char PandaCallMorphFunctionPass::ID = 0;
+static FunctionPass *cmfp;
 static RegisterPass<PandaCallMorphFunctionPass>
 Y("PandaCallMorph", "Change helper function calls to the the LLVM version");
 
@@ -133,6 +134,11 @@ void PandaHelperCallVisitor::visitCallInst(CallInst &I) {
     PCMFP->functionChanged = true;
 }
 
+static void llvmCallMorphNewModuleCallback(Module *module,
+        legacy::FunctionPassManager *functionPassManager) {
+    functionPassManager->add(cmfp);
+}
+
 } // namespace llvm
 
 // resolved full path to the current executable
@@ -188,8 +194,10 @@ void init_llvm_helpers() {
     tcg_llvm_translator->writeModule(mod_file.str().c_str());*/
 
     // Create call morph pass and add to function pass manager
-    llvm::FunctionPass *fp = new llvm::PandaCallMorphFunctionPass();
-    fpm->add(fp);
+    llvm::cmfp = new llvm::PandaCallMorphFunctionPass();
+    fpm->add(llvm::cmfp);
+    tcg_llvm_translator->addNewModuleCallback(
+        &llvm::llvmCallMorphNewModuleCallback);
     helpers_initialized = true;
 }
 
