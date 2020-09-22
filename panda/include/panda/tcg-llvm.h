@@ -132,6 +132,7 @@ using NewModuleCallback = std::function<void(llvm::Module *module,
 
 class TCGLLVMTranslator {
     private:
+    // List of functions to call when a new module is created
     std::vector<NewModuleCallback> newModuleCallbacks;
     std::map<std::pair<int64_t, llvm::Type *>, llvm::Value *>
         m_envOffsetValues;
@@ -205,32 +206,8 @@ class TCGLLVMTranslator {
     llvm::Value *getEnv();
 
     void checkAndLogLLVMIR();
-
-    public:
-    TCGLLVMTranslator();
-    ~TCGLLVMTranslator();
-
+    
     void initMemoryHelpers();
-
-    llvm::orc::LLLazyJIT *getJit() {
-        return &*jit;
-    }
-
-    llvm::orc::ExecutionSession &getExecutionSession() {
-        return jit->getExecutionSession();
-    }
-
-    llvm::LLVMContext *getContext() const {
-        return m_context;
-    }
-
-    llvm::Module *getModule() const {
-        return m_module.get();
-    }
-
-    llvm::legacy::FunctionPassManager* getFunctionPassManager() const {
-        return m_functionPassManager;
-    }
 
     /* Shortcuts */
     llvm::Type *intType(int w) {
@@ -297,7 +274,12 @@ class TCGLLVMTranslator {
     llvm::BasicBlock* getLabel(int idx);
     void startNewBasicBlock(llvm::BasicBlock *bb = nullptr);
 
-    /* Code generation */
+    bool getCpuFieldGepIndexes(unsigned offset, unsigned sizeInBytes,
+        llvm::SmallVector<llvm::Value *, 3> &gepIndexes);
+
+    static bool GetStaticBranchTarget(const llvm::BasicBlock *bb,
+        uint64_t *target);
+
     llvm::Value *generateQemuMemOp(bool ld, llvm::Value *value,
         llvm::Value *addr, int flags, int mem_index, int bits,
         uintptr_t ret_addr);
@@ -306,13 +288,32 @@ class TCGLLVMTranslator {
 
     llvm::Function *createTbFunction(const std::string &name);
 
+    public:
+    TCGLLVMTranslator();
+    ~TCGLLVMTranslator();
+
+    llvm::orc::LLLazyJIT *getJit() const {
+        return &*jit;
+    }
+
+    llvm::orc::ExecutionSession &getExecutionSession() const {
+        return jit->getExecutionSession();
+    }
+
+    llvm::LLVMContext *getContext() const {
+        return m_context;
+    }
+
+    llvm::Module *getModule() const {
+        return m_module.get();
+    }
+
+    llvm::legacy::FunctionPassManager* getFunctionPassManager() const {
+        return m_functionPassManager;
+    }
+
+    /* Code generation */
     void generateCode(TCGContext *s, TranslationBlock *tb);
-
-    bool getCpuFieldGepIndexes(unsigned offset, unsigned sizeInBytes,
-        llvm::SmallVector<llvm::Value *, 3> &gepIndexes);
-
-    static bool GetStaticBranchTarget(const llvm::BasicBlock *bb,
-        uint64_t *target);
 
     void writeModule(const char* path);
 
