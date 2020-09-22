@@ -382,8 +382,6 @@ void TCGLLVMTranslator::initGlobalsAndLocalTemps()
     }
 }
 
-// void TCGLLVMTranslator::loadNativeCpuState(Function *f) {
-
 inline llvm::BasicBlock *TCGLLVMTranslator::getLabel(int idx)
 {
     if(!m_labels[idx]) {
@@ -419,12 +417,6 @@ void TCGLLVMTranslator::startNewBasicBlock(llvm::BasicBlock *bb)
         delPtrForValue(i);
     }
 }
-
-// Value *TCGLLVMTranslator::generateCpuStatePtr(uint64_t registerOffset, unsigned sizeInBytes) {
-
-// void TCGLLVMTranslator::generateQemuCpuLoad(const TCGArg *args, unsigned memBits, unsigned regBits, bool signExtend) {
-
-// void TCGLLVMTranslator::generateQemuCpuStore(const TCGArg *args, unsigned memBits, Value *valueToStore) {
 
 /*
  * rwhelan: This now just calls the helper functions for whole system mode, and
@@ -1219,20 +1211,6 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
     return nb_args;
 }
 
-// bool TCGLLVMTranslator::isInstrumented(llvm::Function *tb) {
-
-// std::string TCGLLVMTranslator::generateName() {
-
-/*
-Function *TCGLLVMTranslator::createTbFunction(const std::string &name) {
-    FunctionType *tbFunctionType = tbType();
-
-    return Function::Create(tbFunctionType, Function::ExternalLinkage, name, m_module.get());
-}
-*/
-
-// void TCGLLVMTranslator::removeInterruptExit() {
-
 void TCGLLVMTranslator::checkAndLogLLVMIR()
 {
     if(qemu_loglevel_mask(CPU_LOG_LLVM_IR)) {
@@ -1248,10 +1226,7 @@ void TCGLLVMTranslator::checkAndLogLLVMIR()
 
 void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
 {
-    assert(tb->tcg_llvm_context == nullptr);
-    assert(tb->llvm_function == nullptr);
-
-    tb->tcg_llvm_context = this;
+    assert(tb->llvm_tc_ptr == nullptr);
 
     /* Create new function for current translation block */
     /* TODO: compute the checksum of the tb to see if we can reuse some code */
@@ -1374,8 +1349,6 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
     verifyFunction(*m_tbFunction);
 #endif
 
-    tb->llvm_function = m_tbFunction;
-
     if(execute_llvm || qemu_loglevel_mask(CPU_LOG_LLVM_ASM)) {
 
         if(jit->addLazyIRModule(llvm::orc::ThreadSafeModule(
@@ -1420,7 +1393,6 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
         // starting address, and kicks off the NotifyLoadedFunction callback
         // which finds the length of the generated assembly code in bytes and
         // stores it in section_size.
-        tb->llvm_tc_end = nullptr;
         pending_tb = tb;
         need_section_size = true;
         auto dylib = jit->getJITDylibByName("<main>.impl");
@@ -1436,42 +1408,9 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
         }
         tb->llvm_tc_end = tb->llvm_asm_ptr + section_size;
     } else {
-        tb->llvm_tc_ptr = 0;
-        tb->llvm_tc_end = 0;
-        tb->llvm_asm_ptr = 0;
         checkAndLogLLVMIR();
     }
 }
-
-// bool TCGLLVMTranslator::getCpuFieldGepIndexes(unsigned offset, unsigned sizeInBytes, SmallVector<Value *, 3> &gepIndexes) {
-
-// bool TCGLLVMTranslator::GetStaticBranchTarget(const llvm::BasicBlock *BB, uint64_t *target) {
-
-
-/*
-void TCGLLVMTranslator::adjustTypeSize(unsigned target, llvm::Value **v1) {
-    Value *va = *v1;
-    if (target == 32) {
-        if (va->getType() == intType(64)) {
-            *v1 = m_builder.CreateTrunc(va, intType(target));
-        } else if (va->getType() != intType(32)) {
-            assert(false);
-        }
-    }
-}
-*/
-
-/*
-uint64_t TCGLLVMTranslator::toInteger(llvm::Value *v) const {
-{
-    if (ConstantInt *cste = dyn_cast<ConstantInt>(v)) {
-        return *cste->getValue().getRawData();
-    }
-    llvm::errs() << *v << '\n';
-    assert(false && "Not a constant");
-    return 0; // make clang++ shut up
-}
-*/
 
 /* rwhelan: to restart LLVM again, there is either a bug with the
  * FunctionPassManager destructor not unregistering passes, or we need to
@@ -1547,9 +1486,6 @@ Value* TCGLLVMTranslator::getEnvOffsetPtr(int64_t offset, TCGTemp &temp) {
     }
 }
 
-
-
-
 inline void TCGLLVMTranslator::delLabel(int idx)
 {
     if(m_labels[idx] && m_labels[idx]->use_empty() &&
@@ -1559,7 +1495,6 @@ inline void TCGLLVMTranslator::delLabel(int idx)
     m_labels[idx] = nullptr;
 }
 
-
 /*
  * rwhelan: This is needed since the memory access helpers now need a handle to
  * env
@@ -1568,12 +1503,8 @@ inline Value* TCGLLVMTranslator::getEnv() {
     return m_tbFunction->arg_begin();
 }
 
-
-
-
 /***********************************/
 /* External interface for C++ code */
-
 
 void TCGLLVMTranslator::writeModule(const char *path)
 {
@@ -1614,14 +1545,17 @@ void tcg_llvm_gen_code(TCGLLVMTranslator *l, TCGContext *s, TranslationBlock *tb
 
 void tcg_llvm_tb_alloc(TranslationBlock *tb)
 {
-    tb->tcg_llvm_context = nullptr;
-    tb->llvm_function = nullptr;
+    tb->llvm_fn_name[0] = '\0';
+    tb->llvm_asm_ptr = nullptr;
+    tb->llvm_tc_ptr = nullptr;
+    tb->llvm_tc_end = nullptr;
 }
 
 void tcg_llvm_tb_free(TranslationBlock *tb)
 {
-    if(tb->llvm_function) {
-        tb->llvm_function = nullptr;
+    if(tb->llvm_tc_ptr) {
+        tb->llvm_fn_name[0] = '\0';
+        tb->llvm_asm_ptr = nullptr;
         tb->llvm_tc_ptr = nullptr;
         tb->llvm_tc_end = nullptr;
     }
@@ -1629,9 +1563,7 @@ void tcg_llvm_tb_free(TranslationBlock *tb)
 
 const char* tcg_llvm_get_func_name(TranslationBlock *tb)
 {
-    // TODO: not safe anymore - llvm_function gets deleted as soon as the
-    // function is jitted
-    if (tb->llvm_function) {
+    if (tb->llvm_fn_name[0]) {
         return tb->llvm_fn_name;
     } else {
         return "";
