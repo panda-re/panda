@@ -269,24 +269,14 @@ class TCGLLVMTranslator {
 
     void invalidateCachedMemory();
 
-    uint64_t toInteger(llvm::Value *v) const;
-
     llvm::BasicBlock* getLabel(int idx);
     void startNewBasicBlock(llvm::BasicBlock *bb = nullptr);
-
-    bool getCpuFieldGepIndexes(unsigned offset, unsigned sizeInBytes,
-        llvm::SmallVector<llvm::Value *, 3> &gepIndexes);
-
-    static bool GetStaticBranchTarget(const llvm::BasicBlock *bb,
-        uint64_t *target);
 
     llvm::Value *generateQemuMemOp(bool ld, llvm::Value *value,
         llvm::Value *addr, int flags, int mem_index, int bits,
         uintptr_t ret_addr);
 
     int generateOperation(int opc, const TCGOp *op, const TCGArg *args);
-
-    llvm::Function *createTbFunction(const std::string &name);
 
     public:
     TCGLLVMTranslator();

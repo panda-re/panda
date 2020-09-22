@@ -1762,7 +1762,7 @@ static TranslationBlock *tb_find_pc(uintptr_t tc_ptr)
     if (execute_llvm) {
         /* first check last tb. optimization for coming from generated code. */
         tb = tcg_llvm_runtime.last_tb;
-        if (tb && tb->llvm_function
+        if (tb && tb->llvm_asm_ptr
                 && tc_ptr >= (uintptr_t)tb->llvm_asm_ptr
                 && tc_ptr <  (uintptr_t)tb->llvm_tc_end) {
             return tb;
@@ -1772,7 +1772,7 @@ static TranslationBlock *tb_find_pc(uintptr_t tc_ptr)
 
         for (m = 0; m < tcg_ctx.tb_ctx.nb_tbs; m++) {
             tb = &tcg_ctx.tb_ctx.tbs[m];
-            if (tb->llvm_function
+            if (tb->llvm_asm_ptr
                     && tc_ptr >= (uintptr_t)tb->llvm_asm_ptr
                     && tc_ptr <  (uintptr_t)tb->llvm_tc_end) {
                 return tb;

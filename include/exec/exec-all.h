@@ -326,17 +326,6 @@ static inline void tlb_flush_by_mmuidx_all_cpus_synced(CPUState *cpu,
 #define USE_DIRECT_JUMP
 #endif
 
-#ifdef CONFIG_LLVM
-#ifdef __cplusplus
-namespace llvm { class Function; }
-using llvm::Function;
-class TCGLLVMTranslator;
-#else
-struct Function;
-struct TCGLLVMTranslator;
-#endif
-#endif
-
 struct TranslationBlock {
     target_ulong pc;   /* simulated PC corresponding to this block (EIP + CS base) */
     target_ulong cs_base; /* CS base for this block */
@@ -392,14 +381,6 @@ struct TranslationBlock {
     uintptr_t jmp_list_first;
 
 #ifdef CONFIG_LLVM
-#ifdef __cplusplus
-    /* pointer to LLVM translated code */
-    TCGLLVMTranslator *tcg_llvm_context;
-    Function *llvm_function;
-#else
-    struct TCGLLVMTranslator *tcg_llvm_context;
-    struct Function *llvm_function;
-#endif
     /* pointer to JIT-or-execute instruction for the host equivalent assembly */
     uint8_t *llvm_tc_ptr;
     uint8_t *llvm_tc_end;
@@ -416,7 +397,6 @@ struct TranslationBlock {
 
     // indicates if this block was split up abnormally
     uint8_t was_split;
-
 };
 
 void tb_free(TranslationBlock *tb);
