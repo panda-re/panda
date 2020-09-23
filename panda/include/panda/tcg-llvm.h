@@ -242,8 +242,6 @@ class TCGLLVMTranslator {
     void generateQemuCpuStore(const TCGArg *args, unsigned memBits,
         llvm::Value *valueToStore);
 
-    llvm::Value *attachCurrentPc(llvm::Value *value);
-
     void adjustTypeSize(unsigned target, llvm::Value **v1, llvm::Value **v2) {
         adjustTypeSize(target, v1);
         adjustTypeSize(target, v2);
