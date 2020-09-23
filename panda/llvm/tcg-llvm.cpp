@@ -79,9 +79,9 @@ extern "C" {
     TCGLLVMRuntime tcg_llvm_runtime = {};
 
     /* the TB whose host assembly size still needs to be determined */
-    struct TranslationBlock *pending_tb;
-    bool need_section_size = false;
-    uint64_t section_size = 0;
+    static struct TranslationBlock *pending_tb;
+    static bool need_section_size = false;
+    static uint64_t section_size = 0;
 }
 
 extern CPUState *env;
@@ -94,9 +94,9 @@ using namespace llvm;
  * generated code (aka the section size) for use in the associated
  * TranslationBlock.
  */
-void getLLVMAssemblySize(llvm::orc::VModuleKey,
-        const llvm::object::ObjectFile &obj,
-        const llvm::RuntimeDyld::LoadedObjectInfo &objInfo) {
+void getLLVMAssemblySize(orc::VModuleKey,
+        const object::ObjectFile &obj,
+        const RuntimeDyld::LoadedObjectInfo &objInfo) {
     if (!need_section_size) {
         return;
     }
@@ -104,11 +104,11 @@ void getLLVMAssemblySize(llvm::orc::VModuleKey,
      * There are multiple symbols associated with the just JITted code.  One of
      * them has the same name as the LLVM function currently being processed.
      */
-    for (llvm::object::symbol_iterator cur_sym = obj.symbol_begin(),
+    for (object::symbol_iterator cur_sym = obj.symbol_begin(),
             end_sym = obj.symbol_end(); cur_sym != end_sym; ++cur_sym) {
         /* don't waste time with undefined symbols */
         uint32_t flags = cur_sym->getFlags();
-        if (flags & llvm::object::SymbolRef::SF_Undefined) {
+        if (flags & object::SymbolRef::SF_Undefined) {
             continue;
         }
 
@@ -122,7 +122,7 @@ void getLLVMAssemblySize(llvm::orc::VModuleKey,
             continue;
         }
         if (0 == name.str().find(pending_tb->llvm_fn_name)) {
-            llvm::object::section_iterator sec_it = obj.section_end();
+            object::section_iterator sec_it = obj.section_end();
             if (auto si_or_err = cur_sym->getSection()) {
                 sec_it = *si_or_err;
                 // save section size so can calculate end after have start
@@ -147,7 +147,18 @@ TCGLLVMTranslator::TCGLLVMTranslator()
     std::memset(m_memValuesPtr, 0, sizeof(m_memValuesPtr));
     std::memset(m_globalsIdx, 0, sizeof(m_globalsIdx));
 
+    initMemoryHelpers();
+    m_cpuType = NULL;
+    m_cpuState = NULL;
+    m_eip = NULL;
+    m_ccop = NULL;
+
+    m_functionPassManager = new legacy::FunctionPassManager(m_module.get());
+
     /*
+    Note: if we want to use any of these, they also need to get added to the
+    function pass manager that is created in generateCode().
+
     m_functionPassManager->add(createReassociatePass());
     m_functionPassManager->add(createConstantPropagationPass());
     m_functionPassManager->add(createInstructionCombiningPass());
@@ -157,14 +168,6 @@ TCGLLVMTranslator::TCGLLVMTranslator()
     m_functionPassManager->add(createPromoteMemoryToRegisterPass());
     */
 
-    initMemoryHelpers();
-    m_cpuType = NULL;
-    m_cpuState = NULL;
-    m_eip = NULL;
-    m_ccop = NULL;
-
-    m_functionPassManager = new legacy::FunctionPassManager(m_module.get());
-
 #define XSTR(x) STR(x)
 #define STR(x) #x
     m_CPUArchStateName = XSTR(CPUArchState);
@@ -173,16 +176,16 @@ TCGLLVMTranslator::TCGLLVMTranslator()
 #undef XSTR
 
     jit->getMainJITDylib().addGenerator(cantFail(
-        llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
+        orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
         DL.getGlobalPrefix())));
 
-    llvm::orc::RTDyldObjectLinkingLayer::NotifyLoadedFunction notify_loaded_fn =
+    orc::RTDyldObjectLinkingLayer::NotifyLoadedFunction notify_loaded_fn =
             getLLVMAssemblySize;
-    static_cast<llvm::orc::RTDyldObjectLinkingLayer&>(
+    static_cast<orc::RTDyldObjectLinkingLayer&>(
             jit->getObjLinkingLayer()).setNotifyLoaded(notify_loaded_fn);
 }
 
-void TCGLLVMTranslator::adjustTypeSize(unsigned target, llvm::Value **v1) {
+void TCGLLVMTranslator::adjustTypeSize(unsigned target, Value **v1) {
     Value *va = *v1;
     if (va->getType() == intType(target)) {
         return;
@@ -196,11 +199,24 @@ void TCGLLVMTranslator::adjustTypeSize(unsigned target, llvm::Value **v1) {
     }
 }
 
-llvm::Value *TCGLLVMTranslator::attachCurrentPc(llvm::Value *v) {
-    return v;
+void TCGLLVMTranslator::initMemoryHelpers() {
+    qemu_ld_helper_names[MO_UB] = "helper_ret_ldub_mmu_panda";
+    qemu_ld_helper_names[MO_LEUW] = "helper_le_lduw_mmu_panda";
+    qemu_ld_helper_names[MO_LEUL] = "helper_le_ldul_mmu_panda";
+    qemu_ld_helper_names[MO_LEQ] = "helper_le_ldq_mmu_panda";
+    qemu_ld_helper_names[MO_BEUW] = "helper_be_lduw_mmu_panda";
+    qemu_ld_helper_names[MO_BEUL] = "helper_be_ldul_mmu_panda";
+    qemu_ld_helper_names[MO_BEQ] = "helper_be_ldq_mmu_panda";
+    qemu_st_helper_names[MO_UB] = "helper_ret_stb_mmu_panda";
+    qemu_st_helper_names[MO_LEUW] = "helper_le_stw_mmu_panda";
+    qemu_st_helper_names[MO_LEUL] = "helper_le_stl_mmu_panda";
+    qemu_st_helper_names[MO_LEQ] = "helper_le_stq_mmu_panda";
+    qemu_st_helper_names[MO_BEUW] = "helper_be_stw_mmu_panda";
+    qemu_st_helper_names[MO_BEUL] = "helper_be_stl_mmu_panda";
+    qemu_st_helper_names[MO_BEQ] = "helper_be_stq_mmu_panda";
 }
 
-llvm::Value *TCGLLVMTranslator::getPtrForValue(int idx)
+Value *TCGLLVMTranslator::getPtrForValue(int idx)
 {
     TCGContext *s = m_tcgContext;
     TCGTemp &temp = s->temps[idx];
@@ -232,6 +248,46 @@ llvm::Value *TCGLLVMTranslator::getPtrForValue(int idx)
     }
 
     return m_memValuesPtr[idx];
+}
+
+Value* TCGLLVMTranslator::getEnvOffsetPtr(int64_t offset, TCGTemp &temp) {
+    llvm::Type *tempType = tcgPtrType(temp.type);
+    auto key = std::make_pair(offset, tempType);
+    auto it = m_envOffsetValues.lower_bound(key);
+    // it->first > or = key. > case:
+    if (it == m_envOffsetValues.end() || key < it->first) {
+        // Have to make sure that these get inserted in a basic block that
+        // always runs.
+        auto savedIP = m_builder.saveIP();
+        BasicBlock *currentBlock = m_builder.GetInsertBlock();
+        assert(currentBlock && currentBlock->getParent());
+        BasicBlock *entry = &m_tbFunction->front();
+        assert(entry);
+        if (entry->getTerminator()) {
+            // get "false" successor of entry block, i.e. not tcg_exit_req branch.
+            BasicBlock *body = entry->getTerminator()->getSuccessor(1);
+            assert(body);
+            if (currentBlock != entry && currentBlock != body) {
+                // this means we are in one of the terminating blocks of the BB.
+                // i.e. the halves of a conditional branch.
+                if (body->getFirstNonPHI()) {
+                    m_builder.SetInsertPoint(body->getFirstNonPHI());
+                } else {
+                    m_builder.SetInsertPoint(body);
+                }
+            }
+        }
+
+        Value *v = m_builder.CreateAdd(m_envInt, constWord(offset));
+        v = m_builder.CreateIntToPtr(
+                v, tcgPtrType(temp.type),
+                temp.name ? StringRef(temp.name) + "_ptr": "");
+        m_builder.restoreIP(savedIP);
+        m_envOffsetValues.insert(it, std::make_pair(key, v));
+        return v;
+    } else {
+        return it->second;
+    }
 }
 
 static inline void freeValue(Value *V) {
@@ -382,7 +438,7 @@ void TCGLLVMTranslator::initGlobalsAndLocalTemps()
     }
 }
 
-inline llvm::BasicBlock *TCGLLVMTranslator::getLabel(int idx)
+inline BasicBlock *TCGLLVMTranslator::getLabel(int idx)
 {
     if(!m_labels[idx]) {
         //std::ostringstream bbName;
@@ -392,7 +448,7 @@ inline llvm::BasicBlock *TCGLLVMTranslator::getLabel(int idx)
     return m_labels[idx];
 }
 
-void TCGLLVMTranslator::startNewBasicBlock(llvm::BasicBlock *bb)
+void TCGLLVMTranslator::startNewBasicBlock(BasicBlock *bb)
 {
     if(!bb) {
         bb = BasicBlock::Create(*m_context);
@@ -422,8 +478,8 @@ void TCGLLVMTranslator::startNewBasicBlock(llvm::BasicBlock *bb)
  * rwhelan: This now just calls the helper functions for whole system mode, and
  * we take care of the logging in there.  For user mode, we log in the IR.
  */
-inline llvm::Value *TCGLLVMTranslator::generateQemuMemOp(bool ld,
-        llvm::Value *value, Value *addr, int flags, int mem_index, int bits, uintptr_t ret_addr) {
+inline Value *TCGLLVMTranslator::generateQemuMemOp(bool ld,
+        Value *value, Value *addr, int flags, int mem_index, int bits, uintptr_t ret_addr) {
 
     assert(addr->getType() == intType(TARGET_LONG_BITS));
     assert(ld || value->getType() == intType(bits));
@@ -435,9 +491,10 @@ inline llvm::Value *TCGLLVMTranslator::generateQemuMemOp(bool ld,
 #ifdef CONFIG_SOFTMMU
     TCGMemOp opc = get_memop(flags);
     const int memIdx = opc & (MO_BSWAP | MO_SIZE);
+    const int numArgs = ld ? 4 : 5;
 
     std::vector<Value*> argValues;
-    argValues.reserve(4);
+    argValues.reserve(numArgs);
     argValues.push_back(getEnv());
     argValues.push_back(addr);
     if(!ld) {
@@ -447,15 +504,15 @@ inline llvm::Value *TCGLLVMTranslator::generateQemuMemOp(bool ld,
     argValues.push_back(constInt(8*sizeof(uintptr_t), ret_addr));
 
     const char *funcName;
-    funcName = ld ? qemu_ld_helper_names[memIdx]:
-        qemu_st_helper_names[memIdx];
+    funcName = ld ? qemu_ld_helper_names[memIdx] : qemu_st_helper_names[memIdx];
     assert(funcName);
+
     Function *helperFunction = m_module->getFunction(funcName);
     if(!helperFunction) {
 
         std::vector<llvm::Type*> argTypes;
-        argTypes.reserve(4);
-        for(int i=0; i<(ld?4:5); ++i) {
+        argTypes.reserve(numArgs);
+        for(int i=0; i<numArgs; ++i) {
             argTypes.push_back(argValues[i]->getType());
         }
 
@@ -1190,11 +1247,11 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
             (opc == INDEX_op_ctz_i32 || opc == INDEX_op_ctz_i64)
             ? Intrinsic::cttz : Intrinsic::ctlz;
         Function *intrinsic = Intrinsic::getDeclaration(m_module.get(),
-                intrinsicID, llvm::ArrayRef<llvm::Type*>(Tys, 1));
+                intrinsicID, ArrayRef<llvm::Type*>(Tys, 1));
         // declare i32  @llvm.ctlz.i32 (i32  <src>, i1 <is_zero_undef>)
-        llvm::Value* callArgs[] = { source, constInt(1, false) };
+        Value* callArgs[] = { source, constInt(1, false) };
         Value *result = m_builder.CreateCall(intrinsic,
-                llvm::ArrayRef<llvm::Value*>(callArgs, 2));
+                ArrayRef<Value*>(callArgs, 2));
         // select args go condition, ifTrue, ifFalse
         Value *ret = m_builder.CreateSelect(isZero, default_, result);
         setValue(args[0], ret);
@@ -1215,7 +1272,7 @@ void TCGLLVMTranslator::checkAndLogLLVMIR()
 {
     if(qemu_loglevel_mask(CPU_LOG_LLVM_IR)) {
         std::string fcnString;
-        llvm::raw_string_ostream ss(fcnString);
+        raw_string_ostream ss(fcnString);
         ss << *m_tbFunction;
         qemu_log("OUT (LLVM IR):\n");
         qemu_log("%s", ss.str().c_str());
@@ -1351,7 +1408,7 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
 
     if(execute_llvm || qemu_loglevel_mask(CPU_LOG_LLVM_ASM)) {
 
-        if(jit->addLazyIRModule(llvm::orc::ThreadSafeModule(
+        if(jit->addLazyIRModule(orc::ThreadSafeModule(
                 std::move(m_module), m_tsc))) {
             std::cerr << "Cannot add module to JIT" << std::endl;
             assert(false);
@@ -1429,63 +1486,6 @@ TCGLLVMTranslator::~TCGLLVMTranslator()
     }*/
 }
 
-void TCGLLVMTranslator::initMemoryHelpers() {
-    qemu_ld_helper_names[MO_UB] = "helper_ret_ldub_mmu_panda";
-    qemu_ld_helper_names[MO_LEUW] = "helper_le_lduw_mmu_panda";
-    qemu_ld_helper_names[MO_LEUL] = "helper_le_ldul_mmu_panda";
-    qemu_ld_helper_names[MO_LEQ] = "helper_le_ldq_mmu_panda";
-    qemu_ld_helper_names[MO_BEUW] = "helper_be_lduw_mmu_panda";
-    qemu_ld_helper_names[MO_BEUL] = "helper_be_ldul_mmu_panda";
-    qemu_ld_helper_names[MO_BEQ] = "helper_be_ldq_mmu_panda";
-    qemu_st_helper_names[MO_UB] = "helper_ret_stb_mmu_panda";
-    qemu_st_helper_names[MO_LEUW] = "helper_le_stw_mmu_panda";
-    qemu_st_helper_names[MO_LEUL] = "helper_le_stl_mmu_panda";
-    qemu_st_helper_names[MO_LEQ] = "helper_le_stq_mmu_panda";
-    qemu_st_helper_names[MO_BEUW] = "helper_be_stw_mmu_panda";
-    qemu_st_helper_names[MO_BEUL] = "helper_be_stl_mmu_panda";
-    qemu_st_helper_names[MO_BEQ] = "helper_be_stq_mmu_panda";
-}
-
-Value* TCGLLVMTranslator::getEnvOffsetPtr(int64_t offset, TCGTemp &temp) {
-    llvm::Type *tempType = tcgPtrType(temp.type);
-    auto key = std::make_pair(offset, tempType);
-    auto it = m_envOffsetValues.lower_bound(key);
-    // it->first > or = key. > case:
-    if (it == m_envOffsetValues.end() || key < it->first) {
-        // Have to make sure that these get inserted in a basic block that
-        // always runs.
-        auto savedIP = m_builder.saveIP();
-        BasicBlock *currentBlock = m_builder.GetInsertBlock();
-        assert(currentBlock && currentBlock->getParent());
-        BasicBlock *entry = &m_tbFunction->front();
-        assert(entry);
-        if (entry->getTerminator()) {
-            // get "false" successor of entry block, i.e. not tcg_exit_req branch.
-            BasicBlock *body = entry->getTerminator()->getSuccessor(1);
-            assert(body);
-            if (currentBlock != entry && currentBlock != body) {
-                // this means we are in one of the terminating blocks of the BB.
-                // i.e. the halves of a conditional branch.
-                if (body->getFirstNonPHI()) {
-                    m_builder.SetInsertPoint(body->getFirstNonPHI());
-                } else {
-                    m_builder.SetInsertPoint(body);
-                }
-            }
-        }
-
-        Value *v = m_builder.CreateAdd(m_envInt, constWord(offset));
-        v = m_builder.CreateIntToPtr(
-                v, tcgPtrType(temp.type),
-                temp.name ? StringRef(temp.name) + "_ptr": "");
-        m_builder.restoreIP(savedIP);
-        m_envOffsetValues.insert(it, std::make_pair(key, v));
-        return v;
-    } else {
-        return it->second;
-    }
-}
-
 inline void TCGLLVMTranslator::delLabel(int idx)
 {
     if(m_labels[idx] && m_labels[idx]->use_empty() &&
@@ -1509,8 +1509,8 @@ inline Value* TCGLLVMTranslator::getEnv() {
 void TCGLLVMTranslator::writeModule(const char *path)
 {
     std::error_code Error;
-    llvm::raw_fd_ostream outfile(path, Error);
-    if (verifyModule(*getModule(), &llvm::outs())) {
+    raw_fd_ostream outfile(path, Error);
+    if (verifyModule(*getModule(), &outs())) {
         exit(1);
     }
     WriteBitcodeToFile(*getModule(), outfile);
@@ -1524,9 +1524,9 @@ void tcg_llvm_initialize()
     assert(tcg_llvm_translator == nullptr);
     //assert(llvm_start_multithreaded());
 
-    llvm::InitializeNativeTarget();
-    llvm::InitializeNativeTargetAsmPrinter();
-    llvm::InitializeNativeTargetAsmParser();
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+    InitializeNativeTargetAsmParser();
 
     tcg_llvm_translator = new TCGLLVMTranslator;
 }
