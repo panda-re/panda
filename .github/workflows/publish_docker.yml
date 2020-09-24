@@ -19,7 +19,6 @@ jobs:
     - name: Build Bionic container
       run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_18_04 -t pandare/panda:latest;
             docker tag  pandare/panda:latest pandare/panda:${GITHUB_SHA};
-            docker run --rm -v /home/runner/work/panda-re.github.io:/out pandare/panda:latest /bin/sh -c 'pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --force -o /out panda'
             docker push pandare/panda:${GITHUB_SHA};
             docker push pandare/panda:latest;
 
