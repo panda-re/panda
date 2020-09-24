@@ -11,7 +11,7 @@ panda = Panda(
     extra_args = "-nographic"
 )
 
-panda.load_plugin('dwarf_query', args={"json":"./firmadyne_mips_be.json"})
+panda.load_plugin('dwarf_query', args={"json":"./firmadyne_mips_be_2.json"})
 
 @blocking
 def run_cmd():
