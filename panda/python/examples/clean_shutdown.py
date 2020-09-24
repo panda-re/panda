@@ -2,7 +2,7 @@
 # Example script to stop an analysis after 100 blocks
 
 from sys import argv
-from panda import Panda
+from pandare import Panda
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]

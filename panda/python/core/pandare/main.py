@@ -30,8 +30,11 @@ from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
 from .qcows import Qcows
-from .plog import PLogReader
 from .arch import ArmArch, MipsArch, X86Arch, X86_64Arch
+
+# Might be worth importing and auto-initilizing a PLogReader
+# object within Panda for the current architecture?
+#from .plog import PLogReader
 
 
 class Panda():
@@ -2254,6 +2257,69 @@ class Panda():
     
     def hook_single_insn(self, name, pc, kernel=False, procname=ffi.NULL, libname=ffi.NULL):
         return self.hook(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
+    
+         ############# GHIDRA MIXINS ###############
+    
+    def delete_all_ghidra_memory_segments(self,memory, monitor):
+        for block in memory.getBlocks(): 
+            memory.removeBlock(block,monitor)
+
+
+    def populate_ghidra(self,cpu, pc, bridge, namespace, analyze=True):
+        globals().update(namespace)
+        tid = currentProgram.startTransaction("BRIDGE: Change Memory Sections")
+        memory = currentProgram.getMemory()
+        self.delete_all_ghidra_memory_segments(memory,monitor)
+
+        def read_memory(cpu, start, size):
+            output = b""
+            pos = start
+            while len(output) < size:
+                try:
+                    output += self.virtual_memory_read(cpu, pos, 0x100)
+                except:
+                    output += b"\x00"*0x100
+                pos += 0x100
+            return output
+
+        names = set()
+        for mapping in self.get_mappings(cpu):
+            if mapping.file != ffi.NULL:
+                name = ffi.string(mapping.file).decode()
+            else:
+                name = "[unknown]"
+            while name in names:
+                from random import randint
+                name += ":"+hex(randint(0,100000000))
+            names.add(name)
+            memory.createInitializedBlock(name,toAddr(mapping.base),mapping.size,0,monitor,False)
+            memory_read = read_memory(cpu,mapping.base,mapping.size)
+            if memory_read:
+                memory.setBytes(toAddr(mapping.base), read_memory(cpu,mapping.base, mapping.size))
+        if analyze:
+            analyzeAll(currentProgram)
+        setCurrentLocation(toAddr(pc))
+        currentProgram.endTransaction(tid,True)
+
+    def ghidra_decompilation(cpu,pc, bridge):
+        #import ghidra.app.decompiler as decomp
+        decomp = bridge.remote_import("ghidra.app.decompiler")
+        # ## get the decompiler interface
+        iface = decomp.DecompInterface()
+
+        # ## decompile the function
+        iface.openProgram(currentProgram)
+        fn = getFunctionContaining(toAddr(pc))
+        d = iface.decompileFunction(fn, 5, monitor)
+
+        ## get the C code as string
+        if not d.decompileCompleted():
+            code = d.getErrorMessage()
+        else:
+            code = d.getDecompiledFunction()
+            ccode = code.getC()
+            code = ccode
+        return code
     
 
 

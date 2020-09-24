@@ -7,7 +7,7 @@ from ghidra_bridge import GhidraBridge
 
 b = GhidraBridge(namespace=globals(),response_timeout=1000)#,hook_import=True)
 
-from panda import Panda, ffi, blocking
+from pandare import Panda, ffi, blocking
 
 def delete_all_memory_segments(memory, monitor):
     for block in memory.getBlocks(): 

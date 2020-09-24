@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from sys import argv
-from panda import blocking, Panda
+from pandare import blocking, Panda
 
 # No arguments, i386. Otherwise argument should be guest arch
 generic_type = argv[1] if len(argv) > 1 else "i386"

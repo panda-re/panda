@@ -2,7 +2,7 @@
 # Take a recording, then replay with analysis, then revert vm and run more commands
 from sys import argv
 from os import remove, path
-from panda import Panda, blocking
+from pandare import Panda, blocking
 
 # Default arch is i386, but others can be used
 arch = argv[1] if len(argv) > 1 else "i386"

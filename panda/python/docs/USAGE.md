@@ -10,7 +10,7 @@ nearly anything you can do using PANDA's C/C++ APIs.
 ## Example program
 This program counts the number of basic blocks executed while running `uname -a` inside a 32-bit guest.
 ```py
-from panda import Panda, blocking
+from pandare import Panda, blocking
 panda = Panda(generic='i386') # Create an instance of panda
 
 # Counter of the number of basic blocks

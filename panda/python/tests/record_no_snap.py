@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 from sys import argv
-from panda import Panda, blocking
-from panda.extras.proc_write_capture import ProcWriteCapture
+from pandare import Panda, blocking
+from pandare.extras.proc_write_capture import ProcWriteCapture
 
 
 # Take a recording without first reverting to a snapshot

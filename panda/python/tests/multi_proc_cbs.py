@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from sys import argv
 from os import path
-from panda import Panda, ffi, blocking
+from pandare import Panda, ffi, blocking
 
 # Run toy in a linux guest- Assert that the process toy runs as well as "ata_id" which is
 # a linux process that seems to always be running in our recordings
