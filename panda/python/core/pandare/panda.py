@@ -1,5 +1,5 @@
 """
-The main module is a container for the Panda class.
+This module simply contains the Panda class
 """
 
 import sys
@@ -75,6 +75,10 @@ class Panda():
         self.plugins = plugin_list(self)
         self.expect_prompt = expect_prompt
         self.lambda_cnt = 0
+        self.arch = None
+        """
+        A reference to an auto-instantiated `pandare.arch.PandaArch` subclass (e.g., `pandare.arch.X86Arch`)
+        """
 
         if isinstance(extra_args, str): # Extra args can be a string or array
             extra_args = extra_args.split()
