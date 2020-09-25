@@ -17,7 +17,7 @@ class Expect(object):
         if filelike is None: # Must later use connect(filelike)
             self.fd = None
         else:
-            connect(filelike)
+            self.connect(filelike)
 
         if logfile is None: logfile = os.devnull
         self.logfile = open(logfile, "wb")

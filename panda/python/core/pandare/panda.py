@@ -1346,15 +1346,15 @@ class Panda():
         if not hasattr(object, "address") or not isinstance(object.address, int):
             raise RuntimeError(
                 (
-                    "Registering PyPeripheral %s failed:\n"
+                    "Registering PyPeripheral {} failed:\n"
                     "Missing or non-int `address` attribute"
-                ).format(object.__repr__())
+                ).format(str(object.__repr__()))
             )
 
         if not hasattr(object, "size") or not isinstance(object.size, int):
             raise RuntimeError(
                 (
-                    "Registering PyPeripheral %s failed:\n"
+                    "Registering PyPeripheral {} failed:\n"
                     "Missing or non-int `address` attribute"
                 ).format(object.__repr__())
             )
@@ -1362,7 +1362,7 @@ class Panda():
         if not hasattr(object, "read_memory"):
             raise RuntimeError(
                 (
-                    "Registering PyPeripheral %s failed:\n"
+                    "Registering PyPeripheral {} failed:\n"
                     "Missing read_memory function"
                 ).format(object.__repr__())
             )
@@ -1371,7 +1371,7 @@ class Panda():
         if params[0] != "address" or params[1] != "size":
             raise RuntimeError(
                 (
-                    "Registering PyPeripheral %s failed:\n"
+                    "Registering PyPeripheral {} failed:\n"
                     "Invalid function signature for read_memory"
                 ).format(object.__repr__())
             )
@@ -1379,7 +1379,7 @@ class Panda():
         if not hasattr(object, "write_memory"):
             raise RuntimeError(
                 (
-                    "Registering PyPeripheral %s failed:\n"
+                    "Registering PyPeripheral {} failed:\n"
                     "Missing write_memory function"
                 ).format(object.__repr__())
             )
@@ -1388,7 +1388,7 @@ class Panda():
         if params[0] != "address" or params[1] != "size" or params[2] != "value":
             raise RuntimeError(
                 (
-                    "Registering PyPeripheral %s failed:\n"
+                    "Registering PyPeripheral {} failed:\n"
                     "Invalid function signature for write_memory"
                 ).format(object.__repr__())
             )
@@ -1400,7 +1400,7 @@ class Panda():
         ):
             raise RuntimeError(
                 (
-                    "Registering PyPeripheral %s failed:\n" "Overlapping memories!"
+                    "Registering PyPeripheral {} failed:\n" "Overlapping memories!"
                 ).format(object.__repr__())
             )
 
