@@ -48,4 +48,4 @@ jobs:
         if grep 'fail' taint2_log; then echo 'TEST FAILED!' && exit 1; else echo -e 'None.\nTEST PASSED!' && exit 0; fi"
 
     - name: Cleanup images # TODO can we run once at the end?
-      run: docker system prune -af --volumes
+      run: docker system prune -af --volumes || true
