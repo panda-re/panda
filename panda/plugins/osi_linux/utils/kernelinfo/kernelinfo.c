@@ -35,8 +35,10 @@
  * XXX: identify the first kernel version after 7d6fec45a5131 to make
  * the conditionals more accurate.
  */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)		/* 0.0  <= v < 3.0  */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)		/* 0.0  <= v < 2.6  */
 #error Unsupported kernel.
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)	/* 2.6  <= v < 3.0  */
+#define current_task per_cpu__current_task
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)	/* 3.0  <= v < 3.3  */
 /* nothing */
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)	/* 3.3  <= v < 4.4  */

@@ -1,4 +1,4 @@
-from panda import *
+from pandare import *
 from strace import Strace
 
 panda = Panda(generic="i386")

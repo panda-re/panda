@@ -10,7 +10,7 @@ This test currently is failing 1/2 the time, probably due to some bug in the hoo
 '''
 
 from sys import argv
-from panda import Panda, blocking
+from pandare import Panda, blocking
 import time
 import pickle
 

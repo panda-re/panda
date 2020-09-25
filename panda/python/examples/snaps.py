@@ -2,7 +2,7 @@
 
 import os
 from sys import argv,exit
-from panda import Panda, blocking
+from pandare import Panda, blocking
 
 #
 # snaps.py

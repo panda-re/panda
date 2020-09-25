@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from panda import panda, blocking
+from pandare import panda, blocking
 from sys import argv
 
 # No arguments, i386. Otherwise argument should be guest arch

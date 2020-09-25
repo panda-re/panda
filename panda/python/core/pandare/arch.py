@@ -1,5 +1,5 @@
 import binascii
-from panda.utils import telescope
+from .utils import telescope
 
 class PandaArch():
     '''

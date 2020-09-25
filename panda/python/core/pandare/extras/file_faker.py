@@ -11,8 +11,8 @@ High-level idea:
 """
 
 
-from panda.extras.file_hook import FileHook
-from panda.ffi_importer import ffi
+from pandare.extras.file_hook import FileHook
+from pandare.ffi_importer import ffi
 import logging
 
 

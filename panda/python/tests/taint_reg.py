@@ -4,8 +4,8 @@ from os import path
 import capstone
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
-from panda import Panda, blocking, ffi
-from panda.helper.x86 import R_EAX, R_EBX, R_ECX, registers
+from pandare import Panda, blocking, ffi
+from pandare.helper.x86 import R_EAX, R_EBX, R_ECX, registers
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]

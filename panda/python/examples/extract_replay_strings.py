@@ -2,7 +2,7 @@
 from time import sleep
 from sys import argv
 from string import printable
-from panda import Panda
+from pandare import Panda
 
 # Pull strings from wget out of a replay (named specified by arg 2)
 

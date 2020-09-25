@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from sys import argv
-from panda import Panda, blocking
+from pandare import Panda, blocking
 
 # Record some programs running in the guest
 # for some programs, register python callbacks

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from panda import Panda, blocking, ffi
+from pandare import Panda, blocking, ffi
 import ipdb
 
 panda = Panda(generic="x86_64")

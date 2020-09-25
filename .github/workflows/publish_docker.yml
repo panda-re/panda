@@ -16,22 +16,21 @@ jobs:
     - name: Docker login
       run: docker login -u pandare -p ${{secrets.pandare_dockerhub}}
 
-    - name: Build Bionic container and generate pypanda docs
+    - name: Build Bionic container
       run:  cd ${GITHUB_WORKSPACE}/panda/docker && docker build . -f Dockerfile_18_04 -t pandare/panda:latest;
             docker tag  pandare/panda:latest pandare/panda:${GITHUB_SHA};
-            docker run --rm -v /home/runner/work/panda-re.github.io:/out pandare/panda:latest /bin/sh -c 'pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --force -o /out panda'
             docker push pandare/panda:${GITHUB_SHA};
             docker push pandare/panda:latest;
 
     - name: Checkout docs and reset
       run: rm -rf "${GITHUB_WORKSPACE}/auto_pydoc";
-           git clone https://panda-jenkins-ci:${{ secrets.PANDABOT_GITHUB_API }}@github.com/panda-re/panda-re.github.io.git --branch=master ${GITHUB_WORKSPACE}/auto_pydoc/panda
+           git clone https://panda-jenkins-ci:${{ secrets.PANDABOT_GITHUB_API }}@github.com/panda-re/panda-re.github.io.git --branch=master ${GITHUB_WORKSPACE}/auto_pydoc/pandare
 
     - name: Update PYPANDA docs in container
-      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc/:/out pandare/panda:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --force -o /out panda"
+      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc/:/out pandare/panda:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --force -o /out pandare"
 
-    - name: Push Pypanda docs to GitHub Pages if docs changed
-      run: cd "${GITHUB_WORKSPACE}/auto_pydoc/panda" &&
+    - name: Push PYPANDA docs to GitHub Pages if docs changed
+      run: cd "${GITHUB_WORKSPACE}/auto_pydoc/pandare" &&
            git config --global user.email "panda-ci@panda-re.mit.edu" &&
            git config --global user.name "PANDA Bot" &&
            git add . &&

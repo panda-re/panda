@@ -16,7 +16,7 @@ signal.
 '''
 
 from sys import argv
-from panda import blocking, Panda
+from pandare import blocking, Panda
 
 # No arguments, i386. Otherwise argument should be guest arch
 arch = "x86_64"

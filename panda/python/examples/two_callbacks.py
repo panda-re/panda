@@ -5,7 +5,7 @@ On a live system, collect basic blocks as we run cat and wget
 
 import time
 from sys import argv
-from panda import Panda, blocking
+from pandare import Panda, blocking
 
 # Record some programs running in the guest
 # for some programs, register python callbacks

@@ -6,7 +6,7 @@ from sys import argv
 from os import path
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
-from panda import Panda, blocking, ffi
+from pandare import Panda, blocking, ffi
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]

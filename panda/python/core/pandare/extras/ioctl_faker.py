@@ -1,10 +1,10 @@
 import sys
 import logging
 
-from panda import ffi
+from pandare import ffi
 
 # TODO: only for logger, should probably move it to a separate file
-from panda.extras.file_hook import FileHook
+from pandare.extras.file_hook import FileHook
 
 # TODO: Ability to fake buffers for specific commands
 
@@ -243,7 +243,7 @@ if __name__ == "__main__":
     Bash will issue ioctls on /dev/ttys0 - this is just a simple test to make sure they're being captured
     '''
 
-    from panda import blocking, Panda
+    from pandare import blocking, Panda
 
     # No arguments, i386. Otherwise argument should be guest arch
     generic_type = sys.argv[1] if len(sys.argv) > 1 else "i386"
