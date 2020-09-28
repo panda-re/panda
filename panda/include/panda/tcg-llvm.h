@@ -276,6 +276,8 @@ class TCGLLVMTranslator {
 
     int generateOperation(int opc, const TCGOp *op, const TCGArg *args);
 
+    void jitPendingModule();
+
     public:
     TCGLLVMTranslator();
     ~TCGLLVMTranslator();
