@@ -181,11 +181,7 @@ def main(install=False):
     # out pypanda bits to go in INCLUDE_DIR files
     plugin_dirs = os.listdir(PLUGINS_DIR)
 
-    if install: # DYNAMIC from file
-        INCLUDE_DIR_PYP_INSTALL = 'os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "pandare", "data", "pypanda", "include"]))'  # ... /python3.6/site-packages/panda/data/pypanda/include/
-    else:
-        # STATIC from current
-        INCLUDE_DIR_PYP_INSTALL = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "core", "panda", "include"]))          # panda-git/panda/python/core/panda/include
+    INCLUDE_DIR_PYP_INSTALL = 'os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "pandare", "data", "pypanda", "include"]))'  # ... /python3.6/site-packages/panda/data/pypanda/include/
 
     # Pull in osi/osi_types.h first - it's needed by other plugins too
     if os.path.exists("%s/%s" % (PLUGINS_DIR, 'osi')):
