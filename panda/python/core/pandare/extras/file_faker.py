@@ -13,6 +13,7 @@ High-level idea:
 
 from pandare.extras.file_hook import FileHook
 from pandare.ffi_importer import ffi
+from math import ceil
 import logging
 
 

@@ -1,5 +1,5 @@
 """
-The main module is a container for the Panda class.
+This module simply contains the Panda class
 """
 
 import sys
@@ -75,6 +75,10 @@ class Panda():
         self.plugins = plugin_list(self)
         self.expect_prompt = expect_prompt
         self.lambda_cnt = 0
+        self.arch = None
+        """
+        A reference to an auto-instantiated `pandare.arch.PandaArch` subclass (e.g., `pandare.arch.X86Arch`)
+        """
 
         if isinstance(extra_args, str): # Extra args can be a string or array
             extra_args = extra_args.split()
@@ -1342,15 +1346,15 @@ class Panda():
         if not hasattr(object, "address") or not isinstance(object.address, int):
             raise RuntimeError(
                 (
-                    "Registering PyPeripheral %s failed:\n"
+                    "Registering PyPeripheral {} failed:\n"
                     "Missing or non-int `address` attribute"
-                ).format(object.__repr__())
+                ).format(str(object.__repr__()))
             )
 
         if not hasattr(object, "size") or not isinstance(object.size, int):
             raise RuntimeError(
                 (
-                    "Registering PyPeripheral %s failed:\n"
+                    "Registering PyPeripheral {} failed:\n"
                     "Missing or non-int `address` attribute"
                 ).format(object.__repr__())
             )
@@ -1358,7 +1362,7 @@ class Panda():
         if not hasattr(object, "read_memory"):
             raise RuntimeError(
                 (
-                    "Registering PyPeripheral %s failed:\n"
+                    "Registering PyPeripheral {} failed:\n"
                     "Missing read_memory function"
                 ).format(object.__repr__())
             )
@@ -1367,7 +1371,7 @@ class Panda():
         if params[0] != "address" or params[1] != "size":
             raise RuntimeError(
                 (
-                    "Registering PyPeripheral %s failed:\n"
+                    "Registering PyPeripheral {} failed:\n"
                     "Invalid function signature for read_memory"
                 ).format(object.__repr__())
             )
@@ -1375,7 +1379,7 @@ class Panda():
         if not hasattr(object, "write_memory"):
             raise RuntimeError(
                 (
-                    "Registering PyPeripheral %s failed:\n"
+                    "Registering PyPeripheral {} failed:\n"
                     "Missing write_memory function"
                 ).format(object.__repr__())
             )
@@ -1384,7 +1388,7 @@ class Panda():
         if params[0] != "address" or params[1] != "size" or params[2] != "value":
             raise RuntimeError(
                 (
-                    "Registering PyPeripheral %s failed:\n"
+                    "Registering PyPeripheral {} failed:\n"
                     "Invalid function signature for write_memory"
                 ).format(object.__repr__())
             )
@@ -1396,7 +1400,7 @@ class Panda():
         ):
             raise RuntimeError(
                 (
-                    "Registering PyPeripheral %s failed:\n" "Overlapping memories!"
+                    "Registering PyPeripheral {} failed:\n" "Overlapping memories!"
                 ).format(object.__repr__())
             )
 
@@ -2257,70 +2261,5 @@ class Panda():
     
     def hook_single_insn(self, name, pc, kernel=False, procname=ffi.NULL, libname=ffi.NULL):
         return self.hook(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
-    
-         ############# GHIDRA MIXINS ###############
-    
-    def delete_all_ghidra_memory_segments(self,memory, monitor):
-        for block in memory.getBlocks(): 
-            memory.removeBlock(block,monitor)
-
-
-    def populate_ghidra(self,cpu, pc, bridge, namespace, analyze=True):
-        globals().update(namespace)
-        tid = currentProgram.startTransaction("BRIDGE: Change Memory Sections")
-        memory = currentProgram.getMemory()
-        self.delete_all_ghidra_memory_segments(memory,monitor)
-
-        def read_memory(cpu, start, size):
-            output = b""
-            pos = start
-            while len(output) < size:
-                try:
-                    output += self.virtual_memory_read(cpu, pos, 0x100)
-                except:
-                    output += b"\x00"*0x100
-                pos += 0x100
-            return output
-
-        names = set()
-        for mapping in self.get_mappings(cpu):
-            if mapping.file != ffi.NULL:
-                name = ffi.string(mapping.file).decode()
-            else:
-                name = "[unknown]"
-            while name in names:
-                from random import randint
-                name += ":"+hex(randint(0,100000000))
-            names.add(name)
-            memory.createInitializedBlock(name,toAddr(mapping.base),mapping.size,0,monitor,False)
-            memory_read = read_memory(cpu,mapping.base,mapping.size)
-            if memory_read:
-                memory.setBytes(toAddr(mapping.base), read_memory(cpu,mapping.base, mapping.size))
-        if analyze:
-            analyzeAll(currentProgram)
-        setCurrentLocation(toAddr(pc))
-        currentProgram.endTransaction(tid,True)
-
-    def ghidra_decompilation(cpu,pc, bridge):
-        #import ghidra.app.decompiler as decomp
-        decomp = bridge.remote_import("ghidra.app.decompiler")
-        # ## get the decompiler interface
-        iface = decomp.DecompInterface()
-
-        # ## decompile the function
-        iface.openProgram(currentProgram)
-        fn = getFunctionContaining(toAddr(pc))
-        d = iface.decompileFunction(fn, 5, monitor)
-
-        ## get the C code as string
-        if not d.decompileCompleted():
-            code = d.getErrorMessage()
-        else:
-            code = d.getDecompiledFunction()
-            ccode = code.getC()
-            code = ccode
-        return code
-    
-
 
 # vim: expandtab:tabstop=4:

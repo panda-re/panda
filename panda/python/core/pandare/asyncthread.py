@@ -1,5 +1,5 @@
 """
-Module to run a thread in parallel to QEMU's main cpu loop.
+Internal module to run a thread in parallel to QEMU's main cpu loop.
 Enables queuing up python functions from main thread and vice versa
 """
 

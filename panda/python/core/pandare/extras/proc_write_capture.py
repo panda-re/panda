@@ -21,9 +21,9 @@ class ProcWriteCapture():
         self._console_printed_err = False
 
         if log_dir == None:
-            self._console_log_dir = Path(__file__).parent.absolute()
+            self._console_log_dir = Path.cwd()
             if proc_name:
-                self._proc_log_dir = Path(__file__).parent.absolute().joinpath(self._proc_name)
+                self._proc_log_dir = Path.cwd() / self._proc_name
         else:
             self._console_log_dir = Path(log_dir)
             if proc_name:

@@ -1,3 +1,11 @@
+'''
+This module contains architecture-specific code.
+
+When the `pandare.panda` class is initialized it will automatically
+initialize a PandaArch class for the specified architecture in the variable
+`pandare.panda.arch`.
+
+'''
 import binascii
 from .utils import telescope
 

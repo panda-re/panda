@@ -146,6 +146,7 @@ class Qcows():
     A qcow loaded by architecture can then be queried to get the name of the root snapshot or prompt
     '''
 
+    @staticmethod
     def get_qcow_info(name=None):
         '''
         Return information about supported image as specified by name.
@@ -171,6 +172,7 @@ class Qcows():
         # Move properties in .arch to being in the main object
         return r
 
+    @staticmethod
     def get_qcow(name=None):
         '''
         Given a generic name of a qcow or a path to a qcow, return the path. Defaults to i386
@@ -220,11 +222,12 @@ class Qcows():
             logger.debug("Downloaded %s to %s", qc, qcow_path)
         return qcow_path
 
+    @staticmethod
     def qcow_from_arg(idx=1):
         '''
         Given an index into argv, call get_qcow with that arg if it exists, else with None
         '''
-        if (len(argv) > idx):
-            return get_qcow(argv[idx])
+        if len(argv) > idx:
+            return Qcows.get_qcow(argv[idx])
         else:
-            return get_qcow()
+            return Qcows.get_qcow()
