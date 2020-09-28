@@ -740,6 +740,37 @@ class Panda():
         else: # Else it's positive
             return x
 
+    def queue_blocking(self, func, queue=True):
+        """
+        Decorator to mark a function as `blocking`, and by default queue it to run asynchronously
+
+        ```
+        @panda.queue_blocking
+        def do_something():
+            panda.revert_sync('root')
+            print(panda.run_serial_cmd('whoami'))
+            panda.end_analysis()
+        ```
+
+        is equivalent to
+
+        ```
+        @blocking
+        def run_whoami():
+            panda.revert_sync('root')
+            print(panda.run_serial_cmd('whoami'))
+            panda.end_analysis()
+
+        panda.queue_async(run_whoami)
+        ```
+
+        """
+        f = blocking(func)
+        if queue:
+            self.queue_async(f)
+        return f
+
+
     ########################## LIBPANDA FUNCTIONS ########################
     # Methods that directly pass data to/from PANDA with no extra logic beyond argument reformatting.
     def set_pandalog(self, name):
