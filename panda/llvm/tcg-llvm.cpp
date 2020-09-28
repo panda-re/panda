@@ -555,18 +555,29 @@ inline Value *TCGLLVMTranslator::generateQemuMemOp(bool ld,
 
     Value *loadedValue = m_builder.CreateCall(helperFunction,
         ArrayRef<Value*>(argValues));
-
     switch (opc & MO_SSIZE) {
     case MO_SB:
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(8));
+        return m_builder.CreateSExt(loadedValue, intType(TCG_TARGET_REG_BITS));
     case MO_SW:
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(16));
+        return m_builder.CreateSExt(loadedValue, intType(TCG_TARGET_REG_BITS));
 #if TCG_TARGET_REG_BITS == 64
     case MO_SL:
-#endif
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(32));
         return m_builder.CreateSExt(loadedValue, intType(TCG_TARGET_REG_BITS));
+#endif
     case MO_UB:
+        if (loadedValue->getType()->isVoidTy()) return loadedValue;
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(8));
+        return loadedValue;
     case MO_UW:
+        if (loadedValue->getType()->isVoidTy()) return loadedValue;
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(16));
+        return loadedValue;
     case MO_UL:
         if (loadedValue->getType()->isVoidTy()) return loadedValue;
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(32));
         return loadedValue;
     case MO_Q:
         return loadedValue;
