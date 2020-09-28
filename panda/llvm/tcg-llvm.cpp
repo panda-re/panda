@@ -518,7 +518,8 @@ inline Value *TCGLLVMTranslator::generateQemuMemOp(bool ld,
 
         FunctionType* helperFunctionTy;
         if (ld) {
-            int retBits;
+            int retBits = 64;
+            /*
             switch (opc & MO_SSIZE) {
                 case MO_SB:
                 case MO_UB:
@@ -540,6 +541,7 @@ inline Value *TCGLLVMTranslator::generateQemuMemOp(bool ld,
                     retBits = 64;
                     break;
             }
+            */
             helperFunctionTy = FunctionType::get(intType(retBits), argTypes,
                 false);
         } else {
@@ -1281,6 +1283,25 @@ void TCGLLVMTranslator::checkAndLogLLVMIR()
     }
 }
 
+// Add m_module to JIT
+// Create new module for next block
+void TCGLLVMTranslator::jitPendingModule()
+{
+    if(jit->addLazyIRModule(orc::ThreadSafeModule(
+            std::move(m_module), m_tsc))) {
+        std::cerr << "Cannot add module to JIT" << std::endl;
+        assert(false);
+    }
+
+    m_module = std::make_unique<Module>(("tcg-llvm" +
+        std::to_string(m_tbCount)).c_str(), *m_context);
+    m_functionPassManager = new legacy::FunctionPassManager(m_module.get());
+    for(auto cb : newModuleCallbacks) {
+        cb(m_module.get(), m_functionPassManager);
+    }
+}
+
+
 void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
 {
     assert(tb->llvm_tc_ptr == nullptr);
@@ -1305,6 +1326,10 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
 
     if (m_CPUArchStateType == nullptr) {
         init_llvm_helpers();
+
+        // Add instrumented helper functions to the JIT
+        jitPendingModule();
+
         m_CPUArchStateType = m_module->getTypeByName(m_CPUArchStateName);
     }
     assert(m_CPUArchStateType);
@@ -1408,18 +1433,7 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
 
     if(execute_llvm || qemu_loglevel_mask(CPU_LOG_LLVM_ASM)) {
 
-        if(jit->addLazyIRModule(orc::ThreadSafeModule(
-                std::move(m_module), m_tsc))) {
-            std::cerr << "Cannot add module to JIT" << std::endl;
-            assert(false);
-        }
-
-        m_module = std::make_unique<Module>(("tcg-llvm" +
-            std::to_string(m_tbCount)).c_str(), *m_context);
-        m_functionPassManager = new legacy::FunctionPassManager(m_module.get());
-        for(auto cb : newModuleCallbacks) {
-            cb(m_module.get(), m_functionPassManager);
-        }
+        jitPendingModule();
 
         auto symbol = jit->lookup(fName.str());
         assert(symbol);
