@@ -157,7 +157,7 @@ TCGLLVMTranslator::TCGLLVMTranslator()
 
     /*
     Note: if we want to use any of these, they also need to get added to the
-    function pass manager that is created in generateCode().
+    function pass manager that is created in jitPendingModule().
 
     m_functionPassManager->add(createReassociatePass());
     m_functionPassManager->add(createConstantPropagationPass());
