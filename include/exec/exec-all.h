@@ -342,6 +342,9 @@ struct TranslationBlock {
 
     uint16_t invalid;
 
+    // indicates if this block was split up abnormally
+    uint8_t was_split;
+
     void *tc_ptr;    /* pointer to the translated code */
     uint8_t *tc_search;  /* pointer to search data */
     /* original tb when cflags has CF_NOCACHE */
@@ -394,9 +397,6 @@ struct TranslationBlock {
      */
     char llvm_fn_name[64];
 #endif
-
-    // indicates if this block was split up abnormally
-    uint8_t was_split;
 };
 
 void tb_free(TranslationBlock *tb);
