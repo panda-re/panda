@@ -1340,6 +1340,9 @@ struct TranslationBlock {
 
     uint16_t invalid;
 
+    // indicates if this block was split up abnormally
+    uint8_t was_split;
+
     void *tc_ptr;    /* pointer to the translated code */
     uint8_t *tc_search;  /* pointer to search data */
     /* original tb when cflags has CF_NOCACHE */
@@ -1379,21 +1382,13 @@ struct TranslationBlock {
     uintptr_t jmp_list_first;
 
 //#ifdef CONFIG_LLVM
-    /* pointer to LLVM translated code */
-    struct TCGLLVMContext *tcg_llvm_context;
-//#ifdef __cplusplus
-    void* llvm_function; //Function *llvm_function;
-//#else
-//    struct Function *llvm_function;
-//#endif
-    uint8_t *llvm_tc_ptr; /* pointer to JIT-or-execute instruction */
+    uint8_t *llvm_tc_ptr;
     uint8_t *llvm_tc_end;
     struct TranslationBlock* llvm_tb_next[2];
     uint8_t *llvm_asm_ptr; /* pointer to host equivalent assembly of the LLVM code */
     /* WARNING:  fixed max size assumes PANDA never builds CONFIG_USER_ONLY */
     char llvm_fn_name[64];
 //#endif
-
 };
 typedef struct TranslationBlock TranslationBlock;
 typedef target_ulong target_long;
