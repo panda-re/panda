@@ -518,30 +518,17 @@ inline Value *TCGLLVMTranslator::generateQemuMemOp(bool ld,
 
         FunctionType* helperFunctionTy;
         if (ld) {
-            int retBits = 64;
-            /*
+            int retBits;
+            // Load helpers return i64 except for bytes, which return i8.
             switch (opc & MO_SSIZE) {
                 case MO_SB:
                 case MO_UB:
                     retBits = 8;
                     break;
-                case MO_SW:
-                case MO_UW:
-                    retBits = 16;
-                    break;
-#if TCG_TARGET_REG_BITS == 64
-                case MO_SL:
-#endif
-                case MO_UL:
-                    retBits = 32;
-                    break;
                 default:
-                    assert(false);
-                case MO_Q:
                     retBits = 64;
                     break;
             }
-            */
             helperFunctionTy = FunctionType::get(intType(retBits), argTypes,
                 false);
         } else {
