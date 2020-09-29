@@ -6,6 +6,11 @@
 
 typedef __int128_t Int128;
 
+// PANDA: Force inlining when building with clang.
+// Without inlining, clang creates function calls that return structures
+// { i64, i64 }.  This complicates taint propagation.
+// TODO: make clang -O1 aggressively inline like clang -O2 does, then remove
+// the next four lines.
 #ifdef __clang__
 #define inline __attribute__((always_inline))
 #pragma clang diagnostic ignored "-Wunused-function"
