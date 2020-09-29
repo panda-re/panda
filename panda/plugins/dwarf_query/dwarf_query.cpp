@@ -12,6 +12,9 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+#include <map>
+#include <unordered_map>
+#include <vector>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -32,52 +35,103 @@ extern "C" {
 
 // Globals -------------------------------------------------------------------------------------------------------------
 
-// TODO
+bool log_verbose;
+std::unordered_map<std::string, StructDef> struct_hashtable;
+std::map<unsigned, std::string> func_hashtable;
 
-// Python CFFI API -----------------------------------------------------------------------------------------------------
+// For CFFI ------------------------------------------------------------------------------------------------------------
 
-// TODO
+// TODO: generic reader here
 
 // Core ----------------------------------------------------------------------------------------------------------------
 
-ReadDataType member_to_rdc(const Json::Value& root, const Json::Value& member) {
+// Lift JSON entry to CPP class
+ReadDataType member_to_rdt(const std::string& member_name, const Json::Value& member, const Json::Value& root) {
 
-    DataType dt;
+    ReadDataType rdt = ReadDataType(member_name);
+    Json::Value type_category = member["type"]["kind"];
 
-    std::string base_str("base");
-    std::string bool_str("bool");
-    std::string char_str("char");
-    std::string double_str("double");
+    Json::Value type_info = root["base_types"][type_category.asString()];
 
-    if (sym["type"]["kind"].compare(base_str == 0) {
+    if (!type_info.isNull()) {
 
-        std::string type = sym["type"]["kind"].asString();
-        Json::Value type_info = root["base_types"][type.as_cstr()];
+        // Size
+        rdt.size_bytes = type_info["size"].asUInt();
 
-        if (!type_info.isNull()) {
+        // Sign
+        rdt.is_signed = type_info["signed"].asBool();
 
-            int type_size = type_info["size"].asInt();
-            std::string type_kind = type_info["kind"].asString();
+        // Endianness
+        rdt.is_le = (type_info["endian"].asString().compare(little_str) == 0);
 
-            if ()
-
-
-            if (type_info["signed"].asBool() == false) {
-            } else {
-
-            }
+        // Data type
+        std::string type_kind = type_info["kind"].asString();
+        if (type_kind.compare(ptr_str) == 0) {
+            Json::Value sub_type = type_category["subtype"]["kind"].asString();
+            assert(sub_type.compare(struct_str) == 0);
+            rdt.type = DataType::STRUCT;
+            rdt.is_ptr = true;
+        } else if (type_kind.compare(void_str) == 0) {
+            rdt.type = DataType::VOID;
+        } else if (type_kind.compare(bool_str) == 0) {
+            rdt.type = DataType::BOOL;
+        } else if (type_kind.compare(char_str) == 0) {
+            rdt.type = DataType::CHAR;
+        } else if (type_kind.find(int_str) != std::string::npos) {
+            rdt.type = DataType::INT;
+        } else if (type_kind.find(float_str) != std::string::npos) {
+            rdt.type = DataType::FLOAT;
+        } else if (type_kind.find(double_str) != std::string::npos) {
+            rdt.type = DataType::FLOAT;
         }
+
+        // Explicitly mark valid
+        rdt.is_valid = true;
+
     } else {
-        // TODO: handle struct
+        fprintf(stderr, "\'%s\'!\n", member.asCString());
+        std::cerr << "[WARNING] dwarf_query: Cannot parse type info for \'" << member_name << "\'" << std::endl;
+        rdt.is_valid = false;
     }
+
+    return rdt;
 }
 
-void load_struct(const Json::Value& struct_entry) {
-    // TODO: stuff here
+void load_struct(const std::string& struct_name, const Json::Value& struct_entry, const Json::Value& root) {
+
+    // New struct
+    StructDef sd = StructDef(struct_name);
+    sd.size_bytes = struct_entry["size"].asUInt();
+
+    // Fill struct member information
+    for (auto const& member_name : struct_entry["fields"].getMemberNames()) {
+
+        auto rdt = member_to_rdt(member_name, struct_entry["fields"][member_name], root);
+        if (rdt.is_valid) {
+            sd.members.push_back(rdt);
+        }
+    }
+
+    if (log_verbose) {
+        std::cout << "Loaded " << sd << std::endl;
+    }
+
+    // Update global hashtable
+    struct_hashtable[sd.name] = sd;
 }
 
-void load_func(const Json::Value& func_entry) {
-    // TODO: stuff here
+void load_func(const std::string& func_name, const Json::Value& func_entry, const Json::Value& root) {
+
+    if ((func_entry["type"]["kind"].asString().compare(base_str) == 0)
+        && (func_entry["type"]["name"].asString().compare(void_str) == 0)) {
+
+        unsigned addr = func_entry["address"].asUInt();
+        func_hashtable[addr] = func_name;
+
+        if (log_verbose) {
+            std::cout << "Loaded func \'" << func_name << "\'@" << addr << std::endl;
+        }
+    }
 }
 
 void load_json(const Json::Value& root) {
@@ -87,10 +141,12 @@ void load_json(const Json::Value& root) {
     std::string struct_str("struct");
 
     // Load struct information
-    for (auto sym : root["user_types"]) {
+    for (auto sym_name : root["user_types"].getMemberNames()) {
+
+        Json::Value sym = root["user_types"][sym_name];
 
         // Skip any zero-sized types
-        if (sym["size"].asInt() > 0) {
+        if (sym["size"].asUInt() > 0) {
 
             std::string type;
 
@@ -101,27 +157,23 @@ void load_json(const Json::Value& root) {
             }
 
             if (type.compare(struct_str) == 0) {
+                load_struct(sym_name, sym, root);
                 struct_cnt++;
-                load_struct(sym);
-
-                // TODO: temp debug
-                printf("Loaded struct \'%s\'\n", sym.asCString());
-            } else if (type.compare(base_str) == 0) {
-                func_cnt++;
-                load_func(sym);
-
-                // TODO: temp debug
-                printf("Loaded struct \'%s\'\n", type.c_str());
             }
+
+        } else {
+            std::cerr << "[WARNING] dwarf_query: Skipping zero-sized type \'" << sym_name << "\'" << std::endl;
         }
     }
 
-    // Load symbol information
-    for (auto sym : root["symbols"]) {
-
+    // Load function information
+    for (auto sym_name : root["symbols"].getMemberNames()) {
+        Json::Value sym = root["symbols"][sym_name];
+        load_func(sym_name, sym, root);
+        func_cnt++;
     }
 
-    printf("Loaded %u funcs, %u structs.\n", func_cnt, struct_cnt);
+    std::cout << "Loaded " << func_cnt << " funcs, " << struct_cnt << "structs." << std::endl;
 }
 
 // Setup/Teardown ------------------------------------------------------------------------------------------------------
@@ -130,13 +182,14 @@ bool init_plugin(void *_self) {
 
     panda_arg_list *args = panda_get_args("dwarf_query");
     const char* json_filename = panda_parse_string_req(args, "json", "dwarf2json_output.json");
+    log_verbose = panda_parse_bool(args, "verbose");
     std::ifstream ifs(json_filename);
 
     Json::Reader reader;
     Json::Value obj;
 
     if (!reader.parse(ifs, obj)) {
-        fprintf(stderr, "[ERROR] dwarf_query: invalid JSON!\n");
+        std::cerr << "[ERROR] dwarf_query: invalid JSON!" << std::endl;
         return false;
     } else {
         load_json(obj);
@@ -149,7 +202,7 @@ bool init_plugin(void *_self) {
         } break;
 
         default: {
-            fprintf(stderr, "[WARNING] dwarf_query: This has never been tested for a non-Linux OS!\n");
+            std::cerr << "[WARNING] dwarf_query: This has never been tested for a non-Linux OS!" << std::endl;
             return true;
         }
     }
