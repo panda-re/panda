@@ -41,7 +41,6 @@ PANDAENDCOMMENT */
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
 #include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/Target.h"
 
@@ -60,7 +59,6 @@ namespace {
 
 int main(int argc, char **argv) {
 
-    LLVMLinkInMCJIT();
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
 
