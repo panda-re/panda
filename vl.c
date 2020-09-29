@@ -171,9 +171,9 @@ const char* replay_name = NULL;
 #include "panda/rr/rr_log_all.h"
 
 #ifdef CONFIG_LLVM
-struct TCGLLVMContext;
+struct TCGLLVMTranslator;
 
-extern struct TCGLLVMContext* tcg_llvm_translator;
+extern struct TCGLLVMTranslator* tcg_llvm_translator;
 extern int generate_llvm;
 extern int execute_llvm;
 extern const int has_llvm_engine;

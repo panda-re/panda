@@ -80,7 +80,7 @@ def get_struct(name, pahole_path, elf_file):
 	problematic = ["Object"] 
 
 	out = out.replace("class", "struct")
-	out = out.replace("TCGLLVMContext", "void")
+	out = out.replace("TCGLLVMTranslator", "void")
 	out = out.replace("__int128 unsigned", "Int128") # cffi doesn't support 128 bit 
 	out = "\n".join([i for i in out.split("\n") if line_passes(i)])
 	out = extract_enum(out)
