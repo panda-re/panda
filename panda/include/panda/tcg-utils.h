@@ -10,10 +10,10 @@
 #include "tcg.h"
 
 /**
- * Search the TCG context for the first guest instruction marker and return a
+ * Search the TCG context for the guest instruction marker at index and return a
  * pointer to it.
  */
-TCGOp *find_first_guest_insn();
+TCGOp *find_guest_insn(int index);
 
 /**
  * Template that converts host pointers to TCG constants. Not really intended
@@ -27,6 +27,19 @@ intptr_t insert_tcg_tmp(TCGOp **after_op, A *value)
     TCGArg *store_args = &tcg_ctx.gen_opparam_buf[(*after_op)->args];
     store_args[0] = GET_TCGV_I64(tmp);
     store_args[1] = reinterpret_cast<TCGArg>(value);
+    return GET_TCGV_I64(tmp);
+}
+
+/**
+ * Template that converts uin64_t to a TCG constants. Not really inteded to be called directly.*/
+template<typename A>
+intptr_t insert_tcg_tmp(TCGOp **after_op, A value)
+{
+    auto tmp = tcg_temp_new_i64();
+    *after_op = tcg_op_insert_after(&tcg_ctx, *after_op, INDEX_op_movi_i64, 2);
+    TCGArg *store_args = &tcg_ctx.gen_opparam_buf[(*after_op)->args];
+    store_args[0] = GET_TCGV_I64(tmp);
+    store_args[1] = static_cast<TCGArg>(value);
     return GET_TCGV_I64(tmp);
 }
 

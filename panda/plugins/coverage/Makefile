@@ -2,7 +2,7 @@
 
 # If you need custom CFLAGS or LIBS, set them up here
 # CFLAGS+=
-# LIBS+=
+LIBS+=-lcapstone
 
 $(PLUGIN_OBJ_DIR)/coverage.py: $(PLUGIN_SRC_DIR)/coverage.py
 	$(call quiet-command,cp $< $@,"CP      $(TARGET_DIR)$@")
@@ -23,6 +23,8 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
     $(PLUGIN_OBJ_DIR)/OsiBlockCsvWriter.o \
     $(PLUGIN_OBJ_DIR)/EdgeCsvWriter.o \
     $(PLUGIN_OBJ_DIR)/EdgeGenerator.o \
-    $(PLUGIN_OBJ_DIR)/BlockProcessorBuilder.o
+    $(PLUGIN_OBJ_DIR)/BlockProcessorBuilder.o \
+    $(PLUGIN_OBJ_DIR)/Pass.o \
+    $(PLUGIN_OBJ_DIR)/EdgeInstrumentationPass.o
 
 all: $(PLUGIN_OBJ_DIR)/coverage.py
