@@ -15,6 +15,7 @@ PANDAENDCOMMENT */
 #include <map>
 #include <unordered_map>
 #include <vector>
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -45,53 +46,123 @@ std::map<unsigned, std::string> func_hashtable;
 
 // Core ----------------------------------------------------------------------------------------------------------------
 
+// TODO: handle UNIONS
+
+DataType str_to_dt(std::string const& kind) {
+    if (kind.compare(void_str) == 0) {
+        return DataType::VOID;
+    } else if (kind.compare(bool_str) == 0) {
+        return DataType::BOOL;
+    } else if (kind.compare(char_str) == 0) {
+        return DataType::CHAR;
+    } else if (kind.find(int_str) != std::string::npos) {
+        return DataType::INT;
+    } else if (kind.find(float_str) != std::string::npos) {
+        return DataType::FLOAT;
+    } else if (kind.find(double_str) != std::string::npos) {
+        return DataType::FLOAT;
+    } else if (kind.compare(struct_str) == 0) {
+        return DataType::STRUCT;
+    } else if (kind.compare(func_str) == 0) {
+        return DataType::FUNC;
+    } else {
+        std::cerr << "[FATAL ERROR] dwarf_query: Unknown kind \'" << kind << "\', no mapping to DataType!" << std::endl;
+        assert(false);
+    }
+}
+
 // Lift JSON entry to CPP class
 ReadDataType member_to_rdt(const std::string& member_name, const Json::Value& member, const Json::Value& root) {
 
+    // TODO: remove debug print
+    //printf("DEBUG: %s\n", member_name.c_str());
+
     ReadDataType rdt = ReadDataType(member_name);
     Json::Value type_category = member["type"]["kind"];
+    Json::Value type_name = member["type"]["name"];
+    Json::Value type_info = root["base_types"][type_name.asString()];
 
-    Json::Value type_info = root["base_types"][type_category.asString()];
+    bool ptr_type = (type_category.asString().compare(ptr_str) == 0);
+    bool struct_type = (type_category.asString().compare(struct_str) == 0);
+    bool array_type = (type_category.asString().compare(array_str) == 0);
+    assert((ptr_type + struct_type + array_type) <= 1);
 
-    if (!type_info.isNull()) {
+    // Offset
+    rdt.offset_bytes = member["offset"].asUInt();
 
-        // Size
-        rdt.size_bytes = type_info["size"].asUInt();
+    // Embedded struct
+    if (struct_type) {
 
-        // Sign
-        rdt.is_signed = type_info["signed"].asBool();
-
-        // Endianness
-        rdt.is_le = (type_info["endian"].asString().compare(little_str) == 0);
-
-        // Data type
-        std::string type_kind = type_info["kind"].asString();
-        if (type_kind.compare(ptr_str) == 0) {
-            Json::Value sub_type = type_category["subtype"]["kind"].asString();
-            assert(sub_type.compare(struct_str) == 0);
-            rdt.type = DataType::STRUCT;
-            rdt.is_ptr = true;
-        } else if (type_kind.compare(void_str) == 0) {
-            rdt.type = DataType::VOID;
-        } else if (type_kind.compare(bool_str) == 0) {
-            rdt.type = DataType::BOOL;
-        } else if (type_kind.compare(char_str) == 0) {
-            rdt.type = DataType::CHAR;
-        } else if (type_kind.find(int_str) != std::string::npos) {
-            rdt.type = DataType::INT;
-        } else if (type_kind.find(float_str) != std::string::npos) {
-            rdt.type = DataType::FLOAT;
-        } else if (type_kind.find(double_str) != std::string::npos) {
-            rdt.type = DataType::FLOAT;
-        }
-
-        // Explicitly mark valid
+        rdt.size_bytes = root["user_types"][member_name]["size"].asUInt();
+        rdt.is_le = (root["base_types"]["pointer"]["endian"].asString().compare(little_str) == 0);
+        rdt.type = DataType::STRUCT;
+        rdt.is_ptr = false;
+        rdt.is_signed = false;
         rdt.is_valid = true;
 
+    // Embedded Array {
+    } else if (array_type) {
+
+        // TODO: add array support
+        std::cerr << "[WARNING] dwarf_query: array support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+
+    // Struct pointer, function pointer, or primitive datatype
     } else {
-        fprintf(stderr, "\'%s\'!\n", member.asCString());
-        std::cerr << "[WARNING] dwarf_query: Cannot parse type info for \'" << member_name << "\'" << std::endl;
-        rdt.is_valid = false;
+
+        // TODO: support arrays!
+
+        // Pointer
+        if (ptr_type) {
+
+            Json::Value subtype_kind = member["type"]["subtype"]["kind"];
+            Json::Value subtype_name = member["type"]["subtype"]["name"];
+
+            // TODO: temp debug
+            printf("DEBUG (%s): %s -> %s\n", member_name.c_str(), subtype_kind.asString().c_str(), struct_str.c_str());
+
+            bool struct_ptr = (subtype_kind.asString().compare(struct_str) == 0);
+            bool func_ptr = (subtype_kind.asString().compare(func_str) == 0);
+
+            bool void_ptr = (subtype_kind.asString().compare(base_str) == 0)
+                && (subtype_name.asString().compare(void_str) == 0);
+
+            bool prim_ptr = (subtype_kind.asString().compare(base_str) == 0)
+                && (!(root["base_types"][subtype_name.asString()].isNull()))
+                && (subtype_name.asString().compare(void_str) != 0);
+
+            assert((struct_ptr + func_ptr + void_ptr + prim_ptr) == 1);
+
+            if (struct_ptr) {
+                rdt.type = DataType::STRUCT;
+            } else if (func_ptr) {
+                rdt.type = DataType::FUNC;
+            } else if (void_ptr) {
+                rdt.type = DataType::VOID;
+            } else if (prim_ptr) {
+                std::string prim_name = subtype_name.asString();
+                rdt.type = str_to_dt(prim_name);
+            }
+
+            type_info = root["base_types"][type_category.asString()];
+            rdt.is_ptr = true;
+
+        // Primitive type
+        } else {
+            std::string kind = type_info["kind"].asString();
+            rdt.is_ptr = false;
+            rdt.type = str_to_dt(kind);
+        }
+
+        // Metadata for pointers and primitives
+        if (!type_info.isNull()) {
+            rdt.size_bytes = type_info["size"].asUInt();
+            rdt.is_signed = type_info["signed"].asBool();
+            rdt.is_le = (type_info["endian"].asString().compare(little_str) == 0);
+            rdt.is_valid = true;
+        } else {
+            std::cerr << "[WARNING] dwarf_query: Cannot parse type info for \'" << member_name << "\'" << std::endl;
+            rdt.is_valid = false;
+        }
     }
 
     return rdt;
@@ -111,6 +182,13 @@ void load_struct(const std::string& struct_name, const Json::Value& struct_entry
             sd.members.push_back(rdt);
         }
     }
+
+    // Sort by offset
+    std::sort(
+        sd.members.begin(),
+        sd.members.end(),
+        [](const ReadDataType& x, const ReadDataType& y) { return x.offset_bytes < y.offset_bytes; }
+    );
 
     if (log_verbose) {
         std::cout << "Loaded " << sd << std::endl;
@@ -150,6 +228,7 @@ void load_json(const Json::Value& root) {
 
             std::string type;
 
+            // TODO: verify this is neccessary/correct?
             if (!sym["kind"].isNull()) {
                 type.assign(sym["kind"].asString());
             } else if (!sym["type"]["kind"].isNull()) {

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <iomanip>
 
 // Alloc only once, for JSON val comparison
 const std::string base_str("base");
@@ -15,6 +16,8 @@ const std::string int_str("int");
 const std::string float_str("float");
 const std::string double_str("double");
 const std::string struct_str("struct");
+const std::string func_str("function");
+const std::string array_str("array");
 
 // Categorization for primitive types
 enum DataType {
@@ -24,6 +27,7 @@ enum DataType {
     INT,    // C: {signed, unsigned} {_, long, long long} int (size and sign dependant)
     FLOAT,  // C: float, double, or long double (size dependant)
     STRUCT, // C: struct
+    FUNC,   // C: function
 };
 
 // Information to read primitive type
@@ -32,6 +36,7 @@ class ReadDataType {
     public:
         std::string name;
         unsigned size_bytes;
+        unsigned offset_bytes;
         DataType type;
         bool is_ptr;
         bool is_le;
@@ -39,7 +44,7 @@ class ReadDataType {
         bool is_valid;
 
     ReadDataType(const std::string& name_in) : name(name_in),
-        size_bytes(0), type(DataType::VOID), is_ptr(false), is_le(true), is_signed(false) {}
+        size_bytes(0), offset_bytes(0), type(DataType::VOID), is_ptr(false), is_le(true), is_signed(false) {}
 
     ReadDataType() : ReadDataType("{unknown}") {}
 };
@@ -66,19 +71,24 @@ inline std::ostream & operator<<(std::ostream& os, ReadDataType const& rdt) {
         case DataType::STRUCT:
             type.assign("struct");
             break;
+        case DataType::FUNC:
+            type.assign("function");
+            break;
         default:
             type.assign("{unknown}");
             break;
     }
 
-    os << "member \'" << rdt.name
-        << "\' (type:" << type
+    os << std::boolalpha
+        << "member \'" << rdt.name
+        << "\' (type: " << type
         << ", size: " << rdt.size_bytes
+        << ", offset: " << rdt.offset_bytes
         << ", ptr: " << rdt.is_ptr
         << ", le: " << rdt.is_le
         << ", signed: " << rdt.is_signed
         << ", valid: " << rdt.is_valid
-        << ")" << std::endl;
+        << ")";
 
     return os;
 }
@@ -95,7 +105,10 @@ class StructDef {
 
 inline std::ostream & operator<<(std::ostream& os, StructDef const& sd) {
 
-    os << "struct \'" << sd.name << "\' (size " << sd.size_bytes << ") members:" << std::endl;
+    os << "struct \'" << sd.name
+        << "\' (size: " << sd.size_bytes
+        << ", members: " << sd.members.size()
+        << "):" << std::endl;
 
     for (auto member : sd.members) {
         os << "\t" << member << std::endl;
