@@ -13,6 +13,10 @@ PANDAENDCOMMENT */
 #include <string>
 #include <unordered_set>
 
+
+#include <capstone/capstone.h>
+#include <capstone/x86.h>
+
 #include "panda/plugin.h"
 
 // OSI
@@ -24,6 +28,11 @@ PANDAENDCOMMENT */
 #include "Block.h"
 #include "RecordProcessor.h"
 #include "BlockProcessorBuilder.h"
+#include "Pass.h"
+#include "EdgeInstrumentationPass.h"
+
+#include "UniqueFilter.h"
+#include "EdgeCsvWriter.h"
 
 #include "panda/tcg-utils.h"
 
@@ -37,6 +46,8 @@ constexpr size_t MONITOR_HELP_LEN = 4;
 const std::string MONITOR_ENABLE = "coverage_enable";
 const std::string MONITOR_DISABLE = "coverage_disable";
 
+static csh handle;
+
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
@@ -47,7 +58,9 @@ void uninit_plugin(void *);
 }
 
 static std::unique_ptr<Predicate> predicate;
-static std::unique_ptr<RecordProcessor<Block>> processor;
+//static std::unique_ptr<RecordProcessor<Block>> processor;
+
+static std::unique_ptr<Pass> pass;
 
 /**
  * Logs a message to stdout.
@@ -64,32 +77,20 @@ static void log_message(const char *fmt, ...)
     va_end(arglist);
 }
 
-static void callback(TranslationBlock *tb)
-{
-    Block block {
-        .addr = tb->pc,
-        .size = tb->size
-    };
-    processor->handle(block);
-}
-
 static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 {
-    // Determine if we should instrument the current block.
-    if (nullptr == processor || !predicate->eval(cpu, tb)) {
+    // Determine if we should instrument.
+    if (nullptr == pass || !predicate->eval(cpu, tb)) {
         return;
     }
-
     // Instrument!
-    TCGOp *insert_point = find_first_guest_insn();
-    assert(NULL != insert_point);
-    insert_call(&insert_point, &callback, tb);
+    pass->before_tcg_codegen(cpu, tb);
 }
 
 static void disable_instrumentation()
 {
     panda_do_flush_tb();
-    processor.reset();
+    pass.reset();
 }
 
 static void enable_instrumentation(const std::string& filename)
@@ -104,20 +105,24 @@ static void enable_instrumentation(const std::string& filename)
     std::string mode_arg = panda_parse_string_opt(args.get(), "mode",
         "asid-block", "coverage mode");
 
-    BlockProcessorBuilder b;
+    /*BlockProcessorBuilder b;
     b.with_filename(filename)
      .with_output_mode(mode_arg);
     if (!log_all_records) {
         b.with_unique_filter();
     }
-    processor = b.build();
+    processor = b.build(); */
+
+    std::unique_ptr<RecordProcessor<Edge>> edge_processor(new EdgeCsvWriter(filename));
+    edge_processor.reset(new UniqueFilter<Edge>(std::move(edge_processor)));
+    pass.reset(new EdgeInstrumentationPass(first_cpu, std::move(edge_processor)));
 }
 
 int monitor_callback(Monitor *mon, const char *cmd_cstr)
 {
     std::string cmd = cmd_cstr;
     if (0 == cmd.find(MONITOR_DISABLE)) {
-        if (nullptr == processor) {
+        if (nullptr == pass) {
             log_message("Instrumentation not enabled, ignoring request to "
                 "disable.");
             return 0;
@@ -125,7 +130,7 @@ int monitor_callback(Monitor *mon, const char *cmd_cstr)
         log_message("Disabling instrumentation.");
         disable_instrumentation();
     } else if (0 == cmd.find(MONITOR_ENABLE)) {
-        if (nullptr != processor) {
+        if (nullptr != pass) {
             log_message("Instrumentation already enabled, ignoring request to "
                 "enable.");
             return 0;
@@ -219,6 +224,9 @@ bool init_plugin(void *self)
 
     pcb.monitor = monitor_callback;
     panda_register_callback(self, PANDA_CB_MONITOR, pcb);
+
+    assert(CS_ERR_OK == cs_open(CS_ARCH_X86, CS_MODE_32, &handle));
+    cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON);
 
     return true;
 }
