@@ -184,11 +184,11 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV->ctx = tcg_llvm_translator->getContext();
 
     Type *shadT = StructType::create(*PTV->ctx, "class.Shad");
-    assert(shadT);
+    assert(shadT && "Can't resolve class.Shad");
     PTV->shadP = PointerType::getUnqual(shadT);
 
     Type *memlogT = StructType::create(*PTV->ctx, "struct.taint2_memlog");
-    assert(memlogT);
+    assert(memlogT && "Can't resolve struct.taint2_memlog");
     PTV->memlogP = PointerType::getUnqual(memlogT);
 
     PTV->int1T = Type::getInt1Ty(*PTV->ctx);
@@ -324,7 +324,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 
     if(tcg_llvm_translator->getJit()->getMainJITDylib().define(
             orc::absoluteSymbols(std::move(symbols)))) {
-        assert(false);
+        assert(false && "Cannot add symbols to JITDylib");
     }
 
     std::cout << "taint2: Done initializing taint transformation." <<
@@ -450,7 +450,7 @@ ConstantInt *PandaTaintVisitor::valueSizeValue(const Value *V) {
 bool inline_taint = false;
 
 void PandaTaintVisitor::inlineCall(CallInst *CI) {
-    assert(CI);
+    assert(CI && "CallInst can't be null");
     if (inline_taint) {
         InlineFunctionInfo IFI;
         // LLVM-10
@@ -486,10 +486,7 @@ CallInst *PandaTaintVisitor::insertCall(Instruction &I,
     Function *F=getFunction(m, func);
 
     CallInst *CI = CallInst::Create(F, args);
-    if (!CI) {
-        printf("Couldn't create call inst!!\n");
-        assert(false);
-    }
+    assert(CI && "Couldn't create call inst!!");
 
     if(before) {
         CI->insertBefore(&I);
@@ -668,7 +665,7 @@ void PandaTaintVisitor::addInstructionDetailsToArgumentList(
                     args.push_back(new TruncInst(lshr, int64T, "", before));
                     break;
                 case 0:
-                    assert(false);
+                    assert(false && "Operand has no size?");
                     break;
                 default:
                     args.push_back(*it);
@@ -1863,5 +1860,5 @@ void PandaTaintVisitor::visitInstruction(Instruction &I) {
     // test to the configure script since there doesn't seem to be a way
     // to interogate llvm-config to determine if dump is available
     //I.dump();
-    assert(1==0);
+    assert(false);
 }
