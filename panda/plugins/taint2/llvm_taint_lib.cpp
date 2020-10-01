@@ -1033,7 +1033,7 @@ void PandaTaintVisitor::visitReturnInst(ReturnInst &I) {
         insertCallBefore(I, copyF, args);
     }
 
-    //visitTerminatorInst(I);
+    visitTerminator(I);
 }
 
 void PandaTaintVisitor::visitBranchInst(BranchInst &I) {
@@ -1051,9 +1051,9 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I) {
 }
 
 // On a branch we just have to log the previous BB.
-//void PandaTaintVisitor::visitTerminatorInst(TerminatorInst &I) {
+void PandaTaintVisitor::visitTerminator(Instruction &I) {
     // BB logging is in the previous stuff.
-//}
+}
 
 void PandaTaintVisitor::visitInvokeInst(InvokeInst &I) {
     assert(false && "Can't handle invoke!!");
