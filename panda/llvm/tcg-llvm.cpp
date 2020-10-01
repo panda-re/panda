@@ -1448,8 +1448,9 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
         // proper symbol table and registering a NotifyLoadedFunction callback
         // (as was done above) to get the size of the associated section
         // first, we need to save the LLVM function name to find the desired
-        // section (adding 1 to size to force null onto end)
-        strncpy(tb->llvm_fn_name, fName.str().c_str(), fName.str().size() + 1);
+        // section
+        g_strlcpy(tb->llvm_fn_name, fName.str().c_str(),
+            sizeof(tb->llvm_fn_name));
 
         // then, need to look up the LLVM function symbol in the magic symbol
         // table - this is NOT the main symbol table that is searched by default
