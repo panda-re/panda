@@ -786,8 +786,7 @@ Linux)
   QEMU_INCLUDES="-I\$(SRC_PATH)/linux-headers -I$(pwd)/linux-headers $QEMU_INCLUDES"
   supported_os="yes"
   LIBS="-ldl $LIBS"
-  QEMU_CFLAGS="$QEMU_CFLAGS -Wno-extern-c-compat"
-  #QEMU_CFLAGS="$QEMU_CFLAGS -Wno-extern-c-compat -Wno-address-of-packed-member -Wno-unused-private-field -Wno-availability"
+  QEMU_CFLAGS="$QEMU_CFLAGS -Wno-extern-c-compat -Wno-address-of-packed-member -Wno-unused-private-field -Wno-availability"
 ;;
 esac
 
