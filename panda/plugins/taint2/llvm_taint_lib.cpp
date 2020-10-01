@@ -175,7 +175,7 @@ static void llvmTaintLibNewModuleCallback(Module *module,
 }
 
 bool PandaTaintFunctionPass::doInitialization(Module &M) {
-    std::cout << "taint2: Linking taint ops" << std::endl;
+    std::cout << "taint2: Initializing taint ops" << std::endl;
 
     ptfp = this;
     tcg_llvm_translator->addNewModuleCallback(
@@ -614,13 +614,19 @@ void PandaTaintVisitor::insertAfterTaintLd(Instruction &I,
 void PandaTaintVisitor::addInstructionDetailsToArgumentList(
     vector<Value *> &args, Instruction &I, Instruction *before) {
 
-    Constant *opcode = const_uint64(I.getOpcode());
+    auto opc = I.getOpcode();
+
+    // update_cb() (taint_ops.cpp) assumes that there are no valid llvm
+    // instructions with an opcode of zero
+    assert(opc != 0);
+
+    Constant *opcode = const_uint64(opc);
     Constant *instruction_flags = const_uint64(getInstructionFlags(I));
 
     args.push_back(opcode);
     args.push_back(instruction_flags);
 
-    switch(I.getOpcode()) {
+    switch(opc) {
         // If taint_ops aren't going to act on the operands, don't bother
         // passing them to the taint_ops function.
         case llvm::Instruction::Trunc:
@@ -771,6 +777,14 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *src1,
     insertTaintCompute(I, &I, src1, src2, is_mixed);
 }
 
+// This function is used to guarantee that the JIT optimizer doesn't optimize
+// away I.  If the result of I is only consumed by another LLVM instruction,
+// the optimizer may combine those two instructions.  This instruction
+// combination hasn't been investigated fully to ensure it doesn't adversely
+// affect taint propagation.  By passing the instruction result to a taint ops
+// function, the optimizer won't optimize away I.  Ultimately the taint ops
+// function ignores the instruction result (see taint_mix_compute
+// as an example.)
 Instruction *PandaTaintVisitor::getResult(Instruction *I) {
 
     Instruction *iResult = I;
