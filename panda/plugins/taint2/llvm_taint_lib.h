@@ -268,7 +268,7 @@ public:
     void visitBranchInst(BranchInst &I);
     void visitIndirectBrInst(IndirectBrInst &I);
     void visitSwitchInst(SwitchInst &I);
-    //void visitTerminatorInst(TerminatorInst &I);
+    void visitTerminator(Instruction &I);
     void visitCastInst(CastInst &I);
     void visitCmpInst(CmpInst &I);
     void visitMemCpyInst(MemTransferInst &I);
