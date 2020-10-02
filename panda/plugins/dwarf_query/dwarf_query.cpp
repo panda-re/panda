@@ -53,7 +53,7 @@ DataType str_to_dt(std::string const& kind) {
         return DataType::VOID;
     } else if (kind.compare(bool_str) == 0) {
         return DataType::BOOL;
-    } else if (kind.compare(char_str) == 0) {
+    } else if (kind.find(char_str) != std::string::npos) {
         return DataType::CHAR;
     } else if (kind.find(int_str) != std::string::npos) {
         return DataType::INT;
@@ -75,7 +75,7 @@ DataType str_to_dt(std::string const& kind) {
 ReadDataType member_to_rdt(const std::string& member_name, const Json::Value& member, const Json::Value& root) {
 
     // TODO: remove debug print
-    //printf("DEBUG: %s\n", member_name.c_str());
+    printf("DEBUG: %s\n", member_name.c_str());
 
     ReadDataType rdt = ReadDataType(member_name);
     Json::Value type_category = member["type"]["kind"];
@@ -85,7 +85,9 @@ ReadDataType member_to_rdt(const std::string& member_name, const Json::Value& me
     bool ptr_type = (type_category.asString().compare(ptr_str) == 0);
     bool struct_type = (type_category.asString().compare(struct_str) == 0);
     bool array_type = (type_category.asString().compare(array_str) == 0);
-    assert((ptr_type + struct_type + array_type) <= 1);
+    bool bitfield_type = (type_category.asString().compare(bitfield_str) == 0);
+    bool enum_type = (type_category.asString().compare(enum_str) == 0);
+    assert((ptr_type + struct_type + array_type + bitfield_type + enum_type) <= 1);
 
     // Offset
     rdt.offset_bytes = member["offset"].asUInt();
@@ -97,14 +99,27 @@ ReadDataType member_to_rdt(const std::string& member_name, const Json::Value& me
         rdt.is_le = (root["base_types"]["pointer"]["endian"].asString().compare(little_str) == 0);
         rdt.type = DataType::STRUCT;
         rdt.is_ptr = false;
+        rdt.is_double_ptr = false;
         rdt.is_signed = false;
         rdt.is_valid = true;
 
-    // Embedded Array {
+    // Embedded array
     } else if (array_type) {
 
         // TODO: add array support
         std::cerr << "[WARNING] dwarf_query: array support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+
+    // Embedded bitfield
+    } else if (bitfield_type) {
+
+        // TODO: add array support
+        std::cerr << "[WARNING] dwarf_query: bitfield support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+
+    // Enum
+    } else if (enum_type) {
+
+        // TODO: add array support
+        std::cerr << "[WARNING] dwarf_query: enum support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
 
     // Struct pointer, function pointer, or primitive datatype
     } else {
@@ -121,6 +136,7 @@ ReadDataType member_to_rdt(const std::string& member_name, const Json::Value& me
             printf("DEBUG (%s): %s -> %s\n", member_name.c_str(), subtype_kind.asString().c_str(), struct_str.c_str());
 
             bool struct_ptr = (subtype_kind.asString().compare(struct_str) == 0);
+            bool double_ptr = (subtype_kind.asString().compare(ptr_str) == 0);
             bool func_ptr = (subtype_kind.asString().compare(func_str) == 0);
 
             bool void_ptr = (subtype_kind.asString().compare(base_str) == 0)
@@ -130,17 +146,39 @@ ReadDataType member_to_rdt(const std::string& member_name, const Json::Value& me
                 && (!(root["base_types"][subtype_name.asString()].isNull()))
                 && (subtype_name.asString().compare(void_str) != 0);
 
-            assert((struct_ptr + func_ptr + void_ptr + prim_ptr) == 1);
+            printf("double_ptr: %d, stuct: %d, func: %d, void: %d, prim: %d\n", double_ptr, struct_ptr, func_ptr, void_ptr, prim_ptr);
 
+            assert((double_ptr + struct_ptr + func_ptr + void_ptr + prim_ptr) == 1);
+
+            // Pointer to stuct (named)
             if (struct_ptr) {
                 rdt.type = DataType::STRUCT;
+                rdt.ptr_trgt_name.assign(subtype_name.asString());
+
+            // Pointer to function (named)
             } else if (func_ptr) {
                 rdt.type = DataType::FUNC;
+                rdt.ptr_trgt_name.assign(subtype_name.asString());
+
+            // Void pointer (unnamed)
             } else if (void_ptr) {
                 rdt.type = DataType::VOID;
+
+            // Pointer to primitive (unnamed)
             } else if (prim_ptr) {
                 std::string prim_name = subtype_name.asString();
                 rdt.type = str_to_dt(prim_name);
+
+            // Double pointer to struct/function (named) or primitive (unnamed)
+            } else if (double_ptr) {
+                Json::Value type_kind = member["type"]["subtype"]["subtype"]["kind"];
+                Json::Value type_name = member["type"]["subtype"]["subtype"]["name"];
+                if (type_kind.compare(base_str) == 0) {
+                    rdt.type = str_to_dt(type_name.asString());
+                } else {
+                    rdt.type = str_to_dt(type_kind.asString());
+                    rdt.ptr_trgt_name.assign(type_name.asString());
+                }
             }
 
             type_info = root["base_types"][type_category.asString()];
@@ -150,6 +188,7 @@ ReadDataType member_to_rdt(const std::string& member_name, const Json::Value& me
         } else {
             std::string kind = type_info["kind"].asString();
             rdt.is_ptr = false;
+            rdt.is_double_ptr = false;
             rdt.type = str_to_dt(kind);
         }
 

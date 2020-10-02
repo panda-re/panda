@@ -18,6 +18,8 @@ const std::string double_str("double");
 const std::string struct_str("struct");
 const std::string func_str("function");
 const std::string array_str("array");
+const std::string bitfield_str("bitfield");
+const std::string enum_str("enum");
 
 // Categorization for primitive types
 enum DataType {
@@ -35,16 +37,20 @@ enum DataType {
 class ReadDataType {
     public:
         std::string name;
+        std::string ptr_trgt_name;
         unsigned size_bytes;
         unsigned offset_bytes;
         DataType type;
         bool is_ptr;
+        bool is_double_ptr;
         bool is_le;
         bool is_signed;
         bool is_valid;
 
-    ReadDataType(const std::string& name_in) : name(name_in),
-        size_bytes(0), offset_bytes(0), type(DataType::VOID), is_ptr(false), is_le(true), is_signed(false) {}
+    ReadDataType(const std::string& ptr_name, const std::string& dst_name) : name(ptr_name), ptr_trgt_name(dst_name),
+        size_bytes(0), offset_bytes(0), type(DataType::VOID), is_ptr(false), is_double_ptr(false), is_le(true), is_signed(false) {}
+
+    ReadDataType(const std::string& type_name) : ReadDataType(type_name, "{none}") {}
 
     ReadDataType() : ReadDataType("{unknown}") {}
 };
@@ -81,9 +87,9 @@ inline std::ostream & operator<<(std::ostream& os, ReadDataType const& rdt) {
 
     os << std::boolalpha
         << "member \'" << rdt.name
-        << "\' (type: " << type
+        << "\' (offset: " << rdt.offset_bytes
+        << ", type: " << type
         << ", size: " << rdt.size_bytes
-        << ", offset: " << rdt.offset_bytes
         << ", ptr: " << rdt.is_ptr
         << ", le: " << rdt.is_le
         << ", signed: " << rdt.is_signed
