@@ -5,6 +5,8 @@
 #include <string>
 #include <iomanip>
 
+// Globals -------------------------------------------------------------------------------------------------------------
+
 // Alloc only once, for JSON val comparison
 const std::string base_str("base");
 const std::string little_str("little");
@@ -21,6 +23,8 @@ const std::string array_str("array");
 const std::string bitfield_str("bitfield");
 const std::string enum_str("enum");
 
+// Struct Members ------------------------------------------------------------------------------------------------------
+
 // Categorization for primitive types
 enum DataType {
     VOID,   // C: void
@@ -30,14 +34,16 @@ enum DataType {
     FLOAT,  // C: float, double, or long double (size dependant)
     STRUCT, // C: struct
     FUNC,   // C: function
+    ARRAY,  // C: array of <DataType>
 };
 
 // Information to read primitive type
-// (is_ptr == true) -> pointer to described data type
-class ReadDataType {
+// (is_ptr == true) || (is_double_ptr == true) -> pointer to described data type
+class ReadableDataType {
     public:
+
+        // Core fields (applicable to every type)
         std::string name;
-        std::string ptr_trgt_name;
         unsigned size_bytes;
         unsigned offset_bytes;
         DataType type;
@@ -47,15 +53,42 @@ class ReadDataType {
         bool is_signed;
         bool is_valid;
 
-    ReadDataType(const std::string& ptr_name, const std::string& dst_name) : name(ptr_name), ptr_trgt_name(dst_name),
-        size_bytes(0), offset_bytes(0), type(DataType::VOID), is_ptr(false), is_double_ptr(false), is_le(true), is_signed(false) {}
+        // Pointer-specific fields
+        std::string ptr_trgt_name;
 
-    ReadDataType(const std::string& type_name) : ReadDataType(type_name, "{none}") {}
+        // Array-specific field
+        std::string arr_member_name;
+        DataType arr_member_type;
+        unsigned arr_member_size_bytes;
 
-    ReadDataType() : ReadDataType("{unknown}") {}
+    // Pointer constructor (for internal use only)
+    ReadableDataType(const std::string& ptr_name, const std::string& dst_name) :
+        name(ptr_name), size_bytes(0), offset_bytes(0), type(DataType::VOID), is_ptr(false), is_double_ptr(false), is_le(true), is_signed(false),
+        ptr_trgt_name(dst_name),
+        arr_member_name("{none}"), arr_member_type(DataType::VOID), arr_member_size_bytes(0) {}
+
+    // Named type constuctor (use this most of the time)
+    ReadableDataType(const std::string& type_name) : ReadableDataType(type_name, "{none}") {}
+
+    // No-args constructor (for compiler only, don't use this)
+    ReadableDataType() : ReadableDataType("{unknown}") {}
+
+    // Get array size, returns -1 if type is not an array
+    int get_arr_size() {
+        if (type == DataType::ARRAY) {
+            if (size_bytes) {
+                assert((size_bytes % arr_member_size_bytes) == 0);
+                return (size_bytes / arr_member_size_bytes);
+            } else {
+                return 0;
+            }
+       } else {
+            return -1;
+        }
+    }
 };
 
-inline std::ostream & operator<<(std::ostream& os, ReadDataType const& rdt) {
+inline std::ostream & operator<<(std::ostream& os, ReadableDataType const& rdt) {
 
     std::string type;
     switch(rdt.type) {
@@ -80,6 +113,9 @@ inline std::ostream & operator<<(std::ostream& os, ReadDataType const& rdt) {
         case DataType::FUNC:
             type.assign("function");
             break;
+        case DataType::ARRAY:
+            type.assign("array");
+            break;
         default:
             type.assign("{unknown}");
             break;
@@ -99,11 +135,13 @@ inline std::ostream & operator<<(std::ostream& os, ReadDataType const& rdt) {
     return os;
 }
 
+// Struct --------------------------------------------------------------------------------------------------------------
+
 class StructDef {
     public:
         std::string name;
         unsigned size_bytes;
-        std::vector<ReadDataType> members;
+        std::vector<ReadableDataType> members;
 
     StructDef(const std::string& name_in) : name(name_in), size_bytes(0) {}
     StructDef() : StructDef("{unknown}") {}

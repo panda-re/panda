@@ -72,21 +72,21 @@ DataType str_to_dt(std::string const& kind) {
 }
 
 // Lift JSON entry to CPP class
-ReadDataType member_to_rdt(const std::string& member_name, const Json::Value& member, const Json::Value& root) {
+ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value& member, const Json::Value& root) {
 
     // TODO: remove debug print
     printf("DEBUG: %s\n", member_name.c_str());
 
-    ReadDataType rdt = ReadDataType(member_name);
-    Json::Value type_category = member["type"]["kind"];
-    Json::Value type_name = member["type"]["name"];
-    Json::Value type_info = root["base_types"][type_name.asString()];
+    ReadableDataType rdt = ReadableDataType(member_name);
+    std::string type_category = member["type"]["kind"].asString();
+    std::string type_name = member["type"]["name"].asString();
+    Json::Value type_info = root["base_types"][type_name];
 
-    bool ptr_type = (type_category.asString().compare(ptr_str) == 0);
-    bool struct_type = (type_category.asString().compare(struct_str) == 0);
-    bool array_type = (type_category.asString().compare(array_str) == 0);
-    bool bitfield_type = (type_category.asString().compare(bitfield_str) == 0);
-    bool enum_type = (type_category.asString().compare(enum_str) == 0);
+    bool ptr_type = (type_category.compare(ptr_str) == 0);
+    bool struct_type = (type_category.compare(struct_str) == 0);
+    bool array_type = (type_category.compare(array_str) == 0);
+    bool bitfield_type = (type_category.compare(bitfield_str) == 0);
+    bool enum_type = (type_category.compare(enum_str) == 0);
     assert((ptr_type + struct_type + array_type + bitfield_type + enum_type) <= 1);
 
     // Offset
@@ -106,8 +106,32 @@ ReadDataType member_to_rdt(const std::string& member_name, const Json::Value& me
     // Embedded array
     } else if (array_type) {
 
-        // TODO: add array support
-        std::cerr << "[WARNING] dwarf_query: array support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+        std::string arr_type_kind = member["type"]["subtype"]["kind"].asString();
+        std::string arr_type_name = member["type"]["subtype"]["name"].asString();
+
+        // Array of primitives
+        if (arr_type_kind.compare(base_str) == 0) {
+            rdt.arr_member_type = str_to_dt(arr_type_name);
+            rdt.arr_member_size_bytes = root["base_types"][arr_type_name]["size"].asUInt();
+            type_info = root["base_types"][arr_type_name];
+
+        // Array of structs
+        } else {
+            rdt.arr_member_type = str_to_dt(arr_type_kind);
+            rdt.size_bytes = root["user_types"][arr_type_name]["size"].asUInt();
+            rdt.arr_member_name.assign(arr_type_name);
+            type_info = root["user_types"][arr_type_name];
+        }
+
+        rdt.size_bytes = (type_info["size"].asUInt() * member["type"]["count"].asUInt());
+        rdt.is_le = (type_info["endian"].asString().compare(little_str) == 0);
+        rdt.type = DataType::ARRAY;
+        rdt.is_ptr = false;
+        rdt.is_double_ptr = false;
+        rdt.is_signed = type_info["signed"].asBool();
+        rdt.is_valid = true;
+
+        assert(rdt.get_arr_size() == member["type"]["count"].asUInt());
 
     // Embedded bitfield
     } else if (bitfield_type) {
@@ -124,27 +148,25 @@ ReadDataType member_to_rdt(const std::string& member_name, const Json::Value& me
     // Struct pointer, function pointer, or primitive datatype
     } else {
 
-        // TODO: support arrays!
-
         // Pointer
         if (ptr_type) {
 
-            Json::Value subtype_kind = member["type"]["subtype"]["kind"];
-            Json::Value subtype_name = member["type"]["subtype"]["name"];
+            std::string subtype_kind = member["type"]["subtype"]["kind"].asString();
+            std::string subtype_name = member["type"]["subtype"]["name"].asString();
 
             // TODO: temp debug
-            printf("DEBUG (%s): %s -> %s\n", member_name.c_str(), subtype_kind.asString().c_str(), struct_str.c_str());
+            printf("DEBUG (%s): %s -> %s\n", member_name.c_str(), subtype_kind.c_str(), struct_str.c_str());
 
-            bool struct_ptr = (subtype_kind.asString().compare(struct_str) == 0);
-            bool double_ptr = (subtype_kind.asString().compare(ptr_str) == 0);
-            bool func_ptr = (subtype_kind.asString().compare(func_str) == 0);
+            bool struct_ptr = (subtype_kind.compare(struct_str) == 0);
+            bool double_ptr = (subtype_kind.compare(ptr_str) == 0);
+            bool func_ptr = (subtype_kind.compare(func_str) == 0);
 
-            bool void_ptr = (subtype_kind.asString().compare(base_str) == 0)
-                && (subtype_name.asString().compare(void_str) == 0);
+            bool void_ptr = (subtype_kind.compare(base_str) == 0)
+                && (subtype_name.compare(void_str) == 0);
 
-            bool prim_ptr = (subtype_kind.asString().compare(base_str) == 0)
-                && (!(root["base_types"][subtype_name.asString()].isNull()))
-                && (subtype_name.asString().compare(void_str) != 0);
+            bool prim_ptr = (subtype_kind.compare(base_str) == 0)
+                && (!(root["base_types"][subtype_name].isNull()))
+                && (subtype_name.compare(void_str) != 0);
 
             printf("double_ptr: %d, stuct: %d, func: %d, void: %d, prim: %d\n", double_ptr, struct_ptr, func_ptr, void_ptr, prim_ptr);
 
@@ -153,12 +175,12 @@ ReadDataType member_to_rdt(const std::string& member_name, const Json::Value& me
             // Pointer to stuct (named)
             if (struct_ptr) {
                 rdt.type = DataType::STRUCT;
-                rdt.ptr_trgt_name.assign(subtype_name.asString());
+                rdt.ptr_trgt_name.assign(subtype_name);
 
             // Pointer to function (named)
             } else if (func_ptr) {
                 rdt.type = DataType::FUNC;
-                rdt.ptr_trgt_name.assign(subtype_name.asString());
+                rdt.ptr_trgt_name.assign(subtype_name);
 
             // Void pointer (unnamed)
             } else if (void_ptr) {
@@ -166,22 +188,22 @@ ReadDataType member_to_rdt(const std::string& member_name, const Json::Value& me
 
             // Pointer to primitive (unnamed)
             } else if (prim_ptr) {
-                std::string prim_name = subtype_name.asString();
-                rdt.type = str_to_dt(prim_name);
+                rdt.type = str_to_dt(subtype_name);
 
             // Double pointer to struct/function (named) or primitive (unnamed)
             } else if (double_ptr) {
-                Json::Value type_kind = member["type"]["subtype"]["subtype"]["kind"];
-                Json::Value type_name = member["type"]["subtype"]["subtype"]["name"];
-                if (type_kind.compare(base_str) == 0) {
-                    rdt.type = str_to_dt(type_name.asString());
+                std::string trgt_type_kind = member["type"]["subtype"]["subtype"]["kind"].asString();
+                std::string trgt_type_name = member["type"]["subtype"]["subtype"]["name"].asString();
+                rdt.is_double_ptr = true;
+                if (trgt_type_kind.compare(base_str) == 0) {
+                    rdt.type = str_to_dt(trgt_type_name);
                 } else {
-                    rdt.type = str_to_dt(type_kind.asString());
-                    rdt.ptr_trgt_name.assign(type_name.asString());
+                    rdt.type = str_to_dt(trgt_type_kind);
+                    rdt.ptr_trgt_name.assign(trgt_type_name);
                 }
             }
 
-            type_info = root["base_types"][type_category.asString()];
+            type_info = root["base_types"][type_category];
             rdt.is_ptr = true;
 
         // Primitive type
@@ -192,7 +214,7 @@ ReadDataType member_to_rdt(const std::string& member_name, const Json::Value& me
             rdt.type = str_to_dt(kind);
         }
 
-        // Metadata for pointers and primitives
+        // Metadata for pointers, primitives
         if (!type_info.isNull()) {
             rdt.size_bytes = type_info["size"].asUInt();
             rdt.is_signed = type_info["signed"].asBool();
@@ -226,7 +248,7 @@ void load_struct(const std::string& struct_name, const Json::Value& struct_entry
     std::sort(
         sd.members.begin(),
         sd.members.end(),
-        [](const ReadDataType& x, const ReadDataType& y) { return x.offset_bytes < y.offset_bytes; }
+        [](const ReadableDataType& x, const ReadableDataType& y) { return x.offset_bytes < y.offset_bytes; }
     );
 
     if (log_verbose) {
