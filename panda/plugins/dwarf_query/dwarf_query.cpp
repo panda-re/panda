@@ -65,6 +65,12 @@ DataType str_to_dt(std::string const& kind) {
         return DataType::STRUCT;
     } else if (kind.compare(func_str) == 0) {
         return DataType::FUNC;
+    } else if (kind.compare(array_str) == 0) {
+        return DataType::ARRAY;
+    } else if (kind.compare(union_str) == 0) {
+        return DataType::UNION;
+    } else if (kind.compare(enum_str) == 0) {
+        return DataType::ENUM;
     } else {
         std::cerr << "[FATAL ERROR] dwarf_query: Unknown kind \'" << kind << "\', no mapping to DataType!" << std::endl;
         assert(false);
@@ -74,20 +80,19 @@ DataType str_to_dt(std::string const& kind) {
 // Lift JSON entry to CPP class
 ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value& member, const Json::Value& root) {
 
-    // TODO: remove debug print
-    printf("DEBUG: %s\n", member_name.c_str());
-
     ReadableDataType rdt = ReadableDataType(member_name);
     std::string type_category = member["type"]["kind"].asString();
     std::string type_name = member["type"]["name"].asString();
     Json::Value type_info = root["base_types"][type_name];
 
+    // TODO: Cleanup with seperate func and switch statement, doesn not map to DataType exactly
     bool ptr_type = (type_category.compare(ptr_str) == 0);
     bool struct_type = (type_category.compare(struct_str) == 0);
     bool array_type = (type_category.compare(array_str) == 0);
     bool bitfield_type = (type_category.compare(bitfield_str) == 0);
     bool enum_type = (type_category.compare(enum_str) == 0);
-    assert((ptr_type + struct_type + array_type + bitfield_type + enum_type) <= 1);
+    bool union_type = (type_category.compare(union_str) == 0);
+    assert((ptr_type + struct_type + array_type + bitfield_type + enum_type + union_type) <= 1);
 
     // Offset
     rdt.offset_bytes = member["offset"].asUInt();
@@ -121,6 +126,32 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
             rdt.arr_member_size_bytes = root["base_types"][arr_type_kind]["size"].asUInt();
             type_info = root["base_types"][arr_type_kind];
 
+        // Array of arrays
+        } else if (arr_type_kind.compare(array_str) == 0) {
+
+            // TODO: add 2D array support
+            std::cerr << "[WARNING] dwarf_query: 2D array support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+            rdt.is_valid = false;
+            return rdt;
+
+            /*
+            rdt.arr_member_type = str_to_dt(arr_type_kind);
+            int first_dimension_size =  member["type"]["count"].asUint();
+            int second_dimension_size =  member["type"]["subtype"]["count"].asUint();
+            // TODO:
+            // 1. Get base elemsize
+            // 2. Compute arr_member_size
+            // 3. Determine type_info
+            */
+
+        // Array of enums
+        } else if (arr_type_kind.compare(enum_str) == 0) {
+
+            // TODO: add enum array support
+            std::cerr << "[WARNING] dwarf_query: enum array support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+            rdt.is_valid = false;
+            return rdt;
+
         // Array of structs
         } else {
             rdt.arr_member_type = str_to_dt(arr_type_kind);
@@ -142,14 +173,26 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
     // Embedded bitfield
     } else if (bitfield_type) {
 
-        // TODO: add array support
+        // TODO: add bitfield support
         std::cerr << "[WARNING] dwarf_query: bitfield support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+        rdt.is_valid = false;
+        return rdt;
+
+    // Embedded union
+    } else if (union_type) {
+
+        // TODO: add enum support
+        std::cerr << "[WARNING] dwarf_query: union support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+        rdt.is_valid = false;
+        return rdt;
 
     // Enum
     } else if (enum_type) {
 
-        // TODO: add array support
+        // TODO: add union support
         std::cerr << "[WARNING] dwarf_query: enum support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+        rdt.is_valid = false;
+        return rdt;
 
     // Struct pointer, function pointer, or primitive datatype
     } else {
@@ -160,12 +203,12 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
             std::string subtype_kind = member["type"]["subtype"]["kind"].asString();
             std::string subtype_name = member["type"]["subtype"]["name"].asString();
 
-            // TODO: temp debug
-            printf("DEBUG (%s): %s -> %s\n", member_name.c_str(), subtype_kind.c_str(), struct_str.c_str());
-
+            // TODO: Cleanup with seperate func and switch statement, doesn not map to DataType exactly
             bool struct_ptr = (subtype_kind.compare(struct_str) == 0);
             bool double_ptr = (subtype_kind.compare(ptr_str) == 0);
             bool func_ptr = (subtype_kind.compare(func_str) == 0);
+            bool union_ptr = (subtype_kind.compare(union_str) == 0);
+            bool arr_ptr = (subtype_kind.compare(array_str) == 0);
 
             bool void_ptr = (subtype_kind.compare(base_str) == 0)
                 && (subtype_name.compare(void_str) == 0);
@@ -174,9 +217,7 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
                 && (!(root["base_types"][subtype_name].isNull()))
                 && (subtype_name.compare(void_str) != 0);
 
-            printf("double_ptr: %d, stuct: %d, func: %d, void: %d, prim: %d\n", double_ptr, struct_ptr, func_ptr, void_ptr, prim_ptr);
-
-            assert((double_ptr + struct_ptr + func_ptr + void_ptr + prim_ptr) == 1);
+            assert((double_ptr + struct_ptr + func_ptr + union_ptr + arr_ptr + void_ptr + prim_ptr) == 1);
 
             // Pointer to stuct (named)
             if (struct_ptr) {
@@ -187,6 +228,15 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
             } else if (func_ptr) {
                 rdt.type = DataType::FUNC;
                 rdt.ptr_trgt_name.assign(subtype_name);
+
+            // Pointer to union (named)
+            } else if (union_ptr) {
+                rdt.type = DataType::UNION;
+                rdt.ptr_trgt_name.assign(subtype_name);
+
+            // Pointer to array (unnamed)
+            } else if (arr_ptr) {
+                rdt.type = DataType::ARRAY;
 
             // Void pointer (unnamed)
             } else if (void_ptr) {
@@ -274,7 +324,7 @@ void load_func(const std::string& func_name, const Json::Value& func_entry, cons
         func_hashtable[addr] = func_name;
 
         if (log_verbose) {
-            std::cout << "Loaded func \'" << func_name << "\'@" << addr << std::endl;
+            std::cout << "Loaded func \'" << func_name << "\' @ 0x" << std::hex << addr << std::dec << std::endl;
         }
     }
 }
@@ -291,7 +341,7 @@ void load_json(const Json::Value& root) {
         Json::Value sym = root["user_types"][sym_name];
 
         // Skip any zero-sized types
-        if (sym["size"].asUInt() > 0) {
+        if (sym["size"].asInt() > 0) {
 
             std::string type;
 
@@ -319,7 +369,7 @@ void load_json(const Json::Value& root) {
         func_cnt++;
     }
 
-    std::cout << "Loaded " << func_cnt << " funcs, " << struct_cnt << "structs." << std::endl;
+    std::cout << std::endl << "Loaded " << func_cnt << " funcs, " << struct_cnt << " structs." << std::endl;
 }
 
 // Setup/Teardown ------------------------------------------------------------------------------------------------------

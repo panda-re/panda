@@ -22,6 +22,7 @@ const std::string func_str("function");
 const std::string array_str("array");
 const std::string bitfield_str("bitfield");
 const std::string enum_str("enum");
+const std::string union_str("union");
 
 // Struct Members ------------------------------------------------------------------------------------------------------
 
@@ -30,11 +31,13 @@ enum DataType {
     VOID,   // C: void
     BOOL,   // C: bool
     CHAR,   // C: {signed, unsigned} char (sign dependant)
-    INT,    // C: {signed, unsigned} {_, long, long long} int (size and sign dependant)
+    INT,    // C: {signed, unsigned} {_, long, long long} int (size and sign dependant, pointers fall here)
     FLOAT,  // C: float, double, or long double (size dependant)
     STRUCT, // C: struct
     FUNC,   // C: function
     ARRAY,  // C: array of <DataType>
+    UNION,  // C: union
+    ENUM,   // C: enum
 };
 
 // Information to read primitive type
@@ -115,6 +118,12 @@ inline std::ostream & operator<<(std::ostream& os, ReadableDataType const& rdt) 
             break;
         case DataType::ARRAY:
             type.assign("array");
+            break;
+        case DataType::UNION:
+            type.assign("union");
+            break;
+        case DataType::ENUM:
+            type.assign("enum");
             break;
         default:
             type.assign("{unknown}");
