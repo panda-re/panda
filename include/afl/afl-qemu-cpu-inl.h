@@ -283,7 +283,10 @@ void afl_forkserver(CPUArchState *env) {
   u32   was_killed;
   int   status = 0;
 
-  if (getenv("__AFL_SHM_FUZZ_ID")) sharedmem_fuzzing = 1;
+  if (getenv(SHM_FUZZ_ENV_VAR)) {
+     sharedmem_fuzzing = 1;
+  }
+
   // with the max ID value
   if (MAP_SIZE <= FS_OPT_MAX_MAPSIZE)
     status |= (FS_OPT_SET_MAPSIZE(MAP_SIZE) | FS_OPT_MAPSIZE);

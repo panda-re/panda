@@ -12315,12 +12315,10 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
 
     fp = fopen(aflFile, "rb");
 
-
-    //AFL_DPRINTF("Expected file: %s\n", aflFile);
-    assert(fp != 0);
-    if(!fp) {
-         perror(aflFile);
-         return 0;
+    if (fp == NULL) {
+      fprintf(stderr, "Unable to open fuzz input file %s\n", aflFile);
+      perror(aflFile);
+      return 0;
     }
 
 #if 0 // legacy triforce afl byte-by-byte input rw. To be replaced.

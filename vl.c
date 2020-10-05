@@ -3100,7 +3100,6 @@ void set_replay_name(char *name) {
 
 int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
  {
-
     /* shannon afl mod for persistent mode */
     if (getenv("SHANNON_ENABLE_PERSISTENT_MODE"))
        is_persistent = 1;
