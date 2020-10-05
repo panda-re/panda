@@ -2,11 +2,11 @@
 This module simply contains the Panda class
 """
 
-import sys
+from sys import version_info, exit
 
-if sys.version_info[0] < 3:
+if version_info[0] < 3:
     print("Please run with Python 3!")
-    sys.exit(0)
+    exit(0)
 
 import socket
 import threading
@@ -120,6 +120,7 @@ class Panda():
 
         self._do_types_import()
         self.libpanda = ffi.dlopen(self.libpanda_path)
+        self.C = ffi.dlopen(None)
 
         # set OS name if we have one
         if self.os:
@@ -518,9 +519,20 @@ class Panda():
         '''
         Calls QEMU memsavep on your specified python file.
         '''
-        newfd = dup(file_out.fileno())
-        self.libpanda.panda_memsavep(newfd)
-        self.libpanda.fclose(newfd)
+        def initlib():
+            ffi.cdef('''
+            FILE *fdopen(int, const char *);   // from the C <stdio.h>
+            int fclose(FILE *);
+            ''', override=True)
+        ffi.init_once(initlib, "cinit")
+        
+        # this part was largely copied from https://cffi.readthedocs.io/en/latest/ref.html#support-for-file
+
+        file_out.flush()                    # make sure the file is flushed
+        newfd = dup(file_out.fileno())   # make a copy of the file descriptor
+        fileptr = self.C.fdopen(newfd, b"w")
+        self.libpanda.panda_memsavep(fileptr)
+        self.C.fclose(fileptr)
 
     def physical_memory_read(self, addr, length, fmt='bytearray'):
         '''
