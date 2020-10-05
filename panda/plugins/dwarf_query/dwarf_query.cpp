@@ -115,10 +115,16 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
             rdt.arr_member_size_bytes = root["base_types"][arr_type_name]["size"].asUInt();
             type_info = root["base_types"][arr_type_name];
 
+        // Array of pointers
+        } else if (arr_type_kind.compare(ptr_str) == 0) {
+            rdt.arr_member_type = str_to_dt("unsigned int");
+            rdt.arr_member_size_bytes = root["base_types"][arr_type_kind]["size"].asUInt();
+            type_info = root["base_types"][arr_type_kind];
+
         // Array of structs
         } else {
             rdt.arr_member_type = str_to_dt(arr_type_kind);
-            rdt.size_bytes = root["user_types"][arr_type_name]["size"].asUInt();
+            rdt.arr_member_size_bytes = root["user_types"][arr_type_name]["size"].asUInt();
             rdt.arr_member_name.assign(arr_type_name);
             type_info = root["user_types"][arr_type_name];
         }

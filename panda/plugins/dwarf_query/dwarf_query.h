@@ -82,7 +82,7 @@ class ReadableDataType {
             } else {
                 return 0;
             }
-       } else {
+        } else {
             return -1;
         }
     }
@@ -127,6 +127,7 @@ inline std::ostream & operator<<(std::ostream& os, ReadableDataType const& rdt) 
         << ", type: " << type
         << ", size: " << rdt.size_bytes
         << ", ptr: " << rdt.is_ptr
+        << ", dptr: " << rdt.is_double_ptr
         << ", le: " << rdt.is_le
         << ", signed: " << rdt.is_signed
         << ", valid: " << rdt.is_valid
