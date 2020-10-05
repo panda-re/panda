@@ -53,6 +53,9 @@ void os_setup_early_signal_handling(void)
     struct sigaction act;
     sigfillset(&act.sa_mask);
     act.sa_flags = 0;
+    if (panda_get_library_mode()) { // Don't ignore signals in library mode
+      return;
+    }
     act.sa_handler = SIG_IGN;
     sigaction(SIGPIPE, &act, NULL);
 }
