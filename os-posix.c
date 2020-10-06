@@ -51,11 +51,14 @@ static int daemon_pipe;
 void os_setup_early_signal_handling(void)
 {
     struct sigaction act;
-    sigfillset(&act.sa_mask);
-    act.sa_flags = 0;
-    if (panda_get_library_mode()) { // Don't ignore signals in library mode
+
+    if (panda_get_library_mode()) {
+       // Don't ignore signals in library mode
       return;
     }
+
+    sigfillset(&act.sa_mask);
+    act.sa_flags = 0;
     act.sa_handler = SIG_IGN;
     sigaction(SIGPIPE, &act, NULL);
 }
@@ -68,6 +71,11 @@ static void termsig_handler(int signal, siginfo_t *info, void *c)
 void os_setup_signal_handling(void)
 {
     struct sigaction act;
+
+    if (panda_get_library_mode()) {
+       // Don't ignore signals in library mode
+      return;
+    }
 
     memset(&act, 0, sizeof(act));
     act.sa_sigaction = termsig_handler;
