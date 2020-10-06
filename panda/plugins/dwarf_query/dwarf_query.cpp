@@ -40,9 +40,135 @@ bool log_verbose;
 std::unordered_map<std::string, StructDef> struct_hashtable;
 std::map<unsigned, std::string> func_hashtable;
 
-// For CFFI ------------------------------------------------------------------------------------------------------------
+// External API --------------------------------------------------------------------------------------------------------
 
-// TODO: generic reader here
+// TODO: rework to assign to result and free at end!
+
+// Read struct member from memory
+// bool indicates read successes (account for paging errors) and type conversion success
+// PrimitiveVariant provides a typed copy of the data
+std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, ReadableDataType rdt) {
+
+    std::pair<bool, PrimitiveVariant> result;
+
+    uint8_t* buf = (uint8_t*)malloc(rdt.size_bytes);
+    assert(buf != NULL);
+
+    int read_res = panda_virtual_memory_read(env, addr, buf, rdt.size_bytes);
+    if (read_res != 0) {
+        std::cerr << "[WARNING] dwarf_query: virt read of member \'" << rdt.name << "\' failed!" << std::endl;
+        return std::make_pair(false, 0);
+    }
+
+    switch (rdt.type) {
+
+        case DataType::VOID:
+            std::cerr << "[WARNING] dwarf_query: cannot virt read void member \'" << rdt.name << "\'" << std::endl;
+            result = std::make_pair(false, 0);
+
+        case DataType::BOOL:
+            bool res = *buf;
+            free(buf);
+            result = std::make_pair(true, res);
+
+        case DataType::CHAR:
+            char res = *buf;
+            free(buf);
+            result = std::make_pair(true, res);
+
+        case DataType::INT:
+            if (rdt.is_signed) {
+                switch (rdt.size_bytes) {
+                    case sizeof(int):
+                        int res = *buf;
+                        free(buf);
+                        result = std::make_pair(true, res);
+                    case sizeof(long int):
+                        long int res = *buf;
+                        free(buf);
+                        result = std::make_pair(true, res);
+                    case sizeof(long long int):
+                        long long int res = *buf;
+                        free(buf);
+                        result = std::make_pair(true, res);
+                    default:
+                        std::cerr << "[WARNING] dwarf_query: cannot virt read int member \'" << rdt.name << "\', bad size!" << std::endl;
+                        free(buf);
+                        result = std::make_pair(false, 0);
+                }
+            } else {
+                switch (rdt.size_bytes) {
+                    case sizeof(unsigned):
+                        unsigned rest = *buf;
+                        free(buf);
+                        result = std::make_pair(true, res);
+                    case sizeof(long unsigned):
+                        long unsigned rest = *buf;
+                        free(buf);
+                        result = std::make_pair(true, res);
+                    case sizeof(long long unsigned):
+                        long long unsigned rest = *buf;
+                        free(buf);
+                        return std::make_pair(true, res);
+                    default:
+                        std::cerr << "[WARNING] dwarf_query: cannot virt read unsigned member \'" << rdt.name << "\', bad size!" << std::endl;
+                        free(buf);
+                        result = std::make_pair(false, 0);
+                }
+            }
+
+        case DataType::FLOAT:
+            switch (rdt.size_bytes) {
+                case sizeof(float):
+                    float res = *buf;
+                    free(buf);
+                    result = std::make_pair(true, res);
+                case sizeof(double):
+                    double res = *buf;
+                    free(buf);
+                    result = std::make_pair(true, res);
+                case sizeof(long double):
+                    long double res = *buf;
+                    free(buf);
+                    result = std::make_pair(true, res);
+                default:
+                    std::cerr << "[WARNING] dwarf_query: cannot virt read float member \'" << rdt.name << "\', bad size!" << std::endl;
+                    free(buf);
+                    result = std::make_pair(false, 0);
+            }
+
+        case DataType::STRUCT:
+            result = std::make_pair(true, res); // Caller must free (gets uint8_t*)
+
+        case DataType::FUNC:
+            target_ulong res = *buf;
+            free(buf);
+            return std::make_pair(true, res);
+
+        case DataType::ARRAY:
+            std::cerr << "[WARNING] dwarf_query: virt read of array not yet supported! Cannot read \'" << rdt.name << "\'" << std::endl;
+            free(buf);
+            return std::make_pair(false, 0);
+
+        case DataType::UNION:
+            std::cerr << "[WARNING] dwarf_query: virt read of union not yet supported! Cannot read \'" << rdt.name << "\'" << std::endl;
+            free(buf);
+            return std::make_pair(false, 0);
+
+        case DataType::ENUM:
+            std::cerr << "[WARNING] dwarf_query: virt read of enum not yet supported! Cannot read \'" << rdt.name << "\'" << std::endl;
+            free(buf);
+            return std::make_pair(false, 0);
+
+        default:
+            std::cerr << "[WARNING] dwarf_query: cannot virt read member \'" << rdt.name << "\', unknown type!" << std::endl;
+            return std::make_pair(false, 0);
+    }
+
+    std::cerr << "[WARNING] dwarf_query: cannot virt read member \'" << rdt.name << "\'" << std::endl;
+    free(buf);
+    return std::make_pair(false, 0);
+}
 
 // Core ----------------------------------------------------------------------------------------------------------------
 

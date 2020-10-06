@@ -1,6 +1,7 @@
 #ifndef __DWARF_QUERY_H__
 #define __DWARF_QUERY_H__
 
+#include <variant>
 #include <vector>
 #include <string>
 #include <iomanip>
@@ -25,6 +26,20 @@ const std::string enum_str("enum");
 const std::string union_str("union");
 
 // Struct Members ------------------------------------------------------------------------------------------------------
+
+typedef std::variant<
+    bool,
+    char,
+    int,
+    long int,
+    long long int,
+    unsigned,
+    long long unsigned,
+    float,
+    double,
+    long double,
+    uint8_t*
+> PrimitiveVariant;
 
 // Categorization for primitive types
 enum DataType {
