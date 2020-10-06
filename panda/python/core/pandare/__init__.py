@@ -13,6 +13,7 @@ Example plugins are available [on GitHub](https://github.com/panda-re/panda/tree
 from .panda import Panda, blocking
 from .ffi_importer import ffi
 from .extras import *
+from .plog_reader import PLogReader
 
 __pdoc__ = {}
 
