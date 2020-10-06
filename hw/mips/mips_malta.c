@@ -938,7 +938,7 @@ static void create_cpu_without_cps(const char *cpu_model,
         /* Init internal devices */
         cpu_mips_irq_init_cpu(cpu);
         cpu_mips_clock_init(cpu);
-        qemu_register_reset(main_cpu_reset, cpu);
+        //qemu_register_reset(main_cpu_reset, cpu);
     }
 
     cpu = MIPS_CPU(first_cpu);

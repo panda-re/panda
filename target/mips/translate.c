@@ -4786,7 +4786,7 @@ static inline void gen_mfhc0_load64(TCGv arg, target_ulong off, int shift)
 }
 
 static inline void gen_mfc0_load32 (TCGv arg, target_ulong off)
-{ 
+{
 //#ifdef CONFIG_SOFTMMU
 //    CPUState* cpustate = cpus.tqh_first;
 //    CPUMIPSState* cpu = cpustate->env_ptr;
@@ -4807,7 +4807,7 @@ static inline void gen_mfc0_load32 (TCGv arg, target_ulong off)
     tcg_gen_ext_i32_tl(arg, t0);
     tcg_temp_free_i32(t0);
 //#endif
-    
+
 }
 
 static inline void gen_mfc0_load64 (TCGv arg, target_ulong off)
@@ -4990,7 +4990,7 @@ static void gen_mfc0(DisasContext *ctx, TCGv arg, int reg, int sel)
 
     switch (reg) {
     case 0:
-        switch (sel) { 
+        switch (sel) {
         case 0:
             gen_mfc0_load32(arg, offsetof(CPUMIPSState, CP0_Index));
             rn = "Index";
@@ -19960,7 +19960,7 @@ void gen_intermediate_code(CPUMIPSState *env, struct TranslationBlock *tb)
     if (max_insns > TCG_MAX_INSNS) {
         max_insns = TCG_MAX_INSNS;
     }
-    
+
     if (rr_in_replay()) {
         uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
         if (max_insns > until_interrupt) {
@@ -19992,7 +19992,7 @@ void gen_intermediate_code(CPUMIPSState *env, struct TranslationBlock *tb)
             gen_io_start();
         }
 
-#ifdef CONFIG_SOFTMMU 
+#ifdef CONFIG_SOFTMMU
         //mz let's count this instruction
         // In LLVM mode we generate this more efficiently.
         if ((rr_on() || panda_update_pc) && !generate_llvm) {
@@ -20024,7 +20024,7 @@ void gen_intermediate_code(CPUMIPSState *env, struct TranslationBlock *tb)
 
         if (ctx.hflags & MIPS_HFLAG_BMASK) {
             if (!(ctx.hflags & (MIPS_HFLAG_BDS16 | MIPS_HFLAG_BDS32 |
-                                MIPS_HFLAG_FBNSLOT))) { 
+                                MIPS_HFLAG_FBNSLOT))) {
                 /* force to generate branch as there is neither delay nor
                    forbidden slot */
                 is_slot = 1;

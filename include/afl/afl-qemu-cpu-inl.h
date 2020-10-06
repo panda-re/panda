@@ -98,7 +98,7 @@ unsigned int afl_forksrv_pid;
 
 u8 * shared_buf;
 u32 *shared_buf_len;
-u8   sharedmem_fuzzing;
+u8   sharedmem_fuzzing = 0;
 
 /* Instrumentation ratio: */
 

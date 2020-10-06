@@ -3,8 +3,8 @@ from pandare import blocking, Panda
 from os.path import isfile, expanduser
 from requests import get
 
-qcow = "https://people.debian.org/~aurel32/qemu/mips/debian_wheezy_mips_standard.qcow2"
-vmlinux = "https://people.debian.org/~aurel32/qemu/mips/vmlinux-3.2.0-4-4kc-malta"
+qcow = "https://people.debian.org/~aurel32/qemu/mipsel/debian_wheezy_mips_standard.qcow2"
+vmlinux = "https://people.debian.org/~aurel32/qemu/mipsel/vmlinux-3.2.0-4-4kc-malta"
 qcow_out = expanduser("~/.panda/debian_wheezy_mips_standard.qcow")
 vmlinux_out = expanduser("~/.panda/vmlinux-3.2.0-4-4kc-malta")
 
@@ -13,7 +13,7 @@ if not isfile(qcow_out):
 if not isfile(vmlinux_out):
 	open(vmlinux_out,'wb').write(requests.get(vmlinux).content)
 
-panda = Panda(generic="mips",extra_args="-monitor telnet:127.0.0.1:4444,server,nowait")
+panda = Panda(generic="mipsel",extra_args="-monitor telnet:127.0.0.1:4444,server,nowait -s -S -M none -cpu 4Km")
 
 replay = False
 if replay:

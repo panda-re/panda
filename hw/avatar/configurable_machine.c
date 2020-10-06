@@ -487,8 +487,14 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 
 
 #elif defined(TARGET_MIPS)
+    CPUMIPSState *mips_env;
     if (!cpu_model) cpu_model = "mips32r6-generic";
     cpuu = cpu_mips_init(cpu_model);
+    mips_env = &cpuu->env;
+
+    if (qdict_haskey(conf, "exception_base")) {
+        mips_env->exception_base = qdict_get_int(conf, "exception_base");
+    }
 
 #elif defined(TARGET_PPC)
     if (!cpu_model) cpu_model = "e500v2_v30";
@@ -538,6 +544,8 @@ static void board_init(MachineState * ms)
 
     cpuu = create_cpu(ms, conf);
     set_entry_point(conf, cpuu);
+
+
 
     if (qdict_haskey(conf, "memory_mapping"))
     {
