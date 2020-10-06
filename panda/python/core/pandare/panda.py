@@ -2135,7 +2135,8 @@ class Panda():
         # name = main_loop_wait
 
         if name in self.registered_callbacks:
-            raise ValueError("Duplicate callback name {}".format(name))
+            print(f"Warning: replacing existing callback '{name}' since it was re-registered")
+            self.delete_callback(name)
 
         cb = self.callback_dictionary[callback]
 
@@ -2215,6 +2216,17 @@ class Panda():
 
         if forever:
             del self.registered_callbacks[name]
+
+    def delete_callback(self, name):
+        '''
+        Completely delete a registered panda callback by name
+        '''
+        if name not in self.registered_callbacks.keys():
+            raise ValueError("No callback has been registered with name '{}'".format(name))
+
+        handle = self.registered_callbacks[name]['handle']
+        self.libpanda.panda_unregister_callbacks(handle)
+        del self.registered_callbacks[name]['handle']
 
     ###########################
     ### PPP-style callbacks ###
