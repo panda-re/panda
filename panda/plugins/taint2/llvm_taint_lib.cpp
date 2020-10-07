@@ -652,7 +652,12 @@ void PandaTaintVisitor::addInstructionDetailsToArgumentList(
     }
 
     for(auto it = I.value_op_begin(); it != I.value_op_end(); it++) {
-        if(it->getType()->isIntegerTy()) {
+        // do not pass non-constant Instruction operands this way, or
+        // the taint operations won't be able to distinguish between LLVM
+        // constants and non-constants (fortunately, the taint operations
+        // don't really need the values of the non-constant operands, they just
+        // need to know where they are)
+        if (isa<Constant>(*it)) {
             Instruction *lshr;
             unsigned size_in_bits = it->getType()->getScalarSizeInBits();
             args.push_back(const_uint64(size_in_bits));
