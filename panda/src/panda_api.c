@@ -160,6 +160,18 @@ target_ulong panda_virt_to_phys_external(CPUState *cpu, target_ulong virt_addr) 
   return panda_virt_to_phys(cpu, virt_addr);
 }
 
+void panda_setup_signal_handling(void (*f) (int, siginfo_t*, void *))
+{
+    struct sigaction act;
+
+    memset(&act, 0, sizeof(act));
+    act.sa_sigaction = f;
+    act.sa_flags = SA_SIGINFO;
+    sigaction(SIGINT,  &act, NULL);
+    sigaction(SIGHUP,  &act, NULL);
+    sigaction(SIGTERM, &act, NULL);
+}
+
 // we have this temporarily in callbacks.c -> to be moved here
 /*
 bool panda_load_external_plugin(const char *filename, const char *plugin_name, void *plugin_uuid, void *init_fn_ptr) {
