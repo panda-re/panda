@@ -9,7 +9,7 @@ from pandare.extras.file_hook import FileHook
 # TODO: Ability to fake buffers for specific commands
 
 ioctl_initialized = False
-def do_ioctl_init(arch):
+def do_ioctl_init(arch_name):
 
     '''
     One-time init for arch-specific bit-packed ioctl cmd struct.
@@ -23,8 +23,8 @@ def do_ioctl_init(arch):
     ioctl_initialized = True
     TYPE_BITS = 8
     CMD_BITS = 8
-    SIZE_BITS = 14 if arch != "ppc" else 13
-    DIR_BITS = 2 if arch != "ppc" else 3
+    SIZE_BITS = 14 if arch_name != "ppc" else 13
+    DIR_BITS = 2 if arch_name != "ppc" else 3
 
     ffi.cdef("""
     struct IoctlCmdBits {
@@ -59,7 +59,7 @@ class Ioctl():
         Do unpacking, optionally using OSI for process and file name info.
         '''
 
-        do_ioctl_init(panda.arch)
+        do_ioctl_init(panda.arch_name)
         self.cmd = ffi.new("union IoctlCmdUnion*")
         self.cmd.asUnsigned32 = cmd
         self.original_ret_code = None
@@ -95,12 +95,12 @@ class Ioctl():
         Helper retrive original return code, handles arch-specifc ABI
         '''
 
-        if panda.arch == "mipsel" or panda.arch == "mips":
+        if panda.arch_name == "mipsel" or panda.arch_name == "mips":
             # Note: return values are in $v0, $v1 (regs 2 and 3 respectively), but here we only use first
             self.original_ret_code = panda.from_unsigned_guest(cpu.env_ptr.active_tc.gpr[2])
-        elif panda.arch == "aarch64":
+        elif panda.arch_name == "aarch64":
             self.original_ret_code = panda.from_unsigned_guest(cpu.env_ptr.xregs[0])
-        elif panda.arch == "ppc":
+        elif panda.arch_name == "ppc":
             raise RuntimeError("PPC currently unsupported!")
         else: # x86/x64/ARM
             self.original_ret_code = panda.from_unsigned_guest(cpu.env_ptr.regs[0])
@@ -194,11 +194,11 @@ class IoctlFaker():
                 ioctl.original_ret_code in self.intercept_ret_vals and \
                         (ioctl.file_name, ioctl.cmd.bits.cmd_num) not in self.ignore: # Allow ignoring specific commands on specific files
 
-                if panda.arch == "mipsel" or panda.arch == "mips":
+                if panda.arch_name == "mipsel" or panda.arch_name == "mips":
                     cpu.env_ptr.active_tc.gpr[2] = 0
-                elif panda.arch == "aarch64":
+                elif panda.arch_name == "aarch64":
                     cpu.env_ptr.xregs[0] = 0
-                elif panda.arch == "ppc":
+                elif panda.arch_name == "ppc":
                     raise RuntimeError("PPC currently unsupported!")
                 else: # x86/x64/ARM
                     cpu.env_ptr.regs[0] = 0

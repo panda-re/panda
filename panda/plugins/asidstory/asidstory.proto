@@ -1,10 +1,13 @@
 message AsidInfo {
-    required uint64 asid = 1; 
-    required string name = 2;
-    required uint32 pid = 3;
-    required uint64 start_instr = 4;
-    required uint64 end_instr = 5;
-    optional uint64 count = 6;
+    required uint32 pid = 1;
+    required uint64 create_time = 2;
+    required uint32 ppid = 3;
+    required uint64 asid = 4; 
+    repeated string names = 5;
+    repeated uint32 tids = 6;
+    required uint64 start_instr = 7;
+    required uint64 end_instr = 8;
+    optional uint64 count = 9;
 }
 
 optional AsidInfo asid_info = 40;
