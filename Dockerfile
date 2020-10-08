@@ -1,16 +1,9 @@
 FROM ubuntu:18.04
-RUN apt-get update
-
 # Base packages required before we do anything else
-RUN apt install -y lsb-core git
-
-# Grab panda now and cache it. We'll pull later
-RUN git clone https://github.com/panda-re/panda
-
-# Figure out our release name (xenial, trusty, etc...) and set up env vars
-ENV SOURCES_LIST="/etc/apt/sources.list"
+RUN apt-get update && apt install -y lsb-core
 
 # apt_enable_src: Enable src repos
+ENV SOURCES_LIST="/etc/apt/sources.list"
 RUN if grep -q "^[^#]*deb-src .* $codename .*main" "$SOURCES_LIST"; then \
        echo "deb-src already enabled in $SOURCES_LIST."; \
    else \
@@ -18,28 +11,27 @@ RUN if grep -q "^[^#]*deb-src .* $codename .*main" "$SOURCES_LIST"; then \
        sed -E -i 's/^([^#]*) *# *deb-src (.*)/\1deb-src \2/' "$SOURCES_LIST"; \
    fi
 
-RUN cat "$SOURCES_LIST"
-# Installing qemu dependencies
-RUN apt-get update
-RUN apt-get -y build-dep qemu
-
-# Install PANDA dependencies
-RUN apt-get -y install git protobuf-compiler protobuf-c-compiler \
+# Install QEMU build-deps, plus panda dependencies
+RUN apt update && apt-get -y build-dep qemu && \
+    apt -y install git protobuf-compiler protobuf-c-compiler \
     libprotobuf-c0-dev libprotoc-dev python3-protobuf libelf-dev libc++-dev pkg-config \
     libwiretap-dev libwireshark-dev flex bison python3-pip python3 software-properties-common \
     chrpath zip libcapstone-dev libdwarf-dev
-
-# There's no python2 in this container - make python->python3 for convenience
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
-
-# Core PANDA python3 dependencies to install via pip
-RUN pip3 install --upgrade protobuf # Upgrade because it's already installed with apt
-RUN pip3 install pycparser
+# TODO: for llvm10 upgrade add llvm-10 clang-10 to the above list
 
 # PYPANDA Dependencies
 RUN apt-get install -y genisoimage wget libc6-dev-i386 gcc-multilib nasm
 RUN pip3 install colorama cffi 'protobuf==3.0.0' # Protobuf version should match system (apt) version
 
+# Core PANDA python3 dependencies to install via pip
+RUN pip3 install --upgrade protobuf # Upgrade because it's already installed with apt
+RUN pip3 install pycparser
+
+# There's no python2 in this container - make python->python3 for convenience
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+
+
+###### LLVM 3.3 TODO: remove when upgrading to LLVM10 ####
 # Setup apt sources of llvm 3.3
 ENV panda_ppa_file=/etc/apt/sources.list.d/phulin-ubuntu-panda-bionic.list
 ENV panda_ppa_file_fallback=/etc/apt/sources.list.d/phulin-ubuntu-panda-xenial.list
@@ -61,24 +53,27 @@ RUN apt-get update
 
 # Install LLVM 3.3...
 RUN apt-get -y install llvm-3.3-dev clang-3.3
+###### End of LLVM 3.3 logic ####
 
+# Copy repo root directory to /panda, note we explicitly copy in .git directory
+# Note .dockerignore file keeps us from copying everything
+COPY . /panda/
+COPY .git /panda/
 WORKDIR "/panda"
-RUN git fetch -a
-RUN git pull
 
-# Trying to update DTC submodule (if necessary)
-RUN git submodule update --init dtc || true
+# Update submodules
+RUN git submodule init && git submodule update --recursive
 
-RUN mkdir build
-
+# Build all targets (simplified logic from build.sh)
+RUN mkdir /panda/build
 WORKDIR "/panda/build"
-# logic based off build.sh but simplified because we're in a container
 ENV TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
 RUN rm -f ./qemu-options.def
 
 # NUMA disabled in docker because I can't get it to work in the container
 # If we extend this to build to produce binaries to run outside of docker, we should
 # re-enable (or make another build) with numa
+# TODO: update llvm-3.3 to llvm-10 for imminent upgrade in this command
 RUN ../configure \
     --target-list=$TARGET_LIST \
     --prefix=/ \
@@ -88,7 +83,7 @@ RUN ../configure \
     --disable-vhost-net \
     --extra-cflags=-DXC_WANT_COMPAT_DEVICEMODEL_API
 
-RUN make -j4
+RUN make -j
 
 RUN make install
 
