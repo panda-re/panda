@@ -1,0 +1,21 @@
+name: Docker Build - Clean
+# For PRs to master or pushes that modify the root Dockerfile, build from scratch
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    paths: ['Dockerfile'] # If this changed, we need to do a clean build
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1 # Clones code into to /home/runner/work/panda
+
+    - name: Build docker container from project root
+      run: docker build /home/runner/work/panda -f /home/runner/work/panda/Dockerfile -t panda_local
+
+    - name: Minimal test of built container # Just test to see if one of our binaries is installed
+      run: docker run --rm panda_local /bin/bash -c 'exit $(panda-system-arm -help | grep -q "usage. panda-system-arm")'
