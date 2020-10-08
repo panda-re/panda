@@ -312,7 +312,9 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
         rdt.is_signed = type_info["signed"].asBool();
         rdt.is_valid = true;
 
-        assert(rdt.get_arr_size() == member["type"]["count"].asUInt());
+        if (type_info["size"].asUInt()) {
+            assert(rdt.get_arr_size() == member["type"]["count"].asUInt());
+        }
 
     // Embedded bitfield
     } else if (bitfield_type) {
