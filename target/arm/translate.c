@@ -12485,7 +12485,8 @@ void helper_aflInterceptPanic(void)
 {
     if(!aflStart)
         return;
-    exit(32);
+
+    abort();
 }
 
 void gen_aflBBlock(target_ulong pc)
