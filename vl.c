@@ -187,7 +187,6 @@ void tcg_llvm_destroy(void);
 
 extern const char *aflFile;
 extern const char *aflOutFile;
-extern char is_persistent;
 extern unsigned long aflPanicAddr[256];
 extern unsigned long aflStateAddr[256];
 extern uint8_t aflStateAddrEntries;
@@ -3100,10 +3099,6 @@ void set_replay_name(char *name) {
 
 int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
  {
-    /* shannon afl mod for persistent mode */
-    if (getenv("SHANNON_ENABLE_PERSISTENT_MODE"))
-       is_persistent = 1;
-
     if (pmm == PANDA_RUN)    goto PANDA_MAIN_RUN;
     if (pmm == PANDA_FINISH) goto PANDA_MAIN_FINISH;
     int i;

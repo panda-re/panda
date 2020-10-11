@@ -287,6 +287,19 @@ void afl_forkserver(CPUArchState *env) {
      sharedmem_fuzzing = 1;
   }
 
+
+  /* shannon afl mod for persistent mode */
+  char * persistentCnt = getenv("SHANNON_ENABLE_PERSISTENT_MODE");
+
+  if (persistentCnt) {
+    is_persistent = 1;
+    afl_persistent_cnt = atoi(persistentCnt);
+    if (afl_persistent_cnt <= 0) {
+      AFL_DPRINTF("Invalid persistent mode count\n");
+      exit(3);
+    }
+  }
+
   // with the max ID value
   if (MAP_SIZE <= FS_OPT_MAX_MAPSIZE)
     status |= (FS_OPT_SET_MAPSIZE(MAP_SIZE) | FS_OPT_MAPSIZE);
@@ -309,6 +322,7 @@ void afl_forkserver(CPUArchState *env) {
     // (e.g. afl-cmin's first pass)
     sharedmem_fuzzing = 0;
     is_persistent = 0;
+    afl_persistent_cnt = 0;
     return;
   }
 

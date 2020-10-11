@@ -12284,7 +12284,8 @@ static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks,
     //AFL_DPRINTF("State at start work: 0x%x\n", afl_state_var);
     aflEnableTicks = enableTicks;
     afl_wants_cpu_to_stop = 1;
-    afl_persistent_cnt = persistent;
+    // set by calling process now
+    //afl_persistent_cnt = persistent;
 #endif
     return 0;
 }
