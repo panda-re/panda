@@ -12305,18 +12305,21 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
     AFL_DPRINTF("pid %d: getWork " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
             getpid(), ptr, sz);
     assert(aflStart == 0);
+
     if (sharedmem_fuzzing) {
+        AFL_DPRINTF("pid %d: getWork from shmem (%d)\n",
+            getpid(), *shared_buf_len);
         cpu_physical_memory_rw(ptr, shared_buf, *shared_buf_len, 1);
-        AFL_DPRINTF("pid %d: getWork %20s (%d)\n", getpid(), shared_buf, *shared_buf_len);
         return *shared_buf_len;
+    } else {
+        AFL_DPRINTF("pid %d: getWork from %20s\n",
+            getpid(), aflFile);
     }
-
-
 
     fp = fopen(aflFile, "rb");
 
     if (fp == NULL) {
-      fprintf(stderr, "Unable to open fuzz input file %s\n", aflFile);
+      AFL_DPRINTF("Unable to open fuzz input file %s\n", aflFile);
       perror(aflFile);
       return 0;
     }

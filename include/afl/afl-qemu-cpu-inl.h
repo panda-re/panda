@@ -77,6 +77,7 @@ static int forkserver_installed = 0;
 
 
 int aflStart = 0;               /* we've started fuzzing */
+int aflDebug = 0;               /* Debug AFL */
 int aflEnableTicks = 0;         /* re-enable ticks for each test */
 int aflGotLog = 0;              /* we've seen dmesg logging */
 
@@ -148,7 +149,7 @@ struct afl_chain {
 static void afl_map_shm_fuzz(void) {
 
   char *id_str = getenv(SHM_FUZZ_ENV_VAR);
-  printf("At least, we are here: %s\n", id_str);
+  AFL_DPRINTF("%s: At least, we are here (%s)\n", __func__, id_str);
 
   if (id_str) {
 
@@ -158,7 +159,7 @@ static void afl_map_shm_fuzz(void) {
 
     if (!map || map == (void *)-1) {
 
-      perror("[AFL] ERROR: could not access fuzzing shared memory");
+      AFL_DPRINTF("ERROR: could not access fuzzing shared memory: %s", strerror(errno));
       exit(1);
 
     }
@@ -168,14 +169,13 @@ static void afl_map_shm_fuzz(void) {
 
     if (getenv("AFL_DEBUG")) {
 
-      fprintf(stderr, "[AFL] DEBUG: successfully got fuzzing shared memory\n");
+      AFL_DPRINTF("Successfully got fuzzing shared memory\n");
 
     }
 
   } else {
 
-    fprintf(stderr,
-            "[AFL] ERROR:  variable for fuzzing shared memory is not set\n");
+    AFL_DPRINTF("ERROR: variable for fuzzing shared memory is not set\n");
     exit(1);
 
   }
@@ -292,14 +292,25 @@ void afl_forkserver(CPUArchState *env) {
     status |= (FS_OPT_SET_MAPSIZE(MAP_SIZE) | FS_OPT_MAPSIZE);
   if (sharedmem_fuzzing != 0) status |= FS_OPT_SHDMEM_FUZZ;
   if (status) status |= (FS_OPT_ENABLED);
-  if (getenv("AFL_DEBUG"))
-    fprintf(stderr, "Debug: Sending status %08x\n", status);
+
+  aflDebug = getenv("AFL_DEBUG") != NULL;
+
+  AFL_DPRINTF("Sending status %08x to forkserver\n", status);
+
   memcpy(tmp, &status, 4);
 
   /* Tell the parent that we're alive. If the parent doesn't want
      to talk, assume that we're not running in forkserver mode. */
 
-  if (write(FORKSRV_FD + 1, tmp, 4) != 4) return;
+  if (write(FORKSRV_FD + 1, tmp, 4) != 4) {
+    AFL_DPRINTF("No response from forkserver - assuming basic AFL or none at all\n");
+    // if there was no response, make sure that we fall back to file
+    // fuzzing only as AFL might not be using the official forkserver
+    // (e.g. afl-cmin's first pass)
+    sharedmem_fuzzing = 0;
+    is_persistent = 0;
+    return;
+  }
 
   afl_forksrv_pid = getpid();
 
@@ -309,13 +320,14 @@ void afl_forkserver(CPUArchState *env) {
 
     if (read(FORKSRV_FD, &was_killed, 4) != 4) exit(2);
 
+    AFL_DPRINTF("Received status %08x from forkserver\n", was_killed);
+
     if ((was_killed & (0xffffffff & (FS_OPT_ENABLED | FS_OPT_SHDMEM_FUZZ))) ==
         (FS_OPT_ENABLED | FS_OPT_SHDMEM_FUZZ))
       afl_map_shm_fuzz();
     else {
 
-      fprintf(stderr,
-              "[AFL] ERROR: afl-fuzz is old and does not support"
+      AFL_DPRINTF("ERROR: afl-fuzz is old and does not support"
               " shmem input");
       exit(1);
 
@@ -409,7 +421,7 @@ void afl_forkserver(CPUArchState *env) {
     }
     else if (unlikely(first_run && is_persistent)) {
 
-      fprintf(stderr, "[AFL] ERROR: no persistent iteration executed\n");
+      AFL_DPRINTF("ERROR: no persistent iteration executed\n");
       exit(12);  // Persistent is wrong
 
     }
@@ -431,6 +443,7 @@ void afl_persistent_start(void) {
   if (!afl_fork_child) return;
 
   if (persistent_first_pass) {
+      AFL_DPRINTF("Persistent mode running for %d loops\n", afl_persistent_cnt);
 
       /* Make sure that every iteration of __AFL_LOOP() starts with a clean slate.
        * On subsequent calls, the parent will take care of that, but on the first

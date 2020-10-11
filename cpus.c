@@ -1661,7 +1661,7 @@ gotPipeNotification(void *ctx)
 
     /* cpu thread asked us to run AFL forkserver */
     if(read(afl_qemuloop_pipe[0], buf, 4) != 4) {
-        printf("error reading afl/qemu pipe!\n");
+        AFL_DPRINTF("error reading afl/qemu pipe!\n");
         exit(1);
     }
     AFL_DPRINTF("start up afl forkserver!\n");
