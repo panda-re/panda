@@ -39,6 +39,8 @@
 #include "panda/callbacks/cb-support.h"
 #include "panda/common.h"
 
+#include "include/afl/afl.h"
+
 
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
@@ -12310,6 +12312,8 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
     if (sharedmem_fuzzing) {
         AFL_DPRINTF("pid %d: getWork from shmem (%d)\n",
             getpid(), *shared_buf_len);
+        /* make sure the size doesn't exceed the max size for this target */
+        *shared_buf_len = *shared_buf_len > AFL_MAX_INPUT ? AFL_MAX_INPUT : *shared_buf_len;
         cpu_physical_memory_rw(ptr, shared_buf, *shared_buf_len, 1);
         return *shared_buf_len;
     } else {
@@ -12336,7 +12340,7 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
         ptr ++;
     }
 #else
-    uint8_t buffer[4096]; //testcase max size for shannon
+    uint8_t buffer[AFL_MAX_INPUT]; //testcase max size for shannon
     uint8_t * bufptr = buffer;
 
     retsz = fread (buffer, 1, sz, fp);

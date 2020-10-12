@@ -1,6 +1,8 @@
 #ifndef __AFL_QEMU_COMMON
 #define __AFL_QEMU_COMMON
 
+#define AFL_MAX_INPUT (4096)
+
 #define AFL_DPRINTF(fmt, ...) do {                                          \
         if (aflDebug) {                                           \
             fprintf(stderr, "[AFLDEBUG] " fmt, ## __VA_ARGS__);      \
