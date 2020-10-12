@@ -480,6 +480,17 @@ class Panda():
         charptr = ffi.new("char[]", bytes(name,"utf-8"))
         self.libpanda.panda_require_from_library(charptr, plugin_args, len(argstrs_ffi))
         self._load_plugin_library(name)
+    
+    def _procname_changed(self, cpu, name):
+        for cb_name, cb in self.registered_callbacks.items():
+            if not cb["procname"]:
+                continue
+            if name == cb["procname"] and not cb['enabled']:
+                self.enable_callback(cb_name)
+            if name != cb["procname"] and cb['enabled']:
+                self.disable_callback(cb_name)
+
+        self._update_hooks_new_procname(cpu, name)
 
     def unload_plugin(self, name):
         '''
