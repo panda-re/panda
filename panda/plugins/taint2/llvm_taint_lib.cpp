@@ -1659,10 +1659,11 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
 
     // As the frame may have been used before, first clear it out
     // note that shad->num_vals is MAXFRAMESIZE
-    // if function called doesn't have a name, then have to assume worst case
-    // of maximum frame size as can't calculate using PandaSlotTracker
+    // if function called doesn't have a name, or has no instructions yet,
+    // then have to assume worst case of maximum frame size as can't calculate
+    // using PandaSlotTracker
     uint64_t clrBytes = MAXREGSIZE * (shad->num_vals);
-    if (calledF) {
+    if (calledF && (calledF->getInstructionCount() > 0)) {
         subframePST.reset(new PandaSlotTracker(calledF));
         subframePST->initialize();
         clrBytes = MAXREGSIZE * (subframePST->getMaxSlot());
