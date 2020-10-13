@@ -229,7 +229,7 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
     std::string type_name = member["type"]["name"].asString();
     Json::Value type_info = root["base_types"][type_name];
 
-    // TODO: Cleanup with seperate func and switch statement, doesn not map to DataType exactly
+    // TODO: Cleanup with separate func and switch statement, doesn not map to DataType exactly
     bool ptr_type = (type_category.compare(ptr_str) == 0);
     bool struct_type = (type_category.compare(struct_str) == 0);
     bool array_type = (type_category.compare(array_str) == 0);
@@ -354,6 +354,7 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
             bool double_ptr = (subtype_kind.compare(ptr_str) == 0);
             bool func_ptr = (subtype_kind.compare(func_str) == 0);
             bool union_ptr = (subtype_kind.compare(union_str) == 0);
+            bool enum_ptr = (subtype_kind.compare(enum_str) == 0);
             bool arr_ptr = (subtype_kind.compare(array_str) == 0);
 
             bool void_ptr = (subtype_kind.compare(base_str) == 0)
@@ -363,7 +364,7 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
                 && (!(root["base_types"][subtype_name].isNull()))
                 && (subtype_name.compare(void_str) != 0);
 
-            assert((double_ptr + struct_ptr + func_ptr + union_ptr + arr_ptr + void_ptr + prim_ptr) == 1);
+            assert((double_ptr + struct_ptr + func_ptr + union_ptr + enum_ptr + arr_ptr + void_ptr + prim_ptr) == 1);
 
             // Pointer to stuct (named)
             if (struct_ptr) {
@@ -378,6 +379,11 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
             // Pointer to union (named)
             } else if (union_ptr) {
                 rdt.type = DataType::UNION;
+                rdt.ptr_trgt_name.assign(subtype_name);
+
+            // Pointer to enum (named)
+            } else if (enum_ptr) {
+                rdt.type = DataType::ENUM;
                 rdt.ptr_trgt_name.assign(subtype_name);
 
             // Pointer to array (unnamed)
@@ -403,6 +409,8 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
                     rdt.type = str_to_dt(trgt_type_kind);
                     rdt.ptr_trgt_name.assign(trgt_type_name);
                 }
+            } else {
+                assert(false && "Pointer to unhandled type!");
             }
 
             type_info = root["base_types"][type_category];

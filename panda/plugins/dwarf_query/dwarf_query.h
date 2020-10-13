@@ -27,6 +27,7 @@ const std::string union_str("union");
 
 // Struct Members ------------------------------------------------------------------------------------------------------
 
+// Typesafe union for readable primitives
 typedef std::variant<
     bool,
     char,

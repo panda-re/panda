@@ -5,8 +5,8 @@ from panda import blocking, Panda
 
 dtb    = "./test_fw/linux-4.4.138/arch/arm/boot/dts/vexpress-v2p-ca9.dtb"
 kernel = "./test_fw/linux-4.4.138/arch/arm/boot/zImage"
-rootfs = "./test_fw/ubuntu-base-18.04-base-armhf.tar.gz"
-append = "root=/dev/vda rw init=/sbin/init earlyprintk=serial,ttyAMA0 console=ttyAMA0"
+rootfs = "./test_fw/ubuntu-base-18.04-base-armhf.img"
+append = "root=/dev/vda rw earlyprintk=serial,ttyAMA0 console=ttyAMA0"
 
 panda = Panda(arch = "arm", mem = "1G", extra_args=[
 

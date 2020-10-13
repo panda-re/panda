@@ -3,6 +3,32 @@
 TOGGLE_COLOR='\033[0m'
 YELLOW='\033[0;33m'
 
+# ----------------------------------------------------------------------------------------------------------------------
+# PRE-REQS
+# ----------------------------------------------------------------------------------------------------------------------
+
+sudo apt-get install -y libguestfs-tools libncurses-dev flex \
+    bison openssl libssl-dev dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf
+
+# Working dir
+cd $(dirname "$0")
+mkdir -p test_fw
+cd test_fw
+
+# ----------------------------------------------------------------------------------------------------------------------
+# TEST FS
+# ----------------------------------------------------------------------------------------------------------------------
+
+echo -e "\n${YELLOW}DOWNLOADING AND CONVERTING TEST FILESYSTEM...${TOGGLE_COLOR}\n"
+
+FS_TAR="ubuntu-base-18.04-base-armhf.tar.gz"
+FS_IMG="${FS_TAR%.*.*}.img"
+USERNAME="$(whoami)"
+
+wget wget -nc -q --show-progress http://cdimage.ubuntu.com/ubuntu-base/releases/18.04/release/$FS_TAR
+sudo virt-make-fs $FS_TAR $FS_IMG
+sudo chown $USERNAME:$USERNAME $FS_IMG
+file $FS_IMG
 
 # ----------------------------------------------------------------------------------------------------------------------
 # KERNEL BUILD
@@ -10,14 +36,9 @@ YELLOW='\033[0;33m'
 
 echo -e "\n${YELLOW}BUILDING KERNEL...${TOGGLE_COLOR}\n"
 
-# Working dir
-cd $(dirname "$0")
-mkdir -p test_fw
-cd test_fw
-
 # Get kernel
 KERNEL_TAR="linux-4.4.138.tar.gz"
-KERNEL_DIR=${KERNEL_TAR%.*.*}
+KERNEL_DIR="${KERNEL_TAR%.*.*}"
 wget -nc -q --show-progress https://mirrors.edge.kernel.org/pub/linux/kernel/v4.x/$KERNEL_TAR
 tar xvzf $KERNEL_TAR
 
@@ -97,11 +118,3 @@ $KERN_INFO_GBD_DIR/run.sh $KERNEL_DIR/vmlinux $OSI_INFO
 
 file $OSI_INFO
 sed -i '1s/^/[debian:4.4.138:32]\n/' $OSI_INFO
-
-# ----------------------------------------------------------------------------------------------------------------------
-# TEST FS
-# ----------------------------------------------------------------------------------------------------------------------
-
-echo -e "\n${YELLOW}DOWNLOADING TEST FILESYSTEM...${TOGGLE_COLOR}\n"
-
-wget wget -nc -q --show-progress http://cdimage.ubuntu.com/ubuntu-base/releases/18.04/release/ubuntu-base-18.04-base-armhf.tar.gz
