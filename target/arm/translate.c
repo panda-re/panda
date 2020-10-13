@@ -39,7 +39,13 @@
 #include "panda/callbacks/cb-support.h"
 #include "panda/common.h"
 
-#include "include/afl/afl.h"
+#define AFL_PERSISTENT_TRACE
+#ifdef AFL_PERSISTENT_TRACE
+#include <limits.h> // PATH_MAX
+#include <arpa/inet.h> // for htonl
+#include "crypto/init.h"
+#include "crypto/hash.h"
+#endif
 
 
 #ifdef CONFIG_SOFTMMU
@@ -87,7 +93,7 @@ static const char *regnames[] =
     { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
       "r8", "r9", "r10", "r11", "r12", "r13", "r14", "pc" };
 
-static target_ulong afl_state_var;
+//static target_ulong afl_state_var;
 void gen_aflBBlock(target_ulong pc);
 
 #include "afl/types.h"
@@ -12298,6 +12304,20 @@ typedef struct state_patch_entry {
     uint8_t val;
 } spe_t;
 
+/* writes persistent log, if needed */
+static void afl_maybe_add_to_persistent_log(uint8_t *buf, size_t len) {
+    if (!len) {
+        /* We don't need support for 0 len testcases here,
+        they could only be emitted by custom mutators like grammar fuzzers. */
+        return;
+    }
+    if (afl_persistent_crash_log_dir) {
+        afl_persistent_cache_pos = afl_persistent_cache_calc_next_pos();
+        *(u32 *)afl_persistent_cache_pos = htonl(len);
+        memcpy(afl_persistent_cache_cur_input(), buf, len);
+    }
+}
+
 /* copy work into ptr[0..sz].  Assumes memory range is locked. */
 static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz)
 {
@@ -12314,12 +12334,70 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
             getpid(), *shared_buf_len);
         /* make sure the size doesn't exceed the max size for this target */
         *shared_buf_len = *shared_buf_len > AFL_MAX_INPUT ? AFL_MAX_INPUT : *shared_buf_len;
+        afl_maybe_add_to_persistent_log(shared_buf, *shared_buf_len);
+
         cpu_physical_memory_rw(ptr, shared_buf, *shared_buf_len, 1);
         return *shared_buf_len;
-    } else {
-        AFL_DPRINTF("pid %d: getWork from %20s\n",
-            getpid(), aflFile);
+    } 
+    if (aflOutFile) {
+
+        AFL_DPRINTF("Replaying next testcase trace from %20s", aflOutFile);
+
+        if (!afl_persistent_cache) {
+
+            fp = fopen(aflOutFile, "rb");
+
+            if (fp == NULL) {
+                AFL_DPRINTF("Unable to open fuzz input file %s\n", aflOutFile);
+                perror(aflOutFile);
+                return 0;
+            }
+
+            fseek(fp, 0L, SEEK_END);
+            uint32_t flen = ftell(fp);
+            AFL_DPRINTF("Read %ud bytes from %s\n", flen, aflOutFile);
+            fseek(fp, 0L, SEEK_SET);
+            /* Alloc one additional last 0 length element for EOF. */
+            afl_persistent_cache = calloc(sizeof(char), flen + sizeof(uint32_t));
+            if (!afl_persistent_cache) {
+                AFL_DPRINTF("Could not get mem");
+                perror("persistent_cache");
+                fclose(fp);
+                return 0;
+            }
+
+            if (fread(afl_persistent_cache, sizeof(char), flen, fp) < flen) {
+                AFL_DPRINTF("Short read, something went wrong!");
+                free(afl_persistent_cache);
+                fclose(fp);
+                return 0;
+            }
+            // TODO Free the afl_persistent_cache at some point?
+            fclose(fp);
+
+            afl_persistent_cache_pos = afl_persistent_cache;
+
+            AFL_DPRINTF("Read %u bytes successfully. Starting trace replay.\n", flen);
+
+        }
+ 
+        AFL_DPRINTF("Replaying packet from %s\n", aflOutFile);
+
+        uint32_t len = afl_persistent_cache_cur_input_len();
+        if (!len) {
+            AFL_DPRINTF("We finished replaying the Log. No crash this time. CYA.\n");
+            exit(0);
+        }
+
+        // Shannon has one contigous address space, so we can directly write physmem
+        cpu_physical_memory_rw(ptr, afl_persistent_cache_cur_input() , len, 1);
+        afl_persistent_cache_pos = afl_persistent_cache_calc_next_pos();
+        return len;
     }
+    
+   
+    AFL_DPRINTF("pid %d: getWork from %20s\n",
+            getpid(), aflFile);
 
     fp = fopen(aflFile, "rb");
 
@@ -12366,21 +12444,10 @@ static target_ulong getWork(CPUArchState *env, target_ulong ptr, target_ulong sz
     }
 
 
+    afl_maybe_add_to_persistent_log(bufptr, retsz);
+
     // Shannon has one contigous address space, so we can directly write physmem
     cpu_physical_memory_rw(ptr, bufptr, retsz, 1);
-
-    // log to aflOutFile if requested
-    if (aflOutFP != NULL){
-        const char * eoi = "EOI\0";
-        if(fwrite(buffer, 1, retsz, aflOutFP) != retsz) {
-            perror("Writing to aflOutFile failed: ");
-        }
-        if(fwrite(eoi, strlen(eoi)+1, 1,aflOutFP) != 1){
-            perror("Writing EOI marker to aflOutFile failed: ");
-        }
-        fflush(aflOutFP);
-    }
-
 
 #endif
     fclose(fp);
@@ -12424,11 +12491,13 @@ static target_ulong doneWork(CPUArchState *env, target_ulong val)
     //exit(64 | val);
     //}
 
-    if (is_persistent) {
+    if (is_persistent || aflOutFile) {
+        /* Go to the next round, if we're fuzzing in persistent,
+        or we are replaying a trace */
         aflStart = 0; /* Stop capturing coverage */
         afl_persistent_stop();
     } else {
-        exit(val); /* exit forkserver child */
+        exit(val);
     }
     return 0;
 }
@@ -12494,12 +12563,65 @@ void helper_aflInterceptPanic(void)
     if(!aflStart)
         return;
 
+
+#ifdef AFL_PERSISTENT_TRACELOG
+    /* In persistent mode, write out a trace of all messages we received */
+
+    if (afl_persistent_crash_log_dir) {
+
+        AFL_DPRINTF("Hooray we found a crash! writing crashlog");
+
+        int ret;
+        char *digest;
+
+        if (!qcrypto_hash_supports(QCRYPTO_HASH_ALG_MD5)) {
+            /* not really anything we can do, but print a warning for strace */
+            printf("MD5 hashing not supported! Can't write trace :(");
+            abort();
+
+        }
+
+        ret = qcrypto_hash_digest(QCRYPTO_HASH_ALG_MD5,
+                                    (char *)afl_persistent_cache_cur_input(),
+                                    afl_persistent_cache_cur_input_len(),
+                                    &digest,
+                                    NULL);
+        g_assert(ret == 0);
+
+
+        char path[PATH_MAX];
+
+        snprintf(path, PATH_MAX, "%s/%s-%lu.buftrace", afl_persistent_crash_log_dir,
+                digest, (unsigned long)time(NULL));
+
+        g_free(digest);
+        digest = NULL;
+
+        FILE *f = fopen(path, "w");
+
+        if (!f) {
+            perror(path);
+            abort();
+        }
+
+        if (fwrite(afl_persistent_cache, sizeof(char), 
+            afl_persistent_cache_len(), f)
+                < afl_persistent_cache_len()) {
+            perror(path);
+        }
+
+        fclose(f);
+
+    }
+
+#endif   
+
     abort();
+
 }
 
 void gen_aflBBlock(target_ulong pc)
 {
-    unsigned char idx = 0;
 
     for (int i = 0; i < aflPanicAddrEntries; i++) {
         if(pc == aflPanicAddr[i]) {

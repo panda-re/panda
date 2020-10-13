@@ -73,6 +73,11 @@ unsigned int afl_persistent_cnt;
 unsigned char is_persistent;
 unsigned char persistent_first_pass = 1;
 
+/* big_endian32(length); Value */
+uint8_t *afl_persistent_cache;
+uint8_t *afl_persistent_cache_pos;
+char *afl_persistent_crash_log_dir;
+
 static int forkserver_installed = 0;
 
 
@@ -84,7 +89,6 @@ int aflGotLog = 0;              /* we've seen dmesg logging */
 /* from command line options */
 const char *aflFile = "/tmp/work";
 const char *aflOutFile = NULL;
-FILE * aflOutFP = NULL;
 unsigned long aflPanicAddr[AFL_MAX_PANIC_ADDR] = {0};
 unsigned long aflStateAddr[AFL_MAX_STATE_ADDR] = {0};
 uint8_t aflStateAddrEntries = 0;
@@ -258,10 +262,6 @@ static ssize_t uninterrupted_read(int fd, void *buf, size_t cnt)
 
 /*int first_run = 1;*/
 
-/*if(aflOutFile != NULL){*/
-/*aflOutFP = fopen(aflOutFile, "w");*/
-/*}*/
-
 /**//* All right, let's await orders... */
 
 
@@ -299,6 +299,41 @@ void afl_forkserver(CPUArchState *env) {
       exit(3);
     }
   }
+
+#define AFL_PERSISTENT_CRASHLOG
+#if defined(AFL_PERSISTENT_CRASHLOG)
+  afl_persistent_crash_log_dir = getenv("AFL_PERSISTENT_CRASH_LOG_DIR");
+
+  if (afl_persistent_crash_log_dir) {
+    if (!*afl_persistent_crash_log_dir) {
+      /* Ignore empty names */
+      afl_persistent_crash_log_dir = NULL;
+    } else {
+
+      DIR *dir_out;
+      if (!(dir_out = opendir(afl_persistent_crash_log_dir))) {
+
+        if (mkdir(afl_persistent_crash_log_dir, 0700)) {
+
+          AFL_DPRINTF("cannot create output directory %s",
+                      afl_persistent_crash_log_dir);
+          afl_persistent_crash_log_dir = NULL;
+
+        }
+
+      } else {
+        closedir(dir_out);
+      }
+    }
+  }
+  if (afl_persistent_crash_log_dir) {
+
+      AFL_DPRINTF("Crashlog dir: %s", afl_persistent_crash_log_dir);
+      /* Maximum would be length + value, with all lens at AFL_MAX_INPUT */
+      afl_persistent_cache = calloc(afl_persistent_cnt, sizeof(u32) + AFL_MAX_INPUT * sizeof(u8));
+
+  }
+#endif
 
   // with the max ID value
   if (MAP_SIZE <= FS_OPT_MAX_MAPSIZE)
@@ -378,11 +413,6 @@ void afl_forkserver(CPUArchState *env) {
       close(t_fd[1]);
 
       aflStart=0;
-
-      // delete log file for previous testinputs if necessary
-      if(aflOutFP != NULL) {
-          aflOutFP = freopen(aflOutFile, "w", aflOutFP);
-      }
 
       child_pid = fork();
       if (child_pid < 0) exit(4);
@@ -621,7 +651,4 @@ static void afl_wait_tsl(CPUArchState *env, int fd) {
   close(fd);
 
 }
-
-
-
 
