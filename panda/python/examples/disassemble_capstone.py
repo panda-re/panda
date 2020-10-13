@@ -2,7 +2,7 @@
 
 from sys import argv, exit
 import capstone
-from panda import Panda, ffi, blocking
+from pandare import Panda, ffi, blocking
 
 # Default arch of i386, if you change it make sure to change capstone as well
 arch="i386"

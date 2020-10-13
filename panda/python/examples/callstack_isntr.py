@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 
 from sys import argv
-from panda import Panda, blocking, ffi
+from pandare import Panda, blocking, ffi
 
 # Record the address of every function we call using callstack_instr
 
-panda = Panda(generic="i386")
-panda.load_plugin("callstack_instr")
+generic_type = argv[1] if len(argv) > 1 else "mipsel"
+panda = Panda(generic=generic_type)
+
+if (generic_type == "i386") or (generic_type == "x86_64"):
+    panda.load_plugin("callstack_instr")
+else:
+    panda.load_plugin("callstack_instr", args = {"stack_type":"heuristic"})
 
 @blocking
 def run_cmd():

@@ -7,7 +7,7 @@ and count how many blocks we see execute, stop after 200
 
 import os
 from sys import argv
-from panda import Panda, blocking
+from pandare import Panda, blocking
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]

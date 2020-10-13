@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from panda import blocking, Panda
+from pandare import blocking, Panda
 from os.path import isfile, expanduser
 from requests import get
 

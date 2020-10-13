@@ -6,21 +6,16 @@ This PANDA plugin emits a file, `lighthouse.out`, for usage by the lighthouse co
 
 Arguments
 ---------
-
-This plugin does not take any arguments, though a future improvement might be an argument to look for a particular module rather than covering everything and being able to specify the output file name.
+you can restrict the output of this plugin to a particular process by specifying the process parameter, e.g.
+-panda lighthouse_coverage:process=lsass.exe
+you can restrict the output of this plugin to a particular dll by specifying both process and dll parameters, e.g.
+-panda lighthouse_coverage:process=lsass.exe,dll=ntdll.dll
 
 Dependencies
 ------------
 
 This module needs OSI.
 
-Installation
-------------
-
-Binary Ninja:
-The included file, `modat.py` needs to be placed into the lighthouse/reader/parsers directory. In the Binary Ninja plugin directory, there should be a file called `lighthouse_plugin.py` and a folder called `lighthouse`. Place `modat.py` there in the relative path `lighthouse/reader/parsers`
-
-![Binary Ninja installation](doc_pics/install_to_lighthouse.png)
 
 Example
 -------

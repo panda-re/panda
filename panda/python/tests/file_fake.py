@@ -2,8 +2,8 @@
 # Test to ensure the file_hook plugin is working
 
 import sys
-from panda import *
-from panda.extras.file_faker import FileFaker, FakeFile
+from pandare import *
+from pandare.extras.file_faker import FileFaker, FakeFile
 
 arch = sys.argv[1] if len(sys.argv) > 1 else "i386"
 panda = Panda(generic=arch)

@@ -32,7 +32,7 @@ jobs:
         pandare/panda bash -c "mkdir /panda.new/build && cd /panda.new/build && ../build.sh ${{ matrix.target }}"
 
     - name: Cleanup images # TODO can we run once at the end?
-      run: docker system prune -af --volumes
+      run: docker system prune -af --volumes || true
 
   build_and_check_fork: # Forked repos can't use self-hosted test suite - just run make check
     if: github.repository != 'panda-re/panda'

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 import sys
 # Set log level to benefit from Scapy warnings
@@ -49,7 +49,7 @@ pkts = rdpcap(sys.argv[1])
 enc = pkts.filter(lambda p: "TCP" in p and (p.sport in TLS_PORTS or p.dport in TLS_PORTS))
 sessions = enc.sessions(bidir_sessions)
 successful = 0
-for label, plist in sessions.items():
+for label, plist in list(sessions.items()):
     info = {}
     for pkt in plist:
         if Raw not in pkt: continue
@@ -91,20 +91,20 @@ for label, plist in sessions.items():
     for f in ('version','client_random', 'cipher_suite',
               'server_random','client_enc'):
         if f not in info:
-            print "DEBUG: Session %s missing %s" % (label, f)
+            print("DEBUG: Session %s missing %s" % (label, f))
             failed = True
 
-    print "# ==== %s ====" % label
-    print "Client-Random: %s" % (info['client_random'].encode('hex') if 'client_random' in info else "[MISSING]")
-    print "Server-Random: %s" % (info['server_random'].encode('hex') if 'server_random' in info else "[MISSING]")
-    print "Content-Type:  %s" % (info['client_enc'][0].encode('hex') if 'client_enc' in info else "[MISSING]")
-    print "Version:       %s" % (info['client_enc'][1].encode('hex') if 'client_enc' in info else "[MISSING]")
-    print "Enc-Msg:       %s" % (info['client_enc'][2].encode('hex') if 'client_enc' in info else "[MISSING]")
-    print "Cipher:        %s" % (CIPHER_SUITES[info['cipher_suite']][0] if 'cipher_suite' in info else "[MISSING]")
-    print "MAC:           %s" % (CIPHER_SUITES[info['cipher_suite']][1] if 'cipher_suite' in info else "[MISSING]")
-    print "Ciphersuite:   %s" % (info['cipher_suite'] if 'cipher_suite' in info else "[MISSING]")
-    print "Session-ID:    %s" % (info['session_id'].encode('hex') if 'session_id' in info else "[MISSING]")
+    print("# ==== %s ====" % label)
+    print("Client-Random: %s" % (info['client_random'].encode('hex') if 'client_random' in info else "[MISSING]"))
+    print("Server-Random: %s" % (info['server_random'].encode('hex') if 'server_random' in info else "[MISSING]"))
+    print("Content-Type:  %s" % (info['client_enc'][0].encode('hex') if 'client_enc' in info else "[MISSING]"))
+    print("Version:       %s" % (info['client_enc'][1].encode('hex') if 'client_enc' in info else "[MISSING]"))
+    print("Enc-Msg:       %s" % (info['client_enc'][2].encode('hex') if 'client_enc' in info else "[MISSING]"))
+    print("Cipher:        %s" % (CIPHER_SUITES[info['cipher_suite']][0] if 'cipher_suite' in info else "[MISSING]"))
+    print("MAC:           %s" % (CIPHER_SUITES[info['cipher_suite']][1] if 'cipher_suite' in info else "[MISSING]"))
+    print("Ciphersuite:   %s" % (info['cipher_suite'] if 'cipher_suite' in info else "[MISSING]"))
+    print("Session-ID:    %s" % (info['session_id'].encode('hex') if 'session_id' in info else "[MISSING]"))
 
     if not failed:
         successful += 1
-print "# END: Found necessary info in %d of %d sessions." % (successful, len(sessions))
+print("# END: Found necessary info in %d of %d sessions." % (successful, len(sessions)))

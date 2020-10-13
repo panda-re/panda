@@ -3,7 +3,7 @@ volatility pslist two ways.
 By: Luke Craig
 '''
 
-from panda import Panda, blocking
+from pandare import Panda, blocking
 from sys import argv
 from time import time
 from volatility.framework.objects import utility

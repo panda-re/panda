@@ -12,7 +12,7 @@ it's thing once then it will store a pickle and be fast after that.
 '''
 from sys import argv
 from volatility.framework.objects import utility, Pointer
-from panda import blocking, Panda, ffi
+from pandare import blocking, Panda, ffi
 import pdb, yaml, pickle, os
 from functools import lru_cache
 
