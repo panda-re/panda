@@ -363,7 +363,28 @@ class Panda():
                 progress("Disabling TB chaining")
             self.disabled_tb_chaining = True
             self.libpanda.panda_disable_tb_chaining()
+    
+    def setup_internal_signal_handler(self):
+        ffi.cdef("void panda_setup_signal_handling(void (*f) (int,void*,void*));",override=True)
+        @ffi.callback("void(int,void*,void*)")
+        def SigHandler(SIG,a,b):
+            from signal import SIGINT, SIGHUP, SIGTERM
+            if SIG == SIGINT:
+                self.end_run_raise_signal = KeyboardInterrupt
+                self.end_analysis()
+            elif SIG == SIGHUP:
+                self.end_run_raise_signal = KeyboardInterrupt
+                self.end_analysis()
+            elif SIG == SIGTERM:
+                self.end_run_raise_signal = KeyboardInterrupt
+                self.end_analysis()
+            else:
+                print(f"PyPanda Signal handler received unhandled signal {SIG}")
+        
+        self.__sighandler = SigHandler
+        self.libpanda.panda_setup_signal_handling(self.__sighandler)
 
+    
     def run(self):
         '''
         This function starts our running PANDA instance from Python. At termination this function returns and the script continues to run after it.
@@ -388,11 +409,16 @@ class Panda():
 
         # Ensure our internal CBs are always enabled
         self.enable_internal_callbacks()
-
+        self.setup_internal_signal_handler()
         self.running.set()
         self.libpanda.panda_run() # Give control to panda
         self.running.clear() # Back from panda's execution (due to shutdown or monitor quit)
         self.libpanda.panda_unload_plugins() # Unload c plugins - should be safe now since exec has stopped
+        if hasattr(self, "end_run_raise_signal"):
+            raise self.end_run_raise_signal
+        if hasattr(self, "callback_exit_exception"):
+            raise self.callback_exit_exception
+            
 
     def end_analysis(self):
         '''
@@ -408,7 +434,6 @@ class Panda():
         if self.running.is_set():
             # If we were running, stop the execution and check if we crashed
             self.queue_async(self.stop_run, internal=True)
-            self.queue_async(self.check_crashed, internal=True)
 
     def run_replay(self, replaypfx):
         '''
@@ -1900,21 +1925,6 @@ class Panda():
         print("Finished recording")
 
     @blocking
-    def check_crashed(self):
-        '''
-        After end_analysis, check if an exn was caught in a callback.
-        If so, print traceback and kill this python instance
-        TODO: currently prints 2 stack frames too low (shows pypanda internals), should hide those
-        '''
-        if self.exception is not None:
-            import traceback, os
-            try:
-                raise self.exception
-            except:
-                traceback.print_exc()
-            os._exit(1) # Force process to exit now
-
-    @blocking
     def interact(self, confirm_quit=True):
         '''
         Expose console interactively until user types pandaquit
@@ -1999,13 +2009,12 @@ class Panda():
                     #assert(isinstance(r, int)), "Invalid return type?"
                     return r
                 except Exception as e:
+                    # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                    # machine exits.
+                    self.callback_exit_exception = e
                     self.end_analysis()
-                    print("\n" + "--"*30 + f"\n\nException in callback `{fun.__name__}`: {e}\n")
-                    import traceback
-                    traceback.print_exc()
-                    self.exception = e # XXX: We can't raise here or exn won't fully be printed. Instead, we print it in check_crashed()
-                    return # XXX: Some callbacks don't expect returns, but most do. If we don't return we might trigger a separate exn and lose ours (occasionally)
-                    # If we return the wrong type, we lose the original exn (TODO)
+                    # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
+                    return 0 
 
             cast_rc = pandatype(_run_and_catch)
             self.register_callback(pandatype, cast_rc, local_name, enabled=enabled, procname=procname)

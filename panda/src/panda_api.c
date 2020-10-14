@@ -170,6 +170,7 @@ void panda_setup_signal_handling(void (*f) (int, siginfo_t*, void *))
     sigaction(SIGINT,  &act, NULL);
     sigaction(SIGHUP,  &act, NULL);
     sigaction(SIGTERM, &act, NULL);
+    panda_external_signal_handler = f;
 }
 
 // we have this temporarily in callbacks.c -> to be moved here
@@ -263,5 +264,4 @@ unsigned long garray_len(GArray *list) {
 // For enabling library mode
 void _panda_set_library_mode(const bool b) {
   panda_set_library_mode(b);
-
 }

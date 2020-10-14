@@ -42,6 +42,11 @@ bool panda_in_kernel_external(CPUState *cpu);
 target_ulong panda_current_sp_external(CPUState *cpu);
 target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong pagesize);
 target_ulong panda_virt_to_phys_external(CPUState *cpu, target_ulong virt_addr);
+
+
+// set to true if panda_setup_signal_handling is called
+void (*panda_external_signal_handler)(int, siginfo_t*,void*) = NULL;
+
 void panda_setup_signal_handling(void (*f) (int, siginfo_t*, void *));
 
 void map_memory(char* name, uint64_t size, uint64_t address);
