@@ -173,7 +173,7 @@ class FileFaker(FileHook):
         self.pending_hfd = None
 
         to_hook = {} # index of fd argument: list of names
-        if panda.arch == "i386":
+        if panda.arch_name == "i386":
             # grep 'int fd' syscall_switch_enter_linux_x86.cpp  | grep "\['int fd\|\['unsigned int fd" | grep -o sys_[a-zA-Z0-9_]* | sed -n -e 's/sys_\(.*\)/"\1" /p' | paste -sd "," -
             # Note the grep commands missed dup2 and dup3 which take oldfd as 1st arg
             to_hook[0] = ["read", "write", "close", "lseek", "fstat", "ioctl", "fcntl", "ftruncate", "fchmod",
@@ -189,7 +189,7 @@ class FileFaker(FileHook):
             to_hook[2] = ["epoll_ctl"]
             to_hook[3] = ["fanotify_mark"]
 
-        elif panda.arch == "x86_64":
+        elif panda.arch_name == "x86_64":
             to_hook[0] = ["read", "write", "close", "newfstat", "lseek", "ioctl", "pread64", "pwrite64", "sendmsg",
                           "recvmsg", "setsockopt", "getsockopt", "fcntl", "flock", "fsync", "fdatasync", "ftruncate",
                           "getdents", "fchdir", "fchmod", "fchown", "fstatfs", "readahead", "fsetxattr", "fgetxattr",
@@ -199,7 +199,7 @@ class FileFaker(FileHook):
             to_hook[2] = ["epoll_ctl"]
             to_hook[3] = ["fanotify_mark"]
 
-        elif panda.arch == "arm":
+        elif panda.arch_name == "arm":
             to_hook[0] = ["read", "write", "close", "lseek", "ioctl", "fcntl", "ftruncate", "fchmod", "fchown16",
                           "fstatfs", "newfstat", "fsync", "fchdir", "llseek", "getdents", "flock", "fdatasync",
                           "pread64", "pwrite64", "ftruncate64", "fchown", "getdents64", "fcntl64", "readahead",
@@ -210,7 +210,7 @@ class FileFaker(FileHook):
             to_hook[2] = ["epoll_ctl"]
             to_hook[3] = ["fanotify_mark"]
         else:
-            raise ValueError(f"Unsupported PANDA arch: {panda.arch}")
+            raise ValueError(f"Unsupported PANDA arch: {panda.arch_name}")
 
         for arg_offset, names in to_hook.items():
             for name in names:
