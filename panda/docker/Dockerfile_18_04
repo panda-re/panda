@@ -38,7 +38,7 @@ RUN pip3 install pycparser
 
 # PYPANDA Dependencies
 RUN apt-get install -y genisoimage wget libc6-dev-i386 gcc-multilib nasm
-RUN pip3 install colorama cffi protobuf
+RUN pip3 install colorama cffi 'protobuf==3.0.0' # Protobuf version should match system (apt) version
 
 # Setup apt sources of llvm 3.3
 ENV panda_ppa_file=/etc/apt/sources.list.d/phulin-ubuntu-panda-bionic.list
