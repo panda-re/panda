@@ -363,7 +363,28 @@ class Panda():
                 progress("Disabling TB chaining")
             self.disabled_tb_chaining = True
             self.libpanda.panda_disable_tb_chaining()
+    
+    def setup_internal_signal_handler(self):
+        ffi.cdef("void panda_setup_signal_handling(void (*f) (int,void*,void*));",override=True)
+        @ffi.callback("void(int,void*,void*)")
+        def SigHandler(SIG,a,b):
+            from signal import SIGINT, SIGHUP, SIGTERM
+            if SIG == SIGINT:
+                self.end_run_raise_signal = KeyboardInterrupt
+                self.end_analysis()
+            elif SIG == SIGHUP:
+                self.end_run_raise_signal = KeyboardInterrupt
+                self.end_analysis()
+            elif SIG == SIGTERM:
+                self.end_run_raise_signal = KeyboardInterrupt
+                self.end_analysis()
+            else:
+                print(f"PyPanda Signal handler received unhandled signal {SIG}")
+        
+        self.__sighandler = SigHandler
+        self.libpanda.panda_setup_signal_handling(self.__sighandler)
 
+    
     def run(self):
         '''
         This function starts our running PANDA instance from Python. At termination this function returns and the script continues to run after it.
@@ -388,11 +409,16 @@ class Panda():
 
         # Ensure our internal CBs are always enabled
         self.enable_internal_callbacks()
-
+        self.setup_internal_signal_handler()
         self.running.set()
         self.libpanda.panda_run() # Give control to panda
         self.running.clear() # Back from panda's execution (due to shutdown or monitor quit)
         self.libpanda.panda_unload_plugins() # Unload c plugins - should be safe now since exec has stopped
+        if hasattr(self, "end_run_raise_signal"):
+            raise self.end_run_raise_signal
+        if hasattr(self, "callback_exit_exception"):
+            raise self.callback_exit_exception
+            
 
     def end_analysis(self):
         '''
@@ -408,7 +434,6 @@ class Panda():
         if self.running.is_set():
             # If we were running, stop the execution and check if we crashed
             self.queue_async(self.stop_run, internal=True)
-            self.queue_async(self.check_crashed, internal=True)
 
     def run_replay(self, replaypfx):
         '''
@@ -1900,21 +1925,6 @@ class Panda():
         print("Finished recording")
 
     @blocking
-    def check_crashed(self):
-        '''
-        After end_analysis, check if an exn was caught in a callback.
-        If so, print traceback and kill this python instance
-        TODO: currently prints 2 stack frames too low (shows pypanda internals), should hide those
-        '''
-        if self.exception is not None:
-            import traceback, os
-            try:
-                raise self.exception
-            except:
-                traceback.print_exc()
-            os._exit(1) # Force process to exit now
-
-    @blocking
     def interact(self, confirm_quit=True):
         '''
         Expose console interactively until user types pandaquit
@@ -1992,6 +2002,11 @@ class Panda():
             local_name = name  # We need a new varaible otherwise we have scoping issues with _generated_callback's name
             if name is None:
                 local_name = fun.__name__
+            
+            # 0 works for all callbacks except void. We check later on
+            # to see if we need to return None otherwise we return 0
+            return_from_exception = 0
+
             def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
                 try:
                     r = fun(*args, **kwargs)
@@ -1999,15 +2014,18 @@ class Panda():
                     #assert(isinstance(r, int)), "Invalid return type?"
                     return r
                 except Exception as e:
+                    # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                    # machine exits.
+                    self.callback_exit_exception = e
                     self.end_analysis()
-                    print("\n" + "--"*30 + f"\n\nException in callback `{fun.__name__}`: {e}\n")
-                    import traceback
-                    traceback.print_exc()
-                    self.exception = e # XXX: We can't raise here or exn won't fully be printed. Instead, we print it in check_crashed()
-                    return # XXX: Some callbacks don't expect returns, but most do. If we don't return we might trigger a separate exn and lose ours (occasionally)
-                    # If we return the wrong type, we lose the original exn (TODO)
+                    return return_from_exception
 
             cast_rc = pandatype(_run_and_catch)
+            cast_rc_string = str(ffi.typeof(cast_rc))
+            return_from_exception = 0
+            if "void(*)(" in cast_rc_string:
+                return_from_exception = None
+
             self.register_callback(pandatype, cast_rc, local_name, enabled=enabled, procname=procname)
             def wrapper(*args, **kw):
                 return _run_and_catch(*args, **kw)
@@ -2190,11 +2208,25 @@ class Panda():
             # function names, we need to keep it or something similar to ensure the reference
             # count remains >0 in python
 
-        def decorator(func):
+        def decorator(fun):
             local_name = name  # We need a new varaible otherwise we have scoping issues, maybe
             if local_name is None:
-                local_name = func.__name__
-            f = ffi.callback(attr+"_t")(func)  # Wrap the python fn in a c-callback.
+                local_name = fun.__name__
+            
+            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
+                try:
+                    r = fun(*args, **kwargs)
+                    #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
+                    #assert(isinstance(r, int)), "Invalid return type?"
+                    return r
+                except Exception as e:
+                    # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                    # machine exits.
+                    self.callback_exit_exception = e
+                    self.end_analysis()
+                    # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
+
+            f = ffi.callback(attr+"_t")(_run_and_catch)  # Wrap the python fn in a c-callback.
             if local_name == "<lambda>":
                 local_name = f"<lambda_{self.lambda_cnt}>"
                 self.lambda_cnt += 1
