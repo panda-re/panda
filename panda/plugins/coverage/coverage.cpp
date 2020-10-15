@@ -25,7 +25,7 @@ PANDAENDCOMMENT */
 #include "RecordProcessor.h"
 #include "BlockProcessorBuilder.h"
 
-#include "utils.h"
+#include "panda/tcg-utils.h"
 
 using namespace coverage;
 

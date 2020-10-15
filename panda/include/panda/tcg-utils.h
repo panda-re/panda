@@ -1,5 +1,5 @@
-#ifndef COVERAGE_UTILS_H
-#define COVERAGE_UTILS_H
+#ifndef TCG_UTILS_H
+#define TCG_UTILS_H
 
 #include <limits>
 #include <sstream>
