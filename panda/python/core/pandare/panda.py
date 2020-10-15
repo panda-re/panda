@@ -2002,6 +2002,11 @@ class Panda():
             local_name = name  # We need a new varaible otherwise we have scoping issues with _generated_callback's name
             if name is None:
                 local_name = fun.__name__
+            
+            # 0 works for all callbacks except void. We check later on
+            # to see if we need to return None otherwise we return 0
+            return_from_exception = 0
+
             def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
                 try:
                     r = fun(*args, **kwargs)
@@ -2013,10 +2018,14 @@ class Panda():
                     # machine exits.
                     self.callback_exit_exception = e
                     self.end_analysis()
-                    # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
-                    return 0 
+                    return return_from_exception
 
             cast_rc = pandatype(_run_and_catch)
+            cast_rc_string = str(ffi.typeof(cast_rc))
+            return_from_exception = 0
+            if "void(*)(" in cast_rc_string:
+                return_from_exception = None
+
             self.register_callback(pandatype, cast_rc, local_name, enabled=enabled, procname=procname)
             def wrapper(*args, **kw):
                 return _run_and_catch(*args, **kw)
@@ -2199,11 +2208,25 @@ class Panda():
             # function names, we need to keep it or something similar to ensure the reference
             # count remains >0 in python
 
-        def decorator(func):
+        def decorator(fun):
             local_name = name  # We need a new varaible otherwise we have scoping issues, maybe
             if local_name is None:
-                local_name = func.__name__
-            f = ffi.callback(attr+"_t")(func)  # Wrap the python fn in a c-callback.
+                local_name = fun.__name__
+            
+            def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
+                try:
+                    r = fun(*args, **kwargs)
+                    #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
+                    #assert(isinstance(r, int)), "Invalid return type?"
+                    return r
+                except Exception as e:
+                    # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                    # machine exits.
+                    self.callback_exit_exception = e
+                    self.end_analysis()
+                    # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
+
+            f = ffi.callback(attr+"_t")(_run_and_catch)  # Wrap the python fn in a c-callback.
             if local_name == "<lambda>":
                 local_name = f"<lambda_{self.lambda_cnt}>"
                 self.lambda_cnt += 1
