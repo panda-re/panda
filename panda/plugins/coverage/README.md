@@ -65,7 +65,7 @@ adjusted manually for DOS operating systems.
 Arguments
 ---------
 * `filename` - The name of the file to output (default:  `coverage.csv`).
-* `mode` - Output mode, one of `asid-block, `osi-block`, or `edge` (default:
+* `mode` - Output mode, one of `asid-block`, `osi-block`, or `edge` (default:
 `asid-block`)
 * `full` - When `true`, logs each record every time it is generated (default:
 `false`)
