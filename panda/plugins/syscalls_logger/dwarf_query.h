@@ -5,25 +5,12 @@
 #include <vector>
 #include <string>
 #include <iomanip>
+#include <unordered_map>
+#include <map>
+#include <jsoncpp/json/json.h>
 
-// Globals -------------------------------------------------------------------------------------------------------------
-
-// Alloc only once, for JSON val comparison
-const std::string base_str("base");
-const std::string little_str("little");
-const std::string ptr_str("pointer");
-const std::string void_str("void");
-const std::string bool_str("bool");
-const std::string char_str("char");
-const std::string int_str("int");
-const std::string float_str("float");
-const std::string double_str("double");
-const std::string struct_str("struct");
-const std::string func_str("function");
-const std::string array_str("array");
-const std::string bitfield_str("bitfield");
-const std::string enum_str("enum");
-const std::string union_str("union");
+#include "panda/plugin.h"
+#include "panda/common.h"
 
 // Struct Members ------------------------------------------------------------------------------------------------------
 
@@ -185,5 +172,37 @@ inline std::ostream & operator<<(std::ostream& os, StructDef const& sd) {
 
     return os;
 }
+
+// Globals -------------------------------------------------------------------------------------------------------------
+
+// Alloc only once, for JSON val comparison
+const std::string base_str("base");
+const std::string little_str("little");
+const std::string ptr_str("pointer");
+const std::string void_str("void");
+const std::string bool_str("bool");
+const std::string char_str("char");
+const std::string int_str("int");
+const std::string float_str("float");
+const std::string double_str("double");
+const std::string struct_str("struct");
+const std::string func_str("function");
+const std::string array_str("array");
+const std::string bitfield_str("bitfield");
+const std::string enum_str("enum");
+const std::string union_str("union");
+
+// Runtime data
+extern bool log_verbose;
+extern std::unordered_map<std::string, StructDef> struct_hashtable;
+extern std::map<unsigned, std::string> func_hashtable;
+
+// API -----------------------------------------------------------------------------------------------------------------
+
+// Read struct member from memory
+// bool indicates read successes (account for paging errors) and type conversion success (supported readable type)
+// PrimitiveVariant provides a typed copy of the data
+std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, ReadableDataType rdt);
+void load_json(const Json::Value& root);
 
 #endif // __DWARF_QUERY_H__

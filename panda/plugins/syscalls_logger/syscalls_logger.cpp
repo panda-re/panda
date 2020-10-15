@@ -11,6 +11,8 @@ PANDAENDCOMMENT */
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <iostream>
+#include <fstream>
 
 #include "panda/plugin.h"
 
@@ -23,21 +25,18 @@ PANDAENDCOMMENT */
 
 #include "osi_linux/osi_linux_ext.h"
 
+#include "dwarf_query.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
-
-bool init_plugin(void *);
-void uninit_plugin(void *);
+    bool init_plugin(void *);
+    void uninit_plugin(void *);
 }
 
-#include <iostream>
-using namespace std;
-
-// Is this a reasonable max strlen for a syscall arg? 
+// Is this a reasonable max strlen for a syscall arg?
 #define MAX_STRLEN 128
-
+bool use_dwarf_info = false;
 
 int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
     // determine strlen (upto max)
@@ -47,35 +46,35 @@ int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
         int rv = panda_virtual_memory_read(cpu, addr + len, (uint8_t*) (&c), 1);
         if (rv == -1) break;
         if (c == 0) break;
-        len ++;
+        len++;
     }
     if (len > 0) {
         int rv = panda_virtual_memory_read(cpu, addr, (uint8_t*) buf, len);
         buf[len] = 0;
-        for (int i=0; i<len; i++) 
+        for (int i = 0; i < len; i++)
             if (!isprint(buf[i])) buf[i] = '.';
-        assert (rv != -1);
+        assert(rv != -1);
     }
     return len;
-}     
-
+}
 
 void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp) {
 
     OsiProc *current = NULL;
     OsiThread *othread = NULL;
+    uint8_t buf[MAX_STRLEN];
 
     // need to have current proc / thread
-    current =  get_current_process(cpu); 
-    if (current == NULL || current->pid == 0) 
+    current = get_current_process(cpu);
+    if (current == NULL || current->pid == 0)
         return;
 
     othread = get_current_thread(cpu);
-    if (othread == NULL) 
+    if (othread == NULL)
         return;
 
-    uint8_t buf[MAX_STRLEN];
     if (pandalog) {
+
         Panda__Syscall psyscall;
         psyscall = PANDA__SYSCALL__INIT;
         psyscall.pid = current->pid;
@@ -85,148 +84,187 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
         psyscall.create_time = current->create_time;
         psyscall.call_name = strdup(call->name);
         psyscall.args = (Panda__SyscallArg **) malloc (sizeof(Panda__SyscallArg *) * call->nargs);
-        for (int i=0; i<call->nargs; i++) {
+
+        for (int i = 0; i < call->nargs; i++) {
+
             Panda__SyscallArg *sa = (Panda__SyscallArg *) malloc(sizeof(Panda__SyscallArg));
             psyscall.args[i] = sa;
             *sa = PANDA__SYSCALL_ARG__INIT;
-            switch (call->argt[i]) {                
-            case SYSCALL_ARG_STR:
-            {
-                target_ulong addr = *((target_ulong *)rp->args[i]);
-                int len = get_string(cpu, addr, buf);
-                if (len > 0) {
-                    sa->str = strdup((const char *) buf);
-                }
-                else {
-                    sa->str = strdup("n/a");                    
-                }
-//                sa->has_str = true;
-                break;
-            }
-            case SYSCALL_ARG_PTR:
-                sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
-                sa->has_ptr = true;
-                break;
+            switch (call->argt[i]) {
 
-            case SYSCALL_ARG_U64:
-                sa->u64 = (uint64_t) *((target_ulong *) rp->args[i]);
-                sa->has_u64 = true;
-                break;
+                case SYSCALL_ARG_STR:
+                {
+                    target_ulong addr = *((target_ulong *)rp->args[i]);
+                    int len = get_string(cpu, addr, buf);
+                    if (len > 0) {
+                        sa->str = strdup((const char *) buf);
+                    }
+                    else {
+                        sa->str = strdup("n/a");
+                    }
+                    // sa->has_str = true;
+                    break;
+                }
+                case SYSCALL_ARG_PTR:
+                    sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
+                    sa->has_ptr = true;
+                    break;
 
-            case SYSCALL_ARG_U32:
-                sa->u32 = *((uint32_t *) rp->args[i]);
-                sa->has_u32 = true;
-                break;
- 
-            case SYSCALL_ARG_U16:
-                sa->u16 = (uint32_t) *((uint16_t *) rp->args[i]);
-                sa->has_u16 = true;
-                break;
- 
-            case SYSCALL_ARG_S64:
-                sa->i64 = *((int64_t *) rp->args[i]);
-                sa->has_i64 = true;
-                break;
-           
-            case SYSCALL_ARG_S32:
-                sa->i32 = *((int32_t *) rp->args[i]);
-                sa->has_i32 = true;
-                break;
- 
-            case SYSCALL_ARG_S16:
-                sa->i16 = (int32_t) *((int16_t *) rp->args[i]);
-                sa->has_i16 = true;
-                break;
-            
-            default:
-                break;
+                case SYSCALL_ARG_U64:
+                    sa->u64 = (uint64_t) *((target_ulong *) rp->args[i]);
+                    sa->has_u64 = true;
+                    break;
+
+                case SYSCALL_ARG_U32:
+                    sa->u32 = *((uint32_t *) rp->args[i]);
+                    sa->has_u32 = true;
+                    break;
+
+                case SYSCALL_ARG_U16:
+                    sa->u16 = (uint32_t) *((uint16_t *) rp->args[i]);
+                    sa->has_u16 = true;
+                    break;
+
+                case SYSCALL_ARG_S64:
+                    sa->i64 = *((int64_t *) rp->args[i]);
+                    sa->has_i64 = true;
+                    break;
+
+                case SYSCALL_ARG_S32:
+                    sa->i32 = *((int32_t *) rp->args[i]);
+                    sa->has_i32 = true;
+                    break;
+
+                case SYSCALL_ARG_S16:
+                    sa->i16 = (int32_t) *((int16_t *) rp->args[i]);
+                    sa->has_i16 = true;
+                    break;
+
+                default:
+                    break;
             }
         }
+
         psyscall.n_args = call->nargs;
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.syscall = &psyscall;
         ple.has_asid = true;
         ple.asid = current->asid;
         pandalog_write_entry(&ple);
-        for (int i=0; i<call->nargs; i++) 
+        for (int i = 0; i < call->nargs; i++)
             free(psyscall.args[i]);
         free(psyscall.args);
-    }
-    else {        
-        cout << "proc [pid=" << current->pid << ",ppid=" << current->ppid
+
+    } else {
+
+        std::cout << "proc [pid=" << current->pid << ",ppid=" << current->ppid
              << ",tid=" << othread->tid << ",create_time=" << current->create_time
-             << ",name=" << current->name << "]\n";
-        cout << " syscall ret pc=" << hex << pc << " name=" << call->name << "\n";
-        
-        for (int i=0; i<call->nargs; i++) {            
-            cout << "  arg " << i ;
+             << ",name=" << current->name << "]" << std::endl;
+        std::cout << " syscall ret pc=" << std::hex << pc << " name=" << call->name << std::endl;
+
+        for (int i = 0; i < call->nargs; i++) {
+
+            std::cout << "  arg " << i ;
             switch (call->argt[i]) {
-            case SYSCALL_ARG_STR:
-            {
-                target_ulong addr = *((target_ulong *)rp->args[i]);
-                int len = get_string(cpu, addr, buf);
-                cout << " str[";
-                if (len > 0) 
-                    cout << buf;
-                cout << "]\n";
-                break;
-            }
-            case SYSCALL_ARG_PTR:
-                cout << "ptr[" << hex << (*((target_ulong *) rp->args[i])) << "]\n";
-                break;
-                
-            case SYSCALL_ARG_U64:
-                cout << "u64[" << (*((uint64_t *) rp->args[i])) << "]\n";
-                break;
-                
-            case SYSCALL_ARG_U32:
-                cout << "u32[" << (*((uint32_t *) rp->args[i])) << "]\n";
-                break;
-                
-            case SYSCALL_ARG_U16:
-                cout << "u16[" << (*((uint16_t *) rp->args[i])) << "]\n";
-                break;
-                
-            case SYSCALL_ARG_S64:
-                cout << "i64[" << (*((int64_t *) rp->args[i])) << "]\n";
-                break;
-                
-            case SYSCALL_ARG_S32:
-                cout << "i32[" << (*((int32_t *) rp->args[i])) << "]\n";
-                break;
-                
-            case SYSCALL_ARG_S16:
-                cout << "i16[" << (*((int16_t *) rp->args[i])) << "]\n";
-                break;
-                
-            default:
-                break;
-                
+
+                case SYSCALL_ARG_STR:
+                {
+                    target_ulong addr = *((target_ulong *)rp->args[i]);
+                    int len = get_string(cpu, addr, buf);
+                    std::cout << " str[";
+                    if (len > 0)
+                        std::cout << buf;
+                    std::cout << "]" << std::endl;
+                    break;
+                }
+                case SYSCALL_ARG_PTR:
+                    std::cout << "ptr[" << std::hex << (*((target_ulong *) rp->args[i])) << "]" << std::endl;
+                    break;
+
+                case SYSCALL_ARG_U64:
+                    std::cout << "u64[" << (*((uint64_t *) rp->args[i])) << "]" << std::endl;
+                    break;
+
+                case SYSCALL_ARG_U32:
+                    std::cout << "u32[" << (*((uint32_t *) rp->args[i])) << "]" << std::endl;
+                    break;
+
+                case SYSCALL_ARG_U16:
+                    std::cout << "u16[" << (*((uint16_t *) rp->args[i])) << "]" << std::endl;
+                    break;
+
+                case SYSCALL_ARG_S64:
+                    std::cout << "i64[" << (*((int64_t *) rp->args[i])) << "]" << std::endl;
+                    break;
+
+                case SYSCALL_ARG_S32:
+                    std::cout << "i32[" << (*((int32_t *) rp->args[i])) << "]" << std::endl;
+                    break;
+
+                case SYSCALL_ARG_S16:
+                    std::cout << "i16[" << (*((int16_t *) rp->args[i])) << "]" << std::endl;
+                    break;
+
+                default:
+                    break;
+
             }
         }
     }
 }
 
+bool init_plugin(void *_self) {
 
+    panda_arg_list *args = panda_get_args("syscall_logger");
+    log_verbose = panda_parse_bool(args, "verbose");
+    const char* json_filename = panda_parse_string_opt(args, "json", nullptr, "dwarf2json_output.json");
 
-bool init_plugin(void *self)
-{
+    // TODO: for both dwarf and sys_logger
+    if (!log_verbose) {
+        std::cout << "[INFO] syscalls_logger: verbose output enabled." << std::endl;
+    }
+
+    if (!json_filename) {
+        std::cerr << "[WARNING] syscalls_logger: No DWARF JSON provided, data logged will be incomplete." << std::endl;
+        use_dwarf_info = false;
+    } else {
+        std::ifstream ifs(json_filename);
+        Json::Reader reader;
+        Json::Value obj;
+
+        if (!reader.parse(ifs, obj)) {
+            std::cerr << "[ERROR] syscalls_logger: invalid DWARF JSON!" << std::endl;
+            return false;
+        } else {
+            load_json(obj);
+            use_dwarf_info = true;
+        }
+    }
 
     // this is required in order to use the on_all_sys_[enter|return]2 cbs
     panda_add_arg("syscalls2", "load-info=1");
     panda_require("syscalls2");
     assert(init_syscalls2_api());
-    
+
     panda_require("osi");
     assert(init_osi_api());
 
-//    PPP_REG_CB("syscalls2", on_all_sys_enter2, sys_enter);
+    // PPP_REG_CB("syscalls2", on_all_sys_enter2, sys_enter);
     PPP_REG_CB("syscalls2", on_all_sys_return2, sys_return);
 
+    switch (panda_os_familyno) {
 
-    return true;
+        case OS_LINUX: {
+           return true;
+        } break;
+
+        default: {
+            std::cerr << "[WARNING] syscalls_logger: This has never been tested for a non-Linux OS!" << std::endl;
+            return true;
+        }
+    }
 }
 
-void uninit_plugin(void *self) {
+void uninit_plugin(void *_self) {
     // intentionally left blank
 }

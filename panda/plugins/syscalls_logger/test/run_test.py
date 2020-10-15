@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from sys import argv
-from panda import blocking, Panda
+from pandare import blocking, Panda
 
 dtb    = "./test_fw/linux-4.4.138/arch/arm/boot/dts/vexpress-v2p-ca9.dtb"
 kernel = "./test_fw/linux-4.4.138/arch/arm/boot/zImage"
@@ -21,6 +21,8 @@ panda = Panda(arch = "arm", mem = "1G", extra_args=[
     "-drive", "if=none,file={},id=rootfs,format=raw".format(rootfs),
     "-device", "virtio-blk-device,drive=rootfs",
 
+    # Syscalls_logger plog
+    "-pandalog", "test_sys_logger.plog"
     ]
 )
 
@@ -30,6 +32,17 @@ osi_kernelinfo = "./test_fw/kernel_info.conf"
 panda.set_os_name("linux-32-debian.4.4.138")
 panda.load_plugin("osi", args={"disable-autoload": True})
 panda.load_plugin("osi_linux", args={"kconf_file": osi_kernelinfo, "kconf_group": "debian:4.4.138:32"})
-panda.load_plugin('dwarf_query', args={"json": dwarf_json, "verbose": "true"})
+panda.load_plugin("syscalls2", args={"load-info": True})
+
+@panda.ppp("syscalls2", "on_all_sys_enter")
+def first_syscall(cpu, pc, callno):
+
+    '''
+    On first syscall load syscalls_logger which avoids
+    the problem of trying to use OSI during boot.
+    '''
+
+    panda.load_plugin("syscalls_logger", args={"json": dwarf_json, "verbose": True})
+    panda.disable_ppp("first_syscall")
 
 panda.run()

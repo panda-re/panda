@@ -8,190 +8,22 @@
  *
 PANDAENDCOMMENT */
 
-// This needs to be defined before anything is included in order to get
-// the PRIx64 macro
-#define __STDC_FORMAT_MACROS
-
-#include <map>
-#include <unordered_map>
 #include <vector>
 #include <algorithm>
-#include <iostream>
-#include <fstream>
 #include <string>
-#include <jsoncpp/json/json.h>
-
-#include "panda/plugin.h"
-#include "panda/common.h"
+#include <iostream>
 
 #include "dwarf_query.h"
-#include "dwarf_query_int_fns.h"
 
-// These need to be extern "C" so that the ABI is compatible with
-// QEMU/PANDA, which is written in C
-extern "C" {
-    bool init_plugin(void *);
-    void uninit_plugin(void *);
-}
-
-// Globals -------------------------------------------------------------------------------------------------------------
+// Runtime data --------------------------------------------------------------------------------------------------------
 
 bool log_verbose;
 std::unordered_map<std::string, StructDef> struct_hashtable;
 std::map<unsigned, std::string> func_hashtable;
 
-// External API --------------------------------------------------------------------------------------------------------
-
-// Read struct member from memory
-// bool indicates read successes (account for paging errors) and type conversion success (supported readable type)
-// PrimitiveVariant provides a typed copy of the data
-std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, ReadableDataType rdt) {
-
-    std::pair<bool, PrimitiveVariant> result = std::make_pair(false, 0);
-
-    uint8_t* buf = (uint8_t*)malloc(rdt.size_bytes);
-    assert(buf != NULL);
-
-    int read_ret = panda_virtual_memory_read(env, addr, buf, rdt.size_bytes);
-    if (read_ret != 0) {
-        std::cerr << "[WARNING] dwarf_query: virt read of member \'" << rdt.name << "\' failed!" << std::endl;
-        return std::make_pair(false, 0);
-    }
-
-    switch (rdt.type) {
-
-        case DataType::VOID:
-            std::cerr << "[WARNING] dwarf_query: cannot virt read void member \'" << rdt.name << "\'" << std::endl;
-            result = std::make_pair(false, 0);
-            break;
-
-        case DataType::BOOL:
-            {
-                PrimitiveVariant prim_var(std::in_place_type<bool>, *buf);
-                result = std::make_pair(true, prim_var);
-            }
-            break;
-
-        case DataType::CHAR:
-            {
-                PrimitiveVariant prim_var(std::in_place_type<char>, *buf);
-                result = std::make_pair(true, prim_var);
-            }
-            break;
-
-        case DataType::INT:
-            if (rdt.is_signed) {
-                switch (rdt.size_bytes) {
-                    case sizeof(int):
-                        {
-                            PrimitiveVariant prim_var(std::in_place_type<int>, *buf);
-                            result = std::make_pair(true, prim_var);
-                        }
-                        break;
-                    case sizeof(long int):
-                        {
-                            assert(sizeof(long int) == sizeof(long long int));
-                            PrimitiveVariant prim_var(std::in_place_type<long int>, *buf);
-                            result = std::make_pair(true, prim_var);
-                        }
-                        break;
-                    default:
-                        std::cerr << "[WARNING] dwarf_query: cannot virt read int member \'" << rdt.name << "\', bad size!" << std::endl;
-                        result = std::make_pair(false, 0);
-                        break;
-                }
-            } else {
-                switch (rdt.size_bytes) {
-                    case sizeof(unsigned):
-                        {
-                            PrimitiveVariant prim_var(std::in_place_type<unsigned>, *buf);
-                            result = std::make_pair(true, prim_var);
-                        }
-                        break;
-                    case sizeof(long unsigned):
-                        {
-                            assert(sizeof(long unsigned) == sizeof(long long unsigned));
-                            PrimitiveVariant prim_var(std::in_place_type<long unsigned>, *buf);
-                            result = std::make_pair(true, prim_var);
-                        }
-                        break;
-                    default:
-                        std::cerr << "[WARNING] dwarf_query: cannot virt read unsigned member \'" << rdt.name << "\', bad size!" << std::endl;
-                        result = std::make_pair(false, 0);
-                        break;
-                }
-            }
-            break;
-
-        case DataType::FLOAT:
-            switch (rdt.size_bytes) {
-                case sizeof(float):
-                    {
-                        PrimitiveVariant prim_var(std::in_place_type<float>, *buf);
-                        result = std::make_pair(true, prim_var);
-                    }
-                    break;
-                case sizeof(double):
-                    {
-                        PrimitiveVariant prim_var(std::in_place_type<double>, *buf);
-                        result = std::make_pair(true, prim_var);
-                    }
-                    break;
-                case sizeof(long double):
-                    {
-                        PrimitiveVariant prim_var(std::in_place_type<long double>, *buf);
-                        result = std::make_pair(true, prim_var);
-                    }
-                    break;
-                default:
-                    std::cerr << "[WARNING] dwarf_query: cannot virt read float member \'" << rdt.name << "\', bad size!" << std::endl;
-                    result = std::make_pair(false, 0);
-                    break;
-            }
-
-        case DataType::STRUCT:
-            {
-                PrimitiveVariant prim_var(std::in_place_type<uint8_t*>, buf);
-                result = std::make_pair(true, prim_var);
-            }
-            return result;  // Caller must free (gets uint8_t*)
-
-        case DataType::FUNC:
-            {
-                PrimitiveVariant prim_var(std::in_place_type<target_ulong>, *buf);
-                result = std::make_pair(true, prim_var);
-            }
-            break;
-
-        case DataType::ARRAY:
-            std::cerr << "[WARNING] dwarf_query: virt read of array not yet supported! Cannot read \'" << rdt.name << "\'" << std::endl;
-            result = std::make_pair(false, 0);
-            break;
-
-        case DataType::UNION:
-            std::cerr << "[WARNING] dwarf_query: virt read of union not yet supported! Cannot read \'" << rdt.name << "\'" << std::endl;
-            result = std::make_pair(false, 0);
-            break;
-
-        case DataType::ENUM:
-            std::cerr << "[WARNING] dwarf_query: virt read of enum not yet supported! Cannot read \'" << rdt.name << "\'" << std::endl;
-            result = std::make_pair(false, 0);
-            break;
-
-        default:
-            std::cerr << "[WARNING] dwarf_query: cannot virt read member \'" << rdt.name << "\', unknown type!" << std::endl;
-            result = std::make_pair(false, 0);
-            break;
-    }
-
-    free(buf);
-    return result;
-}
-
-// Core ----------------------------------------------------------------------------------------------------------------
+// Internal API --------------------------------------------------------------------------------------------------------
 
 // TODO: handle UNIONS
-
 DataType str_to_dt(std::string const& kind) {
     if (kind.compare(void_str) == 0) {
         return DataType::VOID;
@@ -483,6 +315,155 @@ void load_func(const std::string& func_name, const Json::Value& func_entry, cons
     }
 }
 
+// External API --------------------------------------------------------------------------------------------------------
+
+// Read struct member from memory
+// bool indicates read successes (account for paging errors) and type conversion success (supported readable type)
+// PrimitiveVariant provides a typed copy of the data
+std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, ReadableDataType rdt) {
+
+    std::pair<bool, PrimitiveVariant> result = std::make_pair(false, 0);
+
+    uint8_t* buf = (uint8_t*)malloc(rdt.size_bytes);
+    assert(buf != NULL);
+
+    int read_ret = panda_virtual_memory_read(env, addr, buf, rdt.size_bytes);
+    if (read_ret != 0) {
+        std::cerr << "[WARNING] dwarf_query: virt read of member \'" << rdt.name << "\' failed!" << std::endl;
+        return std::make_pair(false, 0);
+    }
+
+    switch (rdt.type) {
+
+        case DataType::VOID:
+            std::cerr << "[WARNING] dwarf_query: cannot virt read void member \'" << rdt.name << "\'" << std::endl;
+            result = std::make_pair(false, 0);
+            break;
+
+        case DataType::BOOL:
+            {
+                PrimitiveVariant prim_var(std::in_place_type<bool>, *buf);
+                result = std::make_pair(true, prim_var);
+            }
+            break;
+
+        case DataType::CHAR:
+            {
+                PrimitiveVariant prim_var(std::in_place_type<char>, *buf);
+                result = std::make_pair(true, prim_var);
+            }
+            break;
+
+        case DataType::INT:
+            if (rdt.is_signed) {
+                switch (rdt.size_bytes) {
+                    case sizeof(int):
+                        {
+                            PrimitiveVariant prim_var(std::in_place_type<int>, *buf);
+                            result = std::make_pair(true, prim_var);
+                        }
+                        break;
+                    case sizeof(long int):
+                        {
+                            assert(sizeof(long int) == sizeof(long long int));
+                            PrimitiveVariant prim_var(std::in_place_type<long int>, *buf);
+                            result = std::make_pair(true, prim_var);
+                        }
+                        break;
+                    default:
+                        std::cerr << "[WARNING] dwarf_query: cannot virt read int member \'" << rdt.name << "\', bad size!" << std::endl;
+                        result = std::make_pair(false, 0);
+                        break;
+                }
+            } else {
+                switch (rdt.size_bytes) {
+                    case sizeof(unsigned):
+                        {
+                            PrimitiveVariant prim_var(std::in_place_type<unsigned>, *buf);
+                            result = std::make_pair(true, prim_var);
+                        }
+                        break;
+                    case sizeof(long unsigned):
+                        {
+                            assert(sizeof(long unsigned) == sizeof(long long unsigned));
+                            PrimitiveVariant prim_var(std::in_place_type<long unsigned>, *buf);
+                            result = std::make_pair(true, prim_var);
+                        }
+                        break;
+                    default:
+                        std::cerr << "[WARNING] dwarf_query: cannot virt read unsigned member \'" << rdt.name << "\', bad size!" << std::endl;
+                        result = std::make_pair(false, 0);
+                        break;
+                }
+            }
+            break;
+
+        case DataType::FLOAT:
+            switch (rdt.size_bytes) {
+                case sizeof(float):
+                    {
+                        PrimitiveVariant prim_var(std::in_place_type<float>, *buf);
+                        result = std::make_pair(true, prim_var);
+                    }
+                    break;
+                case sizeof(double):
+                    {
+                        PrimitiveVariant prim_var(std::in_place_type<double>, *buf);
+                        result = std::make_pair(true, prim_var);
+                    }
+                    break;
+                case sizeof(long double):
+                    {
+                        PrimitiveVariant prim_var(std::in_place_type<long double>, *buf);
+                        result = std::make_pair(true, prim_var);
+                    }
+                    break;
+                default:
+                    std::cerr << "[WARNING] dwarf_query: cannot virt read float member \'" << rdt.name << "\', bad size!" << std::endl;
+                    result = std::make_pair(false, 0);
+                    break;
+            }
+
+        case DataType::STRUCT:
+            {
+                PrimitiveVariant prim_var(std::in_place_type<uint8_t*>, buf);
+                result = std::make_pair(true, prim_var);
+            }
+            return result;  // Caller must free (gets uint8_t*)
+
+        case DataType::FUNC:
+            {
+                PrimitiveVariant prim_var(std::in_place_type<target_ulong>, *buf);
+                result = std::make_pair(true, prim_var);
+            }
+            break;
+
+        case DataType::ARRAY:
+            std::cerr << "[WARNING] dwarf_query: virt read of array not yet supported! Cannot read \'" << rdt.name << "\'" << std::endl;
+            result = std::make_pair(false, 0);
+            break;
+
+        case DataType::UNION:
+            std::cerr << "[WARNING] dwarf_query: virt read of union not yet supported! Cannot read \'" << rdt.name << "\'" << std::endl;
+            result = std::make_pair(false, 0);
+            break;
+
+        case DataType::ENUM:
+            std::cerr << "[WARNING] dwarf_query: virt read of enum not yet supported! Cannot read \'" << rdt.name << "\'" << std::endl;
+            result = std::make_pair(false, 0);
+            break;
+
+        default:
+            std::cerr << "[WARNING] dwarf_query: cannot virt read member \'" << rdt.name << "\', unknown type!" << std::endl;
+            result = std::make_pair(false, 0);
+            break;
+    }
+
+    free(buf);
+    return result;
+}
+
+// Load global structs from JSON
 void load_json(const Json::Value& root) {
 
     unsigned struct_cnt = 0;
@@ -524,40 +505,4 @@ void load_json(const Json::Value& root) {
     }
 
     std::cout << std::endl << "Loaded " << func_cnt << " funcs, " << struct_cnt << " structs." << std::endl;
-}
-
-// Setup/Teardown ------------------------------------------------------------------------------------------------------
-
-bool init_plugin(void *_self) {
-
-    panda_arg_list *args = panda_get_args("dwarf_query");
-    const char* json_filename = panda_parse_string_req(args, "json", "dwarf2json_output.json");
-    log_verbose = panda_parse_bool(args, "verbose");
-    std::ifstream ifs(json_filename);
-
-    Json::Reader reader;
-    Json::Value obj;
-
-    if (!reader.parse(ifs, obj)) {
-        std::cerr << "[ERROR] dwarf_query: invalid JSON!" << std::endl;
-        return false;
-    } else {
-        load_json(obj);
-    }
-
-    switch (panda_os_familyno) {
-
-        case OS_LINUX: {
-           return true;
-        } break;
-
-        default: {
-            std::cerr << "[WARNING] dwarf_query: This has never been tested for a non-Linux OS!" << std::endl;
-            return true;
-        }
-    }
-}
-
-void uninit_plugin(void *_self) {
-    // N/A
 }

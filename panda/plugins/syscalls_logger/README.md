@@ -1,4 +1,4 @@
-Plugin: dwarf_query
+Plugin: syscall_logger
 ===========
 
 Summary
