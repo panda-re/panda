@@ -453,7 +453,7 @@ class Panda():
         if res_string_enum != "RRCTRL_OK":
            raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})") 
     
-def end_record(self):
+    def end_record(self):
         """Stop active recording.
 
         Raises:
