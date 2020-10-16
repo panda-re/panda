@@ -46,6 +46,7 @@ typedef struct {
     int nargs;
     syscall_argtype_t *argt;
     uint8_t *argsz;
+    const char* const *argn;
     bool noreturn;
 } syscall_info_t;
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
