@@ -73,6 +73,11 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
     if (othread == NULL)
         return;
 
+    if (!call) {
+        std::cerr << "[WARNING] syscalls_logger: null syscall_into_t*, missed a syscall!" << std::endl;
+        return;
+    }
+
     if (pandalog) {
 
         Panda__Syscall psyscall;
@@ -92,7 +97,7 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
             *sa = PANDA__SYSCALL_ARG__INIT;
             switch (call->argt[i]) {
 
-                case SYSCALL_ARG_STR:
+                case SYSCALL_ARG_STR_PTR:
                 {
                     target_ulong addr = *((target_ulong *)rp->args[i]);
                     int len = get_string(cpu, addr, buf);
@@ -105,7 +110,12 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                     // sa->has_str = true;
                     break;
                 }
-                case SYSCALL_ARG_PTR:
+                case SYSCALL_ARG_STRUCT_PTR:
+                    sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
+                    sa->has_ptr = true;
+                    break;
+
+                case SYSCALL_ARG_BUF_PTR:
                     sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
                     sa->has_ptr = true;
                     break;
@@ -160,49 +170,54 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
         std::cout << "proc [pid=" << current->pid << ",ppid=" << current->ppid
              << ",tid=" << othread->tid << ",create_time=" << current->create_time
              << ",name=" << current->name << "]" << std::endl;
+
         std::cout << " syscall ret pc=" << std::hex << pc << " name=" << call->name << std::endl;
 
         for (int i = 0; i < call->nargs; i++) {
 
-            std::cout << "  arg " << i ;
+            std::cout << "  arg " << i << " - ";
             switch (call->argt[i]) {
 
-                case SYSCALL_ARG_STR:
+                case SYSCALL_ARG_STR_PTR:
                 {
                     target_ulong addr = *((target_ulong *)rp->args[i]);
                     int len = get_string(cpu, addr, buf);
-                    std::cout << " str[";
+                    std::cout << call->argn[i] << ": str[";
                     if (len > 0)
                         std::cout << buf;
                     std::cout << "]" << std::endl;
                     break;
                 }
-                case SYSCALL_ARG_PTR:
-                    std::cout << "ptr[" << std::hex << (*((target_ulong *) rp->args[i])) << "]" << std::endl;
+                case SYSCALL_ARG_BUF_PTR:
+                    std::cout << call->argn[i] << ": buf ptr[" << std::hex << (*((target_ulong *) rp->args[i])) << "]" << std::endl;
+                    break;
+
+                case SYSCALL_ARG_STRUCT_PTR:
+                    std::cout << call->argn[i] << ": struct ptr[" << std::hex << (*((target_ulong *) rp->args[i])) << "]" << std::endl;
                     break;
 
                 case SYSCALL_ARG_U64:
-                    std::cout << "u64[" << (*((uint64_t *) rp->args[i])) << "]" << std::endl;
+                    std::cout << call->argn[i] << ": u64[" << (*((uint64_t *) rp->args[i])) << "]" << std::endl;
                     break;
 
                 case SYSCALL_ARG_U32:
-                    std::cout << "u32[" << (*((uint32_t *) rp->args[i])) << "]" << std::endl;
+                    std::cout << call->argn[i] << ": u32[" << (*((uint32_t *) rp->args[i])) << "]" << std::endl;
                     break;
 
                 case SYSCALL_ARG_U16:
-                    std::cout << "u16[" << (*((uint16_t *) rp->args[i])) << "]" << std::endl;
+                    std::cout << call->argn[i] << ": u16[" << (*((uint16_t *) rp->args[i])) << "]" << std::endl;
                     break;
 
                 case SYSCALL_ARG_S64:
-                    std::cout << "i64[" << (*((int64_t *) rp->args[i])) << "]" << std::endl;
+                    std::cout << call->argn[i] << ": i64[" << (*((int64_t *) rp->args[i])) << "]" << std::endl;
                     break;
 
                 case SYSCALL_ARG_S32:
-                    std::cout << "i32[" << (*((int32_t *) rp->args[i])) << "]" << std::endl;
+                    std::cout << call->argn[i] << ": i32[" << (*((int32_t *) rp->args[i])) << "]" << std::endl;
                     break;
 
                 case SYSCALL_ARG_S16:
-                    std::cout << "i16[" << (*((int16_t *) rp->args[i])) << "]" << std::endl;
+                    std::cout << call->argn[i] << ": i16[" << (*((int16_t *) rp->args[i])) << "]" << std::endl;
                     break;
 
                 default:
