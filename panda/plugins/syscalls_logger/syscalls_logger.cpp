@@ -215,12 +215,12 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
 
 bool init_plugin(void *_self) {
 
-    panda_arg_list *args = panda_get_args("syscall_logger");
+    panda_arg_list *args = panda_get_args("syscalls_logger");
     log_verbose = panda_parse_bool(args, "verbose");
     const char* json_filename = panda_parse_string_opt(args, "json", nullptr, "dwarf2json_output.json");
 
-    // TODO: for both dwarf and sys_logger
-    if (!log_verbose) {
+    // TODO: use flag for both dwarf and sys_logger
+    if (log_verbose) {
         std::cout << "[INFO] syscalls_logger: verbose output enabled." << std::endl;
     }
 

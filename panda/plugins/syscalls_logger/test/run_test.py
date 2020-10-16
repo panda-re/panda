@@ -22,7 +22,7 @@ panda = Panda(arch = "arm", mem = "1G", extra_args=[
     "-device", "virtio-blk-device,drive=rootfs",
 
     # Syscalls_logger plog
-    "-pandalog", "test_sys_logger.plog"
+    #"-pandalog", "test_sys_logger.plog"
     ]
 )
 
@@ -30,8 +30,6 @@ dwarf_json = "./test_fw/dwarf_info.json"
 osi_kernelinfo = "./test_fw/kernel_info.conf"
 
 panda.set_os_name("linux-32-debian.4.4.138")
-panda.load_plugin("osi", args={"disable-autoload": True})
-panda.load_plugin("osi_linux", args={"kconf_file": osi_kernelinfo, "kconf_group": "debian:4.4.138:32"})
 panda.load_plugin("syscalls2", args={"load-info": True})
 
 @panda.ppp("syscalls2", "on_all_sys_enter")
@@ -42,7 +40,9 @@ def first_syscall(cpu, pc, callno):
     the problem of trying to use OSI during boot.
     '''
 
-    panda.load_plugin("syscalls_logger", args={"json": dwarf_json, "verbose": True})
+    panda.load_plugin("osi", args={"disable-autoload": True})
+    panda.load_plugin("osi_linux", args={"kconf_file": osi_kernelinfo, "kconf_group": "debian:4.4.138:32"})
+    panda.load_plugin("syscalls_logger", args={"json": dwarf_json, "verbose": False})
     panda.disable_ppp("first_syscall")
 
 panda.run()

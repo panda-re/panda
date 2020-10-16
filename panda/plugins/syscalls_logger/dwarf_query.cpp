@@ -106,7 +106,9 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
         } else if (arr_type_kind.compare(array_str) == 0) {
 
             // TODO: add 2D array support
-            std::cerr << "[WARNING] dwarf_query: 2D array support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+            if (log_verbose) {
+                std::cerr << "[WARNING] dwarf_query: 2D array support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+            }
             rdt.is_valid = false;
             return rdt;
 
@@ -124,7 +126,9 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
         } else if (arr_type_kind.compare(enum_str) == 0) {
 
             // TODO: add enum array support
-            std::cerr << "[WARNING] dwarf_query: enum array support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+            if (log_verbose) {
+                std::cerr << "[WARNING] dwarf_query: enum array support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+            }
             rdt.is_valid = false;
             return rdt;
 
@@ -152,7 +156,9 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
     } else if (bitfield_type) {
 
         // TODO: add bitfield support
-        std::cerr << "[WARNING] dwarf_query: bitfield support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+        if (log_verbose) {
+            std::cerr << "[WARNING] dwarf_query: bitfield support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+        }
         rdt.is_valid = false;
         return rdt;
 
@@ -160,7 +166,9 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
     } else if (union_type) {
 
         // TODO: add enum support
-        std::cerr << "[WARNING] dwarf_query: union support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+        if (log_verbose) {
+            std::cerr << "[WARNING] dwarf_query: union support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+        }
         rdt.is_valid = false;
         return rdt;
 
@@ -168,7 +176,9 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
     } else if (enum_type) {
 
         // TODO: add union support
-        std::cerr << "[WARNING] dwarf_query: enum support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+        if (log_verbose) {
+            std::cerr << "[WARNING] dwarf_query: enum support not yet implemented, skipping member \'" << member_name << "\'" << std::endl;
+        }
         rdt.is_valid = false;
         return rdt;
 
@@ -310,7 +320,7 @@ void load_func(const std::string& func_name, const Json::Value& func_entry, cons
         func_hashtable[addr] = func_name;
 
         if (log_verbose) {
-            std::cout << "Loaded func \'" << func_name << "\' @ 0x" << std::hex << addr << std::dec << std::endl;
+            std::cout << "[INFO] dwarf_query: Loaded func \'" << func_name << "\' @ 0x" << std::hex << addr << std::dec << std::endl;
         }
     }
 }
