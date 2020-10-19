@@ -200,7 +200,7 @@ def main(install=False):
                 create_pypanda_header("%s/%s" % (plugin_dir, plugin_file))
 
     # Also pull in a few special header files outside of plugin-to-plugin APIs. Note we already handled syscalls2 above
-    for header in ["rr/rr_api.h", "plugin.h", "common.h"]:
+    for header in ["rr/rr_api.h", "plugin.h", "common.h", "rr/rr_types.h"]:
         create_pypanda_header("%s/%s" % (INCLUDE_DIR_PAN, header))
 
     # PPP headers
