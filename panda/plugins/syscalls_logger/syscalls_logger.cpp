@@ -95,6 +95,7 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
             Panda__SyscallArg *sa = (Panda__SyscallArg *) malloc(sizeof(Panda__SyscallArg));
             psyscall.args[i] = sa;
             *sa = PANDA__SYSCALL_ARG__INIT;
+            sa->arg_name = strdup(call->argn[i]);
             switch (call->argt[i]) {
 
                 case SYSCALL_ARG_STR_PTR:
@@ -107,47 +108,38 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                     else {
                         sa->str = strdup("n/a");
                     }
-                    // sa->has_str = true;
                     break;
                 }
                 case SYSCALL_ARG_STRUCT_PTR:
                     sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
-                    sa->has_ptr = true;
                     break;
 
                 case SYSCALL_ARG_BUF_PTR:
                     sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
-                    sa->has_ptr = true;
                     break;
 
                 case SYSCALL_ARG_U64:
                     sa->u64 = (uint64_t) *((target_ulong *) rp->args[i]);
-                    sa->has_u64 = true;
                     break;
 
                 case SYSCALL_ARG_U32:
                     sa->u32 = *((uint32_t *) rp->args[i]);
-                    sa->has_u32 = true;
                     break;
 
                 case SYSCALL_ARG_U16:
                     sa->u16 = (uint32_t) *((uint16_t *) rp->args[i]);
-                    sa->has_u16 = true;
                     break;
 
                 case SYSCALL_ARG_S64:
                     sa->i64 = *((int64_t *) rp->args[i]);
-                    sa->has_i64 = true;
                     break;
 
                 case SYSCALL_ARG_S32:
                     sa->i32 = *((int32_t *) rp->args[i]);
-                    sa->has_i32 = true;
                     break;
 
                 case SYSCALL_ARG_S16:
                     sa->i16 = (int32_t) *((int16_t *) rp->args[i]);
-                    sa->has_i16 = true;
                     break;
 
                 default:
