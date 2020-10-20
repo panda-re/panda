@@ -228,6 +228,9 @@ void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
     if (opcode && (opcode == llvm::Instruction::And ||
             opcode == llvm::Instruction::Or)) {
         const llvm::ConstantInt *intval = operands[0];
+        if (nullptr == intval) {
+            intval = operands[1];
+        }
         assert(intval);
         uint64_t val = intval->getValue().getLimitedValue();
 
