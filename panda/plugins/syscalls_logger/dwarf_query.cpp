@@ -23,7 +23,7 @@ std::map<unsigned, std::string> func_hashtable;
 
 // Internal API --------------------------------------------------------------------------------------------------------
 
-// TODO: handle UNIONS
+// JSON "kind" value -> DataType
 DataType str_to_dt(std::string const& kind) {
     if (kind.compare(void_str) == 0) {
         return DataType::VOID;
@@ -330,7 +330,7 @@ void load_func(const std::string& func_name, const Json::Value& func_entry, cons
 // Read struct member from memory
 // bool indicates read successes (account for paging errors) and type conversion success (supported readable type)
 // PrimitiveVariant provides a typed copy of the data
-std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, ReadableDataType rdt) {
+std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, ReadableDataType& rdt) {
 
     std::pair<bool, PrimitiveVariant> result = std::make_pair(false, 0);
 

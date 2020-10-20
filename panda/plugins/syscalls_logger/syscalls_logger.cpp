@@ -37,7 +37,9 @@ extern "C" {
 // Is this a reasonable max strlen for a syscall arg?
 #define MAX_STRLEN 128
 bool use_dwarf_info = false;
+std::vector<unsigned> tmp_ptrs;
 
+// TODO: comment this
 int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
     // determine strlen (upto max)
     int len = 0;
@@ -58,6 +60,9 @@ int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
     return len;
 }
 
+// TODO: comment this
+
+// TODO: comment this
 void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp) {
 
     OsiProc *current = NULL;
@@ -88,11 +93,11 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
         psyscall.retcode = get_syscall_retval(cpu);
         psyscall.create_time = current->create_time;
         psyscall.call_name = strdup(call->name);
-        psyscall.args = (Panda__NamedData **) malloc (sizeof(Panda__NamedData *) * call->nargs);
+        psyscall.args = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * call->nargs);
 
         for (int i = 0; i < call->nargs; i++) {
 
-            Panda__NamedData *sa = (Panda__NamedData *) malloc(sizeof(Panda__NamedData));
+            Panda__NamedData *sa = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
             psyscall.args[i] = sa;
             *sa = PANDA__NAMED_DATA__INIT;
             sa->arg_name = strdup(call->argn[i]);
@@ -120,12 +125,38 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
 
                         auto it = struct_hashtable.find(call->argtn[i]);
 
+                        // TODO: make this recursive for pointer case
                         if (use_dwarf_info && (it != struct_hashtable.end())) {
-                            StructDef sd = it->second;
-                            std::cout << "DEBUG HIT!!!" << std::endl;
-                            std::cout << sd << std::endl;
-                            sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
-                            sa->has_ptr = true;
+                            StructDef sdef = it->second;
+                            target_ulong maddr = *((target_ulong *)rp->args[i]);
+
+                            // TODO: move scope to not be switch-local?
+                            Panda__StructData sdata;
+                            sdata = PANDA__STRUCT_DATA__INIT;
+                            // TODO: add code to free this later
+                            sdata.members = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * sdef.members.size());
+
+                            for (auto& mdef : sdef.members) {
+
+                                // TODO: add code to free this later
+                                Panda__NamedData *m = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
+                                sdata.members[i] = m;
+                                *m = PANDA__NAMED_DATA__INIT;
+
+                                std::pair<bool, PrimitiveVariant> data = read_member(cpu, maddr + mdef.offset_bytes, mdef);
+                                if (data.first) {
+                                    printf(" TEMP DEBUG: member read OK\n");
+                                } else {
+                                    printf(" TEMP DEBUG: member fail OK\n");
+                                }
+
+                            }
+                            //std::cout << "DEBUG HIT!!!" << std::endl;
+                            //std::cout << sd << std::endl;
+                            //sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
+                            //sa->has_ptr = true;
+
+
                         }
                     } else {
                         sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
