@@ -753,11 +753,11 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
                   "(0x%.16lx%.16lx) -> (0x%.16lx%.16lx)\n",
                   shad_dest->name(), dest, size, apint_hi_bits(orig_cb_mask),
                   apint_lo_bits(orig_cb_mask), apint_hi_bits(cb_mask),
-                  apint_lo_bits(cb_mask), apint_hi_bits(orig_one_mask),
-                  apint_lo_bits(orig_one_mask), apint_hi_bits(one_mask),
-                  apint_lo_bits(one_mask), apint_hi_bits(orig_zero_mask),
+                  apint_lo_bits(cb_mask), apint_hi_bits(orig_zero_mask),
                   apint_lo_bits(orig_zero_mask), apint_hi_bits(zero_mask),
-                  apint_lo_bits(zero_mask));
+                  apint_lo_bits(zero_mask), apint_hi_bits(orig_one_mask),
+                  apint_lo_bits(orig_one_mask), apint_hi_bits(one_mask),
+                  apint_lo_bits(one_mask));
 
         write_cb_masks(shad_dest, dest, size, cb_masks);
     }
