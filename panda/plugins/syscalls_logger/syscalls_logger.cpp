@@ -88,13 +88,13 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
         psyscall.retcode = get_syscall_retval(cpu);
         psyscall.create_time = current->create_time;
         psyscall.call_name = strdup(call->name);
-        psyscall.args = (Panda__SyscallArg **) malloc (sizeof(Panda__SyscallArg *) * call->nargs);
+        psyscall.args = (Panda__NamedData **) malloc (sizeof(Panda__NamedData *) * call->nargs);
 
         for (int i = 0; i < call->nargs; i++) {
 
-            Panda__SyscallArg *sa = (Panda__SyscallArg *) malloc(sizeof(Panda__SyscallArg));
+            Panda__NamedData *sa = (Panda__NamedData *) malloc(sizeof(Panda__NamedData));
             psyscall.args[i] = sa;
-            *sa = PANDA__SYSCALL_ARG__INIT;
+            *sa = PANDA__NAMED_DATA__INIT;
             sa->arg_name = strdup(call->argn[i]);
             switch (call->argt[i]) {
 
@@ -111,10 +111,29 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                     //sa->has_str = true;
                     break;
                 }
+
                 case SYSCALL_ARG_STRUCT_PTR:
-                    sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
-                    sa->has_ptr = true;
+                {
+                    if (strcmp(call->argtn[i], "n/a") != 0) {
+                        sa->struct_type = strdup(call->argtn[i]);
+                        //sa->has_struct_type = true;
+
+                        auto it = struct_hashtable.find(call->argtn[i]);
+
+                        if (use_dwarf_info && (it != struct_hashtable.end())) {
+                            StructDef sd = it->second;
+                            std::cout << "DEBUG HIT!!!" << std::endl;
+                            std::cout << sd << std::endl;
+                            sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
+                            sa->has_ptr = true;
+                        }
+                    } else {
+                        sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
+                        sa->has_ptr = true;
+                    }
+
                     break;
+                }
 
                 case SYSCALL_ARG_BUF_PTR:
                     sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
