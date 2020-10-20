@@ -22,7 +22,7 @@ panda = Panda(arch = "arm", mem = "1G", extra_args=[
     "-device", "virtio-blk-device,drive=rootfs",
 
     # Syscalls_logger plog
-    #"-pandalog", "test_sys_logger.plog"
+    "-pandalog", "test_sys_logger.plog"
     ]
 )
 
@@ -46,3 +46,4 @@ def first_syscall(cpu, pc, callno):
     panda.disable_ppp("first_syscall")
 
 panda.run()
+panda.finish()

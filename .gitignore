@@ -160,3 +160,6 @@ zImage*
 
 # PANDALOG dumps
 *.plog
+
+# Test FW
+panda/plugins/syscalls_logger/test/test_fw
