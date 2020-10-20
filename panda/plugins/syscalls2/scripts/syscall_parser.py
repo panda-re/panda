@@ -152,6 +152,7 @@ class Argument(object):
         self.arch_bits = arch_bits
         if self.raw == '' or self.raw == 'void':
             raise EmptyArgumentError()
+        self.struct_name = "n/a"
 
         typesforbits = Argument.types32
         if (64 == arch_bits):
@@ -181,6 +182,13 @@ class Argument(object):
             self.type = 'BUF_PTR'
         elif any(['*' in self.raw, '[]' in self.raw, any([x in self.raw for x in typesforbits['ptr']])]) and any(['struct' in self.raw, '_t' in self.raw]):
             self.type = 'STRUCT_PTR'
+            words = self.raw.split(" ")
+            try:
+                struct_idx = words.index("struct")
+                self.struct_name = words[struct_idx + 1]
+            except:
+                self.struct_name = next(filter(lambda w: w.endswith("_t"), words), self.struct_name)
+
         # TODO: how to map to C type?
         #elif ('struct' in self.raw):
         #    self.type = 'STRUCT'

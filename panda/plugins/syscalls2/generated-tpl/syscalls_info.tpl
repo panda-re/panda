@@ -35,6 +35,11 @@ static const char* const argn_{{syscall.no}}[] = {
 	"{{arg.name}}"{{ ', ' if not loop.last else ', 0'}}
 	{%- endfor -%}
 };
+static const char* const argtn_{{syscall.no}}[] = {
+	{%- for arg in syscall.args -%}
+	"{{arg.struct_name}}"{{ ', ' if not loop.last else ', 0'}}
+	{%- endfor -%}
+};
 {% else -%}
 /* skipping non generic system call {{syscall.no}} ({{syscall.name}}) */
 {% endif %}
@@ -51,6 +56,7 @@ syscall_info_t __syscall_info_a[] = {
 		.argt = argt_{{syscall.no}},
 		.argsz = argsz_{{syscall.no}},
 		.argn = argn_{{syscall.no}},
+		.argtn = argtn_{{syscall.no}},
 		.noreturn = {{ 'true' if syscall.panda_noreturn else 'false' }}
 	},
 	{% else -%}
