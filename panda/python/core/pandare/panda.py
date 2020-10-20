@@ -174,7 +174,8 @@ class Panda():
         self._initialized_panda = False
         self.disabled_tb_chaining = False
         self.taint_enabled = False
-        self.hook_list = {}
+        self.hook_list = []
+        self.hook_list2 = {}
 
         # Asid stuff
         self.current_asid_name = None
@@ -2456,8 +2457,8 @@ class Panda():
         '''
         Set hook status to active.        
         '''
-        if hook_name in self.hook_list:
-            self.plugins['hooks2'].enable_hooks2(self.hook_list[hook_name])
+        if hook_name in self.hook_list2:
+            self.plugins['hooks2'].enable_hooks2(self.hook_list2[hook_name])
         else:
             print("ERROR: Your hook name was not in the hook list")
 
@@ -2465,8 +2466,8 @@ class Panda():
         '''
         Set hook status to inactive.
         '''
-        if hook_name in self.hook_list:
-            self.plugins['hooks2'].disable_hooks2(self.hook_list[hook_name])
+        if hook_name in self.hook_list2:
+            self.plugins['hooks2'].disable_hooks2(self.hook_list2[hook_name])
         else:
             print("ERROR: Your hook name was not in the hook list")
 
@@ -2495,7 +2496,7 @@ class Panda():
             hook_number = self.plugins['hooks2'].add_hooks2(hook_cb_passed, cb_data, kernel, \
                 procname, libname, trace_start, trace_stop, range_begin,range_end)
             
-            self.hook_list[name] = hook_number
+            self.hook_list2[name] = hook_number
 
             @hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
             def wrapper(*args, **kw):
