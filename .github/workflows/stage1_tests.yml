@@ -55,7 +55,9 @@ jobs:
   Cleanup:
     # Cleanup after prior jobs finish - even if they fail
     needs: [taint_tests, make_check]
-    if: always()
+    #if: always()
+    if: github.repository  == 'panda-re/panda'
+    runs-on: self-hosted
 
     steps:
       # Note we leave the last 72hrs because caching is nice (first few panda image layers won't change often)
