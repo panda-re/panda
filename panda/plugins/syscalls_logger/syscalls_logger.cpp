@@ -36,8 +36,9 @@ extern "C" {
 
 // Is this a reasonable max strlen for a syscall arg?
 #define MAX_STRLEN 128
-bool use_dwarf_info = false;
-std::vector<unsigned> tmp_ptrs;
+
+std::vector<void*> tmp_single_ptrs;
+std::vector<void*> tmp_double_ptrs;
 
 // TODO: comment this
 int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
@@ -60,7 +61,35 @@ int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
     return len;
 }
 
-// TODO: comment this
+// Recursively read struct information for PANDALOG, using DWARF layout information
+Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& sdef) {
+
+    Panda__StructData *sdata = (Panda__StructData*)malloc(sizeof(Panda__StructData));
+    *sdata = PANDA__STRUCT_DATA__INIT;
+
+    Panda__NamedData** members = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * sdef.members.size());
+    tmp_double_ptrs.push_back(members);
+    sdata->members = members;
+
+    for(int i = 0; i < sdef.members.size(); i++) {
+
+        ReadableDataType mdef = sdef.members[i];
+        Panda__NamedData *m = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
+        *m = PANDA__NAMED_DATA__INIT;
+        sdata->members[i] = m;
+        tmp_single_ptrs.push_back(m);
+
+        std::pair<bool, PrimitiveVariant> data = read_member(cpu, saddr + mdef.offset_bytes, mdef);
+        if (data.first) {
+            std::cout << "TEMP DEBUG: member read OK" << std::endl;
+        } else {
+            std::cout << "TEMP DEBUG: member read FAILED" << std::endl;
+            assert(false);
+        }
+    }
+
+    return sdata;
+}
 
 // TODO: comment this
 void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp) {
@@ -119,45 +148,13 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
 
                 case SYSCALL_ARG_STRUCT_PTR:
                 {
-                    if (strcmp(call->argtn[i], "n/a") != 0) {
+                    auto it = struct_hashtable.find(call->argtn[i]);
+                    if (it != struct_hashtable.end()) {
                         sa->struct_type = strdup(call->argtn[i]);
-                        //sa->has_struct_type = true;
-
-                        auto it = struct_hashtable.find(call->argtn[i]);
-
-                        // TODO: make this recursive for pointer case
-                        if (use_dwarf_info && (it != struct_hashtable.end())) {
-                            StructDef sdef = it->second;
-                            target_ulong maddr = *((target_ulong *)rp->args[i]);
-
-                            // TODO: move scope to not be switch-local?
-                            Panda__StructData sdata;
-                            sdata = PANDA__STRUCT_DATA__INIT;
-                            // TODO: add code to free this later
-                            sdata.members = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * sdef.members.size());
-
-                            for (auto& mdef : sdef.members) {
-
-                                // TODO: add code to free this later
-                                Panda__NamedData *m = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
-                                sdata.members[i] = m;
-                                *m = PANDA__NAMED_DATA__INIT;
-
-                                std::pair<bool, PrimitiveVariant> data = read_member(cpu, maddr + mdef.offset_bytes, mdef);
-                                if (data.first) {
-                                    printf(" TEMP DEBUG: member read OK\n");
-                                } else {
-                                    printf(" TEMP DEBUG: member fail OK\n");
-                                }
-
-                            }
-                            //std::cout << "DEBUG HIT!!!" << std::endl;
-                            //std::cout << sd << std::endl;
-                            //sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
-                            //sa->has_ptr = true;
-
-
-                        }
+                        StructDef sdef = it->second;
+                        target_ulong saddr = *((target_ulong *)rp->args[i]);
+                        sa->struct_data = struct_logger(cpu, saddr, sdef);
+                        //sa->has_struct_data = true;
                     } else {
                         sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
                         sa->has_ptr = true;
@@ -213,8 +210,20 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
         ple.has_asid = true;
         ple.asid = current->asid;
         pandalog_write_entry(&ple);
-        for (int i = 0; i < call->nargs; i++)
+
+        for (auto ptr : tmp_single_ptrs) {
+            free(ptr);
+        }
+        tmp_single_ptrs.clear();
+
+        for (auto ptr : tmp_double_ptrs) {
+            free(ptr);
+        }
+        tmp_double_ptrs.clear();
+
+        for (int i = 0; i < call->nargs; i++) {
             free(psyscall.args[i]);
+        }
         free(psyscall.args);
 
     } else {
@@ -286,14 +295,12 @@ bool init_plugin(void *_self) {
     log_verbose = panda_parse_bool(args, "verbose");
     const char* json_filename = panda_parse_string_opt(args, "json", nullptr, "dwarf2json_output.json");
 
-    // TODO: use flag for both dwarf and sys_logger
     if (log_verbose) {
         std::cout << "[INFO] syscalls_logger: verbose output enabled." << std::endl;
     }
 
     if (!json_filename) {
         std::cerr << "[WARNING] syscalls_logger: No DWARF JSON provided, data logged will be incomplete." << std::endl;
-        use_dwarf_info = false;
     } else {
         std::ifstream ifs(json_filename);
         Json::Reader reader;
@@ -304,7 +311,6 @@ bool init_plugin(void *_self) {
             return false;
         } else {
             load_json(obj);
-            use_dwarf_info = true;
         }
     }
 

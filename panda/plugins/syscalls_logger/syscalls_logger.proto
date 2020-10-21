@@ -15,7 +15,7 @@ message NamedData {
         int64 i64 = 7;
         int32 i32 = 8;
         int32 i16 = 9;
-        StructData struct = 10;
+        StructData struct = 11;
     }
     */
 
@@ -29,7 +29,7 @@ message NamedData {
     optional int32 i16 = 9;
 
     optional string struct_type = 10;
-    optional StructData struct = 11;
+    optional StructData struct_data = 11;
 }
 
 message Syscall {
