@@ -15,7 +15,12 @@ message NamedData {
         int64 i64 = 7;
         int32 i32 = 8;
         int32 i16 = 9;
-        StructData struct = 11;
+        float float_val = 10;
+        double double_val = 11;
+        bool bool_val = 12;
+        bytes bytes_val = 13;
+
+        StructData struct = 15;
     }
     */
 
@@ -27,9 +32,13 @@ message NamedData {
     optional int64 i64 = 7;
     optional int32 i32 = 8;
     optional int32 i16 = 9;
+    optional float float_val = 10;
+    optional double double_val = 11;
+    optional bool bool_val = 12;
+    optional bytes bytes_val = 13;
 
-    optional string struct_type = 10;
-    optional StructData struct_data = 11;
+    optional string struct_type = 14;
+    optional StructData struct_data = 15;
 }
 
 message Syscall {

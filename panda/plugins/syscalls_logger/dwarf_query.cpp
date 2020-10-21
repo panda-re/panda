@@ -76,7 +76,7 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
     // Embedded struct
     if (struct_type) {
 
-        rdt.size_bytes = root["user_types"][member_name]["size"].asUInt();
+        rdt.size_bytes = root["user_types"][type_name]["size"].asUInt();
         rdt.is_le = (root["base_types"]["pointer"]["endian"].asString().compare(little_str) == 0);
         rdt.type = DataType::STRUCT;
         rdt.is_ptr = false;
@@ -449,8 +449,16 @@ std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, 
             break;
 
         case DataType::ARRAY:
-            std::cerr << "[WARNING] dwarf_query: virt read of array not yet supported! Cannot read \'" << rdt.name << "\'" << std::endl;
-            result = std::make_pair(false, 0);
+            {
+                // TODO: replace with case statement for pointer-to-primitive types to support arrays in the general case, need to encode length as well
+                if (rdt.arr_member_type == DataType::CHAR) {
+                    PrimitiveVariant prim_var(std::in_place_type<uint8_t*>, buf);
+                    result = std::make_pair(true, prim_var);
+                } else {
+                    std::cerr << "[WARNING] dwarf_query: virt read of arrays not yet supported for the general case! Cannot read \'" << rdt.name << "\'" << std::endl;
+                    result = std::make_pair(false, 0);
+                }
+            }
             break;
 
         case DataType::UNION:

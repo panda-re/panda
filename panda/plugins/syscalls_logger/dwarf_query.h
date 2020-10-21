@@ -28,6 +28,20 @@ typedef std::variant<
     uint8_t*
 > PrimitiveVariant;
 
+// For switching on variant type (e.g. more readable variant reflection)
+enum VariantType {
+    VT_BOOL = 0,
+    VT_CHAR = 1,
+    VT_INT = 2,
+    VT_LONG_INT = 3,
+    VT_UNSIGNED = 4,
+    VT_LONG_UNSIGNED = 5,
+    VT_FLOAT = 6,
+    VT_DOUBLE = 7,
+    VT_LONG_DOUBLE = 8,
+    VT_UINT8_T_PTR = 9,
+};
+
 // Categorization for primitive types
 enum DataType {
     VOID,   // C: void
@@ -202,7 +216,7 @@ extern std::map<unsigned, std::string> func_hashtable;
 // Read struct member from memory
 // bool indicates read successes (account for paging errors) and type conversion success (supported readable type)
 // PrimitiveVariant provides a typed copy of the data
-std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, ReadableDataType rdt);
+std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, ReadableDataType& rdt);
 void load_json(const Json::Value& root);
 
 #endif // __DWARF_QUERY_H__

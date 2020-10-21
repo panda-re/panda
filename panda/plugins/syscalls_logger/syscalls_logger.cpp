@@ -40,7 +40,7 @@ extern "C" {
 std::vector<void*> tmp_single_ptrs;
 std::vector<void*> tmp_double_ptrs;
 
-// TODO: comment this
+// Read a string from guest memory
 int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
     // determine strlen (upto max)
     int len = 0;
@@ -61,6 +61,72 @@ int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
     return len;
 }
 
+// Read a pointer from guest memory
+target_ulong get_ptr(CPUState *cpu, target_ulong addr) {
+    target_ulong ptr;
+    if (panda_virtual_memory_read(cpu, addr, (uint8_t*)&ptr, sizeof(target_ulong)) != 0) {
+        ptr = 0;
+    }
+    return ptr;
+}
+
+// TODO: finish implementation to cover all cases
+// Helper for struct_logger
+void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& data) {
+
+    nd->arg_name = strdup(rdt.name.c_str());
+
+    switch (data.index()) {
+        case VariantType::VT_BOOL:
+            nd->bool_val = std::get<bool>(data);
+            nd->has_bool_val = true;
+            break;
+        case VariantType::VT_CHAR:
+            assert(false && "TODO: Unhandled PANDALOG case (char)! Needs implementing");
+            break;
+        case VariantType::VT_INT:
+            nd->i64 = std::get<int>(data);
+            nd->has_i64 = true;
+            break;
+        case VariantType::VT_LONG_INT:
+            assert(sizeof(long int) == 8);
+            nd->i64 = std::get<long int>(data);
+            nd->has_i64 = true;
+            break;
+        case VariantType::VT_UNSIGNED:
+            nd->u64 = std::get<unsigned>(data);
+            nd->has_u64 = true;
+            break;
+        case VariantType::VT_LONG_UNSIGNED:
+            assert(sizeof(long unsigned) == 8);
+            nd->u64 = std::get<long unsigned>(data);
+            nd->has_u64 = true;
+            break;
+        case VariantType::VT_FLOAT:
+            nd->float_val = std::get<float>(data);
+            nd->has_float_val = true;
+            break;
+        case VariantType::VT_DOUBLE:
+            nd->double_val = std::get<double>(data);
+            nd->has_double_val = true;
+            break;
+        case VariantType::VT_LONG_DOUBLE:
+            assert(false && "TODO: Unhandled PANDALOG case (long double)! Needs implementing");
+            break;
+        case VariantType::VT_UINT8_T_PTR:
+            if ((rdt.type == DataType::ARRAY) && (rdt.arr_member_type == DataType::CHAR)) {
+                nd->str = strdup((const char *)std::get<uint8_t*>(data));
+            } else {
+                std::cerr << rdt << std::endl;
+                assert(false && "TODO: Unhandled PANDALOG case (unit8_t*)! Needs implementing");
+            }
+            break;
+        default:
+            assert(false && "FATAL: default case should never hit, function \"set_data()\"");
+            break;
+    }
+}
+
 // Recursively read struct information for PANDALOG, using DWARF layout information
 Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& sdef) {
 
@@ -71,6 +137,8 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
     tmp_double_ptrs.push_back(members);
     sdata->members = members;
 
+    std::cout << "TEMP DEBUG: struct_def \'" << sdef << "\'" << std::endl;
+
     for(int i = 0; i < sdef.members.size(); i++) {
 
         ReadableDataType mdef = sdef.members[i];
@@ -79,12 +147,57 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
         sdata->members[i] = m;
         tmp_single_ptrs.push_back(m);
 
-        std::pair<bool, PrimitiveVariant> data = read_member(cpu, saddr + mdef.offset_bytes, mdef);
-        if (data.first) {
-            std::cout << "TEMP DEBUG: member read OK" << std::endl;
+        // Recursive - member is embedded struct
+        if ((mdef.type == DataType::STRUCT) && (mdef.is_ptr == false)) {
+
+            auto it = struct_hashtable.find(mdef.name);
+
+            if (it != struct_hashtable.end()) {
+                m->struct_data = struct_logger(cpu, saddr + mdef.offset_bytes, it->second);
+            } else {
+                m->str = strdup("{read failed, unknown embedded struct}");
+            }
+
+        // Recursive - member is pointer to struct
+        } else if ((mdef.type == DataType::STRUCT) && (mdef.is_ptr == true) && (mdef.is_double_ptr == false)) {
+
+            auto it = struct_hashtable.find(mdef.name);
+            target_ulong addr = get_ptr(cpu, saddr + mdef.offset_bytes);
+
+            if (it != struct_hashtable.end() && (addr != 0)) {
+                m->struct_data = struct_logger(cpu, addr, it->second);
+            } else {
+                m->str = strdup("{read failed, unknown struct ptr}");
+            }
+
+        // Recursive - member is double pointer to struct
+        } else if ((mdef.type == DataType::STRUCT) && (mdef.is_ptr == true) && (mdef.is_double_ptr == true)) {
+
+            auto it = struct_hashtable.find(mdef.name);
+            target_ulong addr_1 = get_ptr(cpu, saddr + mdef.offset_bytes);
+            target_ulong addr_2 = 0;
+
+            if (addr_1 != 0) {
+                addr_2 = get_ptr(cpu, addr_1);
+            }
+
+            if (it != struct_hashtable.end() && (addr_2 != 0)) {
+                m->struct_data = struct_logger(cpu, addr_2, it->second);
+            } else {
+                m->str = strdup("{read failed, unknown struct double ptr}");
+            }
+
+        // Non-recursive - member is a non-struct data type
         } else {
-            std::cout << "TEMP DEBUG: member read FAILED" << std::endl;
-            assert(false);
+
+            std::pair<bool, PrimitiveVariant> read_result = read_member(cpu, saddr + mdef.offset_bytes, mdef);
+
+            if (read_result.first) {
+                auto data = read_result.second;
+                set_data(m, mdef, data);
+            } else {
+                m->str = strdup("{read failed, unknown data}");
+            }
         }
     }
 
