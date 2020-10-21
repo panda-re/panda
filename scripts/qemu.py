@@ -151,7 +151,7 @@ class QEMUMachine(object):
             self._post_shutdown()
             self._popen = None
 
-    underscore_to_dash = string.maketrans('_', '-')
+    underscore_to_dash = bytes.maketrans(b'_', b'-')
     def qmp(self, cmd, conv_keys=True, **args):
         '''Invoke a QMP command and return the result dict'''
         qmp_args = dict()
