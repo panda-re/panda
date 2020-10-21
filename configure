@@ -269,7 +269,7 @@ stack_protector=""
 git_submodules=""
 protobuf="yes"
 llvm="no"
-llvmver="3.3"
+llvmver="10"
 
 # Don't accept a target_list environment variable.
 unset target_list
@@ -5271,7 +5271,7 @@ fi
 if test "$llvm" != "no"; then
   cat > $TMPCXX <<-EOF
 	#include <llvm/IR/LLVMContext.h>
-    int main(void) { llvm::LLVMContext& c = llvm::getGlobalContext(); return 0; }
+    int main(void) { llvm::LLVMContext c; return 0; }
 	EOF
 
   llvm_components=""

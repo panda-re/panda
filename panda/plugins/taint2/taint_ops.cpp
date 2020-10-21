@@ -36,11 +36,14 @@ PANDAENDCOMMENT */
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
+#include "panda/tcg-llvm.h"
 
 #include "shad.h"
 #include "label_set.h"
 #include "taint_ops.h"
 #include "taint_utils.h"
+
+extern TCGLLVMTranslator *tcg_llvm_translator;
 
 uint64_t labelset_count;
 
@@ -63,6 +66,60 @@ static inline bool is_ram_ptr(uint64_t addr)
            qemu_ram_addr_from_host(reinterpret_cast<void *>(addr));
 }
 
+static std::vector<const llvm::ConstantInt *> getOperands(
+        const uint64_t num_operands, va_list ap) {
+
+    auto ctx = tcg_llvm_translator->getContext();
+
+    std::vector<const llvm::ConstantInt *> operands;
+    operands.reserve(num_operands);
+
+    for(uint64_t i=0; i<num_operands; i++) {
+
+        const uint64_t operand_size_in_bits = va_arg(ap, uint64_t);
+        llvm::ConstantInt *operand = nullptr;
+
+        if(operand_size_in_bits > 0) {
+
+            llvm::IntegerType *intTy = nullptr;
+            uint64_t lo;
+            uint64_t hi;
+
+            switch(operand_size_in_bits) {
+                case 1:
+                case 8:
+                case 16: // small types get promoted to int
+                    intTy = llvm::IntegerType::get(*ctx, operand_size_in_bits);
+                    operand = llvm::ConstantInt::get(intTy,
+                        va_arg(ap, unsigned int));
+                    break;
+                case 32:
+                    intTy = llvm::IntegerType::get(*ctx, operand_size_in_bits);
+                    operand = llvm::ConstantInt::get(intTy,
+                        va_arg(ap, uint32_t));
+                    break;
+                case 64:
+                    intTy = llvm::IntegerType::get(*ctx, operand_size_in_bits);
+                    operand = llvm::ConstantInt::get(intTy,
+                        va_arg(ap, uint64_t));
+                    break;
+                case 128:
+                    lo = va_arg(ap, uint64_t);
+                    hi = va_arg(ap, uint64_t);
+                    operand = llvm::ConstantInt::get(*ctx,
+                        make_128bit_apint(hi, lo));
+                    break;
+                default:
+                    assert(false);
+                    break;
+            }
+        }
+
+        operands.push_back(operand);
+    }
+    return operands;
+}
+
 // Remove the taint marker from any bytes whose control mask bits go to 0.
 // A 0 control mask bit means that bit does not impact the value in the byte (or
 // impacts it in an irreversible fashion, so they gave up on calculating the
@@ -76,7 +133,7 @@ void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size)
     {
         curAddr = addr + i;
         TaintData td = shad->query_full(curAddr);
-        
+
         // query_full ALWAYS returns a TaintData object - but there's not really
         // any taint (controlled or not) unless there are labels too
         if ((td.cb_mask == 0) && (td.ls != NULL) && (td.ls->size() > 0))
@@ -137,7 +194,9 @@ struct CBMasks {
 };
 
 static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
-                      uint64_t src, uint64_t size, llvm::Instruction *I);
+        uint64_t src, uint64_t size, uint64_t opcode,
+        uint64_t instruction_flags,
+        std::vector<const llvm::ConstantInt *> &operands);
 
 static inline CBMasks compile_cb_masks(Shad *shad, uint64_t addr,
                                        uint64_t size);
@@ -146,25 +205,35 @@ static inline void write_cb_masks(Shad *shad, uint64_t addr, uint64_t size,
 
 // Taint operations
 void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
-                uint64_t size, llvm::Instruction *I)
+        uint64_t size, uint64_t opcode, uint64_t instruction_flags,
+        uint64_t num_operands, ...)
 {
-    if (unlikely(src >= shad_src->get_size() || dest >= shad_dest->get_size())) {
+    if (unlikely(src >= shad_src->get_size() ||
+            dest >= shad_dest->get_size())) {
         taint_log("  Ignoring IO RW\n");
         return;
     }
 
-    taint_log("copy: %s[%lx+%lx] <- %s[%lx] ",
-            shad_dest->name(), dest, size, shad_src->name(), src);
+    taint_log("copy: %s[%lx+%lx] <- %s[%lx] ", shad_dest->name(), dest, size,
+        shad_src->name(), src);
+
     taint_log_labels(shad_src, src, size);
 
     Shad::copy(shad_dest, dest, shad_src, src, size);
 
-    if (I) update_cb(shad_dest, dest, shad_src, src, size, I);
+    va_list ap;
+    va_start(ap, num_operands);
+    std::vector<const llvm::ConstantInt *> operands = getOperands(num_operands,
+        ap);
+    va_end(ap);
+
+    update_cb(shad_dest, dest, shad_src, src, size, opcode, instruction_flags,
+        operands);
 }
 
 void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
-                            uint64_t src1, uint64_t src2, uint64_t src_size,
-                            llvm::Instruction *I)
+        uint64_t src1, uint64_t src2, uint64_t src_size, uint64_t opcode,
+        uint64_t result_unused)
 {
     uint64_t shad_size = shad->get_size();
     if (unlikely(dest >= shad_size || src1 >= shad_size || src2 >= shad_size)) {
@@ -188,7 +257,7 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
     CBMasks cb_mask_1 = compile_cb_masks(shad, src1, src_size);
     CBMasks cb_mask_2 = compile_cb_masks(shad, src2, src_size);
     CBMasks cb_mask_out;
-    if (I && I->getOpcode() == llvm::Instruction::Or) {
+    if (opcode == llvm::Instruction::Or) {
         cb_mask_out.one_mask = cb_mask_1.one_mask | cb_mask_2.one_mask;
         cb_mask_out.zero_mask = cb_mask_1.zero_mask & cb_mask_2.zero_mask;
         // Anything that's a literal zero in one operand will not affect
@@ -196,7 +265,7 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
         cb_mask_out.cb_mask =
             (cb_mask_1.zero_mask & cb_mask_2.cb_mask) |
             (cb_mask_2.zero_mask & cb_mask_1.cb_mask);
-    } else if (I && I->getOpcode() == llvm::Instruction::And) {
+    } else if (opcode == llvm::Instruction::And) {
         cb_mask_out.one_mask = cb_mask_1.one_mask & cb_mask_2.one_mask;
         cb_mask_out.zero_mask = cb_mask_1.zero_mask | cb_mask_2.zero_mask;
         // Anything that's a literal one in one operand will not affect
@@ -241,8 +310,8 @@ static inline void bulk_set(Shad *shad, uint64_t addr, uint64_t size,
 }
 
 void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
-                       uint64_t src1, uint64_t src2, uint64_t src_size,
-                       llvm::Instruction *ignored)
+        uint64_t src1, uint64_t src2, uint64_t src_size, uint64_t opcode,
+        uint64_t result_unused)
 {
     TaintData td = TaintData::make_union(
             mixed_labels(shad, src1, src_size, false),
@@ -255,9 +324,9 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
 }
 
 void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
-                       uint64_t src1, uint64_t src2, uint64_t src_size,
-                       llvm::Instruction *inst, uint64_t arg1_lo,
-                       uint64_t arg1_hi, uint64_t arg2_lo, uint64_t arg2_hi)
+        uint64_t src1, uint64_t src2, uint64_t src_size, uint64_t arg1_lo,
+        uint64_t arg1_hi, uint64_t arg2_lo, uint64_t arg2_hi,
+        uint64_t opcode, uint64_t result_unused)
 {
     llvm::APInt arg1 = make_128bit_apint(arg1_hi, arg1_lo);
     llvm::APInt arg2 = make_128bit_apint(arg2_hi, arg2_lo);
@@ -277,12 +346,14 @@ void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                   apint_hi_bits(cleanArg), apint_lo_bits(cleanArg));
         if (cleanArg == 0) return ; // mul X untainted 0 -> no taint prop
         else if (cleanArg == 1) { //mul X untainted 1(one) should be a parallel taint
-            taint_parallel_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
+            taint_parallel_compute(shad, dest, dest_size, src1, src2, src_size,
+                opcode, result_unused);
             taint_log("mul_com: mul X 1\n");
             return;
         }
     }
-    taint_mix_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
+    taint_mix_compute(shad, dest, dest_size, src1, src2,  src_size, opcode,
+        result_unused);
 }
 
 void taint_delete(Shad *shad, uint64_t dest, uint64_t size)
@@ -302,7 +373,8 @@ void taint_set(Shad *shad_dest, uint64_t dest, uint64_t dest_size,
 }
 
 void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
-               uint64_t src_size, llvm::Instruction *I)
+        uint64_t src_size, uint64_t opcode, uint64_t instruction_flags,
+        uint64_t num_operands, ...)
 {
     TaintData td = mixed_labels(shad, src, src_size, true);
     bulk_set(shad, dest, dest_size, td);
@@ -310,10 +382,17 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
             shad->name(), dest, dest_size, src, src_size);
     taint_log_labels(shad, dest, dest_size);
 
-    if (I) update_cb(shad, dest, shad, src, dest_size, I);
+    va_list ap;
+    va_start(ap, num_operands);
+    std::vector<const llvm::ConstantInt *> operands = getOperands(num_operands,
+        ap);
+    va_end(ap);
+
+    update_cb(shad, dest, shad, src, dest_size, opcode, instruction_flags,
+        operands);
 }
 
-static const uint64_t ones = ~0UL;
+static const uint64_t ones = UINT64_C(~0);
 
 void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store, uint64_t size);
 
@@ -600,9 +679,11 @@ static inline void write_cb_masks(Shad *shad, uint64_t addr, uint64_t size,
 
 //seems implied via callers that for dyadic operations 'I' will have one tainted and one untainted arg
 static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
-                      uint64_t src, uint64_t size, llvm::Instruction *I)
+        uint64_t src, uint64_t size, uint64_t opcode,
+        uint64_t instruction_flags,
+        std::vector<const llvm::ConstantInt *> &operands)
 {
-    if (!I) return;
+    if (!opcode) return;
 
     // do not update masks on data that is not tainted (ie. has no labels)
     // this is because some operations cause constants to be put in the masks
@@ -625,38 +706,20 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
         __attribute__((unused)) llvm::APInt orig_cb_mask = cb_mask;
         std::vector<llvm::APInt> literals;
         llvm::APInt last_literal = NOT_LITERAL; // last valid literal.
-        literals.reserve(I->getNumOperands());
+        literals.reserve(operands.size());
 
-        for (auto it = I->value_op_begin(); it != I->value_op_end(); it++) {
-            const llvm::Value *arg = *it;
-            const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(arg);
+        for (auto operand : operands) {
             llvm::APInt literal = NOT_LITERAL;
-            if (NULL != CI) {
-                literal = CI->getValue().zextOrSelf(CB_WIDTH);
+            if (nullptr != operand) {
+                literal = operand->getValue().zextOrSelf(CB_WIDTH);
             }
             literals.push_back(literal);
-            if (literal != NOT_LITERAL)
+            if (literal != NOT_LITERAL) {
                 last_literal = literal;
-        }
-
-        static int warning_count = 0;
-        if (10 > warning_count && NOT_LITERAL == last_literal) {
-            fprintf(stderr,
-                    "%sWARNING: Could not find last literal value, control "
-                    "bits may be incorrect.\n",
-                    PANDA_MSG);
-            warning_count++;
-            if (warning_count == 10) {
-                fprintf(stderr,
-                        "%sLast literal warning emitted %d times, suppressing "
-                        "warning.\n",
-                        PANDA_MSG, warning_count);
             }
         }
 
         int log2 = 0;
-
-        unsigned int opcode = I->getOpcode();
 
         // guts of this function are in separate file so it can be more easily
         // tested without calling a function (which would slow things down even more)
@@ -667,11 +730,11 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
                   "(0x%.16lx%.16lx) -> (0x%.16lx%.16lx)\n",
                   shad_dest->name(), dest, size, apint_hi_bits(orig_cb_mask),
                   apint_lo_bits(orig_cb_mask), apint_hi_bits(cb_mask),
-                  apint_lo_bits(cb_mask), apint_hi_bits(orig_one_mask),
-                  apint_lo_bits(orig_one_mask), apint_hi_bits(one_mask),
-                  apint_lo_bits(one_mask), apint_hi_bits(orig_zero_mask),
+                  apint_lo_bits(cb_mask), apint_hi_bits(orig_zero_mask),
                   apint_lo_bits(orig_zero_mask), apint_hi_bits(zero_mask),
-                  apint_lo_bits(zero_mask));
+                  apint_lo_bits(zero_mask), apint_hi_bits(orig_one_mask),
+                  apint_lo_bits(orig_one_mask), apint_hi_bits(one_mask),
+                  apint_lo_bits(one_mask));
 
         write_cb_masks(shad_dest, dest, size, cb_masks);
     }
@@ -679,8 +742,7 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
     // not sure it's possible to call update_cb with data that is unlabeled but
     // still has non-0 masks leftover from previous processing, so just in case
     // call detainter (if desired) even for unlabeled input
-    if (detaint_cb0_bytes)
-    {
+    if (detaint_cb0_bytes) {
         detaint_on_cb0(shad_dest, dest, size);
     }
 }

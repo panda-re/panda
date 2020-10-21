@@ -19,7 +19,7 @@ PANDAENDCOMMENT */
 
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Pass.h"
-#include "llvm/InstVisitor.h"
+#include "llvm/IR/InstVisitor.h"
 
 namespace llvm {
 
