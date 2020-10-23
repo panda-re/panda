@@ -454,6 +454,7 @@ std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, 
                 if (rdt.arr_member_type == DataType::CHAR) {
                     PrimitiveVariant prim_var(std::in_place_type<uint8_t*>, buf);
                     result = std::make_pair(true, prim_var);
+                    return result;  // Caller must free (gets uint8_t*)
                 } else {
                     std::cerr << "[WARNING] dwarf_query: virt read of arrays not yet supported for the general case! Cannot read \'" << rdt.name << "\'" << std::endl;
                     result = std::make_pair(false, 0);

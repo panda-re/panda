@@ -80,42 +80,45 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
         case VariantType::VT_BOOL:
             nd->bool_val = std::get<bool>(data);
             nd->has_bool_val = true;
-            std::cout << "[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<bool>(data) << std::endl;
+            std::cout << "\t[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<bool>(data) << std::endl;
             break;
         case VariantType::VT_CHAR:
-            assert(false && "TODO: Unhandled PANDALOG case (char)! Needs implementing");
+            {
+                std::string char_str(1, std::get<char>(data));
+                nd->str = strdup(char_str.c_str());
+            }
             break;
         case VariantType::VT_INT:
             nd->i64 = std::get<int>(data);
             nd->has_i64 = true;
-            std::cout << "[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<int>(data) << std::endl;
+            std::cout << "\t[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<int>(data) << std::endl;
             break;
         case VariantType::VT_LONG_INT:
             assert(sizeof(long int) == 8);
             nd->i64 = std::get<long int>(data);
             nd->has_i64 = true;
-            std::cout << "[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<long int>(data) << std::endl;
+            std::cout << "\t[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<long int>(data) << std::endl;
             break;
         case VariantType::VT_UNSIGNED:
             nd->u64 = std::get<unsigned>(data);
             nd->has_u64 = true;
-            std::cout << "[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<unsigned>(data) << std::endl;
+            std::cout << "\t[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<unsigned>(data) << std::endl;
             break;
         case VariantType::VT_LONG_UNSIGNED:
             assert(sizeof(long unsigned) == 8);
             nd->u64 = std::get<long unsigned>(data);
             nd->has_u64 = true;
-            std::cout << "[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<long unsigned>(data) << std::endl;
+            std::cout << "\t[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<long unsigned>(data) << std::endl;
             break;
         case VariantType::VT_FLOAT:
             nd->float_val = std::get<float>(data);
             nd->has_float_val = true;
-            std::cout << "[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<float>(data) << std::endl;
+            std::cout << "\t[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<float>(data) << std::endl;
             break;
         case VariantType::VT_DOUBLE:
             nd->double_val = std::get<double>(data);
             nd->has_double_val = true;
-            std::cout << "[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<double>(data) << std::endl;
+            std::cout << "\t[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<double>(data) << std::endl;
             break;
         case VariantType::VT_LONG_DOUBLE:
             assert(false && "TODO: Unhandled PANDALOG case (long double)! Needs implementing");
@@ -123,10 +126,11 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
         case VariantType::VT_UINT8_T_PTR:
             if ((rdt.type == DataType::ARRAY) && (rdt.arr_member_type == DataType::CHAR)) {
                 nd->str = strdup((const char *)std::get<uint8_t*>(data));
-                printf("[TEMP DEBUG MEMBER] STR_MEMBER: %s: %s\n", rdt.name.c_str(), (const char *)std::get<uint8_t*>(data));
+                printf("\t[TEMP DEBUG STR_MEMBER] %s: %s\n", rdt.name.c_str(), (const char *)std::get<uint8_t*>(data));
             } else {
-                std::cerr << rdt << std::endl;
-                assert(false && "TODO: Unhandled PANDALOG case (unit8_t*)! Needs implementing");
+                // TODO: convert to protobuf bytes
+                nd->ptr = (uint64_t)std::get<uint8_t*>(data);
+                nd->has_ptr = true;
             }
             break;
         default:
@@ -147,6 +151,8 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
     assert(members != NULL);
     tmp_double_ptrs.push_back(members);
     sdata->members = members;
+
+    std::cout << "[TEMP DEBUG STRUCT]:" << sdef.name << std::endl;
 
     for (int i = 0; i < sdef.members.size(); i++) {
 
@@ -298,6 +304,7 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
 
                         sa->struct_type = strdup(call->argtn[i]);
                         sa->struct_data = struct_logger(cpu, ptr_val, sdef);
+                        assert(sa->struct_data->members[0]);
                     } else {
                         sa->ptr = (uint64_t)ptr_val;
                         sa->has_ptr = true;
