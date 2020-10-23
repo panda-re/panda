@@ -136,30 +136,37 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
 }
 
 // Recursively read struct information for PANDALOG, using DWARF layout information
-Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& sdef) {
+//Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& sdef) {
+Panda__NamedData** struct_logger(CPUState *cpu, target_ulong saddr, StructDef& sdef) {
 
+    /*
     Panda__StructData *sdata = (Panda__StructData*)malloc(sizeof(Panda__StructData));
     assert(sdata != NULL);
     tmp_single_ptrs.push_back(sdata);
     *sdata = PANDA__STRUCT_DATA__INIT;
+    */
 
     Panda__NamedData** members = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * sdef.members.size());
     assert(members != NULL);
     tmp_double_ptrs.push_back(members);
-    sdata->members = members;
+    //sdata->members = members;
 
-    for(int i = 0; i < sdef.members.size(); i++) {
+    for (int i = 0; i < sdef.members.size(); i++) {
 
         ReadableDataType mdef = sdef.members[i];
-        target_ulong maddr = saddr + mdef.offset_bytes;
+        //target_ulong maddr = saddr + mdef.offset_bytes;
         Panda__NamedData *m = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
         assert(m != NULL);
         tmp_single_ptrs.push_back(m);
-        *m = PANDA__NAMED_DATA__INIT;
-        sdata->members[i] = m;
 
-        // TODO: invert condition
-        if (!log_verbose) {
+        members[i] = m;
+        *m = PANDA__NAMED_DATA__INIT;
+        m->arg_name = strdup("TEMP TEST");
+        m->u64 = 1337;
+        m->has_u64 = true;
+
+        /*
+        if (log_verbose) {
             std::cout << "[INFO] syscalls_logger: loading struct " << sdef.name
                 << ", member: " << mdef.name
                 << ", addr: 0x" << std::hex << maddr << std::dec << std::endl;
@@ -217,9 +224,11 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
                 m->str = strdup("{read failed, unknown data}");
             }
         }
+        */
     }
 
-    return sdata;
+    //return sdata;
+    return members;
 }
 
 // TODO: comment this
@@ -297,8 +306,8 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                         }
 
                         sa->struct_type = strdup(call->argtn[i]);
-                        sa->struct_data = struct_logger(cpu, ptr_val, sdef);
-                        //sa->has_struct_data = true;
+                        //sa->struct_data = struct_logger(cpu, ptr_val, sdef);
+                        sa->struct_members = struct_logger(cpu, ptr_val, sdef);
                     } else {
                         sa->ptr = (uint64_t)ptr_val;
                         sa->has_ptr = true;
