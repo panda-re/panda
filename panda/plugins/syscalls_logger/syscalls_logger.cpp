@@ -80,6 +80,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
         case VariantType::VT_BOOL:
             nd->bool_val = std::get<bool>(data);
             nd->has_bool_val = true;
+            std::cout << "[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<bool>(data) << std::endl;
             break;
         case VariantType::VT_CHAR:
             assert(false && "TODO: Unhandled PANDALOG case (char)! Needs implementing");
@@ -87,28 +88,34 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
         case VariantType::VT_INT:
             nd->i64 = std::get<int>(data);
             nd->has_i64 = true;
+            std::cout << "[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<int>(data) << std::endl;
             break;
         case VariantType::VT_LONG_INT:
             assert(sizeof(long int) == 8);
             nd->i64 = std::get<long int>(data);
             nd->has_i64 = true;
+            std::cout << "[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<long int>(data) << std::endl;
             break;
         case VariantType::VT_UNSIGNED:
             nd->u64 = std::get<unsigned>(data);
             nd->has_u64 = true;
+            std::cout << "[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<unsigned>(data) << std::endl;
             break;
         case VariantType::VT_LONG_UNSIGNED:
             assert(sizeof(long unsigned) == 8);
             nd->u64 = std::get<long unsigned>(data);
             nd->has_u64 = true;
+            std::cout << "[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<long unsigned>(data) << std::endl;
             break;
         case VariantType::VT_FLOAT:
             nd->float_val = std::get<float>(data);
             nd->has_float_val = true;
+            std::cout << "[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<float>(data) << std::endl;
             break;
         case VariantType::VT_DOUBLE:
             nd->double_val = std::get<double>(data);
             nd->has_double_val = true;
+            std::cout << "[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<double>(data) << std::endl;
             break;
         case VariantType::VT_LONG_DOUBLE:
             assert(false && "TODO: Unhandled PANDALOG case (long double)! Needs implementing");
@@ -116,6 +123,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
         case VariantType::VT_UINT8_T_PTR:
             if ((rdt.type == DataType::ARRAY) && (rdt.arr_member_type == DataType::CHAR)) {
                 nd->str = strdup((const char *)std::get<uint8_t*>(data));
+                printf("[TEMP DEBUG MEMBER] STR_MEMBER: %s: %s\n", rdt.name.c_str(), (const char *)std::get<uint8_t*>(data));
             } else {
                 std::cerr << rdt << std::endl;
                 assert(false && "TODO: Unhandled PANDALOG case (unit8_t*)! Needs implementing");
@@ -131,21 +139,31 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
 Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& sdef) {
 
     Panda__StructData *sdata = (Panda__StructData*)malloc(sizeof(Panda__StructData));
+    assert(sdata != NULL);
+    tmp_single_ptrs.push_back(sdata);
     *sdata = PANDA__STRUCT_DATA__INIT;
 
     Panda__NamedData** members = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * sdef.members.size());
+    assert(members != NULL);
     tmp_double_ptrs.push_back(members);
     sdata->members = members;
-
-    std::cout << "TEMP DEBUG: struct_def \'" << sdef << "\'" << std::endl;
 
     for(int i = 0; i < sdef.members.size(); i++) {
 
         ReadableDataType mdef = sdef.members[i];
+        target_ulong maddr = saddr + mdef.offset_bytes;
         Panda__NamedData *m = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
+        assert(m != NULL);
+        tmp_single_ptrs.push_back(m);
         *m = PANDA__NAMED_DATA__INIT;
         sdata->members[i] = m;
-        tmp_single_ptrs.push_back(m);
+
+        // TODO: invert condition
+        if (!log_verbose) {
+            std::cout << "[INFO] syscalls_logger: loading struct " << sdef.name
+                << ", member: " << mdef.name
+                << ", addr: 0x" << std::hex << maddr << std::dec << std::endl;
+        }
 
         // Recursive - member is embedded struct
         if ((mdef.type == DataType::STRUCT) && (mdef.is_ptr == false)) {
@@ -153,7 +171,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
             auto it = struct_hashtable.find(mdef.name);
 
             if (it != struct_hashtable.end()) {
-                m->struct_data = struct_logger(cpu, saddr + mdef.offset_bytes, it->second);
+                m->struct_data = struct_logger(cpu, maddr, it->second);
             } else {
                 m->str = strdup("{read failed, unknown embedded struct}");
             }
@@ -162,7 +180,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
         } else if ((mdef.type == DataType::STRUCT) && (mdef.is_ptr == true) && (mdef.is_double_ptr == false)) {
 
             auto it = struct_hashtable.find(mdef.name);
-            target_ulong addr = get_ptr(cpu, saddr + mdef.offset_bytes);
+            target_ulong addr = get_ptr(cpu, maddr);
 
             if (it != struct_hashtable.end() && (addr != 0)) {
                 m->struct_data = struct_logger(cpu, addr, it->second);
@@ -174,7 +192,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
         } else if ((mdef.type == DataType::STRUCT) && (mdef.is_ptr == true) && (mdef.is_double_ptr == true)) {
 
             auto it = struct_hashtable.find(mdef.name);
-            target_ulong addr_1 = get_ptr(cpu, saddr + mdef.offset_bytes);
+            target_ulong addr_1 = get_ptr(cpu, maddr);
             target_ulong addr_2 = 0;
 
             if (addr_1 != 0) {
@@ -190,7 +208,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
         // Non-recursive - member is a non-struct data type
         } else {
 
-            std::pair<bool, PrimitiveVariant> read_result = read_member(cpu, saddr + mdef.offset_bytes, mdef);
+            std::pair<bool, PrimitiveVariant> read_result = read_member(cpu, maddr, mdef);
 
             if (read_result.first) {
                 auto data = read_result.second;
@@ -236,10 +254,12 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
         psyscall.create_time = current->create_time;
         psyscall.call_name = strdup(call->name);
         psyscall.args = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * call->nargs);
+        assert(psyscall.args != NULL);
 
         for (int i = 0; i < call->nargs; i++) {
 
             Panda__NamedData *sa = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
+            assert(sa != NULL);
             psyscall.args[i] = sa;
             *sa = PANDA__NAMED_DATA__INIT;
             sa->arg_name = strdup(call->argn[i]);
@@ -261,15 +281,26 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
 
                 case SYSCALL_ARG_STRUCT_PTR:
                 {
+                    target_ulong ptr_val = *((target_ulong *)rp->args[i]);
                     auto it = struct_hashtable.find(call->argtn[i]);
+
                     if (it != struct_hashtable.end()) {
-                        sa->struct_type = strdup(call->argtn[i]);
+
                         StructDef sdef = it->second;
-                        target_ulong saddr = *((target_ulong *)rp->args[i]);
-                        sa->struct_data = struct_logger(cpu, saddr, sdef);
+
+                        if (!ptr_val) {
+                            std::cerr << "[WARNING] syscalls_logger: SC2 returned NULL pointer for "
+                                << "\'" << call->name << "\' argument "
+                                << "\'" <<  call->argn[i] << "\'"
+                                << "(type: \'" <<  call->argtn[i] << "\')"
+                                << std::endl;
+                        }
+
+                        sa->struct_type = strdup(call->argtn[i]);
+                        sa->struct_data = struct_logger(cpu, ptr_val, sdef);
                         //sa->has_struct_data = true;
                     } else {
-                        sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
+                        sa->ptr = (uint64_t)ptr_val;
                         sa->has_ptr = true;
                     }
 
