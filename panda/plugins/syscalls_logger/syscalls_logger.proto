@@ -1,6 +1,6 @@
-//message StructData {
-//    repeated NamedData members = 1;
-//}
+message StructData {
+    repeated NamedData members = 1;
+}
 
 message NamedData {
     required string arg_name = 1;
@@ -38,8 +38,7 @@ message NamedData {
     optional bytes bytes_val = 13;
 
     optional string struct_type = 14;
-    //optional StructData struct_data = 15;
-    repeated NamedData struct_members = 16;
+    optional StructData struct_data = 15;
 }
 
 message Syscall {
