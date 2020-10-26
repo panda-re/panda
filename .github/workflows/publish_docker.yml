@@ -17,7 +17,7 @@ jobs:
       run: docker login -u pandare -p ${{secrets.pandare_dockerhub}}
 
     - name: Build Bionic container
-      run:  cd $GITHUB_WORKSPACE && docker build -t pandare/panda:latest;
+      run:  cd $GITHUB_WORKSPACE && docker build -t pandare/panda:latest .;
             docker tag  pandare/panda:latest pandare/panda:${GITHUB_SHA};
             docker push pandare/panda:${GITHUB_SHA};
             docker push pandare/panda:latest;
