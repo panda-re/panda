@@ -5,6 +5,7 @@ callstack_instr
 checkpoint
 collect_code
 correlatetaps
+cskeleton
 coverage
 edge_coverage
 filereadmon

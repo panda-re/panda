@@ -51,11 +51,17 @@
 #define MAKE_CALLBACK_void(name_upper, name, ...) \
     void panda_callbacks_ ## name(COMBINE_TYPES(__VA_ARGS__)) { \
         panda_cb_list *plist; \
+        struct timespec start_time, end_time; \
         for (plist = panda_cbs[PANDA_CB_ ## name_upper]; \
              plist != NULL; \
              plist = panda_cb_list_next(plist)) { \
-              if (plist->enabled) \
+              if (plist->enabled) {\
+                clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time); \
                 plist->entry. ENTRY_NAME(name, EVERY_SECOND(__VA_ARGS__)); \
+                clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_time); \
+                long diffInNanos = (end_time.tv_sec - start_time.tv_sec) * (long)1e9 + (end_time.tv_nsec - start_time.tv_nsec); \
+                printf("Time taken (nanoseconds): %ld\n", diffInNanos); \
+              }\
         } \
     }
 
@@ -66,11 +72,18 @@
     bool panda_callbacks_ ## name(COMBINE_TYPES(__VA_ARGS__)) { \
         panda_cb_list *plist; \
         bool any_true = false; \
+        struct timespec start_time, end_time; \
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_time); \
         for (plist = panda_cbs[PANDA_CB_ ## name_upper]; \
              plist != NULL; \
              plist = panda_cb_list_next(plist)) { \
-              if (plist->enabled) \
+              if (plist->enabled) { \
+                clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time); \
                 any_true |= plist->entry. ENTRY_NAME(name, EVERY_SECOND(__VA_ARGS__)); \
+                clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_time); \
+                long diffInNanos = (end_time.tv_sec - start_time.tv_sec) * (long)1e9 + (end_time.tv_nsec - start_time.tv_nsec); \
+                printf("Time taken (nanoseconds): %ld\n", diffInNanos); \
+              } \
         } \
         return any_true; \
     }
