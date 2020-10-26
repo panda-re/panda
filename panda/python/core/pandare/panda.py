@@ -448,6 +448,8 @@ class Panda():
         """
         if snapshot_name == None:
             snapshot_name_ffi = ffi.NULL
+        else:
+            snapshot_name_ffi = ffi.new("char[]",snapshot_name.encode())
         recording_name_ffi = ffi.new("char[]", recording_name.encode())
         result = self.libpanda.panda_record_begin(recording_name_ffi,snapshot_name_ffi)
         res_string_enum = ffi.string(ffi.cast("RRCTRL_ret",result))
