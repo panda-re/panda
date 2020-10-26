@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    if: github.repository  == 'panda-re/panda'
+    if: github.repository  == 'panda-re/panda' && "!contains(github.event.head_commit.message, 'no ci')"
     runs-on: self-hosted
     steps:
     - name: Checkout PANDA
