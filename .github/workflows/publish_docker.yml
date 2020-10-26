@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     if: github.repository  == 'panda-re/panda'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
     - name: Checkout PANDA
       uses: actions/checkout@v1
