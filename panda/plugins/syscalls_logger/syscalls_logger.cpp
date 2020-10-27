@@ -61,6 +61,24 @@ int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
     return len;
 }
 
+// TODO: merge with above
+bool check_str(char* s) {
+    for (int i = 0; i < MAX_STRLEN; i++) {
+        if ((s[i] == 0) && (i > 0)) {
+            break;
+        }
+
+        if (!isprint(s[i])) {
+            return false;
+        }
+
+        if ((i == (MAX_STRLEN - 1)) && (s[i] != 0)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // Read a pointer from guest memory
 target_ulong get_ptr(CPUState *cpu, target_ulong addr) {
     target_ulong ptr;
@@ -124,8 +142,10 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
             assert(false && "TODO: Unhandled PANDALOG case (long double)! Needs implementing");
             break;
         case VariantType::VT_UINT8_T_PTR:
-            if ((rdt.type == DataType::ARRAY) && (rdt.arr_member_type == DataType::CHAR)) {
-                nd->str = strdup((const char *)std::get<uint8_t*>(data));
+        {
+            char* str_ptr = (char *)std::get<uint8_t*>(data);
+            if ((rdt.type == DataType::ARRAY) && (rdt.arr_member_type == DataType::CHAR) && check_str(str_ptr)) {
+                nd->str = strdup(str_ptr);
                 printf("\t[TEMP DEBUG STR_MEMBER] %s: %s\n", rdt.name.c_str(), (const char *)std::get<uint8_t*>(data));
             } else {
                 // TODO: convert to protobuf bytes
@@ -133,6 +153,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
                 nd->has_ptr = true;
             }
             break;
+        }
         default:
             assert(false && "FATAL: default case should never hit, function \"set_data()\"");
             break;
@@ -142,19 +163,21 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
 // Recursively read struct information for PANDALOG, using DWARF layout information
 Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& sdef) {
 
+    int mcount = sdef.members.size();
+
     Panda__StructData *sdata = (Panda__StructData*)malloc(sizeof(Panda__StructData));
     assert(sdata != NULL);
     tmp_single_ptrs.push_back(sdata);
     *sdata = PANDA__STRUCT_DATA__INIT;
 
-    Panda__NamedData** members = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * sdef.members.size());
+    Panda__NamedData** members = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * mcount);
     assert(members != NULL);
     tmp_double_ptrs.push_back(members);
     sdata->members = members;
 
     std::cout << "[TEMP DEBUG STRUCT]:" << sdef.name << std::endl;
 
-    for (int i = 0; i < sdef.members.size(); i++) {
+    for (int i = 0; i < mcount; i++) {
 
         ReadableDataType mdef = sdef.members[i];
         target_ulong maddr = saddr + mdef.offset_bytes;
@@ -225,6 +248,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
         }
     }
 
+    sdata->n_members = mcount;
     return sdata;
 }
 
