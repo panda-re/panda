@@ -156,7 +156,7 @@ setup(name='pandare',
           'data/pypanda/include/*.h',         # Includes files
           'data/pc-bios/*',                   # BIOSes
           ]},
-      install_requires=[ 'cffi>=1.13', 'colorama', 'protobuf'],
+      install_requires=[ 'cffi>=1.14.3', 'colorama', 'protobuf'],
       python_requires='>=3.6',
       cmdclass={'install': custom_install, 'develop': custom_develop},
      )
