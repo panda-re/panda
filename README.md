@@ -54,7 +54,7 @@ For other distributions, it should be straightforward to translate the `apt-get`
 commands into whatever package manager your distribution uses.
 
 Note that if you want to use our LLVM features (mainly the dynamic taint
-system), you will need to install LLVM 3.3 from OS packages or compiled from
+system), you will need to install LLVM 10 from OS packages or compiled from
 source. On Ubuntu this should happen automatically via `install_ubuntu.sh`.
 Additionally, it is **strongly** recommended that you only build PANDA as 64bit
 binary. Creating a 32bit build should be possible, but best avoided.
@@ -97,10 +97,7 @@ This allows translating the TCG intermediate code representation used by QEMU,
 to LLVM IR. The latter has the advantages of being easier to work with, as well
 as platform independent. This enables the implementation of complex analyses
 like the `taint2` plugin.
-However, S2E is not actively updated to work with the latest LLVM toolchain.
-As a consequence, PANDA still requires specifically LLVM 3.3 in order to be
-built with taint analysis support.
-of the plugins.
+The S2E files used by PANDA to support taint analysis have been updated to work with LLVM 10.
 
 ### Cross-architecture record/replay
 Great effort is put to maintain the PANDA trace format stable so that existing
