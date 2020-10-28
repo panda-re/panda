@@ -60,7 +60,6 @@
   - [Looking at the Logfile](#looking-at-the-logfile)
   - [External References](#external-references)
 - [LLVM](#llvm)
-  - [Building LLVM](#building-llvm)
   - [Execution](#execution)
   - [How to use it for analysis](#how-to-use-it-for-analysis)
 - [Wish List](#wish-list)
