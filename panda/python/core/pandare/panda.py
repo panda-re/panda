@@ -369,16 +369,18 @@ class Panda():
         ffi.cdef("void panda_setup_signal_handling(void (*f) (int,void*,void*));",override=True)
         @ffi.callback("void(int,void*,void*)")
         def SigHandler(SIG,a,b):
-            from signal import SIGINT, SIGHUP, SIGTERM
+            from signal import SIGINT, SIGHUP, SIGTERM, SIGABRT
             if SIG == SIGINT:
-                self.end_run_raise_signal = KeyboardInterrupt
+                self.end_run_raise_signal = KeyboardInterrupt("Caught SIGINT")
                 self.end_analysis()
             elif SIG == SIGHUP:
-                self.end_run_raise_signal = KeyboardInterrupt
+                self.end_run_raise_signal = KeyboardInterrupt("Caught SIGHUP")
                 self.end_analysis()
             elif SIG == SIGTERM:
-                self.end_run_raise_signal = KeyboardInterrupt
+                self.end_run_raise_signal = KeyboardInterrupt("Caught SIGTERM")
                 self.end_analysis()
+            elif SIG == SIGABRT:
+                self.end_run_raise_signal = Exception("Caught SIGABRT")
             else:
                 print(f"PyPanda Signal handler received unhandled signal {SIG}")
         

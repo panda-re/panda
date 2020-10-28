@@ -170,6 +170,7 @@ void panda_setup_signal_handling(void (*f) (int, void*, void *))
     sigaction(SIGINT,  &act, NULL);
     sigaction(SIGHUP,  &act, NULL);
     sigaction(SIGTERM, &act, NULL);
+    sigaction(SIGABRT, &act, NULL);
     panda_external_signal_handler = (void(*)(int,siginfo_t*,void*)) f;
 }
 
