@@ -47,9 +47,7 @@ If you wish to build PANDA manually, you can also check the
 [step-by-step instructions](panda/docs/build\_ubuntu.md) in the documentation
 directory.
 
-PANDA is primarily tested and developed on Ubuntu 18.04, though  it can be built (without LLVM support) on 20.04.
-Debian was previously well-supported but is untested in recent years.
-We welcome pull requests to fix issues with other distros.
+we currently only vouch for buildability on the latest Debian stable/Ubuntu LTS, but we welcome pull requests to fix issues with other distros.
 For other distributions, it should be straightforward to translate the `apt-get`
 commands into whatever package manager your distribution uses.
 
