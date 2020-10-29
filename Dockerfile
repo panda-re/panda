@@ -20,8 +20,10 @@ RUN apt update && apt-get -y build-dep qemu && \
 # TODO: for llvm10 upgrade add llvm-10 clang-10 to the above list
 
 # PYPANDA Dependencies
-RUN apt-get install -y genisoimage wget libc6-dev-i386 gcc-multilib nasm
-RUN pip3 install colorama cffi 'protobuf==3.0.0' # Protobuf version should match system (apt) version
+RUN apt-get install -y genisoimage wget libc6-dev-i386 gcc-multilib nasm libffi-dev
+RUN pip3 install colorama 'protobuf==3.0.0' # Protobuf version should match system (apt) version
+# Need cffi with patch for issue #478
+RUN pip3 install https://foss.heptapod.net/pypy/cffi/-/archive/branch/default/cffi-branch-default.zip
 
 # Core PANDA python3 dependencies to install via pip
 RUN pip3 install --upgrade protobuf # Upgrade because it's already installed with apt
