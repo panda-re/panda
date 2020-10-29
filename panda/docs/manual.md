@@ -881,7 +881,7 @@ one has a README.md file linked here for further explanation.
 * [`stringsearch`](../plugins/stringsearch/README.md) - Mine memory accesses for a particular string. `Already ported from panda1`
 * [`textfinder`](../../../panda1/qemu/panda_plugins/textfinder/USAGE.md)
 * [`textprinter`](../plugins/textprinter/README.md) `Already ported from panda1`
-* [`textprinter_fast`](../../../panda1/qemu/panda_plugins/textprinter_fast/README.md)
+* [`textprinter_fast`](../../../panda1/qemu/panda_plugins/textprinter_fast/USAGE.md)
 * [`unigrams`](../plugins/unigrams/README.md) `Already ported from panda1`
 * [`bigrams`](../../../panda1/qemu/panda_plugins/bigrams/USAGE.md)
 * [`memdump`](../../../panda1/qemu/panda_plugins/memdump/USAGE.md)
@@ -946,7 +946,7 @@ XP SP3 x86.
 * [`memsavep`](../plugins/memsavep/README.md) - Create a dump of
   physical memory at a given point in a replay. The dump can then be fed to
   Volatility. `Already ported from panda1`
-* [`memstats`](../../../../../panda1/qemu/panda_panda1/qemu/panda_plugins/memstats/USAGE.md)
+* [`memstats`](../../../panda1/qemu/panda_plugins/memstats/USAGE.md)
 * [`network`](../plugins/network/README.md) `Already ported from panda1`
 * [`pmemaccess`](../../../panda1/qemu/panda_plugins/pmemaccess/USAGE.md)
 * [`recctrl`](../plugins/recctrl/README.md) - Control recording from within the VM.
