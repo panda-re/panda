@@ -174,7 +174,8 @@ class Panda():
         self._initialized_panda = False
         self.disabled_tb_chaining = False
         self.taint_enabled = False
-        self.hook_list = {}
+        self.hook_list = []
+        self.hook_list2 = {}
 
         # Asid stuff
         self.current_asid_name = None
@@ -434,6 +435,38 @@ class Panda():
         if self.running.is_set():
             # If we were running, stop the execution and check if we crashed
             self.queue_async(self.stop_run, internal=True)
+    
+    def record(self, recording_name, snapshot_name=None):
+        """Begins active recording with name provided.
+
+        Args:
+            recording_name (string): name of recording to save.
+            snapshot_name (string, optional): Before recording starts restore to this snapshot name. Defaults to None.
+
+        Raises:
+            Exception: raises exception if there was an error starting recording.
+        """
+        if snapshot_name == None:
+            snapshot_name_ffi = ffi.NULL
+        else:
+            snapshot_name_ffi = ffi.new("char[]",snapshot_name.encode())
+        recording_name_ffi = ffi.new("char[]", recording_name.encode())
+        result = self.libpanda.panda_record_begin(recording_name_ffi,snapshot_name_ffi)
+        res_string_enum = ffi.string(ffi.cast("RRCTRL_ret",result))
+        if res_string_enum != "RRCTRL_OK":
+           raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})") 
+    
+    def end_record(self):
+        """Stop active recording.
+
+        Raises:
+            Exception: raises exception if there was an error stopping recording.
+        """
+        result = self.libpanda.panda_record_end()
+        res_string_enum = ffi.string(ffi.cast("RRCTRL_ret",result))
+        if res_string_enum != "RRCTRL_OK":
+           raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})") 
+
 
     def run_replay(self, replaypfx):
         '''
@@ -2426,8 +2459,8 @@ class Panda():
         '''
         Set hook status to active.        
         '''
-        if hook_name in self.hook_list:
-            self.plugins['hooks2'].enable_hooks2(self.hook_list[hook_name])
+        if hook_name in self.hook_list2:
+            self.plugins['hooks2'].enable_hooks2(self.hook_list2[hook_name])
         else:
             print("ERROR: Your hook name was not in the hook list")
 
@@ -2435,8 +2468,8 @@ class Panda():
         '''
         Set hook status to inactive.
         '''
-        if hook_name in self.hook_list:
-            self.plugins['hooks2'].disable_hooks2(self.hook_list[hook_name])
+        if hook_name in self.hook_list2:
+            self.plugins['hooks2'].disable_hooks2(self.hook_list2[hook_name])
         else:
             print("ERROR: Your hook name was not in the hook list")
 
@@ -2465,7 +2498,7 @@ class Panda():
             hook_number = self.plugins['hooks2'].add_hooks2(hook_cb_passed, cb_data, kernel, \
                 procname, libname, trace_start, trace_stop, range_begin,range_end)
             
-            self.hook_list[name] = hook_number
+            self.hook_list2[name] = hook_number
 
             @hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
             def wrapper(*args, **kw):

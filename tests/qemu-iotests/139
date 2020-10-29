@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Test cases for the QMP 'blockdev-del' command
 #
@@ -43,7 +43,7 @@ class TestBlockdevDel(iotests.QMPTestCase):
     # Check whether a BlockDriverState exists
     def checkBlockDriverState(self, node, must_exist = True):
         result = self.vm.qmp('query-named-block-nodes')
-        nodes = filter(lambda x: x['node-name'] == node, result['return'])
+        nodes = [x for x in result['return'] if x['node-name'] == node]
         self.assertLessEqual(len(nodes), 1)
         self.assertEqual(must_exist, len(nodes) == 1)
 
