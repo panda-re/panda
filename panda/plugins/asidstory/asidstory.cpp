@@ -447,10 +447,14 @@ void save_proc_range(uint64_t instr_end) {
     process_tids[process].insert(first_good_proc_tid);
 
     // really this process should have only one parent and it should not change
-    if (process_ppid.count(process) == 0)
+    if (process_ppid.count(process) == 0) {
         process_ppid[process] = first_good_proc->ppid;
-    else
-        assert (process_ppid[process] == first_good_proc->ppid);
+    } else {
+        // It's okay if the PPID was originally 1 (init) then changed to another process - just record init was the parent.
+        // It's also okay if the PPID was non-1 (not init) but then changes to 1 (process was reaped)
+        // We don't currently support arbitrary PPID changes (e.g., as caused by prctl)
+        assert (process_ppid[process] == first_good_proc->ppid || process_ppid[process] == 1 || first_good_proc->ppid == 1);
+    }
 
     // process asid also should not change
     if (process_asid.count(process) == 0)
