@@ -11,7 +11,7 @@ if sys.version_info[0] < 3:
 # Both of these files contain info in or derived from stuff in
 # panda/include/panda.  Here, we autogenerate the two files so that we
 # never have to worry about how to keep them in sync with the info in
-# those include files.  See panda/include/panda/README.pypanda for 
+# those include files.  See panda/include/panda/README.pypanda for
 # so proscriptions wrt those headers we use here. They need to be kept
 # fairly clean if we are to be able to make sense of them with this script
 # which isn't terriby clever.
@@ -31,10 +31,10 @@ for arch in ['arm', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']:
 else:
     raise RuntimeError("Unable to find any plog_pb2.py files in build directory")
 
-OUTPUT_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "core", "pandare", "autogen"]))               # panda-git/panda/python/core/pandare/autogen
-PLUGINS_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "plugins"]))                         # panda-git/panda/plugins
-INCLUDE_DIR_PYP = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "core", "pandare", "include"]))          # panda-git/panda/python/core/pandare/include
-INCLUDE_DIR_PAN = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "include", "panda"]))            # panda-git/panda/include/panda
+OUTPUT_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare", "autogen"]))                # panda-git/panda/python/core/pandare/autogen
+PLUGINS_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "plugins"]))              # panda-git/panda/plugins
+INCLUDE_DIR_PYP = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare", "include"]))           # panda-git/panda/python/core/pandare/include
+INCLUDE_DIR_PAN = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "include", "panda"])) # panda-git/panda/include/panda
 
 GLOBAL_MAX_SYSCALL_ARG_SIZE = 64
 GLOBAL_MAX_SYSCALL_ARGS = 17
@@ -177,14 +177,14 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     ffi.set_source(f"panda_{arch}_{bits}", None)
     if install:
         import os
-        include_dir = os.path.abspath(os.path.join(*[os.path.dirname(__file__),  "..", "pandare", "data", "pypanda", "include"]))
+        include_dir = os.path.abspath(os.path.join(*[os.path.dirname(__file__),  "pandare", "include"]))
     else:
         include_dir = static_inc
 
     def define_clean_header(ffi, fname):
         '''Convenience function to pull in headers from file in C'''
         #print("Pulling cdefs from ", fname)
-        # CFFI can't handle externs, but sometimes we have to extern C (as opposed to 
+        # CFFI can't handle externs, but sometimes we have to extern C (as opposed to
         r = open(fname).read()
         for line in r.split("\n"):
             assert("extern \"C\" {" not in line), "Externs unsupported by CFFI. Change {} to a single line without braces".format(r)
@@ -203,7 +203,6 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
 
     ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
     ffi.cdef("typedef int"+str(bits)+"_t target_long;")
-    #define_clean_header(ffi, include_dir + "/pthreadtypes.h")
 
     # PPP Headers
     # Syscalls - load architecture-specific headers
@@ -233,7 +232,6 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
         print("PANDA_DATATYPES: Architecture not supported")
 
     # Define some common panda datatypes
-    #define_clean_header(ffi, include_dir + "/panda_qemu_support.h")
     define_clean_header(ffi, include_dir + "/panda_datatypes.h")
 
     # Now syscalls2 common:
@@ -441,7 +439,7 @@ pcb.init : pandacbtype("init", -1),
                 pdty.write(",\n")
         pdty.write("""
 pandacbtype.__doc__ = '''stores the names and numbers for callbacks'''
-PandaCB.__doc__ = '''custom named tuple to handle callbacks. Each element is a callback except init.'''        
+PandaCB.__doc__ = '''custom named tuple to handle callbacks. Each element is a callback except init.'''
 """)
 
 
@@ -460,7 +458,7 @@ PandaCB.__doc__ = '''custom named tuple to handle callbacks. Each element is a c
 #define PYPANDA 1
 
 """)
-        # probably a better way... 
+        # probably a better way...
         pdth.write("typedef target_ulong target_ptr_t;\n")
 
         # XXX: These are defined in plugin.h, but we can't include all of plugin.h
@@ -481,7 +479,7 @@ PandaCB.__doc__ = '''custom named tuple to handle callbacks. Each element is a c
             ("x86_64", 64),
             ("arm", 32),
             ("ppc", 32),
-            ("ppc", 64),        
+            ("ppc", 64),
             ("mips", 32),
             ("mipsel",32),
         ]

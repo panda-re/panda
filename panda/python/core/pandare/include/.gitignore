@@ -2,6 +2,8 @@
 *_int_fns_pypanda.h
 *_int_fns.h
 
+panda_datatypes.h
+
 # Automatically copied from elsewhere
 # by panda_create_datatypes.py. Trimmed to
 # only include content within the
@@ -18,4 +20,6 @@ syscalls_ext_typedefs*.h
 callstack_instr.h
 osi_types.h
 syscalls2_info.h
+hooks2.h
 hooks2_ppp.h
+rr_types.h
