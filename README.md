@@ -47,7 +47,7 @@ If you wish to build PANDA manually, you can also check the
 [step-by-step instructions](panda/docs/build\_ubuntu.md) in the documentation
 directory.
 
-we currently only vouch for buildability on the latest Debian stable/Ubuntu LTS, but we welcome pull requests to fix issues with other distros.
+We currently only vouch for buildability on the latest Debian stable/Ubuntu LTS, but we welcome pull requests to fix issues with other distros.
 For other distributions, it should be straightforward to translate the `apt-get`
 commands into whatever package manager your distribution uses.
 
