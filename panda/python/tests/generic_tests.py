@@ -6,7 +6,7 @@
 import os
 import subprocess
 from sys import argv
-from pandare.images.qcows import SUPPORTED_IMAGES, VM_DIR, get_qcow
+from pandare.qcows import SUPPORTED_IMAGES, VM_DIR, Qcows
 reverted = False
 
 # If called as ./generic_tests.py, run each supported architecture
@@ -55,7 +55,7 @@ def runner(generic_name):
     '''
     from pandare import Panda, blocking
     data = SUPPORTED_IMAGES[generic_name]
-    qcow_path = get_qcow(generic_name)
+    qcow_path = Qcows.get_qcow(generic_name)
 
     # Check 1 - can we load with CLI
     assert(os.path.isfile(qcow_path)), f"Can't find qcow for {generic_name}"
