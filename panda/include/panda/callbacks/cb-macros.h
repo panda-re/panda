@@ -60,7 +60,7 @@
                 plist->entry. ENTRY_NAME(name, EVERY_SECOND(__VA_ARGS__)); \
                 clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_time); \
                 long diffInNanos = (end_time.tv_sec - start_time.tv_sec) * (long)1e9 + (end_time.tv_nsec - start_time.tv_nsec); \
-                printf("Time taken (nanoseconds): %ld\n", diffInNanos); \
+                printf("Time taken for %s (nanoseconds): %ld\n", #name, diffInNanos); \
               }\
         } \
     }
