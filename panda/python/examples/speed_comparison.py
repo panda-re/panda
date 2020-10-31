@@ -12,25 +12,44 @@ if not exists(recording_name + "-rr-snp"):
 
     @panda.queue_blocking
     def run():
-        panda.record_cmd(command="cat /a",recording_name=recording_name)
+        panda.record_cmd("ls -la",recording_name=recording_name)
+        panda.end_analysis()
 
     panda.run()
+    import sys
+    sys.exit(0)
 else:
-    print("Recording exists")
+    print("recording exists")
 
-import os
-os._exit(0)
+from sys import argv
 
-print("Begin C analysis")
-sleep(10)
-panda.load_plugin("cskeleton")
-panda.run_replay(recording_name)
+if "C" in argv[1]:
+    print("Begin C analysis")
+    count = 0
+    #@panda.cb_asid_changed()
+    def asid_changed(cpu, old_asid, new_asid):
+        global count
+        if count == 100:
+            panda.end_analysis()
+        count += 1
+        return 0
 
-print("Begin Python analysis.")
-sleep(10)
-@panda.cb_before_block_exec
-def bbe(cpu, tb):
-    print("hello")
-    pass
+    panda.load_plugin("cskeleton")
+    panda.run_replay(recording_name)
+else:
+    count = 0
+   # @panda.cb_asid_changed(name="qqq")
+    def asid_changed(cpu, old_asid, new_asid):
+        global count
+        if count == 100:
+            panda.end_analysis()
+        count += 1
+        panda.end_analysis()
+        return 0
 
-panda.run_replay(recording_name)
+    print("Begin Python analysis.")
+    @panda.cb_before_block_exec
+    def bbe(cpu, tb):
+        pass
+
+    panda.run_replay(recording_name)
