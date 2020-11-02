@@ -14,9 +14,6 @@ PANDAENDCOMMENT */
 #include <unordered_set>
 
 
-#include <capstone/capstone.h>
-#include <capstone/x86.h>
-
 #include "panda/plugin.h"
 
 // OSI
@@ -27,9 +24,10 @@ PANDAENDCOMMENT */
 
 #include "Block.h"
 #include "RecordProcessor.h"
-#include "BlockProcessorBuilder.h"
-#include "Pass.h"
-#include "EdgeInstrumentationPass.h"
+#include "ModeBuilder.h"
+#include "InstrumentationDelegate.h"
+#include "EdgeInstrumentationDelegate.h"
+#include "CoverageMonitorDelegate.h"
 
 #include "UniqueFilter.h"
 #include "EdgeCsvWriter.h"
@@ -46,8 +44,6 @@ constexpr size_t MONITOR_HELP_LEN = 4;
 const std::string MONITOR_ENABLE = "coverage_enable";
 const std::string MONITOR_DISABLE = "coverage_disable";
 
-static csh handle;
-
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
@@ -58,9 +54,8 @@ void uninit_plugin(void *);
 }
 
 static std::unique_ptr<Predicate> predicate;
-//static std::unique_ptr<RecordProcessor<Block>> processor;
 
-static std::unique_ptr<Pass> pass;
+static std::unique_ptr<InstrumentationDelegate> inst_del;
 
 /**
  * Logs a message to stdout.
@@ -80,61 +75,24 @@ static void log_message(const char *fmt, ...)
 static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 {
     // Determine if we should instrument.
-    if (nullptr == pass || !predicate->eval(cpu, tb)) {
+    if (nullptr == inst_del || !predicate->eval(cpu, tb)) {
         return;
     }
     // Instrument!
-    pass->before_tcg_codegen(cpu, tb);
+    inst_del->instrument(cpu, tb);
 }
 
-static void disable_instrumentation()
-{
-    panda_do_flush_tb();
-    pass.reset();
-}
-
-static void enable_instrumentation(const std::string& filename)
-{
-    panda_do_flush_tb();
-    std::unique_ptr<panda_arg_list, void(*)(panda_arg_list*)> args(
-        panda_get_args("coverage"), panda_free_args);
-
-    bool log_all_records = panda_parse_bool_opt(args.get(), "full",
-            "log all records instead of just uniquely identified ones");
-    log_message("log all records %s", PANDA_FLAG_STATUS(log_all_records));
-    std::string mode_arg = panda_parse_string_opt(args.get(), "mode",
-        "asid-block", "coverage mode");
-
-    /*BlockProcessorBuilder b;
-    b.with_filename(filename)
-     .with_output_mode(mode_arg);
-    if (!log_all_records) {
-        b.with_unique_filter();
-    }
-    processor = b.build(); */
-
-    std::unique_ptr<RecordProcessor<Edge>> edge_processor(new EdgeCsvWriter(filename));
-    edge_processor.reset(new UniqueFilter<Edge>(std::move(edge_processor)));
-    pass.reset(new EdgeInstrumentationPass(first_cpu, std::move(edge_processor)));
-}
+static std::vector<CoverageMonitorDelegate *> monitor_delegates;
 
 int monitor_callback(Monitor *mon, const char *cmd_cstr)
 {
     std::string cmd = cmd_cstr;
     if (0 == cmd.find(MONITOR_DISABLE)) {
-        if (nullptr == pass) {
-            log_message("Instrumentation not enabled, ignoring request to "
-                "disable.");
-            return 0;
-        }
         log_message("Disabling instrumentation.");
-        disable_instrumentation();
-    } else if (0 == cmd.find(MONITOR_ENABLE)) {
-        if (nullptr != pass) {
-            log_message("Instrumentation already enabled, ignoring request to "
-                "enable.");
-            return 0;
+        for (auto del : monitor_delegates) {
+            del->handle_disable();
         }
+    } else if (0 == cmd.find(MONITOR_ENABLE)) {
         auto index = cmd.find("=");
         std::string filename = DEFAULT_FILE;
         if (std::string::npos != index) {
@@ -145,7 +103,9 @@ int monitor_callback(Monitor *mon, const char *cmd_cstr)
             log_message("Enabling instrumentation with default filename: %s",
                 filename.c_str());
         }
-        enable_instrumentation(filename);
+        for (auto del : monitor_delegates) {
+            del->handle_enable(filename);
+        }
     }
     return 0;
 }
@@ -185,10 +145,6 @@ bool init_plugin(void *self)
     }
 
     std::string process_name = panda_parse_string_opt(args.get(), "process_name", "", "the process to collect coverage from");
-    if ("" != process_name) {
-        log_message("Process Name Filter = %s", process_name.c_str());
-        pb.with_process_name(process_name);
-    }
 
     std::string privilege = panda_parse_string_opt(args.get(), "privilege", "all", "collect coverage for a specific privilege mode" );
     if ("user" == privilege) {
@@ -217,21 +173,42 @@ bool init_plugin(void *self)
         DEFAULT_FILE, "the filename to use for output");
     log_message("output file name %s", filename.c_str());
 
-    if (!start_disabled)
+    std::string mode_arg = panda_parse_string_opt(args.get(), "mode",
+        "asid-block", "coverage mode");
+
+    bool log_all_records = panda_parse_bool_opt(args.get(), "full",
+            "log all records instead of just uniquely identified ones");
+    log_message("log all records %s", PANDA_FLAG_STATUS(log_all_records));
+
+    // XXX: Now we need to construct our mode delegate.
+    ModeBuilder mb(monitor_delegates);
+
+    if ("" != process_name) {
+        log_message("Process Name Filter = %s", process_name.c_str());
+        mb.with_process_name_filter(process_name);
+    }
+
+    mb.with_filename(filename);
+    mb.with_mode(mode_arg);
+    if (!log_all_records) {
+        mb.with_unique_filter();
+    }
+    inst_del = mb.build();
+
+    if (start_disabled)
     {
-        enable_instrumentation(filename);
+        for (auto del : monitor_delegates) {
+            del->handle_disable();
+        }
     }
 
     pcb.monitor = monitor_callback;
     panda_register_callback(self, PANDA_CB_MONITOR, pcb);
-
-    assert(CS_ERR_OK == cs_open(CS_ARCH_X86, CS_MODE_32, &handle));
-    cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON);
 
     return true;
 }
 
 void uninit_plugin(void *self)
 {
-    disable_instrumentation();
+    inst_del.reset();
 }

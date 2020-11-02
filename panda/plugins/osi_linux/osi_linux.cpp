@@ -25,6 +25,9 @@
 #include "kernelinfo_downloader.h"
 #include "endian_helpers.h"
 
+#include "panda/tcg-utils.h"
+#include "osi/osi_ext.h"
+
 #define KERNEL_CONF "/" TARGET_NAME "-softmmu/panda/plugins/osi_linux/kernelinfo.conf"
 
 /*
@@ -647,6 +650,16 @@ void r28_cache(CPUState *cpu, TranslationBlock *tb) {
 }
 #endif
 
+#if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
+static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
+{
+    if (tb->pc == ki.task.switch_to_addr) {
+        TCGOp *op = find_guest_insn(0);
+        assert(NULL != op);
+        insert_call(&op, notify_task_change, cpu);
+    }
+}
+#endif
 
 /**
  * @brief Initializes plugin.
@@ -662,6 +675,11 @@ bool init_plugin(void *self) {
         // Particularly if KASLR is enabled!
         pcb.after_loadvm = init_per_cpu_offsets;
         panda_register_callback(self, PANDA_CB_AFTER_LOADVM, pcb);
+
+        // Register hooks in the kernel to provide task switch notifications.
+        assert(init_osi_api());
+        pcb.before_tcg_codegen = before_tcg_codegen_callback;
+        panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb);
     }
 
 #if defined(TARGET_MIPS)
