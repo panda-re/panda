@@ -48,9 +48,17 @@ static const char *chroot_dir;
 static int daemonize;
 static int daemon_pipe;
 
+extern void (*panda_external_signal_handler)(int, siginfo_t*,void*);
+
 void os_setup_early_signal_handling(void)
 {
     struct sigaction act;
+    
+    if (panda_external_signal_handler != NULL){
+        // don't set up signal handling if we already initialized it
+        return;
+    }
+
     sigfillset(&act.sa_mask);
     act.sa_flags = 0;
     act.sa_handler = SIG_IGN;
@@ -66,8 +74,16 @@ void os_setup_signal_handling(void)
 {
     struct sigaction act;
 
+    void (*handler)(int,siginfo_t*, void*) = termsig_handler;
+
+    if (panda_external_signal_handler != NULL){
+        /* Here we go ahead and set the handler to the previously set handler
+         * in case it needs to be reinitialized for a different thread.
+         */
+        handler = panda_external_signal_handler;
+    }
     memset(&act, 0, sizeof(act));
-    act.sa_sigaction = termsig_handler;
+    act.sa_sigaction = handler;
     act.sa_flags = SA_SIGINFO;
     sigaction(SIGINT,  &act, NULL);
     sigaction(SIGHUP,  &act, NULL);

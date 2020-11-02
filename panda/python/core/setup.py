@@ -17,6 +17,8 @@ import shutil
 
 root_dir = os.path.join(*[os.path.dirname(__file__), "..", "..", ".."]) # panda-git/ root dir
 
+pypi_build = False # Set to true if trying to minimize size for pypi package upload. Note this disables some architectures
+
 lib_dir = os.path.join("pandare", "data")
 def copy_objs():
     '''
@@ -50,9 +52,12 @@ def copy_objs():
         llvm_enabled = True if 'CONFIG_LLVM=y' in cfg.read() else False
 
     # For each arch, copy library, plugins, plog_pb2.py and llvm-helpers
-    #for arch in ['arm', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']:
-    # XXX dropping mips and ppc to fit into pypi
-    for arch in ['arm', 'i386', 'x86_64', 'mipsel']:
+    arches = ['arm', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']
+    if pypi_build:
+        # XXX need to drop mips and ppc to fit into pypi
+        arches = ['arm', 'i386', 'x86_64', 'mipsel']
+
+    for arch in arches:
         libname = "libpanda-"+arch+".so"
         softmmu = arch+"-softmmu"
         path      = os.path.join(*[build_root, softmmu, libname])
@@ -77,8 +82,9 @@ def copy_objs():
 
         shutil.copytree(plugindir,  new_plugindir)
 
-    # Strip libpandas and plugins to save space (Need <100mb for pipy)
-    check_output(f"find {lib_dir} -type f -executable -exec strip {{}} \;", shell=True)
+    # Strip libpandas and plugins to save space (Need <100mb for pypi)
+    if pypi_build:
+        check_output(f"find {lib_dir} -type f -executable -exec strip {{}} \;", shell=True)
 
 
 #########################
@@ -150,7 +156,7 @@ setup(name='pandare',
           'data/pypanda/include/*.h',         # Includes files
           'data/pc-bios/*',                   # BIOSes
           ]},
-      install_requires=[ 'cffi>=1.13', 'colorama', 'protobuf'],
+      install_requires=[ 'cffi>=1.14.3', 'colorama', 'protobuf'],
       python_requires='>=3.6',
       cmdclass={'install': custom_install, 'develop': custom_develop},
      )

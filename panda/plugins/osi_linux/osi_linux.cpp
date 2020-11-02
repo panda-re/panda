@@ -162,7 +162,7 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
     //p->ppid = get_real_parent_pid(cpu, task_addr);
     p->pages = NULL;  // OsiPage - TODO
     p->create_time = get_start_time(cpu, task_addr);
-
+    fixupendian(p->create_time); // The struct_get call won't automatically fix endian
 }
 
 /**
