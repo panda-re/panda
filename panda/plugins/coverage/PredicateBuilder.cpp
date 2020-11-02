@@ -4,7 +4,6 @@
 #include "CompoundPredicate.h"
 #include "InKernelPredicate.h"
 #include "PcRangePredicate.h"
-#include "ProcessNamePredicate.h"
 
 namespace coverage
 {
@@ -15,8 +14,6 @@ PredicateBuilder::PredicateBuilder() : predicate(new AlwaysTruePredicate)
 
 PredicateBuilder& PredicateBuilder::with_process_name(const std::string &pn)
 {
-    std::unique_ptr<Predicate> pnp(new ProcessNamePredicate(pn));
-    predicate.reset(new CompoundPredicate(std::move(predicate), std::move(pnp)));
     return *this;
 }
 
