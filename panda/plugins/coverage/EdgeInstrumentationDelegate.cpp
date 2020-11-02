@@ -1,18 +1,19 @@
 #include <cstddef>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <unordered_map>
-#include <unordered_set>
 
 #include <capstone/capstone.h>
 
 #include "Block.h"
 #include "Edge.h"
-#include "EdgeInstrumentationPass.h"
+#include "EdgeInstrumentationDelegate.h"
 #include "RecordProcessor.h"
 
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
+#include "osi/os_intro.h"
 
 #include "panda/tcg-utils.h"
 
@@ -28,6 +29,13 @@ static target_ulong fetch_register_value(size_t cpu_offset, target_ulong mask, t
     return (*(reinterpret_cast<target_ulong *>((env + cpu_offset))) & mask) >> shr;
 }
 #define MK_REG_FETCHER(cpu_state_variable, mask, shift_right) std::bind(fetch_register_value, offsetof(CPUArchState, cpu_state_variable), mask, shift_right)
+
+static target_ulong fetch_segment_value(size_t cpu_offset)
+{
+    CPUArchState *env = static_cast<CPUArchState *>(first_cpu->env_ptr);
+    return reinterpret_cast<SegmentCache*>((env + cpu_offset))->base;
+}
+#define MK_SEG_FETCHER(cpu_state_variable) std::bind(fetch_segment_value, offsetof(CPUArchState, cpu_state_variable))
 
 #endif
 
@@ -63,6 +71,8 @@ std::unordered_map<x86_reg, RegisterFetcher> CS_TO_QEMU_REG_FETCH = {
     { X86_REG_BP, MK_REG_FETCHER(regs[R_EBP], 0x0000FFFF, 0) },
     { X86_REG_EBP, MK_REG_FETCHER(regs[R_EBP], 0xFFFFFFFF, 0) },
 
+    { X86_REG_GS, MK_SEG_FETCHER(segs[R_GS]) },
+
 #ifdef TARGET_X86_64
     { X86_REG_RAX, MK_REG_FETCHER(regs[R_EAX], 0xFFFFFFFFFFFFFFFF, 0) },
     { X86_REG_RBX, MK_REG_FETCHER(regs[R_EBX], 0xFFFFFFFFFFFFFFFF, 0) },
@@ -81,24 +91,52 @@ std::unordered_map<x86_reg, RegisterFetcher> CS_TO_QEMU_REG_FETCH = {
 #endif
 };
 
+struct JumpTargets
+{
+    bool has_dst1;
+    target_ulong dst1;
+    bool has_dst2;
+    target_ulong dst2;
+};
+
+static bool cov_enabled = true;
+
 // Maps Thread ID -> (previous) Block
 static std::unordered_map<target_pid_t, Block> prev_blocks;
-// Maps Thread ID -> expected next program counters
-static std::unordered_map<target_pid_t, std::unordered_set<target_ulong>> next_block_addrs;
+static Block* prev_block = nullptr;
+
+// Maps Thread ID -> Jump Targets
+static std::map<target_pid_t, JumpTargets> next_block_addrs;
+//static std::unordered_map<target_pid_t, JumpTargets> next_block_addrs;
+
+//static std::unique_ptr<OsiThread, decltype(free_osithread)*> current_thread(nullptr, free_osithread);
+static JumpTargets* jump_target_set = nullptr;
+
+/*static void task_change_callback(CPUState *cpu)
+{
+    current_thread.reset(get_current_thread(cpu));
+
+    // jump target set
+    auto ins_res = next_block_addrs.insert({ current_thread->tid, {
+        .has_dst1 = false,
+        .dst1 = 0x0,
+        .has_dst2 = false,
+        .dst2 = 0x0
+    } });
+    jump_target_set = &ins_res.first->second;
+
+    // previous block
+    auto pb_ins_res = prev_blocks.insert({ current_thread->tid, {} });
+    prev_block = &pb_ins_res.first->second;
+}*/
+
 
 static void block_callback(RecordProcessor<Edge> *ep, TranslationBlock *tb)
 {
-    // Obtain current thread information.
-    std::unique_ptr<OsiThread, decltype(free_osithread)*> thr(get_current_thread(first_cpu), free_osithread);
-
-    // Check if we've identified jump targets for the current thread and if we've hit any. If not, just return. This block isn't running as a result of real control flow.
-    auto find_res = next_block_addrs.find(thr->tid);
-    if (next_block_addrs.end() == find_res || find_res->second.end() == find_res->second.find(tb->pc)) {
+    if (((!jump_target_set->has_dst1) || tb->pc != jump_target_set->dst1) &&
+        ((!jump_target_set->has_dst2) || tb->pc != jump_target_set->dst2)) {
         return;
     }
-    
-    // Clear out jump targets.
-    find_res->second.clear();
 
     // Construct an edge and pass it to the edge processor.
     Block to_block {
@@ -106,42 +144,19 @@ static void block_callback(RecordProcessor<Edge> *ep, TranslationBlock *tb)
         .size = tb->size
     };
     Edge edge {
-        .from = prev_blocks[thr->tid],
+        .from = *prev_block,
         .to = to_block
     };
     ep->handle(edge);
 }
 
-template<typename TargetAddress>
-static void add_targets(std::unordered_set<target_ulong>& targets, TargetAddress target)
+static void update_jump_targets(target_ulong prev_block_addr, target_ulong prev_block_size, const JumpTargets& jmp_targets)
 {
-    targets.insert(target);
-}
-
-template<typename First, typename... TargetAddress>
-static void add_targets(std::unordered_set<target_ulong>& targets, First target, TargetAddress... others)
-{
-    add_targets(targets, target);
-    add_targets(targets, others ...);
-}
-
-template<typename... TargetAddress>
-static void update_jump_targets(target_ulong prev_block_addr, target_ulong prev_block_size, TargetAddress... targets)
-{
-    // Get current thread.
-    std::unique_ptr<OsiThread, decltype(free_osithread)*> thr(get_current_thread(first_cpu), free_osithread);
-
-    // Update jump targets for current thread.
-    auto ins_res = next_block_addrs.insert({ thr->tid, {} });
-    if (ins_res.first->second.size() > 0) {
-        ins_res.first->second.clear();
-    }
-    add_targets(ins_res.first->second, targets ...);
+    *jump_target_set = jmp_targets;
 
     // Update previous block for current thread.
-    auto pb_ins_res = prev_blocks.insert({ thr->tid, {} });
-    pb_ins_res.first->second.addr = prev_block_addr;
-    pb_ins_res.first->second.size = prev_block_size;
+    prev_block->addr = prev_block_addr;
+    prev_block->size = prev_block_size;
 }
 
 /* Called right before a Jcc (JG, JNE, etc) instruction.
@@ -154,7 +169,16 @@ static void jcc_callback(target_ulong prev_block_addr,
                          target_ulong next_insn_addr,
                          target_ulong jump_tgt_addr)
 {
-    update_jump_targets(prev_block_addr, prev_block_size, next_insn_addr, jump_tgt_addr);
+    if (!cov_enabled) {
+        return;
+    }
+
+    update_jump_targets(prev_block_addr, prev_block_size, {
+        .has_dst1 = true,
+        .dst1 = next_insn_addr,
+        .has_dst2 = true,
+        .dst2 = jump_tgt_addr
+    });
 }
 
 // Called for JMP instructions where the jump target was resolved from static
@@ -163,38 +187,78 @@ static void static_jmp_callback(target_ulong prev_block_addr,
                                 target_ulong prev_block_size,
                                 target_ulong jump_tgt_addr)
 {
-    update_jump_targets(prev_block_addr, prev_block_size, jump_tgt_addr);
+    if (!cov_enabled) {
+        return;
+    }
+    update_jump_targets(prev_block_addr, prev_block_size, {
+        .has_dst1 = true,
+        .dst1 = jump_tgt_addr,
+        .has_dst2 = false,
+        .dst2 = 0x0
+    });
 }
 
 static void jmp_mem_direct_callback(CPUState *cpu, target_ulong prev_block_addr, target_ulong prev_block_size, target_ulong direct_address)
 {
+    if (!cov_enabled) {
+        return;
+    }
     target_ulong jump_target = 0x0;
     panda_virtual_memory_read(cpu, direct_address, (uint8_t *)&jump_target, sizeof(jump_target));
-    update_jump_targets(prev_block_addr, prev_block_size, jump_target);
+    update_jump_targets(prev_block_addr, prev_block_size, {
+        .has_dst1 = true,
+        .dst1 = jump_target,
+        .has_dst2 = false,
+        .dst2 = 0x0
+    });
 }
 #ifdef TARGET_I386
 static void jmp_mem_indexed_callback(CPUState *cpu, target_ulong prev_block_addr, target_ulong prev_block_size, RegisterFetcher* index_register_fetcher, int scale, int64_t disp)
 {
+    if (!cov_enabled) {
+        return;
+    }
     target_ulong address = (*index_register_fetcher)() * scale + disp;
     target_ulong jump_target = 0x0;
     panda_virtual_memory_read(cpu, address, (uint8_t *)&jump_target, sizeof(jump_target));
-    update_jump_targets(prev_block_addr, prev_block_size, jump_target);
+    update_jump_targets(prev_block_addr, prev_block_size, {
+        .has_dst1 = true,
+        .dst1 = jump_target,
+        .has_dst2 = false,
+        .dst2 = 0x0
+    });
 }
 
 static void jmp_mem_indirect(CPUState *cpu, target_ulong prev_block_addr, target_ulong prev_block_size, RegisterFetcher* base_register_fetch, int64_t disp)
 {
+    if (!cov_enabled) {
+        return;
+    }
     target_ulong address = (*base_register_fetch)() + disp;
     target_ulong jump_target = 0x0;
     panda_virtual_memory_read(cpu, address, (uint8_t *)&jump_target, sizeof(jump_target));
-    update_jump_targets(prev_block_addr, prev_block_size, jump_target);
+    update_jump_targets(prev_block_addr, prev_block_size, {
+        .has_dst1 = true,
+        .dst1 = jump_target,
+        .has_dst2 = false,
+        .dst2 = 0x0
+    });
 }
 
 static void jmp_mem_indirect_disp_si_callback(CPUState *cpu, target_ulong prev_block_addr, target_ulong prev_block_size, RegisterFetcher *base_register_fetch, int64_t disp, RegisterFetcher *index_register_fetch, int scale)
 {
+    if (!cov_enabled) {
+        return;
+    }
     target_ulong address = (*base_register_fetch)() + disp + (*index_register_fetch)() * scale;
     target_ulong jump_target = 0x0;
     panda_virtual_memory_read(cpu, address, (uint8_t *)&jump_target, sizeof(jump_target));
-    update_jump_targets(prev_block_addr, prev_block_size, jump_target);
+    update_jump_targets(prev_block_addr, prev_block_size, {
+        .has_dst1 = true,
+        .dst1 = jump_target,
+        .has_dst2 = false,
+        .dst2 = 0x0
+    });
 }
 
 static void jmp_reg_callback(CPUState *cpu,
@@ -202,19 +266,36 @@ static void jmp_reg_callback(CPUState *cpu,
                                 target_ulong prev_block_size,
                                 RegisterFetcher *reg_fetch)
 {
+    if (!cov_enabled) {
+        return;
+    }
     target_ulong jump_tgt_addr = (*reg_fetch)();
-    update_jump_targets(prev_block_addr, prev_block_size, jump_tgt_addr);
+    update_jump_targets(prev_block_addr, prev_block_size, {
+        .has_dst1 = true,
+        .dst1 = jump_tgt_addr,
+        .has_dst2 = false,
+        .dst2 = 0x0
+    });
 }
 
 static void ret_callback(CPUState *cpu,
                          target_ulong prev_block_addr,
                          target_ulong prev_block_size)
 {
+    if (!cov_enabled) {
+        return;
+    }
+
     // Read the return target address off the stack.
     CPUArchState *env_ptr = static_cast<CPUArchState *>(cpu->env_ptr);
     target_ulong return_addr = 0x0;
     panda_virtual_memory_read(cpu, env_ptr->regs[R_ESP], (uint8_t *)&return_addr, sizeof(return_addr));
-    update_jump_targets(prev_block_addr, prev_block_size, return_addr);
+    update_jump_targets(prev_block_addr, prev_block_size, {
+        .has_dst1 = true,
+        .dst1 = return_addr,
+        .has_dst2 = false,
+        .dst2 = 0x0
+    });
 }
 #endif
 
@@ -242,26 +323,35 @@ static void instrument_jmp(CPUState *cpu, TCGOp *op, TranslationBlock *tb, cs_in
             insn->detail->x86.operands[0].mem.base,
             insn->detail->x86.operands[0].mem.index,
             insn->detail->x86.operands[0].mem.scale,
-            insn->detail->x86.operands[0].mem.disp);*/
+            insn->detail->x86.operands[0].mem.disp); */
 
-        // 16-bit addressing modes not yet implemented.
-        assert(insn->detail->x86.operands[0].mem.segment == X86_REG_INVALID);
-    
-        if (X86_REG_INVALID == insn->detail->x86.operands[0].mem.base &&
+        //assert(insn->detail->x86.operands[0].mem.segment == X86_REG_INVALID);
+
+        if (X86_REG_INVALID == insn->detail->x86.operands[0].mem.segment &&
+            X86_REG_INVALID == insn->detail->x86.operands[0].mem.base &&
             X86_REG_INVALID == insn->detail->x86.operands[0].mem.index) {
             // direct addressing
             insert_call(&op, jmp_mem_direct_callback, cpu, tb->pc, tb->size, static_cast<target_ulong>(insn->detail->x86.operands[0].mem.disp));
-        } else if (X86_REG_INVALID == insn->detail->x86.operands[0].mem.index) {
+        } else if (X86_REG_INVALID == insn->detail->x86.operands[0].mem.segment &&
+                   X86_REG_INVALID == insn->detail->x86.operands[0].mem.index) {
 #ifdef TARGET_I386
             // indirect addressing
             auto base_register_fetch = &CS_TO_QEMU_REG_FETCH.at(static_cast<x86_reg>(insn->detail->x86.operands[0].mem.base));
             insert_call(&op, jmp_mem_indirect, cpu, tb->pc, tb->size, base_register_fetch, insn->detail->x86.operands[0].mem.disp); 
 #endif
-        } else if (X86_REG_INVALID == insn->detail->x86.operands[0].mem.base) {
+        } else if (X86_REG_INVALID == insn->detail->x86.operands[0].mem.segment &&
+                   X86_REG_INVALID == insn->detail->x86.operands[0].mem.base) {
 #ifdef TARGET_I386
             // indexed addressing
             RegisterFetcher *index_register_fetcher = &CS_TO_QEMU_REG_FETCH.at(static_cast<x86_reg>(insn->detail->x86.operands[0].mem.index));
             insert_call(&op, jmp_mem_indexed_callback, cpu, tb->pc, tb->size, index_register_fetcher, insn->detail->x86.operands[0].mem.scale, insn->detail->x86.operands[0].mem.disp);
+#endif
+        } else if (X86_REG_INVALID != insn->detail->x86.operands[0].mem.segment &&
+                   X86_REG_INVALID == insn->detail->x86.operands[0].mem.base &&
+                   X86_REG_INVALID == insn->detail->x86.operands[0].mem.index) {
+#ifdef TARGET_I386
+            RegisterFetcher *srf = &CS_TO_QEMU_REG_FETCH.at(static_cast<x86_reg>(insn->detail->x86.operands[0].mem.segment));
+            insert_call(&op, jmp_mem_indirect, cpu, tb->pc, tb->size, srf, insn->detail->x86.operands[0].mem.disp);
 #endif
         } else {
 #ifdef TARGET_I386
@@ -315,37 +405,40 @@ const std::unordered_map<unsigned int, void(*)(CPUState *, TCGOp *, TranslationB
     { X86_INS_LOOPNE, instrument_jcc },
 };
 
-EdgeInstrumentationPass::EdgeInstrumentationPass(CPUState *cpu, std::unique_ptr<RecordProcessor<Edge>> ep) : edge_processor(std::move(ep))
+EdgeInstrumentationDelegate::EdgeInstrumentationDelegate(std::unique_ptr<RecordProcessor<Edge>> ep) : edge_processor(std::move(ep)), capstone_initialized(false)
 {
-#ifdef TARGET_I386
-    CPUArchState *env = static_cast<CPUArchState *>(cpu->env_ptr);
-    if (!(env->cr[0] & 0x1)) {
-        throw std::runtime_error("Real Mode is unsupported.");
-    }
-    // Check if we're in 64-bit or not.
-    cs_mode mode = CS_MODE_LITTLE_ENDIAN;
-    if (env->efer & 0x400) {
-        // 64-bit mode (long bit set)
-        mode = CS_MODE_64;
-    } else {
-        // 32-bit mode
-        mode = CS_MODE_32;
-    }
-    cs_open(CS_ARCH_X86, mode, &handle);
-    cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON);
-#endif
-    // OSI is required to figure out what thread an edge occurs on.
-    panda_require("osi");
-    assert(init_osi_api());
 }
 
-EdgeInstrumentationPass::~EdgeInstrumentationPass()
+EdgeInstrumentationDelegate::~EdgeInstrumentationDelegate()
 {
     cs_close(&handle);
 }
 
-void EdgeInstrumentationPass::before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
+void EdgeInstrumentationDelegate::instrument(CPUState *cpu, TranslationBlock *tb)
 {
+#ifdef TARGET_I386
+    if (unlikely(!capstone_initialized)) {
+        CPUArchState *env = static_cast<CPUArchState *>(first_cpu->env_ptr);
+        if (!(env->cr[0] & 0x1)) {
+            throw std::runtime_error("Real Mode is unsupported.");
+        }
+        // Check if we're in 64-bit or not.
+        cs_mode mode = CS_MODE_LITTLE_ENDIAN;
+        if (env->efer & 0x400) {
+            // 64-bit mode (long bit set)
+            mode = CS_MODE_64;
+        } else {
+            // 32-bit mode
+            mode = CS_MODE_32;
+        }
+        cs_open(CS_ARCH_X86, mode, &handle);
+        cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON);
+        capstone_initialized = true;
+
+        task_changed("dummy", 0, 0); // XXX: huge ass hack
+    }
+#endif
+
     // Insert the block callback.
     TCGOp *insert_point = find_guest_insn(0);
     assert(NULL != insert_point);
@@ -374,6 +467,33 @@ void EdgeInstrumentationPass::before_tcg_codegen(CPUState *cpu, TranslationBlock
     }
 
     cs_free(insn, insn_count);
+}
+
+void EdgeInstrumentationDelegate::handle_enable(const std::string& unused)
+{
+    cov_enabled = true;
+}
+
+void EdgeInstrumentationDelegate::handle_disable()
+{
+    cov_enabled = false;
+}
+
+void EdgeInstrumentationDelegate::task_changed(const std::string& unused, target_pid_t pid, target_pid_t tid)
+{
+    //printf("process is now: %s\n", unused.c_str());
+    // jump target set
+    auto ins_res = next_block_addrs.insert({ tid, {
+        .has_dst1 = false,
+        .dst1 = 0x0,
+        .has_dst2 = false,
+        .dst2 = 0x0
+    } });
+    jump_target_set = &ins_res.first->second;
+
+    // previous block
+    auto pb_ins_res = prev_blocks.insert({ tid, {} });
+    prev_block = &pb_ins_res.first->second;
 }
 
 }

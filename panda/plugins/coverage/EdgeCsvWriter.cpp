@@ -5,7 +5,7 @@ namespace coverage
 
 EdgeCsvWriter::EdgeCsvWriter(const std::string &filename) : os(filename)
 {
-    os << "from pc,from size,to pc,to size\n";
+    write_header();
 }
 
 void EdgeCsvWriter::handle(Edge record)
@@ -14,6 +14,22 @@ void EdgeCsvWriter::handle(Edge record)
        << std::dec << record.from.size << ","
        << "0x" << std::hex << record.to.addr << ","
        << std::dec << record.to.size << "\n";
+}
+
+void EdgeCsvWriter::handle_enable(const std::string& filename)
+{
+    os.open(filename);
+    write_header();
+}
+
+void EdgeCsvWriter::handle_disable()
+{
+    os.close();
+}
+
+void EdgeCsvWriter::write_header()
+{
+    os << "from pc,from size,to pc,to size\n";
 }
 
 }

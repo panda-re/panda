@@ -4,6 +4,7 @@
 #include <memory>
 #include <unordered_set>
 
+#include "CoverageMonitorDelegate.h"
 #include "RecordProcessor.h"
 
 namespace coverage
@@ -14,7 +15,8 @@ namespace coverage
  * them to a delegate RecordProcessor of the same record type.
  */
 template<typename RecordType>
-class UniqueFilter : public RecordProcessor<RecordType>
+class UniqueFilter : public RecordProcessor<RecordType>,
+                     public CoverageMonitorDelegate
 {
 public:
     /**
@@ -34,6 +36,16 @@ public:
         if (seen.insert(record).second) {
             delegate->handle(record);
         }
+    }
+
+    void handle_enable(const std::string& filename) override
+    {
+        // nothing to do when we enable
+    }
+
+    void handle_disable() override
+    {
+        seen.clear();
     }
 
 private:
