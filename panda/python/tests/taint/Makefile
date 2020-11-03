@@ -1,6 +1,6 @@
 all: taint taint_asm
 
-CFLAGS += -m32 -g  -O0
+CFLAGS += -m32 -g -O0 -static
 
 taint: taint.c
 	$(CC) $(CFLAGS) -o $@ $<
