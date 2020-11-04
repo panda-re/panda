@@ -34,8 +34,8 @@ extern "C" {
     void uninit_plugin(void *);
 }
 
-// Is this a reasonable max strlen for a syscall arg?
-#define MAX_STRLEN 128
+#define MAX_STRLEN 256
+#define STRUCT_RECURSION_LIMIT 256
 
 std::vector<void*> tmp_single_ptrs;
 std::vector<void*> tmp_double_ptrs;
@@ -90,9 +90,6 @@ target_ulong get_ptr(CPUState *cpu, target_ulong addr) {
 
 // Helper for struct_logger
 void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& data) {
-
-    nd->arg_name = strdup(rdt.name.c_str());
-
     switch (data.index()) {
         case VariantType::VT_BOOL:
             nd->bool_val = std::get<bool>(data);
@@ -154,9 +151,9 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
             if ((rdt.type == DataType::ARRAY) && (rdt.arr_member_type == DataType::CHAR) && check_str(str_ptr)) {
                 nd->str = strdup(str_ptr);
             } else if (rdt.type == DataType::STRUCT) {
-                std::cerr << "[WARNING] syscalls_logger: Directly embedded struct currently unhandled! Need to implement." << std::endl;
+                std::cerr << "[WARNING] syscalls_logger: Directly embedded struct did not hit recursive case. Bug?" << std::endl;
             } else {
-                // TODO: convert to protobuf bytes
+                // TODO: how to convert to protobuf bytes? This is a host pointer, not helpful
                 nd->ptr = (uint64_t)std::get<uint8_t*>(data);
                 nd->has_ptr = true;
             }
@@ -169,7 +166,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
 }
 
 // Recursively read struct information for PANDALOG, using DWARF layout information
-Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& sdef) {
+Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& sdef, int recursion_limit) {
 
     int mcount = sdef.members.size();
 
@@ -203,10 +200,11 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
         // Recursive - member is embedded struct
         if ((mdef.type == DataType::STRUCT) && (mdef.is_ptr == false)) {
 
-            auto it = struct_hashtable.find(mdef.name);
+            auto it = struct_hashtable.find(mdef.struct_name);
 
-            if (it != struct_hashtable.end()) {
-                m->struct_data = struct_logger(cpu, maddr, it->second);
+            if ((recursion_limit > 0) && it != struct_hashtable.end() && (sdef.name.compare(mdef.struct_name) != 0)) {
+                m->struct_type = strdup(mdef.struct_name.c_str());
+                m->struct_data = struct_logger(cpu, maddr, it->second, (recursion_limit - 1));
             } else {
                 m->str = strdup("{read failed, unknown embedded struct}");
             }
@@ -214,11 +212,12 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
         // Recursive - member is pointer to struct
         } else if ((mdef.type == DataType::STRUCT) && (mdef.is_ptr == true) && (mdef.is_double_ptr == false)) {
 
-            auto it = struct_hashtable.find(mdef.name);
+            auto it = struct_hashtable.find(mdef.struct_name);
             target_ulong addr = get_ptr(cpu, maddr);
 
-            if (it != struct_hashtable.end() && (addr != 0)) {
-                m->struct_data = struct_logger(cpu, addr, it->second);
+            if ((recursion_limit > 0) && (it != struct_hashtable.end()) && (addr != 0) && (sdef.name.compare(mdef.struct_name) != 0)) {
+                m->struct_type = strdup(mdef.struct_name.c_str());
+                m->struct_data = struct_logger(cpu, addr, it->second, (recursion_limit - 1));
             } else {
                 m->str = strdup("{read failed, unknown struct ptr}");
             }
@@ -226,7 +225,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
         // Recursive - member is double pointer to struct
         } else if ((mdef.type == DataType::STRUCT) && (mdef.is_ptr == true) && (mdef.is_double_ptr == true)) {
 
-            auto it = struct_hashtable.find(mdef.name);
+            auto it = struct_hashtable.find(mdef.struct_name);
             target_ulong addr_1 = get_ptr(cpu, maddr);
             target_ulong addr_2 = 0;
 
@@ -234,8 +233,9 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
                 addr_2 = get_ptr(cpu, addr_1);
             }
 
-            if (it != struct_hashtable.end() && (addr_2 != 0)) {
-                m->struct_data = struct_logger(cpu, addr_2, it->second);
+            if ((recursion_limit > 0) && (it != struct_hashtable.end()) && (addr_2 != 0) && (sdef.name.compare(mdef.struct_name) != 0)) {
+                m->struct_type = strdup(mdef.struct_name.c_str());
+                m->struct_data = struct_logger(cpu, addr_2, it->second, (recursion_limit - 1));
             } else {
                 m->str = strdup("{read failed, unknown struct double ptr}");
             }
@@ -244,6 +244,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
         } else {
 
             std::pair<bool, PrimitiveVariant> read_result = read_member(cpu, maddr, mdef);
+            m->arg_name = strdup(mdef.name.c_str());
 
             if (read_result.first) {
                 auto data = read_result.second;
@@ -258,7 +259,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
     return sdata;
 }
 
-// TODO: comment this
+// Log arguments for every system call
 void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp) {
 
     OsiProc *current = NULL;
@@ -333,7 +334,7 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                         }
 
                         sa->struct_type = strdup(call->argtn[i]);
-                        sa->struct_data = struct_logger(cpu, ptr_val, sdef);
+                        sa->struct_data = struct_logger(cpu, ptr_val, sdef, STRUCT_RECURSION_LIMIT);
                     } else {
                         sa->ptr = (uint64_t)ptr_val;
                         sa->has_ptr = true;

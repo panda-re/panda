@@ -350,6 +350,37 @@ std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, 
         return std::make_pair(false, 0);
     }
 
+    /*
+    // Pointer
+    if (rdt.is_ptr || rdt.is_double_ptr) {
+        switch (rdt.size_bytes) {
+            case sizeof(unsigned):
+                {
+                    PrimitiveVariant prim_var(std::in_place_type<unsigned>, *buf);
+                    result = std::make_pair(true, prim_var);
+                }
+                break;
+            case sizeof(long unsigned):
+                {
+                    static_assert(sizeof(long unsigned) == sizeof(long long unsigned));
+                    PrimitiveVariant prim_var(std::in_place_type<long unsigned>, *buf);
+                    result = std::make_pair(true, prim_var);
+                }
+                break;
+            default:
+                std::cerr << "[WARNING] dwarf_query: cannot virt read pointer member \'" << rdt.name << "\', bad size! (" << rdt.size_bytes << ")" << std::endl;
+                result = std::make_pair(false, 0);
+                break;
+        }
+
+    // Non-pointer
+    } else {
+
+    }
+    */
+
+    // TODO: consolidate with above
+    // Non-pointer
     switch (rdt.type) {
 
         case DataType::VOID:
@@ -388,7 +419,7 @@ std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, 
                         break;
                     case sizeof(long int):
                         {
-                            assert(sizeof(long int) == sizeof(long long int));
+                            static_assert(sizeof(long int) == sizeof(long long int));
                             PrimitiveVariant prim_var(std::in_place_type<long int>, *buf);
                             result = std::make_pair(true, prim_var);
                         }
@@ -414,7 +445,7 @@ std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, 
                         break;
                     case sizeof(long unsigned):
                         {
-                            assert(sizeof(long unsigned) == sizeof(long long unsigned));
+                            static_assert(sizeof(long unsigned) == sizeof(long long unsigned));
                             PrimitiveVariant prim_var(std::in_place_type<long unsigned>, *buf);
                             result = std::make_pair(true, prim_var);
                         }

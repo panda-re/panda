@@ -21,14 +21,16 @@ cd test_fw
 
 echo -e "\n${YELLOW}DOWNLOADING AND CONVERTING TEST FILESYSTEM...${TOGGLE_COLOR}\n"
 
-FS_TAR="ubuntu-base-18.04-base-armhf.tar.gz"
-FS_IMG="${FS_TAR%.*.*}.img"
-USERNAME="$(whoami)"
+#FS_TAR="ubuntu-base-18.04.5-base-armhf.tar.gz"
+#FS_IMG="${FS_TAR%.*.*}.img"
+#USERNAME="$(whoami)"
 
-wget wget -nc -q --show-progress http://cdimage.ubuntu.com/ubuntu-base/releases/18.04/release/$FS_TAR
-sudo virt-make-fs $FS_TAR $FS_IMG
-sudo chown $USERNAME:$USERNAME $FS_IMG
-file $FS_IMG
+#wget -nc -q --show-progress http://cdimage.ubuntu.com/ubuntu-base/releases/18.04/release/$FS_TAR
+#sudo virt-make-fs $FS_TAR $FS_IMG
+#sudo chown $USERNAME:$USERNAME $FS_IMG
+#file $FS_IMG
+
+wget -nc -q --show-progress https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-armhf.squashfs
 
 # ----------------------------------------------------------------------------------------------------------------------
 # KERNEL BUILD
@@ -73,9 +75,14 @@ CONFIG_MODULES_USE_ELF_REL=y
 CONFIG_MODULE_UNLOAD=y
 CONFIG_UEVENT_HELPER=y
 
+CONFIG_SQUASHFS=y
+CONFIG_XZ_DEC=y
+CONFIG_SQUASHFS_XZ=y
+
 EOF
 
 # Build kernel
+#time make ARCH=arm CROSS_COMPILE=arm-none-eabi- -j 2 zImage dtbs
 time make ARCH=arm CROSS_COMPILE=arm-none-eabi- -j $(nproc) zImage dtbs
 cd ..
 

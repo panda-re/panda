@@ -5,7 +5,8 @@ from pandare import blocking, Panda
 
 dtb    = "./test_fw/linux-4.4.138/arch/arm/boot/dts/vexpress-v2p-ca9.dtb"
 kernel = "./test_fw/linux-4.4.138/arch/arm/boot/zImage"
-rootfs = "./test_fw/ubuntu-base-18.04-base-armhf.img"
+#rootfs = "./test_fw/ubuntu-base-18.04.5-base-armhf.img"
+rootfs = "./test_fw/ubuntu-18.04-server-cloudimg-armhf.squashfs"
 append = "root=/dev/vda rw earlyprintk=serial,ttyAMA0 console=ttyAMA0"
 
 panda = Panda(arch = "arm", mem = "1G", extra_args=[
