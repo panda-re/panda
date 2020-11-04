@@ -18,8 +18,10 @@
 typedef std::variant<
     bool,
     char,
+    short int,
     int,
     long int,
+    short unsigned,
     unsigned,
     long unsigned,
     float,
@@ -32,14 +34,16 @@ typedef std::variant<
 enum VariantType {
     VT_BOOL = 0,
     VT_CHAR = 1,
-    VT_INT = 2,
-    VT_LONG_INT = 3,
-    VT_UNSIGNED = 4,
-    VT_LONG_UNSIGNED = 5,
-    VT_FLOAT = 6,
-    VT_DOUBLE = 7,
-    VT_LONG_DOUBLE = 8,
-    VT_UINT8_T_PTR = 9,
+    VT_SHORT_INT = 2,
+    VT_INT = 3,
+    VT_LONG_INT = 4,
+    VT_SHORT_UNSIGNED = 5,
+    VT_UNSIGNED = 6,
+    VT_LONG_UNSIGNED = 7,
+    VT_FLOAT = 8,
+    VT_DOUBLE = 9,
+    VT_LONG_DOUBLE = 10,
+    VT_UINT8_T_PTR = 11,
 };
 
 // Categorization for primitive types

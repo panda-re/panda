@@ -367,6 +367,12 @@ std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, 
         case DataType::INT:
             if (rdt.is_signed) {
                 switch (rdt.size_bytes) {
+                     case sizeof(short int):
+                        {
+                            PrimitiveVariant prim_var(std::in_place_type<short int>, *buf);
+                            result = std::make_pair(true, prim_var);
+                        }
+                        break;
                     case sizeof(int):
                         {
                             PrimitiveVariant prim_var(std::in_place_type<int>, *buf);
@@ -381,12 +387,18 @@ std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, 
                         }
                         break;
                     default:
-                        std::cerr << "[WARNING] dwarf_query: cannot virt read int member \'" << rdt.name << "\', bad size!" << std::endl;
+                        std::cerr << "[WARNING] dwarf_query: cannot virt read int member \'" << rdt.name << "\', bad size! (" << rdt.size_bytes << ")" << std::endl;
                         result = std::make_pair(false, 0);
                         break;
                 }
             } else {
                 switch (rdt.size_bytes) {
+                    case sizeof(short unsigned):
+                        {
+                            PrimitiveVariant prim_var(std::in_place_type<unsigned>, *buf);
+                            result = std::make_pair(true, prim_var);
+                        }
+                        break;
                     case sizeof(unsigned):
                         {
                             PrimitiveVariant prim_var(std::in_place_type<unsigned>, *buf);
@@ -401,7 +413,7 @@ std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, 
                         }
                         break;
                     default:
-                        std::cerr << "[WARNING] dwarf_query: cannot virt read unsigned member \'" << rdt.name << "\', bad size!" << std::endl;
+                        std::cerr << "[WARNING] dwarf_query: cannot virt read unsigned member \'" << rdt.name << "\', bad size! (" << rdt.size_bytes << ")" << std::endl;
                         result = std::make_pair(false, 0);
                         break;
                 }

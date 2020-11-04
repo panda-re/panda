@@ -61,7 +61,7 @@ int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
     return len;
 }
 
-// TODO: merge with above
+// Validate string
 bool check_str(char* s) {
     for (int i = 0; i < MAX_STRLEN; i++) {
         if ((s[i] == 0) && (i > 0)) {
@@ -88,7 +88,6 @@ target_ulong get_ptr(CPUState *cpu, target_ulong addr) {
     return ptr;
 }
 
-// TODO: finish implementation to cover all cases
 // Helper for struct_logger
 void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& data) {
 
@@ -98,55 +97,64 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
         case VariantType::VT_BOOL:
             nd->bool_val = std::get<bool>(data);
             nd->has_bool_val = true;
-            std::cout << "\t[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<bool>(data) << std::endl;
             break;
         case VariantType::VT_CHAR:
             {
+                static_assert(sizeof(char) == 1);
                 std::string char_str(1, std::get<char>(data));
                 nd->str = strdup(char_str.c_str());
             }
             break;
+        case VariantType::VT_SHORT_INT:
+            static_assert(sizeof(short int) == 2);
+            nd->i16 = std::get<short int>(data);
+            nd->has_i16 = true;
+            break;
         case VariantType::VT_INT:
-            nd->i64 = std::get<int>(data);
-            nd->has_i64 = true;
-            std::cout << "\t[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<int>(data) << std::endl;
+            static_assert(sizeof(int) == 4);
+            nd->i32 = std::get<int>(data);
+            nd->has_i32 = true;
             break;
         case VariantType::VT_LONG_INT:
-            assert(sizeof(long int) == 8);
+            static_assert(sizeof(long int) == 8);
             nd->i64 = std::get<long int>(data);
             nd->has_i64 = true;
-            std::cout << "\t[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<long int>(data) << std::endl;
+            break;
+        case VariantType::VT_SHORT_UNSIGNED:
+            static_assert(sizeof(short unsigned) == 2);
+            nd->u16 = std::get<short unsigned>(data);
+            nd->has_u16 = true;
             break;
         case VariantType::VT_UNSIGNED:
-            nd->u64 = std::get<unsigned>(data);
-            nd->has_u64 = true;
-            std::cout << "\t[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<unsigned>(data) << std::endl;
+            static_assert(sizeof(unsigned) == 4);
+            nd->u32 = std::get<unsigned>(data);
+            nd->has_u32 = true;
             break;
         case VariantType::VT_LONG_UNSIGNED:
-            assert(sizeof(long unsigned) == 8);
+            static_assert(sizeof(long unsigned) == 8);
             nd->u64 = std::get<long unsigned>(data);
             nd->has_u64 = true;
-            std::cout << "\t[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<long unsigned>(data) << std::endl;
             break;
         case VariantType::VT_FLOAT:
             nd->float_val = std::get<float>(data);
             nd->has_float_val = true;
-            std::cout << "\t[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<float>(data) << std::endl;
             break;
         case VariantType::VT_DOUBLE:
             nd->double_val = std::get<double>(data);
             nd->has_double_val = true;
-            std::cout << "\t[TEMP DEBUG MEMBER]: " << rdt.name << ": " << std::get<double>(data) << std::endl;
             break;
         case VariantType::VT_LONG_DOUBLE:
-            assert(false && "TODO: Unhandled PANDALOG case (long double)! Needs implementing");
+            nd->double_val = (double)std::get<long double>(data);
+            nd->has_double_val = true;
+            std::cerr << "[WARNING] syscalls_logger: casting long double to double (only latter supported by protobuf)" << std::endl;
             break;
         case VariantType::VT_UINT8_T_PTR:
         {
             char* str_ptr = (char *)std::get<uint8_t*>(data);
             if ((rdt.type == DataType::ARRAY) && (rdt.arr_member_type == DataType::CHAR) && check_str(str_ptr)) {
                 nd->str = strdup(str_ptr);
-                printf("\t[TEMP DEBUG STR_MEMBER] %s: %s\n", rdt.name.c_str(), (const char *)std::get<uint8_t*>(data));
+            } else if (rdt.type == DataType::STRUCT) {
+                std::cerr << "[WARNING] syscalls_logger: Directly embedded struct currently unhandled! Need to implement." << std::endl;
             } else {
                 // TODO: convert to protobuf bytes
                 nd->ptr = (uint64_t)std::get<uint8_t*>(data);
@@ -174,8 +182,6 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
     assert(members != NULL);
     tmp_double_ptrs.push_back(members);
     sdata->members = members;
-
-    std::cout << "[TEMP DEBUG STRUCT]:" << sdef.name << std::endl;
 
     for (int i = 0; i < mcount; i++) {
 
@@ -328,7 +334,6 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
 
                         sa->struct_type = strdup(call->argtn[i]);
                         sa->struct_data = struct_logger(cpu, ptr_val, sdef);
-                        assert(sa->struct_data->members[0]);
                     } else {
                         sa->ptr = (uint64_t)ptr_val;
                         sa->has_ptr = true;
