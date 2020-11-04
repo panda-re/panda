@@ -165,10 +165,12 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
     }
 }
 
+// TODO: reduce code repetition in recursive cases
 // Recursively read struct information for PANDALOG, using DWARF layout information
 Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& sdef, int recursion_limit) {
 
     int mcount = sdef.members.size();
+    bool null_ptr_err = (saddr == 0);
 
     Panda__StructData *sdata = (Panda__StructData*)malloc(sizeof(Panda__StructData));
     assert(sdata != NULL);
@@ -206,7 +208,11 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
                 m->struct_type = strdup(mdef.struct_name.c_str());
                 m->struct_data = struct_logger(cpu, maddr, it->second, (recursion_limit - 1));
             } else {
-                m->str = strdup("{read failed, unknown embedded struct}");
+                if (null_ptr_err) {
+                    m->str = strdup("{read failed, SC2 returned a NULL pointer (bug)}");
+                } else {
+                    m->str = strdup("{read failed, unknown embedded struct}");
+                }
             }
 
         // Recursive - member is pointer to struct
@@ -219,7 +225,11 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
                 m->struct_type = strdup(mdef.struct_name.c_str());
                 m->struct_data = struct_logger(cpu, addr, it->second, (recursion_limit - 1));
             } else {
-                m->str = strdup("{read failed, unknown struct ptr}");
+                if (null_ptr_err) {
+                    m->str = strdup("{read failed, SC2 returned a NULL pointer (bug)}");
+                } else {
+                    m->str = strdup("{read failed, unknown struct ptr}");
+                }
             }
 
         // Recursive - member is double pointer to struct
@@ -237,7 +247,11 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
                 m->struct_type = strdup(mdef.struct_name.c_str());
                 m->struct_data = struct_logger(cpu, addr_2, it->second, (recursion_limit - 1));
             } else {
-                m->str = strdup("{read failed, unknown struct double ptr}");
+                if (null_ptr_err) {
+                    m->str = strdup("{read failed, SC2 returned a NULL pointer (bug)}");
+                } else {
+                    m->str = strdup("{read failed, unknown struct double ptr}");
+                }
             }
 
         // Non-recursive - member is a non-struct data type
@@ -250,7 +264,11 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
                 auto data = read_result.second;
                 set_data(m, mdef, data);
             } else {
-                m->str = strdup("{read failed, unknown data}");
+                if (null_ptr_err) {
+                    m->str = strdup("{read failed, SC2 returned a NULL pointer (bug)}");
+                } else {
+                    m->str = strdup("{read failed, unknown data}");
+                }
             }
         }
     }

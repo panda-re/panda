@@ -350,9 +350,9 @@ std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, 
         return std::make_pair(false, 0);
     }
 
-    /*
     // Pointer
     if (rdt.is_ptr || rdt.is_double_ptr) {
+
         switch (rdt.size_bytes) {
             case sizeof(unsigned):
                 {
@@ -376,156 +376,151 @@ std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, 
     // Non-pointer
     } else {
 
-    }
-    */
+        switch (rdt.type) {
+            case DataType::VOID:
+                std::cerr << "[WARNING] dwarf_query: cannot virt read void member \'" << rdt.name << "\'" << std::endl;
+                result = std::make_pair(false, 0);
+                break;
 
-    // TODO: consolidate with above
-    // Non-pointer
-    switch (rdt.type) {
+            case DataType::BOOL:
+                {
+                    PrimitiveVariant prim_var(std::in_place_type<bool>, *buf);
+                    result = std::make_pair(true, prim_var);
+                }
+                break;
 
-        case DataType::VOID:
-            std::cerr << "[WARNING] dwarf_query: cannot virt read void member \'" << rdt.name << "\'" << std::endl;
-            result = std::make_pair(false, 0);
-            break;
+            case DataType::CHAR:
+                {
+                    PrimitiveVariant prim_var(std::in_place_type<char>, *buf);
+                    result = std::make_pair(true, prim_var);
+                }
+                break;
 
-        case DataType::BOOL:
-            {
-                PrimitiveVariant prim_var(std::in_place_type<bool>, *buf);
-                result = std::make_pair(true, prim_var);
-            }
-            break;
+            case DataType::INT:
+                if (rdt.is_signed) {
+                    switch (rdt.size_bytes) {
+                        case sizeof(short int):
+                            {
+                                PrimitiveVariant prim_var(std::in_place_type<short int>, *buf);
+                                result = std::make_pair(true, prim_var);
+                            }
+                            break;
+                        case sizeof(int):
+                            {
+                                PrimitiveVariant prim_var(std::in_place_type<int>, *buf);
+                                result = std::make_pair(true, prim_var);
+                            }
+                            break;
+                        case sizeof(long int):
+                            {
+                                static_assert(sizeof(long int) == sizeof(long long int));
+                                PrimitiveVariant prim_var(std::in_place_type<long int>, *buf);
+                                result = std::make_pair(true, prim_var);
+                            }
+                            break;
+                        default:
+                            std::cerr << "[WARNING] dwarf_query: cannot virt read int member \'" << rdt.name << "\', bad size! (" << rdt.size_bytes << ")" << std::endl;
+                            result = std::make_pair(false, 0);
+                            break;
+                    }
+                } else {
+                    switch (rdt.size_bytes) {
+                        case sizeof(short unsigned):
+                            {
+                                PrimitiveVariant prim_var(std::in_place_type<unsigned>, *buf);
+                                result = std::make_pair(true, prim_var);
+                            }
+                            break;
+                        case sizeof(unsigned):
+                            {
+                                PrimitiveVariant prim_var(std::in_place_type<unsigned>, *buf);
+                                result = std::make_pair(true, prim_var);
+                            }
+                            break;
+                        case sizeof(long unsigned):
+                            {
+                                static_assert(sizeof(long unsigned) == sizeof(long long unsigned));
+                                PrimitiveVariant prim_var(std::in_place_type<long unsigned>, *buf);
+                                result = std::make_pair(true, prim_var);
+                            }
+                            break;
+                        default:
+                            std::cerr << "[WARNING] dwarf_query: cannot virt read unsigned member \'" << rdt.name << "\', bad size! (" << rdt.size_bytes << ")" << std::endl;
+                            result = std::make_pair(false, 0);
+                            break;
+                    }
+                }
+                break;
 
-        case DataType::CHAR:
-            {
-                PrimitiveVariant prim_var(std::in_place_type<char>, *buf);
-                result = std::make_pair(true, prim_var);
-            }
-            break;
-
-        case DataType::INT:
-            if (rdt.is_signed) {
+            case DataType::FLOAT:
                 switch (rdt.size_bytes) {
-                     case sizeof(short int):
+                    case sizeof(float):
                         {
-                            PrimitiveVariant prim_var(std::in_place_type<short int>, *buf);
+                            PrimitiveVariant prim_var(std::in_place_type<float>, *buf);
                             result = std::make_pair(true, prim_var);
                         }
                         break;
-                    case sizeof(int):
+                    case sizeof(double):
                         {
-                            PrimitiveVariant prim_var(std::in_place_type<int>, *buf);
+                            PrimitiveVariant prim_var(std::in_place_type<double>, *buf);
                             result = std::make_pair(true, prim_var);
                         }
                         break;
-                    case sizeof(long int):
+                    case sizeof(long double):
                         {
-                            static_assert(sizeof(long int) == sizeof(long long int));
-                            PrimitiveVariant prim_var(std::in_place_type<long int>, *buf);
+                            PrimitiveVariant prim_var(std::in_place_type<long double>, *buf);
                             result = std::make_pair(true, prim_var);
                         }
                         break;
                     default:
-                        std::cerr << "[WARNING] dwarf_query: cannot virt read int member \'" << rdt.name << "\', bad size! (" << rdt.size_bytes << ")" << std::endl;
+                        std::cerr << "[WARNING] dwarf_query: cannot virt read float member \'" << rdt.name << "\', bad size!" << std::endl;
                         result = std::make_pair(false, 0);
                         break;
                 }
-            } else {
-                switch (rdt.size_bytes) {
-                    case sizeof(short unsigned):
-                        {
-                            PrimitiveVariant prim_var(std::in_place_type<unsigned>, *buf);
-                            result = std::make_pair(true, prim_var);
-                        }
-                        break;
-                    case sizeof(unsigned):
-                        {
-                            PrimitiveVariant prim_var(std::in_place_type<unsigned>, *buf);
-                            result = std::make_pair(true, prim_var);
-                        }
-                        break;
-                    case sizeof(long unsigned):
-                        {
-                            static_assert(sizeof(long unsigned) == sizeof(long long unsigned));
-                            PrimitiveVariant prim_var(std::in_place_type<long unsigned>, *buf);
-                            result = std::make_pair(true, prim_var);
-                        }
-                        break;
-                    default:
-                        std::cerr << "[WARNING] dwarf_query: cannot virt read unsigned member \'" << rdt.name << "\', bad size! (" << rdt.size_bytes << ")" << std::endl;
-                        result = std::make_pair(false, 0);
-                        break;
-                }
-            }
-            break;
 
-        case DataType::FLOAT:
-            switch (rdt.size_bytes) {
-                case sizeof(float):
-                    {
-                        PrimitiveVariant prim_var(std::in_place_type<float>, *buf);
-                        result = std::make_pair(true, prim_var);
-                    }
-                    break;
-                case sizeof(double):
-                    {
-                        PrimitiveVariant prim_var(std::in_place_type<double>, *buf);
-                        result = std::make_pair(true, prim_var);
-                    }
-                    break;
-                case sizeof(long double):
-                    {
-                        PrimitiveVariant prim_var(std::in_place_type<long double>, *buf);
-                        result = std::make_pair(true, prim_var);
-                    }
-                    break;
-                default:
-                    std::cerr << "[WARNING] dwarf_query: cannot virt read float member \'" << rdt.name << "\', bad size!" << std::endl;
-                    result = std::make_pair(false, 0);
-                    break;
-            }
-
-        case DataType::STRUCT:
-            {
-                PrimitiveVariant prim_var(std::in_place_type<uint8_t*>, buf);
-                result = std::make_pair(true, prim_var);
-            }
-            return result;  // Caller must free (gets uint8_t*)
-
-        case DataType::FUNC:
-            {
-                PrimitiveVariant prim_var(std::in_place_type<target_ulong>, *buf);
-                result = std::make_pair(true, prim_var);
-            }
-            break;
-
-        case DataType::ARRAY:
-            {
-                // TODO: replace with case statement for pointer-to-primitive types to support arrays in the general case, need to encode length as well
-                if (rdt.arr_member_type == DataType::CHAR) {
+            case DataType::STRUCT:
+                {
                     PrimitiveVariant prim_var(std::in_place_type<uint8_t*>, buf);
                     result = std::make_pair(true, prim_var);
-                    return result;  // Caller must free (gets uint8_t*)
-                } else {
-                    std::cerr << "[WARNING] dwarf_query: virt read of arrays not yet supported for the general case! Cannot read \'" << rdt.name << "\'" << std::endl;
-                    result = std::make_pair(false, 0);
                 }
-            }
-            break;
+                return result;  // Caller must free (gets uint8_t*)
 
-        case DataType::UNION:
-            std::cerr << "[WARNING] dwarf_query: virt read of union not yet supported! Cannot read \'" << rdt.name << "\'" << std::endl;
-            result = std::make_pair(false, 0);
-            break;
+            case DataType::FUNC:
+                {
+                    PrimitiveVariant prim_var(std::in_place_type<target_ulong>, *buf);
+                    result = std::make_pair(true, prim_var);
+                }
+                break;
 
-        case DataType::ENUM:
-            std::cerr << "[WARNING] dwarf_query: virt read of enum not yet supported! Cannot read \'" << rdt.name << "\'" << std::endl;
-            result = std::make_pair(false, 0);
-            break;
+            case DataType::ARRAY:
+                {
+                    // TODO: replace with case statement for pointer-to-primitive types to support arrays in the general case, need to encode length as well
+                    if (rdt.arr_member_type == DataType::CHAR) {
+                        PrimitiveVariant prim_var(std::in_place_type<uint8_t*>, buf);
+                        result = std::make_pair(true, prim_var);
+                        return result;  // Caller must free (gets uint8_t*)
+                    } else {
+                        std::cerr << "[WARNING] dwarf_query: virt read of arrays not yet supported for the general case! Cannot read \'" << rdt.name << "\'" << std::endl;
+                        result = std::make_pair(false, 0);
+                    }
+                }
+                break;
 
-        default:
-            std::cerr << "[WARNING] dwarf_query: cannot virt read member \'" << rdt.name << "\', unknown type!" << std::endl;
-            result = std::make_pair(false, 0);
-            break;
+            case DataType::UNION:
+                std::cerr << "[WARNING] dwarf_query: virt read of union not yet supported! Cannot read \'" << rdt.name << "\'" << std::endl;
+                result = std::make_pair(false, 0);
+                break;
+
+            case DataType::ENUM:
+                std::cerr << "[WARNING] dwarf_query: virt read of enum not yet supported! Cannot read \'" << rdt.name << "\'" << std::endl;
+                result = std::make_pair(false, 0);
+                break;
+
+            default:
+                std::cerr << "[WARNING] dwarf_query: cannot virt read member \'" << rdt.name << "\', unknown type!" << std::endl;
+                result = std::make_pair(false, 0);
+                break;
+        }
     }
 
     free(buf);
