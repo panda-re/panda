@@ -60,6 +60,20 @@ enum DataType {
     ENUM,   // C: enum
 };
 
+// DataType enum -> string by index, no dynamic alloc
+static const char* DataTypeStrings[] = {
+    "void",
+    "bool",
+    "char",
+    "int",
+    "float",
+    "struct",
+    "func",
+    "array",
+    "enum",
+    "union",
+};
+
 // Information to read primitive type
 // (is_ptr == true) || (is_double_ptr == true) -> pointer to described data type
 class ReadableDataType {
@@ -79,16 +93,20 @@ class ReadableDataType {
         // Pointer-specific fields
         std::string ptr_trgt_name;
 
-        // Array-specific field
+        // Array-specific fields
         std::string arr_member_name;
         DataType arr_member_type;
         unsigned arr_member_size_bytes;
+
+        // Struct-specific fields
+        std::string struct_name;
 
     // Pointer constructor (for internal use only)
     ReadableDataType(const std::string& ptr_name, const std::string& dst_name) :
         name(ptr_name), size_bytes(0), offset_bytes(0), type(DataType::VOID), is_ptr(false), is_double_ptr(false), is_le(true), is_signed(false),
         ptr_trgt_name(dst_name),
-        arr_member_name("{none}"), arr_member_type(DataType::VOID), arr_member_size_bytes(0) {}
+        arr_member_name("{none}"), arr_member_type(DataType::VOID), arr_member_size_bytes(0),
+        struct_name("{none}") {}
 
     // Named type constuctor (use this most of the time)
     ReadableDataType(const std::string& type_name) : ReadableDataType(type_name, "{none}") {}
@@ -109,52 +127,40 @@ class ReadableDataType {
             return -1;
         }
     }
+
+    // Get human-readable type name
+    const char* get_type_name() const {
+        return DataTypeStrings[type];
+    }
+
+    // Get human-readable array member type name
+    const char* get_arr_member_type_name() const {
+        return DataTypeStrings[arr_member_type];
+    }
 };
 
 inline std::ostream & operator<<(std::ostream& os, ReadableDataType const& rdt) {
 
-    std::string type;
-    switch(rdt.type) {
-        case DataType::VOID:
-            type.assign("void");
-            break;
-        case DataType::BOOL:
-            type.assign("bool");
-            break;
-        case DataType::CHAR:
-            type.assign("char");
-            break;
-        case DataType::INT:
-            type.assign("int");
-            break;
-        case DataType::FLOAT:
-            type.assign("float");
-            break;
-        case DataType::STRUCT:
-            type.assign("struct");
-            break;
-        case DataType::FUNC:
-            type.assign("function");
-            break;
-        case DataType::ARRAY:
-            type.assign("array");
-            break;
-        case DataType::UNION:
-            type.assign("union");
-            break;
-        case DataType::ENUM:
-            type.assign("enum");
-            break;
-        default:
-            type.assign("{unknown}");
-            break;
-    }
-
     os << std::boolalpha
         << "member \'" << rdt.name
         << "\' (offset: " << rdt.offset_bytes
-        << ", type: " << type
-        << ", size: " << rdt.size_bytes
+        << ", type: " << rdt.get_type_name();
+
+    if (rdt.type == DataType::STRUCT) {
+        os << ", struct_name: " << rdt.struct_name;
+    }
+
+    if (rdt.type == DataType::ARRAY) {
+        os << ", arr_member_name: " << rdt.arr_member_name
+            << ", arr_member_type: " << rdt.get_arr_member_type_name()
+            << ", arr_member_size_bytes: " << rdt.arr_member_size_bytes;
+    }
+
+    if (rdt.is_ptr || rdt.is_double_ptr) {
+        os << ", ptr_trgt_name: " << rdt.ptr_trgt_name;
+    }
+
+    os << ", size: " << rdt.size_bytes
         << ", ptr: " << rdt.is_ptr
         << ", dptr: " << rdt.is_double_ptr
         << ", le: " << rdt.is_le

@@ -76,6 +76,7 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
     // Embedded struct
     if (struct_type) {
 
+        rdt.struct_name.assign(type_name);
         rdt.size_bytes = root["user_types"][type_name]["size"].asUInt();
         rdt.is_le = (root["base_types"]["pointer"]["endian"].asString().compare(little_str) == 0);
         rdt.type = DataType::STRUCT;
@@ -212,11 +213,12 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
             if (struct_ptr) {
                 rdt.type = DataType::STRUCT;
                 rdt.ptr_trgt_name.assign(subtype_name);
+                rdt.struct_name.assign(subtype_name);
 
             // Pointer to function (named)
             } else if (func_ptr) {
                 rdt.type = DataType::FUNC;
-                rdt.ptr_trgt_name.assign(subtype_name);
+                rdt.ptr_trgt_name.assign("{none}");
 
             // Pointer to union (named)
             } else if (union_ptr) {
@@ -250,6 +252,9 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
                 } else {
                     rdt.type = str_to_dt(trgt_type_kind);
                     rdt.ptr_trgt_name.assign(trgt_type_name);
+                    if (rdt.type == DataType::STRUCT) {
+                        rdt.struct_name.assign(trgt_type_name);
+                    }
                 }
             } else {
                 assert(false && "Pointer to unhandled type!");
@@ -339,7 +344,9 @@ std::pair<bool, PrimitiveVariant> read_member(CPUState *env, target_ulong addr, 
 
     int read_ret = panda_virtual_memory_read(env, addr, buf, rdt.size_bytes);
     if (read_ret != 0) {
-        std::cerr << "[WARNING] dwarf_query: virt read of member \'" << rdt.name << "\' failed!" << std::endl;
+        if (log_verbose) {
+            std::cerr << "[WARNING] dwarf_query: virt read of member \'" << rdt.name << "\' failed!" << std::endl;
+        }
         return std::make_pair(false, 0);
     }
 
