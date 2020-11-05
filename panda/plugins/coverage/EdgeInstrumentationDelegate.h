@@ -14,6 +14,8 @@
 namespace coverage
 {
 
+struct EdgeState;
+
 class EdgeInstrumentationDelegate : public InstrumentationDelegate,
                                     public CoverageMonitorDelegate,
                                     public OsiObserver
@@ -33,6 +35,7 @@ private:
     std::unique_ptr<RecordProcessor<Edge>> edge_processor;
     bool capstone_initialized;
     csh handle;
+    std::unique_ptr<EdgeState> edge_state;
 };
 
 }

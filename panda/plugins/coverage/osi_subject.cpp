@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <memory>
 #include <vector>
 
@@ -35,6 +36,13 @@ void register_osi_observer(OsiObserver* observer)
         callbacks_registered = true;
     }
     observers.push_back(observer);
+}
+
+void unregister_osi_observer(OsiObserver* observer) {
+    auto it = std::find(observers.begin(), observers.end(), observer);
+    if (observers.end() != it) {
+        observers.erase(it);
+    }
 }
 
 }
