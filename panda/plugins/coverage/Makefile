@@ -11,6 +11,7 @@ $(PLUGIN_OBJ_DIR)/coverage.py: $(PLUGIN_SRC_DIR)/coverage.py
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
     $(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o \
     $(PLUGIN_OBJ_DIR)/osi_subject.o \
+    $(PLUGIN_OBJ_DIR)/OsiObserver.o \
     $(PLUGIN_OBJ_DIR)/Predicate.o \
     $(PLUGIN_OBJ_DIR)/InKernelPredicate.o \
     $(PLUGIN_OBJ_DIR)/PcRangePredicate.o \
@@ -22,7 +23,6 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
     $(PLUGIN_OBJ_DIR)/OsiBlockGenerator.o \
     $(PLUGIN_OBJ_DIR)/OsiBlockCsvWriter.o \
     $(PLUGIN_OBJ_DIR)/EdgeCsvWriter.o \
-    $(PLUGIN_OBJ_DIR)/EdgeGenerator.o \
     $(PLUGIN_OBJ_DIR)/EdgeInstrumentationDelegate.o \
     $(PLUGIN_OBJ_DIR)/BlockInstrumentationDelegate.o \
     $(PLUGIN_OBJ_DIR)/CoverageMonitorDelegate.o \
