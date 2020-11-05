@@ -3,6 +3,7 @@
 
 #include <string>
 
+#include "panda/plugin.h"
 #include "osi/osi_types.h"
 
 namespace coverage
@@ -14,7 +15,7 @@ namespace coverage
 class OsiObserver
 {
 public:
-    virtual ~OsiObserver() = default;
+    virtual ~OsiObserver() = 0;
     virtual void task_changed(const std::string& process_name,
                               target_pid_t pid,
                               target_pid_t tid) = 0;

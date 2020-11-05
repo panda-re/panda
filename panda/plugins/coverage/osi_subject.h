@@ -8,6 +8,8 @@ namespace coverage
 
 void register_osi_observer(OsiObserver* observer);
 
+void unregister_osi_observer(OsiObserver* observer);
+
 }
 
 #endif

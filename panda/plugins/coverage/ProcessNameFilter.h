@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 
+#include "osi_subject.h"
 #include "OsiObserver.h"
 #include "RecordProcessor.h"
 
