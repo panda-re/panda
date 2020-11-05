@@ -1,7 +1,18 @@
 #! /bin/bash
 
+# TODO: replace this with a cleaner python script
+
 TOGGLE_COLOR='\033[0m'
 YELLOW='\033[0;33m'
+
+if [ -z "$1" ]; then
+    printf "\nUsage: $0 <target>"
+    printf "\n\nValid options for <target>:"
+    printf "\n\'arm\'"
+    printf "\n\'arm-lite\'"
+    printf "\n\'x64\'\n"
+    exit 1
+fi
 
 # ----------------------------------------------------------------------------------------------------------------------
 # PRE-REQS
@@ -21,16 +32,31 @@ cd test_fw
 
 echo -e "\n${YELLOW}DOWNLOADING AND CONVERTING TEST FILESYSTEM...${TOGGLE_COLOR}\n"
 
-#FS_TAR="ubuntu-base-18.04.5-base-armhf.tar.gz"
-#FS_IMG="${FS_TAR%.*.*}.img"
-#USERNAME="$(whoami)"
+if [ "$1" == 'arm-lite' ]; then
 
-#wget -nc -q --show-progress http://cdimage.ubuntu.com/ubuntu-base/releases/18.04/release/$FS_TAR
-#sudo virt-make-fs $FS_TAR $FS_IMG
-#sudo chown $USERNAME:$USERNAME $FS_IMG
-#file $FS_IMG
+    FS_TAR="ubuntu-base-18.04.5-base-armhf.tar.gz"
+    FS_IMG="${FS_TAR%.*.*}.img"
+    USERNAME="$(whoami)"
 
-wget -nc -q --show-progress https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-armhf.squashfs
+    wget -nc -q --show-progress http://cdimage.ubuntu.com/ubuntu-base/releases/18.04/release/$FS_TAR
+    sudo virt-make-fs $FS_TAR $FS_IMG
+    sudo chown $USERNAME:$USERNAME $FS_IMG
+    file $FS_IMG
+
+elif [ "$1" == 'arm' ]; then
+
+    wget -nc -q --show-progress https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-armhf.squashfs
+
+elif [ "$1" == 'x64' ]; then
+
+    wget -nc -q --show-progress https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64.squashfs
+
+else
+
+    printf "Invalid target option! No matching FS\n"
+    exit 1
+
+fi
 
 # ----------------------------------------------------------------------------------------------------------------------
 # KERNEL BUILD
@@ -46,7 +72,13 @@ tar xvzf $KERNEL_TAR
 
 # Config kernel
 cd $KERNEL_DIR
-make ARCH=arm vexpress_defconfig      # QEMU's vexpress-a9
+
+if [ "$1" == 'x64' ]; then
+    make x86_64_defconfig                   # Generic x64
+else
+    make ARCH=arm vexpress_defconfig        # QEMU's vexpress-a9
+fi
+
 sed -i 's/=m/=y/g' .config            # Make everything built-in
 
 cat <<EOF >> .config
@@ -82,8 +114,11 @@ CONFIG_SQUASHFS_XZ=y
 EOF
 
 # Build kernel
-#time make ARCH=arm CROSS_COMPILE=arm-none-eabi- -j 2 zImage dtbs
-time make ARCH=arm CROSS_COMPILE=arm-none-eabi- -j $(nproc) zImage dtbs
+if [ "$1" == 'x64' ]; then
+    time make -j $(nproc)
+else
+    time make ARCH=arm CROSS_COMPILE=arm-none-eabi- -j $(nproc) zImage dtbs
+fi
 cd ..
 
 # ----------------------------------------------------------------------------------------------------------------------

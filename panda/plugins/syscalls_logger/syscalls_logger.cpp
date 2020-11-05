@@ -34,6 +34,7 @@ extern "C" {
     void uninit_plugin(void *);
 }
 
+// TODO: make these optional commandline params
 #define MAX_STRLEN 256
 #define STRUCT_RECURSION_LIMIT 256
 
@@ -86,6 +87,103 @@ target_ulong get_ptr(CPUState *cpu, target_ulong addr) {
         ptr = 0;
     }
     return ptr;
+}
+
+// Parse out prmitive array buffers
+Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data) {
+
+    uint8_t* buf = std::get<uint8_t*>(data);
+    int arr_size = rdt.get_arr_size();
+
+    if (arr_size <= 0) {
+        return 0;
+    }
+
+    Panda__StructData *sdata = (Panda__StructData*)malloc(sizeof(Panda__StructData));
+    assert(sdata != NULL);
+    tmp_single_ptrs.push_back(sdata);
+    *sdata = PANDA__STRUCT_DATA__INIT;
+
+    Panda__NamedData** members = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * arr_size);
+    assert(members != NULL);
+    tmp_double_ptrs.push_back(members);
+    sdata->members = members;
+
+    for (int i = 0; i < arr_size; i++) {
+
+        uint8_t* data_ptr = buf + (i * rdt.arr_member_size_bytes);
+
+        Panda__NamedData *m = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
+        assert(m != NULL);
+        tmp_single_ptrs.push_back(m);
+
+        sdata->members[i] = m;
+        *m = PANDA__NAMED_DATA__INIT;
+
+        switch (rdt.arr_member_type) {
+            case DataType::BOOL:
+            case DataType::INT:
+                if (rdt.is_signed) {
+                    switch (rdt.size_bytes) {
+                        case sizeof(short int):
+                            m->i16 = *(short int*)data_ptr;
+                            m->has_i16 = true;
+                            break;
+                        case sizeof(int):
+                            m->i32 = *(int*)data_ptr;
+                            m->has_i32 = true;
+                            break;
+                        case sizeof(long int):
+                            m->i64 = *(long int*)data_ptr;
+                            m->has_i64 = true;
+                            break;
+                        default:
+                            return 0;
+                            break;
+                    }
+                } else {
+                    switch (rdt.size_bytes) {
+                        case sizeof(short unsigned):
+                            m->u16 = *(short unsigned*)data_ptr;
+                            m->has_u16 = true;
+                            break;
+                        case sizeof(unsigned):
+                            m->u32 = *(unsigned*)data_ptr;
+                            m->has_u32 = true;
+                            break;
+                        case sizeof(long unsigned):
+                            m->u64 = *(long unsigned*)data_ptr;
+                            m->has_u64 = true;
+                            break;
+                        default:
+                            return 0;
+                            break;
+                    }
+                }
+                break;
+
+            case DataType::FLOAT:
+                switch (rdt.size_bytes) {
+                    case sizeof(float):
+                        m->float_val = *(float*)data_ptr;
+                        m->has_float_val = true;
+                        break;
+                    case sizeof(double):
+                        m->double_val = *(float*)data_ptr;
+                        m->has_double_val = true;
+                        break;
+                    default:
+                        return 0;
+                        break;
+                }
+            default:
+                return 0;
+                break;
+        }
+    }
+
+    sdata->n_members = arr_size;
+    return sdata;
 }
 
 // Helper for struct_logger
@@ -150,13 +248,20 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
             char* str_ptr = (char *)std::get<uint8_t*>(data);
             if ((rdt.type == DataType::ARRAY) && (rdt.arr_member_type == DataType::CHAR) && check_str(str_ptr)) {
                 nd->str = strdup(str_ptr);
-            } else if (rdt.type == DataType::STRUCT) {
-                std::cerr << "[WARNING] syscalls_logger: Directly embedded struct did not hit recursive case. Bug?" << std::endl;
-            } else {
-                // TODO: how to convert to protobuf bytes? This is a host pointer, not helpful
-                nd->ptr = (uint64_t)std::get<uint8_t*>(data);
-                nd->has_ptr = true;
+                return;
+            } else if ((rdt.type == DataType::ARRAY) && (rdt.arr_member_type != DataType::CHAR)) {
+                auto sdata = array_logger(rdt, data);
+                if (sdata) {
+                    nd->struct_type = strdup("ArrayOfPrimitve");
+                    nd->struct_data = sdata;
+                    return;
+                }
             }
+
+            assert(rdt.type != DataType::STRUCT);
+            // TODO: how to convert to protobuf bytes? This is a host pointer, not helpful
+            nd->ptr = (uint64_t)std::get<uint8_t*>(data);
+            nd->has_ptr = true;
             break;
         }
         default:
@@ -192,6 +297,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
 
         sdata->members[i] = m;
         *m = PANDA__NAMED_DATA__INIT;
+        m->arg_name = strdup(mdef.name.c_str());
 
         if (log_verbose) {
             std::cout << "[INFO] syscalls_logger: loading struct " << sdef.name
@@ -258,7 +364,6 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
         } else {
 
             std::pair<bool, PrimitiveVariant> read_result = read_member(cpu, maddr, mdef);
-            m->arg_name = strdup(mdef.name.c_str());
 
             if (read_result.first) {
                 auto data = read_result.second;
@@ -354,6 +459,13 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                         sa->struct_type = strdup(call->argtn[i]);
                         sa->struct_data = struct_logger(cpu, ptr_val, sdef, STRUCT_RECURSION_LIMIT);
                     } else {
+
+                        if (log_verbose) {
+                            std::cerr << "[WARNING] syscalls_logger: No definition found for struct "
+                                << "\'" << call->argtn[i] << "\' argument "
+                                << std::endl;
+                        }
+
                         sa->ptr = (uint64_t)ptr_val;
                         sa->has_ptr = true;
                     }
