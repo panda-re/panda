@@ -14,8 +14,8 @@ sudo apt-get build-dep qemu
 sudo apt-get install git python-pip libc++-dev libelf-dev libdwarf-dev \
   libelf-dev libdwarf-dev libwiretap-dev wireshark-dev python3-pycparser
 
-# install llvm dependencies from ppa:phulin/panda
-sudo apt-get install llvm-3.3 clang-3.3
+# install llvm dependencies
+sudo apt-get install llvm-10 clang-10
 
 # install protobuf dependencies
 sudo apt-get install protobuf-compiler protobuf-c-compiler python-protobuf \
