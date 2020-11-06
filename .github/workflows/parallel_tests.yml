@@ -21,10 +21,10 @@ jobs:
     - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
 
     - name: Build docker container from project root
-      run: cd $GITHUB_WORKSPACE && DOCKER_BUILDKIT=1 docker build --target install_panda -t panda_local_${{ github.sha }} .
+      run: cd $GITHUB_WORKSPACE && DOCKER_BUILDKIT=1 docker build --progress=plain --target developer -t panda_local_${{ github.sha }} .
 
-    - name: Minimal test of built container # Just test to see if one of our binaries is installed
-      run: docker run --rm "panda_local_${{ github.sha }}" /bin/bash -c 'exit $(panda-system-arm -help | grep -q "usage. panda-system-arm")'
+    - name: Minimal test of built container # Just test to see if one of our binaries is built
+      run: docker run --rm "panda_local_${{ github.sha }}" /bin/bash -c 'exit $(/panda/build/arm-softmmu/panda-system-arm -help | grep -q "usage. panda-system-arm")'
 
   taint_tests:
     if: github.repository  == 'panda-re/panda'

@@ -1,14 +1,10 @@
 ARG BASE_IMAGE="ubuntu:18.04"
-ARG DISTRO="bionic"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
-ARG PANDA_GIT="https://github.com/panda-re/panda.git"
-ARG PANDA_GITREF="d68f846"
 ARG PROTOBUF_VER="3.0.0"
 ARG CFFI_PIP="https://foss.heptapod.net/pypy/cffi/-/archive/branch/default/cffi-branch-default.zip"
 
 ### BASE IMAGE
 FROM $BASE_IMAGE as base
-ARG DISTRO
 ARG TOOLCHAIN_R_KEY
 ARG TOOLCHAIN_R_PPA
 
@@ -68,8 +64,6 @@ RUN apt-get -qq update && \
 
 ### BUILD IMAGE - STAGE 2
 FROM base AS builder
-ARG DISTRO
-ARG PANDA_GIT
 ARG TARGET_LIST
 ARG PROTOBUF_VER
 ARG CFFI_PIP
@@ -130,20 +124,22 @@ RUN git -C /panda submodule update --init dtc && \
         --extra-cflags=-DXC_WANT_COMPAT_DEVICEMODEL_API && \
     make -C /panda/build -j "$(nproc)"
 
-#### Install PANDA + pypanda (STAGE 3)
-FROM builder as install_panda
-RUN ls /panda/build # TESTING
+#### Develop setup: panda built + pypanda installed - Stage 3
+FROM builder as developer
+RUN cd /panda/panda/python/core && \
+    python3 setup.py develop
+
+#### Install PANDA + pypanda from builder - Stage 4
+FROM builder as installer
 RUN  make -C /panda/build install
 # Install pypanda
 RUN cd /panda/panda/python/core && \
     python3 setup.py install
 
-### STAGE 4 - final image copy pypanda + panda
+### Copy files for panda+pypanda from installer  - Stage 5
 FROM base as panda
 
-COPY --from=install_panda /usr/local /usr/local
+COPY --from=installer /usr/local /usr/local
 
 RUN ldconfig && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10
-
-WORKDIR /panda
