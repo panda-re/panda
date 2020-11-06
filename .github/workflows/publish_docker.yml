@@ -17,10 +17,15 @@ jobs:
       run: docker login -u pandare -p ${{secrets.pandare_dockerhub}}
 
     - name: Build Bionic container
-      run:  cd $GITHUB_WORKSPACE && DOCKER_BUILDKIT=1 docker build -t pandare/panda:latest .;
+      # Push both dev and regular container
+      run:  DOCKER_BUILDKIT=1 docker build --progress=plain -t --target=panda pandare/panda:latest $GITHUB_WORKSPACE;
             docker tag  pandare/panda:latest pandare/panda:${GITHUB_SHA};
             docker push pandare/panda:${GITHUB_SHA};
             docker push pandare/panda:latest;
+            DOCKER_BUILDKIT=1 docker build --progress=plain -t --target=developer pandadev:latest $GITHUB_WORKSPACE;
+            docker tag  pandare/pandadev:latest pandare/pandadev:${GITHUB_SHA};
+            docker push pandare/pandadev:${GITHUB_SHA};
+            docker push pandare/pandadev:latest;
 
     - name: Checkout docs and reset
       run: rm -rf "${GITHUB_WORKSPACE}/auto_pydoc";
