@@ -1,11 +1,21 @@
 #!/bin/bash
+# Usage ./build.sh  [architectures] [Configure flags...]
+# example: ./build.sh i386-softmmu,arm-softmmu
+#          ./build.sh small # small = i386-softmmu
+
+# printf wrapper - messages sent to stderr
+msg() {
+    local fmt=$1
+    shift
+    printf "%s: $fmt\n" build.sh $* >&2
+}
 
 # Default targets to build. Change with argument. small = i386-softmmu
 TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
+LLVM_CONFIG_BINARY="llvm-config-10"
 
 # If there are arguments, the first arg is target list or 'small'. subsequent args are passed to configure
-if [ $# -ge 1 ]; then
-    if [ "$1" = "small" ]; then
+if [ $# -ge 1 ]; then if [ "$1" = "small" ]; then
         TARGET_LIST="i386-softmmu"
     else
         TARGET_LIST="$1"
@@ -21,25 +31,9 @@ else
     READLINK=readlink
 fi
 
-# printf wrapper - messages sent to stderr
-msg() {
-    local fmt=$1
-    shift
-    printf "%s: $fmt\n" $scriptname $* >&2
-}
-
-# Set script related variables.
-scriptname=$(basename $0)
-scriptdir=$(dirname $0)
-
 # Set source path variables.
 PANDA_DIR_REL="$(dirname $0)"
 PANDA_DIR="$("$READLINK" -f "${PANDA_DIR_REL}")"
-
-# Get the location of the LLVM compiled for PANDA, respecting environment variables.
-PANDA_LLVM_ROOT="${PANDA_LLVM_ROOT:-"${PANDA_DIR_REL}/../llvm"}"
-PANDA_LLVM_BUILD="${PANDA_LLVM_BUILD:-Release}"
-PANDA_LLVM="$("$READLINK" -f "${PANDA_LLVM_ROOT}/${PANDA_LLVM_BUILD}" 2>/dev/null)"
 
 # Number of concurrent make jobs.
 PANDA_NPROC=${PANDA_NPROC:-$(nproc || sysctl -n hw.ncpu)}
@@ -69,38 +63,25 @@ else
     exit 1
 fi
 
-### Check that PANDA_LLVM is correct and attempt to fix it if not.
-if [ "$PANDA_LLVM" != "" ] && [ ! -d "$PANDA_LLVM" ]; then
-    msg "$PANDA_LLVM does not exist"
-    if [ -f "$PANDA_LLVM_ROOT/bin/llvm-config" ]; then
-        msg "llvm-config found in ${PANDA_LLVM_ROOT}/bin/llvm-config, setting llvm path to just $PANDA_LLVM_ROOT"
-        PANDA_LLVM="$("$READLINK" -f "${PANDA_LLVM_ROOT}")"
-    else
-        msg "$PANDA_LLVM_ROOT/bin/llvm-config not found either, are you sure that PANDA_LLVM_ROOT is correct?"
-        PANDA_LLVM=""
-    fi
-fi
-
 ### Set LLVM_CONFIG to be used with the configure script.
+# No LLVM binary: Disable LLVM
+if ! command -v $LLVM_CONFIG_BINARY &> /dev/null; then
+    echo "LLVM 10 not installed. LLVM SUPPORT IS DISABLED."
+    LLVM_CONFIG=""
+fi
+# OSX: Disable LLVM
 if [ $(getconf LONG_BIT) = 32 ]; then
     msg "Running on a 32bit OS -- LLVM SUPPORT IS DISABLED"
     LLVM_CONFIG=""
-elif [ "$PANDA_LLVM" != "" ]; then
-    ## Using PANDA LLVM.
-    msg "Found PANDA LLVM on ${PANDA_LLVM_ROOT} -- LLVM SUPPORT IS ENABLED"
-    LLVM_CONFIG="--enable-llvm --with-llvm=${PANDA_LLVM}"
+fi
+
+## Use system LLVM-10
+if $LLVM_CONFIG_BINARY --version >/dev/null 2>/dev/null; then
+    msg "Found LLVM on $($LLVM_CONFIG_BINARY --prefix) -- LLVM SUPPORT IS ENABLED"
+    LLVM_CONFIG="--enable-llvm --with-llvm=$($LLVM_CONFIG_BINARY --prefix)"
 else
-    ## Fallback to system LLVM.
-    if llvm-config-3.3 --version >/dev/null 2>/dev/null; then
-        msg "Found LLVM on $(llvm-config-3.3 --prefix) -- LLVM SUPPORT IS ENABLED"
-        LLVM_CONFIG="--enable-llvm --with-llvm=$(llvm-config-3.3 --prefix)"
-    elif llvm-config --version >/dev/null 2>/dev/null && [ $(llvm-config --version) == "3.3" ]; then
-        msg "Found LLVM on $(llvm-config --prefix) -- LLVM SUPPORT IS ENABLED"
-        LLVM_CONFIG="--enable-llvm --with-llvm=$(llvm-config --prefix)"
-    else
-        msg "No suitable LLVM found -- LLVM SUPPORT IS DISABLED"
-        LLVM_CONFIG=""
-    fi
+    msg "No suitable LLVM found -- LLVM SUPPORT IS DISABLED"
+    LLVM_CONFIG=""
 fi
 
 ### Set other configuration flags, depending on environment.
@@ -147,10 +128,5 @@ msg "Configuring PANDA..."
 
 msg "Compiling PANDA..."
 make -j ${PANDA_NPROC}
-
-if [ "$PANDA_TEST" = "yes" ]; then
-    msg "Testing PANDA..."
-    make -j ${PANDA_NPROC} check
-fi
 
 # vim: set et ts=4 sts=4 sw=4 ai ft=sh :
