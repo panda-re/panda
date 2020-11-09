@@ -1,18 +1,38 @@
 #include "panda/tcg-utils.h"
 
-TCGOp *find_guest_insn(int index)
+TCGOp *find_first_guest_insn()
 {
     TCGOp *op = NULL;
-    TCGOp *guest_insn_mark = NULL; 
-    int ci = 0;
+    TCGOp *first_guest_insn_mark = NULL; 
     for (int oi = tcg_ctx.gen_op_buf[0].next; oi != 0; oi = op->next) {
         op = &tcg_ctx.gen_op_buf[oi];
         if (INDEX_op_insn_start == op->opc) {
-            if (index == ci) {
+            first_guest_insn_mark = op;
+            break;
+        }
+    }
+    return first_guest_insn_mark;
+}
+
+TCGOp *find_guest_insn_by_addr(target_ulong addr)
+{
+    TCGOp *op = NULL;
+    TCGOp *guest_insn_mark = NULL; 
+    for (int oi = tcg_ctx.gen_op_buf[0].next; oi != 0; oi = op->next) {
+        op = &tcg_ctx.gen_op_buf[oi];
+        if (INDEX_op_insn_start == op->opc) {
+            TCGArg *args = &tcg_ctx.gen_opparam_buf[op->args];
+            target_ulong a;
+#if TARGET_LONG_BITS > TCG_TARGET_REG_BITS
+            a = static_cast<target_ulong>(args[1] << 32);
+            a |= args[0];
+#else
+            a = args[0];
+#endif
+            if (addr == a) {
                 guest_insn_mark = op;
                 break;
             }
-            ci++;
         }
     }
     return guest_insn_mark;

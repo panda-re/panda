@@ -17,6 +17,7 @@
 
 #include "panda/tcg-utils.h"
 
+// Uncomment the following for extra debugging messages.
 //#define EDGE_INST_DEBUG
 
 namespace coverage
@@ -99,6 +100,9 @@ const static std::unordered_map<unsigned, RegisterFetcher>
     { X86_REG_RCX, MK_REG_FETCHER(regs[R_ECX], 0xFFFFFFFFFFFFFFFF, 0) },
     { X86_REG_RDX, MK_REG_FETCHER(regs[R_EDX], 0xFFFFFFFFFFFFFFFF, 0) },
     { X86_REG_RBP, MK_REG_FETCHER(regs[R_EBP], 0xFFFFFFFFFFFFFFFF, 0) },
+    { X86_REG_RSI, MK_REG_FETCHER(regs[R_ESI], 0xFFFFFFFFFFFFFFFF, 0) },
+    { X86_REG_RDI, MK_REG_FETCHER(regs[R_EDI], 0xFFFFFFFFFFFFFFFF, 0) },
+    { X86_REG_RSP, MK_REG_FETCHER(regs[R_ESP], 0xFFFFFFFFFFFFFFFF, 0) },
     { X86_REG_R8, MK_REG_FETCHER(regs[8], 0xFFFFFFFFFFFFFFFF, 0) },
     { X86_REG_R9, MK_REG_FETCHER(regs[9], 0xFFFFFFFFFFFFFFFF, 0) },
     { X86_REG_R10, MK_REG_FETCHER(regs[10], 0xFFFFFFFFFFFFFFFF, 0) },
@@ -503,7 +507,7 @@ void EdgeInstrumentationDelegate::instrument(CPUState *cpu,
 #endif
 
     // Insert the block callback.
-    TCGOp *insert_point = find_guest_insn(0);
+    TCGOp *insert_point = find_first_guest_insn();
     assert(NULL != insert_point);
     insert_call(&insert_point, &block_callback, edge_state.get(),
         edge_processor.get(), tb);
@@ -526,7 +530,7 @@ void EdgeInstrumentationDelegate::instrument(CPUState *cpu,
                                                  insn[i].mnemonic,
                                                  insn[i].op_str);
 #endif
-            TCGOp *op = find_guest_insn(i);
+            TCGOp *op = find_guest_insn_by_addr(insn[i].address);
             assert(op);
             it->second(edge_state.get(), cpu, op, tb, &insn[i]);
             break;
