@@ -36,6 +36,7 @@ RUN apt-get -qq update && \
       libiscsi7 \
       libjpeg-turbo8 \
       libjpeg8 \
+      libllvm10 \
       libnettle6 \
       libnuma1 \
       libpixman-1-0 \
