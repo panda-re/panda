@@ -2,6 +2,7 @@
 import re
 import os
 import sys
+import shutil
 if sys.version_info[0] < 3:
     raise RuntimeError('Requires python3')
 
@@ -10,18 +11,33 @@ if sys.version_info[0] < 3:
 # Both of these files contain info in or derived from stuff in
 # panda/include/panda.  Here, we autogenerate the two files so that we
 # never have to worry about how to keep them in sync with the info in
-# those include files.  See panda/include/panda/README.pypanda for 
+# those include files.  See panda/include/panda/README.pypanda for
 # so proscriptions wrt those headers we use here. They need to be kept
 # fairly clean if we are to be able to make sense of them with this script
 # which isn't terriby clever.
-#
 
-#XXX: When trying to install via pip these files get copied to /tmp and then our paths are all bad
-OUTPUT_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "core", "panda", "autogen"]))               # panda-git/panda/python/core/panda/autogen
-PLUGINS_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "plugins"]))                         # panda-git/panda/plugins
-INCLUDE_DIR_PYP = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "core", "panda", "include"]))          # panda-git/panda/python/core/panda/include
-INCLUDE_DIR_PAN = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "include", "panda"]))            # panda-git/panda/include/panda
+# Also copy all of the generated plog_pb2.py's into pandare/plog_pb/
+# XXX: WIP if we do this this file should be renamed
+root_dir = os.path.join(*[os.path.dirname(__file__), "..", "..", ".."]) # panda-git/ root dir
+build_root = os.path.join(root_dir, "build")
+lib_dir = os.path.join("pandare", "data")
 
+for arch in ['arm', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']:
+    softmmu = arch+"-softmmu"
+    plog = os.path.join(*[build_root, softmmu, "plog_pb2.py"])
+    if os.path.isfile(plog):
+        shutil.copy(plog, os.path.join(*["pandare", "plog_pb2.py"]))
+        break
+else:
+    raise RuntimeError("Unable to find any plog_pb2.py files in build directory")
+
+OUTPUT_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare", "autogen"]))                # panda-git/panda/python/core/pandare/autogen
+PLUGINS_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "plugins"]))              # panda-git/panda/plugins
+INCLUDE_DIR_PYP = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare", "include"]))           # panda-git/panda/python/core/pandare/include
+INCLUDE_DIR_PAN = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "include", "panda"])) # panda-git/panda/include/panda
+
+GLOBAL_MAX_SYSCALL_ARG_SIZE = 64
+GLOBAL_MAX_SYSCALL_ARGS = 17
 
 
 pypanda_start_pattern = """// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
@@ -153,13 +169,118 @@ def include_this(pdth, fn):
             pdth.write(line)
     pn += 1
 
+def compile(arch, bits, pypanda_headers, install, static_inc):
+    #from ..ffi_importer import ffi
+    from cffi import FFI
+    ffi = FFI()
 
-def main():
+    ffi.set_source(f"panda_{arch}_{bits}", None)
+    if install:
+        import os
+        include_dir = os.path.abspath(os.path.join(*[os.path.dirname(__file__),  "pandare", "include"]))
+    else:
+        include_dir = static_inc
+
+    def define_clean_header(ffi, fname):
+        '''Convenience function to pull in headers from file in C'''
+        #print("Pulling cdefs from ", fname)
+        # CFFI can't handle externs, but sometimes we have to extern C (as opposed to
+        r = open(fname).read()
+        for line in r.split("\n"):
+            assert("extern \"C\" {" not in line), "Externs unsupported by CFFI. Change {} to a single line without braces".format(r)
+        r = r.replace("extern \"C\" ", "") # This allows inline externs like 'extern "C" void foo(...)'
+        try:
+            with open("a","w") as f:
+                f.write(r)
+            ffi.cdef(r)
+        except Exception as e: # it's a cffi.CDefError, but cffi isn't imported
+            print(f"\nError parsing header from {fname}\n")
+            raise
+
+    # For OSI
+    ffi.cdef("typedef void GArray;")
+    ffi.cdef("typedef int target_pid_t;")
+
+    ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
+    ffi.cdef("typedef int"+str(bits)+"_t target_long;")
+
+    # PPP Headers
+    # Syscalls - load architecture-specific headers
+    if arch == "i386":
+        define_clean_header(ffi, include_dir + "/panda_datatypes_X86_32.h")
+        define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_x86.h")
+    elif arch == "x86_64":
+        define_clean_header(ffi, include_dir + "/panda_datatypes_X86_64.h")
+        define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_x64.h")
+    elif arch == "arm":
+        define_clean_header(ffi, include_dir + "/panda_datatypes_ARM_32.h")
+        define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_arm.h")
+        pass
+    elif arch == "ppc" and int(bits) == 32:
+        define_clean_header(ffi, include_dir + "/panda_datatypes_PPC_32.h")
+        print('WARNING: no syscalls support for PPC 32')
+    elif arch == "ppc" and int(bits) == 64:
+        define_clean_header(ffi, include_dir + "/panda_datatypes_PPC_64.h")
+        print('WARNING: no syscalls support for PPC 64')
+    elif arch == "mips" and int(bits) == 32:
+        define_clean_header(ffi, include_dir + "/panda_datatypes_MIPS_32.h")
+        define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_mips.h")
+    elif arch == "mipsel" and int(bits) == 32:
+        define_clean_header(ffi, include_dir + "/panda_datatypes_MIPS_32.h") # XXX?
+        define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_mips.h")
+    else:
+        print("PANDA_DATATYPES: Architecture not supported")
+
+    # Define some common panda datatypes
+    define_clean_header(ffi, include_dir + "/panda_datatypes.h")
+
+    # Now syscalls2 common:
+    define_clean_header(ffi, include_dir + "/syscalls2_info.h")
+
+    # A few more CFFI types now that we have common datatypes
+    # Manually define syscall_ctx_t - taken from syscalls2/generated/syscalls_ext_typedefs.h
+    # It uses a #DEFINES as part of the array size so CFFI can't hanle that :
+    ffi.cdef(''' typedef struct syscall_ctx { '''
+            + f'''
+            int no;               /**< number */
+            target_ptr_t asid;    /**< calling process asid */
+            target_ptr_t retaddr; /**< return address */
+            uint8_t args[{GLOBAL_MAX_SYSCALL_ARG_SIZE}]
+                 [{GLOBAL_MAX_SYSCALL_ARG_SIZE}]; /**< arguments */
+                 '''
+        +'''
+        } syscall_ctx_t;
+    ''')
+    ffi.cdef("void panda_setup_signal_handling(void (*f) (int,void*,void*));",override=True)
+
+    define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs.h")
+
+    define_clean_header(ffi, include_dir + "/callstack_instr.h")
+
+    define_clean_header(ffi, include_dir + "/hooks2_ppp.h")
+    # END PPP headers
+
+    define_clean_header(ffi, include_dir + "/breakpoints.h")
+    for header in pypanda_headers:
+        define_clean_header(ffi, header)
+
+    ffi.compile(verbose=True,debug=True,tmpdir='./pandare/autogen')
+
+
+def main(install=False,recompile=True):
+    '''
+    Copy and reformat panda header files into the autogen directory
+
+    If `install` is set, we will assume files are being installed to the system
+    Otherwise local paths are used.
+    '''
     global pn
     pn = 1
     # examine all plugin dirs looking for pypanda-aware headers and pull
     # out pypanda bits to go in INCLUDE_DIR files
     plugin_dirs = os.listdir(PLUGINS_DIR)
+
+    INCLUDE_DIR_PYP_INSTALL = 'os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "pandare", "data", "pypanda", "include"]))'  # ... /python3.6/site-packages/panda/data/pypanda/include/
 
     # Pull in osi/osi_types.h first - it's needed by other plugins too
     if os.path.exists("%s/%s" % (PLUGINS_DIR, 'osi')):
@@ -178,7 +299,7 @@ def main():
                 create_pypanda_header("%s/%s" % (plugin_dir, plugin_file))
 
     # Also pull in a few special header files outside of plugin-to-plugin APIs. Note we already handled syscalls2 above
-    for header in ["rr/rr_api.h", "plugin.h", "common.h"]:
+    for header in ["rr/rr_api.h", "plugin.h", "common.h", "rr/rr_types.h"]:
         create_pypanda_header("%s/%s" % (INCLUDE_DIR_PAN, header))
 
     # PPP headers
@@ -193,6 +314,9 @@ def main():
     #   other PPP headers: callstack_instr. TODO: more
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/callstack_instr", "callstack_instr.h"))
 
+    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2_ppp.h"))
+    create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
+
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
         pdty.write("""
 \"\"\"
@@ -206,101 +330,6 @@ from ctypes import *
 from collections import namedtuple
 from ..ffi_importer import ffi
 
-def define_clean_header(ffi, fname):
-    '''Convenience function to pull in headers from file in C'''
-    #print("Pulling cdefs from ", fname)
-    # CFFI can't handle externs, but sometimes we have to extern C (as opposed to 
-    r = open(fname).read()
-    for line in r.split("\\n"):
-        assert("extern \\"C\\" {{" not in line), "Externs unsupported by CFFI. Change {{}} to a single line without braces".format(r)
-    r = r.replace("extern \\"C\\" ", "") # This allows inline externs like 'extern "C" void foo(...)'
-    try:
-        ffi.cdef(r)
-    except Exception as e: # it's a cffi.CDefError, but cffi isn't imported
-        print(f"\\nError parsing header from {{fname}}\\n")
-        raise
-
-from os import environ
-
-if "PANDA_BITS" in environ:
-    bits = int(environ["PANDA_BITS"])
-else:
-    print("DOCUMENT MODE")
-    bits = 32
-
-if "PANDA_ARCH" in environ:
-    arch = environ["PANDA_ARCH"]
-else:
-    print("DOCUMENT MODE")
-    arch = "i386"
-
-# For OSI
-ffi.cdef("typedef void GArray;")
-ffi.cdef("typedef int target_pid_t;")
-
-ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
-#define_clean_header(ffi, "{inc}/pthreadtypes.h")
-
-# PPP Headers
-# Syscalls - load architecture-specific headers
-if arch == "i386":
-    define_clean_header(ffi, "{inc}/panda_datatypes_X86_32.h")
-    define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_x86.h")
-elif arch == "x86_64":
-    define_clean_header(ffi, "{inc}/panda_datatypes_X86_64.h")
-    define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_x64.h")
-elif arch == "arm":
-    define_clean_header(ffi, "{inc}/panda_datatypes_ARM_32.h")
-    define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_arm.h")
-elif arch == "ppc" and int(bits) == 32:
-    define_clean_header(ffi, "{inc}/panda_datatypes_PPC_32.h")
-    print('WARNING: no syscalls support for PPC 32')
-elif arch == "ppc" and int(bits) == 64:
-    define_clean_header(ffi, "{inc}/panda_datatypes_PPC_64.h")
-    print('WARNING: no syscalls support for PPC 64')
-elif arch == "mips" and int(bits) == 32:
-    define_clean_header(ffi, "{inc}/panda_datatypes_MIPS_32.h")
-    define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_mips.h")
-elif arch == "mipsel" and int(bits) == 32:
-    define_clean_header(ffi, "{inc}/panda_datatypes_MIPS_32.h") # XXX?
-    define_clean_header(ffi, "{inc}/syscalls_ext_typedefs_mips.h")
-else:
-    print("PANDA_DATATYPES: Architecture not supported")
-
-# Define some common panda datatypes
-#define_clean_header(ffi, "{inc}/panda_qemu_support.h")
-define_clean_header(ffi, "{inc}/panda_datatypes.h")
-
-# Now syscalls2 common:
-define_clean_header(ffi, "{inc}/syscalls2_info.h")
-
-# A few more CFFI types now that we have common datatypes
-# Manually define syscall_ctx_t - taken from syscalls2/generated/syscalls_ext_typedefs.h
-# It uses a #DEFINES as part of the array size so CFFI can't hanle that :
-ffi.cdef(''' typedef struct syscall_ctx {{
-        int no;               /**< number */
-        target_ptr_t asid;    /**< calling process asid */
-        target_ptr_t retaddr; /**< return address */
-        uint8_t args[{GLOBAL_MAX_SYSCALL_ARGS}]
-             [{GLOBAL_MAX_SYSCALL_ARG_SIZE}]; /**< arguments */
-    }} syscall_ctx_t;
-''')
-
-define_clean_header(ffi, "{inc}/syscalls_ext_typedefs.h")
-
-define_clean_header(ffi, "{inc}/callstack_instr.h")
-# END PPP headers
-
-define_clean_header(ffi, "{inc}/breakpoints.h")
-""".format(inc=INCLUDE_DIR_PYP,
-        GLOBAL_MAX_SYSCALL_ARG_SIZE=64, # It's sizeof(uint64_t) so that's always 64
-        GLOBAL_MAX_SYSCALL_ARGS=17 # Constant from syscalls2/generated/syscalls_ext_typedefs.h
-        ))
-
-        for pypanda_header in pypanda_headers:
-            pdty.write('define_clean_header(ffi, "%s")\n' % pypanda_header)
-
-        pdty.write("""
 # so we need access to some data structures, but don't actually
 # want to open all of libpanda yet because we don't have all the
 # file information. So we just open libc to access this.
@@ -410,8 +439,8 @@ pcb.init : pandacbtype("init", -1),
                 pdty.write(",\n")
         pdty.write("""
 pandacbtype.__doc__ = '''stores the names and numbers for callbacks'''
-PandaCB.__doc__ = '''custom named tuple to handle callbacks. Each element is a callback except init.'''        
-        """)
+PandaCB.__doc__ = '''custom named tuple to handle callbacks. Each element is a callback except init.'''
+""")
 
 
 
@@ -429,7 +458,7 @@ PandaCB.__doc__ = '''custom named tuple to handle callbacks. Each element is a c
 #define PYPANDA 1
 
 """)
-        # probably a better way... 
+        # probably a better way...
         pdth.write("typedef target_ulong target_ptr_t;\n")
 
         # XXX: These are defined in plugin.h, but we can't include all of plugin.h
@@ -442,6 +471,26 @@ PandaCB.__doc__ = '''custom named tuple to handle callbacks. Each element is a c
                         f"{PLUGINS_DIR}/osi_linux/utils/kernelinfo/kernelinfo.h",
                          "panda_api.h", ]:
             include_this(pdth, filename)
+    
+    if recompile:
+        print("Recompiling headers for cffi")
+        arches = [
+            ("i386", 32),
+            ("x86_64", 64),
+            ("arm", 32),
+            ("ppc", 32),
+            ("ppc", 64),
+            ("mips", 32),
+            ("mipsel",32),
+        ]
+
+        for arch in arches:
+            try:
+                compile(arch[0], arch[1], pypanda_headers, install, INCLUDE_DIR_PYP)
+            except Exception as e:
+                print("You need a newer version of cffi to run pypanda. Install from source with \
+                    pip3 install https://foss.heptapod.net/pypy/cffi/-/archive/branch/default/cffi-branch-default.tar.gz")
+                raise e
 
 if __name__ == '__main__':
     main()

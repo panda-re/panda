@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # /* PANDABEGINCOMMENT
 # *
 # * Authors:
@@ -17,7 +17,7 @@
 ''' PANDA tool for generating different code files from system call definitions.
 '''
 
-from __future__ import print_function
+
 import jinja2
 import json
 import sys
@@ -257,7 +257,7 @@ class Argument(object):
             runtime value to it.
         '''
         ctype = self.ctype
-        ctype_bits = int(filter(str.isdigit, ctype))
+        ctype_bits = int(''.join(filter(str.isdigit, ctype)))
         assert ctype_bits in [32, 64], 'Invalid number of bits for type %s' % ctype
         ctype_get = 'get_%d' % ctype_bits if ctype.startswith('uint') else 'get_s%d' % ctype_bits
         return '{0} arg{1} = {2}(cpu, {1});'.format(ctype, self.no, ctype_get)
@@ -423,7 +423,7 @@ if __name__ == '__main__':
         }
         if _target in context_target_extra:
             d = context_target_extra[_target]
-            assert all([k not in target_context for k in d.keys()]), 'target context for %s overwrites values' % (_target)
+            assert all([k not in target_context for k in list(d.keys())]), 'target context for %s overwrites values' % (_target)
             target_context.update(d)
 
         # Parse prototype file contents. Extra context is passed to set
@@ -453,25 +453,25 @@ if __name__ == '__main__':
 
         # Render per-target output files.
         j2tpl = j2env.get_template('syscall_switch_enter.tpl')
-        with open(os.path.join(args.outdir, "%ssyscall_switch_enter_%s_%s.cpp" % (args.prefix, _os, _arch)), "wb+") as of:
+        with open(os.path.join(args.outdir, "%ssyscall_switch_enter_%s_%s.cpp" % (args.prefix, _os, _arch)), "w+") as of:
             logging.info("Writing %s", of.name)
             of.write(j2tpl.render(target_context))
         j2tpl = j2env.get_template('syscall_switch_return.tpl')
-        with open(os.path.join(args.outdir, "%ssyscall_switch_return_%s_%s.cpp" % (args.prefix, _os, _arch)), "wb+") as of:
+        with open(os.path.join(args.outdir, "%ssyscall_switch_return_%s_%s.cpp" % (args.prefix, _os, _arch)), "w+") as of:
             logging.info("Writing %s", of.name)
             of.write(j2tpl.render(target_context))
 
         # Generate syscall info dynamic libraries.
         if args.generate_info:
             j2tpl = j2env.get_template('syscalls_info.tpl')
-            with open(os.path.join(args.outdir, "%sdso_info_%s_%s.c" % (args.prefix, _os, _arch)), "wb+") as of:
+            with open(os.path.join(args.outdir, "%sdso_info_%s_%s.c" % (args.prefix, _os, _arch)), "w+") as of:
                 logging.info("Writing %s", of.name)
                 of.write(j2tpl.render(target_context))
 
         # Make syscalls_ext_typedefs_[arch] files
         j2tpl = j2env.get_template('syscalls_ext_typedefs_arch.tpl')
         of_name = '%s%s' % (args.prefix, 'syscalls_ext_typedefs_' + _arch + '.h')
-        with open(os.path.join(args.outdir, of_name), 'wb+') as of:
+        with open(os.path.join(args.outdir, of_name), 'w+') as of:
             logging.info("Writing %s", of.name)
             of.write(j2tpl.render(syscalls=syscalls_arch))
 
@@ -479,7 +479,7 @@ if __name__ == '__main__':
     for tpl, ext in GENERATED_FILES:
         j2tpl = j2env.get_template(tpl)
         of_name = '%s%s%s' % (args.prefix, os.path.splitext(os.path.basename(tpl))[0], ext)
-        with open(os.path.join(args.outdir, of_name), 'wb+') as of:
+        with open(os.path.join(args.outdir, of_name), 'w+') as of:
             logging.info("Writing %s", of.name)
             of.write(j2tpl.render(global_context))
 

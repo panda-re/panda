@@ -6,7 +6,7 @@
 import os
 import subprocess
 from sys import argv
-from panda.images.qcows import SUPPORTED_IMAGES, VM_DIR, get_qcow
+from pandare.images.qcows import SUPPORTED_IMAGES, VM_DIR, get_qcow
 reverted = False
 
 # If called as ./generic_tests.py, run each supported architecture
@@ -53,7 +53,7 @@ def runner(generic_name):
     First run via CLI - load root snapshot, run a command and quit - check command output
     Then test via python to see if OSI works
     '''
-    from panda import Panda, blocking, ffi
+    from pandare import Panda, blocking, ffi
     data = SUPPORTED_IMAGES[generic_name]
     qcow_path = get_qcow(generic_name)
 

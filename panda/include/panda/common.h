@@ -296,6 +296,8 @@ static inline bool panda_in_kernel(CPUState *cpu) {
 #if defined(TARGET_I386)
     return ((env->hflags & HF_CPL_MASK) == 0);
 #elif defined(TARGET_ARM)
+    // Note: returns true for non-SVC modes (hypervisor, monitor, system, etc).
+    // See: https://www.keil.com/pack/doc/cmsis/Core_A/html/group__CMSIS__CPSR__M.html
     return ((env->uncached_cpsr & CPSR_M) > ARM_CPU_MODE_USR);
 #elif defined(TARGET_PPC)
     return msr_pr;
@@ -306,11 +308,10 @@ static inline bool panda_in_kernel(CPUState *cpu) {
     return false;
 #endif
 }
-
 /**
- * @brief Returns the guest stack pointer.
+ * @brief Returns the guest kernel stack pointer.
  */
-static inline target_ulong panda_current_sp(CPUState *cpu) {
+static inline target_ulong panda_current_ksp(CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
 #if defined(TARGET_I386)
     if (panda_in_kernel(cpu)) {
@@ -327,6 +328,32 @@ static inline target_ulong panda_current_sp(CPUState *cpu) {
         }
         return kernel_esp;
     }
+#elif defined(TARGET_ARM)
+    if ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC) {
+        return env->regs[13];
+    }else {
+        // Read banked R13 for SVC mode to get the kernel SP (1=>SVC bank from target/arm/internals.h)
+        return env->banked_r13[1];
+    }
+#elif defined(TARGET_PPC)
+    // R1 on PPC.
+    return env->gpr[1];
+#elif defined(TARGET_MIPS)
+    return env->active_tc.gpr[MIPS_SP];
+#else
+#error "panda_current_ksp() not implemented for target architecture."
+    return 0;
+#endif
+}
+
+/**
+ * @brief Returns the guest stack pointer.
+ */
+static inline target_ulong panda_current_sp(CPUState *cpu) {
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+#if defined(TARGET_I386)
+    // valid on x86 and x86_64
+    return env->regs[R_ESP];
 #elif defined(TARGET_ARM)
     // R13 on ARM.
     return env->regs[13];

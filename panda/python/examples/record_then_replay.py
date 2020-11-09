@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Take a recording, then replay and analyze
 from os import remove, path
-from panda import Panda, blocking
+from pandare import Panda, blocking
 
 arch = "i386"
 panda = Panda(generic=arch)

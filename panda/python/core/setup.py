@@ -1,33 +1,30 @@
 #!/usr/bin/env python
 # Install with python setup.py (develop|install)
-# XXX: can't be installed with `pip install .` due to some relative path to plugins?
 
-from setuptools import setup
+from setuptools import setup, find_packages
 from setuptools.command.install import install as install_orig
 from setuptools.command.develop import develop as develop_orig
+from setuptools.dist import Distribution
+from subprocess import check_output
+
 import os
 import shutil
-
-##############################
-# 1)  Populate panda/autogen #
-##############################
-
-from create_panda_datatypes import main as create_datatypes
-create_datatypes()
-
 ################################################
-# 2) Copy panda object files: libpanda-XYZ.so, #
+# 1) Copy panda object files: libpanda-XYZ.so, #
 #    pc-bios/*, all .so files for plugins,     #
 #    pypanda's include directory, llvm-helpers #
 ################################################
 
 root_dir = os.path.join(*[os.path.dirname(__file__), "..", "..", ".."]) # panda-git/ root dir
 
-# XXX - Can we toggle this depending on if we're run as 'setup.py develop' vs 'setup.py install'
-# When we're run in develop mode, we shouldn't copy the prebuild binaries and instead should
-# find them in ../../build/. Temporrary hack is to run setup.py develop then delete lib_dir (falls back to build)
-lib_dir = os.path.join("panda", "data")
+pypi_build = False # Set to true if trying to minimize size for pypi package upload. Note this disables some architectures
+
+lib_dir = os.path.join("pandare", "data")
 def copy_objs():
+    '''
+    Run to copy objects into a (local and temporary) python module before installing to the system.
+    Shouldn't be run if you're just installing in develop mode
+    '''
     build_root = os.path.join(root_dir, "build")
 
     if os.path.isdir(lib_dir):
@@ -41,11 +38,11 @@ def copy_objs():
         raise RuntimeError(f"Could not find PC-bios directory at {biosdir}")
     shutil.copytree(biosdir, lib_dir+"/pc-bios")
 
-    # Copy pypanda's include directory (different than core panda's)
-    pypanda_inc = os.path.join(*[root_dir, "panda", "python", "core", "panda", "include"])
+    # Copy pypanda's include directory (different than core panda's) into a datadir
+    pypanda_inc = os.path.join(*[root_dir, "panda", "python", "core", "pandare", "include"])
     if not os.path.isdir(pypanda_inc):
         raise RuntimeError(f"Could not find pypanda include directory at {pypanda_inc}")
-    pypanda_inc_dest = os.path.join(*["core", "panda", "data", "pypanda", "include"])
+    pypanda_inc_dest = os.path.join(*["pandare", "data", "pypanda", "include"])
     if os.path.isdir(pypanda_inc_dest):
         shutil.rmtree(pypanda_inc_dest)
     shutil.copytree(pypanda_inc, pypanda_inc_dest)
@@ -54,16 +51,19 @@ def copy_objs():
     with open(os.path.join(*[build_root, 'config-host.mak']), 'r') as cfg:
         llvm_enabled = True if 'CONFIG_LLVM=y' in cfg.read() else False
 
-
     # For each arch, copy library, plugins, plog_pb2.py and llvm-helpers
-    for arch in ['arm', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']:
+    arches = ['arm', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']
+    if pypi_build:
+        # XXX need to drop mips and ppc to fit into pypi
+        arches = ['arm', 'i386', 'x86_64', 'mipsel']
+
+    for arch in arches:
         libname = "libpanda-"+arch+".so"
         softmmu = arch+"-softmmu"
         path      = os.path.join(*[build_root, softmmu, libname])
         plugindir = os.path.join(*[build_root, softmmu, "panda", "plugins"])
-        plog      = os.path.join(*[build_root, softmmu, "plog_pb2.py"])
-        llvm1      = os.path.join(*[build_root, softmmu, "llvm-helpers.bc1"])
-        llvm2      = os.path.join(*[build_root, softmmu, f"llvm-helpers-{arch}.bc"])
+        llvm1     = os.path.join(*[build_root, softmmu, "llvm-helpers.bc1"])
+        llvm2     = os.path.join(*[build_root, softmmu, f"llvm-helpers-{arch}.bc"])
 
         if os.path.isfile(path) is False:
             print(("Missing file {} - did you run build.sh from panda/build directory?\n"
@@ -75,13 +75,17 @@ def copy_objs():
         new_plugindir = os.path.join(lib_dir, softmmu, "panda/plugins")
         os.mkdir(os.path.dirname(new_plugindir)) # When we copy the whole tree, it will make the plugins directory
 
-        shutil.copy(    plog,       os.path.join(lib_dir, softmmu, "plog_pb2.py"))
-        shutil.copy(    path,       os.path.join(lib_dir, softmmu))
+        shutil.copy(        path,       os.path.join(lib_dir, softmmu))
         if llvm_enabled:
             shutil.copy(    llvm1,      os.path.join(lib_dir, softmmu))
             shutil.copy(    llvm2,      os.path.join(lib_dir, softmmu))
 
-        shutil.copytree(plugindir,  new_plugindir)
+        shutil.copytree(plugindir,  new_plugindir, ignore=shutil.ignore_patterns('*.o', '*.d'))
+
+    # Strip libpandas and plugins to save space (Need <100mb for pypi)
+    if pypi_build:
+        check_output(f"find {lib_dir} -type f -executable -exec strip {{}} \;", shell=True)
+
 
 #########################
 # 3)  Build the package #
@@ -90,38 +94,69 @@ def copy_objs():
 from setuptools.command.install import install as install_orig
 from setuptools.command.develop import develop as develop_orig
 class custom_develop(develop_orig):
+    '''
+    Install as a local module (not to system) by
+        1) Creating datatype files for local-use
+        2) Running regular setup tools logic
+    '''
     def run(self):
-        # Delete panda/data in the case of `setup.py develop`
+        # Delete pandare/data in the case of `setup.py develop`
         # Don't copy objects, use them in the current path
         if os.path.isdir(lib_dir):
             assert('panda' in lib_dir), "Refusing to rm -rf directory without 'panda' in it"
             shutil.rmtree(lib_dir)
+        from create_panda_datatypes import main as create_datatypes
+        create_datatypes(install=False)
         super().run()
 
 class custom_install(install_orig):
-    # Run copy_objs before we install in the case of `setup.py install`
+    '''
+    We're going to install to the system. Two possible states to handle
+    1) Running from within the panda repo with panda built - need to create_datatypes
+    2) Running from a python sdist where all the files are already prepared
+
+    Install to the system by:
+        1) Creating datatype files for an install
+        2) Copying objects into local module
+        3) Running regular setup tools logic
+    '''
     def run(self):
-        copy_objs()
+        try:
+            from create_panda_datatypes import main as create_datatypes
+            create_datatypes(install=True)
+            copy_objs()
+        except ImportError:
+            assert(os.path.isfile("pandare/data/pypanda/include/panda_datatypes.h")), \
+                            "panda_datatypes.h missing and can't be generated"
+            assert(os.path.isfile("pandare/autogen/panda_datatypes.py")), \
+                            "panda_datatypes.py missing and can't be generated"
         super().run()
 
+# To build a package for pip:
+# python setup.py install
+# python setup.py sdist
 
-setup(name='panda',
-      version='0.1',
-      description='Python Interface to Panda',
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
+setup(name='pandare',
+      version='0.1.1.2',
+      description='Python Interface to PANDA',
+      long_description=long_description,
+      long_description_content_type="text/markdown",
       author='Andrew Fasano, Luke Craig, and Tim Leek',
       author_email='fasano@mit.edu',
       url='https://github.com/panda-re/panda/',
-      packages=['panda', 'panda.taint', 'panda.autogen',
-                'panda.images', 'panda.arm', 'panda.x86', 'panda.mips',
-                'panda.extras'],
-      package_data = { 'panda': ['data/**/*', # Copy everything (fails?)
-          'data/*/panda/plugins/*',    # Copy all plugins
-          'data/*/panda/plugins/**/*', # Copy all plugin files
-          'data/pypanda/include/*.h',  # Copy includes files
-          'data/pypanda/include/*.h',  # Copy includes files
-          'data/*/llvm-helpers*.bc',   # Copy llvm-helpers
+      packages=find_packages(),
+      package_data = { 'pandare': ['data/**/*', # Copy everything (fails?)
+          'data/*-softmmu/libpanda-*.so',     # Libpandas
+          'data/*-softmmu/llvm-helpers*.bc*', # Llvm-helpers
+          'data/*-softmmu/panda/plugins/*',   # All plugins
+          'data/*-softmmu/panda/plugins/**/*',# All plugin files
+          'data/pypanda/include/*.h',         # Includes files
+          'data/pc-bios/*',                   # BIOSes
           ]},
-      install_requires=[ 'cffi>=1.13', 'colorama', 'protobuf'],
-      python_requires='>=3.5',
-      cmdclass={'install': custom_install, 'develop': custom_develop}
+      install_requires=[ 'cffi>=1.14.3', 'colorama', 'protobuf'],
+      python_requires='>=3.6',
+      cmdclass={'install': custom_install, 'develop': custom_develop},
      )

@@ -1,6 +1,6 @@
-#!/usr/bin/python2.7
+#!/usr/bin/python3
 
-from __future__ import print_function
+
 import sys
 import os
 import zlib
@@ -32,8 +32,12 @@ assert 'plog_pb2' in sys.modules, "Couldn't load module plog_pb2. Searched paths
 
 class PLogReader:
     def __init__(self, fn):
-        self.f = open(fn)
-        self.version, _, self.dir_pos, _, self.chunk_gsize = struct.unpack('<IIQII', self.f.read(24))
+        self.f = open(fn, "rb")
+        buf = self.f.read(24)
+        try:
+            self.version, _, self.dir_pos, _, self.chunk_gsize = struct.unpack('<IIQII', buf)
+        except struct.error as e:
+             raise ValueError(f"Can't parse {fn} as a plog - it has an incomplete plog header") from e
 
         self.f.seek(self.dir_pos)
         self.nchunks, = struct.unpack('<I', self.f.read(4)) # number of chunks
@@ -53,7 +57,7 @@ class PLogReader:
         self.f.close()
         self.f = self.chunk_data = None
 
-    def next(self):
+    def __next__(self):
         # ran out of chunks
         if not self.chunk_idx < self.nchunks:
             raise StopIteration

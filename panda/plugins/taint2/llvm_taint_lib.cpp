@@ -613,8 +613,8 @@ void PandaTaintVisitor::addInstructionDetailsToArgumentList(
 
     auto opc = I.getOpcode();
 
-    // update_cb() (taint_ops.cpp) assumes that there are no valid llvm
-    // instructions with an opcode of zero
+    // taint_copy()/update_cb() (taint_ops.cpp) assumes that there are 
+    // no valid llvm instructions with an opcode of zero
     assert(opc != 0);
 
     Constant *opcode = const_uint64(opc);
@@ -1341,6 +1341,8 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
         } else {
             insertTaintCopy(I, llvConst, ptr, llvConst, val, size);
         }
+    } else if (isa<AllocaInst>(ptr)) {
+        insertTaintCopy(I, llvConst, val, llvConst, ptr, size);
     } else {
         vector<Value *> args { const_uint64_ptr(first_cpu->env_ptr),
             ptrToInt(ptr, I), llvConst,

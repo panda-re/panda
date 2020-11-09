@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from panda import Panda, blocking, ffi
+from pandare import Panda, blocking, ffi
 
 panda = Panda(generic="x86_64")
 
@@ -12,7 +12,8 @@ def on_sys_read_return(cpu, pc, fd, buf, count):
     procname = ffi.string(proc.name) if proc != ffi.NULL else "error"
     fname_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, fd)
     fname = ffi.string(fname_ptr) if fname_ptr != ffi.NULL else "error"
-    print(f"[PANDA] {procname} read from {fname}")
+    rc = panda.plugins['syscalls2'].get_syscall_retval(cpu)
+    print(f"[PANDA] {procname} read {rc} bytes from {fname}")
 
 @panda.ppp("syscalls2", "on_sys_execve_enter")
 def on_sys_execve_enter(cpu, pc, fname_ptr, argv_ptr, envp):

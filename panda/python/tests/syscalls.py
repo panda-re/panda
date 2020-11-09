@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from panda import Panda, blocking, ffi
+from pandare import Panda, blocking, ffi
 panda = Panda(generic="i386")
 
 panda.load_plugin("syscalls2")

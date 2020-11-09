@@ -9,6 +9,7 @@ coverage
 edge_coverage
 filereadmon
 hooks
+hooks2
 libfi
 lighthouse_coverage
 loaded
@@ -27,6 +28,7 @@ pri_simple
 recctrl
 replaymovie
 scissors
+signal
 stringsearch
 syscalls2
 textprinter
@@ -36,4 +38,4 @@ win2000x86intro
 win7x86intro
 wintrospection
 winxpx86intro
-signal
+syscalls_logger

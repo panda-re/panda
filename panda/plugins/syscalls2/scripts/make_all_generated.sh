@@ -1,7 +1,7 @@
 #!/bin/bash
 
-PYTHON="python2"
-PYENV="pyenv2"
+PYTHON="python3"
+PYENV="pyenv3"
 PYENV_ACTIVATE="$PYENV/bin/activate"
 PYENV_REQUIREMENTS="requirements2.txt"
 

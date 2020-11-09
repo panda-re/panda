@@ -219,13 +219,39 @@ void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
 
     taint_log_labels(shad_src, src, size);
 
-    Shad::copy(shad_dest, dest, shad_src, src, size);
-
     va_list ap;
     va_start(ap, num_operands);
     std::vector<const llvm::ConstantInt *> operands = getOperands(num_operands,
         ap);
     va_end(ap);
+
+    if (opcode && (opcode == llvm::Instruction::And ||
+            opcode == llvm::Instruction::Or)) {
+        const llvm::ConstantInt *intval = operands[0];
+        if (nullptr == intval) {
+            intval = operands[1];
+        }
+        assert(intval);
+        uint64_t val = intval->getValue().getLimitedValue();
+
+        for (uint64_t i = 0; i < size; i++) {
+            uint8_t mask = (val >> (8*i))&0xff;
+            if (opcode == llvm::Instruction::And) {
+                if (mask == 0)
+                    shad_dest->set_full(dest + i, TaintData());
+                else
+                    shad_dest->set_full(dest + i, shad_src->query_full(src+i));
+            }
+            else if (opcode == llvm::Instruction::Or) {
+                if (mask == 0xff)
+                    shad_dest->set_full(dest + i, TaintData());
+                else
+                    shad_dest->set_full(dest + i, shad_src->query_full(src+i));
+            }
+        }
+    } else {
+        Shad::copy(shad_dest, dest, shad_src, src, size);
+    }
 
     update_cb(shad_dest, dest, shad_src, src, size, opcode, instruction_flags,
         operands);

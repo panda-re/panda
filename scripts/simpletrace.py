@@ -9,6 +9,7 @@
 #
 # For help see docs/tracing.txt
 
+from __future__ import print_function
 import struct
 import re
 import inspect
@@ -216,6 +217,6 @@ if __name__ == '__main__':
                 else:
                     fields.append('%s=0x%x' % (name, rec[i]))
                 i += 1
-            print ' '.join(fields)
+            print(' '.join(fields))
 
     run(Formatter())

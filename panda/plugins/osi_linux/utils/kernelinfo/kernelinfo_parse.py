@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 ##  @file kernelinfo_parse.py
 #   @brief Script for retrieving the last kernelinfo block from dmesg.
@@ -8,7 +8,7 @@
 #               See the COPYING file in the top-level directory. 
 #   @author Manolis Stamatogiannakis <manolis.stamatogiannakis@vu.nl>
 
-from __future__ import print_function
+
 import subprocess
 import re
 import sys
@@ -39,14 +39,14 @@ for line in dmesg_in:
 
 # Process lines.
 trans = lambda s: re.sub(r'^\[[^]]*\]\s+', '', s)
-lines = map(trans, lines)
+lines = list(map(trans, lines))
 
 if not lines:
     sys.exit(1)
 
 # Get and parse the name line.
 name_grep = lambda l: re.match(r'^\s*name\s*=', l)
-kname = filter(name_grep, lines)[-1].split('=', 1)[1].strip().lower()
+kname = list(filter(name_grep, lines))[-1].split('=', 1)[1].strip().lower()
 krelease, kversion, kmachine = kname.strip().split('|')
 
 # Ignore distribution-specific version string. More trouble than benefits.

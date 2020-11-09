@@ -5,7 +5,7 @@
 from sys import argv
 from string import ascii_letters
 from os import remove, path
-from panda import Panda, ffi, blocking
+from pandare import Panda, ffi, blocking
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]
