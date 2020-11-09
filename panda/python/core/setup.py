@@ -80,7 +80,7 @@ def copy_objs():
             shutil.copy(    llvm1,      os.path.join(lib_dir, softmmu))
             shutil.copy(    llvm2,      os.path.join(lib_dir, softmmu))
 
-        shutil.copytree(plugindir,  new_plugindir)
+        shutil.copytree(plugindir,  new_plugindir, ignore=shutil.ignore_patterns('*.o', '*.d'))
 
     # Strip libpandas and plugins to save space (Need <100mb for pypi)
     if pypi_build:
@@ -156,7 +156,7 @@ setup(name='pandare',
           'data/pypanda/include/*.h',         # Includes files
           'data/pc-bios/*',                   # BIOSes
           ]},
-      install_requires=[ 'cffi>=1.13', 'colorama', 'protobuf'],
+      install_requires=[ 'cffi>=1.14.3', 'colorama', 'protobuf'],
       python_requires='>=3.6',
       cmdclass={'install': custom_install, 'develop': custom_develop},
      )
