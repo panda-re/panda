@@ -10,10 +10,16 @@
 #include "tcg.h"
 
 /**
- * Search the TCG context for the guest instruction marker at index and return a
+ * Search the TCG context for the first guest instruction marker and return a
  * pointer to it.
  */
-TCGOp *find_guest_insn(int index);
+TCGOp *find_first_guest_insn();
+
+/**
+ * Search the TCG context for the guest instruction marker with the given
+ * address.
+ */
+TCGOp *find_guest_insn_by_addr(target_ulong addr);
 
 /**
  * Template that converts host pointers to TCG constants. Not really intended
