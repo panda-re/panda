@@ -653,8 +653,9 @@ void r28_cache(CPUState *cpu, TranslationBlock *tb) {
 #if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
 static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
 {
-    if (tb->pc == ki.task.switch_to_addr) {
-        TCGOp *op = find_guest_insn(0);
+    if (tb->pc == ki.task.switch_task_hook_addr) {
+        // Instrument the task switch address.
+        TCGOp *op = find_first_guest_insn();
         assert(NULL != op);
         insert_call(&op, notify_task_change, cpu);
     }
