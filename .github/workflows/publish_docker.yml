@@ -22,7 +22,7 @@ jobs:
             docker tag  pandare/panda:latest pandare/panda:${GITHUB_SHA};
             docker push pandare/panda:${GITHUB_SHA};
             docker push pandare/panda:latest;
-            DOCKER_BUILDKIT=1 docker build --progress=plain --target=developer -t pandadev:latest $GITHUB_WORKSPACE;
+            DOCKER_BUILDKIT=1 docker build --progress=plain --target=developer -t pandare/pandadev:latest $GITHUB_WORKSPACE;
             docker tag  pandare/pandadev:latest pandare/pandadev:${GITHUB_SHA};
             docker push pandare/pandadev:${GITHUB_SHA};
             docker push pandare/pandadev:latest;
