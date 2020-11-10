@@ -1,8 +1,7 @@
 # PANDA
 
-![Core Emulation Tests](https://github.com/panda-re/panda/workflows/QEMU%20Checks/badge.svg)
-![Taint System Tests](https://github.com/panda-re/panda/workflows/Taint%20Unit%20Tests/badge.svg)
-![Publish Docker Container](https://github.com/panda-re/panda/workflows/Build%20and%20Publish%20Docker%20Container/badge.svg)
+![Test Suite](https://github.com/panda-re/panda/workflows/Parallel%20Tests/badge.svg)
+![Publish Docker Container and Update Pypanda Docs](https://github.com/panda-re/panda/workflows/Build%20and%20Publish%20Docker%20Container%20and%20Pypanda%20Docs/badge.svg)
 
 
 PANDA is an open-source Platform for Architecture-Neutral Dynamic Analysis. It
@@ -28,7 +27,7 @@ the [GPLv2 license](LICENSE).
 ## Building
 ### Quickstart: Docker
 The latest version of PANDA's master branch is automatically built as a docker image
-from both Ubuntu Bionic (18.04) and Xenial (16.04). These images are available [here](https://hub.docker.com/r/pandare/panda).
+from Ubuntu Focal (20.04). This image is available [here](https://hub.docker.com/r/pandare/panda).
 
 To pull the latest docker container and run PANDA
 ```
@@ -37,7 +36,7 @@ $ docker run --rm pandare/panda -- /bin/panda-system-i386 --help
 ```
 
 ### Quickstart: Python pip
-The Python interface to PANDA (also known as *pypanda*) can be installed from [PIP](https://pypi.org/project/pandare/) by running `pip3 install pandare`. This will install everything you need for python-based PANDA analyses, but not stand-alone PANDA binaries. This package is not automatically updated so it may fall behind the master branch of PANDA. Only 64-bit Linux hosts are currently supported.
+The Python interface to PANDA (also known as *pypanda*) can be installed from [PIP](https://pypi.org/project/pandare/) by running `pip3 install pandare`. This will install everything you need for python-based PANDA analyses, but not stand-alone PANDA binaries. This package is not automatically updated so it may fall behind the master branch of PANDA. The distributed binaries are only tested on 64-bit Ubuntu 18.04 and other architectures/versions are unlikely to work.
 
 ###  Debian, Ubuntu
 Because PANDA has a few dependencies, we've encoded the build instructions into
