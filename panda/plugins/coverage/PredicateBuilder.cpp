@@ -38,7 +38,8 @@ std::unique_ptr<Predicate> PredicateBuilder::build()
 {
     std::unique_ptr<Predicate> tmp = std::move(predicate);
     predicate.reset(new AlwaysTruePredicate);
-    return std::move(tmp);
+    //return std::move(tmp);
+    return tmp;
 }
 
 }
