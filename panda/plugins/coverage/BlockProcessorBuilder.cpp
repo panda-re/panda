@@ -71,7 +71,7 @@ std::unique_ptr<RecordProcessor<Block>> BlockProcessorBuilder::build()
         throw std::runtime_error(ss.str());
     }
 
-    return std::move(result);
+    return result;
 }
 
 }
