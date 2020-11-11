@@ -6,6 +6,8 @@
 namespace coverage
 {
 
+void notify_task_change_observers(CPUState *cpu);
+
 void register_osi_observer(OsiObserver* observer);
 
 void unregister_osi_observer(OsiObserver* observer);

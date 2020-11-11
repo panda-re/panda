@@ -18,7 +18,8 @@ namespace coverage
 {
 
 ModeBuilder::ModeBuilder(std::vector<CoverageMonitorDelegate *>& mds) :
-    monitor_delegates(mds)
+    monitor_delegates(mds), mode(""), process_name(""),
+    filename("coverage.csv"), unique(false)
 {
 }
 

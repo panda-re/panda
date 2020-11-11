@@ -32,6 +32,8 @@ PANDAENDCOMMENT */
 #include "UniqueFilter.h"
 #include "EdgeCsvWriter.h"
 
+#include "osi_subject.h"
+
 #include "panda/tcg-utils.h"
 
 using namespace coverage;
@@ -70,6 +72,11 @@ static void log_message(const char *fmt, ...)
     va_start(arglist, fmt);
     vprintf(msg_fmt.c_str(), arglist);
     va_end(arglist);
+}
+
+static void after_loadvm(CPUState *cpu)
+{
+    notify_task_change_observers(cpu);
 }
 
 static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
@@ -204,6 +211,9 @@ bool init_plugin(void *self)
 
     pcb.monitor = monitor_callback;
     panda_register_callback(self, PANDA_CB_MONITOR, pcb);
+
+    pcb.after_loadvm = after_loadvm;
+    panda_register_callback(self, PANDA_CB_AFTER_LOADVM, pcb);
 
     return true;
 }
