@@ -651,12 +651,29 @@ void r28_cache(CPUState *cpu, TranslationBlock *tb) {
 #endif
 
 #if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
+static bool in_execve = false;
+
+static void on_execve_enter(CPUState *cpu, target_ulong pc, target_ulong fnp, target_ulong ap, target_ulong envp)
+{
+    in_execve = true;
+}
+
+static void execve_check(CPUState *cpu)
+{
+    if (in_execve && !panda_in_kernel(cpu)) {
+        notify_task_change(cpu);
+        in_execve = false;
+    }
+}
+
 static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
 {
+    TCGOp *op = find_first_guest_insn();
+    assert(NULL != op);
+    insert_call(&op, execve_check, cpu);
+
     if (tb->pc == ki.task.switch_task_hook_addr) {
         // Instrument the task switch address.
-        TCGOp *op = find_first_guest_insn();
-        assert(NULL != op);
         insert_call(&op, notify_task_change, cpu);
     }
 }
@@ -777,10 +794,12 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);
 
     // By default, we'll request syscalls2 to load on first syscall
+    panda_require("syscalls2");
     if (!osi_initialized) {
-      panda_require("syscalls2");
       PPP_REG_CB("syscalls2", on_all_sys_enter, on_first_syscall);
     }
+
+    PPP_REG_CB("syscalls2", on_sys_execve_enter, on_execve_enter);
 
 
     return true;

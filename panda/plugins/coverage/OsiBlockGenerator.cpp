@@ -8,17 +8,15 @@ namespace coverage
 {
 
 OsiBlockGenerator::OsiBlockGenerator(std::unique_ptr<RecordProcessor<OsiBlock>> d)
-        : delegate(std::move(d))
+        : pname("(unknown)"), pid(0), tid(0), delegate(std::move(d))
 {
 }
 
 void OsiBlockGenerator::handle(Block record)
 {
-    std::string process_name = "(unknown)";
     bool in_kernel = panda_in_kernel(first_cpu);
-    if (!in_kernel) {
-        process_name = pname;
-    } else {
+    std::string process_name = pname;
+    if (in_kernel) {
         process_name = "(kernel)";
     }
 

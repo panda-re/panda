@@ -1,25 +1,15 @@
 #ifndef TCG_UTILS_H
 #define TCG_UTILS_H
 
+#include "panda/plugin.h"
+#include "tcg.h"
+
+#ifdef __cplusplus
+
 #include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <vector>
-
-#include "panda/plugin.h"
-#include "tcg.h"
-
-/**
- * Search the TCG context for the first guest instruction marker and return a
- * pointer to it.
- */
-TCGOp *find_first_guest_insn();
-
-/**
- * Search the TCG context for the guest instruction marker with the given
- * address.
- */
-TCGOp *find_guest_insn_by_addr(target_ulong addr);
 
 /**
  * Template that converts host pointers to TCG constants. Not really intended
@@ -135,5 +125,27 @@ T try_parse(const std::string& value)
     }
     return static_cast<T>(tmp);
 }
+
+extern "C"
+{
+#endif
+
+/**
+ * Search the TCG context for the first guest instruction marker and return a
+ * pointer to it.
+ */
+TCGOp *find_first_guest_insn(void);
+
+/**
+ * Search the TCG context for the guest instruction marker with the given
+ * address.
+ */
+TCGOp *find_guest_insn_by_addr(target_ulong addr);
+
+void insert_call_1p(TCGOp **after_op, void(*func)(void*), void *val);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
