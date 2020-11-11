@@ -1,5 +1,8 @@
 #include "panda/tcg-utils.h"
 
+extern "C"
+{
+
 TCGOp *find_first_guest_insn()
 {
     TCGOp *op = NULL;
@@ -36,4 +39,11 @@ TCGOp *find_guest_insn_by_addr(target_ulong addr)
         }
     }
     return guest_insn_mark;
+}
+
+void insert_call_1p(TCGOp **after_op, void(*func)(void*), void *val)
+{
+    insert_call(after_op, func, val);
+}
+
 }
