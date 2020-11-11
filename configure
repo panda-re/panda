@@ -6699,6 +6699,18 @@ fi
 if test "$pyperipheral2" = "yes" || test "$pyperipheral3" = "yes" ; then
   echo "CONFIG_PYPERIPHERAL=y" >> $config_target_mak
 
+  if test "$pyperipheral3" = "yes" ; then
+    # Need to update libraries and ldflags to link against python.
+    # Python >3.8 should generate these flags with --embed, but that's not backwards
+    # compatable, so we use this grep to detect failures (since it exits cleanly
+    # and prints an error to stdout).
+    echo "libs_softmmu+=$(python3-config --libs    --embed | grep -v Usage || python3-config --libs)"     >> $config_host_mak
+    echo      "LDFLAGS+=$(python3-config --ldflags --embed | grep -v Usage || python3-config --ldflags )" >> $config_host_mak
+  else
+    # TODO: how should this link? Python2-config? Can we just remove?
+    echo "WARNING: python2 pyperipheral is likely missing required LDFLAGS"
+  fi
+
 fi
 
 # build tree in object directory in case the source is not in the current directory
