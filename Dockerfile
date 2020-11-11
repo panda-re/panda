@@ -1,4 +1,4 @@
-ARG BASE_IMAGE="ubuntu:18.04"
+ARG BASE_IMAGE="ubuntu:20.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
 ARG PROTOBUF_VER="3.0.0"
 ARG CFFI_PIP="https://foss.heptapod.net/pypy/cffi/-/archive/branch/default/cffi-branch-default.zip"
@@ -8,57 +8,31 @@ FROM $BASE_IMAGE as base
 ARG TOOLCHAIN_R_KEY
 ARG TOOLCHAIN_R_PPA
 
+
 # Note nasm, gcc-multilib and libc6-dev-i386 are only necessary for pypanda tests
+# Base image just needs runtime dependencies
 RUN apt-get -qq update && \
     DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends \
-      apt-transport-https \
-      build-essential \
-      ca-certificates \
-      gcc \
       gcc-multilib \
       genisoimage \
       git \
-      gnupg \
-      libaio1 \
-      libbluetooth3 \
-      libbrlapi0.6 \
       libc6-dev-i386 \
-      libcacard0 \
-      libcap-ng0 \
-      libcapstone3 \
-      libcurl3-gnutls \
-      libdwarf1 \
-      libelf1 \
-      libfdt1 \
-      libffi-dev \
-      libglib2.0-0 \
-      libgnutls30 \
-      libiscsi7 \
-      libjpeg-turbo8 \
-      libjpeg8 \
+      libcurl4-gnutls-dev \
+      libelf-dev \
+      libglib2.0-dev \
       libllvm10 \
-      libnettle6 \
-      libnuma1 \
-      libpixman-1-0 \
-      libpng16-16 \
-      libprotobuf-c1 \
-      libprotobuf10 \
-      libpython3-dev \
-      librados2 \
-      librbd1 \
-      librdmacm1 \
-      libsasl2-2 \
-      libsasl2-modules-db \
-      libsdl1.2debian \
-      libspice-server1 \
-      libusb-1.0-0 \
-      libusbredirparser1 \
-      libwiretap8 \
-      libxen-4.9 \
-      libxenstore3.0 \
-      nasm \
+      libpixman-1-dev \
+      libsdl2-dev \
+      libwireshark-dev \
+      libwiretap-dev \
+      pkg-config \
+      protobuf-c-compiler \
+      protobuf-compiler \
+      python3 \
       python3-pip \
+      python3-protobuf \
       wget \
+      zip \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -85,8 +59,9 @@ RUN sed -i 's/# deb-src /deb-src /g' /etc/apt/sources.list && \
       libcapstone-dev \
       libdwarf-dev \
       libelf-dev \
-      libprotobuf-c0-dev \
+      libprotobuf-c-dev \
       libprotoc-dev \
+      libpython3-dev \
       libtool-bin \
       libwireshark-dev \
       libwiretap-dev \
@@ -119,10 +94,7 @@ RUN git -C /panda submodule update --init dtc && \
     /panda/configure \
         --target-list="${TARGET_LIST}" \
         --prefix=/usr/local \
-        --enable-llvm \
-        --with-llvm=/usr/lib/llvm-10 \
-        --disable-vhost-net \
-        --extra-cflags=-DXC_WANT_COMPAT_DEVICEMODEL_API && \
+        --enable-llvm && \
     make -C /panda/build -j "$(nproc)"
 
 #### Develop setup: panda built + pypanda installed - Stage 3
