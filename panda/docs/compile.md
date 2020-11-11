@@ -1,8 +1,8 @@
 # Compiling PANDA
 
 PANDA depends on LLVM-10, python3, and the qemu dependencies.
-It is known to build on Ubuntu 18.04 and the Dockerfile in the root directory
-will produce a container with panda and it's python interface setup.
+It is known to build on Ubuntu 18.04/20.04 and the Dockerfile in the root directory
+will produce a container with panda and it's python interface set up.
 
 ## Compiled prerequisites
 
