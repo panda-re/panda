@@ -1133,7 +1133,9 @@ static bool _unassigned_mem_write(void *opaque, hwaddr addr,
         }
         cpu_unassigned_access(current_cpu, addr, true, false, 0, size);
     }else{
-      printf("WARNING: Unassigned memory write with no CPU\n");
+      // This case is run a bunch during make check so I guess it's normal behavior.
+      // No need to spam the output
+      // printf("WARNING: Unassigned memory write with no CPU\n");
     }
     return false;
 }
