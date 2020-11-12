@@ -5,78 +5,31 @@ ARG CFFI_PIP="https://foss.heptapod.net/pypy/cffi/-/archive/branch/default/cffi-
 
 ### BASE IMAGE
 FROM $BASE_IMAGE as base
-ARG TOOLCHAIN_R_KEY
-ARG TOOLCHAIN_R_PPA
+ARG BASE_IMAGE
 
+# Copy dependencies lists into container. Note this
+#  will rarely change so caching should still work well
+COPY ./panda/dependencies/${BASE_IMAGE}*.txt /tmp/
 
-# Note nasm, gcc-multilib and libc6-dev-i386 are only necessary for pypanda tests
 # Base image just needs runtime dependencies
-RUN apt-get -qq update && \
-    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends \
-      gcc-multilib \
-      genisoimage \
-      git \
-      libc6-dev-i386 \
-      libcurl4-gnutls-dev \
-      libelf-dev \
-      libglib2.0-dev \
-      libllvm10 \
-      libpixman-1-dev \
-      libsdl2-dev \
-      libwireshark-dev \
-      libwiretap-dev \
-      pkg-config \
-      protobuf-c-compiler \
-      protobuf-compiler \
-      python3 \
-      python3-pip \
-      python3-protobuf \
-      wget \
-      zip \
-    && apt-get clean && \
+RUN [ -e /tmp/${BASE_IMAGE}_base.txt ] && \
+    apt-get -qq update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends $(cat /tmp/${BASE_IMAGE}_base.txt | grep -o '^[^#]*') && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 
 ### BUILD IMAGE - STAGE 2
 FROM base AS builder
+ARG BASE_IMAGE
 ARG TARGET_LIST
 ARG PROTOBUF_VER
 ARG CFFI_PIP
 
-RUN sed -i 's/# deb-src /deb-src /g' /etc/apt/sources.list && \
+RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
     apt-get -qq update && \
-    DEBIAN_FRONTEND=noninteractive apt-get -qq build-dep -y qemu && \
-    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends \
-      automake \
-      bison \
-      build-essential \
-      chrpath \
-      clang-10 \
-      flex \
-      gcc-multilib \
-      git \
-      libc++-dev \
-      libcapstone-dev \
-      libdwarf-dev \
-      libelf-dev \
-      libprotobuf-c-dev \
-      libprotoc-dev \
-      libpython3-dev \
-      libtool-bin \
-      libwireshark-dev \
-      libwiretap-dev \
-      llvm-10-dev \
-      lsb-core \
-      nasm \
-      pkg-config \
-      protobuf-c-compiler \
-      protobuf-compiler \
-      python3 \
-      python3-dev \
-      python3-pip \
-      software-properties-common \
-      zip \
-    && apt-get clean && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /tmp/${BASE_IMAGE}_build.txt | grep -o '^[^#]*') && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     python3 -m pip install --upgrade --no-cache-dir pip && \
     python3 -m pip install --upgrade --no-cache-dir setuptools wheel && \
@@ -88,19 +41,24 @@ RUN sed -i 's/# deb-src /deb-src /g' /etc/apt/sources.list && \
 COPY . /panda/
 COPY .git /panda/
 
+# Note we diable NUMA for docker builds because it causes make check to fail in docker
 RUN git -C /panda submodule update --init dtc && \
     git -C /panda rev-parse HEAD > /usr/local/panda_commit_hash && \
     mkdir  /panda/build && cd /panda/build && \
     /panda/configure \
         --target-list="${TARGET_LIST}" \
         --prefix=/usr/local \
+        --disable-numa \
         --enable-llvm && \
     make -C /panda/build -j "$(nproc)"
 
-#### Develop setup: panda built + pypanda installed - Stage 3
+#### Develop setup: panda built + pypanda installed (in develop mode) - Stage 3
 FROM builder as developer
 RUN cd /panda/panda/python/core && \
-    python3 setup.py develop
+    python3 setup.py develop &&  \
+    ldconfig && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+WORKDIR /panda/
 
 #### Install PANDA + pypanda from builder - Stage 4
 FROM builder as installer
@@ -114,5 +72,9 @@ FROM base as panda
 
 COPY --from=installer /usr/local /usr/local
 
+# Ensure runtime dependencies are installed for our libpanda objects and panda plugins
 RUN ldconfig && \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+    update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
+    if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/libpanda-*.so | grep 'not found'); then exit 1; fi && \
+    if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/panda/plugins/*.so | grep 'not found'); then exit 1; fi
+
