@@ -32,11 +32,11 @@ from Ubuntu Focal (20.04). This image is available [here](https://hub.docker.com
 To pull the latest docker container and run PANDA
 ```
 $ docker pull pandare/panda
-$ docker run --rm pandare/panda -- /bin/panda-system-i386 --help
+$ docker run --rm pandare/panda -- panda-system-i386 --help
 ```
 
 ### Quickstart: Python pip
-The Python interface to PANDA (also known as *pypanda*) can be installed from [PIP](https://pypi.org/project/pandare/) by running `pip3 install pandare`. This will install everything you need for python-based PANDA analyses, but not stand-alone PANDA binaries. This package is not automatically updated so it may fall behind the master branch of PANDA. The distributed binaries are only tested on 64-bit Ubuntu 18.04 and other architectures/versions are unlikely to work.
+The Python interface to PANDA (also known as *pypanda*) can be installed from [PIP](https://pypi.org/project/pandare/) by running `pip3 install pandare`. This will install everything you need for python-based PANDA analyses, but not stand-alone PANDA binaries. This package is not automatically updated so it may fall behind the master branch of PANDA. The distributed binaries are only tested on 64-bit Ubuntu 18.04 and other architectures/versions are unlikely to work. You can also install pypanda by building PANDA and then running `python3 setup.py install` from the directory `panda/panda/python/core`.
 
 ###  Debian, Ubuntu
 Because PANDA has a few dependencies, we've encoded the build instructions into
