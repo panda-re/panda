@@ -9,7 +9,7 @@
 #include "panda/plugin_plugin.h"
 
 #include "panda/tcg-llvm.h"
-#include <llvm/InstVisitor.h>
+#include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/InstrTypes.h>
 
 #include <iostream>

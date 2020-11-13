@@ -1,8 +1,7 @@
 # PANDA
 
-![Core Emulation Tests](https://github.com/panda-re/panda/workflows/QEMU%20Checks/badge.svg)
-![Taint System Tests](https://github.com/panda-re/panda/workflows/Taint%20Unit%20Tests/badge.svg)
-![Publish Docker Container](https://github.com/panda-re/panda/workflows/Build%20and%20Publish%20Docker%20Container/badge.svg)
+![Test Suite](https://github.com/panda-re/panda/workflows/Parallel%20Tests/badge.svg)
+![Publish Docker Container and Update Pypanda Docs](https://github.com/panda-re/panda/workflows/Build%20and%20Publish%20Docker%20Container%20and%20Pypanda%20Docs/badge.svg)
 
 
 PANDA is an open-source Platform for Architecture-Neutral Dynamic Analysis. It
@@ -28,7 +27,7 @@ the [GPLv2 license](LICENSE).
 ## Building
 ### Quickstart: Docker
 The latest version of PANDA's master branch is automatically built as a docker image
-from both Ubuntu Bionic (18.04) and Xenial (16.04). These images are available [here](https://hub.docker.com/r/pandare/panda).
+from Ubuntu Focal (20.04). This image is available [here](https://hub.docker.com/r/pandare/panda).
 
 To pull the latest docker container and run PANDA
 ```
@@ -37,7 +36,7 @@ $ docker run --rm pandare/panda -- /bin/panda-system-i386 --help
 ```
 
 ### Quickstart: Python pip
-The Python interface to PANDA (also known as *pypanda*) can be installed from [PIP](https://pypi.org/project/pandare/) by running `pip3 install pandare`. This will install everything you need for python-based PANDA analyses, but not stand-alone PANDA binaries. This package is not automatically updated so it may fall behind the master branch of PANDA. Only 64-bit Linux hosts are currently supported.
+The Python interface to PANDA (also known as *pypanda*) can be installed from [PIP](https://pypi.org/project/pandare/) by running `pip3 install pandare`. This will install everything you need for python-based PANDA analyses, but not stand-alone PANDA binaries. This package is not automatically updated so it may fall behind the master branch of PANDA. The distributed binaries are only tested on 64-bit Ubuntu 18.04 and other architectures/versions are unlikely to work.
 
 ###  Debian, Ubuntu
 Because PANDA has a few dependencies, we've encoded the build instructions into
@@ -47,14 +46,12 @@ If you wish to build PANDA manually, you can also check the
 [step-by-step instructions](panda/docs/build\_ubuntu.md) in the documentation
 directory.
 
-PANDA is primarily tested and developed on Ubuntu 18.04, though  it can be built (without LLVM support) on 20.04.
-Debian was previously well-supported but is untested in recent years.
-We welcome pull requests to fix issues with other distros.
+We currently only vouch for buildability on the latest Debian stable/Ubuntu LTS, but we welcome pull requests to fix issues with other distros.
 For other distributions, it should be straightforward to translate the `apt-get`
 commands into whatever package manager your distribution uses.
 
 Note that if you want to use our LLVM features (mainly the dynamic taint
-system), you will need to install LLVM 3.3 from OS packages or compiled from
+system), you will need to install LLVM 10 from OS packages or compiled from
 source. On Ubuntu this should happen automatically via `install_ubuntu.sh`.
 Additionally, it is **strongly** recommended that you only build PANDA as 64bit
 binary. Creating a 32bit build should be possible, but best avoided.
@@ -97,10 +94,7 @@ This allows translating the TCG intermediate code representation used by QEMU,
 to LLVM IR. The latter has the advantages of being easier to work with, as well
 as platform independent. This enables the implementation of complex analyses
 like the `taint2` plugin.
-However, S2E is not actively updated to work with the latest LLVM toolchain.
-As a consequence, PANDA still requires specifically LLVM 3.3 in order to be
-built with taint analysis support.
-of the plugins.
+The S2E files used by PANDA to support taint analysis have been updated to work with LLVM 10.
 
 ### Cross-architecture record/replay
 Great effort is put to maintain the PANDA trace format stable so that existing
