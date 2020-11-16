@@ -24,16 +24,6 @@ TAINT2_SRC := $(filter-out my_mem.cpp,$(TAINT2_SRC))
 TAINT2_OBJ  = $(patsubst %.cpp,$(PLUGIN_OBJ_DIR)/%.o,$(TAINT2_SRC))
 
 ### Rules and recipes ###############################################
-%_llvm.bc: %.cpp $(wildcard *.h)
-	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
-	$(call quiet-command,\
-		$(filter-out $(TAINT_OP_FILTER),\
-			$(LLVMCXX) $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_CXXFLAGS) \
-			$(QEMU_DGFLAGS) $(CXXFLAGS) $(TAINT_OP_CFLAGS) \
-			-emit-llvm -c -o $@ $<),"CLANGXX $(TARGET_DIR)$@")
-
-$(PLUGIN_OBJ_DIR)/panda_taint2_ops.bc: $(PLUGIN_OBJ_DIR)/taint_ops_llvm.bc
-	$(call quiet-command, $(LLVM_LINK) -o $@ $^,"LLVMLD  $(TARGET_DIR)$@")
 
 $(PLUGIN_OBJ_DIR)/update_cb_switch:
 	$(call quiet-command,$(CXX) $(QEMU_INCLUDES) $(QEMU_CXXFLAGS) \
@@ -42,6 +32,6 @@ $(PLUGIN_OBJ_DIR)/update_cb_switch:
 
 $(PLUGIN_TARGET_DIR)/panda_taint2.so: $(TAINT2_OBJ)
 
-all: $(PLUGIN_OBJ_DIR)/panda_taint2_ops.bc $(PLUGIN_OBJ_DIR)/update_cb_switch
+all: $(PLUGIN_OBJ_DIR)/update_cb_switch
 
 

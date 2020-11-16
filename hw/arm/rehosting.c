@@ -137,7 +137,7 @@ void parse_mem_map(char *map_str)
                 if (fmm_idx < MAX_MEM_MAPPED_FILES) {
                     fn = g_malloc0(strlen(name) + 1);
                     assert(fn != NULL);
-                    strncpy(fn, name, (strlen(name)+1));
+                    strncpy(fn, name, (strlen(fn)));
                     fs = get_file_size(name);
                     if (fs != -1) {
                         file_mem_map[fmm_idx].base = start;

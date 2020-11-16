@@ -1,94 +1,78 @@
-FROM ubuntu:18.04
-# Base packages required before we do anything else
-RUN apt-get update && apt install -y lsb-core
+ARG BASE_IMAGE="ubuntu:20.04"
+ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
+ARG CFFI_PIP="https://foss.heptapod.net/pypy/cffi/-/archive/branch/default/cffi-branch-default.zip"
 
-# apt_enable_src: Enable src repos
-ENV SOURCES_LIST="/etc/apt/sources.list"
-RUN if grep -q "^[^#]*deb-src .* $codename .*main" "$SOURCES_LIST"; then \
-       echo "deb-src already enabled in $SOURCES_LIST."; \
-   else \
-       echo "Enabling deb-src in $SOURCES_LIST."; \
-       sed -E -i 's/^([^#]*) *# *deb-src (.*)/\1deb-src \2/' "$SOURCES_LIST"; \
-   fi
+### BASE IMAGE
+FROM $BASE_IMAGE as base
+ARG BASE_IMAGE
 
-# Install QEMU build-deps, plus panda dependencies
-RUN apt update && apt-get -y build-dep qemu && \
-    apt -y install git protobuf-compiler protobuf-c-compiler \
-    libprotobuf-c0-dev libprotoc-dev python3-protobuf libelf-dev libc++-dev pkg-config \
-    libwiretap-dev libwireshark-dev flex bison python3-pip python3 software-properties-common \
-    chrpath zip libcapstone-dev libdwarf-dev
-# TODO: for llvm10 upgrade add llvm-10 clang-10 to the above list
+# Copy dependencies lists into container. Note this
+#  will rarely change so caching should still work well
+COPY ./panda/dependencies/${BASE_IMAGE}*.txt /tmp/
 
-# PYPANDA Dependencies
-RUN apt-get install -y genisoimage wget libc6-dev-i386 gcc-multilib nasm
-RUN pip3 install colorama cffi 'protobuf==3.0.0' # Protobuf version should match system (apt) version
-
-# Core PANDA python3 dependencies to install via pip
-RUN pip3 install --upgrade protobuf # Upgrade because it's already installed with apt
-RUN pip3 install pycparser
-
-# There's no python2 in this container - make python->python3 for convenience
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+# Base image just needs runtime dependencies
+RUN [ -e /tmp/${BASE_IMAGE}_base.txt ] && \
+    apt-get -qq update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends $(cat /tmp/${BASE_IMAGE}_base.txt | grep -o '^[^#]*') && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 
-###### LLVM 3.3 TODO: remove when upgrading to LLVM10 ####
-# Setup apt sources of llvm 3.3
-ENV panda_ppa_file=/etc/apt/sources.list.d/phulin-ubuntu-panda-bionic.list
-ENV panda_ppa_file_fallback=/etc/apt/sources.list.d/phulin-ubuntu-panda-xenial.list
-ENV PANDA_PPA="ppa:phulin/panda"
-ENV PANDA_GIT="https://github.com/panda-re/panda.git"
-ENV PANDA_PPA="ppa:phulin/panda"
-ENV LIBDWARF_GIT="git://git.code.sf.net/p/libdwarf/code"
-ENV UBUNTU_FALLBACK="xenial"
-ENV codename="bionic"
+### BUILD IMAGE - STAGE 2
+FROM base AS builder
+ARG BASE_IMAGE
+ARG TARGET_LIST
+ARG CFFI_PIP
 
-# We're on bionic so just add the PPA
-RUN rm -f "$panda_ppa_file" "$panda_ppa_file_fallback"
-RUN add-apt-repository -y "$PANDA_PPA" || true
-RUN sed -i "s/$codename/$UBUNTU_FALLBACK/g" "$panda_ppa_file"
-RUN mv -f "$panda_ppa_file" "$panda_ppa_file_fallback"
+RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
+    apt-get -qq update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /tmp/${BASE_IMAGE}_build.txt | grep -o '^[^#]*') && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    python3 -m pip install --upgrade --no-cache-dir pip && \
+    python3 -m pip install --upgrade --no-cache-dir setuptools wheel && \
+    python3 -m pip install --upgrade --no-cache-dir pycparser "protobuf" "${CFFI_PIP}" colorama
 
-# Update so we can see the new PPA
-RUN apt-get update
-
-# Install LLVM 3.3...
-RUN apt-get -y install llvm-3.3-dev clang-3.3
-###### End of LLVM 3.3 logic ####
-
+# Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
-# Note .dockerignore file keeps us from copying everything
+# Note .dockerignore file keeps us from copying things we don't need
 COPY . /panda/
 COPY .git /panda/
-WORKDIR "/panda"
 
-# Update submodules
-RUN git submodule init && git submodule update --recursive
+# Note we diable NUMA for docker builds because it causes make check to fail in docker
+RUN git -C /panda submodule update --init dtc && \
+    git -C /panda rev-parse HEAD > /usr/local/panda_commit_hash && \
+    mkdir  /panda/build && cd /panda/build && \
+    /panda/configure \
+        --target-list="${TARGET_LIST}" \
+        --prefix=/usr/local \
+        --disable-numa \
+        --enable-llvm && \
+    make -C /panda/build -j "$(nproc)"
 
-# Build all targets (simplified logic from build.sh)
-RUN mkdir /panda/build
-WORKDIR "/panda/build"
-ENV TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
-RUN rm -f ./qemu-options.def
+#### Develop setup: panda built + pypanda installed (in develop mode) - Stage 3
+FROM builder as developer
+RUN cd /panda/panda/python/core && \
+    python3 setup.py develop &&  \
+    ldconfig && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+WORKDIR /panda/
 
-# NUMA disabled in docker because I can't get it to work in the container
-# If we extend this to build to produce binaries to run outside of docker, we should
-# re-enable (or make another build) with numa
-# TODO: update llvm-3.3 to llvm-10 for imminent upgrade in this command
-RUN ../configure \
-    --target-list=$TARGET_LIST \
-    --prefix=/ \
-    --enable-llvm \
-    --disable-numa \
-    --with-llvm=/usr/lib/llvm-3.3 \
-    --disable-vhost-net \
-    --extra-cflags=-DXC_WANT_COMPAT_DEVICEMODEL_API
-
-RUN make -j
-
-RUN make install
-
+#### Install PANDA + pypanda from builder - Stage 4
+FROM builder as installer
+RUN  make -C /panda/build install
 # Install pypanda
-WORKDIR "/panda/panda/python/core"
-RUN python3 setup.py install
+RUN cd /panda/panda/python/core && \
+    python3 setup.py install
 
-WORKDIR "/panda"
+### Copy files for panda+pypanda from installer  - Stage 5
+FROM base as panda
+
+COPY --from=installer /usr/local /usr/local
+
+# Ensure runtime dependencies are installed for our libpanda objects and panda plugins
+RUN ldconfig && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
+    if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/libpanda-*.so | grep 'not found'); then exit 1; fi && \
+    if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/panda/plugins/*.so | grep 'not found'); then exit 1; fi
+

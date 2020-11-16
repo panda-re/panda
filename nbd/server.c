@@ -443,7 +443,7 @@ static int nbd_negotiate_options(NBDClient *client)
         return -EIO;
     }
     TRACE("Checking client flags");
-    be32_to_cpus(&flags);
+    flags = be32_to_cpu(flags);
     if (flags & NBD_FLAG_C_FIXED_NEWSTYLE) {
         TRACE("Client supports fixed newstyle handshake");
         fixedNewstyle = true;
