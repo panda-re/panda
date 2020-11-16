@@ -105,3 +105,4 @@ if __name__ == "__main__":
             if i > 0: print(',')
             print(MessageToJson(m), end='')
     print('\n]')
+
