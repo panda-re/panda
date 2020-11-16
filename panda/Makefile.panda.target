@@ -24,7 +24,7 @@ RR_PRINT_PROG=rr_print_$(TARGET_NAME)$(EXESUF)
 endif
 
 ifdef CONFIG_SOFTMMU
-PLOG_READER_PROG=plog_reader
+PLOG_READER_PROG=example_plog_reader
 endif
 
 PLUGIN_SUBDIR_RULES=$(patsubst %,plugin-%, $(PANDA_PLUGINS))
@@ -118,13 +118,13 @@ obj-y += panda/src/tcg-utils.o
 obj-y += panda/src/plog-cc.o
 obj-y += plog.pb.o
 #obj-y += panda/src/plog_print.o
-#obj-y += panda/src/plog_reader.o
+#obj-y += panda/src/example_plog_reader.o
 #obj-y += panda/src/guestarch.o
 
 $(RR_PRINT_PROG): panda/src/rr/rr_print.o
 	$(call LINK,$^)
 
-$(PLOG_READER_PROG): panda/src/plog_reader.o \
+$(PLOG_READER_PROG): panda/src/example_plog_reader.o \
 	plog.pb.o \
 	panda/src/plog-cc.o \
 	#plog.pb-c.o \
