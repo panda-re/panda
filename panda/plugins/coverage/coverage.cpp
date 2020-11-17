@@ -187,7 +187,6 @@ bool init_plugin(void *self)
             "log all records instead of just uniquely identified ones");
     log_message("log all records %s", PANDA_FLAG_STATUS(log_all_records));
 
-    // XXX: Now we need to construct our mode delegate.
     ModeBuilder mb(monitor_delegates);
 
     if ("" != process_name) {
@@ -200,14 +199,11 @@ bool init_plugin(void *self)
     if (!log_all_records) {
         mb.with_unique_filter();
     }
-    inst_del = mb.build();
-
     if (start_disabled)
     {
-        for (auto del : monitor_delegates) {
-            del->handle_disable();
-        }
+        mb.with_start_disabled();
     }
+    inst_del = mb.build();
 
     pcb.monitor = monitor_callback;
     panda_register_callback(self, PANDA_CB_MONITOR, pcb);
