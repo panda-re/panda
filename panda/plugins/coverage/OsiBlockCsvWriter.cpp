@@ -3,13 +3,21 @@
 namespace coverage
 {
 
-OsiBlockCsvWriter::OsiBlockCsvWriter(const std::string &filename) : os(filename)
+OsiBlockCsvWriter::OsiBlockCsvWriter(const std::string &filename,
+    bool start_disabled)
 {
-    write_header();
+    if (!start_disabled) {
+        os.open(filename);
+        write_header();
+    }
 }
 
 void OsiBlockCsvWriter::handle(OsiBlock record)
 {
+    if (!os.is_open()) {
+        return;
+    }
+
     os << record.process_name << ","
        << std::dec << record.pid << ","
        << std::dec << record.tid << ","

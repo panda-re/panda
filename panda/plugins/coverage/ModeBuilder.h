@@ -20,6 +20,7 @@ public:
     ModeBuilder& with_process_name_filter(const std::string& pname);
     ModeBuilder& with_filename(const std::string& filename);
     ModeBuilder& with_unique_filter();
+    ModeBuilder& with_start_disabled();
 
     std::unique_ptr<InstrumentationDelegate> build();
 
@@ -30,6 +31,7 @@ private:
     std::string process_name;
     std::string filename;
     bool unique;
+    bool start_disabled;
 };
 
 }

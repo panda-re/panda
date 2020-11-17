@@ -18,7 +18,7 @@ class OsiBlockCsvWriter : public RecordProcessor<OsiBlock>,
                           public CoverageMonitorDelegate
 {
 public:
-    OsiBlockCsvWriter(const std::string &filename);
+    OsiBlockCsvWriter(const std::string &filename, bool start_disabled);
     void handle(OsiBlock record) override;
 
     void handle_enable(const std::string& filename) override;

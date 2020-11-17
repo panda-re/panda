@@ -19,7 +19,7 @@ class EdgeCsvWriter : public RecordProcessor<Edge>,
                       public CoverageMonitorDelegate
 {
 public:
-    EdgeCsvWriter(const std::string &filename);
+    EdgeCsvWriter(const std::string &filename, bool start_disabled);
     void handle(Edge record) override;
 
     void handle_enable(const std::string& filename);
