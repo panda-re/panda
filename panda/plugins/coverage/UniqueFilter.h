@@ -40,12 +40,11 @@ public:
 
     void handle_enable(const std::string& filename) override
     {
-        // nothing to do when we enable
+        seen.clear();
     }
 
     void handle_disable() override
     {
-        seen.clear();
     }
 
 private:

@@ -3,13 +3,20 @@
 namespace coverage
 {
 
-EdgeCsvWriter::EdgeCsvWriter(const std::string &filename) : os(filename)
+EdgeCsvWriter::EdgeCsvWriter(const std::string &filename, bool start_disabled)
 {
-    write_header();
+    if (!start_disabled) {
+        os.open(filename);
+        write_header();
+    }
 }
 
 void EdgeCsvWriter::handle(Edge record)
 {
+    if (!os.is_open()) {
+        return;
+    }
+
     os << "0x" << std::hex << record.from.addr << ","
        << std::dec << record.from.size << ","
        << "0x" << std::hex << record.to.addr << ","

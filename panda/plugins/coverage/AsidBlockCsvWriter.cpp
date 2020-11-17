@@ -5,9 +5,13 @@
 namespace coverage
 {
 
-AsidBlockCsvWriter::AsidBlockCsvWriter(const std::string &filename) : os(filename)
+AsidBlockCsvWriter::AsidBlockCsvWriter(const std::string &filename,
+    bool start_disabled)
 {
-    write_header();
+    if (!start_disabled) {
+        os.open(filename);
+        write_header();
+    }
 }
 
 void AsidBlockCsvWriter::handle(AsidBlock record)

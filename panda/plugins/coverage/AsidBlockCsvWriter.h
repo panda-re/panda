@@ -18,7 +18,7 @@ class AsidBlockCsvWriter : public RecordProcessor<AsidBlock>,
                            public CoverageMonitorDelegate
 {
 public:
-    AsidBlockCsvWriter(const std::string &filename);
+    AsidBlockCsvWriter(const std::string &filename, bool start_disabled);
     void handle(AsidBlock record) override;
 
     void handle_enable(const std::string& filename) override;

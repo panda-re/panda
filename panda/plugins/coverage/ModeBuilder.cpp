@@ -19,7 +19,7 @@ namespace coverage
 
 ModeBuilder::ModeBuilder(std::vector<CoverageMonitorDelegate *>& mds) :
     monitor_delegates(mds), mode(""), process_name(""),
-    filename("coverage.csv"), unique(false)
+    filename("coverage.csv"), unique(false), start_disabled(false)
 {
 }
 
@@ -47,13 +47,19 @@ ModeBuilder& ModeBuilder::with_unique_filter()
     return *this;
 }
 
+ModeBuilder& ModeBuilder::with_start_disabled()
+{
+    start_disabled = true;
+    return *this;
+}
+
 std::unique_ptr<InstrumentationDelegate> ModeBuilder::build()
 {
     std::unique_ptr<InstrumentationDelegate> result;
 
     monitor_delegates.clear();
     if ("edge" == mode) {
-        auto tmp = new EdgeCsvWriter(filename);
+        auto tmp = new EdgeCsvWriter(filename, start_disabled);
         monitor_delegates.push_back(tmp);
         std::unique_ptr<RecordProcessor<Edge>> writer(tmp);
         if (unique) {
@@ -73,7 +79,7 @@ std::unique_ptr<InstrumentationDelegate> ModeBuilder::build()
         register_osi_observer(inst_del);
         result.reset(inst_del);
     } else if ("asid-block" == mode) {
-        auto tmp = new AsidBlockCsvWriter(filename);
+        auto tmp = new AsidBlockCsvWriter(filename, start_disabled);
         monitor_delegates.push_back(tmp);
         std::unique_ptr<RecordProcessor<AsidBlock>> writer(tmp);
         if (unique) {
@@ -84,7 +90,7 @@ std::unique_ptr<InstrumentationDelegate> ModeBuilder::build()
         std::unique_ptr<RecordProcessor<Block>> block_processor(new AsidBlockGenerator(first_cpu, std::move(writer)));
         result.reset(new BlockInstrumentationDelegate(std::move(block_processor)));
     } else if ("osi-block" == mode) {
-        auto tmp = new OsiBlockCsvWriter(filename);
+        auto tmp = new OsiBlockCsvWriter(filename, start_disabled);
         monitor_delegates.push_back(tmp);
         std::unique_ptr<RecordProcessor<OsiBlock>> writer(tmp);
         if (unique) {
