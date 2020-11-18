@@ -11,16 +11,22 @@ SYSCALL_ADDRESS = BFC_ADDRESS+ 0x380
 
 
 BFC_THING = f"""
+
 #mfc0 $k0, $14
 
 #addiu $k0, 4
-eret
+#eret
 #jr $k0
+
+Loop: j Loop
+
 #j {SYSCALL_ADDRESS}
 """.encode()
 
 SYSCALL_HANDLER = f"""
-mfc0 $k0, $14
+#mfc0 $k0, $14
+#ori k0, $0
+#addi $k0, $0, 0x1000
 eret
 jr $k0
 
@@ -28,7 +34,7 @@ jr $k0
 #    j {BFC_ADDRESS}
 """.encode()
 
-CODE = f"""
+CODE = b"nop\n"*20 +  f"""
 #lw $t1, {SYSCALL_ADDRESS}
 #mtc0 $t1, $8
 addiu $t0, 1  # $t0++
