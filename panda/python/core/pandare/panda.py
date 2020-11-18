@@ -2405,7 +2405,7 @@ class Panda():
         def on_do_mmap2_return(cpu, pc, addr, length, prot, flags, fd, pgoff):
             self._update_hooks_new_procname(cpu, self.get_process_name(cpu))
 
-    def hook(self, addr, enabled=True, kernel=True, libraryname=None, procname=None, name=None):
+    def hook(self, addr, enabled=True, kernel=True, libraryname=None, asid = None, procname=None, name=None):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
@@ -2429,7 +2429,10 @@ class Panda():
 
             # Inform the plugin that it has a new breakpoint at addr
             hook_cb_passed = hook_cb_type(fun)
-            self.plugins['hooks'].add_hook(addr, hook_cb_passed)
+            if not asid:
+                self.plugins['hooks'].add_hook(addr, hook_cb_passed)
+            else:
+                self.plugins['hooks'].add_hook_asid(addr, hook_cb_passed, asid)
             hook_to_add = Hook(is_enabled=enabled,is_kernel=kernel,target_addr=addr,library_name=libraryname,program_name=procname,hook_cb=None, target_library_offset=None)
             if libraryname: 
                 hook_to_add.target_library_offset = addr

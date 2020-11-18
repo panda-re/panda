@@ -9,7 +9,9 @@ extern "C" {
     typedef bool (*hook_func_t)(CPUState *, TranslationBlock *);
 
     void add_hook(target_ulong addr, hook_func_t hook);
+    void add_hook_asid(target_ulong addr, hook_func_t hook, target_ulong cr3);
     void update_hook(hook_func_t hook, target_ulong value);
+    void update_hook_asid(hook_func_t hook, target_ulong value, target_ulong asid);
     void enable_hook(hook_func_t hook, target_ulong value);
     void disable_hook(hook_func_t hook);
 
