@@ -17,7 +17,6 @@ PANDAENDCOMMENT */
 #include "hooks_int_fns.h"
 #include <iostream>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -33,7 +32,6 @@ using namespace std;
 // Hooking framework to execute code before guest executes given basic block
 
 // Mapping of addresses to hook functions
-unordered_set<target_ulong> currently_hooked_addresses;
 unordered_map<target_ulong, vector<pair<target_ulong, hook_func_t>>> hooks;
 
 // Callback object
@@ -101,10 +99,6 @@ void disable_hook(hook_func_t hook)
             if (hook == p.second)
             {
                 i = hook_pile.erase(i);
-                if (i == hook_pile.end()){
-                    auto index = currently_hooked_addresses.find(it->first);
-                    currently_hooked_addresses.erase(index);
-                }
             }
             else
             {
@@ -135,7 +129,6 @@ void add_hook_asid(target_ulong addr, hook_func_t hook, target_ulong cr3)
             return;
         }
     }
-    currently_hooked_addresses.insert(addr);
     pair<target_ulong, hook_func_t> to_add = make_pair(cr3, hook);
     hooks[addr].push_back(to_add);
 }
@@ -147,19 +140,14 @@ bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb)
 
     bool ret = false;
 
-    // the find is an O(1) lookup
-    auto search = currently_hooked_addresses.find(tb->pc);
-    if (search != currently_hooked_addresses.end())
+    auto func_hooks = hooks.find(tb->pc);
+    if (func_hooks != hooks.end())
     {
-        auto func_hooks = hooks.find(tb->pc);
-        if (func_hooks != hooks.end())
+        target_ulong asid = panda_current_asid(cpu);
+        for (auto &hook : func_hooks->second)
         {
-            target_ulong asid = panda_current_asid(cpu);
-            for (auto &hook : func_hooks->second)
-            {
-                if (asid == hook.first || hook.first == 0){
-                    ret |= (*hook.second)(cpu, tb);
-                }
+            if (asid == hook.first || hook.first == 0){
+                ret |= (*hook.second)(cpu, tb);
             }
         }
     }
