@@ -104,6 +104,21 @@ Implementation behaviour: The implementation should create and populate a [`GArr
 
 ## APIs and Callbacks
 
+Plugins may register for task change notifications using the following callback:
+
+---
+Name: **on\_task\_change**
+
+Signature:
+
+```C
+typedef void (*on_task_change_t)(CPUState *)
+```
+
+Description: Used to notify a plugin that the current task (thread/process) within the operating system has changed.
+
+---
+
 To implement OS-specific introspection support, an OSI provider should register the following callbacks:
 
 ---
@@ -209,6 +224,24 @@ typedef void (*on_get_mappings_t)(CPUState *, OsiProc *, GArray**)
 Description: Retrieves the shared libraries loaded for the specified process of the guest OS. The process `OsiProc` can be aquired via a previous call to `on_get_current_process` or `on_get_processes`.
 
 Implementation behaviour: The implementation should populate a [`GArray`][garray] filled with `OsiModule` elements, following the rules described in the *data containers* section above. Results need to be freed using [`g_array_free`][gafree].
+
+---
+
+To implement OS-specific introspection support, an OSI provider should call the following OSI APIs:
+
+---
+
+Name: **notify\_task\_change**
+
+Signature:
+
+```C
+void notify_task_change(CPUState *)
+```
+
+Description: Runs the task change callbacks.
+
+Implementation behavior: The implementation should call this function after the current thread or process has changed.
 
 ---
 
