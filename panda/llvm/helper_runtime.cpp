@@ -107,7 +107,9 @@ const static std::set<std::string> ignore_funcs{
 };
 void PandaHelperCallVisitor::visitCallInst(CallInst &I) {
     Function *oldFunction = I.getCalledFunction();
-    assert(oldFunction);
+    if (!oldFunction) {
+        return; // Ignore function pointers.
+    }
 
     Module *module = I.getParent()->getParent()->getParent();
     assert(module);

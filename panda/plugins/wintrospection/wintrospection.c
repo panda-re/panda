@@ -747,6 +747,7 @@ static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
             OsiModule *mod = &g_array_index(mods, OsiModule, i);
             if (0 == strcmp("ntoskrnl.exe", mod->name)) {
                 task_change_hook_addr = mod->base + task_change_hook_offset;
+                printf("task change hook address = %lX\n", (uint64_t)task_change_hook_addr);
             }
         }
         if (NULL != mods) {
@@ -756,8 +757,9 @@ static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 
     if (tb->pc <= task_change_hook_addr && task_change_hook_addr < tb->pc + tb->size) {
         TCGOp *op = find_guest_insn_by_addr(task_change_hook_addr);
-        assert(NULL != op);
-        insert_call_1p(&op, (void(*)(void*))notify_task_change, cpu);
+        if (op) {
+            insert_call_1p(&op, (void(*)(void*))notify_task_change, cpu);
+        }
     }
 }
 
