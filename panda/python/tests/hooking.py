@@ -25,7 +25,7 @@ def extract_kallsyms():
     global kallsyms
     # First revert to root snapshot, then type a command via serial
     panda.revert_sync("root")
-    syms = panda.run_serial_cmd("cat /boot/System.map*")
+    syms = panda.run_serial_cmd("cat /boot/System.map*", timeout=9999)
 
     for line in syms.split("\n"):
         line = line.strip()
@@ -68,7 +68,7 @@ def call_hook(env, tb):
 
     return False
 
-@panda.hook("call_hook2", kallsyms["sys_access"], kernel=True, kernel=True)
+@panda.hook("call_hook2", kallsyms["sys_access"], kernel=True)
 def call_hook2(env, tb):
     pc = panda.current_pc(env)
     global sysaccess_ran_ctr, need_sysaccess
