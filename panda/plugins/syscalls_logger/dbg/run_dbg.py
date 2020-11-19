@@ -44,8 +44,7 @@ def first_syscall(cpu, pc, callno):
 
     panda.load_plugin("osi", args={"disable-autoload": True})
     panda.load_plugin("osi_linux", args={"kconf_file": osi_kernelinfo, "kconf_group": "debian:4.4.138:32"})
-    #panda.load_plugin("syscalls_logger", args={"json": dwarf_json, "verbose": False})
-    panda.load_plugin("syscalls_logger")
+    panda.load_plugin("syscalls_logger", args={"json": dwarf_json, "verbose": False})
     panda.disable_ppp("first_syscall")
 
 panda.run()
