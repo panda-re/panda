@@ -1552,6 +1552,10 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         PointerType *pointerType = dyn_cast<PointerType>(valueType);
         assert(pointerType && pointerType->getElementType()->isFunctionTy());
         callType = dyn_cast<FunctionType>(pointerType->getElementType());
+        if (!calledF) {
+            return;
+            //printf("calledF = %d\n", (bool)calledF);
+        }
     }
     assert(callType && callType->isFunctionTy());
 
