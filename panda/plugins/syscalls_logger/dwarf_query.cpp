@@ -61,7 +61,6 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
     std::string type_name = member["type"]["name"].asString();
     Json::Value type_info = root["base_types"][type_name];
 
-    // TODO: Cleanup with separate func and switch statement, doesn not map to DataType exactly
     bool ptr_type = (type_category.compare(ptr_str) == 0);
     bool struct_type = (type_category.compare(struct_str) == 0);
     bool array_type = (type_category.compare(array_str) == 0);
@@ -192,7 +191,7 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
             std::string subtype_kind = member["type"]["subtype"]["kind"].asString();
             std::string subtype_name = member["type"]["subtype"]["name"].asString();
 
-            // TODO: Cleanup with seperate func and switch statement, doesn not map to DataType exactly
+            // TODO: Cleanup with separate func and switch statement, doesn not map to DataType exactly
             bool struct_ptr = (subtype_kind.compare(struct_str) == 0);
             bool double_ptr = (subtype_kind.compare(ptr_str) == 0);
             bool func_ptr = (subtype_kind.compare(func_str) == 0);

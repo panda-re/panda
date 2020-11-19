@@ -9,8 +9,7 @@ if [ -z "$1" ]; then
     printf "\nUsage: $0 <target>"
     printf "\n\nValid options for <target>:"
     printf "\n\'arm\'"
-    printf "\n\'arm-lite\'"
-    printf "\n\'x64\'\n"
+    printf "\n\'arm-lite\'\n"
     exit 1
 fi
 
@@ -47,10 +46,6 @@ elif [ "$1" == 'arm' ]; then
 
     wget -nc -q --show-progress https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-armhf.squashfs
 
-elif [ "$1" == 'x64' ]; then
-
-    wget -nc -q --show-progress https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64.squashfs
-
 else
 
     printf "Invalid target option! No matching FS\n"
@@ -73,13 +68,8 @@ tar xvzf $KERNEL_TAR
 # Config kernel
 cd $KERNEL_DIR
 
-if [ "$1" == 'x64' ]; then
-    make x86_64_defconfig                   # Generic x64
-else
-    make ARCH=arm vexpress_defconfig        # QEMU's vexpress-a9
-fi
-
-sed -i 's/=m/=y/g' .config            # Make everything built-in
+make ARCH=arm vexpress_defconfig        # QEMU's vexpress-a9
+sed -i 's/=m/=y/g' .config              # Make everything built-in
 
 cat <<EOF >> .config
 CONFIG_SERIAL_8250_CONSOLE=y
@@ -113,12 +103,7 @@ CONFIG_SQUASHFS_XZ=y
 
 EOF
 
-# Build kernel
-if [ "$1" == 'x64' ]; then
-    time make -j $(nproc)
-else
-    time make ARCH=arm CROSS_COMPILE=arm-none-eabi- -j $(nproc) zImage dtbs
-fi
+time make ARCH=arm CROSS_COMPILE=arm-none-eabi- -j $(nproc) zImage dtbs
 cd ..
 
 # ----------------------------------------------------------------------------------------------------------------------

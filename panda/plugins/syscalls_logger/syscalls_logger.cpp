@@ -89,7 +89,7 @@ target_ulong get_ptr(CPUState *cpu, target_ulong addr) {
     return ptr;
 }
 
-// Parse out prmitive array buffers
+// Parse out primitive array buffers
 Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data) {
 
     uint8_t* buf = std::get<uint8_t*>(data);
@@ -252,7 +252,7 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
             } else if ((rdt.type == DataType::ARRAY) && (rdt.arr_member_type != DataType::CHAR)) {
                 auto sdata = array_logger(rdt, data);
                 if (sdata) {
-                    nd->struct_type = strdup("ArrayOfPrimitve");
+                    nd->struct_type = strdup("ArrayOfPrimitive");
                     nd->struct_data = sdata;
                     return;
                 }
