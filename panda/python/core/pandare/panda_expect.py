@@ -107,9 +107,11 @@ class Expect(object):
                             elif past_ansi:
                                 results.append(line)
                         sofar = b"\r".join(results)
+                    #print("Strip ANSI:", repr(sofar))
 
                     # Try joining all lines together and searching for lastmsg
                     joined = b"".join([x.strip() for x in sofar.split(b"\r")])
+                    #print("RAW JOINED:", joined)
                     if self.last_msg and joined.startswith(self.last_msg.strip()):
                         results = []
                         # Go through lines until we find one that ends with last_msg
@@ -118,24 +120,27 @@ class Expect(object):
                         end_of_echo = 0
                         for idx, line in enumerate(sofar.split(b"\r")):
                             if self.last_msg.strip().endswith(current+line.strip()):
+                                #print("Potential ehco:", repr(current))
                                 current += line.strip()
                                 end_of_echo = idx
+                            else:
+                                break
+
 
                         for idx, line in enumerate(sofar.split(b"\r")):
                             if idx > end_of_echo:
                                 results.append(line)
 
                         sofar = b"\r".join(results)
+                    #print("Strip command echo:", repr(sofar))
 
+                    #if b"\r\n" in sofar: # Drop next prompt - We'll _always_ have a next prompt!
+                    resp = sofar.split(b"\r\n")
 
-
-                    if b"\r\n" in sofar: # Drop next prompt
-                        resp = sofar.split(b"\r\n")
-
-                        last_line = resp[-1]
-                        if self.expectation_re.match(last_line) != None:
-                            resp[:] = resp[:-1] # drop next prompt
-                            sofar= b"\r\n".join(resp)
+                    last_line = resp[-1]
+                    if self.expectation_re.match(last_line.strip()) != None:
+                        resp[:] = resp[:-1] # drop next prompt
+                        sofar= b"\r\n".join(resp)
 
                     sofar = sofar.strip()
                     self.logfile.flush()
