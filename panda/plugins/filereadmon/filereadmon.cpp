@@ -15,6 +15,8 @@
 #include "panda/plugin_plugin.h"
 
 #include "syscalls2/syscalls_ext_typedefs.h"
+#include "syscalls2/syscalls2_info.h"
+#include "syscalls2/syscalls2_ext.h"
 
 #include "osi/osi_types.h"
 
@@ -170,6 +172,9 @@ bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
 
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
+    panda_require("syscalls2");
+    assert(init_syscalls2_api());
+
     PPP_REG_CB("syscalls2", on_NtReadFile_return, my_NtReadFile_return);
     PPP_REG_CB("syscalls2", on_NtOpenFile_return, my_NtOpenFile_return);
     PPP_REG_CB("syscalls2", on_NtCreateFile_return, my_NtCreateFile_return);
