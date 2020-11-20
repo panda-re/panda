@@ -1,4 +1,4 @@
-Plugin: file_taint
+Plugin: file\_taint
 ===========
 
 Summary
@@ -33,7 +33,7 @@ Arguments
 * `end`: ulong, the last offset in the file to label.
 * `label`: the uniform label to use if positional taint is off (defaults to 0xF11E).
 * `verbose`: enables some extra output for debugging, sanity checks.
-* `pread_bits_64`: Treat the offset passed to pread as a 64-bit signed integer (Linux specific). If the binary under analysis was compiled with _FILE_OFFSET_BITS=64, then its possible that this flag needs to be set. See: https://www.gnu.org/software/libc/manual/html_node/I_002fO-Primitives.html
+* `pread_bits_64`: Treat the offset passed to pread as a 64-bit signed integer (Linux specific). If the binary under analysis was compiled with \_FILE\_OFFSET\_BITS=64, then its possible that this flag needs to be set. See: https://www.gnu.org/software/libc/manual/html\_node/I\_002fO-Primitives.html
 
 Dependencies
 ------------
@@ -50,13 +50,15 @@ Example
 
 A typical run might first try to find out where the file `foo.txt` is first used:
 
+```
     $PANDA_PATH/i386-softmmu/panda-system-i386 -replay foo -panda osi \
         -panda osi_linux:kconf_group=debian-3.2.63-i686 \
         -panda syscalls2:profile=linux_x86 -panda file_taint:filename=foo.txt
+```
 
 Limitations
 ----
 
 * In Windows, matching file names that include a drive letter is not supported. The OSI calls used to support file taint in Windows return Kernel object paths which do not include drive letters. This means that the filename is checked against a path without a drive letter. Also, the exact filename that is stored in the kernel object depends on how the file was opened. If the file was opened with a full path, it will have a full path in the file object. Otherwise, the path is relative to the process working directory.
 
-   For example, say I want to taint C:\Users\panda\test.txt. If I provide "C:\Users\panda\test.txt" as the filename, file_taint will miss the file. However, if I provide "\Users\panda\test.txt", file_taint will pick up the file read properly.
+   For example, say I want to taint C:\\Users\\panda\\test.txt. If I provide "C:\\Users\\panda\\test.txt" as the filename, file\_taint will miss the file. However, if I provide "\\Users\\panda\\test.txt", file\_taint will pick up the file read properly.

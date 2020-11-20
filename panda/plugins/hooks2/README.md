@@ -50,6 +50,8 @@ Issues
 Arguments
 ---------
 
+None.
+
 Dependencies
 ------------
 

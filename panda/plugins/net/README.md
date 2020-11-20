@@ -4,7 +4,7 @@ Plugin: net
 Summary
 -------
 
-This plugin exercises / tests the e1000 network callback hooks.  It simply prints the information that was saved in the record.
+This plugin prints information from network traffic saved during a recording.  The recording must have been made with a network device that has network hooks in it.  One such device is the e1000.
 
 Arguments
 ---------

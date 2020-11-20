@@ -7,8 +7,7 @@ Summary
 The `memorymap` plugin dumps the current process mapping at a given instruction, enabling the user to determine if an address is in code, data or the heap.  The instruction of interest can be identifed by its count or by its guest address.  It is possible to identify some instructions by address and others by count.  If neither addresses nor counts are provided, then the information for every instruction is written to standard output.
 
 Following are selected lines from sample output:
-                        
-                                                                                                         
+
 	...
 	pc=0x80441d6d instr_count=9260452 process=win_mt_sf_moref pid=412 tid=644 in_kernel=true image_name=ntoskrnl.exe image_path=\WINNT\System32\ntoskrnl.exe image_base=0x80400000
 	pc=0x80441d6f instr_count=9260453 process=win_mt_sf_moref pid=412 tid=644 in_kernel=true image_name=ntoskrnl.exe image_path=\WINNT\System32\ntoskrnl.exe image_base=0x80400000
@@ -26,6 +25,7 @@ Following are selected lines from sample output:
 	...
 
 The information reported on each instruction is, in order from left to right:
+
 - `pc` : the guest address of the instruction, in hexadecimal
 - `instr_count` : the number of the instruction within the replay
 - `process` : the name of the process currently executing in the guest, if it can be determined
@@ -36,13 +36,11 @@ The information reported on each instruction is, in order from left to right:
 - `image_path` : the path to the identified `image_name`
 - `image_base` : the base address of the identified kernel module or dynamic library
 
-
 Arguments
 ---------
 
 * `pcs`: a dash delimited list of guest instruction addresses to be reported upon (use prefix 0x or 0X to specify in hexadecimal, 0 to specify in octal, or no prefix for decimal)
 * `instr_counts` : a dash delimited list of instruction counts to be reported upon
-
 
 Dependencies
 ------------
