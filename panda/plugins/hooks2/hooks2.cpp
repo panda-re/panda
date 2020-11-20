@@ -143,11 +143,14 @@ get_procname(OsiProc *proc, bool get_basename)
 {
     char *full;
 
+#if 0
     if (plugin.use_exe_file && proc->exe_file) {
         full = proc->exe_file;
     } else {
         full = proc->name;
     }
+#endif
+    full = proc->name;
 
     if (get_basename) {
         return basename(full);
