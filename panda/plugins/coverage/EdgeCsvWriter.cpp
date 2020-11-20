@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "EdgeCsvWriter.h"
 
 namespace coverage
@@ -5,6 +7,7 @@ namespace coverage
 
 EdgeCsvWriter::EdgeCsvWriter(const std::string &filename, bool start_disabled)
 {
+    os.exceptions(std::ofstream::badbit | std::ofstream::failbit);
     if (!start_disabled) {
         os.open(filename);
         write_header();
