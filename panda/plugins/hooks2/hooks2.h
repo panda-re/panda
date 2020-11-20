@@ -12,10 +12,7 @@ extern "C" {
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
 // files in this directory that contain subsections like this one.
 
-#define HOOKS2_UNKNOWN_ASID ((target_ulong)-1)
-
-// Hook functions must be of this type
-typedef bool (*hooks2_func_t)(CPUState *, TranslationBlock *, void *);
+#define HOOKS2_UNKNOWN_ASID -1
 
 int add_hooks2(
     hooks2_func_t hook,

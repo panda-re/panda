@@ -2513,4 +2513,10 @@ class Panda():
     def hook2_single_insn(self, name, pc, kernel=False, procname=ffi.NULL, libname=ffi.NULL):
         return self.hook(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
 
+    def hook2_function(self, hook_enter, hook_return, kernel=False, procname=ffi.NULL, libname=ffi.NULL, offset=0):
+        # hook_enter/hook_return must be decorated with @panda.ffi.callback("hooks2_func_t")
+        procname_s = ffi.new("char[]", bytes(procname, "utf-8"))
+        libname_s = ffi.new("char[]", bytes(libname, "utf-8"))
+        self.plugins['hooks2'].add_hooks2_function(hook_enter, hook_return, ffi.NULL, kernel, procname_s, libname_s, offset)
+
 # vim: expandtab:tabstop=4:
