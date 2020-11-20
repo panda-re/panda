@@ -6,6 +6,7 @@ namespace coverage
 OsiBlockCsvWriter::OsiBlockCsvWriter(const std::string &filename,
     bool start_disabled)
 {
+    os.exceptions(std::ofstream::failbit | std::ofstream::badbit);
     if (!start_disabled) {
         os.open(filename);
         write_header();

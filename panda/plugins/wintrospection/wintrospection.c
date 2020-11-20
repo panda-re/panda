@@ -755,7 +755,7 @@ static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
         }
     }
 
-    if (tb->pc <= task_change_hook_addr && task_change_hook_addr < tb->pc + tb->size) {
+    if ((tb->pc <= task_change_hook_addr) && (task_change_hook_addr < tb->pc + tb->size)) {
         TCGOp *op = find_guest_insn_by_addr(task_change_hook_addr);
         if (op) {
             insert_call_1p(&op, (void(*)(void*))notify_task_change, cpu);
