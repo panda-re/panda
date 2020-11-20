@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "panda/tcg-utils.h"
 
 #include "BlockInstrumentationDelegate.h"
@@ -11,7 +13,12 @@ static void block_callback(RecordProcessor<Block> *bp, TranslationBlock *tb)
         .addr = tb->pc,
         .size = tb->size
     };
-    bp->handle(block);
+    try {
+        bp->handle(block);
+    } catch (std::system_error& err) {
+        std::cerr << "Failed to process block: "
+                  << err.code().message() << "\n";
+    }
 }
 
 BlockInstrumentationDelegate::BlockInstrumentationDelegate(std::unique_ptr<RecordProcessor<Block>> bp)

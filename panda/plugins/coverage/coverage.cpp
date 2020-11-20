@@ -8,6 +8,7 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+#include <iostream>
 #include <exception>
 #include <memory>
 #include <string>
@@ -97,7 +98,11 @@ int monitor_callback(Monitor *mon, const char *cmd_cstr)
     if (0 == cmd.find(MONITOR_DISABLE)) {
         log_message("Disabling instrumentation.");
         for (auto del : monitor_delegates) {
-            del->handle_disable();
+            try {
+                del->handle_disable();
+            } catch (std::system_error& err) {
+                std::cerr << "Error disabling instrumentation: " << err.code().message() << "\n";
+            }
         }
     } else if (0 == cmd.find(MONITOR_ENABLE)) {
         auto index = cmd.find("=");
@@ -111,7 +116,11 @@ int monitor_callback(Monitor *mon, const char *cmd_cstr)
                 filename.c_str());
         }
         for (auto del : monitor_delegates) {
-            del->handle_enable(filename);
+            try {
+                del->handle_enable(filename);
+            } catch (std::system_error& err) {
+                std::cerr << "Error enabling instrumentation: " << err.code().message() << "\n";
+            }
         }
     }
     return 0;
@@ -203,7 +212,14 @@ bool init_plugin(void *self)
     {
         mb.with_start_disabled();
     }
-    inst_del = mb.build();
+
+    try {
+        inst_del = mb.build();
+    } catch (std::system_error& err) {
+        std::cerr << "Error setting up instrumentation: "
+                  << err.code().message() << "\n";
+        return false;
+    }
 
     pcb.monitor = monitor_callback;
     panda_register_callback(self, PANDA_CB_MONITOR, pcb);

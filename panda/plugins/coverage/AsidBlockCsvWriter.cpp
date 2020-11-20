@@ -8,6 +8,7 @@ namespace coverage
 AsidBlockCsvWriter::AsidBlockCsvWriter(const std::string &filename,
     bool start_disabled)
 {
+    os.exceptions(std::ofstream::failbit | std::ofstream::badbit);
     if (!start_disabled) {
         os.open(filename);
         write_header();
@@ -16,6 +17,10 @@ AsidBlockCsvWriter::AsidBlockCsvWriter(const std::string &filename,
 
 void AsidBlockCsvWriter::handle(AsidBlock record)
 {
+    if (!os.is_open()) {
+        return;
+    }
+
     os << "0x" << std::hex << record.asid << ","
        << std::dec << record.in_kernel << ","
        << "0x" << std::hex << record.block.addr << ","

@@ -168,7 +168,13 @@ static void block_callback(EdgeState *edge_state,
         .from = *edge_state->prev_block,
         .to = to_block
     };
-    ep->handle(edge);
+    try {
+        ep->handle(edge);
+    } catch (std::system_error& err) {
+        std::cerr << "Error while processing edge: "
+                  << err.code().message() << "\n";
+        std::exit(EXIT_FAILURE);
+    }
 }
 
 #ifdef TARGET_I386
@@ -501,8 +507,6 @@ void EdgeInstrumentationDelegate::instrument(CPUState *cpu,
         cs_open(CS_ARCH_X86, mode, &handle);
         cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON);
         capstone_initialized = true;
-
-        task_changed("dummy", 0, 0); // TODO: fix this huge ass hack
     }
 #endif
 
