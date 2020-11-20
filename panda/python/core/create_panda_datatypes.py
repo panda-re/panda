@@ -230,6 +230,9 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
         define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_mips.h")
     else:
         print("PANDA_DATATYPES: Architecture not supported")
+    
+    # Include some simple C includes
+    define_clean_header(ffi, include_dir + "/libc_defs.h")
 
     # Define some common panda datatypes
     define_clean_header(ffi, include_dir + "/panda_datatypes.h")
