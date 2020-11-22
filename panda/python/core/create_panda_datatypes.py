@@ -98,6 +98,7 @@ def copy_ppp_header(filename):
             # void ppp_add_cb_{cb_name}(void (*)({cb_args}))
     with open(pypanda_h, "w") as outfile:
         outfile.write("\n".join(new_contents))
+
     return pypanda_h
 
 def create_pypanda_header(filename, no_record=False):
@@ -313,6 +314,10 @@ def main(install=False,recompile=True):
 
     #   other PPP headers: callstack_instr. TODO: more
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/callstack_instr", "callstack_instr.h"))
+
+    # XXX why do we have to append this to pypanda headers?
+    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/osi", "os_intro.h"))
+    pypanda_headers.append(os.path.join(INCLUDE_DIR_PYP, "os_intro.h"))
 
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2_ppp.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
