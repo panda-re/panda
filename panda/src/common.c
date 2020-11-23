@@ -119,6 +119,9 @@ target_ulong panda_current_asid(CPUState *cpu) {
 }
 
 target_ulong panda_current_pc(CPUState *cpu) {
+    /* Use more accurate panda_guest_pc if in llvm mode */
+    if (generate_llvm)
+        return cpu->panda_guest_pc;
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     target_ulong pc, cs_base;
     uint32_t flags;
