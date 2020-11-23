@@ -672,7 +672,7 @@ static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
     assert(NULL != op);
     insert_call(&op, execve_check, cpu);
 
-    if (tb->pc == ki.task.switch_task_hook_addr) {
+    if (0x0 != ki.task.switch_task_hook_addr && tb->pc == ki.task.switch_task_hook_addr) {
         // Instrument the task switch address.
         insert_call(&op, notify_task_change, cpu);
     }
