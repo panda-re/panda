@@ -77,14 +77,14 @@ SUPPORTED_IMAGES = {
 
     'mips_wheezy': Image(
             arch='mips',
-            os="linux-64-debian:3.2.0-4-arm-pae", # XXX wrong
+            os="linux-32-debian:4.19-malta",
             prompt=rb"root@debian-mips:.*# ",
             cdrom="ide1-cd0",
             snapshot="root",
-            url="https://panda-re.mit.edu/qcows/linux/debian/7.3/mips/debian_7.3_mips.qcow",
+            url="https://panda-re.mit.edu/qcows/linux/debian/7.3/mips/debian_7.3_mips_debug.qcow",
             default_mem='1g',
-            extra_files=['vmlinux-3.2.0-4-4kc-malta'],
-            extra_args='-M malta -kernel {DOT_DIR}/vmlinux-3.2.0-4-4kc-malta -append "root=/dev/sda1" -nographic'.format(DOT_DIR=VM_DIR)),
+            extra_files=['vmlinux-4.19-4kc-malta-dbg'],
+            extra_args='-M malta -kernel {DOT_DIR}/vmlinux-4.19-4kc-malta-dbg -append "root=/dev/sda1" -nographic'.format(DOT_DIR=VM_DIR)),
 
     'mipsel_wheezy':  Image(
             arch='mipsel',
