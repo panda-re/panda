@@ -885,6 +885,7 @@ static int vpc_create(const char *filename, QemuOpts *opts, Error **errp)
     int64_t total_size;
     int disk_type;
     int ret = -EIO;
+    QemuUUID uuid;
     bool force_size;
     Error *local_err = NULL;
     BlockBackend *blk = NULL;
@@ -991,7 +992,8 @@ static int vpc_create(const char *filename, QemuOpts *opts, Error **errp)
 
     footer->type = cpu_to_be32(disk_type);
 
-    qemu_uuid_generate(&footer->uuid);
+    qemu_uuid_generate(&uuid);
+    footer->uuid = uuid;
 
     footer->checksum = cpu_to_be32(vpc_checksum(buf, HEADER_SIZE));
 

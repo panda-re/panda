@@ -8,10 +8,12 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+#include <iostream>
 #include <exception>
 #include <memory>
 #include <string>
 #include <unordered_set>
+
 
 #include "panda/plugin.h"
 
@@ -23,7 +25,15 @@ PANDAENDCOMMENT */
 
 #include "Block.h"
 #include "RecordProcessor.h"
-#include "BlockProcessorBuilder.h"
+#include "ModeBuilder.h"
+#include "InstrumentationDelegate.h"
+#include "EdgeInstrumentationDelegate.h"
+#include "CoverageMonitorDelegate.h"
+
+#include "UniqueFilter.h"
+#include "EdgeCsvWriter.h"
+
+#include "osi_subject.h"
 
 #include "panda/tcg-utils.h"
 
@@ -47,7 +57,8 @@ void uninit_plugin(void *);
 }
 
 static std::unique_ptr<Predicate> predicate;
-static std::unique_ptr<RecordProcessor<Block>> processor;
+
+static std::unique_ptr<InstrumentationDelegate> inst_del;
 
 /**
  * Logs a message to stdout.
@@ -64,72 +75,36 @@ static void log_message(const char *fmt, ...)
     va_end(arglist);
 }
 
-static void callback(TranslationBlock *tb)
+static void after_loadvm(CPUState *cpu)
 {
-    Block block {
-        .addr = tb->pc,
-        .size = tb->size
-    };
-    processor->handle(block);
+    notify_task_change_observers(cpu);
 }
 
 static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 {
-    // Determine if we should instrument the current block.
-    if (nullptr == processor || !predicate->eval(cpu, tb)) {
+    // Determine if we should instrument.
+    if (nullptr == inst_del || !predicate->eval(cpu, tb)) {
         return;
     }
-
     // Instrument!
-    TCGOp *insert_point = find_first_guest_insn();
-    assert(NULL != insert_point);
-    insert_call(&insert_point, &callback, tb);
+    inst_del->instrument(cpu, tb);
 }
 
-static void disable_instrumentation()
-{
-    panda_do_flush_tb();
-    processor.reset();
-}
-
-static void enable_instrumentation(const std::string& filename)
-{
-    panda_do_flush_tb();
-    std::unique_ptr<panda_arg_list, void(*)(panda_arg_list*)> args(
-        panda_get_args("coverage"), panda_free_args);
-
-    bool log_all_records = panda_parse_bool_opt(args.get(), "full",
-            "log all records instead of just uniquely identified ones");
-    log_message("log all records %s", PANDA_FLAG_STATUS(log_all_records));
-    std::string mode_arg = panda_parse_string_opt(args.get(), "mode",
-        "asid-block", "coverage mode");
-
-    BlockProcessorBuilder b;
-    b.with_filename(filename)
-     .with_output_mode(mode_arg);
-    if (!log_all_records) {
-        b.with_unique_filter();
-    }
-    processor = b.build();
-}
+static std::vector<CoverageMonitorDelegate *> monitor_delegates;
 
 int monitor_callback(Monitor *mon, const char *cmd_cstr)
 {
     std::string cmd = cmd_cstr;
     if (0 == cmd.find(MONITOR_DISABLE)) {
-        if (nullptr == processor) {
-            log_message("Instrumentation not enabled, ignoring request to "
-                "disable.");
-            return 0;
-        }
         log_message("Disabling instrumentation.");
-        disable_instrumentation();
-    } else if (0 == cmd.find(MONITOR_ENABLE)) {
-        if (nullptr != processor) {
-            log_message("Instrumentation already enabled, ignoring request to "
-                "enable.");
-            return 0;
+        for (auto del : monitor_delegates) {
+            try {
+                del->handle_disable();
+            } catch (std::system_error& err) {
+                std::cerr << "Error disabling instrumentation: " << err.code().message() << "\n";
+            }
         }
+    } else if (0 == cmd.find(MONITOR_ENABLE)) {
         auto index = cmd.find("=");
         std::string filename = DEFAULT_FILE;
         if (std::string::npos != index) {
@@ -140,7 +115,13 @@ int monitor_callback(Monitor *mon, const char *cmd_cstr)
             log_message("Enabling instrumentation with default filename: %s",
                 filename.c_str());
         }
-        enable_instrumentation(filename);
+        for (auto del : monitor_delegates) {
+            try {
+                del->handle_enable(filename);
+            } catch (std::system_error& err) {
+                std::cerr << "Error enabling instrumentation: " << err.code().message() << "\n";
+            }
+        }
     }
     return 0;
 }
@@ -180,10 +161,6 @@ bool init_plugin(void *self)
     }
 
     std::string process_name = panda_parse_string_opt(args.get(), "process_name", "", "the process to collect coverage from");
-    if ("" != process_name) {
-        log_message("Process Name Filter = %s", process_name.c_str());
-        pb.with_process_name(process_name);
-    }
 
     std::string privilege = panda_parse_string_opt(args.get(), "privilege", "all", "collect coverage for a specific privilege mode" );
     if ("user" == privilege) {
@@ -212,18 +189,48 @@ bool init_plugin(void *self)
         DEFAULT_FILE, "the filename to use for output");
     log_message("output file name %s", filename.c_str());
 
-    if (!start_disabled)
+    std::string mode_arg = panda_parse_string_opt(args.get(), "mode",
+        "asid-block", "coverage mode");
+
+    bool log_all_records = panda_parse_bool_opt(args.get(), "full",
+            "log all records instead of just uniquely identified ones");
+    log_message("log all records %s", PANDA_FLAG_STATUS(log_all_records));
+
+    ModeBuilder mb(monitor_delegates);
+
+    if ("" != process_name) {
+        log_message("Process Name Filter = %s", process_name.c_str());
+        mb.with_process_name_filter(process_name);
+    }
+
+    mb.with_filename(filename);
+    mb.with_mode(mode_arg);
+    if (!log_all_records) {
+        mb.with_unique_filter();
+    }
+    if (start_disabled)
     {
-        enable_instrumentation(filename);
+        mb.with_start_disabled();
+    }
+
+    try {
+        inst_del = mb.build();
+    } catch (std::system_error& err) {
+        std::cerr << "Error setting up instrumentation: "
+                  << err.code().message() << "\n";
+        return false;
     }
 
     pcb.monitor = monitor_callback;
     panda_register_callback(self, PANDA_CB_MONITOR, pcb);
+
+    pcb.after_loadvm = after_loadvm;
+    panda_register_callback(self, PANDA_CB_AFTER_LOADVM, pcb);
 
     return true;
 }
 
 void uninit_plugin(void *self)
 {
-    disable_instrumentation();
+    inst_del.reset();
 }

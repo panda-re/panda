@@ -269,6 +269,7 @@ stack_protector=""
 git_submodules=""
 protobuf="yes"
 llvm="no"
+llvmdir="/usr/lib/llvm-10" # Default to try if unspecified
 llvmver="10"
 
 # Don't accept a target_list environment variable.
@@ -372,7 +373,7 @@ opengl_dmabuf="no"
 cpuid_h="no"
 avx2_opt="no"
 zlib="yes"
-capstone=""
+capstone="yes"
 lzo=""
 snappy=""
 bzip2=""
@@ -497,6 +498,12 @@ QEMU_CFLAGS="-fPIC -fno-strict-aliasing -fno-common -fwrapv $QEMU_CFLAGS"
 QEMU_CFLAGS="-Wall -Wwrite-strings -Wmissing-prototypes $QEMU_CFLAGS"
 QEMU_CFLAGS="-Wstrict-prototypes -Wredundant-decls $QEMU_CFLAGS"
 QEMU_CFLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE $QEMU_CFLAGS"
+
+if pkg-config --exists --atleast-version 4.9 xencontrol; then
+    ## Enable xencontrol compat API for libxen-4.9 (Ubuntu 18.04LTS).
+    QEMU_CFLAGS="-DXC_WANT_COMPAT_DEVICEMODEL_API $QEMU_CFLAGS"
+fi
+
 QEMU_INCLUDES="-iquote . -iquote \$(SRC_PATH) -iquote \$(SRC_PATH)/include"
 QEMU_CXXFLAGS="-Wall $QEMU_CXXFLAGS"
 if test "$debug_info" = "yes"; then
@@ -780,7 +787,7 @@ Linux)
   linux="yes"
   linux_user="yes"
   kvm="yes"
-  vhost_net="yes"
+  vhost_net="no" # Disabled for PANDA
   vhost_scsi="yes"
   vhost_vsock="yes"
   QEMU_INCLUDES="-I\$(SRC_PATH)/linux-headers -I$(pwd)/linux-headers $QEMU_INCLUDES"
@@ -6691,6 +6698,18 @@ fi
 
 if test "$pyperipheral2" = "yes" || test "$pyperipheral3" = "yes" ; then
   echo "CONFIG_PYPERIPHERAL=y" >> $config_target_mak
+
+  if test "$pyperipheral3" = "yes" ; then
+    # Need to update libraries and ldflags to link against python.
+    # Python >3.8 should generate these flags with --embed, but that's not backwards
+    # compatable, so we use this grep to detect failures (since it exits cleanly
+    # and prints an error to stdout).
+    echo "libs_softmmu+=$(python3-config --libs    --embed | grep -v Usage || python3-config --libs)"     >> $config_host_mak
+    echo      "LDFLAGS+=$(python3-config --ldflags --embed | grep -v Usage || python3-config --ldflags )" >> $config_host_mak
+  else
+    # TODO: how should this link? Python2-config? Can we just remove?
+    echo "WARNING: python2 pyperipheral is likely missing required LDFLAGS"
+  fi
 
 fi
 

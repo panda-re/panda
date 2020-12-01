@@ -144,5 +144,16 @@ trace-dtrace-root.dtrace
 trace-ust-all.h
 trace-ust-all.c
 
+.vscode/
+
 # Pypanda Examples
 pwc_log
+
+# Recordings and pandalogs
+*-rr-*
+*.plog
+
+# Kerenels/qcows
+*.qcow*
+vmlinux*
+zImage*

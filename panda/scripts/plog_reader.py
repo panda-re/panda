@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+# Note this file is a duplicate of the one in the pandare python package
 
 import sys
 import os
@@ -105,3 +106,4 @@ if __name__ == "__main__":
             if i > 0: print(',')
             print(MessageToJson(m), end='')
     print('\n]')
+

@@ -63,6 +63,8 @@ struct kernelinfo_errors {
 #define OPTIONAL_READ_INFO_INT(ki, memb, gerr, errcount, errbmp)\
 	OPTIONAL_READ_INFO_X(g_key_file_get_integer, ki, memb, gerr, errcount, errbmp)
 
+#define OPTIONAL_READ_INFO_UINT64(ki, memb, gerr, errcount, errbmp)\
+	OPTIONAL_READ_INFO_X(g_key_file_get_uint64, ki, memb, gerr, errcount, errbmp)
 
 
 /*! Reads kernel information (struct offsets and such) from the specified file.
@@ -151,6 +153,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	READ_INFO_INT(ki, task.comm_size, gerr, err.task, &errbmp);
 	READ_INFO_INT(ki, task.files_offset, gerr, err.task, &errbmp);
 	OPTIONAL_READ_INFO_INT(ki, task.start_time_offset, gerr, err.task, &errbmp);
+    OPTIONAL_READ_INFO_UINT64(ki, task.switch_task_hook_addr, gerr, err.task, &errbmp);
         
 	/* read mm information */
 	READ_INFO_INT(ki, mm.size, gerr, err.mm, &errbmp);
