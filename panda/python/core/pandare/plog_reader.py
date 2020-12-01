@@ -1,44 +1,15 @@
 #!/usr/bin/python3
 
-# Note this file is a duplicate of the one in the pandare python package
-
-import sys
-import os
 import zlib
 import struct
-import itertools
-from google.protobuf.json_format import MessageToJson
-from os.path import dirname
-
-panda_dir = dirname(dirname(dirname(os.path.realpath(__file__))))
-
-# components of paths to be serched
-top_dirs = [panda_dir, dirname(panda_dir)]
-build_dirs = ['build-panda', 'build', 'opt-panda', 'debug-panda']
-arch_dirs = ['i386-softmmu', 'x86_64-softmmu']
-searched_paths = []
-
-for dc in itertools.product(top_dirs, build_dirs, arch_dirs):
-    d = os.path.join(*dc)
-    searched_paths.append(d)
-    if not os.path.isdir(d): continue
-    try:
-        sys.path.append(d)
-        import plog_pb2
-        break
-    except ImportError:
-        sys.path.pop()
-
-assert 'plog_pb2' in sys.modules, "Couldn't load module plog_pb2. Searched paths:\n\t%s" % "\n\t".join(searched_paths)
 
 class PLogReader:
+    '''
+    A class for reading pandalog files.
+    '''
     def __init__(self, fn):
-        self.f = open(fn, "rb")
-        buf = self.f.read(24)
-        try:
-            self.version, _, self.dir_pos, _, self.chunk_gsize = struct.unpack('<IIQII', buf)
-        except struct.error as e:
-             raise ValueError(f"Can't parse {fn} as a plog - it has an incomplete plog header") from e
+        self.f = open(fn, 'rb')
+        self.version, _, self.dir_pos, _, self.chunk_gsize = struct.unpack('<IIQII', self.f.read(24))
 
         self.f.seek(self.dir_pos)
         self.nchunks, = struct.unpack('<I', self.f.read(4)) # number of chunks
@@ -100,10 +71,11 @@ class PLogReader:
         return msg
 
 if __name__ == "__main__":
+    import sys
+    from google.protobuf.json_format import MessageToJson
     print('[')
     with PLogReader(sys.argv[1]) as plr:
         for i, m in enumerate(plr):
             if i > 0: print(',')
             print(MessageToJson(m), end='')
     print('\n]')
-
