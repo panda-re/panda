@@ -25,6 +25,9 @@
 #include "kernelinfo_downloader.h"
 #include "endian_helpers.h"
 
+#include "panda/tcg-utils.h"
+#include "osi/osi_ext.h"
+
 #define KERNEL_CONF "/" TARGET_NAME "-softmmu/panda/plugins/osi_linux/kernelinfo.conf"
 
 /*
@@ -647,6 +650,34 @@ void r28_cache(CPUState *cpu, TranslationBlock *tb) {
 }
 #endif
 
+#if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
+static bool in_execve = false;
+
+static void on_execve_enter(CPUState *cpu, target_ulong pc, target_ulong fnp, target_ulong ap, target_ulong envp)
+{
+    in_execve = true;
+}
+
+static void execve_check(CPUState *cpu)
+{
+    if (in_execve && !panda_in_kernel(cpu)) {
+        notify_task_change(cpu);
+        in_execve = false;
+    }
+}
+
+static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
+{
+    TCGOp *op = find_first_guest_insn();
+    assert(NULL != op);
+    insert_call(&op, execve_check, cpu);
+
+    if (0x0 != ki.task.switch_task_hook_addr && tb->pc == ki.task.switch_task_hook_addr) {
+        // Instrument the task switch address.
+        insert_call(&op, notify_task_change, cpu);
+    }
+}
+#endif
 
 /**
  * @brief Initializes plugin.
@@ -662,6 +693,11 @@ bool init_plugin(void *self) {
         // Particularly if KASLR is enabled!
         pcb.after_loadvm = init_per_cpu_offsets;
         panda_register_callback(self, PANDA_CB_AFTER_LOADVM, pcb);
+
+        // Register hooks in the kernel to provide task switch notifications.
+        assert(init_osi_api());
+        pcb.before_tcg_codegen = before_tcg_codegen_callback;
+        panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb);
     }
 
 #if defined(TARGET_MIPS)
@@ -758,10 +794,12 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);
 
     // By default, we'll request syscalls2 to load on first syscall
+    panda_require("syscalls2");
     if (!osi_initialized) {
-      panda_require("syscalls2");
       PPP_REG_CB("syscalls2", on_all_sys_enter, on_first_syscall);
     }
+
+    PPP_REG_CB("syscalls2", on_sys_execve_enter, on_execve_enter);
 
 
     return true;

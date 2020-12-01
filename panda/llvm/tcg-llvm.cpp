@@ -635,17 +635,27 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
 
             const char *helperName = tcg_find_helper(m_tcgContext,
                                                      (uintptr_t)helperAddrC);
-            assert(helperName);
-
-            std::string funcName = std::string("helper_") + helperName;
-            Function* helperFunc = m_module->getFunction(funcName);
-            if(!helperFunc) {
-                helperFunc = Function::Create(
-                        FunctionType::get(retType, argTypes, false),
+            FunctionType *ft = FunctionType::get(retType, argTypes, false);
+            Value *callTarget = NULL;
+            if (!helperName) {
+                // In this case, we couldn't find a helper. All we know is that
+                // this is a function poiner.
+                PointerType *fpt = PointerType::getUnqual(ft);
+                assert(fpt);
+                Value *pointerValue = m_builder.getInt64(helperAddrC);
+                assert(pointerValue);
+                callTarget = m_builder.CreateIntToPtr(pointerValue, fpt);
+                assert(callTarget);
+            } else {
+                std::string funcName = std::string("helper_") + helperName;
+                callTarget = m_module->getFunction(funcName);
+                if(!callTarget) {
+                    callTarget = Function::Create(ft,
                         Function::ExternalLinkage, funcName, m_module.get());
+                }
             }
 
-            result = m_builder.CreateCall(helperFunc,
+            result = m_builder.CreateCall(callTarget,
                                           ArrayRef<Value*>(argValues));
 
             /* Invalidate in-memory values because

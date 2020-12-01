@@ -17,7 +17,8 @@ was executed in kernel mode.) For the `osi-block` and `asid-block` modes, the
 mode used to create the CSV file is also written at the top of the file, to cue
 parsers in as to how to interpret the file. `edge` mode writes two blocks per
 records where the first block represents the "from" node in a control flow
-graph (CFG) and the second represents the "to" node.
+graph (CFG) and the second represents the "to" node. Note that the `edge` mode
+requires OSI and only works with X86 guests.
 
 The default behavior is to store a record only the first time it is
 encountered. However, the `full` option can be used to store a record every
@@ -66,13 +67,14 @@ Arguments
 ---------
 * `filename` - The name of the file to output (default:  `coverage.csv`).
 * `mode` - Output mode, one of `asid-block`, `osi-block`, or `edge` (default:
-`asid-block`)
+`asid-block`). Note that `edge` requires OSI.
 * `full` - When `true`, logs each record every time it is generated (default:
 `false`)
 * `start_disabled` - When `true`, does not start data collection when the
 plugin is initialized (default: `false`)
-* `process_name` - Filter option, only instrument blocks with given procss
-name (requires OSI).
+* `process_name` - Filter option, only emit a block if the current process name
+matches this argument (requires OSI). Note this filter is done at runtime, not
+instrumentation time.
 * `pc` - Filter option, only instrument blocks within a given range. Format: 
 <Start PC in Hex or Decimal>-<End PC in Hex or Decimal>.
 * `privilege` - Filter option, only instrument blocks executed with the
