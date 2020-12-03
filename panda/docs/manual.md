@@ -1129,8 +1129,10 @@ written via `zlib` file access functions for compression.
 
 ### Looking at the Logfile
 
-There is a small program in `panda/src/plog_reader.cpp`, which also serves as an example of reading/writing with the C++ pandalog API.
-Compilation directions are at the head of that source file. You can also use the `panda/scripts/plog_reader.py` script to view a log, which is more convenient but slower.
+There is a small program in `panda/src/example_plog_reader.cpp`, which also serves as an example of reading/writing with the C++ pandalog API.
+Compilation directions are at the head of that source file. This example will only print the PC and instr. You can customize the source code to read additional information from your pandalog.
+
+You can also use the `panda/scripts/plog_reader.py` script to view a log. This will read not require edits to the code, however this method may be slower. 
 
 You can read a pandalog using either program and also see how easy it is to
 unmarshall the pandalog.  Here's how to use it and some of its output.

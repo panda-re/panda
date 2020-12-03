@@ -1,6 +1,5 @@
 ARG BASE_IMAGE="ubuntu:20.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
-ARG PROTOBUF_VER="3.0.0"
 ARG CFFI_PIP="https://foss.heptapod.net/pypy/cffi/-/archive/branch/default/cffi-branch-default.zip"
 
 ### BASE IMAGE
@@ -23,7 +22,6 @@ RUN [ -e /tmp/${BASE_IMAGE}_base.txt ] && \
 FROM base AS builder
 ARG BASE_IMAGE
 ARG TARGET_LIST
-ARG PROTOBUF_VER
 ARG CFFI_PIP
 
 RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
@@ -33,7 +31,7 @@ RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
     rm -rf /var/lib/apt/lists/* && \
     python3 -m pip install --upgrade --no-cache-dir pip && \
     python3 -m pip install --upgrade --no-cache-dir setuptools wheel && \
-    python3 -m pip install --upgrade --no-cache-dir pycparser "protobuf==${PROTOBUF_VER}" "${CFFI_PIP}" colorama
+    python3 -m pip install --upgrade --no-cache-dir pycparser "protobuf" "${CFFI_PIP}" colorama
 
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory

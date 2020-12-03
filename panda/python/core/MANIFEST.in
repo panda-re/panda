@@ -1,0 +1,2 @@
+graft pandare
+global-exclude *.py[cod] __pycache__ *.sw*
