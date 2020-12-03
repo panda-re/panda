@@ -12,7 +12,6 @@ chrpath
 clang-10
 gcc
 libcapstone-dev
-libjsoncpp-dev
 libdwarf-dev
 libprotoc-dev
 llvm-10-dev

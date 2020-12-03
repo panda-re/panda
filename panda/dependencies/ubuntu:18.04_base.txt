@@ -2,6 +2,7 @@
 git
 libcapstone3
 libdwarf1
+libjsoncpp-dev
 libllvm10
 libprotobuf-c0-dev
 libvirglrenderer0
