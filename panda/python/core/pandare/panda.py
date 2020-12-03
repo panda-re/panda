@@ -418,6 +418,7 @@ class Panda():
         self.libpanda.panda_run() # Give control to panda
         self.running.clear() # Back from panda's execution (due to shutdown or monitor quit)
         self.libpanda.panda_unload_plugins() # Unload c plugins - should be safe now since exec has stopped
+        self.panda_finish() # Write PANDALOG, if any
         if hasattr(self, "end_run_raise_signal"):
             raise self.end_run_raise_signal
         if hasattr(self, "callback_exit_exception"):
