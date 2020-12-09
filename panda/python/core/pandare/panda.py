@@ -2363,7 +2363,6 @@ class Panda():
             #print(f"Updating hook {hook_name} at 0x{hook.target_addr:x}")
             if addr != hook.target_addr:
                 hook.target_addr = addr
-                self.plugins['hooks'].enable_hook(hook.hook_cb, hook.target_addr)
             self.enable_hook(hook_name)
 
         else:
@@ -2454,8 +2453,8 @@ class Panda():
             self._register_mmap_cb()
 
         def decorator(fun):
-            # Ultimately, our hook resolves as a before_block_exec so we must match its args
-            hook_cb_type = self.callback.before_block_exec # (CPUState, TranslationBlock)
+            # Ultimately, our hook resolves as a before_block_exec_invalidate_opt callback so we must match its args
+            hook_cb_type = self.callback.before_block_exec_invalidate_opt # (CPUState, TranslationBlock)
 
             if 'hooks' not in self.plugins:
                 # Enable hooks plugin on first request
