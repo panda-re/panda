@@ -183,6 +183,7 @@ class Panda():
 
         # Shutdown stuff
         self.exception = None # When set to an exn, we'll raise and exit
+        self._in_replay = False
 
         # main_loop_wait functions and callbacks
         self.main_loop_wait_fnargs = [] # [(fn, args), ...]
@@ -420,7 +421,9 @@ class Panda():
         self.libpanda.panda_unload_plugins() # Unload c plugins - should be safe now since exec has stopped
         # Write PANDALOG, if any
         #self.libpanda.panda_cleanup_record()
-        self.reset()
+        if self._in_replay:
+            print("doing reset")
+            self.reset()
         if hasattr(self, "end_run_raise_signal"):
             raise self.end_run_raise_signal
         if hasattr(self, "callback_exit_exception"):
@@ -492,7 +495,9 @@ class Panda():
 
         charptr = ffi.new("char[]",bytes(replaypfx,"utf-8"))
         self.libpanda.panda_replay_begin(charptr)
+        self._in_replay = True
         self.run()
+        self._in_replay = False
 
     def require(self, name):
         '''
