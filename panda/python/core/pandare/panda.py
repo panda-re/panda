@@ -418,16 +418,22 @@ class Panda():
         self.running.set()
         self.libpanda.panda_run() # Give control to panda
         self.running.clear() # Back from panda's execution (due to shutdown or monitor quit)
+        self.delete_callbacks()
         self.libpanda.panda_unload_plugins() # Unload c plugins - should be safe now since exec has stopped
+        self.plugins = plugin_list(self)
         # Write PANDALOG, if any
         #self.libpanda.panda_cleanup_record()
         if self._in_replay:
             print("doing reset")
             self.reset()
         if hasattr(self, "end_run_raise_signal"):
-            raise self.end_run_raise_signal
+            saved = self.end_run_raise_signal
+            del self.end_run_raise_signal
+            raise saved
         if hasattr(self, "callback_exit_exception"):
-            raise self.callback_exit_exception
+            saved = self.callback_exit_exception
+            del self.callback_exit_exception
+            raise saved
             
 
     def end_analysis(self):
@@ -590,7 +596,8 @@ class Panda():
 
         # First unload python plugins, should be safe to do anytime
         for name in self.registered_callbacks.keys():
-            self.disable_callback(name)
+            self.delete_callback(name)
+            #self.disable_callback(name)
 
         # Then unload C plugins. May be unsafe to do except from the top of the main loop (taint segfaults otherwise)
         self.queue_main_loop_wait_fn(self.libpanda.panda_unload_plugins)
@@ -2233,8 +2240,15 @@ class Panda():
             raise ValueError("No callback has been registered with name '{}'".format(name))
 
         handle = self.registered_callbacks[name]['handle']
+        print(f"delete_callback {name} {handle}")
         self.libpanda.panda_unregister_callbacks(handle)
         del self.registered_callbacks[name]['handle']
+        del self.registered_callbacks[name]
+    
+    def delete_callbacks(self):
+        #for name in self.registered_callbacks.keys():
+        while len(self.registered_callbacks.keys()) > 0:
+            self.delete_callback(list(self.registered_callbacks.keys())[0])
 
     ###########################
     ### PPP-style callbacks ###
