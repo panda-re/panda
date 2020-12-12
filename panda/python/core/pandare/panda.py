@@ -424,7 +424,6 @@ class Panda():
         # Write PANDALOG, if any
         #self.libpanda.panda_cleanup_record()
         if self._in_replay:
-            print("doing reset")
             self.reset()
         if hasattr(self, "end_run_raise_signal"):
             saved = self.end_run_raise_signal
@@ -595,8 +594,9 @@ class Panda():
             progress ("Disabling all python plugins, unloading all C plugins")
 
         # First unload python plugins, should be safe to do anytime
-        for name in self.registered_callbacks.keys():
-            self.delete_callback(name)
+        #for name in self.registered_callbacks.keys():
+        while len(list(self.registered_callbacks)) > 0:
+            self.delete_callback(list(self.registered_callbacks.keys())[0])
             #self.disable_callback(name)
 
         # Then unload C plugins. May be unsafe to do except from the top of the main loop (taint segfaults otherwise)
@@ -2240,7 +2240,6 @@ class Panda():
             raise ValueError("No callback has been registered with name '{}'".format(name))
 
         handle = self.registered_callbacks[name]['handle']
-        print(f"delete_callback {name} {handle}")
         self.libpanda.panda_unregister_callbacks(handle)
         del self.registered_callbacks[name]['handle']
         del self.registered_callbacks[name]
