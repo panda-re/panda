@@ -176,6 +176,7 @@ class Panda():
         self.taint_enabled = False
         self.hook_list = []
         self.hook_list2 = {}
+        self.mem_hooks = {}
 
         # Asid stuff
         self.current_asid_name = None
@@ -2560,5 +2561,41 @@ class Panda():
     
     def hook2_single_insn(self, name, pc, kernel=False, procname=ffi.NULL, libname=ffi.NULL):
         return self.hook(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
+    
+    # MEM HOOKS
+    def _hook_mem(self, start_address, end_address, before, after, read, write, enabled):
+        def decorator(fun):
+            mem_hook_cb_type = self.ffi.callback("void (CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf, bool is_write, bool is_before)")
+            # Inform the plugin that it has a new breakpoint at addr
+            
+            hook_cb_passed = mem_hook_cb_type(fun)
+            mem_reg = self.ffi.new("struct memory_hooks_region*")
+            mem_reg.start_address = start_address
+            mem_reg.stop_address = end_address
+            mem_reg.on_before = before
+            mem_reg.on_after = after
+            mem_reg.on_read = read
+            mem_reg.on_write = write
+            mem_reg.enabled = enabled
+            mem_reg.cb = hook_cb_passed
+
+            hook = self.plugins['mem_hooks'].add_mem_hook(mem_reg)
+            
+            self.mem_hooks[hook] = [mem_reg, hook_cb_passed]
+
+            @mem_hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
+            def wrapper(*args, **kw):
+                return fun(*args, **kw)
+
+            return wrapper
+        return decorator
+    
+    def hook_mem_read(self, start_address, end_address, before=True, after=False):
+        return self._hook_mem(start_address,end_address,before,after, True, False, True)
+    
+    def hook_mem_write(self, start_address, end_address, before=True, after=False):
+        return self._hook_mem(start_address,end_address,before,after, False, True, True)
+    
+    
 
 # vim: expandtab:tabstop=4:
