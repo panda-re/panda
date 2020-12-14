@@ -2563,9 +2563,9 @@ class Panda():
         return self.hook(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
     
     # MEM HOOKS
-    def _hook_mem(self, start_address, end_address, before, after, read, write, enabled):
+    def _hook_mem(self, start_address, end_address, before, after, read, write, virtual, physical, enabled):
         def decorator(fun):
-            mem_hook_cb_type = self.ffi.callback("void (CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf, bool is_write, bool is_before)")
+            mem_hook_cb_type = self.ffi.callback("mem_hook_func_t")
             # Inform the plugin that it has a new breakpoint at addr
             
             hook_cb_passed = mem_hook_cb_type(fun)
@@ -2576,6 +2576,8 @@ class Panda():
             mem_reg.on_after = after
             mem_reg.on_read = read
             mem_reg.on_write = write
+            mem_reg.on_virtual = virtual
+            mem_reg.on_physical = physical
             mem_reg.enabled = enabled
             mem_reg.cb = hook_cb_passed
 
@@ -2590,12 +2592,19 @@ class Panda():
             return wrapper
         return decorator
     
-    def hook_mem_read(self, start_address, end_address, before=True, after=False):
-        return self._hook_mem(start_address,end_address,before,after, True, False, True)
+    def hook_mem(self, start_address, end_address, on_before, on_after, on_read, on_write, on_virtual, on_physical, enabled):
+        return self._hook_mem(start_address,end_address,on_before,on_after,on_read, on_write, on_virtual, on_physical, enabled)
+
+    def hook_phys_mem_read(self, start_address, end_address, on_before=True, on_after=False, enabled=True):
+        return self._hook_mem(start_address,end_address,on_before,on_after, True, False, False, True, True)
     
-    def hook_mem_write(self, start_address, end_address, before=True, after=False):
-        return self._hook_mem(start_address,end_address,before,after, False, True, True)
+    def hook_phys_mem_write(self, start_address, end_address, on_before=True, on_after=False):
+        return self._hook_mem(start_address,end_address,on_before,on_after, False, True, False, True, True)
     
+    def hook_virt_mem_read(self, start_address, end_address, on_before=True, on_after=False):
+        return self._hook_mem(start_address,end_address,on_before,on_after, True, False, True, False, True)
     
+    def hook_virt_mem_write(self, start_address, end_address, on_before=True, on_after=False):
+        return self._hook_mem(start_address,end_address,on_before,on_after, False, True, True, False, True)
 
 # vim: expandtab:tabstop=4:

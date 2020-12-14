@@ -5,9 +5,23 @@ extern "C" {
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
 // files in this directory that contain subsections like this one.
 
-// Hook functions must be of this type
-typedef void (*mem_hook_func_t)(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf, bool is_write, bool is_before);
 
+struct memory_hooks_region;
+struct memory_access_desc {
+    target_ptr_t pc;
+    target_ulong addr;
+    size_t size;
+    uint8_t* buf;
+    bool on_before;
+    bool on_after;
+    bool on_read;
+    bool on_write;
+    bool on_virtual;
+    bool on_physical;
+    struct memory_hooks_region* hook;
+};
+// Hook functions must be of this type
+typedef void (*mem_hook_func_t)(CPUState *cpu, struct memory_access_desc* mad);
 struct memory_hooks_region{
     target_ulong start_address;
     target_ulong stop_address;
@@ -16,6 +30,8 @@ struct memory_hooks_region{
     bool on_after;
     bool on_read;
     bool on_write;
+    bool on_virtual;
+    bool on_physical;
     mem_hook_func_t cb;
 };
 
