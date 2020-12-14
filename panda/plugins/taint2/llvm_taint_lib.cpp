@@ -1596,7 +1596,9 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         }
 
         assert(!calledF->isIntrinsic());
-        if (calledF->getName().startswith("taint")) {
+        if (calledF->getName().startswith("helper_panda_")) {
+            return;
+        } else if (calledF->getName().startswith("taint")) {
             return;
         } else if (calledName == "cpu_loop_exit") {
             return;
