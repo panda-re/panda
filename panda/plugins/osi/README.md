@@ -107,6 +107,7 @@ Implementation behaviour: The implementation should create and populate a [`GArr
 Plugins may register for task change notifications using the following callback:
 
 ---
+
 Name: **on\_task\_change**
 
 Signature:
