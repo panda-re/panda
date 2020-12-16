@@ -372,7 +372,6 @@ class Panda():
             self.libpanda.panda_disable_tb_chaining()
 
     def setup_internal_signal_handler(self, signal_handler=None):
-       # ffi.cdef("void panda_setup_signal_handling(void (*f) (int,void*,void*));",override=True)
         def SigHandler(SIG,a,b):
             from signal import SIGINT, SIGHUP, SIGTERM
             if SIG == SIGINT:
@@ -617,16 +616,9 @@ class Panda():
         '''
         Calls QEMU memsavep on your specified python file.
         '''
-        def initlib():
-            ffi.cdef('''
-            FILE *fdopen(int, const char *);   // from the C <stdio.h>
-            int fclose(FILE *);
-            ''', override=True)
-        ffi.init_once(initlib, "cinit")
-
         # this part was largely copied from https://cffi.readthedocs.io/en/latest/ref.html#support-for-file
 
-        file_out.flush()                    # make sure the file is flushed
+        file_out.flush()                 # make sure the file is flushed
         newfd = dup(file_out.fileno())   # make a copy of the file descriptor
         fileptr = self.C.fdopen(newfd, b"w")
         self.libpanda.panda_memsavep(fileptr)
