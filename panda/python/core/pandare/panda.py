@@ -177,6 +177,7 @@ class Panda():
         self.taint_enabled = False
         self.hook_list = []
         self.hook_list2 = {}
+        self.mem_hooks = {}
 
         # Asid stuff
         self.current_asid_name = None
@@ -184,6 +185,7 @@ class Panda():
 
         # Shutdown stuff
         self.exception = None # When set to an exn, we'll raise and exit
+        self._in_replay = False
 
         # main_loop_wait functions and callbacks
         self.main_loop_wait_fnargs = [] # [(fn, args), ...]
@@ -427,13 +429,22 @@ class Panda():
         self.running.set()
         self.libpanda.panda_run() # Give control to panda
         self.running.clear() # Back from panda's execution (due to shutdown or monitor quit)
+        self.delete_callbacks()
         self.libpanda.panda_unload_plugins() # Unload c plugins - should be safe now since exec has stopped
-        self.panda_finish() # Write PANDALOG, if any
+        self.plugins = plugin_list(self)
+        # Write PANDALOG, if any
+        #self.libpanda.panda_cleanup_record()
+        if self._in_replay:
+            self.reset()
         if hasattr(self, "end_run_raise_signal"):
-            raise self.end_run_raise_signal
+            saved = self.end_run_raise_signal
+            del self.end_run_raise_signal
+            raise saved
         if hasattr(self, "callback_exit_exception"):
-            raise self.callback_exit_exception
-
+            saved = self.callback_exit_exception
+            del self.callback_exit_exception
+            raise saved
+            
 
     def end_analysis(self):
         '''
@@ -500,7 +511,9 @@ class Panda():
 
         charptr = ffi.new("char[]",bytes(replaypfx,"utf-8"))
         self.libpanda.panda_replay_begin(charptr)
+        self._in_replay = True
         self.run()
+        self._in_replay = False
 
     def require(self, name):
         '''
@@ -592,8 +605,10 @@ class Panda():
             progress ("Disabling all python plugins, unloading all C plugins")
 
         # First unload python plugins, should be safe to do anytime
-        for name in self.registered_callbacks.keys():
-            self.disable_callback(name)
+        #for name in self.registered_callbacks.keys():
+        while len(list(self.registered_callbacks)) > 0:
+            self.delete_callback(list(self.registered_callbacks.keys())[0])
+            #self.disable_callback(name)
 
         # Then unload C plugins. May be unsafe to do except from the top of the main loop (taint segfaults otherwise)
         self.queue_main_loop_wait_fn(self.libpanda.panda_unload_plugins)
@@ -2238,6 +2253,12 @@ class Panda():
         handle = self.registered_callbacks[name]['handle']
         self.libpanda.panda_unregister_callbacks(handle)
         del self.registered_callbacks[name]['handle']
+        del self.registered_callbacks[name]
+    
+    def delete_callbacks(self):
+        #for name in self.registered_callbacks.keys():
+        while len(self.registered_callbacks.keys()) > 0:
+            self.delete_callback(list(self.registered_callbacks.keys())[0])
 
     ###########################
     ### PPP-style callbacks ###
@@ -2549,5 +2570,50 @@ class Panda():
 
     def hook2_single_insn(self, name, pc, kernel=False, procname=ffi.NULL, libname=ffi.NULL):
         return self.hook(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
+    
+    # MEM HOOKS
+    def _hook_mem(self, start_address, end_address, before, after, read, write, virtual, physical, enabled):
+        def decorator(fun):
+            mem_hook_cb_type = self.ffi.callback("mem_hook_func_t")
+            # Inform the plugin that it has a new breakpoint at addr
+            
+            hook_cb_passed = mem_hook_cb_type(fun)
+            mem_reg = self.ffi.new("struct memory_hooks_region*")
+            mem_reg.start_address = start_address
+            mem_reg.stop_address = end_address
+            mem_reg.on_before = before
+            mem_reg.on_after = after
+            mem_reg.on_read = read
+            mem_reg.on_write = write
+            mem_reg.on_virtual = virtual
+            mem_reg.on_physical = physical
+            mem_reg.enabled = enabled
+            mem_reg.cb = hook_cb_passed
+
+            hook = self.plugins['mem_hooks'].add_mem_hook(mem_reg)
+            
+            self.mem_hooks[hook] = [mem_reg, hook_cb_passed]
+
+            @mem_hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
+            def wrapper(*args, **kw):
+                return fun(*args, **kw)
+
+            return wrapper
+        return decorator
+    
+    def hook_mem(self, start_address, end_address, on_before, on_after, on_read, on_write, on_virtual, on_physical, enabled):
+        return self._hook_mem(start_address,end_address,on_before,on_after,on_read, on_write, on_virtual, on_physical, enabled)
+
+    def hook_phys_mem_read(self, start_address, end_address, on_before=True, on_after=False, enabled=True):
+        return self._hook_mem(start_address,end_address,on_before,on_after, True, False, False, True, True)
+    
+    def hook_phys_mem_write(self, start_address, end_address, on_before=True, on_after=False):
+        return self._hook_mem(start_address,end_address,on_before,on_after, False, True, False, True, True)
+    
+    def hook_virt_mem_read(self, start_address, end_address, on_before=True, on_after=False):
+        return self._hook_mem(start_address,end_address,on_before,on_after, True, False, True, False, True)
+    
+    def hook_virt_mem_write(self, start_address, end_address, on_before=True, on_after=False):
+        return self._hook_mem(start_address,end_address,on_before,on_after, False, True, True, False, True)
 
 # vim: expandtab:tabstop=4:

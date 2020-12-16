@@ -62,6 +62,7 @@ char* panda_monitor_run(char* buf);// Redefinition from monitor.h
 CPUState* get_cpu(void);
 
 unsigned long garray_len(GArray *list);
+void panda_cleanup_record(void);
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 // don't expose to API  because we don't want to add siginfo_t understanding

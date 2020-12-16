@@ -76,6 +76,12 @@ int panda_snap(char *snapshot_name) {
     return save_vmstate(NULL, snapshot_name);
 }
 
+void panda_cleanup_record(void){
+    if(rr_in_record()){
+        rr_do_end_record();
+    }
+}
+
 int panda_finish(void) {
     return main_aux(0, 0, 0, PANDA_FINISH);
 }
