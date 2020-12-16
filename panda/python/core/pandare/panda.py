@@ -372,7 +372,6 @@ class Panda():
             self.libpanda.panda_disable_tb_chaining()
 
     def setup_internal_signal_handler(self, signal_handler=None):
-       # ffi.cdef("void panda_setup_signal_handling(void (*f) (int,void*,void*));",override=True)
         def SigHandler(SIG,a,b):
             from signal import SIGINT, SIGHUP, SIGTERM
             if SIG == SIGINT:
