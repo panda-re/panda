@@ -617,16 +617,9 @@ class Panda():
         '''
         Calls QEMU memsavep on your specified python file.
         '''
-        def initlib():
-            ffi.cdef('''
-            FILE *fdopen(int, const char *);   // from the C <stdio.h>
-            int fclose(FILE *);
-            ''', override=True)
-        ffi.init_once(initlib, "cinit")
-
         # this part was largely copied from https://cffi.readthedocs.io/en/latest/ref.html#support-for-file
 
-        file_out.flush()                    # make sure the file is flushed
+        file_out.flush()                 # make sure the file is flushed
         newfd = dup(file_out.fileno())   # make a copy of the file descriptor
         fileptr = self.C.fdopen(newfd, b"w")
         self.libpanda.panda_memsavep(fileptr)
