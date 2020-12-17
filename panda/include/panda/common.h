@@ -63,6 +63,11 @@ extern bool panda_break_vl_loop_req;
  */
 target_ulong panda_current_asid(CPUState *env);
 
+/*
+ * @brief Sets the guest address space identifier.
+ */
+void panda_set_asid(CPUState *env, target_ulong asid);
+
 /**
  * @brief Returns the guest program counter.
  */
@@ -196,6 +201,29 @@ static inline int panda_virtual_memory_write(CPUState *env, target_ulong addr,
     return panda_virtual_memory_rw(env, addr, buf, len, 1);
 }
 
+/**
+ * @brief Reads data into \p buf from guest virtual address \p addr.
+ */
+static inline int panda_virtual_memory_read_asid(CPUState *env, target_ulong addr,
+                                            uint8_t *buf, int len, target_ulong asid) {
+    target_ulong old_asid = panda_current_asid(env);
+    panda_set_asid(env, asid);
+    int ret_val = panda_virtual_memory_rw(env, addr, buf, len, 0);
+    panda_set_asid(env, old_asid);
+    return ret_val;
+}
+
+/**
+ * @brief Writes data from \p buf data to guest virtual address \p addr.
+ */
+static inline int panda_virtual_memory_write_asid(CPUState *env, target_ulong addr,
+                                             uint8_t *buf, int len, target_ulong asid) {
+    target_ulong old_asid = panda_current_asid(env);
+    panda_set_asid(env, asid);
+    int ret_val = panda_virtual_memory_rw(env, addr, buf, len, 1);
+    panda_set_asid(env, old_asid);
+    return ret_val;
+}
 /**
  * @brief Obtains a host pointer for the given virtual address.
  */

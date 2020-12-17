@@ -118,6 +118,35 @@ target_ulong panda_current_asid(CPUState *cpu) {
 #endif
 }
 
+/*
+  sets current asid or address-space id.
+  architecture-independent
+*/
+void panda_set_asid(CPUState *cpu, target_ulong value) {
+#if defined(TARGET_I386)
+  CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+  env->cr[3] = value;
+// someone help with ARM here.
+#elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+//  target_ulong table;
+//  bool rc = arm_get_vaddr_table(cpu,
+//          &table,
+//          panda_current_pc(cpu));
+//  assert(rc);
+//  return table;
+  /*return arm_get_vaddr_table(env, panda_current_pc(env));*/
+#elif defined(TARGET_PPC)
+  CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+  env->sr[0] = value;
+#elif defined(TARGET_MIPS)
+  CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+  env->CP0_EntryHi_ASID_mask = (env->CP0_EntryHi & value);
+#else
+#error "panda_current_asid() not implemented for target architecture."
+#endif
+}
+
+
 target_ulong panda_current_pc(CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     target_ulong pc, cs_base;

@@ -134,6 +134,15 @@ int rr_get_guest_instr_count_external(void){
 }
 
 // XXX: why do we have these as _external wrappers instead of just using the real fns?
+// it's because they're inlines in C and so we can't resolve them.
+int panda_virtual_memory_read_asid_external(CPUState *env, target_ulong addr, char *buf, int len, target_ulong asid){
+	return panda_virtual_memory_read_asid(env, addr, (uint8_t*) buf, len, asid);
+}
+
+int panda_virtual_memory_write_asid_external(CPUState *env, target_ulong addr, char *buf, int len, target_ulong asid){
+	return panda_virtual_memory_write_asid(env, addr, (uint8_t*) buf, len, asid);
+}
+
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len){
 	return panda_virtual_memory_read(env, addr, (uint8_t*) buf, len);
 }

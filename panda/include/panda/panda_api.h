@@ -35,6 +35,8 @@ int rr_get_guest_instr_count_external(void);
 
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len);
 int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *buf, int len);
+int panda_virtual_memory_read_asid_external(CPUState *env, target_ulong addr, char *buf, int len, target_ulong asid);
+int panda_virtual_memory_write_asid_external(CPUState *env, target_ulong addr, char *buf, int len, target_ulong asid);
 int panda_physical_memory_read_external(hwaddr addr, uint8_t *buf, int len);
 int panda_physical_memory_write_external(hwaddr addr, uint8_t *buf, int len);
 
