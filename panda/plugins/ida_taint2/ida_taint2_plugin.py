@@ -126,9 +126,8 @@ class ProcessSelectDialog(QDialog):
             process_id_item.setFlags(process_id_item.flags() & ~(Qt.ItemIsEditable))
             self.process_table.setItem(i, 1, process_id_item)
             i += 1
-        # sort by process name, then by ID
+        # sort by process name (not stable, so pointless to sort by ID too)
         self.process_table.sortItems(0)
-        self.process_table.sortItems(1)
         
         hbox = QHBoxLayout()
         hbox.addStretch(1)
