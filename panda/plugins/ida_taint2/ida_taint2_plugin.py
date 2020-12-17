@@ -174,7 +174,6 @@ class TaintedFuncsChooser(ida_kernwin.Choose):
         self.items = []
         # icon 41 seems to be a piece of paper with an italic f on it
         self.icon = 41
-        print("Constructed TaintedFuncsChooser")
         
     # shamelessly stolen from module idc
     # get the name of the function including the ea provided
@@ -211,13 +210,14 @@ class TaintedFuncsChooser(ida_kernwin.Choose):
         return [ida_kernwin.Choose.ALL_CHANGED] + self.adjust_last_item(n)
 
     def OnClose(self):
-        print("closed ", self.title)
+        pass
 
 # action to show the tainted functions window
 class ShowTaintedFuncs(idaapi.action_handler_t):
     # good to prefix the internal action name with plugin name to avoid conflicts
     ACTION_NAME = "ida_taint2_plugin:Show Tainted Functions"
     ACTION_LABEL = "Show Tainted Functions..."
+    ACTION_TOOLTIP = "List tainted functions in separate window"
     TITLE = "Tainted functions"
     def __init__(self, taintinfo):
         idaapi.action_handler_t.__init__(self)
@@ -230,10 +230,8 @@ class ShowTaintedFuncs(idaapi.action_handler_t):
 
     def update(self, ctx):
         if ((ctx.widget_type == idaapi.BWN_FUNCS) and (self.taintinfo.showing_taint())):
-            print("enabling ShowTaintedFuncs action")
             return idaapi.AST_ENABLE_FOR_WIDGET
         else:
-            print("disabling ShowTaintedFuncs action")
             return idaapi.AST_DISABLE_FOR_WIDGET
         
 # action to show or hide taint information
@@ -241,7 +239,9 @@ class ShowHideTaint(idaapi.action_handler_t):
     # good to prefix the internal action name with plugin name to avoid conflicts
     ACTION_NAME = "ida_taint2_plugin:Show or Hide Taint"
     SHOW_ACTION_LABEL = "Show Taint"
+    SHOW_ACTION_TOOLTIP = "Visually indicate tainted instructions and functions"
     HIDE_ACTION_LABEL = "Hide Taint"
+    HIDE_ACTION_TOOLTIP = "Do not visually indicate tainted instructions and functions"
     def __init__(self, taintinfo):
         idaapi.action_handler_t.__init__(self)
         self.taintinfo = taintinfo
@@ -255,10 +255,8 @@ class ShowHideTaint(idaapi.action_handler_t):
 
     def update(self, ctx):
         if (ctx.widget_type == idaapi.BWN_DISASM):
-            print("enabling Show or Hide Taint action")
             return idaapi.AST_ENABLE_FOR_WIDGET
         else:
-            print("disabling Show or Hide Taint action")
             return idaapi.AST_DISABLE_FOR_WIDGET
             
 class ida_taint2_plugin_t(idaapi.plugin_t):
@@ -385,7 +383,6 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
         self._instr_painter.unhook()
         self._instr_hint_hook.unhook()
         self._hooks_installed = False
-        idaapi.msg("Taint information hidden\n")
         idaapi.refresh_idaview_anyway()
         ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
     
@@ -396,7 +393,6 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
         self._instr_painter.hook()
         self._instr_hint_hook.hook()
         self._hooks_installed = True
-        idaapi.msg("Taint enabled\n")
         idaapi.refresh_idaview_anyway()
         ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
         
@@ -653,41 +649,41 @@ class WatchForWindowsHook(idaapi.UI_Hooks):
         widget_type = idaapi.get_widget_type(widget)
         if ((idaapi.BWN_FUNCS == widget_type) and self.taintinfo.showing_taint()):
             # about to show context menu for "Functions window" - as taint is
-            # show, add item to show window of tainted functions
-            if ida_kernwin.unregister_action(ShowTaintedFuncs.ACTION_NAME):
-                print("Unregistered previously-registered action \"%s\"" % ShowTaintedFuncs.ACTION_LABEL)
+            # shown, add item to show window of tainted functions
+            ida_kernwin.unregister_action(ShowTaintedFuncs.ACTION_NAME)
 
-            # TODO:  should probably come up with a nice shortcut to use, and maybe a tootip and icon
+            # could also provide a shortcut and icon in the action_desc_t, if helpful
             if ida_kernwin.register_action(
                 ida_kernwin.action_desc_t(
                     ShowTaintedFuncs.ACTION_NAME,
                     ShowTaintedFuncs.ACTION_LABEL,
-                    ShowTaintedFuncs(self.taintinfo))):
-                    print("Registered action \"%s\"" % (ShowTaintedFuncs.ACTION_LABEL,))
+                    ShowTaintedFuncs(self.taintinfo),
+                    None,
+                    ShowTaintedFuncs.ACTION_TOOLTIP)):
                     # if middle arg is None, this item is added permanently to the popup menu
                     # if it lists a TPopupMenu* handle, then this action is added just for this invocation
                     ida_kernwin.attach_action_to_popup(widget, popup, ShowTaintedFuncs.ACTION_NAME)
         elif ((idaapi.BWN_DISASM == widget_type) and self.taintinfo.have_taint_info()):
             # about to show context menu for a disassembly window - as taint
             # information is available, add either a Show or Hide item
-            if (ida_kernwin.unregister_action(ShowHideTaint.ACTION_NAME)):
-                print("Unregistered previously registered action \"%s\"" % ShowHideTaint.ACTION_NAME)
+            ida_kernwin.unregister_action(ShowHideTaint.ACTION_NAME)
             if (self.taintinfo.showing_taint()):
-                # TODO:  should probably come up with a nice shortcut to use, and maybe a tootip and icon
                 if ida_kernwin.register_action(
                     ida_kernwin.action_desc_t(
                         ShowHideTaint.ACTION_NAME,
                         ShowHideTaint.HIDE_ACTION_LABEL,
-                        ShowHideTaint(self.taintinfo))):
-                        print("Registered action \"%s\"" % (ShowHideTaint.HIDE_ACTION_LABEL,))
+                        ShowHideTaint(self.taintinfo),
+                        None,
+                        ShowHideTaint.HIDE_ACTION_TOOLTIP)):
                         ida_kernwin.attach_action_to_popup(widget, popup, ShowHideTaint.ACTION_NAME)
             else:
                 if ida_kernwin.register_action(
                     ida_kernwin.action_desc_t(
                         ShowHideTaint.ACTION_NAME,
                         ShowHideTaint.SHOW_ACTION_LABEL,
-                        ShowHideTaint(self.taintinfo))):
-                        print("Registered action \"%s\"" % (ShowHideTaint.SHOW_ACTION_LABEL,))
+                        ShowHideTaint(self.taintinfo),
+                        None,
+                        ShowHideTaint.SHOW_ACTION_TOOLTIP)):
                         ida_kernwin.attach_action_to_popup(widget, popup, ShowHideTaint.ACTION_NAME)
     
     def get_chooser_item_attrs(self, chooser, n, attrs):
