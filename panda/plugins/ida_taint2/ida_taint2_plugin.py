@@ -19,6 +19,11 @@ import ida_funcs
 import ida_kernwin
 import idautils
 
+FUNCS_WINDOW_CAPTION = "Functions window"
+
+# greenish shade
+FUNC_COLOR = 0x90EE90
+# an orangish shade
 INST_COLOR = 0xFF90FF
 
 # dialog to let user enable old taint info, disable current taint info, or
@@ -371,6 +376,13 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
         return True
             
     def hide_taint_info(self):
+        # the item attributes callback is broken previous to IDA 7.5 SP 3
+        if (idaapi.IDA_SDK_VERSION >= 753):
+            # disable colorization in Functions window
+            # may get an error just because the Functions window isn't up
+            # so ignore it
+            ida_kernwin.enable_chooser_item_attrs(FUNCS_WINDOW_CAPTION, False)
+            
         self._instr_painter.unhook()
         self._instr_hint_hook.unhook()
         self._hooks_installed = False
@@ -379,12 +391,18 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
         ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
     
     def show_taint_info(self):
+        if (idaapi.IDA_SDK_VERSION >= 753):
+            ida_kernwin.enable_chooser_item_attrs(FUNCS_WINDOW_CAPTION, True)
+            
         self._instr_painter.hook()
         self._instr_hint_hook.hook()
         self._hooks_installed = True
         idaapi.msg("Taint enabled\n")
         idaapi.refresh_idaview_anyway()
         ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
+        
+        if (idaapi.IDA_SDK_VERSION >= 753):
+            ida_kernwin.refresh_chooser(FUNCS_WINDOW_CAPTION)
         
     def _get_tainted_process(self):
         processes = set()
@@ -441,6 +459,8 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
                 if (self._update_process()):
                     idaapi.refresh_idaview_anyway()
                     ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
+                    if (idaapi.IDA_SDK_VERSION >= 753):
+                        ida_kernwin.refresh_chooser(FUNCS_WINDOW_CAPTION)
             elif (ReuseTaintDialog.GET_NEW_FILE == request):
                 filename, _ = QFileDialog.getOpenFileName(None,
                 self.OPEN_CAPTION, self.OPEN_DIRECTORY, self.OPEN_FILTER)
@@ -451,6 +471,8 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
                 if (self._update_process()):
                     idaapi.refresh_idaview_anyway()
                     ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
+                    if (idaapi.IDA_SDK_VERSION >= 753):
+                        ida_kernwin.refresh_chooser(FUNCS_WINDOW_CAPTION)
         else:
             # must have an old file and process selected, but taint disabled
             # note that _update_process wipes _tainted_process and _taint_file
@@ -619,6 +641,8 @@ class InstrHintHook(idaapi.UI_Hooks):
 
 # watch for the "Functions window" context menu, and add an item to it to show
 # a window of tainted functions
+# if using IDA 7.5 SP 3 or later, also enable item attributes when
+# "Functions window" is displayed
 # also watch for disassembly view context menu, and add an item to it to show
 # or hide taint information
 class WatchForWindowsHook(idaapi.UI_Hooks):
@@ -629,6 +653,8 @@ class WatchForWindowsHook(idaapi.UI_Hooks):
     def finish_populating_widget_popup(self, widget, popup):
         widget_type = idaapi.get_widget_type(widget)
         if ((idaapi.BWN_FUNCS == widget_type) and self.taintinfo.showing_taint()):
+            # about to show context menu for "Functions window" - as taint is
+            # show, add item to show window of tainted functions
             if ida_kernwin.unregister_action(ShowTaintedFuncs.ACTION_NAME):
                 print("Unregistered previously-registered action \"%s\"" % ShowTaintedFuncs.ACTION_LABEL)
 
@@ -642,27 +668,53 @@ class WatchForWindowsHook(idaapi.UI_Hooks):
                     # if middle arg is None, this item is added permanently to the popup menu
                     # if it lists a TPopupMenu* handle, then this action is added just for this invocation
                     ida_kernwin.attach_action_to_popup(widget, popup, ShowTaintedFuncs.ACTION_NAME)
-        elif (idaapi.BWN_DISASM == widget_type):
-            if (self.taintinfo.have_taint_info()):
-                if (ida_kernwin.unregister_action(ShowHideTaint.ACTION_NAME)):
-                    print("Unregistered previously registered action \"%s\"" % ShowHideTaint.ACTION_NAME)
-                if (self.taintinfo.showing_taint()):
-                    # TODO:  should probably come up with a nice shortcut to use, and maybe a tootip and icon
-                    if ida_kernwin.register_action(
-                        ida_kernwin.action_desc_t(
-                            ShowHideTaint.ACTION_NAME,
-                            ShowHideTaint.HIDE_ACTION_LABEL,
-                            ShowHideTaint(self.taintinfo))):
-                            print("Registered action \"%s\"" % (ShowHideTaint.HIDE_ACTION_LABEL,))
-                            ida_kernwin.attach_action_to_popup(widget, popup, ShowHideTaint.ACTION_NAME)
-                else:
-                    if ida_kernwin.register_action(
-                        ida_kernwin.action_desc_t(
-                            ShowHideTaint.ACTION_NAME,
-                            ShowHideTaint.SHOW_ACTION_LABEL,
-                            ShowHideTaint(self.taintinfo))):
-                            print("Registered action \"%s\"" % (ShowHideTaint.SHOW_ACTION_LABEL,))
-                            ida_kernwin.attach_action_to_popup(widget, popup, ShowHideTaint.ACTION_NAME)
-            
+        elif ((idaapi.BWN_DISASM == widget_type) and self.taintinfo.have_taint_info()):
+            # about to show context menu for a disassembly window - as taint
+            # information is available, add either a Show or Hide item
+            if (ida_kernwin.unregister_action(ShowHideTaint.ACTION_NAME)):
+                print("Unregistered previously registered action \"%s\"" % ShowHideTaint.ACTION_NAME)
+            if (self.taintinfo.showing_taint()):
+                # TODO:  should probably come up with a nice shortcut to use, and maybe a tootip and icon
+                if ida_kernwin.register_action(
+                    ida_kernwin.action_desc_t(
+                        ShowHideTaint.ACTION_NAME,
+                        ShowHideTaint.HIDE_ACTION_LABEL,
+                        ShowHideTaint(self.taintinfo))):
+                        print("Registered action \"%s\"" % (ShowHideTaint.HIDE_ACTION_LABEL,))
+                        ida_kernwin.attach_action_to_popup(widget, popup, ShowHideTaint.ACTION_NAME)
+            else:
+                if ida_kernwin.register_action(
+                    ida_kernwin.action_desc_t(
+                        ShowHideTaint.ACTION_NAME,
+                        ShowHideTaint.SHOW_ACTION_LABEL,
+                        ShowHideTaint(self.taintinfo))):
+                        print("Registered action \"%s\"" % (ShowHideTaint.SHOW_ACTION_LABEL,))
+                        ida_kernwin.attach_action_to_popup(widget, popup, ShowHideTaint.ACTION_NAME)
+    
+    def get_chooser_item_attrs(self, chooser, n, attrs):
+        # this method returns the wrong widget as the chooser previous to
+        # IDA 7.5 SP 3, which prevents one from verifying what chooser is
+        # asking for attributes
+        if (idaapi.IDA_SDK_VERSION >= 753):
+            if (self.taintinfo.showing_taint() and (idaapi.get_widget_type(chooser) == idaapi.BWN_FUNCS)):
+                chdata = ida_kernwin.get_chooser_data(FUNCS_WINDOW_CAPTION, n)
+                # chdata is a list of strings for each cell in row n (first row=0)
+                # if some columns are hidden, still get data for all columns
+                # it is not possible to reorder columns in the Functions window
+                # the effective address of the function is in the third cell
+                ea = int(chdata[2], base=16)
+                if (self.taintinfo.is_func_tainted(ea)):
+                    attrs.color = FUNC_COLOR
+                    
+    def widget_visible(self, widget):
+        if (idaapi.IDA_SDK_VERSION >= 753):
+            # if the Functions window is displayed when taint is showing,
+            # need to turn on colors in the Functions window
+            if (self.taintinfo.showign_taint() and (idaapi.get_widget_type(widget) == idaapi.BWN_FUNCS)):
+                if (not ida_kernwin.enable_chooser_item_attrs(FUNCS_WINDOW_CAPTION, True)):
+                    # as I just showed the window, this should NOT happen so
+                    # display an error
+                    idaapi.msg("PROBLEM ENABLING Functions window ITEM ATTRIBUTES")
+                    
 def PLUGIN_ENTRY():
     return ida_taint2_plugin_t()
