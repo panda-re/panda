@@ -267,6 +267,11 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
     wanted_name = "PANDA:  IDA Taint2"
     wanted_hotkey = "Alt-F6"
     
+    # commonly used strings in this class
+    OPEN_CAPTION = "Open ida_taint2 output file"
+    OPEN_DIRECTORY = "."
+    OPEN_FILTER = "CSV Files (*.csv)"
+    
     # have taint information and it is currently displayed
     def showing_taint(self):
         return self._hooks_installed
@@ -423,7 +428,7 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
         if (not self.have_taint_info()):
             # don't even have a file of taint information selected yet
             filename, _ = QFileDialog.getOpenFileName(None,
-            "Open ida_taint2 output file", ".", "CSV Files(*.csv)")
+            self.OPEN_CAPTION, self.OPEN_DIRECTORY, self.OPEN_FILTER)
             if filename == "":
                 # taint must already be disabled, so no need to re-disable
                 return
@@ -438,7 +443,7 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
                     ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
             elif (ReuseTaintDialog.GET_NEW_FILE == request):
                 filename, _ = QFileDialog.getOpenFileName(None,
-                "Open ida_taint2 output file", ".", "CSV Files(*.csv)")
+                self.OPEN_CAPTION, self.OPEN_DIRECTORY, self.OPEN_FILTER)
                 if filename == "":
                     # user must've changed his mind
                     return
@@ -457,7 +462,7 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
                     self.show_taint_info()
             elif (ReuseTaintDialog.GET_NEW_FILE == request):
                 filename, _ = QFileDialog.getOpenFileName(None,
-                "Open ida_taint2 output file", ".", "CSV Files(*.csv)")
+                self.OPEN_CAPTION, self.OPEN_DIRECTORY, self.OPEN_FILTER)
                 if (filename == ""):
                     return
                 self._taint_file = filename
@@ -599,7 +604,6 @@ class InstrHintHook(idaapi.UI_Hooks):
             curea = place.toea()
             label_set = self._taintinfo.get_instr_taint_labels(curea)
             if (len(label_set) > 0):
-                print(label_set)
                 # have to sort semantic labels differently than normal labels
                 if (self._taintinfo.have_semantic_labels()):
                     sorted_labels = sorted(label_set, key=self.semantic_label_sorter)
@@ -608,9 +612,9 @@ class InstrHintHook(idaapi.UI_Hooks):
                     sorted_labels = sorted(label_set, key=int)
                     compressed_labels = self.compress_sorted_standard_labels(sorted_labels)
                 hint = "taint labels = " + compressed_labels
+                # in case someone wants to copy-n-paste the label list
                 idaapi.msg("Hint for " + ('0x%x' %curea) + ":  " + hint + "\n")
                 numlinefeeds = hint.count("\n")
-                idaapi.msg("   has " + str(numlinefeeds) + " linefeeds\n")
                 return(hint, (numlinefeeds+1))
 
 # watch for the "Functions window" context menu, and add an item to it to show
