@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cerrno>
 #include <map>
+#include <unordered_set>
 #include <glib.h>
 
 #include "panda/plugin.h"
@@ -651,18 +652,33 @@ void r28_cache(CPUState *cpu, TranslationBlock *tb) {
 #endif
 
 #if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
-static bool in_execve = false;
 
-static void on_execve_enter(CPUState *cpu, target_ulong pc, target_ulong fnp, target_ulong ap, target_ulong envp)
+// Keep track of which tasks have entered execve. Note that we simply track
+// based on the task struct. This works because the other threads in the thread
+// group will be terminated and the current task will be the only task in the
+// group once execve completes. Even if execve fails, this should still work
+// because the execve call will return to the calling thread.
+static std::unordered_set<target_ptr_t> tasks_in_execve;
+
+static void exec_enter(CPUState *cpu)
 {
-    in_execve = true;
+    target_ptr_t ts = kernel_profile->get_current_task_struct(cpu);
+    tasks_in_execve.insert(ts);
 }
 
-static void execve_check(CPUState *cpu)
+static void exec_check(CPUState *cpu)
 {
-    if (in_execve && !panda_in_kernel(cpu)) {
+    // Fast Path: Nothing is in execve, so there's nothing to do.
+    if (0 == tasks_in_execve.size()) {
+        return;
+    }
+
+    // Slow Path: Something is in execve, so we have to check.
+    target_ptr_t ts = kernel_profile->get_current_task_struct(cpu);
+    auto it = tasks_in_execve.find(ts);
+    if (tasks_in_execve.end() != it && !panda_in_kernel(cpu)) {
         notify_task_change(cpu);
-        in_execve = false;
+        tasks_in_execve.erase(ts);
     }
 }
 
@@ -670,7 +686,7 @@ static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
 {
     TCGOp *op = find_first_guest_insn();
     assert(NULL != op);
-    insert_call(&op, execve_check, cpu);
+    insert_call(&op, exec_check, cpu);
 
     if (0x0 != ki.task.switch_task_hook_addr && tb->pc == ki.task.switch_task_hook_addr) {
         // Instrument the task switch address.
@@ -799,8 +815,19 @@ bool init_plugin(void *self) {
       PPP_REG_CB("syscalls2", on_all_sys_enter, on_first_syscall);
     }
 
-    PPP_REG_CB("syscalls2", on_sys_execve_enter, on_execve_enter);
-
+    // Setup exec task change notifications.
+    PPP_REG_CB("syscalls2", on_sys_execve_enter, [](CPUState *cpu,
+        target_ulong pc, target_ulong fnp, target_ulong ap,
+        target_ulong envp)
+    {
+        exec_enter(cpu);
+    });
+    PPP_REG_CB("syscalls2", on_sys_execveat_enter, [](CPUState *cpu,
+        target_ulong pc, int dirfd, target_ulong pathname_ptr, target_ulong ap,
+        target_ulong envp, int flags)
+    {
+        exec_enter(cpu);
+    });
 
     return true;
 #else
