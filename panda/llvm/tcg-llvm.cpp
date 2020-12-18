@@ -1606,3 +1606,6 @@ void tcg_llvm_write_module(TCGLLVMTranslator *l, const char *path)
     l->writeModule(path);
 }
 
+uintptr_t tcg_llvm_get_module_ptr(TCGLLVMTranslator *l) {
+    return (uintptr_t)l->getModule();
+}
