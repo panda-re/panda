@@ -3,6 +3,7 @@
  * Authors:
  *  Andrew Fasano               andrew.fasano@ll.mit.edu
  *  Nick Gregory                ngregory@nyu.edu
+ *  Luke Craig                  luke.craig@ll.mit.edu
  * 
  * This work is licensed under the terms of the GNU GPL, version 2. 
  * See the COPYING file in the top-level directory. 
