@@ -436,13 +436,17 @@ class Panda():
         if self._in_replay:
             self.reset()
         if hasattr(self, "end_run_raise_signal"):
-            saved = self.end_run_raise_signal
+            saved_exception = self.end_run_raise_signal
             del self.end_run_raise_signal
-            raise saved
+            raise saved_exception
         if hasattr(self, "callback_exit_exception"):
-            saved = self.callback_exit_exception
+            saved_exception = self.callback_exit_exception
             del self.callback_exit_exception
-            raise saved
+            raise saved_exception
+        if hasattr(self, "blocking_queue_error"):
+            saved_exception = self.blocking_queue_error
+            del self.blocking_queue_error
+            raise saved_exception
             
 
     def end_analysis(self):
@@ -787,7 +791,18 @@ class Panda():
             Returns:
                 None
         '''
-        self.athread.queue(f, internal=internal)
+        
+        # this takes the blocking function and handles errors
+        @blocking
+        def wrapper():
+            try:
+                f()
+            except Exception as e:
+                self.blocking_queue_error = e
+                self.end_analysis() 
+        
+
+        self.athread.queue(wrapper, internal=internal)
 
     def map_memory(self, name, size, address):
 
