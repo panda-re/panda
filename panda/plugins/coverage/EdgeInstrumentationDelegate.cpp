@@ -475,39 +475,40 @@ const static std::unordered_map<unsigned int,
 
 EdgeInstrumentationDelegate::EdgeInstrumentationDelegate(
     std::shared_ptr<RecordProcessor<Edge>> ep) : edge_processor(ep)
-                                                , capstone_initialized(false)
                                                 , edge_state(new EdgeState())
 {
+#ifdef TARGET_I386
+    cs_open(CS_ARCH_X86, CS_MODE_32, &handle32);
+    cs_option(handle32, CS_OPT_DETAIL, CS_OPT_ON);
+#ifdef TARGET_X86_64
+    cs_open(CS_ARCH_X86, CS_MODE_64, &handle64);
+    cs_option(handle64, CS_OPT_DETAIL, CS_OPT_ON);
+#endif
+#endif
 }
 
 EdgeInstrumentationDelegate::~EdgeInstrumentationDelegate()
 {
-    cs_close(&handle);
+#ifdef TARGET_I386
+    cs_close(&handle32);
+#ifdef TARGET_X86_64
+    cs_close(&handle64);
+#endif
+#endif
     panda_do_flush_tb();
 }
 
 void EdgeInstrumentationDelegate::instrument(CPUState *cpu,
                                              TranslationBlock *tb)
 {
+    csh handle = 0;
 #ifdef TARGET_I386
-    if (unlikely(!capstone_initialized)) {
-        CPUArchState *env = static_cast<CPUArchState *>(first_cpu->env_ptr);
-        if (!(env->cr[0] & 0x1)) {
-            throw std::runtime_error("Real Mode is unsupported.");
-        }
-        // Check if we're in 64-bit or not.
-        cs_mode mode = CS_MODE_LITTLE_ENDIAN;
-        if (env->efer & 0x400) {
-            // 64-bit mode (long bit set)
-            mode = CS_MODE_64;
-        } else {
-            // 32-bit mode
-            mode = CS_MODE_32;
-        }
-        cs_open(CS_ARCH_X86, mode, &handle);
-        cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON);
-        capstone_initialized = true;
+    handle = handle32;
+#ifdef TARGET_X86_64
+    if ((tb->flags & HF_CS64_SHIFT) & 1) {
+        handle = handle64;
     }
+#endif
 #endif
 
     // Insert the block callback.

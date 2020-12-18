@@ -33,9 +33,14 @@ public:
 
 private:
     std::shared_ptr<RecordProcessor<Edge>> edge_processor;
-    bool capstone_initialized;
-    csh handle;
     std::unique_ptr<EdgeState> edge_state;
+
+#ifdef TARGET_I386
+    csh handle32;
+#ifdef TARGET_X86_64
+    csh handle64;
+#endif
+#endif
 };
 
 }
