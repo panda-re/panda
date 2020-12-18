@@ -306,6 +306,16 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
     def have_semantic_labels(self):
         return self._have_semantic_labels
         
+    def _skip_csv_header(self, reader, show_metadata):
+        # newer ida_taint2 output files have some metadata before the header
+        line1 = next(reader, None)
+        if (line1[0].startswith("PANDA Build Date")):
+            exec_time = next(reader, None)
+            if (show_metadata):
+                idaapi.msg(line1[0] + ":  " + line1[1] + "\n")
+                idaapi.msg(exec_time[0] + ":  " + exec_time[1] + "\n")
+            next(reader, None)
+        
     # read semantic label information, if it exists
     def _read_semantic_labels(self):
         semantic_labels = dict()
@@ -329,8 +339,7 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
         reader = csv.reader(input_file)
         self._ea_to_labels.clear()
         self._tainted_funcs.clear()
-        # skip header
-        next(reader, None)
+        self._skip_csv_header(reader, False)
         for row in reader:
             pid = int(row[1])
             pc = int(row[2], 16)
@@ -360,10 +369,9 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
     def _update_process(self):
         selected_process = self._get_tainted_process()
         if (None == selected_process):
-            # if we didn't previously have a tainted process, then
-            # need to revert to having no file either; otherwise
-            # can continue using what had selected before
-            if (None == self._tainted_process):
+            # if this is first time selecting a process from this file, have
+            # to wipe the file as don't have a process for it
+            if (not self._seen_file):
                 self._taint_file = None
             return False
         self._ea_to_labels.clear()
@@ -403,7 +411,7 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
         processes = set()
         input_file = open(self._taint_file, "r")
         reader = csv.reader(input_file)
-        next(reader, None)
+        self._skip_csv_header(reader, not self._seen_file)
         for row in reader:
             processes.add((row[0], int(row[1])))
         input_file.close()
@@ -422,6 +430,7 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
         self._ea_to_labels = dict()
         self._tainted_funcs = set()
         self._have_semantic_labels = False
+        self._seen_file = False
         return idaapi.PLUGIN_KEEP
             
     def term(self):
@@ -448,6 +457,7 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
             self._taint_file = filename
             if (self._update_process()):
                 self.show_taint_info()
+                self._seen_file = True
         elif (self.showing_taint()):
             request = ReuseTaintDialog.askToReuse(self._taint_file, self._tainted_process)
             if (ReuseTaintDialog.GET_NEW_PROCESS == request):
@@ -463,7 +473,9 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
                     # user must've changed his mind
                     return
                 self._taint_file = filename
+                self._seen_file = False
                 if (self._update_process()):
+                    self._seen_file = True
                     idaapi.refresh_idaview_anyway()
                     ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
                     if (idaapi.IDA_SDK_VERSION >= 753):
@@ -483,8 +495,10 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
                 if (filename == ""):
                     return
                 self._taint_file = filename
+                self._seen_file = False
                 if (self._update_process()):
                     self.show_taint_info()
+                    self._seen_file = True
 
 # class to change background color on tainted instructions in disassembly view
 class InstrPainter(idaapi.IDP_Hooks):
