@@ -49,7 +49,7 @@ void panda_cont(void) {
 //    printf ("panda_api: cont cpu\n");
     panda_exit_loop = false; // is this unnecessary?
     vm_start();
-} 
+}
 
 int panda_delvm(char *snapshot_name) {
     delvm_name(snapshot_name);
@@ -134,6 +134,7 @@ int rr_get_guest_instr_count_external(void){
 }
 
 // XXX: why do we have these as _external wrappers instead of just using the real fns?
+// XXX: b/c funcs called via wrapper are inlined, don't otherwise get exported. Unclear if inlining has any significat perf benefit.
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len){
 	return panda_virtual_memory_read(env, addr, (uint8_t*) buf, len);
 }
@@ -158,12 +159,20 @@ target_ulong panda_current_sp_external(CPUState *cpu){
 	return panda_current_sp(cpu);
 }
 
+target_ulong panda_current_ksp_external(CPUState *cpu){
+	return panda_current_ksp(cpu);
+}
+
 target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong mask){
 	return (panda_current_sp(cpu) & (~(mask+mask-1)));
 }
 
 target_ulong panda_virt_to_phys_external(CPUState *cpu, target_ulong virt_addr) {
   return panda_virt_to_phys(cpu, virt_addr);
+}
+
+target_ulong panda_get_retval_external(CPUState *cpu){
+	return panda_get_retval(cpu);
 }
 
 void panda_setup_signal_handling(void (*f) (int, void*, void *))

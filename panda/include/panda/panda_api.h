@@ -38,7 +38,10 @@ int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *
 int panda_physical_memory_read_external(hwaddr addr, uint8_t *buf, int len);
 int panda_physical_memory_write_external(hwaddr addr, uint8_t *buf, int len);
 
+target_ulong panda_get_retval_external(CPUState *cpu);
+
 bool panda_in_kernel_external(CPUState *cpu);
+target_ulong panda_current_ksp_external(CPUState *cpu);
 target_ulong panda_current_sp_external(CPUState *cpu);
 target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong pagesize);
 target_ulong panda_virt_to_phys_external(CPUState *cpu, target_ulong virt_addr);

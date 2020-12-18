@@ -120,7 +120,7 @@ bool enter_priv(CPUState* cpu);
 
 /**
  * @brief Revert the guest to the privilege mode it was in prior to the last call
- * to enter_priv(). A NO-OP for architectures where enter_prov is a NO-OP.
+ * to enter_priv(). A NO-OP for architectures where enter_priv() is a NO-OP.
  */
 void exit_priv(CPUState* cpu);
 

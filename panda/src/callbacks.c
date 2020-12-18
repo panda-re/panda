@@ -698,8 +698,8 @@ void panda_disable_llvm_helpers(void) {
 }
 
 // Flush results of latest LLVM bitcode to file
+// Reccomend using a RAM-backed path (e.g. /dev/run/, /run/shm, or /dev/shm)
 int panda_write_current_llvm_bitcode_to_file(const char* path) {
-    // TODO: how to RAM back non-anonymous file without tmpfs? Cannot use memfd_create()?
     int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
     if ((tcg_llvm_translator == 0) || (fd == -1)) {
         return -1;
