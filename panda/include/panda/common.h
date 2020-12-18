@@ -291,7 +291,7 @@ static inline MemTxResult PandaVirtualAddressToRamOffset(ram_addr_t* out, CPUSta
 /**
  * @brief Determines if guest is currently executes in kernel mode.
  */
-static inline bool panda_in_kernel(CPUState *cpu) {
+static inline bool panda_in_kernel(const CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
 #if defined(TARGET_I386)
     return ((env->hflags & HF_CPL_MASK) == 0);
@@ -349,7 +349,7 @@ static inline target_ulong panda_current_ksp(CPUState *cpu) {
 /**
  * @brief Returns the guest stack pointer.
  */
-static inline target_ulong panda_current_sp(CPUState *cpu) {
+static inline target_ulong panda_current_sp(const CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
 #if defined(TARGET_I386)
     // valid on x86 and x86_64
@@ -374,7 +374,7 @@ static inline target_ulong panda_current_sp(CPUState *cpu) {
  * abstraction for retrieving a call return value. It still has to
  * be used in the proper context to retrieve a meaningful value.
  */
-static inline target_ulong panda_get_retval(CPUState *cpu) {
+static inline target_ulong panda_get_retval(const CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
 #if defined(TARGET_I386)
     // EAX for x86.

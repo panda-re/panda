@@ -151,11 +151,11 @@ int panda_physical_memory_write_external(hwaddr addr, uint8_t *buf, int len){
 	return panda_physical_memory_rw(addr,buf,len, 1);
 }
 
-bool panda_in_kernel_external(CPUState *cpu){
+bool panda_in_kernel_external(const CPUState *cpu){
 	return panda_in_kernel(cpu);
 }
 
-target_ulong panda_current_sp_external(CPUState *cpu){
+target_ulong panda_current_sp_external(const CPUState *cpu){
 	return panda_current_sp(cpu);
 }
 
@@ -163,7 +163,7 @@ target_ulong panda_current_ksp_external(CPUState *cpu){
 	return panda_current_ksp(cpu);
 }
 
-target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong mask){
+target_ulong panda_current_sp_masked_pagesize_external(const CPUState *cpu, target_ulong mask){
 	return (panda_current_sp(cpu) & (~(mask+mask-1)));
 }
 
@@ -171,7 +171,7 @@ target_ulong panda_virt_to_phys_external(CPUState *cpu, target_ulong virt_addr) 
   return panda_virt_to_phys(cpu, virt_addr);
 }
 
-target_ulong panda_get_retval_external(CPUState *cpu){
+target_ulong panda_get_retval_external(const CPUState *cpu){
 	return panda_get_retval(cpu);
 }
 
