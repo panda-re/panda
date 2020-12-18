@@ -708,6 +708,10 @@ int panda_write_current_llvm_bitcode_to_file(const char* path) {
     tcg_llvm_write_module(tcg_llvm_translator, path);
     return 0;
 }
+
+uintptr_t panda_get_current_llvm_module(void) {
+    return tcg_llvm_get_module_ptr(tcg_llvm_translator);
+}
 #endif
 
 void panda_memsavep(FILE *f) {

@@ -88,6 +88,7 @@ uintptr_t tcg_llvm_qemu_tb_exec(CPUArchState *env,
     struct TranslationBlock *tb);
 void tcg_llvm_write_module(__class_compat_var TCGLLVMTranslator *l,
     const char *path);
+uintptr_t tcg_llvm_get_module_ptr(TCGLLVMTranslator *l);
 
 struct TCGLLVMRuntime {
     // NOTE: The order of these are fixed !
@@ -206,7 +207,7 @@ class TCGLLVMTranslator {
     llvm::Value *getEnv();
 
     void checkAndLogLLVMIR();
-    
+
     void initMemoryHelpers();
 
     /* Shortcuts */
