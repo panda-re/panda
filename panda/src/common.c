@@ -9,7 +9,7 @@
 #include "panda/plog.h"
 #include "panda/plog-cc-bridge.h"
 
-#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+#if defined(TARGET_ARM)
 /* Return the exception level which controls this address translation regime */
 static inline uint32_t regime_el(CPUARMState *env, ARMMMUIdx mmu_idx)
 {
