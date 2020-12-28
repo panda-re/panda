@@ -14,8 +14,10 @@ int load_syscall_info(void) {
     gchar *syscall_info_dlname = NULL;
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
     const gchar *arch = "x86";
-#elif defined(TARGET_ARM)
+#elif defined(TARGET_ARM) &&!defined(TARGET_AARCH64)
     const gchar *arch = "arm";
+#elif defined(TARGET_ARM) &&defined(TARGET_AARCH64)
+    const gchar *arch = "arm64";
 #elif defined(TARGET_MIPS)
     const gchar *arch = "mips";
 #elif defined(TARGET_X86_64)
