@@ -22,7 +22,7 @@ root_dir = os.path.join(*[os.path.dirname(__file__), "..", "..", ".."]) # panda-
 build_root = os.path.join(root_dir, "build")
 lib_dir = os.path.join("pandare", "data")
 
-for arch in ['arm', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']:
+for arch in ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']:
     softmmu = arch+"-softmmu"
     plog = os.path.join(*[build_root, softmmu, "plog_pb2.py"])
     if os.path.isfile(plog):
@@ -216,7 +216,10 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     elif arch == "arm":
         define_clean_header(ffi, include_dir + "/panda_datatypes_ARM_32.h")
         define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_arm.h")
-        pass
+
+    elif arch == "aarch64": # Could also do arch and bits==64
+        define_clean_header(ffi, include_dir + "/panda_datatypes_ARM_64.h")
+        #define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_aarch64.h")
     elif arch == "ppc" and int(bits) == 32:
         define_clean_header(ffi, include_dir + "/panda_datatypes_PPC_32.h")
         print('WARNING: no syscalls support for PPC 32')
@@ -486,6 +489,7 @@ PandaCB.__doc__ = '''custom named tuple to handle callbacks. Each element is a c
             ("i386", 32),
             ("x86_64", 64),
             ("arm", 32),
+            ("aarch64", 64),
             ("ppc", 32),
             ("ppc", 64),
             ("mips", 32),

@@ -106,8 +106,8 @@ class Panda():
             self.arch = X86Arch(self)
         elif self.arch_name == "x86_64":
             self.arch = X86_64Arch(self)
-        elif self.arch_name == "arm":
-            self.arch = ArmArch(self)
+        elif self.arch_name in ["arm", "aarch64"]:
+            self.arch = ArmArch(self) # Not sure if this needs to be different for 64
         elif self.arch_name in ["mips", "mipsel"]:
             self.arch = MipsArch(self)
         else:
