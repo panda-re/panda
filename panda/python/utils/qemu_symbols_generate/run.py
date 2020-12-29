@@ -1,12 +1,15 @@
 import pdb
 
 # add manually. 1st field is the name for CPU*ARCH*State. 2nd is bits. 3rd is path to libpanda*.so
-archs = [("X86", 32,"/i386-softmmu/libpanda-i386.so"),
-		("X86", 64, "/x86_64-softmmu/libpanda-x86_64.so"),
-		("ARM", 32, "/arm-softmmu/libpanda-arm.so"),
-		("PPC", 32, "/ppc-softmmu/libpanda-ppc.so")
-		]
-	#		("PPC", 64, "/ppc64-softmmu/libpanda-ppc64.so")
+archs = [
+	("X86", 32,"/i386-softmmu/libpanda-i386.so"),
+	("X86", 64, "/x86_64-softmmu/libpanda-x86_64.so"),
+	("ARM", 32, "/arm-softmmu/libpanda-arm.so"),
+	("ARM", 64, "/aarch64-softmmu/libpanda-aarch64.so"),
+	("PPC", 32, "/ppc-softmmu/libpanda-ppc.so"),
+	("PPC", 64, "/ppc64-softmmu/libpanda-ppc64.so")
+]
+
 panda_base = "/build"
 
 # REPLACE ME. do not use the ubuntu version from dwarves. build it.
@@ -119,8 +122,12 @@ class Struct(object):
 		self.elf = elf
 		self.pahole_path = pahole_path
 		cont = get_struct(name, pahole_path, elf)
-		# get rid of blank lines
-		self.content = "\n".join([line for line in cont.split("\n") if line.strip()])
+		# get rid of blank lines and (some) pahole warnings
+		self.content = "\n".join([line for line in cont.split("\n") if line.strip() and "lexblock__recode_dwarf_types" not in line])
+		if "lexblock__recode_dwarf_types" in self.content: # Failed to remove warnings
+			print("Invalid structure:", self.content)
+			raise RuntimeError("Trying to parse a pahole error as a struct. Aborting")
+
 		self.circular_depends = []
 		self.depends = []
 
@@ -285,7 +292,7 @@ class HeaderFile(object):
 		comptries += 1
 		try:
 			self.ffi = FFI()
-			self.ffi.cdef(str(self))		
+			self.ffi.cdef(str(self))
 			cpustate = self.ffi.new("CPUState*")
 			self.ffi.new("CPU"+self.arch+"State*")
 			self.ffi.new("TranslationBlock*")
@@ -320,7 +327,7 @@ def generate_config(arch, bits, pahole_path, elf_file):
 	previous = "CPUState"
 	loopcounter = 0
 	while True:
-		valid = header.validate()		
+		valid = header.validate()
 		if valid:
 			missing, line = valid
 			if missing == previous:
