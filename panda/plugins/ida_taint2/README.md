@@ -3,14 +3,7 @@ Plugin: ida_taint2
 
 Summary
 -------
-This plugin is intended to be used with the included `ida_taint2.py` script in
-IDAPython. `ida_taint2.py` colorizes  and renames functions in IDA based on the
-output CSV file from this plugin. This plugin produces a CSV file of process IDs
-and program counter values. There should be no duplicate rows in the file.
-An entry in the CSV file indicates that the instruction at the PC manipulated
-tainted data. The PID is needed because the reported addresses are virtual
-addresses and so one address may be in two different processes. A process ID of
-0 indicates the system is in kernel mode.
+This plugin is intended to be used with the included `ida_taint2.py` script in IDAPython. `ida_taint2.py` colorizes  and renames functions in IDA based on the output CSV file from this plugin. This plugin produces a CSV file of process IDs and program counter values. There are also two informational lines at the top of the file:  the first provides the PANDA build date, and the second provides the timestamp for when this CSV file was produced. There should be no duplicate rows in the file. An entry in the CSV file indicates that the instruction at the PC manipulated tainted data. The PID is needed because the reported addresses are virtual addresses and so one address may be in two different processes. A process ID of 0 indicates the system is in kernel mode.
 
 The `ida_taint2.py` script reads the CSV file and highlights functions and
 instructions that manipulate tainted data. Functions are highlighted green and
