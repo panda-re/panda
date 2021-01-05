@@ -1,7 +1,7 @@
 """
 IDAPython plugin to let the user indicate tainted instructions and functions
 using data collected by PANDA's ida_taint2 plugin.  These indications are
-made only by hanging the view of the data, not the IDA database for a binary.
+made only by changing the view of the data, not the IDA database for a binary.
 """
 import csv
 import ctypes
@@ -332,7 +332,29 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
         if (len(semantic_labels) > 0):
             self._have_semantic_labels = True
         return semantic_labels
-    
+
+    # if the user rebased the binary, need to adjust the list of tainted
+    # functions
+    def rebase_taint_info(self):
+        if (not (self._taint_file == None)):
+            input_file = open(self._taint_file, "r")
+            reader = csv.reader(input_file)
+            self._tainted_funcs.clear()
+            self._skip_csv_header(reader, False)
+            for row in reader:
+                pid = int(row[1])
+                pc = int(row[2], 16)
+
+                if pid != self._tainted_process['process_id']:
+                    continue
+                fn = ida_funcs.get_func(pc)
+                if not fn:
+                    continue
+                fn_start = fn.start_ea
+                self._tainted_funcs.add(fn_start)
+            input_file.close()
+            ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
+        
     def _read_taint_info(self):
         semantic_labels = self._read_semantic_labels()
         input_file = open(self._taint_file, "r")
@@ -654,10 +676,13 @@ class InstrHintHook(idaapi.UI_Hooks):
 # "Functions window" is displayed
 # also watch for disassembly view context menu, and add an item to it to show
 # or hide taint information
+# also watch for RebaseProgram request, as will need to explicitly refresh the
+# Tainted Functions window when it is done
 class WatchForWindowsHook(idaapi.UI_Hooks):
     def __init__(self, taintinfo):
         idaapi.UI_Hooks.__init__(self)
         self.taintinfo = taintinfo
+        self._cmdname = "<no command>"
         
     def finish_populating_widget_popup(self, widget, popup):
         widget_type = idaapi.get_widget_type(widget)
@@ -715,11 +740,24 @@ class WatchForWindowsHook(idaapi.UI_Hooks):
                 if (self.taintinfo.is_func_tainted(ea)):
                     attrs.color = FUNC_COLOR
                     
+    def preprocess_action(self, name):
+        # remember what doing - may need to take special action in
+        # postprocess_action
+        self._cmdname = name
+        return 0
+
+    def postprocess_action(self):
+        if (self._cmdname == "RebaseProgram"):
+            # doesn't seem to be a way to tell if user Cancelled
+            # request or not, so have to assume need to adjust
+            self.taintinfo.rebase_taint_info()
+        return 0
+        
     def widget_visible(self, widget):
         if (idaapi.IDA_SDK_VERSION >= 753):
             # if the Functions window is displayed when taint is showing,
             # need to turn on colors in the Functions window
-            if (self.taintinfo.showign_taint() and (idaapi.get_widget_type(widget) == idaapi.BWN_FUNCS)):
+            if (self.taintinfo.showing_taint() and (idaapi.get_widget_type(widget) == idaapi.BWN_FUNCS)):
                 if (not ida_kernwin.enable_chooser_item_attrs(FUNCS_WINDOW_CAPTION, True)):
                     # as I just showed the window, this should NOT happen so
                     # display an error
