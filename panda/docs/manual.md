@@ -1,4 +1,4 @@
-![LOGO](images/pandalogo-cropped.png)
+![LOGO](images/panda_logo.png)
 
 # PANDA User Manual
 
