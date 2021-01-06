@@ -84,10 +84,18 @@ void insert_call(TCGOp **after_op, F *func_ptr, A... args)
     // Insert all arguments as TCG temporaries.
     std::vector<intptr_t> ia = insert_args(after_op, args ...);
 
-    // Insert the call op.
-    *after_op = tcg_op_insert_after(&tcg_ctx, *after_op, INDEX_op_call, ia.size() + 1);
+    // Insert the call op. Here be dragons: the number of "arguments" passed to
+    // the tcg_op_insert_after is NOT the number of call arguments. Instead,
+    // the arguments in this context is the number of parameters to a call op.
+    // A call op has N output parameters, M output parameters, a function
+    // pointer, and a flags field. Therefore the number to pass to this
+    // function then is N + M + 2. For this case, we have no output arguments,
+    // so we take the number of input arguments and add 2 to compute how many
+    // parameters this call op has.
+    *after_op = tcg_op_insert_after(&tcg_ctx, *after_op, INDEX_op_call, ia.size() + 2);
 
     // Populate call op parameters.
+    (*after_op)->callo = 0; // no return value
     (*after_op)->calli = ia.size();
     TCGArg *call_args = &tcg_ctx.gen_opparam_buf[(*after_op)->args];
     for (int i = 0; i < ia.size(); i++) {

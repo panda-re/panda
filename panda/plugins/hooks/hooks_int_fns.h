@@ -6,7 +6,7 @@ extern "C" {
 // files in this directory that contain subsections like this one.
 
     // Hook functions must be of this type
-    typedef void (*hook_func_t)(CPUState *, TranslationBlock *);
+    typedef bool (*hook_func_t)(CPUState *, TranslationBlock *);
 
     void add_hook(target_ulong addr, hook_func_t hook);
     void update_hook(hook_func_t hook, target_ulong value);
