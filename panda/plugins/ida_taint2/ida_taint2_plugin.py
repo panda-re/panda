@@ -21,10 +21,8 @@ import idautils
 
 FUNCS_WINDOW_CAPTION = "Functions window"
 
-# greenish shade
-FUNC_COLOR = 0x90EE90
 # an orangish shade
-INST_COLOR = 0xFF90FF
+INST_COLOR = 0x55AAFF
 
 # dialog to let user enable old taint info, disable current taint info, or
 # change file and process from which taint information is acquired
