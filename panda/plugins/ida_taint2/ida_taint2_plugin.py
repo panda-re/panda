@@ -402,32 +402,19 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
         self._read_taint_info()
         return True
             
-    def hide_taint_info(self):
-        # the item attributes callback is broken previous to IDA 7.5 SP 3
-        if (idaapi.IDA_SDK_VERSION >= 753):
-            # disable colorization in Functions window
-            # may get an error just because the Functions window isn't up
-            # so ignore it
-            ida_kernwin.enable_chooser_item_attrs(FUNCS_WINDOW_CAPTION, False)
-            
+    def hide_taint_info(self):    
         self._instr_painter.unhook()
         self._instr_hint_hook.unhook()
         self._hooks_installed = False
         idaapi.refresh_idaview_anyway()
         ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
     
-    def show_taint_info(self):
-        if (idaapi.IDA_SDK_VERSION >= 753):
-            ida_kernwin.enable_chooser_item_attrs(FUNCS_WINDOW_CAPTION, True)
-            
+    def show_taint_info(self):    
         self._instr_painter.hook()
         self._instr_hint_hook.hook()
         self._hooks_installed = True
         idaapi.refresh_idaview_anyway()
         ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
-        
-        if (idaapi.IDA_SDK_VERSION >= 753):
-            ida_kernwin.refresh_chooser(FUNCS_WINDOW_CAPTION)
         
     def _get_tainted_process(self):
         processes = set()
@@ -486,8 +473,6 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
                 if (self._update_process()):
                     idaapi.refresh_idaview_anyway()
                     ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
-                    if (idaapi.IDA_SDK_VERSION >= 753):
-                        ida_kernwin.refresh_chooser(FUNCS_WINDOW_CAPTION)
             elif (ReuseTaintDialog.GET_NEW_FILE == request):
                 filename, _ = QFileDialog.getOpenFileName(None,
                 self.OPEN_CAPTION, self.OPEN_DIRECTORY, self.OPEN_FILTER)
@@ -500,8 +485,6 @@ class ida_taint2_plugin_t(idaapi.plugin_t):
                     self._seen_file = True
                     idaapi.refresh_idaview_anyway()
                     ida_kernwin.refresh_chooser(ShowTaintedFuncs.TITLE)
-                    if (idaapi.IDA_SDK_VERSION >= 753):
-                        ida_kernwin.refresh_chooser(FUNCS_WINDOW_CAPTION)
         else:
             # must have an old file and process selected, but taint disabled
             # note that _update_process wipes _tainted_process and _taint_file
@@ -672,8 +655,6 @@ class InstrHintHook(idaapi.UI_Hooks):
 
 # watch for the "Functions window" context menu, and add an item to it to show
 # a window of tainted functions
-# if using IDA 7.5 SP 3 or later, also enable item attributes when
-# "Functions window" is displayed
 # also watch for disassembly view context menu, and add an item to it to show
 # or hide taint information
 # also watch for RebaseProgram request, as will need to explicitly refresh the
@@ -724,21 +705,6 @@ class WatchForWindowsHook(idaapi.UI_Hooks):
                         None,
                         ShowHideTaint.SHOW_ACTION_TOOLTIP)):
                         ida_kernwin.attach_action_to_popup(widget, popup, ShowHideTaint.ACTION_NAME)
-    
-    def get_chooser_item_attrs(self, chooser, n, attrs):
-        # this method returns the wrong widget as the chooser previous to
-        # IDA 7.5 SP 3, which prevents one from verifying what chooser is
-        # asking for attributes
-        if (idaapi.IDA_SDK_VERSION >= 753):
-            if (self.taintinfo.showing_taint() and (idaapi.get_widget_type(chooser) == idaapi.BWN_FUNCS)):
-                chdata = ida_kernwin.get_chooser_data(FUNCS_WINDOW_CAPTION, n)
-                # chdata is a list of strings for each cell in row n (first row=0)
-                # if some columns are hidden, still get data for all columns
-                # it is not possible to reorder columns in the Functions window
-                # the effective address of the function is in the third cell
-                ea = int(chdata[2], base=16)
-                if (self.taintinfo.is_func_tainted(ea)):
-                    attrs.color = FUNC_COLOR
                     
     def preprocess_action(self, name):
         # remember what doing - may need to take special action in
@@ -753,15 +719,6 @@ class WatchForWindowsHook(idaapi.UI_Hooks):
             self.taintinfo.rebase_taint_info()
         return 0
         
-    def widget_visible(self, widget):
-        if (idaapi.IDA_SDK_VERSION >= 753):
-            # if the Functions window is displayed when taint is showing,
-            # need to turn on colors in the Functions window
-            if (self.taintinfo.showing_taint() and (idaapi.get_widget_type(widget) == idaapi.BWN_FUNCS)):
-                if (not ida_kernwin.enable_chooser_item_attrs(FUNCS_WINDOW_CAPTION, True)):
-                    # as I just showed the window, this should NOT happen so
-                    # display an error
-                    idaapi.msg("PROBLEM ENABLING Functions window ITEM ATTRIBUTES")
                     
 def PLUGIN_ENTRY():
     return ida_taint2_plugin_t()
