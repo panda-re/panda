@@ -42,7 +42,7 @@ the filter options can also improve performance because the options are used
 to determine whether or not a block should be instrumented. See the arguments
 section for a list of filter options.
 
-Regardless of mode used, the output CSV file contains metadtata at the top of the header consisting of the PANDA build date and the execution time.  Note that the header is written out each time coverage colection is enabled.
+Regardless of mode used, the output CSV file contains metadtata at the top of the header consisting of the PANDA build date and the execution time.  Note that the header is written out each time coverage collection is enabled.
 
 This plugin can be used with the included `coverage.py` script in IDAPython.
 `coverage.py` colorizes the dissasembly in IDA Pro using the CSV file produced
