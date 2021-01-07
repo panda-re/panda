@@ -7,6 +7,7 @@
 #include "CoverageMonitorDelegate.h"
 #include "OsiBlock.h"
 #include "RecordProcessor.h"
+#include "MetadataWriter.h"
 
 namespace coverage
 {
@@ -19,6 +20,7 @@ class OsiBlockCsvWriter : public RecordProcessor<OsiBlock>,
 {
 public:
     OsiBlockCsvWriter(const std::string &filename, bool start_disabled);
+    virtual ~OsiBlockCsvWriter();
     void handle(OsiBlock record) override;
 
     void handle_enable(const std::string& filename) override;
@@ -26,6 +28,7 @@ public:
 private:
     void write_header();
     std::ofstream os;
+    MetadataWriter *metadata;
 };
 
 }

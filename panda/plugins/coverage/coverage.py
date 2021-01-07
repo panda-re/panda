@@ -137,6 +137,25 @@ def add_comments(info_for_pcs, selections):
             comment = comment + ", " + label_portion
         ida_bytes.set_cmt(pc, comment, 0)
         
+def get_mode(reader, show_metadata):
+    # newer coverage output files have some metadata before the mode and
+    # column header lines
+    line1 = next(reader, None)
+    if (line1[0].startswith("PANDA Build Date")):
+        # new format file - build date, then execution time, then mode line
+        exec_time = next(reader, None)
+        if (show_metadata):
+            idaapi.msg(line1[0] + ":  " + line1[1] + "\n")
+            idaapi.msg(exec_time[0] + ":  " + exec_time[1] + "\n")
+        fmt_row = next(reader, None)
+        mode = fmt_row[0]
+    else:
+        # old format file - first line is the mode
+        mode = line1[0]
+    # skip column headers
+    next(reader, None)
+    return mode
+    
 def main():
     filename, _ = QFileDialog.getOpenFileName(None, "Open file", ".", "CSV Files(*.csv)")
     if filename == "":
@@ -147,8 +166,7 @@ def main():
     reader = csv.reader(input_file)
     
     # what mode was used to produce this output?
-    fmt_row = next(reader, None)
-    mode = fmt_row[0]
+    mode = get_mode(reader, True)
     # where to find the pertinent data depends upon the mode that produced it
     if ("process" == mode):
         id_index = 1
@@ -207,8 +225,7 @@ def main():
     input_file = open(filename, "r")
     reader = csv.reader(input_file)
     # skip mode and column headers
-    next(reader, None)
-    next(reader, None)
+    get_mode(reader, False)
     seq_num = 0
     for row in reader:
         cur_id = int(row[id_index], id_radix)
