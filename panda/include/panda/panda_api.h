@@ -38,10 +38,15 @@ int panda_virtual_memory_write_external(CPUState *env, target_ulong addr, char *
 int panda_physical_memory_read_external(hwaddr addr, uint8_t *buf, int len);
 int panda_physical_memory_write_external(hwaddr addr, uint8_t *buf, int len);
 
-bool panda_in_kernel_external(CPUState *cpu);
-target_ulong panda_current_sp_external(CPUState *cpu);
-target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong pagesize);
+target_ulong panda_get_retval_external(const CPUState *cpu);
+
+bool panda_in_kernel_external(const CPUState *cpu);
+target_ulong panda_current_ksp_external(CPUState *cpu);
+target_ulong panda_current_sp_external(const CPUState *cpu);
+target_ulong panda_current_sp_masked_pagesize_external(const CPUState *cpu, target_ulong pagesize);
 target_ulong panda_virt_to_phys_external(CPUState *cpu, target_ulong virt_addr);
+
+void panda_setup_signal_handling(void (*f) (int, void*, void *));
 
 void map_memory(char* name, uint64_t size, uint64_t address);
 
@@ -60,5 +65,11 @@ char* panda_monitor_run(char* buf);// Redefinition from monitor.h
 CPUState* get_cpu(void);
 
 unsigned long garray_len(GArray *list);
+void panda_cleanup_record(void);
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
+
+// don't expose to API  because we don't want to add siginfo_t understanding
+// set to true if panda_setup_signal_handling is called
+void (*panda_external_signal_handler)(int, siginfo_t*,void*) = NULL;
+
 #endif

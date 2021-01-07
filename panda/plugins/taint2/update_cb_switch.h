@@ -24,7 +24,8 @@ PANDAENDCOMMENT */
  * update_cb_switch folder of the taint2 tests subfolder.
  */
 
- 
+    bool validate_last_literal = true;
+
     switch (opcode) {
         // Totally reversible cases.
         case llvm::Instruction::Sub:
@@ -71,6 +72,7 @@ PANDAENDCOMMENT */
         case llvm::Instruction::Load:
         case llvm::Instruction::ExtractValue:
         case llvm::Instruction::InsertValue:
+            validate_last_literal = false;
             break;
 
         case llvm::Instruction::Trunc:
@@ -84,6 +86,7 @@ PANDAENDCOMMENT */
             }
             // if truncating to (CB_WIDTH / 8) bytes, not really truncating, as
             // largest number we can handle is CB_WIDTH bits - thus no change
+            validate_last_literal = false;
             break;
 
         case llvm::Instruction::Mul:
@@ -223,17 +226,16 @@ PANDAENDCOMMENT */
             cb_mask = 0;
             one_mask = 0;
             zero_mask = 0;
+            validate_last_literal = false;
             break;
 
         case llvm::Instruction::GetElementPtr:
         {
-            llvm::GetElementPtrInst *GEPI =
-                llvm::dyn_cast<llvm::GetElementPtrInst>(I);
-            tassert(GEPI);
+            validate_last_literal = false;
             one_mask = 0;
             zero_mask = 0;
             // Constant indices => fully reversible
-            if (GEPI->hasAllConstantIndices()) break;
+            if (instruction_flags & INSTRUCTION_FLAG_GEP_HAS_CONSTANT_INDICES) break;
             // Otherwise we know nothing.
             cb_mask = 0;
             break;
@@ -241,7 +243,23 @@ PANDAENDCOMMENT */
 
         default:
             printf("Unknown instruction in update_cb: ");
-            I->dump();
+            //dump only available if LLVM compiled with dump enabled
+            //I->dump();
             fflush(stdout);
             return;
+    }
+
+    static int warning_count = 0;
+    if (validate_last_literal && (10 > warning_count) && (NOT_LITERAL == last_literal)) {
+        fprintf(stderr,
+                "%sWARNING: Could not find last literal value, control "
+                "bits may be incorrect.\n",
+                PANDA_MSG);
+        warning_count++;
+        if (warning_count == 10) {
+            fprintf(stderr,
+                    "%sLast literal warning emitted %d times, suppressing "
+                    "warning.\n",
+                    PANDA_MSG, warning_count);
+        }
     }

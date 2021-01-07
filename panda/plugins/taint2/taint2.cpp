@@ -41,9 +41,9 @@
 #include "panda/plugin.h"
 #include "panda/tcg-llvm.h"
 
-#include <llvm/PassManager.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/PassRegistry.h>
-#include <llvm/Analysis/Verifier.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 
@@ -122,7 +122,7 @@ ShadowState *shadow = nullptr; // Global shadow memory
 void *taint2_plugin = nullptr;
 
 // Our pass manager to derive taint ops
-llvm::FunctionPassManager *FPM = nullptr;
+llvm::legacy::FunctionPassManager *FPM = nullptr;
 
 // Taint function pass.
 llvm::PandaTaintFunctionPass *PTFP = nullptr;
@@ -132,7 +132,7 @@ llvm::PandaTaintFunctionPass *PTFP = nullptr;
 bool taintEnabled = false;
 
 // Taint memlog
-static taint2_memlog taint_memlog;
+taint2_memlog taint_memlog;
 
 // Configuration
 bool tainted_pointer = true;
@@ -298,8 +298,8 @@ void taint2_enable_taint(void) {
     // Initialize memlog.
     memset(&taint_memlog, 0, sizeof(taint_memlog));
 
-    llvm::Module *mod = tcg_llvm_ctx->getModule();
-    FPM = tcg_llvm_ctx->getFunctionPassManager();
+    llvm::Module *mod = tcg_llvm_translator->getModule();
+    FPM = tcg_llvm_translator->getFunctionPassManager();
 
     std::cerr << PANDA_MSG "LLVM optimizations " << PANDA_FLAG_STATUS(optimize_llvm) << std::endl;
     if (optimize_llvm) {
@@ -322,14 +322,13 @@ void taint2_enable_taint(void) {
 
     std::cerr << PANDA_MSG "Done processing helper functions for taint." << std::endl;
 
-    std::string err;
-    if(verifyModule(*mod, llvm::AbortProcessAction, &err)){
-        std::cerr << PANDA_MSG << err << std::endl;
+    if(verifyModule(*mod, &llvm::errs())){
+        std::cerr << PANDA_MSG << "Halting: failed to verify module" << std::endl;
         exit(1);
     }
 
 #ifdef TAINT2_DEBUG
-    tcg_llvm_write_module(tcg_llvm_ctx, "llvm-mod.bc");
+    tcg_llvm_write_module(tcg_llvm_translator, "llvm-mod.bc");
 #endif
 
     std::cerr << "Done verifying module. Running..." << std::endl;
@@ -562,7 +561,7 @@ void uninit_plugin(void *self) {
         shadow = nullptr;
     }
 
-    // Check if tcg_llvm_ctx has been initialized before destroy
+    // Check if tcg_llvm_translator has been initialized before destroy
     if (taint2_enabled()) panda_disable_llvm();
 
     panda_disable_memcb();

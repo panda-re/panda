@@ -254,7 +254,23 @@ class FastShad : public Shad
         bool change = false;
         if (track_taint_state && range_tainted(addr, remove_size))
             change = true;
+        
+#if 0
+        // GCC8 doesn't like this memset and raises a warning but we really do want it
+        // for performance reasons. The following code prevents the warning, but it's
+        // about 10x slower so we instead disable the warning.
+        TaintData *t = get_td_p(addr);
+        for (int i=0; i < remove_size; i++) {
+          t[i] = TaintData();
+        }
+#else
+#pragma GCC diagnostic push
+#if defined(__GNUC__) && __GNUC__ >= 8
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
+#endif
         memset(get_td_p(addr), 0, remove_size * sizeof(TaintData));
+#pragma GCC diagnostic pop
+#endif
 
         if (change)
             taint_state_changed(this, addr, remove_size);
@@ -265,7 +281,22 @@ class FastShad : public Shad
         tassert(addr + remove_size >= addr);
         tassert(addr + remove_size <= size);
 
+#if 0
+        // GCC8 doesn't like this memset and raises a warning but we really do want it
+        // for performance reasons. The following code prevents the warning, but it's
+        // about 10x slower so we instead disable the warning.
+        TaintData *t = get_td_p(addr);
+        for (int i=0; i < remove_size; i++) {
+          t[i] = TaintData();
+        }
+#else
+#pragma GCC diagnostic push
+#if defined(__GNUC__) && __GNUC__ >= 8
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
+#endif
         memset(get_td_p(addr), 0, remove_size * sizeof(TaintData));
+#pragma GCC diagnostic pop
+#endif
     }
 
     LabelSetP query(uint64_t addr) override

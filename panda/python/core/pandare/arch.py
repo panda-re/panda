@@ -191,8 +191,8 @@ class MipsArch(PandaArch):
     Register Number	Conventional Name	Usage
     $0	        $zero	Hard-wired to 0
     $1	        $at	Reserved for pseudo-instructions
-    $2 - $3	        $v0, $v1	Return values from functions
-    $4 - $7	        $a0 - $a3	Arguments to functions - not preserved by subprograms
+    $2 - $3	$v0, $v1	Return values from functions
+    $4 - $7     $a0 - $a3	Arguments to functions - not preserved by subprograms
     $8 - $15	$t0 - $t7	Temporary data, not preserved by subprograms
     $16 - $23	$s0 - $s7	Saved registers, preserved by subprograms
     $24 - $25	$t8 - $t9	More temporary registers, not preserved by subprograms
@@ -212,7 +212,8 @@ class MipsArch(PandaArch):
 
         self.reg_sp = regnames.index('sp')
         self.reg_retaddr = regnames.index('ra')
-        self.registers = {regnames[idx]: idx for idx in range(len(regnames)) }
+        # note names must be stored uppercase for get/set reg to work case-insensitively
+        self.registers = {regnames[idx].upper(): idx for idx in range(len(regnames)) }
 
     def get_pc(self, cpu):
         '''

@@ -355,8 +355,7 @@ std::set<uint32_t> parse_int_ranges(panda_arg_list *args, const char *arg_name,
 
     if(0 != std::strcmp(arg_value, DEFAULT_ALL.c_str()))
     {
-        char *tmp = new char[std::strlen(arg_value)+1];
-        std::strncpy(tmp, arg_value, std::strlen(arg_value)+1);
+        char *tmp = g_strdup(arg_value);
 
         char *savptr;
 

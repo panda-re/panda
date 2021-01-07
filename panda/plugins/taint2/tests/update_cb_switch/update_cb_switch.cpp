@@ -22,9 +22,12 @@
 #include "qemu/host-utils.h"   // needed for clz64 and ctz64
 
 #include "taint_utils.h"
+#include "taint2/taint_ops_ins_flags.h"
 
 // needed by the switch
 #define tassert(cond) assert((cond))
+
+#define PANDA_MSG ""
 
 const int CB_WIDTH = 128;
 const llvm::APInt NOT_LITERAL(CB_WIDTH, ~0UL);
@@ -60,8 +63,8 @@ static void runTest(const char *ocname, unsigned int opcode,
     llvm::APInt zero_mask = orig_zero_mask;
     llvm::APInt one_mask = orig_one_mask;
 
-    // fake Instruction object that will never be used, just so will compile
-    llvm::Instruction *I = NULL;
+    // fake flags int that will never be used, just so will compile
+    uint64_t instruction_flags = 0;
 
     // really only need literals[1], and then only for some tests
     std::vector<llvm::APInt> literals;
@@ -72,11 +75,14 @@ static void runTest(const char *ocname, unsigned int opcode,
     // the real code being tested
 #include "../../update_cb_switch.h"
 
+    // opcode is needed by update_cb_switch.h, but as it changes from LLVM
+    // version to version, it is not printed out below
+
     // and the answers are...
-    printf("%s (%d):  size=%ld, lastlit=0x%.16lx%.16lx, orig (cb,0,1) "
+    printf("%s:  size=%ld, lastlit=0x%.16lx%.16lx, orig (cb,0,1) "
            "(0x%.16lx%.16lx, 0x%.16lx%.16lx, 0x%.16lx%.16lx) => new "
            "(0x%.16lx%.16lx, 0x%.16lx%.16lx, 0x%.16lx%.16lx) - ",
-           ocname, opcode, size, apint_hi_bits(last_literal),
+           ocname, size, apint_hi_bits(last_literal),
            apint_lo_bits(last_literal), apint_hi_bits(orig_cb_mask),
            apint_lo_bits(orig_cb_mask), apint_hi_bits(orig_zero_mask),
            apint_lo_bits(orig_zero_mask), apint_hi_bits(orig_one_mask),

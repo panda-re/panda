@@ -17,6 +17,8 @@ PANDAENDCOMMENT */
 
 #include <cstdint>
 
+#include "taint_ops_ins_flags.h"
+
 namespace llvm { class Instruction; }
 
 class Shad;
@@ -61,25 +63,26 @@ void taint_branch(Shad *shad, uint64_t src);
 // These are all the taint operations which we will inline into the LLVM code
 // as it JITs.
 void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
-                uint64_t size, llvm::Instruction *I);
+        uint64_t size, uint64_t opcode, uint64_t instruction_flags,
+        uint64_t num_operands, ...);
 
 // Two compute models: parallel and mixed. Parallel for bitwise, mixed otherwise.
 // Parallel compute: take labelset vectors [1,2,3] + [4,5,6] -> [14,25,36]
 void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
                             uint64_t src1, uint64_t src2, uint64_t src_size,
-                            llvm::Instruction *I);
+                            uint64_t opcode, uint64_t result_unused);
 
 // Mixed compute: [1,2] + [3,4] -> [1234,1234]
 // Note that dest_size and src_size can differ.
 void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                        uint64_t src1, uint64_t src2, uint64_t src_size,
-                       llvm::Instruction *ignored);
+                       uint64_t opcode, uint64_t result_unused);
 
 //for mul or fmul. can do parallel or mixed or no prop depending on vals and their taints
 void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
-                       uint64_t src1, uint64_t src2, uint64_t src_size,
-                       llvm::Instruction *inst, uint64_t arg1_lo,
-                       uint64_t arg1_hi, uint64_t arg2_lo, uint64_t arg2_hi);
+        uint64_t src1, uint64_t src2, uint64_t src_size, uint64_t arg1_lo,
+        uint64_t arg1_hi, uint64_t arg2_lo, uint64_t arg2_hi,
+        uint64_t opcode, uint64_t result_unused);
 
 // Clear taint.
 void taint_delete(Shad *shad, uint64_t dest, uint64_t size);
@@ -94,7 +97,8 @@ void taint_after_ld(uint64_t reg, uint64_t memaddr, uint64_t size);
 // Union all labels within here: [1,2,3] -> [123,123,123]
 // A mixed compute becomes two mixes followed by a parallel.
 void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
-               uint64_t src_size, llvm::Instruction *I);
+        uint64_t src_size, uint64_t opcode, uint64_t instruction_flags,
+        uint64_t num_operands, ...);
 
 // Tainted pointer load in tainted pointer mode.
 // Mixes the ptr labels and parallels that with each src label.

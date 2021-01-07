@@ -157,7 +157,8 @@ struct TranslationBlock {
 	uint16_t                   icount;               /*    14     2 */
 	uint32_t                   cflags;               /*    16     4 */
 	uint16_t                   invalid;              /*    20     2 */
-	/* XXX 2 bytes hole, try to pack */
+	uint8_t                    was_split;            /*    22     1 */
+	/* XXX 1 byte hole, try to pack */
 	void *                     tc_ptr;               /*    24     8 */
 	uint8_t *                  tc_search;            /*    32     8 */
 	struct TranslationBlock *  orig_tb;              /*    40     8 */
@@ -168,15 +169,16 @@ struct TranslationBlock {
 	uint16_t                   jmp_insn_offset[2];   /*    84     4 */
 	uintptr_t                  jmp_list_next[2];     /*    88    16 */
 	uintptr_t                  jmp_list_first;       /*   104     8 */
-	void *           tcg_llvm_context;     /*   112     8 */
-	struct Function *          llvm_function;        /*   120     8 */
+	uint8_t *                  llvm_tc_ptr;          /*   112     8 */
+	uint8_t *                  llvm_tc_end;          /*   120     8 */
 	/* --- cacheline 2 boundary (128 bytes) --- */
-	uint8_t *                  llvm_tc_ptr;          /*   128     8 */
-	uint8_t *                  llvm_tc_end;          /*   136     8 */
-	struct TranslationBlock *  llvm_tb_next[2];      /*   144    16 */
-	/* size: 160, cachelines: 3, members: 21 */
-	/* sum members: 158, holes: 1, sum holes: 2 */
-	/* last cacheline: 32 bytes */
+	struct TranslationBlock *  llvm_tb_next[2];      /*   128    16 */
+	uint8_t *                  llvm_asm_ptr;         /*   144     8 */
+	char                       llvm_fn_name[64];     /*   152    64 */
+	/* --- cacheline 3 boundary (192 bytes) was 24 bytes ago --- */
+	/* size: 216, cachelines: 4, members: 22 */
+	/* sum members: 215, holes: 1, sum holes: 1 */
+	/* last cacheline: 24 bytes */
 };
 struct Object;
 typedef struct Object Object;

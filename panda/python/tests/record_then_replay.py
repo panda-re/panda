@@ -55,7 +55,7 @@ assert(path.isfile('asidstory')), "Asidstory didn't create output"
 with open('asidstory') as f:
     data = f.read()
     assert("date" in data), "Unexpected output from asidstory"
-    assert("md5sum : [" in data), "Unexpected output from asidstory"
+    assert(" md5sum " in data), "Unexpected output from asidstory"
 
 orig_block_c = len(orig_blocks)
 repl_block_c = len(replay_blocks)

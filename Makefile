@@ -326,7 +326,7 @@ qemu-version.h: FORCE
 			if test -d .git; then \
 				printf '" ('; \
 				git describe --match 'v*' 2>/dev/null | tr -d '\n'; \
-				if ! git diff-index --quiet HEAD &>/dev/null; then \
+				if ! git diff-index --quiet HEAD 2>/dev/null; then \
 					printf -- '-dirty'; \
 				fi; \
 				printf ')"\n'; \

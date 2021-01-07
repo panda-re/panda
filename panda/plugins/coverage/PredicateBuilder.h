@@ -16,7 +16,6 @@ class PredicateBuilder
 {
 public:
     PredicateBuilder();
-    PredicateBuilder& with_process_name(const std::string& pn);
     PredicateBuilder& with_pc_range(target_ulong low, target_ulong high);
     PredicateBuilder& in_kernel(bool ik);
     std::unique_ptr<Predicate> build(); 

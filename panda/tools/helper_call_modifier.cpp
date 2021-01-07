@@ -25,19 +25,24 @@ PANDAENDCOMMENT */
  */
 
 #include <cstdio>
+#include <iostream>
 #include <regex>
 
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
-#include "llvm/PassManager.h"
-#include "llvm/Analysis/Verifier.h"
+#include "llvm/IR/PassManager.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/IRReader/IRReader.h"
-#include "llvm/Bitcode/ReaderWriter.h"
+#include "llvm/Bitcode/BitcodeReader.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/raw_os_ostream.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm-c/Core.h"
+#include "llvm-c/Target.h"
 
 #ifdef NDEBUG
 #undef NDEBUG
@@ -53,12 +58,16 @@ namespace {
 }
 
 int main(int argc, char **argv) {
+
+    LLVMInitializeNativeTarget();
+    LLVMInitializeNativeAsmPrinter();
+
     // Load the bitcode
     cl::ParseCommandLineOptions(argc, argv, "helper_call_modifier\n");
     SMDiagnostic Err;
-    LLVMContext &Context = getGlobalContext();
-    Module *Mod = ParseIRFile(InputFile, Err, Context);
-    if (!Mod) {
+    LLVMContext Context;
+    std::unique_ptr<Module> Mod = parseIRFile(InputFile, Err, Context);
+    if (Mod == nullptr) {
         Err.print(argv[0], errs());
         exit(1);
     }
@@ -70,13 +79,14 @@ int main(int argc, char **argv) {
      */
     std::regex mmu_regex("helper_[bl]e_(ld|st)[us]?[bwlq]_mmu(_panda)?",
             std::regex::egrep);
+
     std::vector<Function*> funcs;
     for (Function &f : *Mod) {
         funcs.push_back(&f);
     }
 
     for (Function *f : funcs) {
-        std::string fname = f->getName();
+        std::string fname = f->getName().str();
         std::string newName = fname;
         if (std::regex_match(fname, mmu_regex)) {
             newName.append("_panda");
@@ -84,7 +94,7 @@ int main(int argc, char **argv) {
         } else if (!f->isDeclaration() && fname.find("helper_") == 0) {
             newName.append("_llvm");
             ValueToValueMapTy VMap;
-            Function *newFunc = CloneFunction(f, VMap, false);
+            Function *newFunc = CloneFunction(f, VMap, nullptr);
             newFunc->setName(newName);
             /*
              * XXX: We need to remove stack smash protection from helper
@@ -93,22 +103,27 @@ int main(int argc, char **argv) {
              * that causes the program to segfault.  More information available
              * here: http://llvm.org/bugs/show_bug.cgi?id=11089
              */
-            const AttributeSet AS = newFunc->getAttributes();
+            const AttributeList AS = newFunc->getAttributes();
             newFunc->setAttributes(AS.removeAttribute(newFunc->getContext(),
-                AttributeSet::FunctionIndex, Attribute::StackProtectReq));
-            // push to the front so the iterator doesn't see them again
-            Mod->getFunctionList().push_front(newFunc);
+                AttributeList::FunctionIndex, Attribute::StackProtectReq));
             f->replaceAllUsesWith(newFunc);
             f->eraseFromParent();
         }
     }
 
     // Verify the new bitcode and write it out, printing errors if necessary
-    std::string errstring;
-    verifyModule(*Mod, PrintMessageAction, &errstring);
-    raw_fd_ostream fstream(OutputFile.c_str(), errstring);
-    WriteBitcodeToFile(Mod, fstream);
-    printf("%s", errstring.c_str());
+    bool brokenDebug = false;
+    if(verifyModule(*Mod, &llvm::errs(), &brokenDebug)) {
+        std::cerr << "Module could not be verified";
+    } else {
+        std::error_code err;
+        raw_fd_ostream fstream(OutputFile.c_str(), err);
+        if(err) {
+            std::cerr << err.message();
+        } else {
+            WriteBitcodeToFile(*Mod, fstream);
+        }
+    }
 
     return 0;
 }

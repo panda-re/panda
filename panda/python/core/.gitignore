@@ -3,5 +3,8 @@
 *.recording
 build
 dist
-panda.egg-info
+pandare.egg-info
 data
+a
+__pycache__
+*.egg-info

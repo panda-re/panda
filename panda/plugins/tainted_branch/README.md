@@ -52,7 +52,7 @@ Output in CSV format can also be done in "summary" or default mode.  The "summar
 Arguments
 ---------
 
-- `csvfilename`: string, optional:  name of file to save CSV output to
+- `csvfile`: string, optional:  name of file to save CSV output to
 - `indirect_jumps`: boolean, optional: also report indirect jumps
 - `liveness`:  boolean, optional:  report live labels to the PANDA log
 - `summary`: boolean, optional:  only save the ASID and PC of the tainted branches

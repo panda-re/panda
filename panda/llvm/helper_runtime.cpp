@@ -30,12 +30,12 @@ extern "C" {
 #include <libgen.h>
 }
 
-#include "llvm/Linker.h"
+#include "llvm/Linker/Linker.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/IR/Module.h"
-#include "llvm/PassManager.h"
+#include "llvm/IR/PassManager.h"
 #include "llvm/PassRegistry.h"
-#include "llvm/Analysis/Verifier.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/raw_ostream.h"
@@ -55,6 +55,7 @@ namespace llvm {
  ***/
 
 char PandaCallMorphFunctionPass::ID = 0;
+static FunctionPass *cmfp;
 static RegisterPass<PandaCallMorphFunctionPass>
 Y("PandaCallMorph", "Change helper function calls to the the LLVM version");
 
@@ -105,15 +106,17 @@ const static std::set<std::string> ignore_funcs{
     "helper_outb", "helper_outw", "helper_outl", "helper_outq"
 };
 void PandaHelperCallVisitor::visitCallInst(CallInst &I) {
-    Function *f = I.getCalledFunction();
-    assert(f);
+    Function *oldFunction = I.getCalledFunction();
+    if (!oldFunction) {
+        return; // Ignore function pointers.
+    }
 
-    Module *m = I.getParent()->getParent()->getParent();
-    assert(m);
+    Module *module = I.getParent()->getParent()->getParent();
+    assert(module);
 
-    std::string name = f->getName();
-    if (f->isIntrinsic() || !f->hasName()
-            || ignore_funcs.count(name) > 0) {
+    std::string name = oldFunction->getName().str();
+    if (oldFunction->isIntrinsic() || !oldFunction->hasName() ||
+            ignore_funcs.count(name) > 0) {
         return; // Ignore intrinsics, declarations, memory, and I/O  functions
     } else if (append_panda_funcs.count(name) > 0) {
         std::cout << "modifying " << name << "\n";
@@ -122,31 +125,20 @@ void PandaHelperCallVisitor::visitCallInst(CallInst &I) {
         // Call LLVM version of helper
         name.append("_llvm");
     }
-    Function *newFunction = m->getFunction(name);
-    assert(newFunction);
-    I.setCalledFunction(newFunction);
-    f = newFunction;
 
-    // Fix up argument types to match LLVM function signature
-    Function::arg_iterator func_arg = f->arg_begin();
-    unsigned call_arg_idx = 0;
-    for (; func_arg != f->arg_end(); func_arg++, call_arg_idx++) {
-        assert (call_arg_idx != I.getNumArgOperands());
-        Value *call_arg = I.getArgOperand(call_arg_idx);
-        if (call_arg->getType() == func_arg->getType()) {
-            continue; // No cast required
-        }
-        assert(CastInst::isCastable(call_arg->getType(), func_arg->getType()));
-        // False arguments assume things are unsigned, and I'm pretty sure
-        // this is a correct assumption, especially since LLVM integers
-        // don't have a sign bit.  Signedness will be handled (if necessary)
-        // inside of the helper function.
-        Instruction::CastOps opc =
-            CastInst::getCastOpcode(call_arg, false, func_arg->getType(), false);
-        CastInst *CI = CastInst::Create(opc, call_arg, func_arg->getType(), "", &I);
-        I.setArgOperand(call_arg_idx, CI); // Replace old operand with CastInst
+    Function *newFunction = module->getFunction(name);
+    if(!newFunction) {
+        newFunction = Function::Create(oldFunction->getFunctionType(),
+            Function::ExternalLinkage, name, module);
     }
+    I.setCalledFunction(newFunction);
+
     PCMFP->functionChanged = true;
+}
+
+static void llvmCallMorphNewModuleCallback(Module *module,
+        legacy::FunctionPassManager *functionPassManager) {
+    functionPassManager->add(cmfp);
 }
 
 } // namespace llvm
@@ -162,12 +154,11 @@ static bool helpers_initialized = false;
 void init_llvm_helpers() {
     if (helpers_initialized) return;
 
-    assert(tcg_llvm_ctx);
-    //llvm::ExecutionEngine *ee = tcg_llvm_ctx->getExecutionEngine();
-    //assert(ee);
-    llvm::FunctionPassManager *fpm = tcg_llvm_ctx->getFunctionPassManager();
+    assert(tcg_llvm_translator);
+
+    llvm::legacy::FunctionPassManager *fpm = tcg_llvm_translator->getFunctionPassManager();
     assert(fpm);
-    llvm::Module *mod = tcg_llvm_ctx->getModule();
+    llvm::Module *mod = tcg_llvm_translator->getModule();
     assert(mod);
     llvm::LLVMContext &ctx = mod->getContext();
 
@@ -179,11 +170,11 @@ void init_llvm_helpers() {
     bitcode.append("/llvm-helpers-" TARGET_NAME ".bc");
 
     llvm::SMDiagnostic Err;
-    llvm::Module *helpermod = ParseIRFile(bitcode, Err, ctx);
+    std::unique_ptr<llvm::Module> helpermod = parseIRFile(bitcode, Err, ctx);
     if (nullptr == helpermod) {
         std::string bitcode =
             CONFIG_QEMU_DATADIR "/llvm-helpers-" TARGET_NAME ".bc";
-        helpermod = ParseIRFile(bitcode, Err, ctx);
+        helpermod = parseIRFile(bitcode, Err, ctx);
     }
 
     if (!helpermod) {
@@ -191,25 +182,24 @@ void init_llvm_helpers() {
         exit(1);
     }
 
-    std::string err;
-    llvm::Linker::LinkModules(mod, helpermod, llvm::Linker::DestroySource, &err);
-    if (!err.empty()) {
-        printf("%s\n", err.c_str());
+    if(llvm::Linker::linkModules(*mod, std::move(helpermod))) {
+        printf("llvm::Linker::linkModules failed\n");
         exit(1);
     }
-    verifyModule(*mod, llvm::AbortProcessAction, &err);
-    if (!err.empty()) {
-        printf("%s\n", err.c_str());
+
+    if(llvm::verifyModule(*mod, &llvm::outs())) {
         exit(1);
     }
 
     /*std::stringstream mod_file;
     mod_file << "/tmp/llvm-mod-" << getpid() << ".bc";
-    tcg_llvm_ctx->writeModule(mod_file.str().c_str());*/
+    tcg_llvm_translator->writeModule(mod_file.str().c_str());*/
 
     // Create call morph pass and add to function pass manager
-    llvm::FunctionPass *fp = new llvm::PandaCallMorphFunctionPass();
-    fpm->add(fp);
+    llvm::cmfp = new llvm::PandaCallMorphFunctionPass();
+    fpm->add(llvm::cmfp);
+    tcg_llvm_translator->addNewModuleCallback(
+        &llvm::llvmCallMorphNewModuleCallback);
     helpers_initialized = true;
 }
 
@@ -224,6 +214,11 @@ void uninit_llvm_helpers() {
      * with LLVM.  Switching between TCG and LLVM works fine when passes aren't
      * added to LLVM.
      */
+
+    // unregisterPass doesn't exist in LLVM10 - if this is still an issue an
+    // alternate solution is necessary
+
+    /*
     llvm::PassRegistry *pr = llvm::PassRegistry::getPassRegistry();
     const llvm::PassInfo *pi =
         pr->getPassInfo("PandaCallMorph");
@@ -232,6 +227,7 @@ void uninit_llvm_helpers() {
     } else {
         pr->unregisterPass(*pi);
     }
+    */
     helpers_initialized = false;
 }
 

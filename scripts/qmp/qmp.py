@@ -11,22 +11,35 @@
 import json
 import errno
 import socket
-import sys
+import logging
+
 
 class QMPError(Exception):
     pass
 
+
 class QMPConnectError(QMPError):
     pass
+
 
 class QMPCapabilitiesError(QMPError):
     pass
 
+
 class QMPTimeoutError(QMPError):
     pass
 
-class QEMUMonitorProtocol:
-    def __init__(self, address, server=False, debug=False):
+
+class QEMUMonitorProtocol(object):
+
+    #: Logger object for debugging messages
+    logger = logging.getLogger('QMP')
+    #: Socket's error class
+    error = socket.error
+    #: Socket's timeout
+    timeout = socket.timeout
+
+    def __init__(self, address, server=False):
         """
         Create a QEMUMonitorProtocol class.
 
@@ -40,8 +53,8 @@ class QEMUMonitorProtocol:
         """
         self.__events = []
         self.__address = address
-        self._debug = debug
         self.__sock = self.__get_sock()
+        self.__sockfile = None
         if server:
             self.__sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.__sock.bind(self.__address)
@@ -56,7 +69,7 @@ class QEMUMonitorProtocol:
 
     def __negotiate_capabilities(self):
         greeting = self.__json_read()
-        if greeting is None or not greeting.has_key('QMP'):
+        if greeting is None or "QMP" not in greeting:
             raise QMPConnectError
         # Greeting seems ok, negotiate capabilities
         resp = self.cmd('qmp_capabilities')
@@ -71,14 +84,11 @@ class QEMUMonitorProtocol:
                 return
             resp = json.loads(data)
             if 'event' in resp:
-                if self._debug:
-                    print >>sys.stderr, "QMP:<<< %s" % resp
+                self.logger.debug("<<< %s", resp)
                 self.__events.append(resp)
                 if not only_event:
                     continue
             return resp
-
-    error = socket.error
 
     def __get_events(self, wait=False):
         """
@@ -89,8 +99,8 @@ class QEMUMonitorProtocol:
 
         @raise QMPTimeoutError: If a timeout float is provided and the timeout
                                 period elapses.
-        @raise QMPConnectError: If wait is True but no events could be retrieved
-                                or if some other error occurred.
+        @raise QMPConnectError: If wait is True but no events could be
+                                retrieved or if some other error occurred.
         """
 
         # Check for new events regardless and pull them into the cache:
@@ -154,17 +164,15 @@ class QEMUMonitorProtocol:
         @return QMP response as a Python dict or None if the connection has
                 been closed
         """
-        if self._debug:
-            print >>sys.stderr, "QMP:>>> %s" % qmp_cmd
+        self.logger.debug(">>> %s", qmp_cmd)
         try:
-            self.__sock.sendall(json.dumps(qmp_cmd))
+            self.__sock.sendall(json.dumps(qmp_cmd).encode('utf-8'))
         except socket.error as err:
             if err[0] == errno.EPIPE:
                 return
             raise socket.error(err)
         resp = self.__json_read()
-        if self._debug:
-            print >>sys.stderr, "QMP:<<< %s" % resp
+        self.logger.debug("<<< %s", resp)
         return resp
 
     def cmd(self, name, args=None, id=None):
@@ -175,7 +183,7 @@ class QEMUMonitorProtocol:
         @param args: command arguments (dict)
         @param id: command id (dict, list, string or int)
         """
-        qmp_cmd = { 'execute': name }
+        qmp_cmd = {'execute': name}
         if args:
             qmp_cmd['arguments'] = args
         if id:
@@ -183,22 +191,25 @@ class QEMUMonitorProtocol:
         return self.cmd_obj(qmp_cmd)
 
     def command(self, cmd, **kwds):
+        """
+        Build and send a QMP command to the monitor, report errors if any
+        """
         ret = self.cmd(cmd, kwds)
-        if ret.has_key('error'):
+        if "error" in ret:
             raise Exception(ret['error']['desc'])
         return ret['return']
 
     def pull_event(self, wait=False):
         """
-        Get and delete the first available QMP event.
+        Pulls a single event.
 
         @param wait (bool): block until an event is available.
         @param wait (float): If wait is a float, treat it as a timeout value.
 
         @raise QMPTimeoutError: If a timeout float is provided and the timeout
                                 period elapses.
-        @raise QMPConnectError: If wait is True but no events could be retrieved
-                                or if some other error occurred.
+        @raise QMPConnectError: If wait is True but no events could be
+                                retrieved or if some other error occurred.
 
         @return The first available QMP event, or None.
         """
@@ -217,8 +228,8 @@ class QEMUMonitorProtocol:
 
         @raise QMPTimeoutError: If a timeout float is provided and the timeout
                                 period elapses.
-        @raise QMPConnectError: If wait is True but no events could be retrieved
-                                or if some other error occurred.
+        @raise QMPConnectError: If wait is True but no events could be
+                                retrieved or if some other error occurred.
 
         @return The list of available QMP events.
         """
@@ -234,8 +245,6 @@ class QEMUMonitorProtocol:
     def close(self):
         self.__sock.close()
         self.__sockfile.close()
-
-    timeout = socket.timeout
 
     def settimeout(self, timeout):
         self.__sock.settimeout(timeout)

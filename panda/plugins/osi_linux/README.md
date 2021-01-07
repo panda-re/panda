@@ -96,6 +96,27 @@ Copy this information (without the KERNELINFO-BEGIN and KERNELINFO-END lines) in
 
 The name you give (`my_kernel_info` in this case) should then be passed as the `kconf_group` argument to the plugin.
 
+Task change notifications are an optional feature provided by `osi_linux`. To enable it, you must extract an address that is executed during a context switch from from the `System.map` file for your kernel. To do this, you can simply run the following command in your guest:
+
+For Linux 2.6 and later:
+```
+grep finish_task_switch /boot/System.map-<Kernel Version>
+```
+
+For Linux 2.4.X variants:
+```
+grep __switch_to /boot/System.map-<Kernel Version>
+```
+
+Once you've obtained the address, you can add the task.switch_task_hook_addr field to your kernel config. For example:
+
+    [my_kernel_info]
+    name = #1 SMP Debian 3.2.51-1 i686
+    version.a = 3
+    [...]
+    task.switch_task_hook_addr = <Address extracted from System.map>
+
+
 When taking a recording to be used with `osi_linux`, ASLR must be disabled in the guest, if it is available.
 
 Arguments

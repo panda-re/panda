@@ -3,13 +3,13 @@
 file_network_taint.py
 
 The goal of this demonstration is to taint reads from a specific file
-and see if that file is involved in outbound network traffic. 
+and see if that file is involved in outbound network traffic.
 
 Here we use syscalls2 to check each file that is opened. If the open
 file matches the file we expect (here it is /tmp/panda.panda) we
-observe the cr3 and file descriptor. 
+observe the cr3 and file descriptor.
 
-We again use syscalls2 to monitor all sys_reads on the system. We 
+We again use syscalls2 to monitor all sys_reads on the system. We
 check the reads against our known cr3 and file descriptor. If it
 matches we taint the resulting data.
 
@@ -42,15 +42,15 @@ file_info = None
 
 @ffi.callback(f"void({cb_args})")
 def on_sys_read_return(cpustate, pc, fd, buf, count):
-	global file_info
-	if file_info:
-		cr3, fd1 = file_info
-		if cr3 == cpustate.env_ptr.cr[3] and fd == fd1:
-			returned = panda.arch.get_reg(cpustate, "RAX")
-			if returned >= 0:
-				a_buf  = (10 * b"a") + b"\x00"
-				buf_read = panda.virtual_memory_write(cpustate, buf, a_buf)
-	file_info = None
+    global file_info
+    if file_info:
+        cr3, fd1 = file_info
+        if cr3 == cpustate.env_ptr.cr[3] and fd == fd1:
+            returned = panda.arch.get_reg(cpustate, "RAX")
+            if returned >= 0:
+                a_buf  = (10 * b"a") + b"\x00"
+                panda.virtual_memory_write(cpustate, buf, a_buf)
+    file_info = None
 
 panda.plugins["syscalls2"].__getattr__(f"ppp_add_cb_{cb_name}")(on_sys_read_return)
 
@@ -60,17 +60,16 @@ ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
 
 @ffi.callback(f"void({cb_args})")
 def on_sys_open_return(cpustate, pc, filename, flags, mode):
-	global file_info
-	fname = panda.virtual_memory_read(cpustate, filename, 100)
-	fname_total = fname[:fname.find(b'\x00')]
-	if interesting_file_name in fname_total:
-		print(f"on_sys_open_enter: {fname_total}")
-		global info
-		if panda.arch.get_reg(cpustate, "RAX") > 255: # hack for -1
-			print("Changing return value to 99")
-                        panda.arch.set_reg(cpu, "RAX", 99)
-		file_info = cpustate.current_asid(cpustate), panda.arch.get_reg(cpustate, "RAX")
-		
+    global file_info
+    fname = panda.virtual_memory_read(cpustate, filename, 100)
+    fname_total = fname[:fname.find(b'\x00')]
+    if interesting_file_name in fname_total:
+        print(f"on_sys_open_enter: {fname_total}")
+        if panda.arch.get_reg(cpustate, "RAX") > 255: # hack for -1
+            print("Changing return value to 99")
+            panda.arch.set_reg(cpustate, "RAX", 99)
+        file_info = cpustate.current_asid(cpustate), panda.arch.get_reg(cpustate, "RAX")
+
 
 panda.plugins["syscalls2"].__getattr__(f"ppp_add_cb_{cb_name}")(on_sys_open_return)
 
@@ -82,15 +81,14 @@ ffi.cdef(f"void ppp_add_cb_{cb_name}(void (*)({cb_args}));")
 
 @ffi.callback(f"void({cb_args})")
 def on_sys_fstat_return(cpustate, pc, fd, statbuf):
-	print(fd)
-	global file_info
-	global file_info
-	if file_info:
-		cr3, fd1 = file_info
-		if cr3 == cpustate.env_ptr.cr[3] and fd == fd1:
-			import pdb
-			pdb.set_trace()
-		
+    print(fd)
+    global file_info
+    global file_info
+    if file_info:
+        cr3, fd1 = file_info
+        if cr3 == cpustate.env_ptr.cr[3] and fd == fd1:
+            import pdb
+            pdb.set_trace()
 
 
 panda.plugins["syscalls2"].__getattr__(f"ppp_add_cb_{cb_name}")(on_sys_open_return)
@@ -100,10 +98,10 @@ panda.disable_tb_chaining()
 
 @blocking
 def mycmd():
-	panda.revert_sync("root")
-	#print("Cmd:", panda.run_serial_cmd("echo 'bcbddbdbd' > panda.panda"))
-	print("Cmd:", panda.run_serial_cmd("cat panda.panda2"))
-	panda.end_analysis()
+    panda.revert_sync("root")
+    #print("Cmd:", panda.run_serial_cmd("echo 'bcbddbdbd' > panda.panda"))
+    print("Cmd:", panda.run_serial_cmd("cat panda.panda2"))
+    panda.end_analysis()
 
 
 #panda.run_replay("taint_taint")

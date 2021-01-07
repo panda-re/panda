@@ -293,7 +293,7 @@ do
         start=`_wallclock`
         $timestamp && echo -n "        ["`date "+%T"`"]"
 
-        if [ "$(head -n 1 "$source_iotests/$seq")" == "#!/usr/bin/env python" ]; then
+        if [ "$(head -n 1 "$source_iotests/$seq")" == "#!/usr/bin/env python3" ]; then
             run_command="$PYTHON $seq"
         else
             run_command="./$seq"

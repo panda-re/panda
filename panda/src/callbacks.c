@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 #include <stdint.h>
 #include <string.h>
@@ -157,9 +157,9 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
             fprintf(stderr, PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, filename);
             return true;
         }
-    }    
-    // NB: this is really a list of plugins for which we have started loading 
-    // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require  
+    }
+    // NB: this is really a list of plugins for which we have started loading
+    // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require
     panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(filename);
     nb_panda_plugins_loaded ++;
 
@@ -222,7 +222,7 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
     panda_help_wanted = false;
     panda_args_set_help_wanted(plugin_name);
     if (panda_help_wanted) {
-        printf("Options for plugin %s:\n", plugin_name); 
+        printf("Options for plugin %s:\n", plugin_name);
         fprintf(stderr, "PLUGIN              ARGUMENT                REQUIRED        DESCRIPTION\n");
         fprintf(stderr, "======              ========                ========        ===========\n");
     }
@@ -661,6 +661,8 @@ void panda_disable_tb_chaining(void)
 }
 
 #ifdef CONFIG_LLVM
+
+// Enable translating TCG -> LLVM and executing LLVM
 void panda_enable_llvm(void) {
     panda_do_flush_tb();
     execute_llvm = 1;
@@ -668,20 +670,47 @@ void panda_enable_llvm(void) {
     tcg_llvm_initialize();
 }
 
+// Enable translating TCG -> LLVM, but still execute TCG
+void panda_enable_llvm_no_exec(void) {
+    panda_do_flush_tb();
+    execute_llvm = 0;
+    generate_llvm = 1;
+    tcg_llvm_initialize();
+}
+
+// Disable LLVM translation and execution
 void panda_disable_llvm(void) {
     panda_do_flush_tb();
     execute_llvm = 0;
     generate_llvm = 0;
     tcg_llvm_destroy();
-    tcg_llvm_ctx = NULL;
+    tcg_llvm_translator = NULL;
 }
 
+// Enable LLVM helpers
 void panda_enable_llvm_helpers(void) {
     init_llvm_helpers();
 }
 
+// Disable LLVM helpers
 void panda_disable_llvm_helpers(void) {
     uninit_llvm_helpers();
+}
+
+// Flush results of latest LLVM bitcode to file
+// Reccomend using a RAM-backed path (e.g. /dev/run/, /run/shm, or /dev/shm)
+int panda_write_current_llvm_bitcode_to_file(const char* path) {
+    int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    if ((tcg_llvm_translator == 0) || (fd == -1)) {
+        return -1;
+    }
+
+    tcg_llvm_write_module(tcg_llvm_translator, path);
+    return 0;
+}
+
+uintptr_t panda_get_current_llvm_module(void) {
+    return tcg_llvm_get_module_ptr(tcg_llvm_translator);
 }
 #endif
 
@@ -840,7 +869,7 @@ static panda_arg_list *panda_get_args_internal(const char *plugin_name, bool che
             panda_abort_requested = true;
         }
     }
-    
+
     if (check_only) {
         panda_free_args(ret);
         ret = NULL;
@@ -1214,7 +1243,7 @@ PandaPluginInfoList *qmp_list_plugins(Error **errp) {
 }
 
 void qmp_plugin_cmd(const char * cmd, Error **errp) {
-    
+
 }
 
 // HMP

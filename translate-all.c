@@ -1381,7 +1381,7 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
 
 #if defined(CONFIG_LLVM)
     if (generate_llvm)
-        tcg_llvm_gen_code(tcg_llvm_ctx, &tcg_ctx, tb);
+        tcg_llvm_gen_code(tcg_llvm_translator, &tcg_ctx, tb);
 #endif
 
     if (unlikely(gen_code_size < 0)) {
@@ -1402,10 +1402,10 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
 #if defined(CONFIG_LLVM)
     if(generate_llvm && qemu_loglevel_mask(CPU_LOG_LLVM_ASM)
             && tb->llvm_tc_ptr) {
-        ptrdiff_t size = tb->llvm_tc_end - tb->llvm_tc_ptr;
+        ptrdiff_t size = tb->llvm_tc_end - tb->llvm_asm_ptr;
         qemu_log("OUT (LLVM ASM) [size=%ld] (%s)\n", size,
                     tcg_llvm_get_func_name(tb));
-        log_disas((void*) tb->llvm_tc_ptr, size);
+        log_disas((void*) tb->llvm_asm_ptr, size);
         qemu_log("\n");
         qemu_log_flush();
     }
@@ -1431,10 +1431,10 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
         for (i = 0; i < tcg_ctx.tb_ctx.nb_tbs; i++) {
             TranslationBlock *other = &tcg_ctx.tb_ctx.tbs[i];
             if (tb == other) continue;
-            if (other->llvm_tc_ptr <= tb->llvm_tc_ptr &&
-                    tb->llvm_tc_ptr < other->llvm_tc_end) {
+            if (other->llvm_asm_ptr <= tb->llvm_asm_ptr &&
+                    tb->llvm_asm_ptr < other->llvm_tc_end) {
                 assert(false && "Allocating apparently overlapping blocks!");
-            } else if (other->llvm_tc_ptr < tb->llvm_tc_end &&
+            } else if (other->llvm_asm_ptr < tb->llvm_tc_end &&
                     tb->llvm_tc_end <= other->llvm_tc_end) {
                 assert(false && "Allocating apparently overlapping blocks!");
             }
@@ -1762,21 +1762,24 @@ static TranslationBlock *tb_find_pc(uintptr_t tc_ptr)
     if (execute_llvm) {
         /* first check last tb. optimization for coming from generated code. */
         tb = tcg_llvm_runtime.last_tb;
-        if (tb && tb->llvm_function
-                && tc_ptr >= (uintptr_t)tb->llvm_tc_ptr
+        if (tb && tb->llvm_asm_ptr
+                && tc_ptr >= (uintptr_t)tb->llvm_asm_ptr
                 && tc_ptr <  (uintptr_t)tb->llvm_tc_end) {
             return tb;
         }
+
         /* then do linear search. */
+
         for (m = 0; m < tcg_ctx.tb_ctx.nb_tbs; m++) {
             tb = &tcg_ctx.tb_ctx.tbs[m];
-            if (tb->llvm_function
-                    && tc_ptr >= (uintptr_t)tb->llvm_tc_ptr
+            if (tb->llvm_asm_ptr
+                    && tc_ptr >= (uintptr_t)tb->llvm_asm_ptr
                     && tc_ptr <  (uintptr_t)tb->llvm_tc_end) {
                 return tb;
             }
         }
         return NULL;
+
     }
 #endif
 

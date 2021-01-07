@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+# Note this file is a duplicate of the one in the pandare python package
 
 import sys
 import os
@@ -32,8 +33,12 @@ assert 'plog_pb2' in sys.modules, "Couldn't load module plog_pb2. Searched paths
 
 class PLogReader:
     def __init__(self, fn):
-        self.f = open(fn, 'rb')
-        self.version, _, self.dir_pos, _, self.chunk_gsize = struct.unpack('<IIQII', self.f.read(24))
+        self.f = open(fn, "rb")
+        buf = self.f.read(24)
+        try:
+            self.version, _, self.dir_pos, _, self.chunk_gsize = struct.unpack('<IIQII', buf)
+        except struct.error as e:
+             raise ValueError(f"Can't parse {fn} as a plog - it has an incomplete plog header") from e
 
         self.f.seek(self.dir_pos)
         self.nchunks, = struct.unpack('<I', self.f.read(4)) # number of chunks
@@ -101,3 +106,4 @@ if __name__ == "__main__":
             if i > 0: print(',')
             print(MessageToJson(m), end='')
     print('\n]')
+

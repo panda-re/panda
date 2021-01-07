@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cerrno>
 #include <map>
+#include <unordered_set>
 #include <glib.h>
 
 #include "panda/plugin.h"
@@ -24,6 +25,9 @@
 #include "kernel_2_4_x_profile.h"
 #include "kernelinfo_downloader.h"
 #include "endian_helpers.h"
+
+#include "panda/tcg-utils.h"
+#include "osi/osi_ext.h"
 
 #define KERNEL_CONF "/" TARGET_NAME "-softmmu/panda/plugins/osi_linux/kernelinfo.conf"
 
@@ -162,7 +166,7 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
     //p->ppid = get_real_parent_pid(cpu, task_addr);
     p->pages = NULL;  // OsiPage - TODO
     p->create_time = get_start_time(cpu, task_addr);
-
+    fixupendian(p->create_time); // The struct_get call won't automatically fix endian
 }
 
 /**
@@ -647,6 +651,49 @@ void r28_cache(CPUState *cpu, TranslationBlock *tb) {
 }
 #endif
 
+#if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
+
+// Keep track of which tasks have entered execve. Note that we simply track
+// based on the task struct. This works because the other threads in the thread
+// group will be terminated and the current task will be the only task in the
+// group once execve completes. Even if execve fails, this should still work
+// because the execve call will return to the calling thread.
+static std::unordered_set<target_ptr_t> tasks_in_execve;
+
+static void exec_enter(CPUState *cpu)
+{
+    target_ptr_t ts = kernel_profile->get_current_task_struct(cpu);
+    tasks_in_execve.insert(ts);
+}
+
+static void exec_check(CPUState *cpu)
+{
+    // Fast Path: Nothing is in execve, so there's nothing to do.
+    if (0 == tasks_in_execve.size()) {
+        return;
+    }
+
+    // Slow Path: Something is in execve, so we have to check.
+    target_ptr_t ts = kernel_profile->get_current_task_struct(cpu);
+    auto it = tasks_in_execve.find(ts);
+    if (tasks_in_execve.end() != it && !panda_in_kernel(cpu)) {
+        notify_task_change(cpu);
+        tasks_in_execve.erase(ts);
+    }
+}
+
+static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
+{
+    TCGOp *op = find_first_guest_insn();
+    assert(NULL != op);
+    insert_call(&op, exec_check, cpu);
+
+    if (0x0 != ki.task.switch_task_hook_addr && tb->pc == ki.task.switch_task_hook_addr) {
+        // Instrument the task switch address.
+        insert_call(&op, notify_task_change, cpu);
+    }
+}
+#endif
 
 /**
  * @brief Initializes plugin.
@@ -662,6 +709,11 @@ bool init_plugin(void *self) {
         // Particularly if KASLR is enabled!
         pcb.after_loadvm = init_per_cpu_offsets;
         panda_register_callback(self, PANDA_CB_AFTER_LOADVM, pcb);
+
+        // Register hooks in the kernel to provide task switch notifications.
+        assert(init_osi_api());
+        pcb.before_tcg_codegen = before_tcg_codegen_callback;
+        panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb);
     }
 
 #if defined(TARGET_MIPS)
@@ -758,11 +810,24 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_process_ppid, on_get_process_ppid);
 
     // By default, we'll request syscalls2 to load on first syscall
+    panda_require("syscalls2");
     if (!osi_initialized) {
-      panda_require("syscalls2");
       PPP_REG_CB("syscalls2", on_all_sys_enter, on_first_syscall);
     }
 
+    // Setup exec task change notifications.
+    PPP_REG_CB("syscalls2", on_sys_execve_enter, [](CPUState *cpu,
+        target_ulong pc, target_ulong fnp, target_ulong ap,
+        target_ulong envp)
+    {
+        exec_enter(cpu);
+    });
+    PPP_REG_CB("syscalls2", on_sys_execveat_enter, [](CPUState *cpu,
+        target_ulong pc, int dirfd, target_ulong pathname_ptr, target_ulong ap,
+        target_ulong envp, int flags)
+    {
+        exec_enter(cpu);
+    });
 
     return true;
 #else

@@ -23,6 +23,3 @@ Example
 ```$ ./panda-system-x86_64 -m 4096 -replay theRecording -os linux-64-ubuntu -panda osi -panda osi_linux:kconf_group=ubuntu:5.3.0-28-generic:64 -panda lighthouse_coverage```
 
 produces a file in the current directory, `lighthouse.out', which contains coverage information lighthouse can use.
-
-![Binary Ninja coverage](doc_pics/imported_to_bn.png)
-

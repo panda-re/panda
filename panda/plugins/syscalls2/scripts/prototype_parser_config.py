@@ -120,6 +120,34 @@ CONFIG_LINUX = {
             'source': 'arch/mips/kernel/syscalls/syscall_o32.tbl',
         },
     },
+    # Generate using Linux kernel at v2.6. Note the prototypes files for mips was hand-created
+    # to merge the 2.6 and 5.8 prototypes so it should work on both and everything between
+    'linux:mips26:generic': {
+        'bits': 32,
+        'src': os.path.expanduser('~/git/linux'), # XXX: If you change this be sure to change below
+        'map_function_signature': {
+            'parser': 'parse_signature_files',
+            'locations': {
+                'include/linux/syscalls.h': r'asmlinkage (?P<signature>\w+\s+(?P<syscall>\w+)\(.*)',
+                'arch/mips/kernel/signal.c': r'asmlinkage (?P<signature>\w+\s+(?P<syscall>\w+)\(.*)',
+            },
+            'normalize': True,
+        },
+        'map_function_number': {
+            'parser': 'parse_numbers_calltable',
+            'source': 'arch/mips/kernel/scall32-o32.S',
+            'regex': {
+                'callnr': r'.*/\*\s*(?P<nr>\d+)\s*\*/$',
+                'call': r'\tsys\t(?P<syscall>\w+)',
+            },
+            'syscalls_skip': ['sys_ni_syscall',],
+        },
+        'map_name_number': {
+            'parser': 'parse_numbers_unistd',
+            'source': 'arch/mips/include/asm/unistd.h',
+            'cpp_flags': ['-D_MIPS_SIM=1', '-I'+os.path.expanduser("~/git/linux")+'/arch/mips/include'],
+        },
+    },
 }
 
 ##############################################################################
