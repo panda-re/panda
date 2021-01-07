@@ -6,6 +6,7 @@ checkpoint
 collect_code
 correlatetaps
 coverage
+dynamic_symbols
 edge_coverage
 filereadmon
 hooks
