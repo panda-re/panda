@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "EdgeCsvWriter.h"
+#include "metadata_writer.h"
 
 namespace coverage
 {
@@ -8,16 +9,10 @@ namespace coverage
 EdgeCsvWriter::EdgeCsvWriter(const std::string &filename, bool start_disabled)
 {
     os.exceptions(std::ofstream::badbit | std::ofstream::failbit);
-    metadata = new MetadataWriter();
     if (!start_disabled) {
         os.open(filename);
         write_header();
     }
-}
-
-EdgeCsvWriter::~EdgeCsvWriter()
-{
-    delete metadata;
 }
 
 void EdgeCsvWriter::handle(Edge record)
@@ -45,7 +40,7 @@ void EdgeCsvWriter::handle_disable()
 
 void EdgeCsvWriter::write_header()
 {
-    metadata->write_metadata(os);
+    write_metadata(os);
     os << "from pc,from size,to pc,to size\n";
 }
 

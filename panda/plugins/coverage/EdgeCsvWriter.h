@@ -8,7 +8,6 @@
 #include "RecordProcessor.h"
 
 #include "CoverageMonitorDelegate.h"
-#include "MetadataWriter.h"
 
 namespace coverage
 {
@@ -21,7 +20,6 @@ class EdgeCsvWriter : public RecordProcessor<Edge>,
 {
 public:
     EdgeCsvWriter(const std::string &filename, bool start_disabled);
-    virtual ~EdgeCsvWriter();
     void handle(Edge record) override;
 
     void handle_enable(const std::string& filename);
@@ -30,7 +28,6 @@ private:
     void write_header();
 
     std::ofstream os;
-    MetadataWriter *metadata;
 };
 
 }

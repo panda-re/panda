@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "AsidBlockCsvWriter.h"
+#include "metadata_writer.h"
 
 namespace coverage
 {
@@ -9,16 +10,10 @@ AsidBlockCsvWriter::AsidBlockCsvWriter(const std::string &filename,
     bool start_disabled)
 {
     os.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-    metadata = new MetadataWriter();
     if (!start_disabled) {
         os.open(filename);
         write_header();
     }
-}
-
-AsidBlockCsvWriter::~AsidBlockCsvWriter()
-{
-    delete metadata;
 }
 
 void AsidBlockCsvWriter::handle(AsidBlock record)
@@ -35,7 +30,7 @@ void AsidBlockCsvWriter::handle(AsidBlock record)
 
 void AsidBlockCsvWriter::write_header()
 {
-    metadata->write_metadata(os);
+    write_metadata(os);
     os << "asid\n";
     os << "asid,in kernel,block address,block size\n";
 }

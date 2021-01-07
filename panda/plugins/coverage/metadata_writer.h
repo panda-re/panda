@@ -8,17 +8,9 @@ namespace coverage
 {
 
 /**
- * Utility class to write metadata to a CSV file.
+ * Utility function to write metadata to a CSV file.
  */
-class MetadataWriter
-{
-public:
-    MetadataWriter();
-    void write_metadata(std::ofstream &os);
-    
-private:
-    char build_date[16];
-};
+void write_metadata(std::ofstream &os);
 
 }
 

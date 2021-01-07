@@ -7,7 +7,6 @@
 #include "AsidBlock.h"
 #include "RecordProcessor.h"
 #include "CoverageMonitorDelegate.h"
-#include "MetadataWriter.h"
 
 namespace coverage
 {
@@ -20,7 +19,6 @@ class AsidBlockCsvWriter : public RecordProcessor<AsidBlock>,
 {
 public:
     AsidBlockCsvWriter(const std::string &filename, bool start_disabled);
-    virtual ~AsidBlockCsvWriter();
     void handle(AsidBlock record) override;
 
     void handle_enable(const std::string& filename) override;
@@ -29,7 +27,6 @@ public:
 private:
     void write_header();
     std::ofstream os;
-    MetadataWriter *metadata;
 };
 
 }

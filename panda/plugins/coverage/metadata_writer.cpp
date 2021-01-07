@@ -1,27 +1,24 @@
 #include <iostream>
 #include <cstring>
 
-#include "MetadataWriter.h"
+#include "metadata_writer.h"
 
 namespace coverage
 {
 
-MetadataWriter::MetadataWriter()
-{
-    // construct the PANDA build date string, as that will never change
-    // want it in ISO 8601 format
-    struct tm build_tm;
-    memset(&build_tm, 0, sizeof(struct tm));
-    strptime(__DATE__, "%b %d %Y", &build_tm);
-    strftime(build_date, 16, "%Y-%m-%d", &build_tm);
-}
-
-void MetadataWriter::write_metadata(std::ofstream &os)
+void write_metadata(std::ofstream &os)
 {
     if (!os.is_open()) {
         return;
     }
 
+    // construct the PANDA build datestring, in ISO 8601 format
+    struct tm build_tm;
+    memset(&build_tm, 0, sizeof(struct tm));
+    strptime(__DATE__, "%b %d %Y", &build_tm);
+    char build_date[16];
+    strftime(build_date, 16, "%Y-%m-%d", &build_tm);
+    
     // construct current time as the execution time, in ISO 8601 format
     time_t s_since_epoch = time(NULL);
     struct tm exec_tm;

@@ -1,4 +1,5 @@
 #include "OsiBlockCsvWriter.h"
+#include "metadata_writer.h"
 
 namespace coverage
 {
@@ -7,16 +8,10 @@ OsiBlockCsvWriter::OsiBlockCsvWriter(const std::string &filename,
     bool start_disabled)
 {
     os.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-    metadata = new MetadataWriter();
     if (!start_disabled) {
         os.open(filename);
         write_header();
     }
-}
-
-OsiBlockCsvWriter::~OsiBlockCsvWriter()
-{
-    delete metadata;
 }
 
 void OsiBlockCsvWriter::handle(OsiBlock record)
@@ -35,7 +30,7 @@ void OsiBlockCsvWriter::handle(OsiBlock record)
 
 void OsiBlockCsvWriter::write_header()
 {
-    metadata->write_metadata(os);
+    write_metadata(os);
     os << "process\n";
     os << "process name,process id,thread id,in kernel,block address,block size\n";
 }
