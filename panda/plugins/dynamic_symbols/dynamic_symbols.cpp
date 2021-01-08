@@ -75,12 +75,9 @@ struct proc_symbol_mapping {
     target_ulong start;
     target_ulong size;
     std::vector<struct symbol> symbols;
-}
+};
 
-std::unordered_map<target_ulong, \
-            std::unordered_map<OsiModule, \
-                std::vector<struct symbol>>> symbols;
-
+unordered_map<target_ulong, unordered_map<target_ulong, vector<struct symbol>>> symbols;
 
 string read_str(CPUState* cpu, target_ulong ptr){
     string buf = "";
@@ -100,12 +97,12 @@ string read_str(CPUState* cpu, target_ulong ptr){
 }
 
 void update_symbols_in_space(CPUState* cpu){
-    std::vector<struct symbol> symbols;
+    printf("Got to %s\n", __func__);
     OsiProc *current = get_current_process(cpu);
     GArray *ms = get_mappings(cpu, current);
     target_ulong asid = panda_current_asid(cpu);
 
-    unordered_map<OsiModule, vector<struct symbol>> proc_mapping = symbols[asid];
+    auto proc_mapping = symbols[asid];
 
     
     // static variable to store first 4 bytes of mapping
@@ -118,7 +115,7 @@ void update_symbols_in_space(CPUState* cpu){
             OsiModule *m = &g_array_index(ms, OsiModule, i);
 
             // we already read this one
-            if (proc_mapping.find(*m) != proc_mapping.end()){
+            if (proc_mapping.find(m->base) != proc_mapping.end()){
                 continue;
             }
 
@@ -138,16 +135,19 @@ void update_symbols_in_space(CPUState* cpu){
                     free(buff);
                     continue;
                 }
-
                 ELF(Ehdr) *ehdr = (ELF(Ehdr)*) buff;
                 target_ulong phnum = ehdr->e_phnum;
                 target_ulong phoff = ehdr->e_phoff;
                 ELF(Phdr)* dynamic_phdr = NULL;
                 for (int j=0; j<phnum; j++){
-                    dynamic_phdr = (ELF(Phdr)*)(buff + (j* phoff));
+                    dynamic_phdr = (ELF(Phdr)*)(buff + phoff + (j* sizeof(ELF(Phdr))));
                     if (dynamic_phdr->p_type == PT_DYNAMIC){
+                        printf("Found dynamic marker\n");
                         break;
                     }else if (dynamic_phdr->p_type == PT_NULL){
+                        return;
+                    }else if (j== phnum -1){
+                        printf("got to end\n");
                         return;
                     }
                 }
@@ -159,18 +159,24 @@ void update_symbols_in_space(CPUState* cpu){
                     free(buff);
                     continue;
                 }
-
+                printf("p_filesz: %llu\n", (long long unsigned int) dynamic_phdr->p_filesz);
+                printf("Ehdr size: %d\n", (int)sizeof(ELF(Ehdr)));
                 int numelements_dyn = dynamic_phdr->p_filesz / sizeof(ELF(Ehdr));
+                //assert(false);
+                printf("numelements_dyn: %d\n", numelements_dyn);
                 
                 // iterate over dynamic program headers and find strtab
                 // and symtab
                 target_ulong strtab = 0, symtab = 0;
                 for (int j=0; j<numelements_dyn; j++){
-                   ELF(Dyn) *tag = (ELF(Dyn) *)(dynamic_phdr + j*sizeof(ELF(Dyn)));
+                    printf("num: %d\n", j);
+                   ELF(Dyn) *tag = (ELF(Dyn) *)(dynamic_section + j*sizeof(ELF(Dyn)));
                    if (tag->d_tag == DT_STRTAB){
                        strtab = tag->d_un.d_ptr;
                    }else if (tag->d_tag == DT_SYMTAB){
                        symtab = tag->d_un.d_ptr;
+                   }else if (tag->d_tag == DT_NULL){
+                       break;
                    }
                 }
 
@@ -186,7 +192,7 @@ void update_symbols_in_space(CPUState* cpu){
                 target_ulong strtab_min = strtab + 0x100000;
                 target_ulong symtab_min = symtab + 0x100000;
                 for (int j=0; j< numelements_dyn; j++){
-                   ELF(Dyn) *tag = (ELF(Dyn) *)(dynamic_phdr + j*sizeof(ELF(Dyn)));
+                   ELF(Dyn) *tag = (ELF(Dyn) *)(dynamic_section + j*sizeof(ELF(Dyn)));
                    if (std::find(std::begin(possible_tags), std::end(possible_tags), (int)tag->d_tag) != std::end(possible_tags)){
                        uint32_t candidate = tag->d_un.d_ptr;
                        if (candidate > strtab && candidate < strtab_min){
@@ -225,17 +231,17 @@ void update_symbols_in_space(CPUState* cpu){
                         ELF(Sym)* a = (ELF(Sym)*) (symtab_buf + i*sizeof(ELF(Sym)));
                         if (a->st_value != 0 && string_map.find(a->st_name)!=string_map.end()){
                             struct symbol s;
-                            s.name = string_map[a->st_name];
+                            strncpy((char*)&s.name, string_map[a->st_name].c_str(), PATH_MAX);
                             s.address = m->base + a->st_value;
                             symbols_list_internal.push_back(s);
+                            printf("Found symbol %s %lx\n", s.name, (long unsigned int) (target_ulong)s.address);
                         }
                     }
-
                 }
                 free(dynamic_section);
                 free(buff);
                 free(symtab_buf);
-                proc_mapping[*m] = symbols_list_internal;
+                proc_mapping[m->base] = symbols_list_internal;
             }else{
                 // not an elf header. nothing to do.
             }
@@ -243,14 +249,32 @@ void update_symbols_in_space(CPUState* cpu){
     }
 }
 
-void asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
-    update_symbols_in_space(cpu);
+void* self_ptr;
+panda_cb pcb;
+
+void bbe(CPUState *env, TranslationBlock *tb){
+    if (!panda_in_kernel(env)){
+        printf("Got out of kernel\n");
+        update_symbols_in_space(env);
+        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    }
+}
+
+bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+    printf("Asid has changed. enabling bbe\n");
+    if (panda_in_kernel(env)){
+        panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    }
+    return false;
 }
 
 bool init_plugin(void *self) {
-    panda_cb pcb;
-    pcb.asid_changed = bbe;
+    printf("initializing\n");
+    self_ptr = self;
+    pcb.asid_changed = asid_changed;
     panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
+    pcb.before_block_exec = bbe;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     panda_require("osi");
     assert(init_osi_api());
     return true;
