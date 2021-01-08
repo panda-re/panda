@@ -1,4 +1,6 @@
-![LOGO](images/panda_logo.png)
+<p align="center">
+  <img src="images/panda_logo.png" width="250" alt="PANDA Logo">
+</p>
 
 # PANDA User Manual
 
@@ -380,8 +382,8 @@ Possible return values are:
 
 PANDA supports whole system deterministic record and replay in whole
 system mode on the `i386`, `x86_64`, and `arm` targets. We also support
-running in live mode on `mips`, but not yet record and replay. We hope 
-to add more soon; for example, partial SPARC support exists but is not 
+running in live mode on `mips`, but not yet record and replay. We hope
+to add more soon; for example, partial SPARC support exists but is not
 yet reliable.
 
 ### Background
@@ -1132,7 +1134,7 @@ written via `zlib` file access functions for compression.
 There is a small program in `panda/src/example_plog_reader.cpp`, which also serves as an example of reading/writing with the C++ pandalog API.
 Compilation directions are at the head of that source file. This example will only print the PC and instr. You can customize the source code to read additional information from your pandalog.
 
-You can also use the `panda/scripts/plog_reader.py` script to view a log. This will read not require edits to the code, however this method may be slower. 
+You can also use the `panda/scripts/plog_reader.py` script to view a log. This will read not require edits to the code, however this method may be slower.
 
 You can read a pandalog using either program and also see how easy it is to
 unmarshall the pandalog.  Here's how to use it and some of its output.
