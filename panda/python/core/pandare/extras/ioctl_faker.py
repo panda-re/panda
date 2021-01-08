@@ -82,7 +82,7 @@ class Ioctl():
         if self.osi:
             proc = panda.plugins['osi'].get_current_process(cpu)
             proc_name_ptr = proc.name
-            file_name_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, fd)
+            file_name_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, panda.ffi.cast("int", fd))
             self.proc_name = ffi.string(proc_name_ptr).decode() if proc_name_ptr != ffi.NULL else "unknown"
             self.file_name = ffi.string(file_name_ptr).decode() if file_name_ptr != ffi.NULL else "unknown"
         else:
