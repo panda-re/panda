@@ -33,6 +33,7 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
+#include "dynamic_symbols_int_fns.h"
 
 }
 using namespace std;
@@ -69,15 +70,34 @@ struct symbol {
     char name[PATH_MAX];
 };
 
-struct proc_symbol_mapping {
-    string section_name;
-    target_ulong asid;
-    target_ulong start;
-    target_ulong size;
-    std::vector<struct symbol> symbols;
-};
 
-unordered_map<target_ulong, unordered_map<target_ulong, vector<struct symbol>>> symbols;
+unordered_map<target_ulong, unordered_map<string, vector<struct symbol>>> symbols;
+
+target_ulong resolve_symbol(target_ulong asid, char* section_name, char* symbol){
+    auto proc_mapping = symbols[asid];
+
+    for (const auto& section : proc_mapping){
+        string n = section.first;
+        auto section_vec = section.second;
+        size_t found;
+        if (section_name == NULL){
+            found = 0;
+        }else{
+            found = n.find(section_name); 
+        }
+        if (found != string::npos){
+            for (auto &it: section_vec){
+                struct symbol val = it;
+                string val_str (val.name);
+                if (val_str.find(symbol) != string::npos){
+                    printf("result: %s %s\n", section.first.c_str(), val.name);
+                    return val.address;
+                }
+            }
+        } 
+    }
+    return 0;
+}
 
 string read_str(CPUState* cpu, target_ulong ptr){
     string buf = "";
@@ -85,7 +105,7 @@ string read_str(CPUState* cpu, target_ulong ptr){
     while (true){
         if (panda_virtual_memory_read(cpu, ptr, (uint8_t*)&tmp,1) == MEMTX_OK){
             buf += tmp;
-            if (tmp == 0){
+            if (tmp == '\x00'){
                 break;
             }
             ptr+=1;
@@ -97,7 +117,6 @@ string read_str(CPUState* cpu, target_ulong ptr){
 }
 
 void update_symbols_in_space(CPUState* cpu){
-    printf("Got to %s\n", __func__);
     OsiProc *current = get_current_process(cpu);
     GArray *ms = get_mappings(cpu, current);
     target_ulong asid = panda_current_asid(cpu);
@@ -113,9 +132,12 @@ void update_symbols_in_space(CPUState* cpu){
         //iterate over mappings
         for (int i = 0; i < ms->len; i++) {
             OsiModule *m = &g_array_index(ms, OsiModule, i);
-
+            if (m->name == NULL){
+                continue;
+            }
+            std::string name(m->name);
             // we already read this one
-            if (proc_mapping.find(m->base) != proc_mapping.end()){
+            if (proc_mapping.find(name) != proc_mapping.end()){
                 continue;
             }
 
@@ -126,8 +148,6 @@ void update_symbols_in_space(CPUState* cpu){
             }
             // is it an ELF header?
             if (elfhdr[0] == '\x7f' && elfhdr[1] == 'E' && elfhdr[2] == 'L' && elfhdr[3] == 'F'){
-                printf("In section %s\n",m->name);
-                
                 // allocate buffer for start of ELF. read first page
                 char* buff = (char*)malloc(0x1000);
                 // attempt to read memory allocation
@@ -143,67 +163,65 @@ void update_symbols_in_space(CPUState* cpu){
                 for (int j=0; j<phnum; j++){
                     dynamic_phdr = (ELF(Phdr)*)(buff + phoff + (j* sizeof(ELF(Phdr))));
                     if (dynamic_phdr->p_type == PT_DYNAMIC){
-                        printf("Found dynamic marker\n");
                         break;
                     }else if (dynamic_phdr->p_type == PT_NULL){
-                        printf("got to null\n");
                         return;
                     }else if (j== phnum -1){
-                        printf("got to end\n");
                         return;
                     }
                 }
                 char* dynamic_section = (char*)malloc(dynamic_phdr->p_filesz);
                 // try to read dynamic section
                 if(panda_virtual_memory_read(cpu, m->base + dynamic_phdr->p_vaddr, (uint8_t*) dynamic_section, dynamic_phdr->p_filesz) != MEMTX_OK){
-                    printf("failed to read dynamic section\n");
-                    // fail and move on
+                    // failed to read dynamic section
                     free(dynamic_section);
                     free(buff);
                     continue;
                 }
-                printf("p_filesz: %llu\n", (long long unsigned int) dynamic_phdr->p_filesz);
-                printf("Ehdr size: %d\n", (int)sizeof(ELF(Dyn)));
+                //printf("p_filesz: %llu\n", (long long unsigned int) dynamic_phdr->p_filesz);
+                //printf("Ehdr size: %d\n", (int)sizeof(ELF(Dyn)));
                 int numelements_dyn = dynamic_phdr->p_filesz / sizeof(ELF(Dyn));
                 //assert(false);
-                printf("numelements_dyn: %d\n", numelements_dyn);
+                //printf("numelements_dyn: %d\n", numelements_dyn);
                 
                 // iterate over dynamic program headers and find strtab
                 // and symtab
                 target_ulong strtab = 0, symtab = 0;
                 for (int j=0; j<numelements_dyn; j++){
-                    printf("num: %d\n", j);
-                   ELF(Dyn) *tag = (ELF(Dyn) *)(dynamic_section + j*sizeof(ELF(Dyn)));
-                   if (tag->d_tag == DT_STRTAB){
-                       strtab = tag->d_un.d_ptr;
-                   }else if (tag->d_tag == DT_SYMTAB){
-                       symtab = tag->d_un.d_ptr;
-                   }
+                    ELF(Dyn) *tag = (ELF(Dyn) *)(dynamic_section + j*sizeof(ELF(Dyn)));
+                    if (tag->d_tag == DT_STRTAB){
+                        //printf("Found DT_STRTAB\n");
+                        strtab = tag->d_un.d_ptr;
+                    }else if (tag->d_tag == DT_SYMTAB){
+                        //printf("Found DT_SYMTAB\n");
+                        symtab = tag->d_un.d_ptr;
+                    }
                 }
 
                 if (strtab == 0 || symtab == 0){
-                    printf("strtab or symtab missing\n");
+                    //printf("strtab or symtab missing\n");
                     free(dynamic_section);
                     free(buff);
                     continue;
                 }
+                //printf("strtab: %x symtab: %x\n", (int) strtab, (int)symtab);
 
-                // we don't actaully have the size of these things 
+                // we don't actually have the size of these things 
                 // (not included) so we find it by finding the next
                 // closest section
                 target_ulong strtab_min = strtab + 0x100000;
                 target_ulong symtab_min = symtab + 0x100000;
                 for (int j=0; j< numelements_dyn; j++){
                    ELF(Dyn) *tag = (ELF(Dyn) *)(dynamic_section + j*sizeof(ELF(Dyn)));
-                   if (std::find(std::begin(possible_tags), std::end(possible_tags), (int)tag->d_tag) != std::end(possible_tags)){
-                       uint32_t candidate = tag->d_un.d_ptr;
-                       if (candidate > strtab && candidate < strtab_min){
-                           strtab_min = candidate;
-                       }
-                       if (candidate > symtab && candidate < symtab_min){
-                           symtab_min = candidate;
-                       }
-                   }
+                    if (std::find(std::begin(possible_tags), std::end(possible_tags), (int)tag->d_tag) != std::end(possible_tags)){
+                        uint32_t candidate = tag->d_un.d_ptr;
+                        if (candidate > strtab && candidate < strtab_min){
+                            strtab_min = candidate;
+                        }
+                        if (candidate > symtab && candidate < symtab_min){
+                            symtab_min = candidate;
+                        }
+                    }
                 }
 
                 // take those and convert to sizes
@@ -213,9 +231,10 @@ void update_symbols_in_space(CPUState* cpu){
                 // This first section maps strings to an index
                 std::unordered_map<target_ulong, string> string_map;
                 int index = 0;
+
                 while (true){
-                    string newstr = read_str(cpu, m->base + strtab + index);
-                    if (newstr.length() == 0) break;
+                    string newstr = read_str(cpu, strtab + index);
+                    if (newstr.length() < 1) break;
                     string_map[index] = newstr;
                     index += newstr.length();
                     if (index > strtab_size) break;
@@ -227,23 +246,24 @@ void update_symbols_in_space(CPUState* cpu){
 
                 std::vector<struct symbol> symbols_list_internal;
                 
-                if (panda_virtual_memory_read(cpu, m->base+symtab, (uint8_t*)symtab_buf, symtab_size) == MEMTX_OK){
+                if (panda_virtual_memory_read(cpu, symtab, (uint8_t*)symtab_buf, symtab_size) == MEMTX_OK){
                     int i = 0; 
                     for (;i<numelements_symtab; i++){
                         ELF(Sym)* a = (ELF(Sym)*) (symtab_buf + i*sizeof(ELF(Sym)));
                         if (a->st_value != 0 && string_map.find(a->st_name)!=string_map.end()){
                             struct symbol s;
                             strncpy((char*)&s.name, string_map[a->st_name].c_str(), PATH_MAX);
+                            //printf("%s %s\n", m->name, s.name);
                             s.address = m->base + a->st_value;
                             symbols_list_internal.push_back(s);
-                            printf("Found symbol %s %lx\n", s.name, (long unsigned int) (target_ulong)s.address);
                         }
                     }
+                    proc_mapping[name] = symbols_list_internal;
+                    symbols[asid] = proc_mapping;
                 }
                 free(dynamic_section);
                 free(buff);
                 free(symtab_buf);
-                proc_mapping[m->base] = symbols_list_internal;
             }else{
                 // not an elf header. nothing to do.
             }
@@ -256,14 +276,14 @@ panda_cb pcb;
 
 void bbe(CPUState *env, TranslationBlock *tb){
     if (!panda_in_kernel(env)){
-        printf("Got out of kernel\n");
+        //printf("Got out of kernel\n");
         update_symbols_in_space(env);
         panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     }
 }
 
 bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
-    printf("Asid has changed. enabling bbe\n");
+    //printf("Asid has changed. enabling bbe\n");
     if (panda_in_kernel(env)){
         panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     }
@@ -271,7 +291,6 @@ bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
 }
 
 bool init_plugin(void *self) {
-    printf("initializing\n");
     self_ptr = self;
     pcb.asid_changed = asid_changed;
     panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
