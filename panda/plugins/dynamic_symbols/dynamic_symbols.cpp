@@ -126,6 +126,7 @@ void update_symbols_in_space(CPUState* cpu){
             }
             // is it an ELF header?
             if (elfhdr[0] == '\x7f' && elfhdr[1] == 'E' && elfhdr[2] == 'L' && elfhdr[3] == 'F'){
+                printf("In section %s\n",m->name);
                 
                 // allocate buffer for start of ELF. read first page
                 char* buff = (char*)malloc(0x1000);
@@ -145,6 +146,7 @@ void update_symbols_in_space(CPUState* cpu){
                         printf("Found dynamic marker\n");
                         break;
                     }else if (dynamic_phdr->p_type == PT_NULL){
+                        printf("got to null\n");
                         return;
                     }else if (j== phnum -1){
                         printf("got to end\n");
@@ -154,14 +156,15 @@ void update_symbols_in_space(CPUState* cpu){
                 char* dynamic_section = (char*)malloc(dynamic_phdr->p_filesz);
                 // try to read dynamic section
                 if(panda_virtual_memory_read(cpu, m->base + dynamic_phdr->p_vaddr, (uint8_t*) dynamic_section, dynamic_phdr->p_filesz) != MEMTX_OK){
+                    printf("failed to read dynamic section\n");
                     // fail and move on
                     free(dynamic_section);
                     free(buff);
                     continue;
                 }
                 printf("p_filesz: %llu\n", (long long unsigned int) dynamic_phdr->p_filesz);
-                printf("Ehdr size: %d\n", (int)sizeof(ELF(Ehdr)));
-                int numelements_dyn = dynamic_phdr->p_filesz / sizeof(ELF(Ehdr));
+                printf("Ehdr size: %d\n", (int)sizeof(ELF(Dyn)));
+                int numelements_dyn = dynamic_phdr->p_filesz / sizeof(ELF(Dyn));
                 //assert(false);
                 printf("numelements_dyn: %d\n", numelements_dyn);
                 
@@ -175,12 +178,11 @@ void update_symbols_in_space(CPUState* cpu){
                        strtab = tag->d_un.d_ptr;
                    }else if (tag->d_tag == DT_SYMTAB){
                        symtab = tag->d_un.d_ptr;
-                   }else if (tag->d_tag == DT_NULL){
-                       break;
                    }
                 }
 
                 if (strtab == 0 || symtab == 0){
+                    printf("strtab or symtab missing\n");
                     free(dynamic_section);
                     free(buff);
                     continue;
