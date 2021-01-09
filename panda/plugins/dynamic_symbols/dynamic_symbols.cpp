@@ -65,15 +65,10 @@ map<target_ulong, map<std::string, target_ulong>> mapping;
 
 std::vector<int> possible_tags{ DT_PLTGOT , DT_HASH , DT_STRTAB , DT_SYMTAB , DT_RELA , DT_INIT , DT_FINI , DT_REL , DT_DEBUG , DT_JMPREL, 25, 26, 32, DT_SUNW_RTLDINF , DT_CONFIG , DT_DEPAUDIT , DT_AUDIT , DT_PLTPAD , DT_MOVETAB , DT_SYMINFO , DT_VERDEF , DT_VERNEED };
 
-struct symbol {
-    target_ulong address;
-    char name[PATH_MAX];
-};
-
-
 unordered_map<target_ulong, unordered_map<string, vector<struct symbol>>> symbols;
 
-target_ulong resolve_symbol(target_ulong asid, char* section_name, char* symbol){
+struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_name, char* symbol){
+    update_symbols_in_space(cpu);
     auto proc_mapping = symbols[asid];
 
     for (const auto& section : proc_mapping){
@@ -91,12 +86,18 @@ target_ulong resolve_symbol(target_ulong asid, char* section_name, char* symbol)
                 string val_str (val.name);
                 if (val_str.find(symbol) != string::npos){
                     printf("result: %s %s\n", section.first.c_str(), val.name);
-                    return val.address;
+                    strncpy((char*) &val.section, section.first.c_str(), MAX_PATH_LEN);
+                    return val;
                 }
             }
         } 
     }
-    return 0;
+    struct symbol blank;
+    blank.address = 0;
+    char none[] = "NULL";
+    strncpy((char*) & blank.name, none, strlen(none)+1);
+    strncpy((char*) & blank.section, none, strlen(none)+1);
+    return blank;
 }
 
 string read_str(CPUState* cpu, target_ulong ptr){
@@ -117,6 +118,9 @@ string read_str(CPUState* cpu, target_ulong ptr){
 }
 
 void update_symbols_in_space(CPUState* cpu){
+    if (panda_in_kernel(cpu)){
+        return;
+    }
     OsiProc *current = get_current_process(cpu);
     GArray *ms = get_mappings(cpu, current);
     target_ulong asid = panda_current_asid(cpu);
