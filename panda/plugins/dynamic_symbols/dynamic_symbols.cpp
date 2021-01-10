@@ -80,11 +80,13 @@ struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_nam
         }else{
             found = n.find(section_name); 
         }
+        //section name is A "does string exist in section"
         if (found != string::npos){
             for (auto &it: section_vec){
                 struct symbol val = it;
                 string val_str (val.name);
-                if (val_str.find(symbol) != string::npos){
+                // symbol resolves on exact equality
+                if (val_str.compare(symbol) == 0){
                     printf("result: %s %s\n", section.first.c_str(), val.name);
                     strncpy((char*) &val.section, section.first.c_str(), MAX_PATH_LEN);
                     return val;
@@ -257,7 +259,7 @@ void update_symbols_in_space(CPUState* cpu){
                         if (a->st_value != 0 && string_map.find(a->st_name)!=string_map.end()){
                             struct symbol s;
                             strncpy((char*)&s.name, string_map[a->st_name].c_str(), PATH_MAX);
-                            //printf("%s %s\n", m->name, s.name);
+                            //printf("%x %s %s\n", (uint32_t) asid, m->name, s.name);
                             s.address = m->base + a->st_value;
                             symbols_list_internal.push_back(s);
                         }
