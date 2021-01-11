@@ -1,4 +1,5 @@
 #include "OsiBlockCsvWriter.h"
+#include "metadata_writer.h"
 
 namespace coverage
 {
@@ -29,6 +30,7 @@ void OsiBlockCsvWriter::handle(OsiBlock record)
 
 void OsiBlockCsvWriter::write_header()
 {
+    write_metadata(os);
     os << "process\n";
     os << "process name,process id,thread id,in kernel,block address,block size\n";
 }
