@@ -6,6 +6,7 @@
 git
 libc++-dev
 libelf-dev
+libjsoncpp-dev
 libprotobuf-c-dev
 libprotoc-dev
 libwireshark-dev
