@@ -31,13 +31,13 @@ Name: **get_instr_count_current_asid**
 Signature:
 
 ```C
-Instr get_instr_count_current_asid(void);`
+Instr get_instr_count_current_asid(void);
 ```
 
 Description: Returns instruction count for current asid (subtracting out
 instructions for other asids)
 
-NOTE: this means this isnt the actual instr count within the replay, but it is
+NOTE: this means this isn't the actual instruction count within the replay, but it is
 now safe, e.g., to subtract two instruction counts
 
 Name: **get_instr_count_by_asid**
@@ -45,13 +45,13 @@ Name: **get_instr_count_by_asid**
 Signature:
 
 ```C
-Instr get_instr_count_by_asid(target_ulong asid);`
+Instr get_instr_count_by_asid(target_ulong asid);
 ```
 
 Description: Returns instruction count for input parameter asid (subtracting out
 instructions for other asids)
 
-NOTE: this means this isnt the actual instr count within the replay, but it is
+NOTE: this means this isn't the actual instruction count within the replay, but it is
 now safe, e.g., to subtract two instruction counts
 
 Example
