@@ -209,6 +209,7 @@ void update_symbols_in_space(CPUState* cpu){
                         //printf("Found DT_SYMTAB\n");
                         symtab = tag->d_un.d_ptr;
                     }else if (tag->d_tag == DT_STRSZ ){
+                        //printf("Found DT_STRSZ\n");
                         strtab_size = tag->d_un.d_ptr;
                     }
                 }
@@ -219,7 +220,6 @@ void update_symbols_in_space(CPUState* cpu){
                     free(buff);
                     continue;
                 }
-                //printf("strtab: %llx symtab: %llx\n", (long long unsigned int) strtab, (long long unsigned int)symtab);
 
                 // we don't actually have the size of these things 
                 // (not included) so we find it by finding the next
@@ -243,6 +243,18 @@ void update_symbols_in_space(CPUState* cpu){
                 if (strtab_size == 0){
                     strtab_size = strtab_min - strtab;
                 }
+
+                // some of these are offsets. some are fully qualified
+                // addresses. this is a gimmick that can sort-of tell.
+                // probably better to replace this at some point
+                if (strtab < m->base){
+                    strtab += m->base;
+                }
+                if (symtab < m->base){
+                    symtab += m->base;
+                }
+
+                //printf("strtab: %llx symtab: %llx\n", (long long unsigned int) strtab, (long long unsigned int)symtab);
 
                 // This first section maps strings to an index
                 std::unordered_map<target_ulong, string> string_map;
@@ -280,10 +292,7 @@ void update_symbols_in_space(CPUState* cpu){
                     proc_mapping[name] = symbols_list_internal;
                     symbols[asid] = proc_mapping;
                 }else{
-                    if(panda_virtual_memory_read(cpu, symtab, (uint8_t*)symtab_buf, 1) == MEMTX_OK){
-                        printf("symtab smaller worked\n");
-                    }
-                    printf("couldn't read symtab_buf %llx %llx %llx\n", (long long unsigned int)symtab, (long long unsigned int) m->base, (long long unsigned int)symtab_size);
+                    //printf("couldn't read symtab_buf %llx %llx %llx\n", (long long unsigned int)symtab, (long long unsigned int) m->base, (long long unsigned int)symtab_size);
                 }
                 free(dynamic_section);
                 free(buff);

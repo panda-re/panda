@@ -203,6 +203,8 @@ def get_retval(env):
         return panda.arch.get_reg(env, "RAX")
     elif arch == "arm":
         return panda.arch.get_reg(env, "R0")
+    elif arch == "mips" or arch == "mipsel":
+        return panda.arch.get_reg(env,"v0")
     return 0
 
 def fd_to_fname(env, fd):
