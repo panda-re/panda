@@ -5,6 +5,7 @@ extern "C" {
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
 // files in this directory that contain subsections like this one.
 
+    #define MAX_PROCNAME_LENGTH 256
     struct hook;
 
     // Hook functions must be of this type
@@ -14,8 +15,13 @@ extern "C" {
         target_ulong start_addr;
         target_ulong end_addr;
         target_ulong asid;
+        char procname[MAX_PROCNAME_LENGTH];
+        char libname[MAX_PROCNAME_LENGTH];
         hook_func_t cb;
         bool enabled;
+        bool filter_procname;
+        bool filter_libname;
+        bool is_address_library_offset;
     };
 
     struct hook* add_hook(target_ulong addr, struct hook* h);

@@ -16,6 +16,8 @@ PANDAENDCOMMENT */
 
 #include "panda/plugin.h"
 #include "hooks_int_fns.h"
+#include "osi/osi_types.h"
+#include "osi/osi_ext.h"
 #include <iostream>
 #include <unordered_map>
 #include <vector>
@@ -28,9 +30,6 @@ void uninit_plugin(void *);
 }
 
 using namespace std;
-
-// Hooking framework to execute code before guest executes given basic block
-
 // Mapping of addresses to hook functions
 vector<struct hook> hooks;
 
@@ -39,6 +38,8 @@ panda_cb c_callback;
 
 // Handle to self
 void* self = NULL;
+
+bool disable_osi;
 
 // Enable and disable callbacks
 void enable_hooking() {
@@ -59,22 +60,93 @@ struct hook* add_hook(struct hook* h) {
     return &hooks[hooks.size() -1];
 }
 
+OsiModule* get_current_module(CPUState* cpu, target_ulong pc){
+   OsiProc* current = get_current_process(cpu);
+   GArray *ms = get_mappings(cpu, current);
+    for (int i = 0; i < ms->len; i++) { 
+        OsiModule *m = &g_array_index(ms, OsiModule, i); 
+        if (m->base <= pc && pc <= m->base + m->size){
+            return m;
+        }
+    }
+    return (OsiModule*) NULL;
+}
+
+OsiModule* get_base_overall_library(CPUState* cpu, char* name){
+   OsiProc* current = get_current_process(cpu);
+   GArray *ms = get_mappings(cpu, current);
+    for (int i = 0; i < ms->len; i++) { 
+        OsiModule *m = &g_array_index(ms, OsiModule, i); 
+        // check that the name matches
+        if (strncmp(m->name, name, MAX_PROCNAME_LENGTH) == 0){
+            char elfhdr[4];
+            // look for an elf header
+            if (panda_virtual_memory_read(cpu,m->base, (uint8_t*)elfhdr, 4) == MEMTX_OK){
+                if (elfhdr[0] == '\x7f' && elfhdr[1] == 'E' && elfhdr[2] == 'L' && elfhdr[3] == 'F'){
+                    return m;
+                }
+            }
+        }
+    }
+    return (OsiModule*) NULL;
+}
+
 
 // The panda callback to determine if we should call a python callback
 bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb) {
     // Call any callbacks registered at this PC. Any called callback may invalidate the translation block
- 
     bool ret = false;
     target_ulong asid = panda_current_asid(cpu);
+    OsiProc *current = NULL;
+    OsiModule *current_module = NULL;
+
 
     for (auto& hook: hooks){
         if (hook.enabled){
             if (hook.asid == 0 || hook.asid == asid){
-                if (hook.start_addr <= tb->pc && tb->pc <= hook.start_addr + hook.end_addr){
-                    ret |= (*(hook.cb))(cpu, tb, &hook);
+                // we only ever ask for OsiProc to be filled if a process
+                // actually uses it
+                if (hook.filter_procname && current == NULL && !disable_osi){
+                    current = get_current_process(cpu);
+                }
+                if (hook.filter_libname  && current_module == NULL && !disable_osi){
+                    /**
+                     * If we have 4 memory regions for libc we first need to
+                     * determine which is the "start module". In libraries
+                     * this is the one that has an ELF header at its start.
+                     */
+                    OsiModule* local_module = get_current_module(cpu, tb->pc);
+                    if (local_module->name != NULL)
+                        current_module = get_base_overall_library(cpu, local_module->name);
+                }
+
+                if (disable_osi){ 
+                    // we're not doing osi stuff
+                    // we don't support any of these options and will pass
+                    // on hooks that support them.
+                    if (!(hook.filter_procname || hook.filter_libname || hook.is_address_library_offset)){
+                        if (hook.start_addr <= tb->pc && tb->pc <= hook.end_addr){
+                            ret |= (*(hook.cb))(cpu, tb, &hook);
+                        }
+                    }
+                }else { // doing osi stuff
+                    if (!hook.filter_procname || (current->name != NULL && strncmp(current->name, hook.procname, MAX_PROCNAME_LENGTH) == 0)){
+                        if (!hook.filter_libname || (current_module->name !=NULL && strncmp(current_module->name, hook.libname, MAX_PROCNAME_LENGTH) == 0)){
+                            if (hook.is_address_library_offset){
+                                if (hook.start_addr + current_module->base <= tb->pc && tb->pc <= current_module->base + hook.end_addr){
+                                    ret |= (*(hook.cb))(cpu, tb, &hook);
+                                }           
+                            }else{
+                                if (hook.start_addr <= tb->pc && tb->pc <= hook.end_addr){
+                                    ret |= (*(hook.cb))(cpu, tb, &hook);
+                                }
+                            }
+                        }
+                    }
                 }
             }
-        }
+                
+            }
     }
     return ret;
 }
@@ -83,12 +155,19 @@ bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb) {
 bool init_plugin(void *_self) {
     // On init, register a callback but don't enable it
     self = _self;
+    panda_arg_list *args = panda_get_args("hooks");
+    disable_osi = panda_parse_bool_opt(args, "disable_osi", "disable osi process name options");
 
     panda_disable_tb_chaining();
 
     c_callback.before_block_exec_invalidate_opt = before_block_exec_invalidate_opt;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, c_callback);
     panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, c_callback);
+
+    if (!disable_osi){
+        panda_require("osi");
+        assert(init_osi_api());
+    }
 
     return true;
 }
