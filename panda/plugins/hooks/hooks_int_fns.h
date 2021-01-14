@@ -19,8 +19,6 @@ extern "C" {
         char libname[MAX_PROCNAME_LENGTH];
         hook_func_t cb;
         bool enabled;
-        bool filter_procname;
-        bool filter_libname;
         bool is_address_library_offset;
     };
 
