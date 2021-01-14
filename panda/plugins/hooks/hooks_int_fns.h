@@ -22,7 +22,7 @@ extern "C" {
         bool is_address_library_offset;
     };
 
-    struct hook* add_hook(target_ulong addr, struct hook* h);
+    struct hook* add_hook(struct hook* h);
     void enable_hooking();
     void disable_hooking();
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
