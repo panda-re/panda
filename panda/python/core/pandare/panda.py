@@ -25,7 +25,7 @@ from time import sleep
 from cffi import FFI
 
 from .ffi_importer import ffi, set_ffi
-from .utils import progress, make_iso, debug, blocking, GArrayIterator, plugin_list, Hook
+from .utils import progress, make_iso, debug, blocking, GArrayIterator, plugin_list
 from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
@@ -2473,6 +2473,7 @@ class Panda():
     def hook_lib(self, libraryname, address, length=0, enabled=True, kernel=False, procname=None, name=None, asid=None, address_library_offset=True):
         return self.hook(address, length=length, enabled=enabled, kernel=kernel, libraryname=libraryname, procname=procname, name=name, asid=asid, address_library_offset=address_library_offset)
     
+    
 
     """
     Provides the ability to interact with the hooks2 plugin and receive callbacks based on user-provided criteria.
@@ -2531,7 +2532,7 @@ class Panda():
         return decorator
 
     def hook2_single_insn(self, name, pc, kernel=False, procname=ffi.NULL, libname=ffi.NULL):
-        return self.hook(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
+        return self.hook2(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
     
     # MEM HOOKS
     def _hook_mem(self, start_address, end_address, before, after, read, write, virtual, physical, enabled):
