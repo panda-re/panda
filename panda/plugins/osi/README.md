@@ -18,7 +18,7 @@ The key is that you can swap out the bottom layer to support a new operating sys
 ## Command Line Arguments
   * `os`: The target os. This argument is validated against a list of regular expressions in [common.c][common.c]. For linux, the specified os must also match an existing kernel profile. See [osi_linux documentation][osi_linux_usage] for details.
 
-  ```C
+```C
   const char * valid_os_re[] = {
       "windows[-_]32[-_]xpsp[23]",
       "windows[-_]32[-_]7",
@@ -27,7 +27,7 @@ The key is that you can swap out the bottom layer to support a new operating sys
       "linux[-_]64[-_].+",
       NULL
   };
-  ```
+```
 
 ## Plugin Arguments
 
@@ -107,6 +107,7 @@ Implementation behaviour: The implementation should create and populate a [`GArr
 Plugins may register for task change notifications using the following callback:
 
 ---
+
 Name: **on\_task\_change**
 
 Signature:

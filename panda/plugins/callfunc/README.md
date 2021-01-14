@@ -12,9 +12,9 @@ Arguments
 * when (ulong): PC at which to call our function
 * func (ulong): Function to call
 * args (string): Hexidecimal, dash delimited arguments for the function to call (optional)
-* mm_file (string): File to memory map (optional)
-* mm_dst (ulong): Memory location to map file (optional)
-* rev_push (bool): Push stack arguments in reverse order, if any (optional)
+* mm\_file (string): File to memory map (optional)
+* mm\_dst (ulong): Memory location to map file (optional)
+* rev\_push (bool): Push stack arguments in reverse order, if any (optional)
 
 Dependencies
 ------------
