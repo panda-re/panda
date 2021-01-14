@@ -1,14 +1,25 @@
+message StructData {
+    repeated NamedData members = 1;
+}
 
-/* one of these */
-message SyscallArg {
-    optional string str = 1;
-    optional uint64 ptr = 2;
-    optional uint64 u64 = 3;
-    optional uint32 u32 = 4;
-    optional uint32 u16 = 5;
-    optional int64 i64 = 6;
-    optional int32 i32 = 7;
-    optional int32 i16 = 8;
+message NamedData {
+    required string arg_name = 1;
+
+    optional string str = 2;
+    optional uint64 ptr = 3;
+    optional uint64 u64 = 4;
+    optional uint32 u32 = 5;
+    optional uint32 u16 = 6;
+    optional int64 i64 = 7;
+    optional int32 i32 = 8;
+    optional int32 i16 = 9;
+    optional float float_val = 10;
+    optional double double_val = 11;
+    optional bool bool_val = 12;
+    optional bytes bytes_val = 13;
+
+    optional string struct_type = 14;
+    optional StructData struct_data = 15;
 }
 
 message Syscall {
@@ -18,7 +29,7 @@ message Syscall {
     required uint64 create_time = 4;
     required uint64 retcode = 5;
     required string call_name = 6;
-    repeated SyscallArg args = 7;
+    repeated NamedData args = 7;
 }
 
 optional Syscall syscall = 58;

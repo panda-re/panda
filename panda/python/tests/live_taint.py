@@ -1,35 +1,17 @@
 #!/usr/bin/env python3
 
 from sys import argv
-from os import path, remove
+from os import path
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
 from pandare import Panda, blocking, ffi
 
 # Single arg of arch, defaults to i386
-arch = "i386_wheezy" if len(argv) <= 1 else argv[1]
+arch = "i386" if len(argv) <= 1 else argv[1]
 panda = Panda(generic=arch)
 
 bin_dir = "taint"
 bin_name = "taint"
-
-assert(path.isfile(path.join(bin_dir, bin_name))), "Missing file {}".format(path.join(bin_dir, bin_name))
-# Take a recording of toy running in the guest if necessary
-recording_name = bin_dir+"_"+bin_name
-
-# Debug - delete recording each time
-if path.isfile(recording_name +"-rr-snp"):
-    remove(recording_name +"-rr-snp")
-    remove(recording_name +"-rr-nondet.log")
-
-if not path.isfile(recording_name +"-rr-snp"):
-    @panda.queue_blocking
-    def run_it():
-        panda.record_cmd(f"./taint/taint", copy_directory=bin_dir, recording_name=recording_name)
-        panda.end_analysis()
-
-    print("Generating " + recording_name + " replay")
-    panda.run()
 
 out = []
 mappings = {}
@@ -100,6 +82,13 @@ def bbe(cpu, tb):
             print("Success! Tracked taint propagation and final taint labels match expected (test 2 of 2)!")
             panda.end_analysis()
 
+@panda.queue_blocking
+def drive():
+    panda.revert_sync("root")
+    panda.copy_to_guest(bin_dir)
+    print(panda.run_serial_cmd(f"cd {bin_dir} && ./{bin_name}", timeout=400)) # Live taint is slow
+    panda.end_analysis()
+
 panda.disable_tb_chaining()
 panda.load_plugin("osi") # Necessary for procname filters
-panda.run_replay(recording_name)
+panda.run()

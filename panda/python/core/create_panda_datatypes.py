@@ -234,6 +234,9 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     # Define some common panda datatypes
     define_clean_header(ffi, include_dir + "/panda_datatypes.h")
 
+    # get some libc functionality
+    define_clean_header(ffi, include_dir + "/libc_includes.h")
+
     # Now syscalls2 common:
     define_clean_header(ffi, include_dir + "/syscalls2_info.h")
 

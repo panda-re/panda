@@ -44,17 +44,17 @@ class Panda():
         Parameters:
             arch : architecture string (e.g. "i386", "x86_64", "arm", "mips", "mipsel")
             mem : size of memory for machine (e.g. "128M", "1G")
-            expect_prompt : Regular expression describing the prompt exposed by the guest 
-                on a serial console. Used so we know when a running command has finished 
+            expect_prompt : Regular expression describing the prompt exposed by the guest
+                on a serial console. Used so we know when a running command has finished
                 with its output.
             os_version : analagous to -os string.
             qcow : qcow file to load as a path
             os : type of OS (e.g. "linux")
-            generic : specify a generic qcow to use and set other arguments. Supported 
+            generic : specify a generic qcow to use and set other arguments. Supported
                 values: arm/ppc/x86_64/i386. Will download qcow automatically
-            raw_monitor : When set, don't specify a -monitor. arg Allows for use of 
+            raw_monitor : When set, don't specify a -monitor. arg Allows for use of
                 -nographic in args with ctrl-A+C for interactive qemu prompt.
-            extra_args : extra arguments to pass to PANDA as either a string or an 
+            extra_args : extra arguments to pass to PANDA as either a string or an
                 array. (e.g. "-nographic" or ["-nographic", "-net", "none"])
 
     Note that multiple PANDA objects cannot coexist in the same Python instance.
@@ -76,6 +76,7 @@ class Panda():
         self.expect_prompt = expect_prompt
         self.lambda_cnt = 0
         self.arch = None
+        self.__sighandler = None
         """
         A reference to an auto-instantiated `pandare.arch.PandaArch` subclass (e.g., `pandare.arch.X86Arch`)
         """
@@ -176,6 +177,7 @@ class Panda():
         self.taint_enabled = False
         self.hook_list = []
         self.hook_list2 = {}
+        self.mem_hooks = {}
 
         # Asid stuff
         self.current_asid_name = None
@@ -183,6 +185,7 @@ class Panda():
 
         # Shutdown stuff
         self.exception = None # When set to an exn, we'll raise and exit
+        self._in_replay = False
 
         # main_loop_wait functions and callbacks
         self.main_loop_wait_fnargs = [] # [(fn, args), ...]
@@ -304,7 +307,7 @@ class Panda():
         if debug:
             self.queue_main_loop_wait_fn(self.finish_timer, [timer_start, "Loaded snapshot"])
 
-    def reset(self): 
+    def reset(self):
         """In the next main loop, reset to boot"""
         if debug:
             progress ("Resetting machine to start state")
@@ -367,10 +370,8 @@ class Panda():
                 progress("Disabling TB chaining")
             self.disabled_tb_chaining = True
             self.libpanda.panda_disable_tb_chaining()
-    
-    def setup_internal_signal_handler(self):
-       # ffi.cdef("void panda_setup_signal_handling(void (*f) (int,void*,void*));",override=True)
-        @ffi.callback("void(int,void*,void*)")
+
+    def setup_internal_signal_handler(self, signal_handler=None):
         def SigHandler(SIG,a,b):
             from signal import SIGINT, SIGHUP, SIGTERM
             if SIG == SIGINT:
@@ -384,15 +385,25 @@ class Panda():
                 self.end_analysis()
             else:
                 print(f"PyPanda Signal handler received unhandled signal {SIG}")
-        
-        self.__sighandler = SigHandler
-        self.libpanda.panda_setup_signal_handling(self.__sighandler)
 
-    
+
+        if signal_handler is not None:
+            # store custom signal handler if requested1
+            self.__sighandler = signal_handler
+
+        if self._initialized_panda:
+            # initialize and register signal handler only if panda is initialized
+            self.__sighandler = (ffi.callback("void(int,void*,void*)", SigHandler)
+                       if signal_handler is None and self.__sighandler is None
+                       else ffi.callback("void(int,void*,void*)", self.__sighandler))
+
+            self.libpanda.panda_setup_signal_handling(self.__sighandler)
+
+
     def run(self):
         '''
         This function starts our running PANDA instance from Python. At termination this function returns and the script continues to run after it.
-        
+
         This function starts execution of the guest. It blocks until guest finishes.
         It also initializes panda object, clears main_loop_wait fns, and sets up internal callbacks.
         '''
@@ -417,11 +428,25 @@ class Panda():
         self.running.set()
         self.libpanda.panda_run() # Give control to panda
         self.running.clear() # Back from panda's execution (due to shutdown or monitor quit)
+        self.delete_callbacks()
         self.libpanda.panda_unload_plugins() # Unload c plugins - should be safe now since exec has stopped
+        self.plugins = plugin_list(self)
+        # Write PANDALOG, if any
+        #self.libpanda.panda_cleanup_record()
+        if self._in_replay:
+            self.reset()
         if hasattr(self, "end_run_raise_signal"):
-            raise self.end_run_raise_signal
+            saved_exception = self.end_run_raise_signal
+            del self.end_run_raise_signal
+            raise saved_exception
         if hasattr(self, "callback_exit_exception"):
-            raise self.callback_exit_exception
+            saved_exception = self.callback_exit_exception
+            del self.callback_exit_exception
+            raise saved_exception
+        if hasattr(self, "blocking_queue_error"):
+            saved_exception = self.blocking_queue_error
+            del self.blocking_queue_error
+            raise saved_exception
             
 
     def end_analysis(self):
@@ -438,7 +463,7 @@ class Panda():
         if self.running.is_set():
             # If we were running, stop the execution and check if we crashed
             self.queue_async(self.stop_run, internal=True)
-    
+
     def record(self, recording_name, snapshot_name=None):
         """Begins active recording with name provided.
 
@@ -457,8 +482,8 @@ class Panda():
         result = self.libpanda.panda_record_begin(recording_name_ffi,snapshot_name_ffi)
         res_string_enum = ffi.string(ffi.cast("RRCTRL_ret",result))
         if res_string_enum != "RRCTRL_OK":
-           raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})") 
-    
+           raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})")
+
     def end_record(self):
         """Stop active recording.
 
@@ -468,7 +493,7 @@ class Panda():
         result = self.libpanda.panda_record_end()
         res_string_enum = ffi.string(ffi.cast("RRCTRL_ret",result))
         if res_string_enum != "RRCTRL_OK":
-           raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})") 
+           raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})")
 
 
     def run_replay(self, replaypfx):
@@ -477,7 +502,7 @@ class Panda():
 
             Parameters:
                 replaypfx: python string path to replay file.
-        
+
             Returns:
                 None
         '''
@@ -489,7 +514,9 @@ class Panda():
 
         charptr = ffi.new("char[]",bytes(replaypfx,"utf-8"))
         self.libpanda.panda_replay_begin(charptr)
+        self._in_replay = True
         self.run()
+        self._in_replay = False
 
     def require(self, name):
         '''
@@ -504,7 +531,7 @@ class Panda():
             Parameters:
                 name: python string name of plugin
                 args: Dictionary of arguments matching key to value. e.g. {"key": "value"} sets option key to value.
-            
+
             Returns:
                 None.
         '''
@@ -541,7 +568,7 @@ class Panda():
         charptr = ffi.new("char[]", bytes(name,"utf-8"))
         self.libpanda.panda_require_from_library(charptr, plugin_args, len(argstrs_ffi))
         self._load_plugin_library(name)
-    
+
     def _procname_changed(self, cpu, name):
         for cb_name, cb in self.registered_callbacks.items():
             if not cb["procname"]:
@@ -559,7 +586,7 @@ class Panda():
 
             Parameters:
                 name: python string name of plugin
-        
+
             Returns:
                 None
         '''
@@ -581,8 +608,10 @@ class Panda():
             progress ("Disabling all python plugins, unloading all C plugins")
 
         # First unload python plugins, should be safe to do anytime
-        for name in self.registered_callbacks.keys():
-            self.disable_callback(name)
+        #for name in self.registered_callbacks.keys():
+        while len(list(self.registered_callbacks)) > 0:
+            self.delete_callback(list(self.registered_callbacks.keys())[0])
+            #self.disable_callback(name)
 
         # Then unload C plugins. May be unsafe to do except from the top of the main loop (taint segfaults otherwise)
         self.queue_main_loop_wait_fn(self.libpanda.panda_unload_plugins)
@@ -591,16 +620,9 @@ class Panda():
         '''
         Calls QEMU memsavep on your specified python file.
         '''
-        def initlib():
-            ffi.cdef('''
-            FILE *fdopen(int, const char *);   // from the C <stdio.h>
-            int fclose(FILE *);
-            ''', override=True)
-        ffi.init_once(initlib, "cinit")
-        
         # this part was largely copied from https://cffi.readthedocs.io/en/latest/ref.html#support-for-file
 
-        file_out.flush()                    # make sure the file is flushed
+        file_out.flush()                 # make sure the file is flushed
         newfd = dup(file_out.fileno())   # make a copy of the file descriptor
         fileptr = self.C.fdopen(newfd, b"w")
         self.libpanda.panda_memsavep(fileptr)
@@ -617,9 +639,9 @@ class Panda():
 
             Returns:
                 Buffer based on fmt string
-        
+
             Raises:
-                ValueError for two cases: 
+                ValueError for two cases:
                     Memory Access with error value.
                     Format string is incorrect.
         '''
@@ -634,12 +656,12 @@ class Panda():
                     addr: python int address
                     length: length of array you would like returned
                     fmt: format for returned array. Options: 'bytearray', 'int', and 'str'
-            
+
             Returns:
                     Buffer based on fmt string
-            
+
             Raises:
-                    ValueError for two cases: 
+                    ValueError for two cases:
                         Memory Access with error value.
                         Format string is incorrect.
         '''
@@ -706,12 +728,12 @@ class Panda():
     def virtual_memory_write(self, env, addr, buf):
         '''
         Write guest virtual memory.
-        
+
             Parameters:
                     env: CPUState structure
                     address: python int address
                     buf: byte string to write
-            
+
             Returns:
                     int: 0 on success. 1 on error.
 
@@ -765,17 +787,28 @@ class Panda():
 
             Parameters:
                 f: A python function with no arguments to be called at a later date
-            
+
             Returns:
                 None
         '''
-        self.athread.queue(f, internal=internal)
+        
+        # this takes the blocking function and handles errors
+        @blocking
+        def wrapper():
+            try:
+                f()
+            except Exception as e:
+                self.blocking_queue_error = e
+                self.end_analysis() 
+        
+
+        self.athread.queue(wrapper, internal=internal)
 
     def map_memory(self, name, size, address):
 
         '''
         Make a new memory region.
-        
+
             Parameters:
                     name: This is an internal reference name for this region. Must be unique.
                     size: number of bytes the region should be.
@@ -863,7 +896,7 @@ class Panda():
 
             Parameters:
                 name: file to output data to
-            
+
             Returns:
                 None
         '''
@@ -877,7 +910,7 @@ class Panda():
         '''
         self._memcb = True
         self.libpanda.panda_enable_memcb()
-    
+
     def disable_memcb(self):
         '''
         Disable memory callbacks. Must be enabled for memory callbacks to work.
@@ -893,7 +926,7 @@ class Panda():
             Parameters:
                 env: CPUState struct
                 addr (int): virtual address to convert
-            
+
             Return:
                 physical address as python int
         '''
@@ -905,7 +938,7 @@ class Panda():
 
             Parameters:
                 handle: pointer to handle returned by plugin
-            
+
             Return:
                 None
         '''
@@ -917,7 +950,7 @@ class Panda():
 
             Parameters:
                 handle: pointer to handle returned by plugin
-            
+
             Return:
                 None
         '''
@@ -925,25 +958,25 @@ class Panda():
 
     def enable_llvm(self):
         '''
-        Enables the use of the LLVM JIT in replacement of the TCG (QEMU intermediate language and compiler) backend. 
+        Enables the use of the LLVM JIT in replacement of the TCG (QEMU intermediate language and compiler) backend.
         '''
         self.libpanda.panda_enable_llvm()
 
     def disable_llvm(self):
         '''
-        Disables the use of the LLVM JIT in replacement of the TCG (QEMU intermediate language and compiler) backend. 
+        Disables the use of the LLVM JIT in replacement of the TCG (QEMU intermediate language and compiler) backend.
         '''
         self.libpanda.panda_disable_llvm()
 
     def enable_llvm_helpers(self):
         '''
-        Enables the use of Helpers for the LLVM JIT in replacement of the TCG (QEMU intermediate language and compiler) backend. 
+        Enables the use of Helpers for the LLVM JIT in replacement of the TCG (QEMU intermediate language and compiler) backend.
         '''
         self.libpanda.panda_enable_llvm_helpers()
 
     def disable_llvm_helpers(self):
         '''
-        Disables the use of Helpers for the LLVM JIT in replacement of the TCG (QEMU intermediate language and compiler) backend. 
+        Disables the use of Helpers for the LLVM JIT in replacement of the TCG (QEMU intermediate language and compiler) backend.
         '''
         self.libpanda.panda_disable_llvm_helpers()
 
@@ -980,7 +1013,7 @@ class Panda():
 
             Parameters:
                 size: size to call with malloc
-            
+
             Returns:
                 buffer of that size from malloc
         '''
@@ -1016,7 +1049,7 @@ class Panda():
     def current_asid(self, cpustate):
         '''
         Get current Application Specific ID
-            
+
             Parameters:
                 cpustate: CPUState struct
 
@@ -1082,7 +1115,7 @@ class Panda():
                 blocktype: BlockInterfaceType structure
                 bus: integer bus
                 unit: integer unit
-            
+
             Return:
                 DriveInfo struct
         '''
@@ -1096,7 +1129,7 @@ class Panda():
             Parameters:
                 name: python string
                 addr: python integer representing hwaddr
-            
+
             Return:
                 DeviceState struct
         '''
@@ -1123,7 +1156,7 @@ class Panda():
 
             Parameters:
                 name: string defined by user
-            
+
             Returns:
                 struct as specified by name
         '''
@@ -1152,7 +1185,7 @@ class Panda():
             Parameters:
                 objclass: class to obtain the QOM typename for.
 
-            Returns: 
+            Returns:
                 String QOM typename for klass.
         '''
         return self.libpanda.object_class_get_name(objclass)
@@ -1164,11 +1197,11 @@ class Panda():
         The returned object has a reference count of 1, and will be freed when
         the last reference is dropped.
         Calls object_new QEMU function.
-            
+
             Parameters:
                 name: The name of the type of the object to instantiate.
-            
-            Returns: 
+
+            Returns:
                 The newly allocated and instantiated object.
         '''
         return self.libpanda.object_new(name)
@@ -1181,21 +1214,21 @@ class Panda():
             Parameters:
                 obj: the object
                 name: the name of the property
-            
-            Returns: 
+
+            Returns:
                 the value of the property, converted to a boolean, or NULL if an error occurs (including when the property value is not a bool).
         '''
         return self.libpanda.object_property_get_bool(obj,name,self.libpanda.error_abort)
 
     def object_property_set_int(self,obj, value, name):
         '''
-        Set integer in QEMU object. Writes an integer value to a property.   
+        Set integer in QEMU object. Writes an integer value to a property.
         Calls object_property_set_int QEMU function.
-        
+
             Parameters:
                 value: the value to be written to the property
                 name: the name of the property
-            
+
             Returns:
                 None
         '''
@@ -1203,14 +1236,14 @@ class Panda():
 
     def object_property_get_int(self, obj, name):
         '''
-        Gets integer in QEMU object. Reads an integer value from this property.   
+        Gets integer in QEMU object. Reads an integer value from this property.
         Calls object_property_get_int QEMU function.
 
             Paramaters:
                 obj: the object
                 name: the name of the property
-            
-            Returns: 
+
+            Returns:
                 the value of the property, converted to an integer, or negative if an error occurs (including when the property value is not an integer).
         '''
         return self.libpanda.object_property_get_int(obj, name, self.libpanda.error_abort)
@@ -1234,12 +1267,12 @@ class Panda():
         '''
         Reads an object's canonical path to a property.
         Calls object_property_get_link QEMU function.
-    
+
             Parameters:
                 obj: the object
                 name: the name of the property
                 errp: returns an error if this function fails
-            
+
             Returns:
                 the value of the property, resolved from a path to an Object, or NULL if an error occurs (including when the property value is not a string or not a valid object path).
         '''
@@ -1254,7 +1287,7 @@ class Panda():
                 obj: the object
                 name: the name of the property
                 errp: returns an error if this function fails
-            
+
             Returns:
                 struct ObjectProperty pointer
         '''
@@ -1270,7 +1303,7 @@ class Panda():
                 obj: Object struct
                 name: string of region name
                 ram_size: int of ram size
-            
+
             Returns:
                 None
         '''
@@ -1280,19 +1313,19 @@ class Panda():
         '''
         Calls memory_region_add_subregion from QEMU.
         memory_region_add_subregion: Add a subregion to a container.
-        
+
         Adds a subregion at @offset.  The subregion may not overlap with other
         subregions (except for those explicitly marked as overlapping).  A region
         may only be added once as a subregion (unless removed with
         memory_region_del_subregion()); use memory_region_init_alias() if you
         want a region to be a subregion in multiple locations.
-        
+
             Parameters:
                 mr: the region to contain the new subregion; must be a container initialized with memory_region_init().
                 offset: the offset relative to @mr where @subregion is added.
                 subregion: the subregion to be added.
-            
-            Returns: 
+
+            Returns:
                 None
         '''
         return self.libpanda.memory_region_add_subregion(mr,offset,sr)
@@ -1301,7 +1334,7 @@ class Panda():
         '''
         Calls memory_region_init_ram_from_file from QEMU.
         memory_region_init_ram_from_file:  Initialize RAM memory region with a mmap-ed backend.
-        
+
             Parameters:
                 mr: the #MemoryRegion to be initialized.
                 owner: the object that tracks the region's reference count
@@ -1310,7 +1343,7 @@ class Panda():
                 share: %true if memory must be mmaped with the MAP_SHARED flag
                 path: the path in which to allocate the RAM.
                 errp: pointer to Error*, to store an error if it happens.
-            
+
             Returns:
                 None
         '''
@@ -1346,7 +1379,7 @@ class Panda():
     def set_os_name(self, os_name):
         """
         Set OS target. Equivalent to "-os" flag on the command line. Matches the form of:
-        
+
             "windows[-_]32[-_]xpsp[23]",
             "windows[-_]32[-_]7",
             "windows[-_]32[-_]2000",
@@ -1355,7 +1388,7 @@ class Panda():
 
             Parameters:
                 os_name: string matching the format for the os flag.
-            
+
             Returns:
                 None
         """
@@ -1663,9 +1696,9 @@ class Panda():
         '''
         if not self.taint_enabled: return None
         if debug:
-            progress("taint_get_reg %d" % (reg_num)) 
+            progress("taint_get_reg %d" % (reg_num))
         res = []
-        for offset in range(self.register_size): 
+        for offset in range(self.register_size):
             if self.plugins['taint2'].taint2_query_reg(reg_num, offset) > 0:
                 query_res = ffi.new("QueryResult *")
                 self.plugins['taint2'].taint2_query_reg_full(reg_num, offset, query_res)
@@ -1895,7 +1928,7 @@ class Panda():
         self.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
 
         # 2) run setup script
-        # setup_sh: 
+        # setup_sh:
         #   Make sure cdrom didn't automount
         #   Make sure guest path mirrors host path
         #   if there is a setup.sh script in the directory,
@@ -2038,7 +2071,7 @@ class Panda():
             local_name = name  # We need a new varaible otherwise we have scoping issues with _generated_callback's name
             if name is None:
                 local_name = fun.__name__
-            
+
             # 0 works for all callbacks except void. We check later on
             # to see if we need to return None otherwise we return 0
             return_from_exception = 0
@@ -2227,6 +2260,12 @@ class Panda():
         handle = self.registered_callbacks[name]['handle']
         self.libpanda.panda_unregister_callbacks(handle)
         del self.registered_callbacks[name]['handle']
+        del self.registered_callbacks[name]
+    
+    def delete_callbacks(self):
+        #for name in self.registered_callbacks.keys():
+        while len(self.registered_callbacks.keys()) > 0:
+            self.delete_callback(list(self.registered_callbacks.keys())[0])
 
     ###########################
     ### PPP-style callbacks ###
@@ -2260,7 +2299,7 @@ class Panda():
             local_name = name  # We need a new varaible otherwise we have scoping issues, maybe
             if local_name is None:
                 local_name = fun.__name__
-            
+
             def _run_and_catch(*args, **kwargs): # Run function but if it raises an exception, stop panda and raise it
                 try:
                     r = fun(*args, **kwargs)
@@ -2352,7 +2391,6 @@ class Panda():
             #print(f"Updating hook {hook_name} at 0x{hook.target_addr:x}")
             if addr != hook.target_addr:
                 hook.target_addr = addr
-                self.plugins['hooks'].enable_hook(hook.hook_cb, hook.target_addr)
             self.enable_hook(hook_name)
 
         else:
@@ -2360,7 +2398,7 @@ class Panda():
 
     def enable_hook(self,hook_name):
         '''
-        Set hook status to active.        
+        Set hook status to active.
         '''
         if hook_name in self.named_hooks:
             hook = self.named_hooks[hook_name]
@@ -2385,7 +2423,7 @@ class Panda():
 
     def _update_hooks_new_procname(self, cpu, name):
         '''
-        Uses user-defined information to update the state of hooks based on things such as libraryname, procname and whether 
+        Uses user-defined information to update the state of hooks based on things such as libraryname, procname and whether
         or not the hook points to kernel space.
         '''
         for h in self.hook_list:
@@ -2443,8 +2481,8 @@ class Panda():
             self._register_mmap_cb()
 
         def decorator(fun):
-            # Ultimately, our hook resolves as a before_block_exec so we must match its args
-            hook_cb_type = self.callback.before_block_exec # (CPUState, TranslationBlock)
+            # Ultimately, our hook resolves as a before_block_exec_invalidate_opt callback so we must match its args
+            hook_cb_type = self.callback.before_block_exec_invalidate_opt # (CPUState, TranslationBlock)
 
             if 'hooks' not in self.plugins:
                 # Enable hooks plugin on first request
@@ -2457,7 +2495,7 @@ class Panda():
             hook_cb_passed = hook_cb_type(fun)
             self.plugins['hooks'].add_hook(addr, hook_cb_passed)
             hook_to_add = Hook(is_enabled=enabled,is_kernel=kernel,target_addr=addr,library_name=libraryname,program_name=procname,hook_cb=None, target_library_offset=None)
-            if libraryname: 
+            if libraryname:
                 hook_to_add.target_library_offset = addr
                 hook_to_add.target_addr = 0
                 hook_to_add.hook_cb = hook_cb_passed
@@ -2487,7 +2525,7 @@ class Panda():
 
     def enable_hook2(self,hook_name):
         '''
-        Set hook status to active.        
+        Set hook status to active.
         '''
         if hook_name in self.hook_list2:
             self.plugins['hooks2'].enable_hooks2(self.hook_list2[hook_name])
@@ -2516,7 +2554,7 @@ class Panda():
             # Ultimately, our hook resolves as a before_block_exec_invalidate_opt callback so we must match its args
             hook_cb_type = ffi.callback("bool (CPUState*, TranslationBlock*, void*)")
             # Inform the plugin that it has a new breakpoint at addr
-            
+
             hook_cb_passed = hook_cb_type(fun)
             if not hasattr(self, "hook_gc_list"):
                 self.hook_gc_list = [hook_cb_passed]
@@ -2527,7 +2565,7 @@ class Panda():
             cb_data = ffi.NULL
             hook_number = self.plugins['hooks2'].add_hooks2(hook_cb_passed, cb_data, kernel, \
                 procname, libname, trace_start, trace_stop, range_begin,range_end)
-            
+
             self.hook_list2[name] = hook_number
 
             @hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
@@ -2536,8 +2574,53 @@ class Panda():
 
             return wrapper
         return decorator
-    
+
     def hook2_single_insn(self, name, pc, kernel=False, procname=ffi.NULL, libname=ffi.NULL):
         return self.hook(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
+    
+    # MEM HOOKS
+    def _hook_mem(self, start_address, end_address, before, after, read, write, virtual, physical, enabled):
+        def decorator(fun):
+            mem_hook_cb_type = self.ffi.callback("mem_hook_func_t")
+            # Inform the plugin that it has a new breakpoint at addr
+            
+            hook_cb_passed = mem_hook_cb_type(fun)
+            mem_reg = self.ffi.new("struct memory_hooks_region*")
+            mem_reg.start_address = start_address
+            mem_reg.stop_address = end_address
+            mem_reg.on_before = before
+            mem_reg.on_after = after
+            mem_reg.on_read = read
+            mem_reg.on_write = write
+            mem_reg.on_virtual = virtual
+            mem_reg.on_physical = physical
+            mem_reg.enabled = enabled
+            mem_reg.cb = hook_cb_passed
+
+            hook = self.plugins['mem_hooks'].add_mem_hook(mem_reg)
+            
+            self.mem_hooks[hook] = [mem_reg, hook_cb_passed]
+
+            @mem_hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
+            def wrapper(*args, **kw):
+                return fun(*args, **kw)
+
+            return wrapper
+        return decorator
+    
+    def hook_mem(self, start_address, end_address, on_before, on_after, on_read, on_write, on_virtual, on_physical, enabled):
+        return self._hook_mem(start_address,end_address,on_before,on_after,on_read, on_write, on_virtual, on_physical, enabled)
+
+    def hook_phys_mem_read(self, start_address, end_address, on_before=True, on_after=False, enabled=True):
+        return self._hook_mem(start_address,end_address,on_before,on_after, True, False, False, True, True)
+    
+    def hook_phys_mem_write(self, start_address, end_address, on_before=True, on_after=False):
+        return self._hook_mem(start_address,end_address,on_before,on_after, False, True, False, True, True)
+    
+    def hook_virt_mem_read(self, start_address, end_address, on_before=True, on_after=False):
+        return self._hook_mem(start_address,end_address,on_before,on_after, True, False, True, False, True)
+    
+    def hook_virt_mem_write(self, start_address, end_address, on_before=True, on_after=False):
+        return self._hook_mem(start_address,end_address,on_before,on_after, False, True, True, False, True)
 
 # vim: expandtab:tabstop=4:
