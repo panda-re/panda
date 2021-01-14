@@ -43,12 +43,12 @@ bool disable_osi;
 
 // Enable and disable callbacks
 void enable_hooking() {
-  assert(self != NULL);
-  panda_enable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, c_callback);
+    assert(self != NULL);
+    panda_enable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, c_callback);
 }
 void disable_hooking() {
-  assert(self != NULL);
-  panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, c_callback);
+    assert(self != NULL);
+    panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, c_callback);
 }
 
 struct hook* add_hook(struct hook* h) {
@@ -81,7 +81,7 @@ OsiModule* get_base_overall_library(CPUState* cpu, char* name){
         if (strncmp(m->name, name, MAX_PROCNAME_LENGTH) == 0){
             char elfhdr[4];
             // look for an elf header
-            if (panda_virtual_memory_read(cpu,m->base, (uint8_t*)elfhdr, 4) == MEMTX_OK){
+            if (panda_virtual_memory_read(cpu,m->base, (uint8_t*) elfhdr, 4) == MEMTX_OK){
                 if (elfhdr[0] == '\x7f' && elfhdr[1] == 'E' && elfhdr[2] == 'L' && elfhdr[3] == 'F'){
                     return m;
                 }
@@ -94,22 +94,26 @@ OsiModule* get_base_overall_library(CPUState* cpu, char* name){
 
 // The panda callback to determine if we should call a python callback
 bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb) {
-    // Call any callbacks registered at this PC. Any called callback may invalidate the translation block
+    // Call any callbacks registered at this PC. 
+    // Any called callback may invalidate the translation block
     bool ret = false;
     target_ulong asid = panda_current_asid(cpu);
     OsiProc *current = NULL;
     OsiModule *current_module = NULL;
 
-
     for (auto& hook: hooks){
         if (hook.enabled){
             if (hook.asid == 0 || hook.asid == asid){
-                // we only ever ask for OsiProc to be filled if a process
-                // actually uses it
-                if (hook.filter_procname && current == NULL && !disable_osi){
+                bool filter_procname = hook.procname[0] != 0;
+                bool filter_libname = hook.libname[0] != 0;
+                /* 
+                * we only ever ask for OsiProc or OsiModule to be filled 
+                * if a process actually uses it. We then cache it.
+                */
+                if (filter_procname && current == NULL && !disable_osi){
                     current = get_current_process(cpu);
                 }
-                if (hook.filter_libname  && current_module == NULL && !disable_osi){
+                if (filter_libname && current_module == NULL && !disable_osi){
                     /**
                      * If we have 4 memory regions for libc we first need to
                      * determine which is the "start module". In libraries
@@ -124,14 +128,18 @@ bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb) {
                     // we're not doing osi stuff
                     // we don't support any of these options and will pass
                     // on hooks that support them.
-                    if (!(hook.filter_procname || hook.filter_libname || hook.is_address_library_offset)){
+                    if (!(filter_procname || filter_libname || hook.is_address_library_offset)){
                         if (hook.start_addr <= tb->pc && tb->pc <= hook.end_addr){
                             ret |= (*(hook.cb))(cpu, tb, &hook);
                         }
                     }
                 }else { // doing osi stuff
-                    if (!hook.filter_procname || (current->name != NULL && strncmp(current->name, hook.procname, MAX_PROCNAME_LENGTH) == 0)){
-                        if (!hook.filter_libname || (current_module->name !=NULL && strncmp(current_module->name, hook.libname, MAX_PROCNAME_LENGTH) == 0)){
+                    if (!filter_procname || (current->name != NULL && strncmp(current->name, hook.procname, MAX_PROCNAME_LENGTH) == 0)){
+                        if (!filter_libname || (current_module->name != NULL && strncmp(current_module->name, hook.libname, MAX_PROCNAME_LENGTH) == 0)){
+                            /*
+                            ** We offer two addressing modes: absolute and
+                            ** offset into libraries.
+                            */
                             if (hook.is_address_library_offset){
                                 if (hook.start_addr + current_module->base <= tb->pc && tb->pc <= current_module->base + hook.end_addr){
                                     ret |= (*(hook.cb))(cpu, tb, &hook);
@@ -145,8 +153,7 @@ bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb) {
                     }
                 }
             }
-                
-            }
+        }
     }
     return ret;
 }
