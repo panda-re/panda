@@ -526,6 +526,13 @@ bool init_plugin(void *self) {
 #elif defined(TARGET_ARM)
     if (cs_open(CS_ARCH_ARM, CS_MODE_ARM, &cs_handle_32) != CS_ERR_OK)
         return false;
+
+#if CS_VERSION_MAJOR < 4
+        printf("\n[ERROR] Capstone versions prior to 4.0.1 are unusable with ARM so callstack instr will fail! Please upgrade your libcapstone install to use this plugin\n\n");
+        return false;
+#endif
+
+
 #elif defined(TARGET_PPC)
     if (cs_open(CS_ARCH_PPC, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
         return false;
