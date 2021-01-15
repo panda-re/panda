@@ -2517,6 +2517,50 @@ class Panda():
             return wrapper
         return decorator
 
+    def dynamic_symbol_hook(self, symbol_name, library_name=None, enabled=True):
+
+        def decorator(fun):
+            # Ultimately, our hook resolves as a before_block_exec_invalidate_opt callback so we must match its args
+            dynamic_hook_cb_type = self.ffi.callback("dynamic_hook_func_t") # (CPUState, TranslationBlock)
+
+            # Inform the plugin that it has a new breakpoint at addr
+            hook_cb_passed = dynamic_hook_cb_type(fun)
+            symbol_hook = self.ffi.new("struct symbol_hook*")
+            if library_name is not None:
+                libname_ffi = self.ffi.new("char[]",bytes(library_name,"utf-8"))
+            else:
+                libname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
+            self.ffi.memmove(symbol_hook.section,libname_ffi,len(libname_ffi))
+            
+            if symbol_name is not None:
+                symbol_name_ffi = self.ffi.new("char[]",bytes(symbol_name,"utf-8"))
+            else:
+                symbol_name_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
+            self.ffi.memmove(symbol_hook.name,symbol_name_ffi,len(symbol_name_ffi))
+            symbol_hook.cb = hook_cb_passed
+            if not hasattr(self,"dynamic_hook_cb_list"):
+                self.dynamic_hook_cb_list = []
+            self.dynamic_hook_cb_list.append(hook_cb_passed)
+            symbol_hook.enabled = enabled
+
+            self.plugins['dynamic_symbols'].hook_symbol_resolution(symbol_hook)
+
+            @dynamic_hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
+            def wrapper(*args, **kw):
+                try:
+                    r = fun(*args, **kw)
+                    #assert(isinstance(r, int)), "Invalid return type?"
+                    return r
+                except Exception as e:
+                    # exceptions wont work in our thread. Therefore we print it here and then throw it after the
+                    # machine exits.
+                    self.hook_exit_exception = e
+                    self.end_analysis()
+                    # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
+                    return 0
+
+            return wrapper
+        return decorator
 
 
     """
