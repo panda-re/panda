@@ -40,6 +40,7 @@ extern "C" {
 
 std::vector<void*> tmp_single_ptrs;
 std::vector<void*> tmp_double_ptrs;
+bool did_call_warning;
 
 // Read a string from guest memory
 int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
@@ -399,7 +400,11 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
         return;
 
     if (!call) {
-        std::cerr << "[WARNING] syscalls_logger: null syscall_into_t*, missed a syscall!" << std::endl;
+        // This warning happens _a lot_ so I'm disabling it after the first
+        if (!did_call_warning) {
+          std::cerr << "[WARNING] syscalls_logger: null syscall_into_t*, missed a syscall! Disabling subsequent warnings" << std::endl;
+          did_call_warning = true;
+        }
         return;
     }
 
@@ -604,6 +609,7 @@ bool init_plugin(void *_self) {
     panda_arg_list *args = panda_get_args("syscalls_logger");
     log_verbose = panda_parse_bool(args, "verbose");
     const char* json_filename = panda_parse_string_opt(args, "json", nullptr, "dwarf2json_output.json");
+    did_call_warning=false;
 
     if (log_verbose) {
         std::cout << "[INFO] syscalls_logger: verbose output enabled." << std::endl;
