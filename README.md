@@ -32,7 +32,7 @@ from Ubuntu Focal (20.04). This image is available [here](https://hub.docker.com
 To pull the latest docker container and run PANDA
 ```
 $ docker pull pandare/panda
-$ docker run --rm pandare/panda -- panda-system-i386 --help
+$ docker run --rm pandare/panda panda-system-i386 --help
 ```
 
 ### Quickstart: Python pip
