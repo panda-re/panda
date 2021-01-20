@@ -29,6 +29,9 @@ OsiProc* get_one_proc(GArray *osiprocs, unsigned int idx);
 
 void cleanup_garray(GArray *g);
 
+// returns true if execution is currently within a DLL function, else false.
+bool in_dll(CPUState *cpu, OsiProc *p);
+
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 // gets the currently running process handle

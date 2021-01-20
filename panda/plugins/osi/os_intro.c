@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 // This needs to be defined before anything is included in order to get
 // the PRIx64 macro
@@ -128,6 +128,25 @@ target_pid_t get_process_ppid(CPUState *cpu, const OsiProcHandle *h) {
 void notify_task_change(CPUState *cpu)
 {
     PPP_RUN_CB(on_task_change, cpu);
+}
+
+bool in_dll(CPUState *cpu, OsiProc *p) {
+    target_ulong pc = panda_current_pc(cpu);
+    GArray *mappings = get_mappings(cpu, p);
+    if (mappings != NULL) {
+        for (int i = 0; i < mappings->len; i++) {
+            OsiModule *m = &g_array_index(mappings, OsiModule, i);
+            if ((m->base <= pc) && (pc <= (m->base + m->size))) {
+                if (strcasestr(m->name, ".so") != NULL) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 extern const char *qemu_file;
