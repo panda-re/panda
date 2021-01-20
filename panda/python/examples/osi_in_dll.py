@@ -11,7 +11,7 @@ def bbe(cpu, tb, exit_code):
 
     global bb_ctr
 
-    if exit_code <= 1:
+    if (not panda.in_kernel(cpu)) and (exit_code <= 1):
         bb_ctr += 1
 
         if (bb_ctr % 1000) == 0:

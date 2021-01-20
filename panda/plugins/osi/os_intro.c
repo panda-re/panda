@@ -131,8 +131,13 @@ void notify_task_change(CPUState *cpu)
 }
 
 bool in_dll(CPUState *cpu, OsiProc *p) {
+    if (panda_in_kernel(cpu)) {
+        return false;
+    }
+
     target_ulong pc = panda_current_pc(cpu);
     GArray *mappings = get_mappings(cpu, p);
+
     if (mappings != NULL) {
         for (int i = 0; i < mappings->len; i++) {
             OsiModule *m = &g_array_index(mappings, OsiModule, i);
