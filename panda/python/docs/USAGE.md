@@ -1,11 +1,10 @@
-# PYPANDA
-PYPANDA is a python interface to PANDA. With PYPANDA, you can quickly develop plugins
+# PyPANDA
+PyPANDA is a python interface to PANDA. With PyPANDA, you can quickly develop plugins
 to analyze behavior of a running system, record a system and analyze replays, or do
 nearly anything you can do using PANDA's C/C++ APIs.
 
 ## Installation
-1. Follow instructions to build PANDA or run `scripts/panda/install_ubuntu.sh`.
-2. `cd` into `panda/python/core` and run `python3 setup.py install` (possibly in a virtual environment). This will install the `panda` python package to your system.
+1. Follow instructions to build PANDA using build.sh with the `--python` flag or run `scripts/panda/install_ubuntu.sh`.
 
 ## Example program
 This program counts the number of basic blocks executed while running `uname -a` inside a 32-bit guest.
@@ -168,10 +167,11 @@ Example: [record_then_replay.py](https://github.com/panda-re/panda/tree/master/p
 5. Analyze the replay with `panda.run_replay(filename)`
 
 # Here Be Dragons
-* You can't have multiple instances of panda running at the same time. You can, however, stop an analysis and begin a new one if you don't change the machine type.
-* PYPANDA is slower than traditional panda. To improve performance try disabling callbacks whenever possible and only enabling them when they are needed.
+* You can't have multiple instances of panda running at the same time. Once you've created a panda object for a given architecture, you can never create another. Hoewver, you can modify the machine after it's created to run a new analysis as long as you don't change the machine type.
+* You cannot read from stdin in a pypanda callback (i.e., you can't use `input()` or interactive debuggers)
+* PyPANDA is slower than traditional panda. To improve performance try disabling callbacks whenever possible and only enabling them when they are needed.
 
-# Extending PYPANDA
-PYPANDA currently support a handful of PANDA plugins such as `taint2` and `osi`. To extend PYPANDA to support an additional plugin, its header file
+# Extending PyPANDA
+PyPANDA currently supports interactions (e.g., ppp callbacks) with numerous PANDA plugins such as `taint2` and `osi`. If you wish to extend PyPANDA to support an new plugin, its header file
 must be cleaned up such that it can be parsed by CFFI. See [create_panda_datatypes.py](https://github.com/panda-re/panda/tree/master/panda/python/utils/create_panda_datatypes.py)
 and the magic `BEGIN_PYPANDA_NEEDS_THIS` strings it searches for.
