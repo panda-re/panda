@@ -21,8 +21,8 @@ def bbe(cpu, tb, exit_code):
 
             proc_name = ffi.string(proc.name).decode("utf-8")
             pc = panda.current_pc(cpu)
-            in_dll = panda.plugins['osi'].in_dll(cpu, proc)
-            print(f"{proc_name}@{pc:016x}, in DLL? {in_dll}")
+            in_dll = panda.plugins['osi'].in_shared_object(cpu, proc)
+            print(f"{proc_name}@{pc:016x}, in SO? {in_dll}")
 
 @blocking
 def start():

@@ -130,7 +130,7 @@ void notify_task_change(CPUState *cpu)
     PPP_RUN_CB(on_task_change, cpu);
 }
 
-bool in_dll(CPUState *cpu, OsiProc *p) {
+bool in_shared_object(CPUState *cpu, OsiProc *p) {
     if (panda_in_kernel(cpu)) {
         return false;
     }
@@ -142,7 +142,7 @@ bool in_dll(CPUState *cpu, OsiProc *p) {
         for (int i = 0; i < mappings->len; i++) {
             OsiModule *m = &g_array_index(mappings, OsiModule, i);
             if ((m->base <= pc) && (pc <= (m->base + m->size))) {
-                if (strcasestr(m->name, ".so") != NULL) {
+                if ((strcasestr(m->name, ".so") != NULL) || (strcasestr(m->name, ".dll") != NULL)) {
                     return true;
                 } else {
                     return false;
