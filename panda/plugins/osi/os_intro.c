@@ -142,6 +142,8 @@ bool in_shared_object(CPUState *cpu, OsiProc *p) {
         for (int i = 0; i < mappings->len; i++) {
             OsiModule *m = &g_array_index(mappings, OsiModule, i);
             if ((m->base <= pc) && (pc <= (m->base + m->size))) {
+                // XXX: libc doesn't have a bounded string substring search? e.g. strnstr?
+                // XXX: this logic hasn't been tested on the Windows OS
                 if ((strcasestr(m->name, ".so") != NULL) || (strcasestr(m->name, ".dll") != NULL)) {
                     return true;
                 } else {
