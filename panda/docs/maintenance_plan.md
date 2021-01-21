@@ -35,7 +35,7 @@ Here are the parts of PANDA we consider to be part of the API and which should o
 Note that when we mention a function, here, we mean the prototype to that function as well as its operation (semantics) should remain stable within a major release.
 
 ### Record / Replay
-All functions and types in panda/include/panda_api_rr.h 
+All functions and types in panda/include/panda/api/rr.h 
 * Functions to determine where in a replay one is, e.g., rr_get_guest_instr_count and rr_prog_point
 * Functions to control record and replay, e.g., rr_do_begin_record, rr_do_end_record,  rr_do_begin_replay, and rr_do_end_replay
 
