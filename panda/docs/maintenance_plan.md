@@ -1,9 +1,11 @@
-#PANDA maintenance plan PROPOSAL
+# PANDA maintenance plan PROPOSAL
 
 ## Versions
-Staring with version 3.0.0, PANDA will provide stable releases of the core analysis platform which follow semantic versioning (see semver.org for details) with major, minor and patch versions. Across major versions, the PANDA API will change in a backwards-incompatible way. 
+Staring with version 3.0.0, PANDA will provide stable releases of the core analysis platform which follow semantic versioning (see [semver.org](http://semver.org) for details) with major, minor and patch versions. Across major versions, the PANDA API may change in a backwards-incompatible way. 
 
 Across PANDA minor and patch versions, all API changes will be backwards-compatible, though plugins may need to be recompiled (i.e., names in an ENUM will not change, but their values may).
+
+New minor versions may introduce new features.  Patches will fix bugs.
 
 ## Branches
 We will maintain two primary branches of PANDA: `stable` and `development`.
@@ -34,7 +36,7 @@ Note that when we mention a function, here, we mean the prototype to that functi
 
 ### Record / Replay
 All functions and types in panda/include/panda_api_rr.h 
-* Function to determine where in a replay one is, e.g., rr_get_guest_instr_count and rr_prog_point
+* Functions to determine where in a replay one is, e.g., rr_get_guest_instr_count and rr_prog_point
 * Functions to control record and replay, e.g., rr_do_begin_record, rr_do_end_record,  rr_do_begin_replay, and rr_do_end_replay
 
 Notes:
@@ -52,14 +54,15 @@ All functions and types in panda/include/panda/api/plugins.h
 * Functions to access and manipulate plugin arguments
 * Functions for parsing arguments to plugins
 * Functions for registering or using Plugin-to-Plugin (PPP) interfaces
-* plugin.h, plugin-plugin.h
 
 ### Callbacks
 All functions and types in panda/include/panda/api/callbacks.h
 * The callbacks available
-* The function signatures of PANDA callbacks and names in the panda_cb_type ENUM (include/panda/callbacks/cb-defs.h)
-* The utility functions used to register and unregister callbacks from within plugins
-* Note *when* a callback fires may be changed according to our versioning scheme (e.g., a bugfix in when a callback fires would require new patch version)
+* The function signatures of PANDA callbacks and names in the panda_cb_type ENUM 
+* Functions used to register and unregister callbacks from within plugins
+
+Notes:
+* *When* a callback fires may be changed according to our versioning scheme (e.g., a bugfix in when a callback fires would require new patch version)
 
 ### LLVM
 All functions and types in panda/include/panda/api/llvm.h
@@ -71,26 +74,27 @@ Notes:
 ### Pandalog
 All functions and types in panda/include/panda/api/plog.h
 * Plog metadata (header and chunk structures)
-* The functions available for reading/writing/seeking through plogs
-* Relevant files: plog-cc.hpp, plog-cc-bridge.h
+* Functions for reading/writing/seeking through plogs
 
 Notes:
 * The Pandalog is based upon Google's protocol buffers.  Critical low-level details about protocol buffers will remain constant within a major version of Panda, including
 ** The version of protocol buffers used (2 vs 3)
 ** Slot numbering for messages or message fields
+* Pandalog is chunked and encrypted.  These details will be not change except across a major revision.
+* A minor revision number change may add features, and thus may add new pandalog message types.  Thus it is possible that a pandalog can only be generated and consumed by code *after* a particular minor revision number.
 
 ### Python interface
 * All the functions exposed by PyPANDA in the pandare.panda class are part of the PANDA API. These functions are already documented at panda-re.github.io/panda.html.
 
 Notes:
-    PyPANDA could perhaps have its own versioning or be in its own repo?
+* PyPANDA could perhaps have its own versioning or be in its own repo
 
 ### Docker 
 * The Dockerfile will not move locations without a major version change. 
 * The Ubuntu version the dockerfile is based on will not change without a minor version change.
 
 ### Scripts
-Do we consider anything in panda/scripts to be part of the API?
+[Do we consider anything in panda/scripts to be part of the API?]
 
 ## Restructure and Splitting of Existing PANDA Repository
 
