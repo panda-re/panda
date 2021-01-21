@@ -27,6 +27,12 @@ Notes about the `development` branch.
 
 There are obviously going to be other branches.  But we make no guarantees about any of them.
 
+
+## Schedule
+
+The PANDA major version will change no more frequently than every three months.  
+A major revision will come with a changelog indicating all in the API that has been changed, both in a backwards-compatible and in a backwards-breaking manner.
+
 ## The PANDA API
 
 These are the parts of PANDA to which users will be sensitive to changes.  For intsance, a user will care if the record/replay system changes such that old recordings will no longer replay.  But she will likely not care if the `callstack_instr` plugin is changed to use a cuckoo-hashed linear array instead of a C++ map to keep track of call/ret basic blocks.
