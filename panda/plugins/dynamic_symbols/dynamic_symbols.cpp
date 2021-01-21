@@ -21,9 +21,6 @@ PANDAENDCOMMENT */
 #include "panda/plugin.h"
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
-#include "syscalls2/syscalls_ext_typedefs.h"
-#include "syscalls2/syscalls2_info.h"
-#include "syscalls2/syscalls2_ext.h"
 #include <unordered_map>
 
 
@@ -33,7 +30,11 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
+#include "hooks/hooks_int_fns.h"
 #include "dynamic_symbols_int_fns.h"
+#include "syscalls2/syscalls_ext_typedefs.h"
+#include "syscalls2/syscalls2_info.h"
+#include "syscalls2/syscalls2_ext.h"
 
 }
 using namespace std;
@@ -66,6 +67,27 @@ map<target_ulong, map<std::string, target_ulong>> mapping;
 std::vector<int> possible_tags{ DT_PLTGOT , DT_HASH , DT_STRTAB , DT_SYMTAB , DT_RELA , DT_INIT , DT_FINI , DT_REL , DT_DEBUG , DT_JMPREL, 25, 26, 32, DT_SUNW_RTLDINF , DT_CONFIG , DT_DEPAUDIT , DT_AUDIT , DT_PLTPAD , DT_MOVETAB , DT_SYMINFO , DT_VERDEF , DT_VERNEED };
 
 unordered_map<target_ulong, unordered_map<string, vector<struct symbol>>> symbols;
+
+vector<struct hook_symbol_resolve> hooks;
+
+void hook_symbol_resolution(struct hook_symbol_resolve *h){
+    printf("adding hook %s %llx\n", h->name, (long long unsigned int) h->cb);
+    hooks.push_back(*h);
+}
+
+void check_symbol_for_hook(CPUState* cpu, struct symbol s, OsiModule *m){
+    for (struct hook_symbol_resolve &hook_candidate : hooks){
+        if (hook_candidate.enabled){
+            //printf("comparing \"%s\" and \"%s\"\n", hook_candidate.name, s.name);
+            if (strncmp(s.name, hook_candidate.name, MAX_PATH_LEN) == 0){
+                //printf("name matches\n");
+                if (hook_candidate.section[0] == 0 || strstr(s.section, hook_candidate.section) != NULL){
+                    (*(hook_candidate.cb))(cpu, &hook_candidate, s, m);
+                }
+            }
+        }
+    }
+}
 
 struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_name, char* symbol){
     update_symbols_in_space(cpu);
@@ -283,8 +305,11 @@ void update_symbols_in_space(CPUState* cpu){
                         ELF(Sym)* a = (ELF(Sym)*) (symtab_buf + i*sizeof(ELF(Sym)));
                         if (a->st_value != 0 && string_map.find(a->st_name)!=string_map.end()){
                             struct symbol s;
-                            strncpy((char*)&s.name, string_map[a->st_name].c_str(), PATH_MAX);
+                            strncpy((char*)&s.name, string_map[a->st_name].c_str(), MAX_PATH_LEN);
+                            strncpy((char*)&s.section, m->name, MAX_PATH_LEN);
                             s.address = m->base + a->st_value;
+                            check_symbol_for_hook(cpu, s, m);
+
                             //printf("%llx %s %s %llx\n", (long long unsigned int) asid, m->name, s.name, (long long unsigned int)s.address);
                             symbols_list_internal.push_back(s);
                         }
@@ -316,12 +341,18 @@ void bbe(CPUState *env, TranslationBlock *tb){
 }
 
 bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
-    printf("Asid has changed. enabling bbe\n");
-    if (panda_in_kernel(env)){
-        panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-    }
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     return false;
 }
+
+void execve_cb(CPUState *cpu, target_ptr_t pc, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp) {
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+}
+
+void execveat_cb (CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp, int flags) {
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+}
+
 
 bool init_plugin(void *self) {
     self_ptr = self;
@@ -331,6 +362,16 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     panda_require("osi");
     assert(init_osi_api());
+    
+    #if defined(TARGET_PPC)
+        fprintf(stderr, "[ERROR] asidstory: PPC architecture not supported by syscalls2!\n");
+        return false;
+    #else
+        panda_require("syscalls2");
+        assert(init_syscalls2_api());
+        PPP_REG_CB("syscalls2", on_sys_execve_enter, execve_cb);
+        PPP_REG_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
+    #endif
     return true;
 }
 

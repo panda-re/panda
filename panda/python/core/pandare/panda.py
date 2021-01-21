@@ -175,6 +175,7 @@ class Panda():
         self._initialized_panda = False
         self.disabled_tb_chaining = False
         self.taint_enabled = False
+        self.named_hooks = {}
         self.hook_list = []
         self.hook_list2 = {}
         self.mem_hooks = {}
@@ -434,6 +435,7 @@ class Panda():
         # Write PANDALOG, if any
         #self.libpanda.panda_cleanup_record()
         if self._in_replay:
+            print("called reset")
             self.reset()
         if hasattr(self, "end_run_raise_signal"):
             saved_exception = self.end_run_raise_signal
@@ -2411,7 +2413,7 @@ class Panda():
         else:
             raise ValueError(f"Unknown hook {hook_name}")
 
-    def hook(self, addr, length=0, enabled=True, kernel=True, libraryname=None, procname=None, name=None, asid=None, address_library_offset=False):
+    def hook(self, addr, length=0, enabled=True, kernel=True, libraryname=None, procname=None, name=None, asid=None, cb_type="before_block_exec", address_library_offset=False):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
@@ -2419,7 +2421,19 @@ class Panda():
 
         def decorator(fun):
             # Ultimately, our hook resolves as a beforde_block_exec_invalidate_opt callback so we must match its args
-            hook_cb_type = self.callback.before_block_exec_invalidate_opt # (CPUState, TranslationBlock)
+            if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec" or cb_type == "after_block_exec":
+                hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , struct hook *)")
+            elif cb_type == "before_block_translate":
+                hook_cb_type = self.ffi.callback("void(CPUState* env, target_ptr_t pc, struct hook*)")
+            elif cb_type == "before_block_exec_invalidate_opt":
+                hook_cb_type = self.ffi.callback("bool(CPUState* env, TranslationBlock*, struct hook*)")
+            else:
+                print("function type not supported")
+                return
+            type_num = getattr(self.libpanda, "PANDA_CB_"+cb_type.upper())
+
+            # Inform the plugin that it has a new breakpoint at addr
+            hook_cb_passed = hook_cb_type(fun)
 
             if debug:
                 print("Registering breakpoint at 0x{:x} -> {} == {}".format(addr, fun, 'cdata_cb'))
@@ -2427,31 +2441,28 @@ class Panda():
             # Inform the plugin that it has a new breakpoint at addr
             hook_cb_passed = hook_cb_type(fun)
             new_hook = self.ffi.new("struct hook*")
-            new_hook.cb = hook_cb_passed
+            new_hook.type = type_num
             new_hook.start_addr = addr
-            new_hook.stop_addr = addr + length
+            new_hook.end_addr = addr + length
             if kernel or asid is None:
                 new_hook.asid = 0
             else:
                 new_hook.asid = asid
             
-            if procname is not None:
-                procname_ffi = self.ffi.new("char[]",bytes(procname,"utf-8"))
+            setattr(new_hook.cb,cb_type, hook_cb_passed)
+            if kernel:
+                new_hook.km = self.libpanda.MODE_KERNEL_ONLY
+            elif kernel == False:
+                new_hook.km = self.libpanda.MODE_USER_ONLY
             else:
-                procname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
-            self.ffi.memmove(new_hook.procname,procname_ffi,len(procname_ffi))
-
-            if libraryname is not None:
-                libname_ffi = self.ffi.new("char[]",bytes(libraryname,"utf-8"))
-            else:
-                libname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
-            self.ffi.memmove(new_hook.libname,libname_ffi,len(libname_ffi))
-
+                new_hook.km = self.libpanda.MODE_ANY
             new_hook.enabled = enabled
             
-            hook_ptr = self.plugins['hooks'].add_hook(new_hook)
+            self.plugins['hooks'].add_hook(new_hook)
             if name is not None:
-                self.named_hooks[name] = hook_ptr
+                self.named_hooks[name] = hook_cb_passed
+            
+            self.hook_list.append((new_hook, hook_cb_passed))
 
             @hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
             def wrapper(*args, **kw):
@@ -2470,35 +2481,45 @@ class Panda():
             return wrapper
         return decorator
 
-    def dynamic_symbol_hook(self, symbol_name, library_name=None, enabled=True):
+    
+    def hook_symbol(self, libraryname, symbolname, kernel=False, asid=None,name=None,cb_type="before_block_exec"):
+        '''
+        Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
+        the function will be called with args (CPUState, TranslationBlock)
+        '''
 
         def decorator(fun):
-            # Ultimately, our hook resolves as a before_block_exec_invalidate_opt callback so we must match its args
-            dynamic_hook_cb_type = self.ffi.callback("dynamic_hook_func_t") # (CPUState, TranslationBlock)
+            if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec" or cb_type == "after_block_exec":
+                hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , struct hook *)")
+            elif cb_type == "before_block_translate":
+                hook_cb_type = self.ffi.callback("void(CPUState* env, target_ptr_t pc, struct hook*)")
+            elif cb_type == "before_block_exec_invalidate_opt":
+                hook_cb_type = "bool(CPUState* env, TranslationBlock*, struct hook*)"
+            else:
+                print("function type not supported")
+                return
 
             # Inform the plugin that it has a new breakpoint at addr
-            hook_cb_passed = dynamic_hook_cb_type(fun)
-            symbol_hook = self.ffi.new("struct symbol_hook*")
-            if library_name is not None:
-                libname_ffi = self.ffi.new("char[]",bytes(library_name,"utf-8"))
+            hook_cb_passed = hook_cb_type(fun)
+            new_hook = self.ffi.new("struct symbol_hook*")
+            if libraryname is not None:
+                libname_ffi = self.ffi.new("char[]",bytes(libraryname,"utf-8"))
             else:
                 libname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
-            self.ffi.memmove(symbol_hook.section,libname_ffi,len(libname_ffi))
+            self.ffi.memmove(new_hook.section,libname_ffi,len(libname_ffi))
             
-            if symbol_name is not None:
-                symbol_name_ffi = self.ffi.new("char[]",bytes(symbol_name,"utf-8"))
+            if symbolname is not None:
+                symbolname_ffi = self.ffi.new("char[]",bytes(symbolname,"utf-8"))
             else:
-                symbol_name_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
-            self.ffi.memmove(symbol_hook.name,symbol_name_ffi,len(symbol_name_ffi))
-            symbol_hook.cb = hook_cb_passed
-            if not hasattr(self,"dynamic_hook_cb_list"):
-                self.dynamic_hook_cb_list = []
-            self.dynamic_hook_cb_list.append(hook_cb_passed)
-            symbol_hook.enabled = enabled
+                symbolname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
+            self.ffi.memmove(new_hook.name,symbolname_ffi,len(symbolname_ffi))
+            setattr(new_hook.cb,cb_type, hook_cb_passed)
+            hook_ptr = self.plugins['hooks'].add_symbol_hook(new_hook)
+            if name is not None:
+                self.named_hooks[name] = hook_ptr
+            self.hook_list.append((fun, new_hook,hook_cb_passed, hook_ptr))
 
-            self.plugins['dynamic_symbols'].hook_symbol_resolution(symbol_hook)
-
-            @dynamic_hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
+            @hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
             def wrapper(*args, **kw):
                 try:
                     r = fun(*args, **kw)
@@ -2514,10 +2535,6 @@ class Panda():
 
             return wrapper
         return decorator
-
-    def hook_lib(self, libraryname, address, length=0, enabled=True, kernel=False, procname=None, name=None, asid=None, address_library_offset=True):
-        return self.hook(address, length=length, enabled=enabled, kernel=kernel, libraryname=libraryname, procname=procname, name=name, asid=asid, address_library_offset=address_library_offset)
-    
     
 
     """
