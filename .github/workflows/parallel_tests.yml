@@ -17,7 +17,7 @@ jobs:
     if: github.repository  == 'panda-re/panda'
     runs-on: self-hosted
     steps:
- 
+
     - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
 
     - name: Build docker container from project root
@@ -80,8 +80,12 @@ jobs:
 
     steps:
       # Note we leave the last 72hrs because caching is nice (first few panda image layers won't change often)
+      # docker system prune -> Remove all unused containers, networks, images (both dangling and unreferenced)
+      # docker builder prune -> Remove build cache
     - name: Cleanup images
-      run: docker system prune -f --filter "until=72h"
+      run: |
+        docker system prune -f --filter "until=72h"
+        docker builder prune -af --filter "until=72h"
 
   build_and_check_fork: # Forked repos can't use self-hosted test suite - just checkout and run make check
     if: github.repository != 'panda-re/panda'
