@@ -12,6 +12,7 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 #include <linux/elf.h>
+#include <linux/auxvec.h>
 #include <iostream> 
 #include <vector>
 #include <string>
@@ -331,10 +332,11 @@ void update_symbols_in_space(CPUState* cpu){
 
 void* self_ptr;
 panda_cb pcb;
+panda_cb pcb_execve;
+
 
 void bbe(CPUState *env, TranslationBlock *tb){
     if (!panda_in_kernel(env)){
-        //printf("Got out of kernel\n");
         update_symbols_in_space(env);
         panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     }
@@ -345,12 +347,81 @@ bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
     return false;
 }
 
+void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
+    printf("got to program start\n");
+    update_symbols_in_space(env);
+    h->enabled = false;
+}
+
+bool first_require = false;
+
+void bbe_execve(CPUState *env, TranslationBlock *tb){
+    if (unlikely(!panda_in_kernel(env))){
+        target_ulong sp = panda_current_sp(env);
+        target_ulong stack[50];
+        if (panda_virtual_memory_read(env, sp, (uint8_t*) stack, sizeof(stack))== MEMTX_OK){
+            //target_ulong argc = stack[0]
+            int ptrlistpos = 1;
+            // these are arguments to the binary. we don't read
+            // them but you could.
+            while (true){
+                target_ulong ptr = stack[ptrlistpos];
+                ptrlistpos++;
+                if (ptr == 0){
+                    break;
+                }
+            }
+            // these are environmental variables. we don't read
+            // them, but you could.
+            while (true){
+                target_ulong ptr = stack[ptrlistpos];
+                ptrlistpos++;
+                if (ptr == 0){
+                    break;
+                }
+            }
+            while (true){
+                target_ulong entrynum = stack[ptrlistpos];
+                target_ulong entryval = stack[ptrlistpos+1];
+                ptrlistpos+=2;
+                if (entrynum == AT_NULL){
+                    break;
+                }else if (entrynum == AT_ENTRY){
+                    if (!first_require){
+                        panda_require("dynamic_symbols");
+                        first_require = true;
+                    }
+                    struct hook h;
+                    h.start_addr = entryval;
+                    h.end_addr = entryval;
+                    h.asid = panda_current_asid(env);
+                    h.type = PANDA_CB_BEFORE_BLOCK_EXEC;
+                    h.cb.before_block_exec = hook_program_start;
+                    h.km = MODE_USER_ONLY;
+                    h.enabled = true;
+
+                    void* hooks = panda_get_plugin_by_name("hooks");
+                    if (hooks != NULL){
+                        void (*dlsym_add_hook)(struct hook*) = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
+                        if ((void*)dlsym_add_hook != NULL) {
+                            dlsym_add_hook(&h);
+                        }
+                    }
+
+                }
+            }
+
+        }
+        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_execve);
+    }
+}
+
 void execve_cb(CPUState *cpu, target_ptr_t pc, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp) {
-    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_execve);
 }
 
 void execveat_cb (CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp, int flags) {
-    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_execve);
 }
 
 
@@ -358,6 +429,8 @@ bool init_plugin(void *self) {
     self_ptr = self;
     pcb.asid_changed = asid_changed;
     panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
+    pcb_execve.before_block_exec = bbe_execve;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_execve);
     pcb.before_block_exec = bbe;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     panda_require("osi");
