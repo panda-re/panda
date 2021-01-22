@@ -395,14 +395,14 @@ class X86_64Arch(PandaArch):
         '''
         return self.get_reg(env, "RAX")
 
-    def get_call_return(self,env):
+    def get_return_address(self,env):
         '''
         looks up where ret will go
         '''
         esp = self.get_reg(env,"ESP")
         return self.panda.virtual_memory_read(env,esp,8,fmt='int')
 
-    def get_return_address(self, env, num, kernel=False):
+    def get_arg(self, env, num, kernel=False):
         '''
         Gets arguments based on the number. Supports kernel and usermode.
         '''
