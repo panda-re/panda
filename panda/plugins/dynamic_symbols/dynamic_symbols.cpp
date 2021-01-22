@@ -348,7 +348,7 @@ bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
 }
 
 void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
-    printf("got to program start\n");
+    printf("got to program start 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count());
     update_symbols_in_space(env);
     h->enabled = false;
 }
@@ -358,14 +358,19 @@ bool first_require = false;
 void bbe_execve(CPUState *env, TranslationBlock *tb){
     if (unlikely(!panda_in_kernel(env))){
         target_ulong sp = panda_current_sp(env);
-        target_ulong stack[50];
-        if (panda_virtual_memory_read(env, sp, (uint8_t*) stack, sizeof(stack))== MEMTX_OK){
-            //target_ulong argc = stack[0]
+        target_ulong argc;
+        if (panda_virtual_memory_read(env, sp, (uint8_t*) &argc, sizeof(argc))== MEMTX_OK){
+            // we read argc, but just to check the stack is readable.
+            // don't use it. just iterate and check for nulls.
             int ptrlistpos = 1;
             // these are arguments to the binary. we don't read
             // them but you could.
             while (true){
-                target_ulong ptr = stack[ptrlistpos];
+                target_ulong ptr;
+                if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
+                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_execve);
+                    return;
+                }
                 ptrlistpos++;
                 if (ptr == 0){
                     break;
@@ -374,15 +379,22 @@ void bbe_execve(CPUState *env, TranslationBlock *tb){
             // these are environmental variables. we don't read
             // them, but you could.
             while (true){
-                target_ulong ptr = stack[ptrlistpos];
+                target_ulong ptr;
+                if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
+                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_execve);
+                    return;
+                }
                 ptrlistpos++;
                 if (ptr == 0){
                     break;
                 }
             }
             while (true){
-                target_ulong entrynum = stack[ptrlistpos];
-                target_ulong entryval = stack[ptrlistpos+1];
+                target_ulong entrynum, entryval;
+                if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &entrynum, sizeof(entrynum)) != MEMTX_OK || panda_virtual_memory_read(env, sp+((ptrlistpos+1)*sizeof(target_ulong)), (uint8_t*) &entryval, sizeof(entryval))){
+                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_execve);
+                    return;
+                }
                 ptrlistpos+=2;
                 if (entrynum == AT_NULL){
                     break;
