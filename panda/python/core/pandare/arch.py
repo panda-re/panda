@@ -180,6 +180,30 @@ class ArmArch(PandaArch):
         Set an arm register
         '''
         cpu.env_ptr.regs[reg] = val
+    
+    def get_return_value(self, env):
+        '''
+        returns register value used to return results
+        '''
+        return self.get_reg(env, "R0")
+
+    def get_call_return(self,env):
+        '''
+        looks up where ret will go
+        '''
+        return self.get_reg(env, "LR")
+
+    def get_arg(self, env, num, kernel=False):
+        '''
+        Gets arguments based on the number. Supports kernel and usermode.
+        '''
+        if kernel:
+            # adjusts for the syscall num
+            num += 1
+        arglist = ["R0", "R1", "R2", "R3"]
+        if num >= len(arglist):
+            raise ValueError(f"We only support the first {len(arglist)} arguments.")
+        return self.get_reg(env, arglist[num])
 
 class MipsArch(PandaArch):
     '''
@@ -238,6 +262,30 @@ class MipsArch(PandaArch):
         Set a mips register
         '''
         cpu.env_ptr.active_tc.gpr[reg] = val
+    
+    def get_return_value(self, env):
+        '''
+        returns register value used to return results
+        '''
+        return self.get_reg(env, "V0")
+
+    def get_call_return(self,env):
+        '''
+        looks up where ret will go
+        '''
+        return self.get_reg(env, "RA")
+
+    def get_arg(self, env, num, kernel=False):
+        '''
+        Gets arguments based on the number. Supports kernel and usermode.
+        '''
+        if kernel:
+            # this adjusts for the syscall argument
+            num += 1
+        arglist = ["A0","A1","A2","A3"]
+        if num >= len(arglist):
+            raise ValueError(f"We only support the first {len(arglist)} arguments.")
+        return self.get_reg(env, arglist[num])
 
 class X86Arch(PandaArch):
     '''
@@ -275,6 +323,32 @@ class X86Arch(PandaArch):
         Set an x86 register
         '''
         cpu.env_ptr.regs[reg] = val
+    
+    def get_return_value(self, env):
+        '''
+        returns register value used to return results
+        '''
+        return self.get_reg(env, "EAX")
+
+    def get_call_return(self,env):
+        '''
+        looks up where ret will go
+        '''
+        esp = self.get_reg(env,"ESP")
+        return self.panda.virtual_memory_read(env,esp,4,fmt='int')
+
+    def get_arg(self, env, num, kernel=False):
+        '''
+        Gets arguments based on the number. Supports kernel and usermode.
+        '''
+        if kernel:
+            arglist = ["EBX", "ECX", "EDX", "ESI", "EDI", "EBP"]
+            if num >= len(arglist):
+                raise ValueError(f"We only support the first {len(arglist)} arguments.")
+            return self.get_reg(env, arglist[num])
+        else:
+            esp = self.get_reg(env, "RSP")
+            return self.panda.virtual_memory_read(env, esp+(4*(num+1)),4,fmt='int')
 
 class X86_64Arch(PandaArch):
     '''
@@ -314,3 +388,30 @@ class X86_64Arch(PandaArch):
         Set an x86_64 register
         '''
         cpu.env_ptr.regs[reg] = val
+    
+    def get_return_value(self, env):
+        '''
+        returns register value used to return results
+        '''
+        return self.get_reg(env, "RAX")
+
+    def get_call_return(self,env):
+        '''
+        looks up where ret will go
+        '''
+        esp = self.get_reg(env,"ESP")
+        return self.panda.virtual_memory_read(env,esp,8,fmt='int')
+
+    def get_arg(self, env, num, kernel=False):
+        '''
+        Gets arguments based on the number. Supports kernel and usermode.
+        '''
+        if kernel:
+            arglist = ["RDI", "RSI", "RDX", "R10", "R8", "R9"]
+            if num >= len(arglist):
+                raise ValueError(f"We only support the first {len(arglist)} arguments.")
+            return self.get_reg(env, arglist[num])
+        else:
+            esp = self.get_reg(env, "RSP")
+            return self.panda.virtual_memory_read(env, esp+(8*(num+1)),8,fmt='int')
+        
