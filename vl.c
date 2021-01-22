@@ -5059,7 +5059,7 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
     if (pmm == PANDA_INIT) return 0;
 
 PANDA_MAIN_RUN:
-    
+
 
     panda_in_main_loop = 1;
     main_loop();
@@ -5094,7 +5094,11 @@ PANDA_MAIN_FINISH:
     }
 #endif
 
-    free((void*)qemu_file);
+    if (qemu_file != NULL){
+        free((void*)qemu_file);
+        qemu_file = NULL;
+    }
+
 
     return 0;
 }
