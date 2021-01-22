@@ -2389,29 +2389,6 @@ class Panda():
         self.libpanda.cpu_breakpoint_remove(cpu, pc, BP_GDB)
 
     ############# HOOKING MIXINS ###############
-    
-    def lookup_hook(self, name):
-        return self.named_hooks[name]
-    
-    def enable_hook(self,hook_name):
-        '''
-        Set hook status to active.
-        '''
-        if hook_name in self.named_hooks:
-            hook = self.named_hooks[hook_name]
-            hook.enabled = True
-        else:
-            raise ValueError(f"Unknown hook {hook_name}")
-
-    def disable_hook(self,hook_name):
-        '''
-        Set hook status to inactive.
-        '''
-        if hook_name in self.named_hooks:
-            hook = self.named_hooks[hook_name]
-            hook.enabled = False
-        else:
-            raise ValueError(f"Unknown hook {hook_name}")
 
     def hook(self, addr, length=0, enabled=True, kernel=True, libraryname=None, procname=None, name=None, asid=None, cb_type="before_block_exec", address_library_offset=False):
         '''
