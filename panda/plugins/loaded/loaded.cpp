@@ -168,10 +168,10 @@ void osi_foo(CPUState *cpu, TranslationBlock *tb) {
 bool init_plugin(void *self) {
     //panda_arg_list *args = panda_get_args("loaded");
 
-    panda_require("osi_linux");
-    assert(init_osi_linux_api());
     panda_require("osi");
     assert(init_osi_api());
+    panda_require("osi_linux");
+    assert(init_osi_linux_api());
     panda_require("syscalls2");
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)

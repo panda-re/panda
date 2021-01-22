@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "AsidBlockCsvWriter.h"
+#include "metadata_writer.h"
 
 namespace coverage
 {
@@ -29,6 +30,7 @@ void AsidBlockCsvWriter::handle(AsidBlock record)
 
 void AsidBlockCsvWriter::write_header()
 {
+    write_metadata(os);
     os << "asid\n";
     os << "asid,in kernel,block address,block size\n";
 }

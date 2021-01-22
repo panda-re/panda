@@ -140,8 +140,23 @@ bool init_plugin(void *self)
     panda_arg_list *args = panda_get_args("ida_taint2");
     filename = panda_parse_string(args, "filename", "ida_taint2.csv");
 
-    // Open up a CSV file and write the header.
+    // Open up a CSV file and write the metadata and header.
+    // get build date in ISO 8601 format
+    struct tm build_tm;
+    memset(&build_tm, 0, sizeof(struct tm));
+    strptime(__DATE__, "%b %d %Y", &build_tm);
+    char build_date[16];
+    strftime(build_date, 16, "%Y-%m-%d", &build_tm);
+    
+    // need UTC execution time in ISO 8601 format
+    time_t s_since_epoch = time(NULL);
+    struct tm exec_tm;
+    gmtime_r(&s_since_epoch, &exec_tm);
+    char time_string[64];
+    strftime(time_string, 64, "%FT%TZ", &exec_tm);
     pidpclog = fopen(filename, "w");
+    fprintf(pidpclog, "PANDA Build Date,%s\n", build_date);
+    fprintf(pidpclog, "Execution Timestamp,%s\n", time_string);
     fprintf(pidpclog, "process name,pid,pc,label\n");
 
     return true;
