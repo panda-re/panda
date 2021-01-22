@@ -20,10 +20,10 @@ PANDAENDCOMMENT */
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
-int before_block_exec(CPUState *env, TranslationBlock *tb);
+void before_block_exec(CPUState *env, TranslationBlock *tb);
 
-int before_block_exec(CPUState *env, TranslationBlock *tb) {
-    return 0;
+void before_block_exec(CPUState *env, TranslationBlock *tb) {
+    return;
 }
 
 bool init_plugin(void *self) {

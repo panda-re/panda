@@ -26,13 +26,30 @@ the [GPLv2 license](LICENSE).
 
 ## Building
 ### Quickstart: Docker
-The latest version of PANDA's master branch is automatically built as a docker image
-from Ubuntu Focal (20.04). This image is available [here](https://hub.docker.com/r/pandare/panda).
+The latest version of PANDA's `master` branch is automatically built as a two docker images based on Ubuntu 20.04 and published to Docker Hub.
+Most users will want to use the `panda` container which has PANDA and PyPANDA installed along with their runtime dependencies, but no build artifacts or source code to reduce the size of the container.
+Developers interested in using Docker should use the `pandadev` container which has PANDA and PyPANDA installed, build and runtime dependencies for both, all build artifacts and source code and the contents of this repository in the `/panda` directory.
 
-To pull the latest docker container and run PANDA
+To use the `panda` container you can pull it from Docker Hub:
 ```
 $ docker pull pandare/panda
-$ docker run --rm pandare/panda -- panda-system-i386 --help
+$ docker run --rm pandare/panda panda-system-i386 --help
+```
+Or build from this repository:
+```
+$ DOCKER_BUILDKIT=1 docker build --target=panda -t panda 
+$ docker run --rm panda panda-system-i386 --help
+```
+
+To use the `pandadev` container, you can pull it from Docker Hub:
+```
+$ docker pull pandare/pandadev
+$ docker run --rm pandare/pandadev /panda/build/panda-system-i386 --help
+```
+Or build from this repository:
+```
+$ DOCKER_BUILDKIT=1 docker build --target=developer -t pandadev .
+$ docker run --rm pandadev panda-system-i386 --help
 ```
 
 ### Quickstart: Python pip
