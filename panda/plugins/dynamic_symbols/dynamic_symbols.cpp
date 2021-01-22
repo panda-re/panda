@@ -72,7 +72,7 @@ unordered_map<target_ulong, unordered_map<string, vector<struct symbol>>> symbol
 vector<struct hook_symbol_resolve> hooks;
 
 void hook_symbol_resolution(struct hook_symbol_resolve *h){
-    printf("adding hook %s %llx\n", h->name, (long long unsigned int) h->cb);
+    //printf("adding hook %s %llx\n", h->name, (long long unsigned int) h->cb);
     hooks.push_back(*h);
 }
 
@@ -110,7 +110,7 @@ struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_nam
                 string val_str (val.name);
                 // symbol resolves on exact equality
                 if (val_str.compare(symbol) == 0){
-                    printf("result: %s %s\n", section.first.c_str(), val.name);
+                    //printf("result: %s %s\n", section.first.c_str(), val.name);
                     strncpy((char*) &val.section, section.first.c_str(), MAX_PATH_LEN);
                     return val;
                 }
@@ -348,7 +348,7 @@ bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
 }
 
 void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
-    printf("got to program start 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count());
+    //printf("got to program start 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count());
     update_symbols_in_space(env);
     h->enabled = false;
 }
