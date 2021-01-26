@@ -29,6 +29,8 @@
 #include "hw/virtio/virtio-bus.h"
 #include "hw/virtio/virtio-access.h"
 
+#include "panda/rr/rr_log_all.h"
+
 static void virtio_blk_init_request(VirtIOBlock *s, VirtQueue *vq,
                                     VirtIOBlockReq *req)
 {
@@ -365,12 +367,36 @@ static inline void submit_requests(BlockBackend *blk, MultiReqBuffer *mrb,
                               num_reqs - 1);
     }
 
+    // AF: virtio HD record
+    // I think qiov->size == qiov->iov->iov_len, but maybe not if multiple get  merged? - Using iov_len
     if (is_write) {
+        // FINAL VIRTIO WRITE
         blk_aio_pwritev(blk, sector_num << BDRV_SECTOR_BITS, qiov, 0,
                         virtio_blk_rw_complete, mrb->reqs[start]);
+
+        if (rr_in_record()) {
+          rr_record_hd_transfer(
+             /*    call_site=*/RR_CALLSITE_VIRTIO_BLK_DATA_WRITE,
+             /*transfer_type=*/HD_TRANSFER_IOB_TO_HD,
+            /*      src_addr=*/(uintptr_t)qiov->iov->iov_base,
+            /*     dest_addr=*/sector_num*512,
+            /*     num_bytes=*/qiov->iov->iov_len //* BDRV_SECTOR_SIZE ??
+            );
+          }
     } else {
+        // FINAL VIRTIO READ
         blk_aio_preadv(blk, sector_num << BDRV_SECTOR_BITS, qiov, 0,
                        virtio_blk_rw_complete, mrb->reqs[start]);
+
+        if (rr_in_record()) {
+          rr_record_hd_transfer(
+             /*    call_site=*/RR_CALLSITE_VIRTIO_BLK_DATA_READ,
+             /*transfer_type=*/HD_TRANSFER_HD_TO_IOB,
+            /*      src_addr=*/sector_num*512,
+            /*     dest_addr=*/(uintptr_t)qiov->iov->iov_base,
+            /*     num_bytes=*/qiov->iov->iov_len
+            );
+        }
     }
 }
 

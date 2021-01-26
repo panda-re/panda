@@ -183,6 +183,8 @@ static inline const char* get_log_entry_kind_string(RR_log_entry_kind kind)
         ACTION(RR_CALLSITE_IDE_DATA_WRITEL),                                   \
         ACTION(RR_CALLSITE_IDE_DATA_READW),                                    \
         ACTION(RR_CALLSITE_IDE_DATA_READL),                                    \
+        ACTION(RR_CALLSITE_VIRTIO_BLK_DATA_WRITE),                             \
+        ACTION(RR_CALLSITE_VIRTIO_BLK_DATA_READ),                              \
         ACTION(RR_CALLSITE_E1000_RECEIVE_1),                                   \
         ACTION(RR_CALLSITE_E1000_RECEIVE_2),                                   \
         ACTION(RR_CALLSITE_E1000_RECEIVE_3),                                   \
@@ -425,7 +427,9 @@ typedef enum {
     HD_TRANSFER_PORT_TO_IOB,
     HD_TRANSFER_IOB_TO_PORT,
     HD_TRANSFER_HD_TO_RAM,
-    HD_TRANSFER_RAM_TO_HD
+    HD_TRANSFER_RAM_TO_HD,
+    HD_TRANSFER_IOV_TO_VIRTIO,
+    HD_TRANSFER_VIRTIO_TO_IOV
 } Hd_transfer_type;
 
 /*
