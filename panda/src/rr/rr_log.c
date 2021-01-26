@@ -58,6 +58,9 @@
 #include "exec/gdbstub.h"
 #include "sysemu/cpus.h"
 
+//panda_api.h
+void panda_finish(void);
+
 /******************************************************************************************/
 /* GLOBALS */
 /******************************************************************************************/
@@ -247,6 +250,7 @@ static inline void rr_assert_fail(const char* exp, const char* file, int line,
     // bdg gosh I hope this is OK here. I think it should be as long as we only
     // ever call
     // bdg rr_assert from the CPU loop
+    panda_finish();
     rr_quit_cpu_loop();
     /* NOT REACHED */
 }
@@ -1658,6 +1662,7 @@ void rr_do_end_replay(int is_error)
     // mz XXX something more graceful?
     panda_cleanup();
     if (is_error) {
+        panda_finish();
         abort();
     } else {
       if (panda_get_library_mode()) {
@@ -1700,6 +1705,7 @@ static uint32_t rr_checksum_memory_internal(void) {
     rcu_read_unlock();
     if (!ram) {
         printf("ERROR: could not find RAM start address!\n");
+        panda_finish();
         abort();
     }
     rcu_read_lock();
