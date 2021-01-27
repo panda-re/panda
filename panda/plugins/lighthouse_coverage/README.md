@@ -1,3 +1,6 @@
+Plugin: lighthouse\_coverage
+=======
+
 Summary
 -------
 
@@ -7,9 +10,9 @@ This PANDA plugin emits a file, `lighthouse.out`, for usage by the lighthouse co
 Arguments
 ---------
 you can restrict the output of this plugin to a particular process by specifying the process parameter, e.g.
--panda lighthouse_coverage:process=lsass.exe
+-panda lighthouse\_coverage:process=lsass.exe
 you can restrict the output of this plugin to a particular dll by specifying both process and dll parameters, e.g.
--panda lighthouse_coverage:process=lsass.exe,dll=ntdll.dll
+-panda lighthouse\_coverage:process=lsass.exe,dll=ntdll.dll
 
 Dependencies
 ------------

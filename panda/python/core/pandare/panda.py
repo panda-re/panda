@@ -518,6 +518,28 @@ class Panda():
         self.run()
         self._in_replay = False
 
+
+    def end_replay(self):
+        '''
+        Terminates a currently running replay
+
+            Returns:
+                None
+
+            Raises:
+                Exception: raises exception if no replay is active or termination failed.
+        '''
+
+        if self._in_replay is False:
+            raise Exception("Tried to terminate replay while not in replay mode!")
+
+        result = self.libpanda.panda_replay_end()
+
+        res_string_enum = ffi.string(ffi.cast("RRCTRL_ret",result))
+        if res_string_enum != "RRCTRL_OK":
+           raise Exception(f"ending record method failed with RTCTL_ret {res_string_enum} ({result})")
+
+
     def require(self, name):
         '''
         Load a C plugin with no arguments. Deprecated. Use load_plugin

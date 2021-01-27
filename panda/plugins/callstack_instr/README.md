@@ -1,4 +1,4 @@
-Plugin: callstack_instr
+Plugin: callstack\_instr
 ===========
 
 Summary
@@ -65,7 +65,7 @@ uint32_t get_functions(target_ulong *functions, uint32_t n, CPUState *env);
 void get_prog_point(CPUState *env, prog_point *p);
 ```
 
-There are also functions available for getting callstack information in [pandalog format](docs/pandalog.md):
+There are also functions available for getting callstack information in pandalog format:
 
 ```C
 // Create pandalog message for callstack info

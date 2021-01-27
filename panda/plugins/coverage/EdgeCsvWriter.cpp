@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "EdgeCsvWriter.h"
+#include "metadata_writer.h"
 
 namespace coverage
 {
@@ -39,6 +40,7 @@ void EdgeCsvWriter::handle_disable()
 
 void EdgeCsvWriter::write_header()
 {
+    write_metadata(os);
     os << "from pc,from size,to pc,to size\n";
 }
 

@@ -163,3 +163,6 @@ zImage*
 
 # Test FW
 panda/plugins/syscalls_logger/test/test_fw
+
+# Local files to be gitignored
+local

@@ -27,6 +27,7 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
     $(PLUGIN_OBJ_DIR)/BlockInstrumentationDelegate.o \
     $(PLUGIN_OBJ_DIR)/CoverageMonitorDelegate.o \
     $(PLUGIN_OBJ_DIR)/InstrumentationDelegate.o \
+    $(PLUGIN_OBJ_DIR)/metadata_writer.o \
     $(PLUGIN_OBJ_DIR)/ModeBuilder.o
 
 all: $(PLUGIN_OBJ_DIR)/coverage.py

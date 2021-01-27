@@ -1,7 +1,13 @@
 #!/bin/bash
-# Usage ./build.sh  [architectures] [Configure flags...]
+# Usage ./build.sh [--python]  [architectures] [Configure flags...]
 # example: ./build.sh i386-softmmu,arm-softmmu
+#          ./build.sh --python i386-softmmu,arm-softmmu
 #          ./build.sh small # small = i386-softmmu
+
+# Note the --python flag installs using `pip -e` which leaves files in a local
+# directory (panda/python/core) instead of installing to your system.
+# This allows you to edit those scripts, but means you can't delete the directory
+# and still use pypanda.
 
 # printf wrapper - messages sent to stderr
 msg() {
@@ -14,7 +20,16 @@ msg() {
 TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
 LLVM_CONFIG_BINARY="llvm-config-10"
 
-# If there are arguments, the first arg is target list or 'small'. subsequent args are passed to configure
+pypanda=""
+# Check if first argument is --python
+if [ $# -ge 1 ]; then
+    if [ "$1" = "--python" ]; then
+        pypanda="yes"
+        shift
+    fi
+fi
+
+# If there are more arguments, the first arg is target list or 'small'. subsequent args are passed to configure
 if [ $# -ge 1 ]; then if [ "$1" = "small" ]; then
         TARGET_LIST="i386-softmmu"
     else
@@ -110,5 +125,10 @@ msg "Configuring PANDA..."
 
 msg "Compiling PANDA..."
 make -j ${PANDA_NPROC}
+
+if [ -z "$pypanda" ]; then
+    msg "Installing PyPANDA (developer mode)..."
+    pip install -e ../panda/python/core
+fi
 
 # vim: set et ts=4 sts=4 sw=4 ai ft=sh :
