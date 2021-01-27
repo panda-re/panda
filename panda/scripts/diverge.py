@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 import IPython
 import argparse
 import operator
@@ -21,16 +21,17 @@ from tempdir import TempDir
 DEBUG_COUNTER_PERIOD = 1 << 17
 
 class ArchConfig(object):
-    def __init__(self, cpu_state_name, pc_name, reg_name):
+    def __init__(self, cpu_state_name, pc_name, reg_name, ram_base):
         self.cpu_state_name = cpu_state_name
         self.pc_name = pc_name
         self.reg_name = reg_name
+        self.ram_base = ram_base
 
 SUPPORTED_ARCHS = {
-    'i386': ArchConfig('CPUX86State', 'eip', 'regs'),
-    'x86_64': ArchConfig('CPUX86State', 'eip', 'regs'),
-    'arm': ArchConfig('CPUARMState', 'pc', 'regs'),
-    'ppc': ArchConfig('CPUPPCState', 'lr', 'gpr')
+    'i386':   ArchConfig('CPUX86State', 'eip', 'regs', 0x2000000 ),
+    'x86_64': ArchConfig('CPUX86State', 'eip', 'regs', 0x2000000 ),
+    'arm':    ArchConfig('CPUARMState', 'pc',  'regs', 0x40000000), # Valid for virt machine
+    'ppc':    ArchConfig('CPUPPCState', 'lr',  'gpr',  0x2000000 )  # XXX: probably invalid
 }
 
 def check_output(args, **kwargs):
@@ -65,6 +66,14 @@ def re_search_int(result_re, result):
     else:
         print("re_search_int failed. result:", result)
         raise RuntimeError("re_search_int")
+
+def re_search_str(result_re, result):
+    re_result = re.search(result_re, result)
+    if re_result:
+        return re_result.group(1)
+    else:
+        print("re_search_str failed. result:", result)
+        raise RuntimeError("re_search_str")
 
 class Watch(object):
     def render(self, procs): raise NotImplemented()
@@ -192,6 +201,11 @@ class RRInstance(object):
         result = self.gdb(*args)
         return re_search_int(result_re, result)
 
+    def gdb_str_re(self, result_re, *args):
+        result = self.gdb(*args)
+        print("GDB STR:", result)
+        return re_search_str(result_re, result)
+
     def breakpoint(self, break_arg):
         bp_num = self.gdb_int_re(r"Breakpoint ([0-9]+) at", "break", break_arg)
         self.breakpoints[break_arg] = bp_num
@@ -227,6 +241,9 @@ class RRInstance(object):
     def get_value(self, expr):
         return self.gdb_int_re(r"\$[0-9]+ = ([0-9]+)", "print/u", expr)
 
+    def get_str(self, expr):
+        return self.gdb_str_re(r"\$[0-9]+ = 0x[0-9a-f]+ \"(.+)\"", "print", expr)
+
     def instr_count(self):
         return self.get_value("cpus->tqh_first->rr_guest_instr_count")
 
@@ -253,15 +270,29 @@ class RRInstance(object):
 
     @cached_property
     def ram_ptr(self):
+        # Find HOST pointer to guest RAM (so we can read from a debugger)
+
+        ram_base = self.arch.ram_base
+        # Modifiy if necessary for your machine by connecting to qemu monitor
+        # for machine (-M) that you're using and run `info mtree` and find RAM start addr
+        # ram_base = ...
+
+        # ensure we're getting RAM
+        mr_name = self.get_str(
+            "memory_region_find(" +
+            "get_system_memory(), 0x%x, 1).mr->name" % ram_base)
+
+        assert("ram" in mr_name), "ERROR - ram_ptr points to non-ram region: %s. Reconfigure ram_ptr function" % mr_name
+
         return self.get_value(
             "memory_region_find(" +
-                "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
+            "get_system_memory(), 0x%x, 1).mr->ram_block.host" % ram_base)
 
     def crc32_ram(self, low, size):
         step = 1 << 31 if size > (1 << 31) else size
         crc32s = 0
         for start in range(low, low + size, step):
-            crc32s ^= self.get_value("crc32(0, {} + {}, {})".format(
+            crc32s ^= self.get_value("(unsigned long)crc32(0, {} + {}, {})".format(
                             hex(self.ram_ptr), hex(start), hex(step)))
         return crc32s
 
@@ -636,6 +667,7 @@ class Diverge(object):
                     num_to_watch_dict[self.both.same.watch(watch)] = watch
 
                 instr_counts = self.both.instr_count()
+                hit = []
                 while values_equal(instr_counts) \
                         and instr_counts[self.record] > 0 \
                         and instr_counts[self.replay] < self.instr_count_max \
@@ -668,6 +700,7 @@ class Diverge(object):
 
         self.both.gdb("set confirm off")
         self.both.gdb("set pagination off")
+        self.both.gdb("set disassembly-flavor intel")
 
         check_call(['tmux', 'select-layout', 'even-horizontal'])
 
@@ -678,7 +711,7 @@ class Diverge(object):
         try:
             self.both.breakpoint("debug_counter")
         except RuntimeError:
-            print("Must run diverge.py on a debug build of panda. Run ./configure ",)
+            print("Must run diverge.py on RR recordings taken with a debug build of panda. Rerun ./configure and then regenerate RR recordings of record and replay",)
             print("with --enable-debug for this to work.")
             cleanup_error()
 
@@ -794,9 +827,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="A script to automatically find replay divergences")
     parser.add_argument("record_rr",
-            help="Path to the rr directory for the recording replay")
+            help="Path to the rr directory for the rr recording of PANDA recording")
     parser.add_argument("replay_rr",
-            help="Path to the rr directory for the replay replay")
+            help="Path to the rr directory for the rr recording of PANDA replay")
     parser.add_argument("--rr", default=default_rr,
             help="A path to the rr binary (default={})".format(default_rr))
     parser.add_argument("--instr-bounds",
