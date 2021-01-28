@@ -258,6 +258,7 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     ''')
     ffi.cdef("void panda_setup_signal_handling(void (*f) (int,void*,void*));",override=True)
 
+    # MANUAL curated list of PPP headers
     define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs.h")
 
     define_clean_header(ffi, include_dir + "/callstack_instr.h")
@@ -265,6 +266,7 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     define_clean_header(ffi, include_dir + "/hooks2_ppp.h")
     define_clean_header(ffi, include_dir + "/proc_start_linux_ppp.h")
     define_clean_header(ffi, include_dir + "/forcedexec_ppp.h")
+    define_clean_header(ffi, include_dir + "/stringsearch_ppp.h")
     # END PPP headers
 
     define_clean_header(ffi, include_dir + "/breakpoints.h")
@@ -326,7 +328,7 @@ def main(install=False,recompile=True):
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/syscalls2", "syscalls2_info.h"), no_record=True) # Get syscall_info_t, syscall_meta_t, syscall_argtype_t
     copy_ppp_header("%s/%s" % (syscalls_gen_dir, "syscalls_ext_typedefs.h")) # Get a few arch-agnostic typedefs for PPP headers
 
-    #   other PPP headers: callstack_instr. TODO: more
+    #   other PPP headers: callstack_instr. TODO: manually currated list
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/callstack_instr", "callstack_instr.h"))
 
     # XXX why do we have to append this to pypanda headers?
@@ -336,6 +338,7 @@ def main(install=False,recompile=True):
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2_ppp.h"))
     # TODO: programtically copy anything that ends with _ppp.h
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/forcedexec",   "forcedexec_ppp.h"))
+    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/stringsearch", "stringsearch_ppp.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
     
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux_ppp.h"))
