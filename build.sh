@@ -24,6 +24,7 @@ pypanda=""
 # Check if first argument is --python
 if [ $# -ge 1 ]; then
     if [ "$1" = "--python" ]; then
+        echo "Installing PyPANDA"
         pypanda="yes"
         shift
     fi
@@ -38,6 +39,8 @@ if [ $# -ge 1 ]; then if [ "$1" = "small" ]; then
     echo "Building PANDA for target(s): $TARGET_LIST"
     shift
 fi
+
+echo "Build arguments: $@"
 
 # Prefer greadlink over readlink if present. Important for OSX (incompatible readlink).
 if type greadlink >/dev/null 2>&1; then
@@ -116,17 +119,19 @@ fi
 
 ## Configure/compile/test.
 msg "Configuring PANDA..."
+set -x
 "${PANDA_DIR_REL}/configure" \
     --target-list=$TARGET_LIST \
     --prefix=$prefix \
     $COMPILER_CONFIG \
     $LLVM_CONFIG \
     "$@"
+set +x
 
 msg "Compiling PANDA..."
 make -j ${PANDA_NPROC}
 
-if [ -z "$pypanda" ]; then
+if [ -n "$pypanda" ]; then
     msg "Installing PyPANDA (developer mode)..."
     pip install -e ../panda/python/core
 fi
