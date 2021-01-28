@@ -1735,13 +1735,14 @@ uint32_t rr_checksum_regs(void) {
     crc = crc32(crc, (unsigned char *)env->gpr, sizeof(env->gpr));
 #elif defined(TARGET_MIPS)
     crc = crc32(crc, (unsigned char*)env->active_tc.gpr,sizeof(env->active_tc.gpr));
-#else
-    crc = crc32(crc, (unsigned char *)env->regs, sizeof(env->regs));
-#endif
-#if defined(TARGET_I386)
-    crc = crc32(crc, (unsigned char *)&env->eip, sizeof(env->eip));
+#elif defined(TARGET_I386)
+    crc = crc32(crc, (unsigned char *)&env->eip, sizeof(env->eip)); // XXX: why just PC not all regs?
 #elif defined(TARGET_ARM)
-    crc = crc32(crc, (unsigned char *)&env->pc, sizeof(env->pc));
+    crc = crc32(crc, (unsigned char *)&env->regs, sizeof(env->regs)); // Could also support xregs?
+#else
+#error "Unsupported architecture - need rr_checksum_regs implementation"
+    // Architecture neutral - probably wrong
+    crc = crc32(crc, (unsigned char *)env->regs, sizeof(env->regs));
 #endif
     return crc;
 }
