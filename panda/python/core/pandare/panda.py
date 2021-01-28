@@ -2354,7 +2354,7 @@ class Panda():
     ### PPP-style callbacks ###
     ###########################
 
-    def ppp(self, plugin_name, attr, name=None):
+    def ppp(self, plugin_name, attr, name=None, autoload=True):
         '''
         Decorator for plugin-to-plugin interface. Note this isn't in decorators.py
         becuase it uses the panda object.
@@ -2365,7 +2365,7 @@ class Panda():
             ...
         '''
 
-        if plugin_name not in self.plugins: # Could automatically load it?
+        if plugin_name not in self.plugins and autoload: # Could automatically load it?
             print(f"PPP automatically loaded plugin {plugin_name}")
 
         if not hasattr(self, "ppp_registered_cbs"):
