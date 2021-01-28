@@ -45,7 +45,7 @@ Signature:
 ```C
 typedef void (* on_ssm_t)(CPUState *env, target_ulong pc, target_ulong addr,
                 uint8_t *matched_string, uint32_t matched_string_length,
-                bool is_write)
+                bool is_write, bool in_memory)
 ```
 
 Description: Called whenever a string match is observed. The callback is passed the CPU state, the value of the program counter when the match occurred, the actual string data that was matched (in case multiple search strings were used), the number of bytes in the matched string, and a flag indicating whether the match was seen during a read or a write.
