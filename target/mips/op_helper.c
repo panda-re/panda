@@ -577,7 +577,8 @@ static inline void mips_vpe_sleep(MIPSCPU *cpu)
 
     /* The VPE was shut off, really go to bed.
        Reset any old _WAKE requests.  */
-    cs->halted = 1;
+    printf("XXX halted in vpe_sleep helper\n");
+    // cs->halted = 1; // XXX alyssa XXX fixme
     cpu_reset_interrupt(cs, CPU_INTERRUPT_WAKE);
 }
 
@@ -625,10 +626,9 @@ static CPUMIPSState *mips_cpu_map_tc(CPUMIPSState *env, int *tc)
         *tc = env->current_tc;
         return env;
     }
-
     cs = CPU(mips_env_get_cpu(env));
-    vpe_idx = tc_idx / cs->nr_threads;
-    *tc = tc_idx % cs->nr_threads;
+    vpe_idx = tc_idx % cs->nr_threads;
+    *tc = tc_idx / cs->nr_threads;
     other_cs = qemu_get_cpu(vpe_idx);
     if (other_cs == NULL) {
         return env;
@@ -1362,6 +1362,7 @@ void helper_mtc0_vpecontrol(CPUMIPSState *env, target_ulong arg1)
 
     // TODO: Enable/disable TCs.
 
+    printf("vpecontrol set from %04x to %04x\n", env->CP0_VPEControl, newval);
     env->CP0_VPEControl = newval;
 }
 
@@ -2261,6 +2262,7 @@ void helper_mttgpr(CPUMIPSState *env, target_ulong arg1, uint32_t sel)
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
+    printf("alyssa mttgpr %d on tc %d\n", sel, other_tc);
     if (other_tc == other->current_tc)
         other->active_tc.gpr[sel] = arg1;
     else
@@ -2874,6 +2876,7 @@ void helper_wait(CPUMIPSState *env)
 {
     CPUState *cs = CPU(mips_env_get_cpu(env));
 
+    printf("XXX halted in wait helper\n");
     cs->halted = 1;
     cpu_reset_interrupt(cs, CPU_INTERRUPT_WAKE);
     /* Last instruction in the block, PC was updated before

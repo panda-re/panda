@@ -311,12 +311,23 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
            PRIx64 ") at address 0x%" PRIx64 "\n", name, size, address);
     memory_region_add_subregion(sysmem, address, ram);
 
+    // alyssa hack lol
+    if (address == 0x2000000 || address == 0x0) {
+      printf("add hack\n");
+      MemoryRegion *newram;
+      newram =  g_new(MemoryRegion, 1);
+      memory_region_init_alias(newram, NULL, name, ram, 0, size);
+      //vmstate_register_ram(newram, NULL);
+      memory_region_add_subregion(sysmem, 0x90000000 + address, newram);
+    }
+
     if (qdict_haskey(mapping, "file"))
     {
         int file;
         const char * filename;
         int dirname_len = get_dirname_len(kernel_filename);
         ssize_t err;
+        uint64_t file_offset = 0;
 
         g_assert(qobject_type(qdict_get(mapping, "file")) == QTYPE_QSTRING);
         filename = qdict_get_str(mapping, "file");
@@ -339,8 +350,27 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
             data_size = get_file_size(filename);
         }
 
+        if (qdict_haskey(mapping, "file_offset")) {
+          off_t sbytes;
+          g_assert(qobject_type(qdict_get(mapping, "file_offset")) == QTYPE_QINT);
+          file_offset = qdict_get_int(mapping, "file_offset");
+          sbytes = lseek(file,file_offset,SEEK_SET);
+          g_assert(sbytes >= 0);
+          data_size -= sbytes;
+
+        }
+
+        if (qdict_haskey(mapping,"file_bytes")) {
+          ssize_t file_bytes;
+          g_assert(qobject_type(qdict_get(mapping, "file_bytes")) == QTYPE_QINT);
+          file_bytes = qdict_get_int(mapping, "file_bytes");
+          data_size = file_bytes;
+          printf("File bytes: 0x%lx\n",data_size);
+
+        }
+
         printf("Configurable: Inserting %"
-               PRIx64 " bytes of data in memory region %s\n", data_size, name);
+               PRIx64 " bytes of data from %" PRIx64 " in memory region %s\n", data_size, file_offset, name);
         //Size of data to put into a RAM region needs to fit in the RAM region
         g_assert(data_size <= size);
 
@@ -495,6 +525,10 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
     if (qdict_haskey(conf, "exception_base")) {
         mips_env->exception_base = qdict_get_int(conf, "exception_base");
     }
+
+    /* Init CPU internal devices */
+    cpu_mips_irq_init_cpu(cpuu);
+    cpu_mips_clock_init(cpuu);
 
 #elif defined(TARGET_PPC)
     if (!cpu_model) cpu_model = "e500v2_v30";

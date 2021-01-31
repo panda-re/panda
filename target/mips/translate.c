@@ -45,7 +45,7 @@
 extern bool panda_update_pc;
 #endif
 
-#define MIPS_DEBUG_DISAS 0
+#define MIPS_DEBUG_DISAS 1
 
 /* MIPS major opcodes */
 #define MASK_OP_MAJOR(op)  (op & (0x3F << 26))
@@ -365,6 +365,8 @@ enum {
     OPC_DMOD_G_2F   = 0x1d | OPC_SPECIAL2,
     OPC_MODU_G_2F   = 0x1e | OPC_SPECIAL2,
     OPC_DMODU_G_2F  = 0x1f | OPC_SPECIAL2,
+    /* interAptiv (CorExtend) */
+    OPC_SAVERESTORE = 0x1f | OPC_SPECIAL2,
     /* Misc */
     OPC_CLZ      = 0x20 | OPC_SPECIAL2,
     OPC_CLO      = 0x21 | OPC_SPECIAL2,
@@ -1858,6 +1860,7 @@ static inline void check_dspr2(DisasContext *ctx)
 static inline void check_insn(DisasContext *ctx, int flags)
 {
     if (unlikely(!(ctx->insn_flags & flags))) {
+        printf("check_insn fail\n");
         generate_exception_end(ctx, EXCP_RI);
     }
 }
@@ -7994,6 +7997,9 @@ static void gen_mttr(CPUMIPSState *env, DisasContext *ctx, int rd, int rt,
             case 2:
                 gen_helper_mttc0_vpeconf0(cpu_env, t0);
                 break;
+            case 4:
+                printf("unimplemented: mttc0_yqmask\n");
+                break;
             default:
                 goto die;
                 break;
@@ -11606,6 +11612,7 @@ static void decode_i64_mips16 (DisasContext *ctx,
 }
 #endif
 
+static void gen_sync(int stype); // alyssa added forward ref
 static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
 {
     int extend = cpu_lduw_code(env, ctx->pc + 2);
@@ -11618,6 +11625,11 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
     funct = (ctx->opcode >> 8) & 0x7;
     rx = xlat((ctx->opcode >> 8) & 0x7);
     ry = xlat((ctx->opcode >> 5) & 0x7);
+
+    int sel = (ctx->opcode >> 2) & 0x7;
+    int sel2 = (ctx->opcode >> 5) & 0x7;
+    //printf("EXTEND %04x %x %x/%x\n", ctx->opcode, op, sel, sel2);
+
     offset = imm = (int16_t) (((ctx->opcode >> 16) & 0x1f) << 11
                               | ((ctx->opcode >> 21) & 0x3f) << 5
                               | (ctx->opcode & 0x1f));
@@ -11644,6 +11656,194 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
         /* No delay slot, so just process as a normal instruction */
         break;
     case M16_OPC_SHIFT:
+        /* MIPS16e2 special cases first */
+        switch (sel) {
+        case 0:
+            /* handled below */
+            break;
+        case 1:
+            switch (ctx->opcode & 0x3) {
+            case 0x0:
+                printf("INS is untested\n"); // FIXME
+                {
+                uint32_t lsb = (ctx->opcode >> 22) & 0x1f;
+                uint32_t msb = (ctx->opcode >> 16) & 0x1f;
+                if (lsb > msb) {
+                    generate_exception_end(ctx, EXCP_RI);
+                    break;
+                }
+                // set size bits
+                uint32_t srcmask = (((uint64_t)1) << (msb - lsb + 1)) - 1;
+                // shift by lsb, invert
+                uint32_t dstmask = ~(srcmask << lsb);
+                if ((ctx->opcode >> 21) & 1) {
+                    // insert bit field extended
+                    TCGv_i32 t1 = tcg_temp_new_i32();
+                    tcg_gen_andi_i32(t1, cpu_gpr[ry], srcmask);
+                    tcg_gen_shli_tl(t1, t1, lsb);
+                    tcg_gen_andi_i32(cpu_gpr[ry], cpu_gpr[ry], dstmask);
+                    tcg_gen_or_tl(cpu_gpr[ry], cpu_gpr[ry], t1);
+                    tcg_temp_free_i32(t1);
+                    break;
+                } else {
+                    // insert bit field 0 extended
+                    if (funct != 0) {
+                        generate_exception_end(ctx, EXCP_RI);
+                        break;
+                    }
+                    tcg_gen_andi_i32(cpu_gpr[ry], cpu_gpr[ry], dstmask);
+                    break;
+                }
+                }
+                break;
+            case 2:
+                // MOVZ [rb]
+                printf("MOVZ is untested\n"); // FIXME
+                if ((ctx->opcode >> 21) & 1) {
+                int rb = xlat((ctx->opcode >> 16) & 0x7);
+                TCGv t0 = tcg_const_tl(0);
+                // cond, ret, cmp1, cmp2, value1, value2
+                tcg_gen_movcond_tl(TCG_COND_EQ, cpu_gpr[rx], cpu_gpr[ry], t0, cpu_gpr[rx], cpu_gpr[rb]);
+                tcg_temp_free(t0);
+                } else {
+                // MOVZ [zero]
+                printf("MOVZ is untested\n"); // FIXME
+                TCGv t0 = tcg_const_tl(0);
+                // cond, ret, cmp1, cmp2, value1, value2
+                tcg_gen_movcond_tl(TCG_COND_EQ, cpu_gpr[rx], cpu_gpr[ry], t0, cpu_gpr[rx], t0);
+                tcg_temp_free(t0);
+                }
+                break;
+            default:
+                printf("SHIFT 1/%d: unimplemented\n", ctx->opcode & 0x3);
+                generate_exception_end(ctx, EXCP_RI);
+                break;
+            }
+            break;
+        case 2:
+            switch (ctx->opcode & 0x3) {
+            case 0x0:
+                if (!((ctx->opcode >> 21) & 1)) {
+                    generate_exception_end(ctx, EXCP_RI);
+                    break;
+                }
+                {
+                printf("EXT is untested\n"); // FIXME
+                uint32_t lsb = (ctx->opcode >> 22) & 0x1f;
+                uint32_t msbd = (ctx->opcode >> 16) & 0x1f;
+                if (lsb + msbd > 31) {
+                    generate_exception_end(ctx, EXCP_RI);
+                    break;
+                }
+                // set size bits
+                uint32_t srcmask = (((uint64_t)1) << (msbd + 1)) - 1;
+                // shift by lsb
+                uint32_t dstmask = srcmask << lsb;
+                tcg_gen_andi_i32(cpu_gpr[ry], cpu_gpr[rx], dstmask);
+                tcg_gen_shri_tl(cpu_gpr[ry], cpu_gpr[ry], lsb);
+                }
+                break;
+            case 2:
+                // MOVN [rb]
+                printf("MOVN is untested\n"); // FIXME
+                if ((ctx->opcode >> 21) & 1) {
+                int rb = xlat((ctx->opcode >> 16) & 0x7);
+                TCGv t0 = tcg_const_tl(0);
+                // cond, ret, cmp1, cmp2, value1, value2
+                tcg_gen_movcond_tl(TCG_COND_NE, cpu_gpr[rx], cpu_gpr[ry], t0, cpu_gpr[rx], cpu_gpr[rb]);
+                tcg_temp_free(t0);
+                } else {
+                // MOVN [zero]
+                printf("MOVN is untested\n"); // FIXME
+                TCGv t0 = tcg_const_tl(0);
+                // cond, ret, cmp1, cmp2, value1, value2
+                tcg_gen_movcond_tl(TCG_COND_NE, cpu_gpr[rx], cpu_gpr[ry], t0, cpu_gpr[rx], t0);
+                tcg_temp_free(t0);
+                }
+                break;
+            default:
+                printf("SHIFT 2/%d: unimplemented\n", ctx->opcode & 0x3);
+                generate_exception_end(ctx, EXCP_RI);
+                break;
+            }
+            break;
+        case 3:
+            switch (ctx->opcode & 0x3) {
+            case 0:
+                gen_rdhwr(ctx, ry, (ctx->opcode >> 16) & 0x1f, 0);
+                break;
+            default:
+                printf("SHIFT 3/%d: unimplemented\n", ctx->opcode & 0x3);
+                generate_exception_end(ctx, EXCP_RI);
+                break;
+            }
+            break;
+        case 4:
+            switch (ctx->opcode & 0x3) {
+            case 0:
+                // EHB (barrier)
+                break;
+            default:
+                printf("SHIFT 4/%d: unimplemented\n", ctx->opcode & 0x3);
+                generate_exception_end(ctx, EXCP_RI);
+                break;
+            }
+            break;
+        case 5:
+            switch (ctx->opcode & 0x3) {
+            case 0:
+                if ((ctx->opcode >> 16) & 0x3f) {
+                    printf("SYNC: bad bits\n");
+                    generate_exception_end(ctx, EXCP_RI);
+                    break;
+                }
+                // SYNC (barrier)
+                gen_sync((ctx->opcode >> 22) & 0x1f);
+                break;
+            case 2:
+                // MOVTZ
+                printf("MOVTZ is untested\n"); // FIXME
+                {
+                int rb = xlat((ctx->opcode >> 16) & 0x7);
+                TCGv t0 = tcg_const_tl(0);
+                // cond, ret, cmp1, cmp2, value1, value2
+                tcg_gen_movcond_tl(TCG_COND_EQ, cpu_gpr[rx], cpu_gpr[24], t0, cpu_gpr[rx], cpu_gpr[rb]);
+                tcg_temp_free(t0);
+                }
+                break;
+            default:
+                printf("SHIFT 5/%d: unimplemented\n", ctx->opcode & 0x3);
+                generate_exception_end(ctx, EXCP_RI);
+                break;
+            }
+            break;
+        case 6:
+            switch (ctx->opcode & 0x3) {
+            case 2:
+                // MOVTN
+                printf("MOVTN is untested\n"); // FIXME
+                {
+                int rb = xlat((ctx->opcode >> 16) & 0x7);
+                TCGv t0 = tcg_const_tl(0);
+                // cond, ret, cmp1, cmp2, value1, value2
+                tcg_gen_movcond_tl(TCG_COND_NE, cpu_gpr[rx], cpu_gpr[24], t0, cpu_gpr[rx], cpu_gpr[rb]);
+                tcg_temp_free(t0);
+                }
+                break;
+            default:
+                printf("SHIFT 6/%d: unimplemented\n", ctx->opcode & 0x3);
+                generate_exception_end(ctx, EXCP_RI);
+                break;
+            }
+            break;
+        default:
+            printf("SHIFT %d(/%d): unimplemented\n", sel, ctx->opcode & 0x3);
+            generate_exception_end(ctx, EXCP_RI);
+            break;
+        }
+        if (sel != 0)
+            break;
+
         switch (ctx->opcode & 0x3) {
         case 0x0:
             gen_shift_imm(ctx, OPC_SLL, rx, ry, sa);
@@ -11732,13 +11932,78 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 }
             }
             break;
+        case I8_MOVR32:
+            // MIPS16e2
+            {
+                int cp = (ctx->opcode >> 24) & 0x7;
+                int sel2 = (ctx->opcode >> 21) & 0x7;
+                int clrbit = (ctx->opcode >> 16) & 0x1f;
+                int lowbits = (ctx->opcode >> 0) & 0x1f;
+                //printf("I8_MOVR32 EXTEND: cp %x, sel %x, clrbit %x, reg %x, %x\n", cp, sel2, clrbit, ry, lowbits);
+                if (cp == 0 && clrbit == 0x0) {
+                    // MFC0
+                    check_cp0_enabled(ctx);
+                    if (ry == 0) {
+                        /* Treat as NOP. */
+                        break;
+                    }
+                    gen_mfc0(ctx, cpu_gpr[ry], lowbits, sel2);
+                    break;
+                }
+                if (cp == 0 && clrbit == 0x1) {
+                    // MTC0
+                    check_cp0_enabled(ctx);
+                    TCGv t0 = tcg_temp_new();
+
+                    gen_load_gpr(t0, ry);
+                    gen_mtc0(ctx, t0, lowbits, sel2);
+                    tcg_temp_free(t0);
+                    break;
+                }
+            }
+            printf("I8_MOVR32: unimplemented\n");
+            generate_exception_end(ctx, EXCP_RI);
+            break;
         default:
+            printf("I8: unimplemented %x\n", funct);
             generate_exception_end(ctx, EXCP_RI);
             break;
         }
         break;
     case M16_OPC_LI:
-        tcg_gen_movi_tl(cpu_gpr[rx], (uint16_t) imm);
+        {
+            switch (sel2) {
+            case 0:
+                // LI
+                //printf("LI r%d, %x\n", rx, (uint16_t)imm);
+                tcg_gen_movi_tl(cpu_gpr[rx], (uint16_t) imm);
+                break;
+            case 1:
+                // LUI
+                //printf("LUI r%d, %x\n", rx, (uint16_t)imm);
+                tcg_gen_movi_tl(cpu_gpr[rx], (uint32_t)((uint16_t)imm) << 16);
+                break;
+            case 2:
+                // ORI
+                //printf("ORI r%d, %x\n", rx, (uint16_t)imm);
+                tcg_gen_ori_tl(cpu_gpr[rx], cpu_gpr[rx], (uint16_t) imm);
+                break;
+            case 3:
+                // ANDI
+                //printf("ANDI r%d, %x\n", rx, (uint16_t)imm);
+                tcg_gen_andi_tl(cpu_gpr[rx], cpu_gpr[rx], (uint16_t) imm);
+                break;
+            case 4:
+                // XORI
+                //printf("XORI r%d, %x\n", rx, (uint16_t)imm);
+                tcg_gen_xori_tl(cpu_gpr[rx], cpu_gpr[rx], (uint16_t) imm);
+                break;
+            default:
+                printf("LI: unimplemented %x\n", sel2);
+                generate_exception_end(ctx, EXCP_RI);
+                break;
+            }
+        }
         break;
     case M16_OPC_CMPI:
         tcg_gen_xori_tl(cpu_gpr[24], cpu_gpr[rx], (uint16_t) imm);
@@ -11757,7 +12022,29 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
         gen_ld(ctx, OPC_LH, ry, rx, offset);
         break;
     case M16_OPC_LWSP:
-        gen_ld(ctx, OPC_LW, rx, 29, offset);
+        switch (sel2) {
+        case 0:
+            gen_ld(ctx, OPC_LW, rx, 29, offset);
+            break;
+        case 6:
+            // see similar SC, below
+            {
+            int rb = xlat((ctx->opcode >> 16) & 0x7);
+            int32_t offset = (((ctx->opcode >> 21) & 0xf) << 5
+                              | (ctx->opcode & 0x1f));
+            // FIXME: sign extend ok?
+            if (offset & 0x100)
+                    offset = offset - 0x200;
+            printf("LL: untested: rx%d, rb%d, %d\n", rx, rb, offset); // FIXME
+            // FIXME: LL
+            gen_ld(ctx, OPC_LL, rx, rb, offset);
+            }
+            break;
+        default:
+            printf("LWSP: unimplemented %x\n", sel2);
+            generate_exception_end(ctx, EXCP_RI);
+            break;
+        }
         break;
     case M16_OPC_LW:
         gen_ld(ctx, OPC_LW, ry, rx, offset);
@@ -11785,7 +12072,58 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
         gen_st(ctx, OPC_SH, ry, rx, offset);
         break;
     case M16_OPC_SWSP:
-        gen_st(ctx, OPC_SW, rx, 29, offset);
+        switch (sel2) {
+        case 0:
+            gen_st(ctx, OPC_SW, rx, 29, offset);
+            break;
+        case 5:
+            // helper_cache should just take the darn op directly, for now: a hack
+            // TODO: fix that, once qemu upstream is merged in
+            // TODO: also fix the addr calculation in helper_cache
+            {
+                int op = (ctx->opcode >> 16) & 0x1f;
+                printf("CACHE: op %d\n", op);
+
+                uint32_t offset = (ctx->opcode & 0x1f) | (((ctx->opcode >> 21) & 0xf) << 5);
+                if (offset & 0x100)
+                    offset = offset - 0x200;
+                TCGv t1 = tcg_temp_new();
+                gen_base_offset_addr(ctx, t1, rx, offset);
+
+                if (op == 0b001) {
+                    /* Index Load Tag */
+                    TCGv_i32 t0 = tcg_const_i32(5);
+                    gen_helper_cache(cpu_env, t1, t0);
+                    tcg_temp_free_i32(t0);
+                } else if (op == 0b010) {
+                    /* Index Store Tag */
+                    TCGv_i32 t0 = tcg_const_i32(9);
+                    gen_helper_cache(cpu_env, t1, t0);
+                    tcg_temp_free_i32(t0);
+                } else {
+                    // ignore the rest for now
+                }
+
+                tcg_temp_free(t1);
+            }
+            break;
+        case 6:
+            {
+            int rb = xlat((ctx->opcode >> 16) & 0x7);
+            int32_t offset = (((ctx->opcode >> 21) & 0xf) << 5
+                              | (ctx->opcode & 0x1f));
+            // FIXME: sign extend ok?
+            if (offset & 0x100)
+                    offset = offset - 0x200;
+            printf("SC: untested: rx%d, rb%d, %d\n", rx, rb, offset); // FIXME
+            gen_st_cond(ctx, OPC_SC, rx, rb, offset);
+            }
+            break;
+        default:
+            printf("SWSP: unimplemented %x\n", sel2);
+            generate_exception_end(ctx, EXCP_RI);
+            break;
+        }
         break;
     case M16_OPC_SW:
         gen_st(ctx, OPC_SW, ry, rx, offset);
@@ -17618,6 +17956,7 @@ static void decode_opc_special2_legacy(CPUMIPSState *env, DisasContext *ctx)
     case OPC_MUL:
         gen_arith(ctx, op1, rd, rs, rt);
         break;
+#if 0
     case OPC_DIV_G_2F:
     case OPC_DIVU_G_2F:
     case OPC_MULT_G_2F:
@@ -17627,6 +17966,33 @@ static void decode_opc_special2_legacy(CPUMIPSState *env, DisasContext *ctx)
         check_insn(ctx, INSN_LOONGSON2F);
         gen_loongson_integer(ctx, op1, rd, rs, rt);
         break;
+#else
+    // alyssa
+    case OPC_SAVERESTORE:
+        {
+            /* interAptiv extension */
+            /* different encoding of [mips16] SVRS */
+            printf("SAVERESTORE is untested\n"); // FIXME
+            int xsregs = (ctx->opcode >> 23) & 0x7;
+            int aregs = (ctx->opcode >> 15) & 0xf;
+            int do_ra = (ctx->opcode >> 12) & 0x1;
+            int do_s0 = (ctx->opcode >> 11) & 0x1;
+            int do_s1 = (ctx->opcode >> 10) & 0x1;
+            int framesize = (((ctx->opcode >> 19) & 0xf) << 4
+                           | ((ctx->opcode >> 6) & 0xf)) << 3;
+
+            if (ctx->opcode & (1 << 13)) {
+                gen_mips16_save(ctx, xsregs, aregs,
+                                do_ra, do_s0, do_s1,
+                                framesize);
+            } else {
+                gen_mips16_restore(ctx, xsregs, aregs,
+                                   do_ra, do_s0, do_s1,
+                                   framesize);
+            }
+        }
+        break;
+#endif
     case OPC_CLO:
     case OPC_CLZ:
         check_insn(ctx, ISA_MIPS32);
@@ -20266,7 +20632,7 @@ void gen_intermediate_code(CPUMIPSState *env, struct TranslationBlock *tb)
         tcg_gen_insn_start(ctx.pc, ctx.hflags & MIPS_HFLAG_BMASK, ctx.btarget);
         num_insns++;
 
-        if (unlikely(cpu_breakpoint_test(cs, ctx.pc, BP_ANY))|| unlikely(cpu_breakpoint_test(cs, rr_updated_instr_count, BP_ANY))) {
+        if (unlikely(cpu_breakpoint_test(cs, ctx.pc, BP_ANY))|| unlikely(cpu_rr_breakpoint_test(cs, rr_updated_instr_count, BP_ANY))) {
             save_cpu_state(&ctx, 1);
             ctx.bstate = BS_BRANCH;
             gen_helper_raise_exception_debug(cpu_env);
@@ -20736,12 +21102,15 @@ void cpu_state_reset(CPUMIPSState *env)
             env->active_tc.CP0_TCStatus = (1 << CP0TCSt_A);
             env->tcs[0].CP0_TCStatus = (1 << CP0TCSt_A);
         }
+
+        printf("XXXDEBUG halted is now %d\n", cs->halted);
     }
 
     /*
      * Configure default legacy segmentation control. We use this regardless of
      * whether segmentation control is presented to the guest.
      */
+#if 0
     /* KSeg3 (seg0 0xE0000000..0xFFFFFFFF) */
     env->CP0_SegCtl0 =   (CP0SC_AM_MK << CP0SC_AM);
     /* KSeg2 (seg1 0xC0000000..0xDFFFFFFF) */
@@ -20760,6 +21129,24 @@ void cpu_state_reset(CPUMIPSState *env)
                          (1 << CP0SC_EU) | (2 << CP0SC_C)) << 16;
     /* XKPhys (note, SegCtl2.XR = 0, so XAM won't be used) */
     env->CP0_SegCtl1 |= (CP0SC_AM_UK << CP0SC1_XAM);
+#else
+    // alyssa says: EVA is the future
+    // this is Table 3.12
+    env->CP0_SegCtl0 =   ((CP0SC_AM_MK << CP0SC_AM));
+    env->CP0_SegCtl0 |=  ((CP0SC_AM_MK << CP0SC_AM)) << 16;
+    env->CP0_SegCtl1 =   ((CP0SC_AM_MUSUK << CP0SC_AM) | (5 << CP0SC_PA) | (2 << CP0SC_C) | (1 << CP0SC_EU));
+    env->CP0_SegCtl1 |=  ((CP0SC_AM_MUSUK << CP0SC_AM) | (4 << CP0SC_PA) | (2 << CP0SC_C) | (1 << CP0SC_EU)) << 16;
+    env->CP0_SegCtl2 =   ((CP0SC_AM_MUSUK << CP0SC_AM) | (2 << CP0SC_PA) | (2 << CP0SC_C) | (1 << CP0SC_EU));
+    env->CP0_SegCtl2 |=  ((CP0SC_AM_MUSUK << CP0SC_AM) | (0 << CP0SC_PA) | (2 << CP0SC_C) | (1 << CP0SC_EU)) << 16;
+
+    // alyssa hack: force high addresses to go to the bus
+    env->CP0_SegCtl0 =   ((CP0SC_AM_MUSUK << CP0SC_AM) | (7 << CP0SC_PA) | (2 << CP0SC_C) | (1 << CP0SC_EU));
+    env->CP0_SegCtl0 |=  ((CP0SC_AM_MUSUK << CP0SC_AM) | (6 << CP0SC_PA) | (2 << CP0SC_C) | (1 << CP0SC_EU)) << 16;
+    // alyssa hack II, since 0x9xxx seems to map to 0x0xxx :x pls FIXME (only second one is modified)
+    //env->CP0_SegCtl1 =   ((CP0SC_AM_MUSUK << CP0SC_AM) | (5 << CP0SC_PA) | (2 << CP0SC_C) | (1 << CP0SC_EU));
+    //env->CP0_SegCtl1 |=  ((CP0SC_AM_MUSUK << CP0SC_AM) | (0 << CP0SC_PA) | (2 << CP0SC_C) | (1 << CP0SC_EU)) << 16;
+#endif
+
 #endif
     if ((env->insn_flags & ISA_MIPS32R6) &&
         (env->active_fpu.fcr0 & (1 << FCR0_F64))) {

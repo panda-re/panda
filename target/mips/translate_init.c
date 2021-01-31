@@ -244,7 +244,9 @@ static const mips_def_t mips_defs[] =
                        (0 << CP0C1_DS) | (3 << CP0C1_DL) | (1 << CP0C1_DA) |
                        (1 << CP0C1_CA),
         .CP0_Config2 = MIPS_CONFIG2,
-        .CP0_Config3 = MIPS_CONFIG3 | (0 << CP0C3_VInt),
+        //.CP0_Config3 = MIPS_CONFIG3 | (0 << CP0C3_VInt),
+        .CP0_Config3 = MIPS_CONFIG3 | (0 << CP0C3_VInt) | (1 << CP0C3_MT), // alyssa hack
+	.CP0_Config5 = MIPS_CONFIG5 | (1 << CP0C5_EVA), // FIXME alyssa hack
         .CP0_LLAddr_rw_bitmask = 0,
         .CP0_LLAddr_shift = 4,
         .SYNCI_Step = 32,
@@ -253,7 +255,7 @@ static const mips_def_t mips_defs[] =
         .CP0_Status_rw_bitmask = 0x1278FF1F,
         .SEGBITS = 32,
         .PABITS = 32,
-        .insn_flags = CPU_MIPS32R2 | ASE_MIPS16,
+        .insn_flags = CPU_MIPS32R2 | ASE_MIPS16 | ASE_MT, // FIXME MT is alyssa hack
         .mmu_type = MMU_TYPE_R4000,
     },
     {
@@ -898,10 +900,17 @@ static void mvp_init (CPUMIPSState *env, const mips_def_t *def)
     env->mvp->CP0_MVPConf0 = (1U << CP0MVPC0_M) | (1 << CP0MVPC0_TLBS) |
                              (0 << CP0MVPC0_GS) | (1 << CP0MVPC0_PCP) |
 // TODO: actually do 2 VPEs.
+// alyssa says: what better time than now
+#if 0
 //                             (1 << CP0MVPC0_TCA) | (0x1 << CP0MVPC0_PVPE) |
 //                             (0x04 << CP0MVPC0_PTC);
                              (1 << CP0MVPC0_TCA) | (0x0 << CP0MVPC0_PVPE) |
                              (0x00 << CP0MVPC0_PTC);
+#else
+// alyssa
+                             (1 << CP0MVPC0_TCA) | (0x1 << CP0MVPC0_PVPE) |
+                             (0x04 << CP0MVPC0_PTC);
+#endif
 #if !defined(CONFIG_USER_ONLY)
     /* Usermode has no TLB support */
     env->mvp->CP0_MVPConf0 |= (env->tlb->nb_tlb << CP0MVPC0_PTLBE);

@@ -270,7 +270,7 @@ static int gdb_signal_to_target (int sig)
         return -1;
 }
 
-/*#define DEBUG_GDB*/
+#define DEBUG_GDB
 
 typedef struct GDBRegisterState {
     int base_reg;
@@ -436,6 +436,7 @@ static int gdb_continue_partial(GDBState *s, char *newstates)
             case 's':
                 cpu_single_step(cpu, sstep_flags);
                 cpu_resume(cpu);
+                printf("XXXDEBUG step cpu\n");
                 
 				// If we are broken at an rr breakpoint, disable it before continuing
                 // and reenable it after we get past the instruction
@@ -444,6 +445,7 @@ static int gdb_continue_partial(GDBState *s, char *newstates)
                 break;
             case 'c':
                 cpu_resume(cpu);
+                printf("XXXDEBUG resume cpu\n");
 				
 				// If we are broken at an rr breakpoint, disable it before continuing
                 // and reenable it after we get past the instruction
@@ -1742,6 +1744,7 @@ static void gdb_read_byte(GDBState *s, int ch)
     if (runstate_is_running()) {
         /* when the CPU is running, we cannot do anything except stop
            it when receiving a char */
+        printf("XXX DEBUG pausing\n");
         vm_stop(RUN_STATE_PAUSED);
     } else
 #endif
