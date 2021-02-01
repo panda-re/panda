@@ -11,6 +11,13 @@ if version_info[0] < 3:
 import socket
 import threading
 
+
+import readline
+# XXX: readline is unused but necessary. We need to load python
+# readline, to preempt PANDA loading another version. PANDA
+# seems to work with python's but not vice-versa. This allows for
+# stdio interactions later (e.g., pdb, input())  without segfaults
+
 from os.path import realpath, exists, abspath, isfile, dirname, join as pjoin
 from os import dup, getenv, environ, path
 from random import randint
