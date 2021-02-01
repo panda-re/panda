@@ -32,4 +32,17 @@ void hook_symbol_resolution(struct hook_symbol_resolve *h);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 void update_symbols_in_space(CPUState* cpu);
+
+struct dt_hash_section{
+    uint32_t nchains;
+    uint32_t nbuckets;
+};
+
+struct gnu_hash_table {
+    uint32_t nbuckets;
+    uint32_t symoffset;
+    uint32_t bloom_size;
+    uint32_t bloom_shift;
+};
+
 #endif
