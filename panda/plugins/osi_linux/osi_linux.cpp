@@ -165,8 +165,25 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
     p->pid = get_tgid(cpu, task_addr);
     //p->ppid = get_real_parent_pid(cpu, task_addr);
     p->pages = NULL;  // OsiPage - TODO
-    p->create_time = get_start_time(cpu, task_addr);
-    fixupendian(p->create_time); // The struct_get call won't automatically fix endian
+
+    //if kernel version is < 3.17
+    if(ki.version.a < 3 || (ki.version.a == 3 && ki.version.b < 17)) {
+        uint64_t tmp = get_start_time(cpu, task_addr);
+        fixupendian64(tmp);
+
+        //if there's an endianness mismatch
+        #if defined(TARGET_WORDS_BIGENDIAN) != defined(HOST_WORDS_BIGENDIAN)
+            //convert the most significant half into nanoseconds, then add the rest of the nanoseconds
+            p->create_time = (((tmp & 0xFFFFFFFF00000000) >> 32) * 1000000000) + (tmp & 0x00000000FFFFFFFF);
+        #else
+            //convert the least significant half into nanoseconds, then add the rest of the nanoseconds
+            p->create_time = ((tmp & 0x00000000FFFFFFFF) * 1000000000) + ((tmp & 0xFFFFFFFF00000000) >> 32);
+        #endif
+       
+    } else {
+        p->create_time = get_start_time(cpu, task_addr);
+        fixupendian64(p->create_time); // The struct_get call won't automatically fix endian
+    }
 }
 
 /**
