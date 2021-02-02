@@ -2389,7 +2389,7 @@ class Panda():
 
     ############# HOOKING MIXINS ###############
 
-    def hook(self, addr, length=0, enabled=True, kernel=True, libraryname=None, procname=None, name=None, asid=None, cb_type="before_block_exec", address_library_offset=False):
+    def hook(self, addr, length=0, enabled=True, kernel=True, asid=None, cb_type="before_block_exec"):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
