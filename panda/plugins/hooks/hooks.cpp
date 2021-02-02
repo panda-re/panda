@@ -131,7 +131,7 @@ void add_symbol_hook(struct symbol_hook* h){
 
 bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
     for (auto &h: vh){
-        if (memcmp(&h, &new_hook, sizeof(struct hook)) == 0){
+        if (memcmp(&h, new_hook, sizeof(struct hook)) == 0){
             printf("contains\n");
             return true;
         }}

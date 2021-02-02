@@ -81,7 +81,7 @@ void check_symbol_for_hook(CPUState* cpu, struct symbol s, OsiModule *m){
     for (struct hook_symbol_resolve &hook_candidate : hooks){
         if (hook_candidate.enabled){
             //printf("comparing \"%s\" and \"%s\"\n", hook_candidate.name, s.name);
-            if (strncmp(s.name, hook_candidate.name, MAX_PATH_LEN) == 0){
+            if (strncmp(s.name, hook_candidate.name, MAX_PATH_LEN -1) == 0){
                 //printf("name matches\n");
                 if (hook_candidate.section[0] == 0 || strstr(s.section, hook_candidate.section) != NULL){
                     (*(hook_candidate.cb))(cpu, &hook_candidate, s, m);
@@ -112,7 +112,7 @@ struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_nam
                 // symbol resolves on exact equality
                 if (val_str.compare(symbol) == 0){
                     //printf("result: %s %s\n", section.first.c_str(), val.name);
-                    strncpy((char*) &val.section, section.first.c_str(), MAX_PATH_LEN);
+                    strncpy((char*) &val.section, section.first.c_str(), MAX_PATH_LEN -1);
                     return val;
                 }
             }
@@ -121,8 +121,8 @@ struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_nam
     struct symbol blank;
     blank.address = 0;
     char none[] = "NULL";
-    strncpy((char*) & blank.name, none, strlen(none)+1);
-    strncpy((char*) & blank.section, none, strlen(none)+1);
+    strncpy((char*) & blank.name, none, 5);
+    strncpy((char*) & blank.section, none,5);
     return blank;
 }
 
