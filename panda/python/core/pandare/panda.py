@@ -2457,9 +2457,6 @@ class Panda():
             new_hook.enabled = enabled
             
             self.plugins['hooks'].add_hook(new_hook)
-            if name is not None:
-                self.named_hooks[name] = hook_cb_passed
-            
             self.hook_list.append((new_hook, hook_cb_passed))
 
             @hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
