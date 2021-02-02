@@ -137,7 +137,7 @@ class FileHook:
         fname_s = None
         proc = self._panda.plugins['osi'].get_current_process(cpu)
         if proc != ffi.NULL:
-            fname = self._panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, fd)
+            fname = self._panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, self._panda.ffi.cast("int", fd))
             if fname != ffi.NULL:
                 fname_s = ffi.string(fname).decode('utf8', 'ignore')
         return fname_s
