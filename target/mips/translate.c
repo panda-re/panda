@@ -11628,7 +11628,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
 
     int sel = (ctx->opcode >> 2) & 0x7;
     int sel2 = (ctx->opcode >> 5) & 0x7;
-    //printf("EXTEND %04x %x %x/%x\n", ctx->opcode, op, sel, sel2);
+    printf("EXTEND %04x %x %x/%x\n", ctx->opcode, op, sel, sel2);
 
     offset = imm = (int16_t) (((ctx->opcode >> 16) & 0x1f) << 11
                               | ((ctx->opcode >> 21) & 0x3f) << 5
@@ -11702,15 +11702,15 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 if ((ctx->opcode >> 21) & 1) {
                 int rb = xlat((ctx->opcode >> 16) & 0x7);
                 TCGv t0 = tcg_const_tl(0);
-                // cond, ret, cmp1, cmp2, value1, value2
-                tcg_gen_movcond_tl(TCG_COND_EQ, cpu_gpr[rx], cpu_gpr[ry], t0, cpu_gpr[rx], cpu_gpr[rb]);
+                // cond, ret, cmp1, cmp2, value1[t], value2[f]
+                tcg_gen_movcond_tl(TCG_COND_EQ, cpu_gpr[rx], cpu_gpr[ry], t0, cpu_gpr[rb], cpu_gpr[rx]);
                 tcg_temp_free(t0);
                 } else {
                 // MOVZ [zero]
                 printf("MOVZ is untested\n"); // FIXME
                 TCGv t0 = tcg_const_tl(0);
                 // cond, ret, cmp1, cmp2, value1, value2
-                tcg_gen_movcond_tl(TCG_COND_EQ, cpu_gpr[rx], cpu_gpr[ry], t0, cpu_gpr[rx], t0);
+                tcg_gen_movcond_tl(TCG_COND_EQ, cpu_gpr[rx], cpu_gpr[ry], t0, t0, cpu_gpr[rx]);
                 tcg_temp_free(t0);
                 }
                 break;
@@ -11750,14 +11750,14 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 int rb = xlat((ctx->opcode >> 16) & 0x7);
                 TCGv t0 = tcg_const_tl(0);
                 // cond, ret, cmp1, cmp2, value1, value2
-                tcg_gen_movcond_tl(TCG_COND_NE, cpu_gpr[rx], cpu_gpr[ry], t0, cpu_gpr[rx], cpu_gpr[rb]);
+                tcg_gen_movcond_tl(TCG_COND_NE, cpu_gpr[rx], cpu_gpr[ry], t0, cpu_gpr[rb], cpu_gpr[rx]);
                 tcg_temp_free(t0);
                 } else {
                 // MOVN [zero]
                 printf("MOVN is untested\n"); // FIXME
                 TCGv t0 = tcg_const_tl(0);
                 // cond, ret, cmp1, cmp2, value1, value2
-                tcg_gen_movcond_tl(TCG_COND_NE, cpu_gpr[rx], cpu_gpr[ry], t0, cpu_gpr[rx], t0);
+                tcg_gen_movcond_tl(TCG_COND_NE, cpu_gpr[rx], cpu_gpr[ry], t0, t0, cpu_gpr[rx]);
                 tcg_temp_free(t0);
                 }
                 break;
@@ -11807,7 +11807,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 int rb = xlat((ctx->opcode >> 16) & 0x7);
                 TCGv t0 = tcg_const_tl(0);
                 // cond, ret, cmp1, cmp2, value1, value2
-                tcg_gen_movcond_tl(TCG_COND_EQ, cpu_gpr[rx], cpu_gpr[24], t0, cpu_gpr[rx], cpu_gpr[rb]);
+                tcg_gen_movcond_tl(TCG_COND_EQ, cpu_gpr[rx], cpu_gpr[24], t0, cpu_gpr[rb], cpu_gpr[rx]);
                 tcg_temp_free(t0);
                 }
                 break;
@@ -11826,7 +11826,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 int rb = xlat((ctx->opcode >> 16) & 0x7);
                 TCGv t0 = tcg_const_tl(0);
                 // cond, ret, cmp1, cmp2, value1, value2
-                tcg_gen_movcond_tl(TCG_COND_NE, cpu_gpr[rx], cpu_gpr[24], t0, cpu_gpr[rx], cpu_gpr[rb]);
+                tcg_gen_movcond_tl(TCG_COND_NE, cpu_gpr[rx], cpu_gpr[24], t0, cpu_gpr[rb], cpu_gpr[rx]);
                 tcg_temp_free(t0);
                 }
                 break;
@@ -11939,7 +11939,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                 int sel2 = (ctx->opcode >> 21) & 0x7;
                 int clrbit = (ctx->opcode >> 16) & 0x1f;
                 int lowbits = (ctx->opcode >> 0) & 0x1f;
-                //printf("I8_MOVR32 EXTEND: cp %x, sel %x, clrbit %x, reg %x, %x\n", cp, sel2, clrbit, ry, lowbits);
+                printf("I8_MOVR32 EXTEND: cp %x, sel %x, clrbit %x, reg %x, %x\n", cp, sel2, clrbit, ry, lowbits);
                 if (cp == 0 && clrbit == 0x0) {
                     // MFC0
                     check_cp0_enabled(ctx);
@@ -11958,6 +11958,45 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                     gen_load_gpr(t0, ry);
                     gen_mtc0(ctx, t0, lowbits, sel2);
                     tcg_temp_free(t0);
+                    break;
+                }
+                if (cp == 0 && sel2 == 1 && lowbits == 1 && (clrbit == 0x2 || clrbit == 0x6)) {
+                    // DMT [ry]
+                    printf("DMT is untested\n"); // FIXME
+                    TCGv_i32 t1 = tcg_temp_new_i32();
+                    gen_mfc0_load32(t1, offsetof(CPUMIPSState, CP0_VPEControl));
+                    if (clrbit == 0x2) {
+                        tcg_gen_mov_tl(cpu_gpr[ry], t1);
+                    }
+                    tcg_gen_andi_i32(t1, t1, ~(1 << CP0VPECo_TE));
+                    gen_helper_mtc0_vpecontrol(cpu_env, t1);
+                    tcg_temp_free(t1);
+                    break;
+                }
+                if (cp == 0 && sel2 == 1 && lowbits == 1 && (clrbit == 0x3 || clrbit == 0x7)) {
+                    // EMT [ry]
+                    printf("EMT is untested\n"); // FIXME
+                    TCGv_i32 t1 = tcg_temp_new_i32();
+                    gen_mfc0_load32(t1, offsetof(CPUMIPSState, CP0_VPEControl));
+                    if (clrbit == 0x2) {
+                        tcg_gen_mov_tl(cpu_gpr[ry], t1);
+                    }
+                    tcg_gen_ori_i32(t1, t1, 1 << CP0VPECo_TE);
+                    gen_helper_mtc0_vpecontrol(cpu_env, t1);
+                    tcg_temp_free(t1);
+                    break;
+                }
+                if (cp == 0 && sel2 == 0 && lowbits == 0xc && (clrbit == 0x2 || clrbit == 0x6)) {
+                    // DI [ry]
+                    printf("DI is untested\n"); // FIXME
+                    TCGv_i32 t1 = tcg_temp_new_i32();
+                    gen_mfc0_load32(t1, offsetof(CPUMIPSState, CP0_Status));
+                    if (clrbit == 0x2) {
+                        tcg_gen_mov_tl(cpu_gpr[ry], t1);
+                    }
+                    tcg_gen_andi_i32(t1, t1, ~(1 << CP0St_IE));
+                    gen_helper_mtc0_status(cpu_env, t1);
+                    tcg_temp_free(t1);
                     break;
                 }
             }
