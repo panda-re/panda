@@ -435,7 +435,6 @@ class Panda():
         # Write PANDALOG, if any
         #self.libpanda.panda_cleanup_record()
         if self._in_replay:
-            print("called reset")
             self.reset()
         if hasattr(self, "end_run_raise_signal"):
             saved_exception = self.end_run_raise_signal

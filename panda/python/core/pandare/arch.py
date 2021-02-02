@@ -347,7 +347,7 @@ class X86Arch(PandaArch):
                 raise ValueError(f"We only support the first {len(arglist)} arguments.")
             return self.get_reg(env, arglist[num])
         else:
-            esp = self.get_reg(env, "RSP")
+            esp = self.get_reg(env, "ESP")
             return self.panda.virtual_memory_read(env, esp+(4*(num+1)),4,fmt='int')
 
 class X86_64Arch(PandaArch):
@@ -399,7 +399,7 @@ class X86_64Arch(PandaArch):
         '''
         looks up where ret will go
         '''
-        esp = self.get_reg(env,"ESP")
+        esp = self.get_reg(env,"RSP")
         return self.panda.virtual_memory_read(env,esp,8,fmt='int')
 
     def get_arg(self, env, num, kernel=False):
@@ -407,11 +407,9 @@ class X86_64Arch(PandaArch):
         Gets arguments based on the number. Supports kernel and usermode.
         '''
         if kernel:
-            arglist = ["RDI", "RSI", "RDX", "R10", "R8", "R9"]
-            if num >= len(arglist):
-                raise ValueError(f"We only support the first {len(arglist)} arguments.")
-            return self.get_reg(env, arglist[num])
-        else:
-            esp = self.get_reg(env, "RSP")
-            return self.panda.virtual_memory_read(env, esp+(8*(num+1)),8,fmt='int')
-        
+            num += 1
+
+        arglist = ["RDI", "RSI", "RDX", "R10", "R8", "R9"]
+        if num >= len(arglist):
+            raise ValueError(f"We only support the first {len(arglist)} arguments.")
+        return self.get_reg(env, arglist[num])
