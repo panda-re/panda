@@ -3,8 +3,8 @@
 from pandare import Panda
 from rich import print, inspect
 #arch = "x86_64"
-#arch = "i386"
-arch = "arm"
+arch = "i386"
+#arch = "arm"
 panda = Panda(generic=arch)
 # %%
 from os.path import exists
@@ -164,10 +164,10 @@ def hook_write(env,tb):
     fd = get_arg(env,1)
     buf = get_arg(env,2)
     n = get_arg(env,3)
-    #try:
-    #    qq = panda.read_str(env,buf)
-    #except:
-    qq = "[??]"
+    try:
+        qq = panda.virtual_memory_read(env,buf, n)
+    except:
+        qq = b"[??]"
     print(f'{panda.get_process_name(env)} write {fd} "{qq}" (0x{buf:x}) {n:x}')
     return 0
 
@@ -251,8 +251,10 @@ def hit(cpu, tb, mad):
     print("hit it")
     return 0
 
-def program_start(env, tb):
+def program_start(env, tb, sh):
     print("got to program_start")
+    return 0
+    '''
     hook_function(env, hook_exit, "_Exit")
     hook_function(env, hook_open, "__open64")
     hook_function(env, hook_malloc, "__libc_malloc")
@@ -261,6 +263,7 @@ def program_start(env, tb):
     hook_function(env, hook_read, "__read")
     hook_function(env, hook_write, "__write")
     return 0
+    '''
 
 from cffi import FFI
 ffi = FFI()
@@ -317,7 +320,7 @@ AT_L3_CACHEGEOMETRY =  47, //
 
 
     
-@panda.ppp("syscalls2","on_sys_execve_enter")
+#@panda.ppp("syscalls2","on_sys_execve_enter")
 def execve_enter(cpu, pc, pathname, argv, envp):
     print("hit sys_execve")
     from string import ascii_lowercase
@@ -387,6 +390,41 @@ def execve_enter(cpu, pc, pathname, argv, envp):
                     print(f"{entrynumstr} {hex(auxv_entryval)}")
 
             panda.disable_callback(funcname)
-            
+
+#@panda.hook_symbol("libc", "_Exit")
+def get_exit(cpu, tb, h):
+    print(f"got to exit {panda.get_process_name(cpu)}")
+    return False
+
+
+#@panda.hook_symbol("libc", "__read")
+def get_exit(cpu, tb, h):
+    print(f"got to read {panda.get_process_name(cpu)}")
+    return False
+
+previous_buf_addr = None
+def hook_read_return(env, tb, h):
+    ret = get_retval(env)
+    try:
+        retstr = panda.read_str(env, previous_buf_addr)
+    except:
+        retstr = "?"
+    print(f"hook ret \"{retstr}\"(0x{ret:x})")
+    h.enabled = False
+    return 0
+
+
     
+@panda.hook_symbol("libc", "__read")
+def hook_read(env,tb, h):
+    fd = get_arg(env,1)
+    buf = get_arg(env, 2)
+    global previous_buf_addr
+    previous_buf_addr = buf
+    print(f'{panda.get_process_name(env)} read {fd} 0x{buf:x}')
+    #ra = get_arg(env, 0)
+    #import uuid
+    #hook_name = uuid.uuid1()
+    #panda.hook(ra,enabled=True,kernel=False,name=hook_name, asid=panda.current_asid(env), cb="before_block_exec_invalidate_opt")(hook_read_return)
+
 panda.run_replay(recording_name)

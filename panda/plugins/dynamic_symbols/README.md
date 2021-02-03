@@ -27,7 +27,7 @@ The `resolve_symbol` function is the core of the dynamic_symbols plugin. It reso
 void hook_symbol_resolution(struct symbol_hook *h)
 ```
 
-You may alternatively get a callback when a specified symbol has been resolved. 
+Thorough `hook_symbol_resolution` you may get a callback when a specified symbol has been resolved. This is used when `hooks` wants a future resolved symbol to hook on.
 
 
 Example

@@ -94,7 +94,7 @@ void handle_hook_return (CPUState *cpu, struct hook_symbol_resolve *sh, struct s
     hooks_panda_cb resolved = symbols_to_handle[id];
     struct hook new_hook;
     target_ulong offset = s.address;
-    printf("handle_hook_return @ 0x%llx for \"%s\" in \"%s\" @ 0x%llx ASID: 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count(), sh->name, sh->section, (long long unsigned int) s.address, (long long unsigned int) panda_current_asid(cpu));
+    //printf("handle_hook_return @ 0x%llx for \"%s\" in \"%s\" @ 0x%llx ASID: 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count(), sh->name, sh->section, (long long unsigned int) s.address, (long long unsigned int) panda_current_asid(cpu));
     new_hook.start_addr = offset;
     new_hook.end_addr = offset;
     new_hook.asid = panda_current_asid(cpu);
@@ -132,7 +132,6 @@ void add_symbol_hook(struct symbol_hook* h){
 bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
     for (auto &h: vh){
         if (memcmp(&h, new_hook, sizeof(struct hook)) == 0){
-            printf("contains\n");
             return true;
         }}
     return false;

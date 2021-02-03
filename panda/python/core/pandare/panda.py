@@ -2418,7 +2418,6 @@ class Panda():
         '''
 
         def decorator(fun):
-            # Ultimately, our hook resolves as a beforde_block_exec_invalidate_opt callback so we must match its args
             if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec" or cb_type == "after_block_exec":
                 hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , struct hook *)")
             elif cb_type == "before_block_translate":

@@ -40,7 +40,7 @@ void uninit_plugin(void *);
 }
 using namespace std;
 
-map<target_ulong, map<std::string, target_ulong>> mapping;
+map<target_ulong, map<string, target_ulong>> mapping;
 
 #if TARGET_LONG_BITS == 32
 #define ELF(r) Elf32_ ## r
@@ -66,7 +66,7 @@ map<target_ulong, map<std::string, target_ulong>> mapping;
 #define DT_SYMINFO 0x6ffffeff
 #define DT_GNU_HASH 0x6FFFFEF5
 
-std::vector<int> possible_tags{ DT_PLTGOT , DT_HASH , DT_STRTAB , DT_SYMTAB , DT_RELA , DT_INIT , DT_FINI , DT_REL , DT_DEBUG , DT_JMPREL, 25, 26, 32, DT_SUNW_RTLDINF , DT_CONFIG , DT_DEPAUDIT , DT_AUDIT , DT_PLTPAD , DT_MOVETAB , DT_SYMINFO , DT_VERDEF , DT_VERNEED };
+vector<int> possible_tags{ DT_PLTGOT , DT_HASH , DT_STRTAB , DT_SYMTAB , DT_RELA , DT_INIT , DT_FINI , DT_REL , DT_DEBUG , DT_JMPREL, 25, 26, 32, DT_SUNW_RTLDINF , DT_CONFIG , DT_DEPAUDIT , DT_AUDIT , DT_PLTPAD , DT_MOVETAB , DT_SYMINFO , DT_VERDEF , DT_VERNEED };
 
 unordered_map<target_ulong, unordered_map<string, vector<struct symbol>>> symbols;
 
@@ -120,9 +120,8 @@ struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_nam
     }
     struct symbol blank;
     blank.address = 0;
-    char none[] = "NULL";
-    strncpy((char*) & blank.name, none, 5);
-    strncpy((char*) & blank.section, none,5);
+    memset((char*) & blank.name, 0, MAX_PATH_LEN);
+    memset((char*) & blank.section, 0, MAX_PATH_LEN);
     return blank;
 }
 
@@ -142,8 +141,6 @@ string read_str(CPUState* cpu, target_ulong ptr){
     }
     return buf;
 }
-
-void gdb_helper(){};
 
 int get_numelements_hash(CPUState* cpu, target_ulong dt_hash){
     //printf("in dt_hash_section %s %llx\n", name.c_str(), (long long unsigned int) dt_hash);
@@ -221,19 +218,16 @@ int get_numelements_symtab(CPUState* cpu, target_ulong base, target_ulong dt_has
     // we don't actually have the size of these things 
     // (not included) so we find it by finding the next
     // closest section
-  //  target_ulong strtab_min = strtab + 0x100000;
-    printf("continuing onto the end\n");
+    //  target_ulong strtab_min = strtab + 0x100000;
+    //printf("continuing onto the end\n");
     target_ulong symtab_min = symtab + 0x100000;
     ELF(Dyn) tag;
     for (int j=0; j< numelements_dyn; j++){
         if (panda_virtual_memory_read(cpu, dynamic_section + j*sizeof(ELF(Dyn)), (uint8_t*)&tag, sizeof(ELF(Dyn))) != MEMTX_OK){
             return -1;
         }
-        if (std::find(std::begin(possible_tags), std::end(possible_tags), (int)tag.d_tag) != std::end(possible_tags)){
+        if (find(begin(possible_tags), end(possible_tags), (int)tag.d_tag) != end(possible_tags)){
             uint32_t candidate = tag.d_un.d_ptr;
-            //if (candidate > strtab && candidate < strtab_min){
-            //    strtab_min = candidate;
-            //}
             if (candidate > symtab && candidate < symtab_min){
                 symtab_min = candidate;
             }
@@ -250,7 +244,7 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
         //printf("%s name is null\n", current->name);
         return;
     }
-    std::string name(m->name);
+    string name(m->name);
     // we already read this one
     if (proc_mapping.find(name) != proc_mapping.end()){
         //printf("%s %s already exists \n", current->name, m->name);
@@ -297,26 +291,12 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
                 return;
             }
         }
-        //char* dynamic_section = (char*)malloc(dynamic_phdr.p_filesz);
-        //// try to read dynamic section
-        //if(panda_virtual_memory_read(cpu, m->base + dynamic_phdr.p_vaddr, (uint8_t*) dynamic_section, dynamic_phdr.p_filesz) != MEMTX_OK){
-        //    // failed to read dynamic section
-        //    //printf("failed to read dynamic section %s\n", m->name);
-        //    free(dynamic_section);
-        //    return;
-        //}
-        //printf("p_filesz: %llu\n", (long long unsigned int) dynamic_phdr->p_filesz);
-        //printf("Ehdr size: %d\n", (int)sizeof(ELF(Dyn)));
         int numelements_dyn = dynamic_phdr.p_filesz / sizeof(ELF(Dyn));
-        //assert(false);
-        //printf("numelements_dyn: %d\n", numelements_dyn);
-        
         // iterate over dynamic program headers and find strtab
         // and symtab
         ELF(Dyn) tag;
         target_ulong strtab = 0, symtab = 0, strtab_size = 0, dt_hash = 0, gnu_hash = 0;
         int j = 0;
-        // 100 for sanity
         while (j < numelements_dyn){
             if (panda_virtual_memory_read(cpu, m->base + dynamic_phdr.p_vaddr + (j*sizeof(ELF(Dyn))), (uint8_t*)&tag, sizeof(ELF(Dyn))) != MEMTX_OK){
                 //printf("%s:%s Failed to read entry %d\n", name.c_str(), current->name, j);
@@ -386,10 +366,9 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
 
         //printf("symtab %llx\n", (long long unsigned int) symtab);
         //printf("symtab: 0x%llx  0x%llx\n", symtab, strtab);
-        std::vector<struct symbol> symbols_list_internal;
+        vector<struct symbol> symbols_list_internal;
         if (panda_virtual_memory_read(cpu, symtab, (uint8_t*)symtab_buf, symtab_size) == MEMTX_OK && panda_virtual_memory_read(cpu, strtab, (uint8_t*) strtab_buf, strtab_size) == MEMTX_OK){
             int i = 0; 
-            gdb_helper();
             for (;i<numelements_symtab; i++){
                 ELF(Sym)* a = (ELF(Sym)*) (symtab_buf + i*sizeof(ELF(Sym)));
                 if (a->st_name < strtab_size && a->st_value != 0){
@@ -410,8 +389,6 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
         }
         free(symtab_buf);
         free(strtab_buf);
-    }else{
-        // not an elf header. nothing to do.
     }
 }
 
@@ -506,7 +483,7 @@ void bbe_execve(CPUState *env, TranslationBlock *tb){
                     break;
                 }else if (entrynum == AT_ENTRY){
                     if (!first_require){
-                        panda_require("dynamic_symbols");
+                        panda_require("hooks");
                         first_require = true;
                     }
                     struct hook h;
