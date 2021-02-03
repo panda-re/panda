@@ -245,8 +245,9 @@ static const mips_def_t mips_defs[] =
                        (1 << CP0C1_CA),
         .CP0_Config2 = MIPS_CONFIG2,
         //.CP0_Config3 = MIPS_CONFIG3 | (0 << CP0C3_VInt),
-        .CP0_Config3 = MIPS_CONFIG3 | (0 << CP0C3_VInt) | (1 << CP0C3_MT), // alyssa hack
-	.CP0_Config5 = MIPS_CONFIG5 | (1 << CP0C5_EVA), // FIXME alyssa hack
+        .CP0_Config3 = MIPS_CONFIG3 | (0 << CP0C3_VInt) | (1 << CP0C3_MT) | (1 << CP0C3_ULRI), // alyssa hack
+        .CP0_Config4 = MIPS_CONFIG4 | (1U << CP0C4_M) | (0x1c << CP0C4_KScrExist), // alyssa hack (this is correct for interAptiv)
+	.CP0_Config5 = MIPS_CONFIG5 | (1 << CP0C5_EVA), // FIXME alyssa hack, this is wrong because we are MPU
         .CP0_LLAddr_rw_bitmask = 0,
         .CP0_LLAddr_shift = 4,
         .SYNCI_Step = 32,
