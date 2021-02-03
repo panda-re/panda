@@ -155,6 +155,9 @@ int init_module(void)
 	printk(KERN_INFO "version.a = %d\n", LINUX_VERSION_CODE >> 16);
 	printk(KERN_INFO "version.b = %d\n", (LINUX_VERSION_CODE >> 8) & 0xFF);
 	printk(KERN_INFO "version.c = %d\n", LINUX_VERSION_CODE & 0xFF);
+	printk(KERN_INFO "#arch = %s", utsname()->machine);
+
+#if defined __i386__ || defined __x86_64__
 	printk(KERN_INFO "task.per_cpu_offsets_addr = %llu\n", (u64)(uintptr_t)&__per_cpu_offset);
 	printk(KERN_INFO "task.per_cpu_offset_0_addr = %llu\n", (u64)(uintptr_t)__per_cpu_offset[0]);
 	printk(KERN_INFO "task.current_task_addr = %llu\n", (u64)(uintptr_t)&current_task);
@@ -163,6 +166,18 @@ int init_module(void)
 	printk(KERN_INFO "#task.per_cpu_offset_0_addr = 0x%08llX\n", (u64)(uintptr_t)__per_cpu_offset[0]);
 	printk(KERN_INFO "#task.current_task_addr = 0x%08llX\n", (u64)(uintptr_t)&current_task);
 	printk(KERN_INFO "#task.init_addr = 0x%08llX\n", (u64)(uintptr_t)task_struct__p);
+
+#else
+	printk(KERN_INFO "task.per_cpu_offsets_addr = %d\n", 0);
+	printk(KERN_INFO "task.per_cpu_offset_0_addr = %d\n", 0);
+	printk(KERN_INFO "task.current_task_addr = %llu\n", (u64)(uintptr_t)(task_struct__p)); //set equal to task.init_addr
+	printk(KERN_INFO "task.init_addr = %llu\n", (u64)(uintptr_t)(task_struct__p));
+	printk(KERN_INFO "#task.per_cpu_offsets_addr = %x\n", 0);
+	printk(KERN_INFO "#task.per_cpu_offset_0_addr = %x\n", 0);
+	printk(KERN_INFO "#task.current_task_addr = 0x%08llX\n", (u64)(uintptr_t)task_struct__p);
+	printk(KERN_INFO "#task.init_addr = 0x%08llX\n", (u64)(uintptr_t)task_struct__p);
+
+#endif
 
 	PRINT_SIZE(init_task,				"size",			"task");
 	PRINT_OFFSET(task_struct__p,		tasks,			"task");
