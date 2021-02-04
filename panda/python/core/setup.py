@@ -52,9 +52,11 @@ def copy_objs():
         llvm_enabled = True if 'CONFIG_LLVM=y' in cfg.read() else False
 
     # For each arch, copy library, plugins, plog_pb2.py and llvm-helpers
-    arches = ['arm', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']
+    # TODO: aarch64 -> error: [Errno 2] No such file or directory: '../../../build/aarch64-softmmu/llvm-helpers.bc1'
+    #arches = ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']
+    arches = ['arm',  'i386', 'x86_64', 'ppc', 'mips', 'mipsel']
     if pypi_build:
-        # XXX need to drop mips and ppc to fit into pypi
+        # XXX need to drop aarch64/mipsel/ppc to fit into pypi
         arches = ['arm', 'i386', 'x86_64', 'mipsel']
 
     for arch in arches:
