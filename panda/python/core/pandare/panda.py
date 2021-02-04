@@ -694,6 +694,7 @@ class Panda():
                         Memory Access with error value.
                         Format string is incorrect.
         '''
+
         return self._memory_read(env, addr, length, physical=False, fmt=fmt)
 
     def _memory_read(self, env, addr, length, physical=False, fmt='bytearray'):
@@ -702,6 +703,9 @@ class Panda():
         Supports physical or virtual addresses
         Raises ValueError if read fails
         '''
+        if not isinstance(addr, int):
+            raise ValueError(f"Unsupported read from address {repr(addr)}")
+
         if not hasattr(self, "_memcb"): # XXX: Why do we enable memcbs for memory writes?
             self.enable_memcb()
         buf = ffi.new("char[]", length)
