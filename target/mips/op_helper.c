@@ -1362,7 +1362,7 @@ void helper_mtc0_vpecontrol(CPUMIPSState *env, target_ulong arg1)
 
     // TODO: Enable/disable TCs.
 
-    printf("vpecontrol set from %04x to %04x\n", env->CP0_VPEControl, newval);
+    //printf("vpecontrol set from %04x to %04x\n", env->CP0_VPEControl, newval);
     env->CP0_VPEControl = newval;
 }
 

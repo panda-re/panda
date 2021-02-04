@@ -12079,6 +12079,30 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
             gen_ld(ctx, OPC_LL, rx, rb, offset);
             }
             break;
+        case 7:
+            {
+            int rb = xlat((ctx->opcode >> 16) & 0x7);
+            int32_t offset = (((ctx->opcode >> 21) & 0xf) << 5
+                              | (ctx->opcode & 0x1f));
+            // FIXME: sign extend ok?
+            if (offset & 0x100)
+                    offset = offset - 0x200;
+            switch ((ctx->opcode >> 19) & 0x3) {
+            case 0:
+                printf("LWL: untested\n"); // FIXME
+                gen_ld(ctx, OPC_LWL, rx, rb, offset);
+                break;
+            case 2:
+                printf("LWR: untested\n"); // FIXME
+                gen_ld(ctx, OPC_LWR, rx, rb, offset);
+                break;
+            default:
+                printf("LWSP 7: unimplemented %x\n", (ctx->opcode >> 19) & 0x3);
+                generate_exception_end(ctx, EXCP_RI);
+                break;
+            }
+            }
+            break;
         default:
             printf("LWSP: unimplemented %x\n", sel2);
             generate_exception_end(ctx, EXCP_RI);
@@ -12156,6 +12180,30 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                     offset = offset - 0x200;
             printf("SC: untested: rx%d, rb%d, %d\n", rx, rb, offset); // FIXME
             gen_st_cond(ctx, OPC_SC, rx, rb, offset);
+            }
+            break;
+        case 7:
+            {
+            int rb = xlat((ctx->opcode >> 16) & 0x7);
+            int32_t offset = (((ctx->opcode >> 21) & 0xf) << 5
+                              | (ctx->opcode & 0x1f));
+            // FIXME: sign extend ok?
+            if (offset & 0x100)
+                    offset = offset - 0x200;
+            switch ((ctx->opcode >> 19) & 0x3) {
+            case 0:
+                printf("SWL: untested\n"); // FIXME
+                gen_st(ctx, OPC_SWL, rx, rb, offset);
+                break;
+            case 2:
+                printf("SWR: untested\n"); // FIXME
+                gen_st(ctx, OPC_SWR, rx, rb, offset);
+                break;
+            default:
+                printf("SWSP 7: unimplemented %x\n", (ctx->opcode >> 19) & 0x3);
+                generate_exception_end(ctx, EXCP_RI);
+                break;
+            }
             }
             break;
         default:

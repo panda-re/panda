@@ -270,7 +270,7 @@ static int gdb_signal_to_target (int sig)
         return -1;
 }
 
-#define DEBUG_GDB
+//#define DEBUG_GDB
 
 typedef struct GDBRegisterState {
     int base_reg;
