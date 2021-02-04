@@ -1,3 +1,7 @@
+
+#ifndef __MEM_HOOKS_INT_FNS_H__
+#define __MEM_HOOKS_INT_FNS_H__
+
 extern "C" {
 
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
@@ -42,3 +46,5 @@ void enable_mem_hooking(void);
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 }
+
+#endif
