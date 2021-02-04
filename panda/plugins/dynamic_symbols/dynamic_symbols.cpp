@@ -84,7 +84,7 @@ unordered_map<target_ulong, unordered_map<string, set<struct symbol>>> symbols;
 vector<struct hook_symbol_resolve> hooks;
 
 void hook_symbol_resolution(struct hook_symbol_resolve *h){
-    printf("adding hook %s %llx\n", h->name, (long long unsigned int) h->cb);
+    //printf("adding hook %s %llx\n", h->name, (long long unsigned int) h->cb);
     hooks.push_back(*h);
 }
 
