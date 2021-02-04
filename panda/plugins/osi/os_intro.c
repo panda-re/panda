@@ -151,6 +151,7 @@ bool in_shared_object(CPUState *cpu, OsiProc *p) {
                 }
             }
         }
+        g_array_free(mappings, true);
     }
 
     return false;
@@ -175,7 +176,7 @@ bool init_plugin(void *self) {
     if (panda_os_familyno == OS_LINUX) {
         LOG_INFO("OSI grabbing Linux introspection backend.");
         panda_require("osi_linux");
-    }else if (panda_os_familyno == OS_WINDOWS) {
+    } else if (panda_os_familyno == OS_WINDOWS) {
         LOG_INFO("OSI grabbing Windows introspection backend.");
         panda_require("wintrospection");
     }
