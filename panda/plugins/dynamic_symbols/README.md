@@ -29,6 +29,11 @@ void hook_symbol_resolution(struct symbol_hook *h)
 
 Thorough `hook_symbol_resolution` you may get a callback when a specified symbol has been resolved. This is used when `hooks` wants a future resolved symbol to hook on.
 
+```C
+struct symbol get_best_matching_symbol(CPUState* cpu, target_ulong address, target_ulong asid);
+```
+
+This function attempts to return the *best* matching symbol. This is, generally, the closest symbol without going over. Use at your own risk. It's a best guess. Unless address is the same as PC it could be a different function. It also could be the next block in the function. We don't have a way of knowing.
 
 Example
 -------

@@ -2530,6 +2530,13 @@ class Panda():
             return wrapper
         return decorator
     
+    def get_best_matching_symbol(self, cpu, pc=None, asid=None):
+        if asid is None:
+            asid = self.current_asid(cpu)
+        if pc is None:
+            pc = self.current_pc(cpu)
+        return self.plugins['dynamic_symbols'].get_best_matching_symbol(cpu, pc, asid)
+    
 
     """
     Provides the ability to interact with the hooks2 plugin and receive callbacks based on user-provided criteria.

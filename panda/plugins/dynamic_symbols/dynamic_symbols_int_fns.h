@@ -27,6 +27,7 @@ struct hook_symbol_resolve{
 
 struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_name, char* symbol);
 void hook_symbol_resolution(struct hook_symbol_resolve *h);
+struct symbol get_best_matching_symbol(CPUState* cpu, target_ulong address, target_ulong asid);
 
 
 

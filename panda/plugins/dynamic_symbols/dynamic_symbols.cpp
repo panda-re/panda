@@ -18,6 +18,7 @@ PANDAENDCOMMENT */
 #include <string>
 #include <iterator> 
 #include <map> 
+#include <set>
 #include <algorithm>
 #include "panda/plugin.h"
 #include "osi/osi_types.h"
@@ -68,7 +69,17 @@ map<target_ulong, map<string, target_ulong>> mapping;
 
 vector<int> possible_tags{ DT_PLTGOT , DT_HASH , DT_STRTAB , DT_SYMTAB , DT_RELA , DT_INIT , DT_FINI , DT_REL , DT_DEBUG , DT_JMPREL, 25, 26, 32, DT_SUNW_RTLDINF , DT_CONFIG , DT_DEPAUDIT , DT_AUDIT , DT_PLTPAD , DT_MOVETAB , DT_SYMINFO , DT_VERDEF , DT_VERNEED };
 
-unordered_map<target_ulong, unordered_map<string, vector<struct symbol>>> symbols;
+inline bool operator<(const struct symbol& s, const struct symbol& p){
+    return s.address < p.address;
+}
+
+inline bool operator<(const struct symbol& s, target_ulong p){
+    return s.address < p;
+}
+
+unordered_map<target_ulong, unordered_map<string, set<struct symbol>>> symbols;
+
+
 
 vector<struct hook_symbol_resolve> hooks;
 
@@ -123,6 +134,39 @@ struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_nam
     memset((char*) & blank.name, 0, MAX_PATH_LEN);
     memset((char*) & blank.section, 0, MAX_PATH_LEN);
     return blank;
+}
+
+struct symbol get_best_matching_symbol(CPUState* cpu, target_ulong address, target_ulong asid){
+    update_symbols_in_space(cpu);
+    auto proc_mapping = symbols[asid];
+    struct symbol address_container;
+    address_container.address = address;
+    struct symbol best_candidate;
+    best_candidate.address = 0;
+    memset((char*) & best_candidate.name, 0, MAX_PATH_LEN);
+    memset((char*) & best_candidate.section, 0, MAX_PATH_LEN);
+    for (const auto& section : proc_mapping){
+        set<struct symbol> section_symbols = section.second;
+        set<struct symbol>::iterator it = section_symbols.lower_bound(address_container);
+        if (it != section_symbols.end()){
+            if (it->address == address){
+                // if we found a match just break and move on.
+                memcpy(&best_candidate, &*it, sizeof(struct symbol));
+                break;
+            }
+            //check that there exists a lower value
+            if (it != section_symbols.begin()){
+                // get that lower value
+                it--;
+                // make comparison
+                if (it->address > best_candidate.address){
+                    //copy it
+                    memcpy(&best_candidate, &*it, sizeof(struct symbol));
+                }
+            }
+        }
+    }
+    return best_candidate;
 }
 
 string read_str(CPUState* cpu, target_ulong ptr){
@@ -366,7 +410,7 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
 
         //printf("symtab %llx\n", (long long unsigned int) symtab);
         //printf("symtab: 0x%llx  0x%llx\n", symtab, strtab);
-        vector<struct symbol> symbols_list_internal;
+        set<struct symbol> symbols_list_internal;
         if (panda_virtual_memory_read(cpu, symtab, (uint8_t*)symtab_buf, symtab_size) == MEMTX_OK && panda_virtual_memory_read(cpu, strtab, (uint8_t*) strtab_buf, strtab_size) == MEMTX_OK){
             int i = 0; 
             for (;i<numelements_symtab; i++){
@@ -377,7 +421,7 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
                     strncpy((char*)&s.section, m->name, MAX_PATH_LEN-1);
                     s.address = m->base + a->st_value;
                     //printf("found symbol %s %s 0x%llx\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address);
-                    symbols_list_internal.push_back(s);
+                    symbols_list_internal.insert(s);
                     check_symbol_for_hook(cpu, s, m);
                     //printf("%s %s %llx\n", m->name, s.name, (long long unsigned int)s.address+ a->st_name);
                 }
