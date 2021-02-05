@@ -108,7 +108,7 @@ void handle_hook_return (CPUState *cpu, struct hook_symbol_resolve *sh, struct s
 bool first_require = false;
 
 void add_symbol_hook(struct symbol_hook* h){
-    printf("add_symbol_hook\n");
+    //printf("add_symbol_hook\n");
     if (!first_require){
         panda_require("dynamic_symbols");
         first_require = true;
