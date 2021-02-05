@@ -2439,8 +2439,7 @@ class Panda():
             hook_cb_passed = hook_cb_type(fun)
             new_hook = self.ffi.new("struct hook*")
             new_hook.type = type_num
-            new_hook.start_addr = addr
-            new_hook.end_addr = addr + length
+            new_hook.addr = addr
             if kernel or asid is None:
                 new_hook.asid = 0
             else:

@@ -20,7 +20,6 @@ PANDAENDCOMMENT */
 #include <osi/osi_types.h>
 #include <set>
 #include <vector>
-#include "hook_macros.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -134,6 +133,7 @@ bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
         } \
         break;
 
+void gdb_helper() {};
 
 void add_hook(struct hook* h) {
     switch (h->type){
@@ -144,21 +144,22 @@ void add_hook(struct hook* h) {
         ADD_CALLBACK_TYPE(before_block_exec, BEFORE_BLOCK_EXEC)
         ADD_CALLBACK_TYPE(after_block_exec, AFTER_BLOCK_EXEC)
         default:
-            printf("couldn't find hook type. Invalid\n");
+            printf("couldn't find hook type. Invalid %d\n", (int) h->type);
+            gdb_helper();
     }
 }
 
 
-#define MAKE_HOOK_FN_START(upper_cb_name, temp_name_hooks, name_hooks, name, callback, value) \
-    if (unlikely(! temp_name_hooks .empty())){ \
-        for (auto &h: temp_name_hooks) { \
-            name_hooks[h.asid].insert(h); \
+#define MAKE_HOOK_FN_START(UPPER_CB_NAME, NAME, VALUE) \
+    if (unlikely(! temp_ ## NAME ## _hooks .empty())){ \
+        for (auto &h: temp_ ## NAME ## _hooks) { \
+            NAME ## _hooks[h.asid].insert(h); \
         } \
-        temp_name_hooks .clear(); \
+        temp_ ## NAME ## _hooks .clear(); \
     } \
-    if (unlikely(name_hooks .empty())){ \
-        panda_disable_callback(self, PANDA_CB_ ## upper_cb_name, callback); \
-        return value; \
+    if (unlikely(NAME ## _hooks .empty())){ \
+        panda_disable_callback(self, PANDA_CB_ ## UPPER_CB_NAME, NAME ## _callback); \
+        return VALUE; \
     } \
     target_ulong asid = panda_current_asid(cpu); \
     bool in_kernel = panda_in_kernel(cpu); \
@@ -166,18 +167,16 @@ void add_hook(struct hook* h) {
     hook_container.addr = panda_current_pc(cpu); \
     set<struct hook>::iterator it;
 
-#define HOOK_ASID_START(name_hooks)\
-    it = name_hooks[asid].lower_bound(hook_container); \
-    while(it != name_hooks[asid].end() && it->addr == hook_container.addr){ \
+#define LOOP_ASID_CHECK(NAME, EXPR)\
+    it = NAME ## _hooks[asid].lower_bound(hook_container); \
+    while(it != NAME ## _hooks[asid].end() && it->addr == hook_container.addr){ \
         auto h = *it; \
         if (likely(h.enabled)){ \
             if (h.asid == 0 || h.asid == asid){ \
-                if (h.km == MODE_ANY || (in_kernel && h.km == MODE_KERNEL_ONLY) || (!in_kernel && h.km == MODE_USER_ONLY)){
-
-
-#define MAKE_HOOK_FN_END(name_hooks) \
+                if (h.km == MODE_ANY || (in_kernel && h.km == MODE_KERNEL_ONLY) || (!in_kernel && h.km == MODE_USER_ONLY)){ \
+                    EXPR \
                     if (!h.enabled){ \
-                        it = name_hooks[asid].erase(it); \
+                        it = NAME ## _hooks[asid].erase(it); \
                         continue; \
                     } \
                     memcpy((void*)&(*it), (void*)&h, sizeof(struct hook)); \
@@ -187,56 +186,41 @@ void add_hook(struct hook* h) {
         ++it; \
     } 
 
-#define MAKE_HOOK_VOID(upper_cb_name, name, ...) \
-    MAKE_HOOK_FN_START(upper_cb_name, temp_ ## name ## _hooks, name ## _hooks, name, name ## _callback, )\
-    HOOK_ASID_START(name ## _hooks) \
-    (*(h.cb.name))(__VA_ARGS__); \
-    MAKE_HOOK_FN_END(name ## _hooks) \
+#define HOOK_GENERIC_RET_EXPR(EXPR, UPPER_CB_NAME, NAME, VALUE) \
+    MAKE_HOOK_FN_START(UPPER_CB_NAME, NAME, VALUE) \
+    LOOP_ASID_CHECK(NAME, EXPR) \
     asid = 0; \
-    HOOK_ASID_START(name ## _hooks) \
-    (*(h.cb.name))(__VA_ARGS__); \
-    MAKE_HOOK_FN_END(name ## _hooks)
+    LOOP_ASID_CHECK(NAME, EXPR)
 
-#define MAKE_HOOK_BOOL(upper_cb_name, name, ...) \
-    MAKE_HOOK_FN_START(upper_cb_name, temp_ ## name ## _hooks, name ## _hooks, name, name ## _callback, false) \
-    HOOK_ASID_START(name ## _hooks) \
-    MAKE_HOOK_FN_END(name ## _hooks) \
-    asid = 0; \
-    HOOK_ASID_START(name ## _hooks) \
-    ret |= (*(h.cb.name))(__VA_ARGS__); \
-    MAKE_HOOK_FN_END(name ## _hooks)
-
-void cb_before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb){
-    MAKE_HOOK_VOID(BEFORE_TCG_CODEGEN, before_tcg_codegen, cpu, tb, &h)
+#define MAKE_HOOK_VOID(UPPER_CB_NAME, NAME, PASSED_ARGS, ...) \
+void cb_ ## NAME ## _callback PASSED_ARGS { \
+    HOOK_GENERIC_RET_EXPR( (*(h.cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, ) \
 }
 
-void cb_before_block_translate_callback(CPUState *cpu, target_ptr_t pc) {
-    MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, cpu, pc, &h)
+#define MAKE_HOOK_BOOL(UPPER_CB_NAME, NAME, PASSED_ARGS, ...) \
+bool cb_ ## NAME ## _callback PASSED_ARGS { \
+    bool ret = false; \
+    HOOK_GENERIC_RET_EXPR(ret |= (*(h.cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, false) \
+    return ret; \
 }
 
-void cb_after_block_translate_callback(CPUState *cpu, TranslationBlock *tb) {
-    MAKE_HOOK_VOID(AFTER_BLOCK_TRANSLATE, after_block_translate, cpu, tb, &h)
-}
+MAKE_HOOK_VOID(BEFORE_TCG_CODEGEN, before_tcg_codegen, (CPUState *cpu, TranslationBlock* tb), cpu, tb, &h)
 
-bool cb_before_block_exec_invalidate_opt_callback(CPUState *cpu, TranslationBlock *tb) {
-    bool ret = false;
-    MAKE_HOOK_BOOL(BEFORE_BLOCK_EXEC_INVALIDATE_OPT, before_block_exec_invalidate_opt, cpu, tb, &h)
-    return ret;
-}
+MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, (CPUState *cpu, target_ulong pc), cpu, pc, &h)
 
-void cb_before_block_exec_callback(CPUState *cpu, TranslationBlock *tb) {
-    MAKE_HOOK_VOID(BEFORE_BLOCK_EXEC, before_block_exec, cpu, tb, &h)
-}
+MAKE_HOOK_VOID(AFTER_BLOCK_TRANSLATE, after_block_translate, (CPUState *cpu, TranslationBlock *tb), cpu, tb, &h)
 
-void cb_after_block_exec_callback(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
-    MAKE_HOOK_VOID(AFTER_BLOCK_EXEC, after_block_exec, cpu, tb, exitCode, &h)
-}
+MAKE_HOOK_BOOL(BEFORE_BLOCK_EXEC_INVALIDATE_OPT, before_block_exec_invalidate_opt, (CPUState* cpu, TranslationBlock* tb), cpu, tb, &h)
+
+MAKE_HOOK_VOID(BEFORE_BLOCK_EXEC, before_block_exec, (CPUState *cpu, TranslationBlock *tb), cpu, tb, &h)
+
+MAKE_HOOK_VOID(AFTER_BLOCK_EXEC, after_block_exec, (CPUState *cpu, TranslationBlock *tb, uint8_t exitCode), cpu, tb, exitCode, &h)
 
 
-#define REGISTER_AND_DISABLE_CALLBACK(NAME, NAME_UPPER)\
+#define REGISTER_AND_DISABLE_CALLBACK(SELF, NAME, NAME_UPPER)\
     NAME ## _callback. NAME  = cb_ ## NAME ## _callback; \
-    panda_register_callback(self, PANDA_CB_ ## NAME_UPPER, NAME ## _callback); \
-    panda_disable_callback(self, PANDA_CB_ ## NAME_UPPER, NAME ## _callback);
+    panda_register_callback(SELF, PANDA_CB_ ## NAME_UPPER, NAME ## _callback); \
+    panda_disable_callback(SELF, PANDA_CB_ ## NAME_UPPER, NAME ## _callback);
 
 bool init_plugin(void *_self) {
     // On init, register a callback but don't enable it
@@ -244,13 +228,12 @@ bool init_plugin(void *_self) {
     panda_enable_precise_pc();
     panda_disable_tb_chaining();
 
-    REGISTER_AND_DISABLE_CALLBACK(before_block_translate, BEFORE_BLOCK_TRANSLATE)
-    REGISTER_AND_DISABLE_CALLBACK(before_tcg_codegen, BEFORE_TCG_CODEGEN)
-    REGISTER_AND_DISABLE_CALLBACK(before_block_translate, BEFORE_BLOCK_TRANSLATE)
-    REGISTER_AND_DISABLE_CALLBACK(after_block_translate, AFTER_BLOCK_TRANSLATE)
-    REGISTER_AND_DISABLE_CALLBACK(before_block_exec_invalidate_opt, BEFORE_BLOCK_EXEC_INVALIDATE_OPT)
-    REGISTER_AND_DISABLE_CALLBACK(before_block_exec, BEFORE_BLOCK_EXEC)
-    REGISTER_AND_DISABLE_CALLBACK(after_block_exec, AFTER_BLOCK_EXEC)
+    REGISTER_AND_DISABLE_CALLBACK(_self, before_tcg_codegen, BEFORE_TCG_CODEGEN)
+    REGISTER_AND_DISABLE_CALLBACK(_self, before_block_translate, BEFORE_BLOCK_TRANSLATE)
+    REGISTER_AND_DISABLE_CALLBACK(_self, after_block_translate, AFTER_BLOCK_TRANSLATE)
+    REGISTER_AND_DISABLE_CALLBACK(_self, before_block_exec_invalidate_opt, BEFORE_BLOCK_EXEC_INVALIDATE_OPT)
+    REGISTER_AND_DISABLE_CALLBACK(_self, before_block_exec, BEFORE_BLOCK_EXEC)
+    REGISTER_AND_DISABLE_CALLBACK(_self, after_block_exec, AFTER_BLOCK_EXEC)
     return true;
 }
 
