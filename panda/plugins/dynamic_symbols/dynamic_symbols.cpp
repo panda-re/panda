@@ -32,8 +32,8 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-#include "hooks/hooks_int_fns.h"
 #include "dynamic_symbols_int_fns.h"
+#include "hooks/hooks_int_fns.h"
 #include "syscalls2/syscalls_ext_typedefs.h"
 #include "syscalls2/syscalls2_info.h"
 #include "syscalls2/syscalls2_ext.h"
@@ -92,11 +92,17 @@ void check_symbol_for_hook(CPUState* cpu, struct symbol s, OsiModule *m){
     for (struct hook_symbol_resolve &hook_candidate : hooks){
         if (hook_candidate.enabled){
             //printf("comparing \"%s\" and \"%s\"\n", hook_candidate.name, s.name);
+
             if (strncmp(s.name, hook_candidate.name, MAX_PATH_LEN -1) == 0){
                 //printf("name matches\n");
                 if (hook_candidate.section[0] == 0 || strstr(s.section, hook_candidate.section) != NULL){
                     (*(hook_candidate.cb))(cpu, &hook_candidate, s, m);
                 }
+            }else if (strncmp(hook_candidate.name, "*", 2) == 0){
+                if (hook_candidate.section[0] == 0 || strstr(s.section, hook_candidate.section) != NULL){
+                    (*(hook_candidate.cb))(cpu, &hook_candidate, s, m);
+                }
+
             }
         }
     }
@@ -531,8 +537,7 @@ void bbe_execve(CPUState *env, TranslationBlock *tb){
                         first_require = true;
                     }
                     struct hook h;
-                    h.start_addr = entryval;
-                    h.end_addr = entryval;
+                    h.addr = entryval;
                     h.asid = panda_current_asid(env);
                     h.type = PANDA_CB_BEFORE_BLOCK_EXEC;
                     h.cb.before_block_exec = hook_program_start;
