@@ -54,10 +54,5 @@ def hook_symbols(env, tb, h):
     spacer2 = (50 - len(libname))* ' '
     symname = panda.ffi.string(h.sym.name)
     print(f"[bold magenta]{procname}[/bold magenta]{spacer1}[bold yellow]{libname}[/bold yellow]{spacer2}[bold red]{symname}[/bold red]")
-    #global output
-    #output += "{procname}{spacer1}{libname}{spacer2}{symname}\n"
 
 panda.run_replay(recording_name)
-
-#with open("output","w") as f:
-#    f.write(output)

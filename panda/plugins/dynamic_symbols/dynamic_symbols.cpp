@@ -88,21 +88,18 @@ void hook_symbol_resolution(struct hook_symbol_resolve *h){
     hooks.push_back(*h);
 }
 
-void check_symbol_for_hook(CPUState* cpu, struct symbol s, OsiModule *m){
+void check_symbol_for_hook(CPUState* cpu, struct symbol s, char* procname, OsiModule *m){
     for (struct hook_symbol_resolve &hook_candidate : hooks){
         if (hook_candidate.enabled){
-            //printf("comparing \"%s\" and \"%s\"\n", hook_candidate.name, s.name);
+            if (hook_candidate.procname[0] == 0 || strncmp(procname, hook_candidate.procname, MAX_PATH_LEN -1) == 0){
+                //printf("comparing \"%s\" and \"%s\"\n", hook_candidate.name, s.name);
 
-            if (strncmp(s.name, hook_candidate.name, MAX_PATH_LEN -1) == 0){
-                //printf("name matches\n");
-                if (hook_candidate.section[0] == 0 || strstr(s.section, hook_candidate.section) != NULL){
-                    (*(hook_candidate.cb))(cpu, &hook_candidate, s, m);
+                if (hook_candidate.name[0] == 0 || strncmp(s.name, hook_candidate.name, MAX_PATH_LEN -1) == 0){
+                    //printf("name matches\n");
+                    if (hook_candidate.section[0] == 0 || strstr(s.section, hook_candidate.section) != NULL){
+                        (*(hook_candidate.cb))(cpu, &hook_candidate, s, m);
+                    }
                 }
-            }else if (strncmp(hook_candidate.name, "*", 2) == 0){
-                if (hook_candidate.section[0] == 0 || strstr(s.section, hook_candidate.section) != NULL){
-                    (*(hook_candidate.cb))(cpu, &hook_candidate, s, m);
-                }
-
             }
         }
     }
@@ -428,7 +425,7 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
                     s.address = m->base + a->st_value;
                     //printf("found symbol %s %s 0x%llx\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address);
                     symbols_list_internal.insert(s);
-                    check_symbol_for_hook(cpu, s, m);
+                    check_symbol_for_hook(cpu, s, current->name, m);
                     //printf("%s %s %llx\n", m->name, s.name, (long long unsigned int)s.address+ a->st_name);
                 }
             }
