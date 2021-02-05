@@ -47,6 +47,7 @@ typedef struct hook {
 struct symbol_hook {
     char name[MAX_PATH_LEN];
     char section[MAX_PATH_LEN];
+    char procname[MAX_PATH_LEN];
     hooks_panda_cb cb;
 };
 

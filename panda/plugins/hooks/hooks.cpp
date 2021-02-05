@@ -102,6 +102,7 @@ void add_symbol_hook(struct symbol_hook* h){
     sh.cb = handle_hook_return;
     symbols_to_handle.push_back(h->cb);
     sh.id = symbols_to_handle.size() - 1;
+    strncpy((char*) &sh.procname, (char*) & h->procname, MAX_PATH_LEN);
     strncpy((char*) &sh.name, (char*) &h->name, MAX_PATH_LEN);
     strncpy((char*) &sh.section,(char*) &h->section, MAX_PATH_LEN);
     void* dynamic_symbols = panda_get_plugin_by_name("dynamic_symbols");

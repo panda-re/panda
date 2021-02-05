@@ -2475,7 +2475,7 @@ class Panda():
         return decorator
 
     
-    def hook_symbol(self, libraryname, symbolname, kernel=False, asid=None,name=None,cb_type="before_block_exec"):
+    def hook_symbol(self, libraryname, symbolname, kernel=False, procname=None,name=None,cb_type="before_block_exec"):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
@@ -2495,6 +2495,11 @@ class Panda():
             # Inform the plugin that it has a new breakpoint at addr
             hook_cb_passed = hook_cb_type(fun)
             new_hook = self.ffi.new("struct symbol_hook*")
+            if procname is not None:
+                procname_ffi = self.ffi.new("char[]",bytes(procname,"utf-8"))
+            else:
+                procname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
+            self.ffi.memmove(new_hook.procname,procname_ffi,len(procname_ffi))
             if libraryname is not None:
                 libname_ffi = self.ffi.new("char[]",bytes(libraryname,"utf-8"))
             else:
