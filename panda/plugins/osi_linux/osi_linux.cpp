@@ -244,6 +244,12 @@ void fill_osithread(CPUState *env, OsiThread *t,
 void on_first_syscall(CPUState *cpu, target_ulong pc, target_ulong callno) {
     // Make sure we can now read current. Note this isn't like all the other on_...
     // functions that are registered as OSI callbacks
+    /*
+    if (can_read_current(cpu) == false) {
+      printf("Failed to read at first syscall. Retrying...\n");
+      return;
+    }
+    */
     assert(can_read_current(cpu) && "Couldn't find current task struct at first syscall");
     if (!osi_initialized)
       LOG_INFO(PLUGIN_NAME " initialization complete.");
@@ -270,8 +276,9 @@ inline bool can_read_current(CPUState *cpu) {
  */
 bool osi_guest_is_ready(CPUState *cpu, void** ret) {
 
-    if (osi_initialized) // If osi_initialized is set, the guest must be ready
+    if (osi_initialized) { // If osi_initialized is set, the guest must be ready
       return true;      // or, if it isn't, the user wants an assertion error
+    }
 
 
     // If it's the very first time, try reading current, if we can't
@@ -282,7 +289,7 @@ bool osi_guest_is_ready(CPUState *cpu, void** ret) {
         // Try to load current, if it works, return true
         if (can_read_current(cpu)) {
             // Disable on_first_syscall PPP callback because we're all set
-            PPP_REMOVE_CB("syscalls2", on_all_sys_enter, on_first_syscall);
+            PPP_REMOVE_CB("syscalls2", on_all_sys_enter, on_first_syscall); // XXX may be disabled?
             LOG_INFO(PLUGIN_NAME " initialization complete.");
             osi_initialized=true;
             return true;
@@ -292,6 +299,8 @@ bool osi_guest_is_ready(CPUState *cpu, void** ret) {
         // it could be happening because we're in boot.
         // Wait until on_first_syscall runs, everything should work then
         LOG_INFO(PLUGIN_NAME " cannot find current task struct. Deferring OSI initialization until first syscall.");
+
+        PPP_REG_CB("syscalls2", on_all_sys_enter, on_first_syscall);
     }
     // Not yet initialized, just set the caller's result buffer to NULL
     ret = NULL;
@@ -647,6 +656,21 @@ void init_per_cpu_offsets(CPUState *cpu) {
 }
 
 /**
+ * @brief After guest has restored snapshot, reset so we can redo
+ * initialization
+ */
+void restore_after_snapshot(CPUState* cpu) {
+    LOG_INFO("Snapshot loaded. Re-initializing");
+    // By setting these, we'll redo our init logic which determines
+    // if OSI is ready at the first time it's used, otherwise 
+    // it runs at the first syscall (and asserts if it fails)
+    osi_initialized=false;
+    first_osi_check = true;
+    PPP_REG_CB("syscalls2", on_all_sys_enter, on_first_syscall);
+}
+
+
+/**
  * @brief Cache the last R28 observed while in kernel for MIPS
  */
 
@@ -677,6 +701,8 @@ static std::unordered_set<target_ptr_t> tasks_in_execve;
 
 static void exec_enter(CPUState *cpu)
 {
+    bool **out=0;
+    if (!osi_guest_is_ready(cpu, (void**)out)) return;
     target_ptr_t ts = kernel_profile->get_current_task_struct(cpu);
     tasks_in_execve.insert(ts);
 }
@@ -687,6 +713,8 @@ static void exec_check(CPUState *cpu)
     if (0 == tasks_in_execve.size()) {
         return;
     }
+    bool** out=0;
+    if (!osi_guest_is_ready(cpu, (void**)out)) return;
 
     // Slow Path: Something is in execve, so we have to check.
     target_ptr_t ts = kernel_profile->get_current_task_struct(cpu);
@@ -720,9 +748,10 @@ bool init_plugin(void *self) {
         panda_cb pcb = { .after_machine_init = init_per_cpu_offsets };
         panda_register_callback(self, PANDA_CB_AFTER_MACHINE_INIT, pcb);
 
-        // Whenever we load a snapshot, we need to figure out CPU offsets again.
-        // Particularly if KASLR is enabled!
-        pcb.after_loadvm = init_per_cpu_offsets;
+        // Whenever we load a snapshot, we need to find cpu offsets again
+        // (particularly if KASLR is enabled) and we also may need to re-initialize
+        // OSI on the first guest syscall after the revert.
+        pcb.after_loadvm = restore_after_snapshot;
         panda_register_callback(self, PANDA_CB_AFTER_LOADVM, pcb);
 
         // Register hooks in the kernel to provide task switch notifications.
@@ -826,9 +855,6 @@ bool init_plugin(void *self) {
 
     // By default, we'll request syscalls2 to load on first syscall
     panda_require("syscalls2");
-    if (!osi_initialized) {
-      PPP_REG_CB("syscalls2", on_all_sys_enter, on_first_syscall);
-    }
 
     // Setup exec task change notifications.
     PPP_REG_CB("syscalls2", on_sys_execve_enter, [](CPUState *cpu,
@@ -864,6 +890,7 @@ void uninit_plugin(void *self) {
 #if defined(TARGET_I386) || defined(TARGET_ARM)
     // Nothing to do...
 #endif
+    osi_initialized=false;
     return;
 }
 
