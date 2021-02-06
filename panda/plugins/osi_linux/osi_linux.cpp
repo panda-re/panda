@@ -649,6 +649,16 @@ void init_per_cpu_offsets(CPUState *cpu) {
 }
 
 /**
+ * @brief After guest has restored snapshot, reset so we can redo
+ * initialization
+ */
+void restore_after_snapshot(CPUState* cpu) {
+    init_per_cpu_offsets(cpu);
+    osi_initialized=false;
+}
+
+
+/**
  * @brief Cache the last R28 observed while in kernel for MIPS
  */
 
@@ -679,6 +689,8 @@ static std::unordered_set<target_ptr_t> tasks_in_execve;
 
 static void exec_enter(CPUState *cpu)
 {
+    bool **out=0;
+    if (!osi_guest_is_ready(cpu, (void**)out)) return;
     target_ptr_t ts = kernel_profile->get_current_task_struct(cpu);
     tasks_in_execve.insert(ts);
 }
@@ -689,6 +701,8 @@ static void exec_check(CPUState *cpu)
     if (0 == tasks_in_execve.size()) {
         return;
     }
+    bool** out=0;
+    if (!osi_guest_is_ready(cpu, (void**)out)) return;
 
     // Slow Path: Something is in execve, so we have to check.
     target_ptr_t ts = kernel_profile->get_current_task_struct(cpu);
@@ -722,9 +736,10 @@ bool init_plugin(void *self) {
         panda_cb pcb = { .after_machine_init = init_per_cpu_offsets };
         panda_register_callback(self, PANDA_CB_AFTER_MACHINE_INIT, pcb);
 
-        // Whenever we load a snapshot, we need to figure out CPU offsets again.
-        // Particularly if KASLR is enabled!
-        pcb.after_loadvm = init_per_cpu_offsets;
+        // Whenever we load a snapshot, we need to find cpu offsets again
+        // (particularly if KASLR is enabled) and we also may need to re-initialize
+        // OSI on the first guest syscall after the revert.
+        pcb.after_loadvm = restore_after_snapshot;
         panda_register_callback(self, PANDA_CB_AFTER_LOADVM, pcb);
 
         // Register hooks in the kernel to provide task switch notifications.
@@ -860,9 +875,7 @@ error:
  * @brief Plugin cleanup.
  */
 void uninit_plugin(void *self) {
-#if defined(TARGET_I386) || defined(TARGET_ARM)
-    // Nothing to do...
-#endif
+    osi_initialized=false;
     return;
 }
 
