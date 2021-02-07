@@ -34,8 +34,10 @@ class Expect(object):
             self.consumed_first = False
 
     def update_expectation(self, expectation):
+        if isinstance(expectation, bytes):
+            expectation = expectation.decode()
         self.expectation_re = re.compile(expectation)
-        self.expectation_ends_re = re.compile(rb'.*' + expectation)
+        self.expectation_ends_re = re.compile(r'.*' + expectation)
 
     def connect(self, filelike):
         if type(filelike) == int:
@@ -53,6 +55,181 @@ class Expect(object):
 
     def abort(self):
         self.running = False
+
+    def unansi(self, msg):
+        '''
+        Given a string with ansi control codes, emulate behavior to generate the resulting string. 
+        Poorly tested.
+
+        Split input into a list of ('fn', [args]) / ('text', ['foo']) ansi commands then render real text output
+
+        See https://notes.burke.libbey.me/ansi-escape-codes/ and
+        http://ascii-table.com/ansi-escape-sequences-vt-100.php for ansi escape code details
+        '''
+
+        if b'\x1b' not in msg:
+            text = "".join([chr(x) for x in msg])
+            return text
+
+        start_args = re.compile(br"^(\d+);")
+        last_arg = re.compile(rb"^(\d+)")
+
+        last_text = ""
+        reformatted = []
+        idx = 0 # XXX: mutates during loop
+        while idx < len(msg):
+            if msg[idx] != 0x1b:
+                last_text += chr(msg[idx])
+            else:
+                if len(last_text):
+                    reformatted.append(('text', [last_text]))
+                    last_text = ""
+
+                if idx+3 <= len(msg) and msg[idx+1] == ord('['):
+                    args = []
+                    shift = idx+2
+                    arg_s = msg[shift:]
+                    while start_args.match(arg_s):
+                        arg = start_args.match(arg_s).groups()[0].decode()
+                        args.append(arg)
+                        shift += len(arg)+1 # for ;
+                        arg_s = msg[shift:]
+
+                    # Last arg is just #
+                    if last_arg.match(arg_s):
+                        arg = last_arg.match(arg_s).groups()[0].decode()
+                        shift += len(arg)
+                        args.append(arg)
+                        arg_s = msg[shift:]
+
+                    # Next is one char for cmd
+                    cmd = chr(msg[shift])
+                    reformatted.append((cmd, args))
+
+                    idx = shift # final char
+            idx += 1
+        if len(last_text):
+            reformatted.append(('text', [last_text]))
+
+        # Now render it!
+        lines_out = [" "*100]
+        cur_line = 0
+        line_pos = 0
+        store_ptr = (0, 0)
+
+        for (typ, args) in reformatted:
+            if typ == 'text':
+                n = args[0]
+                #print(n, line_pos)
+                for idx, char in enumerate(n):
+                    if char == '\n':
+                        cur_line += 1 
+                        while cur_line >= len(lines_out):
+                            lines_out.append(" "*100)
+                    if char == '\r':
+                        line_pos = 0
+
+                    line = list(lines_out[cur_line])
+                    if (line_pos) >= len(line):
+                        line.append(char)
+                    else:
+                        line[line_pos] = char
+                    lines_out[cur_line] = "".join(line)
+
+                    if char not in ['\n', '\r']:
+                        line_pos += 1
+
+            else:
+                args[:] = [int(x) for x in args]
+                #print(typ, args)
+
+                if typ == 'A':
+                    n = args[0]
+
+                    if cur_line - n < 0: # Need to shift
+                        cur_line = 0
+                    else:
+                        cur_line -= n
+                    assert(cur_line >= 0)
+
+                elif typ == 'B':
+                    n = args[0]
+                    cur_line += n
+                    while cur_line >= len(lines_out):
+                        lines_out.append(" "*100)
+
+                elif typ == 'D':
+                    n = 1 # Default move left 1
+                    if len(args):
+                        n = args[0]
+
+                    line_pos -= n
+                    if line_pos < 0:
+                        line_pos = 0
+                    assert(line_pos >= 0)
+
+                elif typ == 'J':
+                    # Optional arg 0, 1, 2
+                    n = 0 # default
+                    if len(args):
+                        n = args[0]
+                    if n == 0:
+                        # clear down
+                        lines_out = lines_out[:cur_line+1]
+                    elif n == 1:
+                        # clear up
+                        lines_out = lines_out[cur_line:]
+                    elif n == 2:
+                        # clear everything
+                        lines_out = [""]
+                        cur_line = 0
+                        line_pos = 0
+                        store_ptr = (0, 0)
+
+                elif typ == 'K':
+                    # Optional arg 0, 1, 2
+                    n = 0 # default
+                    if len(args):
+                        n = args[0]
+                    if n == 0:
+                        # clear right of cursor
+                        lines_out[cur_line] = lines_out[cur_line][:line_pos]
+                    elif n == 1:
+                        # clear left of cursor
+                        lines_out[cur_line] = (" "*line_pos)+lines_out[cur_line][line_pos:]
+                    elif n == 2:
+                        # clear whole line
+                        lines_out[cur_line] = " "*len(lines_out[cur_line])
+
+                elif typ == 'H':
+                    n = args[0]-1
+                    m = args[1]-1
+                    cur_line = n
+                    line_pos = m
+
+                    while cur_line >= len(lines_out):
+                        lines_out.append("")
+
+                    while line_pos > len(lines_out[cur_line]):
+                        lines_out[cur_line] += " "
+
+                elif typ == 'T':
+                    # Scroll window down
+                    pass
+                elif typ == 'S':
+                    # Scroll window up
+                    pass
+
+                elif typ == 's':
+                    store_ptr = (cur_line, line_pos)
+                elif typ == 'u':
+                    (cur_line, line_pos) = store_ptr
+
+                else:
+                    raise ValueError(f"Unsupporte ANSI command {typ}")
+            #tmp = "\n".join(lines_out)
+            #print(f"Coords ({cur_line}, {line_pos}): {tmp}\n--")
+        return "\n".join(lines_out)
 
     def expect(self, expectation=None, timeout=30):
         '''
@@ -92,64 +269,26 @@ class Expect(object):
 
                 sofar.extend(char)
 
+                plaintext = self.unansi(sofar)
+
                 # Done parsing - make meaning from the buffer
                 # We may have our command echoed back + control characters before the result
-                if self.expectation_ends_re.match((b"\n"+sofar).split(b"\n")[-1]) != None:
-                    #print("\nFinal line matches -- raw message '{}'".format(sofar))
+                if self.expectation_ends_re.match(("\n"+plaintext).split("\n")[-1]) != None:
+                    #print("\nFinal line matches -- raw message '{}'".format(repr(plaintext)))
 
-                    if b"\x1b" in sofar:
-                        # We have control chracters - assume it's a normal linux guest
-                        # Approach here is to drop the messages before and including ctrl chars
-                        results = []
-                        past_ansi = False
-                        for line in sofar.split(b"\r"):
-                            if b"\x1b" in line:
-                                past_ansi = True
-                                continue
+                    # Strip each line
+                    resp = [x.strip() for x in plaintext.replace("\r", "").split("\n")]
 
-                            elif past_ansi:
-                                results.append(line)
-                        sofar = b"\r".join(results)
-                    #print("Strip ANSI:", repr(sofar))
-
-                    # Try joining all lines together and searching for lastmsg
-                    joined = b"".join([x.strip() for x in sofar.split(b"\r")])
-                    #print("RAW JOINED:", joined)
-                    if self.last_msg and joined.startswith(self.last_msg.strip()):
-                        results = []
-                        # Go through lines until we find one that ends with last_msg
-                        past_echo = False
-                        current = b""
-                        end_of_echo = 0
-                        for idx, line in enumerate(sofar.split(b"\r")):
-                            if self.last_msg.strip().endswith(current+line.strip()):
-                                #print("Potential ehco:", repr(current))
-                                current += line.strip()
-                                end_of_echo = idx
-                            else:
-                                break
-
-
-                        for idx, line in enumerate(sofar.split(b"\r")):
-                            if idx > end_of_echo:
-                                results.append(line)
-
-                        sofar = b"\r".join(results)
-                    #print("Strip command echo:", repr(sofar))
-
-                    #if b"\r\n" in sofar: # Drop next prompt - We'll _always_ have a next prompt!
-                    resp = sofar.split(b"\r\n")
-
+                    # Check if last line matches prompt (again?) - if so drop it from result
                     last_line = resp[-1]
-                    if self.expectation_re.match(last_line.strip()) != None:
+                    if self.expectation_re.match(last_line):
                         resp[:] = resp[:-1] # drop next prompt
-                        sofar= b"\r\n".join(resp)
+                        plaintext= "\n".join(resp)
 
-                    sofar = sofar.strip()
                     self.logfile.flush()
                     if not self.quiet: sys.stdout.flush()
 
-                    return sofar.decode('utf8', 'ignore')
+                    return plaintext
 
         if not self.running: # Aborted
             return None
@@ -165,14 +304,14 @@ class Expect(object):
             pre = self.expect("")
             self.consumed_first = True
 
-        self.last_msg = msg
+        self.last_msg = msg.decode()
         os.write(self.fd, msg)
         self.logfile.write(msg)
         self.logfile.flush()
 
     def send_eol(self): # Just send an EOL
         if self.last_msg:
-            self.last_msg+=b"\n"
+            self.last_msg+="\n"
         os.write(self.fd, b"\n")
         self.logfile.write(b"\n")
         self.logfile.flush()
