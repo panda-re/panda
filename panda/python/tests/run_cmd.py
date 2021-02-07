@@ -18,7 +18,7 @@ def run_cmds():
         resp = panda.run_serial_cmd(f"echo {buf}")
 
         # Check length
-        assert(len(resp) == len(buf)), f"Test {cur_size}: Echo'd {len(buf)} characters but got {len(resp)} back"
+        assert(len(resp) == len(buf)), f"Test {cur_size}: Echo'd {len(buf)} characters but got {len(resp)} back: {repr(resp)}"
 
         # Check contents
         for j in range(len(buf)):

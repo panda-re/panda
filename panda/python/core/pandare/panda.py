@@ -145,7 +145,7 @@ class Panda():
         if self.expect_prompt:
             self.serial_file = NamedTemporaryFile(prefix="pypanda_s").name
             self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.serial_console = Expect(expectation=self.expect_prompt, quiet=True, consume_first=False)
+            self.serial_console = Expect('serial', expectation=self.expect_prompt, quiet=True, consume_first=False)
             self.panda_args.extend(['-serial', 'unix:{},server,nowait'.format(self.serial_file)])
         else:
             self.serial_file = None
@@ -157,7 +157,7 @@ class Panda():
         self.monitor_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.raw_monitor = raw_monitor
         if not self.raw_monitor:
-            self.monitor_console = Expect(expectation=rb"(qemu)", quiet=True, consume_first=True)
+            self.monitor_console = Expect('monitor', expectation=rb"(qemu)", quiet=True, consume_first=True)
             self.panda_args.extend(['-monitor', 'unix:{},server,nowait'.format(self.monitor_file)])
 
         self.running = threading.Event()
