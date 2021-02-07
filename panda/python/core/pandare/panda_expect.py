@@ -65,6 +65,9 @@ class Expect(object):
         if expectation:
             raise ValueError("Deprecated interface - must set expectation in class init")
 
+        if self.fd is None:
+            raise RuntimeError("Must connect() prior to expect()")
+
         sofar = bytearray()
         start_time = datetime.now()
         time_passed = 0
@@ -176,5 +179,6 @@ class Expect(object):
 
 
     def sendline(self, msg=b""):
+        assert(self.fd is not None), "Must connect before sending"
         self.send(msg + b"\n")
 
