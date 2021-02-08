@@ -239,26 +239,37 @@ MemoryRegion* panda_find_ram(void) {
 static int saved_cpsr = -1;
 static int saved_r13 = -1;
 static bool in_fake_priv = false;
+static int saved_pstate = -1;
 
 // Force the guest into supervisor mode by directly modifying its cpsr and r13
 // See https://developer.arm.com/docs/ddi0595/b/aarch32-system-registers/cpsr
 bool enter_priv(CPUState* cpu) {
     CPUARMState* env = ((CPUARMState*)cpu->env_ptr);
 
-    saved_cpsr = env->uncached_cpsr;
-    env->uncached_cpsr = (env->uncached_cpsr) | (ARM_CPU_MODE_SVC & CPSR_M);
-    if (env->uncached_cpsr == saved_cpsr) {
-        // No change was made
-        return false;
+    if (env->aarch64) {
+        saved_pstate = env->pstate;
+        env->pstate |= 1<<2; // Set bits 2-4 to 1 - EL1
+        if (saved_pstate == env->pstate) {
+            return false;
+        }
+    }else{
+        saved_cpsr = env->uncached_cpsr;
+        env->uncached_cpsr = (env->uncached_cpsr) | (ARM_CPU_MODE_SVC & CPSR_M);
+        if (env->uncached_cpsr == saved_cpsr) {
+            // No change was made
+            return false;
+        }
     }
 
     assert(!in_fake_priv && "enter_priv called when already entered");
 
-    // Should we also restore other banked regs like r_14? Seems unnecessary?
-    saved_r13 = env->regs[13];
-    // If we're not already in SVC mode, load the saved SVC r13 from the SVC mode's banked_r13
-    if ((((CPUARMState*)cpu->env_ptr)->uncached_cpsr & CPSR_M) != ARM_CPU_MODE_SVC) {
-        env->regs[13] = env->banked_r13[ /*SVC_MODE=>*/ 1 ];
+    if (!env->aarch64) {
+        // arm32: save r13 for osi - Should we also restore other banked regs like r_14? Seems unnecessary?
+        saved_r13 = env->regs[13];
+        // If we're not already in SVC mode, load the saved SVC r13 from the SVC mode's banked_r13
+        if ((((CPUARMState*)cpu->env_ptr)->uncached_cpsr & CPSR_M) != ARM_CPU_MODE_SVC) {
+            env->regs[13] = env->banked_r13[ /*SVC_MODE=>*/ 1 ];
+        }
     }
     in_fake_priv = true;
     return true;
@@ -270,11 +281,16 @@ void exit_priv(CPUState* cpu) {
     //printf("RESTORING CSPR TO 0x%x\n", saved_cpsr);
     assert(in_fake_priv && "exit called when not faked");
 
-    assert(saved_cpsr != -1 && "Must call enter_svc before reverting with exit_svc");
     CPUARMState* env = ((CPUARMState*)cpu->env_ptr);
 
-    env->uncached_cpsr = saved_cpsr;
-    env->regs[13] = saved_r13;
+    if (env->aarch64) {
+        assert(saved_pstate != -1 && "Must call enter_svc before reverting with exit_svc");
+        env->pstate = saved_pstate;
+    }else{
+        assert(saved_cpsr != -1 && "Must call enter_svc before reverting with exit_svc");
+        env->uncached_cpsr = saved_cpsr;
+        env->regs[13] = saved_r13;
+    }
     in_fake_priv = false;
 }
 
