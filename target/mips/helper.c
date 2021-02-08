@@ -184,9 +184,14 @@ static int get_seg_physical_address(CPUMIPSState *env, hwaddr *physical,
         return env->tlb->map_address(env, physical, prot, real_address, rw,
                                      access_type);
     } else {
+        /* Mask off buffered bits (mtk) - alyssa */
+        if (physical_base >= 0xa0000000)
+            real_address &= ~0x10000000;
+
         /* The segment is unmapped */
         *physical = physical_base | (real_address & segmask);
         *prot = PAGE_READ | PAGE_WRITE;
+
         return TLBRET_MATCH;
     }
 }
