@@ -72,18 +72,18 @@ void disable_hooking() {
     panda_disable_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, after_block_exec_callback);
 }
 
-vector<hooks_panda_cb> symbols_to_handle;
+vector<pair<hooks_panda_cb, panda_cb_type>> symbols_to_handle;
 
 void handle_hook_return (CPUState *cpu, struct hook_symbol_resolve *sh, struct symbol s, OsiModule* m){
     int id = sh->id;
-    hooks_panda_cb resolved = symbols_to_handle[id];
+    pair<hooks_panda_cb,panda_cb_type> resolved = symbols_to_handle[id];
     //printf("handle_hook_return @ 0x%llx for \"%s\" in \"%s\" @ 0x%llx ASID: 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count(), s.name, s.section, (long long unsigned int) s.address, (long long unsigned int) panda_current_asid(cpu));
     struct hook new_hook;
     new_hook.addr = s.address;
     new_hook.asid = panda_current_asid(cpu);
-    new_hook.type = PANDA_CB_BEFORE_BLOCK_EXEC; 
+    new_hook.type = resolved.second; 
     new_hook.km = MODE_USER_ONLY;
-    new_hook.cb = resolved;
+    new_hook.cb = resolved.first;
     new_hook.enabled = true;
     memcpy(&new_hook.sym, &s, sizeof(struct symbol));
     add_hook(&new_hook);
@@ -97,10 +97,11 @@ void add_symbol_hook(struct symbol_hook* h){
         panda_require("dynamic_symbols");
         first_require = true;
     }
+    pair<hooks_panda_cb, panda_cb_type> p (h->cb, h->type);
     struct hook_symbol_resolve sh;
     sh.enabled = true;
     sh.cb = handle_hook_return;
-    symbols_to_handle.push_back(h->cb);
+    symbols_to_handle.push_back(p);
     sh.id = symbols_to_handle.size() - 1;
     strncpy((char*) &sh.procname, (char*) & h->procname, MAX_PATH_LEN);
     strncpy((char*) &sh.name, (char*) &h->name, MAX_PATH_LEN);

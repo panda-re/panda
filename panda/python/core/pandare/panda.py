@@ -2411,15 +2411,17 @@ class Panda():
 
     ############# HOOKING MIXINS ###############
 
-    def hook(self, addr, length=0, enabled=True, kernel=True, asid=None, cb_type="before_block_exec"):
+    def hook(self, addr, enabled=True, kernel=True, asid=None, cb_type="before_block_exec"):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
         '''
 
         def decorator(fun):
-            if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec" or cb_type == "after_block_exec":
+            if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec":
                 hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , struct hook *)")
+            elif cb_type == "after_block_exec":
+                hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , uint8_t, struct hook *)")
             elif cb_type == "before_block_translate":
                 hook_cb_type = self.ffi.callback("void(CPUState* env, target_ptr_t pc, struct hook*)")
             elif cb_type == "before_block_exec_invalidate_opt":
@@ -2482,8 +2484,10 @@ class Panda():
         '''
 
         def decorator(fun):
-            if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec" or cb_type == "after_block_exec":
+            if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec":
                 hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , struct hook *)")
+            elif cb_type == "after_block_exec":
+                hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , uint8_t, struct hook *)")
             elif cb_type == "before_block_translate":
                 hook_cb_type = self.ffi.callback("void(CPUState* env, target_ptr_t pc, struct hook*)")
             elif cb_type == "before_block_exec_invalidate_opt":
@@ -2495,6 +2499,8 @@ class Panda():
             # Inform the plugin that it has a new breakpoint at addr
             hook_cb_passed = hook_cb_type(fun)
             new_hook = self.ffi.new("struct symbol_hook*")
+            type_num = getattr(self.libpanda, "PANDA_CB_"+cb_type.upper())
+            new_hook.type = type_num
             if procname is not None:
                 procname_ffi = self.ffi.new("char[]",bytes(procname,"utf-8"))
             else:
