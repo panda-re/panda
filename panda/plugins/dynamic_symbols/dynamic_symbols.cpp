@@ -602,4 +602,7 @@ bool init_plugin(void *self) {
     return true;
 }
 
-void uninit_plugin(void *self) { }
+void uninit_plugin(void *self) {
+  PPP_REMOVE_CB("syscalls2", on_sys_execve_enter, execve_cb);
+  PPP_REMOVE_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
+}
