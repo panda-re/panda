@@ -401,9 +401,20 @@ static void raise_mmu_exception(CPUMIPSState *env, target_ulong address,
     env->CP0_BadVAddr = address;
     env->CP0_Context = (env->CP0_Context & ~0x007fffff) |
                        ((address >> 9) & 0x007ffff0);
-    env->CP0_EntryHi = (env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask) |
+    target_ulong val = (env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask) |
                        (env->CP0_EntryHi & (1 << CP0EnHi_EHINV)) |
                        (address & (TARGET_PAGE_MASK << 1));
+
+    if ((env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask) != (val & env->CP0_EntryHi_ASID_mask)) {
+      // it's actually changing the asid, trigger out CB and let plugins reject the change
+      if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask, val & env->CP0_EntryHi_ASID_mask)){
+          env->CP0_EntryHi = val;
+      }
+    }else {
+      // asid unchanged, just an update to other fields here - do it without a callback
+      env->CP0_EntryHi = val;
+    }
+
 #if defined(TARGET_MIPS64)
     env->CP0_EntryHi &= env->SEGMask;
     env->CP0_XContext =
