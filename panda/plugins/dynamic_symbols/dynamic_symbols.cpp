@@ -108,9 +108,8 @@ void check_symbol_for_hook(CPUState* cpu, struct symbol s, char* procname, OsiMo
 
 struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_name, char* symbol){
     update_symbols_in_space(cpu);
-    auto proc_mapping = symbols[asid];
 
-    for (const auto& section : proc_mapping){
+    for (const auto& section : symbols[asid]){
         string n = section.first;
         auto section_vec = section.second;
         size_t found;
@@ -142,14 +141,13 @@ struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_nam
 
 struct symbol get_best_matching_symbol(CPUState* cpu, target_ulong address, target_ulong asid){
     update_symbols_in_space(cpu);
-    auto proc_mapping = symbols[asid];
     struct symbol address_container;
     address_container.address = address;
     struct symbol best_candidate;
     best_candidate.address = 0;
     memset((char*) & best_candidate.name, 0, MAX_PATH_LEN);
     memset((char*) & best_candidate.section, 0, MAX_PATH_LEN);
-    for (const auto& section : proc_mapping){
+    for (const auto& section : symbols[asid]){
         set<struct symbol> section_symbols = section.second;
         set<struct symbol>::iterator it = section_symbols.lower_bound(address_container);
         if (it != section_symbols.end()){
@@ -287,14 +285,15 @@ int get_numelements_symtab(CPUState* cpu, target_ulong base, target_ulong dt_has
 
 void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
     target_ulong asid = panda_current_asid(cpu);
-    auto proc_mapping = symbols[asid];
+
     if (m->name == NULL){
         //printf("%s name is null\n", current->name);
         return;
     }
     string name(m->name);
+
     // we already read this one
-    if (proc_mapping.find(name) != proc_mapping.end()){
+    if (symbols[asid].find(name) != symbols[asid].end()){
         //printf("%s %s already exists \n", current->name, m->name);
         return;
     }
@@ -309,17 +308,15 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
     // is it an ELF header?
     if (unlikely(elfhdr[0] == '\x7f' && elfhdr[1] == 'E' && elfhdr[2] == 'L' && elfhdr[3] == 'F')){
 
-        if (unmodded_symbol_mapping.find(name) != proc_mapping.end()){ 
+        if (unmodded_symbol_mapping.find(name) != unmodded_symbol_mapping.end()){ 
             set<struct symbol> symbols_list_internal;
             set<struct symbol>::iterator it;
             for (it = unmodded_symbol_mapping[name].begin(); it != unmodded_symbol_mapping[name].end(); ++it){
                 struct symbol tmp;
                 memcpy(&tmp, &*it, sizeof(struct symbol));
                 tmp.address += m->base;
-                symbols_list_internal.insert(tmp);
+                symbols[asid][name].insert(tmp);
             }
-            proc_mapping[name] = symbols_list_internal;
-            symbols[asid] = proc_mapping;
         }
         //printf("looking at section %s:%s %llx\n", current->name, m->name, (long long unsigned int) m->base);
         //printf("%s %s elf header %llx\n", current->name, m->name, (long long unsigned int) m->base);
@@ -427,8 +424,6 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
 
         //printf("symtab %llx\n", (long long unsigned int) symtab);
         //printf("symtab: 0x%llx  0x%llx\n", symtab, strtab);
-        set<struct symbol> symbols_list_internal;
-        set<struct symbol> unmodded_list_internal;
         if (panda_virtual_memory_read(cpu, symtab, (uint8_t*)symtab_buf, symtab_size) == MEMTX_OK && panda_virtual_memory_read(cpu, strtab, (uint8_t*) strtab_buf, strtab_size) == MEMTX_OK){
             int i = 0; 
             for (;i<numelements_symtab; i++){
@@ -439,17 +434,14 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
                     strncpy((char*)&s.section, m->name, MAX_PATH_LEN-1);
                     s.address = m->base + a->st_value;
                     //printf("found symbol %s %s 0x%llx\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address);
-                    symbols_list_internal.insert(s);
                     memcpy(&t, &s, sizeof(struct symbol));
                     t.address = a->st_value;
-                    unmodded_list_internal.insert(t);
+                    unmodded_symbol_mapping[name].insert(t);
+                    symbols[asid][name].insert(s);
                     check_symbol_for_hook(cpu, s, current->name, m);
                     //printf("%s %s %llx\n", m->name, s.name, (long long unsigned int)s.address+ a->st_name);
                 }
             }
-            unmodded_symbol_mapping[name] = unmodded_list_internal;
-            proc_mapping[name] = symbols_list_internal;
-            symbols[asid] = proc_mapping;
         }else{
             //printf("couldn't read symtab_buf %llx %llx %llx\n", (long long unsigned int)symtab, (long long unsigned int) m->base, (long long unsigned int)symtab_size);
         }
