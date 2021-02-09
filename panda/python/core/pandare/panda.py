@@ -2178,6 +2178,7 @@ class Panda():
                     r = fun(*args, **kwargs)
                     #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
                     #assert(isinstance(r, int)), "Invalid return type?"
+                    #print(fun, r) # Stuck with TypeError in _run_and_catch? Enable this to find where the bug is.
                     return r
                 except Exception as e:
                     # exceptions wont work in our thread. Therefore we print it here and then throw it after the
@@ -2572,7 +2573,7 @@ class Panda():
             elif cb_type == "before_block_translate":
                 hook_cb_type = self.ffi.callback("void(CPUState* env, target_ptr_t pc, struct hook*)")
             elif cb_type == "before_block_exec_invalidate_opt":
-                hook_cb_type = "bool(CPUState* env, TranslationBlock*, struct hook*)"
+                hook_cb_type = self.ffi.callback("bool(CPUState* env, TranslationBlock*, struct hook*)")
             else:
                 print("function type not supported")
                 return
