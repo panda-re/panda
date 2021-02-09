@@ -84,6 +84,7 @@ class Panda():
         self.lambda_cnt = 0
         self.arch = None
         self.__sighandler = None
+        self.ending = False # True during end_analysis
         """
         A reference to an auto-instantiated `pandare.arch.PandaArch` subclass (e.g., `pandare.arch.X86Arch`)
         """
@@ -424,6 +425,8 @@ class Panda():
                 print("Clearing prior main_loop_wait fns:", self.main_loop_wait_fnargs)
             self.main_loop_wait_fnargs = [] # [(fn, args), ...]
 
+        self.ending = False
+
         if debug:
             progress ("Running")
 
@@ -479,6 +482,7 @@ class Panda():
         without needing to wait for tasks in the main async thread
         '''
         self.athread.ending = True
+        self.ending = True
         self.unload_plugins()
         if self.running.is_set() or self.initializing.is_set():
 
@@ -529,6 +533,8 @@ class Panda():
         '''
         if not isfile(replaypfx+"-rr-snp") or not isfile(replaypfx+"-rr-nondet.log"):
             raise ValueError("Replay files not present to run replay of {}".format(replaypfx))
+
+        self.ending = False
 
         if debug:
             progress ("Replaying %s" % replaypfx)
@@ -2310,6 +2316,11 @@ class Panda():
         '''
         Enable a panda plugin using its handle and cb.number as a unique ID
         '''
+
+        # During shutdown callback may be deleted before a request to enable comes through
+        if self.ending:
+            return
+
         if name not in self.registered_callbacks.keys():
             raise RuntimeError("No callback has been registered with name '{}'".format(name))
 
@@ -2326,6 +2337,10 @@ class Panda():
         If forever is specified, we'll never reenable the call- useful when
         you want to really turn off something with a procname filter.
         '''
+        # During shutdown callback may be deleted before a request to enable comes through
+        if self.ending:
+            return
+
         if name not in self.registered_callbacks.keys():
             raise RuntimeError("No callback has been registered with name '{}'".format(name))
         self.registered_callbacks[name]['enabled'] = False
