@@ -309,8 +309,17 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
     // is it an ELF header?
     if (unlikely(elfhdr[0] == '\x7f' && elfhdr[1] == 'E' && elfhdr[2] == 'L' && elfhdr[3] == 'F')){
 
-        if (unmodded_symbol_mapping.find(name) != proc_mapping.end()){
-            
+        if (unmodded_symbol_mapping.find(name) != proc_mapping.end()){ 
+            set<struct symbol> symbols_list_internal;
+            set<struct symbol>::iterator it;
+            for (it = unmodded_symbol_mapping[name].begin(); it != unmodded_symbol_mapping[name].end(); ++it){
+                struct symbol tmp;
+                memcpy(&tmp, &*it, sizeof(struct symbol));
+                tmp.address += m->base;
+                symbols_list_internal.insert(tmp);
+            }
+            proc_mapping[name] = symbols_list_internal;
+            symbols[asid] = proc_mapping;
         }
         //printf("looking at section %s:%s %llx\n", current->name, m->name, (long long unsigned int) m->base);
         //printf("%s %s elf header %llx\n", current->name, m->name, (long long unsigned int) m->base);
@@ -433,7 +442,7 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
                     symbols_list_internal.insert(s);
                     memcpy(&t, &s, sizeof(struct symbol));
                     t.address = a->st_value;
-                    unmodded_list_internal.insert(t)
+                    unmodded_list_internal.insert(t);
                     check_symbol_for_hook(cpu, s, current->name, m);
                     //printf("%s %s %llx\n", m->name, s.name, (long long unsigned int)s.address+ a->st_name);
                 }
@@ -602,7 +611,13 @@ bool init_plugin(void *self) {
     return true;
 }
 
-void uninit_plugin(void *self) {
-  PPP_REMOVE_CB("syscalls2", on_sys_execve_enter, execve_cb);
-  PPP_REMOVE_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
+void uninit_plugin(void *self) { 
+#if defined(TARGET_PPC)
+#else
+  void* syscalls = panda_get_plugin_by_name("syscalls2");
+  if (syscalls != NULL){
+    PPP_REMOVE_CB("syscalls2", on_sys_execve_enter, execve_cb);
+    PPP_REMOVE_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
+  }
+#endif
 }
