@@ -21,7 +21,7 @@ class EdgeInstrumentationDelegate : public InstrumentationDelegate,
                                     public OsiObserver
 {
 public:
-    EdgeInstrumentationDelegate(std::unique_ptr<RecordProcessor<Edge>> ep);
+    EdgeInstrumentationDelegate(std::shared_ptr<RecordProcessor<Edge>> ep);
     ~EdgeInstrumentationDelegate();
 
     void instrument(CPUState *cpu, TranslationBlock *tb) override;
@@ -32,7 +32,7 @@ public:
     void task_changed(const std::string& process_name, target_pid_t pid, target_pid_t tid) override;
 
 private:
-    std::unique_ptr<RecordProcessor<Edge>> edge_processor;
+    std::shared_ptr<RecordProcessor<Edge>> edge_processor;
     bool capstone_initialized;
     csh handle;
     std::unique_ptr<EdgeState> edge_state;

@@ -58,7 +58,7 @@ void uninit_plugin(void *);
 
 static std::unique_ptr<Predicate> predicate;
 
-static std::unique_ptr<InstrumentationDelegate> inst_del;
+static std::vector<std::shared_ptr<InstrumentationDelegate>> inst_dels;
 
 /**
  * Logs a message to stdout.
@@ -83,11 +83,13 @@ static void after_loadvm(CPUState *cpu)
 static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 {
     // Determine if we should instrument.
-    if (nullptr == inst_del || !predicate->eval(cpu, tb)) {
+    if (inst_dels.empty() || !predicate->eval(cpu, tb)) {
         return;
     }
     // Instrument!
-    inst_del->instrument(cpu, tb);
+    for (auto& del : inst_dels) {
+        del->instrument(cpu, tb);
+    }
 }
 
 static std::vector<CoverageMonitorDelegate *> monitor_delegates;
@@ -213,8 +215,31 @@ bool init_plugin(void *self)
         mb.with_start_disabled();
     }
 
+    // Parse hook_filter argument.
+    std::string hook_filter_arg = panda_parse_string_opt(args.get(),
+        "hook_filter", "", "hook_filter");
+    if ("" != hook_filter_arg) {
+        auto dash_idx = pc_arg.find("-");
+        if (std::string::npos == dash_idx) {
+            log_message("Could not parse \"hook_filter\" argument. Format: <Pass PC>-<Block PC>");
+            return false;
+        }
+        try {
+            auto pass_pc = try_parse<target_ulong>(hook_filter_arg.substr(0, dash_idx));
+            auto block_pc = try_parse<target_ulong>(hook_filter_arg.substr(dash_idx + 1));
+            log_message("Hook Filter = [" TARGET_FMT_lx ", " TARGET_FMT_lx "]", pass_pc, block_pc);
+            mb.with_hook_filter(pass_pc, block_pc);
+        } catch (std::invalid_argument& e) {
+            log_message("Could not parse hook filter argument: %s", pc_arg.c_str());
+            return false;
+        } catch (std::overflow_error& e) {
+            log_message("Hook filter outside of valid address space for target.");
+            return false;
+        }
+    }
+
     try {
-        inst_del = mb.build();
+        inst_dels = mb.build();
     } catch (std::system_error& err) {
         std::cerr << "Error setting up instrumentation: "
                   << err.code().message() << "\n";
@@ -232,5 +257,5 @@ bool init_plugin(void *self)
 
 void uninit_plugin(void *self)
 {
-    inst_del.reset();
+    inst_dels.clear();
 }

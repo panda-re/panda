@@ -17,7 +17,7 @@ class OsiBlockGenerator : public RecordProcessor<Block>,
                           public OsiObserver
 {
 public:
-    OsiBlockGenerator(std::unique_ptr<RecordProcessor<OsiBlock>> d);
+    OsiBlockGenerator(std::shared_ptr<RecordProcessor<OsiBlock>> d);
     void handle(Block record) override;
 
     void task_changed(const std::string& process_name, target_pid_t pid, target_pid_t tid) override;
@@ -25,7 +25,7 @@ private:
     std::string pname;
     target_pid_t pid;
     target_pid_t tid;
-    std::unique_ptr<RecordProcessor<OsiBlock>> delegate;
+    std::shared_ptr<RecordProcessor<OsiBlock>> delegate;
 };
 
 }

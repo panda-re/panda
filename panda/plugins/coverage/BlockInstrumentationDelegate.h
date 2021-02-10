@@ -13,12 +13,12 @@ namespace coverage
 class BlockInstrumentationDelegate : public InstrumentationDelegate
 {
 public:
-    BlockInstrumentationDelegate(std::unique_ptr<RecordProcessor<Block>> bp);
+    BlockInstrumentationDelegate(std::shared_ptr<RecordProcessor<Block>> bp);
 
     void instrument(CPUState *cpu, TranslationBlock *tb) override;
 
 private:
-    std::unique_ptr<RecordProcessor<Block>> block_processor;
+    std::shared_ptr<RecordProcessor<Block>> block_processor;
 };
 
 }

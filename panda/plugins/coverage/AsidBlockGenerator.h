@@ -17,11 +17,11 @@ class AsidBlockGenerator : public RecordProcessor<Block>
 {
 public:
     AsidBlockGenerator(CPUState *c,
-                       std::unique_ptr<RecordProcessor<AsidBlock>> d);
+                       std::shared_ptr<RecordProcessor<AsidBlock>> d);
     void handle(Block record) override;
 private:
     CPUState *cpu;
-    std::unique_ptr<RecordProcessor<AsidBlock>> delegate;
+    std::shared_ptr<RecordProcessor<AsidBlock>> delegate;
 };
 
 }

@@ -474,9 +474,9 @@ const static std::unordered_map<unsigned int,
 };
 
 EdgeInstrumentationDelegate::EdgeInstrumentationDelegate(
-    std::unique_ptr<RecordProcessor<Edge>> ep) : edge_processor(std::move(ep))
-                                               , capstone_initialized(false)
-                                               , edge_state(new EdgeState())
+    std::shared_ptr<RecordProcessor<Edge>> ep) : edge_processor(ep)
+                                                , capstone_initialized(false)
+                                                , edge_state(new EdgeState())
 {
 }
 

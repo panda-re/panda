@@ -21,7 +21,7 @@ static void block_callback(RecordProcessor<Block> *bp, TranslationBlock *tb)
     }
 }
 
-BlockInstrumentationDelegate::BlockInstrumentationDelegate(std::unique_ptr<RecordProcessor<Block>> bp)
+BlockInstrumentationDelegate::BlockInstrumentationDelegate(std::shared_ptr<RecordProcessor<Block>> bp)
     : block_processor(std::move(bp))
 {
 }
