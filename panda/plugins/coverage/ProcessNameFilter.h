@@ -21,7 +21,7 @@ class ProcessNameFilter : public RecordProcessor<RecordType>,
 {
 public:
     ProcessNameFilter(const std::string& pname,
-                      std::unique_ptr<RecordProcessor<RecordType>> del)
+                      std::shared_ptr<RecordProcessor<RecordType>> del)
         : delegate(std::move(del)), target_process_name(pname), pass(false)
     {
     }
@@ -41,7 +41,7 @@ public:
     }
 
 private:
-    std::unique_ptr<RecordProcessor<RecordType>> delegate;
+    std::shared_ptr<RecordProcessor<RecordType>> delegate;
 
     std::string target_process_name;
     bool pass;

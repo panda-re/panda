@@ -22,8 +22,8 @@ public:
     /**
      * Constructs a new UniqueFilter and takes ownership of the delegate.
      */
-    UniqueFilter(std::unique_ptr<RecordProcessor<RecordType>> d)
-        : delegate(std::move(d))
+    UniqueFilter(std::shared_ptr<RecordProcessor<RecordType>> d)
+        : delegate(d)
     {
     }
 
@@ -48,7 +48,7 @@ public:
     }
 
 private:
-    std::unique_ptr<RecordProcessor<RecordType>> delegate;
+    std::shared_ptr<RecordProcessor<RecordType>> delegate;
     std::unordered_set<RecordType> seen;
 };
 

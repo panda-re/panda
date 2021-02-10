@@ -21,8 +21,9 @@ public:
     ModeBuilder& with_filename(const std::string& filename);
     ModeBuilder& with_unique_filter();
     ModeBuilder& with_start_disabled();
+    ModeBuilder& with_hook_filter(target_ulong pass_hook, target_ulong block_hook);
 
-    std::unique_ptr<InstrumentationDelegate> build();
+    std::vector<std::shared_ptr<InstrumentationDelegate>> build();
 
 private:
     std::vector<CoverageMonitorDelegate *>& monitor_delegates;
@@ -32,6 +33,8 @@ private:
     std::string filename;
     bool unique;
     bool start_disabled;
+    target_ulong pass_hook; 
+    target_ulong block_hook;
 };
 
 }

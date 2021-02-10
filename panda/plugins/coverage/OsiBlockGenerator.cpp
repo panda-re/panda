@@ -7,8 +7,8 @@
 namespace coverage
 {
 
-OsiBlockGenerator::OsiBlockGenerator(std::unique_ptr<RecordProcessor<OsiBlock>> d)
-        : pname("(unknown)"), pid(0), tid(0), delegate(std::move(d))
+OsiBlockGenerator::OsiBlockGenerator(std::shared_ptr<RecordProcessor<OsiBlock>> d)
+        : pname("(unknown)"), pid(0), tid(0), delegate(d)
 {
 }
 

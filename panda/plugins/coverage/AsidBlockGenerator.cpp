@@ -5,7 +5,7 @@ namespace coverage
 
 AsidBlockGenerator::AsidBlockGenerator(
     CPUState *c,
-    std::unique_ptr<RecordProcessor<AsidBlock>> d)
+    std::shared_ptr<RecordProcessor<AsidBlock>> d)
         : cpu(c), delegate(std::move(d))
 {
 }
