@@ -32,8 +32,8 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-#include "hooks/hooks_int_fns.h"
 #include "dynamic_symbols_int_fns.h"
+#include "hooks/hooks_int_fns.h"
 #include "syscalls2/syscalls_ext_typedefs.h"
 #include "syscalls2/syscalls2_info.h"
 #include "syscalls2/syscalls2_ext.h"
@@ -78,6 +78,7 @@ inline bool operator<(const struct symbol& s, target_ulong p){
 }
 
 unordered_map<target_ulong, unordered_map<string, set<struct symbol>>> symbols;
+unordered_map<string, set<struct symbol>> unmodded_symbol_mapping;
 
 
 
@@ -88,14 +89,17 @@ void hook_symbol_resolution(struct hook_symbol_resolve *h){
     hooks.push_back(*h);
 }
 
-void check_symbol_for_hook(CPUState* cpu, struct symbol s, OsiModule *m){
+void check_symbol_for_hook(CPUState* cpu, struct symbol s, char* procname, OsiModule *m){
     for (struct hook_symbol_resolve &hook_candidate : hooks){
         if (hook_candidate.enabled){
-            //printf("comparing \"%s\" and \"%s\"\n", hook_candidate.name, s.name);
-            if (strncmp(s.name, hook_candidate.name, MAX_PATH_LEN -1) == 0){
-                //printf("name matches\n");
-                if (hook_candidate.section[0] == 0 || strstr(s.section, hook_candidate.section) != NULL){
-                    (*(hook_candidate.cb))(cpu, &hook_candidate, s, m);
+            if (hook_candidate.procname[0] == 0 || strncmp(procname, hook_candidate.procname, MAX_PATH_LEN -1) == 0){
+                //printf("comparing \"%s\" and \"%s\"\n", hook_candidate.name, s.name);
+
+                if (hook_candidate.name[0] == 0 || strncmp(s.name, hook_candidate.name, MAX_PATH_LEN -1) == 0){
+                    //printf("name matches\n");
+                    if (hook_candidate.section[0] == 0 || strstr(s.section, hook_candidate.section) != NULL){
+                        (*(hook_candidate.cb))(cpu, &hook_candidate, s, m);
+                    }
                 }
             }
         }
@@ -104,9 +108,8 @@ void check_symbol_for_hook(CPUState* cpu, struct symbol s, OsiModule *m){
 
 struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_name, char* symbol){
     update_symbols_in_space(cpu);
-    auto proc_mapping = symbols[asid];
 
-    for (const auto& section : proc_mapping){
+    for (const auto& section : symbols[asid]){
         string n = section.first;
         auto section_vec = section.second;
         size_t found;
@@ -138,14 +141,13 @@ struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_nam
 
 struct symbol get_best_matching_symbol(CPUState* cpu, target_ulong address, target_ulong asid){
     update_symbols_in_space(cpu);
-    auto proc_mapping = symbols[asid];
     struct symbol address_container;
     address_container.address = address;
     struct symbol best_candidate;
     best_candidate.address = 0;
     memset((char*) & best_candidate.name, 0, MAX_PATH_LEN);
     memset((char*) & best_candidate.section, 0, MAX_PATH_LEN);
-    for (const auto& section : proc_mapping){
+    for (const auto& section : symbols[asid]){
         set<struct symbol> section_symbols = section.second;
         set<struct symbol>::iterator it = section_symbols.lower_bound(address_container);
         if (it != section_symbols.end()){
@@ -283,14 +285,15 @@ int get_numelements_symtab(CPUState* cpu, target_ulong base, target_ulong dt_has
 
 void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
     target_ulong asid = panda_current_asid(cpu);
-    auto proc_mapping = symbols[asid];
+
     if (m->name == NULL){
         //printf("%s name is null\n", current->name);
         return;
     }
     string name(m->name);
+
     // we already read this one
-    if (proc_mapping.find(name) != proc_mapping.end()){
+    if (symbols[asid].find(name) != symbols[asid].end()){
         //printf("%s %s already exists \n", current->name, m->name);
         return;
     }
@@ -304,6 +307,17 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
     }
     // is it an ELF header?
     if (unlikely(elfhdr[0] == '\x7f' && elfhdr[1] == 'E' && elfhdr[2] == 'L' && elfhdr[3] == 'F')){
+
+        if (unmodded_symbol_mapping.find(name) != unmodded_symbol_mapping.end()){ 
+            set<struct symbol> symbols_list_internal;
+            set<struct symbol>::iterator it;
+            for (it = unmodded_symbol_mapping[name].begin(); it != unmodded_symbol_mapping[name].end(); ++it){
+                struct symbol tmp;
+                memcpy(&tmp, &*it, sizeof(struct symbol));
+                tmp.address += m->base;
+                symbols[asid][name].insert(tmp);
+            }
+        }
         //printf("looking at section %s:%s %llx\n", current->name, m->name, (long long unsigned int) m->base);
         //printf("%s %s elf header %llx\n", current->name, m->name, (long long unsigned int) m->base);
         // allocate buffer for start of ELF. read first page
@@ -410,24 +424,24 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
 
         //printf("symtab %llx\n", (long long unsigned int) symtab);
         //printf("symtab: 0x%llx  0x%llx\n", symtab, strtab);
-        set<struct symbol> symbols_list_internal;
         if (panda_virtual_memory_read(cpu, symtab, (uint8_t*)symtab_buf, symtab_size) == MEMTX_OK && panda_virtual_memory_read(cpu, strtab, (uint8_t*) strtab_buf, strtab_size) == MEMTX_OK){
             int i = 0; 
             for (;i<numelements_symtab; i++){
                 ELF(Sym)* a = (ELF(Sym)*) (symtab_buf + i*sizeof(ELF(Sym)));
                 if (a->st_name < strtab_size && a->st_value != 0){
-                    struct symbol s;
+                    struct symbol s, t;
                     strncpy((char*)&s.name, &strtab_buf[a->st_name], MAX_PATH_LEN-1);
                     strncpy((char*)&s.section, m->name, MAX_PATH_LEN-1);
                     s.address = m->base + a->st_value;
                     //printf("found symbol %s %s 0x%llx\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address);
-                    symbols_list_internal.insert(s);
-                    check_symbol_for_hook(cpu, s, m);
+                    memcpy(&t, &s, sizeof(struct symbol));
+                    t.address = a->st_value;
+                    unmodded_symbol_mapping[name].insert(t);
+                    symbols[asid][name].insert(s);
+                    check_symbol_for_hook(cpu, s, current->name, m);
                     //printf("%s %s %llx\n", m->name, s.name, (long long unsigned int)s.address+ a->st_name);
                 }
             }
-            proc_mapping[name] = symbols_list_internal;
-            symbols[asid] = proc_mapping;
         }else{
             //printf("couldn't read symtab_buf %llx %llx %llx\n", (long long unsigned int)symtab, (long long unsigned int) m->base, (long long unsigned int)symtab_size);
         }
@@ -531,8 +545,7 @@ void bbe_execve(CPUState *env, TranslationBlock *tb){
                         first_require = true;
                     }
                     struct hook h;
-                    h.start_addr = entryval;
-                    h.end_addr = entryval;
+                    h.addr = entryval;
                     h.asid = panda_current_asid(env);
                     h.type = PANDA_CB_BEFORE_BLOCK_EXEC;
                     h.cb.before_block_exec = hook_program_start;
@@ -590,4 +603,13 @@ bool init_plugin(void *self) {
     return true;
 }
 
-void uninit_plugin(void *self) { }
+void uninit_plugin(void *self) { 
+#if defined(TARGET_PPC)
+#else
+  void* syscalls = panda_get_plugin_by_name("syscalls2");
+  if (syscalls != NULL){
+    PPP_REMOVE_CB("syscalls2", on_sys_execve_enter, execve_cb);
+    PPP_REMOVE_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
+  }
+#endif
+}

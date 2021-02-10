@@ -18,6 +18,7 @@ PANDAENDCOMMENT */
 #include <iostream>
 #include <unordered_map>
 #include <osi/osi_types.h>
+#include <set>
 #include <vector>
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -25,43 +26,27 @@ PANDAENDCOMMENT */
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
-#include "hooks_int_fns.h"
 #include "dynamic_symbols/dynamic_symbols_int_fns.h"
+#include "hooks_int_fns.h"
 }
-
 
 using namespace std;
 
-/***************************
- * PANDA_CB_BEFORE_BLOCK_TRANSLATE,// Before translating each basic block
-PANDA_CB_BEFORE_TCG_CODEGEN,    // Before host codegen of each basic block.
-PANDA_CB_AFTER_BLOCK_TRANSLATE, // After translating each basic block
-PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT,    // Before executing each basic block (with option to invalidate, may trigger retranslation)
-PANDA_CB_BEFORE_BLOCK_EXEC,     // Before executing each basic block
-PANDA_CB_AFTER_BLOCK_EXEC,      // After executing each basic block
- */
+bool operator<(const struct hook &a, const struct hook &b){
+    return a.addr < b.addr;
+}
 
-// Mapping of addresses to hook functions
-vector<struct hook> temp_before_tcg_codegen_hooks;
-vector<struct hook> temp_before_block_translate_hooks;
-vector<struct hook> temp_after_block_translate_hooks;
-vector<struct hook> temp_before_block_exec_invalidate_opt_hooks;
-vector<struct hook> temp_before_block_exec_hooks;
-vector<struct hook> temp_after_block_exec_hooks;
-vector<struct hook> before_tcg_codegen_hooks;
-vector<struct hook> before_block_translate_hooks;
-vector<struct hook> after_block_translate_hooks;
-vector<struct hook> before_block_exec_invalidate_opt_hooks;
-vector<struct hook> before_block_exec_hooks;
-vector<struct hook> after_block_exec_hooks;
+#define SUPPORT_CALLBACK_TYPE(name) \
+    vector<struct hook> temp_ ## name ## _hooks; \
+    unordered_map<target_ulong, set<struct hook>> name ## _hooks; \
+    panda_cb name ## _callback;
 
-// Callback object
-panda_cb before_tcg_codegen_callback;
-panda_cb before_block_translate_callback;
-panda_cb after_block_translate_callback;
-panda_cb before_block_exec_invalidate_opt_callback;
-panda_cb before_block_exec_callback;
-panda_cb after_block_exec_callback;
+SUPPORT_CALLBACK_TYPE(before_tcg_codegen)
+SUPPORT_CALLBACK_TYPE(before_block_translate)
+SUPPORT_CALLBACK_TYPE(after_block_translate)
+SUPPORT_CALLBACK_TYPE(before_block_exec_invalidate_opt)
+SUPPORT_CALLBACK_TYPE(before_block_exec)
+SUPPORT_CALLBACK_TYPE(after_block_exec)
 
 // Handle to self
 void* self = NULL;
@@ -87,21 +72,20 @@ void disable_hooking() {
     panda_disable_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, after_block_exec_callback);
 }
 
-vector<hooks_panda_cb> symbols_to_handle;
+vector<pair<hooks_panda_cb, panda_cb_type>> symbols_to_handle;
 
 void handle_hook_return (CPUState *cpu, struct hook_symbol_resolve *sh, struct symbol s, OsiModule* m){
     int id = sh->id;
-    hooks_panda_cb resolved = symbols_to_handle[id];
+    pair<hooks_panda_cb,panda_cb_type> resolved = symbols_to_handle[id];
+    //printf("handle_hook_return @ 0x%llx for \"%s\" in \"%s\" @ 0x%llx ASID: 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count(), s.name, s.section, (long long unsigned int) s.address, (long long unsigned int) panda_current_asid(cpu));
     struct hook new_hook;
-    target_ulong offset = s.address;
-    //printf("handle_hook_return @ 0x%llx for \"%s\" in \"%s\" @ 0x%llx ASID: 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count(), sh->name, sh->section, (long long unsigned int) s.address, (long long unsigned int) panda_current_asid(cpu));
-    new_hook.start_addr = offset;
-    new_hook.end_addr = offset;
+    new_hook.addr = s.address;
     new_hook.asid = panda_current_asid(cpu);
-    new_hook.type = PANDA_CB_BEFORE_BLOCK_EXEC; 
+    new_hook.type = resolved.second; 
     new_hook.km = MODE_USER_ONLY;
-    new_hook.cb = resolved;
+    new_hook.cb = resolved.first;
     new_hook.enabled = true;
+    memcpy(&new_hook.sym, &s, sizeof(struct symbol));
     add_hook(&new_hook);
 }
 
@@ -113,11 +97,13 @@ void add_symbol_hook(struct symbol_hook* h){
         panda_require("dynamic_symbols");
         first_require = true;
     }
+    pair<hooks_panda_cb, panda_cb_type> p (h->cb, h->type);
     struct hook_symbol_resolve sh;
     sh.enabled = true;
     sh.cb = handle_hook_return;
-    symbols_to_handle.push_back(h->cb);
+    symbols_to_handle.push_back(p);
     sh.id = symbols_to_handle.size() - 1;
+    strncpy((char*) &sh.procname, (char*) & h->procname, MAX_PATH_LEN);
     strncpy((char*) &sh.name, (char*) &h->name, MAX_PATH_LEN);
     strncpy((char*) &sh.section,(char*) &h->section, MAX_PATH_LEN);
     void* dynamic_symbols = panda_get_plugin_by_name("dynamic_symbols");
@@ -129,6 +115,10 @@ void add_symbol_hook(struct symbol_hook* h){
     }
 }
 
+bool set_contains_struct(unordered_map<target_ulong, set<struct hook>> vh, struct hook* new_hook){
+    return vh[new_hook->asid].find(*new_hook) != vh[new_hook->asid].end();
+}
+
 bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
     for (auto &h: vh){
         if (memcmp(&h, new_hook, sizeof(struct hook)) == 0){
@@ -137,271 +127,102 @@ bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
     return false;
 }
 
+#define ADD_CALLBACK_TYPE(TYPE, TYPE_UPPER) \
+    case PANDA_CB_ ## TYPE_UPPER: \
+        if (!set_contains_struct(TYPE ## _hooks, h) && !vector_contains_struct(temp_## TYPE ## _hooks, h)){ \
+            temp_## TYPE ## _hooks.push_back(*h); \
+            panda_enable_callback(self, PANDA_CB_ ## TYPE_UPPER , TYPE ## _callback); \
+        } \
+        break;
+
+void gdb_helper() {};
+
 void add_hook(struct hook* h) {
     switch (h->type){
-        case PANDA_CB_BEFORE_TCG_CODEGEN:
-            if (!vector_contains_struct(before_tcg_codegen_hooks, h) && !vector_contains_struct(temp_before_tcg_codegen_hooks, h)){
-                temp_before_tcg_codegen_hooks.push_back(*h);
-                panda_enable_callback(self,PANDA_CB_BEFORE_TCG_CODEGEN,before_tcg_codegen_callback);
-            }
-            break;
-        case PANDA_CB_BEFORE_BLOCK_TRANSLATE:
-            if (!vector_contains_struct(before_block_translate_hooks, h) && !vector_contains_struct(temp_before_block_translate_hooks, h)){
-                temp_before_block_translate_hooks.push_back(*h); 
-                panda_enable_callback(self,PANDA_CB_BEFORE_BLOCK_TRANSLATE,before_block_translate_callback);
-            }
-            break;
-        case PANDA_CB_AFTER_BLOCK_TRANSLATE:
-            if (!vector_contains_struct(after_block_translate_hooks, h) && !vector_contains_struct(temp_after_block_translate_hooks, h)){
-                temp_after_block_translate_hooks.push_back(*h); 
-                panda_enable_callback(self,PANDA_CB_AFTER_BLOCK_TRANSLATE,after_block_translate_callback);
-            }
-            break;
-        case PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT:
-            if (!vector_contains_struct(before_block_exec_invalidate_opt_hooks, h) && !vector_contains_struct(temp_before_block_exec_invalidate_opt_hooks, h)){
-                temp_before_block_exec_invalidate_opt_hooks.push_back(*h);
-                panda_enable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT,before_block_exec_invalidate_opt_callback);
-            }
-            break;
-        case PANDA_CB_BEFORE_BLOCK_EXEC:
-            if (!vector_contains_struct(before_block_exec_hooks, h) && !vector_contains_struct(temp_before_block_exec_hooks, h)){
-                temp_before_block_exec_hooks.push_back(*h); 
-                panda_enable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC,before_block_exec_callback);
-            }
-            break;
-        case PANDA_CB_AFTER_BLOCK_EXEC:
-            if (!vector_contains_struct(after_block_exec_hooks, h) && !vector_contains_struct(temp_after_block_exec_hooks, h)){
-                temp_after_block_exec_hooks.push_back(*h); 
-                panda_enable_callback(self, PANDA_CB_AFTER_BLOCK_EXEC,after_block_exec_callback);
-            }
-            break;
+        ADD_CALLBACK_TYPE(before_tcg_codegen, BEFORE_TCG_CODEGEN)
+        ADD_CALLBACK_TYPE(before_block_translate, BEFORE_BLOCK_TRANSLATE)
+        ADD_CALLBACK_TYPE(after_block_translate, AFTER_BLOCK_TRANSLATE)
+        ADD_CALLBACK_TYPE(before_block_exec_invalidate_opt, BEFORE_BLOCK_EXEC_INVALIDATE_OPT)
+        ADD_CALLBACK_TYPE(before_block_exec, BEFORE_BLOCK_EXEC)
+        ADD_CALLBACK_TYPE(after_block_exec, AFTER_BLOCK_EXEC)
         default:
-            printf("couldn't find hook type. Invalid\n");
+            printf("couldn't find hook type. Invalid %d\n", (int) h->type);
+            gdb_helper();
     }
 }
 
 
-void cb_before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb) {
-    if (unlikely(!temp_before_tcg_codegen_hooks.empty())){
-        for (auto &hook: temp_before_tcg_codegen_hooks) {
-            before_tcg_codegen_hooks.push_back(hook);
-        }
-        temp_before_tcg_codegen_hooks.clear();
-    }
-    if (unlikely(before_tcg_codegen_hooks.empty())){
-        panda_disable_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, before_tcg_codegen_callback);
-        return;
-    }
-    target_ulong asid = panda_current_asid(cpu);
-    bool in_kernel = panda_in_kernel(cpu);
-    vector<struct hook>::iterator it = before_tcg_codegen_hooks.begin();
-    while(it != before_tcg_codegen_hooks.end()){
-        auto h = *it;
-        if (likely(h.enabled)){
-            if (h.asid == 0 || h.asid == asid){
-                if (h.km == MODE_ANY || (in_kernel && h.km == MODE_KERNEL_ONLY) || (!in_kernel && h.km == MODE_USER_ONLY)){
-                    if (unlikely((h.start_addr <= tb->pc && tb->pc <= h.end_addr) ||
-                        (h.start_addr <= tb->pc + tb->size && tb->pc + tb->size <= h.end_addr) || 
-                        (h.start_addr <= tb->pc && tb->pc + tb->size <= h.end_addr))){
-                        (*(h.cb.before_tcg_codegen))(cpu, tb, &h);
-                        if (!h.enabled){
-                            it = before_tcg_codegen_hooks.erase(it);
-                            continue;
-                        }
-                        memcpy(&(*it), (void*)&h, sizeof(struct hook));
-                    }
-                }
-            }
-        }
-        ++it;
-    }
+#define MAKE_HOOK_FN_START(UPPER_CB_NAME, NAME, VALUE) \
+    if (unlikely(! temp_ ## NAME ## _hooks .empty())){ \
+        for (auto &h: temp_ ## NAME ## _hooks) { \
+            NAME ## _hooks[h.asid].insert(h); \
+        } \
+        temp_ ## NAME ## _hooks .clear(); \
+    } \
+    if (unlikely(NAME ## _hooks .empty())){ \
+        panda_disable_callback(self, PANDA_CB_ ## UPPER_CB_NAME, NAME ## _callback); \
+        return VALUE; \
+    } \
+    target_ulong asid = panda_current_asid(cpu); \
+    bool in_kernel = panda_in_kernel(cpu); \
+    struct hook hook_container; \
+    hook_container.addr = panda_current_pc(cpu); \
+    set<struct hook>::iterator it;
+
+#define LOOP_ASID_CHECK(NAME, EXPR)\
+    it = NAME ## _hooks[asid].lower_bound(hook_container); \
+    while(it != NAME ## _hooks[asid].end() && it->addr == hook_container.addr){ \
+        auto h = *it; \
+        if (likely(h.enabled)){ \
+            if (h.asid == 0 || h.asid == asid){ \
+                if (h.km == MODE_ANY || (in_kernel && h.km == MODE_KERNEL_ONLY) || (!in_kernel && h.km == MODE_USER_ONLY)){ \
+                    EXPR \
+                    if (!h.enabled){ \
+                        it = NAME ## _hooks[asid].erase(it); \
+                        continue; \
+                    } \
+                    memcpy((void*)&(*it), (void*)&h, sizeof(struct hook)); \
+                } \
+            } \
+        } \
+        ++it; \
+    } 
+
+#define HOOK_GENERIC_RET_EXPR(EXPR, UPPER_CB_NAME, NAME, VALUE) \
+    MAKE_HOOK_FN_START(UPPER_CB_NAME, NAME, VALUE) \
+    LOOP_ASID_CHECK(NAME, EXPR) \
+    asid = 0; \
+    LOOP_ASID_CHECK(NAME, EXPR)
+
+#define MAKE_HOOK_VOID(UPPER_CB_NAME, NAME, PASSED_ARGS, ...) \
+void cb_ ## NAME ## _callback PASSED_ARGS { \
+    HOOK_GENERIC_RET_EXPR( (*(h.cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, ) \
 }
 
-
-void cb_before_block_translate_callback(CPUState *cpu, target_ptr_t pc) {
-    if (unlikely(!temp_before_block_translate_hooks.empty())){
-        for (auto &hook: temp_before_block_translate_hooks) {
-            before_block_translate_hooks.push_back(hook);
-        }
-        temp_before_block_translate_hooks.clear();
-    }
-    if (unlikely(before_block_translate_hooks.empty())){
-        panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_callback);
-        return;
-    }
-    target_ulong asid = panda_current_asid(cpu);
-    bool in_kernel = panda_in_kernel(cpu);
-    vector<struct hook>::iterator it = before_block_translate_hooks.begin();
-    while(it != before_block_translate_hooks.end()){
-        auto h = *it;
-        if (likely(h.enabled)){
-            if (h.asid == 0 || h.asid == asid){
-                if (h.km == MODE_ANY || (in_kernel && h.km == MODE_KERNEL_ONLY) || (!in_kernel && h.km == MODE_USER_ONLY)){
-                    if (unlikely(h.start_addr <= pc && pc <= h.end_addr)){
-                        (*(h.cb.before_block_translate))(cpu, pc, &h);
-                        if (!h.enabled){
-                            it = before_block_translate_hooks.erase(it);
-                            continue;
-                        }
-                        memcpy(&(*it), (void*)&h, sizeof(struct hook));
-                    }
-                }
-            }
-        }
-        ++it;
-    }
+#define MAKE_HOOK_BOOL(UPPER_CB_NAME, NAME, PASSED_ARGS, ...) \
+bool cb_ ## NAME ## _callback PASSED_ARGS { \
+    bool ret = false; \
+    HOOK_GENERIC_RET_EXPR(ret |= (*(h.cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, false) \
+    return ret; \
 }
 
+MAKE_HOOK_VOID(BEFORE_TCG_CODEGEN, before_tcg_codegen, (CPUState *cpu, TranslationBlock* tb), cpu, tb, &h)
 
-void cb_after_block_translate_callback(CPUState *cpu, TranslationBlock *tb) {
-    if (unlikely(!temp_after_block_translate_hooks.empty())){
-        for (auto &hook: temp_after_block_translate_hooks) {
-            after_block_translate_hooks.push_back(hook);
-        }
-        temp_after_block_translate_hooks.clear();
-    }
-    if (unlikely(after_block_translate_hooks.empty())){
-        panda_disable_callback(self, PANDA_CB_AFTER_BLOCK_TRANSLATE, after_block_translate_callback);
-        return;
-    }
-    target_ulong asid = panda_current_asid(cpu);
-    bool in_kernel = panda_in_kernel(cpu);
-    vector<struct hook>::iterator it = after_block_translate_hooks.begin();
-    while(it != after_block_translate_hooks.end()){
-        auto h = *it;
-        if (likely(h.enabled)){
-            if (h.asid == 0 || h.asid == asid){
-                if (h.km == MODE_ANY || (in_kernel && h.km == MODE_KERNEL_ONLY) || (!in_kernel && h.km == MODE_USER_ONLY)){
-                    if (unlikely((h.start_addr <= tb->pc && tb->pc <= h.end_addr) ||
-                        (h.start_addr <= tb->pc + tb->size && tb->pc + tb->size <= h.end_addr) || 
-                        (h.start_addr <= tb->pc && tb->pc + tb->size <= h.end_addr))){
-                        (*(h.cb.after_block_translate))(cpu, tb, &h);
-                        if (!h.enabled){
-                            it = after_block_translate_hooks.erase(it);
-                            continue;
-                        }
-                        memcpy(&(*it), (void*)&h, sizeof(struct hook));
-                    }
-                }
-            }
-        }
-        ++it;
-    }
-}
+MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, (CPUState *cpu, target_ulong pc), cpu, pc, &h)
+
+MAKE_HOOK_VOID(AFTER_BLOCK_TRANSLATE, after_block_translate, (CPUState *cpu, TranslationBlock *tb), cpu, tb, &h)
+
+MAKE_HOOK_BOOL(BEFORE_BLOCK_EXEC_INVALIDATE_OPT, before_block_exec_invalidate_opt, (CPUState* cpu, TranslationBlock* tb), cpu, tb, &h)
+
+MAKE_HOOK_VOID(BEFORE_BLOCK_EXEC, before_block_exec, (CPUState *cpu, TranslationBlock *tb), cpu, tb, &h)
+
+MAKE_HOOK_VOID(AFTER_BLOCK_EXEC, after_block_exec, (CPUState *cpu, TranslationBlock *tb, uint8_t exitCode), cpu, tb, exitCode, &h)
 
 
-bool cb_before_block_exec_invalidate_opt_callback(CPUState *cpu, TranslationBlock *tb) {
-    bool ret = false;
-    if (unlikely(!temp_before_block_exec_invalidate_opt_hooks.empty())){
-        for (auto &hook: temp_before_block_exec_invalidate_opt_hooks) {
-            before_block_exec_invalidate_opt_hooks.push_back(hook);
-        }
-        temp_before_block_exec_invalidate_opt_hooks.clear();
-    }
-    if (unlikely(before_block_exec_invalidate_opt_hooks.empty())){
-        panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, before_block_exec_invalidate_opt_callback);
-        return ret;
-    }
-    target_ulong asid = panda_current_asid(cpu);
-    bool in_kernel = panda_in_kernel(cpu);
-    vector<struct hook>::iterator it = before_block_exec_invalidate_opt_hooks.begin();
-    while(it != before_block_exec_invalidate_opt_hooks.end()){
-        auto h = *it;
-        if (likely(h.enabled)){
-            if (h.asid == 0 || h.asid == asid){
-                if (h.km == MODE_ANY || (in_kernel && h.km == MODE_KERNEL_ONLY) || (!in_kernel && h.km == MODE_USER_ONLY)){
-                    if (unlikely((h.start_addr <= tb->pc && tb->pc <= h.end_addr) ||
-                        (h.start_addr <= tb->pc + tb->size && tb->pc + tb->size <= h.end_addr) || 
-                        (h.start_addr <= tb->pc && tb->pc + tb->size <= h.end_addr))){
-                        ret |= (*(h.cb.before_block_exec_invalidate_opt))(cpu, tb, &h);
-                        if (!h.enabled){
-                            it = before_block_exec_invalidate_opt_hooks.erase(it);
-                            continue;
-                        }
-                        memcpy(&(*it), (void*)&h, sizeof(struct hook));
-                    }
-                }
-            }
-        }
-        ++it;
-    }
-    return ret;
-}
-
-void cb_before_block_exec_callback(CPUState *cpu, TranslationBlock *tb) {
-    if (unlikely(!temp_before_block_exec_hooks.empty())){
-        for (auto &hook: temp_before_block_exec_hooks) {
-            before_block_exec_hooks.push_back(hook);
-        }
-        temp_before_block_exec_hooks.clear();
-    }
-    if (unlikely(before_block_exec_hooks.empty())){
-        panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, before_block_exec_callback);
-        return;
-    }
-    target_ulong asid = panda_current_asid(cpu);
-    bool in_kernel = panda_in_kernel(cpu);
-    vector<struct hook>::iterator it = before_block_exec_hooks.begin();
-    while(it != before_block_exec_hooks.end()){
-        auto h = *it;
-        if (likely(h.enabled)){
-            if (h.asid == 0 || h.asid == asid){
-                if (h.km == MODE_ANY || (in_kernel && h.km == MODE_KERNEL_ONLY) || (!in_kernel && h.km == MODE_USER_ONLY)){
-                    if (unlikely((h.start_addr <= tb->pc && tb->pc <= h.end_addr) ||
-                        (h.start_addr <= tb->pc + tb->size && tb->pc + tb->size <= h.end_addr) || 
-                        (h.start_addr <= tb->pc && tb->pc + tb->size <= h.end_addr))){
-                        (*(h.cb.before_block_exec))(cpu, tb, &h);
-                        if (!h.enabled){
-                            it = before_block_exec_hooks.erase(it);
-                            continue;
-                        }
-                        memcpy(&(*it), (void*)&h, sizeof(struct hook));
-                    }
-                }
-            }
-        }
-        ++it;
-    }
-}
-
-
-void cb_after_block_exec_callback(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
-    if (unlikely(!temp_after_block_exec_hooks.empty())){
-        for (auto &hook: temp_after_block_exec_hooks) {
-            after_block_exec_hooks.push_back(hook);
-        }
-        temp_after_block_exec_hooks.clear();
-    }
-    if (unlikely(after_block_exec_hooks.empty())){
-        panda_disable_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, after_block_exec_callback);
-        return;
-    }
-    target_ulong asid = panda_current_asid(cpu);
-    bool in_kernel = panda_in_kernel(cpu);
-    vector<struct hook>::iterator it = after_block_exec_hooks.begin();
-    while(it != after_block_exec_hooks.end()){
-        auto h = *it;
-        if (likely(h.enabled)){
-            if (h.asid == 0 || h.asid == asid){
-                if (h.km == MODE_ANY || (in_kernel && h.km == MODE_KERNEL_ONLY) || (!in_kernel && h.km == MODE_USER_ONLY)){
-                    if (unlikely((h.start_addr <= tb->pc && tb->pc < h.end_addr) ||
-                        (h.start_addr <= tb->pc + tb->size && tb->pc + tb->size < h.end_addr) || 
-                        (h.start_addr <= tb->pc && h.end_addr <= tb->pc + tb->size))){
-                        (*(h.cb.after_block_exec))(cpu, tb, exitCode, &h);
-                        if (!h.enabled){
-                            it = after_block_exec_hooks.erase(it);
-                            continue;
-                        }
-                        memcpy(&(*it), (void*)&h, sizeof(struct hook));
-                    }
-                }
-            }
-        }
-        ++it;
-    }
-}
-
-
+#define REGISTER_AND_DISABLE_CALLBACK(SELF, NAME, NAME_UPPER)\
+    NAME ## _callback. NAME  = cb_ ## NAME ## _callback; \
+    panda_register_callback(SELF, PANDA_CB_ ## NAME_UPPER, NAME ## _callback); \
+    panda_disable_callback(SELF, PANDA_CB_ ## NAME_UPPER, NAME ## _callback);
 
 bool init_plugin(void *_self) {
     // On init, register a callback but don't enable it
@@ -409,34 +230,12 @@ bool init_plugin(void *_self) {
     panda_enable_precise_pc();
     panda_disable_tb_chaining();
 
-    before_tcg_codegen_callback.before_tcg_codegen = cb_before_tcg_codegen_callback;
-    panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, before_tcg_codegen_callback);
-    panda_disable_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, before_tcg_codegen_callback);
-    
-    before_block_translate_callback.before_block_translate = cb_before_block_translate_callback;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_callback);
-    panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_callback);
-    
-    
-    after_block_translate_callback.after_block_translate = cb_after_block_translate_callback;
-    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_TRANSLATE, after_block_translate_callback);
-    panda_disable_callback(self, PANDA_CB_AFTER_BLOCK_TRANSLATE, after_block_translate_callback);
-    
-    
-    before_block_exec_invalidate_opt_callback.before_block_exec_invalidate_opt = cb_before_block_exec_invalidate_opt_callback;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, before_block_exec_invalidate_opt_callback);
-    panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, before_block_exec_invalidate_opt_callback);
-    
-    
-    before_block_exec_callback.before_block_exec = cb_before_block_exec_callback;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, before_block_exec_callback);
-    panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, before_block_exec_callback);
-    
-    
-    after_block_exec_callback.after_block_exec = cb_after_block_exec_callback;
-    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, after_block_exec_callback);
-    panda_disable_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, after_block_exec_callback);
-
+    REGISTER_AND_DISABLE_CALLBACK(_self, before_tcg_codegen, BEFORE_TCG_CODEGEN)
+    REGISTER_AND_DISABLE_CALLBACK(_self, before_block_translate, BEFORE_BLOCK_TRANSLATE)
+    REGISTER_AND_DISABLE_CALLBACK(_self, after_block_translate, AFTER_BLOCK_TRANSLATE)
+    REGISTER_AND_DISABLE_CALLBACK(_self, before_block_exec_invalidate_opt, BEFORE_BLOCK_EXEC_INVALIDATE_OPT)
+    REGISTER_AND_DISABLE_CALLBACK(_self, before_block_exec, BEFORE_BLOCK_EXEC)
+    REGISTER_AND_DISABLE_CALLBACK(_self, after_block_exec, AFTER_BLOCK_EXEC)
     return true;
 }
 

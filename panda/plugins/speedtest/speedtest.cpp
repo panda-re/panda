@@ -33,9 +33,9 @@ void before_block_exec_ratio(CPUState *env, TranslationBlock *tb);
 void before_block_exec_time(CPUState *env, TranslationBlock *tb);
 
 float avg_exec_time() {
-    uint64_t sum_ms = 0; // Average microseconds per block for last FIFO_SIZE
+    uint64_t sum_ms = 0; // Average tenth-microseconds per block for last FIFO_SIZE
     for (int i=0; i < FIFO_SIZE; i++) {
-        sum_ms += rel_time[i];
+        sum_ms += rel_time[i]*10;
     }
     return sum_ms/FIFO_SIZE; // AVG time per block
 }
@@ -62,9 +62,10 @@ void before_block_exec_time(CPUState *env, TranslationBlock *tb) {
 
       // Log ever FIFO_SIZE/4 events once we fill queue
       if ((bb_count % (FIFO_SIZE/4)) == 0 && bb_count > FIFO_SIZE) {
-          printf("[SPEEDTEST] Average bock took %.3f microsec to execute (over the last %d blocks)\n", avg_exec_time(), FIFO_SIZE);
+          printf("[SPEEDTEST] Average bock took %.3f tenth-microseconds to execute (over the last %d blocks)\n", avg_exec_time(), FIFO_SIZE);
       }
     }
+    bb_count++;
 }
 
 float kernel_ratio() {
@@ -89,10 +90,14 @@ void before_block_exec_ratio(CPUState *env, TranslationBlock *tb) {
 }
 
 bool init_plugin(void *self) {
-    panda_cb pcb = { .before_block_exec = before_block_exec_ratio };
-    //panda_cb pcb = { .before_block_exec = before_block_exec_time };
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    // You can either have kernel/userspace ratio or average block time. Not both.
+    //panda_cb pcb = { .before_block_exec = before_block_exec_ratio };
+    //panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    panda_cb pcb2 = { .before_block_exec = before_block_exec_time };
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb2);
     return true;
 }
 
-void uninit_plugin(void *self) { }
+void uninit_plugin(void *self) { 
+    //printf("[SPEEDTEST end] Average bock took %.3f microsec to execute (over the last %d blocks)\n", avg_exec_time(), FIFO_SIZE);
+}

@@ -11,6 +11,7 @@ extern "C" {
 #define MAX_PROCNAME_LENGTH 256
 #define MAX_PATH_LEN 256
 struct hook;
+struct symbol;
 
 // Hook functions must be of this type
 typedef bool (*hook_func_t)(CPUState *, TranslationBlock *, struct hook* h);
@@ -33,19 +34,21 @@ enum kernel_mode{
 };
 
 typedef struct hook {
-    target_ulong start_addr;
-    target_ulong end_addr;
+    target_ulong addr;
     target_ulong asid;
     panda_cb_type type;
     hooks_panda_cb cb;
     enum kernel_mode km;
     bool enabled;
+    struct symbol sym; //if an associated symbol exists
 } hook;
 
 
 struct symbol_hook {
     char name[MAX_PATH_LEN];
     char section[MAX_PATH_LEN];
+    char procname[MAX_PATH_LEN];
+    panda_cb_type type;
     hooks_panda_cb cb;
 };
 
