@@ -136,14 +136,16 @@ bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
         } \
         break;
 
-void gdb_helper() {};
+bool first_tb_chaining = false;
 
 void add_hook(struct hook* h) {
+    if (h->type != PANDA_CB_BEFORE_TCG_CODEGEN && !first_tb_chaining){
+        // if we ever register a non tcg_codegen we must disable tb chaining
+        panda_disable_tb_chaining();
+        first_tb_chaining = true;
+    }
     switch (h->type){
         ADD_CALLBACK_TYPE(before_tcg_codegen, BEFORE_TCG_CODEGEN)
-        // if we ever register a non tcg_codegen we do this
-        panda_disable_tb_chaining();
-        printf("adding different kind of hook\n");
         ADD_CALLBACK_TYPE(before_block_translate, BEFORE_BLOCK_TRANSLATE)
         ADD_CALLBACK_TYPE(after_block_translate, AFTER_BLOCK_TRANSLATE)
         ADD_CALLBACK_TYPE(before_block_exec_invalidate_opt, BEFORE_BLOCK_EXEC_INVALIDATE_OPT)
@@ -151,7 +153,6 @@ void add_hook(struct hook* h) {
         ADD_CALLBACK_TYPE(after_block_exec, AFTER_BLOCK_EXEC)
         default:
             printf("couldn't find hook type. Invalid %d\n", (int) h->type);
-            gdb_helper();
     }
 }
 
