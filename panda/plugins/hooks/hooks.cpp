@@ -15,6 +15,7 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 #include "panda/plugin.h"
+#include "panda/tcg-utils.h"
 #include <iostream>
 #include <unordered_map>
 #include <osi/osi_types.h>
@@ -215,7 +216,7 @@ void cb_ ## NAME ## _callback PASSED_ARGS { \
     HOOK_GENERIC_RET_EXPR( insert_call(&op, h.cb.NAME, __VA_ARGS__);, UPPER_CB_NAME, NAME, ) \
 }
 
-MAKE_HOOK_VOID(BEFORE_TCG_CODEGEN, before_tcg_codegen, (CPUState *cpu, TranslationBlock* tb), cpu, tb, &h)
+MAKE_TCG_HOOK(BEFORE_TCG_CODEGEN, before_tcg_codegen, (CPUState *cpu, TranslationBlock* tb), cpu, tb, &h)
 
 MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, (CPUState *cpu, target_ulong pc), cpu, pc, &h)
 
