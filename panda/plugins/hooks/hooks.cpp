@@ -140,6 +140,9 @@ void gdb_helper() {};
 void add_hook(struct hook* h) {
     switch (h->type){
         ADD_CALLBACK_TYPE(before_tcg_codegen, BEFORE_TCG_CODEGEN)
+        // if we ever register a non tcg_codegen we do this
+        panda_disable_tb_chaining();
+        printf("adding different kind of hook\n");
         ADD_CALLBACK_TYPE(before_block_translate, BEFORE_BLOCK_TRANSLATE)
         ADD_CALLBACK_TYPE(after_block_translate, AFTER_BLOCK_TRANSLATE)
         ADD_CALLBACK_TYPE(before_block_exec_invalidate_opt, BEFORE_BLOCK_EXEC_INVALIDATE_OPT)
@@ -206,6 +209,12 @@ bool cb_ ## NAME ## _callback PASSED_ARGS { \
     return ret; \
 }
 
+#define MAKE_TCG_HOOK(UPPER_CB_NAME, NAME, PASSED_ARGS, ...) \
+void cb_ ## NAME ## _callback PASSED_ARGS { \
+    TCGOp *op = find_first_guest_insn(); \
+    HOOK_GENERIC_RET_EXPR( insert_call(&op, h.cb.NAME, __VA_ARGS__);, UPPER_CB_NAME, NAME, ) \
+}
+
 MAKE_HOOK_VOID(BEFORE_TCG_CODEGEN, before_tcg_codegen, (CPUState *cpu, TranslationBlock* tb), cpu, tb, &h)
 
 MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, (CPUState *cpu, target_ulong pc), cpu, pc, &h)
@@ -228,7 +237,6 @@ bool init_plugin(void *_self) {
     // On init, register a callback but don't enable it
     self = _self;
     panda_enable_precise_pc();
-    panda_disable_tb_chaining();
 
     REGISTER_AND_DISABLE_CALLBACK(_self, before_tcg_codegen, BEFORE_TCG_CODEGEN)
     REGISTER_AND_DISABLE_CALLBACK(_self, before_block_translate, BEFORE_BLOCK_TRANSLATE)
