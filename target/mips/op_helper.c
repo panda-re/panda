@@ -1790,7 +1790,7 @@ void helper_mtc0_entryhi(CPUMIPSState *env, target_ulong arg1)
 #endif
     old = env->CP0_EntryHi;
     val = (arg1 & mask) | (old & ~mask);
-    if (!panda_callbacks_asid_changed(ENV_GET_CPU(cpu), env->CP0_EntryHi, val)){
+    if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi, val)){
         env->CP0_EntryHi = val;
         if (env->CP0_Config3 & (1 << CP0C3_MT)) {
             sync_c0_entryhi(env, env->current_tc);
@@ -1807,7 +1807,7 @@ void helper_mttc0_entryhi(CPUMIPSState *env, target_ulong arg1)
 {
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
-    if (!panda_callbacks_asid_changed(ENV_GET_CPU(cpu), env->CP0_EntryHi, arg1)){
+    if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi, arg1)){
         other->CP0_EntryHi = arg1;
     }
     sync_c0_entryhi(other, other_tc);
@@ -2574,7 +2574,7 @@ void r4k_helper_tlbr(CPUMIPSState *env)
 
     if (tlb->EHINV) {
         
-        if (!panda_callbacks_asid_changed(ENV_GET_CPU(cpu), env->CP0_EntryHi, 1 << CP0EnHi_EHINV)){
+        if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi, 1 << CP0EnHi_EHINV)){
             env->CP0_EntryHi = 1 << CP0EnHi_EHINV;
         }
         env->CP0_PageMask = 0;
@@ -2582,7 +2582,7 @@ void r4k_helper_tlbr(CPUMIPSState *env)
         env->CP0_EntryLo1 = 0;
     } else {
 
-        if (!panda_callbacks_asid_changed(ENV_GET_CPU(cpu), env->CP0_EntryHi,tlb->VPN | tlb->ASID)){
+        if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi,tlb->VPN | tlb->ASID)){
             env->CP0_EntryHi = tlb->VPN | tlb->ASID;
         }
         env->CP0_PageMask = tlb->PageMask;
