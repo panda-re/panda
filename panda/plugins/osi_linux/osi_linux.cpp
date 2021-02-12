@@ -151,16 +151,15 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
 
     // p->asid = taskd->mm->pgd (some kernel tasks are expected to return error)
     err = struct_get(cpu, &p->asid, task_addr, {ki.task.mm_offset, ki.mm.pgd_offset});
-    fixupendian(p->asid); // The struct_get call won't automatically fix endian
 
     // p->ppid = taskd->real_parent->pid
     err = struct_get(cpu, &p->ppid, task_addr,
                      {ki.task.real_parent_offset, ki.task.pid_offset});
-    fixupendian(p->ppid); // The struct_get call won't automatically fix endian
 
     // Convert asid to physical to be able to compare it with the pgd register.
     p->asid = p->asid ? panda_virt_to_phys(cpu, p->asid) : (target_ulong) NULL;
     p->taskd = kernel_profile->get_group_leader(cpu, task_addr);
+
     p->name = get_name(cpu, task_addr, p->name);
     p->pid = get_tgid(cpu, task_addr);
     //p->ppid = get_real_parent_pid(cpu, task_addr);
@@ -169,7 +168,6 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
     //if kernel version is < 3.17
     if(ki.version.a < 3 || (ki.version.a == 3 && ki.version.b < 17)) {
         uint64_t tmp = get_start_time(cpu, task_addr);
-        fixupendian64(tmp);
 
         //if there's an endianness mismatch
         #if defined(TARGET_WORDS_BIGENDIAN) != defined(HOST_WORDS_BIGENDIAN)
@@ -182,7 +180,6 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
        
     } else {
         p->create_time = get_start_time(cpu, task_addr);
-        fixupendian64(p->create_time); // The struct_get call won't automatically fix endian
     }
 }
 
@@ -446,6 +443,8 @@ error0:
     return;
 }
 
+
+
 /**
  * @brief PPP callback to retrieve current thread.
  */
@@ -499,7 +498,6 @@ void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *pp
         // ppid = taskd->real_parent->pid
         err = struct_get(cpu, ppid, h->taskd,
                          {ki.task.real_parent_offset, ki.task.pid_offset});
-        fixupendian(*ppid);
         if (err != struct_get_ret_t::SUCCESS) {
             *ppid = (target_pid_t)-1;
         }
