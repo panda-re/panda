@@ -1,3 +1,6 @@
+#ifndef __HOOKS_INT_FNS_H__
+#define __HOOKS_INT_FNS_H__
+
 extern "C" {
 
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
@@ -5,14 +8,62 @@ extern "C" {
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
 // files in this directory that contain subsections like this one.
 
-    // Hook functions must be of this type
-    typedef bool (*hook_func_t)(CPUState *, TranslationBlock *);
+#define MAX_PROCNAME_LENGTH 256
+#define MAX_PATH_LEN 256
+struct hook;
+struct symbol;
 
-    void add_hook(target_ulong addr, hook_func_t hook);
-    void update_hook(hook_func_t hook, target_ulong value);
-    void enable_hook(hook_func_t hook, target_ulong value);
-    void disable_hook(hook_func_t hook);
+// Hook functions must be of this type
+typedef bool (*hook_func_t)(CPUState *, TranslationBlock *, struct hook* h);
+
+typedef bool (*dynamic_symbol_hook_func_t)(CPUState *, TranslationBlock *, struct hook* h);
+
+typedef union hooks_panda_cb {
+    void (*before_tcg_codegen)(CPUState *env, TranslationBlock *tb, struct hook*);
+    void (*before_block_translate)(CPUState *env, target_ptr_t pc, struct hook*);
+    void (*after_block_translate)(CPUState *env, TranslationBlock *tb, struct hook*);
+    bool (*before_block_exec_invalidate_opt)(CPUState *env, TranslationBlock *tb, struct hook*);
+    void (*before_block_exec)(CPUState *env, TranslationBlock *tb, struct hook*);
+    void (*after_block_exec)(CPUState *env, TranslationBlock *tb, uint8_t exitCode, struct hook*);
+} hooks_panda_cb;
+
+enum kernel_mode{
+    MODE_ANY,
+    MODE_KERNEL_ONLY,
+    MODE_USER_ONLY,
+};
+
+typedef struct hook {
+    target_ulong addr;
+    target_ulong asid;
+    panda_cb_type type;
+    hooks_panda_cb cb;
+    enum kernel_mode km;
+    bool enabled;
+    struct symbol sym; //if an associated symbol exists
+} hook;
+
+
+struct symbol_hook {
+    char name[MAX_PATH_LEN];
+    char section[MAX_PATH_LEN];
+    char procname[MAX_PATH_LEN];
+    panda_cb_type type;
+    hooks_panda_cb cb;
+};
+
+extern "C" void add_hook(struct hook* h);
+extern "C" void enable_hooking();
+extern "C" void disable_hooking();
+extern "C" void add_symbol_hook(struct symbol_hook* h);
+
+struct dynamic_symbol_hook {
+    char library_name[MAX_PATH_LEN];
+    char symbol[MAX_PATH_LEN];
+    dynamic_symbol_hook_func_t cb;
+};
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 }
+#endif
