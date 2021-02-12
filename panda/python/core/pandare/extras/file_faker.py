@@ -217,7 +217,7 @@ class FileFaker(FileHook):
             for name in names:
                 self._gen_fd_cb(name, arg_offset)
 
-    def replace_file(self, filename, faker, disk_file="etc/passwd"):
+    def replace_file(self, filename, faker, disk_file="/etc/passwd"):
         '''
         Replace all accesses to filename with accesses to the fake file instead
         which optionally may be specified by disk_file.
