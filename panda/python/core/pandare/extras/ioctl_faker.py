@@ -72,7 +72,8 @@ class Ioctl():
                 self.guest_ptr = guest_ptr
                 self.guest_buf = panda.virtual_memory_read(cpu, self.guest_ptr, self.cmd.bits.arg_size)
             except ValueError:
-                raise RuntimeError("Failed to read guest buffer: ioctl({})".format(str(self.cmd)))
+                self.guest_buf = None
+                #raise RuntimeError("Failed to read guest buffer: ioctl({})".format(str(self.cmd)))
         else:
             self.has_buf = False
             self.guest_ptr = None
@@ -83,8 +84,8 @@ class Ioctl():
             proc = panda.plugins['osi'].get_current_process(cpu)
             proc_name_ptr = proc.name
             file_name_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, panda.ffi.cast("int", fd))
-            self.proc_name = ffi.string(proc_name_ptr).decode() if proc_name_ptr != ffi.NULL else "unknown"
-            self.file_name = ffi.string(file_name_ptr).decode() if file_name_ptr != ffi.NULL else "unknown"
+            self.proc_name = ffi.string(proc_name_ptr).decode(errors="ignore") if proc_name_ptr != ffi.NULL else "unknown"
+            self.file_name = ffi.string(file_name_ptr).decode(errors="ignore") if file_name_ptr != ffi.NULL else "unknown"
         else:
             self.proc_name = None
             self.file_name = None
