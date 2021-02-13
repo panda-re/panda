@@ -307,29 +307,11 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
     }
     // is it an ELF header?
     if (unlikely(elfhdr[0] == '\x7f' && elfhdr[1] == 'E' && elfhdr[2] == 'L' && elfhdr[3] == 'F')){
-
-        if (unmodded_symbol_mapping.find(name) != unmodded_symbol_mapping.end()){ 
-            set<struct symbol> symbols_list_internal;
-            set<struct symbol>::iterator it;
-            for (it = unmodded_symbol_mapping[name].begin(); it != unmodded_symbol_mapping[name].end(); ++it){
-                struct symbol tmp;
-                memcpy(&tmp, &*it, sizeof(struct symbol));
-                tmp.address += m->base;
-                symbols[asid][name].insert(tmp);
-            }
-        }
-        //printf("looking at section %s:%s %llx\n", current->name, m->name, (long long unsigned int) m->base);
-        //printf("%s %s elf header %llx\n", current->name, m->name, (long long unsigned int) m->base);
-        // allocate buffer for start of ELF. read first page
-        //char* buff = (char*)malloc(0x1000);
         ELF(Ehdr) ehdr;
         // attempt to read memory allocation
         if (panda_virtual_memory_read(cpu, m->base, (uint8_t*)&ehdr, sizeof(ELF(Ehdr))) != MEMTX_OK){
             //printf("cant read elf header\n");
-            // can't read it; free buffer and move on.
-            //free(buff);
             return;
-            //return;
         }
         target_ulong phnum = ehdr.e_phnum;
         target_ulong phoff = ehdr.e_phoff;
@@ -383,12 +365,6 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
             }
             j++;
         }  
-        
-        if (dt_hash == 0 && gnu_hash == 0){
-            //printf("%s strtab %llx symtab %llx dt_hash %llx\n",name.c_str(), (long long unsigned int)strtab, (long long unsigned int)symtab, (long long unsigned int)dt_hash);
-            //printf("%s %s  got error 1\n", current->name, m->name);
-            return;
-        }
 
         // some of these are offsets. some are fully qualified
         // addresses. this is a gimmick that can sort-of tell.
@@ -429,21 +405,15 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
             for (;i<numelements_symtab; i++){
                 ELF(Sym)* a = (ELF(Sym)*) (symtab_buf + i*sizeof(ELF(Sym)));
                 if (a->st_name < strtab_size && a->st_value != 0){
-                    struct symbol s, t;
+                    struct symbol s;
                     strncpy((char*)&s.name, &strtab_buf[a->st_name], MAX_PATH_LEN-1);
                     strncpy((char*)&s.section, m->name, MAX_PATH_LEN-1);
                     s.address = m->base + a->st_value;
                     //printf("found symbol %s %s 0x%llx\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address);
-                    memcpy(&t, &s, sizeof(struct symbol));
-                    t.address = a->st_value;
-                    unmodded_symbol_mapping[name].insert(t);
                     symbols[asid][name].insert(s);
                     check_symbol_for_hook(cpu, s, current->name, m);
-                    //printf("%s %s %llx\n", m->name, s.name, (long long unsigned int)s.address+ a->st_name);
                 }
             }
-        }else{
-            //printf("couldn't read symtab_buf %llx %llx %llx\n", (long long unsigned int)symtab, (long long unsigned int) m->base, (long long unsigned int)symtab_size);
         }
         free(symtab_buf);
         free(strtab_buf);
@@ -457,8 +427,6 @@ void update_symbols_in_space(CPUState* cpu){
     }
     OsiProc *current = get_current_process(cpu);
     GArray *ms = get_mappings(cpu, current);
-
-    
     if (ms == NULL) {
         return;
     } else {
@@ -494,8 +462,6 @@ void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
     update_symbols_in_space(env);
     h->enabled = false;
 }
-
-bool first_require = false;
 
 void bbe_execve(CPUState *env, TranslationBlock *tb){
     if (unlikely(!panda_in_kernel(env))){
@@ -540,19 +506,19 @@ void bbe_execve(CPUState *env, TranslationBlock *tb){
                 if (entrynum == AT_NULL){
                     break;
                 }else if (entrynum == AT_ENTRY){
-                    if (!first_require){
-                        panda_require("hooks");
-                        first_require = true;
-                    }
                     struct hook h;
                     h.addr = entryval;
                     h.asid = panda_current_asid(env);
-                    h.type = PANDA_CB_BEFORE_BLOCK_EXEC;
+                    h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
                     h.cb.before_block_exec = hook_program_start;
                     h.km = MODE_USER_ONLY;
                     h.enabled = true;
 
                     void* hooks = panda_get_plugin_by_name("hooks");
+                    if (hooks == NULL){
+                        panda_require("hooks");
+                        hooks = panda_get_plugin_by_name("hooks");
+                    }
                     if (hooks != NULL){
                         void (*dlsym_add_hook)(struct hook*) = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
                         if ((void*)dlsym_add_hook != NULL) {
