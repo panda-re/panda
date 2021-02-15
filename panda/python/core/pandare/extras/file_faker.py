@@ -55,10 +55,11 @@ class FakeFile:
         Return how much HyperFD offset should be incremented by
         XXX what about writes past end of the file?
         '''
-        self.logger.info(f"FakeFD({self.filename}) writing {new_data} at offset {self.offset}")
         new_data  = self.contents[:offset]
         new_data += write_data
         new_data += self.contents[offset+len(new_data):]
+        
+        self.logger.info(f"FakeFD({self.filename}) writing {new_data} at offset {offset}")
 
         self.contents = new_data
         return len(write_data)
@@ -216,15 +217,16 @@ class FileFaker(FileHook):
             for name in names:
                 self._gen_fd_cb(name, arg_offset)
 
-    def replace_file(self, filename, faker):
+    def replace_file(self, filename, faker, disk_file="/etc/passwd"):
         '''
         Replace all accesses to filename with accesses to the fake file instead
+        which optionally may be specified by disk_file.
         '''
         self.faked_files[filename] = faker
 
         # XXX: We rename the files to real files to the guest kernel can manage FDs for us.
         #      this may need to use different real files depending on permissions requested
-        self.rename_file(filename, "/etc/passwd")
+        self.rename_file(filename, disk_file)
 
     def _gen_fd_cb(self, name, fd_offset):
         '''

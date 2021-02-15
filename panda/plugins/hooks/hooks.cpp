@@ -15,6 +15,7 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 #include "panda/plugin.h"
+#include "panda/tcg-utils.h"
 #include <iostream>
 #include <unordered_map>
 #include <osi/osi_types.h>
@@ -30,10 +31,34 @@ void uninit_plugin(void *);
 #include "hooks_int_fns.h"
 }
 
+extern bool panda_please_flush_tb;
+
 using namespace std;
 
+bool operator==(const struct hook &a, const struct hook &b){
+    return memcmp(&a, &b, sizeof(struct hook)) == 0;
+}
+
+#define NOT_EQUAL_RETURN_COND(A, B)  do {if (A != B) { return A < B;}} while (0)
+//
+/*
+ * The set wants to know if our elements are the same. We only want
+ * this to happen in the case that our structs are actual duplicates.
+ * Otherwise we want them ordered by address and then asid and so on.
+ */
 bool operator<(const struct hook &a, const struct hook &b){
-    return a.addr < b.addr;
+    //printf("comparing %llx %llx\n", (long long unsigned int) a.addr, (long long unsigned int) b.addr);
+    if (a == b){
+        return false;
+    }
+    NOT_EQUAL_RETURN_COND(a.addr, b.addr);
+    NOT_EQUAL_RETURN_COND(a.asid, b.asid);
+    NOT_EQUAL_RETURN_COND(a.type, b.type);
+    NOT_EQUAL_RETURN_COND((void*)a.cb.before_block_exec, (void*)b.cb.before_block_exec);
+    NOT_EQUAL_RETURN_COND(a.km, b.km);
+    NOT_EQUAL_RETURN_COND(a.enabled, b.enabled);
+    NOT_EQUAL_RETURN_COND(&a, &b);
+    return false;
 }
 
 #define SUPPORT_CALLBACK_TYPE(name) \
@@ -77,7 +102,7 @@ vector<pair<hooks_panda_cb, panda_cb_type>> symbols_to_handle;
 void handle_hook_return (CPUState *cpu, struct hook_symbol_resolve *sh, struct symbol s, OsiModule* m){
     int id = sh->id;
     pair<hooks_panda_cb,panda_cb_type> resolved = symbols_to_handle[id];
-    //printf("handle_hook_return @ 0x%llx for \"%s\" in \"%s\" @ 0x%llx ASID: 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count(), s.name, s.section, (long long unsigned int) s.address, (long long unsigned int) panda_current_asid(cpu));
+    //printf("handle_hook_return @ 0x%llx for \"%s\" in \"%s\" @ 0x%llx ASID: 0x%llx offset: 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count(), s.name, s.section, (long long unsigned int) s.address, (long long unsigned int) panda_current_asid(cpu), (long long unsigned int) s.address - m->base);
     struct hook new_hook;
     new_hook.addr = s.address;
     new_hook.asid = panda_current_asid(cpu);
@@ -89,14 +114,8 @@ void handle_hook_return (CPUState *cpu, struct hook_symbol_resolve *sh, struct s
     add_hook(&new_hook);
 }
 
-bool first_require = false;
-
 void add_symbol_hook(struct symbol_hook* h){
     //printf("add_symbol_hook\n");
-    if (!first_require){
-        panda_require("dynamic_symbols");
-        first_require = true;
-    }
     pair<hooks_panda_cb, panda_cb_type> p (h->cb, h->type);
     struct hook_symbol_resolve sh;
     sh.enabled = true;
@@ -107,6 +126,10 @@ void add_symbol_hook(struct symbol_hook* h){
     strncpy((char*) &sh.name, (char*) &h->name, MAX_PATH_LEN);
     strncpy((char*) &sh.section,(char*) &h->section, MAX_PATH_LEN);
     void* dynamic_symbols = panda_get_plugin_by_name("dynamic_symbols");
+    if (dynamic_symbols == NULL){
+        panda_require("dynamic_symbols");
+        dynamic_symbols = panda_get_plugin_by_name("dynamic_symbols");
+    }
     if (dynamic_symbols != NULL){
         void (*hook_symbol_resolution_dlsym)(struct hook_symbol_resolve*) = (void(*)(struct hook_symbol_resolve*)) dlsym(dynamic_symbols, "hook_symbol_resolution");
         if ((void*)hook_symbol_resolution_dlsym != NULL) {
@@ -135,9 +158,17 @@ bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
         } \
         break;
 
-void gdb_helper() {};
+bool first_tb_chaining = false;
 
 void add_hook(struct hook* h) {
+    if (h->type != PANDA_CB_BEFORE_TCG_CODEGEN && !first_tb_chaining){
+        // if we ever register a non tcg_codegen we must disable tb chaining
+        panda_disable_tb_chaining();
+        first_tb_chaining = true;
+    }
+    if (h->type == PANDA_CB_BEFORE_TCG_CODEGEN){
+        panda_please_flush_tb = true;
+    }
     switch (h->type){
         ADD_CALLBACK_TYPE(before_tcg_codegen, BEFORE_TCG_CODEGEN)
         ADD_CALLBACK_TYPE(before_block_translate, BEFORE_BLOCK_TRANSLATE)
@@ -147,7 +178,6 @@ void add_hook(struct hook* h) {
         ADD_CALLBACK_TYPE(after_block_exec, AFTER_BLOCK_EXEC)
         default:
             printf("couldn't find hook type. Invalid %d\n", (int) h->type);
-            gdb_helper();
     }
 }
 
@@ -155,7 +185,11 @@ void add_hook(struct hook* h) {
 #define MAKE_HOOK_FN_START(UPPER_CB_NAME, NAME, VALUE) \
     if (unlikely(! temp_ ## NAME ## _hooks .empty())){ \
         for (auto &h: temp_ ## NAME ## _hooks) { \
-            NAME ## _hooks[h.asid].insert(h); \
+            auto pair = NAME ## _hooks[h.asid].insert(h); \
+            if (!pair.second) { \
+                printf("failed add\n");  \
+                printf(*pair.first == (const hook) h ? "true\n" : "false\n"); \
+            } \
         } \
         temp_ ## NAME ## _hooks .clear(); \
     } \
@@ -166,6 +200,7 @@ void add_hook(struct hook* h) {
     target_ulong asid = panda_current_asid(cpu); \
     bool in_kernel = panda_in_kernel(cpu); \
     struct hook hook_container; \
+    memset(&hook_container, 0, sizeof(hook_container)); \
     hook_container.addr = panda_current_pc(cpu); \
     set<struct hook>::iterator it;
 
@@ -206,7 +241,14 @@ bool cb_ ## NAME ## _callback PASSED_ARGS { \
     return ret; \
 }
 
-MAKE_HOOK_VOID(BEFORE_TCG_CODEGEN, before_tcg_codegen, (CPUState *cpu, TranslationBlock* tb), cpu, tb, &h)
+void cb_tcg_codegen_middle_filter(CPUState* cpu, TranslationBlock *tb) {
+    HOOK_GENERIC_RET_EXPR((*(h.cb.before_tcg_codegen))(cpu, tb, &h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, );
+}
+
+void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
+    TCGOp *op = find_first_guest_insn();
+    HOOK_GENERIC_RET_EXPR(insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb); return;, BEFORE_TCG_CODEGEN, before_tcg_codegen, )
+}
 
 MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, (CPUState *cpu, target_ulong pc), cpu, pc, &h)
 
@@ -228,7 +270,6 @@ bool init_plugin(void *_self) {
     // On init, register a callback but don't enable it
     self = _self;
     panda_enable_precise_pc();
-    panda_disable_tb_chaining();
 
     REGISTER_AND_DISABLE_CALLBACK(_self, before_tcg_codegen, BEFORE_TCG_CODEGEN)
     REGISTER_AND_DISABLE_CALLBACK(_self, before_block_translate, BEFORE_BLOCK_TRANSLATE)
