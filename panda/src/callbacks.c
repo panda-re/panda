@@ -49,7 +49,7 @@ WARNING: This is all gloriously thread-unsafe!!!
 panda_cb_list *panda_cbs[PANDA_CB_LAST];
 
 // Storage for command line options
-const gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
+gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
 int panda_argc;
 
 int nb_panda_plugins = 0;
@@ -76,8 +76,22 @@ bool panda_exit_loop = false;
 bool panda_add_arg(const char *plugin_name, const char *plugin_arg) {
     if (plugin_name == NULL)    // PANDA argument
         panda_argv[panda_argc++] = g_strdup(plugin_arg);
-    else                        // PANDA plugin argument
+    else {                       // PANDA plugin argument
+        /*  Check if plugin argument is already present and overwrite, if so */
+        for (int i = 0; i < panda_argc; i++) {
+            if (0 == strncmp(panda_argv[i], plugin_name, strlen(plugin_name))){
+                char * p;
+                p = strchr(plugin_arg, '=');
+                if (0 != p && 0 == strncmp(panda_argv[i]+strlen(plugin_name)+1, plugin_arg, p - plugin_arg)) {
+                    g_free(panda_argv[i]);
+                    panda_argv[i] = g_strdup_printf("%s:%s", plugin_name, plugin_arg);
+                    return true;
+                }
+            }
+        }
+        /* We see this argument for the first time, let's add it */
         panda_argv[panda_argc++] = g_strdup_printf("%s:%s", plugin_name, plugin_arg);
+    }
     return true;
 }
 
