@@ -980,6 +980,71 @@ typedef enum TPRAccess {
     TPR_ACCESS_READ,
     TPR_ACCESS_WRITE,
 } TPRAccess;
+struct hflags_container {
+    uint32_t hflags;
+    
+     #define MAKE_EQUALS_OPERATOR_FN(OP, TYPE) \
+         struct hflags_container & operator OP(TYPE k){ \
+            printf("Got here\n"); \
+            hflags OP k; \
+            return *this; \
+         }
+
+     #define MAKE_EQUALS_ALL_TYPES(TYPE) \
+        MAKE_EQUALS_OPERATOR_FN(+=, TYPE) \
+        MAKE_EQUALS_OPERATOR_FN(-=, TYPE) \
+        MAKE_EQUALS_OPERATOR_FN(&=, TYPE) \
+        MAKE_EQUALS_OPERATOR_FN(|=, TYPE) \
+        MAKE_EQUALS_OPERATOR_FN(*=, TYPE) \
+        MAKE_EQUALS_OPERATOR_FN(/=, TYPE) \
+        MAKE_EQUALS_OPERATOR_FN(%=, TYPE) \
+        MAKE_EQUALS_OPERATOR_FN(<<=,TYPE) \
+        MAKE_EQUALS_OPERATOR_FN(>>=,TYPE) \
+        MAKE_EQUALS_OPERATOR_FN(^=, TYPE) \
+        MAKE_EQUALS_OPERATOR_FN(=, TYPE)
+
+     
+     #define MAKE_RET_OPERATOR_FN(OP, TYPE) \
+        struct hflags_container operator OP(TYPE k){ \
+            printf("Got here\n"); \
+            struct hflags_container b; \
+            b.hflags = hflags OP k; \
+            return b; \
+        }
+        
+
+    #define MAKE_RET_ALL_TYPES(TYPE) \
+        MAKE_RET_OPERATOR_FN(+, TYPE) \
+        MAKE_RET_OPERATOR_FN(-, TYPE) \
+        MAKE_RET_OPERATOR_FN(&, TYPE) \
+        MAKE_RET_OPERATOR_FN(|, TYPE) \
+        MAKE_RET_OPERATOR_FN(*, TYPE) \
+        MAKE_RET_OPERATOR_FN(/, TYPE) \
+        MAKE_RET_OPERATOR_FN(%, TYPE) \
+        MAKE_RET_OPERATOR_FN(<<,TYPE) \
+        MAKE_RET_OPERATOR_FN(>>,TYPE) \
+        MAKE_RET_OPERATOR_FN(^, TYPE)
+    
+
+
+    #define MAKE_ALL_ALL(TYPE) \
+        MAKE_RET_ALL_TYPES(TYPE) \
+        MAKE_EQUALS_ALL_TYPES(TYPE)
+
+    #define MAKE_ALL_REF_AND_NOT(TYPE) \
+        MAKE_ALL_ALL(TYPE &) \
+        MAKE_ALL_ALL(TYPE)
+
+    operator int(){
+        uint32_t *x;
+        x = (uint32_t*)this;
+        return *x;
+    }
+
+    MAKE_ALL_REF_AND_NOT(uint32_t)
+    MAKE_ALL_REF_AND_NOT(int)
+    MAKE_ALL_REF_AND_NOT(target_ulong)
+};
 
 typedef struct CPUX86State {
     /* standard registers */
@@ -995,7 +1060,7 @@ typedef struct CPUX86State {
     target_ulong cc_src2;
     uint32_t cc_op;
     int32_t df; /* D flag : 1 if D = 0, -1 if D = 1 */
-    uint32_t hflags; /* TB flags, see HF_xxx constants. These flags
+    struct hflags_container hflags; /* TB flags, see HF_xxx constants. These flags
                         are known at translation time. */
     uint32_t hflags2; /* various other flags, see HF2_xxx constants. */
 

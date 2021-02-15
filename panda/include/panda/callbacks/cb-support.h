@@ -135,3 +135,4 @@ void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 
 
 void panda_callbacks_before_tcg_codegen(CPUState *env, TranslationBlock *tb);
+void panda_callbacks_mode_changed(CPUState *env, target_ulong old, target_ulong new);

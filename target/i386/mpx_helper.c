@@ -49,7 +49,9 @@ void cpu_sync_bndcs_hflags(CPUX86State *env)
     } else {
         hflags2 &= ~HF2_MPX_PR_MASK;
     }
-
+    if (env->hflags & HF_CPL_MASK != hflags & HF_CPL_MASK){
+        panda_callback_mode_changed(ENV_GET_CPU(env), env->hflags, hflags);
+    }
     env->hflags = hflags;
     env->hflags2 = hflags2;
 }

@@ -630,12 +630,17 @@ void cpu_x86_update_cr0(CPUX86State *env, uint32_t new_cr0)
 
     /* update PE flag in hidden flags */
     pe_state = (env->cr[0] & CR0_PE_MASK);
-    env->hflags = (env->hflags & ~HF_PE_MASK) | (pe_state << HF_PE_SHIFT);
+    target_ulong tmp_val = env->hflags;
+    tmp_val = (env->hflags & ~HF_PE_MASK) | (pe_state << HF_PE_SHIFT);
     /* ensure that ADDSEG is always set in real mode */
-    env->hflags |= ((pe_state ^ 1) << HF_ADDSEG_SHIFT);
+    tmp_val |= ((pe_state ^ 1) << HF_ADDSEG_SHIFT);
     /* update FPU flags */
-    env->hflags = (env->hflags & ~(HF_MP_MASK | HF_EM_MASK | HF_TS_MASK)) |
+    tmp_val = (env->hflags & ~(HF_MP_MASK | HF_EM_MASK | HF_TS_MASK)) |
         ((new_cr0 << (HF_MP_SHIFT - 1)) & (HF_MP_MASK | HF_EM_MASK | HF_TS_MASK));
+    if (env->hflags & HF_CPL_MASK != tmp_val & HF_CPL_MASK){
+        panda_callback_mode_changed(ENV_GET_CPU(env), env->hflags, tmp_val);
+    }
+    env->hflags = tmp_val;
 }
 
 /* XXX: in legacy PAE mode, generate a GPF if reserved bits are set in
@@ -693,6 +698,9 @@ void cpu_x86_update_cr4(CPUX86State *env, uint32_t new_cr4)
     }
 
     env->cr[4] = new_cr4;
+    if (env->hflags & HF_CPL_MASK != hflags & HF_CPL_MASK){
+        panda_callback_mode_changed(ENV_GET_CPU(env), env->hflags, hflags);
+    }
     env->hflags = hflags;
 
     cpu_sync_bndcs_hflags(env);

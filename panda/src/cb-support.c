@@ -161,8 +161,8 @@ MAKE_CALLBACK(void, MAIN_LOOP_WAIT, main_loop_wait, void);
 
 MAKE_CALLBACK(void, PRE_SHUTDOWN, pre_shutdown, void);
 
-MAKE_CALLBACK(void, MODE_CHANGE, mode_change, CPUState*, env, 
-                    target_ulong old_mode, target_ulong, new_mode);
+MAKE_CALLBACK(void, MODE_CHANGED, mode_changed, CPUState*, env, 
+                    target_ulong, old_mode, target_ulong, new_mode);
 
 // Non-standard callbacks below here
 
