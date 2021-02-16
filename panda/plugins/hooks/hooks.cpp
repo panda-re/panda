@@ -204,9 +204,9 @@ void add_hook(struct hook* h) {
     hook_container.addr = panda_current_pc(cpu); \
     set<struct hook>::iterator it;
 
-#define LOOP_ASID_CHECK(NAME, EXPR)\
+#define LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK)\
     it = NAME ## _hooks[asid].lower_bound(hook_container); \
-    while(it != NAME ## _hooks[asid].end() && it->addr == hook_container.addr){ \
+    while(it != NAME ## _hooks[asid].end() && it->addr COMPARATOR_TO_BLOCK){ \
         auto h = *it; \
         if (likely(h.enabled)){ \
             if (h.asid == 0 || h.asid == asid){ \
@@ -223,31 +223,32 @@ void add_hook(struct hook* h) {
         ++it; \
     } 
 
-#define HOOK_GENERIC_RET_EXPR(EXPR, UPPER_CB_NAME, NAME, VALUE) \
+#define HOOK_GENERIC_RET_EXPR(EXPR, UPPER_CB_NAME, NAME, VALUE, COMPARATOR_TO_BLOCK) \
     MAKE_HOOK_FN_START(UPPER_CB_NAME, NAME, VALUE) \
-    LOOP_ASID_CHECK(NAME, EXPR) \
+    LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK) \
     asid = 0; \
-    LOOP_ASID_CHECK(NAME, EXPR)
+    LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK)
 
 #define MAKE_HOOK_VOID(UPPER_CB_NAME, NAME, PASSED_ARGS, ...) \
 void cb_ ## NAME ## _callback PASSED_ARGS { \
-    HOOK_GENERIC_RET_EXPR( (*(h.cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, ) \
+    HOOK_GENERIC_RET_EXPR( (*(h.cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, , == hook_container.addr) \
 }
 
 #define MAKE_HOOK_BOOL(UPPER_CB_NAME, NAME, PASSED_ARGS, ...) \
 bool cb_ ## NAME ## _callback PASSED_ARGS { \
     bool ret = false; \
-    HOOK_GENERIC_RET_EXPR(ret |= (*(h.cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, false) \
+    HOOK_GENERIC_RET_EXPR(ret |= (*(h.cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, false, == hook_container.addr) \
     return ret; \
 }
 
 void cb_tcg_codegen_middle_filter(CPUState* cpu, TranslationBlock *tb) {
-    HOOK_GENERIC_RET_EXPR((*(h.cb.before_tcg_codegen))(cpu, tb, &h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, );
+    HOOK_GENERIC_RET_EXPR((*(h.cb.before_tcg_codegen))(cpu, tb, &h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , <= hook_container.addr + tb->size);
 }
 
 void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
-    TCGOp *op = find_first_guest_insn();
-    HOOK_GENERIC_RET_EXPR(insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb); return;, BEFORE_TCG_CODEGEN, before_tcg_codegen, )
+    target_ulong pc = panda_current_pc(cpu);
+    TCGOp *op = find_guest_insn_by_addr(pc);
+    HOOK_GENERIC_RET_EXPR(insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb); return;, BEFORE_TCG_CODEGEN, before_tcg_codegen, ,<= hook_container.addr + tb->size)
 }
 
 MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, (CPUState *cpu, target_ulong pc), cpu, pc, &h)
