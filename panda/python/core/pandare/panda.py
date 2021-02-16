@@ -700,8 +700,6 @@ class Panda():
         Supports physical or virtual addresses
         Raises ValueError if read fails
         '''
-        if not hasattr(self, "_memcb"): # XXX: Why do we enable memcbs for memory writes?
-            self.enable_memcb()
         buf = ffi.new("char[]", length)
 
         # Force CFFI to parse addr as an unsigned value. Otherwise we get OverflowErrors
