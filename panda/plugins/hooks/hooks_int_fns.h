@@ -1,6 +1,8 @@
 #ifndef __HOOKS_INT_FNS_H__
 #define __HOOKS_INT_FNS_H__
 
+#include "dynamic_symbols/dynamic_symbols_int_fns.h"
+
 extern "C" {
 
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda

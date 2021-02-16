@@ -79,6 +79,7 @@ inline bool operator<(const struct symbol& s, target_ulong p){
 
 unordered_map<target_ulong, unordered_map<string, set<struct symbol>>> symbols;
 unordered_map<string, set<struct symbol>> unmodded_symbol_mapping;
+extern bool panda_please_flush_tb;
 
 vector<struct hook_symbol_resolve> hooks;
 

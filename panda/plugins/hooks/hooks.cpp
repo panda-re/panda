@@ -248,19 +248,7 @@ void cb_ ## NAME ## _callback PASSED_ARGS { \
 bool cb_ ## NAME ## _callback PASSED_ARGS { \
     bool ret = false; \
     HOOK_GENERIC_RET_EXPR(ret |= (*(h->cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, false, == hook_container.addr) \
-    return ret; \
-}
-
-void cb_tcg_codegen_middle_filter(CPUState* cpu, TranslationBlock *tb) {
-    HOOK_GENERIC_RET_EXPR((*(h->cb.before_tcg_codegen))(cpu, tb, h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , <= hook_container.addr + tb->size);
-}
-
-void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
-    target_ulong pc = panda_current_pc(cpu);
     TCGOp *op = find_guest_insn_by_addr(pc);
-    HOOK_GENERIC_RET_EXPR(insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb); return;, BEFORE_TCG_CODEGEN, before_tcg_codegen, ,<= hook_container.addr + tb->size)
-}
-
 MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, (CPUState *cpu, target_ulong pc), cpu, pc, h)
 
 MAKE_HOOK_VOID(AFTER_BLOCK_TRANSLATE, after_block_translate, (CPUState *cpu, TranslationBlock *tb), cpu, tb, h)
