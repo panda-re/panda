@@ -176,7 +176,6 @@ void add_hook(struct hook* h) {
         first_tb_chaining = true;
     }
     if (h->type == PANDA_CB_BEFORE_TCG_CODEGEN){
-        //panda_please_flush_tb = true;
         flush_tb_if_block_in_cache(first_cpu, h->addr);
     }
     switch (h->type){
@@ -256,9 +255,9 @@ void cb_tcg_codegen_middle_filter(CPUState* cpu, TranslationBlock *tb) {
 }
 
 void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
-    target_ulong pc  = panda_current_pc(cpu);
-    TCGOp *op = find_guest_insn_by_addr(pc);
-    HOOK_GENERIC_RET_EXPR(insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb); return;, BEFORE_TCG_CODEGEN, before_tcg_codegen, , <=hook_container.addr + tb->size)
+    //target_ulong pc  = panda_current_pc(cpu);
+    
+    HOOK_GENERIC_RET_EXPR(TCGOp *op = find_guest_insn_by_addr(h->addr);insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , <=hook_container.addr + tb->size)
 }
 
 
