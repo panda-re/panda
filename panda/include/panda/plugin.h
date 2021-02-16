@@ -146,7 +146,7 @@ const char *panda_parse_string_opt(panda_arg_list *args, const char *argname, co
 
 char** str_split(char *a_str, const char a_delim);
 
-extern const gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
+extern gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
 extern int panda_argc;
 
 char *panda_plugin_path(const char *name);
