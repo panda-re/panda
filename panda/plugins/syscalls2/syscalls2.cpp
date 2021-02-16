@@ -896,7 +896,7 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
     }
 #endif
     // Arm32/aarch64 - not a match
-    return false;
+    return 0;
 #elif defined(TARGET_MIPS)
 
     unsigned char buf[4] = {};

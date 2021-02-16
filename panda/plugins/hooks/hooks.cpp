@@ -217,10 +217,10 @@ void add_hook(struct hook* h) {
 #define LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK)\
     it = NAME ## _hooks[asid].lower_bound(hook_container); \
     while(it != NAME ## _hooks[asid].end() && it->addr COMPARATOR_TO_BLOCK){ \
-        auto h = *it; \
-        if (likely(h.enabled)){ \
-            if (h.asid == 0 || h.asid == asid){ \
-                if (h.km == MODE_ANY || (in_kernel && h.km == MODE_KERNEL_ONLY) || (!in_kernel && h.km == MODE_USER_ONLY)){ \
+        auto h = (hook*)&(*it); \
+        if (likely(h->enabled)){ \
+            if (h->asid == 0 || h->asid == asid){ \
+                if (h->km == MODE_ANY || (in_kernel && h->km == MODE_KERNEL_ONLY) || (!in_kernel && h->km == MODE_USER_ONLY)){ \
                     EXPR \
                     if (!h->enabled){ \
                         it = NAME ## _hooks[asid].erase(it); \
@@ -247,19 +247,20 @@ void cb_ ## NAME ## _callback PASSED_ARGS { \
 #define MAKE_HOOK_BOOL(UPPER_CB_NAME, NAME, PASSED_ARGS, ...) \
 bool cb_ ## NAME ## _callback PASSED_ARGS { \
     bool ret = false; \
-    HOOK_GENERIC_RET_EXPR(ret |= (*(h.cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, false, == hook_container.addr) \
+    HOOK_GENERIC_RET_EXPR(ret |= (*(h->cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, false, == hook_container.addr) \
     return ret; \
 }
-
+    
 void cb_tcg_codegen_middle_filter(CPUState* cpu, TranslationBlock *tb) {
-    HOOK_GENERIC_RET_EXPR((*(h.cb.before_tcg_codegen))(cpu, tb, &h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , <= hook_container.addr + tb->size);
+    HOOK_GENERIC_RET_EXPR((*(h->cb.before_tcg_codegen))(cpu, tb, h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , <= hook_container.addr + tb->size );
 }
 
 void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
-    target_ulong pc = panda_current_pc(cpu);
+    target_ulong pc  = panda_current_pc(cpu);
     TCGOp *op = find_guest_insn_by_addr(pc);
-    HOOK_GENERIC_RET_EXPR(insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb); return;, BEFORE_TCG_CODEGEN, before_tcg_codegen, ,<= hook_container.addr + tb->size)
+    HOOK_GENERIC_RET_EXPR(insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb); return;, BEFORE_TCG_CODEGEN, before_tcg_codegen, , <=hook_container.addr + tb->size)
 }
+
 
 MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, (CPUState *cpu, target_ulong pc), cpu, pc, h)
 
