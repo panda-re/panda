@@ -80,16 +80,16 @@ plugin is initialized (default: `false`)
 matches this argument (requires OSI). Note this filter is done at runtime, not
 instrumentation time.
 * `pc` - Filter option, only instrument blocks within a given range. Format: 
-<Start PC in Hex or Decimal>-<End PC in Hex or Decimal>.
+`<Start PC in Hex or Decimal>-<End PC in Hex or Decimal>`.
 * `privilege` - Filter option, only instrument blocks executed with the
 specified privileges. Either: `user` or `kernel`.
 * `hook_filter` - Filter option that is controlled by two user provided hooks.
 When the instruction specified by Pass Hook is executed, the filter is disabled
-allowing records to be passed. The instruction specified by the Block Hook
+allowing records to be logged. The instruction specified by the Block Hook
 turns on the filter which stops records from being logged.  Note that this option
 implicitly filters coverage entries to those produced by the thread ID at the
 time the pass hook is executed and as such, requires OSI. Format:
-<Pass Hook Address>-<Block Hook Address>.
+`<Pass Hook Address in Hex or Decimal>-<Block Hook Address in Hex or Decimal>`.
 
 Monitor Commands
 ------------
