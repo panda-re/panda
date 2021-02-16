@@ -80,8 +80,6 @@ inline bool operator<(const struct symbol& s, target_ulong p){
 unordered_map<target_ulong, unordered_map<string, set<struct symbol>>> symbols;
 unordered_map<string, set<struct symbol>> unmodded_symbol_mapping;
 
-
-
 vector<struct hook_symbol_resolve> hooks;
 
 void hook_symbol_resolution(struct hook_symbol_resolve *h){
@@ -440,20 +438,20 @@ void update_symbols_in_space(CPUState* cpu){
 
 void* self_ptr;
 panda_cb pcb_asid;
-panda_cb pcb_bbe;
-panda_cb pcb_bbe_execve;
+panda_cb pcb_btc;
+panda_cb pcb_btc_execve;
 
 
-void bbe(CPUState *env, TranslationBlock *tb){
+void btc(CPUState *env, TranslationBlock *tb){
     if (!panda_in_kernel(env)){
         update_symbols_in_space(env);
-        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_bbe);
+        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
     }
 }
 
 bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
-    //printf("asid changed\n");
-    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_bbe);
+    //panda_please_flush_tb = true;
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
     return false;
 }
 
@@ -463,7 +461,7 @@ void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
     h->enabled = false;
 }
 
-void bbe_execve(CPUState *env, TranslationBlock *tb){
+void btc_execve(CPUState *env, TranslationBlock *tb){
     if (unlikely(!panda_in_kernel(env))){
         target_ulong sp = panda_current_sp(env);
         target_ulong argc;
@@ -476,7 +474,7 @@ void bbe_execve(CPUState *env, TranslationBlock *tb){
             target_ulong ptr;
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_bbe_execve);
+                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_btc_execve);
                     return;
                 }
                 ptrlistpos++;
@@ -488,7 +486,7 @@ void bbe_execve(CPUState *env, TranslationBlock *tb){
             // them, but you could.
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_bbe_execve);
+                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_btc_execve);
                     return;
                 }
                 ptrlistpos++;
@@ -499,7 +497,7 @@ void bbe_execve(CPUState *env, TranslationBlock *tb){
             target_ulong entrynum, entryval;
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &entrynum, sizeof(entrynum)) != MEMTX_OK || panda_virtual_memory_read(env, sp+((ptrlistpos+1)*sizeof(target_ulong)), (uint8_t*) &entryval, sizeof(entryval))){
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_bbe_execve);
+                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
                     return;
                 }
                 ptrlistpos+=2;
@@ -510,7 +508,7 @@ void bbe_execve(CPUState *env, TranslationBlock *tb){
                     h.addr = entryval;
                     h.asid = panda_current_asid(env);
                     h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
-                    h.cb.before_block_exec = hook_program_start;
+                    h.cb.before_tcg_codegen = hook_program_start;
                     h.km = MODE_USER_ONLY;
                     h.enabled = true;
 
@@ -530,30 +528,33 @@ void bbe_execve(CPUState *env, TranslationBlock *tb){
             }
 
         }
-        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_bbe_execve);
+        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
     }
 }
 
+void run_btc_cb(){
+    panda_do_flush_tb();
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+}
+
 void execve_cb(CPUState *cpu, target_ptr_t pc, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp) {
-    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_bbe_execve);
+    run_btc_cb();
 }
 
 void execveat_cb (CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp, int flags) {
-    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_bbe_execve);
+    run_btc_cb();
 }
-
 
 bool init_plugin(void *self) {
     self_ptr = self;
-    panda_enable_precise_pc();
-    panda_disable_tb_chaining();
     pcb_asid.asid_changed = asid_changed;
     panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
-    pcb_bbe.before_block_exec = bbe;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_bbe);
-    pcb_bbe_execve.before_block_exec = bbe_execve;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_bbe_execve);
-    panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_bbe_execve);
+    pcb_btc.before_tcg_codegen = btc;
+    panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
+    panda_disable_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
+    pcb_btc_execve.before_tcg_codegen = btc_execve;
+    panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+    panda_disable_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
     panda_require("osi");
     assert(init_osi_api());
     
