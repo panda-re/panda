@@ -22,6 +22,7 @@ PANDAENDCOMMENT */
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
+#include "hooks/hooks_int_fns.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -789,11 +790,11 @@ static inline std::string context_map_t_dump(context_map_t &cm) {
  * @brief Checks if the translation block that is about to be executed
  * matches the return address of an executing system call.
  */
-static void tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
+void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
     auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
     auto ctxi = running_syscalls.find(k);
     int UNUSED(no) = -1;
-    if (ctxi != running_syscalls.end()) {
+    if (likely(ctxi != running_syscalls.end())) {
         syscall_ctx_t *ctx = &ctxi->second;
         no = ctx->no;
         syscalls_profile->return_switch(cpu, tb->pc, ctx);
@@ -811,6 +812,7 @@ static void tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
 #endif
     }
 #endif
+    h->enabled = false;
     return;
 }
 #endif
@@ -1071,8 +1073,8 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_INSN_TRANSLATE, pcb);
     pcb.insn_exec = exec_callback;
     panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb);
-    pcb.before_block_exec = tb_check_syscall_return;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    //pcb.before_block_exec = tb_check_syscall_return;
+    //panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 
     // load system call info
     if (panda_parse_bool_opt(plugin_args, "load-info", "Load systemcall information for the selected os.")) {

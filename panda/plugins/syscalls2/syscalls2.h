@@ -5,6 +5,8 @@ typedef struct syscall_ctx syscall_ctx_t;
 typedef std::map<std::pair<target_ptr_t, target_ptr_t>, syscall_ctx_t> context_map_t;
 extern context_map_t running_syscalls;
 
+void hook_syscall_return(CPUState *cpu, TranslationBlock* tb, struct hook* h);
+
 // In generated, run the following to get this list
 // grep -hE '^.*syscall_(enter|return)_switch_[^(]*\(' *.cpp | sed 's/ {$/;/'
 void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc);
