@@ -67,18 +67,7 @@ void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc) {
 		h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
 		h.enabled = true;
 		h.km = MODE_ANY; //you'd expect this to be user only
-
-		void *hooks = panda_get_plugin_by_name("hooks");
-		if (hooks == NULL){
-			panda_require("hooks");
-			hooks = panda_get_plugin_by_name("hooks");
-		}
-		if (hooks != NULL){
-            void (*dlsym_add_hook)(struct hook*) = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
-            if ((void*)dlsym_add_hook != NULL) {
-                dlsym_add_hook(&h);
-            }
-		}
+        hooks_add_hook(&h);
 
 		running_syscalls[std::make_pair(ctx.retaddr, ctx.asid)] = ctx;
 	}

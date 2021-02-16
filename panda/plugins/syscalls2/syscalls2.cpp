@@ -40,6 +40,7 @@ PANDAENDCOMMENT */
 bool translate_callback(CPUState *cpu, target_ulong pc);
 int exec_callback(CPUState *cpu, target_ulong pc);
 
+void (*hooks_add_hook)(struct hook*);
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -995,6 +996,12 @@ bool init_plugin(void *self) {
 
     // done parsing arguments
     panda_free_args(plugin_args);
+    void *hooks = panda_get_plugin_by_name("hooks");
+	if (hooks == NULL){
+		panda_require("hooks");
+		hooks = panda_get_plugin_by_name("hooks");
+	}
+    hooks_add_hook = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
 #else //not x86/arm/mips
     fprintf(stderr,"The syscalls plugin is not currently supported on this platform.\n");
     return false;
