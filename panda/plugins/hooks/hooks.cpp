@@ -48,7 +48,7 @@ bool operator==(const struct hook &a, const struct hook &b){
  */
 bool operator<(const struct hook &a, const struct hook &b){
     //printf("comparing %llx %llx\n", (long long unsigned int) a.addr, (long long unsigned int) b.addr);
-    return tie(a.addr, a.asid, a.type, a.cb.before_block_exec, a.km, a.enabled) < tie(b.addr, b.asid, b.type, b.cb.before_block_exec, b.km, b.enabled);
+    return tie(a.addr, a.asid, a.type, a.cb.before_block_exec, a.km, a.enabled, a.sym.address) < tie(b.addr, b.asid, b.type, b.cb.before_block_exec, b.km, b.enabled, a.sym.address);
     //if (a == b){
     //    return false;
     //}
@@ -153,10 +153,8 @@ bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
 
 #define ADD_CALLBACK_TYPE(TYPE, TYPE_UPPER) \
     case PANDA_CB_ ## TYPE_UPPER: \
-        if (!set_contains_struct(TYPE ## _hooks, h) && !vector_contains_struct(temp_## TYPE ## _hooks, h)){ \
-            temp_## TYPE ## _hooks.push_back(*h); \
-            panda_enable_callback(self, PANDA_CB_ ## TYPE_UPPER , TYPE ## _callback); \
-        } \
+        temp_## TYPE ## _hooks.push_back(*h); \
+        panda_enable_callback(self, PANDA_CB_ ## TYPE_UPPER , TYPE ## _callback); \
         break;
 
 bool first_tb_chaining = false;
@@ -195,11 +193,7 @@ void add_hook(struct hook* h) {
 #define MAKE_HOOK_FN_START(UPPER_CB_NAME, NAME, VALUE) \
     if (unlikely(! temp_ ## NAME ## _hooks .empty())){ \
         for (auto &h: temp_ ## NAME ## _hooks) { \
-            auto pair = NAME ## _hooks[h.asid].insert(h); \
-            if (!pair.second) { \
-                printf("failed add\n");  \
-                printf(*pair.first == (const hook) h ? "true\n" : "false\n"); \
-            } \
+            NAME ## _hooks[h.asid].insert(h); \
         } \
         temp_ ## NAME ## _hooks .clear(); \
     } \
