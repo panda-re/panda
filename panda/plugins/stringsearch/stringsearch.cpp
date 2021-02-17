@@ -50,6 +50,8 @@ PPP_PROT_REG_CB(on_ssm);
 
 }
 
+bool verbose = false;
+
 // Silly: since we use these as map values, they have to be
 // copy constructible. Plain arrays aren't, but structs containing
 // arrays are. So we make these goofy wrappers.
@@ -102,10 +104,12 @@ void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
             if (sp.val[str_idx] == strlens[str_idx]) {
                 // Victory!
                 char *sid_string = get_stackid_string(p);
-                printf("%s Match of str %d at: instr_count=%" PRIu64 " :  "
-                       TARGET_FMT_lx " " TARGET_FMT_lx " %s\n",
-                       (is_write ? "WRITE" : "READ"), str_idx,
-                       rr_get_guest_instr_count(), p.caller, p.pc, sid_string);
+                if (verbose) {
+                  printf("%s Match of str %d at: instr_count=%" PRIu64 " :  "
+                         TARGET_FMT_lx " " TARGET_FMT_lx " %s\n",
+                         (is_write ? "WRITE" : "READ"), str_idx,
+                         rr_get_guest_instr_count(), p.caller, p.pc, sid_string);
+                }
                 matches[p].val[str_idx]++;
                 sp.val[str_idx] = 0;
                 g_free(sid_string);
@@ -168,6 +172,8 @@ bool init_plugin(void *self) {
         strlens[num_strings] = arg_len;
         num_strings++;
     }
+    verbose = panda_parse_bool_opt(args, "verbose",
+                                             "enables verbose logging");
 
     n_callers = panda_parse_uint64_opt(args, "callers", 16, "depth of callstack for matches");
     if (n_callers > MAX_CALLERS) n_callers = MAX_CALLERS;
