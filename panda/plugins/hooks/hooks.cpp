@@ -48,8 +48,8 @@ bool operator==(const struct hook &a, const struct hook &b){
  */
 bool operator<(const struct hook &a, const struct hook &b){
     //printf("comparing %llx %llx\n", (long long unsigned int) a.addr, (long long unsigned int) b.addr);
-    return tie(a.addr, a.asid, a.type, a.cb.before_block_exec, a.km, a.enabled, a.sym.address) < tie(b.addr, b.asid, b.type, b.cb.before_block_exec, b.km, b.enabled, a.sym.address);
-    //if (a == b){
+    return tie(a.addr, a.asid, a.type, a.cb.before_block_exec) < tie(b.addr, b.asid, b.type, b.cb.before_block_exec);//, b.km, b.enabled);
+    //if (a == b){, a.km, a.enabled)
     //    return false;
     //}
     //NOT_EQUAL_RETURN_COND(a.addr, b.addr);
@@ -190,7 +190,7 @@ void add_hook(struct hook* h) {
 }
 
 
-#define MAKE_HOOK_FN_START(UPPER_CB_NAME, NAME, VALUE) \
+#define MAKE_HOOK_FN_START(UPPER_CB_NAME, NAME, VALUE, PC) \
     if (unlikely(! temp_ ## NAME ## _hooks .empty())){ \
         for (auto &h: temp_ ## NAME ## _hooks) { \
             NAME ## _hooks[h.asid].insert(h); \
@@ -205,7 +205,7 @@ void add_hook(struct hook* h) {
     bool in_kernel = panda_in_kernel(cpu); \
     struct hook hook_container; \
     memset(&hook_container, 0, sizeof(hook_container)); \
-    hook_container.addr = panda_current_pc(cpu); \
+    hook_container.addr = PC; \
     set<struct hook>::iterator it;
 
 #define LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK)\
@@ -227,44 +227,44 @@ void add_hook(struct hook* h) {
         ++it; \
     } 
 
-#define HOOK_GENERIC_RET_EXPR(EXPR, UPPER_CB_NAME, NAME, VALUE, COMPARATOR_TO_BLOCK) \
-    MAKE_HOOK_FN_START(UPPER_CB_NAME, NAME, VALUE) \
+#define HOOK_GENERIC_RET_EXPR(EXPR, UPPER_CB_NAME, NAME, VALUE, COMPARATOR_TO_BLOCK, PC) \
+    MAKE_HOOK_FN_START(UPPER_CB_NAME, NAME, VALUE, PC) \
     LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK) \
     asid = 0; \
     LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK)
 
-#define MAKE_HOOK_VOID(UPPER_CB_NAME, NAME, PASSED_ARGS, ...) \
+#define MAKE_HOOK_VOID(UPPER_CB_NAME, NAME, PASSED_ARGS, PC, ...) \
 void cb_ ## NAME ## _callback PASSED_ARGS { \
-    HOOK_GENERIC_RET_EXPR( (*(h.cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, , == hook_container.addr) \
+    HOOK_GENERIC_RET_EXPR( (*(h->cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, , == hook_container.addr, PC) \
 }
 
-#define MAKE_HOOK_BOOL(UPPER_CB_NAME, NAME, PASSED_ARGS, ...) \
+#define MAKE_HOOK_BOOL(UPPER_CB_NAME, NAME, PASSED_ARGS, PC, ...) \
 bool cb_ ## NAME ## _callback PASSED_ARGS { \
     bool ret = false; \
-    HOOK_GENERIC_RET_EXPR(ret |= (*(h->cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, false, == hook_container.addr) \
+    HOOK_GENERIC_RET_EXPR(ret |= (*(h->cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, false, == hook_container.addr, PC) \
     return ret; \
 }
     
 void cb_tcg_codegen_middle_filter(CPUState* cpu, TranslationBlock *tb) {
-    HOOK_GENERIC_RET_EXPR((*(h->cb.before_tcg_codegen))(cpu, tb, h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , <= hook_container.addr + tb->size );
+    HOOK_GENERIC_RET_EXPR(printf("calling %llx from %llx with hook %llx guest_pc %llx\n", (long long unsigned int) panda_current_pc(cpu), (long long unsigned int)tb->pc, (long long unsigned int)h->addr, (long long unsigned int)cpu->panda_guest_pc); (*(h->cb.before_tcg_codegen))(cpu, tb, h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, panda_current_pc(cpu) );
 }
 
 void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
     //target_ulong pc  = panda_current_pc(cpu);
     
-    HOOK_GENERIC_RET_EXPR(TCGOp *op = find_guest_insn_by_addr(h->addr);insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , <=hook_container.addr + tb->size)
+    HOOK_GENERIC_RET_EXPR(printf("inserting op at %llx\n", (long long unsigned int)h->addr);TCGOp *op = find_guest_insn_by_addr(h->addr);insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, tb->pc)
 }
 
 
-MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, (CPUState *cpu, target_ulong pc), cpu, pc, h)
+MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, (CPUState *cpu, target_ulong pc), panda_current_pc(cpu), cpu, pc, h)
 
-MAKE_HOOK_VOID(AFTER_BLOCK_TRANSLATE, after_block_translate, (CPUState *cpu, TranslationBlock *tb), cpu, tb, h)
+MAKE_HOOK_VOID(AFTER_BLOCK_TRANSLATE, after_block_translate, (CPUState *cpu, TranslationBlock *tb), tb->pc, cpu, tb, h)
 
-MAKE_HOOK_BOOL(BEFORE_BLOCK_EXEC_INVALIDATE_OPT, before_block_exec_invalidate_opt, (CPUState* cpu, TranslationBlock* tb), cpu, tb, h)
+MAKE_HOOK_BOOL(BEFORE_BLOCK_EXEC_INVALIDATE_OPT, before_block_exec_invalidate_opt, (CPUState* cpu, TranslationBlock* tb), tb->pc, cpu, tb, h)
 
-MAKE_HOOK_VOID(BEFORE_BLOCK_EXEC, before_block_exec, (CPUState *cpu, TranslationBlock *tb), cpu, tb, h)
+MAKE_HOOK_VOID(BEFORE_BLOCK_EXEC, before_block_exec, (CPUState *cpu, TranslationBlock *tb), tb->pc, cpu, tb, h)
 
-MAKE_HOOK_VOID(AFTER_BLOCK_EXEC, after_block_exec, (CPUState *cpu, TranslationBlock *tb, uint8_t exitCode), cpu, tb, exitCode, h)
+MAKE_HOOK_VOID(AFTER_BLOCK_EXEC, after_block_exec, (CPUState *cpu, TranslationBlock *tb, uint8_t exitCode), tb->pc, cpu, tb, exitCode, h)
 
 
 #define REGISTER_AND_DISABLE_CALLBACK(SELF, NAME, NAME_UPPER)\
