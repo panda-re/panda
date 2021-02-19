@@ -77,7 +77,7 @@ SUPPORTED_IMAGES = {
 
     'mips_wheezy': Image(
             arch='mips',
-            os="linux-64-debian:3.2.0-4-arm-pae", # XXX wrong
+            os="linux-32-debian:3.2.0-4-4kc-malta",
             prompt=rb"root@debian-mips:.*# ",
             cdrom="ide1-cd0",
             snapshot="root",
