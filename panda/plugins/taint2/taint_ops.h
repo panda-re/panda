@@ -19,8 +19,6 @@ PANDAENDCOMMENT */
 
 #include "taint_ops_ins_flags.h"
 
-namespace llvm { class Instruction; }
-
 class Shad;
 
 extern "C" {
@@ -70,13 +68,15 @@ void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
 // Parallel compute: take labelset vectors [1,2,3] + [4,5,6] -> [14,25,36]
 void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
                             uint64_t src1, uint64_t src2, uint64_t src_size,
-                            uint64_t opcode, uint64_t result_unused);
+                            uint64_t opcode, uint64_t result_unused,
+                            uint64_t val1, uint64_t val2, uint64_t unused);
 
 // Mixed compute: [1,2] + [3,4] -> [1234,1234]
 // Note that dest_size and src_size can differ.
 void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                        uint64_t src1, uint64_t src2, uint64_t src_size,
-                       uint64_t opcode, uint64_t result_unused);
+                       uint64_t opcode, uint64_t result_unused, uint64_t val1,
+                       uint64_t val2, uint64_t pred);
 
 //for mul or fmul. can do parallel or mixed or no prop depending on vals and their taints
 void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
@@ -97,8 +97,8 @@ void taint_after_ld(uint64_t reg, uint64_t memaddr, uint64_t size);
 // Union all labels within here: [1,2,3] -> [123,123,123]
 // A mixed compute becomes two mixes followed by a parallel.
 void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
-        uint64_t src_size, uint64_t opcode, uint64_t instruction_flags,
-        uint64_t num_operands, ...);
+        uint64_t src_size, uint64_t concrete,  uint64_t pred,
+        uint64_t opcode, uint64_t instruction_flags, uint64_t num_operands, ...);
 
 // Tainted pointer load in tainted pointer mode.
 // Mixes the ptr labels and parallels that with each src label.
@@ -109,11 +109,10 @@ void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
 // Only generate when signed and dest_size > src_size.
 // Otherwise it should just be a copy.
 void taint_sext(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
-                uint64_t src_size);
+                uint64_t src_size, uint64_t opcode);
 
 // Takes a NULL-terminated list of (value, select) pairs.
-void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
-                  ...);
+void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector, ...);
 
 void taint_host_copy(uint64_t env_ptr, uint64_t addr, Shad *llv,
                      uint64_t llv_offset, Shad *greg, Shad *gspec, Shad *mem,
@@ -126,6 +125,13 @@ void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
 void taint_host_delete(uint64_t env_ptr, uint64_t dest_addr, Shad *greg,
                        Shad *gspec, uint64_t size, uint64_t labels_per_reg);
 
+void concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
+                     uint64_t src, uint64_t size, uint64_t opcode,
+                     uint64_t instruction_flags,
+                     std::vector<const llvm::ConstantInt *> operands);
+
+void __concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
+                     uint64_t src, uint64_t size, uint64_t opcode);
 } // extern "C"
 
 

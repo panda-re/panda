@@ -99,7 +99,7 @@ static LabelSetP tp_labelset_get(const Addr &a) {
 static TaintData tp_query_full(const Addr &a) {
     assert(shadow);
     auto loc = shadow->query_loc(a);
-    return loc.first ? loc.first->query_full(loc.second) : TaintData();
+    return loc.first ? *loc.first->query_full(loc.second) : TaintData();
 }
 
 // untaint -- discard label set associated with a
@@ -541,7 +541,7 @@ TaintLabel taint2_query_result_next(QueryResult *qr, bool *done) {
 
 // pass in query result pre-allocated
 void taint2_query_laddr_full(uint64_t la, uint64_t offset, QueryResult *qr) {
-	// Hmm.  Doesn't this allocate a LabeSetP ? 
+	// Hmm.  Doesn't this allocate a LabeSetP ?
 	// are we leaking (if so we leaking in a bunch of other places)
 	TaintData td = tp_query_full(make_laddr(la, offset));
 	qr->num_labels = td.ls->size();

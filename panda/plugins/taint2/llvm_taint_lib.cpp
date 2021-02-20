@@ -42,11 +42,14 @@ PANDAENDCOMMENT */
 #include "panda/tcg-llvm.h"
 
 #include "addr.h"
+#define SHAD_LLVM
 #include "shad.h"
 #include "llvm_taint_lib.h"
 #include "taint_ops.h"
 #include "taint2.h"
-
+#define CONC_LVL CONC_LVL_OFF
+#include "concolic.h"
+#include "taint_sym_api.h"
 extern "C" {
 #include "libgen.h"
 
@@ -139,11 +142,39 @@ uint64_t PandaTaintVisitor::getInstructionFlags(Instruction &I)
     return flags;
 }
 
-void taint_branch_run(Shad *shad, uint64_t src, uint64_t size)
+void taint_branch_run(Shad *shad, uint64_t src, uint64_t size, uint64_t concrete, 
+        uint64_t opcode)
 {
     // this arg should be the register number
     Addr a = make_laddr(src / MAXREGSIZE, 0);
-    PPP_RUN_CB(on_branch2, a, size);
+    bool tainted = false;
+    PPP_RUN_CB(on_branch2, a, size, &tainted);
+    // if (!I) return;
+    if (tainted) {
+        if (opcode == llvm::Instruction::Br) {
+            // CINFO(llvm::errs() << "Tainted branch: " << *I << "\n");
+            CINFO(std::cerr << "Concrete condition: " << concrete << "\n");
+            if (shad->query_full(src)->expr) {
+                z3::expr expr(*shad->query_full(src)->expr);
+                CINFO(std::cerr << expr << "\n");
+                reg_branch_pc(expr, concrete);
+            }
+            else {
+                CINFO(std::cerr << "Tainted branch has no symbolic info\n");
+            }
+        }
+        else if (opcode == llvm::Instruction::Switch) {
+            // Switch probably extinct during tcg llvm translation
+            CINFO(llvm::errs() << "Tainted switch: " << *I << "\n");
+            CINFO(std::cerr << "Tracking for switch inst not implemented\n");
+            assert(false);
+        }
+        else {
+            CINFO(llvm::errs() << "Unknown opcode: " << opcode << "\n");
+            assert(false);
+        }
+
+    }
 }
 
 void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store,
@@ -166,7 +197,8 @@ void taint_after_ld_run(uint64_t rega, uint64_t addr, uint64_t size) {
 void taint_copyRegToPc_run(Shad *shad, uint64_t src, uint64_t size) {
     // this arg should be the register number
     Addr a = make_laddr(src / MAXREGSIZE, 0);
-    PPP_RUN_CB(on_indirect_jump, a, size);
+    bool tainted = false;
+    PPP_RUN_CB(on_indirect_jump, a, size, &tainted);
 }
 
 static void llvmTaintLibNewModuleCallback(Module *module,
@@ -219,7 +251,8 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
         (void *) &taint_breadcrumb, argTys, PTV->voidT, false, ES, symbols);
 
     argTys = { PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T,
-        PTV->int64T, PTV->int64T, PTV->int64T, PTV->int64T };
+        PTV->int64T, PTV->int64T, PTV->int64T, PTV->int64T,
+        PTV->int64T, PTV->int64T };
 
     PTV->mixF = TaintOpsFunction("taint_mix", (void *) &taint_mix,
         argTys, PTV->voidT, true, ES, symbols);
@@ -231,7 +264,8 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
         (void *) &taint_pointer, argTys, PTV->voidT, false, ES, symbols);
 
     argTys = { PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T,
-        PTV->int64T, PTV->int64T, PTV->int64T, PTV->int64T };
+        PTV->int64T, PTV->int64T, PTV->int64T, PTV->int64T,
+        PTV->int64T, PTV->int64T, PTV->int64T };
 
     PTV->mix_computeF = TaintOpsFunction("taint_mix_compute",
         (void *) &taint_mix_compute, argTys, PTV->voidT, false, ES,
@@ -256,7 +290,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
         argTys, PTV->voidT, true, ES, symbols);
 
     argTys = { PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T,
-        PTV->int64T };
+        PTV->int64T, PTV->int64T };
 
     PTV->sextF = TaintOpsFunction("taint_sext", (void *) &taint_sext,
         argTys, PTV->voidT, false, ES, symbols);
@@ -309,9 +343,14 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 
     PTV->deleteF = TaintOpsFunction("taint_delete",
         (void *) &taint_delete, argTys, PTV->voidT, false, ES, symbols);
+        
+    argTys = { PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T,
+                PTV->int64T };
 
     PTV->branch_runF = TaintOpsFunction("taint_branch_run",
         (void *) &taint_branch_run, argTys, PTV->voidT, false, ES, symbols);
+
+    argTys = { PTV->shadP, PTV->int64T, PTV->int64T };
 
     PTV->copyRegToPc_runF = TaintOpsFunction("taint_copyRegToPc_run",
         (void *) &taint_copyRegToPc_run, argTys, PTV->voidT, false, ES,
@@ -608,6 +647,14 @@ void PandaTaintVisitor::insertAfterTaintLd(Instruction &I,
     insertCallAfter(I, afterLdF, args);    
 }
 
+uint64_t PandaTaintVisitor::ICmpPredicate(Instruction &I) {
+    if (I.getOpcode() == llvm::Instruction::ICmp) {;
+        auto *CI = llvm::dyn_cast<llvm::ICmpInst>(&I);
+        return CI->getPredicate();
+    }
+    return -1;
+}
+
 void PandaTaintVisitor::addInstructionDetailsToArgumentList(
     vector<Value *> &args, Instruction &I, Instruction *before) {
 
@@ -642,7 +689,7 @@ void PandaTaintVisitor::addInstructionDetailsToArgumentList(
         case llvm::Instruction::FDiv:
         case llvm::Instruction::FRem:
         case llvm::Instruction::Call:
-        case llvm::Instruction::ICmp:
+        // case llvm::Instruction::ICmp:
         case llvm::Instruction::FCmp:
             args.push_back(zeroConst);
             return;
@@ -670,7 +717,8 @@ void PandaTaintVisitor::addInstructionDetailsToArgumentList(
                     args.push_back(new TruncInst(lshr, int64T, "", before));
                     break;
                 case 0:
-                    assert(false && "Operand has no size?");
+                    // assert(false && "Operand has no size?");
+                    args.push_back(zeroConst);
                     break;
                 default:
                     args.push_back(*it);
@@ -764,13 +812,23 @@ void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *dest,
     Constant *dest_size = const_uint64(getValueSize(dest));
     Constant *src_size = const_uint64(getValueSize(src));
 
+    /* Provide concrete value if possible */
+    Value *val = const_uint64(0);
+    if (isa<CmpInst>(&I)) {
+        if (src->getType()->isIntegerTy())
+            val = CastInst::CreateIntegerCast(src, Type::getInt64Ty(*ctx), false, "", &I);
+        else if (src->getType()->isPointerTy())
+            val = CastInst::CreatePointerCast(src, Type::getInt64Ty(*ctx), "", &I);
+    }
+
     vector<Value *> args { llvConst, constSlot(dest), dest_size,
-        constSlot(src), src_size };
+        constSlot(src), src_size,
+        val, const_uint64(ICmpPredicate(I)) };
 
     Instruction *next = I.getNextNode();
 
     addInstructionDetailsToArgumentList(args, I, next);
-
+    
     insertCallBefore(*next, mixF, args);
 }
 
@@ -845,9 +903,34 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest,
     Constant *src_size = const_uint64(getValueSize(src1));
     Constant *opcode = const_uint64(I.getOpcode());
 
+    unsigned src1BitWidth = src1->getType()->getPrimitiveSizeInBits();
+    unsigned src2BitWidth = src2->getType()->getPrimitiveSizeInBits();
+    Instruction *val1, *val2;
+    // The argument could be pointers too
+    if (src1->getType()->isPointerTy())
+        val1 = llvm::CastInst::CreatePointerCast(src1,
+            llvm::Type::getInt64Ty(*ctx), "", &I);
+
+    else if (src1BitWidth <= 64)
+        val1 = llvm::CastInst::CreateZExtOrBitCast(src1,
+            llvm::Type::getInt64Ty(*ctx), "", &I);
+    else
+        val1 = llvm::CastInst::CreateTruncOrBitCast(src1,
+            llvm::Type::getInt64Ty(*ctx), "", &I);
+
+    if (src2->getType()->isPointerTy())
+        val2 = llvm::CastInst::CreatePointerCast(src2,
+            llvm::Type::getInt64Ty(*ctx), "", &I);
+    else if (src2BitWidth <= 64)
+        val2 = llvm::CastInst::CreateZExtOrBitCast(src2,
+            llvm::Type::getInt64Ty(*ctx), "", &I);
+    else
+        val2 = llvm::CastInst::CreateTruncOrBitCast(src2,
+            llvm::Type::getInt64Ty(*ctx), "", &I);
+
     vector<Value *> args { llvConst, constSlot(dest), dest_size,
         constSlot(src1), constSlot(src2), src_size,
-        opcode, iResult };
+        opcode, iResult, val1, val2, const_uint64(ICmpPredicate(I)) };
 
     insertCallAfter(*iResult, func, args);
 }
@@ -942,7 +1025,7 @@ void PandaTaintVisitor::insertTaintSext(Instruction &I, Value *src) {
     Constant *src_size = const_uint64(getValueSize(src));
 
     vector<Value *> args { llvConst,
-        constSlot(dest), dest_size, constSlot(src), src_size };
+        constSlot(dest), dest_size, constSlot(src), src_size, const_uint64(I.getOpcode()) };
 
     insertCallAfter(I, sextF, args);
 }
@@ -950,6 +1033,7 @@ void PandaTaintVisitor::insertTaintSext(Instruction &I, Value *src) {
 void PandaTaintVisitor::insertTaintSelect(Instruction &after, Value *dest,
         Value *selector, vector<pair<Value *, Value *>> &selections) {
 
+    // Needs implementation
     Constant *dest_size = const_uint64(getValueSize(dest));
 
     vector<Value *> args { llvConst, constSlot(dest), dest_size, selector };
@@ -994,8 +1078,10 @@ void PandaTaintVisitor::insertTaintBranch(Instruction &I, Value *cond) {
         return;
     }
 
+    Instruction *Cast = llvm::CastInst::CreateZExtOrBitCast(cond, 
+            llvm::Type::getInt64Ty(*ctx), "", &I);
     vector<Value *> args { llvConst,
-        constSlot(cond), const_uint64(getValueSize(cond)) };
+        constSlot(cond), const_uint64(getValueSize(cond)), Cast, const_uint64(I.getOpcode()) };
 
     insertCallBefore(I, branch_runF, args);
 }

@@ -149,6 +149,9 @@ Panda__TaintQuery *taint2_query_pandalog (Addr addr, uint32_t offset);
 void pandalog_taint_query_free(Panda__TaintQuery *tq);
 
 
+void taint2_sym_label_addr(Addr a, int offset, uint32_t l);
+
+void *taint2_sym_query(Addr a);
 
 #endif
 
