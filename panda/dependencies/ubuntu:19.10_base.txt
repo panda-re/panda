@@ -11,6 +11,7 @@ libprotobuf-c-dev
 libprotoc-dev
 libwireshark-dev
 libwiretap-dev
+libz3-dev
 pkg-config
 protobuf-c-compiler
 protobuf-compiler
