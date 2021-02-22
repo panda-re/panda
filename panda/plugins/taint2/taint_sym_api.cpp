@@ -48,6 +48,12 @@ z3::expr *taint2_sym_query_expr(Addr a) {
     return (z3::expr *) taint2_sym_query(a);
 }
 
+
+void taint2_sym_label_ram(uint64_t RamOffset, uint32_t l) {
+    Addr a = make_maddr(RamOffset);
+    taint2_sym_label_addr(a, 0, l);
+}
+
 void reg_branch_pc(z3::expr condition, bool concrete) {
 
     z3::expr pc(context);

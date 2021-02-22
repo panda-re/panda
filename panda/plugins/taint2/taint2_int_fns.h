@@ -136,6 +136,11 @@ void taint2_query_ram_full(uint64_t RamOffset, QueryResult *qr);
 void taint2_query_laddr_full(uint64_t la, uint64_t offset, QueryResult *qr);
 
 
+void taint2_sym_label_addr(Addr a, int offset, uint32_t l);
+
+void *taint2_sym_query(Addr a);
+
+void taint2_sym_label_ram(uint64_t RamOffset, uint32_t l);
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 
@@ -147,11 +152,6 @@ Panda__TaintQuery *taint2_query_pandalog (Addr addr, uint32_t offset);
 
 // used to free memory associated with that struct
 void pandalog_taint_query_free(Panda__TaintQuery *tq);
-
-
-void taint2_sym_label_addr(Addr a, int offset, uint32_t l);
-
-void *taint2_sym_query(Addr a);
 
 #endif
 

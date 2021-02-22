@@ -1700,6 +1700,17 @@ class Panda():
         self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_label_ram, [addr, label])
         self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
 
+    def taint_sym_label_ram(self, addr, label):
+        self.taint_enable(cont=False)
+        #if debug:
+            #progress("taint_ram addr=0x%x label=%d" % (addr, label))
+
+        # XXX must ensure labeling is done in a before_block_invalidate that rets 1
+        #     or some other safe way where the main_loop_wait code will always be run
+        #self.stop()
+        self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_sym_label_ram, [addr, label])
+        self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
+
     # returns true if any bytes in this register have any taint labels
     def taint_check_reg(self, reg_num):
         if not self.taint_enabled: return False

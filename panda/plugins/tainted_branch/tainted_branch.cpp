@@ -87,18 +87,21 @@ int taint_branch_aux(Tlabel ln, void *stuff) {
 
 
 void tbranch_on_branch_taint2(Addr a, uint64_t size, bool *tainted) {
+    // a is an llvm reg
+    assert (a.typ == LADDR);
+    // count number of tainted bytes on this reg
+    uint32_t num_tainted = 0;
+    Addr ao = a;
+    for (uint32_t o=0; o<size; o++) {
+        ao.off = o;
+        num_tainted += (taint2_query(ao) != 0);
+    }
+    
+    if (num_tainted > 0)
+        *tainted = true;
+
     if (pandalog) {
-        // a is an llvm reg
-        assert (a.typ == LADDR);
-        // count number of tainted bytes on this reg
-        uint32_t num_tainted = 0;
-        Addr ao = a;
-        for (uint32_t o=0; o<size; o++) {
-            ao.off = o;
-            num_tainted += (taint2_query(ao) != 0);
-        }
         if (num_tainted > 0) {
-            *tainted = true;
             if (liveness) {
                 // update liveness info for all input bytes from which lval derives
                 for (uint32_t o=0; o<size; o++) {
