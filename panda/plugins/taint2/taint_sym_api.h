@@ -14,7 +14,11 @@
 
 extern z3::context context;
 extern "C" {
-void taint2_sym_label_addr(Addr a, int offset, uint32_t l);
+extern bool symexEnabled;
+
+// void taint2_sym_label_addr(Addr a, int offset, uint32_t l);
+
+// void *taint2_sym_query(Addr a);
 
 void *taint2_sym_query(Addr a);
 

@@ -19,9 +19,9 @@
 
 z3::context context;
 std::vector<z3::expr> path_constraints;
-
 void taint2_sym_label_addr(Addr a, int offset, uint32_t l) {
     assert(shadow);
+    assert(symexEnabled);
     a.off = offset;
     auto loc = shadow->query_loc(a);
     if (loc.first) {
@@ -37,6 +37,7 @@ void taint2_sym_label_addr(Addr a, int offset, uint32_t l) {
 
 void *taint2_sym_query(Addr a) {
     assert(shadow);
+    assert(symexEnabled);
     auto loc = shadow->query_loc(a);
     if (loc.first) {
         return loc.first->query_full(loc.second)->expr;
@@ -50,11 +51,13 @@ z3::expr *taint2_sym_query_expr(Addr a) {
 
 
 void taint2_sym_label_ram(uint64_t RamOffset, uint32_t l) {
+    assert(symexEnabled);
     Addr a = make_maddr(RamOffset);
     taint2_sym_label_addr(a, 0, l);
 }
 
 void reg_branch_pc(z3::expr condition, bool concrete) {
+    assert(symexEnabled);
 
     z3::expr pc(context);
     target_ulong current_pc = first_cpu->panda_guest_pc;

@@ -131,6 +131,8 @@ llvm::PandaTaintFunctionPass *PTFP = nullptr;
 // becomes disabled when a query operation subsequently occurs
 bool taintEnabled = false;
 
+bool symexEnabled =false;
+
 // Taint memlog
 taint2_memlog taint_memlog;
 
@@ -332,6 +334,16 @@ void taint2_enable_taint(void) {
 #endif
 
     std::cerr << "Done verifying module. Running..." << std::endl;
+}
+
+
+void taint2_enable_sym(void) {
+    if (symexEnabled) return;
+
+    taint2_enable_taint();
+    taint2_enable_tainted_pointer();
+
+    symexEnabled = true;
 }
 
 // The i386 doesn't update the condition codes whenever executing an emulated

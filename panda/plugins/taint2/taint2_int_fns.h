@@ -136,6 +136,9 @@ void taint2_query_ram_full(uint64_t RamOffset, QueryResult *qr);
 void taint2_query_laddr_full(uint64_t la, uint64_t offset, QueryResult *qr);
 
 
+// turns on symbolic exeuction
+void taint2_enable_sym(void);
+
 void taint2_sym_label_addr(Addr a, int offset, uint32_t l);
 
 void *taint2_sym_query(Addr a);

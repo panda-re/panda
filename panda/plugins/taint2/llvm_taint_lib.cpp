@@ -75,6 +75,8 @@ PPP_CB_BOILERPLATE(on_after_store);
 
 }
 
+extern bool symexEnabled;
+
 extern const char *qemu_file;
 
 // Helper methods for doing structure computations.
@@ -150,7 +152,7 @@ void taint_branch_run(Shad *shad, uint64_t src, uint64_t size, uint64_t concrete
     bool tainted = false;
     PPP_RUN_CB(on_branch2, a, size, &tainted);
     // if (!I) return;
-    if (tainted) {
+    if (tainted && symexEnabled) {
         if (opcode == llvm::Instruction::Br) {
             // CINFO(llvm::errs() << "Tainted branch: " << *I << "\n");
             CINFO(std::cerr << "Concrete condition: " << concrete << "\n");

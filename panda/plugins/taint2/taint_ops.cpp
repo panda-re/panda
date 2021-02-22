@@ -58,6 +58,7 @@ extern "C" {
 
 extern bool tainted_pointer;
 extern bool detaint_cb0_bytes;
+extern bool symexEnabled;
 
 }
 
@@ -549,6 +550,7 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
             shad->name(), dest, dest_size, src1, src2);
     taint_log_labels(shad, dest, dest_size);
 
+    if (!symexEnabled) return;
     if (!change) return;
 
     switch(opcode) {
@@ -728,6 +730,7 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
     update_cb(shad, dest, shad, src, dest_size, opcode, instruction_flags,
         operands);
         
+    if (!symexEnabled) return;
     if (!change) return;
     
     uint64_t val = 0;
@@ -1229,6 +1232,7 @@ void concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
     } else {
         change = Shad::copy(shad_dest, dest, shad_src, src, size);
     }
+    if (!symexEnabled) return;
     if (!change) return;
     // if (!I) return;
     switch (opcode) {
