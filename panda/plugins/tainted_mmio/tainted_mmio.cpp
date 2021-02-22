@@ -141,10 +141,7 @@ target_ulong virt_addr;
 
 uint64_t first_instruction;
 
-bool read_taint_mem = false;
 target_ulong last_virt_read_pc;
-
-unordered_set<uint64_t> recorded_index;
 
 uint64_t get_number(string line, string key, bool hex) {
     int index = line.find(key);
@@ -167,24 +164,12 @@ uint64_t get_number(string line, string key, bool hex) {
     return result;
 }
 
-void parse_index() {
-    string line;
-    ifstream infile("/tmp/drifuzz_index");
-    getline(infile, line);
-    while (line != "") {
-        recorded_index.insert(get_number(line, "input_index", true));
-        getline(infile, line);
-    }
-
-}
-
 void enable_taint(CPUState *env, target_ulong pc) {
     if (!taint_on 
         && rr_get_guest_instr_count() > first_instruction) {
-        printf ("tainted_mmio plugin is enabling taint\n");
+        cerr << "tainted_mmio plugin is enabling taint\n";
         taint2_enable_taint();
         taint_on = true;
-        parse_index();
     }
     return;
 }
@@ -207,17 +192,9 @@ void before_phys_read(CPUState *env, target_ptr_t pc, target_ptr_t addr,
                           size_t size) {
     // Check if last read of taint memory is not handled
     if (!taint_on) return;
-    if (read_taint_mem) {
-        printf("Warning: PC[%lx] read tainted memory in TCG mode\n", last_virt_read_pc);
-        read_taint_mem = false;
-    }
-    // 1G memory boundary check
-    // IO address can go above
-    if (addr >= 0x40000000) return;
 
     for (int i = 0; i < size; i++) {
         if (taint2_query_ram(addr)) {
-            read_taint_mem = true;
             last_virt_read_pc = panda_current_pc(first_cpu);
             break;
         }
@@ -270,8 +247,6 @@ void label_io_read(Addr reg, uint64_t paddr, uint64_t size) {
 
     // yes we need to use a different one here than above
     target_ulong pc = panda_current_pc(first_cpu);
-
-    read_taint_mem = false;
 
     if (!(pc == bvr_pc && pc == suior_pc))
         return;
@@ -331,11 +306,9 @@ void label_io_read(Addr reg, uint64_t paddr, uint64_t size) {
         assert (reg.typ == LADDR);
         cerr << "label_io Laddr[" << reg.val.la << "]\n";
         cerr << "symbolic_label[" << hex << last_input_index << dec << ":" << mmio_size << "]\n";
-        if (recorded_index.count(last_input_index) > 0) {
-            for (int i=0; i<mmio_size; i++) {
-                taint2_label_addr(reg, i, label);
-                taint2_sym_label_addr(reg, i, last_input_index+i);
-            }
+        for (int i=0; i<mmio_size; i++) {
+            taint2_label_addr(reg, i, label);
+            taint2_sym_label_addr(reg, i, last_input_index+i);
         }
     }    
 }
