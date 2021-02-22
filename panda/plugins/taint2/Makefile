@@ -19,7 +19,7 @@ TAINT_OP_FILTER+= -fstack-protector-strong -Wno-error=cpp -mcx16
 TAINT_OP_FILTER+= -Wno-shift-negative-value
 
 QEMU_CXXFLAGS += -fexceptions
-LDFLAGS += -lz3
+LIBS += -lz3
 
 ### Files setup #####################################################
 TAINT2_SRC  = $(notdir $(wildcard $(PLUGIN_SRC_DIR)/*.cpp))
