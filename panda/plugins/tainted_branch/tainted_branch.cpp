@@ -52,6 +52,7 @@ void uninit_plugin(void *);
 
 
 
+
 #ifdef CONFIG_SOFTMMU
 
 bool summary = false;
@@ -85,7 +86,7 @@ int taint_branch_aux(Tlabel ln, void *stuff) {
 }
 
 
-void tbranch_on_branch_taint2(Addr a, uint64_t size) {
+void tbranch_on_branch_taint2(Addr a, uint64_t size, bool *tainted) {
     if (pandalog) {
         // a is an llvm reg
         assert (a.typ == LADDR);
@@ -97,6 +98,7 @@ void tbranch_on_branch_taint2(Addr a, uint64_t size) {
             num_tainted += (taint2_query(ao) != 0);
         }
         if (num_tainted > 0) {
+            *tainted = true;
             if (liveness) {
                 // update liveness info for all input bytes from which lval derives
                 for (uint32_t o=0; o<size; o++) {
@@ -149,7 +151,7 @@ int taint_branch_csv_aux(Tlabel tl, void *stuff) {
 // panda callback used for CSV output
 // input a is the address type and value (only LADDR is acceptable)
 // input size is the number of bytes in the item being reported
-void tbranch_on_branch_to_csv(Addr a, uint64_t size) {
+void tbranch_on_branch_to_csv(Addr a, uint64_t size, bool *tainted) {
     // a is an llvm reg
     assert (a.typ == LADDR);
     // count number of tainted bytes on this reg
@@ -160,6 +162,7 @@ void tbranch_on_branch_to_csv(Addr a, uint64_t size) {
         num_tainted += (taint2_query(ao) != 0);
     }
     if (num_tainted > 0) {
+        *tainted = true;
         if (summary) {
             CPUState *cpu = first_cpu;
             target_ulong asid = panda_current_asid(cpu);
