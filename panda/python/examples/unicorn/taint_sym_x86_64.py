@@ -9,14 +9,13 @@ CODE = b"""
 jmp .start
 
 .start:
-    MOV DX, word ptr [R13 + RAX*0x2]
-    MOV word ptr [R12 + RAX*0x2], DX
-    CMP DL, 0x41
+    MOV DX, word ptr [R13]
+    MOV CX, word ptr [R13 + 0x2]
+    ADD DX, CX
+    CMP DX, 0x41
     JE .b
 .b:
-    INC RAX
-    CMP EBP, EAX
-    JNZ .start
+    MOV word ptr [R12], DX
 
 jmp .end
 
@@ -81,7 +80,7 @@ def after(cpu, tb, rc):
         dest_data = panda.physical_memory_read(buf_dest, len(buf))
         print("DEST:", dest_data)
 
-        for idx in range(len(buf)):
+        for idx in range(2):
             addr = buf_dest + idx
             assert(panda.taint_check_ram(addr)), f"Dest[{idx}] is not tainted"
             tq = panda.taint_get_ram(addr)
