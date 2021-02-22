@@ -55,6 +55,7 @@
 #include "taint2.h"
 #include "label_set.h"
 #include "taint_api.h"
+#include "taint_sym_api.h"
 #include "taint2_hypercalls.h"
 
 #define CPU_OFF(member) (uint64_t)(&((CPUArchState *)0)->member)
@@ -337,8 +338,10 @@ void taint2_enable_taint(void) {
 }
 
 
-void taint2_enable_sym(void) {
+extern "C" void taint2_enable_sym(void) {
     if (symexEnabled) return;
+
+    std::cerr << PANDA_MSG << __FUNCTION__ << std::endl;
 
     taint2_enable_taint();
     taint2_enable_tainted_pointer();

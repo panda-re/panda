@@ -6,8 +6,8 @@
 #include <cstdint>
 #endif
 #define SHAD_LLVM
-#include "taint2.h"
 #include "taint_sym_api.h"
+#include "taint2.h"
 #include "panda/plugin.h"
 
 #include <cstring>
@@ -21,7 +21,7 @@ z3::context context;
 std::vector<z3::expr> path_constraints;
 void taint2_sym_label_addr(Addr a, int offset, uint32_t l) {
     assert(shadow);
-    assert(symexEnabled);
+    if(!symexEnabled) taint2_enable_sym();
     a.off = offset;
     auto loc = shadow->query_loc(a);
     if (loc.first) {
@@ -30,14 +30,13 @@ void taint2_sym_label_addr(Addr a, int offset, uint32_t l) {
         ss << std::hex << l;
         id += ss.str();
         z3::expr *expr = new z3::expr(context.bv_const(id.c_str(), 8));
-        // std::cout << "expr: " << *expr << "\n";
         loc.first->query_full(loc.second)->expr = expr;
     }
 }
 
 void *taint2_sym_query(Addr a) {
     assert(shadow);
-    assert(symexEnabled);
+    if(!symexEnabled) taint2_enable_sym();
     auto loc = shadow->query_loc(a);
     if (loc.first) {
         return loc.first->query_full(loc.second)->expr;
@@ -51,13 +50,19 @@ z3::expr *taint2_sym_query_expr(Addr a) {
 
 
 void taint2_sym_label_ram(uint64_t RamOffset, uint32_t l) {
-    assert(symexEnabled);
+    if(!symexEnabled) taint2_enable_sym();
     Addr a = make_maddr(RamOffset);
     taint2_sym_label_addr(a, 0, l);
 }
 
+void taint2_sym_label_reg(int reg_num, int offset, uint32_t l) {
+    if(!symexEnabled) taint2_enable_sym();
+    Addr a = make_greg(reg_num, offset);
+    taint2_sym_label_addr(a, 0, l);
+}
+
 void reg_branch_pc(z3::expr condition, bool concrete) {
-    assert(symexEnabled);
+    if(!symexEnabled) taint2_enable_sym();
 
     z3::expr pc(context);
     target_ulong current_pc = first_cpu->panda_guest_pc;

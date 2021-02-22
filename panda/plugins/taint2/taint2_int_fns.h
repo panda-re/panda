@@ -143,7 +143,13 @@ void taint2_sym_label_addr(Addr a, int offset, uint32_t l);
 
 void *taint2_sym_query(Addr a);
 
+// label this RAM offset in memory with label l, and only label l. any previous
+// labels applied to this RAM offset are removed.
 void taint2_sym_label_ram(uint64_t RamOffset, uint32_t l);
+
+// label this reg with label l, and only label l. any previous labels applied 
+// to this address are removed.
+void taint2_sym_label_reg(int reg_num, int offset, uint32_t l);
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 
