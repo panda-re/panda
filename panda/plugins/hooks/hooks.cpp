@@ -250,7 +250,7 @@ void cb_tcg_codegen_middle_filter(CPUState* cpu, TranslationBlock *tb) {
 void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
     //target_ulong pc  = panda_current_pc(cpu);
     
-    HOOK_GENERIC_RET_EXPR(printf("inserting op at %llx\n", (long long unsigned int)h->addr);TCGOp *op = find_guest_insn_by_addr(h->addr);insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, tb->pc)
+    HOOK_GENERIC_RET_EXPR(TCGOp *op = find_guest_insn_by_addr(h->addr);insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, tb->pc)
 }
 
 
