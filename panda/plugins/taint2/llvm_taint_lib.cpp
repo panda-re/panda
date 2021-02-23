@@ -156,8 +156,9 @@ void taint_branch_run(Shad *shad, uint64_t src, uint64_t size, uint64_t concrete
         if (opcode == llvm::Instruction::Br) {
             // CINFO(llvm::errs() << "Tainted branch: " << *I << "\n");
             CINFO(std::cerr << "Concrete condition: " << concrete << "\n");
-            if (shad->query_full(src)->expr) {
-                z3::expr expr(*shad->query_full(src)->expr);
+            if (shad->query_full(src)->sym &&
+                shad->query_full(src)->sym->expr) {
+                z3::expr expr(*shad->query_full(src)->sym->expr);
                 CINFO(std::cerr << expr << "\n");
                 reg_branch_pc(expr, concrete);
             }

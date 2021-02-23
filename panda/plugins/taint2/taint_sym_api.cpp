@@ -18,7 +18,7 @@
 #include <unordered_map>
 
 z3::context context;
-std::vector<z3::expr> path_constraints;
+
 void taint2_sym_label_addr(Addr a, int offset, uint32_t l) {
     assert(shadow);
     if(!symexEnabled) taint2_enable_sym();
@@ -30,7 +30,9 @@ void taint2_sym_label_addr(Addr a, int offset, uint32_t l) {
         ss << std::hex << l;
         id += ss.str();
         z3::expr *expr = new z3::expr(context.bv_const(id.c_str(), 8));
-        loc.first->query_full(loc.second)->expr = expr;
+        if (!loc.first->query_full(loc.second)->sym)
+            loc.first->query_full(loc.second)->sym = new SymLabel();
+        loc.first->query_full(loc.second)->sym->expr = expr;
     }
 }
 
@@ -39,7 +41,8 @@ void *taint2_sym_query(Addr a) {
     if(!symexEnabled) taint2_enable_sym();
     auto loc = shadow->query_loc(a);
     if (loc.first) {
-        return loc.first->query_full(loc.second)->expr;
+        if (loc.first->query_full(loc.second)->sym)
+            return loc.first->query_full(loc.second)->sym->expr;
     }
     return nullptr;
 }

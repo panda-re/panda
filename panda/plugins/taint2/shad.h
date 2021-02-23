@@ -33,12 +33,7 @@ extern "C" {
 
 #include "taint_defines.h"
 #include "label_set.h"
-
-#ifdef SHAD_LLVM
-#include <llvm/Support/raw_ostream.h>
-#include <llvm/IR/Instructions.h>
-#include <z3++.h>
-#endif
+#include "sym_label.h"
 
 class Shad;
 
@@ -99,25 +94,15 @@ struct TaintData {
     // Bits known to be 1 or 0 via bitwise operations.
     uint8_t one_mask;
     uint8_t zero_mask;
+    SymLabelP sym;
 
-#ifdef SHAD_LLVM
-    z3::expr *expr = NULL;
-    z3::expr *full_expr = NULL;
-#else
-    void *spacer = NULL;
-    void *spacer_2 = NULL;
-#endif
-    uint8_t full_size = 0;
-    uint8_t offset = 0;
-    
-
-    TaintData() : ls(NULL), tcn(0), cb_mask(0), one_mask(0), zero_mask(0) {}
+    TaintData() : ls(NULL), tcn(0), cb_mask(0), one_mask(0), zero_mask(0), sym(NULL) {}
     explicit TaintData(LabelSetP ls) : ls(ls), tcn(0), cb_mask(ls ? 0xFF : 0),
-            one_mask(0), zero_mask(0) {}
+            one_mask(0), zero_mask(0), sym(NULL) {}
     TaintData(LabelSetP ls, uint32_t tcn, uint8_t cb_mask,
             uint8_t one_mask, uint8_t zero_mask)
         : ls(ls), tcn(ls ? tcn : 0), cb_mask(ls ? cb_mask : 0),
-        one_mask(one_mask), zero_mask(zero_mask) {}
+        one_mask(one_mask), zero_mask(zero_mask), sym(NULL) {}
 
     bool operator==(const TaintData &other) const {
         return ls == other.ls &&
