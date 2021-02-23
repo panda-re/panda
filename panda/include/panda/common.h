@@ -333,11 +333,15 @@ static inline target_ulong panda_current_ksp(CPUState *cpu) {
         return kernel_esp;
     }
 #elif defined(TARGET_ARM)
-    if ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC) {
-        return env->regs[13];
-    }else {
-        // Read banked R13 for SVC mode to get the kernel SP (1=>SVC bank from target/arm/internals.h)
-        return env->banked_r13[1];
+    if(env->aarch64) {
+        return env->sp_el[1];
+    } else {
+        if ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC) {
+            return env->regs[13];
+        }else {
+            // Read banked R13 for SVC mode to get the kernel SP (1=>SVC bank from target/arm/internals.h)
+            return env->banked_r13[1];
+        }
     }
 #elif defined(TARGET_PPC)
     // R1 on PPC.
