@@ -39,6 +39,7 @@ stringsearch
 syscalls2
 syscalls_logger
 textprinter
+trace
 track_intexc
 unigrams
 win2000x86intro
