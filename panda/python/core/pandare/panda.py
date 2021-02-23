@@ -466,6 +466,7 @@ class Panda():
         without needing to wait for tasks in the main async thread
         '''
         self.unload_plugins()
+
         if self.running.is_set():
             # If we were running, stop the execution and check if we crashed
             self.queue_async(self.stop_run, internal=True)
@@ -2350,7 +2351,7 @@ class Panda():
                 self.lambda_cnt += 1
 
             if local_name in self.ppp_registered_cbs:
-                print(f"Warning: replacing existing PPP callback '{name}' since it was re-registered")
+                print(f"Warning: replacing existing PPP callback '{local_name}' since it was re-registered")
                 self.disable_ppp(local_name)
 
             assert (local_name not in self.ppp_registered_cbs), f"Two callbacks with conflicting name: {local_name}"
