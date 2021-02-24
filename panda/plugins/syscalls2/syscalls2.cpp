@@ -425,17 +425,40 @@ target_ulong calc_retaddr_linux_arm(CPUState* cpu, target_ulong pc) {
     //return mask_retaddr_to_pc(env->regs[14]);
 
     // Fork, exec
-#if !defined(TARGET_AARCH64)
+
+    // 32-bit and 64-bit ARM both have thumb field in CPUARMState
     uint8_t offset = 0;
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    if(env->thumb == 0){
-        offset = 4;
-    } else {
+    bool in_thumb_mode = (env->thumb == 1);
+    if(in_thumb_mode){
         offset = 2;
+    } else {
+        offset = 4; // Note: this is NOT 8 for AARCH64!
     }
+
+// 32-bit specific
+#if !defined(TARGET_AARCH64)
+    // TODO: check syscall encoding here?
+    // If so, check both EABI and OABI!
+
+// 64-bit specific
 #else
-    uint8_t offset = 8;
+    if (!in_thumb_mode) {
+        unsigned char buf[4] = {};
+        panda_virtual_memory_rw(cpu, pc, buf, 4, 0);
+        if (!((buf[0] == 0x01)  && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0xd4))) {
+            assert((1==0) && "Tried to calculate AARCH64 ret addr when instr was not a syscall!");
+        }
+    }
 #endif
+    if (in_thumb_mode) {
+        unsigned char buf[2] = {};
+        panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
+        if (!(buf[1] == 0xDF && buf[0] == 0)) {
+            assert((1==0) && "Tried to calculate THUMB ret addr when instr was not a syscall!");
+        }
+    }
+
     return mask_retaddr_to_pc(pc + offset);
 #else
     // shouldnt happen
