@@ -149,6 +149,9 @@ class PandaArch():
         self.dump_regs(cpu)
         print("Stack:")
         self.dump_stack(cpu)
+    
+    def get_args(self, cpu, num):
+        return [self.get_arg(cpu,i) for i in range(num)]
 
 class ArmArch(PandaArch):
     '''
