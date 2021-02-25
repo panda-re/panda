@@ -22,7 +22,7 @@ extern "C" {
  * system call return callbacks.
  */
 void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc) {
-#if defined(TARGET_ARM)
+#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
 	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 	syscall_ctx_t ctx = {0};
 	ctx.no = env->regs[7];

@@ -137,7 +137,7 @@ def parse_numbers_calltable(rootdir, arch, source, regex, syscalls_skip):
     '''
     calltablefile = '%s/%s' % (rootdir, source)
     logging.info('Parsing syscall numbers from %s.', calltablefile)
-    assert os.path.isfile(calltablefile)
+    assert os.path.isfile(calltablefile), "Missing file " + calltablefile
 
     # parse numbers from file
     syscall_numbers = {}
@@ -155,9 +155,14 @@ def parse_numbers_calltable(rootdir, arch, source, regex, syscalls_skip):
                 syscall = d.get('syscall')
                 is_abi = d.get('abi') is not None
                 is_obsolete = d.get('obsolete') is not None
+                is_compat = d.get('compat') is not None
             else:
                 #logging.debug('Skipping line %03d: \'%s\'', ln, line)
                 continue
+
+            # Do we need to special case 'compat' syscalls?
+            #if is_compat:
+            #    logging.warning("COMPAT %s on line %d:", syscall, ln)
 
             # skip matching line
             if is_obsolete:
@@ -222,8 +227,12 @@ def parse_numbers_unistd(rootdir, arch, source, cpp_flags=[]):
     # evaluate syscall numbers and return
     syscall_numbers = {}
     for line in cpp.stdout.splitlines():
-        if line.startswith('#'): continue
-        syscall_name, syscall_nr_expr = pad_list(line.split(':', 1), 1)
+        if len(line.strip())==0 or line.startswith('#'): continue
+        try:
+            syscall_name, syscall_nr_expr = pad_list(line.split(':', 1), 1)
+        except ValueError:
+            print("Failed to parse: " + line)
+            raise
         if syscall_nr_expr is None: continue
         try:
             syscall_nr = ast.literal_eval(syscall_nr_expr)
@@ -300,6 +309,8 @@ def write_prototypes(fsigs, fnums, nnums, config, outdir):
     ''' Writes prototypes starting by iterating syscall_numbers and
         looking for an appropriate signature in syscall_signatures.
     '''
+    assert(fsigs is not None and len(fsigs)), "No functions provided (incorrect map_name_number logic?)"
+    assert(fnums is not None and len(fnums)), "No syscall numbers provided (incorrect map_function_number logic?)"
     if 'outfile' in config:
         protofile = '%s/%s' % (outdir, config['outfile'])
     else:

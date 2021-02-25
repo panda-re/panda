@@ -296,6 +296,10 @@ static inline bool panda_in_kernel(const CPUState *cpu) {
 #if defined(TARGET_I386)
     return ((env->hflags & HF_CPL_MASK) == 0);
 #elif defined(TARGET_ARM)
+    // See target/arm/cpu.h arm_current_el
+    if (env->aarch64) {
+        return extract32(env->pstate, 2, 2) > 0;
+    }
     // Note: returns true for non-SVC modes (hypervisor, monitor, system, etc).
     // See: https://www.keil.com/pack/doc/cmsis/Core_A/html/group__CMSIS__CPSR__M.html
     return ((env->uncached_cpsr & CPSR_M) > ARM_CPU_MODE_USR);
@@ -329,11 +333,15 @@ static inline target_ulong panda_current_ksp(CPUState *cpu) {
         return kernel_esp;
     }
 #elif defined(TARGET_ARM)
-    if ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC) {
-        return env->regs[13];
-    }else {
-        // Read banked R13 for SVC mode to get the kernel SP (1=>SVC bank from target/arm/internals.h)
-        return env->banked_r13[1];
+    if(env->aarch64) {
+        return env->sp_el[1];
+    } else {
+        if ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC) {
+            return env->regs[13];
+        }else {
+            // Read banked R13 for SVC mode to get the kernel SP (1=>SVC bank from target/arm/internals.h)
+            return env->banked_r13[1];
+        }
     }
 #elif defined(TARGET_PPC)
     // R1 on PPC.

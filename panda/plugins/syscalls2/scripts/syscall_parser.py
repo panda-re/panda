@@ -54,7 +54,13 @@ KNOWN_ARCH = {
         'bits': 32,
         'rt_callno_reg': 'env->regs[7]',        # register holding syscall number at runtime
         'rt_sp_reg': 'env->regs[13]',           # register holding stack pointer at runtime
-        'qemu_target': 'defined(TARGET_ARM)',   # qemu target name for this arch - used in guards
+        'qemu_target': 'defined(TARGET_ARM) && !defined(TARGET_AARCH64)',   # qemu target name for this arch - used in guards
+    },
+    'arm64': {
+        'bits': 64,
+        'rt_callno_reg': 'env->xregs[8]',        # register holding syscall number at runtime (env->pc)
+        'rt_sp_reg': 'env->regs[31]',           # register holding stack pointer at runtime (env->sp)
+        'qemu_target': 'defined(TARGET_ARM) && defined(TARGET_AARCH64)',   # qemu target name for this arch - used in guards
     },
     'mips': {
         'bits': 32,

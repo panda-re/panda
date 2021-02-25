@@ -22,7 +22,7 @@ root_dir = os.path.join(*[os.path.dirname(__file__), "..", "..", ".."]) # panda-
 build_root = os.path.join(root_dir, "build")
 lib_dir = os.path.join("pandare", "data")
 
-for arch in ['arm', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']:
+for arch in ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']:
     softmmu = arch+"-softmmu"
     plog = os.path.join(*[build_root, softmmu, "plog_pb2.py"])
     if os.path.isfile(plog):
@@ -98,6 +98,7 @@ def copy_ppp_header(filename):
             # void ppp_add_cb_{cb_name}(void (*)({cb_args}))
     with open(pypanda_h, "w") as outfile:
         outfile.write("\n".join(new_contents))
+
     return pypanda_h
 
 def create_pypanda_header(filename, no_record=False):
@@ -215,7 +216,10 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     elif arch == "arm":
         define_clean_header(ffi, include_dir + "/panda_datatypes_ARM_32.h")
         define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_arm.h")
-        pass
+
+    elif arch == "aarch64": # Could also do arch and bits==64
+        define_clean_header(ffi, include_dir + "/panda_datatypes_ARM_64.h")
+        define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_arm64.h")
     elif arch == "ppc" and int(bits) == 32:
         define_clean_header(ffi, include_dir + "/panda_datatypes_PPC_32.h")
         print('WARNING: no syscalls support for PPC 32')
@@ -316,6 +320,10 @@ def main(install=False,recompile=True):
 
     #   other PPP headers: callstack_instr. TODO: more
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/callstack_instr", "callstack_instr.h"))
+
+    # XXX why do we have to append this to pypanda headers?
+    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/osi", "os_intro.h"))
+    pypanda_headers.append(os.path.join(INCLUDE_DIR_PYP, "os_intro.h"))
 
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2_ppp.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
@@ -481,6 +489,7 @@ PandaCB.__doc__ = '''custom named tuple to handle callbacks. Each element is a c
             ("i386", 32),
             ("x86_64", 64),
             ("arm", 32),
+            ("aarch64", 64),
             ("ppc", 32),
             ("ppc", 64),
             ("mips", 32),

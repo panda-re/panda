@@ -75,9 +75,19 @@ SUPPORTED_IMAGES = {
             extra_files=['vmlinuz-3.2.0-4-versatile', 'initrd.img-3.2.0-4-versatile'],
             extra_args='-display none -M versatilepb -append "root=/dev/sda1" -kernel {DOT_DIR}/vmlinuz-3.2.0-4-versatile -initrd {DOT_DIR}/initrd.img-3.2.0-4-versatile'.format(DOT_DIR=VM_DIR)),
 
+    'aarch64_focal': Image(
+            arch='aarch64',
+            os="linux-64-ubuntu:5.4.0-58-generic-arm64",
+            prompt=rb"root@ubuntu-panda:.*# ",
+            #cdrom="scsi0-cd2", # No idea what this should be
+            default_mem='1G',
+            snapshot="root",
+            url="https://panda-re.mit.edu/qcows/linux/ubuntu/2004/aarch64/ubuntu20_04-aarch64.qcow",
+            extra_files=['ubuntu20_04-aarch64-flash0.qcow'],
+            extra_args='-nographic -machine virt -cpu cortex-a57 -drive file={DOT_DIR}/ubuntu20_04-aarch64-flash0.qcow,if=pflash,readonly=on'.format(DOT_DIR=VM_DIR)),
     'mips_wheezy': Image(
             arch='mips',
-            os="linux-64-debian:3.2.0-4-arm-pae", # XXX wrong
+            os="linux-32-debian:3.2.0-4-4kc-malta",
             prompt=rb"root@debian-mips:.*# ",
             cdrom="ide1-cd0",
             snapshot="root",
@@ -131,12 +141,13 @@ SUPPORTED_IMAGES = {
 }
 
 # Default values
-SUPPORTED_IMAGES['x86_64'] = SUPPORTED_IMAGES['x86_64_ubuntu_1804']
-SUPPORTED_IMAGES['i386']   = SUPPORTED_IMAGES['i386_ubuntu_1604']
-SUPPORTED_IMAGES['ppc']    = SUPPORTED_IMAGES['ppc_wheezy']
-SUPPORTED_IMAGES['arm']    = SUPPORTED_IMAGES['arm_wheezy']
-SUPPORTED_IMAGES['mips']   = SUPPORTED_IMAGES['mips_wheezy']
-SUPPORTED_IMAGES['mipsel'] = SUPPORTED_IMAGES['mipsel_wheezy']
+SUPPORTED_IMAGES['x86_64']  = SUPPORTED_IMAGES['x86_64_ubuntu_1804']
+SUPPORTED_IMAGES['i386']    = SUPPORTED_IMAGES['i386_ubuntu_1604']
+SUPPORTED_IMAGES['ppc']     = SUPPORTED_IMAGES['ppc_wheezy']
+SUPPORTED_IMAGES['arm']     = SUPPORTED_IMAGES['arm_wheezy']
+SUPPORTED_IMAGES['aarch64'] = SUPPORTED_IMAGES['aarch64_focal']
+SUPPORTED_IMAGES['mips']    = SUPPORTED_IMAGES['mips_wheezy']
+SUPPORTED_IMAGES['mipsel']  = SUPPORTED_IMAGES['mipsel_wheezy']
 
 class Qcows():
     '''

@@ -103,6 +103,39 @@ CONFIG_LINUX = {
             'cpp_flags': ['-D__ARM_EABI__', '-D__KERNEL__',],
         },
     },
+    'linux:arm64:ubuntu': {
+        'bits': 64,
+        'src': os.path.expanduser('~/git/ubuntu-bionic'),
+        #'extrasigs': 'linux_arm_extrasigs.json', # ???
+        'map_function_signature': {
+            'parser': 'parse_signature_files',
+            'locations': {
+                'include/linux/syscalls.h': r'asmlinkage (?P<signature>\w+\s+(?P<syscall>\w+)\(.*)',
+                'arch/arm64/kernel/signal.c': r'asmlinkage (?P<signature>\w+\s+(?P<syscall>\w+)\(.*)',
+            },
+            'normalize': True,
+        },
+        'map_function_number': {
+            'parser': 'parse_numbers_calltable',
+            #'source': 'include/uapi/asm-generic/unistd.h',
+            #'source': 'arch/arm64/include/asm/unistd32.h', # Just includes arch/arm64/include/uapi/asm/unistd.h
+            'source': 'include/uapi/asm-generic/unistd.h',
+            'regex': {
+                'callnr': r'^/\*\s*(?P<nr>\d+)\s*\*/',
+                'call': r'__(SYSCALL|SC_COMP)\(__NR[a-zA-Z_]*, (?P<compat>compat_)?(?P<syscall>\w+)',
+               #'call': r'CALL\((?P<obsolete>OBSOLETE\()?(?P<abi>ABI\()?(?P<syscall>\w+)',
+            },
+            'syscalls_skip': [],
+        },
+
+        'map_name_number': {
+            'parser': 'parse_numbers_unistd',
+            #'source': 'arch/arm64/include/uapi/asm/unistd.h',
+            #'source': 'arch/arm64/include/asm/unistd32.h',
+            'source': 'include/uapi/asm-generic/unistd.h',
+            'cpp_flags': ['-D__ARM_EABI__', '-D__KERNEL__', '-D__ARCH_WANT_RENAMEAT']
+        },
+    },
     # Generate using stock linux kernel at v5.8
     'linux:mips:generic': {
         'bits': 32,

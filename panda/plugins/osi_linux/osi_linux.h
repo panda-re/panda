@@ -77,18 +77,25 @@ struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, std::initiali
     while (true) {
         it++;
         if (it == offsets.end()) break;
+        //printf("\tDereferenced 0x%x (offset 0x%lx) to get ", ptr, o);
         auto r = struct_get(cpu, &ptr, ptr, o);
         if (r != struct_get_ret_t::SUCCESS) {
+            //printf("ERROR\n");
             memset((uint8_t *)v, 0, sizeof(T));
             return r;
         }
         o = *it;
         // We just read a pointer so we may need to fix its endianness
-        if (sizeof(T) == 4) fixupendian(ptr);
+        if (sizeof(T) == 4) fixupendian(ptr); // XXX wrong for 64-bit guests
+        //printf("0x%x\n", ptr);
     }
 
     // last item is read using the size of the type of v
-    return struct_get(cpu, v, ptr, o);
+    // this isn't a pointer so there's no need to fix its endianness
+    auto ret = struct_get(cpu, v, ptr, o); // deref ptr into v, result in ret
+    fixupendian(*v);
+    //printf("Struct_get final 0x%x => 0x%x\n", ptr, *v);
+    return ret;
 }
 #endif
 
@@ -127,7 +134,7 @@ static inline _retType _name(CPUState* env, target_ptr_t _paramName) { \
     if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType), 0)) { \
         return (_errorRetValue); \
     } \
-    return (_t); \
+    return (flipbadendian(_t)); \
 }
 
 
@@ -148,10 +155,10 @@ static inline _retType2 _name(CPUState* env, target_ptr_t _paramName) { \
     if (-1 == panda_virtual_memory_rw(env, _paramName + _offset1, (uint8_t *)&_t1, sizeof(_retType1), 0)) { \
         return (_errorRetValue); \
     } \
-    if (-1 == panda_virtual_memory_rw(env, _t1 + _offset2, (uint8_t *)&_t2, sizeof(_retType2), 0)) { \
+    if (-1 == panda_virtual_memory_rw(env, flipbadendian(_t1) + _offset2, (uint8_t *)&_t2, sizeof(_retType2), 0)) { \
         return (_errorRetValue); \
     } \
-    return (_t2); \
+    return (flipbadendian(_t2)); \
 }
 
 #define OG_AUTOSIZE 0

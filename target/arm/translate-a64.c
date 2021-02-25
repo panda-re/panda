@@ -36,6 +36,15 @@
 
 #include "trace-tcg.h"
 
+#include "panda/callbacks/cb-support.h"
+
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+extern bool panda_update_pc;
+#endif
+
+// PANDA TODO: support hypercalls somewhere in this file
+
 static TCGv_i64 cpu_X[32];
 static TCGv_i64 cpu_pc;
 
@@ -11299,6 +11308,15 @@ void gen_intermediate_code_a64(ARMCPU *cpu, TranslationBlock *tb)
             gen_io_start();
         }
 
+#ifdef CONFIG_SOFTMMU
+        //mz let's count this instruction
+        // In LLVM mode we generate this more efficiently.
+        if ((rr_on() || panda_update_pc) && !generate_llvm) {
+            gen_op_update_panda_pc(dc->pc);
+            gen_op_update_rr_icount();
+        }
+#endif
+
         if (dc->ss_active && !dc->pstate_ss) {
             /* Singlestep state is Active-pending.
              * If we're in this state at the start of a TB then either
@@ -11317,11 +11335,22 @@ void gen_intermediate_code_a64(ARMCPU *cpu, TranslationBlock *tb)
             break;
         }
 
+        // PANDA: ask if anyone wants execution notification
+        if (unlikely(panda_callbacks_insn_translate(cs, dc->pc))) {
+            // PANDA: Insert the instrumentation
+            gen_helper_panda_insn_exec(tcg_const_tl(dc->pc));
+        }
+
         disas_a64_insn(env, dc);
 
         if (tcg_check_temp_count()) {
             fprintf(stderr, "TCG temporary leak before "TARGET_FMT_lx"\n",
                     dc->pc);
+        }
+
+        if (unlikely(panda_callbacks_after_insn_translate(cs, dc->pc))
+                && !dc->is_jmp) {
+            gen_helper_panda_after_insn_exec(tcg_const_tl(dc->pc));
         }
 
         /* Translation stops when a conditional branch is encountered.

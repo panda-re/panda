@@ -15,9 +15,10 @@ PANDAENDCOMMENT */
 
 // The return of some linux system calls is not always handled
 // correctly. This needs further investigation.
-// Uncomment next line to enable debug prints for tracking of system
-// call context.
+// Uncomment next lines to enable debug prints for tracking of system
+// call context. Only for x86
 //#define SYSCALL_RETURN_DEBUG
+//#define PANDA_LOG_LEVEL PANDA_LOG_DEBUG
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
@@ -84,6 +85,7 @@ target_ulong calc_retaddr_linux_mips(CPUState *cpu, target_ulong pc); // TODO
 enum ProfileType {
     PROFILE_LINUX_X86,
     PROFILE_LINUX_ARM,
+    PROFILE_LINUX_AARCH64,
     PROFILE_LINUX_MIPS,
     PROFILE_WINDOWS_2000_X86,
     PROFILE_WINDOWS_XPSP2_X86,
@@ -113,7 +115,7 @@ struct Profile {
 };
 
 Profile profiles[PROFILE_LAST] = {
-    {
+    { /* PROFILE_LINUX_X86 */
         .enter_switch = syscall_enter_switch_linux_x86,
         .return_switch = syscall_return_switch_linux_x86,
         .get_return_val = get_return_val_x86,
@@ -130,9 +132,26 @@ Profile profiles[PROFILE_LAST] = {
         .windows_arg_offset = -1,
         .syscall_interrupt_number = 0x80,
     },
-    {   /* Linux ARM */
+    { /* PROFILE_LINUX_ARM */
         .enter_switch = syscall_enter_switch_linux_arm,
         .return_switch = syscall_return_switch_linux_arm,
+        .get_return_val = get_return_val_arm,
+        .calc_retaddr = calc_retaddr_linux_arm,
+        .get_32 = get_32_linux_arm,
+        .get_s32 = get_s32_generic,
+        .get_64 = get_64_linux_arm,
+        .get_s64 = get_s64_generic,
+        .get_return_32 = get_32_linux_arm,
+        .get_return_s32 = get_return_s32_generic,
+        .get_return_64 = get_64_linux_arm,
+        .get_return_s64 = get_return_s64_generic,
+        .windows_return_addr_register = -1,
+        .windows_arg_offset = -1,
+        .syscall_interrupt_number = 0x80,
+    },
+    {   /* PROFILE_LINUX_AARCH64 */
+        .enter_switch = syscall_enter_switch_linux_arm64,
+        .return_switch = syscall_return_switch_linux_arm64,
         .get_return_val = get_return_val_arm,
         .calc_retaddr = calc_retaddr_linux_arm,
         .get_32 = get_32_linux_arm,
@@ -305,7 +324,14 @@ target_long get_return_val_x86(CPUState *cpu){
 target_long get_return_val_arm(CPUState *cpu){
 #if defined(TARGET_ARM)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+#if !defined(TARGET_AARCH64)
+    // arm: reg[0]
     return static_cast<target_long>(env->regs[0]);
+#else
+    // aarch64: xregs[0]
+    return static_cast<target_long>(env->xregs[0]);
+#endif
+
 #endif
     return 0;
 }
@@ -399,13 +425,40 @@ target_ulong calc_retaddr_linux_arm(CPUState* cpu, target_ulong pc) {
     //return mask_retaddr_to_pc(env->regs[14]);
 
     // Fork, exec
+
+    // 32-bit and 64-bit ARM both have thumb field in CPUARMState
     uint8_t offset = 0;
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    if(env->thumb == 0){
-        offset = 4;
-    } else {
+    bool in_thumb_mode = (env->thumb == 1);
+    if(in_thumb_mode){
         offset = 2;
+    } else {
+        offset = 4; // Note: this is NOT 8 for AARCH64!
     }
+
+// 32-bit specific
+#if !defined(TARGET_AARCH64)
+    // TODO: check syscall encoding here?
+    // If so, check both EABI and OABI!
+
+// 64-bit specific
+#else
+    if (!in_thumb_mode) {
+        unsigned char buf[4] = {};
+        panda_virtual_memory_rw(cpu, pc, buf, 4, 0);
+        if (!((buf[0] == 0x01)  && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0xd4))) {
+            assert((1==0) && "Tried to calculate AARCH64 ret addr when instr was not a syscall!");
+        }
+    }
+#endif
+    if (in_thumb_mode) {
+        unsigned char buf[2] = {};
+        panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
+        if (!(buf[1] == 0xDF && buf[0] == 0)) {
+            assert((1==0) && "Tried to calculate THUMB ret addr when instr was not a syscall!");
+        }
+    }
+
     return mask_retaddr_to_pc(pc + offset);
 #else
     // shouldnt happen
@@ -516,8 +569,17 @@ uint32_t get_32_linux_x64 (CPUState *cpu, uint32_t argnum) {
 uint32_t get_32_linux_arm (CPUState *cpu, uint32_t argnum) {
 #ifdef TARGET_ARM
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+
+#if !defined(TARGET_AARCH64)
+    // arm32 regs in r0-r6
     assert (argnum < 7);
     return (uint32_t) env->regs[argnum];
+#else
+    // aarch64 regs in x0-x5
+    assert (argnum < 6);
+    return (uint32_t) env->xregs[argnum];
+#endif
+
 #else
     return 0;
 #endif
@@ -578,8 +640,15 @@ uint64_t get_64_linux_x64(CPUState *cpu, uint32_t argnum) {
 uint64_t get_64_linux_arm(CPUState *cpu, uint32_t argnum) {
 #ifdef TARGET_ARM
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+#if !defined(TARGET_AARCH64)
+    // arm32 regs in r0-r6
     assert (argnum < 7);
     return (((uint64_t) env->regs[argnum]) << 32) | (env->regs[argnum+1]);
+#else
+    // aarch64 fits 64 bit registers in regs in x0-x5
+    assert (argnum < 6);
+    return (uint64_t) env->xregs[argnum];
+#endif
 #else
     return 0;
 #endif
@@ -732,11 +801,14 @@ static void tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
     }
 #if defined(SYSCALL_RETURN_DEBUG)
     if (no >= 0) {
+#if PANDA_LOG_LEVEL >= PANDA_LOG_DEBUG
+        // If not guarded we get unused variable warning
         const syscall_info_t *si = syscall_info;
         const syscall_meta_t *sm = syscall_meta;
         std::string remaining = context_map_t_dump(running_syscalls);
         LOG_DEBUG("returned: %s:" TARGET_PTR_FMT, (no > sm->max_generic ? "N/A" : si[no].name), panda_current_asid(cpu));
         LOG_DEBUG("remaining %zu: %s\n", running_syscalls.size(), remaining.c_str());
+#endif
     }
 #endif
     return;
@@ -787,6 +859,17 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
 #elif defined(TARGET_ARM)
     unsigned char buf[4] = {};
 
+#if defined(TARGET_AARCH64)
+    // AARCH64 - No thumb mode, syscall is 01 00 00 d4
+    // Check for ARM mode syscall
+    panda_virtual_memory_rw(cpu, pc, buf, 4, 0);
+
+    if ( (buf[0] == 0x01)  && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0xd4) ) {
+        return true;
+    }
+
+#else
+    // ARM32
     // Check for ARM mode syscall
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     if(env->thumb == 0) {
@@ -808,6 +891,8 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
             return true;
         }
     }
+#endif
+    // Arm32/aarch64 - not a match
     return false;
 #elif defined(TARGET_MIPS)
 
@@ -856,7 +941,9 @@ int exec_callback(CPUState *cpu, target_ulong pc) {
         for(const auto callback : preExecCallbacks){
             callback(cpu, pc);
         }
+        // Call into autogenerated code for the current syscall!
         syscalls_profile->enter_switch(cpu, pc);
+
 #if defined(SYSCALL_RETURN_DEBUG) && defined(TARGET_I386)
     if (no >= 0 && !si[no].noreturn) {
         std::string remaining = context_map_t_dump(running_syscalls);
@@ -923,8 +1010,13 @@ bool init_plugin(void *self) {
 #endif
 #endif
 #if defined(TARGET_ARM)
+#if !defined(TARGET_AARCH64)
         std::cerr << PANDA_MSG "using profile for linux arm" << std::endl;
         syscalls_profile = &profiles[PROFILE_LINUX_ARM];
+#else
+        std::cerr << PANDA_MSG "using profile for linux aarch64" << std::endl;
+        syscalls_profile = &profiles[PROFILE_LINUX_AARCH64];
+#endif
 #endif
 #if defined(TARGET_MIPS)
         std::cerr << PANDA_MSG "using profile for linux mips" << std::endl;

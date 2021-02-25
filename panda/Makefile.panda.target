@@ -80,7 +80,7 @@ plog.proto: $(PROTO_FILES) $(PANDA_CONFIG_FILES)
 		"PROTO   $(TARGET_DIR)plog.pb-c.h $(TARGET_DIR)plog.pb-c.c",)
 
 %.pb.h %.pb.cc: %.proto
-	# C++ Protobuf 
+	# C++ Protobuf
 	$(call quiet-command,\
 		protoc --proto_path=. --cpp_out=. $<,\
 		"PROTO" $(TARGET_DIR)"plog.pb.h" $(TARGET_DIR)"plog.pb.cc",)
@@ -136,7 +136,7 @@ PROGS+=$(RR_PRINT_PROG)
 
 PROGS+=$(RR_RMVAPIC_PROG)
 
-PROGS+=$(PLOG_READER_PROG) 
+PROGS+=$(PLOG_READER_PROG)
 
 clean: clean-panda
 
@@ -182,6 +182,13 @@ ARM_HELPERS += crypto_helper.bc2
 llvm-$(TARGET_ARM) += fpu/softfloat.bc2
 llvm-$(TARGET_ARM) += $(addprefix target/arm/,$(ARM_HELPERS))
 llvmmorph-$(TARGET_ARM) += llvm-helpers-arm.bc
+
+AARCH64_HELPERS = op_helper.bc2 helper-a64.bc2 neon_helper.bc2 iwmmxt_helper.bc2
+AARCH64_HELPERS += crypto_helper.bc2
+
+llvm-$(TARGET_AARCH64) += fpu/softfloat.bc2
+llvm-$(TARGET_AARCH64) += $(addprefix target/arm/,$(AARCH64_HELPERS))
+llvmmorph-$(TARGET_AARCH64) += llvm-helpers-aarch64.bc
 
 PPC_HELPERS = excp_helper.bc2 fpu_helper.bc2 timebase_helper.bc2 misc_helper.bc2
 PPC_HELPERS += mmu_helper.bc2 mem_helper.bc2 int_helper.bc2
