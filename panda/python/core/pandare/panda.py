@@ -872,19 +872,21 @@ class Panda():
         size = ceil(size/1024)*1024 # Must be page-aligned
         return self.libpanda.map_memory(name_c, size, address)
 
-    def read_str(self, cpu, ptr):
+    def read_str(self, cpu, ptr, max_length=None):
         '''
         Helper to read a null-terminated string from guest memory given a pointer and CPU state
         May return an exception if the call to panda.virtual_memory_read fails (e.g., if you pass a
         pointer to an unmapped page)
         '''
         r = b""
-        while True:
+        idx = 0
+        while (max_length is None or idx < max_length):
             next_char = self.virtual_memory_read(cpu, ptr, 1) # If this raises an exn, don't mask it
             if next_char == b"\x00":
                 break
             r += next_char
             ptr += 1
+            idx += 1
         return r.decode("utf8", "ignore")
 
     def to_unsigned_guest(self, x):
