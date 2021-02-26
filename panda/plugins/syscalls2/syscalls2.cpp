@@ -6,6 +6,7 @@
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
+ *  Luke Craig             luke.craig@ll.mit.edu
  *
  * This work is licensed under the terms of the GNU GPL, version 2.
  * See the COPYING file in the top-level directory.
@@ -22,6 +23,8 @@ PANDAENDCOMMENT */
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
+#include "panda/tcg-utils.h"
+#include "hooks/hooks_int_fns.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -37,9 +40,9 @@ PANDAENDCOMMENT */
 #include "syscalls2.h"
 #include "syscalls2_info.h"
 
-bool translate_callback(CPUState *cpu, target_ulong pc);
-int exec_callback(CPUState *cpu, target_ulong pc);
+void exec_callback(CPUState *cpu, TranslationBlock* tb, target_ulong pc);
 
+void (*hooks_add_hook)(struct hook*);
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -789,11 +792,11 @@ static inline std::string context_map_t_dump(context_map_t &cm) {
  * @brief Checks if the translation block that is about to be executed
  * matches the return address of an executing system call.
  */
-static void tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
+void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
     auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
     auto ctxi = running_syscalls.find(k);
     int UNUSED(no) = -1;
-    if (ctxi != running_syscalls.end()) {
+    if (likely(ctxi != running_syscalls.end())) {
         syscall_ctx_t *ctx = &ctxi->second;
         no = ctx->no;
         syscalls_profile->return_switch(cpu, tb->pc, ctx);
@@ -811,6 +814,7 @@ static void tb_check_syscall_return(CPUState *cpu, TranslationBlock *tb) {
 #endif
     }
 #endif
+    h->enabled = false;
     return;
 }
 #endif
@@ -822,10 +826,10 @@ static uint32_t impossibleToReadPCs = 0;
 
 // Check if the instruction is sysenter (0F 34),
 // syscall (0F 05) or int 0x80 (CD 80)
-int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
+target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb) {
 #if defined(TARGET_I386)
     unsigned char buf[2] = {};
-
+    target_ulong pc = tb->pc + tb->size - sizeof(buf);
     int res = panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
     if(res <0){
         return -1;
@@ -833,31 +837,32 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
 
     // Check if the instruction is syscall (0F 05)
     if (buf[0]== 0x0F && buf[1] == 0x05) {
-        return true;
+        return pc;
     }
     // Check if the instruction is int 0x80 (CD 80)
     else if (buf[0]== 0xCD && buf[1] == syscalls_profile->syscall_interrupt_number) {
 #if defined(TARGET_X86_64)
         LOG_WARNING("32-bit system call (int 0x80) found in 64-bit replay - ignoring\n");
-        return false;
+        return 0;
 #else
-        return true;
+        return pc;
 #endif
     }
     // Check if the instruction is sysenter (0F 34)
     else if (buf[0]== 0x0F && buf[1] == 0x34) {
 #if defined(TARGET_X86_64)
         LOG_WARNING("32-bit sysenter found in 64-bit replay - ignoring\n");
-        return false;
+        return 0;
 #else
-        return true;
+        return pc;
 #endif
     }
     else {
-        return false;
+        return 0;
     }
 #elif defined(TARGET_ARM)
     unsigned char buf[4] = {};
+    target_ulong pc = tb->pc + tb->size - sizeof(buf);
 
 #if defined(TARGET_AARCH64)
     // AARCH64 - No thumb mode, syscall is 01 00 00 d4
@@ -876,11 +881,11 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
         panda_virtual_memory_rw(cpu, pc, buf, 4, 0);
         // EABI
         if ( ((buf[3] & 0x0F) ==  0x0F)  && (buf[2] == 0) && (buf[1] == 0) && (buf[0] == 0) ) {
-            return true;
+            return pc;
         }
 #if defined(CAPTURE_ARM_OABI)
         else if (((buf[3] & 0x0F) == 0x0F)  && (buf[2] == 0x90)) {  // old ABI
-            return true;
+            return pc;
         }
 #endif
     }
@@ -888,15 +893,16 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
         panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
         // check for Thumb mode syscall
         if (buf[1] == 0xDF && buf[0] == 0){
-            return true;
+            return pc;
         }
     }
 #endif
     // Arm32/aarch64 - not a match
-    return false;
+    return 0;
 #elif defined(TARGET_MIPS)
 
     unsigned char buf[4] = {};
+    target_ulong pc = tb->pc + tb->size - sizeof(buf);
 
     int res = panda_virtual_memory_read(cpu, pc, buf, 4);
     if(res < 0){
@@ -906,37 +912,46 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
     // ifdef guard prevents us from misinterpreting "syscall" as "jal 0x0000" or "ehb"
     #if defined(TARGET_WORDS_BIGENDIAN)
         // 32-bit MIPS "syscall" instruction - big endian
-        return ((buf[0] == 0x00) && (buf[1] == 0x00) && (buf[2] == 0x00) && (buf[3] == 0x0c));
+        if ((buf[0] == 0x00) && (buf[1] == 0x00) && (buf[2] == 0x00) && (buf[3] == 0x0c))
+            return pc;
     #else
         // 32-bit MIPS "syscall" instruction - little endian
-        return ((buf[3] == 0x00) && (buf[2] == 0x00) && (buf[1] == 0x00) && (buf[0] == 0x0c));
+        if ((buf[3] == 0x00) && (buf[2] == 0x00) && (buf[1] == 0x00) && (buf[0] == 0x0c))
+            return pc;
     #endif
 
-    return false;
+    return 0;
 
 #elif defined(TARGET_PPC)
-    return false;
+    return 0;
 #else
-    return false; // helpful as a catchall for other architectures
+    return 0; // helpful as a catchall for other architectures
 #endif
+}
+
+
+void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
+    int res = doesBlockContainSyscall(cpu,tb);
+#ifdef DEBUG
+    if(res == (target_ulong) -1){
+        impossibleToReadPCs++;
+    }
+#endif
+    if(res != 0 && res != (target_ulong) -1){
+        TCGOp *op = find_guest_insn_by_addr(res);
+        insert_call(&op, exec_callback, cpu, tb, res);
+    }
 }
 
 // This will only be called for instructions where the
 // translate_callback returned true
-int exec_callback(CPUState *cpu, target_ulong pc) {
-    int res = isCurrentInstructionASyscall(cpu,pc);
+void exec_callback(CPUState *cpu, TranslationBlock *tb, target_ulong pc) {
 #if defined(SYSCALL_RETURN_DEBUG) && defined(TARGET_I386)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     int no = env->regs[R_EAX];
     const syscall_info_t *si = syscall_info;
     const syscall_meta_t *sm = syscall_meta;
 #endif
-#ifdef DEBUG
-    if(res < 0){
-        impossibleToReadPCs++;
-    }
-#endif
-    if(res == 1){
         // run any code we need to update our state
         for(const auto callback : preExecCallbacks){
             callback(cpu, pc);
@@ -955,12 +970,6 @@ int exec_callback(CPUState *cpu, target_ulong pc) {
 #ifdef DEBUG
         syscallCounter[panda_current_asid(cpu)]++;
 #endif
-    }
-    return 0;
-}
-
-bool translate_callback(CPUState* cpu, target_ulong pc){
-    return isCurrentInstructionASyscall(cpu, pc) == 1;
 }
 
 
@@ -1067,12 +1076,8 @@ bool init_plugin(void *self) {
     panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
 
     panda_cb pcb;
-    pcb.insn_translate = translate_callback;
-    panda_register_callback(self, PANDA_CB_INSN_TRANSLATE, pcb);
-    pcb.insn_exec = exec_callback;
-    panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb);
-    pcb.before_block_exec = tb_check_syscall_return;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    pcb.before_tcg_codegen = before_tcg_codegen;
+    panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb);
 
     // load system call info
     if (panda_parse_bool_opt(plugin_args, "load-info", "Load systemcall information for the selected os.")) {
@@ -1085,6 +1090,12 @@ bool init_plugin(void *self) {
 
     // done parsing arguments
     panda_free_args(plugin_args);
+    void *hooks = panda_get_plugin_by_name("hooks");
+	if (hooks == NULL){
+		panda_require("hooks");
+		hooks = panda_get_plugin_by_name("hooks");
+	}
+    hooks_add_hook = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
 #else //not x86/arm/mips
     fprintf(stderr,"The syscalls plugin is not currently supported on this platform.\n");
     return false;

@@ -84,7 +84,7 @@ jobs:
       # docker builder prune -> Remove build cache
     - name: Cleanup images
       run: |
-        docker system prune -f --filter "until=72h"
+        docker system prune -af --filter "until=72h"
         docker builder prune -af --filter "until=72h"
 
   build_and_check_fork: # Forked repos can't use self-hosted test suite - just checkout and run make check
