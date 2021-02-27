@@ -931,7 +931,7 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb) {
 
 
 void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
-    int res = doesBlockContainSyscall(cpu,tb);
+    target_ulong res = doesBlockContainSyscall(cpu,tb);
 #ifdef DEBUG
     if(res == (target_ulong) -1){
         impossibleToReadPCs++;
