@@ -18,7 +18,7 @@ msg() {
 
 # Default targets to build. Change with argument. small = i386-softmmu
 TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
-LLVM_CONFIG_BINARY="llvm-config-10"
+LLVM_CONFIG_BINARY="llvm-config-11"
 
 pypanda=""
 # Check if first argument is --python
@@ -81,7 +81,7 @@ fi
 ### Set LLVM_CONFIG to be used with the configure script.
 # No LLVM binary: Disable LLVM
 if ! command -v $LLVM_CONFIG_BINARY &> /dev/null; then
-    echo "LLVM 10 not installed. LLVM SUPPORT IS DISABLED."
+    echo "LLVM 11 not installed. LLVM SUPPORT IS DISABLED."
     LLVM_CONFIG=""
 fi
 # OSX: Disable LLVM
@@ -90,7 +90,7 @@ if [ $(getconf LONG_BIT) = 32 ]; then
     LLVM_CONFIG=""
 fi
 
-## Use system LLVM-10
+## Use system LLVM-11
 if $LLVM_CONFIG_BINARY --version >/dev/null 2>/dev/null; then
     msg "Found LLVM on $($LLVM_CONFIG_BINARY --prefix) -- LLVM SUPPORT IS ENABLED"
     LLVM_CONFIG="--enable-llvm --with-llvm=$($LLVM_CONFIG_BINARY --prefix)"
