@@ -453,10 +453,7 @@ void PandaTaintVisitor::inlineCall(CallInst *CI) {
     assert(CI && "CallInst can't be null");
     if (inline_taint) {
         InlineFunctionInfo IFI;
-        // LLVM-10
-        if (!InlineFunction(CI, IFI)) {
-        // LLVM-11
-        //if (!InlineFunction(*CI, IFI).isSuccess()) {
+        if (!InlineFunction(*CI, IFI).isSuccess()) {
             printf("Inlining failed!\n");
         }
     }
