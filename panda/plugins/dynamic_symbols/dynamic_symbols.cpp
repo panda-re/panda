@@ -494,7 +494,7 @@ void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
 }
 
 void btc_execve(CPUState *env, TranslationBlock *tb){
-    if (unlikely(!panda_is_callback_enabled(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_btc_execve))) {
+    if (unlikely(!panda_is_callback_enabled(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve))) {
         // Callback still runs occasionally after disabled
         return;
     }
@@ -510,7 +510,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
             target_ulong ptr;
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_btc_execve);
+                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
                     return;
                 }
                 ptrlistpos++;
@@ -522,7 +522,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
             // them, but you could.
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_btc_execve);
+                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
                     return;
                 }
                 ptrlistpos++;
