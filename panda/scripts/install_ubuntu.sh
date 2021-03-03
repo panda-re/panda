@@ -87,7 +87,7 @@ else
 fi
 
 # PyPanda dependencies
-python3 -m pip install pycparser "protobuf==3.0.0" "https://foss.heptapod.net/pypy/cffi/-/archive/branch/default/cffi-branch-default.zip" colorama
+python3 -m pip install pycparser "protobuf==3.0.0" cffi colorama
 
 progress "Trying to update DTC submodule"
 git submodule update --init dtc || true
