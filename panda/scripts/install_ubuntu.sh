@@ -87,7 +87,7 @@ else
 fi
 
 # PyPanda dependencies
-python3 -m pip install pycparser "protobuf==3.0.0" cffi colorama
+python3 -m pip install pycparser "protobuf==3.0.0" "cffi>=1.14.3" colorama
 
 progress "Trying to update DTC submodule"
 git submodule update --init dtc || true
