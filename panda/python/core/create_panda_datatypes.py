@@ -497,12 +497,7 @@ PandaCB.__doc__ = '''custom named tuple to handle callbacks. Each element is a c
         ]
 
         for arch in arches:
-            try:
-                compile(arch[0], arch[1], pypanda_headers, install, INCLUDE_DIR_PYP)
-            except Exception as e:
-                print("You need a newer version of cffi to run pypanda. Install from source with \
-                    pip3 install https://foss.heptapod.net/pypy/cffi/-/archive/branch/default/cffi-branch-default.tar.gz")
-                raise e
+            compile(arch[0], arch[1], pypanda_headers, install, INCLUDE_DIR_PYP)
 
 if __name__ == '__main__':
     main()
