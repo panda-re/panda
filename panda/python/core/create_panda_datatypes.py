@@ -8,7 +8,7 @@ if sys.version_info[0] < 3:
     raise RuntimeError('Requires python3')
 
 
-debug = False
+debug = True
 
 # Autogenerate panda_datatypes.py and include/panda_datatypes.h
 #
@@ -113,6 +113,7 @@ def create_pypanda_header(filename, no_record=False):
     if no_record is set, we don't save it into the pypanda_headers list
     so you'll have to manually include it
     '''
+
     contents = open(filename).read()
     subcontents = trim_pypanda(contents)
     if not subcontents: return
@@ -182,6 +183,8 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     from cffi import FFI
     ffi = FFI()
 
+    print(f"\n Compiling headers for panda_{arch}_{bits}")
+
     ffi.set_source(f"panda_{arch}_{bits}", None)
     if install:
         import os
@@ -189,11 +192,22 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     else:
         include_dir = static_inc
 
+    headers = []
     def define_clean_header(ffi, fname):
         '''Convenience function to pull in headers from file in C'''
 
         if debug:
             print("Pulling cdefs from ", fname)
+
+        #assert(fname not in headers)
+        #if fname in headers:
+        #    print("WARNING: double defn of ", fname)
+        #    return
+        #headers.append(fname)
+        if "addr" in fname:
+            import ipdb
+            ipdb.set_trace()
+
         # CFFI can't handle externs, but sometimes we have to extern C (as opposed to
         r = open(fname).read()
         for line in r.split("\n"):
@@ -274,10 +288,6 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     define_clean_header(ffi, include_dir + "/callstack_instr.h")
 
     define_clean_header(ffi, include_dir + "/hooks2_ppp.h")
-
-    define_clean_header(ffi, include_dir + "/addr.h")
-    define_clean_header(ffi, include_dir + "/taint2_ppp.h")
-
     # END PPP headers
 
     define_clean_header(ffi, include_dir + "/breakpoints.h")
@@ -342,8 +352,6 @@ def main(install=False,recompile=True):
 
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2_ppp.h"))
 
-    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/taint2", "addr.h"))
-    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/taint2", "taint2_ppp.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
 
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
