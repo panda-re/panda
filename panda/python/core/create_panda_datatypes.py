@@ -174,6 +174,12 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     #from ..ffi_importer import ffi
     from cffi import FFI
     ffi = FFI()
+    old_ffi_cdef = ffi.cdef
+    def new_ffi_cdef(r, override=False):
+        with open("a","a") as f:
+            f.write(r)
+        old_ffi_cdef(r,override=True)
+    ffi.cdef = new_ffi_cdef
 
     ffi.set_source(f"panda_{arch}_{bits}", None)
     if install:
@@ -191,8 +197,7 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
             assert("extern \"C\" {" not in line), "Externs unsupported by CFFI. Change {} to a single line without braces".format(r)
         r = r.replace("extern \"C\" ", "") # This allows inline externs like 'extern "C" void foo(...)'
         try:
-            with open("a","w") as f:
-                f.write(r)
+
             ffi.cdef(r)
         except Exception as e: # it's a cffi.CDefError, but cffi isn't imported
             print(f"\nError parsing header from {fname}\n")
@@ -204,6 +209,9 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
 
     ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
     ffi.cdef("typedef int"+str(bits)+"_t target_long;")
+
+    # for taint2
+#    ffi.cdef("typedef struct a Addr;")
 
     # PPP Headers
     # Syscalls - load architecture-specific headers
@@ -265,6 +273,9 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     define_clean_header(ffi, include_dir + "/callstack_instr.h")
 
     define_clean_header(ffi, include_dir + "/hooks2_ppp.h")
+    
+    define_clean_header(ffi, include_dir + "/addr.h")
+    define_clean_header(ffi, include_dir + "/taint2.h")
     # END PPP headers
 
     define_clean_header(ffi, include_dir + "/breakpoints.h")
@@ -327,6 +338,9 @@ def main(install=False,recompile=True):
 
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2_ppp.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
+    
+    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/taint2", "taint2_ppp.h"))
+    pypanda_headers.append(os.path.join(INCLUDE_DIR_PYP, "os_intro.h"))
 
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
         pdty.write("""

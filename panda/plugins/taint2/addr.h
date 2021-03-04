@@ -23,6 +23,36 @@ typedef uint64_t Unk;      // unknown type that needs to be fixed up
 typedef uint64_t Const;    // constant that we currently treat as untainted
 typedef uint64_t Ret;      // LLVM return value, also temp register
 
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
+
+#if 0
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+typedef uint64_t UnionVal; // if we don't support unions support this
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
+#endif
+
+typedef union {
+    HAddr ha;
+    MAddr ma;
+    IAddr ia;
+    PAddr pa;
+    LAddr la;
+    GReg gr;
+    GSpec gs;
+    Unk ua;
+    Const con;
+    Ret ret;
+} UnionVal;
+
+
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+
 typedef enum {HADDR, MADDR, IADDR, PADDR, LADDR, GREG, GSPEC,
     UNK, CONST, RET, ADDR_LAST} AddrType;
 
@@ -39,18 +69,7 @@ typedef enum {
 
 typedef struct addr_struct {
   AddrType typ;
-  union {
-    HAddr ha;
-    MAddr ma;
-    IAddr ia;
-    PAddr pa;
-    LAddr la;
-    GReg gr;
-    GSpec gs;
-    Unk ua;
-    Const con;
-    Ret ret;
-  } val;
+  UnionVal val;
   uint16_t off;   // offset within local registers and guest registers
   AddrFlag flag;  // indication that we might need to look up address from log
 } Addr;
