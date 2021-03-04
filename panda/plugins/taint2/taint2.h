@@ -30,7 +30,7 @@
 #include "query_res.h"
 
 typedef const std::set<uint32_t> *LabelSetP;
-extern "C" {
+
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
 // api autogen needs it.  And don't put any compiler directives
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
@@ -46,12 +46,6 @@ typedef void (*on_after_load_t) (Addr, uint64_t, uint64_t);
 typedef void (*on_after_store_t) (Addr, uint64_t, uint64_t);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
-    Addr make_haddr(uint64_t a);
-    Addr make_iaddr(uint64_t a);
-    Addr make_maddr(uint64_t a);
-    Addr make_laddr(uint64_t a, uint64_t o);
-    Addr make_greg(uint64_t r, uint16_t off);
-}
 
 struct ShadowState {
     uint64_t prev_bb; // label for previous BB.
@@ -98,5 +92,13 @@ struct ShadowState {
         }
     }
 };
+
+extern "C" {
+    Addr make_haddr(uint64_t a);
+    Addr make_iaddr(uint64_t a);
+    Addr make_maddr(uint64_t a);
+    Addr make_laddr(uint64_t a, uint64_t o);
+    Addr make_greg(uint64_t r, uint16_t off);
+}
 
 #endif
