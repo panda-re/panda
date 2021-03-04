@@ -28,19 +28,9 @@
 #include "taint_defines.h"
 #include "addr.h"
 #include "query_res.h"
+#include "taint2_ppp.h"
 
 typedef const std::set<uint32_t> *LabelSetP;
-
-typedef void (*on_branch2_t) (Addr, uint64_t);
-typedef void (*on_indirect_jump_t) (Addr, uint64_t);
-typedef void (*on_taint_change_t) (Addr, uint64_t);
-typedef void (*on_taint_prop_t) (Addr, Addr, uint64_t);
-typedef void (*on_ptr_load_t) (Addr, uint64_t, uint64_t);
-typedef void (*on_ptr_store_t) (Addr, uint64_t, uint64_t);
-typedef void (*on_after_load_t) (Addr, uint64_t, uint64_t);
-typedef void (*on_after_store_t) (Addr, uint64_t, uint64_t);
- 
-
 
 struct ShadowState {
     uint64_t prev_bb; // label for previous BB.
