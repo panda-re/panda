@@ -65,21 +65,21 @@ progress "Installing PANDA dependencies..."
 # Read file in dependencies directory and install those. If no dependency file present, error
 $SUDO apt-get update
 
-# Ubuntu 19 no longer has llvm10/clang10 in apt
-if [ $version -eq 19 ]; then
-  echo "Installing PPA for llvm/clang-10 on Ubuntu 19"
+# Ubuntu 18 does not have llvm11/clang11 in apt
+if [ $version -eq 18 ]; then
+  echo "Installing PPA for llvm/clang-11 on Ubuntu 18"
   $SUDO apt-get -y install software-properties-common
-  $SUDO add-apt-repository -y ppa:savoury1/llvm-toolchain
+  $SUDO add-apt-repository -y ppa:savoury1/llvm-defaults-11
   $SUDO apt-get update
 fi
 
 # Dependencies are for a major version, but the filenames include minor versions
 # So take our major version, find the first match in dependencies directory and run with it.
-# This will give us "./panda/dependencies/ubuntu:18.04" where ubuntu:18.04_build.txt or 18.04_base.txt exists
+# This will give us "./panda/dependencies/ubuntu:20.04" where ubuntu:20.04_build.txt or 20.04_base.txt exists
 dep_base=$(find ./panda/dependencies/ubuntu:${version}.* -print -quit | sed  -e "s/_build\.txt\|_base\.txt//")
 
 if [ -e ${dep_base}_build.txt ] || [ -e ${dep_base}_base.txt ]; then
-  echo "Found depndency file(s) at ${dep_base}*.txt"
+  echo "Found dependency file(s) at ${dep_base}*.txt"
   DEBIAN_FRONTEND=noninteractive $SUDO apt-get -y install --no-install-recommends $(cat ${dep_base}*.txt | grep -o '^[^#]*')  
 else
   echo "Unsupported Ubuntu version: $version. Create a list of build dependencies in ${dep_base}_{base,build}.txt and try again."
