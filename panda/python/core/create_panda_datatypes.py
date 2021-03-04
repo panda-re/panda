@@ -191,6 +191,7 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
 
     def define_clean_header(ffi, fname):
         '''Convenience function to pull in headers from file in C'''
+
         if debug:
             print("Pulling cdefs from ", fname)
         # CFFI can't handle externs, but sometimes we have to extern C (as opposed to
@@ -273,6 +274,9 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     define_clean_header(ffi, include_dir + "/callstack_instr.h")
 
     define_clean_header(ffi, include_dir + "/hooks2_ppp.h")
+
+    define_clean_header(ffi, include_dir + "/addr.h")
+    define_clean_header(ffi, include_dir + "/taint2_ppp.h")
 
     # END PPP headers
 
