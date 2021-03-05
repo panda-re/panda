@@ -1,5 +1,5 @@
 from pandare import Panda
-panda = Panda(generic='x86_64')
+panda = Panda(generic='arm')
 
 @panda.queue_blocking
 def driver():
@@ -17,18 +17,33 @@ def fd_to_fname(env, fd):
     fname = panda.ffi.string(fname_ptr) if fname_ptr != panda.ffi.NULL else "error"
     return fname
 
+tainted_branches = 0
 @panda.ppp("syscalls2", "on_sys_read_return")
 def read(cpu, tb, fd, buf, cnt):
     fname = fd_to_fname(cpu, fd)
     print(f"read {fname}")
 
-    if fname == "/etc/passwd":
-        for idx in range(cnt):
-            panda.taint_label_ram(buf+idx)
+    if fname == b"/etc/passwd":
+        print(f"labeling /etc/passwd for buf")
+        read_size = panda.arch.get_return_value(cpu)
+        for idx in range(read_size):
+            print
+            taint_paddr = panda.virt_to_phys(cpu, buf + idx)  # Physical address
+            if taint_paddr != -1:
+                print(f"making taint on {taint_paddr:x}")
+                panda.taint_label_ram(taint_paddr, idx)
+            else:
+                print("not doing taint because -1")
 
-@panda.ppp("taint2", "on_branch2")
-def something(addr, pc):
-    print("Tainted branch")
+        @panda.ppp("taint2", "on_branch2")
+        def something(addr, pc):
+            #print("Tainted branch")
+            global tainted_branches
+            tainted_branches += 1
 
-panda.run()
-
+panda.libpanda.panda_enable_llvm()
+try:
+    panda.run()
+except:
+    pass
+print(tainted_branches)

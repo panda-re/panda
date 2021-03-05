@@ -94,7 +94,7 @@ class Expect(object):
                     args = []
                     shift = idx+2
                     arg_s = msg[shift:]
-                    while start_args.match(arg_s):
+                    while start_args.match(arg_s) and shift < len(msg):
                         arg = start_args.match(arg_s).groups()[0].decode()
                         args.append(arg)
                         shift += len(arg)+1 # for ;
@@ -108,8 +108,10 @@ class Expect(object):
                         arg_s = msg[shift:]
 
                     # Next is one char for cmd
-                    cmd = chr(msg[shift])
-                    reformatted.append((cmd, args))
+                    if shift < len(msg):
+                        cmd = chr(msg[shift])
+                        reformatted.append((cmd, args))
+                    
 
                     idx = shift # final char
             idx += 1
@@ -266,6 +268,9 @@ class Expect(object):
                     pass
                 elif typ == 'S':
                     # Scroll window up
+                    pass
+                
+                elif typ == 'm':
                     pass
 
                 elif typ == 's':
