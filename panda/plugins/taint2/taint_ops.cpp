@@ -531,7 +531,7 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
             break;
         }
         default: {
-            CINFO(llvm::errs() << "Untracked taint_parallel_compute: " << *I << '\n');
+            CINFO(llvm::errs() << "Untracked taint_parallel_compute op: " << opcode << '\n');
         }
 
     }
@@ -608,7 +608,6 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         z3::expr expr1 = bytes_to_expr(shad, src1, src_size, val1, &symbolic);
         z3::expr expr2 = bytes_to_expr(shad, src2, src_size, val2, &symbolic);
 
-        // CDEBUG(if (!symbolic) llvm::errs() << *I->getParent()->getParent());
         if (!symbolic) break;
         CDEBUG(std::cerr << "Value 1: " << expr1 << "\n");
         CDEBUG(std::cerr << "Value 2: " << expr2 << "\n");
@@ -679,7 +678,7 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         break;
     }
     default:
-        CINFO(llvm::errs() << "Untracked taint_mix_compute instruction: " << *I << "\n");
+        CINFO(llvm::errs() << "Untracked taint_mix_compute instruction opcode: " << opcode << "\n");
         break;
     }
 
@@ -772,11 +771,8 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
             bool symbolic = false;
             z3::expr expr1 = bytes_to_expr(shad, src, src_size, concrete, &symbolic);
 
-            // CDEBUG(if (!symbolic) llvm::errs() << *I->getParent()->getParent());
             if (!symbolic) break;
             CDEBUG(std::cerr << "Symbolic value: " << expr1 << "\n");
-            // auto *CI = llvm::dyn_cast<llvm::ICmpInst>(I);
-            // assert(CI);
 
             z3::expr expr = icmp_compute(pred, expr1, val, src_size);
 
@@ -1258,7 +1254,6 @@ void concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
     }
     if (!symexEnabled) return;
     if (!change) return;
-    // if (!I) return;
     switch (opcode) {
         case llvm::Instruction::And:
         case llvm::Instruction::Or:
