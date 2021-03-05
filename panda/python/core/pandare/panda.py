@@ -176,6 +176,7 @@ class Panda():
         self._initialized_panda = False
         self.disabled_tb_chaining = False
         self.taint_enabled = False
+        self.taint_sym_enabled = False
         self.named_hooks = {}
         self.hook_list = []
         self.hook_list2 = {}
@@ -1762,7 +1763,48 @@ class Panda():
             return tq
         else:
             return None
+        
+    def taint_sym_enable(self, cont=True):
+        """
+        Inform python that taint is enabled.
+        """
+        if not self.taint_enabled:
+            progress("taint symbolic not enabled -- enabling")
+            self.vm_stop()
+            self.load_plugin("taint2")
+#            self.queue_main_loop_wait_fn(self.load_plugin, ["taint2"])
+        if not self.taint_sym_enabled:
+            self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_enable_sym, [])
+            if cont:
+                self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
+            self.taint_enabled = True
 
+    def taint_sym_label_ram(self, addr, label):
+        self.taint_sym_enable(cont=False)
+        #if debug:
+            #progress("taint_ram addr=0x%x label=%d" % (addr, label))
+
+        # XXX must ensure labeling is done in a before_block_invalidate that rets 1
+        #     or some other safe way where the main_loop_wait code will always be run
+        #self.stop()
+        self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_sym_label_ram, [addr, label])
+        self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
+
+    # label all bytes in this register.
+    # or at least four of them
+    def taint_sym_label_reg(self, reg_num, label):
+        self.taint_sym_enable(cont=False)
+        #if debug:
+        #    progress("taint_reg reg=%d label=%d" % (reg_num, label))
+
+        # XXX must ensure labeling is done in a before_block_invalidate that rets 1
+        #     or some other safe way where the main_loop_wait code will always be run
+        #self.stop()
+        for i in range(self.register_size):
+            self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_sym_label_reg, [reg_num, i, label])
+        self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
+
+    
     ############ Volatility mixins
     """
     Utilities to integrate Volatility with PANDA. Highly experimental.
