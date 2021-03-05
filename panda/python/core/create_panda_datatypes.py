@@ -191,8 +191,6 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
             assert("extern \"C\" {" not in line), "Externs unsupported by CFFI. Change {} to a single line without braces".format(r)
         r = r.replace("extern \"C\" ", "") # This allows inline externs like 'extern "C" void foo(...)'
         try:
-            with open("a","w") as f:
-                f.write(r)
             ffi.cdef(r)
         except Exception as e: # it's a cffi.CDefError, but cffi isn't imported
             print(f"\nError parsing header from {fname}\n")
@@ -270,7 +268,10 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     define_clean_header(ffi, include_dir + "/breakpoints.h")
     for header in pypanda_headers:
         define_clean_header(ffi, header)
-
+    
+    # has to be at the end because it depends on something in list
+    define_clean_header(ffi, include_dir + "/taint2.h")
+    
     ffi.compile(verbose=True,debug=True,tmpdir='./pandare/autogen')
 
 
@@ -293,6 +294,11 @@ def main(install=False,recompile=True):
     if os.path.exists("%s/%s" % (PLUGINS_DIR, 'osi')):
         print("Examining [%s] for pypanda-awareness" % 'osi_types.h')
         create_pypanda_header("%s/osi/osi_types.h" % PLUGINS_DIR)
+    
+    # Pull in taint2/addr.h first - it's needed by other plugins too
+    if os.path.exists("%s/%s" % (PLUGINS_DIR, 'taint2')):
+        print("Examining [%s] for pypanda-awareness" % 'addr.h')
+        create_pypanda_header("%s/taint2/addr.h" % PLUGINS_DIR)
 
 
     for plugin in plugin_dirs:
@@ -327,6 +333,8 @@ def main(install=False,recompile=True):
 
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2_ppp.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
+    
+    copy_ppp_header("%s/taint2/taint2.h" % PLUGINS_DIR)
 
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
         pdty.write("""
