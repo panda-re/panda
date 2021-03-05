@@ -106,8 +106,8 @@ class Panda():
             self.arch = X86Arch(self)
         elif self.arch_name == "x86_64":
             self.arch = X86_64Arch(self)
-        elif self.arch_name == "arm":
-            self.arch = ArmArch(self)
+        elif self.arch_name in ["arm", "aarch64"]:
+            self.arch = ArmArch(self) # Not sure if this needs to be different for 64
         elif self.arch_name in ["mips", "mipsel"]:
             self.arch = MipsArch(self)
         else:
@@ -467,6 +467,7 @@ class Panda():
         without needing to wait for tasks in the main async thread
         '''
         self.unload_plugins()
+
         if self.running.is_set():
             # If we were running, stop the execution and check if we crashed
             self.queue_async(self.stop_run, internal=True)
@@ -700,8 +701,6 @@ class Panda():
         Supports physical or virtual addresses
         Raises ValueError if read fails
         '''
-        if not hasattr(self, "_memcb"): # XXX: Why do we enable memcbs for memory writes?
-            self.enable_memcb()
         buf = ffi.new("char[]", length)
 
         # Force CFFI to parse addr as an unsigned value. Otherwise we get OverflowErrors
@@ -2392,7 +2391,7 @@ class Panda():
                 self.lambda_cnt += 1
 
             if local_name in self.ppp_registered_cbs:
-                print(f"Warning: replacing existing PPP callback '{name}' since it was re-registered")
+                print(f"Warning: replacing existing PPP callback '{local_name}' since it was re-registered")
                 self.disable_ppp(local_name)
 
             assert (local_name not in self.ppp_registered_cbs), f"Two callbacks with conflicting name: {local_name}"
@@ -2456,7 +2455,7 @@ class Panda():
 
     ############# HOOKING MIXINS ###############
 
-    def hook(self, addr, enabled=True, kernel=True, asid=None, cb_type="before_block_exec"):
+    def hook(self, addr, enabled=True, kernel=True, asid=None, cb_type="before_tcg_codegen"):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)

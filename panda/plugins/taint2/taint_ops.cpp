@@ -43,15 +43,18 @@ PANDAENDCOMMENT */
 #define SHAD_LLVM
 #include "panda/tcg-llvm.h"
 
+#include "addr.h"
 #include "shad.h"
 #include "label_set.h"
 #include "sym_label.h"
+#include "taint2.h"
 #include "taint_ops.h"
 #include "taint_utils.h"
 #define CONC_LVL CONC_LVL_OFF
 #include "concolic.h"
 
 extern TCGLLVMTranslator *tcg_llvm_translator;
+extern ShadowState *shadow;
 
 uint64_t labelset_count;
 
@@ -273,6 +276,9 @@ z3::expr bitop_compute(unsigned opcode, z3::expr expr1,
 }
 
 /* taint2 functions */
+PPP_PROT_REG_CB(on_taint_prop);
+PPP_CB_BOILERPLATE(on_taint_prop);
+
 void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size);
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);
 
@@ -422,6 +428,38 @@ static inline CBMasks compile_cb_masks(Shad *shad, uint64_t addr,
 static inline void write_cb_masks(Shad *shad, uint64_t addr, uint64_t size,
                                   CBMasks value);
 
+Addr get_addr_from_shad(Shad *shad, uint64_t shad_addr)
+{
+    Addr addr;
+    if (shad == &shadow->llv) {
+        addr = make_laddr(shad_addr / MAXREGSIZE, shad_addr % MAXREGSIZE);
+    } else if (shad == &shadow->ram) {
+        addr = make_maddr(shad_addr);
+    } else if (shad == &shadow->grv) {
+        addr = make_greg(shad_addr / sizeof(target_ulong), shad_addr % sizeof(target_ulong));
+    } else if (shad == &shadow->gsv) {
+        addr.typ = GSPEC;
+        addr.val.gs = shad_addr;
+        addr.off = 0;
+        addr.flag = (AddrFlag)0;
+    } else if (shad == &shadow->ret) {
+        addr.typ = RET;
+        addr.val.ret = 0;
+        addr.off = shad_addr;
+        addr.flag = (AddrFlag)0;
+    } else if (shad == &shadow->hd) {
+        addr = make_haddr(shad_addr);
+    } else if (shad == &shadow->io) {
+        addr = make_iaddr(shad_addr);
+    } else {
+        addr.typ = UNK;
+        addr.val.ma = 0;
+        addr.off = 0;
+        addr.flag = (AddrFlag)0;
+    }
+    return addr;
+}
+
 // Taint operations
 void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
         uint64_t size, uint64_t opcode, uint64_t instruction_flags,
@@ -448,6 +486,11 @@ void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
 
     update_cb(shad_dest, dest, shad_src, src, size, opcode, instruction_flags,
         operands);
+
+    // Taint propagation notifications.
+    Addr dest_addr = get_addr_from_shad(shad_dest, dest);
+    Addr src_addr = get_addr_from_shad(shad_src, src);
+    PPP_RUN_CB(on_taint_prop, dest_addr, src_addr, size);
 }
 
 void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
@@ -470,6 +513,13 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
                 *shad->query_full(src2 + i), true);
         changed |= shad->set_full(dest + i, td);
     }
+    // Taint propagation notifications.
+    Addr dest_addr = get_addr_from_shad(shad, dest);
+    Addr src1_addr = get_addr_from_shad(shad, src1);
+    Addr src2_addr = get_addr_from_shad(shad, src2);
+    PPP_RUN_CB(on_taint_prop, dest_addr, src1_addr, src_size);
+    PPP_RUN_CB(on_taint_prop, dest_addr, src2_addr, src_size);
+
 
     // Unlike mixed computes, parallel computes guaranteed to be bitwise.
     // This means we can honestly compute CB masks; in fact we have to because
@@ -573,6 +623,15 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
             shad->name(), dest, dest_size, src1, src2);
     taint_log_labels(shad, dest, dest_size);
 
+    // Taint propagation notifications
+    Addr src1_addr = get_addr_from_shad(shad, src1);
+    Addr src2_addr = get_addr_from_shad(shad, src2);
+    for (unsigned i = 0; i < dest_size; i++) {
+        Addr dest_addr = get_addr_from_shad(shad, dest + i);
+        PPP_RUN_CB(on_taint_prop, dest_addr, src1_addr, src_size);
+        PPP_RUN_CB(on_taint_prop, dest_addr, src2_addr, src_size);
+    }
+    
     if (!symexEnabled) return;
     if (!change) return;
 
@@ -751,7 +810,14 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
 
     update_cb(shad, dest, shad, src, dest_size, opcode, instruction_flags,
         operands);
-        
+
+    // Taint propagation notifications.
+    Addr src_addr = get_addr_from_shad(shad, src);
+    for (unsigned i = 0; i < dest_size; i++) {
+        Addr dest_addr = get_addr_from_shad(shad, dest + i);
+        PPP_RUN_CB(on_taint_prop, dest_addr, src_addr, src_size);
+    }
+
     if (!symexEnabled) return;
     if (!change) return;
     
@@ -842,6 +908,7 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
             llvm::errs() << "Untracked taint_mix opcode: " << opcode << "\n";
             break;
     }
+
 }
 
 static const uint64_t ones = UINT64_C(~0);
@@ -877,6 +944,13 @@ void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
     TaintData ptr_td = mixed_labels(shad_ptr, ptr, ptr_size, false);
     if (src == ones) {
         bulk_set(shad_dest, dest, size, ptr_td);
+
+        // Taint propagation notifications.
+        Addr ptr_addr = get_addr_from_shad(shad_ptr, ptr);
+        for (unsigned i = 0; i < size; i++) {
+            Addr dest_addr = get_addr_from_shad(shad_dest, dest + i);
+            PPP_RUN_CB(on_taint_prop, dest_addr, ptr_addr, ptr_size);
+        }
     } else {
         bool change = false;
         for (unsigned i = 0; i < size; i++) {
@@ -896,6 +970,13 @@ void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
             else
             {
                 change |= shad_dest->set_full(dest + i, dest_td);
+
+                // Taint propagation notifications.
+                Addr dest_addr = get_addr_from_shad(shad_dest, dest + i);
+                Addr src_addr = get_addr_from_shad(shad_src, src + i);
+                PPP_RUN_CB(on_taint_prop, dest_addr, src_addr, 1);
+                Addr ptr_addr = get_addr_from_shad(shad_ptr, ptr);
+                PPP_RUN_CB(on_taint_prop, dest_addr, ptr_addr, ptr_size);
             }
         }
         if (change) {
@@ -953,6 +1034,10 @@ void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector, .
                           shad->name(), dest, size, shad->name(), src, size);
                 __concolic_copy(shad, dest, shad, src, size, llvm::Instruction::Select);
                 taint_log_labels(shad, dest, size);
+                //Shad::copy(shad, dest, shad, src, size);
+                Addr dest_addr = get_addr_from_shad(shad, dest);
+                Addr src_addr = get_addr_from_shad(shad, src);
+                PPP_RUN_CB(on_taint_prop, dest_addr, src_addr, size);
             }
             return;
         }
@@ -1058,6 +1143,10 @@ void taint_host_copy(uint64_t env_ptr, uint64_t addr, Shad *llv,
     taint_log_labels(shad_src, src, size);
     // no opcode?
     __concolic_copy(shad_dest, dest, shad_src, src, size, 0);
+    // Taint propagation notifications.
+    Addr dest_addr = get_addr_from_shad(shad_dest, dest);
+    Addr src_addr = get_addr_from_shad(shad_src, src);
+    PPP_RUN_CB(on_taint_prop, dest_addr, src_addr, size);
 }
 
 void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
@@ -1085,6 +1174,10 @@ void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
     taint_log_labels(shad_src, addr_src, size);
     Shad::copy(shad_dest, addr_dest, shad_src, addr_src, size);
     copy_symbols(shad_dest, addr_dest, shad_src, addr_src, size);
+    // Taint propagation notifications.
+    Addr dest_addr = get_addr_from_shad(shad_dest, dest);
+    Addr src_addr = get_addr_from_shad(shad_src, src);
+    PPP_RUN_CB(on_taint_prop, dest_addr, src_addr, size);
 }
 
 void taint_host_delete(uint64_t env_ptr, uint64_t dest_addr, Shad *greg,

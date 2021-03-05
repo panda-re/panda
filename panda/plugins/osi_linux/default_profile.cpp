@@ -5,6 +5,7 @@
 extern target_ulong last_r28;
 #endif
 
+
 /**
  * @brief Retrieves the task_struct address using per cpu information.
  */
@@ -13,14 +14,41 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
     struct_get_ret_t err;
     target_ptr_t current_task_addr;
     target_ptr_t ts;
+
 #ifdef TARGET_ARM
-    target_ptr_t kernel_sp = panda_current_ksp(cpu);
+    //aarch64
+    if (((CPUARMState*) cpu->env_ptr)->aarch64) {
+        //for kernel versions >= 4.10.0
+        if(PROFILE_KVER_GE(ki, 4, 10, 0)) {
+            current_task_addr = ki.task.init_addr;
 
-    // XXX: This should use THREADINFO_MASK but that's hardcoded and wrong for my test system
-    // We need to expose that as a part of the OSI config - See issue #651
-    target_ptr_t task_thread_info = kernel_sp & ~(0x2000 -1);
+        //for kernel versions between 3.7.0 and 4.9.257
+        } else if(PROFILE_KVER_LT(ki, 4, 10, 0) && PROFILE_KVER_GE(ki, 3, 7, 0)) {
+            target_ptr_t kernel_sp = panda_current_ksp(cpu); //((CPUARMState*) cpu->env_ptr)->sp_el[1];
+            target_ptr_t task_thread_info = kernel_sp & ~(0x4000-1);
+            current_task_addr = task_thread_info+0x10;
 
-    current_task_addr=task_thread_info+0xC;
+
+            //because some kernel versions use both per_cpu variables AND access the task_struct 
+            //via the thread_info struct, the default call to struct_get with the per_cpu_offset_0_addr can be incorrect
+            err = struct_get(cpu, &ts, current_task_addr, 0);
+            assert(err == struct_get_ret_t::SUCCESS && "failed to get current task struct");
+            fixupendian(ts);
+            return ts;
+        } else {
+            assert(false && "cannot use kernel version older than 3.7");
+        }
+
+    //arm32
+    } else {
+        target_ptr_t kernel_sp = panda_current_ksp(cpu);
+
+        // XXX: This should use THREADINFO_MASK but that's hardcoded and wrong for my test system
+        // We need to expose that as a part of the OSI config - See issue #651
+        target_ptr_t task_thread_info = kernel_sp & ~(0x2000 -1);
+
+        current_task_addr=task_thread_info+0xC;
+    }
 #elif defined(TARGET_MIPS)
     // __current_thread_info is stored in KERNEL r28
     // userspace clobbers it but kernel restores (somewhow?)

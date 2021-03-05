@@ -1,5 +1,6 @@
 #ifndef __DYNAMIC_SYMBOLS_INT_FNS_H__
 #define __DYNAMIC_SYMBOLS_INT_FNS_H__
+#include "osi/osi_types.h"
 
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
 // api autogen needs it.  And don't put any compiler directives

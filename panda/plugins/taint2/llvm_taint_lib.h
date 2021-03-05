@@ -259,6 +259,7 @@ public:
     void visitInsertValueInst(InsertValueInst &I);
     void visitInsertElementInst(InsertElementInst &I);
     void visitShuffleVectorInst(ShuffleVectorInst &I);
+    void visitFreezeInst(FreezeInst &I);
 
     void visitReturnInst(ReturnInst &I);
     void visitBinaryOperator(BinaryOperator &I);

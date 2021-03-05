@@ -43,7 +43,7 @@ class PandaArch():
             endianness = "little" # XXX add support for arm BE?
             bits = 32
         elif self.panda.arch_name == "aarch64":
-            bit = 64
+            bits = 64
             endianness = "little" # XXX add support for arm BE?
         elif self.panda.arch_name == "ppc":
             bits = 32
@@ -55,8 +55,8 @@ class PandaArch():
             bits = 32
             endianness = "little"
 
-        assert (bits is not None), "Missing num_bits logic for {self.panda.arch_name}"
-        assert (endianness is not None), "Missing endianness logic for {self.panda.arch_name}"
+        assert (bits is not None), f"Missing num_bits logic for {self.panda.arch_name}"
+        assert (endianness is not None), f"Missing endianness logic for {self.panda.arch_name}"
         register_size = int(bits/8)
         return bits, endianness, register_size
 
@@ -149,6 +149,9 @@ class PandaArch():
         self.dump_regs(cpu)
         print("Stack:")
         self.dump_stack(cpu)
+    
+    def get_args(self, cpu, num):
+        return [self.get_arg(cpu,i) for i in range(num)]
 
 class ArmArch(PandaArch):
     '''
