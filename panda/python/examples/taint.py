@@ -46,4 +46,4 @@ try:
     panda.run()
 except:
     pass
-print(tainted_branches)
+print(f"We saw {tainted_branches} tainted branches!")
