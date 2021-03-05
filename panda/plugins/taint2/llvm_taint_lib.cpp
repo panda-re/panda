@@ -1650,6 +1650,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
 
         switch (calledF->getIntrinsicID()) {
             case Intrinsic::uadd_with_overflow:
+            case Intrinsic::uadd_sat:
             case Intrinsic::sadd_sat:
             case Intrinsic::ssub_sat:
             case Intrinsic::usub_sat:
