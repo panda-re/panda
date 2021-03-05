@@ -96,47 +96,43 @@ void tbranch_on_branch_taint2(Addr a, uint64_t size, bool *tainted) {
         ao.off = o;
         num_tainted += (taint2_query(ao) != 0);
     }
-    
-    if (num_tainted > 0)
+    if (num_tainted > 0) {
         *tainted = true;
 
-    if (pandalog) {
-        if (num_tainted > 0) {
-            if (liveness) {
-                // update liveness info for all input bytes from which lval derives
-                for (uint32_t o=0; o<size; o++) {
-                    ao.off = o;
-                    taint2_labelset_addr_iter(a, taint_branch_aux, NULL);
-                }        
-            }
-            if (summary) {
-                CPUState *cpu = first_cpu;
-                target_ulong asid = panda_current_asid(cpu);
-                tainted_branch[asid].insert(panda_current_pc(cpu));
-            }
-            else {
-                Panda__TaintedBranch *tb = (Panda__TaintedBranch *) malloc(sizeof(Panda__TaintedBranch));
-                *tb = PANDA__TAINTED_BRANCH__INIT;
-                tb->call_stack = pandalog_callstack_create();
-                tb->n_taint_query = num_tainted;
-                tb->taint_query = (Panda__TaintQuery **) malloc (sizeof (Panda__TaintQuery *) * num_tainted);
-                uint32_t i=0;
-                for (uint32_t o=0; o<size; o++) {
-                    Addr ao = a;
-                    ao.off = o;
-                    if (taint2_query(ao)) {
-                        tb->taint_query[i++] = taint2_query_pandalog(ao, o);
-                    }
+        if (liveness) {
+            // update liveness info for all input bytes from which lval derives
+            for (uint32_t o=0; o<size; o++) {
+                ao.off = o;
+                taint2_labelset_addr_iter(a, taint_branch_aux, NULL);
+            }        
+        }
+        if (summary) {
+            CPUState *cpu = first_cpu;
+            target_ulong asid = panda_current_asid(cpu);
+            tainted_branch[asid].insert(panda_current_pc(cpu));
+        }
+        else {
+            Panda__TaintedBranch *tb = (Panda__TaintedBranch *) malloc(sizeof(Panda__TaintedBranch));
+            *tb = PANDA__TAINTED_BRANCH__INIT;
+            tb->call_stack = pandalog_callstack_create();
+            tb->n_taint_query = num_tainted;
+            tb->taint_query = (Panda__TaintQuery **) malloc (sizeof (Panda__TaintQuery *) * num_tainted);
+            uint32_t i=0;
+            for (uint32_t o=0; o<size; o++) {
+                Addr ao = a;
+                ao.off = o;
+                if (taint2_query(ao)) {
+                    tb->taint_query[i++] = taint2_query_pandalog(ao, o);
                 }
-                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-                ple.tainted_branch = tb;
-                pandalog_write_entry(&ple);
-                pandalog_callstack_free(tb->call_stack);
-                for (uint32_t i=0; i<num_tainted; i++) {
-                    pandalog_taint_query_free(tb->taint_query[i]);
-                }
-                free(tb);
             }
+            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+            ple.tainted_branch = tb;
+            pandalog_write_entry(&ple);
+            pandalog_callstack_free(tb->call_stack);
+            for (uint32_t i=0; i<num_tainted; i++) {
+                pandalog_taint_query_free(tb->taint_query[i]);
+            }
+            free(tb);
         }
     }
 }
@@ -255,9 +251,15 @@ void uninit_plugin(void *self) {
                     *tbs = PANDA__TAINTED_BRANCH_SUMMARY__INIT;
                     tbs->asid = asid;
                     tbs->pc = pc;
-                    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-                    ple.tainted_branch_summary = tbs;
-                    pandalog_write_entry(&ple);
+
+                    if (pandalog) {
+                      Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+                      ple.tainted_branch_summary = tbs;
+                      pandalog_write_entry(&ple);
+                    }else{
+                      // No CSV, no pandalog - just report to stdout
+                      printf("Tainted branch in asid 0x%lx at 0x" TARGET_FMT_lx "\n", (uint64_t)asid, (target_ulong)pc);
+                    }
                 }
             }
             free(tbs);
