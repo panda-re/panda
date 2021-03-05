@@ -275,7 +275,6 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     define_clean_header(ffi, include_dir + "/hooks2_ppp.h")
     
     define_clean_header(ffi, include_dir + "/addr.h")
-    define_clean_header(ffi, include_dir + "/taint2.h")
     # END PPP headers
 
     define_clean_header(ffi, include_dir + "/breakpoints.h")
@@ -331,6 +330,7 @@ def main(install=False,recompile=True):
 
     #   other PPP headers: callstack_instr. TODO: more
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/callstack_instr", "callstack_instr.h"))
+    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/taint2", "taint2.h"))
 
     # XXX why do we have to append this to pypanda headers?
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/osi", "os_intro.h"))
@@ -339,7 +339,6 @@ def main(install=False,recompile=True):
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2_ppp.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
     
-    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/taint2", "taint2_ppp.h"))
     pypanda_headers.append(os.path.join(INCLUDE_DIR_PYP, "os_intro.h"))
 
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
