@@ -106,9 +106,15 @@ void getLLVMAssemblySize(orc::VModuleKey,
      */
     for (object::symbol_iterator cur_sym = obj.symbol_begin(),
             end_sym = obj.symbol_end(); cur_sym != end_sym; ++cur_sym) {
-        /* don't waste time with undefined symbols */
-        uint32_t flags = cur_sym->getFlags();
-        if (flags & object::SymbolRef::SF_Undefined) {
+        if (cur_sym->getFlags()) {
+            /* don't waste time with undefined symbols */
+            uint32_t flags = cur_sym->getFlags().get();
+            if (flags & object::SymbolRef::SF_Undefined) {
+                continue;
+            }
+        } else {
+            /* flags indicate an error, hopefully not important */
+            std::cerr << "Error getting symbol flags" << std::endl;
             continue;
         }
 
@@ -655,8 +661,9 @@ int TCGLLVMTranslator::generateOperation(int opc, const TCGOp *op,
                 }
             }
 
-            result = m_builder.CreateCall(callTarget,
-                                          ArrayRef<Value*>(argValues));
+            result = m_builder.CreateCall(
+                cast<FunctionType>(callTarget->getType()->getPointerElementType()),
+                callTarget, ArrayRef<Value*>(argValues));
 
             /* Invalidate in-memory values because
              * function might have changed them */
@@ -1440,7 +1447,6 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
 #endif
 
     if(execute_llvm || qemu_loglevel_mask(CPU_LOG_LLVM_ASM)) {
-
         jitPendingModule();
 
         auto symbol = jit->lookup(fName.str());
@@ -1475,7 +1481,13 @@ void TCGLLVMTranslator::generateCode(TCGContext *s, TranslationBlock *tb)
         // stores it in section_size.
         pending_tb = tb;
         need_section_size = true;
-        auto dylib = jit->getJITDylibByName("<main>.impl");
+        auto dylib = jit->getJITDylibByName("main.impl");
+        if (nullptr == dylib) {
+            std::cerr <<
+            "Cannot find magic symbol table - has the name changed again?" << 
+            std::endl;
+            assert(false);
+        }
         auto fnsym = jit->lookup(*dylib, tb->llvm_fn_name);
         // assert forces the return value to be checked for an error, so don't
         // fail the next step

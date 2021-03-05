@@ -453,10 +453,7 @@ void PandaTaintVisitor::inlineCall(CallInst *CI) {
     assert(CI && "CallInst can't be null");
     if (inline_taint) {
         InlineFunctionInfo IFI;
-        // LLVM-10
-        if (!InlineFunction(CI, IFI)) {
-        // LLVM-11
-        //if (!InlineFunction(*CI, IFI).isSuccess()) {
+        if (!InlineFunction(*CI, IFI).isSuccess()) {
             printf("Inlining failed!\n");
         }
     }
@@ -1865,6 +1862,15 @@ void PandaTaintVisitor::visitUnaryOperator(UnaryOperator &I) {
     insertTaintMix(I, I.getOperand(0));
 }
 
+
+void PandaTaintVisitor::visitFreezeInst(FreezeInst &I) {
+    // TODO:  if the input to freeze is undef or poison, result is constant (so
+    // need to delete taint)
+    // otherwise, the output is what started out with (so need to copy taint)
+    // but pointers, aggregates and vectors are special (see LLVM doc)
+    printf("taint2: Warning: Freeze unhandled!  Taint may be lost!\n");
+}
+
 // Unhandled
 void PandaTaintVisitor::visitInstruction(Instruction &I) {
     //dump only available if LLVM compiled with dump enabled
@@ -1874,5 +1880,7 @@ void PandaTaintVisitor::visitInstruction(Instruction &I) {
     // test to the configure script since there doesn't seem to be a way
     // to interogate llvm-config to determine if dump is available
     //I.dump();
+    // meanwhile...
+    printf("%s (%d)\n", I.getOpcodeName(), I.getOpcode());
     assert(false);
 }
