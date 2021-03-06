@@ -1,6 +1,7 @@
 from pandare import Panda
+from sys import argv
 
-panda = Panda(generic="i386")
+panda = Panda(generic=argv[1])
 
 @panda.queue_blocking
 def guest_interaction():
