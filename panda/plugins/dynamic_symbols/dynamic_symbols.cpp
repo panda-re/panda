@@ -496,6 +496,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
                 }
             }
             target_ulong entrynum, entryval;
+            target_ulong exec_entry = 0;
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &entrynum, sizeof(entrynum)) != MEMTX_OK || panda_virtual_memory_read(env, sp+((ptrlistpos+1)*sizeof(target_ulong)), (uint8_t*) &entryval, sizeof(entryval))){
                     panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
@@ -505,27 +506,31 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
                 if (entrynum == AT_NULL){
                     break;
                 }else if (entrynum == AT_ENTRY){
-                    struct hook h;
-                    h.addr = entryval;
-                    h.asid = panda_current_asid(env);
-                    h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
-                    h.cb.before_tcg_codegen = hook_program_start;
-                    h.km = MODE_USER_ONLY;
-                    h.enabled = true;
-
-                    void* hooks = panda_get_plugin_by_name("hooks");
-                    if (hooks == NULL){
-                        panda_require("hooks");
-                        hooks = panda_get_plugin_by_name("hooks");
-                    }
-                    if (hooks != NULL){
-                        void (*dlsym_add_hook)(struct hook*) = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
-                        if ((void*)dlsym_add_hook != NULL) {
-                            dlsym_add_hook(&h);
-                        }
-                    }
-
+                    exec_entry = entryval;
                 }
+            }
+            if (exec_entry){
+                struct hook h;
+                h.addr = entryval;
+                h.asid = panda_current_asid(env);
+                h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
+                h.cb.before_tcg_codegen = hook_program_start;
+                h.km = MODE_USER_ONLY;
+                h.enabled = true;
+
+                void* hooks = panda_get_plugin_by_name("hooks");
+                if (hooks == NULL){
+                    panda_require("hooks");
+                    hooks = panda_get_plugin_by_name("hooks");
+                }
+                if (hooks != NULL){
+                    void (*dlsym_add_hook)(struct hook*) = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
+                    if ((void*)dlsym_add_hook != NULL) {
+                        dlsym_add_hook(&h);
+                    }
+                }
+            }else{
+                return;
             }
 
         }
