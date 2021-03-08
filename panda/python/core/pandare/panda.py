@@ -644,7 +644,10 @@ class Panda():
         # First unload python plugins, should be safe to do anytime
         #for name in self.registered_callbacks.keys():
         while len(list(self.registered_callbacks)) > 0:
-            self.delete_callback(list(self.registered_callbacks.keys())[0])
+            try:
+                self.delete_callback(list(self.registered_callbacks.keys())[0])
+            except IndexError:
+                continue
             #self.disable_callback(name)
 
         # Then unload C plugins. May be unsafe to do except from the top of the main loop (taint segfaults otherwise)
