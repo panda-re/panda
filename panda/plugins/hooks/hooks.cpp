@@ -163,7 +163,6 @@ static inline void flush_tb_if_block_in_cache(CPUState* cpu, target_ulong pc){
     assert(cpu != (CPUState*)NULL && "Cannot register TCG-based hooks before guest is created. Try this in after_machine_init CB");
     TranslationBlock *tb = cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)];
     if (tb && tb->pc == pc){
-        printf("hooks invalidate\n");
         tb_lock();
         tb_phys_invalidate(tb, -1);
         tb_free(tb);
