@@ -607,12 +607,13 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) { 
-#if defined(TARGET_PPC)
-#else
-  void* syscalls = panda_get_plugin_by_name("syscalls2");
-  if (syscalls != NULL){
-    PPP_REMOVE_CB("syscalls2", on_sys_execve_enter, execve_cb);
-    PPP_REMOVE_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
-  }
-#endif
+    panda_flush_tb();
+    #if defined(TARGET_PPC)
+    #else
+        void* syscalls = panda_get_plugin_by_name("syscalls2");
+        if (syscalls != NULL){
+            PPP_REMOVE_CB("syscalls2", on_sys_execve_enter, execve_cb);
+            PPP_REMOVE_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
+        }
+    #endif
 }

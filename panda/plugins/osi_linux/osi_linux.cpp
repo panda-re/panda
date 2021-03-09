@@ -858,6 +858,9 @@ error:
  * @brief Plugin cleanup.
  */
 void uninit_plugin(void *self) {
+    // if we don't clear tb's when this exits we have TBs which can call
+    // into our exited plugin.
+    panda_flush_tb();
 #if defined(TARGET_I386) || defined(TARGET_ARM)
     // Nothing to do...
 #endif
