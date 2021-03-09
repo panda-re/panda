@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+'''
+disassemble_capstone.py
+
+In this example we integrate python with the capstone disassembler. We
+disassemble blocks as we see them with block level callbacks.
+
+In order to make the machine do something we queue an asynchronous command to
+revert to root, run a command, and then end the analysis.
+
+Run with: python3 disassemble_capstone.py
+'''
 
 from sys import argv, exit
 import capstone
@@ -13,7 +24,7 @@ insn_cache = {} # address -> disassembly string
 executed_pcs = [] # List of addresses we executed
 
 # Run a command in the guest
-@blocking
+@panda.queue_async
 def my_runcmd():
     panda.revert_sync('root')
     panda.run_serial_cmd("find . /proc/self")
@@ -43,8 +54,5 @@ def before_block_exec(env, tb):
         generate_insns(env, tb)
     executed_pcs.append(pc)
 
-panda.queue_async(my_runcmd)
 panda.run()
-
 print("Observed {} distinct basic blocks".format(len(insn_cache)))
-#for pc in executed_pcs: print(insn_cache[pc])

@@ -5,6 +5,8 @@ block_count.py
 Generate a test recording if one doesn't exist.
 Use a before_block_exec callback when process is named bash
 and count how many blocks we see execute, stop after 200
+
+Run with: python3 block_count.py
 '''
 
 import os

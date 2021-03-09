@@ -6,7 +6,7 @@ This example shows registering, enabling, and disabling of callbacks during
 runtime of a program. In particular, it enables before_block_execute and
 after_block_execute. After 2 blocks hit it disables after_block_execute. After 2
 additional blocks hit it enables after_block_execute again.
- 
+
 Run with: python3 example_disable_callbacks.py
 
 '''

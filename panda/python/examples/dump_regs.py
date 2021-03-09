@@ -6,10 +6,10 @@ from sys import argv
 from pandare import Panda, blocking
 
 # Single arg of arch, defaults to i386
-arch = "i386"
+arch = "i386" if len(argv) <= 1 else argv[1]
 panda = Panda(generic=arch)
 
-@blocking
+@panda.queue_async
 def run_my_cmd():
     panda.revert_sync("root")
     print(panda.run_serial_cmd("uname -a"))
