@@ -163,6 +163,7 @@ class Panda():
 
         self.running = threading.Event()
         self.started = threading.Event()
+        self.initializing = threading.Event()
         self.athread = AsyncThread(self.started) # athread manages actions that need to occur outside qemu's CPU loop
 
         # Callbacks
@@ -419,8 +420,10 @@ class Panda():
         if debug:
             progress ("Running")
 
+        self.initializing.set()
         if not self._initialized_panda:
             self._initialize_panda()
+        self.initializing.clear()
 
         if not self.started.is_set():
             self.started.set()
@@ -467,8 +470,7 @@ class Panda():
         without needing to wait for tasks in the main async thread
         '''
         self.unload_plugins()
-
-        if self.running.is_set():
+        if self.running.is_set() or self.initializing.is_set():
             # If we were running, stop the execution and check if we crashed
             self.queue_async(self.stop_run, internal=True)
 
@@ -2455,7 +2457,7 @@ class Panda():
 
     ############# HOOKING MIXINS ###############
 
-    def hook(self, addr, enabled=True, kernel=True, asid=None, cb_type="before_tcg_codegen"):
+    def hook(self, addr, enabled=True, kernel=None, asid=None, cb_type="before_tcg_codegen"):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
