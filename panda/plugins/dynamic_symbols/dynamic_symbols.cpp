@@ -607,7 +607,7 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) { 
-    panda_flush_tb();
+    panda_do_flush_tb();
     #if defined(TARGET_PPC)
     #else
         void* syscalls = panda_get_plugin_by_name("syscalls2");
