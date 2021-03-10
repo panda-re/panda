@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pandare import Panda, blocking, ffi
+from pandare import Panda
 
 panda = Panda(generic="i386")
 panda.load_plugin("osi")

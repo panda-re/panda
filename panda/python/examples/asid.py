@@ -11,7 +11,7 @@ output when it changes.
 Run with: python3 after_init.py
 '''
 from sys import argv
-from pandare import Panda, blocking, ffi
+from pandare import Panda
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]

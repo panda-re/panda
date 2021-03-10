@@ -13,7 +13,7 @@ Run with: python3 disassemble_capstone.py
 
 from sys import argv, exit
 import capstone
-from pandare import Panda, ffi, blocking
+from pandare import Panda
 
 # Default arch of i386, if you change it make sure to change capstone as well
 arch="i386"

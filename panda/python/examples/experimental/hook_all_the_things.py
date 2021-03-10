@@ -1,3 +1,5 @@
+
+
 from pandare import Panda
 from rich import print, inspect
 from sys import argv
@@ -42,7 +44,6 @@ from functools import lru_cache
 @lru_cache
 def lookup_name(asid,env):
     return panda.get_process_name(env)
-    
 output = ""
 
 @panda.hook_symbol(None, None, procname="curl")
