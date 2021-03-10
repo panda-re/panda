@@ -37,7 +37,7 @@ from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
 from .qcows import Qcows
-from .arch import ArmArch, MipsArch, X86Arch, X86_64Arch
+from .arch import ArmArch, Aarch64Arch, MipsArch, X86Arch, X86_64Arch
 
 # Might be worth importing and auto-initilizing a PLogReader
 # object within Panda for the current architecture?
@@ -114,8 +114,10 @@ class Panda():
             self.arch = X86Arch(self)
         elif self.arch_name == "x86_64":
             self.arch = X86_64Arch(self)
-        elif self.arch_name in ["arm", "aarch64"]:
-            self.arch = ArmArch(self) # Not sure if this needs to be different for 64
+        elif self.arch_name in ["arm"]:
+            self.arch = ArmArch(self)
+        elif self.arch_name in ["aarch64"]:
+            self.arch = Aarch64Arch(self)
         elif self.arch_name in ["mips", "mipsel"]:
             self.arch = MipsArch(self)
         else:
