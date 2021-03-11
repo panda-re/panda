@@ -1,37 +1,46 @@
 # PANDA maintenance plan PROPOSAL
 
 ## Versions
-Staring with version 3.0.0, PANDA will provide stable releases of the core analysis platform which follow semantic versioning (see [semver.org](http://semver.org) for details) with major, minor and patch versions. Across major versions, the PANDA API may change in a backwards-incompatible way. 
+Staring with version 3.0.0, PANDA will provide releases of the core analysis platform which follow semantic versioning (see [semver.org](http://semver.org) for details) with major, minor and patch versions.
+
+Across major versions, the PANDA API may change in a backwards-incompatible way.
 
 Across PANDA minor and patch versions, all API changes will be backwards-compatible, though plugins may need to be recompiled (i.e., names in an ENUM will not change, but their values may).
 
 New minor versions may introduce new features.  Patches will fix bugs.
 
 ## Branches
-We will maintain two primary branches of PANDA: `stable` and `development`.
+We will maintain two primary branches of PANDA: `main` and `stable`. These branches will use semantic versioning.
 
-1. `stable` branch with semantic versioning. This is probably the one you want if you are using PANDA. Updates to this branch are tagged with *major*, *minor*, and *patch* version upon check-in. If you don’t know what these mean: 
-- major breaks PANDA’s API somehow (see below for what that means)
-- minor adds functionality but no change to API
-- patch fixes something but no change to API
-
-Notes about the `stable` branch.
-- Every version compiles  
-- Every version passes all of the PANDA and qemu regression tests
-- Last commit to each major version will be tagged in the git repo as `stable-major.minor.patch` 
-
-2. `development` branch with no versioning.  The head of this branch will always be a (possibly unstable) version of the current head of the `stable` branch, perhaps several commits ahead.  
-
-Notes about the `development` branch.
-- Every version compiles
-
-There are obviously going to be other branches.  But we make no guarantees about any of them.
-
+1. `main`
+	- Reaching this branch should be the goal of all feature development.
+	- Code should reach `main` by pull requests from feature branches.
+		- Scrutiny should be applied to pull request into main to ensure the changes are understood and that the pull request does not contain spurious changes.
+		- At a minimum, code merged into main should build on supported operating systems and pass any existing CI tests.
+	- Feature developers likely want to fork this branch to begin their work.
+	- Regular releases will be sourced from this branch.
+1. `stable`
+	- This branch exists to support longer term development efforts
+	- Periodically (currently every 12 months) a new `stable` release will be created.
+		- Stable releases can always be found by the tag `panda-stable-{VERSION}`
+		- The `stable` branch will always point to the most recent stable release.
+	- Code in `stable` must not be updated except for the following reasons:
+		- Patches that fix severe issues, like fixes for CVEs.
+		- Patches that fix regressions.
+	- Stable releases will be sourced from this branch.
+1. Other branches
+	- Most development work for PANDA will occur on feature or development branches.
+	- No assumptions should be made about the state of such branches. They may not build, may break every API, etc...
+	- When a developer feels their feature or update is ready, the developer may make a pull request to have it merged into `main` (or `stable` if it meats the criteria).
+		- Developers are encouraged to reach out before their feature/update is ready to merge for assistance/guidance especially if the update is large or contains breaking changes.
 
 ## Schedule
 
-The PANDA major version will change no more frequently than every six months.  
-A changelog will accompany each major revision indicating all in the API that has been changed, both in a backwards-compatible and in a backwards-breaking manner.
+We will tag a new regular release of PANDA at least every 3 months (possibly faster depending on feature accumulation). We will select a new stable release every 12 months. Support for the prior stable release will end once a new stable branch is selected. These periods may change as we experiment with our new release process. Upstream qemu tags a new stable release around every 12 months, so if we ever manage to get in sync with upstream, our stable release could slightly lag theirs (we are currently on upstream qemu version 2.9.1).
+
+As we move to semantic versioning and better change tracking, care will be taken to avoid breaking changes where possible.
+
+A changelog will accompany each release indicating all in the API that has been changed, both in a backwards-compatible and in a backwards-breaking manner.
 
 ## Supported Operating Systems
 Each PANDA major version will have a published set of supported operating systems with versions. Removing a supported operating system will require updating the major version. Additional operating systems can be added at any time.
