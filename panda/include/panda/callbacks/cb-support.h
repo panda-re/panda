@@ -85,8 +85,8 @@ void panda_callbacks_before_block_exec(TranslationBlock *tb);
 void panda_callbacks_after_block_exec(TranslationBlock *tb, uint8_t exitCode);
 void panda_callbacks_before_block_translate(target_ptr_t pc);
 void panda_callbacks_after_block_translate(TranslationBlock *tb);
-void panda_callbacks_after_cpu_exec_enter(CPUState *env);
-void panda_callbacks_before_cpu_exec_exit(CPUState *env, bool ranBlock);
+void panda_callbacks_after_cpu_exec_enter(void);
+void panda_callbacks_before_cpu_exec_exit(bool ranBlock);
 
 /* invoked from cpu-exec.c (indirectly) */
 bool panda_callbacks_before_block_exec_invalidate_opt(TranslationBlock *tb);

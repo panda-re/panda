@@ -61,11 +61,10 @@ MAKE_CALLBACK(void, BEFORE_BLOCK_TRANSLATE, before_block_translate,
 MAKE_CALLBACK(void, AFTER_BLOCK_TRANSLATE, after_block_translate,
                     TranslationBlock*, tb);
 
-MAKE_CALLBACK(void, AFTER_CPU_EXEC_ENTER, after_cpu_exec_enter,
-                    CPUState*, cpu);
+MAKE_CALLBACK(void, AFTER_CPU_EXEC_ENTER, after_cpu_exec_enter);
 
 MAKE_CALLBACK(void, BEFORE_CPU_EXEC_EXIT, before_cpu_exec_exit,
-                    CPUState*, cpu, bool, ranBlock);
+                    bool, ranBlock);
 
 MAKE_CALLBACK(void, AFTER_LOADVM, after_loadvm);
 

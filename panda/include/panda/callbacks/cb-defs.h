@@ -223,7 +223,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*after_cpu_exec_enter)(CPUState *env);
+    void (*after_cpu_exec_enter)(void);
 
     /* Callback ID: PANDA_CB_BEFORE_CPU_EXEC_EXIT
 
@@ -239,7 +239,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*before_cpu_exec_exit)(CPUState *env, bool ranBlock);
+    void (*before_cpu_exec_exit)(bool ranBlock);
 
     /* Callback ID: PANDA_CB_INSN_TRANSLATE
 

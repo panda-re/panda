@@ -771,7 +771,7 @@ int cpu_exec(CPUState *cpu)
 
     ranBlockSinceEnter = false;
     cc->cpu_exec_enter(cpu);
-    panda_callbacks_after_cpu_exec_enter(cpu);
+    panda_callbacks_after_cpu_exec_enter();
 
     /* Calculate difference between guest clock and host clock.
      * This delay includes the delay of the last cycle, so
@@ -869,7 +869,7 @@ int cpu_exec(CPUState *cpu)
         }
     }
 
-    panda_callbacks_before_cpu_exec_exit(cpu, ranBlockSinceEnter);
+    panda_callbacks_before_cpu_exec_exit(ranBlockSinceEnter);
     cc->cpu_exec_exit(cpu);
     rcu_read_unlock();
 

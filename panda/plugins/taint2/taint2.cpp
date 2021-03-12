@@ -39,6 +39,7 @@
 #include <iostream>
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/tcg-llvm.h"
 
 #include <llvm/IR/PassManager.h>
@@ -71,8 +72,8 @@ bool before_block_exec_invalidate_opt(TranslationBlock *tb);
 
 // for i386 condition code adjustments
 #if defined(TARGET_I386)
-void i386_after_cpu_exec_enter(CPUState *cpu);
-void i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock);
+void i386_after_cpu_exec_enter(void);
+void i386_before_cpu_exec_exit(bool ranBlock);
 #endif
 
 void phys_mem_write_callback(target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf);
@@ -361,7 +362,7 @@ extern "C" void taint2_enable_sym(void) {
 // runs the enter callback.  (Apparently somebody outside of the cpu_exec needs
 // to know the real condition codes.)
 #if defined(TARGET_I386)
-void i386_after_cpu_exec_enter(CPUState *cpu) {
+void i386_after_cpu_exec_enter(void) {
 
     if (!haveSavedCC)
     {
@@ -369,6 +370,7 @@ void i386_after_cpu_exec_enter(CPUState *cpu) {
     }
 
     // as have saved data, restore it
+    CPUState *cpu = get_cpu(); // TODO
     CPUArchState *env = static_cast<CPUArchState*>(cpu->env_ptr);
 
     env->cc_dst = savedCCDst;
@@ -407,11 +409,12 @@ void i386_after_cpu_exec_enter(CPUState *cpu) {
     return;
 }
 
-void i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock) {
+void i386_before_cpu_exec_exit(bool ranBlock) {
     // it's possible for the cpu_exec loop to enter and then leave without
     // ever executing an LLVM block - don't update the saved information in
     // that case, as may have unrestored saved information to apply yet
     if (ranBlock) {
+        CPUState *cpu = get_cpu(); // TODO
         CPUArchState *env = static_cast<CPUArchState*>(cpu->env_ptr);
 
         // save the data itself
