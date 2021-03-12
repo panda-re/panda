@@ -1380,7 +1380,7 @@ bool x86_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
                 /*location=*/ RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO);
 
             // panda callback might swallow interrupt or exception
-            intno = panda_callbacks_before_handle_interrupt(cs, intno);
+            intno = panda_callbacks_before_handle_interrupt(intno);
 
             qemu_log_mask(CPU_LOG_TB_IN_ASM,
                           "Servicing hardware INT=0x%02x\n", intno);

@@ -985,7 +985,7 @@ typedef union panda_cb {
 
      */
 
-    int32_t (*before_handle_exception)(CPUState *cpu, int32_t exception_index);
+    int32_t (*before_handle_exception)(int32_t exception_index);
 
     /* Dummy union member.
 
@@ -997,7 +997,7 @@ typedef union panda_cb {
     */
 
 
-    int32_t (*before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request);
+    int32_t (*before_handle_interrupt)(int32_t interrupt_request);
 
     void (*cbaddr)(void);
 } panda_cb;

@@ -96,8 +96,8 @@ void panda_callbacks_top_loop(void);
 void panda_callbacks_during_machine_init(MachineState *machine);
 void panda_callbacks_main_loop_wait(void);
 void panda_callbacks_pre_shutdown(void);
-int32_t panda_callbacks_before_handle_exception(CPUState *cpu, int32_t exception_index);
-int32_t panda_callbacks_before_handle_interrupt(CPUState *cpu, int32_t exception_index);
+int32_t panda_callbacks_before_handle_exception(int32_t exception_index);
+int32_t panda_callbacks_before_handle_interrupt(int32_t exception_index);
 void panda_callbacks_cbaddr(void);
 
 /* invoked from memory.c */

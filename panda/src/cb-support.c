@@ -203,7 +203,7 @@ bool PCB(after_find_fast)(TranslationBlock *tb,
 // Note: We still run all of the callbacks, but only one of them can
 // change the current cpu exception.  Sorry.
 
-int32_t PCB(before_handle_exception)(CPUState *cpu, int32_t exception_index) {
+int32_t PCB(before_handle_exception)(int32_t exception_index) {
     panda_cb_list *plist;
     bool got_new_exception = false;
     int32_t new_exception;
@@ -211,7 +211,7 @@ int32_t PCB(before_handle_exception)(CPUState *cpu, int32_t exception_index) {
     for (plist = panda_cbs[PANDA_CB_BEFORE_HANDLE_EXCEPTION]; plist != NULL;
          plist = panda_cb_list_next(plist)) {
         if (plist->enabled) {
-            int32_t new_e = plist->entry.before_handle_exception(cpu, exception_index);
+            int32_t new_e = plist->entry.before_handle_exception(exception_index);
             if (!got_new_exception && new_e != exception_index) {
                 got_new_exception = true;
                 new_exception = new_e;
@@ -226,7 +226,7 @@ int32_t PCB(before_handle_exception)(CPUState *cpu, int32_t exception_index) {
 }
 
 
-int32_t PCB(before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request) {
+int32_t PCB(before_handle_interrupt)(int32_t interrupt_request) {
     panda_cb_list *plist;
     bool got_new_interrupt = false;
     int32_t new_interrupt;
@@ -234,7 +234,7 @@ int32_t PCB(before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request) {
     for (plist = panda_cbs[PANDA_CB_BEFORE_HANDLE_INTERRUPT]; plist != NULL;
          plist = panda_cb_list_next(plist)) {
         if (plist->enabled) {
-            int32_t new_i = plist->entry.before_handle_interrupt(cpu, interrupt_request);
+            int32_t new_i = plist->entry.before_handle_interrupt(interrupt_request);
             if (!got_new_interrupt && new_i != interrupt_request) {
                 got_new_interrupt = true;
                 new_interrupt = new_i;

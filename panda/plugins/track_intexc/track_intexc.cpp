@@ -176,22 +176,22 @@ void spit_stacks() {
 
 // called when we 
 // note exception start (maybe)
-int32_t note_exception(CPUState *cpu, int32_t ei) {
+int32_t note_exception(int32_t ei) {
   if (current_state == Unknown) return ei;
   state_before_maybe_state = current_state;
   current_state = MaybeException;
   exception_index = ei;
-  pc_at_exception = panda_current_pc(cpu);
+  pc_at_exception = panda_current_pc2();
   check_transition(state_before_maybe_state, current_state);
   return ei;
 }
 
-int32_t note_interrupt(CPUState *cpu, int32_t ir) {
+int32_t note_interrupt(int32_t ir) {
   if (current_state == Unknown) return ir;
   state_before_maybe_state = current_state;
   current_state = MaybeInterrupt;
   interrupt_request = ir;
-  pc_at_interrupt = panda_current_pc(cpu);
+  pc_at_interrupt = panda_current_pc2();
   check_transition(state_before_maybe_state, current_state);
   return ir;
 }
