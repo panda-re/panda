@@ -560,7 +560,7 @@ typedef union panda_cb {
         processes the hypercall, it should return true so the execution
         of the normal instruction is skipped.
     */
-    bool (*guest_hypercall)(CPUState *env);
+    bool (*guest_hypercall)(void);
 
     /* Callback ID: PANDA_CB_MONITOR
 

@@ -135,8 +135,7 @@ MAKE_CALLBACK(bool, ASID_CHANGED, asid_changed,
 
 
 // target-i386/misc_helpers.c
-MAKE_CALLBACK(bool, GUEST_HYPERCALL, guest_hypercall,
-                    CPUState*, env);
+MAKE_CALLBACK(bool, GUEST_HYPERCALL, guest_hypercall);
 
 MAKE_CALLBACK(void, CPU_RESTORE_STATE, cpu_restore_state,
                     CPUState*, env, TranslationBlock*, tb);

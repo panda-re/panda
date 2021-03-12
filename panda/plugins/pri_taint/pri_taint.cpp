@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/plugin_plugin.h"
 
 // taint
@@ -282,8 +283,9 @@ void on_fn_start(CPUState *cpu, target_ulong pc, const char *file_Name, const ch
 
 #ifdef TARGET_I386
 // Support all features of label and query program
-bool i386_hypercall_callback(CPUState *cpu){
+bool i386_hypercall_callback(void){
     bool ret = false;
+    CPUState *cpu = get_cpu();
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     if (taint2_enabled() && pandalog) {
         // LAVA Hypercall
@@ -325,9 +327,9 @@ bool i386_hypercall_callback(CPUState *cpu){
 #endif // TARGET_I386
 
 
-bool guest_hypercall_callback(CPUState *cpu){
+bool guest_hypercall_callback(void){
 #ifdef TARGET_I386
-    return i386_hypercall_callback(cpu);
+    return i386_hypercall_callback();
 #endif
 
 #ifdef TARGET_ARM

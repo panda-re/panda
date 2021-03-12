@@ -32,7 +32,7 @@ void HELPER(panda_after_insn_exec)(target_ulong pc) {
 }
 
 #if defined(TARGET_ARM)
-void HELPER(panda_guest_hypercall)(CPUArchState *cpu_env) {
-    panda_callbacks_guest_hypercall(ENV_GET_CPU(cpu_env));
+void HELPER(panda_guest_hypercall)(void) {
+    panda_callbacks_guest_hypercall();
 }
 #endif

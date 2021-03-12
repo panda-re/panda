@@ -12,12 +12,13 @@
 #include <stdint.h>
 #include <glib.h>
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/rr/rr_api.h"
 #include "recctrl.h"
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-bool start_stop_recording(CPUState *cpu);
+bool start_stop_recording(void);
 gboolean timeout_cb(gpointer data);
 
 static bool dry = false; /** dry-run mode flag */
@@ -115,7 +116,7 @@ static recctrl_ret_t record_toggler(CPUState *cpu, rr_control_t *rrcp, target_pt
  * from the guest VM. Returns true when the proper hypercall magic is set.
  * Registers are set with the appropriate return code for the user program.
  */
-bool start_stop_recording(CPUState *cpu) {
+bool start_stop_recording(void) {
     target_ulong magic = 0;
     target_ptr_t rnamep = (uintptr_t)NULL;
     recctrl_action_t action = RECCTRL_ACT_TOGGLE;
@@ -123,6 +124,7 @@ bool start_stop_recording(CPUState *cpu) {
     target_ulong *hypercall_retp = NULL;
 
     rr_control_t *rrcp = dry ? &rr_control_dry : &rr_control;
+    CPUState* cpu = get_cpu();
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
 
 #if defined(TARGET_I386)

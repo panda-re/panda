@@ -45,7 +45,7 @@ typedef struct panda_hypercall_struct {
 #ifdef __cplusplus
 extern "C" {
 #endif
-bool guest_hypercall_callback(CPUState *cpu);
+bool guest_hypercall_callback(void);
 #ifdef __cplusplus
 }
 #endif

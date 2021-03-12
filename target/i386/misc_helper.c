@@ -107,7 +107,7 @@ void helper_cpuid(CPUX86State *env)
 
     cpu_svm_check_intercept_param(env, SVM_EXIT_CPUID, 0, GETPC());
 
-    if (panda_callbacks_guest_hypercall(ENV_GET_CPU(env))) {
+    if (panda_callbacks_guest_hypercall()) {
         // cpuid processed by one of the callbacks
         return;
     }

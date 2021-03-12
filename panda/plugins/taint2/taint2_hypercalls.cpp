@@ -24,6 +24,7 @@
 #include <vector>
 #include "taint2_hypercalls.h"
 #include "taint_api.h"
+#include "panda/plugin_api.h"
 extern "C" {
 #include "callstack_instr/callstack_instr.h"
 #include "callstack_instr/callstack_instr_ext.h"
@@ -251,7 +252,7 @@ static void write_taint_log(const std::string &msg)
 }
 #endif
 
-bool guest_hypercall_callback(CPUState *cpu) {
+bool guest_hypercall_callback(void) {
     bool ret = false;
 #if defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM)
     // "CPUID" is hypercall for I386/X86_64 guests
@@ -276,6 +277,7 @@ bool guest_hypercall_callback(CPUState *cpu) {
 #define REG_ARG3 R4
 #define REG_ARG4 R5
 #endif // defined(TARGET_ARM)
+    CPUState* cpu = get_cpu();
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     if (REG_CMD == ENABLE_TAINT) {
         if (!taintEnabled) {

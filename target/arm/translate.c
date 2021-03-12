@@ -7545,7 +7545,7 @@ static int disas_coproc_insn(DisasContext *s, uint32_t insn)
                 /* Coprocessor 7 is used to implement PANDA hypercalls. */
                 if (!(insn & ARM_CP_RW_BIT)) {
                     gen_set_pc_im(s, s->pc);
-                    gen_helper_panda_guest_hypercall(cpu_env);
+                    gen_helper_panda_guest_hypercall();
 
                     /* End block here. This enables using hypercalls to
                      * implement advanced functionality. E.g. to switch
