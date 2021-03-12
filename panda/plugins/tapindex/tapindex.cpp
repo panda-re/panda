@@ -35,6 +35,7 @@ extern "C" {
 #include <algorithm>
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/plog.h"
 
 #include "callstack_instr/prog_point.h"           // use the prog_point.h from callstack_instr, any way the plugin is dependent on callstack_instr
@@ -46,8 +47,8 @@ extern "C"
 {
     bool init_plugin(void *);
     void uninit_plugin(void *);
-    void mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
-    void mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
+    void mem_write_callback(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
+    void mem_read_callback(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
 }
 
 /*
@@ -69,12 +70,13 @@ std::map<prog_point, target_ulong> write_tracker;
 FILE *read_index;
 FILE *write_index;
 
-void mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr,
+void mem_write_callback(target_ulong pc, target_ulong addr,
                         size_t size, uint8_t *buf)
 {
     prog_point p = {};
 
 #ifdef TARGET_I386
+    CPUState * cpu = get_cpu(); // TODO
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     panda_virtual_memory_rw(cpu, env->regs[R_EBP] + 4, (uint8_t *)&p.caller, 4, false);
     if ((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
@@ -86,12 +88,13 @@ void mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr,
     return;
 }
 
-void mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr,
+void mem_read_callback(target_ulong pc, target_ulong addr,
                        size_t size, uint8_t *buf)
 {
     prog_point p = {};
 
 #ifdef TARGET_I386
+    CPUState * cpu = get_cpu(); // TODO
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     panda_virtual_memory_rw(cpu, env->regs[R_EBP] + 4, (uint8_t *)&p.caller, 4, false);
     if ((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together

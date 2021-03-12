@@ -28,10 +28,10 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 void enable_mem_hooking(void);
 void disable_mem_hooking(void);
-void phys_mem_before_write(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf);
-void phys_mem_before_read(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf);
-void phys_mem_after_write(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-void phys_mem_after_read(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+void phys_mem_before_write(target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf);
+void phys_mem_before_read (target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf);
+void phys_mem_after_write (target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+void phys_mem_after_read  (target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 struct memory_hooks_region* add_mem_hook(struct memory_hooks_region* a);
 }
 
@@ -105,7 +105,7 @@ struct memory_hooks_region* add_mem_hook(struct memory_hooks_region* m) {
   return &hooks[hooks.size() - 1];
 }
 
-void check_phys_mem_change(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf, bool is_write, bool is_before, bool is_physical){
+void check_phys_mem_change(target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf, bool is_write, bool is_before, bool is_physical){
   bool is_read = !is_write;
   bool is_after = !is_before;
   bool is_virtual = !is_physical;
@@ -132,7 +132,7 @@ void check_phys_mem_change(CPUState *cpu, target_ptr_t pc, target_ulong addr, si
              if ((is_virtual && it.on_virtual) ||
                 (is_physical && it.on_physical)){
               mad.hook = &it;
-              (*(it.cb))(cpu, &mad);
+              (*(it.cb))(&mad);
              }
         }
       }else{
@@ -141,29 +141,29 @@ void check_phys_mem_change(CPUState *cpu, target_ptr_t pc, target_ulong addr, si
   }
 }
 
-void phys_mem_before_write(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf){
-  check_phys_mem_change(cpu, pc, addr, size, buf, true, true, true);
+void phys_mem_before_write(target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf){
+  check_phys_mem_change(pc, addr, size, buf, true, true, true);
 }
-void phys_mem_before_read(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size){
-  check_phys_mem_change(cpu, pc, addr, size, (uint8_t*) NULL, false, true, true);
+void phys_mem_before_read(target_ptr_t pc, target_ulong addr, size_t size){
+  check_phys_mem_change(pc, addr, size, (uint8_t*) NULL, false, true, true);
 }
-void phys_mem_after_write(CPUState *cpu, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf){
-  check_phys_mem_change(cpu, pc, addr, size, buf, true, false, true);
+void phys_mem_after_write(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf){
+  check_phys_mem_change(pc, addr, size, buf, true, false, true);
 }
-void phys_mem_after_read(CPUState *cpu, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf){
-  check_phys_mem_change(cpu, pc, addr, size, buf, false, false, true);
+void phys_mem_after_read(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf){
+  check_phys_mem_change(pc, addr, size, buf, false, false, true);
 }
-void virt_mem_before_write(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf){
-  check_phys_mem_change(cpu, pc, addr, size, buf, true, true, false);
+void virt_mem_before_write(target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf){
+  check_phys_mem_change( pc, addr, size, buf, true, true, false);
 }
-void virt_mem_before_read(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size){
-  check_phys_mem_change(cpu, pc, addr, size, (uint8_t*) NULL, false, true, false);
+void virt_mem_before_read(target_ptr_t pc, target_ulong addr, size_t size){
+  check_phys_mem_change(pc, addr, size, (uint8_t*) NULL, false, true, false);
 }
-void virt_mem_after_write(CPUState *cpu, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf){
-  check_phys_mem_change(cpu, pc, addr, size, buf, true, false, false);
+void virt_mem_after_write(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf){
+  check_phys_mem_change(pc, addr, size, buf, true, false, false);
 }
-void virt_mem_after_read(CPUState *cpu, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf){
-  check_phys_mem_change(cpu, pc, addr, size, buf, false, false, false);
+void virt_mem_after_read(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf){
+  check_phys_mem_change(pc, addr, size, buf, false, false, false);
 }
 
 bool init_plugin(void *_self) {

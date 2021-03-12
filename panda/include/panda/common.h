@@ -62,11 +62,13 @@ extern bool panda_break_vl_loop_req;
  * @brief Returns the guest address space identifier.
  */
 target_ulong panda_current_asid(CPUState *env);
+target_ulong panda_current_asid2(void);
 
 /**
  * @brief Returns the guest program counter.
  */
 target_ulong panda_current_pc(CPUState *cpu);
+target_ulong panda_current_pc2(void);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
@@ -312,6 +314,11 @@ static inline bool panda_in_kernel(const CPUState *cpu) {
     return false;
 #endif
 }
+
+static inline bool panda_in_kernel2(void) {
+  return panda_in_kernel(first_cpu);
+}
+
 /**
  * @brief Returns the guest kernel stack pointer.
  */

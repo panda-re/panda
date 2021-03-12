@@ -52,12 +52,12 @@ Description: Called every time a function call returns in guest (e.g., at the `r
 // Get up to n callers from the given stack in use at this moment
 // Callers are returned in callers[], most recent first
 // Return value is the number of callers actually retrieved
-uint32_t get_callers(target_ulong *callers, uint32_t n, CPUState *env);
+uint32_t get_callers(target_ulong *callers, uint32_t n);
 
 // Get up to n functions from the given stack in use at this moment
 // Functions are returned in functions[], most recent first
 // Return value is the number of callers actually retrieved
-uint32_t get_functions(target_ulong *functions, uint32_t n, CPUState *env);
+uint32_t get_functions(target_ulong *functions, uint32_t n);
 
 // Get the current program point: (Caller, PC, stack ID)
 // This isn't quite the right place for it, but since it's awkward

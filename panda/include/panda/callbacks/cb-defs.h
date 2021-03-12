@@ -343,7 +343,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*virt_mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size);
+    void (*virt_mem_before_read)(target_ptr_t pc, target_ptr_t addr, size_t size);
 
     /* Callback ID: PANDA_CB_VIRT_MEM_BEFORE_WRITE
 
@@ -362,7 +362,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*virt_mem_before_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
+    void (*virt_mem_before_write)(target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_PHYS_MEM_BEFORE_READ
 
@@ -380,7 +380,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*phys_mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size);
+    void (*phys_mem_before_read)(target_ptr_t pc, target_ptr_t addr, size_t size);
 
     /* Callback ID: PANDA_CB_PHYS_MEM_BEFORE_WRITE
 
@@ -399,7 +399,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*phys_mem_before_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
+    void (*phys_mem_before_write)(target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_VIRT_MEM_AFTER_READ
 
@@ -418,7 +418,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*virt_mem_after_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
+    void (*virt_mem_after_read)(target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_VIRT_MEM_AFTER_WRITE
 
@@ -437,7 +437,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*virt_mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
+    void (*virt_mem_after_write)(target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_PHYS_MEM_AFTER_READ
 
@@ -456,7 +456,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*phys_mem_after_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
+    void (*phys_mem_after_read)(target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_PHYS_MEM_AFTER_WRITE
 
@@ -475,7 +475,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*phys_mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
+    void (*phys_mem_after_write)(target_ptr_t pc, target_ptr_t addr, size_t size, uint8_t *buf);
 
     /* Callback ID: PANDA_CB_MMIO_AFTER_READ
 

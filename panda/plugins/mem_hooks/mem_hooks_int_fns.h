@@ -25,7 +25,7 @@ struct memory_access_desc {
     struct memory_hooks_region* hook;
 };
 // Hook functions must be of this type
-typedef void (*mem_hook_func_t)(CPUState *cpu, struct memory_access_desc* mad);
+typedef void (*mem_hook_func_t)(struct memory_access_desc* mad);
 struct memory_hooks_region{
     target_ulong start_address;
     target_ulong stop_address;

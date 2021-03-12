@@ -12,11 +12,11 @@
 
 // Get up to n callers from the given stack in use at this moment
 // Callers are returned in callers[], most recent first
-uint32_t get_callers(target_ulong *callers, uint32_t n, CPUState *cpu);
+uint32_t get_callers(target_ulong *callers, uint32_t n);
 
 // Get up to n functions from the given stack in use at this moment
 // Functions are returned in functions[], most recent first
-uint32_t get_functions(target_ulong *functions, uint32_t n, CPUState *cpu);
+uint32_t get_functions(target_ulong *functions, uint32_t n);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 

@@ -1900,10 +1900,10 @@ bool dwarf_in_target_code(CPUState *cpu, target_ulong pc){
     return (it != line_range_list.end() && pc >= it->lowpc);
 }
 
-void dwarf_log_callsite(CPUState *cpu, const char *file_callee, const char *fn_callee, uint64_t lno_callee, bool isCall){
+void dwarf_log_callsite(const char *file_callee, const char *fn_callee, uint64_t lno_callee, bool isCall){
     target_ulong ra = 0;
 
-    int num_received = get_callers(&ra, 1, cpu);
+    int num_received = get_callers(&ra, 1);
     if (num_received < 1){
         printf("Error No dwarf information. Could not get callers from callstack plugin\n");
     }
@@ -1957,7 +1957,7 @@ void on_call(CPUState *cpu, target_ulong pc) {
     }
     //printf("CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),cur_function, funct_name.c_str(),cur_line,pc);
     if (logCallSites) {
-        dwarf_log_callsite(cpu, file_name.c_str(), funct_name.c_str(), cur_line, true);
+        dwarf_log_callsite(file_name.c_str(), funct_name.c_str(), cur_line, true);
     }
     pri_runcb_on_fn_start(cpu, pc, file_name.c_str(), funct_name.c_str());
 
@@ -2008,7 +2008,7 @@ void on_ret(CPUState *cpu, target_ulong pc_func) {
     cur_line = it->line_number;
     //printf("RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),cur_function, funct_name.c_str(),cur_line,pc_func);
     if (logCallSites) {
-        dwarf_log_callsite(cpu, file_name.c_str(), funct_name.c_str(), cur_line, false);
+        dwarf_log_callsite(file_name.c_str(), funct_name.c_str(), cur_line, false);
     }
     pri_runcb_on_fn_return(cpu, pc_func, file_name.c_str(), funct_name.c_str());
 }

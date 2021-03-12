@@ -7,6 +7,7 @@
 
 #include "panda/rr/rr_log.h"
 #include "panda/rr/rr_api.h"
+#include "panda/plugin_api.h"
 #include "exec/cpu-common.h"
 #include "exec/ram_addr.h"
 
@@ -75,7 +76,8 @@ MAKE_CALLBACK(bool, AFTER_INSN_TRANSLATE, after_insn_translate,
                     CPUState*, env, target_ptr_t, pc)
 
 // Custom CB
-static inline hwaddr get_paddr(CPUState *cpu, target_ptr_t addr, void *ram_ptr) {
+static inline hwaddr get_paddr(target_ptr_t addr, void *ram_ptr) {
+    CPUState *cpu = get_cpu();
     if (!ram_ptr) {
         return panda_virt_to_phys(cpu, addr);
     }
@@ -251,82 +253,82 @@ int32_t PCB(before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request) {
 
 // These are used in softmmu_template.h. They are distinct from MAKE_CALLBACK's standard form.
 // ram_ptr is a possible pointer into host memory from the TLB code. Can be NULL.
-void PCB(mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
+void PCB(mem_before_read)(target_ptr_t pc, target_ptr_t addr,
                           size_t data_size, void *ram_ptr) {
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_VIRT_MEM_BEFORE_READ]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        if (plist->enabled) plist->entry.virt_mem_before_read(env, env->panda_guest_pc, addr,
+        if (plist->enabled) plist->entry.virt_mem_before_read(panda_current_pc2(), addr,
                                                               data_size);
     }
     if (panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_READ]) {
-        hwaddr paddr = get_paddr(env, addr, ram_ptr);
+        hwaddr paddr = get_paddr(addr, ram_ptr);
         for(plist = panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_READ]; plist != NULL;
             plist = panda_cb_list_next(plist)) {
-            if (plist->enabled) plist->entry.phys_mem_before_read(env, env->panda_guest_pc,
+            if (plist->enabled) plist->entry.phys_mem_before_read(panda_current_pc2(),
                                                                   paddr, data_size);
         }
     }
 }
 
 
-void PCB(mem_after_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
+void PCB(mem_after_read)(target_ptr_t pc, target_ptr_t addr,
                          size_t data_size, uint64_t result, void *ram_ptr) {
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_VIRT_MEM_AFTER_READ]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
         /* mstamat: Passing &result as the last cb arg doesn't make much sense. */
-        if (plist->enabled) plist->entry.virt_mem_after_read(env, env->panda_guest_pc, addr,
+        if (plist->enabled) plist->entry.virt_mem_after_read(panda_current_pc2(),addr,
                                          data_size, (uint8_t *)&result);
     }
     if (panda_cbs[PANDA_CB_PHYS_MEM_AFTER_READ]) {
-        hwaddr paddr = get_paddr(env, addr, ram_ptr);
+        hwaddr paddr = get_paddr(addr, ram_ptr);
         for(plist = panda_cbs[PANDA_CB_PHYS_MEM_AFTER_READ]; plist != NULL;
             plist = panda_cb_list_next(plist)) {
             /* mstamat: Passing &result as the last cb arg doesn't make much sense. */
-            if (plist->enabled) plist->entry.phys_mem_after_read(env, env->panda_guest_pc, paddr,
+            if (plist->enabled) plist->entry.phys_mem_after_read(panda_current_pc2(), paddr,
                                              data_size, (uint8_t *)&result);
         }
     }
 }
 
 
-void PCB(mem_before_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
+void PCB(mem_before_write)(target_ptr_t pc, target_ptr_t addr,
                            size_t data_size, uint64_t val, void *ram_ptr) {
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_VIRT_MEM_BEFORE_WRITE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
         /* mstamat: Passing &val as the last arg doesn't make much sense. */
-        if (plist->enabled) plist->entry.virt_mem_before_write(env, env->panda_guest_pc, addr,
+        if (plist->enabled) plist->entry.virt_mem_before_write(panda_current_pc2(), addr,
                                            data_size, (uint8_t *)&val);
     }
     if (panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_WRITE]) {
-        hwaddr paddr = get_paddr(env, addr, ram_ptr);
+        hwaddr paddr = get_paddr(addr, ram_ptr);
         for(plist = panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_WRITE]; plist != NULL;
             plist = panda_cb_list_next(plist)) {
             /* mstamat: Passing &val as the last cb arg doesn't make much sense. */
-            if (plist->enabled) plist->entry.phys_mem_before_write(env, env->panda_guest_pc, paddr,
+            if (plist->enabled) plist->entry.phys_mem_before_write(panda_current_pc2(), paddr,
                                                data_size, (uint8_t *)&val);
         }
     }
 }
 
 
-void PCB(mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
+void PCB(mem_after_write)(target_ptr_t pc, target_ptr_t addr,
                           size_t data_size, uint64_t val, void *ram_ptr) {
     panda_cb_list *plist;
     for (plist = panda_cbs[PANDA_CB_VIRT_MEM_AFTER_WRITE]; plist != NULL;
          plist = panda_cb_list_next(plist)) {
         /* mstamat: Passing &val as the last cb arg doesn't make much sense. */
-        if (plist->enabled) plist->entry.virt_mem_after_write(env, env->panda_guest_pc, addr,
+        if (plist->enabled) plist->entry.virt_mem_after_write(panda_current_pc2(), addr,
                                           data_size, (uint8_t *)&val);
     }
     if (panda_cbs[PANDA_CB_PHYS_MEM_AFTER_WRITE]) {
-        hwaddr paddr = get_paddr(env, addr, ram_ptr);
+        hwaddr paddr = get_paddr(addr, ram_ptr);
         for (plist = panda_cbs[PANDA_CB_PHYS_MEM_AFTER_WRITE]; plist != NULL;
              plist = panda_cb_list_next(plist)) {
             /* mstamat: Passing &val as the last cb arg doesn't make much sense. */
-            if (plist->enabled) plist->entry.phys_mem_after_write(env, env->panda_guest_pc, paddr,
+            if (plist->enabled) plist->entry.phys_mem_after_write(panda_current_pc2(), paddr,
                                               data_size, (uint8_t *)&val);
         }
     }

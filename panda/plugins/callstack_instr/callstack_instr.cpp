@@ -379,7 +379,8 @@ void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
 /**
  * @brief Fills preallocated buffer \p callers with up to \p n call addresses.
  */
-uint32_t get_callers(target_ulong callers[], uint32_t n, CPUState* cpu) {
+uint32_t get_callers(target_ulong callers[], uint32_t n) {
+    CPUState *cpu = get_cpu();
     std::vector<stack_entry> &v = callstacks[get_stackid(cpu)];
 
     n = std::min((uint32_t)v.size(), n);
@@ -419,7 +420,8 @@ void pandalog_callstack_free(Panda__CallStack *cs) {
 /**
  * @brief Fills preallocated buffer \p functions with up to \p n function addresses.
  */
-uint32_t get_functions(target_ulong functions[], uint32_t n, CPUState* cpu) {
+uint32_t get_functions(target_ulong functions[], uint32_t n) {
+    CPUState* cpu = get_cpu();
     std::vector<target_ulong> &v = function_stacks[get_stackid(cpu)];
 
     n = std::min((uint32_t)v.size(), n);
@@ -446,7 +448,7 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
 
     // Try to get the caller
     int n_callers = 0;
-    n_callers = get_callers(&p->caller, 1, cpu);
+    n_callers = get_callers(&p->caller, 1);
 
     if (n_callers == 0) {
 #if defined(TARGET_I386)

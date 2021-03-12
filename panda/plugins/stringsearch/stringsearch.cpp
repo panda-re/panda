@@ -26,6 +26,7 @@ PANDAENDCOMMENT */
 #include <iostream>
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 extern "C" {
 #include "stringsearch.h"
@@ -42,8 +43,8 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
-void mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
+void mem_write_callback(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
+void mem_read_callback(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
 
 // prototype for the register-this-callback fn
 PPP_PROT_REG_CB(on_ssm);
@@ -83,10 +84,11 @@ PPP_CB_BOILERPLATE(on_ssm)
 
 // this creates the 
 
-void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
+void mem_callback(target_ulong pc, target_ulong addr,
                   size_t size, uint8_t *buf, bool is_write,
                   std::map<prog_point, string_pos> &text_tracker) {
     prog_point p = {};
+    CPUState *env = get_cpu(); // TODO
     get_prog_point(env, &p);
 
     string_pos &sp = text_tracker[p];
@@ -112,7 +114,7 @@ void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
 
                 // Also get the full stack here
                 fullstack f = {0};
-                f.n = get_callers(f.callers, n_callers, env);
+                f.n = get_callers(f.callers, n_callers);
                 f.pc = p.pc;
                 f.sidFirst = p.sidFirst;
                 f.sidSecond = p.sidSecond;
@@ -140,15 +142,15 @@ void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
     return;
 }
 
-void mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
+void mem_read_callback(target_ulong pc, target_ulong addr,
                        size_t size, uint8_t *buf) {
-    mem_callback(env, pc, addr, size, buf, false, read_text_tracker);
+    mem_callback(pc, addr, size, buf, false, read_text_tracker);
     return;
 }
 
-void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
+void mem_write_callback(target_ulong pc, target_ulong addr,
                         size_t size, uint8_t *buf) {
-    mem_callback(env, pc, addr, size, buf, true, write_text_tracker);
+    mem_callback(pc, addr, size, buf, true, write_text_tracker);
     return;
 }
 

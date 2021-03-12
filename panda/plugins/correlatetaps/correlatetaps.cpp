@@ -34,6 +34,7 @@ extern "C" {
 #include <algorithm>
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/plog.h"
 
 #include "callstack_instr/prog_point.h" // use the prog_point.h from callstack_instr to avoid duplication, anyway the plugin depends on callstack_instr
@@ -44,7 +45,7 @@ extern "C" {
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
+void mem_write_callback(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
 }
 
 struct recent_addr {
@@ -60,9 +61,10 @@ recent_addr history[HISTORY_SIZE];
 int history_pos = 0;
 std::map<std::pair<prog_point,prog_point>,int> correlated;
 
-void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
+void mem_write_callback(target_ulong pc, target_ulong addr,
                         size_t size, uint8_t *buf) {
     prog_point p = {};
+    CPUState* env = get_cpu(); // TODO
     get_prog_point(env, &p);
 
     for (int i = 0; i < HISTORY_SIZE; i++) {

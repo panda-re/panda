@@ -75,8 +75,8 @@ void i386_after_cpu_exec_enter(CPUState *cpu);
 void i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock);
 #endif
 
-void phys_mem_write_callback(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf);
-void phys_mem_read_callback(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf);
+void phys_mem_write_callback(target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf);
+void phys_mem_read_callback(target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf);
 
 // network related callbacks
 void on_replay_net_transfer(CPUState *cpu, uint32_t type, uint64_t src_addr, uint64_t dst_addr, size_t num_bytes);
@@ -148,12 +148,12 @@ bool detaint_cb0_bytes = false;
  * These memory callbacks are only for whole-system mode.  User-mode memory
  * accesses are captured by IR instrumentation.
  */
-void phys_mem_write_callback(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf) {
+void phys_mem_write_callback(target_ptr_t pc, target_ulong addr, size_t size, uint8_t *buf) {
     taint_memlog_push(&taint_memlog, addr);
     return;
 }
 
-void phys_mem_read_callback(CPUState *cpu, target_ptr_t pc, target_ulong addr, size_t size) {
+void phys_mem_read_callback(target_ptr_t pc, target_ulong addr, size_t size) {
     taint_memlog_push(&taint_memlog, addr);
     return;
 }

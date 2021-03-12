@@ -22,6 +22,7 @@ PANDAENDCOMMENT */
 #include <map>
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 #include "../callstack_instr/callstack_instr.h"
 #include "../callstack_instr/callstack_instr_ext.h"
@@ -31,8 +32,8 @@ PANDAENDCOMMENT */
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
-void mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
+void mem_write_callback(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
+void mem_read_callback(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
 }
 
 struct text_counter {
@@ -42,11 +43,12 @@ struct text_counter {
 std::map<prog_point,text_counter> read_tracker;
 std::map<prog_point,text_counter> write_tracker;
 
-static void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
+static void mem_callback(target_ulong pc, target_ulong addr,
                          size_t size, uint8_t *buf,
                          std::map<prog_point, text_counter> &tracker) {
     prog_point p = {};
 
+    CPUState *env = get_cpu();
     get_prog_point(env, &p);
 
     text_counter &tc = tracker[p];
@@ -58,15 +60,15 @@ static void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
     return;
 }
 
-void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
+void mem_write_callback(target_ulong pc, target_ulong addr,
                         size_t size, uint8_t *buf) {
-    mem_callback(env, pc, addr, size, buf, write_tracker);
+    mem_callback(pc, addr, size, buf, write_tracker);
     return;
 }
 
-void mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
+void mem_read_callback(target_ulong pc, target_ulong addr,
                        size_t size, uint8_t *buf) {
-    mem_callback(env, pc, addr, size, buf, read_tracker);
+    mem_callback(pc, addr, size, buf, read_tracker);
     return;
 }
 

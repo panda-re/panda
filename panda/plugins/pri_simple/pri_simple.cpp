@@ -2,6 +2,7 @@
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
+#include "panda/plugin_api.h"
 
 extern "C" {
 
@@ -19,7 +20,7 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 int get_loglevel() ;
 void set_loglevel(int new_loglevel);
-//void on_line_change(CPUState *cpu, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno);
+//void on_line_change(target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno);
 }
 struct args {
     CPUState *cpu;
@@ -57,7 +58,8 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
             break;
     }
 }
-void on_line_change(CPUState *cpu, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
+void on_line_change(target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
+    CPUState* cpu = get_cpu();
     struct args args = {cpu, file_Name, lno};
     printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_Name, funct_name,lno,pc);
     pri_funct_livevar_iter(cpu, pc, (liveVarCB) pfun, (void *) &args);
@@ -69,8 +71,9 @@ void on_fn_start(CPUState *cpu, target_ulong pc, const char *file_Name, const ch
 }
 
 
-void virt_mem_helper(CPUState *cpu, target_ulong pc, target_ulong addr, bool isRead) {
+void virt_mem_helper(target_ulong pc, target_ulong addr, bool isRead) {
     SrcInfo info;
+    CPUState *cpu = get_cpu();
     // if NOT in source code, just return
     int rc = pri_get_pc_source_info(cpu, pc, &info);
     // We are not in dwarf info
@@ -106,12 +109,12 @@ void virt_mem_helper(CPUState *cpu, target_ulong pc, target_ulong addr, bool isR
     return;
 }
 
-void virt_mem_read(CPUState *cpu, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf) {
-    virt_mem_helper(cpu, pc, addr, true);
+void virt_mem_read(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf) {
+    virt_mem_helper(pc, addr, true);
 }
 
-void virt_mem_write(CPUState *cpu, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf) {
-    virt_mem_helper(cpu, pc, addr, false);
+void virt_mem_write(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf) {
+    virt_mem_helper(pc, addr, false);
 }
 #endif
 

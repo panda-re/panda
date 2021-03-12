@@ -37,6 +37,7 @@ PANDAENDCOMMENT */
 #include <fstream>
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 #include "../callstack_instr/callstack_instr.h"
 #include "../callstack_instr/callstack_instr_ext.h"
@@ -46,8 +47,8 @@ PANDAENDCOMMENT */
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void read_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
-void write_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
+void read_mem_callback(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
+void write_mem_callback(target_ulong pc, target_ulong addr, size_t size, uint8_t *buf);
 }
 
 uint64_t mem_counter;
@@ -56,14 +57,15 @@ std::set<prog_point> tap_points;
 gzFile read_tap_buffers;
 gzFile write_tap_buffers;
 
-void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
+void mem_callback(target_ulong pc, target_ulong addr,
                   size_t size, uint8_t *buf, gzFile f) {
     prog_point p = {};
+    CPUState * env = get_cpu(); // TODO
     get_prog_point(env, &p);
 
     if (tap_points.find(p) != tap_points.end()) {
         target_ulong callers[16] = {0};
-        int nret = get_callers(callers, 16, env);
+        int nret = get_callers(callers, 16);
         unsigned char *buf_uc = static_cast<unsigned char *>(buf);
         for (unsigned int i = 0; i < size; i++) {
             for (int j = nret-1; j > 0; j--) {
@@ -83,15 +85,15 @@ void mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
     return;
 }
 
-void mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
+void mem_read_callback(target_ulong pc, target_ulong addr,
                        size_t size, uint8_t *buf) {
-    mem_callback(env, pc, addr, size, buf, read_tap_buffers);
+    mem_callback(pc, addr, size, buf, read_tap_buffers);
     return;
 }
 
-void mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
+void mem_write_callback(target_ulong pc, target_ulong addr,
                         size_t size, uint8_t *buf) {
-    mem_callback(env, pc, addr, size, buf, write_tap_buffers);
+    mem_callback(pc, addr, size, buf, write_tap_buffers);
     return;
 }
 

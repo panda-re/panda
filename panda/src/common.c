@@ -122,12 +122,20 @@ target_ulong panda_current_asid(CPUState *cpu) {
 #endif
 }
 
+target_ulong panda_current_asid2(void) {
+    return panda_current_asid(first_cpu);
+}
+
 target_ulong panda_current_pc(CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     target_ulong pc, cs_base;
     uint32_t flags;
     cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
     return pc;
+}
+
+target_ulong panda_current_pc2(void) {
+    return panda_current_pc(first_cpu);
 }
 
 /**

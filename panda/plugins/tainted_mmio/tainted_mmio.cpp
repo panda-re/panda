@@ -177,25 +177,25 @@ void enable_taint(CPUState *env, target_ulong pc) {
 
 target_ulong bvr_pc;
 
-void before_virt_read(CPUState *env, target_ptr_t pc, target_ptr_t addr,
+void before_virt_read(target_ptr_t pc, target_ptr_t addr,
                      size_t size) {
     // clear this before every read
     is_unassigned_io = false;
     is_mmio = false;
     virt_addr = addr;
-    bvr_pc = panda_current_pc(first_cpu);
+    bvr_pc = panda_current_pc2();
 
     return;
 }
 
-void before_phys_read(CPUState *env, target_ptr_t pc, target_ptr_t addr,
+void before_phys_read(target_ptr_t pc, target_ptr_t addr,
                           size_t size) {
     // Check if last read of taint memory is not handled
     if (!taint_on) return;
 
     for (int i = 0; i < size; i++) {
         if (taint2_query_ram(addr)) {
-            last_virt_read_pc = panda_current_pc(first_cpu);
+            last_virt_read_pc = panda_current_pc2();
             break;
         }
     }

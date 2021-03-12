@@ -306,8 +306,8 @@ static inline uint32_t tb_idx(CPUState *cpu, TranslationBlock *tb){
 }
 
 // Returns the functions' identifiers asking the callstack_instr plugin.
-int get_current_functions(target_ulong functions[], unsigned int n, CPUState *cpu){
-    int fns_returned = get_functions(functions,n,cpu);
+int get_current_functions(target_ulong functions[], unsigned int n){
+    int fns_returned = get_functions(functions,n);
     if(!fns_returned){
 //        printf("No fns returned\n");
         return 0;
@@ -316,9 +316,9 @@ int get_current_functions(target_ulong functions[], unsigned int n, CPUState *cp
 }
 
 // Returns the current function identifier asking the callstack_instr plugin.
-target_ulong get_current_function(CPUState *cpu){
+target_ulong get_current_function(){
     target_ulong fns[1];
-    int fns_returned = get_functions(fns,1,cpu);
+    int fns_returned = get_functions(fns,1);
     if(!fns_returned){
 //        printf("No fns returned\n");
         return 0;
@@ -327,15 +327,15 @@ target_ulong get_current_function(CPUState *cpu){
 }
 
 /* Initializes the call object (with the initial record information) to be further expande and logged*/
-void initialize_call_obj(CPUState *cpu, Asid curr_asid, target_ulong entrypoint){
+void initialize_call_obj(Asid curr_asid, target_ulong entrypoint){
     call_infos[entrypoint].asid = curr_asid;
     call_infos[entrypoint].entrypoint =  entrypoint;
-    call_infos[entrypoint].pc = cpu->panda_guest_pc; //same as the passed pc to mem callbacks, get_prog_point, but diferent than tb->pc, since tb->pc is the start of the block, while pc is the trigger
+    call_infos[entrypoint].pc = panda_current_pc2(); //same as the passed pc to mem callbacks, get_prog_point, but diferent than tb->pc, since tb->pc is the start of the block, while pc is the trigger
     call_infos[entrypoint].rr_instr_count =  rr_get_guest_instr_count();
 
     // Get the callstack and functionstack for each call.
     std::vector<target_ulong> callers(enteries_from_callstack_per_fn_entrypoint);
-    int callers_n = get_current_callers(callers.data(), static_cast<uint>(callers.size()), cpu);
+    int callers_n = get_current_callers(callers.data(), static_cast<uint>(callers.size()));
     callers.resize(callers_n);
 
     if(callers_n){ //if is populated
@@ -347,7 +347,7 @@ void initialize_call_obj(CPUState *cpu, Asid curr_asid, target_ulong entrypoint)
     call_infos[entrypoint].caller =  callers[0];
 
     std::vector<target_ulong> functions(enteries_from_callstack_per_fn_entrypoint);
-    int functions_n = get_current_functions(functions.data(), static_cast<uint>(functions.size()), cpu);
+    int functions_n = get_current_functions(functions.data(), static_cast<uint>(functions.size()));
     functions.resize(functions_n);
 
     if(functions_n){ //if it is populated
@@ -360,13 +360,13 @@ void initialize_call_obj(CPUState *cpu, Asid curr_asid, target_ulong entrypoint)
 // After the execusion of each basic block, log the block(s)' info, right after disassembly.
 void after_block_exec_cb(CPUState *cpu, TranslationBlock *tb, unsigned char exitCode) { 
 
-    Asid curr_asid  = panda_current_asid(cpu);
+    Asid curr_asid  = panda_current_asid2();
 
-    if (panda_in_kernel(cpu) || !tracked_asids.count(curr_asid)){
+    if (panda_in_kernel2() || !tracked_asids.count(curr_asid)){
             return;
     }
     
-    target_ulong current_fn = get_current_function(cpu);
+    target_ulong current_fn = get_current_function();
 
     if (!current_fn) {
        return;
@@ -380,7 +380,7 @@ void after_block_exec_cb(CPUState *cpu, TranslationBlock *tb, unsigned char exit
 
     if (!call_infos.count(current_fn)){
         //return; //if we only need the records initiated on call and/or on memory read/write
-        initialize_call_obj(cpu, curr_asid, current_fn);
+        initialize_call_obj(curr_asid, current_fn);
     }
 
     auto& call = call_infos[current_fn];
@@ -600,7 +600,7 @@ void on_call_cb(CPUState *cpu, target_ulong entrypoint){
     }
 
     // Create a CallInfo object for this function call.
-    initialize_call_obj(cpu, curr_asid, entrypoint);
+    initialize_call_obj(curr_asid, entrypoint);
 
     // Successive memory callbacks will populate its writeset and readset for the function call.
 }
@@ -611,18 +611,18 @@ void on_call_cb(CPUState *cpu, target_ulong entrypoint){
 // - gets the current_fn to use as identifier for this call
 // - gets or creates a CallInfo for this call
 // - adds the write to the CallInfo's writeset
-void mem_write_callback_cb(CPUState *cpu, target_ulong pc, target_ulong addr,
+void mem_write_callback_cb(target_ulong pc, target_ulong addr,
                        size_t size, uint8_t *buf) {
 
-    Asid curr_asid = panda_current_asid(cpu);
+    Asid curr_asid = panda_current_asid2();
 
-    if (panda_in_kernel(cpu) || !tracked_asids.count(curr_asid)){
+    if (panda_in_kernel2() || !tracked_asids.count(curr_asid)){
         return;
     }
     
     uint8_t *data = static_cast<uint8_t*>(buf);
 
-    target_ulong current_fn = get_current_function(cpu);
+    target_ulong current_fn = get_current_function();
 
     if (!current_fn) {
         return;
@@ -640,7 +640,7 @@ void mem_write_callback_cb(CPUState *cpu, target_ulong pc, target_ulong addr,
         }
     } else {
         // We need to create a new CallInfo, then log this write
-        initialize_call_obj(cpu, curr_asid, current_fn);
+        initialize_call_obj(curr_asid, current_fn);
         for(target_ulong i=0; i < size; i++){
             call_infos[current_fn].writes++;
             if(!call_infos[current_fn].writeset.count(addr + i)){
@@ -659,7 +659,7 @@ void mem_write_callback_cb(CPUState *cpu, target_ulong pc, target_ulong addr,
 // - gets the current_fn to use as identifier of this call
 // - gets or creates a CallInfo for this call
 // - adds the read to the CallInfo's readset
-void mem_read_callback_cb(CPUState *cpu, target_ulong pc, target_ulong addr,
+void mem_read_callback_cb(target_ulong pc, target_ulong addr,
                        size_t size, uint8_t *buf) {
 
     Asid curr_asid = panda_current_asid(cpu);
@@ -670,7 +670,7 @@ void mem_read_callback_cb(CPUState *cpu, target_ulong pc, target_ulong addr,
     
     uint8_t *data = static_cast<uint8_t*>(buf);
     
-    target_ulong current_fn = get_current_function(cpu);
+    target_ulong current_fn = get_current_function();
 
     if (!current_fn) {
         return;
@@ -688,7 +688,7 @@ void mem_read_callback_cb(CPUState *cpu, target_ulong pc, target_ulong addr,
         }
     } else {
         // We need to create a new CallInfo, then log this read.
-        initialize_call_obj(cpu, curr_asid, current_fn);
+        initialize_call_obj(curr_asid, current_fn);
         for(target_ulong i=0; i < size; i++){
             call_infos[current_fn].reads++;
                 if(!call_infos[current_fn].readset.count(addr + i)) {
