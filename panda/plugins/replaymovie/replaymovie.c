@@ -20,7 +20,7 @@ PANDAENDCOMMENT */
 const double MIN_FRACTION = 0.0;
 const double MAX_FRACTION = 1.0;
 
-void before_block_callback(CPUState *env, TranslationBlock *tb);
+void before_block_callback(TranslationBlock *tb);
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -32,7 +32,7 @@ float xfraction = 1.0;
 float yfraction = 1.0;
 FILE *counterslog = NULL;
 
-void before_block_callback(CPUState *env, TranslationBlock *tb) {
+void before_block_callback(TranslationBlock *tb) {
     assert(rr_in_replay());
     char fname[256] = {0};
     if (total_insns == 0) {

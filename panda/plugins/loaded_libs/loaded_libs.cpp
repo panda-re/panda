@@ -74,7 +74,7 @@ bool asid_changed(target_ulong old_asid, target_ulong new_asid) {
     return false; // allow OS to change ASID
 }
 
-void before_block(CPUState *env, TranslationBlock *tb) {
+void before_block(TranslationBlock *tb) {
     // check up on module list ever 50 bb
     if (((float)(random())) / RAND_MAX < 0.02) 
         get_libs();

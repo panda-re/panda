@@ -34,7 +34,7 @@ Hook Callbacks
 The hook callbacks are available in several styles. They are essentially the same as the specified callback style, but they also contain a pointer to the relevant hook. For example, if we were to use the `before_block_exec` style it would look like:
 
 ```
-void (*before_block_exec)(CPUState* env, TranslationBlock* tb, struct hook*);
+void (*before_block_exec)(TranslationBlock* tb, struct hook*);
 ```
 
 Changes made to the hooks in callbacks are propagated. Hooks disabled are removed.

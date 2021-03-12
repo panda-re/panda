@@ -20,6 +20,7 @@ PANDAENDCOMMENT */
 #include <memory>
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/plugin_plugin.h"
 
 #include "loaded.h"
@@ -131,8 +132,8 @@ void linux_mmap_pgoff_return(CPUState *cpu,target_ulong pc,uint32_t addr,uint32_
 
 // get current process before each bb execs
 // which will probably help us actually know the current process
-void osi_foo(CPUState *cpu, TranslationBlock *tb) {
-
+void osi_foo(TranslationBlock *tb) {
+    CPUState *cpu = get_cpu(); // TODO
     if (panda_in_kernel(cpu)) {
 
         std::unique_ptr<OsiProc, decltype(free_osiproc)*> p { get_current_process(cpu), free_osiproc };

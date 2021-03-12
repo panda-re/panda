@@ -118,7 +118,7 @@ typedef union panda_cb {
         true if we should invalidate the current translation block
         and retranslate, false otherwise.
     */
-    bool (*before_block_exec_invalidate_opt)(CPUState *env, TranslationBlock *tb);
+    bool (*before_block_exec_invalidate_opt)(TranslationBlock *tb);
 
     /* Callback ID: PANDA_CB_BEFORE_TCG_CODEGEN
 
@@ -152,7 +152,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*before_block_exec)(CPUState *env, TranslationBlock *tb);
+    void (*before_block_exec)(TranslationBlock *tb);
 
     /* Callback ID: PANDA_CB_AFTER_BLOCK_EXEC
 

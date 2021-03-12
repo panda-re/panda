@@ -35,6 +35,7 @@ extern "C" {
 #include "panda/rr/rr_log.h"
 #include "panda/plog.h"
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/plugin_plugin.h"
 
 #include "pri_dwarf_util.h"
@@ -2328,8 +2329,9 @@ void handle_asid_change(CPUState *cpu, target_ulong asid, OsiProc *p) {
 // XXX
 // get current process before each bb execs
 // which will probably help us actually know the current process
-void osi_foo(CPUState *cpu, TranslationBlock *tb) {
+void osi_foo(TranslationBlock *tb) {
 
+    CPUState *cpu = get_cpu();
     if (panda_in_kernel(cpu)) {
 
         OsiProc *p = get_current_process(cpu);

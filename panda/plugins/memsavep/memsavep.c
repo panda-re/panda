@@ -30,7 +30,7 @@ static const char *filename = NULL;
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void before_block_exec(CPUState *env, TranslationBlock *tb);
+void before_block_exec(TranslationBlock *tb);
 void dump_memory(void);
 
 void dump_memory(void){
@@ -43,7 +43,7 @@ void dump_memory(void){
         panda_replay_end();
 }
 
-void before_block_exec(CPUState *env, TranslationBlock *tb) {
+void before_block_exec(TranslationBlock *tb) {
     if (dump_done) return;
 
     if (instr_count && rr_get_guest_instr_count() > instr_count) {

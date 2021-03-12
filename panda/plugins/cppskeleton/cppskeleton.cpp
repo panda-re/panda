@@ -24,7 +24,7 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 }
 
-void before_block_exec(CPUState *env, TranslationBlock *tb) {
+void before_block_exec(TranslationBlock *tb) {
     return
 }
 

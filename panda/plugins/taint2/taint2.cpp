@@ -67,7 +67,7 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 int after_block_translate(CPUState *cpu, TranslationBlock *tb);
-bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb);
+bool before_block_exec_invalidate_opt(TranslationBlock *tb);
 
 // for i386 condition code adjustments
 #if defined(TARGET_I386)
@@ -503,7 +503,7 @@ void taint_state_changed(Shad *shad, uint64_t shad_addr, uint64_t size)
     PPP_RUN_CB(on_taint_change, addr, size);
 }
 
-bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb) {
+bool before_block_exec_invalidate_opt(TranslationBlock *tb) {
     if (taintEnabled)  {
         return tb->llvm_tc_ptr ? false : true /* invalidate! */;
     }

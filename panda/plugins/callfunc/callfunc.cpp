@@ -19,6 +19,7 @@ PANDAENDCOMMENT */
 #include<string>
 #include<algorithm>
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/common.h"
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -140,9 +141,10 @@ void mm_file(CPUState *env, target_ulong dst, const char* fn) {
 }
 
 // Make a function call (arbitrary callsite, callee, params)
-bool call_function(CPUState *env, TranslationBlock *tb) {
+bool call_function(TranslationBlock *tb) {
 #ifdef TARGET_ARM
 
+    CPUState* env = get_cpu(); // TODO
     CPUArchState *envp = (CPUArchState *)env->env_ptr;
     static char pre_call_state[offsetof(CPUArchState, end_reset_fields)];
     static bool in_call = false;

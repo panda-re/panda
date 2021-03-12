@@ -3,6 +3,7 @@
 #include <cstdio>
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 extern "C" {
 
@@ -75,7 +76,7 @@ void after_block(CPUState *env, TranslationBlock *tb, uint8_t exitCode) {
 }
 
 
-void before_block(CPUState *env, TranslationBlock *tb) {
+void before_block(TranslationBlock *tb) {
     
     if (start_main) {
         // we are only paying attention to edges within some program
@@ -88,6 +89,7 @@ void before_block(CPUState *env, TranslationBlock *tb) {
             return;
     }
     
+    CPUState* env = get_cpu(); // TODO
     target_ulong asid = panda_current_asid(env);
     bool intexc = (check_in_exception() || check_in_interrupt());
     

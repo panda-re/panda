@@ -21,7 +21,7 @@
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void before_block_exec(CPUState *env, TranslationBlock *tb);
+void before_block_exec(TranslationBlock *tb);
 
 void check_start_snip(CPUState *env);
 void check_end_snip(CPUState *env);
@@ -341,7 +341,7 @@ void check_end_snip(CPUState *env) {
 }
 
 
-void before_block_exec(CPUState *env, TranslationBlock *tb) {
+void before_block_exec(TranslationBlock *tb) {
     uint64_t count = rr_get_guest_instr_count();
     if (!snipping && count+tb->icount > start_count) {
         panda_exit_loop = true;

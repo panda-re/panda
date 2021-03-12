@@ -20,6 +20,7 @@ PANDAENDCOMMENT */
 #include <libgen.h>
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 #include "syscalls2/syscalls_ext_typedefs.h"
@@ -415,8 +416,9 @@ update_active_userspace_libs(CPUState *cpu, target_ulong asid)
 
 
 static void
-cb_tracing_before_block_exec(CPUState *cpu, TranslationBlock *tb)
+cb_tracing_before_block_exec(TranslationBlock *tb)
 {
+    CPUState* cpu = get_cpu();
     if (panda_in_kernel(cpu)) {
         for (auto &trace_ptr : plugin.kernel_traces) {
             handle_kernel_traces(cpu, tb, trace_ptr);

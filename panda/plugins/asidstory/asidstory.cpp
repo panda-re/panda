@@ -50,6 +50,7 @@ using std::setfill;
 using std::endl;
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/plugin_plugin.h"
 
 extern "C" {
@@ -621,7 +622,7 @@ static inline bool process_same(OsiProc *proc1, OsiProc *proc2) {
 uint64_t start_time, next_check_time;
 
 // before every bb, mostly just trying to figure out current proc
-void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
+void asidstory_before_block_exec(TranslationBlock *tb) {
 
     if (!rr_in_replay()) {
         // live -- spit asidstory once every second
@@ -634,6 +635,7 @@ void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
         instr_count += tb->icount; // num instr in this block
     }
 
+    CPUState *env = get_cpu();
     if (panda_in_kernel(env))
         kernel_count ++;
     else

@@ -14,6 +14,7 @@
 #include <glib.h>
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/plugin_plugin.h"
 #include "osi/osi_types.h"
 #include "osi/os_intro.h"
@@ -654,8 +655,8 @@ void init_per_cpu_offsets(CPUState *cpu) {
 #ifdef TARGET_MIPS
 target_ulong last_r28 = 0;
 
-void r28_cache(CPUState *cpu, TranslationBlock *tb) {
-
+void r28_cache(TranslationBlock *tb) {
+  CPUState *cpu = get_cpu();
   if (unlikely(((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28] != last_r28) && panda_in_kernel(cpu)) {
 
       target_ulong potential = ((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28];

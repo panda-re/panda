@@ -42,6 +42,7 @@ PANDAENDCOMMENT */
 #endif
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/plugin_plugin.h"
 
 // needed for the threaded stack_type
@@ -59,7 +60,7 @@ extern "C" {
 
 bool translate_callback(CPUState* cpu, target_ulong pc);
 int exec_callback(CPUState* cpu, target_ulong pc);
-void before_block_exec(CPUState* cpu, TranslationBlock *tb);
+void before_block_exec(TranslationBlock *tb);
 void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode);
 void after_block_translate(CPUState* cpu, TranslationBlock *tb);
 
@@ -322,7 +323,8 @@ void after_block_translate(CPUState *cpu, TranslationBlock *tb) {
     return;
 }
 
-void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
+void before_block_exec(TranslationBlock *tb) {
+  CPUState*cpu = get_cpu();
   std::vector<stack_entry> &v = callstacks[get_stackid(cpu)];
   std::vector<target_ulong> &w = function_stacks[get_stackid(cpu)];
   if (v.empty()) {

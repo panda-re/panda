@@ -13,6 +13,7 @@
  * PANDAENDCOMMENT */
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/rr/rr_log.h"
 #include "panda/checkpoint.h"
 
@@ -20,10 +21,10 @@ uint64_t checkpoint_instr_size;
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-bool before_block_exec(CPUState *env, TranslationBlock *tb);
+bool before_block_exec(TranslationBlock *tb);
 void after_init(CPUState *env);
 
-bool before_block_exec(CPUState *env, TranslationBlock *tb) {
+bool before_block_exec(TranslationBlock *tb) {
     static int progress = 0;
 
     if (progress == 0 || rr_get_guest_instr_count()/checkpoint_instr_size > progress) {
@@ -35,6 +36,7 @@ bool before_block_exec(CPUState *env, TranslationBlock *tb) {
 
     // If this found tb could contain a breakpoint or watchpoint that is set for some instruction count,
     // invalidate it and retranslate, so that a debug instruction is emitted for this tb
+    CPUState* env = get_cpu(); // TODO?
     CPUBreakpoint* bp;
     if (unlikely(!QTAILQ_EMPTY(&env->breakpoints))) {
         QTAILQ_FOREACH(bp, &env->breakpoints, entry) {

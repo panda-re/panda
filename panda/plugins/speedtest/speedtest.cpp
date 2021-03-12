@@ -29,8 +29,8 @@ bool rel_kernel[FIFO_SIZE] = {0}; // 1 if kernel, 0 if user
 uint64_t last_block_time; // last block time
 
 
-void before_block_exec_ratio(CPUState *env, TranslationBlock *tb);
-void before_block_exec_time(CPUState *env, TranslationBlock *tb);
+void before_block_exec_ratio(TranslationBlock *tb);
+void before_block_exec_time(TranslationBlock *tb);
 
 float avg_exec_time() {
     uint64_t sum_ms = 0; // Average tenth-microseconds per block for last FIFO_SIZE
@@ -40,7 +40,7 @@ float avg_exec_time() {
     return sum_ms/FIFO_SIZE; // AVG time per block
 }
 
-void before_block_exec_time(CPUState *env, TranslationBlock *tb) {
+void before_block_exec_time(TranslationBlock *tb) {
     // Get current time
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC_RAW, &now);
@@ -78,8 +78,9 @@ float kernel_ratio() {
 
 
 // Measure kernel ratio
-void before_block_exec_ratio(CPUState *env, TranslationBlock *tb) {
-    rel_kernel[bb_count % FIFO_SIZE] = panda_in_kernel(env);
+void before_block_exec_ratio(TranslationBlock *tb) {
+    CPUState *env = get_cpu(); // TODO
+    rel_kernel[bb_count % FIFO_SIZE] = panda_in_kernel(env); // TODO remove env
 
     if ((bb_count % (FIFO_SIZE/4)) == 0 && bb_count > FIFO_SIZE) {
         printf("[SPEEDTEST] Kernel ratio %.4f (over the last %d blocks)\n", kernel_ratio(), FIFO_SIZE);

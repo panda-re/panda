@@ -3,6 +3,7 @@
 #include <cstdio>
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 extern "C" {
 
@@ -196,8 +197,8 @@ int32_t note_interrupt(CPUState *cpu, int32_t ir) {
 }
 
 
-void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
-
+void before_block_exec(TranslationBlock *tb) {
+  CPUState *cpu = get_cpu(); // TODO
   target_ulong pc = panda_current_pc(cpu);
   bool in_kernel = panda_in_kernel(cpu);
   IEState old_state = current_state;

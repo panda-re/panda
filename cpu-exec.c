@@ -185,7 +185,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     cpu->can_do_io = !use_icount;
 
     if (!panda_exit_loop)
-        panda_callbacks_before_block_exec(cpu, itb);
+        panda_callbacks_before_block_exec(itb);
 
     // If there has been a request to break the CPU
     // loop, return now. Before we execute the block
@@ -830,7 +830,7 @@ int cpu_exec(CPUState *cpu)
             panda_callbacks_before_find_fast();
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
             panda_bb_invalidate_done = panda_callbacks_after_find_fast(
-                    cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
+                    tb, panda_bb_invalidate_done, &panda_invalidate_tb);
         
             if (unlikely(cpu->temp_rr_bp_instr) && rr_get_guest_instr_count() > cpu->temp_rr_bp_instr) {
                 // Restore rr breakpoint if one was disabled for continue

@@ -15,6 +15,7 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/common.h"
 #include "panda/tcg-utils.h"
 #include <iostream>
@@ -192,6 +193,7 @@ void add_hook(struct hook* h) {
 }
 
 
+// TODO remove get_cpu()
 #define MAKE_HOOK_FN_START(UPPER_CB_NAME, NAME, VALUE, PC) \
     if (unlikely(! temp_ ## NAME ## _hooks .empty())){ \
         for (auto &h: temp_ ## NAME ## _hooks) { \
@@ -203,8 +205,9 @@ void add_hook(struct hook* h) {
         panda_disable_callback(self, PANDA_CB_ ## UPPER_CB_NAME, NAME ## _callback); \
         return VALUE; \
     } \
-    target_ulong asid = panda_current_asid(cpu); \
-    bool in_kernel = panda_in_kernel(cpu); \
+    CPUState *_cpu = get_cpu(); \
+    target_ulong asid = panda_current_asid(_cpu); \
+    bool in_kernel = panda_in_kernel(_cpu); \
     struct hook hook_container; \
     memset(&hook_container, 0, sizeof(hook_container)); \
     hook_container.addr = PC; \
@@ -260,9 +263,9 @@ MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, (CPUState *cpu, t
 
 MAKE_HOOK_VOID(AFTER_BLOCK_TRANSLATE, after_block_translate, (CPUState *cpu, TranslationBlock *tb), tb->pc, cpu, tb, h)
 
-MAKE_HOOK_BOOL(BEFORE_BLOCK_EXEC_INVALIDATE_OPT, before_block_exec_invalidate_opt, (CPUState* cpu, TranslationBlock* tb), tb->pc, cpu, tb, h)
+MAKE_HOOK_BOOL(BEFORE_BLOCK_EXEC_INVALIDATE_OPT, before_block_exec_invalidate_opt, (TranslationBlock* tb), tb->pc, tb, h)
 
-MAKE_HOOK_VOID(BEFORE_BLOCK_EXEC, before_block_exec, (CPUState *cpu, TranslationBlock *tb), tb->pc, cpu, tb, h)
+MAKE_HOOK_VOID(BEFORE_BLOCK_EXEC, before_block_exec, (TranslationBlock *tb), tb->pc, tb, h)
 
 MAKE_HOOK_VOID(AFTER_BLOCK_EXEC, after_block_exec, (CPUState *cpu, TranslationBlock *tb, uint8_t exitCode), tb->pc, cpu, tb, exitCode, h)
 

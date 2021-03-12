@@ -47,7 +47,7 @@ MAKE_CALLBACK(void, BEFORE_TCG_CODEGEN, before_tcg_codegen, CPUState*, cpu, Tran
 
 // These are used in cpu-exec.c
 MAKE_CALLBACK(void, BEFORE_BLOCK_EXEC, before_block_exec,
-                    CPUState*, cpu, TranslationBlock*, tb);
+                    TranslationBlock*, tb);
 
 MAKE_CALLBACK(void, AFTER_BLOCK_EXEC, after_block_exec,
                     CPUState*, cpu, TranslationBlock*, tb,
@@ -178,7 +178,7 @@ void PCB(before_find_fast)(void) {
         tb_flush(first_cpu);
     }
 }
-bool PCB(after_find_fast)(CPUState *cpu, TranslationBlock *tb,
+bool PCB(after_find_fast)(TranslationBlock *tb,
                           bool bb_invalidate_done, bool *invalidate) {
     panda_cb_list *plist;
     if (!bb_invalidate_done) {
@@ -186,7 +186,7 @@ bool PCB(after_find_fast)(CPUState *cpu, TranslationBlock *tb,
              plist != NULL; plist = panda_cb_list_next(plist)) {
             if (plist->enabled)
               *invalidate |=
-                  plist->entry.before_block_exec_invalidate_opt(cpu, tb);
+                  plist->entry.before_block_exec_invalidate_opt(tb);
         }
         return true;
     }
