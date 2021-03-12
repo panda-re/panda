@@ -524,7 +524,7 @@ typedef union panda_cb {
        CPUState *env
     */
 
-    void (*hd_read)(CPUState *env);
+    void (*hd_read)(void);
 
     /* Callback ID: PANDA_CB_HD_WRITE
        hd_write : called when there is a hard drive write
@@ -535,7 +535,7 @@ typedef union panda_cb {
        CPUState *env
     */
 
-    void (*hd_write)(CPUState *env);
+    void (*hd_write)(void);
 
     /* Callback ID: PANDA_CB_GUEST_HYPERCALL
 
