@@ -20,7 +20,7 @@ We will maintain two primary branches of PANDA: `main` and `stable`. These branc
 	- Feature developers likely want to fork this branch to begin their work.
 	- Regular releases will be sourced from this branch.
 1. `stable`
-	- This branch exists to support longer term development efforts
+	- This branch exists to support longer term development efforts.
 	- Periodically (currently every 12 months) a new `stable` release will be created.
 		- Stable releases can always be found by the tag `panda-stable-{VERSION}`
 		- The `stable` branch will always point to the most recent stable release.
