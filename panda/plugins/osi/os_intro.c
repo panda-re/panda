@@ -65,9 +65,9 @@ PPP_CB_BOILERPLATE(on_task_change)
 // the fact that PPP doesn't support return values (since it assumes
 // that you will be running multiple callbacks at one site)
 
-GArray *get_processes(CPUState *cpu) {
+GArray *get_processes(void) {
     GArray *p = NULL;
-    PPP_RUN_CB(on_get_processes, cpu, &p);
+    PPP_RUN_CB(on_get_processes, &p);
     return p;
 }
 
@@ -89,9 +89,9 @@ OsiProcHandle *get_current_process_handle(CPUState *cpu) {
     return h;
 }
 
-OsiProc *get_process(CPUState *cpu, const OsiProcHandle *h) {
+OsiProc *get_process(const OsiProcHandle *h) {
     OsiProc *p = NULL;
-    PPP_RUN_CB(on_get_process, cpu, h, &p);
+    PPP_RUN_CB(on_get_process, h, &p);
     return p;
 }
 

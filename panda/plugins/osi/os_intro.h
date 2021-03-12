@@ -6,11 +6,11 @@
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
 // files in this directory that contain subsections like this one.
 
-typedef void (*on_get_processes_t)(CPUState *, GArray **);
+typedef void (*on_get_processes_t)(GArray **);
 typedef void (*on_get_process_handles_t)(CPUState *, GArray **);
 typedef void (*on_get_current_process_t)(OsiProc **);
 typedef void (*on_get_current_process_handle_t)(CPUState *, OsiProcHandle **);
-typedef void (*on_get_process_t)(CPUState *, const OsiProcHandle *, OsiProc **);
+typedef void (*on_get_process_t)(const OsiProcHandle *, OsiProc **);
 typedef void (*on_get_modules_t)(CPUState *, GArray **);
 typedef void (*on_get_mappings_t)(CPUState *, OsiProc *, GArray**);
 typedef void (*on_get_current_thread_t)(CPUState *, OsiThread **);

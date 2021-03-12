@@ -20,7 +20,7 @@ GArray *get_modules(CPUState *cpu);
 GArray *get_mappings(CPUState *cpu, OsiProc *p);
 
 // returns operating system introspection info for each process in an array
-GArray *get_processes(CPUState *cpu);
+GArray *get_processes(void);
 
 // gets the currently running process
 OsiProc *get_current_process(void);
@@ -40,7 +40,7 @@ bool in_shared_object(CPUState *cpu, OsiProc *p);
 OsiProcHandle *get_current_process_handle(CPUState *cpu);
 
 // gets the process pointed to by the handle
-OsiProc *get_process(CPUState *cpu, const OsiProcHandle *h);
+OsiProc *get_process(const OsiProcHandle *h);
 
 // functions retrieving partial process information via an OsiProcHandle
 target_pid_t get_process_pid(CPUState *cpu, const OsiProcHandle *h);

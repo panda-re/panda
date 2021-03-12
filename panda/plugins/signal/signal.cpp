@@ -151,7 +151,7 @@ void sig_mitm(CPUState* cpu, target_ulong pc, int32_t pid, int32_t sig) {
 
     // pid -> signal destination process name
     std::string dst_proc_name("UNKOWN_DST_PROC");
-    GArray *proc_list = get_processes(cpu);
+    GArray *proc_list = get_processes();
     if (proc_list != NULL) {
         for (int i = 0; i < proc_list->len; i++) {
             OsiProc *proc = &g_array_index(proc_list, OsiProc, i);

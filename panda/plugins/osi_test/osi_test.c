@@ -42,8 +42,7 @@ void before_block_exec(TranslationBlock *tb) {
     
     printf("\n");
 
-    CPUState *cpu = get_cpu(); // TODO
-    GArray *ps = get_processes(cpu);
+    GArray *ps = get_processes();
     if (ps == NULL) {
         printf("Process list not available.\n");
     } else {
@@ -66,8 +65,8 @@ void before_block_exec(TranslationBlock *tb) {
 }
 
 void after_block_exec(TranslationBlock *tb, uint8_t exitCode) {
-    CPUState* cpu = get_cpu();
     OsiProc *current = get_current_process();
+    CPUState* cpu = get_cpu();
     GArray *ms = get_mappings(cpu, current);
     if (ms == NULL) {
         printf("No mapped dynamic libraries.\n");

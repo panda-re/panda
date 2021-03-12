@@ -181,7 +181,7 @@ Name: **on\_get\_process**
 Signature:
 
 ```C
-typedef void (*on_get_process_t)(CPUState *, OsiProcHandle *, OsiProc **)
+typedef void (*on_get_process_t)(OsiProcHandle *, OsiProc **)
 ```
 
 Description: Called to retrieve full process information about the process pointed to by `OsiProcHandle`. Implementation should allocate memory and fill in the pointer to an `OsiProc` struct. The returned `OsiProc` can be freed with `free_osiproc`.

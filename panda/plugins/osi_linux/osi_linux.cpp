@@ -43,11 +43,11 @@ void uninit_plugin(void *);
 }
 void on_first_syscall(CPUState *cpu, target_ulong pc, target_ulong callno);
 
-void on_get_processes(CPUState *env, GArray **out);
+void on_get_processes(GArray **out);
 void on_get_process_handles(CPUState *env, GArray **out);
 void on_get_current_process(OsiProc **out_p);
 void on_get_current_process_handle(CPUState *env, OsiProcHandle **out_p);
-void on_get_process(CPUState *, const OsiProcHandle *, OsiProc **);
+void on_get_process(const OsiProcHandle *, OsiProc **);
 void on_get_mappings(CPUState *env, OsiProc *p, GArray **out);
 void on_get_current_thread(CPUState *env, OsiThread *t);
 
@@ -307,7 +307,8 @@ bool osi_guest_is_ready(CPUState *cpu, void** ret) {
  * @brief PPP callback to retrieve process list from the running OS.
  *
  */
-void on_get_processes(CPUState *env, GArray **out) {
+void on_get_processes(GArray **out) {
+    CPUState *env = get_cpu();
     if (!osi_guest_is_ready(env, (void**)out)) return;
     // instantiate and call function from get_process_info template
     get_process_info<>(env, out, fill_osiproc, free_osiproc_contents);
@@ -392,7 +393,8 @@ void on_get_current_process_handle(CPUState *env, OsiProcHandle **out) {
  * @brief PPP callback to retrieve info about a running process using its
  * handle.
  */
-void on_get_process(CPUState *env, const OsiProcHandle *h, OsiProc **out) {
+void on_get_process(const OsiProcHandle *h, OsiProc **out) {
+    CPUState *env = get_cpu();
     if (!osi_guest_is_ready(env, (void**)out)) return;
 
     OsiProc *p = NULL;

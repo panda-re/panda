@@ -329,7 +329,7 @@ error:
     return;
 }
 
-void on_get_processes(CPUState *cpu, GArray **out) {
+void on_get_processes(GArray **out) {
     // The process list in NT can be iterated by starting at the
     // nt!PsActiveProcessHead symbol. The symbol points to an nt!_LIST_ENTRY
     // that acts as a sentinel node for the process list, so we can use it as a
@@ -338,6 +338,8 @@ void on_get_processes(CPUState *cpu, GArray **out) {
     // Assume failure until we reach the first process, so set the output to
     // null.
     *out = NULL;
+
+    CPUState *cpu = get_cpu();
 
     // Try to get the nt!PsActiveProcessHead from the KDDEBUGGER_DATA64 struct.
     // Note that the result of kddebugger_data returns a physical address.
