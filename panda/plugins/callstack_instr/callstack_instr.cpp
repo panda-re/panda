@@ -61,8 +61,8 @@ extern "C" {
 bool translate_callback(CPUState* cpu, target_ulong pc);
 int exec_callback(CPUState* cpu, target_ulong pc);
 void before_block_exec(TranslationBlock *tb);
-void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode);
-void after_block_translate(CPUState* cpu, TranslationBlock *tb);
+void after_block_exec(TranslationBlock *tb, uint8_t exitCode);
+void after_block_translate(TranslationBlock *tb);
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -315,7 +315,8 @@ done2:
     return res;
 }
 
-void after_block_translate(CPUState *cpu, TranslationBlock *tb) {
+void after_block_translate(TranslationBlock *tb) {
+    CPUState *cpu = get_cpu(); // TODO
     CPUArchState *env = static_cast<CPUArchState *>(cpu->env_ptr);
 
     call_cache[tb->pc] = disas_block(env, tb->pc, tb->size);
@@ -346,7 +347,7 @@ void before_block_exec(TranslationBlock *tb) {
   }
 }
 
-void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
+void after_block_exec(TranslationBlock *tb, uint8_t exitCode) {
     target_ulong pc = 0x0;
     target_ulong cs_base = 0x0;
     uint32_t flags = 0x0;
@@ -355,6 +356,7 @@ void after_block_exec(CPUState* cpu, TranslationBlock *tb, uint8_t exitCode) {
         return;
     }
 
+    CPUState *cpu = get_cpu(); // TODO
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     instr_type tb_type = call_cache[tb->pc];
     stackid curStackid = get_stackid(cpu);

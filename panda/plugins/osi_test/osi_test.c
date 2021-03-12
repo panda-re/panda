@@ -30,7 +30,7 @@ void uninit_plugin(void *);
 
 bool asid_changed(target_ulong old_pgd, target_ulong new_pgd);
 void before_block_exec(CPUState *cpu, TranslationBlock *tb);
-void after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode);
+void after_block_exec(TranslationBlock *tb, uint8_t exitCode);
 
 void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
     if  (cpu == NULL) {
@@ -67,10 +67,8 @@ void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
     return;
 }
 
-void after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
-    if (cpu == NULL) {
-        cpu = get_cpu(); // TODO
-    }
+void after_block_exec(TranslationBlock *tb, uint8_t exitCode) {
+    CPUState* cpu = get_cpu();
     OsiProc *current = get_current_process(cpu);
     GArray *ms = get_mappings(cpu, current);
     if (ms == NULL) {
@@ -113,7 +111,7 @@ void after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
 bool asid_changed(target_ulong old_pgd, target_ulong new_pgd) {
     // tb argument is not used by before_block_exec()
     before_block_exec(NULL, NULL);
-    after_block_exec(NULL, NULL, TB_EXIT_IDX0);
+    after_block_exec(NULL, TB_EXIT_IDX0);
     return false;
 }
 

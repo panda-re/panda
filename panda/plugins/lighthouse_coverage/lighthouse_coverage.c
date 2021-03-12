@@ -1,4 +1,5 @@
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 // OSI
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
@@ -10,7 +11,7 @@
 
 
 // function prototypes
-void after_block_exec(CPUState *cpuState, TranslationBlock *translationBlock, uint8_t exitCode) ;
+void after_block_exec(TranslationBlock *translationBlock, uint8_t exitCode) ;
 void uninit_plugin(void *self) ;
 bool init_plugin(void *self) ;
 
@@ -18,11 +19,12 @@ FILE       * outputFile = 0;							// pointer to output file...
 const char * processName = 0;							// pointer to process name to restrict output to
 const char * dllName = 0;							// pointer to dll name to restrict output to
 
-void after_block_exec(CPUState *cpuState, TranslationBlock *translationBlock, uint8_t exitCode) 
+void after_block_exec(TranslationBlock *translationBlock, uint8_t exitCode) 
 {	// this function gets called right after every basic block is executed
 	if (exitCode > TB_EXIT_IDX1)						// If exitCode > TB_EXIT_IDX1, then the block exited early.
 		return;
-	if (panda_in_kernel(first_cpu) == 0)				// I'm not interested in kernel modules
+  CPUState *cpuState = get_cpu();
+	if (panda_in_kernel2() == 0)				// I'm not interested in kernel modules
 		{
 		OsiProc * process = get_current_process(cpuState);		// get a reference to the process this TranslationBlock belongs to
 	        if (process) 										// Make sure 'process' is a thing

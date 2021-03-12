@@ -261,13 +261,13 @@ void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
 
 MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, (target_ulong pc), panda_current_pc2(), pc, h)
 
-MAKE_HOOK_VOID(AFTER_BLOCK_TRANSLATE, after_block_translate, (CPUState *cpu, TranslationBlock *tb), tb->pc, cpu, tb, h)
+MAKE_HOOK_VOID(AFTER_BLOCK_TRANSLATE, after_block_translate, (TranslationBlock *tb), tb->pc, tb, h)
 
 MAKE_HOOK_BOOL(BEFORE_BLOCK_EXEC_INVALIDATE_OPT, before_block_exec_invalidate_opt, (TranslationBlock* tb), tb->pc, tb, h)
 
 MAKE_HOOK_VOID(BEFORE_BLOCK_EXEC, before_block_exec, (TranslationBlock *tb), tb->pc, tb, h)
 
-MAKE_HOOK_VOID(AFTER_BLOCK_EXEC, after_block_exec, (CPUState *cpu, TranslationBlock *tb, uint8_t exitCode), tb->pc, cpu, tb, exitCode, h)
+MAKE_HOOK_VOID(AFTER_BLOCK_EXEC, after_block_exec, (TranslationBlock *tb, uint8_t exitCode), tb->pc, tb, exitCode, h)
 
 
 #define REGISTER_AND_DISABLE_CALLBACK(SELF, NAME, NAME_UPPER)\

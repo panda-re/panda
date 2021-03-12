@@ -66,7 +66,7 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-int after_block_translate(CPUState *cpu, TranslationBlock *tb);
+int after_block_translate(TranslationBlock *tb);
 bool before_block_exec_invalidate_opt(TranslationBlock *tb);
 
 // for i386 condition code adjustments

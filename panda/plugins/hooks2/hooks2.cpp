@@ -927,18 +927,18 @@ on_sys_exit_group_enter(
 
 static void
 cb_pending_procname_after_block_exec(
-    CPUState *cpu,
     TranslationBlock *tb,
     uint8_t exit_code)
 {
     if (exit_code)
         return;
 
-    if (panda_in_kernel(cpu))
+    if (panda_in_kernel2())
         return;
 
     disable_callback(plugin.cb_pend_procname);
 
+    CPUState *cpu = get_cpu();
     OsiProc *proc = get_current_process(cpu);
     if (!proc)
         return;
@@ -947,7 +947,7 @@ cb_pending_procname_after_block_exec(
         cpu,
         ASID_CHANGE,
         -1,
-        panda_current_asid(cpu),
+        panda_current_asid2(),
         proc->name);
 }
 

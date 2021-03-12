@@ -23,10 +23,10 @@ typedef bool (*dynamic_symbol_hook_func_t)(CPUState *, TranslationBlock *, struc
 typedef union hooks_panda_cb {
     void (*before_tcg_codegen)(CPUState *env, TranslationBlock *tb, struct hook*);
     void (*before_block_translate)(target_ptr_t pc, struct hook*);
-    void (*after_block_translate)(CPUState *env, TranslationBlock *tb, struct hook*);
+    void (*after_block_translate)(TranslationBlock *tb, struct hook*);
     bool (*before_block_exec_invalidate_opt)(TranslationBlock *tb, struct hook*);
     void (*before_block_exec)(TranslationBlock *tb, struct hook*);
-    void (*after_block_exec)(CPUState *env, TranslationBlock *tb, uint8_t exitCode, struct hook*);
+    void (*after_block_exec)(TranslationBlock *tb, uint8_t exitCode, struct hook*);
 } hooks_panda_cb;
 
 enum kernel_mode{

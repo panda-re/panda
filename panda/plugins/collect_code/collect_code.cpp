@@ -11,6 +11,7 @@
 #define __STDC_FORMAT_MACROS
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 extern "C" {   
 #include <assert.h>
@@ -89,14 +90,15 @@ uint64_t num_unique_bb = 0;
 
 Panda__BasicBlock pbb;
 
-void after_bb_translate(CPUState *env, TranslationBlock *tb) {
+void after_bb_translate(TranslationBlock *tb) {
 	Bblock bb;
-	target_ulong pc = tb->pc;    
+	target_ulong pc = panda_current_pc2();
 
-	bb.asid = panda_current_asid(env);
+	bb.asid = panda_current_asid2();
 	bb.pc = pc;
 	bb.size = tb->size;
 	bb.code = (uint8_t *) malloc(bb.size);
+  CPUState *env = get_cpu(); // TODO
 	panda_virtual_memory_read(env, pc, bb.code, bb.size);
 
 	pc2bb[bb.asid][pc].insert(bb);

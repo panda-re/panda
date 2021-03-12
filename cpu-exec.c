@@ -220,7 +220,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     /* force into variable of known size */
     exitCode = (uint8_t)tb_exit;
-    panda_callbacks_after_block_exec(cpu, itb, exitCode);
+    panda_callbacks_after_block_exec(itb, exitCode);
 
     trace_exec_tb_exit(last_tb, tb_exit);
 
@@ -425,7 +425,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
                 panda_callbacks_before_block_translate(pc);
                 /* if no translated code available, then translate it now */
                 tb = tb_gen_code(cpu, pc, cs_base, flags, 0);
-                panda_callbacks_after_block_translate(cpu, tb);
+                panda_callbacks_after_block_translate(tb);
             }
 
             mmap_unlock();

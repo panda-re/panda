@@ -7,6 +7,7 @@
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
+#include "panda/plugin_api.h"
 
 #include "panda/tcg-llvm.h"
 #include <llvm/IR/InstVisitor.h>
@@ -358,7 +359,7 @@ void initialize_call_obj(Asid curr_asid, target_ulong entrypoint){
 }
 
 // After the execusion of each basic block, log the block(s)' info, right after disassembly.
-void after_block_exec_cb(CPUState *cpu, TranslationBlock *tb, unsigned char exitCode) { 
+void after_block_exec_cb(TranslationBlock *tb, unsigned char exitCode) { 
 
     Asid curr_asid  = panda_current_asid2();
 
@@ -387,6 +388,7 @@ void after_block_exec_cb(CPUState *cpu, TranslationBlock *tb, unsigned char exit
     call.block_executions[tb->pc]++; //that is how many times the current block addr got executed, stored in the call's info
 
     // ######## Disassembly ########
+    CPUState* cpu = get_cpu();
     uint8_t mem[1024] = {};
     int err = panda_virtual_memory_rw(cpu, tb->pc, mem, tb->size, false);
     if(err == -1) {
@@ -704,9 +706,9 @@ void mem_read_callback_cb(target_ulong pc, target_ulong addr,
 /*
 For llvm_visiting: Invalidates the cache when translating/re-translating
 */
-void after_block_translate_cb (CPUState *cpu, TranslationBlock *tb) {
+void after_block_translate_cb (TranslationBlock *tb) {
 
-    Asid curr_asid = panda_current_asid(cpu);
+    Asid curr_asid = panda_current_asid2();
 
     if (panda_in_kernel(cpu) || !tracked_asids.count(curr_asid)){
         return;

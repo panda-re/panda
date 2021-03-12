@@ -170,7 +170,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*after_block_exec)(CPUState *env, TranslationBlock *tb, uint8_t exitCode);
+    void (*after_block_exec)(TranslationBlock *tb, uint8_t exitCode);
 
     /* Callback ID: PANDA_CB_BEFORE_BLOCK_TRANSLATE
 
@@ -208,7 +208,7 @@ typedef union panda_cb {
         FIXME: How would this actually work? By this point the out ASM
         has already been generated. Modify the IR and then regenerate?
     */
-    void (*after_block_translate)(CPUState *env, TranslationBlock *tb);
+    void (*after_block_translate)(TranslationBlock *tb);
 
     /* Callback ID: PANDA_CB_AFTER_CPU_EXEC_ENTER
 

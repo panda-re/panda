@@ -54,13 +54,13 @@ map<target_ulong,target_ulong> last_bb_before_intexc;
 bool saw_main = false;
 
 
-void after_block(CPUState *env, TranslationBlock *tb, uint8_t exitCode) {
+void after_block(TranslationBlock *tb, uint8_t exitCode) {
 
     // only paying attention to one program and haven't seen main yet..
     if (start_main && !saw_main) 
         return;
 
-    target_ulong asid = panda_current_asid(env);
+    target_ulong asid = panda_current_asid2();
     
     // dont record pc if we are in exception or interrupt code
     if (check_in_exception() || check_in_interrupt()) 
