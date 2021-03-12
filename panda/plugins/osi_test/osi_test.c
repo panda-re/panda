@@ -66,8 +66,7 @@ void before_block_exec(TranslationBlock *tb) {
 
 void after_block_exec(TranslationBlock *tb, uint8_t exitCode) {
     OsiProc *current = get_current_process();
-    CPUState* cpu = get_cpu();
-    GArray *ms = get_mappings(cpu, current);
+    GArray *ms = get_mappings(current);
     if (ms == NULL) {
         printf("No mapped dynamic libraries.\n");
     } else {
@@ -80,7 +79,7 @@ void after_block_exec(TranslationBlock *tb, uint8_t exitCode) {
 
     printf("\n");
 
-    GArray *kms = get_modules(cpu);
+    GArray *kms = get_modules();
     if (kms == NULL) {
         printf("No mapped kernel modules.\n");
     } else {

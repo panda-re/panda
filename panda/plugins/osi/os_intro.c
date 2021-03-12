@@ -95,15 +95,15 @@ OsiProc *get_process(const OsiProcHandle *h) {
     return p;
 }
 
-GArray *get_modules(CPUState *cpu) {
+GArray *get_modules(void) {
     GArray *m = NULL;
-    PPP_RUN_CB(on_get_modules, cpu, &m);
+    PPP_RUN_CB(on_get_modules, &m);
     return m;
 }
 
-GArray *get_mappings(CPUState *cpu, OsiProc *p) {
+GArray *get_mappings(OsiProc *p) {
     GArray *m = NULL;
-    PPP_RUN_CB(on_get_mappings, cpu, p, &m);
+    PPP_RUN_CB(on_get_mappings, p, &m);
     return m;
 }
 
@@ -131,12 +131,12 @@ void notify_task_change(CPUState *cpu)
 }
 
 bool in_shared_object(CPUState *cpu, OsiProc *p) {
-    if (panda_in_kernel(cpu)) {
+    if (panda_in_kernel2()) {
         return false;
     }
 
-    target_ulong pc = panda_current_pc(cpu);
-    GArray *mappings = get_mappings(cpu, p);
+    target_ulong pc = panda_current_pc2();
+    GArray *mappings = get_mappings(p);
 
     if (mappings != NULL) {
         for (int i = 0; i < mappings->len; i++) {

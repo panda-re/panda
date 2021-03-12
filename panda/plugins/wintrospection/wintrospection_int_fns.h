@@ -62,9 +62,9 @@ void on_get_current_process(OsiProc **out);
 
 void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out);
 
-void on_get_modules(CPUState *cpu, GArray **out);
+void on_get_modules(GArray **out);
 
-void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out);
+void on_get_mappings(OsiProc *p, GArray **out);
 
 void on_get_processes(GArray **out);
 

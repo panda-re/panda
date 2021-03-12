@@ -196,7 +196,7 @@ int before_insn_exec_cb(target_ulong pc) {
         }
 
         // dump info on the dynamic library for the current PC, if there is one
-        GArray *ms = get_mappings(cpu, current);
+        GArray *ms = get_mappings(current);
         if (ms != NULL) {
             for (int i = 0; i < ms->len; i++) {
                 OsiModule *m = &g_array_index(ms, OsiModule, i);
@@ -215,7 +215,7 @@ int before_insn_exec_cb(target_ulong pc) {
 
     if (!found_lib) {
         // dump info on the kernel module for the current PC, if there is one
-        GArray *kms = get_modules(cpu);
+        GArray *kms = get_modules();
         if (kms != NULL) {
             for (int i = 0; i < kms->len; i++) {
                 OsiModule *km = &g_array_index(kms, OsiModule, i);

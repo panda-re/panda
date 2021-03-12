@@ -457,12 +457,12 @@ void update_symbols_in_space(void){
         return;
     }
     OsiProc *current = get_current_process();
-    CPUState *cpu = get_cpu();
-    GArray *ms = get_mappings(cpu, current);
+    GArray *ms = get_mappings(current);
     if (ms == NULL) {
         return;
     } else {
         //iterate over mappings
+        CPUState *cpu = get_cpu();
         for (int i = 0; i < ms->len; i++) {
             OsiModule *m = &g_array_index(ms, OsiModule, i);
             find_symbols(cpu, current, m);

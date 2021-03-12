@@ -36,8 +36,7 @@ void get_libs() {
     target_ulong asid = panda_current_asid2(); 
 
     if (current != NULL) {
-        CPUState *env = get_cpu();
-        GArray *ms = get_mappings(env, current); 
+        GArray *ms = get_mappings(current); 
 
         //if (current) printf("current->name: %s  asid: " TARGET_FMT_lx "\n", current->name, asid);
         if (program_name != NULL && strcmp(current->name, program_name) != 0) return; 

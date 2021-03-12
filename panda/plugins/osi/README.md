@@ -205,7 +205,7 @@ Name: **on\_get\_modules**
 Signature:
 
 ```C
-typedef void (*on_get_modules_t)(CPUState *, GArray **)
+typedef void (*on_get_modules_t)(GArray **)
 ```
 
 Description: Retrieves the kernel modules loaded in the guest OS, along with detailed information for each process. to get the process list from the guest OS.
@@ -219,7 +219,7 @@ Name: **on\_get\_mappings**
 Signature:
 
 ```C
-typedef void (*on_get_mappings_t)(CPUState *, OsiProc *, GArray**)
+typedef void (*on_get_mappings_t)(OsiProc *, GArray**)
 ```
 
 Description: Retrieves the shared libraries loaded for the specified process of the guest OS. The process `OsiProc` can be aquired via a previous call to `on_get_current_process` or `on_get_processes`.

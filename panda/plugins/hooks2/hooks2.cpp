@@ -369,8 +369,7 @@ update_active_userspace_libs(target_ulong asid)
     if (!current)
         return;
 
-    CPUState *cpu = get_cpu();
-    GArray *ms = get_mappings(cpu, current);
+    GArray *ms = get_mappings(current);
     if (!ms) {
         free_osiproc(current);
         return;
@@ -397,6 +396,7 @@ update_active_userspace_libs(target_ulong asid)
         if (m_text) {
             if (!trace->base_valid || (m_text->base != trace->lib_base))
             {
+                CPUState *cpu = get_cpu();
                 trace->base_valid = true;
                 trace->lib_base = m_text->base;
                 trace->lib_size = m_text->size;

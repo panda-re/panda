@@ -48,7 +48,7 @@ void on_get_process_handles(CPUState *env, GArray **out);
 void on_get_current_process(OsiProc **out_p);
 void on_get_current_process_handle(CPUState *env, OsiProcHandle **out_p);
 void on_get_process(const OsiProcHandle *, OsiProc **);
-void on_get_mappings(CPUState *env, OsiProc *p, GArray **out);
+void on_get_mappings(OsiProc *p, GArray **out);
 void on_get_current_thread(CPUState *env, OsiThread *t);
 
 struct kernelinfo ki;
@@ -414,7 +414,8 @@ void on_get_process(const OsiProcHandle *h, OsiProc **out) {
  *
  * @todo Remove duplicates from results.
  */
-void on_get_mappings(CPUState *env, OsiProc *p, GArray **out) {
+void on_get_mappings(OsiProc *p, GArray **out) {
+    CPUState *env = get_cpu();
     if (!osi_guest_is_ready(env, (void**)out)) return;
 
     OsiModule m;
@@ -580,7 +581,7 @@ int osi_linux_test(target_ulong oldval, target_ulong newval) {
                  p->pid, p->ppid, p->name, p->asid, p->taskd);
 #if defined(OSI_LINUX_TEST_MODULES)
         GArray *ms = NULL;
-        on_get_mappings(env, p, &ms);
+        on_get_mappings(p, &ms);
         if (ms != NULL) {
             for (uint32_t j = 0; j < ms->len; j++) {
                 OsiModule *m = &g_array_index(ms, OsiModule, j);

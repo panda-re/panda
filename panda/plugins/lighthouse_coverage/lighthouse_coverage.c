@@ -28,8 +28,7 @@ void after_block_exec(TranslationBlock *translationBlock, uint8_t exitCode)
 		OsiProc * process = get_current_process();		// get a reference to the process this TranslationBlock belongs to
 	        if (process) 										// Make sure 'process' is a thing
 			{
-      CPUState *cpuState = get_cpu();
-			GArray * mappings = get_mappings(cpuState, process);			// we need this for getting the base address of the process or DLL
+			GArray * mappings = get_mappings(process);			// we need this for getting the base address of the process or DLL
 			if (mappings != NULL)										// make sure 'mappings' is a thing
 				{
 				OsiModule * module = NULL;

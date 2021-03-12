@@ -189,7 +189,7 @@ void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out) {
     }
 }
 
-void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out)
+void on_get_mappings(OsiProc *p, GArray **out)
 {
     *out = NULL;
     if (p == NULL) {
@@ -200,6 +200,7 @@ void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out)
     PTR ptr_peb;
     // EPROCESS is allocated from the non-paged pool, so it should
     // accessible at any time via its virtual address.
+    CPUState *cpu = get_cpu();
     if (-1 == panda_virtual_memory_read(cpu, eproc + eproc_ppeb_off,
                                         (uint8_t *)&ptr_peb, sizeof(ptr_peb))) {
         fprintf(stderr, "Could not read PEB Pointer from _EPROCESS!\n");
@@ -296,8 +297,10 @@ void on_get_mappings(CPUState *cpu, OsiProc *p, GArray **out)
 #endif
 }
 
-void on_get_modules(CPUState *cpu, GArray **out)
+void on_get_modules(GArray **out)
 {
+    
+    CPUState *cpu = get_cpu();
     PTR kdbg = get_kddebugger_data(cpu);
     PTR PsLoadedModuleList = 0xFFFFFFFF;
     PTR mod_current = 0x0;
@@ -746,8 +749,7 @@ static void before_tcg_codegen(TranslationBlock *tb)
     if (0x0 == task_change_hook_addr && 0 == strcmp(panda_os_variant, "7")) {
         // On Windows 7, we have to compute the task change hook address
         // relative to the ntoskrnl.exe base (because ASLR).
-        CPUState *cpu = get_cpu();
-        GArray *mods = get_modules(cpu);
+        GArray *mods = get_modules();
         for (int i = 0; i < mods->len; i++) {
             OsiModule *mod = &g_array_index(mods, OsiModule, i);
             if (0 == strcmp("ntoskrnl.exe", mod->name)) {
