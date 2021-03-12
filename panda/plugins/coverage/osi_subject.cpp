@@ -23,7 +23,7 @@ void notify_task_change_observers(CPUState *cpu)
         return;
     }
 
-    std::unique_ptr<OsiProc, decltype(free_osiproc)*> current_process(get_current_process(cpu), free_osiproc);
+    std::unique_ptr<OsiProc, decltype(free_osiproc)*> current_process(get_current_process(), free_osiproc);
     std::unique_ptr<OsiThread, decltype(free_osithread)*> current_thread(get_current_thread(cpu), free_osithread);
 
     for (auto ob : observers) {

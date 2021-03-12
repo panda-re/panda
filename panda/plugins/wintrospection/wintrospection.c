@@ -166,7 +166,8 @@ void add_mod(CPUState *cpu, GArray *ms, PTR mod, bool ignore_basename) {
     g_array_append_val(ms, m);
 }
 
-void on_get_current_process(CPUState *cpu, OsiProc **out) {
+void on_get_current_process(OsiProc **out) {
+    CPUState *cpu = get_cpu();
     PTR eproc = get_current_proc(cpu);
     if(eproc) {
         OsiProc *p = (OsiProc *)g_malloc(sizeof(OsiProc));
@@ -380,7 +381,7 @@ void on_get_processes(CPUState *cpu, GArray **out) {
 void on_get_current_thread(CPUState *cpu, OsiThread **out) {
     // Get current process.
     OsiProc *p = NULL;
-    on_get_current_process(cpu, &p);
+    on_get_current_process(&p);
     if (NULL == p) {
         goto error;
     }

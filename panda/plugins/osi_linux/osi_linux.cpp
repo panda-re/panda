@@ -45,7 +45,7 @@ void on_first_syscall(CPUState *cpu, target_ulong pc, target_ulong callno);
 
 void on_get_processes(CPUState *env, GArray **out);
 void on_get_process_handles(CPUState *env, GArray **out);
-void on_get_current_process(CPUState *env, OsiProc **out_p);
+void on_get_current_process(OsiProc **out_p);
 void on_get_current_process_handle(CPUState *env, OsiProcHandle **out_p);
 void on_get_process(CPUState *, const OsiProcHandle *, OsiProc **);
 void on_get_mappings(CPUState *env, OsiProc *p, GArray **out);
@@ -326,7 +326,8 @@ void on_get_process_handles(CPUState *env, GArray **out) {
 /**
  * @brief PPP callback to retrieve info about the currently running process.
  */
-void on_get_current_process(CPUState *env, OsiProc **out) {
+void on_get_current_process(OsiProc **out) {
+    CPUState *env = get_cpu();
     if (!osi_guest_is_ready(env, (void**)out)) return;
 
     static target_ptr_t last_ts = 0x0;

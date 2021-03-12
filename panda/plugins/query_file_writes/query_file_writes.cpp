@@ -51,7 +51,7 @@ void before_write(CPUState* cpu, target_ulong pc, uint32_t fd, uint64_t buf, uin
     static uint8_t read_buf[128];
     if (!taint2_enabled()) return;
 
-    OsiProc *proc = get_current_process(cpu);
+    OsiProc *proc = get_current_process();
 
     cout << "Write from process " << proc->name << " of " << count << " bytes\n";
 

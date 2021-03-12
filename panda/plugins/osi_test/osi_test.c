@@ -33,8 +33,7 @@ void before_block_exec(TranslationBlock *tb);
 void after_block_exec(TranslationBlock *tb, uint8_t exitCode);
 
 void before_block_exec(TranslationBlock *tb) {
-    CPUState *cpu = get_cpu(); // TODO
-    OsiProc *current = get_current_process(cpu);
+    OsiProc *current = get_current_process();
     if(current) {
         printf("Current process: %s PID:" TARGET_PID_FMT " PPID:" TARGET_PID_FMT "\n", current->pid > 0 ? current->name : "N/A", current->pid, current->ppid);
     } else {
@@ -43,6 +42,7 @@ void before_block_exec(TranslationBlock *tb) {
     
     printf("\n");
 
+    CPUState *cpu = get_cpu(); // TODO
     GArray *ps = get_processes(cpu);
     if (ps == NULL) {
         printf("Process list not available.\n");
@@ -67,7 +67,7 @@ void before_block_exec(TranslationBlock *tb) {
 
 void after_block_exec(TranslationBlock *tb, uint8_t exitCode) {
     CPUState* cpu = get_cpu();
-    OsiProc *current = get_current_process(cpu);
+    OsiProc *current = get_current_process();
     GArray *ms = get_mappings(cpu, current);
     if (ms == NULL) {
         printf("No mapped dynamic libraries.\n");

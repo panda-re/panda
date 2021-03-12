@@ -58,7 +58,7 @@ void fill_osimod(CPUState *cpu, OsiModule *m, PTR mod, bool ignore_basename);
 
 void add_mod(CPUState *cpu, GArray *ms, PTR mod, bool ignore_basename);
 
-void on_get_current_process(CPUState *cpu, OsiProc **out);
+void on_get_current_process(OsiProc **out);
 
 void on_get_current_process_handle(CPUState *cpu, OsiProcHandle **out);
 

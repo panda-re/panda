@@ -23,12 +23,12 @@ void after_block_exec(TranslationBlock *translationBlock, uint8_t exitCode)
 {	// this function gets called right after every basic block is executed
 	if (exitCode > TB_EXIT_IDX1)						// If exitCode > TB_EXIT_IDX1, then the block exited early.
 		return;
-  CPUState *cpuState = get_cpu();
 	if (panda_in_kernel2() == 0)				// I'm not interested in kernel modules
 		{
-		OsiProc * process = get_current_process(cpuState);		// get a reference to the process this TranslationBlock belongs to
+		OsiProc * process = get_current_process();		// get a reference to the process this TranslationBlock belongs to
 	        if (process) 										// Make sure 'process' is a thing
 			{
+      CPUState *cpuState = get_cpu();
 			GArray * mappings = get_mappings(cpuState, process);			// we need this for getting the base address of the process or DLL
 			if (mappings != NULL)										// make sure 'mappings' is a thing
 				{

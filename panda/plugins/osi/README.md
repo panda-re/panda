@@ -157,7 +157,7 @@ Name: **on\_get\_current\_process**
 Signature:
 
 ```C
-typedef void (*on_get_current_process_t)(CPUState *, OsiProc **)
+typedef void (*on_get_current_process_t)(OsiProc **)
 ```
 
 Description: Called to get the currently running process in the guest OS. The implementation should allocate memory and fill in the pointer to an `OsiProc` struct. The returned `OsiProc` can be freed with `free_osiproc`.

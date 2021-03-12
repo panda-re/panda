@@ -180,9 +180,9 @@ int before_insn_exec_cb(target_ulong pc) {
 
     bool found_lib = false;
 
-    CPUState *cpu = get_cpu();
-    OsiProc *current = get_current_process(cpu);
+    OsiProc *current = get_current_process();
     target_pid_t tid = 0;
+    CPUState *cpu = get_cpu();
     OsiThread *thread = get_current_thread(cpu);
     if (NULL != thread) {
         tid = thread->tid;

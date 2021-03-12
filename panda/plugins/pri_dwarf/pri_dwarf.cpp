@@ -1738,7 +1738,7 @@ unsigned num_libs_known = 0;
 bool correct_asid(void) {
     if (monitored_asid.size() == 0) {
         return false;
-        //OsiProc *p = get_current_process(cpu);
+        //OsiProc *p = get_current_process();
         // checking if p is not null because we got a segfault here
         // if p is null return false, not @ correct_asid
     }
@@ -1809,9 +1809,9 @@ bool main_exec_initialized = false;
 #define MOD_CHECK_FREQ 1000
 bool ensure_main_exec_initialized(void) {
     //if (!correct_asid()) return;
-    CPUState *cpu = get_cpu();
-    OsiProc *p = get_current_process(cpu);
+    OsiProc *p = get_current_process();
     GArray *libs = NULL;
+    CPUState *cpu = get_cpu();
     libs = get_mappings(cpu, p);
     free_osiproc(p);
     if (!libs)
@@ -2265,6 +2265,7 @@ int exec_callback_dwarf(target_ulong pc) {
     //__livevar_iter(env, pc, global_var_list, print_var_if_live);
     if (cur_line != prev_line){
         //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(), funct_name.c_str(),cur_line,pc);
+        CPUState *cpu = get_cpu();
         pri_runcb_on_after_line_change (cpu, pc, prev_file_name.c_str(), prev_funct_name.c_str(), prev_line);
         pri_runcb_on_before_line_change(cpu, pc, file_name.c_str(), funct_name.c_str(), cur_line);
         PPP_RUN_CB(on_pri_dwarf_line_change, cpu, pc, file_name.c_str(), funct_name.c_str(), cur_line);
@@ -2332,10 +2333,8 @@ void handle_asid_change(CPUState *cpu, target_ulong asid, OsiProc *p) {
 // which will probably help us actually know the current process
 void osi_foo(TranslationBlock *tb) {
 
-    CPUState *cpu = get_cpu();
-    if (panda_in_kernel(cpu)) {
-
-        OsiProc *p = get_current_process(cpu);
+    if (panda_in_kernel2()) {
+        OsiProc *p = get_current_process();
         if (!p) return;
 
         //some sanity checks on what we think the current process is
@@ -2354,7 +2353,7 @@ void osi_foo(TranslationBlock *tb) {
         //}
         //// name doesnt consist of solely printable characters
         //if (np != n) return;
-        target_ulong asid = panda_current_asid(cpu);
+        target_ulong asid = panda_current_asid2();
         if (running_procs.count(asid) == 0) {
             printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->taskd);
         }

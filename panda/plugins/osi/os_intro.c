@@ -77,9 +77,9 @@ GArray *get_process_handles(CPUState *cpu) {
     return p;
 }
 
-OsiProc *get_current_process(CPUState *cpu) {
+OsiProc *get_current_process(void) {
     OsiProc *p = NULL;
-    PPP_RUN_CB(on_get_current_process, cpu, &p);
+    PPP_RUN_CB(on_get_current_process, &p);
     return p;
 }
 

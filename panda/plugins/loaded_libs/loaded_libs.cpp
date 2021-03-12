@@ -32,14 +32,11 @@ const char* program_name;
 
 
 void get_libs() {
-    //TODO: remove env dependency
-    CPUState *env = get_cpu();
-
-
-    OsiProc *current =  get_current_process(env); 
-    target_ulong asid = panda_current_asid(env); 
+    OsiProc *current =  get_current_process(); 
+    target_ulong asid = panda_current_asid2(); 
 
     if (current != NULL) {
+        CPUState *env = get_cpu();
         GArray *ms = get_mappings(env, current); 
 
         //if (current) printf("current->name: %s  asid: " TARGET_FMT_lx "\n", current->name, asid);

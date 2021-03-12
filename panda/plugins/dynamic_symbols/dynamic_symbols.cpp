@@ -456,8 +456,8 @@ void update_symbols_in_space(void){
     if (panda_in_kernel2()){
         return;
     }
+    OsiProc *current = get_current_process();
     CPUState *cpu = get_cpu();
-    OsiProc *current = get_current_process(cpu);
     GArray *ms = get_mappings(cpu, current);
     if (ms == NULL) {
         return;

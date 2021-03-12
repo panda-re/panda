@@ -133,10 +133,9 @@ void linux_mmap_pgoff_return(CPUState *cpu,target_ulong pc,uint32_t addr,uint32_
 // get current process before each bb execs
 // which will probably help us actually know the current process
 void osi_foo(TranslationBlock *tb) {
-    CPUState *cpu = get_cpu(); // TODO
-    if (panda_in_kernel(cpu)) {
+    if (panda_in_kernel2()) {
 
-        std::unique_ptr<OsiProc, decltype(free_osiproc)*> p { get_current_process(cpu), free_osiproc };
+        std::unique_ptr<OsiProc, decltype(free_osiproc)*> p { get_current_process(), free_osiproc };
 
         //some sanity checks on what we think the current process is
         // we couldn't find the current task
@@ -157,7 +156,7 @@ void osi_foo(TranslationBlock *tb) {
         // name doesnt consist of solely printable characters
         //        printf ("np=%d n=%d\n", np, n);
         if (np != n) return;
-        target_ulong asid = panda_current_asid(cpu);
+        target_ulong asid = panda_current_asid2();
         if (running_procs.count(asid) == 0) {
             printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->taskd);
         }

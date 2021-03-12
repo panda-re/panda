@@ -290,12 +290,11 @@ handle_kernel_traces(
 
 static bool
 update_active_userspace_traces(
-    CPUState *cpu,
     target_ulong asid)
 {
     bool changed = false;
 
-    OsiProc *proc = get_current_process(cpu);
+    OsiProc *proc = get_current_process();
     if (!proc)
         return changed;
 
@@ -342,7 +341,7 @@ update_active_userspace_traces(
 }
 
 static void
-update_active_userspace_libs(CPUState *cpu, target_ulong asid)
+update_active_userspace_libs(target_ulong asid)
 {
     auto it = plugin.map_active_utraces.find(asid);
     if (it == plugin.map_active_utraces.end()) {
@@ -366,10 +365,11 @@ update_active_userspace_libs(CPUState *cpu, target_ulong asid)
         return;
     }
 
-    OsiProc *current = get_current_process(cpu);
+    OsiProc *current = get_current_process();
     if (!current)
         return;
 
+    CPUState *cpu = get_cpu();
     GArray *ms = get_mappings(cpu, current);
     if (!ms) {
         free_osiproc(current);
@@ -451,8 +451,8 @@ on_process_start_internal(
     if (!asid)
         return;
 
-    if (update_active_userspace_traces(cpu, asid)) {
-        update_active_userspace_libs(cpu, asid);
+    if (update_active_userspace_traces(asid)) {
+        update_active_userspace_libs(asid);
     }
 
     if (!plugin.kernel_traces.size()) {
@@ -569,7 +569,7 @@ on_mmap_return(
     (void)arg4;
     (void)arg5;
 
-    update_active_userspace_libs(cpu, panda_current_asid(cpu));
+    update_active_userspace_libs(panda_current_asid2());
 }
 
 static void
@@ -583,7 +583,7 @@ on_sys_munmap_return(
     (void)addr;
     (void)len;
 
-    update_active_userspace_libs(cpu, panda_current_asid(cpu));
+    update_active_userspace_libs(panda_current_asid2());
 }
 
 static void
@@ -691,7 +691,7 @@ on_sys_brk_enter(
     (void)pc;
     (void)brk;
 
-    OsiProc *proc = get_current_process(cpu);
+    OsiProc *proc = get_current_process();
     if (!proc) {
         return;
     }
@@ -700,7 +700,7 @@ on_sys_brk_enter(
         cpu,
         SYS_BRK,
         -1,
-        panda_current_asid(cpu),
+        panda_current_asid2(),
         proc->name);
 }
 
@@ -735,7 +735,7 @@ on_sys_clone_return(
     target_ulong thread_mask = CLONE_VM | CLONE_THREAD;
     if ((flags & thread_mask) == thread_mask) {
         type = NEW_THREAD;
-        asid = panda_current_asid(cpu);
+        asid = panda_current_asid2();
     } else {
         type = FORK;
         asid = 0;
@@ -743,7 +743,7 @@ on_sys_clone_return(
 
     target_long ret = get_syscall_retval(cpu);
 
-    OsiProc *proc = get_current_process(cpu);
+    OsiProc *proc = get_current_process();
     if (!proc)
         return;
 
@@ -853,7 +853,7 @@ on_sys_exit_enter_common(
         return;
     }
 
-    OsiProc *proc = get_current_process(cpu);
+    OsiProc *proc = get_current_process();
     if (!proc) {
         free_osithread(pThread);
         return;
@@ -938,11 +938,11 @@ cb_pending_procname_after_block_exec(
 
     disable_callback(plugin.cb_pend_procname);
 
-    CPUState *cpu = get_cpu();
-    OsiProc *proc = get_current_process(cpu);
+    OsiProc *proc = get_current_process();
     if (!proc)
         return;
 
+    CPUState *cpu = get_cpu();
     on_start_thread_or_proc(
         cpu,
         ASID_CHANGE,

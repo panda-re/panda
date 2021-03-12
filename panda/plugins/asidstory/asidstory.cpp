@@ -656,11 +656,11 @@ void asidstory_before_block_exec(TranslationBlock *tb) {
     }
 
     // all this is about figuring out if and when we know the current process
-    CPUState *env = get_cpu();
+    CPUState *env = get_cpu(); // needed for ppp and get_current_thread
     switch (process_mode) {
 
     case Process_known: {
-        OsiProc *current_proc = get_current_process(env);
+        OsiProc *current_proc = get_current_process();
         if (check_proc(current_proc)) {
             if (0 != strcmp(current_proc->name, first_good_proc->name)) {
                 // process name changed -- execve?
@@ -687,7 +687,7 @@ void asidstory_before_block_exec(TranslationBlock *tb) {
     }
     case Process_unknown: {
         if (debug) printf("before_bb: process_mode unknown\n");
-        OsiProc *current_proc = get_current_process(env);
+        OsiProc *current_proc = get_current_process();
         if (check_proc(current_proc)) {
             // first good proc
             first_good_proc = copy_osiproc(current_proc, first_good_proc);
@@ -704,7 +704,7 @@ void asidstory_before_block_exec(TranslationBlock *tb) {
         break;
     }
     case Process_suspicious: {
-        OsiProc *current_proc = get_current_process(env);
+        OsiProc *current_proc = get_current_process();
         if (check_proc(current_proc) && (process_same(current_proc, first_good_proc))) {
             // proc good and also stable
             process_counter--;

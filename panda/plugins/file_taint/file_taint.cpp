@@ -14,6 +14,7 @@ PANDAENDCOMMENT */
 
 #include "taint2/taint2.h"
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 #include "syscalls2/syscalls_ext_typedefs.h"
 #include "syscalls2/syscalls2_info.h"
@@ -103,8 +104,9 @@ void read_enter(const std::string &filename, uint64_t file_id,
     // Construct the read key and record the associated start position of the
     // read.
     ReadKey key;
-    OsiProc *proc = get_current_process(first_cpu);
-    OsiThread *thr = get_current_thread(first_cpu);
+    OsiProc *proc = get_current_process();
+    CPUState *cpu = get_cpu(); // TODO
+    OsiThread *thr = get_current_thread(cpu);
     key.process_id = proc ? proc->pid : 0;
     key.thread_id = thr->tid;
     key.file_id = file_id;
@@ -126,8 +128,9 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
     // Construct our read key (a tuple of PID, TID, and file ID (handle or
     // descriptor).
     ReadKey key;
-    std::unique_ptr<OsiProc, decltype(free_osiproc)*> proc { get_current_process(first_cpu), free_osiproc };
-    std::unique_ptr<OsiThread, decltype(free_osithread)*> thr { get_current_thread(first_cpu), free_osithread };
+    CPUState *cpu = get_cpu(); // TODO
+    std::unique_ptr<OsiProc, decltype(free_osiproc)*> proc { get_current_process(), free_osiproc };
+    std::unique_ptr<OsiThread, decltype(free_osithread)*> thr { get_current_thread(cpu), free_osithread };
     key.process_id = proc ? proc->pid : 0;
     key.thread_id = thr->tid;
     key.file_id = file_id;
@@ -266,7 +269,7 @@ void windows_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
 // normalized read enter.
 void linux_read_enter(CPUState *cpu, uint32_t fd)
 {
-    OsiProc *proc = get_current_process(cpu);
+    OsiProc *proc = get_current_process();
     // The filename in Linux should always be absolute.
     char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
     if (filename != NULL) {
@@ -297,7 +300,7 @@ void linux_read_enter_64(CPUState *cpu, target_ulong pc, uint32_t fd,
 // normalized read enter.
 void linux_pread_enter(CPUState *cpu, uint32_t fd, uint64_t pos)
 {
-    OsiProc *proc = get_current_process(cpu);
+    OsiProc *proc = get_current_process();
     // The filename in Linux should always be absolute.
     char *filename = osi_linux_fd_to_filename(cpu, proc, fd);
     if (filename != NULL) {

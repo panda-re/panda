@@ -175,7 +175,7 @@ void sig_mitm(CPUState* cpu, target_ulong pc, int32_t pid, int32_t sig) {
     }
 
     // Logging
-    OsiProc* curr_proc = get_current_process(cpu);
+    OsiProc* curr_proc = get_current_process();
     sig_event_t sig_event = {
         sig,
         suppressed,

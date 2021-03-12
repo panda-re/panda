@@ -391,7 +391,7 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
     uint8_t buf[MAX_STRLEN];
 
     // need to have current proc / thread
-    current = get_current_process(cpu);
+    current = get_current_process();
     if (current == NULL || current->pid == 0)
         return;
 

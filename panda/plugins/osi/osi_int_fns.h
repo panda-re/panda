@@ -23,7 +23,7 @@ GArray *get_mappings(CPUState *cpu, OsiProc *p);
 GArray *get_processes(CPUState *cpu);
 
 // gets the currently running process
-OsiProc *get_current_process(CPUState *cpu);
+OsiProc *get_current_process(void);
 
 OsiModule* get_one_module(GArray *osimodules, unsigned int idx);
 
