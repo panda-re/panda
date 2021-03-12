@@ -33,8 +33,7 @@ def my_runcmd():
 def generate_insns(env, tb):
     # Disassemble each basic block and store in insn_cache
     if tb.pc in insn_cache: return
-
-    code_buf = ffi.new("char[]", tb.size)
+    
     code = panda.virtual_memory_read(env, tb.pc, tb.size)
 
     insn_cache[tb.pc] = ""
