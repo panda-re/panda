@@ -1752,7 +1752,7 @@ std::string libc_name;
 void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, target_ulong base_addr, target_ulong size) {
     printf ("on_library_load guest_lib_name=%s\n", guest_lib_name);
     if (!correct_asid()) {
-        printf ("current_asid=%x is not monitored\n", panda_current_asid(cpu));
+        printf ("current_asid=%x is not monitored\n", panda_current_asid2());
         return;
     }
     active_libs.push_back(Lib(guest_lib_name, base_addr, base_addr + size));
@@ -1807,8 +1807,9 @@ void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, targe
 int mod_check_count = 0;
 bool main_exec_initialized = false;
 #define MOD_CHECK_FREQ 1000
-bool ensure_main_exec_initialized(CPUState *cpu) {
+bool ensure_main_exec_initialized(void) {
     //if (!correct_asid()) return;
+    CPUState *cpu = get_cpu();
     OsiProc *p = get_current_process(cpu);
     GArray *libs = NULL;
     libs = get_mappings(cpu, p);
@@ -2316,7 +2317,7 @@ void handle_asid_change(CPUState *cpu, target_ulong asid, OsiProc *p) {
         printf ("monitoring asid %x\n", current_asid);
     }
     if (correct_asid() && !main_exec_initialized){
-        main_exec_initialized = ensure_main_exec_initialized(cpu);
+        main_exec_initialized = ensure_main_exec_initialized();
     }
     //free_osiproc(p);
 
