@@ -635,12 +635,11 @@ void asidstory_before_block_exec(TranslationBlock *tb) {
         instr_count += tb->icount; // num instr in this block
     }
 
-    CPUState *env = get_cpu();
-    if (panda_in_kernel(env))
+    if (panda_in_kernel2())
         kernel_count ++;
     else
         user_count ++;
-    asid_count[panda_current_asid(env)] ++;
+    asid_count[panda_current_asid2()] ++;
 
     // NB: we only know max instr *after* replay has started which is why this is here
     if (rr_in_replay()) {
@@ -657,6 +656,7 @@ void asidstory_before_block_exec(TranslationBlock *tb) {
     }
 
     // all this is about figuring out if and when we know the current process
+    CPUState *env = get_cpu();
     switch (process_mode) {
 
     case Process_known: {
