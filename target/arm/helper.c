@@ -2588,7 +2588,7 @@ static void vmsa_ttbr_write(CPUARMState *env, const ARMCPRegInfo *ri,
         tlb_flush(CPU(cpu));
     }
 	// ret val !=0 means *dont* allow allow to change
-	if (0 == (panda_callbacks_asid_changed(ENV_GET_CPU(env), current_value, value))){
+	if (0 == (panda_callbacks_asid_changed(current_value, value))){
 		raw_write(env, ri, value);
 	}
 }
@@ -2601,7 +2601,7 @@ static void vttbr_write(CPUARMState *env, const ARMCPRegInfo *ri,
 	uint64_t current_value = raw_read(env,ri);
 
 	// ret val !=0 means *dont* allow allow to change
-	if (0 == (panda_callbacks_asid_changed(ENV_GET_CPU(env), current_value, value))){
+	if (0 == (panda_callbacks_asid_changed(current_value, value))){
     	/* Accesses to VTTBR may change the VMID so we must flush the TLB.  */
     	if (current_value != value) {
     	    tlb_flush_by_mmuidx(cs,

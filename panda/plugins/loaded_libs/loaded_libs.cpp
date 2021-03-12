@@ -3,6 +3,7 @@
 #include <cstdio>
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 extern "C" {
 
@@ -24,13 +25,17 @@ using namespace std;
 typedef target_ulong Asid;
 map<Asid, vector<vector<OsiModule>>> asid_module_list; 
 
-//bool asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd);
+//bool asid_changed(target_ulong old_pgd, target_ulong new_pgd);
 
 const char* program_name; 
 
 
 
-void get_libs(CPUState *env) {
+void get_libs() {
+    //TODO: remove env dependency
+    CPUState *env = get_cpu();
+
+
     OsiProc *current =  get_current_process(env); 
     target_ulong asid = panda_current_asid(env); 
 
@@ -61,18 +66,18 @@ void get_libs(CPUState *env) {
 
 
 void asidstory_proc_changed(CPUState *env, target_ulong asid, OsiProc *proc) {
-    get_libs(env);
+    get_libs();
 }
 
-bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
-    get_libs(env);
+bool asid_changed(target_ulong old_asid, target_ulong new_asid) {
+    get_libs();
     return false; // allow OS to change ASID
 }
 
 void before_block(CPUState *env, TranslationBlock *tb) {
     // check up on module list ever 50 bb
     if (((float)(random())) / RAND_MAX < 0.02) 
-        get_libs(env);
+        get_libs();
 }
 
 

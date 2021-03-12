@@ -542,7 +542,7 @@ void save_proc_range(uint64_t instr_end) {
 // block until we succeed in determining current proc.
 // also, if proc has changed, we record the fact that a process was seen to be running
 // from now back to last asid change
-bool asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+bool asidstory_asid_changed(target_ulong old_asid, target_ulong new_asid) {
 
     // some fool trying to use asidstory for boot?
     if (new_asid == 0) return false;

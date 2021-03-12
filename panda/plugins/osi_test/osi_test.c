@@ -21,17 +21,21 @@ PANDAENDCOMMENT */
 #define OSI_TEST_ON_ASID_CHANGED
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
-bool asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd);
+bool asid_changed(target_ulong old_pgd, target_ulong new_pgd);
 void before_block_exec(CPUState *cpu, TranslationBlock *tb);
 void after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode);
 
 void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
+    if  (cpu == NULL) {
+      cpu = get_cpu(); // TODO
+    }
     OsiProc *current = get_current_process(cpu);
     if(current) {
         printf("Current process: %s PID:" TARGET_PID_FMT " PPID:" TARGET_PID_FMT "\n", current->pid > 0 ? current->name : "N/A", current->pid, current->ppid);
@@ -64,6 +68,9 @@ void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
 }
 
 void after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
+    if (cpu == NULL) {
+        cpu = get_cpu(); // TODO
+    }
     OsiProc *current = get_current_process(cpu);
     GArray *ms = get_mappings(cpu, current);
     if (ms == NULL) {
@@ -103,10 +110,10 @@ void after_block_exec(CPUState *cpu, TranslationBlock *tb, uint8_t exitCode) {
     return;
 }
 
-bool asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd) {
+bool asid_changed(target_ulong old_pgd, target_ulong new_pgd) {
     // tb argument is not used by before_block_exec()
-    before_block_exec(cpu, NULL);
-    after_block_exec(cpu, NULL, TB_EXIT_IDX0);
+    before_block_exec(NULL, NULL);
+    after_block_exec(NULL, NULL, TB_EXIT_IDX0);
     return false;
 }
 

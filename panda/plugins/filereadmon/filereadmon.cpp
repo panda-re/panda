@@ -159,7 +159,7 @@ void my_NtCreateFile_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
 /*
   called whenever asid changes
 */
-bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+bool asid_changed(target_ulong old_asid, target_ulong new_asid) {
     // XXX I wonder why this is in here?
     if (new_asid < 10) return false;
 

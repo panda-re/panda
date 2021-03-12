@@ -124,7 +124,7 @@ bool proc_changed = false;
 //////// end effects plugin globals
 
 // asid changed -- start looking for valid proc info
-int asid_changed(CPUState *cpu, target_ulong old_asid, target_ulong new_asid) {
+int asid_changed(target_ulong old_asid, target_ulong new_asid) {
     if (current_proc) {
         free_osiproc(current_proc);
         current_proc = NULL;

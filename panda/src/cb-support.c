@@ -130,7 +130,7 @@ MAKE_CALLBACK(void, TOP_LOOP, top_loop,
 // Returns true if any registered + enabled callback returns nonzero.
 // If so, it doesn't let the asid change
 MAKE_CALLBACK(bool, ASID_CHANGED, asid_changed,
-                    CPUState*, env, target_ulong, old_asid,
+                    target_ulong, old_asid,
                     target_ulong, new_asid);
 
 

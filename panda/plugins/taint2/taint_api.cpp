@@ -65,7 +65,7 @@ target_ulong debug_asid = 0;
 // Implements taint2:debug plugin arg. Turns on -d llvm_ir,taint_ops,in_asm,exec
 // for that specific asid.
 extern "C"
-int asid_changed_callback(CPUState *env, target_ulong oldval, target_ulong newval) {
+int asid_changed_callback(target_ulong oldval, target_ulong newval) {
     if (debug_asid) {
         if (newval == debug_asid) {
             qemu_loglevel |= CPU_LOG_TAINT_OPS | CPU_LOG_LLVM_IR | CPU_LOG_TB_IN_ASM | CPU_LOG_EXEC;

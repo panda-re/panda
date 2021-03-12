@@ -481,7 +481,7 @@ void btc(CPUState *env, TranslationBlock *tb){
     }
 }
 
-bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+bool asid_changed(target_ulong old_asid, target_ulong new_asid) {
     //panda_please_flush_tb = true;
     panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
     return false;

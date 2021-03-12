@@ -82,7 +82,7 @@ void update_asid_rr_sub_factor(target_ulong old_asid, InstrRange rri) {
   update info about what instruction intervals belong to each asid
   which is, in turn, used to be able to know instruction count by asid
 */
-bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+bool asid_changed(target_ulong old_asid, target_ulong new_asid) {
     // XXX I wonder why this is in here?
     if (new_asid < 10) return false;
     Instr instr = rr_get_guest_instr_count();

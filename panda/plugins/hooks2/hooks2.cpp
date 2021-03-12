@@ -952,7 +952,6 @@ cb_pending_procname_after_block_exec(
 
 static bool
 cb_asid_changed(
-    CPUState *env,
     target_ulong old_asid,
     target_ulong new_asid)
 {

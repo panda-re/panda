@@ -1793,7 +1793,7 @@ void helper_mtc0_entryhi(CPUMIPSState *env, target_ulong arg1)
 
     if ((env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask) != (val & env->CP0_EntryHi_ASID_mask)) {
       // Actually an asid change, trigger CB
-      if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi, val)){
+      if (!panda_callbacks_asid_changed(env->CP0_EntryHi, val)){
           env->CP0_EntryHi = val;
       }
     }else{
@@ -1819,7 +1819,7 @@ void helper_mttc0_entryhi(CPUMIPSState *env, target_ulong arg1)
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
     if ((env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask) != (arg1 & env->CP0_EntryHi_ASID_mask)) {
-      if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi, arg1)){
+      if (!panda_callbacks_asid_changed(env->CP0_EntryHi, arg1)){
           other->CP0_EntryHi = arg1;
       }
       // if plugin returns false could there be other (non-asid) changes we need to apply?
@@ -2591,7 +2591,7 @@ void r4k_helper_tlbr(CPUMIPSState *env)
 
     if (tlb->EHINV) {
         
-        if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi, 1 << CP0EnHi_EHINV)){
+        if (!panda_callbacks_asid_changed(env->CP0_EntryHi, 1 << CP0EnHi_EHINV)){
             env->CP0_EntryHi = 1 << CP0EnHi_EHINV;
         }
         env->CP0_PageMask = 0;
@@ -2599,7 +2599,7 @@ void r4k_helper_tlbr(CPUMIPSState *env)
         env->CP0_EntryLo1 = 0;
     } else {
 
-        if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi,tlb->VPN | tlb->ASID)){
+        if (!panda_callbacks_asid_changed(env->CP0_EntryHi,tlb->VPN | tlb->ASID)){
             env->CP0_EntryHi = tlb->VPN | tlb->ASID;
         }
         env->CP0_PageMask = tlb->PageMask;

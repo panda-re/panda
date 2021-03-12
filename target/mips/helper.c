@@ -407,7 +407,7 @@ static void raise_mmu_exception(CPUMIPSState *env, target_ulong address,
 
     if ((env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask) != (val & env->CP0_EntryHi_ASID_mask)) {
       // it's actually changing the asid, trigger out CB and let plugins reject the change
-      if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask, val & env->CP0_EntryHi_ASID_mask)){
+      if (!panda_callbacks_asid_changed(env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask, val & env->CP0_EntryHi_ASID_mask)){
           env->CP0_EntryHi = val;
       }
     }else {

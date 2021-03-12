@@ -647,7 +647,7 @@ typedef union panda_cb {
         This should break plugins which rely on it to detect context
         switches in any other architecture.
     */
-    bool (*asid_changed)(CPUState *env, target_ptr_t oldval, target_ptr_t newval);
+    bool (*asid_changed)(target_ptr_t oldval, target_ptr_t newval);
 
     /* Callback ID:     PANDA_CB_REPLAY_HD_TRANSFER,
 

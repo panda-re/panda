@@ -559,10 +559,11 @@ unsigned long long  osi_linux_fd_to_pos(CPUState *env, OsiProc *p, int fd) {
  * respective introspection functions. For testing the functions via
  * their callbacks, use the osi_test plugin.
  */
-int osi_linux_test(CPUState *env, target_ulong oldval, target_ulong newval) {
+int osi_linux_test(target_ulong oldval, target_ulong newval) {
     static uint32_t asid_change_count = 0;
     GArray *ps = NULL;
 
+    CPUState *env = get_cpu(); // TODO remove
     on_get_processes(env, &ps);
     assert(ps != NULL && ps->len > 0 && "no processes retrieved");
 
