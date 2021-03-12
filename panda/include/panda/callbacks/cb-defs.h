@@ -862,7 +862,7 @@ typedef union panda_cb {
         access to the RAM, CPU object, etc. E.g. for the taint2 plugin,
         this is the appropriate place to call taint2_enable_taint().
     */
-    void (*after_machine_init)(CPUState *env);
+    void (*after_machine_init)(void);
 
     /* Callback ID:     PANDA_CB_AFTER_LOADVM
 
@@ -877,7 +877,7 @@ typedef union panda_cb {
         none
 
     */
-    void (*after_loadvm)(CPUState *env);
+    void (*after_loadvm)(void);
 
     /* Callback ID:     PANDA_CB_TOP_LOOP
 

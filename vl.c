@@ -153,7 +153,7 @@ extern bool panda_load_plugin(const char *, const char *);
 extern void panda_unload_plugins(void);
 extern char *panda_plugin_path(const char *name);
 extern void panda_set_os_name(char *os_name);
-extern void panda_callbacks_after_machine_init(CPUState *);
+extern void panda_callbacks_after_machine_init(void);
 extern void panda_callbacks_pre_shutdown(void);
 extern void panda_callbacks_main_loop_wait(void);
 extern void pandalog_cc_init_write(const char * fname);
@@ -5054,7 +5054,7 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
     os_setup_post();
 
     // Call PANDA post-machine init hook
-    panda_callbacks_after_machine_init(first_cpu);
+    panda_callbacks_after_machine_init();
 
     if (pmm == PANDA_INIT) return 0;
 

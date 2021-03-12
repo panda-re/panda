@@ -22,7 +22,7 @@ uint64_t checkpoint_instr_size;
 bool init_plugin(void *);
 void uninit_plugin(void *);
 bool before_block_exec(TranslationBlock *tb);
-void after_init(CPUState *env);
+void after_init(void);
 
 bool before_block_exec(TranslationBlock *tb) {
     static int progress = 0;
@@ -50,7 +50,7 @@ bool before_block_exec(TranslationBlock *tb) {
     return false;
 }
 
-void after_init(CPUState* env) {
+void after_init(void) {
     panda_arg_list *args = panda_get_args("checkpoint");
 
     const char* avail_space = panda_parse_string_opt(args, "space", "6G", "Available disk/RAM space for storing checkpoints");

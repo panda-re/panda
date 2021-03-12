@@ -2068,7 +2068,7 @@ int qemu_loadvm_state(QEMUFile *f)
     }
 
     cpu_synchronize_all_post_init();
-    panda_callbacks_after_loadvm(first_cpu);
+    panda_callbacks_after_loadvm();
 
 
     return ret;

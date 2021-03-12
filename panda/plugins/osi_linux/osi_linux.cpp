@@ -620,7 +620,7 @@ int osi_linux_test(target_ulong oldval, target_ulong newval) {
  * Currently the only per-cpu offset we use in osi_linux is
  * ki.task.per_cpu_offset_0_addr.
  */
-void init_per_cpu_offsets(CPUState *cpu) {
+void init_per_cpu_offsets(void) {
     // old kernel - no per-cpu offsets to update
     if (PROFILE_KVER_LE(ki, 2, 4, 254)) {
         return;
@@ -635,6 +635,7 @@ void init_per_cpu_offsets(CPUState *cpu) {
 
     // skip update because of failure to read from per_cpu_offsets_addr
     target_ptr_t per_cpu_offset_0_addr;
+    CPUState *cpu = get_cpu();
     auto r = struct_get(cpu, &per_cpu_offset_0_addr, ki.task.per_cpu_offsets_addr,
                         0*sizeof(target_ptr_t));
     if (r != struct_get_ret_t::SUCCESS) {

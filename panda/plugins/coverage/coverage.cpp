@@ -16,6 +16,7 @@ PANDAENDCOMMENT */
 
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 // OSI
 #include "osi/osi_types.h"
@@ -75,8 +76,9 @@ static void log_message(const char *fmt, ...)
     va_end(arglist);
 }
 
-static void after_loadvm(CPUState *cpu)
+static void after_loadvm(void)
 {
+    CPUState *cpu = get_cpu();
     notify_task_change_observers(cpu);
 }
 
