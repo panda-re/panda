@@ -21,6 +21,7 @@ PANDAENDCOMMENT */
 #include <set>
 #include <algorithm>
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 #include <unordered_map>
@@ -89,7 +90,7 @@ void hook_symbol_resolution(struct hook_symbol_resolve *h){
     hooks.push_back(*h);
 }
 
-void check_symbol_for_hook(CPUState* cpu, struct symbol s, char* procname, OsiModule *m){
+void check_symbol_for_hook(struct symbol s, char* procname, OsiModule *m){
     for (struct hook_symbol_resolve &hook_candidate : hooks){
         if (hook_candidate.enabled){
             if (hook_candidate.procname[0] == 0 || strncmp(procname, hook_candidate.procname, MAX_PATH_LEN -1) == 0){
@@ -98,7 +99,7 @@ void check_symbol_for_hook(CPUState* cpu, struct symbol s, char* procname, OsiMo
                 if (hook_candidate.name[0] == 0 || strncmp(s.name, hook_candidate.name, MAX_PATH_LEN -1) == 0){
                     //printf("name matches\n");
                     if (hook_candidate.section[0] == 0 || strstr(s.section, hook_candidate.section) != NULL){
-                        (*(hook_candidate.cb))(cpu, &hook_candidate, s, m);
+                        (*(hook_candidate.cb))(&hook_candidate, s, m);
                     }
                 }
             }
@@ -106,8 +107,8 @@ void check_symbol_for_hook(CPUState* cpu, struct symbol s, char* procname, OsiMo
     }
 }
 
-struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_name, char* symbol){
-    update_symbols_in_space(cpu);
+struct symbol resolve_symbol(target_ulong asid, char* section_name, char* symbol){
+    update_symbols_in_space();
 
     for (const auto& section : symbols[asid]){
         string n = section.first;
@@ -139,8 +140,8 @@ struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_nam
     return blank;
 }
 
-struct symbol get_best_matching_symbol(CPUState* cpu, target_ulong address, target_ulong asid){
-    update_symbols_in_space(cpu);
+struct symbol get_best_matching_symbol(target_ulong address, target_ulong asid){
+    update_symbols_in_space();
     struct symbol address_container;
     address_container.address = address;
     struct symbol best_candidate;
@@ -441,7 +442,7 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
                     s.address = m->base + a->st_value;
                     //printf("found symbol %s %s 0x%llx\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address);
                     symbols[asid][name].insert(s);
-                    check_symbol_for_hook(cpu, s, current->name, m);
+                    check_symbol_for_hook(s, current->name, m);
                 }
             }
         }
@@ -451,10 +452,11 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
 }
 
 
-void update_symbols_in_space(CPUState* cpu){
-    if (panda_in_kernel(cpu)){
+void update_symbols_in_space(void){
+    if (panda_in_kernel2()){
         return;
     }
+    CPUState *cpu = get_cpu();
     OsiProc *current = get_current_process(cpu);
     GArray *ms = get_mappings(cpu, current);
     if (ms == NULL) {
@@ -474,9 +476,9 @@ panda_cb pcb_btc;
 panda_cb pcb_btc_execve;
 
 
-void btc(CPUState *env, TranslationBlock *tb){
-    if (!panda_in_kernel(env)){
-        update_symbols_in_space(env);
+void btc(TranslationBlock *tb){
+    if (!panda_in_kernel2()){
+        update_symbols_in_space();
         panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
     }
 }
@@ -487,20 +489,21 @@ bool asid_changed(target_ulong old_asid, target_ulong new_asid) {
     return false;
 }
 
-void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
+void hook_program_start(TranslationBlock* tb, struct hook* h){
     //printf("got to program start 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count());
-    update_symbols_in_space(env);
+    update_symbols_in_space();
     h->enabled = false;
 }
 
-void btc_execve(CPUState *env, TranslationBlock *tb){
+void btc_execve(TranslationBlock *tb){
     if (unlikely(!panda_is_callback_enabled(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve))) {
         // Callback still runs occasionally after disabled
         return;
     }
-    if (unlikely(!panda_in_kernel(env))){
-        target_ulong sp = panda_current_sp(env);
+    if (unlikely(!panda_in_kernel2())){
+        target_ulong sp = panda_current_sp2();
         target_ulong argc;
+        CPUState *env = get_cpu();
         if (panda_virtual_memory_read(env, sp, (uint8_t*) &argc, sizeof(argc))== MEMTX_OK){
             // we read argc, but just to check the stack is readable.
             // don't use it. just iterate and check for nulls.

@@ -30,6 +30,7 @@ PANDAENDCOMMENT */
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/plog.h"
 
 #include "syscalls2/syscalls_ext_typedefs.h"
@@ -737,11 +738,12 @@ void fill_osimod(CPUState *cpu, OsiModule *m, PTR mod, bool ignore_basename) {
     assert(m->name);
 }
 
-static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
+static void before_tcg_codegen(TranslationBlock *tb)
 {
     if (0x0 == task_change_hook_addr && 0 == strcmp(panda_os_variant, "7")) {
         // On Windows 7, we have to compute the task change hook address
         // relative to the ntoskrnl.exe base (because ASLR).
+        CPUState *cpu = get_cpu();
         GArray *mods = get_modules(cpu);
         for (int i = 0; i < mods->len; i++) {
             OsiModule *mod = &g_array_index(mods, OsiModule, i);
@@ -757,6 +759,7 @@ static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
 
     if ((tb->pc <= task_change_hook_addr) && (task_change_hook_addr < tb->pc + tb->size)) {
         TCGOp *op = find_guest_insn_by_addr(task_change_hook_addr);
+        CPUState *cpu = get_cpu();
         if (op) {
             insert_call_1p(&op, (void(*)(void*))notify_task_change, cpu);
         }

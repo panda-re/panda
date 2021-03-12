@@ -136,7 +136,7 @@ typedef union panda_cb {
        Return value:
         None
     */
-    void (*before_tcg_codegen)(CPUState *env, TranslationBlock *tb);
+    void (*before_tcg_codegen)(TranslationBlock *tb);
 
     /* Callback ID: PANDA_CB_BEFORE_BLOCK_EXEC
 

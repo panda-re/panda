@@ -700,10 +700,11 @@ static void exec_check(CPUState *cpu)
     }
 }
 
-static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
+static void before_tcg_codegen_callback(TranslationBlock *tb)
 {
     TCGOp *op = find_first_guest_insn();
     assert(NULL != op);
+    CPUState * cpu = get_cpu();
     insert_call(&op, exec_check, cpu);
 
     if (0x0 != ki.task.switch_task_hook_addr && tb->pc == ki.task.switch_task_hook_addr) {

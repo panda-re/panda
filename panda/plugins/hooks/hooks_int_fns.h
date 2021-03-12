@@ -21,7 +21,7 @@ typedef bool (*hook_func_t)(CPUState *, TranslationBlock *, struct hook* h);
 typedef bool (*dynamic_symbol_hook_func_t)(CPUState *, TranslationBlock *, struct hook* h);
 
 typedef union hooks_panda_cb {
-    void (*before_tcg_codegen)(CPUState *env, TranslationBlock *tb, struct hook*);
+    void (*before_tcg_codegen)(TranslationBlock *tb, struct hook*);
     void (*before_block_translate)(target_ptr_t pc, struct hook*);
     void (*after_block_translate)(TranslationBlock *tb, struct hook*);
     bool (*before_block_exec_invalidate_opt)(TranslationBlock *tb, struct hook*);

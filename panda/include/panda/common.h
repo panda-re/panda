@@ -383,6 +383,10 @@ static inline target_ulong panda_current_sp(const CPUState *cpu) {
 #endif
 }
 
+static inline target_ulong panda_current_sp2(void) {
+    return panda_current_sp(first_cpu);
+}
+
 /**
  * @brief Returns the return value of the guest.
  * The function is only meant to provide a platform-independent

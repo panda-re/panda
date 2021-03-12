@@ -134,4 +134,4 @@ bool panda_callbacks_guest_hypercall(CPUState *env);
 void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 
 
-void panda_callbacks_before_tcg_codegen(CPUState *env, TranslationBlock *tb);
+void panda_callbacks_before_tcg_codegen(TranslationBlock *tb);

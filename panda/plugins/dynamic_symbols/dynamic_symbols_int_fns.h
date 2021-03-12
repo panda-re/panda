@@ -16,7 +16,7 @@ struct symbol {
 
 struct hook_symbol_resolve;
 
-typedef void (*dynamic_hook_func_t)(CPUState *, struct hook_symbol_resolve *, struct symbol, OsiModule*);
+typedef void (*dynamic_hook_func_t)(struct hook_symbol_resolve *, struct symbol, OsiModule*);
 
 struct hook_symbol_resolve{
     char name[MAX_PATH_LEN];
@@ -27,14 +27,14 @@ struct hook_symbol_resolve{
     int id;
 };
 
-struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_name, char* symbol);
+struct symbol resolve_symbol(target_ulong asid, char* section_name, char* symbol);
 void hook_symbol_resolution(struct hook_symbol_resolve *h);
-struct symbol get_best_matching_symbol(CPUState* cpu, target_ulong address, target_ulong asid);
+struct symbol get_best_matching_symbol(target_ulong address, target_ulong asid);
 
 
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
-void update_symbols_in_space(CPUState* cpu);
+void update_symbols_in_space(void);
 
 struct dt_hash_section{
     uint32_t nchains;

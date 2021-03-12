@@ -17,6 +17,7 @@ PANDAENDCOMMENT */
 
 #include "panda/plugin.h"
 #include "panda/plugin_api.h"
+#include "panda/plugin_api.h"
 
 // OSI
 #include "osi/osi_types.h"
@@ -82,9 +83,10 @@ static void after_loadvm(void)
     notify_task_change_observers(cpu);
 }
 
-static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
+static void before_tcg_codegen(TranslationBlock *tb)
 {
     // Determine if we should instrument.
+    CPUState * cpu = get_cpu();
     if (inst_dels.empty() || !predicate->eval(cpu, tb)) {
         return;
     }

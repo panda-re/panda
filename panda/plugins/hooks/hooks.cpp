@@ -101,13 +101,13 @@ void disable_hooking() {
 
 vector<pair<hooks_panda_cb, panda_cb_type>> symbols_to_handle;
 
-void handle_hook_return (CPUState *cpu, struct hook_symbol_resolve *sh, struct symbol s, OsiModule* m){
+void handle_hook_return (struct hook_symbol_resolve *sh, struct symbol s, OsiModule* m){
     int id = sh->id;
     pair<hooks_panda_cb,panda_cb_type> resolved = symbols_to_handle[id];
     //printf("handle_hook_return @ 0x%llx for \"%s\" in \"%s\" @ 0x%llx ASID: 0x%llx offset: 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count(), s.name, s.section, (long long unsigned int) s.address, (long long unsigned int) panda_current_asid(cpu), (long long unsigned int) s.address - m->base);
     struct hook new_hook;
     new_hook.addr = s.address;
-    new_hook.asid = panda_current_asid(cpu);
+    new_hook.asid = panda_current_asid2();
     new_hook.type = resolved.second; 
     new_hook.km = MODE_USER_ONLY;
     new_hook.cb = resolved.first;
@@ -160,7 +160,8 @@ bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
 
 bool first_tb_chaining = false;
 
-static inline void flush_tb_if_block_in_cache(CPUState* cpu, target_ulong pc){
+static inline void flush_tb_if_block_in_cache(target_ulong pc){
+    CPUState *cpu = get_cpu();
     assert(cpu != (CPUState*)NULL && "Cannot register TCG-based hooks before guest is created. Try this in after_machine_init CB");
     TranslationBlock *tb = cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)];
     if (tb && tb->pc == pc){
@@ -178,7 +179,7 @@ void add_hook(struct hook* h) {
         first_tb_chaining = true;
     }
     if (h->type == PANDA_CB_BEFORE_TCG_CODEGEN){
-        flush_tb_if_block_in_cache(first_cpu, h->addr);
+        flush_tb_if_block_in_cache(h->addr);
     }
     switch (h->type){
         ADD_CALLBACK_TYPE(before_tcg_codegen, BEFORE_TCG_CODEGEN)
@@ -248,14 +249,14 @@ bool cb_ ## NAME ## _callback PASSED_ARGS { \
     return ret; \
 }
     
-void cb_tcg_codegen_middle_filter(CPUState* cpu, TranslationBlock *tb) {
-    HOOK_GENERIC_RET_EXPR(/*printf("calling %llx from %llx with hook %llx guest_pc %llx\n", (long long unsigned int) panda_current_pc(cpu), (long long unsigned int)tb->pc, (long long unsigned int)h->addr, (long long unsigned int)cpu->panda_guest_pc);*/ (*(h->cb.before_tcg_codegen))(cpu, tb, h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, panda_current_pc(cpu) );
+void cb_tcg_codegen_middle_filter(TranslationBlock *tb) {
+    HOOK_GENERIC_RET_EXPR(/*printf("calling %llx from %llx with hook %llx guest_pc %llx\n", (long long unsigned int) panda_current_pc(cpu), (long long unsigned int)tb->pc, (long long unsigned int)h->addr, (long long unsigned int)cpu->panda_guest_pc);*/ (*(h->cb.before_tcg_codegen))(tb, h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, panda_current_pc2() );
 }
 
-void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
-    //target_ulong pc  = panda_current_pc(cpu);
+void cb_before_tcg_codegen_callback (TranslationBlock *tb) {
+    //target_ulong pc  = panda_current_pc2();
     
-    HOOK_GENERIC_RET_EXPR(TCGOp *op = find_guest_insn_by_addr(h->addr);insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, tb->pc)
+    HOOK_GENERIC_RET_EXPR(TCGOp *op = find_guest_insn_by_addr(h->addr);insert_call(&op, cb_tcg_codegen_middle_filter, tb);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, tb->pc)
 }
 
 

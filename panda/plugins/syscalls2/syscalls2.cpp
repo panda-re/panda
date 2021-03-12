@@ -22,6 +22,7 @@ PANDAENDCOMMENT */
 //#define PANDA_LOG_LEVEL PANDA_LOG_DEBUG
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/plugin_plugin.h"
 #include "panda/tcg-utils.h"
 #include "hooks/hooks_int_fns.h"
@@ -930,7 +931,8 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb) {
 }
 
 
-void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
+void before_tcg_codegen(TranslationBlock *tb){
+    CPUState* cpu = get_cpu();
     target_ulong res = doesBlockContainSyscall(cpu,tb);
 #ifdef DEBUG
     if(res == (target_ulong) -1){
