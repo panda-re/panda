@@ -606,7 +606,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*cpu_restore_state)(CPUState *env, TranslationBlock *tb);
+    void (*cpu_restore_state)(TranslationBlock *tb);
 
     /* Callback ID: PANDA_CB_BEFORE_LOADVM
 

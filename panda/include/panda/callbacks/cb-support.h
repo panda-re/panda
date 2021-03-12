@@ -133,7 +133,7 @@ bool panda_callbacks_asid_changed(target_ptr_t oldval, target_ptr_t newval);
 bool panda_callbacks_guest_hypercall(void);
 
 /* invoked from translate-all.c */
-void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb);
+void panda_callbacks_cpu_restore_state(TranslationBlock *tb);
 
 
 void panda_callbacks_before_tcg_codegen(TranslationBlock *tb);

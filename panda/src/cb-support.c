@@ -138,7 +138,7 @@ MAKE_CALLBACK(bool, ASID_CHANGED, asid_changed,
 MAKE_CALLBACK(bool, GUEST_HYPERCALL, guest_hypercall);
 
 MAKE_CALLBACK(void, CPU_RESTORE_STATE, cpu_restore_state,
-                    CPUState*, env, TranslationBlock*, tb);
+                    TranslationBlock*, tb);
 
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_SERIAL_RECEIVE, replay_serial_receive,
                     target_ptr_t, fifo_addr,
