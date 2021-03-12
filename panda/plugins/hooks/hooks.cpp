@@ -259,7 +259,7 @@ void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
 }
 
 
-MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, (CPUState *cpu, target_ulong pc), panda_current_pc(cpu), cpu, pc, h)
+MAKE_HOOK_VOID(BEFORE_BLOCK_TRANSLATE, before_block_translate, (target_ulong pc), panda_current_pc2(), pc, h)
 
 MAKE_HOOK_VOID(AFTER_BLOCK_TRANSLATE, after_block_translate, (CPUState *cpu, TranslationBlock *tb), tb->pc, cpu, tb, h)
 

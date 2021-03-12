@@ -422,7 +422,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
              */
             tb = tb_htable_lookup(cpu, pc, cs_base, flags);
             if (!tb) {
-                panda_callbacks_before_block_translate(cpu, pc);
+                panda_callbacks_before_block_translate(pc);
                 /* if no translated code available, then translate it now */
                 tb = tb_gen_code(cpu, pc, cs_base, flags, 0);
                 panda_callbacks_after_block_translate(cpu, tb);

@@ -186,7 +186,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*before_block_translate)(CPUState *env, target_ptr_t pc);
+    void (*before_block_translate)(target_ptr_t pc);
 
     /* Callback ID: PANDA_CB_AFTER_BLOCK_TRANSLATE
 

@@ -164,7 +164,7 @@ uint64_t get_number(string line, string key, bool hex) {
     return result;
 }
 
-void enable_taint(CPUState *env, target_ulong pc) {
+void enable_taint(target_ulong pc) {
     if (!taint_on 
         && rr_get_guest_instr_count() > first_instruction) {
         cerr << "tainted_mmio plugin is enabling taint\n";
