@@ -285,7 +285,7 @@ typedef union panda_cb {
         This is fairly expensive, which is why it's only enabled via
         the PANDA_CB_INSN_TRANSLATE callback.
     */
-    int (*insn_exec)(CPUState *env, target_ptr_t pc);
+    int (*insn_exec)(target_ptr_t pc);
 
     /* Callback ID: PANDA_CB_AFTER_INSN_TRANSLATE
 
@@ -325,7 +325,7 @@ typedef union panda_cb {
        Notes:
         See `insn_exec`. Enabled via the PANDA_CB_AFTER_INSN_TRANSLATE callback.
     */
-    int (*after_insn_exec)(CPUState *env, target_ptr_t pc);
+    int (*after_insn_exec)(target_ptr_t pc);
 
     /* Callback ID: PANDA_CB_VIRT_MEM_BEFORE_READ
 

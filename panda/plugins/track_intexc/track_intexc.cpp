@@ -287,8 +287,8 @@ uint64_t num_irets_resolved = 0;
 
 // this will be called *before* the instruction in question
 // i.e. just before iret since that's the only one we instrument
-int insn_exec_callback(CPUState *cpu, target_ulong pc) {
-
+int insn_exec_callback(target_ulong pc) {
+  CPUState *cpu = get_cpu();
   uint64_t retto;
   
   panda_virtual_memory_read(cpu, ESP, (uint8_t *) &retto, 8);

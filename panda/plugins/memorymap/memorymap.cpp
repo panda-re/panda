@@ -14,6 +14,7 @@
 #include <string>
 
 #include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 const char *UNKNOWN_ITEM = "(unknown)";
 const char *NO_PROCESS = "(no current process)";
@@ -36,7 +37,7 @@ uint64_t maximum_instr_count = 0;
 std::unordered_set<target_ulong> pcs_set;
 
 bool translate_cb(CPUState *cpu, target_ulong pc);
-int before_insn_exec_cb(CPUState *cpu, target_ulong pc);
+int before_insn_exec_cb(target_ulong pc);
 
 // Parse string of delimited instruction count arguments to a set
 void instrs_to_vec(const char *arg_list_str,
@@ -165,7 +166,7 @@ void dump_noprocess_info(const char * in_kernel, target_ulong pc,
     }
 }
 
-int before_insn_exec_cb(CPUState *cpu, target_ulong pc) {
+int before_insn_exec_cb(target_ulong pc) {
     uint64_t cur_instr = rr_get_guest_instr_count();
 
     // only output information if at a desired PC or instruction count - if
@@ -179,6 +180,7 @@ int before_insn_exec_cb(CPUState *cpu, target_ulong pc) {
 
     bool found_lib = false;
 
+    CPUState *cpu = get_cpu();
     OsiProc *current = get_current_process(cpu);
     target_pid_t tid = 0;
     OsiThread *thread = get_current_thread(cpu);

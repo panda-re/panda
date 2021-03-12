@@ -2238,8 +2238,9 @@ bool translate_callback_dwarf(CPUState *cpu, target_ulong pc) {
     */
 }
 
-int exec_callback_dwarf(CPUState *cpu, target_ulong pc) {
+int exec_callback_dwarf(target_ulong pc) {
     inExecutableSource = false;
+    CPUState *cpu = get_cpu();
     if (!correct_asid(cpu)) return 0;
     auto it2 = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
     if (it2 == line_range_list.end() || pc < it2->lowpc)
