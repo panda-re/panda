@@ -22,18 +22,18 @@ PANDAENDCOMMENT */
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void on_replay_net_transfer(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dst_addr, size_t num_bytes);
-void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
+void on_replay_net_transfer(uint32_t type, uint64_t src_addr, uint64_t dst_addr, size_t num_bytes);
+void on_replay_handle_packet(uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
 }
 
-void on_replay_net_transfer(CPUState* env, uint32_t type, uint64_t src_addr,
+void on_replay_net_transfer(uint32_t type, uint64_t src_addr,
                             uint64_t dst_addr, size_t num_bytes) {
     printf("net transfer: src: %" PRIx64 ", dst: %" PRIx64 ", n: %zu\n",
            src_addr, dst_addr, num_bytes);
     return;
 }
 
-void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t size,
+void on_replay_handle_packet(uint8_t *buf, size_t size,
                              uint8_t direction, uint64_t buf_addr_rec) {
     printf("handle packets: buf: %p, size: %zu, direction: %u, "
            "buf_addr_rec: %" PRIx64 "\n", buf, size, direction, buf_addr_rec);

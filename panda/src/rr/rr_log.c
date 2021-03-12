@@ -1139,13 +1139,13 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
             } break;
             case RR_CALL_HD_TRANSFER: {
                 RR_hd_transfer_args hdt = args.variant.hd_transfer_args;
-                panda_callbacks_replay_hd_transfer(first_cpu, hdt.type, hdt.src_addr, hdt.dest_addr, hdt.num_bytes);
+                panda_callbacks_replay_hd_transfer(hdt.type, hdt.src_addr, hdt.dest_addr, hdt.num_bytes);
             } break;
             case RR_CALL_HANDLE_PACKET:
                 {
                     // run all callbacks registered for packet handling
                     RR_handle_packet_args hp = args.variant.handle_packet_args;
-                    panda_callbacks_replay_handle_packet(first_cpu, hp.buf, hp.size, hp.direction, args.buf_addr_rec);
+                    panda_callbacks_replay_handle_packet(hp.buf, hp.size, hp.direction, args.buf_addr_rec);
                 } break;
             case RR_CALL_NET_TRANSFER:
                 {
@@ -1153,23 +1153,23 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                     // card (E1000)
                     RR_net_transfer_args nta =
                          args.variant.net_transfer_args;
-                    panda_callbacks_replay_net_transfer(first_cpu, nta.type, nta.src_addr, nta.dest_addr, nta.num_bytes);
+                    panda_callbacks_replay_net_transfer(nta.type, nta.src_addr, nta.dest_addr, nta.num_bytes);
                 } break;
                 case RR_CALL_SERIAL_RECEIVE: {
                     RR_serial_receive_args recv = args.variant.serial_receive_args;
-                    panda_callbacks_replay_serial_receive(first_cpu, recv.fifo_addr, recv.value);
+                    panda_callbacks_replay_serial_receive(recv.fifo_addr, recv.value);
                 } break;
                 case RR_CALL_SERIAL_READ: {
                     RR_serial_read_args readargs = args.variant.serial_read_args;
-                    panda_callbacks_replay_serial_read(first_cpu, readargs.fifo_addr, readargs.port_addr, readargs.value);
+                    panda_callbacks_replay_serial_read(readargs.fifo_addr, readargs.port_addr, readargs.value);
                 } break;
                 case RR_CALL_SERIAL_SEND: {
                     RR_serial_send_args send = args.variant.serial_send_args;
-                    panda_callbacks_replay_serial_send(first_cpu, send.fifo_addr, send.value);
+                    panda_callbacks_replay_serial_send(send.fifo_addr, send.value);
                 } break;
                 case RR_CALL_SERIAL_WRITE: {
                     RR_serial_write_args write = args.variant.serial_write_args;
-                    panda_callbacks_replay_serial_write(first_cpu, write.fifo_addr, write.port_addr, write.value);
+                    panda_callbacks_replay_serial_write(write.fifo_addr, write.port_addr, write.value);
                 } break;
 
                 default:

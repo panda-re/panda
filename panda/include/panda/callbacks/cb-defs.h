@@ -673,7 +673,7 @@ typedef union panda_cb {
         In replay the transfer doesn't really happen. We are *at* the point at
         which it happened, really.
     */
-    void (*replay_hd_transfer)(CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, size_t num_bytes);
+    void (*replay_hd_transfer)(uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, size_t num_bytes);
 
     /* Callback ID:     PANDA_CB_REPLAY_BEFORE_DMA,
 
@@ -693,7 +693,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*replay_before_dma)(CPUState *env, const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
+    void (*replay_before_dma)(const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
 
     /* Callback ID:     PANDA_CB_REPLAY_AFTER_DMA,
 
@@ -711,7 +711,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*replay_after_dma)(CPUState *env, const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
+    void (*replay_after_dma)(const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
 
     /* Callback ID:   PANDA_CB_REPLAY_HANDLE_PACKET,
 
@@ -745,7 +745,7 @@ typedef union panda_cb {
         real impact is minimal (virtually nobody uses 32bit builds),
         the fix has a very low priority in the bugfix list.
     */
-    void (*replay_handle_packet)(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
+    void (*replay_handle_packet)(uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
 
     /* Callback ID:     PANDA_CB_REPLAY_NET_TRANSFER,
 
@@ -772,7 +772,7 @@ typedef union panda_cb {
         Also, the src_addr and dest_addr may be for either host (ie. a location
         in the emulated network device) or guest, depending upon the type.
     */
-    void (*replay_net_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, size_t num_bytes);
+    void (*replay_net_transfer)(uint32_t type, uint64_t src_addr, uint64_t dest_addr, size_t num_bytes);
 
     /* Callback ID:     PANDA_CB_REPLAY_SERIAL_RECEIVE,
 
@@ -789,7 +789,7 @@ typedef union panda_cb {
        Return value:
         unused
     */
-    void (*replay_serial_receive)(CPUState *env, target_ptr_t fifo_addr, uint8_t value);
+    void (*replay_serial_receive)(target_ptr_t fifo_addr, uint8_t value);
 
     /* Callback ID:     PANDA_CB_REPLAY_SERIAL_READ,
 
@@ -807,7 +807,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*replay_serial_read)(CPUState *env, target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
+    void (*replay_serial_read)(target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
 
     /* Callback ID:     PANDA_CB_REPLAY_SERIAL_SEND,
 
@@ -824,7 +824,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*replay_serial_send)(CPUState *env, target_ptr_t fifo_addr, uint8_t value);
+    void (*replay_serial_send)(target_ptr_t fifo_addr, uint8_t value);
 
     /* Callback ID:     PANDA_CB_REPLAY_SERIAL_WRITE,
 
@@ -841,7 +841,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*replay_serial_write)(CPUState *env, target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
+    void (*replay_serial_write)(target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
 
     /* Callback ID:     PANDA_CB_AFTER_MACHINE_INIT
 

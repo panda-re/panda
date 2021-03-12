@@ -76,7 +76,7 @@ int panda_callbacks_insn_exec(target_ptr_t pc);
 int panda_callbacks_after_insn_exec(target_ptr_t pc);
 int panda_callbacks_monitor(Monitor *mon, const char *cmd);
 int panda_callbacks_before_loadvm(void);
-void panda_callbacks_replay_hd_transfer(CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, size_t num_bytes);
+void panda_callbacks_replay_hd_transfer(uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, size_t num_bytes);
 void panda_callbacks_after_machine_init(CPUState *env);
 void panda_callbacks_after_loadvm(CPUState *env);
 
@@ -109,16 +109,16 @@ void panda_callbacks_hd_read(CPUState *env);
 void panda_callbacks_hd_write(CPUState *env);
 
 /* invoked from exec.c */
-void panda_callbacks_replay_before_dma(CPUState *env, const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
-void panda_callbacks_replay_after_dma(CPUState *env, const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
+void panda_callbacks_replay_before_dma(const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
+void panda_callbacks_replay_after_dma(const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
 
 /* invoked from panda/src/rr/rr_log.c */
-void panda_callbacks_replay_handle_packet(CPUState *env, uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
-void panda_callbacks_replay_net_transfer(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, size_t num_bytes);
-void panda_callbacks_replay_serial_receive(CPUState *env, target_ptr_t fifo_addr, uint8_t value);
-void panda_callbacks_replay_serial_read(CPUState *env, target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
-void panda_callbacks_replay_serial_send(CPUState *env, target_ptr_t fifo_addr, uint8_t value);
-void panda_callbacks_replay_serial_write(CPUState *env, target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
+void panda_callbacks_replay_handle_packet(uint8_t *buf, size_t size, uint8_t direction, uint64_t buf_addr_rec);
+void panda_callbacks_replay_net_transfer(uint32_t type, uint64_t src_addr, uint64_t dest_addr, size_t num_bytes);
+void panda_callbacks_replay_serial_receive(target_ptr_t fifo_addr, uint8_t value);
+void panda_callbacks_replay_serial_read(target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
+void panda_callbacks_replay_serial_send(target_ptr_t fifo_addr, uint8_t value);
+void panda_callbacks_replay_serial_write(target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
 
 /* invoked from panda/target/ARCH/translate.c */
 bool panda_callbacks_insn_translate(CPUState *env, target_ptr_t pc);

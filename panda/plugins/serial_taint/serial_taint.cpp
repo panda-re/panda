@@ -25,7 +25,7 @@ uint32_t input_label;
 bool positional_labels;
 uint32_t pos_current_label = 0;
 
-void serial_receive(CPUState *cpu, target_ptr_t fifo_addr, uint8_t value) {
+void serial_receive(target_ptr_t fifo_addr, uint8_t value) {
     fprintf(stderr, "Applying taint labels to incoming serial port data.\n");
     fprintf(stderr, "  Address in IO Shadow = 0x" TARGET_PTR_FMT "\n", fifo_addr);
     fprintf(stderr, "  Value = 0x%X\n", value);
@@ -41,7 +41,7 @@ void serial_receive(CPUState *cpu, target_ptr_t fifo_addr, uint8_t value) {
     return;
 }
 
-void serial_read(CPUState *cpu, target_ptr_t fifo_addr, uint32_t port_addr,
+void serial_read(target_ptr_t fifo_addr, uint32_t port_addr,
                  uint8_t value) {
     if (!taint2_enabled()) {
         // Taint hasn't yet been enabled, no need to copy taint between EAX
@@ -61,7 +61,7 @@ void serial_read(CPUState *cpu, target_ptr_t fifo_addr, uint32_t port_addr,
     return;
 }
 
-void serial_write(CPUState *cpu, target_ptr_t fifo_addr, uint32_t port_addr,
+void serial_write(target_ptr_t fifo_addr, uint32_t port_addr,
                   uint8_t value) {
     if (!taint2_enabled()) {
         // During a write, if taint hasn't been enabled we don't need to do
@@ -84,7 +84,7 @@ void serial_write(CPUState *cpu, target_ptr_t fifo_addr, uint32_t port_addr,
     return;
 }
 
-void serial_send(CPUState *cpu, target_ptr_t fifo_addr, uint8_t value) {
+void serial_send(target_ptr_t fifo_addr, uint8_t value) {
     if (!taint2_enabled()) {
         // During a send, if taint hasn't been enabled we don't need to do
         // anything.

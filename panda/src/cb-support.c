@@ -19,28 +19,28 @@
 // TODO: macro names should be include return type - bools |= all cb fns, voids don't
 
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_HD_TRANSFER, replay_hd_transfer,
-                    CPUState*, cpu, Hd_transfer_type, type,
+                    Hd_transfer_type, type,
                     target_ptr_t, src_addr, target_ptr_t, dest_addr,
                     size_t, num_bytes)
 
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_HANDLE_PACKET, replay_handle_packet,
-                  CPUState*, cpu, uint8_t*, buf,
+                  uint8_t*, buf,
                   size_t, size, uint8_t, direction,
                   uint64_t, buf_addr_rec)
 
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_NET_TRANSFER, replay_net_transfer,
-                    CPUState*, cpu, Net_transfer_type, type,
+                    Net_transfer_type, type,
                     uint64_t, src_addr, uint64_t, dst_addr,
                     size_t, num_bytes);
 
 // These are used in exec.c
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_BEFORE_DMA, replay_before_dma,
-                    CPUState*, cpu, const uint8_t*, buf,
+                    const uint8_t*, buf,
                     hwaddr, addr, size_t, size,
                     bool, is_write);
 
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_AFTER_DMA, replay_after_dma,
-                    CPUState*, cpu, const uint8_t*, buf,
+                    const uint8_t*, buf,
                     hwaddr, addr, size_t ,size,
                     bool, is_write)
 
@@ -144,19 +144,19 @@ MAKE_CALLBACK(void, CPU_RESTORE_STATE, cpu_restore_state,
                     CPUState*, env, TranslationBlock*, tb);
 
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_SERIAL_RECEIVE, replay_serial_receive,
-                    CPUState*, env, target_ptr_t, fifo_addr,
+                    target_ptr_t, fifo_addr,
                     uint8_t, value);
 
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_SERIAL_READ, replay_serial_read,
-                    CPUState*, env, target_ptr_t, fifo_addr,
+                    target_ptr_t, fifo_addr,
                     uint32_t, port_addr, uint8_t, value);
 
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_SERIAL_SEND, replay_serial_send,
-                    CPUState*, env, target_ptr_t, fifo_addr,
+                    target_ptr_t, fifo_addr,
                     uint8_t, value);
 
 MAKE_REPLAY_ONLY_CALLBACK(REPLAY_SERIAL_WRITE, replay_serial_write,
-                    CPUState*, env, target_ptr_t, fifo_addr,
+                    target_ptr_t, fifo_addr,
                     uint32_t, port_addr, uint8_t, value);
 
 MAKE_CALLBACK(void, MAIN_LOOP_WAIT, main_loop_wait, void);

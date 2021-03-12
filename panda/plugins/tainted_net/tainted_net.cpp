@@ -33,7 +33,7 @@ extern "C"
 // QEMU/PANDA, which is written in C
 bool init_plugin(void *self);
 void uninit_plugin(void *self);
-void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t packet_size, uint8_t direction, uint64_t buf_addr_rec);
+void on_replay_handle_packet(uint8_t *buf, size_t packet_size, uint8_t direction, uint64_t buf_addr_rec);
 }
 
 const std::string PLUGIN_NM = std::string("tainted_net");
@@ -202,7 +202,7 @@ static bool validate_ethertype(uint8_t *buf, size_t packet_size)
 }
 
 
-static void on_replay_handle_incoming_packet(CPUState *env, uint8_t *buf, size_t packet_size, uint64_t buf_addr_rec)
+static void on_replay_handle_incoming_packet(uint8_t *buf, size_t packet_size, uint64_t buf_addr_rec)
 {
     assert(packet_size > 0);
     assert(buf);
@@ -223,7 +223,7 @@ static void on_replay_handle_incoming_packet(CPUState *env, uint8_t *buf, size_t
     }
 }
 
-static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, size_t packet_size, uint64_t buf_addr_rec)
+static void on_replay_handle_outgoing_packet(uint8_t *buf, size_t packet_size, uint64_t buf_addr_rec)
 {
     if (0 != taint2_enabled())
     {
@@ -304,7 +304,7 @@ static void on_replay_handle_outgoing_packet(CPUState *env, uint8_t *buf, size_t
 }
 
 // a packet has come in over the network, or is about to go out over the network
-void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t packet_size, uint8_t direction, uint64_t buf_addr_rec)
+void on_replay_handle_packet(uint8_t *buf, size_t packet_size, uint8_t direction, uint64_t buf_addr_rec)
 {
     // Increment packet counter.  This count should agree with the count in the
     // wireshark file that is produced by the network plugin.
@@ -314,7 +314,7 @@ void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t packet_size, ui
     {
         if (label_incoming_network_traffic)
         {
-            on_replay_handle_incoming_packet(env, buf, packet_size,
+            on_replay_handle_incoming_packet(buf, packet_size,
                 buf_addr_rec);
         }
     }
@@ -322,7 +322,7 @@ void on_replay_handle_packet(CPUState *env, uint8_t *buf, size_t packet_size, ui
     {
         if (query_outgoing_network_traffic)
         {
-            on_replay_handle_outgoing_packet(env, buf, packet_size,
+            on_replay_handle_outgoing_packet(buf, packet_size,
                 buf_addr_rec);
         }
     }
