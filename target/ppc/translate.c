@@ -7347,7 +7347,7 @@ void gen_intermediate_code(CPUPPCState *env, struct TranslationBlock *tb)
         }
 
         // PANDA: ask if anyone wants execution notification
-        if (unlikely(panda_callbacks_insn_translate(cs, ctx.nip))) {
+        if (unlikely(panda_callbacks_insn_translate(ctx.nip))) {
             // PANDA: Insert the instrumentation
             gen_helper_panda_insn_exec(tcg_const_tl(ctx.nip));
         }
@@ -7357,7 +7357,7 @@ void gen_intermediate_code(CPUPPCState *env, struct TranslationBlock *tb)
         handler->count++;
 #endif
 
-        if (unlikely(panda_callbacks_after_insn_translate(cs, ctx.nip))) {
+        if (unlikely(panda_callbacks_after_insn_translate(ctx.nip))) {
             gen_helper_panda_after_insn_exec(tcg_const_tl(ctx.nip));
         }
 

@@ -36,7 +36,7 @@ uint64_t maximum_instr_count = 0;
 // list of PCs at which desire memory mapping information
 std::unordered_set<target_ulong> pcs_set;
 
-bool translate_cb(CPUState *cpu, target_ulong pc);
+bool translate_cb(target_ulong pc);
 int before_insn_exec_cb(target_ulong pc);
 
 // Parse string of delimited instruction count arguments to a set
@@ -112,7 +112,7 @@ void pcs_to_vec(const char *arg_list_str,
 }
 
 // instrument each instruction of interest as it is translated
-bool translate_cb(CPUState *env, target_ulong pc) {
+bool translate_cb(target_ulong pc) {
     // if neither PCs nor instructions are listed, then instrument every
     // instruction
     if (pcs_set.empty() && instr_counts_set.empty()) {

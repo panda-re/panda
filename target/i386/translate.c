@@ -8543,7 +8543,7 @@ generate_debug:
 #endif
 
         // PANDA: ask if anyone wants execution notification
-        if (unlikely(panda_callbacks_insn_translate(ENV_GET_CPU(env), pc_ptr))) {
+        if (unlikely(panda_callbacks_insn_translate(pc_ptr))) {
             gen_update_cc_op(dc);
             gen_helper_panda_insn_exec(tcg_const_tl(pc_ptr));
         }
@@ -8551,7 +8551,7 @@ generate_debug:
         pc_ptr = disas_insn(env, dc, pc_ptr);
         rr_updated_instr_count++;
 
-        if (unlikely(panda_callbacks_after_insn_translate(ENV_GET_CPU(env), pc_ptr))
+        if (unlikely(panda_callbacks_after_insn_translate(pc_ptr))
                 && !dc->is_jmp) {
             gen_helper_panda_after_insn_exec(tcg_const_tl(pc_ptr));
         }

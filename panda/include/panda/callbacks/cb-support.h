@@ -123,8 +123,8 @@ void panda_callbacks_replay_serial_send(target_ptr_t fifo_addr, uint8_t value);
 void panda_callbacks_replay_serial_write(target_ptr_t fifo_addr, uint32_t port_addr, uint8_t value);
 
 /* invoked from panda/target/ARCH/translate.c */
-bool panda_callbacks_insn_translate(CPUState *env, target_ptr_t pc);
-bool panda_callbacks_after_insn_translate(CPUState *env, target_ptr_t pc);
+bool panda_callbacks_insn_translate(target_ptr_t pc);
+bool panda_callbacks_after_insn_translate(target_ptr_t pc);
 
 /* invoked from target/i386/helper.c */
 bool panda_callbacks_asid_changed(target_ptr_t oldval, target_ptr_t newval);

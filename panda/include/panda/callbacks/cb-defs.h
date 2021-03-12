@@ -262,7 +262,7 @@ typedef union panda_cb {
         If you do want to instrument every single instruction, just return
         true. See the documentation for PANDA_CB_INSN_EXEC for more detail.
     */
-    bool (*insn_translate)(CPUState *env, target_ptr_t pc);
+    bool (*insn_translate)(target_ptr_t pc);
 
     /* Callback ID: PANDA_CB_INSN_EXEC
 
@@ -305,7 +305,7 @@ typedef union panda_cb {
        Notes:
         See `insn_translate`, callbacks are registered via PANDA_CB_AFTER_INSN_EXEC
     */
-    bool (*after_insn_translate)(CPUState *env, target_ptr_t pc);
+    bool (*after_insn_translate)(target_ptr_t pc);
 
     /* Callback ID: PANDA_CB_AFTER_INSN_EXEC
 

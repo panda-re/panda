@@ -11336,7 +11336,7 @@ void gen_intermediate_code_a64(ARMCPU *cpu, TranslationBlock *tb)
         }
 
         // PANDA: ask if anyone wants execution notification
-        if (unlikely(panda_callbacks_insn_translate(cs, dc->pc))) {
+        if (unlikely(panda_callbacks_insn_translate(dc->pc))) {
             // PANDA: Insert the instrumentation
             gen_helper_panda_insn_exec(tcg_const_tl(dc->pc));
         }
@@ -11348,7 +11348,7 @@ void gen_intermediate_code_a64(ARMCPU *cpu, TranslationBlock *tb)
                     dc->pc);
         }
 
-        if (unlikely(panda_callbacks_after_insn_translate(cs, dc->pc))
+        if (unlikely(panda_callbacks_after_insn_translate(dc->pc))
                 && !dc->is_jmp) {
             gen_helper_panda_after_insn_exec(tcg_const_tl(dc->pc));
         }

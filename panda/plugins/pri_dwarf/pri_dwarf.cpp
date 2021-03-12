@@ -1735,14 +1735,14 @@ std::set<target_ulong> monitored_asid;
 //target_ulong monitored_asid = 0;
 unsigned num_libs_known = 0;
 
-bool correct_asid(CPUState *cpu) {
+bool correct_asid(void) {
     if (monitored_asid.size() == 0) {
         return false;
         //OsiProc *p = get_current_process(cpu);
         // checking if p is not null because we got a segfault here
         // if p is null return false, not @ correct_asid
     }
-    return (monitored_asid.count(panda_current_asid(cpu)) != 0);
+    return (monitored_asid.count(panda_current_asid2()) != 0);
 }
 
 bool looking_for_libc=false;
@@ -1751,7 +1751,7 @@ std::string libc_name;
 
 void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, target_ulong base_addr, target_ulong size) {
     printf ("on_library_load guest_lib_name=%s\n", guest_lib_name);
-    if (!correct_asid(cpu)) {
+    if (!correct_asid()) {
         printf ("current_asid=%x is not monitored\n", panda_current_asid(cpu));
         return;
     }
@@ -1808,7 +1808,7 @@ int mod_check_count = 0;
 bool main_exec_initialized = false;
 #define MOD_CHECK_FREQ 1000
 bool ensure_main_exec_initialized(CPUState *cpu) {
-    //if (!correct_asid(cpu)) return;
+    //if (!correct_asid()) return;
     OsiProc *p = get_current_process(cpu);
     GArray *libs = NULL;
     libs = get_mappings(cpu, p);
@@ -1895,7 +1895,7 @@ target_ulong get_cur_fp(CPUState *cpu, target_ulong pc){
 }
 
 bool dwarf_in_target_code(CPUState *cpu, target_ulong pc){
-    if (!correct_asid(cpu)) return false;
+    if (!correct_asid()) return false;
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
     return (it != line_range_list.end() && pc >= it->lowpc);
 }
@@ -1934,7 +1934,7 @@ void dwarf_log_callsite(const char *file_callee, const char *fn_callee, uint64_t
 }
 
 void on_call(CPUState *cpu, target_ulong pc) {
-    if (!correct_asid(cpu)) return;
+    if (!correct_asid()) return;
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
     if (it == line_range_list.end() || pc < it->lowpc ){
         auto it_dyn = addr_to_dynl_function.find(pc);
@@ -1988,7 +1988,7 @@ void on_call(CPUState *cpu, target_ulong pc) {
 
 // pc_func - of the function we are returning from
 void on_ret(CPUState *cpu, target_ulong pc_func) {
-    if (!correct_asid(cpu)) return;
+    if (!correct_asid()) return;
     //printf(" on_ret address: %x\n", func);
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc_func, CompareRangeAndPC());
     if (it == line_range_list.end() || pc_func < it->lowpc) {
@@ -2109,7 +2109,7 @@ int compare_address(void *var_ty, const char *var_nm, LocType loc_t, target_ulon
     return 0;
 }
 void dwarf_get_vma_symbol (CPUState *cpu, target_ulong pc, target_ulong vma, char ** symbol_name){
-    if (!correct_asid(cpu)) {
+    if (!correct_asid()) {
         *symbol_name = NULL;
         return;
     }
@@ -2142,7 +2142,7 @@ void dwarf_get_vma_symbol (CPUState *cpu, target_ulong pc, target_ulong vma, cha
     return;
 }
 void dwarf_get_pc_source_info(CPUState *cpu, target_ulong pc, SrcInfo *info, int *rc){
-    if (!correct_asid(cpu)) {
+    if (!correct_asid()) {
         *rc = -1;
         return;
     }
@@ -2217,8 +2217,8 @@ void dwarf_global_livevar_iter(CPUState *cpu,
     __livevar_iter(cpu, pc, global_var_list, f, args, 0);
 }
 
-bool translate_callback_dwarf(CPUState *cpu, target_ulong pc) {
-    if (!correct_asid(cpu)) return false;
+bool translate_callback_dwarf(target_ulong pc) {
+    if (!correct_asid()) return false;
 
     auto it2 = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
     // after the call to lower_bound the `pc` should be between it2->lowpc and it2->highpc
@@ -2240,8 +2240,7 @@ bool translate_callback_dwarf(CPUState *cpu, target_ulong pc) {
 
 int exec_callback_dwarf(target_ulong pc) {
     inExecutableSource = false;
-    CPUState *cpu = get_cpu();
-    if (!correct_asid(cpu)) return 0;
+    if (!correct_asid()) return 0;
     auto it2 = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
     if (it2 == line_range_list.end() || pc < it2->lowpc)
         return 0;
@@ -2316,7 +2315,7 @@ void handle_asid_change(CPUState *cpu, target_ulong asid, OsiProc *p) {
         monitored_asid.insert(current_asid);
         printf ("monitoring asid %x\n", current_asid);
     }
-    if (correct_asid(cpu) && !main_exec_initialized){
+    if (correct_asid() && !main_exec_initialized){
         main_exec_initialized = ensure_main_exec_initialized(cpu);
     }
     //free_osiproc(p);

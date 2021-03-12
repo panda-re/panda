@@ -263,8 +263,9 @@ void before_block_exec(TranslationBlock *tb) {
 
 
 // arrange for insn_exec callback on all irets
-bool translate_callback(CPUState* cpu, target_ulong pc){
+bool translate_callback(target_ulong pc){
   unsigned char byte[2];
+  CPUState *cpu = get_cpu();
   int res = panda_virtual_memory_read(cpu, pc, (uint8_t *) &byte, 2);
   if (res == -1) // really should not happen
     return false;

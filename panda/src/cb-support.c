@@ -70,10 +70,10 @@ MAKE_CALLBACK(void, AFTER_LOADVM, after_loadvm);
 
 // These are used in target-i386/translate.c
 MAKE_CALLBACK(bool, INSN_TRANSLATE, insn_translate,
-                    CPUState*, env, target_ptr_t, pc);
+                    target_ptr_t, pc);
 
 MAKE_CALLBACK(bool, AFTER_INSN_TRANSLATE, after_insn_translate,
-                    CPUState*, env, target_ptr_t, pc)
+                    target_ptr_t, pc)
 
 // Custom CB
 static inline hwaddr get_paddr(target_ptr_t addr, void *ram_ptr) {

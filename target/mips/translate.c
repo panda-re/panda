@@ -20001,7 +20001,7 @@ void gen_intermediate_code(CPUMIPSState *env, struct TranslationBlock *tb)
         }
 #endif
         // PANDA: ask if anyone wants execution notification
-        if (unlikely(panda_callbacks_insn_translate(cs, ctx.pc))) {
+        if (unlikely(panda_callbacks_insn_translate(ctx.pc))) {
             // PANDA: Insert the instrumentation
             gen_helper_panda_insn_exec(tcg_const_tl(ctx.pc));
         }
@@ -20041,7 +20041,7 @@ void gen_intermediate_code(CPUMIPSState *env, struct TranslationBlock *tb)
         }
         ctx.pc += insn_bytes;
 
-        if (unlikely(panda_callbacks_after_insn_translate(cs, ctx.pc))
+        if (unlikely(panda_callbacks_after_insn_translate(ctx.pc))
                 && !is_slot) { // XXX: af - unsure about is_slot?
             gen_helper_panda_after_insn_exec(tcg_const_tl(ctx.pc));
         }
