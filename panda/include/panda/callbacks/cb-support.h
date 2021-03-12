@@ -105,8 +105,8 @@ bool panda_callbacks_unassigned_io_read(target_ptr_t pc, hwaddr addr, size_t siz
 bool panda_callbacks_unassigned_io_write(target_ptr_t pc, hwaddr addr, size_t size, uint64_t val);
 
 /* invoked from cputlb.c */
-void panda_callbacks_mmio_after_read(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
-void panda_callbacks_mmio_before_write(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
+void panda_callbacks_mmio_after_read(target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
+void panda_callbacks_mmio_before_write(target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
 void panda_callbacks_hd_read(CPUState *env);
 void panda_callbacks_hd_write(CPUState *env);
 

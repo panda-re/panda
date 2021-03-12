@@ -33,15 +33,15 @@ extern "C" {
 // CALLBACKS -----------------------------------------------------------------------------------------------------------
 
 // PANDA_CB_MMIO_AFTER_READ callback
-void buffer_mmio_read(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val) {
-    mmio_event_t new_event{'R', env->panda_guest_pc, physaddr, vaddr, size, *val, default_dev_name};
+void buffer_mmio_read(target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val) {
+    mmio_event_t new_event{'R', panda_current_pc2(), physaddr, vaddr, size, *val, default_dev_name};
     mmio_events.push_back(new_event);
     return;
 }
 
 // PANDA_CB_MMIO_BEFORE_WRITE callback
-void buffer_mmio_write(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val) {
-    mmio_event_t new_event{'W', env->panda_guest_pc, physaddr, vaddr, size, *val, default_dev_name};
+void buffer_mmio_write(target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val) {
+    mmio_event_t new_event{'W', panda_current_pc2(), physaddr, vaddr, size, *val, default_dev_name};
     mmio_events.push_back(new_event);
     return;
 }

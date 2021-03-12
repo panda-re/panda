@@ -228,7 +228,7 @@ bool saw_unassigned_io_read(target_ulong pc, hwaddr addr,
     return false;
 }
 
-void saw_mmio_read(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, 
+void saw_mmio_read(target_ptr_t physaddr, target_ptr_t vaddr, 
                             size_t size, uint64_t *val) {
     // cerr << "tainted_mmio: pc=" << hex << panda_current_pc(first_cpu) 
     //      << ": Saw mmio read virt_addr=" 
@@ -237,7 +237,7 @@ void saw_mmio_read(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr,
     mmio_size = size;
     read_addr = physaddr;
     value = *val;
-    suior_pc = panda_current_pc(first_cpu);
+    suior_pc = panda_current_pc2();
 }
 
 

@@ -94,12 +94,12 @@ static inline hwaddr get_paddr(target_ptr_t addr, void *ram_ptr) {
 
 // These are used in cputlb.c
 MAKE_CALLBACK(void, MMIO_AFTER_READ, mmio_after_read,
-                    CPUState*, env, target_ptr_t, physaddr,
+                    target_ptr_t, physaddr,
                     target_ptr_t, vaddr, size_t, size,
                     uint64_t*, val);
 
 MAKE_CALLBACK(void, MMIO_BEFORE_WRITE, mmio_before_write,
-                    CPUState*, env, target_ptr_t, physaddr,
+                    target_ptr_t, physaddr,
                     target_ptr_t, vaddr, size_t, size,
                     uint64_t*, val);
 

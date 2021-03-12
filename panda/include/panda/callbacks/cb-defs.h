@@ -494,7 +494,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*mmio_after_read)(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
+    void (*mmio_after_read)(target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
 
     /* Callback ID: PANDA_CB_MMIO_BEFORE_WRITE
 
@@ -513,7 +513,7 @@ typedef union panda_cb {
        Return value:
         none
     */
-    void (*mmio_before_write)(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
+    void (*mmio_before_write)(target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
 
     /* Callback ID: PANDA_CB_HD_READ
        hd_read : called when there is a hard drive read
