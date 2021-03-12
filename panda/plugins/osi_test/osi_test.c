@@ -29,13 +29,11 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 
 bool asid_changed(target_ulong old_pgd, target_ulong new_pgd);
-void before_block_exec(CPUState *cpu, TranslationBlock *tb);
+void before_block_exec(TranslationBlock *tb);
 void after_block_exec(TranslationBlock *tb, uint8_t exitCode);
 
-void before_block_exec(CPUState *cpu, TranslationBlock *tb) {
-    if  (cpu == NULL) {
-      cpu = get_cpu(); // TODO
-    }
+void before_block_exec(TranslationBlock *tb) {
+    CPUState *cpu = get_cpu(); // TODO
     OsiProc *current = get_current_process(cpu);
     if(current) {
         printf("Current process: %s PID:" TARGET_PID_FMT " PPID:" TARGET_PID_FMT "\n", current->pid > 0 ? current->name : "N/A", current->pid, current->ppid);
@@ -110,7 +108,7 @@ void after_block_exec(TranslationBlock *tb, uint8_t exitCode) {
 
 bool asid_changed(target_ulong old_pgd, target_ulong new_pgd) {
     // tb argument is not used by before_block_exec()
-    before_block_exec(NULL, NULL);
+    before_block_exec(NULL);
     after_block_exec(NULL, TB_EXIT_IDX0);
     return false;
 }
