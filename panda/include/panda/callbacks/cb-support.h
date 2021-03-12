@@ -96,11 +96,13 @@ void panda_callbacks_top_loop(void);
 void panda_callbacks_during_machine_init(MachineState *machine);
 void panda_callbacks_main_loop_wait(void);
 void panda_callbacks_pre_shutdown(void);
-bool panda_callbacks_unassigned_io_read(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint64_t *val);
-bool panda_callbacks_unassigned_io_write(CPUState *env, target_ptr_t pc, hwaddr addr, size_t size, uint64_t val);
 int32_t panda_callbacks_before_handle_exception(CPUState *cpu, int32_t exception_index);
 int32_t panda_callbacks_before_handle_interrupt(CPUState *cpu, int32_t exception_index);
 void panda_callbacks_cbaddr(void);
+
+/* invoked from memory.c */
+bool panda_callbacks_unassigned_io_read(target_ptr_t pc, hwaddr addr, size_t size, uint64_t *val);
+bool panda_callbacks_unassigned_io_write(target_ptr_t pc, hwaddr addr, size_t size, uint64_t val);
 
 /* invoked from cputlb.c */
 void panda_callbacks_mmio_after_read(CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);

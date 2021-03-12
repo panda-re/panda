@@ -112,18 +112,18 @@ MAKE_CALLBACK(void, DURING_MACHINE_INIT, during_machine_init,
 // Returns true if any registered&enabled callback returns non-zero.
 // If so, we'll silence the memory write error.
 MAKE_CALLBACK(bool, UNASSIGNED_IO_WRITE, unassigned_io_write,
-                    CPUState*, env, target_ptr_t, pc,
+                    target_ptr_t, pc,
                     hwaddr, addr, size_t, size,
-                   uint64_t, val);
+                    uint64_t, val);
 
 // Returns true if any registered&enabled callback returns non-zero,
 // if so, we'll silence the invalid memory read error and return
 // the value provided by the last callback in `val`
 // Note if multiple callbacks run they can each mutate val
 MAKE_CALLBACK(bool, UNASSIGNED_IO_READ, unassigned_io_read,
-                    CPUState*, env, target_ptr_t, pc,
+                    target_ptr_t, pc,
                     hwaddr, addr, size_t, size,
-                   uint64_t*, val);
+                    uint64_t*, val);
 
 MAKE_CALLBACK(void, TOP_LOOP, top_loop);
 
