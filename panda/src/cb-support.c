@@ -126,8 +126,7 @@ MAKE_CALLBACK(bool, UNASSIGNED_IO_READ, unassigned_io_read,
                     hwaddr, addr, size_t, size,
                    uint64_t*, val);
 
-MAKE_CALLBACK(void, TOP_LOOP, top_loop,
-                    CPUState*, cpu);
+MAKE_CALLBACK(void, TOP_LOOP, top_loop);
 
 // Returns true if any registered + enabled callback returns nonzero.
 // If so, it doesn't let the asid change

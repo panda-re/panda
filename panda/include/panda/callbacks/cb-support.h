@@ -92,7 +92,7 @@ void panda_callbacks_before_cpu_exec_exit(CPUState *env, bool ranBlock);
 bool panda_callbacks_before_block_exec_invalidate_opt(TranslationBlock *tb);
 
 /* invoked from cpus.c */
-void panda_callbacks_top_loop(CPUState *env);
+void panda_callbacks_top_loop(void);
 void panda_callbacks_during_machine_init(MachineState *machine);
 void panda_callbacks_main_loop_wait(void);
 void panda_callbacks_pre_shutdown(void);

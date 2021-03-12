@@ -1276,7 +1276,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
     while (1) {
 
         if (!rr_replay_complete) {
-            panda_callbacks_top_loop(cpu);
+            panda_callbacks_top_loop();
         }
 
         /* Account partial waits to QEMU_CLOCK_VIRTUAL.  */

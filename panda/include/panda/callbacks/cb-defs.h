@@ -892,7 +892,7 @@ typedef union panda_cb {
        Return value:
         unused
      */
-    void (*top_loop)(CPUState *env);
+    void (*top_loop)(void);
     /* Callback ID:     PANDA_CB_DURING_MACHINE_INIT
 
        during_machine_init: Called in the middle of machine initialization

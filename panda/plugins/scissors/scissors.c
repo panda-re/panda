@@ -23,8 +23,8 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 void before_block_exec(TranslationBlock *tb);
 
-void check_start_snip(CPUState *env);
-void check_end_snip(CPUState *env);
+void check_start_snip(void);
+void check_end_snip(void);
 
 static uint64_t start_count;
 static uint64_t actual_start_count;
@@ -322,7 +322,7 @@ bool snip_done = false;
 bool request_end_snip = false;
 bool snip_ended = false;
 
-void check_start_snip(CPUState *env) {
+void check_start_snip(void) {
     if (!request_start_snip) return;
     // only one snip per replay!
     if (snip_started) return;
@@ -332,7 +332,7 @@ void check_start_snip(CPUState *env) {
     start_snip(rr_get_guest_instr_count());
 }
 
-void check_end_snip(CPUState *env) {
+void check_end_snip(void) {
     if (!request_end_snip) return;
     if (snip_ended) return;
     request_end_snip = false;
