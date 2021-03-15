@@ -112,20 +112,32 @@ Notes:
 * The Ubuntu version the dockerfile is based on will not change without a minor version change.
 
 ### Scripts
-[Do we consider anything in panda/scripts to be part of the API?]
+[Do we consider anything in panda/scripts to be part of the API?] - no
 
-## Restructure and Splitting of Existing PANDA Repository
+## Plugins
 
-PANDA will be split into three repositories.  One contains PANDA itself and the API detailed above, another contains core plugins, and a third contains more experimental plugins.
+### Core plugins
+The following plugins are considered a part of `core panda` and will maintain stable APIs as per the semantic versioning rules. These APIs are the functions described in the `*_ext.h` `*_ppp.h` and `*_int_fns.h` headers.
+* OSI / OSI_Linux / (Maybe some/all of the windows OSIs?)
+* hooks
+* syscalls2
+* taint2
+* dynamic_symbols
+* coverage
 
-Plugins are consumers of the APIs provided by the core of PANDA. The APIs provided by plugins are *not* described by the core PANDA version number.
+### Other plugins
+Other plugins are no considered stable and may change APIs. API-breaking changes here are allowed without major-version number changes.
+
+
+### Long term plugin plan: Decouple plugins from PANDA
+Plugins are consumers of the APIs provided by the core of PANDA. The APIs provided by plugins should *not* described by the core PANDA version number.
+Plugins should consume a set of PANDA API headers - a plugin built for panda version X.0.0 should be work, without being rebuilt for version X.9.9.
+
 To ensure plugin properly function with core PANDA, they will be able to specify which version(s) (minimum, maximum or exact) of PANDA they are known to be compatible with.
 
 In addition to consuming the core PANDA APIs, plugins also provide APIs through PPP.
 Plugins will optionally be versioned and in the future, we may support versioning requirements on plugin-to-plugin interactions (e.g., syscalls_logger depends on syscalls > v0.1).
 
 Plugins will be split into two new repositories, `pandare/core-plugins`, and `pandare/plugins`.
-The plugins committed to `core-plugins` will each follow semantic versioning and have CI testing. These are plugins that we want to provide reasonability stability guarantees for (Taint2, syscalls2, etc).
+The "core plugins" listed above will move to `core-plugins` and will each follow semantic versioning and have CI testing against the current stable PANDA release. These are plugins that we want to provide reasonability stability guarantees for.
 The plugins committed to the general `plugins` repository will have no such requirements but commits to the main branch will be tested with CI to ensure they compile.
-
-
