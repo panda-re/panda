@@ -502,10 +502,14 @@ int main_loop_wait(int nonblocking)
     uint32_t timeout = UINT32_MAX;
     int64_t timeout_ns;
 
+#ifdef CONFIG_SOFTMMU
     if (rr_in_replay()) {
         timeout = RR_MAIN_WAIT_LOOP_TIMEOUT_IN_REPLAY;
     }
     else if (nonblocking) {
+#else
+    if (1) {
+#endif
         timeout = 0;
     }
 
@@ -513,7 +517,11 @@ int main_loop_wait(int nonblocking)
     g_array_set_size(gpollfds, 0); /* reset for new iteration */
     /* XXX: separate device handlers from system ones */
 #ifdef CONFIG_SLIRP
+#ifdef CONFIG_SOFTMMU
     if (! (rr_in_replay() || rr_replay_requested())) {
+#else
+     if (1) {
+#endif
         slirp_pollfds_fill(gpollfds, &timeout);
     }
 #endif
@@ -531,17 +539,25 @@ int main_loop_wait(int nonblocking)
     ret = os_host_main_loop_wait(timeout_ns);
 
 #ifdef CONFIG_SLIRP
+#ifdef CONFIG_SOFTMMU
     rr_begin_main_loop_wait();
+#endif
     slirp_pollfds_poll(gpollfds, (ret < 0));
+#ifdef CONFIG_SOFTMMU
     rr_end_main_loop_wait();
+#endif
 #endif
 
     /* CPU thread can infinitely wait for event after
        missing the warp */
     qemu_start_warp_timer();
+#ifdef CONFIG_SOFTMMU
     rr_begin_main_loop_wait();
+#endif
     qemu_clock_run_all_timers();
+#ifdef CONFIG_SOFTMMU
     rr_end_main_loop_wait();
+#endif
 
     return ret;
 }

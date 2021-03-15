@@ -6,6 +6,7 @@
 
 #define RR_LOG_STANDALONE
 #include "panda/include/panda/rr/rr_log.h"
+#include "panda/include/panda/rr/rr_api.h"
 #include "qemu/osdep.h"
 #include "cpu.h"
 

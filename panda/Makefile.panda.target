@@ -112,6 +112,7 @@ obj-y += panda/src/common.o
 obj-y += panda/src/plog.o
 obj-y += plog.pb-c.o
 obj-y += panda/src/rr/rr_log.o
+obj-y += panda/src/rr/rr_api.o
 obj-y += panda/src/checkpoint.o
 obj-y += panda/src/tcg-utils.o
 # These are for C++ protobuf pandalog
@@ -121,7 +122,7 @@ obj-y += plog.pb.o
 #obj-y += panda/src/example_plog_reader.o
 #obj-y += panda/src/guestarch.o
 
-$(RR_PRINT_PROG): panda/src/rr/rr_print.o
+$(RR_PRINT_PROG): panda/src/rr/rr_print.o panda/src/rr/rr_api.o
 	$(call LINK,$^)
 
 $(PLOG_READER_PROG): panda/src/example_plog_reader.o \
