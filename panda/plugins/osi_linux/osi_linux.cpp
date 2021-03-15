@@ -15,8 +15,6 @@
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
-#include "osi/osi_types.h"
-#include "osi/os_intro.h"
 #include "utils/kernelinfo/kernelinfo.h"
 #include "osi_linux.h"
 #include "syscalls2/syscalls_ext_typedefs.h"
@@ -38,8 +36,11 @@
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
+#include "osi/os_intro.h"
+#include "osi/osi_types.h"
 #include "osi_linux_int_fns.h"
 }
+
 void on_first_syscall(CPUState *cpu, target_ulong pc, target_ulong callno);
 
 void on_get_processes(CPUState *env, GArray **out);

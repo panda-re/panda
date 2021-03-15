@@ -207,3 +207,75 @@ void cleanup_garray(GArray *g) {
     // but for now we only expose GArrays via library mode with OSI
     g_array_free(g, true);
 }
+
+void free_osiprochandle(OsiProcHandle *h) {
+    g_free(h);
+}
+
+void free_osithread(OsiThread *t) {
+    g_free(t);
+}
+
+void free_osipage(OsiPage *p) {
+    g_free(p);
+}
+
+//void free_osimodule_contents(OsiModule *m) {
+//    if (m == NULL) return;
+//    g_free(m->file);
+//    g_free(m->name);
+//}
+
+void free_osimodule(OsiModule *m) {
+    free_osimodule_contents(m);
+    g_free(m);
+}
+
+/*void free_osiproc_contents(OsiProc *p) {
+    if (p == NULL) return;
+    g_free(p->name);
+    g_free(p->pages);
+}
+*/
+
+void free_osiproc(OsiProc *p) {
+    free_osiproc_contents(p);
+    g_free(p);
+}
+
+OsiProcHandle *copy_osiprochandle(OsiProcHandle *from, OsiProcHandle *to) {
+    if (from == NULL) return NULL;
+    if (to == NULL) {
+        to = (OsiProcHandle *)g_malloc0(sizeof(OsiProc));
+    } else if (free_osiprochandle_contents != NULL) {
+        free_osiprochandle_contents(to);
+    }
+    memcpy(to, from, sizeof(OsiProc));
+    return to;
+}
+
+OsiProc *copy_osiproc(OsiProc *from, OsiProc *to) {
+    if (from == NULL) return NULL;
+    if (to == NULL) {
+        to = (OsiProc *)g_malloc0(sizeof(OsiProc));
+    } else {
+        free_osiproc_contents(to);
+    }
+    memcpy(to, from, sizeof(OsiProc));
+    to->name = g_strdup(from->name);
+    to->pages = NULL;  // OsiPage - TODO
+    return to;
+}
+
+OsiModule *copy_osimod(OsiModule *from, OsiModule *to) {
+    if (from == NULL) return NULL;
+    if (to == NULL) {
+        to = (OsiModule *)g_malloc0(sizeof(OsiModule));
+    } else {
+        free_osimodule_contents(to);
+    }
+    memcpy(to, from, sizeof(OsiModule));
+    to->name = g_strdup(from->name);
+    to->file = g_strdup(from->file);
+    return to;
+}
