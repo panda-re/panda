@@ -204,7 +204,8 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
       g_free(library_path);
     }
 
-    void *plugin = dlopen(filename, RTLD_NOW);
+    void *plugin = dlopen(filename, RTLD_NOW | RTLD_GLOBAL); // Global means subsequent
+                                      // plugins can see our symbols which is important.
     if(!plugin) {
         fprintf(stderr, "Failed to load %s: %s\n", filename, dlerror());
         return false;
