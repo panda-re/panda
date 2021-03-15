@@ -15,33 +15,31 @@ recording_name = "wget_google"
 for f in [recording_name+"-rr-nondet.log", recording_name+"-rr-snp"]:
     if path.isfile(f): remove(f)
 
-# if recording doesn't exist, take one
-@blocking
-def take_recording():
-    panda.record_cmd("wget google.com", recording_name=recording_name)
-    panda.end_analysis()
 
 if not path.isfile(recording_name+"-rr-snp"):
-    print("Recording didn't exist. Creating...")
-    panda.queue_async(take_recording)
-    panda.run()
+	# if recording doesn't exist, take one
+	@panda.queue_async
+	def take_recording():
+		panda.record_cmd("wget google.com", recording_name=recording_name)
+		panda.end_analysis()
+		print("Recording didn't exist. Creating...")
+	panda.run()
 
-@panda.cb_virt_mem_after_read(procname="wget")
-def virt_mem_after_read(cpustate, pc, addr, size, buf):
-	curbuf = ffi.cast("char*", buf)
-	current = panda.get_current_process(cpustate)
-	if current != ffi.NULL:
-		if size >= 5:
-			buf_addr = hex(int(ffi.cast("uint64_t", buf)))
-			buf_str = ffi.string(ffi.cast("char*",buf)).decode(errors='ignore')
-			print("Read buf: %s, size: %x, at pc: %x %s" %(buf_addr[2:], size, addr, buf_str))
+#@panda.cb_virt_mem_after_read(procname="wget")
+#def virt_mem_after_read(cpustate, pc, addr, size, buf):
+#	curbuf = ffi.cast("char*", buf)
+#	current = panda.get_current_process(cpustate)
+#	if current != ffi.NULL:
+#		if size >= 5:
+#			buf_addr = hex(int(panda.ffi.cast("uint64_t", buf)))
+#			buf_str = panda.ffi.string(panda.ffi.cast("char*",buf)).decode(errors='ignore')
+#			print("Read buf: %s, size: %x, at pc: %x %s" %(buf_addr[2:], size, addr, buf_str))
 
 packets = []
 @panda.cb_replay_handle_packet(procname="wget")
 def handle_packet(cpustate,buf,size,direction,old_buf_addr):
-	buf_uint8 = ffi.cast("uint8_t*", buf)
+	buf_uint8 = panda.ffi.cast("uint8_t*", buf)
 	packets.append(Ether([buf_uint8[i] for i in range(size)]))
-	return 0
 
 panda.enable_memcb()
 panda.run_replay(recording_name)

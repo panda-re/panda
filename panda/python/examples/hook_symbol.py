@@ -1,17 +1,20 @@
+'''
+hook_symbol.py
 
+This example downloads a file from the internet, hooks the call to fwrite in
+libc and grabs the values being written from virtual memory. It then adds the
+values to a saved buffer and writes the file to the local file system.
+
+Run with: python3 hook_symbol.py
+'''
 
 from pandare import Panda
-from rich import print
 from sys import argv
-arch = argv[1] if len(argv) > 1 else "i386"
+
+arch = argv[1] if len(argv) > 1 else "arm"
 panda = Panda(generic=arch)
 
-'''
-the arm generic image does not have "curl"
-we could install it OR we could show that it doesn't 
-matter which program we use
-'''
-if arch == "arm":
+if arch == "arm" or "mips" in arch:
     program_name = "wget"
     # I tried and couldn't get it to work with https. but it works on 
     # other architectures.
@@ -23,11 +26,21 @@ else:
 @panda.queue_blocking
 def do_stuff():
     panda.revert_sync("root")
-    panda.run_serial_cmd(command_str)
+    print(panda.run_serial_cmd(command_str,no_timeout=True))
     panda.end_analysis()
 
+stored_buf = b""
+
 @panda.hook_symbol("libc-", "fwrite", procname=program_name)
-def hook_symbols(env, tb, h):
-    print("write called")
+def hook_fwrite(env, tb, h):
+    data_ptr, size_t, count = panda.arch.get_args(env, 3)
+    buf = panda.virtual_memory_read(env, data_ptr, count*size_t)
+    global stored_buf
+    stored_buf += buf
+    print(f"libc:fwrite called")
 
 panda.run()
+
+print("writing recovered logo to file system")
+with open("logo.png","wb") as f:
+    f.write(stored_buf)

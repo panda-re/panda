@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
+'''
+monitor_cmds.py
 
-import os
-from enum import Enum
+This example shows running monitor commands.
+
+Run with python3 monitor_cmds.py
+'''
+
 from sys import argv
-from pandare import Panda, ffi, blocking
+from pandare import Panda, blocking
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]
