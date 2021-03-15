@@ -154,8 +154,19 @@ target_ulong panda_current_sp(const CPUState *cpu);
  */
 target_ulong panda_get_retval(const CPUState *cpu);
 
+
+/**
+ * @brief Returns true if a pandalog has been specified
+ */
+bool pandalog_set(void);
+
+target_ptr_t tb_get_pc(TranslationBlock * tb);
+size_t tb_get_size(TranslationBlock * tb);
+unsigned int tb_get_icount(TranslationBlock * tb);
+
 #ifdef __cplusplus
 }
 #endif
+
 
 /* vim:set tabstop=4 softtabstop=4 expandtab: */

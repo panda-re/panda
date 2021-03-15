@@ -343,6 +343,10 @@ size_t tb_get_size(TranslationBlock * tb) {
   return tb->size;
 }
 
+unsigned int tb_get_icount(TranslationBlock * tb) {
+  return tb->icount;
+}
+
 bool panda_in_kernel(const CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
 #if defined(TARGET_I386)
@@ -641,6 +645,8 @@ MemTxResult PandaVirtualAddressToRamOffset(ram_addr_t* out, CPUState* cpu, targe
     return PandaPhysicalAddressToRamOffset(out, PhysicalAddress, is_write);
 }
 
-
+bool pandalog_set(void) {
+    return pandalog;
+}
 
 /* vim:set shiftwidth=4 ts=4 sts=4 et: */
