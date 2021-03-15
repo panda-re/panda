@@ -76,12 +76,9 @@ std::string format_hex(uint64_t n) {
 }
 
 /* Symbolic helper functions */
-bool is_concrete_byte(z3::expr byte) {
+inline bool is_concrete_byte(z3::expr byte) {
 
-    z3::expr zero = context.bv_val(0, 8);
-    z3::expr simplified = (zero == byte).simplify();
-
-    return simplified.is_true() || simplified.is_false() ||
+    return byte.is_numeral() ||
            byte.is_true() || byte.is_false();
 
 }
@@ -169,14 +166,12 @@ void invalidate_full(Shad *shad, uint64_t src, uint64_t size) {
 void copy_symbols(Shad *shad_dest, uint64_t dest, Shad *shad_src, 
         uint64_t src, uint64_t size) {
 
-    if (size == 255)
-        assert(false);
     CDEBUG(std::cerr << "copy_symbols shad src " << src << " dst " << dest << "\n");
     for (uint64_t i = 0; i < size; i++) {
 
         // When copy src bytes without symbolic data, make sure to clean dest byte
         if (!shad_src->query_full(src+i)->sym) {
-            shad_src->query_full(dest+i)->sym = nullptr;
+            shad_dest->query_full(dest+i)->sym = nullptr;
             continue;
         }
             
@@ -979,8 +974,8 @@ void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
                 PPP_RUN_CB(on_taint_prop, dest_addr, ptr_addr, ptr_size);
             }
         }
-        if (change) {
-            __concolic_copy(shad_dest, dest, shad_src, src, size, 0);
+        if (change && symexEnabled) {
+            copy_symbols(shad_dest, dest, shad_src, src, size);
         }
     }
 }
@@ -1172,8 +1167,9 @@ void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
             shad_dest->name(), dest, size, shad_src->name(), src,
             dest_offset, src_offset);
     taint_log_labels(shad_src, addr_src, size);
-    Shad::copy(shad_dest, addr_dest, shad_src, addr_src, size);
-    copy_symbols(shad_dest, addr_dest, shad_src, addr_src, size);
+    // Shad::copy(shad_dest, addr_dest, shad_src, addr_src, size);
+    // copy_symbols(shad_dest, addr_dest, shad_src, addr_src, size);
+    __concolic_copy(shad_dest, addr_dest, shad_src, addr_src, size, 0);
     // Taint propagation notifications.
     Addr dest_addr = get_addr_from_shad(shad_dest, dest);
     Addr src_addr = get_addr_from_shad(shad_src, src);
