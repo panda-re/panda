@@ -2,8 +2,9 @@
 '''
 osi_syscalls.py
 
-This example shows PPP calls through syscalls2 
+This example shows PPP calls through syscalls2.
 
+Run with: python3 osi_syscalls.py
 '''
 from pandare import Panda
 from sys import argv

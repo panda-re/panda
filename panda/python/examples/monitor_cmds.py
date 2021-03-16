@@ -28,8 +28,8 @@ def info_mem():
     lines = [x for x in result.split("\n") if x]
     lines.sort(key=lambda x: int(x.split(" ")[-2], 16) if len(x.split(" ")) >= 3 else 0)
 
-    print("info mem returned information on {} allocations!\n\t Biggest: {}\n\t" \
-            "Smallest: {}".format(len(lines), lines[-1], lines[0]))
+    print(f"info mem returned information on {len(lines)} allocations!\n\t Biggest: {lines[-1]}\n\t" \
+            "Smallest: {lines[0]}")
     panda.end_analysis()
 
 @panda.cb_before_block_exec
@@ -41,4 +41,4 @@ panda.queue_async(my_runcmd)
 panda.queue_async(info_mem)
 panda.run()
 
-print("Saw {} BBs".format(bb_count))
+print(f"Saw {bb_count} BBs")

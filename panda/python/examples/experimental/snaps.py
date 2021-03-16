@@ -1,34 +1,38 @@
 #!/usr/bin/env python3
+'''
+snaps.py
+
+A simple demo script of precise control over taking and restoring
+snapshots with pypanda.  Makes use of prior knowledge of what code
+will be executed when we revert to the 'root' snapshot in the
+indicated qcow.
+
+1. A after machine init callback lets us start that guest and
+immediate revert it to the snapshot 'root' which is a booted machine
+logged in to the root account.
+
+2. A before block exec callback lets us wait until we encounter a very
+particular pc (0xc101dfec) which we only knew about bc we ran qemu -d
+in_asm before.  At this pc we take a snapshot.  This callback actually
+contains a little state machine.  After we have taken the snapshot, we
+are in state 3, where we increment a counter with each call, i.e. for
+each new basic block we execute.  After 10 blocks, we revert to the
+snapshot at 0xc101dfec.
+
+Obviously there are more interesting uses for this kind of thing.  Two
+important things to notice.  First, we can take a snapshot that will
+in fact revert to a specific block's start pc.  Second, when we
+revert, we don't keep executing any code.  We snap back to exactly
+that bloc.
+
+Run with: python3 snaps.py
+
+'''
 
 import os
 from sys import argv,exit
 from pandare import Panda, blocking
 
-#
-# snaps.py
-#
-# A simple demo script of precise control over taking and restoring
-# snapshots with pypanda.  Makes use of prior knowledge of what code
-# will be executed when we revert to the 'root' snapshot in the
-# indicated qcow.
-#
-# 1. A after machine init callback lets us start that guest and
-# immediate revert it to the snapshot 'root' which is a booted machine
-# logged in to the root account.
-#
-# 2. A before block exec callback lets us wait until we encounter a very
-# particular pc (0xc101dfec) which we only knew about bc we ran qemu -d
-# in_asm before.  At this pc we take a snapshot.  This callback actually
-# contains a little state machine.  After we have taken the snapshot, we
-# are in state 3, where we increment a counter with each call, i.e. for
-# each new basic block we execute.  After 10 blocks, we revert to the
-# snapshot at 0xc101dfec.
-#
-# Obviously there are more interesting uses for this kind of thing.  Two
-# important things to notice.  First, we can take a snapshot that will
-# in fact revert to a specific block's start pc.  Second, when we
-# revert, we don't keep executing any code.  We snap back to exactly
-# that bloc.
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]

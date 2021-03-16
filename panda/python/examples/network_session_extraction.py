@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-from time import sleep
+'''
+network_session_extract.py
+
+This example takes a recording of a network transaction. It then replays it and
+sets a callback on packets sent out. It takes the data from example and uses
+scapy to write the packets to a PCAP for further examination.
+
+Run with: python3 network_session_extract.py
+'''
 from sys import argv
 from os import path, remove
 from scapy.all import Ether, wrpcap
@@ -25,23 +33,12 @@ if not path.isfile(recording_name+"-rr-snp"):
 		print("Recording didn't exist. Creating...")
 	panda.run()
 
-#@panda.cb_virt_mem_after_read(procname="wget")
-#def virt_mem_after_read(cpustate, pc, addr, size, buf):
-#	curbuf = ffi.cast("char*", buf)
-#	current = panda.get_current_process(cpustate)
-#	if current != ffi.NULL:
-#		if size >= 5:
-#			buf_addr = hex(int(panda.ffi.cast("uint64_t", buf)))
-#			buf_str = panda.ffi.string(panda.ffi.cast("char*",buf)).decode(errors='ignore')
-#			print("Read buf: %s, size: %x, at pc: %x %s" %(buf_addr[2:], size, addr, buf_str))
-
 packets = []
 @panda.cb_replay_handle_packet(procname="wget")
 def handle_packet(cpustate,buf,size,direction,old_buf_addr):
 	buf_uint8 = panda.ffi.cast("uint8_t*", buf)
 	packets.append(Ether([buf_uint8[i] for i in range(size)]))
 
-panda.enable_memcb()
 panda.run_replay(recording_name)
 wrpcap(pcap_path, packets)
 
