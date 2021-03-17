@@ -557,7 +557,7 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
         detaint_on_cb0(shad, dest, src_size);
     }
 
-    if (!changed) return;
+    if (!changed || !symexEnabled) return;
 
     switch(opcode) {
         case llvm::Instruction::And:
@@ -632,8 +632,7 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         PPP_RUN_CB(on_taint_prop, dest_addr, src2_addr, src_size);
     }
     
-    if (!symexEnabled) return;
-    if (!change) return;
+    if (!change || !symexEnabled) return;
 
     switch(opcode) {
     case llvm::Instruction::Sub:
@@ -818,8 +817,7 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
         PPP_RUN_CB(on_taint_prop, dest_addr, src_addr, src_size);
     }
 
-    if (!symexEnabled) return;
-    if (!change) return;
+    if (!change || !symexEnabled) return;
     
     uint64_t val = 0;
     if (operands.size() >= 2 && (operands[0] || operands[1])) {
@@ -979,8 +977,8 @@ void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
                 PPP_RUN_CB(on_taint_prop, dest_addr, ptr_addr, ptr_size);
             }
         }
-        if (change) {
-            __concolic_copy(shad_dest, dest, shad_src, src, size, 0);
+        if (change && symexEnabled) {
+            copy_symbols(shad_dest, dest, shad_src, src, size);
         }
     }
 }
@@ -998,7 +996,7 @@ void taint_sext(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
                 uint64_t src_size, uint64_t opcode)
 {
     taint_log("taint_sext\n");
-    __concolic_copy(shad, dest, shad, src, src_size, opcode);
+    concolic_copy(shad, dest, shad, src, src_size, llvm::Instruction::SExt, 0, {});
     bulk_set(shad, dest + src_size, dest_size - src_size,
             *shad->query_full(dest + src_size - 1));
     auto src_tdp = shad->query_full(dest + src_size - 1)->sym;
@@ -1032,7 +1030,7 @@ void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector, .
             if (src != ones) { // otherwise it's a constant.
                 taint_log("select (copy): %s[%lx+%lx] <- %s[%lx+%lx] ",
                           shad->name(), dest, size, shad->name(), src, size);
-                __concolic_copy(shad, dest, shad, src, size, llvm::Instruction::Select);
+                concolic_copy(shad, dest, shad, src, size, llvm::Instruction::Select, 0, {});
                 taint_log_labels(shad, dest, size);
                 //Shad::copy(shad, dest, shad, src, size);
                 Addr dest_addr = get_addr_from_shad(shad, dest);
@@ -1141,8 +1139,7 @@ void taint_host_copy(uint64_t env_ptr, uint64_t addr, Shad *llv,
     taint_log("hostcopy: %s[%lx+%lx] <- %s[%lx+%lx] ", shad_dest->name(), dest,
               size, shad_src->name(), src, size);
     taint_log_labels(shad_src, src, size);
-    // no opcode?
-    __concolic_copy(shad_dest, dest, shad_src, src, size, 0);
+    concolic_copy(shad_dest, dest, shad_src, src, size, 0, 0, {});
     // Taint propagation notifications.
     Addr dest_addr = get_addr_from_shad(shad_dest, dest);
     Addr src_addr = get_addr_from_shad(shad_src, src);
@@ -1172,8 +1169,7 @@ void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
             shad_dest->name(), dest, size, shad_src->name(), src,
             dest_offset, src_offset);
     taint_log_labels(shad_src, addr_src, size);
-    Shad::copy(shad_dest, addr_dest, shad_src, addr_src, size);
-    copy_symbols(shad_dest, addr_dest, shad_src, addr_src, size);
+    concolic_copy(shad_dest, addr_dest, shad_src, addr_src, size, 0, 0, {});
     // Taint propagation notifications.
     Addr dest_addr = get_addr_from_shad(shad_dest, dest);
     Addr src_addr = get_addr_from_shad(shad_src, src);
@@ -1325,6 +1321,7 @@ void concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
     bool change = false;
     if (opcode && (opcode == llvm::Instruction::And ||
             opcode == llvm::Instruction::Or)) {
+        // Perform byte-level copy for bitwise and/or
         assert(operands.size() >= 2);
 
         for (uint64_t i = 0; i < size; i++) {
@@ -1342,11 +1339,12 @@ void concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
                     change |= shad_dest->set_full(dest + i, *shad_src->query_full(src+i));
             }
         }
-    } else {
+    }
+    else {
+        // Otherwise, copy together
         change = Shad::copy(shad_dest, dest, shad_src, src, size);
     }
-    if (!symexEnabled) return;
-    if (!change) return;
+    if (!change || !symexEnabled) return;
     switch (opcode) {
         case llvm::Instruction::And:
         case llvm::Instruction::Or:
@@ -1379,30 +1377,17 @@ void concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
         case llvm::Instruction::Store:
         case llvm::Instruction::IntToPtr:
         case llvm::Instruction::PtrToInt:
-            copy_symbols(shad_dest, dest, shad_src, src, size);
-            break;
-
-        case llvm::Instruction::ExtractValue: {
+        case 0:
+            // From host_copy, host_memcpy
+        case llvm::Instruction::ExtractValue:
             // Assuming extract value from following result
             // llvm.uadd.with.overflow.i8
+            // llvm.uadd.with.overflow.i16
             // llvm.uadd.with.overflow.i32
             copy_symbols(shad_dest, dest, shad_src, src, size);
-
             break;
-        }
-        // From host_copy
-        case 0: {
-            copy_symbols(shad_dest, dest, shad_src, src, size);
-            break;
-        }
         default:
             CINFO(llvm::errs() << "Untracked opcode: " << opcode << "\n");
             break;
     }
-}
-
-
-void __concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
-                     uint64_t src, uint64_t size, uint64_t opcode) {
-    concolic_copy(shad_dest, dest, shad_src, src, size, opcode, 0, {});
 }
