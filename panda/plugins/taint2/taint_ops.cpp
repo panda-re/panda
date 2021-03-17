@@ -1316,6 +1316,7 @@ void concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
     bool change = false;
     if (opcode && (opcode == llvm::Instruction::And ||
             opcode == llvm::Instruction::Or)) {
+        // Perform byte-level copy for bitwise and/or
         assert(operands.size() >= 2);
 
         for (uint64_t i = 0; i < size; i++) {
@@ -1333,7 +1334,9 @@ void concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
                     change |= shad_dest->set_full(dest + i, *shad_src->query_full(src+i));
             }
         }
-    } else {
+    }
+    else {
+        // Otherwise, copy together
         change = Shad::copy(shad_dest, dest, shad_src, src, size);
     }
     if (!change || !symexEnabled) return;
@@ -1369,22 +1372,15 @@ void concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
         case llvm::Instruction::Store:
         case llvm::Instruction::IntToPtr:
         case llvm::Instruction::PtrToInt:
-            copy_symbols(shad_dest, dest, shad_src, src, size);
-            break;
-
-        case llvm::Instruction::ExtractValue: {
+        case 0:
+            // From host_copy, host_memcpy
+        case llvm::Instruction::ExtractValue:
             // Assuming extract value from following result
             // llvm.uadd.with.overflow.i8
+            // llvm.uadd.with.overflow.i16
             // llvm.uadd.with.overflow.i32
             copy_symbols(shad_dest, dest, shad_src, src, size);
-
             break;
-        }
-        // From host_copy
-        case 0: {
-            copy_symbols(shad_dest, dest, shad_src, src, size);
-            break;
-        }
         default:
             CINFO(llvm::errs() << "Untracked opcode: " << opcode << "\n");
             break;
