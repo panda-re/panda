@@ -552,7 +552,7 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
         detaint_on_cb0(shad, dest, src_size);
     }
 
-    if (!changed) return;
+    if (!changed || !symexEnabled) return;
 
     switch(opcode) {
         case llvm::Instruction::And:
@@ -627,8 +627,7 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         PPP_RUN_CB(on_taint_prop, dest_addr, src2_addr, src_size);
     }
     
-    if (!symexEnabled) return;
-    if (!change) return;
+    if (!change || !symexEnabled) return;
 
     switch(opcode) {
     case llvm::Instruction::Sub:
@@ -813,8 +812,7 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
         PPP_RUN_CB(on_taint_prop, dest_addr, src_addr, src_size);
     }
 
-    if (!symexEnabled) return;
-    if (!change) return;
+    if (!change || !symexEnabled) return;
     
     uint64_t val = 0;
     if (operands.size() >= 2 && (operands[0] || operands[1])) {
@@ -1341,8 +1339,7 @@ void concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
     } else {
         change = Shad::copy(shad_dest, dest, shad_src, src, size);
     }
-    if (!symexEnabled) return;
-    if (!change) return;
+    if (!change || !symexEnabled) return;
     switch (opcode) {
         case llvm::Instruction::And:
         case llvm::Instruction::Or:
