@@ -109,7 +109,7 @@ void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
 // Only generate when signed and dest_size > src_size.
 // Otherwise it should just be a copy.
 void taint_sext(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
-                uint64_t src_size);
+                uint64_t src_size, uint64_t opcode);
 
 // Takes a NULL-terminated list of (value, select) pairs.
 void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector, ...);

@@ -76,9 +76,12 @@ std::string format_hex(uint64_t n) {
 }
 
 /* Symbolic helper functions */
-inline bool is_concrete_byte(z3::expr byte) {
+bool is_concrete_byte(z3::expr byte) {
 
-    return byte.is_numeral() ||
+    z3::expr zero = context.bv_val(0, 8);
+    z3::expr simplified = (zero == byte).simplify();
+
+    return simplified.is_true() || simplified.is_false() ||
            byte.is_true() || byte.is_false();
 
 }
@@ -166,12 +169,14 @@ void invalidate_full(Shad *shad, uint64_t src, uint64_t size) {
 void copy_symbols(Shad *shad_dest, uint64_t dest, Shad *shad_src, 
         uint64_t src, uint64_t size) {
 
+    if (size == 255)
+        assert(false);
     CDEBUG(std::cerr << "copy_symbols shad src " << src << " dst " << dest << "\n");
     for (uint64_t i = 0; i < size; i++) {
 
         // When copy src bytes without symbolic data, make sure to clean dest byte
         if (!shad_src->query_full(src+i)->sym) {
-            shad_dest->query_full(dest+i)->sym = nullptr;
+            shad_src->query_full(dest+i)->sym = nullptr;
             continue;
         }
             
@@ -988,7 +993,7 @@ void taint_after_ld(uint64_t reg, uint64_t memaddr, uint64_t size) {
 
 
 void taint_sext(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
-                uint64_t src_size)
+                uint64_t src_size, uint64_t opcode)
 {
     taint_log("taint_sext\n");
     concolic_copy(shad, dest, shad, src, src_size, llvm::Instruction::SExt, 0, {});

@@ -293,7 +293,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
         argTys, PTV->voidT, true, ES, symbols);
 
     argTys = { PTV->shadP, PTV->int64T, PTV->int64T, PTV->int64T,
-        PTV->int64T };
+        PTV->int64T, PTV->int64T };
 
     PTV->sextF = TaintOpsFunction("taint_sext", (void *) &taint_sext,
         argTys, PTV->voidT, false, ES, symbols);
@@ -1025,7 +1025,7 @@ void PandaTaintVisitor::insertTaintSext(Instruction &I, Value *src) {
     Constant *src_size = const_uint64(getValueSize(src));
 
     vector<Value *> args { llvConst,
-        constSlot(dest), dest_size, constSlot(src), src_size };
+        constSlot(dest), dest_size, constSlot(src), src_size, const_uint64(I.getOpcode()) };
 
     insertCallAfter(I, sextF, args);
 }
@@ -1650,6 +1650,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
 
         switch (calledF->getIntrinsicID()) {
             case Intrinsic::uadd_with_overflow:
+            case Intrinsic::uadd_sat:
             case Intrinsic::sadd_sat:
             case Intrinsic::ssub_sat:
             case Intrinsic::usub_sat:
