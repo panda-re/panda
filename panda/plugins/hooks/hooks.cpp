@@ -211,11 +211,12 @@ void add_hook(struct hook* h) {
     set<struct hook>::iterator it;
 
 #define LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK)\
+    hook_container.asid = asid; \
     it = NAME ## _hooks[asid].lower_bound(hook_container); \
     while(it != NAME ## _hooks[asid].end() && it->addr COMPARATOR_TO_BLOCK){ \
         auto h = (hook*)&(*it); \
         if (likely(h->enabled)){ \
-            if (h->asid == 0 || h->asid == asid){ \
+            if (h->asid == asid){ \
                 if (h->km == MODE_ANY || (in_kernel && h->km == MODE_KERNEL_ONLY) || (!in_kernel && h->km == MODE_USER_ONLY)){ \
                     EXPR \
                     if (!h->enabled){ \
@@ -231,7 +232,12 @@ void add_hook(struct hook* h) {
 
 #define HOOK_GENERIC_RET_EXPR(EXPR, UPPER_CB_NAME, NAME, VALUE, COMPARATOR_TO_BLOCK, PC) \
     MAKE_HOOK_FN_START(UPPER_CB_NAME, NAME, VALUE, PC) \
-    LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK)
+    LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK) \
+    if (asid != 0){ \
+        asid = 0; \
+        LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK) \
+    }
+
 
 #define MAKE_HOOK_VOID(UPPER_CB_NAME, NAME, PASSED_ARGS, PC, ...) \
 void cb_ ## NAME ## _callback PASSED_ARGS { \
