@@ -1108,6 +1108,9 @@ bool init_plugin(void *self) {
 
 void uninit_plugin(void *self) {
     //(void) self;
+    // if we don't clear tb's when this exits we have TBs which can call
+    // into our exited plugin.
+    panda_do_flush_tb();
 #ifdef DEBUG
     std::cout << PANDA_MSG "DEBUG syscall count per asid:";
     for(const auto &asid_count : syscallCounter){

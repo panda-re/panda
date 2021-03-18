@@ -13,7 +13,7 @@ for f in [recording_name+"-rr-nondet.log", recording_name+"-rr-snp"]:
 
 @blocking
 def record_nondet(): # Run a non-deterministic command at the root snapshot, then end .run()
-    panda.record_cmd("date; cat /dev/urandom | head -n30 | md5sum", recording_name=recording_name)
+    panda.record_cmd("date; cat /dev/urandom | head -n1 | md5sum", recording_name=recording_name)
     panda.stop_run()
 
 # Collect BBs during both recording and then replay validate that our replay is good

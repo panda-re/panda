@@ -293,5 +293,8 @@ bool init_plugin(void *_self) {
 }
 
 void uninit_plugin(void *self) {
+    // if we don't clear tb's when this exits we have TBs which can call
+    // into our exited plugin.
+    panda_do_flush_tb();
     disable_hooking();
 }
