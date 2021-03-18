@@ -11,7 +11,7 @@ else:
 
 command_str = f"{program_name} --no-check-certificate  http://www.ll.mit.edu/sites/default/files/styles/ifde_wysiwyg__floated/public/other/image/2018-04/New_Full_Logo-BLACK-2500-lissajou-only-square.png -O o.png"
 
-@panda.queue_blocking
+@panda.queue_async
 def driver():
     print(panda.revert_sync("root"))
     print(panda.run_serial_cmd(command_str))

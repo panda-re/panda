@@ -4,7 +4,7 @@ TODO: We don't currently have a way to unset the breakpoint so you get stuck the
 '''
 
 from sys import argv
-from pandare import Panda, blocking, ffi
+from pandare import Panda
 
 panda = Panda(generic="i386", extra_args=["-s", "-S"])
 
