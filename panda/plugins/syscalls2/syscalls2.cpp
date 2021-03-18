@@ -890,6 +890,9 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb) {
 #endif
     }
     else {
+        // the buffer size is 4, but the read size is 2. Adjust for that
+        // in thumb mode.
+        pc += 2;
         panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
         // check for Thumb mode syscall
         if (buf[1] == 0xDF && buf[0] == 0){
