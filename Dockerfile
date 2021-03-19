@@ -33,6 +33,11 @@ RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
     python3 -m pip install --upgrade --no-cache-dir setuptools wheel && \
     python3 -m pip install --upgrade --no-cache-dir pycparser "protobuf" "${CFFI_PIP}" colorama
 
+# Rust toolchain install
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN cargo --help
+
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
 # Note .dockerignore file keeps us from copying things we don't need
@@ -49,6 +54,15 @@ RUN git -C /panda submodule update --init dtc && \
         --disable-numa \
         --enable-llvm && \
     make -C /panda/build -j "$(nproc)"
+
+# Rust plugin build
+ENV PANDA_PATH "/panda/build"
+RUN echo "export PANDA_PATH=\"/panda/build\" >> /root/.bashrc"
+RUN git -C /panda submodule update --init panda-rs-plugins
+WORKDIR /panda/panda-rs-plugins
+RUN ./install_plugins.sh
+# Cleanup after IL plugin (uses a differnt captstone version during build)
+RUN sudo apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get install -y libcapstone3 libcapstone-dev
 
 #### Develop setup: panda built + pypanda installed (in develop mode) - Stage 3
 FROM builder as developer

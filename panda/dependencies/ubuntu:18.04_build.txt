@@ -24,6 +24,8 @@ protobuf-c-compiler
 protobuf-compiler
 python3-dev
 zip
+curl
+sudo
 
 # pypanda build dependencies
 python3-setuptools
