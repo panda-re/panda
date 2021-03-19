@@ -62,7 +62,7 @@ RUN git -C /panda submodule update --init panda-rs-plugins
 WORKDIR /panda/panda-rs-plugins
 RUN ./install_plugins.sh
 # Cleanup after IL plugin (uses a differnt captstone version during build)
-RUN sudo apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get install -y libcapstone3 libcapstone-dev
+RUN apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get install -y libcapstone3 libcapstone-dev
 
 #### Develop setup: panda built + pypanda installed (in develop mode) - Stage 3
 FROM builder as developer
