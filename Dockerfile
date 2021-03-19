@@ -58,8 +58,9 @@ RUN cd /panda/panda/python/core && \
     python3 setup.py develop &&  \
     ldconfig && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10
-# TODO merge with above command once it works
-RUN git -C /panda/rs-plugins submodule update  && \
+
+# TODO: merge with above command?
+RUN git -C /panda submodule update --init panda/rs-plugins && \
     /panda/panda/rs-plugins/install_plugins.sh
 WORKDIR /panda/
 
