@@ -59,8 +59,8 @@ RUN cd /panda/panda/python/core && \
     ldconfig && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 # TODO merge with above command once it works
-RUN git -C /panda submodule update --init panda-rs-plugins && \
-    /panda/panda-rs-plugins/install_plugins.sh
+RUN git -C /panda/rs-plugins submodule update  && \
+    /panda/panda/rs-plugins/install_plugins.sh
 WORKDIR /panda/
 
 #### Install PANDA + pypanda from builder - Stage 4

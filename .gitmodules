@@ -34,6 +34,6 @@
 [submodule "roms/skiboot"]
 	path = roms/skiboot
 	url = https://git.qemu.org/git/skiboot.git
-[submodule "panda-rs-plugins"]
-	path = panda-rs-plugins
+[submodule "panda/rs-plugins"]
+	path = panda/rs-plugins
 	url = https://github.com/panda-re/panda-rs-plugins.git
