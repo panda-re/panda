@@ -6,9 +6,9 @@ Enables queuing up python functions from main thread and vice versa
 import threading
 import functools
 from queue import Queue, Empty
-from time import sleep
+from time import sleep, time
 from colorama import Fore, Style
-from .utils import debug
+from .utils import debug, warn
 
 
 def progress(msg):
@@ -28,6 +28,10 @@ class AsyncThread:
         self.task_queue = Queue()
         self.athread = threading.Thread(target=self.run, args=(self.task_queue,))
         self.athread.daemon = True # Quit on main quit
+        self.warned = False # Did we print a warning about empty queue?
+        self.ending = False # Is main PANDA execution ending?
+        self.empty_at = None # Last time when our task queue went from full to empty
+        self.last_called = None # Name of the last function called
         self.athread.start()
 
         # Internal thread which only pypanda should use
@@ -58,7 +62,16 @@ class AsyncThread:
         while self.running: # Note setting this to false will take some time
             try: # Try to get an item repeatedly, but also check if we want to stop running
                 func = task_queue.get(True, 1) # Implicit (blocking) wait for 1s
+                self.empty_at = None
+                self.last_called = func.__name__.replace(" (with async thread)", "")
             except Empty:
+                # If we've been empty for 5s without shutdown, warn (just once)
+                if self.empty_at is None:
+                    self.empty_at = time()
+                else:
+                    if time() - self.empty_at > 5 and not self.warned and not self.ending:
+                        warn(f"PANDA finished all the queued functions but emulation was left running. You may have forgotten to call to panda.end_analysis() in the last queued function '{self.last_called}'")
+                        self.warned = True
                 continue
 
             # Don't interact with guest if it isn't running

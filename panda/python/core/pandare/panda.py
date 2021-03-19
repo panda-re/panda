@@ -428,6 +428,8 @@ class Panda():
         if not self.started.is_set():
             self.started.set()
 
+        self.athread.ending = False
+
         # Ensure our internal CBs are always enabled
         self.enable_internal_callbacks()
         self.setup_internal_signal_handler()
@@ -469,8 +471,10 @@ class Panda():
         Note here we use the async class's internal thread to process these
         without needing to wait for tasks in the main async thread
         '''
+        self.athread.ending = True
         self.unload_plugins()
         if self.running.is_set() or self.initializing.is_set():
+
             # If we were running, stop the execution and check if we crashed
             self.queue_async(self.stop_run, internal=True)
 
@@ -830,6 +834,8 @@ class Panda():
                 self.end_analysis() 
         
 
+        # Keep the original function name instead of replacing it with 'wrapper'
+        wrapper.__name__ = f.__name__
         self.athread.queue(wrapper, internal=internal)
 
     def map_memory(self, name, size, address):
