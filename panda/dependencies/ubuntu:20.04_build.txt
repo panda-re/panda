@@ -20,8 +20,9 @@ protobuf-compiler
 python3-dev
 libpixman-1-dev
 zip
+
+# Rust env dependencies
 curl
-sudo
 
 # pypanda build dependencies
 python3-setuptools

@@ -24,8 +24,9 @@ protobuf-c-compiler
 protobuf-compiler
 python3-dev
 zip
+
+# Rust env dependencies
 curl
-sudo
 
 # pypanda build dependencies
 python3-setuptools

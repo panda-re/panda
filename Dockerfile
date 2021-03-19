@@ -1,6 +1,5 @@
 ARG BASE_IMAGE="ubuntu:20.04"
 ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
-ARG CFFI_PIP="https://foss.heptapod.net/pypy/cffi/-/archive/branch/default/cffi-branch-default.zip"
 
 ### BASE IMAGE
 FROM $BASE_IMAGE as base
@@ -22,7 +21,6 @@ RUN [ -e /tmp/${BASE_IMAGE}_base.txt ] && \
 FROM base AS builder
 ARG BASE_IMAGE
 ARG TARGET_LIST
-ARG CFFI_PIP
 
 RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
     apt-get -qq update && \
@@ -31,12 +29,8 @@ RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
     rm -rf /var/lib/apt/lists/* && \
     python3 -m pip install --upgrade --no-cache-dir pip && \
     python3 -m pip install --upgrade --no-cache-dir setuptools wheel && \
-    python3 -m pip install --upgrade --no-cache-dir pycparser "protobuf" "${CFFI_PIP}" colorama
-
-# Rust toolchain install
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
-RUN cargo --help
+    python3 -m pip install --upgrade --no-cache-dir pycparser protobuf cffi colorama && \
+    curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
@@ -55,21 +49,18 @@ RUN git -C /panda submodule update --init dtc && \
         --enable-llvm && \
     make -C /panda/build -j "$(nproc)"
 
-# Rust plugin build
-ENV PANDA_PATH "/panda/build"
-RUN echo "export PANDA_PATH=\"/panda/build\" >> /root/.bashrc"
-RUN git -C /panda submodule update --init panda-rs-plugins
-WORKDIR /panda/panda-rs-plugins
-RUN ./install_plugins.sh
-# Cleanup after IL plugin (uses a differnt captstone version during build)
-RUN apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get install -y libcapstone3 libcapstone-dev
-
-#### Develop setup: panda built + pypanda installed (in develop mode) - Stage 3
+#### Develop setup: panda built + pypanda installed (in develop mode) + panda-rs installed - Stage 3
 FROM builder as developer
+ENV PANDA_PATH="/panda/build"
+ENV PATH="/root/.cargo/bin:${PATH}"
+
 RUN cd /panda/panda/python/core && \
     python3 setup.py develop &&  \
     ldconfig && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+# TODO merge with above command once it works
+RUN git -C /panda submodule update --init panda-rs-plugins && \
+    /panda/panda-rs-plugins/install_plugins.sh
 WORKDIR /panda/
 
 #### Install PANDA + pypanda from builder - Stage 4
