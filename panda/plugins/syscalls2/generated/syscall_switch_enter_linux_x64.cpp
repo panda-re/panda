@@ -4578,8 +4578,8 @@ void syscall_enter_switch_linux_x64(CPUState *cpu, target_ptr_t pc) {
 		h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
 		h.enabled = true;
 		h.km = MODE_ANY; //you'd expect this to be user only
-
 		hooks_add_hook(&h);
+
 		running_syscalls[std::make_pair(ctx.retaddr, ctx.asid)] = ctx;
 	}
 #endif
