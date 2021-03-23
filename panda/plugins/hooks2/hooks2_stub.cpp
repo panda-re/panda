@@ -10,7 +10,7 @@ PANDAENDCOMMENT */
 
 /* This is a stub for systems that aren't ARM or X86. */
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 
 #include "hooks2.h"

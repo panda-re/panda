@@ -3,9 +3,8 @@
 #include <stdbool.h>
 
 #include "vl.h"
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "panda/panda_api.h"
-#include "panda/common.h"
 #include "sysemu/sysemu.h"
 
 // for map_memory

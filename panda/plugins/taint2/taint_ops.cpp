@@ -38,10 +38,8 @@ PANDAENDCOMMENT */
 #include "qemu/osdep.h"        // needed for host-utils.h
 #include "qemu/host-utils.h"   // needed for clz64 and ctz64
 
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
+#include "panda/plugin_api.h"
 #define SHAD_LLVM
-#include "panda/tcg-llvm.h"
 
 #include "addr.h"
 #include "shad.h"

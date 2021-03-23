@@ -1,7 +1,7 @@
 #ifndef COVERAGE_PREDICATE_H
 #define COVERAGE_PREDICATE_H
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 namespace coverage
 {

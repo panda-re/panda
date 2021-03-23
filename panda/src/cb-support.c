@@ -1,12 +1,10 @@
 #include <stdint.h>
 #include "qemu/osdep.h"
 #include "cpu.h"
-#include "panda/plugin.h"
-#include "panda/callbacks/cb-support.h"
-#include "panda/common.h"
 
-#include "panda/rr/rr_log.h"
-#include "panda/rr/rr_api.h"
+#include "panda/plugin_api.h"
+#include "panda/callbacks/cb-support.h"
+
 #include "exec/cpu-common.h"
 #include "exec/ram_addr.h"
 

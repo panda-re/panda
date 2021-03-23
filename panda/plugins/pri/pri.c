@@ -15,8 +15,7 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
+#include "panda/plugin_api.h"
 
 #include "pri_types.h"
 #include "pri_int_fns.h"

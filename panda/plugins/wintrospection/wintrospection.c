@@ -21,16 +21,11 @@ PANDAENDCOMMENT */
 
 #include <iconv.h>
 
-#include "panda/rr/rr_log.h"
-#include "panda/tcg-utils.h"
+#include "panda/plugin_api.h"
 
 #include "osi/osi_types.h"
 #include "osi/os_intro.h"
 #include "osi/osi_ext.h"
-
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
-#include "panda/plog.h"
 
 #include "syscalls2/syscalls_ext_typedefs.h"
 

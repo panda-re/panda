@@ -4,7 +4,7 @@
  *
  * This header file is not meant to be used by plugins building
  * upon the functionality of Linux OSI.
- * For <a href="https://github.com/panda-re/panda/blob/master/panda/docs/manual.md#plugin-plugin-interaction">Plugin-Plugin</a>
+ * For <a href="https://github.com/panda-re/panda/plugin_api.md#plugin-plugin-interaction">Plugin-Plugin</a>
  * interactions, `osi_linux_ext.h` should be used.
  *
  * The offset getter macros have been based off the code from
@@ -21,7 +21,7 @@
 #include <initializer_list>
 #include <glib.h>
 #endif
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "osi/osi_types.h"
 #include "utils/kernelinfo/kernelinfo.h"
 #include "osi_linux_debug.h"

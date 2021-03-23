@@ -12,9 +12,7 @@
  *
  * PANDAENDCOMMENT */
 
-#include "panda/plugin.h"
-#include "panda/rr/rr_log.h"
-#include "panda/checkpoint.h"
+#include "panda/plugin_api.h"
 
 uint64_t checkpoint_instr_size;
 

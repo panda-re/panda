@@ -13,7 +13,7 @@
 #include <cstdlib>
 #include <string>
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 const char *UNKNOWN_ITEM = "(unknown)";
 const char *NO_PROCESS = "(no current process)";

@@ -36,7 +36,7 @@ PANDAENDCOMMENT */
 #include <iostream>
 #include <fstream>
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 #include "../callstack_instr/callstack_instr.h"
 #include "../callstack_instr/callstack_instr_ext.h"

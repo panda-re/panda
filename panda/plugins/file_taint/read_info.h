@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 struct ReadKey
 {

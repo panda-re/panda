@@ -15,14 +15,13 @@
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "taint2/taint2.h"
 #include "taint2/addr.h"
 
 extern "C" {
 #include <assert.h>
 #include "taint2/taint2_ext.h"
-#include "panda/plog.h"
 }
 
 #include <sstream>

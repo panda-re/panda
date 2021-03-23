@@ -17,7 +17,7 @@ PANDAENDCOMMENT */
 #include <glib.h>
 
 #include "config-host.h"
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "qapi/qmp/qdict.h"
 #include "qmp-commands.h"
 #include "hmp.h"
@@ -26,12 +26,8 @@ PANDAENDCOMMENT */
 
 #ifdef CONFIG_LLVM
 #include "tcg.h"
-#include "panda/tcg-llvm.h"
 #include "panda/helper_runtime.h"
 #endif
-
-#include "panda/common.h"
-#include "panda/rr/rr_api.h"
 
 #define LIBRARY_DIR "/" TARGET_NAME "-softmmu/libpanda-" TARGET_NAME ".so"
 #define PLUGIN_DIR "/" TARGET_NAME "-softmmu/panda/plugins/"

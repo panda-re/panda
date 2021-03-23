@@ -10,12 +10,11 @@
 
 #define __STDC_FORMAT_MACROS
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 extern "C" {   
 #include <assert.h>
 #include <stdint.h>
-#include "panda/plog.h"
 }
 
 #include <sstream>

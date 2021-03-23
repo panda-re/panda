@@ -2,7 +2,7 @@
 
 #include <cstdio>
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 extern "C" {
 
@@ -11,7 +11,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#include "panda/plog.h"
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 #include "track_intexc/track_intexc_ext.h"

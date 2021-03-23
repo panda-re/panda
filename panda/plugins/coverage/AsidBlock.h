@@ -3,7 +3,7 @@
 
 #include <functional>
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 #include "Block.h"
 

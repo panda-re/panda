@@ -3,7 +3,7 @@
 
 #include <functional>
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 /**
  * The common block structure, blocks are represented by address and size.

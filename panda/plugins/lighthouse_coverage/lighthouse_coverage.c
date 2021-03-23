@@ -1,4 +1,4 @@
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 // OSI
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"

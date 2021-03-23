@@ -14,7 +14,7 @@ PANDAENDCOMMENT */
 
 #include <math.h>
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "qmp-commands.h"
 
 const double MIN_FRACTION = 0.0;

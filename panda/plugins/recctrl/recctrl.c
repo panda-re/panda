@@ -11,8 +11,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <glib.h>
-#include "panda/plugin.h"
-#include "panda/rr/rr_api.h"
+#include "panda/plugin_api.h"
 #include "recctrl.h"
 
 bool init_plugin(void *);

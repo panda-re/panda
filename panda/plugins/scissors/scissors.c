@@ -8,10 +8,7 @@
 
 #include <stdio.h>
 
-#include "panda/plugin.h"
-#include "panda/rr/rr_log.h"
-#include "panda/rr/rr_api.h"
-#include "panda/common.h"
+#include "panda/plugin_api.h"
 
 #include "migration/migration.h"
 #include "include/exec/address-spaces.h"

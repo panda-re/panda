@@ -73,7 +73,7 @@ def generate_code(functions, module, includes):
          * compilation unit, rather than in every compilation unit.
          */
         #include <dlfcn.h>
-        #include "panda/plugin.h"
+        #include "panda/plugin_api.h"
     """).format(module.upper())
 
     # convert function specs to maps

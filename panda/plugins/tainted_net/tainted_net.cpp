@@ -13,8 +13,7 @@ PANDAENDCOMMENT */
 #include <cstring>
 #include <stdint.h>
 
-#include "panda/plugin.h"
-#include "panda/network.h"
+#include "panda/plugin_api.h"
 #include "taint2/taint2.h"
 
 // Number of bits in a taint label

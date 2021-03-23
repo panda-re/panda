@@ -4,8 +4,7 @@
 #include <vector>
 #include <memory>
 
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
+#include "panda/plugin_api.h"
 
 // taint
 #include "taint2/label_set.h"
@@ -15,10 +14,6 @@
 #include "callstack_instr/callstack_instr.h"
 
 extern "C" {
-
-#include "panda/rr/rr_log.h"
-#include "panda/plog.h"
-
 #include "taint2/taint2_hypercalls.h"
 
 #include "pri/pri_types.h"

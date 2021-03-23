@@ -22,18 +22,11 @@
 #include <set>
 #include <map>
 
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
-
+#include "panda/plugin_api.h"
 
 extern "C" {
-#include "panda/rr/rr_log.h"
-
-//#include "cpu.h"
-
 bool init_plugin(void *);
 void uninit_plugin(void *);
-
 }
 
 #include "asid_instr_count.h"

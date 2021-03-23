@@ -1,6 +1,5 @@
 #include <vector>
-#include "panda/plugin.h"
-#include "panda/common.h"
+#include "panda/plugin_api.h"
 
 // Structs instead of std::tuple for C-compatible API
 

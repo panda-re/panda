@@ -2,7 +2,7 @@
 
 #include <cstdio>
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 extern "C" {
 

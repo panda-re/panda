@@ -15,7 +15,7 @@ PANDAENDCOMMENT */
 #include <unordered_set>
 
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 // OSI
 #include "osi/osi_types.h"
@@ -34,8 +34,6 @@ PANDAENDCOMMENT */
 #include "EdgeCsvWriter.h"
 
 #include "osi_subject.h"
-
-#include "panda/tcg-utils.h"
 
 using namespace coverage;
 

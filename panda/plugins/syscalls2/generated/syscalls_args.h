@@ -17,7 +17,7 @@
  * `syscall_ctx_t *`.
  */
 #pragma once
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 /* ### linux:arm ######################################################## */
 // long sys_restart_syscall ['void']

@@ -29,14 +29,9 @@ PANDAENDCOMMENT */
 #include <cstdlib>
 #include <cstring>
 #include <cerrno>
+#include "panda/plugin_api.h"
 
 extern "C" {
-
-#include "panda/rr/rr_log.h"
-#include "panda/plog.h"
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
-
 #include "pri_dwarf_util.h"
 #include "pri_dwarf.h"
 #include "pri_dwarf_types.h"

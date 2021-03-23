@@ -9,8 +9,7 @@
 #include <map>
 #include <jsoncpp/json/json.h>
 
-#include "panda/plugin.h"
-#include "panda/common.h"
+#include "panda/plugin_api.h"
 
 // Struct Members ------------------------------------------------------------------------------------------------------
 

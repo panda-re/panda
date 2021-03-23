@@ -36,10 +36,7 @@ PANDAENDCOMMENT */
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/IR/Instruction.h>
 
-#include "panda/rr/rr_log.h"
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
-#include "panda/tcg-llvm.h"
+#include "panda/plugin_api.h"
 
 #include "addr.h"
 #define SHAD_LLVM

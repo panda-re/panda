@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "panda/tcg-utils.h"
+#include "panda/plugin_api.h"
 
 #include "InstrumentationDelegate.h"
 #include "OsiObserver.h"

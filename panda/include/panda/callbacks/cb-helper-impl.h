@@ -13,7 +13,7 @@
 PANDAENDCOMMENT */
 #pragma once
 #include "panda/callbacks/cb-support.h"
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 void HELPER(panda_insn_exec)(target_ulong pc) {
     // PANDA instrumentation: before basic block

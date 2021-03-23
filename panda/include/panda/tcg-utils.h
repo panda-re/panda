@@ -1,7 +1,7 @@
 #ifndef TCG_UTILS_H
 #define TCG_UTILS_H
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h" // circular?
 #include "tcg.h"
 
 #ifdef __cplusplus

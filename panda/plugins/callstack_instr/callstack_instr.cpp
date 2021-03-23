@@ -41,8 +41,7 @@ PANDAENDCOMMENT */
 #include <capstone/mips.h>
 #endif
 
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
+#include "panda/plugin_api.h"
 
 // needed for the threaded stack_type
 #include "osi/osi_types.h"
@@ -54,7 +53,6 @@ PANDAENDCOMMENT */
 #include "callstack_instr.h"
 
 extern "C" {
-#include "panda/plog.h"
 #include "callstack_instr_int_fns.h"
 
 bool translate_callback(CPUState* cpu, target_ulong pc);

@@ -15,7 +15,7 @@
 #include "osi/osi_ext.h"
 #include "osi/os_intro.h"
 
-#include "panda/tcg-utils.h"
+#include "panda/plugin_api.h"
 
 // Uncomment the following for extra debugging messages.
 //#define EDGE_INST_DEBUG

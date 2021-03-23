@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "panda/tcg-utils.h"
+#include "panda/plugin_api.h"
 
 #include "BlockInstrumentationDelegate.h"
 

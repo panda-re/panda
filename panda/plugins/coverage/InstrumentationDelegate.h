@@ -1,7 +1,7 @@
 #ifndef COVERAGE_INSTRUMENTATION_DELEGATE_H
 #define COVERAGE_INSTRUMENTATION_DELEGATE_H
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 namespace coverage
 {

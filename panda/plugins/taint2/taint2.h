@@ -20,7 +20,7 @@
 #include <map>
 #include <set>
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 #include "shad.h"
 #include "shad_dir_32.h"

@@ -5,10 +5,7 @@
 #define __STDC_FORMAT_MACROS
 #endif
 
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
-
-#include "panda/tcg-llvm.h"
+#include "panda/plugin_api.h"
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/InstrTypes.h>
 

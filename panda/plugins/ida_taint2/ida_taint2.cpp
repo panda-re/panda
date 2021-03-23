@@ -11,7 +11,7 @@ PANDAENDCOMMENT */
 #include <vector>
 #include <unordered_set>
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 // Taint Includes
 #include "taint2/taint2.h"

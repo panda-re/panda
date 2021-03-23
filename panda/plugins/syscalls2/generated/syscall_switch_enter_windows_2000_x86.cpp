@@ -1,5 +1,4 @@
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
+#include "panda/plugin_api.h"
 
 #include "syscalls2.h"
 #include "syscalls2_info.h"
@@ -4184,8 +4183,8 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc) {
 		h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
 		h.enabled = true;
 		h.km = MODE_ANY; //you'd expect this to be user only
+        hooks_add_hook(&h);
 
-		hooks_add_hook(&h);
 		running_syscalls[std::make_pair(ctx.retaddr, ctx.asid)] = ctx;
 	}
 #endif

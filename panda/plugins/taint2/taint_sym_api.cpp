@@ -8,7 +8,7 @@
 #define SHAD_LLVM
 #include "taint_sym_api.h"
 #include "taint2.h"
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 #include <cstring>
 #include <fstream>

@@ -25,7 +25,7 @@ PANDAENDCOMMENT */
 #include <string>
 #include <iostream>
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 extern "C" {
 #include "stringsearch.h"

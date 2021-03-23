@@ -10,7 +10,6 @@
 PANDAENDCOMMENT */
 // This needs to be defined before anything is included in order to get
 // the PRIx64 macro
-#define __STDC_FORMAT_MACROS
 
 #include<vector>
 #include<iostream>
@@ -18,8 +17,7 @@ PANDAENDCOMMENT */
 #include<fstream>
 #include<string>
 #include<algorithm>
-#include "panda/plugin.h"
-#include "panda/common.h"
+#include "panda/plugin_api.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C

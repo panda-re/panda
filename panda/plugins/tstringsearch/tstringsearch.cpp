@@ -22,7 +22,7 @@ extern "C" {
 #include <math.h>
 }
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "taint2/taint2.h"
 #include "stringsearch/stringsearch.h"
 

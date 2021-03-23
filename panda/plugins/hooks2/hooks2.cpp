@@ -19,7 +19,7 @@ PANDAENDCOMMENT */
 #include <sstream>
 #include <libgen.h>
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 #include "syscalls2/syscalls_ext_typedefs.h"

@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <gmodule.h>
-#include "panda/types.h"
+#include "panda/plugin_api.h"
 
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
 // api autogen needs it.  And don't put any compiler directives

@@ -38,8 +38,7 @@
 
 #include <iostream>
 
-#include "panda/plugin.h"
-#include "panda/tcg-llvm.h"
+#include "panda/plugin_api.h"
 
 #include <llvm/IR/PassManager.h>
 #include <llvm/PassRegistry.h>

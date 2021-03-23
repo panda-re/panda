@@ -4,9 +4,7 @@
 #include <glib.h>
 
 #include "panda/debug.h"
-#include "panda/plugin.h"
-#include "panda/common.h"
-#include "panda/plog.h"
+#include "panda/plugin_api.h"
 #include "panda/plog-cc-bridge.h"
 
 #if defined(TARGET_ARM)

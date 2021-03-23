@@ -15,7 +15,7 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 bool init_plugin(void *);
 void uninit_plugin(void *);

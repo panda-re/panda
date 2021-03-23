@@ -1,5 +1,4 @@
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
+#include "panda/plugin_api.h"
 
 #include "syscalls2.h"
 #include "syscalls2_info.h"

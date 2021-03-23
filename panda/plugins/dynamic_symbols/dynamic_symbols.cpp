@@ -20,7 +20,7 @@ PANDAENDCOMMENT */
 #include <map> 
 #include <set>
 #include <algorithm>
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 #include <unordered_map>

@@ -11,6 +11,10 @@
  * See the COPYING file in the top-level directory.
  *
 PANDAENDCOMMENT */
+
+
+// TODO: delete this file - it was replaced by plugin_api.h which is a bit more comprehensive
+
 #pragma once
 #include "panda/debug.h"
 #include "panda/cheaders.h"

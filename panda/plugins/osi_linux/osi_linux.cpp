@@ -13,8 +13,7 @@
 #include <unordered_set>
 #include <glib.h>
 
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
+#include "panda/plugin_api.h"
 #include "osi/osi_types.h"
 #include "osi/os_intro.h"
 #include "utils/kernelinfo/kernelinfo.h"

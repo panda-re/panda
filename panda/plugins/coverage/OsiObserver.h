@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "osi/osi_types.h"
 
 namespace coverage

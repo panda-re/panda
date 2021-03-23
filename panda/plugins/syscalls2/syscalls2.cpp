@@ -21,9 +21,7 @@ PANDAENDCOMMENT */
 //#define SYSCALL_RETURN_DEBUG
 //#define PANDA_LOG_LEVEL PANDA_LOG_DEBUG
 
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
-#include "panda/tcg-utils.h"
+#include "panda/plugin_api.h"
 #include "hooks/hooks_int_fns.h"
 
 #include <cstdio>

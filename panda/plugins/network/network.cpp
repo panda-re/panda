@@ -17,7 +17,7 @@
 
 #define COMMENT_BUF_LEN 1024
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 #include <wireshark/config.h>
 #include <wiretap/wtap.h>

@@ -25,8 +25,7 @@ PANDAENDCOMMENT */
 #include <gmodule.h>
 #include <glib/gprintf.h>
 
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
+#include "panda/plugin_api.h"
 
 #include "osi_types.h"
 #include "osi_int_fns.h"

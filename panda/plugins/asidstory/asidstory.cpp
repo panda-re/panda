@@ -49,13 +49,9 @@ using std::setw;
 using std::setfill;
 using std::endl;
 
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
+#include "panda/plugin_api.h"
 
 extern "C" {
-
-#include "panda/rr/rr_log.h"
-
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 

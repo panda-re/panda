@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <dlfcn.h>
 #include <glib.h>
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "syscalls2_info.h"
 #include "syscalls2_int_fns.h"
 

@@ -15,9 +15,7 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
-#include "panda/plugin.h"
-#include "panda/rr/rr_log.h"
-#include "panda/rr/rr_api.h"
+#include "panda/plugin_api.h"
 
 #include <stdio.h>
 

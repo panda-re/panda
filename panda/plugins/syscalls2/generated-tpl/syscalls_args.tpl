@@ -17,7 +17,7 @@
  * `syscall_ctx_t *`.
  */
 #pragma once
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 {%- for platform in syscalls %}
 {%- set os, arch = platform.split(':') %}

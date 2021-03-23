@@ -2,7 +2,7 @@
 #include <memory>
 #include <vector>
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"

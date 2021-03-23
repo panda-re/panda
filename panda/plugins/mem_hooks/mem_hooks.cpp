@@ -14,7 +14,7 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include "mem_hooks_int_fns.h"
 #include <iostream>
 #include <unordered_map>

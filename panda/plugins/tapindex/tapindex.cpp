@@ -34,8 +34,7 @@ extern "C" {
 #include <list>
 #include <algorithm>
 
-#include "panda/plugin.h"
-#include "panda/plog.h"
+#include "panda/plugin_api.h"
 
 #include "callstack_instr/prog_point.h"           // use the prog_point.h from callstack_instr, any way the plugin is dependent on callstack_instr
 #include "callstack_instr/callstack_instr_ext.h" // for init api, any way the plugin is dependent on callstack_instr

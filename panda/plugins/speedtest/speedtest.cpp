@@ -9,7 +9,7 @@
 PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
-#include "panda/plugin.h"
+#include "panda/plugin_api.h"
 #include <sys/time.h>
 
 #include <algorithm> 

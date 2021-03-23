@@ -7,14 +7,10 @@
 #include <iostream>
 #include <vector>
 
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
+#include "panda/plugin_api.h"
 
 
 extern "C" {
-#include "panda/rr/rr_log.h"
-#include "panda/plog.h"
-
 #include "pri/pri_types.h"
 #include "pri/pri_ext.h"
 #include "pri/pri.h"
