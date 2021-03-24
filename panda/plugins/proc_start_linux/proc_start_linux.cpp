@@ -112,6 +112,36 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
                 }else if (entrynum == AT_EXECFN){
                     string execfn = read_str(env, entryval);
                     execfn.copy(vals.procname, MAX_PATH_LEN -1, 0);
+                }else if (entrynum == AT_SYSINFO_EHDR){
+                    vals.ehdr = entryval;
+                }else if (entrynum == AT_HWCAP){
+                    vals.hwcap = entryval;
+                }else if (entrynum == AT_PAGESZ){
+                    vals.pagesz = entryval;
+                }else if (entrynum == AT_CLKTCK){
+                    vals.clktck = entryval;
+                }else if (entrynum == AT_PHENT){
+                    vals.phent = entryval;
+                }else if (entrynum == AT_PHNUM){
+                    vals.phnum = entryval;
+                }else if (entrynum == AT_BASE){
+                    vals.base = entryval;
+                }else if (entrynum == AT_FLAGS){
+                    vals.flags = entryval;
+                }else if (entrynum == AT_UID){
+                    vals.uid = entryval;
+                }else if (entrynum == AT_EUID){
+                    vals.euid = entryval;
+                }else if (entrynum == AT_GID){
+                    vals.gid = entryval;
+                }else if (entrynum == AT_EGID){
+                    vals.egid = entryval;
+                }else if (entrynum == AT_SECURE){
+                    vals.secure = entryval;
+                }else if (entrynum == AT_RANDOM){
+                    vals.random = entryval;
+                }else if (entrynum == AT_PLATFORM){
+                    vals.platform = entryval;
                 }
             }
             if (vals.entry && vals.phdr){
