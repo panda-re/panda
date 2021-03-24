@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from sys import argv
-from pandare import Panda, blocking, ffi
+from pandare import Panda
 
 # Record the address of every function we call using callstack_instr
 
@@ -13,7 +13,7 @@ if (generic_type == "i386") or (generic_type == "x86_64"):
 else:
     panda.load_plugin("callstack_instr", args = {"stack_type":"heuristic"})
 
-@blocking
+@panda.queue_async
 def run_cmd():
     panda.revert_sync("root")
     print(panda.run_serial_cmd("uname -a"))
@@ -23,6 +23,5 @@ def run_cmd():
 def on_call(cpu, func):
     print(f"Call to 0x{func:x}")
 
-panda.queue_async(run_cmd)
-
+panda.disable_tb_chaining()
 panda.run()

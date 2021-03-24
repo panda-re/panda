@@ -13,7 +13,7 @@ from os import path
 import capstone
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
-from pandare import Panda, blocking, ffi
+from pandare import Panda
 
 arch = "x86_64" if len(argv) <= 1 else argv[1]
 extra = "-nographic -chardev socket,id=monitor,path=./monitor.sock,server,nowait -monitor chardev:monitor -serial telnet:127.0.0.1:4445,server,nowait  -device e1000,netdev=net0 -netdev user,id=net0,hostfwd=tcp::5556-:22 -cdrom /home/luke/workspace/qcows/instance-1-cidata.iso"

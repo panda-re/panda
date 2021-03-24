@@ -13,7 +13,6 @@ panda = Panda(generic=generic_type)
 
 @blocking
 def run_cmd():
-
     pwc = ProcWriteCapture(panda, console_capture = True, proc_name = "dhclient", log_dir = "./pwc_log")
 
     panda.revert_sync("root")

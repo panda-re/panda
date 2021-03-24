@@ -99,6 +99,7 @@ void tbranch_on_branch_taint2(Addr a, uint64_t size, bool *tainted) {
     if (num_tainted > 0) {
         *tainted = true;
 
+
         if (liveness) {
             // update liveness info for all input bytes from which lval derives
             for (uint32_t o=0; o<size; o++) {
@@ -111,7 +112,7 @@ void tbranch_on_branch_taint2(Addr a, uint64_t size, bool *tainted) {
             target_ulong asid = panda_current_asid(cpu);
             tainted_branch[asid].insert(panda_current_pc(cpu));
         }
-        else {
+        else if (pandalog) {
             Panda__TaintedBranch *tb = (Panda__TaintedBranch *) malloc(sizeof(Panda__TaintedBranch));
             *tb = PANDA__TAINTED_BRANCH__INIT;
             tb->call_stack = pandalog_callstack_create();

@@ -890,6 +890,9 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb) {
 #endif
     }
     else {
+        // the buffer size is 4, but the read size is 2. Adjust for that
+        // in thumb mode.
+        pc += 2;
         panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
         // check for Thumb mode syscall
         if (buf[1] == 0xDF && buf[0] == 0){
@@ -1105,6 +1108,9 @@ bool init_plugin(void *self) {
 
 void uninit_plugin(void *self) {
     //(void) self;
+    // if we don't clear tb's when this exits we have TBs which can call
+    // into our exited plugin.
+    panda_do_flush_tb();
 #ifdef DEBUG
     std::cout << PANDA_MSG "DEBUG syscall count per asid:";
     for(const auto &asid_count : syscallCounter){

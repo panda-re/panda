@@ -16,7 +16,7 @@ panda = Panda(generic=arch)
 
 @panda.cb_after_machine_init
 def after_machine_init(env):
-        print("Hit machine init. Shutdown analysis")
-        panda.end_analysis()
+	print("Hit machine init. Shutdown analysis")
+	panda.end_analysis()
 
 panda.run()

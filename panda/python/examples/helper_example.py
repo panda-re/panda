@@ -1,10 +1,21 @@
-from pandare import *
-from strace import Strace
+'''
+helper_example.py
 
-panda = Panda(generic="i386")
+This demo shows off using helper scripts to do analysis. In this case we use
+strace.py and provide the Panda object to it.
+
+Run with: python3 helper_example.py
+'''
+
+from pandare import Panda
+from strace import Strace
+from sys import argv
+
+arch = argv[1] if len(argv) > 1 else "i386"
+panda = Panda(generic=arch)
 Strace(panda)
 
-@blocking
+@panda.queue_async
 def revert():
     panda.revert_sync('root')
     print(panda.run_serial_cmd("mount"))
@@ -13,5 +24,4 @@ def revert():
     print(panda.run_serial_cmd("touch myfilename"))
     panda.end_analysis()
 
-panda.queue_async(revert)
 panda.run()
