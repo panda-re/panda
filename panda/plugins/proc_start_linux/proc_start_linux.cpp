@@ -1,11 +1,7 @@
 /* PANDABEGINCOMMENT
  * 
  * Authors:
- *  Tim Leek               tleek@ll.mit.edu
- *  Ryan Whelan            rwhelan@ll.mit.edu
- *  Joshua Hodosh          josh.hodosh@ll.mit.edu
- *  Michael Zhivich        mzhivich@ll.mit.edu
- *  Brendan Dolan-Gavitt   brendandg@gatech.edu
+ * Luke Craig luke.craig@ll.mit.eduß
  * 
  * This work is licensed under the terms of the GNU GPL, version 2. 
  * See the COPYING file in the top-level directory. 
@@ -158,4 +154,13 @@ bool init_plugin(void *self) {
     return true;
 }
 
-void uninit_plugin(void *self) { }
+void uninit_plugin(void *self) {
+#if defined(TARGET_PPC)
+#else
+  void* syscalls = panda_get_plugin_by_name("syscalls2");
+  if (syscalls != NULL){
+    PPP_REMOVE_CB("syscalls2", on_sys_execve_enter, execve_cb);
+    PPP_REMOVE_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
+  }
+#endif
+}
