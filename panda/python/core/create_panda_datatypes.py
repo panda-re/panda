@@ -263,6 +263,7 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     define_clean_header(ffi, include_dir + "/callstack_instr.h")
 
     define_clean_header(ffi, include_dir + "/hooks2_ppp.h")
+    define_clean_header(ffi, include_dir + "/proc_start_linux_ppp.h")
     # END PPP headers
 
     define_clean_header(ffi, include_dir + "/breakpoints.h")
@@ -334,6 +335,8 @@ def main(install=False,recompile=True):
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2_ppp.h"))
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
     
+    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux_ppp.h"))
+    create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux.h"))
     copy_ppp_header("%s/taint2/taint2.h" % PLUGINS_DIR)
 
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
