@@ -11,7 +11,7 @@ Arguments
 
 Dependencies
 ------------
-
+syscalls2.
 APIs and Callbacks
 ------------------
 
@@ -21,16 +21,7 @@ We provide the following PPP callback:
 void (*on_rec_auxv_t)(CPUState *env, TranslationBlock *tb, struct auxv_values);
 ```
 
-The structure currently provides:
-
-```
-struct auxv_values {
-    char procname[MAX_PATH_LEN];
-    target_ulong phdr;
-    target_ulong entry;
-};
-```
-but can fairly easily be extended to add more.
+The structure currently provides many elements of the auxiliary vector that you are quite unlikely to need.
 
 Example
 -------
