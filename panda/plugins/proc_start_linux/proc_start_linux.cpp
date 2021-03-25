@@ -65,38 +65,60 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
         target_ulong sp = panda_current_sp(env);
         target_ulong argc;
         if (panda_virtual_memory_read(env, sp, (uint8_t*) &argc, sizeof(argc))== MEMTX_OK){
+            
+            // the idea of this code is to fill this as best as we can
+            struct auxv_values vals;
+            memset(&vals, 0, sizeof(struct auxv_values));
+
             // we read argc, but just to check the stack is readable.
             // don't use it. just iterate and check for nulls.
             int ptrlistpos = 1;
-            // these are arguments to the binary. we don't read
-            // them but you could.
             target_ulong ptr;
+            
+            // read the arguments from the argv
+            int argc_num = 0;
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
+                    printf("failed reading args\n");
                     panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
                     return;
                 }
                 ptrlistpos++;
                 if (ptr == 0){
                     break;
+                }else if (argc_num < MAX_NUM_ARGS){
+                    string arg = read_str(env, ptr);
+                    if (arg.length() > 0){
+                        strncpy(vals.argv[argc_num], arg.c_str(), MAX_PATH_LEN);
+                        argc_num++;
+                    }
                 }
             }
-            // these are environmental variables. we don't read
-            // them, but you could.
+            vals.argc = argc_num;
+
+            // read the environment variable
+
+            int envc_num = 0;
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
+                    printf("failed reading envp\n");
                     panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
                     return;
                 }
                 ptrlistpos++;
                 if (ptr == 0){
                     break;
+                }else if (envc_num < MAX_NUM_ENV){
+                    string arg = read_str(env, ptr);
+                    if (arg.length() > 0){
+                        strncpy(vals.envp[envc_num], arg.c_str(), MAX_PATH_LEN);
+                        envc_num++;
+                    }
                 }
             }
+            vals.envc = envc_num;
             target_ulong entrynum, entryval;
 
-            struct auxv_values vals;
-            memset(&vals, 0, sizeof(struct auxv_values));
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &entrynum, sizeof(entrynum)) != MEMTX_OK || panda_virtual_memory_read(env, sp+((ptrlistpos+1)*sizeof(target_ulong)), (uint8_t*) &entryval, sizeof(entryval))){
                     panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
@@ -111,11 +133,13 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
                     vals.phdr = entryval;
                 }else if (entrynum == AT_EXECFN){
                     string execfn = read_str(env, entryval);
-                    execfn.copy(vals.procname, MAX_PATH_LEN -1, 0);
+                    execfn.copy(vals.execfn, MAX_PATH_LEN -1, 0);
                 }else if (entrynum == AT_SYSINFO_EHDR){
                     vals.ehdr = entryval;
                 }else if (entrynum == AT_HWCAP){
                     vals.hwcap = entryval;
+                }else if (entrynum == AT_HWCAP2){
+                    vals.hwcap2 = entryval;
                 }else if (entrynum == AT_PAGESZ){
                     vals.pagesz = entryval;
                 }else if (entrynum == AT_CLKTCK){
@@ -149,6 +173,10 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
             }else {
                 return;
             }
+        }else{
+            // If we can't read from the stack this is an indication that
+            // we aren't quite in a usable userspace just yet.
+            return;
         }
         panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
     }
