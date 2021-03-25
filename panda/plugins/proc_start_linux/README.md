@@ -23,5 +23,7 @@ void (*on_rec_auxv_t)(CPUState *env, TranslationBlock *tb, struct auxv_values);
 
 The structure currently provides many elements of the auxiliary vector that you are quite unlikely to need.
 
+There is no guarantee a kernel sets each value every time. The `struct auv_values` is set to 0 before it is filled. A value provided should be suspect if it is a zero.
+
 Example
 -------
