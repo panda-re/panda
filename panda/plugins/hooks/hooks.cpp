@@ -159,11 +159,24 @@ bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
 
 bool first_tb_chaining = false;
 
+
+/*
+ * In this code we'd really *love* to call tb_trylock. Sadly it 
+ * just doesn't exist. Therefore we extern these values and do implement
+ * it ourselves below.
+ */
+extern TCGContext tcg_ctx;
+extern __thread int have_tb_lock;
+
 static inline void flush_tb_if_block_in_cache(CPUState* cpu, target_ulong pc){
     assert(cpu != (CPUState*)NULL && "Cannot register TCG-based hooks before guest is created. Try this in after_machine_init CB");
     TranslationBlock *tb = cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)];
     if (tb && tb->pc == pc){
-        tb_lock();
+        // these lines are tb_trylock (which doesn't exist)
+        // wait for the mutex to be available and take it
+        while (qemu_mutex_trylock(&tcg_ctx.tb_ctx.tb_lock)==0){};
+        // set the mutex value
+        have_tb_lock++;
         tb_phys_invalidate(tb, -1);
         tb_free(tb);
         tb_unlock();
