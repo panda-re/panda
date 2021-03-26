@@ -310,8 +310,12 @@ class Expect(object):
                 elif typ == 'u':
                     (cur_line, line_pos) = store_ptr
 
+                elif typ == 'm':
+                    # alter character attributes - just ignore
+                    pass
+
                 else:
-                    raise ValueError(f"Unsupporte ANSI command {typ}")
+                    raise ValueError(f"Unsupported ANSI command {typ}")
             #_dump(lines_out, cur_line, line_pos)
 
         # Done processing - update variables
