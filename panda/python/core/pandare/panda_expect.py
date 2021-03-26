@@ -415,8 +415,8 @@ class Expect(object):
         if not self.quiet:
             sys.stdout.flush()
 
-        self.current_line = current_line.decode('utf8')
-        raise TimeoutExpired(f"{self.name} Read message \n{self.current_line}\n")
+        full_buffer = self.prior_lines + [self.current_line]
+        raise TimeoutExpired(f"{self.name} Read message \n{full_buffer}\n")
 
     def send(self, msg):
         if not self.quiet:
