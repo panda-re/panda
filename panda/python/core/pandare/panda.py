@@ -145,7 +145,7 @@ class Panda():
         if self.expect_prompt:
             self.serial_file = NamedTemporaryFile(prefix="pypanda_s").name
             self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.serial_console = Expect('serial', expectation=self.expect_prompt, quiet=True, consume_first=False)
+            self.serial_console = Expect('serial', expectation=self.expect_prompt, consume_first=False)
             self.panda_args.extend(['-serial', 'unix:{},server,nowait'.format(self.serial_file)])
         else:
             self.serial_file = None
@@ -158,7 +158,7 @@ class Panda():
         self.raw_monitor = raw_monitor
         if not self.raw_monitor:
             # XXX don't forget to escape expectation regex parens!
-            self.monitor_console = Expect('monitor', expectation=rb"\(qemu\) ", quiet=True, consume_first=True)
+            self.monitor_console = Expect('monitor', expectation=rb"\(qemu\) ", consume_first=True)
             self.panda_args.extend(['-monitor', 'unix:{},server,nowait'.format(self.monitor_file)])
 
         self.running = threading.Event()
@@ -2523,7 +2523,7 @@ class Panda():
         return decorator
 
     
-    def hook_symbol(self, libraryname, symbolname, kernel=False, procname=None,name=None,cb_type="before_block_exec"):
+    def hook_symbol(self, libraryname, symbolname, kernel=False, procname=None,name=None,cb_type="before_tcg_codegen"):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
