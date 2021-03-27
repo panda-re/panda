@@ -42,7 +42,7 @@ jobs:
         docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
         --mount type=bind,source=/home/panda/regdir/replays,target=/home/panda/regdir/replays
         --rm -t "panda_local_${{ github.sha }}" bash -c
-        "ls /home/panda/regdir/replays;
+        "ls -R /home/panda/regdir/replays;
         git clone -b panda-regression-test-release https://github.com/panda-re/panda_test;
         cd ./panda_test/regression-tests/;
         pip install -r requirements.txt;
