@@ -19,6 +19,8 @@ typedef void (*on_get_process_pid_t)(CPUState *, const OsiProcHandle *, target_p
 typedef void (*on_get_process_ppid_t)(CPUState *, const OsiProcHandle *, target_pid_t *);
 
 typedef void (*on_task_change_t)(CPUState *);
+typedef void (*on_task_end_t)(CPUState *, const OsiProcHandle *h);
+typedef void (*on_task_start_t)(CPUState *, const OsiProcHandle *h);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 

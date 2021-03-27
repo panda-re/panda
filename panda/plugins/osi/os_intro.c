@@ -47,6 +47,8 @@ PPP_PROT_REG_CB(on_get_process_pid)
 PPP_PROT_REG_CB(on_get_process_ppid)
 
 PPP_PROT_REG_CB(on_task_change)
+PPP_PROT_REG_CB(on_task_start)
+PPP_PROT_REG_CB(on_task_end)
 
 PPP_CB_BOILERPLATE(on_get_processes)
 PPP_CB_BOILERPLATE(on_get_process_handles)
@@ -60,6 +62,8 @@ PPP_CB_BOILERPLATE(on_get_process_pid)
 PPP_CB_BOILERPLATE(on_get_process_ppid)
 
 PPP_CB_BOILERPLATE(on_task_change)
+PPP_CB_BOILERPLATE(on_task_start)
+PPP_CB_BOILERPLATE(on_task_end)
 
 // The copious use of pointers to pointers in this file is due to
 // the fact that PPP doesn't support return values (since it assumes
@@ -128,6 +132,16 @@ target_pid_t get_process_ppid(CPUState *cpu, const OsiProcHandle *h) {
 void notify_task_change(CPUState *cpu)
 {
     PPP_RUN_CB(on_task_change, cpu);
+}
+
+void notify_task_end(CPUState *cpu, const OsiProcHandle *h)
+{
+    PPP_RUN_CB(on_task_end, cpu, h);
+}
+
+void notify_task_start(CPUState *cpu, const OsiProcHandle *h)
+{
+    PPP_RUN_CB(on_task_start, cpu, h);
 }
 
 bool in_shared_object(CPUState *cpu, OsiProc *p) {

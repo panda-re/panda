@@ -729,6 +729,52 @@ static void exec_check(CPUState *cpu)
     }
 }
 
+static target_ulong get_arg0(CPUState *cpu)
+{
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+    target_ulong esp = env->regs[R_ESP];
+    target_ulong arg0;
+    panda_virtual_memory_read(cpu, esp + 4, (uint8_t *)&arg0, 4);
+    return arg0;
+#elif defined(TARGET_X86_64)
+    return env->regs[R_EDI];
+#elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+    return env->regs[0];
+#elif defined(TARGET_ARM)
+    return (uint64_t) env->xregs[0];
+#elif defined(TARGET_MIPS)
+    return (uint32_t) env->active_tc.gpr[4];
+#else
+    return 0;
+#endif
+}
+
+static void hook_wakeup_new_task(CPUState *cpu)
+{
+    OsiProcHandle *p = NULL;
+    target_ulong ts = get_arg0(cpu);
+    if (ts) {
+        p = (OsiProcHandle *)g_malloc(sizeof(OsiProcHandle));
+        fill_osiprochandle(cpu, p, ts);
+        notify_task_start(cpu, p);
+        g_free(p);
+    }
+}
+
+static void hook_free_task(CPUState *cpu)
+{
+    OsiProcHandle *p = NULL;
+    target_ulong ts = get_arg0(cpu);
+    if (ts) {
+        p = (OsiProcHandle *)g_malloc(sizeof(OsiProcHandle));
+        fill_osiprochandle(cpu, p, ts);
+        notify_task_end(cpu, p);
+        g_free(p);
+    }
+}
+
 static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
 {
     TCGOp *op = find_first_guest_insn();
@@ -739,6 +785,15 @@ static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
         // Instrument the task switch address.
         insert_call(&op, notify_task_change, cpu);
     }
+    if (0x0 != ki.task.free_task_hook_addr && tb->pc == ki.task.free_task_hook_addr) {
+        // Instrument the task switch address.
+        insert_call(&op, hook_free_task, cpu);
+    }
+    if (0x0 != ki.task.wake_up_new_task_hook_addr && tb->pc == ki.task.wake_up_new_task_hook_addr) {
+        // Instrument the task switch address.
+        insert_call(&op, hook_wakeup_new_task, cpu);
+    }
+
 }
 #endif
 

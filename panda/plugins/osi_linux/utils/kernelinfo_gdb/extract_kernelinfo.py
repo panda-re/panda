@@ -17,6 +17,11 @@ def print_offset_from_member(structp, memb_base, memb_dest, cfgname):
     offset = gdb.execute(f'printf "%lld", (int64_t)&(({structp})*0)->{memb_dest} - (int64_t)&(({structp})*0)->{memb_base}',to_string=True)
     print(f"{cfgname}.{memb_dest}_offset = {offset}",file=file_out)
 
+def print_function(cfgname, funcname):
+    offset = gdb.execute(f'printf "%llu", {funcname}',to_string=True)
+    print(f"#{cfgname} = {hex(int(offset))}",file=file_out)
+    print(f"{cfgname} = {offset}",file=file_out)
+
 def get_symbol_as_string(name):
     return gdb.execute(f'printf "%s",{name}',to_string=True)
 
@@ -136,8 +141,14 @@ class KernelInfo(gdb.Command):
             # fields in struct vfsmount 
             print_offset("struct vfsmount",         "mnt_parent",               "path");
             print_offset("struct vfsmount",         "mnt_mountpoint",           "path");
+
+        print_function("task.switch_task_hook_addr", "finish_task_switch")
+        print_function("task.free_task_hook_addr", "free_task")
+        print_function("task.wake_up_new_task_hook_addr", "wake_up_new_task")
+
         if file_out != sys.stdout:
             file_out.close()
+
 
 # This registers our class to the gdb runtime at "source" time.
 KernelInfo()
