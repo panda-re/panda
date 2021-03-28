@@ -415,7 +415,7 @@ jemalloc="no"
 replication="yes"
 #AVATAR
 pyperipheral2="no"
-pyperipheral3="yes"
+pyperipheral3="no"
 
 
 supported_cpu="no"
