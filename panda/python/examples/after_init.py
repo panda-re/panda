@@ -15,7 +15,7 @@ arch = "i386" if len(argv) <= 1 else argv[1]
 panda = Panda(generic=arch)
 
 @panda.cb_after_machine_init
-def after_machine_init(env):
+def after_machine_init(cpu):
 	print("Hit machine init. Shutdown analysis")
 	panda.end_analysis()
 

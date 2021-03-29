@@ -17,14 +17,14 @@ from pandare import Panda
 arch = "i386" if len(argv) <= 1 else argv[1]
 panda = Panda(generic=arch)
 
-@panda.queue_async
+@panda.queue_blocking
 def run_cmd():
     panda.revert_sync("root")
     print(panda.run_serial_cmd("uname -a"))
     panda.end_analysis()
 
 @panda.cb_asid_changed()
-def asidchange(env, old_asid, new_asid):
+def asidchange(cpu, old_asid, new_asid):
     if old_asid != new_asid:
         print(f"Asid changed from 0x{old_asid:x} to 0x{new_asid:x}")
     return 0

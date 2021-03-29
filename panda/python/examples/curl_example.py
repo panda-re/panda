@@ -40,9 +40,9 @@ else:
     print("recording exists. not remaking recording")
 
 
-def try_read_str(env, arg_val):
+def try_read_str(cpu, arg_val):
     try:
-        return panda.read_str(env, arg_val).encode("utf8",errors="ignore")
+        return panda.read_str(cpu, arg_val).encode("utf8",errors="ignore")
     except:
         return b"?"
 
@@ -62,15 +62,15 @@ we only get reads from that FILE*. As of yet it hasn't been an issue.
 This recovers the data just fine.
 '''
 @panda.hook_symbol("libc", "fwrite")
-def hook_fwrite(env, tb, h):
+def hook_fwrite(cpu, tb, h):
     global recovered_buf, program_name
-    if program_name not in panda.get_process_name(env):
+    if program_name not in panda.get_process_name(cpu):
         h.enabled = False
         return
-    ptr, size, count, fptr = [panda.arch.get_arg(env,i) for i in range(4)]
+    ptr, size, count, fptr = [panda.arch.get_arg(cpu,i) for i in range(4)]
     try:
         total_size = size*count
-        buf = panda.virtual_memory_read(env, ptr, total_size)
+        buf = panda.virtual_memory_read(cpu, ptr, total_size)
         print(f"hook_fwrite {buf[:100]}")
         recovered_buf += buf
     except:
@@ -85,14 +85,14 @@ prevtype = "0x%x"
 This is the return from our functions. It gets the type and based on the
 globals prints out the information
 '''
-def generic_hook_return(env, tb, h):
-    procname = panda.get_process_name(env)
+def generic_hook_return(cpu, tb, h):
+    procname = panda.get_process_name(cpu)
     global prevcall, prevtype
-    result = panda.arch.get_arg(env, 0)
+    result = panda.arch.get_arg(cpu, 0)
     space1 = (30-len(procname))*' '
     space2 = (50-len(prevcall))*' '
     if prevtype == "char*": 
-        result_str = try_read_str(env, result)
+        result_str = try_read_str(cpu, result)
     else:
         result_str = prevtype % result
     print(f"[bold magenta]{procname}[/bold magenta]{space1}{prevcall}{space2}= {result_str}")
@@ -104,9 +104,9 @@ our labeled hooks and makes another hook for our return hook.
 '''
 def hook_symbol(symbol):
     @panda.hook_symbol(symbol[0],symbol[1])
-    def do_generic_hook(env, tb, h):
+    def do_generic_hook(cpu, tb, h):
         global program_name, prevcall, prevtype
-        if program_name not in panda.get_process_name(env):
+        if program_name not in panda.get_process_name(cpu):
             h.enabled = False
             return
         args = symbol[2]
@@ -114,9 +114,9 @@ def hook_symbol(symbol):
         for i in range(len(args)):
             if i > 0:
                 prevcall += ","
-            arg_val = panda.arch.get_arg(env, i)
+            arg_val = panda.arch.get_arg(cpu, i)
             if args[i] == "char*":
-                arg_string = try_read_str(env, arg_val)
+                arg_string = try_read_str(cpu, arg_val)
                 prevcall += f'{arg_string}'
             elif args[i] == "ptr":
                 prevcall += f"0x{arg_val:x}"
@@ -124,9 +124,9 @@ def hook_symbol(symbol):
                 prevcall += f"{arg_val:d}"
         prevcall += ")"
         prevtype = symbol[3]
-        ra = panda.arch.get_return_address(env)
+        ra = panda.arch.get_return_address(cpu)
         if ra != 0:
-            panda.hook(ra,enabled=True,kernel=False,asid=panda.current_asid(env))(generic_hook_return)
+            panda.hook(ra,enabled=True,kernel=False,asid=panda.current_asid(cpu))(generic_hook_return)
 
 
 
