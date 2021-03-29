@@ -18,12 +18,12 @@ panda = Panda(generic=arch)
 recording_name = "test.recording"
 
 ctr = 0
-@panda.cb_before_block_exec()
+@panda.cb_before_block_exec
 def my_before_block_execute(cpustate, transblock):
     print("before block in python... sleeping 1s")
     sleep(1)
 
-@panda.cb_after_block_exec()
+@panda.cb_after_block_exec
 def my_after_block_execute(cpustate,transblock,exit):
     print("after block in python")
     global ctr

@@ -22,12 +22,12 @@ bbs_wget = set()
 bbs_cat = set()
 
 # Run a command in the guest
-@panda.queue_async
+@panda.queue_blocking
 def my_runcmd():
     panda.revert_sync('root')
     panda.run_serial_cmd("cat /proc/self")
     panda.run_serial_cmd("wget http://google.com")
-    panda.stop_run() # Finish panda.run in main thread
+    panda.end_analysis()
 
 @panda.cb_before_block_exec(procname="wget")
 def before_block_execute(env, tb):

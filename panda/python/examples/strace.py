@@ -1,6 +1,6 @@
 '''
-This is an example of building a helper class to do analysis with PANDA. To see
-how it's used look at helper_example.py
+This is an example of building a pypanda plugin class to do analysis with PANDA. To see
+how it's used look at pypanda_plugin_user.py
 '''
 
 class Strace:

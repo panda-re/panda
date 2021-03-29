@@ -23,7 +23,7 @@ def print_list_elems(l):
         for e in l:
             print(e)
 
-@panda.queue_async
+@panda.queue_blocking
 def run_cmd():
 
     # Setup faker (forces success returns - although only the decode/log functionality is used in this example)

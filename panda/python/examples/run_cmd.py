@@ -15,7 +15,7 @@ from pandare import Panda
 generic_type = argv[1] if len(argv) > 1 else "i386"
 panda = Panda(generic=generic_type)
 
-@panda.queue_async
+@panda.queue_blocking
 def run_cmd():
     # First revert to root snapshot, then type a command via serial
     panda.revert_sync("root")

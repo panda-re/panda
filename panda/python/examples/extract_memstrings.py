@@ -28,7 +28,7 @@ recording_name = "mem_test.recording"
 for f in [recording_name+"-rr-nondet.log", recording_name+"-rr-snp"]:
     if path.isfile(f): remove(f)
 
-@panda.queue_async
+@panda.queue_blocking
 def my_record_cmd(): # Run a non-deterministic command at the root snapshot, then end .run()
     panda.record_cmd("wget google.com", recording_name=recording_name)
     panda.stop_run()
@@ -42,10 +42,10 @@ string_buffer = ""
 # After we see a virt mem write, try to build up a human-readable string. If we build
 # up a big enough string, print it
 @panda.cb_virt_mem_after_write
-def virt_mem_after_write(env, pc, addr, size, buf):
+def virt_mem_after_write(cpu, pc, addr, size, buf):
     global string_buffer
     try:
-        py_str = panda.virtual_memory_read(env, addr, size, fmt='str').decode("utf-8", "strict")
+        py_str = panda.virtual_memory_read(cpu, addr, size, fmt='str').decode("utf-8", "strict")
     except UnicodeDecodeError: #
         string_buffer = ""
         return
