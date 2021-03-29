@@ -43,8 +43,8 @@ else:
 
 memory_mappings = {}
 
-def address_in_malloc_map(env, address):
-    asid = panda.current_asid(env)
+def address_in_malloc_map(cpu, address):
+    asid = panda.current_asid(cpu)
     if asid in memory_mappings:
         maps = memory_mappings[asid]
         for m in maps:
@@ -54,57 +54,57 @@ def address_in_malloc_map(env, address):
 
 
 previous_size = None
-def call_address_return(env, tb, h):
-    asid = panda.current_asid(env)
+def call_address_return(cpu, tb, h):
+    asid = panda.current_asid(cpu)
     if asid in memory_mappings:
         mmaps = memory_mappings[asid]
     else:
         mmaps = {}
-    ret = panda.arch.get_return_value(env)
+    ret = panda.arch.get_return_value(cpu)
     mmaps[ret] = previous_size
     memory_mappings[asid] = mmaps
     print(f"got malloc return with 0x{ret:x}")
     h.enabled = False
 
 @panda.hook_symbol("libc", "__libc_malloc")
-def hook_malloc(env,tb, h):
-    size = panda.arch.get_arg(env,0)
+def hook_malloc(cpu,tb, h):
+    size = panda.arch.get_arg(cpu,0)
     global previous_size
     previous_size = size
-    print(f"got to malloc with size {size} {panda.get_process_name(env)} 0x{panda.current_asid(env):x} 0x{panda.current_pc(env):x}")
-    ra = panda.arch.get_return_address(env)
-    panda.hook(ra,enabled=True,kernel=False,asid=panda.current_asid(env))(call_address_return)
+    print(f"got to malloc with size {size} {panda.get_process_name(cpu)} 0x{panda.current_asid(cpu):x} 0x{panda.current_pc(cpu):x}")
+    ra = panda.arch.get_return_address(cpu)
+    panda.hook(ra,enabled=True,kernel=False,asid=panda.current_asid(cpu))(call_address_return)
 
 @panda.hook_symbol("libc", "__libc_calloc")
-def hook_calloc(env,tb, h):
-    size = panda.arch.get_arg(env,0)
+def hook_calloc(cpu,tb, h):
+    size = panda.arch.get_arg(cpu,0)
     global previous_size
     previous_size = size
-    print(f"got to calloc with size {size} {panda.get_process_name(env)} 0x{panda.current_asid(env):x} 0x{panda.current_pc(env):x}")
-    ra = panda.arch.get_return_address(env)
-    panda.hook(ra,enabled=True,kernel=False,asid=panda.current_asid(env))(call_address_return)
+    print(f"got to calloc with size {size} {panda.get_process_name(cpu)} 0x{panda.current_asid(cpu):x} 0x{panda.current_pc(cpu):x}")
+    ra = panda.arch.get_return_address(cpu)
+    panda.hook(ra,enabled=True,kernel=False,asid=panda.current_asid(cpu))(call_address_return)
 
 @panda.hook_symbol("libc", "__libc_realloc")
-def hook_realloc(env,tb, h):
-    old_ptr = panda.arch.get_arg(env,0)
+def hook_realloc(cpu,tb, h):
+    old_ptr = panda.arch.get_arg(cpu,0)
     global previous_size
-    previous_size = panda.arch.get_arg(env,1)
-    asid = panda.current_asid(env)
+    previous_size = panda.arch.get_arg(cpu,1)
+    asid = panda.current_asid(cpu)
     mmaps = memory_mappings[asid]
     if old_ptr != 0:
         if old_ptr in mmaps:
             del mmaps[old_ptr]
         else:
             print("missing old pointer")
-    print(f"got to realloc with old pointer 0x{old_ptr:x} size {previous_size} {panda.get_process_name(env)} 0x{panda.current_asid(env):x} 0x{panda.current_pc(env):x}")
-    ra = panda.arch.get_return_address(env)
-    panda.hook(ra,enabled=True,kernel=False,asid=panda.current_asid(env))(call_address_return)
+    print(f"got to realloc with old pointer 0x{old_ptr:x} size {previous_size} {panda.get_process_name(cpu)} 0x{panda.current_asid(cpu):x} 0x{panda.current_pc(cpu):x}")
+    ra = panda.arch.get_return_address(cpu)
+    panda.hook(ra,enabled=True,kernel=False,asid=panda.current_asid(cpu))(call_address_return)
 
 @panda.hook_symbol("libc", "__libc_free")
-def hook_free(env,tb, h):
-    ptr = panda.arch.get_arg(env,0)
+def hook_free(cpu,tb, h):
+    ptr = panda.arch.get_arg(cpu,0)
     if ptr != 0:
-        asid = panda.current_asid(env)
+        asid = panda.current_asid(cpu)
         mmaps = memory_mappings[asid]
         if ptr in mmaps:
             print(f"freeing previously found mmap at 0x{ptr:x} of size {mmaps[ptr]}")
@@ -113,21 +113,21 @@ def hook_free(env,tb, h):
             print(f"missed a malloc at 0x{ptr:x}")
 
 @panda.hook_symbol("libc", "_Exit")
-def hook_exit(env, tb, h):
-    print(f"got to exit {panda.get_process_name(env)} 0x{panda.current_pc(env):x} 0x{panda.current_asid(env):x} {panda.in_kernel(env)}")
-    asid = panda.current_asid(env)
+def hook_exit(cpu, tb, h):
+    print(f"got to exit {panda.get_process_name(cpu)} 0x{panda.current_pc(cpu):x} 0x{panda.current_asid(cpu):x} {panda.in_kernel(cpu)}")
+    asid = panda.current_asid(cpu)
     if asid in memory_mappings:
         print(f"Found #{len(memory_mappings[asid])} unfreed buffers")
         memory_mappings[asid] = {}
 
 @panda.hook_symbol("libc", "write")
-def hook_write(env, tb, h):
-    arg1 = panda.arch.get_arg(env,1)
+def hook_write(cpu, tb, h):
+    arg1 = panda.arch.get_arg(cpu,1)
     try:
-        trout = panda.read_str(env, arg1)
+        trout = panda.read_str(cpu, arg1)
     except:
         trout = "?"
 
-    print(f"{panda.get_process_name(env)} write \"{trout}\" 0x{arg1:x} {address_in_malloc_map(env, arg1)}")
+    print(f"{panda.get_process_name(cpu)} write \"{trout}\" 0x{arg1:x} {address_in_malloc_map(cpu, arg1)}")
 
 panda.run_replay(recording_name)

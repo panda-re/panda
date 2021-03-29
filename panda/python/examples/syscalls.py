@@ -20,7 +20,7 @@ def on_sys_read_return(cpu, pc, fd, buf, count):
 def on_sys_execve_enter(cpu, pc, fname_ptr, argv_ptr, envp):
     print("execve enter")
 
-@panda.queue_async
+@panda.queue_blocking
 def start():
     panda.revert_sync("root")
     print(panda.run_serial_cmd("cat /etc/passwd"))

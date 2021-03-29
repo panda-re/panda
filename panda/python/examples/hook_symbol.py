@@ -32,9 +32,9 @@ def do_stuff():
 stored_buf = b""
 
 @panda.hook_symbol("libc-", "fwrite", procname=program_name)
-def hook_fwrite(env, tb, h):
-    data_ptr, size_t, count = panda.arch.get_args(env, 3)
-    buf = panda.virtual_memory_read(env, data_ptr, count*size_t)
+def hook_fwrite(cpu, tb, h):
+    data_ptr, size_t, count = panda.arch.get_args(cpu, 3)
+    buf = panda.virtual_memory_read(cpu, data_ptr, count*size_t)
     global stored_buf
     stored_buf += buf
     print(f"libc:fwrite called")

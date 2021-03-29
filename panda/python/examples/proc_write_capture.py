@@ -11,7 +11,7 @@ from pandare.extras.proc_write_capture import ProcWriteCapture
 generic_type = sys.argv[1] if len(sys.argv) > 1 else "i386"
 panda = Panda(generic=generic_type)
 
-@blocking
+@panda.queue_blocking
 def run_cmd():
     pwc = ProcWriteCapture(panda, console_capture = True, proc_name = "dhclient", log_dir = "./pwc_log")
 
@@ -23,5 +23,4 @@ def run_cmd():
     for fw in pwc.get_files_written():
         print(fw)
 
-panda.queue_async(run_cmd)
 panda.run()
