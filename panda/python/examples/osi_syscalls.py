@@ -29,7 +29,7 @@ def on_sys_execve_enter(cpu, pc, fname_ptr, argv_ptr, envp):
         return
     try:
         fname = panda.read_str(cpu, fname_ptr)
-        argv_ptrlist = panda.virtual_memory_read(cpu, argv_ptr, 100, fmt='ptrlist')
+        argv_ptrlist = panda.virtual_memory_read(cpu, argv_ptr, 104, fmt='ptrlist')
     except ValueError: return
     argv = []
     for ptr in argv_ptrlist:
