@@ -528,7 +528,7 @@ void afl_persistent_stop(void) {
     } else {
 
       afl_area_ptr = dummy;
-      exit(0);
+      _exit(0);
 
     }
 

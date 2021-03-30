@@ -12497,7 +12497,7 @@ static target_ulong doneWork(CPUArchState *env, target_ulong val)
         aflStart = 0; /* Stop capturing coverage */
         afl_persistent_stop();
     } else {
-        exit(val);
+        _exit(val);
     }
     return 0;
 }
