@@ -26,7 +26,7 @@ for f in [recording_name+"-rr-nondet.log", recording_name+"-rr-snp"]:
 
 if not path.isfile(recording_name+"-rr-snp"):
 	# if recording doesn't exist, take one
-	@panda.queue_async
+	@panda.queue_blocking
 	def take_recording():
 		panda.record_cmd("wget google.com", recording_name=recording_name)
 		panda.end_analysis()

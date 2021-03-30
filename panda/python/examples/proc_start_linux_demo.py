@@ -1,7 +1,8 @@
 from pandare import Panda
 from sys import argv
 
-panda = Panda(generic=argv[1])
+arch = "i386" if len(argv) <= 1 else argv[1]
+panda = Panda(generic=arch)
 
 @panda.queue_blocking
 def guest_interaction():

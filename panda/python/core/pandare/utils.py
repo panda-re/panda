@@ -16,6 +16,12 @@ def progress(msg):
     """
     print(Fore.GREEN + '[PYPANDA] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
 
+def warn(msg):
+    """
+    Print a message with a red "[PYPANDA]" prefix
+    """
+    print(Fore.RED + '[PYPANDA] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
+
 def make_iso(directory, iso_path):
     '''
     Generate an iso from a directory

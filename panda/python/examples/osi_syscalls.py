@@ -29,7 +29,7 @@ def on_sys_execve_enter(cpu, pc, fname_ptr, argv_ptr, envp):
         return
     try:
         fname = panda.read_str(cpu, fname_ptr)
-        argv_ptrlist = panda.virtual_memory_read(cpu, argv_ptr, 100, fmt='ptrlist')
+        argv_ptrlist = panda.virtual_memory_read(cpu, argv_ptr, 80, fmt='ptrlist')
     except ValueError: return
     argv = []
     for ptr in argv_ptrlist:
@@ -56,7 +56,7 @@ def get_calltree(cpu):
     return " -> ".join(f"{item['name']} ({item['pid']})" for item in chain[::-1])
 
 
-@panda.queue_async
+@panda.queue_blocking
 def start():
     panda.revert_sync("root")
     print(panda.run_serial_cmd("cat /etc/passwd"))
