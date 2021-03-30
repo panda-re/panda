@@ -70,6 +70,11 @@ FROM base as panda
 
 COPY --from=installer /usr/local /usr/local
 
+# Workaround issue #901 - ensure LD_LIBRARY_PATH contains the panda plugins directories
+#ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
+ENV LD_LIBRARY_PATH /usr/local/lib/python3.8/dist-packages/pandare/data/x86_64-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/i386-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/arm-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/ppc-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/mips-softmmu/panda/plugins/:/usr/local/lib/python3.8/dist-packages/pandare/data/mipsel-softmmu/panda/plugins/
+
+
 # Ensure runtime dependencies are installed for our libpanda objects and panda plugins
 RUN ldconfig && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
