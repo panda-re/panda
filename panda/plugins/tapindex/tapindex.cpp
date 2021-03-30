@@ -73,14 +73,7 @@ void mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr,
                         size_t size, uint8_t *buf)
 {
     prog_point p = {};
-
-#ifdef TARGET_I386
-    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
-    panda_virtual_memory_rw(cpu, env->regs[R_EBP] + 4, (uint8_t *)&p.caller, 4, false);
-    if ((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
-        p.sidFirst = env->cr[3];
-#endif
-    p.pc = pc;
+    get_prog_point(cpu, &p);
     write_tracker[p] += size;
 
     return;
@@ -90,14 +83,7 @@ void mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr,
                        size_t size, uint8_t *buf)
 {
     prog_point p = {};
-
-#ifdef TARGET_I386
-    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
-    panda_virtual_memory_rw(cpu, env->regs[R_EBP] + 4, (uint8_t *)&p.caller, 4, false);
-    if ((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
-        p.sidFirst = env->cr[3];
-#endif
-    p.pc = pc;
+    get_prog_point(cpu, &p);
     read_tracker[p] += size;
 
     return;
