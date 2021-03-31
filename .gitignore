@@ -162,7 +162,8 @@ zImage*
 *.plog
 
 # Test FW
-panda/plugins/syscalls_logger/test/test_fw
+panda/plugins/syscalls_logger/dbg/test_fw
+panda/plugins/syscalls_logger/dbg/test_fw/dwarf_info.json
 
 # Local files to be gitignored
 local

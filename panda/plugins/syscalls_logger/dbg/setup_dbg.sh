@@ -60,7 +60,7 @@ fi
 echo -e "\n${YELLOW}BUILDING KERNEL...${TOGGLE_COLOR}\n"
 
 # Get kernel
-KERNEL_TAR="linux-4.4.138.tar.gz"
+KERNEL_TAR="linux-4.19.184.tar.gz"
 KERNEL_DIR="${KERNEL_TAR%.*.*}"
 wget -nc -q --show-progress https://mirrors.edge.kernel.org/pub/linux/kernel/v4.x/$KERNEL_TAR
 tar xvzf $KERNEL_TAR
@@ -103,7 +103,7 @@ CONFIG_SQUASHFS_XZ=y
 
 EOF
 
-time make ARCH=arm CROSS_COMPILE=arm-none-eabi- -j $(nproc) zImage dtbs
+time yes "" | make ARCH=arm CROSS_COMPILE=arm-none-eabi- -j $(nproc) zImage dtbs
 cd ..
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -144,4 +144,4 @@ echo $KERN_INFO_OUT_DIR
 $KERN_INFO_GBD_DIR/run.sh $KERNEL_DIR/vmlinux $OSI_INFO
 
 file $OSI_INFO
-sed -i '1s/^/[debian:4.4.138:32]\n/' $OSI_INFO
+sed -i '1s/^/[debian:4.19.184:32]\n/' $OSI_INFO

@@ -3,10 +3,10 @@
 from sys import argv
 from pandare import blocking, Panda
 
-dtb    = "./test_fw/linux-4.4.138/arch/arm/boot/dts/vexpress-v2p-ca9.dtb"
-kernel = "./test_fw/linux-4.4.138/arch/arm/boot/zImage"
-rootfs = "./test_fw/ubuntu-base-18.04.5-base-armhf.img"
-#rootfs = "./test_fw/ubuntu-18.04-server-cloudimg-armhf.squashfs"
+dtb    = "./test_fw/linux-4.19.184/arch/arm/boot/dts/vexpress-v2p-ca9.dtb"
+kernel = "./test_fw/linux-4.19.184/arch/arm/boot/zImage"
+#rootfs = "./test_fw/ubuntu-base-18.04.5-base-armhf.img"
+rootfs = "./test_fw/ubuntu-18.04-server-cloudimg-armhf.squashfs"
 append = "root=/dev/vda rw earlyprintk=serial,ttyAMA0 console=ttyAMA0"
 
 panda = Panda(
@@ -31,7 +31,7 @@ panda = Panda(
 dwarf_json = "./test_fw/dwarf_info.json"
 osi_kernelinfo = "./test_fw/kernel_info.conf"
 
-panda.set_os_name("linux-32-debian.4.4.138")
+panda.set_os_name("linux-32-debian.4.19.184")
 panda.load_plugin("syscalls2", args={"load-info": True})
 
 @panda.ppp("syscalls2", "on_all_sys_enter")
@@ -43,7 +43,7 @@ def first_syscall(cpu, pc, callno):
     '''
 
     panda.load_plugin("osi", args={"disable-autoload": True})
-    panda.load_plugin("osi_linux", args={"kconf_file": osi_kernelinfo, "kconf_group": "debian:4.4.138:32"})
+    panda.load_plugin("osi_linux", args={"kconf_file": osi_kernelinfo, "kconf_group": "debian:4.19.184:32"})
     panda.load_plugin("syscalls_logger", args={"json": dwarf_json, "verbose": False})
     panda.disable_ppp("first_syscall")
 

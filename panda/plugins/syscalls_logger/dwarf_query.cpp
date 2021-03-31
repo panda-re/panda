@@ -27,7 +27,7 @@ std::map<unsigned, std::string> func_hashtable;
 DataType str_to_dt(std::string const& kind) {
     if (kind.compare(void_str) == 0) {
         return DataType::VOID;
-    } else if (kind.compare(bool_str) == 0) {
+    } else if ((kind.compare(bool_str) == 0) || (kind.compare(bool_str_alt) == 0)) {
         return DataType::BOOL;
     } else if (kind.find(char_str) != std::string::npos) {
         return DataType::CHAR;
