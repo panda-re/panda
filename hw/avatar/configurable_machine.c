@@ -30,7 +30,13 @@
 #include "hw/boards.h"
 
 //plattform specific imports
-#if defined(TARGET_ARM)
+#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+#include "target/arm/cpu.h"
+#include "hw/arm/arm.h"
+#include "hw/avatar/arm_helper.h"
+typedef ARMCPU THISCPU;
+
+#elif defined(TARGET_AARCH64)
 #include "target/arm/cpu.h"
 #include "hw/arm/arm.h"
 #include "hw/avatar/arm_helper.h"
@@ -395,8 +401,11 @@ static void set_entry_point(QDict *conf, THISCPU *cpuu)
                    // later set a program counter
     }
 
-#ifdef TARGET_ARM
+#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
     cpuu->env.regs[15] = entry & (~1);
+    cpuu->env.thumb = (entry & 1) == 1 ? 1 : 0; // XXX: if using in library mode, make sure to set thumb appropriately
+#elif defined(TARGET_AARCH64)
+    cpuu->env.pc = entry & (~1);
     cpuu->env.thumb = (entry & 1) == 1 ? 1 : 0; // XXX: if using in library mode, make sure to set thumb appropriately
 #elif defined(TARGET_I386)
     cpuu->env.eip = entry;
@@ -423,10 +432,28 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
         g_assert(cpu_model);
     }
 
-#if defined(TARGET_ARM)
+#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
     ObjectClass *cpu_oc;
     Object *cpuobj;
     if (!cpu_model) cpu_model = "arm926";
+
+    printf("Configurable: Adding processor %s\n", cpu_model);
+
+    cpu_oc = cpu_class_by_name(TYPE_ARM_CPU, cpu_model);
+    if (!cpu_oc) {
+        fprintf(stderr, "Unable to find CPU definition\n");
+        exit(1);
+    }
+
+    cpuobj = object_new(object_class_get_name(cpu_oc));
+
+    object_property_set_bool(cpuobj, true, "realized", &error_fatal);
+    cpuu = ARM_CPU(cpuobj);
+
+#elif defined(TARGET_AARCH64)
+    ObjectClass *cpu_oc;
+    Object *cpuobj;
+    if (!cpu_model) cpu_model = "virt";
 
     printf("Configurable: Adding processor %s\n", cpu_model);
 

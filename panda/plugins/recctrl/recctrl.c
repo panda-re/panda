@@ -120,7 +120,7 @@ bool start_stop_recording(CPUState *cpu) {
     target_ptr_t rnamep = (uintptr_t)NULL;
     recctrl_action_t action = RECCTRL_ACT_TOGGLE;
     recctrl_ret_t hypercall_ret = RECCTRL_RET_NOOP;
-    uint32_t *hypercall_retp = NULL;
+    target_ulong *hypercall_retp = NULL;
 
     rr_control_t *rrcp = dry ? &rr_control_dry : &rr_control;
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
