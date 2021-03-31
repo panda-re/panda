@@ -32,6 +32,16 @@
 extern "C" {
 #endif
 
+#if defined(TARGET_MIPS)
+#define MIPS_HFLAG_KSU    0x00003 /* kernel/supervisor/user mode mask   */
+#define MIPS_HFLAG_KM     0x00000 /* kernel mode flag                   */
+/**
+ *  Register values from: http://www.cs.uwm.edu/classes/cs315/Bacon/Lecture/HTML/ch05s03.html
+ */
+#define MIPS_SP           29      /* value for MIPS stack pointer offset into GPR */
+#define MIPS_V0           2
+#define MIPS_V1           3
+#endif
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
 // api autogen needs it.  And don't put any compiler directives
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
@@ -58,11 +68,11 @@ target_ulong panda_current_asid(CPUState *env);
  */
 target_ulong panda_current_pc(CPUState *cpu);
 
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
+
 /**
  * @brief Reads/writes data into/from \p buf from/to guest physical address \p addr.
  */
-
-// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 static inline int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
                                            bool is_write) {
@@ -110,7 +120,7 @@ bool enter_priv(CPUState* cpu);
 
 /**
  * @brief Revert the guest to the privilege mode it was in prior to the last call
- * to enter_priv(). A NO-OP for architectures where enter_prov is a NO-OP.
+ * to enter_priv(). A NO-OP for architectures where enter_priv() is a NO-OP.
  */
 void exit_priv(CPUState* cpu);
 
@@ -118,7 +128,7 @@ void exit_priv(CPUState* cpu);
 /**
  * @brief Reads/writes data into/from \p buf from/to guest virtual address \p addr.
  *
- * For ARM we switch CPSR into SVC (privileged) mode if the access fails. The mode is always reset
+ * For ARM/MIPS we switch into privileged mode if the access fails. The mode is always reset
  * before we return.
  */
 static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
@@ -281,24 +291,31 @@ static inline MemTxResult PandaVirtualAddressToRamOffset(ram_addr_t* out, CPUSta
 /**
  * @brief Determines if guest is currently executes in kernel mode.
  */
-static inline bool panda_in_kernel(CPUState *cpu) {
+static inline bool panda_in_kernel(const CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
 #if defined(TARGET_I386)
     return ((env->hflags & HF_CPL_MASK) == 0);
 #elif defined(TARGET_ARM)
-    return ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC);
+    // See target/arm/cpu.h arm_current_el
+    if (env->aarch64) {
+        return extract32(env->pstate, 2, 2) > 0;
+    }
+    // Note: returns true for non-SVC modes (hypervisor, monitor, system, etc).
+    // See: https://www.keil.com/pack/doc/cmsis/Core_A/html/group__CMSIS__CPSR__M.html
+    return ((env->uncached_cpsr & CPSR_M) > ARM_CPU_MODE_USR);
 #elif defined(TARGET_PPC)
     return msr_pr;
+#elif defined(TARGET_MIPS)
+    return (env->hflags & MIPS_HFLAG_KSU) == MIPS_HFLAG_KM;
 #else
 #error "panda_in_kernel() not implemented for target architecture."
     return false;
 #endif
 }
-
 /**
- * @brief Returns the guest stack pointer.
+ * @brief Returns the guest kernel stack pointer.
  */
-static inline target_ulong panda_current_sp(CPUState *cpu) {
+static inline target_ulong panda_current_ksp(CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
 #if defined(TARGET_I386)
     if (panda_in_kernel(cpu)) {
@@ -316,11 +333,43 @@ static inline target_ulong panda_current_sp(CPUState *cpu) {
         return kernel_esp;
     }
 #elif defined(TARGET_ARM)
+    if(env->aarch64) {
+        return env->sp_el[1];
+    } else {
+        if ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC) {
+            return env->regs[13];
+        }else {
+            // Read banked R13 for SVC mode to get the kernel SP (1=>SVC bank from target/arm/internals.h)
+            return env->banked_r13[1];
+        }
+    }
+#elif defined(TARGET_PPC)
+    // R1 on PPC.
+    return env->gpr[1];
+#elif defined(TARGET_MIPS)
+    return env->active_tc.gpr[MIPS_SP];
+#else
+#error "panda_current_ksp() not implemented for target architecture."
+    return 0;
+#endif
+}
+
+/**
+ * @brief Returns the guest stack pointer.
+ */
+static inline target_ulong panda_current_sp(const CPUState *cpu) {
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+#if defined(TARGET_I386)
+    // valid on x86 and x86_64
+    return env->regs[R_ESP];
+#elif defined(TARGET_ARM)
     // R13 on ARM.
     return env->regs[13];
 #elif defined(TARGET_PPC)
     // R1 on PPC.
     return env->gpr[1];
+#elif defined(TARGET_MIPS)
+    return env->active_tc.gpr[MIPS_SP];
 #else
 #error "panda_current_sp() not implemented for target architecture."
     return 0;
@@ -333,7 +382,7 @@ static inline target_ulong panda_current_sp(CPUState *cpu) {
  * abstraction for retrieving a call return value. It still has to
  * be used in the proper context to retrieve a meaningful value.
  */
-static inline target_ulong panda_get_retval(CPUState *cpu) {
+static inline target_ulong panda_get_retval(const CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
 #if defined(TARGET_I386)
     // EAX for x86.
@@ -344,6 +393,9 @@ static inline target_ulong panda_get_retval(CPUState *cpu) {
 #elif defined(TARGET_PPC)
     // R3 on PPC.
     return env->gpr[3];
+#elif defined(TARGET_MIPS)
+    // MIPS has 2 return registers v0 and v1. Here we choose v0.
+    return env->active_tc.gpr[MIPS_V0];
 #else
 #error "panda_get_retval() not implemented for target architecture."
     return 0;

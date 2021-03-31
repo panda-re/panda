@@ -4,13 +4,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "addr.h"
 
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
 // api autogen needs it.  And don't put any compiler directives
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
 // files in this directory that contain subsections like this one.
 
-#include "addr.h"
 #include "query_res.h"
 
 // turns on taint
@@ -136,6 +136,20 @@ void taint2_query_ram_full(uint64_t RamOffset, QueryResult *qr);
 void taint2_query_laddr_full(uint64_t la, uint64_t offset, QueryResult *qr);
 
 
+// turns on symbolic exeuction
+void taint2_enable_sym(void);
+
+void taint2_sym_label_addr(Addr a, int offset, uint32_t l);
+
+void *taint2_sym_query(Addr a);
+
+// label this RAM offset in memory with label l, and only label l. any previous
+// labels applied to this RAM offset are removed.
+void taint2_sym_label_ram(uint64_t RamOffset, uint32_t l);
+
+// label this reg with label l, and only label l. any previous labels applied 
+// to this address are removed.
+void taint2_sym_label_reg(int reg_num, int offset, uint32_t l);
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 
@@ -147,8 +161,6 @@ Panda__TaintQuery *taint2_query_pandalog (Addr addr, uint32_t offset);
 
 // used to free memory associated with that struct
 void pandalog_taint_query_free(Panda__TaintQuery *tq);
-
-
 
 #endif
 

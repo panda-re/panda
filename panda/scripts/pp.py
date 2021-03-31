@@ -88,6 +88,7 @@ if __name__ == '__main__':
         with open(plugins_filename) as plugins_file:
             for plugin_name in plugins_file:
                 plugin_name = plugin_name.strip()
+                if not len(plugin_name): continue
                 if plugin_name[0] == '#': continue
                 proto_file = os.path.join(plugins_dir, plugin_name, '%s.proto' % plugin_name)
                 if not os.path.isfile(proto_file):

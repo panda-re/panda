@@ -41,9 +41,9 @@
 #include "panda/plugin.h"
 #include "panda/tcg-llvm.h"
 
-#include <llvm/PassManager.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/PassRegistry.h>
-#include <llvm/Analysis/Verifier.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 
@@ -55,6 +55,7 @@
 #include "taint2.h"
 #include "label_set.h"
 #include "taint_api.h"
+#include "taint_sym_api.h"
 #include "taint2_hypercalls.h"
 
 #define CPU_OFF(member) (uint64_t)(&((CPUArchState *)0)->member)
@@ -122,7 +123,7 @@ ShadowState *shadow = nullptr; // Global shadow memory
 void *taint2_plugin = nullptr;
 
 // Our pass manager to derive taint ops
-llvm::FunctionPassManager *FPM = nullptr;
+llvm::legacy::FunctionPassManager *FPM = nullptr;
 
 // Taint function pass.
 llvm::PandaTaintFunctionPass *PTFP = nullptr;
@@ -131,11 +132,10 @@ llvm::PandaTaintFunctionPass *PTFP = nullptr;
 // becomes disabled when a query operation subsequently occurs
 bool taintEnabled = false;
 
-// Lets us know right when taint was disabled
-bool taintJustDisabled = false;
+bool symexEnabled =false;
 
 // Taint memlog
-static taint2_memlog taint_memlog;
+taint2_memlog taint_memlog;
 
 // Configuration
 bool tainted_pointer = true;
@@ -301,8 +301,8 @@ void taint2_enable_taint(void) {
     // Initialize memlog.
     memset(&taint_memlog, 0, sizeof(taint_memlog));
 
-    llvm::Module *mod = tcg_llvm_ctx->getModule();
-    FPM = tcg_llvm_ctx->getFunctionPassManager();
+    llvm::Module *mod = tcg_llvm_translator->getModule();
+    FPM = tcg_llvm_translator->getFunctionPassManager();
 
     std::cerr << PANDA_MSG "LLVM optimizations " << PANDA_FLAG_STATUS(optimize_llvm) << std::endl;
     if (optimize_llvm) {
@@ -325,17 +325,28 @@ void taint2_enable_taint(void) {
 
     std::cerr << PANDA_MSG "Done processing helper functions for taint." << std::endl;
 
-    std::string err;
-    if(verifyModule(*mod, llvm::AbortProcessAction, &err)){
-        std::cerr << PANDA_MSG << err << std::endl;
+    if(verifyModule(*mod, &llvm::errs())){
+        std::cerr << PANDA_MSG << "Halting: failed to verify module" << std::endl;
         exit(1);
     }
 
 #ifdef TAINT2_DEBUG
-    tcg_llvm_write_module(tcg_llvm_ctx, "llvm-mod.bc");
+    tcg_llvm_write_module(tcg_llvm_translator, "llvm-mod.bc");
 #endif
 
     std::cerr << "Done verifying module. Running..." << std::endl;
+}
+
+
+extern "C" void taint2_enable_sym(void) {
+    if (symexEnabled) return;
+
+    std::cerr << PANDA_MSG << __FUNCTION__ << std::endl;
+
+    taint2_enable_taint();
+    taint2_enable_tainted_pointer();
+
+    symexEnabled = true;
 }
 
 // The i386 doesn't update the condition codes whenever executing an emulated
@@ -416,12 +427,12 @@ void i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock) {
             // the offset into CPUX86State of each item of interest is used as
             // the address of the item's taint in the shadow
             for (uint32_t i = 0; i < sizeof(target_ulong); i++) {
-                ccDstTaint[i] = shadow->gsv.query_full(dstOff + i);
-                ccSrcTaint[i] = shadow->gsv.query_full(srcOff + i);
-                ccSrc2Taint[i] = shadow->gsv.query_full(src2Off + i);
+                ccDstTaint[i] = *shadow->gsv.query_full(dstOff + i);
+                ccSrcTaint[i] = *shadow->gsv.query_full(srcOff + i);
+                ccSrc2Taint[i] = *shadow->gsv.query_full(src2Off + i);
             }
             for (uint32_t i = 0; i < sizeof(uint32_t); i++) {
-                ccOpTaint[i] = shadow->gsv.query_full(opOff + i);
+                ccOpTaint[i] = *shadow->gsv.query_full(opOff + i);
             }
             savedTaint = true;
         }
@@ -493,7 +504,7 @@ void taint_state_changed(Shad *shad, uint64_t shad_addr, uint64_t size)
 }
 
 bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb) {
-    if (taintEnabled) {
+    if (taintEnabled)  {
         return tb->llvm_tc_ptr ? false : true /* invalidate! */;
     }
     return false;
@@ -565,7 +576,7 @@ void uninit_plugin(void *self) {
         shadow = nullptr;
     }
 
-    // Check if tcg_llvm_ctx has been initialized before destroy
+    // Check if tcg_llvm_translator has been initialized before destroy
     if (taint2_enabled()) panda_disable_llvm();
 
     panda_disable_memcb();

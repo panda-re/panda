@@ -1,7 +1,8 @@
 # PANDA
 
-[![Build Status](https://travis-ci.org/panda-re/panda.svg?branch=master)](https://travis-ci.org/panda-re/panda)
-![Autobuild Docker Container](https://github.com/panda-re/panda/workflows/Build%20and%20Publish%20Docker%20Container/badge.svg)
+![Test Suite](https://github.com/panda-re/panda/workflows/Parallel%20Tests/badge.svg)
+![Publish Docker Container and Update Pypanda Docs](https://github.com/panda-re/panda/workflows/Build%20and%20Publish%20Docker%20Container%20and%20Pypanda%20Docs/badge.svg)
+
 
 PANDA is an open-source Platform for Architecture-Neutral Dynamic Analysis. It
 is built upon the QEMU whole system emulator, and so analyses have access to all
@@ -25,14 +26,34 @@ the [GPLv2 license](LICENSE).
 
 ## Building
 ### Quickstart: Docker
-The latest version of PANDA's master branch is automatically built as a docker image
-from both Ubuntu Bionic (18.04) and Xenial (16.04). These images are available [here](https://hub.docker.com/r/pandare/panda).
+The latest version of PANDA's `master` branch is automatically built as a two docker images based on Ubuntu 20.04 and published to Docker Hub.
+Most users will want to use the `panda` container which has PANDA and PyPANDA installed along with their runtime dependencies, but no build artifacts or source code to reduce the size of the container.
+Developers interested in using Docker should use the `pandadev` container which has PANDA and PyPANDA installed, build and runtime dependencies for both, all build artifacts and source code and the contents of this repository in the `/panda` directory.
 
-To pull the latest docker container and run PANDA
+To use the `panda` container you can pull it from Docker Hub:
 ```
 $ docker pull pandare/panda
-$ docker run --rm pandare/panda -- /bin/panda-system-i386 --help
+$ docker run --rm pandare/panda panda-system-i386 --help
 ```
+Or build from this repository:
+```
+$ DOCKER_BUILDKIT=1 docker build --target=panda -t panda 
+$ docker run --rm panda panda-system-i386 --help
+```
+
+To use the `pandadev` container, you can pull it from Docker Hub:
+```
+$ docker pull pandare/pandadev
+$ docker run --rm pandare/pandadev /panda/build/panda-system-i386 --help
+```
+Or build from this repository:
+```
+$ DOCKER_BUILDKIT=1 docker build --target=developer -t pandadev .
+$ docker run --rm pandadev panda-system-i386 --help
+```
+
+### Quickstart: Python pip
+The Python interface to PANDA (also known as *pypanda*) can be installed from [PIP](https://pypi.org/project/pandare/) by running `pip3 install pandare`. This will install everything you need for python-based PANDA analyses, but not stand-alone PANDA binaries. This package is not automatically updated so it may fall behind the master branch of PANDA. The distributed binaries are only tested on 64-bit Ubuntu 18.04 and other architectures/versions are unlikely to work. You can also install pypanda by building PANDA and then running `python3 setup.py install` from the directory `panda/panda/python/core`.
 
 ###  Debian, Ubuntu
 Because PANDA has a few dependencies, we've encoded the build instructions into
@@ -42,19 +63,18 @@ If you wish to build PANDA manually, you can also check the
 [step-by-step instructions](panda/docs/build\_ubuntu.md) in the documentation
 directory.
 
-We currently only vouch for buildability on the latest Debian stable/Ubuntu LTS,
-but we welcome pull requests to fix issues with other distros.
+We currently only vouch for buildability on the latest Debian stable/Ubuntu LTS, but we welcome pull requests to fix issues with other distros.
 For other distributions, it should be straightforward to translate the `apt-get`
 commands into whatever package manager your distribution uses.
 
 Note that if you want to use our LLVM features (mainly the dynamic taint
-system), you will need to install LLVM 3.3 from OS packages or compiled from
+system), you will need to install LLVM 11 from OS packages or compiled from
 source. On Ubuntu this should happen automatically via `install_ubuntu.sh`.
 Additionally, it is **strongly** recommended that you only build PANDA as 64bit
 binary. Creating a 32bit build should be possible, but best avoided.
 See the limitations section for details.
 
-### Arch
+### Arch Linux
 The [install\_arch.sh](panda/scripts/install\_arch.sh) has been contributed
 for building PANDA on Arch Linux.
 Currently, the script has only been tested on Arch Linux 4.17.5-1-MANJARO.
@@ -91,10 +111,7 @@ This allows translating the TCG intermediate code representation used by QEMU,
 to LLVM IR. The latter has the advantages of being easier to work with, as well
 as platform independent. This enables the implementation of complex analyses
 like the `taint2` plugin.
-However, S2E is not actively updated to work with the latest LLVM toolchain.
-As a consequence, PANDA still requires specifically LLVM 3.3 in order to be
-built with taint analysis support.
-of the plugins.
+The S2E files used by PANDA to support taint analysis have been updated to work with LLVM 11.
 
 ### Cross-architecture record/replay
 Great effort is put to maintain the PANDA trace format stable so that existing
@@ -123,7 +140,8 @@ possible options.
 
 ### PANDA manual
 PANDA currently supports whole-system record/replay execution, as well as
-time-travel debugging, of x86, x86\_64, and ARM guests.
+time-travel debugging, of x86, x86\_64, and ARM guests. Other architectures
+(mips, mipsel, ppc) may be run under PANDA without record/replay support.
 Details about the implementation and use of PANDA can be found in the
 [PANDA manual](panda/docs/manual.md). Some of the topics covered are:
 
@@ -131,13 +149,14 @@ Details about the implementation and use of PANDA can be found in the
   * the [architecture-neutral plugin interface](panda/docs/manual.md#plugin-architecture)
   * the [callbacks provided by PANDA](panda/docs/manual.md#appendix-a-callback-list)
   * [plugin zoo](panda/docs/manual.md#plugin-zoo)
+  * [python interface](panda/python/README.md)
 
 Documentation for individual plugins is provided by the `README.md` file
 in the plugin directory. See [panda/plugins](panda/plugins) directory.
 
 ### Support
-If you need help with PANDA, or want to discuss the project, you can join our
-IRC channel at #panda-re on Freenode, or join the [PANDA mailing
+If you need help with PANDA, or want to discuss the project, you can request an invite
+to our Slack channel [here](https://panda-re.mit.edu/invite.php) or join the [PANDA mailing
 list](http://mailman.mit.edu/mailman/listinfo/panda-users).
 
 ---------------------------------------------------------------------

@@ -24,6 +24,12 @@
 #include "exec/cpu_ldst.h"
 #include "exec/log.h"
 
+#include "panda/callbacks/cb-support.h"
+
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
+
 enum {
     TLBRET_XI = -6,
     TLBRET_RI = -5,
@@ -395,9 +401,20 @@ static void raise_mmu_exception(CPUMIPSState *env, target_ulong address,
     env->CP0_BadVAddr = address;
     env->CP0_Context = (env->CP0_Context & ~0x007fffff) |
                        ((address >> 9) & 0x007ffff0);
-    env->CP0_EntryHi = (env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask) |
+    target_ulong val = (env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask) |
                        (env->CP0_EntryHi & (1 << CP0EnHi_EHINV)) |
                        (address & (TARGET_PAGE_MASK << 1));
+
+    if ((env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask) != (val & env->CP0_EntryHi_ASID_mask)) {
+      // it's actually changing the asid, trigger out CB and let plugins reject the change
+      if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask, val & env->CP0_EntryHi_ASID_mask)){
+          env->CP0_EntryHi = val;
+      }
+    }else {
+      // asid unchanged, just an update to other fields here - do it without a callback
+      env->CP0_EntryHi = val;
+    }
+
 #if defined(TARGET_MIPS64)
     env->CP0_EntryHi &= env->SEGMask;
     env->CP0_XContext =
@@ -883,16 +900,25 @@ void mips_cpu_do_interrupt(CPUState *cs)
 
 bool mips_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
 {
+    MIPSCPU *cpu = MIPS_CPU(cs);
+    CPUMIPSState *env = &cpu->env;
+    #ifdef CONFIG_SOFTMMU
+    rr_pending_interrupts_at(
+            RR_CALLSITE_CPU_PENDING_INTERRUPTS_BEFORE,
+            (uint32_t*)&env->error_code);
+    #endif
     if (interrupt_request & CPU_INTERRUPT_HARD) {
-        MIPSCPU *cpu = MIPS_CPU(cs);
-        CPUMIPSState *env = &cpu->env;
-
         if (cpu_mips_hw_interrupts_enabled(env) &&
             cpu_mips_hw_interrupts_pending(env)) {
             /* Raise it */
             cs->exception_index = EXCP_EXT_INTERRUPT;
             env->error_code = 0;
             mips_cpu_do_interrupt(cs);
+            #ifdef CONFIG_SOFTMMU
+            rr_pending_interrupts_at(
+                RR_CALLSITE_CPU_PENDING_INTERRUPTS_AFTER,
+                (uint32_t*)&env->error_code);
+            #endif
             return true;
         }
     }

@@ -1,6 +1,6 @@
 # syscalls2 maintenance
 
-**Note:** This document is work in progress.
+**Note:** This document is work in progress. There is also some documentation in docs/syscalls2.md.
 
 In this document we highlight how support for new operating systems can be added to `syscalls2`. Overall, this is a three step process:
 

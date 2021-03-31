@@ -73,7 +73,7 @@ def main():
     try:
         c = reactor.server().connect(args.server, args.port, args.nickname)
     except irc.client.ServerConnectionError:
-        print(sys.exc_info()[1])
+        print((sys.exc_info()[1]))
         raise SystemExit(1)
 
     c.add_global_handler("welcome", on_connect)

@@ -115,6 +115,19 @@ extern int ppp_##cb_name##_num_cb;
     }                                                                         \
   }
 
+// If any of the registered functions returns true, take the if body
+// Usage: IF_PPP_RUN_BOOL_CB(...) { printf("True"); }
+#define IF_PPP_RUN_BOOL_CB(cb_name, ...)                                      \
+  bool __ret = false;                                                         \
+  {                                                                           \
+    int ppp_cb_ind;                                                           \
+    for (ppp_cb_ind = 0; ppp_cb_ind < ppp_##cb_name##_num_cb; ppp_cb_ind++) { \
+      if (ppp_##cb_name##_cb[ppp_cb_ind] != NULL) {                           \
+        __ret |= ppp_##cb_name##_cb[ppp_cb_ind]( __VA_ARGS__ ) ;              \
+      }                                                                       \
+    }                                                                         \
+  }; if (__ret)
+
 #define PPP_CHECK_CB(cb_name) (ppp_##cb_name##_num_cb > 0)
 
 /****************************************************************
@@ -136,6 +149,7 @@ to add a callback to be run inside of plugin A.
     assert (add_cb != 0);                                                                   \
     add_cb (cb_func);                                                                       \
   }
+
 
 
 // Use to disable (delete) a ppp-callback

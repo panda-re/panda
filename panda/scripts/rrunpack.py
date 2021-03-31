@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 import sys, os
 import subprocess
@@ -14,7 +14,7 @@ RRPACK_MAGIC = "PANDA_RR"
 # 0x20: archive data in .tar.xz format
 
 if len(sys.argv) != 2:
-    print >>sys.stderr, "usage: %s <filename.rr>" % sys.argv[0]
+    print("usage: %s <filename.rr>" % sys.argv[0], file=sys.stderr)
     sys.exit(1)
 
 infname = sys.argv[1]
@@ -24,9 +24,9 @@ try:
     with open(infname, 'rb') as f:
         magic, num_guest_insns, file_digest = struct.unpack("<8sQ16s", f.read(0x20))
         if magic != RRPACK_MAGIC:
-            print >>sys.stderr, infname, "is not in PANDA Record/Replay format"
+            print(infname, "is not in PANDA Record/Replay format", file=sys.stderr)
             sys.exit(1)
-        print "Verifying checksum...",
+        print("Verifying checksum...", end=' ')
         m = hashlib.md5()
         while True:
             data = f.read(4096)
@@ -34,14 +34,14 @@ try:
             m.update(data)
         digest = m.digest()
         if digest != file_digest:
-            print "FAILED. Aborting."
+            print("FAILED. Aborting.")
             sys.exit(1)
         else:
-            print "Success."
+            print("Success.")
         f.seek(0x20)
-        print "Unacking RR log %s with %d instructions..." % (infname, num_guest_insns),
+        print("Unacking RR log %s with %d instructions..." % (infname, num_guest_insns), end=' ')
         subprocess.check_call(['tar', 'xJvf', '-'], stdin=f)
-        print "Done."
+        print("Done.")
 except EnvironmentError:
-    print >>sys.stderr, "Failed to open", infname
+    print("Failed to open", infname, file=sys.stderr)
     sys.exit(1)

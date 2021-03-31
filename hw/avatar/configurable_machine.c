@@ -402,8 +402,8 @@ static void set_entry_point(QDict *conf, THISCPU *cpuu)
     cpuu->env.eip = entry;
 
 #elif defined(TARGET_MIPS)
-    //Not implemented yet
-    printf("Not yet implemented- can't start execution at 0x%x\n", entry);
+    cpuu->env.active_tc.PC = entry;
+
 #elif defined(TARGET_PPC)
     //Not implemented yet
     printf("Not yet implemented- can't start execution at 0x%x\n", entry);
@@ -481,8 +481,14 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
     avatar_add_banked_registers(cpuu);
     set_feature(&cpuu->env, ARM_FEATURE_CONFIGURABLE);
 #elif defined(TARGET_I386)
-    // Ensures CS register is set correctly on x86 CPU reset. See target/i386/cpu.c:3063
-    set_x86_configurable_machine();
+    // Ensures CS register is set correctly on x86/x86_64 CPU reset. See target/i386/cpu.c:3063
+    int mode =
+#if defined(TARGET_X86_64)
+              64;
+#else
+              32;
+#endif
+    set_x86_configurable_machine(mode); // This sets the CPU to be in 32 or 64 bit mode
 #endif
 
     assert(cpuu != NULL);

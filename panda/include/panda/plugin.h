@@ -76,7 +76,7 @@ extern bool panda_plugin_to_unload;
 extern bool panda_tb_chaining;
 
 // this stuff is used by the new qemu cmd-line arg '-os os_name'
-typedef enum OSFamilyEnum { OS_UNKNOWN, OS_WINDOWS, OS_LINUX } PandaOsFamily;
+typedef enum OSFamilyEnum { OS_UNKNOWN, OS_WINDOWS, OS_LINUX, OS_FREEBSD } PandaOsFamily;
 
 // these are set in panda/src/common.c via call to panda_set_os_name(os_name)
 extern char *panda_os_name;           // the full name of the os, as provided by the user
@@ -95,9 +95,12 @@ void panda_disable_precise_pc(void);
 void panda_enable_memcb(void);
 void panda_disable_memcb(void);
 void panda_enable_llvm(void);
+void panda_enable_llvm_no_exec(void);
 void panda_disable_llvm(void);
 void panda_enable_llvm_helpers(void);
 void panda_disable_llvm_helpers(void);
+int panda_write_current_llvm_bitcode_to_file(const char* path);
+uintptr_t panda_get_current_llvm_module(void);
 void panda_enable_tb_chaining(void);
 void panda_disable_tb_chaining(void);
 void panda_memsavep(FILE *f);
@@ -143,7 +146,7 @@ const char *panda_parse_string_opt(panda_arg_list *args, const char *argname, co
 
 char** str_split(char *a_str, const char a_delim);
 
-extern const gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
+extern gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
 extern int panda_argc;
 
 char *panda_plugin_path(const char *name);

@@ -2,7 +2,7 @@
 # Take a recording, then replay with analysis, then revert vm and run more commands
 from sys import argv
 from os import remove, path
-from panda import Panda, blocking
+from pandare import Panda, blocking
 
 # Default arch is i386, but others can be used
 arch = argv[1] if len(argv) > 1 else "i386"
@@ -55,7 +55,7 @@ assert(path.isfile('asidstory')), "Asidstory didn't create output"
 with open('asidstory') as f:
     data = f.read()
     assert("date" in data), "Unexpected output from asidstory"
-    assert("md5sum : [" in data), "Unexpected output from asidstory"
+    assert(" md5sum " in data), "Unexpected output from asidstory"
 
 orig_block_c = len(orig_blocks)
 repl_block_c = len(replay_blocks)

@@ -28,6 +28,3 @@ Running `osi_test` on an Windows XP 32-bit replay:
 
     $PANDA_PATH/i386-softmmu/panda-system-i386 -replay foo \
         -panda osi -panda win7x86intro -panda osi_test
-
-Bugs
-----

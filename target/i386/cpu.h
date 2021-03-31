@@ -1679,6 +1679,6 @@ void x86_cpu_dump_local_apic_state(CPUState *cs, FILE *f,
 
 /* cpu.c */
 bool cpu_is_bsp(X86CPU *cpu);
-void set_x86_configurable_machine(void);
+void set_x86_configurable_machine(int mode);
 
 #endif /* I386_CPU_H */

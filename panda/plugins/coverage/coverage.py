@@ -5,11 +5,16 @@ IDAPython Script to ingest a coverage PANDA plugin report.
 import csv
 import datetime
 
+import ida_bytes
+import ida_funcs
 import ida_kernwin
 import ida_loader
+import ida_nalt
 
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QAbstractItemView, QCheckBox, QDialog, \
+    QFileDialog, QHBoxLayout, QHeaderView, QPushButton, QTableWidget, \
+    QTableWidgetItem, QVBoxLayout
 
 FUNC_COLOR = 0x90EE90
 INST_COLOR = 0x55AAFF
@@ -103,21 +108,21 @@ class ProcessSelectDialog(QDialog):
         return None
         
 def color_blocks(fn, pc, size):
-    fn_start = fn.startEA
-    fn_name = GetFunctionName(fn_start)
+    fn_start = fn.start_ea
+    fn_name = ida_funcs.get_func_name(fn_start)
     if ("COVERED_" not in fn_name):
-        MakeName(fn_start, "COVERED_" + fn_name)
-    SetColor(pc, CIC_FUNC, FUNC_COLOR)
+        ida_name.set_name(fn_start, "COVERED_" + fn_name, ida_name.SN_CHECK)
+    fn.color = FUNC_COLOR
     # PANDA blocks may be shorter than IDA blocks
     # so use the size to color just what PANDA executed
     i = 0
     while ((pc + i) < (pc + size)):
-        SetColor(pc + i, CIC_ITEM, INST_COLOR)
+        ida_nalt.set_item_color(pc + i, INST_COLOR)
         i = i + 1
 
 def add_comments(info_for_pcs, selections):
-    for pc, info in info_for_pcs.iteritems():
-        comment = Comment(pc)
+    for pc, info in info_for_pcs.items():
+        comment = ida_bytes.get_cmt(pc, 0)
         if (not comment):
             comment = ""
         if (selections['add_tids'] and selections['add_seqs']):
@@ -130,8 +135,27 @@ def add_comments(info_for_pcs, selections):
             comment = label_portion
         else:
             comment = comment + ", " + label_portion
-        MakeComm(pc, comment)
+        ida_bytes.set_cmt(pc, comment, 0)
         
+def get_mode(reader, show_metadata):
+    # newer coverage output files have some metadata before the mode and
+    # column header lines
+    line1 = next(reader, None)
+    if (line1[0].startswith("PANDA Build Date")):
+        # new format file - build date, then execution time, then mode line
+        exec_time = next(reader, None)
+        if (show_metadata):
+            idaapi.msg(line1[0] + ":  " + line1[1] + "\n")
+            idaapi.msg(exec_time[0] + ":  " + exec_time[1] + "\n")
+        fmt_row = next(reader, None)
+        mode = fmt_row[0]
+    else:
+        # old format file - first line is the mode
+        mode = line1[0]
+    # skip column headers
+    next(reader, None)
+    return mode
+    
 def main():
     filename, _ = QFileDialog.getOpenFileName(None, "Open file", ".", "CSV Files(*.csv)")
     if filename == "":
@@ -142,8 +166,7 @@ def main():
     reader = csv.reader(input_file)
     
     # what mode was used to produce this output?
-    fmt_row = next(reader, None)
-    mode = fmt_row[0]
+    mode = get_mode(reader, True)
     # where to find the pertinent data depends upon the mode that produced it
     if ("process" == mode):
         id_index = 1
@@ -202,8 +225,7 @@ def main():
     input_file = open(filename, "r")
     reader = csv.reader(input_file)
     # skip mode and column headers
-    next(reader, None)
-    next(reader, None)
+    get_mode(reader, False)
     seq_num = 0
     for row in reader:
         cur_id = int(row[id_index], id_radix)

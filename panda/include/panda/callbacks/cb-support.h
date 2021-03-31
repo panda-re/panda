@@ -133,3 +133,5 @@ bool panda_callbacks_guest_hypercall(CPUState *env);
 /* invoked from translate-all.c */
 void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 
+
+void panda_callbacks_before_tcg_codegen(CPUState *env, TranslationBlock *tb);

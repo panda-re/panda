@@ -326,7 +326,7 @@ qemu-version.h: FORCE
 			if test -d .git; then \
 				printf '" ('; \
 				git describe --match 'v*' 2>/dev/null | tr -d '\n'; \
-				if ! git diff-index --quiet HEAD &>/dev/null; then \
+				if ! git diff-index --quiet HEAD 2>/dev/null; then \
 					printf -- '-dirty'; \
 				fi; \
 				printf ')"\n'; \
@@ -421,7 +421,7 @@ qemu-ga$(EXESUF): QEMU_CFLAGS += -I qga/qapi-generated
 
 gen-out-type = $(subst .,-,$(suffix $@))
 
-qapi-py = $(SRC_PATH)/scripts/qapi.py $(SRC_PATH)/scripts/ordereddict.py
+qapi-py = $(SRC_PATH)/scripts/qapi.py
 
 qga/qapi-generated/qga-qapi-types.c qga/qapi-generated/qga-qapi-types.h :\
 $(SRC_PATH)/qga/qapi-schema.json $(SRC_PATH)/scripts/qapi-types.py $(qapi-py)
@@ -626,12 +626,17 @@ endif
 endif
 
 ifneq ($(CONFIG_LINUX),)
+
+# This hack is needed with `make` >=4.3
+# More details can be found in the changelog: https://lwn.net/Articles/810071/
+number_sign := \#
+
 # The install target won't succeed if the RPATH in the .so files is longer than
 # the value need to change it to for installation purposes.  It does not matter
 # which architecture is used for the comparison - it shows up once in both the
 # new and old RPATHs, so the differences cancel out.
 # Calculate length of new RPATH.
-newrplen=$(shell newrp="$(panda_plugindir)/$(ARCH)" ; eval echo $${\#newrp})
+newrplen=$(shell newrp="$(panda_plugindir)/$(ARCH)" ; eval echo $${$(number_sign)newrp})
 # Fetch current RPATH from an .so file - doesn't matter which plugin/arch it is for.
 archdir=$(lastword $(TARGET_DIRS))
 ifeq ($(archdir),)
@@ -643,7 +648,7 @@ cpout=$(shell chrpath -l "$(pathtoso)")
 # The old RPATH will include a "RPATH=" prefix - the size calculation will
 # adjust for that later.
 rppart=$(lastword $(cpout))
-newtoobig=$(shell oldrp="$(rppart)" ; oldrplen=`expr $${\#oldrp} - 6` ; if [ $$oldrplen -lt $(newrplen) ] ; then echo true ; else echo false ; fi)
+newtoobig=$(shell oldrp="$(rppart)" ; oldrplen=`expr $${$(number_sign)oldrp} - 6` ; if [ $$oldrplen -lt $(newrplen) ] ; then echo true ; else echo false ; fi)
 endif
 
 install: all $(if $(BUILD_DOCS),install-doc) install-datadir install-localstatedir

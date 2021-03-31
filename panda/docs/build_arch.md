@@ -1,5 +1,7 @@
 # Manually building on Arch Linux
 
+Warning this file is very out of date. PRs welcome.
+
 ## Dependencies
 ```
 aur_install_pkg () {

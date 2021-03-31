@@ -25,6 +25,8 @@
 #include "exec/cpu_ldst.h"
 #include "sysemu/kvm.h"
 
+#include "panda/callbacks/cb-helper-impl.h"
+
 /*****************************************************************************/
 /* Exceptions processing helpers */
 
@@ -696,31 +698,97 @@ static void sync_c0_entryhi(CPUMIPSState *cpu, int tc)
 /* CP0 helpers */
 target_ulong helper_mfc0_mvpcontrol(CPUMIPSState *env)
 {
-    return env->mvp->CP0_MVPControl;
+    target_ulong number;
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = env->mvp->CP0_MVPControl,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+        number = env->mvp->CP0_MVPControl;
+//#endif
+        return number;
 }
 
 target_ulong helper_mfc0_mvpconf0(CPUMIPSState *env)
 {
-    return env->mvp->CP0_MVPConf0;
+    target_ulong number;
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = env->mvp->CP0_MVPConf0,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+        number = env->mvp->CP0_MVPConf0;
+//#endif
+        return number;
 }
 
 target_ulong helper_mfc0_mvpconf1(CPUMIPSState *env)
 {
-    return env->mvp->CP0_MVPConf1;
+    target_ulong number;
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = env->mvp->CP0_MVPConf1,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+        number = env->mvp->CP0_MVPConf1;
+//#endif
+        return number;
 }
 
 target_ulong helper_mfc0_random(CPUMIPSState *env)
-{
-    return (int32_t)cpu_mips_get_random(env);
+{   
+    target_ulong number;
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = cpu_mips_get_count(env),
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+        number = (int32_t) cpu_mips_get_count(env);
+//#endif
+    return number;
 }
 
 target_ulong helper_mfc0_tcstatus(CPUMIPSState *env)
 {
-    return env->active_tc.CP0_TCStatus;
+
+    target_ulong number;
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = env->active_tc.CP0_TCStatus,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+        number = (int32_t) env->active_tc.CP0_TCStatus;
+//#endif
+    return number;
 }
 
 target_ulong helper_mftc0_tcstatus(CPUMIPSState *env)
 {
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = (other_tc == other->current_tc) ? other->active_tc.CP0_TCStatus : other->tcs[other_tc].CP0_TCStatus,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
@@ -728,15 +796,41 @@ target_ulong helper_mftc0_tcstatus(CPUMIPSState *env)
         return other->active_tc.CP0_TCStatus;
     else
         return other->tcs[other_tc].CP0_TCStatus;
+//#endif
 }
 
 target_ulong helper_mfc0_tcbind(CPUMIPSState *env)
 {
-    return env->active_tc.CP0_TCBind;
+
+    target_ulong number;
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = env->active_tc.CP0_TCBind,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+        number = (int32_t) env->active_tc.CP0_TCBind;
+//#endif
+    return number;
 }
 
 target_ulong helper_mftc0_tcbind(CPUMIPSState *env)
 {
+
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = (other_tc == other->current_tc) ? other->active_tc.CP0_TCBind : other->tcs[other_tc].CP0_TCBind,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
+
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
@@ -744,15 +838,41 @@ target_ulong helper_mftc0_tcbind(CPUMIPSState *env)
         return other->active_tc.CP0_TCBind;
     else
         return other->tcs[other_tc].CP0_TCBind;
+//#endif
 }
 
 target_ulong helper_mfc0_tcrestart(CPUMIPSState *env)
 {
-    return env->active_tc.PC;
+
+    target_ulong number;
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = env->active_tc.PC,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+        number = (int32_t) env->active_tc.PC;
+//#endif
+    return number;
 }
 
 target_ulong helper_mftc0_tcrestart(CPUMIPSState *env)
 {
+
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = (other_tc == other->current_tc) ? other->active_tc.PC : other->tcs[other_tc].PC,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
+
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
@@ -760,15 +880,41 @@ target_ulong helper_mftc0_tcrestart(CPUMIPSState *env)
         return other->active_tc.PC;
     else
         return other->tcs[other_tc].PC;
+//#endif
 }
 
 target_ulong helper_mfc0_tchalt(CPUMIPSState *env)
 {
-    return env->active_tc.CP0_TCHalt;
+
+    target_ulong number;
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = env->active_tc.CP0_TCHalt,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+        number = (int32_t) env->active_tc.CP0_TCHalt;
+//#endif
+    return number;
 }
 
 target_ulong helper_mftc0_tchalt(CPUMIPSState *env)
 {
+
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = (other_tc == other->current_tc) ? other->active_tc.CP0_TCHalt : other->tcs[other_tc].CP0_TCHalt,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
+
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
@@ -776,15 +922,40 @@ target_ulong helper_mftc0_tchalt(CPUMIPSState *env)
         return other->active_tc.CP0_TCHalt;
     else
         return other->tcs[other_tc].CP0_TCHalt;
+//#endif
 }
 
 target_ulong helper_mfc0_tccontext(CPUMIPSState *env)
 {
-    return env->active_tc.CP0_TCContext;
+
+    target_ulong number;
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = env->active_tc.CP0_TCContext,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+        number = (int32_t) env->active_tc.CP0_TCContext;
+//#endif
+    return number;
 }
 
 target_ulong helper_mftc0_tccontext(CPUMIPSState *env)
 {
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = (other_tc == other->current_tc) ? other->active_tc.CP0_TCContext : other->tcs[other_tc].CP0_TCContext,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
+
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
@@ -792,15 +963,41 @@ target_ulong helper_mftc0_tccontext(CPUMIPSState *env)
         return other->active_tc.CP0_TCContext;
     else
         return other->tcs[other_tc].CP0_TCContext;
+//#endif
 }
 
 target_ulong helper_mfc0_tcschedule(CPUMIPSState *env)
 {
-    return env->active_tc.CP0_TCSchedule;
+
+    target_ulong number;
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = env->active_tc.CP0_TCSchedule,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+        number = (int32_t) env->active_tc.CP0_TCSchedule;
+//#endif
+    return number;
 }
 
 target_ulong helper_mftc0_tcschedule(CPUMIPSState *env)
 {
+
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = (other_tc == other->current_tc) ? other->active_tc.CP0_TCSchedule : other->tcs[other_tc].CP0_TCSchedule,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
+
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
@@ -808,15 +1005,41 @@ target_ulong helper_mftc0_tcschedule(CPUMIPSState *env)
         return other->active_tc.CP0_TCSchedule;
     else
         return other->tcs[other_tc].CP0_TCSchedule;
+//#endif
 }
 
 target_ulong helper_mfc0_tcschefback(CPUMIPSState *env)
 {
-    return env->active_tc.CP0_TCScheFBack;
+
+    target_ulong number;
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = env->active_tc.CP0_TCScheFBack,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+        number = (int32_t) env->active_tc.CP0_TCScheFBack;
+//#endif
+    return number;
 }
 
 target_ulong helper_mftc0_tcschefback(CPUMIPSState *env)
 {
+
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = (other_tc == other->current_tc) ? other->active_tc.CP0_TCScheFBack : other->tcs[other_tc].CP0_TCScheFBack,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
+
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
@@ -824,84 +1047,217 @@ target_ulong helper_mftc0_tcschefback(CPUMIPSState *env)
         return other->active_tc.CP0_TCScheFBack;
     else
         return other->tcs[other_tc].CP0_TCScheFBack;
+//#endif
 }
 
 target_ulong helper_mfc0_count(CPUMIPSState *env)
 {
-    int32_t count;
-    qemu_mutex_lock_iothread();
-    count = (int32_t) cpu_mips_get_count(env);
-    qemu_mutex_unlock_iothread();
-    return count;
+    target_ulong count;
+    //qemu_mutex_lock_iothread(); 
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/count = cpu_mips_get_count(env),
+//        /*record=*/rr_input_4(&count),
+//        /*replay=*/rr_input_4(&count),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+        count = cpu_mips_get_count(env);
+//#endif
+    //qemu_mutex_unlock_iothread();
+    return (target_ulong) count;
 }
 
 target_ulong helper_mftc0_entryhi(CPUMIPSState *env)
 {
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
-
-    return other->CP0_EntryHi;
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong count;
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/count = other->CP0_EntryHi,
+//        /*record=*/rr_input_4(&count),
+//        /*replay=*/rr_input_4(&count),
+//        /*location=*/RR_CALLSITE_READ_4);
+//        return count;
+//#else
+        return other->CP0_EntryHi;
+//#endif
 }
 
 target_ulong helper_mftc0_cause(CPUMIPSState *env)
 {
+
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = other->CP0_Cause,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
+
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
-    int32_t tccause;
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
-
-    if (other_tc == other->current_tc) {
-        tccause = other->CP0_Cause;
-    } else {
-        tccause = other->CP0_Cause;
-    }
-
-    return tccause;
+    return other->CP0_Cause;
+//#endif
 }
 
 target_ulong helper_mftc0_status(CPUMIPSState *env)
 {
+
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = other->CP0_Status,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
-
     return other->CP0_Status;
+//#endif
 }
 
 target_ulong helper_mfc0_lladdr(CPUMIPSState *env)
 {
-    return (int32_t)(env->lladdr >> env->CP0_LLAddr_shift);
+
+    target_ulong count;
+    //qemu_mutex_lock_iothread(); 
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/count = (int32_t)(env->lladdr >> env->CP0_LLAddr_shift),
+//        /*record=*/rr_input_4(&count),
+//        /*replay=*/rr_input_4(&count),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+        count = (int32_t)(env->lladdr >> env->CP0_LLAddr_shift);
+//#endif
+    //qemu_mutex_unlock_iothread();
+    return (target_ulong) count;
 }
 
 target_ulong helper_mfc0_maar(CPUMIPSState *env)
 {
-    return (int32_t) env->CP0_MAAR[env->CP0_MAARI];
+
+
+    target_ulong count;
+    //qemu_mutex_lock_iothread(); 
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/count = (int32_t) env->CP0_MAAR[env->CP0_MAARI],
+//        /*record=*/rr_input_4(&count),
+//        /*replay=*/rr_input_4(&count),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+        count = (int32_t) env->CP0_MAAR[env->CP0_MAARI];
+//#endif
+    //qemu_mutex_unlock_iothread();
+    return (target_ulong) count;
 }
 
 target_ulong helper_mfhc0_maar(CPUMIPSState *env)
 {
-    return env->CP0_MAAR[env->CP0_MAARI] >> 32;
+
+    target_ulong count;
+    //qemu_mutex_lock_iothread(); 
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/count = env->CP0_MAAR[env->CP0_MAARI] >> 32,
+//        /*record=*/rr_input_4(&count),
+//        /*replay=*/rr_input_4(&count),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+    count = env->CP0_MAAR[env->CP0_MAARI] >> 32;
+//#endif
+    //qemu_mutex_unlock_iothread();
+    return (target_ulong) count;
 }
 
 target_ulong helper_mfc0_watchlo(CPUMIPSState *env, uint32_t sel)
 {
-    return (int32_t)env->CP0_WatchLo[sel];
+
+    target_ulong count;
+    //qemu_mutex_lock_iothread(); 
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/count = env->CP0_MAAR[env->CP0_MAARI] >> 32,
+//        /*record=*/rr_input_4(&count),
+//        /*replay=*/rr_input_4(&count),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+    count = (int32_t)env->CP0_WatchLo[sel];
+//#endif
+    return count;
 }
 
 target_ulong helper_mfc0_watchhi(CPUMIPSState *env, uint32_t sel)
 {
-    return env->CP0_WatchHi[sel];
+
+    target_ulong count;
+    //qemu_mutex_lock_iothread(); 
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/count = (int32_t) env->CP0_WatchHi[sel],
+//        /*record=*/rr_input_4(&count),
+//        /*replay=*/rr_input_4(&count),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+    count = (int32_t)env->CP0_WatchHi[sel];
+//#endif
+    return count;
 }
 
 target_ulong helper_mfc0_debug(CPUMIPSState *env)
 {
-    target_ulong t0 = env->CP0_Debug;
+    target_ulong t0;
+    //qemu_mutex_lock_iothread(); 
+
+//#ifdef CONFIG_SOFTMMU
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/t0 = (env->hflags & MIPS_HFLAG_DM) ? ((env->CP0_Debug) | (1 << CP0DB_DM)) : env->CP0_Debug,
+//        /*record=*/rr_input_4(&t0),
+//        /*replay=*/rr_input_4(&t0),
+//        /*location=*/RR_CALLSITE_READ_4);
+//#else
+    t0 = env->CP0_Debug;
     if (env->hflags & MIPS_HFLAG_DM)
         t0 |= 1 << CP0DB_DM;
-
+//#endif
     return t0;
 }
 
 target_ulong helper_mftc0_debug(CPUMIPSState *env)
 {
+
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    int32_t tcstatus;
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    if (other_tc == other->current_tc)
+//        tcstatus = other->active_tc.CP0_Debug_tcstatus;
+//    else
+//        tcstatus = other->tcs[other_tc].CP0_Debug_tcstatus;
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = (other->CP0_Debug & ~((1 << CP0DB_SSt) | (1 << CP0DB_Halt))) | (tcstatus & ((1 << CP0DB_SSt) | (1 << CP0DB_Halt))),
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     int32_t tcstatus;
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
@@ -914,6 +1270,7 @@ target_ulong helper_mftc0_debug(CPUMIPSState *env)
     /* XXX: Might be wrong, check with EJTAG spec. */
     return (other->CP0_Debug & ~((1 << CP0DB_SSt) | (1 << CP0DB_Halt))) |
             (tcstatus & ((1 << CP0DB_SSt) | (1 << CP0DB_Halt)));
+//#endif
 }
 
 #if defined(TARGET_MIPS64)
@@ -1022,18 +1379,42 @@ void helper_mttc0_vpecontrol(CPUMIPSState *env, target_ulong arg1)
 
 target_ulong helper_mftc0_vpecontrol(CPUMIPSState *env)
 {
+
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = other->CP0_VPEControl,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
-    /* FIXME: Mask away return zero on read bits.  */
     return other->CP0_VPEControl;
+//#endif
 }
 
 target_ulong helper_mftc0_vpeconf0(CPUMIPSState *env)
 {
+
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = other->CP0_VPEConf0,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
-
     return other->CP0_VPEConf0;
+//#endif
 }
 
 void helper_mtc0_vpeconf0(CPUMIPSState *env, target_ulong arg1)
@@ -1380,9 +1761,9 @@ void helper_mtc0_hwrena(CPUMIPSState *env, target_ulong arg1)
 
 void helper_mtc0_count(CPUMIPSState *env, target_ulong arg1)
 {
-    qemu_mutex_lock_iothread();
+    //qemu_mutex_lock_iothread();
     cpu_mips_store_count(env, arg1);
-    qemu_mutex_unlock_iothread();
+    //qemu_mutex_unlock_iothread();
 }
 
 void helper_mtc0_entryhi(CPUMIPSState *env, target_ulong arg1)
@@ -1409,10 +1790,22 @@ void helper_mtc0_entryhi(CPUMIPSState *env, target_ulong arg1)
 #endif
     old = env->CP0_EntryHi;
     val = (arg1 & mask) | (old & ~mask);
-    env->CP0_EntryHi = val;
+
+    if ((env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask) != (val & env->CP0_EntryHi_ASID_mask)) {
+      // Actually an asid change, trigger CB
+      if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi, val)){
+          env->CP0_EntryHi = val;
+      }
+    }else{
+      // not an asid change, no cb
+      env->CP0_EntryHi = val;
+    }
+
     if (env->CP0_Config3 & (1 << CP0C3_MT)) {
         sync_c0_entryhi(env, env->current_tc);
     }
+
+
     /* If the ASID changes, flush qemu's TLB.  */
     if ((old & env->CP0_EntryHi_ASID_mask) !=
         (val & env->CP0_EntryHi_ASID_mask)) {
@@ -1425,15 +1818,23 @@ void helper_mttc0_entryhi(CPUMIPSState *env, target_ulong arg1)
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
-    other->CP0_EntryHi = arg1;
+    if ((env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask) != (arg1 & env->CP0_EntryHi_ASID_mask)) {
+      if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi, arg1)){
+          other->CP0_EntryHi = arg1;
+      }
+      // if plugin returns false could there be other (non-asid) changes we need to apply?
+    }else{
+      // Not an asid change, no CB
+      other->CP0_EntryHi = arg1;
+    }
     sync_c0_entryhi(other, other_tc);
 }
 
 void helper_mtc0_compare(CPUMIPSState *env, target_ulong arg1)
 {
-    qemu_mutex_lock_iothread();
+    //qemu_mutex_lock_iothread();
     cpu_mips_store_compare(env, arg1);
-    qemu_mutex_unlock_iothread();
+    //qemu_mutex_unlock_iothread();
 }
 
 void helper_mtc0_status(CPUMIPSState *env, target_ulong arg1)
@@ -1484,9 +1885,9 @@ void helper_mtc0_srsctl(CPUMIPSState *env, target_ulong arg1)
 
 void helper_mtc0_cause(CPUMIPSState *env, target_ulong arg1)
 {
-    qemu_mutex_lock_iothread();
+    //qemu_mutex_lock_iothread();
     cpu_mips_store_cause(env, arg1);
-    qemu_mutex_unlock_iothread();
+    //qemu_mutex_unlock_iothread();
 }
 
 void helper_mttc0_cause(CPUMIPSState *env, target_ulong arg1)
@@ -1499,18 +1900,42 @@ void helper_mttc0_cause(CPUMIPSState *env, target_ulong arg1)
 
 target_ulong helper_mftc0_epc(CPUMIPSState *env)
 {
+
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = other->CP0_EPC,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
-
     return other->CP0_EPC;
+//#endif
 }
 
 target_ulong helper_mftc0_ebase(CPUMIPSState *env)
 {
+
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    RR_DO_RECORD_OR_REPLAY(
+//        /*action=*/number = other->CP0_EBase,
+//        /*record=*/rr_input_4(&number),
+//        /*replay=*/rr_input_4(&number),
+//        /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
-
     return other->CP0_EBase;
+//#endif
 }
 
 void helper_mtc0_ebase(CPUMIPSState *env, target_ulong arg1)
@@ -1527,6 +1952,31 @@ void helper_mttc0_ebase(CPUMIPSState *env, target_ulong arg1)
 
 target_ulong helper_mftc0_configx(CPUMIPSState *env, target_ulong idx)
 {
+
+//#ifdef CONFIG_SOFTMMU
+//    target_ulong number;
+//    int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
+//    CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
+//    target_ulong num;
+//
+//    switch (idx) {
+//    case 0: num= other->CP0_Config0;break;
+//    case 1: num= other->CP0_Config1;break;
+//    case 2: num= other->CP0_Config2;break;
+//    case 3: num= other->CP0_Config3;break;
+//    /* 4 and 5 are reserved.  */
+//    case 6: num= other->CP0_Config6;break;
+//    case 7: num= other->CP0_Config7;break;
+//    default:
+//        num=0;
+//    }
+//    //RR_DO_RECORD_OR_REPLAY(
+//    //    /*action=*/number = num,
+//    //    /*record=*/rr_input_4(&number),
+//    //    /*replay=*/rr_input_4(&number),
+//    //    /*location=*/RR_CALLSITE_READ_4);
+//    return number;
+//#else
     int other_tc = env->CP0_VPEControl & (0xff << CP0VPECo_TargTC);
     CPUMIPSState *other = mips_cpu_map_tc(env, &other_tc);
 
@@ -1542,6 +1992,7 @@ target_ulong helper_mftc0_configx(CPUMIPSState *env, target_ulong idx)
         break;
     }
     return 0;
+//#endif
 }
 
 void helper_mtc0_config0(CPUMIPSState *env, target_ulong arg1)
@@ -2139,12 +2590,18 @@ void r4k_helper_tlbr(CPUMIPSState *env)
     r4k_mips_tlb_flush_extra(env, env->tlb->nb_tlb);
 
     if (tlb->EHINV) {
-        env->CP0_EntryHi = 1 << CP0EnHi_EHINV;
+        
+        if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi, 1 << CP0EnHi_EHINV)){
+            env->CP0_EntryHi = 1 << CP0EnHi_EHINV;
+        }
         env->CP0_PageMask = 0;
         env->CP0_EntryLo0 = 0;
         env->CP0_EntryLo1 = 0;
     } else {
-        env->CP0_EntryHi = tlb->VPN | tlb->ASID;
+
+        if (!panda_callbacks_asid_changed(ENV_GET_CPU(env), env->CP0_EntryHi,tlb->VPN | tlb->ASID)){
+            env->CP0_EntryHi = tlb->VPN | tlb->ASID;
+        }
         env->CP0_PageMask = tlb->PageMask;
         env->CP0_EntryLo0 = tlb->G | (tlb->V0 << 1) | (tlb->D0 << 2) |
                         ((uint64_t)tlb->RI0 << CP0EnLo_RI) |
@@ -2312,9 +2769,9 @@ target_ulong helper_rdhwr_cc(CPUMIPSState *env)
 #ifdef CONFIG_USER_ONLY
     count = env->CP0_Count;
 #else
-    qemu_mutex_lock_iothread();
+    //qemu_mutex_lock_iothread();
     count = (int32_t)cpu_mips_get_count(env);
-    qemu_mutex_unlock_iothread();
+    //qemu_mutex_unlock_iothread();
 #endif
     return count;
 }

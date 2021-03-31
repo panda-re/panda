@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ "$#" -ne 2 ]; then
+if [ "$#" -lt 1 ]; then
    echo "run.sh [debuggable vmlinux file] [output file]"
    exit
 fi

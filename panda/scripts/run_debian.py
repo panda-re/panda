@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 USAGE="""run_on_32bitlinux.py [args] binary
 
@@ -117,7 +117,7 @@ def run_and_create_recording():
     parser.add_argument("--qemu_args", action='store', default="")
     parser.add_argument("--qcow", action='store', default="")
     parser.add_argument("--snapshot", "-s", action='store', default="root")
-    parser.add_argument("--arch", action='store', default='i386', choices=SUPPORTED_ARCHES.keys())
+    parser.add_argument("--arch", action='store', default='i386', choices=list(SUPPORTED_ARCHES.keys()))
     parser.add_argument("--fileinput", action='store')
     parser.add_argument("--stdin", action='store_true')
     parser.add_argument("--replaybase", action='store')
@@ -136,7 +136,7 @@ def run_and_create_recording():
         try:
             env = eval(args.env)
         except:
-            print("Something went wrong parsing the environment string: [{}]".format(env))
+            print(("Something went wrong parsing the environment string: [{}]".format(env)))
             EXIT_USAGE()
 
     binary = guest_cmd[0]
@@ -165,7 +165,7 @@ def run_and_create_recording():
         qcow = join(dot_dir, arch_data.qcow)
 
     if not os.path.isfile(qcow):
-        print "\nQcow %s doesn't exist. Downloading from moyix. Thanks moyix!\n" % qcow
+        print(("\nQcow %s doesn't exist. Downloading from moyix. Thanks moyix!\n" % qcow))
         sp.check_call(["wget", "http://panda.moyix.net/~moyix/" + arch_data.qcow, "-O", qcow])
         for extra_file in arch_data.extra_files or []:
             extra_file_path = join(dot_dir, extra_file)
@@ -179,12 +179,12 @@ def run_and_create_recording():
     else:
         extra_args = []
 
-    new_guest_cmd = map(transform_arg_copy, guest_cmd)
+    new_guest_cmd = list(map(transform_arg_copy, guest_cmd))
     exename = basename(new_guest_cmd[0])
 
-    print "args =", guest_cmd
-    print "new_guest_cmd =", new_guest_cmd
-    print "env = ", env
+    print(("args =", guest_cmd))
+    print(("new_guest_cmd =", new_guest_cmd))
+    print(("env = ", env))
 
     if args.replaybase is None:
         replay_base = join(binary_dir, binary_basename)

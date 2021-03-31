@@ -10,12 +10,12 @@ import tempfile
 debug = False
 
 def progress(msg):
-    print Fore.GREEN + '[ptest.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
-    print
+    print(Fore.GREEN + '[ptest.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL)
+    print()
 
 def error(msg):
-    print Fore.RED + '[ptest.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
-    print
+    print(Fore.RED + '[ptest.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL)
+    print()
 
 def dir_exists(dirname):
     return os.path.exists(dirname) and os.path.isdir(dirname)
@@ -43,7 +43,7 @@ def file_required(filename):
         sys.exit(1)
 
 def moveit(base1, base2, suff):
-    print "moving %s%s to %s%s" % (base1, suff, base2, suff)
+    print("moving %s%s to %s%s" % (base1, suff, base2, suff))
     shutil.move(base1 + suff, base2 + suff)
 
 def run(cmd):
@@ -132,7 +132,7 @@ def run_test_debian(replay_args, replayname, arch, rdir = replaydir, clear_tmpou
         os.chdir(tmpoutdir)
         output = sp.check_output(cmd.split())                
         # full output of replay goes here
-        with open (tmpfulloutfile, "a") as out:
+        with open (tmpfulloutfile, "ab") as out:
             out.write(output)
         msg = ("Test %s succeeded" % testname)
         progress(msg)

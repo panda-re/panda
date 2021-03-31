@@ -58,12 +58,13 @@
 #include "exec/gdbstub.h"
 #include "sysemu/cpus.h"
 
+//#define RR_DEBUG
+
 /******************************************************************************************/
 /* GLOBALS */
 /******************************************************************************************/
 // record/replay state
 rr_control_t rr_control = {.mode = RR_OFF, .next = RR_NOCHANGE};
-extern bool panda_library_mode;
 
 // mz FIFO queue of log entries read from the log file
 // Implemented as ring buffer.
@@ -1263,7 +1264,7 @@ struct timeval replay_begin_time;
 // size)
 void replay_progress(void)
 {
-    if (rr_nondet_log && !panda_library_mode) { // Silent if no nondet_log or if we're replaying in library mode
+    if (rr_nondet_log && !panda_get_library_mode()) { // Silent if no nondet_log or if we're replaying in library mode
         if (rr_log_is_empty()) {
             printf("%s:  log is empty.\n", rr_nondet_log->name);
         } else {
@@ -1419,6 +1420,11 @@ static time_t rr_start_time;
 // mz file_name_full should be full path to desired record/replay log file
 int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
 {
+#ifdef TARGET_MIPS
+  fprintf(stderr, "Record/replay unsupported on MIPS\n");
+  exit(1);
+#endif
+
 #ifdef CONFIG_SOFTMMU
     Error* err = NULL;
     char name_buf[1024];
@@ -1487,7 +1493,7 @@ void rr_do_end_record(void)
 
     time_t rr_end_time;
     time(&rr_end_time);
-    if (!panda_library_mode)  {
+    if (!panda_get_library_mode())  {
       printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
       printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
     }
@@ -1516,6 +1522,12 @@ void rr_do_end_record(void)
 // file_name_full should be full path to the record/replay log
 int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
 {
+
+#ifdef TARGET_MIPS
+  fprintf(stderr, "Record/replay unsupported on MIPS\n");
+  exit(1);
+#endif
+
 #ifdef CONFIG_SOFTMMU
     char name_buf[1024];
     // decompose file_name_base into path & file.
@@ -1584,7 +1596,7 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     // Resume execution of the CPU thread when using PANDA as a library
     // note that this means library-mode consumers can't start a replay `-s -S` to
     // get a stopped guest that will only be started via an attached GDB
-    if (panda_library_mode) {
+    if (panda_get_library_mode()) {
         vm_start();
     }
 
@@ -1605,7 +1617,7 @@ void rr_do_end_replay(int is_error)
         printf("ERROR: replay failed!\n");
     }
 
-    if(!panda_library_mode) {
+    if(!panda_get_library_mode()) {
       time_t rr_end_time;
       time(&rr_end_time);
       printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
@@ -1620,7 +1632,9 @@ void rr_do_end_replay(int is_error)
           rr_size_of_log_entries[i] = 0;
       }
       printf("max_queue_len = %llu\n", rr_max_num_queue_entries);
+#ifdef RR_DEBUG
       printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
+#endif
     }
     rr_max_num_queue_entries = 0;
 
@@ -1650,7 +1664,7 @@ void rr_do_end_replay(int is_error)
     if (is_error) {
         abort();
     } else {
-      if (panda_library_mode) {
+      if (panda_get_library_mode()) {
           // Reset the system and break out of the vl.c loop. Note we leave the cpu thread running
           // This ensures we can run a replay, then a live guest without a hang
           qemu_system_reset(VMRESET_SILENT);
@@ -1717,6 +1731,8 @@ uint32_t rr_checksum_regs(void) {
     uint32_t crc = crc32(0, Z_NULL, 0);
 #if defined(TARGET_PPC)
     crc = crc32(crc, (unsigned char *)env->gpr, sizeof(env->gpr));
+#elif defined(TARGET_MIPS)
+    crc = crc32(crc, (unsigned char*)env->active_tc.gpr,sizeof(env->active_tc.gpr));
 #else
     crc = crc32(crc, (unsigned char *)env->regs, sizeof(env->regs));
 #endif

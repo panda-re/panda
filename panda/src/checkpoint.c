@@ -164,8 +164,18 @@ void panda_restore_by_num(int num) {
     }
 }
 
+// This should only ever called from inside the tcg_thread
+extern void tb_lock_reset(void);
+
 void panda_restore(void *opaque) {
     assert(rr_in_replay());
+    // there's a bug here where if have_tb_lock is set
+    // when we call into restore, after the restore
+    // a thread is going to try getting the tb_lock again
+    // and that's going to fail. So let's try
+    // ensuring that the lock is always cleared whenever
+    // we restore. This might be totally broken -af
+    tb_lock_reset();
     
     Checkpoint *checkpoint = (Checkpoint *)opaque;
     printf("Restarting checkpoint @ instr count %" PRIu64 "\n", checkpoint->guest_instr_count);

@@ -1,8 +1,17 @@
-# The current Travis default is a VM based 16.04 Xenial on GCE
-dist: xenial
+dist: bionic
 language: c
-compiler:
-  - gcc
+compiler: gcc-8
+addons:
+	apt:
+		sources:
+			- ubuntu-toolchain-r-test
+		packages:
+			- gcc-8
+env:
+	- CC=gcc-8
+	- AR=gcc-ar-8
+
+
 cache:
   # There is one cache per branch and compiler version.
   timeout: 1200

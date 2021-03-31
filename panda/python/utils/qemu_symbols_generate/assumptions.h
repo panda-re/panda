@@ -107,3 +107,13 @@ typedef void BlockCompletionFunc(void *opaque, int ret);
 typedef uint8_t QDict[4120];
 typedef uint8_t mon_cmd_t[56];
 typedef char gchar;
+typedef uint8_t fpr_t[16];
+enum mips_mmu_types {
+    MMU_TYPE_NONE,
+    MMU_TYPE_R4000,
+    MMU_TYPE_RESERVED,
+    MMU_TYPE_FMT,
+    MMU_TYPE_R3000,
+    MMU_TYPE_R6000,
+    MMU_TYPE_R8000
+};

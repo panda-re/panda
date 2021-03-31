@@ -24,12 +24,13 @@ PANDAENDCOMMENT */
  * update_cb_switch folder of the taint2 tests subfolder.
  */
 
- 
+    bool validate_last_literal = true;
+
     switch (opcode) {
         // Totally reversible cases.
         case llvm::Instruction::Sub:
-            if (literals[1] == ~0UL) {
-                tassert(last_literal != ~0UL);
+            if (literals[1] == NOT_LITERAL) {
+                tassert(last_literal != NOT_LITERAL);
                 // first operand is a variable. so negate.
                 // throw out ones/zeroes info.
                 // FIXME: handle better.
@@ -37,23 +38,16 @@ PANDAENDCOMMENT */
                 break;
             } // otherwise fall through.
         case llvm::Instruction::Add:
-            tassert(last_literal != ~0UL);
-            
-            // can't use the standard __builtin_clz, because its argument is an
-            // unsigned int, which may not be 64 bits on this machine
-            log2 = 64 - clz64(last_literal);
+            tassert(last_literal != NOT_LITERAL);
+
+            log2 = CB_WIDTH - last_literal.countLeadingZeros();
             // FIXME: this isn't quite right. for example, if all bits ones,
             // adding one makes all bits zero.
-            if (log2 < 64)
-            {
-                // darned compiler does bit twiddling in 32 bits even though all
-                // the variables are uint64_t, so have to force it to 64 bits or
-                // answers will be wrong in some cases
-                one_mask &= ~(((uint64_t)1 << log2) - 1);
-                zero_mask &= ~(((uint64_t)1 << log2) - 1);
-            }
-            else
-            {
+            if (log2 < CB_WIDTH) {
+                llvm::APInt mask = ~((llvm::APInt(CB_WIDTH, 1ul) << log2) - 1);
+                one_mask &= mask;
+                zero_mask &= mask;
+            } else {
                 one_mask = 0;
                 zero_mask = 0;
             }
@@ -78,41 +72,43 @@ PANDAENDCOMMENT */
         case llvm::Instruction::Load:
         case llvm::Instruction::ExtractValue:
         case llvm::Instruction::InsertValue:
+            validate_last_literal = false;
             break;
 
         case llvm::Instruction::Trunc:
             // explicitly cast or will get wrong answer when size=4
-            if (size < 8)
-            {
-                cb_mask &= ((uint64_t)1 << (size * 8)) - 1;
-                one_mask &= ((uint64_t)1 << (size * 8)) - 1;
-                zero_mask &= ((uint64_t)1 << (size * 8)) - 1;
+            if (size < (CB_WIDTH / 8)) {
+                llvm::APInt mask =
+                    (llvm::APInt(CB_WIDTH, 1ul) << (size * 8)) - 1;
+                cb_mask &= mask;
+                one_mask &= mask;
+                zero_mask &= mask;
             }
-            // if truncating to 8 bytes, not really truncating, as largest
-            // number we can handle (currently) is 64 bits - thus no change
+            // if truncating to (CB_WIDTH / 8) bytes, not really truncating, as
+            // largest number we can handle is CB_WIDTH bits - thus no change
+            validate_last_literal = false;
             break;
 
         case llvm::Instruction::Mul:
         { //TODO can implement this through strength reduction to shift and sub
-            tassert(last_literal != ~0UL);
+            tassert(last_literal != NOT_LITERAL);
             // Powers of two in last_literal destroy reversibility.
-            uint64_t trailing_zeroes = ctz64(last_literal);
+            int trailing_zeroes = last_literal.countTrailingZeros();
             cb_mask <<= trailing_zeroes;
             // cast so works on large numbers too, or any shift over 31 not
             // handled properly
-            zero_mask = ((uint64_t)1 << trailing_zeroes) - 1;
+            zero_mask = (llvm::APInt(CB_WIDTH, 1) << trailing_zeroes) - 1;
             one_mask = 0;
             break;
         }
 
         case llvm::Instruction::URem:
         case llvm::Instruction::SRem:
-            tassert(last_literal != ~0UL);
+            tassert(last_literal != NOT_LITERAL);
             tassert(last_literal != 0UL);  // /0 makes these LLVM ops undefined
-            log2 = 64 - clz64(last_literal);
-            if (log2 < 64)
-            {
-                cb_mask &= ((uint64_t)1 << log2) - 1;
+            log2 = CB_WIDTH - last_literal.countLeadingZeros();
+            if (log2 < CB_WIDTH) {
+                cb_mask &= (llvm::APInt(CB_WIDTH, 1) << log2) - 1;
             }
             // if no leading zeros, then keep the whole mask - no-op
             one_mask = 0;
@@ -121,14 +117,11 @@ PANDAENDCOMMENT */
 
         case llvm::Instruction::UDiv:
         case llvm::Instruction::SDiv:
-            tassert(last_literal != ~0UL);
-            log2 = 64 - clz64(last_literal);
-            if (log2 < 64)
-            {
-                cb_mask >>= log2;
-            }
-            else
-            {
+            tassert(last_literal != NOT_LITERAL);
+            log2 = CB_WIDTH - last_literal.countLeadingZeros();
+            if (log2 < CB_WIDTH) {
+                cb_mask = cb_mask.lshr(log2);
+            } else {
                 cb_mask = 0;
             }
             one_mask = 0;
@@ -136,7 +129,7 @@ PANDAENDCOMMENT */
             break;
 
         case llvm::Instruction::And:
-            tassert(last_literal != ~0UL);
+            tassert(last_literal != NOT_LITERAL);
             // Bits not in the bit mask are no longer controllable
             cb_mask &= last_literal;
             zero_mask |= ~last_literal;
@@ -144,7 +137,7 @@ PANDAENDCOMMENT */
             break;
 
         case llvm::Instruction::Or:
-            tassert(last_literal != ~0UL);
+            tassert(last_literal != NOT_LITERAL);
             // Bits in the bit mask are no longer controllable
             cb_mask &= ~last_literal;
             one_mask |= last_literal;
@@ -152,49 +145,72 @@ PANDAENDCOMMENT */
             break;
 
         case llvm::Instruction::Shl:
-            tassert(last_literal != ~0UL);
-            
-            // assuming the item being shifted by LShr is at most 64 bits, as
-            // the masks can't handle anything larger
-            tassert(last_literal < 64);
-            
-            cb_mask <<= last_literal;
-            one_mask <<= last_literal;
-            zero_mask <<= last_literal;
-            zero_mask |= ((uint64_t)1 << last_literal) - 1;
+            tassert(last_literal != NOT_LITERAL);
+
+            // assuming the item being shifted by Shl is at most CB_WIDTH bits,
+            // as the masks can't handle anything larger
+            if (last_literal.getZExtValue() > CB_WIDTH) {
+                // Preserve previous behavior
+                cb_mask = 0;
+                one_mask = 0;
+                zero_mask = 0;
+            } else {
+                cb_mask <<= last_literal.getZExtValue();
+                one_mask <<= last_literal.getZExtValue();
+                zero_mask <<= last_literal.getZExtValue();
+                zero_mask |= (llvm::APInt(CB_WIDTH, 1ul)
+                              << last_literal.getZExtValue()) -
+                             1;
+            }
             break;
 
         case llvm::Instruction::LShr:
-            tassert(last_literal != ~0UL);
+            tassert(last_literal != NOT_LITERAL);
 
             // if not really shifting, should be getting back what started with
             if (last_literal != 0)
             {
-                cb_mask >>= last_literal;
-                one_mask >>= last_literal;
-                zero_mask >>= last_literal;
-            
+                cb_mask = cb_mask.lshr(last_literal);
+                one_mask = one_mask.lshr(last_literal);
+                zero_mask = zero_mask.lshr(last_literal);
+
                 // (size * 8) is the number of bits in the item LLVM is shifting
-                zero_mask |= ~(((uint64_t)1 << ((size * 8) - last_literal)) - 1);
+                if ((size * 8) - last_literal.getZExtValue() > CB_WIDTH) {
+                    zero_mask |= llvm::APInt(CB_WIDTH, 0ul);
+                } else {
+                    zero_mask |=
+                        ~((llvm::APInt(CB_WIDTH, 1ul)
+                           << ((size * 8) - last_literal.getZExtValue())) -
+                          1);
+                }
             }
             break;
 
         case llvm::Instruction::AShr: // High bits not really controllable.
-            tassert(last_literal != ~0UL);
-            
+            tassert(last_literal != NOT_LITERAL);
+
             // if not really shifting, should be getting back what started with
-            if (last_literal != 0)
-            {
-                cb_mask >>= last_literal;
-                one_mask >>= last_literal;
-                zero_mask >>= last_literal;
+            if (last_literal.getZExtValue() > CB_WIDTH) {
+                cb_mask = 0;
+                one_mask = 0;
+                zero_mask = 0;
+            } else if (last_literal != 0) {
+                cb_mask = cb_mask.lshr(last_literal);
+                one_mask = one_mask.lshr(last_literal);
+                zero_mask = zero_mask.lshr(last_literal);
 
                 // See if high bit is a last_literal
-                if (orig_one_mask & ((uint64_t)1 << ((size * 8) - 1))) {
-                    one_mask |= ~(((uint64_t)1 << ((size * 8) - last_literal)) - 1);
-                } else if (orig_zero_mask & ((uint64_t)1 << ((size * 8) - 1))) {
-                    zero_mask |= ~(((uint64_t)1 << ((size * 8) - last_literal)) - 1);
-               }
+                llvm::APInt orig_mask = llvm::APInt(CB_WIDTH, 1ul)
+                                        << ((size * 8) - 1);
+                llvm::APInt mask =
+                    ~((llvm::APInt(CB_WIDTH, 1ul)
+                       << ((size * 8) - last_literal.getZExtValue())) -
+                      1);
+                if ((orig_one_mask & orig_mask).ugt(0)) {
+                    one_mask |= mask;
+                } else if ((orig_zero_mask & orig_mask).ugt(0)) {
+                    zero_mask |= mask;
+                }
             }
             break;
 
@@ -210,17 +226,16 @@ PANDAENDCOMMENT */
             cb_mask = 0;
             one_mask = 0;
             zero_mask = 0;
+            validate_last_literal = false;
             break;
 
         case llvm::Instruction::GetElementPtr:
         {
-            llvm::GetElementPtrInst *GEPI =
-                llvm::dyn_cast<llvm::GetElementPtrInst>(I);
-            tassert(GEPI);
+            validate_last_literal = false;
             one_mask = 0;
             zero_mask = 0;
             // Constant indices => fully reversible
-            if (GEPI->hasAllConstantIndices()) break;
+            if (instruction_flags & INSTRUCTION_FLAG_GEP_HAS_CONSTANT_INDICES) break;
             // Otherwise we know nothing.
             cb_mask = 0;
             break;
@@ -228,7 +243,23 @@ PANDAENDCOMMENT */
 
         default:
             printf("Unknown instruction in update_cb: ");
-            I->dump();
+            //dump only available if LLVM compiled with dump enabled
+            //I->dump();
             fflush(stdout);
             return;
+    }
+
+    static int warning_count = 0;
+    if (validate_last_literal && (10 > warning_count) && (NOT_LITERAL == last_literal)) {
+        fprintf(stderr,
+                "%sWARNING: Could not find last literal value, control "
+                "bits may be incorrect.\n",
+                PANDA_MSG);
+        warning_count++;
+        if (warning_count == 10) {
+            fprintf(stderr,
+                    "%sLast literal warning emitted %d times, suppressing "
+                    "warning.\n",
+                    PANDA_MSG, warning_count);
+        }
     }

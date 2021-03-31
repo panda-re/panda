@@ -175,10 +175,10 @@ static int nbd_receive_option_reply(QIOChannel *ioc, uint32_t opt,
         nbd_send_opt_abort(ioc);
         return -1;
     }
-    be64_to_cpus(&reply->magic);
-    be32_to_cpus(&reply->option);
-    be32_to_cpus(&reply->type);
-    be32_to_cpus(&reply->length);
+    reply->magic = be64_to_cpu(reply->magic);
+    reply->option = be32_to_cpu(reply->option);
+    reply->type = be32_to_cpu(reply->type);
+    reply->length = be32_to_cpu(reply->length);
 
     TRACE("Received option reply %" PRIx32", type %" PRIx32", len %" PRIu32,
           reply->option, reply->type, reply->length);
@@ -607,7 +607,7 @@ int nbd_receive_negotiate(QIOChannel *ioc, const char *name, uint16_t *flags,
             error_setg(errp, "Failed to read export flags");
             goto fail;
         }
-        be32_to_cpus(&oldflags);
+        oldflags = be32_to_cpu(oldflags);
         if (oldflags & ~0xffff) {
             error_setg(errp, "Unexpected export flags %0x" PRIx32, oldflags);
             goto fail;

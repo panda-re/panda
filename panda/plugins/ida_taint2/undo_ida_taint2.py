@@ -7,11 +7,18 @@ import re
 
 import ida_loader
 import ida_kernwin
+import ida_name
+import ida_nalt
+import ida_bytes
+import ida_funcs
+import ida_segment
 
-from PyQt5.QtWidgets import *
+import idautils
+
+from PyQt5.QtWidgets import QMessageBox
 
 UNDO_COLOR = 0xFFFFFF
-label_regex = re.compile(r"(,\s)*taint labels = \[([0-9]+,*\s*)+\]")
+label_regex = re.compile(r"(,\s)*taint labels = \[('?[0-9\-]+'?,*\s*)+\]")
 
 def main():
     button_result = QMessageBox.warning(None, "Warning", "This script will attempt to undo ida_taint2.py changes. It is not perfect and will unpredictably change comments if you've made changes to comments since running ida_taint2.py. Do you want to continue?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
@@ -22,18 +29,17 @@ def main():
     snapshot.desc = "Before undo_ida_taint2.py @ %s" % (datetime.datetime.now())
     ida_kernwin.take_database_snapshot(snapshot)
 
-    for segea in Segments():
-        for funcea in Functions(segea, SegEnd(segea)):
-            function_name = GetFunctionName(funcea)
+    for segea in idautils.Segments():
+        for funcea in Functions(segea, ida_segment.getseg(segea).end_ea):
+            function_name = ida_funcs.get_func_name(funcea)
             if function_name.startswith("TAINTED_"):
-                MakeName(funcea, function_name.replace("TAINTED_", ""))
-                SetColor(funcea, CIC_FUNC, UNDO_COLOR)
-                for (startea, endea) in Chunks(funcea):
-                    for head in Heads(startea, endea):
-                        comment = str(Comment(head))
-                        print(comment)
-                        if "taint labels" in comment:
-                            SetColor(head, CIC_ITEM, UNDO_COLOR)
-                            MakeComm(head, label_regex.sub("", comment))
+                ida_name.set_name(funcea, function_name.replace("TAINTED_", ""), ida_name.SN_NOWARN)
+                ida_funcs.get_func(funcea).color = UNDO_COLOR
+                for (startea, endea) in idautils.Chunks(funcea):
+                    for head in idautils.Heads(startea, endea):
+                        comment = ida_bytes.get_cmt(head, 0)
+                        if comment != None and "taint labels" in comment:
+                            ida_nalt.set_item_color(head, UNDO_COLOR)
+                            ida_bytes.set_cmt(head, label_regex.sub("", comment), 0)
 if __name__ == "__main__":
     main()

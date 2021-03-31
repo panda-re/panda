@@ -5,7 +5,7 @@ message TaintedMmioLabel {
     required uint64 addr = 3;
 }
 
-optional TaintedMmioLabel tainted_mmio_label = 41;
+optional TaintedMmioLabel tainted_mmio_label = 73;
 
  
 

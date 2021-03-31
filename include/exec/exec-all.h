@@ -326,16 +326,6 @@ static inline void tlb_flush_by_mmuidx_all_cpus_synced(CPUState *cpu,
 #define USE_DIRECT_JUMP
 #endif
 
-#ifdef CONFIG_LLVM
-#include "panda/tcg-llvm.h"
-#ifdef __cplusplus
-namespace llvm { class Function; }
-using llvm::Function;
-#else
-struct Function;
-#endif
-#endif
-
 struct TranslationBlock {
     target_ulong pc;   /* simulated PC corresponding to this block (EIP + CS base) */
     target_ulong cs_base; /* CS base for this block */
@@ -351,6 +341,9 @@ struct TranslationBlock {
 #define CF_IGNORE_ICOUNT 0x40000 /* Do not generate icount code */
 
     uint16_t invalid;
+
+    // indicates if this block was split up abnormally
+    uint8_t was_split;
 
     void *tc_ptr;    /* pointer to the translated code */
     uint8_t *tc_search;  /* pointer to search data */
@@ -391,21 +384,19 @@ struct TranslationBlock {
     uintptr_t jmp_list_first;
 
 #ifdef CONFIG_LLVM
-    /* pointer to LLVM translated code */
-    TCGLLVMContext *tcg_llvm_context;
-#ifdef __cplusplus
-    Function *llvm_function;
-#else
-    struct Function *llvm_function;
-#endif
+    /* pointer to JIT-or-execute instruction for the host equivalent assembly */
     uint8_t *llvm_tc_ptr;
     uint8_t *llvm_tc_end;
     struct TranslationBlock* llvm_tb_next[2];
+    /* pointer to the host equivalent assembly of the LLVM code */
+    uint8_t *llvm_asm_ptr;
+    /*
+     * really don't want to allocate and deallocate memory a lot, and as the
+     * function name follows a strict pattern, and PANDA is never built with
+     * CONFIG_USER_ONLY, can determine a maximum size
+     */
+    char llvm_fn_name[64];
 #endif
-
-    // indicates if this block was split up abnormally
-    uint8_t was_split;
-
 };
 
 void tb_free(TranslationBlock *tb);

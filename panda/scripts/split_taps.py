@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 import gzip
 import time
@@ -14,7 +14,7 @@ def main(logfile, prefix, num_callers=1):
     for line in f:
         # Avoid "too many open files" -- flush the file descriptor map
         if len(filemap) > 1000:
-            for o in filemap.values(): o.close()
+            for o in list(filemap.values()): o.close()
             filemap = {}
 
         callers, pc, stack_kind, sid_first, sid_second, addr, n, val = line.strip().rsplit(" ", 7)

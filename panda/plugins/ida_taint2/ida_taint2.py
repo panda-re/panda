@@ -7,9 +7,14 @@ import datetime
 
 import ida_kernwin
 import ida_loader
+import ida_funcs
+import ida_name
+import ida_nalt
+import ida_bytes
 
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (QDialog, QPushButton, QTableWidget, QHeaderView, QAbstractItemView,
+        QTableWidgetItem, QHBoxLayout, QVBoxLayout, QFileDialog, QMessageBox)
 
 FUNC_COLOR = 0x90EE90
 INST_COLOR = 0x55AAFF
@@ -85,6 +90,16 @@ def read_semantic_labels(filename):
 
     return semantic_labels
 
+def skip_csv_header(reader, show_metadata):
+    # newer ida_taint2 output files have some metadata before the header
+    line1 = next(reader, None)
+    if (line1[0].startswith("PANDA Build Date")):
+        exec_time = next(reader, None)
+        if (show_metadata):
+            idaapi.msg(line1[0] + ":  " + line1[1] + "\n")
+            idaapi.msg(exec_time[0] + ":  " + exec_time[1] + "\n")
+        next(reader, None)
+        
 def main():
     filename, _ = QFileDialog.getOpenFileName(None, "Open file", ".", "CSV Files(*.csv)")
     if filename == "":
@@ -93,13 +108,15 @@ def main():
     processes = set()
     input_file = open(filename, "r")
     reader = csv.reader(input_file)
-    next(reader, None)
+    
+    skip_csv_header(reader, True)
     for row in reader:
         processes.add((row[0], int(row[1])))
     input_file.close()
 
     selected_pid = ProcessSelectDialog.selectProcess(processes)
-    if not selected_pid:
+    # N.B.:  0 is a valid process ID
+    if (None == selected_pid):
         return
 
     semantic_labels = read_semantic_labels(filename + ".semantic_labels")
@@ -111,8 +128,7 @@ def main():
     input_file = open(filename, "r")
     reader = csv.reader(input_file)
     labels_for_pc = {}
-    # skip header
-    next(reader, None)
+    skip_csv_header(reader, False)
     for row in reader:
         pid = int(row[1])
         pc = int(row[2], 16)
@@ -125,22 +141,22 @@ def main():
 
         if pid != selected_pid:
             continue
-        fn = idaapi.get_func(pc)
+        fn = ida_funcs.get_func(pc)
         if not fn:
             continue
-        fn_start = fn.startEA
-        fn_name = GetFunctionName(fn_start)
+        fn_start = fn.start_ea
+        fn_name = ida_funcs.get_func_name(fn_start)
         if "TAINTED" not in fn_name:
-            MakeName(fn_start, "TAINTED_" + fn_name)
-        SetColor(pc, CIC_FUNC, FUNC_COLOR)
-        SetColor(pc, CIC_ITEM, INST_COLOR)
+            ida_name.set_name(fn_start, "TAINTED_" + fn_name, ida_name.SN_CHECK)
+        fn.color = FUNC_COLOR
+        ida_nalt.set_item_color(pc, INST_COLOR)
         if pc not in labels_for_pc:
             labels_for_pc[pc] = set()
         labels_for_pc[pc].add(label)
     input_file.close()
 
-    for pc, labels in labels_for_pc.iteritems():
-        comment = Comment(pc)
+    for pc, labels in labels_for_pc.items():
+        comment = ida_bytes.get_cmt(pc, 0)
         if not comment:
             comment = ""
         label_portion = "taint labels = {}".format(list(labels))
@@ -148,14 +164,14 @@ def main():
             comment = label_portion
         else:
             comment += ", " + label_portion
-        MakeComm(pc, comment)
+        ida_bytes.set_cmt(pc, comment, 0)        
 
 if __name__ == "__main__":
     try:
         main()
     except ValueError as ve:
-        msg = "Failed to read IDA Taint CSV: %s" % (ve.message)
+        msg = "Failed to read IDA Taint CSV: %s" % (ve)
         QMessageBox.critical(None, "Error", msg)
     except Exception as e:
-        msg = "Unexpected error: %s" % (e.message)
+        msg = "Unexpected error: %s" % (e)
         QMessageBox.critical(None, "Error", msg)

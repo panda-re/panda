@@ -9,7 +9,7 @@
 #include "panda/plog.h"
 #include "panda/plog-cc-bridge.h"
 
-#ifdef TARGET_ARM
+#if defined(TARGET_ARM)
 /* Return the exception level which controls this address translation regime */
 static inline uint32_t regime_el(CPUARMState *env, ARMMMUIdx mmu_idx)
 {
@@ -55,6 +55,22 @@ static inline uint64_t regime_ttbr(CPUARMState *env, ARMMMUIdx mmu_idx,
     }
 }
 
+/* Return true if the translation regime is using LPAE format page tables */
+static inline bool regime_using_lpae_format(CPUARMState *env,
+                                            ARMMMUIdx mmu_idx)
+{
+    int el = regime_el(env, mmu_idx);
+    if (el == 2 || arm_el_is_aa64(env, el)) {
+        return true;
+    }
+    if (arm_feature(env, ARM_FEATURE_LPAE)
+        && (regime_tcr(env, mmu_idx)->raw_tcr & TTBCR_EAE)) {
+        return true;
+    }
+    return false;
+}
+
+
 // ARM: stolen get_level1_table_address ()
 // from target-arm/helper.c - changed to target_ulong for aarch64
 bool arm_get_vaddr_table(CPUState *cpu, target_ulong *table, target_ulong address);
@@ -70,23 +86,26 @@ bool arm_get_vaddr_table(CPUState *cpu, target_ulong *table, target_ulong addres
         mmu_idx += ARMMMUIdx_S1NSE0;
     }
 
-    /* Note that we can only get here for an AArch32 PL0/PL1 lookup */
-    TCR *tcr = regime_tcr(env, mmu_idx);
-
-    if (address & tcr->mask) {
-        if (tcr->raw_tcr & TTBCR_PD1) {
-            /* Translation table walk disabled for TTBR1 */
-            return false;
-        }
-        *table = regime_ttbr(env, mmu_idx, 1) & 0xffffc000;
+    if (regime_using_lpae_format(env, mmu_idx)) {
+        *table = regime_ttbr(env, mmu_idx, 0);
     } else {
-        if (tcr->raw_tcr & TTBCR_PD0) {
-            /* Translation table walk disabled for TTBR0 */
-            return false;
+        /* Note that we can only get here for an AArch32 PL0/PL1 lookup */
+        TCR *tcr = regime_tcr(env, mmu_idx);
+
+        if (address & tcr->mask) {
+            if (tcr->raw_tcr & TTBCR_PD1) {
+                /* Translation table walk disabled for TTBR1 */
+                return false;
+            }
+            *table = regime_ttbr(env, mmu_idx, 1) & 0xffffc000;
+        } else {
+            if (tcr->raw_tcr & TTBCR_PD0) {
+                /* Translation table walk disabled for TTBR0 */
+                return false;
+            }
+            *table = regime_ttbr(env, mmu_idx, 0) & tcr->base_mask;
         }
-        *table = regime_ttbr(env, mmu_idx, 0) & tcr->base_mask;
     }
-    *table |= (address >> 18) & 0x3ffc;
     return true;
 }
 #endif
@@ -100,6 +119,9 @@ target_ulong panda_current_asid(CPUState *cpu) {
   CPUArchState *env = (CPUArchState *)cpu->env_ptr;
   return env->cr[3];
 #elif defined(TARGET_ARM)
+#if defined(TARGET_AARCH64)
+  return 0; // XXX: TODO
+#else
   target_ulong table;
   bool rc = arm_get_vaddr_table(cpu,
           &table,
@@ -107,9 +129,13 @@ target_ulong panda_current_asid(CPUState *cpu) {
   assert(rc);
   return table;
   /*return arm_get_vaddr_table(env, panda_current_pc(env));*/
+#endif
 #elif defined(TARGET_PPC)
   CPUArchState *env = (CPUArchState *)cpu->env_ptr;
   return env->sr[0];
+#elif defined(TARGET_MIPS)
+  CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+  return (env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask);
 #else
 #error "panda_current_asid() not implemented for target architecture."
   return 0;
@@ -138,6 +164,8 @@ const char * valid_os_re[] = {
     "windows[-_]32[-_]2000",
     "linux[-_]32[-_].+",
     "linux[-_]64[-_].+",
+    "freebsd[-_]32[-_].+",
+    "freebsd[-_]64[-_].+",
     NULL
 };
 
@@ -167,6 +195,7 @@ void panda_set_os_name(char *os_name) {
     // set os type
     if (0 == g_ascii_strncasecmp("windows", osparts[0], strlen("windows"))) { panda_os_familyno = OS_WINDOWS; }
     else if (0 == g_ascii_strncasecmp("linux", osparts[0], strlen("linux"))) { panda_os_familyno = OS_LINUX; }
+    else if (0 == g_ascii_strncasecmp("freebsd", osparts[0], strlen("freebsd"))) { panda_os_familyno = OS_FREEBSD; }
     else { panda_os_familyno = OS_UNKNOWN; }
 
     // set os bits
@@ -230,26 +259,37 @@ MemoryRegion* panda_find_ram(void) {
 static int saved_cpsr = -1;
 static int saved_r13 = -1;
 static bool in_fake_priv = false;
+static int saved_pstate = -1;
 
 // Force the guest into supervisor mode by directly modifying its cpsr and r13
 // See https://developer.arm.com/docs/ddi0595/b/aarch32-system-registers/cpsr
 bool enter_priv(CPUState* cpu) {
     CPUARMState* env = ((CPUARMState*)cpu->env_ptr);
 
-    saved_cpsr = env->uncached_cpsr;
-    env->uncached_cpsr = (env->uncached_cpsr) | (ARM_CPU_MODE_SVC & CPSR_M);
-    if (env->uncached_cpsr == saved_cpsr) {
-        // No change was made
-        return false;
+    if (env->aarch64) {
+        saved_pstate = env->pstate;
+        env->pstate |= 1<<2; // Set bits 2-4 to 1 - EL1
+        if (saved_pstate == env->pstate) {
+            return false;
+        }
+    }else{
+        saved_cpsr = env->uncached_cpsr;
+        env->uncached_cpsr = (env->uncached_cpsr) | (ARM_CPU_MODE_SVC & CPSR_M);
+        if (env->uncached_cpsr == saved_cpsr) {
+            // No change was made
+            return false;
+        }
     }
 
     assert(!in_fake_priv && "enter_priv called when already entered");
 
-    // Should we also restore other banked regs like r_14? Seems unnecessary?
-    saved_r13 = env->regs[13];
-    // If we're not already in SVC mode, load the saved SVC r13 from the SVC mode's banked_r13
-    if ((((CPUARMState*)cpu->env_ptr)->uncached_cpsr & CPSR_M) != ARM_CPU_MODE_SVC) {
-        env->regs[13] = env->banked_r13[ /*SVC_MODE=>*/ 1 ];
+    if (!env->aarch64) {
+        // arm32: save r13 for osi - Should we also restore other banked regs like r_14? Seems unnecessary?
+        saved_r13 = env->regs[13];
+        // If we're not already in SVC mode, load the saved SVC r13 from the SVC mode's banked_r13
+        if ((((CPUARMState*)cpu->env_ptr)->uncached_cpsr & CPSR_M) != ARM_CPU_MODE_SVC) {
+            env->regs[13] = env->banked_r13[ /*SVC_MODE=>*/ 1 ];
+        }
     }
     in_fake_priv = true;
     return true;
@@ -261,11 +301,49 @@ void exit_priv(CPUState* cpu) {
     //printf("RESTORING CSPR TO 0x%x\n", saved_cpsr);
     assert(in_fake_priv && "exit called when not faked");
 
-    assert(saved_cpsr != -1 && "Must call enter_svc before reverting with exit_svc");
     CPUARMState* env = ((CPUARMState*)cpu->env_ptr);
 
-    env->uncached_cpsr = saved_cpsr;
-    env->regs[13] = saved_r13;
+    if (env->aarch64) {
+        assert(saved_pstate != -1 && "Must call enter_svc before reverting with exit_svc");
+        env->pstate = saved_pstate;
+    }else{
+        assert(saved_cpsr != -1 && "Must call enter_svc before reverting with exit_svc");
+        env->uncached_cpsr = saved_cpsr;
+        env->regs[13] = saved_r13;
+    }
+    in_fake_priv = false;
+}
+
+
+#elif defined(TARGET_MIPS)
+// MIPS
+static int saved_hflags = -1;
+static bool in_fake_priv = false;
+
+// Force the guest into supervisor mode by modifying env->hflags
+// save old hflags and restore after the read
+bool enter_priv(CPUState* cpu) {
+    saved_hflags = ((CPUMIPSState*)cpu->env_ptr)->hflags;
+    CPUMIPSState *env =  (CPUMIPSState*)cpu->env_ptr;
+
+    // Already in kernel mode?
+    if (!(env->hflags & MIPS_HFLAG_UM) && !(env->hflags & MIPS_HFLAG_SM)) {
+        // No point in changing permissions
+        return false;
+    }
+
+    // Disable usermode & supervisor mode - puts us in kernel mode
+    ((CPUMIPSState*)cpu->env_ptr)->hflags = ((CPUMIPSState*)cpu->env_ptr)->hflags & ~MIPS_HFLAG_UM;
+    ((CPUMIPSState*)cpu->env_ptr)->hflags = ((CPUMIPSState*)cpu->env_ptr)->hflags & ~MIPS_HFLAG_SM;
+
+    in_fake_priv = true;
+
+    return true;
+}
+
+void exit_priv(CPUState* cpu) {
+    assert(in_fake_priv && "exit called when not faked");
+    ((CPUMIPSState*)cpu->env_ptr)->hflags = saved_hflags;
     in_fake_priv = false;
 }
 

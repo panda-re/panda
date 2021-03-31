@@ -161,6 +161,14 @@ getReg (CPUState *cpu, int index)
     return env->regs[index];
 #elif defined(TARGET_PPC)
     return env->gpr[index];
+#elif defined(TARGET_MIPS)
+    return env->active_tc.gpr[index];
+#else
+    /*
+     * We need this last else because otherwise this function in this
+     * plugin breaks build on new architectures.
+    */
+    return 0; 
 #endif
 }
 

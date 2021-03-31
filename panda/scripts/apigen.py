@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 import os
 import re
@@ -78,7 +78,7 @@ def generate_code(functions, module, includes):
 
     # convert function specs to maps
     fn_keys = ['rtype', 'name', 'args_with_types', 'args_list']
-    functions = [dict(zip(fn_keys, fn_spec)) for fn_spec in functions]
+    functions = [dict(list(zip(fn_keys, fn_spec))) for fn_spec in functions]
 
     for fn in functions:
         fn['args'] = ','.join(fn['args_list'])

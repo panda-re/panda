@@ -589,7 +589,7 @@ DeviceState *exynos4210_uart_create(hwaddr addr,
     SysBusDevice *bus;
 
     const char chr_name[] = "serial";
-    char label[ARRAY_SIZE(chr_name) + 1];
+    char label[ARRAY_SIZE(chr_name) + 16];
 
     dev = qdev_create(NULL, TYPE_EXYNOS4210_UART);
 

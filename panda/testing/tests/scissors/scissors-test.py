@@ -71,7 +71,7 @@ for binary in binaries:
 
 os.chdir(tmpoutdir)
 with open(tmpoutfile, "w") as f:
-    print "scissors-test results: %d pass %d fail\n" % (num_pass, num_fail)
+    print("scissors-test results: %d pass %d fail\n" % (num_pass, num_fail))
     f.write("scissors-test results: %d pass %d fail\n" % (num_pass, num_fail))
     if num_pass == num_tests * (len(binaries)):
         f.write("Scissors PASS\n")

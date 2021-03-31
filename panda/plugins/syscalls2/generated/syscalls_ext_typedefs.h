@@ -46,8 +46,14 @@ struct syscall_ctx {
 };
 typedef struct syscall_ctx syscall_ctx_t;
 
-#if defined(TARGET_ARM)
+#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
 #include "syscalls_ext_typedefs_arm.h"
+#endif
+#if defined(TARGET_ARM) && defined(TARGET_AARCH64)
+#include "syscalls_ext_typedefs_arm64.h"
+#endif
+#if defined(TARGET_MIPS)
+#include "syscalls_ext_typedefs_mips.h"
 #endif
 #if defined(TARGET_X86_64)
 #include "syscalls_ext_typedefs_x64.h"

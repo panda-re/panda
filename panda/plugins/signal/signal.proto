@@ -1,0 +1,10 @@
+message SignalEvent {
+    required int32 sig = 1;
+    required bool suppressed = 2;
+    required string src_name = 3;
+    required string dst_name = 4;
+    required int32 src_pid = 5;
+    required int32 dst_pid = 6;
+}
+
+optional SignalEvent signal_event = 50;

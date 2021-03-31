@@ -3,8 +3,8 @@ from sys import argv, path
 import time
 import pickle
 path.append("..")
-from panda import Panda
-from panda.x86.helper import *
+from pandare import Panda
+from pandare.helper.x86 import *
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]
@@ -15,7 +15,7 @@ with open("libc_syms.pickle", "rb") as f:
     libc = pickle.load(f)
 
 f = open("fwrite.out","wb")
-@panda.hook(libc["fwrite"],libraryname="libc",kernel=False)
+@panda.hook_single_insn("fwrite_hook", libc["fwrite"],libraryname="libc",kernel=False)
 def fwrite_hook(cpustate, tb):
 	# grab arguments ESP, arg1, arg2, arg3...
 	ret = ffi.new("uint32_t[]", 5)

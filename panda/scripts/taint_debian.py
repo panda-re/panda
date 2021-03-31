@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 """This should work with same cmdline as run_debian.py.  
 
 Create recording of 32-bit linux program and replay it, tainting input
@@ -67,7 +67,7 @@ entry for a single pc, though.
 
 import re
 import os
-import subprocess32 as sp
+import subprocess as sp
 import time
 from run_debian import run_and_create_recording, qemu_binary
 
@@ -87,18 +87,18 @@ assert (arch_data.dir == 'i386-softmmu')
 if (stdin ^ (not (fileinput is None))):
     pass
 else:
-    print "You didn't tell me stdin/fileinput."
+    print("You didn't tell me stdin/fileinput.")
     # try to deduce stdin / filename
-    saw_redirect = len(filter(lambda x: x=='<', guest_cmd)) > 0
+    saw_redirect = len([x for x in guest_cmd if x=='<']) > 0
     if saw_redirect:
         stdin = True
-        print "... I deduced stdin"
+        print("... I deduced stdin")
     else:
         fileinput = os.path.basename(guest_cmd[-1])        
-        print "... I deduced file input [%s]" % fileinput
+        print("... I deduced file input [%s]" % fileinput)
 
-print "\n-----------------------------------------------------------------------------"
-print "\nFirst pass replay to figure out when to turn on taint (after file opened)\n"
+print("\n-----------------------------------------------------------------------------")
+print("\nFirst pass replay to figure out when to turn on taint (after file opened)\n")
 
 base_panda_args = ["-replay", replay_base, "-os", "linux-32-lava32"]
 panda_args = list(base_panda_args)
@@ -120,17 +120,17 @@ for line in output.split('\n'):
     foo = re.search("saw open of file we want to taint: .* insn ([0-9]+)", line)
     if foo:
         insn = int(foo.groups()[0])
-        print "file opened @ insn = %d" % insn
-        print "arbitrarily reducing that by 1m"
+        print("file opened @ insn = %d" % insn)
+        print("arbitrarily reducing that by 1m")
         insn -= 1000000
         if insn < 0:
             insn = 0
         break
-        print "We'll turn on taint around instr %d" % insn
+        print("We'll turn on taint around instr %d" % insn)
 
 
-print "\n-----------------------------------------------------------------------------"
-print "\nSecond pass replay to actually perform taint analysis\n"
+print("\n-----------------------------------------------------------------------------")
+print("\nSecond pass replay to actually perform taint analysis\n")
 
 # second pass to
 panda_args = list(base_panda_args)
@@ -151,16 +151,16 @@ output = sp.check_output([qemu_binary(arch_data)] + panda_args)
 t4 = time.time()
 
 for line in output.split('\n'):
-    print line
+    print(line)
 
 d1 = t2-t1
 d2 = t3-t2
 d3 = t4-t3
 r1 = d2/d1  # slowdown of replay vs record (mostly)
 r2 = d3/d1  # slowdown of replay with taint vs record
-print
-print "%.2f sec: recording" % (t2-t1)
-print "%.2f sec: first replay          (slowdown wrt record: %.2f)" % (t3-t2, r1)
-print "%.2f sec: second (taint) replay (slowdown wrt record: %.2f)" % (t4-t3, r2)
+print()
+print("%.2f sec: recording" % (t2-t1))
+print("%.2f sec: first replay          (slowdown wrt record: %.2f)" % (t3-t2, r1))
+print("%.2f sec: second (taint) replay (slowdown wrt record: %.2f)" % (t4-t3, r2))
 
 

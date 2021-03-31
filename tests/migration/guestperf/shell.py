@@ -1,3 +1,4 @@
+from __future__ import print_function
 #
 # Migration test command line shell integration
 #
@@ -153,13 +154,13 @@ class Shell(BaseShell):
         try:
             report = engine.run(hardware, scenario)
             if args.output is None:
-                print report.to_json()
+                print(report.to_json())
             else:
                 with open(args.output, "w") as fh:
-                    print >>fh, report.to_json()
+                    print(report.to_json(), file=fh)
             return 0
         except Exception as e:
-            print >>sys.stderr, "Error: %s" % str(e)
+            print("Error: %s" % str(e), file=sys.stderr)
             if args.debug:
                 raise
             return 1
@@ -188,11 +189,11 @@ class BatchShell(BaseShell):
                     name = os.path.join(comparison._name, scenario._name)
                     if not fnmatch.fnmatch(name, args.filter):
                         if args.verbose:
-                            print "Skipping %s" % name
+                            print("Skipping %s" % name)
                         continue
 
                     if args.verbose:
-                        print "Running %s" % name
+                        print("Running %s" % name)
 
                     dirname = os.path.join(args.output, comparison._name)
                     filename = os.path.join(dirname, scenario._name + ".json")
@@ -200,9 +201,9 @@ class BatchShell(BaseShell):
                         os.makedirs(dirname)
                     report = engine.run(hardware, scenario)
                     with open(filename, "w") as fh:
-                        print >>fh, report.to_json()
+                        print(report.to_json(), file=fh)
         except Exception as e:
-            print >>sys.stderr, "Error: %s" % str(e)
+            print("Error: %s" % str(e), file=sys.stderr)
             if args.debug:
                 raise
 
@@ -231,14 +232,14 @@ class PlotShell(object):
         args = self._parser.parse_args(argv)
 
         if len(args.reports) == 0:
-            print >>sys.stderr, "At least one report required"
+            print("At least one report required", file=sys.stderr)
             return 1
 
         if not (args.qemu_cpu or
                 args.vcpu_cpu or
                 args.total_guest_cpu or
                 args.split_guest_cpu):
-            print >>sys.stderr, "At least one chart type is required"
+            print("At least one chart type is required", file=sys.stderr)
             return 1
 
         reports = []

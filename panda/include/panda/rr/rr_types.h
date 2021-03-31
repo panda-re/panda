@@ -34,6 +34,11 @@
 #include <stdbool.h>    /* bool type */
 #include <signal.h>     /* sig_atomic_t */
 
+// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
+// api autogen needs it.  And don't put any compiler directives
+// between this and END_PYPANDA_NEEDS_THIS except includes of other
+// files in this directory that contain subsections like this one.
+
 /** @brief Memory types. */
 typedef enum { RR_MEM_IO, RR_MEM_RAM, RR_MEM_UNKNOWN } RR_mem_type;
 
@@ -44,11 +49,13 @@ typedef enum { RR_MEM_IO, RR_MEM_RAM, RR_MEM_UNKNOWN } RR_mem_type;
 typedef enum { RR_NOCHANGE=-1, RR_OFF=0, RR_RECORD, RR_REPLAY } RR_mode;
 
 /** @brief Return codes for functions controlling record/replay. */
-typedef enum {
+typedef enum { 
     RRCTRL_EINVALID=-2, /* invalid mode transition requested */
     RRCTRL_EPENDING=-1, /* another transition is already pending */
     RRCTRL_OK=0         /* transition request registered */
 } RRCTRL_ret;
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 /** @brief Structure encapsulating requests to change the record/replay status. */
 typedef struct {

@@ -22,9 +22,11 @@ PANDAENDCOMMENT */
 #include <iconv.h>
 
 #include "panda/rr/rr_log.h"
+#include "panda/tcg-utils.h"
 
 #include "osi/osi_types.h"
 #include "osi/os_intro.h"
+#include "osi/osi_ext.h"
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
@@ -76,6 +78,13 @@ void uninit_plugin(void *);
 
 // "Constants" specific to the guest operating system.
 // These are initialized in the init_plugin function.
+static uint32_t task_change_hook_addr; // Address within nt!SwapContext call
+                                       // that is after control registers have
+                                       // been updated.
+static uint32_t task_change_hook_offset; // Offset within ntoskrnl.exe that
+                                         // is used to compute an address in
+                                         // nt!SwapContext  after the control
+                                         // registers have been updated.
 static uint32_t kthread_kproc_off;  // _KTHREAD.Process
 static uint32_t kthread_cid_off;    // _ETHREAD._KTHREAD.Cid
 static uint32_t eproc_pid_off;      // _EPROCESS.UniqueProcessId
@@ -727,6 +736,33 @@ void fill_osimod(CPUState *cpu, OsiModule *m, PTR mod, bool ignore_basename) {
     m->name = ignore_basename ? g_strdup("-") : (char *)get_mod_basename(cpu, mod);
     assert(m->name);
 }
+
+static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
+{
+    if (0x0 == task_change_hook_addr && 0 == strcmp(panda_os_variant, "7")) {
+        // On Windows 7, we have to compute the task change hook address
+        // relative to the ntoskrnl.exe base (because ASLR).
+        GArray *mods = get_modules(cpu);
+        for (int i = 0; i < mods->len; i++) {
+            OsiModule *mod = &g_array_index(mods, OsiModule, i);
+            if (0 == strcmp("ntoskrnl.exe", mod->name)) {
+                task_change_hook_addr = mod->base + task_change_hook_offset;
+                printf("task change hook address = %lX\n", (uint64_t)task_change_hook_addr);
+            }
+        }
+        if (NULL != mods) {
+            g_array_free(mods, true);
+        }
+    }
+
+    if ((tb->pc <= task_change_hook_addr) && (task_change_hook_addr < tb->pc + tb->size)) {
+        TCGOp *op = find_guest_insn_by_addr(task_change_hook_addr);
+        if (op) {
+            insert_call_1p(&op, (void(*)(void*))notify_task_change, cpu);
+        }
+    }
+}
+
 #endif
 
 
@@ -738,6 +774,8 @@ bool init_plugin(void *self) {
     assert (panda_os_variant);
 
     if(0 == strcmp(panda_os_variant, "7")) {
+        task_change_hook_addr = 0x0;
+        task_change_hook_offset = 0x55209;
         kthread_kproc_off=0x150;
         kthread_cid_off = 0x22c;
         eproc_pid_off=0x0b4;
@@ -758,6 +796,8 @@ bool init_plugin(void *self) {
         get_handle_object = get_win7_handle_object;
         get_kddebugger_data = get_win7_kdbg;
     } else if (0 == strcmp(panda_os_variant, "2000")) {
+        task_change_hook_addr = 0x804043E3;
+        task_change_hook_offset = 0x0;
         kthread_kproc_off = 0x22c;
         kthread_cid_off = 0x1e0;
         eproc_pid_off=0x09c;
@@ -778,6 +818,8 @@ bool init_plugin(void *self) {
         get_handle_object = get_win2000_handle_object;
         get_kddebugger_data = get_win2000_kddebugger_data;
     } else if (0 == strcmp(panda_os_variant, "xpsp3")) {
+        task_change_hook_addr = 0x804DB9D7;
+        task_change_hook_offset = 0x0;
         kthread_kproc_off = 0x044;
         kthread_cid_off = 0x1ec;
         eproc_pid_off = 0x084;
@@ -811,6 +853,12 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_mappings, on_get_mappings);
     PPP_REG_CB("osi", on_get_modules, on_get_modules);
 
+    assert(init_osi_api());
+
+    panda_cb pcb;
+    pcb.before_tcg_codegen = &before_tcg_codegen;
+    panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb);
+
     return true;
 #else
     fprintf(stderr, "Plugin is not supported on this platform.\n");
@@ -821,6 +869,9 @@ bool init_plugin(void *self) {
 
 void uninit_plugin(void *self) {
     printf("Unloading wintrospection plugin\n");
+    // if we don't clear tb's when this exits we have TBs which can call
+    // into our exited plugin.
+    panda_do_flush_tb();
 }
 
 /* vim: set tabstop=4 softtabstop=4 expandtab: */

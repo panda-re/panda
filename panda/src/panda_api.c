@@ -14,6 +14,9 @@
 #include "qapi/error.h"
 #include "migration/vmstate.h"
 
+// for panda_{set/get}_library_mode
+#include "qemu/osdep.h"
+
 // call main_aux and run everything up to and including panda_callbacks_after_machine_init
 int panda_init(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_INIT);
@@ -24,7 +27,6 @@ extern int panda_in_main_loop;
 
 // vl.c
 extern char *panda_snap_name;
-extern bool panda_library_mode;
 extern bool panda_aborted;
 
 int panda_run(void) {
@@ -35,11 +37,6 @@ int panda_run(void) {
     panda_in_main_loop = 0;
     return 0;
 }
-
-void panda_set_library_mode(bool value) {
-    // XXX: This should probably be done via preprocessor macros instead
-    panda_library_mode = value;
-};
 
 extern int do_vm_stop(int state);
 
@@ -52,7 +49,7 @@ void panda_cont(void) {
 //    printf ("panda_api: cont cpu\n");
     panda_exit_loop = false; // is this unnecessary?
     vm_start();
-} 
+}
 
 int panda_delvm(char *snapshot_name) {
     delvm_name(snapshot_name);
@@ -77,6 +74,12 @@ void panda_reset(void) {
 
 int panda_snap(char *snapshot_name) {
     return save_vmstate(NULL, snapshot_name);
+}
+
+void panda_cleanup_record(void){
+    if(rr_in_record()){
+        rr_do_end_record();
+    }
 }
 
 int panda_finish(void) {
@@ -131,6 +134,7 @@ int rr_get_guest_instr_count_external(void){
 }
 
 // XXX: why do we have these as _external wrappers instead of just using the real fns?
+// XXX: b/c funcs called via wrapper are inlined, don't otherwise get exported. Unclear if inlining has any significat perf benefit.
 int panda_virtual_memory_read_external(CPUState *env, target_ulong addr, char *buf, int len){
 	return panda_virtual_memory_read(env, addr, (uint8_t*) buf, len);
 }
@@ -147,20 +151,41 @@ int panda_physical_memory_write_external(hwaddr addr, uint8_t *buf, int len){
 	return panda_physical_memory_rw(addr,buf,len, 1);
 }
 
-bool panda_in_kernel_external(CPUState *cpu){
+bool panda_in_kernel_external(const CPUState *cpu){
 	return panda_in_kernel(cpu);
 }
 
-target_ulong panda_current_sp_external(CPUState *cpu){
+target_ulong panda_current_sp_external(const CPUState *cpu){
 	return panda_current_sp(cpu);
 }
 
-target_ulong panda_current_sp_masked_pagesize_external(CPUState *cpu, target_ulong mask){
+target_ulong panda_current_ksp_external(CPUState *cpu){
+	return panda_current_ksp(cpu);
+}
+
+target_ulong panda_current_sp_masked_pagesize_external(const CPUState *cpu, target_ulong mask){
 	return (panda_current_sp(cpu) & (~(mask+mask-1)));
 }
 
 target_ulong panda_virt_to_phys_external(CPUState *cpu, target_ulong virt_addr) {
   return panda_virt_to_phys(cpu, virt_addr);
+}
+
+target_ulong panda_get_retval_external(const CPUState *cpu){
+	return panda_get_retval(cpu);
+}
+
+void panda_setup_signal_handling(void (*f) (int, void*, void *))
+{
+    struct sigaction act;
+
+    memset(&act, 0, sizeof(act));
+    act.sa_sigaction = (void(*)(int,siginfo_t*,void*))f;
+    act.sa_flags = SA_SIGINFO;
+    sigaction(SIGINT,  &act, NULL);
+    sigaction(SIGHUP,  &act, NULL);
+    sigaction(SIGTERM, &act, NULL);
+    panda_external_signal_handler = (void(*)(int,siginfo_t*,void*)) f;
 }
 
 // we have this temporarily in callbacks.c -> to be moved here
@@ -249,4 +274,9 @@ unsigned long garray_len(GArray *list) {
     if (list == NULL)
         return 0;
     return list->len;
+}
+
+// For enabling library mode
+void _panda_set_library_mode(const bool b) {
+  panda_set_library_mode(b);
 }

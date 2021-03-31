@@ -130,7 +130,7 @@ bool start_stop_recording(CPUState *cpu) {
     action = env->regs[R_EBX];
     rnamep = env->regs[R_ECX];
     hypercall_retp = &env->regs[R_EAX];
-#elif defined(TARGET_ARM)
+#elif defined(TARGET_ARM) && !defined(TARGET_AARCH64)
     magic = env->regs[0];
     action = env->regs[1];
     rnamep = env->regs[2];

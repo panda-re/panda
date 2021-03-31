@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
 // api autogen needs it.  And don't put any compiler directives
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
@@ -27,6 +29,11 @@ OsiModule* get_one_module(GArray *osimodules, unsigned int idx);
 
 OsiProc* get_one_proc(GArray *osiprocs, unsigned int idx);
 
+void cleanup_garray(GArray *g);
+
+// returns true if execution is currently within a dynamically-linked function, else false.
+bool in_shared_object(CPUState *cpu, OsiProc *p);
+
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 // gets the currently running process handle
@@ -38,3 +45,7 @@ OsiProc *get_process(CPUState *cpu, const OsiProcHandle *h);
 // functions retrieving partial process information via an OsiProcHandle
 target_pid_t get_process_pid(CPUState *cpu, const OsiProcHandle *h);
 target_pid_t get_process_ppid(CPUState *cpu, const OsiProcHandle *h);
+
+void notify_task_change(CPUState *cpu);
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!

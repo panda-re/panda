@@ -205,6 +205,7 @@ all-obj-$(CONFIG_SOFTMMU) += $(block-obj-y) $(chardev-obj-y)
 all-obj-$(CONFIG_USER_ONLY) += $(crypto-aes-obj-y)
 all-obj-$(CONFIG_SOFTMMU) += $(crypto-obj-y)
 all-obj-$(CONFIG_SOFTMMU) += $(io-obj-y)
+all-obj-$(CONFIG_SOFTMMU) += panda/src/panda_api.o
 
 ifdef CONFIG_SOFTMMU
 panda-all-obj-y += $(filter-out %main.o, $(common-obj-y))
@@ -266,9 +267,16 @@ endif
 ifdef CONFIG_LLVM
 	$(INSTALL_DATA) $(llvmmorph-y) "$(DESTDIR)$(qemu_datadir)/"
 endif
-	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/python2.7/site-packages"
-	$(INSTALL_LIB) plog_pb2.py "$(DESTDIR)$(libdir)/python2.7/site-packages"
+	# Install into [prefix]/usr/lib/python3/dist-packages which should work with any Python3.x install unlike site-packages which
+	# contains minor version numbers in the path. See https://stackoverflow.com/a/54239729
+	$(INSTALL_DIR) "$(DESTDIR)$(pythondir)"
+	$(INSTALL_LIB) plog_pb2.py "$(DESTDIR)$(pythondir)/"
 	$(INSTALL_DIR) "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"
+	$(INSTALL_DIR) "$(DESTDIR)$(qemu_datadir)/scripts"
+	for f in $$(find $(SRC_PATH)/panda/scripts -type f); do \
+		echo $$f; \
+		$(INSTALL_PROG) $$f "$(DESTDIR)$(qemu_datadir)/scripts"; \
+	done
 # N.B. the new rpath must not be longer than the old rpath or chrpath will fail
 	for p in $(PANDA_PLUGINS) $(EXTRA_PANDA_PLUGINS); do \
 		echo $$p; \

@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+
 USAGE = """
 
 NB: you need to set the PANDA_REGRESSION_DIR env variable for any
@@ -74,7 +75,7 @@ def setup(testname):
         return True
     except Exception as e:
         error ("Setup %s failed" % testname)
-        print e
+        print(e)
         return False
 
 def bless(testname):
@@ -97,7 +98,7 @@ def bless(testname):
         return True
     except Exception as e:
         error ("Bless %s failed" % testname)
-        print e
+        print(e)
         return False
 
 def test(testname):
@@ -132,7 +133,7 @@ def test(testname):
         return True
     except Exception as e:
         error ("Test %s failed" % testname)
-        print e
+        print(e)
         return False
 
 def do_all(do_fn):

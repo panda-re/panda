@@ -1,3 +1,5 @@
+# List of plugins to build
+
 asid_instr_count
 asidstory
 callfunc
@@ -6,13 +8,17 @@ checkpoint
 collect_code
 correlatetaps
 coverage
+dynamic_symbols
 edge_coverage
 filereadmon
+forcedexec
 hooks
+hooks2
 libfi
 lighthouse_coverage
 loaded
 loaded_libs
+mem_hooks
 memorymap
 memsavep
 mmio_trace
@@ -24,11 +30,14 @@ osi_test
 pri
 pri_dwarf
 pri_simple
+proc_start_linux
 recctrl
 replaymovie
 scissors
+signal
 stringsearch
 syscalls2
+syscalls_logger
 textprinter
 track_intexc
 unigrams

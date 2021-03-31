@@ -3,6 +3,7 @@
 
 #include "syscalls2.h"
 #include "syscalls2_info.h"
+#include "hooks/hooks_int_fns.h"
 
 extern const syscall_info_t *syscall_info;
 extern const syscall_meta_t *syscall_meta;
@@ -22,7 +23,7 @@ extern "C" {
  * system call return callbacks.
  */
 void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc) {
-#if defined(TARGET_ARM)
+#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
 	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 	syscall_ctx_t ctx = {0};
 	ctx.no = env->regs[7];
@@ -5005,6 +5006,15 @@ void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc) {
 	PPP_RUN_CB(on_all_sys_enter, cpu, pc, ctx.no);
 	PPP_RUN_CB(on_all_sys_enter2, cpu, pc, call, &ctx);
 	if (!panda_noreturn) {
+		struct hook h;
+		h.addr = ctx.retaddr;
+		h.asid = ctx.asid;
+		h.cb.before_tcg_codegen = hook_syscall_return;
+		h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
+		h.enabled = true;
+		h.km = MODE_ANY; //you'd expect this to be user only
+		hooks_add_hook(&h);
+
 		running_syscalls[std::make_pair(ctx.retaddr, ctx.asid)] = ctx;
 	}
 #endif

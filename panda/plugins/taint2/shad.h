@@ -33,6 +33,7 @@ extern "C" {
 
 #include "taint_defines.h"
 #include "label_set.h"
+#include "sym_label.h"
 
 class Shad;
 
@@ -93,14 +94,15 @@ struct TaintData {
     // Bits known to be 1 or 0 via bitwise operations.
     uint8_t one_mask;
     uint8_t zero_mask;
+    SymLabelP sym;
 
-    TaintData() : ls(NULL), tcn(0), cb_mask(0), one_mask(0), zero_mask(0) {}
+    TaintData() : ls(NULL), tcn(0), cb_mask(0), one_mask(0), zero_mask(0), sym(NULL) {}
     explicit TaintData(LabelSetP ls) : ls(ls), tcn(0), cb_mask(ls ? 0xFF : 0),
-            one_mask(0), zero_mask(0) {}
+            one_mask(0), zero_mask(0), sym(NULL) {}
     TaintData(LabelSetP ls, uint32_t tcn, uint8_t cb_mask,
             uint8_t one_mask, uint8_t zero_mask)
         : ls(ls), tcn(ls ? tcn : 0), cb_mask(ls ? cb_mask : 0),
-        one_mask(one_mask), zero_mask(zero_mask) {}
+        one_mask(one_mask), zero_mask(zero_mask), sym(NULL) {}
 
     bool operator==(const TaintData &other) const {
         return ls == other.ls &&
@@ -152,7 +154,7 @@ class Shad
 
     virtual void label(uint64_t addr, LabelSetP ls) = 0;
 
-    static void copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
+    static bool copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
                      uint64_t src, uint64_t size)
     {
         tassert(dest + size >= dest);
@@ -161,19 +163,20 @@ class Shad
         tassert(src + size <= shad_src->size);
 
         bool change = false;
-        if (track_taint_state && (shad_dest->range_tainted(dest, size) ||
+        if ((shad_dest->range_tainted(dest, size) ||
                     shad_src->range_tainted(src, size)))
             change = true;
 
         for (uint64_t i = 0; i < size; i++) {
-            auto td = shad_src->query_full(src + i);
+            auto td = *shad_src->query_full(src + i);
 
             // don't report taint changes when store the taint data, as it is
             // already taken care of for all bytes below
             shad_dest->set_full_quiet(dest + i, td);
         }
 
-        if (change) taint_state_changed(shad_dest, dest, size);
+        if (track_taint_state && change) taint_state_changed(shad_dest, dest, size);
+        return change;
     }
 
     virtual void remove(uint64_t addr, uint64_t remove_size) = 0;
@@ -193,9 +196,9 @@ class Shad
 
     virtual void pop_frame(uint64_t framesize) = 0;
 
-    virtual TaintData query_full(uint64_t addr) = 0;
+    virtual TaintData *query_full(uint64_t addr) = 0;
 
-    virtual void set_full(uint64_t addr, TaintData td) = 0;
+    virtual bool set_full(uint64_t addr, TaintData td) = 0;
 
     virtual uint32_t query_tcn(uint64_t addr) = 0;
 
@@ -254,7 +257,23 @@ class FastShad : public Shad
         bool change = false;
         if (track_taint_state && range_tainted(addr, remove_size))
             change = true;
+        
+#if 0
+        // GCC8 doesn't like this memset and raises a warning but we really do want it
+        // for performance reasons. The following code prevents the warning, but it's
+        // about 10x slower so we instead disable the warning.
+        TaintData *t = get_td_p(addr);
+        for (int i=0; i < remove_size; i++) {
+          t[i] = TaintData();
+        }
+#else
+#pragma GCC diagnostic push
+#if defined(__GNUC__) && __GNUC__ >= 8
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
+#endif
         memset(get_td_p(addr), 0, remove_size * sizeof(TaintData));
+#pragma GCC diagnostic pop
+#endif
 
         if (change)
             taint_state_changed(this, addr, remove_size);
@@ -265,7 +284,22 @@ class FastShad : public Shad
         tassert(addr + remove_size >= addr);
         tassert(addr + remove_size <= size);
 
+#if 0
+        // GCC8 doesn't like this memset and raises a warning but we really do want it
+        // for performance reasons. The following code prevents the warning, but it's
+        // about 10x slower so we instead disable the warning.
+        TaintData *t = get_td_p(addr);
+        for (int i=0; i < remove_size; i++) {
+          t[i] = TaintData();
+        }
+#else
+#pragma GCC diagnostic push
+#if defined(__GNUC__) && __GNUC__ >= 8
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
+#endif
         memset(get_td_p(addr), 0, remove_size * sizeof(TaintData));
+#pragma GCC diagnostic pop
+#endif
     }
 
     LabelSetP query(uint64_t addr) override
@@ -293,15 +327,16 @@ class FastShad : public Shad
         taint_log("pop: %lx\n", (uint64_t)labels);
     }
 
-    TaintData query_full(uint64_t addr) override
+    TaintData *query_full(uint64_t addr) override
     {
         tassert(addr < size);
-        return labels[addr];
+        return &labels[addr];
     }
 
-    void set_full(uint64_t addr, TaintData td) override
+    bool set_full(uint64_t addr, TaintData td) override
     {
         tassert(addr < size);
+        bool changed = false;
 
         uint32_t newcard = 0;
         if (td.ls != NULL) newcard = td.ls->size();
@@ -312,6 +347,7 @@ class FastShad : public Shad
             labels[addr] = td;
             
             if (change) taint_state_changed(this, addr, 1);
+            changed |= change;
         }
         else
         {
@@ -323,6 +359,7 @@ class FastShad : public Shad
                 remove(addr, 1);
             }
         }
+        return changed;
     }
 
     // Set taint quietly - ie. no taint change report is made.
@@ -334,7 +371,7 @@ class FastShad : public Shad
 
     uint32_t query_tcn(uint64_t addr) override
     {
-        return (query_full(addr)).tcn;
+        return query_full(addr)->tcn;
     }
 };
 
@@ -400,22 +437,24 @@ class LazyShad : public Shad
         return result->second.ls;
     }
 
-    TaintData query_full(uint64_t addr) override
+    TaintData *query_full(uint64_t addr) override
     {
-        return labels[addr];
+        return &labels[addr];
     }
 
-    void set_full(uint64_t addr, TaintData td) override
+    bool set_full(uint64_t addr, TaintData td) override
     {
+        bool changed = false;
         uint32_t newcard = 0;
         if (td.ls != NULL) newcard = td.ls->size();
         if (((max_tcn == 0) || (td.tcn <= max_tcn)) &&
             ((max_taintset_card == 0) || (newcard <= max_taintset_card)))
         {
-            bool change = !(td == query_full(addr));
+            bool change = !(td == *query_full(addr));
             labels[addr] = td;
             
             if (change) taint_state_changed(this, addr, 1);
+            changed |= change;
         }
         else
         {
@@ -427,6 +466,7 @@ class LazyShad : public Shad
                 remove(addr, 1);
             }
         }
+        return changed;
     }
 
     // Set taint quietly - ie. no taint change report is made
@@ -437,7 +477,7 @@ class LazyShad : public Shad
 
     uint32_t query_tcn(uint64_t addr) override
     {
-        return (query_full(addr)).tcn;
+        return query_full(addr)->tcn;
     }
 
     void reset_frame() override

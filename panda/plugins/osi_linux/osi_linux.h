@@ -26,6 +26,7 @@
 #include "utils/kernelinfo/kernelinfo.h"
 #include "osi_linux_debug.h"
 #include "kernel_profile.h"
+#include "endian_helpers.h"
 
 extern struct kernelinfo ki;
 extern struct KernelProfile const *kernel_profile;
@@ -49,6 +50,7 @@ struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, off_t offset)
         memset((uint8_t *)v, 0, sizeof(T));
         return struct_get_ret_t::ERROR_DEREF;
     }
+
     switch(panda_virtual_memory_rw(cpu, ptr+offset, (uint8_t *)v, sizeof(T), 0)) {
         case -1:
             memset((uint8_t *)v, 0, sizeof(T));
@@ -69,21 +71,31 @@ struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, off_t offset)
 template <typename T>
 struct_get_ret_t struct_get(CPUState *cpu, T *v, target_ptr_t ptr, std::initializer_list<off_t> offsets) {
     // read all but last item as pointers
+    // After each pointer read, flip endianness as necessary
     auto it = offsets.begin();
     auto o = *it;
     while (true) {
         it++;
         if (it == offsets.end()) break;
+        //printf("\tDereferenced 0x%x (offset 0x%lx) to get ", ptr, o);
         auto r = struct_get(cpu, &ptr, ptr, o);
         if (r != struct_get_ret_t::SUCCESS) {
+            //printf("ERROR\n");
             memset((uint8_t *)v, 0, sizeof(T));
             return r;
         }
         o = *it;
+        // We just read a pointer so we may need to fix its endianness
+        if (sizeof(T) == 4) fixupendian(ptr); // XXX wrong for 64-bit guests
+        //printf("0x%x\n", ptr);
     }
 
     // last item is read using the size of the type of v
-    return struct_get(cpu, v, ptr, o);
+    // this isn't a pointer so there's no need to fix its endianness
+    auto ret = struct_get(cpu, v, ptr, o); // deref ptr into v, result in ret
+    fixupendian(*v);
+    //printf("Struct_get final 0x%x => 0x%x\n", ptr, *v);
+    return ret;
 }
 #endif
 
@@ -101,8 +113,32 @@ static inline _retType _name(CPUState* env, target_ptr_t _paramName) { \
     if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType), 0)) { \
         return (_errorRetValue); \
     } \
-    return (_t); \
+    return (flipbadendian(_t)); \
 }
+
+/**
+ * @brief IMPLEMENT_OPTIONAL_OFFSET_GET is a macro for generating uniform
+ * inlines for retrieving data based on a location+offset as above, but
+ * it returns 0 if the underlying offset was not read in the first place
+ * and was optional.
+ *
+ * @deprecated Directly returning a value complicates error handling
+ * and doesn't work for arrays or simple structs.
+ * Use IMPLEMENT_OFFSET_GETN instead.
+ */
+#define IMPLEMENT_OPTIONAL_OFFSET_GET(_name, _paramName, _retType, _offset, _errorRetValue) \
+static inline _retType _name(CPUState* env, target_ptr_t _paramName) { \
+    _retType _t; \
+    if (_offset == NULL)\
+        return 0; \
+    if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType), 0)) { \
+        return (_errorRetValue); \
+    } \
+    return (flipbadendian(_t)); \
+}
+
+
+
 
 /**
  * @brief IMPLEMENT_OFFSET_GET2L is a macro for generating uniform
@@ -119,10 +155,10 @@ static inline _retType2 _name(CPUState* env, target_ptr_t _paramName) { \
     if (-1 == panda_virtual_memory_rw(env, _paramName + _offset1, (uint8_t *)&_t1, sizeof(_retType1), 0)) { \
         return (_errorRetValue); \
     } \
-    if (-1 == panda_virtual_memory_rw(env, _t1 + _offset2, (uint8_t *)&_t2, sizeof(_retType2), 0)) { \
+    if (-1 == panda_virtual_memory_rw(env, flipbadendian(_t1) + _offset2, (uint8_t *)&_t2, sizeof(_retType2), 0)) { \
         return (_errorRetValue); \
     } \
-    return (_t2); \
+    return (flipbadendian(_t2)); \
 }
 
 #define OG_AUTOSIZE 0
@@ -201,6 +237,12 @@ IMPLEMENT_OFFSET_GET(get_pid, task_struct, int, ki.task.pid_offset, 0)
  * @brief Retrieves the tgid from a task_struct.
  */
 IMPLEMENT_OFFSET_GET(get_tgid, task_struct, int, ki.task.tgid_offset, 0)
+
+/**
+ * @brief Retrieves the start_time from a task_struct.
+ */
+IMPLEMENT_OPTIONAL_OFFSET_GET(get_start_time, task_struct, uint64_t, ki.task.start_time_offset, 0)
+
 
 /**
  * @brief Retrieves the address of the mm_struct from a task_struct.
@@ -326,7 +368,6 @@ IMPLEMENT_OFFSET_GETN(get_dentry_parent, dentry, target_ptr_t, dentry_parent, OG
  */
 static inline target_ptr_t get_fd_file(CPUState *env, target_ptr_t fd_file_array, int n) {
     target_ptr_t fd_file, fd_file_ptr;
-
     // Compute address of the pointer to the file struct of the n-th fd.
     fd_file_ptr = fd_file_array+n*sizeof(target_ptr_t);
 
@@ -334,7 +375,7 @@ static inline target_ptr_t get_fd_file(CPUState *env, target_ptr_t fd_file_array
     if (-1 == panda_virtual_memory_rw(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(target_ptr_t), 0)) {
         return (target_ptr_t)NULL;
     }
-
+    fixupendian(fd_file_ptr);
     return fd_file_ptr;
 }
 
@@ -375,6 +416,11 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
         memset(d_name, 0, ki.qstr.size * sizeof(uint8_t));
         og_err1 = get_dentry_name(env, current_dentry, d_name);
         og_err2 = get_dentry_parent(env, current_dentry, &current_dentry_parent);
+
+        // Note we don't fix endian of dentry name because it's a large(r than 4)
+        // byte buffer. Instead we'll fix it just before use (in guest_addr)
+        fixupendian(current_dentry_parent);
+
         //HEXDUMP(d_name, ki.path.qstr_size, current_dentry + ki.path.d_name_offset);
         if (OG_SUCCESS != og_err1 || OG_SUCCESS != og_err2) {
             break;
@@ -389,12 +435,21 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
         }
 
         // read component
-        pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t)) + 1; // increment pcomp_length to include the string terminator
+        pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t));
+        fixupendian(pcomp_length)
+        pcomp_length += 1; // space for string terminator
+
         if (pcomp_capacity < pcomp_length) {
             pcomp_capacity = pcomp_length + 16;
             pcomp = (char *)g_realloc(pcomp, pcomp_capacity * sizeof(char));
         }
-        og_err1 = panda_virtual_memory_rw(env, *(target_ptr_t *)(d_name + ki.qstr.name_offset), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
+
+        target_ptr_t guest_addr = *(target_ptr_t *)(d_name + ki.qstr.name_offset);
+        fixupendian(guest_addr);
+        og_err1 = panda_virtual_memory_rw(env, guest_addr, (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
+
+    // I think this aims to be a re-implementation of the Linux kernel function
+    // __dentry_path but the logic seems pretty different.
         //printf("2#%lx\n", (uintptr_t)*(target_ptr_t *)(d_name + 2*sizeof(uint32_t)));
         //printf("3#%s\n", pcomp);
         if (-1 == og_err1) {
@@ -475,6 +530,9 @@ static inline char *read_vfsmount_name(CPUState *env, target_ptr_t vfsmount) {
         // retrieve vfsmount members
         og_err0 = get_vfsmount_dentry(env, current_vfsmount, &current_vfsmount_dentry);
         og_err1 = get_vfsmount_parent(env, current_vfsmount, &current_vfsmount_parent);
+        fixupendian(current_vfsmount_dentry);
+        fixupendian(current_vfsmount_parent);
+
         //printf("###D:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err0, current_vfsmount, current_vfsmount_dentry);
         //printf("###R:%d:" TARGET_PTR_FMT ":" TARGET_PTR_FMT "\n", og_err2, current_vfsmount, root_dentry);
         //og_err2 = get_vfsmount_root_dentry(env, current_vfsmount, &root_dentry);
@@ -582,6 +640,7 @@ void get_process_info(CPUState *cpu, GArray **out,
 #endif
 
     ts_current = ts_first;
+
     if (ts_first == (target_ptr_t)NULL) goto error;
 #if defined(OSI_LINUX_PSDEBUG)
     LOG_INFO("START %c:%c " TARGET_PTR_FMT " " TARGET_PTR_FMT, TS_THREAD_CHR(cpu, ts_first),  TS_LEADER_CHR(cpu, ts_first), ts_first, ts_first);
@@ -589,7 +648,7 @@ void get_process_info(CPUState *cpu, GArray **out,
 
     do {
 #if defined(OSI_LINUX_PSDEBUG)
-        LOG_INFO("\t %03u:" TARGET_PTR_FMT ":" TARGET_PID_FMT ":" TARGET_PID_FMT ":%c:%c", a->len, ts_current, get_pid(cpu, ts_current), get_tgid(cpu, ts_current), TS_THREAD_CHR(cpu, ts_current), TS_LEADER_CHR(cpu, ts_current));
+         LOG_INFO("\t %03u:" TARGET_PTR_FMT ":" TARGET_PID_FMT ":" TARGET_PID_FMT ":%c:%c", (*out)->len, ts_current, get_pid(cpu, ts_current), get_tgid(cpu, ts_current), TS_THREAD_CHR(cpu, ts_current), TS_LEADER_CHR(cpu, ts_current));
 #endif
         memset(&element, 0, sizeof(ET));
         fill_element(cpu, &element, ts_current);
