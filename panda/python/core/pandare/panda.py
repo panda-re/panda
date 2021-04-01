@@ -11,6 +11,13 @@ if version_info[0] < 3:
 import socket
 import threading
 
+
+import readline
+# XXX: readline is unused but necessary. We need to load python
+# readline, to preempt PANDA loading another version. PANDA
+# seems to work with python's but not vice-versa. This allows for
+# stdio interactions later (e.g., pdb, input())  without segfaults
+
 from os.path import realpath, exists, abspath, isfile, dirname, join as pjoin
 from os import dup, getenv, environ, path
 from random import randint
@@ -30,7 +37,7 @@ from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
 from .qcows import Qcows
-from .arch import ArmArch, MipsArch, X86Arch, X86_64Arch
+from .arch import ArmArch, Aarch64Arch, MipsArch, X86Arch, X86_64Arch
 
 # Might be worth importing and auto-initilizing a PLogReader
 # object within Panda for the current architecture?
@@ -77,6 +84,7 @@ class Panda():
         self.lambda_cnt = 0
         self.arch = None
         self.__sighandler = None
+        self.ending = False # True during end_analysis
         """
         A reference to an auto-instantiated `pandare.arch.PandaArch` subclass (e.g., `pandare.arch.X86Arch`)
         """
@@ -106,8 +114,10 @@ class Panda():
             self.arch = X86Arch(self)
         elif self.arch_name == "x86_64":
             self.arch = X86_64Arch(self)
-        elif self.arch_name in ["arm", "aarch64"]:
-            self.arch = ArmArch(self) # Not sure if this needs to be different for 64
+        elif self.arch_name in ["arm"]:
+            self.arch = ArmArch(self)
+        elif self.arch_name in ["aarch64"]:
+            self.arch = Aarch64Arch(self)
         elif self.arch_name in ["mips", "mipsel"]:
             self.arch = MipsArch(self)
         else:
@@ -417,6 +427,8 @@ class Panda():
                 print("Clearing prior main_loop_wait fns:", self.main_loop_wait_fnargs)
             self.main_loop_wait_fnargs = [] # [(fn, args), ...]
 
+        self.ending = False
+
         if debug:
             progress ("Running")
 
@@ -427,6 +439,8 @@ class Panda():
 
         if not self.started.is_set():
             self.started.set()
+
+        self.athread.ending = False
 
         # Ensure our internal CBs are always enabled
         self.enable_internal_callbacks()
@@ -469,8 +483,11 @@ class Panda():
         Note here we use the async class's internal thread to process these
         without needing to wait for tasks in the main async thread
         '''
+        self.athread.ending = True
+        self.ending = True
         self.unload_plugins()
         if self.running.is_set() or self.initializing.is_set():
+
             # If we were running, stop the execution and check if we crashed
             self.queue_async(self.stop_run, internal=True)
 
@@ -518,6 +535,8 @@ class Panda():
         '''
         if not isfile(replaypfx+"-rr-snp") or not isfile(replaypfx+"-rr-nondet.log"):
             raise ValueError("Replay files not present to run replay of {}".format(replaypfx))
+
+        self.ending = False
 
         if debug:
             progress ("Replaying %s" % replaypfx)
@@ -640,7 +659,10 @@ class Panda():
         # First unload python plugins, should be safe to do anytime
         #for name in self.registered_callbacks.keys():
         while len(list(self.registered_callbacks)) > 0:
-            self.delete_callback(list(self.registered_callbacks.keys())[0])
+            try:
+                self.delete_callback(list(self.registered_callbacks.keys())[0])
+            except IndexError:
+                continue
             #self.disable_callback(name)
 
         # Then unload C plugins. May be unsafe to do except from the top of the main loop (taint segfaults otherwise)
@@ -695,6 +717,7 @@ class Panda():
                         Memory Access with error value.
                         Format string is incorrect.
         '''
+
         return self._memory_read(env, addr, length, physical=False, fmt=fmt)
 
     def _memory_read(self, env, addr, length, physical=False, fmt='bytearray'):
@@ -703,6 +726,9 @@ class Panda():
         Supports physical or virtual addresses
         Raises ValueError if read fails
         '''
+        if not isinstance(addr, int):
+            raise ValueError(f"Unsupported read from address {repr(addr)}")
+
         buf = ffi.new("char[]", length)
 
         # Force CFFI to parse addr as an unsigned value. Otherwise we get OverflowErrors
@@ -830,6 +856,8 @@ class Panda():
                 self.end_analysis() 
         
 
+        # Keep the original function name instead of replacing it with 'wrapper'
+        wrapper.__name__ = f.__name__
         self.athread.queue(wrapper, internal=internal)
 
     def map_memory(self, name, size, address):
@@ -847,19 +875,21 @@ class Panda():
         size = ceil(size/1024)*1024 # Must be page-aligned
         return self.libpanda.map_memory(name_c, size, address)
 
-    def read_str(self, cpu, ptr):
+    def read_str(self, cpu, ptr, max_length=None):
         '''
         Helper to read a null-terminated string from guest memory given a pointer and CPU state
         May return an exception if the call to panda.virtual_memory_read fails (e.g., if you pass a
         pointer to an unmapped page)
         '''
         r = b""
-        while True:
+        idx = 0
+        while (max_length is None or idx < max_length):
             next_char = self.virtual_memory_read(cpu, ptr, 1) # If this raises an exn, don't mask it
             if next_char == b"\x00":
                 break
             r += next_char
             ptr += 1
+            idx += 1
         return r.decode("utf8", "ignore")
 
     def to_unsigned_guest(self, x):
@@ -2152,6 +2182,7 @@ class Panda():
                     r = fun(*args, **kwargs)
                     #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
                     #assert(isinstance(r, int)), "Invalid return type?"
+                    #print(fun, r) # Stuck with TypeError in _run_and_catch? Enable this to find where the bug is.
                     return r
                 except Exception as e:
                     # exceptions wont work in our thread. Therefore we print it here and then throw it after the
@@ -2293,6 +2324,11 @@ class Panda():
         '''
         Enable a panda plugin using its handle and cb.number as a unique ID
         '''
+
+        # During shutdown callback may be deleted before a request to enable comes through
+        if self.ending:
+            return
+
         if name not in self.registered_callbacks.keys():
             raise RuntimeError("No callback has been registered with name '{}'".format(name))
 
@@ -2309,6 +2345,10 @@ class Panda():
         If forever is specified, we'll never reenable the call- useful when
         you want to really turn off something with a procname filter.
         '''
+        # During shutdown callback may be deleted before a request to enable comes through
+        if self.ending:
+            return
+
         if name not in self.registered_callbacks.keys():
             raise RuntimeError("No callback has been registered with name '{}'".format(name))
         self.registered_callbacks[name]['enabled'] = False
@@ -2345,7 +2385,7 @@ class Panda():
     ### PPP-style callbacks ###
     ###########################
 
-    def ppp(self, plugin_name, attr, name=None):
+    def ppp(self, plugin_name, attr, name=None, autoload=True):
         '''
         Decorator for plugin-to-plugin interface. Note this isn't in decorators.py
         becuase it uses the panda object.
@@ -2356,7 +2396,7 @@ class Panda():
             ...
         '''
 
-        if plugin_name not in self.plugins: # Could automatically load it?
+        if plugin_name not in self.plugins and autoload: # Could automatically load it?
             print(f"PPP automatically loaded plugin {plugin_name}")
 
         if not hasattr(self, "ppp_registered_cbs"):
@@ -2537,7 +2577,7 @@ class Panda():
             elif cb_type == "before_block_translate":
                 hook_cb_type = self.ffi.callback("void(CPUState* env, target_ptr_t pc, struct hook*)")
             elif cb_type == "before_block_exec_invalidate_opt":
-                hook_cb_type = "bool(CPUState* env, TranslationBlock*, struct hook*)"
+                hook_cb_type = self.ffi.callback("bool(CPUState* env, TranslationBlock*, struct hook*)")
             else:
                 print("function type not supported")
                 return

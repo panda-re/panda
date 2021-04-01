@@ -47,7 +47,7 @@ class FileHook:
         self.use_osi = use_osi
 
         self.logger = logging.getLogger('panda.hooking')
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(logging.ERROR)
 
         self.pending_virt_read = None
 

@@ -55,6 +55,7 @@ class FakeFile:
         Return how much HyperFD offset should be incremented by
         XXX what about writes past end of the file?
         '''
+        self.logger.info(f"FakeFD({self.filename}) writing {write_data} at offset {offset}")
         new_data  = self.contents[:offset]
         new_data += write_data
         new_data += self.contents[offset+len(new_data):]

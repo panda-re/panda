@@ -14,7 +14,7 @@ from pandare import Panda
 arch = "i386" if len(argv) <= 1 else argv[1]
 panda = Panda(generic=arch)
 
-@panda.queue_async
+@panda.queue_blocking
 def run_my_cmd():
     panda.revert_sync("root")
     print(panda.run_serial_cmd("uname -a"))

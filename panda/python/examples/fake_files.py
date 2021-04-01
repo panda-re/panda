@@ -21,7 +21,7 @@ myFakeFile = FakeFile("hello world\n")
 faker = FileFaker(panda)
 faker.replace_file("/foo", myFakeFile)
 
-@panda.queue_async
+@panda.queue_blocking
 def read_it():
     panda.revert_sync('root')
     hello_world = panda.run_serial_cmd("cat /foo")

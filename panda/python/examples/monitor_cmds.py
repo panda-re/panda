@@ -8,7 +8,7 @@ Run with python3 monitor_cmds.py
 '''
 
 from sys import argv
-from pandare import Panda, blocking
+from pandare import Panda
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]
@@ -17,12 +17,12 @@ panda = Panda(generic=arch)
 queued = False
 bb_count = 0
 
-@blocking
+@panda.queue_blocking
 def my_runcmd():
     panda.revert_sync('root')
     panda.run_serial_cmd("find . /proc/self")
 
-@blocking
+@panda.queue_blocking
 def info_mem():
     result = panda.run_monitor_cmd("info mem")
     lines = [x for x in result.split("\n") if x]
@@ -33,12 +33,10 @@ def info_mem():
     panda.end_analysis()
 
 @panda.cb_before_block_exec
-def before_block_exec(env,tb):
+def before_block_exec(cpu, tb):
     global queued, bb_count
     bb_count += 1
 
-panda.queue_async(my_runcmd)
-panda.queue_async(info_mem)
 panda.run()
 
 print(f"Saw {bb_count} BBs")

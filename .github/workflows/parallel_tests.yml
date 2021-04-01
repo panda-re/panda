@@ -7,6 +7,8 @@ on:
   pull_request:
     branches:
       - master
+      - stable
+      - candidate_release_*
   #push:
   #  paths: ['Dockerfile'] # If this file changed, we'd need to do a clean build (this action)
   #  otherwise we could speed this up by pulling the last container of 'master', copying
