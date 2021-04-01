@@ -1,6 +1,5 @@
 #define __STDC_FORMAT_MACROS
 
-#include <stdlib.h>
 #include <cstdio>
 
 #include "panda/plugin.h"
@@ -70,7 +69,7 @@ bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
 // Sample about 2% of BBs, or at least 1 BB
 void before_block(CPUState *env, TranslationBlock *tb) {
     static bool no_sample = true;
-    if (no_sample || (((float)(rand())) / RAND_MAX < 0.02)) {
+    if (no_sample || (((float)(random())) / RAND_MAX < 0.02)) {
        get_libs(env);
        no_sample = false;
     }
@@ -97,7 +96,7 @@ bool init_plugin(void *self) {
     program_name = panda_parse_string_opt(args, "program_name", NULL, "program name to collect libraries for");
 
     // Seed for deterministic sampling with rand()
-    srand(0xDEADC0DE);
+    srandom(0xDEADC0DE);
 
     return true;
 }
