@@ -29,6 +29,9 @@ PANDAENDCOMMENT */
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
+#include "syscalls2/syscalls_ext_typedefs.h"
+#include "syscalls2/syscalls2_info.h"
+#include "syscalls2/syscalls2_ext.h"
 #include "dynamic_symbols/dynamic_symbols_int_fns.h"
 #include "hooks_int_fns.h"
 }
@@ -291,6 +294,17 @@ MAKE_HOOK_VOID(AFTER_BLOCK_EXEC, after_block_exec, (CPUState *cpu, TranslationBl
     panda_register_callback(SELF, PANDA_CB_ ## NAME_UPPER, NAME ## _callback); \
     panda_disable_callback(SELF, PANDA_CB_ ## NAME_UPPER, NAME ## _callback);
 
+
+void sys_exit_enter(CPUState *cpu, target_ulong pc, int exit_code){
+    target_ulong asid = panda_current_asid(cpu);
+    before_tcg_codegen_hooks.erase(asid);
+    before_block_translate_hooks.erase(asid);
+    after_block_translate_hooks.erase(asid);
+    before_block_exec_invalidate_opt_hooks.erase(asid);
+    before_block_exec_hooks.erase(asid);
+    after_block_exec_hooks.erase(asid);
+}
+
 bool init_plugin(void *_self) {
     // On init, register a callback but don't enable it
     self = _self;
@@ -302,6 +316,15 @@ bool init_plugin(void *_self) {
     REGISTER_AND_DISABLE_CALLBACK(_self, before_block_exec_invalidate_opt, BEFORE_BLOCK_EXEC_INVALIDATE_OPT)
     REGISTER_AND_DISABLE_CALLBACK(_self, before_block_exec, BEFORE_BLOCK_EXEC)
     REGISTER_AND_DISABLE_CALLBACK(_self, after_block_exec, AFTER_BLOCK_EXEC)
+    #if defined(TARGET_PPC)
+        fprintf(stderr, "[ERROR] asidstory: PPC architecture not supported by syscalls2!\n");
+        return false;
+    #else
+        panda_require("syscalls2");
+        assert(init_syscalls2_api());
+        PPP_REG_CB("syscalls2", on_sys_exit_enter, sys_exit_enter);
+        PPP_REG_CB("syscalls2", on_sys_exit_group_enter, sys_exit_enter);
+    #endif
     return true;
 }
 
