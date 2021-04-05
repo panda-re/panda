@@ -34,6 +34,8 @@ void uninit_plugin(void *);
 #include "syscalls2/syscalls2_ext.h"
 #include "dynamic_symbols/dynamic_symbols_int_fns.h"
 #include "hooks_int_fns.h"
+void prepare_group_hook(void);
+void end_group_hook(void);
 }
 
 using namespace std;
@@ -103,6 +105,7 @@ void disable_hooking() {
 
 vector<pair<hooks_panda_cb, panda_cb_type>> symbols_to_handle;
 
+
 void handle_hook_return (CPUState *cpu, struct hook_symbol_resolve *sh, struct symbol s, OsiModule* m){
     int id = sh->id;
     pair<hooks_panda_cb,panda_cb_type> resolved = symbols_to_handle[id];
@@ -171,19 +174,52 @@ bool first_tb_chaining = false;
 extern TCGContext tcg_ctx;
 extern __thread int have_tb_lock;
 
+bool keep_lock = false;
+bool have_lock = false;
+
+void prepare_group_hook(){
+    printf("prepare_group_hook\n");
+    fflush(stdout);
+    keep_lock = true;
+}
+
+void end_group_hook(){
+    printf("end_group_hook\n");
+    fflush(stdout);
+    //tb_unlock();
+    keep_lock = false;
+    have_lock = false;
+}
+
+
 static inline void flush_tb_if_block_in_cache(CPUState* cpu, target_ulong pc){
     assert(cpu != (CPUState*)NULL && "Cannot register TCG-based hooks before guest is created. Try this in after_machine_init CB");
-    TranslationBlock *tb = cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)];
+    //if (!have_lock){
+    //    while (qemu_mutex_trylock(&tcg_ctx.tb_ctx.tb_lock)==0){};
+    //    // set the mutex value
+    //    have_tb_lock++;
+    //    have_lock = true;
+    //}
+    target_ulong phys = panda_virt_to_phys(cpu,pc);
+    TranslationBlock *tb = cpu->tb_jmp_cache[tb_jmp_cache_hash_func(phys)];
+    
+
     if (tb && tb->pc == pc){
         // these lines are tb_trylock (which doesn't exist)
         // wait for the mutex to be available and take it
-        while (qemu_mutex_trylock(&tcg_ctx.tb_ctx.tb_lock)==0){};
-        // set the mutex value
-        have_tb_lock++;
-        tb_phys_invalidate(tb, -1);
+        //printf("Invalidating " TARGET_PTR_FMT "\n", tb->pc);
+
+        //printf("invalidating block\n");
+        //tb->pc = 0;
+        tb_phys_invalidate(tb, phys);
+
+
         tb_free(tb);
-        tb_unlock();
     }
+    //if (!keep_lock){
+    //    tb_unlock();
+    //    have_lock = false;
+    //}
 }
 
 void add_hook(struct hook* h) {
@@ -193,7 +229,9 @@ void add_hook(struct hook* h) {
         first_tb_chaining = true;
     }
     if (h->type == PANDA_CB_BEFORE_TCG_CODEGEN){
+        //panda_do_flush_tb();
         flush_tb_if_block_in_cache(first_cpu, h->addr);
+        //panda_do_flush_tb();
     }
     switch (h->type){
         ADD_CALLBACK_TYPE(before_tcg_codegen, BEFORE_TCG_CODEGEN)
@@ -257,6 +295,7 @@ void add_hook(struct hook* h) {
 
 #define MAKE_HOOK_VOID(UPPER_CB_NAME, NAME, PASSED_ARGS, PC, ...) \
 void cb_ ## NAME ## _callback PASSED_ARGS { \
+    /*printf("VOID calling %llx guest_pc %llx\n", (long long unsigned int) panda_current_pc(cpu), (long long unsigned int)cpu->panda_guest_pc);*/\
     HOOK_GENERIC_RET_EXPR( (*(h->cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, , == hook_container.addr, PC) \
 }
 
@@ -268,7 +307,7 @@ bool cb_ ## NAME ## _callback PASSED_ARGS { \
 }
     
 void cb_tcg_codegen_middle_filter(CPUState* cpu, TranslationBlock *tb) {
-    HOOK_GENERIC_RET_EXPR(/*printf("calling %llx from %llx with hook %llx guest_pc %llx\n", (long long unsigned int) panda_current_pc(cpu), (long long unsigned int)tb->pc, (long long unsigned int)h->addr, (long long unsigned int)cpu->panda_guest_pc);*/ (*(h->cb.before_tcg_codegen))(cpu, tb, h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, panda_current_pc(cpu) );
+    HOOK_GENERIC_RET_EXPR(/*printf("TCG calling %llx from %llx with hook %llx guest_pc %llx\n", (long long unsigned int) panda_current_pc(cpu), (long long unsigned int)tb->pc, (long long unsigned int)h->addr, (long long unsigned int)cpu->panda_guest_pc);*/ (*(h->cb.before_tcg_codegen))(cpu, tb, h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, panda_current_pc(cpu) );
 }
 
 void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {

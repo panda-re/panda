@@ -107,6 +107,10 @@ unordered_map<target_ulong, unordered_map<string, set<struct symbol>*>> symbols;
 
 vector<struct hook_symbol_resolve> hooks;
 
+void (*dlsym_add_hook)(struct hook*);
+void (*dlsym_prepare_group_hook)(void);
+void (*dlsym_end_group_hook)(void);
+
 void hook_symbol_resolution(struct hook_symbol_resolve *h){
     // ISSUE: Doesn't resolve for hooks that have been previously resolved.
     //printf("adding hook %s %llx\n", h->name, (long long unsigned int) h->cb);
@@ -117,8 +121,6 @@ void check_symbol_for_hook(CPUState* cpu, struct symbol s, char* procname, OsiMo
     for (struct hook_symbol_resolve &hook_candidate : hooks){
         if (hook_candidate.enabled){
             if (hook_candidate.procname[0] == 0 || strncmp(procname, hook_candidate.procname, MAX_PATH_LEN -1) == 0){
-                //printf("comparing \"%s\" and \"%s\"\n", hook_candidate.name, s.name);
-
                 if (hook_candidate.name[0] == 0 || strncmp(s.name, hook_candidate.name, MAX_PATH_LEN -1) == 0){
                     //printf("name matches\n");
                     if (hook_candidate.section[0] == 0 || strstr(s.section, hook_candidate.section) != NULL){
@@ -314,9 +316,11 @@ int get_numelements_symtab(CPUState* cpu, target_ulong base, target_ulong dt_has
 }
 
 void new_assignment_check_symbols(CPUState* cpu, set<struct symbol> ss, char* procname, OsiModule* m){
+    dlsym_prepare_group_hook();
     for (auto s : ss){
         check_symbol_for_hook(cpu, s, procname, m);
     }
+    dlsym_end_group_hook();
 }
 
 #define error_case(A,B,C) //printf("%s %s %s\n", A, B, C)
@@ -497,7 +501,7 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
                     symbols[asid][name] = &seen_libraries[c];
                     new_assignment_check_symbols(cpu, seen_libraries[c], current->name, m);
                     error_case(current->name, m->name, "SUCCESS");
-                    printf("Successful on %s. Found %d symbols " TARGET_FMT_lx "\n", m->name, (int)seen_libraries[c].size(), m->base);
+                    //printf("Successful on %s. Found %d symbols " TARGET_FMT_lx "\n", m->name, (int)seen_libraries[c].size(), m->base);
                 }
                 //printf("CURRENT PC: %llx\n", (long long unsigned int) panda_current_pc(cpu));
             }else{
@@ -561,13 +565,11 @@ bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
 }
 
 void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
-    printf("got to program start 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count());
+    //printf("got to program start 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count());
     symbols.erase(panda_current_asid(env));
     update_symbols_in_space(env);
     h->enabled = false;
 }
-
-void (*dlsym_add_hook)(struct hook*);
 
 void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values av){
     struct hook h;
@@ -607,7 +609,9 @@ bool init_plugin(void *self) {
     }
     if (hooks != NULL){
         dlsym_add_hook = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
-        if ((void*)dlsym_add_hook == NULL) {
+        dlsym_prepare_group_hook = (void(*)(void)) dlsym(hooks, "prepare_group_hook");
+        dlsym_end_group_hook = (void(*)(void)) dlsym(hooks, "end_group_hook");
+        if ((void*)dlsym_add_hook == NULL || (void*) dlsym_prepare_group_hook == NULL || dlsym_end_group_hook == NULL) {
             printf("couldn't load add_hook from hooks\n");
             return false;
         }

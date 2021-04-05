@@ -1022,7 +1022,7 @@ class Panda():
         This function requests that the translation block cache be flushed as soon as possible. If running with translation block chaining turned off (e.g. when in LLVM mode or replay mode), this will happen when the current translation block is done executing.
         Flushing the translation block cache is additionally necessary if the plugin makes changes to the way code is translated. For example, by using panda_enable_precise_pc.
         '''
-        return self.libpanda.panda_flush_tb()
+        return self.libpanda.panda_do_flush_tb()
 
     def enable_precise_pc(self):
         '''
