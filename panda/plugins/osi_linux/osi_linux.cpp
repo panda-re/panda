@@ -50,6 +50,7 @@ void on_get_process(CPUState *, const OsiProcHandle *, OsiProc **);
 void on_get_mappings(CPUState *env, OsiProc *p, GArray **out);
 void on_get_current_thread(CPUState *env, OsiThread *t);
 
+void init_per_cpu_offsets(CPUState *cpu);
 struct kernelinfo ki;
 struct KernelProfile const *kernel_profile;
 
@@ -285,6 +286,8 @@ bool osi_guest_is_ready(CPUState *cpu, void** ret) {
     // wait until first sycall and try again
     if (first_osi_check) {
         first_osi_check = false;
+
+        init_per_cpu_offsets(cpu); // Formerly in _machine_init callback, but now it will work with loading OSI after init and snapshots
 
         // Try to load current, if it works, return true
         if (can_read_current(cpu)) {
@@ -661,6 +664,7 @@ void init_per_cpu_offsets(CPUState *cpu) {
  */
 void restore_after_snapshot(CPUState* cpu) {
     LOG_INFO("Snapshot loaded. Re-initializing");
+
     // By setting these, we'll redo our init logic which determines
     // if OSI is ready at the first time it's used, otherwise 
     // it runs at the first syscall (and asserts if it fails)
@@ -745,13 +749,10 @@ bool init_plugin(void *self) {
     // Register callbacks to the PANDA core.
 #if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
     {
-        panda_cb pcb = { .after_machine_init = init_per_cpu_offsets };
-        panda_register_callback(self, PANDA_CB_AFTER_MACHINE_INIT, pcb);
-
         // Whenever we load a snapshot, we need to find cpu offsets again
         // (particularly if KASLR is enabled) and we also may need to re-initialize
         // OSI on the first guest syscall after the revert.
-        pcb.after_loadvm = restore_after_snapshot;
+        panda_cb pcb = { .after_loadvm = restore_after_snapshot };
         panda_register_callback(self, PANDA_CB_AFTER_LOADVM, pcb);
 
         // Register hooks in the kernel to provide task switch notifications.
