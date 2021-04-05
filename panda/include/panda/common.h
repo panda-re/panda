@@ -289,9 +289,9 @@ static inline MemTxResult PandaVirtualAddressToRamOffset(ram_addr_t* out, CPUSta
 }
 
 /**
- * @brief Determines if guest is currently executes in kernel mode.
+ * @brief Determines if guest is currently executing in kernel mode, e.g. execution privilege level.
  */
-static inline bool panda_in_kernel(const CPUState *cpu) {
+static inline bool panda_in_kernel_mode(const CPUState *cpu) {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
 #if defined(TARGET_I386)
     return ((env->hflags & HF_CPL_MASK) == 0);
@@ -308,10 +308,41 @@ static inline bool panda_in_kernel(const CPUState *cpu) {
 #elif defined(TARGET_MIPS)
     return (env->hflags & MIPS_HFLAG_KSU) == MIPS_HFLAG_KM;
 #else
-#error "panda_in_kernel() not implemented for target architecture."
+#error "panda_in_kernel_mode() not implemented for target architecture."
     return false;
 #endif
 }
+
+/**
+ * @brief Determines if guest is currently executing in kernel mode. Old API name for panda_in_kernel_mode().
+ */
+static inline bool panda_in_kernel(const CPUState *cpu) {
+    return panda_in_kernel_mode(cpu);
+}
+
+/**
+ * @brief Determines if guest is currently executing kernelspace code, regardless of privilege level.
+ * Necessary because there's a small bit of kernelspace code that runs AFTER a switch to usermode privileges.
+ * Therefore, certain analysis logic can't rely on panda_in_kernel_mode() alone.
+ * Checking the userspace cutoff means this should work even if KASLR is enabled.
+ */
+static inline bool panda_in_kernel_code_linux(CPUState *cpu) {
+    target_ulong curr_pc = panda_current_pc(cpu);
+#if (TARGET_LONG_BITS == 32)
+    // https://www.kernel.org/doc/html/latest/vm/highmem.html
+    // Source link i386, but not arch specific
+    return (curr_pc > 0xc0000000);
+#elif (TARGET_LONG_BITS == 64)
+    // https://github.com/torvalds/linux/blob/master/Documentation/x86/x86_64/mm.rst
+    // Source link x86_64, but not arch specific
+    // Below cut-off will work for both 4 and 5 level page tables, we don't have to know which the guest uses!
+    return (curr_pc > 0x00ffffffffffffff);
+#else
+#error "panda_in_kernel_code() not implemented for target bit width."
+    return false;
+#endif
+}
+
 /**
  * @brief Returns the guest kernel stack pointer.
  */
