@@ -8,9 +8,11 @@ tcg = True
 if tcg:
     #panda.disable_tb_chaining()
     mode = "before_tcg_codegen"
+    print("running in tcg mode")
 else:
     panda.disable_tb_chaining()
     mode = "before_block_exec"
+    print("running in bbe mode")
 
 
 @panda.hook_symbol("libc", None, procname="uaf", name="hook_symbols", cb_type=mode)

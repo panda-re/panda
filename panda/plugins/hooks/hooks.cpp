@@ -79,6 +79,8 @@ SUPPORT_CALLBACK_TYPE(before_block_exec_invalidate_opt)
 SUPPORT_CALLBACK_TYPE(before_block_exec)
 SUPPORT_CALLBACK_TYPE(after_block_exec)
 
+panda_cb before_block_translate_block_invalidator_callback;
+
 // Handle to self
 void* self = NULL;
 
@@ -164,62 +166,19 @@ bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
         break;
 
 bool first_tb_chaining = false;
+set<target_ulong> pcs_to_flush;
 
 
-/*
- * In this code we'd really *love* to call tb_trylock. Sadly it 
- * just doesn't exist. Therefore we extern these values and do implement
- * it ourselves below.
- */
-extern TCGContext tcg_ctx;
-extern __thread int have_tb_lock;
-
-bool keep_lock = false;
-bool have_lock = false;
-
-void prepare_group_hook(){
-    printf("prepare_group_hook\n");
-    fflush(stdout);
-    keep_lock = true;
-}
-
-void end_group_hook(){
-    printf("end_group_hook\n");
-    fflush(stdout);
-    //tb_unlock();
-    keep_lock = false;
-    have_lock = false;
-}
-
-
-static inline void flush_tb_if_block_in_cache(CPUState* cpu, target_ulong pc){
+void before_block_translate_invalidator(CPUState* cpu, target_ulong pc){
     assert(cpu != (CPUState*)NULL && "Cannot register TCG-based hooks before guest is created. Try this in after_machine_init CB");
-    //if (!have_lock){
-    //    while (qemu_mutex_trylock(&tcg_ctx.tb_ctx.tb_lock)==0){};
-    //    // set the mutex value
-    //    have_tb_lock++;
-    //    have_lock = true;
-    //}
-    target_ulong phys = panda_virt_to_phys(cpu,pc);
-    TranslationBlock *tb = cpu->tb_jmp_cache[tb_jmp_cache_hash_func(phys)];
-    
-
-    if (tb && tb->pc == pc){
-        // these lines are tb_trylock (which doesn't exist)
-        // wait for the mutex to be available and take it
-        //printf("Invalidating " TARGET_PTR_FMT "\n", tb->pc);
-
-        //printf("invalidating block\n");
-        //tb->pc = 0;
-        tb_phys_invalidate(tb, phys);
-
-
-        tb_free(tb);
+    for (auto pc: pcs_to_flush){
+        TranslationBlock *tb = cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)];
+        if (tb && tb->pc == pc){
+            tb_phys_invalidate(tb, -1);
+        }
     }
-    //if (!keep_lock){
-    //    tb_unlock();
-    //    have_lock = false;
-    //}
+    pcs_to_flush.clear();
+    panda_disble_callback(_self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_invalidator);
 }
 
 void add_hook(struct hook* h) {
@@ -229,9 +188,7 @@ void add_hook(struct hook* h) {
         first_tb_chaining = true;
     }
     if (h->type == PANDA_CB_BEFORE_TCG_CODEGEN){
-        //panda_do_flush_tb();
-        flush_tb_if_block_in_cache(first_cpu, h->addr);
-        //panda_do_flush_tb();
+        pcs_to_flush.insert(pc);
     }
     switch (h->type){
         ADD_CALLBACK_TYPE(before_tcg_codegen, BEFORE_TCG_CODEGEN)
@@ -355,6 +312,9 @@ bool init_plugin(void *_self) {
     REGISTER_AND_DISABLE_CALLBACK(_self, before_block_exec_invalidate_opt, BEFORE_BLOCK_EXEC_INVALIDATE_OPT)
     REGISTER_AND_DISABLE_CALLBACK(_self, before_block_exec, BEFORE_BLOCK_EXEC)
     REGISTER_AND_DISABLE_CALLBACK(_self, after_block_exec, AFTER_BLOCK_EXEC)
+    before_block_translate_block_invalidator_callback.before_block_translate = 
+
+
     #if defined(TARGET_PPC)
         fprintf(stderr, "[ERROR] asidstory: PPC architecture not supported by syscalls2!\n");
         return false;
