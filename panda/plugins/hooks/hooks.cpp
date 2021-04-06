@@ -22,6 +22,7 @@ PANDAENDCOMMENT */
 #include <osi/osi_types.h>
 #include "exec/tb-hash.h"
 #include <set>
+#include <queue>
 #include <vector>
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -34,8 +35,7 @@ void uninit_plugin(void *);
 #include "syscalls2/syscalls2_ext.h"
 #include "dynamic_symbols/dynamic_symbols_int_fns.h"
 #include "hooks_int_fns.h"
-void prepare_group_hook(void);
-void end_group_hook(void);
+void hooks_flush_pc(target_ulong pc);
 }
 
 using namespace std;
@@ -166,20 +166,30 @@ bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
         break;
 
 bool first_tb_chaining = false;
-set<target_ulong> pcs_to_flush;
+queue<target_ulong> pcs_to_flush;
 
-
-void before_block_translate_invalidator(CPUState* cpu, target_ulong pc){
-    assert(cpu != (CPUState*)NULL && "Cannot register TCG-based hooks before guest is created. Try this in after_machine_init CB");
-    for (auto pc: pcs_to_flush){
-        TranslationBlock *tb = cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)];
-        if (tb && tb->pc == pc){
-            tb_phys_invalidate(tb, -1);
-        }
-    }
-    pcs_to_flush.clear();
-    panda_disble_callback(_self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_invalidator);
+void hooks_flush_pc(target_ulong pc){
+    pcs_to_flush.push(pc);
 }
+
+void before_block_translate_invalidator(CPUState* cpu, target_ulong pc_val){
+    assert(cpu != (CPUState*)NULL && "Cannot register TCG-based hooks before guest is created. Try this in after_machine_init CB");
+    while (!pcs_to_flush.empty()){
+        target_ulong pc = pcs_to_flush.front();
+        uint32_t h = tb_jmp_cache_hash_func(pc);
+        TranslationBlock *tb = atomic_read(&cpu->tb_jmp_cache[h]);
+        if (tb && tb->pc == pc){
+            printf("invalidating tb " TARGET_PTR_FMT "\n",tb->pc);
+            tb_phys_invalidate(tb, tb->page_addr[0]);
+            //tb_free(tb);
+        }
+        pcs_to_flush.pop();
+    }
+    //pcs_to_flush.clear();
+    panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_block_invalidator_callback);
+}
+
+int hook_counter = 0;
 
 void add_hook(struct hook* h) {
     if (h->type != PANDA_CB_BEFORE_TCG_CODEGEN && !first_tb_chaining){
@@ -188,7 +198,8 @@ void add_hook(struct hook* h) {
         first_tb_chaining = true;
     }
     if (h->type == PANDA_CB_BEFORE_TCG_CODEGEN){
-        pcs_to_flush.insert(pc);
+        pcs_to_flush.push(h->addr);
+        panda_enable_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_block_invalidator_callback);
     }
     switch (h->type){
         ADD_CALLBACK_TYPE(before_tcg_codegen, BEFORE_TCG_CODEGEN)
@@ -256,6 +267,8 @@ void cb_ ## NAME ## _callback PASSED_ARGS { \
     HOOK_GENERIC_RET_EXPR( (*(h->cb.NAME))(__VA_ARGS__);, UPPER_CB_NAME, NAME, , == hook_container.addr, PC) \
 }
 
+// first level hook that goes to other hooks?
+
 #define MAKE_HOOK_BOOL(UPPER_CB_NAME, NAME, PASSED_ARGS, PC, ...) \
 bool cb_ ## NAME ## _callback PASSED_ARGS { \
     bool ret = false; \
@@ -264,13 +277,13 @@ bool cb_ ## NAME ## _callback PASSED_ARGS { \
 }
     
 void cb_tcg_codegen_middle_filter(CPUState* cpu, TranslationBlock *tb) {
-    HOOK_GENERIC_RET_EXPR(/*printf("TCG calling %llx from %llx with hook %llx guest_pc %llx\n", (long long unsigned int) panda_current_pc(cpu), (long long unsigned int)tb->pc, (long long unsigned int)h->addr, (long long unsigned int)cpu->panda_guest_pc);*/ (*(h->cb.before_tcg_codegen))(cpu, tb, h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, panda_current_pc(cpu) );
+    HOOK_GENERIC_RET_EXPR(printf("TCG calling %llx from %llx with hook %llx guest_pc %llx\n", (long long unsigned int) panda_current_pc(cpu), (long long unsigned int)tb->pc, (long long unsigned int)h->addr, (long long unsigned int)cpu->panda_guest_pc); printf("made it to hook %p\n", (void*)h->cb.before_block_exec); (*(h->cb.before_tcg_codegen))(cpu, tb, h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, panda_current_pc(cpu) );
 }
 
 void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
     //target_ulong pc  = panda_current_pc(cpu);
     
-    HOOK_GENERIC_RET_EXPR(TCGOp *op = find_guest_insn_by_addr(h->addr);insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, tb->pc)
+    HOOK_GENERIC_RET_EXPR(printf("adding call to " TARGET_PTR_FMT "\n", h->addr); TCGOp *op = find_guest_insn_by_addr(h->addr); insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb);return;, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, tb->pc)
 }
 
 
@@ -312,7 +325,10 @@ bool init_plugin(void *_self) {
     REGISTER_AND_DISABLE_CALLBACK(_self, before_block_exec_invalidate_opt, BEFORE_BLOCK_EXEC_INVALIDATE_OPT)
     REGISTER_AND_DISABLE_CALLBACK(_self, before_block_exec, BEFORE_BLOCK_EXEC)
     REGISTER_AND_DISABLE_CALLBACK(_self, after_block_exec, AFTER_BLOCK_EXEC)
-    before_block_translate_block_invalidator_callback.before_block_translate = 
+    
+    before_block_translate_block_invalidator_callback.before_block_translate = before_block_translate_invalidator; 
+    panda_register_callback(_self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_block_invalidator_callback);
+    panda_disable_callback(_self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_block_invalidator_callback);
 
 
     #if defined(TARGET_PPC)

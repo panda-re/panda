@@ -70,6 +70,12 @@ map<target_ulong, map<string, target_ulong>> mapping;
 #define DT_SYMINFO 0x6ffffeff
 #define DT_GNU_HASH 0x6FFFFEF5
 
+void* self_ptr;
+panda_cb pcb_asid;
+panda_cb pcb_bbt;
+panda_cb pcb_btc_execve;
+panda_cb before_block_translate_hook_adder_callback;
+
 vector<int> possible_tags{ DT_PLTGOT , DT_HASH , DT_STRTAB , DT_SYMTAB , DT_RELA , DT_INIT , DT_FINI , DT_REL , DT_DEBUG , DT_JMPREL, 25, 26, 32, DT_SUNW_RTLDINF , DT_CONFIG , DT_DEPAUDIT , DT_AUDIT , DT_PLTPAD , DT_MOVETAB , DT_SYMINFO , DT_VERDEF , DT_VERNEED };
 
 inline bool operator<(const struct symbol& s, const struct symbol& p){
@@ -78,6 +84,10 @@ inline bool operator<(const struct symbol& s, const struct symbol& p){
 
 inline bool operator<(const struct symbol& s, target_ulong p){
     return s.address < p;
+}
+
+inline bool operator<(const hook_symbol_resolve &s, const hook_symbol_resolve &p){
+    return s.cb < p.cb;
 }
 
 inline bool operator<(const pair<string, target_ulong>& s, const pair<string, target_ulong>& p){
@@ -101,35 +111,77 @@ struct pair_hash {
 };
 
 // [section name, address] -> map of symbol name to symbols 
-unordered_map<pair<target_ulong,string>, set<struct symbol>, pair_hash> seen_libraries;
-// asid -> section_name ->  symbols
-unordered_map<target_ulong, unordered_map<string, set<struct symbol>*>> symbols;
+unordered_map<pair<target_ulong,string>, unordered_map<string,struct symbol>, pair_hash> seen_libraries;
+// asid -> section_name ->  symbols map pointer
+unordered_map<target_ulong, unordered_map<string, unordered_map<string,struct symbol>*>> symbols;
 
-vector<struct hook_symbol_resolve> hooks;
+// section -> set of structs
+// section -> name -> set struct
+unordered_map<string, unordered_map<string, set<struct hook_symbol_resolve>>> hooks; 
+//set<struct hook_symbol_resolve> hooks;
 
 void (*dlsym_add_hook)(struct hook*);
-void (*dlsym_prepare_group_hook)(void);
-void (*dlsym_end_group_hook)(void);
+void (*dlsym_hooks_flush_pc)(target_ulong pc);
 
 void hook_symbol_resolution(struct hook_symbol_resolve *h){
     // ISSUE: Doesn't resolve for hooks that have been previously resolved.
-    //printf("adding hook %s %llx\n", h->name, (long long unsigned int) h->cb);
-    hooks.push_back(*h);
+    printf("adding hook \"%s\" \"%s\" %llx\n", h->section, h->name, (long long unsigned int) h->cb);
+    string section(h->section);
+    string name(h->name);
+    hooks[section][name].insert(*h);
 }
 
-void check_symbol_for_hook(CPUState* cpu, struct symbol s, char* procname, OsiModule *m){
-    for (struct hook_symbol_resolve &hook_candidate : hooks){
-        if (hook_candidate.enabled){
-            if (hook_candidate.procname[0] == 0 || strncmp(procname, hook_candidate.procname, MAX_PATH_LEN -1) == 0){
-                if (hook_candidate.name[0] == 0 || strncmp(s.name, hook_candidate.name, MAX_PATH_LEN -1) == 0){
-                    //printf("name matches\n");
-                    if (hook_candidate.section[0] == 0 || strstr(s.section, hook_candidate.section) != NULL){
-                        (*(hook_candidate.cb))(cpu, &hook_candidate, s, m);
+
+void new_assignment_check_symbols(CPUState* cpu, unordered_map<string, struct symbol> ss, char* procname, OsiModule* m){
+    string module(m->name);
+    vector<tuple<struct hook_symbol_resolve, struct symbol, OsiModule>> symbols_to_flush;
+
+    set<string> matching_libs;
+    matching_libs.insert("");
+
+    for (auto strs : hooks){
+        string lib = strs.first;
+        auto h = strs.second;
+        if (!h.empty() && module.find(lib) != std::string::npos && !module.empty()){
+            matching_libs.insert(lib);
+        }
+    }
+
+    for (string lib : matching_libs){
+        for (auto symbol_matcher : hooks[lib]){
+            string symname = symbol_matcher.first;
+            set<struct hook_symbol_resolve> h = symbol_matcher.second;
+            for (auto hook_candidate: h){
+                if (hook_candidate.enabled){
+                    if (hook_candidate.procname[0] == 0 || strncmp(procname, hook_candidate.procname, MAX_PATH_LEN -1) == 0){
+                        if (symname.empty()){
+                            for (auto sym: ss){
+                                symbols_to_flush.push_back(make_tuple(hook_candidate, sym.second, *m));
+                            }
+                        }else{
+                            auto it = ss.find(symname);
+                            if (it != ss.end()){
+                                auto a = *it;
+                                symbols_to_flush.push_back(make_tuple(hook_candidate, a.second, *m));
+                            }
+                        }
                     }
                 }
             }
         }
     }
+    if (!symbols_to_flush.empty()){
+        printf("%s hooking %d symbols in %s\n", procname, (int)symbols_to_flush.size(), m->name);
+    }
+    while (!symbols_to_flush.empty()){
+        auto p = symbols_to_flush.back();
+        auto hook_candidate = get<0>(p);
+        auto s = get<1>(p);
+        auto m = get<2>(p);
+        (*(hook_candidate.cb))(cpu, &hook_candidate, s, &m);
+        symbols_to_flush.pop_back();
+    }
+    printf("finished adding symbols for %s:%s\n", procname, m->name);
 }
 
 struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_name, char* symbol){
@@ -146,15 +198,13 @@ struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_nam
         }
         //section name is A "does string exist in section"
         if (found != string::npos){
-            for (auto it: *section_vec){
-                struct symbol val = it;
+            string sym(symbol);
+            auto it = section_vec->find(sym);
+            if (it != section_vec->end()){
+                struct symbol val = it->second;
                 string val_str (val.name);
-                // symbol resolves on exact equality
-                if (val_str.compare(symbol) == 0){
-                    //printf("result: %s %s\n", section.first.c_str(), val.name);
-                    strncpy((char*) &val.section, section.first.c_str(), MAX_PATH_LEN -1);
-                    return val;
-                }
+                strncpy((char*) &val.section, section.first.c_str(), MAX_PATH_LEN -1);
+                return val;
             }
         } 
     }
@@ -167,29 +217,23 @@ struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_nam
 
 struct symbol get_best_matching_symbol(CPUState* cpu, target_ulong address, target_ulong asid){
     update_symbols_in_space(cpu);
-    struct symbol address_container;
-    address_container.address = address;
     struct symbol best_candidate;
     best_candidate.address = 0;
     memset((char*) & best_candidate.name, 0, MAX_PATH_LEN);
     memset((char*) & best_candidate.section, 0, MAX_PATH_LEN);
     for (const auto& section : symbols[asid]){
-        set<struct symbol> section_symbols = *section.second;
-        set<struct symbol>::iterator it = section_symbols.lower_bound(address_container);
-        if (it != section_symbols.end()){
-            if (it->address == address){
-                // if we found a match just break and move on.
-                memcpy(&best_candidate, &*it, sizeof(struct symbol));
-                break;
-            }
-            //check that there exists a lower value
-            if (it != section_symbols.begin()){
-                // get that lower value
-                it--;
-                // make comparison
-                if (it->address > best_candidate.address){
+        unordered_map<string, struct symbol> section_symbols = *section.second;
+        for (auto i : section_symbols){
+            struct symbol it = i.second;
+            if (it.address > address){
+                if (it.address == address){
+                    // if we found a match just break and move on.
+                    memcpy(&best_candidate, &it, sizeof(struct symbol));
+                    break;
+                }
+                if (it.address > best_candidate.address){
                     //copy it
-                    memcpy(&best_candidate, &*it, sizeof(struct symbol));
+                    memcpy(&best_candidate, &it, sizeof(struct symbol));
                 }
             }
         }
@@ -315,15 +359,9 @@ int get_numelements_symtab(CPUState* cpu, target_ulong base, target_ulong dt_has
     return (symtab_min - symtab)/(sizeof(ELF(Dyn)));
 }
 
-void new_assignment_check_symbols(CPUState* cpu, set<struct symbol> ss, char* procname, OsiModule* m){
-    dlsym_prepare_group_hook();
-    for (auto s : ss){
-        check_symbol_for_hook(cpu, s, procname, m);
-    }
-    dlsym_end_group_hook();
-}
-
 #define error_case(A,B,C) //printf("%s %s %s\n", A, B, C)
+
+void helper(){};
 
 
 void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule *m){
@@ -344,8 +382,13 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
 
     auto it = seen_libraries.find(candidate);
     if (it != seen_libraries.end()) {
-        //printf("Doing a copy of %s to %s\n", m->name, current->name);
+        if (strncmp("uaf", current->name,3) == 0){
+            helper();
+        }
+        //printf("Doing a copy of %s to %s for asid" TARGET_PTR_FMT "  and base of " TARGET_PTR_FMT "\n", m->name, current->name, panda_current_asid(cpu), m->base);
+        //printf("size of ASID before is %d\n", (int)symbols[asid].size());
         symbols[asid][name] = &seen_libraries[candidate];
+        //printf("size of ASID after is %d\n", (int)symbols[asid].size());
         new_assignment_check_symbols(cpu, seen_libraries[candidate], current->name, m);
         return;
     }
@@ -494,7 +537,8 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
                         strncpy((char*)&s.section, m->name, MAX_PATH_LEN-1);
                         s.address = m->base + a->st_value;
                         //printf("found symbol %s %s 0x%llx\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address);
-                        seen_libraries[c].insert(s);
+                        string sym_name(s.name);
+                        seen_libraries[c][sym_name] = s;
                     }
                 }
                 if (seen_libraries[c].size() > 0){
@@ -536,39 +580,38 @@ void update_symbols_in_space(CPUState* cpu){
     }
 }
 
-void* self_ptr;
-panda_cb pcb_asid;
-panda_cb pcb_btc;
-panda_cb pcb_btc_execve;
 
 
-void btc(CPUState *env, TranslationBlock *tb){
+void bbt(CPUState *env, target_ulong pc){
     if (!panda_in_kernel(env)){
         update_symbols_in_space(env);
-        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
+        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
     }
 }
 
 void all_sys_enter(CPUState *env, target_ulong pc, target_ulong callno){
-    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
 }
 
 void sys_exit_enter(CPUState *cpu, target_ulong pc, int exit_code){
     target_ulong asid = panda_current_asid(cpu);
-    symbols.erase(asid);
+    printf("Erasing all symbols from " TARGET_PTR_FMT "\n", asid);
+    //symbols.erase(asid);
 }
 
 bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
     //panda_please_flush_tb = true;
-    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
     return false;
 }
 
 void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
     //printf("got to program start 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count());
-    symbols.erase(panda_current_asid(env));
-    update_symbols_in_space(env);
+    //symbols.erase(panda_current_asid(env));
+    //update_symbols_in_space(env);
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
     h->enabled = false;
+    printf("flushing tb in program start\n");
 }
 
 void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values av){
@@ -582,13 +625,25 @@ void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values av){
     dlsym_add_hook(&h);
 }
 
+
+//void before_block_translate_adder(CPUState *env, target_ulong pc){
+//    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_hook_adder_callback);
+//    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
+//    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
+//}
+
 bool init_plugin(void *self) {
     self_ptr = self;
     pcb_asid.asid_changed = asid_changed;
     panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
-    pcb_btc.before_tcg_codegen = btc;
-    panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
-    panda_disable_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
+    pcb_bbt.before_block_translate = bbt;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
+    panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
+    
+    //before_block_translate_hook_adder_callback.before_block_translate = before_block_translate_adder; 
+    //panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_hook_adder_callback);
+    //panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_hook_adder_callback);
+
     panda_require("osi");
     assert(init_osi_api());
     panda_require("proc_start_linux");
@@ -609,9 +664,8 @@ bool init_plugin(void *self) {
     }
     if (hooks != NULL){
         dlsym_add_hook = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
-        dlsym_prepare_group_hook = (void(*)(void)) dlsym(hooks, "prepare_group_hook");
-        dlsym_end_group_hook = (void(*)(void)) dlsym(hooks, "end_group_hook");
-        if ((void*)dlsym_add_hook == NULL || (void*) dlsym_prepare_group_hook == NULL || dlsym_end_group_hook == NULL) {
+        dlsym_hooks_flush_pc = (void(*)(target_ulong pc)) dlsym(hooks, "hooks_flush_pc");
+        if ((void*)dlsym_add_hook == NULL) {
             printf("couldn't load add_hook from hooks\n");
             return false;
         }
