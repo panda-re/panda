@@ -20,6 +20,7 @@ class Expect(object):
 
         self.name = name
         self.logfile = None
+        logfile_base = "/tmp/expect"
         if logfile_base:
             self.logfile = open(f"{logfile_base}_{name}.txt", "wb")
 
@@ -45,7 +46,7 @@ class Expect(object):
             expectation = expectation.decode()
         self.last_prompt = expectation # approximation
         self.expectation_re = re.compile(expectation)
-        self.expectation_ends_re = re.compile(r'.*' + expectation)
+        self.expectation_ends_re = re.compile(r'(.*)' + expectation)
 
     def connect(self, filelike):
         if type(filelike) == int:
@@ -371,7 +372,7 @@ class Expect(object):
 
                 # Debugging - log current line to file
                 if self.logfile:
-                    self.logfile.write(b"\n\n"+repr(self.prior_lines + [self.current_line]).encode())
+                    self.logfile.write(("\n\n" + repr(self.prior_lines) + " Current line = " + repr(self.current_line)).encode())
 
                 # Translate the current_line buffer into plaintext, then determine if we're finished (bc we see new prompt)
                 # note this drops the echo'd command
@@ -386,9 +387,18 @@ class Expect(object):
                 #lines = [x.replace("\r", "") for x in plaintext.split("\n")]
                 # Check current line to see if it ends with prompt (indicating we finished)
                 # current_line is a bytearray. Need it as a string
-                current_line_s = str(self.current_line)
+                current_line_s = self.current_line.decode()
 
-                if self.expectation_ends_re.match(current_line_s) != None:
+                end_match = self.expectation_ends_re.match(current_line_s)
+                if end_match is not None:
+                    # This line matches the end regex - it's either like root@host:... or it's [output]root@host:...
+                    # We'll use self.expectation_re on the current line to identify where the prompt is and grab any final output
+                    final_output = end_match.groups(1)[0]
+                    if len(final_output):
+                        self.prior_lines.append(final_output)
+                        current_line_s = current_line_s[len(final_output):]
+
+                    # Note we may have a line like [output]root@.... in which case we need to identify where the prompt was
                     self.last_prompt = current_line_s
 
                     # Drop command we sent - note it won't be a direct match with last_cmd because of weird escape codes
