@@ -324,23 +324,19 @@ static inline bool panda_in_kernel(const CPUState *cpu) {
  * @brief Determines if guest is currently executing kernelspace code, regardless of privilege level.
  * Necessary because there's a small bit of kernelspace code that runs AFTER a switch to usermode privileges.
  * Therefore, certain analysis logic can't rely on panda_in_kernel_mode() alone.
- * Checking the userspace cutoff means this should work even if KASLR is enabled.
+ * Checking the MSB means this should work even if KASLR is enabled.
  */
 static inline bool panda_in_kernel_code_linux(CPUState *cpu) {
-    target_ulong curr_pc = panda_current_pc(cpu);
-#if (TARGET_LONG_BITS == 32)
     // https://www.kernel.org/doc/html/latest/vm/highmem.html
-    // Source link i386, but not arch specific
-    return (curr_pc > 0xc0000000);
-#elif (TARGET_LONG_BITS == 64)
     // https://github.com/torvalds/linux/blob/master/Documentation/x86/x86_64/mm.rst
-    // Source link x86_64, but not arch specific
-    // Below cut-off will work for both 4 and 5 level page tables, we don't have to know which the guest uses!
-    return (curr_pc > 0x00ffffffffffffff);
-#else
-#error "panda_in_kernel_code() not implemented for target bit width."
-    return false;
-#endif
+    // If addr MSB set -> kernelspace!
+
+    target_ulong msb_mask = ((target_ulong)1 << ((sizeof(target_long) * 8) - 1));
+    if (msb_mask & cpu->panda_guest_pc) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 /**

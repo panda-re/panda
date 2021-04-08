@@ -471,7 +471,7 @@ class Panda():
             saved_exception = self.hook_exit_exception
             del self.hook_exit_exception
             raise saved_exception
-            
+
 
     def end_analysis(self):
         '''
@@ -845,7 +845,7 @@ class Panda():
             Returns:
                 None
         '''
-        
+
         # this takes the blocking function and handles errors
         @blocking
         def wrapper():
@@ -853,8 +853,8 @@ class Panda():
                 f()
             except Exception as e:
                 self.blocking_queue_error = e
-                self.end_analysis() 
-        
+                self.end_analysis()
+
 
         # Keep the original function name instead of replacing it with 'wrapper'
         wrapper.__name__ = f.__name__
@@ -1061,9 +1061,22 @@ class Panda():
 
     def in_kernel(self, cpustate):
         '''
-        Returns true if the processor is in the privilege level corresponding to executing kernel code for any of the PANDA supported architectures.
+        Returns true if the processor is in the privilege level corresponding to kernel mode for any of the PANDA supported architectures.
+        Legacy alias for in_kernel_mode().
         '''
         return self.libpanda.panda_in_kernel_external(cpustate)
+
+    def in_kernel_mode(self, cpustate):
+        '''
+        Returns true if the processor is in the privilege level corresponding to kernel mode for any of the PANDA supported architectures.
+        '''
+        return self.libpanda.panda_in_kernel_mode_external(cpustate)
+
+    def in_kernel_code_linux(self, cpustate):
+        '''
+        Returns true if the current program counter corresponds to Linux kernelspace.
+        '''
+        return self.libpanda.panda_in_kernel_code_linux_external(cpustate)
 
     def g_malloc0(self, size):
         '''
@@ -1795,7 +1808,7 @@ class Panda():
             return tq
         else:
             return None
-        
+
     def taint_sym_enable(self, cont=True):
         """
         Inform python that taint is enabled.
@@ -1836,7 +1849,7 @@ class Panda():
             self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_sym_label_reg, [reg_num, i, label])
         self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
 
-    
+
     ############ Volatility mixins
     """
     Utilities to integrate Volatility with PANDA. Highly experimental.
@@ -2375,7 +2388,7 @@ class Panda():
         self.old_cb_list.append(self.registered_callbacks[name])
         del self.registered_callbacks[name]['handle']
         del self.registered_callbacks[name]
-    
+
     def delete_callbacks(self):
         #for name in self.registered_callbacks.keys():
         while len(self.registered_callbacks.keys()) > 0:
@@ -2532,7 +2545,7 @@ class Panda():
                 new_hook.asid = 0
             else:
                 new_hook.asid = asid
-            
+
             setattr(new_hook.cb,cb_type, hook_cb_passed)
             if kernel:
                 new_hook.km = self.libpanda.MODE_KERNEL_ONLY
@@ -2541,7 +2554,7 @@ class Panda():
             else:
                 new_hook.km = self.libpanda.MODE_ANY
             new_hook.enabled = enabled
-            
+
             self.plugins['hooks'].add_hook(new_hook)
             self.hook_list.append((new_hook, hook_cb_passed))
 
@@ -2562,7 +2575,7 @@ class Panda():
             return wrapper
         return decorator
 
-    
+
     def hook_symbol(self, libraryname, symbolname, kernel=False, procname=None,name=None,cb_type="before_tcg_codegen"):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
@@ -2597,7 +2610,7 @@ class Panda():
             else:
                 libname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
             self.ffi.memmove(new_hook.section,libname_ffi,len(libname_ffi))
-            
+
             if symbolname is not None:
                 symbolname_ffi = self.ffi.new("char[]",bytes(symbolname,"utf-8"))
             else:
@@ -2625,14 +2638,14 @@ class Panda():
 
             return wrapper
         return decorator
-    
+
     def get_best_matching_symbol(self, cpu, pc=None, asid=None):
         if asid is None:
             asid = self.current_asid(cpu)
         if pc is None:
             pc = self.current_pc(cpu)
         return self.plugins['dynamic_symbols'].get_best_matching_symbol(cpu, pc, asid)
-    
+
 
     """
     Provides the ability to interact with the hooks2 plugin and receive callbacks based on user-provided criteria.
@@ -2692,13 +2705,13 @@ class Panda():
 
     def hook2_single_insn(self, name, pc, kernel=False, procname=ffi.NULL, libname=ffi.NULL):
         return self.hook2(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
-    
+
     # MEM HOOKS
     def _hook_mem(self, start_address, end_address, before, after, read, write, virtual, physical, enabled):
         def decorator(fun):
             mem_hook_cb_type = self.ffi.callback("mem_hook_func_t")
             # Inform the plugin that it has a new breakpoint at addr
-            
+
             hook_cb_passed = mem_hook_cb_type(fun)
             mem_reg = self.ffi.new("struct memory_hooks_region*")
             mem_reg.start_address = start_address
@@ -2713,7 +2726,7 @@ class Panda():
             mem_reg.cb = hook_cb_passed
 
             hook = self.plugins['mem_hooks'].add_mem_hook(mem_reg)
-            
+
             self.mem_hooks[hook] = [mem_reg, hook_cb_passed]
 
             @mem_hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
@@ -2722,19 +2735,19 @@ class Panda():
 
             return wrapper
         return decorator
-    
+
     def hook_mem(self, start_address, end_address, on_before, on_after, on_read, on_write, on_virtual, on_physical, enabled):
         return self._hook_mem(start_address,end_address,on_before,on_after,on_read, on_write, on_virtual, on_physical, enabled)
 
     def hook_phys_mem_read(self, start_address, end_address, on_before=True, on_after=False, enabled=True):
         return self._hook_mem(start_address,end_address,on_before,on_after, True, False, False, True, True)
-    
+
     def hook_phys_mem_write(self, start_address, end_address, on_before=True, on_after=False):
         return self._hook_mem(start_address,end_address,on_before,on_after, False, True, False, True, True)
-    
+
     def hook_virt_mem_read(self, start_address, end_address, on_before=True, on_after=False):
         return self._hook_mem(start_address,end_address,on_before,on_after, True, False, True, False, True)
-    
+
     def hook_virt_mem_write(self, start_address, end_address, on_before=True, on_after=False):
         return self._hook_mem(start_address,end_address,on_before,on_after, False, True, True, False, True)
 
