@@ -521,7 +521,19 @@ class Panda():
         res_string_enum = ffi.string(ffi.cast("RRCTRL_ret",result))
         if res_string_enum != "RRCTRL_OK":
            raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})")
+    
+    def recording_exists(self, name):
+        '''
+        Checks if a recording file exists on disk.
 
+        Parameters:
+            name: name of the recording to check for
+        
+        Returns:
+            boolean true if file exists, false otherwise
+        '''
+        if exists(name + "-rr-snp"):
+            return True
 
     def run_replay(self, replaypfx):
         '''

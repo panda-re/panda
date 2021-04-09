@@ -373,8 +373,8 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
     string name(m->name);
 
     // we already read this one
-    if (symbols[asid].find(name) != symbols[asid].end()){
-        error_case(current->name, m->name, " in symbols[asid] already");
+    if (symbols[asid].find(name) != symbols[asid].end() && symbols[asid][name]->size() > 0){
+        error_case(current->name, m->name, " in symbols[asid] already and has");
         //printf("%s %s already exists \n", current->name, m->name);
         return;
     }
@@ -383,7 +383,7 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
 
     auto it = seen_libraries.find(candidate);
     if (it != seen_libraries.end()) {
-        //printf("Doing a copy of %s to %s for asid" TARGET_PTR_FMT "  and base of " TARGET_PTR_FMT "\n", m->name, current->name, panda_current_asid(cpu), m->base);
+        //printf("COPY %s:%s for asid " TARGET_PTR_FMT "  and base of " TARGET_PTR_FMT "\n",  current->name, m->name, panda_current_asid(cpu), m->base);
         //printf("size of ASID before is %d\n", (int)symbols[asid].size());
         symbols[asid][name] = &seen_libraries[candidate];
         //printf("size of ASID after is %d\n", (int)symbols[asid].size());
@@ -585,14 +585,10 @@ void bbt(CPUState *env, target_ulong pc){
     }
 }
 
-void all_sys_enter(CPUState *env, target_ulong pc, target_ulong callno){
-    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
-}
-
 void sys_exit_enter(CPUState *cpu, target_ulong pc, int exit_code){
     target_ulong asid = panda_current_asid(cpu);
-    printf("Erasing all symbols from " TARGET_PTR_FMT "\n", asid);
     symbols.erase(asid);
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
 }
 
 bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
@@ -606,6 +602,8 @@ void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
 }
 
 void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values av){
+    target_ulong asid = panda_current_asid(env);
+    symbols.erase(asid);
     struct hook h;
     h.addr = av.entry;
     h.asid = panda_current_asid(env);
@@ -629,10 +627,14 @@ bool init_plugin(void *self) {
     panda_require("proc_start_linux");
     PPP_REG_CB("proc_start_linux",on_rec_auxv, recv_auxv);
     #if defined(TARGET_PPC)
-        fprintf(stderr, "[ERROR] asidstory: PPC architecture not supported by syscalls2!\n");
+        fprintf(stderr, "[ERROR] dynamic_symbols: PPC architecture not supported by syscalls2!\n");
         return false;
     #else
-        panda_require("syscalls2");
+        // why? so we don't get 1000 messages telling us syscalls2 is already loaded
+        void* syscalls2 = panda_get_plugin_by_name("syscalls2");
+        if (syscalls2 == NULL){
+            panda_require("syscalls2");
+        }
         assert(init_syscalls2_api());
         PPP_REG_CB("syscalls2", on_sys_exit_enter, sys_exit_enter);
         PPP_REG_CB("syscalls2", on_sys_exit_group_enter, sys_exit_enter);
