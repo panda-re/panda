@@ -11,6 +11,13 @@ if version_info[0] < 3:
 import socket
 import threading
 
+
+import readline
+# XXX: readline is unused but necessary. We need to load python
+# readline, to preempt PANDA loading another version. PANDA
+# seems to work with python's but not vice-versa. This allows for
+# stdio interactions later (e.g., pdb, input())  without segfaults
+
 from os.path import realpath, exists, abspath, isfile, dirname, join as pjoin
 from os import dup, getenv, environ, path
 from random import randint
@@ -30,7 +37,7 @@ from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
 from .qcows import Qcows
-from .arch import ArmArch, MipsArch, X86Arch, X86_64Arch
+from .arch import ArmArch, Aarch64Arch, MipsArch, X86Arch, X86_64Arch
 
 # Might be worth importing and auto-initilizing a PLogReader
 # object within Panda for the current architecture?
@@ -77,6 +84,7 @@ class Panda():
         self.lambda_cnt = 0
         self.arch = None
         self.__sighandler = None
+        self.ending = False # True during end_analysis
         """
         A reference to an auto-instantiated `pandare.arch.PandaArch` subclass (e.g., `pandare.arch.X86Arch`)
         """
@@ -106,8 +114,10 @@ class Panda():
             self.arch = X86Arch(self)
         elif self.arch_name == "x86_64":
             self.arch = X86_64Arch(self)
-        elif self.arch_name in ["arm", "aarch64"]:
-            self.arch = ArmArch(self) # Not sure if this needs to be different for 64
+        elif self.arch_name in ["arm"]:
+            self.arch = ArmArch(self)
+        elif self.arch_name in ["aarch64"]:
+            self.arch = Aarch64Arch(self)
         elif self.arch_name in ["mips", "mipsel"]:
             self.arch = MipsArch(self)
         else:
@@ -417,6 +427,8 @@ class Panda():
                 print("Clearing prior main_loop_wait fns:", self.main_loop_wait_fnargs)
             self.main_loop_wait_fnargs = [] # [(fn, args), ...]
 
+        self.ending = False
+
         if debug:
             progress ("Running")
 
@@ -459,7 +471,7 @@ class Panda():
             saved_exception = self.hook_exit_exception
             del self.hook_exit_exception
             raise saved_exception
-            
+
 
     def end_analysis(self):
         '''
@@ -472,6 +484,7 @@ class Panda():
         without needing to wait for tasks in the main async thread
         '''
         self.athread.ending = True
+        self.ending = True
         self.unload_plugins()
         if self.running.is_set() or self.initializing.is_set():
 
@@ -522,6 +535,8 @@ class Panda():
         '''
         if not isfile(replaypfx+"-rr-snp") or not isfile(replaypfx+"-rr-nondet.log"):
             raise ValueError("Replay files not present to run replay of {}".format(replaypfx))
+
+        self.ending = False
 
         if debug:
             progress ("Replaying %s" % replaypfx)
@@ -702,6 +717,7 @@ class Panda():
                         Memory Access with error value.
                         Format string is incorrect.
         '''
+
         return self._memory_read(env, addr, length, physical=False, fmt=fmt)
 
     def _memory_read(self, env, addr, length, physical=False, fmt='bytearray'):
@@ -710,6 +726,9 @@ class Panda():
         Supports physical or virtual addresses
         Raises ValueError if read fails
         '''
+        if not isinstance(addr, int):
+            raise ValueError(f"Unsupported read from address {repr(addr)}")
+
         buf = ffi.new("char[]", length)
 
         # Force CFFI to parse addr as an unsigned value. Otherwise we get OverflowErrors
@@ -826,7 +845,7 @@ class Panda():
             Returns:
                 None
         '''
-        
+
         # this takes the blocking function and handles errors
         @blocking
         def wrapper():
@@ -834,8 +853,8 @@ class Panda():
                 f()
             except Exception as e:
                 self.blocking_queue_error = e
-                self.end_analysis() 
-        
+                self.end_analysis()
+
 
         # Keep the original function name instead of replacing it with 'wrapper'
         wrapper.__name__ = f.__name__
@@ -856,19 +875,21 @@ class Panda():
         size = ceil(size/1024)*1024 # Must be page-aligned
         return self.libpanda.map_memory(name_c, size, address)
 
-    def read_str(self, cpu, ptr):
+    def read_str(self, cpu, ptr, max_length=None):
         '''
         Helper to read a null-terminated string from guest memory given a pointer and CPU state
         May return an exception if the call to panda.virtual_memory_read fails (e.g., if you pass a
         pointer to an unmapped page)
         '''
         r = b""
-        while True:
+        idx = 0
+        while (max_length is None or idx < max_length):
             next_char = self.virtual_memory_read(cpu, ptr, 1) # If this raises an exn, don't mask it
             if next_char == b"\x00":
                 break
             r += next_char
             ptr += 1
+            idx += 1
         return r.decode("utf8", "ignore")
 
     def to_unsigned_guest(self, x):
@@ -1040,9 +1061,22 @@ class Panda():
 
     def in_kernel(self, cpustate):
         '''
-        Returns true if the processor is in the privilege level corresponding to executing kernel code for any of the PANDA supported architectures.
+        Returns true if the processor is in the privilege level corresponding to kernel mode for any of the PANDA supported architectures.
+        Legacy alias for in_kernel_mode().
         '''
         return self.libpanda.panda_in_kernel_external(cpustate)
+
+    def in_kernel_mode(self, cpustate):
+        '''
+        Returns true if the processor is in the privilege level corresponding to kernel mode for any of the PANDA supported architectures.
+        '''
+        return self.libpanda.panda_in_kernel_mode_external(cpustate)
+
+    def in_kernel_code_linux(self, cpustate):
+        '''
+        Returns true if the current program counter corresponds to Linux kernelspace.
+        '''
+        return self.libpanda.panda_in_kernel_code_linux_external(cpustate)
 
     def g_malloc0(self, size):
         '''
@@ -1774,7 +1808,7 @@ class Panda():
             return tq
         else:
             return None
-        
+
     def taint_sym_enable(self, cont=True):
         """
         Inform python that taint is enabled.
@@ -1815,7 +1849,7 @@ class Panda():
             self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_sym_label_reg, [reg_num, i, label])
         self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
 
-    
+
     ############ Volatility mixins
     """
     Utilities to integrate Volatility with PANDA. Highly experimental.
@@ -2161,6 +2195,7 @@ class Panda():
                     r = fun(*args, **kwargs)
                     #print(pandatype, type(r)) # XXX Can we use pandatype to determine requried return and assert if incorrect
                     #assert(isinstance(r, int)), "Invalid return type?"
+                    #print(fun, r) # Stuck with TypeError in _run_and_catch? Enable this to find where the bug is.
                     return r
                 except Exception as e:
                     # exceptions wont work in our thread. Therefore we print it here and then throw it after the
@@ -2302,6 +2337,11 @@ class Panda():
         '''
         Enable a panda plugin using its handle and cb.number as a unique ID
         '''
+
+        # During shutdown callback may be deleted before a request to enable comes through
+        if self.ending:
+            return
+
         if name not in self.registered_callbacks.keys():
             raise RuntimeError("No callback has been registered with name '{}'".format(name))
 
@@ -2318,6 +2358,10 @@ class Panda():
         If forever is specified, we'll never reenable the call- useful when
         you want to really turn off something with a procname filter.
         '''
+        # During shutdown callback may be deleted before a request to enable comes through
+        if self.ending:
+            return
+
         if name not in self.registered_callbacks.keys():
             raise RuntimeError("No callback has been registered with name '{}'".format(name))
         self.registered_callbacks[name]['enabled'] = False
@@ -2344,7 +2388,7 @@ class Panda():
         self.old_cb_list.append(self.registered_callbacks[name])
         del self.registered_callbacks[name]['handle']
         del self.registered_callbacks[name]
-    
+
     def delete_callbacks(self):
         #for name in self.registered_callbacks.keys():
         while len(self.registered_callbacks.keys()) > 0:
@@ -2354,7 +2398,7 @@ class Panda():
     ### PPP-style callbacks ###
     ###########################
 
-    def ppp(self, plugin_name, attr, name=None):
+    def ppp(self, plugin_name, attr, name=None, autoload=True):
         '''
         Decorator for plugin-to-plugin interface. Note this isn't in decorators.py
         becuase it uses the panda object.
@@ -2365,7 +2409,7 @@ class Panda():
             ...
         '''
 
-        if plugin_name not in self.plugins: # Could automatically load it?
+        if plugin_name not in self.plugins and autoload: # Could automatically load it?
             print(f"PPP automatically loaded plugin {plugin_name}")
 
         if not hasattr(self, "ppp_registered_cbs"):
@@ -2501,7 +2545,7 @@ class Panda():
                 new_hook.asid = 0
             else:
                 new_hook.asid = asid
-            
+
             setattr(new_hook.cb,cb_type, hook_cb_passed)
             if kernel:
                 new_hook.km = self.libpanda.MODE_KERNEL_ONLY
@@ -2510,7 +2554,7 @@ class Panda():
             else:
                 new_hook.km = self.libpanda.MODE_ANY
             new_hook.enabled = enabled
-            
+
             self.plugins['hooks'].add_hook(new_hook)
             self.hook_list.append((new_hook, hook_cb_passed))
 
@@ -2531,7 +2575,7 @@ class Panda():
             return wrapper
         return decorator
 
-    
+
     def hook_symbol(self, libraryname, symbolname, kernel=False, procname=None,name=None,cb_type="before_tcg_codegen"):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
@@ -2546,7 +2590,7 @@ class Panda():
             elif cb_type == "before_block_translate":
                 hook_cb_type = self.ffi.callback("void(CPUState* env, target_ptr_t pc, struct hook*)")
             elif cb_type == "before_block_exec_invalidate_opt":
-                hook_cb_type = "bool(CPUState* env, TranslationBlock*, struct hook*)"
+                hook_cb_type = self.ffi.callback("bool(CPUState* env, TranslationBlock*, struct hook*)")
             else:
                 print("function type not supported")
                 return
@@ -2566,7 +2610,7 @@ class Panda():
             else:
                 libname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
             self.ffi.memmove(new_hook.section,libname_ffi,len(libname_ffi))
-            
+
             if symbolname is not None:
                 symbolname_ffi = self.ffi.new("char[]",bytes(symbolname,"utf-8"))
             else:
@@ -2594,14 +2638,14 @@ class Panda():
 
             return wrapper
         return decorator
-    
+
     def get_best_matching_symbol(self, cpu, pc=None, asid=None):
         if asid is None:
             asid = self.current_asid(cpu)
         if pc is None:
             pc = self.current_pc(cpu)
         return self.plugins['dynamic_symbols'].get_best_matching_symbol(cpu, pc, asid)
-    
+
 
     """
     Provides the ability to interact with the hooks2 plugin and receive callbacks based on user-provided criteria.
@@ -2661,13 +2705,13 @@ class Panda():
 
     def hook2_single_insn(self, name, pc, kernel=False, procname=ffi.NULL, libname=ffi.NULL):
         return self.hook2(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
-    
+
     # MEM HOOKS
     def _hook_mem(self, start_address, end_address, before, after, read, write, virtual, physical, enabled):
         def decorator(fun):
             mem_hook_cb_type = self.ffi.callback("mem_hook_func_t")
             # Inform the plugin that it has a new breakpoint at addr
-            
+
             hook_cb_passed = mem_hook_cb_type(fun)
             mem_reg = self.ffi.new("struct memory_hooks_region*")
             mem_reg.start_address = start_address
@@ -2682,7 +2726,7 @@ class Panda():
             mem_reg.cb = hook_cb_passed
 
             hook = self.plugins['mem_hooks'].add_mem_hook(mem_reg)
-            
+
             self.mem_hooks[hook] = [mem_reg, hook_cb_passed]
 
             @mem_hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
@@ -2691,19 +2735,19 @@ class Panda():
 
             return wrapper
         return decorator
-    
+
     def hook_mem(self, start_address, end_address, on_before, on_after, on_read, on_write, on_virtual, on_physical, enabled):
         return self._hook_mem(start_address,end_address,on_before,on_after,on_read, on_write, on_virtual, on_physical, enabled)
 
     def hook_phys_mem_read(self, start_address, end_address, on_before=True, on_after=False, enabled=True):
         return self._hook_mem(start_address,end_address,on_before,on_after, True, False, False, True, True)
-    
+
     def hook_phys_mem_write(self, start_address, end_address, on_before=True, on_after=False):
         return self._hook_mem(start_address,end_address,on_before,on_after, False, True, False, True, True)
-    
+
     def hook_virt_mem_read(self, start_address, end_address, on_before=True, on_after=False):
         return self._hook_mem(start_address,end_address,on_before,on_after, True, False, True, False, True)
-    
+
     def hook_virt_mem_write(self, start_address, end_address, on_before=True, on_after=False):
         return self._hook_mem(start_address,end_address,on_before,on_after, False, True, True, False, True)
 

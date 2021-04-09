@@ -171,7 +171,8 @@ void new_assignment_check_symbols(CPUState* cpu, unordered_map<string, struct sy
         }
     }
     if (!symbols_to_flush.empty()){
-        printf("%s hooking %d symbols in %s\n", procname, (int)symbols_to_flush.size(), m->name);
+        //panda_do_flush_tb();
+        //printf("%s hooking %d symbols in %s\n", procname, (int)symbols_to_flush.size(), m->name);
     }
     while (!symbols_to_flush.empty()){
         auto p = symbols_to_flush.back();
@@ -181,7 +182,7 @@ void new_assignment_check_symbols(CPUState* cpu, unordered_map<string, struct sy
         (*(hook_candidate.cb))(cpu, &hook_candidate, s, &m);
         symbols_to_flush.pop_back();
     }
-    printf("finished adding symbols for %s:%s\n", procname, m->name);
+    //printf("finished adding symbols for %s:%s\n", procname, m->name);
 }
 
 struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_name, char* symbol){
@@ -382,9 +383,6 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
 
     auto it = seen_libraries.find(candidate);
     if (it != seen_libraries.end()) {
-        if (strncmp("uaf", current->name,3) == 0){
-            helper();
-        }
         //printf("Doing a copy of %s to %s for asid" TARGET_PTR_FMT "  and base of " TARGET_PTR_FMT "\n", m->name, current->name, panda_current_asid(cpu), m->base);
         //printf("size of ASID before is %d\n", (int)symbols[asid].size());
         symbols[asid][name] = &seen_libraries[candidate];
@@ -580,8 +578,6 @@ void update_symbols_in_space(CPUState* cpu){
     }
 }
 
-
-
 void bbt(CPUState *env, target_ulong pc){
     if (!panda_in_kernel(env)){
         update_symbols_in_space(env);
@@ -596,22 +592,17 @@ void all_sys_enter(CPUState *env, target_ulong pc, target_ulong callno){
 void sys_exit_enter(CPUState *cpu, target_ulong pc, int exit_code){
     target_ulong asid = panda_current_asid(cpu);
     printf("Erasing all symbols from " TARGET_PTR_FMT "\n", asid);
-    //symbols.erase(asid);
+    symbols.erase(asid);
 }
 
 bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
-    //panda_please_flush_tb = true;
     panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
     return false;
 }
 
 void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
-    //printf("got to program start 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count());
-    //symbols.erase(panda_current_asid(env));
-    //update_symbols_in_space(env);
     panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
     h->enabled = false;
-    printf("flushing tb in program start\n");
 }
 
 void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values av){
@@ -625,13 +616,6 @@ void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values av){
     dlsym_add_hook(&h);
 }
 
-
-//void before_block_translate_adder(CPUState *env, target_ulong pc){
-//    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_hook_adder_callback);
-//    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
-//    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
-//}
-
 bool init_plugin(void *self) {
     self_ptr = self;
     pcb_asid.asid_changed = asid_changed;
@@ -639,10 +623,6 @@ bool init_plugin(void *self) {
     pcb_bbt.before_block_translate = bbt;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
     panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
-    
-    //before_block_translate_hook_adder_callback.before_block_translate = before_block_translate_adder; 
-    //panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_hook_adder_callback);
-    //panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_hook_adder_callback);
 
     panda_require("osi");
     assert(init_osi_api());
