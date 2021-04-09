@@ -100,7 +100,7 @@ vector<pair<hooks_panda_cb, panda_cb_type>> symbols_to_handle;
 void handle_hook_return (CPUState *cpu, struct hook_symbol_resolve *sh, struct symbol s, OsiModule* m){
     int id = sh->id;
     pair<hooks_panda_cb,panda_cb_type> resolved = symbols_to_handle[id];
-    printf("handle_hook_return @ 0x%llx for \"%s\" in \"%s\" @ 0x%llx ASID: 0x%llx offset: 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count(), s.name, s.section, (long long unsigned int) s.address, (long long unsigned int) panda_current_asid(cpu), (long long unsigned int) s.address - m->base);
+    //.printf("handle_hook_return @ 0x%llx for \"%s\" in \"%s\" @ 0x%llx ASID: 0x%llx offset: 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count(), s.name, s.section, (long long unsigned int) s.address, (long long unsigned int) panda_current_asid(cpu), (long long unsigned int) s.address - m->base);
     struct hook new_hook;
     new_hook.addr = s.address;
     new_hook.asid = panda_current_asid(cpu);
