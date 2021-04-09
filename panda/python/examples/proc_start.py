@@ -55,10 +55,11 @@ def rec_auxv(cpu, tb, av):
     @panda.hook(av.entry)
     def hook(cpu,tb, h):
         try:
-            
             print(panda.virtual_memory_read(cpu,av.program_header,4))
+            print('this should read "\\x7f7FELF" (though sometimes it wont if its not in memory)')
         except Exception as e:
-            print(f"hook failed {str(e)}")
+            print(f"whoops. failed to read. probably not paged in yet. {str(e)}")
+        h.enabled = False
     
 
 panda.run()
