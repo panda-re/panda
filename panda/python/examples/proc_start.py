@@ -52,4 +52,13 @@ def rec_auxv(cpu, tb, av):
     print(f"[bold blue]AT_PLATFORM:     {av.platform}[/bold blue]")
     print("[bold magenta][END PyPANDA on_rec_auxv][/bold magenta]")
 
+    @panda.hook(av.entry)
+    def hook(cpu,tb, h):
+        try:
+            
+            print(panda.virtual_memory_read(cpu,av.program_header,4))
+        except Exception as e:
+            print(f"hook failed {str(e)}")
+    
+
 panda.run()
