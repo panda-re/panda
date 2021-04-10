@@ -125,7 +125,7 @@ void (*dlsym_hooks_flush_pc)(target_ulong pc);
 
 void hook_symbol_resolution(struct hook_symbol_resolve *h){
     // ISSUE: Doesn't resolve for hooks that have been previously resolved.
-    printf("adding hook \"%s\" \"%s\" %llx\n", h->section, h->name, (long long unsigned int) h->cb);
+    //printf("adding hook \"%s\" \"%s\" %llx\n", h->section, h->name, (long long unsigned int) h->cb);
     string section(h->section);
     string name(h->name);
     hooks[section][name].insert(*h);
