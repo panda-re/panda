@@ -30,20 +30,28 @@ PANDAENDCOMMENT */
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Value.h>
+#include <llvm/IR/Operator.h>
+
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Function.h>
 
 #include "qemu/osdep.h"        // needed for host-utils.h
 #include "qemu/host-utils.h"   // needed for clz64 and ctz64
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
+#define SHAD_LLVM
 #include "panda/tcg-llvm.h"
 
 #include "addr.h"
 #include "shad.h"
 #include "label_set.h"
+#include "sym_label.h"
 #include "taint2.h"
 #include "taint_ops.h"
 #include "taint_utils.h"
+#define CONC_LVL CONC_LVL_OFF
+#include "concolic.h"
 
 extern TCGLLVMTranslator *tcg_llvm_translator;
 extern ShadowState *shadow;
@@ -54,9 +62,220 @@ extern "C" {
 
 extern bool tainted_pointer;
 extern bool detaint_cb0_bytes;
+extern bool symexEnabled;
 
 }
 
+extern z3::context context;
+
+std::string format_hex(uint64_t n) {
+    std::stringstream stream;
+    stream << std::hex << n;
+    std::string result( stream.str() );
+    return result;
+}
+
+/* Symbolic helper functions */
+bool is_concrete_byte(z3::expr byte) {
+
+    z3::expr zero = context.bv_val(0, 8);
+    z3::expr simplified = (zero == byte).simplify();
+
+    return simplified.is_true() || simplified.is_false() ||
+           byte.is_true() || byte.is_false();
+
+}
+
+SymLabelP get_or_alloc_sym_label(Shad *shad, uint64_t addr) {
+    if (!shad->query_full(addr)->sym) {
+        shad->query_full(addr)->sym = new SymLabel();
+    }
+    return shad->query_full(addr)->sym;
+}
+
+z3::expr get_byte(z3::expr *ptr, uint8_t offset, uint8_t concrete_byte, bool* symbolic) {
+
+    if (ptr == nullptr)
+        return context.bv_val(concrete_byte, 8);
+
+    if (ptr->is_bool()) {
+        if (ptr->is_true()) {
+            assert(concrete_byte == 1);
+            return context.bv_val(1, 8);
+        }
+        else if (ptr->is_false()) {
+            assert(concrete_byte == 0);
+            return context.bv_val(0, 8);
+        }
+        else {
+            if (symbolic) *symbolic = true;
+            return ite(*ptr, context.bv_val(1, 8), context.bv_val(0, 8));
+        }
+    }
+
+    z3::expr expr = ptr->extract(8*offset + 7, 8*offset).simplify();
+    if (symbolic) *symbolic = true;
+    // assert(!is_concrete_byte(expr));
+    return expr;
+}
+
+z3::expr bytes_to_expr(Shad *shad, uint64_t src, uint64_t size,
+        uint64_t concrete, bool* symbolic) {
+    z3::expr expr(context);
+    for (uint64_t i = 0; i < size; i++) {
+        auto src_tdp = shad->query_full(src+i)->sym;
+        uint8_t concrete_byte = (concrete >> (8*i))&0xff;
+        if (i == 0) {
+            if (src_tdp && src_tdp->full_size > size) {
+                *symbolic = true; //?
+                return src_tdp->full_expr->extract(size*8-1, 0).simplify();
+            }
+            else if (src_tdp && src_tdp->full_size == size) {
+                // std::cerr << "fast path: " << *src_tdp->full_expr << std::endl;
+                *symbolic = true;
+                return *src_tdp->full_expr;
+            }
+            else if (src_tdp && src_tdp->full_size > 0) {
+                *symbolic = true;
+                expr = *src_tdp->full_expr;
+                i += (src_tdp->full_size - 1);
+            }
+            else if (src_tdp) {
+                expr = get_byte(src_tdp->expr, src_tdp->offset, concrete_byte, symbolic);
+            }
+            else {
+                expr = context.bv_val(concrete_byte, 8);
+            }
+        }
+        else {
+            if (src_tdp)
+                expr = concat(get_byte(src_tdp->expr, src_tdp->offset, concrete_byte, symbolic), expr);
+            else
+                expr = concat(context.bv_val(concrete_byte, 8), expr);
+        }
+    }
+    return expr.simplify();
+}
+
+void invalidate_full(Shad *shad, uint64_t src, uint64_t size) {
+    auto src_tdp = shad->query_full(src)->sym;
+    if (src_tdp) {
+        src_tdp->full_expr = nullptr;
+        src_tdp->full_size = 0;
+        shad->query_full(src)->sym = nullptr;
+    }
+}
+
+void copy_symbols(Shad *shad_dest, uint64_t dest, Shad *shad_src, 
+        uint64_t src, uint64_t size) {
+
+    if (size == 255)
+        assert(false);
+    CDEBUG(std::cerr << "copy_symbols shad src " << src << " dst " << dest << "\n");
+    for (uint64_t i = 0; i < size; i++) {
+
+        // When copy src bytes without symbolic data, make sure to clean dest byte
+        if (!shad_src->query_full(src+i)->sym) {
+            shad_src->query_full(dest+i)->sym = nullptr;
+            continue;
+        }
+            
+        auto src_tdp = shad_src->query_full(src+i)->sym;
+        auto dst_tdp = get_or_alloc_sym_label(shad_dest, dest+i);
+        assert(src_tdp && dst_tdp);
+
+        if (i == 0) {
+            if (src_tdp->full_size > size) {
+                // large to small
+                dst_tdp->full_expr = new z3::expr(
+                    src_tdp->full_expr->extract(8*size-1, 0).simplify());
+                dst_tdp->full_size = size;
+            }
+            else if (src_tdp->full_size > 0) {
+                // small to large or equal
+                dst_tdp->full_expr = src_tdp->full_expr;
+                dst_tdp->full_size = src_tdp->full_size;
+            }
+        }
+
+        dst_tdp->expr = src_tdp->expr;
+        dst_tdp->offset = src_tdp->offset;
+    }
+}
+
+void expr_to_bytes(z3::expr expr, Shad *shad, uint64_t dest, 
+        uint64_t size) {
+    z3::expr *ptr = new z3::expr(expr);
+    for (uint64_t i = 0; i < size; i++) {
+        auto dst_tdp = get_or_alloc_sym_label(shad, dest+i);
+        if (i == 0 && size != 1) {
+            dst_tdp->full_expr = new z3::expr(expr);
+            dst_tdp->full_size = size;
+        }
+        dst_tdp->expr = ptr;
+        dst_tdp->offset = i;
+    }
+}
+
+z3::expr icmp_compute(uint64_t pred, z3::expr expr1, z3::expr expr2) {
+
+    llvm::CmpInst::Predicate p = (llvm::CmpInst::Predicate) pred;
+    switch(p) {
+        case llvm::ICmpInst::ICMP_EQ:
+            return expr1 == expr2;
+        case llvm::ICmpInst::ICMP_NE:
+            return expr1 != expr2;
+        case llvm::ICmpInst::ICMP_UGT:
+            return z3::ugt(expr1, expr2);
+        case llvm::ICmpInst::ICMP_UGE:
+            return z3::uge(expr1, expr2);
+        case llvm::ICmpInst::ICMP_ULT:
+            return z3::ult(expr1, expr2);
+        case llvm::ICmpInst::ICMP_ULE:
+            return z3::ule(expr1, expr2);
+        case llvm::ICmpInst::ICMP_SGT:
+            return expr1 > expr2;
+        case llvm::ICmpInst::ICMP_SGE:
+            return expr1 >= expr2;
+        case llvm::ICmpInst::ICMP_SLT:
+            return expr1 < expr2;
+        case llvm::ICmpInst::ICMP_SLE:
+            return expr1 <= expr2;
+        default:
+            assert(false);
+            return z3::expr(context);
+    }
+}
+
+z3::expr icmp_compute(uint64_t pred, z3::expr expr1,
+        uint64_t val, uint64_t nbytes) {
+    assert(expr1.get_sort().is_bv());
+    z3::expr expr2 = context.bv_val(val, nbytes*8);
+    return icmp_compute(pred, expr1, expr2);
+}
+
+z3::expr bitop_compute(unsigned opcode, z3::expr expr1, z3::expr expr2) {
+    switch(opcode) {
+        case llvm::Instruction::And:
+            return expr1 & expr2;
+        case llvm::Instruction::Or:
+            return expr1 | expr2;
+        case llvm::Instruction::Xor:
+            return expr1 ^ expr2;
+        default:
+            assert(false);
+            return z3::expr(context);
+    }
+}
+
+z3::expr bitop_compute(unsigned opcode, z3::expr expr1,
+        uint64_t val, uint64_t nbytes) {
+    assert(expr1.get_sort().is_bv());
+    z3::expr expr2 = context.bv_val(val, nbytes*8);
+    return bitop_compute(opcode, expr1, expr2);
+}
+
+/* taint2 functions */
 PPP_PROT_REG_CB(on_taint_prop);
 PPP_CB_BOILERPLATE(on_taint_prop);
 
@@ -138,8 +357,8 @@ void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size)
     for (int i = 0; i < size; i++)
     {
         curAddr = addr + i;
-        TaintData td = shad->query_full(curAddr);
-
+        TaintData td = *shad->query_full(curAddr);
+        
         // query_full ALWAYS returns a TaintData object - but there's not really
         // any taint (controlled or not) unless there are labels too
         if ((td.cb_mask == 0) && (td.ls != NULL) && (td.ls->size() > 0))
@@ -262,34 +481,8 @@ void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
     std::vector<const llvm::ConstantInt *> operands = getOperands(num_operands,
         ap);
     va_end(ap);
-
-    if (opcode && (opcode == llvm::Instruction::And ||
-            opcode == llvm::Instruction::Or)) {
-        const llvm::ConstantInt *intval = operands[0];
-        if (nullptr == intval) {
-            intval = operands[1];
-        }
-        assert(intval);
-        uint64_t val = intval->getValue().getLimitedValue();
-
-        for (uint64_t i = 0; i < size; i++) {
-            uint8_t mask = (val >> (8*i))&0xff;
-            if (opcode == llvm::Instruction::And) {
-                if (mask == 0)
-                    shad_dest->set_full(dest + i, TaintData());
-                else
-                    shad_dest->set_full(dest + i, shad_src->query_full(src+i));
-            }
-            else if (opcode == llvm::Instruction::Or) {
-                if (mask == 0xff)
-                    shad_dest->set_full(dest + i, TaintData());
-                else
-                    shad_dest->set_full(dest + i, shad_src->query_full(src+i));
-            }
-        }
-    } else {
-        Shad::copy(shad_dest, dest, shad_src, src, size);
-    }
+    concolic_copy(shad_dest, dest, shad_src, src, size, opcode,
+                    instruction_flags, operands);
 
     update_cb(shad_dest, dest, shad_src, src, size, opcode, instruction_flags,
         operands);
@@ -302,7 +495,7 @@ void taint_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src, uint64_t src,
 
 void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
         uint64_t src1, uint64_t src2, uint64_t src_size, uint64_t opcode,
-        uint64_t result_unused)
+        uint64_t result_unused, uint64_t val1, uint64_t val2, uint64_t unused)
 {
     uint64_t shad_size = shad->get_size();
     if (unlikely(dest >= shad_size || src1 >= shad_size || src2 >= shad_size)) {
@@ -313,11 +506,12 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
     taint_log("pcompute: %s[%lx+%lx] <- %lx + %lx\n",
             shad->name(), dest, src_size, src1, src2);
     uint64_t i;
+    bool changed = false;
     for (i = 0; i < src_size; ++i) {
         TaintData td = TaintData::make_union(
-                shad->query_full(src1 + i),
-                shad->query_full(src2 + i), true);
-        shad->set_full(dest + i, td);
+                *shad->query_full(src1 + i),
+                *shad->query_full(src2 + i), true);
+        changed |= shad->set_full(dest + i, td);
     }
     // Taint propagation notifications.
     Addr dest_addr = get_addr_from_shad(shad, dest);
@@ -362,38 +556,69 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
     {
         detaint_on_cb0(shad, dest, src_size);
     }
+
+    if (!changed || !symexEnabled) return;
+
+    switch(opcode) {
+        case llvm::Instruction::And:
+        case llvm::Instruction::Or:
+        case llvm::Instruction::Xor: {
+
+            invalidate_full(shad, dest, src_size);
+            for (int i = 0; i < src_size; i++) {
+                uint8_t byte1 = (val1 >> (8*i))&0xff;
+                uint8_t byte2 = (val2 >> (8*i))&0xff;
+                bool symbolic = false;
+                z3::expr expr1 = bytes_to_expr(shad, src1+i, 1, byte1, &symbolic);
+                z3::expr expr2 = bytes_to_expr(shad, src2+i, 1, byte2, &symbolic);
+                if (!symbolic) continue;
+                z3::expr expr = bitop_compute(opcode, expr1, expr2);
+                // simplify because one input may be constant
+                expr = expr.simplify();
+                if (!is_concrete_byte(expr))
+                    expr_to_bytes(expr, shad, dest+i, 1);
+            }
+            break;
+        }
+        default: {
+            CINFO(llvm::errs() << "Untracked taint_parallel_compute op: " << opcode << '\n');
+        }
+
+    }
 }
 
 static inline TaintData mixed_labels(Shad *shad, uint64_t addr, uint64_t size,
                                      bool increment_tcn)
 {
-    TaintData td(shad->query_full(addr));
+    TaintData td(*shad->query_full(addr));
     for (uint64_t i = 1; i < size; ++i) {
-        td = TaintData::make_union(td, shad->query_full(addr + i), false);
+        td = TaintData::make_union(td, *shad->query_full(addr + i), false);
     }
 
     if (increment_tcn) td.increment_tcn();
     return td;
 }
 
-static inline void bulk_set(Shad *shad, uint64_t addr, uint64_t size,
+static inline bool bulk_set(Shad *shad, uint64_t addr, uint64_t size,
                             TaintData td)
 {
     uint64_t i;
+    bool change = false;
     for (i = 0; i < size; ++i) {
-        shad->set_full(addr + i, td);
+        change |= shad->set_full(addr + i, td);
     }
+    return change;
 }
 
 void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         uint64_t src1, uint64_t src2, uint64_t src_size, uint64_t opcode,
-        uint64_t result_unused)
+        uint64_t result_unused, uint64_t val1, uint64_t val2, uint64_t pred)
 {
     TaintData td = TaintData::make_union(
             mixed_labels(shad, src1, src_size, false),
             mixed_labels(shad, src2, src_size, false),
             true);
-    bulk_set(shad, dest, dest_size, td);
+    bool change = bulk_set(shad, dest, dest_size, td);
     taint_log("mcompute: %s[%lx+%lx] <- %lx + %lx ",
             shad->name(), dest, dest_size, src1, src2);
     taint_log_labels(shad, dest, dest_size);
@@ -406,6 +631,115 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         PPP_RUN_CB(on_taint_prop, dest_addr, src1_addr, src_size);
         PPP_RUN_CB(on_taint_prop, dest_addr, src2_addr, src_size);
     }
+    
+    if (!change || !symexEnabled) return;
+
+    switch(opcode) {
+    case llvm::Instruction::Sub:
+    case llvm::Instruction::Add:
+    case llvm::Instruction::UDiv:
+    case llvm::Instruction::Mul:
+    {
+        bool symbolic = false;
+        z3::expr expr1 = bytes_to_expr(shad, src1, src_size, val1, &symbolic);
+        z3::expr expr2 = bytes_to_expr(shad, src2, src_size, val2, &symbolic);
+
+        if (!symbolic) break;
+
+        z3::expr expr(context);
+        if (opcode == llvm::Instruction::Sub)
+            expr = expr1 - expr2;
+        else if (opcode == llvm::Instruction::Add)
+            expr = expr1 + expr2;
+        else if (opcode == llvm::Instruction::UDiv)
+            expr = expr1 / expr2;
+        else if (opcode == llvm::Instruction::Mul)
+            expr = expr1 * expr2;
+
+        CDEBUG(std::cerr << "output expr: " << expr << "\n");
+
+        expr_to_bytes(expr, shad, dest, src_size);
+        break;
+    }
+    case llvm::Instruction::ICmp: {
+        bool symbolic = false;
+        z3::expr expr1 = bytes_to_expr(shad, src1, src_size, val1, &symbolic);
+        z3::expr expr2 = bytes_to_expr(shad, src2, src_size, val2, &symbolic);
+
+        if (!symbolic) break;
+        CDEBUG(std::cerr << "Value 1: " << expr1 << "\n");
+        CDEBUG(std::cerr << "Value 2: " << expr2 << "\n");
+        z3::expr expr = icmp_compute(pred, expr1, expr2);
+        auto sym = get_or_alloc_sym_label(shad, dest);
+        sym->expr = new z3::expr(expr);
+        sym->offset = 0;
+        break;
+    }
+    case llvm::Instruction::Call: {
+
+        assert(dest_size == 2 * src_size);
+        bool symbolic = false;
+        z3::expr expr1 = bytes_to_expr(shad, src1, src_size, val1, &symbolic);
+        z3::expr expr2 = bytes_to_expr(shad, src2, src_size, val2, &symbolic);
+
+        if (!symbolic) break;
+
+        CDEBUG(std::cerr << "expr1: " << expr1 << "\n");
+        CDEBUG(std::cerr << "expr2: " << expr2 << "\n");
+        // Assuming it's the following functions
+        // llvm.uadd.with.overflow.i8
+        // llvm.uadd.with.overflow.i32
+        z3::expr expr = expr1 + expr2;
+        CDEBUG(std::cerr << "expr: " << expr << "\n");
+
+        expr_to_bytes(expr, shad, dest, src_size);
+
+        z3::expr overflow = z3::ult(expr, expr1) && z3::ult(expr, expr2);
+        overflow = overflow.simplify();
+        CDEBUG(std::cerr << "overflow: " << overflow << "\n");
+        auto dst_tdp = get_or_alloc_sym_label(shad, dest+src_size);
+        if (!overflow.is_true() && !overflow.is_false()) {
+            dst_tdp->expr = new z3::expr(overflow);
+            dst_tdp->offset = 0;
+        }
+        break;
+    }        
+    case llvm::Instruction::Shl:
+    case llvm::Instruction::LShr:
+    case llvm::Instruction::AShr: {
+
+        bool symbolic = false;
+        z3::expr expr(context);
+        z3::expr expr1 = bytes_to_expr(shad, src1, src_size, val1, &symbolic);
+        z3::expr expr2 = bytes_to_expr(shad, src2, src_size, val2, &symbolic);
+
+        if (!symbolic) break;
+
+        switch (opcode)
+        {
+        case llvm::Instruction::Shl:
+            expr = shl(expr1, expr2);
+            break;
+        case llvm::Instruction::LShr:
+            expr = lshr(expr1, expr2);
+            break;
+        case llvm::Instruction::AShr:
+            expr = ashr(expr1, expr2);
+            break;
+        default:
+            assert(false);
+            break;
+        }
+        expr = expr.simplify();
+        expr_to_bytes(expr, shad, dest, src_size);
+
+        break;
+    }
+    default:
+        CINFO(llvm::errs() << "Untracked taint_mix_compute instruction opcode: " << opcode << "\n");
+        break;
+    }
+
 }
 
 void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
@@ -432,13 +766,13 @@ void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         if (cleanArg == 0) return ; // mul X untainted 0 -> no taint prop
         else if (cleanArg == 1) { //mul X untainted 1(one) should be a parallel taint
             taint_parallel_compute(shad, dest, dest_size, src1, src2, src_size,
-                opcode, result_unused);
+                opcode, result_unused, arg1_lo, arg2_lo, result_unused);
             taint_log("mul_com: mul X 1\n");
             return;
         }
     }
     taint_mix_compute(shad, dest, dest_size, src1, src2,  src_size, opcode,
-        result_unused);
+        result_unused, arg1_lo, arg2_lo, -1);
 }
 
 void taint_delete(Shad *shad, uint64_t dest, uint64_t size)
@@ -454,15 +788,15 @@ void taint_delete(Shad *shad, uint64_t dest, uint64_t size)
 void taint_set(Shad *shad_dest, uint64_t dest, uint64_t dest_size,
                Shad *shad_src, uint64_t src)
 {
-    bulk_set(shad_dest, dest, dest_size, shad_src->query_full(src));
+    bulk_set(shad_dest, dest, dest_size, *shad_src->query_full(src));
 }
 
 void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
-        uint64_t src_size, uint64_t opcode, uint64_t instruction_flags,
-        uint64_t num_operands, ...)
+        uint64_t src_size, uint64_t concrete, uint64_t pred, uint64_t opcode,
+        uint64_t instruction_flags, uint64_t num_operands, ...)
 {
     TaintData td = mixed_labels(shad, src, src_size, true);
-    bulk_set(shad, dest, dest_size, td);
+    bool change = bulk_set(shad, dest, dest_size, td);
     taint_log("mix: %s[%lx+%lx] <- %lx+%lx ",
             shad->name(), dest, dest_size, src, src_size);
     taint_log_labels(shad, dest, dest_size);
@@ -482,6 +816,97 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
         Addr dest_addr = get_addr_from_shad(shad, dest + i);
         PPP_RUN_CB(on_taint_prop, dest_addr, src_addr, src_size);
     }
+
+    if (!change || !symexEnabled) return;
+    
+    uint64_t val = 0;
+    if (operands.size() >= 2 && (operands[0] || operands[1])) {
+        val = (operands[0] ? operands[0] : operands[1])->getValue().getLimitedValue();
+    }
+    else {
+        std::cerr << "opcode: " << opcode << "\n";
+        std::cerr << "size: " << operands.size() << "\n";
+    }
+
+    switch (opcode) {
+        case llvm::Instruction::ICmp: {
+            CDEBUG(llvm::errs() << "Concrete Value: " << format_hex(concrete) << '\n');
+            
+            bool symbolic = false;
+            z3::expr expr1 = bytes_to_expr(shad, src, src_size, concrete, &symbolic);
+
+            if (!symbolic) break;
+            CDEBUG(std::cerr << "Symbolic value: " << expr1 << "\n");
+
+            z3::expr expr = icmp_compute(pred, expr1, val, src_size);
+
+            auto sym = get_or_alloc_sym_label(shad, dest);
+            sym->expr = new z3::expr(expr);
+            sym->offset = 0;
+            break;
+        }
+        case llvm::Instruction::Shl:
+        case llvm::Instruction::LShr:
+        case llvm::Instruction::AShr: {
+            assert(src_size == dest_size);
+
+            bool symbolic = false;
+            z3::expr expr = bytes_to_expr(shad, src, src_size, concrete, &symbolic);
+
+            if (!symbolic) break;
+
+            switch (opcode)
+            {
+            case llvm::Instruction::Shl:
+                expr = shl(expr, context.bv_val(val, dest_size*8));
+                break;
+            case llvm::Instruction::LShr:
+                expr = lshr(expr, context.bv_val(val, dest_size*8));
+                break;
+            case llvm::Instruction::AShr:
+                expr = ashr(expr, context.bv_val(val, dest_size*8));
+                break;
+            default:
+                assert(false);
+                break;
+            }
+            expr = expr.simplify();
+            expr_to_bytes(expr, shad, dest, src_size);
+
+            break;
+        }
+        case llvm::Instruction::Sub:
+        case llvm::Instruction::Add:
+        case llvm::Instruction::UDiv:
+        case llvm::Instruction::Mul:
+        {
+            bool symbolic = false;
+            z3::expr expr = bytes_to_expr(shad, src, src_size, concrete, &symbolic);
+            if (!symbolic) break;
+
+            CDEBUG(std::cerr << "Immediate: " << val << "\n");
+            CDEBUG(std::cerr << "input expr: " << expr << "\n");
+
+            if (opcode == llvm::Instruction::Sub)
+                expr = expr - context.bv_val(val, src_size*8);
+            else if (opcode == llvm::Instruction::Add)
+                expr = expr + context.bv_val(val, src_size*8);
+            else if (opcode == llvm::Instruction::UDiv)
+                expr = expr / context.bv_val(val, src_size*8);
+            else if (opcode == llvm::Instruction::Mul)
+                expr = expr * context.bv_val(val, src_size*8);
+
+                
+            CDEBUG(std::cerr << "output expr: " << expr << "\n");
+
+            expr_to_bytes(expr, shad, dest, src_size);
+            break;
+        }
+        default:
+            llvm::errs() << "Untracked taint_mix opcode: " << opcode << "\n";
+            break;
+    }
+
 }
 
 static const uint64_t ones = UINT64_C(~0);
@@ -525,8 +950,9 @@ void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
             PPP_RUN_CB(on_taint_prop, dest_addr, ptr_addr, ptr_size);
         }
     } else {
+        bool change = false;
         for (unsigned i = 0; i < size; i++) {
-            TaintData byte_td = shad_src->query_full(src + i);
+            TaintData byte_td = *shad_src->query_full(src + i);
             TaintData dest_td = TaintData::make_union(ptr_td, byte_td, false);
 
             // Unions usually destroy controlled bits. Tainted pointer is
@@ -541,7 +967,7 @@ void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
             }
             else
             {
-                shad_dest->set_full(dest + i, dest_td);
+                change |= shad_dest->set_full(dest + i, dest_td);
 
                 // Taint propagation notifications.
                 Addr dest_addr = get_addr_from_shad(shad_dest, dest + i);
@@ -550,6 +976,9 @@ void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
                 Addr ptr_addr = get_addr_from_shad(shad_ptr, ptr);
                 PPP_RUN_CB(on_taint_prop, dest_addr, ptr_addr, ptr_size);
             }
+        }
+        if (change && symexEnabled) {
+            copy_symbols(shad_dest, dest, shad_src, src, size);
         }
     }
 }
@@ -564,17 +993,31 @@ void taint_after_ld(uint64_t reg, uint64_t memaddr, uint64_t size) {
 
 
 void taint_sext(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
-                uint64_t src_size)
+                uint64_t src_size, uint64_t opcode)
 {
     taint_log("taint_sext\n");
-    Shad::copy(shad, dest, shad, src, src_size);
+    concolic_copy(shad, dest, shad, src, src_size, llvm::Instruction::SExt, 0, {});
     bulk_set(shad, dest + src_size, dest_size - src_size,
-            shad->query_full(dest + src_size - 1));
+            *shad->query_full(dest + src_size - 1));
+    auto src_tdp = shad->query_full(dest + src_size - 1)->sym;
+    if (src_tdp && src_tdp->expr) {
+        z3::expr top_byte = get_byte(src_tdp->expr, src_tdp->offset, 0, nullptr);
+        z3::expr expr = ite(
+                (top_byte & 0x80) == context.bv_val(0x80, 8), 
+                context.bv_val(0xff, 8), context.bv_val(0, 8));
+        expr = expr.simplify();
+        z3::expr *ptr = new z3::expr(expr);
+        for (uint64_t i = dest + src_size; i < dest + dest_size; i++) {
+            auto dst_tdp = get_or_alloc_sym_label(shad, i);
+            dst_tdp->expr = ptr;
+            dst_tdp->offset = 0;
+        }
+
+    }
 }
 
 // Takes a (~0UL, ~0UL)-terminated list of (value, selector) pairs.
-void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
-                  ...)
+void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector, ...)
 {
     va_list argp;
     uint64_t src, srcsel;
@@ -587,7 +1030,7 @@ void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
             if (src != ones) { // otherwise it's a constant.
                 taint_log("select (copy): %s[%lx+%lx] <- %s[%lx+%lx] ",
                           shad->name(), dest, size, shad->name(), src, size);
-                Shad::copy(shad, dest, shad, src, size);
+                concolic_copy(shad, dest, shad, src, size, llvm::Instruction::Select, 0, {});
                 taint_log_labels(shad, dest, size);
                 //Shad::copy(shad, dest, shad, src, size);
                 Addr dest_addr = get_addr_from_shad(shad, dest);
@@ -696,7 +1139,7 @@ void taint_host_copy(uint64_t env_ptr, uint64_t addr, Shad *llv,
     taint_log("hostcopy: %s[%lx+%lx] <- %s[%lx+%lx] ", shad_dest->name(), dest,
               size, shad_src->name(), src, size);
     taint_log_labels(shad_src, src, size);
-    Shad::copy(shad_dest, dest, shad_src, src, size);
+    concolic_copy(shad_dest, dest, shad_src, src, size, 0, 0, {});
     // Taint propagation notifications.
     Addr dest_addr = get_addr_from_shad(shad_dest, dest);
     Addr src_addr = get_addr_from_shad(shad_src, src);
@@ -726,7 +1169,7 @@ void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
             shad_dest->name(), dest, size, shad_src->name(), src,
             dest_offset, src_offset);
     taint_log_labels(shad_src, addr_src, size);
-    Shad::copy(shad_dest, addr_dest, shad_src, addr_src, size);
+    concolic_copy(shad_dest, addr_dest, shad_src, addr_src, size, 0, 0, {});
     // Taint propagation notifications.
     Addr dest_addr = get_addr_from_shad(shad_dest, dest);
     Addr src_addr = get_addr_from_shad(shad_src, src);
@@ -766,7 +1209,7 @@ static inline CBMasks compile_cb_masks(Shad *shad, uint64_t addr, uint64_t size)
 
     CBMasks result;
     for (int i = size - 1; i >= 0; i--) {
-        TaintData td = shad->query_full(addr + i);
+        TaintData td = *shad->query_full(addr + i);
         result.cb_mask <<= 8;
         result.one_mask <<= 8;
         result.zero_mask <<= 8;
@@ -781,7 +1224,7 @@ static inline void write_cb_masks(Shad *shad, uint64_t addr, uint64_t size,
                                   CBMasks cb_masks)
 {
     for (unsigned i = 0; i < size; i++) {
-        TaintData td = shad->query_full(addr + i);
+        TaintData td = *shad->query_full(addr + i);
         td.cb_mask =
             static_cast<uint8_t>(cb_masks.cb_mask.trunc(8).getZExtValue());
         td.one_mask =
@@ -862,5 +1305,89 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
     // call detainter (if desired) even for unlabeled input
     if (detaint_cb0_bytes) {
         detaint_on_cb0(shad_dest, dest, size);
+    }
+}
+
+void concolic_copy(Shad *shad_dest, uint64_t dest, Shad *shad_src,
+                     uint64_t src, uint64_t size, uint64_t opcode,
+                     uint64_t instruction_flags,
+                     std::vector<const llvm::ConstantInt *> operands)
+{
+    uint64_t val = 0;
+    if (operands.size() >= 2 && (operands[0] || operands[1])) {
+        val = (operands[0] ? operands[0] : operands[1])->getValue().getLimitedValue();
+    }
+
+    bool change = false;
+    if (opcode && (opcode == llvm::Instruction::And ||
+            opcode == llvm::Instruction::Or)) {
+        // Perform byte-level copy for bitwise and/or
+        assert(operands.size() >= 2);
+
+        for (uint64_t i = 0; i < size; i++) {
+            uint8_t mask = (val >> (8*i))&0xff;
+            if (opcode == llvm::Instruction::And) {
+                if (mask == 0)
+                    change |= shad_dest->set_full(dest + i, TaintData());
+                else
+                    change |= shad_dest->set_full(dest + i, *shad_src->query_full(src+i));
+            }
+            else if (opcode == llvm::Instruction::Or) {
+                if (mask == 0xff)
+                    change |= shad_dest->set_full(dest + i, TaintData());
+                else
+                    change |= shad_dest->set_full(dest + i, *shad_src->query_full(src+i));
+            }
+        }
+    }
+    else {
+        // Otherwise, copy together
+        change = Shad::copy(shad_dest, dest, shad_src, src, size);
+    }
+    if (!change || !symexEnabled) return;
+    switch (opcode) {
+        case llvm::Instruction::And:
+        case llvm::Instruction::Or:
+        case llvm::Instruction::Xor: {
+            CDEBUG(llvm::errs() << "Value: " << val << '\n');
+            bool symbolic = false;
+            invalidate_full(shad_dest, dest, size);
+            for (int i = 0; i < size; i++) {
+                uint8_t mask = (val >> (8*i))&0xff;
+                // concrete value does not matter here (just use 0)
+                // because concrete bytes won't propagate
+                z3::expr expr1 = bytes_to_expr(shad_src, src+i, 1, 0, &symbolic);
+                z3::expr expr = bitop_compute(opcode, expr1, mask, 1);
+                // simplify because one input is constant
+                expr = expr.simplify();
+                expr_to_bytes(expr, shad_dest, dest+i, 1);
+
+            }
+            break;
+        }
+        // shift by zero bits got here
+        case llvm::Instruction::Shl:
+        case llvm::Instruction::LShr:
+        case llvm::Instruction::AShr:
+        case llvm::Instruction::SExt:
+            // Higher bits handled by caller
+        case llvm::Instruction::Trunc:
+        case llvm::Instruction::ZExt:
+        case llvm::Instruction::Load:
+        case llvm::Instruction::Store:
+        case llvm::Instruction::IntToPtr:
+        case llvm::Instruction::PtrToInt:
+        case 0:
+            // From host_copy, host_memcpy
+        case llvm::Instruction::ExtractValue:
+            // Assuming extract value from following result
+            // llvm.uadd.with.overflow.i8
+            // llvm.uadd.with.overflow.i16
+            // llvm.uadd.with.overflow.i32
+            copy_symbols(shad_dest, dest, shad_src, src, size);
+            break;
+        default:
+            CINFO(llvm::errs() << "Untracked opcode: " << opcode << "\n");
+            break;
     }
 }

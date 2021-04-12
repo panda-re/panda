@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 '''
+block_count.py
+
 Generate a test recording if one doesn't exist.
 Use a before_block_exec callback when process is named bash
 and count how many blocks we see execute, stop after 200
+
+Run with: python3 block_count.py
 '''
 
 import os
 from sys import argv
-from pandare import Panda, blocking
+from pandare import Panda
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]
@@ -16,14 +20,13 @@ panda = Panda(generic=arch)
 # Make sure we're always saving a new recording
 recording_name = "test.recording"
 if not os.path.isfile(recording_name+"-rr-nondet.log"): # Take new recording
-    @blocking
+    @panda.queue_blocking
     def record_nondet(): # Run a non-deterministic command at the root snapshot, then end .run()
         panda.record_cmd("date; cat /dev/urandom | head -n30 | md5sum", recording_name=recording_name)
         panda.stop_run()
 
     print("======== TAKE RECORDING ========")
     print("Please wait ~15 seconds for the guest to execute our commands\n")
-    panda.queue_async(record_nondet) # Take a recording
     panda.run()
     print("======== END RECORDING ========")
 

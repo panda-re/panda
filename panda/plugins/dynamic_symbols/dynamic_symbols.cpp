@@ -24,6 +24,7 @@ PANDAENDCOMMENT */
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 #include <unordered_map>
+#include "osi_linux/endian_helpers.h"
 
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -37,6 +38,8 @@ void uninit_plugin(void *);
 #include "syscalls2/syscalls_ext_typedefs.h"
 #include "syscalls2/syscalls2_info.h"
 #include "syscalls2/syscalls2_ext.h"
+#include "proc_start_linux/proc_start_linux.h"
+#include "proc_start_linux/proc_start_linux_ppp.h"
 
 }
 using namespace std;
@@ -188,14 +191,16 @@ string read_str(CPUState* cpu, target_ulong ptr){
 }
 
 int get_numelements_hash(CPUState* cpu, target_ulong dt_hash){
-    //printf("in dt_hash_section %s %llx\n", name.c_str(), (long long unsigned int) dt_hash);
+    //printf("in dt_hash_section 0x%llx\n", (long long unsigned int) dt_hash);
     struct dt_hash_section dt;
+
     if (panda_virtual_memory_read(cpu, dt_hash, (uint8_t*) &dt, sizeof(struct dt_hash_section))!= MEMTX_OK){
         //printf("got error 2\n");
         return -1;
         //goto nextloop;
     }
-    //printf("strtab %llx\n", (long long unsigned int)strtab);
+    fixupendian(dt.nbuckets);
+    //printf("Nbucks: 0x%x\n", dt.nbuckets);
     return dt.nbuckets;
 }
 
@@ -211,7 +216,9 @@ int get_numelements_gnu_hash(CPUState* cpu, target_ulong gnu_hash){
         //printf("got error in gnu_hash_table\n");
         return -1;
     }
+    //printf("GNU numbucks: 0x%x, bloom_size 0x%x\n", ght.nbuckets, ght.bloom_size);
     uint32_t* buckets = (uint32_t*) malloc(ght.nbuckets*sizeof(uint32_t));
+    assert(buckets != NULL);
 
     target_ulong bucket_offset = gnu_hash + sizeof(gnu_hash_table) + (ght.bloom_size*sizeof(target_ulong));
 
@@ -249,6 +256,7 @@ int get_numelements_gnu_hash(CPUState* cpu, target_ulong gnu_hash){
 }
 
 int get_numelements_symtab(CPUState* cpu, target_ulong base, target_ulong dt_hash, target_ulong gnu_hash, target_ulong dynamic_section, target_ulong symtab, int numelements_dyn){
+    //printf("Get numelembs symtab 0x%x, 0x%x\n", base, dt_hash);
     if (base != dt_hash){
         int result = get_numelements_hash(cpu, dt_hash);
         if (result != -1)
@@ -271,6 +279,8 @@ int get_numelements_symtab(CPUState* cpu, target_ulong base, target_ulong dt_has
         if (panda_virtual_memory_read(cpu, dynamic_section + j*sizeof(ELF(Dyn)), (uint8_t*)&tag, sizeof(ELF(Dyn))) != MEMTX_OK){
             return -1;
         }
+        fixupendian(tag.d_tag);
+        fixupendian(tag.d_un.d_ptr);
         if (find(begin(possible_tags), end(possible_tags), (int)tag.d_tag) != end(possible_tags)){
             uint32_t candidate = tag.d_un.d_ptr;
             if (candidate > symtab && candidate < symtab_min){
@@ -312,14 +322,24 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
             //printf("cant read elf header\n");
             return;
         }
+
+
         target_ulong phnum = ehdr.e_phnum;
         target_ulong phoff = ehdr.e_phoff;
+        fixupendian(phnum);
+        fixupendian(phoff);
 
         ELF(Phdr) dynamic_phdr;
+
+        //printf("Read Phdr from 0x%x + 0x%x + j*0x%lx\n", m->base, phoff, (sizeof(ELF(Phdr))));
+
         for (int j=0; j<phnum; j++){
             if (panda_virtual_memory_read(cpu, m->base + phoff + (j*sizeof(ELF(Phdr))), (uint8_t*)&dynamic_phdr, sizeof(ELF(Phdr))) != MEMTX_OK){
                 return;
             }
+
+            fixupendian(dynamic_phdr.p_type)
+
             if (dynamic_phdr.p_type == PT_DYNAMIC){
                 break;
             }else if (dynamic_phdr.p_type == PT_NULL){
@@ -330,17 +350,25 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
                 return;
             }
         }
+        fixupendian(dynamic_phdr.p_filesz);
         int numelements_dyn = dynamic_phdr.p_filesz / sizeof(ELF(Dyn));
         // iterate over dynamic program headers and find strtab
         // and symtab
         ELF(Dyn) tag;
         target_ulong strtab = 0, symtab = 0, strtab_size = 0, dt_hash = 0, gnu_hash = 0;
         int j = 0;
+
+        fixupendian(dynamic_phdr.p_vaddr);
         while (j < numelements_dyn){
+            //printf("Read Dyn PHDR from 0x%x + 0x%x + j*0x%lx\n", m->base, dynamic_phdr.p_vaddr, (sizeof(ELF(Phdr))));
             if (panda_virtual_memory_read(cpu, m->base + dynamic_phdr.p_vaddr + (j*sizeof(ELF(Dyn))), (uint8_t*)&tag, sizeof(ELF(Dyn))) != MEMTX_OK){
                 //printf("%s:%s Failed to read entry %d\n", name.c_str(), current->name, j);
                 return;
             }
+
+            fixupendian(tag.d_tag);
+            fixupendian(tag.d_un.d_ptr);
+
             if (tag.d_tag == DT_STRTAB){
                 //printf("Found DT_STRTAB\n");
                 strtab = tag.d_un.d_ptr;
@@ -356,12 +384,12 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
             }else if (tag.d_tag == DT_GNU_HASH){
                 //printf("Found DT_GNU_HASH\n");
                 gnu_hash = tag.d_un.d_ptr;
-               // printf("DT_HASH_ORIGINAL 0x%llx\n", (long long unsigned int) gnu_hash);
             }else if (tag.d_tag == DT_NULL){
                 //printf("Found DT_NULL \n");
                 j = numelements_dyn;
                 //break;
             }
+
             j++;
         }  
 
@@ -390,7 +418,6 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
         }
 
         target_ulong symtab_size = numelements_symtab * sizeof(ELF(Sym));
-       // printf("numelements_symtab %x\n", numelements_symtab);
 
         //printf("symtab_size %llx strtab_size %llx\n",(long long unsigned int)symtab_size, (long long unsigned int)strtab_size);
 
@@ -398,11 +425,17 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
         char* strtab_buf = (char*)malloc(strtab_size);
 
         //printf("symtab %llx\n", (long long unsigned int) symtab);
-        //printf("symtab: 0x%llx  0x%llx\n", symtab, strtab);
-        if (panda_virtual_memory_read(cpu, symtab, (uint8_t*)symtab_buf, symtab_size) == MEMTX_OK && panda_virtual_memory_read(cpu, strtab, (uint8_t*) strtab_buf, strtab_size) == MEMTX_OK){
+        //printf("symtab: 0x" TARGET_FMT_lx "  0x" TARGET_FMT_lx "\n", symtab, strtab);
+        if (panda_virtual_memory_read(cpu, symtab, (uint8_t*)symtab_buf, symtab_size) == MEMTX_OK &&
+            panda_virtual_memory_read(cpu, strtab, (uint8_t*) strtab_buf, strtab_size) == MEMTX_OK){
             int i = 0; 
+            //for (int idx =0; idx < strtab_size; idx++)
+            //  printf("Strtab[%d]: %c\n", idx, strtab_buf[idx]);
+
             for (;i<numelements_symtab; i++){
                 ELF(Sym)* a = (ELF(Sym)*) (symtab_buf + i*sizeof(ELF(Sym)));
+                fixupendian(a->st_name);
+                fixupendian(a->st_value);
                 if (a->st_name < strtab_size && a->st_value != 0){
                     struct symbol s;
                     strncpy((char*)&s.name, &strtab_buf[a->st_name], MAX_PATH_LEN-1);
@@ -462,88 +495,17 @@ void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
     h->enabled = false;
 }
 
-void btc_execve(CPUState *env, TranslationBlock *tb){
-    if (unlikely(!panda_in_kernel(env))){
-        target_ulong sp = panda_current_sp(env);
-        target_ulong argc;
-        if (panda_virtual_memory_read(env, sp, (uint8_t*) &argc, sizeof(argc))== MEMTX_OK){
-            // we read argc, but just to check the stack is readable.
-            // don't use it. just iterate and check for nulls.
-            int ptrlistpos = 1;
-            // these are arguments to the binary. we don't read
-            // them but you could.
-            target_ulong ptr;
-            while (true){
-                if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_btc_execve);
-                    return;
-                }
-                ptrlistpos++;
-                if (ptr == 0){
-                    break;
-                }
-            }
-            // these are environmental variables. we don't read
-            // them, but you could.
-            while (true){
-                if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_btc_execve);
-                    return;
-                }
-                ptrlistpos++;
-                if (ptr == 0){
-                    break;
-                }
-            }
-            target_ulong entrynum, entryval;
-            while (true){
-                if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &entrynum, sizeof(entrynum)) != MEMTX_OK || panda_virtual_memory_read(env, sp+((ptrlistpos+1)*sizeof(target_ulong)), (uint8_t*) &entryval, sizeof(entryval))){
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
-                    return;
-                }
-                ptrlistpos+=2;
-                if (entrynum == AT_NULL){
-                    break;
-                }else if (entrynum == AT_ENTRY){
-                    struct hook h;
-                    h.addr = entryval;
-                    h.asid = panda_current_asid(env);
-                    h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
-                    h.cb.before_tcg_codegen = hook_program_start;
-                    h.km = MODE_USER_ONLY;
-                    h.enabled = true;
+void (*dlsym_add_hook)(struct hook*);
 
-                    void* hooks = panda_get_plugin_by_name("hooks");
-                    if (hooks == NULL){
-                        panda_require("hooks");
-                        hooks = panda_get_plugin_by_name("hooks");
-                    }
-                    if (hooks != NULL){
-                        void (*dlsym_add_hook)(struct hook*) = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
-                        if ((void*)dlsym_add_hook != NULL) {
-                            dlsym_add_hook(&h);
-                        }
-                    }
-
-                }
-            }
-
-        }
-        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
-    }
-}
-
-void run_btc_cb(){
-    panda_do_flush_tb();
-    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
-}
-
-void execve_cb(CPUState *cpu, target_ptr_t pc, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp) {
-    run_btc_cb();
-}
-
-void execveat_cb (CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp, int flags) {
-    run_btc_cb();
+void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values av){
+    struct hook h;
+    h.addr = av.entry;
+    h.asid = panda_current_asid(env);
+    h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
+    h.cb.before_tcg_codegen = hook_program_start;
+    h.km = MODE_USER_ONLY;
+    h.enabled = true;
+    dlsym_add_hook(&h);
 }
 
 bool init_plugin(void *self) {
@@ -553,31 +515,24 @@ bool init_plugin(void *self) {
     pcb_btc.before_tcg_codegen = btc;
     panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
     panda_disable_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
-    pcb_btc_execve.before_tcg_codegen = btc_execve;
-    panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
-    panda_disable_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
     panda_require("osi");
     assert(init_osi_api());
-    
-    #if defined(TARGET_PPC)
-        fprintf(stderr, "[ERROR] asidstory: PPC architecture not supported by syscalls2!\n");
-        return false;
-    #else
-        panda_require("syscalls2");
-        assert(init_syscalls2_api());
-        PPP_REG_CB("syscalls2", on_sys_execve_enter, execve_cb);
-        PPP_REG_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
-    #endif
+    panda_require("proc_start_linux");
+    PPP_REG_CB("proc_start_linux",on_rec_auxv, recv_auxv);
+    void* hooks = panda_get_plugin_by_name("hooks");
+    if (hooks == NULL){
+        panda_require("hooks");
+        hooks = panda_get_plugin_by_name("hooks");
+    }
+    if (hooks != NULL){
+        dlsym_add_hook = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
+        if ((void*)dlsym_add_hook == NULL) {
+            printf("couldn't load add_hook from hooks\n");
+            return false;
+        }
+    }
     return true;
 }
 
 void uninit_plugin(void *self) { 
-#if defined(TARGET_PPC)
-#else
-  void* syscalls = panda_get_plugin_by_name("syscalls2");
-  if (syscalls != NULL){
-    PPP_REMOVE_CB("syscalls2", on_sys_execve_enter, execve_cb);
-    PPP_REMOVE_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
-  }
-#endif
 }

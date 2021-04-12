@@ -55,6 +55,7 @@
 #include "taint2.h"
 #include "label_set.h"
 #include "taint_api.h"
+#include "taint_sym_api.h"
 #include "taint2_hypercalls.h"
 
 #define CPU_OFF(member) (uint64_t)(&((CPUArchState *)0)->member)
@@ -130,6 +131,8 @@ llvm::PandaTaintFunctionPass *PTFP = nullptr;
 // For now, taint becomes enabled when a label operation first occurs, and
 // becomes disabled when a query operation subsequently occurs
 bool taintEnabled = false;
+
+bool symexEnabled =false;
 
 // Taint memlog
 taint2_memlog taint_memlog;
@@ -334,6 +337,18 @@ void taint2_enable_taint(void) {
     std::cerr << "Done verifying module. Running..." << std::endl;
 }
 
+
+extern "C" void taint2_enable_sym(void) {
+    if (symexEnabled) return;
+
+    std::cerr << PANDA_MSG << __FUNCTION__ << std::endl;
+
+    taint2_enable_taint();
+    taint2_enable_tainted_pointer();
+
+    symexEnabled = true;
+}
+
 // The i386 doesn't update the condition codes whenever executing an emulated
 // instruction that chagnes them, but just saves some information needed to
 // calculate the value should it be needed before the next change.  This causes
@@ -412,12 +427,12 @@ void i386_before_cpu_exec_exit(CPUState *cpu, bool ranBlock) {
             // the offset into CPUX86State of each item of interest is used as
             // the address of the item's taint in the shadow
             for (uint32_t i = 0; i < sizeof(target_ulong); i++) {
-                ccDstTaint[i] = shadow->gsv.query_full(dstOff + i);
-                ccSrcTaint[i] = shadow->gsv.query_full(srcOff + i);
-                ccSrc2Taint[i] = shadow->gsv.query_full(src2Off + i);
+                ccDstTaint[i] = *shadow->gsv.query_full(dstOff + i);
+                ccSrcTaint[i] = *shadow->gsv.query_full(srcOff + i);
+                ccSrc2Taint[i] = *shadow->gsv.query_full(src2Off + i);
             }
             for (uint32_t i = 0; i < sizeof(uint32_t); i++) {
-                ccOpTaint[i] = shadow->gsv.query_full(opOff + i);
+                ccOpTaint[i] = *shadow->gsv.query_full(opOff + i);
             }
             savedTaint = true;
         }
@@ -489,7 +504,7 @@ void taint_state_changed(Shad *shad, uint64_t shad_addr, uint64_t size)
 }
 
 bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb) {
-    if (taintEnabled) {
+    if (taintEnabled)  {
         return tb->llvm_tc_ptr ? false : true /* invalidate! */;
     }
     return false;

@@ -159,12 +159,27 @@ bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
 
 bool first_tb_chaining = false;
 
+
+/*
+ * In this code we'd really *love* to call tb_trylock. Sadly it 
+ * just doesn't exist. Therefore we extern these values and do implement
+ * it ourselves below.
+ */
+extern TCGContext tcg_ctx;
+extern __thread int have_tb_lock;
+
 static inline void flush_tb_if_block_in_cache(CPUState* cpu, target_ulong pc){
     assert(cpu != (CPUState*)NULL && "Cannot register TCG-based hooks before guest is created. Try this in after_machine_init CB");
     TranslationBlock *tb = cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)];
     if (tb && tb->pc == pc){
+        // these lines are tb_trylock (which doesn't exist)
+        // wait for the mutex to be available and take it
+        while (qemu_mutex_trylock(&tcg_ctx.tb_ctx.tb_lock)==0){};
+        // set the mutex value
+        have_tb_lock++;
         tb_phys_invalidate(tb, -1);
         tb_free(tb);
+        tb_unlock();
     }
 }
 
@@ -209,11 +224,12 @@ void add_hook(struct hook* h) {
     set<struct hook>::iterator it;
 
 #define LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK)\
+    hook_container.asid = asid; \
     it = NAME ## _hooks[asid].lower_bound(hook_container); \
     while(it != NAME ## _hooks[asid].end() && it->addr COMPARATOR_TO_BLOCK){ \
         auto h = (hook*)&(*it); \
         if (likely(h->enabled)){ \
-            if (h->asid == 0 || h->asid == asid){ \
+            if (h->asid == asid){ \
                 if (h->km == MODE_ANY || (in_kernel && h->km == MODE_KERNEL_ONLY) || (!in_kernel && h->km == MODE_USER_ONLY)){ \
                     EXPR \
                     if (!h->enabled){ \
@@ -229,7 +245,12 @@ void add_hook(struct hook* h) {
 
 #define HOOK_GENERIC_RET_EXPR(EXPR, UPPER_CB_NAME, NAME, VALUE, COMPARATOR_TO_BLOCK, PC) \
     MAKE_HOOK_FN_START(UPPER_CB_NAME, NAME, VALUE, PC) \
-    LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK)
+    LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK) \
+    if (asid != 0){ \
+        asid = 0; \
+        LOOP_ASID_CHECK(NAME, EXPR, COMPARATOR_TO_BLOCK) \
+    }
+
 
 #define MAKE_HOOK_VOID(UPPER_CB_NAME, NAME, PASSED_ARGS, PC, ...) \
 void cb_ ## NAME ## _callback PASSED_ARGS { \
@@ -285,5 +306,8 @@ bool init_plugin(void *_self) {
 }
 
 void uninit_plugin(void *self) {
+    // if we don't clear tb's when this exits we have TBs which can call
+    // into our exited plugin.
+    panda_do_flush_tb();
     disable_hooking();
 }

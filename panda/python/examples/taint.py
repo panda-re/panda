@@ -1,5 +1,5 @@
 from pandare import Panda
-panda = Panda(generic='mips')
+panda = Panda(generic='x86_64')
 
 @panda.queue_blocking
 def driver():

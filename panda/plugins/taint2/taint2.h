@@ -77,6 +77,7 @@ struct ShadowState {
         }
     }
 };
+extern ShadowState *shadow; 
 
 extern "C" {
 Addr make_haddr(uint64_t a);

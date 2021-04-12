@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
-# Displays the register state of the cpu in x86 at 10 basic blocks
+'''
+dump_regs.py
 
+Displays the register state of the CPU at the first 10 blocks it sees.
+
+Run with: python3 dump_regs.py
+'''
 from time import sleep
 from sys import argv
-from pandare import Panda, blocking
+from pandare import Panda
 
 # Single arg of arch, defaults to i386
-arch = "i386"
+arch = "i386" if len(argv) <= 1 else argv[1]
 panda = Panda(generic=arch)
 
-@blocking
+@panda.queue_blocking
 def run_my_cmd():
     panda.revert_sync("root")
     print(panda.run_serial_cmd("uname -a"))
@@ -22,7 +27,7 @@ def before_block_execute(cpu, tb):
     global ctr
     ctr += 1
 
-    print("\n\n===== State after block {} =====".format(ctr))
+    print(f"\n\n===== State after block {ctr} =====")
     panda.arch.dump_state(cpu)
 
     if ctr > 10: panda.end_analysis()

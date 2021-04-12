@@ -435,7 +435,10 @@ static inline char *read_dentry_name(CPUState *env, target_ptr_t dentry) {
         }
 
         // read component
-        pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t)) + 1; // increment pcomp_length to include the string terminator
+        pcomp_length = *(uint32_t *)(d_name + sizeof(uint32_t));
+        fixupendian(pcomp_length)
+        pcomp_length += 1; // space for string terminator
+
         if (pcomp_capacity < pcomp_length) {
             pcomp_capacity = pcomp_length + 16;
             pcomp = (char *)g_realloc(pcomp, pcomp_capacity * sizeof(char));

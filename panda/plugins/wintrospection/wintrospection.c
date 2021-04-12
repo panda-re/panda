@@ -869,6 +869,9 @@ bool init_plugin(void *self) {
 
 void uninit_plugin(void *self) {
     printf("Unloading wintrospection plugin\n");
+    // if we don't clear tb's when this exits we have TBs which can call
+    // into our exited plugin.
+    panda_do_flush_tb();
 }
 
 /* vim: set tabstop=4 softtabstop=4 expandtab: */

@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 '''
-On a live system, collect basic blocks as we run cat and wget
+two_callbacks.py
+
+On a live system, collect basic blocks as we run cat and wget.
+
+Run with: python3 two_callbacks.py
 '''
 
 import time
@@ -18,12 +22,12 @@ bbs_wget = set()
 bbs_cat = set()
 
 # Run a command in the guest
-@blocking
+@panda.queue_blocking
 def my_runcmd():
     panda.revert_sync('root')
     panda.run_serial_cmd("cat /proc/self")
     panda.run_serial_cmd("wget http://google.com")
-    panda.stop_run() # Finish panda.run in main thread
+    panda.end_analysis()
 
 @panda.cb_before_block_exec(procname="wget")
 def before_block_execute(env, tb):
@@ -37,7 +41,6 @@ def before_block_execute2(env, tb, exit):
     global bbs_cat
     bbs_cat.add(pc)
 
-panda.queue_async(my_runcmd)
 start_time = time.time()
 
 panda.run()

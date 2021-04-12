@@ -145,6 +145,7 @@ private:
     bool isEnvPtr(Value *V);
     bool isCPUStateAdd(BinaryOperator *AI);
     bool isIrrelevantAdd(BinaryOperator *AI);
+    uint64_t ICmpPredicate(Instruction &I);
     void addInstructionDetailsToArgumentList(vector<Value *> &args,
         Instruction &I, Instruction *before);
     void inlineCall(CallInst *CI);
@@ -258,6 +259,7 @@ public:
     void visitInsertValueInst(InsertValueInst &I);
     void visitInsertElementInst(InsertElementInst &I);
     void visitShuffleVectorInst(ShuffleVectorInst &I);
+    void visitFreezeInst(FreezeInst &I);
 
     void visitReturnInst(ReturnInst &I);
     void visitBinaryOperator(BinaryOperator &I);

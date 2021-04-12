@@ -269,8 +269,8 @@ stack_protector=""
 git_submodules=""
 protobuf="yes"
 llvm="no"
-llvmdir="/usr/lib/llvm-10" # Default to try if unspecified
-llvmver="10"
+llvmdir="/usr/lib/llvm-11" # Default to try if unspecified
+llvmver="11"
 
 # Don't accept a target_list environment variable.
 unset target_list
@@ -415,7 +415,7 @@ jemalloc="no"
 replication="yes"
 #AVATAR
 pyperipheral2="no"
-pyperipheral3="yes"
+pyperipheral3="no"
 
 
 supported_cpu="no"
