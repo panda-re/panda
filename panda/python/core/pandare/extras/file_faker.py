@@ -385,3 +385,33 @@ class FileFaker(FileHook):
     def __del__(self):
         # XXX: This isn't being called for some reason on destruction
         self.close()
+
+
+if __name__ == '__main__':
+    from pandare import Panda
+
+    panda = Panda(generic="x86_64")
+
+    # Replace all syscalls that reference /foo with a custom string
+    fake_str = "Hello world. This is data generated from python!"
+    faker = FileFaker(panda)
+    faker.replace_file("/foo", FakeFile(fake_str))
+
+    new_str = "This is some new data"
+
+    @panda.queue_blocking
+    def read_it():
+        global new_str
+
+        panda.revert_sync('root')
+        data = panda.run_serial_cmd("cat /foo")
+        assert(fake_str in data), f"Failed to read fake file /foo: {data}"
+
+        panda.run_serial_cmd(f'echo {new_str} > /foo')
+        data = panda.run_serial_cmd("cat /foo")
+        assert(new_str in data), f"Failed to update fake file /foo: {data}. Expected: {new_str}"
+
+        panda.end_analysis()
+
+    panda.run()
+    print("Successfully faked file /foo")

@@ -183,7 +183,7 @@ class FileHook:
                 return
 
         fname = path.normpath(fname) # Normalize it
-        self.logger.debug(f"Entering {syscall_name} with file={fname}")
+        #self.logger.info(f"Entering {syscall_name} with file={fname}")
 
         if fname in self._renamed_files:
             # It matches, now let's take our action! Either rename or callback
