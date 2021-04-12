@@ -4,7 +4,7 @@ panda = Panda(generic='x86_64')
 @panda.queue_blocking
 def driver():
     panda.revert_sync('root')
-    panda.run_serial_cmd("grep /etc/passwd root")
+    panda.run_serial_cmd("grep root /etc/passwd")
     panda.end_analysis()
 
 @panda.ppp("syscalls2", "on_sys_read_return")
