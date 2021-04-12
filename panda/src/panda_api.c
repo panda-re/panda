@@ -155,6 +155,14 @@ bool panda_in_kernel_external(const CPUState *cpu){
 	return panda_in_kernel(cpu);
 }
 
+bool panda_in_kernel_mode_external(const CPUState *cpu){
+	return panda_in_kernel_mode(cpu);
+}
+
+bool panda_in_kernel_code_linux_external(CPUState *cpu){
+	return panda_in_kernel_code_linux(cpu);
+}
+
 target_ulong panda_current_sp_external(const CPUState *cpu){
 	return panda_current_sp(cpu);
 }
