@@ -10,6 +10,7 @@
 #define MAX_NUM_ARGS 10
 #define MAX_NUM_ENV 20
 
+// https://lwn.net/Articles/519085/
 struct auxv_values {
     int argc;
     char argv[MAX_NUM_ARGS][MAX_PATH_LEN];
@@ -34,6 +35,7 @@ struct auxv_values {
     bool secure;
     target_ulong random;
     target_ulong platform;
+    target_ulong program_header; // this is just PHDR - sizeof(ehdr). it's a best guess
 };
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!

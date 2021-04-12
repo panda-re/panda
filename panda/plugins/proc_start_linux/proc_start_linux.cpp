@@ -12,6 +12,7 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 #include <linux/auxvec.h>
+#include <linux/elf.h>
 #include <string>
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
@@ -131,6 +132,11 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
                     vals.entry = entryval;
                 }else if (entrynum == AT_PHDR){
                     vals.phdr = entryval;
+                    // every elf I've seen says that the PHDR
+                    // is immediately following the EHDR.
+                    // we can do a bunch to check this or we can just
+                    // take the value.
+                    vals.program_header = entryval - sizeof(ELF(Ehdr));
                 }else if (entrynum == AT_EXECFN){
                     string execfn = read_str(env, entryval);
                     execfn.copy(vals.execfn, MAX_PATH_LEN -1, 0);
@@ -201,10 +207,14 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
 
     #if defined(TARGET_PPC)
-        fprintf(stderr, "[ERROR] asidstory: PPC architecture not supported by syscalls2!\n");
+        fprintf(stderr, "[ERROR] proc_start_linux: PPC architecture not supported by syscalls2!\n");
         return false;
     #else
-        panda_require("syscalls2");
+        // why? so we don't get 1000 messages telling us syscalls2 is already loaded
+        void* syscalls2 = panda_get_plugin_by_name("syscalls2");
+        if (syscalls2 == NULL){
+            panda_require("syscalls2");
+        }
         assert(init_syscalls2_api());
         PPP_REG_CB("syscalls2", on_sys_execve_enter, execve_cb);
         PPP_REG_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
