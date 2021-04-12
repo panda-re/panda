@@ -13,8 +13,10 @@
 // https://lwn.net/Articles/519085/
 struct auxv_values {
     int argc;
+    target_ulong arg_ptr[MAX_NUM_ARGS];
     char argv[MAX_NUM_ARGS][MAX_PATH_LEN];
     int envc;
+    target_ulong env_ptr[MAX_NUM_ARGS];
     char envp[MAX_NUM_ENV][MAX_PATH_LEN];
     char execfn[MAX_PATH_LEN];
     target_ulong phdr;

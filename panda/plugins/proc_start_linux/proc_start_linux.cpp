@@ -88,6 +88,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
                 if (ptr == 0){
                     break;
                 }else if (argc_num < MAX_NUM_ARGS){
+                    vals.arg_ptr[argc_num] = ptr;
                     string arg = read_str(env, ptr);
                     if (arg.length() > 0){
                         strncpy(vals.argv[argc_num], arg.c_str(), MAX_PATH_LEN);
@@ -110,6 +111,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
                 if (ptr == 0){
                     break;
                 }else if (envc_num < MAX_NUM_ENV){
+                    vals.env_ptr[envc_num] = ptr;
                     string arg = read_str(env, ptr);
                     if (arg.length() > 0){
                         strncpy(vals.envp[envc_num], arg.c_str(), MAX_PATH_LEN);
