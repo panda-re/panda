@@ -2060,8 +2060,8 @@ class Panda():
         #   if there is a setup.sh script in the directory,
         #   then run that setup.sh script first (good for scripts that need to
         #   prep guest environment before script runs)
-        setup_sh = "mkdir -p {mount_dir}; while ! mount /dev/cdrom {mount_dir}; do sleep 0.3; " \
-               " umount /dev/cdrom; done; {mount_dir}/setup.sh &> /dev/null || true " \
+        setup_sh = "mkdir -p {mount_dir} {mount_dir}.ro; while ! mount /dev/cdrom {mount_dir}.ro; do sleep 0.3; " \
+               " umount /dev/cdrom; done; cp -r {mount_dir}.ro/* {mount_dir}/; {mount_dir}/setup.sh &> /dev/null || true " \
                .format(mount_dir = (shlex_quote(copy_directory)))
         progress("setup_sh = [%s] " % setup_sh)
         progress(self.run_serial_cmd(setup_sh))
