@@ -1735,16 +1735,23 @@ class Panda():
     # label all bytes in this register.
     # or at least four of them
     def taint_label_reg(self, reg_num, label):
-        self.taint_enable(cont=False)
-        #if debug:
-        #    progress("taint_reg reg=%d label=%d" % (reg_num, label))
+        #self.plugins['taint2'].taint2_enable_taint()
+        if not self.taint_enabled:
+            self.taint_enable(cont=False)
+            #if debug:
+            #    progress("taint_reg reg=%d label=%d" % (reg_num, label))
 
-        # XXX must ensure labeling is done in a before_block_invalidate that rets 1
-        #     or some other safe way where the main_loop_wait code will always be run
-        #self.stop()
-        for i in range(self.register_size):
-            self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_label_reg, [reg_num, i, label])
-        self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
+            # XXX must ensure labeling is done in a before_block_invalidate that rets 1
+            #     or some other safe way where the main_loop_wait code will always be run
+            #self.stop()
+            for i in range(self.register_size):
+                #self.plugins['taint2'].taint2_label_reg(reg_num, i, label)
+#                self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_label_reg, [reg_num, i, label])
+                self.queue_main_loop_wait_fn(self.taint_label_reg, [reg_num, label])
+            self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
+        else:
+            for i in range(self.register_size):
+                self.plugins['taint2'].taint2_label_reg(reg_num,i,label)
 
     def taint_label_ram(self, addr, label):
         self.taint_enable(cont=False)
