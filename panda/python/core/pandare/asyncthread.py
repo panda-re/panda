@@ -66,8 +66,11 @@ class AsyncThread:
                     self.empty_at = None
                 self.last_called = func.__name__.replace(" (with async thread)", "")
             except Empty:
-                # If we've been empty for 5s without shutdown, warn (just once)
-                if not internal:
+                # If we've been empty for 5s without shutdown, warn (just once). *Unless* we're
+                # in a replay or we've never queued up a serial command (e.g., the guest is
+                # actually booting instead of being driven from a snapshot). In either of
+                # these cases, self.last_called will be None
+                if not internal and self.last_called is not None:
                     if self.empty_at is None:
                         self.empty_at = time()
                     else:
@@ -96,6 +99,7 @@ class AsyncThread:
                 raise
             finally:
                 task_queue.task_done()
+                self.last_called = None
 
 def test1():
     # Basic test: create an AsyncThread and run a coroutine 3 times
