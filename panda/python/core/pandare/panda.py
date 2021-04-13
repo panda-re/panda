@@ -1718,44 +1718,30 @@ class Panda():
 
     ############## TAINT FUNCTIONS ###############
     # Convenience methods for interacting with the taint subsystem.
-    def taint_enable(self, cont=True):
+    def taint_enable(self):
         """
         Inform python that taint is enabled.
-
-        Boolean: Whether a change was made
         """
         if not self.taint_enabled:
-            progress("taint not enabled -- enabling")
-            self.vm_stop()
             self.load_plugin("taint2")
-#            self.queue_main_loop_wait_fn(self.load_plugin, ["taint2"])
-            self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_enable_taint, [])
-            if cont:
-                self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
+            self.libpanda.panda_exit_loop = True
+            self.plugins['taint2'].taint2_enable_taint()
             self.taint_enabled = True
-            return True
-        return False
 
     # label all bytes in this register.
     # or at least four of them
     def taint_label_reg(self, reg_num, label):
-        if self.taint_enable(cont=False):
-            #if debug:
-            #    progress("taint_reg reg=%d label=%d" % (reg_num, label))
-            self.queue_main_loop_wait_fn(self.taint_label_reg, [reg_num, label])
-            self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
-        else:
-            for i in range(self.register_size):
-                self.plugins['taint2'].taint2_label_reg(reg_num,i,label)
+        #if debug:
+        #    progress("taint_reg reg=%d label=%d" % (reg_num, label))
+        self.taint_enable()
+        for i in range(self.register_size):
+            self.plugins['taint2'].taint2_label_reg(reg_num,i,label)
 
     def taint_label_ram(self, addr, label):
         #if debug:
             #progress("taint_ram addr=0x%x label=%d" % (addr, label))
-        if self.taint_enable(cont=False):
-            self.queue_main_loop_wait_fn(self.taint2_label_ram, [addr, label])
-            self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
-        else:
-            self.plugins['taint2'].taint2_label_ram(addr,label)
+        self.taint_enable()
+        self.plugins['taint2'].taint2_label_ram(addr,label)
 
 
     # returns true if any bytes in this register have any taint labels
@@ -1822,41 +1808,33 @@ class Panda():
         else:
             return None
 
-    def taint_sym_enable(self, cont=True):
+    def taint_sym_enable(self):
         """
         Inform python that taint is enabled.
         """
         if not self.taint_enabled:
             progress("taint symbolic not enabled -- enabling")
-            self.vm_stop()
-            self.load_plugin("taint2")
+            self.taint_enable()
 #            self.queue_main_loop_wait_fn(self.load_plugin, ["taint2"])
         if not self.taint_sym_enabled:
-            self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_enable_sym, [])
-            if cont:
-                self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
-            self.taint_enabled = True
+            self.plugins['taint2'].taint2_enable_sym()
+            self.libpanda.panda_exit_loop = True
+            self.taint_sym_enabled = True
 
     def taint_sym_label_ram(self, addr, label):
         #if debug:
             #progress("taint_ram addr=0x%x label=%d" % (addr, label))
-        if self.taint_sym_enable(cont=False):
-            self.queue_main_loop_wait_fn(self.taint_sym_label_ram, [addr, label])
-            self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
-        else:
-            self.plugins['taint2'].taint2_sym_label_ram(addr, label)
+        self.taint_sym_enable()
+        self.plugins['taint2'].taint2_sym_label_ram(addr, label)
 
     # label all bytes in this register.
     # or at least four of them
     def taint_sym_label_reg(self, reg_num, label):
         #if debug:
         #    progress("taint_reg reg=%d label=%d" % (reg_num, label))
-        if self.taint_sym_enable(cont=False):
-            self.queue_main_loop_wait_fn(self.taint_sym_label_reg, [reg_num, label])
-            self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
-        else:
-            for i in range(self.register_size):
-                self.plugins['taint2'].taint2_sym_label_reg(reg_num, i, label)
+        self.taint_sym_enable()
+        for i in range(self.register_size):
+            self.plugins['taint2'].taint2_sym_label_reg(reg_num, i, label)
 
 
     ############ Volatility mixins
