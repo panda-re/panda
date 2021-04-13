@@ -1744,10 +1744,10 @@ class Panda():
             # XXX must ensure labeling is done in a before_block_invalidate that rets 1
             #     or some other safe way where the main_loop_wait code will always be run
             #self.stop()
-            for i in range(self.register_size):
+            #for i in range(self.register_size):
                 #self.plugins['taint2'].taint2_label_reg(reg_num, i, label)
 #                self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_label_reg, [reg_num, i, label])
-                self.queue_main_loop_wait_fn(self.taint_label_reg, [reg_num, label])
+            self.queue_main_loop_wait_fn(self.taint_label_reg, [reg_num, label])
             self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
         else:
             for i in range(self.register_size):
