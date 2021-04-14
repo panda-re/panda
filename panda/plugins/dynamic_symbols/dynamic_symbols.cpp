@@ -87,7 +87,7 @@ inline bool operator<(const struct symbol& s, target_ulong p){
 }
 
 inline bool operator<(const hook_symbol_resolve &s, const hook_symbol_resolve &p){
-    return s.cb < p.cb;
+    return tie(s.cb,s.hook_offset,s.offset)  < tie(p.cb,p.hook_offset,p.offset);
 }
 
 inline bool operator<(const pair<string, target_ulong>& s, const pair<string, target_ulong>& p){
@@ -132,7 +132,7 @@ void hook_symbol_resolution(struct hook_symbol_resolve *h){
 }
 
 
-void new_assignment_check_symbols(CPUState* cpu, unordered_map<string, struct symbol> ss, char* procname, OsiModule* m){
+void new_assignment_check_symbols(CPUState* cpu, unordered_map<string, struct symbol> ss, OsiModule* m){
     string module(m->name);
     vector<tuple<struct hook_symbol_resolve, struct symbol, OsiModule>> symbols_to_flush;
 
@@ -153,17 +153,23 @@ void new_assignment_check_symbols(CPUState* cpu, unordered_map<string, struct sy
             set<struct hook_symbol_resolve> h = symbol_matcher.second;
             for (auto hook_candidate: h){
                 if (hook_candidate.enabled){
-                    if (hook_candidate.procname[0] == 0 || strncmp(procname, hook_candidate.procname, MAX_PATH_LEN -1) == 0){
-                        if (symname.empty()){
+                    if (symname.empty()){
+                        if (hook_candidate.hook_offset){
+                            struct symbol s;
+                            memset(&s, 0, sizeof(struct symbol));
+                            s.address = m->base + hook_candidate.offset;
+                            strncpy((char*)&s.section, m->name, MAX_PATH_LEN);
+                            symbols_to_flush.push_back(make_tuple(hook_candidate,s, *m));
+                        }else{
                             for (auto sym: ss){
                                 symbols_to_flush.push_back(make_tuple(hook_candidate, sym.second, *m));
                             }
-                        }else{
-                            auto it = ss.find(symname);
-                            if (it != ss.end()){
-                                auto a = *it;
-                                symbols_to_flush.push_back(make_tuple(hook_candidate, a.second, *m));
-                            }
+                        }
+                    }else{
+                        auto it = ss.find(symname);
+                        if (it != ss.end()){
+                            auto a = *it;
+                            symbols_to_flush.push_back(make_tuple(hook_candidate, a.second, *m));
                         }
                     }
                 }
@@ -387,7 +393,7 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
         //printf("size of ASID before is %d\n", (int)symbols[asid].size());
         symbols[asid][name] = &seen_libraries[candidate];
         //printf("size of ASID after is %d\n", (int)symbols[asid].size());
-        new_assignment_check_symbols(cpu, seen_libraries[candidate], current->name, m);
+        new_assignment_check_symbols(cpu, seen_libraries[candidate], m);
         return;
     }
     // static variable to store first 4 bytes of mapping
@@ -541,7 +547,7 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
                 }
                 if (seen_libraries[c].size() > 0){
                     symbols[asid][name] = &seen_libraries[c];
-                    new_assignment_check_symbols(cpu, seen_libraries[c], current->name, m);
+                    new_assignment_check_symbols(cpu, seen_libraries[c], m);
                     error_case(current->name, m->name, "SUCCESS");
                     //printf("Successful on %s. Found %d symbols " TARGET_FMT_lx "\n", m->name, (int)seen_libraries[c].size(), m->base);
                 }

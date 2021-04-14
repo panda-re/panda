@@ -2588,7 +2588,7 @@ class Panda():
         return decorator
 
 
-    def hook_symbol(self, libraryname, symbolname, kernel=False, procname=None,name=None,cb_type="before_tcg_codegen"):
+    def hook_symbol(self, libraryname, symbol, kernel=False, name=None,cb_type="before_tcg_codegen"):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
@@ -2612,19 +2612,20 @@ class Panda():
             new_hook = self.ffi.new("struct symbol_hook*")
             type_num = getattr(self.libpanda, "PANDA_CB_"+cb_type.upper())
             new_hook.type = type_num
-            if procname is not None:
-                procname_ffi = self.ffi.new("char[]",bytes(procname,"utf-8"))
-            else:
-                procname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
-            self.ffi.memmove(new_hook.procname,procname_ffi,len(procname_ffi))
             if libraryname is not None:
                 libname_ffi = self.ffi.new("char[]",bytes(libraryname,"utf-8"))
             else:
                 libname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
             self.ffi.memmove(new_hook.section,libname_ffi,len(libname_ffi))
 
-            if symbolname is not None:
-                symbolname_ffi = self.ffi.new("char[]",bytes(symbolname,"utf-8"))
+            new_hook.hook_offset = False
+            if symbol is not None:
+                if isinstance(symbol, int):
+                    new_hook.offset = symbol
+                    new_hook.hook_offset = True
+                    symbolname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
+                else:
+                    symbolname_ffi = self.ffi.new("char[]",bytes(symbol,"utf-8"))
             else:
                 symbolname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
             self.ffi.memmove(new_hook.name,symbolname_ffi,len(symbolname_ffi))
