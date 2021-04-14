@@ -601,11 +601,11 @@ void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
     h->enabled = false;
 }
 
-void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values av){
+void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values *av){
     target_ulong asid = panda_current_asid(env);
     symbols.erase(asid);
     struct hook h;
-    h.addr = av.entry;
+    h.addr = av->entry;
     h.asid = panda_current_asid(env);
     h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
     h.cb.before_tcg_codegen = hook_program_start;
