@@ -73,7 +73,7 @@ SUPPORTED_IMAGES = {
             snapshot="root",
             url="https://panda-re.mit.edu/qcows/linux/debian/7.3/arm/debian_7.3_arm.qcow",
             extra_files=['vmlinuz-3.2.0-4-versatile', 'initrd.img-3.2.0-4-versatile'],
-            extra_args='-display none -M versatilepb -append "root=/dev/sda1" -kernel {DOT_DIR}/vmlinuz-3.2.0-4-versatile -initrd {DOT_DIR}/initrd.img-3.2.0-4-versatile'.format(DOT_DIR=VM_DIR)),
+            extra_args='-display none -M versatilepb -append "root=/dev/sda1 console=ttyAMA0" -kernel {DOT_DIR}/vmlinuz-3.2.0-4-versatile -initrd {DOT_DIR}/initrd.img-3.2.0-4-versatile'.format(DOT_DIR=VM_DIR)),
 
     'aarch64_focal': Image(
             arch='aarch64',
@@ -84,7 +84,7 @@ SUPPORTED_IMAGES = {
             snapshot="root",
             url="https://panda-re.mit.edu/qcows/linux/ubuntu/2004/aarch64/ubuntu20_04-aarch64.qcow",
             extra_files=['ubuntu20_04-aarch64-flash0.qcow'],
-            extra_args='-nographic -machine virt -cpu cortex-a57 -drive file={DOT_DIR}/ubuntu20_04-aarch64-flash0.qcow,if=pflash,readonly=on'.format(DOT_DIR=VM_DIR)),
+            extra_args='-display none -machine virt -cpu cortex-a57 -drive file={DOT_DIR}/ubuntu20_04-aarch64-flash0.qcow,if=pflash,readonly=on'.format(DOT_DIR=VM_DIR)),
     'mips_wheezy': Image(
             arch='mips',
             os="linux-32-debian:3.2.0-4-4kc-malta",
@@ -94,7 +94,7 @@ SUPPORTED_IMAGES = {
             url="https://panda-re.mit.edu/qcows/linux/debian/7.3/mips/debian_7.3_mips.qcow",
             default_mem='1g',
             extra_files=['vmlinux-3.2.0-4-4kc-malta'],
-            extra_args='-M malta -kernel {DOT_DIR}/vmlinux-3.2.0-4-4kc-malta -append "root=/dev/sda1" -nographic'.format(DOT_DIR=VM_DIR)),
+            extra_args='-M malta -kernel {DOT_DIR}/vmlinux-3.2.0-4-4kc-malta -append "root=/dev/sda1" -display none'.format(DOT_DIR=VM_DIR)),
 
     'mipsel_wheezy':  Image(
             arch='mipsel',
@@ -105,7 +105,7 @@ SUPPORTED_IMAGES = {
             default_mem='1g',
             url="https://panda-re.mit.edu/qcows/linux/debian/7.3/mipsel/debian_7.3_mipsel.qcow",
             extra_files=['vmlinux-3.2.0-4-4kc-malta.mipsel',],
-            extra_args='-M malta -kernel {DOT_DIR}/vmlinux-3.2.0-4-4kc-malta.mipsel -append "root=/dev/sda1" -nographic'.format(DOT_DIR=VM_DIR)),
+            extra_args='-M malta -kernel {DOT_DIR}/vmlinux-3.2.0-4-4kc-malta.mipsel -append "root=/dev/sda1" -display none'.format(DOT_DIR=VM_DIR)),
 
     # Ubuntu: x86/x86_64 support for 16.04, x86_64 support for 18.04
     'i386_ubuntu_1604': Image(
