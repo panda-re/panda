@@ -86,8 +86,8 @@ else
   exit 1
 fi
 
-# PyPanda dependencies
-python3 -m pip install pycparser "protobuf==3.0.0" "cffi>=1.14.3" colorama
+# PyPanda dependencies - install system-wide so we can install pypanda system-wide
+$SUDO python3 -m pip install pycparser "protobuf==3.0.0" "cffi>=1.14.3" colorama
 
 progress "Trying to update DTC submodule"
 git submodule update --init dtc || true
