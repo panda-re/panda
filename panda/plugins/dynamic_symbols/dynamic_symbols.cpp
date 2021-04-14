@@ -158,7 +158,7 @@ void new_assignment_check_symbols(CPUState* cpu, unordered_map<string, struct sy
                             struct symbol s;
                             memset(&s, 0, sizeof(struct symbol));
                             s.address = m->base + hook_candidate.offset;
-                            strncpy((char*)&s.section, m->name, MAX_PATH_LEN);
+                            strncpy((char*)&s.section, m->name, MAX_PATH_LEN-1);
                             symbols_to_flush.push_back(make_tuple(hook_candidate,s, *m));
                         }else{
                             for (auto sym: ss){
