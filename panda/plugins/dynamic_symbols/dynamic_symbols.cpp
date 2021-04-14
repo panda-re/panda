@@ -158,7 +158,7 @@ void new_assignment_check_symbols(CPUState* cpu, unordered_map<string, struct sy
                             struct symbol s;
                             memset(&s, 0, sizeof(struct symbol));
                             s.address = m->base + hook_candidate.offset;
-                            strncpy((char*)&s.section, m->name, MAX_PATH_LEN-1);
+                            strncpy((char*)&s.section, m->name, sizeof(s.section)-2);
                             symbols_to_flush.push_back(make_tuple(hook_candidate,s, *m));
                         }else{
                             for (auto sym: ss){
@@ -210,7 +210,7 @@ struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_nam
             if (it != section_vec->end()){
                 struct symbol val = it->second;
                 string val_str (val.name);
-                strncpy((char*) &val.section, section.first.c_str(), MAX_PATH_LEN -1);
+                strncpy((char*) &val.section, section.first.c_str(), sizeof(val.section) -2);
                 return val;
             }
         } 
@@ -537,8 +537,8 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
                     fixupendian(a->st_value);
                     if (a->st_name < strtab_size && a->st_value != 0){
                         struct symbol s;
-                        strncpy((char*)&s.name, &strtab_buf[a->st_name], MAX_PATH_LEN-1);
-                        strncpy((char*)&s.section, m->name, MAX_PATH_LEN-1);
+                        strncpy((char*)&s.name, &strtab_buf[a->st_name], sizeof(s.name)-2);
+                        strncpy((char*)&s.section, m->name, sizeof(s.section)-2);
                         s.address = m->base + a->st_value;
                         //printf("found symbol %s %s 0x%llx\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address);
                         string sym_name(s.name);

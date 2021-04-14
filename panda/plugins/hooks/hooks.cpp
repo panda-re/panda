@@ -124,9 +124,9 @@ void add_symbol_hook(struct symbol_hook* h){
         sh.offset = h->offset;
         memset((char*) &sh.name, 0, sizeof(sh.name));
     }else{
-        strncpy((char*) &sh.name, (char*) &h->name, MAX_PATH_LEN-1);
+        strncpy((char*) &sh.name, (char*) &h->name, sizeof(sh.name)-2);
     }
-    strncpy((char*) &sh.section,(char*) &h->section, MAX_PATH_LEN-1);
+    strncpy((char*) &sh.section,(char*) &h->section, sizeof(sh.section)-2);
     void* dynamic_symbols = panda_get_plugin_by_name("dynamic_symbols");
     if (dynamic_symbols == NULL){
         panda_require("dynamic_symbols");
