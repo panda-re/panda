@@ -729,21 +729,16 @@ void asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
 }
 
 
+static_assert(CHAR_BIT == 8);
+static_assert(sizeof(char) == sizeof(uint8_t)); /* this is pointless, sizeof(char) == 1 by definition, and uint8_t must be exactly 8 bits if defined */
 string read_guest_null_terminated_string(CPUState *cpu, uint64_t addr) {
-    // find length of string
-    int len = 0;
-    while (len < 1024) {
-        uint8_t c;
-        int rv = panda_virtual_memory_read(cpu, addr+len, &c, 1);
-        if (rv == -1) break;
-        if (c == 0) break;
-        len ++;
-    }
-    string the_string("");
-    if (len == 0) return the_string;
-    uint8_t buffer[1024];
-    panda_virtual_memory_read(cpu, addr, buffer, len);
-    return string((const char *) buffer);
+    char buffer[1024];
+    size_t len; /* len must escape the loop scope */
+    for (len = 0; len < sizeof(buffer); ++len)
+        if ((panda_virtual_memory_read(cpu, addr+len, (uint8_t*)&buffer[len], 1) != 0) ||
+            (buffer[len] == 0))
+            break;
+    return string(buffer, len);
 }
 
 
