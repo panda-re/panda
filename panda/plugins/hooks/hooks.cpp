@@ -122,11 +122,11 @@ void add_symbol_hook(struct symbol_hook* h){
     if (h->hook_offset){
         sh.hook_offset = true;
         sh.offset = h->offset;
-        memset((char*) &sh.name, 0, sizeof(sh.name));
+        memset((void*) &sh.name, 0, sizeof(sh.name));
     }else{
-        strncpy((char*) &sh.name, (char*) &h->name, sizeof(sh.name)-2);
+        memcpy((void*) &sh.name, (void*) &h->name, sizeof(sh.name));
     }
-    strncpy((char*) &sh.section,(char*) &h->section, sizeof(sh.section)-2);
+    memcpy((void*) &sh.section,(void*) &h->section, sizeof(sh.section));
     void* dynamic_symbols = panda_get_plugin_by_name("dynamic_symbols");
     if (dynamic_symbols == NULL){
         panda_require("dynamic_symbols");
