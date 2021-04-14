@@ -29,6 +29,8 @@ DataType str_to_dt(std::string const& kind) {
         return DataType::VOID;
     } else if (kind.compare(bool_str) == 0) {
         return DataType::BOOL;
+    } else if (kind.compare(_Bool_str) == 0) {
+        return DataType::BOOL;
     } else if (kind.find(char_str) != std::string::npos) {
         return DataType::CHAR;
     } else if (kind.find(int_str) != std::string::npos) {
