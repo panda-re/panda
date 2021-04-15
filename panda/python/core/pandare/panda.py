@@ -18,7 +18,7 @@ import readline
 # seems to work with python's but not vice-versa. This allows for
 # stdio interactions later (e.g., pdb, input())  without segfaults
 
-from typing import IO, Callable, List, Union, Optional
+from typing import IO, Callable, List, Union, Optional, Set
 from os.path import realpath, exists, abspath, isfile, dirname, join as pjoin
 from os import dup, getenv, environ, path
 from random import randint
@@ -588,7 +588,7 @@ class Panda():
         '''
         self.load_plugin(name, args={})
 
-    def load_plugin(self, name:str, args:set[str]={}) -> None:
+    def load_plugin(self, name:str, args:Set[str]={}) -> None:
         '''
         Load a C plugin, optionally with arguments
 
