@@ -29,6 +29,8 @@ DataType str_to_dt(std::string const& kind) {
         return DataType::VOID;
     } else if (kind.compare(bool_str) == 0) {
         return DataType::BOOL;
+    } else if (kind.compare(_Bool_str) == 0) {
+        return DataType::BOOL;
     } else if (kind.find(char_str) != std::string::npos) {
         return DataType::CHAR;
     } else if (kind.find(int_str) != std::string::npos) {
@@ -70,13 +72,13 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
     assert((ptr_type + struct_type + array_type + bitfield_type + enum_type + union_type) <= 1);
 
     // Offset
-    rdt.offset_bytes = member["offset"].asUInt();
+    rdt.offset_bytes = member["offset"].asLargestUInt();
 
     // Embedded struct
     if (struct_type) {
 
         rdt.struct_name.assign(type_name);
-        rdt.size_bytes = root["user_types"][type_name]["size"].asUInt();
+        rdt.size_bytes = root["user_types"][type_name]["size"].asLargestUInt();
         rdt.is_le = (root["base_types"]["pointer"]["endian"].asString().compare(little_str) == 0);
         rdt.type = DataType::STRUCT;
         rdt.is_ptr = false;
@@ -93,13 +95,13 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
         // Array of primitives
         if (arr_type_kind.compare(base_str) == 0) {
             rdt.arr_member_type = str_to_dt(arr_type_name);
-            rdt.arr_member_size_bytes = root["base_types"][arr_type_name]["size"].asUInt();
+            rdt.arr_member_size_bytes = root["base_types"][arr_type_name]["size"].asLargestUInt();
             type_info = root["base_types"][arr_type_name];
 
         // Array of pointers
         } else if (arr_type_kind.compare(ptr_str) == 0) {
             rdt.arr_member_type = str_to_dt("unsigned int");
-            rdt.arr_member_size_bytes = root["base_types"][arr_type_kind]["size"].asUInt();
+            rdt.arr_member_size_bytes = root["base_types"][arr_type_kind]["size"].asLargestUInt();
             type_info = root["base_types"][arr_type_kind];
 
         // Array of arrays
@@ -135,12 +137,12 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
         // Array of structs
         } else {
             rdt.arr_member_type = str_to_dt(arr_type_kind);
-            rdt.arr_member_size_bytes = root["user_types"][arr_type_name]["size"].asUInt();
+            rdt.arr_member_size_bytes = root["user_types"][arr_type_name]["size"].asLargestUInt();
             rdt.arr_member_name.assign(arr_type_name);
             type_info = root["user_types"][arr_type_name];
         }
 
-        rdt.size_bytes = (type_info["size"].asUInt() * member["type"]["count"].asUInt());
+        rdt.size_bytes = (type_info["size"].asLargestUInt() * member["type"]["count"].asLargestUInt());
         rdt.is_le = (type_info["endian"].asString().compare(little_str) == 0);
         rdt.type = DataType::ARRAY;
         rdt.is_ptr = false;
@@ -148,8 +150,8 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
         rdt.is_signed = type_info["signed"].asBool();
         rdt.is_valid = true;
 
-        if (type_info["size"].asUInt()) {
-            assert(rdt.get_arr_size() == member["type"]["count"].asUInt());
+        if (type_info["size"].asLargestUInt()) {
+            assert(rdt.get_arr_size() == member["type"]["count"].asLargestUInt());
         }
 
     // Embedded bitfield
@@ -272,7 +274,7 @@ ReadableDataType member_to_rdt(const std::string& member_name, const Json::Value
 
         // Metadata for pointers, primitives
         if (!type_info.isNull()) {
-            rdt.size_bytes = type_info["size"].asUInt();
+            rdt.size_bytes = type_info["size"].asLargestUInt();
             rdt.is_signed = type_info["signed"].asBool();
             rdt.is_le = (type_info["endian"].asString().compare(little_str) == 0);
             rdt.is_valid = true;
@@ -289,7 +291,7 @@ void load_struct(const std::string& struct_name, const Json::Value& struct_entry
 
     // New struct
     StructDef sd = StructDef(struct_name);
-    sd.size_bytes = struct_entry["size"].asUInt();
+    sd.size_bytes = struct_entry["size"].asLargestUInt();
 
     // Fill struct member information
     for (auto const& member_name : struct_entry["fields"].getMemberNames()) {
@@ -320,7 +322,7 @@ void load_func(const std::string& func_name, const Json::Value& func_entry, cons
     if ((func_entry["type"]["kind"].asString().compare(base_str) == 0)
         && (func_entry["type"]["name"].asString().compare(void_str) == 0)) {
 
-        unsigned addr = func_entry["address"].asUInt();
+        uint64_t addr = func_entry["address"].asLargestUInt();
         func_hashtable[addr] = func_name;
 
         if (log_verbose) {
@@ -533,7 +535,7 @@ void load_json(const Json::Value& root) {
         Json::Value sym = root["user_types"][sym_name];
 
         // Skip any zero-sized types
-        if (sym["size"].asInt() > 0) {
+        if (sym["size"].asLargestInt() > 0) {
 
             std::string type;
 
