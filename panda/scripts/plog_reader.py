@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
-# Note this file is a duplicate of the one in the pandare python package
+# Note this file is a duplicate of the one in the pandare python package.
+# This file is no longer maintained, if you install the pandare package you can
+# get equivalent behavior with python3 -m pandare.plog_reader [input file]
 
 import sys
 import os
