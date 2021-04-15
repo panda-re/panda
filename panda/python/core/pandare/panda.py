@@ -18,7 +18,7 @@ import readline
 # seems to work with python's but not vice-versa. This allows for
 # stdio interactions later (e.g., pdb, input())  without segfaults
 
-from typing import IO, Callable, List
+from typing import IO, Callable, List, Union, Optional
 from os.path import realpath, exists, abspath, isfile, dirname, join as pjoin
 from os import dup, getenv, environ, path
 from random import randint
@@ -67,12 +67,12 @@ class Panda():
 
     Note that multiple PANDA objects cannot coexist in the same Python instance.
     '''
-    def __init__(self, arch:str="i386", mem:str="128M",
-            expect_prompt:str=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
-            os_version:str=None,
-            qcow:str=None, # Qcow file to load
+    def __init__(self, arch:Optional[str]="i386", mem:str="128M",
+            expect_prompt:Optional[str]=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
+            os_version:Optional[str]=None,
+            qcow:Optional[str]=None, # Qcow file to load
             os:str="linux",
-            generic:str=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
+            generic:Optional[str]=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
             raw_monitor:bool = False, # When set, don't specify a -monitor. arg Allows for use of -nographic in args with ctrl-A+C for interactive qemu prompt.
             extra_args:List[str]=[]):
         self.arch_name = arch
@@ -492,7 +492,7 @@ class Panda():
             # If we were running, stop the execution and check if we crashed
             self.queue_async(self.stop_run, internal=True)
 
-    def record(self, recording_name:str, snapshot_name:str=None) -> None:
+    def record(self, recording_name:str, snapshot_name:Optional[str]=None) -> None:
         """Begins active recording with name provided.
 
         Args:
@@ -1719,7 +1719,7 @@ class Panda():
 
     ############## TAINT FUNCTIONS ###############
     # Convenience methods for interacting with the taint subsystem.
-    def taint_enable(self, cont=True):
+    def taint_enable(self, cont:bool=True):
         """
         Inform python that taint is enabled.
         """
@@ -1735,7 +1735,7 @@ class Panda():
 
     # label all bytes in this register.
     # or at least four of them
-    def taint_label_reg(self, reg_num, label):
+    def taint_label_reg(self, reg_num:int, label:int) -> None:
         self.taint_enable(cont=False)
         #if debug:
         #    progress("taint_reg reg=%d label=%d" % (reg_num, label))
@@ -1747,7 +1747,7 @@ class Panda():
             self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_label_reg, [reg_num, i, label])
         self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
 
-    def taint_label_ram(self, addr, label):
+    def taint_label_ram(self, addr:int, label:int) -> None:
         self.taint_enable(cont=False)
         #if debug:
             #progress("taint_ram addr=0x%x label=%d" % (addr, label))
@@ -1759,7 +1759,7 @@ class Panda():
         self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
 
     # returns true if any bytes in this register have any taint labels
-    def taint_check_reg(self, reg_num):
+    def taint_check_reg(self, reg_num:int) -> bool:
         if not self.taint_enabled: return False
 #        if debug:
 #            progress("taint_check_reg %d" % (reg_num))
@@ -1768,12 +1768,12 @@ class Panda():
                 return True
 
     # returns true if this physical address is tainted
-    def taint_check_ram(self, addr):
+    def taint_check_ram(self, addr:int) -> bool:
         if not self.taint_enabled: return False
         if self.plugins['taint2'].taint2_query_ram(addr) > 0:
             return True
 
-    def taint_get_reg(self, reg_num):
+    def taint_get_reg(self, reg_num:int) -> List[int]:
         '''
         Returns array of results, one for each byte in this register
         None if no taint.  QueryResult struct otherwise
@@ -1794,7 +1794,7 @@ class Panda():
 
     # returns array of results, one for each byte in this register
     # None if no taint.  QueryResult struct otherwise
-    def taint_get_ram(self, addr):
+    def taint_get_ram(self, addr:int):
         if not self.taint_enabled: return None
         if self.plugins['taint2'].taint2_query_ram(addr) > 0:
             query_res = ffi.new("QueryResult *")
@@ -1805,14 +1805,14 @@ class Panda():
             return None
 
     # returns true if this laddr is tainted
-    def taint_check_laddr(self, addr, off):
+    def taint_check_laddr(self, addr:int, off:int) -> bool:
         if not self.taint_enabled: return False
         if self.plugins['taint2'].taint2_query_laddr(addr, off) > 0:
             return True
 
     # returns array of results, one for each byte in this laddr
     # None if no taint.  QueryResult struct otherwise
-    def taint_get_laddr(self, addr, offset):
+    def taint_get_laddr(self, addr:int, offset:int):
         if not self.taint_enabled: return None
         if self.plugins['taint2'].taint2_query_laddr(addr, offset) > 0:
             query_res = ffi.new("QueryResult *")
@@ -1822,7 +1822,7 @@ class Panda():
         else:
             return None
 
-    def taint_sym_enable(self, cont=True):
+    def taint_sym_enable(self, cont:bool=True) -> None:
         """
         Inform python that taint is enabled.
         """
@@ -1837,7 +1837,7 @@ class Panda():
                 self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
             self.taint_enabled = True
 
-    def taint_sym_label_ram(self, addr, label):
+    def taint_sym_label_ram(self, addr:int, label:int) -> None:
         self.taint_sym_enable(cont=False)
         #if debug:
             #progress("taint_ram addr=0x%x label=%d" % (addr, label))
@@ -1850,7 +1850,7 @@ class Panda():
 
     # label all bytes in this register.
     # or at least four of them
-    def taint_sym_label_reg(self, reg_num, label):
+    def taint_sym_label_reg(self, reg_num:int, label:int) -> None:
         self.taint_sym_enable(cont=False)
         #if debug:
         #    progress("taint_reg reg=%d label=%d" % (reg_num, label))
@@ -2290,7 +2290,7 @@ class Panda():
 
         self._registered_asid_changed_internal_cb = True
 
-    def register_callback(self, callback, function:Callable, name:str, enabled:bool=True, procname:str=None):
+    def register_callback(self, callback, function:Callable, name:str, enabled:bool=True, procname:Optional[str]=None):
         # CB   = self.callback.main_loop_wait
         # func = main_loop_wait_cb
         # name = main_loop_wait
@@ -2411,7 +2411,7 @@ class Panda():
     ### PPP-style callbacks ###
     ###########################
 
-    def ppp(self, plugin_name:str, attr:str, name:str=None, autoload:bool=True) -> Callable:
+    def ppp(self, plugin_name:str, attr:str, name:Optional[str]=None, autoload:bool=True) -> Callable:
         '''
         Decorator for plugin-to-plugin interface. Note this isn't in decorators.py
         becuase it uses the panda object.
@@ -2523,7 +2523,7 @@ class Panda():
 
     ############# HOOKING MIXINS ###############
 
-    def hook(self, addr:int, enabled:bool=True, kernel=None, asid=None, cb_type:str="before_tcg_codegen") -> Callable:
+    def hook(self, addr:int, enabled:bool=True, kernel:Optional[bool]=None, asid:Optional[bool]=None, cb_type:str="before_tcg_codegen") -> Callable:
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
@@ -2589,7 +2589,7 @@ class Panda():
         return decorator
 
 
-    def hook_symbol(self, libraryname:str, symbolname:str, kernel=None, procname:str=None,name:str=None,cb_type:str="before_tcg_codegen") -> Callable:
+    def hook_symbol(self, libraryname:str, symbol:Union[int,str], kernel:Optional[bool]=None, name:Optional[bool]=None,cb_type:str="before_tcg_codegen") -> Callable:
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
@@ -2613,19 +2613,20 @@ class Panda():
             new_hook = self.ffi.new("struct symbol_hook*")
             type_num = getattr(self.libpanda, "PANDA_CB_"+cb_type.upper())
             new_hook.type = type_num
-            if procname is not None:
-                procname_ffi = self.ffi.new("char[]",bytes(procname,"utf-8"))
-            else:
-                procname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
-            self.ffi.memmove(new_hook.procname,procname_ffi,len(procname_ffi))
             if libraryname is not None:
                 libname_ffi = self.ffi.new("char[]",bytes(libraryname,"utf-8"))
             else:
                 libname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
             self.ffi.memmove(new_hook.section,libname_ffi,len(libname_ffi))
 
-            if symbolname is not None:
-                symbolname_ffi = self.ffi.new("char[]",bytes(symbolname,"utf-8"))
+            new_hook.hook_offset = False
+            if symbol is not None:
+                if isinstance(symbol, int):
+                    new_hook.offset = symbol
+                    new_hook.hook_offset = True
+                    symbolname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
+                else:
+                    symbolname_ffi = self.ffi.new("char[]",bytes(symbol,"utf-8"))
             else:
                 symbolname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
             self.ffi.memmove(new_hook.name,symbolname_ffi,len(symbolname_ffi))
@@ -2652,7 +2653,7 @@ class Panda():
             return wrapper
         return decorator
 
-    def get_best_matching_symbol(self, cpu, pc:int=None, asid:int=None):
+    def get_best_matching_symbol(self, cpu, pc:Optional[int]=None, asid:Optional[int]=None):
         if asid is None:
             asid = self.current_asid(cpu)
         if pc is None:
@@ -2682,7 +2683,7 @@ class Panda():
         else:
             print("ERROR: Your hook name was not in the hook list")
 
-    def hook2(self,name:str, kernel:bool=True, procname=ffi.NULL, libname=ffi.NULL, trace_start:int=0, trace_stop:int=0, range_begin:int=0, range_end:int=0) -> Callable:
+    def hook2(self,name:str, kernel:bool=True, procname:Optional[str]=ffi.NULL, libname:Optional[str]=ffi.NULL, trace_start:int=0, trace_stop:int=0, range_begin:int=0, range_end:int=0) -> Callable:
         if procname != ffi.NULL:
             procname = ffi.new("char[]",bytes(procname,"utf-8"))
         if libname != ffi.NULL:
@@ -2716,7 +2717,7 @@ class Panda():
             return wrapper
         return decorator
 
-    def hook2_single_insn(self, name:str, pc:int, kernel:bool=False, procname=ffi.NULL, libname=ffi.NULL) -> Callable:
+    def hook2_single_insn(self, name:str, pc:int, kernel:bool=False, procname:Optional[str]=ffi.NULL, libname:Optional[str]=ffi.NULL) -> Callable:
         return self.hook2(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
 
     # MEM HOOKS

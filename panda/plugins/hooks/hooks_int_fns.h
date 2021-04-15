@@ -48,8 +48,9 @@ typedef struct hook {
 
 struct symbol_hook {
     char name[MAX_PATH_LEN];
+    target_ulong offset;
+    bool hook_offset;
     char section[MAX_PATH_LEN];
-    char procname[MAX_PATH_LEN];
     panda_cb_type type;
     hooks_panda_cb cb;
 };
