@@ -2589,7 +2589,7 @@ class Panda():
         return decorator
 
 
-    def hook_symbol(self, libraryname:str, symbol:Union[int,str], kernel:Optional[bool]=None, name:Optional[bool]=None,cb_type:str="before_tcg_codegen") -> Callable:
+    def hook_symbol(self, libraryname:Optional[str], symbol:Union[int,str,None], kernel:Optional[bool]=None, name:Optional[bool]=None,cb_type:str="before_tcg_codegen") -> Callable:
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
