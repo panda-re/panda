@@ -2,6 +2,7 @@
 
 import zlib
 import struct
+import pandare.plog_pb2
 
 class PLogReader:
     '''
@@ -54,7 +55,7 @@ class PLogReader:
         # parse message - we're using a fresh message
         # using MergeFromString() is slightly faster than using ParseFromString()
         msg_size, = struct.unpack_from('<I', self.chunk_data, self.chunk_data_idx)
-        msg = plog_pb2.LogEntry()
+        msg = pandare.plog_pb2.LogEntry()
         msg_start = self.chunk_data_idx + 4
         msg_end = msg_start + msg_size
         msg.MergeFromString(self.chunk_data[msg_start:msg_end])
