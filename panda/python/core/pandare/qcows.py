@@ -158,7 +158,7 @@ class Qcows():
     '''
 
     @staticmethod
-    def get_qcow_info(name=None):
+    def get_qcow_info(name:str=None):
         '''
         Return information about supported image as specified by name.
 
@@ -184,7 +184,7 @@ class Qcows():
         return r
 
     @staticmethod
-    def get_qcow(name=None):
+    def get_qcow(name:str=None):
         '''
         Given a generic name of a qcow or a path to a qcow, return the path. Defaults to i386
 
@@ -234,7 +234,7 @@ class Qcows():
         return qcow_path
 
     @staticmethod
-    def qcow_from_arg(idx=1):
+    def qcow_from_arg(idx:int=1):
         '''
         Given an index into argv, call get_qcow with that arg if it exists, else with None
         '''

@@ -18,6 +18,7 @@ import readline
 # seems to work with python's but not vice-versa. This allows for
 # stdio interactions later (e.g., pdb, input())  without segfaults
 
+from typing import IO, Callable, List
 from os.path import realpath, exists, abspath, isfile, dirname, join as pjoin
 from os import dup, getenv, environ, path
 from random import randint
@@ -66,14 +67,14 @@ class Panda():
 
     Note that multiple PANDA objects cannot coexist in the same Python instance.
     '''
-    def __init__(self, arch="i386", mem="128M",
-            expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
-            os_version=None,
-            qcow=None, # Qcow file to load
-            os="linux",
-            generic=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
-            raw_monitor = False, # When set, don't specify a -monitor. arg Allows for use of -nographic in args with ctrl-A+C for interactive qemu prompt.
-            extra_args=[]):
+    def __init__(self, arch:str="i386", mem:str="128M",
+            expect_prompt:str=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
+            os_version:str=None,
+            qcow:str=None, # Qcow file to load
+            os:str="linux",
+            generic:str=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
+            raw_monitor:bool = False, # When set, don't specify a -monitor. arg Allows for use of -nographic in args with ctrl-A+C for interactive qemu prompt.
+            extra_args:List[str]=[]):
         self.arch_name = arch
         self.mem = mem
         self.os = os_version
@@ -206,7 +207,7 @@ class Panda():
         progress ("Panda args: [" + (" ".join(self.panda_args)) + "]")
     # /__init__
 
-    def _do_types_import(self):
+    def _do_types_import(self) -> None:
         # Import objects from panda_datatypes which are configured by the environment variables
         # Store these objects in self.callback and self.callback_dictionary
         global ffi
@@ -220,7 +221,7 @@ class Panda():
         self.callback = pcb
         return ffi
 
-    def _initialize_panda(self):
+    def _initialize_panda(self) -> None:
         '''
         After initializing the class, the user has a chance to do something
         (TODO: what? register callbacks? It's something important...) before we finish initializing
@@ -247,7 +248,7 @@ class Panda():
         self._initialized_panda = True
 
 
-    def __main_loop_wait_cb(self):
+    def __main_loop_wait_cb(self) -> None:
         '''
         __main_loop_wait_cb is called at the start of the main cpu loop in qemu.
         This is a fairly safe place to call into qemu internals but watch out for deadlocks caused
@@ -264,7 +265,7 @@ class Panda():
         except KeyboardInterrupt:
             self.end_analysis()
 
-    def _find_build_dir(self):
+    def _find_build_dir(self) -> str:
         '''
         Find build directory containing ARCH-softmmu/libpanda-ARCH.so and ARCH-softmmu/panda/plugins/
         1) check relative to file (in the case of installed packages)
@@ -289,20 +290,20 @@ class Panda():
                            ).format(self.arch_name, searched_paths))
 
 
-    def queue_main_loop_wait_fn(self, fn, args=[]):
+    def queue_main_loop_wait_fn(self, fn:Callable, args:List[str]=[]) -> None:
         '''
         Queue a function to run at the next main loop
         fn is a function we want to run, args are arguments to apss to it
         '''
         self.main_loop_wait_fnargs.append((fn, args))
 
-    def exit_cpu_loop(self):
+    def exit_cpu_loop(self) -> None:
         '''
         Stop cpu execution at nearest juncture.
         '''
         self.libpanda.panda_exit_loop = True
 
-    def revert_async(self, snapshot_name): # In the next main loop, revert
+    def revert_async(self, snapshot_name:str) -> None: # In the next main loop, revert
         '''
         Request a snapshot revert, eventually. This is fairly dangerous
         because you don't know when it finishes. You should be using revert_sync
@@ -321,7 +322,7 @@ class Panda():
         if debug:
             self.queue_main_loop_wait_fn(self.finish_timer, [timer_start, "Loaded snapshot"])
 
-    def reset(self):
+    def reset(self) -> None:
         """In the next main loop, reset to boot"""
         if debug:
             progress ("Resetting machine to start state")
@@ -331,16 +332,16 @@ class Panda():
         self.queue_main_loop_wait_fn(self.libpanda.panda_reset)
         self.queue_main_loop_wait_fn(self.libpanda.panda_cont)
 
-    def cont(self):
+    def cont(self) -> None:
         ''' Continue execution (run after vm_stop) '''
         self.libpanda.panda_cont()
         self.running.set()
 
-    def vm_stop(self, code=4):
+    def vm_stop(self, code:int=4) -> None:
         ''' Stop execution, default code means RUN_STATE_PAUSED '''
         self.libpanda.panda_stop(code)
 
-    def snap(self, snapshot_name):
+    def snap(self, snapshot_name:str) -> None:
         ''' Create snapshot with specified name '''
         if debug:
             progress ("Creating snapshot " + snapshot_name)
@@ -354,7 +355,7 @@ class Panda():
         if debug:
             self.queue_main_loop_wait_fn(self.finish_timer, [timer_start, "Saved snapshot"])
 
-    def delvm(self, snapshot_name):
+    def delvm(self, snapshot_name:str) -> None:
         ''' Delete snapshot with specified name '''
         if debug:
             progress ("Deleting snapshot " + snapshot_name)
@@ -364,20 +365,20 @@ class Panda():
         charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
         self.queue_main_loop_wait_fn(self.libpanda.panda_delvm, [charptr])
 
-    def finish_timer(self, start, msg):
+    def finish_timer(self, start, msg:str) -> None:
         ''' Print how long some (main_loop_wait) task took '''
         t = time() - start
         print("{} in {1:.08f} seconds".format(msg, t))
 
 
-    def enable_tb_chaining(self):
+    def enable_tb_chaining(self) -> None:
         ''' This function enables translation block chaining in QEMU '''
         if debug:
             progress("Enabling TB chaining")
         self.disabled_tb_chaining = False
         self.libpanda.panda_enable_tb_chaining()
 
-    def disable_tb_chaining(self):
+    def disable_tb_chaining(self) -> None:
         ''' This function disables translation block chaining in QEMU '''
         if not self.disabled_tb_chaining:
             if debug:
@@ -385,7 +386,7 @@ class Panda():
             self.disabled_tb_chaining = True
             self.libpanda.panda_disable_tb_chaining()
 
-    def setup_internal_signal_handler(self, signal_handler=None):
+    def setup_internal_signal_handler(self, signal_handler=None) -> None:
         def SigHandler(SIG,a,b):
             from signal import SIGINT, SIGHUP, SIGTERM
             if SIG == SIGINT:
@@ -414,7 +415,7 @@ class Panda():
             self.libpanda.panda_setup_signal_handling(self.__sighandler)
 
 
-    def run(self):
+    def run(self) -> None:
         '''
         This function starts our running PANDA instance from Python. At termination this function returns and the script continues to run after it.
 
@@ -473,7 +474,7 @@ class Panda():
             raise saved_exception
 
 
-    def end_analysis(self):
+    def end_analysis(self) -> None:
         '''
         Stop running machine.
 
@@ -491,7 +492,7 @@ class Panda():
             # If we were running, stop the execution and check if we crashed
             self.queue_async(self.stop_run, internal=True)
 
-    def record(self, recording_name, snapshot_name=None):
+    def record(self, recording_name:str, snapshot_name:str=None) -> None:
         """Begins active recording with name provided.
 
         Args:
@@ -511,7 +512,7 @@ class Panda():
         if res_string_enum != "RRCTRL_OK":
            raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})")
 
-    def end_record(self):
+    def end_record(self) -> None:
         """Stop active recording.
 
         Raises:
@@ -522,7 +523,7 @@ class Panda():
         if res_string_enum != "RRCTRL_OK":
            raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})")
     
-    def recording_exists(self, name):
+    def recording_exists(self, name:str) -> None:
         '''
         Checks if a recording file exists on disk.
 
@@ -535,7 +536,7 @@ class Panda():
         if exists(name + "-rr-snp"):
             return True
 
-    def run_replay(self, replaypfx):
+    def run_replay(self, replaypfx:str) -> None:
         '''
         Load a replay and run it. Starts PANDA execution and returns after end of VM execution.
 
@@ -560,7 +561,7 @@ class Panda():
         self._in_replay = False
 
 
-    def end_replay(self):
+    def end_replay(self) -> None:
         '''
         Terminates a currently running replay
 
@@ -581,13 +582,13 @@ class Panda():
            raise Exception(f"ending record method failed with RTCTL_ret {res_string_enum} ({result})")
 
 
-    def require(self, name):
+    def require(self, name:str) -> None:
         '''
         Load a C plugin with no arguments. Deprecated. Use load_plugin
         '''
         self.load_plugin(name, args={})
 
-    def load_plugin(self, name, args={}):
+    def load_plugin(self, name:str, args:set[str]={}) -> None:
         '''
         Load a C plugin, optionally with arguments
 
@@ -632,7 +633,7 @@ class Panda():
         self.libpanda.panda_require_from_library(charptr, plugin_args, len(argstrs_ffi))
         self._load_plugin_library(name)
 
-    def _procname_changed(self, cpu, name):
+    def _procname_changed(self, cpu, name:str) -> None:
         for cb_name, cb in self.registered_callbacks.items():
             if not cb["procname"]:
                 continue
@@ -641,7 +642,7 @@ class Panda():
             if name != cb["procname"] and cb['enabled']:
                 self.disable_callback(cb_name)
 
-    def unload_plugin(self, name):
+    def unload_plugin(self, name:str) -> None:
         '''
         Unload plugin with given name.
 
@@ -656,7 +657,7 @@ class Panda():
         name_ffi = ffi.new("char[]", bytes(name,"utf-8"))
         self.libpanda.panda_unload_plugin_by_name(name_ffi)
 
-    def unload_plugins(self):
+    def unload_plugins(self) -> None:
         '''
         Disable all python plugins and request to unload all c plugins
         at the next main_loop_wait.
@@ -680,7 +681,7 @@ class Panda():
         # Then unload C plugins. May be unsafe to do except from the top of the main loop (taint segfaults otherwise)
         self.queue_main_loop_wait_fn(self.libpanda.panda_unload_plugins)
 
-    def memsavep(self, file_out):
+    def memsavep(self, file_out:IO) -> None:
         '''
         Calls QEMU memsavep on your specified python file.
         '''
@@ -692,7 +693,7 @@ class Panda():
         self.libpanda.panda_memsavep(fileptr)
         self.C.fclose(fileptr)
 
-    def physical_memory_read(self, addr, length, fmt='bytearray'):
+    def physical_memory_read(self, addr:int, length:int, fmt:str='bytearray'):
         '''
         Read guest physical memory.
 
@@ -711,7 +712,7 @@ class Panda():
         '''
         return self._memory_read(None, addr, length, physical=True, fmt=fmt)
 
-    def virtual_memory_read(self, env, addr, length, fmt='bytearray'):
+    def virtual_memory_read(self, env, addr:int, length:int, fmt='bytearray'):
         '''
         Read guest virtual memory.
 
@@ -732,7 +733,7 @@ class Panda():
 
         return self._memory_read(env, addr, length, physical=False, fmt=fmt)
 
-    def _memory_read(self, env, addr, length, physical=False, fmt='bytearray'):
+    def _memory_read(self, env, addr:int, length:int, physical:bool=False, fmt:str='bytearray'):
         '''
         Read but with an autogen'd buffer
         Supports physical or virtual addresses
@@ -781,7 +782,7 @@ class Panda():
         else:
             raise ValueError("fmt={} unsupported".format(fmt))
 
-    def physical_memory_write(self, addr, buf):
+    def physical_memory_write(self, addr:int, buf:int) -> int:
         '''
         Write guest physical memory.
 
@@ -791,7 +792,7 @@ class Panda():
         '''
         return self._memory_write(None, addr, buf, physical=True)
 
-    def virtual_memory_write(self, env, addr, buf):
+    def virtual_memory_write(self, env, addr:int, buf:int) -> int:
         '''
         Write guest virtual memory.
 
@@ -806,7 +807,7 @@ class Panda():
         '''
         return self._memory_write(env, addr, buf, physical=False)
 
-    def _memory_write(self, env, addr, buf, physical=False):
+    def _memory_write(self, env, addr:int, buf:int, physical=False):
         '''
         Write a bytearray into memory at the specified physical/virtual address
         '''
@@ -838,7 +839,7 @@ class Panda():
             c.append(pc)
         return c
 
-    def _load_plugin_library(self, name):
+    def _load_plugin_library(self, name:str) -> None:
         if hasattr(self,"__did_load_libpanda"):
             libpanda_path_chr = ffi.new("char[]",bytes(self.libpanda_path, "UTF-8"))
             self.__did_load_libpanda = self.libpanda.panda_load_libpanda(libpanda_path_chr)
@@ -847,7 +848,7 @@ class Panda():
             library = ffi.dlopen(pjoin(*[self.build_dir, self.arch_name+"-softmmu", "panda/plugins/panda_{}.so".format(name)]))
             self.plugins[name] = library
 
-    def queue_async(self, f, internal=False):
+    def queue_async(self, f:Callable, internal:bool=False) -> None:
         '''
         Queues work in the asynchronous work queue.
 
@@ -872,7 +873,7 @@ class Panda():
         wrapper.__name__ = f.__name__
         self.athread.queue(wrapper, internal=internal)
 
-    def map_memory(self, name, size, address):
+    def map_memory(self, name:str, size:int, address:int) -> None:
 
         '''
         Make a new memory region.
@@ -887,7 +888,7 @@ class Panda():
         size = ceil(size/1024)*1024 # Must be page-aligned
         return self.libpanda.map_memory(name_c, size, address)
 
-    def read_str(self, cpu, ptr, max_length=None):
+    def read_str(self, cpu, ptr:int, max_length:int=None) -> str:
         '''
         Helper to read a null-terminated string from guest memory given a pointer and CPU state
         May return an exception if the call to panda.virtual_memory_read fails (e.g., if you pass a
@@ -904,7 +905,7 @@ class Panda():
             idx += 1
         return r.decode("utf8", "ignore")
 
-    def to_unsigned_guest(self, x):
+    def to_unsigned_guest(self, x:int) -> int:
         '''
         Convert a singed python int to an unsigned int32/unsigned int64
         depending on guest bit-size
@@ -917,7 +918,7 @@ class Panda():
         else:
             raise ValueError("Unsupported number of bits")
 
-    def from_unsigned_guest(self, x):
+    def from_unsigned_guest(self, x:int) -> int:
         '''
         Convert an unsigned int32/unsigned int64 from the guest
         (depending on guest bit-size) to a (signed) python int
@@ -927,7 +928,7 @@ class Panda():
         else: # Else it's positive
             return x
 
-    def queue_blocking(self, func, queue=True):
+    def queue_blocking(self, func:Callable, queue:bool=True) -> Callable:
         """
         Decorator to mark a function as `blocking`, and by default queue it to run asynchronously
 
@@ -960,7 +961,7 @@ class Panda():
 
     ########################## LIBPANDA FUNCTIONS ########################
     # Methods that directly pass data to/from PANDA with no extra logic beyond argument reformatting.
-    def set_pandalog(self, name):
+    def set_pandalog(self, name:str) -> None:
         '''
         Enable recording to a pandalog (plog) named `name`
 
@@ -973,7 +974,7 @@ class Panda():
         charptr = ffi.new("char[]", bytes(name, "utf-8"))
         self.libpanda.panda_start_pandalog(charptr)
 
-    def enable_memcb(self):
+    def enable_memcb(self) -> None:
         '''
         Enable memory callbacks. Must be called for memory callbacks to work.
         pypanda enables this automatically with some callbacks.
@@ -981,7 +982,7 @@ class Panda():
         self._memcb = True
         self.libpanda.panda_enable_memcb()
 
-    def disable_memcb(self):
+    def disable_memcb(self) -> None:
         '''
         Disable memory callbacks. Must be enabled for memory callbacks to work.
         pypanda enables this automatically with some callbacks.
@@ -989,7 +990,7 @@ class Panda():
         self._memcb = False
         self.libpanda.panda_disable_memcb()
 
-    def virt_to_phys(self, env, addr):
+    def virt_to_phys(self, env, addr:int) -> int:
         '''
         Convert virtual address to physical address.
 
@@ -1002,7 +1003,7 @@ class Panda():
         '''
         return self.libpanda.panda_virt_to_phys_external(env, addr)
 
-    def enable_plugin(self, handle):
+    def enable_plugin(self, handle:int) -> None:
         '''
         Enable plugin.
 
@@ -1014,7 +1015,7 @@ class Panda():
         '''
         self.libpanda.panda_enable_plugin(handle)
 
-    def disable_plugin(self, handle):
+    def disable_plugin(self, handle:int) -> None:
         '''
         Disable plugin.
 
@@ -1026,71 +1027,71 @@ class Panda():
         '''
         self.libpanda.panda_disable_plugin(handle)
 
-    def enable_llvm(self):
+    def enable_llvm(self) -> None:
         '''
         Enables the use of the LLVM JIT in replacement of the TCG (QEMU intermediate language and compiler) backend.
         '''
         self.libpanda.panda_enable_llvm()
 
-    def disable_llvm(self):
+    def disable_llvm(self) -> None:
         '''
         Disables the use of the LLVM JIT in replacement of the TCG (QEMU intermediate language and compiler) backend.
         '''
         self.libpanda.panda_disable_llvm()
 
-    def enable_llvm_helpers(self):
+    def enable_llvm_helpers(self) -> None:
         '''
         Enables the use of Helpers for the LLVM JIT in replacement of the TCG (QEMU intermediate language and compiler) backend.
         '''
         self.libpanda.panda_enable_llvm_helpers()
 
-    def disable_llvm_helpers(self):
+    def disable_llvm_helpers(self) -> None:
         '''
         Disables the use of Helpers for the LLVM JIT in replacement of the TCG (QEMU intermediate language and compiler) backend.
         '''
         self.libpanda.panda_disable_llvm_helpers()
 
-    def flush_tb(self):
+    def flush_tb(self) -> None:
         '''
         This function requests that the translation block cache be flushed as soon as possible. If running with translation block chaining turned off (e.g. when in LLVM mode or replay mode), this will happen when the current translation block is done executing.
         Flushing the translation block cache is additionally necessary if the plugin makes changes to the way code is translated. For example, by using panda_enable_precise_pc.
         '''
         return self.libpanda.panda_do_flush_tb()
 
-    def enable_precise_pc(self):
+    def enable_precise_pc(self) -> None:
         '''
         By default, QEMU does not update the program counter after every instruction.
         This function enables precise tracking of the program counter. After enabling precise PC tracking, the program counter will be available in env->panda_guest_pc and can be assumed to accurately reflect the guest state.
         '''
         self.libpanda.panda_enable_precise_pc()
 
-    def disable_precise_pc(self):
+    def disable_precise_pc(self) -> None:
         '''
         By default, QEMU does not update the program counter after every instruction.
         This function disables precise tracking of the program counter.
         '''
         self.libpanda.panda_disable_precise_pc()
 
-    def in_kernel(self, cpustate):
+    def in_kernel(self, cpustate) -> bool:
         '''
         Returns true if the processor is in the privilege level corresponding to kernel mode for any of the PANDA supported architectures.
         Legacy alias for in_kernel_mode().
         '''
         return self.libpanda.panda_in_kernel_external(cpustate)
 
-    def in_kernel_mode(self, cpustate):
+    def in_kernel_mode(self, cpustate) -> bool:
         '''
         Returns true if the processor is in the privilege level corresponding to kernel mode for any of the PANDA supported architectures.
         '''
         return self.libpanda.panda_in_kernel_mode_external(cpustate)
 
-    def in_kernel_code_linux(self, cpustate):
+    def in_kernel_code_linux(self, cpustate) -> bool:
         '''
         Returns true if the current program counter corresponds to Linux kernelspace.
         '''
         return self.libpanda.panda_in_kernel_code_linux_external(cpustate)
 
-    def g_malloc0(self, size):
+    def g_malloc0(self, size:int):
         '''
         Helper function to call glib malloc
 
@@ -1102,7 +1103,7 @@ class Panda():
         '''
         return self.libpanda.g_malloc0(size)
 
-    def current_sp(self, cpustate):
+    def current_sp(self, cpustate) -> int:
         '''
         Get current stack pointer
 
@@ -1114,7 +1115,7 @@ class Panda():
         '''
         return self.libpanda.panda_current_sp_external(cpustate)
 
-    def current_pc(self, cpustate):
+    def current_pc(self, cpustate) -> int:
         '''
         Get current program counter
 
@@ -1129,7 +1130,7 @@ class Panda():
         return self.libpanda.panda_current_pc(cpustate)
 
 
-    def current_asid(self, cpustate):
+    def current_asid(self, cpustate) -> int:
         '''
         Get current Application Specific ID
 
@@ -1148,13 +1149,13 @@ class Panda():
         '''
         self.libpanda.panda_disas(code, size)
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         '''
         Unload all plugins and close pandalog.
         '''
         self.libpanda.panda_cleanup()
 
-    def was_aborted(self):
+    def was_aborted(self) -> bool:
         '''
         Returns true if panda was aborted.
         '''
@@ -1173,13 +1174,13 @@ class Panda():
         '''
         return self.libpanda.garray_len(garray)
 
-    def panda_finish(self):
+    def panda_finish(self) -> int:
         '''
         Final stage call to underlying panda_finish with initialization.
         '''
         return self.libpanda.panda_finish()
 
-    def rr_get_guest_instr_count(self):
+    def rr_get_guest_instr_count(self) -> int:
         '''
         Returns record/replay guest instruction count.
         '''
@@ -1459,7 +1460,7 @@ class Panda():
     ##################### OSI FUNCTIONS ###########
     #Convenience functions to interact with the Operating System Instrospection (OSI) class of plugins.
 
-    def set_os_name(self, os_name):
+    def set_os_name(self, os_name:str) -> None:
         """
         Set OS target. Equivalent to "-os" flag on the command line. Matches the form of:
 
@@ -1537,7 +1538,7 @@ class Panda():
             assert(not (proc.pid != 0 and proc.pid == proc.ppid)) # No cycles allowed other than at 0
         return procs
 
-    def get_process_name(self, cpu):
+    def get_process_name(self, cpu) -> str:
         '''
         Get the name of the current process. May return None if OSI cannot identify the current process
         '''
@@ -1637,7 +1638,7 @@ class Panda():
 
         return True
 
-    def pyperiph_read_cb(self, cpu, pc, physaddr, size, val_ptr):
+    def pyperiph_read_cb(self, cpu, pc:int, physaddr:int, size:int, val_ptr) -> bool:
         pp = self._addr_to_pyperipheral(physaddr)
         if pp is None:
             return False
@@ -1651,7 +1652,7 @@ class Panda():
 
         return True
 
-    def pyperiph_write_cb(self, cpu, pc, physaddr, size, val):
+    def pyperiph_write_cb(self, cpu, pc:int, physaddr:int, size:int, val) -> bool:
         pp = self._addr_to_pyperipheral(physaddr)
         if pp is None:
             return False
@@ -1659,7 +1660,7 @@ class Panda():
         pp.write_memory(physaddr, size, val)
         return True
 
-    def register_pyperipheral(self, object):
+    def register_pyperipheral(self, object) -> None:
         """
         Registers a python peripheral, and the necessary attributes to the
         panda-object, if not present yet.
@@ -1691,7 +1692,7 @@ class Panda():
 
         self.pyperipherals.append(object)
 
-    def unregister_pyperipheral(self, pyperiph):
+    def unregister_pyperipheral(self, pyperiph) -> bool:
         """
         deregisters a python peripheral.
         The pyperiph parameter can be either an object, or an address
@@ -1867,7 +1868,7 @@ class Panda():
     Utilities to integrate Volatility with PANDA. Highly experimental.
     """
 
-    def make_panda_file_handler(self, debug=False):
+    def make_panda_file_handler(self, debug:bool=False) -> bool:
         '''
         Constructs a file and file handler that volatility can't ignore to back by PANDA physical memory
         '''
@@ -1981,7 +1982,7 @@ class Panda():
     XXX: Do not call any of the following from the main thread- they depend on the CPU loop running
     '''
     @blocking
-    def stop_run(self):
+    def stop_run(self) -> None:
         '''
         From a blocking thread, request vl.c loop to break. Returns control flow in main thread.
         In other words, once this is called, panda.run() will finish and your main thread will continue.
@@ -1992,7 +1993,7 @@ class Panda():
         self.libpanda.panda_break_vl_loop_req = True
 
     @blocking
-    def run_serial_cmd(self, cmd, no_timeout=False, timeout=30):
+    def run_serial_cmd(self, cmd:str, no_timeout:bool=False, timeout:int=30) -> str:
         if self.serial_console is None:
             raise RuntimeError("Cannot run serial commands without providing PANDA an expect_prompt")
         self.running.wait() # Can only run serial when guest is running
@@ -2004,7 +2005,7 @@ class Panda():
         return result
 
     @blocking
-    def run_serial_cmd_async(self, cmd, delay=1):
+    def run_serial_cmd_async(self, cmd:str, delay:int=1) -> None:
         '''
         Type a command and press enter in the guest. Return immediately. No results available
         Only use this if you know what you're doing!
@@ -2015,34 +2016,34 @@ class Panda():
             sleep(delay) # Ensure it has a chance to run
 
     @blocking
-    def type_serial_cmd(self, cmd):
+    def type_serial_cmd(self, cmd:str) -> None:
         #Can send message into socket without guest running (no self.running.wait())
         self.serial_console.send(cmd.encode("utf8")) # send, not sendline
 
-    def finish_serial_cmd(self):
+    def finish_serial_cmd(self) -> None:
         result = self.serial_console.send_eol()
         result = self.serial_console.expect()
         return result
 
     @blocking
-    def run_monitor_cmd(self, cmd):
+    def run_monitor_cmd(self, cmd:str) -> str:
         self.monitor_console.sendline(cmd.encode("utf8"))
         result = self.monitor_console.expect()
         return result
 
     @blocking
-    def revert_sync(self, snapshot_name):
+    def revert_sync(self, snapshot_name:str) -> str:
         result = self.run_monitor_cmd("loadvm {}".format(snapshot_name))
         if result.startswith("Length mismatch"):
             raise RuntimeError("QEMU machine's RAM size doesn't match snapshot RAM size!")
         return result
 
     @blocking
-    def delvm_sync(self, snapshot_name):
+    def delvm_sync(self, snapshot_name:str) -> None:
         self.run_monitor_cmd("delvm {}".format(snapshot_name))
 
     @blocking
-    def copy_to_guest(self, copy_directory, iso_name=None):
+    def copy_to_guest(self, copy_directory:str, iso_name:str=None) -> None:
         if not iso_name: iso_name = copy_directory + '.iso'
         progress("Creating ISO {}...".format(iso_name))
 
@@ -2067,7 +2068,7 @@ class Panda():
         progress(self.run_serial_cmd(setup_sh))
 
     @blocking
-    def record_cmd(self, guest_command, copy_directory=None, iso_name=None, setup_command=None, recording_name="recording", snap_name="root", ignore_errors=False):
+    def record_cmd(self, guest_command:str, copy_directory:str=None, iso_name:str=None, setup_command:str=None, recording_name:str="recording", snap_name:str="root", ignore_errors:bool=False) -> None:
         '''
         Take a recording as follows:
             0) Revert to the specified snapshot name if one is set. By default 'root'. Set to `None` if you have already set up the guest and are ready to record with no revert
@@ -2120,7 +2121,7 @@ class Panda():
         print("Finished recording")
 
     @blocking
-    def interact(self, confirm_quit=True):
+    def interact(self, confirm_quit:bool=True) -> None:
         '''
         Expose console interactively until user types pandaquit
         Must be run in blocking thread.
@@ -2148,7 +2149,7 @@ class Panda():
             print(r)
 
     @blocking
-    def do_panda_finish(self):
+    def do_panda_finish(self) -> None:
         '''
         Call panda_finish. Note this isn't really blocking - the
         guest should have exited by now, but queue this after
@@ -2161,7 +2162,7 @@ class Panda():
     ################## CALLBACK FUNCTIONS ################
     # Mixin for handling callbacks and generation of decorators that allow users to register their own callbacks
     # such as panda.cb_before_block_exec()
-    def register_cb_decorators(self):
+    def register_cb_decorators(self) -> None:
         '''
         Setup callbacks and generate self.cb_XYZ functions for cb decorators
         XXX Don't add any other methods with names starting with 'cb_'
@@ -2289,7 +2290,7 @@ class Panda():
 
         self._registered_asid_changed_internal_cb = True
 
-    def register_callback(self, callback, function, name, enabled=True, procname=None):
+    def register_callback(self, callback, function:Callable, name:str, enabled:bool=True, procname:str=None):
         # CB   = self.callback.main_loop_wait
         # func = main_loop_wait_cb
         # name = main_loop_wait
@@ -2323,12 +2324,12 @@ class Panda():
                 self.disable_tb_chaining()
 
 
-    def is_callback_enabled(self, name):
+    def is_callback_enabled(self, name:str) -> bool:
         if name not in self.registered_callbacks.keys():
             raise RuntimeError("No callback has been registered with name '{}'".format(name))
         return self.registered_callbacks[name]['enabled']
 
-    def enable_internal_callbacks(self):
+    def enable_internal_callbacks(self) -> None:
         '''
         Enable all our internal callbacks that start with __ such as __main_loop_wait
         and __asid_changed. Important in case user has done a panda.end_analysis()
@@ -2338,14 +2339,14 @@ class Panda():
             if name.startswith("__") and not self.registered_callbacks[name]['enabled']:
                 self.enable_callback(name)
 
-    def enable_all_callbacks(self):
+    def enable_all_callbacks(self) -> None:
         '''
         Enable all python callbacks that have been disabled
         '''
         for name in self.registered_callbacks.keys():
             self.enable_callback(name)
 
-    def enable_callback(self, name):
+    def enable_callback(self, name:str) -> None:
         '''
         Enable a panda plugin using its handle and cb.number as a unique ID
         '''
@@ -2364,7 +2365,7 @@ class Panda():
         #progress("Enabling callback '{}' on '{}' handle = {}".format(name, cb.name, handle))
         self.libpanda.panda_enable_callback_helper(handle, cb.number, pcb)
 
-    def disable_callback(self, name, forever=False):
+    def disable_callback(self, name:str, forever:bool=False) -> None:
         '''
         Disable a panda plugin using its handle and cb.number as a unique ID
         If forever is specified, we'll never reenable the call- useful when
@@ -2386,7 +2387,7 @@ class Panda():
         if forever:
             del self.registered_callbacks[name]
 
-    def delete_callback(self, name):
+    def delete_callback(self, name:str) -> None:
         '''
         Completely delete a registered panda callback by name
         '''
@@ -2401,7 +2402,7 @@ class Panda():
         del self.registered_callbacks[name]['handle']
         del self.registered_callbacks[name]
 
-    def delete_callbacks(self):
+    def delete_callbacks(self) -> None:
         #for name in self.registered_callbacks.keys():
         while len(self.registered_callbacks.keys()) > 0:
             self.delete_callback(list(self.registered_callbacks.keys())[0])
@@ -2410,7 +2411,7 @@ class Panda():
     ### PPP-style callbacks ###
     ###########################
 
-    def ppp(self, plugin_name, attr, name=None, autoload=True):
+    def ppp(self, plugin_name:str, attr:str, name:str=None, autoload:bool=True) -> Callable:
         '''
         Decorator for plugin-to-plugin interface. Note this isn't in decorators.py
         becuase it uses the panda object.
@@ -2471,7 +2472,7 @@ class Panda():
         return decorator
 
 
-    def disable_ppp(self, name):
+    def disable_ppp(self, name:str) -> None:
         '''
         Disable a ppp-style callback by name.
         Unlike regular panda callbacks which can be enabled/disabled/deleted, PPP callbacks are only enabled/deleted (which we call disabled)
@@ -2505,7 +2506,7 @@ class Panda():
     Provides the ability to interact with a QEMU attached gdb session by setting and clearing breakpoints. Experimental.
     """
 
-    def set_breakpoint(self, cpu, pc):
+    def set_breakpoint(self, cpu, pc:int) -> None:
         '''
         Set a GDB breakpoint such that when the guest hits PC, execution is paused and an attached
         GDB instance can introspect on guest memory. Requires starting panda with -s, at least for now
@@ -2513,7 +2514,7 @@ class Panda():
         BP_GDB = 0x10
         self.libpanda.cpu_breakpoint_insert(cpu, pc, BP_GDB, ffi.NULL)
 
-    def clear_breakpoint(self, cpu, pc):
+    def clear_breakpoint(self, cpu, pc:int) -> None:
         '''
         Remove a breakpoint
         '''
@@ -2522,7 +2523,7 @@ class Panda():
 
     ############# HOOKING MIXINS ###############
 
-    def hook(self, addr, enabled=True, kernel=None, asid=None, cb_type="before_tcg_codegen"):
+    def hook(self, addr:int, enabled:bool=True, kernel=None, asid=None, cb_type:str="before_tcg_codegen") -> Callable:
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
@@ -2588,7 +2589,7 @@ class Panda():
         return decorator
 
 
-    def hook_symbol(self, libraryname, symbolname, kernel=False, procname=None,name=None,cb_type="before_tcg_codegen"):
+    def hook_symbol(self, libraryname:str, symbolname:str, kernel=None, procname:str=None,name:str=None,cb_type:str="before_tcg_codegen") -> Callable:
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
@@ -2651,7 +2652,7 @@ class Panda():
             return wrapper
         return decorator
 
-    def get_best_matching_symbol(self, cpu, pc=None, asid=None):
+    def get_best_matching_symbol(self, cpu, pc:int=None, asid:int=None):
         if asid is None:
             asid = self.current_asid(cpu)
         if pc is None:
@@ -2663,7 +2664,7 @@ class Panda():
     Provides the ability to interact with the hooks2 plugin and receive callbacks based on user-provided criteria.
     """
 
-    def enable_hook2(self,hook_name):
+    def enable_hook2(self,hook_name:str) -> None:
         '''
         Set hook status to active.
         '''
@@ -2672,7 +2673,7 @@ class Panda():
         else:
             print("ERROR: Your hook name was not in the hook list")
 
-    def disable_hook2(self,hook_name):
+    def disable_hook2(self,hook_name:str) -> None:
         '''
         Set hook status to inactive.
         '''
@@ -2681,7 +2682,7 @@ class Panda():
         else:
             print("ERROR: Your hook name was not in the hook list")
 
-    def hook2(self,name, kernel=True, procname=ffi.NULL, libname=ffi.NULL, trace_start=0, trace_stop=0, range_begin=0, range_end=0):
+    def hook2(self,name:str, kernel:bool=True, procname=ffi.NULL, libname=ffi.NULL, trace_start:int=0, trace_stop:int=0, range_begin:int=0, range_end:int=0) -> Callable:
         if procname != ffi.NULL:
             procname = ffi.new("char[]",bytes(procname,"utf-8"))
         if libname != ffi.NULL:
@@ -2715,11 +2716,11 @@ class Panda():
             return wrapper
         return decorator
 
-    def hook2_single_insn(self, name, pc, kernel=False, procname=ffi.NULL, libname=ffi.NULL):
+    def hook2_single_insn(self, name:str, pc:int, kernel:bool=False, procname=ffi.NULL, libname=ffi.NULL) -> Callable:
         return self.hook2(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
 
     # MEM HOOKS
-    def _hook_mem(self, start_address, end_address, before, after, read, write, virtual, physical, enabled):
+    def _hook_mem(self, start_address:int, end_address:int, before:bool, after:bool, read:bool, write:bool, virtual:bool, physical:bool, enabled:bool) -> Callable:
         def decorator(fun):
             mem_hook_cb_type = self.ffi.callback("mem_hook_func_t")
             # Inform the plugin that it has a new breakpoint at addr
@@ -2748,19 +2749,19 @@ class Panda():
             return wrapper
         return decorator
 
-    def hook_mem(self, start_address, end_address, on_before, on_after, on_read, on_write, on_virtual, on_physical, enabled):
+    def hook_mem(self, start_address:int, end_address:int, on_before:bool, on_after:bool, on_read:bool, on_write:bool, on_virtual:bool, on_physical:bool, enabled:bool) -> Callable:
         return self._hook_mem(start_address,end_address,on_before,on_after,on_read, on_write, on_virtual, on_physical, enabled)
 
-    def hook_phys_mem_read(self, start_address, end_address, on_before=True, on_after=False, enabled=True):
+    def hook_phys_mem_read(self, start_address:int, end_address:int, on_before:bool=True, on_after:bool=False, enabled:bool=True) -> Callable:
         return self._hook_mem(start_address,end_address,on_before,on_after, True, False, False, True, True)
 
-    def hook_phys_mem_write(self, start_address, end_address, on_before=True, on_after=False):
+    def hook_phys_mem_write(self, start_address:int, end_address:int, on_before:bool=True, on_after:bool=False) -> Callable:
         return self._hook_mem(start_address,end_address,on_before,on_after, False, True, False, True, True)
 
-    def hook_virt_mem_read(self, start_address, end_address, on_before=True, on_after=False):
+    def hook_virt_mem_read(self, start_address:int, end_address:int, on_before:bool=True, on_after:bool=False) -> Callable:
         return self._hook_mem(start_address,end_address,on_before,on_after, True, False, True, False, True)
 
-    def hook_virt_mem_write(self, start_address, end_address, on_before=True, on_after=False):
+    def hook_virt_mem_write(self, start_address:int, end_address:int, on_before:bool=True, on_after:bool=False) -> Callable:
         return self._hook_mem(start_address,end_address,on_before,on_after, False, True, True, False, True)
 
 # vim: expandtab:tabstop=4:

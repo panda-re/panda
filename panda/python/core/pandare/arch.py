@@ -7,6 +7,7 @@ initialize a PandaArch class for the specified architecture in the variable
 
 '''
 import binascii
+from typing import List
 from .utils import telescope
 
 class PandaArch():
@@ -62,7 +63,7 @@ class PandaArch():
         register_size = int(bits/8)
         return bits, endianness, register_size
 
-    def get_reg(self, cpu, reg):
+    def get_reg(self, cpu, reg:int) -> int:
         '''
         Return value in a `reg` which is either a register name or index (e.g., "R0" or 0)
         '''
@@ -81,7 +82,7 @@ class PandaArch():
         '''
         raise NotImplementedError()
 
-    def set_reg(self, cpu, reg, val):
+    def set_reg(self, cpu, reg:str, val:int) -> None:
         '''
         Set register `reg` to a value where `reg` is either a register name or index (e.g., "R0" or 0)
         '''
@@ -102,7 +103,7 @@ class PandaArch():
         '''
         raise NotImplementedError()
 
-    def get_pc(self, cpu):
+    def get_pc(self, cpu) -> int:
         '''
         Returns the current program counter. Must be overloaded if self.reg_pc is None
         '''
@@ -128,7 +129,7 @@ class PandaArch():
         raise NotImplementedError(f"Unsupported get_retval for architecture {type(self)} {convention}")
 
 
-    def set_arg(self, cpu, idx, val, convention='default'):
+    def set_arg(self, cpu, idx:int, val:int, convention:str='default') -> None:
         '''
         Set arg [idx] to [val] for given calling convention.
 
@@ -137,7 +138,7 @@ class PandaArch():
         reg = self._get_arg_reg(idx, convention)
         return self.set_reg(cpu, reg, val)
 
-    def get_arg(self, cpu, idx, convention='default'):
+    def get_arg(self, cpu, idx:int, convention:str='default') -> int:
         '''
         Return arg [idx] for given calling convention. This only works right as the guest
         is calling or has called a function before register values are clobbered.
@@ -148,7 +149,7 @@ class PandaArch():
         return self.get_reg(cpu, reg)
 
 
-    def set_retval(self, cpu, val, convention='default'):
+    def set_retval(self, cpu, val:int, convention:str='default') -> int:
         '''
         Set return val to [val] for given calling convention. This only works
         right after a function call has returned, otherwise the register will contain
@@ -157,7 +158,7 @@ class PandaArch():
         reg = self._get_ret_val_reg(cpu, convention)
         return self.set_reg(cpu, reg, val)
 
-    def get_retval(self, cpu, convention='default'):
+    def get_retval(self, cpu, convention:str='default') -> int:
         '''
         Set return val to [val] for given calling convention. This only works
         right after a function call has returned, otherwise the register will contain
@@ -166,8 +167,7 @@ class PandaArch():
         reg = self._get_ret_val_reg(cpu, convention)
         return self.get_reg(cpu, reg)
 
-
-    def set_pc(self, cpu, val):
+    def set_pc(self, cpu, val:int) -> None:
         '''
         Set the program counter. Must be overloaded if self.reg_pc is None
         '''
@@ -176,7 +176,7 @@ class PandaArch():
         else:
             raise RuntimeError(f"set_pc unsupported for {self.panda.arch_name}")
 
-    def dump_regs(self, cpu):
+    def dump_regs(self, cpu) -> None:
         '''
         Print (telescoping) each register and its values
         '''
@@ -185,7 +185,7 @@ class PandaArch():
             print("{}: 0x{:x}".format(regname, val), end="\t")
             telescope(self.panda, cpu, val)
 
-    def dump_stack(self, cpu, words=8):
+    def dump_stack(self, cpu, words:int=8) -> None:
         '''
         Print (telescoping) most recent `words` words on the stack (from stack pointer to stack pointer + `words`*word_size)
         '''
@@ -200,7 +200,7 @@ class PandaArch():
             print("[{}+0x{:0>2x} == 0x{:0<8x}]: 0x{:0<8x}".format(base_reg_s, word_idx*word_size, base_reg_val+word_idx*word_size, val), end="\t")
             telescope(self.panda, cpu, val)
 
-    def dump_state(self, cpu):
+    def dump_state(self, cpu) -> None:
         """
         Print registers and stack
         """
@@ -210,7 +210,7 @@ class PandaArch():
         print("Stack:")
         self.dump_stack(cpu)
 
-    def get_args(self, cpu, num):
+    def get_args(self, cpu, num:int) -> List[int]:
         return [self.get_arg(cpu,i) for i in range(num)]
 
 class ArmArch(PandaArch):
@@ -239,25 +239,25 @@ class ArmArch(PandaArch):
                            "syscall":    "R0"}
         self.reg_pc = regnames.index("IP")
 
-    def _get_reg_val(self, cpu, reg):
+    def _get_reg_val(self, cpu, reg:int) -> int:
         '''
         Return an arm register
         '''
         return cpu.env_ptr.regs[reg]
 
-    def _set_reg_val(self, cpu, reg, val):
+    def _set_reg_val(self, cpu, reg:int, val:int) -> None:
         '''
         Set an arm register
         '''
         cpu.env_ptr.regs[reg] = val
 
-    def get_return_value(self, env):
+    def get_return_value(self, env) -> int:
         '''
         returns register value used to return results
         '''
         return self.get_reg(env, "R0")
 
-    def get_return_address(self,env):
+    def get_return_address(self,env) -> int:
         '''
         looks up where ret will go
         '''
@@ -291,38 +291,38 @@ class Aarch64Arch(PandaArch):
         self.reg_retval = {"default":    "X0",
                            "syscall":    "X0"}
 
-    def get_pc(self, cpu):
+    def get_pc(self, cpu) -> int:
         '''
         Overloaded function to get aarch64 program counter.
         Note the PC is not stored in a general purpose reg
         '''
         return cpu.env_ptr.pc
 
-    def set_pc(self, cpu, val):
+    def set_pc(self, cpu, val:int) -> None:
         '''
         Overloaded function set AArch64 program counter
         '''
         cpu.env_ptr.pc = val
 
-    def _get_reg_val(self, cpu, reg):
+    def _get_reg_val(self, cpu, reg:int) -> int:
         '''
         Return an aarch64 register
         '''
         return cpu.env_ptr.xregs[reg]
 
-    def _set_reg_val(self, cpu, reg, val):
+    def _set_reg_val(self, cpu, reg:int, val:int) -> None:
         '''
         Set an aarch64 register
         '''
         cpu.env_ptr.xregs[reg] = val
 
-    def get_return_value(self, env):
+    def get_return_value(self, env) -> int:
         '''
         returns register value used to return results
         '''
         return self.get_reg(env, "R0")
 
-    def get_return_address(self,env):
+    def get_return_address(self,env) -> int:
         '''
         looks up where ret will go
         '''
@@ -370,37 +370,37 @@ class MipsArch(PandaArch):
         # note names must be stored uppercase for get/set reg to work case-insensitively
         self.registers = {regnames[idx].upper(): idx for idx in range(len(regnames)) }
 
-    def get_pc(self, cpu):
+    def get_pc(self, cpu) -> int:
         '''
         Overloaded function to return the MIPS current program counter
         '''
         return cpu.env_ptr.active_tc.PC
 
-    def set_pc(self, cpu, val):
+    def set_pc(self, cpu, val:int) -> int:
         '''
         Overloaded function set the MIPS program counter
         '''
         cpu.env_ptr.active_tc.PC = val
 
-    def _get_reg_val(self, cpu, reg):
+    def _get_reg_val(self, cpu, reg:int) -> int:
         '''
         Return a mips register
         '''
         return cpu.env_ptr.active_tc.gpr[reg]
 
-    def _set_reg_val(self, cpu, reg, val):
+    def _set_reg_val(self, cpu, reg:int, val:int) -> None:
         '''
         Set a mips register
         '''
         cpu.env_ptr.active_tc.gpr[reg] = val
 
-    def get_return_value(self, env):
+    def get_return_value(self, env) -> int:
         '''
         returns register value used to return results
         '''
         return self.get_reg(env, "V0")
 
-    def get_call_return(self,env):
+    def get_call_return(self,env) -> int:
         '''
         looks up where ret will go
         '''
@@ -424,37 +424,37 @@ class X86Arch(PandaArch):
         self.reg_sp = regnames.index('ESP')
         self.registers = {regnames[idx]: idx for idx in range(len(regnames)) }
 
-    def get_pc(self, cpu):
+    def get_pc(self, cpu) -> int:
         '''
         Overloaded function to return the x86 current program counter
         '''
         return cpu.env_ptr.eip
 
-    def set_pc(self, cpu, val):
+    def set_pc(self, cpu, val:int) -> None:
         '''
         Overloaded function to set the x86 program counter
         '''
         cpu.env_ptr.eip = val
 
-    def _get_reg_val(self, cpu, reg):
+    def _get_reg_val(self, cpu, reg:int) -> int:
         '''
         Return an x86 register
         '''
         return cpu.env_ptr.regs[reg]
 
-    def _set_reg_val(self, cpu, reg, val):
+    def _set_reg_val(self, cpu, reg:int, val:int) -> None:
         '''
         Set an x86 register
         '''
         cpu.env_ptr.regs[reg] = val
 
-    def get_return_value(self, env):
+    def get_return_value(self, env) -> int:
         '''
         returns register value used to return results
         '''
         return self.get_reg(env, "EAX")
 
-    def get_return_address(self,env):
+    def get_return_address(self,env) -> int:
         '''
         looks up where ret will go
         '''
@@ -485,37 +485,37 @@ class X86_64Arch(PandaArch):
 
         self.registers = {regnames[idx]: idx for idx in range(len(regnames)) }
 
-    def get_pc(self, cpu):
+    def get_pc(self, cpu) -> int:
         '''
         Overloaded function to return the x86_64 current program counter
         '''
         return cpu.env_ptr.eip
 
-    def set_pc(self, cpu, val):
+    def set_pc(self, cpu, val:int) -> int:
         '''
         Overloaded function to set the x86_64 program counter
         '''
         cpu.env_ptr.eip = val
 
-    def _get_reg_val(self, cpu, reg):
+    def _get_reg_val(self, cpu, reg:int) -> int:
         '''
         Return an x86_64 register
         '''
         return cpu.env_ptr.regs[reg]
 
-    def _set_reg_val(self, cpu, reg, val):
+    def _set_reg_val(self, cpu, reg:int, val:int) -> int:
         '''
         Set an x86_64 register
         '''
         cpu.env_ptr.regs[reg] = val
 
-    def get_return_value(self, env):
+    def get_return_value(self, env) -> int:
         '''
         returns register value used to return results
         '''
         return self.get_reg(env, "RAX")
 
-    def get_return_address(self,env):
+    def get_return_address(self,env) -> int:
         '''
         looks up where ret will go
         '''
