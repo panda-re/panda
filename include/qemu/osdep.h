@@ -49,6 +49,10 @@
 #define __STDC_FORMAT_MACROS
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* The following block of code temporarily renames the daemon() function so the
  * compiler does not see the warning associated with it in stdlib.h on OSX
  */
@@ -474,6 +478,10 @@ char *qemu_get_pid_name(pid_t pid);
 pid_t qemu_fork(Error **errp);
 void panda_set_library_mode(bool);
 bool panda_get_library_mode(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
