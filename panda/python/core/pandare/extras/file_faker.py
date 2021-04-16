@@ -12,10 +12,10 @@ High-level idea:
 
 
 from pandare.extras.file_hook import FileHook
+from pandare.extras.ioctl_faker import Ioctl
 from pandare.ffi_importer import ffi
 from math import ceil
 import logging
-
 
 class FakeFile:
     '''
@@ -36,6 +36,8 @@ class FakeFile:
         self.initial_contents = fake_contents
         self.refcount = 0 # Reference count
         self.filename = filename # Just for debug printing
+        self.ioctl_handlers = {}
+        self.generic_ioctl = None
 
     def read(self, size, offset):
         '''
@@ -59,7 +61,7 @@ class FakeFile:
         new_data  = self.contents[:offset]
         new_data += write_data
         new_data += self.contents[offset+len(new_data):]
-        
+
         self.logger.info(f"FakeFD({self.filename}) writing {new_data} at offset {offset}")
 
         self.contents = new_data
@@ -78,6 +80,36 @@ class FakeFile:
 
     def get_size(self, bytesize):
         return ceil(len(self.contents)/bytesize)
+
+    def register_ioctl_handler(self, cmd, handler):
+        if cmd in self.ioctl_handlers:
+            self.logger.info("NOTE: overwriting old ioctl handler!")
+        self.ioctl_handlers[cmd] = handler
+
+    def has_ioctl_handler(self, cmd):
+        if cmd in self.ioctl_handlers:
+            return True
+        else:
+            return False
+
+    def do_ioctl(self, cmd, ioctl):
+        handler = self.ioctl_handlers[cmd]
+        handler(ioctl)
+        return
+
+    def register_generic_ioctl(self, handler):
+        self.generic_ioctl = handler
+
+    def has_generic_ioctl(self):
+        if self.generic_ioctl != None:
+            return True
+        else:
+            return False
+
+    def do_generic_ioctl(self, ioctl):
+        handler = self.generic_ioctl
+        handler(ioctl)
+        return
 
     def __str__(self):
         return f"Faker({self.filename} -> {repr(self.contents[:10])}..."
@@ -163,7 +195,7 @@ class FileFaker(FileHook):
     from fake conents and writes are logged.
     '''
 
-    def __init__(self, panda):
+    def __init__(self, panda, osi=False):
         '''
         Initialize FileHook and vars. Setup callbacks for all fd-based syscalls
         '''
@@ -173,6 +205,10 @@ class FileFaker(FileHook):
         self.hooked_fds = {} # (fd, cr3): HyperFD->faker
         self.currently_hooked = None # fd, asid tuple. Set when we're entering a syscall to hook. cleared on return
         self.pending_hfd = None
+        self._osi=osi
+        self.log_ioctls = True
+        self.log_entries = True
+        self.generic_ioctl = None
 
         to_hook = {} # index of fd argument: list of names
         if panda.arch_name == "i386":
@@ -229,6 +265,44 @@ class FileFaker(FileHook):
         #      this may need to use different real files depending on permissions requested
         self.rename_file(filename, disk_file)
 
+    def register_generic_ioctl(self, handler):
+        self.generic_ioctl = handler
+
+    def has_generic_ioctl(self):
+        if self.generic_ioctl != None:
+            return True
+        else:
+            return False
+
+    def do_generic_ioctl(self, ioctl):
+        handler = self.generic_ioctl
+        handler(ioctl)
+        return
+
+    def invoke_fake_ioctl(self, hfd, cpu, fd, cmd, arg):
+        '''
+        Attempts, in order, to invoke:
+            -specific ioctl handler for file
+            -generic file ioctl handler
+            -generic faker ioctl handler
+        '''
+        this_ioctl = Ioctl(self._panda, cpu, fd, cmd, arg, self._osi)
+        filename = hfd.name
+        faker = self.faked_files[filename]
+        if faker.has_ioctl_handler(cmd):
+            #there's an ioctl registered for this command for this specific FakeFile
+            faker.do_ioctl(cmd, this_ioctl)
+            return True
+        elif faker.has_generic_ioctl():
+            #there's no ioctl for this command, but this FakeFile has a generic ioctl handler
+            faker.do_generic_ioctl(this_ioctl)
+            return True
+        elif self.has_generic_ioctl():
+            #there's no ioctl for this FakeFile, but there's a handler for FileFaker as a whole
+            self.do_generic_ioctl(this_ioctl)
+            return True
+        return False
+
     def _gen_fd_cb(self, name, fd_offset):
         '''
         Register syscalls2 PPP callback on enter and return for the given name
@@ -269,7 +343,8 @@ class FileFaker(FileHook):
         # so we know to mutate it when it returns
         if (fd, asid) in self.hooked_fds:
             hfd = self.hooked_fds[(fd, asid)]
-            self.logger.info(f"Entering hooked syscall {syscall_name} for fd {fd}, " + \
+            if self.log_entries:
+                self.logger.info(f"Entering hooked syscall {syscall_name} for fd {fd}, " + \
                                 f"filename {hfd.name}")
             self.currently_hooked = (fd, asid)
 
@@ -334,6 +409,15 @@ class FileFaker(FileHook):
             whence = args[3]
             hfd.seek(offset, whence)
 
+
+        elif syscall_name == "ioctl":
+            cmd = args[3]
+            arg = args[4]
+            if self.log_ioctls:
+                self.logger.info("FakeFile IOCTL(fd={}, filename={}, cmd=0x{:08x}, arg=0x{:08x})".format(fd, hfd.name, cmd, arg))
+            hooked = self.invoke_fake_ioctl(hfd, cpu, fd, cmd, arg)
+            if (not hooked) and self.log_ioctls:
+                self.logger.info("NOTE: unhooked IOCTL to a fakeFile!")
 
         elif syscall_name in ["dup2", "dup3"]:
             # add newfd

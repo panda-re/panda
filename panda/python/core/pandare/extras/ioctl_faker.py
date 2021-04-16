@@ -64,6 +64,8 @@ class Ioctl():
         self.cmd.asUnsigned32 = cmd
         self.original_ret_code = None
         self.osi = use_osi_linux
+        self._cpu = cpu
+        self._panda = panda
 
         # Optional syscall argument: pointer to buffer
         if (self.cmd.bits.arg_size > 0):
@@ -90,11 +92,27 @@ class Ioctl():
             self.proc_name = None
             self.file_name = None
 
-    def get_ret_code(self, panda, cpu):
+    def mutate_ret_code(self, newcode):
+        '''
+        TODO: other arches, currently just arm
+        '''
+        self.get_ret_code()
+        self._cpu.env_ptr.regs[self._panda.arch.registers['R0']] = newcode
 
-        ''''
+    def mutate_buffer(self, newbuff):
+        '''
+        TODO: other arches, currently just arm
+        '''
+        self._panda.virtual_memory_write(self._cpu, self.guest_ptr, newbuff)
+
+    def get_ret_code(self):
+
+        '''
         Helper retrive original return code, handles arch-specifc ABI
         '''
+
+        panda = self._panda
+        cpu = self._cpu
 
         if panda.arch_name == "mipsel" or panda.arch_name == "mips":
             # Note: return values are in $v0, $v1 (regs 2 and 3 respectively), but here we only use first
@@ -188,7 +206,7 @@ class IoctlFaker():
         def ioctl_faker_on_sys_ioctl_return(cpu, pc, fd, cmd, arg):
 
             ioctl = Ioctl(self._panda, cpu, fd, cmd, arg, self.osi)
-            ioctl.get_ret_code(self._panda, cpu)
+            ioctl.get_ret_code()
 
             # Modify
             if (self.intercept_all_non_zero and ioctl.original_ret_code != 0) or \

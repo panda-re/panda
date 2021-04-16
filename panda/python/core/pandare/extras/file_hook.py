@@ -170,17 +170,12 @@ class FileHook:
         try:
             fname = self._panda.read_str(cpu, fname_ptr)
         except:
-            fname = self._get_fname(cpu, args[2+fname_ptr_pos])
-
-            if fname:
-                self.logger.info(f"OSI found fname after simple logic missed it in call to {syscall_name}")
-            else:
-                self.logger.debug(f"missed filename at 0x{fname_ptr:x} in call to {syscall_name} - trying to find")
-                self.pending_virt_read = cpu.env_ptr.regs[0]
-                self.pending_syscall = syscall_name
-                self._panda.enable_callback('before_virt_read')
-                #self._panda_enable_memcb()
-                return
+            self.logger.debug(f"missed filename at 0x{fname_ptr:x} in call to {syscall_name} - trying to find")
+            self.pending_virt_read = cpu.env_ptr.regs[0]
+            self.pending_syscall = syscall_name
+            self._panda.enable_callback('before_virt_read')
+            #self._panda_enable_memcb()
+            return
 
         fname = path.normpath(fname) # Normalize it
         self.logger.debug(f"Entering {syscall_name} with file={fname}")
