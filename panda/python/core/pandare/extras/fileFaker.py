@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 Framework for halucinating files inside the guest through
 modifications around syscalls involving filenames and file
@@ -11,8 +13,11 @@ High-level idea:
 """
 
 
-from pandare.extras.file_hook import FileHook
-from pandare.ffi_importer import ffi
+if __name__ == '__main__': # Script run directly
+    from pandare.extras import FileHook
+else: # Load from module
+    from .fileHook import FileHook
+
 from math import ceil
 import logging
 
@@ -27,11 +32,10 @@ class FakeFile:
 
     '''
     def __init__(self, fake_contents="", filename=None):
-        self.logger = logging.getLogger('panda.hooking')
+        self.logger = logging.getLogger('panda.filehook.fakefile')
 
         if isinstance(fake_contents, str):
             fake_contents = fake_contents.encode("utf8")
-        fake_contents += b'\x00'
         self.contents = fake_contents
         self.initial_contents = fake_contents
         self.refcount = 0 # Reference count
@@ -55,7 +59,6 @@ class FakeFile:
         Return how much HyperFD offset should be incremented by
         XXX what about writes past end of the file?
         '''
-        self.logger.info(f"FakeFD({self.filename}) writing {write_data} at offset {offset}")
         new_data  = self.contents[:offset]
         new_data += write_data
         new_data += self.contents[offset+len(new_data):]
@@ -168,10 +171,10 @@ class FileFaker(FileHook):
         Initialize FileHook and vars. Setup callbacks for all fd-based syscalls
         '''
         super().__init__(panda)
+        self.ff_logger = logging.getLogger('panda.filehook.fakefile')
 
         self.faked_files = {} # filename: Fake
         self.hooked_fds = {} # (fd, cr3): HyperFD->faker
-        self.currently_hooked = None # fd, asid tuple. Set when we're entering a syscall to hook. cleared on return
         self.pending_hfd = None
 
         to_hook = {} # index of fd argument: list of names
@@ -234,66 +237,26 @@ class FileFaker(FileHook):
         Register syscalls2 PPP callback on enter and return for the given name
         which has an argument of fd at fd_offset in the argument list
         '''
-        self._panda.ppp("syscalls2", f"on_sys_{name}_enter", name=f"file_faker_enter_{name}")( \
-                    lambda *args: self._enter_fd_cb(name, fd_offset, args=args))
         self._panda.ppp("syscalls2", f"on_sys_{name}_return", name=f"file_faker_return_{name}")( \
                     lambda *args: self._return_fd_cb(name, fd_offset, args=args))
-
-    def _enter_fd_cb(self, syscall_name, fd_pos, args=None):
-        '''
-        When we're about to enter a callback. Check if the fd is hooked and if so
-        update currently_hooked so we can fix it upon return.
-        Maybe this could be updated to skip the hooked syscalls entirely?
-        '''
-        assert(args)
-        (cpu, pc) = args[0:2]
-        fd = args[2+fd_pos]
-        asid = self._panda.current_asid(cpu)
-
-        if fd == 0xffffffff:
-            self.logger.debug(f"Got -1 for fd in enter of {syscall_name}")
-            return
-
-        assert(fd < 0xffffffff), "FD overflow?"
-
-        # Looks like this file isn't hooked. Let's use OSI and confirm
-        if (fd, asid) not in self.hooked_fds:
-            # Let's use OSI to figure out the backing filename here
-            fname = self._get_fname(cpu, fd)
-            if fname and fname in self.faked_files:
-                self.logger.warning("Entering {syscall_name} with fd {fd} backed by {fname} but we missed it earlier - adding it now")
-                hfd = HyperFD(fname, self.faked_files[fname]) # Create HFD
-                self.hooked_fds[(fd, asid)] =  hfd
-
-        # If this file descriptor is already hooked, update currently_hooked
-        # so we know to mutate it when it returns
-        if (fd, asid) in self.hooked_fds:
-            hfd = self.hooked_fds[(fd, asid)]
-            self.logger.info(f"Entering hooked syscall {syscall_name} for fd {fd}, " + \
-                                f"filename {hfd.name}")
-            self.currently_hooked = (fd, asid)
-
 
     def _return_fd_cb(self, syscall_name, fd_pos, args=None):
         '''
         When we're returnuing from a syscall, mutate memory
         to put the results we want there
         '''
-        if not self.currently_hooked:
-            return
-
-        (fd, asid) = self.currently_hooked
-        hfd = self.hooked_fds[(fd, asid)]
-
-        self.currently_hooked = None
-        assert(args)
 
         (cpu, pc) = args[0:2]
         fd = args[2+fd_pos]
         asid = self._panda.current_asid(cpu)
 
+        if (fd, asid) not in self.hooked_fds:
+            return
+
+        assert(args)
+        hfd = self.hooked_fds[(fd, asid)]
+
         if syscall_name == "read":
-            self.logger.debug(f"Handling READ of fakeFD {fd} {hfd.name}")
             # Place up to `count` bytes of data into memory at `buf_ptr`
             buf_ptr = args[3]
             count   = args[4]
@@ -303,12 +266,12 @@ class FileFaker(FileHook):
                 try:
                     self._panda.virtual_memory_write(cpu, buf_ptr, data)
                 except ValueError:
-                    self.logger.error(f"Unable to store fake data after read to {hfd}")
+                    self.ff_logger.error(f"Unable to store fake data after read to {hfd}")
                     return
 
             cpu.env_ptr.regs[0] = data_len
 
-            #self.logger.info(f"Returning {data_len} bytes")
+            self.ff_logger.info(f"Read - returning {data_len} bytes")
 
         elif syscall_name == "close":
             # We want the guest to close the real FD. Delete it from our map of hooked fds
@@ -323,7 +286,7 @@ class FileFaker(FileHook):
             try:
                 data = self._panda.virtual_memory_read(cpu, buf_ptr, count)
             except ValueError:
-                self.logger.error(f"Unable to read buffer that was being written")
+                self.ff_logger.error(f"Unable to read buffer that was being written")
                 return
 
             bytes_written = hfd.write(data)
@@ -339,14 +302,14 @@ class FileFaker(FileHook):
             # add newfd
             oldfd = args[2]
             newfd = args[3]
-            self.logger.debug(f"Duplicating faked fd {oldfd} to {newfd}")
+            self.ff_logger.debug(f"Duplicating faked fd {oldfd} to {newfd}")
 
             # Duplicate the old hfd - but not the file behind it
             new_hfd = HyperFD(hfd.name, hfd.file, hfd.offset)
             self.hooked_fds[(newfd, asid)] = new_hfd
 
         else:
-            self.logger.error(f"Unsupported syscall on FakeFD{fd}: {syscall_name}. Not intercepting (Running on real guest FD)")
+            self.ff_logger.error(f"Unsupported syscall on FakeFD{fd}: {syscall_name}. Not intercepting (Running on real guest FD)")
 
 
     def _before_modified_enter(self, cpu, pc, syscall_name, fname):
@@ -360,23 +323,21 @@ class FileFaker(FileHook):
             self.pending_hfd =  HyperFD(fname, self.faked_files[fname]) # Create HFD
             asid = self._panda.current_asid(cpu)
 
-    def _after_modified_return(self, cpu, pc, syscall_name):
+    def _after_modified_return(self, cpu, pc, syscall_name, fd):
         '''
         Overload FileHook function. Determine if a syscall we're about to
         return from was using a filename we want to fake. If so, grab the FD
         '''
         if self.pending_hfd:
-            # XXX: is asid correct here?
-            fd = cpu.env_ptr.regs[0] # XXX: definitely isn't true for all syscalls
             asid = self._panda.current_asid(cpu)
             self.hooked_fds[(fd, asid)] =  self.pending_hfd
+            self.logger.info(f"A file we want to hook was created {self.pending_hfd}")
             self.pending_hfd = None
-
 
     def close(self):
         # Close all open hfds
         if len(self.hooked_fds):
-            self.logger.debug("Cleaning up open hyper file descriptors")
+            self.ff_logger.debug("Cleaning up open hyper file descriptors")
             for (fd, asid) in list(self.hooked_fds.keys()):
                 self.hooked_fds[(fd, asid)].close()
                 del self.hooked_fds[(fd, asid)]
@@ -385,3 +346,30 @@ class FileFaker(FileHook):
     def __del__(self):
         # XXX: This isn't being called for some reason on destruction
         self.close()
+
+
+if __name__ == '__main__':
+    from pandare import Panda
+
+    panda = Panda(generic="x86_64")
+
+    # Replace all syscalls that reference /foo with a custom string
+    fake_str = "Hello world. This is data generated from python!"
+    faker = FileFaker(panda)
+    faker.replace_file("/foo", FakeFile(fake_str))
+
+    @panda.queue_blocking
+    def driver():
+        new_str = "This is some new data"
+
+        panda.revert_sync('root')
+        data = panda.run_serial_cmd("cat /foo") # note run_serial_cmd must end with a blank line and our fake file doesn't
+        assert(fake_str in data), f"Failed to read fake file /foo: {data}"
+
+        panda.run_serial_cmd(f'echo {new_str} > /foo')
+        data = panda.run_serial_cmd("cat /foo")
+        assert(new_str in data), f"Failed to update fake file /foo: {data}. Expected: {new_str}"
+        panda.end_analysis()
+
+    panda.run()
+    print("Success")

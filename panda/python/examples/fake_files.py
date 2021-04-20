@@ -8,7 +8,7 @@ Run with: python3 fake_files.py
 '''
 import sys
 from pandare import Panda
-from pandare.extras.file_faker import FileFaker, FakeFile
+from pandare.extras import FileFaker, FakeFile
 
 arch = sys.argv[1] if len(sys.argv) > 1 else "i386"
 panda = Panda(generic=arch)
