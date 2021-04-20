@@ -12,12 +12,13 @@ Example plugins are available [on GitHub](https://github.com/panda-re/panda/tree
 
 from .panda import Panda, blocking
 from .ffi_importer import ffi
-from .extras import *
 from .plog_reader import PLogReader
 
 __pdoc__ = {}
 
 __pdoc__['volatility_cli_classes'] = False
 __pdoc__['data'] = False
+__pdoc__['async_thread'] = False
+__pdoc__['ffi_importer'] = False
 __pdoc__['autogen'] = False
 __pdoc__['plog_pb2'] = False

@@ -4,7 +4,6 @@ Simple helper and example to selectively execute callbacks based on a mode strin
 '''
 
 from functools import wraps
-from pandare import Panda
 
 class ModeFilter:
     '''
@@ -118,6 +117,8 @@ class Tester(ModeFilter):
         self.panda.run()
 
 if __name__ == "__main__":
+    from pandare import Panda
+    # Note the test is architecture-specific, otherwise different syscalls are issued
     panda = Panda(generic="i386")
     test = Tester(panda)
     test.run_guest()
