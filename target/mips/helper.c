@@ -318,8 +318,16 @@ void cpu_mips_store_cause(CPUMIPSState *env, target_ulong val)
     if (env->insn_flags & ISA_MIPS32R6) {
         mask &= ~((1 << CP0Ca_WP) & val);
     }
+    
+    val = (env->CP0_Cause & ~mask) | (val & mask);
+    
+    RR_DO_RECORD_OR_REPLAY(
+        /* action= */,
+        /* record= */ rr_input_4(&val); rr_input_4(&old);,
+        /* replay= */ rr_input_4(&val); rr_input_4(&old);,
+        /* location= */ RR_CALLSITE_WRITE_4);
+    env->CP0_Cause = val;
 
-    env->CP0_Cause = (env->CP0_Cause & ~mask) | (val & mask);
 
     if ((old ^ env->CP0_Cause) & (1 << CP0Ca_DC)) {
         if (env->CP0_Cause & (1 << CP0Ca_DC)) {

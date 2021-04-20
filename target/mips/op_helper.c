@@ -1055,15 +1055,15 @@ target_ulong helper_mfc0_count(CPUMIPSState *env)
     target_ulong count;
     //qemu_mutex_lock_iothread(); 
 
-//#ifdef CONFIG_SOFTMMU
-//    RR_DO_RECORD_OR_REPLAY(
-//        /*action=*/count = cpu_mips_get_count(env),
-//        /*record=*/rr_input_4(&count),
-//        /*replay=*/rr_input_4(&count),
-//        /*location=*/RR_CALLSITE_READ_4);
-//#else
+#ifdef CONFIG_SOFTMMU
+    RR_DO_RECORD_OR_REPLAY(
+        /*action=*/count = cpu_mips_get_count(env),
+        /*record=*/rr_input_4(&count),
+        /*replay=*/rr_input_4(&count),
+        /*location=*/RR_CALLSITE_READ_4);
+#else
         count = cpu_mips_get_count(env);
-//#endif
+#endif
     //qemu_mutex_unlock_iothread();
     return (target_ulong) count;
 }

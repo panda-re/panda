@@ -27,6 +27,10 @@
 #include "sysemu/kvm.h"
 #include "kvm_mips.h"
 
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
+
 static void cpu_mips_irq_request(void *opaque, int irq, int level)
 {
     MIPSCPU *cpu = opaque;
@@ -35,21 +39,30 @@ static void cpu_mips_irq_request(void *opaque, int irq, int level)
 
     if (irq < 0 || irq > 7)
         return;
+    
+    target_ulong cause = env->CP0_Cause;
 
     if (level) {
-        env->CP0_Cause |= 1 << (irq + CP0Ca_IP);
+        cause |= 1 << (irq + CP0Ca_IP);
 
         if (kvm_enabled() && irq == 2) {
             kvm_mips_set_interrupt(cpu, irq, level);
         }
 
     } else {
-        env->CP0_Cause &= ~(1 << (irq + CP0Ca_IP));
+        cause &= ~(1 << (irq + CP0Ca_IP));
 
         if (kvm_enabled() && irq == 2) {
             kvm_mips_set_interrupt(cpu, irq, level);
         }
     }
+
+    RR_DO_RECORD_OR_REPLAY(
+        /* action= */,
+        /* record= */ rr_input_4(&cause);,
+        /* replay= */ rr_input_4(&cause);,
+        /* location= */ RR_CALLSITE_WRITE_4);
+    env->CP0_Cause = cause;
 
     if (env->CP0_Cause & CP0Ca_IP_mask) {
         cpu_interrupt(cs, CPU_INTERRUPT_HARD);

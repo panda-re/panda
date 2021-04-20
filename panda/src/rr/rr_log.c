@@ -1420,11 +1420,6 @@ static time_t rr_start_time;
 // mz file_name_full should be full path to desired record/replay log file
 int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
 {
-#ifdef TARGET_MIPS
-  fprintf(stderr, "Record/replay unsupported on MIPS\n");
-  exit(1);
-#endif
-
 #ifdef CONFIG_SOFTMMU
     Error* err = NULL;
     char name_buf[1024];
@@ -1470,6 +1465,13 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     g_free(rr_name_base);
     // set global to turn on recording
     rr_control.mode = RR_RECORD;
+#ifdef TARGET_MIPS
+    CPUMIPSState* cpu = cpu_state->env_ptr;
+    qemu_clock_run_all_timers();
+    cpu->CP0_Cause = 0;
+  //fprintf(stderr, "Record/replay unsupported on MIPS\n");
+  //exit(1);
+#endif
     return snapshot_ret;
 #endif
 }
@@ -1523,10 +1525,10 @@ void rr_do_end_record(void)
 int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
 {
 
-#ifdef TARGET_MIPS
-  fprintf(stderr, "Record/replay unsupported on MIPS\n");
-  exit(1);
-#endif
+//#ifdef TARGET_MIPS
+//  fprintf(stderr, "Record/replay unsupported on MIPS\n");
+//  exit(1);
+//#endif
 
 #ifdef CONFIG_SOFTMMU
     char name_buf[1024];
@@ -1596,6 +1598,12 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     // Resume execution of the CPU thread when using PANDA as a library
     // note that this means library-mode consumers can't start a replay `-s -S` to
     // get a stopped guest that will only be started via an attached GDB
+#ifdef TARGET_MIPS
+    CPUMIPSState* cpu = cpu_state->env_ptr;
+    cpu->CP0_Cause = 0;
+  //fprintf(stderr, "Record/replay unsupported on MIPS\n");
+  //exit(1);
+#endif
     if (panda_get_library_mode()) {
         vm_start();
     }
@@ -1733,6 +1741,87 @@ uint32_t rr_checksum_regs(void) {
     crc = crc32(crc, (unsigned char *)env->gpr, sizeof(env->gpr));
 #elif defined(TARGET_MIPS)
     crc = crc32(crc, (unsigned char*)env->active_tc.gpr,sizeof(env->active_tc.gpr));
+    crc = crc32(crc, (unsigned char*)&env->active_tc,sizeof(env->active_tc));
+    //crc = crc32(crc, (unsigned char*)env,sizeof(env));
+    //crc = crc32(crc, (unsigned char*)first_cpu,sizeof(first_cpu));
+
+    crc = crc32(crc, (unsigned char*)env->active_tc.gpr,sizeof(env->active_tc.gpr));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Index, sizeof(env->CP0_Index));
+    crc = crc32(crc, (unsigned char*)&env->CP0_VPControl, sizeof(env->CP0_VPControl));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Random, sizeof(env->CP0_Random));
+    crc = crc32(crc, (unsigned char*)&env->CP0_VPEControl, sizeof(env->CP0_VPEControl));
+    crc = crc32(crc, (unsigned char*)&env->CP0_VPEConf0, sizeof(env->CP0_VPEConf0));
+    crc = crc32(crc, (unsigned char*)&env->CP0_VPEConf1, sizeof(env->CP0_VPEConf1));
+    crc = crc32(crc, (unsigned char*)&env->CP0_YQMask, sizeof(env->CP0_YQMask));
+    crc = crc32(crc, (unsigned char*)&env->CP0_VPESchedule, sizeof(env->CP0_VPESchedule));
+    crc = crc32(crc, (unsigned char*)&env->CP0_VPEScheFBack, sizeof(env->CP0_VPEScheFBack));
+    crc = crc32(crc, (unsigned char*)&env->CP0_VPEOpt, sizeof(env->CP0_VPEOpt));
+    crc = crc32(crc, (unsigned char*)&env->CP0_EntryLo0, sizeof(env->CP0_EntryLo0));
+    crc = crc32(crc, (unsigned char*)&env->CP0_EntryLo1, sizeof(env->CP0_EntryLo1));
+    crc = crc32(crc, (unsigned char*)&env->CP0_GlobalNumber, sizeof(env->CP0_GlobalNumber));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Context, sizeof(env->CP0_Context));
+    crc = crc32(crc, (unsigned char*)&env->CP0_KScratch, sizeof(env->CP0_KScratch));
+    crc = crc32(crc, (unsigned char*)&env->CP0_PageMask, sizeof(env->CP0_PageMask));
+    crc = crc32(crc, (unsigned char*)&env->CP0_PageGrain_rw_bitmask, sizeof(env->CP0_PageGrain_rw_bitmask));
+    crc = crc32(crc, (unsigned char*)&env->CP0_PageGrain, sizeof(env->CP0_PageGrain));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Wired, sizeof(env->CP0_Wired));
+    crc = crc32(crc, (unsigned char*)&env->CP0_SRSConf0_rw_bitmask, sizeof(env->CP0_SRSConf0_rw_bitmask));
+    crc = crc32(crc, (unsigned char*)&env->CP0_SRSConf0, sizeof(env->CP0_SRSConf0));
+    crc = crc32(crc, (unsigned char*)&env->CP0_SRSConf1_rw_bitmask, sizeof(env->CP0_SRSConf1_rw_bitmask));
+    crc = crc32(crc, (unsigned char*)&env->CP0_SRSConf1, sizeof(env->CP0_SRSConf1));
+    crc = crc32(crc, (unsigned char*)&env->CP0_SRSConf2_rw_bitmask, sizeof(env->CP0_SRSConf2_rw_bitmask));
+    crc = crc32(crc, (unsigned char*)&env->CP0_SRSConf2, sizeof(env->CP0_SRSConf2));
+    crc = crc32(crc, (unsigned char*)&env->CP0_SRSConf3_rw_bitmask, sizeof(env->CP0_SRSConf3_rw_bitmask));
+    crc = crc32(crc, (unsigned char*)&env->CP0_SRSConf3, sizeof(env->CP0_SRSConf3));
+    crc = crc32(crc, (unsigned char*)&env->CP0_SRSConf4_rw_bitmask, sizeof(env->CP0_SRSConf4_rw_bitmask));
+    crc = crc32(crc, (unsigned char*)&env->CP0_SRSConf4, sizeof(env->CP0_SRSConf4));
+    crc = crc32(crc, (unsigned char*)&env->CP0_HWREna, sizeof(env->CP0_HWREna));
+    crc = crc32(crc, (unsigned char*)&env->CP0_BadVAddr, sizeof(env->CP0_BadVAddr));
+    crc = crc32(crc, (unsigned char*)&env->CP0_BadInstr, sizeof(env->CP0_BadInstr));
+    crc = crc32(crc, (unsigned char*)&env->CP0_BadInstrP, sizeof(env->CP0_BadInstrP));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Count, sizeof(env->CP0_Count));
+    crc = crc32(crc, (unsigned char*)&env->CP0_EntryHi, sizeof(env->CP0_EntryHi));
+    crc = crc32(crc, (unsigned char*)&env->CP0_EntryHi_ASID_mask, sizeof(env->CP0_EntryHi_ASID_mask));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Compare, sizeof(env->CP0_Compare));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Status, sizeof(env->CP0_Status));
+    crc = crc32(crc, (unsigned char*)&env->CP0_IntCtl, sizeof(env->CP0_IntCtl));
+    crc = crc32(crc, (unsigned char*)&env->CP0_SRSCtl, sizeof(env->CP0_SRSCtl));
+    crc = crc32(crc, (unsigned char*)&env->CP0_SRSMap, sizeof(env->CP0_SRSMap));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Cause, sizeof(env->CP0_Cause));
+    crc = crc32(crc, (unsigned char*)&env->CP0_EPC, sizeof(env->CP0_EPC));
+    crc = crc32(crc, (unsigned char*)&env->CP0_PRid, sizeof(env->CP0_PRid));
+    crc = crc32(crc, (unsigned char*)&env->CP0_EBase, sizeof(env->CP0_EBase));
+    crc = crc32(crc, (unsigned char*)&env->CP0_CMGCRBase, sizeof(env->CP0_CMGCRBase));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Config0, sizeof(env->CP0_Config0));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Config1, sizeof(env->CP0_Config1));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Config2, sizeof(env->CP0_Config2));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Config3, sizeof(env->CP0_Config3));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Config4, sizeof(env->CP0_Config4));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Config4_rw_bitmask, sizeof(env->CP0_Config4_rw_bitmask));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Config5, sizeof(env->CP0_Config5));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Config5_rw_bitmask, sizeof(env->CP0_Config5_rw_bitmask));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Config6, sizeof(env->CP0_Config6));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Config7, sizeof(env->CP0_Config7));
+    crc = crc32(crc, (unsigned char*)&env->CP0_MAAR, sizeof(env->CP0_MAAR));
+    crc = crc32(crc, (unsigned char*)&env->CP0_MAARI, sizeof(env->CP0_MAARI));
+    crc = crc32(crc, (unsigned char*)&env->CP0_LLAddr_rw_bitmask, sizeof(env->CP0_LLAddr_rw_bitmask));
+    crc = crc32(crc, (unsigned char*)&env->CP0_LLAddr_shift, sizeof(env->CP0_LLAddr_shift));
+    crc = crc32(crc, (unsigned char*)&env->CP0_WatchLo, sizeof(env->CP0_WatchLo));
+    crc = crc32(crc, (unsigned char*)&env->CP0_WatchHi, sizeof(env->CP0_WatchHi));
+    crc = crc32(crc, (unsigned char*)&env->CP0_XContext, sizeof(env->CP0_XContext));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Framemask, sizeof(env->CP0_Framemask));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Debug, sizeof(env->CP0_Debug));
+    crc = crc32(crc, (unsigned char*)&env->CP0_DEPC, sizeof(env->CP0_DEPC));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Performance0, sizeof(env->CP0_Performance0));
+    crc = crc32(crc, (unsigned char*)&env->CP0_ErrCtl, sizeof(env->CP0_ErrCtl));
+    crc = crc32(crc, (unsigned char*)&env->CP0_TagLo, sizeof(env->CP0_TagLo));
+    crc = crc32(crc, (unsigned char*)&env->CP0_DataLo, sizeof(env->CP0_DataLo));
+    crc = crc32(crc, (unsigned char*)&env->CP0_TagHi, sizeof(env->CP0_TagHi));
+    crc = crc32(crc, (unsigned char*)&env->CP0_DataHi, sizeof(env->CP0_DataHi));
+    crc = crc32(crc, (unsigned char*)&env->CP0_ErrorEPC, sizeof(env->CP0_ErrorEPC));
+    crc = crc32(crc, (unsigned char*)&env->CP0_DESAVE, sizeof(env->CP0_DESAVE));
+    crc = crc32(crc, (unsigned char*)&env->CP0_Status_rw_bitmask, sizeof(env->CP0_Status_rw_bitmask));
+    crc = crc32(crc, (unsigned char*)&env->CP0_TCStatus_rw_bitmask, sizeof(env->CP0_TCStatus_rw_bitmask));
 #else
     crc = crc32(crc, (unsigned char *)env->regs, sizeof(env->regs));
 #endif

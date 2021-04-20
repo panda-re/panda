@@ -26,6 +26,10 @@
 #include "qemu/timer.h"
 #include "sysemu/kvm.h"
 
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
+
 #define TIMER_PERIOD 10 /* 10 ns period for 100 Mhz frequency */
 
 /* XXX: do not use a global */
@@ -48,6 +52,13 @@ uint32_t cpu_mips_get_random (CPUMIPSState *env)
         idx = (seed >> 16) % nb_rand_tlb + env->CP0_Wired;
     } while (idx == prev_idx);
     prev_idx = idx;
+
+    RR_DO_RECORD_OR_REPLAY(
+        /* action= */,
+        /* record= */ rr_input_4(&idx);,
+        /* replay= */ rr_input_4(&idx);,
+        /* location= */ RR_CALLSITE_WRITE_4);
+
     return idx;
 }
 
@@ -68,13 +79,15 @@ static void cpu_mips_timer_expire(CPUMIPSState *env)
 {
     cpu_mips_timer_update(env);
     if (env->insn_flags & ISA_MIPS32R2) {
-        env->CP0_Cause |= 1 << CP0Ca_TI;
+        target_ulong val = env->CP0_Cause |= 1 << CP0Ca_TI;
+        env->CP0_Cause = val;
     }
     qemu_irq_raise(env->irq[(env->CP0_IntCtl >> CP0IntCtl_IPTI) & 0x7]);
 }
 
 uint32_t cpu_mips_get_count (CPUMIPSState *env)
 {
+    target_ulong count;
     if (env->CP0_Cause & (1 << CP0Ca_DC)) {
         return env->CP0_Count;
     } else {
@@ -87,8 +100,16 @@ uint32_t cpu_mips_get_count (CPUMIPSState *env)
             cpu_mips_timer_expire(env);
         }
 
-        return env->CP0_Count + (uint32_t)(now / TIMER_PERIOD);
+        count = env->CP0_Count + (uint32_t)(now / TIMER_PERIOD);
     }
+    
+    RR_DO_RECORD_OR_REPLAY(
+        /* action= */,
+        /* record= */ rr_input_4(&count);,
+        /* replay= */ rr_input_4(&count);,
+        /* location= */ RR_CALLSITE_WRITE_4);
+    return count;
+
 }
 
 void cpu_mips_store_count (CPUMIPSState *env, uint32_t count)
@@ -98,6 +119,11 @@ void cpu_mips_store_count (CPUMIPSState *env, uint32_t count)
      * So env->timer may be NULL, which is also the case with KVM enabled so
      * treat timer as disabled in that case.
      */
+    RR_DO_RECORD_OR_REPLAY(
+        /* action= */,
+        /* record= */ rr_input_4(&count);,
+        /* replay= */ rr_input_4(&count);,
+        /* location= */ RR_CALLSITE_WRITE_4);
     if (env->CP0_Cause & (1 << CP0Ca_DC) || !env->timer)
         env->CP0_Count = count;
     else {
@@ -111,6 +137,13 @@ void cpu_mips_store_count (CPUMIPSState *env, uint32_t count)
 
 void cpu_mips_store_compare (CPUMIPSState *env, uint32_t value)
 {
+
+    RR_DO_RECORD_OR_REPLAY(
+        /* action= */,
+        /* record= */ rr_input_4(&value);,
+        /* replay= */ rr_input_4(&value);,
+        /* location= */ RR_CALLSITE_WRITE_4);
+
     env->CP0_Compare = value;
     if (!(env->CP0_Cause & (1 << CP0Ca_DC)))
         cpu_mips_timer_update(env);
