@@ -1,4 +1,7 @@
 # Helper utilities functions and classes for use in pypanda.
+'''
+Misc helper functions
+'''
 
 from colorama import Fore, Style
 from functools import wraps
