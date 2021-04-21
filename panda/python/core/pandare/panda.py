@@ -2043,13 +2043,21 @@ class Panda():
         self.run_monitor_cmd("delvm {}".format(snapshot_name))
 
     @blocking
-    def copy_to_guest(self, copy_directory:str, iso_name:str=None) -> None:
+    def copy_to_guest(self, copy_directory:str, iso_name:Optional[str]=None, absolute_paths:Optional[bool]=False) -> None:
+        '''
+        Copy a directory from the host into the guest by
+        1) Creating an .iso image of the directory on the host
+        2) Run a bash command to mount it at the exact same path + .ro and then copy the files to the provided path
+        3) If the directory contains setup.sh, run it
+        '''
+
         if not iso_name: iso_name = copy_directory + '.iso'
         progress("Creating ISO {}...".format(iso_name))
 
         make_iso(copy_directory, iso_name)
 
-        copy_directory = path.split(copy_directory)[-1] # Get dirname
+        if not absolute_paths:
+            copy_directory = path.split(copy_directory)[-1] # Copy directory relative, not absolutely
 
         # 1) we insert the CD drive TODO: the cd-drive name should be a config option, see the values in qcow.py
         self.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
@@ -2062,7 +2070,7 @@ class Panda():
         #   then run that setup.sh script first (good for scripts that need to
         #   prep guest environment before script runs)
         setup_sh = "mkdir -p {mount_dir} {mount_dir}.ro; while ! mount /dev/cdrom {mount_dir}.ro; do sleep 0.3; " \
-               " umount /dev/cdrom; done; cp -r {mount_dir}.ro/* {mount_dir}/; {mount_dir}/setup.sh &> /dev/null || true " \
+               " umount /dev/cdrom 2>&1 | grep -v 'not mounted\|write-protected'; done; cp -r {mount_dir}.ro/* {mount_dir}/; {mount_dir}/setup.sh &> /dev/null || true " \
                .format(mount_dir = (shlex_quote(copy_directory)))
         progress("setup_sh = [%s] " % setup_sh)
         progress(self.run_serial_cmd(setup_sh))
