@@ -5,7 +5,7 @@ and plugin systems.
 
 Most of the commonly used APIs are in `pandare.panda`.
 
-Example plugins are available [on GitHub](https://github.com/panda-re/panda/tree/master/panda/python/examples).
+Example plugins are available in the [examples directory](https://github.com/panda-re/panda/tree/master/panda/python/examples).
 
 .. include:: ../../docs/USAGE.md
 """
