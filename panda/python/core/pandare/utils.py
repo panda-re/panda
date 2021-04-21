@@ -6,23 +6,24 @@ from os import devnull
 from subprocess import check_call, STDOUT
 from sys import platform
 from threading import current_thread, main_thread
+from typing import Callable
 
 # Set to enable pypanda debugging
 debug = False
 
-def progress(msg):
+def progress(msg:str) -> None:
     """
     Print a message with a green "[PYPANDA]" prefix
     """
     print(Fore.GREEN + '[PYPANDA] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
 
-def warn(msg):
+def warn(msg:str) -> None:
     """
     Print a message with a red "[PYPANDA]" prefix
     """
     print(Fore.RED + '[PYPANDA] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
 
-def make_iso(directory, iso_path):
+def make_iso(directory:str, iso_path:str) -> None:
     '''
     Generate an iso from a directory
     '''
@@ -38,7 +39,7 @@ def make_iso(directory, iso_path):
         else:
             raise NotImplementedError("Unsupported operating system!")
 
-def telescope(panda, cpu, val):
+def telescope(panda, cpu, val:int) -> None:
     '''
     Given a value, check if it's a pointer by seeing if we can map it to physical memory.
     If so, recursively print where it points
@@ -79,7 +80,7 @@ def telescope(panda, cpu, val):
 
     print("-> ...")
 
-def blocking(func):
+def blocking(func:Callable) -> Callable:
     """
     Decorator to ensure a function isn't run in the main thread
     """
@@ -98,7 +99,7 @@ class GArrayIterator():
     that takes arguments of the GArray and list index. e.g., osi's
     get_one_module.
     '''
-    def __init__(self, func, garray, garray_len, cleanup_fn):
+    def __init__(self, func:Callable, garray, garray_len, cleanup_fn:Callable):
         self.garray = garray
         self.garray_len = garray_len
         self.current_idx = 0
@@ -127,7 +128,7 @@ class plugin_list(dict):
     def __init__(self,panda):
         self._panda = panda
         super().__init__()
-    def __getitem__(self,plugin_name):
+    def __getitem__(self,plugin_name:str):
         if plugin_name not in self:
             self._panda.load_plugin(plugin_name)
         return super().__getitem__(plugin_name)
