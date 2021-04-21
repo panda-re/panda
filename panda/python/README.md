@@ -1,6 +1,6 @@
 PyPANDA: PANDA's Python Interface
 ========
-What is PyPANDA
+Overview
 -
 PyPANDA is a Python 3 interface to PANDA. With PyPANDA, you can quickly develop plugins
 to analyze behavior of a running system, record a system and analyze replays, or do
