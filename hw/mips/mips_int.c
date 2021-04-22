@@ -57,12 +57,12 @@ static void cpu_mips_irq_request(void *opaque, int irq, int level)
         }
     }
 
-    RR_DO_RECORD_OR_REPLAY(
-        /* action= */,
-        /* record= */ rr_input_4(&cause);,
-        /* replay= */ rr_input_4(&cause);,
-        /* location= */ RR_CALLSITE_WRITE_4);
-    env->CP0_Cause = cause;
+    //RR_DO_RECORD_OR_REPLAY(
+    //    /* action= */,
+    //    /* record= */ rr_input_4(&cause);,
+    //    /* replay= */ rr_input_4(&cause);,
+    //    /* location= */ RR_CALLSITE_WRITE_4);
+    //env->CP0_Cause = cause;
 
     if (env->CP0_Cause & CP0Ca_IP_mask) {
         cpu_interrupt(cs, CPU_INTERRUPT_HARD);
