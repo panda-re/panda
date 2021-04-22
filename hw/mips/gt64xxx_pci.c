@@ -30,6 +30,10 @@
 #include "hw/i386/pc.h"
 #include "exec/address-spaces.h"
 
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
+
 //#define DEBUG
 
 #ifdef DEBUG
@@ -746,7 +750,14 @@ static uint64_t gt64120_readl (void *opaque,
         break;
     case GT_PCI0_IACK:
         /* Read the IRQ number */
-        val = pic_read_irq(isa_pic);
+        // dont bother calling this if we are replaying       
+        // ... just obtain "intno" from (or record it to) 
+        // non-deterministic inputs log
+        RR_DO_RECORD_OR_REPLAY(
+            /*action=*/val = pic_read_irq(isa_pic),
+            /*record=*/rr_input_4((uint32_t*)&val),
+            /*replay=*/if (!rr_replay_intno((uint32_t*)&val)) { return false; },
+            /*location=*/ RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO);
         break;
 
     /* SDRAM and Device Address Decode */

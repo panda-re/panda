@@ -1140,7 +1140,7 @@ static void * const qemu_ld_helpers_panda[16] = {
     [MO_BESL] = helper_be_ldsl_mmu_panda,
 #endif
 };
-#define qemu_ld_helpers \
+//#define qemu_ld_helpers \
     (panda_use_memcb ? qemu_ld_helpers_panda : qemu_ld_helpers_normal)
 
 static void * const qemu_st_helpers[16] = {

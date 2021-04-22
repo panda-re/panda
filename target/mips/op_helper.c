@@ -1055,7 +1055,7 @@ target_ulong helper_mfc0_count(CPUMIPSState *env)
     target_ulong count;
     //qemu_mutex_lock_iothread(); 
 
-#ifdef CONFIG_SOFTMMU
+#ifdef ASFDAFASDFCONFIG_SOFTMMU
     RR_DO_RECORD_OR_REPLAY(
         /*action=*/count = cpu_mips_get_count(env),
         /*record=*/rr_input_4(&count),

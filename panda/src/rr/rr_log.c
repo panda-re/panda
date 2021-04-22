@@ -1465,13 +1465,13 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     g_free(rr_name_base);
     // set global to turn on recording
     rr_control.mode = RR_RECORD;
-#ifdef TARGET_MIPS
-    CPUMIPSState* cpu = cpu_state->env_ptr;
-    qemu_clock_run_all_timers();
-    cpu->CP0_Cause = 0;
-  //fprintf(stderr, "Record/replay unsupported on MIPS\n");
-  //exit(1);
-#endif
+//#ifdef TARGET_MIPS
+//    CPUMIPSState* cpu = cpu_state->env_ptr;
+//    qemu_clock_run_all_timers();
+//    cpu->CP0_Cause = 0;
+//  //fprintf(stderr, "Record/replay unsupported on MIPS\n");
+//  //exit(1);
+//#endif
     return snapshot_ret;
 #endif
 }
@@ -1598,12 +1598,12 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     // Resume execution of the CPU thread when using PANDA as a library
     // note that this means library-mode consumers can't start a replay `-s -S` to
     // get a stopped guest that will only be started via an attached GDB
-#ifdef TARGET_MIPS
-    CPUMIPSState* cpu = cpu_state->env_ptr;
-    cpu->CP0_Cause = 0;
-  //fprintf(stderr, "Record/replay unsupported on MIPS\n");
-  //exit(1);
-#endif
+//#ifdef TARGET_MIPS
+//    CPUMIPSState* cpu = cpu_state->env_ptr;
+//    cpu->CP0_Cause = 0;
+//  //fprintf(stderr, "Record/replay unsupported on MIPS\n");
+//  //exit(1);
+//#endif
     if (panda_get_library_mode()) {
         vm_start();
     }
