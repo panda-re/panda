@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+'''
+Module for fetching generic PANDA images and managing their metadata.
+'''
+
 from os import path, remove, makedirs
 import logging
 from sys import argv
@@ -12,18 +17,18 @@ VM_DIR = path.join(path.expanduser("~"), ".panda")
 
 class Image(namedtuple('Image', ['arch', 'os', 'prompt', 'cdrom', 'snapshot', 'url', 'extra_files', 'qcow', 'default_mem', 'extra_args'])):
     '''
-    The Image class stores information about a supported PANDA image:
+    The Image class stores information about a supported PANDA image
 
-        Fields:
-            arch : Arch for the given architecture.
-            os : an os string we can pass to panda with -os
-            prompt : a regex to detect a bash prompt after loading the snapshot and sending commands
-            cdrom : name to use for cd-drive when inserting an ISO via monitor
-            qcow : optional name to save qcow as
-            url : url to download the qcow (e.g. https:// website.com/yourqcow.qcow2)
-            default_mem : memory to use for the root snapshot (e.g. 1G)
-            extra_files : other files (assumed to be in same directory on server) that we also need
-            extra_args : Extra arguments to pass to PANDA (e.g. '-nographic')
+    Args:
+        arch (str): Arch for the given architecture.
+        os (str): an os string we can pass to panda with -os
+        prompt (regex): a regex to detect a bash prompt after loading the snapshot and sending commands
+        cdrom (str): name to use for cd-drive when inserting an ISO via monitor
+        qcow (str): optional name to save qcow as
+        url (str): url to download the qcow (e.g. https:// website.com/yourqcow.qcow2)
+        default_mem (str): memory to use for the root snapshot (e.g. 1G)
+        extra_files (list): other files (assumed to be in same directory on server) that we also need
+        extra_args (list): Extra arguments to pass to PANDA (e.g. ['-display', 'none'])
     '''
 
 Image.__new__.__defaults__ = (None,) * len(Image._fields)
@@ -139,6 +144,17 @@ SUPPORTED_IMAGES = {
             url="https://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64-noaslr-nokaslr.qcow2",
             extra_args="-display none"),
 }
+"""
+Dictionary of `Image` objects by name. Supported values include:
+
+    x86_64
+    i386
+    ppc
+    arm
+    aarch64 
+    mips
+    mipsel
+""" # TODO: autogenerate values here
 
 # Default values
 SUPPORTED_IMAGES['x86_64']  = SUPPORTED_IMAGES['x86_64_ubuntu_1804']
@@ -152,21 +168,21 @@ SUPPORTED_IMAGES['mipsel']  = SUPPORTED_IMAGES['mipsel_wheezy']
 class Qcows():
     '''
     Helper library for managing qcows on your filesystem.
-    Given an architecture, it can download a qcow from panda-re.mit.edu to ~/.panda/ and then use that.
+    Given an architecture, it can download a qcow from `panda.mit.edu` to `~/.panda/` and then use that.
     Alternatively, if a path to a qcow is provided, it can just use that.
-    A qcow loaded by architecture can then be queried to get the name of the root snapshot or prompt
+    A qcow loaded by architecture can then be queried to get the name of the root snapshot or prompt.
     '''
 
     @staticmethod
     def get_qcow_info(name=None):
         '''
-        Return information about supported image as specified by name.
+        Get information about supported image as specified by name.
 
-            Parameters:
-                name: python string idenfifying a qcow supported
-            
-            Returns:
-                Image class for qcow
+        Args:
+            name (str): String idenfifying a qcow supported
+                
+        Returns:
+            Image: Instance of the Image class for a qcow
         '''
         if name is None:
             logger.warning("No qcow name provided. Defaulting to i386")
@@ -186,13 +202,13 @@ class Qcows():
     @staticmethod
     def get_qcow(name=None):
         '''
-        Given a generic name of a qcow or a path to a qcow, return the path. Defaults to i386
+        Given a generic name of a qcow in `pandare.qcows.SUPPORTED_IMAGES` or a path to a qcow, return the path. Defaults to i386
 
-            Parameters:
-                name: generic name or path to qcow
-            
-            Returns:
-                path to qcow
+        Args:
+            name (str): generic name or path to qcow
+                
+        Returns:
+            string: Path to qcow
         '''
         if name is None:
             logger.warning("No qcow name provided. Defaulting to i386")
@@ -237,6 +253,12 @@ class Qcows():
     def qcow_from_arg(idx=1):
         '''
         Given an index into argv, call get_qcow with that arg if it exists, else with None
+
+        Args:
+            idx (int): an index into argv
+                
+        Returns:
+            string: Path to qcow
         '''
         if len(argv) > idx:
             return Qcows.get_qcow(argv[idx])

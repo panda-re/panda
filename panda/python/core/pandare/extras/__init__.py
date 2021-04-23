@@ -1,12 +1,15 @@
 """
-Extras are a bit like python-based plugins. You can import them, instantiate them as classes, and use their functionality.
-
-Note file names should NOT contain underscores, let's keep these in (upper)
-CamelCase going forward (e.g., ModeFilter) so they match the class names.
+Extras are PyPANDA plugins which you can import into other python analyses. Typically
+this is done by passing a handle from your script's PANDA object to the plugin.
 """
-from .ModeFilter import ModeFilter
 
-from .file_hook import FileHook
-from .file_faker import FakeFile
-from .ioctl_faker import IoctlFaker
-from .proc_write_capture import ProcWriteCapture
+# Note file names should not contain underscores, let's keep these in lower
+# camelCase going forward (e.g., modeFilter) so they match the class names.
+from .fileFaker import FakeFile, FileFaker
+from .fileHook import FileHook
+from .ioctlFaker import IoctlFaker
+from .modeFilter import ModeFilter
+from .procWriteCapture import ProcWriteCapture
+
+
+__all__ = ['FakeFile', 'FileFaker', 'FileHook', 'IoctlFaker', 'ModeFilter', 'ProcWriteCapture']

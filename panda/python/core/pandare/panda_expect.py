@@ -386,7 +386,7 @@ class Expect(object):
                 #lines = [x.replace("\r", "") for x in plaintext.split("\n")]
                 # Check current line to see if it ends with prompt (indicating we finished)
                 # current_line is a bytearray. Need it as a string
-                current_line_s = self.current_line.decode()
+                current_line_s = self.current_line.decode(errors='ignore')
 
                 end_match = self.expectation_ends_re.match(current_line_s)
                 if end_match is not None:

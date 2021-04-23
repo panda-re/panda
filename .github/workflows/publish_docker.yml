@@ -32,10 +32,10 @@ jobs:
            git clone https://panda-jenkins-ci:${{ secrets.PANDABOT_GITHUB_API }}@github.com/panda-re/panda-re.github.io.git --branch=master ${GITHUB_WORKSPACE}/auto_pydoc/pandare
 
     - name: Update PYPANDA docs in container
-      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc/:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --force -o /out pandare"
+      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc/:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out pandare"
 
     - name: Push PYPANDA docs to GitHub Pages if docs changed
-      run: cd "${GITHUB_WORKSPACE}/auto_pydoc/pandare" &&
+      run: cd "${GITHUB_WORKSPACE}/auto_pydoc/pandare" && cp ../doc-search.html ../index.js . &&
            git config --global user.email "panda-ci@panda-re.mit.edu" &&
            git config --global user.name "PANDA Bot" &&
            git add . &&
