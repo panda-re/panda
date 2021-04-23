@@ -35,6 +35,7 @@ OUTPUT_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare"
 PLUGINS_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "plugins"]))              # panda-git/panda/plugins
 INCLUDE_DIR_PYP = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare", "include"]))           # panda-git/panda/python/core/pandare/include
 INCLUDE_DIR_PAN = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "include", "panda"])) # panda-git/panda/include/panda
+INCLUDE_DIR_AVA = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "..", "include", "hw", "avatar"])) # panda-git/panda/include/panda
 
 GLOBAL_MAX_SYSCALL_ARG_SIZE = 64
 GLOBAL_MAX_SYSCALL_ARGS = 17
@@ -345,6 +346,10 @@ def main(install=False,recompile=True):
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux.h"))
     copy_ppp_header("%s/taint2/taint2.h" % PLUGINS_DIR)
 
+
+    create_pypanda_header("%s/%s" % (INCLUDE_DIR_AVA, "configurable_machine.h"))
+
+
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
         pdty.write("""
 \"\"\"
@@ -499,7 +504,7 @@ PandaCB.__doc__ = '''custom named tuple to handle callbacks. Each element is a c
                         f"{PLUGINS_DIR}/osi_linux/utils/kernelinfo/kernelinfo.h",
                          "panda_api.h", ]:
             include_this(pdth, filename)
-    
+
     if recompile:
         print("Recompiling headers for cffi")
         arches = [
