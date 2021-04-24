@@ -9,8 +9,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 panda-re = { version = "0.4", default-features = false }
-gdbstub = "0.3"
-lazy_static = "1.4.0"
 
 [features]
 default = ["x86_64"]
