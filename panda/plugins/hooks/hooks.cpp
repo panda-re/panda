@@ -346,8 +346,7 @@ MAKE_HOOK_VOID(BEFORE_BLOCK_EXEC, before_block_exec, (CPUState *cpu, Translation
 MAKE_HOOK_VOID(AFTER_BLOCK_EXEC, after_block_exec, (CPUState *cpu, TranslationBlock *tb, uint8_t exitCode), tb->pc, cpu, tb, exitCode, h)
 
 
-void sys_exit_enter(CPUState *cpu, target_ulong pc, int exit_code){
-    target_ulong asid = panda_current_asid(cpu);
+void hooks_disable_asid(target_ulong asid){
     before_tcg_codegen_hooks.erase(asid);
     before_block_translate_hooks.erase(asid);
     after_block_translate_hooks.erase(asid);
@@ -376,21 +375,6 @@ bool init_plugin(void *_self) {
     before_block_translate_block_invalidator_callback.before_block_translate = before_block_translate_invalidator; 
     panda_register_callback(_self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_block_invalidator_callback);
     panda_disable_callback(_self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, before_block_translate_block_invalidator_callback);
-
-
-    #if defined(TARGET_PPC)
-        fprintf(stderr, "[ERROR] hooks: PPC architecture not supported by syscalls2!\n");
-        return false;
-    #else
-        // why? so we don't get 1000 messages telling us syscalls2 is already loaded
-        void* syscalls2 = panda_get_plugin_by_name("syscalls2");
-        if (syscalls2 == NULL){
-            panda_require("syscalls2");
-        }
-        assert(init_syscalls2_api());
-        PPP_REG_CB("syscalls2", on_sys_exit_enter, sys_exit_enter);
-        PPP_REG_CB("syscalls2", on_sys_exit_group_enter, sys_exit_enter);
-    #endif
     return true;
 }
 

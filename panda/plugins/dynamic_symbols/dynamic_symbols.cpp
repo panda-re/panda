@@ -40,6 +40,8 @@ void uninit_plugin(void *);
 #include "syscalls2/syscalls2_ext.h"
 #include "proc_start_linux/proc_start_linux.h"
 #include "proc_start_linux/proc_start_linux_ppp.h"
+void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h);
+void hook_library_start(CPUState *env, TranslationBlock* tb, struct hook* h);
 
 }
 using namespace std;
@@ -122,6 +124,7 @@ unordered_map<string, unordered_map<string, set<struct hook_symbol_resolve>>> ho
 
 void (*dlsym_add_hook)(struct hook*);
 void (*dlsym_hooks_flush_pc)(target_ulong pc);
+void (*dlsym_hooks_disable_asid)(target_ulong asid);
 
 void hook_symbol_resolution(struct hook_symbol_resolve *h){
     // ISSUE: Doesn't resolve for hooks that have been previously resolved.
@@ -366,10 +369,15 @@ int get_numelements_symtab(CPUState* cpu, target_ulong base, target_ulong dt_has
     return (symtab_min - symtab)/(sizeof(ELF(Dyn)));
 }
 
-#define error_case(A,B,C) //printf("%s %s %s\n", A, B, C)
+#define error_case(A,B,C) if (strcmp(A, "uaf")==0) printf("%s %s %s\n", A, B, C)
 
-void helper(){};
-
+// some systems are defined as absolute addresses
+// some are offsets.
+// we decide by checking it relative to the base address
+#define ADJUST_PTR(A,BASE) \
+    if (A < BASE){ \
+        A += BASE; \
+    }
 
 void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule *m){
     if (m->name == NULL){
@@ -389,6 +397,7 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
 
     auto it = seen_libraries.find(candidate);
     if (it != seen_libraries.end()) {
+        error_case(current->name, m->name, " adding copied library");
         //printf("COPY %s:%s for asid " TARGET_PTR_FMT "  and base of " TARGET_PTR_FMT "\n",  current->name, m->name, panda_current_asid(cpu), m->base);
         //printf("size of ASID before is %d\n", (int)symbols[asid].size());
         symbols[asid][name] = &seen_libraries[candidate];
@@ -415,11 +424,27 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
             return;
         }
 
-
+        target_ulong entry = ehdr.e_entry;
         target_ulong phnum = ehdr.e_phnum;
         target_ulong phoff = ehdr.e_phoff;
+        fixupendian(entry);
         fixupendian(phnum);
         fixupendian(phoff);
+
+        ADJUST_PTR(entry, m->base);
+
+        struct hook h;
+        h.addr = entry;
+        h.asid = asid;
+        h.cb.before_tcg_codegen = hook_library_start;
+        h.enabled = true;
+        h.km = MODE_USER_ONLY;
+        h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
+        memcpy(&h.sym.name, "_entry", MAX_PATH_LEN);
+        memcpy(&h.sym.section, m->name, MAX_PATH_LEN);
+        printf("adding hook for library %s:%s at entry " TARGET_PTR_FMT "\n", current->name, m->name, entry);
+        dlsym_add_hook(&h);
+
 
         ELF(Phdr) dynamic_phdr;
 
@@ -485,25 +510,16 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
                 j = numelements_dyn;
                 //break;
             }
-
             j++;
         }  
 
         // some of these are offsets. some are fully qualified
         // addresses. this is a gimmick that can sort-of tell.
         // probably better to replace this at some point
-        if (strtab < m->base){
-            strtab += m->base;
-        }
-        if (symtab < m->base){
-            symtab += m->base;
-        }
-        if (dt_hash < m->base){
-            dt_hash += m->base;
-        }
-        if (gnu_hash < m->base){
-            gnu_hash += m->base;
-        }
+        ADJUST_PTR(strtab, m->base);
+        ADJUST_PTR(symtab, m->base);
+        ADJUST_PTR(dt_hash, m->base);
+        ADJUST_PTR(gnu_hash, m->base);
 
         //printf("strtab: %llx symtab: %llx hash: %llx\n", (long long unsigned int) strtab, (long long unsigned int)symtab, (long long unsigned int) dt_hash);
 
@@ -594,6 +610,7 @@ void bbt(CPUState *env, target_ulong pc){
 void sys_exit_enter(CPUState *cpu, target_ulong pc, int exit_code){
     target_ulong asid = panda_current_asid(cpu);
     symbols.erase(asid);
+    dlsym_hooks_disable_asid(asid);
     panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
 }
 
@@ -602,7 +619,15 @@ bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
     return false;
 }
 
-void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
+void hook_library_start(CPUState *env, TranslationBlock* tb, struct hook* h){
+    printf("Got hook library in %s:%s\n", h->sym.section, h->sym.name);
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
+    h->enabled = false;
+}
+
+void hook_program_start(CPUState *cpu, TranslationBlock* tb, struct hook* h){
+    target_ulong asid = panda_current_asid(cpu);
+    symbols.erase(asid);
     panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
     h->enabled = false;
 }
@@ -653,6 +678,7 @@ bool init_plugin(void *self) {
     if (hooks != NULL){
         dlsym_add_hook = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
         dlsym_hooks_flush_pc = (void(*)(target_ulong pc)) dlsym(hooks, "hooks_flush_pc");
+        dlsym_hooks_disable_asid = (void(*)(target_ulong asid)) dlsym(hooks, "hooks_disable_asid");
         if ((void*)dlsym_add_hook == NULL) {
             printf("couldn't load add_hook from hooks\n");
             return false;
@@ -661,5 +687,4 @@ bool init_plugin(void *self) {
     return true;
 }
 
-void uninit_plugin(void *self) { 
-}
+void uninit_plugin(void *self) {}

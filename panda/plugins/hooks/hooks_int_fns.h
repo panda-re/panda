@@ -59,6 +59,7 @@ extern "C" void add_hook(struct hook* h);
 extern "C" void enable_hooking();
 extern "C" void disable_hooking();
 extern "C" void add_symbol_hook(struct symbol_hook* h);
+extern "C" void hooks_disable_asid(target_ulong asid);
 
 struct dynamic_symbol_hook {
     char library_name[MAX_PATH_LEN];
