@@ -11,5 +11,5 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so : $(RUST_SOURCE)
 	echo "PLUGIN_DIR" $(PLUGIN_DIR)
 	echo "RUST_SOURCE" $(RUST_SOURCE)
 	ls -la
-	cargo build --manifest-path=$(PLUGIN_DIR)/Cargo.toml --target-dir=$(PLUGIN_DIR)
+	cargo build --manifest-path=$(PLUGIN_DIR)/Cargo.toml --target-dir=$(PLUGIN_DIR)/target
 	cp -p $(PLUGIN_DIR)/target/debug/lib$(PLUGIN_NAME).so $@
