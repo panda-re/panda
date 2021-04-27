@@ -143,6 +143,9 @@ class HyperFD:
         SEEK_SET = 0
         SEEK_CUR = 1
         SEEK_END = 2
+        SEEK_DATA = 3
+        SEEK_HOLE = 4
+        SEEK_MAX = SEEK_HOLE
 
         if whence == SEEK_SET:
             self.offset = offset
@@ -150,6 +153,15 @@ class HyperFD:
             self.offset = self.offset + offset
         elif whence == SEEK_END:
             self.offset = self.offset + offset
+        elif whence == SEEK_DATA:
+            # No-op for now - TODO implement
+            pass
+        elif whence == SEEK_DATA:
+            # No-op for now - TODO implement
+            pass
+        elif whence == SEEK_MAX:
+            # No-op for now - TODO implement
+            pass
         else:
             raise ValueError(f"Unsupported whence {whence} in seek")
 
@@ -295,7 +307,7 @@ class FileFaker(FileHook):
         elif syscall_name == "lseek": # LLSEEK?
             offset = args[2]
             whence = args[3]
-            hfd.seek(offset, whence)
+            hfd.seek(whence, offset)
 
 
         elif syscall_name in ["dup2", "dup3"]:
