@@ -29,6 +29,7 @@ class ArchConfig(object):
 SUPPORTED_ARCHS = {
     'i386': ArchConfig('CPUX86State', 'eip', 'regs'),
     'x86_64': ArchConfig('CPUX86State', 'eip', 'regs'),
+    'mips': ArchConfig('CPUMIPSState', 'active_tc.PC', 'active_tc.gpr'),
     'arm': ArchConfig('CPUARMState', 'pc', 'regs'),
     'ppc': ArchConfig('CPUPPCState', 'lr', 'gpr')
 }
@@ -89,15 +90,39 @@ class WatchRAM(Watch):
     def __repr__(self):
         return "WatchRAM({:#x}, {})".format(self.addr, self.size)
 
+def isInt(a):
+    try:
+        b = int(a)
+        return True
+    except:
+        return False
+
 class WatchReg(Watch):
     def __init__(self, reg_num):
         self.reg_num = reg_num
 
     def render(self, proc):
-        return proc.env_ptr("{}[{}]".format(proc.arch.reg_name, self.reg_num)), proc.reg_size
+        if isInt(self.reg_num):
+            return proc.env_ptr("{}[{}]".format(proc.arch.reg_name, self.reg_num)), proc.reg_size
+        else:
+            return proc.env_ptr(f"{self.reg_num}"), proc.reg_size
+
 
     def __repr__(self):
         return "WatchReg({})".format(self.reg_num)
+
+class WatchVar(Watch):
+    def __init__(self, str,size):
+        self.str = str
+        self.size = size
+        self.val = self.get_value(self.str)
+
+    
+    def render(self,proc):
+        return self.val, self.size
+    
+    def __repr__(self):
+        return "WatchVar({})".format(self.str)
 
 class RRInstance(object):
     def __init__(self, description, rr_replay, source_pane):
@@ -190,7 +215,9 @@ class RRInstance(object):
 
     def gdb_int_re(self, result_re, *args):
         result = self.gdb(*args)
-        return re_search_int(result_re, result)
+        val_out =  re_search_int(result_re, result)
+        print(f"gdb_int_re '{args}' '{result}' '{result_re}' out='{val_out}'")
+        return val_out
 
     def breakpoint(self, break_arg):
         bp_num = self.gdb_int_re(r"Breakpoint ([0-9]+) at", "break", break_arg)
@@ -261,7 +288,7 @@ class RRInstance(object):
         step = 1 << 31 if size > (1 << 31) else size
         crc32s = 0
         for start in range(low, low + size, step):
-            crc32s ^= self.get_value("crc32(0, {} + {}, {})".format(
+            crc32s ^= self.get_value("(uint32_t) crc32(0, {} + {}, {})".format(
                             hex(self.ram_ptr), hex(start), hex(step)))
         return crc32s
 
@@ -290,7 +317,7 @@ class RRInstance(object):
     def checksum(self):
         # NB: Only run when you are at a breakpoint in CPU thread!
         memory = self.crc32_ram(0, self.ram_size)
-        regs = self.get_value("rr_checksum_regs()")
+        regs = self.get_value("(uint32_t)rr_checksum_regs()")
         return (memory, regs)
 
     def when(self):
@@ -590,6 +617,10 @@ class Diverge(object):
                 self.record.arch.reg_name, reg))
             if not values_equal(reg_values):
                 diverged_registers.append(reg)
+        for reg in ["CP0_Cause"]:
+            reg_values = self.both.env_value("CP0_Cause")
+            if not values_equal(reg_values):
+                diverged_registers.append(reg)
         return diverged_registers
 
     def goto_instr(self, target_instr, strict=False):
@@ -635,14 +666,50 @@ class Diverge(object):
                 for watch in watches_chunk:
                     num_to_watch_dict[self.both.same.watch(watch)] = watch
 
+                hit = None
                 instr_counts = self.both.instr_count()
                 while values_equal(instr_counts) \
-                        and instr_counts[self.record] > 0 \
+                        and instr_counts[self.record] >= 0 \
                         and instr_counts[self.replay] < self.instr_count_max \
                         and values_equal(self.both.checksum()):
                     hit = self.both.cont()
+                    print(f"hit {hit}")
                     instr_counts = self.both.instr_count()
 
+                if hit is None:
+                    self.both.disable_all()
+                    self.both.breakpoint("rr_do_begin_record")
+                    self.both.breakpoint("rr_do_begin_replay")
+                    self.both.reverse_cont()
+                    self.both.reverse_cont()
+                    self.both.cont()
+                    self.both.disable_all()
+                    self.both.breakpoint("cpu_loop_exec_tb")
+                    self.both.cont()
+                    self.both.disable_all()
+                    var = self.both.get_value("&cpus->tqh_first->rr_guest_instr_count")
+                    print(var)
+                    try:
+                        self.both.watch(WatchRAM(var[self.record],4))
+                    except:
+                        IPython.embed()
+                    
+                    instr_counts = self.both.instr_count()
+                    print(f"initial run instr_counts: {values_equal(instr_counts)} and checksum {values_equal(self.both.checksum())}")
+
+                    while values_equal(instr_counts) and values_equal(self.both.checksum()):
+                        instr_counts = self.both.instr_count()
+                        hit = self.both.cont()
+                    
+                    reg_diverge = self.check_registers()
+                    self.both.disable_all()
+                    for i in range(min(len(reg_diverge),4)):
+                        self.both.watch(WatchReg(reg_diverge[i]))
+                    
+                    self.both.reverse_cont()
+
+                    if hit is None:
+                        IPython.embed()
                 hit_watches = {}
                 for proc in hit:
                     try:

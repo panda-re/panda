@@ -29,6 +29,7 @@
 
 static void cpu_mips_irq_request(void *opaque, int irq, int level)
 {
+    // this function needs replayed to do the level thing
     MIPSCPU *cpu = opaque;
     CPUMIPSState *env = &cpu->env;
     CPUState *cs = CPU(cpu);

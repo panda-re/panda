@@ -124,6 +124,7 @@ set -x
     --target-list=$TARGET_LIST \
     --prefix=$prefix \
     $COMPILER_CONFIG \
+    --enable-debug \
     $LLVM_CONFIG \
     "$@"
 set +x

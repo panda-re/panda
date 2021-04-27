@@ -1124,6 +1124,17 @@ static void * const qemu_ld_helpers[16] = {
     [MO_BESL] = helper_be_ldsl_mmu,
 #endif
 };
+static void * const qemu_ld_helpers_panda[16] = {
+    [MO_UB]   = helper_ret_ldub_mmu_panda,
+    [MO_LEUW] = helper_le_lduw_mmu_panda,
+    [MO_LEUL] = helper_le_ldul_mmu_panda,
+    [MO_LEQ]  = helper_le_ldq_mmu_panda,
+    [MO_BEUW] = helper_be_lduw_mmu_panda,
+    [MO_BEUL] = helper_be_ldul_mmu_panda,
+    [MO_BEQ]  = helper_be_ldq_mmu_panda,
+};
+#define qemu_ld_helpers \
+    (panda_use_memcb ? qemu_ld_helpers_panda : qemu_ld_helpers_normal)
 
 static void * const qemu_st_helpers[16] = {
     [MO_UB]   = helper_ret_stb_mmu,
@@ -1134,6 +1145,18 @@ static void * const qemu_st_helpers[16] = {
     [MO_BEUL] = helper_be_stl_mmu,
     [MO_BEQ]  = helper_be_stq_mmu,
 };
+
+static void * const qemu_st_helpers_panda[16] = {
+    [MO_UB]   = helper_ret_stb_mmu_panda,
+    [MO_LEUW] = helper_le_stw_mmu_panda,
+    [MO_LEUL] = helper_le_stl_mmu_panda,
+    [MO_LEQ]  = helper_le_stq_mmu_panda,
+    [MO_BEUW] = helper_be_stw_mmu_panda,
+    [MO_BEUL] = helper_be_stl_mmu_panda,
+    [MO_BEQ]  = helper_be_stq_mmu_panda,
+};
+#define qemu_st_helpers \
+    (panda_use_memcb ? qemu_st_helpers_panda : qemu_st_helpers_normal)
 
 /* Helper routines for marshalling helper function arguments into
  * the correct registers and stack.

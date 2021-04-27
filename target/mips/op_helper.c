@@ -27,6 +27,10 @@
 
 #include "panda/callbacks/cb-helper-impl.h"
 
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
+
 /*****************************************************************************/
 /* Exceptions processing helpers */
 
@@ -48,7 +52,9 @@ void helper_raise_exception_debug(CPUMIPSState *env)
 
 static void raise_exception(CPUMIPSState *env, uint32_t exception)
 {
-    do_raise_exception(env, exception, 0);
+    if (!rr_in_replay()){
+        do_raise_exception(env, exception, 0);
+    }
 }
 
 #if defined(CONFIG_USER_ONLY)
@@ -1053,18 +1059,7 @@ target_ulong helper_mftc0_tcschefback(CPUMIPSState *env)
 target_ulong helper_mfc0_count(CPUMIPSState *env)
 {
     target_ulong count;
-    //qemu_mutex_lock_iothread(); 
-
-//#ifdef CONFIG_SOFTMMU
-//    RR_DO_RECORD_OR_REPLAY(
-//        /*action=*/count = cpu_mips_get_count(env),
-//        /*record=*/rr_input_4(&count),
-//        /*replay=*/rr_input_4(&count),
-//        /*location=*/RR_CALLSITE_READ_4);
-//#else
-        count = cpu_mips_get_count(env);
-//#endif
-    //qemu_mutex_unlock_iothread();
+    count = cpu_mips_get_count(env);
     return (target_ulong) count;
 }
 
@@ -2825,7 +2820,8 @@ void helper_wait(CPUMIPSState *env)
     CPUState *cs = CPU(mips_env_get_cpu(env));
 
     cs->halted = 1;
-    cpu_reset_interrupt(cs, CPU_INTERRUPT_WAKE);
+    if (!rr_in_replay())
+        cpu_reset_interrupt(cs, CPU_INTERRUPT_WAKE);
     /* Last instruction in the block, PC was updated before
        - no need to recover PC and icount */
     raise_exception(env, EXCP_HLT);
@@ -2852,6 +2848,7 @@ void mips_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
             error_code |= EXCP_INST_NOTAVAIL;
         }
     }
+
 
     do_raise_exception_err(env, excp, error_code, retaddr);
 }
