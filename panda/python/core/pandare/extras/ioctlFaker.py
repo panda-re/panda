@@ -119,7 +119,7 @@ class Ioctl():
             self_str = ""
 
         bits = self.cmd.bits
-        direction = panda.ffi.string(panda.ffi.cast("enum ioctl_direction", bits.direction))
+        direction = ffi.string(ffi.cast("enum ioctl_direction", bits.direction))
         ioctl_desc = f"dir={direction},arg_size={bits.arg_size:x},cmd=0x{bits.cmd_num:x},type=0x{bits.type_num:x}"
         if (self.guest_ptr == None):
             self_str += f"ioctl({ioctl_desc}) -> {self.original_ret_code}"
