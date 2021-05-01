@@ -65,7 +65,7 @@ def re_search_int(result_re, result):
         return int(re_result.group(1))
     else:
         print("re_search_int failed. result:", result)
-        raise RuntimeError("re_search_int")
+        #raise RuntimeError("re_search_int")
 
 class Watch(object):
     def render(self, procs): raise NotImplemented()
@@ -617,8 +617,9 @@ class Diverge(object):
                 self.record.arch.reg_name, reg))
             if not values_equal(reg_values):
                 diverged_registers.append(reg)
-        for reg in ["CP0_Cause"]:
-            reg_values = self.both.env_value("CP0_Cause")
+        for reg in ['Index', 'VPControl', 'Random', 'VPEControl', 'VPEConf0', 'VPEConf1', 'YQMask', 'VPESchedule', 'VPEScheFBack', 'VPEOpt', 'EntryLo0', 'EntryLo1', 'GlobalNumber', 'Context', 'PageMask', 'PageGrain_rw_bitmask', 'PageGrain', 'Wired', 'SRSConf0_rw_bitmask', 'SRSConf0', 'SRSConf1_rw_bitmask', 'SRSConf1', 'SRSConf2_rw_bitmask', 'SRSConf2', 'SRSConf3_rw_bitmask', 'SRSConf3', 'SRSConf4_rw_bitmask', 'SRSConf4', 'HWREna', 'BadVAddr', 'BadInstr', 'BadInstrP', 'Count', 'EntryHi', 'EntryHi_ASID_mask', 'Compare', 'Status', 'IntCtl', 'SRSCtl', 'SRSMap', 'Cause', 'EPC', 'PRid', 'EBase', 'CMGCRBase', 'Config0', 'Config1', 'Config2', 'Config3', 'Config4', 'Config4_rw_bitmask', 'Config5', 'Config5_rw_bitmask', 'Config6', 'Config7', 'MAARI', 'LLAddr_rw_bitmask', 'LLAddr_shift', 'XContext', 'Framemask', 'Debug', 'DEPC', 'Performance0', 'ErrCtl', 'TagLo', 'DataLo', 'TagHi', 'DataHi', 'ErrorEPC', 'DESAVE']:
+            reg = "CP0_"+reg
+            reg_values = self.both.env_value(reg)
             if not values_equal(reg_values):
                 diverged_registers.append(reg)
         return diverged_registers
@@ -636,6 +637,7 @@ class Diverge(object):
     def find_precise_divergence(self, instr_bounds, diverged_ranges,
                                 diverged_registers, diverged_pcs):
         watches = [WatchReg(reg) for reg in diverged_registers]
+        diverged_pcs = True
         if diverged_pcs: watches.append(WatchEIP())
 
         for low, high in diverged_ranges:
@@ -665,13 +667,16 @@ class Diverge(object):
                 self.both.restart_instr(instr_bounds[0])
                 for watch in watches_chunk:
                     num_to_watch_dict[self.both.same.watch(watch)] = watch
+                
 
                 hit = None
                 instr_counts = self.both.instr_count()
                 while values_equal(instr_counts) \
                         and instr_counts[self.record] >= 0 \
                         and instr_counts[self.replay] < self.instr_count_max \
-                        and values_equal(self.both.checksum()):
+                        and values_equal(self.both.checksum()) \
+                        and values_equal(self.both.env_value(self.record.arch.pc_name)):
+                        
                     hit = self.both.cont()
                     print(f"hit {hit}")
                     instr_counts = self.both.instr_count()
@@ -708,8 +713,8 @@ class Diverge(object):
                     
                     self.both.reverse_cont()
 
-                    if hit is None:
-                        IPython.embed()
+                if hit is None:
+                    IPython.embed()
                 hit_watches = {}
                 for proc in hit:
                     try:
@@ -717,8 +722,9 @@ class Diverge(object):
                             re_search_int(r"hit Hardware watchpoint ([0-9]+):",
                                         hit[proc])
                         ]
-                    except RuntimeError:
+                    except Exception as e:
                         # one of the processes has hit the end
+                        print(e)
                         pass
                 new_watches.extend(set(hit_watches.values()))
 

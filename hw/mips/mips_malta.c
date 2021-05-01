@@ -594,8 +594,9 @@ static void network_init(PCIBus *pci_bus)
         if (i == 0 && (!nd->model || strcmp(nd->model, "pcnet") == 0))
             /* The malta board has a PCNet card using PCI SLOT 11 */
             default_devaddr = "0b";
-
-        pci_nic_init_nofail(nd, pci_bus, "pcnet", default_devaddr);
+        
+        //we changed the default to e1000
+        pci_nic_init_nofail(nd, pci_bus, "e1000", default_devaddr);
     }
 }
 

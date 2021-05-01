@@ -27,9 +27,14 @@
 #include "sysemu/kvm.h"
 #include "kvm_mips.h"
 
-static void cpu_mips_irq_request(void *opaque, int irq, int level)
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
+
+static void cpu_mips_irq_request_internal(void *opaque, int irq, int level);
+
+static void cpu_mips_irq_request_internal(void *opaque, int irq, int level)
 {
-    // this function needs replayed to do the level thing
     MIPSCPU *cpu = opaque;
     CPUMIPSState *env = &cpu->env;
     CPUState *cs = CPU(cpu);
@@ -52,11 +57,25 @@ static void cpu_mips_irq_request(void *opaque, int irq, int level)
         }
     }
 
+    //RR_DO_RECORD_OR_REPLAY(
+    //            env->CP0_Cause = env->CP0_Cause;,
+    //            rr_input_4((uint32_t*)&env->CP0_Cause),
+    //            rr_input_4((uint32_t*)&env->CP0_Cause),
+    //            RR_CALLSITE_WRITE_4);
+
     if (env->CP0_Cause & CP0Ca_IP_mask) {
         cpu_interrupt(cs, CPU_INTERRUPT_HARD);
     } else {
         cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD);
     }
+}
+
+static void cpu_mips_irq_request(void *opaque, int irq, int level){
+//    RR_DO_RECORD_OR_REPLAY(
+    /*action=*/ cpu_mips_irq_request_internal(opaque,irq,level);
+  //  /*record=*/RR_NO_ACTION,
+  //  /*replay=*/RR_NO_ACTION,
+  //  /*location=*/RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE);
 }
 
 void cpu_mips_irq_init_cpu(MIPSCPU *cpu)

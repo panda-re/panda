@@ -542,6 +542,12 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
 #ifdef TARGET_PPC
                 rr_exception_index_at(RR_CALLSITE_CPU_EXCEPTION_INDEX, &cpu->exception_index);
 #endif
+#ifdef TARGET_MIPS
+                if (((CPUMIPSState*)cpu->env_ptr)->insn_flags & ISA_MIPS32R2) {
+                    ((CPUMIPSState*)(cpu->env_ptr))->CP0_Cause |= 1 << CP0Ca_TI;
+                }
+                rr_exception_index_at(RR_CALLSITE_CPU_EXCEPTION_INDEX, &cpu->exception_index);
+#endif
                 CPUClass *cc = CPU_GET_CLASS(cpu);
                 cc->do_interrupt(cpu);
                 cpu->exception_index = -1;
