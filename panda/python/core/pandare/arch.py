@@ -192,6 +192,9 @@ class PandaArch():
 
         base_reg_s = "SP"
         base_reg_val = self.get_reg(cpu, self.reg_sp)
+        if base_reg_val == 0:
+            print("[WARNING: no stack pointer]")
+            return
         word_size = int(self.panda.bits/4)
 
         for word_idx in range(words):
@@ -308,7 +311,12 @@ class Aarch64Arch(PandaArch):
         '''
         Return an aarch64 register
         '''
-        return cpu.env_ptr.xregs[reg]
+
+        if reg == 32:
+            print("WARNING: unsupported get sp for aarch64")
+            return 0
+        else:
+            return cpu.env_ptr.xregs[reg]
 
     def _set_reg_val(self, cpu, reg, val):
         '''
