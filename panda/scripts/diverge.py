@@ -637,7 +637,7 @@ class Diverge(object):
     def find_precise_divergence(self, instr_bounds, diverged_ranges,
                                 diverged_registers, diverged_pcs):
         watches = [WatchReg(reg) for reg in diverged_registers]
-        diverged_pcs = True
+        #diverged_pcs = True
         if diverged_pcs: watches.append(WatchEIP())
 
         for low, high in diverged_ranges:

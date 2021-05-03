@@ -106,6 +106,7 @@ extern void rr_signal_disagreement(RR_prog_point current,
         ACTION(RR_CALL_SERIAL_SEND),       /* send byte on serial port */      \
         ACTION(RR_CALL_SERIAL_WRITE),      /* write byte to serial tx fifo */  \
         ACTION(RR_CALL_CPU_REG_WRITE),     /* */                               \
+        ACTION(RR_CALL_MIPS_CAUSE),        /* ungeneric. the MIPS timer*/      \
         ACTION(RR_CALL_LAST)
 
 typedef enum {
@@ -506,6 +507,10 @@ typedef struct {
     uint32_t port_addr;
     uint8_t value;
 } RR_serial_write_args;
+
+typedef struct {
+    uint32_t cause; 
+} RR_mips_cause_args;
 
 void rr_record_serial_send(RR_callsite_id call_site, uint64_t fifo_addr,
                            uint8_t value);

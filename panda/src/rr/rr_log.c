@@ -352,6 +352,9 @@ static inline void rr_write_item(RR_log_entry item)
                 case RR_CALL_SERIAL_WRITE:
                     RR_WRITE_ITEM(args->variant.serial_write_args);
                     break;
+                case RR_CALL_MIPS_CAUSE:
+                    RR_WRITE_ITEM(args->variant.mips_cause_args);
+                    break;
                 default:
                     // mz unimplemented
                     rr_assert(0 && "Unimplemented skipped call!");
@@ -506,6 +509,15 @@ void rr_cpu_reg_write_call_record(int cpu_index, const uint8_t* buf,
             .buf = (uint8_t *)buf,
             .reg = reg,
             .len = len
+        }
+    });
+}
+
+void rr_mips_cause_record(target_ulong val){
+    rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_CALL_MIPS_CAUSE,
+        .variant.mips_cause_args = {
+            .cause = val
         }
     });
 }
@@ -856,6 +868,9 @@ static RR_log_entry *rr_read_item(void) {
                 case RR_CALL_SERIAL_WRITE:
                     RR_READ_ITEM(args->variant.serial_write_args);
                     break;
+                case RR_CALL_MIPS_CAUSE:
+                    RR_READ_ITEM(args->variant.mips_cause_args);
+                    break;
                 default:
                     // mz unimplemented
                     rr_assert(0 && "Unimplemented skipped call!");
@@ -1171,7 +1186,15 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                     RR_serial_write_args write = args.variant.serial_write_args;
                     panda_callbacks_replay_serial_write(first_cpu, write.fifo_addr, write.port_addr, write.value);
                 } break;
-
+            case RR_CALL_MIPS_CAUSE:
+                {
+                    #ifdef TARGET_MIPS
+                    printf("replaying value\n");
+                    RR_mips_cause_args a = args.variant.mips_cause_args;
+                    CPUMIPSState* env = (CPUMIPSState*)cpus.tqh_first->env_ptr;
+                    env->CP0_Cause = a.cause;
+                    #endif
+                } break;
                 default:
                     // mz sanity check
                     rr_assert(0);
@@ -1517,11 +1540,6 @@ void rr_do_end_record(void)
 // file_name_full should be full path to the record/replay log
 int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
 {
-
-//#ifdef TARGET_MIPS
-//  fprintf(stderr, "Record/replay unsupported on MIPS\n");
-//  exit(1);
-//#endif
 
 #ifdef CONFIG_SOFTMMU
     char name_buf[1024];

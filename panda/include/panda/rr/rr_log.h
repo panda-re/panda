@@ -70,6 +70,7 @@ void rr_device_mem_unmap_call_record(hwaddr addr, const uint8_t* buf,
 void rr_mem_region_change_record(hwaddr start_addr, uint64_t size,
                                  const char *name, RR_mem_type mtype, bool added);
 void rr_mem_region_transaction_record(bool begin);
+void rr_mips_cause_record(target_ulong);
 
 // mz using uint8_t for kind and callsite_loc to control space - enums default
 // to int.
@@ -97,6 +98,7 @@ typedef struct {
         RR_serial_send_args serial_send_args;
         RR_serial_write_args serial_write_args;
         RR_cpu_reg_write_args cpu_reg_write_args;
+        RR_mips_cause_args mips_cause_args;
     } variant;
     // mz XXX HACK
     uint64_t buf_addr_rec;

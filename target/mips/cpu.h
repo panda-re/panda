@@ -828,6 +828,7 @@ void cpu_mips_store_count (CPUMIPSState *env, uint32_t value);
 void cpu_mips_store_compare (CPUMIPSState *env, uint32_t value);
 void cpu_mips_start_count(CPUMIPSState *env);
 void cpu_mips_stop_count(CPUMIPSState *env);
+void cpu_mips_timer_expire_external(CPUMIPSState *env);
 
 /* mips_int.c */
 void cpu_mips_soft_irq(CPUMIPSState *env, int irq, int level);

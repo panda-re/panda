@@ -100,7 +100,6 @@ uint32_t cpu_mips_get_count (CPUMIPSState *env)
         uint64_t now;
 
         now = replay_timer(); //qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL);
-
         if (timer_pending(env->timer) && timer_expired(env->timer, now)) {
             cpu_mips_timer_expire(env);
         }
@@ -162,16 +161,17 @@ static void mips_timer_cb (void *opaque)
     if (env->CP0_Cause & (1 << CP0Ca_DC))
         return;
 
+
+
     /* ??? This callback should occur when the counter is exactly equal to
        the comparator value.  Offset the count by one to avoid immediately
        retriggering the callback before any virtual time has passed.  */
-    RR_DO_RECORD_OR_REPLAY(
-            env->CP0_Count++;
-            cpu_mips_timer_expire(env);
-            env->CP0_Count--;,
-            RR_NO_ACTION,
-            RR_NO_ACTION,
-            RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE);
+    env->CP0_Count++;
+    cpu_mips_timer_expire(env);
+    env->CP0_Count--;
+    
+    if (rr_in_record())
+        rr_mips_cause_record(env->CP0_Cause);
 }
 
 void cpu_mips_clock_init (MIPSCPU *cpu)
