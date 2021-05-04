@@ -20,7 +20,7 @@ class Expect(object):
 
         self.name = name
         self.logfile = None
-        logfile_base = "/tmp/expect"
+
         if logfile_base:
             self.logfile = open(f"{logfile_base}_{name}.txt", "wb")
 

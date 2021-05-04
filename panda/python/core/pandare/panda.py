@@ -1978,26 +1978,59 @@ class Panda():
     def copy_to_guest(self, copy_directory, iso_name=None):
         if not iso_name: iso_name = copy_directory + '.iso'
         progress("Creating ISO {}...".format(iso_name))
+        '''
 
+        Copy a directory from the host into the guest by
+        1) Creating an .iso image of the directory on the host
+        2) Run a bash command to mount it at the exact same path + .ro and then copy the files to the provided path
+        3) If the directory contains setup.sh, run it
+
+        Args:
+            copy_directory: Local directory to copy into guest
+            iso_name: Name of iso file that will be generated. Defaults to [copy_directory].iso
+
+        Returns:
+            None
+        '''
+
+        if not iso_name:
+            iso_name = copy_directory + '.iso'
         make_iso(copy_directory, iso_name)
 
         copy_directory = path.split(copy_directory)[-1] # Get dirname
 
-        # 1) we insert the CD drive TODO: the cd-drive name should be a config option, see the values in qcow.py
-        self.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
-
-        # 2) run setup script
+        # 2) Drive the guest to mount the drive
         # setup_sh:
         #   Make sure cdrom didn't automount
         #   Make sure guest path mirrors host path
         #   if there is a setup.sh script in the directory,
         #   then run that setup.sh script first (good for scripts that need to
         #   prep guest environment before script runs)
-        setup_sh = "mkdir -p {mount_dir}; while ! mount /dev/cdrom {mount_dir}; do sleep 0.3; " \
-               " umount /dev/cdrom; done; {mount_dir}/setup.sh &> /dev/null || true " \
-               .format(mount_dir = (shlex_quote(copy_directory)))
-        progress("setup_sh = [%s] " % setup_sh)
-        progress(self.run_serial_cmd(setup_sh))
+        mount_dir = shlex_quote(copy_directory)
+
+        mkdir_result = self.run_serial_cmd(f"mkdir -p {mount_dir} {mount_dir}.ro && echo \"mkdir_ok\"; echo \"exit code $?\"")
+
+        if 'mkdir_ok' not in mkdir_result:
+            raise RuntimeError(f"Failed to create mount directories inside guest: {mkdir_result}")
+
+        mount_status = "bad"
+        for _ in range(10):
+            if 'mount_ok' in mount_status:
+                break
+            mount_status = self.run_serial_cmd(f"mount /dev/cdrom {mount_dir}.ro && echo 'mount_ok' || (umount /dev/cdrom; echo 'bad')")
+            sleep(1)
+        else:
+            # Didn't ever break
+            raise RuntimeError(f"Failed to mount media inside guest: {mount_status}")
+
+        # Note the . after our src/. directory - that's special syntax for cp -a
+        copy_result = self.run_serial_cmd(f"cp -a {mount_dir}.ro/. {mount_dir} && echo 'ok'")
+        if copy_result != 'ok':
+            raise RuntimeError(f"Copy to rw directory failed: {copy_result}")
+
+        if isfile(pjoin(copy_directory, "setup.sh")):
+            setup_result = self.run_serial_cmd(f"{mount_dir}/setup.sh")
+            progress("[Setup command]: {setup_result}")
 
     @blocking
     def record_cmd(self, guest_command, copy_directory=None, iso_name=None, setup_command=None, recording_name="recording", snap_name="root", ignore_errors=False):
