@@ -870,7 +870,7 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb) {
     panda_virtual_memory_rw(cpu, pc, buf, 4, 0);
 
     if ( (buf[0] == 0x01)  && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0xd4) ) {
-        return true;
+        return pc;
     }
 
 #else
