@@ -13,15 +13,22 @@ from colorama import Fore, Style
 class TimeoutExpired(Exception): pass
 
 class Expect(object):
+    '''
+    Class to manage typing commands into consoles and waiting for responses.
+
+    Designed to be used with the qemu monitor and serial consoles for Linux guests.
+
+    '''
     def __init__(self, name, filelike=None, expectation=None, logfile_base=None, consume_first=False):
         '''
-        To debug, set logfile_base to something like '/tmp/log' and then look at logs written to /tmp/log_monitor.txt and /tmp/log_serial.txt
+        To debug, set logfile_base to something like '/tmp/log' and then look at logs written to /tmp/log_monitor.txt and /tmp/log_serial.txt. Or directyl access
         '''
 
         self.name = name
         self.logfile = None
+
         if logfile_base:
-            self.logfile = open(f"{logfile_base}_{name}.txt", "wb")
+            self.enable_logger(f"{logfile_base}_{name}.txt")
 
         if filelike is None: # Must later use connect(filelike)
             self.fd = None
@@ -46,6 +53,9 @@ class Expect(object):
         self.last_prompt = expectation # approximation
         self.expectation_re = re.compile(expectation)
         self.expectation_ends_re = re.compile(r'(.*)' + expectation)
+
+    def set_logging(self, name):
+        self.logfile = open(name, "wb")
 
     def connect(self, filelike):
         if type(filelike) == int:
