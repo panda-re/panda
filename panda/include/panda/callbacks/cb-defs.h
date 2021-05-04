@@ -96,6 +96,8 @@ typedef enum panda_cb_type {
                                       // or squash exceptions
 
     PANDA_CB_BEFORE_HANDLE_INTERRUPT, // ditto, for interrupts
+    PANDA_CB_START_BLOCK_EXEC,
+    PANDA_CB_END_BLOCK_EXEC,
 
     PANDA_CB_LAST
 } panda_cb_type;
@@ -998,6 +1000,9 @@ typedef union panda_cb {
 
 
     int32_t (*before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request);
+
+    void (*start_block_exec)(CPUState *cpu, TranslationBlock* tb);
+    void (*end_block_exec)(CPUState *cpu, TranslationBlock* tb);
 
     void (*cbaddr)(void);
 } panda_cb;
