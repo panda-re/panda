@@ -2084,13 +2084,30 @@ class Panda():
         self.libpanda.panda_break_vl_loop_req = True
 
     @blocking
-    def run_serial_cmd(self, cmd, no_timeout=False, timeout=30):
+    def run_serial_cmd(self, cmd, no_timeout=False, timeout=None):
+        '''
+        Run a command inside the guest through a terminal exposed over a serial port. Can only be used if your guest is configured in this way
+
+        Guest output will be analyzed until we see the expect_prompt regex printed (i.e., the PS1 prompt)
+
+        Args:
+            cmd: command to run.
+            timeout: maximum time to wait for the command to finish
+            no_timeout: if set, don't ever timeout
+
+        Returns:
+            String: all the output (stdout + stderr) printed after typing your command and pressing enter until the next prompt was printed.
+        '''
+
+        if timeout is None:
+            timeout = 30
+
         if self.serial_console is None:
             raise RuntimeError("Cannot run serial commands without providing PANDA an expect_prompt")
         self.running.wait() # Can only run serial when guest is running
         self.serial_console.sendline(cmd.encode("utf8"))
         if no_timeout:
-            result = self.serial_console.expect(timeout=9999)
+            result = self.serial_console.expect(timeout=9999) # "Don't ever timeout" above is a bit of an exaggeration
         else:
             result = self.serial_console.expect(timeout=timeout)
         return result
@@ -2134,9 +2151,8 @@ class Panda():
         self.run_monitor_cmd("delvm {}".format(snapshot_name))
 
     @blocking
-    def copy_to_guest(self, copy_directory, iso_name=None, absolute_paths=False):
+    def copy_to_guest(self, copy_directory, iso_name=None, absolute_paths=False, setup_script="setup.sh", timeout=None):
         '''
-
 
         Copy a directory from the host into the guest by
         1) Creating an .iso image of the directory on the host
@@ -2145,14 +2161,17 @@ class Panda():
 
         Args:
             copy_directory: Local directory to copy into guest
+            iso_name: Name of iso file that will be generated. Defaults to [copy_directory].iso
+            absolute_paths: is copy_directory an absolute or relative path
+            seutp_script: name of a script which, if present inside copy_directory, will be automatically run after the copy
+            timeout: maximum time each copy command will be allowed to run for, will use the `run_serial_cmd` default value unless another is provided
 
         Returns:
             None
         '''
 
-        if not iso_name: iso_name = copy_directory + '.iso'
-        progress("Creating ISO {}...".format(iso_name))
-
+        if not iso_name:
+            iso_name = copy_directory + '.iso'
         make_iso(copy_directory, iso_name)
 
         if not absolute_paths:
@@ -2161,18 +2180,38 @@ class Panda():
         # 1) we insert the CD drive TODO: the cd-drive name should be a config option, see the values in qcow.py
         self.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
 
-        # 2) run setup script
+        # 2) Drive the guest to mount the drive
         # setup_sh:
         #   Make sure cdrom didn't automount
         #   Make sure guest path mirrors host path
         #   if there is a setup.sh script in the directory,
         #   then run that setup.sh script first (good for scripts that need to
         #   prep guest environment before script runs)
-        setup_sh = "mkdir -p {mount_dir} {mount_dir}.ro; while ! mount /dev/cdrom {mount_dir}.ro; do sleep 0.3; " \
-               " umount /dev/cdrom 2>&1 | grep -v 'not mounted\|write-protected'; done; cp -r {mount_dir}.ro/* {mount_dir}/; {mount_dir}/setup.sh &> /dev/null || true " \
-               .format(mount_dir = (shlex_quote(copy_directory)))
-        progress("setup_sh = [%s] " % setup_sh)
-        progress(self.run_serial_cmd(setup_sh))
+        mount_dir = shlex_quote(copy_directory)
+
+        mkdir_result = self.run_serial_cmd(f"mkdir -p {mount_dir} {mount_dir}.ro && echo \"mkdir_ok\"; echo \"exit code $?\"", timeout=timeout)
+
+        if 'mkdir_ok' not in mkdir_result:
+            raise RuntimeError(f"Failed to create mount directories inside guest: {mkdir_result}")
+
+        mount_status = "bad"
+        for _ in range(10):
+            if 'mount_ok' in mount_status:
+                break
+            mount_status = self.run_serial_cmd(f"mount /dev/cdrom {mount_dir}.ro && echo 'mount_ok' || (umount /dev/cdrom; echo 'bad')", timeout=timeout)
+            sleep(1)
+        else:
+            # Didn't ever break
+            raise RuntimeError(f"Failed to mount media inside guest: {mount_status}")
+
+        # Note the . after our src/. directory - that's special syntax for cp -a
+        copy_result = self.run_serial_cmd(f"cp -a {mount_dir}.ro/. {mount_dir} && echo 'ok'", timeout=timeout)
+        if copy_result != 'ok':
+            raise RuntimeError(f"Copy to rw directory failed: {copy_result}")
+
+        if isfile(pjoin(copy_directory, setup_script)):
+            setup_result = self.run_serial_cmd(f"{mount_dir}/{setup_script}", timeout=timeout)
+            progress("[Setup command]: {setup_result}")
 
     @blocking
     def record_cmd(self, guest_command, copy_directory=None, iso_name=None, setup_command=None, recording_name="recording", snap_name="root", ignore_errors=False):
