@@ -32,7 +32,7 @@ from time import sleep
 from cffi import FFI
 
 from .ffi_importer import ffi, set_ffi
-from .utils import progress, make_iso, debug, blocking, GArrayIterator, plugin_list
+from .utils import progress, warn, make_iso, debug, blocking, GArrayIterator, plugin_list
 from .taint import TaintQuery
 from .panda_expect import Expect
 from .asyncthread import AsyncThread
@@ -2141,9 +2141,26 @@ class Panda():
 
     @blocking
     def revert_sync(self, snapshot_name):
+        '''
+        Args:
+            snapshot_name: name of snapshot in the current qcow to load
+
+        Returns:
+            String: error message. Empty on success.
+        '''
         result = self.run_monitor_cmd("loadvm {}".format(snapshot_name))
+        # On success we should get no result
+
         if result.startswith("Length mismatch"):
             raise RuntimeError("QEMU machine's RAM size doesn't match snapshot RAM size!")
+
+        if "does not have the requested snapshot" in result:
+            raise ValueError(f"Snapshot '{snapshot_name}' not present in {self.qcow}")
+
+        result = result.strip()
+        if len(result):
+            warn(f"snapshot load returned error {result}")
+
         return result
 
     @blocking
