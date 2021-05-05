@@ -521,10 +521,16 @@ void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *pp
 ****************************************************************** */
 
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
-    target_ptr_t ts_current = p->taskd;
     char *filename = NULL;
+    target_ptr_t ts_current;
     //const char *err = NULL;
 
+    if (p == NULL) {
+        //err = "Null OsiProc argument";
+        goto end;
+    }
+
+    ts_current = p->taskd;
     if (ts_current == 0) {
         //err = "can't get task";
         goto end;
