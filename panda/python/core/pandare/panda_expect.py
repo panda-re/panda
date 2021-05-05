@@ -28,7 +28,7 @@ class Expect(object):
         self.logfile = None
 
         if logfile_base:
-            self.enable_logger(f"{logfile_base}_{name}.txt")
+            self.set_logging(f"{logfile_base}_{name}.txt")
 
         if filelike is None: # Must later use connect(filelike)
             self.fd = None
