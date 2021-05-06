@@ -121,7 +121,7 @@ jobs:
         docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
         -e PANDA_TEST=yes --cap-add SYS_NICE
         --rm -t "panda_local_${{ github.sha }}" bash -c
-        "python3 /panda/panda/python/tests/${{ matrix.test_script }}.py"
+        "cd /panda/panda/python/tests/ && make && python3 ${{ matrix.test_script }}.py"
 
   cleanup:
     # Cleanup after prior jobs finish - even if they fail
