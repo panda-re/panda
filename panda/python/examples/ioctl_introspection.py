@@ -10,7 +10,7 @@ Run with: python3 ioctl_introspection.py
 import sys
 
 from pandare import Panda
-from pandare.extras.ioctl_faker import IoctlFaker
+from pandare.extras import IoctlFaker
 
 # No arguments, i386. Otherwise argument should be guest arch
 generic_type = sys.argv[1] if len(sys.argv) > 1 else "i386"

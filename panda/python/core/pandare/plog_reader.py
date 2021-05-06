@@ -1,12 +1,27 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
+'''
+Module for reading and writing PANDAlog (plog) files from Python.
+'''
 
 import zlib
 import struct
 import pandare.plog_pb2
+from google.protobuf.message import Message
 
 class PLogReader:
     '''
-    A class for reading pandalog files.
+    A class for reading PANDAlog (plog) files. Run directly with `python -m  pandare.plog_reader [input.plog]` to translate input.plog file to json.
+
+    Or the class can be imported and used in a Python script, where it can be iterated over to get 
+    [google.protobuf.message.Message](https://googleapis.dev/python/protobuf/latest/google/protobuf/message.html#google.protobuf.message.Message) objects.
+
+	with PLogReader('input.plog') as plr:
+	  for msg in plr:
+		if msg.HasField("SomeField"):
+		  print(msg.SomeField)
+		if msg.HasField("OtherField"):
+		  print(msg.otherField)
+
     '''
     def __init__(self, fn):
         self.f = open(fn, 'rb')
