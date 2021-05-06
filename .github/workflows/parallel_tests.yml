@@ -116,8 +116,8 @@ jobs:
         test_script: [file_fake, file_hook, generic_tests, hooking, monitor_cmds, sleep_in_cb, syscalls, taint_ram, taint_reg, record_then_replay, record_no_snap]
 
         # Multi-arch tests only for specific scripts, for now!
-        # In future matrix (all tests) * (all archs)
-        # e.g. "test_arch: [i386, x86_64, arm]"
+        # In future: matrix (all tests) * (all archs)
+        # e.g. "test_arch: [i386, x86_64, arm, aarch64, mips]"
         test_arch: [i386]
         include:
           - test_script: record_then_replay
@@ -128,10 +128,10 @@ jobs:
     steps:
     - name: Run individual pypanda tests
       run: >-
-        docker run --name panda_test_${{ matrix.single_arch_test_script }}_${GITHUB_RUN_ID}
+        docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
         -e PANDA_TEST=yes --cap-add SYS_NICE
         --rm -t "panda_local_${{ github.sha }}" bash -c
-        "python3 /panda/panda/python/tests/${{ matrix.single_arch_test_script }}.py ${{ matrix.test_arch }}"
+        "python3 /panda/panda/python/tests/${{ matrix.test_script }}.py ${{ matrix.test_arch }}"
 
   cleanup:
     # Cleanup after prior jobs finish - even if they fail
