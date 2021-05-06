@@ -2,7 +2,7 @@
 
 from sys import argv
 from pandare import Panda, blocking
-from pandare.extras.proc_write_capture import ProcWriteCapture
+from pandare.extras import ProcWriteCapture
 
 
 # Take a recording without first reverting to a snapshot
