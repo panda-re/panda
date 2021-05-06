@@ -110,15 +110,28 @@ jobs:
       matrix:
         # See output from `make check-help`: we're just splitting `make check` into all the things it does
         # so we can run them in parallel: arch-specific qtests, plus a few others
-        target: [file_fake, file_hook, generic_tests, hooking, monitor_cmds, multi_proc_cbs, sleep_in_cb, syscalls, taint_ram, taint_reg, record_then_replay, record_no_snap]
+
+        # TODO: re-enable multi-proc CBs
+        #single_arch_test_script: [file_fake, file_hook, generic_tests, hooking, monitor_cmds, multi_proc_cbs, sleep_in_cb, syscalls, taint_ram, taint_reg, record_no_snap]
+
+        single_arch_test_script: [file_fake, file_hook, generic_tests, hooking, monitor_cmds, sleep_in_cb, syscalls, taint_ram, taint_reg, record_no_snap]
+        multi_arch_test_script: [record_then_replay]
+        test_arch: [i386, x86_64, arm]
 
     steps:
-    - name: Run individual pypanda tests
+    - name: Run individual single arch pypanda tests
       run: >-
-        docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
+        docker run --name panda_test_${{ matrix.single_arch_test_script }}_${GITHUB_RUN_ID}
         -e PANDA_TEST=yes --cap-add SYS_NICE
         --rm -t "panda_local_${{ github.sha }}" bash -c
-        "python3 /panda/panda/python/tests/${{ matrix.target }}.py"
+        "python3 /panda/panda/python/tests/${{ matrix.single_arch_test_script }}.py"
+
+    - name: Run individual multi arch pypanda tests
+      run: >-
+        docker run --name panda_test_${{ matrix.multi_arch_test_script }}_${{ matrix.test_arch }}_${GITHUB_RUN_ID}
+        -e PANDA_TEST=yes --cap-add SYS_NICE
+        --rm -t "panda_local_${{ github.sha }}" bash -c
+        "python3 /panda/panda/python/tests/${{ matrix.multi_arch_test_script }}.py ${{ matrix.test_arch }}"
 
   cleanup:
     # Cleanup after prior jobs finish - even if they fail
