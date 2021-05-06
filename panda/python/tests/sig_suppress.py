@@ -1,4 +1,3 @@
-import wget
 import shutil
 from pathlib import Path
 
@@ -66,7 +65,6 @@ def run_in_guest():
 
 if __name__ == "__main__":
 
-    #host_build_test_progs()
     assert(HOST_PROG_PATH.is_file())
 
     panda = Panda(
