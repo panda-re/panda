@@ -113,7 +113,7 @@ jobs:
 
         # TODO: re-enable multi-proc CBs
         #test_script: [file_fake, file_hook, generic_tests, hooking, monitor_cmds, multi_proc_cbs, sleep_in_cb, syscalls, taint_ram, taint_reg, record_no_snap]
-        test_script: [file_fake, file_hook, generic_tests, hooking, monitor_cmds, sleep_in_cb, syscalls, taint_ram, taint_reg, record_then_replay, record_no_snap]
+        test_script: [file_fake, file_hook, generic_tests, hooking, monitor_cmds, sleep_in_cb, syscalls, taint_ram, taint_reg, record_then_replay, record_no_snap, sig_suppress]
 
     steps:
     - name: Run individual pypanda tests
@@ -121,7 +121,7 @@ jobs:
         docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
         -e PANDA_TEST=yes --cap-add SYS_NICE
         --rm -t "panda_local_${{ github.sha }}" bash -c
-        "cd /panda/panda/python/tests/ && make && python3 ${{ matrix.test_script }}.py"
+        "cd /panda/panda/python/tests/ && make && pip3 install -r requirements.txt && python3 ${{ matrix.test_script }}.py"
 
   cleanup:
     # Cleanup after prior jobs finish - even if they fail

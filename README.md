@@ -40,7 +40,7 @@ $ docker run --rm pandare/panda panda-system-i386 --help
 ```
 Or build from this repository:
 ```
-$ DOCKER_BUILDKIT=1 docker build --target=panda -t panda 
+$ DOCKER_BUILDKIT=1 docker build --target=panda -t panda .
 $ docker run --rm panda panda-system-i386 --help
 ```
 
