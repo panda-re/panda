@@ -471,10 +471,12 @@ target_ulong calc_retaddr_linux_arm(CPUState* cpu, target_ulong pc) {
 
 target_ulong calc_retaddr_linux_mips(CPUState* cpu, target_ulong pc) {
 #if defined(TARGET_MIPS)
-    // Normal calls: return address is in $ra which is reg 31
-    // System calls: address of instruction that caused the interrupt is in $EPC, a special register for co-processor 0
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    return env->CP0_EPC;
+    // We use PC+4 to grab the instruction after the syscall
+    // note we previously incorrectly thought we needed to use $EPC,
+    // which is a special register for co-processor 0 to store the
+    // PC to return to after exceptions. But then we tested it and
+    // that was incorrect.
+    return pc +  4;
 #else
     // shouldnt happen
     assert (1==0);
