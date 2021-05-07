@@ -100,7 +100,7 @@ static void shannon_timer_write(void *opaque, hwaddr offset,
     DPRINTF("Write at 0x%lx: 0x%lx (%d)\n", offset, value, s->irq_num);
     int freq;
 
-    
+
     switch (offset) {
     case 0x00: /* TimerLoad */
         s->limit = value;

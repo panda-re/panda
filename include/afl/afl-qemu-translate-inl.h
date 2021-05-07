@@ -33,22 +33,10 @@
 
 /* Declared in afl-qemu-cpu-inl.h */
 extern unsigned char *afl_area_ptr;
-extern unsigned int afl_inst_rms;
 extern target_ulong afl_start_code, afl_end_code;
 extern  __thread target_ulong afl_prev_loc;
 extern int aflStart;
 
-#if (defined(__x86_64__) || defined(__i386__)) && defined(AFL_QEMU_NOT_ZERO)
-#define INC_AFL_AREA(loc)           \
-  asm volatile(                     \
-      "incb (%0, %1, 1)\n"          \
-      "adcb $0, (%0, %1, 1)\n"      \
-      : /* no out */                \
-      : "r"(afl_area_ptr), "r"(loc) \
-      : "memory", "eax")
-#else
-#define INC_AFL_AREA(loc) afl_area_ptr[loc]++
-#endif
 
 void HELPER(afl_maybe_log)(target_ulong cur_loc) {
 
@@ -135,3 +123,132 @@ static void afl_gen_trace(target_ulong cur_loc)
 
 }
 
+static inline void gen_afl_compcov_log_16(uint64_t cur_loc,
+                                          TCGv_i32 arg1, TCGv_i32 arg2) {
+#if defined(AFL_DEBUG)
+  printf("[d] Emitting 16 bit COMPCOV instrumentation for loc 0x%lx\n", cur_loc);
+#endif
+
+  TCGv_i64 tcur_loc = tcg_const_i64(cur_loc);
+  gen_helper_afl_compcov_log_16(tcur_loc, arg1, arg2);
+
+}
+
+static inline void gen_afl_compcov_log_32(uint64_t cur_loc,
+                                          TCGv_i32 arg1, TCGv_i32 arg2) {
+#if defined(AFL_DEBUG)
+  printf("[d] Emitting 32 bit COMPCOV instrumentation for loc 0x%lux\n", cur_loc);
+#endif
+
+  TCGv_i64 tcur_loc = tcg_const_i64(cur_loc);
+  gen_helper_afl_compcov_log_32(tcur_loc, arg1, arg2);
+
+}
+
+static inline void gen_afl_compcov_log_64(uint64_t cur_loc,
+                                          TCGv_i64 arg1, TCGv_i64 arg2) {
+#if defined(AFL_DEBUG)
+  printf("[d] Emitting 64 bit COMPCOV instrumentation for loc 0x%lux\n", cur_loc);
+#endif
+
+  TCGv_i64 tcur_loc = tcg_const_i64(cur_loc);
+  gen_helper_afl_compcov_log_64(tcur_loc, arg1, arg2);
+
+}
+
+
+void HELPER(afl_compcov_log_16)(uint64_t cur_loc, uint32_t arg1,
+                                uint32_t arg2) {
+
+  if ((arg1 & 0xff00) == (arg2 & 0xff00)) { INC_AFL_AREA(cur_loc); }
+
+}
+
+void HELPER(afl_compcov_log_32)(uint64_t cur_loc, uint32_t arg1,
+                                uint32_t arg2) {
+
+  if ((arg1 & 0xff000000) == (arg2 & 0xff000000)) {
+
+    INC_AFL_AREA(cur_loc + 2);
+    if ((arg1 & 0xff0000) == (arg2 & 0xff0000)) {
+
+      INC_AFL_AREA(cur_loc + 1);
+      if ((arg1 & 0xff00) == (arg2 & 0xff00)) { INC_AFL_AREA(cur_loc); }
+
+    }
+
+  }
+
+}
+
+void HELPER(afl_compcov_log_64)(uint64_t cur_loc, uint64_t arg1,
+                                uint64_t arg2) {
+
+  if ((arg1 & 0xff00000000000000) == (arg2 & 0xff00000000000000)) {
+
+    INC_AFL_AREA(cur_loc + 6);
+    if ((arg1 & 0xff000000000000) == (arg2 & 0xff000000000000)) {
+
+      INC_AFL_AREA(cur_loc + 5);
+      if ((arg1 & 0xff0000000000) == (arg2 & 0xff0000000000)) {
+
+        INC_AFL_AREA(cur_loc + 4);
+        if ((arg1 & 0xff00000000) == (arg2 & 0xff00000000)) {
+
+          INC_AFL_AREA(cur_loc + 3);
+          if ((arg1 & 0xff000000) == (arg2 & 0xff000000)) {
+
+            INC_AFL_AREA(cur_loc + 2);
+            if ((arg1 & 0xff0000) == (arg2 & 0xff0000)) {
+
+              INC_AFL_AREA(cur_loc + 1);
+              if ((arg1 & 0xff00) == (arg2 & 0xff00)) { INC_AFL_AREA(cur_loc); }
+
+            }
+
+          }
+
+        }
+
+      }
+
+    }
+
+  }
+
+}
+
+void afl_gen_compcov(uint64_t cur_loc, TCGv arg1,
+                            TCGv arg2, TCGMemOp ot, int is_imm) {
+
+  static int afl_compcov_level = -1;
+  if (afl_compcov_level < 0) {
+    char *compcov_level_str = getenv("AFL_COMPCOV_LEVEL");
+    if (compcov_level_str) {
+      afl_compcov_level = atoi(compcov_level_str);
+      printf("Got AFL_COMPCOV_LEVEL %d.\n", afl_compcov_level);
+    } else {
+      printf("AFL_COMPCOV_LEVEL not set.\n");
+      afl_compcov_level = 0;
+    }
+  }
+
+  if (!afl_compcov_level || !afl_area_ptr) return;
+
+  if (!is_imm && afl_compcov_level < 2) return;
+
+  cur_loc = (cur_loc >> 4) ^ (cur_loc << 8);
+  cur_loc &= MAP_SIZE - 7;
+
+  if (cur_loc >= afl_inst_rms) return;
+
+  switch (ot) {
+
+    case MO_64: gen_afl_compcov_log_64(cur_loc, (TCGv_i64)arg1, (TCGv_i64)arg2); break;
+    case MO_32: gen_afl_compcov_log_32(cur_loc, (TCGv_i32)arg1, (TCGv_i32)arg2); break;
+    case MO_16: gen_afl_compcov_log_16(cur_loc, (TCGv_i32)arg1, (TCGv_i32)arg2); break;
+    default: return;
+
+  }
+
+}

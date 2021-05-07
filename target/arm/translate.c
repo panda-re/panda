@@ -96,6 +96,7 @@ static const char *regnames[] =
 //static target_ulong afl_state_var;
 void gen_aflBBlock(target_ulong pc);
 
+extern void afl_gen_compcov(uint64_t cur_loc, TCGv arg1, TCGv arg2, TCGMemOp ot, int is_imm);
 #include "afl/types.h"
 extern u8 * shared_buf;
 extern u32 *shared_buf_len;
@@ -8565,6 +8566,7 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                     goto illegal_op;
                 }
                 gen_sub_CC(tmp, tmp, tmp2);
+                afl_gen_compcov(s->pc, (TCGv)tmp, (TCGv)tmp2, MO_32, insn & (1 << 25));
                 gen_exception_return(s, tmp);
             } else {
                 if (set_cc) {
@@ -8578,6 +8580,7 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
         case 0x03:
             if (set_cc) {
                 gen_sub_CC(tmp, tmp2, tmp);
+                afl_gen_compcov(s->pc, (TCGv)tmp, (TCGv)tmp2, MO_32, insn & (1 << 25));
             } else {
                 tcg_gen_sub_i32(tmp, tmp2, tmp);
             }
@@ -8632,6 +8635,7 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
         case 0x0a:
             if (set_cc) {
                 gen_sub_CC(tmp, tmp, tmp2);
+                afl_gen_compcov(s->pc, (TCGv)tmp, (TCGv)tmp2, MO_32, insn & (1 << 25));
             }
             tcg_temp_free_i32(tmp);
             break;
@@ -9554,7 +9558,7 @@ thumb2_logic_op(int op)
 
 static int
 gen_thumb2_data_op(DisasContext *s, int op, int conds, uint32_t shifter_out,
-                   TCGv_i32 t0, TCGv_i32 t1)
+                   TCGv_i32 t0, TCGv_i32 t1, int has_imm)
 {
     int logic_cc;
 
@@ -9600,15 +9604,17 @@ gen_thumb2_data_op(DisasContext *s, int op, int conds, uint32_t shifter_out,
         }
         break;
     case 13: /* sub */
-        if (conds)
+        if (conds) {
             gen_sub_CC(t0, t0, t1);
-        else
+            afl_gen_compcov(s->pc, (TCGv)t0, (TCGv)t1, MO_32, has_imm);
+        } else
             tcg_gen_sub_i32(t0, t0, t1);
         break;
     case 14: /* rsb */
-        if (conds)
+        if (conds) {
             gen_sub_CC(t0, t1, t0);
-        else
+            afl_gen_compcov(s->pc, (TCGv)t0, (TCGv)t1, MO_32, has_imm);
+        } else
             tcg_gen_sub_i32(t0, t1, t0);
         break;
     default: /* 5, 6, 7, 9, 12, 15. */
@@ -9985,7 +9991,7 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
             conds = (insn & (1 << 20)) != 0;
             logic_cc = (conds && thumb2_logic_op(op));
             gen_arm_shift_im(tmp2, shiftop, shift, logic_cc);
-            if (gen_thumb2_data_op(s, op, conds, 0, tmp, tmp2))
+            if (gen_thumb2_data_op(s, op, conds, 0, tmp, tmp2, insn & (1 << 10)))
                 goto illegal_op;
             tcg_temp_free_i32(tmp2);
             if (rd != 15) {
@@ -10786,7 +10792,7 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                 }
                 op = (insn >> 21) & 0xf;
                 if (gen_thumb2_data_op(s, op, (insn & (1 << 20)) != 0,
-                                       shifter_out, tmp, tmp2))
+                                       shifter_out, tmp, tmp2, insn & (1 << 10)))
                     goto illegal_op;
                 tcg_temp_free_i32(tmp2);
                 rd = (insn >> 8) & 0xf;
@@ -11020,8 +11026,10 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
             if (insn & (1 << 9)) {
                 if (s->condexec_mask)
                     tcg_gen_sub_i32(tmp, tmp, tmp2);
-                else
+                else {
                     gen_sub_CC(tmp, tmp, tmp2);
+                    afl_gen_compcov(s->pc, (TCGv)tmp, (TCGv)tmp2, MO_32, insn & (1 << 10));
+                }
             } else {
                 if (s->condexec_mask)
                     tcg_gen_add_i32(tmp, tmp, tmp2);
@@ -11058,6 +11066,7 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
             switch (op) {
             case 1: /* cmp */
                 gen_sub_CC(tmp, tmp, tmp2);
+                afl_gen_compcov(s->pc, (TCGv)tmp, (TCGv)tmp2, MO_32, 1);
                 tcg_temp_free_i32(tmp);
                 tcg_temp_free_i32(tmp2);
                 break;
@@ -11072,8 +11081,10 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
             case 3: /* sub */
                 if (s->condexec_mask)
                     tcg_gen_sub_i32(tmp, tmp, tmp2);
-                else
+                else {
                     gen_sub_CC(tmp, tmp, tmp2);
+                    afl_gen_compcov(s->pc, (TCGv)tmp, (TCGv)tmp2, MO_32, 1);
+                }
                 tcg_temp_free_i32(tmp2);
                 store_reg(s, rd, tmp);
                 break;
@@ -11112,6 +11123,7 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
                 tmp = load_reg(s, rd);
                 tmp2 = load_reg(s, rm);
                 gen_sub_CC(tmp, tmp, tmp2);
+                afl_gen_compcov(s->pc, (TCGv)tmp, (TCGv)tmp2, MO_32, 0);
                 tcg_temp_free_i32(tmp2);
                 tcg_temp_free_i32(tmp);
                 break;
@@ -11230,6 +11242,7 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
             break;
         case 0xa: /* cmp */
             gen_sub_CC(tmp, tmp, tmp2);
+            afl_gen_compcov(s->pc, (TCGv)tmp, (TCGv)tmp2, MO_32, 0);
             rd = 16;
             break;
         case 0xb: /* cmn */

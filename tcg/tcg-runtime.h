@@ -29,6 +29,9 @@ DEF_HELPER_FLAGS_1(exit_atomic, TCG_CALL_NO_WG, noreturn, env)
 #ifdef CONFIG_SOFTMMU
 
 DEF_HELPER_FLAGS_1(afl_maybe_log, TCG_CALL_NO_RWG, void, tl)
+DEF_HELPER_FLAGS_3(afl_compcov_log_16, 0, void, i64, i32, i32)
+DEF_HELPER_FLAGS_3(afl_compcov_log_32, 0, void, i64, i32, i32)
+DEF_HELPER_FLAGS_3(afl_compcov_log_64, 0, void, i64, i64, i64)
 
 DEF_HELPER_FLAGS_5(atomic_cmpxchgb, TCG_CALL_NO_WG,
                    i32, env, tl, i32, i32, i32)
