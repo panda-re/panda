@@ -133,7 +133,7 @@ make -j ${PANDA_NPROC}
 
 if [ -n "$pypanda" ]; then
     msg "Installing PyPANDA (developer mode)..."
-    pip install -e ../panda/python/core
+    pip3 install -e ../panda/python/core
 fi
 
 # vim: set et ts=4 sts=4 sw=4 ai ft=sh :

@@ -11628,7 +11628,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
 
     int sel = (ctx->opcode >> 2) & 0x7;
     int sel2 = (ctx->opcode >> 5) & 0x7;
-    printf("EXTEND %04x %x %x/%x\n", ctx->opcode, op, sel, sel2);
+    // printf("EXTEND %04x %x %x/%x\n", ctx->opcode, op, sel, sel2);
 
     offset = imm = (int16_t) (((ctx->opcode >> 16) & 0x1f) << 11
                               | ((ctx->opcode >> 21) & 0x3f) << 5
@@ -11819,6 +11819,11 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
             break;
         case 6:
             switch (ctx->opcode & 0x3) {
+            case 0:
+                // PAUSE
+                printf("PAUSE unimplemented\n"); // FIXME
+                generate_exception_end(ctx, EXCP_RI);
+                break;
             case 2:
                 // MOVTN
                 printf("MOVTN is untested\n"); // FIXME
@@ -11935,11 +11940,13 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
         case I8_MOVR32:
             // MIPS16e2
             {
+                // Already set: m16_op + funct (bits 15-8)
                 int cp = (ctx->opcode >> 24) & 0x7;
-                int sel2 = (ctx->opcode >> 21) & 0x7;
+                int sel2_upper = (ctx->opcode >> 21) & 0x7;
                 int clrbit = (ctx->opcode >> 16) & 0x1f;
+                int bits_16_20 = clrbit;
                 int lowbits = (ctx->opcode >> 0) & 0x1f;
-                printf("I8_MOVR32 EXTEND: cp %x, sel %x, clrbit %x, reg %x, %x\n", cp, sel2, clrbit, ry, lowbits);
+                printf("I8_MOVR32 EXTEND: cp %x, sel %x, clrbit %x, reg %x, %x\n", cp, sel2_upper, clrbit, ry, lowbits);
                 if (cp == 0 && clrbit == 0x0) {
                     // MFC0
                     check_cp0_enabled(ctx);
@@ -11947,7 +11954,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                         /* Treat as NOP. */
                         break;
                     }
-                    gen_mfc0(ctx, cpu_gpr[ry], lowbits, sel2);
+                    gen_mfc0(ctx, cpu_gpr[ry], lowbits, sel2_upper);
                     break;
                 }
                 if (cp == 0 && clrbit == 0x1) {
@@ -11956,11 +11963,11 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                     TCGv t0 = tcg_temp_new();
 
                     gen_load_gpr(t0, ry);
-                    gen_mtc0(ctx, t0, lowbits, sel2);
+                    gen_mtc0(ctx, t0, lowbits, sel2_upper);
                     tcg_temp_free(t0);
                     break;
                 }
-                if (cp == 0 && sel2 == 1 && lowbits == 1 && (clrbit == 0x2 || clrbit == 0x6)) {
+                if (cp == 0 && sel2_upper == 1 && lowbits == 1 && (clrbit == 0x2 || clrbit == 0x6)) {
                     // DMT [ry]
                     printf("DMT is untested\n"); // FIXME
                     TCGv_i32 t1 = tcg_temp_new_i32();
@@ -11973,7 +11980,11 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                     tcg_temp_free(t1);
                     break;
                 }
-                if (cp == 0 && sel2 == 1 && lowbits == 1 && (clrbit == 0x3 || clrbit == 0x7)) {
+                // I8_MOVR32 EXTEND: cp 0, sel 0, clrbit 7, reg 10, lowbits: c
+                // I8_MOVR32: unimplemented
+                // I8_MOVR32 EXTEND: cp 0, sel 0, clrbit 7, reg 10, c
+                // I8_MOVR32: unimplemented
+                if (cp == 0 && sel2_upper == 1 && lowbits == 1 && (clrbit == 0x3 || clrbit == 0x7)) {
                     // EMT [ry]
                     printf("EMT is untested\n"); // FIXME
                     TCGv_i32 t1 = tcg_temp_new_i32();
@@ -11986,7 +11997,7 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                     tcg_temp_free(t1);
                     break;
                 }
-                if (cp == 0 && sel2 == 0 && lowbits == 0xc && (clrbit == 0x2 || clrbit == 0x6)) {
+                if (cp == 0 && sel2_upper == 0 && lowbits == 0xc && (clrbit == 0x2 || clrbit == 0x6)) {
                     // DI [ry]
                     printf("DI is untested\n"); // FIXME
                     TCGv_i32 t1 = tcg_temp_new_i32();
@@ -11995,6 +12006,19 @@ static int decode_extended_mips16_opc (CPUMIPSState *env, DisasContext *ctx)
                         tcg_gen_mov_tl(cpu_gpr[ry], t1);
                     }
                     tcg_gen_andi_i32(t1, t1, ~(1 << CP0St_IE));
+                    gen_helper_mtc0_status(cpu_env, t1);
+                    tcg_temp_free(t1);
+                    break;
+                }
+                if (cp == 0 && sel2_upper == 0 && lowbits == 0xc && (clrbit == 0x3 || clrbit == 0x7)) {
+                    // EI [ry]
+                    printf("EI is untested\n"); // FIXME
+                    TCGv_i32 t1 = tcg_temp_new_i32();
+                    gen_mfc0_load32(t1, offsetof(CPUMIPSState, CP0_Status));
+                    if (clrbit == 0x3) {
+                        tcg_gen_mov_tl(cpu_gpr[ry], t1);
+                    }
+                    tcg_gen_ori_i32(t1, t1, (1 << CP0St_IE));
                     gen_helper_mtc0_status(cpu_env, t1);
                     tcg_temp_free(t1);
                     break;
