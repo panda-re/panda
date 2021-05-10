@@ -426,7 +426,12 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 #if defined(TARGET_ARM)
     ObjectClass *cpu_oc;
     Object *cpuobj;
+
+#ifdef TARGET_AARCH64
+    if (!cpu_model) cpu_model = "cortex-a57";
+#else
     if (!cpu_model) cpu_model = "arm926";
+#endif
 
     printf("Configurable: Adding processor %s\n", cpu_model);
 
@@ -478,8 +483,16 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
     }
 
 #if defined(TARGET_ARM)
+
+#ifdef TARGET_AARCH64
+    set_feature(&cpuu->env, ARM_FEATURE_AARCH64);
+    set_feature(&cpuu->env, ARM_FEATURE_CONFIGURABLE);
+#else
     avatar_add_banked_registers(cpuu);
     set_feature(&cpuu->env, ARM_FEATURE_CONFIGURABLE);
+#endif
+
+
 #elif defined(TARGET_I386)
     // Ensures CS register is set correctly on x86/x86_64 CPU reset. See target/i386/cpu.c:3063
     int mode =
