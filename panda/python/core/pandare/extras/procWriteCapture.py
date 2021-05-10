@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import shutil
 from pathlib import Path
 from pandare import ffi
@@ -113,3 +115,26 @@ class ProcWriteCapture():
 
     def get_files_written(self):
         return self._files_written
+
+if __name__ == "__main__":
+    import os
+    from pandare import Panda
+    panda = Panda(generic="x86_64")
+    test = ProcWriteCapture(panda, console_capture = True)
+
+    @panda.queue_blocking
+    def driver():
+        panda.revert_sync('root')
+        data = panda.run_serial_cmd("whoami")
+        panda.end_analysis()
+
+    panda.run()
+
+    outfile = "console.out"
+    assert(os.path.isfile(outfile)), "Missing file"
+    with open(outfile) as f:
+        data = f.readlines()
+    os.remove(outfile)
+
+    assert 'whoami\n' in data, "Incorrect output"
+    print("Success")

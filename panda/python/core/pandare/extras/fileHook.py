@@ -1,21 +1,9 @@
+#!/usr/bin/env python3
+
 import logging
-from pandare.ffi_importer import ffi
+import sys
 from os import path
 
-# If coloredlogs is installed, use it
-try:
-    import coloredlogs
-    import sys
-    root = logging.getLogger()
-    root.setLevel(logging.INFO)
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    root.addHandler(handler)
-except ImportError:
-    pass
-# End temp
 
 class FileHook:
     '''
@@ -28,9 +16,8 @@ class FileHook:
     just using the OSI plugin.
 
     usage:
-        from pandare import Panda, extras
         panda = Panda(...)
-        hook = extras.Hook(panda)
+        hook = FileHook(panda)
         hook.rename_file("/rename_this", "/to_this")
     '''
 
@@ -46,9 +33,12 @@ class FileHook:
         self._changed_strs = {} # callback_name: original_data
         self.use_osi = use_osi
 
-        self.logger = logging.getLogger('panda.hooking')
-        self.logger.setLevel(logging.ERROR)
-
+        self.logger = logging.getLogger('panda.filehook')
+        try:
+            import coloredlogs
+            coloredlogs.install(level='WARN')
+        except ImportError:
+            pass
         self.pending_virt_read = None
 
         panda.load_plugin("syscalls2")
@@ -136,10 +126,10 @@ class FileHook:
             return None
         fname_s = None
         proc = self._panda.plugins['osi'].get_current_process(cpu)
-        if proc != ffi.NULL:
+        if proc != self._panda.ffi.NULL:
             fname = self._panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, self._panda.ffi.cast("int", fd))
-            if fname != ffi.NULL:
-                fname_s = ffi.string(fname).decode('utf8', 'ignore')
+            if fname != self._panda.ffi.NULL:
+                fname_s = self._panda.ffi.string(fname).decode('utf8', 'ignore')
         return fname_s
 
     def _gen_cb(self, name, fname_ptr_pos):
@@ -183,7 +173,7 @@ class FileHook:
                 return
 
         fname = path.normpath(fname) # Normalize it
-        self.logger.debug(f"Entering {syscall_name} with file={fname}")
+        #self.logger.info(f"Entering {syscall_name} with file={fname}")
 
         if fname in self._renamed_files:
             # It matches, now let's take our action! Either rename or callback
@@ -207,7 +197,8 @@ class FileHook:
                 return
 
             # If it all worked, save the clobbered data
-            self._changed_strs[syscall_name] = clobbered_data
+            asid = self._panda.current_asid(cpu)
+            self._changed_strs[(syscall_name, asid)] = clobbered_data
 
             self._before_modified_enter(cpu, pc, syscall_name, fname)
 
@@ -218,8 +209,8 @@ class FileHook:
         we need to restore whatever data was there (we may have written
         past the end of the string)
         '''
+        (cpu, pc) = args[0:2]
         if self.pending_virt_read:
-            (cpu, pc) = args[0:2]
             fname_ptr = args[2+fname_ptr_pos] # offset to after (cpu, pc) in callback args
 
             self.logger.warning(f"missed filename in call to {syscall_name} with fname at 0x{fname_ptr:x}. Ignoring it")
@@ -228,18 +219,19 @@ class FileHook:
             self.pending_virt_read = None # Virtual address that we're waiting to read as soon as possible
             return
 
-        if syscall_name in self._changed_strs:
+        asid = self._panda.current_asid(cpu)
+        if (syscall_name, asid) in self._changed_strs:
             assert(args)
-            (cpu, pc) = args[0:2]
             fname_ptr = args[2+fname_ptr_pos] # offset to after (cpu, pc) in callback args
             try:
-                self._panda.virtual_memory_write(cpu, fname_ptr, self._changed_strs[syscall_name])
+                self._panda.virtual_memory_write(cpu, fname_ptr, self._changed_strs[(syscall_name, asid)])
             except ValueError:
                 self.logger.warn(f"Failed to fix filename buffer at return of {syscall_name}")
-            del self._changed_strs[syscall_name]
-            self._after_modified_return(cpu, pc, syscall_name)
+            del self._changed_strs[(syscall_name, asid)]
 
-        self.logger.debug(f"Returning from {syscall_name}")
+            fd = self._panda.arch.get_retval(cpu, convention='syscall')
+            self.logger.info(f"Returning from {syscall_name} after modifying argument - modified FD is {fd}")
+            self._after_modified_return(cpu, pc, syscall_name, fd=fd)
 
     def _before_modified_enter(self, cpu, pc, syscall_name, fname):
         '''
@@ -248,9 +240,28 @@ class FileHook:
         '''
         pass
 
-    def _after_modified_return(self, cpu, pc, syscall_name):
+    def _after_modified_return(self, cpu, pc, syscall_name, fd):
         '''
         Internal callback run before we return from a syscall where we mutated
         the filename. Exists to be overloaded by subclasses
         '''
         pass
+
+if __name__ == '__main__':
+    from pandare import Panda
+
+    panda = Panda(generic="x86_64")
+
+    # Reads to /does_not_exist should be redirected to /etc/issue
+    hook = FileHook(panda)
+    hook.rename_file("/does_not_exist", "/etc/issue")
+
+    @panda.queue_blocking
+    def read_it():
+        panda.revert_sync('root')
+        data = panda.run_serial_cmd("cat /does_not_exist")
+        assert("Ubuntu" in data), f"Hook failed"
+        panda.end_analysis()
+
+    panda.run()
+    print("Success")

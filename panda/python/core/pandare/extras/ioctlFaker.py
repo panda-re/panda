@@ -1,15 +1,20 @@
+#!/usr/bin/env python3
+
 import sys
 import logging
 
 from pandare import ffi
 
 # TODO: only for logger, should probably move it to a separate file
-from pandare.extras.file_hook import FileHook
+if __name__ == '__main__': # Script run directly
+    from pandare.extras import FileHook
+else:
+    from .fileHook import FileHook
 
 # TODO: Ability to fake buffers for specific commands
 
 ioctl_initialized = False
-def do_ioctl_init(arch_name):
+def do_ioctl_init(panda):
 
     '''
     One-time init for arch-specific bit-packed ioctl cmd struct.
@@ -23,8 +28,8 @@ def do_ioctl_init(arch_name):
     ioctl_initialized = True
     TYPE_BITS = 8
     CMD_BITS = 8
-    SIZE_BITS = 14 if arch_name != "ppc" else 13
-    DIR_BITS = 2 if arch_name != "ppc" else 3
+    SIZE_BITS = 14 if panda.arch_name != "ppc" else 13
+    DIR_BITS = 2 if panda.arch_name != "ppc" else 3
 
     ffi.cdef("""
     struct IoctlCmdBits {
@@ -59,7 +64,7 @@ class Ioctl():
         Do unpacking, optionally using OSI for process and file name info.
         '''
 
-        do_ioctl_init(panda.arch_name)
+        do_ioctl_init(panda)
         self.cmd = ffi.new("union IoctlCmdUnion*")
         self.cmd.asUnsigned32 = cmd
         self.original_ret_code = None
@@ -84,8 +89,8 @@ class Ioctl():
             proc = panda.plugins['osi'].get_current_process(cpu)
             proc_name_ptr = proc.name
             file_name_ptr = panda.plugins['osi_linux'].osi_linux_fd_to_filename(cpu, proc, panda.ffi.cast("int", fd))
-            self.proc_name = ffi.string(proc_name_ptr).decode(errors="ignore") if proc_name_ptr != ffi.NULL else "unknown"
-            self.file_name = ffi.string(file_name_ptr).decode(errors="ignore") if file_name_ptr != ffi.NULL else "unknown"
+            self.proc_name = panda.ffi.string(proc_name_ptr).decode(errors="ignore") if proc_name_ptr != panda.ffi.NULL else "unknown"
+            self.file_name = panda.ffi.string(file_name_ptr).decode(errors="ignore") if file_name_ptr != panda.ffi.NULL else "unknown"
         else:
             self.proc_name = None
             self.file_name = None
@@ -246,17 +251,9 @@ if __name__ == "__main__":
 
     from pandare import blocking, Panda
 
-    # No arguments, i386. Otherwise argument should be guest arch
-    generic_type = sys.argv[1] if len(sys.argv) > 1 else "i386"
+    # No arguments, x86_64. Otherwise argument should be guest arch
+    generic_type = sys.argv[1] if len(sys.argv) > 1 else "x86_64"
     panda = Panda(generic=generic_type)
-
-    def print_list_elems(l):
-
-        if not l:
-            print("None")
-        else:
-            for e in l:
-                print(e)
 
     @blocking
     def run_cmd():
@@ -264,26 +261,18 @@ if __name__ == "__main__":
         # Setup faker
         ioctl_faker = IoctlFaker(panda, use_osi_linux=True)
 
-        print("\nRunning \'ls -l\' to ensure ioctl() capture is working...\n")
-
-        # First revert to root snapshot, then type a command via serial
+        # First revert to root snapshot, then issue an IOCTL directly through perl - which is junk
+        # so the faker should fake it
         panda.revert_sync("root")
-        panda.run_serial_cmd("cd / && ls -l")
+        panda.run_serial_cmd("""perl -e 'require "sys/ioctl.ph"; ioctl(1, 0, 1);'""")
 
         # Check faker's results
         faked_rets = ioctl_faker.get_forced_returns()
         normal_rets = ioctl_faker.get_unmodified_returns()
-
-        print("{} faked ioctl returns:".format(len(faked_rets)))
-        print_list_elems(faked_rets)
-        print("\n")
-
-        print("{} normal ioctl returns:".format(len(normal_rets)))
-        print_list_elems(normal_rets)
-        print("\n")
-
-        # Cleanup
+        assert(len(faked_rets)), "No returns faked"
+        assert(len(normal_rets)), "No normal returns"
         panda.end_analysis()
 
     panda.queue_async(run_cmd)
     panda.run()
+    print("Success")
