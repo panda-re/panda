@@ -369,6 +369,8 @@ enum {
     OPC_DMODU_G_2F  = 0x1f | OPC_SPECIAL2,
     /* interAptiv (CorExtend) */
     OPC_SAVERESTORE = 0x1f | OPC_SPECIAL2,
+    /* alyssa */
+    OPC_AFLHACK     = 0x1e | OPC_SPECIAL2,
     /* Misc */
     OPC_CLZ      = 0x20 | OPC_SPECIAL2,
     OPC_CLO      = 0x21 | OPC_SPECIAL2,
@@ -18103,6 +18105,21 @@ static void decode_opc_special2_legacy(CPUMIPSState *env, DisasContext *ctx)
                                    do_ra, do_s0, do_s1,
                                    framesize);
             }
+        }
+        break;
+    case OPC_AFLHACK:
+        {
+            TCGv_i32 tmp = tcg_temp_new_i32();
+            TCGv_i32 tmp2 = tcg_temp_new_i32();
+            TCGv_i32 tmp3 = tcg_temp_new_i32();
+            gen_load_gpr(tmp, 4); // a0
+            gen_load_gpr(tmp2, 5); // a1
+            gen_load_gpr(tmp3, 6); // a2
+            gen_helper_aflCall32(tmp, cpu_env, tmp, tmp2, tmp3);
+            gen_store_gpr(tmp, 4); // a0
+            tcg_temp_free_i32(tmp3);
+            tcg_temp_free_i32(tmp2);
+            tcg_temp_free_i32(tmp);
         }
         break;
 #endif
