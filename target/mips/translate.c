@@ -45,6 +45,8 @@
 extern bool panda_update_pc;
 #endif
 
+#include "afl/afl-target-translate-inl.h"
+
 #define MIPS_DEBUG_DISAS 1
 
 /* MIPS major opcodes */

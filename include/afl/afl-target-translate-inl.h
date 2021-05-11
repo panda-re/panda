@@ -263,6 +263,9 @@ static target_ulong qputs(target_ulong val)
     return writed;
 }
 
+target_ulong helper_aflCall(CPUArchState *env, target_ulong code, target_ulong a0, target_ulong a1);
+uint32_t helper_aflCall32(CPUArchState *env, uint32_t code, uint32_t a0, uint32_t a1);
+
 uint32_t helper_aflCall32(CPUArchState *env, uint32_t code, uint32_t a0, uint32_t a1) {
     return (uint32_t)helper_aflCall(env, code, a0, a1);
 }
@@ -277,6 +280,9 @@ target_ulong helper_aflCall(CPUArchState *env, target_ulong code, target_ulong a
     default: return -1;
     }
 }
+
+void helper_aflInterceptLog(CPUArchState *env);
+void helper_aflInterceptPanic(void);
 
 void helper_aflInterceptLog(CPUArchState *env)
 {

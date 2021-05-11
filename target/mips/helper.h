@@ -1,5 +1,10 @@
 #include "panda/callbacks/cb-helper-defs.h"
 
+DEF_HELPER_0(aflInterceptPanic, void)
+DEF_HELPER_1(aflInterceptLog, void, env)
+DEF_HELPER_4(aflCall32, i32, env, i32, i32, i32)
+DEF_HELPER_4(aflCall, tl, env, tl, tl, tl)
+
 DEF_HELPER_3(raise_exception_err, noreturn, env, i32, int)
 DEF_HELPER_2(raise_exception, noreturn, env, i32)
 DEF_HELPER_1(raise_exception_debug, noreturn, env)
