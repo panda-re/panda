@@ -52,10 +52,6 @@ PPP_CB_BOILERPLATE(on_rec_auxv);
 void *self_ptr;
 panda_cb pcb_btc_execve;
 
-static std::atomic_uint32_t g_enable_cb_refcount{0};
-
-
-
 
 
 
@@ -124,25 +120,26 @@ static ProcFilter g_proc_filter;
 
 
 // the idea of this code is to refcount
+
+#ifdef MULTI_THREAD_TCG
+static std::atomic_uint32_t g_enable_cb_refcount{0};
+#else
+static uint32_t g_enable_cb_refcount = 0;
+#endif
+
 static inline void ref_enable_callback()
 {
-    g_enable_cb_refcount++;
-    if (g_enable_cb_refcount == 1) {
-        //std::cout << "enable tcg codeegen" << std::endl;
+    if (++g_enable_cb_refcount == 1) {
         panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
     }
-    //std::cout << "current refcount: " << g_enable_cb_refcount << std::endl;
 }
 
 static inline void deref_disable_callback()
 {
     assert(g_enable_cb_refcount > 0);
-    g_enable_cb_refcount--;
-    if (g_enable_cb_refcount == 0) {
-        //std::cout << "disable tcg codeegen" << std::endl;
+    if (--g_enable_cb_refcount == 0) {
         panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
     }
-    //std::cout << "current refcount: " << g_enable_cb_refcount << std::endl;
 }
 
 string read_str(CPUState* cpu, target_ulong ptr)
@@ -152,7 +149,7 @@ string read_str(CPUState* cpu, target_ulong ptr)
     while (true) {
         if (panda_virtual_memory_read(cpu, ptr, (uint8_t*)&tmp, 1) == MEMTX_OK){
             buf += tmp;
-            if (tmp == '\x00'){
+            if (tmp == '\x00') {
                 break;
             }
             ptr += 1;
