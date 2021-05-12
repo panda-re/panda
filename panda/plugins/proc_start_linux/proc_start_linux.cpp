@@ -12,8 +12,14 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 #include <linux/auxvec.h>
+#include <iostream>
 #include <linux/elf.h>
 #include <string>
+#include <atomic>
+#include <mutex>
+#include <cstdlib>
+#include <cstdio>
+#include <unordered_set>
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 
@@ -27,6 +33,8 @@ void uninit_plugin(void *);
 #include "syscalls2/syscalls_ext_typedefs.h"
 #include "syscalls2/syscalls2_info.h"
 #include "syscalls2/syscalls2_ext.h"
+#include "osi/osi_types.h"
+#include "osi/osi_ext.h"
 #include "proc_start_linux.h"
 #include "proc_start_linux_ppp.h"
 PPP_PROT_REG_CB(on_rec_auxv);
@@ -44,28 +52,125 @@ PPP_CB_BOILERPLATE(on_rec_auxv);
 void *self_ptr;
 panda_cb pcb_btc_execve;
 
-string read_str(CPUState* cpu, target_ulong ptr){
+static std::atomic_uint32_t g_enable_cb_refcount{0};
+
+
+
+
+
+
+class ProcFilter {
+public:
+    inline void insert(CPUState *env) noexcept
+    {
+        #ifdef MULTI_THREAD_TCG
+        std::lock_guard<std::mutex> lock(this->_mtx);
+        #endif
+
+        OsiProc *proc = get_current_process(env);
+        if (proc) {
+            this->_proc_set.insert(proc->pid);
+            this->_asid_set.insert(proc->asid);
+            free_osiproc(proc);
+        } else {
+            std::cerr << "failed to get_current_process" << std::endl;
+            abort();
+        }
+    }
+
+    inline bool has_proc(CPUState *env) const
+    {
+        #ifdef MULTI_THREAD_TCG
+        std::lock_guard<std::mutex> lock(this->_mtx);
+        #endif
+
+        // double check
+        target_ulong asid = panda_current_asid(env);
+        if (this->_asid_set.find(asid) == this->_asid_set.end()) {
+            return false;
+        }
+
+        OsiProc *proc = get_current_process(env);
+        if (proc) {
+            target_pid_t pid = proc->pid;
+            free_osiproc(proc);
+            return this->_proc_set.find(pid) != this->_proc_set.end();
+        }
+
+        std::cerr << "failed to get_current_process" << std::endl;
+        abort();
+
+        return true;
+    }
+
+    inline void clear() noexcept
+    {
+        this->_asid_set.clear();
+        this->_proc_set.clear();
+    }
+
+private:
+    std::unordered_set<target_ulong> _asid_set;
+    std::unordered_set<target_pid_t> _proc_set;
+
+    #ifdef MULTI_THREAD_TCG
+    std::mutex _mtx;
+    #endif
+
+};
+
+
+static ProcFilter g_proc_filter;
+
+
+// the idea of this code is to refcount
+static inline void ref_enable_callback()
+{
+    g_enable_cb_refcount++;
+    if (g_enable_cb_refcount == 1) {
+        //std::cout << "enable tcg codeegen" << std::endl;
+        panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+    }
+    //std::cout << "current refcount: " << g_enable_cb_refcount << std::endl;
+}
+
+static inline void deref_disable_callback()
+{
+    assert(g_enable_cb_refcount > 0);
+    g_enable_cb_refcount--;
+    if (g_enable_cb_refcount == 0) {
+        //std::cout << "disable tcg codeegen" << std::endl;
+        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+    }
+    //std::cout << "current refcount: " << g_enable_cb_refcount << std::endl;
+}
+
+string read_str(CPUState* cpu, target_ulong ptr)
+{
     string buf = "";
     char tmp;
-    while (true){
-        if (panda_virtual_memory_read(cpu, ptr, (uint8_t*)&tmp,1) == MEMTX_OK){
+    while (true) {
+        if (panda_virtual_memory_read(cpu, ptr, (uint8_t*)&tmp, 1) == MEMTX_OK){
             buf += tmp;
             if (tmp == '\x00'){
                 break;
             }
-            ptr+=1;
-        }else{
+            ptr += 1;
+        } else {
             break;
         }
     }
     return buf;
 }
 
-void btc_execve(CPUState *env, TranslationBlock *tb){
-    if (unlikely(!panda_in_kernel(env))){
+void btc_execve(CPUState *env, TranslationBlock *tb)
+{
+    if (!unlikely(panda_in_kernel(env)
+        || panda_in_kernel_code_linux(env)
+        || g_proc_filter.has_proc(env))) {
         target_ulong sp = panda_current_sp(env);
         target_ulong argc;
-        if (panda_virtual_memory_read(env, sp, (uint8_t*) &argc, sizeof(argc))== MEMTX_OK){
+        if (panda_virtual_memory_read(env, sp, (uint8_t*) &argc, sizeof(argc)) == MEMTX_OK) {
             
             // the idea of this code is to fill this as best as we can
             struct auxv_values vals;
@@ -81,7 +186,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
                     printf("failed reading args\n");
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+                    deref_disable_callback();
                     return;
                 }
                 ptrlistpos++;
@@ -104,7 +209,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
                     printf("failed reading envp\n");
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+                    deref_disable_callback();
                     return;
                 }
                 ptrlistpos++;
@@ -124,7 +229,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
 
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &entrynum, sizeof(entrynum)) != MEMTX_OK || panda_virtual_memory_read(env, sp+((ptrlistpos+1)*sizeof(target_ulong)), (uint8_t*) &entryval, sizeof(entryval))){
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+                    deref_disable_callback();
                     return;
                 }
                 ptrlistpos+=2;
@@ -176,34 +281,51 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
                     vals.platform = entryval;
                 }
             }
-            if (vals.entry && vals.phdr){
+            if (vals.entry && vals.phdr) {
                 PPP_RUN_CB(on_rec_auxv, env, tb, &vals);
-            }else {
+                g_proc_filter.insert(env);
+            } else {
                 return;
             }
-        }else{
+        } else{
             // If we can't read from the stack this is an indication that
             // we aren't quite in a usable userspace just yet.
             return;
         }
-        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+        deref_disable_callback();
     }
 }
 
-void run_btc_cb(){
+void run_btc_cb()
+{
     panda_do_flush_tb();
-    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+    ref_enable_callback();
 }
 
-void execve_cb(CPUState *cpu, target_ptr_t pc, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp) {
+void execve_cb(CPUState *cpu, target_ptr_t pc, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp)
+{
     run_btc_cb();
 }
 
-void execveat_cb (CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp, int flags) {
+void execveat_cb(CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp, int flags)
+{
     run_btc_cb();
 }
 
-bool init_plugin(void *self) {
+// disable callback if failed to call execve
+void execve_error(CPUState *cpu, target_ptr_t pc, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp)
+{
+    deref_disable_callback();
+}
+
+void execveat_error(CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp, int flags)
+{
+    deref_disable_callback();
+}
+
+
+bool init_plugin(void *self)
+{
     self_ptr = self;
     pcb_btc_execve.before_tcg_codegen = btc_execve;
     panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
@@ -214,23 +336,37 @@ bool init_plugin(void *self) {
     #else
         // why? so we don't get 1000 messages telling us syscalls2 is already loaded
         void* syscalls2 = panda_get_plugin_by_name("syscalls2");
-        if (syscalls2 == NULL){
+        if (syscalls2 == NULL) {
             panda_require("syscalls2");
         }
         assert(init_syscalls2_api());
+
+        void *osi = panda_get_plugin_by_name("osi");
+        if (osi == NULL) {
+            panda_require("osi");
+        }
+        assert(init_osi_api());
+
         PPP_REG_CB("syscalls2", on_sys_execve_enter, execve_cb);
         PPP_REG_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
+
+        PPP_REG_CB("syscalls2", on_sys_execve_return, execve_error);
+        PPP_REG_CB("syscalls2", on_sys_execveat_return, execveat_error);
     #endif
     return true;
 }
 
-void uninit_plugin(void *self) {
+void uninit_plugin(void *self)
+{
 #if defined(TARGET_PPC)
 #else
-  void* syscalls = panda_get_plugin_by_name("syscalls2");
-  if (syscalls != NULL){
-    PPP_REMOVE_CB("syscalls2", on_sys_execve_enter, execve_cb);
-    PPP_REMOVE_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
-  }
+    void* syscalls = panda_get_plugin_by_name("syscalls2");
+    if (syscalls != NULL) {
+        PPP_REMOVE_CB("syscalls2", on_sys_execve_enter, execve_cb);
+        PPP_REMOVE_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
+
+        PPP_REMOVE_CB("syscalls2", on_sys_execve_return, execve_error);
+        PPP_REMOVE_CB("syscalls2", on_sys_execveat_return, execveat_error);
+    }
 #endif
 }
