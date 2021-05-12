@@ -157,8 +157,14 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
     err = struct_get(cpu, &p->ppid, task_addr,
                      {ki.task.real_parent_offset, ki.task.pid_offset});
 
+    #ifdef TARGET_MIPS
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+    p->asid = (env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask);
+    #else
     // Convert asid to physical to be able to compare it with the pgd register.
     p->asid = p->asid ? panda_virt_to_phys(cpu, p->asid) : (target_ulong) NULL;
+    #endif
+
     p->taskd = kernel_profile->get_group_leader(cpu, task_addr);
 
     p->name = get_name(cpu, task_addr, p->name);
@@ -367,7 +373,7 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
             strncpy(cached_name, p->name, ki.task.comm_size);
             cached_pid = p->pid;
             cached_ppid = p->ppid;
-	    cached_start_time = p->create_time;
+            cached_start_time = p->create_time;
             cached_comm_ptr = panda_map_virt_to_host(
                 env, ts + ki.task.comm_offset, ki.task.comm_size);
         } else {
@@ -377,7 +383,7 @@ void on_get_current_process(CPUState *env, OsiProc **out) {
             p->pid = cached_pid;
             p->ppid = cached_ppid;
             p->pages = NULL;
-	    p->create_time = cached_start_time;
+            p->create_time = cached_start_time;
         }
     }
     *out = p;
