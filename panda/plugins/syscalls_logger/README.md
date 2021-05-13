@@ -120,6 +120,7 @@ Arguments
 
 * `dwarf_json`: string, path to JSON file with the kernels DWARF info. Enables richer logging if present, as described above. Optional.
 * `verbose`: bool, defaults to false. Enables verbose logging if set.
+* `target`: string, name of a process to log syscalls for. If unset, syscalls for all processes are logged.
 
 Dependencies
 ------------
