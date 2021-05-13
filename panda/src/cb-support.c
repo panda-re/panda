@@ -74,6 +74,12 @@ MAKE_CALLBACK(bool, INSN_TRANSLATE, insn_translate,
 MAKE_CALLBACK(bool, AFTER_INSN_TRANSLATE, after_insn_translate,
                     CPUState*, env, target_ptr_t, pc)
 
+MAKE_CALLBACK(void, START_BLOCK_EXEC, start_block_exec,
+                    CPUState*, env, TranslationBlock*, tb)
+
+MAKE_CALLBACK(void, END_BLOCK_EXEC, end_block_exec,
+                    CPUState*, env, TranslationBlock*, tb)
+
 // Helper - get a physical address
 static inline hwaddr get_paddr(CPUState *cpu, target_ptr_t addr, void *ram_ptr) {
     if (!ram_ptr) {

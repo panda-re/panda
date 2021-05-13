@@ -78,6 +78,7 @@
 
 #include "panda/rr/rr_log.h"
 #include "panda/callbacks/cb-support.h"
+#include "panda/tcg-utils.h"
 
 /* #define DEBUG_TB_INVALIDATE */
 /* #define DEBUG_TB_FLUSH */
@@ -1377,6 +1378,8 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
        that should be required is to flush the TBs, allocate a new TB,
        re-initialize it per above, and re-do the actual code generation.  */
     panda_callbacks_before_tcg_codegen(first_cpu, tb);
+    panda_install_block_callbacks(first_cpu, tb);
+
     gen_code_size = tcg_gen_code(&tcg_ctx, tb);
 
 #if defined(CONFIG_LLVM)

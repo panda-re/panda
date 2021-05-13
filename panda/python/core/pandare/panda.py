@@ -2494,7 +2494,7 @@ class Panda():
         if not enabled: # Note the registered_callbacks dict starts with enabled true and then we update it to false as necessary here
             self.disable_callback(name)
 
-        if "block" in cb.name:
+        if "block" in cb.name and "start" not in cb.name and "end" not in cb.name:
             if not self.disabled_tb_chaining:
                 print("Warning: disabling TB chaining to support {} callback".format(cb.name))
                 self.disable_tb_chaining()
