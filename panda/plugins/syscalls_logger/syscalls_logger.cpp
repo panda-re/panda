@@ -41,6 +41,7 @@ extern "C" {
 std::vector<void*> tmp_single_ptrs;
 std::vector<void*> tmp_double_ptrs;
 bool did_call_warning;
+const char* target_process = NULL;
 
 // Read a string from guest memory
 int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
@@ -91,7 +92,7 @@ target_ulong get_ptr(CPUState *cpu, target_ulong addr) {
 }
 
 // Parse out primitive array buffers
-Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data) {
+Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data, bool pandalog) {
 
     uint8_t* buf = std::get<uint8_t*>(data);
     int arr_size = rdt.get_arr_size();
@@ -100,26 +101,33 @@ Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data) {
         return 0;
     }
 
-    Panda__StructData *sdata = (Panda__StructData*)malloc(sizeof(Panda__StructData));
-    assert(sdata != NULL);
-    tmp_single_ptrs.push_back(sdata);
-    *sdata = PANDA__STRUCT_DATA__INIT;
+    Panda__StructData *sdata = NULL;
 
-    Panda__NamedData** members = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * arr_size);
-    assert(members != NULL);
-    tmp_double_ptrs.push_back(members);
-    sdata->members = members;
+    if (pandalog) {
+        sdata = (Panda__StructData*)malloc(sizeof(Panda__StructData));
+        assert(sdata != NULL);
+        tmp_single_ptrs.push_back(sdata);
+        *sdata = PANDA__STRUCT_DATA__INIT;
+
+        Panda__NamedData**  members = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * arr_size);
+        assert(members != NULL);
+        tmp_double_ptrs.push_back(members);
+        sdata->members = members;
+    }
 
     for (int i = 0; i < arr_size; i++) {
 
         uint8_t* data_ptr = buf + (i * rdt.arr_member_size_bytes);
 
-        Panda__NamedData *m = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
-        assert(m != NULL);
-        tmp_single_ptrs.push_back(m);
+        Panda__NamedData *m = NULL;
+        if (pandalog) {
+            m = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
+            assert(m != NULL);
+            tmp_single_ptrs.push_back(m);
 
-        sdata->members[i] = m;
-        *m = PANDA__NAMED_DATA__INIT;
+            sdata->members[i] = m;
+            *m = PANDA__NAMED_DATA__INIT;
+        }
 
         switch (rdt.arr_member_type) {
             case DataType::BOOL:
@@ -127,16 +135,28 @@ Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data) {
                 if (rdt.is_signed) {
                     switch (rdt.size_bytes) {
                         case sizeof(short int):
-                            m->i16 = *(short int*)data_ptr;
-                            m->has_i16 = true;
+                            if (pandalog) {
+                                m->i16 = *(short int*)data_ptr;
+                                m->has_i16 = true;
+                            }else{
+                                std::cout << *(short int*)data_ptr;
+                            }
                             break;
                         case sizeof(int):
-                            m->i32 = *(int*)data_ptr;
-                            m->has_i32 = true;
+                            if (pandalog) {
+                                m->i32 = *(int*)data_ptr;
+                                m->has_i32 = true;
+                            }else{
+                                std::cout << *(int*)data_ptr;
+                            }
                             break;
                         case sizeof(long int):
-                            m->i64 = *(long int*)data_ptr;
-                            m->has_i64 = true;
+                            if (pandalog) {
+                                m->i64 = *(long int*)data_ptr;
+                                m->has_i64 = true;
+                            }else{
+                                std::cout << *(long int*)data_ptr;
+                            }
                             break;
                         default:
                             return 0;
@@ -145,16 +165,28 @@ Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data) {
                 } else {
                     switch (rdt.size_bytes) {
                         case sizeof(short unsigned):
-                            m->u16 = *(short unsigned*)data_ptr;
-                            m->has_u16 = true;
+                            if (pandalog) {
+                                m->u16 = *(short unsigned*)data_ptr;
+                                m->has_u16 = true;
+                            }else{
+                                std::cout << *(short unsigned*)data_ptr;
+                            }
                             break;
                         case sizeof(unsigned):
-                            m->u32 = *(unsigned*)data_ptr;
-                            m->has_u32 = true;
+                            if (pandalog) {
+                                m->u32 = *(unsigned*)data_ptr;
+                                m->has_u32 = true;
+                            }else{
+                                std::cout << *(unsigned*)data_ptr;
+                            }
                             break;
                         case sizeof(long unsigned):
-                            m->u64 = *(long unsigned*)data_ptr;
-                            m->has_u64 = true;
+                            if (pandalog) {
+                                m->u64 = *(long unsigned*)data_ptr;
+                                m->has_u64 = true;
+                            }else{
+                                std::cout << *(long unsigned*)data_ptr;
+                            }
                             break;
                         default:
                             return 0;
@@ -166,12 +198,20 @@ Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data) {
             case DataType::FLOAT:
                 switch (rdt.size_bytes) {
                     case sizeof(float):
-                        m->float_val = *(float*)data_ptr;
-                        m->has_float_val = true;
+                        if (pandalog) {
+                            m->float_val = *(float*)data_ptr;
+                            m->has_float_val = true;
+                        }else{
+                            std::cout << *(float*)data_ptr;
+                        }
                         break;
                     case sizeof(double):
-                        m->double_val = *(float*)data_ptr;
-                        m->has_double_val = true;
+                        if (pandalog) {
+                            m->double_val = *(float*)data_ptr;
+                            m->has_double_val = true;
+                        }else{
+                            std::cout << *(double*)data_ptr; // Note we actually read a double for ptinting while logging uses a float
+                        }
                         break;
                     default:
                         return 0;
@@ -183,86 +223,143 @@ Panda__StructData* array_logger(ReadableDataType& rdt, PrimitiveVariant& data) {
         }
     }
 
-    sdata->n_members = arr_size;
-    return sdata;
+    if (pandalog) {
+        sdata->n_members = arr_size;
+        return sdata;
+    }
+    return NULL;
 }
 
 // Helper for struct_logger
 void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& data) {
     switch (data.index()) {
         case VariantType::VT_BOOL:
-            nd->bool_val = std::get<bool>(data);
-            nd->has_bool_val = true;
+            if (nd) {
+                nd->bool_val = std::get<bool>(data);
+                nd->has_bool_val = true;
+            }else{
+                std::cout << std::get<bool>(data);
+            }
             break;
         case VariantType::VT_CHAR:
             {
-                static_assert(sizeof(char) == 1);
-                std::string char_str(1, std::get<char>(data));
-                nd->str = strdup(char_str.c_str());
+                if (nd) {
+                    static_assert(sizeof(char) == 1);
+                    std::string char_str(1, std::get<char>(data));
+                    nd->str = strdup(char_str.c_str());
+                }else{
+                    std::cout << std::get<char>(data);
+                }
             }
             break;
         case VariantType::VT_SHORT_INT:
-            static_assert(sizeof(short int) == 2);
-            nd->i16 = std::get<short int>(data);
-            nd->has_i16 = true;
+            if (nd) {
+                static_assert(sizeof(short int) == 2);
+                nd->i16 = std::get<short int>(data);
+                nd->has_i16 = true;
+            }else{
+                std::cout << std::get<short int>(data);
+            }
             break;
         case VariantType::VT_INT:
-            static_assert(sizeof(int) == 4);
-            nd->i32 = std::get<int>(data);
-            nd->has_i32 = true;
+            if (nd) {
+                static_assert(sizeof(int) == 4);
+                nd->i32 = std::get<int>(data);
+                nd->has_i32 = true;
+            }else{
+                std::cout << std::get<int>(data);
+            }
             break;
         case VariantType::VT_LONG_INT:
-            static_assert(sizeof(long int) == 8);
-            nd->i64 = std::get<long int>(data);
-            nd->has_i64 = true;
+            if (nd) {
+                static_assert(sizeof(long int) == 8);
+                nd->i64 = std::get<long int>(data);
+                nd->has_i64 = true;
+            }else{
+                std::cout << std::get<long int>(data);
+            }
             break;
         case VariantType::VT_SHORT_UNSIGNED:
-            static_assert(sizeof(short unsigned) == 2);
-            nd->u16 = std::get<short unsigned>(data);
-            nd->has_u16 = true;
+            if (nd) {
+                static_assert(sizeof(short unsigned) == 2);
+                nd->u16 = std::get<short unsigned>(data);
+                nd->has_u16 = true;
+            }else{
+                std::cout << std::get<short unsigned>(data);
+            }
             break;
         case VariantType::VT_UNSIGNED:
-            static_assert(sizeof(unsigned) == 4);
-            nd->u32 = std::get<unsigned>(data);
-            nd->has_u32 = true;
+            if (nd) {
+                static_assert(sizeof(unsigned) == 4);
+                nd->u32 = std::get<unsigned>(data);
+                nd->has_u32 = true;
+            }else{
+                std::cout << std::get<unsigned>(data);
+            }
             break;
         case VariantType::VT_LONG_UNSIGNED:
-            static_assert(sizeof(long unsigned) == 8);
-            nd->u64 = std::get<long unsigned>(data);
-            nd->has_u64 = true;
+            if (nd) {
+                static_assert(sizeof(long unsigned) == 8);
+                nd->u64 = std::get<long unsigned>(data);
+                nd->has_u64 = true;
+            }else{
+                std::cout << std::get<long unsigned>(data);
+            }
             break;
         case VariantType::VT_FLOAT:
-            nd->float_val = std::get<float>(data);
-            nd->has_float_val = true;
+            if (nd) {
+                nd->float_val = std::get<float>(data);
+                nd->has_float_val = true;
+            }else{
+                std::cout << std::get<float>(data);
+            }
             break;
         case VariantType::VT_DOUBLE:
-            nd->double_val = std::get<double>(data);
-            nd->has_double_val = true;
+            if (nd) {
+                nd->double_val = std::get<double>(data);
+                nd->has_double_val = true;
+            }else{
+                std::cout << std::get<double>(data);
+            }
             break;
         case VariantType::VT_LONG_DOUBLE:
-            nd->double_val = (double)std::get<long double>(data);
-            nd->has_double_val = true;
-            std::cerr << "[WARNING] syscalls_logger: casting long double to double (only latter supported by protobuf)" << std::endl;
+            if (nd) {
+                nd->double_val = (double)std::get<long double>(data);
+                nd->has_double_val = true;
+                std::cerr << "[WARNING] syscalls_logger: casting long double to double (only latter supported by protobuf)" << std::endl;
+            }else{
+                std::cout << std::get<long double>(data);
+            }
             break;
         case VariantType::VT_UINT8_T_PTR:
         {
             char* str_ptr = (char *)std::get<uint8_t*>(data);
             if ((rdt.type == DataType::ARRAY) && (rdt.arr_member_type == DataType::CHAR) && check_str(str_ptr)) {
-                nd->str = strdup(str_ptr);
+                if (nd) {
+                    nd->str = strdup(str_ptr);
+                }else{
+                    std::cout << str_ptr; // Not sure about this one
+                }
                 return;
             } else if ((rdt.type == DataType::ARRAY) && (rdt.arr_member_type != DataType::CHAR)) {
-                auto sdata = array_logger(rdt, data);
+                auto sdata = array_logger(rdt, data, nd!=NULL);
                 if (sdata) {
-                    nd->struct_type = strdup("ArrayOfPrimitive");
-                    nd->struct_data = sdata;
+                    if (nd) {
+                        nd->struct_type = strdup("ArrayOfPrimitive");
+                        nd->struct_data = sdata;
+                    }
                     return;
                 }
             }
 
             assert(rdt.type != DataType::STRUCT);
             // TODO: how to convert to protobuf bytes? This is a host pointer, not helpful
-            nd->ptr = (uint64_t)std::get<uint8_t*>(data);
-            nd->has_ptr = true;
+            if (nd) {
+                nd->ptr = (uint64_t)std::get<uint8_t*>(data);
+                nd->has_ptr = true;
+            }else{
+                std::cout << std::get<uint8_t*>(data); // Not sure about this one
+            }
             break;
         }
         default:
@@ -273,32 +370,52 @@ void set_data(Panda__NamedData* nd, ReadableDataType& rdt, PrimitiveVariant& dat
 
 // TODO: reduce code repetition in recursive cases
 // Recursively read struct information for PANDALOG, using DWARF layout information
-Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& sdef, int recursion_limit) {
+Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& sdef, bool pandalog, int recursion_limit) {
+    // Here we analyze the DWARFINFO we have to determine the type of a struct
 
     int mcount = sdef.members.size();
     bool null_ptr_err = (saddr == 0);
 
-    Panda__StructData *sdata = (Panda__StructData*)malloc(sizeof(Panda__StructData));
-    assert(sdata != NULL);
-    tmp_single_ptrs.push_back(sdata);
-    *sdata = PANDA__STRUCT_DATA__INIT;
+    Panda__StructData *sdata = NULL;
 
-    Panda__NamedData** members = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * mcount);
-    assert(members != NULL);
-    tmp_double_ptrs.push_back(members);
-    sdata->members = members;
+    if (pandalog) {
+        sdata = (Panda__StructData*)malloc(sizeof(Panda__StructData));
+        assert(sdata != NULL);
+        tmp_single_ptrs.push_back(sdata);
+        *sdata = PANDA__STRUCT_DATA__INIT;
+
+        Panda__NamedData**  members = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * mcount);
+        assert(members != NULL);
+        tmp_double_ptrs.push_back(members);
+        sdata->members = members;
+    } else {
+        std::cout << "{";
+    }
 
     for (int i = 0; i < mcount; i++) {
-
+        Panda__NamedData *m = NULL;
         ReadableDataType mdef = sdef.members[i];
         target_ulong maddr = saddr + mdef.offset_bytes;
-        Panda__NamedData *m = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
-        assert(m != NULL);
-        tmp_single_ptrs.push_back(m);
 
-        sdata->members[i] = m;
-        *m = PANDA__NAMED_DATA__INIT;
-        m->arg_name = strdup(mdef.name.c_str());
+        if (mdef.struct_name.find(std::string("__unused")) != std::string::npos) {
+            // some names we get from the dwarf info are __unusedX and we don't really want to log those
+            continue;
+        }
+
+        if (pandalog) {
+            m = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
+            assert(m != NULL);
+            tmp_single_ptrs.push_back(m);
+
+            sdata->members[i] = m;
+            *m = PANDA__NAMED_DATA__INIT;
+            m->arg_name = strdup(mdef.name.c_str());
+        }else{
+            if (i > 0) {
+                std::cout << ", ";
+            }
+            std::cout << mdef.name << "=";
+        }
 
         if (log_verbose) {
             std::cout << "[INFO] syscalls_logger: loading struct " << sdef.name
@@ -306,20 +423,24 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
                 << ", addr: 0x" << std::hex << maddr << std::dec << std::endl;
         }
 
+
+        std::string error;
         // Recursive - member is embedded struct
         if ((mdef.type == DataType::STRUCT) && (mdef.is_ptr == false)) {
 
             auto it = struct_hashtable.find(mdef.struct_name);
 
             if ((recursion_limit > 0) && it != struct_hashtable.end() && (sdef.name.compare(mdef.struct_name) != 0)) {
-                m->struct_type = strdup(mdef.struct_name.c_str());
-                m->struct_data = struct_logger(cpu, maddr, it->second, (recursion_limit - 1));
-            } else {
-                if (null_ptr_err) {
-                    m->str = strdup("{read failed, SC2 returned a NULL pointer (bug)}");
+                if (pandalog) {
+                    m->struct_type = strdup(mdef.struct_name.c_str());
+                    m->struct_data = struct_logger(cpu, maddr, it->second, pandalog, (recursion_limit - 1));
                 } else {
-                    m->str = strdup("{read failed, unknown embedded struct}");
+                    struct_logger(cpu, maddr, it->second, pandalog, (recursion_limit - 1));
                 }
+            } else if (null_ptr_err) {
+                error ="read failed, SC2 returned a NULL pointer (bug)";
+            } else {
+                error ="read failed, unknown embeddded struct";
             }
 
         // Recursive - member is pointer to struct
@@ -329,14 +450,16 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
             target_ulong addr = get_ptr(cpu, maddr);
 
             if ((recursion_limit > 0) && (it != struct_hashtable.end()) && (addr != 0) && (sdef.name.compare(mdef.struct_name) != 0)) {
-                m->struct_type = strdup(mdef.struct_name.c_str());
-                m->struct_data = struct_logger(cpu, addr, it->second, (recursion_limit - 1));
-            } else {
-                if (null_ptr_err) {
-                    m->str = strdup("{read failed, SC2 returned a NULL pointer (bug)}");
+                if (pandalog) {
+                    m->struct_type = strdup(mdef.struct_name.c_str());
+                    m->struct_data = struct_logger(cpu, addr, it->second, pandalog, (recursion_limit - 1));
                 } else {
-                    m->str = strdup("{read failed, unknown struct ptr}");
+                    struct_logger(cpu, addr, it->second, pandalog, (recursion_limit - 1));
                 }
+            } else if (null_ptr_err) {
+                error ="read failed, SC2 returned a NULL pointer (bug)";
+            } else {
+                error ="read failed, unknown embeddded struct";
             }
 
         // Recursive - member is double pointer to struct
@@ -351,14 +474,16 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
             }
 
             if ((recursion_limit > 0) && (it != struct_hashtable.end()) && (addr_2 != 0) && (sdef.name.compare(mdef.struct_name) != 0)) {
-                m->struct_type = strdup(mdef.struct_name.c_str());
-                m->struct_data = struct_logger(cpu, addr_2, it->second, (recursion_limit - 1));
-            } else {
-                if (null_ptr_err) {
-                    m->str = strdup("{read failed, SC2 returned a NULL pointer (bug)}");
+                if (pandalog) {
+                    m->struct_type = strdup(mdef.struct_name.c_str());
+                    m->struct_data = struct_logger(cpu, addr_2, it->second, pandalog, (recursion_limit - 1));
                 } else {
-                    m->str = strdup("{read failed, unknown struct double ptr}");
+                    struct_logger(cpu, addr_2, it->second, pandalog, (recursion_limit - 1));
                 }
+            } else if (null_ptr_err) {
+                error ="read failed, SC2 returned a NULL pointer (bug)";
+            } else {
+                error ="read failed, unknown embeddded struct";
             }
 
         // Non-recursive - member is a non-struct data type
@@ -368,19 +493,193 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
 
             if (read_result.first) {
                 auto data = read_result.second;
+                // Note we pass M which will be null if pandalog = false
                 set_data(m, mdef, data);
+            } else if (null_ptr_err) {
+                error ="read failed, SC2 returned a NULL pointer (bug)";
             } else {
-                if (null_ptr_err) {
-                    m->str = strdup("{read failed, SC2 returned a NULL pointer (bug)}");
-                } else {
-                    m->str = strdup("{read failed, unknown data}");
-                }
+                error = "read failed, unknown embeddded struct";
+            }
+        }
+
+        if (!error.empty()) {
+            if (pandalog) {
+                m->str = strdup(error.c_str());
+            } else {
+                std::cout << "{" << error << " for struct " << mdef.struct_name << "}";
             }
         }
     }
 
-    sdata->n_members = mcount;
-    return sdata;
+    if (pandalog) {
+        sdata->n_members = mcount;
+        return sdata;
+    } else {
+        std::cout << "}";
+        return NULL;
+    }
+}
+
+void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__NamedData *sa, const syscall_ctx_t *rp) {
+    // Handle arguments for a syscall
+    // if SA is non-null, we write the arguments into the pandalog NamedData object
+    // if SA is NULL, write arguments to stdout
+
+    // Here we analyze the syscalls2-provide information about each system call
+
+    uint8_t buf[MAX_STRLEN];
+
+    if (sa == NULL) {
+        // printing arguments - always start with name
+        std::cout << call->argn[i] << "=";
+    }
+
+    switch (call->argt[i]) {
+
+        case SYSCALL_ARG_STR_PTR:
+        {
+            target_ulong addr = *((target_ulong *)rp->args[i]);
+            int len = get_string(cpu, addr, buf);
+            if (sa) {
+                if (len > 0) {
+                    sa->str = strdup((const char *) buf);
+                }
+                else {
+                    sa->str = strdup("n/a");
+                }
+                //sa->has_str = true;
+            }else{
+                if (len > 0) {
+                    std::cout << "\"" << (const char*)buf << "\"";
+                } else {
+                    std::cout << "NULL";
+                }
+            }
+            break;
+        }
+
+        case SYSCALL_ARG_STRUCT_PTR:
+        {
+            target_ulong ptr_val = *((target_ulong *)rp->args[i]);
+            auto it = struct_hashtable.find(call->argtn[i]);
+
+            if (it != struct_hashtable.end()) {
+
+                StructDef sdef = it->second;
+
+                if (!ptr_val) {
+                    std::cerr << "[WARNING] syscalls_logger: SC2 returned NULL pointer for "
+                        << "\'" << call->name << "\' argument "
+                        << "\'" <<  call->argn[i] << "\'"
+                        << "(type: \'" <<  call->argtn[i] << "\')"
+                        << std::endl;
+                }
+
+                if (sa) {
+                    sa->struct_type = strdup(call->argtn[i]);
+                    sa->struct_data = struct_logger(cpu, ptr_val, sdef, true, STRUCT_RECURSION_LIMIT);
+                }else{
+                    struct_logger(cpu, ptr_val, sdef, false, STRUCT_RECURSION_LIMIT);
+                }
+
+            } else {
+
+                if (log_verbose) {
+                    std::cerr << "[WARNING] syscalls_logger: No definition found for struct "
+                        << "\'" << call->argtn[i] << "\' argument "
+                        << std::endl;
+                }
+
+                if (sa) {
+                    sa->ptr = (uint64_t)ptr_val;
+                    sa->has_ptr = true;
+                }else{
+                    std::cerr << "(struct pointer error)";
+                }
+            }
+
+            break;
+        }
+
+        case SYSCALL_ARG_BUF_PTR:
+            if (sa) {
+                sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
+                sa->has_ptr = true;
+            } else {
+                // Special cases - read/write - dump as a string
+                if (strcmp(call->name, "read") == 0 || strcmp(call->name, "write") == 0) {
+                    uint8_t buf[MAX_STRLEN];
+                    target_ulong addr = *((target_ulong *)rp->args[i]);
+                    int len = get_string(cpu, addr, buf);
+                    if (len == 0) {
+                        std::cout << "NULL";
+                    }else{
+                        std::cout << "\"" << (const char*)buf << "\"";
+                    }
+                }else{
+                    std::cout << "buf ptr[" << std::hex << (*((target_ulong *) rp->args[i])) << "]";
+                }
+            }
+            break;
+
+        case SYSCALL_ARG_U64:
+            if (sa) {
+                sa->u64 = (uint64_t) *((target_ulong *) rp->args[i]);
+                sa->has_u64 = true;
+            } else {
+                std::cout << "0x" << (*((uint64_t *) rp->args[i]));
+            }
+            break;
+
+        case SYSCALL_ARG_U32:
+            if (sa) {
+                sa->u32 = *((uint32_t *) rp->args[i]);
+                sa->has_u32 = true;
+            }else {
+                std::cout << "0x" << (*((uint32_t *) rp->args[i]));
+            }
+            break;
+
+        case SYSCALL_ARG_U16:
+            if (sa) {
+                sa->u16 = (uint32_t) *((uint16_t *) rp->args[i]);
+                sa->has_u16 = true;
+            } else {
+                std::cout << "0x" << (*((uint16_t *) rp->args[i]));
+            }
+            break;
+
+        case SYSCALL_ARG_S64:
+            if (sa) {
+                sa->i64 = *((int64_t *) rp->args[i]);
+                sa->has_i64 = true;
+            } else {
+                std::cout << "0x" << (*((int64_t *) rp->args[i]));
+            }
+            break;
+
+        case SYSCALL_ARG_S32:
+            if (sa) {
+                sa->i32 = *((int32_t *) rp->args[i]);
+                sa->has_i32 = true;
+            } else {
+                std::cout <<"0x" << (*((int32_t *) rp->args[i]));
+            }
+            break;
+
+        case SYSCALL_ARG_S16:
+            if (sa) {
+                sa->i16 = (int32_t) *((int16_t *) rp->args[i]);
+                sa->has_i16 = true;
+            } else {
+                std::cout << "0x" << (*((int16_t *) rp->args[i]));
+            }
+            break;
+
+        default:
+            assert(false && "[ERROR] syscalls_logger: Unknown argument type!");
+            break;
+    }
 }
 
 // Log arguments for every system call
@@ -388,7 +687,6 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
 
     OsiProc *current = NULL;
     OsiThread *othread = NULL;
-    uint8_t buf[MAX_STRLEN];
 
     // need to have current proc / thread
     current = get_current_process(cpu);
@@ -405,6 +703,11 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
           std::cerr << "[WARNING] syscalls_logger: null syscall_into_t*, missed a syscall! Disabling subsequent warnings" << std::endl;
           did_call_warning = true;
         }
+        return;
+    }
+
+    if (target_process != NULL && strcmp(current->name, target_process) != 0) {
+        // Target specified and it's not this one - bail
         return;
     }
 
@@ -428,95 +731,7 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
             psyscall.args[i] = sa;
             *sa = PANDA__NAMED_DATA__INIT;
             sa->arg_name = strdup(call->argn[i]);
-            switch (call->argt[i]) {
-
-                case SYSCALL_ARG_STR_PTR:
-                {
-                    target_ulong addr = *((target_ulong *)rp->args[i]);
-                    int len = get_string(cpu, addr, buf);
-                    if (len > 0) {
-                        sa->str = strdup((const char *) buf);
-                    }
-                    else {
-                        sa->str = strdup("n/a");
-                    }
-                    //sa->has_str = true;
-                    break;
-                }
-
-                case SYSCALL_ARG_STRUCT_PTR:
-                {
-                    target_ulong ptr_val = *((target_ulong *)rp->args[i]);
-                    auto it = struct_hashtable.find(call->argtn[i]);
-
-                    if (it != struct_hashtable.end()) {
-
-                        StructDef sdef = it->second;
-
-                        if (!ptr_val) {
-                            std::cerr << "[WARNING] syscalls_logger: SC2 returned NULL pointer for "
-                                << "\'" << call->name << "\' argument "
-                                << "\'" <<  call->argn[i] << "\'"
-                                << "(type: \'" <<  call->argtn[i] << "\')"
-                                << std::endl;
-                        }
-
-                        sa->struct_type = strdup(call->argtn[i]);
-                        sa->struct_data = struct_logger(cpu, ptr_val, sdef, STRUCT_RECURSION_LIMIT);
-                    } else {
-
-                        if (log_verbose) {
-                            std::cerr << "[WARNING] syscalls_logger: No definition found for struct "
-                                << "\'" << call->argtn[i] << "\' argument "
-                                << std::endl;
-                        }
-
-                        sa->ptr = (uint64_t)ptr_val;
-                        sa->has_ptr = true;
-                    }
-
-                    break;
-                }
-
-                case SYSCALL_ARG_BUF_PTR:
-                    sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
-                    sa->has_ptr = true;
-                    break;
-
-                case SYSCALL_ARG_U64:
-                    sa->u64 = (uint64_t) *((target_ulong *) rp->args[i]);
-                    sa->has_u64 = true;
-                    break;
-
-                case SYSCALL_ARG_U32:
-                    sa->u32 = *((uint32_t *) rp->args[i]);
-                    sa->has_u32 = true;
-                    break;
-
-                case SYSCALL_ARG_U16:
-                    sa->u16 = (uint32_t) *((uint16_t *) rp->args[i]);
-                    sa->has_u16 = true;
-                    break;
-
-                case SYSCALL_ARG_S64:
-                    sa->i64 = *((int64_t *) rp->args[i]);
-                    sa->has_i64 = true;
-                    break;
-
-                case SYSCALL_ARG_S32:
-                    sa->i32 = *((int32_t *) rp->args[i]);
-                    sa->has_i32 = true;
-                    break;
-
-                case SYSCALL_ARG_S16:
-                    sa->i16 = (int32_t) *((int16_t *) rp->args[i]);
-                    sa->has_i16 = true;
-                    break;
-
-                default:
-                    assert(false && "[ERROR] syscalls_logger: Unknown argument type!");
-                    break;
-            }
+            log_argument(cpu, call, i, sa, rp);
         }
 
         psyscall.n_args = call->nargs;
@@ -543,64 +758,25 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
 
     } else {
 
-        std::cout << "proc [pid=" << current->pid << ",ppid=" << current->ppid
-             << ",tid=" << othread->tid << ",create_time=" << current->create_time
-             << ",name=" << current->name << "]" << std::endl;
+        if (target_process == NULL) {
+            // Only log process details if we're logging multiple processes
+            std::cout << "proc [pid=" << current->pid << ",ppid=" << current->ppid
+                 << ",tid=" << othread->tid << ",create_time=" << current->create_time
+                 << ",name=" << current->name << "]" << std::endl;
+        }
 
-        std::cout << " syscall ret pc=" << std::hex << pc << " name=" << call->name << std::endl;
+        target_long retval = get_syscall_retval(cpu);
+
+        // Skip past sys_
+        std::cout << call->name+4 << "(";
 
         for (int i = 0; i < call->nargs; i++) {
-
-            std::cout << "  arg " << i << " - ";
-            switch (call->argt[i]) {
-
-                case SYSCALL_ARG_STR_PTR:
-                {
-                    target_ulong addr = *((target_ulong *)rp->args[i]);
-                    int len = get_string(cpu, addr, buf);
-                    std::cout << call->argn[i] << ": str[";
-                    if (len > 0)
-                        std::cout << buf;
-                    std::cout << "]" << std::endl;
-                    break;
-                }
-                case SYSCALL_ARG_BUF_PTR:
-                    std::cout << call->argn[i] << ": buf ptr[" << std::hex << (*((target_ulong *) rp->args[i])) << "]" << std::endl;
-                    break;
-
-                case SYSCALL_ARG_STRUCT_PTR:
-                    std::cout << call->argn[i] << ": struct ptr[" << std::hex << (*((target_ulong *) rp->args[i])) << "]" << std::endl;
-                    break;
-
-                case SYSCALL_ARG_U64:
-                    std::cout << call->argn[i] << ": u64[" << (*((uint64_t *) rp->args[i])) << "]" << std::endl;
-                    break;
-
-                case SYSCALL_ARG_U32:
-                    std::cout << call->argn[i] << ": u32[" << (*((uint32_t *) rp->args[i])) << "]" << std::endl;
-                    break;
-
-                case SYSCALL_ARG_U16:
-                    std::cout << call->argn[i] << ": u16[" << (*((uint16_t *) rp->args[i])) << "]" << std::endl;
-                    break;
-
-                case SYSCALL_ARG_S64:
-                    std::cout << call->argn[i] << ": i64[" << (*((int64_t *) rp->args[i])) << "]" << std::endl;
-                    break;
-
-                case SYSCALL_ARG_S32:
-                    std::cout << call->argn[i] << ": i32[" << (*((int32_t *) rp->args[i])) << "]" << std::endl;
-                    break;
-
-                case SYSCALL_ARG_S16:
-                    std::cout << call->argn[i] << ": i16[" << (*((int16_t *) rp->args[i])) << "]" << std::endl;
-                    break;
-
-                default:
-                    break;
-
+            if (i > 0) {
+                std::cout << ", ";
             }
+            log_argument(cpu, call, i, NULL, rp);
         }
+        std::cout << ") => 0x" << std::hex << retval << std::endl;
     }
 }
 
@@ -609,6 +785,7 @@ bool init_plugin(void *_self) {
     panda_arg_list *args = panda_get_args("syscalls_logger");
     log_verbose = panda_parse_bool(args, "verbose");
     const char* json_filename = panda_parse_string_opt(args, "json", nullptr, "dwarf2json_output.json");
+    target_process = panda_parse_string_opt(args, "target", nullptr, "Name of a single process to target. If unset, syscalls from all proceses are logged");
     did_call_warning=false;
 
     if (log_verbose) {
