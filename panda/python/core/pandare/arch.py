@@ -147,7 +147,7 @@ class PandaArch():
         
         # i386 is stack based and so the convention wont work
         if self.call_conventions[convention] == "stack":
-            return self.get_arg(cpu, idx)
+            return self.get_arg_stack(cpu, idx)
         reg = self._get_arg_reg(idx, convention)
         return self.get_reg(cpu, reg)
 
@@ -479,18 +479,12 @@ class X86Arch(PandaArch):
         return self.panda.virtual_memory_read(env,esp,4,fmt='int')
     
     # we need this because X86 is stack based
-    def get_arg(self, env, num, kernel=False):
+    def get_arg_stack(self, env, num, kernel=False):
         '''
         Gets arguments based on the number. Supports kernel and usermode.
         '''
-        if kernel:
-            arglist = ["EBX", "ECX", "EDX", "ESI", "EDI", "EBP"]
-            if num >= len(arglist):
-                raise ValueError(f"We only support the first {len(arglist)} arguments.")
-            return self.get_reg(env, arglist[num])
-        else:
-            esp = self.get_reg(env, "ESP")
-            return self.panda.virtual_memory_read(env, esp+(4*(num+1)),4,fmt='int')
+        esp = self.get_reg(env, "ESP")
+        return self.panda.virtual_memory_read(env, esp+(4*(num+1)),4,fmt='int')
 
 class X86_64Arch(PandaArch):
     '''
