@@ -144,6 +144,10 @@ class PandaArch():
 
         Note for syscalls we define arg[0] as syscall number and then 1-index the actual args
         '''
+        
+        # i386 is stack based and so the convention wont work
+        if self.panda.arch_name == "i386":
+            return self.get_arg(cpu, idx)
         reg = self._get_arg_reg(idx, convention)
         return self.get_reg(cpu, reg)
 
@@ -432,6 +436,7 @@ class X86Arch(PandaArch):
         self.reg_sp = regnames.index('ESP')
         self.registers = {regnames[idx]: idx for idx in range(len(regnames)) }
 
+
     def get_pc(self, cpu):
         '''
         Overloaded function to return the x86 current program counter
@@ -468,6 +473,20 @@ class X86Arch(PandaArch):
         '''
         esp = self.get_reg(env,"ESP")
         return self.panda.virtual_memory_read(env,esp,4,fmt='int')
+    
+    # we need this because X86 is stack based
+    def get_arg(self, env, num, kernel=False):
+        '''
+        Gets arguments based on the number. Supports kernel and usermode.
+        '''
+        if kernel:
+            arglist = ["EBX", "ECX", "EDX", "ESI", "EDI", "EBP"]
+            if num >= len(arglist):
+                raise ValueError(f"We only support the first {len(arglist)} arguments.")
+            return self.get_reg(env, arglist[num])
+        else:
+            esp = self.get_reg(env, "ESP")
+            return self.panda.virtual_memory_read(env, esp+(4*(num+1)),4,fmt='int')
 
 class X86_64Arch(PandaArch):
     '''
