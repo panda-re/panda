@@ -622,8 +622,8 @@ void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values *av){
 #endif
 
     h.asid = panda_current_asid(env);
-    h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
-    h.cb.before_tcg_codegen = hook_program_start;
+    h.type = PANDA_CB_START_BLOCK_EXEC;
+    h.cb.start_block_exec = hook_program_start;
     h.km = MODE_USER_ONLY;
     h.enabled = true;
     dlsym_add_hook(&h);
