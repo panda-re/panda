@@ -146,7 +146,7 @@ class PandaArch():
         '''
         
         # i386 is stack based and so the convention wont work
-        if self.panda.arch_name == "i386":
+        if self.call_conventions[convention] == "stack":
             return self.get_arg(cpu, idx)
         reg = self._get_arg_reg(idx, convention)
         return self.get_reg(cpu, reg)
@@ -217,8 +217,8 @@ class PandaArch():
         print("Stack:")
         self.dump_stack(cpu)
 
-    def get_args(self, cpu, num):
-        return [self.get_arg(cpu,i) for i in range(num)]
+    def get_args(self, cpu, num, convention='default'):
+        return [self.get_arg(cpu,i, convention) for i in range(num)]
 
 class ArmArch(PandaArch):
     '''
@@ -432,6 +432,10 @@ class X86Arch(PandaArch):
         # not yet supported
         self.reg_retval = {"default":    "EAX",
                            "syscall":    "EAX"}
+        
+        self.call_conventions = {"stack": "stack",
+                                 "syscall": ["EBX", "ECX", "EDX", "ESI", "EBP"]}
+        self.call_conventions['default'] = self.call_conventions['stack']
 
         self.reg_sp = regnames.index('ESP')
         self.registers = {regnames[idx]: idx for idx in range(len(regnames)) }
