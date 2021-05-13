@@ -114,6 +114,7 @@ obj-y += plog.pb-c.o
 obj-y += panda/src/rr/rr_log.o
 obj-y += panda/src/checkpoint.o
 obj-y += panda/src/tcg-utils.o
+obj-y += panda/src/cb-installer.o
 # These are for C++ protobuf pandalog
 obj-y += panda/src/plog-cc.o
 obj-y += plog.pb.o

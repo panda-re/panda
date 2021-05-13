@@ -150,6 +150,13 @@ TCGOp *find_first_guest_insn(void);
  */
 TCGOp *find_guest_insn_by_addr(target_ulong addr);
 
+
+/* 
+*  Search the TCG context for the last guest instruction marker and return
+*  a pointer to it.
+*/
+TCGOp *find_last_guest_insn(void);
+
 void insert_call_1p(TCGOp **after_op, void(*func)(void*), void *val);
 
 #ifdef __cplusplus
