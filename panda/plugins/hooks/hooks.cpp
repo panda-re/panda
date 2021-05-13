@@ -29,9 +29,6 @@ PANDAENDCOMMENT */
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
-#include "syscalls2/syscalls_ext_typedefs.h"
-#include "syscalls2/syscalls2_info.h"
-#include "syscalls2/syscalls2_ext.h"
 #include "dynamic_symbols/dynamic_symbols_int_fns.h"
 #include "hooks_int_fns.h"
 #include "exec/tb-hash.h"
