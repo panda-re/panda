@@ -110,10 +110,11 @@ jobs:
       matrix:
         # See output from `make check-help`: we're just splitting `make check` into all the things it does
         # so we can run them in parallel: arch-specific qtests, plus a few others
-        test_script: [dyn_hook, copy_test, file_fake, file_hook, generic_tests, hooking, monitor_cmds, multi_proc_cbs, sleep_in_cb, syscalls, taint_ram, taint_reg, record_then_replay, record_no_snap, sig_suppress]
+        test_script: [dyn_hooks, copy_test, file_fake, file_hook, generic_tests, hooking, monitor_cmds, multi_proc_cbs, sleep_in_cb, syscalls, taint_ram, taint_reg, record_then_replay, record_no_snap, sig_suppress]
 
     steps:
     - name: Run individual pypanda tests
+      # TODO: pip requirements install here should be moved to Docker image build to save test time
       run: >-
         docker run --name panda_test_${{ matrix.test_script }}_${GITHUB_RUN_ID}
         -e PANDA_TEST=yes --cap-add SYS_NICE
