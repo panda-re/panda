@@ -77,7 +77,7 @@ static inline ptrdiff_t afl_persistent_cache_len(void) {
     return afl_persistent_cache_calc_next_pos() - afl_persistent_cache;
 }
 
-void afl_request_tsl(target_ulong, target_ulong, uint32_t, TranslationBlock*, int, char cmd);
+void afl_request_tsl(CPUArchState *, target_ulong, target_ulong, uint32_t, TranslationBlock*, int, char cmd);
 
 enum tsl_cmd {
     TRANSLATE = 0,

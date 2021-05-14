@@ -130,6 +130,10 @@ struct afl_tb {
   target_ulong pc;
   target_ulong cs_base;
   uint32_t flags;
+#if defined(TARGET_MIPS)
+  target_ulong hflags;
+  target_ulong btarget;
+#endif
 };
 
 struct afl_tsl {
@@ -524,7 +528,7 @@ void afl_persistent_stop(void) {
 
     if (--cycle_cnt) {
 
-      afl_request_tsl(0, 0, 0, 0, 0, EXIT_TSL);
+      afl_request_tsl(NULL, 0, 0, 0, 0, 0, EXIT_TSL);
 
       raise(SIGSTOP);
 
@@ -567,7 +571,7 @@ static inline void helper_aflMaybeLog(target_ulong cur_loc) {
    we tell the parent to mirror the operation, so that the next fork() has a
    cached copy. */
 
-void afl_request_tsl(target_ulong pc, target_ulong cb, uint32_t flags,
+void afl_request_tsl(CPUArchState *env, target_ulong pc, target_ulong cb, uint32_t flags,
                             TranslationBlock *last_tb, int tb_exit, char cmd) {
 
   struct afl_tsl t;
@@ -579,6 +583,8 @@ void afl_request_tsl(target_ulong pc, target_ulong cb, uint32_t flags,
   t.tb.pc      = pc;
   t.tb.cs_base = cb;
   t.tb.flags   = flags;
+  t.tb.hflags  = env->hflags;
+  t.tb.btarget = env->btarget;
   t.cmd        = cmd;
 
   if ( cmd == TRANSLATE && last_tb != NULL)
@@ -629,6 +635,15 @@ static void afl_wait_tsl(CPUArchState *env, int fd) {
         default: break;
     }
 
+    // Prepare hflags for delay slot
+#if defined(TARGET_MIPS)
+    struct afl_tsl tmp;
+    tmp.tb.hflags = env->hflags;
+    tmp.tb.btarget = env->btarget;
+    env->hflags = t.tb.hflags;
+    env->btarget = t.tb.btarget;
+#endif
+
     tb = tb_htable_lookup(cpu, t.tb.pc, t.tb.cs_base, t.tb.flags);
 
     if(!tb) {
@@ -639,6 +654,11 @@ static void afl_wait_tsl(CPUArchState *env, int fd) {
       tb_unlock();
 
     }
+
+#if defined(TARGET_MIPS)
+    env->hflags = tmp.tb.hflags;
+    env->btarget = tmp.tb.btarget;
+#endif
 
     if (t.cmd == IS_CHAIN) {
       if (read(fd, &c, sizeof(struct afl_chain)) != sizeof(struct afl_chain))

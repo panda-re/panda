@@ -209,7 +209,7 @@ static target_ulong startWork(CPUArchState *env, target_ulong start, target_ulon
     afl_end_code   = end;
     aflGotLog = 0;
     aflStart = 1;
-    afl_request_tsl(0, 0, 0, 0, 0, START_AFL);
+    afl_request_tsl(NULL, 0, 0, 0, 0, 0, START_AFL);
     if (is_persistent)
         afl_persistent_start();
     return 0;
@@ -229,7 +229,7 @@ static target_ulong doneWork(CPUArchState *env, target_ulong val)
     if(aflGotLog)
         exit(64 | val);
 #endif
-    afl_request_tsl(0, 0, 0, 0, 0, STOP_AFL);
+    afl_request_tsl(NULL, 0, 0, 0, 0, 0, STOP_AFL);
     //new_state = cpu_ldq_data(env, aflStateAddr);
     //AFL_DPRINTF("State at done work: 0x%x\n", new_state);
     //if ((uint8_t) new_state != (uint8_t) afl_state_var){

@@ -474,7 +474,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
         tb_unlock();
     }
     if (was_translated || was_chained) {
-        afl_request_tsl(pc, cs_base, flags, was_chained ? last_tb : NULL,
+        afl_request_tsl(env, pc, cs_base, flags, was_chained ? last_tb : NULL,
                         tb_exit, 0);
     }
     return tb;
