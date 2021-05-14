@@ -152,11 +152,17 @@ class PandaArch():
         return self.get_reg(cpu, reg)
 
 
-    def set_retval(self, cpu, val, convention='default'):
+    def set_retval(self, cpu, val, convention='default', failure=False):
         '''
         Set return val to [val] for given calling convention. This only works
         right after a function call has returned, otherwise the register will contain
         a different value.
+
+        If the given architecture returns failure/success in a second register (i.e., the A3
+        register for mips), set that according to the failure flag.
+
+        Note the failure argument only used by subclasses that overload this function. It's provided
+        in the signature here so it can be set by a caller without regard for the guest architecture.
         '''
         reg = self._get_ret_val_reg(cpu, convention)
         return self.set_reg(cpu, reg, val)
@@ -202,10 +208,13 @@ class PandaArch():
         word_size = int(self.panda.bits/8)
 
         for word_idx in range(words):
-            val_b = self.panda.virtual_memory_read(cpu, base_reg_val+word_idx*word_size, word_size)
-            val = int.from_bytes(val_b, byteorder='little')
-            print("[{}+0x{:0>2x} == 0x{:0<8x}]: 0x{:0<8x}".format(base_reg_s, word_idx*word_size, base_reg_val+word_idx*word_size, val), end="\t")
-            telescope(self.panda, cpu, val)
+            try:
+                val_b = self.panda.virtual_memory_read(cpu, base_reg_val+word_idx*word_size, word_size)
+                val = int.from_bytes(val_b, byteorder='little')
+                print("[{}+0x{:0>2x}] == 0x{:0<8x}]: 0x{:0<8x}".format(base_reg_s, word_idx*word_size, base_reg_val+word_idx*word_size, val), end="\t")
+                telescope(self.panda, cpu, val)
+            except ValueError:
+                print("[{}+0x{:0>2x}] == [memory read error]".format(base_reg_s, word_idx*word_size))
 
     def dump_state(self, cpu):
         """
@@ -417,6 +426,22 @@ class MipsArch(PandaArch):
         looks up where ret will go
         '''
         return self.get_reg(env, "RA")
+
+    def set_retval(self, cpu, val, convention='default', failure=False):
+        '''
+        Overloaded function so when convention is syscall, user can control
+        the A3 register (which indicates syscall success/failure) in addition
+        to syscall return value.
+
+        When convention == 'syscall', failure = False means A3 will bet set to 0,
+        otherwise it will be set to 1
+
+        '''
+        if convention == 'syscall':
+            # Set A3 register to indicate syscall success/failure
+            self.set_reg(cpu, 'a3', failure)
+
+        return super().set_retval(cpu, val, convention)
 
 class X86Arch(PandaArch):
     '''
