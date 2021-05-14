@@ -199,7 +199,7 @@ class PandaArch():
         if base_reg_val == 0:
             print("[WARNING: no stack pointer]")
             return
-        word_size = int(self.panda.bits/4)
+        word_size = int(self.panda.bits/8)
 
         for word_idx in range(words):
             val_b = self.panda.virtual_memory_read(cpu, base_reg_val+word_idx*word_size, word_size)
