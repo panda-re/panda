@@ -589,8 +589,10 @@ void afl_request_tsl(CPUArchState *env, target_ulong pc, target_ulong cb, uint32
   t.tb.pc      = pc;
   t.tb.cs_base = cb;
   t.tb.flags   = flags;
-  t.tb.hflags  = env->hflags;
-  t.tb.btarget = env->btarget;
+  if (env) {
+    t.tb.hflags  = env->hflags;
+    t.tb.btarget = env->btarget;
+  }
   t.cmd        = cmd;
 
   if ( cmd == TRANSLATE && last_tb != NULL)
