@@ -28,6 +28,7 @@ extern int aflEnableTicks;
 extern int aflStart;
 extern int aflDebug;
 extern int aflGotLog;
+extern int aflFastExit;
 extern target_ulong afl_start_code, afl_end_code;
 extern unsigned char afl_fork_child;
 extern int afl_wants_cpu_to_stop;

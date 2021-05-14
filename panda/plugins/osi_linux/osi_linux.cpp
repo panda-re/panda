@@ -17,6 +17,7 @@
 #include "panda/plugin_plugin.h"
 #include "osi/osi_types.h"
 #include "osi/os_intro.h"
+#include "osi/osi_int_fns.h"
 #include "utils/kernelinfo/kernelinfo.h"
 #include "osi_linux.h"
 #include "syscalls2/syscalls_ext_typedefs.h"

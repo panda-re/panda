@@ -85,6 +85,7 @@ int aflStart = 0;               /* we've started fuzzing */
 int aflDebug = 0;               /* Debug AFL */
 int aflEnableTicks = 0;         /* re-enable ticks for each test */
 int aflGotLog = 0;              /* we've seen dmesg logging */
+int aflFastExit = 0;              /* we've seen dmesg logging */
 
 /* from command line options */
 const char *aflFile = "/tmp/work";
@@ -298,6 +299,11 @@ void afl_forkserver(CPUArchState *env) {
       AFL_DPRINTF("Invalid persistent mode count\n");
       exit(3);
     }
+  }
+
+  if (getenv("SHANNON_FAST_EXIT")) {
+    aflFastExit = 1;
+    AFL_DPRINTF("Fast exit mode active\n");
   }
 
 #define AFL_PERSISTENT_CRASHLOG
@@ -528,7 +534,10 @@ void afl_persistent_stop(void) {
     } else {
 
       afl_area_ptr = dummy;
-      _exit(0);
+      if (aflFastExit)
+        _exit(0);
+      else
+        exit(0);
 
     }
 
