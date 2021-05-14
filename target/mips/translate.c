@@ -20701,6 +20701,7 @@ void gen_intermediate_code(CPUMIPSState *env, struct TranslationBlock *tb)
     int is_slot;
 
     pc_start = tb->pc;
+    gen_aflBBlock(pc_start);
     next_page_start = (pc_start & TARGET_PAGE_MASK) + TARGET_PAGE_SIZE;
     ctx.pc = pc_start;
     ctx.saved_pc = -1;
