@@ -150,14 +150,14 @@ typedef struct RR_log_t {
 RR_log_entry* rr_get_queue_head(void);
 
 static inline uint64_t rr_get_guest_instr_count(void) {
-    assert(first_cpu);
-    return first_cpu->rr_guest_instr_count;
+    assert(current_cpu);
+    return current_cpu->rr_guest_instr_count;
 }
 
 //mz program execution state
 static inline RR_prog_point rr_prog_point(void) {
     RR_prog_point ret = {0};
-    ret.guest_instr_count = first_cpu->rr_guest_instr_count;
+    ret.guest_instr_count = current_cpu->rr_guest_instr_count;
     return ret;
 }
 

@@ -193,8 +193,8 @@ void panda_restore(void *opaque) {
 
     migration_incoming_state_destroy();
 
-    first_cpu->rr_guest_instr_count = checkpoint->guest_instr_count;
-    first_cpu->panda_guest_pc = panda_current_pc(first_cpu);
+    current_cpu->rr_guest_instr_count = checkpoint->guest_instr_count;
+    current_cpu->panda_guest_pc = panda_current_pc(current_cpu);
     rr_nondet_log->bytes_read = checkpoint->nondet_log_position;
     fseek(rr_nondet_log->fp, checkpoint->nondet_log_position, SEEK_SET);
     rr_queue_head = rr_queue_tail = NULL;
@@ -207,7 +207,7 @@ void panda_restore(void *opaque) {
     rr_next_progress = checkpoint->next_progress;
 
     // XXX: first_cpu->jmp_env always evaluate to true - says clang
-    if (qemu_in_vcpu_thread() && first_cpu->jmp_env) {
-        cpu_loop_exit(first_cpu);
+    if (qemu_in_vcpu_thread() && current_cpu->jmp_env) {
+        cpu_loop_exit(current_cpu);
     }
 }

@@ -269,6 +269,7 @@ static ssize_t uninterrupted_read(int fd, void *buf, size_t cnt)
 
 /**//* All right, let's await orders... */
 
+extern CPUState *aflCurrentCPU; // alyssa loves you
 
 void afl_forkserver(CPUArchState *env) {
 
@@ -457,9 +458,14 @@ void afl_forkserver(CPUArchState *env) {
 
     if (write(FORKSRV_FD + 1, &child_pid, 4) != 4) exit(5);
 
+    CPUState *old_current_cpu = current_cpu;
+    current_cpu = aflCurrentCPU;
+
     /* Collect translation requests until child dies and closes the pipe. */
 
     afl_wait_tsl(env, t_fd[0]);
+
+    current_cpu = old_current_cpu;
 
     /* Get and relay exit status to parent. */
 

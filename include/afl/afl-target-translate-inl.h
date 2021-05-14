@@ -5,6 +5,7 @@
 extern u8 * shared_buf;
 extern u32 *shared_buf_len;
 extern u8   sharedmem_fuzzing;
+CPUState *aflCurrentCPU;
 
 void gen_aflBBlock(target_ulong pc);
 
@@ -37,6 +38,7 @@ static target_ulong startForkserver(CPUArchState *env, target_ulong enableTicks,
     //AFL_DPRINTF("State at start work: 0x%x\n", afl_state_var);
     aflEnableTicks = enableTicks;
     afl_wants_cpu_to_stop = 1;
+    aflCurrentCPU = current_cpu;
     // set by calling process now
     //afl_persistent_cnt = persistent;
 #endif

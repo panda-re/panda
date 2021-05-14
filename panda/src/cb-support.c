@@ -178,7 +178,7 @@ void PCB(before_find_fast)(void) {
         }
     }
     if (panda_flush_tb()) {
-        tb_flush(first_cpu);
+        tb_flush(current_cpu);
     }
 }
 bool PCB(after_find_fast)(CPUState *cpu, TranslationBlock *tb,
