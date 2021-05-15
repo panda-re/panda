@@ -2719,9 +2719,6 @@ class Panda():
                 return
             type_num = getattr(self.libpanda, "PANDA_CB_"+cb_type.upper())
 
-            # Inform the plugin that it has a new breakpoint at addr
-            hook_cb_passed = hook_cb_type(fun)
-
             if debug:
                 print("Registering breakpoint at 0x{:x} -> {} == {}".format(addr, fun, 'cdata_cb'))
 
