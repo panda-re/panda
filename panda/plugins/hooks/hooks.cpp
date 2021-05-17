@@ -267,11 +267,62 @@ bool cb_ ## NAME ## _callback PASSED_ARGS { \
 void cb_tcg_codegen_middle_filter(CPUState* cpu, TranslationBlock *tb) {
     HOOK_GENERIC_RET_EXPR(/*printf("calling %llx from %llx with hook %llx guest_pc %llx\n", (long long unsigned int) panda_current_pc(cpu), (long long unsigned int)tb->pc, (long long unsigned int)h->addr, (long long unsigned int)cpu->panda_guest_pc);*/ (*(h->cb.before_tcg_codegen))(cpu, tb, h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, panda_current_pc(cpu) );
 }
-
 void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
-    //target_ulong pc  = panda_current_pc(cpu);
-    
-    HOOK_GENERIC_RET_EXPR(TCGOp *op = find_guest_insn_by_addr(h->addr);insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, tb->pc)
+    if (unlikely(! temp_before_tcg_codegen_hooks.empty())){
+        for (auto &h: temp_before_tcg_codegen_hooks) {
+            before_tcg_codegen_hooks[h.asid].insert(h);
+        }
+        temp_before_tcg_codegen_hooks.clear();
+    }
+    if (unlikely(before_tcg_codegen_hooks.empty())){
+        panda_disable_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, before_tcg_codegen_callback);
+    }
+    bool in_kernel = panda_in_kernel(cpu);
+    struct hook hook_container;
+    set<target_ulong> inserted_addresses;
+    memset(&hook_container, 0, sizeof(hook_container));
+    hook_container.addr = tb->pc;
+    TCGOp *first_instr = NULL;
+    for (auto a : before_tcg_codegen_hooks){
+        target_ulong asid = a.first;
+        set<struct hook>::iterator it;
+        hook_container.asid = asid;
+        it = before_tcg_codegen_hooks[asid].lower_bound(hook_container); 
+        while(it != before_tcg_codegen_hooks[asid].end() && it->addr < tb->pc + tb->size){
+            auto h = (hook*)&(*it);
+            if (likely(h->enabled)){
+                if (h->asid == asid){ 
+                    if (h->km == MODE_ANY || (in_kernel && h->km == MODE_KERNEL_ONLY) || (!in_kernel && h->km == MODE_USER_ONLY)){
+                        auto exclude = inserted_addresses.find(h->addr);
+                        if (exclude == inserted_addresses.end()){
+                            TCGOp* op = NULL;
+                            if (h->addr == tb->pc){
+                                if (!first_instr) {
+                                    first_instr = find_first_guest_insn();
+                                }
+                                op = first_instr;
+                            }else{
+                                op = find_guest_insn_by_addr(h->addr);
+                            }
+                            if (op != NULL){
+                                insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb);
+                                inserted_addresses.insert(h->addr);
+                                //printf("op inserted correctly\n");
+                            }else{
+                                //printf("Couldn't insert with " TARGET_PTR_FMT "\n", h->addr);
+                                //hooks_flush_pc(tb->pc);
+                            }
+                        }                        /*memcpy((void*)&(*it), (void*)&h, sizeof(struct hook));*/
+                    }
+                } 
+            }else{
+                printf("erasing hook\n");
+                it = before_tcg_codegen_hooks[asid].erase(it);
+                continue;
+            }
+            ++it;
+        }
+    }
 }
 
 
