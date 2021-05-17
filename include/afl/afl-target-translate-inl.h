@@ -363,8 +363,11 @@ void helper_aflInterceptPanic(void)
     }
 
 #endif
-
-    abort();
+    if(aflFastExit) {
+        abort();
+    } else {
+        exit(-1);
+    }
 
 }
 
