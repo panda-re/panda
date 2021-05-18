@@ -67,7 +67,7 @@ class Ioctl():
         do_ioctl_init(panda)
         self.cmd = ffi.new("union IoctlCmdUnion*")
         self.cmd.asUnsigned32 = cmd
-        self.original_ret_code = None
+        self.original_ret_code = panda.arch.get_retval(cpu)
         self.osi = use_osi_linux
         self._cpu = cpu
         self._panda = panda
@@ -97,37 +97,21 @@ class Ioctl():
             self.proc_name = None
             self.file_name = None
 
-    def mutate_ret_code(self, newcode):
-        '''
-        TODO: other arches, currently just arm
-        '''
-        self.get_ret_code()
-        self._cpu.env_ptr.regs[self._panda.arch.registers['R0']] = newcode
-
-    def mutate_buffer(self, newbuff):
-        '''
-        TODO: other arches, currently just arm
-        '''
-        self._panda.virtual_memory_write(self._cpu, self.guest_ptr, newbuff)
-
-    def get_ret_code(self):
+    def mutate_ret_code(self, new_code):
 
         '''
-        Helper retrive original return code, handles arch-specifc ABI
+        Overwrite ioctl return code
         '''
 
-        panda = self._panda
-        cpu = self._cpu
+        self._panda.arch.set_retval(self._cpu, new_code)
 
-        if panda.arch_name == "mipsel" or panda.arch_name == "mips":
-            # Note: return values are in $v0, $v1 (regs 2 and 3 respectively), but here we only use first
-            self.original_ret_code = panda.from_unsigned_guest(cpu.env_ptr.active_tc.gpr[2])
-        elif panda.arch_name == "aarch64":
-            self.original_ret_code = panda.from_unsigned_guest(cpu.env_ptr.xregs[0])
-        elif panda.arch_name == "ppc":
-            raise RuntimeError("PPC currently unsupported!")
-        else: # x86/x64/ARM
-            self.original_ret_code = panda.from_unsigned_guest(cpu.env_ptr.regs[0])
+    def mutate_buffer(self, new_buff):
+
+        '''
+        Overwrite ioctl return buffer
+        '''
+
+        self._panda.virtual_memory_write(self._cpu, self.guest_ptr, new_buff)
 
     def __str__(self):
 
@@ -211,22 +195,13 @@ class IoctlFaker():
         def ioctl_faker_on_sys_ioctl_return(cpu, pc, fd, cmd, arg):
 
             ioctl = Ioctl(self._panda, cpu, fd, cmd, arg, self.osi)
-            ioctl.get_ret_code()
 
             # Modify
             if (self.intercept_all_non_zero and ioctl.original_ret_code != 0) or \
                 ioctl.original_ret_code in self.intercept_ret_vals and \
                         (ioctl.file_name, ioctl.cmd.bits.cmd_num) not in self.ignore: # Allow ignoring specific commands on specific files
 
-                if panda.arch_name == "mipsel" or panda.arch_name == "mips":
-                    cpu.env_ptr.active_tc.gpr[2] = 0
-                elif panda.arch_name == "aarch64":
-                    cpu.env_ptr.xregs[0] = 0
-                elif panda.arch_name == "ppc":
-                    raise RuntimeError("PPC currently unsupported!")
-                else: # x86/x64/ARM
-                    cpu.env_ptr.regs[0] = 0
-
+                ioctl.mutate_ret_code(0)
                 self._forced_returns.add(ioctl)
 
                 if ioctl.has_buf and self._log:

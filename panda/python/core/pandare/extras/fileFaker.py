@@ -17,7 +17,7 @@ if __name__ == '__main__': # Script run directly
     from pandare.extras import FileHook
 else: # Load from module
     from .fileHook import FileHook
-    from .ioctl_faker import Ioctl
+    from .ioctlFaker import Ioctl
 
 from pandare.ffi_importer import ffi
 from math import ceil
