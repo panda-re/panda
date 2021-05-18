@@ -155,7 +155,7 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
 
     // p->ppid = taskd->real_parent->pid
     err = struct_get(cpu, &p->ppid, task_addr,
-                     {ki.task.real_parent_offset, ki.task.pid_offset});
+                     {ki.task.real_parent_offset, ki.task.tgid_offset});
 
     // Convert asid to physical to be able to compare it with the pgd register.
     p->asid = p->asid ? panda_virt_to_phys(cpu, p->asid) : (target_ulong) NULL;
