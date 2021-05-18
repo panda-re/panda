@@ -316,7 +316,7 @@ void helper_aflInterceptLog(CPUArchState *env)
 
 void helper_aflInterceptPanic(void)
 {
-    if(!aflStart)
+    if(!aflStart && !afl_panic_exit_always)
         return;
 
 

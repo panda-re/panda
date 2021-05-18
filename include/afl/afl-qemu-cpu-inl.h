@@ -73,6 +73,8 @@ unsigned int afl_persistent_cnt;
 unsigned char is_persistent;
 unsigned char persistent_first_pass = 1;
 
+unsigned int afl_panic_exit_always = 0;
+
 /* big_endian32(length); Value */
 uint8_t *afl_persistent_cache;
 uint8_t *afl_persistent_cache_pos;
@@ -233,6 +235,10 @@ void afl_setup(void) {
     afl_start_code = 0;
     afl_end_code   = (target_ulong)-1;
 
+  }
+
+  if (getenv("AFL_PANIC_EXIT_ALWAYS")) {
+    afl_panic_exit_always = 1;
   }
 
 }
