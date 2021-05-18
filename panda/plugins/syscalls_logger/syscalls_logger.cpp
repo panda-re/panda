@@ -42,6 +42,7 @@ std::vector<void*> tmp_single_ptrs;
 std::vector<void*> tmp_double_ptrs;
 bool did_call_warning;
 const char* target_process = NULL;
+target_ulong last_pid = 0;
 
 // Read a string from guest memory
 int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
@@ -62,6 +63,34 @@ int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
         assert(rv != -1);
     }
     return len;
+}
+
+int is_likely_string(CPUState *cpu, target_ulong addr) {
+    // Returns strlen or -1 if unlikely to be a string
+    int len = 0;
+    uint8_t buf[MAX_STRLEN];
+    while (len < MAX_STRLEN) {
+        int rv = panda_virtual_memory_read(cpu, addr + len, (uint8_t*) (buf+len), 1);
+        if (rv == -1) break;
+        if (buf[len] == 0) break;
+        len++;
+    }
+
+    // We just read up to len with no null bytes - If they're all printable we return len
+    int printable_count = 0;
+    for (int i=0; i < len; i++) {
+        if (std::isprint(buf[i])) {
+            printable_count++;
+        }else{
+            break;
+        }
+    }
+    // Keeping this as a seprate loop so we can tune it to something other than 100% printable if we want
+    // if all printable up to null, say it's a string. if it's a null byte that's printable (empty string)
+    if (len==printable_count) {
+        return len;
+    }
+    return -1;
 }
 
 // Validate string
@@ -374,7 +403,16 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
     // Here we analyze the DWARFINFO we have to determine the type of a struct
 
     int mcount = sdef.members.size();
-    bool null_ptr_err = (saddr == 0);
+
+    if (saddr == 0) {
+        // Null pointer - if logging to pandalog, return NULL
+        // or if logging to stdout write NULL
+
+        if (!pandalog) {
+            std::cout << "NULL";
+        }
+        return NULL;
+    }
 
     Panda__StructData *sdata = NULL;
 
@@ -397,7 +435,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
         ReadableDataType mdef = sdef.members[i];
         target_ulong maddr = saddr + mdef.offset_bytes;
 
-        if (mdef.struct_name.find(std::string("__unused")) != std::string::npos) {
+        if (mdef.name.find(std::string("__unused")) != std::string::npos || mdef.name.find(std::string("__pad")) != std::string::npos) {
             // some names we get from the dwarf info are __unusedX and we don't really want to log those
             continue;
         }
@@ -437,10 +475,8 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
                 } else {
                     struct_logger(cpu, maddr, it->second, pandalog, (recursion_limit - 1));
                 }
-            } else if (null_ptr_err) {
-                error ="read failed, SC2 returned a NULL pointer (bug)";
             } else {
-                error ="read failed, unknown embeddded struct";
+                error ="read failed, unknown embeddded struct (embedded struct)";
             }
 
         // Recursive - member is pointer to struct
@@ -456,10 +492,8 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
                 } else {
                     struct_logger(cpu, addr, it->second, pandalog, (recursion_limit - 1));
                 }
-            } else if (null_ptr_err) {
-                error ="read failed, SC2 returned a NULL pointer (bug)";
             } else {
-                error ="read failed, unknown embeddded struct";
+                error = "read failed, unknown embeddded struct (struct ptr)";
             }
 
         // Recursive - member is double pointer to struct
@@ -480,10 +514,8 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
                 } else {
                     struct_logger(cpu, addr_2, it->second, pandalog, (recursion_limit - 1));
                 }
-            } else if (null_ptr_err) {
-                error ="read failed, SC2 returned a NULL pointer (bug)";
             } else {
-                error ="read failed, unknown embeddded struct";
+                error = "read failed, unknown embeddded struct (double ptr)";
             }
 
         // Non-recursive - member is a non-struct data type
@@ -495,10 +527,8 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
                 auto data = read_result.second;
                 // Note we pass M which will be null if pandalog = false
                 set_data(m, mdef, data);
-            } else if (null_ptr_err) {
-                error ="read failed, SC2 returned a NULL pointer (bug)";
             } else {
-                error = "read failed, unknown embeddded struct";
+                error = "read failed, unknown embeddded struct (non-recursive)";
             }
         }
 
@@ -564,20 +594,12 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
             auto it = struct_hashtable.find(call->argtn[i]);
 
             if (it != struct_hashtable.end()) {
-
                 StructDef sdef = it->second;
-
-                if (!ptr_val) {
-                    std::cerr << "[WARNING] syscalls_logger: SC2 returned NULL pointer for "
-                        << "\'" << call->name << "\' argument "
-                        << "\'" <<  call->argn[i] << "\'"
-                        << "(type: \'" <<  call->argtn[i] << "\')"
-                        << std::endl;
-                }
+                // Note pointer may be null - that's allowed for some syscalls with structs - handled in struct_logger
 
                 if (sa) {
                     sa->struct_type = strdup(call->argtn[i]);
-                    sa->struct_data = struct_logger(cpu, ptr_val, sdef, true, STRUCT_RECURSION_LIMIT);
+                    sa->struct_data = struct_logger(cpu, ptr_val, sdef, true, STRUCT_RECURSION_LIMIT); // NULL if ptr_val == 0
                 }else{
                     struct_logger(cpu, ptr_val, sdef, false, STRUCT_RECURSION_LIMIT);
                 }
@@ -606,28 +628,36 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
                 sa->has_ptr = true;
             } else {
-                // Special cases - read/write - dump as a string
-                if (strcmp(call->name, "read") == 0 || strcmp(call->name, "write") == 0) {
+                // Try reading as a string - if we get a null terminated character within MAX_STRLEN chars and the rest is printable then print as a string
+                // otherwise just print the pointer
+                //
+                // TOOD: would be better to look for a size_t argument somewhere else or an arg named size/len and try using that
+                target_ulong addr = *((target_ulong *)rp->args[i]);
+                int strlen = is_likely_string(cpu, addr);
+                if (strlen == 0) {
+                    std::cout << "NULL";
+                }else if (strlen > 0) {
                     uint8_t buf[MAX_STRLEN];
-                    target_ulong addr = *((target_ulong *)rp->args[i]);
-                    int len = get_string(cpu, addr, buf);
-                    if (len == 0) {
-                        std::cout << "NULL";
-                    }else{
-                        std::cout << "\"" << (const char*)buf << "\"";
-                    }
-                }else{
-                    std::cout << "buf ptr[" << std::hex << (*((target_ulong *) rp->args[i])) << "]";
+                     get_string(cpu, addr, buf);
+                    std::cout << "\"" << (const char*)buf << "\"";
+                }else {
+                    std::cout << "0x" << std::hex << (*((target_ulong *) rp->args[i]));
                 }
             }
             break;
 
+        // TODO: the following cases are all nearly the same except the type and file names- would be good to macroize them
         case SYSCALL_ARG_U64:
             if (sa) {
                 sa->u64 = (uint64_t) *((target_ulong *) rp->args[i]);
                 sa->has_u64 = true;
             } else {
-                std::cout << "0x" << (*((uint64_t *) rp->args[i]));
+                if (*((uint64_t *) rp->args[i]) > 10) {
+                  std::cout << std::hex << "0x";
+                }else{
+                  std::cout << std::dec;
+                }
+                std::cout << (*((uint64_t *) rp->args[i]));
             }
             break;
 
@@ -636,7 +666,12 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 sa->u32 = *((uint32_t *) rp->args[i]);
                 sa->has_u32 = true;
             }else {
-                std::cout << "0x" << (*((uint32_t *) rp->args[i]));
+                if (*((uint32_t *) rp->args[i]) > 10) {
+                  std::cout << std::hex << "0x";
+                }else{
+                  std::cout << std::dec;
+                }
+                std::cout << (*((uint32_t *) rp->args[i]));
             }
             break;
 
@@ -645,7 +680,12 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 sa->u16 = (uint32_t) *((uint16_t *) rp->args[i]);
                 sa->has_u16 = true;
             } else {
-                std::cout << "0x" << (*((uint16_t *) rp->args[i]));
+                if (*((uint16_t *) rp->args[i]) > 10) {
+                  std::cout << std::hex << "0x";
+                }else{
+                  std::cout << std::dec;
+                }
+                std::cout << (*((uint16_t *) rp->args[i]));
             }
             break;
 
@@ -654,7 +694,12 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 sa->i64 = *((int64_t *) rp->args[i]);
                 sa->has_i64 = true;
             } else {
-                std::cout << "0x" << (*((int64_t *) rp->args[i]));
+                if (*((int64_t *) rp->args[i]) > 10) {
+                  std::cout << std::hex << "0x";
+                }else{
+                  std::cout << std::dec;
+                }
+                std::cout << (*((int64_t *) rp->args[i]));
             }
             break;
 
@@ -663,7 +708,12 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 sa->i32 = *((int32_t *) rp->args[i]);
                 sa->has_i32 = true;
             } else {
-                std::cout <<"0x" << (*((int32_t *) rp->args[i]));
+                if (*((int32_t *) rp->args[i]) > 10) {
+                  std::cout << std::hex << "0x";
+                }else{
+                  std::cout << std::dec;
+                }
+                std::cout << (*((int32_t *) rp->args[i]));
             }
             break;
 
@@ -672,7 +722,12 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 sa->i16 = (int32_t) *((int16_t *) rp->args[i]);
                 sa->has_i16 = true;
             } else {
-                std::cout << "0x" << (*((int16_t *) rp->args[i]));
+                if (*((int16_t *) rp->args[i]) > 10) {
+                  std::cout << std::hex << "0x";
+                }else{
+                  std::cout << std::dec;
+                }
+                std::cout << (*((int16_t *) rp->args[i]));
             }
             break;
 
@@ -763,11 +818,20 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
             std::cout << "proc [pid=" << current->pid << ",ppid=" << current->ppid
                  << ",tid=" << othread->tid << ",create_time=" << current->create_time
                  << ",name=" << current->name << "]" << std::endl;
+        }else{
+            // if tracing one target with multiple pids, log on changes
+            if (current->pid != last_pid) {
+                if (last_pid != 0) {
+                    // Skip initial log, like strace
+                    std::cout << "[pid = " << std::dec << current->pid << "]" << std::endl;
+                }
+                last_pid = current->pid;
+            }
         }
 
         target_long retval = get_syscall_retval(cpu);
 
-        // Skip past sys_
+        // Print name (skip past sys_ prefix)
         std::cout << call->name+4 << "(";
 
         for (int i = 0; i < call->nargs; i++) {
@@ -776,7 +840,14 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
             }
             log_argument(cpu, call, i, NULL, rp);
         }
-        std::cout << ") => 0x" << std::hex << retval << std::endl;
+
+        std::cout << ") =>";
+        if (retval > 10) {
+          std::cout << std::hex << "0x";
+        }else{
+          std::cout << std::dec;
+        }
+        std::cout << retval << std::endl;
     }
 }
 
