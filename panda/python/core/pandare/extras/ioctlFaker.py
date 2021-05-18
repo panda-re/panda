@@ -62,12 +62,13 @@ class Ioctl():
 
         '''
         Do unpacking, optionally using OSI for process and file name info.
+        Note: this assumes it's called at "on_sys_ioctl_return" and ret code is retrieveable from current CPU
         '''
 
         do_ioctl_init(panda)
         self.cmd = ffi.new("union IoctlCmdUnion*")
         self.cmd.asUnsigned32 = cmd
-        self.original_ret_code = panda.arch.get_retval(cpu)
+        self.original_ret_code = panda.from_unsigned_guest(panda.arch.get_retval(cpu))
         self.osi = use_osi_linux
         self._cpu = cpu
         self._panda = panda
@@ -262,6 +263,15 @@ if __name__ == "__main__":
         # Check faker's results
         faked_rets = ioctl_faker.get_forced_returns()
         normal_rets = ioctl_faker.get_unmodified_returns()
+
+        print("Normal ioctls:")
+        for ir in normal_rets:
+            print(ir)
+
+        print("Faked ioctls:")
+        for ir in faked_rets:
+            print(ir)
+
         assert(len(faked_rets)), "No returns faked"
         assert(len(normal_rets)), "No normal returns"
         panda.end_analysis()
