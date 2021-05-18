@@ -140,18 +140,6 @@ void add_symbol_hook(struct symbol_hook* h){
     }
 }
 
-bool set_contains_struct(unordered_map<target_ulong, set<struct hook>> vh, struct hook* new_hook){
-    return vh[new_hook->asid].find(*new_hook) != vh[new_hook->asid].end();
-}
-
-bool vector_contains_struct(vector<struct hook> vh, struct hook* new_hook){
-    for (auto &h: vh){
-        if (memcmp(&h, new_hook, sizeof(struct hook)) == 0){
-            return true;
-        }}
-    return false;
-}
-
 #define ADD_CALLBACK_TYPE(TYPE, TYPE_UPPER) \
     case PANDA_CB_ ## TYPE_UPPER: \
         temp_## TYPE ## _hooks.push_back(*h); \
@@ -292,7 +280,7 @@ void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
     memset(&hook_container, 0, sizeof(hook_container));
     hook_container.addr = tb->pc;
     TCGOp *first_instr = NULL;
-    for (auto a : before_tcg_codegen_hooks){
+    for (auto& a : before_tcg_codegen_hooks){
         target_ulong asid = a.first;
         set<struct hook>::iterator it;
         hook_container.asid = asid;

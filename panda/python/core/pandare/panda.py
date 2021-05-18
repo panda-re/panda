@@ -2494,7 +2494,7 @@ class Panda():
         if not enabled: # Note the registered_callbacks dict starts with enabled true and then we update it to false as necessary here
             self.disable_callback(name)
 
-        if "block" in cb.name:
+        if "block" in cb.name and "start" not in cb.name and "end" not in cb.name:
             if not self.disabled_tb_chaining:
                 print("Warning: disabling TB chaining to support {} callback".format(cb.name))
                 self.disable_tb_chaining()
@@ -2718,9 +2718,6 @@ class Panda():
                 print("function type not supported")
                 return
             type_num = getattr(self.libpanda, "PANDA_CB_"+cb_type.upper())
-
-            # Inform the plugin that it has a new breakpoint at addr
-            hook_cb_passed = hook_cb_type(fun)
 
             if debug:
                 print("Registering breakpoint at 0x{:x} -> {} == {}".format(addr, fun, 'cdata_cb'))
