@@ -2699,14 +2699,14 @@ class Panda():
 
     ############# HOOKING MIXINS ###############
 
-    def hook(self, addr, enabled=True, kernel=None, asid=None, cb_type="before_tcg_codegen"):
+    def hook(self, addr, enabled=True, kernel=None, asid=None, cb_type="start_block_exec"):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
         '''
 
         def decorator(fun):
-            if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec":
+            if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec" or cb_type == "start_block_exec" or cb_type == "end_block_exec":
                 hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , struct hook *)")
             elif cb_type == "after_block_exec":
                 hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , uint8_t, struct hook *)")
@@ -2762,7 +2762,7 @@ class Panda():
         return decorator
 
 
-    def hook_symbol(self, libraryname, symbol, kernel=False, name=None, cb_type="before_tcg_codegen"):
+    def hook_symbol(self, libraryname, symbol, kernel=False, name=None, cb_type="start_block_exec"):
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
@@ -2772,7 +2772,7 @@ class Panda():
             symbol (string, int): Name of symbol or offset into library to hook
             kernel (bool): if hook should be applied exclusively in kernel mode
             name (string): name of hook, defaults to function name
-            cb_type (string): callback-type, defaults to before_tcg_codegen
+            cb_type (string): callback-type, defaults to start_block_exec
 
         Returns:
             None: Decorated function is called when (before/after is determined by cb_type) guest goes to call
@@ -2780,7 +2780,7 @@ class Panda():
         '''
 
         def decorator(fun):
-            if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec":
+            if cb_type == "before_tcg_codegen" or cb_type == "after_block_translate" or cb_type == "before_block_exec" or cb_type == "start_block_exec" or cb_type == "end_block_exec":
                 hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , struct hook *)")
             elif cb_type == "after_block_exec":
                 hook_cb_type = self.ffi.callback("void(CPUState*, TranslationBlock* , uint8_t, struct hook *)")
@@ -2811,6 +2811,7 @@ class Panda():
                     symbolname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
                 else:
                     symbolname_ffi = self.ffi.new("char[]",bytes(symbol,"utf-8"))
+                    new_hook.hook_offset = False
             else:
                 symbolname_ffi = self.ffi.new("char[]",bytes("\x00\x00\x00\x00","utf-8"))
             self.ffi.memmove(new_hook.name,symbolname_ffi,len(symbolname_ffi))

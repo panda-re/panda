@@ -6282,8 +6282,8 @@ void syscall_enter_switch_freebsd_x64(CPUState *cpu, target_ptr_t pc) {
 		struct hook h;
 		h.addr = ctx.retaddr;
 		h.asid = ctx.asid;
-		h.cb.before_tcg_codegen = hook_syscall_return;
-		h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
+		h.cb.start_block_exec = hook_syscall_return;
+		h.type = PANDA_CB_START_BLOCK_EXEC;
 		h.enabled = true;
 		h.km = MODE_ANY; //you'd expect this to be user only
 		hooks_add_hook(&h);
