@@ -1,17 +1,17 @@
 name: Parallel Tests
-# For PRs to master or pushes that modify the root Dockerfile, build from scratch
+# For PRs to dev or pushes that modify the root Dockerfile, build from scratch
 # then run CI tests using that container in parallel
 # For forked repos that can't use our self-hosted test suite, just build and run make check
 
 on:
   pull_request:
     branches:
-      - master
+      - dev
       - stable
       - candidate_release_*
   #push:
   #  paths: ['Dockerfile'] # If this file changed, we'd need to do a clean build (this action)
-  #  otherwise we could speed this up by pulling the last container of 'master', copying
+  #  otherwise we could speed this up by pulling the last container of 'dev', copying
   #  code into it, and then rebuilding
 
 jobs:

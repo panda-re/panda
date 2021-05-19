@@ -3,7 +3,8 @@ name: Build and Publish Docker Container and Pypanda Docs # Only for main panda-
 on:
   push:
     branches:
-      - master
+      - dev
+      - stable
 
 jobs:
   build:
