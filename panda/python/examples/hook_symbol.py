@@ -31,13 +31,16 @@ def do_stuff():
 
 stored_buf = b""
 
-@panda.hook_symbol("libc-", "fwrite", procname=program_name)
+@panda.hook_symbol("libc-", "fwrite")
 def hook_fwrite(cpu, tb, h):
-    data_ptr, size_t, count = panda.arch.get_args(cpu, 3)
-    buf = panda.virtual_memory_read(cpu, data_ptr, count*size_t)
-    global stored_buf
-    stored_buf += buf
-    print(f"libc:fwrite called")
+    if program_name in panda.get_process_name(cpu):
+        data_ptr, size_t, count = panda.arch.get_args(cpu, 3)
+        buf = panda.virtual_memory_read(cpu, data_ptr, count*size_t)
+        global stored_buf
+        stored_buf += buf
+        print(f"libc:fwrite called")
+    else:
+        h.enabled = False
 
 panda.run()
 
