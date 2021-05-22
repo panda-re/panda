@@ -27,7 +27,7 @@ encoding, count = ks.asm(CODE, ADDRESS)
 stop_addr = ADDRESS + len(encoding)
 
 panda = Panda("mips",
-        extra_args=["-M", "configurable", "-nographic", '-d', 'int'],
+        extra_args=["-M", "configurable", "-nographic"],
         raw_monitor=True) # Allows for a user to ctrl-a + c then type quit if things go wrong
 
 @panda.cb_after_machine_init
