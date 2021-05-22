@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 from pandare import Panda, ffi
-import capstone
-import keystone
+from capstone import *
+from capstone.mips import *
+from keystone import *
 import os
 
 CODE = b"""
@@ -19,10 +20,9 @@ nop
 addiu $t1, 1  # t1++
 """
 
-#ks = keystone.Ks(keystone.KS_ARCH_MIPS, keystone.KS_MODE_MIPS32)
-ks = keystone.Ks(keystone.KS_ARCH_MIPS, keystone.KS_MODE_MIPS32 + keystone.KS_MODE_BIG_ENDIAN)
+ks = Ks(KS_ARCH_MIPS,KS_MODE_MIPS32 + KS_MODE_BIG_ENDIAN)
 
-ADDRESS = 0x80000000#0x1000
+ADDRESS = 0x1000
 encoding, count = ks.asm(CODE, ADDRESS)
 stop_addr = ADDRESS + len(encoding)
 
@@ -51,7 +51,7 @@ def setup(cpu):
 # Always run insn_exec
 panda.cb_insn_translate(lambda x,y: True)
 
-md = capstone.Cs(capstone.CS_ARCH_MIPS, 4) # misp32
+md = Cs(CS_ARCH_MIPS, CS_MODE_MIPS32+ CS_MODE_BIG_ENDIAN) # misp32
 @panda.cb_insn_exec
 def on_insn(cpu, pc):
     '''
@@ -64,7 +64,7 @@ def on_insn(cpu, pc):
         print("Register t1 contains:", hex(panda.arch.get_reg(cpu,'t1')))
         os._exit(0) # TODO: we need a better way to stop here
 
-    code = panda.virtual_memory_read(cpu, pc, 12)
+    code = panda.virtual_memory_read(cpu, pc, 4)
     for i in md.disasm(code, pc):
         print("0x%x:\t%s\t%s" %(i.address, i.mnemonic, i.op_str))
         break
