@@ -31,7 +31,7 @@ panda_cb tcg_cb;
 
 PPP_CB_BOILERPLATE(on_branch);
 
-void tcg_parse(CPUState *env, TranslationBlock *tb) {
+void tcg_parse(CPUState *env, TranslationBlock *tb, TCGContext *s) {
     // Called after we generated a TCG block but before it's lowered to host ISA
 
     // If the block contains a branch, call out
@@ -46,7 +46,6 @@ void tcg_parse(CPUState *env, TranslationBlock *tb) {
     // Iterate oi until it's last instruction in block
     TCGOp *op;
     int oi;
-    TCGContext *s = &tcg_ctx; // global tcg context
 
     // For each branch in the block - consider flipping it
     size_t idx = 0;

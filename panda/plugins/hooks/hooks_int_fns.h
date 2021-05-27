@@ -2,6 +2,7 @@
 #define __HOOKS_INT_FNS_H__
 
 #include "dynamic_symbols/dynamic_symbols_int_fns.h"
+#include "tcg.h"
 
 extern "C" {
 
@@ -21,7 +22,7 @@ typedef bool (*hook_func_t)(CPUState *, TranslationBlock *, struct hook* h);
 typedef bool (*dynamic_symbol_hook_func_t)(CPUState *, TranslationBlock *, struct hook* h);
 
 typedef union hooks_panda_cb {
-    void (*before_tcg_codegen)(CPUState *env, TranslationBlock *tb, struct hook*);
+    void (*before_tcg_codegen)(CPUState *env, TranslationBlock *tb, TCGContext *s, struct hook*);
     void (*before_block_translate)(CPUState *env, target_ptr_t pc, struct hook*);
     void (*after_block_translate)(CPUState *env, TranslationBlock *tb, struct hook*);
     bool (*before_block_exec_invalidate_opt)(CPUState *env, TranslationBlock *tb, struct hook*);

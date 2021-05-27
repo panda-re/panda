@@ -828,6 +828,7 @@ static uint32_t impossibleToReadPCs = 0;
 
 // Check if the instruction is sysenter (0F 34),
 // syscall (0F 05) or int 0x80 (CD 80)
+// Returns program counter of syscall
 target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb) {
 #if defined(TARGET_I386)
     unsigned char buf[2] = {};
@@ -935,7 +936,7 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb) {
 }
 
 
-void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
+void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb, TCGContext *s) {
     target_ulong res = doesBlockContainSyscall(cpu,tb);
 #ifdef DEBUG
     if(res == (target_ulong) -1){
@@ -948,8 +949,7 @@ void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
     }
 }
 
-// This will only be called for instructions where the
-// translate_callback returned true
+// A call to this function will be inserted into the TCG stream if the block contains a syscall
 void exec_callback(CPUState *cpu, TranslationBlock *tb, target_ulong pc) {
 #if defined(SYSCALL_RETURN_DEBUG) && defined(TARGET_I386)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;

@@ -80,7 +80,7 @@ static void after_loadvm(CPUState *cpu)
     notify_task_change_observers(cpu);
 }
 
-static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
+static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb, TCGContext *s)
 {
     // Determine if we should instrument.
     if (inst_dels.empty() || !predicate->eval(cpu, tb)) {

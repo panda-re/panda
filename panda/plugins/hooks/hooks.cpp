@@ -265,11 +265,11 @@ bool cb_ ## NAME ## _callback PASSED_ARGS { \
     return ret; \
 }
     
-void cb_tcg_codegen_middle_filter(CPUState* cpu, TranslationBlock *tb) {
-    HOOK_GENERIC_RET_EXPR(/*printf("TCG calling %llx from %llx with hook %llx guest_pc %llx\n", (long long unsigned int) panda_current_pc(cpu), (long long unsigned int)tb->pc, (long long unsigned int)h->addr, (long long unsigned int)cpu->panda_guest_pc); printf("made it to hook %p\n", (void*)h->cb.before_block_exec);*/ (*(h->cb.before_tcg_codegen))(cpu, tb, h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, tb->pc );
+void cb_tcg_codegen_middle_filter(CPUState* cpu, TranslationBlock *tb, TCGContext *s) {
+    HOOK_GENERIC_RET_EXPR(/*printf("TCG calling %llx from %llx with hook %llx guest_pc %llx\n", (long long unsigned int) panda_current_pc(cpu), (long long unsigned int)tb->pc, (long long unsigned int)h->addr, (long long unsigned int)cpu->panda_guest_pc); printf("made it to hook %p\n", (void*)h->cb.before_block_exec);*/ (*(h->cb.before_tcg_codegen))(cpu, tb, s, h);, BEFORE_TCG_CODEGEN, before_tcg_codegen, , < tb->pc + tb->size, tb->pc );
 }
 
-void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
+void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb, TCGContext *s) {
     if (unlikely(! temp_before_tcg_codegen_hooks.empty())){
         for (auto &h: temp_before_tcg_codegen_hooks) {
             before_tcg_codegen_hooks[h.asid].insert(h);
@@ -307,7 +307,7 @@ void cb_before_tcg_codegen_callback (CPUState* cpu, TranslationBlock *tb) {
                                 op = find_guest_insn_by_addr(h->addr);
                             }
                             if (op != NULL){
-                                insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb);
+                                insert_call(&op, cb_tcg_codegen_middle_filter, cpu, tb, s);
                                 inserted_addresses.insert(h->addr);
                             }
                         } 
