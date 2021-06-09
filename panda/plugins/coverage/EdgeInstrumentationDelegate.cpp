@@ -475,7 +475,7 @@ const static std::unordered_map<unsigned int,
 
 EdgeInstrumentationDelegate::EdgeInstrumentationDelegate(
     std::shared_ptr<RecordProcessor<Edge>> ep) : edge_processor(ep)
-                                                , edge_state(new EdgeState())
+                                               , edge_state(new EdgeState())
 {
 #ifdef TARGET_I386
     cs_open(CS_ARCH_X86, CS_MODE_32, &handle32);
@@ -503,10 +503,14 @@ void EdgeInstrumentationDelegate::instrument(CPUState *cpu,
 {
     csh handle = 0;
 #ifdef TARGET_I386
-    handle = handle32;
 #ifdef TARGET_X86_64
-    if ((tb->flags & HF_CS64_SHIFT) & 1) {
+    CPUArchState *env = static_cast<CPUArchState *>(cpu->env_ptr);
+    if ((env->hflags & (1 << HF_LMA_SHIFT)) && (env->hflags & (1 << HF_CS64_SHIFT))) {
         handle = handle64;
+    } else {
+#endif
+        handle = handle32;
+#ifdef TARGET_X86_64
     }
 #endif
 #endif
