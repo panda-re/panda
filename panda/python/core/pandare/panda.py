@@ -861,7 +861,7 @@ class Panda():
             progress("enabling callstack_instr plugin")
             self.load_plugin("callstack_instr")
 
-        callers = ffi.new("uint32_t[%d]" % lim)
+        callers = ffi.new("uint%d_t[%d]" % (self.bits, lim))
         n = self.plugins['callstack_instr'].get_callers(callers, lim, cpu)
         c = []
         for pc in callers:
