@@ -33,7 +33,7 @@ jobs:
            git clone https://panda-jenkins-ci:${{ secrets.PANDABOT_GITHUB_API }}@github.com/panda-re/panda-re.github.io.git --branch=master ${GITHUB_WORKSPACE}/auto_pydoc/pandare
 
     - name: Update PYPANDA docs in container
-      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc/:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out/${{GITHUB_REF##*/}} pandare"
+      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc/:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out/${GITHUB_REF##*/} pandare"
       # will put docs in workspace/auto_pydoc/dev/pandare and/or workspace/auto_pydoc/stable/pandare
       # we want to copy /auto_pydoc/dev/pandare to /auto_doc and /auto_pydoc/stable/pandare to /auto_pydoc/stable
     - name: Push PYPANDA docs to GitHub Pages if docs changed
@@ -41,7 +41,7 @@ jobs:
            git config --global user.email "panda-ci@panda-re.mit.edu" &&
            git config --global user.name "PANDA Bot" &&
            git add . &&
-           git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch ${{GITHUB_REF##*/}}" &&
+           git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch ${GITHUB_REF##*/}" &&
            git push || true
 
   build_stable:
@@ -70,7 +70,7 @@ jobs:
            git clone https://panda-jenkins-ci:${{ secrets.PANDABOT_GITHUB_API }}@github.com/panda-re/panda-re.github.io.git --branch=master ${GITHUB_WORKSPACE}/auto_pydoc/pandare
 
     - name: Update PYPANDA docs in container
-      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc/:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out/${{GITHUB_REF##*/}} pandare"
+      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc/:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out/${GITHUB_REF##*/} pandare"
       # will put docs in workspace/auto_pydoc/dev/pandare and/or workspace/auto_pydoc/stable/pandare
       # we want to copy /auto_pydoc/dev/pandare to /auto_doc and /auto_pydoc/stable/pandare to /auto_pydoc/stable
     - name: Push PYPANDA docs to GitHub Pages if docs changed
@@ -78,5 +78,5 @@ jobs:
            git config --global user.email "panda-ci@panda-re.mit.edu" &&
            git config --global user.name "PANDA Bot" &&
            git add . &&
-           git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch ${{GITHUB_REF##*/}}" &&
+           git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch ${GITHUB_REF##*/}" &&
            git push || true
