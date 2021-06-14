@@ -106,7 +106,8 @@ pushd build
 ./i386-softmmu/panda-system-i386 --version | head # Make sure it worked
 progress "PANDA is built and ready to use in panda/build/[arch]-softmmu/panda-system-[arch]."
 
-$SUDO python3 -m pip install ../panda/python/core
+cd ../panda/python/core
+$SUDO python3 setup.py install
 python3 -c "import pandare; panda = pandare.Panda(generic='i386')" # Make sure it worked
 progress "Pypanda successfully installed"
 popd
