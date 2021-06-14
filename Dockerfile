@@ -50,7 +50,8 @@ RUN git -C /panda submodule update --init dtc && \
 
 #### Develop setup: panda built + pypanda installed (in develop mode) - Stage 3
 FROM builder as developer
-RUN python3 -m pip install -e /panda/panda/python/core && \
+RUN cd /panda/panda/python/core && \
+    python3 setup.py develop && \
     ldconfig && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 WORKDIR /panda/
@@ -59,7 +60,8 @@ WORKDIR /panda/
 FROM builder as installer
 RUN  make -C /panda/build install
 # Install pypanda
-RUN python3 -m pip install /panda/panda/python/core
+RUN cd /panda/panda/python/core && \
+    python3 setup.py install
 
 ### Copy files for panda+pypanda from installer  - Stage 5
 FROM base as panda
