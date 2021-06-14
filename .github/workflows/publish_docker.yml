@@ -37,7 +37,7 @@ jobs:
       # will put docs in workspace/auto_pydoc/dev/pandare and/or workspace/auto_pydoc/stable/pandare
       # we want to copy /auto_pydoc/dev/pandare to /auto_doc and /auto_pydoc/stable/pandare to /auto_pydoc/stable
     - name: Push PYPANDA docs to GitHub Pages if docs changed
-      run: cd "${GITHUB_WORKSPACE}/auto_pydoc/" && cp -r ./dev/pandare/* .
+      run: cd "${GITHUB_WORKSPACE}/auto_pydoc/" && cp -r ./dev/pandare/* . &&
            git config --global user.email "panda-ci@panda-re.mit.edu" &&
            git config --global user.name "PANDA Bot" &&
            git add . &&
