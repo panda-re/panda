@@ -74,12 +74,19 @@ bool init_plugin(void *self) {
     #endif
 
     #if (VERSION_MAJOR>=3)
+    #if (VERSION_MAJOR>=4 || VERSION_MINOR>=4)
+    gchar *write_err_info;
+    #endif
     plugin_log = wtap_dump_open(
             tblog_filename,
             WTAP_FILE_TYPE_SUBTYPE_PCAPNG,
             WTAP_UNCOMPRESSED,   // assuming this...
             &wdparams,            // the new structure that wraps all the ng params
-            &err );
+            &err
+    #if (VERSION_MAJOR>=4 || VERSION_MINOR>=4)
+            , &write_err_info
+    #endif
+    );
     #else
     plugin_log = wtap_dump_open_ng(
             /*filename*/tblog_filename,
@@ -109,8 +116,17 @@ void uninit_plugin(void *self) {
     printf("Unloading network plugin.\n");
     panda_free_args(args);
     int err;
+    #if (VERSION_MAJOR>=4 || (VERSION_MAJOR==3 && VERSION_MINOR>=3))
+    wtap_dump_flush(plugin_log, &err);
+    #else
     wtap_dump_flush(plugin_log);
+    #endif
+    #if (VERSION_MAJOR>=4 || (VERSION_MAJOR==3 && VERSION_MINOR>=4))
+    gchar *write_err_info;
+    gboolean ret = wtap_dump_close(plugin_log, &err, &write_err_info);
+    #else
     gboolean ret = wtap_dump_close(plugin_log, &err);
+    #endif
     if (!ret) {
         fprintf(stderr, "Plugin 'network': failed wtap_dump_close() with error %d\n", err);
     }
