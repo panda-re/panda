@@ -857,7 +857,7 @@ class Panda():
         Helper function for callstack_instr plugin
         Handle conversion and return get_callers from callstack_instr.
         '''
-        if not "plugin_callstack_instr" in self.plugins:
+        if not "callstack_instr" in self.plugins:
             progress("enabling callstack_instr plugin")
             self.load_plugin("callstack_instr")
 
