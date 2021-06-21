@@ -24,10 +24,8 @@
 #include <vector>
 #include "taint2_hypercalls.h"
 #include "taint_api.h"
-extern "C" {
 #include "callstack_instr/callstack_instr.h"
 #include "callstack_instr/callstack_instr_ext.h"
-}
 
 #ifdef TARGET_I386
 // shorcuts for accesing the values of x86 registers
