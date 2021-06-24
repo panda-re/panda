@@ -3,7 +3,7 @@
 # Note that it doesn't actually *install* panda, it just install dependencies and *builds* panda.
 # If you want to install run `make install` in the build directory after this runs
 
-set -e
+set -ex
 
 # Tested for architectures listed in panda/panda/dependencies/
 
@@ -87,6 +87,11 @@ else
   echo "Unsupported Ubuntu version: $version. Create a list of build dependencies in ${dep_base}_{base,build}.txt and try again."
   exit 1
 fi
+
+# PyPANDA needs CFFI from pip (the version in apt is too old)
+# Install system-wide since PyPANDA install will also be system-wide
+$SUDO python3 -m pip install pip
+$SUDO python3 -m pip install "cffi>1.14.3"
 
 progress "Trying to update DTC submodule"
 git submodule update --init dtc || true

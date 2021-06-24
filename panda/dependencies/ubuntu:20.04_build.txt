@@ -18,11 +18,13 @@ llvm-11-dev
 protobuf-c-compiler
 protobuf-compiler
 python3-dev
+python3-pycparser
 libpixman-1-dev
 zip
 
-# pypanda build dependencies
+# pypanda dependencies
 python3-setuptools
+python3-wheel
 
 # pypanda test dependencies
 gcc-multilib
