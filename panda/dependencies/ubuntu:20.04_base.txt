@@ -19,6 +19,8 @@ wget
 libpython3-dev
 
 # pypanda dependencies
+python3-colorama
+python3-protobuf
 genisoimage
 libffi-dev
 
