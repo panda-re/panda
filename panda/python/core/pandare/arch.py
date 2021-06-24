@@ -207,10 +207,12 @@ class PandaArch():
             return
         word_size = int(self.panda.bits/8)
 
+        _, endianness, _ = self._determine_bits()
+
         for word_idx in range(words):
             try:
                 val_b = self.panda.virtual_memory_read(cpu, base_reg_val+word_idx*word_size, word_size)
-                val = int.from_bytes(val_b, byteorder='little')
+                val = int.from_bytes(val_b, byteorder=endianness)
                 print("[{}+0x{:0>2x}] == 0x{:0<8x}]: 0x{:0<8x}".format(base_reg_s, word_idx*word_size, base_reg_val+word_idx*word_size, val), end="\t")
                 telescope(self.panda, cpu, val)
             except ValueError:
