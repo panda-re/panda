@@ -17,9 +17,10 @@ on:
 jobs:
 
   test_installer: # test install_ubuntu.sh
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
-    - name: Run install_ubuntu.shj
+    - name: Run install_ubuntu.sh
       run: cd $GITHUB_WORKSPACE/panda/scripts && ./install_ubuntu.sh
 
 
