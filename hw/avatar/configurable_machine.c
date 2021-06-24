@@ -45,6 +45,7 @@ typedef  X86CPU THISCPU;
 #include "hw/mips/mips.h"
 #include "hw/mips/cpudevs.h"
 #include "target/mips/cpu.h"
+#include "hw/mips/cpudevs.h"
 typedef  MIPSCPU THISCPU;
 
 #elif defined(TARGET_PPC)
@@ -470,6 +471,9 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 #elif defined(TARGET_MIPS)
     if (!cpu_model) cpu_model = "mips32r6-generic";
     cpuu = cpu_mips_init(cpu_model);
+    /* Init CPU internal devices */
+    cpu_mips_irq_init_cpu(cpuu);
+    cpu_mips_clock_init(cpuu);
 
 #elif defined(TARGET_PPC)
     if (!cpu_model) cpu_model = "e500v2_v30";

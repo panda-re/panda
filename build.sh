@@ -98,6 +98,7 @@ else
     msg "No suitable LLVM found -- LLVM SUPPORT IS DISABLED"
     LLVM_CONFIG=""
 fi
+LLVM_CONFIG=""
 
 ### Force QEMU options definitions to be regenerated.
 rm -f "${PANDA_DIR}/qemu-options.def"
