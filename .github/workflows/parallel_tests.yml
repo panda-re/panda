@@ -97,6 +97,7 @@ jobs:
       run: |
         docker system prune -af --filter "until=72h"
         docker builder prune -af --filter "until=72h"
+        [[ ! -z "$GITHUB_WORKSPACE" ]] && rm -rf $GITHUB_WORKSPACE
 
   build_and_check_fork: # Forked repos can't use self-hosted test suite - just checkout and run make check
     if: github.repository != 'panda-re/panda'
