@@ -29,7 +29,8 @@ RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
     rm -rf /var/lib/apt/lists/* && \
     python3 -m pip install --upgrade --no-cache-dir pip && \
     python3 -m pip install --upgrade --no-cache-dir setuptools wheel && \
-    python3 -m pip install --upgrade --no-cache-dir pycparser "protobuf" "cffi>1.14.3" colorama
+    python3 -m pip install --upgrade --no-cache-dir pycparser "protobuf" "cffi>1.14.3" colorama && \
+    curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
@@ -48,12 +49,19 @@ RUN git -C /panda submodule update --init dtc && \
         --enable-llvm && \
     make -C /panda/build -j "$(nproc)"
 
-#### Develop setup: panda built + pypanda installed (in develop mode) - Stage 3
+#### Develop setup: panda built + pypanda installed (in develop mode) + panda-rs installed - Stage 3
 FROM builder as developer
+ENV PANDA_PATH="/panda/build"
+ENV PATH="/root/.cargo/bin:${PATH}"
+
 RUN cd /panda/panda/python/core && \
     python3 setup.py develop && \
     ldconfig && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+
+# TODO: merge with above command?
+RUN git -C /panda submodule update --init panda/rs-plugins && \
+    /panda/panda/rs-plugins/install_plugins.sh
 WORKDIR /panda/
 
 #### Install PANDA + pypanda from builder - Stage 4
