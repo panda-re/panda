@@ -136,7 +136,8 @@ def AssociateThreadsAndProcesses(processes, threads, thread_names):
     for thread in threads:
         proc2threads[(thread.ProcessId, thread.ParentProcessId)].add(thread)
     if len(DuplicateCheck) != len(thread2proc.keys()):
-        raise Exception("Threads are not unique in (ThreadId, CreateTime)... If you think this should be ingestable, change this line...")
+        #raise Exception("Threads are not unique in (ThreadId, CreateTime)... If you think this should be ingestable, change this line...")
+        pass
 
     for proc in proc2threads.keys():
         print('Process (ProcessId {} ParentProcessId {}) has {} Threads'.format(proc.ProcessId, proc.ParentProcessId, len(proc2threads[proc])))
