@@ -1689,10 +1689,6 @@ translation blocks. This is useful e.g. for dynamically turning on
 LLVM and enabling heavyweight instrumentation at at a specific point
 in execution.
 
-**ARM support for PANDA hypercalls has not been thoroughly tested.
-If you have sucessfully used it, please submit a PR to remove this
-warning.**
-
 **Signature**:
 ```C
 bool (*guest_hypercall)(CPUState *env);
