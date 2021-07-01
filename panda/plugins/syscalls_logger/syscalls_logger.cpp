@@ -383,6 +383,7 @@ Panda__StructData* struct_logger(CPUState *cpu, target_ulong saddr, StructDef& s
     return sdata;
 }
 
+
 // Log arguments for every system call
 void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp) {
 
@@ -604,6 +605,173 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
     }
 }
 
+void sys_enter(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp) {
+    //only do stuff for syscalls we care about that don't return
+    if(strcmp(call->name, "sys_exit") == 0 || strcmp(call->name, "sys_exit_group") == 0 ||
+        strcmp(call->name, "sys_execve") == 0 || strcmp(call->name, "sys_execveat")) {
+
+        OsiProc *current = NULL;
+        OsiThread *othread = NULL;
+        uint8_t buf[MAX_STRLEN];
+
+        // need to have current proc / thread
+        current = get_current_process(cpu);
+        if (current == NULL || current->pid == 0)
+            return;
+
+        othread = get_current_thread(cpu);
+        if (othread == NULL)
+            return;
+
+        if (!call) {
+            // This warning happens _a lot_ so I'm disabling it after the first
+            if (!did_call_warning) {
+            std::cerr << "[WARNING] syscalls_logger: null syscall_into_t*, missed a syscall! Disabling subsequent warnings" << std::endl;
+            did_call_warning = true;
+            }
+            return;
+        }
+
+
+        if (pandalog) {
+            Panda__Syscall psyscall;
+            psyscall = PANDA__SYSCALL__INIT;
+            psyscall.pid = current->pid;
+            psyscall.ppid = current->ppid;
+            psyscall.tid = othread->tid;
+
+            //this is to make protobuf happy, not because sys_execve and sys_exit return 0
+            psyscall.retcode = 0;
+
+            psyscall.create_time = current->create_time;
+            psyscall.call_name = strdup(call->name);
+            psyscall.args = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * call->nargs);
+            assert(psyscall.args != NULL);
+
+            for (int i = 0; i < call->nargs; i++) {
+
+                Panda__NamedData *sa = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
+                assert(sa != NULL);
+                psyscall.args[i] = sa;
+                *sa = PANDA__NAMED_DATA__INIT;
+                sa->arg_name = strdup(call->argn[i]);
+                switch (call->argt[i]) {
+
+                    case SYSCALL_ARG_STR_PTR:
+                    {
+                        target_ulong addr = *((target_ulong *)rp->args[i]);
+                        int len = get_string(cpu, addr, buf);
+                        if (len > 0) {
+                            sa->str = strdup((const char *) buf);
+                        }
+                        else {
+                            sa->str = strdup("n/a");
+                        }
+                        //sa->has_str = true;
+                        break;
+                    }
+
+                    case SYSCALL_ARG_STRUCT_PTR:
+                    {
+                        target_ulong ptr_val = *((target_ulong *)rp->args[i]);
+                        auto it = struct_hashtable.find(call->argtn[i]);
+
+                        if (it != struct_hashtable.end()) {
+
+                            StructDef sdef = it->second;
+
+                            if (!ptr_val) {
+                                std::cerr << "[WARNING] syscalls_logger: SC2 returned NULL pointer for "
+                                    << "\'" << call->name << "\' argument "
+                                    << "\'" <<  call->argn[i] << "\'"
+                                    << "(type: \'" <<  call->argtn[i] << "\')"
+                                    << std::endl;
+                            }
+
+                            sa->struct_type = strdup(call->argtn[i]);
+                            sa->struct_data = struct_logger(cpu, ptr_val, sdef, STRUCT_RECURSION_LIMIT);
+                        } else {
+
+                            if (log_verbose) {
+                                std::cerr << "[WARNING] syscalls_logger: No definition found for struct "
+                                    << "\'" << call->argtn[i] << "\' argument "
+                                    << std::endl;
+                            }
+
+                            sa->ptr = (uint64_t)ptr_val;
+                            sa->has_ptr = true;
+                        }
+
+                        break;
+                    }
+
+                    case SYSCALL_ARG_BUF_PTR:
+                        sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
+                        sa->has_ptr = true;
+                        break;
+
+                    case SYSCALL_ARG_U64:
+                        sa->u64 = (uint64_t) *((target_ulong *) rp->args[i]);
+                        sa->has_u64 = true;
+                        break;
+
+                    case SYSCALL_ARG_U32:
+                        sa->u32 = *((uint32_t *) rp->args[i]);
+                        sa->has_u32 = true;
+                        break;
+
+                    case SYSCALL_ARG_U16:
+                        sa->u16 = (uint32_t) *((uint16_t *) rp->args[i]);
+                        sa->has_u16 = true;
+                        break;
+
+                    case SYSCALL_ARG_S64:
+                        sa->i64 = *((int64_t *) rp->args[i]);
+                        sa->has_i64 = true;
+                        break;
+
+                    case SYSCALL_ARG_S32:
+                        sa->i32 = *((int32_t *) rp->args[i]);
+                        sa->has_i32 = true;
+                        break;
+
+                    case SYSCALL_ARG_S16:
+                        sa->i16 = (int32_t) *((int16_t *) rp->args[i]);
+                        sa->has_i16 = true;
+                        break;
+
+                    default:
+                        assert(false && "[ERROR] syscalls_logger: Unknown argument type!");
+                        break;
+                }
+            }
+
+            psyscall.n_args = call->nargs;
+            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+            ple.syscall = &psyscall;
+            ple.has_asid = true;
+            ple.asid = current->asid;
+            pandalog_write_entry(&ple);
+
+            for (auto ptr : tmp_single_ptrs) {
+                free(ptr);
+            }
+            tmp_single_ptrs.clear();
+
+            for (auto ptr : tmp_double_ptrs) {
+                free(ptr);
+            }
+            tmp_double_ptrs.clear();
+
+            for (int i = 0; i < call->nargs; i++) {
+                free(psyscall.args[i]);
+            }
+            free(psyscall.args);
+        }
+    }
+}
+
+
 bool init_plugin(void *_self) {
 
     panda_arg_list *args = panda_get_args("syscalls_logger");
@@ -638,7 +806,7 @@ bool init_plugin(void *_self) {
     panda_require("osi");
     assert(init_osi_api());
 
-    // PPP_REG_CB("syscalls2", on_all_sys_enter2, sys_enter);
+    PPP_REG_CB("syscalls2", on_all_sys_enter2, sys_enter);
     PPP_REG_CB("syscalls2", on_all_sys_return2, sys_return);
 
     switch (panda_os_familyno) {
