@@ -1394,7 +1394,8 @@ bool (*insn_translate)(CPUState *env, target_ulong pc);
 ---
 
 `insn_exec`: called before execution of any instruction identified
-by the `PANDA_CB_INSN_TRANSLATE` callback
+by the `PANDA_CB_INSN_TRANSLATE` callback. Only enabled for blocks where
+the `insn_translate` callback returns true.
 
 **Callback ID**: `PANDA_CB_INSN_EXEC`
 
@@ -1417,6 +1418,34 @@ the `PANDA_CB_INSN_TRANSLATE` callback.
 **Signature**:
 ```C
 int (*insn_exec)(CPUState *env, target_ulong pc);
+```
+---
+
+`after_insn_exec`: called after execution of any instruction identified
+by the `PANDA_CB_INSN_TRANSLATE` callback. Only enabled for blocks where
+the `after_insn_translate` callback returns true.
+
+**Callback ID**: `PANDA_CB_AFTER_INSN_EXEC`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC we are about to execute
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+This instrumentation is implemented by generating a call to a
+helper function just after the instruction itself is generated.
+This is fairly expensive, which is why it's only enabled via
+the `PANDA_CB_AFTER_INSN_TRANSLATE` callback.
+
+**Signature**:
+```C
+int (*after_insn_exec)(CPUState *env, target_ulong pc);
 ```
 ---
 
