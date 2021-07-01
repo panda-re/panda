@@ -35,7 +35,7 @@ extern "C" {
 }
 
 // TODO: make these optional commandline params
-#define MAX_STRLEN 256
+#define MAX_STRLEN 1024
 #define STRUCT_RECURSION_LIMIT 256
 
 std::vector<void*> tmp_single_ptrs;
@@ -61,6 +61,23 @@ int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
         assert(rv != -1);
     }
     return len;
+}
+
+void get_n_buf(CPUState *cpu, target_ulong addr, uint8_t *buf, uint64_t size) {
+    // Populate buf with data at addr of the provided size
+
+    int len = 0;
+    uint8_t *c = (uint8_t*)&buf;
+    // Read buffer, one character at a time (slower than a big read, but can handle failures?)
+    while ((uint64_t)(len+&buf) < size) {
+        int rv = panda_virtual_memory_read(cpu, addr + len, c, 1);
+        if (rv == -1) {
+            buf[len] = '.'; // Might also want to warn that data is unavailable
+        }else if (!isprint(buf[len])) {
+            buf[len] = '.'; // Only printable characters
+        }
+        len++;
+    }
 }
 
 // Validate string
@@ -429,17 +446,87 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
             psyscall.args[i] = sa;
             *sa = PANDA__NAMED_DATA__INIT;
             sa->arg_name = strdup(call->argn[i]);
+
+            // Special case: if an arg is named 'buf' and is a pointer
+            // and the next arg is a size_t, unsigned long, or
+            // with a name that contains 'size', 'len', or 'count'
+            // we read the length and then capture that many bytes of the buf
+
+            bool know_buf_len = false;
+            uint64_t buf_len = 0;
+            bool null_terminated = false; // e.g., sys_read will fill a null-terminated buffer
+
+            if (strcasestr(sa->arg_name, "buf") != NULL // arg named buf
+                && i < call->nargs-1 // has a next arg
+                && (strcasestr(call->argn[i+1], "size")  != NULL ||
+                    strcasestr(call->argn[i+1], "len")   != NULL ||
+                    strcasestr(call->argn[i+1], "count") != NULL
+                   ) // next arg name contains size, len, or count
+                ) {
+                know_buf_len = true;
+
+                // Some syscalls will have a max size but then just a null-term'd string.
+                // For these we just read to null terminator, not provided size
+                if (strcmp(call->name, "sys_read") == 0) {
+                    null_terminated = true;
+                }
+
+                switch (call->argt[i+1]) {
+                  // Assume it will always be unsigned
+                  case SYSCALL_ARG_U64:
+                      buf_len = (uint64_t) *((target_ulong *) rp->args[i+1]);
+                      break;
+
+                  case SYSCALL_ARG_U32:
+                      buf_len = (uint64_t) *((uint32_t *) rp->args[i+1]);
+                      break;
+
+                  case SYSCALL_ARG_U16:
+                      buf_len = (uint64_t) *((uint16_t *) rp->args[i+1]);
+                      break;
+
+                  default:
+                      printf("Unknown buffer size type for field %s %d\n", call->argn[i+1],
+                                                                           call->argt[i+1]);
+                }
+
+            }
+
+            // Buf is a fixed size - ensure we don't overflow it
+            buf_len = std::min(buf_len, (uint64_t)MAX_STRLEN);
+
             switch (call->argt[i]) {
 
                 case SYSCALL_ARG_STR_PTR:
                 {
                     target_ulong addr = *((target_ulong *)rp->args[i]);
-                    int len = get_string(cpu, addr, buf);
-                    if (len > 0) {
-                        sa->str = strdup((const char *) buf);
-                    }
-                    else {
-                        sa->str = strdup("n/a");
+
+                    if (know_buf_len && !null_terminated) {
+                      // It's a buffer of a fixed length
+                      if (buf_len == 0) {
+                        sa->bytes_val.data = NULL;
+                      } else {
+                        get_n_buf(cpu, addr, buf, buf_len);
+                        unsigned char* data = (unsigned char*)malloc(sizeof(unsigned char)*buf_len);
+                        assert(data != NULL);
+                        memcpy(data, buf, buf_len);
+
+                        printf("Set arg str_ptr for %s to %s\n", call->name, data);
+                        sa->bytes_val.data = data;
+                      }
+                      sa->bytes_val.len = buf_len;
+                      sa->has_bytes_val = true;
+
+                    }else{
+                        assert(strcmp("sys_write", call->name) != 0);
+
+                        int len = get_string(cpu, addr, buf);
+                        if (len > 0) {
+                            sa->str = strdup((const char *) buf);
+                        }
+                        else {
+                            sa->str = strdup("n/a");
+                        }
                     }
                     //sa->has_str = true;
                     break;
@@ -472,6 +559,7 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                                 << std::endl;
                         }
 
+                        assert(strcmp("sys_write", call->name) != 0);
                         sa->ptr = (uint64_t)ptr_val;
                         sa->has_ptr = true;
                     }
@@ -480,8 +568,37 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                 }
 
                 case SYSCALL_ARG_BUF_PTR:
-                    sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
-                    sa->has_ptr = true;
+                    if (know_buf_len) {
+                      if (null_terminated) {
+                        // Unexpected, but we do end up here - it's a null-terminatd string
+                        int len = get_string(cpu, (target_ulong)*(target_ulong*) rp->args[i], buf);
+                        if (len > 0) {
+                            sa->str = strdup((const char *) buf);
+                        } else{
+                            sa->str = NULL;
+                        }
+                      } else {
+                          // It's a buffer of a fixed length
+                          if (buf_len == 0) {
+                              sa->bytes_val.data = NULL;
+                          } else {
+                              get_n_buf(cpu, (target_ulong)*(target_ulong*) rp->args[i], buf, buf_len);
+                              unsigned char* data = (unsigned char*)malloc(sizeof(unsigned char)*buf_len);
+                              assert(data != NULL);
+                              memcpy(data, buf, buf_len);
+                              printf("Set arg buf_ptr for %s to %s\n", call->name, data);
+
+                              sa->bytes_val.data = data;
+                          }
+                          sa->bytes_val.len = buf_len;
+                          sa->has_bytes_val = true;
+                      }
+
+                    } else {
+                      assert(strcmp("sys_write", call->name) != 0);
+                      sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
+                      sa->has_ptr = true;
+                    }
                     break;
 
                 case SYSCALL_ARG_U64:
@@ -699,6 +816,7 @@ void sys_enter(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const
                             }
 
                             sa->ptr = (uint64_t)ptr_val;
+                            assert(strcmp("sys_write", call->name) != 0);
                             sa->has_ptr = true;
                         }
 
@@ -706,6 +824,7 @@ void sys_enter(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const
                     }
 
                     case SYSCALL_ARG_BUF_PTR:
+                        assert(strcmp("sys_write", call->name) != 0);
                         sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
                         sa->has_ptr = true;
                         break;
