@@ -63,6 +63,23 @@ int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
     return len;
 }
 
+void get_n_buf(CPUState *cpu, target_ulong addr, uint8_t *buf, uint64_t size) {
+    // Populate buf with data at addr of the provided size
+
+    int len = 0;
+    uint8_t *c = (uint8_t*)&buf;
+    // Read buffer, one character at a time (slower than a big read, but can handle failures?)
+    while ((uint64_t)(len+&buf) < size) {
+        int rv = panda_virtual_memory_read(cpu, addr + len, c, 1);
+        if (rv == -1) {
+            buf[len] = '.'; // Might also want to warn that data is unavailable
+        }else if (!isprint(buf[len])) {
+            buf[len] = '.'; // Only printable characters
+        }
+        len++;
+    }
+}
+
 // Validate string
 bool check_str(char* s) {
     for (int i = 0; i < MAX_STRLEN; i++) {
@@ -429,17 +446,57 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
             psyscall.args[i] = sa;
             *sa = PANDA__NAMED_DATA__INIT;
             sa->arg_name = strdup(call->argn[i]);
+
+            // Special case: if an arg is named 'buf' and is a pointer
+            // and the next arg is a size_t, unsigned long, or
+            // with a name that contains 'size', 'len', or 'count'
+            // we read the length and then capture that many bytes of the buf
+            uint64_t known_buf_len = 0;
+            if (strcasestr(sa->arg_name, "buf") != NULL // arg named buf
+                && i < call->nargs-1 // has a next arg
+                && (strcasestr(call->argn[i+1], "size")  != NULL ||
+                    strcasestr(call->argn[i+1], "len")   != NULL ||
+                    strcasestr(call->argn[i+1], "count") != NULL
+                   ) // next arg name contains size, len, or count
+                ) {
+                switch (call->argt[i+1]) {
+                  // Assume it will always be unsigned
+                  case SYSCALL_ARG_U64:
+                      known_buf_len = (uint64_t) *((target_ulong *) rp->args[i]);
+                      break;
+
+                  case SYSCALL_ARG_U32:
+                      known_buf_len = (uint64_t) *((uint32_t *) rp->args[i]);
+                      break;
+
+                  case SYSCALL_ARG_U16:
+                      known_buf_len = (uint64_t) *((uint16_t *) rp->args[i]);
+                      break;
+
+                  default:
+                      printf("Unknown buffer size type for field %s %d\n", call->argn[i+1],
+                                                                           call->argt[i+1]);
+                }
+            }
+
+
             switch (call->argt[i]) {
 
                 case SYSCALL_ARG_STR_PTR:
                 {
                     target_ulong addr = *((target_ulong *)rp->args[i]);
-                    int len = get_string(cpu, addr, buf);
-                    if (len > 0) {
-                        sa->str = strdup((const char *) buf);
-                    }
-                    else {
-                        sa->str = strdup("n/a");
+
+                    if (known_buf_len) {
+                      get_n_buf(cpu, addr, buf, known_buf_len);
+                      sa->str = strdup((const char *) buf);
+                    }else{
+                        int len = get_string(cpu, addr, buf);
+                        if (len > 0) {
+                            sa->str = strdup((const char *) buf);
+                        }
+                        else {
+                            sa->str = strdup("n/a");
+                        }
                     }
                     //sa->has_str = true;
                     break;
@@ -480,8 +537,14 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                 }
 
                 case SYSCALL_ARG_BUF_PTR:
-                    sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
-                    sa->has_ptr = true;
+                    if (known_buf_len) {
+                      // It's a buffer of a fixed length - let's just treat it like a string
+                      get_n_buf(cpu, (target_ulong)*(target_ulong*) rp->args[i], buf, known_buf_len);
+                      sa->str = strdup((const char *) buf);
+                    } else {
+                      sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
+                      sa->has_ptr = true;
+                    }
                     break;
 
                 case SYSCALL_ARG_U64:
