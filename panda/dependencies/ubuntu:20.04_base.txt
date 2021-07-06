@@ -19,10 +19,11 @@ wget
 libpython3-dev
 
 # pypanda dependencies
-python3-colorama
-python3-protobuf
 genisoimage
 libffi-dev
+python3-colorama
+python3-protobuf
+python3-pycparser
 
 # apt-rdepends qemu-system-common
 acl
