@@ -427,6 +427,12 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
     }
 
     if (pandalog) {
+        bool is_bind = false;
+        uint16_t sin_family = 0;
+        if(strcmp(call->name, "sys_bind") == 0) {
+            is_bind = true;
+        }
+
 
         Panda__Syscall psyscall;
         psyscall = PANDA__SYSCALL__INIT;
@@ -436,10 +442,62 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
         psyscall.retcode = get_syscall_retval(cpu);
         psyscall.create_time = current->create_time;
         psyscall.call_name = strdup(call->name);
-        psyscall.args = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * call->nargs);
+        if(is_bind) {
+            psyscall.args = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * call->nargs+1);
+        } else {
+            psyscall.args = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * call->nargs);
+        }
         assert(psyscall.args != NULL);
 
-        for (int i = 0; i < call->nargs; i++) {
+        for (int i = 0; i < ((is_bind) ? (call->nargs+1) : (call->nargs)); i++) { //I am so sorry for making you look at this
+            if(is_bind) printf("loop start\n");
+
+            if(is_bind && i == 3) {
+                uint8_t data[2] = {0};
+                printf("sys_bind happened, at extra arg cycle!\n");
+
+                //get the value of the pointer (second arg of bind)
+                target_ulong address_of_addr_in = 0;
+                address_of_addr_in = *((target_ulong *)rp->args[1]);
+                printf("address of struct in_addr: " TARGET_PTR_FMT "\n", address_of_addr_in);
+
+                //get the sin_family value
+                panda_virtual_memory_read(cpu, address_of_addr_in, data, 2);
+                sin_family = *((uint16_t*) &data[0]);
+                printf("sin_family value: %d\n", sin_family);
+
+                if(sin_family == 2 || sin_family == 10) { //AF_INET or AF_INET6
+
+                    Panda__NamedData *sa = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
+                    assert(sa != NULL);
+                    psyscall.args[i] = sa;
+                    *sa = PANDA__NAMED_DATA__INIT;
+                    sa->arg_name = strdup("port");
+
+                    //sa->u16 = (uint32_t) *((uint16_t *) rp->args[i]);
+
+
+
+
+                    panda_virtual_memory_read(cpu, address_of_addr_in + 2, data, 2);
+                    uint16_t port = *((uint16_t*) &data[0]);
+                    port = ntohs(port);
+
+                    printf("inet socket!! port is: %d\n", port);
+                    sa->u16 = port;
+
+                    sa->has_u16 = true;
+                } else {
+                    printf("not an inet socket\n");
+                }
+
+
+                break;
+            }
+
+            //if(is_bind && (sin_family == 2 || sin_family == 10)) {}
+
+            if(is_bind) printf("shouldn't be here after non-inet socket\n");
 
             Panda__NamedData *sa = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
             assert(sa != NULL);
@@ -613,7 +671,11 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
             }
         }
 
-        psyscall.n_args = call->nargs;
+        if(is_bind && (sin_family == 2 || sin_family == 10)) {
+            psyscall.n_args = call->nargs + 1;
+        } else {
+            psyscall.n_args = call->nargs;
+        }
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.syscall = &psyscall;
         ple.has_asid = true;
@@ -701,7 +763,7 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
 void sys_enter(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp) {
     //only do stuff for syscalls we care about that don't return
     if(strcmp(call->name, "sys_exit") == 0 || strcmp(call->name, "sys_exit_group") == 0 ||
-        strcmp(call->name, "sys_execve") == 0 || strcmp(call->name, "sys_execveat")) {
+        strcmp(call->name, "sys_execve") == 0 || strcmp(call->name, "sys_execveat") == 0) {
 
         OsiProc *current = NULL;
         OsiThread *othread = NULL;
@@ -742,6 +804,8 @@ void sys_enter(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const
             assert(psyscall.args != NULL);
 
             for (int i = 0; i < call->nargs; i++) {
+
+                
 
                 Panda__NamedData *sa = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
                 assert(sa != NULL);
