@@ -450,21 +450,19 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
         assert(psyscall.args != NULL);
 
         for (int i = 0; i < ((is_bind) ? (call->nargs+1) : (call->nargs)); i++) { //I am so sorry for making you look at this
-            if(is_bind) printf("loop start\n");
-
             if(is_bind && i == 3) {
                 uint8_t data[2] = {0};
-                printf("sys_bind happened, at extra arg cycle!\n");
+                //printf("sys_bind happened, at extra arg cycle!\n");
 
                 //get the value of the pointer (second arg of bind)
                 target_ulong address_of_addr_in = 0;
                 address_of_addr_in = *((target_ulong *)rp->args[1]);
-                printf("address of struct in_addr: " TARGET_PTR_FMT "\n", address_of_addr_in);
+                //printf("address of struct in_addr: " TARGET_PTR_FMT "\n", address_of_addr_in);
 
                 //get the sin_family value
                 panda_virtual_memory_read(cpu, address_of_addr_in, data, 2);
                 sin_family = *((uint16_t*) &data[0]);
-                printf("sin_family value: %d\n", sin_family);
+                //printf("sin_family value: %d\n", sin_family);
 
                 if(sin_family == 2 || sin_family == 10) { //AF_INET or AF_INET6
 
@@ -483,12 +481,12 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                     uint16_t port = *((uint16_t*) &data[0]);
                     port = ntohs(port);
 
-                    printf("inet socket!! port is: %d\n", port);
+                    //printf("inet socket!! port is: %d\n", port);
                     sa->u16 = port;
 
                     sa->has_u16 = true;
                 } else {
-                    printf("not an inet socket\n");
+                    //printf("not an inet socket\n");
                 }
 
 
@@ -497,7 +495,6 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
 
             //if(is_bind && (sin_family == 2 || sin_family == 10)) {}
 
-            if(is_bind) printf("shouldn't be here after non-inet socket\n");
 
             Panda__NamedData *sa = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
             assert(sa != NULL);
@@ -695,7 +692,7 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
             }
         }
 
-        if(is_bind && (sin_family == 2 || sin_family == 10)) {
+        if(is_bind && (sin_family == 2 || sin_family == 10)) { //add an extra argument iff it's a network socket
             psyscall.n_args = call->nargs + 1;
         } else {
             psyscall.n_args = call->nargs;
