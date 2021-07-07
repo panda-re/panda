@@ -32,6 +32,7 @@ skip_steps = []
 USAGE: plog_to_pandelephant.py db_url plog
 """
 
+
 DEBUG_VERBOSE = False
 
 # HasField will raise an exception if that isnt a possible field name
@@ -142,7 +143,8 @@ def AssociateThreadsAndProcesses(processes, threads, thread_names):
     for thread in threads:
         proc2threads[(thread.ProcessId, thread.ParentProcessId)].add(thread)
     if len(DuplicateCheck) != len(thread2proc.keys()):
-        raise Exception("Threads are not unique in (ThreadId, CreateTime)... If you think this should be ingestable, change this line...")
+        #raise Exception("Threads are not unique in (ThreadId, CreateTime)... If you think this should be ingestable, change this line...")
+        pass
 
     for proc in proc2threads.keys():
         print('Process (ProcessId {} ParentProcessId {}) has {} Threads'.format(proc.ProcessId, proc.ParentProcessId, len(proc2threads[proc])))
@@ -245,11 +247,16 @@ def CollectTaintFlowsAndSyscalls(pandalog, CollectedBetterMappingRanges):
             'i64': ('signed64',   '{:d}'),
             'i32': ('signed32',   '{:d}'),
             'i16': ('signed16',   '{:d}'),
+            'bytes_val': ('signed16',   '{:d}'),
         }
         def syscall_arg_value(arg):
             for fld, (typ, fmt) in SyscallFieldInfo.items():
                 if arg.HasField(fld):
-                    return typ, fmt.format(getattr(arg, fld))
+                    if fld == 'bytes_val':
+                        safe_str = getattr(arg, fld) # TODO: do we need to strip out non-ascii for DB?
+                        return typ, safe_str
+                    else:
+                        return typ, fmt.format(getattr(arg, fld))
             assert(False)
         thread = CollectedThread(ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time)
         CollectedSyscalls.add(CollectedSyscall(
