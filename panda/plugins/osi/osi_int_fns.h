@@ -34,18 +34,21 @@ void cleanup_garray(GArray *g);
 // returns true if execution is currently within a dynamically-linked function, else false.
 bool in_shared_object(CPUState *cpu, OsiProc *p);
 
+// gets the process pointed to by the handle
+OsiProc *get_process(CPUState *cpu, const OsiProcHandle *h);
+
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 // gets the currently running process handle
 OsiProcHandle *get_current_process_handle(CPUState *cpu);
 
-// gets the process pointed to by the handle
-OsiProc *get_process(CPUState *cpu, const OsiProcHandle *h);
 
 // functions retrieving partial process information via an OsiProcHandle
 target_pid_t get_process_pid(CPUState *cpu, const OsiProcHandle *h);
 target_pid_t get_process_ppid(CPUState *cpu, const OsiProcHandle *h);
 
 void notify_task_change(CPUState *cpu);
+void notify_task_end(CPUState *cpu, const OsiProcHandle *h);
+void notify_task_start(CPUState *cpu, const OsiProcHandle *h);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
