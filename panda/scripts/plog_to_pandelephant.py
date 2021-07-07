@@ -25,7 +25,7 @@ except ImportError:
 
 # TODO: add more steps that should be skipped to the steps list
 # and then check `if 'stepname' not in skip_steps: ...` before running the steps
-steps = ['threadslices']
+steps = ['threadslices', 'asid_libraries']
 skip_steps = []
 
 """
@@ -76,6 +76,8 @@ def CollectThreadsAndProcesses(pandalog):
     thread_slices = set()
     thread_names = {}
     def CollectFrom_asid_libraries(msg):
+        if 'asid_libraries' in skip_steps:
+            return
         thread = CollectedThread(ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time)
         # there might be several names for a tid
         if thread in thread_names.keys():
@@ -159,6 +161,9 @@ def CollectProcessMemoryMappings(pandalog, processes):
 
     num_no_mappings = 0
     def CollectFrom_asid_libraries(entry, msg):
+        if 'asid_libraries' in skip_steps:
+            return
+
         nonlocal num_no_mappings
         if (msg.pid == 0) or (msg.ppid == 0) or (msg.tid == 0):
             num_no_mappings += 1
