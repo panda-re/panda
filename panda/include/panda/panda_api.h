@@ -68,6 +68,8 @@ CPUState* get_cpu(void);
 
 unsigned long garray_len(GArray *list);
 void panda_cleanup_record(void);
+
+void panda_page_fault(CPUState *cpu, target_ulong address, target_ulong retaddr);
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 // don't expose to API  because we don't want to add siginfo_t understanding

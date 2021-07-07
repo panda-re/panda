@@ -288,3 +288,19 @@ unsigned long garray_len(GArray *list) {
 void _panda_set_library_mode(const bool b) {
   panda_set_library_mode(b);
 }
+
+// Raise a page fault on address, then return execution to retaddr
+void panda_page_fault(CPUState* cpu, target_ulong address, target_ulong retaddr) {
+
+#ifdef TARGET_I386
+    CPUX86State *env = cpu->env_ptr;
+
+    // We want to set up CPU state with x86_cpu_handle_mmu_fault
+    // and then interrupt the cpu-exec loop with raise_exception_err_ra
+    // Explicitly set EIP to retaddr so after the exception is handled, we resume from retaddr
+    // instead of restarting the block
+    env->eip = retaddr;
+    tlb_fill(cpu, address, MMU_DATA_LOAD, 0, retaddr);
+
+#endif
+}
