@@ -61,7 +61,7 @@ string read_str(CPUState* cpu, target_ulong ptr){
     return buf;
 }
 
-void btc_execve(CPUState *env, TranslationBlock *tb){
+void btc_execve(CPUState *env, TranslationBlock *tb, TCGContext *s){
     if (unlikely(!panda_in_kernel(env))){
         target_ulong sp = panda_current_sp(env);
         target_ulong argc;

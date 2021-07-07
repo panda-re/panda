@@ -737,7 +737,7 @@ void fill_osimod(CPUState *cpu, OsiModule *m, PTR mod, bool ignore_basename) {
     assert(m->name);
 }
 
-static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb)
+static void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb, TCGContext *s)
 {
     if (0x0 == task_change_hook_addr && 0 == strcmp(panda_os_variant, "7")) {
         // On Windows 7, we have to compute the task change hook address

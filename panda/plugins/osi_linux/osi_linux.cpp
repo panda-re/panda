@@ -735,7 +735,7 @@ static void exec_check(CPUState *cpu)
     }
 }
 
-static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
+static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb, TCGContext *s)
 {
     TCGOp *op = find_first_guest_insn();
     assert(NULL != op);

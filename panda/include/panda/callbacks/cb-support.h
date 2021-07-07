@@ -53,9 +53,8 @@ exit 0
  ***************************************************************************/
 #include <stdbool.h>
 #include "panda/types.h"
+#include "tcg.h" // TCGContext, TranslationBlock (indirectly)
 #ifndef EXEC_ALL_H
-// If this file is included from a file that doesn't define TranslationBlock (e.g., memory.c), we still need to be valid
-typedef struct {} TranslationBlock;
 #endif
 /* shared helpers for virtual/physical memory callbacks */
 void panda_callbacks_mem_before_read(CPUState *env, target_ptr_t pc, target_ptr_t addr, size_t data_size, void *ram_ptr);
@@ -134,7 +133,7 @@ bool panda_callbacks_guest_hypercall(CPUState *env);
 void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 
 
-void panda_callbacks_before_tcg_codegen(CPUState *env, TranslationBlock *tb);
+void panda_callbacks_before_tcg_codegen(CPUState *env, TranslationBlock *tb, TCGContext *s);
 void panda_callbacks_start_block_exec(CPUState *env, TranslationBlock *tb);
 void panda_callbacks_end_block_exec(CPUState *env, TranslationBlock *tb);
 

@@ -132,13 +132,14 @@ typedef union panda_cb {
        Arguments:
         CPUState *env:        the current CPU state
         TranslationBlock *tb: the TB about to be compiled
+        TCGContext *s: the current TCG context
 
        Helper call location: translate-all.c
 
        Return value:
         None
     */
-    void (*before_tcg_codegen)(CPUState *env, TranslationBlock *tb);
+    void (*before_tcg_codegen)(CPUState *env, TranslationBlock *tb, TCGContext *s);
 
     /* Callback ID: PANDA_CB_BEFORE_BLOCK_EXEC
 
