@@ -566,7 +566,7 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                         assert(data != NULL);
                         memcpy(data, buf, buf_len);
 
-                        printf("Set arg str_ptr for %s to %s\n", call->name, data);
+                        //printf("Set arg str_ptr for %s to %s\n", call->name, data);
                         sa->bytes_val.data = data;
                       }
                       sa->bytes_val.len = buf_len;
@@ -641,7 +641,7 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                               unsigned char* data = (unsigned char*)malloc(sizeof(unsigned char)*buf_len);
                               assert(data != NULL);
                               memcpy(data, buf, buf_len);
-                              printf("Set arg buf_ptr for %s to %s\n", call->name, data);
+                              //printf("Set arg buf_ptr for %s to %s\n", call->name, data);
 
                               sa->bytes_val.data = data;
                           }
