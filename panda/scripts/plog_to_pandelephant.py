@@ -23,9 +23,15 @@ except ImportError:
         print("Unable to locate PLogReader")
         sys.exit(-1)
 
+# TODO: add more steps that should be skipped to the steps list
+# and then check `if 'stepname' not in skip_steps: ...` before running the steps
+steps = ['threadslices', 'asid_libraries']
+skip_steps = []
+
 """
 USAGE: plog_to_pandelephant.py db_url plog
 """
+
 
 DEBUG_VERBOSE = False
 
@@ -71,6 +77,8 @@ def CollectThreadsAndProcesses(pandalog):
     thread_slices = set()
     thread_names = {}
     def CollectFrom_asid_libraries(msg):
+        if 'asid_libraries' in skip_steps:
+            return
         thread = CollectedThread(ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time)
         # there might be several names for a tid
         if thread in thread_names.keys():
@@ -135,7 +143,8 @@ def AssociateThreadsAndProcesses(processes, threads, thread_names):
     for thread in threads:
         proc2threads[(thread.ProcessId, thread.ParentProcessId)].add(thread)
     if len(DuplicateCheck) != len(thread2proc.keys()):
-        raise Exception("Threads are not unique in (ThreadId, CreateTime)... If you think this should be ingestable, change this line...")
+        #raise Exception("Threads are not unique in (ThreadId, CreateTime)... If you think this should be ingestable, change this line...")
+        pass
 
     for proc in proc2threads.keys():
         print('Process (ProcessId {} ParentProcessId {}) has {} Threads'.format(proc.ProcessId, proc.ParentProcessId, len(proc2threads[proc])))
@@ -154,6 +163,9 @@ def CollectProcessMemoryMappings(pandalog, processes):
 
     num_no_mappings = 0
     def CollectFrom_asid_libraries(entry, msg):
+        if 'asid_libraries' in skip_steps:
+            return
+
         nonlocal num_no_mappings
         if (msg.pid == 0) or (msg.ppid == 0) or (msg.tid == 0):
             num_no_mappings += 1
@@ -235,11 +247,16 @@ def CollectTaintFlowsAndSyscalls(pandalog, CollectedBetterMappingRanges):
             'i64': ('signed64',   '{:d}'),
             'i32': ('signed32',   '{:d}'),
             'i16': ('signed16',   '{:d}'),
+            'bytes_val': ('signed16',   '{:d}'),
         }
         def syscall_arg_value(arg):
             for fld, (typ, fmt) in SyscallFieldInfo.items():
                 if arg.HasField(fld):
-                    return typ, fmt.format(getattr(arg, fld))
+                    if fld == 'bytes_val':
+                        safe_str = getattr(arg, fld) # TODO: do we need to strip out non-ascii for DB?
+                        return typ, safe_str
+                    else:
+                        return typ, fmt.format(getattr(arg, fld))
             assert(False)
         thread = CollectedThread(ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time)
         CollectedSyscalls.add(CollectedSyscall(
@@ -352,8 +369,9 @@ def ConvertProcessThreadsMappingsToDatabase(datastore, execution, processes, thr
         for mapping, (FirstInstructionCount, LastInstructionCount) in CollectedBetterMappingRanges[p].items():
             CollectedMappingToDatabaseMapping[mapping] = datastore.new_mapping(process, mapping.Name, mapping.File, mapping.AddressSpaceId, mapping.BaseAddress, FirstInstructionCount, mapping.Size, FirstInstructionCount, LastInstructionCount)
 
-    for thread_slice in thread_slices:
-        datastore.new_threadslice(CollectedThreadToDatabaseThread[thread_slice.Thread], thread_slice.FirstInstructionCount, end_execution_offset=thread_slice.LastInstructionCount)
+    if 'threadslices' not in skip_steps:
+        for thread_slice in thread_slices:
+            datastore.new_threadslice(CollectedThreadToDatabaseThread[thread_slice.Thread], thread_slice.FirstInstructionCount, end_execution_offset=thread_slice.LastInstructionCount)
 
     return CollectedProcessToDatabaseProcess, CollectedThreadToDatabaseThread, CollectedMappingToDatabaseMapping
 
@@ -430,8 +448,16 @@ if __name__ == "__main__":
     parser.add_argument("-db_url", help="db url", action="store", required=True)
     parser.add_argument("-pandalog", help="pandalog", action="store", required=True)
     parser.add_argument("-exec_name", "--exec-name", help="A name for the execution", action="store", required=True)
+    parser.add_argument('-s','--skip', action='append', help='Steps to skip. Valid values: ' + ' '.join(steps), required=False)
+
 
     args = parser.parse_args()
+
+    if args.skip:
+        for arg in args.skip:
+            if arg not in steps:
+                raise ValueError(f"Unable to skip step {arg}. Valid values are: {' '.join(steps)}")
+            skip_steps.append(arg)
 
     print("%s %s" % (args.db_url, args.exec_name))
     plog_to_pe(args.pandalog, args.db_url, args.exec_name)
