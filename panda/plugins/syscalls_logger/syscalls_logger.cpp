@@ -35,7 +35,7 @@ extern "C" {
 }
 
 // TODO: make these optional commandline params
-#define MAX_STRLEN 256
+#define MAX_STRLEN 1024
 #define STRUCT_RECURSION_LIMIT 256
 
 std::vector<void*> tmp_single_ptrs;
@@ -451,7 +451,10 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
             // and the next arg is a size_t, unsigned long, or
             // with a name that contains 'size', 'len', or 'count'
             // we read the length and then capture that many bytes of the buf
+
             uint64_t known_buf_len = 0;
+            bool null_terminated = false; // e.g., sys_read will fill a null-terminated buffer
+
             if (strcasestr(sa->arg_name, "buf") != NULL // arg named buf
                 && i < call->nargs-1 // has a next arg
                 && (strcasestr(call->argn[i+1], "size")  != NULL ||
@@ -459,26 +462,38 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                     strcasestr(call->argn[i+1], "count") != NULL
                    ) // next arg name contains size, len, or count
                 ) {
+
+                // Some syscalls will have a max size but then just a null-term'd string.
+                // For these we just read to null terminator, not provided size
+                if (strcmp(call->name, "sys_read") == 0) {
+                    null_terminated = true;
+                }
+
                 switch (call->argt[i+1]) {
                   // Assume it will always be unsigned
                   case SYSCALL_ARG_U64:
-                      known_buf_len = (uint64_t) *((target_ulong *) rp->args[i]);
+                      known_buf_len = (uint64_t) *((target_ulong *) rp->args[i+1]);
                       break;
 
                   case SYSCALL_ARG_U32:
-                      known_buf_len = (uint64_t) *((uint32_t *) rp->args[i]);
+                      known_buf_len = (uint64_t) *((uint32_t *) rp->args[i+1]);
                       break;
 
                   case SYSCALL_ARG_U16:
-                      known_buf_len = (uint64_t) *((uint16_t *) rp->args[i]);
+                      known_buf_len = (uint64_t) *((uint16_t *) rp->args[i+1]);
                       break;
 
                   default:
                       printf("Unknown buffer size type for field %s %d\n", call->argn[i+1],
                                                                            call->argt[i+1]);
                 }
+
             }
 
+            // Buf is a fixed size - ensure we don't overflow it
+            known_buf_len = std::min(known_buf_len, (uint64_t)MAX_STRLEN);
+            //if (known_buf_len > 0)
+            //  printf("ARG: %s %d, len 0x%lx\n", call->name, i, known_buf_len);
 
             switch (call->argt[i]) {
 
@@ -486,9 +501,17 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                 {
                     target_ulong addr = *((target_ulong *)rp->args[i]);
 
-                    if (known_buf_len) {
+                    if (known_buf_len && !null_terminated) {
+                      // It's a buffer of a fixed length
                       get_n_buf(cpu, addr, buf, known_buf_len);
-                      sa->str = strdup((const char *) buf);
+                      unsigned char* data = (unsigned char*)malloc(sizeof(unsigned char)*known_buf_len);
+                      assert(data != NULL);
+                      memcpy(data, buf, known_buf_len);
+
+                      sa->bytes_val.data = data;
+                      sa->bytes_val.len = known_buf_len;
+                      //sa->has_bytes_val = true;
+
                     }else{
                         int len = get_string(cpu, addr, buf);
                         if (len > 0) {
@@ -537,10 +560,17 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                 }
 
                 case SYSCALL_ARG_BUF_PTR:
-                    if (known_buf_len) {
-                      // It's a buffer of a fixed length - let's just treat it like a string
+                    if (known_buf_len && !null_terminated) {
+                      // It's a buffer of a fixed length
                       get_n_buf(cpu, (target_ulong)*(target_ulong*) rp->args[i], buf, known_buf_len);
-                      sa->str = strdup((const char *) buf);
+                      unsigned char* data = (unsigned char*)malloc(sizeof(unsigned char)*known_buf_len);
+                      assert(data != NULL);
+                      memcpy(data, buf, known_buf_len);
+
+                      sa->bytes_val.data = data;
+                      sa->bytes_val.len = known_buf_len;
+                      //sa->has_bytes_val = true;
+
                     } else {
                       sa->ptr = (uint64_t) *((target_ulong *) rp->args[i]);
                       sa->has_ptr = true;
