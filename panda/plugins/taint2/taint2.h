@@ -28,23 +28,9 @@
 #include "taint_defines.h"
 #include "addr.h"
 #include "query_res.h"
+#include "taint2_ppp.h"
 
 typedef const std::set<uint32_t> *LabelSetP;
-
-// BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
-// api autogen needs it.  And don't put any compiler directives
-// between this and END_PYPANDA_NEEDS_THIS except includes of other
-// files in this directory that contain subsections like this one.
-typedef void (*on_branch2_t) (Addr, uint64_t, bool*);
-typedef void (*on_indirect_jump_t) (Addr, uint64_t, bool*);
-typedef void (*on_taint_change_t) (Addr, uint64_t);
-typedef void (*on_taint_prop_t) (Addr, Addr, uint64_t);
-typedef void (*on_ptr_load_t) (Addr, uint64_t, uint64_t);
-typedef void (*on_ptr_store_t) (Addr, uint64_t, uint64_t);
-typedef void (*on_after_load_t) (Addr, uint64_t, uint64_t);
-typedef void (*on_after_store_t) (Addr, uint64_t, uint64_t);
-
-// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 struct ShadowState {
     uint64_t prev_bb; // label for previous BB.

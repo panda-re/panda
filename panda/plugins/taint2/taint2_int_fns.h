@@ -11,6 +11,8 @@
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
 // files in this directory that contain subsections like this one.
 
+#include "addr.h"
+#include "taint2_ppp.h"
 #include "query_res.h"
 
 // turns on taint
