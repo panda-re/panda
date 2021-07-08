@@ -1,4 +1,4 @@
-∑/* PANDABEGINCOMMENT
+/* PANDABEGINCOMMENT
  *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
