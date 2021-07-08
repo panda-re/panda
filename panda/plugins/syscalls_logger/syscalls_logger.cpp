@@ -1051,6 +1051,14 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
 }
 
 void sys_enter(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp) {
+    if (!call) {
+        // This warning happens _a lot_ so I'm disabling it after the first
+        if (!did_call_warning) {
+          std::cerr << "[WARNING] syscalls_logger: null syscall_into_t*, missed a syscall! Disabling subsequent warnings" << std::endl;
+          did_call_warning = true;
+        }
+        return;
+    }
     if(strcmp(call->name, "sys_exit") == 0 || strcmp(call->name, "sys_exit_group") == 0 ||
         strcmp(call->name, "sys_execve") == 0 || strcmp(call->name, "sys_execveat") == 0) {
     handle_syscall(cpu, pc, call, rp, false);
