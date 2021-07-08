@@ -150,7 +150,8 @@ def AssociateThreadsAndProcesses(processes, threads, thread_names):
     for proc in proc2threads.keys():
         print('Process (ProcessId {} ParentProcessId {}) has {} Threads'.format(proc.ProcessId, proc.ParentProcessId, len(proc2threads[proc])))
         for thread in proc2threads[proc]:
-            print('\tThread (ThreadId {} CreateTime {:#x}) names: {}'.format(thread.ThreadId, thread.CreateTime, thread_names[thread]))
+            if thread in thread_names:
+                print('\tThread (ThreadId {} CreateTime {:#x}) names: {}'.format(thread.ThreadId, thread.CreateTime, thread_names[thread]))
 
     return proc2threads, thread2proc
 
