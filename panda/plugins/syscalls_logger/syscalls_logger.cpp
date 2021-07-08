@@ -509,7 +509,6 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
 
             bool know_buf_len = false;
             uint64_t buf_len = 0;
-            bool null_terminated = false; // e.g., sys_read will fill a null-terminated buffer
 
             if (strcasestr(sa->arg_name, "buf") != NULL // arg named buf
                 && i < call->nargs-1 // has a next arg
@@ -520,29 +519,29 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                 ) {
                 know_buf_len = true;
 
-                // Some syscalls will have a max size but then just a null-term'd string.
-                // For these we just read to null terminator, not provided size
+                // Some syscalls will have a max size as an arg and we'll need to calculate the actual size as a special-case
+                // e.g., sys_read which has the actual buffer size in the return value
                 if (strcmp(call->name, "sys_read") == 0) {
-                    null_terminated = true;
-                }
+                  buf_len = psyscall.retcode;
+                } else {
+                    switch (call->argt[i+1]) {
+                      // Assume it will always be unsigned
+                      case SYSCALL_ARG_U64:
+                          buf_len = (uint64_t) *((target_ulong *) rp->args[i+1]);
+                          break;
 
-                switch (call->argt[i+1]) {
-                  // Assume it will always be unsigned
-                  case SYSCALL_ARG_U64:
-                      buf_len = (uint64_t) *((target_ulong *) rp->args[i+1]);
-                      break;
+                      case SYSCALL_ARG_U32:
+                          buf_len = (uint64_t) *((uint32_t *) rp->args[i+1]);
+                          break;
 
-                  case SYSCALL_ARG_U32:
-                      buf_len = (uint64_t) *((uint32_t *) rp->args[i+1]);
-                      break;
+                      case SYSCALL_ARG_U16:
+                          buf_len = (uint64_t) *((uint16_t *) rp->args[i+1]);
+                          break;
 
-                  case SYSCALL_ARG_U16:
-                      buf_len = (uint64_t) *((uint16_t *) rp->args[i+1]);
-                      break;
-
-                  default:
-                      printf("Unknown buffer size type for field %s %d\n", call->argn[i+1],
-                                                                           call->argt[i+1]);
+                      default:
+                          printf("Unknown buffer size type for field %s %d\n", call->argn[i+1],
+                                                                               call->argt[i+1]);
+                    }
                 }
 
             }
@@ -556,7 +555,7 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
                 {
                     target_ulong addr = *((target_ulong *)rp->args[i]);
 
-                    if (know_buf_len && !null_terminated) {
+                    if (know_buf_len) {
                       // It's a buffer of a fixed length
                       if (buf_len == 0) {
                         sa->bytes_val.data = NULL;
@@ -624,30 +623,20 @@ void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, cons
 
                 case SYSCALL_ARG_BUF_PTR:
                     if (know_buf_len) {
-                      if (null_terminated) {
-                        // Unexpected, but we do end up here - it's a null-terminatd string
-                        int len = get_string(cpu, (target_ulong)*(target_ulong*) rp->args[i], buf);
-                        if (len > 0) {
-                            sa->str = strdup((const char *) buf);
-                        } else{
-                            sa->str = NULL;
-                        }
+                      // It's a buffer of a fixed length
+                      if (buf_len == 0) {
+                          sa->bytes_val.data = NULL;
                       } else {
-                          // It's a buffer of a fixed length
-                          if (buf_len == 0) {
-                              sa->bytes_val.data = NULL;
-                          } else {
-                              get_n_buf(cpu, (target_ulong)*(target_ulong*) rp->args[i], buf, buf_len);
-                              unsigned char* data = (unsigned char*)malloc(sizeof(unsigned char)*buf_len);
-                              assert(data != NULL);
-                              memcpy(data, buf, buf_len);
-                              //printf("Set arg buf_ptr for %s to %s\n", call->name, data);
+                          get_n_buf(cpu, (target_ulong)*(target_ulong*) rp->args[i], buf, buf_len);
+                          unsigned char* data = (unsigned char*)malloc(sizeof(unsigned char)*buf_len);
+                          assert(data != NULL);
+                          memcpy(data, buf, buf_len);
+                          //printf("Set arg buf_ptr for %s to %s\n", call->name, data);
 
-                              sa->bytes_val.data = data;
-                          }
-                          sa->bytes_val.len = buf_len;
-                          sa->has_bytes_val = true;
+                          sa->bytes_val.data = data;
                       }
+                      sa->bytes_val.len = buf_len;
+                      sa->has_bytes_val = true;
 
                     } else {
                       assert(strcmp("sys_write", call->name) != 0);
