@@ -528,6 +528,7 @@ bool init_plugin(void *self) {
         return false;
 
 #if CS_VERSION_MAJOR < 4
+	printf("\nCS_VERSION = %d", CS_VERSION_MAJOR); 
         printf("\n[ERROR] Capstone versions prior to 4.0.1 are unusable with ARM so callstack instr will fail! Please upgrade your libcapstone install to use this plugin\n\n");
         return false;
 #endif

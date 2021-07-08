@@ -319,7 +319,7 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
 
 #if defined(CONFIG_LLVM)
     target_ulong guest_pc = cpu->panda_guest_pc;
-    if (execute_llvm) {
+    if (execute_llvm == 2) {
         assert(guest_pc >= tb->pc);
         assert(guest_pc < tb->pc + tb->size);
         for (i = 0; i < num_insns; ++i) {

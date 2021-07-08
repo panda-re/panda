@@ -1,4 +1,4 @@
-/* PANDABEGINCOMMENT
+∑/* PANDABEGINCOMMENT
  *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
@@ -682,6 +682,9 @@ void panda_enable_llvm(void) {
     execute_llvm = 1;
     generate_llvm = 1;
     tcg_llvm_initialize();
+    tcg_llvm_initialize();
+    execute_llvm = 2;
+    generate_llvm = 2;
 }
 
 // Enable translating TCG -> LLVM, but still execute TCG
@@ -690,6 +693,7 @@ void panda_enable_llvm_no_exec(void) {
     execute_llvm = 0;
     generate_llvm = 1;
     tcg_llvm_initialize();
+    generate_llvm = 2;
 }
 
 // Disable LLVM translation and execution

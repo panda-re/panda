@@ -4446,9 +4446,11 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
     }
 
 #if defined(CONFIG_LLVM)
-    if (generate_llvm || execute_llvm){
+    if (generate_llvm == 1 || execute_llvm == 1){
         if (tcg_llvm_translator == NULL){
             tcg_llvm_initialize();
+            generate_llvm = 2;
+            execute_llvm = 2;
         }
     }
 #endif
