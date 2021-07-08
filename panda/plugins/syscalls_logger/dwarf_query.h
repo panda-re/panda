@@ -7,7 +7,11 @@
 #include <iomanip>
 #include <unordered_map>
 #include <map>
+#if __has_include(<jsoncpp/json/json.h>)
 #include <jsoncpp/json/json.h>
+#else
+#include <json/json.h>
+#endif
 
 #include "panda/plugin.h"
 #include "panda/common.h"

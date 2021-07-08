@@ -14,6 +14,8 @@ PANDAENDCOMMENT */
 #ifndef __PROG_POINT_H
 #define __PROG_POINT_H
 
+#include <functional>
+
 // different ways to segregate the stacks
 enum stack_type {
     STACK_ASID = 0,
