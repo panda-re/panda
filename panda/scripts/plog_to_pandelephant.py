@@ -197,9 +197,9 @@ def CollectProcessMemoryMappings(pandalog, processes):
                     AttemptCounts[k] += 1
                     try:
                         CollectFrom[k](msg, getattr(msg, k))
-                    except:
+                    except Exception as e:
                         FailCounts[k] += 1
-                        pass
+                        print(e)
                     break
     print('Processed {} messages ({} without mapping)'.format(sum(AttemptCounts[k] for k in AttemptCounts.keys()), num_no_mappings))
     for k in CollectFrom.keys():
@@ -337,6 +337,7 @@ def CollectTaintFlowsAndSyscalls(pandalog, CollectedBetterMappingRanges):
                         CollectFrom[k](msg, getattr(msg, k))
                     except Exception as e:
                         FailCounts[k] += 1
+                        print(e)
                     break
     for k in CollectFrom.keys():
         print('\t{} Attempts: {}, Failures: {}'.format(k, AttemptCounts[k], FailCounts[k]))
