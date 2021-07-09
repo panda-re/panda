@@ -27,6 +27,7 @@ network
 osi
 osi_linux
 osi_test
+passive
 pri
 pri_dwarf
 pri_simple
