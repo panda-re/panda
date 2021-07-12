@@ -896,9 +896,20 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
 
     if (pandalog) {
         bool is_bind = false;
+        bool has_fd = false;
+        int fd_arg_position = -1;
         uint16_t sin_family = 0;
         if(strcmp(call->name, "sys_bind") == 0) {
             is_bind = true;
+        }
+
+        for (int i = 0; i < call->nargs; i++) {
+            //printf("arg name: %s\n", call->argn[i]);
+            if (strcmp(call->argn[i], "fd") == 0 && strcmp(call->name, "sys_bind") != 0) {  //pretend that bind doesn't involve FDs
+                has_fd = true;
+                fd_arg_position = i;
+                //printf("call %s has fd in position %d\n", call->name, i);
+            }
         }
 
 
@@ -917,17 +928,16 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
 
         psyscall.create_time = current->create_time;
         psyscall.call_name = strdup(call->name);
-        if (is_bind) {
+        if (is_bind || has_fd) {
             psyscall.args = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * call->nargs+1);
         } else {
             psyscall.args = (Panda__NamedData **)malloc(sizeof(Panda__NamedData *) * call->nargs);
         }
         assert(psyscall.args != NULL);
 
-        for (int i = 0; i < ((is_bind) ? (call->nargs+1) : (call->nargs)); i++) { //I am so sorry for making you look at this
+        for (int i = 0; i < ((is_bind || has_fd) ? (call->nargs+1) : (call->nargs)); i++) { //I am so sorry for making you look at this
             if(is_bind && i == 3) {
                 uint8_t data[2] = {0};
-                //printf("sys_bind happened, at extra arg cycle!\n");
 
                 //get the value of the pointer (second arg of bind)
                 target_ulong address_of_addr_in = 0;
@@ -966,6 +976,54 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
 
 
                 break;
+            } else if(has_fd && i == call->nargs) {
+                //strvar
+
+                //printf("fd we're in the loop!\n");
+
+                if(fd_arg_position) {}
+
+                Panda__NamedData *sa = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
+                assert(sa != NULL);
+                psyscall.args[i] = sa;
+                *sa = PANDA__NAMED_DATA__INIT;
+                sa->arg_name = strdup("filename(from fd)");
+
+                uint8_t fd_number = *(rp->args[fd_arg_position]);
+                //printf("fd is: %d\n", fd_number);
+
+                char* fn = NULL;
+                fn = osi_linux_fd_to_filename(cpu, current, fd_number);
+
+                unsigned char* filename_data = NULL;
+                if(fn) {
+                    //printf("filename: %s\n", fn);
+
+                    uint64_t len = strlen(fn);
+                    //printf("strlen %lu\n", len);
+                    filename_data = (unsigned char*) malloc(sizeof(unsigned char) * len);
+                    assert(filename_data != NULL);
+                    memcpy(filename_data, fn, len);
+
+                    //printf("filename: %s\n", filename_data);
+
+                    sa->bytes_val.data = filename_data;
+                    sa->bytes_val.len = len;
+                    //sa->str = strdup("NAME");
+                    sa->has_bytes_val = true;
+                } else {
+                    //printf("filename is null\n");
+
+                    filename_data = (unsigned char*) malloc(sizeof(unsigned char) * 20);
+                    sa->bytes_val.data = (unsigned char*) strdup("[unknown filename]");
+                    sa->bytes_val.len = strlen("[unknown filename]");
+                    sa->has_bytes_val = true;
+                }
+
+                break;
+
+
+
             }
 
             //if(is_bind && (sin_family == 2 || sin_family == 10)) {}
@@ -979,7 +1037,7 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
             log_argument(cpu, call, i, sa, rp);
         }
 
-        if(is_bind && (sin_family == 2 || sin_family == 10)) { //add an extra argument iff it's a network socket
+        if((is_bind && (sin_family == 2 || sin_family == 10)) || has_fd) { //add an extra argument iff it's a network socket, or if there's a file descriptor
             psyscall.n_args = call->nargs + 1;
         } else {
             psyscall.n_args = call->nargs;
@@ -1100,6 +1158,7 @@ bool init_plugin(void *_self) {
 
     panda_require("osi");
     assert(init_osi_api());
+    assert(init_osi_linux_api());
 
     PPP_REG_CB("syscalls2", on_all_sys_enter2, sys_enter);
     PPP_REG_CB("syscalls2", on_all_sys_return2, sys_return);
