@@ -10,13 +10,14 @@ import collections
 import pandelephant
 
 # PLogReader from pandare package is easiest to import,
-# but if it's unavailable, fallback to searching PYTHONPATH
+# but if it's unavailable, fallback to searching
+# local directory, then PYTHONPATH
 # which users should add panda/panda/scripts to
 try:
-    from plog_reader import PLogReader
+    from pandare.plog_reader import PLogReader
 except ImportError:
     try:
-        from pandare.plog_reader import PLogReader
+        from plog_reader import PLogReader
     except ImportError:
         import PLogReader
     except ImportError:
@@ -150,7 +151,8 @@ def AssociateThreadsAndProcesses(processes, threads, thread_names):
     for proc in proc2threads.keys():
         print('Process (ProcessId {} ParentProcessId {}) has {} Threads'.format(proc.ProcessId, proc.ParentProcessId, len(proc2threads[proc])))
         for thread in proc2threads[proc]:
-            print('\tThread (ThreadId {} CreateTime {:#x}) names: {}'.format(thread.ThreadId, thread.CreateTime, thread_names[thread]))
+            if thread in thread_names:
+                print('\tThread (ThreadId {} CreateTime {:#x}) names: {}'.format(thread.ThreadId, thread.CreateTime, thread_names[thread]))
 
     return proc2threads, thread2proc
 
@@ -200,7 +202,7 @@ def CollectProcessMemoryMappings(pandalog, processes):
                         CollectFrom[k](msg, getattr(msg, k))
                     except Exception as e:
                         FailCounts[k] += 1
-                        print(e)
+                        print("Exception:", e)
                     break
     print('Processed {} messages ({} without mapping)'.format(sum(AttemptCounts[k] for k in AttemptCounts.keys()), num_no_mappings))
     for k in CollectFrom.keys():
@@ -214,7 +216,7 @@ def ConvertTaintFlowsAndSyscallsToDatabase(datastore, CollectedSyscalls, Collect
     for s in CollectedSyscalls:
         args = []
         for a in s.Arguments:
-            args.append({'name': a.Name, 'type': a.Type, 'value': a.Value})
+            args.append({'Name': a.Name, 'Type': a.Type, 'Value': a.Value})
         if s.Thread in CollectedThreadToDatabaseThread:
             CollectedSyscallToDatabaseSyscall[s] = datastore.new_syscall(CollectedThreadToDatabaseThread[s.Thread], s.Name, s.RetVal, args, s.InstructionCount)
 
@@ -248,7 +250,7 @@ def CollectTaintFlowsAndSyscalls(pandalog, CollectedBetterMappingRanges):
             'i64': ('signed64',   '{:d}'),
             'i32': ('signed32',   '{:d}'),
             'i16': ('signed16',   '{:d}'),
-            'bytes_val': ('signed16',   '{:d}'),
+            'bytes_val': ('bytes',   '{:d}'),
         }
         def syscall_arg_value(arg):
             for fld, (typ, fmt) in SyscallFieldInfo.items():
@@ -270,6 +272,7 @@ def CollectTaintFlowsAndSyscalls(pandalog, CollectedBetterMappingRanges):
                 for arg in msg.args
             )
         ))
+
         return
     def CollectFrom_taint_flow(entry, msg):
         source_thread = msg.source.cp.thread
@@ -339,7 +342,7 @@ def CollectTaintFlowsAndSyscalls(pandalog, CollectedBetterMappingRanges):
                         CollectFrom[k](msg, getattr(msg, k))
                     except Exception as e:
                         FailCounts[k] += 1
-                        print(e)
+                        print("Exception:", e)
                     break
     for k in CollectFrom.keys():
         print('\t{} Attempts: {}, Failures: {}'.format(k, AttemptCounts[k], FailCounts[k]))
