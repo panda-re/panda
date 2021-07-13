@@ -589,7 +589,7 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
     bool know_buf_len = false;
     uint64_t buf_len = 0;
 
-    if (strcasestr(sa->arg_name, "buf") != NULL // arg named buf
+    if (strcasestr(call->argn[i], "buf") != NULL // arg named buf
         && i < call->nargs-1 // has a next arg
         && (strcasestr(call->argn[i+1], "size")  != NULL ||
             strcasestr(call->argn[i+1], "len")   != NULL ||
