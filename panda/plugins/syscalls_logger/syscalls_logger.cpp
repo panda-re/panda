@@ -68,17 +68,20 @@ int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
 void get_n_buf(CPUState *cpu, target_ulong addr, uint8_t *buf, uint64_t size) {
     // Populate buf with data at addr of the provided size
 
-    int len = 0;
-    uint8_t *c = (uint8_t*)&buf;
-    // Read buffer, one character at a time (slower than a big read, but can handle failures?)
-    while ((uint64_t)(len+&buf) < size) {
-        int rv = panda_virtual_memory_read(cpu, addr + len, c, 1);
-        if (rv == -1) {
+    uint8_t* dest;
+
+    // Read buffer, one character at a time (slower than a big read, but can handle failures)
+    //
+    for (int len=0; len < size; len++) {
+
+        dest = &buf[len];
+
+        if (panda_virtual_memory_read(cpu, addr + len, dest, 1) == -1) {
+            // read failed
             buf[len] = '.'; // Might also want to warn that data is unavailable
-        }else if (!isprint(buf[len])) {
-            buf[len] = '.'; // Only printable characters
+        //}else if (!isprint(buf[len])) {
+            //buf[len] = '.'; // Only printable characters?
         }
-        len++;
     }
 }
 
@@ -622,7 +625,6 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                                                                        call->argt[i+1]);
             }
         }
-
     }
 
     // Buf is a fixed size - ensure we don't overflow it
@@ -652,7 +654,7 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                   memcpy(data, buf, buf_len);
                   sa->bytes_val.data = data;
                 } else {
-                  printf("\"%.*s", (int)buf_len, buf);
+                  printf("\"%.*s\"", (int)buf_len, buf);
                 }
               }
               if (sa) {
@@ -736,7 +738,6 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 }
               } else {
                   get_n_buf(cpu, (target_ulong)*(target_ulong*) rp->args[i], buf, buf_len);
-                  //printf("Set arg buf_ptr for %s to %s\n", call->name, data);
 
                   if (sa) {
                     unsigned char* data = (unsigned char*)malloc(sizeof(unsigned char)*buf_len);
@@ -744,7 +745,7 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                     memcpy(data, buf, buf_len);
                     sa->bytes_val.data = data;
                   } else {
-                    printf("\"%.*s", (int)buf_len, buf);
+                    printf("\"%.*s\"", (int)buf_len, buf);
                   }
               }
               if (sa) {
