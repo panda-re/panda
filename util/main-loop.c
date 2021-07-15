@@ -524,9 +524,18 @@ int main_loop_wait(int nonblocking)
         timeout_ns = (uint64_t)timeout * (int64_t)(SCALE_MS);
     }
 
+
+
     timeout_ns = qemu_soonest_timeout(timeout_ns,
                                       timerlistgroup_deadline_ns(
                                           &main_loop_tlg));
+
+    /*  In some edge cases encountered in multi-replay runs with PANDA, both
+     *  timeout_ns and the return value of timerlistgroup_deadline_ns end up
+     *  being -1. If this happens, we would hang here.
+     *  Hence, we manually fix the timeout value for this corner case */
+    if (unlikely(timeout_ns == -1)) timeout_ns = RR_MAIN_WAIT_LOOP_TIMEOUT_IN_REPLAY;
+
 
     ret = os_host_main_loop_wait(timeout_ns);
 
