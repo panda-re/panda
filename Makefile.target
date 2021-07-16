@@ -23,6 +23,7 @@ else
 # system emulator name
 QEMU_PROG=panda-system-$(TARGET_NAME)$(EXESUF)
 PANDA_PROG=libpanda-$(TARGET_NAME).so
+PANDA_PROG_NAME=panda-$(TARGET_NAME)
 ifneq (,$(findstring -mwindows,$(libs_softmmu)))
 # Terminate program name with a 'w' because the linker builds a windows executable.
 QEMU_PROGW=panda-system-$(TARGET_NAME)w$(EXESUF)
@@ -223,12 +224,10 @@ $(PANDA_PROG): config-devices.mak
 COMMON_LDADDS = $(trace-obj-y) ../libqemuutil.a ../libqemustub.a
 
 # build either PROG or PROGW and libpanda.so
-$(QEMU_PROG_BUILD): $(all-obj-y) $(COMMON_LDADDS)
+# QEMU_PROG_BUILD is dynamically linked against PANDA_PROG (libpanda) and only contains main.o
+$(QEMU_PROG_BUILD): LDFLAGS+=-L. -l$(PANDA_PROG_NAME) -Wl,-rpath,'$$ORIGIN' -Wl,-rpath='$$ORIGIN/../lib'
+$(QEMU_PROG_BUILD): main.o $(PANDA_PROG)
 	$(call LINK, $(filter-out %.mak, $^))
-ifdef CONFIG_DARWIN
-	$(call quiet-command,Rez -append $(SRC_PATH)/pc-bios/panda.rsrc -o $@,"REZ","$(TARGET_DIR)$@")
-	$(call quiet-command,SetFile -a C $@,"SETFILE","$(TARGET_DIR)$@")
-endif
 
 $(PANDA_PROG): LDFLAGS+=-shared
 $(PANDA_PROG): $(panda-all-obj-y) $(COMMON_LDADDS)
