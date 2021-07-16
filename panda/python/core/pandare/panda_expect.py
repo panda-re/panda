@@ -110,7 +110,7 @@ class Expect(object):
         # Join prior lines into a single text element in our reformatted list
         reformatted = []
         if len(self.prior_lines):
-            reformatted = [('text', '\n'.join(self.prior_lines))]
+            reformatted = [('text', ['\n'.join(self.prior_lines)])]
 
         # Then split current line into the tuple format describe above
         msg = self.current_line
