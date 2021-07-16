@@ -51,12 +51,13 @@ class Panda():
 
     def __init__(self, arch="i386", mem="128M",
             expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
+            serial_kwargs=None,
             os_version=None,
             qcow=None, # Qcow file to load
             os="linux",
             generic=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
-            raw_monitor = False, # When set, don't specify a -monitor. arg Allows for use of -nographic in args with ctrl-A+C for interactive qemu prompt.
-            extra_args=[]):
+            raw_monitor=False, # When set, don't specify a -monitor. arg Allows for use of -nographic in args with ctrl-A+C for interactive qemu prompt.
+            extra_args=None):
         '''
         Construct a new `Panda` object.  Note that multiple Panda objects cannot coexist in the same Python instance.
         Args:
@@ -66,6 +67,10 @@ class Panda():
             expect_prompt: Regular expression describing the prompt exposed by the guest
                     on a serial console. Used so we know when a running command has finished
                     with its output.
+            serial_kwargs: dict of additional arguments to pass to pandare.Expect (see signature of its constructor).
+                    Note that `expect_prompt` is already passed to Expect as "expectation".
+                    If not explicitly given, "unansi" is set to True (simulates a subset of ANSI codes and attempts to
+                    remove command strings repeated by the shell from the shell output).
             os_version: analagous to PANDA's -os argument (e.g, linux-32-debian:3.2.0-4-686-pae")
             os: type of OS (e.g. "linux")
             qcow: path to a qcow file to load
@@ -89,6 +94,8 @@ class Panda():
 
         if isinstance(extra_args, str): # Extra args can be a string or array
             extra_args = extra_args.split()
+        elif extra_args is None:
+            extra_args = []
 
         # If specified, use a generic (x86_64, i386, arm, etc) qcow from MIT and ignore
         if generic:                                 # other args. See details in qcows.py
@@ -155,10 +162,13 @@ class Panda():
         self.panda_args.extend(['-m', self.mem])
 
         # Configure serial - if we have an expect_prompt set. Otherwise how can we know what guest cmds are outputting?
-        if self.expect_prompt:
+        if self.expect_prompt or self.expect_kwargs.get('expectation'):
             self.serial_file = NamedTemporaryFile(prefix="pypanda_s").name
             self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.serial_console = Expect('serial', expectation=self.expect_prompt, consume_first=False)
+            expect_kwargs = {'expectation': self.expect_prompt, 'consume_first': False, 'unansi': True}
+            if serial_kwargs:
+                expect_kwargs.update(serial_kwargs)
+            self.serial_console = Expect('serial', **expect_kwargs)
             self.panda_args.extend(['-serial', 'unix:{},server,nowait'.format(self.serial_file)])
         else:
             self.serial_file = None
