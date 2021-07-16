@@ -467,7 +467,7 @@ class X86Arch(PandaArch):
                            "syscall":    "EAX"}
         
         self.call_conventions = {"stack": "stack",
-                                 "syscall": ["EBX", "ECX", "EDX", "ESI", "EBP"]}
+                                 "syscall": ["EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP"]}
         self.call_conventions['default'] = self.call_conventions['stack']
 
         self.reg_sp = regnames.index('ESP')
