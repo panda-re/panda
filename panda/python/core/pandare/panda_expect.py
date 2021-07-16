@@ -19,7 +19,7 @@ class Expect(object):
     Designed to be used with the qemu monitor and serial consoles for Linux guests.
 
     '''
-    def __init__(self, name, filelike=None, expectation=None, logfile_base=None, consume_first=False):
+    def __init__(self, name, filelike=None, expectation=None, logfile_base=None, consume_first=False, unansi=False):
         '''
         To debug, set logfile_base to something like '/tmp/log' and then look at logs written to /tmp/log_monitor.txt and /tmp/log_serial.txt. Or directyl access
         '''
@@ -43,9 +43,8 @@ class Expect(object):
         self.update_expectation(expectation)
 
         # If consumed_first is false, we'll consume a message before anything else. Requires self.expectation to be set
-        self.consumed_first = True
-        if consume_first:
-            self.consumed_first = False
+        self.consumed_first = not consume_first
+        self.use_unansi = unansi
 
     def update_expectation(self, expectation):
         if isinstance(expectation, bytes):
@@ -386,8 +385,12 @@ class Expect(object):
                 # Translate the current_line buffer into plaintext, then determine if we're finished (bc we see new prompt)
                 # note this drops the echo'd command
                 if self.current_line.endswith(b"\n"):
-                    # End of line - need to unansi and move into prior_lines
-                    self.unansi()
+                    # End of line - need to potentially unansi and move into prior_lines
+                    if self.use_unansi:
+                        self.unansi()
+                    else:
+                        self.prior_lines.append(self.current_line[:-1].decode(errors='ignore'))
+                        self.current_line = bytearray()
 
                     # Now we have command\nresults..........\nprompt
                     #self.logfile.write(b"\n UNANSIs to: " + repr(self.prior_lines).encode()+b"\n")
