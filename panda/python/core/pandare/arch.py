@@ -207,10 +207,12 @@ class PandaArch():
             return
         word_size = int(self.panda.bits/8)
 
+        _, endianness, _ = self._determine_bits()
+
         for word_idx in range(words):
             try:
                 val_b = self.panda.virtual_memory_read(cpu, base_reg_val+word_idx*word_size, word_size)
-                val = int.from_bytes(val_b, byteorder='little')
+                val = int.from_bytes(val_b, byteorder=endianness)
                 print("[{}+0x{:0>2x}] == 0x{:0<8x}]: 0x{:0<8x}".format(base_reg_s, word_idx*word_size, base_reg_val+word_idx*word_size, val), end="\t")
                 telescope(self.panda, cpu, val)
             except ValueError:
@@ -267,17 +269,17 @@ class ArmArch(PandaArch):
         '''
         cpu.env_ptr.regs[reg] = val
 
-    def get_return_value(self, env):
+    def get_return_value(self, cpu):
         '''
         returns register value used to return results
         '''
-        return self.get_reg(env, "R0")
+        return self.get_reg(cpu, "R0")
 
-    def get_return_address(self,env):
+    def get_return_address(self, cpu):
         '''
         looks up where ret will go
         '''
-        return self.get_reg(env, "LR")
+        return self.get_reg(cpu, "LR")
 
 class Aarch64Arch(PandaArch):
     '''
@@ -337,17 +339,17 @@ class Aarch64Arch(PandaArch):
         '''
         cpu.env_ptr.xregs[reg] = val
 
-    def get_return_value(self, env):
+    def get_return_value(self, cpu):
         '''
         returns register value used to return results
         '''
-        return self.get_reg(env, "R0")
+        return self.get_reg(cpu, "R0")
 
-    def get_return_address(self,env):
+    def get_return_address(self, cpu):
         '''
         looks up where ret will go
         '''
-        return self.get_reg(env, "LR")
+        return self.get_reg(cpu, "LR")
 
 class MipsArch(PandaArch):
     '''
@@ -415,17 +417,23 @@ class MipsArch(PandaArch):
         '''
         cpu.env_ptr.active_tc.gpr[reg] = val
 
-    def get_return_value(self, env):
+    def get_return_value(self, cpu):
         '''
         returns register value used to return results
         '''
-        return self.get_reg(env, "V0")
+        return self.get_reg(cpu, "V0")
 
-    def get_call_return(self,env):
+    def get_call_return(self, cpu):
+        '''
+        .. Deprecated:: use get_return_address
+        '''
+        return self.get_return_addess(cpu)
+
+    def get_return_address(self,cpu):
         '''
         looks up where ret will go
         '''
-        return self.get_reg(env, "RA")
+        return self.get_reg(cpu, "RA")
 
     def set_retval(self, cpu, val, convention='default', failure=False):
         '''
@@ -490,26 +498,26 @@ class X86Arch(PandaArch):
         '''
         cpu.env_ptr.regs[reg] = val
 
-    def get_return_value(self, env):
+    def get_return_value(self, cpu):
         '''
         returns register value used to return results
         '''
-        return self.get_reg(env, "EAX")
+        return self.get_reg(cpu, "EAX")
 
-    def get_return_address(self,env):
+    def get_return_address(self,cpu):
         '''
         looks up where ret will go
         '''
-        esp = self.get_reg(env,"ESP")
-        return self.panda.virtual_memory_read(env,esp,4,fmt='int')
+        esp = self.get_reg(cpu,"ESP")
+        return self.panda.virtual_memory_read(cpu,esp,4,fmt='int')
     
     # we need this because X86 is stack based
-    def get_arg_stack(self, env, num, kernel=False):
+    def get_arg_stack(self, cpu, num, kernel=False):
         '''
         Gets arguments based on the number. Supports kernel and usermode.
         '''
-        esp = self.get_reg(env, "ESP")
-        return self.panda.virtual_memory_read(env, esp+(4*(num+1)),4,fmt='int')
+        esp = self.get_reg(cpu, "ESP")
+        return self.panda.virtual_memory_read(cpu, esp+(4*(num+1)),4,fmt='int')
 
 class X86_64Arch(PandaArch):
     '''
@@ -559,15 +567,15 @@ class X86_64Arch(PandaArch):
         '''
         cpu.env_ptr.regs[reg] = val
 
-    def get_return_value(self, env):
+    def get_return_value(self, cpu):
         '''
         returns register value used to return results
         '''
-        return self.get_reg(env, "RAX")
+        return self.get_reg(cpu, "RAX")
 
-    def get_return_address(self,env):
+    def get_return_address(self, cpu):
         '''
         looks up where ret will go
         '''
-        esp = self.get_reg(env,"RSP")
-        return self.panda.virtual_memory_read(env,esp,8,fmt='int')
+        esp = self.get_reg(cpu, "RSP")
+        return self.panda.virtual_memory_read(cpu, esp, 8, fmt='int')

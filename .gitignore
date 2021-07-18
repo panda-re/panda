@@ -166,3 +166,7 @@ panda/plugins/syscalls_logger/test/test_fw
 
 # Local files to be gitignored
 local
+
+# Workaround for CI to avoid github checkout@v2 actions bug when auto-generating documentation
+auto_pydoc
+auto_pydoc/pandare

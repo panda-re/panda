@@ -1107,6 +1107,7 @@ struct CPUMIPSState;
 typedef struct CPUMIPSState CPUMIPSState;
 struct CPUMIPSState {
 	TCState                    active_tc;            /*     0   228 */
+	char pack[4];
 	/* XXX 4 bytes hole, try to pack */
 	/* --- cacheline 3 boundary (192 bytes) was 40 bytes ago --- */
 	CPUMIPSFPUContext          active_fpu;           /*   232   536 */
@@ -1116,6 +1117,7 @@ struct CPUMIPSState {
 	uint32_t                   SEGBITS;              /*   776     4 */
 	uint32_t                   PABITS;               /*   780     4 */
 	target_ulong               SEGMask;              /*   784     4 */
+	char pack2[4];
 	/* XXX 4 bytes hole, try to pack */
 	uint64_t                   PAMask;               /*   792     8 */
 	int32_t                    msair;                /*   800     4 */
@@ -1213,6 +1215,7 @@ struct CPUMIPSState {
 	TCState                    tcs[16];              /*  1356  3648 */
 	/* XXX 4 bytes hole, try to pack */
 	/* --- cacheline 78 boundary (4992 bytes) was 16 bytes ago --- */
+	char pack3[4];
 	CPUMIPSFPUContext          fpus[1];              /*  5008   536 */
 	/* --- cacheline 86 boundary (5504 bytes) was 40 bytes ago --- */
 	int                        error_code;           /*  5544     4 */
@@ -1240,6 +1243,7 @@ struct CPUMIPSState {
 	target_ulong               tlb_flush_mask;       /* 43604     4 */
 	target_ulong               vtlb_index;           /* 43608     4 */
 	/* XXX 4 bytes hole, try to pack */
+	char pack4[4];
 	CPUMIPSMVPContext *        mvp;                  /* 43616     8 */
 	CPUMIPSTLBContext *        tlb;                  /* 43624     8 */
 	const mips_def_t  *        cpu_model;            /* 43632     8 */

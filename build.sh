@@ -3,6 +3,7 @@
 # example: ./build.sh i386-softmmu,arm-softmmu
 #          ./build.sh --python i386-softmmu,arm-softmmu
 #          ./build.sh small # small = i386-softmmu
+#          LLVM_CONFIG_BINARY=llvm-config-11-64 ./build.sh small # set custom llvm-config path
 
 # Note the --python flag installs using `pip -e` which leaves files in a local
 # directory (panda/python/core) instead of installing to your system.
@@ -18,7 +19,7 @@ msg() {
 
 # Default targets to build. Change with argument. small = i386-softmmu
 TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
-LLVM_CONFIG_BINARY="llvm-config-11"
+LLVM_CONFIG_BINARY="${LLVM_CONFIG_BINARY:-llvm-config-11}"
 
 pypanda=""
 # Check if first argument is --python
