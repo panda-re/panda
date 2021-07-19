@@ -122,7 +122,7 @@ uint64_t read_uint64(CPUState* cpu, target_ulong addr, target_ulong res);
 uint32_t read_uint32(CPUState* cpu, target_ulong addr, target_ulong res);
 int read_register(CPUState* cpu, char* name, target_ulong* res);
 void write_register(CPUState* cpu, target_ulong val);
-void get_all_proc_base_addrs(CPUState* cpu, uint64_t list_offset, std::vector<target_ulong>&);
+void get_all_proc_base_addrs(CPUState* cpu, std::vector<target_ulong>&);
 //void stack_search(CPUState* cpu);
 //void execve_enter(CPUState* cpu, target_ulong pc, uint64_t filename, uint64_t argv, uint64_t envp);
 }
@@ -226,7 +226,7 @@ int read_target_ulong(CPUState* cpu, target_ulong addr, target_ulong* res) {
     
     tmp = panda_virtual_memory_read(cpu, addr, data, 8);
     if(tmp == -1) {
-        printf("Couldn't read memory at 0x" TARGET_PTR_FMT "\n", addr);
+        //printf("Couldn't read memory at 0x" TARGET_PTR_FMT "\n", addr);
         return -1;
     }
     
@@ -254,14 +254,78 @@ int read_uint32(CPUState* cpu, target_ulong addr, target_ulong* res) {
     uint8_t data[8] = {0};
     target_ulong tmp = 0;
     
-    tmp = panda_virtual_memory_read(cpu, addr, data, 8);
+    tmp = panda_virtual_memory_read(cpu, addr, data, 4);
     if(tmp == -1) {
-        printf("Couldn't read memory at 0x" TARGET_PTR_FMT "\n", addr);
+        //printf("Couldn't read memory at 0x" TARGET_PTR_FMT "\n", addr);
         return -1;
     }
     
     *res = *((uint32_t*) &data[0]);
     return 0;
+}
+
+void get_all_proc_base_addrs(CPUState* cpu, std::vector<target_ulong>& addrs) {
+    //reload current
+    int err;
+    target_ulong res = 0;
+    err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err != -1) {
+        printf("current: " TARGET_PTR_FMT "\n", res);
+        current = res;
+    } else {
+        printf("ERROR: couldn't read memory at " TARGET_PTR_FMT "\n", task_per_cpu_offset_0_addr + task_current_task_addr);
+        return;
+    }
+
+    if (task_tasks_offset == 0) {
+        printf("ERROR: task_tasks_offset has not yet been set\n");
+        return;
+    }
+
+    //addrs.push_back(current);
+
+    target_ulong addr_of_start_of_list = current + task_tasks_offset;
+    target_ulong start_of_list = 0;
+    target_ulong next = 0;
+    err = read_target_ulong(cpu, addr_of_start_of_list, &res);
+    if(err != -1) {
+        start_of_list = res;
+    } else {
+        printf("couldn't read!!\n");
+    }
+
+    addrs.push_back(start_of_list - task_tasks_offset);
+
+    err = read_target_ulong(cpu, start_of_list, &next);
+    if(err == -1) {
+        printf("failed to read next\n");
+        return;
+    }
+
+    int count = 0;
+
+    //printf("main_ptr: " TARGET_PTR_FMT "\n", main_ptr);
+    //printf("next: " TARGET_PTR_FMT "\n", addr_of_next);
+
+    while (next != start_of_list) {
+        count += 1;
+        addrs.push_back(next - task_tasks_offset);
+        err = read_target_ulong(cpu, next, &res);
+        if(err != -1) {
+            next = res;
+            printf("next: " TARGET_PTR_FMT "\n", res);
+        } else {
+            printf("failed\n");
+            break;
+        }
+        printf("looping %d\n", count);
+
+        if(count > 100) {
+            break;
+        }
+    }
+
+    printf("size: %lu\n", addrs.size());
 }
 
 //made this for demo, delete later
@@ -363,6 +427,11 @@ void comm_search(CPUState* cpu) {
 
     printf("current is %lx\n", new_current);
 
+    if(task_tasks_offset == 0) {
+        printf("task_tasks_offset has not been set\n");
+        return;
+    }
+
     //get address of tasks list
     uint64_t tasks_addr = new_current + task_tasks_offset;
     uint64_t next_addr = tasks_addr;
@@ -393,7 +462,11 @@ void comm_search(CPUState* cpu) {
             offset += 4;
         }
         panda_virtual_memory_read(cpu, next_addr, data, 8);
-        next_addr = *((uint64_t*) &data[0]);
+        ret = next_addr = *((uint64_t*) &data[0]);
+        if (ret == -1) {
+            printf("couldn't read memory at 0x%lx\n", current + offset);
+            break;
+        }
         printf("next_addr is 0x%lx\n", next_addr);
         if (found) {
             break;
@@ -688,237 +761,372 @@ void group_leader_search(CPUState* cpu) {
 }
 
 void thread_group_search(CPUState* cpu) {
-    //find circular linked list candidates
-    //for each candidate, keep only if the tgids all match
-    //check each process for these candidates
-
-    //2392
+    //make a list of all the task base addresses
+    //for each task, find all circular lists of size > 1
+    //check if they all have the same tgid
 
     //reload current
-    std::vector<int> candidates;
-    uint64_t new_current;
-    //uint64_t task_base = 0;
-    uint8_t data[8] = {0};
-    uint8_t comm[16] = {0};
-    int offset = 0;
-    int count = 0;
-    int ret = 0;
 
-    printf("searching for thread group\n");
-    panda_virtual_memory_read(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, data, 8);
-    new_current = *((uint64_t*) &data[0]);
 
-    printf("current is %lx\n", new_current);
+    printf("searching for thread_group\n");
 
-    while (offset < 10000) {
-        //uint64_t secret_known_offset = 2392;
-        uint64_t main_thread_ptr = new_current + offset;
-        uint64_t current_thread_ptr = main_thread_ptr;
-        //uint32_t last_tgid = -1;
-        count = 0;
+    int err;
+    target_ulong res = 0;
 
-        ret = panda_virtual_memory_read(cpu, main_thread_ptr, data, 8);
-        if (ret == -1) {
-            offset += 4;
-            continue;
-        }
-        current_thread_ptr = *((uint64_t*) &data[0]);
+    err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err != -1) printf("current: " TARGET_PTR_FMT "\n", res); 
+    current = res;
+    std::map<int, int> candidates;
+    std::vector<target_ulong> base_addrs;
 
-        //printf("main_thread_ptr 0x%lx\n", main_thread_ptr);
-        //printf("current_thread_ptr 0x%lx\n", current_thread_ptr);
+    get_all_proc_base_addrs(cpu, base_addrs);
 
-        while(current_thread_ptr != main_thread_ptr) {
-//            task_base = current_thread_ptr - offset;
-//            //check tgid
-//            ret = panda_virtual_memory_read(cpu, task_base + task_tgid_offset, data, 8);
-//            if (ret == -1) {
-//                printf("COULD NOT READ THE TGID!!!\n");
-//                break;
-//            }
-//
-//            if (last_tgid == -1) {
-//                last_tgid = *((uint32_t*) &data[0]);
-//            } else {
-//                if(*((uint32_t*) &data[0]) != last_tgid) {
-//                    printf("tgid is different\n");
-//                    break;
-//                }
-//            }
+    for(int i = 0; i < base_addrs.size(); i++) {
+        //uint8_t data[16] = {0};
+        //panda_virtual_memory_read(cpu, base_addrs[i] + task_comm_offset, data, 16);
+        //printf("proc: %s\n", (char*) data);
 
-            ret = panda_virtual_memory_read(cpu, current_thread_ptr, data, 8);
-            if (ret == -1) {
-                printf("couldn't read memory at 0x%lx\n", current_thread_ptr);
+        //int offset = 0;
+        int offset = 0;
+        //check for all circular lists
+
+        //while (offset < 10000) {
+        //printf("proc %d\n", i);
+        while (offset < 10000) {
+            bool found = true;
+            target_ulong list_start = 0;
+            target_ulong next = 0;
+
+            err = read_target_ulong(cpu, base_addrs[i] + offset, &list_start);
+            if(err == -1) {
+                //printf("couldn't read addr 0x" TARGET_PTR_FMT " from proc %d", base_addrs[i] + offset, i);
+                //break;
+            }
+            //printf("list_start: " TARGET_PTR_FMT "\n", list_start);
+
+            err = read_target_ulong(cpu, list_start, &next);
+            if(err == -1) {
+                //printf("couldn't read second item in list\n");
+                //break;
+            }
+            //printf("next: " TARGET_PTR_FMT "\n", next);
+
+            target_ulong start_tgid = 0;
+            target_ulong next_tgid = 0;
+            target_ulong next_base = list_start - offset;
+            int count = 1;
+
+            //printf("next_base: " TARGET_PTR_FMT "\n", next_base);
+
+            err = read_uint32(cpu, base_addrs[i] + task_tgid_offset, &start_tgid);
+            if(err == -1) {
+                //printf("couldn't read start proc tgid\n");
                 break;
             }
-            current_thread_ptr = *((uint64_t*) &data[0]);
-            //printf("read another thread\n");
+            //printf("start_tgid: " TARGET_FMT_lx "\n", start_tgid);
+            if(start_tgid == 0) break;
 
-            count++;
-            if (count > 1000) break;
-        }
+            while(next != list_start) {
+                //printf("non-trivial loop!\n");
+                err = read_uint32(cpu, next_base + task_tgid_offset, &next_tgid);
+                if(err == -1) {
+                    //printf("couldn't read the next tgid\n");
+                    break;
+                }
+                //printf("next_tgid: " TARGET_FMT_lx "\n", next_tgid);
 
-        if (current_thread_ptr == main_thread_ptr) {
-            candidates.push_back(offset);
-        }
-
-        printf("finished looping!\n");
-        offset += 4;
-    }
-
-    for (int i = 0; i < candidates.size(); i++) {
-        printf("candidate: %d\n", candidates[i]);
-    }
-    //iterate over the list of tasks
-
-
-
-    //create a map of candidate offsets -> vector<int>
-    //for each process
-        //for each candidate offset
-
-            //count the number of tasks in the list at the candidate offset
-            //if the number is >= 2:
-                //if the TGIDs don't match
-                    //delete the candidate offset from the map
-            //if the offset hasn't been deleted:
-                //add the number of elements in the list to the mapped vector
-
-    uint64_t tasks_addr = new_current + task_tasks_offset;
-    uint64_t next_addr = tasks_addr;
-    uint64_t task_base = 0;
-    printf("tasks list addr is 0x%lx\n", tasks_addr);
-
-    std::map<int, std::vector<int> > lists;
-
-    for (int i = 0; i < candidates.size(); i++) {
-        lists.insert(std::pair<int, std::vector<int> >(candidates[i], std::vector<int>()));
-    }
-    std::map<int, std::vector<int> >::iterator it;
-
-    std::set<int> finalists;
-
-    //for each task in the list
-    printf("iterating through task list!\n");
-    do {
-        task_base = next_addr - task_tasks_offset;
-        //printf("task_base is: 0x%lx\n", task_base);
-
-        ret = panda_virtual_memory_read(cpu, task_base + task_comm_offset, comm, 16);
-        if (ret == -1) {
-            printf("couldn't read comm string at 0x%lx\n", task_base + task_comm_offset);
-            break;
-        }
-
-        printf("proc: %s\n", (char*) comm);
-
-        //for each candidate offset
-        for(it = lists.begin(); it != lists.end(); ++it) {
-            //count the number of tasks in the list at the candidate offset
-            count = 0;
-            uint64_t task_base_inner = 0;
-            uint64_t candidate_addr = task_base + it->first;
-            uint64_t next_addr_inner = candidate_addr;
-            int64_t last_tgid = -1;
-            uint32_t tgid = 0;
-            //printf("first loop: candidate_addr: 0x%lx, next_addr_inner: 0x%lx, task_base: 0x%lx\n", candidate_addr, next_addr_inner, task_base);
-
-            do {
-
-                ret = panda_virtual_memory_read(cpu, next_addr_inner, data, 8);
-                if (ret == -1) {
-                    //printf("BREAKING - couldn't read the next pointer\n");
+                //check the match
+                if(next_tgid != start_tgid) {
+                    found = false;
                     break;
                 }
 
-                next_addr_inner = *((uint64_t*) &data[0]);
-                count++;
-                if (count > 500) {
-                    //printf("infinite loop! breaking...\n");
+                next_base = next - offset;
+                //maybe verify this step
+
+                err = read_target_ulong(cpu, next, &next);
+                if(err == -1) {
+                    //printf("couldn't read next proc at " TARGET_PTR_FMT "\n", next);
+                    break;
+                }
+                //printf("next: " TARGET_PTR_FMT "\n", next);
+
+                if(count > 200) {
+                    //printf("infinite loop. breaking...\n");
+                    found = false;
                     break;
                 }
 
-            } while(next_addr_inner != candidate_addr);
-            count -= 1;
-            printf("finished inner candidate %d loop - number of tasks: %d\n", it->first, count);
-            //lists[it->first].push_back(count);
+                count += 1;
 
-            //if there are more than two tasks in the loop
-            if(count >= 2 && count < 500) {
-                candidate_addr = task_base + it->first;
-                next_addr_inner = candidate_addr;
-                count = 0;
-                bool mismatch = false;
-                //printf("second loop: candidate_addr: 0x%lx, next_addr_inner: 0x%lx, task_base: 0x%lx\n", candidate_addr, next_addr_inner, task_base);
-                do {
-                    task_base_inner = next_addr_inner - it->first;
+            }
 
-                    ret = panda_virtual_memory_read(cpu, task_base_inner + task_comm_offset, comm, 16);
-                    if (ret == -1) {
-                        printf("couldn't read comm string at 0x%lx\n", task_base_inner + task_comm_offset);
-                        break;
-                    }
-                    printf("inner proc: %s\n", (char*) comm);
+            //printf("procs in loop: %d\n", count);
 
-                    //check tgid
-                    ret = panda_virtual_memory_read(cpu, task_base_inner + task_tgid_offset, data, 4);
-                    if (ret == -1) {
-                        printf("COULDN'T READ THE TGID - candidate %d\n", it->first);
-                        break;
-                    }
-                    tgid = *((uint32_t*) &data[0]);
-                    printf("tgid is %u\n", tgid);
-                    if(last_tgid == -1) {
-                        last_tgid = (int64_t) tgid;
-                    } else if(tgid != last_tgid) {
-                        mismatch = true;
-                    }
-
-                    //get next addr
-                    panda_virtual_memory_read(cpu, next_addr_inner, data, 8);
-                    next_addr_inner = *((uint64_t*) &data[0]);
-                    count++;
-                    if (count > 500) {
-                        //printf("infinite loop! breaking...\n");
-                        break;
-                    }
-                } while(next_addr_inner != candidate_addr);
-
-                if(!mismatch) {
-                    finalists.insert(it->first);
-                    printf("found a solution!\n");
+            if(found == true && count > 1) {
+                printf("MATCH FOUND!!\n");
+                printf("proc: %d, offset: %d, procs in loop: %d\n", i, offset, count);
+                std::map<int, int>::iterator tmp = candidates.find(offset);
+                if(tmp == candidates.end()) {
+                    candidates[offset] = 1;
+                } else {
+                    tmp->second = tmp->second += 1;
                 }
             }
+
+            offset += 4;
         }
 
-        //break;
-
-
-        panda_virtual_memory_read(cpu, next_addr, data, 8);
-        next_addr = *((uint64_t*) &data[0]);
-        //printf("next_addr is 0x%lx\n", next_addr);
-    } while (next_addr != tasks_addr); 
-
-//    for(it = lists.begin(); it != lists.end(); ++it) {
-//        printf("%d: [", it->first);
-//        for(int i = 0; i < it->second.size(); i++) {
-//            printf("%d, ", it->second[i]);
-//        }
-//        printf("]\n");
-//    }
-
-    printf("FINAL CANDIDATES\n");
-    std::set<int>::iterator it2;
-    for(it2 = finalists.begin(); it2 != finalists.end(); ++it2) {
-        printf("%d\n", *it2);
     }
 
-    if(finalists.size() == 1) {
-        printf("found one valid solution!\n");
-        task_thread_group_offset = *(finalists.begin());
-        printf("task_thread_group_offset: %lu\n\n", task_thread_group_offset);
+    printf("number of candidates: %lu\n", candidates.size());
+    std::map<int, int>::iterator it;
+    int max_freq = 0;
+    int solution = 0;
+    for(it = candidates.begin(); it != candidates.end(); ++it) {
+        printf("candidate: %d, freq: %d\n", it->first, it->second);
+        if(it->second > max_freq) {
+            solution = it->first;
+            max_freq = it->second;
+        }
     }
-    //printf("finished looping through tasks!\n");
+
+    printf("task_thread_group: %d\n", solution);
+    task_thread_group_offset = solution;
 }
+
+//void thread_group_search(CPUState* cpu) {
+//    //find circular linked list candidates
+//    //for each candidate, keep only if the tgids all match
+//    //check each process for these candidates
+//
+//    //2392
+//
+//    //reload current
+//    std::vector<int> candidates;
+//    uint64_t new_current;
+//    //uint64_t task_base = 0;
+//    uint8_t data[8] = {0};
+//    uint8_t comm[16] = {0};
+//    int offset = 0;
+//    int count = 0;
+//    int ret = 0;
+//
+//    printf("searching for thread group\n");
+//    panda_virtual_memory_read(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, data, 8);
+//    new_current = *((uint64_t*) &data[0]);
+//
+//    printf("current is %lx\n", new_current);
+//
+//    while (offset < 10000) {
+//        //uint64_t secret_known_offset = 2392;
+//        uint64_t main_thread_ptr = new_current + offset;
+//        uint64_t current_thread_ptr = main_thread_ptr;
+//        //uint32_t last_tgid = -1;
+//        count = 0;
+//
+//        ret = panda_virtual_memory_read(cpu, main_thread_ptr, data, 8);
+//        if (ret == -1) {
+//            offset += 4;
+//            continue;
+//        }
+//        current_thread_ptr = *((uint64_t*) &data[0]);
+//
+//        //printf("main_thread_ptr 0x%lx\n", main_thread_ptr);
+//        //printf("current_thread_ptr 0x%lx\n", current_thread_ptr);
+//
+//        while(current_thread_ptr != main_thread_ptr) {
+////            task_base = current_thread_ptr - offset;
+////            //check tgid
+////            ret = panda_virtual_memory_read(cpu, task_base + task_tgid_offset, data, 8);
+////            if (ret == -1) {
+////                printf("COULD NOT READ THE TGID!!!\n");
+////                break;
+////            }
+////
+////            if (last_tgid == -1) {
+////                last_tgid = *((uint32_t*) &data[0]);
+////            } else {
+////                if(*((uint32_t*) &data[0]) != last_tgid) {
+////                    printf("tgid is different\n");
+////                    break;
+////                }
+////            }
+//
+//            ret = panda_virtual_memory_read(cpu, current_thread_ptr, data, 8);
+//            if (ret == -1) {
+//                printf("couldn't read memory at 0x%lx\n", current_thread_ptr);
+//                break;
+//            }
+//            current_thread_ptr = *((uint64_t*) &data[0]);
+//            //printf("read another thread\n");
+//
+//            count++;
+//            if (count > 1000) break;
+//        }
+//
+//        if (current_thread_ptr == main_thread_ptr) {
+//            candidates.push_back(offset);
+//        }
+//
+//        printf("finished looping!\n");
+//        offset += 4;
+//    }
+//
+//    for (int i = 0; i < candidates.size(); i++) {
+//        printf("candidate: %d\n", candidates[i]);
+//    }
+//    //iterate over the list of tasks
+//
+//
+//
+//    //create a map of candidate offsets -> vector<int>
+//    //for each process
+//        //for each candidate offset
+//
+//            //count the number of tasks in the list at the candidate offset
+//            //if the number is >= 2:
+//                //if the TGIDs don't match
+//                    //delete the candidate offset from the map
+//            //if the offset hasn't been deleted:
+//                //add the number of elements in the list to the mapped vector
+//
+//    uint64_t tasks_addr = new_current + task_tasks_offset;
+//    uint64_t next_addr = tasks_addr;
+//    uint64_t task_base = 0;
+//    printf("tasks list addr is 0x%lx\n", tasks_addr);
+//
+//    std::map<int, std::vector<int> > lists;
+//
+//    for (int i = 0; i < candidates.size(); i++) {
+//        lists.insert(std::pair<int, std::vector<int> >(candidates[i], std::vector<int>()));
+//    }
+//    std::map<int, std::vector<int> >::iterator it;
+//
+//    std::set<int> finalists;
+//
+//    //for each task in the list
+//    printf("iterating through task list!\n");
+//    do {
+//        task_base = next_addr - task_tasks_offset;
+//        //printf("task_base is: 0x%lx\n", task_base);
+//
+//        ret = panda_virtual_memory_read(cpu, task_base + task_comm_offset, comm, 16);
+//        if (ret == -1) {
+//            printf("couldn't read comm string at 0x%lx\n", task_base + task_comm_offset);
+//            break;
+//        }
+//
+//        printf("proc: %s\n", (char*) comm);
+//
+//        //for each candidate offset
+//        for(it = lists.begin(); it != lists.end(); ++it) {
+//            //count the number of tasks in the list at the candidate offset
+//            count = 0;
+//            uint64_t task_base_inner = 0;
+//            uint64_t candidate_addr = task_base + it->first;
+//            uint64_t next_addr_inner = candidate_addr;
+//            int64_t last_tgid = -1;
+//            uint32_t tgid = 0;
+//            //printf("first loop: candidate_addr: 0x%lx, next_addr_inner: 0x%lx, task_base: 0x%lx\n", candidate_addr, next_addr_inner, task_base);
+//
+//            do {
+//
+//                ret = panda_virtual_memory_read(cpu, next_addr_inner, data, 8);
+//                if (ret == -1) {
+//                    //printf("BREAKING - couldn't read the next pointer\n");
+//                    break;
+//                }
+//
+//                next_addr_inner = *((uint64_t*) &data[0]);
+//                count++;
+//                if (count > 500) {
+//                    //printf("infinite loop! breaking...\n");
+//                    break;
+//                }
+//
+//            } while(next_addr_inner != candidate_addr);
+//            count -= 1;
+//            printf("finished inner candidate %d loop - number of tasks: %d\n", it->first, count);
+//            //lists[it->first].push_back(count);
+//
+//            //if there are more than two tasks in the loop
+//            if(count >= 2 && count < 500) {
+//                candidate_addr = task_base + it->first;
+//                next_addr_inner = candidate_addr;
+//                count = 0;
+//                bool mismatch = false;
+//                //printf("second loop: candidate_addr: 0x%lx, next_addr_inner: 0x%lx, task_base: 0x%lx\n", candidate_addr, next_addr_inner, task_base);
+//                do {
+//                    task_base_inner = next_addr_inner - it->first;
+//
+//                    ret = panda_virtual_memory_read(cpu, task_base_inner + task_comm_offset, comm, 16);
+//                    if (ret == -1) {
+//                        printf("couldn't read comm string at 0x%lx\n", task_base_inner + task_comm_offset);
+//                        break;
+//                    }
+//                    printf("inner proc: %s\n", (char*) comm);
+//
+//                    //check tgid
+//                    ret = panda_virtual_memory_read(cpu, task_base_inner + task_tgid_offset, data, 4);
+//                    if (ret == -1) {
+//                        printf("COULDN'T READ THE TGID - candidate %d\n", it->first);
+//                        break;
+//                    }
+//                    tgid = *((uint32_t*) &data[0]);
+//                    printf("tgid is %u\n", tgid);
+//                    if(last_tgid == -1) {
+//                        last_tgid = (int64_t) tgid;
+//                    } else if(tgid != last_tgid) {
+//                        mismatch = true;
+//                    }
+//
+//                    //get next addr
+//                    panda_virtual_memory_read(cpu, next_addr_inner, data, 8);
+//                    next_addr_inner = *((uint64_t*) &data[0]);
+//                    count++;
+//                    if (count > 500) {
+//                        //printf("infinite loop! breaking...\n");
+//                        break;
+//                    }
+//                } while(next_addr_inner != candidate_addr);
+//
+//                if(!mismatch) {
+//                    finalists.insert(it->first);
+//                    printf("found a solution!\n");
+//                }
+//            }
+//        }
+//
+//        //break;
+//
+//
+//        panda_virtual_memory_read(cpu, next_addr, data, 8);
+//        next_addr = *((uint64_t*) &data[0]);
+//        //printf("next_addr is 0x%lx\n", next_addr);
+//    } while (next_addr != tasks_addr); 
+//
+////    for(it = lists.begin(); it != lists.end(); ++it) {
+////        printf("%d: [", it->first);
+////        for(int i = 0; i < it->second.size(); i++) {
+////            printf("%d, ", it->second[i]);
+////        }
+////        printf("]\n");
+////    }
+//
+//    printf("FINAL CANDIDATES\n");
+//    std::set<int>::iterator it2;
+//    for(it2 = finalists.begin(); it2 != finalists.end(); ++it2) {
+//        printf("%d\n", *it2);
+//    }
+//
+//    if(finalists.size() == 1) {
+//        printf("found one valid solution!\n");
+//        task_thread_group_offset = *(finalists.begin());
+//        printf("task_thread_group_offset: %lu\n\n", task_thread_group_offset);
+//    }
+//    //printf("finished looping through tasks!\n");
+//}
 
 void pgd_search(CPUState* cpu) {
     uint8_t data[8] = {0};
@@ -1287,7 +1495,7 @@ void time_of_day_return(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz
 
         comm_search(cpu);
         thread_group_search(cpu);
-        pgd_search(cpu);
+        //pgd_search(cpu);
         //stack_search(cpu);
 
         //print_results();
