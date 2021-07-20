@@ -22,11 +22,15 @@ extern "C" {
  * arguments, return address) to prepare for handling the respective
  * system call return callbacks.
  */
-void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc) {
+void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ptr_t pc, int static_callno) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 	syscall_ctx_t ctx = {0};
-	ctx.no = env->regs[R_EAX];
+	if (static_callno == -1) {
+	  ctx.no = env->regs[R_EAX];
+	} else {
+	  ctx.no = static_callno;
+	}
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
 	bool panda_noreturn;	// true if PANDA should not track the return of this system call
