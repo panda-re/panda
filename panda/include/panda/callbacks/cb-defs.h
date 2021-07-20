@@ -933,7 +933,7 @@ typedef union panda_cb {
      */
     void (*pre_shutdown)(void);
 
-    /* Callback ID:     PANDA_CB_UNASSIGNED_IO_WRITE
+    /* Callback ID:     PANDA_CB_UNASSIGNED_IO_READ
 
       unassigned_io_read: Called when the guest attempts to read from an unmapped peripheral via MMIO
 
@@ -973,7 +973,7 @@ typedef union panda_cb {
 
        Note: only called for cpu->exception_index > 0
 
-       Aguments:
+       Arguments:
          exception_index (the current exception number)
 
        Return value:
@@ -989,14 +989,22 @@ typedef union panda_cb {
 
     int32_t (*before_handle_exception)(CPUState *cpu, int32_t exception_index);
 
-    /* Dummy union member.
+    /* Callback ID:     PANDA_CB_BEFORE_HANDLE_INTERRUPT
 
-       This union only contains function pointers.
-       Using the cbaddr member one can compare if two union instances
-       point to the same callback function. In principle, any other
-       member could be used instead.
-       However, cbaddr provides neutral semantics for the comparisson.
-    */
+       before_handle_interrupt: Called just before we are about to
+       handle an interrupt.
+
+       Arguments:
+         interrupt request
+
+       Return value:
+         new interrupt_rquest
+
+       Note: There might be more than one callback for this location.
+       First callback that returns an interrupt_request that *differs*
+       from the one passed as an arg wins.
+
+     */
 
 
     int32_t (*before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request);
@@ -1017,7 +1025,8 @@ typedef union panda_cb {
     */
 
     void (*start_block_exec)(CPUState *cpu, TranslationBlock* tb);
-    /* Callback ID: PANDA_CB_START_BLOCK_EXEC
+
+    /* Callback ID: PANDA_CB_END_BLOCK_EXEC
 
        end_block_exec:
         This is like after_block_exec except its part of the TCG stream.
@@ -1033,7 +1042,17 @@ typedef union panda_cb {
     */
     void (*end_block_exec)(CPUState *cpu, TranslationBlock* tb);
 
+    /* cbaddr is a dummy union member.
+
+       This union only contains function pointers.
+       Using the cbaddr member one can compare if two union instances
+       point to the same callback function. In principle, any other
+       member could be used instead.
+       However, cbaddr provides neutral semantics for the comparisson.
+    */
+
     void (*cbaddr)(void);
+
 } panda_cb;
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
