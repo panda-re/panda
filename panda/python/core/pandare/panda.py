@@ -87,6 +87,7 @@ class Panda():
         self.__sighandler = None
         self.ending = False # True during end_analysis
 
+
         if isinstance(extra_args, str): # Extra args can be a string or array
             extra_args = extra_args.split()
 
@@ -218,9 +219,10 @@ class Panda():
         ffi = panda_arch_support.ffi
         self.ffi = ffi
         set_ffi(ffi)
-        from .autogen.panda_datatypes import pcb, C, callback_dictionary # XXX: What is C and do we need it?
-        self.callback_dictionary = callback_dictionary
-        self.callback = pcb
+
+        from .autogen.panda_datatypes import get_cbs
+        self.callback, self.callback_dictionary = get_cbs()
+
         return ffi
 
     def _initialize_panda(self):

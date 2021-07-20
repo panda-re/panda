@@ -358,11 +358,6 @@ from ctypes import *
 from collections import namedtuple
 from ..ffi_importer import ffi
 
-# so we need access to some data structures, but don't actually
-# want to open all of libpanda yet because we don't have all the
-# file information. So we just open libc to access this.
-C = ffi.dlopen(None)
-
 class PandaState(Enum):
     UNINT = 1
     INIT_DONE = 2
@@ -380,6 +375,8 @@ class PandaState(Enum):
                     cbname_l = cbname.lower()
                     cb_list[cbn] = cbname_l
                     cbn += 1
+
+        # Manually add callback 'last'
         cb_list[cbn] = "last"
         cbn += 1
 
@@ -391,55 +388,99 @@ class PandaState(Enum):
             else:
                 pdty.write("\\\n")
 
+        # Analyze cb-def.sh to extract each entry in the 'typedef union panda_cb {...}'
+        # for each we grab the name, type
         in_tdu = False
+        current_comment = ""
         cb_types = {}
         with open (os.path.join(INCLUDE_DIR_PAN, "callbacks/cb-defs.h")) as fp:
             for line in fp:
-                foo = re.search("typedef union panda_cb {", line)
-                if foo:
+                if re.search("typedef union panda_cb {", line):
                     in_tdu = True
                     continue
-                foo = re.search("} panda_cb;", line)
-                if foo:
+                if re.search("} panda_cb;", line):
                     in_tdu = False
                     continue
-                if in_tdu:
-                    # int (*before_block_translate)(CPUState *env, target_ulong pc);
-                    for i in range(cbn):
-                        foo = re.search("^\s+(.*)\s+\(\*%s\)\((.*)\);" % cb_list[i], line)
-                        if foo:
-                            rvtype = foo.groups()[0]
-                            params = foo.groups()[1]
-                            partypes = []
-                            for param in params.split(','):
-                                j = 1
-                                while True:
-                                    c = param[-j]
-                                    if not (c.isalpha() or c.isnumeric() or c=='_'):
-                                        break
-                                    if j == len(param):
-                                        break
-                                    j += 1
-                                if j == len(param):
-                                    typ = param
-                                else:
-                                    typ = param[:(-j)+1].strip()
-                                partypes.append(typ)
-                            cb_typ = rvtype + " (" +  (", ".join(partypes)) + ")"
-                            cb_name = cb_list[i]
-                            cb_types[i] = (cb_name, cb_typ)
+
+                if not in_tdu:
+                    continue
+
+                # Accumulate comment strings - at the end of each, we'll
+                # hit a function signature (match=True below) and empty buffer
+                if re.search("\w*\/\* Callback ID:", line):
+                    cb_comment = line.split("/* Callback ID: ")[1].strip()
+                elif len(cb_comment):
+                    cb_comment += "\n" + line.replace("*/","").strip()
+
+                # Parse function signature:
+                # example: int (*before_block_translate)(CPUState *env, target_ulong pc);
+                # rv=int and params="CPUState* env, target_ulong pc"
+                # partypes = [CPUState*, target_ulong]
+                for i in range(cbn):
+                    match = re.search("^\s+(.*)\s+\(\*%s\)\((.*)\);" % cb_list[i], line)
+                    if match:
+                        rvtype = match.groups()[0]
+                        params = match.groups()[1]
+                        partypes = []
+                        for param in params.split(','):
+                            #This is basically
+
+                            typ = param
+                            for j in range(len(param)-1, -1, -1):
+                                c = param[j]
+                                if not (c.isalpha() or c.isnumeric() or c=='_'):
+                                    break
+                            else: # param is 'void' ?
+                                typ = param.strip()
+
+                            partypes.append(typ)
+                        cb_typ = rvtype + " (" +  (", ".join(partypes)) + ")"
+                        cb_name = cb_list[i]
+
+                        assert(cb_comment.startswith("PANDA_CB_" + cb_name.upper())), f"Unaligned docs: callback {cb_name} has comment: {repr(cb_comment)}"
+                        cb_types[i] = (cb_name, cb_typ, cb_comment)
+                        cb_comment = ""
 
         # Sanity check: each callback must exist in both panda_cb_type and function definition
         for i in range(cbn-1):
             if i not in cb_types:
                 raise RuntimeError(f"Error parsing code for '{cb_list[i]}' in callbacks/cb-defs.h. Is it defined both in panda_cb_type enum and as a prototype later with the same name?")
 
+        # Define function to get function documentation
         pdty.write("""
-pcb = PandaCB(init = ffi.callback("bool(void*)"),
+def get_cb_docs():
+    ''' Generate a PCB of (return type, arg type, docstring) '''
+    return PandaCB(init = (None, None, None),\n""")
+
+        for i in range(cbn-1):
+            rv   = cb_types[i][1].split("(")[0].strip()
+            args = cb_types[i][1].split("(")[1].split(")")[0].strip()
+            pdty.write(f"    {cb_types[i][0]} = ({repr(rv)}, {repr(args)}, {repr(cb_types[i][2])})")
+            if i == cbn-2:
+                pdty.write(")\n")
+            else:
+                pdty.write(",\n")
+
+        # Define function to get pcb object populated with callback names + ffi.callback("signature")
+        pdty.write("""
+def get_cbs(ffi):
+    '''
+    Returns (callback_dictory, pcb) tuple of ({callback name: CFFI func}, CFFI funcs)
+    '''
+
+    # So we need access to some data structures, but don't actually
+    # want to open all of libpanda yet because we don't have all the
+    # file information. So we just open libc to access this.
+    C = ffi.dlopen(None)
+
+    # Stores the names and numbers for callbacks
+    pandacbtype = namedtuple("pandacbtype", "name number")
+
+    pcb = PandaCB(init = ffi.callback("bool(void*)"),
 """)
 
         for i in range(cbn-1):
-            pdty.write('%s = ffi.callback("%s")' % cb_types[i])
+            pdty.write('    %s = ffi.callback("%s")' % cb_types[i][:2])
             if i == cbn-2:
                 pdty.write(")\n")
             else:
@@ -447,29 +488,21 @@ pcb = PandaCB(init = ffi.callback("bool(void*)"),
 
         pdty.write("""
 
-pandacbtype = namedtuple("pandacbtype", "name number")
-
-""")
-
-        pdty.write("""
-callback_dictionary = {
-pcb.init : pandacbtype("init", -1),
+    callback_dictionary = {
+        pcb.init : pandacbtype("init", -1),
 """)
 
 
         for i in range(cbn-1):
             cb_name = cb_list[i]
             cb_name_up = cb_name.upper()
-            pdty.write('pcb.%s : pandacbtype("%s", C.PANDA_CB_%s)' % (cb_name, cb_name, cb_name_up))
+            pdty.write('        pcb.%s : pandacbtype("%s", C.PANDA_CB_%s)' % (cb_name, cb_name, cb_name_up))
             if i == cbn-2:
                 pdty.write("}\n")
             else:
                 pdty.write(",\n")
-        pdty.write("""
-pandacbtype.__doc__ = '''stores the names and numbers for callbacks'''
-PandaCB.__doc__ = '''custom named tuple to handle callbacks. Each element is a callback except init.'''
-""")
 
+        pdty.write("    return (pcb, callback_dictionary)")
 
 
     #########################################################

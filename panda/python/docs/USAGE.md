@@ -55,8 +55,7 @@ def my_before_block_fn(cpustate, translation_block):
 
 The panda object creates decorators named `cb_[CALLBACK_NAME]` for each PANDA callback.
 The decorated functions must take the same number of arguments, and return the same type
-as expected by the original C callback, see [Callback List](https://github.com/panda-re/panda/tree/master/panda/docs/manual.md#appendix-a-callback-list)
-for more information.
+as expected by the original C callback. The **[list of callbacks](#pandare.Callbacks)** is available below.
 The decorated functions are called at the appropriate times, similarly to how a PANDA plugin written
 in C behaves.
 
