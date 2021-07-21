@@ -1,9 +1,6 @@
-from ..ffi_importer import ffi
-
-
 class TaintQuery:
 
-    def __init__(self, query_result, panda_taint2):
+    def __init__(self, query_result, panda_taint2, ffi):
         self.num_labels = query_result.num_labels
         self.tcn = query_result.tcn
         self.cb_mask = query_result.cb_mask
