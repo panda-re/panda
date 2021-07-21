@@ -49,7 +49,7 @@ jobs:
            git config --global user.email "panda-ci@panda-re.mit.edu" &&
            git config --global user.name "PANDA Bot" &&
            git add . &&
-           git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch ${{ GITHUB_REF##*/}}" &&
+           git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch dev" &&
            git push || true
 
   build_stable:
@@ -93,5 +93,5 @@ jobs:
            git config --global user.email "panda-ci@panda-re.mit.edu" &&
            git config --global user.name "PANDA Bot" &&
            git add . &&
-           git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch ${{ GITHUB_REF##*/}}" &&
+           git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch stable" &&
            git push || true
