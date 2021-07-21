@@ -3,7 +3,8 @@
 import sys
 import logging
 
-from pandare import ffi
+from cffi import FFI
+ffi = FFI()
 
 # TODO: only for logger, should probably move it to a separate file
 if __name__ == '__main__': # Script run directly
