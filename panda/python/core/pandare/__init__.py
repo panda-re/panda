@@ -13,6 +13,8 @@ Example plugins are available in the [examples directory](https://github.com/pan
 from .panda import Panda, blocking
 from .plog_reader import PLogReader
 
+__all__ = ['Panda', 'PLogReader', 'Callbacks']
+
 __pdoc__ = {}
 
 __pdoc__['asyncthread'] = False
@@ -25,9 +27,10 @@ __pdoc__['volatility_cli_classes'] = False
 from .autogen.panda_datatypes import get_cb_docs
 class Callbacks:
     '''
-    The core callbacks provided by PANDA. Note this is a pseudo class just for documentation.
-    Note **the arguments listed are the arguments your callback function will receive** and
-    **the return value is what your callback must return**.
+    The core callbacks provided by PANDA. Note this is a fake class that only exists for
+    documentation.
+    Importantly: the arguments listed are the arguments **your callback function will receive** and
+    the return value is what **your callback must return**.
 
     These decorators should be accessed through a handle to a panda object, for example:
 
@@ -38,6 +41,11 @@ class Callbacks:
             print("Before block exec!")
         ...
     '''
+
+    def __init__(self):
+        raise RuntimeError("The callbacks class is only used for documentation. Callback " \
+                           "decorators should be accessed through @panda.cb_[calback_name] " \
+                           "where panda is the name of your pandare.Panda() object")
 
 cb_docs = get_cb_docs()
 for cb_name, (rv, args, docstring) in cb_docs._asdict().items():
