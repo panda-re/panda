@@ -4,7 +4,7 @@ to analyze behavior of a running system, record a system and analyze replays, or
 nearly anything you can do using PANDA's C/C++ APIs.
 
 ## Installation
-Follow PANDA's build instructions. The `panda` docker container includes the `pandare` package. If you setup panda with the `install_ubuntu.sh` script, it will install PyPANDA for you. Otherwise, when your install instructions tell you to run `build.sh` be sure to include the `--python` flag.
+Follow PANDA's build instructions. The `pandare/panda` docker container includes the `pandare` package. If you setup panda with the `install_ubuntu.sh` script, it will install PyPANDA for you. Otherwise, when your install instructions tell you to run `build.sh` be sure to include the `--python` flag.
 
 ## Example program
 This program counts the number of basic blocks executed while running `uname -a` inside a 32-bit guest.
@@ -53,8 +53,8 @@ def my_before_block_fn(cpustate, translation_block):
   print("About to run the block at 0x{:x}".format(pc))
 ```
 
-The panda object creates decorators named `cb_[CALLBACK_NAME]` for each PANDA callback.
-The decorated functions must take the same number of arguments, and return the same type
+The panda object contains decorators named `cb_[CALLBACK_NAME]` for each PANDA callback.
+A decorated function must take the same number of arguments and return the equivalent type
 as expected by the original C callback. The **[list of callbacks](#pandare.Callbacks)** is available below.
 The decorated functions are called at the appropriate times, similarly to how a PANDA plugin written
 in C behaves.
