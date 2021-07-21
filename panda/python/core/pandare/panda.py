@@ -739,7 +739,7 @@ class Panda():
         '''
         return self._memory_read(None, addr, length, physical=True, fmt=fmt)
 
-    def virtual_memory_read(self, cpu, addr:int, length:int, fmt='bytearray') -> Union[bytearray, int, str, list[int]]:
+    def virtual_memory_read(self, cpu, addr:int, length:int, fmt='bytearray') -> Union[bytearray, int, str, List[int]]:
         '''
         Read guest virtual memory.
 
