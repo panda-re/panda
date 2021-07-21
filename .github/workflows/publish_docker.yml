@@ -33,15 +33,23 @@ jobs:
            git clone https://panda-jenkins-ci:${{ secrets.PANDABOT_GITHUB_API }}@github.com/panda-re/panda-re.github.io.git --branch=master ${GITHUB_WORKSPACE}/auto_pydoc/pandare
 
     - name: Update PYPANDA docs in container
-      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc/:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out/${GITHUB_REF##*/} pandare; chmod -R 777 /out/"
+      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out/${GITHUB_REF##*/} pandare; chmod -R 777 /out/"
       # will put docs in workspace/auto_pydoc/dev/pandare and/or workspace/auto_pydoc/stable/pandare
-      # we want to copy /auto_pydoc/dev/pandare to /auto_doc and /auto_pydoc/stable/pandare to /auto_pydoc/stable
+      # we want to copy auto_pydoc/dev/pandare to auto_pydoc/pandare/ and /auto_pydoc/stable/pandare to /auto_pydoc/pandare/stable
+      #
+      # This is a bit complicated, sorry. We want to keep pandare/{CNAME,.git/} and nothing else
+      # then we copy in the new files (and merge doc-search.html and index.js with dev/pandare/
     - name: Push PYPANDA docs to GitHub Pages if docs changed
-      run: cd "${GITHUB_WORKSPACE}/auto_pydoc/" && cp -r ./dev/pandare/* . &&
+      run: cd "${GITHUB_WORKSPACE}/auto_pydoc" &&
+           mv pandare/CNAME dev &&
+           rm -rf pandare/* &&
+           mv dev/pandare/* pandare &&
+           rmdir dev/pandare &&
+           mv dev/* pandare/ &&
            git config --global user.email "panda-ci@panda-re.mit.edu" &&
            git config --global user.name "PANDA Bot" &&
            git add . &&
-           git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch ${GITHUB_REF##*/}" &&
+           git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch ${{ GITHUB_REF##*/}}" &&
            git push || true
 
   build_stable:
@@ -70,13 +78,20 @@ jobs:
            git clone https://panda-jenkins-ci:${{ secrets.PANDABOT_GITHUB_API }}@github.com/panda-re/panda-re.github.io.git --branch=master ${GITHUB_WORKSPACE}/auto_pydoc/pandare
 
     - name: Update PYPANDA docs in container
-      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc/:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out/${GITHUB_REF##*/} pandare; chmod -R 777 /out/"
+      run: docker run --rm -v ${GITHUB_WORKSPACE}/auto_pydoc/pandare:/out pandare/pandadev:latest /bin/sh -c "pip3 install pdoc3; cd /panda/panda/python/core; pdoc3 --html --template-dir=../docs/template --force -o /out/${GITHUB_REF##*/} pandare; chmod -R 777 /out/"
       # will put docs in workspace/auto_pydoc/dev/pandare and/or workspace/auto_pydoc/stable/pandare
       # we want to copy /auto_pydoc/dev/pandare to /auto_doc and /auto_pydoc/stable/pandare to /auto_pydoc/stable
+      #
+      # This is a bit complicated, sorry. We create a directory stable and combine doc-search.html and index.js in there.
     - name: Push PYPANDA docs to GitHub Pages if docs changed
-      run: cd "${GITHUB_WORKSPACE}/auto_pydoc/" && mv ./stable ./stable2; mv ./stable2/pandare stable; rm -rf ./stable2;
+      #run: cd "${GITHUB_WORKSPACE}/auto_pydoc/pandare" && mv ./stable ./stable2; mv ./stable2/pandare stable; rm -rf ./stable2;
+      run: cd "${GITHUB_WORKSPACE}/auto_pydoc" &&
+           rm -rf pandare/stable &&
+           mv stable/pandare/* pandare/stable &&
+           rmdir stable/pandare &&
+           mv stable/* pandare/stable &&
            git config --global user.email "panda-ci@panda-re.mit.edu" &&
            git config --global user.name "PANDA Bot" &&
            git add . &&
-           git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch ${GITHUB_REF##*/}" &&
+           git commit -m "Documentation update for PANDA commit ${{ github.sha  }} branch ${{ GITHUB_REF##*/}}" &&
            git push || true
