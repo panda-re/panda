@@ -155,7 +155,7 @@ void fill_osiproc(CPUState *cpu, OsiProc *p, target_ptr_t task_addr) {
 
     // p->ppid = taskd->real_parent->pid
     err = struct_get(cpu, &p->ppid, task_addr,
-                     {ki.task.real_parent_offset, ki.task.pid_offset});
+                     {ki.task.real_parent_offset, ki.task.tgid_offset});
 
     // Convert asid to physical to be able to compare it with the pgd register.
     p->asid = p->asid ? panda_virt_to_phys(cpu, p->asid) : (target_ulong) NULL;
@@ -521,10 +521,16 @@ void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *pp
 ****************************************************************** */
 
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
-    target_ptr_t ts_current = p->taskd;
     char *filename = NULL;
+    target_ptr_t ts_current;
     //const char *err = NULL;
 
+    if (p == NULL) {
+        //err = "Null OsiProc argument";
+        goto end;
+    }
+
+    ts_current = p->taskd;
     if (ts_current == 0) {
         //err = "can't get task";
         goto end;

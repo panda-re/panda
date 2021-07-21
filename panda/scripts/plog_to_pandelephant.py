@@ -47,8 +47,8 @@ CollectedMappingSlice = collections.namedtuple('CollectedMappingSlice', ['Instru
 CollectedMapping = collections.namedtuple('CollectedMapping', ['Name', 'File', 'BaseAddress', 'Size'])
 BetterCollectedMapping = collections.namedtuple('BetterCollectedMapping', ['AddressSpaceId', 'Process', 'Name', 'File', 'BaseAddress', 'Size'])
 CollectedCodePoint = collections.namedtuple('CollectedCodePoint', ['Mapping', 'Offset'])
-CollectedSyscall = collections.namedtuple('CollectedSyscall', ['Name', 'Thread', 'InstructionCount', 'Arguments'])
-CollectedSyscallArgument = collections.namedtuple('CollectedSyscallArgument', ['Type', 'Value'])
+CollectedSyscall = collections.namedtuple('CollectedSyscall', ['Name', 'RetVal', 'Thread', 'InstructionCount', 'Arguments'])
+CollectedSyscallArgument = collections.namedtuple('CollectedSyscallArgument', ['Name', 'Type', 'Value'])
 CollectedTaintFlow = collections.namedtuple('CollectedTaintFlow', ['IsStore', 'SourceCodePoint', 'SourceThread', 'SourceInstructionCount', 'SinkCodePoint', 'SinkThread', 'SinkInstructionCount'])
 
 def CollectThreadsAndProcesses(pandalog):
@@ -117,7 +117,8 @@ def CollectThreadsAndProcesses(pandalog):
                     AttemptCounts[k] += 1
                     try:
                         CollectFrom[k](getattr(msg, k))
-                    except:
+                    except Exception as e:
+                        print("Warning: ", e)
                         FailCounts[k] += 1
                         pass
                     break
@@ -135,7 +136,8 @@ def AssociateThreadsAndProcesses(processes, threads, thread_names):
     for thread in threads:
         proc2threads[(thread.ProcessId, thread.ParentProcessId)].add(thread)
     if len(DuplicateCheck) != len(thread2proc.keys()):
-        raise Exception("Threads are not unique in (ThreadId, CreateTime)... If you think this should be ingestable, change this line...")
+        #raise Exception("Threads are not unique in (ThreadId, CreateTime)... If you think this should be ingestable, change this line...")
+        pass
 
     for proc in proc2threads.keys():
         print('Process (ProcessId {} ParentProcessId {}) has {} Threads'.format(proc.ProcessId, proc.ParentProcessId, len(proc2threads[proc])))
@@ -185,7 +187,8 @@ def CollectProcessMemoryMappings(pandalog, processes):
                     AttemptCounts[k] += 1
                     try:
                         CollectFrom[k](msg, getattr(msg, k))
-                    except:
+                    except Exception as e:
+                        print("Warning:", e)
                         FailCounts[k] += 1
                         pass
                     break
@@ -201,9 +204,9 @@ def ConvertTaintFlowsAndSyscallsToDatabase(datastore, CollectedSyscalls, Collect
     for s in CollectedSyscalls:
         args = []
         for a in s.Arguments:
-            args.append({'type': a.Type, 'value': a.Value})
-        CollectedSyscallToDatabaseSyscall[s] = datastore.add(CollectedThreadToDatabaseThread[s.Thread], s.Name, args, s.InstructionCount)
-
+            args.append({'name': a.Name, 'type': a.Type, 'value': a.Value})
+        if s.Thread in CollectedThreadToDatabaseThread:
+            CollectedSyscallToDatabaseSyscall[s] = datastore.new_syscall(CollectedThreadToDatabaseThread[s.Thread], s.Name, s.RetVal, args, s.InstructionCount)
 
     for tf in CollectedTaintFlows:
         src_thread = CollectedThreadToDatabaseThread[tf.SourceThread]
@@ -228,7 +231,7 @@ def CollectTaintFlowsAndSyscalls(pandalog, CollectedBetterMappingRanges):
         args = []
         SyscallFieldInfo = {
             'str': ('string',      '{:s}'),
-            'ptr': ('pointer',     '{:x}'),
+            'ptr': ('pointer',     '0x{:x}'),
             'u64': ('unsigned64', '{:d}'),
             'u32': ('unsigned32', '{:d}'),
             'u16': ('unsigned16', '{:d}'),
@@ -239,17 +242,18 @@ def CollectTaintFlowsAndSyscalls(pandalog, CollectedBetterMappingRanges):
         def syscall_arg_value(arg):
             for fld, (typ, fmt) in SyscallFieldInfo.items():
                 if arg.HasField(fld):
-                    return typ, fmt.format(getattr(arg, fld))
+                    return arg.arg_name, typ, fmt.format(getattr(arg, fld))
             assert(False)
         thread = CollectedThread(ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time)
         CollectedSyscalls.add(CollectedSyscall(
             Name=msg.call_name,
+            RetVal=msg.retcode,
             Thread=thread,
             InstructionCount=entry.instr,
-            Arguments=[
+            Arguments=tuple(
                 CollectedSyscallArgument(*syscall_arg_value(arg))
                 for arg in msg.args
-            ]
+            )
         ))
         return
     def CollectFrom_taint_flow(entry, msg):
@@ -347,7 +351,8 @@ def ConvertProcessThreadsMappingsToDatabase(datastore, execution, processes, thr
         CollectedProcessToDatabaseProcess[p] = process
 
         for t in proc2threads[p]:
-            CollectedThreadToDatabaseThread[t] = datastore.new_thread(process, t.CreateTime, t.ThreadId, thread_names[t])
+            if t in thread_names:
+                CollectedThreadToDatabaseThread[t] = datastore.new_thread(process, t.CreateTime, t.ThreadId, thread_names[t])
         
         for mapping, (FirstInstructionCount, LastInstructionCount) in CollectedBetterMappingRanges[p].items():
             CollectedMappingToDatabaseMapping[mapping] = datastore.new_mapping(process, mapping.Name, mapping.File, mapping.AddressSpaceId, mapping.BaseAddress, FirstInstructionCount, mapping.Size, FirstInstructionCount, LastInstructionCount)

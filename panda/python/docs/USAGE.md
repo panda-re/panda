@@ -4,7 +4,7 @@ to analyze behavior of a running system, record a system and analyze replays, or
 nearly anything you can do using PANDA's C/C++ APIs.
 
 ## Installation
-1. Follow instructions to build PANDA regularly. The `install_ubuntu.sh` script will install PyPANDA for you, otherwise, when you run `build.sh` include the `--python` flag.
+Follow PANDA's build instructions. The `panda` docker container includes the `pandare` package. If you setup panda with the `install_ubuntu.sh` script, it will install PyPANDA for you. Otherwise, when your install instructions tell you to run `build.sh` be sure to include the `--python` flag.
 
 ## Example program
 This program counts the number of basic blocks executed while running `uname -a` inside a 32-bit guest.
@@ -40,7 +40,7 @@ print("Finished. Saw a total of {} basic blocks during execution".format(blocks)
 # Usage
 ## Create an instance of Panda
 The `Panda` class takes many arguments, but the only crucial argument is a
-specificed qcow image. If you wish to get started quickly you may use the `panda.qcows` module
+specificed qcow image. If you wish to get started quickly you may use the `pandare.qcows.Qcows` module
 to automatically download a pre-configured virtual machine for you to use.
 
 For example: `panda = Panda(generic='i386')`
@@ -111,7 +111,7 @@ When a callback is executing, the guest is suspended until the callback finishes
 with guests during our analyses. In these situations, we run code asynchronously to send data into and wait for results
 from the guest.
 
-PyPANDA is designed to easily support such analyses with the `@panda.queue_blocking` decorator (see `pandare.queue_blocking`).
+PyPANDA is designed to easily support such analyses with the `@panda.queue_blocking` decorator.
 
 Consider if you with to run the commands `uname -a`, then `whoami` in a guest. If your guest exposes a console over a serial port
 (as all the 'generic' qcows we use do), you could run these commands by simply typing them and waiting for a response. But if you were
@@ -164,11 +164,15 @@ Example: [tests/record_then_replay.py](https://github.com/panda-re/panda/tree/ma
 3. Register functions to run at various PANDA callbacks.
 5. Analyze the replay with `panda.run_replay(filename)`
 
-# Here Be Dragons
+# Additional Information
+## Here be dragons
 * You can't have multiple instances of panda running at the same time. Once you've created a panda object for a given architecture, you can never create another. Hoewver, you can modify the machine after it's created to run a new analysis as long as you don't change the machine type.
 * PyPANDA is slower than traditional PANDA. Well-engineered plugins typically have a runtime overhead of ~10% compared to regular PANDA plugins (for up to 10M instructions). To improve performance try disabling callbacks when possible and only enabling them when they are needed.
 
-# Extending PyPANDA
+## Extending PyPANDA
 PyPANDA currently supports interactions (e.g., ppp callbacks) with many PANDA plugins such as `taint2` and `osi`. If you wish to extend PyPANDA to support an new plugin, its header file
 must be cleaned up such that it can be parsed by CFFI. See [create_panda_datatypes.py](https://github.com/panda-re/panda/tree/master/panda/python/utils/create_panda_datatypes.py)
 and the magic `BEGIN_PYPANDA_NEEDS_THIS` strings it searches for.
+
+## Learn more
+The [PyPANDA paper](https://moyix.net/~moyix/papers/pypanda.pdf) was published at the NDSS Binary Analysis Research Workshop in 2021 and includes details on the project's design goals as well as an evaluation of it's usability and performance.

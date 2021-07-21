@@ -28,8 +28,7 @@ RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     python3 -m pip install --upgrade --no-cache-dir pip && \
-    python3 -m pip install --upgrade --no-cache-dir setuptools wheel && \
-    python3 -m pip install --upgrade --no-cache-dir pycparser "protobuf" "cffi>1.14.3" colorama
+    python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3"
 
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
@@ -51,7 +50,7 @@ RUN git -C /panda submodule update --init dtc && \
 #### Develop setup: panda built + pypanda installed (in develop mode) - Stage 3
 FROM builder as developer
 RUN cd /panda/panda/python/core && \
-    python3 setup.py develop &&  \
+    python3 setup.py develop && \
     ldconfig && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 WORKDIR /panda/

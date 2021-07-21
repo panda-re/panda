@@ -611,10 +611,19 @@ void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values *av){
     target_ulong asid = panda_current_asid(env);
     symbols.erase(asid);
     struct hook h;
+
+#ifdef TARGET_ARM
+    // If the entrypoint is in thumb mode, bit 0 will be set which results
+    // in an update to the CSPR.T bit. The hook needs needs the bit to masked
+    // out.
+    h.addr = av->entry & ~0x1;
+#else
     h.addr = av->entry;
+#endif
+
     h.asid = panda_current_asid(env);
-    h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
-    h.cb.before_tcg_codegen = hook_program_start;
+    h.type = PANDA_CB_START_BLOCK_EXEC;
+    h.cb.start_block_exec = hook_program_start;
     h.km = MODE_USER_ONLY;
     h.enabled = true;
     dlsym_add_hook(&h);

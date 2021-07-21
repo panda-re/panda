@@ -22,11 +22,11 @@ class ModeFilter:
                 self.panda = panda
                 self.set_mode("mode1")
 
-            @self.mode_filter("mode1")
-            @self.panda.ppp("syscalls2", "on_sys_open_enter")
-            def on_open(cpu, pc, fname_ptr, flags, mode):
-                # assert(self.mode == "mode1") # Note decorator ensures this
-                self.set_mode("mode2") # Change mode - so this callback won't run again
+                @self.mode_filter("mode1")
+                @self.panda.ppp("syscalls2", "on_sys_open_enter")
+                def on_open(cpu, pc, fname_ptr, flags, mode):
+                    # assert(self.mode == "mode1") # Note decorator ensures this
+                    self.set_mode("mode2") # Change mode - so this callback won't run again
             ...
             def run(self):
                 self.panda.run()

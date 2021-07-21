@@ -1,5 +1,5 @@
 """
-The PANDA python interface (sometimes called pypanda) is a python module built for interacting with the PANDA project.
+`pandare` (also called PyPANDA) is a Python 3 module built for interacting with the PANDA project.
 The module enables driving an execution of a virtual machine while also introspecting on its execution using PANDA's callback
 and plugin systems.
 
@@ -16,9 +16,8 @@ from .plog_reader import PLogReader
 
 __pdoc__ = {}
 
-__pdoc__['volatility_cli_classes'] = False
-__pdoc__['data'] = False
-__pdoc__['async_thread'] = False
-__pdoc__['ffi_importer'] = False
+__pdoc__['asyncthread'] = False
 __pdoc__['autogen'] = False
+__pdoc__['ffi_importer'] = False
 __pdoc__['plog_pb2'] = False
+__pdoc__['volatility_cli_classes'] = False

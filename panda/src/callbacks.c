@@ -541,9 +541,8 @@ void panda_unregister_callbacks(void *plugin)
     for (int i = 0; i < PANDA_CB_LAST; i++) {
         panda_cb_list *plist;
         plist = panda_cbs[i];
-        bool done = false;
         panda_cb_list *plist_head = plist;
-        while (!done && plist != NULL) {
+        while (plist != NULL) {
             panda_cb_list *plist_next = plist->next;
             if (plist->owner == plugin) {
                 // delete this entry -- it belongs to our plugin
@@ -563,9 +562,6 @@ void panda_unregister_callbacks(void *plugin)
                 }
                 // Free the entry we just unlinked
                 g_free(del_plist);
-                // there should only be one callback in list for this plugin so
-                // done
-                done = true;
             }
             plist = plist_next;
         }

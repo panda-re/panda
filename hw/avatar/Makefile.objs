@@ -1,4 +1,5 @@
 obj-$(TARGET_ARM)  += avatar_posix.o configurable_machine.o remote_memory.o arm_helper.o
+obj-$(TARGET_AARCH64)  += configurable_machine.o arm_helper.o
 obj-$(TARGET_MIPS) += avatar_posix.o configurable_machine.o remote_memory.o
 obj-$(TARGET_PPC) += configurable_machine.o
 obj-$(TARGET_I386) += configurable_machine.o

@@ -636,6 +636,8 @@ PANDA_CB_AFTER_CPU_EXEC_ENTER,  // Just after cpu_exec_enter is called
 PANDA_CB_BEFORE_CPU_EXEC_EXIT,  // Just before cpu_exec_exit is called
 PANDA_CB_AFTER_MACHINE_INIT,    // Right after the machine is initialized, before any code runs
 PANDA_CB_AFTER_VMLOAD,          // Right after machine state is restored from a snapshot, before any code runs
+PANDA_CB_START_BLOCK_EXEC,      // TCG stream start of block
+PANDA_CB_END_BLOCK_EXEC,        // TCG stream end of block
 PANDA_CB_TOP_LOOP,              // At top of loop that manages emulation.  good place to take a snapshot
 ```
 For more information on each callback, see the "Callbacks" section.
@@ -1392,7 +1394,8 @@ bool (*insn_translate)(CPUState *env, target_ulong pc);
 ---
 
 `insn_exec`: called before execution of any instruction identified
-by the `PANDA_CB_INSN_TRANSLATE` callback
+by the `PANDA_CB_INSN_TRANSLATE` callback. Only enabled for blocks where
+the `insn_translate` callback returns true.
 
 **Callback ID**: `PANDA_CB_INSN_EXEC`
 
@@ -1415,6 +1418,34 @@ the `PANDA_CB_INSN_TRANSLATE` callback.
 **Signature**:
 ```C
 int (*insn_exec)(CPUState *env, target_ulong pc);
+```
+---
+
+`after_insn_exec`: called after execution of any instruction identified
+by the `PANDA_CB_INSN_TRANSLATE` callback. Only enabled for blocks where
+the `after_insn_translate` callback returns true.
+
+**Callback ID**: `PANDA_CB_AFTER_INSN_EXEC`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC we are about to execute
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+This instrumentation is implemented by generating a call to a
+helper function just after the instruction itself is generated.
+This is fairly expensive, which is why it's only enabled via
+the `PANDA_CB_AFTER_INSN_TRANSLATE` callback.
+
+**Signature**:
+```C
+int (*after_insn_exec)(CPUState *env, target_ulong pc);
 ```
 ---
 
@@ -1686,10 +1717,6 @@ PANDA has modified translate.c to make CPUID/MCR instructions end
 translation blocks. This is useful e.g. for dynamically turning on
 LLVM and enabling heavyweight instrumentation at at a specific point
 in execution.
-
-**ARM support for PANDA hypercalls has not been thoroughly tested.
-If you have sucessfully used it, please submit a PR to remove this
-warning.**
 
 **Signature**:
 ```C
@@ -2029,3 +2056,42 @@ unused
 ```C
 void after_vmload(CPUState *env);
 ```
+---
+ 
+`start_block_exec`: This is like before_block_exec except its part of the TCG stream.
+
+**Callback ID**: `PANDA_CB_START_BLOCK_EXEC`
+
+**Arguments**:
+* `CPUState *env`:        the current CPU state
+* `TranslationBlock *tb`: the TB we are executing
+
+**Return value**:
+none
+
+
+
+**Notes**
+
+This callback is inserted into the TCG stream near `before_tcg_codegen`.
+
+**Signature**
+```C
+void (*start_block_exec)(CPUState *cpu, TranslationBlock* tb);
+```
+---
+
+`end_block_exec`: This is like after_block_exec except its part of the TCG stream.
+**Callback ID**: `PANDA_CB_END_BLOCK_EXEC`
+
+**Arguments**:
+* CPUState *env:        the current CPU state
+* TranslationBlock *tb: the TB we are executing
+
+**Return value**:
+none
+
+Signature
+```C
+void (*end_block_exec)(CPUState *cpu, TranslationBlock* tb);
+``

@@ -65,7 +65,11 @@ void get_libs(CPUState *env) {
             OsiModule *module = &g_array_index(ms, OsiModule, i);
             m[i] = (Panda__Module *) malloc (sizeof (Panda__Module));
             *(m[i]) = PANDA__MODULE__INIT;
-            m[i]->name = strdup(module->name);
+            if (module->name == 0x0)
+              m[i]->file = strdup("none");
+            else
+              m[i]->name = strdup(module->name);
+
             if (module->file == 0x0)
                 m[i]->file = strdup("none");
             else

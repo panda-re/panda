@@ -21,8 +21,9 @@ python3-dev
 libpixman-1-dev
 zip
 
-# pypanda build dependencies
+# pypanda dependencies
 python3-setuptools
+python3-wheel
 
 # pypanda test dependencies
 gcc-multilib

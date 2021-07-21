@@ -27,6 +27,8 @@ typedef union hooks_panda_cb {
     bool (*before_block_exec_invalidate_opt)(CPUState *env, TranslationBlock *tb, struct hook*);
     void (*before_block_exec)(CPUState *env, TranslationBlock *tb, struct hook*);
     void (*after_block_exec)(CPUState *env, TranslationBlock *tb, uint8_t exitCode, struct hook*);
+    void (*start_block_exec)(CPUState *env, TranslationBlock *tb, struct hook*);
+    void (*end_block_exec)(CPUState *env, TranslationBlock *tb, struct hook*);
 } hooks_panda_cb;
 
 enum kernel_mode{

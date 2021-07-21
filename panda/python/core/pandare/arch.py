@@ -3,7 +3,7 @@ This module contains architecture-specific code.
 
 When the `pandare.panda` class is initialized it will automatically
 initialize a PandaArch class for the specified architecture in the variable
-`pandare.panda.arch`.
+`panda.arch`.
 
 '''
 import binascii
@@ -145,15 +145,25 @@ class PandaArch():
 
         Note for syscalls we define arg[0] as syscall number and then 1-index the actual args
         '''
+        
+        # i386 is stack based and so the convention wont work
+        if self.call_conventions[convention] == "stack":
+            return self.get_arg_stack(cpu, idx)
         reg = self._get_arg_reg(idx, convention)
         return self.get_reg(cpu, reg)
 
 
-    def set_retval(self, cpu, val:int, convention:str='default') -> int:
+    def set_retval(self, cpu, val:int, convention:str='default', failure:bool=False) -> int:
         '''
         Set return val to [val] for given calling convention. This only works
         right after a function call has returned, otherwise the register will contain
         a different value.
+
+        If the given architecture returns failure/success in a second register (i.e., the A3
+        register for mips), set that according to the failure flag.
+
+        Note the failure argument only used by subclasses that overload this function. It's provided
+        in the signature here so it can be set by a caller without regard for the guest architecture.
         '''
         reg = self._get_ret_val_reg(cpu, convention)
         return self.set_reg(cpu, reg, val)
@@ -192,13 +202,21 @@ class PandaArch():
 
         base_reg_s = "SP"
         base_reg_val = self.get_reg(cpu, self.reg_sp)
-        word_size = int(self.panda.bits/4)
+        if base_reg_val == 0:
+            print("[WARNING: no stack pointer]")
+            return
+        word_size = int(self.panda.bits/8)
+
+        _, endianness, _ = self._determine_bits()
 
         for word_idx in range(words):
-            val_b = self.panda.virtual_memory_read(cpu, base_reg_val+word_idx*word_size, word_size)
-            val = int.from_bytes(val_b, byteorder='little')
-            print("[{}+0x{:0>2x} == 0x{:0<8x}]: 0x{:0<8x}".format(base_reg_s, word_idx*word_size, base_reg_val+word_idx*word_size, val), end="\t")
-            telescope(self.panda, cpu, val)
+            try:
+                val_b = self.panda.virtual_memory_read(cpu, base_reg_val+word_idx*word_size, word_size)
+                val = int.from_bytes(val_b, byteorder=endianness)
+                print("[{}+0x{:0>2x}] == 0x{:0<8x}]: 0x{:0<8x}".format(base_reg_s, word_idx*word_size, base_reg_val+word_idx*word_size, val), end="\t")
+                telescope(self.panda, cpu, val)
+            except ValueError:
+                print("[{}+0x{:0>2x}] == [memory read error]".format(base_reg_s, word_idx*word_size))
 
     def dump_state(self, cpu) -> None:
         """
@@ -210,8 +228,8 @@ class PandaArch():
         print("Stack:")
         self.dump_stack(cpu)
 
-    def get_args(self, cpu, num:int) -> List[int]:
-        return [self.get_arg(cpu,i) for i in range(num)]
+    def get_args(self, cpu, num:int, convention:str='default') -> List[int]:
+        return [self.get_arg(cpu,i, convention) for i in range(num)]
 
 class ArmArch(PandaArch):
     '''
@@ -251,17 +269,17 @@ class ArmArch(PandaArch):
         '''
         cpu.env_ptr.regs[reg] = val
 
-    def get_return_value(self, env) -> int:
+    def get_return_value(self, cpu) -> int:
         '''
         returns register value used to return results
         '''
-        return self.get_reg(env, "R0")
+        return self.get_reg(cpu, "R0")
 
-    def get_return_address(self,env) -> int:
+    def get_return_address(self, cpu) -> int:
         '''
         looks up where ret will go
         '''
-        return self.get_reg(env, "LR")
+        return self.get_reg(cpu, "LR")
 
 class Aarch64Arch(PandaArch):
     '''
@@ -308,7 +326,12 @@ class Aarch64Arch(PandaArch):
         '''
         Return an aarch64 register
         '''
-        return cpu.env_ptr.xregs[reg]
+
+        if reg == 32:
+            print("WARNING: unsupported get sp for aarch64")
+            return 0
+        else:
+            return cpu.env_ptr.xregs[reg]
 
     def _set_reg_val(self, cpu, reg:int, val:int) -> None:
         '''
@@ -316,17 +339,17 @@ class Aarch64Arch(PandaArch):
         '''
         cpu.env_ptr.xregs[reg] = val
 
-    def get_return_value(self, env) -> int:
+    def get_return_value(self, cpu) -> int:
         '''
         returns register value used to return results
         '''
-        return self.get_reg(env, "R0")
+        return self.get_reg(cpu, "R0")
 
-    def get_return_address(self,env) -> int:
+    def get_return_address(self, cpu) -> int:
         '''
         looks up where ret will go
         '''
-        return self.get_reg(env, "LR")
+        return self.get_reg(cpu, "LR")
 
 class MipsArch(PandaArch):
     '''
@@ -394,17 +417,39 @@ class MipsArch(PandaArch):
         '''
         cpu.env_ptr.active_tc.gpr[reg] = val
 
-    def get_return_value(self, env) -> int:
+    def get_return_value(self, cpu) -> int:
         '''
         returns register value used to return results
         '''
-        return self.get_reg(env, "V0")
+        return self.get_reg(cpu, "V0")
 
-    def get_call_return(self,env) -> int:
+    def get_call_return(self, cpu):
+        '''
+        .. Deprecated:: use get_return_address
+        '''
+        return self.get_return_addess(cpu)
+
+    def get_return_address(self,cpu) -> int:
         '''
         looks up where ret will go
         '''
-        return self.get_reg(env, "RA")
+        return self.get_reg(cpu, "RA")
+
+    def set_retval(self, cpu, val, convention='default', failure=False):
+        '''
+        Overloaded function so when convention is syscall, user can control
+        the A3 register (which indicates syscall success/failure) in addition
+        to syscall return value.
+
+        When convention == 'syscall', failure = False means A3 will bet set to 0,
+        otherwise it will be set to 1
+
+        '''
+        if convention == 'syscall':
+            # Set A3 register to indicate syscall success/failure
+            self.set_reg(cpu, 'a3', failure)
+
+        return super().set_retval(cpu, val, convention)
 
 class X86Arch(PandaArch):
     '''
@@ -420,6 +465,10 @@ class X86Arch(PandaArch):
         # not yet supported
         self.reg_retval = {"default":    "EAX",
                            "syscall":    "EAX"}
+        
+        self.call_conventions = {"stack": "stack",
+                                 "syscall": ["EBX", "ECX", "EDX", "ESI", "EBP"]}
+        self.call_conventions['default'] = self.call_conventions['stack']
 
         self.reg_sp = regnames.index('ESP')
         self.registers = {regnames[idx]: idx for idx in range(len(regnames)) }
@@ -448,18 +497,26 @@ class X86Arch(PandaArch):
         '''
         cpu.env_ptr.regs[reg] = val
 
-    def get_return_value(self, env) -> int:
+    def get_return_value(self, cpu) -> int:
         '''
         returns register value used to return results
         '''
-        return self.get_reg(env, "EAX")
+        return self.get_reg(cpu, "EAX")
 
-    def get_return_address(self,env) -> int:
+    def get_return_address(self,cpu) -> int:
         '''
         looks up where ret will go
         '''
-        esp = self.get_reg(env,"ESP")
-        return self.panda.virtual_memory_read(env,esp,4,fmt='int')
+        esp = self.get_reg(cpu,"ESP")
+        return self.panda.virtual_memory_read(cpu,esp,4,fmt='int')
+    
+    # we need this because X86 is stack based
+    def get_arg_stack(self, cpu, num, kernel=False):
+        '''
+        Gets arguments based on the number. Supports kernel and usermode.
+        '''
+        esp = self.get_reg(cpu, "ESP")
+        return self.panda.virtual_memory_read(cpu, esp+(4*(num+1)),4,fmt='int')
 
 class X86_64Arch(PandaArch):
     '''
@@ -509,15 +566,15 @@ class X86_64Arch(PandaArch):
         '''
         cpu.env_ptr.regs[reg] = val
 
-    def get_return_value(self, env) -> int:
+    def get_return_value(self, cpu) -> int:
         '''
         returns register value used to return results
         '''
-        return self.get_reg(env, "RAX")
+        return self.get_reg(cpu, "RAX")
 
-    def get_return_address(self,env) -> int:
+    def get_return_address(self, cpu) -> int:
         '''
         looks up where ret will go
         '''
-        esp = self.get_reg(env,"RSP")
-        return self.panda.virtual_memory_read(env,esp,8,fmt='int')
+        esp = self.get_reg(cpu, "RSP")
+        return self.panda.virtual_memory_read(cpu, esp, 8, fmt='int')

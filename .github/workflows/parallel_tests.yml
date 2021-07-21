@@ -1,20 +1,29 @@
 name: Parallel Tests
-# For PRs to master or pushes that modify the root Dockerfile, build from scratch
+# For PRs to dev or pushes that modify the root Dockerfile, build from scratch
 # then run CI tests using that container in parallel
 # For forked repos that can't use our self-hosted test suite, just build and run make check
 
 on:
   pull_request:
     branches:
-      - master
+      - dev
       - stable
       - candidate_release_*
   #push:
   #  paths: ['Dockerfile'] # If this file changed, we'd need to do a clean build (this action)
-  #  otherwise we could speed this up by pulling the last container of 'master', copying
+  #  otherwise we could speed this up by pulling the last container of 'dev', copying
   #  code into it, and then rebuilding
 
 jobs:
+
+  test_installer: # test install_ubuntu.sh
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2 # Clones to $GITHUB_WORKSPACE. NOTE: this requires git > 2.18 (not on ubuntu 18.04 by default) to get .git directory
+    - name: Run install_ubuntu.sh
+      run: cd $GITHUB_WORKSPACE && ./panda/scripts/install_ubuntu.sh
+
+
   build_container:
     if: github.repository  == 'panda-re/panda'
     runs-on: self-hosted
