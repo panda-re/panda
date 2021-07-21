@@ -46,6 +46,7 @@ jobs:
            mv dev/pandare/* pandare &&
            rmdir dev/pandare &&
            mv dev/* pandare/ &&
+           cd pandare &&
            git config --global user.email "panda-ci@panda-re.mit.edu" &&
            git config --global user.name "PANDA Bot" &&
            git add . &&
@@ -90,6 +91,7 @@ jobs:
            mv stable/pandare/* pandare/stable &&
            rmdir stable/pandare &&
            mv stable/* pandare/stable &&
+           cd pandare &&
            git config --global user.email "panda-ci@panda-re.mit.edu" &&
            git config --global user.name "PANDA Bot" &&
            git add . &&
