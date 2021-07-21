@@ -32,7 +32,6 @@ from shlex import quote as shlex_quote
 from time import sleep
 from cffi import FFI
 
-from .ffi_importer import ffi, set_ffi
 from .utils import progress, warn, make_iso, debug, blocking, GArrayIterator, plugin_list
 from .taint import TaintQuery
 from .panda_expect import Expect
@@ -87,6 +86,7 @@ class Panda():
         self.__sighandler = None
         self.ending = False # True during end_analysis
 
+
         if isinstance(extra_args, str): # Extra args can be a string or array
             extra_args = extra_args.split()
 
@@ -133,8 +133,9 @@ class Panda():
         self.panda = self.libpanda_path # Necessary for realpath to work inside core-panda, may cause issues?
 
         self.ffi = self._do_types_import()
+
         self.libpanda = self.ffi.dlopen(self.libpanda_path)
-        self.C = ffi.dlopen(None)
+        self.C = self.ffi.dlopen(None)
 
         # set OS name if we have one
         if self.os:
@@ -210,17 +211,19 @@ class Panda():
     # /__init__
 
     def _do_types_import(self) -> None:
-        # Import objects from panda_datatypes which are configured by the environment variables
-        # Store these objects in self.callback and self.callback_dictionary
-        global ffi
+        '''
+        Import objects from panda_datatypes which are configured by the environment variables(?)
+        Store these objects in self.callback and self.callback_dictionary
+
+        Returns a handle to the FFI object for the libpanda object
+        '''
         from importlib import import_module
+        from .autogen.panda_datatypes import get_cbs
         panda_arch_support = import_module(f".autogen.panda_{self.arch_name}_{self.bits}",package='pandare')
+
         ffi = panda_arch_support.ffi
-        self.ffi = ffi
-        set_ffi(ffi)
-        from .autogen.panda_datatypes import pcb, C, callback_dictionary # XXX: What is C and do we need it?
-        self.callback_dictionary = callback_dictionary
-        self.callback = pcb
+        self.callback, self.callback_dictionary = get_cbs(ffi)
+
         return ffi
 
     def _initialize_panda(self) -> None:
@@ -230,9 +233,9 @@ class Panda():
         '''
         self.libpanda._panda_set_library_mode(True)
 
-        cenvp = ffi.new("char**", ffi.new("char[]", b""))
-        len_cargs = ffi.cast("int", len(self.panda_args))
-        panda_args_ffi = [ffi.new("char[]", bytes(str(i),"utf-8")) for i in self.panda_args]
+        cenvp = self.ffi.new("char**", self.ffi.new("char[]", b""))
+        len_cargs = self.ffi.cast("int", len(self.panda_args))
+        panda_args_ffi = [self.ffi.new("char[]", bytes(str(i),"utf-8")) for i in self.panda_args]
         self.libpanda.panda_init(len_cargs, panda_args_ffi, cenvp)
 
         # Now we've run qemu init so we can connect to the sockets for the monitor and serial
@@ -318,7 +321,7 @@ class Panda():
         # Stop guest, queue up revert, then continue
         timer_start = time()
         self.vm_stop()
-        charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
+        charptr = self.ffi.new("char[]", bytes(snapshot_name, "utf-8"))
         self.queue_main_loop_wait_fn(self.libpanda.panda_revert, [charptr])
         self.queue_main_loop_wait_fn(self.libpanda.panda_cont)
         if debug:
@@ -359,7 +362,7 @@ class Panda():
         # Stop guest execution, queue up a snapshot, then continue
         timer_start = time()
         self.vm_stop()
-        charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
+        charptr = self.ffi.new("char[]", bytes(snapshot_name, "utf-8"))
         self.queue_main_loop_wait_fn(self.libpanda.panda_snap, [charptr])
         self.queue_main_loop_wait_fn(self.libpanda.panda_cont)
         if debug:
@@ -380,7 +383,7 @@ class Panda():
 
         # Stop guest, queue up delete, then continue
         self.vm_stop()
-        charptr = ffi.new("char[]", bytes(snapshot_name, "utf-8"))
+        charptr = self.ffi.new("char[]", bytes(snapshot_name, "utf-8"))
         self.queue_main_loop_wait_fn(self.libpanda.panda_delvm, [charptr])
 
     def _finish_timer(self, start, msg:str) -> None:
@@ -430,9 +433,9 @@ class Panda():
 
         if self._initialized_panda:
             # initialize and register signal handler only if panda is initialized
-            self.__sighandler = (ffi.callback("void(int,void*,void*)", SigHandler)
+            self.__sighandler = (self.ffi.callback("void(int,void*,void*)", SigHandler)
                        if signal_handler is None and self.__sighandler is None
-                       else ffi.callback("void(int,void*,void*)", self.__sighandler))
+                       else self.ffi.callback("void(int,void*,void*)", self.__sighandler))
 
             self.libpanda.panda_setup_signal_handling(self.__sighandler)
 
@@ -531,12 +534,12 @@ class Panda():
             Exception: raises exception if there was an error starting recording.
         """
         if snapshot_name == None:
-            snapshot_name_ffi = ffi.NULL
+            snapshot_name_ffi = self.ffi.NULL
         else:
-            snapshot_name_ffi = ffi.new("char[]",snapshot_name.encode())
-        recording_name_ffi = ffi.new("char[]", recording_name.encode())
+            snapshot_name_ffi = self.ffi.new("char[]",snapshot_name.encode())
+        recording_name_ffi = self.ffi.new("char[]", recording_name.encode())
         result = self.libpanda.panda_record_begin(recording_name_ffi,snapshot_name_ffi)
-        res_string_enum = ffi.string(ffi.cast("RRCTRL_ret",result))
+        res_string_enum = self.ffi.string(self.ffi.cast("RRCTRL_ret",result))
         if res_string_enum != "RRCTRL_OK":
            raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})")
 
@@ -547,7 +550,7 @@ class Panda():
             Exception: raises exception if there was an error stopping recording.
         """
         result = self.libpanda.panda_record_end()
-        res_string_enum = ffi.string(ffi.cast("RRCTRL_ret",result))
+        res_string_enum = self.ffi.string(self.ffi.cast("RRCTRL_ret",result))
         if res_string_enum != "RRCTRL_OK":
            raise Exception(f"record method failed with RTCTL_ret {res_string_enum} ({result})")
     
@@ -582,7 +585,7 @@ class Panda():
         if debug:
             progress ("Replaying %s" % replaypfx)
 
-        charptr = ffi.new("char[]",bytes(replaypfx,"utf-8"))
+        charptr = self.ffi.new("char[]",bytes(replaypfx,"utf-8"))
         self.libpanda.panda_replay_begin(charptr)
         self._in_replay = True
         self.run()
@@ -605,7 +608,7 @@ class Panda():
 
         result = self.libpanda.panda_replay_end()
 
-        res_string_enum = ffi.string(ffi.cast("RRCTRL_ret",result))
+        res_string_enum = self.ffi.string(self.ffi.cast("RRCTRL_ret",result))
         if res_string_enum != "RRCTRL_OK":
             raise Exception(f"ending record method failed with RTCTL_ret {res_string_enum} ({result})")
 
@@ -634,13 +637,13 @@ class Panda():
         if isinstance(args, dict):
             for k,v in args.items():
                 this_arg_s = "{}={}".format(k,v)
-                this_arg = ffi.new("char[]", bytes(this_arg_s, "utf-8"))
+                this_arg = self.ffi.new("char[]", bytes(this_arg_s, "utf-8"))
                 argstrs_ffi.append(this_arg)
 
             n = len(args.keys())
         elif isinstance(args, list):
             for arg in args:
-                this_arg = ffi.new("char[]", bytes(arg, "utf-8"))
+                this_arg = self.ffi.new("char[]", bytes(arg, "utf-8"))
                 argstrs_ffi.append(this_arg)
             n = len(args)
 
@@ -649,15 +652,15 @@ class Panda():
 
         # First set qemu_path so plugins can load (may be unnecessary after the first time)
         assert(self.panda), "Unknown location of PANDA"
-        panda_name_ffi = ffi.new("char[]", bytes(self.panda,"utf-8"))
+        panda_name_ffi = self.ffi.new("char[]", bytes(self.panda,"utf-8"))
         self.libpanda.panda_set_qemu_path(panda_name_ffi)
 
         if len(argstrs_ffi):
             plugin_args = argstrs_ffi
         else:
-            plugin_args = ffi.NULL
+            plugin_args = self.ffi.NULL
 
-        charptr = ffi.new("char[]", bytes(name,"utf-8"))
+        charptr = self.ffi.new("char[]", bytes(name,"utf-8"))
         self.libpanda.panda_require_from_library(charptr, plugin_args, len(argstrs_ffi))
         self._load_plugin_library(name)
 
@@ -682,7 +685,7 @@ class Panda():
         '''
         if debug:
             progress ("Unloading plugin %s" % name),
-        name_ffi = ffi.new("char[]", bytes(name,"utf-8"))
+        name_ffi = self.ffi.new("char[]", bytes(name,"utf-8"))
         self.libpanda.panda_unload_plugin_by_name(name_ffi)
 
     def unload_plugins(self) -> None:
@@ -767,15 +770,15 @@ class Panda():
         if not isinstance(addr, int):
             raise ValueError(f"Unsupported read from address {repr(addr)}")
 
-        buf = ffi.new("char[]", length)
+        buf = self.ffi.new("char[]", length)
 
         # Force CFFI to parse addr as an unsigned value. Otherwise we get OverflowErrors
         # when it decides that it's negative
         ptr_typ = f'uint{self.bits}_t'
-        addr_u = int(ffi.cast(ptr_typ, addr))
+        addr_u = int(self.ffi.cast(ptr_typ, addr))
 
-        buf_a = ffi.cast("char*", buf)
-        length_a = ffi.cast("int", length)
+        buf_a = self.ffi.cast("char*", buf)
+        length_a = self.ffi.cast("int", length)
         if physical:
             err = self.libpanda.panda_physical_memory_read_external(addr_u, buf_a, length_a)
         else:
@@ -784,13 +787,13 @@ class Panda():
         if err < 0:
             raise ValueError(f"Memory access failed with err={err}") # TODO: make a PANDA Exn class
 
-        r = ffi.unpack(buf, length)
+        r = self.ffi.unpack(buf, length)
         if fmt == 'bytearray':
             return r
         elif fmt=='int':
             return int.from_bytes(r, byteorder=self.endianness)  # XXX size better be small enough to pack into an int!
         elif fmt=='str':
-            return ffi.string(buf, length)
+            return self.ffi.string(buf, length)
         elif fmt=='ptrlist':
             # This one is weird. Chunmk the memory into byte-sequences of (self.bits/8) bytes and flip endianness as approperiate
             # return a list
@@ -840,9 +843,9 @@ class Panda():
         Write a bytearray into memory at the specified physical/virtual address
         '''
         length = len(buf)
-        c_buf = ffi.new("char[]",buf)
-        buf_a = ffi.cast("char*", c_buf)
-        length_a = ffi.cast("int", length)
+        c_buf = self.ffi.new("char[]",buf)
+        buf_a = self.ffi.cast("char*", c_buf)
+        length_a = self.ffi.cast("int", length)
 
         if not hasattr(self, "_memcb"): # XXX: Why do we enable memcbs for memory writes?
             self.enable_memcb()
@@ -861,7 +864,7 @@ class Panda():
             progress("enabling callstack_instr plugin")
             self.load_plugin("callstack_instr")
 
-        callers = ffi.new("uint%d_t[%d]" % (self.bits, lim))
+        callers = self.ffi.new("uint%d_t[%d]" % (self.bits, lim))
         n = self.plugins['callstack_instr'].get_callers(callers, lim, cpu)
         c = []
         for pc in callers:
@@ -870,11 +873,11 @@ class Panda():
 
     def _load_plugin_library(self, name:str) -> None:
         if hasattr(self,"__did_load_libpanda"):
-            libpanda_path_chr = ffi.new("char[]",bytes(self.libpanda_path, "UTF-8"))
+            libpanda_path_chr = self.ffi.new("char[]",bytes(self.libpanda_path, "UTF-8"))
             self.__did_load_libpanda = self.libpanda.panda_load_libpanda(libpanda_path_chr)
         if not name in self.plugins.keys():
             assert(isfile(pjoin(*[self.build_dir, self.arch_name+"-softmmu", "panda/plugins/panda_{}.so".format(name)])))
-            library = ffi.dlopen(pjoin(*[self.build_dir, self.arch_name+"-softmmu", "panda/plugins/panda_{}.so".format(name)]))
+            library = self.ffi.dlopen(pjoin(*[self.build_dir, self.arch_name+"-softmmu", "panda/plugins/panda_{}.so".format(name)]))
             self.plugins[name] = library
 
     def queue_async(self, f:Callable, internal:bool=False) -> None:
@@ -917,7 +920,7 @@ class Panda():
             None
         '''
 
-        name_c = ffi.new("char[]", bytes(name, "utf-8"))
+        name_c = self.ffi.new("char[]", bytes(name, "utf-8"))
         size = ceil(size/1024)*1024 # Must be page-aligned
         return self.libpanda.map_memory(name_c, size, address)
 
@@ -1035,7 +1038,7 @@ class Panda():
         Returns:
             None
         '''
-        charptr = ffi.new("char[]", bytes(name, "utf-8"))
+        charptr = self.ffi.new("char[]", bytes(name, "utf-8"))
         self.libpanda.panda_start_pandalog(charptr)
 
     def enable_memcb(self) -> None:
@@ -1567,7 +1570,7 @@ class Panda():
             Returns:
                 None
         """
-        os_name_new = ffi.new("char[]", bytes(os_name, "utf-8"))
+        os_name_new = self.ffi.new("char[]", bytes(os_name, "utf-8"))
         self.libpanda.panda_set_os_name(os_name_new)
 
 
@@ -1623,9 +1626,9 @@ class Panda():
         procs = {} #pid: {name: X, pid: Y, parent_pid: Z})
 
         for proc in self.get_processes(cpu):
-            assert(proc != ffi.NULL)
+            assert(proc != self.ffi.NULL)
             assert(proc.pid not in procs)
-            procs[proc.pid] = {"name": ffi.string(proc.name).decode('utf8', 'ignore'), 'pid': proc.pid, 'parent_pid': proc.ppid}
+            procs[proc.pid] = {"name": self.ffi.string(proc.name).decode('utf8', 'ignore'), 'pid': proc.pid, 'parent_pid': proc.ppid}
             assert(not (proc.pid != 0 and proc.pid == proc.ppid)) # No cycles allowed other than at 0
         return procs
 
@@ -1634,11 +1637,11 @@ class Panda():
         Get the name of the current process. May return None if OSI cannot identify the current process
         '''
         proc = self.plugins['osi'].get_current_process(cpu)
-        if proc == ffi.NULL or proc.name == ffi.NULL:
+        if proc == self.ffi.NULL or proc.name == self.ffi.NULL:
             return None
 
-        procname = ffi.string(proc.name).decode('utf8', 'ignore')
-        return ffi.string(proc.name).decode('utf8', 'ignore')
+        procname = self.ffi.string(proc.name).decode('utf8', 'ignore')
+        return self.ffi.string(proc.name).decode('utf8', 'ignore')
 
 
     ################## PYPERIPHERAL FUNCTIONS #####################
@@ -1735,7 +1738,7 @@ class Panda():
             return False
 
         val = pp.read_memory(physaddr, size)
-        buf = ffi.buffer(val_ptr, size)
+        buf = self.ffi.buffer(val_ptr, size)
 
         fmt = "{}{}".format(self._end2fmt[self.endianness], self._num2fmt[size])
 
@@ -1875,9 +1878,9 @@ class Panda():
         res = []
         for offset in range(self.register_size):
             if self.plugins['taint2'].taint2_query_reg(reg_num, offset) > 0:
-                query_res = ffi.new("QueryResult *")
+                query_res = self.ffi.new("QueryResult *")
                 self.plugins['taint2'].taint2_query_reg_full(reg_num, offset, query_res)
-                tq = TaintQuery(query_res, self.plugins['taint2'])
+                tq = TaintQuery(query_res, self.plugins['taint2'], self.ffi)
                 res.append(tq)
             else:
                 res.append(None)
@@ -1888,9 +1891,9 @@ class Panda():
     def taint_get_ram(self, addr:int):
         if not self.taint_enabled: return None
         if self.plugins['taint2'].taint2_query_ram(addr) > 0:
-            query_res = ffi.new("QueryResult *")
+            query_res = self.ffi.new("QueryResult *")
             self.plugins['taint2'].taint2_query_ram_full(addr, query_res)
-            tq = TaintQuery(query_res, self.plugins['taint2'])
+            tq = TaintQuery(query_res, self.plugins['taint2'], self.ffi)
             return tq
         else:
             return None
@@ -1906,9 +1909,9 @@ class Panda():
     def taint_get_laddr(self, addr:int, offset:int):
         if not self.taint_enabled: return None
         if self.plugins['taint2'].taint2_query_laddr(addr, offset) > 0:
-            query_res = ffi.new("QueryResult *")
+            query_res = self.ffi.new("QueryResult *")
             self.plugins['taint2'].taint2_query_laddr_full(addr, offset, query_res)
-            tq = TaintQuery(query_res, self.plugins['taint2'])
+            tq = TaintQuery(query_res, self.plugins['taint2'], self.ffi)
             return tq
         else:
             return None
@@ -2394,7 +2397,7 @@ class Panda():
                     return return_from_exception
 
             cast_rc = pandatype(_run_and_catch)
-            cast_rc_string = str(ffi.typeof(cast_rc))
+            cast_rc_string = str(self.ffi.typeof(cast_rc))
             return_from_exception = 0
             if "void(*)(" in cast_rc_string:
                 return_from_exception = None
@@ -2429,8 +2432,8 @@ class Panda():
                 return None
             if not self.in_kernel(cpu): # Once we're out of kernel code, grab procname
                 process = self.plugins['osi'].get_current_process(cpu)
-                if process != ffi.NULL:
-                    name = ffi.string(process.name).decode("utf8", "ignore")
+                if process != self.ffi.NULL:
+                    name = self.ffi.string(process.name).decode("utf8", "ignore")
                 else:
                     return None # Couldn't figure out the process
                 asid = self.libpanda.panda_current_asid(cpu)
@@ -2478,11 +2481,11 @@ class Panda():
         cb = self.callback_dictionary[callback]
 
         # Generate a unique handle for each callback type using the number of previously registered CBs of that type added to a constant
-        handle = ffi.cast('void *', 0x8888 + 100*len([x for x in self.registered_callbacks.values() if x['callback'] == cb]))
+        handle = self.ffi.cast('void *', 0x8888 + 100*len([x for x in self.registered_callbacks.values() if x['callback'] == cb]))
 
         # XXX: We should have another layer of indirection here so we can catch
         #      exceptions raised during execution of the CB and abort analysis
-        pcb = ffi.new("panda_cb *", {cb.name:function})
+        pcb = self.ffi.new("panda_cb *", {cb.name:function})
 
         if debug:
             progress("Registered function '{}' to run on callback {}".format(name, cb.name))
@@ -2629,7 +2632,7 @@ class Panda():
                     self.end_analysis()
                     # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
 
-            f = ffi.callback(attr+"_t")(_run_and_catch)  # Wrap the python fn in a c-callback.
+            f = self.ffi.callback(attr+"_t")(_run_and_catch)  # Wrap the python fn in a c-callback.
             if local_name == "<lambda>":
                 local_name = f"<lambda_{self.lambda_cnt}>"
                 self.lambda_cnt += 1
@@ -2688,7 +2691,7 @@ class Panda():
         GDB instance can introspect on guest memory. Requires starting panda with -s, at least for now
         '''
         BP_GDB = 0x10
-        self.libpanda.cpu_breakpoint_insert(cpu, pc, BP_GDB, ffi.NULL)
+        self.libpanda.cpu_breakpoint_insert(cpu, pc, BP_GDB, self.ffi.NULL)
 
     def clear_breakpoint(self, cpu, pc:int) -> None:
         '''
@@ -2879,23 +2882,30 @@ class Panda():
         else:
             print("ERROR: Your hook name was not in the hook list")
 
-    def hook2(self,name:str, kernel:bool=True, procname:str=ffi.NULL, libname:str=ffi.NULL, trace_start:int=0, trace_stop:int=0, range_begin:int=0, range_end:int=0):
+    def hook2(self,name:str, kernel:bool=True, procname:str=None, libname:str=None, trace_start:int=0, trace_stop:int=0, range_begin:int=0, range_end:int=0) -> Callable:
         '''
         Decorator to create a hook with the hooks2 plugin.
 
         .. Deprecated:: Use the hooks plugin instead.
         '''
-        if procname != ffi.NULL:
-            procname = ffi.new("char[]",bytes(procname,"utf-8"))
-        if libname != ffi.NULL:
-            libname = ffi.new("char[]",bytes(libname,"utf-8"))
+
+        if procname == None:
+            procname = self.ffi.NULL
+        if libname == None:
+            libname = self.ffi.NULL
+
+
+        if procname != self.ffi.NULL:
+            procname = self.ffi.new("char[]",bytes(procname,"utf-8"))
+        if libname != self.ffi.NULL:
+            libname = self.ffi.new("char[]",bytes(libname,"utf-8"))
         '''
         Decorate a function to setup a hook: when a guest goes to execute a basic block beginning with addr,
         the function will be called with args (CPUState, TranslationBlock)
         '''
         def decorator(fun):
             # Ultimately, our hook resolves as a before_block_exec_invalidate_opt callback so we must match its args
-            hook_cb_type = ffi.callback("bool (CPUState*, TranslationBlock*, void*)")
+            hook_cb_type = self.ffi.callback("bool (CPUState*, TranslationBlock*, void*)")
             # Inform the plugin that it has a new breakpoint at addr
 
             hook_cb_passed = hook_cb_type(fun)
@@ -2905,7 +2915,7 @@ class Panda():
                 self.hook_gc_list.append(hook_cb_passed)
 
             # I don't know what this is/does
-            cb_data = ffi.NULL
+            cb_data =self.ffi.NULL
             hook_number = self.plugins['hooks2'].add_hooks2(hook_cb_passed, cb_data, kernel, \
                 procname, libname, trace_start, trace_stop, range_begin,range_end)
 
@@ -2918,12 +2928,16 @@ class Panda():
             return wrapper
         return decorator
 
-    def hook2_single_insn(self, name:str, pc:int, kernel:bool=False, procname:str=ffi.NULL, libname:str=ffi.NULL):
+    def hook2_single_insn(self, name:str, pc:int, kernel:bool=False, procname:str=None, libname:str=None):
         '''
         Helper function to hook a single instruction with the hooks2 plugin.
 
         .. Deprecated:: Use the hooks plugin instead.
         '''
+        if procname == None:
+            procname = self.ffi.NULL
+        if libname == None:
+            libname = self.ffi.NULL
         return self.hook2(name, kernel=kernel, procname=procname,libname=libname,range_begin=pc, range_end=pc)
 
     # MEM HOOKS

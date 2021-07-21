@@ -17,7 +17,6 @@ from volatility.framework import automagic, constants, contexts, exceptions, int
 from volatility.framework.automagic import linux
 from volatility.framework.layers.linear import LinearlyMappedLayer
 from volatility.framework.objects import utility
-from .ffi_importer import ffi
 import argparse
 import shlex
 import inspect
