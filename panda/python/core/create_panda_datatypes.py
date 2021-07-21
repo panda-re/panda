@@ -356,7 +356,6 @@ If you simply need a list of callbacks consult the manual in main PANDA.
 from enum import Enum
 from ctypes import *
 from collections import namedtuple
-from ..ffi_importer import ffi
 
 class PandaState(Enum):
     UNINT = 1

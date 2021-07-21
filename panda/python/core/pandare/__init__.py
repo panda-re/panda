@@ -11,7 +11,6 @@ Example plugins are available in the [examples directory](https://github.com/pan
 """
 
 from .panda import Panda, blocking
-from .ffi_importer import ffi
 from .plog_reader import PLogReader
 
 __pdoc__ = {}
