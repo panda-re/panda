@@ -73,6 +73,9 @@ if [ $version -eq 18 ]; then
   $SUDO apt-get update
 fi
 
+progress "Installing Rust..."
+curl https://sh.rustup.rs -sSf | sh -s -- -y
+
 # Dependencies are for a major version, but the filenames include minor versions
 # So take our major version, find the first match in dependencies directory and run with it.
 # This will give us "./panda/dependencies/ubuntu:20.04" where ubuntu:20.04_build.txt or 20.04_base.txt exists
