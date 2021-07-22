@@ -4,7 +4,7 @@ from os import path
 import capstone
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
-from pandare import Panda, blocking, ffi
+from pandare import Panda
 from pandare.helper.x86 import R_EAX, R_EBX, R_ECX, registers
 
 # Single arg of arch, defaults to i386
@@ -20,13 +20,12 @@ assert(path.isfile(path.join(bin_dir, bin_name))), "Missing file {}".format(path
 # Take a recording of toy running in the guest if necessary
 recording_name = bin_dir+"_"+bin_name
 if not path.isfile(recording_name +"-rr-snp"):
-    @blocking
+    @panda.queue_blocking
     def run_it():
         panda.record_cmd(path.join(bin_dir, bin_name), copy_directory=bin_dir, recording_name=recording_name)
         panda.stop_run()
 
     print("Generating " + recording_name + " replay")
-    panda.queue_async(run_it)
     panda.run()
 
 out = []
