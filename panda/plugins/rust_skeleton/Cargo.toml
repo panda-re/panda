@@ -19,3 +19,4 @@ arm = ["panda-re/arm"]
 ppc = ["panda-re/ppc"]
 mips = ["panda-re/mips"]
 mipsel = ["panda-re/mipsel"]
+aarch64 = ["panda-re/arm"] # aarch64 not supported
