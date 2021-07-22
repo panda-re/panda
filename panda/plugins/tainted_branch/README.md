@@ -47,7 +47,9 @@ The PANDA log "summary" mode is not really a summary of the PANDA log default mo
 
 In either PANDA log mode, the liveness option can be used to include a list of the labels which have appeared on tainted branches and the number of times each one has appeared.  This option makes it easier to determine if a particular label was ever used to determine which path to take in a conditional branch.
 
-Output in CSV format can also be done in "summary" or default mode.  The "summary" output lists the same information as seen in the PANDA log summary output.  The default mode lists for each tainted branch the guest address of the blocking including the tainted branch, the instruction count, and a space-separated list of labels.  Note that the liveness option cannot be used with CSV output.  It is also not possible to produce PANDA log and CSV output at the same time.
+The "ignore_helpers" option can be used to omit taint reports that are generated from within LLVM helper functions.  This can be useful if the output will be processed by analysis tools that cannot process helper functions.
+
+Output in CSV format can also be done in "summary" or default mode.  The "summary" output lists the same information as seen in the PANDA log summary output.  The default mode lists for each tainted branch the guest address of the block including the tainted branch, the instruction count, and a space-separated list of labels.  Note that the liveness option cannot be used with CSV output.  It is also not possible to produce PANDA log and CSV output at the same time.
 
 Arguments
 ---------
@@ -55,6 +57,7 @@ Arguments
 - `csvfile`: string, optional:  name of file to save CSV output to
 - `indirect_jumps`: boolean, optional: also report indirect jumps
 - `liveness`:  boolean, optional:  report live labels to the PANDA log
+- `ignore_helpers`:  boolean, optional:  do not report taint from within helper functions
 - `summary`: boolean, optional:  only save the ASID and PC of the tainted branches
 
 Dependencies

@@ -288,13 +288,16 @@ class PandaTaintFunctionPass : public FunctionPass {
 private:
     ShadowState *shad;
     taint2_memlog *taint_memlog;
+    bool processing_helper;
 
 public:
     static char ID;
     PandaTaintVisitor *PTV; // Our LLVM instruction visitor
 
     PandaTaintFunctionPass(ShadowState *shad, taint2_memlog *taint_memlog)
-        : FunctionPass(ID), shad(shad), taint_memlog(taint_memlog), PTV(new PandaTaintVisitor(shad, taint_memlog)) {}
+        : FunctionPass(ID), shad(shad), taint_memlog(taint_memlog),
+		  processing_helper(false),
+		  PTV(new PandaTaintVisitor(shad, taint_memlog)) {}
 
     ~PandaTaintFunctionPass() { }
 
@@ -308,6 +311,20 @@ public:
 
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {
         AU.setPreservesAll();
+    }
+
+    // the processing_helper flag is used to tweak some taint op arguments based
+    // on whether or not instrumenting a helper function
+    void setProcessingHelper() {
+    	processing_helper = true;
+    }
+
+    void clearProcessingHelper() {
+    	processing_helper = false;
+    }
+
+    bool processingHelper() {
+    	return processing_helper;
     }
 };
 

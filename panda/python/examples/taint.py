@@ -27,7 +27,7 @@ def read(cpu, tb, fd, buf, cnt):
             panda.taint_label_ram(buf+idx)
 
 @panda.ppp("taint2", "on_branch2")
-def something(addr, pc):
+def something(addr, size, from_helper, tainted):
     print("Tainted branch")
 
 panda.run()

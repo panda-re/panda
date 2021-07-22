@@ -41,9 +41,9 @@ APIs and Callbacks
 
 Name: **on_branch2**
 
-Signature: `typedef void (*on_branch2_t) (Addr addr, uint64_t size)`
+Signature: `typedef void (*on_branch2_t) (Addr addr, uint64_t size, bool from_helper, bool *tainted)`
 
-Description: Called when a branch that depends on tainted data is encountered. The `Addr` parameter (a union of the various types of memory that can be tracked by the taint system) provides the address of the data that the tainted branch depends on.
+Description: Called when a branch that depends on tainted data is encountered. The `Addr` parameter (a union of the various types of memory that can be tracked by the taint system) provides the address of the data that the tainted branch depends on.  The `size` parameter is the number of bytes in the data.  The `from_helper` parameter indicates whether or not this taint report was generated from within a helper function.  The output parameter `tainted` should be set to true by the implementing callback if taint was found on any of the bytes.
 
 Name: **on_taint_change**
 
