@@ -35,6 +35,7 @@ recctrl
 replaymovie
 scissors
 signal
+snake_hook
 stringsearch
 syscalls2
 syscalls_logger
