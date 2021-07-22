@@ -223,10 +223,26 @@ class Panda():
     def _do_types_import(self):
         '''
         Import objects from panda_datatypes which are configured by the environment variables(?)
+        Check the DATATTYPES_VERSION to detect if panda_datatypes.py has gotten stale.
+
         Store these objects in self.callback and self.callback_dictionary
 
         Returns a handle to the FFI object for the libpanda object
         '''
+
+        required_datatypes_version = 1.1
+        version_err = "Your panda_datatypes.py is out of date (has version {} but PANDA " \
+                      "requires version {}). Please reinstall pypanda or re-run "\
+                      "create_panda_datatypes.py."
+        try:
+            from .autogen.panda_datatypes import DATATYPES_VERSION
+        except ImportError:
+            raise RuntimeError(version_err.format(None, required_datatypes_version))
+
+        if required_datatypes_version != DATATYPES_VERSION:
+            raise RuntimeError(version_err.format(DATATYPES_VERSION, required_datatypes_version))
+
+
         from importlib import import_module
         from .autogen.panda_datatypes import get_cbs
         panda_arch_support = import_module(f".autogen.panda_{self.arch_name}_{self.bits}",package='pandare')
