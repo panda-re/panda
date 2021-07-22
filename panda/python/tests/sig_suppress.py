@@ -1,7 +1,7 @@
 import shutil
 from pathlib import Path
 
-from pandare import blocking, Panda
+from pandare import Panda
 
 BIN_NAME = "sig_logger"
 SIG_LOG = "/tmp/sig_log.txt"
@@ -9,7 +9,16 @@ PROG_DIR = "sig"
 HOST_PROG_DIR = Path(__file__).parent.absolute().joinpath(PROG_DIR)
 HOST_PROG_PATH = HOST_PROG_DIR.joinpath(BIN_NAME)
 
-@blocking
+assert(HOST_PROG_PATH.is_file())
+
+panda = Panda(
+    generic = "x86_64_ubuntu_1804",
+    extra_args = "-nographic -pandalog test_sig_suppress.plog",
+    expect_prompt = rb"root@ubuntu:.*",
+    mem = "1G"
+)
+
+@panda.queue_blocking
 def prepare_plugins():
 
     # Apply signal supression by process, for the 3 signals we're about to send
@@ -18,7 +27,7 @@ def prepare_plugins():
     panda.plugins['signal'].block_sig_by_proc(11, bin_name_str)
     panda.plugins['signal'].block_sig_by_proc(6, bin_name_str)
 
-@blocking
+@panda.queue_blocking
 def run_in_guest():
 
     # Setup write capture, mirrors files create to hyper visor
@@ -63,17 +72,4 @@ def run_in_guest():
     print("\nTEST OK! Signals successfully suppressed\n")
     panda.end_analysis()
 
-if __name__ == "__main__":
-
-    assert(HOST_PROG_PATH.is_file())
-
-    panda = Panda(
-        generic = "x86_64_ubuntu_1804",
-        extra_args = "-nographic -pandalog test_sig_suppress.plog",
-        expect_prompt = rb"root@ubuntu:.*",
-        mem = "1G"
-    )
-
-    panda.queue_async(prepare_plugins)
-    panda.queue_async(run_in_guest)
     panda.run()

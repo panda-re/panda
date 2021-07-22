@@ -10,7 +10,7 @@ This test currently is failing 1/2 the time, probably due to some bug in the hoo
 '''
 
 from sys import argv
-from pandare import Panda, blocking
+from pandare import Panda
 import time
 import pickle
 
@@ -20,7 +20,7 @@ panda = Panda(generic=arch)
 # First run - Just get symbols
 # Extract kernel symbols and populate dictionary
 kallsyms = {}
-@blocking
+@panda.queue_blocking
 def extract_kallsyms():
     global kallsyms
     # First revert to root snapshot, then type a command via serial
@@ -34,7 +34,6 @@ def extract_kallsyms():
         kallsyms[name] = addr
     panda.end_analysis()
 
-panda.queue_async(extract_kallsyms)
 print("\nStarting guest to extract kernel symbols. This will take a moment...")
 panda.run()
 assert(len(kallsyms) > 100), f"Error - Only identified {len(kallsyms)} symbols"
@@ -78,13 +77,12 @@ def call_hook2(env, tb):
     return False
 
 # Run a command in the guest which should cause hooks to trigger
-@blocking
+@panda.queue_blocking
 def my_runcmd():
     panda.revert_sync('root')
     panda.run_serial_cmd("cat /proc/self/environ")
     panda.run_serial_cmd("wget http://example.com")
     panda.stop_run()
-panda.queue_async(my_runcmd)
 
 print("Running guest with two hooks")
 panda.run()

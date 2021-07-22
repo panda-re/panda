@@ -53,7 +53,7 @@ def runner(generic_name):
     First run via CLI - load root snapshot, run a command and quit - check command output
     Then test via python to see if OSI works
     '''
-    from pandare import Panda, blocking
+    from pandare import Panda
     data = SUPPORTED_IMAGES[generic_name]
     qcow_path = Qcows.get_qcow(generic_name)
 
@@ -94,7 +94,7 @@ def runner(generic_name):
                 seen.add(name)
         return 0
 
-    @blocking
+    @panda.queue_blocking
     def start():
         panda.revert_sync("root")
         global reverted
@@ -104,7 +104,6 @@ def runner(generic_name):
         assert("root:x" in r), "Failed to run grep command"
         panda.end_analysis()
 
-    panda.queue_async(start)
     panda.run()
 
     if panda.arch in osi_supported:

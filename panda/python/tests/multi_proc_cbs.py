@@ -16,7 +16,6 @@ if not path.isfile("toy-rr-snp"):
         panda.stop_run()
 
     print("Generating toy replay")
-    panda.queue_async(run_toy)
     panda.run()
 
 hit_toy = False

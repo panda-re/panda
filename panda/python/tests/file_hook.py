@@ -12,13 +12,12 @@ panda = Panda(generic=arch)
 hook = FileHook(panda)
 hook.rename_file("/foo", "/etc/passwd")
 
-@blocking
+@panda.queue_blocking
 def read_it():
     panda.revert_sync('root')
     data = panda.run_serial_cmd("cat /foo")
     assert("root:x:0" in data), f"Failed to read renamed /foo (/etc/passwd): {data}"
     panda.end_analysis()
 
-panda.queue_async(read_it)
 panda.run()
 print("Successfully hooked /foo to become /etc/passwd")

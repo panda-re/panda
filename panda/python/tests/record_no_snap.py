@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from sys import argv
-from pandare import Panda, blocking
+from pandare import Panda
 from pandare.extras import ProcWriteCapture
 
 
@@ -13,7 +13,7 @@ panda = Panda(generic=arch)
 
 rec_name = "test_ls"
 
-@blocking
+@panda.queue_blocking
 def record_no_revert():
     # Normally record_cmd will do the revert, but we want to modify the guest
     # after the snapshot and before the recording starts
@@ -26,7 +26,6 @@ def record_no_revert():
 
 
 print("Queue up recording...")
-panda.queue_async(record_no_revert)
 panda.run()
 
 print("Running replay")
