@@ -28,7 +28,7 @@ RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     python3 -m pip install --upgrade --no-cache-dir pip && \
-    python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3"
+    python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 # Build and install panda
