@@ -31,6 +31,11 @@ RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
     python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y
 
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Sanity check to ensure cargo is installed
+RUN cargo --help
+
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
 # Note .dockerignore file keeps us from copying things we don't need

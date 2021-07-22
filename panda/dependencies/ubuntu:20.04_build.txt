@@ -80,3 +80,6 @@ libc6.1-dev-alpha-cross
 #gcc-alpha-linux-gnu
 #gcc-powerpc64-linux-gnu
 #gcc-s390x-linux-gnu
+
+# rust install deps
+curl
