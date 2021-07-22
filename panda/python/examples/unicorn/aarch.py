@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pandare import Panda, ffi
+from pandare import Panda
 import capstone
 import keystone
 import os
