@@ -3,7 +3,7 @@
 import os
 from enum import Enum
 from sys import argv
-from pandare import Panda, ffi, blocking
+from pandare import Panda
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]
@@ -12,12 +12,12 @@ panda = Panda(generic=arch)
 monitor_lines = []
 bb_count = 0
 
-@blocking
+@panda.queue_blocking
 def my_runcmd():
     panda.revert_sync('root')
     panda.run_serial_cmd("find . /proc/self")
 
-@blocking
+@panda.queue_blocking
 def info_reg():
     global monitor_lines
     result = panda.run_monitor_cmd("info registers")
@@ -29,8 +29,6 @@ def before_block_exec(env,tb):
     global bb_count
     bb_count += 1
 
-panda.queue_async(my_runcmd)
-panda.queue_async(info_reg)
 panda.run()
 
 assert(len(monitor_lines) > 5), "Not enough output from monitor"
