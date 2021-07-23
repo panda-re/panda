@@ -2,6 +2,7 @@
 import re
 import os
 import sys
+import glob
 import shutil
 if sys.version_info[0] < 3:
     raise RuntimeError('Requires python3')
@@ -260,16 +261,17 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
 
     # MANUAL curated list of PPP headers
     define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs.h")
-
     define_clean_header(ffi, include_dir + "/callstack_instr.h")
+    define_clean_header(ffi, include_dir + "/osi_types.h") # Need this before some other PPP headers - e.g., asidstory
 
-    define_clean_header(ffi, include_dir + "/hooks2_ppp.h")
-    define_clean_header(ffi, include_dir + "/proc_start_linux_ppp.h")
-    define_clean_header(ffi, include_dir + "/forcedexec_ppp.h")
-    define_clean_header(ffi, include_dir + "/stringsearch_ppp.h")
+    # Programatically def clean header files named *_ppp.h as PPP headers
+    for fname in glob.glob(f"{include_dir}/*_ppp.h"):
+        if "osi_types" not in fname:
+            define_clean_header(ffi, fname)
+
     # END PPP headers
-
     define_clean_header(ffi, include_dir + "/breakpoints.h")
+
     for header in pypanda_headers:
         define_clean_header(ffi, header)
     
@@ -297,13 +299,15 @@ def main(install=False,recompile=True):
     # Pull in osi/osi_types.h first - it's needed by other plugins too
     if os.path.exists("%s/%s" % (PLUGINS_DIR, 'osi')):
         print("Examining [%s] for pypanda-awareness" % 'osi_types.h')
-        create_pypanda_header("%s/osi/osi_types.h" % PLUGINS_DIR)
+        create_pypanda_header("%s/osi/osi_types.h" % PLUGINS_DIR, no_record=True) # XXX: norecord because we manually define_clean_header on it before others
     
     # Pull in taint2/addr.h first - it's needed by other plugins too
     if os.path.exists("%s/%s" % (PLUGINS_DIR, 'taint2')):
         print("Examining [%s] for pypanda-awareness" % 'addr.h')
         create_pypanda_header("%s/taint2/addr.h" % PLUGINS_DIR)
 
+    # Why is this one special, shouldn't it be named such that the following loop gets it?
+    create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux.h"))
 
     for plugin in plugin_dirs:
         if plugin == ".git": continue
@@ -320,7 +324,7 @@ def main(install=False,recompile=True):
         create_pypanda_header("%s/%s" % (INCLUDE_DIR_PAN, header))
 
     # PPP headers
-    #   for syscalls2 ppp headers, grab generated files for all architectures
+    #   for syscalls2 ppp headers, grab generated files for all architectures - this one will always be special
     syscalls_gen_dir = PLUGINS_DIR + "/syscalls2/generated"
     for header in os.listdir(syscalls_gen_dir):
         if header.startswith("syscalls_ext_typedefs_"):
@@ -328,22 +332,18 @@ def main(install=False,recompile=True):
     create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/syscalls2", "syscalls2_info.h"), no_record=True) # Get syscall_info_t, syscall_meta_t, syscall_argtype_t
     copy_ppp_header("%s/%s" % (syscalls_gen_dir, "syscalls_ext_typedefs.h")) # Get a few arch-agnostic typedefs for PPP headers
 
-    #   other PPP headers: callstack_instr. TODO: manually currated list
+    # Nonstandard PPP names (XXX: manually currated) - should rename to end with _ppp.h
+    copy_ppp_header("%s/taint2/taint2.h" % PLUGINS_DIR)
+    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/osi", "os_intro.h"))
     copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/callstack_instr", "callstack_instr.h"))
 
-    # XXX why do we have to append this to pypanda headers?
-    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/osi", "os_intro.h"))
-    pypanda_headers.append(os.path.join(INCLUDE_DIR_PYP, "os_intro.h"))
+    # Programatically copy files named *_ppp.h as PPP headers
+    for fname in glob.glob(f"{PLUGINS_DIR}/*/*_ppp.h"):
+        copy_ppp_header(fname)
+        #pypanda_headers.append(os.path.join(INCLUDE_DIR_PYP, fname.split("/")[-1]))
 
-    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2_ppp.h"))
-    # TODO: programtically copy anything that ends with _ppp.h
-    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/forcedexec",   "forcedexec_ppp.h"))
-    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/stringsearch", "stringsearch_ppp.h"))
-    create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/hooks2", "hooks2.h"))
-    
-    copy_ppp_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux_ppp.h"))
-    create_pypanda_header("%s/%s" % (PLUGINS_DIR+"/proc_start_linux", "proc_start_linux.h"))
-    copy_ppp_header("%s/taint2/taint2.h" % PLUGINS_DIR)
+    # XXX why do we have to append this to pypanda headers?
+    pypanda_headers.append(os.path.join(INCLUDE_DIR_PYP, "os_intro.h"))
 
     with open(os.path.join(OUTPUT_DIR, "panda_datatypes.py"), "w") as pdty:
         pdty.write("""
