@@ -101,6 +101,18 @@ else
 fi
 
 ### Ensure Rust version is up to date
+if ! command -v cargo &> /dev/null
+then
+    msg ""
+    msg ""
+    msg "Rust could not be found. Install it using the following command:"
+    msg ""
+    msg "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    msg ""
+
+    exit 1
+fi
+
 RUST_VERSION="$(cargo --version | grep -o -E '1\.[0-9]+' | cut -c 3-)"
 
 if [[ "$RUST_VERSION" -lt "52" ]]; then
