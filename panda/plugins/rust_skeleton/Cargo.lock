@@ -184,9 +184,9 @@ dependencies = [
 
 [[package]]
 name = "panda-re"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "865148a6777aa151aedaac3c4ff271c392d0ed9b279f149f75419230ca57d25d"
+checksum = "ffca8d596b1da4578c9e4c5318382cd9d26243e4f650bec67ee92a1df7db72dc"
 dependencies = [
  "dirs",
  "glib-sys",
@@ -215,9 +215,9 @@ dependencies = [
 
 [[package]]
 name = "panda-re-sys"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10038b6906ec08855c5347bb88d760e9d148d05f3c469293fdc920e5d7f7c94a"
+checksum = "7a37f3c9092a0586216fbeda31e9130558ae40e27120ad7616cecb8b6cf2d020"
 
 [[package]]
 name = "paste"

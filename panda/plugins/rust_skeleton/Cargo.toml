@@ -8,7 +8,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-panda-re = { version = "0.5", default-features = false }
+panda-re = { version = "0.6", default-features = false }
 
 [features]
 default = ["x86_64"]
@@ -19,4 +19,4 @@ arm = ["panda-re/arm"]
 ppc = ["panda-re/ppc"]
 mips = ["panda-re/mips"]
 mipsel = ["panda-re/mipsel"]
-aarch64 = ["panda-re/arm"] # aarch64 not supported
+aarch64 = ["panda-re/aarch64"]
