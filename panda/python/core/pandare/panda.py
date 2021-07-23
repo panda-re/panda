@@ -415,7 +415,7 @@ class Panda():
     def _finish_timer(self, start, msg):
         ''' Print how long some (main_loop_wait) task took '''
         t = time() - start
-        print("{} in {1:.08f} seconds".format(msg, t))
+        print("{} in {:.08f} seconds".format(msg, t))
 
 
     def enable_tb_chaining(self):
