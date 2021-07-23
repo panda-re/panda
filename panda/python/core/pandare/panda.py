@@ -168,11 +168,7 @@ class Panda():
         self.panda_args.extend(['-m', self.mem])
 
         # Configure serial - if we have an expect_prompt set. Otherwise how can we know what guest cmds are outputting?
-<<<<<<< HEAD
-        if self.expect_prompt or (serial_kwargs is not None and serial_kwargs.get('expectation')):
-=======
         if self.expect_prompt or self.expect_kwargs.get('expectation'):
->>>>>>> e09621e484 (PyPanda Expect: Allow to turn off unansi)
             self.serial_file = NamedTemporaryFile(prefix="pypanda_s").name
             self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             expect_kwargs = {'expectation': self.expect_prompt, 'consume_first': False, 'unansi': True}
