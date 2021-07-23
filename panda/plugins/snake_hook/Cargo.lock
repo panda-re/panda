@@ -383,7 +383,6 @@ name = "snake_hook"
 version = "0.1.0"
 dependencies = [
  "inline-python",
- "lazy_static",
  "libc",
  "panda-re",
 ]

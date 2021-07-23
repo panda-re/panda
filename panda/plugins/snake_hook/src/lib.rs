@@ -3,7 +3,6 @@ use inline_python::Context;
 use inline_python::pyo3::prelude::*;
 
 use std::ffi::{CStr, CString};
-//use std::sync::Mutex;
 use std::path::Path;
 
 #[derive(PandaArgs, Debug)]
@@ -26,12 +25,13 @@ fn init(_: &mut PluginHandle) -> bool {
         .unwrap()
         .parent()
         .unwrap()
-        .join("libpanda-x86_64.so");
+        .join(format!("libpanda-{}.so", ARCH));
 
     if !plugin_self_path.exists() {
         panic!("Plugin not found at '{}'", plugin_self_path.display());
     }
 
+    // Reload self in order to 
     let plugin_self_path = CString::new(plugin_self_path.to_str().unwrap()).unwrap();
     unsafe {
         let handle = libc::dlopen(
@@ -82,10 +82,6 @@ fn init(_: &mut PluginHandle) -> bool {
                     'module.init('panda_obj)
                 });
 
-                //MODULES
-                //    .lock()
-                //    .unwrap()
-                //    .push(module.into_py(py));
             } else {
                 println!("[snake_hook] Script '{}' does not exist", file);
             }
@@ -99,15 +95,26 @@ fn init(_: &mut PluginHandle) -> bool {
         }).unwrap();
     };
 
-    //PANDA_OBJ
-    //    .lock()
-    //    .unwrap()
-    //    .replace(panda_obj);
-
     true
 }
 
-//lazy_static::lazy_static! {
-//    static ref MODULES: Mutex<Vec<Py<PyModule>>> = Mutex::new(Vec::new());
-//    static ref PANDA_OBJ: Mutex<Option<PyObject>> = Mutex::new(None);
-//}
+#[cfg(feature = "x86_64")]
+const ARCH: &str = "x86_64";
+
+#[cfg(feature = "i386")]
+const ARCH: &str = "i386";
+
+#[cfg(feature = "arm")]
+const ARCH: &str = "arm";
+
+#[cfg(feature = "ppc")]
+const ARCH: &str = "ppc";
+
+#[cfg(feature = "mips")]
+const ARCH: &str = "mips";
+
+#[cfg(feature = "mipsel")]
+const ARCH: &str = "mipsel";
+
+#[cfg(feature = "aarch64")]
+const ARCH: &str = "aarch64";
