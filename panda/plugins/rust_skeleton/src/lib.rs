@@ -2,9 +2,6 @@ use panda::prelude::*;
 
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
-    #[cfg(feature = "aarch64")] {
-        panic!("aarch64 is not a supported target");
-    }
     println!("Initialized!");
     true
 }
