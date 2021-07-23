@@ -15,10 +15,6 @@ struct Args {
 
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
-    #[cfg(feature = "aarch64")]
-    {
-        panic!("snake_hook does not currently support aarch64");
-    }
     let args = Args::from_panda_args();
     let plugin_self_path = std::env::current_exe()
         .unwrap()
