@@ -162,6 +162,8 @@ void invalidate_full(Shad *shad, uint64_t src, uint64_t size) {
     if (src_tdp) {
         src_tdp->full_expr = nullptr;
         src_tdp->full_size = 0;
+        if (shad->query_full(src)->sym)
+            delete shad->query_full(src)->sym;
         shad->query_full(src)->sym = nullptr;
     }
 }
@@ -176,6 +178,8 @@ void copy_symbols(Shad *shad_dest, uint64_t dest, Shad *shad_src,
 
         // When copy src bytes without symbolic data, make sure to clean dest byte
         if (!shad_src->query_full(src+i)->sym) {
+            if (shad_src->query_full(dest+i)->sym)
+                delete shad_src->query_full(dest+i)->sym;
             shad_src->query_full(dest+i)->sym = nullptr;
             continue;
         }
