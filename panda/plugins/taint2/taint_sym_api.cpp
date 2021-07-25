@@ -29,7 +29,8 @@ void taint2_sym_label_addr(Addr a, int offset, uint32_t l) {
         std::stringstream ss;
         ss << std::hex << l;
         id += ss.str();
-        z3::expr *expr = new z3::expr(context.bv_const(id.c_str(), 8));
+        std::shared_ptr<z3::expr> expr = 
+            std::make_shared<z3::expr>(context.bv_const(id.c_str(), 8));
         if (!loc.first->query_full(loc.second)->sym)
             loc.first->query_full(loc.second)->sym = new SymLabel();
         loc.first->query_full(loc.second)->sym->expr = expr;
@@ -42,7 +43,7 @@ void *taint2_sym_query(Addr a) {
     auto loc = shadow->query_loc(a);
     if (loc.first) {
         if (loc.first->query_full(loc.second)->sym)
-            return loc.first->query_full(loc.second)->sym->expr;
+            return loc.first->query_full(loc.second)->sym->expr.get();
     }
     return nullptr;
 }
