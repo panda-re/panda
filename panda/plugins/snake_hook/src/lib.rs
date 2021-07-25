@@ -1,6 +1,7 @@
 use panda::prelude::*;
-use inline_python::Context;
+use inline_python::{python, Context};
 use inline_python::pyo3::prelude::*;
+use once_cell::sync::OnceCell;
 
 use std::ffi::{CStr, CString};
 use std::path::Path;
@@ -31,7 +32,8 @@ fn init(_: &mut PluginHandle) -> bool {
         panic!("Plugin not found at '{}'", plugin_self_path.display());
     }
 
-    // Reload self in order to 
+    // 'Reload' self in order to ensure this plugin is set as RTLD_GLOBAL, as this is necessary
+    // in order to ensure Python can load native python libraries
     let plugin_self_path = CString::new(plugin_self_path.to_str().unwrap()).unwrap();
     unsafe {
         let handle = libc::dlopen(
@@ -47,14 +49,13 @@ fn init(_: &mut PluginHandle) -> bool {
 
     println!("[snake_hook] Initialized");
 
-    let context: Context = inline_python::python! {
+    let context: Context = python! {
         from pandare import Panda
 
         panda = Panda(libpanda_path='libpanda_path)
     };
 
-    let panda_obj = context.get::<PyObject>("panda");
-
+    let panda_obj: PyObject = context.get("panda");
     let files = args.files.split(':').collect::<Vec<_>>();
 
     if let Err(python_err) = Python::with_gil(|py| -> PyResult<()> {
@@ -78,7 +79,7 @@ fn init(_: &mut PluginHandle) -> bool {
                 };
 
                 let panda_obj = panda_obj.clone();
-                context.run(inline_python::python! {
+                context.run(python! {
                     'module.init('panda_obj)
                 });
 
@@ -95,7 +96,19 @@ fn init(_: &mut PluginHandle) -> bool {
         }).unwrap();
     };
 
+    PANDA_OBJ.set(panda_obj).unwrap();
+
     true
+}
+
+static PANDA_OBJ: OnceCell<PyObject> = OnceCell::new();
+
+#[panda::uninit]
+fn uninit(_: &mut panda::PluginHandle) {
+    let panda_obj = PANDA_OBJ.get().unwrap();
+    python! {
+        'panda_obj.delete_callbacks()
+    }
 }
 
 #[cfg(feature = "x86_64")]
