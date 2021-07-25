@@ -96,6 +96,8 @@ typedef enum panda_cb_type {
                                       // or squash exceptions
 
     PANDA_CB_BEFORE_HANDLE_INTERRUPT, // ditto, for interrupts
+    PANDA_CB_START_BLOCK_EXEC,
+    PANDA_CB_END_BLOCK_EXEC,
 
     PANDA_CB_LAST
 } panda_cb_type;
@@ -931,7 +933,7 @@ typedef union panda_cb {
      */
     void (*pre_shutdown)(void);
 
-    /* Callback ID:     PANDA_CB_UNASSIGNED_IO_WRITE
+    /* Callback ID:     PANDA_CB_UNASSIGNED_IO_READ
 
       unassigned_io_read: Called when the guest attempts to read from an unmapped peripheral via MMIO
 
@@ -971,7 +973,7 @@ typedef union panda_cb {
 
        Note: only called for cpu->exception_index > 0
 
-       Aguments:
+       Arguments:
          exception_index (the current exception number)
 
        Return value:
@@ -987,7 +989,60 @@ typedef union panda_cb {
 
     int32_t (*before_handle_exception)(CPUState *cpu, int32_t exception_index);
 
-    /* Dummy union member.
+    /* Callback ID:     PANDA_CB_BEFORE_HANDLE_INTERRUPT
+
+       before_handle_interrupt: Called just before we are about to
+       handle an interrupt.
+
+       Arguments:
+         interrupt request
+
+       Return value:
+         new interrupt_rquest
+
+       Note: There might be more than one callback for this location.
+       First callback that returns an interrupt_request that *differs*
+       from the one passed as an arg wins.
+
+     */
+
+
+    int32_t (*before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request);
+    
+    /* Callback ID: PANDA_CB_START_BLOCK_EXEC
+
+       start_block_exec:
+        This is like before_block_exec except its part of the TCG stream.
+
+       Arguments:
+        CPUState *env:        the current CPU state
+        TranslationBlock *tb: the TB we are executing
+
+       Helper call location: cpu-exec.c
+
+       Return value:
+        none
+    */
+
+    void (*start_block_exec)(CPUState *cpu, TranslationBlock* tb);
+
+    /* Callback ID: PANDA_CB_END_BLOCK_EXEC
+
+       end_block_exec:
+        This is like after_block_exec except its part of the TCG stream.
+
+       Arguments:
+        CPUState *env:        the current CPU state
+        TranslationBlock *tb: the TB we are executing
+
+       Helper call location: cpu-exec.c
+
+       Return value:
+        none
+    */
+    void (*end_block_exec)(CPUState *cpu, TranslationBlock* tb);
+
+    /* cbaddr is a dummy union member.
 
        This union only contains function pointers.
        Using the cbaddr member one can compare if two union instances
@@ -996,10 +1051,8 @@ typedef union panda_cb {
        However, cbaddr provides neutral semantics for the comparisson.
     */
 
-
-    int32_t (*before_handle_interrupt)(CPUState *cpu, int32_t interrupt_request);
-
     void (*cbaddr)(void);
+
 } panda_cb;
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!

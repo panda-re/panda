@@ -1,7 +1,9 @@
 #!/bin/bash
 # This script installs dependencies then builds panda.
-# Note that it doesn't actually install panda, just the dependencies.
+# Note that it doesn't actually *install* panda, it just install dependencies and *builds* panda.
 # If you want to install run `make install` in the build directory after this runs
+
+set -ex
 
 # Tested for architectures listed in panda/panda/dependencies/
 
@@ -73,6 +75,9 @@ if [ $version -eq 18 ]; then
   $SUDO apt-get update
 fi
 
+progress "Installing Rust..."
+curl https://sh.rustup.rs -sSf | sh -s -- -y
+
 # Dependencies are for a major version, but the filenames include minor versions
 # So take our major version, find the first match in dependencies directory and run with it.
 # This will give us "./panda/dependencies/ubuntu:20.04" where ubuntu:20.04_build.txt or 20.04_base.txt exists
@@ -86,8 +91,10 @@ else
   exit 1
 fi
 
-# PyPanda dependencies
-python3 -m pip install pycparser "protobuf==3.0.0" "cffi>=1.14.3" colorama
+# PyPANDA needs CFFI from pip (the version in apt is too old)
+# Install system-wide since PyPANDA install will also be system-wide
+$SUDO python3 -m pip install pip
+$SUDO python3 -m pip install "cffi>1.14.3"
 
 progress "Trying to update DTC submodule"
 git submodule update --init dtc || true

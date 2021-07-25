@@ -240,6 +240,9 @@ size_t boot_splash_filedata_size;
 uint8_t qemu_extra_params_fw[2];
 int only_migratable; /* turn it off unless user states otherwise */
 
+/* hack to get at the QEMU monitor */
+void *qemu_mon = NULL;
+
 int icount_align_option;
 
 /* The bytes in qemu_uuid are in the order specified by RFC4122, _not_ in the
@@ -2001,6 +2004,9 @@ void main_loop(void)
         } else if (unlikely((rr_control.next == RR_OFF) && rr_in_record())) {
 	    //mz 05.2012 We have the global mutex here, so this should be OK.
             rr_do_end_record();
+            if (NULL != qemu_mon) {
+            	monitor_printf(qemu_mon, "Recording ready for use.\n");
+            }
             rr_reset_state(first_cpu);
             rr_control.next = RR_NOCHANGE;
             vm_start();
@@ -2483,6 +2489,7 @@ static int mon_init_func(void *opaque, QemuOpts *opts, Error **errp)
     }
 
     monitor_init(chr, flags);
+    qemu_mon = chr->be->opaque;
     return 0;
 }
 

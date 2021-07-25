@@ -21,8 +21,9 @@ python3-dev
 libpixman-1-dev
 zip
 
-# pypanda build dependencies
+# pypanda dependencies
 python3-setuptools
+python3-wheel
 
 # pypanda test dependencies
 gcc-multilib
@@ -79,3 +80,6 @@ libc6.1-dev-alpha-cross
 #gcc-alpha-linux-gnu
 #gcc-powerpc64-linux-gnu
 #gcc-s390x-linux-gnu
+
+# rust install deps
+curl

@@ -24,6 +24,9 @@ the [GPLv2 license](LICENSE).
 
 ---------------------------------------------------------------------
 
+## Notable Branches
+We have two primary branches of PANDA: `dev` for development and `stable` for stable+versioned releases. To learn more about the differences between these branches and version numbers, visit [our wiki](https://github.com/panda-re/panda/wiki/PANDA-Branches-&-Versioning). In general, PANDA resources (i.e., docker containers and documentation) are based off the `dev` branch. We recommend using the `stable` branch if you're going to fork the project and later pull in updates.
+
 ## Building
 ### Quickstart: Docker
 The latest version of PANDA's `master` branch is automatically built as a two docker images based on Ubuntu 20.04 and published to Docker Hub.

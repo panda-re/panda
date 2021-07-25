@@ -53,7 +53,7 @@ def runner(generic_name):
     First run via CLI - load root snapshot, run a command and quit - check command output
     Then test via python to see if OSI works
     '''
-    from pandare import Panda, blocking, ffi
+    from pandare import Panda, blocking
     data = SUPPORTED_IMAGES[generic_name]
     qcow_path = get_qcow(generic_name)
 
@@ -89,7 +89,7 @@ def runner(generic_name):
         print("ASID", reverted, panda.arch)
         if reverted and panda.arch in osi_supported: # If osi unsupported, bail
             proc = panda.plugins['osi'].get_current_process(cpu) 
-            name = ffi.string(proc.name)
+            name = panda.ffi.string(proc.name)
             if name not in seen:
                 seen.add(name)
         return 0

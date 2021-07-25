@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
+'''
+fake_files.py
+
+This example replaces a file with a fake file.
+
+Run with: python3 fake_files.py
+'''
 import sys
-from pandare import *
-from pandare.extras.file_faker import FileFaker, FakeFile
+from pandare import Panda
+from pandare.extras import FileFaker, FakeFile
 
 arch = sys.argv[1] if len(sys.argv) > 1 else "i386"
 panda = Panda(generic=arch)
@@ -14,7 +21,7 @@ myFakeFile = FakeFile("hello world\n")
 faker = FileFaker(panda)
 faker.replace_file("/foo", myFakeFile)
 
-@blocking
+@panda.queue_blocking
 def read_it():
     panda.revert_sync('root')
     hello_world = panda.run_serial_cmd("cat /foo")
@@ -24,7 +31,6 @@ def read_it():
     print("hi ==", hi)
     panda.end_analysis()
 
-panda.queue_async(read_it)
 panda.run()
 
 # Shutdown our faker class to dump fake file states at end

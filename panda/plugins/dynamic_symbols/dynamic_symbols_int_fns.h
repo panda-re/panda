@@ -20,8 +20,9 @@ typedef void (*dynamic_hook_func_t)(CPUState *, struct hook_symbol_resolve *, st
 
 struct hook_symbol_resolve{
     char name[MAX_PATH_LEN];
+    target_ulong offset;
+    bool hook_offset;
     char section[MAX_PATH_LEN];
-    char procname[MAX_PATH_LEN];
     dynamic_hook_func_t cb;
     bool enabled;
     int id;

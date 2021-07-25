@@ -41,6 +41,8 @@ int panda_physical_memory_write_external(hwaddr addr, uint8_t *buf, int len);
 target_ulong panda_get_retval_external(const CPUState *cpu);
 
 bool panda_in_kernel_external(const CPUState *cpu);
+bool panda_in_kernel_mode_external(const CPUState *cpu);
+bool panda_in_kernel_code_linux_external(CPUState *cpu);
 target_ulong panda_current_ksp_external(CPUState *cpu);
 target_ulong panda_current_sp_external(const CPUState *cpu);
 target_ulong panda_current_sp_masked_pagesize_external(const CPUState *cpu, target_ulong pagesize);

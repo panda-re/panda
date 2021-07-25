@@ -1,12 +1,16 @@
 '''
+ioctl_introspection.py
+
 Bash will issue ioctls on /dev/ttys0 when a command is run
-This example demonstrates capture and decoding
+This example demonstrates capture and decoding.
+
+Run with: python3 ioctl_introspection.py
 '''
 
 import sys
 
-from pandare import blocking, Panda
-from pandare.extras.ioctl_faker import IoctlFaker
+from pandare import Panda
+from pandare.extras import IoctlFaker
 
 # No arguments, i386. Otherwise argument should be guest arch
 generic_type = sys.argv[1] if len(sys.argv) > 1 else "i386"
@@ -19,7 +23,7 @@ def print_list_elems(l):
         for e in l:
             print(e)
 
-@blocking
+@panda.queue_blocking
 def run_cmd():
 
     # Setup faker (forces success returns - although only the decode/log functionality is used in this example)
@@ -45,5 +49,4 @@ def run_cmd():
 
     panda.end_analysis()
 
-panda.queue_async(run_cmd)
 panda.run()

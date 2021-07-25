@@ -7,6 +7,9 @@
  */
 
 #include <stdio.h>
+#include <libgen.h>
+#include <dirent.h>
+#include <errno.h>
 
 #include "panda/plugin.h"
 #include "panda/rr/rr_log.h"
@@ -375,6 +378,23 @@ bool init_plugin(void *self) {
         name = panda_parse_string_req(args, "name", "name of the scissored replay");
         start_count = panda_parse_uint64_opt(args, "start", 0, "starting instruction count");
         end_count = panda_parse_uint64_opt(args, "end", UINT64_MAX, "ending instruction count");
+    }
+
+    // we will seg fault in savevm if path to scissors files doesnt exist...
+    char *name_copy = strdup(name);
+    char *sciss_dir = dirname(name_copy);    
+    DIR* dir = opendir(sciss_dir);
+    if (dir) {
+        /* Directory exists. */
+        closedir(dir);
+    } else if (ENOENT == errno) {
+        /* Directory does not exist. */
+        printf ("Path to scissor files (name arg) does not exist\n");
+        return false;
+    } else {
+        /* opendir() failed for some other reason. */
+        printf ("Some other error occurred wrt path to scissor file (name arg)\n");
+        return false;
     }
 
     size_t needed;

@@ -10,3 +10,5 @@ record_then_replay.py i386
 record_then_replay.py x86_64
 record_then_replay.py arm
 record_no_snap.py
+copy_test.py x86
+copy_test.py i386

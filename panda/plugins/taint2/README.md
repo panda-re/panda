@@ -55,7 +55,7 @@ Name: **on_taint_prop**
 
 Signature: `typedef void (*on_taint_prop_t) (Addr, Addr, uint64_t)`
 
-Description: Called right after taint is propagated. The source, destination, and size of the propagation are provided as arguments. Note that this callback is invoked regardless of whether or not there are labels in the source, so client plugins should perform the checks on the source\destination as applicable for whatever task they are trying to accomplish.
+Description: Called right after taint is propagated. The source, destination, and size of the propagation are provided as arguments. Note that this callback is invoked regardless of whether or not there are labels in the source, so client plugins should perform the checks on the source or destination as applicable for whatever task they are trying to accomplish.
 
 `taint2` also provides the following APIs:
 

@@ -20,7 +20,7 @@ we alert if it is tainted.
 
 from sys import argv
 from os import path
-from pandare import Panda, blocking, ffi
+from pandare import Panda
 
 arch = "x86_64" if len(argv) <= 1 else argv[1]
 extra = "-nographic"

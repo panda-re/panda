@@ -74,7 +74,13 @@ MAKE_CALLBACK(bool, INSN_TRANSLATE, insn_translate,
 MAKE_CALLBACK(bool, AFTER_INSN_TRANSLATE, after_insn_translate,
                     CPUState*, env, target_ptr_t, pc)
 
-// Custom CB
+MAKE_CALLBACK(void, START_BLOCK_EXEC, start_block_exec,
+                    CPUState*, env, TranslationBlock*, tb)
+
+MAKE_CALLBACK(void, END_BLOCK_EXEC, end_block_exec,
+                    CPUState*, env, TranslationBlock*, tb)
+
+// Helper - get a physical address
 static inline hwaddr get_paddr(CPUState *cpu, target_ptr_t addr, void *ram_ptr) {
     if (!ram_ptr) {
         return panda_virt_to_phys(cpu, addr);
@@ -85,8 +91,11 @@ static inline hwaddr get_paddr(CPUState *cpu, target_ptr_t addr, void *ram_ptr) 
     if (!block) {
         return panda_virt_to_phys(cpu, addr);
     } else {
-        assert(block->mr);
-        return block->mr->addr + offset;
+        if (block->mr) {
+          return block->mr->addr + offset;
+        } else {
+          return -1;
+        }
     }
 }
 
@@ -261,6 +270,7 @@ void PCB(mem_before_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
     }
     if (panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_READ]) {
         hwaddr paddr = get_paddr(env, addr, ram_ptr);
+        if (paddr == -1) return;
         for(plist = panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_READ]; plist != NULL;
             plist = panda_cb_list_next(plist)) {
             if (plist->enabled) plist->entry.phys_mem_before_read(env, env->panda_guest_pc,
@@ -281,6 +291,7 @@ void PCB(mem_after_read)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
     }
     if (panda_cbs[PANDA_CB_PHYS_MEM_AFTER_READ]) {
         hwaddr paddr = get_paddr(env, addr, ram_ptr);
+        if (paddr == -1) return;
         for(plist = panda_cbs[PANDA_CB_PHYS_MEM_AFTER_READ]; plist != NULL;
             plist = panda_cb_list_next(plist)) {
             /* mstamat: Passing &result as the last cb arg doesn't make much sense. */
@@ -302,6 +313,7 @@ void PCB(mem_before_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
     }
     if (panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_WRITE]) {
         hwaddr paddr = get_paddr(env, addr, ram_ptr);
+        if (paddr == -1) return;
         for(plist = panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_WRITE]; plist != NULL;
             plist = panda_cb_list_next(plist)) {
             /* mstamat: Passing &val as the last cb arg doesn't make much sense. */
@@ -323,6 +335,7 @@ void PCB(mem_after_write)(CPUState *env, target_ptr_t pc, target_ptr_t addr,
     }
     if (panda_cbs[PANDA_CB_PHYS_MEM_AFTER_WRITE]) {
         hwaddr paddr = get_paddr(env, addr, ram_ptr);
+        if (paddr == -1) return;
         for (plist = panda_cbs[PANDA_CB_PHYS_MEM_AFTER_WRITE]; plist != NULL;
              plist = panda_cb_list_next(plist)) {
             /* mstamat: Passing &val as the last cb arg doesn't make much sense. */

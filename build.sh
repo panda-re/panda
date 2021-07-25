@@ -3,6 +3,7 @@
 # example: ./build.sh i386-softmmu,arm-softmmu
 #          ./build.sh --python i386-softmmu,arm-softmmu
 #          ./build.sh small # small = i386-softmmu
+#          LLVM_CONFIG_BINARY=llvm-config-11-64 ./build.sh small # set custom llvm-config path
 
 # Note the --python flag installs using `pip -e` which leaves files in a local
 # directory (panda/python/core) instead of installing to your system.
@@ -18,7 +19,7 @@ msg() {
 
 # Default targets to build. Change with argument. small = i386-softmmu
 TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
-LLVM_CONFIG_BINARY="llvm-config-11"
+LLVM_CONFIG_BINARY="${LLVM_CONFIG_BINARY:-llvm-config-11}"
 
 pypanda=""
 # Check if first argument is --python
@@ -97,6 +98,27 @@ if $LLVM_CONFIG_BINARY --version >/dev/null 2>/dev/null; then
 else
     msg "No suitable LLVM found -- LLVM SUPPORT IS DISABLED"
     LLVM_CONFIG=""
+fi
+
+### Ensure Rust version is up to date
+if ! command -v cargo &> /dev/null
+then
+    msg ""
+    msg ""
+    msg "Rust could not be found. Install it using the following command:"
+    msg ""
+    msg "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    msg ""
+
+    exit 1
+fi
+
+RUST_VERSION="$(cargo --version | grep -o -E '1\.[0-9]+' | cut -c 3-)"
+
+if [[ "$RUST_VERSION" -lt "52" ]]; then
+    echo "Rust version 1.$RUST_VERSION is not compatible! Updating to latest."
+    rustup update stable
+    rustup default stable
 fi
 
 ### Force QEMU options definitions to be regenerated.

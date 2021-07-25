@@ -1,3 +1,8 @@
+'''
+This is an example of building a pypanda plugin class to do analysis with PANDA. To see
+how it's used look at pypanda_plugin_user.py
+'''
+
 class Strace:
     def enter_cb(self, syscall_name, fname_ptr_pos, **kwargs):
         cpu=kwargs['args'][0]
@@ -29,15 +34,22 @@ class Strace:
 
     def __init__(self, panda):
         self.panda = panda
-        panda.load_plugin("syscalls2")
 
         # Syscalls that have char *fname as the 1st argument
-        for name in ["chdir", "mknod", "chmod", "lchown16", "utime", "chroot",
-                     "newstat", "chown16", "lchown", "chown", "utimes", "access",
-                     "statfs", "newstat", "newlstat", "stat64", "lstat64"]:
+        for name in ["chdir", "mknod", "chmod",  "chroot",
+                     "newstat",  "lchown", "chown",  "access",
+                     "statfs", "newstat", "newlstat", "utime", "utimes"]:
             self.gen_cb(name, 0)
+        
+        if panda.bits == 32:
+            for name in ["chown16","lchown16", "stat64", "lstat64"]:
+                self.gen_cb(name, 0)
 
         # Syscalls that have char *fname as the 2nd argument
         for name in ["openat", "mknodat", "fchownat", "futimesat", "fchmodat",
-                "faccessat", "utimensat", "execveat", "fstatat64"]:
+                "faccessat", "utimensat", "execveat"]:
             self.gen_cb(name, 1)
+        
+        if panda.bits == 32:
+            for name in ["fstatat64"]:
+                self.gen_cb(name, 1)

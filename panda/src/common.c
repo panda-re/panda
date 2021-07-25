@@ -55,6 +55,22 @@ static inline uint64_t regime_ttbr(CPUARMState *env, ARMMMUIdx mmu_idx,
     }
 }
 
+/* Return true if the translation regime is using LPAE format page tables */
+static inline bool regime_using_lpae_format(CPUARMState *env,
+                                            ARMMMUIdx mmu_idx)
+{
+    int el = regime_el(env, mmu_idx);
+    if (el == 2 || arm_el_is_aa64(env, el)) {
+        return true;
+    }
+    if (arm_feature(env, ARM_FEATURE_LPAE)
+        && (regime_tcr(env, mmu_idx)->raw_tcr & TTBCR_EAE)) {
+        return true;
+    }
+    return false;
+}
+
+
 // ARM: stolen get_level1_table_address ()
 // from target-arm/helper.c
 bool arm_get_vaddr_table(CPUState *cpu, uint32_t *table, uint32_t address);
@@ -70,21 +86,25 @@ bool arm_get_vaddr_table(CPUState *cpu, uint32_t *table, uint32_t address)
         mmu_idx += ARMMMUIdx_S1NSE0;
     }
 
-    /* Note that we can only get here for an AArch32 PL0/PL1 lookup */
-    TCR *tcr = regime_tcr(env, mmu_idx);
-
-    if (address & tcr->mask) {
-        if (tcr->raw_tcr & TTBCR_PD1) {
-            /* Translation table walk disabled for TTBR1 */
-            return false;
-        }
-        *table = regime_ttbr(env, mmu_idx, 1) & 0xffffc000;
+    if (regime_using_lpae_format(env, mmu_idx)) {
+        *table = regime_ttbr(env, mmu_idx, 0);
     } else {
-        if (tcr->raw_tcr & TTBCR_PD0) {
-            /* Translation table walk disabled for TTBR0 */
-            return false;
+        /* Note that we can only get here for an AArch32 PL0/PL1 lookup */
+        TCR *tcr = regime_tcr(env, mmu_idx);
+
+        if (address & tcr->mask) {
+            if (tcr->raw_tcr & TTBCR_PD1) {
+                /* Translation table walk disabled for TTBR1 */
+                return false;
+            }
+            *table = regime_ttbr(env, mmu_idx, 1) & 0xffffc000;
+        } else {
+            if (tcr->raw_tcr & TTBCR_PD0) {
+                /* Translation table walk disabled for TTBR0 */
+                return false;
+            }
+            *table = regime_ttbr(env, mmu_idx, 0) & tcr->base_mask;
         }
-        *table = regime_ttbr(env, mmu_idx, 0) & tcr->base_mask;
     }
     return true;
 }

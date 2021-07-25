@@ -7,7 +7,11 @@
 #include <iomanip>
 #include <unordered_map>
 #include <map>
+#if __has_include(<jsoncpp/json/json.h>)
 #include <jsoncpp/json/json.h>
+#else
+#include <json/json.h>
+#endif
 
 #include "panda/plugin.h"
 #include "panda/common.h"
@@ -205,6 +209,7 @@ const std::string little_str("little");
 const std::string ptr_str("pointer");
 const std::string void_str("void");
 const std::string bool_str("bool");
+const std::string _Bool_str("_Bool");
 const std::string char_str("char");
 const std::string int_str("int");
 const std::string float_str("float");

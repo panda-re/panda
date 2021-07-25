@@ -5,13 +5,15 @@
 # but also for running multiple commands sequentially
 
 from pandare import Panda
-panda = Panda(generic="i386")
+panda = Panda(generic="x86_64")
 
 @panda.queue_blocking
 def run_cmds():
     panda.revert_sync("root")
     
-    for cur_size in range(1, 300):
+    maxc = 300
+    print(f"Test 1: echo strings up to {maxc} characters")
+    for cur_size in range(1, maxc):
         buf = '1234567890'*(cur_size//10) + '1234567890'[:cur_size % 10]
         assert(len(buf) == cur_size), "Test is broken"
 
@@ -24,6 +26,14 @@ def run_cmds():
         for j in range(len(buf)):
             if resp[j] != buf[j]:
                 raise ValueError(f"Test {cur_size}: Response character {j} was {repr(resp[j])} instead of an {buf[j]}")
+    print("Test 1: passed")
+
+    # Check for timeout
+    print("Test 2: read all of dmesg output")
+    out = panda.run_serial_cmd("dmesg")
+    linec = len(out.split("\n"))
+    assert(linec > 100), "Unexpectedly short result from dmesg - likely a bug in run_serial_cmd"
+    print(f"Test 2: passed with {linec} lines")
 
     panda.end_analysis()
 

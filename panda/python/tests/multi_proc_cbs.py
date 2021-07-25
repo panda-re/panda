@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from sys import argv
 from os import path
-from pandare import Panda, ffi, blocking
+from pandare import Panda
 
 # Run toy in a linux guest- Assert that the process toy runs as well as "ata_id" which is
 # a linux process that seems to always be running in our recordings
@@ -11,7 +11,7 @@ panda = Panda(generic="i386")
 
 # Take a recording of toy running in the guest if necessary
 if not path.isfile("toy-rr-snp"):
-    @blocking
+    @panda.queue_blocking
     def run_toy():
         panda.record_cmd("toy/toy toy/testsmall.bin", "toy", recording_name="toy")
         panda.stop_run()

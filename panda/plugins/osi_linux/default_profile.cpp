@@ -59,7 +59,11 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
     current_task_addr = ki.task.current_task_addr;
 #endif
     err = struct_get(cpu, &ts, current_task_addr, ki.task.per_cpu_offset_0_addr);
-    assert(err == struct_get_ret_t::SUCCESS && "failed to get current task struct");
+    //assert(err == struct_get_ret_t::SUCCESS && "failed to get current task struct");
+    if (err != struct_get_ret_t::SUCCESS) {
+      // Callers need to check if we return NULL!
+      return 0;
+    }
     fixupendian(ts);
     return ts;
 }

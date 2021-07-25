@@ -38,6 +38,8 @@ void uninit_plugin(void *);
 #include "syscalls2/syscalls_ext_typedefs.h"
 #include "syscalls2/syscalls2_info.h"
 #include "syscalls2/syscalls2_ext.h"
+#include "proc_start_linux/proc_start_linux.h"
+#include "proc_start_linux/proc_start_linux_ppp.h"
 
 }
 using namespace std;
@@ -68,6 +70,12 @@ map<target_ulong, map<string, target_ulong>> mapping;
 #define DT_SYMINFO 0x6ffffeff
 #define DT_GNU_HASH 0x6FFFFEF5
 
+void* self_ptr;
+panda_cb pcb_asid;
+panda_cb pcb_bbt;
+panda_cb pcb_btc_execve;
+panda_cb before_block_translate_hook_adder_callback;
+
 vector<int> possible_tags{ DT_PLTGOT , DT_HASH , DT_STRTAB , DT_SYMTAB , DT_RELA , DT_INIT , DT_FINI , DT_REL , DT_DEBUG , DT_JMPREL, 25, 26, 32, DT_SUNW_RTLDINF , DT_CONFIG , DT_DEPAUDIT , DT_AUDIT , DT_PLTPAD , DT_MOVETAB , DT_SYMINFO , DT_VERDEF , DT_VERNEED };
 
 inline bool operator<(const struct symbol& s, const struct symbol& p){
@@ -78,38 +86,115 @@ inline bool operator<(const struct symbol& s, target_ulong p){
     return s.address < p;
 }
 
-unordered_map<target_ulong, unordered_map<string, set<struct symbol>>> symbols;
-unordered_map<string, set<struct symbol>> unmodded_symbol_mapping;
-extern bool panda_please_flush_tb;
-
-vector<struct hook_symbol_resolve> hooks;
-
-void hook_symbol_resolution(struct hook_symbol_resolve *h){
-    //printf("adding hook %s %llx\n", h->name, (long long unsigned int) h->cb);
-    hooks.push_back(*h);
+inline bool operator<(const hook_symbol_resolve &s, const hook_symbol_resolve &p){
+    return tie(s.cb,s.hook_offset,s.offset)  < tie(p.cb,p.hook_offset,p.offset);
 }
 
-void check_symbol_for_hook(CPUState* cpu, struct symbol s, char* procname, OsiModule *m){
-    for (struct hook_symbol_resolve &hook_candidate : hooks){
-        if (hook_candidate.enabled){
-            if (hook_candidate.procname[0] == 0 || strncmp(procname, hook_candidate.procname, MAX_PATH_LEN -1) == 0){
-                //printf("comparing \"%s\" and \"%s\"\n", hook_candidate.name, s.name);
+inline bool operator<(const pair<string, target_ulong>& s, const pair<string, target_ulong>& p){
+    int s_comp = s.first.compare(p.first);
+    if(s_comp == 0){
+        return s.second < p.second;
+    }
+    return s_comp;
+}
 
-                if (hook_candidate.name[0] == 0 || strncmp(s.name, hook_candidate.name, MAX_PATH_LEN -1) == 0){
-                    //printf("name matches\n");
-                    if (hook_candidate.section[0] == 0 || strstr(s.section, hook_candidate.section) != NULL){
-                        (*(hook_candidate.cb))(cpu, &hook_candidate, s, m);
+// https://stackoverflow.com/questions/32685540/why-cant-i-compile-an-unordered-map-with-a-pair-as-key
+// Only for pairs of std::hash-able types for simplicity.
+// You can of course template this struct to allow other hash functions
+struct pair_hash {
+    template <class T1, class T2>
+    std::size_t operator () (const std::pair<T1,T2> &p) const {
+        auto h1 = std::hash<T1>{}(p.first);
+        auto h2 = std::hash<T2>{}(p.second);
+        return h1 ^ h2;  
+    }
+};
+
+// [section name, address] -> map of symbol name to symbols 
+unordered_map<pair<target_ulong,string>, unordered_map<string,struct symbol>, pair_hash> seen_libraries;
+// asid -> section_name ->  symbols map pointer
+unordered_map<target_ulong, unordered_map<string, unordered_map<string,struct symbol>*>> symbols;
+
+// section -> set of structs
+// section -> name -> set struct
+unordered_map<string, unordered_map<string, set<struct hook_symbol_resolve>>> hooks; 
+//set<struct hook_symbol_resolve> hooks;
+
+void (*dlsym_add_hook)(struct hook*);
+void (*dlsym_hooks_flush_pc)(target_ulong pc);
+
+void hook_symbol_resolution(struct hook_symbol_resolve *h){
+    // ISSUE: Doesn't resolve for hooks that have been previously resolved.
+    //printf("adding hook \"%s\" \"%s\" %llx\n", h->section, h->name, (long long unsigned int) h->cb);
+    string section(h->section);
+    string name(h->name);
+    hooks[section][name].insert(*h);
+}
+
+
+void new_assignment_check_symbols(CPUState* cpu, unordered_map<string, struct symbol> ss, OsiModule* m){
+    string module(m->name);
+    vector<tuple<struct hook_symbol_resolve, struct symbol, OsiModule>> symbols_to_flush;
+
+    set<string> matching_libs;
+    matching_libs.insert("");
+
+    for (auto strs : hooks){
+        string lib = strs.first;
+        auto h = strs.second;
+        if (!h.empty() && module.find(lib) != std::string::npos && !module.empty()){
+            matching_libs.insert(lib);
+        }
+    }
+
+    for (string lib : matching_libs){
+        for (auto symbol_matcher : hooks[lib]){
+            string symname = symbol_matcher.first;
+            set<struct hook_symbol_resolve> h = symbol_matcher.second;
+            for (auto hook_candidate: h){
+                if (hook_candidate.enabled){
+                    if (symname.empty()){
+                        if (hook_candidate.hook_offset){
+                            struct symbol s;
+                            memset(&s, 0, sizeof(struct symbol));
+                            s.address = m->base + hook_candidate.offset;
+                            strncpy((char*)&s.section, m->name, sizeof(s.section)-2);
+                            symbols_to_flush.push_back(make_tuple(hook_candidate,s, *m));
+                        }else{
+                            for (auto sym: ss){
+                                symbols_to_flush.push_back(make_tuple(hook_candidate, sym.second, *m));
+                            }
+                        }
+                    }else{
+                        auto it = ss.find(symname);
+                        if (it != ss.end()){
+                            auto a = *it;
+                            symbols_to_flush.push_back(make_tuple(hook_candidate, a.second, *m));
+                        }
                     }
                 }
             }
         }
     }
+    if (!symbols_to_flush.empty()){
+        //panda_do_flush_tb();
+        //printf("%s hooking %d symbols in %s\n", procname, (int)symbols_to_flush.size(), m->name);
+    }
+    while (!symbols_to_flush.empty()){
+        auto p = symbols_to_flush.back();
+        auto hook_candidate = get<0>(p);
+        auto s = get<1>(p);
+        auto m = get<2>(p);
+        (*(hook_candidate.cb))(cpu, &hook_candidate, s, &m);
+        symbols_to_flush.pop_back();
+    }
+    //printf("finished adding symbols for %s:%s\n", procname, m->name);
 }
 
 struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_name, char* symbol){
     update_symbols_in_space(cpu);
 
-    for (const auto& section : symbols[asid]){
+    for (const auto section : symbols[asid]){
         string n = section.first;
         auto section_vec = section.second;
         size_t found;
@@ -120,15 +205,13 @@ struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_nam
         }
         //section name is A "does string exist in section"
         if (found != string::npos){
-            for (auto &it: section_vec){
-                struct symbol val = it;
+            string sym(symbol);
+            auto it = section_vec->find(sym);
+            if (it != section_vec->end()){
+                struct symbol val = it->second;
                 string val_str (val.name);
-                // symbol resolves on exact equality
-                if (val_str.compare(symbol) == 0){
-                    //printf("result: %s %s\n", section.first.c_str(), val.name);
-                    strncpy((char*) &val.section, section.first.c_str(), MAX_PATH_LEN -1);
-                    return val;
-                }
+                strncpy((char*) &val.section, section.first.c_str(), sizeof(val.section) -2);
+                return val;
             }
         } 
     }
@@ -141,29 +224,23 @@ struct symbol resolve_symbol(CPUState* cpu, target_ulong asid, char* section_nam
 
 struct symbol get_best_matching_symbol(CPUState* cpu, target_ulong address, target_ulong asid){
     update_symbols_in_space(cpu);
-    struct symbol address_container;
-    address_container.address = address;
     struct symbol best_candidate;
     best_candidate.address = 0;
     memset((char*) & best_candidate.name, 0, MAX_PATH_LEN);
     memset((char*) & best_candidate.section, 0, MAX_PATH_LEN);
     for (const auto& section : symbols[asid]){
-        set<struct symbol> section_symbols = section.second;
-        set<struct symbol>::iterator it = section_symbols.lower_bound(address_container);
-        if (it != section_symbols.end()){
-            if (it->address == address){
-                // if we found a match just break and move on.
-                memcpy(&best_candidate, &*it, sizeof(struct symbol));
-                break;
-            }
-            //check that there exists a lower value
-            if (it != section_symbols.begin()){
-                // get that lower value
-                it--;
-                // make comparison
-                if (it->address > best_candidate.address){
+        unordered_map<string, struct symbol> section_symbols = *section.second;
+        for (auto i : section_symbols){
+            struct symbol it = i.second;
+            if (it.address > address){
+                if (it.address == address){
+                    // if we found a match just break and move on.
+                    memcpy(&best_candidate, &it, sizeof(struct symbol));
+                    break;
+                }
+                if (it.address > best_candidate.address){
                     //copy it
-                    memcpy(&best_candidate, &*it, sizeof(struct symbol));
+                    memcpy(&best_candidate, &it, sizeof(struct symbol));
                 }
             }
         }
@@ -289,34 +366,51 @@ int get_numelements_symtab(CPUState* cpu, target_ulong base, target_ulong dt_has
     return (symtab_min - symtab)/(sizeof(ELF(Dyn)));
 }
 
+#define error_case(A,B,C) //printf("%s %s %s\n", A, B, C)
 
-void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
-    target_ulong asid = panda_current_asid(cpu);
+void helper(){};
 
+
+void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule *m){
     if (m->name == NULL){
-        //printf("%s name is null\n", current->name);
+        error_case(current->name, m->name, "m->name is NULL");
         return;
     }
     string name(m->name);
 
     // we already read this one
-    if (symbols[asid].find(name) != symbols[asid].end()){
+    if (symbols[asid].find(name) != symbols[asid].end() && symbols[asid][name]->size() > 0){
+        error_case(current->name, m->name, " in symbols[asid] already and has");
         //printf("%s %s already exists \n", current->name, m->name);
         return;
     }
+
+    pair<target_ulong, string> candidate(m->base, name);
+
+    auto it = seen_libraries.find(candidate);
+    if (it != seen_libraries.end()) {
+        //printf("COPY %s:%s for asid " TARGET_PTR_FMT "  and base of " TARGET_PTR_FMT "\n",  current->name, m->name, panda_current_asid(cpu), m->base);
+        //printf("size of ASID before is %d\n", (int)symbols[asid].size());
+        symbols[asid][name] = &seen_libraries[candidate];
+        //printf("size of ASID after is %d\n", (int)symbols[asid].size());
+        new_assignment_check_symbols(cpu, seen_libraries[candidate], m);
+        return;
+    }
     // static variable to store first 4 bytes of mapping
-    char elfhdr[4];
+    char elf_magic[4];
 
     // read first 4 bytes
-    if (likely(panda_virtual_memory_read(cpu, m->base, (uint8_t*)elfhdr, 4) != MEMTX_OK)){
+    if (likely(panda_virtual_memory_read(cpu, m->base, (uint8_t*)elf_magic, 4) != MEMTX_OK)){            
+        error_case(current->name, m->name, "3 CNRB");
         // can't read page.
         return;
     }
     // is it an ELF header?
-    if (unlikely(elfhdr[0] == '\x7f' && elfhdr[1] == 'E' && elfhdr[2] == 'L' && elfhdr[3] == 'F')){
+    if (unlikely(elf_magic[0] == '\x7f' && elf_magic[1] == 'E' && elf_magic[2] == 'L' && elf_magic[3] == 'F')){
         ELF(Ehdr) ehdr;
         // attempt to read memory allocation
         if (panda_virtual_memory_read(cpu, m->base, (uint8_t*)&ehdr, sizeof(ELF(Ehdr))) != MEMTX_OK){
+            error_case(current->name, m->name, "4 CNREH");
             //printf("cant read elf header\n");
             return;
         }
@@ -333,6 +427,7 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
 
         for (int j=0; j<phnum; j++){
             if (panda_virtual_memory_read(cpu, m->base + phoff + (j*sizeof(ELF(Phdr))), (uint8_t*)&dynamic_phdr, sizeof(ELF(Phdr))) != MEMTX_OK){
+                error_case(current->name, m->name, "5 DPHDR");
                 return;
             }
 
@@ -341,9 +436,11 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
             if (dynamic_phdr.p_type == PT_DYNAMIC){
                 break;
             }else if (dynamic_phdr.p_type == PT_NULL){
+                error_case(current->name, m->name, "PTNULL");
                 //printf("hit PT_NULL\n");
                 return;
             }else if (j == phnum -1){
+                error_case(current->name, m->name, "END");
                 //printf("hit phnum-1\n");
                 return;
             }
@@ -361,6 +458,7 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
             //printf("Read Dyn PHDR from 0x%x + 0x%x + j*0x%lx\n", m->base, dynamic_phdr.p_vaddr, (sizeof(ELF(Phdr))));
             if (panda_virtual_memory_read(cpu, m->base + dynamic_phdr.p_vaddr + (j*sizeof(ELF(Dyn))), (uint8_t*)&tag, sizeof(ELF(Dyn))) != MEMTX_OK){
                 //printf("%s:%s Failed to read entry %d\n", name.c_str(), current->name, j);
+                error_case(current->name, m->name, "5 DPDR");
                 return;
             }
 
@@ -411,6 +509,7 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
 
         int numelements_symtab = get_numelements_symtab(cpu,m->base, dt_hash, gnu_hash, m->base + dynamic_phdr.p_vaddr, symtab, numelements_dyn);
         if (numelements_symtab == -1){
+            error_case(current->name, m->name, "6 GETELEMENTSSYMTAB");
             //printf("numelements_symtab not working\n");
             return;
         }
@@ -424,30 +523,46 @@ void find_symbols(CPUState* cpu, OsiProc *current, OsiModule *m){
 
         //printf("symtab %llx\n", (long long unsigned int) symtab);
         //printf("symtab: 0x" TARGET_FMT_lx "  0x" TARGET_FMT_lx "\n", symtab, strtab);
-        if (panda_virtual_memory_read(cpu, symtab, (uint8_t*)symtab_buf, symtab_size) == MEMTX_OK &&
-            panda_virtual_memory_read(cpu, strtab, (uint8_t*) strtab_buf, strtab_size) == MEMTX_OK){
-            int i = 0; 
-            //for (int idx =0; idx < strtab_size; idx++)
-            //  printf("Strtab[%d]: %c\n", idx, strtab_buf[idx]);
+        if (panda_virtual_memory_read(cpu, symtab, (uint8_t*)symtab_buf, symtab_size) == MEMTX_OK){
+                if (panda_virtual_memory_read(cpu, strtab, (uint8_t*) strtab_buf, strtab_size) == MEMTX_OK){
+                int i = 0; 
+                //for (int idx =0; idx < strtab_size; idx++)
+                //  printf("Strtab[%d]: %c\n", idx, strtab_buf[idx]);
 
-            for (;i<numelements_symtab; i++){
-                ELF(Sym)* a = (ELF(Sym)*) (symtab_buf + i*sizeof(ELF(Sym)));
-                fixupendian(a->st_name);
-                fixupendian(a->st_value);
-                if (a->st_name < strtab_size && a->st_value != 0){
-                    struct symbol s;
-                    strncpy((char*)&s.name, &strtab_buf[a->st_name], MAX_PATH_LEN-1);
-                    strncpy((char*)&s.section, m->name, MAX_PATH_LEN-1);
-                    s.address = m->base + a->st_value;
-                    //printf("found symbol %s %s 0x%llx\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address);
-                    symbols[asid][name].insert(s);
-                    check_symbol_for_hook(cpu, s, current->name, m);
+                pair<target_ulong, string> c(m->base, name);
+
+                for (;i<numelements_symtab; i++){
+                    ELF(Sym)* a = (ELF(Sym)*) (symtab_buf + i*sizeof(ELF(Sym)));
+                    fixupendian(a->st_name);
+                    fixupendian(a->st_value);
+                    if (a->st_name < strtab_size && a->st_value != 0){
+                        struct symbol s;
+                        strncpy((char*)&s.name, &strtab_buf[a->st_name], sizeof(s.name)-2);
+                        strncpy((char*)&s.section, m->name, sizeof(s.section)-2);
+                        s.address = m->base + a->st_value;
+                        //printf("found symbol %s %s 0x%llx\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address);
+                        string sym_name(s.name);
+                        seen_libraries[c][sym_name] = s;
+                    }
                 }
+                if (seen_libraries[c].size() > 0){
+                    symbols[asid][name] = &seen_libraries[c];
+                    new_assignment_check_symbols(cpu, seen_libraries[c], m);
+                    error_case(current->name, m->name, "SUCCESS");
+                    //printf("Successful on %s. Found %d symbols " TARGET_FMT_lx "\n", m->name, (int)seen_libraries[c].size(), m->base);
+                }
+                //printf("CURRENT PC: %llx\n", (long long unsigned int) panda_current_pc(cpu));
+            }else{
+                error_case(current->name, m->name, "7 CNR STRTAB");
             }
+        }else{
+            error_case(current->name, m->name, "8 CNR SYMTAB");
         }
         free(symtab_buf);
         free(strtab_buf);
+        return;
     }
+    error_case(current->name, m->name, "NOT AN ELF HEADER");
 }
 
 
@@ -456,6 +571,7 @@ void update_symbols_in_space(CPUState* cpu){
         return;
     }
     OsiProc *current = get_current_process(cpu);
+    target_ulong asid = panda_current_asid(cpu);
     GArray *ms = get_mappings(cpu, current);
     if (ms == NULL) {
         return;
@@ -463,156 +579,96 @@ void update_symbols_in_space(CPUState* cpu){
         //iterate over mappings
         for (int i = 0; i < ms->len; i++) {
             OsiModule *m = &g_array_index(ms, OsiModule, i);
-            find_symbols(cpu, current, m);
+            find_symbols(cpu, asid, current, m);
         }
     }
 }
 
-void* self_ptr;
-panda_cb pcb_asid;
-panda_cb pcb_btc;
-panda_cb pcb_btc_execve;
-
-
-void btc(CPUState *env, TranslationBlock *tb){
+void bbt(CPUState *env, target_ulong pc){
     if (!panda_in_kernel(env)){
         update_symbols_in_space(env);
-        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
+        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
     }
 }
 
+void sys_exit_enter(CPUState *cpu, target_ulong pc, int exit_code){
+    target_ulong asid = panda_current_asid(cpu);
+    symbols.erase(asid);
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
+}
+
 bool asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
-    //panda_please_flush_tb = true;
-    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
     return false;
 }
 
 void hook_program_start(CPUState *env, TranslationBlock* tb, struct hook* h){
-    //printf("got to program start 0x%llx\n", (long long unsigned int)rr_get_guest_instr_count());
-    update_symbols_in_space(env);
+    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
     h->enabled = false;
 }
 
-void btc_execve(CPUState *env, TranslationBlock *tb){
-    if (unlikely(!panda_is_callback_enabled(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve))) {
-        // Callback still runs occasionally after disabled
-        return;
-    }
-    if (unlikely(!panda_in_kernel(env))){
-        target_ulong sp = panda_current_sp(env);
-        target_ulong argc;
-        if (panda_virtual_memory_read(env, sp, (uint8_t*) &argc, sizeof(argc))== MEMTX_OK){
-            // we read argc, but just to check the stack is readable.
-            // don't use it. just iterate and check for nulls.
-            int ptrlistpos = 1;
-            // these are arguments to the binary. we don't read
-            // them but you could.
-            target_ulong ptr;
-            while (true){
-                if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
-                    return;
-                }
-                ptrlistpos++;
-                if (ptr == 0){
-                    break;
-                }
-            }
-            // these are environmental variables. we don't read
-            // them, but you could.
-            while (true){
-                if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
-                    return;
-                }
-                ptrlistpos++;
-                if (ptr == 0){
-                    break;
-                }
-            }
-            target_ulong entrynum, entryval;
-            while (true){
-                if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &entrynum, sizeof(entrynum)) != MEMTX_OK || panda_virtual_memory_read(env, sp+((ptrlistpos+1)*sizeof(target_ulong)), (uint8_t*) &entryval, sizeof(entryval))){
-                    panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
-                    return;
-                }
-                ptrlistpos+=2;
-                if (entrynum == AT_NULL){
-                    break;
-                }else if (entrynum == AT_ENTRY){
-                    struct hook h;
-                    h.addr = entryval;
-                    h.asid = panda_current_asid(env);
-                    h.type = PANDA_CB_BEFORE_TCG_CODEGEN;
-                    h.cb.before_tcg_codegen = hook_program_start;
-                    h.km = MODE_USER_ONLY;
-                    h.enabled = true;
+void recv_auxv(CPUState *env, TranslationBlock *tb, struct auxv_values *av){
+    target_ulong asid = panda_current_asid(env);
+    symbols.erase(asid);
+    struct hook h;
 
-                    void* hooks = panda_get_plugin_by_name("hooks");
-                    if (hooks == NULL){
-                        panda_require("hooks");
-                        hooks = panda_get_plugin_by_name("hooks");
-                    }
-                    if (hooks != NULL){
-                        void (*dlsym_add_hook)(struct hook*) = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
-                        if ((void*)dlsym_add_hook != NULL) {
-                            dlsym_add_hook(&h);
-                        }
-                    }
+#ifdef TARGET_ARM
+    // If the entrypoint is in thumb mode, bit 0 will be set which results
+    // in an update to the CSPR.T bit. The hook needs needs the bit to masked
+    // out.
+    h.addr = av->entry & ~0x1;
+#else
+    h.addr = av->entry;
+#endif
 
-                }
-            }
-
-        }
-        panda_disable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
-    }
-}
-
-void run_btc_cb(){
-    panda_do_flush_tb();
-    panda_enable_callback(self_ptr, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
-}
-
-void execve_cb(CPUState *cpu, target_ptr_t pc, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp) {
-    run_btc_cb();
-}
-
-void execveat_cb (CPUState* cpu, target_ptr_t pc, int dfd, target_ptr_t filename, target_ptr_t argv, target_ptr_t envp, int flags) {
-    run_btc_cb();
+    h.asid = panda_current_asid(env);
+    h.type = PANDA_CB_START_BLOCK_EXEC;
+    h.cb.start_block_exec = hook_program_start;
+    h.km = MODE_USER_ONLY;
+    h.enabled = true;
+    dlsym_add_hook(&h);
 }
 
 bool init_plugin(void *self) {
     self_ptr = self;
     pcb_asid.asid_changed = asid_changed;
     panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb_asid);
-    pcb_btc.before_tcg_codegen = btc;
-    panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
-    panda_disable_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc);
-    pcb_btc_execve.before_tcg_codegen = btc_execve;
-    panda_register_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
-    panda_disable_callback(self, PANDA_CB_BEFORE_TCG_CODEGEN, pcb_btc_execve);
+    pcb_bbt.before_block_translate = bbt;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
+    panda_disable_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb_bbt);
+
     panda_require("osi");
     assert(init_osi_api());
-    
+    panda_require("proc_start_linux");
+    PPP_REG_CB("proc_start_linux",on_rec_auxv, recv_auxv);
     #if defined(TARGET_PPC)
-        fprintf(stderr, "[ERROR] asidstory: PPC architecture not supported by syscalls2!\n");
+        fprintf(stderr, "[ERROR] dynamic_symbols: PPC architecture not supported by syscalls2!\n");
         return false;
     #else
-        panda_require("syscalls2");
+        // why? so we don't get 1000 messages telling us syscalls2 is already loaded
+        void* syscalls2 = panda_get_plugin_by_name("syscalls2");
+        if (syscalls2 == NULL){
+            panda_require("syscalls2");
+        }
         assert(init_syscalls2_api());
-        PPP_REG_CB("syscalls2", on_sys_execve_enter, execve_cb);
-        PPP_REG_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
+        PPP_REG_CB("syscalls2", on_sys_exit_enter, sys_exit_enter);
+        PPP_REG_CB("syscalls2", on_sys_exit_group_enter, sys_exit_enter);
     #endif
+    void* hooks = panda_get_plugin_by_name("hooks");
+    if (hooks == NULL){
+        panda_require("hooks");
+        hooks = panda_get_plugin_by_name("hooks");
+    }
+    if (hooks != NULL){
+        dlsym_add_hook = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
+        dlsym_hooks_flush_pc = (void(*)(target_ulong pc)) dlsym(hooks, "hooks_flush_pc");
+        if ((void*)dlsym_add_hook == NULL) {
+            printf("couldn't load add_hook from hooks\n");
+            return false;
+        }
+    }
     return true;
 }
 
 void uninit_plugin(void *self) { 
-#if defined(TARGET_PPC)
-#else
-  void* syscalls = panda_get_plugin_by_name("syscalls2");
-  if (syscalls != NULL){
-    PPP_REMOVE_CB("syscalls2", on_sys_execve_enter, execve_cb);
-    PPP_REMOVE_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
-  }
-#endif
 }

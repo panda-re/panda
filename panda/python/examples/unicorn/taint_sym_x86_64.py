@@ -4,7 +4,7 @@ import time
 import keystone
 import capstone
 
-from pandare import Panda, ffi
+from pandare import Panda
 CODE = b"""
 jmp .start
 

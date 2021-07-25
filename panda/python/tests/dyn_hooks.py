@@ -26,12 +26,14 @@ def calloc(cpu, tb, h):
     print(f"Calloc hook running at 0x{tb.pc:x}")
     global calloc_ran
     calloc_ran = True
+    h.enabled = False # got result. no reason to continue
 
 @panda.hook_symbol(None, "malloc")
 def malloc(cpu, tb, h):
     print(f"Malloc hook running at 0x{tb.pc:x}")
     global malloc_ran
     malloc_ran = True
+    h.enabled = False # got result. no reason to continue
 
 panda.run()
 

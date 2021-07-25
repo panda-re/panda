@@ -36,6 +36,25 @@ Dependencies
 APIs and Callbacks
 ------------------
 
+To use `stringsearch` programatically you can use the following API functions. Note that, string search will only run its memory read/write callbacks when strings are in its search list.
+
+```
+bool add_string(const char* arg)
+```
+Add `arg` to the list of strings that `stringsearch` is watching for. Returns true if your string was successfully added to the list. Also returns true if your string was already in the search list.
+
+
+```
+bool remove_strings(const char* arg)
+```
+Remove `arg` from the list of strings that `stringsearch` is watching for. Returns true if your string was successfully found and removed from the list.
+
+```
+void reset_strings()
+```
+Remove all strings that stringsearch is watching for.
+
+
 `stringsearch` provides a single callback that can be used by other plugins to take actions when a string match is found:
 
 Name: **on_ssm**
@@ -45,7 +64,7 @@ Signature:
 ```C
 typedef void (* on_ssm_t)(CPUState *env, target_ulong pc, target_ulong addr,
                 uint8_t *matched_string, uint32_t matched_string_length,
-                bool is_write)
+                bool is_write, bool in_memory)
 ```
 
 Description: Called whenever a string match is observed. The callback is passed the CPU state, the value of the program counter when the match occurred, the actual string data that was matched (in case multiple search strings were used), the number of bytes in the matched string, and a flag indicating whether the match was seen during a read or a write.

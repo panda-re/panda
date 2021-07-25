@@ -1,4 +1,7 @@
 # Helper utilities functions and classes for use in pypanda.
+'''
+Misc helper functions
+'''
 
 from colorama import Fore, Style
 from functools import wraps
@@ -15,6 +18,12 @@ def progress(msg):
     Print a message with a green "[PYPANDA]" prefix
     """
     print(Fore.GREEN + '[PYPANDA] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
+
+def warn(msg):
+    """
+    Print a message with a red "[PYPANDA]" prefix
+    """
+    print(Fore.RED + '[PYPANDA] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
 
 def make_iso(directory, iso_path):
     '''
