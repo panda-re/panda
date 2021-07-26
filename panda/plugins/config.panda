@@ -31,8 +31,10 @@ pri
 pri_dwarf
 pri_simple
 proc_start_linux
+proc_trace
 recctrl
 replaymovie
+rust_skeleton
 scissors
 signal
 snake_hook
@@ -47,4 +49,3 @@ win2000x86intro
 win7x86intro
 wintrospection
 winxpx86intro
-rust_skeleton
