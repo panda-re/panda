@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+'''
+Generate a recording if one does not exist, then use the on_task_change
+callback to collect information about when various processes are running.
+
+Also load asidstory plugin to compare output.
+'''
 from pandare import Panda
 
 panda = Panda(generic="x86_64")
@@ -62,7 +69,7 @@ def task_change(cpu):
     time_data.append((proc_key, n_insns))
     n_insns = 0
 
-# DEBUG: compare to asidstory
+# For testing: compare to asidstory
 panda.load_plugin("asidstory", {"width": 120})
 panda.run_replay(rec_name)
 
