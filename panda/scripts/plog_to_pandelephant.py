@@ -10,13 +10,14 @@ import collections
 import pandelephant
 
 # PLogReader from pandare package is easiest to import,
-# but if it's unavailable, fallback to searching PYTHONPATH
+# but if it's unavailable, fallback to searching
+# local directory, then PYTHONPATH
 # which users should add panda/panda/scripts to
 try:
-    from plog_reader import PLogReader
+    from pandare.plog_reader import PLogReader
 except ImportError:
     try:
-        from pandare.plog_reader import PLogReader
+        from plog_reader import PLogReader
     except ImportError:
         import PLogReader
     except ImportError:
@@ -150,7 +151,8 @@ def AssociateThreadsAndProcesses(processes, threads, thread_names):
     for proc in proc2threads.keys():
         print('Process (ProcessId {} ParentProcessId {}) has {} Threads'.format(proc.ProcessId, proc.ParentProcessId, len(proc2threads[proc])))
         for thread in proc2threads[proc]:
-            print('\tThread (ThreadId {} CreateTime {:#x}) names: {}'.format(thread.ThreadId, thread.CreateTime, thread_names[thread]))
+            if thread in thread_names:
+                print('\tThread (ThreadId {} CreateTime {:#x}) names: {}'.format(thread.ThreadId, thread.CreateTime, thread_names[thread]))
 
     return proc2threads, thread2proc
 
@@ -335,7 +337,7 @@ def CollectTaintFlowsAndSyscalls(pandalog, CollectedBetterMappingRanges):
                         CollectFrom[k](msg, getattr(msg, k))
                     except Exception as e:
                         FailCounts[k] += 1
-                        print(e)
+                        print("Exception:", e)
                     break
     for k in CollectFrom.keys():
         print('\t{} Attempts: {}, Failures: {}'.format(k, AttemptCounts[k], FailCounts[k]))
