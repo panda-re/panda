@@ -24,7 +24,6 @@ PANDAENDCOMMENT */
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 #include "panda/tcg-utils.h"
-#include "hooks/hooks_int_fns.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -42,7 +41,6 @@ PANDAENDCOMMENT */
 
 void syscall_callback(CPUState *cpu, TranslationBlock* tb, target_ulong pc, int static_callno);
 
-void (*hooks_add_hook)(struct hook*);
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -794,7 +792,7 @@ static inline std::string context_map_t_dump(context_map_t &cm) {
  * @brief Checks if the translation block that is about to be executed
  * matches the return address of an executing system call.
  */
-void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
+void syscall_return(CPUState *cpu, TranslationBlock *tb) {
     auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
     auto ctxi = running_syscalls.find(k);
     int UNUSED(no) = -1;
@@ -816,7 +814,6 @@ void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
 #endif
     }
 #endif
-    h->enabled = false;
     return;
 }
 #endif
@@ -950,8 +947,25 @@ void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
     }
 #endif
     if(res != 0 && res != (target_ulong) -1){
+        // insert ENTER
         TCGOp *op = find_guest_insn_by_addr(res);
         insert_call(&op, syscall_callback, cpu, tb, res, static_callno);
+
+        // insert RETURN
+        bool found_exit = false;
+        TCGOp *last_op = NULL;
+        op = NULL;
+        for (int oi = tcg_ctx.gen_op_buf[0].next; oi != 0; oi = op->next) {
+            op = &tcg_ctx.gen_op_buf[oi];
+            if (INDEX_op_exit_tb == op->opc) {
+                insert_call(&last_op, syscall_return , first_cpu, tb);
+                found_exit = true;
+            }
+            last_op = op;
+        }
+        if (!found_exit) {
+            printf("error on end %d\n", tb->size);
+        }
     }
 }
 
@@ -1103,12 +1117,6 @@ bool init_plugin(void *self) {
 
     // done parsing arguments
     panda_free_args(plugin_args);
-    void *hooks = panda_get_plugin_by_name("hooks");
-	if (hooks == NULL){
-		panda_require("hooks");
-		hooks = panda_get_plugin_by_name("hooks");
-	}
-    hooks_add_hook = (void(*)(struct hook*)) dlsym(hooks, "add_hook");
 #else //not x86/arm/mips
     fprintf(stderr,"The syscalls plugin is not currently supported on this platform.\n");
     return false;

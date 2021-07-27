@@ -3,7 +3,6 @@
 
 #include "syscalls2.h"
 #include "syscalls2_info.h"
-#include "hooks/hooks_int_fns.h"
 
 extern const syscall_info_t *syscall_info;
 extern const syscall_meta_t *syscall_meta;
@@ -64,15 +63,6 @@ void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, int st
 	PPP_RUN_CB(on_all_sys_enter, cpu, pc, ctx.no);
 	PPP_RUN_CB(on_all_sys_enter2, cpu, pc, call, &ctx);
 	if (!panda_noreturn) {
-		struct hook h;
-		h.addr = ctx.retaddr;
-		h.asid = ctx.asid;
-		h.cb.start_block_exec = hook_syscall_return;
-		h.type = PANDA_CB_START_BLOCK_EXEC;
-		h.enabled = true;
-		h.km = MODE_ANY; //you'd expect this to be user only
-		hooks_add_hook(&h);
-
 		running_syscalls[std::make_pair(ctx.retaddr, ctx.asid)] = ctx;
 	}
 #endif
