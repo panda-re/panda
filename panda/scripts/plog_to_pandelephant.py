@@ -110,11 +110,32 @@ def CollectThreadsAndProcesses(pandalog):
         threads.add(CollectedThread(ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time))
         processes.add(CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid))
 
+    last_thread_info = None
+    def CollectFrom_proc_trace(msg):
+        thread = CollectedThread(ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time)
+        if thread in thread_names.keys():
+            thread_names[thread].add(msg.name)
+        else:
+            thread_names[thread] = set([msg.name])
+        print(thread_names)
+        threads.add(thread)
+        processes.add(CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid))
+
+        nonlocal last_thread_info
+
+        if last_thread_info is not None: # XXX this will miss the very last one since we don't know when it ended
+            (last_thread, start_instr) = last_thread_info
+            thread_slices.add(CollectedThreadSlice(FirstInstructionCount=start_instr, LastInstructionCount=msg.start_instr-1, Thread=last_thread))
+        last_thread = (thread, msg.start_instr)
+
+
+
     CollectFrom = {
         'asid_libraries': CollectFrom_asid_libraries,
         'asid_info': CollectFrom_asid_info,
         'taint_flow': CollectFrom_taint_flow,
         'syscall': CollectFrom_syscall,
+        'proc_trace': CollectFrom_proc_trace,
     }
 
     AttemptCounts = { k: 0 for k in CollectFrom.keys() }
@@ -251,11 +272,16 @@ def CollectTaintFlowsAndSyscalls(pandalog, CollectedBetterMappingRanges):
             'i64': ('signed64',   '{:d}'),
             'i32': ('signed32',   '{:d}'),
             'i16': ('signed16',   '{:d}'),
+            'bytes_val': ('bytes','{:d}'),
         }
         def syscall_arg_value(arg):
             for fld, (typ, fmt) in SyscallFieldInfo.items():
                 if arg.HasField(fld):
-                    return arg.arg_name, typ, fmt.format(getattr(arg, fld))
+                    if fld == 'bytes_val':
+                        safe_str = getattr(arg, fld) # TODO: do we need to strip out non-ascii for DB?
+                        return arg.arg_name, typ, safe_str
+                    else:
+                        return arg.arg_name, typ, fmt.format(getattr(arg, fld))
             assert(False)
         thread = CollectedThread(ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time)
         CollectedSyscalls.add(CollectedSyscall(
@@ -338,6 +364,7 @@ def CollectTaintFlowsAndSyscalls(pandalog, CollectedBetterMappingRanges):
                     except Exception as e:
                         FailCounts[k] += 1
                         print("Exception:", e)
+                        raise e
                     break
     for k in CollectFrom.keys():
         print('\t{} Attempts: {}, Failures: {}'.format(k, AttemptCounts[k], FailCounts[k]))
