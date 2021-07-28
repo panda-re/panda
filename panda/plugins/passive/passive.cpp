@@ -28,6 +28,8 @@ PANDAENDCOMMENT */
 #include <set>
 #include <vector>
 #include <map>
+#include <string>
+#include <iostream>
 #include <strings.h>
 
 /*
@@ -114,6 +116,8 @@ void tasks_search(CPUState* cpu);
 void group_leader_search(CPUState* cpu);
 void thread_group_search(CPUState* cpu);
 void pgd_search(CPUState* cpu);
+void mmap_search(CPUState* cpu);
+void brk_search(CPUState* cpu);
 
 void print_results(void *);
 void print_regstate(CPUState* cpu);
@@ -134,6 +138,7 @@ bool phase2 = false;
 bool phase3 = false;
 bool phase4 = false;
 bool phase5 = false;
+bool phase6 = false;
 bool opening = false;
 bool reading = false;
 bool in_syscall = false;
@@ -141,7 +146,9 @@ bool check_mem_reads = true;
 int call_count = 0;
 //int err = 0;
 
-uint8_t buf[2048];
+uint8_t buf[9216];
+int bytes_to_read = 9216;
+std::string maps = "";
 
 FILE* fptr = NULL;
 uint64_t current = 0;
@@ -176,7 +183,7 @@ uint64_t cred_euid_offset = 20;
 uint64_t cred_egid_offset = 24;
 
 //uint64_t mm_size = 0;                     - TODO
-//uint64_t mm_mmap_offset = 0;              - TODO
+uint64_t mm_mmap_offset = 0;             
 uint64_t mm_pgd_offset = 0;
 //uint64_t mm_arg_start_offset = 0;         - TODO
 //uint64_t mm_start_brk_offset = 0;         - TODO
@@ -185,8 +192,8 @@ uint64_t mm_pgd_offset = 0;
 
 //uint64_t vma_size = 0;                    - TODO
 //uint64_t vma_vm_mm_offset = 0;            - TODO
-//uint64_t vma_vm_start_offset = 0;         - TODO
-//uint64_t vma_vm_end_offset = 0;           - TODO
+uint64_t vma_vm_start_offset = 0;
+uint64_t vma_vm_end_offset = 0;
 //uint64_t vma_vm_next_offset = 0;          - TODO
 //uint64_t vma_vm_flags_offset = 0;         - TODO
 //uint64_t vma_vm_file_offset = 0;          - TODO
@@ -1202,54 +1209,143 @@ void pgd_search(CPUState* cpu) {
     }
 }
 
-//void stack_search(CPUState* cpu) {
-//    uint8_t data[8] = {0};
-//    uint64_t stack_ptr = 0;
-//    uint64_t thread_info_pointer = 0;
-//    uint64_t ksp = 0;
-//    uint64_t sp = 0;
-//    int ret = 0;
-//
-//    printf("\nsearching for stack offset\n");
-//
-//    panda_virtual_memory_read(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, data, 8);
-//    current = *((uint64_t*) &data[0]);
-//    printf("current is %lx\n", current);
-//
-//    //initial test
-//    int stack_offset = 24;
-//
-//    ret = panda_virtual_memory_read(cpu, current + stack_offset, data, 8);
-//    if(ret == -1) {
-//        printf("couldn't read stack\n");
-//        return;
-//    }
-//    stack_ptr = *((uint64_t*) &data[0]);
-//
-//    printf("stack_ptr: 0x%lx\n", stack_ptr);
-//    stack_ptr = panda_virt_to_phys(cpu, stack_ptr);
-//    printf("stack_ptr (phys): 0x%lx\n", stack_ptr);
-//
-//    //printf("esp 0x%lx\n", ((CPUX86State*) cpu->env_ptr)->regs[4]);
-//    ret = panda_virtual_memory_read(cpu, current + 0, data, 8);
-//    if(ret == -1) {
-//        printf("couldn't read thread info\n");
-//        return;
-//    }
-//    thread_info_pointer = *((uint64_t*) &data[0]);
-//
-//    printf("thread_info_pointer: 0x%lx\n", thread_info_pointer);
-//
-//    ksp = panda_current_ksp(cpu);
-//    printf("ksp: 0x%lx\n", ksp);
-//    ksp = panda_virt_to_phys(cpu, ksp);
-//    printf("ksp (phys): 0x%lx\n", ksp);
-//
-//    sp = panda_current_sp(cpu);
-//    printf("sp: 0x%lx\n", sp);
-//    sp = panda_virt_to_phys(cpu, sp);
-//    printf("sp (phys): 0x%lx\n", sp);
-//}
+void mmap_search(CPUState* cpu) {
+//    //refresh current
+    target_ulong res = 0;
+    target_ulong mm_addr = 0;
+
+    int mmap_offset_candidate = 0;
+    int vma_start_offset_candidate = 0;
+    int vma_end_offset_candidate = 0;
+
+
+    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err == -1) printf("couldn't read current\n");
+    current = res;
+    printf("current: " TARGET_PTR_FMT "\n", current);
+    
+    //get the start and end offsets of the first vma from the /proc/self/maps string
+    int pos = maps.find(" ");
+    std::string tmp_str = maps.substr(0, pos);
+
+    printf("substr: %s\n", tmp_str.c_str());
+    std::string start_str = tmp_str.substr(0, tmp_str.find("-"));
+    printf("start: %s\n", start_str.c_str());
+
+    std::string end_str = tmp_str.substr(tmp_str.find("-") + 1, tmp_str.length());
+    printf("end: %s\n", end_str.c_str());
+
+    uint64_t start = strtoll(start_str.c_str(), NULL, 16);
+    uint64_t end = strtoll(end_str.c_str(), NULL, 16);
+
+    printf("start int %lx - end int %lx\n", start, end);
+
+    //iterate over mm to find a valid pointer
+    err = read_target_ulong(cpu, current + task_mm_offset, &mm_addr);
+    if(err == -1) {
+        printf("couldn't read mm_addr\n");
+        return; //break;
+    }
+    printf("mm_addr: " TARGET_PTR_FMT "\n", mm_addr);
+
+    bool found_start = false;
+    bool found_end = false;
+    while(mmap_offset_candidate < 2500 && !found_start && !found_end) {
+        target_ulong vma_addr = 0;
+
+        vma_start_offset_candidate = 0;
+        vma_end_offset_candidate = 0;
+
+        err = read_target_ulong(cpu, mm_addr + mmap_offset_candidate, &vma_addr);
+        if(err == -1) {
+            printf("couldn't read address of vma\n");
+            break;
+        }
+        printf("vma_addr: " TARGET_PTR_FMT " - mmap_offset_candidate %d\n", vma_addr, mmap_offset_candidate);
+
+        while(vma_start_offset_candidate < 250 && !found_start) {
+            target_ulong val = 0;
+            err = read_target_ulong(cpu, vma_addr + vma_start_offset_candidate, &val);
+            if(err == -1) {
+                printf("couldn't read from the vma\n");
+                break;
+            }
+            printf("read " TARGET_PTR_FMT " from the vma at offset %d\n", val, vma_start_offset_candidate);
+
+
+            if(val == start) {
+                printf("Found start val in the VMA!\n");
+                found_start = true;
+                break;
+            }
+
+            vma_start_offset_candidate += 4;
+        }
+
+        while(vma_end_offset_candidate < 250 && !found_end) {
+            target_ulong val = 0;
+            err = read_target_ulong(cpu, vma_addr + vma_end_offset_candidate, &val);
+            if(err == -1) {
+                printf("couldn't read from the vma\n");
+                break;
+            }
+            printf("read " TARGET_PTR_FMT " from the vma at offset %d\n", val, vma_end_offset_candidate);
+
+            if(val == end) {
+                printf("Found end val in the VMA!\n");
+                found_end = true;
+                break;
+            }
+                
+            vma_end_offset_candidate += 4;
+        }
+
+        if(found_start && found_end) {
+            printf("Found both numbers!\n");
+            mm_mmap_offset = mmap_offset_candidate;
+            vma_vm_start_offset = vma_start_offset_candidate;
+            vma_vm_end_offset = vma_end_offset_candidate;
+            printf("mm_mmap_offset: %lu\n", mm_mmap_offset);
+            printf("vma_vm_start_offset: %lu\n", vma_vm_start_offset);
+            printf("vma_vm_end_offset: %lu\n", vma_vm_end_offset);
+            break;
+        } else {
+            found_start = false;
+            found_end = false;
+        }
+
+        mmap_offset_candidate += 4;
+    }
+}
+
+void brk_search(CPUState* cpu) {
+    target_ulong res = 0;
+    target_ulong mm_addr = 0;
+
+    printf("\nsearching for start_brk and brk!\n");
+
+    //refresh current
+    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err == -1) printf("couldn't read current\n");
+    current = res;
+    printf("current: " TARGET_PTR_FMT "\n", current);
+
+    //get mm pointer
+    err = read_target_ulong(cpu, current + task_mm_offset, &mm_addr);
+    if(err == -1) {
+        printf("couldn't read mm_addr\n");
+        return; //break;
+    }
+    printf("mm_addr: " TARGET_PTR_FMT "\n", mm_addr);
+
+    //read the start_brk
+    err = read_target_ulong(cpu, mm_addr + 272, &res);
+    printf("start_brk: " TARGET_PTR_FMT "\n", res);
+
+    err = read_target_ulong(cpu, mm_addr + 280, &res);
+    printf("brk: " TARGET_PTR_FMT "\n", res);
+}
+
 
 bool translate_callback(CPUState* cpu, target_ulong pc){
 //    if (phase1 && in_syscall) {
@@ -1450,6 +1546,7 @@ void time_of_day_enter(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz)
                 printf("couldn't write to the stack\n");
                 return;
             }
+            printf("stack addr: " TARGET_PTR_FMT "\n", ((CPUX86State*) cpu->env_ptr)->regs[4]);
 
             //verify that it got written to the stack
             //err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], buf, 16);
@@ -1470,9 +1567,10 @@ void time_of_day_enter(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz)
             printf("reading from the new file\n");
             reading = true;
 
-            memset(buf, 0, 2048);
+            memset(buf, 0, bytes_to_read);
 
-            err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], buf, 128); //TODO - read more
+            //preserve the contents of the stack
+            err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read, buf, bytes_to_read); //TODO - read more
             //err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->eip, buf, 128); //TODO - read more
             if(err == -1) {
                 printf("couldn't read from the stack\n");
@@ -1484,9 +1582,9 @@ void time_of_day_enter(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz)
             //set the regs
             ((CPUX86State*) cpu->env_ptr)->regs[0] = 0; //eax set to read
             ((CPUX86State*) cpu->env_ptr)->regs[7] = fd_map[current]; //set RDI to the appropriate file descriptor
-            ((CPUX86State*) cpu->env_ptr)->regs[6] = ((CPUX86State*) cpu->env_ptr)->regs[4]; //set RSI to the stack pointer from ESP
+            ((CPUX86State*) cpu->env_ptr)->regs[6] = ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read; //set RSI to the stack pointer from ESP
             //((CPUX86State*) cpu->env_ptr)->regs[6] = ((CPUX86State*) cpu->env_ptr)->eip; //set RSI to the stack pointer from ESP
-            ((CPUX86State*) cpu->env_ptr)->regs[2] = 127; //num bytes to read in rdx
+            ((CPUX86State*) cpu->env_ptr)->regs[2] = bytes_to_read-1; //num bytes to read in rdx
 
             //save the result
         }
@@ -1596,7 +1694,7 @@ void time_of_day_return(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz
 
         comm_search(cpu);
         thread_group_search(cpu);
-        //pgd_search(cpu);
+        pgd_search(cpu);
         //stack_search(cpu);
 
         //print_results();
@@ -1629,29 +1727,54 @@ void time_of_day_return(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz
             opening = false;
         } else if(reading) {
             printf("returning from reading\n");
-            uint8_t tmp[128] = {0};
+            uint8_t tmp[bytes_to_read] = {0};
             int err = 0;
+            uint64_t num_bytes = 0;
 
             //get the result
-            err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], tmp, 127);
+            err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read, tmp, bytes_to_read-1);
             //err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->eip, tmp, 127);
             if(err == -1) {
                 printf("couldn't read result from the stack\n");
                 return;
             }
-            buf[127] = 0;
+            tmp[bytes_to_read-1] = 0;
             printf("RESULT:\n%s\n", (char*) tmp);
+            std::string part((char*) tmp);
+            maps += part;
 
             //restore the stack
-            err = panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], buf, 128);
+            err = panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read, buf, bytes_to_read);
             //err = panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->eip, buf, 128);
             if(err == -1) {
                 printf("couldn't restore the stack\n");
                 return;
             }
 
+            num_bytes = ((CPUX86State*) cpu->env_ptr)->regs[0];
+
+            printf("read %lu bytes from the file\n", num_bytes);
+
+            if(num_bytes == 0) {
+                printf("Finished reading from the file!\n");
+                phase5 = false;
+                printf("total file contents:\n");
+                std::cout << "\n" << maps << std::endl;
+                mmap_search(cpu);
+                brk_search(cpu);
+            }
+
+
             reading = false;
+            //phase5 = false;
+            phase6 = true;
         }
+    } else if(phase6) {
+
+        //mmap_search(cpu);
+        //brk_search(cpu);
+
+        phase6 = false;
     }
 }
 
