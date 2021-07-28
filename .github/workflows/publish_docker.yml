@@ -12,7 +12,7 @@ jobs:
     runs-on: self-hosted
     steps:
     - name: Checkout PANDA at current commit
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
 
     - name: Docker login
       run: docker login -u pandare -p ${{secrets.pandare_dockerhub}}
