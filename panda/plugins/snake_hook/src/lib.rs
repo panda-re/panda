@@ -52,7 +52,7 @@ fn init(_: &mut PluginHandle) -> bool {
     let context: Context = python! {
         from pandare import Panda
 
-        panda = Panda(libpanda_path='libpanda_path)
+        panda = Panda(arch='ARCH, libpanda_path='libpanda_path)
     };
 
     let panda_obj: PyObject = context.get("panda");
