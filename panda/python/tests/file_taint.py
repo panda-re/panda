@@ -1,6 +1,6 @@
 from pandare import Panda
 from os import remove
-from sys import artv
+from sys import argv
 
 # Default arch is i386, but others can be used
 arch = argv[1] if len(argv) > 1 else "i386"
