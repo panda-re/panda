@@ -4,6 +4,7 @@
 #include "label_set.h"
 
 #include <cstdint>
+#include <memory>
 
 #ifdef SHAD_LLVM
 #include <z3++.h>
@@ -11,11 +12,13 @@
 struct SymLabel {
     
 #ifdef SHAD_LLVM
-    z3::expr *expr = NULL;
-    z3::expr *full_expr = NULL;
+    std::shared_ptr<z3::expr> expr;
+    std::shared_ptr<z3::expr> full_expr;
 #else
     void *expr = NULL;
+    void *expr_1 = NULL;
     void *full_expr = NULL;
+    void *full_expr_1 = NULL;
 #endif
     uint8_t full_size = 0;
     uint8_t offset = 0;

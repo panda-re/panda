@@ -93,7 +93,7 @@ SymLabelP get_or_alloc_sym_label(Shad *shad, uint64_t addr) {
     return shad->query_full(addr)->sym;
 }
 
-z3::expr get_byte(z3::expr *ptr, uint8_t offset, uint8_t concrete_byte, bool* symbolic) {
+z3::expr get_byte(std::shared_ptr<z3::expr> ptr, uint8_t offset, uint8_t concrete_byte, bool* symbolic) {
 
     if (ptr == nullptr)
         return context.bv_val(concrete_byte, 8);
@@ -162,6 +162,8 @@ void invalidate_full(Shad *shad, uint64_t src, uint64_t size) {
     if (src_tdp) {
         src_tdp->full_expr = nullptr;
         src_tdp->full_size = 0;
+        if (shad->query_full(src)->sym)
+            delete shad->query_full(src)->sym;
         shad->query_full(src)->sym = nullptr;
     }
 }
@@ -176,7 +178,9 @@ void copy_symbols(Shad *shad_dest, uint64_t dest, Shad *shad_src,
 
         // When copy src bytes without symbolic data, make sure to clean dest byte
         if (!shad_src->query_full(src+i)->sym) {
-            shad_src->query_full(dest+i)->sym = nullptr;
+            if (shad_dest->query_full(dest+i)->sym)
+                delete shad_dest->query_full(dest+i)->sym;
+            shad_dest->query_full(dest+i)->sym = nullptr;
             continue;
         }
             
@@ -187,7 +191,7 @@ void copy_symbols(Shad *shad_dest, uint64_t dest, Shad *shad_src,
         if (i == 0) {
             if (src_tdp->full_size > size) {
                 // large to small
-                dst_tdp->full_expr = new z3::expr(
+                dst_tdp->full_expr = std::make_shared<z3::expr>(
                     src_tdp->full_expr->extract(8*size-1, 0).simplify());
                 dst_tdp->full_size = size;
             }
@@ -205,11 +209,11 @@ void copy_symbols(Shad *shad_dest, uint64_t dest, Shad *shad_src,
 
 void expr_to_bytes(z3::expr expr, Shad *shad, uint64_t dest, 
         uint64_t size) {
-    z3::expr *ptr = new z3::expr(expr);
+    std::shared_ptr<z3::expr> ptr = std::make_shared<z3::expr>(expr);
     for (uint64_t i = 0; i < size; i++) {
         auto dst_tdp = get_or_alloc_sym_label(shad, dest+i);
         if (i == 0 && size != 1) {
-            dst_tdp->full_expr = new z3::expr(expr);
+            dst_tdp->full_expr = ptr;
             dst_tdp->full_size = size;
         }
         dst_tdp->expr = ptr;
@@ -671,7 +675,7 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         CDEBUG(std::cerr << "Value 2: " << expr2 << "\n");
         z3::expr expr = icmp_compute(pred, expr1, expr2);
         auto sym = get_or_alloc_sym_label(shad, dest);
-        sym->expr = new z3::expr(expr);
+        sym->expr = std::make_shared<z3::expr>(expr);
         sym->offset = 0;
         break;
     }
@@ -699,7 +703,7 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         CDEBUG(std::cerr << "overflow: " << overflow << "\n");
         auto dst_tdp = get_or_alloc_sym_label(shad, dest+src_size);
         if (!overflow.is_true() && !overflow.is_false()) {
-            dst_tdp->expr = new z3::expr(overflow);
+            dst_tdp->expr = std::make_shared<z3::expr>(overflow);
             dst_tdp->offset = 0;
         }
         break;
@@ -841,7 +845,7 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
             z3::expr expr = icmp_compute(pred, expr1, val, src_size);
 
             auto sym = get_or_alloc_sym_label(shad, dest);
-            sym->expr = new z3::expr(expr);
+            sym->expr = std::make_shared<z3::expr>(expr);
             sym->offset = 0;
             break;
         }
@@ -1006,7 +1010,7 @@ void taint_sext(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
                 (top_byte & 0x80) == context.bv_val(0x80, 8), 
                 context.bv_val(0xff, 8), context.bv_val(0, 8));
         expr = expr.simplify();
-        z3::expr *ptr = new z3::expr(expr);
+        std::shared_ptr<z3::expr> ptr = std::make_shared<z3::expr>(expr);
         for (uint64_t i = dest + src_size; i < dest + dest_size; i++) {
             auto dst_tdp = get_or_alloc_sym_label(shad, i);
             dst_tdp->expr = ptr;
