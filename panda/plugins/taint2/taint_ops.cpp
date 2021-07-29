@@ -178,9 +178,9 @@ void copy_symbols(Shad *shad_dest, uint64_t dest, Shad *shad_src,
 
         // When copy src bytes without symbolic data, make sure to clean dest byte
         if (!shad_src->query_full(src+i)->sym) {
-            if (shad_src->query_full(dest+i)->sym)
-                delete shad_src->query_full(dest+i)->sym;
-            shad_src->query_full(dest+i)->sym = nullptr;
+            if (shad_dest->query_full(dest+i)->sym)
+                delete shad_dest->query_full(dest+i)->sym;
+            shad_dest->query_full(dest+i)->sym = nullptr;
             continue;
         }
             
