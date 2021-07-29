@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 '''
+XXX: Broken - our kernels don't have the system_call and sys_access functions in their System.map
+
 1) Start guest and identify kernel symbol->address mappings. End execution
 2) Restart guest with two kernel functions hooked.
 3) Once both hooks are triggered, end analysis
@@ -25,9 +27,10 @@ def extract_kallsyms():
     global kallsyms
     # First revert to root snapshot, then type a command via serial
     panda.revert_sync("root")
-    syms = panda.run_serial_cmd("cat /boot/System.map*", timeout=9999)
+    syms = panda.run_serial_cmd("grep -h 'system_call\\|sys_access' /boot/System.map*")
+    print(syms)
 
-    for line in syms.split("\n"):
+    for line in syms.splitlines():
         line = line.strip()
         addr = int(line.split(" ")[0], 16)
         name = line.split(" ")[-1]
