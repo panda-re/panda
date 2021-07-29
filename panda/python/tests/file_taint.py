@@ -16,7 +16,7 @@ success = False
 @panda.queue_blocking
 def driver():
     panda.record_cmd("cat /etc/passwd | wc -l", recording_name=recording_name)
-    panda.stop_run()
+    panda.end_analysis()
 
 panda.run() # take recording
 
