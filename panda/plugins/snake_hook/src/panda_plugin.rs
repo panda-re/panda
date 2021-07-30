@@ -1,9 +1,7 @@
 use pyo3::prelude::*;
 
 #[pyclass(subclass, module = "snake_hook")]
-pub struct PandaPlugin {
-
-}
+pub struct PandaPlugin {}
 
 #[pymethods]
 impl PandaPlugin {

@@ -1,6 +1,6 @@
-use crate::{Args, ARCH, executable_dir, PANDA_OBJ, PLUGINS, PandaPlugin};
-use pyo3::{prelude::*, types::PyType};
+use crate::{executable_dir, Args, PandaPlugin, ARCH, PANDA_OBJ, PLUGINS};
 use inline_python::{python, Context};
+use pyo3::{prelude::*, types::PyType};
 use std::path::Path;
 
 /// Checks if the type `ty` is a subclass of `PandaPlugin` but is *not* `PandaPlugin` itself
@@ -24,7 +24,10 @@ pub(crate) fn initialize_pyplugins(args: Args) {
         for file in files {
             let path = Path::new(file);
             if path.exists() {
-                let file_path = std::fs::canonicalize(path).unwrap().to_string_lossy().into_owned();
+                let file_path = std::fs::canonicalize(path)
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned();
                 let panda_obj = panda_obj.clone();
 
                 let panda_plugin = py.get_type::<PandaPlugin>();
@@ -48,7 +51,7 @@ pub(crate) fn initialize_pyplugins(args: Args) {
                     // treat it as a plugin
                     if let Ok(class) = item.downcast::<PyType>() {
                         if !is_plugin_type(py, class) {
-                            continue
+                            continue;
                         }
 
                         if class.hasattr("__init__").unwrap_or(false) {
@@ -81,7 +84,8 @@ pub(crate) fn initialize_pyplugins(args: Args) {
         Python::with_gil(|py| -> PyResult<()> {
             python_err.print(py);
             Ok(())
-        }).unwrap();
+        })
+        .unwrap();
     };
 
     // hold onto the Panda object to allow for deleting callbacks on uninit
