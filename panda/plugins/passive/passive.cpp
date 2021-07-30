@@ -118,6 +118,7 @@ void thread_group_search(CPUState* cpu);
 void pgd_search(CPUState* cpu);
 void mmap_search(CPUState* cpu);
 void brk_search(CPUState* cpu);
+void arg_start_search(CPUState* cpu);
 
 void print_results(void *);
 void print_regstate(CPUState* cpu);
@@ -1344,6 +1345,206 @@ void brk_search(CPUState* cpu) {
 
     err = read_target_ulong(cpu, mm_addr + 280, &res);
     printf("brk: " TARGET_PTR_FMT "\n", res);
+
+    err = read_target_ulong(cpu, mm_addr + 288, &res);
+    printf("start_stack: " TARGET_PTR_FMT "\n", res);
+
+    res = ((CPUX86State*) cpu->env_ptr)->regs[4];
+    printf("rsp: " TARGET_PTR_FMT "\n", res);
+
+    err = read_target_ulong(cpu, mm_addr + 296, &res);
+    printf("arg_start: " TARGET_PTR_FMT "\n", res);
+
+    err = read_target_ulong(cpu, res, &res);
+    printf("--> %s\n", (char*) &res);
+
+    err = read_target_ulong(cpu, mm_addr + 296, &res);
+    printf("arg_start: " TARGET_PTR_FMT "\n", res);
+
+    err = read_target_ulong(cpu, res+8, &res);
+    printf("--> %s\n", (char*) &res);
+
+    int offset = 0;
+    while (offset < 2100) {
+        err = read_target_ulong(cpu, mm_addr + offset, &res);
+        if(err == -1) {
+            printf("couldn't read from mm\n");
+            break;
+        }
+
+        if(res >= 0x555555864000 && res <= 0x5555559fd000) {
+            printf("found valid num " TARGET_PTR_FMT " at offset %d\n", res, offset);
+        }
+
+        offset += 4;
+    }
+
+    offset = 0;
+    while(offset < 2100) {
+        err = read_target_ulong(cpu, mm_addr + offset, &res);
+        if(err == -1) {
+            printf("couldn't read from mm\n");
+            break;
+        }
+
+        if(res >= 0x7ffffffde000 && res <= 0x7ffffffff000) {
+            printf("found stack addr " TARGET_PTR_FMT " at offset %d\n", res, offset);
+        }
+
+        offset += 4;
+    }
+
+    printf("finished!\n");
+}
+
+void arg_start_search(CPUState* cpu) {
+    target_ulong mm_addr = 0;
+    target_ulong res = 0;
+    uint8_t data[64] = {0};
+
+    //refresh current
+    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err == -1) printf("couldn't read current\n");
+    current = res;
+    printf("current: " TARGET_PTR_FMT "\n", current);
+
+    err = read_target_ulong(cpu, current + task_mm_offset, &mm_addr);
+    if(err == -1) printf("couldn't read the mm addr\n");
+    printf("mm_addr: " TARGET_PTR_FMT "\n", res);
+
+    err = read_target_ulong(cpu, mm_addr + 296, &res);
+    printf("arg_start " TARGET_PTR_FMT "\n", res);
+
+    err = read_target_ulong(cpu, mm_addr + 288, &res);
+    printf("start_stack " TARGET_PTR_FMT "\n", res);
+
+    std::vector<target_ulong> bases;
+    get_all_proc_base_addrs(cpu, bases);
+
+//    int offset = 0;
+//    while(offset < 400) {
+//        memset(data, 0, 64);
+//
+//        err = read_target_ulong(cpu, mm_addr + offset, &res);
+//
+//        err = panda_virtual_memory_read(cpu, res, data, 16);
+//        if(err == -1) {
+//            printf("couldn't read at offset %d\n", offset);
+//            offset += 4;
+//            continue;
+//        }
+//        printf("%d str: %s\n", offset, (char*) data);
+//
+//
+//        offset += 4;
+//    }
+
+
+    for(int i = 0; i < bases.size(); i++) {
+        memset(data, 0, 64);
+        err = panda_virtual_memory_read(cpu, bases[i] + task_comm_offset, data, 16);
+        if(err == -1) {
+            printf("couldn't read comm\n");
+            continue;
+        }
+        printf("proc: %s\n", (char*) data);
+
+        err = read_target_ulong(cpu, bases[i] + task_mm_offset, &mm_addr);
+        if(err == -1) {
+            printf("couldn't read mm_addr\n");
+            continue;
+        }
+
+        memset(data, 0, 64);
+
+        err = panda_virtual_memory_read(cpu, mm_addr + 296, data, 64);
+
+        for(int j = 0; j < 64; j++) {
+            if (j % 8 == 0 && j != 0) {
+                printf(" ");
+            }
+            printf("%02hhx", data[j]);
+        }
+        printf("\n");
+
+        err = read_target_ulong(cpu, mm_addr + 320, &res);
+        if(err == -1) {
+            printf("couldn't read from arg_start\n");
+            continue;
+        }
+
+        err = panda_virtual_memory_read(cpu, res, data, 64);
+        for(int j = 0; j < 64; j++) {
+            printf("%c", data[j]);
+            if (j % 8 == 0 && j != 0) {
+                printf(" ");
+            }
+        }
+        printf("\n");
+
+
+    }
+
+//    int offset = 8;
+//    int len = 0;
+//    target_ulong tmp_addr = 0;
+//    while(offset < 300) { //reset this to 2100
+//        len = 0;
+//        err = read_target_ulong(cpu, mm_addr + offset, &tmp_addr);
+//        if(err == -1) {
+//            printf("couldn't read from the mm_struct\n");
+//            break;
+//        }
+//
+//        err = read_target_ulong(cpu, tmp_addr, &res);
+//        if(err == -1) {
+//            printf("couldn't read the second dereference\n");
+//            offset += 4;
+//            continue;
+//        }
+//
+//        err = panda_virtual_memory_read(cpu, tmp_addr, data, 16);
+//        if(err == -1) printf("VERY BAD\n");
+//
+//        printf("FROM READ: %s\n", (char*) data);
+//
+//        len = strlen((char*) &res);
+//
+//        printf("len is %d at offset %d\n", len, offset);
+//        printf("--> %s\n", (char*) &res);
+//
+//        err = read_target_ulong(cpu, tmp_addr + 8, &res);
+//        if(err == -1) {
+//            printf("couldn't read the third dereference\n");
+//            offset += 4;
+//            continue;
+//        }
+//
+//        len = strlen((char*) &res);
+//
+//        printf("len is %d at offset %d\n", len, offset);
+//        printf("--> %s\n", (char*) &res);
+//
+//        err = read_target_ulong(cpu, tmp_addr + 16, &res);
+//        if(err == -1) {
+//            printf("couldn't read the fourth dereference\n");
+//            offset += 4;
+//            continue;
+//        }
+//
+//        len = strlen((char*) &res);
+//
+//        printf("len is %d at offset %d\n", len, offset);
+//        printf("--> %s\n", (char*) &res);
+//
+//
+//
+//        offset += 4;
+//    }
+//
+//    panda_virtual_memory_read(cpu, current + task_comm_offset, data, 16);
+//    printf("comm: %s\n", (char*) data);
+
 }
 
 
@@ -1762,6 +1963,7 @@ void time_of_day_return(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz
                 std::cout << "\n" << maps << std::endl;
                 mmap_search(cpu);
                 brk_search(cpu);
+                arg_start_search(cpu);
             }
 
 
