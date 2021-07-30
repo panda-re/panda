@@ -54,7 +54,7 @@ CollectedMappingSlice = collections.namedtuple('CollectedMappingSlice', ['Instru
 CollectedMapping = collections.namedtuple('CollectedMapping', ['Name', 'File', 'BaseAddress', 'Size'])
 BetterCollectedMapping = collections.namedtuple('BetterCollectedMapping', ['AddressSpaceId', 'Process', 'Name', 'File', 'BaseAddress', 'Size'])
 CollectedCodePoint = collections.namedtuple('CollectedCodePoint', ['Mapping', 'Offset'])
-CollectedSyscall = collections.namedtuple('CollectedSyscall', ['Name', 'RetVal', 'Thread', 'InstructionCount', 'Arguments'])
+CollectedSyscall = collections.namedtuple('CollectedSyscall', ['Name', 'RetVal', 'Thread', 'InstructionCount', 'Arguments', 'ProgramCounter'])
 CollectedSyscallArgument = collections.namedtuple('CollectedSyscallArgument', ['Name', 'Type', 'Value'])
 CollectedTaintFlow = collections.namedtuple('CollectedTaintFlow', ['IsStore', 'SourceCodePoint', 'SourceThread', 'SourceInstructionCount', 'SinkCodePoint', 'SinkThread', 'SinkInstructionCount'])
 
@@ -240,7 +240,7 @@ def ConvertTaintFlowsAndSyscallsToDatabase(datastore, CollectedSyscalls, Collect
         for a in s.Arguments:
             args.append({'name': a.Name, 'type': a.Type, 'value': a.Value})
         if s.Thread in CollectedThreadToDatabaseThread:
-            CollectedSyscallToDatabaseSyscall[s] = datastore.new_syscall(CollectedThreadToDatabaseThread[s.Thread], s.Name, s.RetVal, args, s.InstructionCount)
+            CollectedSyscallToDatabaseSyscall[s] = datastore.new_syscall(CollectedThreadToDatabaseThread[s.Thread], s.Name, s.RetVal, args, s.InstructionCount, s.ProgramCounter)
 
     for tf in CollectedTaintFlows:
         src_thread = CollectedThreadToDatabaseThread[tf.SourceThread]
@@ -292,7 +292,8 @@ def CollectTaintFlowsAndSyscalls(pandalog, CollectedBetterMappingRanges):
             Arguments=tuple(
                 CollectedSyscallArgument(*syscall_arg_value(arg))
                 for arg in msg.args
-            )
+            ),
+            ProgramCounter=entry.pc
         ))
         return
     def CollectFrom_taint_flow(entry, msg):
