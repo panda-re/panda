@@ -1,7 +1,7 @@
-use pyo3::prelude::*;
-use panda::prelude::*;
 use inline_python::python;
 use once_cell::sync::OnceCell;
+use panda::prelude::*;
+use pyo3::prelude::*;
 
 use std::ffi::{CStr, CString};
 use std::path::PathBuf;
@@ -33,7 +33,10 @@ fn init(_: &mut PluginHandle) -> bool {
     let plugin_self_path = executable_dir().join("panda/plugins/panda_snake_hook.so");
 
     if !plugin_self_path.exists() {
-        panic!("[snake_hook] snake_hook not found at '{}'", plugin_self_path.display());
+        panic!(
+            "[snake_hook] snake_hook not found at '{}'",
+            plugin_self_path.display()
+        );
     }
 
     // 'Reload' self in order to ensure this plugin is set as RTLD_GLOBAL, as this is necessary
@@ -42,12 +45,15 @@ fn init(_: &mut PluginHandle) -> bool {
     unsafe {
         let handle = libc::dlopen(
             plugin_self_path.as_ptr(),
-            libc::RTLD_NOLOAD | libc::RTLD_GLOBAL | libc::RTLD_NOW
+            libc::RTLD_NOLOAD | libc::RTLD_GLOBAL | libc::RTLD_NOW,
         );
 
         if handle.is_null() {
             let err = CStr::from_ptr(libc::dlerror());
-            println!("[snake_hook] Error making snake_hook global dylib: {:?}", err);
+            println!(
+                "[snake_hook] Error making snake_hook global dylib: {:?}",
+                err
+            );
         }
     }
 
