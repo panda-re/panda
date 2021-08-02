@@ -1175,8 +1175,8 @@ void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
     taint_log_labels(shad_src, addr_src, size);
     concolic_copy(shad_dest, addr_dest, shad_src, addr_src, size, 0, 0, {});
     // Taint propagation notifications.
-    Addr dest_addr = get_addr_from_shad(shad_dest, dest);
-    Addr src_addr = get_addr_from_shad(shad_src, src);
+    Addr dest_addr = get_addr_from_shad(shad_dest, addr_dest);
+    Addr src_addr = get_addr_from_shad(shad_src, addr_src);
     PPP_RUN_CB(on_taint_prop, dest_addr, src_addr, size);
 }
 
