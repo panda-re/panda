@@ -120,6 +120,7 @@ void pgd_search(CPUState* cpu);
 void mmap_search(CPUState* cpu);
 void brk_search(CPUState* cpu);
 void arg_start_search(CPUState* cpu);
+void vm_mm_search(CPUState* cpu);
 
 void print_results(void *);
 void print_regstate(CPUState* cpu);
@@ -193,7 +194,7 @@ uint64_t mm_brk_offset = 0;
 //uint64_t mm_start_stack_offset = 0;       - TODO
 
 //uint64_t vma_size = 0;                    - TODO
-//uint64_t vma_vm_mm_offset = 0;            - TODO
+uint64_t vma_vm_mm_offset = 0;
 uint64_t vma_vm_start_offset = 0;
 uint64_t vma_vm_end_offset = 0;
 //uint64_t vma_vm_next_offset = 0;          - TODO
@@ -1771,6 +1772,70 @@ void arg_start_search(CPUState* cpu) {
 
 }
 
+void vm_mm_search(CPUState* cpu) {
+    target_ulong res = 0;
+    target_ulong mm_addr = 0;
+    target_ulong vma_addr = 0;
+
+    printf("\nsearching for vm_mm...\n");
+
+    //refresh current
+    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err == -1) printf("couldn't read current\n");
+    current = res;
+    printf("current: " TARGET_PTR_FMT "\n", current);
+
+
+    //get mm_addr
+    err = read_target_ulong(cpu, current + task_mm_offset, &mm_addr);
+    if(err == -1) {
+        printf("couldn't read mm_addr\n");
+        return;
+    }
+    printf("mm_addr: " TARGET_PTR_FMT "\n", mm_addr);
+
+
+
+    //get vma addr
+    err = read_target_ulong(cpu, mm_addr + mm_mmap_offset, &vma_addr);
+    if(err == -1) {
+        printf("couldn't read vma addr\n");
+        return;
+    }
+
+
+    //scan vma for mm_addr
+    int offset = 0;
+    std::vector<int> candidates;
+    while(offset < 250) {
+        err = read_target_ulong(cpu, vma_addr + offset, &res);
+        if(err == -1) {
+            printf("couldn't read from the vma!\n");
+            offset += 4;
+            continue;
+        }
+
+        if(res == mm_addr) {
+            printf("found mm_addr at offset %d\n", offset);
+            candidates.push_back(offset);
+        }
+
+        offset += 4;
+    }
+
+    if(candidates.size() == 1) {
+        vma_vm_mm_offset = candidates[0];
+        printf("vm_mm_offset: %lu\n", vma_vm_mm_offset);
+    } else if(candidates.size() > 1) {
+        printf("found too many solutions\n");
+        return;
+    } else if(candidates.size() < 1) {
+        printf("found too few solutions\n");
+        return;
+    }
+
+}
+
 
 bool translate_callback(CPUState* cpu, target_ulong pc){
 //    if (phase1 && in_syscall) {
@@ -2121,13 +2186,14 @@ void time_of_day_return(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz
         thread_group_search(cpu);
         pgd_search(cpu);
         arg_start_search(cpu);
+        vm_mm_search(cpu);
         //stack_search(cpu);
 
         //print_results();
 
         in_syscall = false;
         phase4 = false;
-        phase5 = true;
+        //phase5 = true;
     } else if (phase5) {
         printf("phase 5: returning from gettimeofday\n");
         in_syscall = false;
