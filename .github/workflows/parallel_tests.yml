@@ -63,6 +63,24 @@ jobs:
         echo -e '\nFailures:';
         if grep 'fail' taint2_log; then echo 'TEST FAILED!' && exit 1; else echo -e 'None.\nTEST PASSED!' && exit 0; fi"
 
+  sym_trace_tests:
+    if: github.repository  == 'panda-re/panda'
+    runs-on: self-hosted
+    needs: [build_container]
+
+    strategy:
+      matrix:
+        target: [i386, x86_64]
+
+    steps:
+    # Given a container with PANDA installed at /panda, run the taint tests
+    - name: Run symbolic tracing tests inside current container
+      run: >-
+        docker run --name panda_test_${{ matrix.target }}_${GITHUB_RUN_ID}
+        --rm -t "panda_local_${{ github.sha }}" bash -c
+        "python3 /panda/python/examples/unicorn/taint_sym_x86_64.py 2>&1 |tee sym.log;
+        if grep 'Path constraint' sym.log; then echo -e 'None.\nTEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
+
   make_check:
     if: github.repository  == 'panda-re/panda'
     runs-on: self-hosted
@@ -85,7 +103,7 @@ jobs:
 
   cleanup:
     # Cleanup after prior jobs finish - even if they fail
-    needs: [taint_tests, make_check]
+    needs: [taint_tests, sym_trace_tests, make_check]
     runs-on: self-hosted
     if: always()
 
