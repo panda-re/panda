@@ -21,7 +21,7 @@ extern "C" {
  * arguments, return address) to prepare for handling the respective
  * system call return callbacks.
  */
-void syscall_enter_switch_linux_x86(CPUState *cpu, target_ptr_t pc, int static_callno) {
+void syscall_enter_switch_linux_x86(CPUState *cpu, target_ulong tb_pc, target_ptr_t pc, int static_callno) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 	syscall_ctx_t ctx = {0};
@@ -5093,7 +5093,7 @@ void syscall_enter_switch_linux_x86(CPUState *cpu, target_ptr_t pc, int static_c
 	PPP_RUN_CB(on_all_sys_enter, cpu, pc, ctx.no);
 	PPP_RUN_CB(on_all_sys_enter2, cpu, pc, call, &ctx);
 	if (!panda_noreturn) {
-		running_syscalls[std::make_pair(ctx.retaddr, ctx.asid)] = ctx;
+		running_syscalls[std::make_pair(tb_pc, ctx.asid)] = ctx;
 	}
 #endif
 }

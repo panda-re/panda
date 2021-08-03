@@ -150,6 +150,12 @@ TCGOp *find_first_guest_insn(void);
  */
 TCGOp *find_guest_insn_by_addr(target_ulong addr);
 
+/**
+ * Search the TCG context for the guest instruction marker and find the first
+ * after the given instruction.
+ */
+TCGOp *find_guest_insn_after_addr(target_ulong addr);
+
 
 /* 
 *  Search the TCG context for the last guest instruction marker and return
