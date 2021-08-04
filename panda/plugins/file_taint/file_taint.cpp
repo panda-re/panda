@@ -49,6 +49,7 @@ static bool positional = false;
 static uint32_t static_label = 0xF11E;
 static bool verbose = false;
 static bool pread_bits_64 = false;
+static bool use_symbolic_label = false;
 
 // Number of bytes tainted, used for the max_byte_count option.
 static uint64_t tainted_byte_count = 0;
@@ -181,6 +182,8 @@ void read_return(uint64_t file_id, uint64_t bytes_read,
                 file_pos, buffer_addr + i);
             if (positional) {
                 taint2_label_ram(RamOffset, file_pos);
+                if (use_symbolic_label)
+                    taint2_sym_label_ram(RamOffset, file_pos);
             } else {
                 taint2_label_ram(RamOffset, static_label);
             }
@@ -405,6 +408,8 @@ bool init_plugin(void *self)
                                             "maximum number of bytes to taint");
     positional = panda_parse_bool_opt(args, "pos",
                                       "enable or disable positional labels");
+    use_symbolic_label = panda_parse_bool_opt(args, "sym",
+                                              "mark data with symbolic labels too (only work with \"pos\" option)");
     static_label = panda_parse_uint32_opt(
         args, "label", 0xF11E, "the label to use (for non-positional labels)");
     verbose = panda_parse_bool_opt(args, "verbose", "enable verbose output");
