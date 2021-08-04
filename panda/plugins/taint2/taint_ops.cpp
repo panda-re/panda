@@ -872,8 +872,8 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
         val = (operands[0] ? operands[0] : operands[1])->getValue().getLimitedValue();
     }
     else {
-        std::cerr << "opcode: " << opcode << "\n";
-        std::cerr << "size: " << operands.size() << "\n";
+        CINFO(std::cerr << "opcode: " << opcode << "\n");
+        CINFO(std::cerr << "size: " << operands.size() << "\n");
     }
 
     switch (opcode) {
@@ -951,7 +951,7 @@ void taint_mix(Shad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
             break;
         }
         default:
-            llvm::errs() << "Untracked taint_mix opcode: " << opcode << "\n";
+            CINFO(llvm::errs() << "Untracked taint_mix opcode: " << opcode << "\n");
             break;
     }
 
