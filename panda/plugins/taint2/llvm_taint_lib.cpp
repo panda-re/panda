@@ -672,6 +672,29 @@ void PandaTaintVisitor::addInstructionDetailsToArgumentList(
     args.push_back(instruction_flags);
 
     switch(opc) {
+        
+        case llvm::Instruction::Call: {
+            Function *calledF = dyn_cast<CallInst>(&I)->getCalledFunction();
+            if (!calledF) {
+                args.push_back(zeroConst);
+                return;
+            }
+            switch (calledF->getIntrinsicID()) {
+                case Intrinsic::bswap:
+                // case Intrinsic::ceil:
+                // case Intrinsic::ctlz:
+                // case Intrinsic::cttz:
+                // case Intrinsic::fabs:
+                // case Intrinsic::floor:
+                // case Intrinsic::rint:
+                    args.push_back(const_uint64(I.getNumOperands()));
+                    break;
+                default:
+                    args.push_back(zeroConst);
+                    return;
+            }
+            break;  // outter switch
+        }  
         // If taint_ops aren't going to act on the operands, don't bother
         // passing them to the taint_ops function.
         case llvm::Instruction::Trunc:
@@ -689,7 +712,6 @@ void PandaTaintVisitor::addInstructionDetailsToArgumentList(
         case llvm::Instruction::FMul:
         case llvm::Instruction::FDiv:
         case llvm::Instruction::FRem:
-        case llvm::Instruction::Call:
         // case llvm::Instruction::ICmp:
         case llvm::Instruction::FCmp:
             args.push_back(zeroConst);

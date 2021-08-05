@@ -78,7 +78,7 @@ jobs:
       run: >-
         docker run --name panda_sym_test_${{ matrix.target }}_${GITHUB_RUN_ID}
         --rm -t "panda_local_${{ github.sha }}" bash -c
-        "python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py 2>&1 |tee sym.log;
+        "pip3 install capstone keystone-engine; python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py 2>&1 |tee sym.log;
         if grep 'Path constraint' sym.log; then echo -e 'None.\nTEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
 
   make_check:
