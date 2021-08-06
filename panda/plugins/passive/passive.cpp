@@ -121,8 +121,11 @@ void mmap_search(CPUState* cpu);
 void brk_search(CPUState* cpu);
 void arg_start_search(CPUState* cpu);
 void vm_mm_search(CPUState* cpu);
+void vma_vm_next_search(CPUState* cpu);
+void vma_vm_flags_search(CPUState* cpu);
 
 void print_results(void *);
+void print_bits_target(target_ulong num);
 void print_regstate(CPUState* cpu);
 int read_target_ulong(CPUState* cpu, target_ulong addr, target_ulong* res);
 int read_uint64(CPUState* cpu, target_ulong addr, target_ulong* res);
@@ -130,6 +133,8 @@ int read_uint32(CPUState* cpu, target_ulong addr, target_ulong* res);
 int read_register(CPUState* cpu, char* name, target_ulong* res);
 void write_register(CPUState* cpu, target_ulong val);
 void get_all_proc_base_addrs(CPUState* cpu, std::vector<target_ulong>&);
+void get_all_vma_base_addrs(CPUState* cpu, std::vector<target_ulong>&);
+void get_all_expected_flags(CPUState* cpu, std::vector<target_ulong>&);
 //void stack_search(CPUState* cpu);
 //void execve_enter(CPUState* cpu, target_ulong pc, uint64_t filename, uint64_t argv, uint64_t envp);
 }
@@ -197,8 +202,8 @@ uint64_t mm_brk_offset = 0;
 uint64_t vma_vm_mm_offset = 0;
 uint64_t vma_vm_start_offset = 0;
 uint64_t vma_vm_end_offset = 0;
-//uint64_t vma_vm_next_offset = 0;          - TODO
-//uint64_t vma_vm_flags_offset = 0;         - TODO
+uint64_t vma_vm_next_offset = 0;
+uint64_t vma_vm_flags_offset = 0;
 //uint64_t vma_vm_file_offset = 0;          - TODO
 
 //uint64_t fs_f_path_dentry_offset = 0;     - TODO
@@ -345,6 +350,102 @@ void get_all_proc_base_addrs(CPUState* cpu, std::vector<target_ulong>& addrs) {
     printf("size: %lu\n", addrs.size());
 }
 
+void get_all_vma_base_addrs(CPUState* cpu, std::vector<target_ulong>& addrs) {
+    target_ulong res = 0;
+    target_ulong mm_addr = 0;
+    target_ulong vma_addr = 0;
+    target_ulong next_vma_addr = 0;
+
+    printf("\ngetting all vma base addrs...\n");
+
+    //refresh current
+    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err == -1) printf("couldn't read current\n");
+    current = res;
+    printf("current: " TARGET_PTR_FMT "\n", current);
+
+    //get mm_addr
+    err = read_target_ulong(cpu, current + task_mm_offset, &mm_addr);
+    if(err == -1) {
+        printf("couldn't read mm_addr\n");
+        return;
+    }
+    printf("mm_addr: " TARGET_PTR_FMT "\n", mm_addr);
+
+    //get vma addr
+    err = read_target_ulong(cpu, mm_addr + mm_mmap_offset, &vma_addr);
+    if(err == -1) {
+        printf("couldn't read vma addr\n");
+        return;
+    }
+
+    addrs.push_back(vma_addr);
+
+    err = read_target_ulong(cpu, vma_addr + vma_vm_next_offset, &next_vma_addr);
+    if(err == -1) {
+        printf("couldn't read next vma addr\n");
+        return;
+    }
+    addrs.push_back(next_vma_addr);
+
+    while(next_vma_addr != 0) {
+        err = read_target_ulong(cpu, next_vma_addr + vma_vm_next_offset, &next_vma_addr);
+        if(err == -1) {
+            printf("main loop: couldn't read next vma addr\n");
+            break;
+        }
+
+        if(next_vma_addr != 0) addrs.push_back(next_vma_addr);
+
+    }
+
+    //printf("size: %lu\n", addrs.size());
+
+    //for(int i = 0; i < addrs.size(); i++) {
+    //    printf("%d: " TARGET_PTR_FMT "\n", i, addrs[i]);
+    //}
+    //printf("\n");
+}
+
+void get_all_expected_flags(CPUState* cpu, std::vector<target_ulong>& expecteds) {
+    printf("getting all expected flag vals...\n");
+
+    std::string map_copy = maps.c_str();
+    std::string flags;
+    int pos = 0;
+    int count = 0;
+
+    while(map_copy.size() > 3 && count < 300) {
+        pos = map_copy.find(" ");
+        map_copy.erase(0, pos + 1);
+        pos = map_copy.find(" ");
+        flags = map_copy.substr(0, pos);
+        pos = map_copy.find("\n");
+        map_copy.erase(0, pos + 1);
+
+        //VM_READ  == 0x1
+        //VM_WRITE == 0x2
+        //VM_EXEC  == 0x4
+        target_ulong expected = 0;
+        if(flags[0] == 'r') expected = expected | 0x1;
+        if(flags[1] == 'w') expected = expected | 0x2;
+        if(flags[2] == 'x') expected = expected | 0x4;
+
+        expecteds.push_back(expected);
+        //std::cout << count << " " << flags << " " << expected << std::endl;
+
+        //if(count > 50) {
+        //    printf("size %lu, MAP_COPY:\n", map_copy.size());
+        //    std::cout << map_copy << std::endl;            
+        //}
+        count += 1;
+    }
+
+//    printf("map_copy:\n");
+//    std::cout << map_copy << std::endl;
+
+}
+
 //made this for demo, delete later
 void print_results() {
     printf("\n\n***** RESULTS *****\n");
@@ -372,6 +473,19 @@ void print_results() {
     printf("cred_egid_offset %lu\n", cred_egid_offset);
 
     printf("\nmm_pgd_offset %lu\n", mm_pgd_offset);
+}
+
+void print_bits_target(target_ulong num) {
+    for(int i = 0; i < 64; i++) {
+        if((num & 1) == 1){
+            printf("%c", '1');
+        } else {
+            printf("%c", '0');
+        }
+
+        num = num << 1;
+    }
+
 }
 
 void print_regstate(CPUState* cpu) {
@@ -1836,6 +1950,213 @@ void vm_mm_search(CPUState* cpu) {
 
 }
 
+void vma_vm_next_search(CPUState* cpu) {
+    target_ulong res = 0;
+    target_ulong mm_addr = 0;
+    target_ulong vma_addr = 0;
+
+    printf("\nsearching for vma_vm_next...\n");
+
+    //refresh current
+    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err == -1) printf("couldn't read current\n");
+    current = res;
+    printf("current: " TARGET_PTR_FMT "\n", current);
+
+    //get mm addr
+    err = read_target_ulong(cpu, current + task_mm_offset, &mm_addr);
+    if(err == -1) {
+        printf("couldn't read mm_addr\n");
+        return;
+    }
+    printf("mm_addr: " TARGET_PTR_FMT "\n", mm_addr);
+
+    //get vma addr
+    err = read_target_ulong(cpu, mm_addr + mm_mmap_offset, &vma_addr);
+    if(err == -1) {
+        printf("couldn't read vma addr\n");
+        return;
+    }
+    printf("vma_addr: " TARGET_PTR_FMT "\n", vma_addr);
+
+    std::string map_copy = maps.c_str();
+    int pos = map_copy.find("\n");
+    map_copy.erase(0, pos+1);
+
+    pos = map_copy.find("-");
+    std::string low_str = map_copy.substr(0, pos);
+    std::cout << "low str: " << low_str << std::endl;
+    map_copy.erase(0, pos+1);
+    pos = map_copy.find(" ");
+    std::string hi_str = map_copy.substr(0, pos);
+    std::cout << "hi str: " << hi_str << std::endl;
+
+    uint64_t low_int = strtoll(low_str.c_str(), NULL, 16);
+    uint64_t hi_int = strtoll(hi_str.c_str(), NULL, 16);
+
+    printf("low_int: %lu - %lx\n", low_int, low_int);
+    printf("hi_int: %lu - %lx\n", hi_int, hi_int);
+
+    int offset = 0;
+    bool found = false;
+
+    while(offset < 250) {
+        target_ulong next_vma_addr;
+        target_ulong next_vma_start;
+        target_ulong next_vma_end;
+
+        err = read_target_ulong(cpu, vma_addr + offset, &next_vma_addr);
+        if(err == -1) {
+            printf("couldn't read next vma addr\n");
+            break;
+        }
+        printf("next vma addr: " TARGET_PTR_FMT "\n", next_vma_addr);
+
+        err = read_target_ulong(cpu, next_vma_addr + vma_vm_start_offset, &next_vma_start);
+        if(err == -1) {
+            printf("couldn't read vma_start from the next vma\n");
+            offset += 4;
+            continue;
+        }
+        printf("next vma start: " TARGET_PTR_FMT "\n", next_vma_start);
+
+        err = read_target_ulong(cpu, next_vma_addr + vma_vm_end_offset, &next_vma_end);
+        if(err == -1) {
+            printf("couldn't read vma_ent from the next vma\n");
+            offset += 4;
+            continue;
+        }
+        printf("next vma end: " TARGET_PTR_FMT "\n", next_vma_end);
+
+        if(next_vma_start == low_int && next_vma_end == hi_int) {
+            found = true;
+            printf("found matches!\n");
+            break;
+        }
+
+        offset += 4;
+    }
+
+    if(found) {
+        vma_vm_next_offset = offset;
+        printf("vma_vm_next_offset: %lu\n", vma_vm_next_offset);
+    }
+
+}
+
+void vma_vm_flags_search(CPUState* cpu) {
+    target_ulong res = 0;
+    target_ulong mm_addr = 0;
+    target_ulong vma_addr = 0;
+
+    printf("\nsearching for vma_vm_flags...\n");
+
+    //refresh current
+    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err == -1) printf("couldn't read current\n");
+    current = res;
+    printf("current: " TARGET_PTR_FMT "\n", current);
+
+    err = read_target_ulong(cpu, current + task_mm_offset, &mm_addr);
+    if(err == -1) {
+        printf("couldn't read mm_addr\n");
+        return;
+    }
+    printf("mm_addr: " TARGET_PTR_FMT "\n", mm_addr);
+
+    //get vma addr
+    err = read_target_ulong(cpu, mm_addr + mm_mmap_offset, &vma_addr);
+    if(err == -1) {
+        printf("couldn't read vma addr\n");
+        return;
+    }
+
+//    int offset = 80;
+//    err = read_target_ulong(cpu, vma_addr + offset, &res);
+//    if(err == -1) {
+//        printf("couldn't read at offset %d\n", offset);
+//        return;
+//    }
+//    printf("vma_vm_flags: " TARGET_PTR_FMT "\n", res);
+    //print_bits_target(res);
+    //printf("\n");
+
+    std::string map_copy = maps.c_str();
+    int pos = map_copy.find(" ");
+    map_copy.erase(0, pos+1);
+
+    std::string permissions = map_copy.substr(0, map_copy.find(" "));
+
+    //std::cout << "perms: " << permissions << std::endl;
+
+
+    //VM_READ  == 0x1
+    //VM_WRITE == 0x2
+    //VM_EXEC  == 0x4
+    target_ulong expected = 0;
+    if(permissions[0] == 'r') expected = expected | 0x1;
+    if(permissions[1] == 'w') expected = expected | 0x2;
+    if(permissions[2] == 'x') expected = expected | 0x4;
+
+    //if((res & 0x7) == expected) printf("holy shit it works\n");
+
+    int offset = 0;
+    bool broke = false;
+
+    std::vector<target_ulong> addrs;
+    std::vector<target_ulong> expecteds;
+    std::vector<int> matches;
+    get_all_vma_base_addrs(cpu, addrs);
+    get_all_expected_flags(cpu, expecteds);
+
+    //printf("vma list size: %lu   flags list size: %lu\n", addrs.size(), expecteds.size());
+
+    while(offset < 250) {
+        err = read_target_ulong(cpu, vma_addr + offset, &res);
+        if(err == -1) {
+            printf("couldn't read from the vma\n");
+            break;
+        }
+
+        if((res & 0x7) == expected) {
+            printf("potential match found at offset %d\n", offset);
+
+
+            broke = false;
+            for(int i = 0; i < expecteds.size()/2; i++) {
+                err = read_target_ulong(cpu, addrs[i] + offset, &res);
+                if(err == -1) {
+                    printf("inner loop: couldn't read from the vma\n");
+                    break;
+                }
+                if(!((res & 0x7) == expecteds[i])) {
+                    printf("didn't match! breaking\n");
+                    broke = true;
+                    break;
+                }
+            }
+
+            if(!broke) {
+                printf("found a match at offset %d\n", offset);
+                matches.push_back(offset);
+            }
+        }
+
+        offset += 4;
+    }
+
+    if(matches.size() == 1) {
+        vma_vm_flags_offset = matches[0];
+        printf("vma_vm_flags_offset: %lu\n", vma_vm_flags_offset);
+    } else if(matches.size() == 0) {
+        printf("found no solutions\n");
+        return;
+    } else {
+        printf("found too many solutions\n");
+        return;
+    }
+}
+
 
 bool translate_callback(CPUState* cpu, target_ulong pc){
 //    if (phase1 && in_syscall) {
@@ -2193,7 +2514,7 @@ void time_of_day_return(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz
 
         in_syscall = false;
         phase4 = false;
-        //phase5 = true;
+        phase5 = true;
     } else if (phase5) {
         printf("phase 5: returning from gettimeofday\n");
         in_syscall = false;
@@ -2254,6 +2575,8 @@ void time_of_day_return(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz
                 std::cout << "\n" << maps << std::endl;
                 mmap_search(cpu);
                 brk_search(cpu);
+                vma_vm_next_search(cpu);
+                vma_vm_flags_search(cpu);
             }
 
 
