@@ -91,6 +91,16 @@ else
   exit 1
 fi
 
+# Because libz3-dev for Ubuntu 18 is really old, we download and install z3 github release v-4.8.7
+if [ "$version" -eq 18 ]; then
+  echo "Installing z3 on Ubuntu 18"
+  wget https://github.com/Z3Prover/z3/releases/download/z3-4.8.7/z3-4.8.7-x64-ubuntu-16.04.zip -O z3-4.8.7-x64-ubuntu-16.04.zip
+  unzip z3-4.8.7-x64-ubuntu-16.04.zip
+  $SUDO cp -r z3-4.8.7-x64-ubuntu-16.04/* /usr/local/
+  rm -rf z3-4.8.7-x64-ubuntu-16.04
+  rm z3-4.8.7-x64-ubuntu-16.04.zip
+fi
+
 # PyPANDA needs CFFI from pip (the version in apt is too old)
 # Install system-wide since PyPANDA install will also be system-wide
 $SUDO python3 -m pip install pip
