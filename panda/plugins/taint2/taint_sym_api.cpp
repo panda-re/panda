@@ -52,6 +52,50 @@ z3::expr *taint2_sym_query_expr(Addr a) {
     return (z3::expr *) taint2_sym_query(a);
 }
 
+void expr_to_string(z3::expr *expr, uint32_t *n, char** strptr) {
+    std::stringstream ss;
+    z3::solver solver(context);
+    solver.add(*expr == *expr);
+    ss << solver;
+    std::string cppstr = ss.str();
+    // std::cerr << "cppstr: " << cppstr << std::endl;
+    size_t size = cppstr.length() + 1;
+    char *str = (char*) malloc(size);
+    strncpy(str, cppstr.c_str(), size);
+    *n = size;
+    *strptr = str;
+}
+
+z3::expr bytes_to_expr(Shad *shad, uint64_t src, uint64_t size,
+        uint64_t concrete, bool* symbolic);
+
+void cpu_physical_memory_read(hwaddr, void*, int);
+void taint2_sym_query_ram(uint64_t RamOffset, uint32_t size, uint32_t *n, char** strptr) {
+    bool symbolic = false;
+    uint64_t concrete = 0;
+    if(!symexEnabled) return;
+    assert(shadow);
+    assert(size <= 8);
+    *n = 0;
+    // Get concrete value for memory
+    cpu_physical_memory_read((hwaddr)RamOffset, (void*)&concrete, size);
+    auto expr = bytes_to_expr(&shadow->ram, RamOffset, size, concrete, &symbolic);
+    if (symbolic)
+        expr_to_string(&expr, n, strptr);
+}
+
+void taint2_sym_query_reg(uint32_t reg_num, uint32_t *n, char** strptr) {
+    bool symbolic = false;
+    uint64_t concrete = 0;
+    if(!symexEnabled) return;
+    assert(shadow);
+    *n = 0;
+    // Get concrete value for reg
+    concrete = ((CPUArchState*)current_cpu->env_ptr)->regs[reg_num];
+    auto expr = bytes_to_expr(&shadow->grv, reg_num * sizeof(target_ulong), sizeof(target_ulong), concrete, &symbolic);
+    if (symbolic)
+        expr_to_string(&expr, n, strptr);
+}
 
 void taint2_sym_label_ram(uint64_t RamOffset, uint32_t l) {
     if(!symexEnabled) taint2_enable_sym();

@@ -150,8 +150,12 @@ void taint2_sym_label_ram(uint64_t RamOffset, uint32_t l);
 // label this reg with label l, and only label l. any previous labels applied 
 // to this address are removed.
 void taint2_sym_label_reg(int reg_num, int offset, uint32_t l);
-// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
+void taint2_sym_query_ram(uint64_t RamOffset, uint32_t s, uint32_t *n, char** strptr);
+
+void taint2_sym_query_reg(uint32_t reg_num, uint32_t *n, char** strptr);
+
+// END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 // queries taint on this virtual addr and, if any taint there, writes
 // an entry to pandalog with lots of stuff like label set, taint
