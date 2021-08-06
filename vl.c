@@ -4447,8 +4447,11 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 
 #if defined(CONFIG_LLVM)
     if (generate_llvm == 1 || execute_llvm == 1){
+        printf("---- vl.c ---- tcg_llvm_translator CHECK if NULL");
         if (tcg_llvm_translator == NULL){
+            printf("---- vl.c ---- tcg_llvm_initialize STARTED");
             tcg_llvm_initialize();
+            printf("---- vl.c ---- tcg_llvm_initialize COMPLETE");
             generate_llvm = 2;
             execute_llvm = 2;
         }

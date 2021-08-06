@@ -681,10 +681,11 @@ void panda_enable_llvm(void) {
     panda_do_flush_tb();
     execute_llvm = 1;
     generate_llvm = 1;
-    tcg_llvm_initialize();
+    printf("status = 1");
     tcg_llvm_initialize();
     execute_llvm = 2;
     generate_llvm = 2;
+    printf("status = 2");
 }
 
 // Enable translating TCG -> LLVM, but still execute TCG
@@ -710,7 +711,7 @@ void panda_enable_llvm_helpers(void) {
     init_llvm_helpers();
 }
 
-// Disable LLVM helpers
+  // Disable LLVM helpers
 void panda_disable_llvm_helpers(void) {
     uninit_llvm_helpers();
 }
