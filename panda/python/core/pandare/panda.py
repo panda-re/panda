@@ -2,6 +2,7 @@
 This module simply contains the Panda class
 """
 
+from ctypes import sizeof
 from sys import version_info, exit
 
 if version_info[0] < 3:
@@ -1947,6 +1948,7 @@ class Panda():
         else:
             return None
 
+    # enables symbolic tracing
     def taint_sym_enable(self, cont=True):
         """
         Inform python that taint is enabled.
@@ -1975,18 +1977,79 @@ class Panda():
 
     # label all bytes in this register.
     # or at least four of them
+    # XXX label must increment by panda.register_size after the call
     def taint_sym_label_reg(self, reg_num, label):
         self.taint_sym_enable(cont=False)
-        #if debug:
-        #    progress("taint_reg reg=%d label=%d" % (reg_num, label))
-
         # XXX must ensure labeling is done in a before_block_invalidate that rets 1
         #     or some other safe way where the main_loop_wait code will always be run
         #self.stop()
         for i in range(self.register_size):
-            self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_sym_label_reg, [reg_num, i, label])
+            self.queue_main_loop_wait_fn(self.plugins['taint2'].taint2_sym_label_reg, [reg_num, i, label+i])
         self.queue_main_loop_wait_fn(self.libpanda.panda_cont, [])
+    
+    # Deserialize a z3 solver
+    # Lazy import z3. 
+    def string_to_solver(self, string: str):
+        from z3 import Solver
+        s = Solver()
+        s.from_string(string)
+        return s
 
+    # Get the first condition in serialized solver str
+    def string_to_condition(self, string: str):
+        s = self.string_to_solver(string)
+        asrts = s.assertions()
+        if len(asrts) == 0:
+            return None 
+        return asrts[0]
+
+    # Get the expr in serialized solver str
+    # (https://github.com/Z3Prover/z3/issues/2674) 
+    def string_to_expr(self, string: str):
+        eq = self.string_to_condition(string)
+        if eq and len(eq.children()) > 0:
+            return eq.children()[0]
+        return None
+
+    # Query the ram addr with given size
+    def taint_sym_query_ram(self, addr, size=1):
+        # Prepare ptr for returned string
+        somestr = b''
+        some_str_ffi = self.ffi.new('char[]', somestr)
+        str_ptr_ffi = self.ffi.new('char**', some_str_ffi)
+        # Prepare ptr for string size
+        n_ptr_ffi = self.ffi.new('uint32_t *', 0)
+
+        self.plugins['taint2'].taint2_sym_query_ram(addr, size, n_ptr_ffi, str_ptr_ffi)
+        # Unpack size
+        n = self.ffi.unpack(n_ptr_ffi, 1)[0]
+        if n == 0:
+            return None
+        # Unpack cstr
+        str_ptr = self.ffi.unpack(str_ptr_ffi, 1)[0]
+        str_bs = self.ffi.unpack(str_ptr, n)
+        expr_str = str(str_bs, 'utf-8')
+        return self.string_to_expr(expr_str)
+
+    # Query all bytes in this register.
+    def taint_sym_query_reg(self, addr):
+        # Prepare ptr for returned string
+        somestr = b''
+        some_str_ffi = self.ffi.new('char[]', somestr)
+        str_ptr_ffi = self.ffi.new('char**', some_str_ffi)
+        # Prepare ptr for string size
+        n_ptr_ffi = self.ffi.new('uint32_t *', 0)
+
+        self.plugins['taint2'].taint2_sym_query_reg(addr, n_ptr_ffi, str_ptr_ffi)
+        # Unpack size
+        n = self.ffi.unpack(n_ptr_ffi, 1)[0]
+        if n == 0:
+            return None
+        # Unpack cstr
+        str_ptr = self.ffi.unpack(str_ptr_ffi, 1)[0]
+        str_bs = self.ffi.unpack(str_ptr, n)
+        expr_str = str(str_bs, 'utf-8')
+        return self.string_to_expr(expr_str)
 
     ############ Volatility mixins
     """
