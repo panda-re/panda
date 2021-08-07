@@ -85,6 +85,9 @@ void taint2_sym_query_ram(uint64_t RamOffset, uint32_t size, uint32_t *n, char**
 }
 
 void taint2_sym_query_reg(uint32_t reg_num, uint32_t *n, char** strptr) {
+#if TARGET_MIPS || TARGET_PPC
+    assert(false && "Concolic tracing does not support mips and ppc");
+#else
     bool symbolic = false;
     uint64_t concrete = 0;
     if(!symexEnabled) return;
@@ -95,6 +98,7 @@ void taint2_sym_query_reg(uint32_t reg_num, uint32_t *n, char** strptr) {
     auto expr = bytes_to_expr(&shadow->grv, reg_num * sizeof(target_ulong), sizeof(target_ulong), concrete, &symbolic);
     if (symbolic)
         expr_to_string(&expr, n, strptr);
+#endif
 }
 
 void taint2_sym_label_ram(uint64_t RamOffset, uint32_t l) {
