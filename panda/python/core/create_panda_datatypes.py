@@ -550,8 +550,14 @@ def get_cbs(ffi):
             ("mipsel",32),
         ]
 
-        for arch in arches:
-            compile(arch[0], arch[1], pypanda_headers, install, INCLUDE_DIR_PYP)
+        from multiprocessing import Process
+        ps = (
+            Process(target=compile, args=(arch[0], arch[1], pypanda_headers, install, INCLUDE_DIR_PYP))
+            for arch in arches
+        )
+        [p.start() for p in ps]
+        [p.join() for p in ps]
+
 
 if __name__ == '__main__':
     main()
