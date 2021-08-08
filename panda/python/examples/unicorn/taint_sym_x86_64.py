@@ -96,6 +96,11 @@ def after(cpu, tb, rc):
         expr = panda.taint_sym_query_reg(reg_num)
         assert expr != None
         print("RDX symbolic value =>", expr)
+
+        # Get Path Constrains
+        pcs = panda.taint_sym_path_constraints()
+        assert len(pcs) > 0
+        print(pcs)
         os._exit(0) # TODO: we need a better way to stop here
 
 # Before every instruction, disassemble it with capstone

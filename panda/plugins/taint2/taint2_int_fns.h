@@ -155,6 +155,8 @@ void taint2_sym_query_ram(uint64_t RamOffset, uint32_t s, uint32_t *n, char** st
 
 void taint2_sym_query_reg(uint32_t reg_num, uint32_t *n, char** strptr);
 
+void taint2_sym_path_constraints(uint32_t *n, char** strptr);
+
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 // queries taint on this virtual addr and, if any taint there, writes

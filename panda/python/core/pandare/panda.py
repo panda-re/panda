@@ -2051,6 +2051,29 @@ class Panda():
         expr_str = str(str_bs, 'utf-8')
         return self.string_to_expr(expr_str)
 
+    def taint_sym_path_constraints(self):
+        # Prepare ptr for returned string
+        somestr = b''
+        some_str_ffi = self.ffi.new('char[]', somestr)
+        str_ptr_ffi = self.ffi.new('char**', some_str_ffi)
+        # Prepare ptr for string size
+        n_ptr_ffi = self.ffi.new('uint32_t *', 0)
+
+        self.plugins['taint2'].taint2_sym_path_constraints(n_ptr_ffi, str_ptr_ffi)
+        # Unpack size
+        n = self.ffi.unpack(n_ptr_ffi, 1)[0]
+        if n == 0:
+            return None
+        # Unpack cstr
+        str_ptr = self.ffi.unpack(str_ptr_ffi, 1)[0]
+        str_bs = self.ffi.unpack(str_ptr, n)
+        expr_str = str(str_bs, 'utf-8')
+        solver = self.string_to_solver(expr_str)
+        return solver.assertions() if solver != None else []
+
+
+
+
     ############ Volatility mixins
     """
     Utilities to integrate Volatility with PANDA. Highly experimental.
