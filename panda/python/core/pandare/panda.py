@@ -2063,7 +2063,7 @@ class Panda():
         # Unpack size
         n = self.ffi.unpack(n_ptr_ffi, 1)[0]
         if n == 0:
-            return None
+            return []
         # Unpack cstr
         str_ptr = self.ffi.unpack(str_ptr_ffi, 1)[0]
         str_bs = self.ffi.unpack(str_ptr, n)
@@ -2071,6 +2071,23 @@ class Panda():
         solver = self.string_to_solver(expr_str)
         return solver.assertions() if solver != None else []
 
+    def taint_sym_branch_meta(self):
+        branch_meta_ptr_ffi = self.ffi.new('SymbolicBranchMeta **')
+        n_ptr_ffi = self.ffi.new('uint32_t *', 0)
+
+        self.plugins['taint2'].taint2_sym_branch_meta(n_ptr_ffi, branch_meta_ptr_ffi)
+        # Unpack size
+        n = self.ffi.unpack(n_ptr_ffi, 1)[0]
+        if n == 0:
+            return []
+        meta_ptr = self.ffi.unpack(branch_meta_ptr_ffi, 1)[0]
+        metas_ffi = self.ffi.unpack(meta_ptr, n)
+        # Meta only has a pc field now
+        metas = [
+            hex(meta_ffi.pc)
+            for meta_ffi in metas_ffi
+        ]
+        return metas
 
 
 
