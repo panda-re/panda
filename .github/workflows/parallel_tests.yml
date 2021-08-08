@@ -70,7 +70,7 @@ jobs:
 
     strategy:
       matrix:
-        target: [i386, x86_64]
+        target: [x86_64]
 
     steps:
     # Given a container with PANDA installed at /panda, run the taint tests
@@ -78,8 +78,8 @@ jobs:
       run: >-
         docker run --name panda_sym_test_${{ matrix.target }}_${GITHUB_RUN_ID}
         --rm -t "panda_local_${{ github.sha }}" bash -c
-        "pip3 install capstone keystone-engine; python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py 2>&1 |tee sym.log;
-        if grep 'Path constraint' sym.log; then echo -e 'None.\nTEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
+        "pip3 install capstone keystone-engine z3-solver; python3 /panda/panda/python/examples/unicorn/taint_sym_x86_64.py;
+        if [ $? -eq 0 ]; then echo -e 'TEST PASSED!' && exit 0; else echo 'TEST FAILED!' && exit 1; fi"
 
   make_check:
     if: github.repository  == 'panda-re/panda'
