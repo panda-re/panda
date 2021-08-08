@@ -28,6 +28,7 @@
 #include "taint_defines.h"
 #include "addr.h"
 #include "query_res.h"
+#include "branch_meta.h"
 
 typedef const std::set<uint32_t> *LabelSetP;
 
