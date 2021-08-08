@@ -99,8 +99,10 @@ def after(cpu, tb, rc):
 
         # Get Path Constrains
         pcs = panda.taint_sym_path_constraints()
+        metas = panda.taint_sym_branch_meta()
         assert len(pcs) > 0
-        print(pcs)
+        assert len(pcs) == len(metas)
+        [print(meta,'\t', pc) for pc, meta in zip(pcs, metas)]
         os._exit(0) # TODO: we need a better way to stop here
 
 # Before every instruction, disassemble it with capstone

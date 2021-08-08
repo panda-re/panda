@@ -95,6 +95,11 @@ void taint2_sym_path_constraints(uint32_t *n, char** strptr) {
     solver_to_string(gsolver, n, strptr);
 }
 
+void taint2_sym_branch_meta(uint32_t *n, SymbolicBranchMeta** metas) {
+    *n = branches.size();
+    *metas = branches.data();
+}
+
 void taint2_sym_query_reg(uint32_t reg_num, uint32_t *n, char** strptr) {
 #if TARGET_MIPS || TARGET_PPC
     assert(false && "Concolic tracing does not support mips and ppc");
@@ -137,8 +142,9 @@ void reg_branch_pc(z3::expr condition, bool concrete) {
     if (pc.is_true() || pc.is_false())
         return;
 #endif
-
-    branches.push_back(SymbolicBranchMeta(current_pc));
+    auto sbm = SymbolicBranchMeta();
+    sbm.pc = current_pc;
+    branches.push_back(sbm);
     gsolver.add(pc);
 }
 
