@@ -1,6 +1,5 @@
 #ifndef __BRANCH_META_H__
 #define __BRANCH_META_H__
-#include "taint2.h"
 
 // BEGIN_PYPANDA_NEEDS_THIS -- do not delete this comment bc pypanda
 // api autogen needs it.  And don't put any compiler directives
