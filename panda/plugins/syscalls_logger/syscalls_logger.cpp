@@ -1038,11 +1038,13 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
                   // arg_ptr is the address of the string, now read it!
                   if (!argv_ptr) break;
 
-                  char this_arg[MAX_STRLEN];
-                  get_string(cpu, argv_ptr, (uint8_t*) &this_arg);
+                  char this_arg[MAX_STRLEN] = {0};
+                  int rv = get_string(cpu, argv_ptr, (uint8_t*) &this_arg);
 
-                  strncat(buffer, this_arg, buf_sz-strlen(buffer));
-                  strncat(buffer, " ", buf_sz-strlen(buffer)-1);
+                  if (rv) {
+                    strncat(buffer, this_arg, buf_sz-strlen(buffer));
+                    strncat(buffer, " ", buf_sz-strlen(buffer)-1);
+                  }
                 }
 
                 Panda__NamedData *sa = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
@@ -1053,7 +1055,7 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
                 sa->str = strdup(buffer);
                 //sa->has_str = true;
 
-                printf("EXECVE: %s\n", buffer);
+                //printf("EXECVE: %s\n", buffer);
                 free(buffer);
 
             }else{
