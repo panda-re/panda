@@ -1012,25 +1012,9 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
                 // 0x10c: 0
                 target_ulong argv_ptr = 0;
 
-                // Pass 1 - determine buffer size, include space for a space after each arg
-                size_t buf_sz = 0;
+                std::string args;
 
-                for (target_ulong argv = *((target_ulong *)rp->args[1]); argv != NULL; argv += sizeof(target_ulong)) {
-                  // Read the address of the string into argv_ptr
-                  panda_virtual_memory_read(cpu, argv, (uint8_t*)&argv_ptr, sizeof(target_ulong));
-                  // arg_ptr is the address of the string, now read it!
-                  if (!argv_ptr) break;
-
-                  char buf[MAX_STRLEN];
-                  buf_sz += get_string(cpu, argv_ptr, (uint8_t*) &buf) +  1; // space between arg
-                }
-
-
-                // Pass 2 - actually put them in the plog
-                char * buffer = (char*)malloc(sizeof(char)*buf_sz);
-                assert(buffer != NULL);
-                buffer[0] = 0;
-
+                bool first = true;
                 for (target_ulong argv = *((target_ulong *)rp->args[1]); argv != NULL; argv += sizeof(target_ulong)) {
                   // Read the address of the string into argv_ptr
                   panda_virtual_memory_read(cpu, argv, (uint8_t*)&argv_ptr, sizeof(target_ulong));
@@ -1038,14 +1022,14 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
                   if (!argv_ptr) break;
 
                   char this_arg[MAX_STRLEN] = {0};
-                  int rv = get_string(cpu, argv_ptr, (uint8_t*) &this_arg);
+                  get_string(cpu, argv_ptr, (uint8_t*) &this_arg);
 
-                  assert(strlen(buffer) + rv < MAX_STRLEN);
-
-                  if (rv) {
-                    strncat(buffer, this_arg, buf_sz-strlen(buffer));
-                    strncat(buffer, " ", buf_sz-strlen(buffer));
+                  if (!first) {
+                    args += " ";
                   }
+
+                  args += this_arg;
+                  first = false;
                 }
 
                 Panda__NamedData *sa = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
@@ -1053,11 +1037,10 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
                 psyscall.args[i] = sa;
                 *sa = PANDA__NAMED_DATA__INIT;
                 sa->arg_name = strdup("args");
-                sa->str = strdup(buffer);
+                sa->str = strdup(args.c_str());
                 //sa->has_str = true;
 
-                //printf("EXECVE: %s\n", buffer);
-                free(buffer);
+                printf("EXECVE: %s\n", args.c_str());
 
             }else{
               assert(0 &&  "This should be unreachable");
