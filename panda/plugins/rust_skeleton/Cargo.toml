@@ -8,7 +8,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-panda-re = { version = "0.6", default-features = false }
+panda-re = { version = "0.7", default-features = false }
 
 [features]
 default = ["x86_64"]

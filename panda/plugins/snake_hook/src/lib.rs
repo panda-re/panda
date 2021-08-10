@@ -85,24 +85,3 @@ fn uninit(_: &mut panda::PluginHandle) {
         'panda_obj.delete_callbacks()
     }
 }
-
-#[cfg(feature = "x86_64")]
-const ARCH: &str = "x86_64";
-
-#[cfg(feature = "i386")]
-const ARCH: &str = "i386";
-
-#[cfg(feature = "arm")]
-const ARCH: &str = "arm";
-
-#[cfg(feature = "ppc")]
-const ARCH: &str = "ppc";
-
-#[cfg(feature = "mips")]
-const ARCH: &str = "mips";
-
-#[cfg(feature = "mipsel")]
-const ARCH: &str = "mipsel";
-
-#[cfg(feature = "aarch64")]
-const ARCH: &str = "aarch64";

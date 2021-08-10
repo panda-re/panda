@@ -1,7 +1,9 @@
-use crate::{executable_dir, Args, PandaPlugin, ARCH, PANDA_OBJ, PLUGINS};
+use crate::{executable_dir, Args, PandaPlugin, PANDA_OBJ, PLUGINS};
 use inline_python::{python, Context};
 use pyo3::{prelude::*, types::PyType};
 use std::path::Path;
+
+use panda::ARCH_NAME as ARCH;
 
 /// Checks if the type `ty` is a subclass of `PandaPlugin` but is *not* `PandaPlugin` itself
 fn is_plugin_type<'py>(py: Python<'py>, ty: &'py PyType) -> bool {
