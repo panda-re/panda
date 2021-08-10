@@ -974,6 +974,7 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
                 }
             } else if(has_fd) {
                 // use OSI_linux to resolve the  fd to a filename, add filename as an extra argument
+                has_fd = false;
                 Panda__NamedData *sa = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
                 assert(sa != NULL);
                 psyscall.args[i] = sa;
@@ -1017,6 +1018,7 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
                 // 0x100: 0x200 => "foo
                 // 0x108: 0x300 => "zoo"
                 // 0x10c: 0
+                is_execve = false;
                 target_ulong argv_ptr = 0;
 
                 std::string args;
