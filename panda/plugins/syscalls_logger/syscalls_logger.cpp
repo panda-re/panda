@@ -1022,8 +1022,7 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
                   if (!argv_ptr) break;
 
                   char buf[MAX_STRLEN];
-                  get_string(cpu, argv_ptr, (uint8_t*) &buf);
-                  buf_sz += strlen(buf)+1;
+                  buf_sz += get_string(cpu, argv_ptr, (uint8_t*) &buf) +  1; // space between arg
                 }
 
 
@@ -1041,9 +1040,11 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
                   char this_arg[MAX_STRLEN] = {0};
                   int rv = get_string(cpu, argv_ptr, (uint8_t*) &this_arg);
 
+                  assert(strlen(buffer) + rv < MAX_STRLEN);
+
                   if (rv) {
                     strncat(buffer, this_arg, buf_sz-strlen(buffer));
-                    strncat(buffer, " ", buf_sz-strlen(buffer)-1);
+                    strncat(buffer, " ", buf_sz-strlen(buffer));
                   }
                 }
 
