@@ -117,7 +117,7 @@ def CollectThreadsAndProcesses(pandalog):
             thread_names[thread].add(msg.name)
         else:
             thread_names[thread] = set([msg.name])
-        print(thread_names)
+        #print(thread_names)
         threads.add(thread)
         processes.add(CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid))
 
