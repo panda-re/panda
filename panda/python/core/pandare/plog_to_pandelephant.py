@@ -9,30 +9,33 @@ import sys
 import time
 
 import pandelephant
-from pandare import PLogReader
+
+from . import PLogReader
 
 # TODO: add more steps that should be skipped to the steps list
 # and then check `if 'stepname' not in skip_steps: ...` before running the steps
 steps = ["threadslices", "asid_libraries"]
 
+
 def hasfield(msg, field_name):
-    '''
+    """
     HasField will raise an exception if that isnt a possible field name
     so this version translates that into a False
-    '''
+    """
     try:
         return msg.HasField(field_name)
     except:
         return False
 
+
 def time_log(arg):
-    '''
+    """
     Decorator to log timing information.
     Use as either @time_log def myfunc() or @time_log("Some Name") def anotherfunc()
 
     Will print timing information for the wrapped function along with the provided
     name or the function name.
-    '''
+    """
 
     def helper(name, f, *args, **kwargs):
         t1 = time.time()
@@ -43,15 +46,20 @@ def time_log(arg):
 
     def unnamed(*args, **kwargs):
         return helper(arg.__name__, arg, *args, **kwargs)
+
     def named(target_func):
         def _named(*args, **kwargs):
             return helper(arg, target_func, *args, **kwargs)
+
         return _named
 
-    if callable(arg): # If arg is callabale, assume it's not the function name and use `unnamed`
+    if callable(
+        arg
+    ):  # If arg is callabale, assume it's not the function name and use `unnamed`
         return unnamed
     # Otherwise assume arg is name and we use `named` to grab the target func
     return named
+
 
 CollectedThread = collections.namedtuple(
     "CollectedThread", ["ProcessId", "ParentProcessId", "ThreadId", "CreateTime"]
@@ -93,6 +101,7 @@ CollectedTaintFlow = collections.namedtuple(
     ],
 )
 
+
 class PLogToPandelephant:
     """
     Class for converting PANDAlog (plog) files to a pandelephant database. Run directly with:
@@ -133,14 +142,14 @@ class PLogToPandelephant:
         # // init
 
     def _plog_dispatcher(self, CollectFrom, collectTypes=False):
-        '''
+        """
         Enumeate through the PandaLog. For each entry, check if it is of any type
         which has a key in CollectFrom. If so, call the provided function
 
         For example, calling plog_dispatcher({'foo': self.foo})
         will call the function self.foo for every message in the pandalog of type foo
         self.foo will take be called with two arguments: msg and msg['foo']
-        '''
+        """
         AttemptCounts = {k: 0 for k in CollectFrom}
         FailCounts = {k: 0 for k in CollectFrom}
 
@@ -158,7 +167,7 @@ class PLogToPandelephant:
                             CollectFrom[k](msg, getattr(msg, k))
                         except Exception as e:
                             print("Warning:", e)
-                            #raise
+                            # raise
                             FailCounts[k] += 1
                         break
 
@@ -170,6 +179,12 @@ class PLogToPandelephant:
             )
 
         return list(msgTypes)
+
+    def CreateExecutionIfNeeded(self):
+        matching_execution = self.ds.get_execution_by_name(self.exec_name)
+        if matching_execution is None:
+            matching_execution = self.ds.new_execution(self.exec_name)
+        return matching_execution
 
     @time_log
     def InitialCollection(self):
@@ -184,7 +199,7 @@ class PLogToPandelephant:
         It's essential that we get *all* the threads and processes that could possibly
         be referenced in subsequent analyses - to ensure we're not missing any, we examine
         messgaes of every type and create threads/processes whenever we see a new one referenced.
-        
+
         In theory proc_trace should have info for all processes (and maybe threads?) but
         if we fail to populate an item in self.processes/self.threads here and subsequently
         try to report information on it, we'll run into errors.
@@ -215,8 +230,10 @@ class PLogToPandelephant:
 
         print(f"Plog contains messages of types {types}")
 
-        print(f"Gathered {len(self.processes)} Processes, {len(self.threads)} Threads"\
-              f" and {len(self.CollectedSyscalls)} syscalls")
+        print(
+            f"Gathered {len(self.processes)} Processes, {len(self.threads)} Threads"
+            f" and {len(self.CollectedSyscalls)} syscalls"
+        )
 
         return types
 
@@ -242,13 +259,17 @@ class PLogToPandelephant:
 
         if self.verbose:
             for proc in self.proc2threads:
-                print(f"Process (ProcessId {proc.ProcessId} ParentProcessId "\
-                      f"{proc.ParentProcessId}) has {len(self.proc2threads[proc])} Threads")
+                print(
+                    f"Process (ProcessId {proc.ProcessId} ParentProcessId "
+                    f"{proc.ParentProcessId}) has {len(self.proc2threads[proc])} Threads"
+                )
 
                 for thread in self.proc2threads[proc]:
                     if thread in self.thread_names:
-                        print(f"\tThread (ThreadId {thread.ThreadId} CreateTime "\
-                              f"{thread.CreateTime:#x}) names: {self.thread_names[thread]}")
+                        print(
+                            f"\tThread (ThreadId {thread.ThreadId} CreateTime "
+                            f"{thread.CreateTime:#x}) names: {self.thread_names[thread]}"
+                        )
 
     @time_log
     def CollectProcessMemoryMappings(self):
@@ -260,15 +281,20 @@ class PLogToPandelephant:
         self.CollectedBetterMappingRanges = {proc: {} for proc in self.processes}
         self.num_no_mappings = 0
 
-        self._plog_dispatcher({
+        self._plog_dispatcher(
+            {
                 "asid_libraries": self._collect_memmaps_from_asidlib,
-            })
+            }
+        )
 
         print(f"{self.num_no_mappings} messages processed without mappings")
 
-        mapping_len = sum([len(procmaps.keys())
-                           for procmaps in self.CollectedBetterMappingRanges.values()
-                         ])
+        mapping_len = sum(
+            [
+                len(procmaps.keys())
+                for procmaps in self.CollectedBetterMappingRanges.values()
+            ]
+        )
         print(f"CollectedBetterMappingRanges Len {mapping_len}")
 
         if self.verbose:
@@ -310,9 +336,11 @@ class PLogToPandelephant:
             "Sink": 0,
         }
 
-        self._plog_dispatcher({
+        self._plog_dispatcher(
+            {
                 "taint_flow": self._collect_taint_flows,
-            })
+            }
+        )
 
         print("\tNoMappingCount = {}".format(self.NoMappingCount))
 
@@ -334,7 +362,7 @@ class PLogToPandelephant:
     def ConvertTaintFlowsToDatabase(self):
         print("Constructing db objects for Taint Flows and CodePoints")
         # TODO: do we need to return this dict? If not, why are we collecting it?
-        #CollectedCodePointToDatabaseCodePoint = {}
+        # CollectedCodePointToDatabaseCodePoint = {}
 
         for tf in self.CollectedTaintFlows:
             src_thread = self.CollectedThreadToDatabaseThread[tf.SourceThread]
@@ -347,7 +375,7 @@ class PLogToPandelephant:
                 tf.SinkCodePoint.Mapping
             ]
 
-            #CollectedCodePointToDatabaseCodePoint[tf] =
+            # CollectedCodePointToDatabaseCodePoint[tf] =
             self.ds.new_taintflow(
                 tf.IsStore,
                 src_thread,
@@ -370,14 +398,16 @@ class PLogToPandelephant:
             for a in s.Arguments:
                 args.append({"name": a.Name, "type": a.Type, "value": a.Value})
             if s.Thread in self.CollectedThreadToDatabaseThread:
-                syscall_infos.append((
-                    self.CollectedThreadToDatabaseThread[s.Thread],
-                    s.Name,
-                    s.RetVal,
-                    args,
-                    s.InstructionCount,
-                    s.ProgramCounter,
-                ))
+                syscall_infos.append(
+                    (
+                        self.CollectedThreadToDatabaseThread[s.Thread],
+                        s.Name,
+                        s.RetVal,
+                        args,
+                        s.InstructionCount,
+                        s.ProgramCounter,
+                    )
+                )
 
         self.ds.new_syscall_collection(syscall_infos)
 
@@ -429,12 +459,6 @@ class PLogToPandelephant:
                     thread_slice.FirstInstructionCount,
                     end_execution_offset=thread_slice.LastInstructionCount,
                 )
-
-    def CreateExecutionIfNeeded(self):
-        matching_execution = self.ds.get_execution_by_name(self.exec_name)
-        if matching_execution is None:
-            matching_execution = self.ds.new_execution(self.exec_name)
-        return matching_execution
 
     def _collect_thread_procs_from_asidlib(self, _, msg):
         thread = CollectedThread(
@@ -491,7 +515,6 @@ class PLogToPandelephant:
                     entry.instr,
                     entry.instr,
                 )
-
 
     def _collect_thread_procs_from_asidinfo(self, _, msg):
         for tid in msg.tids:
@@ -670,7 +693,9 @@ class PLogToPandelephant:
         )
 
         self.threads.add(thread)
-        self.processes.add(CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid))
+        self.processes.add(
+            CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid)
+        )
 
         # Then store info on this syscall in self.CollectedSyscalls
         self.CollectedSyscalls.add(
@@ -703,7 +728,7 @@ class PLogToPandelephant:
             CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid)
         )
 
-        if hasattr(self, 'last_thread_info') and self.last_thread_info is not None:
+        if hasattr(self, "last_thread_info") and self.last_thread_info is not None:
             # XXX this will miss the very last one since we don't know when it ended
             (last_thread, start_instr) = self.last_thread_info
             self.thread_slices.add(
@@ -715,8 +740,6 @@ class PLogToPandelephant:
             )
 
         self.last_thread_info = (thread, msg.start_instr)
-
-
 
 
 if __name__ == "__main__":
