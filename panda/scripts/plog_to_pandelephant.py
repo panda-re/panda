@@ -15,16 +15,43 @@ from pandare import PLogReader
 # and then check `if 'stepname' not in skip_steps: ...` before running the steps
 steps = ["threadslices", "asid_libraries"]
 
-# HasField will raise an exception if that isnt a possible field name
-# so this version translates that into a False
-
-
 def hasfield(msg, field_name):
+    '''
+    HasField will raise an exception if that isnt a possible field name
+    so this version translates that into a False
+    '''
     try:
         return msg.HasField(field_name)
     except:
         return False
 
+def time_log(arg):
+    '''
+    Decorator to log timing information.
+    Use as either @time_log def myfunc() or @time_log("Some Name") def anotherfunc()
+
+    Will print timing information for the wrapped function along with the provided
+    name or the function name.
+    '''
+
+    def helper(name, f, *args, **kwargs):
+        t1 = time.time()
+        rv = f(*args, **kwargs)
+        t2 = time.time()
+        print(f"{name} completed in {t2-t1:.2f}\n" + "_" * 60)
+        return rv
+
+    def unnamed(*args, **kwargs):
+        return helper(arg.__name__, arg, *args, **kwargs)
+    def named(target_func):
+        def _named(*args, **kwargs):
+            return helper(arg, target_func, *args, **kwargs)
+        return _named
+
+    if callable(arg): # If arg is callabale, assume it's not the function name and use `unnamed`
+        return unnamed
+    # Otherwise assume arg is name and we use `named` to grab the target func
+    return named
 
 CollectedThread = collections.namedtuple(
     "CollectedThread", ["ProcessId", "ParentProcessId", "ThreadId", "CreateTime"]
@@ -66,33 +93,20 @@ CollectedTaintFlow = collections.namedtuple(
     ],
 )
 
-
-def time_log(func):
-    def wrapped(*fargs, **kwargs):
-        t1 = time.time()
-        rv = func(*fargs, **kwargs)
-        t2 = time.time()
-        print(f"{func.__name__} completed in {t2-t1:.2f}\n" + "_" * 60)
-        return rv
-
-    return wrapped
-
-
 class PLogToPandelephant:
     """
     Class for converting PANDAlog (plog) files to a pandelephant database. Run directly with:
         python -m pandare.PlogToPandelphant -db_url X -pandalog Y -exec_name Z
     """
 
+    @time_log("Full import process")
     def __init__(self, pandalog, db_url, exec_name, skip_steps=None):
         self.pandalog = pandalog
         self.db_url = db_url
         self.exec_name = exec_name
         self.skip_steps = skip_steps if skip_steps else []
 
-        start_time = time.time()
         self.ds = pandelephant.PandaDatastore(db_url)
-
         self.execution = self.CreateExecutionIfNeeded()
 
         self.CollectThreadsAndProcesses()
@@ -151,7 +165,6 @@ class PLogToPandelephant:
 
         self.ConvertTaintFlowsToDatabase()
         self.ConvertSyscallsToDatabase()
-        print("final time: %.2f sec" % (time.time() - start_time))
 
         # // init
 
