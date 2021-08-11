@@ -789,10 +789,13 @@ bool init_plugin(void *self) {
     if (!kconf_file) {
         // Search build dir and installed location for kernelinfo.conf
         gchar *progname = realpath(qemu_file, NULL);
-        gchar *progdir = g_path_get_dirname(progname);
+        gchar *progdir = NULL;
+        if(progname != NULL) {
+            progdir = g_path_get_dirname(progname);
+        }
         gchar *kconffile_canon = NULL;
 
-        if (kconffile_canon == NULL) {  // from build dir
+        if (kconffile_canon == NULL && progdir != NULL) {  // from build dir
             if (kconf_file != NULL) g_free(kconf_file);
             kconf_file = g_build_filename(progdir, "panda", "plugins", "osi_linux", "kernelinfo.conf", NULL);
             LOG_INFO("Looking for kconf_file attempt %u: %s", 1, kconf_file);
