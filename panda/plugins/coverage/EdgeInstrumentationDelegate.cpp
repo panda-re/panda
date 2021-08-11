@@ -77,13 +77,15 @@ const static std::unordered_map<unsigned, RegisterFetcher>
     { X86_REG_CX, MK_REG_FETCHER(regs[R_ECX], 0x0000FFFF, 0) },
     { X86_REG_ECX, MK_REG_FETCHER(regs[R_ECX], 0xFFFFFFFF, 0) },
 
-    { X86_REG_DH, MK_REG_FETCHER(regs[R_ECX], 0x0000FF00, 8) },
-    { X86_REG_DL, MK_REG_FETCHER(regs[R_ECX], 0x000000FF, 0) },
-    { X86_REG_DX, MK_REG_FETCHER(regs[R_ECX], 0x0000FFFF, 0) },
-    { X86_REG_EDX, MK_REG_FETCHER(regs[R_ECX], 0xFFFFFFFF, 0) },
+    { X86_REG_DH, MK_REG_FETCHER(regs[R_EDX], 0x0000FF00, 8) },
+    { X86_REG_DL, MK_REG_FETCHER(regs[R_EDX], 0x000000FF, 0) },
+    { X86_REG_DX, MK_REG_FETCHER(regs[R_EDX], 0x0000FFFF, 0) },
+    { X86_REG_EDX, MK_REG_FETCHER(regs[R_EDX], 0xFFFFFFFF, 0) },
 
+	{ X86_REG_SI, MK_REG_FETCHER(regs[R_ESI], 0x0000FFFF, 0) },
     { X86_REG_ESI, MK_REG_FETCHER(regs[R_ESI], 0xFFFFFFFF, 0) },
 
+	{ X86_REG_DI, MK_REG_FETCHER(regs[R_EDI], 0x0000FFFF, 0) },
     { X86_REG_EDI, MK_REG_FETCHER(regs[R_EDI], 0xFFFFFFFF, 0) },
 
     { X86_REG_SP, MK_REG_FETCHER(regs[R_ESP], 0x0000FFFF, 0) },
@@ -91,6 +93,12 @@ const static std::unordered_map<unsigned, RegisterFetcher>
 
     { X86_REG_BP, MK_REG_FETCHER(regs[R_EBP], 0x0000FFFF, 0) },
     { X86_REG_EBP, MK_REG_FETCHER(regs[R_EBP], 0xFFFFFFFF, 0) },
+
+	{ X86_REG_ES, MK_SEG_FETCHER(segs[R_ES]) },
+
+	{ X86_REG_CS, MK_SEG_FETCHER(segs[R_CS]) },
+
+	{ X86_REG_SS, MK_SEG_FETCHER(segs[R_SS]) },
 
     { X86_REG_GS, MK_SEG_FETCHER(segs[R_GS]) },
 
@@ -292,6 +300,29 @@ static void jmp_mem_indirect(EdgeState* edge_state, CPUState *cpu,
     });
 }
 
+static void jmp_mem_indirect_no_index(EdgeState* edge_state, CPUState *cpu,
+                             target_ulong prev_block_addr,
+                             target_ulong prev_block_size,
+							 RegisterFetcher* segment_register_fetch,
+                             RegisterFetcher* base_register_fetch,
+                             int64_t disp)
+{
+    if (!edge_state->cov_enabled) {
+        return;
+    }
+    target_ulong address = (*segment_register_fetch)() +
+    		(*base_register_fetch)() + disp;
+    target_ulong jump_target = 0x0;
+    panda_virtual_memory_read(cpu, address,
+        reinterpret_cast<uint8_t *>(&jump_target), sizeof(jump_target));
+    update_jump_targets(edge_state, prev_block_addr, prev_block_size, {
+        .has_dst1 = true,
+        .dst1 = jump_target,
+        .has_dst2 = false,
+        .dst2 = 0x0
+    });
+}
+
 static void jmp_mem_indirect_disp_si_callback(EdgeState *edge_state,
                                               CPUState *cpu,
                                               target_ulong prev_block_addr,
@@ -416,6 +447,20 @@ static void instrument_jmp(EdgeState *edge_state, CPUState *cpu, TCGOp *op,
             // Indirect addressing, but with a segment register.
             insert_call(&op, jmp_mem_indirect, edge_state, cpu, tb->pc,
                         tb->size, srf, jmp_op.mem.disp);
+        } else if (INVALID_REGISTER != srf && INVALID_REGISTER != brf &&
+        		INVALID_REGISTER == irf) {
+
+        	// Indirect addressing with segment and base registers.
+        	insert_call(&op, jmp_mem_indirect_no_index, edge_state, cpu, tb->pc,
+        			tb->size, srf, brf, jmp_op.mem.disp);
+
+        } else if (INVALID_REGISTER != srf && INVALID_REGISTER == brf &&
+        		INVALID_REGISTER != irf) {
+
+        	// Indirect address with segment and index registers.
+        	insert_call(&op, jmp_mem_indirect_disp_si_callback, edge_state,
+        			cpu, tb->pc, tb->size, srf, jmp_op.mem.disp, irf,
+					jmp_op.mem.scale);
 
         } else {
 
@@ -503,8 +548,8 @@ void EdgeInstrumentationDelegate::instrument(CPUState *cpu,
 {
     csh handle = 0;
 #ifdef TARGET_I386
-#ifdef TARGET_X86_64
     CPUArchState *env = static_cast<CPUArchState *>(cpu->env_ptr);
+#ifdef TARGET_X86_64
     if ((env->hflags & (1 << HF_LMA_SHIFT)) && (env->hflags & (1 << HF_CS64_SHIFT))) {
         handle = handle64;
     } else {
@@ -522,6 +567,14 @@ void EdgeInstrumentationDelegate::instrument(CPUState *cpu,
         edge_processor.get(), tb);
 
     // Instrument the control flow instructions.
+    // watch it - i386 may be running either 16- or 32-bit code
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+    if ((env->hflags & HF_CS32_MASK) == 0) {
+    	cs_option(handle, CS_OPT_MODE, CS_MODE_16);
+    } else {
+    	cs_option(handle, CS_OPT_MODE, CS_MODE_32);
+    }
+#endif
     std::vector<uint8_t> block(tb->size);
     panda_virtual_memory_read(cpu, tb->pc, block.data(), block.size());
     cs_insn *insn;
