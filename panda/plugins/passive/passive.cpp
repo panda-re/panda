@@ -123,6 +123,10 @@ void arg_start_search(CPUState* cpu);
 void vm_mm_search(CPUState* cpu);
 void vma_vm_next_search(CPUState* cpu);
 void vma_vm_flags_search(CPUState* cpu);
+void start_stack_search(CPUState* cpu);
+void vma_vm_file_search(CPUState* cpu);
+void path_d_parent_search(CPUState* cpu);
+void task_files_search(CPUState* cpu);
 
 void print_results(void *);
 void print_bits_target(target_ulong num);
@@ -135,6 +139,8 @@ void write_register(CPUState* cpu, target_ulong val);
 void get_all_proc_base_addrs(CPUState* cpu, std::vector<target_ulong>&);
 void get_all_vma_base_addrs(CPUState* cpu, std::vector<target_ulong>&);
 void get_all_expected_flags(CPUState* cpu, std::vector<target_ulong>&);
+int get_dentry_from_first_vma(CPUState* cpu, target_ulong* dentry_addr);
+int get_name_from_dentry(CPUState* cpu, target_ulong dentry_addr, uint8_t* buf);
 //void stack_search(CPUState* cpu);
 //void execve_enter(CPUState* cpu, target_ulong pc, uint64_t filename, uint64_t argv, uint64_t envp);
 }
@@ -169,7 +175,7 @@ uint64_t task_per_cpu_offset_0_addr = 0;
 uint64_t task_current_task_addr = 0;
 //uint64_t task_init_addr = 0;              - TODO
 
-//uint64_t task_size = 0                    - TODO
+//uint64_t task_size = 0;
 uint64_t task_tasks_offset = 0;
 uint64_t task_pid_offset = 0;
 uint64_t task_tgid_offset = 0;
@@ -190,35 +196,35 @@ uint64_t cred_gid_offset = 8;
 uint64_t cred_euid_offset = 20;
 uint64_t cred_egid_offset = 24;
 
-//uint64_t mm_size = 0;                     - TODO
+//uint64_t mm_size = 0;
 uint64_t mm_mmap_offset = 0;             
 uint64_t mm_pgd_offset = 0;
 uint64_t mm_arg_start_offset = 0;
 uint64_t mm_start_brk_offset = 0;
 uint64_t mm_brk_offset = 0;
-//uint64_t mm_start_stack_offset = 0;       - TODO
+uint64_t mm_start_stack_offset = 0;
 
-//uint64_t vma_size = 0;                    - TODO
+//uint64_t vma_size = 0;
 uint64_t vma_vm_mm_offset = 0;
 uint64_t vma_vm_start_offset = 0;
 uint64_t vma_vm_end_offset = 0;
 uint64_t vma_vm_next_offset = 0;
 uint64_t vma_vm_flags_offset = 0;
-//uint64_t vma_vm_file_offset = 0;          - TODO
+uint64_t vma_vm_file_offset = 0;
 
-//uint64_t fs_f_path_dentry_offset = 0;     - TODO
+uint64_t fs_f_path_dentry_offset = 0;
 //uint64_t fs_f_path_mnt_offset = 0;        - TODO
 //uint64_t fs_f_pos_offset = 0;             - TODO
 //uint64_t fs_fdt_offset = 0;               - TODO
 //uint64_t fs_fdtab_offset = 0;             - TODO
 //uint64_t fs_fd_offset = 0;                - TODO
 
-//uint64_t qstr_size = 0;                   - TODO
-//uint64_t qstr_name_offset = 0;            - TODO
+//uint64_t qstr_size = 0;
+uint64_t qstr_name_offset = 0;
 
-//uint64_t path_d_name_offset = 0;          - TODO
-//uint64_t path_d_iname_offset = 0;         - TODO
-//uint64_t path_d_parent_offset = 0;        - TODO
+uint64_t path_d_name_offset = 0;
+uint64_t path_d_iname_offset = 0;
+uint64_t path_d_parent_offset = 0;
 //uint64_t path_d_op_offset = 0;            - TODO
 //uint64_t path_d_dname_offset = 0;         - TODO
 //uint64_t path_mnt_root_offset = 0;        - TODO
@@ -444,6 +450,78 @@ void get_all_expected_flags(CPUState* cpu, std::vector<target_ulong>& expecteds)
 //    printf("map_copy:\n");
 //    std::cout << map_copy << std::endl;
 
+}
+
+int get_dentry_from_first_vma(CPUState* cpu, target_ulong* dentry_addr) {
+    //target_ulong res = 0;
+    target_ulong mm_addr = 0;
+    target_ulong vma_addr = 0;
+    target_ulong file_addr = 0;
+
+
+//    //refresh current
+//    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+//    if(err == -1) printf("couldn't read current\n");
+//    current = res;
+//    printf("current: " TARGET_PTR_FMT "\n", current);
+
+    //get mm addr
+    int err = read_target_ulong(cpu, current + task_mm_offset, &mm_addr);
+    if(err == -1) {
+        printf("couldn't read mm_addr\n");
+        return err;
+    }
+    printf("mm_addr: " TARGET_PTR_FMT "\n", mm_addr);
+
+    //get vma addr
+    err = read_target_ulong(cpu, mm_addr + mm_mmap_offset, &vma_addr);
+    if(err == -1) {
+        printf("couldn't read vma addr\n");
+        return err;
+    }
+    printf("vma_addr: " TARGET_PTR_FMT "\n", vma_addr);
+
+    //get file addr
+    err = read_target_ulong(cpu, vma_addr + vma_vm_file_offset, &file_addr);
+    if(err == -1) {
+        printf("couldn't read from vma\n");
+        return err;
+    }
+    printf("file addr: " TARGET_PTR_FMT "\n", file_addr);
+
+    //+ path_dentry_offset
+    err = read_target_ulong(cpu, file_addr + fs_f_path_dentry_offset, dentry_addr);
+    if(err == -1) {
+        printf("couldn't read from file struct\n");
+        return err;
+    }
+    printf("dentry_addr: " TARGET_PTR_FMT "\n", *dentry_addr);
+
+    return 0;
+}
+
+//buf must be >= 128 bytes
+int get_name_from_dentry(CPUState* cpu, target_ulong dentry_addr, uint8_t* buf) { 
+    target_ulong qstr_addr = 0;
+    memset(buf, 0, 128);
+
+    //+ path_d_name_offset + qstr_name_offset
+    int err = read_target_ulong(cpu, dentry_addr + path_d_name_offset + qstr_name_offset, &qstr_addr);
+    if(err == -1) {
+        //printf("couldn't read from the dentry\n");
+        return err;
+    }
+    //printf("qstr_addr: " TARGET_PTR_FMT "\n", qstr_addr);
+
+    err = panda_virtual_memory_read(cpu, qstr_addr, buf, 127);
+    if(err == -1) {
+        //printf("couldn't read from the qstr\n");
+        return err;
+    }
+    //printf("qstr_addr: " TARGET_PTR_FMT "\n", qstr_addr);
+    //printf("file name: %s\n", (char*) buf);
+
+    return 0;
 }
 
 //made this for demo, delete later
@@ -2157,6 +2235,463 @@ void vma_vm_flags_search(CPUState* cpu) {
     }
 }
 
+void start_stack_search(CPUState* cpu) {
+    target_ulong res = 0;
+    target_ulong mm_addr = 0;
+    target_ulong rsp = 0;
+
+    printf("\nsearching for mm.start_stack...\n");
+
+    //refresh current
+    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err == -1) printf("couldn't read current\n");
+    current = res;
+    printf("current: " TARGET_PTR_FMT "\n", current);
+
+    err = read_target_ulong(cpu, current + task_mm_offset, &mm_addr);
+    if(err == -1) {
+        printf("couldn't read mm_addr\n");
+        return;
+    }
+    printf("mm_addr: " TARGET_PTR_FMT "\n", mm_addr);
+
+    //start_stack_offset = 288
+
+    rsp = ((CPUX86State*) cpu->env_ptr)->regs[4]; //read rsp
+
+    printf("rsp: " TARGET_PTR_FMT "\n", rsp);
+
+    err = read_target_ulong(cpu, mm_addr + 288, &res);
+    if(err == -1) {
+        printf("couldn't read from mm\n");
+        return;
+    }
+    printf("start_stack: " TARGET_PTR_FMT "\n", res);
+
+
+    std::string map_copy = maps.c_str();
+
+    int pos = map_copy.find("\n");
+    std::string line = map_copy.substr(0, pos);
+    map_copy.erase(0, pos+1);
+    
+    //std::cout << "LINE: \n" << line << std::endl;
+    //std::cout << "MAP_COPY: \n" << map_copy << std::endl;
+
+    while(line.find("stack") == std::string::npos) {
+        pos = map_copy.find("\n");
+        line = map_copy.substr(0, pos);
+        map_copy.erase(0, pos+1);
+    }
+
+    //std::cout << "LINE: \n" << line << std::endl;
+
+    pos = line.find("-");
+    std::string low_str = line.substr(0, pos);
+    std::cout << "low str: " << low_str << std::endl;
+    line.erase(0, pos+1);
+    pos = line.find(" ");
+    std::string hi_str = line.substr(0, pos);
+    std::cout << "hi str: " << hi_str << std::endl;
+
+    uint64_t low_int = strtoll(low_str.c_str(), NULL, 16);
+    uint64_t hi_int = strtoll(hi_str.c_str(), NULL, 16);
+
+    printf("low_int: %lu - %lx\n", low_int, low_int);
+    printf("hi_int: %lu - %lx\n", hi_int, hi_int);
+
+    //7ffffffde000-7ffffffff000
+
+    int offset = 0;
+    //target_ulong max = 0;
+    std::vector<int> candidates; 
+    while(offset < 2500) {
+        err = read_target_ulong(cpu, mm_addr + offset, &res);
+        if(err == -1) {
+            printf("couldn't read from mm\n");
+            break;
+        }
+
+        if(res >= low_int && res < hi_int) {
+            printf("%d - potential match found: " TARGET_PTR_FMT "\n", offset, res);
+            //max = res;
+
+            err = read_target_ulong(cpu, res, &res);
+            if(err == -1) {
+                printf("couldn't read from (potential) stack\n");
+            }
+            //printf("stack_num: " TARGET_PTR_FMT "\n", res);
+
+            //relies on the fact that argc sits directly above start_stack
+            if(res < 10) {
+                printf("match found!\n");
+                candidates.push_back(offset);
+            }
+        }
+
+        offset += 4;
+    } 
+
+    //printf("size: %lu\n", candidates.size());
+    if(candidates.size() == 1) {
+        mm_start_stack_offset = candidates[0];
+        printf("mm_start_stack_offset: %lu\n", mm_start_stack_offset);
+    } else if(candidates.size() > 1) {
+        printf("found too many solutions\n");
+    } else if(candidates.size() < 1) {
+        printf("found too few solutions\n");
+    }
+}
+
+void vma_vm_file_search(CPUState* cpu) {
+    target_ulong res = 0;
+    target_ulong mm_addr = 0;
+    target_ulong vma_addr = 0;
+    target_ulong file_addr = 0;
+    //target_ulong path_addr = 0;
+    target_ulong dentry_addr = 0;
+    //target_ulong qstr_addr = 0;
+    target_ulong str_ptr = 0;
+
+    int files_offset = 0; //0 - 300?
+    int dentry_offset = 0; //0 - 300?
+    int str_offset = 0; //0 - 300?
+    int qstr_offset = 0;
+
+    int count = 0;
+
+    uint8_t data[128] = {0};
+    //std::vector<target_ulong> vmas;
+    //get_all_vma_base_addrs(cpu, vmas);
+
+    printf("\nsearching for vma_vm_file, fs_f_path_dentry, path_d_iname, path_d_name, and qstr_name...\n");
+
+    //refresh current
+    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err == -1) printf("couldn't read current\n");
+    current = res;
+    printf("current: " TARGET_PTR_FMT "\n", current);
+
+    //get mm addr
+    err = read_target_ulong(cpu, current + task_mm_offset, &mm_addr);
+    if(err == -1) {
+        printf("couldn't read mm_addr\n");
+        return;
+    }
+    printf("mm_addr: " TARGET_PTR_FMT "\n", mm_addr);
+
+    //get vma addr
+    err = read_target_ulong(cpu, mm_addr + mm_mmap_offset, &vma_addr);
+    if(err == -1) {
+        printf("couldn't read vma addr\n");
+        return;
+    }
+    printf("vma_addr: " TARGET_PTR_FMT "\n", vma_addr);
+
+
+    //get the filename
+    std::string map_copy = maps.c_str();
+    int pos = map_copy.find("\n");
+    std::string line = map_copy.substr(0, pos);
+    pos = line.rfind("/");
+    std::string filename = line.substr(pos+1, line.size()-pos+1);
+
+    std::cout << "filename: " << filename << std::endl;
+
+
+    while(files_offset < 300) { //300) {
+        //+ vam_vm_files_offset
+        err = read_target_ulong(cpu, vma_addr + files_offset, &file_addr);
+        if(err == -1) {
+            //printf("couldn't read file_addr\n");
+            return;
+        }
+        //printf("files_offset: %d  - file_addr: " TARGET_PTR_FMT "\n", files_offset, file_addr);
+
+        if(!file_addr) goto endloop;
+
+        dentry_offset = 0;
+        //str_offset = 0;
+        while(dentry_offset < 300) {
+            err = read_target_ulong(cpu, file_addr + dentry_offset, &dentry_addr);
+            if(err == -1) {
+                //printf("unable to read from (potential) files struct\n");
+                goto endloop;
+            }
+            //printf("dentry_offset: %d  - dentry_addr: " TARGET_PTR_FMT "\n", dentry_offset, dentry_addr);
+
+            if(!dentry_addr) goto endloop_inner;
+
+            str_offset = 0;
+            while(str_offset < 300) {
+                memset(data, 0, 128);
+                err = panda_virtual_memory_read(cpu, dentry_addr + str_offset, data, 32);
+                if(err == -1) {
+                    //printf("unable to read from (potential) dentry\n");
+                    goto endloop_inner;
+                }
+                //printf("str_offset: %d  - string: %s\n", str_offset, (char*) data);
+
+                //if(strcmp((char*) data, "bash") == 0) {
+                if(strcmp((char*) data, filename.c_str()) == 0) {
+                    printf("FOUND THE FILENAME!\n");
+
+
+                    qstr_offset = 0;
+                    while(qstr_offset < 300) {
+                        err = read_target_ulong(cpu, dentry_addr + qstr_offset, &str_ptr);
+                        if(err == -1) {
+                            //printf("unable to read from (potential) dentry\n");
+                        }
+
+                        if((str_ptr == dentry_addr + str_offset) && qstr_offset != str_offset) {
+                            printf("QSTR POINTER FOUND!!\n");
+                            vma_vm_file_offset = files_offset;
+                            fs_f_path_dentry_offset = dentry_offset;
+                            path_d_iname_offset = str_offset;
+                            qstr_name_offset = 8;           //it doesn't matter what this is as long as qstr_name_offset + path_d_name_offset == qstr_offset
+                            path_d_name_offset = qstr_offset - qstr_name_offset;
+                            count++;
+                            break;
+                        }
+
+                        qstr_offset += 4;
+                    }
+                }
+
+                str_offset += 4;
+            }
+
+        endloop_inner:
+
+            dentry_offset += 4;
+        }
+        
+
+
+    endloop: 
+
+        files_offset += 4;
+    }
+
+    printf("found %d solutions\n\n", count);
+
+    if(count == 1) {
+        printf("success!\n");
+        printf("vma_vm_file_offset: %lu\n", vma_vm_file_offset);
+        printf("fs_f_path_dentry_offset: %lu\n", fs_f_path_dentry_offset);
+        printf("path_d_iname_offset: %lu\n", path_d_iname_offset);
+        printf("path_d_name_offset: %lu\n", path_d_name_offset);
+        printf("qstr_name_offset: %lu\n", qstr_name_offset);
+    } else if(count > 1 || count < 1) {
+        printf("found the wrong number of solutions!\n");
+        vma_vm_file_offset = 0;
+        fs_f_path_dentry_offset = 0;
+        path_d_iname_offset = 0;
+        path_d_name_offset = 0;
+        qstr_name_offset = 0;
+    }
+
+//    //+ vam_vm_files_offset
+//    err = read_target_ulong(cpu, vma_addr + vma_vm_file_offset, &file_addr);
+//    if(err == -1) {
+//        printf("couldn't read file_addr\n");
+//        return;
+//    }
+//    printf("file_addr: " TARGET_PTR_FMT "\n", file_addr);
+//
+//    //if(file_addr == NULL) continue;
+//
+//    //+ path_dentry_offset
+//    err = read_target_ulong(cpu, file_addr + fs_f_path_dentry_offset, &dentry_addr);
+//    if(err == -1) {
+//        printf("couldn't read from file struct\n");
+//        return;
+//    }
+//    printf("dentry_addr: " TARGET_PTR_FMT "\n", dentry_addr);
+//
+//    //+ path_d_name_offset + qstr_name_offset
+//    err = read_target_ulong(cpu, dentry_addr + path_d_name_offset + qstr_name_offset, &qstr_addr);
+//    if(err == -1) {
+//        printf("couldn't read from the dentry\n");
+//        return;
+//    }
+//    printf("qstr_addr: " TARGET_PTR_FMT "\n", qstr_addr);
+//
+//
+//    err = panda_virtual_memory_read(cpu, qstr_addr, data, 127);
+//    if(err == -1) {
+//        printf("couldn't read from the qstr\n");
+//        return;
+//    }
+//    printf("qstr_addr: " TARGET_PTR_FMT "\n", qstr_addr);
+//    printf("file name: %s\n", (char*) data);
+//
+//    //+ d_iname_offset
+//    err = panda_virtual_memory_read(cpu, dentry_addr + path_d_iname_offset, data, 127);
+//    if(err == -1) {
+//        printf("couldn't read from the qstr\n");
+//        return;
+//    }
+//    printf("dentry_iname_addr: " TARGET_PTR_FMT "\n", dentry_addr + 56);
+//    printf("dentry_iname: %s\n\n", (char*) data);
+
+}
+
+void path_d_parent_search(CPUState* cpu) {
+    target_ulong res = 0;
+    //target_ulong mm_addr = 0;
+    //target_ulong vma_addr = 0;
+    //target_ulong file_addr = 0;
+    //target_ulong path_addr = 0;
+    target_ulong dentry_addr = 0;
+    //target_ulong qstr_addr = 0;
+    //target_ulong str_ptr = 0;
+    //target_ulong d_parent_addr = 0;
+    target_ulong parent_addr = 0;
+
+    //int files_offset = 0; //0 - 300?
+    //int dentry_offset = 0; //0 - 300?
+    //int str_offset = 0; //0 - 300?
+    //int qstr_offset = 0;
+
+    //int count = 0;
+
+    uint8_t data[128] = {0};
+    //std::vector<target_ulong> vmas;
+    //get_all_vma_base_addrs(cpu, vmas);
+
+    printf("\nsearching for path_d_parent...\n");
+
+    //refresh current
+    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err == -1) printf("couldn't read current\n");
+    current = res;
+    printf("current: " TARGET_PTR_FMT "\n", current);
+
+//    //get mm addr
+//    err = read_target_ulong(cpu, current + task_mm_offset, &mm_addr);
+//    if(err == -1) {
+//        printf("couldn't read mm_addr\n");
+//        return;
+//    }
+//    printf("mm_addr: " TARGET_PTR_FMT "\n", mm_addr);
+//
+//    //get vma addr
+//    err = read_target_ulong(cpu, mm_addr + mm_mmap_offset, &vma_addr);
+//    if(err == -1) {
+//        printf("couldn't read vma addr\n");
+//        return;
+//    }
+//    printf("vma_addr: " TARGET_PTR_FMT "\n", vma_addr);
+//
+//    //get file addr
+//    err = read_target_ulong(cpu, vma_addr + vma_vm_file_offset, &file_addr);
+//    if(err == -1) {
+//        printf("couldn't read from vma\n");
+//        return;
+//    }
+//    printf("file addr: " TARGET_PTR_FMT "\n", file_addr);
+//
+//    //+ path_dentry_offset
+//    err = read_target_ulong(cpu, file_addr + fs_f_path_dentry_offset, &dentry_addr);
+//    if(err == -1) {
+//        printf("couldn't read from file struct\n");
+//        return;
+//    }
+//    printf("dentry_addr: " TARGET_PTR_FMT "\n", dentry_addr);
+//    
+//    //+ path_d_parent_offset
+//    err = read_target_ulong(cpu, dentry_addr + 24, &d_parent_addr);
+//    if(err == -1) {
+//        printf("couldn't read from the dentry\n");
+//        return;
+//    }
+//    printf("d_parent_addr: " TARGET_PTR_FMT "\n", d_parent_addr);
+//
+//    //+ path_d_name_offset + qstr_name_offset
+//    err = read_target_ulong(cpu, d_parent_addr + path_d_name_offset + qstr_name_offset, &qstr_addr);
+//    if(err == -1) {
+//        printf("couldn't read from the dentry\n");
+//        return;
+//    }
+//    printf("qstr_addr: " TARGET_PTR_FMT "\n", qstr_addr);
+//
+//    err = panda_virtual_memory_read(cpu, qstr_addr, data, 127);
+//    if(err == -1) {
+//        printf("couldn't read from the qstr\n");
+//        return;
+//    }
+//    //printf("qstr_addr: " TARGET_PTR_FMT "\n", qstr_addr);
+//    printf("file name: %s\n", (char*) data);
+
+    //get the name of the parent directory
+    std::string map_copy = maps.c_str();
+    int pos = map_copy.find("\n");
+    std::string line = map_copy.substr(0, pos);
+    pos = line.rfind("/");
+    std::string filename = line.substr(pos+1, line.size()-pos+1);
+    line.erase(pos, line.size()-pos);
+    pos = line.rfind("/");
+    std::string dirname = line.substr(pos+1, line.size()-pos+1);
+
+    std::cout << "line: " << line << std::endl;
+    std::cout << "filename: " << filename << std::endl;
+    std::cout << "dirname: " << dirname << std::endl;
+
+    err = get_dentry_from_first_vma(cpu, &dentry_addr);
+    if(err == -1) {
+        printf("something went very wrong - couldn't get the first vma's dentry\n");
+        return;
+    }
+
+    std::vector<int> candidates;
+    int offset = 0;
+    while(offset < 200) {
+        err = read_target_ulong(cpu, dentry_addr + offset, &parent_addr);
+        if(err == -1) {
+            //printf("couldn't read from the dentry\n");
+            break;
+        }
+
+        err = get_name_from_dentry(cpu, parent_addr, data);
+        if(err != -1 && strcmp((char*) data, dirname.c_str()) == 0) {
+            printf("found match! at offset %d\n", offset);
+            candidates.push_back(offset);
+        }
+
+
+        offset += 4;
+    }
+    //get_name_from_dentry(cpu, dentry_addr, data);
+    //printf("file name: %s\n", (char*) data);
+
+    if(candidates.size() == 1) {
+        printf("success! found 1 solution\n");
+        path_d_parent_offset = candidates[0];
+        printf("path_d_parent_offset: %lu\n", path_d_parent_offset);
+    } else if(candidates.size() > 1) {
+        printf("found too few solutions!\n");
+    } else {
+        printf("found too many solutions!\n");
+    }
+
+}
+
+void task_files_search(CPUState* cpu) {
+    target_ulong res = 0;
+
+
+    printf("\nsearching for task_files...\n");
+
+    //refresh current
+    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err == -1) printf("couldn't read current\n");
+    current = res;
+    printf("current: " TARGET_PTR_FMT "\n", current);
+
+}
+
 
 bool translate_callback(CPUState* cpu, target_ulong pc){
 //    if (phase1 && in_syscall) {
@@ -2577,6 +3112,10 @@ void time_of_day_return(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz
                 brk_search(cpu);
                 vma_vm_next_search(cpu);
                 vma_vm_flags_search(cpu);
+                start_stack_search(cpu);
+                vma_vm_file_search(cpu);
+                path_d_parent_search(cpu);
+                task_files_search(cpu);
             }
 
 
