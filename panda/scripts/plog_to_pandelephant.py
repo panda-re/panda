@@ -110,23 +110,29 @@ class PLogToPandelephant:
         self.ds = pandelephant.PandaDatastore(db_url)
         self.execution = self.CreateExecutionIfNeeded()
 
-        # Collect information on threads and processes from all data sources
-        self.CollectThreadsAndProcesses()
+        # First pass over plog to determine threads, processes, syscalls, and plog message types
+        plog_types = self.InitialCollection()
         # then associate threads to their processes.
         self.AssociateThreadsAndProcesses()
 
-        # Get memory mappings per process
+        # Second pass over plog to determine memory mappings
         self.CollectProcessMemoryMappings()
-        # then 
-        self.CollectTaintFlowsAndSyscalls()
+
+        if "taint_flow" in plog_types:
+            # Third pass over plog to determine taint flows
+            self.CollectTaintFlows()
 
         self.ConvertProcessThreadsMappingsToDatabase()
-        self.ConvertTaintFlowsToDatabase()
-        self.ConvertSyscallsToDatabase()
+
+        if "taint_flow" in plog_types:
+            self.ConvertTaintFlowsToDatabase()
+
+        if "syscall" in plog_types:
+            self.ConvertSyscallsToDatabase()
 
         # // init
 
-    def _plog_dispatcher(self, CollectFrom):
+    def _plog_dispatcher(self, CollectFrom, collectTypes=False):
         '''
         Enumeate through the PandaLog. For each entry, check if it is of any type
         which has a key in CollectFrom. If so, call the provided function
@@ -137,15 +143,22 @@ class PLogToPandelephant:
         '''
         AttemptCounts = {k: 0 for k in CollectFrom}
         FailCounts = {k: 0 for k in CollectFrom}
+
+        msgTypes = set()
+
         with PLogReader(self.pandalog) as plr:
             for msg in plr:
                 for k in CollectFrom:
                     if hasfield(msg, k) and k not in self.skip_steps:
+                        if collectTypes:
+                            msgTypes.add(k)
+
                         AttemptCounts[k] += 1
                         try:
                             CollectFrom[k](msg, getattr(msg, k))
                         except Exception as e:
                             print("Warning:", e)
+                            #raise
                             FailCounts[k] += 1
                         break
 
@@ -156,30 +169,30 @@ class PLogToPandelephant:
                 )
             )
 
-    @time_log
-    def CollectThreadsAndProcesses(self):
-        """
-        Gather information on processes and threads observed during execution.
+        return list(msgTypes)
 
-        To ensure we're not misssing any threads or processes for subsequent analyses,
-        we look at the thread & process info reported by all of our collection plugins.
+    @time_log
+    def InitialCollection(self):
+        """
+        Do a first pass over the pandalog to gather basic information on:
+            1) Threads
+            2) Proceses
+            3) Syscalls
+
+        This first pass has no dependencies.
+
+        It's essential that we get *all* the threads and processes that could possibly
+        be referenced in subsequent analyses - to ensure we're not missing any, we examine
+        messgaes of every type and create threads/processes whenever we see a new one referenced.
         
-        In theory proc_trace should have info for all processes (and maybe threads)? but
-        if we fail to populate an item in self.processes/self.threds here and subsequently
+        In theory proc_trace should have info for all processes (and maybe threads?) but
+        if we fail to populate an item in self.processes/self.threads here and subsequently
         try to report information on it, we'll run into errors.
 
         Why don't we just gather these on the fly? Because there are multiple sources
         for this information and they have to be reconciled. It's oddly tricky to
         get a consistent view out of a replay of the set of threads and processes and
         their names.
-
-        One could check at every basic block (by invoking OSI) but that would be very
-        slow.  So we check at a few std temporal points (syscall, every 100 bb,
-        asid_info logging points) and reconcile.
-
-        Better would be if we had callback on after-scheduler-changes-proc s.t. we
-        could obtain proc/thread.  TODO: if we have proc_trace messages, that's
-        exactly what we have
         """
 
         print("First pass over plog (Gathering Processes and Threads)...")
@@ -190,16 +203,22 @@ class PLogToPandelephant:
         self.threads = set()
         self.thread_slices = set()
         self.thread_names = {}
+        self.CollectedSyscalls = set()
 
-        self._plog_dispatcher({  # Field name -> parsing function
-                "asid_libraries": self._collect_thread_procs_from_asidlib,
-                "asid_info":      self._collect_thread_procs_from_asidinfo,
-                "taint_flow":     self._create_thread_procs_from_taintflow,
-                "syscall":        self._create_thread_procs_from_syscall,
-                "proc_trace":     self._create_thread_procs_from_proctrace,
-            })
+        types = self._plog_dispatcher({  # Field name -> parsing function
+                    "asid_libraries": self._collect_thread_procs_from_asidlib,
+                    "asid_info":      self._collect_thread_procs_from_asidinfo,
+                    "taint_flow":     self._create_thread_procs_from_taintflow,
+                    "syscall":        self._create_thread_procs_and_syscalls_from_syscall,
+                    "proc_trace":     self._create_thread_procs_from_proctrace,
+                }, collectTypes = True)
 
-        print(f"Gathered {len(self.processes)} Processes and {len(self.threads)} Threads")
+        print(f"Plog contains messages of types {types}")
+
+        print(f"Gathered {len(self.processes)} Processes, {len(self.threads)} Threads"\
+              f" and {len(self.CollectedSyscalls)} syscalls")
+
+        return types
 
     @time_log
     def AssociateThreadsAndProcesses(self):
@@ -281,10 +300,9 @@ class PLogToPandelephant:
                     )
 
     @time_log
-    def CollectTaintFlowsAndSyscalls(self):
-        print("Third pass over plog (Gathering Taint Flows and Syscalls)...")
+    def CollectTaintFlows(self):
+        print("Third pass over plog (Gathering Taint Flows)...")
         self.CollectedCodePoints = set()
-        self.CollectedSyscalls = set()
         self.CollectedTaintFlows = set()
         # DuplicateTaintFlows = {}
         self.NoMappingCount = {
@@ -293,9 +311,8 @@ class PLogToPandelephant:
         }
 
         self._plog_dispatcher({
-            "syscall": self._collect_syscalls,
-            "taint_flow": self._collect_taint_flows,
-        })
+                "taint_flow": self._collect_taint_flows,
+            })
 
         print("\tNoMappingCount = {}".format(self.NoMappingCount))
 
@@ -312,7 +329,6 @@ class PLogToPandelephant:
                 len(self.CollectedCodePoints),
             )
         )
-
 
     @time_log
     def ConvertTaintFlowsToDatabase(self):
@@ -621,20 +637,7 @@ class PLogToPandelephant:
         #         DuplicateTaintFlows[flow] = 2
         self.CollectedTaintFlows.add(flow)
 
-    def _create_thread_procs_from_syscall(self, _, msg):
-        self.threads.add(
-            CollectedThread(
-                ProcessId=msg.pid,
-                ParentProcessId=msg.ppid,
-                ThreadId=msg.tid,
-                CreateTime=msg.create_time,
-            )
-        )
-        self.processes.add(
-            CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid)
-        )
-
-    def _collect_syscalls(self, entry, msg):
+    def _create_thread_procs_and_syscalls_from_syscall(self, entry, msg):
         SyscallFieldInfo = {
             "str": ("string", "{:s}"),
             "ptr": ("pointer", "0x{:x}"),
@@ -658,12 +661,18 @@ class PLogToPandelephant:
             # Failed to return - invalid argument
             raise ValueError(f"Unsuported argument type {sarg}")
 
+        # First update self.threads and self.processes with info from this syscall
         thread = CollectedThread(
             ProcessId=msg.pid,
             ParentProcessId=msg.ppid,
             ThreadId=msg.tid,
             CreateTime=msg.create_time,
         )
+
+        self.threads.add(thread)
+        self.processes.add(CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid))
+
+        # Then store info on this syscall in self.CollectedSyscalls
         self.CollectedSyscalls.add(
             CollectedSyscall(
                 Name=msg.call_name,
