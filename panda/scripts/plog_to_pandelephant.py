@@ -464,6 +464,7 @@ class PLogToPandelephant:
     @time_log
     def ConvertTaintFlowsToDatabase(self):
         print("Constructing db objects for Taint Flows and CodePoints")
+        # TODO: do we need to return this dict?
         CollectedCodePointToDatabaseCodePoint = {}
 
         for tf in self.CollectedTaintFlows:
@@ -493,21 +494,22 @@ class PLogToPandelephant:
     def ConvertSyscallsToDatabase(self):
         print("Constructing db objects for Syscalls")
 
-        # Todo: do we return/store these?
-        CollectedSyscallToDatabaseSyscall = {}
+        syscall_infos = []
         for s in self.CollectedSyscalls:
             args = []
             for a in s.Arguments:
                 args.append({"name": a.Name, "type": a.Type, "value": a.Value})
             if s.Thread in self.CollectedThreadToDatabaseThread:
-                CollectedSyscallToDatabaseSyscall[s] = self.ds.new_syscall(
+                syscall_infos.append((
                     self.CollectedThreadToDatabaseThread[s.Thread],
                     s.Name,
                     s.RetVal,
                     args,
                     s.InstructionCount,
                     s.ProgramCounter,
-                )
+                ))
+
+        self.ds.new_syscall_collection(syscall_infos)
 
     def CollectTaintFlowsAndSyscalls(self):
         print("Third pass over plog (Gathering Taint Flows and Syscalls)...")
@@ -685,7 +687,6 @@ class PLogToPandelephant:
         #     if (flow.SourceCodePoint.Mapping.Name == 'toy_debug') and (flow.SinkCodePoint.Mapping.Name == 'toy_debug'):
         #         print('\t\t\tGhidra Flow Info: {:08x} -> {:08x}'.format(0x00100000 + flow.SourceCodePoint.Offset, 0x00100000 + flow.SinkCodePoint.Offset))
 
-    # , datastore, execution, processes, threads, CollectedBetterMappingRanges, thread_names, proc2threads, thread_slices):
     def ConvertProcessThreadsMappingsToDatabase(self):
         print("Constructing db objects for thread, process, and mapping")
         # construct db process, and for each,
@@ -733,8 +734,6 @@ class PLogToPandelephant:
                     thread_slice.FirstInstructionCount,
                     end_execution_offset=thread_slice.LastInstructionCount,
                 )
-
-        # return CollectedProcessToDatabaseProcess, CollectedThreadToDatabaseThread, CollectedMappingToDatabaseMapping
 
     def CreateExecutionIfNeeded(self):
         matching_execution = self.ds.get_execution_by_name(self.exec_name)
