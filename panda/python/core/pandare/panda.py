@@ -2,7 +2,6 @@
 This module simply contains the Panda class
 """
 
-from ctypes import sizeof
 from sys import version_info, exit
 
 if version_info[0] < 3:
@@ -2014,9 +2013,7 @@ class Panda():
     # Query the ram addr with given size
     def taint_sym_query_ram(self, addr, size=1):
         # Prepare ptr for returned string
-        somestr = b''
-        some_str_ffi = self.ffi.new('char[]', somestr)
-        str_ptr_ffi = self.ffi.new('char**', some_str_ffi)
+        str_ptr_ffi = self.ffi.new('char**')
         # Prepare ptr for string size
         n_ptr_ffi = self.ffi.new('uint32_t *', 0)
 
@@ -2034,9 +2031,7 @@ class Panda():
     # Query all bytes in this register.
     def taint_sym_query_reg(self, addr):
         # Prepare ptr for returned string
-        somestr = b''
-        some_str_ffi = self.ffi.new('char[]', somestr)
-        str_ptr_ffi = self.ffi.new('char**', some_str_ffi)
+        str_ptr_ffi = self.ffi.new('char**')
         # Prepare ptr for string size
         n_ptr_ffi = self.ffi.new('uint32_t *', 0)
 
@@ -2053,9 +2048,7 @@ class Panda():
 
     def taint_sym_path_constraints(self):
         # Prepare ptr for returned string
-        somestr = b''
-        some_str_ffi = self.ffi.new('char[]', somestr)
-        str_ptr_ffi = self.ffi.new('char**', some_str_ffi)
+        str_ptr_ffi = self.ffi.new('char**')
         # Prepare ptr for string size
         n_ptr_ffi = self.ffi.new('uint32_t *', 0)
 
@@ -2084,7 +2077,7 @@ class Panda():
         metas_ffi = self.ffi.unpack(meta_ptr, n)
         # Meta only has a pc field now
         metas = [
-            hex(meta_ffi.pc)
+            meta_ffi.pc
             for meta_ffi in metas_ffi
         ]
         return metas
