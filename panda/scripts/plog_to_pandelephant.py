@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-'''
+"""
 Module for converting from PANDAlog (plog) files to a Pandelephant database
-'''
+"""
 
 import argparse
 import collections
@@ -13,7 +13,7 @@ from pandare import PLogReader
 
 # TODO: add more steps that should be skipped to the steps list
 # and then check `if 'stepname' not in skip_steps: ...` before running the steps
-steps = ['threadslices', 'asid_libraries']
+steps = ["threadslices", "asid_libraries"]
 
 # HasField will raise an exception if that isnt a possible field name
 # so this version translates that into a False
@@ -26,34 +26,45 @@ def hasfield(msg, field_name):
         return False
 
 
-CollectedThread = collections.namedtuple('CollectedThread', ['ProcessId', 'ParentProcessId',
-                                                             'ThreadId', 'CreateTime'])
+CollectedThread = collections.namedtuple(
+    "CollectedThread", ["ProcessId", "ParentProcessId", "ThreadId", "CreateTime"]
+)
 CollectedProcess = collections.namedtuple(
-    'CollectedProcess', ['ProcessId', 'ParentProcessId'])
-CollectedThreadSlice = collections.namedtuple('CollectedThreadSlice', ['FirstInstructionCount',
-                                                                       'LastInstructionCount',
-                                                                       'Thread'])
-CollectedMappingSlice = collections.namedtuple('CollectedMappingSlice', ['InstructionCount',
-                                                                         'AddressSpaceId',
-                                                                         'Mappings'])
-CollectedMapping = collections.namedtuple('CollectedMapping', ['Name', 'File', 'BaseAddress',
-                                                               'Size'])
-BetterCollectedMapping = collections.namedtuple('BetterCollectedMapping', ['AddressSpaceId',
-                                                                           'Process',
-                                                                           'Name', 'File',
-                                                                           'BaseAddress', 'Size'])
-CollectedCodePoint = collections.namedtuple(
-    'CollectedCodePoint', ['Mapping', 'Offset'])
-CollectedSyscall = collections.namedtuple('CollectedSyscall', ['Name', 'RetVal', 'Thread',
-                                                               'InstructionCount', 'Arguments',
-                                                               'ProgramCounter'])
-CollectedSyscallArgument = collections.namedtuple('CollectedSyscallArgument', ['Name', 'Type',
-                                                                               'Value'])
-CollectedTaintFlow = collections.namedtuple('CollectedTaintFlow', ['IsStore', 'SourceCodePoint',
-                                                                   'SourceThread',
-                                                                   'SourceInstructionCount',
-                                                                   'SinkCodePoint', 'SinkThread',
-                                                                   'SinkInstructionCount'])
+    "CollectedProcess", ["ProcessId", "ParentProcessId"]
+)
+CollectedThreadSlice = collections.namedtuple(
+    "CollectedThreadSlice", ["FirstInstructionCount", "LastInstructionCount", "Thread"]
+)
+CollectedMappingSlice = collections.namedtuple(
+    "CollectedMappingSlice", ["InstructionCount", "AddressSpaceId", "Mappings"]
+)
+CollectedMapping = collections.namedtuple(
+    "CollectedMapping", ["Name", "File", "BaseAddress", "Size"]
+)
+BetterCollectedMapping = collections.namedtuple(
+    "BetterCollectedMapping",
+    ["AddressSpaceId", "Process", "Name", "File", "BaseAddress", "Size"],
+)
+CollectedCodePoint = collections.namedtuple("CollectedCodePoint", ["Mapping", "Offset"])
+CollectedSyscall = collections.namedtuple(
+    "CollectedSyscall",
+    ["Name", "RetVal", "Thread", "InstructionCount", "Arguments", "ProgramCounter"],
+)
+CollectedSyscallArgument = collections.namedtuple(
+    "CollectedSyscallArgument", ["Name", "Type", "Value"]
+)
+CollectedTaintFlow = collections.namedtuple(
+    "CollectedTaintFlow",
+    [
+        "IsStore",
+        "SourceCodePoint",
+        "SourceThread",
+        "SourceInstructionCount",
+        "SinkCodePoint",
+        "SinkThread",
+        "SinkInstructionCount",
+    ],
+)
 
 
 def time_log(func):
@@ -61,16 +72,17 @@ def time_log(func):
         t1 = time.time()
         rv = func(*fargs, **kwargs)
         t2 = time.time()
-        print(f"{func.__name__} completed in {t2-t1:.2f}\n" + "_"*60)
+        print(f"{func.__name__} completed in {t2-t1:.2f}\n" + "_" * 60)
         return rv
+
     return wrapped
 
 
 class PLogToPandelephant:
-    '''
+    """
     Class for converting PANDAlog (plog) files to a pandelephant database. Run directly with:
         python -m pandare.PlogToPandelphant -db_url X -pandalog Y -exec_name Z
-    '''
+    """
 
     def __init__(self, pandalog, db_url, exec_name, skip_steps=None):
         self.pandalog = pandalog
@@ -89,32 +101,51 @@ class PLogToPandelephant:
 
         self.CollectProcessMemoryMappings()
 
-        print('Got {} BetterMappings...'.format(sum(len(procmaps.keys())
-                                                    for procmaps in
-                                                    self.CollectedBetterMappingRanges.values())))
+        print(
+            "Got {} BetterMappings...".format(
+                sum(
+                    len(procmaps.keys())
+                    for procmaps in self.CollectedBetterMappingRanges.values()
+                )
+            )
+        )
 
         for proc in self.processes:
-            print('\tProcess (ProcessId {} ParentProcessId {}) has {} Threads {} Mappings'
-                  .format(proc.ProcessId, proc.ParentProcessId, len(self.proc2threads[proc]),
-                          len(self.CollectedBetterMappingRanges[proc].keys())))
+            print(
+                "\tProcess (ProcessId {} ParentProcessId {}) has {} Threads {} Mappings".format(
+                    proc.ProcessId,
+                    proc.ParentProcessId,
+                    len(self.proc2threads[proc]),
+                    len(self.CollectedBetterMappingRanges[proc].keys()),
+                )
+            )
 
-            for mapping, (FirstInstructionCount, LastInstructionCount) in \
-                    self.CollectedBetterMappingRanges[proc].items():
-                print('\t\tFrom Instruction {} - {} in Address Space {:#x} Mapping {} File {}" \
-                        "BaseAddress {:#x} Size {:#x}'.format(FirstInstructionCount,
-                                                              LastInstructionCount,
-                                                              mapping.AddressSpaceId,
-                                                              mapping.Name,
-                                                              mapping.File,
-                                                              mapping.BaseAddress,
-                                                              mapping.Size))
+            for mapping, (
+                FirstInstructionCount,
+                LastInstructionCount,
+            ) in self.CollectedBetterMappingRanges[proc].items():
+                print(
+                    '\t\tFrom Instruction {} - {} in Address Space {:#x} Mapping {} File {}" \
+                        "BaseAddress {:#x} Size {:#x}'.format(
+                        FirstInstructionCount,
+                        LastInstructionCount,
+                        mapping.AddressSpaceId,
+                        mapping.Name,
+                        mapping.File,
+                        mapping.BaseAddress,
+                        mapping.Size,
+                    )
+                )
 
         self.CollectTaintFlowsAndSyscalls()
 
-        print('Collected {} Taint Flows {} Syscalls {} Code Points'.format(
-            len(self.CollectedTaintFlows),
-            len(self.CollectedSyscalls),
-            len(self.CollectedCodePoints)))
+        print(
+            "Collected {} Taint Flows {} Syscalls {} Code Points".format(
+                len(self.CollectedTaintFlows),
+                len(self.CollectedSyscalls),
+                len(self.CollectedCodePoints),
+            )
+        )
 
         self.ConvertProcessThreadsMappingsToDatabase()
 
@@ -127,36 +158,46 @@ class PLogToPandelephant:
     @time_log
     def AssociateThreadsAndProcesses(self):
         # associate threads and procs
-        print('Associating Threads and Processes...')
-        self.thread2proc = {thread: CollectedProcess(ProcessId=thread.ProcessId,
-                                                     ParentProcessId=thread.ParentProcessId)
-                            for thread in self.threads}
+        print("Associating Threads and Processes...")
+        self.thread2proc = {
+            thread: CollectedProcess(
+                ProcessId=thread.ProcessId, ParentProcessId=thread.ParentProcessId
+            )
+            for thread in self.threads
+        }
         self.proc2threads = {proc: set() for proc in self.processes}
         for thread in self.threads:
-            self.proc2threads[(thread.ProcessId, thread.ParentProcessId)].add(
-                thread)
-        #newthreads = set([])  # All threads observed
-        #DuplicateCheck = set((thread.ThreadId, thread.CreateTime)
+            self.proc2threads[(thread.ProcessId, thread.ParentProcessId)].add(thread)
+        # newthreads = set([])  # All threads observed
+        # DuplicateCheck = set((thread.ThreadId, thread.CreateTime)
         #                     for thread in self.threads)
 
-        #if len(DuplicateCheck) != len(self.thread2proc.keys()):
+        # if len(DuplicateCheck) != len(self.thread2proc.keys()):
         #     raise Exception("Threads are not unique in (ThreadId, CreateTime)..."\
         #     "If you think this should be ingestable, change this line...")
 
         for proc in self.proc2threads:
-            print('Process (ProcessId {} ParentProcessId {}) has {} Threads'.format(
-                proc.ProcessId, proc.ParentProcessId, len(self.proc2threads[proc])))
+            print(
+                "Process (ProcessId {} ParentProcessId {}) has {} Threads".format(
+                    proc.ProcessId, proc.ParentProcessId, len(self.proc2threads[proc])
+                )
+            )
 
             for thread in self.proc2threads[proc]:
                 if thread in self.thread_names:
-                    print('\tThread (ThreadId {} CreateTime {:#x}) names: {}'.format(
-                        thread.ThreadId, thread.CreateTime, self.thread_names[thread]))
+                    print(
+                        "\tThread (ThreadId {} CreateTime {:#x}) names: {}".format(
+                            thread.ThreadId,
+                            thread.CreateTime,
+                            self.thread_names[thread],
+                        )
+                    )
 
     @time_log
     def CollectThreadsAndProcesses(self):
         print("First pass over plog (Gathering Processes and Threads)...")
 
-        '''
+        """
         Why don't we just gather these on the fly? Because there are multiple sources
         for this information and they have to be reconciled. It's oddly tricky to
         get a consistent view out of a replay of the set of threads and processes and
@@ -169,7 +210,7 @@ class PLogToPandelephant:
         Better would be if we had callback on after-scheduler-changes-proc s.t. we
         could obtain proc/thread.  TODO: if we have proc_trace messages, that's
         exactly what we have
-        '''
+        """
 
         # thread is (pid, ppid, tid, create_time)
         # process is (pid, ppid)
@@ -179,77 +220,129 @@ class PLogToPandelephant:
         self.thread_names = {}
 
         def CollectFrom_asid_libraries(msg):
-            thread = CollectedThread(ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid,
-                                     CreateTime=msg.create_time)
+            thread = CollectedThread(
+                ProcessId=msg.pid,
+                ParentProcessId=msg.ppid,
+                ThreadId=msg.tid,
+                CreateTime=msg.create_time,
+            )
             # there might be several names for a tid
             if thread in self.thread_names.keys():
                 self.thread_names[thread].add(msg.proc_name)
             else:
                 self.thread_names[thread] = set([msg.proc_name])
             self.threads.add(thread)
-            self.processes.add(CollectedProcess(
-                ProcessId=msg.pid, ParentProcessId=msg.ppid))
+            self.processes.add(
+                CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid)
+            )
 
         def CollectFrom_asid_info(msg):
             for tid in msg.tids:
                 thread = CollectedThread(
-                    ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=tid, CreateTime=msg.create_time)
+                    ProcessId=msg.pid,
+                    ParentProcessId=msg.ppid,
+                    ThreadId=tid,
+                    CreateTime=msg.create_time,
+                )
                 if thread in self.thread_names.keys():
                     for name in msg.names:
                         self.thread_names[thread].add(name)
                 else:
                     self.thread_names[thread] = set(msg.names)
                 self.threads.add(thread)
-                self.thread_slices.add(CollectedThreadSlice(
-                    FirstInstructionCount=msg.start_instr, LastInstructionCount=msg.end_instr, Thread=thread))
-            self.processes.add(CollectedProcess(
-                ProcessId=msg.pid, ParentProcessId=msg.ppid))
+                self.thread_slices.add(
+                    CollectedThreadSlice(
+                        FirstInstructionCount=msg.start_instr,
+                        LastInstructionCount=msg.end_instr,
+                        Thread=thread,
+                    )
+                )
+            self.processes.add(
+                CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid)
+            )
 
         def CollectFrom_taint_flow(msg):
             source_thread = msg.source.cp.thread
-            self.threads.add(CollectedThread(ProcessId=source_thread.pid, ParentProcessId=source_thread.ppid,
-                                             ThreadId=source_thread.tid, CreateTime=source_thread.create_time))
-            self.processes.add(CollectedProcess(
-                ProcessId=source_thread.pid, ParentProcessId=source_thread.ppid))
+            self.threads.add(
+                CollectedThread(
+                    ProcessId=source_thread.pid,
+                    ParentProcessId=source_thread.ppid,
+                    ThreadId=source_thread.tid,
+                    CreateTime=source_thread.create_time,
+                )
+            )
+            self.processes.add(
+                CollectedProcess(
+                    ProcessId=source_thread.pid, ParentProcessId=source_thread.ppid
+                )
+            )
             sink_thread = msg.sink.cp.thread
-            self.threads.add(CollectedThread(ProcessId=sink_thread.pid, ParentProcessId=sink_thread.ppid,
-                                             ThreadId=sink_thread.tid, CreateTime=sink_thread.create_time))
-            self.processes.add(CollectedProcess(
-                ProcessId=sink_thread.pid, ParentProcessId=sink_thread.ppid))
+            self.threads.add(
+                CollectedThread(
+                    ProcessId=sink_thread.pid,
+                    ParentProcessId=sink_thread.ppid,
+                    ThreadId=sink_thread.tid,
+                    CreateTime=sink_thread.create_time,
+                )
+            )
+            self.processes.add(
+                CollectedProcess(
+                    ProcessId=sink_thread.pid, ParentProcessId=sink_thread.ppid
+                )
+            )
 
         def CollectFrom_syscall(msg):
-            self.threads.add(CollectedThread(
-                ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time))
-            self.processes.add(CollectedProcess(
-                ProcessId=msg.pid, ParentProcessId=msg.ppid))
+            self.threads.add(
+                CollectedThread(
+                    ProcessId=msg.pid,
+                    ParentProcessId=msg.ppid,
+                    ThreadId=msg.tid,
+                    CreateTime=msg.create_time,
+                )
+            )
+            self.processes.add(
+                CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid)
+            )
 
         last_thread_info = None
 
         def CollectFrom_proc_trace(msg):
             thread = CollectedThread(
-                ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time)
+                ProcessId=msg.pid,
+                ParentProcessId=msg.ppid,
+                ThreadId=msg.tid,
+                CreateTime=msg.create_time,
+            )
             if thread in self.thread_names.keys():
                 self.thread_names[thread].add(msg.name)
             else:
                 self.thread_names[thread] = set([msg.name])
             self.threads.add(thread)
-            self.processes.add(CollectedProcess(
-                ProcessId=msg.pid, ParentProcessId=msg.ppid))
+            self.processes.add(
+                CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid)
+            )
 
             nonlocal last_thread_info
 
-            if last_thread_info is not None:  # XXX this will miss the very last one since we don't know when it ended
+            if (
+                last_thread_info is not None
+            ):  # XXX this will miss the very last one since we don't know when it ended
                 (last_thread, start_instr) = last_thread_info
-                self.thread_slices.add(CollectedThreadSlice(
-                    FirstInstructionCount=start_instr, LastInstructionCount=msg.start_instr-1, Thread=last_thread))
+                self.thread_slices.add(
+                    CollectedThreadSlice(
+                        FirstInstructionCount=start_instr,
+                        LastInstructionCount=msg.start_instr - 1,
+                        Thread=last_thread,
+                    )
+                )
             last_thread = (thread, msg.start_instr)
 
         CollectFrom = {  # Field name -> parsing function
-            'asid_libraries': CollectFrom_asid_libraries,
-            'asid_info': CollectFrom_asid_info,
-            'taint_flow': CollectFrom_taint_flow,
-            'syscall': CollectFrom_syscall,
-            'proc_trace': CollectFrom_proc_trace,
+            "asid_libraries": CollectFrom_asid_libraries,
+            "asid_info": CollectFrom_asid_info,
+            "taint_flow": CollectFrom_taint_flow,
+            "syscall": CollectFrom_syscall,
+            "proc_trace": CollectFrom_proc_trace,
         }
 
         AttemptCounts = {k: 0 for k in CollectFrom}
@@ -266,11 +359,17 @@ class PLogToPandelephant:
                             FailCounts[k] += 1
                         break
 
-        print('Gathered {} Processes and {} Threads'.format(
-            len(self.processes), len(self.threads)))
+        print(
+            "Gathered {} Processes and {} Threads".format(
+                len(self.processes), len(self.threads)
+            )
+        )
         for k in CollectFrom:
-            print('\t{} Attempts: {}, Failures: {}'.format(
-                k, AttemptCounts[k], FailCounts[k]))
+            print(
+                "\t{} Attempts: {}, Failures: {}".format(
+                    k, AttemptCounts[k], FailCounts[k]
+                )
+            )
 
     @time_log
     def CollectProcessMemoryMappings(self):
@@ -280,8 +379,7 @@ class PLogToPandelephant:
         print("Second pass over plog (Gathering Process Mappings)...")
 
         CollectedBetterMappings = set()
-        self.CollectedBetterMappingRanges = {
-            proc: {} for proc in self.processes}
+        self.CollectedBetterMappingRanges = {proc: {} for proc in self.processes}
 
         num_no_mappings = 0
 
@@ -290,30 +388,43 @@ class PLogToPandelephant:
             if (msg.pid == 0) or (msg.ppid == 0) or (msg.tid == 0):
                 num_no_mappings += 1
                 return
-            #thread = CollectedThread(
+            # thread = CollectedThread(
             #    ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time)
-            process = CollectedProcess(
-                ProcessId=msg.pid, ParentProcessId=msg.ppid)
+            process = CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid)
             # mappings in this plog entry
             for mapping in msg.modules:
                 better_mapping = BetterCollectedMapping(
-                    AddressSpaceId=entry.asid, Name=mapping.name, File=mapping.file, BaseAddress=mapping.base_addr, Size=mapping.size, Process=process)
+                    AddressSpaceId=entry.asid,
+                    Name=mapping.name,
+                    File=mapping.file,
+                    BaseAddress=mapping.base_addr,
+                    Size=mapping.size,
+                    Process=process,
+                )
                 CollectedBetterMappings.add(better_mapping)
                 if better_mapping in self.CollectedBetterMappingRanges[process].keys():
-                    FirstInstructionCount, LastInstructionCount = self.CollectedBetterMappingRanges[
-                        process][better_mapping]
+                    (
+                        FirstInstructionCount,
+                        LastInstructionCount,
+                    ) = self.CollectedBetterMappingRanges[process][better_mapping]
                     if entry.instr < FirstInstructionCount:
                         self.CollectedBetterMappingRanges[process][better_mapping] = (
-                            entry.instr, LastInstructionCount)
+                            entry.instr,
+                            LastInstructionCount,
+                        )
                     elif entry.instr > LastInstructionCount:
                         self.CollectedBetterMappingRanges[process][better_mapping] = (
-                            FirstInstructionCount, entry.instr)
+                            FirstInstructionCount,
+                            entry.instr,
+                        )
                 else:
                     self.CollectedBetterMappingRanges[process][better_mapping] = (
-                        entry.instr, entry.instr)
+                        entry.instr,
+                        entry.instr,
+                    )
 
         CollectFrom = {
-            'asid_libraries': CollectFrom_asid_libraries,
+            "asid_libraries": CollectFrom_asid_libraries,
         }
         AttemptCounts = {k: 0 for k in CollectFrom}
         FailCounts = {k: 0 for k in CollectFrom}
@@ -328,13 +439,27 @@ class PLogToPandelephant:
                             print("Warning:", e)
                             FailCounts[k] += 1
                         break
-        print('Processed {} messages ({} without mapping)'.format(
-            sum(AttemptCounts[k] for k in AttemptCounts), num_no_mappings))
+        print(
+            "Processed {} messages ({} without mapping)".format(
+                sum(AttemptCounts[k] for k in AttemptCounts), num_no_mappings
+            )
+        )
         for k in CollectFrom:
-            print('\t{} Attempts: {}, Failures: {}'.format(
-                k, AttemptCounts[k], FailCounts[k]))
-        print('CollectedBetterMappingRanges Len {}'.format(
-            sum([len(procmaps.keys()) for procmaps in self.CollectedBetterMappingRanges.values()])))
+            print(
+                "\t{} Attempts: {}, Failures: {}".format(
+                    k, AttemptCounts[k], FailCounts[k]
+                )
+            )
+        print(
+            "CollectedBetterMappingRanges Len {}".format(
+                sum(
+                    [
+                        len(procmaps.keys())
+                        for procmaps in self.CollectedBetterMappingRanges.values()
+                    ]
+                )
+            )
+        )
 
     @time_log
     def ConvertTaintFlowsToDatabase(self):
@@ -343,15 +468,26 @@ class PLogToPandelephant:
 
         for tf in self.CollectedTaintFlows:
             src_thread = self.CollectedThreadToDatabaseThread[tf.SourceThread]
-            src_mapping = self.CollectedMappingToDatabaseMapping[tf.SourceCodePoint.Mapping]
+            src_mapping = self.CollectedMappingToDatabaseMapping[
+                tf.SourceCodePoint.Mapping
+            ]
 
             sink_thread = self.CollectedThreadToDatabaseThread[tf.SinkThread]
-            sink_mapping = self.CollectedMappingToDatabaseMapping[tf.SinkCodePoint.Mapping]
+            sink_mapping = self.CollectedMappingToDatabaseMapping[
+                tf.SinkCodePoint.Mapping
+            ]
 
             CollectedCodePointToDatabaseCodePoint[tf] = self.ds.new_taintflow(
-                tf.IsStore, src_thread, src_mapping, tf.SourceCodePoint.Offset, tf.SourceInstructionCount, sink_thread, sink_mapping, tf.SinkCodePoint.Offset, tf.SinkInstructionCount)
-
-
+                tf.IsStore,
+                src_thread,
+                src_mapping,
+                tf.SourceCodePoint.Offset,
+                tf.SourceInstructionCount,
+                sink_thread,
+                sink_mapping,
+                tf.SinkCodePoint.Offset,
+                tf.SinkInstructionCount,
+            )
 
     @time_log
     def ConvertSyscallsToDatabase(self):
@@ -362,39 +498,45 @@ class PLogToPandelephant:
         for s in self.CollectedSyscalls:
             args = []
             for a in s.Arguments:
-                args.append({'name': a.Name, 'type': a.Type, 'value': a.Value})
+                args.append({"name": a.Name, "type": a.Type, "value": a.Value})
             if s.Thread in self.CollectedThreadToDatabaseThread:
                 CollectedSyscallToDatabaseSyscall[s] = self.ds.new_syscall(
-                    self.CollectedThreadToDatabaseThread[s.Thread], s.Name, s.RetVal, args, s.InstructionCount, s.ProgramCounter)
+                    self.CollectedThreadToDatabaseThread[s.Thread],
+                    s.Name,
+                    s.RetVal,
+                    args,
+                    s.InstructionCount,
+                    s.ProgramCounter,
+                )
 
     def CollectTaintFlowsAndSyscalls(self):
-        print('Third pass over plog (Gathering Taint Flows and Syscalls)...')
+        print("Third pass over plog (Gathering Taint Flows and Syscalls)...")
         self.CollectedCodePoints = set()
         self.CollectedSyscalls = set()
         self.CollectedTaintFlows = set()
         # DuplicateTaintFlows = {}
         NoMappingCount = {
-            'Source': 0,
-            'Sink': 0,
+            "Source": 0,
+            "Sink": 0,
         }
 
         def CollectFrom_syscall(entry, msg):
             SyscallFieldInfo = {
-                'str': ('string', '{:s}'),
-                'ptr': ('pointer', '0x{:x}'),
-                'u64': ('unsigned64', '{:d}'),
-                'u32': ('unsigned32', '{:d}'),
-                'u16': ('unsigned16', '{:d}'),
-                'i64': ('signed64', '{:d}'),
-                'i32': ('signed32', '{:d}'),
-                'i16': ('signed16', '{:d}'),
-                'bytes_val': ('bytes', '{:d}'),
+                "str": ("string", "{:s}"),
+                "ptr": ("pointer", "0x{:x}"),
+                "u64": ("unsigned64", "{:d}"),
+                "u32": ("unsigned32", "{:d}"),
+                "u16": ("unsigned16", "{:d}"),
+                "i64": ("signed64", "{:d}"),
+                "i32": ("signed32", "{:d}"),
+                "i16": ("signed16", "{:d}"),
+                "bytes_val": ("bytes", "{:d}"),
             }
 
             def syscall_arg_value(sarg):
                 for fld, (typ, fmt) in SyscallFieldInfo.items():
                     if sarg.HasField(fld):
-                        if fld == 'bytes_val':
+                        if fld == "bytes_val":
                             # TODO: do we need to strip out non-ascii for DB?
                             safe_str = getattr(sarg, fld)
                             return sarg.arg_name, typ, safe_str
@@ -402,73 +544,107 @@ class PLogToPandelephant:
                 assert False
 
             thread = CollectedThread(
-                ProcessId=msg.pid, ParentProcessId=msg.ppid, ThreadId=msg.tid, CreateTime=msg.create_time)
-            self.CollectedSyscalls.add(CollectedSyscall(
-                Name=msg.call_name,
-                RetVal=msg.retcode,
-                Thread=thread,
-                InstructionCount=entry.instr,
-                Arguments=tuple(
-                    CollectedSyscallArgument(*syscall_arg_value(arg))
-                    for arg in msg.args
-                ),
-                ProgramCounter=entry.pc
-            ))
+                ProcessId=msg.pid,
+                ParentProcessId=msg.ppid,
+                ThreadId=msg.tid,
+                CreateTime=msg.create_time,
+            )
+            self.CollectedSyscalls.add(
+                CollectedSyscall(
+                    Name=msg.call_name,
+                    RetVal=msg.retcode,
+                    Thread=thread,
+                    InstructionCount=entry.instr,
+                    Arguments=tuple(
+                        CollectedSyscallArgument(*syscall_arg_value(arg))
+                        for arg in msg.args
+                    ),
+                    ProgramCounter=entry.pc,
+                )
+            )
             return
 
         def CollectFrom_taint_flow(_, msg):
             source_thread = msg.source.cp.thread
             source_process = CollectedProcess(
-                ProcessId=source_thread.pid, ParentProcessId=source_thread.ppid)
-            source_thread = CollectedThread(ProcessId=source_thread.pid, ParentProcessId=source_thread.ppid,
-                                            ThreadId=source_thread.tid, CreateTime=source_thread.create_time)
+                ProcessId=source_thread.pid, ParentProcessId=source_thread.ppid
+            )
+            source_thread = CollectedThread(
+                ProcessId=source_thread.pid,
+                ParentProcessId=source_thread.ppid,
+                ThreadId=source_thread.tid,
+                CreateTime=source_thread.create_time,
+            )
             sink_thread = msg.sink.cp.thread
             sink_process = CollectedProcess(
-                ProcessId=sink_thread.pid, ParentProcessId=sink_thread.ppid)
-            sink_thread = CollectedThread(ProcessId=sink_thread.pid, ParentProcessId=sink_thread.ppid,
-                                          ThreadId=sink_thread.tid, CreateTime=sink_thread.create_time)
+                ProcessId=sink_thread.pid, ParentProcessId=sink_thread.ppid
+            )
+            sink_thread = CollectedThread(
+                ProcessId=sink_thread.pid,
+                ParentProcessId=sink_thread.ppid,
+                ThreadId=sink_thread.tid,
+                CreateTime=sink_thread.create_time,
+            )
 
             # REQUIRES: CollectedBetterMappingRanges[{source,sink}_process].items() is sorted by ascending FirstInstructionCount
-            #sink_mapping_slice = None
+            # sink_mapping_slice = None
             sink_mapping, sink_offset = None, None
-            for mapping, (FirstInstructionCount, LastInstructionCount) in self.CollectedBetterMappingRanges[sink_process].items():
-                if (FirstInstructionCount <= msg.sink.instr) and (LastInstructionCount >= msg.sink.instr):
-                    if (msg.sink.cp.pc >= mapping.BaseAddress) and (msg.sink.cp.pc <= (mapping.BaseAddress + mapping.Size - 1)):
-                        #sink_mapping_slice = ( FirstInstructionCount, LastInstructionCount)
+            for mapping, (
+                FirstInstructionCount,
+                LastInstructionCount,
+            ) in self.CollectedBetterMappingRanges[sink_process].items():
+                if (FirstInstructionCount <= msg.sink.instr) and (
+                    LastInstructionCount >= msg.sink.instr
+                ):
+                    if (msg.sink.cp.pc >= mapping.BaseAddress) and (
+                        msg.sink.cp.pc <= (mapping.BaseAddress + mapping.Size - 1)
+                    ):
+                        # sink_mapping_slice = ( FirstInstructionCount, LastInstructionCount)
                         sink_mapping = mapping
                         sink_offset = msg.sink.cp.pc - mapping.BaseAddress
                 else:
                     if sink_mapping is not None:
                         break
 
-            #source_mapping_slice = None # Unusued
+            # source_mapping_slice = None # Unusued
             source_mapping, source_offset = None, None
-            for mapping, (FirstInstructionCount, LastInstructionCount) in self.CollectedBetterMappingRanges[source_process].items():
-                if (FirstInstructionCount <= msg.source.instr) and (LastInstructionCount >= msg.source.instr):
-                    if (msg.source.cp.pc >= mapping.BaseAddress) and (msg.source.cp.pc <= (mapping.BaseAddress + mapping.Size - 1)):
-                        #source_mapping_slice = (FirstInstructionCount, LastInstructionCount)
+            for mapping, (
+                FirstInstructionCount,
+                LastInstructionCount,
+            ) in self.CollectedBetterMappingRanges[source_process].items():
+                if (FirstInstructionCount <= msg.source.instr) and (
+                    LastInstructionCount >= msg.source.instr
+                ):
+                    if (msg.source.cp.pc >= mapping.BaseAddress) and (
+                        msg.source.cp.pc <= (mapping.BaseAddress + mapping.Size - 1)
+                    ):
+                        # source_mapping_slice = (FirstInstructionCount, LastInstructionCount)
                         source_mapping = mapping
                         source_offset = msg.source.cp.pc - mapping.BaseAddress
                 else:
                     if source_mapping is not None:
                         break
             if sink_mapping is None:
-                NoMappingCount['Sink'] += 1
+                NoMappingCount["Sink"] += 1
             if source_mapping is None:
-                NoMappingCount['Source'] += 1
+                NoMappingCount["Source"] += 1
             if (sink_mapping is None) or (source_mapping is None):
                 return
 
             SourceCodePoint = CollectedCodePoint(
-                Mapping=source_mapping, Offset=source_offset)
-            SinkCodePoint = CollectedCodePoint(
-                Mapping=sink_mapping, Offset=sink_offset)
+                Mapping=source_mapping, Offset=source_offset
+            )
+            SinkCodePoint = CollectedCodePoint(Mapping=sink_mapping, Offset=sink_offset)
             self.CollectedCodePoints.add(SourceCodePoint)
             self.CollectedCodePoints.add(SinkCodePoint)
             flow = CollectedTaintFlow(
                 IsStore=msg.source.is_store,
-                SourceCodePoint=SourceCodePoint, SourceThread=source_thread, SourceInstructionCount=msg.source.instr,
-                SinkCodePoint=SinkCodePoint, SinkThread=sink_thread, SinkInstructionCount=msg.sink.instr
+                SourceCodePoint=SourceCodePoint,
+                SourceThread=source_thread,
+                SourceInstructionCount=msg.source.instr,
+                SinkCodePoint=SinkCodePoint,
+                SinkThread=sink_thread,
+                SinkInstructionCount=msg.sink.instr,
             )
             # if flow in CollectedTaintFlows:
             #     if flow in DuplicateTaintFlows.keys():
@@ -477,9 +653,10 @@ class PLogToPandelephant:
             #         DuplicateTaintFlows[flow] = 2
             self.CollectedTaintFlows.add(flow)
             return
+
         CollectFrom = {
-            'syscall': CollectFrom_syscall,
-            'taint_flow': CollectFrom_taint_flow,
+            "syscall": CollectFrom_syscall,
+            "taint_flow": CollectFrom_taint_flow,
         }
         AttemptCounts = {k: 0 for k in CollectFrom}
         FailCounts = {k: 0 for k in CollectFrom}
@@ -496,9 +673,12 @@ class PLogToPandelephant:
                             raise e
                         break
         for k in CollectFrom:
-            print('\t{} Attempts: {}, Failures: {}'.format(
-                k, AttemptCounts[k], FailCounts[k]))
-        print('\tNoMappingCount = {}'.format(NoMappingCount))
+            print(
+                "\t{} Attempts: {}, Failures: {}".format(
+                    k, AttemptCounts[k], FailCounts[k]
+                )
+            )
+        print("\tNoMappingCount = {}".format(NoMappingCount))
         # print('\tDuplicate Flows {}'.format(len(DuplicateTaintFlows.keys())))
         # for flow, count in DuplicateTaintFlows.items():
         #     print('\t\tFlow Duplicated {} times: {}'.format(count, flow))
@@ -520,22 +700,39 @@ class PLogToPandelephant:
                 if t.CreateTime < create_time:
                     create_time = t.CreateTime
             process = self.ds.new_process(
-                self.execution, create_time, p.ProcessId, p.ParentProcessId)
+                self.execution, create_time, p.ProcessId, p.ParentProcessId
+            )
             self.CollectedProcessToDatabaseProcess[p] = process
 
             for t in self.proc2threads[p]:
                 if t in self.thread_names:
                     self.CollectedThreadToDatabaseThread[t] = self.ds.new_thread(
-                        process, t.CreateTime, t.ThreadId, self.thread_names[t])
+                        process, t.CreateTime, t.ThreadId, self.thread_names[t]
+                    )
 
-            for mapping, (FirstInstructionCount, LastInstructionCount) in self.CollectedBetterMappingRanges[p].items():
+            for mapping, (
+                FirstInstructionCount,
+                LastInstructionCount,
+            ) in self.CollectedBetterMappingRanges[p].items():
                 self.CollectedMappingToDatabaseMapping[mapping] = self.ds.new_mapping(
-                    process, mapping.Name, mapping.File, mapping.AddressSpaceId, mapping.BaseAddress, FirstInstructionCount, mapping.Size, FirstInstructionCount, LastInstructionCount)
+                    process,
+                    mapping.Name,
+                    mapping.File,
+                    mapping.AddressSpaceId,
+                    mapping.BaseAddress,
+                    FirstInstructionCount,
+                    mapping.Size,
+                    FirstInstructionCount,
+                    LastInstructionCount,
+                )
 
-        if 'threadslices' not in self.skip_steps:
+        if "threadslices" not in self.skip_steps:
             for thread_slice in self.thread_slices:
-                self.ds.new_threadslice(self.CollectedThreadToDatabaseThread[thread_slice.Thread],
-                                        thread_slice.FirstInstructionCount, end_execution_offset=thread_slice.LastInstructionCount)
+                self.ds.new_threadslice(
+                    self.CollectedThreadToDatabaseThread[thread_slice.Thread],
+                    thread_slice.FirstInstructionCount,
+                    end_execution_offset=thread_slice.LastInstructionCount,
+                )
 
         # return CollectedProcessToDatabaseProcess, CollectedThreadToDatabaseThread, CollectedMappingToDatabaseMapping
 
@@ -548,15 +745,24 @@ class PLogToPandelephant:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="ingest pandalog and tranfer results to pandelephant")
-    parser.add_argument("-db_url", help="db url",
-                        action="store", required=True)
-    parser.add_argument("-pandalog", help="pandalog",
-                        action="store", required=True)
-    parser.add_argument("-exec_name", "--exec-name",
-                        help="A name for the execution", action="store", required=True)
-    parser.add_argument('-s', '--skip', action='append',
-                        help='Steps to skip. Valid values: ' + ' '.join(steps), required=False)
+        description="ingest pandalog and tranfer results to pandelephant"
+    )
+    parser.add_argument("-db_url", help="db url", action="store", required=True)
+    parser.add_argument("-pandalog", help="pandalog", action="store", required=True)
+    parser.add_argument(
+        "-exec_name",
+        "--exec-name",
+        help="A name for the execution",
+        action="store",
+        required=True,
+    )
+    parser.add_argument(
+        "-s",
+        "--skip",
+        action="append",
+        help="Steps to skip. Valid values: " + " ".join(steps),
+        required=False,
+    )
 
     pargs = parser.parse_args()
 
@@ -565,7 +771,8 @@ if __name__ == "__main__":
         for arg in pargs.skip:
             if arg not in steps:
                 raise ValueError(
-                    f"Unable to skip step {arg}. Valid values are: {' '.join(steps)}")
+                    f"Unable to skip step {arg}. Valid values are: {' '.join(steps)}"
+                )
             skips.append(arg)
 
     print("%s %s" % (pargs.db_url, pargs.exec_name))
