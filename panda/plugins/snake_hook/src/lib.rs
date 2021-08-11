@@ -8,8 +8,10 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 mod loader;
+mod plugin_path;
 mod panda_plugin;
 use panda_plugin::PandaPlugin;
+use plugin_path::plugin_path;
 
 #[derive(PandaArgs, Debug)]
 #[name = "snake_hook"]
@@ -30,7 +32,7 @@ fn executable_dir() -> PathBuf {
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
     let args = Args::from_panda_args();
-    let plugin_self_path = executable_dir().join("panda/plugins/panda_snake_hook.so");
+    let plugin_self_path = plugin_path("snake_hook");
 
     if !plugin_self_path.exists() {
         panic!(
