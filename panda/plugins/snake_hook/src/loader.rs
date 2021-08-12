@@ -1,4 +1,4 @@
-use crate::{executable_dir, Args, PandaPlugin, PANDA_OBJ, PLUGINS};
+use crate::{executable_dir, Args, PandaPlugin, PANDA_OBJ, PLUGINS, py_unix_socket::PyUnixSocket};
 use inline_python::{python, Context};
 use pyo3::{prelude::*, types::PyType};
 use std::path::Path;
@@ -23,6 +23,17 @@ pub(crate) fn initialize_pyplugins(args: Args) {
     let files = args.files.split(':').collect::<Vec<_>>();
 
     if let Err(python_err) = Python::with_gil(|py| -> PyResult<()> {
+        if !args.stdout.is_empty() {
+            println!("[snake_hook] connecting python stdout to '{}'", args.stdout);
+            let socket = Py::new(py, PyUnixSocket::new(&args.stdout)?)?;
+
+            context.run(python! {
+                import sys
+
+                sys.stdout = 'socket;
+            });
+        }
+
         for file in files {
             let path = Path::new(file);
             if path.exists() {
