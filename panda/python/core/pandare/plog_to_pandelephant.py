@@ -364,22 +364,28 @@ class PLogToPandelephant:
     def ConvertSyscallsToDatabase(self):
         print("Constructing db objects for Syscalls")
 
+        # Bulk insert items in chunks of 10k
         syscall_infos = []
-        for s in self.CollectedSyscalls:
+        for idx, syscall in enumerate(self.CollectedSyscalls):
+            if idx > 0 and idx % 10000 == 0:
+                self.ds.new_syscall_collection(syscall_infos)
+                syscall_infos = []
+
             args = []
-            for a in s.Arguments:
+            for a in syscall.Arguments:
                 args.append({"name": a.Name, "type": a.Type, "value": a.Value})
-            if s.Thread in self.CollectedThreadToDatabaseThread:
+            if syscall.Thread in self.CollectedThreadToDatabaseThread:
                 syscall_infos.append((
-                    self.CollectedThreadToDatabaseThread[s.Thread],
-                    s.Name,
-                    s.RetVal,
+                    self.CollectedThreadToDatabaseThread[syscall.Thread],
+                    syscall.Name,
+                    syscall.RetVal,
                     args,
-                    s.InstructionCount,
-                    s.ProgramCounter,
+                    syscall.InstructionCount,
+                    syscall.ProgramCounter,
                 ))
 
-        self.ds.new_syscall_collection(syscall_infos)
+        if len(syscall_infos):
+            self.ds.new_syscall_collection(syscall_infos)
 
     @time_log
     def ConvertProcessThreadsMappingsToDatabase(self):
