@@ -10,6 +10,7 @@ use std::sync::Mutex;
 mod loader;
 mod plugin_path;
 mod panda_plugin;
+mod py_unix_socket;
 use panda_plugin::PandaPlugin;
 use plugin_path::plugin_path;
 
@@ -18,6 +19,9 @@ use plugin_path::plugin_path;
 struct Args {
     #[arg(required, about = "colon-separated list of python plugins to run")]
     files: String,
+
+    #[arg(about = "path for unix socket to redirect stdout to")]
+    stdout: String,
 }
 
 /// Return the directory of the panda-system-* executable
