@@ -174,11 +174,11 @@ def initialCollection(pandalog, skip_steps=None):
 
     def _collect_thread_procs_from_asidlib(entry, msg):
         nonlocal threads, processes, thread_names
-        thread = collectedthread(
-            processid=msg.pid,
-            parentprocessid=msg.ppid,
-            threadid=msg.tid,
-            createtime=msg.create_time,
+        thread = CollectedThread(
+            ProcessId=msg.pid,
+            ParentProcessId=msg.ppid,
+            ThreadId=msg.tid,
+            CreateTime=msg.create_time,
         )
         # there might be several names for a tid
         if thread in thread_names.keys():
@@ -187,17 +187,17 @@ def initialCollection(pandalog, skip_steps=None):
             thread_names[thread] = set([msg.proc_name])
         threads.add(thread)
         processes.add(
-            collectedprocess(processid=msg.pid, parentprocessid=msg.ppid)
+            CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid)
         )
 
     def _collect_thread_procs_from_asidinfo(entry, msg):
         nonlocal threads, processes, thread_names, thread_slices
         for tid in msg.tids:
-            thread = collectedthread(
-                processid=msg.pid,
-                parentprocessid=msg.ppid,
-                threadid=tid,
-                createtime=msg.create_time,
+            thread = CollectedThread(
+                ProcessId=msg.pid,
+                ParentProcessId=msg.ppid,
+                ThreadId=tid,
+                CreateTime=msg.create_time,
             )
             if thread in thread_names.keys():
                 for name in msg.names:
@@ -206,29 +206,29 @@ def initialCollection(pandalog, skip_steps=None):
                 thread_names[thread] = set(msg.names)
             threads.add(thread)
             thread_slices.add(
-                collectedthreadslice(
-                    firstinstructioncount=msg.start_instr,
-                    lastinstructioncount=msg.end_instr,
-                    thread=thread,
+                CollectedThreadSlice(
+                    FirstInstructionCount=msg.start_instr,
+                    LastInstructionCount=msg.end_instr,
+                    Thread=thread,
                 )
             )
         processes.add(
-            collectedprocess(processid=msg.pid, parentprocessid=msg.ppid)
+            CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid)
         )
 
     def _create_thread_procs_from_taintflow(entry, msg):
         nonlocal threads, processes
         source_thread = msg.source.cp.thread
         threads.add(
-            collectedthread(
-                processid=source_thread.pid,
-                parentprocessid=source_thread.ppid,
-                threadid=source_thread.tid,
-                createtime=source_thread.create_time,
+            CollectedThread(
+                ProcessId=source_thread.pid,
+                ParentProcessId=source_thread.ppid,
+                ThreadId=source_thread.tid,
+                CreateTime=source_thread.create_time,
             )
         )
         processes.add(
-            collectedprocess(
+            CollectedProcess(
                 ProcessId=source_thread.pid, ParentProcessId=source_thread.ppid
             )
         )
