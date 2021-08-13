@@ -444,7 +444,7 @@ def collectProcessMemoryMappings(pandalog, processes, skip_steps):
 
 
 @time_log
-def collectTaintFlows():
+def collectTaintFlows(pandalog, skip_steps):
     print("Third pass over plog (Gathering Taint Flows)...")
 
     collectedCodePoints = set()
