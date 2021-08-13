@@ -872,6 +872,12 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
         return;
     }
 
+    // Sometimes we'll get a syscall with an unknown name
+    if (call->name == NULL) {
+          std::cerr << "[WARNING] syscalls_logger: unknown syscall " << call->no << " update syscalls prototype if you want to to log it" << std::endl;
+          return;
+    }
+
     if (target_process != NULL && strcmp(current->name, target_process) != 0) {
         // Target specified and it's not this one - bail
         return;
@@ -1137,6 +1143,14 @@ void sys_enter(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const
         }
         return;
     }
+
+    // Sometimes we'll get a syscall with an unknown name - I think it's because we failed to map some syscall number back to a name
+    // that certainly won't be one of the special cases we handle here.
+    if (call->name == NULL) {
+        return;
+    }
+
+
     // NOTE: if these syscalls fail, we'll initially record them (on enter) with a retval of 0
     // but we'll then also record them again (on return) with the actual retval.
     // In the non failure case, they never return and are only captured once.
