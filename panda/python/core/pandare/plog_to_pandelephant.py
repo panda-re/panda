@@ -172,6 +172,23 @@ def initialCollection(pandalog, skip_steps=None):
     collectedSyscalls = set()
     last_thread_info = None
 
+
+    def track_name(thread, name, start_instr, end_instr):
+        nonlocal thread_names
+        if thread in thread_names.keys():
+            if name in thread_names[thread].keys():
+                FirstInstructionCount, LastInstructionCount = thread_names[thread][name]
+                if start_instr < FirstInstructionCount:
+                    FirstInstructionCount = start_instr
+                if end_instr > LastInstructionCount:
+                    LastInstructionCount = end_instr
+                thread_names[thread][name] = (FirstInstructionCount, LastInstructionCount)
+            else:
+                thread_names[thread][name] = (start_instr, end_instr)
+        else:
+            thread_names[thread] = {
+                name: (start_instr, end_instr)
+            }
     def _collect_thread_procs_from_asidlib(entry, msg):
         nonlocal threads, processes, thread_names
         thread = CollectedThread(
@@ -181,10 +198,7 @@ def initialCollection(pandalog, skip_steps=None):
             CreateTime=msg.create_time,
         )
         # there might be several names for a tid
-        if thread in thread_names.keys():
-            thread_names[thread].add(msg.proc_name)
-        else:
-            thread_names[thread] = set([msg.proc_name])
+        track_name(thread=thread, name=msg.proc_name, start_instr=entry.instr, end_instr=entry.instr)
         threads.add(thread)
         processes.add(
             CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid)
@@ -199,11 +213,8 @@ def initialCollection(pandalog, skip_steps=None):
                 ThreadId=tid,
                 CreateTime=msg.create_time,
             )
-            if thread in thread_names.keys():
-                for name in msg.names:
-                    thread_names[thread].add(name)
-            else:
-                thread_names[thread] = set(msg.names)
+            for name in msg.names:
+                track_name(thread=thread, name=name, start_instr=entry.instr, end_instr=entry.instr)
             threads.add(thread)
             thread_slices.add(
                 CollectedThreadSlice(
@@ -306,10 +317,7 @@ def initialCollection(pandalog, skip_steps=None):
             ThreadId=msg.tid,
             CreateTime=msg.create_time,
         )
-        if thread in thread_names.keys():
-            thread_names[thread].add(msg.name)
-        else:
-            thread_names[thread] = set([msg.name])
+
         threads.add(thread)
         processes.add(
             CollectedProcess(ProcessId=msg.pid, ParentProcessId=msg.ppid)
@@ -317,7 +325,8 @@ def initialCollection(pandalog, skip_steps=None):
 
         if last_thread_info is not None:
             # XXX this will miss the very last one since we don't know when it ended
-            (last_thread, start_instr) = last_thread_info
+            (last_thread, start_instr, last_name) = last_thread_info
+            track_name(thread=last_thread, name=last_name, start_instr=start_instr, end_instr=msg.start_instr-1)
             thread_slices.add(
                 CollectedThreadSlice(
                     FirstInstructionCount=start_instr,
@@ -326,7 +335,7 @@ def initialCollection(pandalog, skip_steps=None):
                 )
             )
 
-        last_thread_info = (thread, msg.start_instr)
+        last_thread_info = (thread, msg.start_instr, msg.name)
 
 
 
@@ -592,7 +601,7 @@ def convertProcessThreadsMappingsToDb(execution, ds, processes, proc2threads, th
         for t in proc2threads[p]:
             if t in thread_names:
                 collectedThreadToDbThread[t] = ds.new_thread(
-                    process, t.CreateTime, t.ThreadId, thread_names[t]
+                    process, t.CreateTime, t.ThreadId, thread_names[t].items()
                 )
 
         for mapping, (
