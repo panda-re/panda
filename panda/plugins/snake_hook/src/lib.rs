@@ -22,6 +22,9 @@ struct Args {
 
     #[arg(about = "path for unix socket to redirect stdout to")]
     stdout: String,
+
+    #[arg(about = "colon-separated list of classes to execute, defaults to all classes")]
+    classes: String,
 }
 
 /// Return the directory of the panda-system-* executable

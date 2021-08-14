@@ -12,6 +12,11 @@ fn is_plugin_type<'py>(py: Python<'py>, ty: &'py PyType) -> bool {
 
 /// Load and initalize all the plugins
 pub(crate) fn initialize_pyplugins(args: Args) {
+    let load_all_classes = args.classes == "";
+    let class_names = args.classes.split(":").collect::<Vec<_>>();
+    let should_load = move |class: &PyType| {
+        class.name().map(|name| class_names.contains(&name)).unwrap_or(false)
+    };
     let libpanda_path = executable_dir().join(format!("libpanda-{}.so", ARCH));
     let context: Context = python! {
         from pandare import Panda
@@ -64,6 +69,10 @@ pub(crate) fn initialize_pyplugins(args: Args) {
                     // treat it as a plugin
                     if let Ok(class) = item.downcast::<PyType>() {
                         if !is_plugin_type(py, class) {
+                            continue;
+                        }
+
+                        if !load_all_classes && !should_load(&class) {
                             continue;
                         }
 
