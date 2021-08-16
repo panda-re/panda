@@ -11,6 +11,7 @@ mod loader;
 mod panda_plugin;
 mod plugin_path;
 mod py_unix_socket;
+
 use plugin_path::plugin_path;
 
 #[derive(PandaArgs, Debug)]
