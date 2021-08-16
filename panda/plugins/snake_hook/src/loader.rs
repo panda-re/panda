@@ -1,4 +1,5 @@
-use crate::{executable_dir, Args, PandaPlugin, PANDA_OBJ, PLUGINS, py_unix_socket::PyUnixSocket};
+use crate::panda_plugin::{ArgMap, ArgValue, PandaPlugin, NEXT_PLUGIN_ARGS};
+use crate::{executable_dir, py_unix_socket::PyUnixSocket, Args, PANDA_OBJ, PLUGINS};
 use inline_python::{python, Context};
 use pyo3::{prelude::*, types::PyType};
 use std::path::Path;
@@ -10,12 +11,40 @@ fn is_plugin_type<'py>(py: Python<'py>, ty: &'py PyType) -> bool {
     ty.is_subclass::<PandaPlugin>().unwrap_or(false) && ty != py.get_type::<PandaPlugin>()
 }
 
+struct PluginFile {
+    path: String,
+    args: ArgMap,
+}
+
+fn parse_files(files: &str) -> Vec<PluginFile> {
+    files
+        .split(':')
+        .map(|file| {
+            let mut iter = file.split('|');
+            let path = iter.next().unwrap().to_owned();
+
+            let args = iter
+                .map(|arg| {
+                    arg.split_once("=")
+                        .map(|(key, value)| (key.to_owned(), ArgValue::Value(value.to_string())))
+                        .unwrap_or_else(|| (arg.to_owned(), ArgValue::NoValue))
+                })
+                .collect();
+
+            PluginFile { path, args }
+        })
+        .collect()
+}
+
 /// Load and initalize all the plugins
 pub(crate) fn initialize_pyplugins(args: Args) {
-    let load_all_classes = args.classes == "";
-    let class_names = args.classes.split(":").collect::<Vec<_>>();
+    let load_all_classes = args.classes.is_empty();
+    let class_names = args.classes.split(':').collect::<Vec<_>>();
     let should_load = move |class: &PyType| {
-        class.name().map(|name| class_names.contains(&name)).unwrap_or(false)
+        class
+            .name()
+            .map(|name| class_names.contains(&name))
+            .unwrap_or(false)
     };
     let libpanda_path = executable_dir().join(format!("libpanda-{}.so", ARCH));
     let context: Context = python! {
@@ -25,7 +54,7 @@ pub(crate) fn initialize_pyplugins(args: Args) {
     };
 
     let panda_obj: PyObject = context.get("panda");
-    let files = args.files.split(':').collect::<Vec<_>>();
+    let files = parse_files(&args.files);
 
     if let Err(python_err) = Python::with_gil(|py| -> PyResult<()> {
         if !args.stdout.is_empty() {
@@ -40,6 +69,13 @@ pub(crate) fn initialize_pyplugins(args: Args) {
         }
 
         for file in files {
+            let PluginFile {
+                path: ref file,
+                args,
+            } = file;
+
+            *NEXT_PLUGIN_ARGS.lock().unwrap() = Some(args);
+
             let path = Path::new(file);
             if path.exists() {
                 let file_path = std::fs::canonicalize(path)
@@ -72,7 +108,7 @@ pub(crate) fn initialize_pyplugins(args: Args) {
                             continue;
                         }
 
-                        if !load_all_classes && !should_load(&class) {
+                        if !load_all_classes && !should_load(class) {
                             continue;
                         }
 

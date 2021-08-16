@@ -1,5 +1,5 @@
-use std::os::unix::net::UnixStream;
 use std::io::Write;
+use std::os::unix::net::UnixStream;
 
 use pyo3::prelude::*;
 
@@ -13,7 +13,7 @@ impl PyUnixSocket {
     #[new]
     pub fn new(path: &str) -> PyResult<Self> {
         Ok(Self {
-            stream: UnixStream::connect(path)?
+            stream: UnixStream::connect(path)?,
         })
     }
 

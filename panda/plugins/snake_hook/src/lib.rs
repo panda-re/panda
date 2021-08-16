@@ -8,10 +8,9 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 mod loader;
-mod plugin_path;
 mod panda_plugin;
+mod plugin_path;
 mod py_unix_socket;
-use panda_plugin::PandaPlugin;
 use plugin_path::plugin_path;
 
 #[derive(PandaArgs, Debug)]
