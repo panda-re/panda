@@ -8,10 +8,10 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 mod loader;
-mod plugin_path;
 mod panda_plugin;
+mod plugin_path;
 mod py_unix_socket;
-use panda_plugin::PandaPlugin;
+
 use plugin_path::plugin_path;
 
 #[derive(PandaArgs, Debug)]
@@ -22,6 +22,9 @@ struct Args {
 
     #[arg(about = "path for unix socket to redirect stdout to")]
     stdout: String,
+
+    #[arg(about = "colon-separated list of classes to execute, defaults to all classes")]
+    classes: String,
 }
 
 /// Return the directory of the panda-system-* executable
