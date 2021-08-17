@@ -13,8 +13,7 @@ COPY ./panda/dependencies/${BASE_IMAGE}*.txt /tmp/
 RUN [ -e /tmp/${BASE_IMAGE}_base.txt ] && \
     apt-get -qq update && \
     DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends $(cat /tmp/${BASE_IMAGE}_base.txt | grep -o '^[^#]*') && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get clean
 
 
 ### BUILD IMAGE - STAGE 2
@@ -26,7 +25,6 @@ RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
     apt-get -qq update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /tmp/${BASE_IMAGE}_build.txt | grep -o '^[^#]*') && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
     python3 -m pip install --upgrade --no-cache-dir pip && \
     python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
