@@ -540,6 +540,10 @@ void find_symbols(CPUState* cpu, target_ulong asid, OsiProc *current, OsiModule 
                         strncpy((char*)&s.name, &strtab_buf[a->st_name], sizeof(s.name)-2);
                         strncpy((char*)&s.section, m->name, sizeof(s.section)-2);
                         s.address = m->base + a->st_value;
+#ifdef TARGET_ARM
+                        s.address &= ~0x1;
+#endif
+
                         //printf("found symbol %s %s 0x%llx\n",s.section, &strtab_buf[a->st_name],(long long unsigned int)s.address);
                         string sym_name(s.name);
                         seen_libraries[c][sym_name] = s;
