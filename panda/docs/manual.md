@@ -1692,6 +1692,8 @@ For ARM, PANDA specifies coprocessor 7 (p7) as the target of the MCR
 instruction (move to coprocessor from register). p7 is reserved by ARM
 and not implemented in QEMU, so it can be handled without causing
 conflicts.
+For AARCH64, PANDA uses a system register that is not implemented in QEMU.
+Specifically, it uses the instruction `msr S0_0_c5_c0_0, xzr`.
 PANDA also opted out from using an undefined opcode to implement the
 hypercall functionality. This is the approach taken by S2E, but it has
 the drawback that during development you need to output raw bytes
