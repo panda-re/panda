@@ -35,7 +35,7 @@ QEMU_PROG_BUILD = $(QEMU_PROG)
 endif
 endif
 
-PROGS=$(QEMU_PROG) $(QEMU_PROGW) $(PANDA_PROG)
+PROGS=$(PANDA_PROG) $(QEMU_PROG) $(QEMU_PROGW)
 STPFILES=
 
 config-target.h: config-target.h-timestamp
