@@ -666,12 +666,16 @@ void log_argument(CPUState* cpu, const syscall_info_t *call, int i, Panda__Named
                 assert(strcmp("sys_write", call->name) != 0);
 
                 int len = get_string(cpu, addr, buf);
-                if (len > 0) {
-                    sa->str = strdup((const char *) buf);
-                } else {
-                    sa->str = strdup("n/a");
+                if (sa) {
+                  if (len > 0) {
+                      sa->str = strdup((const char *) buf);
+                  } else {
+                      sa->str = strdup("n/a");
+                  }
+                }else{
+                  printf("\"%.*s\"", (int)len, buf);
                 }
-            }
+              }
             break;
         }
 
