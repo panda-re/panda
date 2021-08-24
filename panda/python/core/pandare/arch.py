@@ -172,9 +172,15 @@ class PandaArch():
         Set return val to [val] for given calling convention. This only works
         right after a function call has returned, otherwise the register will contain
         a different value.
+
+        Return value from syscalls is signed
         '''
         reg = self._get_ret_val_reg(cpu, convention)
-        return self.get_reg(cpu, reg)
+        rv = self.get_reg(cpu, reg)
+
+        if convention == 'syscall':
+            rv = self.panda.from_unsigned_guest(rv)
+        return rv
 
 
     def set_pc(self, cpu, val):
@@ -271,9 +277,9 @@ class ArmArch(PandaArch):
 
     def get_return_value(self, cpu):
         '''
-        returns register value used to return results
+        .. Deprecated:: use get_retval
         '''
-        return self.get_reg(cpu, "R0")
+        return self.get_retval(cpu)
 
     def get_return_address(self, cpu):
         '''
@@ -341,9 +347,9 @@ class Aarch64Arch(PandaArch):
 
     def get_return_value(self, cpu):
         '''
-        returns register value used to return results
+        .. Deprecated:: use get_retval
         '''
-        return self.get_reg(cpu, "R0")
+        return self.get_retval(cpu)
 
     def get_return_address(self, cpu):
         '''
@@ -405,6 +411,22 @@ class MipsArch(PandaArch):
         '''
         cpu.env_ptr.active_tc.PC = val
 
+    def get_retval(self, cpu, convention='default'):
+        '''
+        Overloaded to incorporate error data from A3 register for syscalls.
+
+        If A3 is 1 and convention is syscall, *negate* the return value.
+        This matches behavior of other architecures (where -ERRNO is returned
+        on error)
+        '''
+
+        flip = 1
+        if convention == 'syscall' and self.get_reg(cpu, "A3") == 1:
+            flip = -1
+
+        return flip * super().get_retval(cpu)
+
+
     def _get_reg_val(self, cpu, reg):
         '''
         Return a mips register
@@ -417,11 +439,11 @@ class MipsArch(PandaArch):
         '''
         cpu.env_ptr.active_tc.gpr[reg] = val
 
-    def get_return_value(self, cpu):
+    def get_return_value(self, cpu, convention='default'):
         '''
-        returns register value used to return results
+        .. Deprecated:: use get_retval
         '''
-        return self.get_reg(cpu, "V0")
+        return self.get_retval(cpu)
 
     def get_call_return(self, cpu):
         '''
@@ -448,6 +470,11 @@ class MipsArch(PandaArch):
         if convention == 'syscall':
             # Set A3 register to indicate syscall success/failure
             self.set_reg(cpu, 'a3', failure)
+
+            # If caller is trying to indicate error by setting a negative retval
+            # for a syscall, just make it positive with A3=1
+            if failure and self.panda.from_unsigned_guest(val) < 0:
+                val = -1 * self.panda.from_unsigned_guest(val)
 
         return super().set_retval(cpu, val, convention)
 
@@ -500,9 +527,9 @@ class X86Arch(PandaArch):
 
     def get_return_value(self, cpu):
         '''
-        returns register value used to return results
+        .. Deprecated:: use get_retval
         '''
-        return self.get_reg(cpu, "EAX")
+        return self.get_retval(cpu)
 
     def get_return_address(self,cpu):
         '''
@@ -569,9 +596,9 @@ class X86_64Arch(PandaArch):
 
     def get_return_value(self, cpu):
         '''
-        returns register value used to return results
+        .. Deprecated:: use get_retval
         '''
-        return self.get_reg(cpu, "RAX")
+        return self.get_retval(cpu)
 
     def get_return_address(self, cpu):
         '''
