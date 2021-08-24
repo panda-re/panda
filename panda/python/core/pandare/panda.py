@@ -52,6 +52,7 @@ class Panda():
     def __init__(self, arch="i386", mem="128M",
             expect_prompt=None, # Regular expression describing the prompt exposed by the guest on a serial console. Used so we know when a running command has finished with its output
             serial_kwargs=None,
+            monitor_kwargs=None,
             os_version=None,
             qcow=None, # Qcow file to load
             os="linux",
@@ -69,6 +70,10 @@ class Panda():
                     on a serial console. Used so we know when a running command has finished
                     with its output.
             serial_kwargs: dict of additional arguments to pass to pandare.Expect (see signature of its constructor).
+                    Note that `expect_prompt` is already passed to Expect as "expectation".
+                    If not explicitly given, "unansi" is set to True (simulates a subset of ANSI codes and attempts to
+                    remove command strings repeated by the shell from the shell output).
+            monitor_kwargs: dict of additional arguments to pass to pandare.Expect (see signature of its constructor) for qemu monior.
                     Note that `expect_prompt` is already passed to Expect as "expectation".
                     If not explicitly given, "unansi" is set to True (simulates a subset of ANSI codes and attempts to
                     remove command strings repeated by the shell from the shell output).
@@ -189,7 +194,10 @@ class Panda():
         self.raw_monitor = raw_monitor
         if not self.raw_monitor:
             # XXX don't forget to escape expectation regex parens!
-            self.monitor_console = Expect('monitor', expectation=rb"\(qemu\) ", consume_first=True)
+            expect_kwargs = {'expectation': rb"\(qemu\) ", 'consume_first': True, 'unansi': True}
+            if monitor_kwargs:
+                expect_kwargs.update(monitor_kwargs)
+            self.monitor_console = Expect('monitor', **expect_kwargs)
             self.panda_args.extend(['-monitor', 'unix:{},server,nowait'.format(self.monitor_file)])
 
         self.running = threading.Event()
