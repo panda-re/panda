@@ -22,6 +22,7 @@ PANDAENDCOMMENT */
 #include "syscalls2/syscalls2_ext.h"
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
+#include "osi_linux/osi_linux_ext.h"
 #include "capstone/capstone.h"
 
 #include <sys/time.h>
@@ -126,7 +127,11 @@ void vma_vm_flags_search(CPUState* cpu);
 void start_stack_search(CPUState* cpu);
 void vma_vm_file_search(CPUState* cpu);
 void path_d_parent_search(CPUState* cpu);
-void task_files_search(CPUState* cpu);
+void task_files_search(CPUState* cpu, int fd);
+void vfsmount_search(CPUState* cpu, int fd);
+void path_mnt_parent_search(CPUState* cpu, int fd);
+void fs_f_pos_search(CPUState* cpu, int fd, int num_bytes);
+//void path_d_op_search(CPUState* cpu, int fd);
 
 void print_results(void *);
 void print_bits_target(target_ulong num);
@@ -170,6 +175,7 @@ uint64_t current = 0;
 uint64_t tmp = 0;
 std::set<uint64_t> current_candidates;
 std::map<target_ulong, int> fd_map;
+std::map<target_ulong, int> fdpos_map;
 
 //uint64_t task_per_cpu_offsets_addr = 0;   - TODO
 uint64_t task_per_cpu_offset_0_addr = 0;
@@ -180,7 +186,7 @@ uint64_t task_current_task_addr = 0;
 uint64_t task_tasks_offset = 0;
 uint64_t task_pid_offset = 0;
 uint64_t task_tgid_offset = 0;
-//uint64_t task_group_leader_offset = 0;    - TODO
+uint64_t task_group_leader_offset = 0;
 uint64_t task_thread_group_offset = 0;
 uint64_t task_real_parent_offset = 0;
 uint64_t task_parent_offset = 0;
@@ -214,10 +220,10 @@ uint64_t vma_vm_flags_offset = 0;
 uint64_t vma_vm_file_offset = 0;
 
 uint64_t fs_f_path_dentry_offset = 0;
-//uint64_t fs_f_path_mnt_offset = 0;        - TODO
-//uint64_t fs_f_pos_offset = 0;             - TODO
+uint64_t fs_f_path_mnt_offset = 0;
+uint64_t fs_f_pos_offset = 0;
 uint64_t fs_fdt_offset = 0;
-//uint64_t fs_fdtab_offset = 0;             - TODO
+uint64_t fs_fdtab_offset = 0;               //non-essential
 uint64_t fs_fd_offset = 0;
 
 //uint64_t qstr_size = 0;
@@ -226,11 +232,11 @@ uint64_t qstr_name_offset = 0;
 uint64_t path_d_name_offset = 0;
 uint64_t path_d_iname_offset = 0;
 uint64_t path_d_parent_offset = 0;
-//uint64_t path_d_op_offset = 0;            - TODO
-//uint64_t path_d_dname_offset = 0;         - TODO
-//uint64_t path_mnt_root_offset = 0;        - TODO
-uint64_t path_mnt_parent_offset = 0;        //non-essential
-uint64_t path_mnt_mountpoint_offset = 0;    //non-essential
+uint64_t path_d_op_offset = 0;              //non-essential
+uint64_t path_d_dname_offset = 0;           //non-essential
+uint64_t path_mnt_root_offset = 0;          //non-essential
+int64_t path_mnt_parent_offset = 0;
+int64_t path_mnt_mountpoint_offset = 0;
 
 
 //UNFINISHED
@@ -342,12 +348,12 @@ void get_all_proc_base_addrs(CPUState* cpu, std::vector<target_ulong>& addrs) {
         err = read_target_ulong(cpu, next, &res);
         if(err != -1) {
             next = res;
-            printf("next: " TARGET_PTR_FMT "\n", res);
+            //printf("next: " TARGET_PTR_FMT "\n", res);
         } else {
             printf("failed\n");
             break;
         }
-        printf("looping %d\n", count);
+        //printf("looping %d\n", count);
 
         if(count > 100) {
             break;
@@ -974,29 +980,182 @@ void group_leader_search(CPUState* cpu) {
     //reload current
     uint64_t new_current;
     uint8_t data[8] = {0};
-    int offset = 2280;
+    //int offset = 2280;
+
+    target_ulong res = 0;
+    target_ulong group_leader_addr = 0;
+    target_ulong cred_addr = 0;
+    //target_ulong pid_addr = 0;
+    target_ulong parent_addr = 0;
+    target_ulong parent_group_leader_addr = 0;
+    target_ulong glgl = 0;
 
     panda_virtual_memory_read(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, data, 8);
     new_current = *((uint64_t*) &data[0]);
 
     printf("current is %lx\n", new_current);
+    current = new_current;
 
-    // manually verify group leader
-    panda_virtual_memory_read(cpu, new_current + offset, data, 8);
-    uint64_t group_leader = *((uint64_t*) &data[0]);
-    printf("group leader is 0x%lx\n", group_leader);
+    // + task_group_leader_offset
+    int err = read_target_ulong(cpu, current + 2280, &group_leader_addr);
+    if(err == -1) {
+        printf("couldn't read the group leader from the task struct\n");
+        return;
+    }
+    printf("group leader addr: " TARGET_PTR_FMT "\n", group_leader_addr);
 
-    panda_virtual_memory_read(cpu, group_leader + task_cred_offset, data, 8);
-    uint64_t group_leader_cred = *((uint64_t*) &data[0]);
+    err = read_target_ulong(cpu, group_leader_addr + 2280, &glgl);
+    if(err == -1) {
+        printf("couldn't read group leader addr from group leader\n");
+        return;
+    }
+    printf("group leader's group leader addr: " TARGET_PTR_FMT "\n", glgl);
 
-    panda_virtual_memory_read(cpu, group_leader_cred + cred_gid_offset, data, 8);
-    uint32_t gid = *((uint32_t*) &data[0]);
+    err = read_target_ulong(cpu, current + task_parent_offset, &parent_addr);
+    if(err == -1) {
+        printf("couldn't read the parent from the task struct\n");
+        return;
+    }
+    printf("parent_addr: " TARGET_PTR_FMT "\n", parent_addr);
 
-    printf("group leader gid: %u\n", gid);
-    panda_virtual_memory_read(cpu, group_leader + task_pid_offset, data, 8);
-    uint32_t pid = *((uint32_t*) &data[0]);
-    printf("group leader pid: %u\n", pid);
-    
+    //parent group leader
+    err = read_target_ulong(cpu, parent_addr + 2280, &parent_group_leader_addr);
+    if(err == -1) {
+        printf("couldn't read the group leader addr from the parent\n");
+        return;
+    }
+    printf("parent group leader addr: " TARGET_PTR_FMT "\n", parent_group_leader_addr);
+
+    err = read_target_ulong(cpu, current + task_cred_offset, &cred_addr);
+    if(err == -1) {
+        printf("couldn't read the cred addr from the task struct\n");
+        return;
+    }
+
+    err = read_target_ulong(cpu, cred_addr + cred_gid_offset, &res);
+    if(err == -1) {
+        printf("couldn't read the gid from the cred struct\n");
+        return;
+    }
+    printf("gid (from cred): " TARGET_FMT_lu "\n", res);
+
+    err = read_target_ulong(cpu, cred_addr + cred_egid_offset, &res);
+    if(err == -1) {
+        printf("couldn't read the egid from the cred struct\n");
+        return;
+    }
+    printf("egid (from cred): " TARGET_FMT_lu "\n", res);
+
+    //get group leader tgid
+    err = read_uint32(cpu, group_leader_addr + task_tgid_offset, &res);
+    if(err == -1) {
+        printf("couldn't get the tgid from the group leader\n");
+        return;
+    }
+    printf("group leader tgid: " TARGET_FMT_lu "\n", res);
+
+    err = read_uint32(cpu, group_leader_addr + task_pid_offset, &res);
+    if(err == -1) {
+        printf("couldn't git the pid from the group leader\n");
+        return;
+    }
+    printf("group leader pid: " TARGET_FMT_lu "\n", res);
+
+
+    int offset = 0;
+    //int upid_offset = 0;
+    std::set<int> candidates;
+    std::vector<target_ulong> procs;
+    get_all_proc_base_addrs(cpu, procs);
+    for(int i = 0; i < procs.size(); i++) {
+        offset = 0;
+        while(offset < 10000) {
+            err = read_target_ulong(cpu, procs[i] + offset, &group_leader_addr);
+            if(err == -1) {
+                printf("couldn't read addr from current\n");
+                goto loop_end;
+            }
+
+            if(!group_leader_addr) {
+                goto loop_end;
+            }
+
+            if(group_leader_addr == procs[i]) {
+                candidates.insert(offset);
+            } else {
+
+                err = read_target_ulong(cpu, group_leader_addr + offset, &res);
+                if(err == -1) {
+                    //printf("couldn't read from (potential) group leader\n");
+                    goto loop_end;
+                }
+                if(res == group_leader_addr) {
+                    candidates.insert(offset);
+                }
+            }
+
+        loop_end:
+            offset += 4;
+        }
+
+    }
+        
+    std::set<int>::iterator it = candidates.begin();
+    while(it != candidates.end()) {
+        printf("candidate %d\n", *it);
+
+        for(int i = 0; i < procs.size(); i++) {
+            err = read_target_ulong(cpu, procs[i] + *it, &group_leader_addr);
+            if(err == -1) {
+                printf("couldn't read addr from current, removing %d\n", *it);
+                candidates.erase(it++);
+                goto loop_end_2;
+            }
+
+            if(!group_leader_addr) {
+                printf("group_leader_addr was null, removing %d\n", *it);
+                candidates.erase(it++);
+                goto loop_end_2;
+            }
+
+            if(group_leader_addr != procs[i]) {
+                err = read_target_ulong(cpu, group_leader_addr + *it, &res);
+                if(err == -1) {
+                    printf("couldn't read from (potential) group leader, removing %d\n", *it);
+                    candidates.erase(it++);
+                    goto loop_end_2;
+                }
+
+                if(res != group_leader_addr) {
+                    candidates.erase(it++);
+                    printf("proc's group leader is not its own group leader, removing %d\n", *it);
+                    goto loop_end_2;
+                }
+            }
+
+
+
+        }
+
+        it++;
+
+    loop_end_2:
+        res = 0; // I needed to put something here to make the compiler happy
+    }
+
+    printf("\nremaining candidates: %lu\n", candidates.size());
+    for(std::set<int>::iterator it = candidates.begin(); it != candidates.end(); ++it) {
+        printf("candidate: %d\n", *it);
+    }
+
+    if(candidates.size() == 1) {
+        printf("success!\n");
+        task_group_leader_offset = *(candidates.begin());
+        printf("task_group_leader_offset: %lu\n", task_group_leader_offset);
+    } else {
+        printf("found the wrong number of solutions.\n");
+    }
+        
 
 }
 
@@ -2693,14 +2852,16 @@ void path_d_parent_search(CPUState* cpu) {
 
 }
 
-void task_files_search(CPUState* cpu) {
+void task_files_search(CPUState* cpu, int fd) {
     target_ulong res = 0;
     target_ulong task_files_addr = 0;
     target_ulong fdt_addr = 0;
     //target_ulong fdtab_addr = 0;
     target_ulong fd_addr = 0;
     target_ulong file_addr = 0;
-    //target_ulong dentry_addr = 0;
+    target_ulong dentry_addr = 0;
+    target_ulong dentry_parent_addr = 0;
+    target_ulong tgid = 0;
     uint8_t data[128] = {0};
 
 
@@ -2763,13 +2924,64 @@ void task_files_search(CPUState* cpu) {
                     if(err == -1) {
                         //printf("couldn't read file name!\n");
                     }
+
                     //printf("array_offset: %d - file name: %s\n", array_offset, (char*) data);
-                    if(strcmp((char*) data, "maps") == 0) {
-                        printf("match found!!! - files_offset: %d, fdt_offset: %d, fd_offset: %d\n", files_offset, fdt_offset, fd_offset);
-                        task_files_offset = files_offset;
-                        fs_fdt_offset = fdt_offset;
-                        fs_fd_offset = fd_offset;
-                        count++;
+                    if(strcmp((char*) data, "maps") == 0 && array_offset == fd) {
+
+                        err = read_uint32(cpu, current + task_tgid_offset, &tgid);
+                        if(err == -1) {
+                            printf("couldn't read the tgid of current\n");
+                            goto loop_end_3;
+                        }
+                        printf("tgid: %lu\n", tgid);
+
+                        //check if the parent dentry name is the pid
+                        err = read_target_ulong(cpu, file_addr + fs_f_path_dentry_offset, &dentry_addr);
+                        if(err == -1) {
+                            printf("couldn't read dentry addr from file\n");
+                            goto loop_end_3;
+                        }
+                        //printf("dentry_addr: " TARGET_PTR_FMT "\n", dentry_addr);
+
+                        err = read_target_ulong(cpu, dentry_addr + path_d_parent_offset, &dentry_parent_addr);
+                        if(err == -1) {
+                            printf("couldn't read dentry parent addr from dentry\n");
+                            goto loop_end_3;
+                        }
+                        //printf("dentry_parent_addr: " TARGET_PTR_FMT "\n", dentry_parent_addr);
+
+                        err = get_name_from_dentry(cpu, dentry_parent_addr, data);
+                        if(err == -1) {
+                            printf("couldn't get name from dentry\n");
+                            goto loop_end_3;
+                        }
+                        printf("dentry parent name: %s\n", (char*) data);
+
+                        if(atoll((char*) data) == tgid) {
+                            printf("potential match found!!! - files_offset: %d, fdt_offset: %d, fd_offset: %d, array_offset: %d\n", files_offset, fdt_offset, fd_offset, array_offset);
+
+                            task_files_offset = files_offset;
+                            fs_fdt_offset = fdt_offset;
+                            fs_fd_offset = fd_offset;
+                            count++;
+                        }
+
+                        //err = read_target_ulong(cpu, dentry_parent_addr + path_d_parent_offset, &dentry_parent_addr);
+                        //if(err == -1) {
+                        //    printf("couldn't read second dentry parent addr from dentry\n");
+                        //    goto loop_end_3;
+                        //}
+                        ////printf("second dentry_parent_addr: " TARGET_PTR_FMT "\n", dentry_parent_addr);
+
+                        //err = get_name_from_dentry(cpu, dentry_parent_addr, data);
+                        //if(err == -1) {
+                        //    printf("couldn't get name from dentry\n");
+                        //    goto loop_end_3;
+                        //}
+                        //printf("second dentry parent name: %s\n", (char*) data);
+
+
+                        
                     }
                 
                 loop_end_3:
@@ -2799,6 +3011,10 @@ void task_files_search(CPUState* cpu) {
         fs_fdt_offset = 0;
         fs_fd_offset = 0;
     }
+
+
+    OsiProc *current_proc = get_current_process(cpu);
+    printf("fd to filename: %s\n", osi_linux_fd_to_filename(cpu, current_proc, 3));
 
 
 
@@ -2839,13 +3055,79 @@ void task_files_search(CPUState* cpu) {
     }
     printf("file addr: " TARGET_PTR_FMT "\n", file_addr);
 
-    err = get_name_from_file(cpu, file_addr, data);
+    target_ulong vfsmount_addr = 0;
+    // + fs_f_path_mnt_offset
+    err = read_target_ulong(cpu, file_addr + 16, &vfsmount_addr);
     if(err == -1) {
-        printf("couldn't get name from file\n");
+        printf("couldn't read the vfsmount addr\n");
         return;
     }
-    printf("file name: %s\n", (char*) data);
-    fflush(stdout);
+    printf("vfsmount addr: " TARGET_PTR_FMT "\n", vfsmount_addr);
+
+    target_ulong vfs_dentry_addr = 0;
+    // + path_mnt_mountpoint_offset
+    err = read_target_ulong(cpu, vfsmount_addr + (-8), &vfs_dentry_addr);
+    if(err == -1) {
+        printf("couldn't read the vfsmount dentry addr\n");
+        return;
+    }
+    printf("vfsmount_dentry_addr: " TARGET_PTR_FMT "\n", vfs_dentry_addr);
+
+    err = get_name_from_dentry(cpu, vfs_dentry_addr, data);
+    printf("vfsmount_dentry file name: %s\n", (char*) data);
+
+    target_ulong vfs_dentry_parent_addr = 0;
+    err = read_target_ulong(cpu, vfs_dentry_addr + path_d_parent_offset, &vfs_dentry_parent_addr);
+    if(err == -1) {
+        printf("couldn't read the vfsmount dentry parent addr\n");
+        return;
+    }
+    printf("vfsmount_dentry_parent_addr: " TARGET_PTR_FMT "\n", vfs_dentry_parent_addr);
+
+    err = get_name_from_dentry(cpu, vfs_dentry_parent_addr, data);
+    printf("vfsmount_dentry_parent file name: %s\n", (char*) data);
+
+    // + path_mnt_root_offset
+    err = read_target_ulong(cpu, vfsmount_addr + 0, &vfs_dentry_addr);
+    if(err == -1) {
+        printf("couldn't read the vfsmount dentry addr\n");
+        return;
+    }
+    printf("vfsmount_root_dentry_addr: " TARGET_PTR_FMT "\n", vfs_dentry_addr);
+
+    target_ulong mnt_parent_addr = 0;
+    // + path_mnt_parent_offset
+    err = read_target_ulong(cpu, vfsmount_addr + (-16), &mnt_parent_addr);
+    if(err == -1) {
+        printf("couldn't read the vfsmount dentry addr\n");
+        return;
+    }
+    printf("vfsmount_parent_dentry_addr: " TARGET_PTR_FMT "\n", mnt_parent_addr);
+
+    target_ulong tmp = 0;
+    //check if mnt + 8 is the parent offset
+    for(int i = 0; i < 6; i++) {
+        err = read_target_ulong(cpu, mnt_parent_addr + (8*i), &tmp);
+        if(err == -1) {
+            printf("couldn't read the (suspected) mnt_parent field\n");
+            return;
+        }
+        printf("i: %d, mnt_parent_address: " TARGET_PTR_FMT "\n", i, tmp);
+    }
+
+
+
+
+//
+//    err = get_name_from_file(cpu, file_addr, data);
+//    if(err == -1) {
+//        printf("couldn't get name from file\n");
+//        return;
+//    }
+//    printf("file name: %s\n", (char*) data);
+//    fflush(stdout);
+//
+//    printf("fd is: %d\n", fd);
 
 
 
@@ -2876,6 +3158,447 @@ void task_files_search(CPUState* cpu) {
 
 
 }
+
+void vfsmount_search(CPUState* cpu, int fd) {
+    target_ulong res = 0;
+    target_ulong task_files_addr = 0;
+    target_ulong fdt_addr = 0;
+    target_ulong fd_addr = 0;
+    target_ulong file_addr = 0;
+    target_ulong vfsmount_addr = 0;
+    target_ulong mountpoint_dentry_addr = 0;
+
+    int fs_f_path_mnt = 0;
+    int path_mnt_mountpoint = 0;
+    //int path_mnt_parent = 0;
+
+    uint8_t data[128] = {0};
+
+    printf("\nsearching for vfsmount...\n");
+
+    //refresh current
+    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err == -1) printf("couldn't read current\n");
+    current = res;
+    printf("current: " TARGET_PTR_FMT "\n", current);
+
+
+    //finds fs_f_path_mnt_offset, path_mnt_mountpoint_offset, path_mnt_parent_offset
+
+    //task->files
+    err = read_target_ulong(cpu, current + task_files_offset, &task_files_addr);
+    if(err == -1) {
+        printf("couldn't read from current\n");
+        return;
+    }
+    printf("task_files addr: " TARGET_PTR_FMT "\n", task_files_addr);
+
+
+    //files->fdt
+    err = read_target_ulong(cpu, task_files_addr + fs_fdt_offset, &fdt_addr);
+    if(err == -1) {
+        printf("couldn't read from files_struct\n");
+        return;
+    }
+    printf("fdt addr: " TARGET_PTR_FMT "\n", fdt_addr);
+
+
+    //fdt->fd**
+    err = read_target_ulong(cpu, fdt_addr + fs_fd_offset, &fd_addr);
+    if(err == -1) {
+        printf("couldn't read from the fdtable\n");
+        return;
+    }
+    printf("fd* addr: " TARGET_PTR_FMT "\n", fd_addr);
+
+
+    //fd** -> file* 
+    err = read_target_ulong(cpu, fd_addr + (fd*sizeof(target_ulong)), &file_addr);
+    if(err == -1) {
+        printf("couldn't read the first element of the fd array\n");
+        return;
+    }
+    printf("file addr: " TARGET_PTR_FMT "\n", file_addr);
+
+    //file->vfsmount : loop
+    int parity = 0;
+    int count = 0;
+    while(fs_f_path_mnt < 300) { //bump to 300
+        
+        err = read_target_ulong(cpu, file_addr + fs_f_path_mnt, &vfsmount_addr);
+        if(err == -1) {
+            //printf("couldn't read the vfsmount_addr\n");
+            goto loop_end_1;
+        }
+        if(!vfsmount_addr) {
+            //printf("vfsmount_addr is null\n");
+            goto loop_end_1;
+        }
+        //printf("fs_f_path_mnt: %d, vfsmount_addr: " TARGET_PTR_FMT "\n", fs_f_path_mnt, vfsmount_addr);
+
+        path_mnt_mountpoint = 0;
+        while(path_mnt_mountpoint < 30) {
+            err = read_target_ulong(cpu, vfsmount_addr + path_mnt_mountpoint, &mountpoint_dentry_addr);
+            if(err == -1) {
+                //printf("couldn't read the potential vfsmount's mountpoint dentry\n");
+                goto loop_end_2;
+            }
+            if(!mountpoint_dentry_addr) {
+                //printf("mountpoint dentry is null\n");
+                goto loop_end_2;
+            }
+            //printf("path_mnt_mountpoint: %d, mountpoint_dentry_addr: " TARGET_PTR_FMT "\n", path_mnt_mountpoint, mountpoint_dentry_addr);
+
+            err = get_name_from_dentry(cpu, mountpoint_dentry_addr, data);
+            if(err != -1) printf("dentry name: %s\n", (char*) data);
+
+            if(strcmp((char*) data, "proc") == 0) {
+                printf("potential match found!\n");
+                fs_f_path_mnt_offset = fs_f_path_mnt;
+                path_mnt_mountpoint_offset = path_mnt_mountpoint;
+                count++;
+            }
+
+        loop_end_2:
+            path_mnt_mountpoint *= -1;
+            if(parity % 2 == 0) {
+                path_mnt_mountpoint += 4;
+            }
+            parity++;
+        }
+
+    loop_end_1:
+        fs_f_path_mnt += 4;
+    }
+
+    printf("found %d potential solutions\n", count);
+    if(count == 1) {
+        printf("success!\n");
+        printf("fs_f_path_mnt_offset: %lu\n", fs_f_path_mnt_offset);
+        printf("path_mnt_mountpoint_offset: %ld\n", path_mnt_mountpoint_offset);
+    } else {
+        printf("found the wrong number of solutions\n");
+        fs_f_path_mnt_offset = 0;
+        path_mnt_mountpoint_offset = 0;
+    }
+}
+
+void path_mnt_parent_search(CPUState* cpu, int fd) {
+    target_ulong res = 0;
+    target_ulong task_files_addr = 0;
+    target_ulong fdt_addr = 0;
+    target_ulong fd_addr = 0;
+    target_ulong file_addr = 0;
+    target_ulong vfsmount_addr = 0;
+    //target_ulong mountpoint_dentry_addr = 0;
+    target_ulong vfsmount_dentry_addr = 0;
+    target_ulong vfsmount_dentry_parent_addr = 0;
+    target_ulong mnt_parent_addr = 0;
+    target_ulong tmp = 0;
+
+    int path_mnt_parent = 0;
+    int parity = 0;
+    int count = 0;
+
+    uint8_t data[128] = {0};
+
+    printf("\nsearching for path_mnt_parent_offset...\n");
+
+    //refresh current
+    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err == -1) printf("couldn't read current\n");
+    current = res;
+    printf("current: " TARGET_PTR_FMT "\n", current);
+
+
+    //finds fs_f_path_mnt_offset, path_mnt_mountpoint_offset, path_mnt_parent_offset
+
+    //task->files
+    err = read_target_ulong(cpu, current + task_files_offset, &task_files_addr);
+    if(err == -1) {
+        printf("couldn't read from current\n");
+        return;
+    }
+    printf("task_files addr: " TARGET_PTR_FMT "\n", task_files_addr);
+
+
+    //files->fdt
+    err = read_target_ulong(cpu, task_files_addr + fs_fdt_offset, &fdt_addr);
+    if(err == -1) {
+        printf("couldn't read from files_struct\n");
+        return;
+    }
+    printf("fdt addr: " TARGET_PTR_FMT "\n", fdt_addr);
+
+
+    //fdt->fd**
+    err = read_target_ulong(cpu, fdt_addr + fs_fd_offset, &fd_addr);
+    if(err == -1) {
+        printf("couldn't read from the fdtable\n");
+        return;
+    }
+    printf("fd* addr: " TARGET_PTR_FMT "\n", fd_addr);
+
+
+    //fd** -> file* 
+    err = read_target_ulong(cpu, fd_addr + (fd*sizeof(target_ulong)), &file_addr);
+    if(err == -1) {
+        printf("couldn't read the first element of the fd array\n");
+        return;
+    }
+    printf("file addr: " TARGET_PTR_FMT "\n", file_addr);
+
+    //file*->vfsmount*
+    err = read_target_ulong(cpu, file_addr + fs_f_path_mnt_offset, &vfsmount_addr);
+    if(err == -1) {
+        printf("couldn't read vfsmount addr from the file struct\n");
+        return;
+    }
+    printf("vfsmount_addr: " TARGET_PTR_FMT "\n", vfsmount_addr);
+
+    //get vfsmount dentry
+    err = read_target_ulong(cpu, vfsmount_addr + path_mnt_mountpoint_offset, &vfsmount_dentry_addr);
+    if(err == -1) {
+        printf("couldn't read mountpoint dentry from the mount struct\n");
+        return;
+    }
+    printf("vfsmount_dentry_addr: " TARGET_PTR_FMT "\n", vfsmount_dentry_addr);
+    err = get_name_from_dentry(cpu, vfsmount_dentry_addr, data);
+    if(err != -1) printf("vfsmount_dentry file name: %s\n", (char*) data);
+
+    //get vfsmount dentry parent
+    err = read_target_ulong(cpu, vfsmount_dentry_addr + path_d_parent_offset, &vfsmount_dentry_parent_addr);
+    if(err == -1) {
+        printf("couldn't read mountpoint dentry parent from the mountpoint dentry\n");
+        return;
+    }
+    printf("vfsmount_dentry_parent_addr: " TARGET_PTR_FMT "\n", vfsmount_dentry_parent_addr);
+
+    err = get_name_from_dentry(cpu, vfsmount_dentry_parent_addr, data);
+    if(err != -1) printf("vfsmount_dentry_parent file name: %s\n", (char*) data);
+
+
+    //search for the mount parent
+    while(path_mnt_parent < 40) { //bump to 40
+        err = read_target_ulong(cpu, vfsmount_addr + path_mnt_parent, &mnt_parent_addr);
+        if(err == -1) {
+            //printf("couldn't read the potential mount parent from the vfsmount\n");
+            goto loop_end;
+        }
+        if(!mnt_parent_addr) {
+            //printf("mnt_parent_addr is null\n");
+            goto loop_end;
+        }
+        if(mnt_parent_addr == vfsmount_dentry_addr) {
+            goto loop_end;
+        }
+
+        for(int i = 0; i < 6 /*verify this later*/; i++) {
+            err = read_target_ulong(cpu, mnt_parent_addr + (i*sizeof(target_ulong)), &tmp);
+            if(err == -1) {
+                //printf("error\n");
+                continue;
+            }
+            //printf("i: %d, field: " TARGET_PTR_FMT "\n", i, tmp);
+            if(tmp == vfsmount_dentry_parent_addr) {
+                printf("match found!! - path_mnt_parent_offset: %d\n", path_mnt_parent);
+                path_mnt_parent_offset = path_mnt_parent;
+                count++;
+            }
+        }
+
+
+        //printf("path_mnt_parent_offset: %d, path_mnt_parent_addr: " TARGET_PTR_FMT "\n", path_mnt_parent, mnt_parent_addr);
+
+    loop_end:
+        path_mnt_parent *= -1;
+        if(parity % 2 == 0) {
+            path_mnt_parent += 4;
+        }
+        parity++;
+    }
+
+    printf("found %d solutions\n", count);
+    if(count == 1) {
+        printf("success!\n");
+        printf("path_mnt_parent_offset: %ld\n", path_mnt_parent_offset);
+    } else {
+        printf("found the wrong number of solutions\n");
+        path_mnt_parent_offset = 0;
+    }
+}
+
+void fs_f_pos_search(CPUState* cpu, int fd, int num_bytes) {
+    target_ulong res = 0;
+    target_ulong task_files_addr = 0;
+    target_ulong fdt_addr = 0;
+    target_ulong fd_addr = 0;
+    target_ulong file_addr = 0;
+
+    //uint8_t data[128] = {0};
+
+    printf("\nsearching for fs_f_pos...\n");
+
+    //refresh current
+    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+    if(err == -1) printf("couldn't read current\n");
+    current = res;
+    printf("current: " TARGET_PTR_FMT "\n", current);
+
+
+    //finds fs_f_path_mnt_offset, path_mnt_mountpoint_offset, path_mnt_parent_offset
+
+    //task->files
+    err = read_target_ulong(cpu, current + task_files_offset, &task_files_addr);
+    if(err == -1) {
+        printf("couldn't read from current\n");
+        return;
+    }
+    printf("task_files addr: " TARGET_PTR_FMT "\n", task_files_addr);
+
+
+    //files->fdt
+    err = read_target_ulong(cpu, task_files_addr + fs_fdt_offset, &fdt_addr);
+    if(err == -1) {
+        printf("couldn't read from files_struct\n");
+        return;
+    }
+    printf("fdt addr: " TARGET_PTR_FMT "\n", fdt_addr);
+
+
+    //fdt->fd**
+    err = read_target_ulong(cpu, fdt_addr + fs_fd_offset, &fd_addr);
+    if(err == -1) {
+        printf("couldn't read from the fdtable\n");
+        return;
+    }
+    printf("fd* addr: " TARGET_PTR_FMT "\n", fd_addr);
+
+
+    //fd** -> file* 
+    err = read_target_ulong(cpu, fd_addr + (fd*sizeof(target_ulong)), &file_addr);
+    if(err == -1) {
+        printf("couldn't read the first element of the fd array\n");
+        return;
+    }
+    printf("file addr: " TARGET_PTR_FMT "\n", file_addr);
+
+
+    int fs_f_pos = 0;
+    int count = 0;
+    while(fs_f_pos < 200) {
+        err = read_target_ulong(cpu, file_addr + fs_f_pos, &res);
+        if(err == -1) {
+            printf("couldn't read from the file struct\n");
+            fs_f_pos += 4;
+            continue;
+        }
+
+        if(res == num_bytes) {
+            printf("match found!! offset: %d\n", fs_f_pos);
+            fs_f_pos_offset = fs_f_pos;
+            count++;
+        }
+
+
+
+        fs_f_pos += 4;
+    }
+
+    printf("found %d solutions\n", count);
+    if(count == 1) {
+        printf("success!\n");
+        printf("fs_f_pos_offset: %lu\n", fs_f_pos_offset);
+    } else {
+        printf("found the wrong number of solutions\n");
+        fs_f_pos_offset = 0;
+    }
+
+//    err = get_name_from_file(cpu, file_addr, data);
+//    if(err != -1) printf("file name: %s\n", (char*) data);
+
+}
+
+//turns out osi_linux doesn't support reconstruction of dynamic names, so we don't need dentry.d_op or dname offsets lol
+//void path_d_op_search(CPUState* cpu, int fd) {
+//    target_ulong res = 0;
+//    target_ulong task_files_addr = 0;
+//    target_ulong fdt_addr = 0;
+//    target_ulong fd_addr = 0;
+//    target_ulong file_addr = 0;
+//    target_ulong dentry_addr = 0;
+//    target_ulong d_op_addr = 0;
+//    target_ulong d_dname_addr = 0;
+//
+//    //uint8_t data[128] = {0};
+//
+//    printf("\nsearching for path_d_op...\n");
+//
+//    //refresh current
+//    int err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+//    if(err == -1) printf("couldn't read current\n");
+//    current = res;
+//    printf("current: " TARGET_PTR_FMT "\n", current);
+//
+//    //task->files
+//    err = read_target_ulong(cpu, current + task_files_offset, &task_files_addr);
+//    if(err == -1) {
+//        printf("couldn't read from current\n");
+//        return;
+//    }
+//    printf("task_files addr: " TARGET_PTR_FMT "\n", task_files_addr);
+//
+//
+//    //files->fdt
+//    err = read_target_ulong(cpu, task_files_addr + fs_fdt_offset, &fdt_addr);
+//    if(err == -1) {
+//        printf("couldn't read from files_struct\n");
+//        return;
+//    }
+//    printf("fdt addr: " TARGET_PTR_FMT "\n", fdt_addr);
+//
+//
+//    //fdt->fd**
+//    err = read_target_ulong(cpu, fdt_addr + fs_fd_offset, &fd_addr);
+//    if(err == -1) {
+//        printf("couldn't read from the fdtable\n");
+//        return;
+//    }
+//    printf("fd* addr: " TARGET_PTR_FMT "\n", fd_addr);
+//
+//
+//    //fd** -> file* 
+//    err = read_target_ulong(cpu, fd_addr + (fd*sizeof(target_ulong)), &file_addr);
+//    if(err == -1) {
+//        printf("couldn't read the first element of the fd array\n");
+//        return;
+//    }
+//    printf("file addr: " TARGET_PTR_FMT "\n", file_addr);
+//
+//    err = read_target_ulong(cpu, file_addr + fs_f_path_dentry_offset, &dentry_addr);
+//    if(err == -1) {
+//        printf("couldn't read the dentry from the file's path\n");
+//        return;
+//    }
+//    printf("dentry_addr: " TARGET_PTR_FMT "\n", dentry_addr);
+//
+//    // + path_d_op_offset
+//    err = read_target_ulong(cpu, dentry_addr + 96, &d_op_addr);
+//    if(err == -1) {
+//        printf("couldn't read the d_op table from the dentry\n");
+//        return;
+//    }
+//    printf("d_op_addr: " TARGET_PTR_FMT "\n", d_op_addr);
+//
+//    // + path_d_dname_addr
+//    err = read_target_ulong(cpu, d_op_addr + 72, &d_dname_addr);
+//    if(err == -1) {
+//        printf("couldn't read the d_dname function pointer from the d_op struct\n");
+//        return;
+//    }
+//    printf("d_dname_addr: " TARGET_PTR_FMT "\n", d_dname_addr);
+//
+//}
 
 
 bool translate_callback(CPUState* cpu, target_ulong pc){
@@ -2969,6 +3692,40 @@ void getpid_return(CPUState *cpu, target_ulong pc) {
 
 }
 
+
+/*
+PHASE 5: IMPROVED
+
+enter:
+    - if there is an open file descriptor available in fd_maps
+        - set read flag
+        - store the regstate
+        - set args for reading 
+    - else:
+        - don't set read flag
+        - store the regstate
+        - set args for open
+
+
+
+
+
+exit:
+    - check if read flag
+        - store contents of read in map
+        - store number of bytes read in map
+        - restore args
+        - unset read flag
+        - if read 0 bytes
+            - exit phase 5
+            - do the searches
+    - else:
+        - get the fd and put it in fd_maps
+        - restore the regs
+*/
+
+
+
 void time_of_day_enter(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz) {
 //    OsiProc *current = get_current_process(cpu);
 //
@@ -3011,7 +3768,7 @@ void time_of_day_enter(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz)
         printf("\nphase4: entering timeofday\n");
         in_syscall = true;
 
-        ((CPUX86State*) cpu->env_ptr)->regs[0] = 111; //getpgrp
+        ((CPUX86State*) cpu->env_ptr)->regs[0] = 121; //getpgid
 
         //load current
         uint64_t new_current;
@@ -3022,13 +3779,13 @@ void time_of_day_enter(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz)
         printf("current is %lx\n", new_current);
 
         //get current pid
-        panda_virtual_memory_read(cpu, new_current + task_pid_offset, data, 8);
-        uint32_t pid = *((uint32_t*) &data[0]);
-        printf("pid is %u\n", pid);
+        panda_virtual_memory_read(cpu, new_current + task_tgid_offset, data, 8);
+        uint32_t tgid = *((uint32_t*) &data[0]);
+        printf("tgid is %u\n", tgid);
         //save rdi
-        //tmp = ((CPUX86State*) cpu->env_ptr)->regs[7];
+        tmp = ((CPUX86State*) cpu->env_ptr)->regs[7];
         //set rdi to pid
-        //((CPUX86State*) cpu->env_ptr)->regs[7] = pid;
+        ((CPUX86State*) cpu->env_ptr)->regs[7] = tgid;
     }
     if (phase5) {
         //open /proc/self/mappings  if it hasn't been opened yet. If it has, read from it.
@@ -3216,18 +3973,21 @@ void time_of_day_return(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz
         uint64_t retval = ((CPUX86State*) cpu->env_ptr)->regs[0];
         printf("pgid of current proc is %lu\n", retval);
 
-        //((CPUX86State*) cpu->env_ptr)->regs[7] = tmp; //restore the timeval struct pointer
+        ((CPUX86State*) cpu->env_ptr)->regs[7] = tmp; //restore the timeval struct pointer
         ((CPUX86State*) cpu->env_ptr)->regs[0] = 0;   //return success
 
         struct timeval t;
         gettimeofday(&t, NULL);
         panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->regs[7], (uint8_t*) &t, 16); //write a valid result
 
+        group_leader_search(cpu);
+
         comm_search(cpu);
         thread_group_search(cpu);
         pgd_search(cpu);
         arg_start_search(cpu);
         vm_mm_search(cpu);
+
         //stack_search(cpu);
 
         //print_results();
@@ -3288,19 +4048,31 @@ void time_of_day_return(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz
 
             printf("read %lu bytes from the file\n", num_bytes);
 
+            //count number of bytes read
+            if(fdpos_map.find(current) == fdpos_map.end()) {
+                fdpos_map[current] = num_bytes;
+            } else {
+                fdpos_map[current] += num_bytes;
+            }
+
             if(num_bytes == 0) {
                 printf("Finished reading from the file!\n");
                 phase5 = false;
                 printf("total file contents:\n");
                 std::cout << "\n" << maps << std::endl;
-                mmap_search(cpu);
-                brk_search(cpu);
-                vma_vm_next_search(cpu);
-                vma_vm_flags_search(cpu);
-                start_stack_search(cpu);
-                vma_vm_file_search(cpu);
-                path_d_parent_search(cpu);
-                task_files_search(cpu);
+                //mmap_search(cpu);
+                //brk_search(cpu);
+                //vma_vm_next_search(cpu);
+                //vma_vm_flags_search(cpu);
+                //start_stack_search(cpu);
+                //vma_vm_file_search(cpu);
+                //path_d_parent_search(cpu);
+                //task_files_search(cpu, fd_map[current]);
+                //vfsmount_search(cpu, fd_map[current]);
+                //path_mnt_parent_search(cpu, fd_map[current]);
+                //fs_f_pos_search(cpu, fd_map[current], fdpos_map[current]);
+
+                //path_d_op_search(cpu, fd_map[current]);
             }
 
 
@@ -3365,6 +4137,7 @@ bool init_plugin(void *self) {
 
     panda_require("osi");
     assert(init_osi_api());
+    assert(init_osi_linux_api());
 
     //PPP_REG_CB("syscalls2", on_all_sys_return2, sys_return);
     PPP_REG_CB("syscalls2", on_sys_gettimeofday_enter, time_of_day_enter);
@@ -3372,6 +4145,9 @@ bool init_plugin(void *self) {
 
     PPP_REG_CB("syscalls2", on_sys_getpid_enter, getpid_enter);
     PPP_REG_CB("syscalls2", on_sys_getpid_return, getpid_return);
+
+    //PPP_REG_CB("syscalls2", on_all_sys_enter2, sys_enter);
+    //PPP_REG_CB("syscalls2", on_all_sys_return2, sys_return);
 
     //PPP_REG_CB("syscalls2", on_sys_execve_enter, execve_enter);
 
