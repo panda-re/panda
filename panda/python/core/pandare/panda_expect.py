@@ -6,7 +6,7 @@ import select
 import sys
 import string
 
-from datetime import datetime
+from time import monotonic
 from errno import EAGAIN, EWOULDBLOCK
 from colorama import Fore, Style
 
@@ -354,11 +354,11 @@ class Expect(object):
             raise RuntimeError("Must connect() prior to expect()")
 
         self.current_line = bytearray()
-        start_time = datetime.now()
+        start_time = monotonic()
         time_passed = 0
         while (timeout is None or time_passed < timeout) and self.running:
             if timeout is not None:
-                time_passed = (datetime.now() - start_time).total_seconds()
+                time_passed = (monotonic() - start_time)
                 time_left = timeout - time_passed
             else:
                 time_left = float("inf")
