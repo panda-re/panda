@@ -85,6 +85,23 @@ target_ulong calc_retaddr_linux_x64(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_linux_arm(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_linux_mips(CPUState *cpu, target_ulong pc); // TODO
 
+// Useful for math
+#if defined(TARGET_I386) && defined(TARGET_X86_64)
+// 64-bit or 32-bit x86 are the same (surprisingly)
+#define SYSCALL_INSN_SIZE 2
+
+#elif defined(TARGET_ARM)
+// Same for AARCH64. XXX: We dynamically ID thumb mode and use 2 then.
+#define SYSCALL_INSN_SIZE 4
+
+#elif defined(TARGET_MIPS)
+#define SYSCALL_INSN_SIZE 4
+
+#else
+#define SYSCALL_INSN_SIZE 0 // Plugin will fail in init_plugin as an unsupported arch
+#endif
+
+
 enum ProfileType {
     PROFILE_LINUX_X86,
     PROFILE_LINUX_ARM,
@@ -401,13 +418,13 @@ target_ulong calc_retaddr_linux_x86(CPUState* cpu, target_ulong pc) {
 
 target_ulong calc_retaddr_linux_x64(CPUState* cpu, target_ulong pc) {
 #if defined(TARGET_X86_64)
-    unsigned char buf[2] = {};
-    panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
+    unsigned char buf[SYSCALL_INSN_SIZE] = {};
+    panda_virtual_memory_rw(cpu, pc, buf, SYSCALL_INSN_SIZE, 0);
     // Check if the instruction is syscall (0F 05)
     if ((0x0F == buf[0]) && (0x05 == buf[1])) {
         // syscall expects the return address to be in RCX, but sometimes RCX is
     	// still 0 at this point; so calculate the return address from the pc
-        target_ulong ret = pc + 2;
+        target_ulong ret = pc + SYSCALL_INSN_SIZE;
         assert(ret != 0x0);
         return ret;
     }
@@ -430,13 +447,11 @@ target_ulong calc_retaddr_linux_arm(CPUState* cpu, target_ulong pc) {
     // Fork, exec
 
     // 32-bit and 64-bit ARM both have thumb field in CPUARMState
-    uint8_t offset = 0;
+    uint8_t offset = SYSCALL_INSN_SIZE;
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     bool in_thumb_mode = (env->thumb == 1);
-    if(in_thumb_mode){
+    if (in_thumb_mode) {
         offset = 2;
-    } else {
-        offset = 4; // Note: this is NOT 8 for AARCH64!
     }
 
 // 32-bit specific
@@ -447,14 +462,15 @@ target_ulong calc_retaddr_linux_arm(CPUState* cpu, target_ulong pc) {
 // 64-bit specific
 #else
     if (!in_thumb_mode) {
-        unsigned char buf[4] = {};
-        panda_virtual_memory_rw(cpu, pc, buf, 4, 0);
+        unsigned char buf[SYSCALL_INSN_SIZE] = {};
+        panda_virtual_memory_rw(cpu, pc, buf, SYSCALL_INSN_SIZE, 0);
         if (!((buf[0] == 0x01)  && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0xd4))) {
             assert((1==0) && "Tried to calculate AARCH64 ret addr when instr was not a syscall!");
         }
     }
 #endif
     if (in_thumb_mode) {
+        // XXX: Special case - here we use 2 not SYSCALL_INSN_SIZE
         unsigned char buf[2] = {};
         panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
         if (!(buf[1] == 0xDF && buf[0] == 0)) {
@@ -471,12 +487,12 @@ target_ulong calc_retaddr_linux_arm(CPUState* cpu, target_ulong pc) {
 
 target_ulong calc_retaddr_linux_mips(CPUState* cpu, target_ulong pc) {
 #if defined(TARGET_MIPS)
-    // We use PC+4 to grab the instruction after the syscall
+    // We use PC+SYSCALL_INSN_SIZE to grab the instruction after the syscall
     // note we previously incorrectly thought we needed to use $EPC,
     // which is a special register for co-processor 0 to store the
     // PC to return to after exceptions. But then we tested it and
     // that was incorrect.
-    return pc +  4;
+    return pc +  SYSCALL_INSN_SIZE;
 #else
     // shouldnt happen
     assert (1==0);
@@ -830,9 +846,9 @@ static uint32_t impossibleToReadPCs = 0;
 // syscall (0F 05) or int 0x80 (CD 80)
 target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* static_callno) {
 #if defined(TARGET_I386)
-    unsigned char buf[2] = {};
+    unsigned char buf[SYSCALL_INSN_SIZE] = {};
     target_ulong pc = tb->pc + tb->size - sizeof(buf);
-    int res = panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
+    int res = panda_virtual_memory_rw(cpu, pc, buf, SYSCALL_INSN_SIZE, 0);
     if(res <0){
         return -1;
     }
@@ -863,13 +879,13 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
         return 0;
     }
 #elif defined(TARGET_ARM)
-    unsigned char buf[4] = {};
+    unsigned char buf[SYSCALL_INSN_SIZE] = {};
     target_ulong pc = tb->pc + tb->size - sizeof(buf);
 
 #if defined(TARGET_AARCH64)
     // AARCH64 - No thumb mode, syscall is 01 00 00 d4
     // Check for ARM mode syscall
-    panda_virtual_memory_rw(cpu, pc, buf, 4, 0);
+    panda_virtual_memory_rw(cpu, pc, buf, SYSCALL_INSN_SIZE, 0);
 
     if ( (buf[0] == 0x01)  && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0xd4) ) {
         return pc;
@@ -880,7 +896,7 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
     // Check for ARM mode syscall
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     if(env->thumb == 0) {
-        panda_virtual_memory_rw(cpu, pc, buf, 4, 0);
+        panda_virtual_memory_rw(cpu, pc, buf, SYSCALL_INSN_SIZE, 0);
         // EABI
         if ( ((buf[3] & 0x0F) ==  0x0F)  && (buf[2] == 0) && (buf[1] == 0) && (buf[0] == 0) ) {
             return pc;
@@ -898,7 +914,9 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
     }
     else {
         // the buffer size is 4, but the read size is 2. Adjust for that
-        // in thumb mode.
+        // in thumb mode. Note we can't use SYSCALL_INSN_SIZE here because
+        // that's static per arch (i.e., arm) not for the current (thumb-mode)
+        // instruction.
         pc += 2;
         panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
         // check for Thumb mode syscall
