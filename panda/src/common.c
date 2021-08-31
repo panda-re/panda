@@ -143,6 +143,9 @@ target_ulong panda_current_asid(CPUState *cpu) {
 }
 
 target_ulong panda_current_pc(CPUState *cpu) {
+    if (cpu == NULL) {
+        return 0;
+    }
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     target_ulong pc, cs_base;
     uint32_t flags;
