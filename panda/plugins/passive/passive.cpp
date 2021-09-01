@@ -105,6 +105,9 @@ bool translate_callback(CPUState* cpu, target_ulong pc);
 int insn_exec_callback(CPUState* cpu, target_ulong pc);
 void virt_mem_before_read_callback(CPUState *cpu, target_ptr_t pc, target_ptr_t addr, size_t size);
 void before_block_exec(CPUState *cpu, TranslationBlock *tb);
+void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp);
+void sys_enter(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp);
+void after_block_exec(CPUState* cpu, TranslationBlock* tb, uint8_t exitCode);
 
 void getpid_enter(CPUState *cpu, target_ulong pc);
 void getuid_return(CPUState *cpu, target_ulong pc);
@@ -135,7 +138,10 @@ void fs_f_pos_search(CPUState* cpu, int fd, int num_bytes);
 
 void print_results(void *);
 void print_bits_target(target_ulong num);
+void print_bytes(uint8_t* buf, int len);
 void print_regstate(CPUState* cpu);
+void store_regstate(CPUState* cpu);
+void restore_regstate(CPUState* cpu);
 int read_target_ulong(CPUState* cpu, target_ulong addr, target_ulong* res);
 int read_uint64(CPUState* cpu, target_ulong addr, target_ulong* res);
 int read_uint32(CPUState* cpu, target_ulong addr, target_ulong* res);
@@ -147,6 +153,7 @@ void get_all_expected_flags(CPUState* cpu, std::vector<target_ulong>&);
 int get_dentry_from_first_vma(CPUState* cpu, target_ulong* dentry_addr);
 int get_name_from_dentry(CPUState* cpu, target_ulong dentry_addr, uint8_t* buf);
 int get_name_from_file(CPUState* cpu, target_ulong file_addr, uint8_t* buf);
+bool validate_string(CPUState* cpu);
 //void stack_search(CPUState* cpu);
 //void execve_enter(CPUState* cpu, target_ulong pc, uint64_t filename, uint64_t argv, uint64_t envp);
 }
@@ -164,18 +171,26 @@ bool reading = false;
 bool in_syscall = false;
 bool check_mem_reads = true;
 int call_count = 0;
+int count = 0;
 //int err = 0;
 
 uint8_t buf[9216];
+uint64_t regs[16];
 int bytes_to_read = 9216;
 std::string maps = "";
 
 FILE* fptr = NULL;
 uint64_t current = 0;
 uint64_t tmp = 0;
+uint64_t asid = 0;
+uint64_t new_asid = 0;
+uint64_t selected_current = 0;
+uint64_t entry_pc = 0;
 std::set<uint64_t> current_candidates;
+std::set<target_ulong> banned_procs;
 std::map<target_ulong, int> fd_map;
 std::map<target_ulong, int> fdpos_map;
+std::map<target_ulong, std::string> str_map;
 
 //uint64_t task_per_cpu_offsets_addr = 0;   - TODO
 uint64_t task_per_cpu_offset_0_addr = 0;
@@ -561,6 +576,61 @@ int get_name_from_file(CPUState* cpu, target_ulong file_addr, uint8_t* buf) {
     return 0;
 }
 
+bool validate_string(CPUState* cpu) {
+    //check that the words "[heap]", "[stack]", "[vsyscall]", and "[vdso]" appear in the string
+    if(str_map[current].find("[heap]") == std::string::npos) return false;
+    if(str_map[current].find("[stack]") == std::string::npos) return false;
+    if(str_map[current].find("[vsyscall]") == std::string::npos) return false;
+    if(str_map[current].find("[vdso]") == std::string::npos) return false;
+    if(str_map[current].find("systemd") == std::string::npos) return false;
+
+    //check if every line with regular length starts with a number
+
+    int pos = 0;
+    int count = 0;
+    std::string line = "";
+    std::string map_copy = str_map[current].c_str();
+    while(map_copy.size() > 0 && count < 100) {
+        pos = map_copy.find("\n");
+        line = map_copy.substr(0, pos+1);
+        //std::cout << line << std::endl;
+        map_copy.erase(0, pos+1);
+
+        pos = line.find("-");
+        const char* low_str = line.substr(0, pos).c_str();
+        char** endptr = NULL;
+
+        uint64_t low_int = strtoll(low_str, endptr, 16);
+        if(low_int == 0 && low_str == (char*) endptr) {
+            printf("invalid number: %s\n", low_str);
+            return false;
+        }
+
+        const char* hi_str = line.substr(pos+1, line.find(" ")).c_str();
+        uint64_t hi_int = strtoll(hi_str, endptr, 16);
+        if(hi_int == 0 && hi_str == (char*) endptr) {
+            printf("invalid number: %s\n", hi_str);
+            return false;
+        }
+
+
+        count++;
+    }
+
+//    pos = line.find("-");
+//    std::string low_str = line.substr(0, pos);
+//    uint64_t low_int = strtoll(low_str.c_str(), NULL, 16);
+//    printf("low: %lx\n", low_int);
+//
+//    std::string hi_str = line.substr(pos+1, line.find(" "));
+//    uint64_t hi_int = strtoll(hi_str.c_str(), NULL, 16);
+//    printf("hi: %lx\n", hi_int);
+
+
+
+    return true;
+}
+
 //made this for demo, delete later
 void print_results() {
     printf("\n\n***** RESULTS *****\n");
@@ -603,6 +673,21 @@ void print_bits_target(target_ulong num) {
 
 }
 
+void print_bytes(uint8_t* buf, int len) {
+    for(int i = 0; i < len; i++) {
+        if(i % 8 == 0 && i != 0) {
+            printf(" ");
+        }
+
+        printf("%02x", buf[i]);
+
+        if(i % 32 == 0) {
+            printf("\n");
+        }
+    }
+    printf("\n");
+}
+
 void print_regstate(CPUState* cpu) {
     for (int i = 0; i < 16; i++) {
         if (i == 1) {
@@ -614,6 +699,18 @@ void print_regstate(CPUState* cpu) {
         } else {
             printf("%s: 0x%lx\n", regnames[i], ((CPUX86State*) cpu->env_ptr)->regs[i]);
         }
+    }
+}
+
+void store_regstate(CPUState* cpu) {
+    for(int i = 0; i < 16; i++) {
+        regs[i] = ((CPUX86State*) cpu->env_ptr)->regs[i];
+    }
+}
+
+void restore_regstate(CPUState* cpu) {
+    for(int i = 0; i < 16; i++) {
+        ((CPUX86State*) cpu->env_ptr)->regs[i] = regs[i];
     }
 }
 
@@ -1610,8 +1707,8 @@ void mmap_search(CPUState* cpu) {
     printf("current: " TARGET_PTR_FMT "\n", current);
     
     //get the start and end offsets of the first vma from the /proc/self/maps string
-    int pos = maps.find(" ");
-    std::string tmp_str = maps.substr(0, pos);
+    int pos = str_map[current].find(" ");
+    std::string tmp_str = str_map[current].substr(0, pos);
 
     printf("substr: %s\n", tmp_str.c_str());
     std::string start_str = tmp_str.substr(0, tmp_str.find("-"));
@@ -1751,7 +1848,7 @@ void brk_search(CPUState* cpu) {
 
     //find the heap bounds
 
-    std::string map_copy = maps.c_str();
+    std::string map_copy = str_map[current].c_str();
     std::string line;
     int pos = 0;
     bool found = false;
@@ -3697,33 +3794,283 @@ void getpid_return(CPUState *cpu, target_ulong pc) {
 PHASE 5: IMPROVED
 
 enter:
-    - if there is an open file descriptor available in fd_maps
-        - set read flag
+    - refresh current
+    - if selected_current == 0 && current not banned
         - store the regstate
-        - set args for reading 
-    - else:
-        - don't set read flag
-        - store the regstate
+        - store the stack in buf
+            - if failed, add current to set of banned procs and set selected_current = 0
+        - store "/proc/self/maps\0" on the stack
+            - if failed, add current to set of banned procs and set selected_current = 0
         - set args for open
+        - set selected_current = current
+        - set open flag
+    - else if current == selected_current
+        - store the regstate in regs
+        - store the top of the stack in buf
+            - if failed, add current to set of banned procs and set selected_current = 0
+        - set args for reading 
+        - set read flag
+    
 
 
 
+exit (after block exec):
+    - check if open flag && current == selected_current
+        - unset open flag
+        - get the fd and put it in fd_maps
+        - restore the stack
+            - if failed, add current to set of banned procs and set selected_current = 0
+        - restore the regs
+        - mess with the pc
 
-
-exit:
-    - check if read flag
+    - else check if read flag && current == selected_current
+        - unset read flag
         - store contents of read in map
         - store number of bytes read in map
+        - restore stack
         - restore args
-        - unset read flag
         - if read 0 bytes
             - exit phase 5
             - do the searches
-    - else:
-        - get the fd and put it in fd_maps
-        - restore the regs
-*/
+            - exit
+        - set skip flag and execute next syscall
+   */
 
+
+void after_block_exec(CPUState* cpu, TranslationBlock* tb, uint8_t exitCode) {
+    if(phase5) {
+        new_asid = panda_current_asid(cpu);
+        //refresh current
+        uint64_t res = 0;
+        int err = 0;
+        err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+        if(err == -1) printf("couldn't read current\n");
+        current = res;
+
+        if(!panda_in_kernel(cpu) && new_asid == asid) {
+            if(opening) {
+                printf("\nphase5: after block exec, after the syscall\n");
+                printf("getting results from open syscall\n");
+
+                //unset open flag
+                opening = false;
+
+                //read the file descriptor from rax
+                int fd = 0;
+                fd = ((CPUX86State*) cpu->env_ptr)->regs[0];
+                fd_map[selected_current] = fd;
+                printf("the fd is %d\n", fd_map[selected_current]);
+
+                //restore the stack
+                err = panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], buf, 16);
+                if(err == -1) {
+                    printf("couldn't restore the stack\n");
+                    banned_procs.insert(selected_current);
+                    selected_current = 0;
+                    return;
+                }
+                
+                //verify that it got restored
+                memset(buf, 0, bytes_to_read);
+                err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], buf, 16);
+                if(err == -1) {
+                    printf("couldn't read from the stack\n");
+                    banned_procs.insert(selected_current);
+                    selected_current = 0;
+                    return;
+                }
+                printf("stack contents after restoration:\n");
+                print_bytes(buf, 16);
+
+                //restore the regs
+
+                //printf("regs (before restoring)\n");
+                //print_regstate(cpu);
+                restore_regstate(cpu);
+                //printf("regs (after restoring)\n");
+                //print_regstate(cpu);
+
+                count++;
+
+
+                uint64_t cur_pc = panda_current_pc(cpu);
+                printf("current_pc: " TARGET_PTR_FMT "\n", cur_pc);
+                //((CPUX86State*) cpu->env_ptr)->eip = cur_pc - 2;
+                ((CPUX86State*) cpu->env_ptr)->eip = entry_pc;
+                printf("current_pc - entry_pc: %lu\n", cur_pc - entry_pc);
+
+                //phase5 = false;
+            } else if(reading) {
+                printf("\nphase5: after block exec, after the syscall\n");
+                printf("getting results from read syscall\n");
+
+                //unset read flag
+                reading = false;
+                
+                //get the number of bytes read from rax
+                uint64_t num_bytes = ((CPUX86State*) cpu->env_ptr)->regs[0];
+                printf("read %lu bytes from the file\n", num_bytes);
+
+                //read the file contents from the stack
+                uint8_t tmp[bytes_to_read] = {0};
+                err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read, tmp, num_bytes);
+                //err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->eip, tmp, 127);
+                if(err == -1) {
+                    printf("couldn't read result from the stack\n");
+                    banned_procs.insert(selected_current);
+                    selected_current = 0;
+                    return;
+                }               
+
+                printf("result:\n");
+                printf("%s\n", (char*) tmp);
+
+                //restore the stack
+                err = panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read, buf, bytes_to_read);
+                if(err == -1) {
+                    printf("couldn't restore the stack\n");
+                    banned_procs.insert(selected_current);
+                    selected_current = 0;
+                    return;
+                }
+ 
+                memset(buf, 0, bytes_to_read);
+                err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read, buf, bytes_to_read); 
+                if(err == -1) {
+                    printf("couldn't read from the stack\n");
+                    banned_procs.insert(current);
+                    selected_current = 0;
+                    return;
+                }
+                printf("stack contents after restoration:\n");
+                print_bytes(buf, 32);
+
+
+
+
+                count++;
+            }
+        }
+
+    }
+}
+
+void sys_enter(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp) {
+    uint64_t res = 0;
+    int err = 0;
+
+    if(phase5 && strcmp(call->name, "sys_clock_gettime") == 0) {
+        printf("\nphase5: entering syscall: %s\n", call->name);
+
+        //refresh current
+        err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &res);
+        if(err == -1) printf("couldn't read current\n");
+        current = res;
+        printf("current:          " TARGET_PTR_FMT "\n", current);
+        printf("selected_current: " TARGET_PTR_FMT "\n", selected_current);
+        printf("asid: " TARGET_FMT_lx "\n", panda_current_asid(cpu));
+        printf("pc: " TARGET_PTR_FMT "\n", panda_current_pc(cpu));
+        asid = panda_current_asid(cpu);
+        entry_pc = panda_current_pc(cpu);
+
+        //if(count > 0) phase5 = false;
+
+        if(selected_current == 0 && banned_procs.find(current) == banned_procs.end()) { 
+            printf("OPENING NEW FILE\n");
+
+            //store the regstate
+            printf("regstate:\n");
+            print_regstate(cpu);
+            store_regstate(cpu);
+
+            //store the stack in buf
+            memset(buf, 0, bytes_to_read);
+            err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], buf, 16);
+            if(err == -1) {
+                printf("couldn't read from the stack\n");
+                banned_procs.insert(current);
+                selected_current = 0;
+                return;
+            }
+            printf("stack contents:\n");
+            print_bytes(buf, 16);
+
+            //store the filename on the stack
+            uint8_t filename[16] = {0};
+            strcpy((char*) filename, "/proc/self/maps");
+
+            err = panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], filename, 16);
+            if(err == -1) {
+                printf("couldn't write to the stack\n");
+                banned_procs.insert(current);
+                selected_current = 0;
+                return;
+            }
+
+            //verify that it got written
+            //err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], buf, 16);
+            //if(err == -1) {
+            //    printf("couldn't read from the stack\n");
+            //    return;
+            //}
+            //printf("stack contents 2: %s\n", buf);
+
+
+            //set args for open syscall
+            ((CPUX86State*) cpu->env_ptr)->regs[0] = 2;     //eax set to open
+            ((CPUX86State*) cpu->env_ptr)->regs[7] = ((CPUX86State*) cpu->env_ptr)->regs[4]; //set RDI to ESP
+            ((CPUX86State*) cpu->env_ptr)->regs[6] = O_NONBLOCK | O_RDONLY; //flags in RSI
+            ((CPUX86State*) cpu->env_ptr)->regs[2] = O_RDONLY; //mode in RDX
+
+            //set selected_current
+            selected_current = current;
+
+            //set open flag
+            opening = true;
+
+
+        } else if(current == selected_current && fd_map.find(current) != fd_map.end()) {
+            printf("READING FROM THE OPEN FILE\n");
+
+            //store the regstate
+            printf("regstate:\n");
+            print_regstate(cpu);
+            store_regstate(cpu);
+
+
+
+            //preserve the contents of the stack
+
+            memset(buf, 0, bytes_to_read);
+            err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read, buf, bytes_to_read); 
+            if(err == -1) {
+                printf("couldn't read from the stack\n");
+                banned_procs.insert(current);
+                selected_current = 0;
+                return;
+            }
+            printf("stack contents:\n");
+            print_bytes(buf, 32);
+
+            //set args for read syscall
+            ((CPUX86State*) cpu->env_ptr)->regs[0] = 0; //eax set to read
+            ((CPUX86State*) cpu->env_ptr)->regs[7] = fd_map[selected_current]; //set RDI to the appropriate file descriptor
+            ((CPUX86State*) cpu->env_ptr)->regs[6] = ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read; //set RSI to the stack pointer from ESP
+            //((CPUX86State*) cpu->env_ptr)->regs[6] = ((CPUX86State*) cpu->env_ptr)->eip; //set RSI to the stack pointer from ESP
+            ((CPUX86State*) cpu->env_ptr)->regs[2] = bytes_to_read-1; //num bytes to read in rdx
+
+            reading = true;
+        }
+    }
+
+}
+
+void sys_return(CPUState *cpu, target_ulong pc, const syscall_info_t *call, const syscall_ctx_t *rp) {
+    if(phase5) {
+        printf("\nphase5: returning from syscall %s\n", call->name);
+        if(count > 1) phase5 = false;
+    }
+}
 
 
 void time_of_day_enter(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz) {
@@ -3787,102 +4134,102 @@ void time_of_day_enter(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz)
         //set rdi to pid
         ((CPUX86State*) cpu->env_ptr)->regs[7] = tgid;
     }
-    if (phase5) {
-        //open /proc/self/mappings  if it hasn't been opened yet. If it has, read from it.
-        printf("\nphase 5: entering gettimeofday\n");
-        in_syscall = true;
-        target_ulong pid = 0;
-        int err = 0;
-        
-        //step 1 - refresh current
-        //target_ulong new_current = 0;
-        err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &current);
-        if(err == -1) {
-            printf("couldn't read current\n");
-        }
-        printf("current is " TARGET_PTR_FMT "\n", current);
-
-        //step 2 - get the current pid
-        err = read_uint32(cpu, current + task_pid_offset, &pid);
-        if(err == -1) {
-            printf("couldn't read pid\n");
-        }
-        printf("pid is %ld\n", pid);
-
-        //step 3 - check if the file has been opened
-        std::map<target_ulong, int>::iterator it;
-        it = fd_map.find(current);
-        if(it == fd_map.end()) {      //if the file has not been opened
-            //preserve the top of the stack, then write the filename to the stack
-            //restore the stack and get the fd on exit
-            //4
-            uint8_t filename[16] = {0};
-            memset(buf, 0, 2048);
-            opening = true;
-
-            err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], buf, 16);
-            if(err == -1) {
-                printf("couldn't read from the stack\n");
-                return;
-            }
-            printf("stack contents: %s\n", buf);
-
-            strcpy((char*) filename, "/proc/self/maps");
-
-            err = panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], filename, 16);
-            if(err == -1) {
-                printf("couldn't write to the stack\n");
-                return;
-            }
-            printf("stack addr: " TARGET_PTR_FMT "\n", ((CPUX86State*) cpu->env_ptr)->regs[4]);
-
-            //verify that it got written to the stack
-            //err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], buf, 16);
-            //if(err == -1) {
-            //    printf("couldn't read from the stack\n");
-            //    return;
-            //}
-            //printf("stack contents 2: %s\n", buf);
-
-            //set the regs
-            ((CPUX86State*) cpu->env_ptr)->regs[0] = 2;     //eax set to open
-            ((CPUX86State*) cpu->env_ptr)->regs[7] = ((CPUX86State*) cpu->env_ptr)->regs[4]; //set RDI to ESP
-            ((CPUX86State*) cpu->env_ptr)->regs[6] = O_NONBLOCK | O_RDONLY; //flags in RSI
-            ((CPUX86State*) cpu->env_ptr)->regs[2] = O_RDONLY; //mode in RDX
-            
-        } else {
-            //call read
-            printf("reading from the new file\n");
-            reading = true;
-
-            memset(buf, 0, bytes_to_read);
-
-            //preserve the contents of the stack
-            err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read, buf, bytes_to_read); //TODO - read more
-            //err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->eip, buf, 128); //TODO - read more
-            if(err == -1) {
-                printf("couldn't read from the stack\n");
-                return;
-            }
-            printf("stack contents: %s\n", (char*) buf);
-            //read from the fd to the stack
-
-            //set the regs
-            ((CPUX86State*) cpu->env_ptr)->regs[0] = 0; //eax set to read
-            ((CPUX86State*) cpu->env_ptr)->regs[7] = fd_map[current]; //set RDI to the appropriate file descriptor
-            ((CPUX86State*) cpu->env_ptr)->regs[6] = ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read; //set RSI to the stack pointer from ESP
-            //((CPUX86State*) cpu->env_ptr)->regs[6] = ((CPUX86State*) cpu->env_ptr)->eip; //set RSI to the stack pointer from ESP
-            ((CPUX86State*) cpu->env_ptr)->regs[2] = bytes_to_read-1; //num bytes to read in rdx
-
-            //save the result
-        }
-        // - if it has been opened, call read
-        //preserve the top of the stack
-        //read from the fd to the stack
-        //save the result
-        //step 4 - close the file?
-
-    }
+//    if (phase5) {
+//        //open /proc/self/mappings  if it hasn't been opened yet. If it has, read from it.
+//        printf("\nphase 5: entering gettimeofday\n");
+//        in_syscall = true;
+//        target_ulong pid = 0;
+//        int err = 0;
+//        
+//        //step 1 - refresh current
+//        //target_ulong new_current = 0;
+//        err = read_target_ulong(cpu, task_per_cpu_offset_0_addr + task_current_task_addr, &current);
+//        if(err == -1) {
+//            printf("couldn't read current\n");
+//        }
+//        printf("current is " TARGET_PTR_FMT "\n", current);
+//
+//        //step 2 - get the current pid
+//        err = read_uint32(cpu, current + task_pid_offset, &pid);
+//        if(err == -1) {
+//            printf("couldn't read pid\n");
+//        }
+//        printf("pid is %ld\n", pid);
+//
+//        //step 3 - check if the file has been opened
+//        std::map<target_ulong, int>::iterator it;
+//        it = fd_map.find(current);
+//        if(it == fd_map.end()) {      //if the file has not been opened
+//            //preserve the top of the stack, then write the filename to the stack
+//            //restore the stack and get the fd on exit
+//            //4
+//            uint8_t filename[16] = {0};
+//            memset(buf, 0, 2048);
+//            opening = true;
+//
+//            err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], buf, 16);
+//            if(err == -1) {
+//                printf("couldn't read from the stack\n");
+//                return;
+//            }
+//            printf("stack contents: %s\n", buf);
+//
+//            strcpy((char*) filename, "/proc/self/maps");
+//
+//            err = panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], filename, 16);
+//            if(err == -1) {
+//                printf("couldn't write to the stack\n");
+//                return;
+//            }
+//            printf("stack addr: " TARGET_PTR_FMT "\n", ((CPUX86State*) cpu->env_ptr)->regs[4]);
+//
+//            //verify that it got written to the stack
+//            //err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], buf, 16);
+//            //if(err == -1) {
+//            //    printf("couldn't read from the stack\n");
+//            //    return;
+//            //}
+//            //printf("stack contents 2: %s\n", buf);
+//
+//            //set the regs
+//            ((CPUX86State*) cpu->env_ptr)->regs[0] = 2;     //eax set to open
+//            ((CPUX86State*) cpu->env_ptr)->regs[7] = ((CPUX86State*) cpu->env_ptr)->regs[4]; //set RDI to ESP
+//            ((CPUX86State*) cpu->env_ptr)->regs[6] = O_NONBLOCK | O_RDONLY; //flags in RSI
+//            ((CPUX86State*) cpu->env_ptr)->regs[2] = O_RDONLY; //mode in RDX
+//            
+//        } else {
+//            //call read
+//            printf("reading from the new file\n");
+//            reading = true;
+//
+//            memset(buf, 0, bytes_to_read);
+//
+//            //preserve the contents of the stack
+//            err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read, buf, bytes_to_read); //TODO - read more
+//            //err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->eip, buf, 128); //TODO - read more
+//            if(err == -1) {
+//                printf("couldn't read from the stack\n");
+//                return;
+//            }
+//            printf("stack contents: %s\n", (char*) buf);
+//            //read from the fd to the stack
+//
+//            //set the regs
+//            ((CPUX86State*) cpu->env_ptr)->regs[0] = 0; //eax set to read
+//            ((CPUX86State*) cpu->env_ptr)->regs[7] = fd_map[current]; //set RDI to the appropriate file descriptor
+//            ((CPUX86State*) cpu->env_ptr)->regs[6] = ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read; //set RSI to the stack pointer from ESP
+//            //((CPUX86State*) cpu->env_ptr)->regs[6] = ((CPUX86State*) cpu->env_ptr)->eip; //set RSI to the stack pointer from ESP
+//            ((CPUX86State*) cpu->env_ptr)->regs[2] = bytes_to_read-1; //num bytes to read in rdx
+//
+//            //save the result
+//        }
+//        // - if it has been opened, call read
+//        //preserve the top of the stack
+//        //read from the fd to the stack
+//        //save the result
+//        //step 4 - close the file?
+//
+//    }
 }
 
 void time_of_day_return(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz) {
@@ -3995,98 +4342,92 @@ void time_of_day_return(CPUState* cpu, target_ulong pc, uint64_t tv, uint64_t tz
         in_syscall = false;
         phase4 = false;
         phase5 = true;
-    } else if (phase5) {
-        printf("phase 5: returning from gettimeofday\n");
-        in_syscall = false;
-        if(opening) {
-            printf("returning from opening - getting the file descriptor\n");
-            //get the file descriptor
-            int fd = 0;
-            fd = ((CPUX86State*) cpu->env_ptr)->regs[0];
-            printf("the fd is %d\n", fd);
-
-            //restore the stack
-            panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], buf, 16);
-
-            //record the fd in the map
-            fd_map[current] = fd;
-
-            std::map<target_ulong, int>::iterator it;
-            printf("MAP CONTENTS\n");
-            for(it = fd_map.begin(); it != fd_map.end(); ++it) {
-                printf("current: " TARGET_PTR_FMT ", fd %d\n", it->first, it->second);
-            }
-
-            opening = false;
-        } else if(reading) {
-            printf("returning from reading\n");
-            uint8_t tmp[bytes_to_read] = {0};
-            int err = 0;
-            uint64_t num_bytes = 0;
-
-            //get the result
-            err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read, tmp, bytes_to_read-1);
-            //err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->eip, tmp, 127);
-            if(err == -1) {
-                printf("couldn't read result from the stack\n");
-                return;
-            }
-            tmp[bytes_to_read-1] = 0;
-            printf("RESULT:\n%s\n", (char*) tmp);
-            std::string part((char*) tmp);
-            maps += part;
-
-            //restore the stack
-            err = panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read, buf, bytes_to_read);
-            //err = panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->eip, buf, 128);
-            if(err == -1) {
-                printf("couldn't restore the stack\n");
-                return;
-            }
-
-            num_bytes = ((CPUX86State*) cpu->env_ptr)->regs[0];
-
-            printf("read %lu bytes from the file\n", num_bytes);
-
-            //count number of bytes read
-            if(fdpos_map.find(current) == fdpos_map.end()) {
-                fdpos_map[current] = num_bytes;
-            } else {
-                fdpos_map[current] += num_bytes;
-            }
-
-            if(num_bytes == 0) {
-                printf("Finished reading from the file!\n");
-                phase5 = false;
-                printf("total file contents:\n");
-                std::cout << "\n" << maps << std::endl;
-                //mmap_search(cpu);
-                //brk_search(cpu);
-                //vma_vm_next_search(cpu);
-                //vma_vm_flags_search(cpu);
-                //start_stack_search(cpu);
-                //vma_vm_file_search(cpu);
-                //path_d_parent_search(cpu);
-                //task_files_search(cpu, fd_map[current]);
-                //vfsmount_search(cpu, fd_map[current]);
-                //path_mnt_parent_search(cpu, fd_map[current]);
-                //fs_f_pos_search(cpu, fd_map[current], fdpos_map[current]);
-
-                //path_d_op_search(cpu, fd_map[current]);
-            }
-
-
-            reading = false;
-            //phase5 = false;
-            phase6 = true;
-        }
-    } else if(phase6) {
-
-        //mmap_search(cpu);
-        //brk_search(cpu);
-
-        phase6 = false;
-    }
+    } //else if (phase5) {
+//        printf("phase 5: returning from gettimeofday\n");
+//        in_syscall = false;
+//        if(opening) {
+//            printf("returning from opening - getting the file descriptor\n");
+//            //get the file descriptor
+//            int fd = 0;
+//            fd = ((CPUX86State*) cpu->env_ptr)->regs[0];
+//            printf("the fd is %d\n", fd);
+//
+//            //restore the stack
+//            panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4], buf, 16);
+//
+//            //record the fd in the map
+//            fd_map[current] = fd;
+//
+//            std::map<target_ulong, int>::iterator it;
+//            printf("MAP CONTENTS\n");
+//            for(it = fd_map.begin(); it != fd_map.end(); ++it) {
+//                printf("current: " TARGET_PTR_FMT ", fd %d\n", it->first, it->second);
+//            }
+//
+//            opening = false;
+//        } else if(reading) {
+//            printf("returning from reading\n");
+//            uint8_t tmp[bytes_to_read] = {0};
+//            int err = 0;
+//            uint64_t num_bytes = 0;
+//
+//            //get the result
+//            err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read, tmp, bytes_to_read-1);
+//            //err = panda_virtual_memory_read(cpu, ((CPUX86State*) cpu->env_ptr)->eip, tmp, 127);
+//            if(err == -1) {
+//                printf("couldn't read result from the stack\n");
+//                return;
+//            }
+//            tmp[bytes_to_read-1] = 0;
+//            printf("RESULT:\n%s\n", (char*) tmp);
+//            std::string part((char*) tmp);
+//            maps += part;
+//
+//            //restore the stack
+//            err = panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->regs[4]-bytes_to_read, buf, bytes_to_read);
+//            //err = panda_virtual_memory_write(cpu, ((CPUX86State*) cpu->env_ptr)->eip, buf, 128);
+//            if(err == -1) {
+//                printf("couldn't restore the stack\n");
+//                return;
+//            }
+//
+//            num_bytes = ((CPUX86State*) cpu->env_ptr)->regs[0];
+//
+//            printf("read %lu bytes from the file\n", num_bytes);
+//
+//            //count number of bytes read
+//            if(fdpos_map.find(current) == fdpos_map.end()) {
+//                fdpos_map[current] = num_bytes;
+//            } else {
+//                fdpos_map[current] += num_bytes;
+//            }
+//
+//            if(num_bytes == 0) {
+//                printf("Finished reading from the file!\n");
+//                phase5 = false;
+//                printf("total file contents:\n");
+//                std::cout << "\n" << maps << std::endl;
+//                //mmap_search(cpu);
+//                //brk_search(cpu);
+//                //vma_vm_next_search(cpu);
+//                //vma_vm_flags_search(cpu);
+//                //start_stack_search(cpu);
+//                //vma_vm_file_search(cpu);
+//                //path_d_parent_search(cpu);
+//                //task_files_search(cpu, fd_map[current]);
+//                //vfsmount_search(cpu, fd_map[current]);
+//                //path_mnt_parent_search(cpu, fd_map[current]);
+//                //fs_f_pos_search(cpu, fd_map[current], fdpos_map[current]);
+//
+//                //path_d_op_search(cpu, fd_map[current]);
+//            }
+//
+//
+//            reading = false;
+//            //phase5 = false;
+//            phase6 = true;
+//        }
+//    }
 }
 
 
@@ -4146,8 +4487,8 @@ bool init_plugin(void *self) {
     PPP_REG_CB("syscalls2", on_sys_getpid_enter, getpid_enter);
     PPP_REG_CB("syscalls2", on_sys_getpid_return, getpid_return);
 
-    //PPP_REG_CB("syscalls2", on_all_sys_enter2, sys_enter);
-    //PPP_REG_CB("syscalls2", on_all_sys_return2, sys_return);
+    PPP_REG_CB("syscalls2", on_all_sys_enter2, sys_enter);
+    PPP_REG_CB("syscalls2", on_all_sys_return2, sys_return);
 
     //PPP_REG_CB("syscalls2", on_sys_execve_enter, execve_enter);
 
@@ -4158,6 +4499,9 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb);
     pcb.virt_mem_before_read = virt_mem_before_read_callback;
     panda_register_callback(self, PANDA_CB_VIRT_MEM_BEFORE_READ, pcb);
+
+    pcb.after_block_exec = after_block_exec;
+    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
 
     //fptr = fopen("pid_replaced_instruction_log.txt", "w");
     fptr = fopen("null.txt", "w");
