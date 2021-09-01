@@ -13,6 +13,8 @@ panda-system-x86_64 -panda snake_hook:files=print_pcs.py:print_strings.py -nogra
 * `files` - a colon-separated list of python files to load\*
 * `stdout` - path for unix socket to redirect stdout to (default: don't redirect stdout)
 * `classes` - colon-separated list of classes to execute, defaults to all classes
+* `flask` - a bool (0 or 1) indicating whether to enable the flask server
+* `port` - a number (0-65535) indicating the port number to host the flask server at (default: 8080)
 
 \*See 'passing arguments to plugins' for more info
 
@@ -35,6 +37,37 @@ class TestPlugin(PandaPlugin):
 The anatomy of a pypanda plugin in its current form is one or more types which subclass `PandaPlugin` (`PandaPlugin` is a type that will already be in scope). The constructor takes a `panda` object, which is of type [pandare.Panda](https://docs.panda.re/panda.html#pandare.panda.Panda).
 
 From there, you can add hooks and declare initial state for your plugin. The destructor (`__del__`) is optional, but can be used to perform cleanup when `snake_hook` is unloaded.
+
+### Flask Integration
+
+Example plugins can be found in the [pypanda-plugins](https://github.com/panda-re/pypanda-plugins) repository, [in the plugins folder](https://github.com/panda-re/pypanda-plugins/tree/main/plugins).
+
+Each plugin can host its own endpoints under `localhost:port/[plugin_name]` by means of declaring a `webpage_init(app)` then writing a flask application using `app` as normal. In order to mount all plugin-specifc routes under `/[plugin_name]/` the variable `app` is a [`Blueprint`](https://flask.palletsprojects.com/en/2.0.x/blueprints/). If you need access to the `Flask` object itself, use `self.flask` (`flask` is a member of the `PandaPlugin` class).
+
+Note: `plugin_name` is the class name of the subclass of `PandaPlugin`. So a plugin such as:
+
+```python
+class BasicBlockCount(PandaPlugin):
+    def __init__(self, panda):
+        self.bb_count = 0
+
+        @panda.cb_before_block_exec
+        def my_before_block_fn(_cpu, _trans):
+            self.bb_count += 1
+
+    def webserver_init(self, app):
+        @app.route("/")
+        def test_index():
+            return """<html>
+            <body>
+                <p>
+                    Basic Block Count: <span id="bb_count">""" + self.bb_count +  """</span>
+                </p>
+            </body>
+            </html>"""
+```
+
+Will be mounted at `https://localhost:8080/BasicBlockCount` by default.
 
 ### Passing Arguments to Plugins
 
