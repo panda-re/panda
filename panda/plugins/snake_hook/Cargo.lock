@@ -253,9 +253,9 @@ checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
 
 [[package]]
 name = "panda-re"
-version = "0.7.1"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ddc645258776e0c44cc46347d444b329224671a5c8fd866343c07e3de681477f"
+checksum = "8040bb4e407d4c2c5a564f5b0974387e2aa7566851b1bf3e26819cfc3ff7e4bc"
 dependencies = [
  "dirs",
  "glib-sys",
@@ -272,9 +272,9 @@ dependencies = [
 
 [[package]]
 name = "panda-re-macros"
-version = "0.4.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3951c3922b289d34ddf772357a521713cdd6f7d464562b6d5cb3ffbe214c5ef"
+checksum = "c27b19c47785554542bb20b2a8185c15bb9c30694efea83eaccf1725bcf13e80"
 dependencies = [
  "darling",
  "doc-comment",

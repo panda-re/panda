@@ -28,6 +28,9 @@ struct Args {
 
     #[arg(about = "enable the flask server for supported plugins")]
     flask: bool,
+
+    #[arg(default = 8080, about = "port to run the flask server on")]
+    port: u32,
 }
 
 /// Return the directory of the panda-system-* executable
