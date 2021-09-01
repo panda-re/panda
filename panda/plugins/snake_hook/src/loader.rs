@@ -175,6 +175,7 @@ pub(crate) fn initialize_pyplugins(args: Args) {
     };
 
     if use_flask {
+        let port = args.port;
         std::thread::spawn(move || {
             context.run(python! {
                 app = 'flask_app
@@ -183,7 +184,7 @@ pub(crate) fn initialize_pyplugins(args: Args) {
                 def index():
                     return "PANDA web server"
 
-                app.run(port=1234)
+                app.run(port='port)
             });
         });
     }
