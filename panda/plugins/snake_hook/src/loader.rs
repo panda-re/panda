@@ -38,6 +38,7 @@ fn parse_files(files: &str) -> Vec<PluginFile> {
 
 /// Load and initalize all the plugins
 pub(crate) fn initialize_pyplugins(args: Args) {
+    let use_flask = args.flask;
     let load_all_classes = args.classes.is_empty();
     let class_names = args.classes.split(':').collect::<Vec<_>>();
     let should_load = move |class: &PyType| {
@@ -51,7 +52,24 @@ pub(crate) fn initialize_pyplugins(args: Args) {
         from pandare import Panda
 
         panda = Panda(arch='ARCH, libpanda_path='libpanda_path)
+
+        if 'use_flask:
+            from flask import Flask, Blueprint
+            app = Flask(__name__)
     };
+
+    let (flask_app, blueprint) = Python::with_gil(|py| {
+        (
+            context
+                .globals(py)
+                .get_item("app")
+                .map(|item| item.to_object(py)),
+            context
+                .globals(py)
+                .get_item("Blueprint")
+                .map(|item| item.to_object(py))
+        )
+    });
 
     let panda_obj: PyObject = context.get("panda");
     let files = parse_files(&args.files);
@@ -100,7 +118,7 @@ pub(crate) fn initialize_pyplugins(args: Args) {
                 });
 
                 let plugin_module = context.get::<Py<PyModule>>("plugin");
-                for (_name, item) in plugin_module.as_ref(py).dict().iter() {
+                for (name, item) in plugin_module.as_ref(py).dict().iter() {
                     // if the object is a type and the type is a subclass of PandaPlugin
                     // treat it as a plugin
                     if let Ok(class) = item.downcast::<PyType>() {
@@ -114,9 +132,19 @@ pub(crate) fn initialize_pyplugins(args: Args) {
 
                         if class.hasattr("__init__").unwrap_or(false) {
                             let panda_obj = &panda_obj;
+                            let url_prefix = format!("/{}", name);
+                            let name = name.to_string();
+                            let flask_app = flask_app.as_ref().map(|app| app.clone_ref(py));
+                            let blueprint = &blueprint;
                             context.run(python! {
                                 // create an instance of the plugin class
                                 plugin_obj = 'class('panda_obj)
+
+                                if 'use_flask:
+                                    bp = 'blueprint('name, __name__)
+                                    plugin_obj.flask = 'flask_app
+                                    plugin_obj.webserver_init(bp)
+                                    'flask_app.register_blueprint(bp, url_prefix='url_prefix)
                             });
 
                             // store the plugin object so we can de-initialize it later
@@ -145,6 +173,20 @@ pub(crate) fn initialize_pyplugins(args: Args) {
         })
         .unwrap();
     };
+
+    if use_flask {
+        std::thread::spawn(move || {
+            context.run(python! {
+                app = 'flask_app
+
+                @app.route("/")
+                def index():
+                    return "PANDA web server"
+
+                app.run(port=1234)
+            });
+        });
+    }
 
     // hold onto the Panda object to allow for deleting callbacks on uninit
     PANDA_OBJ.set(panda_obj).unwrap();

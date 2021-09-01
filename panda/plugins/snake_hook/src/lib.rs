@@ -25,6 +25,9 @@ struct Args {
 
     #[arg(about = "colon-separated list of classes to execute, defaults to all classes")]
     classes: String,
+
+    #[arg(about = "enable the flask server for supported plugins")]
+    flask: bool,
 }
 
 /// Return the directory of the panda-system-* executable
