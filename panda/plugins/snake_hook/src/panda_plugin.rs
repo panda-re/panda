@@ -7,6 +7,7 @@ use std::sync::Mutex;
 #[pyclass(subclass, module = "snake_hook")]
 pub struct PandaPlugin {
     args: ArgMap,
+    pub flask: Option<PyObject>,
 }
 
 #[pymethods]
@@ -15,7 +16,7 @@ impl PandaPlugin {
     fn new() -> PyResult<Self> {
         let args = NEXT_PLUGIN_ARGS.lock().unwrap().take().unwrap();
 
-        Ok(Self { args })
+        Ok(Self { args, flask: None })
     }
 
     fn get_arg(&self, name: &str) -> Option<String> {
@@ -37,6 +38,8 @@ impl PandaPlugin {
             None => false,
         }
     }
+
+    fn webserver_init(&self, _flask: &PyAny) {}
 }
 
 lazy_static! {
