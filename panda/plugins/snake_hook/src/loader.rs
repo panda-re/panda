@@ -98,7 +98,9 @@ pub(crate) fn initialize_pyplugins(args: Args) {
             let path = Path::new(file);
             if path.exists() {
                 let file_path = std::fs::canonicalize(path)
-                    .unwrap()
+                    .unwrap();
+                let parent_dir = file_path.parent().unwrap();
+                let file_path = file_path
                     .to_string_lossy()
                     .into_owned();
                 let panda_obj = panda_obj.clone();
@@ -133,18 +135,28 @@ pub(crate) fn initialize_pyplugins(args: Args) {
 
                         if class.hasattr("__init__").unwrap_or(false) {
                             let panda_obj = &panda_obj;
-                            let url_prefix = format!("/{}", name);
+
                             let name = name.to_string();
                             let display_name = class.getattr("name").ok().map(ToString::to_string);
                             plugin_names.push((name.clone(), display_name));
+
                             let flask_app = flask_app.as_ref().map(|app| app.clone_ref(py));
                             let blueprint = &blueprint;
+
+                            let url_prefix = format!("/{}", name);
+                            let template_dir = parent_dir.join("templates");
+                            let template_dir = if template_dir.exists() {
+                                Some(template_dir)
+                            } else {
+                                None
+                            };
+
                             context.run(python! {
                                 // create an instance of the plugin class
                                 plugin_obj = 'class('panda_obj)
 
                                 if 'use_flask:
-                                    bp = 'blueprint('name, __name__)
+                                    bp = 'blueprint('name, __name__, template_folder = 'template_dir)
                                     plugin_obj.flask = 'flask_app
                                     plugin_obj.webserver_init(bp)
                                     'flask_app.register_blueprint(bp, url_prefix='url_prefix)
