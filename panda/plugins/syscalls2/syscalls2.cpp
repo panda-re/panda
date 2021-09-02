@@ -12,6 +12,7 @@
  * See the COPYING file in the top-level directory.
  *
 PANDAENDCOMMENT */
+
 #define __STDC_FORMAT_MACROS
 
 // The return of some linux system calls is not always handled
@@ -809,16 +810,32 @@ static inline std::string context_map_t_dump(context_map_t &cm) {
 /**
  * @brief Checks if the translation block that is about to be executed
  * matches the return address of an executing system call.
+ *
+ * Note: this was changed to trigger in a before_block_exec_invalidate_opt
+ * callback. If there's a registered callback, we run it. Afterwards, if the PC
+ * has changed, we invalidate the block.
+ *
+ * This allows us to change where a syscall returns to in the return callback.
+ * If we instead run in a start_block_exec or before_block_exec callback, we
+ * won't be able to change the PC before the block starts executing.
  */
-void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
+bool hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
+
+    //printf("Search for %lx\n", pc);
     auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
     auto ctxi = running_syscalls.find(k);
     int UNUSED(no) = -1;
+    bool ret = false;
+
+    auto orig_pc = panda_current_pc(cpu); // Detect if the PC changed during our callback
+
     if (likely(ctxi != running_syscalls.end())) {
         syscall_ctx_t *ctx = &ctxi->second;
         no = ctx->no;
         syscalls_profile->return_switch(cpu, tb->pc, ctx);
         running_syscalls.erase(ctxi);
+
+        ret = (orig_pc != panda_current_pc(cpu));
     }
 #if defined(SYSCALL_RETURN_DEBUG)
     if (no >= 0) {
@@ -833,7 +850,8 @@ void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
     }
 #endif
     h->enabled = false;
-    return;
+
+    return ret;
 }
 #endif
 

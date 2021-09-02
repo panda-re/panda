@@ -4169,8 +4169,8 @@ void syscall_enter_switch_linux_arm64(CPUState *cpu, target_ptr_t pc, int static
 		struct hook h;
 		h.addr = ctx.retaddr;
 		h.asid = ctx.asid;
-		h.cb.start_block_exec = hook_syscall_return;
-		h.type = PANDA_CB_START_BLOCK_EXEC;
+		h.cb.before_block_exec_invalidate_opt = hook_syscall_return;
+		h.type = PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT;
 		h.enabled = true;
 		h.km = MODE_ANY; //you'd expect this to be user only
 		hooks_add_hook(&h);
