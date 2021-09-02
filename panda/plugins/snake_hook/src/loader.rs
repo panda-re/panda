@@ -74,6 +74,7 @@ pub(crate) fn initialize_pyplugins(args: Args) {
     let panda_obj: PyObject = context.get("panda");
     let files = parse_files(&args.files);
 
+    let mut plugin_names = Vec::new();
     if let Err(python_err) = Python::with_gil(|py| -> PyResult<()> {
         if !args.stdout.is_empty() {
             println!("[snake_hook] connecting python stdout to '{}'", args.stdout);
@@ -134,6 +135,8 @@ pub(crate) fn initialize_pyplugins(args: Args) {
                             let panda_obj = &panda_obj;
                             let url_prefix = format!("/{}", name);
                             let name = name.to_string();
+                            let display_name = class.getattr("name").ok().map(ToString::to_string);
+                            plugin_names.push((name.clone(), display_name));
                             let flask_app = flask_app.as_ref().map(|app| app.clone_ref(py));
                             let blueprint = &blueprint;
                             context.run(python! {
@@ -175,6 +178,21 @@ pub(crate) fn initialize_pyplugins(args: Args) {
     };
 
     if use_flask {
+        // professional html templating
+        let html = format!(
+            "<html><body><p><b>PANDA Plugin Webserver</b></p><p>Plugins:</p><ul>{}</ul></body></html>",
+            plugin_names
+                .into_iter()
+                .map(|(name, display_name)| {
+                    format!(
+                        "<li><a href=\"/{}\">{}</a></li>",
+                        &name,
+                        display_name.as_ref().unwrap_or_else(|| &name)
+                    )
+                })
+                .collect::<String>()
+        );
+
         let port = args.port;
         std::thread::spawn(move || {
             context.run(python! {
@@ -182,7 +200,7 @@ pub(crate) fn initialize_pyplugins(args: Args) {
 
                 @app.route("/")
                 def index():
-                    return "PANDA web server"
+                    return 'html
 
                 app.run(port='port)
             });
