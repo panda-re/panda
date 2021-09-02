@@ -120,6 +120,7 @@ class PandaArch():
             if idx < len(self.call_conventions[convention]):
                 return self.call_conventions[convention][idx]
             raise NotImplementedError(f"Unsupported argument number {idx}")
+
         raise NotImplementedError(f"Unsupported convention {convention} for {type(self)}")
 
     def _get_ret_val_reg(self, cpu, convention):
@@ -134,6 +135,11 @@ class PandaArch():
 
         Note for syscalls we define arg[0] as syscall number and then 1-index the actual args
         '''
+
+        reg_c = len(self.call_conventions[convention])
+        if idx >= reg_c: # Stack time
+            return self.set_arg_stack(cpu, idx-reg_c, val)
+
         reg = self._get_arg_reg(idx, convention)
         return self.set_reg(cpu, reg, val)
 
@@ -144,10 +150,16 @@ class PandaArch():
 
         Note for syscalls we define arg[0] as syscall number and then 1-index the actual args
         '''
+
+        reg_c = len(self.call_conventions[convention])
         
-        # i386 is stack based and so the convention wont work
-        if self.call_conventions[convention] == "stack":
-            return self.get_arg_stack(cpu, idx)
+        ## i386 is stack based and so the convention wont work
+        #if self.call_conventions[convention] == "stack":
+        #    return self.get_arg_stack(cpu, idx)
+
+        if idx >= reg_c: # Stack time
+            return self.get_arg_stack(cpu, idx-reg_c)
+
         reg = self._get_arg_reg(idx, convention)
         return self.get_reg(cpu, reg)
 
@@ -255,7 +267,7 @@ class ArmArch(PandaArch):
         self.reg_sp = regnames.index("SP")
         self.reg_retaddr = regnames.index("LR")
         self.call_conventions = {"arm32":         ["R0", "R1", "R2", "R3"],
-                                 "syscall": ["R7", "R0", "R1", "R2", "R3"], # EABI
+                                 "syscall": ["R7", "R0", "R1", "R2", "R3", "R4", "R5"], # EABI
                                  }
         self.call_conventions['default'] = self.call_conventions['arm32']
 
@@ -398,6 +410,30 @@ class MipsArch(PandaArch):
 
         # note names must be stored uppercase for get/set reg to work case-insensitively
         self.registers = {regnames[idx].upper(): idx for idx in range(len(regnames)) }
+
+    def get_arg_stack(self, cpu, idx):
+        '''
+        Gets stack arg idx - note IDX is stack-relative so if you want the 5th arg, you'd pass 0
+        '''
+        sp = self.get_reg(cpu, self.reg_sp)
+        word_size = int(self.panda.bits/8)
+        rv= self.panda.virtual_memory_read(cpu, sp+word_size*idx, word_size, fmt='int')
+        #print(f"STACK READ Return stack {idx} = {rv:x}")
+        return rv
+
+    def set_arg_stack(self, cpu, idx, val):
+        '''
+        set stack arg [idx] to [val] - note IDX is stack-relative so if you want the 5th arg, you'd pass 0
+        '''
+        sp = self.get_reg(cpu, self.reg_sp)
+        word_size = int(self.panda.bits/8)
+        _, endianness, _ = self._determine_bits()
+
+        data = (val).to_bytes(word_size, byteorder=endianness)
+        err = self.panda.virtual_memory_write(cpu, sp+word_size*idx, data)
+        if err:
+            raise ValueError(f"Could not write to {sp+word_size*idx:x}")
+        #print(f"Wrote {val:x} == {data} to stack {idx} at {sp+word_size*idx:#x} OK")
 
     def get_pc(self, cpu):
         '''
