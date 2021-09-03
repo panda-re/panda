@@ -197,7 +197,7 @@ pub(crate) fn initialize_pyplugins(args: Args) {
                 .into_iter()
                 .map(|(name, display_name)| {
                     format!(
-                        "<li><a href=\"/{}\">{}</a></li>",
+                        "<li><a href=\"./{}/\">{}</a></li>",
                         &name,
                         display_name.as_ref().unwrap_or_else(|| &name)
                     )
@@ -216,6 +216,8 @@ pub(crate) fn initialize_pyplugins(args: Args) {
 
                 app.run(port='port)
             });
+
+            println!("[snake_hook] flask server has started up.");
         });
     }
 

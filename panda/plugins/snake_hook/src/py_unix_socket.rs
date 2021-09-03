@@ -22,4 +22,10 @@ impl PyUnixSocket {
 
         Ok(data.len())
     }
+
+    pub fn flush(&mut self) -> PyResult<()> {
+        self.stream.flush()?;
+
+        Ok(())
+    }
 }
