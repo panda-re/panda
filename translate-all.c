@@ -76,9 +76,11 @@
 #include "panda/tcg-llvm.h"
 #endif
 
+#ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
-#include "panda/callbacks/cb-support.h"
 #include "panda/tcg-utils.h"
+#endif
+#include "panda/callbacks/cb-support.h"
 
 /* #define DEBUG_TB_INVALIDATE */
 /* #define DEBUG_TB_FLUSH */

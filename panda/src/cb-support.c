@@ -82,6 +82,7 @@ MAKE_CALLBACK(void, END_BLOCK_EXEC, end_block_exec,
 
 // Helper - get a physical address
 static inline hwaddr get_paddr(CPUState *cpu, target_ptr_t addr, void *ram_ptr) {
+#ifdef CONFIG_SOFTMMU
     if (!ram_ptr) {
         return panda_virt_to_phys(cpu, addr);
     }
@@ -97,6 +98,9 @@ static inline hwaddr get_paddr(CPUState *cpu, target_ptr_t addr, void *ram_ptr) 
           return -1;
         }
     }
+#else
+    return -1;
+#endif
 }
 
 // These are used in cputlb.c

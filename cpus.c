@@ -51,7 +51,9 @@
 #include "hw/nmi.h"
 #include "sysemu/replay.h"
 
+#ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
+#endif
 #include "panda/callbacks/cb-support.h"
 
 #ifdef CONFIG_LINUX

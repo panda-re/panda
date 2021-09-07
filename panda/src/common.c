@@ -226,6 +226,7 @@ void panda_cleanup(void) {
     }
 }
 
+#ifdef CONFIG_SOFTMMU
 /* Board-agnostic search for RAM memory region */
 MemoryRegion* panda_find_ram(void) {
 
@@ -252,6 +253,7 @@ MemoryRegion* panda_find_ram(void) {
 
     return ram;
 }
+#endif
 
 #ifdef TARGET_ARM
 #define CPSR_M (0x1fU)

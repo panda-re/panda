@@ -23,6 +23,10 @@
  * USA.
  */
 
+#ifndef CONFIG_SOFTMMU
+#error "NO RR for usermode"
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

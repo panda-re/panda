@@ -52,7 +52,9 @@ void panda_set_os_name(char *os_name);
 void panda_before_find_fast(void);
 void panda_disas(FILE *out, void *code, unsigned long size);
 void panda_break_main_loop(void);
+#ifdef CONFIG_SOFTMMU
 MemoryRegion* panda_find_ram(void);
+#endif
 
 extern bool panda_exit_loop;
 extern bool panda_break_vl_loop_req;
@@ -76,6 +78,7 @@ target_ulong panda_current_pc(CPUState *cpu);
 
 static inline int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
                                            bool is_write) {
+#ifdef CONFIG_SOFTMMU
     hwaddr l = len;
     hwaddr addr1;
     MemoryRegion *mr = address_space_translate(&address_space_memory, addr,
@@ -93,12 +96,17 @@ static inline int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
         memcpy(buf, ram_ptr, len);
     }
     return MEMTX_OK;
+#else
+    printf("panda_physical_memory_rw unsupported for usermode\n");
+    return 1;
+#endif
 }
 
 /**
  * @brief Translates guest virtual addres \p addr to a guest physical address.
  */
 static inline hwaddr panda_virt_to_phys(CPUState *env, target_ulong addr) {
+#ifdef CONFIG_SOFTMMU
     target_ulong page;
     hwaddr phys_addr;
     page = addr & TARGET_PAGE_MASK;
@@ -109,6 +117,9 @@ static inline hwaddr panda_virt_to_phys(CPUState *env, target_ulong addr) {
     }
     phys_addr += (addr & ~TARGET_PAGE_MASK);
     return phys_addr;
+#else
+    return (hwaddr)(-1);
+#endif
 }
 
 /**
@@ -133,6 +144,7 @@ void exit_priv(CPUState* cpu);
  */
 static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
                                           uint8_t *buf, int len, bool is_write) {
+#ifdef CONFIG_SOFTMMU
     int l;
     int ret;
     hwaddr phys_addr;
@@ -178,6 +190,9 @@ static inline int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
     }
     if (changed_priv) exit_priv(env); // Clear privileged mode if necessary
     return 0;
+#else
+    return -1;
+#endif
 }
 
 /**
@@ -202,6 +217,7 @@ static inline int panda_virtual_memory_write(CPUState *env, target_ulong addr,
 static inline void *panda_map_virt_to_host(CPUState *env, target_ulong addr,
                                            int len)
 {
+#ifdef CONFIG_SOFTMMU
     hwaddr phys = panda_virt_to_phys(env, addr);
     hwaddr l = len;
     hwaddr addr1;
@@ -213,12 +229,16 @@ static inline void *panda_map_virt_to_host(CPUState *env, target_ulong addr,
     }
 
     return qemu_map_ram_ptr(mr->ram_block, addr1);
+#else
+    return NULL;
+#endif
 }
 
 /**
  * @brief Translate a physical address to a RAM Offset (needed for the taint system)
  * Returns MEMTX_OK on success.
  */
+#ifdef CONFIG_SOFTMMU
 static inline MemTxResult PandaPhysicalAddressToRamOffset(ram_addr_t* out, hwaddr addr, bool is_write)
 {
     hwaddr TranslatedAddress;
@@ -319,6 +339,16 @@ static inline bool panda_in_kernel_mode(const CPUState *cpu) {
 static inline bool panda_in_kernel(const CPUState *cpu) {
     return panda_in_kernel_mode(cpu);
 }
+#else
+// panda-user - never in kernel
+static inline bool panda_in_kernel(const CPUState *cpu) {
+    return false;
+}
+static inline bool panda_in_kernel_mode(const CPUState *cpu) {
+    return false;
+}
+
+#endif
 
 /**
  * @brief Determines if guest is currently executing kernelspace code, regardless of privilege level.

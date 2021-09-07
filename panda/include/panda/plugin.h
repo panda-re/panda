@@ -16,8 +16,8 @@ PANDAENDCOMMENT */
 #include "panda/cheaders.h"
 
 #ifndef CONFIG_SOFTMMU
-#include "linux-user/qemu-types.h"
-#include "thunk.h"
+//#include "linux-user/qemu.h"
+#include "exec/user/thunk.h"
 #endif
 
 #define MAX_PANDA_PLUGINS 16
@@ -167,7 +167,9 @@ bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb);
 extern "C" {
 #endif
 
+#ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
+#endif
 #include "panda/plog.h"
 
 #ifdef __cplusplus

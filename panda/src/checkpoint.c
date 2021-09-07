@@ -5,6 +5,8 @@
  * Provides functions to take, store, and restore replay checkpoints
  */
 
+#ifdef CONFG_SOFTMMU
+
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -211,3 +213,5 @@ void panda_restore(void *opaque) {
         cpu_loop_exit(first_cpu);
     }
 }
+// config_softmmu
+#endif

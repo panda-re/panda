@@ -348,7 +348,9 @@ int cpu_memory_rw_debug(CPUState *cpu, target_ulong addr,
 int cpu_exec(CPUState *cpu);
 
 // needed by panda
+#ifdef CONFIG_SOFTMMU
 MemTxResult cpu_physical_memory_rw_ex(hwaddr addr, uint8_t *buf,
                                       int len, int is_write, bool safe);
+#endif
 
 #endif /* CPU_ALL_H */

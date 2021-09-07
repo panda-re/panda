@@ -12,7 +12,9 @@
 
 extern "C" {
 #ifndef PLOG_READER
+#ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
+#endif
 #include "panda/common.h"
 #endif
 

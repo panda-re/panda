@@ -1,4 +1,6 @@
+#ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
+#endif
 
 typedef struct Checkpoint {
     uint64_t guest_instr_count;

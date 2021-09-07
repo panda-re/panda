@@ -111,7 +111,9 @@ obj-y += panda/src/cb-support.o
 obj-y += panda/src/common.o
 obj-y += panda/src/plog.o
 obj-y += plog.pb-c.o
+ifdef CONFIG_SOFTMMU
 obj-y += panda/src/rr/rr_log.o
+endif
 obj-y += panda/src/checkpoint.o
 obj-y += panda/src/tcg-utils.o
 obj-y += panda/src/cb-installer.o

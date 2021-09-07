@@ -35,7 +35,9 @@
 #include "sysemu/cpus.h"
 #include "sysemu/replay.h"
 #include "sysemu/sysemu.h"
+#ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
+#endif
 #include "panda/callbacks/cb-support.h"
 #include "panda/common.h"
 
@@ -198,7 +200,9 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     }
 
     // NB: This is where we did this in panda1
+#ifdef CONFIG_SOFTMMU
     panda_bb_invalidate_done = false;
+#endif
 
 #if defined(CONFIG_LLVM)
     if (execute_llvm) {

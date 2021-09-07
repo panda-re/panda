@@ -19,6 +19,8 @@ ifdef CONFIG_USER_ONLY
 # user emulator name
 QEMU_PROG=panda-$(TARGET_NAME)
 QEMU_PROG_BUILD = $(QEMU_PROG)
+PANDA_PROG=libpanda-user-$(TARGET_NAME).so
+PANDA_PROG_NAME=panda-user-$(TARGET_NAME)
 else
 # system emulator name
 QEMU_PROG=panda-system-$(TARGET_NAME)$(EXESUF)
@@ -277,6 +279,8 @@ endif
 		$(INSTALL_PROG) $$f "$(DESTDIR)$(qemu_datadir)/scripts"; \
 	done
 # N.B. the new rpath must not be longer than the old rpath or chrpath will fail
+ifdef CONFIG_SOFTMMU
+	echo "PLUGINS PLUGINS PLUGINS";
 	for p in $(PANDA_PLUGINS) $(EXTRA_PANDA_PLUGINS); do \
 		echo $$p; \
 		$(INSTALL_LIB) panda/plugins/panda_$$p.so "$(DESTDIR)$(libdir)/panda/$(TARGET_NAME)"; \
@@ -290,6 +294,7 @@ endif
 			$(INSTALL_DATA) $$f "$(DESTDIR)$(qemu_confdir)/$$p"; \
 		done; \
 	done
+endif
 
 GENERATED_FILES += config-target.h plog_pb2.py
 Makefile: $(GENERATED_FILES)
