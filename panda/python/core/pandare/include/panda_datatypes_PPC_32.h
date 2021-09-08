@@ -70,7 +70,7 @@ typedef uint32_t powerpc_mmu_t;
 typedef uint32_t powerpc_excp_t;
 typedef uint32_t powerpc_input_t;
 typedef void RCUCBFunc(struct rcu_head *head);
-typedef uint8_t ZMMReg[40];
+typedef uint8_t ZMMReg[64];
 typedef uint8_t MMXReg[8];
 typedef uint8_t ppc_avr_t[16];
 typedef uint8_t ppc_tlb_t[8];
@@ -108,6 +108,16 @@ typedef void BlockCompletionFunc(void *opaque, int ret);
 typedef uint8_t QDict[4120];
 typedef uint8_t mon_cmd_t[56];
 typedef char gchar;
+typedef uint8_t fpr_t[16];
+enum mips_mmu_types {
+    MMU_TYPE_NONE,
+    MMU_TYPE_R4000,
+    MMU_TYPE_RESERVED,
+    MMU_TYPE_FMT,
+    MMU_TYPE_R3000,
+    MMU_TYPE_R6000,
+    MMU_TYPE_R8000
+};
 struct QemuThread;
 typedef struct QemuThread QemuThread;
 struct QemuThread {
@@ -175,7 +185,6 @@ struct TranslationBlock {
 	struct TranslationBlock *  llvm_tb_next[2];      /*   128    16 */
 	uint8_t *                  llvm_asm_ptr;         /*   144     8 */
 	char                       llvm_fn_name[64];     /*   152    64 */
-	/* --- cacheline 3 boundary (192 bytes) was 24 bytes ago --- */
 	/* size: 216, cachelines: 4, members: 22 */
 	/* sum members: 215, holes: 1, sum holes: 1 */
 	/* last cacheline: 24 bytes */
@@ -215,7 +224,7 @@ struct QemuOptDesc;
 typedef struct QemuOptDesc QemuOptDesc;
 struct QemuOptDesc {
 	const char  *              name;                 /*     0     8 */
-	enum QemuOptType           type;                 /*     8     4 */
+	enum QemuOptType   type;                         /*     8     4 */
 	/* XXX 4 bytes hole, try to pack */
 	const char  *              help;                 /*    16     8 */
 	const char  *              def_value_str;        /*    24     8 */
@@ -242,7 +251,7 @@ struct HotplugHandler {
 struct RAMBlock;
 typedef struct RAMBlock RAMBlock;
 struct RAMBlock {
-	struct rcu_head            rcu;                  /*     0    16 */
+	struct rcu_head    rcu;                          /*     0    16 */
 	struct MemoryRegion *      mr;                   /*    16     8 */
 	uint8_t *                  host;                 /*    24     8 */
 	ram_addr_t                 offset;               /*    32     8 */
@@ -567,7 +576,7 @@ typedef struct MemoryRegion MemoryRegion;
 struct MemoryListener;
 typedef struct MemoryListener MemoryListener;
 struct AddressSpace {
-	struct rcu_head            rcu;                  /*     0    16 */
+	struct rcu_head    rcu;                          /*     0    16 */
 	char *                     name;                 /*    16     8 */
 	MemoryRegion *             root;                 /*    24     8 */
 	int                        ref_count;            /*    32     4 */
@@ -648,7 +657,7 @@ struct MemoryRegionOps {
 	void                       (*write)(void *, hwaddr, uint64_t, unsigned int); /*     8     8 */
 	MemTxResult                (*read_with_attrs)(void *, hwaddr, uint64_t *, unsigned int, MemTxAttrs); /*    16     8 */
 	MemTxResult                (*write_with_attrs)(void *, hwaddr, uint64_t, unsigned int, MemTxAttrs); /*    24     8 */
-	enum device_endian         endianness;           /*    32     4 */
+	enum device_endian endianness;                   /*    32     4 */
 	/* XXX 4 bytes hole, try to pack */
 	struct {
 		unsigned int       min_access_size;      /*    40     4 */
@@ -716,13 +725,13 @@ struct MemoryRegion {
 	hwaddr                     alias_offset;         /*   152     8 */
 	int32_t                    priority;             /*   160     4 */
 	/* XXX 4 bytes hole, try to pack */
-	struct subregions          subregions;           /*   168    16 */
+	struct subregions  subregions;                   /*   168    16 */
 	struct {
 		struct MemoryRegion * tqe_next;          /*   184     8 */
 		/* --- cacheline 3 boundary (192 bytes) --- */
 		struct MemoryRegion * * tqe_prev;        /*   192     8 */
 	} subregions_link;                               /*   184    16 */
-	struct coalesced_ranges    coalesced;            /*   200    16 */
+	struct coalesced_ranges coalesced;               /*   200    16 */
 	const char  *              name;                 /*   216     8 */
 	unsigned int               ioeventfd_nb;         /*   224     4 */
 	/* XXX 4 bytes hole, try to pack */
@@ -879,7 +888,7 @@ struct QemuOpts {
 	char *                     id;                   /*     0     8 */
 	QemuOptsList *             list;                 /*     8     8 */
 	Location                   loc;                  /*    16    24 */
-	struct QemuOptHead         head;                 /*    40    16 */
+	struct QemuOptHead head;                         /*    40    16 */
 	struct {
 		struct QemuOpts *  tqe_next;             /*    56     8 */
 		/* --- cacheline 1 boundary (64 bytes) --- */
@@ -1029,7 +1038,7 @@ struct BusState {
 	int                        max_index;            /*    64     4 */
 	_Bool                      realized;             /*    68     1 */
 	/* XXX 3 bytes hole, try to pack */
-	struct ChildrenHead        children;             /*    72    16 */
+	struct ChildrenHead children;                    /*    72    16 */
 	struct {
 		struct BusState *  le_next;              /*    88     8 */
 		struct BusState * * le_prev;             /*    96     8 */
@@ -1249,8 +1258,8 @@ struct CPUState {
 		/* --- cacheline 520 boundary (33280 bytes) --- */
 		struct CPUState * * tqe_prev;            /* 33280     8 */
 	} node;                                          /* 33272    16 */
-	struct breakpoints_head    breakpoints;          /* 33288    16 */
-	struct watchpoints_head    watchpoints;          /* 33304    16 */
+	struct breakpoints_head breakpoints;             /* 33288    16 */
+	struct watchpoints_head watchpoints;             /* 33304    16 */
 	CPUWatchpoint *            watchpoint_hit;       /* 33320     8 */
 	_Bool                      watchpoints_disabled; /* 33328     1 */
 	/* XXX 7 bytes hole, try to pack */

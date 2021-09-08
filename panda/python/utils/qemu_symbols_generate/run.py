@@ -303,6 +303,13 @@ class HeaderFile(object):
 			return self.parse_error_msg(e)
 	
 
+def remove_empty_structs(data):
+	from re import sub, M
+	# looks for empty structs and replaces them with a tab
+	foutput = sub(r"struct([\n\r\s\t]){\s*(\n\t)*\s*}([\n\r\s\t])[a-zA-Z0-9_]+;","\t",data,M)
+	return foutput
+
+
 
 '''
 This function attempts to create, validate, and write a header file based on the required information
@@ -349,7 +356,9 @@ def generate_config(arch, bits, pahole_path, elf_file):
 	
 	OUT_FILE_NAME = "/output/panda_datatypes_"+arch+"_"+str(bits)+".h"
 	with open(OUT_FILE_NAME,"w") as f:
-		f.write(header.render())
+		output = header.render()
+		output_minus_empty = remove_empty_structs(output)
+		f.write(output_minus_empty)
 	print("Finished. Content written to "+OUT_FILE_NAME)
 
 comptries = 0

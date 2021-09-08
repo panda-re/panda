@@ -70,7 +70,7 @@ typedef uint32_t powerpc_mmu_t;
 typedef uint32_t powerpc_excp_t;
 typedef uint32_t powerpc_input_t;
 typedef void RCUCBFunc(struct rcu_head *head);
-typedef uint8_t ZMMReg[40];
+typedef uint8_t ZMMReg[64];
 typedef uint8_t MMXReg[8];
 typedef uint8_t ppc_avr_t[16];
 typedef uint8_t ppc_tlb_t[8];
@@ -1208,8 +1208,7 @@ struct CPUARMState {
 	/* --- cacheline 48 boundary (3072 bytes) was 48 bytes ago --- */
 	struct CPUWatchpoint *     cpu_watchpoint[16];   /*  3120   128 */
 	/* --- cacheline 50 boundary (3200 bytes) was 48 bytes ago --- */
-	struct {
-	} end_reset_fields;                              /*  3248     0 */
+		                              /*  3248     0 */
 	CPUTLBEntry                tlb_table[7][256];    /*  3248 57344 */
 	/* --- cacheline 946 boundary (60544 bytes) was 48 bytes ago --- */
 	CPUTLBEntry                tlb_v_table[7][8];    /* 60592  1792 */
