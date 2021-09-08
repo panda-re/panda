@@ -70,7 +70,7 @@ typedef uint32_t powerpc_mmu_t;
 typedef uint32_t powerpc_excp_t;
 typedef uint32_t powerpc_input_t;
 typedef void RCUCBFunc(struct rcu_head *head);
-typedef uint8_t ZMMReg[40];
+typedef uint8_t ZMMReg[64];
 typedef uint8_t MMXReg[8];
 typedef uint8_t ppc_avr_t[16];
 typedef uint8_t ppc_tlb_t[8];
@@ -1228,8 +1228,7 @@ struct CPUMIPSState {
 	uint32_t                   CP0_Status_rw_bitmask; /*  5568     4 */
 	uint32_t                   CP0_TCStatus_rw_bitmask; /*  5572     4 */
 	int                        insn_flags;           /*  5576     4 */
-	struct {
-	} end_reset_fields;                              /*  5580     0 */
+	                             /*  5580     0 */
 	/* XXX 4 bytes hole, try to pack */
 	CPUTLBEntry                tlb_table[3][256];    /*  5584 24576 */
 	/* --- cacheline 471 boundary (30144 bytes) was 16 bytes ago --- */
