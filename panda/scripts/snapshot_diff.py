@@ -783,7 +783,8 @@ def do_inflate(args):
     rebuild(diff_dict, rec_filename)
 
 parser = argparse.ArgumentParser()
-subparsers = parser.add_subparsers(title='commands', dest='command', required=True)
+subparsers = parser.add_subparsers(title='commands', dest='command')
+subparsers.required = True
 diffcmd = subparsers.add_parser('diff', help='diff two PANDA snapshots (for compression)')
 diffcmd.add_argument("files", metavar='FILE', help='snapshots to diff', nargs=2)
 diffcmd.add_argument("-o", "--output", help='name of output file (default: file2.pdiff)')
