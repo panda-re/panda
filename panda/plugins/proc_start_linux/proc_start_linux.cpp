@@ -77,6 +77,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
             target_ulong ptr;
             
             // read the arguments from the argv
+            vals.argv_ptr_ptr = sp+(ptrlistpos*sizeof(target_ulong));
             int argc_num = 0;
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
@@ -99,7 +100,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
             vals.argc = argc_num;
 
             // read the environment variable
-
+            vals.env_ptr_ptr = sp+(ptrlistpos*sizeof(target_ulong));
             int envc_num = 0;
             while (true){
                 if (panda_virtual_memory_read(env, sp+(ptrlistpos*sizeof(target_ulong)), (uint8_t*) &ptr, sizeof(ptr)) != MEMTX_OK){
@@ -140,6 +141,7 @@ void btc_execve(CPUState *env, TranslationBlock *tb){
                     // take the value.
                     vals.program_header = entryval - sizeof(ELF(Ehdr));
                 }else if (entrynum == AT_EXECFN){
+                    vals.execfn_ptr = entryval;
                     string execfn = read_str(env, entryval);
                     execfn.copy(vals.execfn, MAX_PATH_LEN -1, 0);
                 }else if (entrynum == AT_SYSINFO_EHDR){
