@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# 
 #  PANDA Snapshot Diff Tool
 # 
 #  Copyright (c) 2021 Brendan Dolan-Gavitt <brendandg@nyu.edu>
@@ -235,7 +234,11 @@ class RamSection(object):
                 #  [QEMU_VM_SECTION_FOOTER(1)][ID(4)][QEMU_VM_SECTION_PART(1)][ID(4)]
                 if self.name == 'pc.ram':
                     gap_data = self.file.file.read(10)
-                    assert gap_data == bytes.fromhex('7e000000040200000004')
+                    if gap_data != bytes.fromhex('7e000000040200000004'):
+                        print('Warning: section gap did not have expected content - you may want to double-check that this replays correctly!', file=sys.stderr)
+                        #print(f'gap_data: {gap_data.hex()}')
+                        #print(f'expected: 7e000000040200000004')
+                        #assert False
                     self.ramsections.append( ('EOS', addr, flags, secstart, self.file.tell(), 0) )
                     self.file.file.seek(-10, 1)
                 break
@@ -556,8 +559,10 @@ class MigrationDump(object):
         while True:
             section_type = file.read8()
             if section_type == self.QEMU_VM_EOF:
+                #print('Section QEMU_VM_EOF')
                 break
             elif section_type == self.QEMU_VM_CONFIGURATION:
+                #print('Section QEMU_VM_CONFIGURATION')
                 section = ConfigurationSection(file)
                 section.read()
             elif section_type == self.QEMU_VM_SECTION_START or section_type == self.QEMU_VM_SECTION_FULL:
@@ -569,14 +574,17 @@ class MigrationDump(object):
                 classdesc = self.section_classes[section_key]
                 section = classdesc[0](file, version_id, classdesc[1], section_key)
                 self.sections[section_id] = section
+                #print(f'Section QEMU_VM_SECTION_START/QEMU_VM_SECTION_FULL {section_id=} {name=}')
                 section.read()
             elif section_type == self.QEMU_VM_SECTION_PART or section_type == self.QEMU_VM_SECTION_END:
                 section_id = file.read32()
+                #print(f'Section QEMU_VM_SECTION_PART/QEMU_VM_SECTION_END {section_id}')
                 self.sections[section_id].read()
             elif section_type == self.QEMU_VM_SECTION_FOOTER:
                 read_section_id = file.read32()
                 if read_section_id != section_id:
                     raise Exception("Mismatched section footer: %x vs %x" % (read_section_id, section_id))
+                #print(f'Section QEMU_VM_SECTION_FOOTER {read_section_id}')
             else:
                 raise Exception("Unknown section type: %d" % section_type)
         #file.close()
@@ -672,6 +680,11 @@ def make_diff(file1, file2):
     diff_dict['diffs'] = diffs
     f2.seek(ram2.ramsections[-1][4])
     diff_dict['footer'] = f2.read()
+    # Check for trailing EOS. In this case the gap data will be wrong on the last one.
+    if ram2.ramsections[-1][0] == 'EOS':
+        _, _, _, s, e, _ = ram2.ramsections[-1]
+        f2.seek(s)
+        diff_dict['eos_trail'] = f2.read(e-s)
     f2.close()
     return diff_dict
 
@@ -710,10 +723,21 @@ def rebuild(diff_dict, out_filename):
     for i in eos_pos:
         ram2_reconstruct.insert(i, eos_proto)
 
+    if 'eos_trail' in diff_dict:
+        # Make sure this is consistent
+        assert ram2_reconstruct[-1][0] == 'EOS'
+        ram2_reconstruct[-1] = ('EOS_TRAIL', 0, 0, 0, 0, 0)
+
     outf = open(out_filename,'wb')
     outf.write(diff_dict['header'])
     for t1, a, f1, s1, e1, fc1 in ram2_reconstruct:
-        if a in diffs:
+        if t1 == 'EOS_TRAIL':
+            outf.write(diff_dict['eos_trail'])
+        elif t1 == 'EOS':
+            ram1.file.file.seek(s1)
+            data = ram1.file.file.read(e1-s1)
+            outf.write(data)
+        elif a in diffs:
             kind, data = diffs[a]
             if kind == 'COPY':
                 outf.write(data)
