@@ -173,7 +173,7 @@ class Panda():
         if self.expect_prompt or (serial_kwargs is not None and serial_kwargs.get('expectation')):
             self.serial_file = NamedTemporaryFile(prefix="pypanda_s").name
             self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            expect_kwargs = {'expectation': self.expect_prompt, 'consume_first': False, 'unansi': False}
+            expect_kwargs = {'expectation': self.expect_prompt, 'consume_first': False, 'unansi': True}
             if serial_kwargs:
                 expect_kwargs.update(serial_kwargs)
             self.serial_console = Expect('serial', **expect_kwargs)
