@@ -9,6 +9,7 @@ if version_info[0] < 3:
     exit(0)
 
 import socket
+import select
 import threading
 
 
@@ -92,6 +93,7 @@ class Panda():
         self.__sighandler = None
         self.ending = False # True during end_analysis
 
+        self.serial_unconsumed_data = b''
 
         if isinstance(extra_args, str): # Extra args can be a string or array
             extra_args = extra_args.split()
@@ -171,7 +173,7 @@ class Panda():
         if self.expect_prompt or (serial_kwargs is not None and serial_kwargs.get('expectation')):
             self.serial_file = NamedTemporaryFile(prefix="pypanda_s").name
             self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            expect_kwargs = {'expectation': self.expect_prompt, 'consume_first': False, 'unansi': True}
+            expect_kwargs = {'expectation': self.expect_prompt, 'consume_first': False, 'unansi': False}
             if serial_kwargs:
                 expect_kwargs.update(serial_kwargs)
             self.serial_console = Expect('serial', **expect_kwargs)
@@ -272,6 +274,7 @@ class Panda():
         # Now we've run qemu init so we can connect to the sockets for the monitor and serial
         if self.serial_console and not self.serial_console.is_connected():
             self.serial_socket.connect(self.serial_file)
+            self.serial_socket.settimeout(None)
             self.serial_console.connect(self.serial_socket)
         if not self.raw_monitor and not self.monitor_console.is_connected():
             self.monitor_socket.connect(self.monitor_file)
@@ -283,6 +286,7 @@ class Panda():
 
         self._initialized_panda = True
 
+        
 
     def __main_loop_wait_cb(self):
         '''
@@ -1601,6 +1605,7 @@ class Panda():
             Returns:
                 None
         """
+        print ("os_name=[%s]" % os_name)
         os_name_new = self.ffi.new("char[]", bytes(os_name, "utf-8"))
         self.libpanda.panda_set_os_name(os_name_new)
 
@@ -2243,6 +2248,37 @@ class Panda():
         return result
 
     @blocking
+    def serial_read_until(self, byte_sequence):
+        if len(self.serial_unconsumed_data) > 0:
+            found_idx = self.serial_unconsumed_data.find(byte_sequence)
+            if found_idx >= 0:
+                match = self.serial_unconsumed_data[ : found_idx]
+                self.serial_unconsumed_data = self.serial_unconsumed_data[found_idx + 1 : ]
+                return match
+        while self.serial_socket != None:
+            try:
+                readable, _, _ = select.select([self.serial_socket], [], [], 0.5)
+                if len(readable) == 0:
+                    continue
+                data = self.serial_socket.recv(65535)
+            except Exception as e:
+                if '[Errno 11]' in str(e) or '[Errno 35]' in str(e):
+                    # EAGAIN
+                    continue
+                raise Exception("Data Read Error: {}".format(e.message))
+            if not data:
+                raise Exception('Connection Closed by Server')
+
+            self.serial_unconsumed_data += data
+            found_idx = self.serial_unconsumed_data.find(byte_sequence)
+            if found_idx >= 0:
+                match = self.serial_unconsumed_data[ : found_idx]
+                self.serial_unconsumed_data = self.serial_unconsumed_data[found_idx + 1 : ]
+                return match
+        return None
+            
+    
+    @blocking
     def run_serial_cmd_async(self, cmd, delay=1):
         '''
         Type a command and press enter in the guest. Return immediately. No results available
@@ -2357,8 +2393,10 @@ class Panda():
                 raise RuntimeError(f"Failed to mount media inside guest: {mount_status}")
 
             # Note the . after our src/. directory - that's special syntax for cp -a
-            copy_result = self.run_serial_cmd(f"cp -a {mount_dir}.ro/. {mount_dir} && echo 'ok'", timeout=timeout)
-            if copy_result != 'ok':
+            copy_result = self.run_serial_cmd(f"cp -a {mount_dir}.ro/. {mount_dir} && echo 'copyok'", timeout=timeout)
+            
+            # NB: exact match here causing issues so making things more flexible
+            if not ('copyok' in copy_result):
                 raise RuntimeError(f"Copy to rw directory failed: {copy_result}")
 
         finally:
