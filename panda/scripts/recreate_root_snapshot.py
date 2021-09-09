@@ -6,7 +6,7 @@ assert(len(sys.argv) == 2)
 arch="x86_64"
 
 qi = qcows.Qcows.get_qcow_info(arch)
-panda = Panda(arch=qi.arch, mem="1G", expect_prompt=qi.prompt, os=qi.os, qcow=sys.argv[1], extra_args="-nographic")
+panda = Panda(arch=qi.arch, mem="1G", expect_prompt=qi.prompt, os=qi.os, qcow=sys.argv[1], extra_args="-nographic", expect_kwargs={"unansi": False})
 
 
 @panda.queue_blocking
