@@ -12,6 +12,7 @@ dynamic_symbols
 edge_coverage
 filereadmon
 forcedexec
+gdb
 hooks
 hooks2
 libfi
