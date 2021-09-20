@@ -1,5 +1,5 @@
 [package]
-name = "panda-gdb"
+name = "gdb"
 version = "0.1.0"
 authors = ["Jordan McLeod <Jordan.McLeod@ll.mit.edu>"]
 edition = "2018"
