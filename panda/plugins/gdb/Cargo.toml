@@ -1,0 +1,27 @@
+[package]
+name = "gdb"
+version = "0.1.0"
+authors = ["Jordan McLeod <Jordan.McLeod@ll.mit.edu>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+panda-re = { version = "0.9.1", default-features = false }
+gdbstub = "0.5"
+lazy_static = "1.4.0"
+gdbstub_arch = "0.1.0"
+peg = "0.7.0"
+tabwriter = "1.2.1"
+
+[features]
+default = ["x86_64"]
+
+x86_64 = ["panda-re/x86_64"]
+i386 = ["panda-re/i386"]
+arm = ["panda-re/arm"]
+ppc = ["panda-re/ppc"]
+mips = ["panda-re/mips"]
+mipsel = ["panda-re/mipsel"]
+aarch64 = ["panda-re/aarch64"]
