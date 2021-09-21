@@ -109,8 +109,7 @@ static uint64_t vhost_vsock_get_features(VirtIODevice *vdev,
                                          uint64_t requested_features,
                                          Error **errp)
 {
-    /* No feature bits used yet */
-    return requested_features;
+    return vhost_vsock_common_get_features(vdev, requested_features, errp);
 }
 
 static const VMStateDescription vmstate_virtio_vhost_vsock = {
