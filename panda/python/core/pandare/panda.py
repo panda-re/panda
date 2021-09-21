@@ -2248,13 +2248,19 @@ class Panda():
         return result
 
     @blocking
+    def run_serial_cmd2(self, cmd):
+        self.serial_socket.sendall(cmd)
+        return self.serial_read_until(b'root@ubuntu:')
+        
+    
+    @blocking
     def serial_read_until(self, byte_sequence):
         if len(self.serial_unconsumed_data) > 0:
             found_idx = self.serial_unconsumed_data.find(byte_sequence)
             if found_idx >= 0:
                 match = self.serial_unconsumed_data[ : found_idx]
                 self.serial_unconsumed_data = self.serial_unconsumed_data[found_idx + 1 : ]
-                return match
+                return (self.serial_unconsumed_data, match)
         while self.serial_socket != None:
             try:
                 readable, _, _ = select.select([self.serial_socket], [], [], 0.5)
@@ -2274,7 +2280,7 @@ class Panda():
             if found_idx >= 0:
                 match = self.serial_unconsumed_data[ : found_idx]
                 self.serial_unconsumed_data = self.serial_unconsumed_data[found_idx + 1 : ]
-                return match
+                return (self.serial_unconsumed_data, match)
         return None
             
     
@@ -2353,6 +2359,7 @@ class Panda():
             None
         '''
 
+        
         if not iso_name:
             iso_name = copy_directory + '.iso'
         make_iso(copy_directory, iso_name)
@@ -2371,12 +2378,14 @@ class Panda():
         mount_dir = shlex_quote(copy_directory)
 
         mkdir_result = self.run_serial_cmd(f"mkdir -p {mount_dir} {mount_dir}.ro && echo \"mkdir_ok\"; echo \"exit code $?\"", timeout=timeout)
+        #mkdir_result = self.run_serial_cmd2((f"mkdir -p {mount_dir} {mount_dir}.ro && echo \"mkdir_ok\"; echo \"exit code $?\"").encode())
 
+        print("mkdir_result=[%s]" % mkdir_result)
+            
         if 'mkdir_ok' not in mkdir_result:
             raise RuntimeError(f"Failed to create mount directories inside guest: {mkdir_result}")
 
-        # Tell panda to we insert the CD drive
-        # TODO: the cd-drive name should be a config option, see the values in qcow.py
+        # Tell panda to we insert the CD drive          # TODO: the cd-drive name should be a config option, see the values in qcow.py
         errs = self.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
         if len(errs):
             warn(f"Warning encountered when connecting media to guest: {errs}")
@@ -2386,15 +2395,19 @@ class Panda():
             for _ in range(10):
                 if 'mount_ok' in mount_status:
                     break
-                mount_status = self.run_serial_cmd(f"mount /dev/cdrom {mount_dir}.ro && echo 'mount_ok' || (umount /dev/cdrom; echo 'bad')", timeout=timeout)
+                mount_status = self.run_serial_cmd(f"mount /dev/cdrom {mount_dir}.ro && echo 'mount_ok' || (umount /dev/cdrom; echo 'bad')") #, timeout=timeout)
+                #mount_status = self.run_serial_cmd2((f"mount /dev/cdrom {mount_dir}.ro && echo 'mount_ok' || (umount /dev/cdrom; echo 'bad')").encode())
+                print("mount_status=[%s]" % mount_status)
                 sleep(1)
             else:
                 # Didn't ever break
                 raise RuntimeError(f"Failed to mount media inside guest: {mount_status}")
 
             # Note the . after our src/. directory - that's special syntax for cp -a
-            copy_result = self.run_serial_cmd(f"cp -a {mount_dir}.ro/. {mount_dir} && echo 'copyok'", timeout=timeout)
-            
+            #copy_result = self.run_serial_cmd(f"cp -a {mount_dir}.ro/. {mount_dir} && echo 'copyok'", timeout=timeout)
+            copy_result = self.run_serial_cmd(f"cp -r {mount_dir}.ro {mount_dir} && echo 'copyok'", timeout=timeout)
+            #copy_result = self.run_serial_cmd2((f"cp -a {mount_dir}.ro/. {mount_dir} && echo 'copyok'").encode())
+            print ("copy_result=[%s]" % copy_result)
             # NB: exact match here causing issues so making things more flexible
             if not ('copyok' in copy_result):
                 raise RuntimeError(f"Copy to rw directory failed: {copy_result}")
@@ -2402,13 +2415,15 @@ class Panda():
         finally:
             # Ensure we disconnect the CD drive after the mount + copy, even if it fails
             self.run_serial_cmd("umount /dev/cdrom") # This can fail and that's okay, we'll forece eject
+            #self.run_serial_cmd2(("umount /dev/cdrom").encode())  # This can fail and that's okay, we'll forece eject
             sleep(1)
             errs = self.run_monitor_cmd("eject -f ide1-cd0")
             if len(errs):
                 warn(f"Warning encountered when disconnecting media from guest: {errs}")
 
         if isfile(pjoin(copy_directory, setup_script)):
-            setup_result = self.run_serial_cmd(f"{mount_dir}/{setup_script}", timeout=timeout)
+            setup_result = self.run_serial_cmd(f"{mount_dir}/{setup_script}" , timeout=timeout)
+            #setup_result = self.run_serial_cmd2((f"{mount_dir}/{setup_script}").encode())
             progress("[Setup command]: {setup_result}")
 
     @blocking
