@@ -579,8 +579,10 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
     //time via a signal.  Thus, we want to make sure that we
     //record the same value in the log as the one being used in
     //these decisions.
+
     rr_skipped_callsite_location = RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE;
     rr_interrupt_request(&interrupt_request);
+    //rr_mem_write(&interrupt_request);
 
     if (rr_in_replay()) {
         cpu->interrupt_request = interrupt_request;
@@ -841,7 +843,7 @@ int cpu_exec(CPUState *cpu)
             qemu_log_rr(tb->pc);
 
 #ifdef CONFIG_SOFTMMU
-            uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
+            uint64_t until_interrupt = rr_num_instr_before_next_event();
             if (panda_invalidate_tb
                     || (rr_in_replay() && until_interrupt > 0
                         && tb->icount > until_interrupt)) {
@@ -850,6 +852,12 @@ int cpu_exec(CPUState *cpu)
                 tb_lock();
                 tb_phys_invalidate(tb, -1);
                 tb_unlock();
+
+                if (rr_in_replay()) {
+                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT_END;
+                    rr_replay_skipped_calls();
+                }
+
                 continue;
             }
 #endif // CONFIG_SOFTMMU
@@ -866,6 +874,7 @@ int cpu_exec(CPUState *cpu)
                    if the guest is in advance */
                 align_clocks(&sc, cpu);
             }
+
         }
     }
 

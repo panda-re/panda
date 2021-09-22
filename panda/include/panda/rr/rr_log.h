@@ -65,6 +65,7 @@ void rr_cpu_reg_write_call_record(int cpu_index, const uint8_t* buf,
                                   int reg, int len);
 void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
                                   int len, int is_write);
+void rr_device_mem_rw_call_record2(hwaddr addr, const uint8_t* buf, int len, int is_write);
 void rr_device_mem_unmap_call_record(hwaddr addr, const uint8_t* buf,
                                   int len, int is_write);
 void rr_mem_region_change_record(hwaddr start_addr, uint64_t size,
@@ -188,7 +189,8 @@ static inline void rr_maybe_progress(void) {
 
 extern void rr_fill_queue(void);
 extern RR_log_entry *rr_queue_tail;
-static inline uint64_t rr_num_instr_before_next_interrupt(void) {
+
+static inline uint64_t rr_num_instr_before_next_event(void) {
     if (!rr_queue_tail) rr_fill_queue();
     if (!rr_queue_tail) return -1;
 

@@ -197,6 +197,7 @@ static inline const char* get_log_entry_kind_string(RR_log_entry_kind kind)
         ACTION(RR_CALLSITE_E1000_START_XMIT),                                  \
         ACTION(RR_CALLSITE_SERIAL_RECEIVE), ACTION(RR_CALLSITE_SERIAL_READ),   \
         ACTION(RR_CALLSITE_SERIAL_SEND), ACTION(RR_CALLSITE_SERIAL_WRITE),     \
+        ACTION(RR_CALLSITE_MAIN_LOOP_WAIT_END), \
         ACTION(RR_CALLSITE_LAST)
 
 typedef enum {
@@ -224,6 +225,8 @@ void rr_record_input_8(RR_callsite_id call_site, uint64_t data);
 
 void rr_record_interrupt_request(RR_callsite_id call_site,
                                  int interrupt_request);
+void rr_record_mem_write(RR_callsite_id call_site,
+                                 int ignored); // Unused
 void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request);
 
 void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_interrupt);
@@ -235,6 +238,8 @@ void rr_replay_input_1(RR_callsite_id call_site, uint8_t* data);
 void rr_replay_input_2(RR_callsite_id call_site, uint16_t* data);
 void rr_replay_input_4(RR_callsite_id call_site, uint32_t* data);
 void rr_replay_input_8(RR_callsite_id call_site, uint64_t* data);
+void rr_replay_mem_write(RR_callsite_id call_site,
+                                 int* ignored); // Unused
 
 void rr_replay_interrupt_request(RR_callsite_id call_site,
                                  int* interrupt_request);
@@ -295,6 +300,8 @@ static inline int rr_prog_point_compare(RR_prog_point current,
             (RR_callsite_id)rr_skipped_callsite_location, val);         \
     }
 
+
+RR_CONVENIENCE(mem_write, int);
 RR_CONVENIENCE(interrupt_request, int);
 RR_CONVENIENCE(exit_request, uint32_t);
 RR_CONVENIENCE(pending_interrupts, uint32_t);
@@ -306,6 +313,9 @@ RR_CONVENIENCE(input_8, uint64_t);
 
 static inline void rr_replay_skipped_calls(void)
 {
+    if (rr_skipped_callsite_location == RR_CALLSITE_MAIN_LOOP_WAIT_END)
+      printf("Handle skipped calls from END:\n");
+
     rr_replay_skipped_calls_internal(
         (RR_callsite_id)rr_skipped_callsite_location);
 }

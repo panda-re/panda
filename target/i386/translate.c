@@ -8459,7 +8459,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
 
     if (rr_in_replay()) {
 //        tb->replay_interrupt = false;
-        uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
+        uint64_t until_interrupt = rr_num_instr_before_next_event();
         if (max_insns > until_interrupt) {
             max_insns = until_interrupt;
 //            tb->replay_interrupt = true;

@@ -277,6 +277,17 @@ CPUState* get_cpu(void) {
   return first_cpu;
 }
 
+void set_register(CPUState* cpu, int reg, int val) {
+  ((CPUArchState*)cpu->env_ptr)->regs[reg] = val;
+   
+  printf("PANDA REGISTER write at %ld\n", rr_get_guest_instr_count());
+
+  rr_cpu_reg_write_call_record(cpu->cpu_index,
+                               (uint8_t*)&val,
+                               reg,
+                               sizeof(((CPUArchState*)cpu->env_ptr)->regs[reg]));
+}
+
 // Get the length of a GArray list
 unsigned long garray_len(GArray *list) {
     if (list == NULL)

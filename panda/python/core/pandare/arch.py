@@ -615,6 +615,8 @@ class X86_64Arch(PandaArch):
     def set_pc(self, cpu, val):
         '''
         Overloaded function to set the x86_64 program counter
+
+        XXX: Not supported for record/replay
         '''
         cpu.env_ptr.eip = val
 
@@ -628,7 +630,8 @@ class X86_64Arch(PandaArch):
         '''
         Set an x86_64 register
         '''
-        cpu.env_ptr.regs[reg] = val
+        #cpu.env_ptr.regs[reg] = val
+        self.panda.libpanda.set_register(cpu, reg, val);
 
     def get_return_value(self, cpu):
         '''

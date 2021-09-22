@@ -58,7 +58,7 @@
 #include "exec/gdbstub.h"
 #include "sysemu/cpus.h"
 
-//#define RR_DEBUG
+#define RR_DEBUG
 
 /******************************************************************************************/
 /* GLOBALS */
@@ -763,6 +763,10 @@ static RR_log_entry *rr_read_item(void) {
     rr_fread(&(item->header.kind), 1, 1);
     rr_fread(&(item->header.callsite_loc), 1, 1);
 
+#ifdef RR_DEBUG
+  printf("rr_read_item got entry at %ld of type %d\n", item->header.prog_point.guest_instr_count, item->header.kind);
+#endif
+
     // mz read the rest of the item
     switch (item->header.kind) {
         case RR_INPUT_1:
@@ -994,6 +998,53 @@ void rr_replay_interrupt_request(RR_callsite_id call_site,
         rr_queue_pop_front();
     }
     *interrupt_request = panda_current_interrupt_request;
+}
+
+// if interrupt changed, record it. No-ops for memwrites
+void rr_record_mem_write(RR_callsite_id call_site, int interrupt_request) {
+    if (panda_current_interrupt_request != interrupt_request) {
+        rr_write_item((RR_log_entry) {
+            .header = rr_header(RR_INTERRUPT_REQUEST, call_site),
+            .variant.interrupt_request = interrupt_request
+        });
+        panda_current_interrupt_request = interrupt_request;
+    }
+}
+
+// WIP: generic start-of-block event
+void rr_replay_mem_write(RR_callsite_id call_site,
+                                 int* interrupt_request)
+{
+    RR_log_entry* entry = get_next_entry(); // UNCHECKED - we have to check and handle types / raise error here
+    if (entry == NULL) {
+      return;
+    }
+
+    // Logic taken from get_next_entry_checkex
+    RR_header header = entry->header;
+    if (header.prog_point.guest_instr_count == 0) {
+        // We'll process this one beacuse it's the start of the log
+    } else if (rr_prog_point().guest_instr_count != header.prog_point.guest_instr_count) {
+        return;
+    }
+    // End logic taken from get_next_entry_checkex
+
+    if (header.kind == RR_INTERRUPT_REQUEST) {
+      // Set interrupt_request argument
+        panda_current_interrupt_request = entry->variant.interrupt_request;
+        rr_queue_pop_front();
+        *interrupt_request = panda_current_interrupt_request;
+    } else if (header.kind == RR_SKIPPED_CALL) {
+      printf("COULD IT BE\n");
+      rr_queue_pop_front();
+      return;
+
+    //} else {
+    //  printf("TYPE MISMATCH IN MEMWRITE: got %d not skipped(%d). memrw is %d\n", header.kind, RR_SKIPPED_CALL, RR_CALL_CPU_MEM_RW);
+    //  rr_spit_log_entry(*entry);
+    //  assert(0);
+    }
+
 }
 
 void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request)

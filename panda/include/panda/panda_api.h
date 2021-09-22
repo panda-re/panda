@@ -68,6 +68,10 @@ CPUState* get_cpu(void);
 
 unsigned long garray_len(GArray *list);
 void panda_cleanup_record(void);
+
+// Set a register and record the change to the nondet log if in record mode
+void set_register(CPUState* cpu, int reg, int val);
+
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
 // don't expose to API  because we don't want to add siginfo_t understanding

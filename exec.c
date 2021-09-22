@@ -2898,6 +2898,7 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
         if (!memory_access_is_direct(mr, true)) {
             release_lock |= prepare_mmio_access(mr);
             l = memory_access_size(mr, l, addr1);
+            printf("Writing %ld bytes to %lx\n", l, addr1);
             /* XXX: could force current_cpu to NULL to avoid
                potential bugs */
             /* Maybe we want to record the value of result in this switch statement */

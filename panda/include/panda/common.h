@@ -73,27 +73,7 @@ target_ulong panda_current_pc(CPUState *cpu);
 /**
  * @brief Reads/writes data into/from \p buf from/to guest physical address \p addr.
  */
-
-static inline int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
-                                           bool is_write) {
-    hwaddr l = len;
-    hwaddr addr1;
-    MemoryRegion *mr = address_space_translate(&address_space_memory, addr,
-                                               &addr1, &l, is_write);
-
-    if (!memory_access_is_direct(mr, is_write)) {
-        // fail for MMIO regions of physical address space
-        return MEMTX_ERROR;
-    }
-    void *ram_ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
-
-    if (is_write) {
-        memcpy(ram_ptr, buf, len);
-    } else {
-        memcpy(buf, ram_ptr, len);
-    }
-    return MEMTX_OK;
-}
+int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len, bool is_write);
 
 /**
  * @brief Translates guest virtual addres \p addr to a guest physical address.

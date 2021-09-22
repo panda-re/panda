@@ -9,6 +9,9 @@
 #include "panda/plog.h"
 #include "panda/plog-cc-bridge.h"
 
+#include "panda/rr/rr_log.h"
+#include "panda/rr/rr_api.h"
+
 #if defined(TARGET_ARM)
 /* Return the exception level which controls this address translation regime */
 static inline uint32_t regime_el(CPUARMState *env, ARMMMUIdx mmu_idx)
@@ -356,5 +359,34 @@ void exit_priv(CPUState* cpu) {
 bool enter_priv(CPUState* cpu) {return false;};
 void exit_priv(CPUState* cpu)  {};
 #endif
+
+int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len,
+                                           bool is_write) {
+    hwaddr l = len;
+    hwaddr addr1;
+    MemoryRegion *mr = address_space_translate(&address_space_memory, addr,
+                                               &addr1, &l, is_write);
+
+    if (!memory_access_is_direct(mr, is_write)) {
+        // fail for MMIO regions of physical address space
+        return MEMTX_ERROR;
+    }
+    void *ram_ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
+
+    if (is_write) {
+      // If we're in a recording, capture this panda-driven write in nondet log
+        printf("PANDA MEM WRITE AT RR %ld\n", rr_get_guest_instr_count());
+        if (rr_in_record()) {
+            rr_device_mem_rw_call_record(addr1, buf, len, /*is_write*/1);
+        }
+
+        // Should we use cpu_physical_memory instead?
+        memcpy(ram_ptr, buf, len);
+        //cpu_physical_memory_rw(addr1, buf, len, /*is_write=*/1);
+    } else {
+        memcpy(buf, ram_ptr, len);
+    }
+    return MEMTX_OK;
+}
 
 /* vim:set shiftwidth=4 ts=4 sts=4 et: */
