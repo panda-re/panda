@@ -87,7 +87,7 @@ target_ulong calc_retaddr_linux_arm(CPUState *cpu, target_ulong pc);
 target_ulong calc_retaddr_linux_mips(CPUState *cpu, target_ulong pc); // TODO
 
 // Useful for math
-#if defined(TARGET_I386) && defined(TARGET_X86_64)
+#if defined(TARGET_I386)
 // 64-bit or 32-bit x86 are the same (surprisingly)
 #define SYSCALL_INSN_SIZE 2
 
