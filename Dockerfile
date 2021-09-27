@@ -76,7 +76,7 @@ FROM base as panda
 
 # Copy panda + libcapstone.so*
 COPY --from=installer /usr/local /usr/local
-COPY --from=installer /lib/capstone* /lib
+COPY --from=installer /lib/x86_64-linux-gnu/libcapstone* /lib/x86_64-linux-gnu/
 
 # Workaround issue #901 - ensure LD_LIBRARY_PATH contains the panda plugins directories
 #ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
@@ -88,4 +88,3 @@ RUN ldconfig && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
     if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/libpanda-*.so | grep 'not found'); then exit 1; fi && \
     if (ldd /usr/local/lib/python*/dist-packages/pandare/data/*-softmmu/panda/plugins/*.so | grep 'not found'); then exit 1; fi
-
