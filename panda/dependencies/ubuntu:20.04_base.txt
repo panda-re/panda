@@ -1,6 +1,6 @@
 # Panda dependencies
+# Note that libcapstone >= v4.1 is also required, but that's not available in apt
 git
-libcapstone3
 libdwarf1
 libjsoncpp-dev
 libllvm11

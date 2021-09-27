@@ -12,9 +12,8 @@ COPY ./panda/dependencies/${BASE_IMAGE}*.txt /tmp/
 # Base image just needs runtime dependencies
 RUN [ -e /tmp/${BASE_IMAGE}_base.txt ] && \
     apt-get -qq update && \
-    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends $(cat /tmp/${BASE_IMAGE}_base.txt | grep -o '^[^#]*') && \
+    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends curl $(cat /tmp/${BASE_IMAGE}_base.txt | grep -o '^[^#]*') && \
     apt-get clean
-
 
 ### BUILD IMAGE - STAGE 2
 FROM base AS builder
@@ -28,6 +27,12 @@ RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
     python3 -m pip install --upgrade --no-cache-dir pip && \
     python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
+
+# Then install capstone from source
+RUN cd /tmp && \
+    curl -o cap.tgz -L https://github.com/aquynh/capstone/archive/4.0.2.tar.gz && \
+    tar xvf cap.tgz && cd capstone-4.0.2/ && ./make.sh && make install && cd /tmp && \
+    rm -rf /tmp/capstone-4.0.2
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
@@ -69,7 +74,9 @@ RUN cd /panda/panda/python/core && \
 ### Copy files for panda+pypanda from installer  - Stage 5
 FROM base as panda
 
+# Copy panda + libcapstone.so*
 COPY --from=installer /usr/local /usr/local
+COPY --from=installer /lib/capstone* /lib
 
 # Workaround issue #901 - ensure LD_LIBRARY_PATH contains the panda plugins directories
 #ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
