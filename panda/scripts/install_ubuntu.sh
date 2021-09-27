@@ -101,6 +101,17 @@ if [ "$version" -eq 18 ]; then
   rm z3-4.8.7-x64-ubuntu-16.04.zip
 fi
 
+# Because libcapstone for Ubuntu 18 or 20 is really old, we download and install the v4.0.2 release if it's not present
+if [[ !$(ldconfig -p | grep -q libcapstone.so.4) ]]; then
+  echo "Installing libcapstone v4"
+  pushd /tmp && \
+  curl -o /tmp/cap.tgz -L https://github.com/aquynh/capstone/archive/4.0.2.tar.gz && \
+  tar xvf cap.tgz && cd capstone-4.0.2/ && ./make.sh && make install && cd /tmp && \
+  rm -rf /tmp/capstone-4.0.2
+  $SUDO ldconfig
+  popd
+fi
+
 # PyPANDA needs CFFI from pip (the version in apt is too old)
 # Install system-wide since PyPANDA install will also be system-wide
 $SUDO python3 -m pip install pip
