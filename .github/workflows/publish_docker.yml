@@ -19,14 +19,12 @@ jobs:
 
     - name: Build Bionic container
       # Push both dev and regular container
-      run:  DOCKER_BUILDKIT=1 docker build --progress=plain --target=panda -t pandare/panda:latest $GITHUB_WORKSPACE;
-            docker tag  pandare/panda:latest pandare/panda:${GITHUB_SHA};
-            docker push pandare/panda:${GITHUB_SHA};
-            docker push pandare/panda:latest;
-            DOCKER_BUILDKIT=1 docker build --progress=plain --target=developer -t pandare/pandadev:latest $GITHUB_WORKSPACE;
-            docker tag  pandare/pandadev:latest pandare/pandadev:${GITHUB_SHA};
-            docker push pandare/pandadev:${GITHUB_SHA};
-            docker push pandare/pandadev:latest;
+      run:  DOCKER_BUILDKIT=1 docker build --progress=plain --target=panda -t pandare/panda:${GITHUB_SHA} $GITHUB_WORKSPACE;
+            docker tag pandare/panda:${GITHUB_SHA} pandare/panda:latest;
+            docker push pandare/panda;
+            DOCKER_BUILDKIT=1 docker build --progress=plain --target=developer -t pandare/pandadev:${GITHUB_SHA} $GITHUB_WORKSPACE;
+            docker tag pandare/pandadev:${GITHUB_SHA} pandare/pandadev:latest;
+            docker push pandare/pandadev;
 
     - name: Checkout docs and reset
       run: rm -rf "${GITHUB_WORKSPACE}/auto_pydoc";
@@ -65,14 +63,12 @@ jobs:
 
     - name: Build Bionic container
       # Push both dev and regular container
-      run:  DOCKER_BUILDKIT=1 docker build --progress=plain --target=panda -t pandare/panda:latest $GITHUB_WORKSPACE;
-            docker tag  pandare/panda_stable:latest pandare/panda:${GITHUB_SHA};
-            docker push pandare/panda_stable:${GITHUB_SHA};
-            docker push pandare/panda_stable:latest;
-            #DOCKER_BUILDKIT=1 docker build --progress=plain --target=developer -t pandare/pandadev:latest $GITHUB_WORKSPACE;
-            #docker tag  pandare/pandadev:latest pandare/pandadev:${GITHUB_SHA};
-            #docker push pandare/pandadev:${GITHUB_SHA};
-            #docker push pandare/pandadev:latest;
+      run:  DOCKER_BUILDKIT=1 docker build --progress=plain --target=panda -t pandare/panda_stable:${GITHUB_SHA} $GITHUB_WORKSPACE;
+            docker tag pandare/panda_stable:${GITHUB_SHA} pandare/panda_stable:latest
+            docker push pandare/panda_stable;
+            #DOCKER_BUILDKIT=1 docker build --progress=plain --target=developer -t pandare/pandadev:${GITHUB_SHA} $GITHUB_WORKSPACE;
+            #docker tag pandare/panadev:${GITHUB_SHA} pandare/pandadev:latest
+            #docker push pandare/pandadev;
 
     - name: Checkout docs and reset
       run: rm -rf "${GITHUB_WORKSPACE}/auto_pydoc";
