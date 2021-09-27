@@ -519,6 +519,17 @@ void on_get_process_ppid(CPUState *cpu, const OsiProcHandle *h, target_pid_t *pp
 /* ******************************************************************
  osi_linux extra API
 ****************************************************************** */
+#ifdef TARGET_MIPS
+target_ulong last_r28 = 0;
+#endif
+
+target_ulong get_current(CPUState *env) {
+#ifdef TARGET_MIPS
+  return last_r28;
+#else
+    return 0;
+#endif
+}
 
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
     char *filename = NULL;
@@ -685,7 +696,6 @@ void restore_after_snapshot(CPUState* cpu) {
  */
 
 #ifdef TARGET_MIPS
-target_ulong last_r28 = 0;
 
 void r28_cache(CPUState *cpu, TranslationBlock *tb) {
 

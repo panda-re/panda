@@ -10,6 +10,8 @@
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
 // files in this directory that contain subsections like this one.
 
+target_ulong get_current(CPUState *env);
+
 // returns fd for a filename or a NULL if failed
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd);
 
