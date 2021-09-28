@@ -5,9 +5,9 @@ use panda::plugins::hooks::Hook;
 use panda::plugins::proc_start_linux::{AuxvValues, PROC_START_LINUX};
 use panda::prelude::*;
 use panda::regs::{get_pc, get_reg, set_reg, Reg};
+use std::cmp::min;
 use std::convert::TryFrom;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::cmp::min;
 
 static POINTERS: OnceCell<[target_ulong; 3]> = OnceCell::new();
 static POINTERS_READ: AtomicUsize = AtomicUsize::new(0);
@@ -69,7 +69,8 @@ fn inject_hook(
     hook: &mut Hook,
 ) {
     let inject_bytes = include_bytes!("./injectables/injector");
-    let (text_data, _offset, _section_size) = parse_file_data(&inject_bytes[..]);
+    let (text_data, _offset, _section_size) =
+        parse_file_data(&inject_bytes[..]);
     let pc = panda::regs::get_pc(cpu);
     virtual_memory_write(cpu, pc, text_data);
     hook.enabled = false;
@@ -86,10 +87,7 @@ fn hyp_start(_cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
 }
 
 fn hyp_write(cpu: &mut CPUState, arg1: usize, arg2: usize) -> Option<usize> {
-    ELF_TO_INJECT.get_or_init(|| {
-        std::fs::read(ELF_PATH).unwrap()
-
-    });
+    ELF_TO_INJECT.get_or_init(|| std::fs::read(ELF_PATH).unwrap());
     let buf_to_write = arg1;
     let size_requested = arg2;
 
@@ -97,12 +95,12 @@ fn hyp_write(cpu: &mut CPUState, arg1: usize, arg2: usize) -> Option<usize> {
     let buf_size = ELF_TO_INJECT.get().expect("").len();
     if read_pos < buf_size {
         let lower = read_pos;
-        let upper = min(buf_size, read_pos+size_requested);
+        let upper = min(buf_size, read_pos + size_requested);
         let data_to_write = &ELF_TO_INJECT.get().expect("")[lower..upper];
         virtual_memory_write(cpu, buf_to_write as u64, data_to_write);
         ELF_READ_POS.fetch_add(upper - lower, Ordering::SeqCst);
         Some(upper - lower)
-    }else {
+    } else {
         None
     }
 }
@@ -114,21 +112,21 @@ fn hyp_read(cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
     let pointers = POINTERS.get().unwrap();
     let pc = get_pc(cpu);
 
-    if ptr_pos <= pointers.len(){
-        if ptr_pos == pointers.len(){
+    if ptr_pos <= pointers.len() {
+        if ptr_pos == pointers.len() {
             virtual_memory_write(cpu, pc, SAVED_BUF.get().unwrap());
             None
-        } else{
+        } else {
             POINTERS_READ.fetch_add(1, Ordering::SeqCst);
             Some(pointers[ptr_pos] as usize)
         }
-    }else{
+    } else {
         None
     }
 }
 
 fn hyp_stop(cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
-    if POINTERS_READ.load(Ordering::SeqCst) == POINTERS.get().unwrap().len(){
+    if POINTERS_READ.load(Ordering::SeqCst) == POINTERS.get().unwrap().len() {
         virtual_memory_write(cpu, arg1 as u64, "\x01\x02\x03\x04".as_bytes());
     }
     None
