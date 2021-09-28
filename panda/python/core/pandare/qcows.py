@@ -112,6 +112,30 @@ SUPPORTED_IMAGES = {
             extra_files=['vmlinux-3.2.0-4-4kc-malta.mipsel',],
             extra_args='-M malta -kernel {DOT_DIR}/vmlinux-3.2.0-4-4kc-malta.mipsel -append "root=/dev/sda1" -nographic'.format(DOT_DIR=VM_DIR)),
 
+    'mips_buildroot5':  Image(
+            arch='mips',
+            os = "linux-32-buildroot:5.10.7-4kc-malta",
+            prompt=rb"# ",
+            cdrom="ide1-cd0",
+            snapshot="root",
+            default_mem='1g',
+            url="https://panda-re.mit.edu/qcows/linux/buildroot/5.10/mips/mips32_buildroot.qcow",
+            extra_files=['mips32_vmlinux-5.10.7-4kc-malta',],
+            extra_args='-M malta -kernel {DOT_DIR}/mips32_vmlinux-5.10.7-4kc-malta -net nic,model=pcnet -net user -append "root=/dev/hda" -nographic'.format(DOT_DIR=VM_DIR)),
+
+
+    'mipsel_buildroot5':  Image(
+            arch='mipsel',
+            os = "linux-32-buildroot:5.10.7-4kc-malta-el",
+            prompt=rb"# ",
+            cdrom="ide1-cd0",
+            snapshot="root",
+            default_mem='1g',
+            url="https://panda-re.mit.edu/qcows/linux/buildroot/5.10/mipsel/mipsel32_buildroot.qcow",
+            extra_files=['mipsel32_vmlinux-5.10.7-4kc-malta-el',],
+            extra_args='-M malta -kernel {DOT_DIR}/mipsel32_vmlinux-5.10.7-4kc-malta-el -net nic,model=pcnet -net user -append "root=/dev/hda" -nographic'.format(DOT_DIR=VM_DIR)),
+
+
     # Ubuntu: x86/x86_64 support for 16.04, x86_64 support for 18.04
     'i386_ubuntu_1604': Image(
             arch = 'i386',
@@ -145,15 +169,26 @@ SUPPORTED_IMAGES = {
             extra_args="-display none"),
 }
 """
-Dictionary of `Image` objects by name. Supported values include:
-
+Dictionary of `Image` objects by name.
+Generic values (underlying OS version may change) include:
     x86_64
     i386
     ppc
     arm
-    aarch64 
+    aarch64
     mips
     mipsel
+
+You may also specify an exact arch/OS combination from the following exist:
+    x86_64_ubuntu_1804
+    i386_ubuntu_1604
+    ppc_wheezy
+    arm_wheezy
+    aarch64 _focal
+    mips_wheezy
+    mips_buildroot5
+    mipsel_wheezy
+    mipsel_buildroot5
 """ # TODO: autogenerate values here
 
 # Default values
@@ -162,8 +197,8 @@ SUPPORTED_IMAGES['i386']    = SUPPORTED_IMAGES['i386_ubuntu_1604']
 SUPPORTED_IMAGES['ppc']     = SUPPORTED_IMAGES['ppc_wheezy']
 SUPPORTED_IMAGES['arm']     = SUPPORTED_IMAGES['arm_wheezy']
 SUPPORTED_IMAGES['aarch64'] = SUPPORTED_IMAGES['aarch64_focal']
-SUPPORTED_IMAGES['mips']    = SUPPORTED_IMAGES['mips_wheezy']
-SUPPORTED_IMAGES['mipsel']  = SUPPORTED_IMAGES['mipsel_wheezy']
+SUPPORTED_IMAGES['mips']    = SUPPORTED_IMAGES['mips_buildroot5']
+SUPPORTED_IMAGES['mipsel']  = SUPPORTED_IMAGES['mipsel_buildroot5']
 
 class Qcows():
     '''
