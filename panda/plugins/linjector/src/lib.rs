@@ -1,13 +1,21 @@
+use panda::{
+    mem::{virtual_memory_read, virtual_memory_write},
+    plugins::{
+        hooks::Hook,
+        proc_start_linux::{AuxvValues, PROC_START_LINUX},
+    },
+    prelude::*,
+    regs::{get_pc, get_reg, set_reg},
+};
+
+use std::{
+    cmp::min,
+    convert::TryFrom,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+
 use object::{Object, ObjectSection};
 use once_cell::sync::OnceCell;
-use panda::mem::{virtual_memory_read, virtual_memory_write};
-use panda::plugins::hooks::Hook;
-use panda::plugins::proc_start_linux::{AuxvValues, PROC_START_LINUX};
-use panda::prelude::*;
-use panda::regs::{get_pc, get_reg, set_reg, Reg};
-use std::cmp::min;
-use std::convert::TryFrom;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 static POINTERS: OnceCell<[target_ulong; 3]> = OnceCell::new();
 static POINTERS_READ: AtomicUsize = AtomicUsize::new(0);
@@ -17,7 +25,9 @@ static ELF_TO_INJECT: OnceCell<Vec<u8>> = OnceCell::new();
 static ELF_READ_POS: AtomicUsize = AtomicUsize::new(0);
 
 const MAGIC: usize = 0x10adc0d3;
-const X86_REG_ORDER: [Reg; 4] = [Reg::EAX, Reg::EBX, Reg::ECX, Reg::EDX];
+
+mod regs;
+use regs::{REG_ORDER, RET_REG};
 
 #[derive(PandaArgs)]
 #[name = "linjector"] // plugin name
@@ -27,6 +37,8 @@ struct Args {
 
     #[arg(default = "guest_daemon")]
     guest_binary: String,
+
+    require_root: bool,
 }
 
 lazy_static::lazy_static! {
@@ -76,7 +88,7 @@ fn parse_file_data(file_bytes: &[u8]) -> (&[u8], usize, usize) {
 }
 
 fn get_hyp_reg(cpu: &mut CPUState, num: usize) -> usize {
-    let reg_to_read = X86_REG_ORDER[num];
+    let reg_to_read = REG_ORDER[num];
     get_reg(cpu, reg_to_read) as usize
 }
 
@@ -149,11 +161,7 @@ fn hyp_read(cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
 
 fn hyp_stop(cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
     if POINTERS_READ.load(Ordering::SeqCst) == POINTERS.get().unwrap().len() {
-        virtual_memory_write(
-            cpu,
-            arg1 as target_ulong,
-            "\x01\x02\x03\x04".as_bytes(),
-        );
+        virtual_memory_write(cpu, arg1 as target_ulong, b"\x01\x02\x03\x04");
         virtual_memory_write(
             cpu,
             *SAVED_PC.get().unwrap(),
@@ -179,9 +187,8 @@ fn hypercall_handler(cpu: &mut CPUState) -> bool {
             _ => None,
         };
 
-        match retval {
-            Some(p) => set_reg(cpu, Reg::EAX, p as target_ulong),
-            None => (),
+        if let Some(retval) = retval {
+            set_reg(cpu, RET_REG, retval as target_ulong);
         }
     }
     true
@@ -216,25 +223,29 @@ fn entry_hook(
     hook.enabled = false;
 }
 
-extern "C" fn handle_proc_start(
+#[panda::on_rec_auxv]
+fn handle_proc_start(
     _cpu: &mut CPUState,
     _tb: &mut TranslationBlock,
     auxv: &AuxvValues,
 ) {
-    if true {
-        // auxv.euid == 0 for root only
+    if !ARGS.require_root || auxv.euid == 0 {
         println!("accepting new proc with euid {}", auxv.euid);
         // get pointers to values for re-starting process
-        let execfn_ptr = auxv.execfn_ptr;
-        let argv_ptr_ptr = auxv.argv_ptr_ptr;
-        let env_ptr_ptr = auxv.env_ptr_ptr;
+
+        let &AuxvValues {
+            execfn_ptr,
+            argv_ptr_ptr,
+            env_ptr_ptr,
+            ..
+        } = auxv;
 
         // in your callback
         POINTERS
             .set([execfn_ptr, argv_ptr_ptr, env_ptr_ptr])
             .unwrap();
 
-        // set a
+        // set a hook at the entrypoint
         entry_hook::hook().after_block_exec().at_addr(auxv.entry);
 
         PROC_START_LINUX.remove_callback_on_rec_auxv(handle_proc_start);
@@ -244,7 +255,6 @@ extern "C" fn handle_proc_start(
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
     lazy_static::initialize(&ARGS);
-    PROC_START_LINUX.add_callback_on_rec_auxv(handle_proc_start);
     true
 }
 
