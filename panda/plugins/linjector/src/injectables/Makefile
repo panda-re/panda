@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := all
-LIST=hello_world read_file read_all_files injector tiny_mmap
+LIST=injector tiny_mmap
 
 all: $(LIST)
 

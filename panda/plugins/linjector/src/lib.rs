@@ -23,13 +23,15 @@ const X86_REG_ORDER: [Reg; 4] = [Reg::EAX, Reg::EBX, Reg::ECX, Reg::EDX];
 #[name = "linjector"] // plugin name
 struct Args {
     #[arg(required)]
-    proc: String
+    proc: String,
+
+    #[arg(default = "guest_daemon")]
+    guest_binary: String,
 }
 
 lazy_static::lazy_static! {
     static ref ARGS: Args = Args::from_panda_args();
 }
-
 
 #[derive(Copy, Clone)]
 pub enum HcCmd {
@@ -96,12 +98,14 @@ fn inject_hook(
 
 fn hyp_start(_cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
     println!("Got to hyp_start");
-    inject_hook::hook().after_block_exec().at_addr(arg1 as target_ulong);
+    inject_hook::hook()
+        .after_block_exec()
+        .at_addr(arg1 as target_ulong);
     None
 }
 
 fn hyp_write(cpu: &mut CPUState, arg1: usize, arg2: usize) -> Option<usize> {
-    ELF_TO_INJECT.get_or_init(|| std::fs::read(ARGS.guest_binary).unwrap());
+    ELF_TO_INJECT.get_or_init(|| std::fs::read(&ARGS.guest_binary).unwrap());
     let buf_to_write = arg1;
     let size_requested = arg2;
 
@@ -119,7 +123,6 @@ fn hyp_write(cpu: &mut CPUState, arg1: usize, arg2: usize) -> Option<usize> {
     }
 }
 
-
 fn hyp_read(cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
     println!("Got to read with {:#x}", arg1);
     assert!(arg1 != 0, "arg1 is a fork return 0 is the child");
@@ -131,8 +134,12 @@ fn hyp_read(cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
         POINTERS_READ.fetch_add(1, Ordering::SeqCst);
         println!("Returning {:#x}", pointers[ptr_pos]);
         // on the last ptr_pos replace the new code
-        if ptr_pos == pointers.len() -1 {
-            virtual_memory_write(cpu, *SAVED_PC.get().unwrap(), SAVED_BUF.get().unwrap());
+        if ptr_pos == pointers.len() - 1 {
+            virtual_memory_write(
+                cpu,
+                *SAVED_PC.get().unwrap(),
+                SAVED_BUF.get().unwrap(),
+            );
         }
         Some(pointers[ptr_pos] as usize)
     } else {
@@ -142,8 +149,16 @@ fn hyp_read(cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
 
 fn hyp_stop(cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
     if POINTERS_READ.load(Ordering::SeqCst) == POINTERS.get().unwrap().len() {
-        virtual_memory_write(cpu, arg1 as target_ulong, "\x01\x02\x03\x04".as_bytes());
-        virtual_memory_write(cpu, *SAVED_PC.get().unwrap(), SAVED_BUF.get().unwrap());
+        virtual_memory_write(
+            cpu,
+            arg1 as target_ulong,
+            "\x01\x02\x03\x04".as_bytes(),
+        );
+        virtual_memory_write(
+            cpu,
+            *SAVED_PC.get().unwrap(),
+            SAVED_BUF.get().unwrap(),
+        );
     }
     None
 }
@@ -194,7 +209,7 @@ fn entry_hook(
                 .expect("failed to read buf. you might need a smaller injector or another stage"),
         )
         .unwrap();
-    println!("Writing {:#x} bytes at {:#x}",section_size, pc);
+    println!("Writing {:#x} bytes at {:#x}", section_size, pc);
     virtual_memory_write(cpu, pc, text_data);
     println!("Replacing bytes at PC with tiny_mmap");
 
@@ -225,7 +240,6 @@ extern "C" fn handle_proc_start(
         PROC_START_LINUX.remove_callback_on_rec_auxv(handle_proc_start);
     }
 }
-
 
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
