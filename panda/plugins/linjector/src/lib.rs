@@ -55,7 +55,7 @@ pub enum HcCmd {
     Error,         /* report error to hypervisor*/
     ConditionalOp, /* ask the hypervisor if op should be completed*/
     NextStateMachine, /* ask the hypervisor manager to move to the next
-                   state machine*/
+                            state machine*/
 }
 
 impl TryFrom<usize> for HcCmd {
@@ -109,7 +109,6 @@ fn inject_hook(
 }
 
 fn hyp_start(_cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
-    println!("Got to hyp_start");
     inject_hook::hook()
         .after_block_exec()
         .at_addr(arg1 as target_ulong);
@@ -122,11 +121,11 @@ fn hyp_write(cpu: &mut CPUState, arg1: usize, arg2: usize) -> Option<usize> {
     let size_requested = arg2;
 
     let read_pos = ELF_READ_POS.load(Ordering::SeqCst);
-    let buf_size = ELF_TO_INJECT.get().expect("").len();
+    let buf_size = ELF_TO_INJECT.get().unwrap().len();
     if read_pos < buf_size {
         let lower = read_pos;
         let upper = min(buf_size, read_pos + size_requested);
-        let data_to_write = &ELF_TO_INJECT.get().expect("")[lower..upper];
+        let data_to_write = &ELF_TO_INJECT.get().unwrap()[lower..upper];
         virtual_memory_write(cpu, buf_to_write as target_ulong, data_to_write);
         ELF_READ_POS.fetch_add(upper - lower, Ordering::SeqCst);
         Some(upper - lower)
@@ -136,7 +135,6 @@ fn hyp_write(cpu: &mut CPUState, arg1: usize, arg2: usize) -> Option<usize> {
 }
 
 fn hyp_read(cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
-    println!("Got to read with {:#x}", arg1);
     assert!(arg1 != 0, "arg1 is a fork return 0 is the child");
     let ptr_pos = POINTERS_READ.load(Ordering::SeqCst);
     let pointers = POINTERS.get().unwrap();
@@ -201,7 +199,6 @@ fn entry_hook(
     _exit_code: u8,
     hook: &mut Hook,
 ) {
-    println!("AT ENTRY_HOOK");
     let inject_bytes = include_bytes!("./injectables/tiny_mmap");
     let (text_data, offset, section_size) = parse_file_data(&inject_bytes[..]);
     assert_eq!(
@@ -259,6 +256,4 @@ fn init(_: &mut PluginHandle) -> bool {
 }
 
 #[panda::uninit]
-fn exit(_: &mut PluginHandle) {
-    println!("Exiting");
-}
+fn exit(_: &mut PluginHandle) {}
