@@ -12,12 +12,24 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 static POINTERS: OnceCell<[target_ulong; 3]> = OnceCell::new();
 static POINTERS_READ: AtomicUsize = AtomicUsize::new(0);
 static SAVED_BUF: OnceCell<Vec<u8>> = OnceCell::new();
+static SAVED_PC: OnceCell<target_ulong> = OnceCell::new();
 static ELF_TO_INJECT: OnceCell<Vec<u8>> = OnceCell::new();
 static ELF_READ_POS: AtomicUsize = AtomicUsize::new(0);
 
 const MAGIC: usize = 0x10adc0d3;
-const X86_REG_ORDER: [Reg; 4] = [Reg::RAX, Reg::RBX, Reg::RCX, Reg::RDX];
-const ELF_PATH: &str = "/home/luke/workspace/igloo/pie_idea/rusty_shell/target/i686-unknown-linux-musl/release/rusty_shell";
+const X86_REG_ORDER: [Reg; 4] = [Reg::EAX, Reg::EBX, Reg::ECX, Reg::EDX];
+
+#[derive(PandaArgs)]
+#[name = "linjector"] // plugin name
+struct Args {
+    #[arg(required)]
+    proc: String
+}
+
+lazy_static::lazy_static! {
+    static ref ARGS: Args = Args::from_panda_args();
+}
+
 
 #[derive(Copy, Clone)]
 pub enum HcCmd {
@@ -61,6 +73,11 @@ fn parse_file_data(file_bytes: &[u8]) -> (&[u8], usize, usize) {
     (text_data, offset as usize, section_size as usize)
 }
 
+fn get_hyp_reg(cpu: &mut CPUState, num: usize) -> usize {
+    let reg_to_read = X86_REG_ORDER[num];
+    get_reg(cpu, reg_to_read) as usize
+}
+
 #[panda::hook]
 fn inject_hook(
     cpu: &mut CPUState,
@@ -72,22 +89,19 @@ fn inject_hook(
     let (text_data, _offset, _section_size) =
         parse_file_data(&inject_bytes[..]);
     let pc = panda::regs::get_pc(cpu);
+    println!("about to inject injector at {:#x}", pc);
     virtual_memory_write(cpu, pc, text_data);
     hook.enabled = false;
 }
 
-fn get_hyp_reg(cpu: &mut CPUState, num: usize) -> usize {
-    let reg_to_read = X86_REG_ORDER[num];
-    get_reg(cpu, reg_to_read) as usize
-}
-
 fn hyp_start(_cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
-    inject_hook::hook().after_block_exec().at_addr(arg1 as u64);
+    println!("Got to hyp_start");
+    inject_hook::hook().after_block_exec().at_addr(arg1 as target_ulong);
     None
 }
 
 fn hyp_write(cpu: &mut CPUState, arg1: usize, arg2: usize) -> Option<usize> {
-    ELF_TO_INJECT.get_or_init(|| std::fs::read(ELF_PATH).unwrap());
+    ELF_TO_INJECT.get_or_init(|| std::fs::read(ARGS.guest_binary).unwrap());
     let buf_to_write = arg1;
     let size_requested = arg2;
 
@@ -97,7 +111,7 @@ fn hyp_write(cpu: &mut CPUState, arg1: usize, arg2: usize) -> Option<usize> {
         let lower = read_pos;
         let upper = min(buf_size, read_pos + size_requested);
         let data_to_write = &ELF_TO_INJECT.get().expect("")[lower..upper];
-        virtual_memory_write(cpu, buf_to_write as u64, data_to_write);
+        virtual_memory_write(cpu, buf_to_write as target_ulong, data_to_write);
         ELF_READ_POS.fetch_add(upper - lower, Ordering::SeqCst);
         Some(upper - lower)
     } else {
@@ -105,21 +119,22 @@ fn hyp_write(cpu: &mut CPUState, arg1: usize, arg2: usize) -> Option<usize> {
     }
 }
 
+
 fn hyp_read(cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
     println!("Got to read with {:#x}", arg1);
     assert!(arg1 != 0, "arg1 is a fork return 0 is the child");
     let ptr_pos = POINTERS_READ.load(Ordering::SeqCst);
     let pointers = POINTERS.get().unwrap();
-    let pc = get_pc(cpu);
+    println!("ptr_pos {}, ptrs.len() {}", ptr_pos, pointers.len());
 
-    if ptr_pos <= pointers.len() {
-        if ptr_pos == pointers.len() {
-            virtual_memory_write(cpu, pc, SAVED_BUF.get().unwrap());
-            None
-        } else {
-            POINTERS_READ.fetch_add(1, Ordering::SeqCst);
-            Some(pointers[ptr_pos] as usize)
+    if ptr_pos < pointers.len() {
+        POINTERS_READ.fetch_add(1, Ordering::SeqCst);
+        println!("Returning {:#x}", pointers[ptr_pos]);
+        // on the last ptr_pos replace the new code
+        if ptr_pos == pointers.len() -1 {
+            virtual_memory_write(cpu, *SAVED_PC.get().unwrap(), SAVED_BUF.get().unwrap());
         }
+        Some(pointers[ptr_pos] as usize)
     } else {
         None
     }
@@ -127,7 +142,8 @@ fn hyp_read(cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
 
 fn hyp_stop(cpu: &mut CPUState, arg1: usize, _arg2: usize) -> Option<usize> {
     if POINTERS_READ.load(Ordering::SeqCst) == POINTERS.get().unwrap().len() {
-        virtual_memory_write(cpu, arg1 as u64, "\x01\x02\x03\x04".as_bytes());
+        virtual_memory_write(cpu, arg1 as target_ulong, "\x01\x02\x03\x04".as_bytes());
+        virtual_memory_write(cpu, *SAVED_PC.get().unwrap(), SAVED_BUF.get().unwrap());
     }
     None
 }
@@ -149,7 +165,7 @@ fn hypercall_handler(cpu: &mut CPUState) -> bool {
         };
 
         match retval {
-            Some(p) => set_reg(cpu, Reg::RAX, p as u64),
+            Some(p) => set_reg(cpu, Reg::EAX, p as target_ulong),
             None => (),
         }
     }
@@ -163,6 +179,7 @@ fn entry_hook(
     _exit_code: u8,
     hook: &mut Hook,
 ) {
+    println!("AT ENTRY_HOOK");
     let inject_bytes = include_bytes!("./injectables/tiny_mmap");
     let (text_data, offset, section_size) = parse_file_data(&inject_bytes[..]);
     assert_eq!(
@@ -170,12 +187,14 @@ fn entry_hook(
         "get better shellcode. why is there another function?"
     );
     let pc = get_pc(cpu);
+    SAVED_PC.set(pc).unwrap();
     SAVED_BUF
         .set(
             virtual_memory_read(cpu, pc, section_size as usize)
                 .expect("failed to read buf. you might need a smaller injector or another stage"),
         )
         .unwrap();
+    println!("Writing {:#x} bytes at {:#x}",section_size, pc);
     virtual_memory_write(cpu, pc, text_data);
     println!("Replacing bytes at PC with tiny_mmap");
 
@@ -207,9 +226,10 @@ extern "C" fn handle_proc_start(
     }
 }
 
+
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
-    println!("Initialized!");
+    lazy_static::initialize(&ARGS);
     PROC_START_LINUX.add_callback_on_rec_auxv(handle_proc_start);
     true
 }
