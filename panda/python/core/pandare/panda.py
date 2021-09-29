@@ -2917,7 +2917,6 @@ class Panda():
             self.plugins['hooks'].add_hook(new_hook)
             self.hook_list.append((new_hook, hook_cb_passed))
 
-            @hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
             def wrapper(*args, **kw):
                 return _run_and_catch(args,kw)
             return wrapper
@@ -3099,7 +3098,6 @@ class Panda():
 
             self.hook_list2[name] = hook_number
 
-            @hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
             def wrapper(*args, **kw):
                 return _run_and_catch(*args, **kw)
             return wrapper
@@ -3153,7 +3151,6 @@ class Panda():
             self.mem_hooks[hook] = [mem_reg, hook_cb_passed]
 
 
-            @mem_hook_cb_type # Make CFFI know it's a callback. Different from _generated_callback for some reason?
             def wrapper(*args, **kw):
                 _run_and_catch(args,kw)
 
