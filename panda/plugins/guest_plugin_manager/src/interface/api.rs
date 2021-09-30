@@ -3,7 +3,7 @@ use std::os::raw::c_char;
 use std::slice::from_raw_parts;
 
 use super::plugin::{
-    add_plugin, publish_message_to_guest, ChannelId, PluginCB,
+    add_plugin, publish_message_to_guest, ChannelId, PluginCB
 };
 
 #[repr(C)]
@@ -36,4 +36,14 @@ pub unsafe extern "C" fn channel_write(
     out_len: usize,
 ) {
     publish_message_to_guest(channel, from_raw_parts(out, out_len).to_vec())
+}
+
+#[no_mangle]
+pub extern "C" fn get_channel_from_name(channel_name: *const c_char) -> ChannelId {
+    let name = unsafe {
+        CStr::from_ptr(channel_name)
+            .to_string_lossy()
+            .into_owned()
+    };
+    super::plugin::get_channel_from_name(&name).unwrap()
 }
