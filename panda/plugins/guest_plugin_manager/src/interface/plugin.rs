@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 pub type ChannelId = u32;
-pub type PluginCB = extern "C" fn(Vec<u8>);
+pub type PluginCB = extern "C" fn(*const u8, usize);
 
 static NEXT_PLUGIN_NUMBER: AtomicU32 = AtomicU32::new(0);
 
@@ -53,7 +53,8 @@ pub fn poll_plugin_message(channel_id: ChannelId) -> Option<Vec<u8>> {
 pub fn publish_message_from_guest(channel_id: ChannelId, msg: Vec<u8>) {
     let pm = PLUGINS.read();
     if let Some(plugin) = pm.get(&channel_id){
-        (plugin.msg_receive_cb)(msg)
+        let buf_ptr = msg.as_ptr();
+        (plugin.msg_receive_cb)(buf_ptr, msg.len())
     }
 }
 
