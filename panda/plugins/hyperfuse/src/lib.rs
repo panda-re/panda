@@ -168,7 +168,11 @@ struct Sender<T: Serialize>(ChannelId, PhantomData<T>);
 impl<T: Serialize> Sender<T> {
     fn send(&self, val: T) -> Result<(), ()> {
         let bytes = bincode::serialize(&val).unwrap();
+
+        let len = (bytes.len() as u32).to_le_bytes();
+        GUEST_PLUGIN_MANAGER.channel_write(self.0, len.as_ptr(), 4);
         GUEST_PLUGIN_MANAGER.channel_write(self.0, bytes.as_ptr(), bytes.len());
+
         Ok(())
     }
 }
