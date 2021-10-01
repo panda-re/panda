@@ -1,32 +1,33 @@
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::slice::from_raw_parts;
+use super::daemon_manager::load_binary;
+use super::channels::add_channel;
 
-use super::plugin::{
-    add_plugin, publish_message_to_guest, ChannelId, PluginCB
+use super::channels::{
+    publish_message_to_guest, ChannelId, ChannelCB
 };
 
 #[repr(C)]
 pub struct GuestPlugin {
-    pub name: *const c_char,
-    pub elf_path: *const c_char,
-    pub msg_receive_cb: PluginCB,
+    pub plugin_name: *const c_char,
+    pub guest_binary_path: *const c_char,
+    pub msg_receive_cb: ChannelCB,
 }
 
 // returns channel ID
 #[no_mangle]
 pub extern "C" fn add_guest_plugin(plugin: GuestPlugin) -> ChannelId {
-    let _elf_path = unsafe {
-        CStr::from_ptr(plugin.elf_path)
+    let binary_path = unsafe {
+        CStr::from_ptr(plugin.guest_binary_path)
             .to_string_lossy()
-            .into_owned()
     };
+    load_binary(&binary_path);
     let name = unsafe {
-        CStr::from_ptr(plugin.name)
+        CStr::from_ptr(plugin.plugin_name)
             .to_string_lossy()
-            .into_owned()
     };
-    add_plugin(&name, plugin.msg_receive_cb)
+    add_channel(Some(&name), plugin.msg_receive_cb)
 }
 
 #[no_mangle]
@@ -45,5 +46,5 @@ pub extern "C" fn get_channel_from_name(channel_name: *const c_char) -> ChannelI
             .to_string_lossy()
             .into_owned()
     };
-    super::plugin::get_channel_from_name(&name).unwrap()
+    super::channels::get_channel_from_name(&name).unwrap()
 }

@@ -23,7 +23,6 @@ pub fn get_hyp_reg(cpu: &mut CPUState, num: usize) -> usize {
     get_reg(cpu, reg_to_read) as usize
 }
 
-pub fn set_hyp_reg(cpu: &mut CPUState, num: usize, value: usize) {
-    let reg_to_write = REG_ORDER[num];
-    set_reg(cpu, reg_to_write, value as target_ulong)
+pub fn set_hyp_ret_reg(cpu: &mut CPUState, value: usize) {
+    set_reg(cpu, RET_REG,value as target_ulong)
 }

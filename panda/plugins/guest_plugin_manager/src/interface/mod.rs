@@ -1,4 +1,5 @@
 pub mod api;
-pub mod guest_daemon_manager;
+pub mod plugin_manager;
 pub mod hci;
-pub mod plugin;
+pub mod channels;
+pub mod daemon_manager;

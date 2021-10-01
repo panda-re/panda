@@ -1,20 +1,22 @@
-use super::plugin::ChannelId;
-use super::plugin::{poll_plugin_message, publish_message_from_guest};
+use super::channels::ChannelId;
+use super::channels::{poll_plugin_message, publish_message_from_guest};
+use super::plugin_manager::new_manager_channel;
+use crate::MAGIC;
 use panda::mem::{virtual_memory_read, virtual_memory_write};
 use panda::prelude::*;
 
 pub fn hyp_start(
-    cpu: &mut CPUState,
-    channel_id: ChannelId,
-    arg1: usize,
+    _cpu: &mut CPUState,
+    _channel_id: ChannelId,
+    _arg1: usize,
     _arg2: usize,
 ) -> Option<usize> {
-    None
+    Some(!MAGIC)
 }
 pub fn hyp_stop(
-    cpu: &mut CPUState,
-    channel_id: ChannelId,
-    arg1: usize,
+    _cpu: &mut CPUState,
+    _channel_id: ChannelId,
+    _arg1: usize,
     _arg2: usize,
 ) -> Option<usize> {
     None
@@ -23,9 +25,10 @@ pub fn hyp_read(
     cpu: &mut CPUState,
     channel_id: ChannelId,
     addr: usize,
-    max_size: usize,
+    _max_size: usize,
 ) -> Option<usize> {
     if let Some(msg) = poll_plugin_message(channel_id) {
+        // could check max len more
         virtual_memory_write(cpu, addr as target_ulong, &msg);
         Some(msg.len())
     } else {
@@ -49,10 +52,18 @@ pub fn hyp_write(
     }
 }
 pub fn hyp_error(
-    cpu: &mut CPUState,
-    channel_id: ChannelId,
-    arg1: usize,
+    _cpu: &mut CPUState,
+    _channel_id: ChannelId,
+    _arg1: usize,
     _arg2: usize,
 ) -> Option<usize> {
     None
+}
+
+pub fn hyp_get_manager(
+    _cpu: &mut CPUState,
+    _channel_id: ChannelId,
+    _arg1: usize,
+    _arg2: usize,) -> Option<usize>{
+    Some(new_manager_channel() as usize)
 }
