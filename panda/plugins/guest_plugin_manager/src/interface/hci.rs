@@ -11,6 +11,7 @@ pub fn hyp_start(
     _arg1: usize,
     _arg2: usize,
 ) -> Option<usize> {
+    println!("start");
     Some(!MAGIC)
 }
 pub fn hyp_stop(
@@ -19,6 +20,7 @@ pub fn hyp_stop(
     _arg1: usize,
     _arg2: usize,
 ) -> Option<usize> {
+    println!("stop");
     None
 }
 pub fn hyp_read(
@@ -27,6 +29,7 @@ pub fn hyp_read(
     addr: usize,
     _max_size: usize,
 ) -> Option<usize> {
+    println!("read");
     if let Some(msg) = poll_plugin_message(channel_id) {
         // could check max len more
         virtual_memory_write(cpu, addr as target_ulong, &msg);
@@ -41,6 +44,7 @@ pub fn hyp_write(
     buf_ptr: usize,
     buf_size: usize,
 ) -> Option<usize> {
+    println!("write");
     if let Ok(buf_out) =
         virtual_memory_read(cpu, buf_ptr as target_ulong, buf_size)
     {
@@ -57,6 +61,7 @@ pub fn hyp_error(
     _arg1: usize,
     _arg2: usize,
 ) -> Option<usize> {
+    println!("error");
     None
 }
 
@@ -64,6 +69,9 @@ pub fn hyp_get_manager(
     _cpu: &mut CPUState,
     _channel_id: ChannelId,
     _arg1: usize,
-    _arg2: usize,) -> Option<usize>{
+    _arg2: usize,
+) -> Option<usize> {
+    println!("get_manager");
     Some(new_manager_channel() as usize)
 }
+

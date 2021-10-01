@@ -5,11 +5,13 @@ use panda::{
 
 // =================== Register Order ===================
 #[cfg(feature = "i386")]
-pub const REG_ORDER: [Reg; 4] = [Reg::EAX, Reg::EBX, Reg::ECX, Reg::EDX];
+pub const REG_ORDER: [Reg; 5] =
+    [Reg::EAX, Reg::EBX, Reg::ECX, Reg::EDX, Reg::EDI];
 
 // XXX: is this right?
 #[cfg(feature = "x86_64")]
-pub const REG_ORDER: [Reg; 4] = [Reg::RAX, Reg::RBX, Reg::RCX, Reg::RDX];
+pub const REG_ORDER: [Reg; 5] =
+    [Reg::RAX, Reg::RBX, Reg::RCX, Reg::RDX, Reg::RDI];
 
 // =================== Return Value ===================
 #[cfg(feature = "i386")]
@@ -24,5 +26,5 @@ pub fn get_hyp_reg(cpu: &mut CPUState, num: usize) -> usize {
 }
 
 pub fn set_hyp_ret_reg(cpu: &mut CPUState, value: usize) {
-    set_reg(cpu, RET_REG,value as target_ulong)
+    set_reg(cpu, RET_REG, value as target_ulong)
 }

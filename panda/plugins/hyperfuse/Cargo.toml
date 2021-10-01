@@ -1,19 +1,23 @@
 [package]
-name = "guest_plugin_manager"
+name = "hyperfuse"
 version = "0.1.0"
 authors = ["Luke Craig <Luke.Craig@ll.mit.edu>", "Jordan McLeod <Jordan.McLeod@ll.mit.edu>"]
 edition = "2018"
 
 [lib]
 crate-type = ["cdylib"]
-path = "./src/guest_plugin_manager.rs"
 
 [dependencies]
-panda-re = { version = "0.13.0", default-features = false }
-crossbeam-queue = "0.3.2"
-parking_lot = "0.11.2"
-lazy_static = "1.4.0"
-once_cell = "1.8.0"
+#panda-re = { version = "0.13.0", default-features = false }
+panda-re = { path = "/home/jamcleod/dev/work/panda-rs/panda-rs", default-features = false }
+fuser = { version = "0.8.0", features = ["serializable"] }
+libc = "0.2.98"
+env_logger = "0.9.0"
+serde = { version = "1", features = ["derive"] }
+bincode = "1.3.3"
+lazy_static = "1"
+parking_lot = "0.11"
+crossbeam-queue = "0.3"
 
 [features]
 default = ["x86_64"]

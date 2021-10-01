@@ -6,17 +6,19 @@ mod hyp_regs;
 use hyp_regs::{get_hyp_reg, set_hyp_ret_reg};
 
 mod interface;
-use interface::hci::{hyp_error, hyp_read, hyp_start, hyp_stop, hyp_write,hyp_get_manager};
+use interface::hci::{
+    hyp_error, hyp_get_manager, hyp_read, hyp_start, hyp_stop, hyp_write,
+};
 
 const MAGIC: usize = 0x1337c0d3;
 
 #[derive(Copy, Clone)]
 pub enum HcCmd {
-    Start = 1, /* start new action */
-    Stop,      /* stop action */
-    Read,      /* read buffer from hypervisor */
-    Write,     /* write buffer TO hypervisor*/
-    Error,     /* report error to hypervisor*/
+    Start = 1,  /* start new action */
+    Stop,       /* stop action */
+    Read,       /* read buffer from hypervisor */
+    Write,      /* write buffer TO hypervisor*/
+    Error,      /* report error to hypervisor*/
     GetManager, /* returns unique chanenl ID to manager from plugin */
 }
 
@@ -41,6 +43,7 @@ fn hypercall_handler(cpu: &mut CPUState) -> bool {
     let magicval = get_hyp_reg(cpu, 0);
     if magicval == MAGIC {
         let action = get_hyp_reg(cpu, 1);
+        dbg!(action);
         let chan_id = get_hyp_reg(cpu, 2) as u32;
         let arg1 = get_hyp_reg(cpu, 3);
         let arg2 = get_hyp_reg(cpu, 4);
@@ -56,10 +59,10 @@ fn hypercall_handler(cpu: &mut CPUState) -> bool {
         };
 
         if let Some(retval) = retval {
-            set_hyp_ret_reg(cpu,  retval);
+            set_hyp_ret_reg(cpu, retval);
         }
         true
-    }else{
+    } else {
         false
     }
 }

@@ -32,9 +32,6 @@ use regs::{REG_ORDER, RET_REG};
 #[derive(PandaArgs)]
 #[name = "linjector"] // plugin name
 struct Args {
-    #[arg(required)]
-    proc: String,
-
     #[arg(default = "guest_daemon")]
     guest_binary: String,
 
@@ -55,7 +52,7 @@ pub enum HcCmd {
     Error,         /* report error to hypervisor*/
     ConditionalOp, /* ask the hypervisor if op should be completed*/
     NextStateMachine, /* ask the hypervisor manager to move to the next
-                            state machine*/
+                   state machine*/
 }
 
 impl TryFrom<usize> for HcCmd {
@@ -99,6 +96,7 @@ fn inject_hook(
     _exit_code: u8,
     hook: &mut Hook,
 ) {
+    println!("Inject hook");
     let inject_bytes = include_bytes!("./injectables/injector");
     let (text_data, _offset, _section_size) =
         parse_file_data(&inject_bytes[..]);
@@ -174,6 +172,7 @@ fn hypercall_handler(cpu: &mut CPUState) -> bool {
     let magicval = get_hyp_reg(cpu, 0);
     if magicval == MAGIC {
         let action = get_hyp_reg(cpu, 1);
+        dbg!(action);
         let first_arg = get_hyp_reg(cpu, 2);
         let second_arg = get_hyp_reg(cpu, 3);
 
@@ -199,6 +198,7 @@ fn entry_hook(
     _exit_code: u8,
     hook: &mut Hook,
 ) {
+    println!("Entry hook");
     let inject_bytes = include_bytes!("./injectables/tiny_mmap");
     let (text_data, offset, section_size) = parse_file_data(&inject_bytes[..]);
     assert_eq!(
@@ -226,6 +226,7 @@ fn handle_proc_start(
     _tb: &mut TranslationBlock,
     auxv: &AuxvValues,
 ) {
+    println!("proc start");
     if !ARGS.require_root || auxv.euid == 0 {
         println!("accepting new proc with euid {}", auxv.euid);
         // get pointers to values for re-starting process

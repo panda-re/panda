@@ -13,10 +13,13 @@ edge_coverage
 filereadmon
 forcedexec
 gdb
+guest_plugin_manager
 hooks
 hooks2
+hyperfuse
 libfi
 lighthouse_coverage
+linjector
 loaded
 loaded_libs
 mem_hooks
