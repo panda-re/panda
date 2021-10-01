@@ -191,7 +191,7 @@ impl Receiver<Reply> {
 //}
 
 fn mount(channel: ChannelId) {
-    let mountpoint = "/home/jamcleod/dev/work/fuse-expirement/test";
+    let mountpoint = "/home/luke/workspace/fuse_mount";
     let options = vec![
         MountOption::FSName("hello".to_string()),
         MountOption::AutoUnmount,
@@ -218,7 +218,7 @@ extern "C" fn message_recv(_channel: u32, ptr: *const u8, len: usize) {
 
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
-    let path = "/home/jamcleod/dev/work/igloo-internal/pie_idea/guest_code/target/i686-unknown-linux-musl/release/guest_daemon";
+    let path = "/home/luke/workspace/igloo/pie_idea/guest_code/target/i686-unknown-linux-musl/release/guest_daemon";
     let plugin_name = CString::new("linjector".as_bytes()).unwrap();
     let plugin_arg = CString::new(format!("guest_binary={}", path).as_bytes()).unwrap();
     unsafe {
@@ -230,7 +230,7 @@ fn init(_: &mut PluginHandle) -> bool {
     GUEST_PLUGIN_MANAGER.ensure_init();
     let channel = GUEST_PLUGIN_MANAGER.add_guest_plugin(GuestPlugin::new(
         "hyperfuse".into(),
-        Path::new("/home/jamcleod/dev/work/igloo-internal/pie_idea/guest_code/target/i686-unknown-linux-musl/release/hyperfuse_guest"),
+        Path::new("/home/luke/workspace/igloo/pie_idea/guest_code/target/i686-unknown-linux-musl/debug/hyperfuse_guest"),
         message_recv,
     ));
 
