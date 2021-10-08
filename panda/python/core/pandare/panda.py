@@ -813,6 +813,9 @@ class Panda():
         if not isinstance(addr, int):
             raise ValueError(f"Unsupported read from address {repr(addr)}")
 
+        if addr == 0:
+            raise ValueError(f"Can't read from NULL")
+
         buf = self.ffi.new("char[]", length)
 
         # Force CFFI to parse addr as an unsigned value. Otherwise we get OverflowErrors
@@ -993,7 +996,7 @@ class Panda():
             idx += 1
         return r.decode("utf8", "ignore")
 
-    def to_unsigned_guest(self, x):
+    def to_unsigned_guest(self, x, bits=None):
         '''
         Convert a singed python int to an unsigned int32/unsigned int64
         depending on guest bit-size
@@ -1004,10 +1007,14 @@ class Panda():
         Returns:
             int: Python integer representing x as an unsigned value in the guest's pointer-size.
         '''
+
+        if not bits:
+            bits = self.bits
+
         import ctypes
-        if self.bits == 32:
+        if bits == 32:
             return ctypes.c_uint32(x).value
-        elif self.bits == 64:
+        elif bits == 64:
             return ctypes.c_uint64(x).value
         else:
             raise ValueError("Unsupported number of bits")
