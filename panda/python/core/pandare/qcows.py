@@ -90,6 +90,18 @@ SUPPORTED_IMAGES = {
             url="https://panda-re.mit.edu/qcows/linux/ubuntu/2004/aarch64/ubuntu20_04-aarch64.qcow",
             extra_files=['ubuntu20_04-aarch64-flash0.qcow'],
             extra_args='-nographic -machine virt -cpu cortex-a57 -drive file={DOT_DIR}/ubuntu20_04-aarch64-flash0.qcow,if=pflash,readonly=on'.format(DOT_DIR=VM_DIR)),
+
+    'mips64': Image(
+            arch='mips64',
+            os="linux-64-debian:4.14.0-3-5kc-malta", # XXX: NO OSI
+            prompt=rb"root@debian-buster-mips:.*# ",
+            cdrom="ide1-cd0", # not sure
+            snapshot="root",
+            url="https://panda-re.mit.edu/qcows/linux/debian/10/mips64/debian-buster-mips.qcow2",
+            default_mem='2g',
+            extra_files=['vmlinux-4.14.0-3-5kc-malta.mips.buster', 'initrd.img-4.14.0-3-5kc-malta.mips.buster'],
+            extra_args='-M malta -cpu MIPS64R2-generic -append "root=/dev/vda console=ttyS0 mem=2048m net.ifnames=0 nokaslr" -netdev user,id=user.0 -device virtio-net,netdev=user.0 -device usb-kbd -device usb-tablet -kernel {DOT_DIR}/vmlinux-4.14.0-3-5kc-malta.mips.buster -initrd {DOT_DIR}/initrd.img-4.14.0-3-5kc-malta.mips.buster -nographic'.format(DOT_DIR=VM_DIR)),
+
     'mips_wheezy': Image(
             arch='mips',
             os="linux-32-debian:3.2.0-4-4kc-malta",
@@ -111,6 +123,30 @@ SUPPORTED_IMAGES = {
             url="https://panda-re.mit.edu/qcows/linux/debian/7.3/mipsel/debian_7.3_mipsel.qcow",
             extra_files=['vmlinux-3.2.0-4-4kc-malta.mipsel',],
             extra_args='-M malta -kernel {DOT_DIR}/vmlinux-3.2.0-4-4kc-malta.mipsel -append "root=/dev/sda1" -nographic'.format(DOT_DIR=VM_DIR)),
+
+    'mips_buildroot5':  Image(
+            arch='mips',
+            os = "linux-32-buildroot:5.10.7-4kc-malta",
+            prompt=rb"# ",
+            cdrom="ide1-cd0",
+            snapshot="root",
+            default_mem='1g',
+            url="https://panda-re.mit.edu/qcows/linux/buildroot/5.10/mips/mips32_buildroot.qcow",
+            extra_files=['mips32_vmlinux-5.10.7-4kc-malta',],
+            extra_args='-M malta -kernel {DOT_DIR}/mips32_vmlinux-5.10.7-4kc-malta -net nic,model=pcnet -net user -append "root=/dev/hda" -nographic'.format(DOT_DIR=VM_DIR)),
+
+
+    'mipsel_buildroot5':  Image(
+            arch='mipsel',
+            os = "linux-32-buildroot:5.10.7-4kc-malta-el",
+            prompt=rb"# ",
+            cdrom="ide1-cd0",
+            snapshot="root",
+            default_mem='1g',
+            url="https://panda-re.mit.edu/qcows/linux/buildroot/5.10/mipsel/mipsel32_buildroot.qcow",
+            extra_files=['mipsel32_vmlinux-5.10.7-4kc-malta-el',],
+            extra_args='-M malta -kernel {DOT_DIR}/mipsel32_vmlinux-5.10.7-4kc-malta-el -net nic,model=pcnet -net user -append "root=/dev/hda" -nographic'.format(DOT_DIR=VM_DIR)),
+
 
     # Ubuntu: x86/x86_64 support for 16.04, x86_64 support for 18.04
     'i386_ubuntu_1604': Image(
@@ -145,15 +181,28 @@ SUPPORTED_IMAGES = {
             extra_args="-display none"),
 }
 """
-Dictionary of `Image` objects by name. Supported values include:
-
+Dictionary of `Image` objects by name.
+Generic values (underlying OS version may change) include:
     x86_64
     i386
     ppc
     arm
-    aarch64 
+    aarch64
     mips
     mipsel
+    mips64
+
+You may also specify an exact arch/OS combination from the following exist:
+    x86_64_ubuntu_1804
+    i386_ubuntu_1604
+    ppc_wheezy
+    arm_wheezy
+    aarch64 _focal
+    mips_wheezy
+    mips_buildroot5
+    mipsel_wheezy
+    mipsel_buildroot5
+    mips64
 """ # TODO: autogenerate values here
 
 # Default values
@@ -164,6 +213,7 @@ SUPPORTED_IMAGES['arm']     = SUPPORTED_IMAGES['arm_wheezy']
 SUPPORTED_IMAGES['aarch64'] = SUPPORTED_IMAGES['aarch64_focal']
 SUPPORTED_IMAGES['mips']    = SUPPORTED_IMAGES['mips_wheezy']
 SUPPORTED_IMAGES['mipsel']  = SUPPORTED_IMAGES['mipsel_wheezy']
+SUPPORTED_IMAGES['mips64']    = SUPPORTED_IMAGES['mips64']
 
 class Qcows():
     '''
