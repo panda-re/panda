@@ -22,7 +22,6 @@ PANDAENDCOMMENT */
 
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
-
 #include "osi_linux/osi_linux_ext.h"
 
 #include "dwarf_query.h"
@@ -43,6 +42,7 @@ std::vector<void*> tmp_double_ptrs;
 bool did_call_warning;
 const char* target_process = NULL;
 target_ulong last_pid = 0;
+bool USE_OSI;
 
 // Read a string from guest memory
 int get_string(CPUState *cpu, target_ulong addr, uint8_t *buf) {
@@ -858,14 +858,21 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
     OsiProc *current = NULL;
     OsiThread *othread = NULL;
 
-    // need to have current proc / thread
-    current = get_current_process(cpu);
-    if (current == NULL || current->pid == 0)
-        return;
+    if (USE_OSI) {
+      // need to have current proc / thread
+      current = get_current_process(cpu);
+      if (current == NULL || current->pid == 0)
+          return;
 
-    othread = get_current_thread(cpu);
-    if (othread == NULL)
-        return;
+      othread = get_current_thread(cpu);
+      if (othread == NULL)
+          return;
+
+      if (target_process != NULL && strcmp(current->name, target_process) != 0) {
+          // Target specified and it's not this one - bail
+          return;
+      }
+    }
 
     if (!call) {
         // This warning happens _a lot_ so I'm disabling it after the first
@@ -876,10 +883,7 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
         return;
     }
 
-    if (target_process != NULL && strcmp(current->name, target_process) != 0) {
-        // Target specified and it's not this one - bail
-        return;
-    }
+    target_ulong asid = panda_current_asid(cpu);
 
     // Note that: pandalog mode supports capturing additional information for bind and execve which is not reported for
     // non-pandalog output.
@@ -902,9 +906,12 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
 
         Panda__Syscall psyscall;
         psyscall = PANDA__SYSCALL__INIT;
-        psyscall.pid = current->pid;
-        psyscall.ppid = current->ppid;
-        psyscall.tid = othread->tid;
+        if (USE_OSI) {
+          psyscall.pid = current->pid;
+          psyscall.ppid = current->ppid;
+          psyscall.tid = othread->tid;
+          psyscall.create_time = current->create_time;
+        }
 
         if (is_return) {
             psyscall.retcode = get_syscall_retval(cpu);
@@ -913,7 +920,6 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
             // For those we record 0. If a failure occurs, we'll run again on return and record the actual failing retcode then.
             psyscall.retcode = 0;
         }
-        psyscall.create_time = current->create_time;
         psyscall.call_name = strdup(call->name);
 
         // If it's a bind, we only special case it if it's AF_INET/AF_INET6
@@ -976,7 +982,7 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
                   sa->u16 = port;
                   sa->has_u16 = port;
                 }
-            } else if(has_fd) {
+            } else if(has_fd && USE_OSI) {
                 // use OSI_linux to resolve the  fd to a filename, add filename as an extra argument
                 has_fd = false;
                 Panda__NamedData *sa = (Panda__NamedData *)malloc(sizeof(Panda__NamedData));
@@ -1069,7 +1075,7 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.syscall = &psyscall;
         ple.has_asid = true;
-        ple.asid = current->asid;
+        ple.asid = asid;
         pandalog_write_entry(&ple);
 
         for (auto ptr : tmp_single_ptrs) {
@@ -1088,13 +1094,12 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
         free(psyscall.args);
 
     } else {
-
-        if (target_process == NULL) {
+        if (target_process == NULL && USE_OSI) {
             // Only log process details if we're logging multiple processes
             std::cout << "proc [pid=" << current->pid << ",ppid=" << current->ppid
                  << ",tid=" << othread->tid << ",create_time=" << current->create_time
                  << ",name=" << current->name << "]" << std::endl;
-        }else{
+        } else if (USE_OSI) {
             // if tracing one target with multiple pids, log on changes
             if (current->pid != last_pid) {
                 if (last_pid != 0) {
@@ -1102,6 +1107,15 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
                     std::cout << "[pid = " << std::dec << current->pid << "]" << std::endl;
                 }
                 last_pid = current->pid;
+            }
+        } else {
+            // Log on asid change when we have no OSI
+            if (asid != last_pid) {
+                if (last_pid != 0) {
+                    // Skip initial log
+                    std::cout << "[asid = " << std::hex << asid << "]" << std::endl;
+                }
+                last_pid = asid;
             }
         }
 
@@ -1155,12 +1169,19 @@ bool init_plugin(void *_self) {
 
     panda_arg_list *args = panda_get_args("syscalls_logger");
     log_verbose = panda_parse_bool(args, "verbose");
+    USE_OSI = !panda_parse_bool(args, "no_osi");
     const char* json_filename = panda_parse_string_opt(args, "json", nullptr, "dwarf2json_output.json");
     target_process = panda_parse_string_opt(args, "target", nullptr, "Name of a single process to target. If unset, syscalls from all proceses are logged");
     did_call_warning=false;
 
     if (log_verbose) {
         std::cout << "[INFO] syscalls_logger: verbose output enabled." << std::endl;
+    }
+
+    if (target_process && !USE_OSI) {
+        // could add support for target_asid
+        std::cerr << "[ERROR] syscalls_logger: cannot specify a target process without OSI" << std::endl;
+        return false;
     }
 
     if (!json_filename) {
@@ -1183,9 +1204,11 @@ bool init_plugin(void *_self) {
     panda_require("syscalls2");
     assert(init_syscalls2_api());
 
-    panda_require("osi");
-    assert(init_osi_api());
-    assert(init_osi_linux_api());
+    if (USE_OSI) {
+      panda_require("osi");
+      assert(init_osi_api());
+      assert(init_osi_linux_api());
+    }
 
     PPP_REG_CB("syscalls2", on_all_sys_enter2, sys_enter);
     PPP_REG_CB("syscalls2", on_all_sys_return2, sys_return);
