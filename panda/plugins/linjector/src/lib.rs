@@ -34,7 +34,7 @@ use regs::{REG_ORDER, RET_REG};
 struct Args {
     #[arg(default = "guest_daemon")]
     guest_binary: String,
-
+    #[arg(default = true)]
     require_root: bool,
 }
 
@@ -128,7 +128,8 @@ fn hyp_write(cpu: &mut CPUState, arg1: usize, arg2: usize) -> Option<usize> {
         ELF_READ_POS.fetch_add(upper - lower, Ordering::SeqCst);
         Some(upper - lower)
     } else {
-        None
+        println!("finished processing binary");
+        Some(0)
     }
 }
 
@@ -172,7 +173,6 @@ fn hypercall_handler(cpu: &mut CPUState) -> bool {
     let magicval = get_hyp_reg(cpu, 0);
     if magicval == MAGIC {
         let action = get_hyp_reg(cpu, 1);
-        dbg!(action);
         let first_arg = get_hyp_reg(cpu, 2);
         let second_arg = get_hyp_reg(cpu, 3);
 
@@ -252,7 +252,9 @@ fn handle_proc_start(
 
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
+    println!("linjector hit");
     lazy_static::initialize(&ARGS);
+    println!("got args {} {}", ARGS.guest_binary, ARGS.require_root);
     true
 }
 

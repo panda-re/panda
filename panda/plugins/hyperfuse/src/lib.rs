@@ -195,7 +195,7 @@ impl Receiver<Reply> {
 //}
 
 fn mount(channel: ChannelId) {
-    let mountpoint = "/home/luke/workspace/fuse_mount";
+    let mountpoint = "/home/luke/workspace/fuse_mount/";
     let options = vec![
         MountOption::FSName("hello".to_string()),
         MountOption::AutoUnmount,
@@ -215,6 +215,7 @@ static MESSAGE_QUEUE: SegQueue<Vec<u8>> = SegQueue::new();
 
 extern "C" fn message_recv(_channel: u32, ptr: *const u8, len: usize) {
     unsafe {
+        println!("message_recv in hyperfuse");
         let bytes = std::slice::from_raw_parts(ptr, len);
         MESSAGE_QUEUE.push(bytes.to_owned());
     }
@@ -230,17 +231,21 @@ fn init(_: &mut PluginHandle) -> bool {
         panda::sys::panda_add_arg(plugin_name.as_ptr(), plugin_arg.as_ptr());
         panda::sys::panda_load_plugin(path, plugin_name.as_ptr());
     }
+    println!("after load_plugin in hyperfuse");
 
     GUEST_PLUGIN_MANAGER.ensure_init();
     let channel = GUEST_PLUGIN_MANAGER.add_guest_plugin(GuestPlugin::new(
         "hyperfuse".into(),
-        Path::new("/home/luke/workspace/igloo/pie_idea/guest_code/target/i686-unknown-linux-musl/debug/hyperfuse_guest"),
+        Path::new("/home/luke/workspace/igloo/pie_idea/guest_code/target/i686-unknown-linux-musl/release/hyperfuse_guest"),
         message_recv,
     ));
+    println!("hyperfuse established channel with fd {}", channel);
 
     std::thread::spawn(move || {
+        println!("new hyperfuse thread");
         mount(channel);
     });
+    println!("returning after new thread hyperfuse");
 
     true
 }

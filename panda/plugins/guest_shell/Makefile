@@ -6,7 +6,7 @@
 
 PANDA_PATH = $(realpath $(shell pwd)/..)
 PLUGIN_DIR = $(realpath $(join $(PANDA_PATH), /../panda/plugins/$(PLUGIN_NAME)/))
-RUST_SOURCE = $(shell find $(PLUGIN_DIR)/src/ -name "*.rs")
+RUST_SOURCE = $(wildcard $(PLUGIN_DIR)/src/*.rs)
 PLUGIN_ARTIFACTS_DIR = $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)/target
 
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so : $(RUST_SOURCE) $(PLUGIN_DIR)/Cargo.toml

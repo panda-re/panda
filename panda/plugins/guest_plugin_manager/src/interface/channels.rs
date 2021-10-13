@@ -30,10 +30,12 @@ pub fn add_channel(p_name: Option<&str>, cb: ChannelCB) -> ChannelId {
     }).is_some() {
         panic!("We've somehow added a duplicate ID");
     }
+    println!("Added channel {} FD: {}", p_name.unwrap_or("?"), channel_id);
     channel_id
 }
 
 pub fn poll_plugin_message(channel_id: ChannelId) -> Option<Vec<u8>> {
+    println!("in poll_plugin_message");
     let pm = CHANNELS.read();
     if let Some(plugin) = pm.get(&channel_id){
         plugin.message_queue.pop()
@@ -46,17 +48,29 @@ pub fn publish_message_from_guest(channel_id: ChannelId, msg: Vec<u8>) {
     let pm = CHANNELS.read();
     if let Some(plugin) = pm.get(&channel_id){
         let buf_ptr = msg.as_ptr();
+        println!("published message to FD {}", channel_id);
         (plugin.msg_receive_cb)(channel_id, buf_ptr, msg.len())
+    }else{
+        println!("failed publish message to FD {}", channel_id);
     }
 }
 
 pub fn publish_message_to_guest(channel_id: ChannelId, msg: Vec<u8>) {
     let pm = CHANNELS.read();
     if let Some(plugin) = pm.get(&channel_id){
+        // println!("message pushed");
         plugin.message_queue.push(msg)
+    }else{
+        println!("failed to publish message");
     }
 }
 
 pub fn get_channel_from_name(p_name: &str) -> Option<ChannelId>{
+    // let unnamed = "unnamed".to_owned();
+    println!("channel_from_name");
+    for ch in CHANNELS.read().iter(){
+        println!("channel name: {} FD: {}",&ch.1.name.as_ref().unwrap_or(&"unnamed".to_string()), ch.0);
+    }
+
     CHANNELS.read().iter().find(|(_, v)| v.name.as_deref() == Some(p_name)).map(|x| *x.0)
 }

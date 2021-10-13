@@ -35,13 +35,19 @@ extern "C" fn read_callback(
 pub fn load_binary(binary_path: &str) {
     if Path::new(binary_path).is_file() {
         if let Ok(binary) = std::fs::read(binary_path) {
-            let payload_size = binary.len();
-            let mut buf =
-                u32::to_le_bytes(PacketKind::LoadPlugin as u32).to_vec();
-            buf.extend(u32::to_le_bytes(payload_size as u32).to_vec());
-            let cd = CHANNEL_DESC.get().unwrap();
-            publish_message_to_guest(*cd, buf);
-            publish_message_to_guest(*cd, binary);
+            for chunk in binary.chunks(4096){
+                // let mut buf =
+                    // u32::to_le_bytes(PacketKind::LoadPlugin as u32).to_vec();
+                // buf.extend(u32::to_le_bytes(chunk.len() as u32).to_vec());
+                let cd = CHANNEL_DESC.get().unwrap();
+                // publish_message_to_guest(*cd, buf);
+                publish_message_to_guest(*cd, chunk.to_owned());
+            }
+            // let mut buf =
+                // u32::to_le_bytes(PacketKind::LoadPlugin as u32).to_vec();
+            // buf.extend(u32::to_le_bytes(0 as u32).to_vec());
+            // let cd = CHANNEL_DESC.get().unwrap();
+            // publish_message_to_guest(*cd, buf);
         } else {
             panic!("Failed to read binary at {}", binary_path);
         }

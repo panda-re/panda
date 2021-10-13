@@ -1,5 +1,5 @@
 [package]
-name = "hyperfuse"
+name = "rust_skeleton"
 version = "0.1.0"
 authors = ["Luke Craig <Luke.Craig@ll.mit.edu>", "Jordan McLeod <Jordan.McLeod@ll.mit.edu>"]
 edition = "2018"
@@ -8,16 +8,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-#panda-re = { version = "0.13.0", default-features = false }
-panda-re = { git = "https://github.com/panda-re/panda-rs", default-features = false }
-fuser = { version = "0.8.0", features = ["serializable"] }
-libc = "0.2.98"
-env_logger = "0.9.0"
-serde = { version = "1", features = ["derive"] }
-bincode = "1.3.3"
-lazy_static = "1"
-parking_lot = "0.11"
-crossbeam-queue = "0.3"
+panda-re = { version = "0.9.1", default-features = false }
 
 [features]
 default = ["x86_64"]
