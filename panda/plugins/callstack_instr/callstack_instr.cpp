@@ -47,8 +47,6 @@ PANDAENDCOMMENT */
 // needed for the threaded stack_type
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
-#include "wintrospection/wintrospection.h"
-#include "wintrospection/wintrospection_ext.h"
 #include "osi_linux/osi_linux_ext.h"
 
 #include "callstack_instr.h"

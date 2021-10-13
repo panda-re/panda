@@ -71,3 +71,8 @@ texinfo
 uuid-dev
 xfslibs-dev
 zlib1g-dev
+
+# libosi install deps
+cmake
+ninja-build
+rapidjson-dev

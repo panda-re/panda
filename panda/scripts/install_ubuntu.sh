@@ -112,6 +112,22 @@ if [[ !$(ldconfig -p | grep -q libcapstone.so.4) ]]; then
   popd
 fi
 
+# if the windows introspection library is not installed, clone and install
+if [[ !$(dpkg -l | grep -q libosi) ]]; then
+  libosi_name=libosi-$(date +"%Y%m%d")
+  libosi_branch=dev
+  libosi_repo=https://github.com/panda-re/wintrospection
+
+  echo "Installing libosi"
+  pushd .
+  git clone -b $libosi_branch $libosi_repo $libosi_name && cd $_
+  mkdir build && cd $_
+  cmake -GNinja .. && \
+    ninja && ninja package && \
+    $SUDO dpkg -i libosi*.deb
+  popd && rm -rf $libosi_name
+fi
+
 # PyPANDA needs CFFI from pip (the version in apt is too old)
 # Install system-wide since PyPANDA install will also be system-wide
 $SUDO python3 -m pip install pip

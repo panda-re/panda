@@ -22,7 +22,6 @@ PANDAENDCOMMENT */
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 
-#include "wintrospection/wintrospection.h"
 #include "wintrospection/wintrospection_ext.h"
 
 #include "osi_linux/osi_linux_ext.h"
@@ -207,11 +206,11 @@ void windows_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
                         uint32_t ByteOffset, uint32_t Key)
 {
     // get_handle_name will assert if the filename is null
-    char *filename = get_handle_name(cpu, get_current_proc(cpu), FileHandle);
+    char *filename = get_handle_name(FileHandle);
     std::string ob_path = filename;
     // Check if the file handle is absolute, if not we need to make it absolute.
     if (filename[0] != '\\') {
-        char *cwd = get_cwd(cpu);
+        char *cwd = get_cwd();
         ob_path = cwd;
         // If the cwd doesn't have a slash, add it.
         if (ob_path.back() != '\\') {
@@ -221,7 +220,7 @@ void windows_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle,
         g_free(cwd);
     }
     verbose_printf("file_taint windows object path: %s\n", ob_path.c_str());
-    int64_t pos = get_file_handle_pos(cpu, get_current_proc(cpu), FileHandle);
+    int64_t pos = get_file_handle_pos(FileHandle);
     read_enter(ob_path, FileHandle, pos);
     g_free(filename);
 }
