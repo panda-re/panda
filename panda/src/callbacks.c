@@ -569,9 +569,11 @@ void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb)
     bool found = false;
     assert(type < PANDA_CB_LAST);
     if (panda_cbs[type] != NULL) {
+        panda_cb_with_context trampoline = panda_get_cb_trampoline(type);
         for (panda_cb_list *plist = panda_cbs[type]; plist != NULL;
              plist = plist->next) {
-            if (plist->owner == plugin && (plist->entry.cbaddr) == cb.cbaddr) {
+            if (plist->owner == plugin && (((plist->entry.cbaddr) == cb.cbaddr)
+                    || ((plist->entry.cbaddr) == trampoline.cbaddr))) {
                 found = true;
                 plist->enabled = false;
 
