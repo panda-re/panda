@@ -18,7 +18,7 @@ void panda_cb_trampoline_phys_mem_after_write(void* context, CPUState *env, targ
 
 int panda_cb_trampoline_insn_exec(void* context, CPUState *env, target_ptr_t pc);
 int panda_cb_trampoline_after_insn_exec(void* context, CPUState *env, target_ptr_t pc);
-//int panda_cb_trampoline_monitor(void* context, Monitor *mon, const char *cmd);
+int panda_cb_trampoline_monitor(void* context, Monitor *mon, const char *cmd);
 //int panda_cb_trampoline_before_loadvm(void* context);
 void panda_cb_trampoline_replay_hd_transfer(void* context, CPUState *env, uint32_t type, target_ptr_t src_addr, target_ptr_t dest_addr, size_t num_bytes);
 void panda_cb_trampoline_after_machine_init(void* context, CPUState *env);
@@ -49,8 +49,8 @@ void panda_cb_trampoline_cbaddr(void* context);
 /* invoked from cputlb.c */
 void panda_cb_trampoline_mmio_after_read(void* context, CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
 void panda_cb_trampoline_mmio_before_write(void* context, CPUState *env, target_ptr_t physaddr, target_ptr_t vaddr, size_t size, uint64_t *val);
-//void panda_cb_trampoline_hd_read(void* context, CPUState *env);
-//void panda_cb_trampoline_hd_write(void* context, CPUState *env);
+void panda_cb_trampoline_hd_read(void* context, CPUState *env);
+void panda_cb_trampoline_hd_write(void* context, CPUState *env);
 
 /* invoked from exec.c */
 void panda_cb_trampoline_replay_before_dma(void* context, CPUState *env, const uint8_t *buf, hwaddr addr, size_t size, bool is_write);
