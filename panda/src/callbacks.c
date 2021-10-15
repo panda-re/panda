@@ -520,6 +520,7 @@ void panda_register_callback_with_context(void *plugin, panda_cb_type type, pand
     new_list->entry = cb;
     new_list->owner = plugin;
     new_list->enabled = true;
+    new_list->context = context;
     assert(type < PANDA_CB_LAST);
 
     if (panda_cbs[type] != NULL) {
