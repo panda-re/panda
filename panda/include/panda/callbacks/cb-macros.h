@@ -55,8 +55,11 @@
              plist != NULL; \
              plist = panda_cb_list_next(plist)) { \
               if (plist->enabled) \
-                plist->entry. ENTRY_NAME(name, EVERY_SECOND(__VA_ARGS__)); \
+                plist->entry. ENTRY_NAME(name, plist->context, EVERY_SECOND(__VA_ARGS__)); \
         } \
+    } \
+    void panda_cb_trampoline_ ## name(void* context, COMBINE_TYPES(__VA_ARGS__)) {\
+        (*(panda_cb*)context) . ENTRY_NAME(name, EVERY_SECOND(__VA_ARGS__)); \
     }
 
 // Call all enabled & registered functions for this callback. Return
@@ -70,9 +73,12 @@
              plist != NULL; \
              plist = panda_cb_list_next(plist)) { \
               if (plist->enabled) \
-                any_true |= plist->entry. ENTRY_NAME(name, EVERY_SECOND(__VA_ARGS__)); \
+                any_true |= plist->entry. ENTRY_NAME(name, plist->context, EVERY_SECOND(__VA_ARGS__)); \
         } \
         return any_true; \
+    } \
+    bool panda_cb_trampoline_ ## name(void* context, COMBINE_TYPES(__VA_ARGS__)) {\
+        return (*(panda_cb*)context) . ENTRY_NAME(name, EVERY_SECOND(__VA_ARGS__)); \
     }
 
 // XXX: gcc/clang both stringify 'void' -> 'void' but 'bool' -> '_Bool'
@@ -94,7 +100,45 @@
                plist != NULL; \
                plist = panda_cb_list_next(plist)) { \
                 if (plist->enabled) \
-                  plist->entry. ENTRY_NAME(name, EVERY_SECOND(__VA_ARGS__)); \
+                  plist->entry. ENTRY_NAME(name, plist->context, EVERY_SECOND(__VA_ARGS__)); \
           } \
         } \
+    } \
+    void panda_cb_trampoline_ ## name(void* context, COMBINE_TYPES(__VA_ARGS__)) {\
+        (*(panda_cb*)context) . ENTRY_NAME(name, EVERY_SECOND(__VA_ARGS__)); \
     }
+
+#define MAKE_CALLBACK_NO_ARGS_void(name_upper, name) \
+    void panda_callbacks_ ## name(void) { \
+        panda_cb_list *plist; \
+        for (plist = panda_cbs[PANDA_CB_ ## name_upper]; \
+             plist != NULL; \
+             plist = panda_cb_list_next(plist)) { \
+              if (plist->enabled) \
+                plist->entry. ENTRY_NAME(name, plist->context); \
+        } \
+    } \
+    void panda_cb_trampoline_ ## name(void* context) {\
+        (*(panda_cb*)context) . ENTRY_NAME(name); \
+    }
+
+#define MAKE_CALLBACK_NO_ARGS__Bool(name_upper, name) \
+    bool panda_callbacks_ ## name(void) { \
+        panda_cb_list *plist; \
+        bool any_true = false; \
+        for (plist = panda_cbs[PANDA_CB_ ## name_upper]; \
+             plist != NULL; \
+             plist = panda_cb_list_next(plist)) { \
+              if (plist->enabled) \
+                any_true |= plist->entry. ENTRY_NAME(name, plist->context); \
+        } \
+        return any_true; \
+    } \
+    bool panda_cb_trampoline_ ## name(void* context) {\
+        return (*(panda_cb*)context) . ENTRY_NAME(name); \
+    }
+
+#define _GET_CB_NAME_NO_ARGS(rettype) \
+  MAKE_CALLBACK_NO_ARGS_ ## rettype
+
+#define MAKE_CALLBACK_NO_ARGS(rettype, ...) _GET_CB_NAME_NO_ARGS(rettype)(__VA_ARGS__)
