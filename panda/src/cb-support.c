@@ -81,6 +81,11 @@ MAKE_CALLBACK(void, START_BLOCK_EXEC, start_block_exec,
 MAKE_CALLBACK(void, END_BLOCK_EXEC, end_block_exec,
                     CPUState*, env, TranslationBlock*, tb)
 
+// these aren't used
+MAKE_CALLBACK(void, HD_READ, hd_read, CPUState*, env);
+MAKE_CALLBACK(void, HD_WRITE, hd_write, CPUState*, env);
+MAKE_CALLBACK(int, MONITOR, monitor, Monitor*, mon, const char*, cmd);
+
 // Helper - get a physical address
 static inline hwaddr get_paddr(CPUState *cpu, target_ptr_t addr, void *ram_ptr) {
     if (!ram_ptr) {

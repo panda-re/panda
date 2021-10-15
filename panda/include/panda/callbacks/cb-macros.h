@@ -62,6 +62,21 @@
         (*(panda_cb*)context) . ENTRY_NAME(name, EVERY_SECOND(__VA_ARGS__)); \
     }
 
+#define MAKE_CALLBACK_int(name_upper, name, ...) \
+    int panda_callbacks_ ## name(COMBINE_TYPES(__VA_ARGS__)) { \
+        panda_cb_list *plist; \
+        for (plist = panda_cbs[PANDA_CB_ ## name_upper]; \
+             plist != NULL; \
+             plist = panda_cb_list_next(plist)) { \
+              if (plist->enabled) \
+                plist->entry. ENTRY_NAME(name, plist->context, EVERY_SECOND(__VA_ARGS__)); \
+        } \
+        return 0; \
+    } \
+    int panda_cb_trampoline_ ## name(void* context, COMBINE_TYPES(__VA_ARGS__)) {\
+        return (*(panda_cb*)context) . ENTRY_NAME(name, EVERY_SECOND(__VA_ARGS__)); \
+    }
+
 // Call all enabled & registered functions for this callback. Return
 // all results together OR'd together.
 // XXX: double underscore in name is intentional
