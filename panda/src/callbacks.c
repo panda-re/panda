@@ -528,7 +528,8 @@ void panda_register_callback_with_context(void *plugin, panda_cb_type type, pand
              plist = plist->next) {
             // the same plugin can register the same callback function only once
             assert(!(plist->owner == plugin &&
-                     (plist->entry.cbaddr) == cb.cbaddr));
+                     (plist->entry.cbaddr) == cb.cbaddr &&
+                     plist->context == context));
             plist_last = plist;
         }
         plist_last->next = new_list;
@@ -555,6 +556,9 @@ bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb) {
     return false;
 }
 
+#define TRAMP_CTXT(context) \
+    (*(panda_cb*)context).cbaddr
+
 /**
  * @brief Disables the execution of the specified callback.
  *
@@ -564,7 +568,21 @@ bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb) {
  *
  * @note Disabling an unregistered callback will trigger an assertion error.
  */
-void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb)
+void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb) {
+    panda_cb_with_context trampoline = panda_get_cb_trampoline(type);
+    panda_disable_callback_with_context(plugin, type, trampoline, &cb);
+}
+
+/**
+ * @brief Disables the execution of the specified callback.
+ *
+ * This is done by setting the `enabled` flag to `false`. The callback remains
+ * in the callback list, so when it is enabled again it will execute in the same
+ * relative order.
+ *
+ * @note Disabling an unregistered callback will trigger an assertion error.
+ */
+void panda_disable_callback_with_context(void *plugin, panda_cb_type type, panda_cb_with_context cb, void* context)
 {
     bool found = false;
     assert(type < PANDA_CB_LAST);
@@ -572,8 +590,15 @@ void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb)
         panda_cb_with_context trampoline = panda_get_cb_trampoline(type);
         for (panda_cb_list *plist = panda_cbs[type]; plist != NULL;
              plist = plist->next) {
-            if (plist->owner == plugin && (((plist->entry.cbaddr) == cb.cbaddr)
-                    || ((plist->entry.cbaddr) == trampoline.cbaddr))) {
+            if (plist->owner == plugin &&
+                ((((plist->entry.cbaddr) == cb.cbaddr) && plist->context == context) ||
+                 (
+                     // if and only if it's a trampoline, it's safe to dereference the
+                     // context in order to do an equality check
+                     plist->entry.cbaddr == trampoline.cbaddr
+                     && TRAMP_CTXT(context) == TRAMP_CTXT(plist->context)
+                ))
+            ) {
                 found = true;
                 plist->enabled = false;
 
@@ -596,14 +621,37 @@ void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb)
  *
  * @note Enabling an unregistered callback will trigger an assertion error.
  */
-void panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb)
+void panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb) {
+    panda_cb_with_context trampoline = panda_get_cb_trampoline(type);
+    panda_enable_callback_with_context(plugin, type, trampoline, &cb);
+}
+
+/**
+ * @brief Enables the execution of the specified callback.
+ *
+ * This is done by setting the `enabled` flag to `true`. After enabling the
+ * callback, it will execute in the same relative order as before having it
+ * disabled.
+ *
+ * @note Enabling an unregistered callback will trigger an assertion error.
+ */
+void panda_enable_callback_with_context(void *plugin, panda_cb_type type, panda_cb_with_context cb, void* context)
 {
     bool found = false;
-    assert(type < PANDA_CB_LAST);
     if (panda_cbs[type] != NULL) {
-        for (panda_cb_list *plist = panda_cbs[type]; plist != NULL;
-             plist = plist->next) {
-            if (plist->owner == plugin && (plist->entry.cbaddr) == cb.cbaddr) {
+        panda_cb_with_context trampoline = panda_get_cb_trampoline(type);
+        for (panda_cb_list *plist = panda_cbs[type]; plist != NULL; plist = plist->next)
+        {
+            if (plist->owner == plugin && ((
+                    (plist->entry.cbaddr) == cb.cbaddr && plist->context == context
+                ) ||
+                (
+                    // if and only if it's a trampoline, it's safe to dereference the
+                    // context in order to do an equality check
+                    plist->entry.cbaddr == trampoline.cbaddr
+                        && TRAMP_CTXT(plist->context) == TRAMP_CTXT(context)
+                ))
+            ) {
                 found = true;
                 plist->enabled = true;
 
