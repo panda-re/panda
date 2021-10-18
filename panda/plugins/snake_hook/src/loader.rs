@@ -51,7 +51,7 @@ pub(crate) fn initialize_pyplugins(args: Args) {
     let context: Context = python! {
         from pandare import Panda
 
-        panda = Panda(arch='ARCH, libpanda_path='libpanda_path)
+        panda = Panda(arch='ARCH, libpanda_path='libpanda_path, catch_exceptions=False)
 
         if 'use_flask:
             from flask import Flask, Blueprint
