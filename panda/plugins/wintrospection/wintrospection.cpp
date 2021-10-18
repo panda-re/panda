@@ -49,6 +49,10 @@ PANDAENDCOMMENT */
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
+
+int64_t get_file_handle_pos(uint64_t handle);
+char *get_cwd(void);
+char *get_handle_name(uint64_t handle);
 }
 
 void on_get_current_thread(CPUState *cpu, OsiThread *out);
@@ -178,20 +182,19 @@ int64_t get_file_handle_pos(uint64_t handle) {
   auto kernel = g_kernel_manager->get_kernel_object();
   WindowsHandleObject *h = resolve_handle(kernel, handle);
 
-  auto ptr = handle_get_pointer(h);
-  if (!ptr) {
-    return -1;
-  }
-
+  uint64_t ptr;
   int64_t file_pos = -1;
-  try {
-    auto file = g_process_manager->get_type(ptr, "_FILE_OBJECT");
-    file_pos = file["CurrentByteOffset"].get64();
-  } catch (std::runtime_error const &) {
-    // runtime_error is raised when a virtual memory read fails
-    // it's the equiv of (-1 == panda_virtual_memory_rw(...))
+  if (h != nullptr && (ptr = handle_get_pointer(h))) {
+    try {
+      auto file = g_process_manager->get_type(ptr, "_FILE_OBJECT");
+      file_pos = file["CurrentByteOffset"].get64();
+    } catch (std::runtime_error const &) {
+      // runtime_error is raised when a virtual memory read fails
+      // it's the equiv of (-1 == panda_virtual_memory_rw(...))
+    }
   }
 
+  free_handle(h);
   return file_pos;
 }
 
@@ -217,17 +220,22 @@ char *get_cwd(void) {
     params = peb("ProcessParameters");
   }
 
-  auto dir = osi::ustring(params["CurrentDirectory"]);
-  std::string path = dir.as_utf8();
+  auto dospath = osi::ustring(params["CurrentDirectory"]["DosPath"]);
+  std::string path = dospath.as_utf8();
   return strdup(path.c_str());
 }
 
 char *get_handle_name(uint64_t handle) {
   auto kernel = g_kernel_manager->get_kernel_object();
   WindowsHandleObject *h = resolve_handle(kernel, handle);
+  if (!h)
+    return strdup("unknown");
 
-  auto name = extract_handle_name(h);
-  return strdup(name.c_str());
+  auto tmp = extract_handle_name(h);
+  char *name = strdup(tmp.c_str());
+
+  free_handle(h);
+  return name;
 }
 
 /* ******************************************************************

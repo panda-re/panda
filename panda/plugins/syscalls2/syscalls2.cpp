@@ -1059,7 +1059,7 @@ bool init_plugin(void *self) {
             std::cerr << PANDA_MSG "using profile for windows sp3 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWS_XPSP3_X86];
         }
-        if (0 == strcmp(panda_os_variant, "7")) {
+        if (0 == strncmp(panda_os_variant, "7", 1)) {
             std::cerr << PANDA_MSG "using profile for windows 7 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWS_7_X86];
         }
