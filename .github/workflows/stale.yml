@@ -16,7 +16,8 @@ jobs:
     - uses: actions/stale@v3
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
-        stale-issue-message: 'Stale issue message'
-        stale-pr-message: 'Stale pull request message'
+        days-before-close: 30
+        stale-issue-message: 'This issue has gone stale! If you believe it is still a problem, please comment on this issue or it will be closed in 30 days'
+        stale-pr-message: 'This PR has gone stale! If you are still intersted in merging it, please merge, comment or push new code, otherwise the PR will be closed in 30 days'
         stale-issue-label: 'no-issue-activity'
         stale-pr-label: 'no-pr-activity'
