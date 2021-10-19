@@ -61,7 +61,7 @@ class BasicBlockCount(PandaPlugin):
             return """<html>
             <body>
                 <p>
-                    Basic Block Count: <span id="bb_count">""" + self.bb_count +  """</span>
+                    Basic Block Count: <span id="bb_count">""" + str(self.bb_count) +  """</span>
                 </p>
             </body>
             </html>"""

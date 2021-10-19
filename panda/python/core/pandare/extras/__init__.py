@@ -10,6 +10,8 @@ from .fileHook import FileHook
 from .ioctlFaker import IoctlFaker
 from .modeFilter import ModeFilter
 from .procWriteCapture import ProcWriteCapture
+from .snake import PandaPlugin, Snake
 
 
-__all__ = ['FakeFile', 'FileFaker', 'FileHook', 'IoctlFaker', 'ModeFilter', 'ProcWriteCapture']
+__all__ = ['FakeFile', 'FileFaker', 'FileHook', 'IoctlFaker', 'ModeFilter', 'ProcWriteCapture',
+           'PandaPlugin', 'Snake']
