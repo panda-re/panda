@@ -162,6 +162,8 @@ void panda_disas(FILE *out, void *code, unsigned long size) {
 
 // regular expressions used to validate the -os option
 const char * valid_os_re[] = {
+    "windows[-_]32[-_]xpsp[23]",
+    "windows[-_]32[-_]2000",
     "windows[-_]32[-_]7sp[01]",
     "windows[-_]64[-_]7sp[01]",
     "linux[-_]32[-_].+",

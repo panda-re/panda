@@ -73,8 +73,13 @@ std::unique_ptr<WindowsProcessManager> g_process_manager;
 bool g_update_task;
 
 static std::map<std::string, uint64_t> system_asid_lookup = {
-    {"windows-32-7sp1", 0x185000},
-    {"windows-64-7sp1", 0x187000},
+  {"windows-32-2000", 0x0}, // TO-DO
+  {"windows-32-xpsp2", 0x39000},
+  {"windows-32-xpsp3", 0x39000},
+  {"windows-32-7sp0", 0x185000},
+  {"windows-64-7sp0", 0x187000},
+  {"windows-32-7sp1", 0x185000},
+  {"windows-64-7sp1", 0x187000},
 };
 
 /* ******************************************************************
