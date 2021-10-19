@@ -219,7 +219,7 @@ bool init_plugin(void *self)
     std::string hook_filter_arg = panda_parse_string_opt(args.get(),
         "hook_filter", "", "hook_filter");
     if ("" != hook_filter_arg) {
-        auto dash_idx = pc_arg.find("-");
+        auto dash_idx = hook_filter_arg.find("-");
         if (std::string::npos == dash_idx) {
             log_message("Could not parse \"hook_filter\" argument. Format: <Pass PC>-<Block PC>");
             return false;
