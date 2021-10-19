@@ -230,7 +230,7 @@ bool init_plugin(void *self)
             log_message("Hook Filter = [" TARGET_FMT_lx ", " TARGET_FMT_lx "]", pass_pc, block_pc);
             mb.with_hook_filter(pass_pc, block_pc);
         } catch (std::invalid_argument& e) {
-            log_message("Could not parse hook filter argument: %s", pc_arg.c_str());
+            log_message("Could not parse hook filter argument: %s", hook_filter_arg.c_str());
             return false;
         } catch (std::overflow_error& e) {
             log_message("Hook filter outside of valid address space for target.");
