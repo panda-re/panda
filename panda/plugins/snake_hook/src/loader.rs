@@ -116,6 +116,12 @@ pub(crate) fn initialize_pyplugins(args: Args) {
                     // inject the 'PandaPlugin' type into execution before running the module
                     plugin.PandaPlugin = 'panda_plugin
 
+                    // A script may import the normal PandaPlugin class from pandare.extras
+                    // but we need to overwrite that with the rust PandaPlugin class in order
+                    // for all our snake_hook stuff to work.
+                    import pandare.extras
+                    pandare.extras.PandaPlugin = 'panda_plugin
+
                     // run the module so any types can be declared
                     spec.loader.exec_module(plugin)
                 });
