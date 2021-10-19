@@ -2334,7 +2334,7 @@ class Panda():
         self.run_monitor_cmd("delvm {}".format(snapshot_name))
 
     @blocking
-    def copy_to_guest(self, copy_directory, iso_name=None, absolute_paths=False, setup_script="setup.sh", timeout=None):
+    def copy_to_guest(self, copy_directory, iso_name=None, absolute_paths=False, setup_script="setup.sh", timeout=None, cd_drive="ide1-cd0"):
         '''
 
         Copy a directory from the host into the guest by
@@ -2377,7 +2377,7 @@ class Panda():
 
         # Tell panda to we insert the CD drive
         # TODO: the cd-drive name should be a config option, see the values in qcow.py
-        errs = self.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
+        errs = self.run_monitor_cmd("change {} \"{}\"".format(cd_drive, iso_name))
         if len(errs):
             warn(f"Warning encountered when connecting media to guest: {errs}")
 
