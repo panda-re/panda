@@ -1066,6 +1066,9 @@ class Panda():
     # PyPlugin helpers
     @property
     def pyplugin(self):
+        """
+        A reference to an auto-instantiated `pandare.pyplugin.PyPluginManager` class.
+        """
         if not hasattr(self, "_pyplugin_manager"):
             from .pyplugin import PyPluginManager
             self._pyplugin_manager = PyPluginManager(self)
