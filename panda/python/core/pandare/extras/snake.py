@@ -4,6 +4,7 @@
 Class to manage loading PyPANDA plugins of standard format
 which is compatable with the snake_hook plugin for CLI-panda
 """
+from pathlib import Path
 
 class PandaPlugin:
     def __init__(self, panda):
@@ -67,15 +68,52 @@ class Snake:
             self.app = Flask(__name__)
             self.blueprint = Blueprint
 
-    def register(self, pluginclass, args=None, name=None):
+    def load_plugin_class(self, plugin_file, class_name):
+        '''
+        Given a path to a python file which has a class that subclasses
+        PandaPlugin, set up the imports correctly such that we can
+        generate an uninstantiated instance of that class and return
+        that object.
+
+        Note you can also just add `from pandare.extras import PandaPlugin` to
+        the plugin file and then just import the class(es) you want and pass them
+        directly to snake.register()
+
+        This avoids the `NameError: name 'PandaPlugin' is not defined` which
+        you would get from directly doing `import [class_name] from [plugin_file]`
+        '''
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(plugin_file.split("/")[-1], plugin_file)
+        if spec is None:
+            raise ValueError(f"Unable to resolve plugin {plugin_file}")
+        plugin = importlib.util.module_from_spec(spec)
+        plugin.PandaPlugin = PandaPlugin
+        spec.loader.exec_module(plugin)
+        if not hasattr(plugin, class_name):
+            raise ValueError(f"Unable to find class {class_name} in {plugin_file}")
+        cls = getattr(plugin, class_name)
+        assert issubclass(cls, PandaPlugin), f"Class {class_name} does not subclass PandaPlugin"
+        return cls
+
+    def register(self, pluginclass, args=None, name=None, template_dir=None):
         '''
         Register a PyPANDA plugin  to run. It can later be unloaded
-        by using Snake.unregister(name). If name is unspecified, a
-        string representation of the class will be used instead
+        by using Snake.unregister(name).
+
+        pluginclass can either be an uninstantiated python class
+        or a tuple of (path_to_module.py, classname) where classname subclasses PandaPlugin
+
+        If name is unspecified, a string representation of the class will be used instead
         '''
 
         if args is None:
             args = {}
+
+        pluginpath = None
+        if isinstance(pluginclass, tuple):
+            pluginpath, clsname = pluginclass
+            pluginclass = self.load_plugin_class(pluginpath, clsname)
+
         # This is a little tricky - we can't just instantiate
         # an instance of the object- it may use self.get_arg
         # in its init method. To allow this behavior, we create
@@ -96,7 +134,18 @@ class Snake:
         # Setup webserver if necessary
         if self.flask:
             self.plugins[name].flask = self.app
-            bp = self.blueprint(name, __name__)
+
+            # If no template_dir was provided, try using ./templates in the dir of the plugin
+            # if we know it, otherwise ./templates
+            if template_dir is None:
+                if pluginpath is not None:
+                    template_dir = (Path(pluginpath).parent / "templates").absolute()
+                elif (Path(".") / "templates").exists():
+                    template_dir = (Path(".") / "templates").absolute()
+                else:
+                    print("Warning: snake couldn't find a template dir")
+
+            bp = self.blueprint(name, __name__, template_folder=template_dir)
             self.plugins[name].webserver_init(bp)
             self.app.register_blueprint(bp, url_prefix="/" + name)
 
