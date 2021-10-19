@@ -1,6 +1,6 @@
 # snake_hook
 
-A plugin for running pypanda scripts in a plugin-style architecture. Unlike traditional pypanda usage, this allows PANDA to drive python, rather than python driving PANDA. This allows for a higher level of uncoordinated composability than is possible from using pypanda itself.
+A compiled plugin for running [PyPlugins](../../..//docs/pyplugins.md) Unlike traditional pypanda usage, this allows PANDA to drive python, rather than python driving PANDA. This allows for a higher level of uncoordinated composability than is possible from using pypanda itself.
 
 ### Example Usage
 
@@ -18,29 +18,15 @@ panda-system-x86_64 -panda snake_hook:files=print_pcs.py:print_strings.py -nogra
 
 \*See 'passing arguments to plugins' for more info
 
-### Example Plugin
+### PyPlugins
 
-```py
-class TestPlugin(PandaPlugin):
-    def __init__(self, panda):
-        print("Initialized test plugin")
-        
-        @panda.cb_before_block_exec
-        def before_block(cpustate, transblock):
-            panda.unload_plugin("snake_hook")
-            print("snake_hook unloaded")
+See [docs/pyplugins.md](../../../docs/pyplugins.md) for examples and details of PyPlugins.
 
-    def __del__(self):
-        print("Uninitialized test plugin")
-```
-
-The anatomy of a pypanda plugin in its current form is one or more types which subclass `PandaPlugin` (`PandaPlugin` is a type that will already be in scope). The constructor takes a `panda` object, which is of type [pandare.Panda](https://docs.panda.re/panda.html#pandare.panda.Panda).
-
-From there, you can add hooks and declare initial state for your plugin. The destructor (`__del__`) is optional, but can be used to perform cleanup when `snake_hook` is unloaded.
+Note that when `snake_hook` is unloaded, it will call a destructor if you have defined one in your class.
 
 ### Flask Integration
 
-Example plugins can be found in the [pypanda-plugins](https://github.com/panda-re/pypanda-plugins) repository, [in the plugins folder](https://github.com/panda-re/pypanda-plugins/tree/main/plugins).
+Example PyPANDA Plugins can be found in the [pypanda-plugins](https://github.com/panda-re/pypanda-plugins) repository, [in the plugins folder](https://github.com/panda-re/pypanda-plugins/tree/main/plugins).
 
 Each plugin can host its own endpoints under `localhost:port/[plugin_name]` by means of declaring a `webpage_init(app)` then writing a flask application using `app` as normal. In order to mount all plugin-specifc routes under `/[plugin_name]/` the variable `app` is a [`Blueprint`](https://flask.palletsprojects.com/en/2.0.x/blueprints/). If you need access to the `Flask` object itself, use `self.flask` (`flask` is a member of the `PandaPlugin` class).
 
@@ -48,30 +34,14 @@ Note: `plugin_name` is the class name of the subclass of `PandaPlugin`. So a plu
 
 ```python
 class BasicBlockCount(PandaPlugin):
-    def __init__(self, panda):
-        self.bb_count = 0
-
-        @panda.cb_before_block_exec
-        def my_before_block_fn(_cpu, _trans):
-            self.bb_count += 1
-
-    def webserver_init(self, app):
-        @app.route("/")
-        def test_index():
-            return """<html>
-            <body>
-                <p>
-                    Basic Block Count: <span id="bb_count">""" + str(self.bb_count) +  """</span>
-                </p>
-            </body>
-            </html>"""
+    ...
 ```
 
 Will be mounted at `https://localhost:8080/BasicBlockCount` by default.
 
 ### Passing Arguments to Plugins
 
-Arguments passed to pypanda plugins take the form of `file_path.py|arg=value|bool_arg|arg2=val`, where `|` separates arguments, arguments themselves take the form of `key=value` (or for bool args, just `key` for true, alternatively '1', 'yes', 'y', and 'true' are all accepted as truthy).
+Arguments passed to pypanda plugins via `snake_hook` take the form of `file_path.py|arg=value|bool_arg|arg2=val`, where `|` separates arguments, arguments themselves take the form of `key=value` (or for bool args, just `key` for true, alternatively '1', 'yes', 'y', and 'true' are all accepted as truthy).
 
 #### API Docs
 
@@ -79,8 +49,7 @@ Arguments passed to pypanda plugins take the form of `file_path.py|arg=value|boo
   * `get_arg(name)` - returns either the argument as a string or `None` if the argument wasn't passed (arguments passed in bool form instead of key/value form will also return `None`)
   * `get_arg_bool(name)` - returns `True` if the argument is truthy (either by passing the argument with no value, or with a value of any of the following: '1', 'yes', 'y', 'true'), otherwise returns `False`
 
-#### Example
-
+#### Snake_hook examples
 ```py
 class TestPlugin(PandaPlugin):
     def __init__(self, panda):

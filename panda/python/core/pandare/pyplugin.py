@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Class to manage loading Panda PyPlugins. Compatable with the snake_hook plugin for CLI-panda
+Class to manage loading Panda PyPlugins. See docs/pyplugins.md for details.
 """
 from pathlib import Path
 from pandare import PandaPlugin
@@ -9,12 +9,9 @@ from pandare import PandaPlugin
 class PyPluginManager:
     def __init__(self, panda, flask=False, host='127.0.0.1', port=8080, silence_warning=False):
         '''
-        panda- a panda object
-        flask - a bool indicating whether to enable the flask server
-        port - a number (0-65535) indicating the port number to host the flask server at
-                (default: 8080)
-        host - host for flask server to listen on
+        Set up an instance of PyPluginManager.
         '''
+
         self.panda = panda
         self.plugins = {}
         self.silence_warning = silence_warning
@@ -30,11 +27,16 @@ class PyPluginManager:
             self.enable_flask(host, port)
 
     def enable_flask(self, host='127.0.0.1', port=8080):
+        '''
+        Enable flask mode for this instance of the PyPlugin manager. Registered PyPlugins
+        which support flask will be made available at the web interfaces.
+        '''
         if len(self.plugins) and not self.silence_warning:
             print("WARNING: You've previously registered some PyPlugins prior to enabling flask")
             print(f"Plugin(s) {self.plugins.keys()} will be unable to use flask")
 
         from flask import Flask, Blueprint
+        self.flask = True
         self.app = Flask(__name__)
         self.blueprint = Blueprint
         self.host = host
@@ -52,7 +54,7 @@ class PyPluginManager:
 
         Note you can also just add `from pandare import PandaPlugin` to
         the plugin file and then just import the class(es) you want and pass them
-        directly to snake.register()
+        directly to panda.pyplugin.register()
 
         This avoids the `NameError: name 'PandaPlugin' is not defined` which
         you would get from directly doing `import [class_name] from [plugin_file]`
@@ -73,7 +75,7 @@ class PyPluginManager:
     def register(self, pluginclass, args=None, name=None, template_dir=None):
         '''
         Register a PyPANDA plugin  to run. It can later be unloaded
-        by using Snake.unregister(name).
+        by using panda.pyplugin.unregister(name).
 
         pluginclass can either be an uninstantiated python class
         or a tuple of (path_to_module.py, classname) where classname subclasses PandaPlugin.
@@ -118,7 +120,7 @@ class PyPluginManager:
                 elif (Path(".") / "templates").exists():
                     template_dir = (Path(".") / "templates").absolute()
                 else:
-                    print("Warning: snake couldn't find a template dir")
+                    print("Warning: pyplugin couldn't find a template dir")
 
             bp = self.blueprint(name, __name__, template_folder=template_dir)
             self.plugins[name].webserver_init(bp)
