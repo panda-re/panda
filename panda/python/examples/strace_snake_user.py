@@ -6,14 +6,13 @@ Run with: python3 pypanda_plugin_user.py
 '''
 
 from pandare import Panda
-from pandare.extras import PandaPlugin, Snake
 from sys import argv
 from strace import Strace
 
 arch = argv[1] if len(argv) > 1 else "i386"
 panda = Panda(generic=arch)
 
-Snake(panda).register(Strace)
+panda.pyplugin.register(Strace)
 
 @panda.queue_blocking
 def revert():

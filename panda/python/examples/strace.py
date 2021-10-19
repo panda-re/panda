@@ -3,7 +3,7 @@ This is an example of building a pypanda plugin class to do analysis with PANDA.
 how it's used look at pypanda_plugin_user.py
 '''
 
-from pandare.extras import PandaPlugin
+from pandare import PandaPlugin
 
 class Strace(PandaPlugin):
     def enter_cb(self, syscall_name, fname_ptr_pos, **kwargs):

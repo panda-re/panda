@@ -1,50 +1,13 @@
 #!/usr/bin/env python3
 
 """
-Class to manage loading PyPANDA plugins of standard format
-which is compatable with the snake_hook plugin for CLI-panda
+Class to manage loading Panda PyPlugins. Compatable with the snake_hook plugin for CLI-panda
 """
 from pathlib import Path
+from pandare import PandaPlugin
 
-class PandaPlugin:
-    def __init__(self, panda):
-        '''
-        Base class which PyPANDA plugins should inherit. Subclasses may
-        register callbacks using the provided panda object and use
-        PandaPlugin.get_args or PandaPlugin.get_arg_bool to check argument
-        values (note these helpers should be accessed with `self.get_...`).
-
-        This PyPANDA extra aims to mirror the snake_hook (rust) plugin
-        so a single PyPANDA plugin can be used from both pure PyPANDA (with this class)
-        or from CLI panda with snake_hook.
-
-        For more information, read the snake_hook documentation
-        '''
-        pass
-
-    def __preinit__(self, args):
-        self.args = args
-
-    def get_arg(self, arg_name):
-        '''
-        returns either the argument as a string or None if the argument
-        wasn't passed (arguments passed in bool form (i.e., set but with no value)
-        instead of key/value form will also return None).
-        '''
-        if arg_name in self.args:
-            return self.args[arg_name]
-
-        return None
-
-    def get_arg_bool(self, arg_name):
-        '''
-        returns True if the argument is True
-        '''
-        return arg_name in self.args and self.args[arg_name]==True
-
-
-class Snake:
-    def __init__(self, panda, flask=False, port=8080, host='127.0.0.1'):
+class PyPluginManager:
+    def __init__(self, panda, flask=False, host='127.0.0.1', port=8080, silence_warning=False):
         '''
         panda- a panda object
         flask - a bool indicating whether to enable the flask server
@@ -54,28 +17,40 @@ class Snake:
         '''
         self.panda = panda
         self.plugins = {}
+        self.silence_warning = silence_warning
 
-        # Flask specific vars
         self.flask = flask
-        self.port = port
-        self.host=host
+        self.port  = None
+        self.host  = None
+        self.app   = None
+        self.blueprint    = None
         self.flask_thread = None
-        self.app = None
-        self.blueprint = None
 
         if self.flask:
-            from flask import Flask, Blueprint
-            self.app = Flask(__name__)
-            self.blueprint = Blueprint
+            self.enable_flask(host, port)
+
+    def enable_flask(self, host='127.0.0.1', port=8080):
+        if len(self.plugins) and not self.silence_warning:
+            print("WARNING: You've previously registered some PyPlugins prior to enabling flask")
+            print(f"Plugin(s) {self.plugins.keys()} will be unable to use flask")
+
+        from flask import Flask, Blueprint
+        self.app = Flask(__name__)
+        self.blueprint = Blueprint
+        self.host = host
+        self.port = port
 
     def load_plugin_class(self, plugin_file, class_name):
         '''
+        For backwards compatability with PyPlugins which subclass
+        PandaPlugin without importing it.
+
         Given a path to a python file which has a class that subclasses
         PandaPlugin, set up the imports correctly such that we can
         generate an uninstantiated instance of that class and return
         that object.
 
-        Note you can also just add `from pandare.extras import PandaPlugin` to
+        Note you can also just add `from pandare import PandaPlugin` to
         the plugin file and then just import the class(es) you want and pass them
         directly to snake.register()
 
@@ -101,7 +76,7 @@ class Snake:
         by using Snake.unregister(name).
 
         pluginclass can either be an uninstantiated python class
-        or a tuple of (path_to_module.py, classname) where classname subclasses PandaPlugin
+        or a tuple of (path_to_module.py, classname) where classname subclasses PandaPlugin.
 
         If name is unspecified, a string representation of the class will be used instead
         '''
@@ -167,12 +142,14 @@ class Snake:
         self.flask_thread.start() # TODO: shut down more gracefully?
 
     def _do_serve(self):
-        print("Started thread")
         assert(self.flask)
 
         @self.app.route("/")
         def index():
-            return "PANDA web server"
+            return "PANDA PyPlugin web interface. Available plugins:" + "<br\>".join( \
+                    [f"<li><a href='/{name}'>{name}</a></li>" \
+                            for name in self.plugins.keys() \
+                            if hasattr(self.plugins[name], 'flask')])
 
         self.app.run(host=self.host, port=self.port)
 
@@ -209,14 +186,13 @@ if __name__ == '__main__':
         def __del__(self):
             global _test_deleted
             _test_deleted = True
-    s = Snake(panda)
-    s.register(TestPlugin, {'path': '/foo', 'should_print_hello': False,
-                                            'should_print_hello2': True})
+    panda.pyplugin.register(TestPlugin, {'path': '/foo', 'should_print_hello': False,
+                                                         'should_print_hello2': True})
     @panda.queue_blocking
     def driver():
         panda.revert_sync("root")
         assert(panda.run_serial_cmd("whoami") == 'root'), "Bad guest behavior"
-        s.unregister(TestPlugin)
+        panda.pyplugin.unregister(TestPlugin)
         panda.end_analysis()
 
     panda.run()
