@@ -203,6 +203,9 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     ffi.cdef("typedef uint"+str(bits)+"_t target_ulong;")
     ffi.cdef("typedef int"+str(bits)+"_t target_long;")
 
+    # For direct access to -d logging flags
+    ffi.cdef("extern int qemu_loglevel;")
+
     # PPP Headers
     # Syscalls - load architecture-specific headers
     if arch == "i386":
