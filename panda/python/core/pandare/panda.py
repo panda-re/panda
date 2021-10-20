@@ -1063,6 +1063,19 @@ class Panda():
             self.queue_async(f)
         return f
 
+    # PyPlugin helpers
+    @property
+    def pyplugin(self):
+        """
+        A reference to an auto-instantiated `pandare.pyplugin.PyPluginManager` class.
+        """
+        if not hasattr(self, "_pyplugin_manager"):
+            from .pyplugin import PyPluginManager
+            self._pyplugin_manager = PyPluginManager(self)
+        return self._pyplugin_manager
+
+
+
 
     ########################## LIBPANDA FUNCTIONS ########################
     # Methods that directly pass data to/from PANDA with no extra logic beyond argument reformatting.

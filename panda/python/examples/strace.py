@@ -3,7 +3,9 @@ This is an example of building a pypanda plugin class to do analysis with PANDA.
 how it's used look at pypanda_plugin_user.py
 '''
 
-class Strace:
+from pandare import PandaPlugin
+
+class Strace(PandaPlugin):
     def enter_cb(self, syscall_name, fname_ptr_pos, **kwargs):
         cpu=kwargs['args'][0]
         pcu=kwargs['args'][1]

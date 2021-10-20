@@ -12,4 +12,5 @@ from .modeFilter import ModeFilter
 from .procWriteCapture import ProcWriteCapture
 
 
-__all__ = ['FakeFile', 'FileFaker', 'FileHook', 'IoctlFaker', 'ModeFilter', 'ProcWriteCapture']
+__all__ = ['FakeFile', 'FileFaker', 'FileHook', 'IoctlFaker', 'ModeFilter', 'ProcWriteCapture',
+           'PandaPlugin', 'Snake']
