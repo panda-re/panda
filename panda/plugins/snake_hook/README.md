@@ -1,6 +1,6 @@
 # snake_hook
 
-A compiled plugin for running [PyPlugins](../../..//docs/pyplugins.md) Unlike traditional pypanda usage, this allows PANDA to drive python, rather than python driving PANDA. This allows for a higher level of uncoordinated composability than is possible from using pypanda itself.
+A compiled plugin for running [PyPlugins](/panda/docs/pyplugins.md) Unlike traditional pypanda usage, this allows PANDA to drive python, rather than python driving PANDA. This allows for a higher level of uncoordinated composability than is possible from using pypanda itself.
 
 ### Example Usage
 
@@ -20,7 +20,7 @@ panda-system-x86_64 -panda snake_hook:files=print_pcs.py:print_strings.py -nogra
 
 ### PyPlugins
 
-See [docs/pyplugins.md](../../../docs/pyplugins.md) for examples and details of PyPlugins.
+See [docs/pyplugins.md](/panda/docs/pyplugins.md) for examples and details of PyPlugins.
 
 Note that when `snake_hook` is unloaded, it will call a destructor if you have defined one in your class.
 
