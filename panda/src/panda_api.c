@@ -291,8 +291,10 @@ void _panda_set_library_mode(const bool b) {
 
 // Raise a page fault on address, then return execution to retaddr
 void panda_page_fault(CPUState* cpu, target_ulong address, target_ulong retaddr) {
+  // Update the CPUArchstate so the PC is the desired return address, then call
+  // tlb_fill. This ensures that we always go back to retaddr
 
-#ifdef TARGET_I386
+#if defined(TARGET_I386) //|| defined(TARGET_X86_64)
     CPUX86State *env = cpu->env_ptr;
 
     // We want to set up CPU state with x86_cpu_handle_mmu_fault
@@ -301,34 +303,16 @@ void panda_page_fault(CPUState* cpu, target_ulong address, target_ulong retaddr)
     // instead of restarting the block
     env->eip = retaddr;
     tlb_fill(cpu, address, MMU_DATA_LOAD, 0, retaddr);
+//#elif defined (TARGET_ARM)
+//    CPUARMState *env = cpu->env_ptr;
+//    env->pc = retaddr;
+//    tlb_fill(cpu, address, MMU_DATA_LOAD, 0, retaddr);
+
 #elif defined(TARGET_MIPS)
     CPUMIPSState *env = cpu->env_ptr;
-    CPUState *cs = CPU(mips_env_get_cpu(env));
-    int exception = 26; //26 is EXCP_TLBL. 27 is TLBS
-    int error_code = 1; // EXCP_TLB_NOMATCH;
-
-    env->CP0_BadVAddr = address;
-    env->CP0_Context = (env->CP0_Context & ~0x007fffff) |
-                       ((address >> 9) & 0x007ffff0);
-    target_ulong val = (env->CP0_EntryHi & env->CP0_EntryHi_ASID_mask) |
-                       (env->CP0_EntryHi & (1 << CP0EnHi_EHINV)) |
-                       (address & (TARGET_PAGE_MASK << 1));
-
-    // XXX skip panda callback here - unlike in mips/helper.c
-    env->CP0_EntryHi = val;
-
-#if defined(TARGET_MIPS64)
-    env->CP0_EntryHi &= env->SEGMask;
-    env->CP0_XContext =
-        /* PTEBase */   (env->CP0_XContext & ((~0ULL) << (env->SEGBITS - 7))) |
-        /* R */         (extract64(address, 62, 2) << (env->SEGBITS - 9)) |
-        /* BadVPN2 */   (extract64(address, 13, env->SEGBITS - 13) << 4);
-#endif
-    cs->exception_index = exception;
-    env->error_code = error_code;
-
-    // Break out of the current block so the fault can be handled, then return to our current addr
-    cpu_loop_exit_restore(cs, retaddr);
-
+    env->active_tc.PC = retaddr;
+    tlb_fill(cpu, address, MMU_DATA_LOAD, 0, retaddr);
+#else
+    printf("ERROR: Unsupported architecture for panda_page_fault\n");
 #endif
 }
