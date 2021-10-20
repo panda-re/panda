@@ -198,6 +198,10 @@ bool init_plugin(void *self)
             "log all records instead of just uniquely identified ones");
     log_message("log all records %s", PANDA_FLAG_STATUS(log_all_records));
 
+    bool summarize_records = panda_parse_bool_opt(args.get(), "summary",
+            "summarize coverage per program");
+    log_message("summarize coverage %s", PANDA_FLAG_STATUS(summarize_records));
+
     ModeBuilder mb(monitor_delegates);
 
     if ("" != process_name) {
@@ -213,6 +217,19 @@ bool init_plugin(void *self)
     if (start_disabled)
     {
         mb.with_start_disabled();
+    }
+
+    if (summarize_records) {
+        mb.with_summarize_results();
+
+        if (mode_arg != "osi-block") {
+            log_message("Running with summary requires mode to be \"osi-block\"");
+            return false;
+        }
+        if (log_all_records) {
+            log_message("full mode is pointless when running in summary mode- disabling");
+            log_all_records = false;
+        }
     }
 
     // Parse hook_filter argument.
@@ -257,6 +274,16 @@ bool init_plugin(void *self)
 
 void uninit_plugin(void *self)
 {
+    // Disable any running coverage monitors - this ensures we write results when running in summary
+    // mode and we close files when running in normal mode.
+    for (auto del : monitor_delegates) {
+        try {
+            del->handle_disable();
+        } catch (std::system_error& err) {
+            std::cerr << "Error disabling instrumentation: " << err.code().message() << "\n";
+        }
+    }
+
     inst_dels.clear();
     // if we don't clear tb's when this exits we have TBs which can call
     // into our exited plugin.
