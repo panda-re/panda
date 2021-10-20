@@ -8,12 +8,11 @@ OsiBlockCsvWriter::OsiBlockCsvWriter(const std::string &filename,
     bool _summarize_results, bool start_disabled)
 {
     os.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+    summarize_results = _summarize_results;
     if (!start_disabled) {
         os.open(filename);
         write_header();
     }
-
-    summarize_results = _summarize_results;
 }
 
 void OsiBlockCsvWriter::handle(OsiBlock record)
