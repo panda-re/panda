@@ -2,13 +2,12 @@ use inline_python::python;
 use once_cell::sync::OnceCell;
 use panda::prelude::*;
 use pyo3::prelude::*;
+use std::collections::HashMap;
 
 use std::ffi::{CStr, CString};
 use std::path::PathBuf;
-use std::sync::Mutex;
 
 mod loader;
-mod panda_plugin;
 mod plugin_path;
 mod py_unix_socket;
 
@@ -47,12 +46,11 @@ fn init(_: &mut PluginHandle) -> bool {
     let args = Args::from_panda_args();
     let plugin_self_path = plugin_path("snake_hook");
 
-    if !plugin_self_path.exists() {
-        panic!(
-            "[snake_hook] snake_hook not found at '{}'",
-            plugin_self_path.display()
-        );
-    }
+    assert!(
+        plugin_self_path.exists(),
+        "[snake_hook] snake_hook not found at '{}'",
+        plugin_self_path.display()
+    );
 
     // 'Reload' self in order to ensure this plugin is set as RTLD_GLOBAL, as this is necessary
     // in order to ensure Python can load native python libraries
@@ -78,25 +76,32 @@ fn init(_: &mut PluginHandle) -> bool {
     true
 }
 
-lazy_static::lazy_static! {
-    /// References to all the loaded plugins so they can be uninitialized
-    static ref PLUGINS: Mutex<Vec<Py<PyAny>>> = Mutex::new(Vec::new());
-}
-
 /// The global `Panda` object shared between plugins
 static PANDA_OBJ: OnceCell<PyObject> = OnceCell::new();
 
 #[panda::uninit]
 fn uninit(_: &mut panda::PluginHandle) {
     let panda_obj = PANDA_OBJ.get().unwrap();
-    let plugins = PLUGINS.lock().unwrap();
 
     // Run destructors for all plugins and clear all callbacks
-    let plugins = &*plugins;
     python! {
-        for plugin in 'plugins:
-            if callable(getattr(plugin, "__del__", None)):
-                plugin.__del__()
+        'panda_obj.pyplugins.unload_all()
         'panda_obj.delete_callbacks()
+    }
+}
+
+pub(crate) enum ArgValue {
+    Value(String),
+    NoValue,
+}
+
+pub(crate) type ArgMap = HashMap<String, ArgValue>;
+
+impl ToPyObject for ArgValue {
+    fn to_object(&self, py: Python<'_>) -> PyObject {
+        match self {
+            ArgValue::Value(value) => value.clone().to_object(py),
+            ArgValue::NoValue => true.to_object(py), // If no value, set it to True
+        }
     }
 }

@@ -12,7 +12,7 @@ from strace import Strace
 arch = argv[1] if len(argv) > 1 else "i386"
 panda = Panda(generic=arch)
 
-panda.pyplugin.register(Strace)
+panda.pyplugins.load(Strace)
 
 @panda.queue_blocking
 def revert():
