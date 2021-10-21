@@ -303,16 +303,21 @@ void panda_page_fault(CPUState* cpu, target_ulong address, target_ulong retaddr)
     // instead of restarting the block
     env->eip = retaddr;
     tlb_fill(cpu, address, MMU_DATA_LOAD, 0, retaddr);
-//#elif defined (TARGET_ARM)
-//    CPUARMState *env = cpu->env_ptr;
-//    env->pc = retaddr;
-//    tlb_fill(cpu, address, MMU_DATA_LOAD, 0, retaddr);
+#elif defined (TARGET_ARM)
+    CPUARMState *env = cpu->env_ptr;
+    if (is_a64(env)) {
+      env->pc = retaddr; // PC for aarch64
+    } else {
+      env->regs[15] = retaddr; // PC for arm32
+    }
+    tlb_fill(cpu, address, MMU_DATA_LOAD, 0, retaddr);
 
 #elif defined(TARGET_MIPS)
     CPUMIPSState *env = cpu->env_ptr;
     env->active_tc.PC = retaddr;
     tlb_fill(cpu, address, MMU_DATA_LOAD, 0, retaddr);
 #else
-    printf("ERROR: Unsupported architecture for panda_page_fault\n");
+    printf("\n\nnERROR: Unsupported architecture for panda_page_fault!!\n\n");
+    assert(0);
 #endif
 }
