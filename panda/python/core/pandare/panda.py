@@ -755,6 +755,10 @@ class Panda():
                 continue
             #self.disable_callback(name)
 
+        # Next, unload any pyplugins
+        if hasattr(self, "_pyplugin_manager"):
+            self.pyplugins.unload_all()
+
         # Then unload C plugins. May be unsafe to do except from the top of the main loop (taint segfaults otherwise)
         self.queue_main_loop_wait_fn(self.libpanda.panda_unload_plugins)
 
@@ -1073,16 +1077,14 @@ class Panda():
 
     # PyPlugin helpers
     @property
-    def pyplugin(self):
+    def pyplugins(self):
         """
         A reference to an auto-instantiated `pandare.pyplugin.PyPluginManager` class.
         """
         if not hasattr(self, "_pyplugin_manager"):
-            from .pyplugin import PyPluginManager
+            from .pypluginmanager import PyPluginManager
             self._pyplugin_manager = PyPluginManager(self)
         return self._pyplugin_manager
-
-
 
 
     ########################## LIBPANDA FUNCTIONS ########################
