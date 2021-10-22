@@ -94,6 +94,7 @@ class Panda():
         self.lambda_cnt = 0
         self.__sighandler = None
         self.ending = False # True during end_analysis
+        self.cdrom = None
         self.catch_exceptions=catch_exceptions
 
         self.serial_unconsumed_data = b''
@@ -112,6 +113,7 @@ class Panda():
             self.mem      = q.default_mem # Might clobber a specified argument, but required if you want snapshots
             self.qcow     = Qcows.get_qcow(generic)
             self.expect_prompt = q.prompt
+            self.cdrom    = q.cdrom
             if q.extra_args:
                 extra_args.extend(shlex_split(q.extra_args))
 
@@ -2356,7 +2358,7 @@ class Panda():
         self.run_monitor_cmd("delvm {}".format(snapshot_name))
 
     @blocking
-    def copy_to_guest(self, copy_directory, iso_name=None, absolute_paths=False, setup_script="setup.sh", timeout=None):
+    def copy_to_guest(self, copy_directory, iso_name=None, absolute_paths=False, setup_script="setup.sh", timeout=None, cdrom=None):
         '''
 
         Copy a directory from the host into the guest by
@@ -2399,7 +2401,15 @@ class Panda():
 
         # Tell panda to we insert the CD drive
         # TODO: the cd-drive name should be a config option, see the values in qcow.py
-        errs = self.run_monitor_cmd("change ide1-cd0 \"{}\"".format(iso_name))
+
+        cd_drive_name = cdrom
+        if cdrom is None:
+            if self.cdrom is not None:
+                cd_drive_name = self.cdrom
+            else:
+                cd_drive_name = "ide1-cd0"
+
+        errs = self.run_monitor_cmd("change {} \"{}\"".format(cd_drive_name, iso_name))
         if len(errs):
             warn(f"Warning encountered when connecting media to guest: {errs}")
 
@@ -2425,7 +2435,7 @@ class Panda():
             # Ensure we disconnect the CD drive after the mount + copy, even if it fails
             self.run_serial_cmd("umount /dev/cdrom") # This can fail and that's okay, we'll forece eject
             sleep(1)
-            errs = self.run_monitor_cmd("eject -f ide1-cd0")
+            errs = self.run_monitor_cmd(f"eject -f {cd_drive_name}")
             if len(errs):
                 warn(f"Warning encountered when disconnecting media from guest: {errs}")
 
