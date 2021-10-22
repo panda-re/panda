@@ -6,7 +6,7 @@
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
 // files in this directory that contain subsections like this one.
 
-typedef bool (*on_branch_t)(CPUState *env, TranslationBlock *tb, size_t branch_insn);
+PPP_CB_TYPEDEF(bool, on_branch, CPUState *env, TranslationBlock *tb, size_t branch_insn);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 

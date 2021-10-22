@@ -48,12 +48,20 @@ extern "C" { \
 void ppp_add_cb_##cb_name(cb_name##_t fptr) ;                \
 void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) ; \
 bool ppp_remove_cb_##cb_name(cb_name##_t fptr) ; \
+\
+void ppp_add_cb_##cb_name##_with_context(cb_name##_with_context_t fptr, void* context) ;                \
+void ppp_add_cb_##cb_name##_slot_with_context(cb_name##_with_context_t fptr, int slot_num, void* context) ; \
+bool ppp_remove_cb_##cb_name##_with_context(cb_name##_with_context_t fptr, void* context) ; \
 }
 #else
 #define PPP_PROT_REG_CB(cb_name) \
 void ppp_add_cb_##cb_name(cb_name##_t fptr) ;                \
 void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) ; \
-bool ppp_remove_cb_##cb_name(cb_name##_t fptr) ;
+bool ppp_remove_cb_##cb_name(cb_name##_t fptr) ;\
+\
+void ppp_add_cb_##cb_name##_with_context(cb_name##_with_context_t fptr, void* context) ;                \
+void ppp_add_cb_##cb_name##_slot_with_context(cb_name##_with_context_t fptr, int slot_num, void* context) ; \
+bool ppp_remove_cb_##cb_name##_with_context(cb_name##_with_context_t fptr, void* context) ;
 #endif
 
 /*
@@ -67,39 +75,86 @@ bool ppp_remove_cb_##cb_name(cb_name##_t fptr) ;
   as there isnt any attempt, here, to detect if you leave a slot empty
 */
 
-#define PPP_CB_BOILERPLATE(cb_name)                                \
-cb_name##_t ppp_##cb_name##_cb[PPP_MAX_CB];                        \
-int ppp_##cb_name##_num_cb = 0;                                    \
-                                                                   \
-void ppp_add_cb_##cb_name(cb_name##_t fptr) {                      \
-  assert (ppp_##cb_name##_num_cb < PPP_MAX_CB);                    \
-  ppp_##cb_name##_cb[ppp_##cb_name##_num_cb] = fptr;               \
-  ppp_##cb_name##_num_cb += 1;                                     \
-}                                                                  \
-                                                                   \
-void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) { \
-  assert (slot_num < PPP_MAX_CB);                                  \
-  ppp_##cb_name##_cb[slot_num] = fptr;                             \
-  ppp_##cb_name##_num_cb = MAX(slot_num, ppp_##cb_name##_num_cb);  \
-}                                                                  \
-bool ppp_remove_cb_##cb_name(cb_name##_t fptr) {                   \
-  int i = 0;                                                       \
-  bool found = false;                                              \
-  for (; i<MIN(PPP_MAX_CB,ppp_##cb_name##_num_cb); i++){           \
-    if (!found && fptr == ppp_##cb_name##_cb[i]) {                 \
-        found = true;                                              \
-        ppp_##cb_name##_num_cb--;                                  \
-    }                                                              \
-    if (found && i < PPP_MAX_CB -2 ){                              \
-        ppp_##cb_name##_cb[i] = ppp_##cb_name##_cb[i+1];           \
-    }                                                              \
-  }                                                                \
-  return found;                                                    \
+#define PPP_CB_BOILERPLATE(cb_name)                                               \
+cb_name##_t ppp_##cb_name##_cb[PPP_MAX_CB];                                       \
+int ppp_##cb_name##_num_cb = 0;                                                   \
+                                                                                  \
+void ppp_add_cb_##cb_name(cb_name##_t fptr) {                                     \
+  assert (ppp_##cb_name##_num_cb < PPP_MAX_CB);                                   \
+  ppp_##cb_name##_cb[ppp_##cb_name##_num_cb] = fptr;                              \
+  ppp_##cb_name##_num_cb += 1;                                                    \
+}                                                                                 \
+                                                                                  \
+void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) {                \
+  assert (slot_num < PPP_MAX_CB);                                                 \
+  ppp_##cb_name##_cb[slot_num] = fptr;                                            \
+  ppp_##cb_name##_num_cb = MAX(slot_num, ppp_##cb_name##_num_cb);                 \
+}                                                                                 \
+bool ppp_remove_cb_##cb_name(cb_name##_t fptr) {                                  \
+  int i = 0;                                                                      \
+  bool found = false;                                                             \
+  for (; i<MIN(PPP_MAX_CB,ppp_##cb_name##_num_cb); i++){                          \
+    if (!found && fptr == ppp_##cb_name##_cb[i]) {                                \
+        found = true;                                                             \
+        ppp_##cb_name##_num_cb--;                                                 \
+    }                                                                             \
+    if (found && i < PPP_MAX_CB -2 ){                                             \
+        ppp_##cb_name##_cb[i] = ppp_##cb_name##_cb[i+1];                          \
+    }                                                                             \
+  }                                                                               \
+  return found;                                                                   \
+}                                                                                 \
+cb_name##_with_context_t ppp_##cb_name##_cb_with_context[PPP_MAX_CB];             \
+void* ppp_##cb_name##_cb_context[PPP_MAX_CB];                                     \
+int ppp_##cb_name##_num_cb_with_context = 0;                                      \
+                                                                                  \
+void ppp_add_cb_##cb_name##_with_context(                                           \
+    cb_name##_with_context_t fptr,                                                \
+    void* context                                                                 \
+) {                                                                               \
+  assert (ppp_##cb_name##_num_cb_with_context < PPP_MAX_CB);                      \
+  ppp_##cb_name##_cb_with_context[ppp_##cb_name##_num_cb_with_context] = fptr;    \
+  ppp_##cb_name##_cb_context[ppp_##cb_name##_num_cb_with_context] = context;      \
+  ppp_##cb_name##_num_cb_with_context += 1;                                       \
+}                                                                                 \
+                                                                                  \
+void ppp_add_cb_##cb_name##_slot_with_context(                                    \
+    cb_name##_with_context_t fptr, int slot_num, void* context                    \
+) {                                                                               \
+  assert (slot_num < PPP_MAX_CB);                                                 \
+  ppp_##cb_name##_cb_with_context[slot_num] = fptr;                               \
+  ppp_##cb_name##_cb_context[slot_num] = context;                                 \
+  ppp_##cb_name##_num_cb_with_context = MAX(                                      \
+          slot_num, ppp_##cb_name##_num_cb_with_context                           \
+  );                                                                              \
+}                                                                                 \
+bool ppp_remove_cb_##cb_name##_with_context(                                        \
+    cb_name##_with_context_t fptr, void* context                                  \
+) {                                                                               \
+  int i = 0;                                                                      \
+  bool found = false;                                                             \
+  for (; i<MIN(PPP_MAX_CB,ppp_##cb_name##_num_cb_with_context); i++){             \
+    if (                                                                          \
+        !found && fptr == ppp_##cb_name##_cb_with_context[i]                      \
+        && ppp_##cb_name##_cb_context[i] == context                               \
+    ) {                                                                           \
+        found = true;                                                             \
+        ppp_##cb_name##_num_cb_with_context--;                                    \
+    }                                                                             \
+    if (found && i < PPP_MAX_CB -2 ){                                             \
+        ppp_##cb_name##_cb_with_context[i] = ppp_##cb_name##_cb_with_context[i+1];\
+        ppp_##cb_name##_cb_context[i] = ppp_##cb_name##_cb_context[i+1];          \
+    }                                                                             \
+  }                                                                               \
+  return found;                                                                   \
 }
 
 #define PPP_CB_EXTERN(cb_name) \
 extern cb_name##_t ppp_##cb_name##_cb[PPP_MAX_CB]; \
-extern int ppp_##cb_name##_num_cb;
+extern int ppp_##cb_name##_num_cb;\
+extern cb_name##_with_context_t ppp_##cb_name##_cb_with_context[PPP_MAX_CB]; \
+extern void* ppp_##cb_name##_cb_context[PPP_MAX_CB]; \
+extern int ppp_##cb_name##_num_cb_with_context;
 
 /*
   And employ this where you want the callback functions to be called 
@@ -111,6 +166,14 @@ extern int ppp_##cb_name##_num_cb;
     for (ppp_cb_ind = 0; ppp_cb_ind < ppp_##cb_name##_num_cb; ppp_cb_ind++) { \
       if (ppp_##cb_name##_cb[ppp_cb_ind] != NULL) {                           \
     ppp_##cb_name##_cb[ppp_cb_ind]( __VA_ARGS__ ) ;                           \
+      }                                                                       \
+    }                                                                         \
+    for (ppp_cb_ind = 0;                                                      \
+            ppp_cb_ind < ppp_##cb_name##_num_cb_with_context;                 \
+            ppp_cb_ind++) {                                                   \
+      if (ppp_##cb_name##_cb_with_context[ppp_cb_ind] != NULL) {              \
+        void* context = ppp_##cb_name##_cb_context[ppp_cb_ind];               \
+        ppp_##cb_name##_cb_with_context[ppp_cb_ind](context, __VA_ARGS__ ) ;  \
       }                                                                       \
     }                                                                         \
   }
@@ -128,7 +191,8 @@ extern int ppp_##cb_name##_num_cb;
     }                                                                         \
   }; if (__ret)
 
-#define PPP_CHECK_CB(cb_name) (ppp_##cb_name##_num_cb > 0)
+#define PPP_CHECK_CB(cb_name) \
+    ((ppp_##cb_name##_num_cb > 0) || (ppp_##cb_name##_num_cb_with_context > 0))
 
 /****************************************************************
 This stuff gets used in "plugin B", i.e., the plugin that wants
@@ -150,6 +214,20 @@ to add a callback to be run inside of plugin A.
     add_cb (cb_func);                                                                       \
   }
 
+#define PPP_REG_CB_WITH_CONTEXT(other_plugin, cb_name, cb_func, context)                    \
+  {                                                                                         \
+    dlerror();                                                                              \
+    void *op = panda_get_plugin_by_name(other_plugin);                                      \
+    if (!op) {                                                                              \
+      printf("In trying to add plugin callback, couldn't load %s plugin\n", other_plugin);  \
+      assert (op);                                                                          \
+    }                                                                                       \
+    void (*add_cb)(cb_name##_with_context_t fptr, void* context) = \
+      (void (*)(cb_name##_with_context_t, void*)) \
+      dlsym(op, "ppp_add_cb_" #cb_name "_with_context"); \
+    assert (add_cb != 0);                                                                   \
+    add_cb (cb_func, context);                                                                       \
+  }
 
 
 // Use to disable (delete) a ppp-callback
@@ -164,6 +242,20 @@ to add a callback to be run inside of plugin A.
     void (*rm_cb)(cb_name##_t fptr) = (void (*)(cb_name##_t)) dlsym(op, "ppp_remove_cb_" #cb_name); \
     assert (rm_cb != 0);                                                                            \
     rm_cb (cb_func);                                                                                \
+  }
+
+#define PPP_REMOVE_CB_WITH_CONTEXT(other_plugin, cb_name, cb_func, context)                         \
+  {                                                                                                 \
+    dlerror();                                                                                      \
+    void *op = panda_get_plugin_by_name(other_plugin);                                              \
+    if (!op) {                                                                                      \
+      printf("In trying to remove plugin callback, couldn't load %s plugin\n", other_plugin);       \
+      assert (op);                                                                                  \
+    }                                                                                               \
+    void (*rm_cb)(cb_name##_with_context_t fptr, void* context) = \
+      (void (*)(cb_name##_t, void*)) dlsym(op, "ppp_remove_cb_" #cb_name "_with_context"); \
+    assert (rm_cb != 0);                                                                            \
+    rm_cb (cb_func, context);                                                                                \
   }
 
 #endif // __PANDA_PLUGIN_PLUGIN_H_

@@ -9,7 +9,7 @@
 
 // the type for the ppp callback fn that can be passed to string search to be called
 // whenever a string match is observed
-typedef void (*on_ssm_t)(CPUState *env, target_ulong pc, target_ulong addr, uint8_t *matched_string,  uint32_t matched_string_length, bool is_write, bool in_memory);
+PPP_CB_TYPEDEF(void, on_ssm, CPUState *env, target_ulong pc, target_ulong addr, uint8_t *matched_string,  uint32_t matched_string_length, bool is_write, bool in_memory);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 #endif

@@ -7,7 +7,7 @@
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
 // files in this directory that contain subsections like this one.
 
-typedef void (*on_rec_auxv_t)(CPUState *env, TranslationBlock *tb, struct auxv_values * av);
+PPP_CB_TYPEDEF(void, on_rec_auxv, CPUState *env, TranslationBlock *tb, struct auxv_values * av);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 

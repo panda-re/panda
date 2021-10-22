@@ -18,12 +18,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 	switch (ctx->no) {
 		// 0 NTSTATUS NtAcceptConnectPort ['PHANDLE PortHandle', 'PVOID PortContext', 'PPORT_MESSAGE ConnectionRequest', 'BOOLEAN AcceptConnection', 'PPORT_VIEW ServerView', 'PREMOTE_PORT_VIEW ClientView']
 		case 0: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtAcceptConnectPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -36,14 +36,14 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 1 NTSTATUS NtAccessCheck ['PSECURITY_DESCRIPTOR SecurityDescriptor', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'PGENERIC_MAPPING GenericMapping', 'PPRIVILEGE_SET PrivilegeSet', 'PULONG PrivilegeSetLength', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus']
 		case 1: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
 			if (PPP_CHECK_CB(on_NtAccessCheck_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -58,17 +58,17 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 2 NTSTATUS NtAccessCheckAndAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'ACCESS_MASK DesiredAccess', 'PGENERIC_MAPPING GenericMapping', 'BOOLEAN ObjectCreation', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus', 'PBOOLEAN GenerateOnClose']
 		case 2: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
-			uint32_t arg10;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
+			uint32_t arg10 = 0;
 			if (PPP_CHECK_CB(on_NtAccessCheckAndAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -86,17 +86,17 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 3 NTSTATUS NtAccessCheckByType ['PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'PPRIVILEGE_SET PrivilegeSet', 'PULONG PrivilegeSetLength', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus']
 		case 3: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
-			uint32_t arg10;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
+			uint32_t arg10 = 0;
 			if (PPP_CHECK_CB(on_NtAccessCheckByType_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -114,22 +114,22 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 4 NTSTATUS NtAccessCheckByTypeAndAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'ACCESS_MASK DesiredAccess', 'AUDIT_EVENT_TYPE AuditType', 'ULONG Flags', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'BOOLEAN ObjectCreation', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus', 'PBOOLEAN GenerateOnClose']
 		case 4: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
-			uint32_t arg10;
-			uint32_t arg11;
-			uint32_t arg12;
-			uint32_t arg13;
-			uint32_t arg14;
-			uint32_t arg15;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
+			uint32_t arg10 = 0;
+			uint32_t arg11 = 0;
+			uint32_t arg12 = 0;
+			uint32_t arg13 = 0;
+			uint32_t arg14 = 0;
+			uint32_t arg15 = 0;
 			if (PPP_CHECK_CB(on_NtAccessCheckByTypeAndAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -152,17 +152,17 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 5 NTSTATUS NtAccessCheckByTypeResultList ['PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'PPRIVILEGE_SET PrivilegeSet', 'PULONG PrivilegeSetLength', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus']
 		case 5: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
-			uint32_t arg10;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
+			uint32_t arg10 = 0;
 			if (PPP_CHECK_CB(on_NtAccessCheckByTypeResultList_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -180,22 +180,22 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 6 NTSTATUS NtAccessCheckByTypeResultListAndAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'ACCESS_MASK DesiredAccess', 'AUDIT_EVENT_TYPE AuditType', 'ULONG Flags', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'BOOLEAN ObjectCreation', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus', 'PBOOLEAN GenerateOnClose']
 		case 6: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
-			uint32_t arg10;
-			uint32_t arg11;
-			uint32_t arg12;
-			uint32_t arg13;
-			uint32_t arg14;
-			uint32_t arg15;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
+			uint32_t arg10 = 0;
+			uint32_t arg11 = 0;
+			uint32_t arg12 = 0;
+			uint32_t arg13 = 0;
+			uint32_t arg14 = 0;
+			uint32_t arg15 = 0;
 			if (PPP_CHECK_CB(on_NtAccessCheckByTypeResultListAndAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -218,23 +218,23 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 7 NTSTATUS NtAccessCheckByTypeResultListAndAuditAlarmByHandle ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'HANDLE ClientToken', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'PSID PrincipalSelfSid', 'ACCESS_MASK DesiredAccess', 'AUDIT_EVENT_TYPE AuditType', 'ULONG Flags', 'POBJECT_TYPE_LIST ObjectTypeList', 'ULONG ObjectTypeListLength', 'PGENERIC_MAPPING GenericMapping', 'BOOLEAN ObjectCreation', 'PACCESS_MASK GrantedAccess', 'PNTSTATUS AccessStatus', 'PBOOLEAN GenerateOnClose']
 		case 7: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
-			uint32_t arg10;
-			uint32_t arg11;
-			uint32_t arg12;
-			uint32_t arg13;
-			uint32_t arg14;
-			uint32_t arg15;
-			uint32_t arg16;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
+			uint32_t arg10 = 0;
+			uint32_t arg11 = 0;
+			uint32_t arg12 = 0;
+			uint32_t arg13 = 0;
+			uint32_t arg14 = 0;
+			uint32_t arg15 = 0;
+			uint32_t arg16 = 0;
 			if (PPP_CHECK_CB(on_NtAccessCheckByTypeResultListAndAuditAlarmByHandle_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -258,9 +258,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 8 NTSTATUS NtAddAtom ['PWSTR AtomName', 'ULONG Length', 'PRTL_ATOM Atom']
 		case 8: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtAddAtom_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -270,12 +270,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 9 NTSTATUS NtAdjustGroupsToken ['HANDLE TokenHandle', 'BOOLEAN ResetToDefault', 'PTOKEN_GROUPS NewState', 'ULONG BufferLength', 'PTOKEN_GROUPS PreviousState', 'PULONG ReturnLength']
 		case 9: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtAdjustGroupsToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -288,12 +288,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 10 NTSTATUS NtAdjustPrivilegesToken ['HANDLE TokenHandle', 'BOOLEAN DisableAllPrivileges', 'PTOKEN_PRIVILEGES NewState', 'ULONG BufferLength', 'PTOKEN_PRIVILEGES PreviousState', 'PULONG ReturnLength']
 		case 10: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtAdjustPrivilegesToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -306,8 +306,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 11 NTSTATUS NtAlertResumeThread ['HANDLE ThreadHandle', 'PULONG PreviousSuspendCount']
 		case 11: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtAlertResumeThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -316,7 +316,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 12 NTSTATUS NtAlertThread ['HANDLE ThreadHandle']
 		case 12: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtAlertThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -324,7 +324,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 13 NTSTATUS NtAllocateLocallyUniqueId ['PLUID Luid']
 		case 13: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtAllocateLocallyUniqueId_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -332,9 +332,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 14 NTSTATUS NtAllocateUserPhysicalPages ['HANDLE ProcessHandle', 'PULONG_PTR NumberOfPages', 'PULONG_PTR UserPfnArray']
 		case 14: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtAllocateUserPhysicalPages_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -344,10 +344,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 15 NTSTATUS NtAllocateUuids ['PULARGE_INTEGER Time', 'PULONG Range', 'PULONG Sequence', 'PCHAR Seed']
 		case 15: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtAllocateUuids_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -358,12 +358,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 16 NTSTATUS NtAllocateVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'ULONG_PTR ZeroBits', 'PSIZE_T RegionSize', 'ULONG AllocationType', 'ULONG Protect']
 		case 16: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtAllocateVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -376,8 +376,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 17 NTSTATUS NtAreMappedFilesTheSame ['PVOID File1MappedAsAnImage', 'PVOID File2MappedAsFile']
 		case 17: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtAreMappedFilesTheSame_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -386,8 +386,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 18 NTSTATUS NtAssignProcessToJobObject ['HANDLE JobHandle', 'HANDLE ProcessHandle']
 		case 18: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtAssignProcessToJobObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -396,9 +396,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 19 NTSTATUS NtCallbackReturn ['PVOID OutputBuffer', 'ULONG OutputLength', 'NTSTATUS Status']
 		case 19: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtCallbackReturn_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -408,8 +408,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 20 NTSTATUS NtCancelIoFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock']
 		case 20: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtCancelIoFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -418,8 +418,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 21 NTSTATUS NtCancelTimer ['HANDLE TimerHandle', 'PBOOLEAN CurrentState']
 		case 21: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtCancelTimer_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -428,7 +428,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 23 NTSTATUS NtClearEvent ['HANDLE EventHandle']
 		case 23: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtClearEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -436,7 +436,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 24 NTSTATUS NtClose ['HANDLE Handle']
 		case 24: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtClose_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -444,9 +444,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 25 NTSTATUS NtCloseObjectAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'BOOLEAN GenerateOnClose']
 		case 25: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtCloseObjectAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -456,7 +456,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 26 NTSTATUS NtCompleteConnectPort ['HANDLE PortHandle']
 		case 26: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtCompleteConnectPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -464,14 +464,14 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 27 NTSTATUS NtConnectPort ['PHANDLE PortHandle', 'PUNICODE_STRING PortName', 'PSECURITY_QUALITY_OF_SERVICE SecurityQos', 'PPORT_VIEW ClientView', 'PREMOTE_PORT_VIEW ServerView', 'PULONG MaxMessageLength', 'PVOID ConnectionInformation', 'PULONG ConnectionInformationLength']
 		case 27: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
 			if (PPP_CHECK_CB(on_NtConnectPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -486,8 +486,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 28 NTSTATUS NtContinue ['PCONTEXT ContextRecord', 'BOOLEAN TestAlert']
 		case 28: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtContinue_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -496,9 +496,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 29 NTSTATUS NtCreateDirectoryObject ['PHANDLE DirectoryHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 		case 29: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtCreateDirectoryObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -508,11 +508,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 30 NTSTATUS NtCreateEvent ['PHANDLE EventHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'EVENT_TYPE EventType', 'BOOLEAN InitialState']
 		case 30: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtCreateEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -524,9 +524,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 31 NTSTATUS NtCreateEventPair ['PHANDLE EventPairHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 		case 31: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtCreateEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -536,17 +536,17 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 32 NTSTATUS NtCreateFile ['PHANDLE FileHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PIO_STATUS_BLOCK IoStatusBlock', 'PLARGE_INTEGER AllocationSize', 'ULONG FileAttributes', 'ULONG ShareAccess', 'ULONG CreateDisposition', 'ULONG CreateOptions', 'PVOID EaBuffer', 'ULONG EaLength']
 		case 32: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
-			uint32_t arg10;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
+			uint32_t arg10 = 0;
 			if (PPP_CHECK_CB(on_NtCreateFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -564,10 +564,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 33 NTSTATUS NtCreateIoCompletion ['PHANDLE IoCompletionHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'ULONG Count']
 		case 33: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtCreateIoCompletion_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -578,9 +578,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 34 NTSTATUS NtCreateJobObject ['PHANDLE JobHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 		case 34: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtCreateJobObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -590,13 +590,13 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 35 NTSTATUS NtCreateKey ['PHANDLE KeyHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'ULONG TitleIndex', 'PUNICODE_STRING Class', 'ULONG CreateOptions', 'PULONG Disposition']
 		case 35: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
 			if (PPP_CHECK_CB(on_NtCreateKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -610,14 +610,14 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 36 NTSTATUS NtCreateMailslotFile ['PHANDLE FileHandle', 'ULONG DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG CreateOptions', 'ULONG MailslotQuota', 'ULONG MaximumMessageSize', 'PLARGE_INTEGER ReadTimeout']
 		case 36: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
 			if (PPP_CHECK_CB(on_NtCreateMailslotFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -632,10 +632,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 37 NTSTATUS NtCreateMutant ['PHANDLE MutantHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'BOOLEAN InitialOwner']
 		case 37: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtCreateMutant_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -646,20 +646,20 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 38 NTSTATUS NtCreateNamedPipeFile ['PHANDLE FileHandle', 'ULONG DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG ShareAccess', 'ULONG CreateDisposition', 'ULONG CreateOptions', 'ULONG NamedPipeType', 'ULONG ReadMode', 'ULONG CompletionMode', 'ULONG MaximumInstances', 'ULONG InboundQuota', 'ULONG OutboundQuota', 'PLARGE_INTEGER DefaultTimeout']
 		case 38: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
-			uint32_t arg10;
-			uint32_t arg11;
-			uint32_t arg12;
-			uint32_t arg13;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
+			uint32_t arg10 = 0;
+			uint32_t arg11 = 0;
+			uint32_t arg12 = 0;
+			uint32_t arg13 = 0;
 			if (PPP_CHECK_CB(on_NtCreateNamedPipeFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -680,10 +680,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 39 NTSTATUS NtCreatePagingFile ['PUNICODE_STRING PageFileName', 'PLARGE_INTEGER MinimumSize', 'PLARGE_INTEGER MaximumSize', 'ULONG Priority']
 		case 39: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtCreatePagingFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -694,11 +694,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 40 NTSTATUS NtCreatePort ['PHANDLE PortHandle', 'POBJECT_ATTRIBUTES ObjectAttributes', 'ULONG MaxConnectionInfoLength', 'ULONG MaxMessageLength', 'ULONG MaxPoolUsage']
 		case 40: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtCreatePort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -710,14 +710,14 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 41 NTSTATUS NtCreateProcess ['PHANDLE ProcessHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'HANDLE ParentProcess', 'BOOLEAN InheritObjectTable', 'HANDLE SectionHandle', 'HANDLE DebugPort', 'HANDLE ExceptionPort']
 		case 41: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
 			if (PPP_CHECK_CB(on_NtCreateProcess_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -732,15 +732,15 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 42 NTSTATUS NtCreateProfile ['PHANDLE ProfileHandle', 'HANDLE Process', 'PVOID RangeBase', 'SIZE_T RangeSize', 'ULONG BucketSize', 'PULONG Buffer', 'ULONG BufferSize', 'KPROFILE_SOURCE ProfileSource', 'KAFFINITY Affinity']
 		case 42: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
 			if (PPP_CHECK_CB(on_NtCreateProfile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -756,13 +756,13 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 43 NTSTATUS NtCreateSection ['PHANDLE SectionHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PLARGE_INTEGER MaximumSize', 'ULONG SectionPageProtection', 'ULONG AllocationAttributes', 'HANDLE FileHandle']
 		case 43: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
 			if (PPP_CHECK_CB(on_NtCreateSection_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -776,11 +776,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 44 NTSTATUS NtCreateSemaphore ['PHANDLE SemaphoreHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'LONG InitialCount', 'LONG MaximumCount']
 		case 44: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			int32_t arg3;
-			int32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			int32_t arg3 = 0;
+			int32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtCreateSemaphore_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -792,10 +792,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 45 NTSTATUS NtCreateSymbolicLinkObject ['PHANDLE LinkHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PUNICODE_STRING LinkTarget']
 		case 45: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtCreateSymbolicLinkObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -806,14 +806,14 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 46 NTSTATUS NtCreateThread ['PHANDLE ThreadHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'HANDLE ProcessHandle', 'PCLIENT_ID ClientId', 'PCONTEXT ThreadContext', 'PINITIAL_TEB InitialTeb', 'BOOLEAN CreateSuspended']
 		case 46: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
 			if (PPP_CHECK_CB(on_NtCreateThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -828,10 +828,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 47 NTSTATUS NtCreateTimer ['PHANDLE TimerHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'TIMER_TYPE TimerType']
 		case 47: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtCreateTimer_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -842,19 +842,19 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 48 NTSTATUS NtCreateToken ['PHANDLE TokenHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'TOKEN_TYPE TokenType', 'PLUID AuthenticationId', 'PLARGE_INTEGER ExpirationTime', 'PTOKEN_USER User', 'PTOKEN_GROUPS Groups', 'PTOKEN_PRIVILEGES Privileges', 'PTOKEN_OWNER Owner', 'PTOKEN_PRIMARY_GROUP PrimaryGroup', 'PTOKEN_DEFAULT_DACL DefaultDacl', 'PTOKEN_SOURCE TokenSource']
 		case 48: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
-			uint32_t arg10;
-			uint32_t arg11;
-			uint32_t arg12;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
+			uint32_t arg10 = 0;
+			uint32_t arg11 = 0;
+			uint32_t arg12 = 0;
 			if (PPP_CHECK_CB(on_NtCreateToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -874,11 +874,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 49 NTSTATUS NtCreateWaitablePort ['PHANDLE PortHandle', 'POBJECT_ATTRIBUTES ObjectAttributes', 'ULONG MaxConnectionInfoLength', 'ULONG MaxMessageLength', 'ULONG MaxPoolUsage']
 		case 49: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtCreateWaitablePort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -890,8 +890,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 50 NTSTATUS NtDelayExecution ['BOOLEAN Alertable', 'PLARGE_INTEGER DelayInterval']
 		case 50: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtDelayExecution_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -900,7 +900,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 51 NTSTATUS NtDeleteAtom ['RTL_ATOM Atom']
 		case 51: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtDeleteAtom_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -908,7 +908,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 52 NTSTATUS NtDeleteFile ['POBJECT_ATTRIBUTES ObjectAttributes']
 		case 52: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtDeleteFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -916,7 +916,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 53 NTSTATUS NtDeleteKey ['HANDLE KeyHandle']
 		case 53: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtDeleteKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -924,9 +924,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 54 NTSTATUS NtDeleteObjectAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'BOOLEAN GenerateOnClose']
 		case 54: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtDeleteObjectAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -936,8 +936,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 55 NTSTATUS NtDeleteValueKey ['HANDLE KeyHandle', 'PUNICODE_STRING ValueName']
 		case 55: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtDeleteValueKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -946,16 +946,16 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 56 NTSTATUS NtDeviceIoControlFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG IoControlCode', 'PVOID InputBuffer', 'ULONG InputBufferLength', 'PVOID OutputBuffer', 'ULONG OutputBufferLength']
 		case 56: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
 			if (PPP_CHECK_CB(on_NtDeviceIoControlFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -972,7 +972,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 57 NTSTATUS NtDisplayString ['PUNICODE_STRING String']
 		case 57: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtDisplayString_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -980,13 +980,13 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 58 NTSTATUS NtDuplicateObject ['HANDLE SourceProcessHandle', 'HANDLE SourceHandle', 'HANDLE TargetProcessHandle', 'PHANDLE TargetHandle', 'ACCESS_MASK DesiredAccess', 'ULONG HandleAttributes', 'ULONG Options']
 		case 58: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
 			if (PPP_CHECK_CB(on_NtDuplicateObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1000,12 +1000,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 59 NTSTATUS NtDuplicateToken ['HANDLE ExistingTokenHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'BOOLEAN EffectiveOnly', 'TOKEN_TYPE TokenType', 'PHANDLE NewTokenHandle']
 		case 59: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtDuplicateToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1018,12 +1018,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 60 NTSTATUS NtEnumerateKey ['HANDLE KeyHandle', 'ULONG Index', 'KEY_INFORMATION_CLASS KeyInformationClass', 'PVOID KeyInformation', 'ULONG Length', 'PULONG ResultLength']
 		case 60: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtEnumerateKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1036,12 +1036,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 61 NTSTATUS NtEnumerateValueKey ['HANDLE KeyHandle', 'ULONG Index', 'KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass', 'PVOID KeyValueInformation', 'ULONG Length', 'PULONG ResultLength']
 		case 61: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtEnumerateValueKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1054,8 +1054,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 62 NTSTATUS NtExtendSection ['HANDLE SectionHandle', 'PLARGE_INTEGER NewSectionSize']
 		case 62: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtExtendSection_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1064,12 +1064,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 63 NTSTATUS NtFilterToken ['HANDLE ExistingTokenHandle', 'ULONG Flags', 'PTOKEN_GROUPS SidsToDisable', 'PTOKEN_PRIVILEGES PrivilegesToDelete', 'PTOKEN_GROUPS RestrictedSids', 'PHANDLE NewTokenHandle']
 		case 63: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtFilterToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1082,9 +1082,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 64 NTSTATUS NtFindAtom ['PWSTR AtomName', 'ULONG Length', 'PRTL_ATOM Atom']
 		case 64: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtFindAtom_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1094,8 +1094,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 65 NTSTATUS NtFlushBuffersFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock']
 		case 65: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtFlushBuffersFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1104,9 +1104,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 66 NTSTATUS NtFlushInstructionCache ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'SIZE_T Length']
 		case 66: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtFlushInstructionCache_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1116,7 +1116,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 67 NTSTATUS NtFlushKey ['HANDLE KeyHandle']
 		case 67: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtFlushKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -1124,10 +1124,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 68 NTSTATUS NtFlushVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'PIO_STATUS_BLOCK IoStatus']
 		case 68: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtFlushVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1144,9 +1144,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 70 NTSTATUS NtFreeUserPhysicalPages ['HANDLE ProcessHandle', 'PULONG_PTR NumberOfPages', 'PULONG_PTR UserPfnArray']
 		case 70: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtFreeUserPhysicalPages_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1156,10 +1156,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 71 NTSTATUS NtFreeVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'ULONG FreeType']
 		case 71: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtFreeVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1170,16 +1170,16 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 72 NTSTATUS NtFsControlFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG IoControlCode', 'PVOID InputBuffer', 'ULONG InputBufferLength', 'PVOID OutputBuffer', 'ULONG OutputBufferLength']
 		case 72: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
 			if (PPP_CHECK_CB(on_NtFsControlFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1196,8 +1196,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 73 NTSTATUS NtGetContextThread ['HANDLE ThreadHandle', 'PCONTEXT ThreadContext']
 		case 73: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtGetContextThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1206,8 +1206,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 74 NTSTATUS NtGetDevicePowerState ['HANDLE Device', 'DEVICE_POWER_STATE *State']
 		case 74: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtGetDevicePowerState_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1216,10 +1216,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 75 NTSTATUS NtGetPlugPlayEvent ['HANDLE EventHandle', 'PVOID Context', 'PPLUGPLAY_EVENT_BLOCK EventBlock', 'ULONG EventBufferSize']
 		case 75: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtGetPlugPlayEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1230,13 +1230,13 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 77 NTSTATUS NtGetWriteWatch ['HANDLE ProcessHandle', 'ULONG Flags', 'PVOID BaseAddress', 'SIZE_T RegionSize', 'PVOID *UserAddressArray', 'PULONG_PTR EntriesInUserAddressArray', 'PULONG Granularity']
 		case 77: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
 			if (PPP_CHECK_CB(on_NtGetWriteWatch_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1250,7 +1250,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 78 NTSTATUS NtImpersonateAnonymousToken ['HANDLE ThreadHandle']
 		case 78: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtImpersonateAnonymousToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -1258,8 +1258,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 79 NTSTATUS NtImpersonateClientOfPort ['HANDLE PortHandle', 'PPORT_MESSAGE Message']
 		case 79: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtImpersonateClientOfPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1268,9 +1268,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 80 NTSTATUS NtImpersonateThread ['HANDLE ServerThreadHandle', 'HANDLE ClientThreadHandle', 'PSECURITY_QUALITY_OF_SERVICE SecurityQos']
 		case 80: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtImpersonateThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1280,7 +1280,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 81 NTSTATUS NtInitializeRegistry ['USHORT BootCondition']
 		case 81: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtInitializeRegistry_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -1288,10 +1288,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 82 NTSTATUS NtInitiatePowerAction ['POWER_ACTION SystemAction', 'SYSTEM_POWER_STATE MinSystemState', 'ULONG Flags', 'BOOLEAN Asynchronous']
 		case 82: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtInitiatePowerAction_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1308,8 +1308,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 84 NTSTATUS NtListenPort ['HANDLE PortHandle', 'PPORT_MESSAGE ConnectionRequest']
 		case 84: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtListenPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1318,7 +1318,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 85 NTSTATUS NtLoadDriver ['PUNICODE_STRING DriverServiceName']
 		case 85: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtLoadDriver_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -1326,8 +1326,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 86 NTSTATUS NtLoadKey ['POBJECT_ATTRIBUTES TargetKey', 'POBJECT_ATTRIBUTES SourceFile']
 		case 86: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtLoadKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1336,9 +1336,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 87 NTSTATUS NtLoadKey2 ['POBJECT_ATTRIBUTES TargetKey', 'POBJECT_ATTRIBUTES SourceFile', 'ULONG Flags']
 		case 87: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtLoadKey2_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1348,16 +1348,16 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 88 NTSTATUS NtLockFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PLARGE_INTEGER ByteOffset', 'PLARGE_INTEGER Length', 'ULONG Key', 'BOOLEAN FailImmediately', 'BOOLEAN ExclusiveLock']
 		case 88: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
 			if (PPP_CHECK_CB(on_NtLockFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1374,10 +1374,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 89 NTSTATUS NtLockVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'ULONG MapType']
 		case 89: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtLockVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1388,7 +1388,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 90 NTSTATUS NtMakeTemporaryObject ['HANDLE Handle']
 		case 90: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtMakeTemporaryObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -1396,9 +1396,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 91 NTSTATUS NtMapUserPhysicalPages ['PVOID VirtualAddress', 'ULONG_PTR NumberOfPages', 'PULONG_PTR UserPfnArray']
 		case 91: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtMapUserPhysicalPages_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1408,9 +1408,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 92 NTSTATUS NtMapUserPhysicalPagesScatter ['PVOID *VirtualAddresses', 'ULONG_PTR NumberOfPages', 'PULONG_PTR UserPfnArray']
 		case 92: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtMapUserPhysicalPagesScatter_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1420,16 +1420,16 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 93 NTSTATUS NtMapViewOfSection ['HANDLE SectionHandle', 'HANDLE ProcessHandle', 'PVOID *BaseAddress', 'ULONG_PTR ZeroBits', 'SIZE_T CommitSize', 'PLARGE_INTEGER SectionOffset', 'PSIZE_T ViewSize', 'SECTION_INHERIT InheritDisposition', 'ULONG AllocationType', 'WIN32_PROTECTION_MASK Win32Protect']
 		case 93: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
 			if (PPP_CHECK_CB(on_NtMapViewOfSection_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1446,15 +1446,15 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 94 NTSTATUS NtNotifyChangeDirectoryFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'ULONG CompletionFilter', 'BOOLEAN WatchTree']
 		case 94: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
 			if (PPP_CHECK_CB(on_NtNotifyChangeDirectoryFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1470,16 +1470,16 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 95 NTSTATUS NtNotifyChangeKey ['HANDLE KeyHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG CompletionFilter', 'BOOLEAN WatchTree', 'PVOID Buffer', 'ULONG BufferSize', 'BOOLEAN Asynchronous']
 		case 95: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
 			if (PPP_CHECK_CB(on_NtNotifyChangeKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1496,18 +1496,18 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 96 NTSTATUS NtNotifyChangeMultipleKeys ['HANDLE MasterKeyHandle', 'ULONG Count', 'OBJECT_ATTRIBUTES SlaveObjects[]', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG CompletionFilter', 'BOOLEAN WatchTree', 'PVOID Buffer', 'ULONG BufferSize', 'BOOLEAN Asynchronous']
 		case 96: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
-			uint32_t arg10;
-			uint32_t arg11;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
+			uint32_t arg10 = 0;
+			uint32_t arg11 = 0;
 			if (PPP_CHECK_CB(on_NtNotifyChangeMultipleKeys_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1526,9 +1526,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 97 NTSTATUS NtOpenDirectoryObject ['PHANDLE DirectoryHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 		case 97: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtOpenDirectoryObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1538,9 +1538,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 98 NTSTATUS NtOpenEvent ['PHANDLE EventHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 		case 98: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtOpenEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1550,9 +1550,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 99 NTSTATUS NtOpenEventPair ['PHANDLE EventPairHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 		case 99: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtOpenEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1562,12 +1562,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 100 NTSTATUS NtOpenFile ['PHANDLE FileHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PIO_STATUS_BLOCK IoStatusBlock', 'ULONG ShareAccess', 'ULONG OpenOptions']
 		case 100: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtOpenFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1580,9 +1580,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 101 NTSTATUS NtOpenIoCompletion ['PHANDLE IoCompletionHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 		case 101: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtOpenIoCompletion_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1592,9 +1592,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 102 NTSTATUS NtOpenJobObject ['PHANDLE JobHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 		case 102: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtOpenJobObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1604,9 +1604,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 103 NTSTATUS NtOpenKey ['PHANDLE KeyHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 		case 103: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtOpenKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1616,9 +1616,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 104 NTSTATUS NtOpenMutant ['PHANDLE MutantHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 		case 104: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtOpenMutant_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1628,18 +1628,18 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 105 NTSTATUS NtOpenObjectAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'PUNICODE_STRING ObjectTypeName', 'PUNICODE_STRING ObjectName', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'ACCESS_MASK GrantedAccess', 'PPRIVILEGE_SET Privileges', 'BOOLEAN ObjectCreation', 'BOOLEAN AccessGranted', 'PBOOLEAN GenerateOnClose']
 		case 105: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
-			uint32_t arg10;
-			uint32_t arg11;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
+			uint32_t arg10 = 0;
+			uint32_t arg11 = 0;
 			if (PPP_CHECK_CB(on_NtOpenObjectAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1658,10 +1658,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 106 NTSTATUS NtOpenProcess ['PHANDLE ProcessHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PCLIENT_ID ClientId']
 		case 106: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtOpenProcess_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1672,9 +1672,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 107 NTSTATUS NtOpenProcessToken ['HANDLE ProcessHandle', 'ACCESS_MASK DesiredAccess', 'PHANDLE TokenHandle']
 		case 107: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtOpenProcessToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1684,9 +1684,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 108 NTSTATUS NtOpenSection ['PHANDLE SectionHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 		case 108: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtOpenSection_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1696,9 +1696,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 109 NTSTATUS NtOpenSemaphore ['PHANDLE SemaphoreHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 		case 109: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtOpenSemaphore_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1708,9 +1708,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 110 NTSTATUS NtOpenSymbolicLinkObject ['PHANDLE LinkHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 		case 110: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtOpenSymbolicLinkObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1720,10 +1720,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 111 NTSTATUS NtOpenThread ['PHANDLE ThreadHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes', 'PCLIENT_ID ClientId']
 		case 111: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtOpenThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1734,10 +1734,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 112 NTSTATUS NtOpenThreadToken ['HANDLE ThreadHandle', 'ACCESS_MASK DesiredAccess', 'BOOLEAN OpenAsSelf', 'PHANDLE TokenHandle']
 		case 112: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtOpenThreadToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1748,9 +1748,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 113 NTSTATUS NtOpenTimer ['PHANDLE TimerHandle', 'ACCESS_MASK DesiredAccess', 'POBJECT_ATTRIBUTES ObjectAttributes']
 		case 113: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtOpenTimer_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1760,9 +1760,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 114 NTSTATUS NtPlugPlayControl ['PLUGPLAY_CONTROL_CLASS PnPControlClass', 'PVOID PnPControlData', 'ULONG PnPControlDataLength']
 		case 114: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtPlugPlayControl_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1772,11 +1772,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 115 NTSTATUS NtPowerInformation ['POWER_INFORMATION_LEVEL InformationLevel', 'PVOID InputBuffer', 'ULONG InputBufferLength', 'PVOID OutputBuffer', 'ULONG OutputBufferLength']
 		case 115: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtPowerInformation_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1788,9 +1788,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 116 NTSTATUS NtPrivilegeCheck ['HANDLE ClientToken', 'PPRIVILEGE_SET RequiredPrivileges', 'PBOOLEAN Result']
 		case 116: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtPrivilegeCheck_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1800,11 +1800,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 117 NTSTATUS NtPrivilegedServiceAuditAlarm ['PUNICODE_STRING SubsystemName', 'PUNICODE_STRING ServiceName', 'HANDLE ClientToken', 'PPRIVILEGE_SET Privileges', 'BOOLEAN AccessGranted']
 		case 117: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtPrivilegedServiceAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1816,12 +1816,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 118 NTSTATUS NtPrivilegeObjectAuditAlarm ['PUNICODE_STRING SubsystemName', 'PVOID HandleId', 'HANDLE ClientToken', 'ACCESS_MASK DesiredAccess', 'PPRIVILEGE_SET Privileges', 'BOOLEAN AccessGranted']
 		case 118: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtPrivilegeObjectAuditAlarm_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1834,11 +1834,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 119 NTSTATUS NtProtectVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'WIN32_PROTECTION_MASK NewProtectWin32', 'PULONG OldProtect']
 		case 119: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtProtectVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1850,8 +1850,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 120 NTSTATUS NtPulseEvent ['HANDLE EventHandle', 'PLONG PreviousState']
 		case 120: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtPulseEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1860,11 +1860,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 121 NTSTATUS NtQueryInformationAtom ['RTL_ATOM Atom', 'ATOM_INFORMATION_CLASS InformationClass', 'PVOID AtomInformation', 'ULONG AtomInformationLength', 'PULONG ReturnLength']
 		case 121: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueryInformationAtom_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1876,8 +1876,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 122 NTSTATUS NtQueryAttributesFile ['POBJECT_ATTRIBUTES ObjectAttributes', 'PFILE_BASIC_INFORMATION FileInformation']
 		case 122: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtQueryAttributesFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1886,8 +1886,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 123 NTSTATUS NtQueryDefaultLocale ['BOOLEAN UserProfile', 'PLCID DefaultLocaleId']
 		case 123: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtQueryDefaultLocale_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1896,7 +1896,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 124 NTSTATUS NtQueryDefaultUILanguage ['LANGID *DefaultUILanguageId']
 		case 124: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtQueryDefaultUILanguage_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -1904,17 +1904,17 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 125 NTSTATUS NtQueryDirectoryFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FileInformation', 'ULONG Length', 'FILE_INFORMATION_CLASS FileInformationClass', 'BOOLEAN ReturnSingleEntry', 'PUNICODE_STRING FileName', 'BOOLEAN RestartScan']
 		case 125: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
-			uint32_t arg9;
-			uint32_t arg10;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
+			uint32_t arg9 = 0;
+			uint32_t arg10 = 0;
 			if (PPP_CHECK_CB(on_NtQueryDirectoryFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1932,13 +1932,13 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 126 NTSTATUS NtQueryDirectoryObject ['HANDLE DirectoryHandle', 'PVOID Buffer', 'ULONG Length', 'BOOLEAN ReturnSingleEntry', 'BOOLEAN RestartScan', 'PULONG Context', 'PULONG ReturnLength']
 		case 126: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
 			if (PPP_CHECK_CB(on_NtQueryDirectoryObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1952,15 +1952,15 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 127 NTSTATUS NtQueryEaFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'BOOLEAN ReturnSingleEntry', 'PVOID EaList', 'ULONG EaListLength', 'PULONG EaIndex', 'BOOLEAN RestartScan']
 		case 127: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
 			if (PPP_CHECK_CB(on_NtQueryEaFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1976,11 +1976,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 128 NTSTATUS NtQueryEvent ['HANDLE EventHandle', 'EVENT_INFORMATION_CLASS EventInformationClass', 'PVOID EventInformation', 'ULONG EventInformationLength', 'PULONG ReturnLength']
 		case 128: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueryEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -1992,8 +1992,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 129 NTSTATUS NtQueryFullAttributesFile ['POBJECT_ATTRIBUTES ObjectAttributes', 'PFILE_NETWORK_OPEN_INFORMATION FileInformation']
 		case 129: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtQueryFullAttributesFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2002,11 +2002,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 130 NTSTATUS NtQueryInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FileInformation', 'ULONG Length', 'FILE_INFORMATION_CLASS FileInformationClass']
 		case 130: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueryInformationFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2018,11 +2018,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 131 NTSTATUS NtQueryInformationJobObject ['HANDLE JobHandle', 'JOBOBJECTINFOCLASS JobObjectInformationClass', 'PVOID JobObjectInformation', 'ULONG JobObjectInformationLength', 'PULONG ReturnLength']
 		case 131: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueryInformationJobObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2034,11 +2034,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 132 NTSTATUS NtQueryIoCompletion ['HANDLE IoCompletionHandle', 'IO_COMPLETION_INFORMATION_CLASS IoCompletionInformationClass', 'PVOID IoCompletionInformation', 'ULONG IoCompletionInformationLength', 'PULONG ReturnLength']
 		case 132: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueryIoCompletion_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2050,11 +2050,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 133 NTSTATUS NtQueryInformationPort ['HANDLE PortHandle', 'PORT_INFORMATION_CLASS PortInformationClass', 'PVOID PortInformation', 'ULONG Length', 'PULONG ReturnLength']
 		case 133: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueryInformationPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2066,11 +2066,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 134 NTSTATUS NtQueryInformationProcess ['HANDLE ProcessHandle', 'PROCESSINFOCLASS ProcessInformationClass', 'PVOID ProcessInformation', 'ULONG ProcessInformationLength', 'PULONG ReturnLength']
 		case 134: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueryInformationProcess_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2082,11 +2082,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 135 NTSTATUS NtQueryInformationThread ['HANDLE ThreadHandle', 'THREADINFOCLASS ThreadInformationClass', 'PVOID ThreadInformation', 'ULONG ThreadInformationLength', 'PULONG ReturnLength']
 		case 135: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueryInformationThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2098,11 +2098,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 136 NTSTATUS NtQueryInformationToken ['HANDLE TokenHandle', 'TOKEN_INFORMATION_CLASS TokenInformationClass', 'PVOID TokenInformation', 'ULONG TokenInformationLength', 'PULONG ReturnLength']
 		case 136: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueryInformationToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2114,7 +2114,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 137 NTSTATUS NtQueryInstallUILanguage ['LANGID *InstallUILanguageId']
 		case 137: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtQueryInstallUILanguage_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -2122,8 +2122,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 138 NTSTATUS NtQueryIntervalProfile ['KPROFILE_SOURCE ProfileSource', 'PULONG Interval']
 		case 138: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtQueryIntervalProfile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2132,11 +2132,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 139 NTSTATUS NtQueryKey ['HANDLE KeyHandle', 'KEY_INFORMATION_CLASS KeyInformationClass', 'PVOID KeyInformation', 'ULONG Length', 'PULONG ResultLength']
 		case 139: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueryKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2148,12 +2148,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 140 NTSTATUS NtQueryMultipleValueKey ['HANDLE KeyHandle', 'PKEY_VALUE_ENTRY ValueEntries', 'ULONG EntryCount', 'PVOID ValueBuffer', 'PULONG BufferLength', 'PULONG RequiredBufferLength']
 		case 140: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtQueryMultipleValueKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2166,11 +2166,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 141 NTSTATUS NtQueryMutant ['HANDLE MutantHandle', 'MUTANT_INFORMATION_CLASS MutantInformationClass', 'PVOID MutantInformation', 'ULONG MutantInformationLength', 'PULONG ReturnLength']
 		case 141: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueryMutant_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2182,11 +2182,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 142 NTSTATUS NtQueryObject ['HANDLE Handle', 'OBJECT_INFORMATION_CLASS ObjectInformationClass', 'PVOID ObjectInformation', 'ULONG ObjectInformationLength', 'PULONG ReturnLength']
 		case 142: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueryObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2198,8 +2198,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 143 NTSTATUS NtQueryOpenSubKeys ['POBJECT_ATTRIBUTES TargetKey', 'PULONG HandleCount']
 		case 143: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtQueryOpenSubKeys_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2208,8 +2208,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 144 NTSTATUS NtQueryPerformanceCounter ['PLARGE_INTEGER PerformanceCounter', 'PLARGE_INTEGER PerformanceFrequency']
 		case 144: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtQueryPerformanceCounter_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2218,15 +2218,15 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 145 NTSTATUS NtQueryQuotaInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'BOOLEAN ReturnSingleEntry', 'PVOID SidList', 'ULONG SidListLength', 'PULONG StartSid', 'BOOLEAN RestartScan']
 		case 145: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
 			if (PPP_CHECK_CB(on_NtQueryQuotaInformationFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2242,11 +2242,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 146 NTSTATUS NtQuerySection ['HANDLE SectionHandle', 'SECTION_INFORMATION_CLASS SectionInformationClass', 'PVOID SectionInformation', 'SIZE_T SectionInformationLength', 'PSIZE_T ReturnLength']
 		case 146: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQuerySection_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2258,11 +2258,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 147 NTSTATUS NtQuerySecurityObject ['HANDLE Handle', 'SECURITY_INFORMATION SecurityInformation', 'PSECURITY_DESCRIPTOR SecurityDescriptor', 'ULONG Length', 'PULONG LengthNeeded']
 		case 147: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQuerySecurityObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2274,11 +2274,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 148 NTSTATUS NtQuerySemaphore ['HANDLE SemaphoreHandle', 'SEMAPHORE_INFORMATION_CLASS SemaphoreInformationClass', 'PVOID SemaphoreInformation', 'ULONG SemaphoreInformationLength', 'PULONG ReturnLength']
 		case 148: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQuerySemaphore_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2290,9 +2290,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 149 NTSTATUS NtQuerySymbolicLinkObject ['HANDLE LinkHandle', 'PUNICODE_STRING LinkTarget', 'PULONG ReturnedLength']
 		case 149: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtQuerySymbolicLinkObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2302,10 +2302,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 150 NTSTATUS NtQuerySystemEnvironmentValue ['PUNICODE_STRING VariableName', 'PWSTR VariableValue', 'USHORT ValueLength', 'PUSHORT ReturnLength']
 		case 150: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtQuerySystemEnvironmentValue_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2316,10 +2316,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 151 NTSTATUS NtQuerySystemInformation ['SYSTEM_INFORMATION_CLASS SystemInformationClass', 'PVOID SystemInformation', 'ULONG SystemInformationLength', 'PULONG ReturnLength']
 		case 151: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtQuerySystemInformation_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2330,7 +2330,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 152 NTSTATUS NtQuerySystemTime ['PLARGE_INTEGER SystemTime']
 		case 152: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtQuerySystemTime_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -2338,11 +2338,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 153 NTSTATUS NtQueryTimer ['HANDLE TimerHandle', 'TIMER_INFORMATION_CLASS TimerInformationClass', 'PVOID TimerInformation', 'ULONG TimerInformationLength', 'PULONG ReturnLength']
 		case 153: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueryTimer_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2354,9 +2354,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 154 NTSTATUS NtQueryTimerResolution ['PULONG MaximumTime', 'PULONG MinimumTime', 'PULONG CurrentTime']
 		case 154: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtQueryTimerResolution_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2366,12 +2366,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 155 NTSTATUS NtQueryValueKey ['HANDLE KeyHandle', 'PUNICODE_STRING ValueName', 'KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass', 'PVOID KeyValueInformation', 'ULONG Length', 'PULONG ResultLength']
 		case 155: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtQueryValueKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2384,12 +2384,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 156 NTSTATUS NtQueryVirtualMemory ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'MEMORY_INFORMATION_CLASS MemoryInformationClass', 'PVOID MemoryInformation', 'SIZE_T MemoryInformationLength', 'PSIZE_T ReturnLength']
 		case 156: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtQueryVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2402,11 +2402,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 157 NTSTATUS NtQueryVolumeInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FsInformation', 'ULONG Length', 'FS_INFORMATION_CLASS FsInformationClass']
 		case 157: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueryVolumeInformationFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2418,11 +2418,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 158 NTSTATUS NtQueueApcThread ['HANDLE ThreadHandle', 'PPS_APC_ROUTINE ApcRoutine', 'PVOID ApcArgument1', 'PVOID ApcArgument2', 'PVOID ApcArgument3']
 		case 158: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtQueueApcThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2434,9 +2434,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 159 NTSTATUS NtRaiseException ['PEXCEPTION_RECORD ExceptionRecord', 'PCONTEXT ContextRecord', 'BOOLEAN FirstChance']
 		case 159: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtRaiseException_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2446,12 +2446,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 160 NTSTATUS NtRaiseHardError ['NTSTATUS ErrorStatus', 'ULONG NumberOfParameters', 'ULONG UnicodeStringParameterMask', 'PULONG_PTR Parameters', 'ULONG ValidResponseOptions', 'PULONG Response']
 		case 160: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtRaiseHardError_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2464,15 +2464,15 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 161 NTSTATUS NtReadFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'PLARGE_INTEGER ByteOffset', 'PULONG Key']
 		case 161: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
 			if (PPP_CHECK_CB(on_NtReadFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2488,15 +2488,15 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 162 NTSTATUS NtReadFileScatter ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PFILE_SEGMENT_ELEMENT SegmentArray', 'ULONG Length', 'PLARGE_INTEGER ByteOffset', 'PULONG Key']
 		case 162: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
 			if (PPP_CHECK_CB(on_NtReadFileScatter_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2512,12 +2512,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 163 NTSTATUS NtReadRequestData ['HANDLE PortHandle', 'PPORT_MESSAGE Message', 'ULONG DataEntryIndex', 'PVOID Buffer', 'SIZE_T BufferSize', 'PSIZE_T NumberOfBytesRead']
 		case 163: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtReadRequestData_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2530,11 +2530,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 164 NTSTATUS NtReadVirtualMemory ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'PVOID Buffer', 'SIZE_T BufferSize', 'PSIZE_T NumberOfBytesRead']
 		case 164: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtReadVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2546,7 +2546,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 165 NTSTATUS NtRegisterThreadTerminatePort ['HANDLE PortHandle']
 		case 165: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtRegisterThreadTerminatePort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -2554,8 +2554,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 166 NTSTATUS NtReleaseMutant ['HANDLE MutantHandle', 'PLONG PreviousCount']
 		case 166: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtReleaseMutant_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2564,9 +2564,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 167 NTSTATUS NtReleaseSemaphore ['HANDLE SemaphoreHandle', 'LONG ReleaseCount', 'PLONG PreviousCount']
 		case 167: {
-			uint32_t arg0;
-			int32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			int32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtReleaseSemaphore_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(int32_t));
@@ -2576,11 +2576,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 168 NTSTATUS NtRemoveIoCompletion ['HANDLE IoCompletionHandle', 'PVOID *KeyContext', 'PVOID *ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PLARGE_INTEGER Timeout']
 		case 168: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtRemoveIoCompletion_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2592,9 +2592,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 169 NTSTATUS NtReplaceKey ['POBJECT_ATTRIBUTES NewFile', 'HANDLE TargetHandle', 'POBJECT_ATTRIBUTES OldFile']
 		case 169: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtReplaceKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2604,8 +2604,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 170 NTSTATUS NtReplyPort ['HANDLE PortHandle', 'PPORT_MESSAGE ReplyMessage']
 		case 170: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtReplyPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2614,10 +2614,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 171 NTSTATUS NtReplyWaitReceivePort ['HANDLE PortHandle', 'PVOID *PortContext', 'PPORT_MESSAGE ReplyMessage', 'PPORT_MESSAGE ReceiveMessage']
 		case 171: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtReplyWaitReceivePort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2628,11 +2628,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 172 NTSTATUS NtReplyWaitReceivePortEx ['HANDLE PortHandle', 'PVOID *PortContext', 'PPORT_MESSAGE ReplyMessage', 'PPORT_MESSAGE ReceiveMessage', 'PLARGE_INTEGER Timeout']
 		case 172: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtReplyWaitReceivePortEx_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2644,8 +2644,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 173 NTSTATUS NtReplyWaitReplyPort ['HANDLE PortHandle', 'PPORT_MESSAGE ReplyMessage']
 		case 173: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtReplyWaitReplyPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2654,8 +2654,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 175 NTSTATUS NtRequestPort ['HANDLE PortHandle', 'PPORT_MESSAGE RequestMessage']
 		case 175: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtRequestPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2664,9 +2664,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 176 NTSTATUS NtRequestWaitReplyPort ['HANDLE PortHandle', 'PPORT_MESSAGE RequestMessage', 'PPORT_MESSAGE ReplyMessage']
 		case 176: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtRequestWaitReplyPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2676,8 +2676,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 178 NTSTATUS NtResetEvent ['HANDLE EventHandle', 'PLONG PreviousState']
 		case 178: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtResetEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2686,9 +2686,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 179 NTSTATUS NtResetWriteWatch ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'SIZE_T RegionSize']
 		case 179: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtResetWriteWatch_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2698,9 +2698,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 180 NTSTATUS NtRestoreKey ['HANDLE KeyHandle', 'HANDLE FileHandle', 'ULONG Flags']
 		case 180: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtRestoreKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2710,8 +2710,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 181 NTSTATUS NtResumeThread ['HANDLE ThreadHandle', 'PULONG PreviousSuspendCount']
 		case 181: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtResumeThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2720,8 +2720,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 182 NTSTATUS NtSaveKey ['HANDLE KeyHandle', 'HANDLE FileHandle']
 		case 182: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtSaveKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2730,9 +2730,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 183 NTSTATUS NtSaveMergedKeys ['HANDLE HighPrecedenceKeyHandle', 'HANDLE LowPrecedenceKeyHandle', 'HANDLE FileHandle']
 		case 183: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtSaveMergedKeys_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2742,15 +2742,15 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 184 NTSTATUS NtSecureConnectPort ['PHANDLE PortHandle', 'PUNICODE_STRING PortName', 'PSECURITY_QUALITY_OF_SERVICE SecurityQos', 'PPORT_VIEW ClientView', 'PSID RequiredServerSid', 'PREMOTE_PORT_VIEW ServerView', 'PULONG MaxMessageLength', 'PVOID ConnectionInformation', 'PULONG ConnectionInformationLength']
 		case 184: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
 			if (PPP_CHECK_CB(on_NtSecureConnectPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2766,11 +2766,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 185 NTSTATUS NtSetIoCompletion ['HANDLE IoCompletionHandle', 'PVOID KeyContext', 'PVOID ApcContext', 'NTSTATUS IoStatus', 'ULONG_PTR IoStatusInformation']
 		case 185: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtSetIoCompletion_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2782,8 +2782,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 186 NTSTATUS NtSetContextThread ['HANDLE ThreadHandle', 'PCONTEXT ThreadContext']
 		case 186: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtSetContextThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2792,7 +2792,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 187 NTSTATUS NtSetDefaultHardErrorPort ['HANDLE DefaultHardErrorPort']
 		case 187: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtSetDefaultHardErrorPort_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -2800,8 +2800,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 188 NTSTATUS NtSetDefaultLocale ['BOOLEAN UserProfile', 'LCID DefaultLocaleId']
 		case 188: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtSetDefaultLocale_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2810,7 +2810,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 189 NTSTATUS NtSetDefaultUILanguage ['LANGID DefaultUILanguageId']
 		case 189: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtSetDefaultUILanguage_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -2818,10 +2818,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 190 NTSTATUS NtSetEaFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length']
 		case 190: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtSetEaFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2832,8 +2832,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 191 NTSTATUS NtSetEvent ['HANDLE EventHandle', 'PLONG PreviousState']
 		case 191: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtSetEvent_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2842,7 +2842,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 192 NTSTATUS NtSetHighEventPair ['HANDLE EventPairHandle']
 		case 192: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtSetHighEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -2850,7 +2850,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 193 NTSTATUS NtSetHighWaitLowEventPair ['HANDLE EventPairHandle']
 		case 193: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtSetHighWaitLowEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -2858,11 +2858,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 194 NTSTATUS NtSetInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FileInformation', 'ULONG Length', 'FILE_INFORMATION_CLASS FileInformationClass']
 		case 194: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtSetInformationFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2874,10 +2874,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 195 NTSTATUS NtSetInformationJobObject ['HANDLE JobHandle', 'JOBOBJECTINFOCLASS JobObjectInformationClass', 'PVOID JobObjectInformation', 'ULONG JobObjectInformationLength']
 		case 195: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtSetInformationJobObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2888,10 +2888,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 196 NTSTATUS NtSetInformationKey ['HANDLE KeyHandle', 'KEY_SET_INFORMATION_CLASS KeySetInformationClass', 'PVOID KeySetInformation', 'ULONG KeySetInformationLength']
 		case 196: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtSetInformationKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2902,10 +2902,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 197 NTSTATUS NtSetInformationObject ['HANDLE Handle', 'OBJECT_INFORMATION_CLASS ObjectInformationClass', 'PVOID ObjectInformation', 'ULONG ObjectInformationLength']
 		case 197: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtSetInformationObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2916,10 +2916,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 198 NTSTATUS NtSetInformationProcess ['HANDLE ProcessHandle', 'PROCESSINFOCLASS ProcessInformationClass', 'PVOID ProcessInformation', 'ULONG ProcessInformationLength']
 		case 198: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtSetInformationProcess_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2930,10 +2930,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 199 NTSTATUS NtSetInformationThread ['HANDLE ThreadHandle', 'THREADINFOCLASS ThreadInformationClass', 'PVOID ThreadInformation', 'ULONG ThreadInformationLength']
 		case 199: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtSetInformationThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2944,10 +2944,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 200 NTSTATUS NtSetInformationToken ['HANDLE TokenHandle', 'TOKEN_INFORMATION_CLASS TokenInformationClass', 'PVOID TokenInformation', 'ULONG TokenInformationLength']
 		case 200: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtSetInformationToken_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2958,8 +2958,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 201 NTSTATUS NtSetIntervalProfile ['ULONG Interval', 'KPROFILE_SOURCE Source']
 		case 201: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtSetIntervalProfile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2968,12 +2968,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 202 NTSTATUS NtSetLdtEntries ['ULONG Selector0', 'ULONG Entry0Low', 'ULONG Entry0Hi', 'ULONG Selector1', 'ULONG Entry1Low', 'ULONG Entry1Hi']
 		case 202: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtSetLdtEntries_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -2986,7 +2986,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 203 NTSTATUS NtSetLowEventPair ['HANDLE EventPairHandle']
 		case 203: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtSetLowEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -2994,7 +2994,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 204 NTSTATUS NtSetLowWaitHighEventPair ['HANDLE EventPairHandle']
 		case 204: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtSetLowWaitHighEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -3002,10 +3002,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 205 NTSTATUS NtSetQuotaInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length']
 		case 205: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtSetQuotaInformationFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3016,9 +3016,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 206 NTSTATUS NtSetSecurityObject ['HANDLE Handle', 'SECURITY_INFORMATION SecurityInformation', 'PSECURITY_DESCRIPTOR SecurityDescriptor']
 		case 206: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtSetSecurityObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3028,8 +3028,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 207 NTSTATUS NtSetSystemEnvironmentValue ['PUNICODE_STRING VariableName', 'PUNICODE_STRING VariableValue']
 		case 207: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtSetSystemEnvironmentValue_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3038,9 +3038,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 208 NTSTATUS NtSetSystemInformation ['SYSTEM_INFORMATION_CLASS SystemInformationClass', 'PVOID SystemInformation', 'ULONG SystemInformationLength']
 		case 208: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtSetSystemInformation_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3050,9 +3050,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 209 NTSTATUS NtSetSystemPowerState ['POWER_ACTION SystemAction', 'SYSTEM_POWER_STATE MinSystemState', 'ULONG Flags']
 		case 209: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtSetSystemPowerState_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3062,8 +3062,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 210 NTSTATUS NtSetSystemTime ['PLARGE_INTEGER SystemTime', 'PLARGE_INTEGER PreviousTime']
 		case 210: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtSetSystemTime_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3072,8 +3072,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 211 NTSTATUS NtSetThreadExecutionState ['EXECUTION_STATE esFlags', 'PEXECUTION_STATE PreviousFlags']
 		case 211: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtSetThreadExecutionState_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3082,13 +3082,13 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 212 NTSTATUS NtSetTimer ['HANDLE TimerHandle', 'PLARGE_INTEGER DueTime', 'PTIMER_APC_ROUTINE TimerApcRoutine', 'PVOID TimerContext', 'BOOLEAN WakeTimer', 'LONG Period', 'PBOOLEAN PreviousState']
 		case 212: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			int32_t arg5;
-			uint32_t arg6;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			int32_t arg5 = 0;
+			uint32_t arg6 = 0;
 			if (PPP_CHECK_CB(on_NtSetTimer_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3102,9 +3102,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 213 NTSTATUS NtSetTimerResolution ['ULONG DesiredTime', 'BOOLEAN SetResolution', 'PULONG ActualTime']
 		case 213: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtSetTimerResolution_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3114,7 +3114,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 214 NTSTATUS NtSetUuidSeed ['PCHAR Seed']
 		case 214: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtSetUuidSeed_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -3122,12 +3122,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 215 NTSTATUS NtSetValueKey ['HANDLE KeyHandle', 'PUNICODE_STRING ValueName', 'ULONG TitleIndex', 'ULONG Type', 'PVOID Data', 'ULONG DataSize']
 		case 215: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtSetValueKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3140,11 +3140,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 216 NTSTATUS NtSetVolumeInformationFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID FsInformation', 'ULONG Length', 'FS_INFORMATION_CLASS FsInformationClass']
 		case 216: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtSetVolumeInformationFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3156,7 +3156,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 217 NTSTATUS NtShutdownSystem ['SHUTDOWN_ACTION Action']
 		case 217: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtShutdownSystem_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -3164,10 +3164,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 218 NTSTATUS NtSignalAndWaitForSingleObject ['HANDLE SignalHandle', 'HANDLE WaitHandle', 'BOOLEAN Alertable', 'PLARGE_INTEGER Timeout']
 		case 218: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtSignalAndWaitForSingleObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3178,7 +3178,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 219 NTSTATUS NtStartProfile ['HANDLE ProfileHandle']
 		case 219: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtStartProfile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -3186,7 +3186,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 220 NTSTATUS NtStopProfile ['HANDLE ProfileHandle']
 		case 220: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtStopProfile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -3194,8 +3194,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 221 NTSTATUS NtSuspendThread ['HANDLE ThreadHandle', 'PULONG PreviousSuspendCount']
 		case 221: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtSuspendThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3204,12 +3204,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 222 NTSTATUS NtSystemDebugControl ['SYSDBG_COMMAND Command', 'PVOID InputBuffer', 'ULONG InputBufferLength', 'PVOID OutputBuffer', 'ULONG OutputBufferLength', 'PULONG ReturnLength']
 		case 222: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtSystemDebugControl_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3222,8 +3222,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 223 NTSTATUS NtTerminateJobObject ['HANDLE JobHandle', 'NTSTATUS ExitStatus']
 		case 223: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtTerminateJobObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3232,8 +3232,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 224 NTSTATUS NtTerminateProcess ['HANDLE ProcessHandle', 'NTSTATUS ExitStatus']
 		case 224: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtTerminateProcess_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3242,8 +3242,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 225 NTSTATUS NtTerminateThread ['HANDLE ThreadHandle', 'NTSTATUS ExitStatus']
 		case 225: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtTerminateThread_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3258,7 +3258,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 227 NTSTATUS NtUnloadDriver ['PUNICODE_STRING DriverServiceName']
 		case 227: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtUnloadDriver_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -3266,7 +3266,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 228 NTSTATUS NtUnloadKey ['POBJECT_ATTRIBUTES TargetKey']
 		case 228: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtUnloadKey_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -3274,11 +3274,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 229 NTSTATUS NtUnlockFile ['HANDLE FileHandle', 'PIO_STATUS_BLOCK IoStatusBlock', 'PLARGE_INTEGER ByteOffset', 'PLARGE_INTEGER Length', 'ULONG Key']
 		case 229: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtUnlockFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3290,10 +3290,10 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 230 NTSTATUS NtUnlockVirtualMemory ['HANDLE ProcessHandle', 'PVOID *BaseAddress', 'PSIZE_T RegionSize', 'ULONG MapType']
 		case 230: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
 			if (PPP_CHECK_CB(on_NtUnlockVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3304,8 +3304,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 231 NTSTATUS NtUnmapViewOfSection ['HANDLE ProcessHandle', 'PVOID BaseAddress']
 		case 231: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtUnmapViewOfSection_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3314,8 +3314,8 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 232 NTSTATUS NtVdmControl ['VDMSERVICECLASS Service', 'PVOID ServiceData']
 		case 232: {
-			uint32_t arg0;
-			uint32_t arg1;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
 			if (PPP_CHECK_CB(on_NtVdmControl_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3324,11 +3324,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 233 NTSTATUS NtWaitForMultipleObjects ['ULONG Count', 'HANDLE Handles[]', 'WAIT_TYPE WaitType', 'BOOLEAN Alertable', 'PLARGE_INTEGER Timeout']
 		case 233: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtWaitForMultipleObjects_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3340,9 +3340,9 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 234 NTSTATUS NtWaitForSingleObject ['HANDLE Handle', 'BOOLEAN Alertable', 'PLARGE_INTEGER Timeout']
 		case 234: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
 			if (PPP_CHECK_CB(on_NtWaitForSingleObject_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3352,7 +3352,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 235 NTSTATUS NtWaitHighEventPair ['HANDLE EventPairHandle']
 		case 235: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtWaitHighEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -3360,7 +3360,7 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 236 NTSTATUS NtWaitLowEventPair ['HANDLE EventPairHandle']
 		case 236: {
-			uint32_t arg0;
+			uint32_t arg0 = 0;
 			if (PPP_CHECK_CB(on_NtWaitLowEventPair_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 			}
@@ -3368,15 +3368,15 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 237 NTSTATUS NtWriteFile ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PVOID Buffer', 'ULONG Length', 'PLARGE_INTEGER ByteOffset', 'PULONG Key']
 		case 237: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
 			if (PPP_CHECK_CB(on_NtWriteFile_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3392,15 +3392,15 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 238 NTSTATUS NtWriteFileGather ['HANDLE FileHandle', 'HANDLE Event', 'PIO_APC_ROUTINE ApcRoutine', 'PVOID ApcContext', 'PIO_STATUS_BLOCK IoStatusBlock', 'PFILE_SEGMENT_ELEMENT SegmentArray', 'ULONG Length', 'PLARGE_INTEGER ByteOffset', 'PULONG Key']
 		case 238: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
-			uint32_t arg6;
-			uint32_t arg7;
-			uint32_t arg8;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
+			uint32_t arg6 = 0;
+			uint32_t arg7 = 0;
+			uint32_t arg8 = 0;
 			if (PPP_CHECK_CB(on_NtWriteFileGather_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3416,12 +3416,12 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 239 NTSTATUS NtWriteRequestData ['HANDLE PortHandle', 'PPORT_MESSAGE Message', 'ULONG DataEntryIndex', 'PVOID Buffer', 'SIZE_T BufferSize', 'PSIZE_T NumberOfBytesWritten']
 		case 239: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
-			uint32_t arg5;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
+			uint32_t arg5 = 0;
 			if (PPP_CHECK_CB(on_NtWriteRequestData_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
@@ -3434,11 +3434,11 @@ void syscall_return_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, cons
 		}; break;
 		// 240 NTSTATUS NtWriteVirtualMemory ['HANDLE ProcessHandle', 'PVOID BaseAddress', 'PVOID Buffer', 'SIZE_T BufferSize', 'PSIZE_T NumberOfBytesWritten']
 		case 240: {
-			uint32_t arg0;
-			uint32_t arg1;
-			uint32_t arg2;
-			uint32_t arg3;
-			uint32_t arg4;
+			uint32_t arg0 = 0;
+			uint32_t arg1 = 0;
+			uint32_t arg2 = 0;
+			uint32_t arg3 = 0;
+			uint32_t arg4 = 0;
 			if (PPP_CHECK_CB(on_NtWriteVirtualMemory_return) || PPP_CHECK_CB(on_all_sys_return2)) {
 				memcpy(&arg0, ctx->args[0], sizeof(uint32_t));
 				memcpy(&arg1, ctx->args[1], sizeof(uint32_t));
