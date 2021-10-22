@@ -198,6 +198,10 @@ bool init_plugin(void *self)
             "log all records instead of just uniquely identified ones");
     log_message("log all records %s", PANDA_FLAG_STATUS(log_all_records));
 
+    bool summarize_records = panda_parse_bool_opt(args.get(), "summary",
+            "summarize coverage per program");
+    log_message("summarize coverage %s", PANDA_FLAG_STATUS(summarize_records));
+
     ModeBuilder mb(monitor_delegates);
 
     if ("" != process_name) {
@@ -215,11 +219,24 @@ bool init_plugin(void *self)
         mb.with_start_disabled();
     }
 
+    if (summarize_records) {
+        mb.with_summarize_results();
+
+        if (mode_arg != "osi-block") {
+            log_message("Running with summary requires mode to be \"osi-block\"");
+            return false;
+        }
+        if (log_all_records) {
+            log_message("full mode is pointless when running in summary mode- disabling");
+            log_all_records = false;
+        }
+    }
+
     // Parse hook_filter argument.
     std::string hook_filter_arg = panda_parse_string_opt(args.get(),
         "hook_filter", "", "hook_filter");
     if ("" != hook_filter_arg) {
-        auto dash_idx = pc_arg.find("-");
+        auto dash_idx = hook_filter_arg.find("-");
         if (std::string::npos == dash_idx) {
             log_message("Could not parse \"hook_filter\" argument. Format: <Pass PC>-<Block PC>");
             return false;
@@ -230,7 +247,7 @@ bool init_plugin(void *self)
             log_message("Hook Filter = [" TARGET_FMT_lx ", " TARGET_FMT_lx "]", pass_pc, block_pc);
             mb.with_hook_filter(pass_pc, block_pc);
         } catch (std::invalid_argument& e) {
-            log_message("Could not parse hook filter argument: %s", pc_arg.c_str());
+            log_message("Could not parse hook filter argument: %s", hook_filter_arg.c_str());
             return false;
         } catch (std::overflow_error& e) {
             log_message("Hook filter outside of valid address space for target.");
@@ -257,6 +274,16 @@ bool init_plugin(void *self)
 
 void uninit_plugin(void *self)
 {
+    // Disable any running coverage monitors - this ensures we write results when running in summary
+    // mode and we close files when running in normal mode.
+    for (auto del : monitor_delegates) {
+        try {
+            del->handle_disable();
+        } catch (std::system_error& err) {
+            std::cerr << "Error disabling instrumentation: " << err.code().message() << "\n";
+        }
+    }
+
     inst_dels.clear();
     // if we don't clear tb's when this exits we have TBs which can call
     // into our exited plugin.

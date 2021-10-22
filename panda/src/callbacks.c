@@ -32,6 +32,7 @@ PANDAENDCOMMENT */
 
 #include "panda/common.h"
 #include "panda/rr/rr_api.h"
+#include "panda/callbacks/cb-trampolines.h"
 
 #define LIBRARY_DIR "/" TARGET_NAME "-softmmu/libpanda-" TARGET_NAME ".so"
 #define PLUGIN_DIR "/" TARGET_NAME "-softmmu/panda/plugins/"
@@ -418,6 +419,72 @@ void *panda_get_plugin_by_name(const char *plugin_name)
     return NULL;
 }
 
+#define CASE_CB_TRAMPOLINE(kind,name) \
+    case PANDA_CB_ ## kind: \
+        trampoline_cb. name = panda_cb_trampoline_ ## name; \
+        break;
+
+panda_cb_with_context panda_get_cb_trampoline(panda_cb_type type) {
+    panda_cb_with_context trampoline_cb;
+    switch (type) {
+        CASE_CB_TRAMPOLINE(BEFORE_BLOCK_TRANSLATE,before_block_translate)
+        CASE_CB_TRAMPOLINE(AFTER_BLOCK_TRANSLATE,after_block_translate)
+        CASE_CB_TRAMPOLINE(BEFORE_BLOCK_EXEC_INVALIDATE_OPT,before_block_exec_invalidate_opt)
+        CASE_CB_TRAMPOLINE(BEFORE_TCG_CODEGEN,before_tcg_codegen)
+        CASE_CB_TRAMPOLINE(BEFORE_BLOCK_EXEC,before_block_exec)
+        CASE_CB_TRAMPOLINE(AFTER_BLOCK_EXEC,after_block_exec)
+        CASE_CB_TRAMPOLINE(INSN_TRANSLATE,insn_translate)
+        CASE_CB_TRAMPOLINE(INSN_EXEC,insn_exec)
+        CASE_CB_TRAMPOLINE(AFTER_INSN_TRANSLATE,after_insn_translate)
+        CASE_CB_TRAMPOLINE(AFTER_INSN_EXEC,after_insn_exec)
+        CASE_CB_TRAMPOLINE(VIRT_MEM_BEFORE_READ,virt_mem_before_read)
+        CASE_CB_TRAMPOLINE(VIRT_MEM_BEFORE_WRITE,virt_mem_before_write)
+        CASE_CB_TRAMPOLINE(PHYS_MEM_BEFORE_READ,phys_mem_before_read)
+        CASE_CB_TRAMPOLINE(PHYS_MEM_BEFORE_WRITE,phys_mem_before_write)
+        CASE_CB_TRAMPOLINE(VIRT_MEM_AFTER_READ,virt_mem_after_read)
+        CASE_CB_TRAMPOLINE(VIRT_MEM_AFTER_WRITE,virt_mem_after_write)
+        CASE_CB_TRAMPOLINE(PHYS_MEM_AFTER_READ,phys_mem_after_read)
+        CASE_CB_TRAMPOLINE(PHYS_MEM_AFTER_WRITE,phys_mem_after_write)
+        CASE_CB_TRAMPOLINE(MMIO_AFTER_READ,mmio_after_read)
+        CASE_CB_TRAMPOLINE(MMIO_BEFORE_WRITE,mmio_before_write)
+        CASE_CB_TRAMPOLINE(HD_READ,hd_read)
+        CASE_CB_TRAMPOLINE(HD_WRITE,hd_write)
+        CASE_CB_TRAMPOLINE(GUEST_HYPERCALL,guest_hypercall)
+        CASE_CB_TRAMPOLINE(MONITOR,monitor)
+        CASE_CB_TRAMPOLINE(CPU_RESTORE_STATE,cpu_restore_state)
+
+        //CASE_CB_TRAMPOLINE(BEFORE_LOADVM,before_loadvm)
+        CASE_CB_TRAMPOLINE(ASID_CHANGED,asid_changed)
+        CASE_CB_TRAMPOLINE(REPLAY_HD_TRANSFER,replay_hd_transfer)
+        CASE_CB_TRAMPOLINE(REPLAY_NET_TRANSFER,replay_net_transfer)
+        CASE_CB_TRAMPOLINE(REPLAY_SERIAL_RECEIVE,replay_serial_receive)
+        CASE_CB_TRAMPOLINE(REPLAY_SERIAL_READ,replay_serial_read)
+        CASE_CB_TRAMPOLINE(REPLAY_SERIAL_SEND,replay_serial_send)
+        CASE_CB_TRAMPOLINE(REPLAY_SERIAL_WRITE,replay_serial_write)
+        CASE_CB_TRAMPOLINE(REPLAY_BEFORE_DMA,replay_before_dma)
+        CASE_CB_TRAMPOLINE(REPLAY_AFTER_DMA,replay_after_dma)
+        CASE_CB_TRAMPOLINE(REPLAY_HANDLE_PACKET,replay_handle_packet)
+        CASE_CB_TRAMPOLINE(AFTER_CPU_EXEC_ENTER,after_cpu_exec_enter)
+        CASE_CB_TRAMPOLINE(BEFORE_CPU_EXEC_EXIT,before_cpu_exec_exit)
+        CASE_CB_TRAMPOLINE(AFTER_MACHINE_INIT,after_machine_init)
+        CASE_CB_TRAMPOLINE(AFTER_LOADVM,after_loadvm)
+        CASE_CB_TRAMPOLINE(TOP_LOOP,top_loop)
+        CASE_CB_TRAMPOLINE(DURING_MACHINE_INIT,during_machine_init)
+        CASE_CB_TRAMPOLINE(MAIN_LOOP_WAIT,main_loop_wait)
+        CASE_CB_TRAMPOLINE(PRE_SHUTDOWN,pre_shutdown)
+        CASE_CB_TRAMPOLINE(UNASSIGNED_IO_READ,unassigned_io_read)
+        CASE_CB_TRAMPOLINE(UNASSIGNED_IO_WRITE,unassigned_io_write)
+        CASE_CB_TRAMPOLINE(BEFORE_HANDLE_EXCEPTION,before_handle_exception)
+        CASE_CB_TRAMPOLINE(BEFORE_HANDLE_INTERRUPT,before_handle_interrupt)
+        CASE_CB_TRAMPOLINE(START_BLOCK_EXEC,start_block_exec)
+        CASE_CB_TRAMPOLINE(END_BLOCK_EXEC,end_block_exec)
+
+        default: assert(false);
+    }
+
+    return trampoline_cb;
+}
+
 /**
  * @brief Adds callback to the tail of the callback list and enables it.
  *
@@ -429,12 +496,32 @@ void *panda_get_plugin_by_name(const char *plugin_name)
  */
 void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb)
 {
+    panda_cb_with_context trampoline = panda_get_cb_trampoline(type);
+    panda_cb* cb_context = malloc(sizeof(panda_cb));
+    *cb_context = cb;
+
+    panda_register_callback_with_context(plugin, type, trampoline, cb_context);
+}
+
+/**
+ * @brief Adds callback to the tail of the callback list and enables it.
+ *
+ * The order of callback registration will determine the order in which
+ * callbacks of the same type will be invoked. Each callback will recieve the
+ * context variable it was passed.
+ *
+ * @note Registering a callback function twice from the same plugin will trigger
+ * an assertion error.
+ */
+void panda_register_callback_with_context(void *plugin, panda_cb_type type, panda_cb_with_context cb, void* context)
+{
     panda_cb_list *plist_last = NULL;
 
     panda_cb_list *new_list = g_new0(panda_cb_list, 1);
     new_list->entry = cb;
     new_list->owner = plugin;
     new_list->enabled = true;
+    new_list->context = context;
     assert(type < PANDA_CB_LAST);
 
     if (panda_cbs[type] != NULL) {
@@ -442,7 +529,8 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb)
              plist = plist->next) {
             // the same plugin can register the same callback function only once
             assert(!(plist->owner == plugin &&
-                     (plist->entry.cbaddr) == cb.cbaddr));
+                     (plist->entry.cbaddr) == cb.cbaddr &&
+                     plist->context == context));
             plist_last = plist;
         }
         plist_last->next = new_list;
@@ -469,6 +557,9 @@ bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb) {
     return false;
 }
 
+#define TRAMP_CTXT(context) \
+    (*(panda_cb*)context).cbaddr
+
 /**
  * @brief Disables the execution of the specified callback.
  *
@@ -478,14 +569,37 @@ bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb) {
  *
  * @note Disabling an unregistered callback will trigger an assertion error.
  */
-void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb)
+void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb) {
+    panda_cb_with_context trampoline = panda_get_cb_trampoline(type);
+    panda_disable_callback_with_context(plugin, type, trampoline, &cb);
+}
+
+/**
+ * @brief Disables the execution of the specified callback.
+ *
+ * This is done by setting the `enabled` flag to `false`. The callback remains
+ * in the callback list, so when it is enabled again it will execute in the same
+ * relative order.
+ *
+ * @note Disabling an unregistered callback will trigger an assertion error.
+ */
+void panda_disable_callback_with_context(void *plugin, panda_cb_type type, panda_cb_with_context cb, void* context)
 {
     bool found = false;
     assert(type < PANDA_CB_LAST);
     if (panda_cbs[type] != NULL) {
+        panda_cb_with_context trampoline = panda_get_cb_trampoline(type);
         for (panda_cb_list *plist = panda_cbs[type]; plist != NULL;
              plist = plist->next) {
-            if (plist->owner == plugin && (plist->entry.cbaddr) == cb.cbaddr) {
+            if (plist->owner == plugin &&
+                ((((plist->entry.cbaddr) == cb.cbaddr) && plist->context == context) ||
+                 (
+                     // if and only if it's a trampoline, it's safe to dereference the
+                     // context in order to do an equality check
+                     plist->entry.cbaddr == trampoline.cbaddr
+                     && TRAMP_CTXT(context) == TRAMP_CTXT(plist->context)
+                ))
+            ) {
                 found = true;
                 plist->enabled = false;
 
@@ -508,14 +622,37 @@ void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb)
  *
  * @note Enabling an unregistered callback will trigger an assertion error.
  */
-void panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb)
+void panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb) {
+    panda_cb_with_context trampoline = panda_get_cb_trampoline(type);
+    panda_enable_callback_with_context(plugin, type, trampoline, &cb);
+}
+
+/**
+ * @brief Enables the execution of the specified callback.
+ *
+ * This is done by setting the `enabled` flag to `true`. After enabling the
+ * callback, it will execute in the same relative order as before having it
+ * disabled.
+ *
+ * @note Enabling an unregistered callback will trigger an assertion error.
+ */
+void panda_enable_callback_with_context(void *plugin, panda_cb_type type, panda_cb_with_context cb, void* context)
 {
     bool found = false;
-    assert(type < PANDA_CB_LAST);
     if (panda_cbs[type] != NULL) {
-        for (panda_cb_list *plist = panda_cbs[type]; plist != NULL;
-             plist = plist->next) {
-            if (plist->owner == plugin && (plist->entry.cbaddr) == cb.cbaddr) {
+        panda_cb_with_context trampoline = panda_get_cb_trampoline(type);
+        for (panda_cb_list *plist = panda_cbs[type]; plist != NULL; plist = plist->next)
+        {
+            if (plist->owner == plugin && ((
+                    (plist->entry.cbaddr) == cb.cbaddr && plist->context == context
+                ) ||
+                (
+                    // if and only if it's a trampoline, it's safe to dereference the
+                    // context in order to do an equality check
+                    plist->entry.cbaddr == trampoline.cbaddr
+                        && TRAMP_CTXT(plist->context) == TRAMP_CTXT(context)
+                ))
+            ) {
                 found = true;
                 plist->enabled = true;
 
@@ -1290,7 +1427,7 @@ void hmp_panda_plugin_cmd(Monitor *mon, const QDict *qdict) {
     panda_cb_list *plist;
     const char *cmd = qdict_get_try_str(qdict, "cmd");
     for(plist = panda_cbs[PANDA_CB_MONITOR]; plist != NULL; plist = panda_cb_list_next(plist)) {
-        plist->entry.monitor(mon, cmd);
+        plist->entry.monitor(plist->context, mon, cmd);
     }
 }
 

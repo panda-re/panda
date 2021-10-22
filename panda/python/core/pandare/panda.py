@@ -28,7 +28,7 @@ from time import time
 from math import ceil
 from inspect import signature
 from struct import pack_into
-from shlex import quote as shlex_quote
+from shlex import quote as shlex_quote, split as shlex_split
 from time import sleep
 from cffi import FFI
 
@@ -58,6 +58,7 @@ class Panda():
             generic=None, # Helper: specify a generic qcow to use and set other arguments. Supported values: arm/ppc/x86_64/i386. Will download qcow automatically
             raw_monitor=False, # When set, don't specify a -monitor. arg Allows for use of -nographic in args with ctrl-A+C for interactive qemu prompt.
             extra_args=None,
+            catch_exceptions=True, # Should we catch and end_analysis() when python code raises an exception?
             libpanda_path=None):
         '''
         Construct a new `Panda` object.  Note that multiple Panda objects cannot coexist in the same Python instance.
@@ -75,6 +76,7 @@ class Panda():
             os_version: analagous to PANDA's -os argument (e.g, linux-32-debian:3.2.0-4-686-pae")
             os: type of OS (e.g. "linux")
             qcow: path to a qcow file to load
+            catch_exceptions: Should we catch exceptions raised by python code and end_analysis() and then print a backtrace (Default: True)
             raw_monitor: When set, don't specify a -monitor. arg Allows for use of
                     -nographic in args with ctrl-A+C for interactive qemu prompt. Experts only!
             extra_args: extra arguments to pass to PANDA as either a string or an
@@ -93,11 +95,12 @@ class Panda():
         self.__sighandler = None
         self.ending = False # True during end_analysis
         self.cdrom = None
+        self.catch_exceptions=catch_exceptions
 
         self.serial_unconsumed_data = b''
 
-        if isinstance(extra_args, str): # Extra args can be a string or array
-            extra_args = extra_args.split()
+        if isinstance(extra_args, str): # Extra args can be a string or array. Use shlex to preserve quoted substrings
+            extra_args = shlex_split(extra_args)
         elif extra_args is None:
             extra_args = []
 
@@ -112,7 +115,7 @@ class Panda():
             self.expect_prompt = q.prompt
             self.cdrom    = q.cdrom
             if q.extra_args:
-                extra_args.extend(q.extra_args.split(" "))
+                extra_args.extend(shlex_split(q.extra_args))
 
         if self.qcow: # Otherwise we shuld be able to do a replay with no qcow but this is probably broken
             if not (exists(self.qcow)):
@@ -135,6 +138,8 @@ class Panda():
             self.arch = Aarch64Arch(self)
         elif self.arch_name in ["mips", "mipsel"]:
             self.arch = MipsArch(self)
+        elif self.arch_name in ["mips64"]:
+            self.arch = MipsArch(self) # XXX: We probably need a different class?
         else:
             raise ValueError(f"Unsupported architecture {self.arch_name}")
         self.bits, self.endianness, self.register_size = self.arch._determine_bits()
@@ -159,12 +164,16 @@ class Panda():
 
         # Setup argv for panda
         self.panda_args = [self.panda]
-        biospath = realpath(pjoin(self.build_dir, "pc-bios")) # XXX: necessary for network drivers for arm, so 'pc-bios' is a misleading name
+        biospath = realpath(pjoin(self.build_dir, "pc-bios")) # XXX: necessary for network drivers for arm/mips, so 'pc-bios' is a misleading name
         self.panda_args.append("-L")
         self.panda_args.append(biospath)
 
         if self.qcow:
-            self.panda_args.append(self.qcow)
+            if self.arch_name == 'mips64':
+                # XXX: mips64 needs virtio interface for the qcow
+                self.panda_args.extend(["-drive", f"file={self.qcow},if=virtio"])
+            else:
+                self.panda_args.append(self.qcow)
 
         self.panda_args += extra_args
 
@@ -1061,6 +1070,19 @@ class Panda():
         if queue:
             self.queue_async(f)
         return f
+
+    # PyPlugin helpers
+    @property
+    def pyplugin(self):
+        """
+        A reference to an auto-instantiated `pandare.pyplugin.PyPluginManager` class.
+        """
+        if not hasattr(self, "_pyplugin_manager"):
+            from .pyplugin import PyPluginManager
+            self._pyplugin_manager = PyPluginManager(self)
+        return self._pyplugin_manager
+
+
 
 
     ########################## LIBPANDA FUNCTIONS ########################
@@ -2567,8 +2589,11 @@ class Panda():
                 except Exception as e:
                     # exceptions wont work in our thread. Therefore we print it here and then throw it after the
                     # machine exits.
-                    self.callback_exit_exception = e
-                    self.end_analysis()
+                    if self.catch_exceptions:
+                        self.callback_exit_exception = e
+                        self.end_analysis()
+                    else:
+                        raise e
                     return return_from_exception
 
             cast_rc = pandatype(_run_and_catch)
@@ -2803,11 +2828,14 @@ class Panda():
                 except Exception as e:
                     # exceptions wont work in our thread. Therefore we print it here and then throw it after the
                     # machine exits.
-                    self.callback_exit_exception = e
-                    self.end_analysis()
+                    if self.catch_exceptions:
+                        self.callback_exit_exception = e
+                        self.end_analysis()
+                    else:
+                        raise e
                     # this works in all current callback cases. CFFI auto-converts to void, bool, int, and int32_t
 
-            f = self.ffi.callback(attr+"_t")(_run_and_catch)  # Wrap the python fn in a c-callback.
+            cast_rc = self.ffi.callback(attr+"_t")(_run_and_catch)  # Wrap the python fn in a c-callback.
             if local_name == "<lambda>":
                 local_name = f"<lambda_{self.lambda_cnt}>"
                 self.lambda_cnt += 1
@@ -2819,10 +2847,10 @@ class Panda():
             assert (local_name not in self.ppp_registered_cbs), f"Two callbacks with conflicting name: {local_name}"
 
             # Ensure function isn't garbage collected, and keep the name->(fn, plugin_name, attr) map for disabling
-            self.ppp_registered_cbs[local_name] = (f, plugin_name, attr)
+            self.ppp_registered_cbs[local_name] = (cast_rc, plugin_name, attr)
 
-            eval(f"self.plugins['{plugin_name}'].ppp_add_cb_{attr}")(f) # All PPP  cbs start with this string. XXX insecure eval
-            return f
+            eval(f"self.plugins['{plugin_name}'].ppp_add_cb_{attr}")(cast_rc) # All PPP  cbs start with this string. XXX insecure eval
+            return cast_rc
         return decorator
 
 

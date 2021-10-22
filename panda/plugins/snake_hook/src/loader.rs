@@ -51,7 +51,7 @@ pub(crate) fn initialize_pyplugins(args: Args) {
     let context: Context = python! {
         from pandare import Panda
 
-        panda = Panda(arch='ARCH, libpanda_path='libpanda_path)
+        panda = Panda(arch='ARCH, libpanda_path='libpanda_path, catch_exceptions=False)
 
         if 'use_flask:
             from flask import Flask, Blueprint
@@ -115,6 +115,12 @@ pub(crate) fn initialize_pyplugins(args: Args) {
 
                     // inject the 'PandaPlugin' type into execution before running the module
                     plugin.PandaPlugin = 'panda_plugin
+
+                    // A script may import the normal PandaPlugin class from pandare
+                    // but we need to overwrite that with the rust PandaPlugin class in order
+                    // for all our snake_hook stuff to work.
+                    import pandare
+                    pandare.PandaPlugin = 'panda_plugin
 
                     // run the module so any types can be declared
                     spec.loader.exec_module(plugin)

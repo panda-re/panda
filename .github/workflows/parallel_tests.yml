@@ -90,8 +90,7 @@ jobs:
       matrix:
         # See output from `make check-help`: we're just splitting `make check` into all the things it does
         # so we can run them in parallel: arch-specific qtests, plus a few others
-        target: [check-qtest-x86_64, check-qtest-i386, check-qtest-arm, check-qtest-mips, check-qtest-mipsel, check-qtest-ppc,
-        check-block, check-unit, check-qapi-schema]
+        target: [check-qtest-x86_64, check-qtest-i386, check-qtest-arm, check-qtest-mips, check-qtest-mipsel, check-qtest-ppc, check-block, check-unit, check-qapi-schema]
 
     steps:
     - name: Run Individual QEMU tests
@@ -110,7 +109,7 @@ jobs:
       matrix:
         # See output from `make check-help`: we're just splitting `make check` into all the things it does
         # so we can run them in parallel: arch-specific qtests, plus a few others
-        test_script: [dyn_hooks, copy_test, file_fake, file_hook, generic_tests, monitor_cmds, multi_proc_cbs, sleep_in_cb, syscalls, taint_ram, taint_reg, record_no_snap, sig_suppress]
+        test_script: [dyn_hooks, copy_test, file_fake, file_hook, generic_tests, monitor_cmds, multi_proc_cbs, sleep_in_cb, syscalls, record_no_snap, sig_suppress]
 
     steps:
     - name: Run individual pypanda tests

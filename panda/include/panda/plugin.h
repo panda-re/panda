@@ -37,11 +37,12 @@ extern "C" {
 // Doubly linked list that stores a callback, along with its owner
 typedef struct _panda_cb_list panda_cb_list;
 struct _panda_cb_list {
-    panda_cb entry;
+    panda_cb_with_context entry;
     void *owner;
     panda_cb_list *next;
     panda_cb_list *prev;
     bool enabled;
+    void* context;
 };
 panda_cb_list *panda_cb_list_next(panda_cb_list *plist);
 void panda_enable_plugin(void *plugin);
@@ -53,9 +54,13 @@ typedef struct panda_plugin {
     void *plugin;       // Handle to the plugin (for use with dlsym())
 } panda_plugin;
 
+panda_cb_with_context panda_get_cb_trampoline(panda_cb_type type);
 void   panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
+void   panda_register_callback_with_context(void *plugin, panda_cb_type type, panda_cb_with_context cb, void* context);
 void   panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void   panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb);
+void   panda_disable_callback_with_context(void *plugin, panda_cb_type type, panda_cb_with_context cb, void* context);
+void   panda_enable_callback_with_context(void *plugin, panda_cb_type type, panda_cb_with_context cb, void* context);
 void   panda_unregister_callbacks(void *plugin);
 bool   panda_load_plugin(const char *filename, const char *plugin_name);
 bool   _panda_load_plugin(const char *filename, const char *plugin_name, bool library_mode);

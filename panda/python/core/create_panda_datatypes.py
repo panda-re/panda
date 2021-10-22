@@ -22,7 +22,7 @@ root_dir = os.path.join(*[os.path.dirname(__file__), "..", "..", ".."]) # panda-
 build_root = os.path.join(root_dir, "build")
 lib_dir = os.path.join("pandare", "data")
 
-for arch in ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']:
+for arch in ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel', 'mips64']:
     softmmu = arch+"-softmmu"
     plog = os.path.join(*[build_root, softmmu, "plog_pb2.py"])
     if os.path.isfile(plog):
@@ -230,6 +230,9 @@ def compile(arch, bits, pypanda_headers, install, static_inc):
     elif arch == "mipsel" and int(bits) == 32:
         define_clean_header(ffi, include_dir + "/panda_datatypes_MIPS_32.h") # XXX?
         define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_mips.h")
+    elif arch == "mips64" and int(bits) == 64:
+        define_clean_header(ffi, include_dir + "/panda_datatypes_MIPS_64.h")
+        define_clean_header(ffi, include_dir + "/syscalls_ext_typedefs_mips.h") # syscalls are the same?
     else:
         print("PANDA_DATATYPES: Architecture not supported")
 
@@ -548,6 +551,7 @@ def get_cbs(ffi):
             ("ppc", 64),
             ("mips", 32),
             ("mipsel",32),
+            ("mips64",64),
         ]
 
         from multiprocessing import Process

@@ -772,15 +772,18 @@ bool init_plugin(void *self) {
     pcb.before_block_exec = asidstory_before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 
-    #if defined(TARGET_PPC)
-        fprintf(stderr, "[ERROR] asidstory: PPC architecture not supported by syscalls2!\n");
+#if defined(TARGET_MIPS)
+    fprintf(stderr, "[ERROR] asidstory: MIPS unsupported!\n");
+    return false;
+#elif defined(TARGET_PPC)
+        fprintf(stderr, "[ERROR] asidstory: PPC architecture is not supported by syscalls2!\n");
         return false;
-    #else
+#else
         panda_require("syscalls2");
         assert(init_syscalls2_api());
         PPP_REG_CB("syscalls2", on_sys_execve_enter, execve_cb);
         PPP_REG_CB("syscalls2", on_sys_execveat_enter, execveat_cb);
-    #endif
+#endif
 
     panda_arg_list *args = panda_get_args("asidstory");
     num_cells = std::max(panda_parse_uint64_opt(args, "width", 100, "number of columns to use for display"), UINT64_C(80)) - NAMELEN - 5;

@@ -12,8 +12,9 @@ Example plugins are available in the [examples directory](https://github.com/pan
 
 from .panda import Panda, blocking
 from .plog_reader import PLogReader
+from .panda_plugin import PandaPlugin
 
-__all__ = ['Panda', 'PLogReader', 'Callbacks']
+__all__ = ['Panda', 'PLogReader', 'Callbacks', 'PandaPlugin']
 
 __pdoc__ = {}
 

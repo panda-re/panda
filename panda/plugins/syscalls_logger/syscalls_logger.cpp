@@ -20,10 +20,32 @@ PANDAENDCOMMENT */
 #include "syscalls2/syscalls2_info.h"
 #include "syscalls2/syscalls2_ext.h"
 
+#define HAVE_OSI
+
+#ifdef HAVE_OSI
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"
 
 #include "osi_linux/osi_linux_ext.h"
+#else
+typedef struct {
+  int pid;
+  int ppid;
+  char* name;
+  int create_time;
+} OsiProc;
+
+typedef struct {
+  int tid;
+} OsiThread;
+
+static OsiProc* get_current_process(CPUState*) {return NULL;}
+static OsiThread* get_current_thread(CPUState*) {return NULL;}
+static char* osi_linux_fd_to_filename(CPUState*, OsiProc*, int) { return NULL;}
+static bool init_osi_api(void) {return true;};
+static bool init_osi_linux_api(void) {return true;};
+
+#endif
 
 #include "dwarf_query.h"
 
@@ -1068,8 +1090,10 @@ void handle_syscall(CPUState *cpu, target_ulong pc, const syscall_info_t *call, 
         psyscall.n_args = nargs_to_store;
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.syscall = &psyscall;
+#ifdef HAVE_OSI
         ple.has_asid = true;
         ple.asid = current->asid;
+#endif
         pandalog_write_entry(&ple);
 
         for (auto ptr : tmp_single_ptrs) {

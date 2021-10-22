@@ -1,19 +1,18 @@
 '''
-helper_example.py
-
-This demo shows off using a pypanda pluginto do analysis. In this case we use
-strace.py from strace.py and provide the Panda object to it.
+This demo shows off using a pypanda plugin to do analysis. In this case we use
+strace.py from strace.py
 
 Run with: python3 pypanda_plugin_user.py
 '''
 
 from pandare import Panda
-from strace import Strace
 from sys import argv
+from strace import Strace
 
 arch = argv[1] if len(argv) > 1 else "i386"
 panda = Panda(generic=arch)
-Strace(panda)
+
+panda.pyplugin.register(Strace)
 
 @panda.queue_blocking
 def revert():
