@@ -18,7 +18,7 @@ msg() {
 }
 
 # Default targets to build. Change with argument. small = i386-softmmu
-TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
+TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,aarch64-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu,mips64-softmmu"
 LLVM_CONFIG_BINARY="${LLVM_CONFIG_BINARY:-llvm-config-11}"
 
 pypanda=""
