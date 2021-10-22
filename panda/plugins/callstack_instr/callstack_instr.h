@@ -8,8 +8,8 @@
 // between this and END_PYPANDA_NEEDS_THIS except includes of other
 // files in this directory that contain subsections like this one.
 
-typedef void (*on_call_t)(CPUState *env, target_ulong func);
-typedef void (*on_ret_t)(CPUState *env, target_ulong func);
+PPP_CB_TYPEDEF(void, on_call, CPUState *env, target_ulong func);
+PPP_CB_TYPEDEF(void, on_ret, CPUState *env, target_ulong func);
 
 // END_PYPANDA_NEEDS_THIS -- do not delete this comment!
 
