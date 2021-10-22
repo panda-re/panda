@@ -315,8 +315,12 @@ void on_get_current_process(CPUState *cpu, OsiProc **out) {
   OsiProc *p = (OsiProc *)g_malloc(sizeof(OsiProc));
 
   auto proc = g_process_manager->get_process_object();
-  auto kernel = g_kernel_manager->get_kernel_object();
+  if (proc->eprocess_address == 0) {
+    *out = NULL;
+    return;
+  }
 
+  auto kernel = g_kernel_manager->get_kernel_object();
   WindowsProcess *process = create_process(kernel, proc->eprocess_address);
   fill_process(p, process);
   free_process(process);
@@ -519,6 +523,8 @@ uint64_t get_kpcr_amd64(CPUState *cpu) {
     // it has been swapped into GS
     kpcr = env->segs[R_GS].base;
   }
+
+  free_member_result(mr);
   return kpcr;
 #endif
   return 0;
