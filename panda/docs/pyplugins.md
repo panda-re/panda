@@ -13,7 +13,7 @@ From there, you can add hooks and declare initial state for your plugin. The des
   * `get_arg_bool(name)` - returns `True` if the argument is present and truthy.
 
 
-# Examples
+# Example Plugins
 
 ## Trivial plugin
 ```py
@@ -24,9 +24,9 @@ class TestPlugin(PandaPlugin):
         print("Initialized test plugin")
         
         @panda.cb_before_block_exec
-        def before_block(cpustate, transblock):
-            panda.unload_plugin("snake_hook")
-            print("snake_hook unloaded")
+        def test_before_block(cpustate, transblock):
+            print("Running test plugin")
+            panda.disable_callback('test_before_block')
 
     def __del__(self):
         print("Uninitialized test plugin")
@@ -59,7 +59,7 @@ class BasicBlockCount(PandaPlugin):
 
 ## Hello
 ```py
-class TestPlugin(PandaPlugin):
+class HelloPlugin(PandaPlugin):
     def __init__(self, panda):
         path = self.get_arg('path')
         print(f"path = {path}")
@@ -67,3 +67,25 @@ class TestPlugin(PandaPlugin):
         if should_print_hello:
             print("Hello!")
 ```
+
+# Example Usage:
+
+## PyPANDA
+To use a PyPlugin from a PyPanda script, you should either define it within your python script or import it from another file using the standard Python import mechanisms. Once your plugin class is in scope, you'll register it with the panda.pyplugin object:
+```
+panda.pyplugin.register(YourPlugin, {'path': '/foo'})
+```
+
+For example, if the `Hello` example from above is in the file hello.py and that's in the same directory as your PyPANDA script, you could do:
+```
+from pandare import Panda
+from hello import HelloPlugin
+panda = Panda.generic("x86_64")
+panda.pyplugin.register(HelloPlugin, {'should_print_hello': True})
+```
+
+Note that when the plugin was registered, we also specified an argument `should_print_hello` and set it to True.
+
+## Snake Hook
+You can use the [SnakeHook](../plugins/snake_hook) plugin to load a PyPanda plugin from the PANDA command line. For example, if you've created the `hello.py` example as described in the prior section, you could load it with `panda-system-.... -snake_hook:files=./hello`. The snake_hook documentation provides further details on how to load multiple plugins and how to set arguments for each of them.
+
