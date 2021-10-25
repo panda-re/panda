@@ -1688,7 +1688,10 @@ class Panda():
         for proc in self.get_processes(cpu):
             assert(proc != self.ffi.NULL)
             assert(proc.pid not in procs)
-            procs[proc.pid] = {"name": self.ffi.string(proc.name).decode('utf8', 'ignore'), 'pid': proc.pid, 'parent_pid': proc.ppid}
+            procs[proc.pid] = {'name': self.ffi.string(proc.name).decode('utf8', 'ignore'),
+                               'pid': proc.pid,
+                               'parent_pid': proc.ppid,
+                               'create_time': proc.create_time}
             assert(not (proc.pid != 0 and proc.pid == proc.ppid)) # No cycles allowed other than at 0
         return procs
 
