@@ -17,6 +17,7 @@ class PredicateBuilder
 public:
     PredicateBuilder();
     PredicateBuilder& with_pc_range(target_ulong low, target_ulong high);
+    PredicateBuilder& without_pc_range(target_ulong low, target_ulong high);
     PredicateBuilder& in_kernel(bool ik);
     std::unique_ptr<Predicate> build(); 
 private:

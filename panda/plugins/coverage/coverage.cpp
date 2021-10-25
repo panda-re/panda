@@ -148,7 +148,7 @@ bool init_plugin(void *self)
             auto start_pc = try_parse<target_ulong>(pc_arg.substr(0, dash_idx));
             auto end_pc = try_parse<target_ulong>(pc_arg.substr(dash_idx + 1));
             if (end_pc < start_pc) {
-                log_message("End PC must be smaller than Start PC.");
+                log_message("End PC cannot be smaller than Start PC.");
                 return false;
             }
             log_message("PC Range Filter = [" TARGET_FMT_lx ", " TARGET_FMT_lx "]", start_pc, end_pc);
@@ -158,6 +158,33 @@ bool init_plugin(void *self)
             return false;
         } catch (std::overflow_error& e) {
             log_message("PC range outside of valid address space for target.");
+            return false;
+        }
+    }
+
+    // Parse Excluded PC range argument.
+    std::string expc_arg = panda_parse_string_opt(args.get(), "exclude_pc", "",
+        "excluded program counter range");
+    if ("" != expc_arg) {
+        auto dash_idx = expc_arg.find("-");
+        if (std::string::npos == dash_idx) {
+            log_message("Could not parse \"exclude_pc\" argument. Format: <Start PC>-<End PC>");
+            return false;
+        }
+        try {
+            auto start_pc = try_parse<target_ulong>(expc_arg.substr(0, dash_idx));
+            auto end_pc = try_parse<target_ulong>(expc_arg.substr(dash_idx + 1));
+            if (end_pc < start_pc) {
+                log_message("Excluded End PC cannot be smaller than Start PC.");
+                return false;
+            }
+            log_message("Excluded PC Range Filter = [" TARGET_FMT_lx ", " TARGET_FMT_lx "]", start_pc, end_pc);
+            pb.without_pc_range(start_pc, end_pc);
+        } catch (std::invalid_argument& e) {
+            log_message("Could not parse Excluded PC Range argument: %s", expc_arg.c_str());
+            return false;
+        } catch (std::overflow_error& e) {
+            log_message("Excluded PC range outside of valid address space for target.");
             return false;
         }
     }

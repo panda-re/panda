@@ -15,6 +15,7 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
     $(PLUGIN_OBJ_DIR)/Predicate.o \
     $(PLUGIN_OBJ_DIR)/InKernelPredicate.o \
     $(PLUGIN_OBJ_DIR)/PcRangePredicate.o \
+    $(PLUGIN_OBJ_DIR)/ExcludedPcRangePredicate.o \
     $(PLUGIN_OBJ_DIR)/CompoundPredicate.o \
     $(PLUGIN_OBJ_DIR)/AlwaysTruePredicate.o \
     $(PLUGIN_OBJ_DIR)/PredicateBuilder.o \
