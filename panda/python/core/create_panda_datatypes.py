@@ -35,6 +35,7 @@ OUTPUT_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare"
 PLUGINS_DIR = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "plugins"]))              # panda-git/panda/plugins
 INCLUDE_DIR_PYP = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "pandare", "include"]))           # panda-git/panda/python/core/pandare/include
 INCLUDE_DIR_PAN = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "include", "panda"])) # panda-git/panda/include/panda
+INCLUDE_DIR_CORE = os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "..", "include"]))   # panda-git/include
 
 GLOBAL_MAX_SYSCALL_ARG_SIZE = 64
 GLOBAL_MAX_SYSCALL_ARGS = 17
@@ -135,6 +136,7 @@ def create_pypanda_header(filename, no_record=False):
         else:
             rest.append(line)
     new_contents = "\n".join(rest)
+    new_contents = new_contents.replace(" QEMU_NORETURN ", " ")
     foo = re.search("([^\/]+)\.h$", filename)
     assert (not (foo is None))
     pypanda_h = os.path.join(INCLUDE_DIR_PYP, foo.groups()[0])+".h"
@@ -322,6 +324,9 @@ def main(install=False,recompile=True):
     plugin_dirs = os.listdir(PLUGINS_DIR)
 
     INCLUDE_DIR_PYP_INSTALL = 'os.path.abspath(os.path.join(*[os.path.dirname(__file__), "..", "..", "pandare", "data", "pypanda", "include"]))'  # ... /python3.6/site-packages/panda/data/pypanda/include/
+
+    # We want the various cpu_loop_... functions
+    create_pypanda_header("%s/exec/exec-all.h" % INCLUDE_DIR_CORE)
 
     # Pull in osi/osi_types.h first - it's needed by other plugins too
     if os.path.exists("%s/%s" % (PLUGINS_DIR, 'osi')):
