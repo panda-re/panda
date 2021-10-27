@@ -179,13 +179,13 @@ bool init_plugin(void *_self) {
     c_callback_phys_after_write.phys_mem_after_write = phys_mem_after_write;
     panda_register_callback(self, PANDA_CB_PHYS_MEM_AFTER_WRITE, c_callback_phys_after_write);
     c_callback_virt_before_read.virt_mem_before_read = virt_mem_before_read;
-    panda_register_callback(self, PANDA_CB_PHYS_MEM_BEFORE_READ, c_callback_virt_before_read);
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_BEFORE_READ, c_callback_virt_before_read);
     c_callback_virt_before_write.virt_mem_before_write = virt_mem_before_write;
-    panda_register_callback(self, PANDA_CB_PHYS_MEM_BEFORE_WRITE, c_callback_virt_before_write);
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_BEFORE_WRITE, c_callback_virt_before_write);
     c_callback_virt_after_read.virt_mem_after_read = virt_mem_after_read;
-    panda_register_callback(self, PANDA_CB_PHYS_MEM_AFTER_READ, c_callback_virt_after_read);
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_AFTER_READ, c_callback_virt_after_read);
     c_callback_virt_after_write.virt_mem_after_write = virt_mem_after_write;
-    panda_register_callback(self, PANDA_CB_PHYS_MEM_AFTER_WRITE, c_callback_virt_after_write);
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_AFTER_WRITE, c_callback_virt_after_write);
 
     panda_enable_memcb();
 
