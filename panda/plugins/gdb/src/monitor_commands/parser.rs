@@ -1,7 +1,7 @@
 use panda::prelude::*;
 use panda::regs::Reg;
 
-use peg::{str::LineCol, error::ParseError};
+use peg::{error::ParseError, str::LineCol};
 
 use std::convert::TryInto;
 
@@ -27,7 +27,7 @@ pub(crate) enum TaintTarget {
     Register(Reg),
 }
 
-peg::parser!{
+peg::parser! {
     grammar monitor_commands() for str {
         pub(crate) rule command() -> Command
             = taint()
@@ -54,11 +54,14 @@ peg::parser!{
         rule thread_info() -> Command
             = "threadinfo" { Command::ThreadInfo }
 
+        // taint [target] [label]
         rule taint() -> Command
             = "taint" _ target:taint_target() _ label:number() {
                 Command::Taint(target, label as u32)
             }
 
+        // A taint target can be either an address prefixed by a `*` or simply
+        // a register name
         rule taint_target() -> TaintTarget
             = quiet!{
                 "*" addr:number() { TaintTarget::Address(addr.try_into().unwrap()) }
@@ -66,19 +69,22 @@ peg::parser!{
             }
             / expected!("an address (example: *0x55555555) or a register name")
 
+        // check_taint [target]
         rule check_taint() -> Command
             = "check_taint" _ target:taint_target() { Command::CheckTaint(target) }
 
+        // get_taint [target]
         rule get_taint() -> Command
             = "get_taint" _ target:taint_target() { Command::GetTaint(target) }
 
-        // TODO: display available registers on error
+        // A register name is an alphanumeric identifier which must start with a letter
         rule register() -> Reg
             = reg:$(['a'..='z' | 'A'..='Z'] ['a'..='z' | 'A'..='Z' | '0'..='9']*) {?
-                reg.parse()
+                reg.parse() // TODO: display available registers on error
                     .map_err(|_| "invalid register name")
             }
 
+        // Either a hex number prefixed by 0x or a non-prefixed decimal number
         rule number() -> u64
             = quiet!{
                 "0x" hex:$(['0'..='9' | 'a'..='f' | 'A'..='F']+) {?
@@ -92,6 +98,7 @@ peg::parser!{
             }
             / expected!("a number")
 
+        // rule for matching against arbitrary whitespace
         rule _() = quiet!{ [' ' | '\n' | '\t']+ }
     }
 }
