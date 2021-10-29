@@ -5,7 +5,6 @@ import capstone
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
 from pandare import Panda
-from pandare.helper.x86 import R_EAX, R_EBX, R_ECX, registers
 
 # Single arg of arch, defaults to i386
 arch = "i386" if len(argv) <= 1 else argv[1]
@@ -49,9 +48,9 @@ def taint_it(env, tb):
         if not tainted:
             print("Applying taint in taint_me function")
             tainted = True
-            panda.taint_label_reg(R_EAX, 10)
-            panda.taint_label_reg(R_EBX, 20)
-            panda.taint_label_reg(R_ECX, 30)
+            panda.taint_label_reg(panda.arch.registers["EAX"], 10)
+            panda.taint_label_reg(panda.arch.registers["EBX"], 20)
+            panda.taint_label_reg(panda.arch.registers["ECX"], 30)
 
             return 1
     return 0
@@ -62,7 +61,7 @@ def bbe(env, tb):
         print(mappings[tb.pc])
         if mappings[tb.pc] == "query_taint":
             print("\nTAINT INFO")
-            for reg_name, reg in registers.items():
+            for reg_name, reg in panda.arch.registers.items():
                 if panda.taint_check_reg(reg):
                     for idx, byte_taint in enumerate(panda.taint_get_reg(reg)):
                         labels = byte_taint.get_labels()
