@@ -73,7 +73,7 @@ std::unique_ptr<WindowsProcessManager> g_process_manager;
 bool g_update_task;
 
 static std::map<std::string, uint64_t> system_asid_lookup = {
-  {"windows-32-2000", 0x0}, // TO-DO
+  {"windows-32-2000", 0x30000},
   {"windows-32-xpsp2", 0x39000},
   {"windows-32-xpsp3", 0x39000},
   {"windows-32-7sp0", 0x185000},
@@ -105,6 +105,12 @@ void fill_module(OsiModule *m, struct WindowsModuleEntry *win_mod) {
 }
 
 std::string get_key_name(uint64_t ptr) {
+  if (strncmp(panda_os_name, "windows-32-2000", 15) == 0) {
+    // just keep previous functionality for windows 2k,
+    // as we couldn't verify the fancy functionality works
+    return std::string("_CM_KEY_BODY@0x") + std::to_string(ptr);
+  }
+
   auto object = g_process_manager->get_type(ptr, "_CM_KEY_BODY");
 
   osi::i_t nameblock;
