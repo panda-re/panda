@@ -81,6 +81,8 @@ matches this argument (requires OSI). Note this filter is done at runtime, not
 instrumentation time.
 * `pc` - Filter option, only instrument blocks within a given range. Format: 
 `<Start PC in Hex or Decimal>-<End PC in Hex or Decimal>`.
+* `exclude_pc` - Filter option, do not instrument blocks which fall at least partially within a given range.  Format:
+`<Start PC in Hex or Decimal>-<End PC in Hex or Decimal>`.
 * `privilege` - Filter option, only instrument blocks executed with the
 specified privileges. Either: `user` or `kernel`.
 * `hook_filter` - Filter option that is controlled by two user provided hooks.
