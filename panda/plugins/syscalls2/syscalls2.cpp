@@ -36,6 +36,8 @@ PANDAENDCOMMENT */
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include <unordered_set>
+#include <vector>
 
 #include "syscalls2.h"
 #include "syscalls2_info.h"
@@ -794,16 +796,35 @@ static inline std::string context_map_t_dump(context_map_t &cm) {
  * @brief Checks if the translation block that is about to be executed
  * matches the return address of an executing system call.
  */
-void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
-    auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
-    auto ctxi = running_syscalls.find(k);
+void syscall_return(CPUState *cpu, TranslationBlock *tb) {
+    //auto k = std::make_pair(tb->pc, panda_current_asid(cpu));
+    auto pair = running_syscalls.find(panda_current_asid(cpu));
     int UNUSED(no) = -1;
-    if (likely(ctxi != running_syscalls.end())) {
-        syscall_ctx_t *ctx = &ctxi->second;
-        no = ctx->no;
-        syscalls_profile->return_switch(cpu, tb->pc, ctx);
-        running_syscalls.erase(ctxi);
+    if (likely(pair != running_syscalls.end())) {
+        auto &vec = pair->second;
+        auto it = vec.begin();
+        while (it != vec.end()){
+            syscall_ctx_t *ctx = &(*it);
+            if (ctx->retaddr == tb->pc){
+                no = ctx->no;
+                syscalls_profile->return_switch(cpu, tb->pc, ctx);
+                break;
+            }
+            it++;
+            if (it == vec.end()){
+                printf("missed at " TARGET_PTR_FMT " for " TARGET_PTR_FMT "\n", panda_current_pc(cpu), panda_current_asid(cpu));
+                asm volatile("int3");
+            }
+        }
+
+        if (unlikely(vec.size() > MAX_CTX_PER_ASID)){
+            // throw away the first half of syscalls effectively a LRU
+            // printf("erasing some for asid " TARGET_FMT_lx "\n", panda_current_asid(cpu));
+            // vec.erase(vec.begin(), vec.begin() + (int)(MAX_CTX_PER_ASID/2));
+        }
     }
+    
+
 #if defined(SYSCALL_RETURN_DEBUG)
     if (no >= 0) {
 #if PANDA_LOG_LEVEL >= PANDA_LOG_DEBUG
@@ -816,8 +837,6 @@ void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
 #endif
     }
 #endif
-    h->enabled = false;
-    return;
 }
 #endif
 
@@ -939,8 +958,19 @@ target_ulong doesBlockContainSyscall(CPUState *cpu, TranslationBlock *tb, int* s
 #endif
 }
 
+std::unordered_set<target_ulong> missed_rets = {};
 
 void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
+    if (unlikely(missed_rets.find(tb->pc) != missed_rets.end())){
+        TCGOp *op = find_guest_insn_by_addr(tb->pc);
+        if (likely(op != NULL)){
+            printf("adding via new codegen + %lx\n", missed_rets.size());
+            insert_call(&op, syscall_return, cpu, tb);
+            return;
+        }else{
+            // printf("new codegen fails lookup\n");
+        }
+    }
     int static_callno = -1; // Set to non -1 if syscall num can be
                             // statically identified
     target_ulong res = doesBlockContainSyscall(cpu, tb, &static_callno);
@@ -949,9 +979,23 @@ void before_tcg_codegen(CPUState *cpu, TranslationBlock *tb){
         impossibleToReadPCs++;
     }
 #endif
-    if(res != 0 && res != (target_ulong) -1){
+    if(unlikely(res != 0 && res != (target_ulong) -1)){
         TCGOp *op = find_guest_insn_by_addr(res);
-        insert_call(&op, syscall_callback, cpu, tb, res, static_callno);
+        if (likely(op != NULL)){
+            insert_call(&op, syscall_callback, cpu, tb, res, static_callno);
+        }
+        target_ulong next_tb = tb->pc + tb->size;
+		
+        printf("BTC: PC " TARGET_FMT_lx " RET: " TARGET_FMT_lx "\n", tb->pc, tb->pc+tb->size);
+
+        TCGOp *retop = find_guest_insn_by_addr(next_tb);
+        if (unlikely(retop != NULL)){
+            printf("Adding syscall_return\n");
+            insert_call(&retop, syscall_return, cpu, tb);
+        }else{
+            // printf("Adding to missed_rets\n");
+            missed_rets.insert(next_tb);
+        }
     }
 }
 

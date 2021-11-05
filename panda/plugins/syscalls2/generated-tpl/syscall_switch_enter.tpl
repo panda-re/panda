@@ -64,16 +64,17 @@ void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, int st
 	PPP_RUN_CB(on_all_sys_enter, cpu, pc, ctx.no);
 	PPP_RUN_CB(on_all_sys_enter2, cpu, pc, call, &ctx);
 	if (!panda_noreturn) {
-		struct hook h;
-		h.addr = ctx.retaddr;
-		h.asid = ctx.asid;
-		h.cb.start_block_exec = hook_syscall_return;
-		h.type = PANDA_CB_START_BLOCK_EXEC;
-		h.enabled = true;
-		h.km = MODE_ANY; //you'd expect this to be user only
-		hooks_add_hook(&h);
+		//struct hook h;
+		//h.addr = ctx.retaddr;
+		//h.asid = ctx.asid;
+		//h.cb.start_block_exec = hook_syscall_return;
+		//h.type = PANDA_CB_START_BLOCK_EXEC;
+		//h.enabled = true;
+		//h.km = MODE_ANY; //you'd expect this to be user only
+		//hooks_add_hook(&h);
+		printf("SYSENTER: PC " TARGET_FMT_lx " RET: " TARGET_FMT_lx "\n", panda_current_pc(cpu), ctx.retaddr);
 
-		running_syscalls[std::make_pair(ctx.retaddr, ctx.asid)] = ctx;
+		running_syscalls[ctx.asid].push_back(ctx);
 	}
 #endif
 }
