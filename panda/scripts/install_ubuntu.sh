@@ -92,7 +92,7 @@ fi
 progress "Installing Rust..."
 curl https://sh.rustup.rs -sSf | sh -s -- -y
 
-# expose cargo to the running shell/env
+# Expose cargo to the running shell/env
 . $HOME/.cargo/env
 
 # Because libz3-dev for Ubuntu 18 is really old, we download and install z3 github release v-4.8.7
@@ -110,7 +110,7 @@ if [[ !$(ldconfig -p | grep -q libcapstone.so.4) ]]; then
   echo "Installing libcapstone v4"
   pushd /tmp && \
   curl -o /tmp/cap.tgz -L https://github.com/aquynh/capstone/archive/4.0.2.tar.gz && \
-  tar xvf cap.tgz && cd capstone-4.0.2/ && ./make.sh && make install && cd /tmp && \
+  tar xvf cap.tgz && cd capstone-4.0.2/ && ./make.sh && $SUDO make install && cd /tmp && \
   rm -rf /tmp/capstone-4.0.2
   $SUDO ldconfig
   popd
