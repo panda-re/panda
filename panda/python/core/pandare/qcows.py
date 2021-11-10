@@ -3,12 +3,12 @@
 Module for fetching generic PANDA images and managing their metadata.
 '''
 
-from os import path, remove, makedirs
 import logging
+from os import path, remove, makedirs
 from sys import argv
 from subprocess import check_call
 from collections import namedtuple
-
+from shlex import split as shlex_split
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -314,3 +314,46 @@ class Qcows():
             return Qcows.get_qcow(argv[idx])
         else:
             return Qcows.get_qcow()
+
+    @staticmethod
+    def cli(target):
+        from .panda import Panda
+        q = Qcows.get_qcow_info(target)
+        qcow = Qcows.get_qcow(target)
+        arch = q.arch
+        build_dir = Panda._find_build_dir(arch)
+        panda_args = [build_dir + f"/{arch}-softmmu/panda-system-{arch}"]
+        biospath = path.realpath(path.join(build_dir, "pc-bios"))
+        panda_args.extend(["-L", biospath])
+
+        if arch == 'mips64':
+            panda_args.extend(["-drive", f"file={qcow},if=virtio"])
+        else:
+            panda_args.append(qcow)
+
+        panda_args.extend(['-m', q.default_mem])
+
+        if q.extra_args:
+            extra_args = shlex_split(q.extra_args)
+            for x in extra_args:
+                if " " in x:
+                    panda_args.append(repr(x))
+                else:
+                    panda_args.append(x)
+
+        panda_args.extend(['-loadvm', q.snapshot])
+
+        return " ".join(panda_args)
+
+if __name__ == "__main__":
+    from sys import argv, stdout
+    valid_names = ", ".join(SUPPORTED_IMAGES.keys())
+
+    if len(argv) != 2 or argv[1] not in SUPPORTED_IMAGES:
+        raise ValueError(f"USAGE: {argv[0]}: target_arch where name is one of " + valid_names)
+
+    cmd = Qcows.cli(argv[1])
+    if stdout.isatty():
+        print(f"\nRun panda for {argv[1]} with:\n{cmd}")
+    else:
+        print(cmd)

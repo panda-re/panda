@@ -144,7 +144,7 @@ class Panda():
             raise ValueError(f"Unsupported architecture {self.arch_name}")
         self.bits, self.endianness, self.register_size = self.arch._determine_bits()
 
-        self.build_dir  = self._find_build_dir()
+        self.build_dir  = self._find_build_dir(self.arch_name)
         environ["PANDA_DIR"] = self.build_dir
 
         if libpanda_path:
@@ -316,7 +316,8 @@ class Panda():
         except KeyboardInterrupt:
             self.end_analysis()
 
-    def _find_build_dir(self):
+    @staticmethod
+    def _find_build_dir(arch_name):
         '''
         Find build directory containing ARCH-softmmu/libpanda-ARCH.so and ARCH-softmmu/panda/plugins/
         1) check relative to file (in the case of installed packages)
@@ -326,19 +327,19 @@ class Panda():
         archs = ['i386', 'x86_64', 'arm', 'ppc']
         python_package = pjoin(*[dirname(__file__), "data"])
         local_build = realpath(pjoin(dirname(__file__), "../../../../build"))
-        path_end = "{0}-softmmu/libpanda-{0}.so".format(self.arch_name)
+        path_end = "{0}-softmmu/libpanda-{0}.so".format(arch_name)
 
         pot_paths = [python_package, local_build]
         for potential_path in pot_paths:
             if isfile(pjoin(potential_path, path_end)):
-                print("Loading libpanda from {}".format(potential_path))
+                #print("Loading libpanda from {}".format(potential_path))
                 return potential_path
 
         searched_paths = "\n".join(["\t"+p for p in  pot_paths])
         raise RuntimeError(("Couldn't find libpanda-{}.so.\n"
                             "Did you built PANDA for this architecture?\n"
                             "Searched paths:\n{}"
-                           ).format(self.arch_name, searched_paths))
+                           ).format(arch_name, searched_paths))
 
 
     def queue_main_loop_wait_fn(self, fn, args=[]):
