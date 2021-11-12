@@ -1113,6 +1113,11 @@ bool init_plugin(void *self) {
     fprintf(stderr,"The syscalls plugin is not currently supported on this platform.\n");
     return false;
 #endif // x86/arm/mips
+
+    // Plugin is good to load - now let's clear the cache to make
+    // sure there aren't any previously-translated TCG blocks
+    // which already have (uninstrumented) syscalls.
+    panda_do_flush_tb();
     return true;
 }
 
