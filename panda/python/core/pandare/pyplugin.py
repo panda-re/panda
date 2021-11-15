@@ -96,9 +96,28 @@ class PyPlugin:
 
     def get_arg_bool(self, arg_name):
         '''
-        Returns True if the argument is set and has a value of True
+        Returns True if the argument is set and has a truthy value
         '''
-        return arg_name in self.args and self.args[arg_name]==True
+
+        if arg_name not in self.args:
+            # Argument name unset - it's false
+            return False
+
+        arg_val = self.args[arg_name]
+        if isinstance(arg_val, bool):
+            # If it's a python bol already, just return it
+            return arg_val
+
+        if isinstance(arg_val, str):
+            # string of true/y/1  is True
+            return arg_val.lower() in ['true', 'y', '1']
+
+        if isinstance(arg_val, int):
+            # Nonzero is True
+            return arg_val != 0
+
+        # If it's not a string, int, or bool something is weird
+        raise ValueError(f"Unsupported arg type: {type(arg_val)}")
 
     # Callback definition / registration / use. Note these functions mirror the behavior of the macros used
     # in C plugin, check out docs/readme.md for additional details.
