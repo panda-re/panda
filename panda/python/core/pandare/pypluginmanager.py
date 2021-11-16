@@ -206,11 +206,14 @@ class PyPluginManager:
         all classes that subclass PyPlugin and passing them to self.load()
         '''
         import inspect, importlib
-        spec = importlib.util.spec_from_file_location("snake_hook", plugin_file)
+        spec = importlib.util.spec_from_file_location("plugin_file", plugin_file)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        for name, cls in inspect.getmembers(module, lambda x: inspect.isclass(x) and x.__module__ == "snake_hook"): # matches module set above
+        for name, cls in inspect.getmembers(module, lambda x: inspect.isclass(x)):
+            if not issubclass(cls, PyPlugin):
+                continue
+            cls.__name__ = name
             self.load(cls, args, template_dir)
 
     def unload(self, pluginclass, do_del=True):
@@ -226,8 +229,8 @@ class PyPluginManager:
             del self.plugins[name]
 
     def unload_all(self):
-        for instance in self.plugins.values():
-            self.unload(instance, do_del=False)
+        for name in self.plugins.keys():
+            self.unload(name, do_del=False)
         self.plugins.clear()
 
     def is_loaded(self, pluginclass):
