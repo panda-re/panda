@@ -4,7 +4,7 @@ PyPlugins are Python3 classes which implement some reusable PANDA capability.
 
 The anatomy of a PANDA PyPlugin in its current form is one or more types which subclass `PyPlugin`. The constructor takes a `panda` object, which is of type [pandare.Panda](https://docs.panda.re/panda.html#pandare.panda.Panda).
 
-From there, you can add hooks and declare initial state for your plugin. The destructor (`__del__`) is optional, but can be used to perform cleanup when your plugin is unloaded.
+From there, you can add hooks and declare initial state for your plugin. An `uninit` method can optionally be defined which will run prior to your plugin being unloaded (often due to the end of the guest execution or replay).
 
 ## Relevant API Docs
 

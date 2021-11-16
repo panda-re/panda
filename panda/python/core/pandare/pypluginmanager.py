@@ -213,22 +213,21 @@ class PyPluginManager:
         for name, cls in inspect.getmembers(module, lambda x: inspect.isclass(x) and x.__module__ == "snake_hook"): # matches module set above
             self.load(cls, args, template_dir)
 
-    def unload(self, pluginclass):
+    def unload(self, pluginclass, do_del=True):
         if isinstance(pluginclass, str):
             name = pluginclass
         else:
             name = pluginclass.__name__
 
-        del self.plugins[name]
+        if callable(getattr(self.plugins[name], "uninit", None)):
+            self.plugins[name].uninit()
+
+        if do_del:
+            del self.plugins[name]
 
     def unload_all(self):
-        # XXX: Why don't we just clear the plugin list? The refcount isn't
-        # dropping to zero after the clear and I can't figure out why. So
-        # we'll explicitly call __del__ if it exists on unload as per
-        # the PyPlugin API
         for instance in self.plugins.values():
-            if callable(getattr(instance, "__del__", None)):
-                instance.__del__()
+            self.unload(instance, do_del=False)
         self.plugins.clear()
 
     def is_loaded(self, pluginclass):
