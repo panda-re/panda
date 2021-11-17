@@ -1,6 +1,7 @@
-use panda::current_asid;
 use panda::sys::get_cpu;
+use panda::{current_asid, current_pc};
 use panda::{
+    mem::virtual_memory_read,
     mem::virtual_memory_write,
     plugins::syscalls2::SYSCALLS,
     prelude::*,
@@ -30,7 +31,19 @@ lazy_static::lazy_static! {
     static ref ARGS: Args = Args::from_panda_args();
 }
 
-const MMAP2: target_ulong = 192;
+// i386
+// const MMAP2: target_ulong = 192;
+// const WRITE: target_ulong = 4;
+// const FORK: target_ulong = 2;
+// const EXECVE: target_ulong = 11;
+// const MEMFD_CREATE: target_ulong = 356;
+// x86_64
+const MMAP: target_ulong = 9;
+const WRITE: target_ulong = 1;
+const FORK: target_ulong = 57;
+const EXECVE: target_ulong = 59;
+const MEMFD_CREATE: target_ulong = 319;
+
 const NULL: target_ulong = 0;
 const NEG_1: target_ulong = target_ulong::MAX;
 const PAGE_SIZE: target_ulong = 0x1000;
@@ -42,7 +55,7 @@ const MAP_ANON: target_ulong = 0x20;
 
 async fn do_mmap() -> target_ulong {
     syscall(
-        MMAP2,
+        MMAP,
         (
             NULL,
             PAGE_SIZE,
@@ -55,7 +68,6 @@ async fn do_mmap() -> target_ulong {
     .await
 }
 
-const MEMFD_CREATE: target_ulong = 356;
 const MFD_CLOEXEC: target_ulong = 1;
 
 async fn do_memfd_create(mmap_addr: target_ulong) -> target_ulong {
@@ -63,8 +75,6 @@ async fn do_memfd_create(mmap_addr: target_ulong) -> target_ulong {
     // so it will be a '\0' litera,l name
     syscall(MEMFD_CREATE, (mmap_addr, MFD_CLOEXEC)).await
 }
-
-const WRITE: target_ulong = 4;
 
 async fn do_write(
     mem_fd: target_ulong,
@@ -74,13 +84,9 @@ async fn do_write(
     syscall(WRITE, (mem_fd, mmap_addr, len)).await
 }
 
-const FORK: target_ulong = 2;
-
 async fn do_fork() -> target_ulong {
     syscall(FORK, ()).await
 }
-
-const EXECVE: target_ulong = 11;
 
 async fn do_execve(
     path: target_ulong,
@@ -90,31 +96,50 @@ async fn do_execve(
     syscall(EXECVE, (path, argv, envp)).await
 }
 
+const GETPID: target_ulong = 24;
+
+fn read_2_bytes_at_pc(_cpu: &mut CPUState, pc: target_ulong) {
+    let a = virtual_memory_read(_cpu, pc, 2).unwrap();
+    println!("opcode@PC 0: {:x} 1: {:x}", a[0], a[1]);
+}
+
 #[panda::on_all_sys_enter]
-fn on_sys_enter(
-    _cpu: &mut CPUState,
-    pc: SyscallPc,
-    _syscall_num: target_ulong,
-) {
+fn on_sys_enter(_cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
+    println!("Got syscall {}", syscall_num);
+    println!(
+        "SYSCALLS PC is {:x} CURRENT_PC is {:x}",
+        pc.pc(),
+        current_pc(_cpu)
+    );
+    let asid = current_asid(_cpu);
+    let cpc = current_pc(_cpu);
+    read_2_bytes_at_pc(_cpu, pc.pc());
+    read_2_bytes_at_pc(_cpu, cpc);
+
     let file_data = ELF_TO_INJECT.get().unwrap();
     run_injector(pc, async move {
+        let cpu = unsafe { &mut *get_cpu() };
+        println!("current asid: {:x}", current_asid(cpu));
         if ARGS.require_root {
-            let is_root = syscall(24, ()).await == 0 as target_ulong;
+            let is_root = syscall(GETPID, ()).await == 0 as target_ulong;
             if !is_root {
                 SYSCALLS.add_callback_on_all_sys_enter(on_sys_enter);
                 return;
+            } else {
+                println!("Got root!");
             }
         }
-        let cpu = unsafe { &mut *get_cpu() };
+
         println!("In injector");
         println!("current asid: {:x}", current_asid(cpu));
         // only problematic in multi-cpu systems
         // mmap a region
         let mmap_addr = do_mmap().await;
         println!("Got mmap addr {:#x}", mmap_addr);
+        println!("{}", mmap_addr as i64);
         println!("current asid: {:x}", current_asid(cpu));
         // zero it out
-        virtual_memory_write(cpu, mmap_addr, &[0u8; PAGE_SIZE as usize]);
+        // virtual_memory_write(cpu, mmap_addr, &[0u8; PAGE_SIZE as usize]);
         let mem_fd = do_memfd_create(mmap_addr).await;
         println!("Got fd {:#x}", mem_fd);
         println!("current asid: {:x}", current_asid(cpu));
@@ -171,6 +196,12 @@ fn on_sys_enter(
         do_execve(mmap_addr, end_mmap_buf, end_mmap_buf).await;
         println!("finished");
     });
+    panda::hook::before_block_exec(move |cpu, _, hook| {
+        if asid == current_asid(cpu) {
+            println!("Hit PC for SYSCALL {:x}", pc.pc());
+        }
+    })
+    .at_addr(pc.pc());
     SYSCALLS.remove_callback_on_all_sys_enter(on_sys_enter);
 }
 
