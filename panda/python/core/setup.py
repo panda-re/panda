@@ -52,7 +52,7 @@ def copy_objs():
         llvm_enabled = True if 'CONFIG_LLVM=y' in cfg.read() else False
 
     # For each arch, copy library, plugins, plog_pb2.py and llvm-helpers
-    arches = ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel']
+    arches = ['arm', 'aarch64', 'i386', 'x86_64', 'ppc', 'mips', 'mipsel', 'mips64']
     if pypi_build:
         # XXX need to drop aarch64/mipsel/ppc to fit into pypi
         arches = ['arm', 'i386', 'x86_64', 'mipsel']

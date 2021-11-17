@@ -75,8 +75,6 @@ if [ $version -eq 18 ]; then
   $SUDO apt-get update
 fi
 
-progress "Installing Rust..."
-curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 # Dependencies are for a major version, but the filenames include minor versions
 # So take our major version, find the first match in dependencies directory and run with it.
@@ -90,6 +88,12 @@ else
   echo "Unsupported Ubuntu version: $version. Create a list of build dependencies in ${dep_base}_{base,build}.txt and try again."
   exit 1
 fi
+
+progress "Installing Rust..."
+curl https://sh.rustup.rs -sSf | sh -s -- -y
+
+# Expose cargo to the running shell/env
+. $HOME/.cargo/env
 
 # Because libz3-dev for Ubuntu 18 is really old, we download and install z3 github release v-4.8.7
 if [ "$version" -eq 18 ]; then
@@ -106,7 +110,7 @@ if [[ !$(ldconfig -p | grep -q libcapstone.so.4) ]]; then
   echo "Installing libcapstone v4"
   pushd /tmp && \
   curl -o /tmp/cap.tgz -L https://github.com/aquynh/capstone/archive/4.0.2.tar.gz && \
-  tar xvf cap.tgz && cd capstone-4.0.2/ && ./make.sh && make install && cd /tmp && \
+  tar xvf cap.tgz && cd capstone-4.0.2/ && ./make.sh && $SUDO make install && cd /tmp && \
   rm -rf /tmp/capstone-4.0.2
   $SUDO ldconfig
   popd

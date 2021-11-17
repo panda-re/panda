@@ -793,6 +793,9 @@ following.
 
 2. Create a type for the callback function. Put this in the .h file for Plugin
    A. If the callback's name is `foo`, then this type has to be called `foo_t`.
+   This type shold be generated using the `PPP_CB_TYPEDEF` macro in the form of 
+   `PPP_CB_TYPEDEF(return_type, name, arguments...);`. For example 
+   `PPP_CB_TYPEDEF(void, foo, CPUState *env, target_ptr_t pc);`.
 
 3. Use the macro `PPP_RUN_CB` at the line chosen in 1. This macro takes all the
    arguments you want the callback to get, so it will look like a function call.

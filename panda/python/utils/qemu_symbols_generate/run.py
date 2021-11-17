@@ -6,6 +6,8 @@ archs = [
 	("X86", 64, "/x86_64-softmmu/libpanda-x86_64.so"),
 	("ARM", 32, "/arm-softmmu/libpanda-arm.so"),
 	("ARM", 64, "/aarch64-softmmu/libpanda-aarch64.so"),
+	("MIPS", 32,"/mips-softmmu/libpanda-mips.so"),
+	("MIPS", 64,"/mips64-softmmu/libpanda-mips64.so"),
 	("PPC", 32, "/ppc-softmmu/libpanda-ppc.so"),
 	("PPC", 64, "/ppc64-softmmu/libpanda-ppc64.so")
 ]

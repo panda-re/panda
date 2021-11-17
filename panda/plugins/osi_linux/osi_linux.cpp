@@ -700,7 +700,7 @@ void r28_cache(CPUState *cpu, TranslationBlock *tb) {
 }
 #endif
 
-#if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
+#if defined(TARGET_I386) || defined(TARGET_ARM) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
 
 // Keep track of which tasks have entered execve. Note that we simply track
 // based on the task struct. This works because the other threads in the thread
@@ -753,7 +753,12 @@ static void before_tcg_codegen_callback(CPUState *cpu, TranslationBlock *tb)
  */
 bool init_plugin(void *self) {
     // Register callbacks to the PANDA core.
-#if defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS)
+#if defined(TARGET_MIPS64)
+        printf("No OSI for mips64\n");
+        return false;
+#endif
+
+#if defined(TARGET_I386) || defined(TARGET_ARM) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
     {
         // Whenever we load a snapshot, we need to find cpu offsets again
         // (particularly if KASLR is enabled) and we also may need to re-initialize

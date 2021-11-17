@@ -4,8 +4,7 @@
 
 # The main rule for your plugin. List all object-file dependencies.
 
-PANDA_PATH = $(realpath $(shell pwd)/..)
-PLUGIN_DIR = $(realpath $(join $(PANDA_PATH), /../panda/plugins/$(PLUGIN_NAME)/))
+PLUGIN_DIR = $(realpath $(join $(SRC_PATH), /panda/plugins/$(PLUGIN_NAME)/))
 RUST_SOURCE = $(wildcard $(PLUGIN_DIR)/src/*.rs)
 PLUGIN_ARTIFACTS_DIR = $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)/target
 

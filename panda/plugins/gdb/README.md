@@ -58,6 +58,20 @@ Here are some of the other commands that have been tested and which work:
 * `si` (step)
 * `x` (read memory)
 
+### Monitor Commands
+
+panda-gdb provides a set of monitor commands in order to allow accessing PANDA-specific
+functionality such as dynamic taint analysis and process lists. The following commands 
+are supported:
+
+* `meminfo` - print out the current memory map
+* `taint` - apply taint to a given register/memory location
+* `check_taint` - check if a given register/memory location is tainted
+* `get_taint` - get the taint labels for a given register/memory location
+* `threadinfo` - get info about threads of the current process
+* `procinfo` - get info about the current process
+* `proclist` - list all the currently running processes
+
 ### Dependencies
 
 * `osi`
