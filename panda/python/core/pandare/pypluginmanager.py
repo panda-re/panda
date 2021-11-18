@@ -175,6 +175,10 @@ class PyPluginManager:
             if not isinstance(pluginclass, type) or not issubclass(pluginclass, PyPlugin):
                 raise ValueError(f"pluginclass must be an uninstantiated subclass of PyPlugin")
 
+            # If PyPlugin is in scope it should not be treated as a plugin
+            if pluginclass is PyPlugin:
+                continue
+
             name = pluginclass.__name__
 
             self.plugins[name] = pluginclass.__new__(pluginclass)
