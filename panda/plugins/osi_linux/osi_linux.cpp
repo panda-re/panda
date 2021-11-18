@@ -558,6 +558,15 @@ end:
 }
 
 
+target_ptr_t ext_get_file_dentry(CPUState *env, target_ptr_t file_struct) {
+	return get_file_dentry(env, file_struct);
+} 
+
+target_ptr_t ext_get_file_struct_ptr(CPUState *env, target_ptr_t task_struct, int fd) {
+	return get_file_struct_ptr(env, task_struct, fd);
+}
+
+
 unsigned long long  osi_linux_fd_to_pos(CPUState *env, OsiProc *p, int fd) {
     //    target_ulong asid = panda_current_asid(env);
     target_ptr_t ts_current = 0;
