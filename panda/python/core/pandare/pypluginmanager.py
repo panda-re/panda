@@ -268,7 +268,7 @@ class PyPluginManager:
         @self.app.route("/")
         def index():
             return "PANDA PyPlugin web interface. Available plugins:" + "<br\>".join( \
-                    [f"<li><a href='/{name}'>{name}</a></li>" \
+                    [f"<li><a href='./{name}'>{name}</a></li>" \
                             for name in self.plugins.keys() \
                             if hasattr(self.plugins[name], 'flask')])
 
