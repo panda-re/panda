@@ -31,9 +31,9 @@ macro_rules! on_reply {
             => $code:block
         ) $(;)?
     ) => {
-        println!("Before send");
+        // println!("Before send");
         $self.request.send(Request::$type { $( $field ),* }).unwrap();
-        println!("After send");
+        // println!("After send");
         match $self.reply.recv() {
             Ok(Reply::$reply_ty { $( $reply_field ),* }) => $code,
             Ok(Reply::Error(err)) => $reply.error(err),
@@ -53,7 +53,7 @@ macro_rules! send_reply {
                 ),*}
         ) $(;)?
     ) => {
-        println!("{}(...)", stringify!($method));
+        // println!("{}(...)", stringify!($method));
         on_reply! {
             $self => $reply (
                 $type { $($field),* }
@@ -215,7 +215,7 @@ static MESSAGE_QUEUE: SegQueue<Vec<u8>> = SegQueue::new();
 
 extern "C" fn message_recv(_channel: u32, ptr: *const u8, len: usize) {
     unsafe {
-        println!("message_recv in hyperfuse");
+        // println!("message_recv in hyperfuse");
         let bytes = std::slice::from_raw_parts(ptr, len);
         MESSAGE_QUEUE.push(bytes.to_owned());
     }
@@ -223,7 +223,7 @@ extern "C" fn message_recv(_channel: u32, ptr: *const u8, len: usize) {
 
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
-    let path = "/home/luke/workspace/igloo/pie_idea/guest_code/target/i686-unknown-linux-musl/release/guest_daemon";
+    let path = "/home/luke/workspace/igloo/pie_idea/guest_code/target/release/guest_daemon";
     let plugin_name = CString::new("linjector".as_bytes()).unwrap();
     let plugin_arg = CString::new(format!("guest_binary={}", path).as_bytes()).unwrap();
     unsafe {
@@ -236,7 +236,7 @@ fn init(_: &mut PluginHandle) -> bool {
     GUEST_PLUGIN_MANAGER.ensure_init();
     let channel = GUEST_PLUGIN_MANAGER.add_guest_plugin(GuestPlugin::new(
         "hyperfuse".into(),
-        Path::new("/home/luke/workspace/igloo/pie_idea/guest_code/target/i686-unknown-linux-musl/release/hyperfuse_guest"),
+        Path::new("/home/luke/workspace/igloo/pie_idea/guest_code/target/release/hyperfuse_guest"),
         message_recv,
     ));
     println!("hyperfuse established channel with fd {}", channel);

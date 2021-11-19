@@ -29,17 +29,17 @@ pub fn hyp_read(
     addr: usize,
     max_size: usize,
 ) -> Option<usize> {
-    println!("got to hyp_read with CID {}", channel_id);
+    // println!("got to hyp_read with CID {}", channel_id);
     if let Some(msg) = poll_plugin_message(channel_id) {
         if msg.len() > max_size{
             panic!();
         }
         // could check max len more
         virtual_memory_write(cpu, addr as target_ulong, &msg);
-        println!("end of get some message");
+        // println!("end of get some message");
         Some(msg.len())
     } else {
-        println!("end of get nothing");
+        // println!("end of get nothing");
         Some(0)
     }
 }
@@ -49,7 +49,7 @@ pub fn hyp_write(
     buf_ptr: usize,
     buf_size: usize,
 ) -> Option<usize> {
-    println!("write");
+    // println!("write");
     if let Ok(buf_out) =
         virtual_memory_read(cpu, buf_ptr as target_ulong, buf_size)
     {

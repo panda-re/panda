@@ -35,7 +35,7 @@ pub fn add_channel(p_name: Option<&str>, cb: ChannelCB) -> ChannelId {
 }
 
 pub fn poll_plugin_message(channel_id: ChannelId) -> Option<Vec<u8>> {
-    println!("in poll_plugin_message");
+    // println!("in poll_plugin_message");
     let pm = CHANNELS.read();
     if let Some(plugin) = pm.get(&channel_id){
         plugin.message_queue.pop()
@@ -48,10 +48,10 @@ pub fn publish_message_from_guest(channel_id: ChannelId, msg: Vec<u8>) {
     let pm = CHANNELS.read();
     if let Some(plugin) = pm.get(&channel_id){
         let buf_ptr = msg.as_ptr();
-        println!("published message to FD {}", channel_id);
+        // println!("published message to FD {}", channel_id);
         (plugin.msg_receive_cb)(channel_id, buf_ptr, msg.len())
     }else{
-        println!("failed publish message to FD {}", channel_id);
+        // println!("failed publish message to FD {}", channel_id);
     }
 }
 
