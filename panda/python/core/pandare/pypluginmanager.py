@@ -212,6 +212,7 @@ class PyPluginManager:
         import inspect, importlib
         spec = importlib.util.spec_from_file_location("plugin_file", plugin_file)
         module = importlib.util.module_from_spec(spec)
+        module.PyPlugin = PyPlugin
         spec.loader.exec_module(module)
 
         for name, cls in inspect.getmembers(module, lambda x: inspect.isclass(x)):
