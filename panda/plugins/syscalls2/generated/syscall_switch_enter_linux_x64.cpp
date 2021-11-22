@@ -867,7 +867,6 @@ void syscall_enter_switch_linux_x64(CPUState *cpu, target_ptr_t pc, int static_c
 	case 57: {
 		panda_noreturn = false;
 		ctx.double_return = true;
-		printf("double return\n");
 		PPP_RUN_CB(on_sys_fork_enter, cpu, pc);
 	}; break;
 	// 58 long sys_vfork ['void']
