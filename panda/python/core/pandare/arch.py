@@ -485,7 +485,7 @@ class MipsArch(PandaArch):
         '''
         .. Deprecated:: use get_return_address
         '''
-        return self.get_return_addess(cpu)
+        return self.get_return_address(cpu)
 
     def get_return_address(self,cpu):
         '''
