@@ -114,7 +114,7 @@ class PandaArch():
         else:
             raise RuntimeError(f"get_pc unsupported for {self.panda.arch_name}")
 
-    def _get_arg_reg(self, idx, convention):
+    def _get_arg_loc(self, idx, convention):
         '''
         return the name of the argument [idx] for the given arch with calling [convention]
         '''
@@ -137,7 +137,7 @@ class PandaArch():
 
         Note for syscalls we define arg[0] as syscall number and then 1-index the actual args
         '''
-        reg = self._get_arg_reg(idx, convention)
+        reg = self._get_arg_loc(idx, convention)
         return self.set_reg(cpu, reg, val)
 
     def get_arg(self, cpu, idx, convention='default'):
@@ -145,15 +145,47 @@ class PandaArch():
         Return arg [idx] for given calling convention. This only works right as the guest
         is calling or has called a function before register values are clobbered.
 
+        If arg[idx] should be stack-based, name it stack_0, stack_1... this allows mixed
+        conventions where some args are in registers and others are on the stack (i.e.,
+        mips32 syscalls).
+
+        When doing a stack-based read, this function may raise a ValueError if the memory
+        read fails (i.e., paged out, invalid address).
+
         Note for syscalls we define arg[0] as syscall number and then 1-index the actual args
         '''
         
-        # i386 is stack based and so the convention wont work
-        if self.call_conventions[convention] == "stack":
-            return self.get_arg_stack(cpu, idx)
-        reg = self._get_arg_reg(idx, convention)
-        return self.get_reg(cpu, reg)
+        argloc = self._get_arg_loc(idx, convention)
 
+        if self._is_stack_loc(argloc):
+            return self._read_stack(cpu, argloc)
+        else:
+            return self.get_reg(cpu, argloc)
+
+    @staticmethod
+    def _is_stack_loc(argloc):
+        '''
+        Given a name returned by self._get_arg_loc
+        check if it's the name of a stack offset
+        '''
+        return argloc.startswith("stack_")
+
+    def _read_stack(self, cpu, argloc):
+        '''
+        Given a name like stack_X, calculate where
+        the X-th value on the stack is, then read it out of
+        memory and return it.
+
+        May raise a ValueError if the memory read fails
+        '''
+        # Stack based - get stack base, calculate offset, then try to read it
+        assert(self._is_stack_loc(argloc)), f"Can't get stack offset of {argloc}"
+
+        stack_idx = int(argloc.split("stack_")[1])
+        stack_base = self.get_reg(cpu, self.reg_sp)
+        arg_sz = self.panda.bits // 8
+        offset = arg_sz * (stack_idx+1)
+        return self.panda.virtual_memory_read(cpu, stack_base + offset, arg_sz, fmt='int')
 
     def set_retval(self, cpu, val, convention='default', failure=False):
         '''
@@ -362,7 +394,7 @@ class Aarch64Arch(PandaArch):
 
 class MipsArch(PandaArch):
     '''
-    Register names and accessors for MIPS
+    Register names and accessors for MIPS. Handles 32el, 32eb, and mips64
     '''
 
     # Registers are:
@@ -391,8 +423,9 @@ class MipsArch(PandaArch):
 
         self.reg_sp = regnames.index('sp')
         self.reg_retaddr = regnames.index("ra")
+        # Default syscall/args are for mips o32
         self.call_conventions = {"mips":          ["A0", "A1", "A2", "A3"],
-                                 "syscall": ["V0", "A0", "A1", "A2", "A3"]}
+                                 "syscall": ["V0", "A0", "A1", "A2", "A3", "stack_1", "stack_2", "stack_3", "stack_4"]}
         self.call_conventions['default'] = self.call_conventions['mips']
 
         self.reg_retval =  {"default":    "V0",
@@ -496,9 +529,9 @@ class X86Arch(PandaArch):
         self.reg_retval = {"default":    "EAX",
                            "syscall":    "EAX"}
         
-        self.call_conventions = {"stack": "stack",
+        self.call_conventions = {"cdecl": ["stack_{x}" for x in range(20)], # 20: arbitrary but big
                                  "syscall": ["EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP"]}
-        self.call_conventions['default'] = self.call_conventions['stack']
+        self.call_conventions['default'] = self.call_conventions['cdecl']
 
         self.reg_sp = regnames.index('ESP')
         self.registers = {regnames[idx]: idx for idx in range(len(regnames)) }
@@ -541,14 +574,6 @@ class X86Arch(PandaArch):
         esp = self.get_reg(cpu,"ESP")
         return self.panda.virtual_memory_read(cpu,esp,4,fmt='int')
     
-    # we need this because X86 is stack based
-    def get_arg_stack(self, cpu, num, kernel=False):
-        '''
-        Gets arguments based on the number. Supports kernel and usermode.
-        '''
-        esp = self.get_reg(cpu, "ESP")
-        return self.panda.virtual_memory_read(cpu, esp+(4*(num+1)),4,fmt='int')
-
 class X86_64Arch(PandaArch):
     '''
     Register names and accessors for x86_64
