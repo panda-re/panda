@@ -394,7 +394,7 @@ class Aarch64Arch(PandaArch):
 
 class MipsArch(PandaArch):
     '''
-    Register names and accessors for MIPS. Handles 32el, 32eb, and mips64
+    Register names and accessors for 32-bit MIPS
     '''
 
     # Registers are:
@@ -513,6 +513,33 @@ class MipsArch(PandaArch):
                 val = -1 * self.panda.from_unsigned_guest(val)
 
         return super().set_retval(cpu, val, convention)
+
+class Mips64Arch(MipsArch):
+    '''
+    Register names and accessors for MIPS64. Inherits from MipsArch for everything
+    except the register name and call conventions.
+    '''
+
+    def __init__(self, panda):
+        super().__init__(panda)
+        regnames = ["zero", "at",   "v0",   "v1",   "a0",   "a1",   "a2",   "a3",
+                    "a4",   "a5",   "a6",   "a7",   "t0",   "t1",   "t2",   "t3",
+                    "s0",   "s1",   "s2",   "s3",   "s4",   "s5",   "s6",   "s7",
+                    "t8",   "t9",   "k0",   "k1",   "gp",   "sp",   "s8",   "ra"]
+
+        self.reg_sp = regnames.index('sp')
+        self.reg_retaddr = regnames.index("ra")
+        # Default syscall/args are for mips 64/n32 - note the registers are different than 32
+        self.call_conventions = {"mips":          ["A0", "A1", "A2", "A3"], # XXX Unsure?
+                                 "syscall": ["V0", "A0", "A1", "A2", "A3", "A4", "A5"]}
+        self.call_conventions['default'] = self.call_conventions['mips']
+
+        self.reg_retval =  {"default":    "V0",
+                            "syscall":    'V0'}
+
+
+        # note names must be stored uppercase for get/set reg to work case-insensitively
+        self.registers = {regnames[idx].upper(): idx for idx in range(len(regnames)) }
 
 class X86Arch(PandaArch):
     '''
