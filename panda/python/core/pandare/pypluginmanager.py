@@ -212,6 +212,10 @@ class PyPluginManager:
         '''
         import inspect, importlib
         spec = importlib.util.spec_from_file_location("plugin_file", plugin_file)
+        if spec is None:
+            # Likely an invalid path
+            raise ValueError(f"Unable to load {plugin_file}")
+
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
