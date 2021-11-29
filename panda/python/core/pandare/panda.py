@@ -1001,24 +1001,27 @@ class Panda():
             idx += 1
         return r.decode("utf8", "ignore")
 
-    def to_unsigned_guest(self, x):
+    def to_unsigned_guest(self, x, bits=None):
         '''
         Convert a singed python int to an unsigned int32/unsigned int64
         depending on guest bit-size
 
         Args:
             x (int): Python integer
+            bits (int): Number of bits to treat this value as. If unset, uses architecture default
 
         Returns:
             int: Python integer representing x as an unsigned value in the guest's pointer-size.
         '''
         import ctypes
-        if self.bits == 32:
+        if bits is None:
+            bits = self.bits
+        if bits == 32:
             return ctypes.c_uint32(x).value
-        elif self.bits == 64:
+        elif bits == 64:
             return ctypes.c_uint64(x).value
         else:
-            raise ValueError("Unsupported number of bits")
+            raise ValueError(f"Unsupported number of bits {bits}")
 
     def from_unsigned_guest(self, x):
         '''
