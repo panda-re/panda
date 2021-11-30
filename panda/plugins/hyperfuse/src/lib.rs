@@ -122,7 +122,9 @@ impl Filesystem for HelloFS {
                 ReadDir { ino, offset }
                     => Directory { dir_entries }
                     => {
+                        println!("Got to dir entry");
                         for DirEntry { ino, offset, kind, name } in dir_entries {
+                            println!("{:?}", name);
                             if reply.add(ino, offset, kind, name) {
                                 break
                             }
@@ -132,6 +134,7 @@ impl Filesystem for HelloFS {
                     }
             );
         }
+        println!("Finished reply");
     }
 
     fn open(&mut self, _req: &fuser::Request<'_>, ino: u64, flags: i32, reply: ReplyOpen) {
@@ -184,7 +187,11 @@ impl Receiver<Reply> {
         loop {
             match MESSAGE_QUEUE.pop() {
                 Some(bytes) => break bincode::deserialize(&bytes).map_err(|_| ()),
-                None => std::thread::yield_now(),
+                None => {
+                    println!("Nothing recieved, sleeping...");
+                    //std::thread::yield_now();
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                }
             }
         }
     }
@@ -195,7 +202,7 @@ impl Receiver<Reply> {
 //}
 
 fn mount(channel: ChannelId) {
-    let mountpoint = "/home/luke/workspace/fuse_mount/";
+    let mountpoint = "/home/jmcleod/dev/panda/build/fuse_mount";
     let options = vec![
         MountOption::FSName("hello".to_string()),
         MountOption::AutoUnmount,
@@ -206,6 +213,7 @@ fn mount(channel: ChannelId) {
     //other_thread::start(incoming_request, response);
 
     fuser::mount2(HelloFS { request, reply }, mountpoint, &options).unwrap();
+    println!("Unmounted");
 }
 
 use crossbeam_queue::SegQueue;
@@ -223,7 +231,7 @@ extern "C" fn message_recv(_channel: u32, ptr: *const u8, len: usize) {
 
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
-    let path = "/home/luke/workspace/igloo/pie_idea/guest_code/target/i686-unknown-linux-musl/release/guest_daemon";
+    let path = "/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/x86_64-unknown-linux-musl/release/guest_daemon";
     let plugin_name = CString::new("linjector".as_bytes()).unwrap();
     let plugin_arg = CString::new(format!("guest_binary={}", path).as_bytes()).unwrap();
     unsafe {
@@ -236,7 +244,7 @@ fn init(_: &mut PluginHandle) -> bool {
     GUEST_PLUGIN_MANAGER.ensure_init();
     let channel = GUEST_PLUGIN_MANAGER.add_guest_plugin(GuestPlugin::new(
         "hyperfuse".into(),
-        Path::new("/home/luke/workspace/igloo/pie_idea/guest_code/target/i686-unknown-linux-musl/release/hyperfuse_guest"),
+        Path::new("/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/x86_64-unknown-linux-musl/release/hyperfuse_guest"),
         message_recv,
     ));
     println!("hyperfuse established channel with fd {}", channel);
