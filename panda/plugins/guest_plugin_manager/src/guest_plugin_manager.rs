@@ -64,7 +64,6 @@ fn hypercall_handler(cpu: &mut CPUState) -> bool {
         if let Some(retval) = retval {
             set_hyp_ret_reg(cpu, retval);
         }
-        println!("end of hc");
         true
     } else {
         false

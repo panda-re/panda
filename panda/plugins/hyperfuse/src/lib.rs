@@ -9,7 +9,6 @@ use std::borrow::Borrow;
 use std::ffi::{CString, OsStr};
 use std::marker::PhantomData;
 use std::path::Path;
-use std::sync::mpsc;
 
 mod types;
 use types::*;
@@ -231,6 +230,8 @@ extern "C" fn message_recv(_channel: u32, ptr: *const u8, len: usize) {
 
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
+    pretty_env_logger::init_custom_env("HYPERFUSE_LOG");
+
     let path = "/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/x86_64-unknown-linux-musl/release/guest_daemon";
     let plugin_name = CString::new("linjector".as_bytes()).unwrap();
     let plugin_arg = CString::new(format!("guest_binary={}", path).as_bytes()).unwrap();
