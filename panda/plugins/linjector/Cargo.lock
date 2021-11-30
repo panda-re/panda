@@ -370,7 +370,9 @@ checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
 
 [[package]]
 name = "panda-re"
-version = "0.22.0"
+version = "0.23.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b31fe3ef9172ce66a9957e7e0f703be08b7f5c8fba234e6adde2ab3a08792d38"
 dependencies = [
  "async-trait",
  "dashmap",
@@ -392,6 +394,8 @@ dependencies = [
 [[package]]
 name = "panda-re-macros"
 version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f81c6e3b78cf36e32f50b53a41d2d71b55b5ffee17978aac0c0b61e160f60d9f"
 dependencies = [
  "darling",
  "doc-comment",
@@ -402,6 +406,8 @@ dependencies = [
 [[package]]
 name = "panda-re-sys"
 version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e00ee000dc315bf4a0a55d78b6d97456a7540d6ed01768da5f5aa89fdb660783"
 
 [[package]]
 name = "parking_lot"
