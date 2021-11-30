@@ -117,7 +117,7 @@ class Server(PyPlugin):
       self.counter = 0
 
     @PyPlugin.ppp_export
-    def do_add(x):
+    def do_add(self, x):
         self.counter += x
         return self.counter
 
@@ -128,6 +128,8 @@ class Consumer(PyPlugin):
     def __init__(self, panda):
         print(f"Calling Server's do_add(1): ", self.ppp.Server.do_add(1))
   ```
+  
+The `Server.do_add` function could also be called directly from outside of a PyPlugin throught the panda object's pyplugin.ppp interface: e.g., `panda.pyplugins.ppp.Server.do_add(1)`.
 
 # Example Usage:
 
