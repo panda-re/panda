@@ -83,4 +83,12 @@ pub struct DirEntry {
     pub offset: i64,
     pub kind: FileType,
     pub name: String,
+    pub lookup_cache: LookupCacheEntry,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LookupCacheEntry {
+    pub ttl: Duration,
+    pub attr: FileAttr,
+    pub generation: u64,
 }

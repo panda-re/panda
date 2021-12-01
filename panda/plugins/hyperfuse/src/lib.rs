@@ -6,16 +6,19 @@ use libc::ENOENT;
 use panda::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
-use std::ffi::{CString, OsStr};
+use std::collections::HashMap;
+use std::ffi::{CString, OsStr, OsString};
 use std::marker::PhantomData;
 use std::path::Path;
 
 mod types;
 use types::*;
 
-struct HelloFS {
+struct HyperFilesystem {
     reply: Receiver<Reply>,
     request: Sender<types::Request>,
+
+    lookup_cache: HashMap<(u64, OsString), LookupCacheEntry>,
 }
 
 macro_rules! on_reply {
@@ -72,8 +75,18 @@ macro_rules! send_reply {
     };
 }
 
-impl Filesystem for HelloFS {
+impl Filesystem for HyperFilesystem {
     fn lookup(&mut self, _req: &fuser::Request, parent_ino: u64, name: &OsStr, reply: ReplyEntry) {
+        if let Some(LookupCacheEntry {
+            ttl,
+            attr,
+            generation,
+        }) = self.lookup_cache.remove(&(parent_ino, name.to_os_string()))
+        {
+            reply.entry(&ttl, &attr, generation);
+            return;
+        }
+
         let name = name.to_string_lossy().into_owned();
         send_reply! {
             self => reply.entry(
@@ -116,14 +129,16 @@ impl Filesystem for HelloFS {
         offset: i64,
         mut reply: ReplyDirectory,
     ) {
+        let parent_ino = ino;
         on_reply! {
             self => reply(
                 ReadDir { ino, offset }
                     => Directory { dir_entries }
                     => {
                         println!("Got to dir entry");
-                        for DirEntry { ino, offset, kind, name } in dir_entries {
+                        for DirEntry { ino, offset, kind, name, lookup_cache } in dir_entries {
                             println!("{:?}", name);
+                            self.lookup_cache.insert((parent_ino, name.clone().into()), lookup_cache);
                             if reply.add(ino, offset, kind, name) {
                                 break
                             }
@@ -211,7 +226,16 @@ fn mount(channel: ChannelId) {
 
     //other_thread::start(incoming_request, response);
 
-    fuser::mount2(HelloFS { request, reply }, mountpoint, &options).unwrap();
+    fuser::mount2(
+        HyperFilesystem {
+            request,
+            reply,
+            lookup_cache: Default::default(),
+        },
+        mountpoint,
+        &options,
+    )
+    .unwrap();
     println!("Unmounted");
 }
 
