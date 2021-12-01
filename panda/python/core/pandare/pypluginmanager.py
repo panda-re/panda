@@ -187,7 +187,8 @@ class PyPluginManager:
             self.get_ppp_funcs(self.plugins[name])
 
             # Setup webserver if necessary
-            if self.flask:
+            if self.flask and hasattr(self.plugins[name], 'webserver_init') and \
+                    callable(self.plugins[name].webserver_init):
                 self.plugins[name].flask = self.app
 
                 # If no template_dir was provided, try using ./templates in the dir of the plugin

@@ -8,7 +8,7 @@ From there, you can add hooks and declare initial state for your plugin. An `uni
 
 ## Relevant API Docs
 
-PyPlugin class which PyPlugins should subclass: [auto generated documentation](https://docs.panda.re/panda_plugin.html).
+PyPlugin class which PyPlugins should subclass: [auto generated documentation](https://docs.panda.re/pyplugin.html).
 * `class PyPlugin`:
   * `get_arg(name)` - returns either the argument value as a string or `None` if the argument is not present
   * `get_arg_bool(name)` - returns `True` if the argument is present and truthy.
@@ -20,7 +20,7 @@ PyPlugin class which PyPlugins should subclass: [auto generated documentation](h
   * `ppp.TargetPlugin.ppp_reg_cb('ppp_cb_name', self.my_func)`: Register the local function `self.my_func` with the PyPlugin `TargetPlugin`'s `ppp_cb_name` ppp-style callback. Note that the target plugin must have previously been loaded.
   * `ppp.TargetPlugin.some_function(*args)`: Call the ppp-exported `some_function` defined in `TargetPlugin`. Note that the target plugin must have previously been loaded.
 
-PyPluginManager: Interface to load/unload PyPlugins with an instance of the `pandare` class, accessable via the `.pyplugin` field of a panda object: [documentation](https://docs.panda.re/pyplugin.html#pandare.PyPluginManager).
+PyPluginManager: Interface to load/unload PyPlugins with an instance of the `pandare` class, accessable via the `.pyplugin` field of a panda object: [documentation](https://docs.panda.re/pypluginmanager.html).
 
 # Example Plugins
 
@@ -41,7 +41,7 @@ class TestPlugin(PyPlugin):
         print("Uninitialized test plugin")
 ```
 
-## Basic block counter
+## Basic block counter with webserver
 ```python
 from pandare import PyPlugin
 
