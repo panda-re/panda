@@ -115,8 +115,8 @@ fi
 # if the windows introspection library is not installed, clone and install
 if [[ !$(dpkg -l | grep -q libosi) ]]; then
   libosi_name=libosi-$(date +"%Y%m%d")
-  libosi_branch=dev
-  libosi_repo=https://github.com/panda-re/wintrospection
+  libosi_branch=master
+  libosi_repo=https://github.com/panda-re/libosi
 
   echo "Installing libosi"
   pushd .

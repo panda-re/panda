@@ -39,6 +39,13 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # Sanity check to ensure cargo is installed
 RUN cargo --help
 
+# install libosi
+RUN cd /tmp && \
+  git clone https://github.com/panda-re/libosi && \
+  mkdir libosi/build && cd $_ && \
+  cmake -GNinja .. && ninja && ninja package && dpkg -i libosi*.deb && \
+  cd /tmp && rm -rf libosi/
+
 # Build and install panda
 # Copy repo root directory to /panda, note we explicitly copy in .git directory
 # Note .dockerignore file keeps us from copying things we don't need
