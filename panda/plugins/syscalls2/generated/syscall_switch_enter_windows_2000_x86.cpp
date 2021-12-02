@@ -34,7 +34,15 @@ void syscall_enter_switch_windows_2000_x86(CPUState *cpu, target_ptr_t pc, int s
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
 	bool panda_noreturn;	// true if PANDA should not track the return of this system call
-	const syscall_info_t *call = (syscall_meta == NULL || ctx.no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx.no];
+	const syscall_info_t *call = NULL;
+	syscall_info_t zero = {0};
+	if (syscall_meta != NULL && ctx.no <= syscall_meta->max_generic) {
+	  // If the syscall_info object from dso_info_....c doesn't have an entry
+	  // for this syscall, we want to leave it as a NULL pointer
+	  if (memcmp(&syscall_info[ctx.no], &zero, sizeof(syscall_info_t)) != 0) {
+		call = &syscall_info[ctx.no];
+	  }
+	}
 
 	switch (ctx.no) {
 	// 0 NTSTATUS NtAcceptConnectPort ['PHANDLE PortHandle', 'PVOID PortContext', 'PPORT_MESSAGE ConnectionRequest', 'BOOLEAN AcceptConnection', 'PPORT_VIEW ServerView', 'PREMOTE_PORT_VIEW ClientView']

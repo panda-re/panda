@@ -268,7 +268,7 @@ class Argument(object):
         ''' Returns a snippet declaring an appropriate temp
             variable for this argument.
         '''
-        return '{0} arg{1};'.format(self.ctype, self.no)
+        return '{0} arg{1} = 0;'.format(self.ctype, self.no)
 
     def emit_temp_assignment(self):
         ''' Returns a snippet declaring an appropriate temp

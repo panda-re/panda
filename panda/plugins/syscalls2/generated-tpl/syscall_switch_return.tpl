@@ -14,7 +14,15 @@ extern "C" {
 
 void syscall_return_switch_{{os}}_{{arch}}(CPUState *cpu, target_ptr_t pc, const syscall_ctx_t *ctx) {
 #if {{arch_conf.qemu_target}}
-	const syscall_info_t *call = (syscall_meta == NULL || ctx->no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx->no];
+	const syscall_info_t *call = NULL;
+	syscall_info_t zero = {0};
+	if (syscall_meta != NULL && ctx->no <= syscall_meta->max_generic) {
+	  // If the syscall_info object from dso_info_....c doesn't have an entry
+	  // for this syscall, we want to leave it as a NULL pointer
+	  if (memcmp(&syscall_info[ctx->no], &zero, sizeof(syscall_info_t)) != 0) {
+		call = &syscall_info[ctx->no];
+	  }
+	}
 	switch (ctx->no) {
 		{%- for syscall in syscalls %}
 		// {{syscall.no}} {{syscall.rettype}} {{syscall.name}} {{syscall.args_raw}}

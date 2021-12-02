@@ -7,7 +7,7 @@ Example usage with a recording of the generic x86 qcow, run from the local direc
     panda-system-x86_64 -m 1g -os linux-64-ubuntu:4.15.0-72-generic-noaslr-nokaslr -replay trace_test -panda snake_hook:files=graph.py
 '''
 
-class ProcGraph(PandaPlugin):
+class ProcGraph(PyPlugin):
     def __init__(self, panda):
         # Data collection
         self.procinfo = {} # PID: info
