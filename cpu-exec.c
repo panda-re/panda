@@ -523,8 +523,13 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
             cpu->exception_index = -1;
             return true;
         } else {
+            int32_t exception = cpu->exception_index;
 
             cpu->exception_index = panda_callbacks_before_handle_exception(cpu, cpu->exception_index);
+
+            if (exception != cpu->exception_index){
+                return cpu_handle_exception(cpu, ret);
+            }
 
 #if defined(CONFIG_USER_ONLY)
             /* if user mode only, we simulate a fake exception
