@@ -1,24 +1,30 @@
 use panda::{
     prelude::*,
-    regs::{get_reg, set_reg, Reg},
+    regs::{
+        get_reg, set_reg,
+        Reg::{self, *},
+    },
 };
 
 // =================== Register Order ===================
 #[cfg(feature = "i386")]
-pub const REG_ORDER: [Reg; 5] =
-    [Reg::EAX, Reg::EBX, Reg::ECX, Reg::EDX, Reg::EDI];
+pub const REG_ORDER: [Reg; 5] = [EAX, EBX, ECX, EDX, EDI];
 
-// XXX: is this right?
 #[cfg(feature = "x86_64")]
-pub const REG_ORDER: [Reg; 5] =
-    [Reg::RAX, Reg::RBX, Reg::RCX, Reg::RDX, Reg::RDI];
+pub const REG_ORDER: [Reg; 5] = [RAX, RBX, RCX, RDX, RDI];
+
+#[cfg(feature = "arm")]
+pub const REG_ORDER: [Reg; 5] = [R0, R1, R2, R3, R4];
 
 // =================== Return Value ===================
 #[cfg(feature = "i386")]
-pub const RET_REG: Reg = Reg::EAX;
+pub const RET_REG: Reg = EAX;
 
 #[cfg(feature = "x86_64")]
-pub const RET_REG: Reg = Reg::RAX;
+pub const RET_REG: Reg = RAX;
+
+#[cfg(feature = "arm")]
+pub const RET_REG: Reg = R0;
 
 pub fn get_hyp_reg(cpu: &mut CPUState, num: usize) -> usize {
     let reg_to_read = REG_ORDER[num];

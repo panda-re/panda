@@ -8,23 +8,23 @@ use panda::syscall_injection::{syscall, syscall_no_return};
 // const EXECVE: target_ulong = 11;
 // const MEMFD_CREATE: target_ulong = 356;
 
-// x86_64
-const GETPID: target_ulong = 39;
-const MMAP: target_ulong = 9;
-const WRITE: target_ulong = 1;
-const EXECVE: target_ulong = 59;
-const MEMFD_CREATE: target_ulong = 319;
-const CHDIR: target_ulong = 80;
-const SETSID: target_ulong = 112;
+#[cfg(feature = "x86_64")]
+#[path = "syscalls/x86_64.rs"]
+mod sys_nums;
+
+#[cfg(feature = "i386")]
+#[path = "syscalls/i386.rs"]
+mod sys_nums;
+
+#[cfg(feature = "arm")]
+#[path = "syscalls/arm.rs"]
+mod sys_nums;
+
+use sys_nums::*;
 
 const NULL: target_ulong = 0;
 const NEG_1: target_ulong = u32::MAX as target_ulong;
 pub const PAGE_SIZE: target_ulong = 1024;
-
-const PROT_READ: target_ulong = 4;
-const PROT_WRITE: target_ulong = 2;
-const MAP_ANON: target_ulong = 0x20;
-const MAP_SHARED: target_ulong = 0x2;
 
 pub async fn do_mmap() -> target_ulong {
     syscall(
@@ -40,6 +40,11 @@ pub async fn do_mmap() -> target_ulong {
     )
     .await
 }
+
+pub const O_CREAT: i32 = 0o100;
+pub const O_RDWR: i32 = 0o002;
+pub const O_CLOEXEC: i32 = 0o2000000;
+pub const O_TRUNC: i32 = 0o1000;
 
 const MFD_CLOEXEC: target_ulong = 1;
 
@@ -75,4 +80,16 @@ pub async fn chdir(addr: target_ulong) -> target_ulong {
 
 pub async fn setsid() -> target_ulong {
     syscall(SETSID, ()).await
+}
+
+pub async fn close(fd: target_ulong) -> target_ulong {
+    syscall(CLOSE, (fd,)).await
+}
+
+pub async fn open(
+    path_ptr: target_ulong,
+    flags: i32,
+    mode: target_ulong,
+) -> target_ulong {
+    syscall(OPEN, (path_ptr, flags as target_long as target_ulong, mode)).await
 }

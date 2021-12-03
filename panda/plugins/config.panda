@@ -29,7 +29,7 @@ mmio_trace
 net
 network
 osi
-osi_linux
+#osi_linux
 osi_test
 pri
 pri_dwarf
