@@ -13,8 +13,8 @@ mod args;
 mod syscalls;
 
 use syscalls::{
-    chdir, do_execve, do_memfd_create, do_mmap, do_write, getpid, setsid,
-    PAGE_SIZE,
+    chdir, close, do_execve, do_memfd_create, do_mmap, do_write, getpid, open,
+    setsid, O_CLOEXEC, O_CREAT, O_RDWR, O_TRUNC, PAGE_SIZE,
 };
 
 /// mmap a buffer and ensure it's paged in, then return the address to it
@@ -23,7 +23,7 @@ async fn get_guest_buffer() -> target_ptr_t {
     let mmap_addr = do_mmap().await;
     log::debug!("mmap addr {:#x}", mmap_addr);
 
-    if (mmap_addr as target_long).is_negative() {
+    if (mmap_addr as target_long).is_negative() && mmap_addr > 0xffff_0000 {
         log::error!("linjector mmap error: {}", mmap_addr as target_long);
     }
 
@@ -37,6 +37,29 @@ async fn get_guest_buffer() -> target_ptr_t {
 fn current_process_name(cpu: &mut CPUState) -> String {
     let proc = OSI.get_current_process(cpu);
     proc.get_name().into_owned()
+}
+
+/// Convert to bytes and add null terminator
+fn cstr_bytes(string: impl Into<String>) -> Vec<u8> {
+    let mut string = string.into().into_bytes();
+    string.push(0);
+    string
+}
+
+/// Format a string and copy it to the guest
+macro_rules! guest_string {
+    ($cpu:ident, $($tt:tt)*) => {{
+        let bytes = cstr_bytes(format!($($tt)*));
+        let guest_buf = get_guest_buffer().await;
+
+        let write_result = virtual_memory_write($cpu, guest_buf, &bytes);
+
+        if !matches!(write_result, MemRWStatus::MemTxOk) {
+            log::error!("Write to guest status: {:?}", write_result);
+        }
+
+        guest_buf
+    }};
 }
 
 #[panda::on_all_sys_enter]
@@ -83,9 +106,25 @@ fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
         let mem_fd = do_memfd_create(guest_buf).await;
         log::debug!("Got memory fd {:#x}", mem_fd);
 
-        if (mem_fd as target_long).is_negative() {
+        let (fd, is_mem_fd) = if (mem_fd as target_long).is_negative() {
             log::error!("linjector mem_fd error: {}", mem_fd as target_long);
-        }
+
+            log::debug!("linjector trying to write to /tmp instead...");
+
+            let path = guest_string!(cpu, "/tmp/payload");
+            let fd =
+                open(path, O_CREAT | O_CLOEXEC | O_RDWR | O_TRUNC, 0o777).await;
+
+            log::debug!("open of /tmp/payload returned {}", fd);
+
+            if (fd as target_long).is_negative() {
+                log::error!("open of /tmp/payload returned error {}", fd);
+            }
+
+            (fd, false)
+        } else {
+            (mem_fd, true)
+        };
 
         // Write our file to our memory fd
         let mut elf_write_pos = 0;
@@ -113,10 +152,11 @@ fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
             );
 
             // Write guest buffer to memory file descriptor
-            let written = do_write(mem_fd, guest_buf, PAGE_SIZE).await;
+            let written = do_write(fd, guest_buf, PAGE_SIZE).await;
 
             if written < 0 {
                 log::error!("Write returned error {}", written);
+                panic!();
             } else {
                 elf_write_pos += written as usize;
             }
@@ -124,6 +164,13 @@ fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
 
         log::debug!("Finished writing to memfd");
         log::debug!("Forking...");
+
+        if !is_mem_fd {
+            let close_ret = close(fd).await;
+            if close_ret != 0 {
+                log::error!("Close of fd failed: {}", close_ret);
+            }
+        }
 
         // Fork and have the child process spawn the injected elf
         fork(async move {
@@ -133,25 +180,13 @@ fn on_sys_enter(cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
             let session_id = setsid().await;
             log::debug!("Session id: {:#x}", session_id);
 
-            // Get a new buffer for writing the path to our memfd
-            let guest_path_buf = get_guest_buffer().await;
-
             // Path should be "/proc/self/fd/#" where # is the memory file descriptor we
             // loaded our executable into,
-            let path = format!("/proc/self/fd/{}", mem_fd);
-            log::debug!("fd path: {:?}", path);
-
-            // Convert to bytes and add null terminator
-            let mut path = path.into_bytes();
-            path.push(0);
-
-            // Copy the path to the guest buffer we mmap'd
-            log::debug!("Writing path to guest...");
-            let write_result = virtual_memory_write(cpu, guest_path_buf, &path);
-
-            if !matches!(write_result, MemRWStatus::MemTxOk) {
-                log::error!("Write to guest status: {:?}", write_result);
-            }
+            let guest_path_buf = if is_mem_fd {
+                guest_string!(cpu, "/proc/self/fd/{}", fd)
+            } else {
+                guest_string!(cpu, "/tmp/payload")
+            };
 
             // Execute the host binary
             log::debug!("Performing execve");
