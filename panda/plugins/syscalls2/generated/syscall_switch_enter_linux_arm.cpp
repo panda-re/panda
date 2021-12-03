@@ -33,6 +33,7 @@ void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc, int static_c
 	}
 	ctx.asid = panda_current_asid(cpu);
 	ctx.retaddr = calc_retaddr(cpu, pc);
+	ctx.double_return = false;
 	bool panda_noreturn;	// true if PANDA should not track the return of this system call
 	const syscall_info_t *call = (syscall_meta == NULL || ctx.no > syscall_meta->max_generic) ? NULL : &syscall_info[ctx.no];
 
@@ -56,6 +57,8 @@ void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc, int static_c
 	// 2 long sys_fork ['void']
 	case 2: {
 		panda_noreturn = false;
+		ctx.double_return = true;
+		printf("enabling double return for fork\n");
 		PPP_RUN_CB(on_sys_fork_enter, cpu, pc);
 	}; break;
 	// 3 long sys_read ['unsigned int fd', 'char __user *buf', 'size_t count']
@@ -5012,14 +5015,18 @@ void syscall_enter_switch_linux_arm(CPUState *cpu, target_ptr_t pc, int static_c
 	if (!panda_noreturn) {
 		struct hook h;
 		h.addr = ctx.retaddr;
-		h.asid = ctx.asid;
+		if (ctx.double_return) {
+			h.asid = 0;
+		} else {
+			h.asid = ctx.asid;
+		}
 		h.cb.start_block_exec = hook_syscall_return;
 		h.type = PANDA_CB_START_BLOCK_EXEC;
 		h.enabled = true;
 		h.km = MODE_ANY; //you'd expect this to be user only
 		hooks_add_hook(&h);
 
-		running_syscalls[std::make_pair(ctx.retaddr, ctx.asid)] = ctx;
+		running_syscalls[std::make_pair(ctx.retaddr, h.asid)] = ctx;
 	}
 #endif
 }

@@ -252,13 +252,30 @@ extern "C" fn message_recv(_channel: u32, ptr: *const u8, len: usize) {
     }
 }
 
+#[cfg(feature = "x86_64")]
+const PATH: &str = "/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/x86_64-unknown-linux-musl/release/guest_daemon";
+
+#[cfg(feature = "arm")]
+const PATH: &str = "/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/arm-unknown-linux-musleabi/release/guest_daemon";
+
+#[cfg(feature = "i386")]
+const PATH: &str = "/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/i686-unknown-linux-musl/release/guest_daemon";
+
+#[cfg(feature = "x86_64")]
+const GUEST_PLUGIN_PATH: &str = "/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/x86_64-unknown-linux-musl/release/hyperfuse_guest";
+
+#[cfg(feature = "arm")]
+const GUEST_PLUGIN_PATH: &str = "/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/arm-unknown-linux-musleabi/release/hyperfuse_guest";
+
+#[cfg(feature = "i386")]
+const GUEST_PLUGIN_PATH: &str = "/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/i686-unknown-linux-musl/release/hyperfuse_guest";
+
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
     pretty_env_logger::init_custom_env("HYPERFUSE_LOG");
 
-    let path = "/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/x86_64-unknown-linux-musl/release/guest_daemon";
     let plugin_name = CString::new("linjector".as_bytes()).unwrap();
-    let plugin_arg = CString::new(format!("guest_binary={}", path).as_bytes()).unwrap();
+    let plugin_arg = CString::new(format!("guest_binary={}", PATH).as_bytes()).unwrap();
     unsafe {
         let path = panda::sys::panda_plugin_path(plugin_name.as_ptr());
         panda::sys::panda_add_arg(plugin_name.as_ptr(), plugin_arg.as_ptr());
@@ -269,7 +286,7 @@ fn init(_: &mut PluginHandle) -> bool {
     GUEST_PLUGIN_MANAGER.ensure_init();
     let channel = GUEST_PLUGIN_MANAGER.add_guest_plugin(GuestPlugin::new(
         "hyperfuse".into(),
-        Path::new("/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/x86_64-unknown-linux-musl/release/hyperfuse_guest"),
+        Path::new(GUEST_PLUGIN_PATH),
         message_recv,
     ));
     println!("hyperfuse established channel with fd {}", channel);
