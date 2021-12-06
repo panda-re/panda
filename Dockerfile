@@ -25,7 +25,8 @@ RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /tmp/${BASE_IMAGE}_build.txt | grep -o '^[^#]*') && \
     apt-get clean && \
     python3 -m pip install --upgrade --no-cache-dir pip && \
-    python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3 capstone" && \
+    python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" && \
+    python3 -m pip install --upgrade --no-cache-dir "capstone" && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
 
 # Then install capstone from source
