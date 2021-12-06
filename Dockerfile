@@ -42,7 +42,7 @@ RUN cargo --help
 # install libosi
 RUN cd /tmp && \
   git clone https://github.com/panda-re/libosi && \
-  mkdir libosi/build && cd $_ && \
+  mkdir /tmp/libosi/build && cd /tmp/libosi/build && \
   cmake -GNinja .. && ninja && ninja package && dpkg -i libosi*.deb && \
   cd /tmp && rm -rf libosi/
 
