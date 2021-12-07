@@ -258,7 +258,7 @@ class ArmArch(PandaArch):
         self.reg_sp = regnames.index("SP")
         self.reg_retaddr = regnames.index("LR")
         self.call_conventions = {"arm32":         ["R0", "R1", "R2", "R3"],
-                                 "syscall": ["R7", "R0", "R1", "R2", "R3"], # EABI
+                                 "syscall": ["R7", "R0", "R1", "R2", "R3", "R4", "R5"], # EABI
                                  }
         self.call_conventions['default'] = self.call_conventions['arm32']
 
