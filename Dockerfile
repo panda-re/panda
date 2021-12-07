@@ -26,13 +26,14 @@ RUN [ -e /tmp/${BASE_IMAGE}_build.txt ] && \
     apt-get clean && \
     python3 -m pip install --upgrade --no-cache-dir pip && \
     python3 -m pip install --upgrade --no-cache-dir "cffi>1.14.3" && \
+    python3 -m pip install --upgrade --no-cache-dir "capstone" && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
 
 # Then install capstone from source
 RUN cd /tmp && \
     curl -o cap.tgz -L https://github.com/aquynh/capstone/archive/4.0.2.tar.gz && \
     tar xvf cap.tgz && cd capstone-4.0.2/ && ./make.sh && make install && cd /tmp && \
-    rm -rf /tmp/capstone-4.0.2
+    rm -rf /tmp/capstone-4.0.2 && ldconfig
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
@@ -76,7 +77,7 @@ FROM base as panda
 
 # Copy panda + libcapstone.so*
 COPY --from=installer /usr/local /usr/local
-COPY --from=installer /lib/x86_64-linux-gnu/libcapstone* /lib/x86_64-linux-gnu/
+COPY --from=installer /usr/lib/libcapstone* /usr/lib/
 
 # Workaround issue #901 - ensure LD_LIBRARY_PATH contains the panda plugins directories
 #ARG TARGET_LIST="x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu,mips-softmmu,mipsel-softmmu"
