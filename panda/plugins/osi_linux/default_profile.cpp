@@ -2,7 +2,7 @@
 #include "default_profile.h"
 
 #ifdef TARGET_MIPS
-extern target_ulong last_r28;
+#include "hw_proc_id/hw_proc_id_int_fns.h"
 #endif
 
 
@@ -53,7 +53,7 @@ target_ptr_t default_get_current_task_struct(CPUState *cpu)
     // __current_thread_info is stored in KERNEL r28
     // userspace clobbers it but kernel restores (somewhow?)
     // First field of struct is task - no offset needed
-    current_task_addr=last_r28;
+    current_task_addr = get_id(cpu); // HWID returned by hw_proc_id is the cached r28 value
 
 #else // x86/64
     current_task_addr = ki.task.current_task_addr;

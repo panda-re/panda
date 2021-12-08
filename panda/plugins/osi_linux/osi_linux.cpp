@@ -688,27 +688,6 @@ void restore_after_snapshot(CPUState* cpu) {
     PPP_REG_CB("syscalls2", on_all_sys_enter, on_first_syscall);
 }
 
-
-/**
- * @brief Cache the last R28 observed while in kernel for MIPS
- */
-
-#ifdef TARGET_MIPS
-target_ulong last_r28 = 0;
-
-void r28_cache(CPUState *cpu, TranslationBlock *tb) {
-
-  if (unlikely(((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28] != last_r28) && panda_in_kernel(cpu)) {
-
-      target_ulong potential = ((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28];
-      // XXX: af: We need this filter but I have no idea why
-      if (potential > 0x80000000) {
-        last_r28 = potential;
-      }
-  }
-}
-#endif
-
 #if defined(TARGET_I386) || defined(TARGET_ARM) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
 
 // Keep track of which tasks have entered execve. Note that we simply track
@@ -782,8 +761,7 @@ bool init_plugin(void *self) {
     }
 
 #if defined(TARGET_MIPS)
-        panda_cb pcb2 = { .before_block_exec = r28_cache };
-        panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb2);
+        panda_require("hw_proc_id");
 #endif
 
 #if defined(OSI_LINUX_TEST)
