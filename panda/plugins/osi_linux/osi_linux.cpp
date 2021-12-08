@@ -710,33 +710,6 @@ void restore_after_snapshot(CPUState* cpu) {
     PPP_REG_CB("syscalls2", on_all_sys_enter, on_first_syscall);
 }
 
-
-
-#ifdef TARGET_MIPS
-target_ulong last_r28 = 0;
-
-/**
- * @brief Cache the last R28 observed while in kernel for MIPS
- * 
- * On MIPS in kernel mode r28 a pointer to the location of the current
- * task_struct. We need to cache this value for use in usermode. 
- */
-inline void check_cache_r28(CPUState *cpu){
-    if (unlikely(((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28] != last_r28) && panda_in_kernel(cpu)) {
-        target_ulong potential = ((CPUMIPSState*)cpu->env_ptr)->active_tc.gpr[28];
-        // check if r28 contains a pointer to kernel memory
-        if (likely(address_in_kernel_code_linux(potential))) {
-            last_r28 = potential;
-            r28_set = true;
-        }
-    }
-}
-
-void r28_cache(CPUState *cpu, TranslationBlock *tb) {
-    check_cache_r28(cpu);
-}
-#endif
-
 #if defined(TARGET_I386) || defined(TARGET_ARM) || (defined(TARGET_MIPS) && !defined(TARGET_MIPS64))
 
 // Keep track of which tasks have entered execve. Note that we simply track
@@ -810,8 +783,7 @@ bool init_plugin(void *self) {
     }
 
 #if defined(TARGET_MIPS)
-        panda_cb pcb2 = { .start_block_exec = r28_cache };
-        panda_register_callback(self, PANDA_CB_START_BLOCK_EXEC, pcb2);
+        panda_require("hw_proc_id");
 #endif
 
 #if defined(OSI_LINUX_TEST)
