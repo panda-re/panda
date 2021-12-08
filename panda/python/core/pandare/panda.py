@@ -1373,7 +1373,7 @@ class Panda():
         Returns:
             DeviceState struct
         '''
-        return self.libpanda.sysbus_create_varargs(name,addr,ffi.NULL)
+        return self.libpanda.sysbus_create_varargs(name,addr, self.ffi.NULL)
 
     def cpu_class_by_name(self, name, cpu_model):
         '''
@@ -1531,7 +1531,7 @@ class Panda():
         Returns:
             struct ObjectProperty pointer
         '''
-        return self.libpanda.object_property_find(obj,name,ffi.NULL)
+        return self.libpanda.object_property_find(obj,name, self.ffi.NULL)
 
     def memory_region_allocate_system_memory(self, mr, obj, name, ram_size):
         '''
