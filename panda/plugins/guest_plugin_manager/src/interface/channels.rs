@@ -53,7 +53,6 @@ pub fn publish_message_from_guest(channel_id: ChannelId, msg: Vec<u8>) {
     let pm = CHANNELS.read();
     if let Some(plugin) = pm.get(&channel_id) {
         let buf_ptr = msg.as_ptr();
-        println!("published message to FD {}", channel_id);
         (plugin.msg_receive_cb)(channel_id, buf_ptr, msg.len())
     } else {
         println!("failed publish message to FD {}", channel_id);

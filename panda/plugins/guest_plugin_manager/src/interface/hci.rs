@@ -48,7 +48,6 @@ pub fn hyp_write(
     buf_ptr: usize,
     buf_size: usize,
 ) -> Option<usize> {
-    println!("write");
     if let Ok(buf_out) =
         virtual_memory_read(cpu, buf_ptr as target_ulong, buf_size)
     {
@@ -101,4 +100,3 @@ pub fn hyp_get_channel_by_name(
         panic!("Failed to read virtual memory in hyp_write");
     }
 }
-
