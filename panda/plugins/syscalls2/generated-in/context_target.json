@@ -1,14 +1,22 @@
 {
 	"linux:x86": {
-		"panda_noreturn": ["sys_execve", "sys_exit_group", "sys_sigreturn"]
+		"panda_noreturn": ["sys_execve", "sys_exit_group", "sys_sigreturn"],
+		"panda_doublereturn": ["sys_fork"]
 	},
 	"linux:arm": {
-		"panda_noreturn": ["sys_execve", "sys_exit_group", "sys_sigreturn"]
+		"panda_noreturn": ["sys_execve", "sys_exit_group", "sys_sigreturn"],
+		"panda_doublereturn": ["sys_fork"]
 	},
 	"linux:x64": {
-		"panda_noreturn": ["sys_exit_group"]
+		"panda_noreturn": ["sys_exit_group"],
+		"panda_doublereturn": ["sys_fork"]
+	},
+	"linux:mips": {
+		"panda_noreturn": ["sys_exit_group"],
+		"panda_doublereturn": ["sys_fork"]
 	},
 	"freebsd:x64": {
-		"panda_noreturn": ["execve", "fexecve", "__mac_execve", "sys_exit", "thr_exit"]
+		"panda_noreturn": ["execve", "fexecve", "__mac_execve", "sys_exit", "thr_exit"],
+		"panda_doublereturn": ["fork"]
 	}
 }

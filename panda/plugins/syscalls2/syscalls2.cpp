@@ -807,7 +807,6 @@ void hook_syscall_return(CPUState *cpu, TranslationBlock *tb, struct hook* h) {
         no = ctx->no;
         syscalls_profile->return_switch(cpu, tb->pc, ctx);
         if (ctx->double_return){
-            printf("double return\n");
             ctx->double_return = false;
             return;
         }else{
