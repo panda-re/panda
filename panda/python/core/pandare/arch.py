@@ -7,6 +7,7 @@ initialize a PandaArch class for the specified architecture in the variable
 
 '''
 import binascii
+import struct
 from .utils import telescope
 
 class PandaArch():
@@ -137,8 +138,12 @@ class PandaArch():
 
         Note for syscalls we define arg[0] as syscall number and then 1-index the actual args
         '''
-        reg = self._get_arg_loc(idx, convention)
-        return self.set_reg(cpu, reg, val)
+        argloc = self._get_arg_loc(idx, convention)
+
+        if self._is_stack_loc(argloc):
+            return self._write_stack(cpu, argloc, val)
+        else:
+            return self.set_reg(cpu, argloc, val)
 
     def get_arg(self, cpu, idx, convention='default'):
         '''
@@ -169,6 +174,33 @@ class PandaArch():
         check if it's the name of a stack offset
         '''
         return argloc.startswith("stack_")
+
+    def _write_stack(self, cpu, argloc, val):
+        '''
+        Given a name like stack_X, calculate where
+        the X-th value on the stack is, then write val
+        to that location
+
+        May raise a ValueError if the memory write fails
+        '''
+
+        if isinstance(val, int):
+            # Encode as word-size with endianness
+            bits, endianness, reg_sz = self._determine_bits()
+            val = val.to_bytes(reg_sz, byteorder=endianness)
+
+        if not isinstance(val, bytes):
+            raise ValueError("_write_stack needs an int or bytes")
+
+
+        # Stack based - get stack base, calculate offset, then try to read it
+        assert(self._is_stack_loc(argloc)), f"Can't get stack offset of {argloc}"
+
+        stack_idx = int(argloc.split("stack_")[1])
+        stack_base = self.get_reg(cpu, self.reg_sp)
+        offset = reg_sz * (stack_idx+1)
+        if self.panda.virtual_memory_write(cpu, stack_base + offset, val):
+            raise ValueError
 
     def _read_stack(self, cpu, argloc):
         '''
