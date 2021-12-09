@@ -331,6 +331,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 
 [[package]]
+name = "once_cell"
+version = "1.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
+
+[[package]]
 name = "page_size"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -342,13 +348,15 @@ dependencies = [
 
 [[package]]
 name = "panda-re"
-version = "0.13.0"
+version = "0.22.0"
+source = "git+https://github.com/panda-re/panda-rs#cfa0d34cc7ca372be7daab76e09c603eab415059"
 dependencies = [
  "dirs",
  "glib-sys",
  "inventory",
  "lazy_static",
  "libloading",
+ "once_cell",
  "panda-re-macros",
  "panda-re-sys",
  "paste",
@@ -359,7 +367,8 @@ dependencies = [
 
 [[package]]
 name = "panda-re-macros"
-version = "0.9.0"
+version = "0.14.0"
+source = "git+https://github.com/panda-re/panda-rs#cfa0d34cc7ca372be7daab76e09c603eab415059"
 dependencies = [
  "darling",
  "doc-comment",
@@ -369,7 +378,8 @@ dependencies = [
 
 [[package]]
 name = "panda-re-sys"
-version = "0.4.0"
+version = "0.7.0"
+source = "git+https://github.com/panda-re/panda-rs#cfa0d34cc7ca372be7daab76e09c603eab415059"
 
 [[package]]
 name = "parking_lot"

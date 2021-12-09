@@ -1,4 +1,5 @@
 use panda::sys::{get_cpu, qemu_loglevel, CPUX86State};
+use panda::syscall_injection::fork;
 use panda::{current_asid, current_pc, current_sp, PppCallback};
 use panda::{
     mem::virtual_memory_read,
@@ -104,7 +105,8 @@ async fn do_execve(
     syscall(EXECVE, (path, argv, envp)).await
 }
 
-const GETPID: target_ulong = 24;
+const GETPID: target_ulong = 39;
+const GET_PARENT_PID: target_ulong = 110;
 
 fn read_2_bytes_at_pc(_cpu: &mut CPUState, pc: target_ulong) {
     let a = virtual_memory_read(_cpu, pc, 2).unwrap();
@@ -203,19 +205,26 @@ fn on_sys_enter(_cpu: &mut CPUState, pc: SyscallPc, syscall_num: target_ulong) {
             }
         }
         println!("forking...");
-        panda::hook::start_block_exec(move |cpu, _, hook| {
-            println!("RAX: {:x}", panda::regs::get_reg(cpu, RAX));
+
+        let pid = syscall(GETPID, ()).await;
+        println!("parent PID before fork is {}", pid);
+
+        let fork_ret = fork(async {
+            println!("In child injector");
+
+            let child_pid = syscall(GETPID, ()).await;
+            let parent_pid = syscall(GET_PARENT_PID, ()).await;
+
+            println!("child_pid: {} | parent: {}", child_pid, parent_pid);
         })
-        .at_addr(pc.pc() + 2);
-
-        // let pid = syscall(GETPID, ()).await;
-        // println!("PID is {}", pid);
-
-        let fork_ret = do_fork().await;
-        println!("fork ret {:x}", fork_ret);
+        .await;
+        println!("fork ret: {}", fork_ret);
 
         // let is_parent = fork_ret != 0 as target_ulong;
         // println!("is_parent is {}", is_parent);
+
+        let pid = syscall(GETPID, ()).await;
+        println!("parent pid after fork: {}", pid);
 
         // // /proc/self/fd/#
 
