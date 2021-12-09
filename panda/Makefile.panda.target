@@ -56,7 +56,7 @@ extra-plugin-%: plog.pb-c.h plog.pb.h $(PANDA_API_EXT)
 		PLUGIN_SRC_ROOT="$(EXTRA_PLUGINS_PATH)/panda/plugins" \
 		V="$(V)" PLUGIN_NAME="$*" all,)
 
-all: $(PLUGIN_SUBDIR_RULES) $(EXTRA_PLUGIN_SUBDIR_RULES)
+all: $(PLUGIN_SUBDIR_RULES) $(EXTRA_PLUGIN_SUBDIR_RULES) build_guest_plugins
 
 PROTO_FILES=$(wildcard $(addsuffix /*.proto,$(ALL_PLUGIN_SUBDIRS)))
 
@@ -146,6 +146,28 @@ clean-panda:
 		find panda/plugins -depth -mindepth 1 -delete;\
 		rm -f panda/panda_*.so;\
 	fi
+
+#########################################################
+# Guest Plugins
+
+# determine list of guest plugins
+# remove spaces from lines. skip lines starting with a #. concatenate the rest into 
+# a space-delimited list
+PANDA_GUEST_PLUGINS=$(shell tr -d "[:blank:]" < $(SRC_PATH)/panda/guest_plugins/config.panda | grep -v "^\#" | xargs)
+GUEST_PLUGIN_SUBDIR_RULES=$(patsubst %,guest-plugin-%, $(PANDA_GUEST_PLUGINS))
+GUEST_PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
+
+build_guest_plugins: $(GUEST_PLUGIN_SUBDIR_RULES)
+	@echo "GUEST_PLUGINS: ${PANDA_GUEST_PLUGINS}"
+
+guest-plugin-%:
+	$(call quiet-command,mkdir -p ../panda/guest_plugins/$*,)
+	$(call quiet-command,mkdir -p panda/guest_plugins/$*,)
+	$(call quiet-command,$(MAKE) $(GUEST_PLUGIN_SUBDIR_MAKEFLAGS) \
+		-f "$(SRC_PATH)/panda/guest_plugins/panda.mak" \
+		-f "$(SRC_PATH)/panda/guest_plugins/$*/Makefile" \
+		PLUGIN_SRC_ROOT="$(SRC_PATH)/panda/guest_plugins" \
+		V="$(V)" PLUGIN_NAME="$*" all,)
 
 ifdef CONFIG_LLVM
 #########################################################

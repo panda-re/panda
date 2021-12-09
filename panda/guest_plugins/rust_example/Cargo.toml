@@ -1,0 +1,8 @@
+[package]
+name = "rust_example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# TODO: move to its own repo to version separately
+channels = { path = "../../../../igloo-internal/pie_idea/guest_code/channels" }
