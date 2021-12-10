@@ -276,14 +276,14 @@ fn guest_plugin_path(name: &str) -> Option<PathBuf> {
         fn panda_guest_plugin_path(name: *const c_char) -> *mut c_char;
     }
 
-    let name = dbg!(CString::new(name).ok())?;
+    let name = CString::new(name).ok()?;
     let path_result = unsafe { panda_guest_plugin_path(name.as_ptr()) };
 
-    if dbg!(path_result).is_null() {
+    if path_result.is_null() {
         None
     } else {
         let path = unsafe { CStr::from_ptr(path_result) };
-        let path = dbg!(path.to_str().ok().map(PathBuf::from));
+        let path = path.to_str().ok().map(PathBuf::from);
 
         unsafe {
             panda::sys::free(path_result as _);
