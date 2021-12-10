@@ -250,6 +250,29 @@ bool _panda_load_plugin(const char *filename, const char *plugin_name, bool libr
 
 extern const char *qemu_file;
 
+char *panda_guest_plugin_path(const char *plugin_name) {
+    gchar* plugin_path;
+    // Note qemu_file is set in the first call to main_aux
+    // so if this is called (likely via load_plugin) qemu_file must be set directly
+    assert(qemu_file != NULL);
+
+    // try relative to PANDA binary as it would be in the build or install directory
+    char *dir = g_path_get_dirname(qemu_file);
+    plugin_path = g_strdup_printf("%s/panda/guest_plugins/bin/%s", dir,
+                                  plugin_name);
+
+    g_free(dir);
+    if (TRUE == g_file_test(plugin_path, G_FILE_TEST_EXISTS)) {
+        char* path = strdup(plugin_path);
+        g_free(plugin_path);
+        return path;
+    }
+    g_free(plugin_path);
+
+    // Return null if plugin resolution failed.
+    return NULL;
+}
+
 // Resolve a plugin to a path. If the plugin doesn't exist in any of the search
 // paths, then NULL is returned. The search order for plugins is as follows:
 //

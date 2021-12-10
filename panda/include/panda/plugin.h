@@ -154,6 +154,7 @@ char** str_split(char *a_str, const char a_delim);
 extern gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
 extern int panda_argc;
 
+char *panda_guest_plugin_path(const char *name);
 char *panda_plugin_path(const char *name);
 void panda_require_from_library(const char *plugin_name, char **plugin_args, uint32_t num_args);
 void panda_require(const char *plugin_name);

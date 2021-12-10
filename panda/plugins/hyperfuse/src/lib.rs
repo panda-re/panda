@@ -270,9 +270,34 @@ const GUEST_PLUGIN_PATH: &str = "/home/jmcleod/dev/igloo-internal/pie_idea/guest
 #[cfg(feature = "i386")]
 const GUEST_PLUGIN_PATH: &str = "/home/jmcleod/dev/igloo-internal/pie_idea/guest_code/target/i686-unknown-linux-musl/release/hyperfuse_guest";
 
+use std::{ffi::CStr, os::raw::c_char, path::PathBuf};
+fn guest_plugin_path(name: &str) -> Option<PathBuf> {
+    extern "C" {
+        fn panda_guest_plugin_path(name: *const c_char) -> *mut c_char;
+    }
+
+    let name = dbg!(CString::new(name).ok())?;
+    let path_result = unsafe { panda_guest_plugin_path(name.as_ptr()) };
+
+    if dbg!(path_result).is_null() {
+        None
+    } else {
+        let path = unsafe { CStr::from_ptr(path_result) };
+        let path = dbg!(path.to_str().ok().map(PathBuf::from));
+
+        unsafe {
+            panda::sys::free(path_result as _);
+        }
+
+        path
+    }
+}
+
 #[panda::init]
 fn init(_: &mut PluginHandle) -> bool {
     pretty_env_logger::init_custom_env("HYPERFUSE_LOG");
+
+    //let guest_plugin_path = guest_plugin_path("hyperfuse");
 
     let plugin_name = CString::new("linjector".as_bytes()).unwrap();
     let plugin_arg = CString::new(format!("guest_binary={}", PATH).as_bytes()).unwrap();
